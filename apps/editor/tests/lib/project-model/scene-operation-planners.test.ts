@@ -75,7 +75,8 @@ function supportedLayout(elevation = 0) {
 			[0, 6]
 		],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: baseline.floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the support fixture enclosure was refused');
 	return planned.document;

@@ -191,6 +191,7 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 				[0, 3]
 			],
 			close: true,
+			levelId: baseline.floor.id,
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.document.walls.length).toBeGreaterThan(0);
@@ -213,6 +214,7 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 			baseline,
 			start: [0, 0],
 			end: [3, 0],
+			levelId: baseline.floor.id,
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.document.walls.map((wall) => wall.height)).toEqual([
@@ -232,7 +234,8 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 			baseline,
 			start: [0, 0],
 			end: [3, 0],
-			height: 1.2
+			height: 1.2,
+			levelId: baseline.floor.id
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.document.walls[0]!.height).toBe(1.2);
@@ -246,7 +249,7 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 			rooms: [],
 			openings: []
 		};
-		const plan = planWallSegmentCaptured({ baseline, start: [0, 0], end: [3, 0] });
+		const plan = planWallSegmentCaptured({ baseline, start: [0, 0], end: [3, 0], levelId: baseline.floor.id });
 		expect(plan.kind).toBe('success');
 	});
 
@@ -265,7 +268,8 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 		const plan = planDuplicateIsolatedRoom(
 			document,
 			{ roomId: 'room-a', delta: [10, 0] },
-			freshCapture()
+			freshCapture(),
+			document.floor.id
 		);
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.createdWallIds.length).toBeGreaterThan(0);

@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	compileWallFirstLayoutGeometry,
+	createEmptyWallFirstLayoutDocument,
 	deriveLayoutWallRoles,
 	extractBoundaryCandidateFaces,
 	validateWallFirstPortalRelations,
 	wallFirstAdjacentRooms,
-	type LayoutDocumentWallFirst
+	type LayoutDocumentWallFirst,
+	type LayoutVec2
 } from '@portfolio/layout-core';
 import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-fixtures';
 
@@ -52,6 +54,16 @@ const PRE_FORMAT6_DIGESTS: Record<string, string> = {
 	'p23b-40-wall-all-curved-v1': '8928aa74102721a17e89284a93e2bab9a5edac0e96ee82d1d4032e2844113bd8'
 };
 
+/**
+ * The seventh fixture's digest, recorded the same way at `55683981`: the
+ * format-5 tree with `role: 'boundary'` on every Wall of
+ * `dividedRoomsFixture()` below (the divider included, as every Wall was then
+ * authored), compiled by the base code and pinned through the same
+ * `formatNeutralDigest`. It is the only fixture here that is NOT all-boundary:
+ * format 6 derives the shared Wall `dividing`, and the digest must still match.
+ */
+const PRE_FORMAT6_DIVIDED_ROOMS_DIGEST = '1d25073c508ffd90b4cc21d5e3282b356942fb5c514999418b9a0094f9b1030f';
+
 const canonical = (value: unknown): string => {
 	if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
 	if (value !== null && typeof value === 'object') {
@@ -62,6 +74,72 @@ const canonical = (value: unknown): string => {
 	}
 	return JSON.stringify(value) ?? 'null';
 };
+
+/**
+ * Seventh fixture (dividing Wall with a portal): two Rooms sharing one dividing Wall, with a
+ * door Opening whose `connectsRoomIds` names both Rooms. Literal geometry, no
+ * planner: Room A is (0,0)-(4,3) and Room B is (4,0)-(8,3); the shared Wall runs
+ * from `j-south` (4,0) to `j-north` (4,3). Format 6 carries no `role` key.
+ */
+function dividedRoomsFixture(): LayoutDocumentWallFirst {
+	const document = createEmptyWallFirstLayoutDocument();
+	const junction = (id: string, x: number, z: number) => ({ id, point: [x, z] as LayoutVec2 });
+	const wall = (id: string, startJunctionId: string, endJunctionId: string) => ({
+		id,
+		startJunctionId,
+		endJunctionId,
+		thickness: 0.2,
+		height: 3,
+		centerline: { kind: 'line' as const }
+	});
+	document.junctions.push(
+		junction('j-a-sw', 0, 0),
+		junction('j-south', 4, 0),
+		junction('j-b-se', 8, 0),
+		junction('j-b-ne', 8, 3),
+		junction('j-north', 4, 3),
+		junction('j-a-nw', 0, 3)
+	);
+	document.walls.push(
+		wall('wall-a-south', 'j-a-sw', 'j-south'),
+		wall('wall-b-south', 'j-south', 'j-b-se'),
+		wall('wall-b-east', 'j-b-se', 'j-b-ne'),
+		wall('wall-b-north', 'j-b-ne', 'j-north'),
+		wall('wall-divider', 'j-south', 'j-north'),
+		wall('wall-a-north', 'j-north', 'j-a-nw'),
+		wall('wall-a-west', 'j-a-nw', 'j-a-sw')
+	);
+	const forward = (wallId: string) => ({ wallId, direction: 'forward' as const });
+	const reverse = (wallId: string) => ({ wallId, direction: 'reverse' as const });
+	document.rooms.push(
+		{
+			id: 'room-a',
+			name: 'Room A',
+			boundary: [forward('wall-a-south'), forward('wall-divider'), forward('wall-a-north'), forward('wall-a-west')],
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		},
+		{
+			id: 'room-b',
+			name: 'Room B',
+			boundary: [forward('wall-b-south'), forward('wall-b-east'), forward('wall-b-north'), reverse('wall-divider')],
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		}
+	);
+	document.openings.push({
+		id: 'door-divider',
+		wallId: 'wall-divider',
+		kind: 'door',
+		offset: 1,
+		width: 0.9,
+		height: 2.1,
+		sillHeight: 0,
+		profile: 'rectangular',
+		connectsRoomIds: ['room-a', 'room-b']
+	});
+	return document;
+}
 
 function formatNeutralDigest(document: LayoutDocumentWallFirst): string {
 	const { geometry } = compileWallFirstLayoutGeometry(document);
@@ -117,4 +195,17 @@ describe('T1.P02.S01 — format 6 pre/post differential over all-boundary kernel
 			expect(validateWallFirstPortalRelations(document)).toEqual([]);
 		});
 	}
+
+	it('divided-rooms-portal-v1: a dividing Wall and its door portal compile exactly as format 5 did', () => {
+		const document = dividedRoomsFixture();
+		expect(document.formatVersion).toBe(6);
+		// The derived model names the shared Wall dividing; the perimeter stays bounding.
+		const roles = deriveLayoutWallRoles(document);
+		expect(roles.get('wall-divider')).toBe('dividing');
+		expect([...new Set(roles.values())].sort()).toEqual(['bounding', 'dividing']);
+		expect(extractBoundaryCandidateFaces(document).faces).toHaveLength(2);
+
+		expect(formatNeutralDigest(document)).toBe(PRE_FORMAT6_DIVIDED_ROOMS_DIGEST);
+		expect(validateWallFirstPortalRelations(document)).toEqual([]);
+	});
 });

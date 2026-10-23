@@ -2,7 +2,7 @@
 
 **Slice:** T1.P02.S01 · **Status:** implemented 2026-10-22 on
 `t1/p02-s01-layout-identity-format-cutover` (batch E, E7) — §1 and §2 complete, §3 filed as a
-stop-and-report; verification recorded below; independently reviewed by two adversarial passes, not
+stop-and-report; verification recorded below; independently reviewed by three adversarial passes, not
 owner-accepted, no acceptance recorded ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -15,7 +15,8 @@ the phase's final gate either — the deferred exhaustive proof routes to
 [`T1.P02.S04`](../t1.p02.s04-integrated-final-gate/acceptance.md).
 
 The command counts below describe the tree that carries this record: the cutover commit `8edc6487`,
-the review-pass commits `9be24c65` and `c4a5f60f`, and the docs commit that lands this text. Each
+the review-pass commits `9be24c65` and `c4a5f60f`, and the third-review commit that carries the
+owner rulings and this text. Each
 lane was re-run after the last code or test edit, and the full suite again on the final tip.
 
 ## Stop-and-report: legacy Layout type retirement (§3)
@@ -149,6 +150,10 @@ intent today:
 3. Starter-gallery boot fixes the nonce to `'starter-template'`, so two independently booted projects
    derive the same template ids. The plan sanctions this: template boot is deterministic by design
    and nonce-suffixed ids cannot collide with it.
+4. The standalone noding planners `planWallSubdivision`, `planWallSplit` and `planWallCrossing` take a
+   caller-supplied `NodingIdAllocator` rather than a capture. No production caller reaches them; the
+   owner kept them as listed exceptions (plan, owner rulings 2026-10-22). Inside `planWallChain`
+   they run on the chain's captured allocator.
 
 ## Verification evidence
 
@@ -166,18 +171,18 @@ the API admits Layout units through the shared package.
 | `npm run check:layout-core` | clean (`tsc --noEmit`) |
 | `npm run check:project-model` | clean (`tsc --noEmit`) |
 | `npm run check:api` | clean (`tsc --noEmit`) |
-| `npm run test:fast` | 143 files, 1954 tests passed |
-| `npm run test:heavy` | 9 files, 124 tests passed |
+| `npm run test:fast` | 143 files, 1996 tests passed |
+| `npm run test:heavy` | 9 files, 125 tests passed |
 | `npm run test:arch` | 22 files, 173 tests passed |
-| `npm test` (full suite) | 174 files, 2251 tests passed |
-| `npm run test:api` | 11 files, 80 tests passed, 0 skipped (DB target `postgresql://localhost:5432/biskiq`, the default the API suites declare) |
+| `npm test` (full suite) | 174 files, 2294 tests passed |
+| `npm run test:api` | 11 files, 82 tests passed, 0 skipped (DB target `postgresql://localhost:5432/biskiq_t1p02s01_fix`, a fresh local database) |
 
 The full suite is required, not optional: `apps/editor/test-lanes.ts` and
 `apps/editor/tests/helpers/angled-plan-fixtures.ts` are in the change set, and
 [the tests README's change-impact table](../../../../../apps/editor/tests/README.md#what-a-change-requires)
 requires every lane such a change reaches plus the full suite at acceptance. `test:fast`,
-`test:heavy` and `test:arch` sum exactly to the full suite (143 + 9 + 22 = 174 files; 1954 + 124 +
-173 = 2251 tests), so no test sits outside a lane.
+`test:heavy` and `test:arch` sum exactly to the full suite (143 + 9 + 22 = 174 files; 1996 + 125 +
+173 = 2294 tests), so no test sits outside a lane.
 
 ## What the plan asked, and what proves it
 
@@ -203,9 +208,18 @@ requires every lane such a change reaches plus the full suite at acceptance. `te
   re-places it at the same point, because that allocator's seed is occupancy-shaped
   (`layout-object-N`) and only the capture prevents a recycled identity there.
 - The working level is an explicit captured intent input (`readLayoutWorkingLevel`,
-  `packages/layout-core/src/layout-id-capture.ts`), which the Layout precision adapter enforces by
-  refusing when the captured `levelId` is not the accepted Layout floor; the retained planners then
-  read `document.floor`, whose `id` stays stable.
+  `packages/layout-core/src/layout-id-capture.ts`), which the Layout precision adapter refuses when
+  the captured `levelId` is not the accepted Layout floor. By owner ruling it is also an explicit
+  `levelId` parameter on all twelve planner entry points this slice changed (`planWallChain`,
+  `planWallSegment`, `planFirstEnclosureCreation`, `planDeleteWall`, `planRemoveRoom`,
+  `planDissolveJunction`, `planCreateWallFirstOpening`, `planRepeatLayoutObject`,
+  `planRepeatWallOpening`, `planDuplicateIsolatedRoom`, `planCommitLayoutObjectPresetWithId`,
+  `planCommitLayoutObjectPreset`): each refuses a missing or mismatched level first, through
+  `layoutWorkingLevelIssue`, with its family's existing code (`invalid_value`, or
+  `invalid_candidate_document` for the chain and dissolve). `layout-identity-capture.test.ts`
+  (*explicit working level*) proves a wrong level, an empty level and the document's own level for
+  each of the twelve; `layout-precision-adapter.test.ts` proves the adapter's missing-level and
+  stale-level refusals, including on the plinth path.
 - The stale-capture guarantee does not rest on the nonce alone: an accepted edit moves the revision,
   and the acceptance coordinator refuses `stale-revision` before any planner runs, so a captured id
   from a superseded state cannot be replayed onto a newer document.
@@ -244,9 +258,8 @@ requires every lane such a change reaches plus the full suite at acceptance. `te
   `stage-source-admission.test.ts` (a Layout unit at `LAYOUT_WALL_FIRST_FORMAT_VERSION - 1`, i.e.
   format 5, refused through both `validateProjectEnvelope` and editor admission). The API Save path
   goes through the same `packages/project-model/src/units/validate.ts` reader and therefore inherits
-  the refusal, but **no API-level test asserts a format-5 Layout refusal**: `save-units.test.mjs`
-  proves the transaction and envelope contract, not the payload version. That gap is stated rather
-  than papered over.
+  the refusal, and `save.test.mjs` asserts it end to end: a format-5 Layout unit and a format-6
+  Wall carrying `role` each refuse as `invalid_project` and write nothing.
 
 **§3 — legacy Layout type retirement.** Not implemented: filed as a stop-and-report below, with the
 five blocking findings and the successor slice's scope.
@@ -291,16 +304,18 @@ stays open and is listed under outstanding obligations.
    15-row delta test (`p23b4-consumer-observations.test.ts`). The P23B verdict fixture says
    where its 12 re-derived digests came from. This is the one place a reviewer should look hardest: a
    reference that silently becomes a snapshot of the code under test stops being evidence.
-4. **The working level is enforced at the intent seam**, not as a new parameter on every planner
-   signature: the adapter refuses a captured level that is not the accepted floor, and the retained
-   planners keep reading `document.floor`. Same guarantee, narrower diff.
-5. **The API's format-5 refusal is inherited, not API-tested** — the Save path shares the units
-   reader, but no `apps/api` test feeds a format-5 Layout payload. Adding that one case is the obvious
-   follow-up if criterion 3 must be proved end-to-end rather than at the shared reader.
+4. **The working level is an explicit parameter as well as an intent-seam check** (owner ruling,
+   strict): the twelve changed planners take `levelId` and refuse a stale one, and the adapter still
+   refuses first. Only the planners whose signature this slice changed count as "changed"; the
+   canonical compiler keeps reading `document.floor` as authored data.
+5. **The API's format-5 refusal is now API-tested** — `apps/api/tests/save.test.mjs` refuses a
+   format-5 Layout unit (`unsupported_format_version`) and a format-6 Wall carrying `role`
+   (`unknown_key`) as `invalid_project`, with no version or receipt written.
 
 ## Outstanding obligations
 
-- **F2 open timings at S and M** on the owner's MacBook Air M2 (E6 amendment) — not measured in this
-  pass; no benchmark harness exists in the tree.
-- **§3 retirement slice** — authorized separately, before S02, not carried past the phase.
+- **F2 open timings at S and M** on the owner's MacBook Air M2 (E6 amendment) — moved by owner ruling
+  to `T1.P02.S04`'s performance recheck; not an S01 acceptance obligation.
+- **§3 retirement slice** — owner-accepted stop-and-report; authorized separately, before S02, not
+  carried past the phase.
 - **Review and acceptance** — this record is evidence for that judgement, not the judgement.

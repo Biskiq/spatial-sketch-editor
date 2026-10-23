@@ -154,3 +154,9 @@ export function readLayoutWorkingLevel(
 		? entry.value
 		: null;
 }
+
+/** T1.P02.S01 §1 — explicit working level: null when `levelId` names the document's level, else the refusal message. */
+export function layoutWorkingLevelIssue(document: { readonly floor: { readonly id: string } }, levelId: string): string | null {
+	if (typeof levelId !== 'string' || levelId.length === 0) return 'A Layout planner requires an explicit working level';
+	return levelId === document.floor.id ? null : `Working level '${levelId}' is not this document's level '${document.floor.id}'`;
+}

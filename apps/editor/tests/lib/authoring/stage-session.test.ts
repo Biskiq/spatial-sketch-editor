@@ -49,7 +49,8 @@ async function enclosureProject(id: string, scale: number = 1): Promise<ProjectE
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points,
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
 	return createUnitProject({ id, name: 'Session project', layout: plan.document });

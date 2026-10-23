@@ -114,7 +114,8 @@ export function plan(
 		end,
 		capture: freshCapture(),
 		...(hostSnaps.length > 0 ? { endpointHostSnaps: hostSnaps } : {}),
-		...(junctionSnaps.length > 0 ? { endpointJunctionSnaps: junctionSnaps } : {})
+		...(junctionSnaps.length > 0 ? { endpointJunctionSnaps: junctionSnaps } : {}),
+		levelId: baseline.floor.id
 	});
 }
 
@@ -148,7 +149,8 @@ export function twoRoomsWithOneObliqueDivider(): LayoutDocumentWallFirst {
 		baseline: baseDocument(),
 		points: [p(0, -4), p(7, -4), p(7, 2), p(0, 2)],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: baseDocument().floor.id
 	});
 	if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 	const document = commit(enclosure.document, bottomStart, bottomEnd);

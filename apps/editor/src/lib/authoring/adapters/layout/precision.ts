@@ -218,16 +218,13 @@ function addressedSubject(
 	return { ok: true };
 }
 
-function prepared(
-	request: PlannerRequest<ProjectEnvelope>,
-	operationKind: string,
-	subject: LayoutSubject,
-	document: LayoutDocumentWallFirst,
-	fields: readonly string[],
-	options: { readonly created?: boolean; readonly id?: string } = {}
-): PlannerOutcome<ProjectEnvelope> {
-	// T1.P02.S01 §1 — the working level is an explicit captured input, never a
-	// field read out of the document during planning. A stale level fails closed.
+/**
+ * T1.P02.S01 §1 — the working level is an explicit captured input, never a field
+ * read out of the document during planning. A missing or stale level fails closed.
+ */
+function capturedWorkingLevel(
+	request: PlannerRequest<ProjectEnvelope>
+): { readonly levelId: string } | PlannerOutcome<ProjectEnvelope> {
 	const levelId = readLayoutWorkingLevel(request.capturedInputs);
 	if (levelId === null) {
 		return rejected('invalid-value', 'The intent must capture its working Layout level before evaluation.');
@@ -238,6 +235,20 @@ function prepared(
 			`The captured working level '${levelId}' is not the accepted Layout floor.`
 		);
 	}
+	return { levelId };
+}
+
+function prepared(
+	request: PlannerRequest<ProjectEnvelope>,
+	operationKind: string,
+	subject: LayoutSubject,
+	document: LayoutDocumentWallFirst,
+	fields: readonly string[],
+	options: { readonly created?: boolean; readonly id?: string } = {}
+): PlannerOutcome<ProjectEnvelope> {
+	const level = capturedWorkingLevel(request);
+	if ('kind' in level) return level;
+	const levelId = level.levelId;
 	const reference = layoutReference(
 		request.snapshot,
 		subject,
@@ -523,13 +534,16 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 				'A plinth placement must capture its new layout-object id before evaluation.'
 			);
 		}
+		const level = capturedWorkingLevel(request);
+		if ('kind' in level) return level;
 		const plan = planCommitLayoutObjectPresetWithId(
 			request.snapshot.domain.source.units.layout.data,
 			'plinth',
 			point as LayoutVec2,
 			floorElevation,
 			capture,
-			objectId
+			objectId,
+			level.levelId
 		);
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);

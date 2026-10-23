@@ -25,7 +25,9 @@ import {
 	type LayoutDocumentWallFirst,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
+import type { PlannerRequest } from '@portfolio/project-model';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
+
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
@@ -67,7 +69,8 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 			[0, 4]
 		],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: base.floor.id
 	});
 	if (chained.kind !== 'success') throw new Error('the S04 enclosure was refused');
 	const wallId = chained.document.walls[0]!.id;
@@ -81,7 +84,8 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 			height: 1.2,
 			sillHeight: 1
 		},
-		freshCapture()
+		freshCapture(),
+		chained.document.floor.id
 	);
 	if (opening.kind === 'rejected') throw new Error(`opening fixture refused: ${opening.rejection.message}`);
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };
@@ -394,6 +398,55 @@ describe('T1.P01.S04 — Layout precision', () => {
 		).toMatchObject({ kind: 'rejected', code: 'invalid-value' });
 		expect(layoutSubjectOf({ sourceKind: 'room-floor', sourceId: 'room' })).toBeNull();
 		expect(datumWorkingPlane(ELEVATION).datumMeters).toBe(ELEVATION);
+	});
+
+	it('refuses a plinth whose captured working level, nonce or derived identity disagrees', async () => {
+		const { facade, host, document } = await mount();
+		const planner = createLayoutPlanners().find((entry) => entry.kind === 'layout-plinth-place')!;
+		const snapshot = host.coordinator().acceptedSnapshot();
+		const capture = freshCapture();
+		const objectId = nextLayoutPresetObjectId(document, capture);
+		const plinth = (capturedInputs: PlannerRequest<ProjectEnvelope>['capturedInputs'], id = objectId) => ({
+			snapshot,
+			intent: {
+				version: 1 as const,
+				kind: 'layout-plinth-place',
+				operationId: 'op',
+				expectedRevision: facade.snapshot().acceptedRevision,
+				targets: [],
+				capturedInputs,
+				allocatedIds: [{ kind: 'layout-object', id }],
+				payload: { point: [1, 1], floorElevation: ELEVATION, objectId: id }
+			},
+			capturedInputs,
+			allocatedIds: []
+		});
+		const workingLevel = { name: 'layout-working-level', value: document.floor.id };
+		const nonce = { name: 'layout-id-nonce', value: capture.nonce };
+
+		// (a) no captured working level at all: the level is an explicit input, never read back.
+		expect(planner.prepare(plinth([nonce]))).toMatchObject({
+			kind: 'rejected',
+			code: 'invalid-value',
+			message: expect.stringContaining('working Layout level')
+		});
+		// (b) a captured level that is not the accepted floor fails closed as stale.
+		expect(
+			planner.prepare(plinth([{ name: 'layout-working-level', value: 'other-floor' }, nonce]))
+		).toMatchObject({ kind: 'rejected', code: 'stale-level' });
+		// (c) a plinth without its identity nonce cannot derive its object id.
+		expect(planner.prepare(plinth([workingLevel]))).toMatchObject({
+			kind: 'rejected',
+			code: 'invalid-value',
+			message: expect.stringContaining('identity nonce')
+		});
+		// (d) a valid nonce, but the payload names the id a different fresh capture derives.
+		const otherObjectId = nextLayoutPresetObjectId(document, freshCapture());
+		expect(otherObjectId).not.toBe(objectId);
+		expect(planner.prepare(plinth([workingLevel, nonce], otherObjectId))).toMatchObject({
+			kind: 'rejected',
+			code: 'invalid-value'
+		});
 	});
 
 	it('accepts one Opening measure edit with one undo and full typed precision', async () => {

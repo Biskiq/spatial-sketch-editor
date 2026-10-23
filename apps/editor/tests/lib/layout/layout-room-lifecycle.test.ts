@@ -45,11 +45,11 @@ import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured Room removal: every call is a new edit with a new nonce. */
 const removeRoom = (document: LayoutDocumentWallFirst, roomId: string): WallFirstOpPlan =>
-	planRemoveRoomWithCapture(document, roomId, freshCapture());
+	planRemoveRoomWithCapture(document, roomId, freshCapture(), document.floor.id);
 
 /** One captured single-Wall delete: every call is a new edit with a new nonce. */
 const deleteWall = (document: LayoutDocumentWallFirst, wallId: string): WallFirstOpPlan =>
-	planDeleteWallWithCapture(document, wallId, freshCapture());
+	planDeleteWallWithCapture(document, wallId, freshCapture(), document.floor.id);
 
 type WallSeed = {
 	id: string;

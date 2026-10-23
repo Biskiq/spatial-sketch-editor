@@ -96,7 +96,8 @@ export function layoutSeed(): ProofLayoutSeed {
 		'plinth',
 		[0, 0],
 		0,
-		nextLayoutPresetObjectId(document, capture)
+		nextLayoutPresetObjectId(document, capture),
+		document.floor.id
 	);
 	if (plan.kind !== 'success' || plan.createdObjectId === undefined) {
 		throw new Error(
@@ -117,7 +118,8 @@ export function withLayoutObjects(base: ProofLayoutSeed, count: number): ProofLa
 			index % 2 === 0 ? 'column' : 'platform',
 			[index * 3, index * 2],
 			0,
-			nextLayoutPresetObjectId(document, capture)
+			nextLayoutPresetObjectId(document, capture),
+			document.floor.id
 		);
 		if (plan.kind !== 'success' || plan.createdObjectId === undefined) {
 			throw new Error(`conformance Layout object ${index} was refused`);

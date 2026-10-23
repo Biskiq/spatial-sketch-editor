@@ -56,7 +56,8 @@ describe('curved neighbour Room correspondence', () => {
 			endpointHostSnaps: [
 				{ pointIndex: 0, wallId: hostWallAtSpan(baseline, start)! },
 				{ pointIndex: 1, wallId: hostWallAtSpan(baseline, end)! }
-			]
+			],
+			levelId: baseline.floor.id
 		});
 		expect(plan.kind, plan.kind === 'success' ? '' : JSON.stringify(plan)).toBe('success');
 		if (plan.kind === 'success') expect(plan.document.rooms).toHaveLength(3);
@@ -67,7 +68,8 @@ describe('curved neighbour Room correspondence', () => {
 			baseline: suppliedLayout(),
 			points: [[7, -5], [8, -5]],
 			close: false,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: suppliedLayout().floor.id
 		});
 		expect(plan.kind, plan.kind === 'success' ? '' : JSON.stringify(plan)).toBe('success');
 		if (plan.kind === 'success') expect(plan.document.rooms).toHaveLength(2);

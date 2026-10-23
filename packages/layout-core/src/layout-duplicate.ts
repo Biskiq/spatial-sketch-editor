@@ -36,6 +36,7 @@ import { translateWallCenterline } from './layout-wall-centerline';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import {
 	layoutCapturedId,
+	layoutWorkingLevelIssue,
 	LayoutIdCollisionError,
 	type LayoutIdCapture
 } from './layout-id-capture';
@@ -295,8 +296,11 @@ export type LayoutObjectRepeatIntent = {
 export function planRepeatLayoutObject(
 	document: LayoutDocumentWallFirst,
 	intent: LayoutObjectRepeatIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
+	levelId: string
 ): DuplicatePlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.objectId]);
 	return guardedDuplicatePlan(() => planRepeatLayoutObjectInternal(document, intent, capture));
 }
 
@@ -375,8 +379,11 @@ export type WallOpeningRepeatIntent = {
 export function planRepeatWallOpening(
 	document: LayoutDocumentWallFirst,
 	intent: WallOpeningRepeatIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
+	levelId: string
 ): DuplicatePlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.openingId]);
 	return guardedDuplicatePlan(() => planRepeatWallOpeningInternal(document, intent, capture));
 }
 
@@ -466,8 +473,11 @@ export type RoomDuplicateIntent = {
 export function planDuplicateIsolatedRoom(
 	document: LayoutDocumentWallFirst,
 	intent: RoomDuplicateIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
+	levelId: string
 ): DuplicatePlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.roomId]);
 	return guardedDuplicatePlan(() => planDuplicateIsolatedRoomInternal(document, intent, capture));
 }
 

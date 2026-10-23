@@ -50,7 +50,8 @@ describe('P23.6e extra — angled neighbours stay distinct Rooms', () => {
 			baseline: baseDocument(),
 			points: [p(0, -4), p(3.5, -4), p(3.5, 1.5), p(0, 1.5)],
 			close: true,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: baseDocument().floor.id
 		});
 		if (room.kind !== 'success') throw new Error('room birth failed');
 		return commit(room.document, p(0, 0.13), p(0.88, -4));
@@ -152,7 +153,8 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 			baseline,
 			points: [canonicalPoint, p(2, -2)],
 			close: false,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: baseline.floor.id
 		});
 		expect(result.kind).toBe('success');
 		if (result.kind !== 'success') return;

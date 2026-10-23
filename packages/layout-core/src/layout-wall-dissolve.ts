@@ -27,7 +27,7 @@ import type {
 	LayoutWallCurveKnot
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
-import { LayoutIdCollisionError, type LayoutIdCapture } from './layout-id-capture';
+import { LayoutIdCollisionError, layoutWorkingLevelIssue, type LayoutIdCapture } from './layout-id-capture';
 import {
 	nextWallCurveKnotId,
 	orientedWallChainKnotsAndSpans,
@@ -114,12 +114,17 @@ export type DissolvePlan =
 export function planDissolveJunction(
 	document: LayoutDocumentWallFirst,
 	junctionId: string,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
+	levelId: string
 ): DissolvePlan {
 	const reject = (rejection: DissolveSpecificRejection): DissolvePlan => ({
 		kind: 'rejected',
 		rejection
 	});
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) {
+		return reject({ code: 'invalid_candidate_document', message: levelIssue, junctionIds: [junctionId] });
+	}
 
 	const junction = document.junctions.find((candidate) => candidate.id === junctionId);
 	if (!junction) {

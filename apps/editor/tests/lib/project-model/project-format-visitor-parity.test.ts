@@ -62,7 +62,8 @@ async function wallFirstPayload() {
 			],
 			objects: []
 		},
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: 'floor-1'
 	});
 	if (birth.kind !== 'success') throw new Error('birth fixture failed');
 	return createUnitProject({

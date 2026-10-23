@@ -6,12 +6,14 @@
  * mock cannot prove them. `npm run test:api` is the owning lane.
  */
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
 import { createApp } from '../dist/app.js';
 import { runMigrations } from '../dist/migrate.js';
+import { mintLayoutIdCapture, planWallChain } from '@portfolio/layout-core';
+import { canonicalUnitJson } from '@portfolio/project-model/units';
 
 import { SESSION_KEY, projectDocument, saveRequestBody, sessionCookie } from './test-support.mjs';
 
@@ -56,6 +58,28 @@ async function createProject(cookie, envelope) {
 	const response = await save(projectId, cookie, request);
 	assert.equal(response.statusCode, 200, JSON.stringify(response.json()));
 	return { projectId, request, acknowledgement: response.json() };
+}
+
+/**
+ * The F.2 envelope for `id` with one real format-6 Wall in its Layout, so a
+ * refusal test can mutate a Wall the capture already carries.
+ */
+function envelopeWithWall(name, id) {
+	const envelope = projectDocument(name, { id });
+	const empty = envelope.units.layout.data;
+	const planned = planWallChain({
+		baseline: { ...empty, floor: { ...empty.floor, id: 'floor-1', name: 'Floor 1', elevation: 0 } },
+		points: [[0, 0], [4, 0]],
+		close: false,
+		capture: mintLayoutIdCapture(),
+		levelId: 'floor-1'
+	});
+	assert.equal(planned.kind, 'success');
+	envelope.units.layout.data = planned.document;
+	envelope.units.layout.header.contentRevision = `sha256-${createHash('sha256')
+		.update(canonicalUnitJson(planned.document))
+		.digest('hex')}`;
+	return envelope;
 }
 
 async function receiptOperations(projectId) {
@@ -346,6 +370,44 @@ test('a non-F2 envelope is refused as invalid_project and writes nothing', async
 	assert.equal(invalid.statusCode, 400);
 	assert.equal(invalid.json().error.code, 'invalid_project');
 	assert.ok(invalid.json().issues.length > 0);
+
+	const state = await counts(projectId);
+	assert.equal(state.versions, 0);
+	assert.equal(state.receipts, 0);
+});
+
+test('a format-5 Layout is refused as invalid_project and writes nothing', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
+	const projectId = track(nextProjectId());
+	const request = await saveRequestBody(projectDocument('Format five Layout', { id: projectId }));
+	const envelope = JSON.parse(request.capture.canonicalJson);
+	envelope.units.layout.data.formatVersion = 5;
+	const invalid = await save(projectId, cookie, {
+		...request,
+		capture: { ...request.capture, canonicalJson: JSON.stringify(envelope) }
+	});
+	assert.equal(invalid.statusCode, 400);
+	assert.equal(invalid.json().error.code, 'invalid_project');
+	assert.ok(invalid.json().issues.some((issue) => issue.code === 'unsupported_format_version'));
+
+	const state = await counts(projectId);
+	assert.equal(state.versions, 0);
+	assert.equal(state.receipts, 0);
+});
+
+test('a format-6 Wall carrying a role key is refused as invalid_project and writes nothing', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
+	const projectId = track(nextProjectId());
+	const request = await saveRequestBody(envelopeWithWall('Boundary role Wall', projectId));
+	const envelope = JSON.parse(request.capture.canonicalJson);
+	envelope.units.layout.data.walls[0].role = 'boundary';
+	const invalid = await save(projectId, cookie, {
+		...request,
+		capture: { ...request.capture, canonicalJson: JSON.stringify(envelope) }
+	});
+	assert.equal(invalid.statusCode, 400);
+	assert.equal(invalid.json().error.code, 'invalid_project');
+	assert.ok(invalid.json().issues.some((issue) => issue.code === 'unknown_key'));
 
 	const state = await counts(projectId);
 	assert.equal(state.versions, 0);

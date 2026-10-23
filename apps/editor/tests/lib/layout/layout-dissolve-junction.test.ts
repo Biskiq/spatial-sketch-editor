@@ -34,7 +34,7 @@ import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured dissolve operation: every call is a new edit with a new nonce. */
 const dissolve = (document: LayoutDocumentWallFirst, junctionId: string): DissolvePlan =>
-	planDissolveJunctionWithCapture(document, junctionId, freshCapture());
+	planDissolveJunctionWithCapture(document, junctionId, freshCapture(), document.floor.id);
 
 const allocator: NodingIdAllocator = {
 	nextWallId: (_document, seed) => `${seed}-frag`,

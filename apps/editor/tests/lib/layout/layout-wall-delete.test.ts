@@ -44,7 +44,7 @@ import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured Wall delete: every call is a new edit with a new nonce. */
 const deleteWall = (document: LayoutDocumentWallFirst, wallId: string): WallFirstOpPlan =>
-	planDeleteWallWithCapture(document, wallId, freshCapture());
+	planDeleteWallWithCapture(document, wallId, freshCapture(), document.floor.id);
 
 type WallSeed = {
 	id: string;

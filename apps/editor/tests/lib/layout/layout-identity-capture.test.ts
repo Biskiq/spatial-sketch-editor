@@ -19,9 +19,18 @@ import { describe, expect, it } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
 	layoutCapturedId,
+	nextLayoutPresetObjectId,
+	planCommitLayoutObjectPreset,
+	planCommitLayoutObjectPresetWithId,
 	planCreateWallFirstOpening,
 	planDeleteWall,
 	planDeleteWallFirstOpening,
+	planDissolveJunction,
+	planDuplicateIsolatedRoom,
+	planFirstEnclosureCreation,
+	planRemoveRoom,
+	planRepeatLayoutObject,
+	planRepeatWallOpening,
 	planWallChain,
 	planWallSegment,
 	type LayoutDocumentWallFirst,
@@ -42,7 +51,8 @@ function enclosure(capture: LayoutIdCapture) {
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points: RECT,
 		close: true,
-		capture
+		capture,
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(`enclosure refused: ${plan.rejection.code}`);
 	return plan;
@@ -66,7 +76,7 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 		const deletedEnd = deletedWall.endJunctionId;
 
 		// Delete one boundary Wall; its Room retires.
-		const deleted = planDeleteWall(first.document, deletedWallId, freshCapture());
+		const deleted = planDeleteWall(first.document, deletedWallId, freshCapture(), first.document.floor.id);
 		expect(deleted.kind).toBe('success');
 		if (deleted.kind !== 'success') return;
 		expect(deleted.document.rooms.find((room) => room.id === roomId)).toBeUndefined();
@@ -82,7 +92,8 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 			endpointJunctionSnaps: [
 				{ pointIndex: 0, junctionId: deletedStart },
 				{ pointIndex: 1, junctionId: deletedEnd }
-			]
+			],
+			levelId: deleted.document.floor.id
 		});
 		expect(rebuilt.kind).toBe('success');
 		if (rebuilt.kind !== 'success') return;
@@ -105,7 +116,8 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 			baseline: deleted.document,
 			start: rebuiltGap.start,
 			end: rebuiltGap.end,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: deleted.document.floor.id
 		});
 		expect(minted.kind).toBe('success');
 		if (minted.kind !== 'success') return;
@@ -121,7 +133,8 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 		const createdOpening = planCreateWallFirstOpening(
 			rebuilt.document,
 			{ wallId, kind: 'door', offset: 1 },
-			openingCapture
+			openingCapture,
+			rebuilt.document.floor.id
 		);
 		expect(createdOpening.kind).toBe('success');
 		if (createdOpening.kind !== 'success') return;
@@ -133,7 +146,8 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 		const recreatedOpening = planCreateWallFirstOpening(
 			removedOpening.document,
 			{ wallId, kind: 'door', offset: 1 },
-			freshCapture()
+			freshCapture(),
+			removedOpening.document.floor.id
 		);
 		expect(recreatedOpening.kind).toBe('success');
 		if (recreatedOpening.kind !== 'success') return;
@@ -147,7 +161,8 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 			baseline,
 			points: RECT,
 			close: true,
-			capture: undoneCapture
+			capture: undoneCapture,
+			levelId: baseline.floor.id
 		});
 		expect(undone.kind).toBe('success');
 		if (undone.kind !== 'success') return;
@@ -163,7 +178,8 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 				[20, 4]
 			],
 			close: true,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: baseline.floor.id
 		});
 		expect(different.kind).toBe('success');
 		if (different.kind !== 'success') return;
@@ -177,7 +193,7 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 		}
 
 		// Redo replays the captured operation — identical ids and document.
-		const replay = planWallChain({ baseline, points: RECT, close: true, capture: undoneCapture });
+		const replay = planWallChain({ baseline, points: RECT, close: true, capture: undoneCapture, levelId: baseline.floor.id });
 		expect(replay.kind).toBe('success');
 		if (replay.kind !== 'success') return;
 		expect(replay.createdWallIds).toEqual(undone.createdWallIds);
@@ -205,7 +221,8 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 				[20, 4]
 			],
 			close: true,
-			capture: editCapture
+			capture: editCapture,
+			levelId: reloaded.floor.id
 		});
 		expect(addition.kind).toBe('success');
 		if (addition.kind !== 'success') return;
@@ -239,11 +256,200 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 				[20, 4]
 			],
 			close: true,
-			capture
+			capture,
+			levelId: first.document.floor.id
 		});
 		expect(reuse.kind).toBe('rejected');
 		if (reuse.kind !== 'rejected') return;
 		expect(reuse.rejection.code).toBe('captured_id_in_use');
 		expect(reuse.rejection.message).toContain(capture.nonce);
+	});
+});
+
+/** A plan outcome's refusal, read structurally across the planner families. */
+type PlanOutcome = {
+	readonly kind: string;
+	readonly rejection?: { readonly code: string; readonly message: string };
+};
+
+/**
+ * A straight open run `[0,0]→[3,0]→[6,0]`: its middle Junction has degree two.
+ * One chain cannot hold two collinear legs (`collinear_overlap`), so the second
+ * leg is a continuation that declares the first leg's end Junction.
+ */
+function openChain(): LayoutDocumentWallFirst {
+	const levelId = createEmptyWallFirstLayoutDocument().floor.id;
+	const first = planWallSegment({
+		baseline: createEmptyWallFirstLayoutDocument(),
+		start: [0, 0],
+		end: [3, 0],
+		capture: freshCapture(),
+		levelId
+	});
+	if (first.kind !== 'success') throw new Error(`open run refused: ${first.rejection.code}`);
+	const joint = first.document.junctions.find((junction) => junction.point[0] === 3 && junction.point[1] === 0)!;
+	const second = planWallSegment({
+		baseline: first.document,
+		start: [3, 0],
+		end: [6, 0],
+		capture: freshCapture(),
+		endpointJunctionSnaps: [{ pointIndex: 0, junctionId: joint.id }],
+		levelId
+	});
+	if (second.kind !== 'success') throw new Error(`open run continuation refused: ${second.rejection.code}`);
+	return second.document;
+}
+
+describe('T1.P02.S01 §1 — explicit working level', () => {
+	const D = enclosure(freshCapture()).document;
+	const C = openChain();
+	const middle = C.junctions.find((junction) => junction.point[0] === 3 && junction.point[1] === 0)!.id;
+	const P = planCommitLayoutObjectPreset(D, 'plinth', [3, 2], D.floor.elevation, 'obj-1.testnonce1', D.floor.id);
+	if (P.kind !== 'success') throw new Error(`plinth fixture refused: ${P.rejection.code}`);
+	const O = planCreateWallFirstOpening(
+		D,
+		{ wallId: D.walls[0]!.id, kind: 'door', offset: 1 },
+		freshCapture(),
+		D.floor.id
+	);
+	if (O.kind !== 'success') throw new Error(`opening fixture refused: ${O.rejection.code}`);
+	const openingId = O.changedOpeningIds[0]!;
+
+	/** Each entry point, called with the given working level and everything else valid. */
+	const entryPoints: readonly { name: string; code: string; plan: (levelId: string) => PlanOutcome }[] = [
+		{
+			name: 'planWallChain',
+			code: 'invalid_candidate_document',
+			plan: (levelId) =>
+				planWallChain({
+					baseline: createEmptyWallFirstLayoutDocument(),
+					points: RECT,
+					close: true,
+					capture: freshCapture(),
+					levelId
+				})
+		},
+		{
+			name: 'planWallSegment',
+			code: 'invalid_candidate_document',
+			plan: (levelId) =>
+				planWallSegment({
+					baseline: createEmptyWallFirstLayoutDocument(),
+					start: [0, 0],
+					end: [6, 0],
+					capture: freshCapture(),
+					levelId
+				})
+		},
+		{
+			name: 'planFirstEnclosureCreation',
+			code: 'invalid_value',
+			plan: (levelId) =>
+				planFirstEnclosureCreation({
+					candidateDocument: { ...D, rooms: [] },
+					capture: freshCapture(),
+					levelId
+				})
+		},
+		{
+			name: 'planDeleteWall',
+			code: 'invalid_value',
+			plan: (levelId) => planDeleteWall(D, D.walls[0]!.id, freshCapture(), levelId)
+		},
+		{
+			name: 'planRemoveRoom',
+			code: 'invalid_value',
+			plan: (levelId) => planRemoveRoom(D, D.rooms[0]!.id, freshCapture(), levelId)
+		},
+		{
+			name: 'planDissolveJunction',
+			code: 'invalid_candidate_document',
+			plan: (levelId) => planDissolveJunction(C, middle, freshCapture(), levelId)
+		},
+		{
+			name: 'planCreateWallFirstOpening',
+			code: 'invalid_value',
+			plan: (levelId) =>
+				planCreateWallFirstOpening(
+					D,
+					{ wallId: D.walls[0]!.id, kind: 'door', offset: 1 },
+					freshCapture(),
+					levelId
+				)
+		},
+		{
+			name: 'planRepeatLayoutObject',
+			code: 'invalid_value',
+			plan: (levelId) =>
+				planRepeatLayoutObject(
+					P.document,
+					{ objectId: P.document.objects[0]!.id, count: 1, delta: [1, 0] },
+					freshCapture(),
+					levelId
+				)
+		},
+		{
+			name: 'planRepeatWallOpening',
+			code: 'invalid_value',
+			plan: (levelId) =>
+				planRepeatWallOpening(
+					O.document,
+					{ openingId, count: 1, spacing: 1.5 },
+					freshCapture(),
+					levelId
+				)
+		},
+		{
+			name: 'planDuplicateIsolatedRoom',
+			code: 'invalid_value',
+			plan: (levelId) =>
+				planDuplicateIsolatedRoom(
+					D,
+					{ roomId: D.rooms[0]!.id, delta: [20, 0] },
+					freshCapture(),
+					levelId
+				)
+		},
+		{
+			name: 'planCommitLayoutObjectPresetWithId',
+			code: 'invalid_value',
+			plan: (levelId) => {
+				const capture = freshCapture();
+				return planCommitLayoutObjectPresetWithId(
+					D,
+					'plinth',
+					[3, 2],
+					D.floor.elevation,
+					capture,
+					nextLayoutPresetObjectId(D, capture),
+					levelId
+				);
+			}
+		},
+		{
+			name: 'planCommitLayoutObjectPreset',
+			code: 'invalid_value',
+			plan: (levelId) =>
+				planCommitLayoutObjectPreset(D, 'plinth', [3, 2], D.floor.elevation, 'obj-1.testnonce1', levelId)
+		}
+	];
+
+	it.each(entryPoints)('$name refuses a working level that is not the document level', ({ code, plan }) => {
+		const outcome = plan('not-the-floor');
+		expect(outcome.kind).toBe('rejected');
+		expect(outcome.rejection?.code).toBe(code);
+		expect(outcome.rejection?.message).toMatch(/working level/i);
+	});
+
+	it.each(entryPoints)('$name refuses an empty working level with the same code', ({ code, plan }) => {
+		const outcome = plan('');
+		expect(outcome.kind).toBe('rejected');
+		expect(outcome.rejection?.code).toBe(code);
+		expect(outcome.rejection?.message).toMatch(/working level/i);
+	});
+
+	it.each(entryPoints)('$name is not refused for the level when the call names the document level', ({ plan }) => {
+		const outcome = plan(D.floor.id);
+		expect(outcome.rejection?.message ?? '').not.toMatch(/working level/i);
 	});
 });

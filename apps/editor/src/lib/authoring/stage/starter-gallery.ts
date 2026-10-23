@@ -74,7 +74,8 @@ export function buildStarterEnclosureLayout(): LayoutDocumentWallFirst {
 		baseline,
 		points: STARTER_ENCLOSURE_POINTS.map((point) => [point[0], point[1]] as LayoutVec2),
 		close: true,
-		capture: STARTER_TEMPLATE_ID_CAPTURE
+		capture: STARTER_TEMPLATE_ID_CAPTURE,
+		levelId: baseline.floor.id
 	});
 	if (plan.kind !== 'success') {
 		throw new Error(`the canonical starter enclosure no longer plans: ${plan.rejection.code}`);

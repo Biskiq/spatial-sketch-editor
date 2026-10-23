@@ -22,7 +22,7 @@ import {
 	type PrecisionPlan
 } from './layout-wall-first-precision.js';
 import type { LayoutDocumentWallFirst } from './layout-wall-first-types.js';
-import { layoutCapturedId, type LayoutIdCapture } from './layout-id-capture.js';
+import { layoutCapturedId, layoutWorkingLevelIssue, type LayoutIdCapture } from './layout-id-capture.js';
 
 /**
  * The id a preset placement derives from this operation's captured nonce and
@@ -50,8 +50,16 @@ export function planCommitLayoutObjectPresetWithId(
 	point: LayoutVec2,
 	floorElevation: number,
 	capture: LayoutIdCapture,
-	capturedObjectId: string
+	capturedObjectId: string,
+	levelId: string
 ): PrecisionPlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) {
+		return {
+			kind: 'rejected',
+			rejection: { code: 'invalid_value', message: levelIssue, targetIds: [presetId] }
+		};
+	}
 	if (layoutArchitecturalPreset(presetId) === undefined) {
 		return {
 			kind: 'rejected',
@@ -88,7 +96,8 @@ export function planCommitLayoutObjectPresetWithId(
 		presetId,
 		point,
 		floorElevation,
-		capturedObjectId
+		capturedObjectId,
+		levelId
 	);
 	if (planned.kind === 'rejected') return planned;
 	if (planned.createdObjectId !== capturedObjectId) {

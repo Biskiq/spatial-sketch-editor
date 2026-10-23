@@ -109,7 +109,7 @@ describe('P23B durable fixture contracts', () => {
 				// D-12 identity: a role change keeps the unrelated Room's id, the
 				// object's ownership and the Opening's host.
 				expect(topology, spec.id).toBeUndefined();
-				const changed = planDeleteWall(document, 'c-a1', freshCapture());
+				const changed = planDeleteWall(document, 'c-a1', freshCapture(), document.floor.id);
 				expect(changed.kind, spec.id).toBe('success');
 				if (changed.kind === 'success') {
 					expect(changed.document.rooms.map((room) => room.id), spec.id).toContain('room-k');

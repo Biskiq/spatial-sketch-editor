@@ -59,7 +59,8 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 			baseline: baseDocument(),
 			points: [p(0, -4), p(7, -4), p(7, 2), p(0, 2)],
 			close: true,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: baseDocument().floor.id
 		});
 		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 		let document = commit(enclosure.document, topStart, topEnd);

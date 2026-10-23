@@ -87,7 +87,8 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 			[0, 4]
 		],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: base.floor.id
 	});
 	if (chained.kind !== 'success') throw new Error('the S05 enclosure was refused');
 	const wallId = chained.document.walls[0]!.id;
@@ -101,7 +102,8 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 			height: 1.2,
 			sillHeight: 1
 		},
-		freshCapture()
+		freshCapture(),
+		chained.document.floor.id
 	);
 	if (opening.kind === 'rejected') throw new Error(`opening fixture refused: ${opening.rejection.message}`);
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };

@@ -48,6 +48,7 @@ import type { LayoutDocumentIssue } from './layout-codec';
 import type { LayoutVec2 } from './layout-types';
 import {
 	allocateCapturedId,
+	layoutWorkingLevelIssue,
 	LayoutIdCollisionError,
 	type LayoutIdCapture
 } from './layout-id-capture';
@@ -256,7 +257,13 @@ export function planFirstEnclosureCreation(options: {
 	candidateDocument: LayoutDocumentWallFirst;
 	/** The operation's captured identity; every born Room derives from it. */
 	capture: LayoutIdCapture;
+	/** T1.P02.S01 §1 — explicit working level; must name `candidateDocument.floor.id`. */
+	levelId: string;
 }): WallFirstOpPlan {
+	const levelIssue = layoutWorkingLevelIssue(options.candidateDocument, options.levelId);
+	if (levelIssue !== null) {
+		return { kind: 'rejected', rejection: { code: 'invalid_value', message: levelIssue } };
+	}
 	const allocator = createAuthoringRoomAllocator(options.capture);
 	if (options.candidateDocument.rooms.length > 0) {
 		return {
@@ -425,8 +432,13 @@ function planWallRemovalSet(
 export function planDeleteWall(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
+	levelId: string
 ): WallFirstOpPlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) {
+		return { kind: 'rejected', rejection: { code: 'invalid_value', message: levelIssue, wallIds: [wallId] } };
+	}
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) {
 		return {
@@ -788,9 +800,12 @@ export function roomExclusiveBoundaryWallIds(
 export function planRemoveRoom(
 	document: LayoutDocumentWallFirst,
 	roomId: string,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
+	levelId: string
 ): WallFirstOpPlan {
 	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
 		return reject({

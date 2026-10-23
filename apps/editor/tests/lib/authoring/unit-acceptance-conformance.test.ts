@@ -258,7 +258,8 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 					'plinth',
 					[0, 0],
 					0,
-					nextLayoutPresetObjectId(candidateLayout, capture)
+					nextLayoutPresetObjectId(candidateLayout, capture),
+					candidateLayout.floor.id
 				);
 				if (plan.kind !== 'success') throw new Error(`the Layout write fixture was refused: ${plan.kind}`);
 				return {

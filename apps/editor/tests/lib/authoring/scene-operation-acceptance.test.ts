@@ -129,7 +129,8 @@ function enclosedLayout(elevation = 0): LayoutDocumentWallFirst {
 			[0, 6]
 		],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: base.floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the conformance enclosure was refused');
 	return planned.document;
@@ -154,7 +155,8 @@ function conformanceProject(elevation = ELEVATION): {
 		'plinth',
 		[0, 0],
 		0,
-		nextLayoutPresetObjectId(objectDocument, objectCapture)
+		nextLayoutPresetObjectId(objectDocument, objectCapture),
+		objectDocument.floor.id
 	);
 	if (objectPlan.kind !== 'success' || objectPlan.createdObjectId === undefined) {
 		throw new Error('the conformance Layout object was refused');

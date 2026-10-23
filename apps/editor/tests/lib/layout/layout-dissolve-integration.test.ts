@@ -20,7 +20,7 @@ import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured dissolve operation: every call is a new edit with a new nonce. */
 const dissolve = (document: LayoutDocumentWallFirst, junctionId: string) =>
-	planDissolveJunctionWithCapture(document, junctionId, freshCapture());
+	planDissolveJunctionWithCapture(document, junctionId, freshCapture(), document.floor.id);
 
 /** 4×3 Room with a pre-split south edge (M) and a door on the survivor side. */
 function seed(): LayoutDocumentWallFirst {

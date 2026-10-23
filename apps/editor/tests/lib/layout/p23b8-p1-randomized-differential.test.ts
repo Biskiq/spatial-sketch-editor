@@ -58,7 +58,8 @@ function rectBaseline(): LayoutDocumentWallFirst {
 			[0, 4]
 		] as LayoutVec2[],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: baseline.floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(`rect baseline rejected: ${plan.rejection.code}`);
 	return plan.document;
@@ -160,7 +161,8 @@ describe('p23b.8 S1 — P1 seeded differential over the three M-3 callers', () =
 						[origin[0], origin[1] + size]
 					],
 					close: true,
-					capture: freshCapture()
+					capture: freshCapture(),
+					levelId: document.floor.id
 				});
 				if (plan.kind === 'success') {
 					accepted[0]! += 1;
@@ -178,7 +180,7 @@ describe('p23b.8 S1 — P1 seeded differential over the three M-3 callers', () =
 				// Format 6 — the role-change caller is gone; the same shared function is
 				// reached by removing the Wall instead (the geometry the old partition
 				// flip expressed).
-				const plan = planDeleteWall(document, wall.id, freshCapture());
+				const plan = planDeleteWall(document, wall.id, freshCapture(), document.floor.id);
 				if (plan.kind === 'success') {
 					accepted[1]! += 1;
 					expect(flagSurvivingKeyWithChangedGeometry(document, plan.document)).toEqual([]);
@@ -197,7 +199,7 @@ describe('p23b.8 S1 — P1 seeded differential over the three M-3 callers', () =
 					rejected[2]! += 1;
 					return;
 				}
-				const plan = planDissolveJunction(document, degreeTwo.id, freshCapture());
+				const plan = planDissolveJunction(document, degreeTwo.id, freshCapture(), document.floor.id);
 				if (plan.kind === 'success') {
 					accepted[2]! += 1;
 					expect(flagSurvivingKeyWithChangedGeometry(document, plan.document)).toEqual([]);

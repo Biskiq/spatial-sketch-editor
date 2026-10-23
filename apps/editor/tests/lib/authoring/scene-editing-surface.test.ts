@@ -61,7 +61,8 @@ async function supportedProject(entities: readonly SceneEntity[]): Promise<Proje
 			[0, 6]
 		],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
 	return createUnitProject({
@@ -1039,7 +1040,8 @@ describe('Scene adapter registration', () => {
 			[0, 5.9]
 		],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 		if (planned.kind !== 'success') throw new Error('the snap fixture was refused');
 		const scene: SceneDocument = {

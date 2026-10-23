@@ -55,7 +55,8 @@ async function enclosureProject(points: readonly LayoutVec2[], id: string = PROJ
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points: points.map((point) => [point[0], point[1]] as LayoutVec2),
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
 	return createUnitProject({ id, name: 'Content change project', layout: plan.document });

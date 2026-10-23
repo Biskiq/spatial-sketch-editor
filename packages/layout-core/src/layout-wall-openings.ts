@@ -28,6 +28,7 @@ import { validateWallFirstPortalRelations } from './layout-portals';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import {
 	allocateCapturedId,
+	layoutWorkingLevelIssue,
 	LayoutIdCollisionError,
 	type LayoutIdCapture
 } from './layout-id-capture';
@@ -188,8 +189,11 @@ export function wallFirstOpeningClearances(
 export function planCreateWallFirstOpening(
 	document: LayoutDocumentWallFirst,
 	intent: WallFirstOpeningIntent,
-	capture: LayoutIdCapture
+	capture: LayoutIdCapture,
+	levelId: string
 ): WallOpeningPlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.wallId]);
 	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) {
 		return reject('unknown_wall', `Unknown Wall '${intent.wallId}'`, [intent.wallId]);

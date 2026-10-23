@@ -551,7 +551,8 @@ it('places on a real raised compiled floor with Plan/3D parity and strict projec
 		baseline,
 		points: [[0, 0], [7, 0], [7, 6], [0, 6]],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: baseline.floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('enclosure failed');
 	const source = await createUnitProject({ id: 'project-1', name: 'Raised gallery', layout: planned.document });

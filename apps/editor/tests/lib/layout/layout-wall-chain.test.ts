@@ -11,7 +11,7 @@ import {
 	type LayoutIdCapture,
 	type WallChainPlanOptions
 } from '@portfolio/layout-core';
-import { freshCapture } from './__fixtures__/layout-id-capture';
+import { captureFor, freshCapture } from './__fixtures__/layout-id-capture';
 
 /**
  * T1.P02.S01 §1 — one simulated operation, one fresh capture. A test that
@@ -19,17 +19,29 @@ import { freshCapture } from './__fixtures__/layout-id-capture';
  * same capture explicitly, which is exactly the contract Redo relies on.
  */
 function planWallChain(
-	options: Omit<WallChainPlanOptions, 'capture'> & { readonly capture?: LayoutIdCapture }
+	options: Omit<WallChainPlanOptions, 'capture' | 'levelId'> & {
+		readonly capture?: LayoutIdCapture;
+		readonly levelId?: string;
+	}
 ): ReturnType<typeof planWallChainRaw> {
-	return planWallChainRaw({ ...options, capture: options.capture ?? freshCapture() });
+	return planWallChainRaw({
+		...options,
+		capture: options.capture ?? freshCapture(),
+		levelId: options.levelId ?? options.baseline.floor.id
+	});
 }
 
 function planWallSegment(
-	options: Omit<Parameters<typeof planWallSegmentRaw>[0], 'capture'> & {
+	options: Omit<Parameters<typeof planWallSegmentRaw>[0], 'capture' | 'levelId'> & {
 		readonly capture?: LayoutIdCapture;
+		readonly levelId?: string;
 	}
 ): ReturnType<typeof planWallSegmentRaw> {
-	return planWallSegmentRaw({ ...options, capture: options.capture ?? freshCapture() });
+	return planWallSegmentRaw({
+		...options,
+		capture: options.capture ?? freshCapture(),
+		levelId: options.levelId ?? options.baseline.floor.id
+	});
 }
 
 /** Empty wall-first document with a real floor record. */
@@ -1165,5 +1177,142 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 			}),
 			'invalid_candidate_document'
 		);
+	});
+});
+
+describe('T1.P02.S01 captured identity — one operation splitting the same Wall twice', () => {
+	/** Host Wall (0,0)→(10,0), born under its own capture (a separate operation). */
+	function hostBaseline(): { baseline: LayoutDocumentWallFirst; hostId: string } {
+		const plan = expectSuccess(
+			planWallChain({
+				baseline: baseDocument(),
+				points: [p(0, 0), p(10, 0)],
+				close: false,
+				capture: captureFor('host-baseline-nonce')
+			})
+		);
+		return { baseline: plan.document, hostId: plan.createdWallIds[0]! };
+	}
+
+	function expectUniqueIds(document: LayoutDocumentWallFirst) {
+		const wallIds = document.walls.map((wall) => wall.id);
+		const junctionIds = document.junctions.map((junction) => junction.id);
+		expect(new Set(wallIds).size).toBe(wallIds.length);
+		expect(new Set(junctionIds).size).toBe(junctionIds.length);
+	}
+
+	/** U drawn with both free-standing legs ending on the host Wall. */
+	const U = [p(8, 0), p(8, 3), p(2, 3), p(2, 0)];
+	const U_REVERSED = [p(2, 0), p(2, 3), p(8, 3), p(8, 0)];
+	/** Zig-zag crossing the host twice, once per leg. */
+	const ZIGZAG = [p(8, -1), p(8, 1), p(2, 1), p(2, -1)];
+	const ZIGZAG_REVERSED = [p(2, -1), p(2, 1), p(8, 1), p(8, -1)];
+
+	function hostedSnaps(hostId: string) {
+		return [
+			{ pointIndex: 0, wallId: hostId },
+			{ pointIndex: 3, wallId: hostId }
+		];
+	}
+
+	it('a U whose both endpoints land on one host Wall succeeds with unique ids', () => {
+		const { baseline, hostId } = hostBaseline();
+		const plan = expectSuccess(
+			planWallChain({
+				baseline,
+				points: U,
+				close: false,
+				capture: captureFor('u-split-nonce'),
+				endpointHostSnaps: hostedSnaps(hostId)
+			})
+		);
+		expectUniqueIds(plan.document);
+		expectReturnedJunctionIdsLive(plan);
+	});
+
+	it('the same U drawn in reverse point order succeeds with unique ids', () => {
+		const { baseline, hostId } = hostBaseline();
+		const plan = expectSuccess(
+			planWallChain({
+				baseline,
+				points: U_REVERSED,
+				close: false,
+				capture: captureFor('u-reversed-split-nonce'),
+				endpointHostSnaps: [
+					{ pointIndex: 0, wallId: hostId },
+					{ pointIndex: 3, wallId: hostId }
+				]
+			})
+		);
+		expectUniqueIds(plan.document);
+		expectReturnedJunctionIdsLive(plan);
+	});
+
+	it('a zig-zag crossing the host twice succeeds with unique ids, in both orders', () => {
+		const { baseline } = hostBaseline();
+		for (const [points, nonce] of [
+			[ZIGZAG, 'zigzag-split-nonce'],
+			[ZIGZAG_REVERSED, 'zigzag-reversed-nonce']
+		] as const) {
+			const plan = expectSuccess(
+				planWallChain({ baseline, points, close: false, capture: captureFor(nonce) })
+			);
+			expectUniqueIds(plan.document);
+			expectReturnedJunctionIdsLive(plan);
+		}
+	});
+
+	it('replaying each double split with the same capture yields an identical plan', () => {
+		const { baseline, hostId } = hostBaseline();
+		const cases = [
+			{ points: U, snaps: hostedSnaps(hostId) },
+			{ points: U_REVERSED, snaps: hostedSnaps(hostId) },
+			{ points: ZIGZAG, snaps: undefined },
+			{ points: ZIGZAG_REVERSED, snaps: undefined }
+		] as const;
+		for (const [index, testCase] of cases.entries()) {
+			const capture = captureFor(`replay-split-${index}-nonce`);
+			const first = planWallChain({
+				baseline,
+				points: testCase.points,
+				close: false,
+				capture,
+				endpointHostSnaps: testCase.snaps ? [...testCase.snaps] : undefined
+			});
+			const replay = planWallChain({
+				baseline,
+				points: testCase.points,
+				close: false,
+				capture,
+				endpointHostSnaps: testCase.snaps ? [...testCase.snaps] : undefined
+			});
+			expect(replay).toEqual(first);
+			expect(first.kind).toBe('success');
+		}
+	});
+
+	it('the U inside an existing Room against one of its Walls succeeds and births a new Room', () => {
+		const enclosure = expectSuccess(
+			planWallChain({
+				baseline: baseDocument(),
+				points: [p(0, 0), p(10, 0), p(10, 6), p(0, 6)],
+				close: true,
+				capture: captureFor('closed-room-enclosure-nonce')
+			})
+		);
+		const withRoom = enclosure.document;
+		const bottom = horizontalWallAt(withRoom, 0);
+		const plan = expectSuccess(
+			planWallChain({
+				baseline: withRoom,
+				points: U,
+				close: false,
+				capture: captureFor('closed-room-u-nonce'),
+				endpointHostSnaps: hostedSnaps(bottom)
+			})
+		);
+		expectUniqueIds(plan.document);
+		expect(plan.document.rooms.length).toBeGreaterThan(withRoom.rooms.length);
+		expect(plan.lineage.some((record) => record.kind === 'created')).toBe(true);
 	});
 });

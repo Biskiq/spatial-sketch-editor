@@ -53,7 +53,7 @@ function enclosure(floorElevation = 0): LayoutDocumentWallFirst {
 }
 
 function closeChain(baseline: LayoutDocumentWallFirst): LayoutDocumentWallFirst {
-	const plan = planWallChain({ baseline, points: RECT, close: true, capture: freshCapture() });
+	const plan = planWallChain({ baseline, points: RECT, close: true, capture: freshCapture(), levelId: baseline.floor.id });
 	if (plan.kind !== 'success') throw new Error(`enclosure failed: ${JSON.stringify(plan)}`);
 	return plan.document;
 }
@@ -242,7 +242,8 @@ describe('floor-support query over the canonical compiled Layout', () => {
 			baseline,
 			points: [p(20, -4), p(27, -4), p(27, 2), p(20, 2)],
 			close: true,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: baseline.floor.id
 		});
 		if (addition.kind !== 'success') throw new Error('second enclosure failed');
 		const { geometry, issues } = compileWallFirstLayoutGeometry(addition.document);

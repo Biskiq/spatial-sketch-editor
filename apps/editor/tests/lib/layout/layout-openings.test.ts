@@ -150,7 +150,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		expect(created.operation).toBe('opening-create');
@@ -179,7 +180,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 					kind: 'door',
 					offset: 1
 				},
-				secondCapture
+				secondCapture,
+				created.document.floor.id
 			)
 		);
 		const secondId = capturedId(secondCapture, 'opening:door:wall-b');
@@ -202,7 +204,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 				kind: 'door',
 				offset: 0
 			},
-			freshCapture()
+			freshCapture(),
+			BASE.floor.id
 		);
 		expect(rejection(plan)).toMatchObject({ code: 'unknown_wall' });
 	});
@@ -215,7 +218,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 				kind: 'door',
 				offset: 3.5
 			},
-			freshCapture()
+			freshCapture(),
+			BASE.floor.id
 		);
 		const rejected = rejection(plan);
 		expect(rejected.code).toBe('opening_set_invalid');
@@ -227,7 +231,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		const overlapping = planCreateWallFirstOpening(
@@ -237,7 +242,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 				kind: 'window',
 				offset: 1.5
 			},
-			freshCapture()
+			freshCapture(),
+			first.document.floor.id
 		);
 		expect(rejection(overlapping).code).toBe('opening_set_invalid');
 		// The prior authored Opening is untouched (no partial commit).
@@ -251,7 +257,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 					kind: 'window',
 					offset: 2.5
 				},
-				freshCapture()
+				freshCapture(),
+				first.document.floor.id
 			)
 		);
 		expect(fine.document.openings).toHaveLength(2);
@@ -270,7 +277,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 				height: 1.2,
 				sillHeight: 2.2
 			},
-			freshCapture()
+			freshCapture(),
+			BASE.floor.id
 		);
 		const rejected = rejection(plan);
 		expect(rejected.code).toBe('opening_set_invalid');
@@ -282,7 +290,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		const updated = success(
@@ -313,7 +322,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		expect(wallFirstWallLength(created.document, 'wall-e')).toBeCloseTo(4, 12);
@@ -340,7 +350,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		const centered = success(planCenterWallFirstOpening(created.document, DOOR_ID));
@@ -353,7 +364,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		const moved = rejection(planMoveWallFirstOpening(created.document, DOOR_ID, 5.5));
@@ -368,7 +380,8 @@ describe('P23.3 canonical Opening domain operations', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		const deleted = success(
@@ -391,7 +404,8 @@ describe('P23.3 portal relations on authored Openings', () => {
 					offset: 1,
 					connectsRoomIds: ['room-left', 'room-right']
 				},
-				freshCapture()
+				freshCapture(),
+				BASE.floor.id
 			)
 		);
 		expect(accepted.document.openings[0]!.connectsRoomIds).toEqual([
@@ -406,7 +420,8 @@ describe('P23.3 portal relations on authored Openings', () => {
 				offset: 1,
 				connectsRoomIds: ['room-left', 'room-left']
 			},
-			freshCapture()
+			freshCapture(),
+			BASE.floor.id
 		);
 		expect(rejection(stranger).code).toBe('portal_relation_invalid');
 		const exterior = planCreateWallFirstOpening(
@@ -417,7 +432,8 @@ describe('P23.3 portal relations on authored Openings', () => {
 				offset: 1,
 				connectsRoomIds: ['room-left', 'room-right']
 			},
-			freshCapture()
+			freshCapture(),
+			BASE.floor.id
 		);
 		expect(rejection(exterior).code).toBe('portal_relation_invalid');
 	});
@@ -427,7 +443,8 @@ describe('P23.3 portal relations on authored Openings', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-b', kind: 'door', offset: 1 },
-				freshCapture()
+				freshCapture(),
+				BASE.floor.id
 			)
 		);
 		expect(exterior.document.openings[0]!.connectsRoomIds).toBeUndefined();
@@ -445,7 +462,8 @@ describe('P23.3 portal relations on authored Openings', () => {
 					kind: 'door',
 					offset: 1
 				},
-				freshCapture()
+				freshCapture(),
+				partitionDoc.floor.id
 			)
 		);
 		expect(partition.document.openings[0]!.connectsRoomIds).toBeUndefined();
@@ -461,7 +479,8 @@ describe('P23.3 portal relations on authored Openings', () => {
 					offset: 1,
 					connectsRoomIds: ['room-left', 'room-right']
 				},
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		const implicit = planUpdateWallFirstOpening(created.document, DOOR_ID, {
@@ -489,7 +508,8 @@ describe('P23.3 portal relations on authored Openings', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		const plan = planUpdateWallFirstOpening(created.document, DOOR_ID, {
@@ -505,7 +525,8 @@ describe('P23.3 shared canonical opening-set validator (P23.1 shrink)', () => {
 			planCreateWallFirstOpening(
 				BASE,
 				{ wallId: 'wall-e', kind: 'door', offset: 1 },
-				DOOR_CAPTURE
+				DOOR_CAPTURE,
+				BASE.floor.id
 			)
 		);
 		// wall-e is 4 m; shrinking to 1.5 m would leave offset 1 + width 0.9
@@ -543,7 +564,8 @@ function withDoor(overrides: Partial<{ offset: number; width: number }> = {}) {
 				offset: overrides.offset ?? 1,
 				...(overrides.width === undefined ? {} : { width: overrides.width })
 			},
-			DOOR_CAPTURE
+			DOOR_CAPTURE,
+			BASE.floor.id
 		)
 	);
 	return created.document;
@@ -629,7 +651,8 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 			planCreateWallFirstOpening(
 				withDoor(),
 				{ wallId: 'wall-e', kind: 'window', offset: 2.5 },
-				windowCapture
+				windowCapture,
+				withDoor().floor.id
 			)
 		).document;
 		const geometry = compiledWallFirst(document).geometry;

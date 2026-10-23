@@ -57,7 +57,8 @@ function supportedProject(entities: readonly SceneEntity[]): Promise<ProjectEnve
 			[0, 6]
 		],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
 	return createUnitProject({

@@ -41,15 +41,23 @@ import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** T1.P02.S01 §1 — every simulated operation casts its own captured nonce. */
 function planWallSegment(
-	options: Omit<Parameters<typeof planWallSegmentRaw>[0], 'capture'>
+	options: Omit<Parameters<typeof planWallSegmentRaw>[0], 'capture' | 'levelId'> & { readonly levelId?: string }
 ): ReturnType<typeof planWallSegmentRaw> {
-	return planWallSegmentRaw({ ...options, capture: freshCapture() });
+	return planWallSegmentRaw({
+		...options,
+		capture: freshCapture(),
+		levelId: options.levelId ?? options.baseline.floor.id
+	});
 }
 
 function planWallChain(
-	options: Omit<WallChainPlanOptions, 'capture'>
+	options: Omit<WallChainPlanOptions, 'capture' | 'levelId'> & { readonly levelId?: string }
 ): ReturnType<typeof planWallChainRaw> {
-	return planWallChainRaw({ ...options, capture: freshCapture() });
+	return planWallChainRaw({
+		...options,
+		capture: freshCapture(),
+		levelId: options.levelId ?? options.baseline.floor.id
+	});
 }
 
 type RoomDuplicateArgs = Parameters<typeof planDuplicateIsolatedRoomRaw>;
@@ -58,7 +66,7 @@ function planDuplicateIsolatedRoom(
 	document: RoomDuplicateArgs[0],
 	intent: RoomDuplicateArgs[1]
 ): ReturnType<typeof planDuplicateIsolatedRoomRaw> {
-	return planDuplicateIsolatedRoomRaw(document, intent, freshCapture());
+	return planDuplicateIsolatedRoomRaw(document, intent, freshCapture(), document.floor.id);
 }
 
 type WallSpec = { id: string; start: string; end: string; height: number };

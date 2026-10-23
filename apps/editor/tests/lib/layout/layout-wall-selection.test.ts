@@ -42,7 +42,7 @@ function commitChain(
 	baseline: LayoutDocumentWallFirst,
 	points: [number, number][]
 ): LayoutDocumentWallFirst {
-	const plan = planWallChain({ baseline, points, close: false, capture: freshCapture() });
+	const plan = planWallChain({ baseline, points, close: false, capture: freshCapture(), levelId: baseline.floor.id });
 	if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 	return plan.document;
 }
@@ -96,7 +96,8 @@ describe('P23.6 wall-first Room selection', () => {
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)],
 			close: true,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: baseDocument().floor.id
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		return plan.document;

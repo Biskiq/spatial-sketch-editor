@@ -72,7 +72,8 @@ function commitChain(
 		close,
 		capture: freshCapture(),
 		...(junctionSnaps.length > 0 ? { endpointJunctionSnaps: junctionSnaps } : {}),
-		...(hostSnaps.length > 0 ? { endpointHostSnaps: hostSnaps } : {})
+		...(hostSnaps.length > 0 ? { endpointHostSnaps: hostSnaps } : {}),
+		levelId: baseline.floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 	return plan.document;

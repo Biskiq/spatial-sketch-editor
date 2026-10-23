@@ -164,7 +164,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 			baseline,
 			start: p(20, 0),
 			end: p(22, 0),
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: baseline.floor.id
 		});
 		if (withWall.kind !== 'success') {
 			throw new Error(`wall draw should succeed: ${JSON.stringify(withWall.rejection)}`);
@@ -173,7 +174,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 			baseline: withWall.document,
 			start: p(22, 0),
 			end: p(22, 2),
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: withWall.document.floor.id
 		});
 		if (candidate.kind !== 'success') {
 			throw new Error(`second wall draw should succeed: ${JSON.stringify(candidate.rejection)}`);
@@ -182,7 +184,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 			baseline: candidate.document,
 			start: p(22, 2),
 			end: p(20, 2),
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: candidate.document.floor.id
 		});
 		if (final.kind !== 'success') {
 			throw new Error(`third wall draw should succeed: ${JSON.stringify(final.rejection)}`);
@@ -191,7 +194,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 			baseline: final.document,
 			start: p(20, 2),
 			end: p(20, 0),
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: final.document.floor.id
 		});
 		if (closed.kind !== 'success') {
 			throw new Error(`closing wall draw should succeed: ${JSON.stringify(closed.rejection)}`);

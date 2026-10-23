@@ -371,6 +371,7 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 				[5, 2]
 			],
 			close: false,
+			levelId: baseline.floor.id,
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -402,7 +403,8 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 				[2, 4]
 			],
 			close: false,
-			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'c-b' }]
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'c-b' }],
+			levelId: baseline.floor.id
 		});
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
@@ -422,6 +424,7 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 				[-1, 3]
 			],
 			close: false,
+			levelId: baseline.floor.id,
 		});
 		expect(plan.kind).toBe('success');
 	});
@@ -435,6 +438,7 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 				[9, 0]
 			],
 			close: false,
+			levelId: baseline.floor.id,
 		});
 		expect(plan.kind).toBe('success');
 	});
@@ -461,7 +465,8 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 				[4, 3]
 			],
 			close: false,
-			endpointHostSnaps: [{ pointIndex: 0, wallId: 'host' }]
+			endpointHostSnaps: [{ pointIndex: 0, wallId: 'host' }],
+			levelId: document.floor.id
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -486,6 +491,7 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 				[4, 3]
 			],
 			close: false,
+			levelId: document.floor.id,
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -508,7 +514,8 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			baseline,
 			start: [hit.point[0], hit.point[1] - 2],
 			end: hit.point,
-			endpointHostWallId: 'curved'
+			endpointHostWallId: 'curved',
+			levelId: baseline.floor.id
 		});
 		if (plan.kind !== 'success') throw new Error(`expected curved T success, got ${JSON.stringify(plan.rejection)}`);
 
@@ -554,7 +561,8 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			baseline: seed,
 			points: [[hit.point[0], hit.point[1] - 2], hit.point],
 			close: false,
-			endpointHostSnaps: [{ pointIndex: 1, wallId: 'curved' }]
+			endpointHostSnaps: [{ pointIndex: 1, wallId: 'curved' }],
+			levelId: seed.floor.id
 		});
 		if (plan.kind !== 'success') throw new Error(`expected boundary-host T success, got ${JSON.stringify(plan.rejection)}`);
 		const authored = wallOf(plan.document, plan.authoredWallIds[0]!);
@@ -595,7 +603,8 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			baseline: seed,
 			start: [hit.point[0], hit.point[1] - 2],
 			end: hit.point,
-			endpointHostWallId: 'curved'
+			endpointHostWallId: 'curved',
+			levelId: seed.floor.id
 		});
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
@@ -612,6 +621,7 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			baseline,
 			start: [outside[0] - 0.2, outside[1]],
 			end: outside,
+			levelId: baseline.floor.id,
 		});
 		if (plan.kind !== 'success') throw new Error(`expected disconnected near-miss success, got ${JSON.stringify(plan.rejection)}`);
 		expect(plan.splitWallIds).not.toContain('curved');
@@ -630,7 +640,8 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			baseline,
 			start: [-2, 0],
 			end: [5e-10, -5e-10],
-			endpointJunctionSnaps: [{ pointIndex: 1, junctionId: 'c-a' }]
+			endpointJunctionSnaps: [{ pointIndex: 1, junctionId: 'c-a' }],
+			levelId: baseline.floor.id
 		});
 		if (plan.kind !== 'success') throw new Error(`expected endpoint adoption, got ${JSON.stringify(plan.rejection)}`);
 		const authored = wallOf(plan.document, plan.authoredWallIds[0]!);

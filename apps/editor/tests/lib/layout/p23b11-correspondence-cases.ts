@@ -221,7 +221,8 @@ function divisionSketch(
 		endpointHostSnaps: [
 			{ pointIndex: 0, wallId: leftWallId },
 			{ pointIndex: 1, wallId: rightWallId }
-		]
+		],
+		levelId: baseline.floor.id
 	});
 }
 
@@ -269,6 +270,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 				start: MATRIX_AUTHORING[0],
 				end: MATRIX_AUTHORING[1],
 				capture,
+				levelId: baseline.floor.id,
 			})
 	},
 	{
@@ -282,6 +284,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 				start: MATRIX_AUTHORING[0],
 				end: MATRIX_AUTHORING[1],
 				capture,
+				levelId: baseline.floor.id,
 			})
 	},
 
@@ -292,7 +295,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		kind: 'planned',
 		baseline: () => fixtureDocument(STRAIGHT_40),
 		plan: (baseline, capture) =>
-			planWallChain({ baseline, points: MATRIX_RECT, close: true, capture })
+			planWallChain({ baseline, points: MATRIX_RECT, close: true, capture, levelId: baseline.floor.id })
 	},
 	{
 		id: 'b-all-curved-40-rect-room',
@@ -300,7 +303,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		kind: 'planned',
 		baseline: () => fixtureDocument(CURVED_40),
 		plan: (baseline, capture) =>
-			planWallChain({ baseline, points: MATRIX_RECT, close: true, capture })
+			planWallChain({ baseline, points: MATRIX_RECT, close: true, capture, levelId: baseline.floor.id })
 	},
 
 	// --- (c) a chain that divides a Room ------------------------------------
@@ -325,7 +328,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		covers: 'OR-1(d) + OR-1(h)',
 		kind: 'planned',
 		baseline: () => buildP23B11ConnectedCase(),
-		plan: (baseline, capture) => planDeleteWall(baseline, 'grid:v-1-0', capture),
+		plan: (baseline, capture) => planDeleteWall(baseline, 'grid:v-1-0', capture, baseline.floor.id),
 		note: 'The recorded 2→1 MERGE: re-roling the shared wall leaves one candidate face claimed by BOTH cells, so the component is 2→1 with a merge survivor and a retirement. No chain gesture produces this (measured), and it is the strongest same-group row on the connected case.'
 	},
 	{
@@ -333,7 +336,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		covers: 'OR-1(d) + OR-1(h)',
 		kind: 'planned',
 		baseline: () => buildP23B11ConnectedCase(),
-		plan: (baseline, capture) => planDeleteWall(baseline, 'grid:h-0-0', capture),
+		plan: (baseline, capture) => planDeleteWall(baseline, 'grid:h-0-0', capture, baseline.floor.id),
 		note: 'Retirement: the cell loses its whole enclosure, so its predecessor never reaches a face and retires — the D-12 one-sided denial on a connected plan.'
 	},
 	{
@@ -341,14 +344,14 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		covers: 'OR-1(d)',
 		kind: 'planned',
 		baseline: () => fixtureDocument(STRAIGHT_12),
-		plan: (baseline, capture) => planDeleteWall(baseline, 'room-0:wall-0', capture)
+		plan: (baseline, capture) => planDeleteWall(baseline, 'room-0:wall-0', capture, baseline.floor.id)
 	},
 	{
 		id: 'd-d12-remove-room-retire',
 		covers: 'OR-1(d)',
 		kind: 'planned',
 		baseline: () => correctnessDocument('d12-exact-coincidence-v1'),
-		plan: (baseline, capture) => planRemoveRoom(baseline, 'room-c', capture),
+		plan: (baseline, capture) => planRemoveRoom(baseline, 'room-c', capture, baseline.floor.id),
 		note: "The reachable one-sided denial: the operated Room's whole ring goes while the unrelated Room's face is still authored."
 	},
 
@@ -359,7 +362,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		kind: 'planned',
 		baseline: () => correctnessDocument('d12-exact-coincidence-v1'),
 		plan: (baseline, capture) =>
-			planWallSegment({ baseline, start: [-4, 2], end: [10, 2], capture }),
+			planWallSegment({ baseline, start: [-4, 2], end: [10, 2], capture, levelId: baseline.floor.id }),
 		note: 'Two Rooms occupying identical coordinates under a chain that crosses both: both faces stay separate components of their own groups, neither Room is touched.'
 	},
 	{
@@ -368,7 +371,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		kind: 'planned',
 		baseline: () => correctnessDocument('d12-full-containment-v1'),
 		plan: (baseline, capture) =>
-			planWallSegment({ baseline, start: [-4, 2], end: [10, 2], capture }),
+			planWallSegment({ baseline, start: [-4, 2], end: [10, 2], capture, levelId: baseline.floor.id }),
 		note: 'A nested Room pair under the same chain: containment alone authorizes nothing.'
 	},
 	{
@@ -385,7 +388,8 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 				endpointJunctionSnaps: [
 					{ pointIndex: 0, junctionId: 'k-a' },
 					{ pointIndex: 1, junctionId: 'k-b' }
-				]
+				],
+				levelId: baseline.floor.id
 			}),
 		note: 'The REFUSAL row: landing a chain exactly along an authored wall is still refused with the same code, so the freeze pins a refusal as well as acceptances.'
 	},
@@ -396,28 +400,28 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		covers: 'OR-1(f)',
 		kind: 'planned',
 		baseline: () => correctnessDocument('d12-exact-coincidence-v1'),
-		plan: (baseline, capture) => planDeleteWall(baseline, 'c-a1', capture)
+		plan: (baseline, capture) => planDeleteWall(baseline, 'c-a1', capture, baseline.floor.id)
 	},
 	{
 		id: 'f-d12-partial-overlap-role-change',
 		covers: 'OR-1(f)',
 		kind: 'planned',
 		baseline: () => correctnessDocument('d12-partial-overlap-v1'),
-		plan: (baseline, capture) => planDeleteWall(baseline, 'c-a1', capture)
+		plan: (baseline, capture) => planDeleteWall(baseline, 'c-a1', capture, baseline.floor.id)
 	},
 	{
 		id: 'f-d12-full-containment-role-change',
 		covers: 'OR-1(f)',
 		kind: 'planned',
 		baseline: () => correctnessDocument('d12-full-containment-v1'),
-		plan: (baseline, capture) => planDeleteWall(baseline, 'c-a1', capture)
+		plan: (baseline, capture) => planDeleteWall(baseline, 'c-a1', capture, baseline.floor.id)
 	},
 	{
 		id: 'f-d12-full-containment-mirror-role-change',
 		covers: 'OR-1(f)',
 		kind: 'planned',
 		baseline: () => correctnessDocument('d12-full-containment-v1'),
-		plan: (baseline, capture) => planDeleteWall(baseline, 'k-a1', capture),
+		plan: (baseline, capture) => planDeleteWall(baseline, 'k-a1', capture, baseline.floor.id),
 		note: "The mirrored row: the UNRELATED Room's own wall changes, so the operated Room is the one that retires."
 	},
 	{
@@ -451,6 +455,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 				],
 				close: true,
 				capture,
+				levelId: baseline.floor.id,
 			}),
 		note: 'The empty-extraction control: a closed chain on an empty document, zero pairs, one birth.'
 	},
@@ -460,7 +465,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		kind: 'planned',
 		baseline: () => facesOnlyDocument(),
 		plan: (baseline, capture) =>
-			planWallSegment({ baseline, start: [10, 0], end: [14, 0], capture }),
+			planWallSegment({ baseline, start: [10, 0], end: [14, 0], capture, levelId: baseline.floor.id }),
 		note: 'Faces but no Rooms: the pass runs with an empty predecessor set, so zero pairs and a birth of the pre-existing face.'
 	},
 
@@ -476,6 +481,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 				start: CONNECTED_AUTHORING[0],
 				end: CONNECTED_AUTHORING[1],
 				capture,
+				levelId: baseline.floor.id,
 			}),
 		note: 'The ratified capture gesture, landing INSIDE the grid cell (0,0): four faces against four same-group Rooms, sixteen pairs, no reconciliation effect.'
 	},
@@ -502,7 +508,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		covers: 'OR-1(h)',
 		kind: 'planned',
 		baseline: () => buildP23B11ConnectedCase(),
-		plan: (baseline, capture) => planDissolveJunction(baseline, 'grid:j-2-0', capture),
+		plan: (baseline, capture) => planDissolveJunction(baseline, 'grid:j-2-0', capture, baseline.floor.id),
 		note: 'The third live caller of the shared `buildCorrespondenceComponents` — added by the 2026-09-27 owner review fix, because dissolve was the one live caller with no OR-1 row. Dissolving the grid corner joins `grid:h-1-0` and `grid:v-2-0` into one chain through the SAME points: every Room is preserved, the affected Room (1-0) loses its boundary cycle so its pairs fall to the geometric proof, and the other three Rooms keep their keys: nine of the sixteen pairs (three unions, six refusals) are settled by identity with no geometry, and the rest fall to the exact short-circuits. Two of the four grid corners are refused by the planner’s own compile gate (a narrow neck after the join), which is why this row uses the accepted one. Checked against the exhaustive bypass like every other row.'
 	}
 ];

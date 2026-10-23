@@ -26,6 +26,7 @@ import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import { layoutWorkingLevelIssue } from './layout-id-capture';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-portals';
 import {
@@ -1681,8 +1682,12 @@ export function planCommitLayoutObjectPreset(
 	point: LayoutVec2,
 	floorElevation: number,
 	/** The identity captured before evaluation (T1.P02.S01 §1). */
-	capturedObjectId: string
+	capturedObjectId: string,
+	/** T1.P02.S01 §1 — explicit working level; must name `document.floor.id`. */
+	levelId: string
 ): PrecisionPlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject('invalid_value', levelIssue, [presetId]);
 	const preset = layoutArchitecturalPreset(presetId);
 	if (!preset) return reject('invalid_reference', `Unknown architectural preset '${presetId}'`, [presetId]);
 	if (!finitePoint(point)) return reject('invalid_value', 'Preset placement point must be finite', [presetId]);

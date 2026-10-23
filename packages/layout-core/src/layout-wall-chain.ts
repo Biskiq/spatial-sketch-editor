@@ -71,7 +71,9 @@ import {
 } from './layout-room-reconciliation';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
 import {
-	allocateCapturedId,
+	assertCapturedIdUnused,
+	layoutCapturedId,
+	layoutWorkingLevelIssue,
 	LayoutIdCollisionError,
 	type LayoutIdCapture
 } from './layout-id-capture';
@@ -230,13 +232,41 @@ export type WallChainIdAllocator = {
 	nextJunctionId(taken: ReadonlySet<string>, seed: string): string;
 };
 
-/** One captured operation's chain allocator (capture, never occupancy). */
+/**
+ * One captured operation's chain allocator (capture, never occupancy).
+ *
+ * The allocator is stateful for its one operation: one operation may request
+ * the same seed more than once (a second split landing on the start-side
+ * fragment that kept the host id requests `${wallId}-b` again). The first
+ * request for a seed derives exactly from that seed; the k-th request (k >= 2)
+ * derives from `${seed}-${k}`. Replaying the same capture reproduces the same
+ * sequence, so the ids stay deterministic. Occupancy (including ids this
+ * operation already issued) is only the refusal check.
+ */
 export function createCapturedWallChainAllocator(
 	capture: LayoutIdCapture
 ): WallChainIdAllocator {
+	const wallSeeds = new Map<string, number>();
+	const junctionSeeds = new Map<string, number>();
+	const issued = new Set<string>();
+	const allocate = (
+		seeds: Map<string, number>,
+		taken: ReadonlySet<string>,
+		seed: string
+	): string => {
+		const request = (seeds.get(seed) ?? 0) + 1;
+		seeds.set(seed, request);
+		const effectiveSeed = request === 1 ? seed : `${seed}-${request}`;
+		const id = assertCapturedIdUnused(
+			new Set([...taken, ...issued]),
+			layoutCapturedId(capture, effectiveSeed)
+		);
+		issued.add(id);
+		return id;
+	};
 	return {
-		nextWallId: (taken, seed) => allocateCapturedId(taken, seed, capture),
-		nextJunctionId: (taken, seed) => allocateCapturedId(taken, seed, capture)
+		nextWallId: (taken, seed) => allocate(wallSeeds, taken, seed),
+		nextJunctionId: (taken, seed) => allocate(junctionSeeds, taken, seed)
 	};
 }
 
@@ -288,6 +318,11 @@ export type WallChainPlanOptions = {
 	 */
 	capture: LayoutIdCapture;
 	/**
+	 * T1.P02.S01 §1 — the explicit working level. Required and refused unless it
+	 * names `baseline.floor.id`; the chain never infers its level from the document.
+	 */
+	levelId: string;
+	/**
 	 * P23B.3a S6 — DECLARED host-Wall connections, keyed by draft point index.
 	 *
 	 * The annotation names the point that expresses the attachment (the endpoint
@@ -338,6 +373,8 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	const allocator = createCapturedWallChainAllocator(options.capture);
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
 	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
+	const levelIssue = layoutWorkingLevelIssue(options.baseline, options.levelId);
+	if (levelIssue !== null) return reject({ code: 'invalid_candidate_document', message: levelIssue });
 
 	// P23.6I birth semantics. `planWallChain` is the **bounded compound** planner
 	// (Rectangle/Polygon and explicit multi-point callers): the whole generated
@@ -1585,6 +1622,8 @@ export function planWallSegment(options: {
 	height?: number;
 	/** The operation's captured identity; see `planWallChain`. */
 	capture: LayoutIdCapture;
+	/** Explicit working level; see `planWallChain`. */
+	levelId: string;
 	/** Existing `wall-span` snap identity for the authored endpoint. */
 	endpointHostWallId?: string;
 	/**
@@ -1643,6 +1682,7 @@ export function planWallSegment(options: {
 		...(options.endpointJunctionSnaps && options.endpointJunctionSnaps.length > 0
 			? { endpointJunctionSnaps: options.endpointJunctionSnaps }
 			: {}),
-		capture: options.capture
+		capture: options.capture,
+		levelId: options.levelId
 	});
 }

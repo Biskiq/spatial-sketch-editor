@@ -190,7 +190,7 @@ const FULL_CONTAINMENT = pairDocument(
 /** The operation under test: delete the OPERATED Room's own south Wall (format 6: removing it opens the enclosure exactly as dropping it from face extraction did). */
 function operateOnOperatedRoom(document: LayoutDocumentWallFirst) {
 	expect(document.rooms.map((room) => room.id)).toContain('room-c');
-	return planDeleteWall(document, 'c-a1', HAZARD_CAPTURE);
+	return planDeleteWall(document, 'c-a1', HAZARD_CAPTURE, document.floor.id);
 }
 
 function roomsOf(document: LayoutDocumentWallFirst) {
@@ -422,7 +422,7 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 	}
 
 	it('OR-D12-6 wall delete — deleting the OPERATED Room\'s Wall leaves the unrelated Room intact', () => {
-		const plan = planDeleteWall(FULL_CONTAINMENT, 'c-a1', HAZARD_CAPTURE);
+		const plan = planDeleteWall(FULL_CONTAINMENT, 'c-a1', HAZARD_CAPTURE, FULL_CONTAINMENT.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		assertUnrelatedSurvives(plan.document, 'wall delete');
@@ -440,7 +440,7 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		// Dissolve only joins COLLINEAR straight Walls, so the operated Room's south
 		// Wall is split at a midpoint Junction and that Junction is the one dissolved.
 		const split = splitOperatedSouthWall(FULL_CONTAINMENT);
-		const plan = planDissolveJunction(split, 'c-mid', HAZARD_CAPTURE);
+		const plan = planDissolveJunction(split, 'c-mid', HAZARD_CAPTURE, split.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		assertUnrelatedSurvives(plan.document, 'dissolve');
@@ -454,7 +454,8 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 				[8, 2]
 			],
 			close: false,
-			capture: HAZARD_CAPTURE
+			capture: HAZARD_CAPTURE,
+			levelId: FULL_CONTAINMENT.floor.id
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -632,7 +633,7 @@ describe('P23B.3a S3a — the D-12 fallback on coherent inputs, and reachable bo
 		// (geometry-only union restored): the plan's only Room was
 		// `[['room-c', 'Room c']]` — the lexical survivor took the enclosure, so the
 		// UNRELATED Room was the one retired and `obj-k` the association remapped.
-		const plan = planRemoveRoom(EXACT_COINCIDENCE, 'room-c', HAZARD_CAPTURE);
+		const plan = planRemoveRoom(EXACT_COINCIDENCE, 'room-c', HAZARD_CAPTURE, EXACT_COINCIDENCE.floor.id);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);

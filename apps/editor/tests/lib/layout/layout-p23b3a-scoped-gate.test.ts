@@ -804,7 +804,8 @@ describe('P23B.3a S5 / R-3 — the WALL-CHAIN gate takes the SAME subject in bot
 				[-1, 10]
 			],
 			close: false,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: baseline.floor.id
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -837,7 +838,8 @@ describe('P23B.3a S5 / R-3 — the WALL-CHAIN gate takes the SAME subject in bot
 				[11, 3]
 			],
 			close: false,
-			capture: freshCapture()
+			capture: freshCapture(),
+			levelId: INDEPENDENT_CURVE_CROSSING.floor.id
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;

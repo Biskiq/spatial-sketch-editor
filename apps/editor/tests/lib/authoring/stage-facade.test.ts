@@ -51,7 +51,8 @@ async function enclosureProject(points: readonly LayoutVec2[], id: string = PROJ
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points: points.map((point) => [point[0], point[1]] as LayoutVec2),
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
 	return createUnitProject({ id, name: 'Stage facade project', layout: plan.document });
@@ -72,7 +73,8 @@ async function enclosureWithDoor(): Promise<ProjectEnvelope> {
 			height: 2.1,
 			sillHeight: 0
 		},
-		freshCapture()
+		freshCapture(),
+		baseLayout.floor.id
 	);
 	if (door.kind !== 'success') throw new Error(`the door fixture no longer plans: ${door.rejection.code}`);
 	return createUnitProject({ id: base.id, name: base.name, layout: door.document });

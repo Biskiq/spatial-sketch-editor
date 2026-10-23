@@ -75,7 +75,8 @@ function project(position: Vec3 = [2, 0.5, 2]): Promise<ProjectEnvelope> {
 			[0, 6]
 		],
 		close: true,
-		capture: freshCapture()
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
 	return createUnitProject({

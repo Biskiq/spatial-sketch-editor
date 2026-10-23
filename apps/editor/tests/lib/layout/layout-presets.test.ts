@@ -63,7 +63,7 @@ function planPreset(
 		document,
 		capture,
 		capturedObjectId,
-		plan: planCommitLayoutObjectPreset(document, presetId, point, elevation, capturedObjectId)
+		plan: planCommitLayoutObjectPreset(document, presetId, point, elevation, capturedObjectId, document.floor.id)
 	};
 }
 

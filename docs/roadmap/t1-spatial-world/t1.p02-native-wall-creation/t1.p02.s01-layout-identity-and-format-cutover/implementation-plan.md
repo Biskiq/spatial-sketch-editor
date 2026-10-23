@@ -79,6 +79,20 @@ report so it becomes its own slice before S02; do not carry it past the phase.
 5. **No behavior change for creators.** Existing precision, manipulation, plinth, Scene placement,
    Save and Undo/Redo journeys behave as before; the shared F2 open flow (F2) is recorded at S and M
    against the H0 baseline. Its hard rows are accepted on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment).
+   By owner ruling (2026-10-22) those F2 timings are first recorded at
+   [`T1.P02.S04`](../t1.p02.s04-integrated-final-gate/implementation-plan.md#performance-recheck),
+   not before this slice's acceptance.
+
+## Owner rulings at implementation review (2026-10-22)
+
+- **§3 retirement is its own later slice.** The stop-and-report is accepted; the retirement runs as a
+  separately authorized slice before S02, and S01 does not carry it.
+- **The working level is an explicit planner parameter.** §1's rule is applied literally: every new
+  or changed planner entry point takes the working level and refuses a stale one, in addition to the
+  intent-seam check.
+- **Uncaptured noding planners stay listed exceptions.** The standalone `planWallSubdivision`,
+  `planWallSplit` and `planWallCrossing` keep their caller-supplied allocator while no production
+  caller reaches them; a first production caller moves them onto a capture.
 
 Verification: affected fast and heavy contracts, the arch lane, `npm run check`, and `npm run check:api`
 with the DB-backed `npm run test:api` at zero skips, because the API admits Layout units. The complete

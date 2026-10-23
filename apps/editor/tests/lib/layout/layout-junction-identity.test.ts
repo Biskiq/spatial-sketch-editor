@@ -81,7 +81,8 @@ function commit(
 		baseline,
 		start,
 		end,
-		...(declaredJunctions.length > 0 ? { endpointJunctionSnaps: declaredJunctions } : {})
+		...(declaredJunctions.length > 0 ? { endpointJunctionSnaps: declaredJunctions } : {}),
+		levelId: baseline.floor.id
 	});
 	if (result.kind !== 'success') {
 		throw new Error(`expected success, got ${JSON.stringify(result)}`);
@@ -94,6 +95,7 @@ function enclosure(): LayoutDocumentWallFirst {
 		baseline: baseDocument(),
 		points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)],
 		close: true,
+		levelId: baseDocument().floor.id,
 	});
 	if (result.kind !== 'success') throw new Error('enclosure failed');
 	return result.document;
@@ -105,6 +107,7 @@ function enclosureWithDivider(): LayoutDocumentWallFirst {
 		baseline: enclosure(),
 		start: p(0, 1),
 		end: p(4, 2.5),
+		levelId: enclosure().floor.id,
 	});
 	if (divider.kind !== 'success') throw new Error('divider failed');
 	return divider.document;
@@ -196,6 +199,7 @@ describe('P23.9 shared Junction identity predicate', () => {
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), p(0, 0)],
 			close: false,
+			levelId: baseDocument().floor.id,
 		});
 		expect(exact.kind).toBe('success');
 		if (exact.kind !== 'success') return;
@@ -208,6 +212,7 @@ describe('P23.9 shared Junction identity predicate', () => {
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), [NEAR_MISS, NEAR_MISS]],
 			close: false,
+			levelId: baseDocument().floor.id,
 		});
 		expect(near.kind).toBe('success');
 		if (near.kind !== 'success') return;
@@ -226,6 +231,7 @@ describe('P23.9 shared Junction identity predicate', () => {
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), [NEAR_MISS, 0]],
 			close: false,
+			levelId: baseDocument().floor.id,
 		});
 		expect(ontoLeg.kind).toBe('rejected');
 		if (ontoLeg.kind !== 'rejected') return;
@@ -247,7 +253,8 @@ describe('P23.9 shared Junction identity predicate', () => {
 			// P23B.3a S6 — the click resolved onto that corner Junction, so the
 			// operation declares it: the declared anchor is what makes the sub-ulp
 			// coordinate an ADOPTION instead of a second record.
-			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: corner.id }]
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: corner.id }],
+			levelId: baseline.floor.id
 		});
 		expect(result.kind).toBe('success');
 		if (result.kind !== 'success') return;
@@ -294,6 +301,7 @@ describe('P23.9 shared Junction identity predicate', () => {
 			baseline,
 			start: p(0, 0),
 			end: p(1e-16, 1e-16),
+			levelId: baseline.floor.id,
 		});
 		expect(degenerate.kind).toBe('rejected');
 		if (degenerate.kind !== 'rejected') return;
@@ -307,6 +315,7 @@ describe('P23.9 shared Junction identity predicate', () => {
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), [1e-10, 1e-10]],
 			close: false,
+			levelId: baseDocument().floor.id,
 		});
 		expect(inside.kind).toBe('success');
 		if (inside.kind !== 'success') return;
@@ -319,6 +328,7 @@ describe('P23.9 shared Junction identity predicate', () => {
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), [NEAR_MISS, NEAR_MISS]],
 			close: false,
+			levelId: baseDocument().floor.id,
 		});
 		expect(outside.kind).toBe('success');
 		if (outside.kind !== 'success') return;
@@ -350,7 +360,7 @@ describe('P23.9 shared Junction identity predicate', () => {
 
 		let successes = 0;
 		for (const [start, end] of gestures) {
-			const result = planWallSegmentCaptured({ baseline: document, start, end });
+			const result = planWallSegmentCaptured({ baseline: document, start, end, levelId: document.floor.id });
 			if (result.kind === 'rejected') {
 				// Honest geometry rejections are fine; a noding rejection here is the
 				// regression this bar exists to prevent.
