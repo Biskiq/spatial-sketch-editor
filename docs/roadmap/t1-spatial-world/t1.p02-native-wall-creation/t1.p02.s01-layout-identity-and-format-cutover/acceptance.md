@@ -1,17 +1,14 @@
 # T1.P02.S01 — acceptance record: Layout identity and format cutover
 
-**Slice:** T1.P02.S01 · **Status:** implemented 2026-10-22 on
-`t1/p02-s01-layout-identity-format-cutover` (batch E, E7) — §1 and §2 complete, §3 filed as a
-stop-and-report; verification recorded below; independently reviewed by three adversarial passes, not
-owner-accepted, no acceptance recorded ·
+**Slice:** T1.P02.S01 · **Status:** accepted 2026-10-23 by per-slice `owner-override` — §1 and §2
+complete, §3 accepted as a stop-and-report; verification recorded below ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 This record carries the verification evidence for the implemented slice: the plan's declared tier
 with the exact commands and their actual counts, the plan items with the evidence that proves each,
-and the deviations a reviewer must judge. It records **no acceptance**: `T1.P02.S01` has not been
-owner-reviewed or accepted, so it claims no gate state, no capability entry and no acceptance. It is not
-the phase's final gate either — the deferred exhaustive proof routes to
+the deviations accepted by owner ruling below, and the bounded scope of that ruling. It records no
+new capability outcome. It is not the phase's final gate either — the deferred exhaustive proof routes to
 [`T1.P02.S04`](../t1.p02.s04-integrated-final-gate/acceptance.md).
 
 The command counts below describe the tree that carries this record: the cutover commit `8edc6487`,
@@ -312,10 +309,35 @@ stays open and is listed under outstanding obligations.
    format-5 Layout unit (`unsupported_format_version`) and a format-6 Wall carrying `role`
    (`unknown_key`) as `invalid_project`, with no version or receipt written.
 
+## Owner ruling — per-slice owner-override (2026-10-23)
+
+```text
+RULING:     The owner stated, “owner overide, everything is accepted.” This is an explicit
+            per-Batch-E, per-current-revision owner-override for T1.P02.S01.
+SOURCE:     PR #179 reviewed implementation tip 7e159370a94a1a5e3cbb6d48abe42a66f7c3bd48;
+            the documentation-only T1 baton commit is aa3bc771e801791654bfea16008b5e8a3ebfcc0e.
+INTEGRATED: The rebased integration candidate at the time of this ruling is
+            a9530e82c9f3c08b9953eef6017b1afea540578a, based on PR #180 merge
+            c1e4e0307a6e5d293f25d35e233451730a34b8db. The rebase preserves the reviewed S01 source;
+            the original 7e159370 source identity remains its provenance.
+WAIVED:     The independent-review verdict prerequisite for this S01 source revision.
+            The S01 F2 open-timing acceptance prerequisites at S and M on the designated M2.
+NOT WAIVED: The plan's recorded architecture-integration evidence and all other acceptance
+            criteria, or T1.P02.S04's integrated final gate. No S/M measurements were run. Those
+            timings remain assigned to S04's performance recheck under the earlier owner ruling.
+STATE:      The phase slice register reads `shipped` with this authorization as `owner-override`;
+            the T1 baton routes the separately authorized successor work.
+```
+
+The §3 legacy Layout type/codec/room-frame/compiler-adapter retirement remains a real residual, not
+a waiver: the T1.P02 phase owner must separately scope, register and authorize its successor slice,
+which must land before S02. The five-blocker rationale and successor scope are recorded above. S02
+then requires its own owner authorization and a complete plan drafted from its current outline before
+implementation. S01 creates no capability outcome and does not close its phase.
+
 ## Outstanding obligations
 
 - **F2 open timings at S and M** on the owner's MacBook Air M2 (E6 amendment) — moved by owner ruling
   to `T1.P02.S04`'s performance recheck; not an S01 acceptance obligation.
 - **§3 retirement slice** — owner-accepted stop-and-report; authorized separately, before S02, not
   carried past the phase.
-- **Review and acceptance** — this record is evidence for that judgement, not the judgement.
