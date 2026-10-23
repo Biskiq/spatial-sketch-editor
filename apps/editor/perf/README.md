@@ -25,8 +25,9 @@ PERF_BASE_URL=http://127.0.0.1:4173 npx playwright test --config perf/playwright
 with `vite preview` on `http://127.0.0.1:4173`. Nothing about the harness enters
 that bundle: `src/lib/platform/perf-marks.ts` is inert until the harness sets
 `__BISKIQ_PERF__.enabled` through a Playwright init script. Browsers come from
-Playwright's own cache (Chromium, plus branded Chrome where installed); every run
-uses a fresh context, never a user profile.
+Playwright's own cache (Chromium, plus branded Chrome where installed); every
+cold run uses a fresh context, and warm/repeat-use reuse one context for their
+series, never a user profile.
 
 ## Flows
 
@@ -65,9 +66,11 @@ evidence for presentation.
 pointer event is handled within 50 ms. This harness records the first
 architectural rAF frame after the activation/admission mark. Reports must call
 that row **first architectural frame (rAF proxy)** and must not present it as
-the contract's first-interactive row. Page INP is reported separately from
-operation completion; with ten milestone samples p95/p99 are coarse and the
-report says so.
+the contract's first-interactive row. Per-operation completion is reported
+separately; page INP is **not computed** in this pass (the ledger buffers Event
+Timing entries at a 16 ms threshold, but no row reduces them), and it is listed
+as unrun in the acceptance inventory. With ten milestone samples p95/p99 are
+coarse and the report says so.
 
 ## Environment
 
@@ -87,14 +90,16 @@ report says so.
 A reduced pass (`PERF_RUNS<10` or `PERF_SAMPLES<60`) is labelled a pre-flight
 pass in every row and is never acceptance evidence.
 
-Every flow row runs **cold, warm and repeat-use**. Cold clears the HTTP cache and
-cookies before every measured run; warm and repeat-use keep the same context and
-never clear. For the navigation and drag flows, a repeat-use run closes back to
-the hub and then opens a fresh project, so the cycle boundary is real. F13's
-repeat-use row is the contract's ten-cycle state; its warm row measures one
-cycle after a discarded cycle has warmed the Stage, so it is not a disguised
-cold load. The delayed-preview proof remains a warm-only diagnostic, not a flow
-row.
+Every flow row runs **cold, warm and repeat-use**. Cold creates a fresh browser
+context for every measured run (the contract's definition); warm and repeat-use
+reuse one context and never clear. For the navigation and drag flows, repeat-use
+is ten cycles in that context, one measured cycle per run, closing back to the
+hub before the next open. F13's repeat-use row is the contract's ten-cycle state
+in a single run; its cold row starts in one fresh context and clears
+cache/cookies before each open, but does not reset the renderer's V8 code cache
+inside the run. F13's warm row measures one cycle after a discarded cycle has
+warmed the Stage, so it is not a disguised cold load. The delayed-preview proof
+remains a warm-only diagnostic, not a flow row.
 
 F7 paces its 60-step orbit to a 10 s wall-clock deadline. On a 60 Hz presented
 clock that is the contract's ≥600 frames. If the browser presents below 60 Hz,

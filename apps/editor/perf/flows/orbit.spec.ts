@@ -3,7 +3,9 @@
  *
  * A scripted 10 s orbit + dolly on the M fixture, measured cold, warm and
  * repeat-use with the harness's rAF frame clock: frame intervals p50/p95/p99,
- * long tasks and dropped frames.
+ * long tasks and dropped frames. Cold creates a fresh context per run; warm and
+ * repeat-use reuse one context, with repeat-use closing to the hub between
+ * cycles.
  *
  * The script paces movement to a wall-clock deadline, so the orbit itself takes
  * 10 s rather than the shorter time a fixed per-step delay produced. If the
@@ -20,8 +22,8 @@
 
 import { expect, test } from '@playwright/test';
 
-import { browserFacts, clearBrowserState, newMeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, passLimitations } from '../lib/config';
+import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
+import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
 import { fixtureProject } from '../lib/fixtures';
 import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
 import { frameIntervals, readLedger } from '../lib/ledger';
@@ -44,9 +46,7 @@ type OrbitRun = {
 
 type TickWindow = Window & { __BISKIQ_PERF_TICKS__?: number[] };
 
-async function orbitOnce(
-	session: Awaited<ReturnType<typeof newMeasuredSession>>
-): Promise<OrbitRun> {
+async function orbitOnce(session: MeasuredSession): Promise<OrbitRun> {
 	const { page } = session;
 	const projectId = uniqueProjectId('f7');
 	const project = await fixtureProject('M', projectId);
@@ -107,66 +107,57 @@ test.describe('F7 orbit', () => {
 	test('scripted orbit and dolly on M, cold, warm and repeat-use', async ({ browser }, testInfo) => {
 		const report = startReport(`f7-orbit-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-			const session = await newMeasuredSession(browser, {
-				viewport: VIEWPORT,
-				deviceScaleFactor: DEVICE_SCALE_FACTOR,
-				network: NETWORK,
-				cacheState
-			});
-			try {
-				const facts = await browserFacts(browser, session.page);
-				if (cacheState === 'cold') await clearBrowserState(session.cdp);
-				await orbitOnce(session); // discarded warm-up
-				if (cacheState === 'repeat-use') await closeToHub(session.page);
-				const runs: OrbitRun[] = [];
-				for (let index = 0; index < RUNS; index++) {
-					if (cacheState === 'cold') await clearBrowserState(session.cdp);
-					runs.push(await orbitOnce(session));
-					if (cacheState === 'repeat-use') await closeToHub(session.page);
-				}
-				const intervals = runs.flatMap((run) => run.intervals);
-				const dropped = runs.reduce(
-					(sum, run) => sum + run.intervals.filter((interval) => interval > 33.4).length,
-					0
-				);
-				const row: ResultRow = {
-					id: `F7-orbit-M-${cacheState}`,
-					flow: 'F7 orbit/navigation',
-					workload: 'M fixture, 10 s scripted orbit + dolly, extended only to reach the 600-frame floor',
+			const { results: runs, facts } = await collectMeasuredRuns(
+				browser,
+				{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
+				{
 					cacheState,
-					network: NETWORK,
-					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
-					cpuRate: 1,
-					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-					metrics: {
-						frames: intervals.length,
-						framesPerRunMin: Math.min(...runs.map((run) => run.frames)),
-						durationMsMedian: summarize(runs.map((run) => run.durationMs)).median,
-						durationMsMin: Math.min(...runs.map((run) => run.durationMs)),
-						droppedFramesOver33ms: dropped,
-						longTaskCount: runs.reduce((sum, run) => sum + run.longTasks, 0),
-						longestTask: runs.reduce((max, run) => Math.max(max, run.longestTask), 0)
-					},
-					stats: {
-						frameInterval: summarize(intervals),
-						durationMs: summarize(runs.map((run) => run.durationMs)),
-						framesPerRun: summarize(runs.map((run) => run.frames))
-					},
-					limitations: [
-						...passLimitations(),
-						'draw calls, triangles and GPU time are not captured (no renderer probe on the shipped Stage)',
-						'S and L orbit rows stay unrun in this slice',
-						'frame intervals are rAF-to-rAF on a 60 Hz panel and do not substitute for presented-result latency',
-						`runs extend past ${ORBIT_MS} ms only when the display cannot deliver ${FRAME_FLOOR} frames in that time`
-					]
-				};
-				report.rows.push(row);
-				console.log(formatRow(row));
-				expect(runs).toHaveLength(RUNS);
-				for (const run of runs) expect(run.frames).toBeGreaterThanOrEqual(FRAME_FLOOR);
-			} finally {
-				await session.close();
-			}
+					warmup: WARMUP_RUNS,
+					runs: RUNS,
+					afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+				},
+				orbitOnce
+			);
+			const intervals = runs.flatMap((run) => run.intervals);
+			const dropped = runs.reduce(
+				(sum, run) => sum + run.intervals.filter((interval) => interval > 33.4).length,
+				0
+			);
+			const row: ResultRow = {
+				id: `F7-orbit-M-${cacheState}`,
+				flow: 'F7 orbit/navigation',
+				workload: 'M fixture, 10 s scripted orbit + dolly, extended only to reach the 600-frame floor',
+				cacheState,
+				network: NETWORK,
+				browser: `${testInfo.project.name} ${facts.chromeVersion}`,
+				cpuRate: 1,
+				viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+				metrics: {
+					frames: intervals.length,
+					framesPerRunMin: Math.min(...runs.map((run) => run.frames)),
+					durationMsMedian: summarize(runs.map((run) => run.durationMs)).median,
+					durationMsMin: Math.min(...runs.map((run) => run.durationMs)),
+					droppedFramesOver33ms: dropped,
+					longTaskCount: runs.reduce((sum, run) => sum + run.longTasks, 0),
+					longestTask: runs.reduce((max, run) => Math.max(max, run.longestTask), 0)
+				},
+				stats: {
+					frameInterval: summarize(intervals),
+					durationMs: summarize(runs.map((run) => run.durationMs)),
+					framesPerRun: summarize(runs.map((run) => run.frames))
+				},
+				limitations: [
+					...passLimitations(),
+					'draw calls, triangles and GPU time are not captured (no renderer probe on the shipped Stage)',
+					'S and L orbit rows stay unrun in this slice',
+					'frame intervals are rAF-to-rAF on a 60 Hz panel and do not substitute for presented-result latency',
+					`runs extend past ${ORBIT_MS} ms only when the display cannot deliver ${FRAME_FLOOR} frames in that time`
+				]
+			};
+			report.rows.push(row);
+			console.log(formatRow(row));
+			expect(runs).toHaveLength(RUNS);
+			for (const run of runs) expect(run.frames).toBeGreaterThanOrEqual(FRAME_FLOOR);
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);

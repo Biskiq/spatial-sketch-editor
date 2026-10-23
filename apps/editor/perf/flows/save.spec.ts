@@ -10,15 +10,17 @@
  *   EDITOR_ORIGIN         the preview origin the API accepts
  *
  * Without those, the spec skips with its reason: the flow is not faked against
- * production and is listed as owner-run in the acceptance record. F9's hard
- * rows (main-thread work, local feedback ≤ 100 ms) are accepted only from the
- * designated reference machine.
+ * production and is listed as owner-run in the acceptance record. Cold creates a
+ * fresh context per run and installs the session cookie in each one; warm and
+ * repeat-use reuse a context, with repeat-use closing to the hub between saves.
+ * F9's hard rows (main-thread work, local feedback ≤ 100 ms) are accepted only
+ * from the designated reference machine.
  */
 
 import { expect, test } from '@playwright/test';
 
 import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
-import { browserFacts, clearBrowserState, newMeasuredSession } from '../lib/browser';
+import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
 import { fixtureProject } from '../lib/fixtures';
 import {
@@ -45,10 +47,7 @@ type SaveRun = {
 	readonly wireBytes: number;
 };
 
-async function saveOnce(
-	session: Awaited<ReturnType<typeof newMeasuredSession>>,
-	origin: string
-): Promise<SaveRun> {
+async function saveOnce(session: MeasuredSession, origin: string): Promise<SaveRun> {
 	const { page } = session;
 	const projectId = uniqueProjectId('f9');
 	const project = await fixtureProject('S', projectId);
@@ -133,72 +132,54 @@ test.describe('F9 Save', () => {
 		};
 
 		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-			const session = await newMeasuredSession(browser, {
-				viewport: VIEWPORT,
-				deviceScaleFactor: DEVICE_SCALE_FACTOR,
-				network: NETWORK,
-				cacheState
-			});
-			try {
-				if (cacheState === 'cold') await clearBrowserState(session.cdp);
-				await session.context.addCookies([cookie]);
-				const facts = await browserFacts(browser, session.page);
-				for (let index = 0; index < WARMUP_RUNS; index++) {
-					if (cacheState === 'cold') {
-						await clearBrowserState(session.cdp);
-						await session.context.addCookies([cookie]);
-					}
-					await saveOnce(session, origin);
-					if (cacheState === 'repeat-use') await closeToHub(session.page);
-				}
-				const runs: SaveRun[] = [];
-				for (let index = 0; index < RUNS; index++) {
-					if (cacheState === 'cold') {
-						await clearBrowserState(session.cdp);
-						await session.context.addCookies([cookie]);
-					}
-					runs.push(await saveOnce(session, origin));
-					if (cacheState === 'repeat-use') await closeToHub(session.page);
-				}
-				const feedback = runs
-					.map((run) => run.submitToSavingLabel)
-					.filter((value): value is number => value !== null);
-				const receipt = runs
-					.map((run) => run.submitToReceipt)
-					.filter((value): value is number => value !== null);
-				const saved = runs
-					.map((run) => run.submitToSavedLabel)
-					.filter((value): value is number => value !== null);
-				const row: ResultRow = {
-					id: `F9-save-local-${cacheState}`,
-					flow: 'F9 Save',
-					workload: 'S fixture, one typed edit, Save to the local test-auth stack',
+			const { results: runs, facts } = await collectMeasuredRuns(
+				browser,
+				{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
+				{
 					cacheState,
-					network: NETWORK,
-					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
-					cpuRate: 1,
-					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-					metrics: {
-						wireBytesMedian: summarize(runs.map((run) => run.wireBytes)).median,
-						runs: runs.length
-					},
-					stats: {
-						localFeedback: summarize(feedback),
-						durableReceipt: summarize(receipt),
-						savedLabel: summarize(saved)
-					},
-					limitations: [
-						...passLimitations(),
-						'loopback unthrottled transport: the durable-receipt target formula is not evaluated here',
-						'main-thread work during Save is not split out by this pass'
-					]
-				};
-				report.rows.push(row);
-				console.log(formatRow(row));
-				expect(feedback.length).toBeGreaterThan(0);
-			} finally {
-				await session.close();
-			}
+					warmup: WARMUP_RUNS,
+					runs: RUNS,
+					prepare: async (session) => session.context.addCookies([cookie]),
+					afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+				},
+				(session) => saveOnce(session, origin)
+			);
+			const feedback = runs
+				.map((run) => run.submitToSavingLabel)
+				.filter((value): value is number => value !== null);
+			const receipt = runs
+				.map((run) => run.submitToReceipt)
+				.filter((value): value is number => value !== null);
+			const saved = runs
+				.map((run) => run.submitToSavedLabel)
+				.filter((value): value is number => value !== null);
+			const row: ResultRow = {
+				id: `F9-save-local-${cacheState}`,
+				flow: 'F9 Save',
+				workload: 'S fixture, one typed edit, Save to the local test-auth stack',
+				cacheState,
+				network: NETWORK,
+				browser: `${testInfo.project.name} ${facts.chromeVersion}`,
+				cpuRate: 1,
+				viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+				metrics: {
+					wireBytesMedian: summarize(runs.map((run) => run.wireBytes)).median,
+					runs: runs.length
+				},
+				stats: {
+					localFeedback: summarize(feedback),
+					durableReceipt: summarize(receipt),
+					savedLabel: summarize(saved)
+				},
+				limitations: [
+					...passLimitations(),
+					'loopback unthrottled transport: the durable-receipt target formula is not evaluated here',
+					'main-thread work during Save is not split out by this pass'
+				]
+			};
+			report.rows.push(row);
+			console.log(formatRow(row));
+			expect(feedback.length).toBeGreaterThan(0);
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);

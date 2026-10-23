@@ -94,7 +94,7 @@ test.describe('F13 repeated open/close', () => {
 					stats: { heapAfterGCDistribution: summarize(heaps) },
 					limitations: [
 						...passLimitations(),
-						`${cacheState === 'cold' ? 'cold clears cache and cookies before each open; ' : ''}${cacheState === 'warm' ? 'warm is one cycle after a discarded warm-up cycle; repeat-use is ten cycles; ' : ''}geometry/texture counts, live WebGL contexts and detached nodes are not captured`,
+						`${cacheState === 'cold' ? 'cold starts in a fresh context and clears cache/cookies before each open; the V8 code cache is not reset within the ten-cycle run; ' : ''}${cacheState === 'warm' ? 'warm is one cycle after a discarded warm-up cycle; repeat-use is ten cycles; ' : ''}geometry/texture counts, live WebGL contexts and detached nodes are not captured`,
 						'viewer and Preview enter/exit cycles are not available in this slice'
 					]
 				};

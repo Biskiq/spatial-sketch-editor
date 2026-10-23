@@ -18,7 +18,7 @@
 
 import { expect, test } from '@playwright/test';
 
-import { browserFacts, clearBrowserState, newMeasuredSession } from '../lib/browser';
+import { collectMeasuredRuns, newMeasuredSession, type MeasuredSession } from '../lib/browser';
 import {
 	DEVICE_SCALE_FACTOR,
 	INPUT_SAMPLES,
@@ -82,7 +82,7 @@ function commandCompletion(
 }
 
 async function runDrag(
-	session: Awaited<ReturnType<typeof newMeasuredSession>>,
+	session: MeasuredSession,
 	options: { settleMs?: number } = {}
 ): Promise<DragRun> {
 	const { page } = session;
@@ -159,72 +159,61 @@ test.describe('F3/F4/F8 methodology', () => {
 		const report = startReport(`drag-correlation-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const limitations = passLimitations();
 		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-			const session = await newMeasuredSession(browser, {
-				viewport: VIEWPORT,
-				deviceScaleFactor: DEVICE_SCALE_FACTOR,
-				network: NETWORK,
-				cacheState
-			});
-			try {
-				const facts = await browserFacts(browser, session.page);
-				for (let index = 0; index < WARMUP_RUNS; index++) {
-					if (cacheState === 'cold') await clearBrowserState(session.cdp);
-					await runDrag(session);
-					if (cacheState === 'repeat-use') await closeToHub(session.page);
-				}
-				const runs: DragRun[] = [];
-				for (let index = 0; index < RUNS; index++) {
-					if (cacheState === 'cold') await clearBrowserState(session.cdp);
-					runs.push(await runDrag(session));
-					if (cacheState === 'repeat-use') await closeToHub(session.page);
-				}
-				const latencies = runs.flatMap((run) => run.latencies);
-				const ages = runs.flatMap((run) => run.ages);
-				const undo = runs.flatMap((run) => run.undoCompletion);
-				const redo = runs.flatMap((run) => run.redoCompletion);
-				const commit = runs
-					.map((run) => run.commitCompletion)
-					.filter((value): value is number => value !== null);
-				const precision = runs
-					.map((run) => run.precisionCompletion)
-					.filter((value): value is number => value !== null);
-				const row: ResultRow = {
-					id: `F3-methodology-S-${cacheState}`,
-					flow: 'F3/F4/F8 methodology on the shipped straight-Wall drag',
-					workload: 'S fixture, 60 pointer samples, exact length, 20 Undo/Redo cycles',
+			const { results: runs, facts } = await collectMeasuredRuns(
+				browser,
+				{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
+				{
 					cacheState,
-					network: NETWORK,
-					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
-					cpuRate: 1,
-					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-					metrics: {
-						dispatched: runs.reduce((sum, run) => sum + run.dispatched, 0),
-						rows: runs.reduce((sum, run) => sum + run.rows, 0),
-						presented: runs.reduce((sum, run) => sum + run.presented, 0),
-						superseded: runs.reduce((sum, run) => sum + run.superseded, 0),
-						unresolved: runs.reduce((sum, run) => sum + run.unresolved, 0),
-						refused: runs.reduce((sum, run) => sum + run.refused, 0),
-						latestInputAgeMedian: summarize(ages).median
-					},
-					stats: {
-						inputToMatchingPreview: summarize(latencies),
-						commitCompletion: summarize(commit),
-						precisionCompletion: summarize(precision),
-						undoCompletion: summarize(undo),
-						redoCompletion: summarize(redo)
-					},
-					limitations: [
-						...limitations,
-						'no drawing feature exists in this slice: F3 measures the methodology on the shipped Wall drag',
-						'GPU, frame-time and GPU-memory rows stay unrun and owner-run on the reference machine'
-					]
-				};
-				report.rows.push(row);
-				console.log(formatRow(row));
-				expect(runs.every((run) => run.rows === run.dispatched)).toBe(true);
-			} finally {
-				await session.close();
-			}
+					warmup: WARMUP_RUNS,
+					runs: RUNS,
+					afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+				},
+				(session) => runDrag(session)
+			);
+			const latencies = runs.flatMap((run) => run.latencies);
+			const ages = runs.flatMap((run) => run.ages);
+			const undo = runs.flatMap((run) => run.undoCompletion);
+			const redo = runs.flatMap((run) => run.redoCompletion);
+			const commit = runs
+				.map((run) => run.commitCompletion)
+				.filter((value): value is number => value !== null);
+			const precision = runs
+				.map((run) => run.precisionCompletion)
+				.filter((value): value is number => value !== null);
+			const row: ResultRow = {
+				id: `F3-methodology-S-${cacheState}`,
+				flow: 'F3/F4/F8 methodology on the shipped straight-Wall drag',
+				workload: 'S fixture, 60 pointer samples, exact length, 20 Undo/Redo cycles',
+				cacheState,
+				network: NETWORK,
+				browser: `${testInfo.project.name} ${facts.chromeVersion}`,
+				cpuRate: 1,
+				viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+				metrics: {
+					dispatched: runs.reduce((sum, run) => sum + run.dispatched, 0),
+					rows: runs.reduce((sum, run) => sum + run.rows, 0),
+					presented: runs.reduce((sum, run) => sum + run.presented, 0),
+					superseded: runs.reduce((sum, run) => sum + run.superseded, 0),
+					unresolved: runs.reduce((sum, run) => sum + run.unresolved, 0),
+					refused: runs.reduce((sum, run) => sum + run.refused, 0),
+					latestInputAgeMedian: summarize(ages).median
+				},
+				stats: {
+					inputToMatchingPreview: summarize(latencies),
+					commitCompletion: summarize(commit),
+					precisionCompletion: summarize(precision),
+					undoCompletion: summarize(undo),
+					redoCompletion: summarize(redo)
+				},
+				limitations: [
+					...limitations,
+					'no drawing feature exists in this slice: F3 measures the methodology on the shipped Wall drag',
+					'GPU, frame-time and GPU-memory rows stay unrun and owner-run on the reference machine'
+				]
+			};
+			report.rows.push(row);
+			console.log(formatRow(row));
+			expect(runs.every((run) => run.rows === run.dispatched)).toBe(true);
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);

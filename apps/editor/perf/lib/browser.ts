@@ -1,11 +1,11 @@
 /**
  * Measured browser sessions for the on-demand harness (T3.P03.S02).
  *
- * One fresh Playwright context per run, never a user profile; Playwright's own
- * browser cache supplies Chromium and (where installed) branded Chrome. Cache
- * states follow the performance contract: cold clears cache/cookies and blocks
- * service workers, warm is a second navigation in the same context, and
- * repeat-use cycles the same context without clearing.
+ * Never a user profile; Playwright's own browser cache supplies Chromium and
+ * (where installed) branded Chrome. Cache states follow the performance
+ * contract: cold is a fresh context per measured run with cache/cookies cleared
+ * and service workers blocked, warm is a second navigation in one context, and
+ * repeat-use cycles that same context without clearing.
  */
 
 import type { Browser, BrowserContext, CDPSession, Page } from '@playwright/test';
@@ -104,6 +104,77 @@ export async function heapUsedMiB(cdp: CDPSession): Promise<number> {
 	const metrics = await cdp.send('Performance.getMetrics');
 	const used = metrics.metrics.find((metric: { name: string }) => metric.name === 'JSHeapUsedSize');
 	return used === undefined ? Number.NaN : used.value / (1024 * 1024);
+}
+
+export type MeasuredRunPlan = {
+	readonly cacheState: CacheState;
+	readonly warmup: number;
+	readonly runs: number;
+	/** Called once per session before any measured navigation (e.g. F9's cookie). */
+	readonly prepare?: (session: MeasuredSession) => Promise<void>;
+	/** Called after each warm/repeat-use run to close the cycle boundary. */
+	readonly afterRun?: (page: Page) => Promise<void>;
+};
+
+/**
+ * Run a flow's warm-up and measured runs under the contract's cache states.
+ *
+ * Cold creates a **new context for every run** (the contract's definition),
+ * not one context with the cache cleared; warm and repeat-use keep one context
+ * so the HTTP cache and V8 code cache stay populated, and repeat-use calls
+ * `afterRun` between cycles.
+ */
+export async function collectMeasuredRuns<T>(
+	browser: Browser,
+	options: Omit<MeasuredSessionOptions, 'cacheState'>,
+	plan: MeasuredRunPlan,
+	run: (session: MeasuredSession) => Promise<T>
+): Promise<{ results: T[]; facts: Record<string, string> }> {
+	const results: T[] = [];
+	if (plan.cacheState === 'cold') {
+		let facts: Record<string, string> = {};
+		for (let index = 0; index < plan.warmup; index++) {
+			await withSession(browser, { ...options, cacheState: 'cold' }, plan.prepare, run);
+		}
+		for (let index = 0; index < plan.runs; index++) {
+			await withSession(browser, { ...options, cacheState: 'cold' }, plan.prepare, async (session) => {
+				facts = await browserFacts(browser, session.page);
+				results.push(await run(session));
+			});
+		}
+		return { results, facts };
+	}
+	const session = await newMeasuredSession(browser, { ...options, cacheState: plan.cacheState });
+	try {
+		await plan.prepare?.(session);
+		const facts = await browserFacts(browser, session.page);
+		for (let index = 0; index < plan.warmup; index++) {
+			await run(session);
+			await plan.afterRun?.(session.page);
+		}
+		for (let index = 0; index < plan.runs; index++) {
+			results.push(await run(session));
+			await plan.afterRun?.(session.page);
+		}
+		return { results, facts };
+	} finally {
+		await session.close();
+	}
+}
+
+async function withSession<T>(
+	browser: Browser,
+	options: MeasuredSessionOptions,
+	prepare: ((session: MeasuredSession) => Promise<void>) | undefined,
+	run: (session: MeasuredSession) => Promise<T>
+): Promise<T> {
+	const session = await newMeasuredSession(browser, options);
+	try {
+		await prepare?.(session);
+		return await run(session);
+	} finally {
+		await session.close();
+	}
 }
 
 /** Browser and platform version facts recorded with every result. */

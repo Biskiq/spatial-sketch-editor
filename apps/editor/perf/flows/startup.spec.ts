@@ -3,9 +3,8 @@
  *
  * Measure: navigation start → hub interactive → Stage route → first
  * architectural frame on the starter, plus FCP, LCP, long tasks and script
- * bytes/requests per route. Cold clears cache/cookies before every measured
- * navigation; warm is a second navigation in the same context; repeat-use
- * returns to the hub and starts again in that same, uncleared context.
+ * bytes/requests per route. Cold creates a fresh context for every run; warm
+ * and repeat-use keep one context (repeat-use re-enters through the hub).
  *
  * These are pre-flight numbers on a developer machine. F1's Stage **first
  * architectural frame** is the rAF rendering opportunity after activation; it is
@@ -17,9 +16,8 @@
 
 import { expect, test } from '@playwright/test';
 
-import { clearBrowserState, newMeasuredSession, browserFacts } from '../lib/browser';
+import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
-import { closeToHub } from '../lib/flow';
 import { firstFrameAtOrAfter, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
@@ -36,9 +34,7 @@ type StartRun = {
 	readonly scriptRequests: number;
 };
 
-async function startOnce(
-	session: Awaited<ReturnType<typeof newMeasuredSession>>
-): Promise<StartRun> {
+async function startOnce(session: MeasuredSession): Promise<StartRun> {
 	const { page } = session;
 	await page.goto('/projects');
 	// The hub renders on the server; a click before hydration is silently lost, so
@@ -84,55 +80,40 @@ test.describe('F1 startup', () => {
 		const report = startReport(`f1-startup-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const limitations = passLimitations();
 		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-			const session = await newMeasuredSession(browser, {
-				viewport: VIEWPORT,
-				deviceScaleFactor: DEVICE_SCALE_FACTOR,					network: NETWORK,
-					cacheState
-				});
-			try {
-				const facts = await browserFacts(browser, session.page);
-				for (let index = 0; index < WARMUP_RUNS; index++) {
-					if (cacheState === 'cold') await clearBrowserState(session.cdp);
-					await startOnce(session);
-					if (cacheState === 'repeat-use') await closeToHub(session.page);
-				}
-				const runs: StartRun[] = [];
-				for (let index = 0; index < RUNS; index++) {
-					if (cacheState === 'cold') await clearBrowserState(session.cdp);
-					runs.push(await startOnce(session));
-					if (cacheState === 'repeat-use') await closeToHub(session.page);
-				}
-				const row: ResultRow = {
-					id: `F1-starter-${cacheState}`,
-					flow: 'F1 editor startup',
-					workload: 'starter gallery',
-					cacheState,
-					network: NETWORK,
-					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
-					cpuRate: 1,
-					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-					metrics: {
-						hubInteractive: summarize(runs.map((run) => run.hubInteractive)).median,
-						stageFirstFrame: summarize(runs.map((run) => run.stageFirstFrame)).median,
-						activationToFrame: summarize(runs.map((run) => run.activationToFrame)).median,
-						fcp: summarize(runs.map((run) => run.fcp).filter((value): value is number => value !== null)).median,
-						lcp: summarize(runs.map((run) => run.lcp).filter((value): value is number => value !== null)).median,
-						longTaskCount: summarize(runs.map((run) => run.longTaskCount)).median,
-						longTaskMax: summarize(runs.map((run) => run.longTaskMax)).max,
-						scriptBytes: summarize(runs.map((run) => run.scriptBytes)).median,
-						scriptRequests: summarize(runs.map((run) => run.scriptRequests)).median
-					},
-					stats: {
-						stageFirstFrame: summarize(runs.map((run) => run.stageFirstFrame)),
-						activationToFrame: summarize(runs.map((run) => run.activationToFrame))
-					},
-					limitations: [...limitations, 'first architectural frame is attributed to the rAF rendering opportunity']
-				};
-				report.rows.push(row);
-				console.log(formatRow(row));
-			} finally {
-				await session.close();
-			}
+			const { results: runs, facts } = await collectMeasuredRuns(
+				browser,
+				{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
+				{ cacheState, warmup: WARMUP_RUNS, runs: RUNS },
+				startOnce
+			);
+			const row: ResultRow = {
+				id: `F1-starter-${cacheState}`,
+				flow: 'F1 editor startup',
+				workload: 'starter gallery',
+				cacheState,
+				network: NETWORK,
+				browser: `${testInfo.project.name} ${facts.chromeVersion}`,
+				cpuRate: 1,
+				viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+				metrics: {
+					hubInteractive: summarize(runs.map((run) => run.hubInteractive)).median,
+					stageFirstFrame: summarize(runs.map((run) => run.stageFirstFrame)).median,
+					activationToFrame: summarize(runs.map((run) => run.activationToFrame)).median,
+					fcp: summarize(runs.map((run) => run.fcp).filter((value): value is number => value !== null)).median,
+					lcp: summarize(runs.map((run) => run.lcp).filter((value): value is number => value !== null)).median,
+					longTaskCount: summarize(runs.map((run) => run.longTaskCount)).median,
+					longTaskMax: summarize(runs.map((run) => run.longTaskMax)).max,
+					scriptBytes: summarize(runs.map((run) => run.scriptBytes)).median,
+					scriptRequests: summarize(runs.map((run) => run.scriptRequests)).median
+				},
+				stats: {
+					stageFirstFrame: summarize(runs.map((run) => run.stageFirstFrame)),
+					activationToFrame: summarize(runs.map((run) => run.activationToFrame))
+				},
+				limitations: [...limitations, 'first architectural frame is attributed to the rAF rendering opportunity']
+			};
+			report.rows.push(row);
+			console.log(formatRow(row));
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);
