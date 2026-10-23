@@ -1,17 +1,33 @@
 # T3.P02.S01 — acceptance record: First capture and Cut Preview
 
-**Slice:** T3.P02.S01 · **Status:** implemented on `t3/p02-s01-capture-cut-preview` from base
-`55683981`; independently reviewed over three rounds, review fixes applied, **awaiting owner
-acceptance — no acceptance recorded** · **Plan:**
+**Slice:** T3.P02.S01 · **Status:** accepted as `owner-override` at revision
+`26531059ff1bc51bbb352ae7f351071858b501fa`; implementation was independently reviewed over three
+rounds and fixes were applied · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T3.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
-This record claims implementation and recorded verification only. It claims no acceptance, no
-merge, no gate state, no capability entry and no shipped revision. The independent reviewer
-decides acceptance; routine `slice-closeout` owns the later status edits. The phase's deferred
+This record carries the owner acceptance ruling below plus implementation and recorded verification.
+It claims no merge, provider gate state, capability entry or shipped merge revision. The phase's deferred
 exhaustive proof (two Experiences over one world, the full editorial matrix, DOM reach with gap
 explanation and the complete repository gate) routes to
 [`T3.P02.S02`](../t3.p02.s02-integrated-final-gate/acceptance.md).
+
+## Owner ruling — acceptance prerequisites waived (2026-10-23)
+
+```text
+DATE:       2026-10-23
+RULING:     explicit owner override; accept this slice at the stated revision as `owner-override`,
+            not `reviewed`
+SCOPE:      T3.P02.S01 only, source revision 26531059ff1bc51bbb352ae7f351071858b501fa
+WAIVED:     pending formal/final verdict and any missing or stale test-evidence prerequisites for
+            slice acceptance, including owner-run F10 Preview performance rows and the DB-backed
+            test:api zero-skip evidence row
+NOT CLAIMED: waived rows were run; F10 measurements, API results, or post-fix browser evidence not
+             recorded below remain unrun/unverified
+NOT WAIVED:  T3.P02.S02's declared exhaustive integration route and the parent's PR merge gates;
+             those remain separate and must be completed before phase closure
+STATE:      slice acceptance is owner-override at this revision; no merge or phase closure claimed
+```
 
 ## Settled implementation-review decisions
 
@@ -168,7 +184,9 @@ the narrow check ran at 760 × 900 with reduced motion **on**.
 - **Save/conflict/reload with the API lane.** The slice does not change the Save path: it reuses
   T3.P01.S02's conditional Save unchanged, and this session has no cloud client or
   `DATABASE_URL`, so `npm run test:api` was not run. `check:api` passes on this tree; the
-  implementation-PR merge gate still owes `test:api` with zero skips as the plan records.
+  DB-backed `test:api` remains unrun here; the owner override waives it as a prerequisite for this
+  slice's acceptance, but this record claims no API result and does not discharge the parent's
+  complete merge gates.
 - **F10 performance rows.** Owner-run on the MacBook Air M2 with 16 GB (batch E, E6 amendment):
   first/repeated Preview entry and return timing, repeated enter/exit memory behavior, and any
   frame-time or disclosure row remain **owner-run**, not filled in here. The lazy-chunk delivery
