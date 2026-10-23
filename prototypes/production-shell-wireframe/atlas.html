@@ -188,5 +188,8 @@
     const fit = () => tiles.forEach((t) => t._fit?.());
     new ResizeObserver(fit).observe(document.body); fit();
   </script>
+<script>/* ES modules do not load from file://: say so instead of showing a blank page */
+if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded', () => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:auto 16px 16px 16px;z-index:999;padding:14px 16px;border-radius:10px;background:#f3f0e4;color:#14261f;font:14px/1.45 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.35)'; d.innerHTML = '<b>This page needs its local server.</b> Browsers block the wireframe\'s modules on <code>file://</code>, so every frame stays blank. Run <code>python3 serve.py 8850</code> in <code>prototypes/production-shell-wireframe</code> and open <code>http://127.0.0.1:8850/atlas.html</code>.'; document.body.appendChild(d); });
+</script>
 </body>
 </html>
