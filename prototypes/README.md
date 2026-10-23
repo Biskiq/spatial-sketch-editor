@@ -55,6 +55,7 @@ production authority; their documentation is still a route a reader follows.
 | **World Paper design** | Accepted 2D authoring-depth and precision contract: tools, drafting, dimensions, discovery and advanced procedures; shared shell reconciled with Conservatory | [PLATE §0.8.4](../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) · [original proposal](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) |
 | **V2 Spatial Authoring** | World Spatial Interaction Reference: Plan ↔ 3D continuity, Rotunda Unroll/partial readings, Section/Cut, Ceiling Lift, nested Look/return and World journeys A–F/QA. Experience V2 is historical functional/regression evidence | [spatial-authoring](./spatial-authoring/README.md) · [#114 branch-diff disposition](./spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition) |
 | **Object Composition** | Supporting unratified inspection, assembly, provenance, reach and repair research; no product/model/shell authority | [object-composition-prototype](./object-composition-prototype/README.md) |
+| **Production shell wireframe** | Unratified round-1 wireframe of the integrated World and Experience production shell, pending owner review; no authority, no contract | [README](./production-shell-wireframe/README.md) · [DESIGN-NOTE](./production-shell-wireframe/DESIGN-NOTE.md) |
 | **Product foundation** | Current production implementation and its contracts; the linked references distinguish landed capabilities from the destination. Prototype resemblance alone never authorizes reuse | [architecture](../docs/reference/architecture.md) · [shell destination](../docs/reference/design-system/editor-shell-and-visual-system.md) |
 
 Other retained evidence stays in its existing directories:
@@ -98,6 +99,9 @@ its accepted direction is adopted by the spatial-authoring prototype in #112.
 ```sh
 # Conservatory — accepted interactive design, no build step
 cd prototypes/experience-ux-alternative && python3 -m http.server 8841
+
+# Production shell wireframe — unratified exploration, no build step
+cd prototypes/production-shell-wireframe && python3 serve.py 8850
 
 # World Spatial Interaction Reference — no build step, vendored Three.js
 cd prototypes/spatial-authoring && python3 -m http.server 8826   # http://localhost:8826/
