@@ -25,7 +25,7 @@ const FRAMES = [
   ['st-layout', 'Layout', 'Box out the rooms', 'Box strokes become Rooms. The reading chip appears only when a closed shape is ambiguous — room, platform or Shape.'],
   ['rest', 'Layout', 'A finished gallery', 'Skipping ahead: the Boathouse — a long gallery and a studio, with openings, a roof and objects placed.'],
   ['obj-rays', 'Arrange', 'Move and size objects directly', 'Select the bench: rays leave its faces. Drag one to stretch that side; the size read-out follows the hand.'],
-  ['obj-dims', 'Arrange', 'Exact numbers when you need them', 'The same handles can show dimensions to type into, without leaving the Stage.'],
+  ['obj-rays-closed', 'Arrange', 'Some objects keep their proportions', 'A sculpture has one size ray that scales it as a whole. Exact numbers stay in the Card.'],
   ['wall-rays', 'Arrange', 'The same language on walls', 'A wall offers its top, ends and thickness as handles — architecture is edited like objects.'],
   ['opening', 'Arrange', 'Openings on their wall', 'A window slides along its host wall; its sill and head are handles too.'],
   ['slice', 'Inspect', 'Slice to look inside', 'The Slice tool cuts a live section with a depth. Put back restores the whole building.'],
