@@ -1,15 +1,34 @@
 # T2.P02.S01 — acceptance record: Model resource storage and admission
 
-**Slice:** T2.P02.S01 · **Status:** implemented on `t2/p02-s01-model-resource-storage` at
-`7a90f7d8`, evidence recorded, **independent review ACCEPT** (`5a3451fb`) — owner acceptance and merge
-owed ·
+**Slice:** T2.P02.S01 · **Status:** owner-override accepted 2026-10-23 for the rebased implementation
+revision `623a7f73a61496d5df09c9dc0fc69ab5c6737b36` on `t2/p02-s01-model-resource-storage` ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T2.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 This page records the evidence the plan's declared **architecture-integration** tier requires. It
-claims no acceptance, no owner ruling, no gate state and no merge. The criteria remain the plan's;
-the form is [the tests README's "What a change requires"](../../../../../apps/editor/tests/README.md#what-a-change-requires).
+keeps historical test and review identities distinct from the owner ruling; the criteria remain the
+plan's, and the form is [the tests README's "What a change requires"](../../../../../apps/editor/tests/README.md#what-a-change-requires).
 The slice adds no editor flow, so the batch E performance table's row for it is "None".
+
+## Owner override acceptance — 2026-10-23
+
+The owner's ruling was: “owner overide, everything is accepted.” It accepts T2.P02.S01 as carried
+by the current PR #177 implementation revision
+`623a7f73a61496d5df09c9dc0fc69ab5c6737b36`, rebased onto then-current `main`
+`8501e7bf8ec48c4b16835ebf11607f1966a79c7d`. The earlier PR branch head was
+`7d8f458d2059ef1e99ce48647ec3f2837024fef0`; rebase changed commit identity while carrying the
+implementation onto the merged #180/#179 base.
+
+This is a per-slice, per-revision **owner-override**, not an independent-review verdict. The ruling
+waives the requirement for a current-revision independent verdict and the requirement for plan-tier
+verification evidence against the post-`7a90f7d8` changes. No review or test run at `623a7f73` is
+claimed. The historical two-facet independent **ACCEPT** was recorded at `5a3451fb` for code
+`7a90f7d8`; the plan-tier checks below were likewise recorded at `7a90f7d8`. The current-revision
+source/evidence prerequisite is waived by the owner; the recorded results retain their actual source
+identity and are not relabeled as tests of this revision.
+
+The complete repository gate on then-current `main` remains a required pre-merge step. It is owned by
+the parent task and is not claimed as run here.
 
 ## Delivered
 
@@ -214,6 +233,7 @@ regressions     apps/api/tests/model-resources.test.mjs
 
 ## Next
 
-Owner review of PR #177 at the branch tip, whose code revision is `7a90f7d8`. Acceptance, closeout
-and merge are not claimed; `T2.P02.S02` and `T2.P02.S03` stay held, and the phase's integrated proof remains
+Owner override acceptance is recorded above for the rebased implementation revision. Routine
+closeout is proceeding; `T2.P02.S02` and `T2.P02.S03` remain proposed and require their own owner
+authorization. The phase's integrated proof remains
 [`T2.P02.S03`](../t2.p02.s03-integrated-final-gate/acceptance.md).
