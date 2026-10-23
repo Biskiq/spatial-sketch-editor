@@ -41,8 +41,7 @@ type WallSeed = {
 	end: [string, LayoutVec2];
 	thickness?: number;
 	height?: number;
-	role?: 'boundary' | 'partition';
-	/** Cubic-chain interior knots; the endpoints come from the junction points. */
+		/** Cubic-chain interior knots; the endpoints come from the junction points. */
 	knots?: LayoutVec2[];
 	opening?: { id: string; offset: number; width: number; height: number };
 };
@@ -55,7 +54,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 5,
+		formatVersion: 6,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map((wall): LayoutWall => {
@@ -73,7 +72,6 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 				id: wall.id,
 				startJunctionId: wall.start[0],
 				endJunctionId: wall.end[0],
-				role: wall.role ?? 'partition',
 				thickness: wall.thickness ?? 0.2,
 				height: wall.height ?? 3,
 				centerline
@@ -168,7 +166,7 @@ describe('P23.15 correction — Junction partition and curved Junctions', () => 
 		]);
 		const documentValue: LayoutDocumentWallFirst = {
 			units: 'meters',
-			formatVersion: 5,
+			formatVersion: 6,
 			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 			walls: [
@@ -176,7 +174,6 @@ describe('P23.15 correction — Junction partition and curved Junctions', () => 
 					id: 'w1',
 					startJunctionId: 'ja',
 					endJunctionId: 'j',
-					role: 'partition',
 					thickness: 0.2,
 					height: 3,
 					centerline: {
@@ -189,7 +186,6 @@ describe('P23.15 correction — Junction partition and curved Junctions', () => 
 					id: 'w2',
 					startJunctionId: 'j',
 					endJunctionId: 'jb',
-					role: 'partition',
 					thickness: 0.2,
 					height: 3,
 					centerline: {

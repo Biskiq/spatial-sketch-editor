@@ -26,6 +26,12 @@ import {
 } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-portals';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import {
+	allocateCapturedId,
+	layoutWorkingLevelIssue,
+	LayoutIdCollisionError,
+	type LayoutIdCapture
+} from './layout-id-capture';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutWallOpening
@@ -53,7 +59,8 @@ export type WallOpeningRejectionCode =
 	| 'no_op'
 	| 'invalid_candidate_document'
 	| 'opening_set_invalid'
-	| 'candidate_does_not_compile';
+	| 'candidate_does_not_compile'
+	| 'captured_id_in_use';
 
 export type WallOpeningRejection = {
 	code: WallOpeningRejectionCode;
@@ -96,18 +103,6 @@ export type WallOpeningPatch = {
 	/** `null` clears the relation explicitly (`door→window`); omission preserves. */
 	connectsRoomIds?: [string, string] | null;
 };
-
-/** Deterministic document-global Opening ID (never Room-scoped, never random). */
-export function nextWallFirstOpeningId(
-	document: LayoutDocumentWallFirst,
-	kind: LayoutWallOpening['kind']
-): string {
-	const taken = new Set(document.openings.map((opening) => opening.id));
-	const prefix = `opening:${kind}`;
-	let index = 1;
-	while (taken.has(`${prefix}:${index}`)) index += 1;
-	return `${prefix}:${index}`;
-}
 
 /** Canonical metrics for one authored Opening (meters, canonical Wall frame). */
 export type WallFirstOpeningMetrics = {
@@ -183,11 +178,22 @@ export function wallFirstOpeningClearances(
 		: undefined;
 }
 
-/** Create one authored Opening on a canonical Wall. Never clamps. */
+/**
+ * Create one authored Opening on a canonical Wall. Never clamps.
+ *
+ * The Opening id derives from the operation's captured nonce plus its hosting
+ * Wall and kind; an explicit `intent.id` remains the snapshot-restore/import
+ * path. Occupancy is only the refusal check: a captured id already present
+ * rejects instead of being suffixed.
+ */
 export function planCreateWallFirstOpening(
 	document: LayoutDocumentWallFirst,
-	intent: WallFirstOpeningIntent
+	intent: WallFirstOpeningIntent,
+	capture: LayoutIdCapture,
+	levelId: string
 ): WallOpeningPlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject('invalid_value', levelIssue, [intent.wallId]);
 	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) {
 		return reject('unknown_wall', `Unknown Wall '${intent.wallId}'`, [intent.wallId]);
@@ -198,8 +204,23 @@ export function planCreateWallFirstOpening(
 		]);
 	}
 	const defaults = WALL_OPENING_DEFAULTS[intent.kind];
+	let id = intent.id;
+	if (id === undefined) {
+		try {
+			id = allocateCapturedId(
+				new Set(document.openings.map((candidate) => candidate.id)),
+				`opening:${intent.kind}:${intent.wallId}`,
+				capture
+			);
+		} catch (error) {
+			if (error instanceof LayoutIdCollisionError) {
+				return reject('captured_id_in_use', error.message, [intent.wallId]);
+			}
+			throw error;
+		}
+	}
 	const opening: LayoutWallOpening = {
-		id: intent.id ?? nextWallFirstOpeningId(document, intent.kind),
+		id,
 		wallId: intent.wallId,
 		kind: intent.kind,
 		offset: intent.offset,

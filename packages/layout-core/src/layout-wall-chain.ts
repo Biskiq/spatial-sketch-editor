@@ -21,10 +21,11 @@
  *
  * Semantics ratified by the P23.9 plan:
  * - open chains are valid architecture and commit without producing a Room;
- * - `role: 'boundary'` chains invoke P23.8 face extraction and Room
- *   reconciliation (first-enclosure birth, 1→2 divider split, or no-op
- *   preservation per witness correspondence); `role: 'partition'` chains
- *   never touch Rooms;
+ * - **every** chain invokes P23.8 face extraction and Room reconciliation
+ *   (first-enclosure birth, 1→2 divider split, or no-op preservation per witness
+ *   correspondence). Format 6 has no authored role: a ring encloses and a Wall
+ *   between two points of one Room's boundary divides it (T1.P02 drawing policy,
+ *   owner-accepted 2026-10-22);
  * - snapping is a suggestion (the editor resolves coordinates before this
  *   planner runs); committed topology here is explicit and DECLARED;
  * - collinear overlap rejects — no auto-merge/trim — WITHIN one connected
@@ -45,8 +46,7 @@
 import type {
 	LayoutDocumentWallFirst,
 	LayoutJunction,
-	LayoutWall,
-	LayoutWallRole
+	LayoutWall
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
 import { p2311Measure } from './p2311-perf';
@@ -70,6 +70,13 @@ import {
 	type ComponentLineage
 } from './layout-room-reconciliation';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
+import {
+	assertCapturedIdUnused,
+	layoutCapturedId,
+	layoutWorkingLevelIssue,
+	LayoutIdCollisionError,
+	type LayoutIdCapture
+} from './layout-id-capture';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
 import { detectWallCurveTopologyCrossings } from './layout-wall-first-precision';
 import {
@@ -154,6 +161,7 @@ export type WallChainRejectionCode =
 	| 'self_intersecting_chain'
 	| 'noding_rejected'
 	| 'room_reconciliation_rejected'
+	| 'captured_id_in_use'
 	| 'invalid_candidate_document'
 	| 'candidate_does_not_compile';
 
@@ -216,24 +224,49 @@ export type WallChainPlan =
 
 /**
  * Deterministic chain allocator contract. Compatible with the editor's
- * `NodingIdAllocator` shape; when omitted the planner allocates
- * collision-free deterministic IDs from fixed seeds.
+ * `NodingIdAllocator` shape. Every id derives from the operation's captured
+ * nonce plus this allocator's seed; occupancy is only the refusal check.
  */
 export type WallChainIdAllocator = {
 	nextWallId(taken: ReadonlySet<string>, seed: string): string;
 	nextJunctionId(taken: ReadonlySet<string>, seed: string): string;
 };
 
-function defaultChainAllocator(): WallChainIdAllocator {
-	const allocate = (taken: ReadonlySet<string>, seed: string): string => {
-		if (!taken.has(seed)) return seed;
-		let index = 2;
-		while (taken.has(`${seed}.${index}`)) index += 1;
-		return `${seed}.${index}`;
+/**
+ * One captured operation's chain allocator (capture, never occupancy).
+ *
+ * The allocator is stateful for its one operation: one operation may request
+ * the same seed more than once (a second split landing on the start-side
+ * fragment that kept the host id requests `${wallId}-b` again). The first
+ * request for a seed derives exactly from that seed; the k-th request (k >= 2)
+ * derives from `${seed}-${k}`. Replaying the same capture reproduces the same
+ * sequence, so the ids stay deterministic. Occupancy (including ids this
+ * operation already issued) is only the refusal check.
+ */
+export function createCapturedWallChainAllocator(
+	capture: LayoutIdCapture
+): WallChainIdAllocator {
+	const wallSeeds = new Map<string, number>();
+	const junctionSeeds = new Map<string, number>();
+	const issued = new Set<string>();
+	const allocate = (
+		seeds: Map<string, number>,
+		taken: ReadonlySet<string>,
+		seed: string
+	): string => {
+		const request = (seeds.get(seed) ?? 0) + 1;
+		seeds.set(seed, request);
+		const effectiveSeed = request === 1 ? seed : `${seed}-${request}`;
+		const id = assertCapturedIdUnused(
+			new Set([...taken, ...issued]),
+			layoutCapturedId(capture, effectiveSeed)
+		);
+		issued.add(id);
+		return id;
 	};
 	return {
-		nextWallId: (taken, seed) => allocate(taken, seed),
-		nextJunctionId: (taken, seed) => allocate(taken, seed)
+		nextWallId: (taken, seed) => allocate(wallSeeds, taken, seed),
+		nextJunctionId: (taken, seed) => allocate(junctionSeeds, taken, seed)
 	};
 }
 
@@ -276,10 +309,19 @@ export type WallChainPlanOptions = {
 	baseline: LayoutDocumentWallFirst;
 	points: readonly LayoutVec2[];
 	close: boolean;
-	role: LayoutWallRole;
 	thickness?: number;
 	height?: number;
-	allocator?: WallChainIdAllocator;
+	/**
+	 * T1.P02.S01 §1 — the operation's captured identity. Required: the chain
+	 * mints Junctions, Walls, noding fragments and (on a closed ring) Rooms, and
+	 * every one of those derives from this nonce rather than from occupancy.
+	 */
+	capture: LayoutIdCapture;
+	/**
+	 * T1.P02.S01 §1 — the explicit working level. Required and refused unless it
+	 * names `baseline.floor.id`; the chain never infers its level from the document.
+	 */
+	levelId: string;
 	/**
 	 * P23B.3a S6 — DECLARED host-Wall connections, keyed by draft point index.
 	 *
@@ -314,13 +356,25 @@ export type WallChainPlanOptions = {
  * rejection).
  */
 export function planWallChain(options: WallChainPlanOptions): WallChainPlan {
-	return p2311Measure('wall-chain-plan', () => planWallChainInternal(options));
+	try {
+		return p2311Measure('wall-chain-plan', () => planWallChainInternal(options));
+	} catch (error) {
+		if (error instanceof LayoutIdCollisionError) {
+			return {
+				kind: 'rejected',
+				rejection: { code: 'captured_id_in_use', message: error.message }
+			};
+		}
+		throw error;
+	}
 }
 
 function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
-	const allocator = options.allocator ?? defaultChainAllocator();
+	const allocator = createCapturedWallChainAllocator(options.capture);
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
 	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
+	const levelIssue = layoutWorkingLevelIssue(options.baseline, options.levelId);
+	if (levelIssue !== null) return reject({ code: 'invalid_candidate_document', message: levelIssue });
 
 	// P23.6I birth semantics. `planWallChain` is the **bounded compound** planner
 	// (Rectangle/Polygon and explicit multi-point callers): the whole generated
@@ -500,7 +554,6 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 			id,
 			startJunctionId: startId,
 			endJunctionId: endId,
-			role: options.role,
 			thickness,
 			height,
 			// P23.11 — authored chains are straight; curves arrive only through
@@ -641,10 +694,13 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	const topologyIssue = p2311Measure('chain-topology-gate', () => validateChainTopology(candidate));
 	if (topologyIssue) return reject(topologyIssue);
 
-	// --- room reconciliation (boundary chains only) --------------------------
+	// --- room reconciliation (every chain) ----------------------------------
+	// Format 6: a closed ring encloses and a Wall between two points of one Room's
+	// boundary divides it. There is no authored role to gate on, so every chain
+	// runs the same correspondence reconciliation.
 	let lineage: Array<{ faceKey: string; roomId: string; kind: 'created' }> = [];
 	let retiredRoomIds: string[] = [];
-	if (options.role === 'boundary') {
+	{
 		const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(candidate));
 		if (extraction.faces.length > 0 || options.baseline.rooms.length > 0) {
 			const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
@@ -687,7 +743,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 					components,
 					predecessorWitnesses,
 					predecessorPolygons,
-					allocator: createAuthoringRoomAllocator()
+					allocator: createAuthoringRoomAllocator(options.capture)
 				})
 			);
 			if ('rejection' in result) {
@@ -1562,10 +1618,12 @@ export function planWallSegment(options: {
 	baseline: LayoutDocumentWallFirst;
 	start: LayoutVec2;
 	end: LayoutVec2;
-	role: LayoutWallRole;
 	thickness?: number;
 	height?: number;
-	allocator?: WallChainIdAllocator;
+	/** The operation's captured identity; see `planWallChain`. */
+	capture: LayoutIdCapture;
+	/** Explicit working level; see `planWallChain`. */
+	levelId: string;
 	/** Existing `wall-span` snap identity for the authored endpoint. */
 	endpointHostWallId?: string;
 	/**
@@ -1614,7 +1672,6 @@ export function planWallSegment(options: {
 		baseline: options.baseline,
 		points: [options.start, options.end],
 		close: false,
-		role: options.role,
 		height: resolveWallBirthHeight(
 			options.baseline,
 			declaredStartJunctionId ?? coordinateStartJunction?.id ?? null,
@@ -1625,6 +1682,7 @@ export function planWallSegment(options: {
 		...(options.endpointJunctionSnaps && options.endpointJunctionSnaps.length > 0
 			? { endpointJunctionSnaps: options.endpointJunctionSnaps }
 			: {}),
-		...(options.allocator !== undefined ? { allocator: options.allocator } : {})
+		capture: options.capture,
+		levelId: options.levelId
 	});
 }

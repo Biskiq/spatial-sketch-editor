@@ -4,7 +4,7 @@
  * Two invariants live here, and neither can be seen by a lane, a build or a type
  * check:
  *
- * 1. **The delivery-only program closure.** AM-6 requires `ExecutionProgram@1`'s
+ * 1. **The delivery-only program closure.** AM-6 requires `ExecutionProgram@2`'s
  *    standalone entry to import delivery validation only, so a prepared release
  *    can import the program codec without dragging in a source codec, the Layout
  *    compiler, the package root barrel, a Camera evaluator or Three. The closure

@@ -26,8 +26,7 @@ import type {
 	LayoutDocumentWallFirst,
 	LayoutWall,
 	LayoutWallFirstRoom,
-	LayoutWallOpening,
-	LayoutWallRole
+	LayoutWallOpening
 } from './layout-wall-first-types';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
@@ -47,22 +46,27 @@ import {
 } from './layout-room-reconciliation';
 import type { LayoutDocumentIssue } from './layout-codec';
 import type { LayoutVec2 } from './layout-types';
+import {
+	allocateCapturedId,
+	layoutWorkingLevelIssue,
+	LayoutIdCollisionError,
+	type LayoutIdCapture
+} from './layout-id-capture';
 
 /**
- * Deterministic authoring allocator (P23.8 ID policy: collision-free
- * against the complete candidate document, never timestamps/random).
- * Room IDs seed from the sanitized canonical face key so the same face
- * always allocates the same ID for the same operation input; names extend
- * the existing `Draft Room N` convention against the full taken set.
+ * Captured Room allocator (T1.P02.S01 §1). Room IDs derive from the
+ * operation's nonce plus the sanitized canonical face key; the taken set is
+ * only the refusal check that the captured id is unused. Names extend the
+ * existing `Draft Room N` convention — a name is not identity.
  */
-export function createAuthoringRoomAllocator(): RoomIdAllocator {
+export function createAuthoringRoomAllocator(capture: LayoutIdCapture): RoomIdAllocator {
 	return {
 		nextRoomId(baseDocument, faceKey) {
 			const taken = new Set(baseDocument.rooms.map((room) => room.id));
 			// Face keys embed topology tokens; sanitize into the codec's ID
 			// charset (same policy as the migration allocator).
 			const seed = `room.${faceKey.replace(/[^A-Za-z0-9._:-]+/g, '-')}`;
-			return allocateId(taken, seed);
+			return allocateCapturedId(taken, seed, capture);
 		},
 		nextRoomName(existingNames) {
 			const taken = new Set(existingNames);
@@ -71,14 +75,6 @@ export function createAuthoringRoomAllocator(): RoomIdAllocator {
 			return `Draft Room ${index}`;
 		}
 	};
-}
-
-/** Deterministic collision-free ID from a seed (H5 §4.5). */
-function allocateId(taken: ReadonlySet<string>, seed: string): string {
-	if (!taken.has(seed)) return seed;
-	let index = 2;
-	while (taken.has(`${seed}.${index}`)) index += 1;
-	return `${seed}.${index}`;
 }
 
 /** Why a canonical topology operation rejected; stable machine codes. */
@@ -96,7 +92,8 @@ export type WallFirstOpRejectionCode =
 	| 'invalid_patch'
 	| 'invalid_value'
 	| 'wall_not_in_room_boundary'
-	| 'ambiguous_room_removal';
+	| 'ambiguous_room_removal'
+	| 'captured_id_in_use';
 
 export type WallFirstOpRejection = {
 	code: WallFirstOpRejectionCode;
@@ -135,11 +132,9 @@ export type WallFirstOpPlan =
  * responsibility"): reconcile the candidate document's zero-predecessor
  * faces into born Rooms, then run the full canonical gates.
  *
- * Called by both {@link planFirstEnclosureCreation} and
- * {@link planPartitionToBoundaryRoomBirth} — closing a Wall chain and
- * converting a closed Partition chain to boundary Walls go through the
- * exact same path, differing only in the role policy each planner applies
- * to the submitted walls.
+ * Called by {@link planFirstEnclosureCreation}: any closed Wall chain births
+ * Room(s) through this one path. Format 6 has no role policy to apply — a ring
+ * encloses because of its topology.
  */
 function runRoomBirthOperation(options: {
 	candidateDocument: LayoutDocumentWallFirst;
@@ -260,9 +255,16 @@ export function planFirstEnclosureCreation(options: {
 	 * first enclosure is a zero-predecessor birth operation.
 	 */
 	candidateDocument: LayoutDocumentWallFirst;
-	allocator?: RoomIdAllocator;
+	/** The operation's captured identity; every born Room derives from it. */
+	capture: LayoutIdCapture;
+	/** T1.P02.S01 §1 — explicit working level; must name `candidateDocument.floor.id`. */
+	levelId: string;
 }): WallFirstOpPlan {
-	const allocator = options.allocator ?? createAuthoringRoomAllocator();
+	const levelIssue = layoutWorkingLevelIssue(options.candidateDocument, options.levelId);
+	if (levelIssue !== null) {
+		return { kind: 'rejected', rejection: { code: 'invalid_value', message: levelIssue } };
+	}
+	const allocator = createAuthoringRoomAllocator(options.capture);
 	if (options.candidateDocument.rooms.length > 0) {
 		return {
 			kind: 'rejected',
@@ -273,180 +275,18 @@ export function planFirstEnclosureCreation(options: {
 			}
 		};
 	}
-	return runRoomBirthOperation({
-		candidateDocument: options.candidateDocument,
-		allocator,
-		reject: (rejection) => ({ kind: 'rejected', rejection })
-	});
-}
-
-/**
- * Partition → boundary Room birth: mark the submitted closed partition
- * chain as `boundary` and run the same foundation operation. The role flip
- * is a topology-changing operation (P23.8 "Boundary versus Partition") and
- * therefore runs the full candidate-face/reconciliation gate — this planner
- * is the P23.9 entry point's engine.
- *
- * Every wall in the chain flips; `null` leaves a wall's role unchanged so
- * the caller can submit a mixed candidate graph when the chain already
- * contains boundary walls.
- */
-export function planPartitionToBoundaryRoomBirth(options: {
-	/** Complete candidate document with the closed chain still marked `partition`. */
-	candidateDocument: LayoutDocumentWallFirst;
-	/** Wall IDs of the chain to flip. `null` keeps that wall's authored role. */
-	chainWallIds: ReadonlyArray<string | null>;
-	allocator?: RoomIdAllocator;
-}): WallFirstOpPlan {
-	const allocator = options.allocator ?? createAuthoringRoomAllocator();
-	const chainIds = options.chainWallIds.filter((id): id is string => id !== null);
-	const wallById = new Map(
-		options.candidateDocument.walls.map((wall) => [wall.id, wall])
-	);
-	const missing = chainIds.filter((id) => !wallById.has(id));
-	if (missing.length > 0) {
-		return {
-			kind: 'rejected',
-			rejection: {
-				code: 'no_boundary_walls',
-				message: `Partition chain references unknown walls: ${missing.join(', ')}`,
-				wallIds: missing
-			}
-		};
-	}
-	if (chainIds.length === 0) {
-		return {
-			kind: 'rejected',
-			rejection: {
-				code: 'no_boundary_walls',
-				message: 'Partition → boundary birth requires at least one wall to flip'
-			}
-		};
-	}
-	const chainSet = new Set(chainIds);
-	const walls: LayoutWall[] = options.candidateDocument.walls.map((wall) =>
-		chainSet.has(wall.id) ? { ...wall, role: 'boundary' as const } : wall
-	);
-	return runRoomBirthOperation({
-		candidateDocument: { ...options.candidateDocument, walls },
-		allocator,
-		reject: (rejection) => ({ kind: 'rejected', rejection })
-	});
-}
-
-/**
- * P23.6 — single-Wall role change through the canonical topology path.
- *
- * Flipping `role` is a topology-changing operation (P23.8 "Boundary versus
- * Partition"), never a direct field assignment: the candidate runs face
- * extraction + P23.8 correspondence reconciliation + the final canonical
- * gates, exactly like the chain engine. Typical outcomes:
- *
- * - boundary → partition: the physical Wall remains; affected Room topology
- *   reconciles canonically (faces that no longer close retire their Rooms);
- * - partition → boundary: supported topology births/splits Rooms through the
- *   same reconciliation; without a closed face the Wall simply flips role.
- *
- * Openings stay hosted on the physical Wall in both directions; portal Room
- * references remap or reject inside reconciliation. One plan = one history
- * entry at the caller. Invalid intent → no document.
- */
-export function planWallRoleChange(
-	document: LayoutDocumentWallFirst,
-	wallId: string,
-	role: LayoutWallRole
-): WallFirstOpPlan {
-	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
-	if (!wall) {
-		return reject({
-			code: 'unknown_wall',
-			message: `Unknown wall '${wallId}'`,
-			wallIds: [wallId]
+	try {
+		return runRoomBirthOperation({
+			candidateDocument: options.candidateDocument,
+			allocator,
+			reject: (rejection) => ({ kind: 'rejected', rejection })
 		});
-	}
-	if (role !== 'boundary' && role !== 'partition') {
-		return reject({
-			code: 'invalid_role',
-			message: `Wall role must be 'boundary' or 'partition'`,
-			wallIds: [wallId]
-		});
-	}
-	if (wall.role === role) {
-		return reject({
-			code: 'no_op',
-			message: `Wall '${wallId}' already ${role === 'boundary' ? 'defines a room boundary' : 'does not divide rooms'}`,
-			wallIds: [wallId]
-		});
-	}
-
-	const candidate: LayoutDocumentWallFirst = {
-		...document,
-		walls: document.walls.map((entry) => (entry.id === wallId ? { ...entry, role } : entry))
-	};
-
-	// --- room reconciliation (both directions) --------------------------------
-	// Same correspondence as the chain engine: predecessor polygons/witnesses
-	// come from the BASELINE rooms, components join predecessor rooms with
-	// candidate faces, and reconcileRooms owns birth/preservation/retirement.
-	let lineage: Array<{ faceKey: string; roomId: string; kind: 'created' }> = [];
-	let retiredRoomIds: readonly string[] = [];
-	const extraction = extractBoundaryCandidateFaces(candidate);
-	if (extraction.faces.length > 0 || document.rooms.length > 0) {
-		const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
-		const predecessorWitnesses = new Map<string, LayoutVec2>();
-		for (const room of document.rooms) {
-			const polygon = roomBoundaryPolygon(document, room.id);
-			if (!polygon) {
-				return reject({
-					code: 'room_reconciliation_rejected',
-					message: `Predecessor room '${room.id}' has an unresolvable boundary`,
-					roomIds: [room.id]
-				});
-			}
-			predecessorPolygons.set(room.id, polygon);
-			predecessorWitnesses.set(room.id, interiorWitness(polygon));
+	} catch (error) {
+		if (error instanceof LayoutIdCollisionError) {
+			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message } };
 		}
-		const components = buildCorrespondenceComponents({
-			faces: extraction.faces,
-			predecessorRoomIds: document.rooms.map((room) => room.id),
-			predecessorWitnesses,
-			predecessorPolygons,
-			candidateDocument: candidate,
-			baselineRooms: document.rooms
-		});
-		const result = reconcileRooms({
-			baseline: document,
-			candidateDocument: candidate,
-			extraction,
-			components,
-			predecessorWitnesses,
-			predecessorPolygons,
-			allocator: createAuthoringRoomAllocator()
-		});
-		if ('rejection' in result) {
-			return reject({
-				code: 'room_reconciliation_rejected',
-				message: result.rejection.message,
-				...(result.rejection.roomIds ? { roomIds: result.rejection.roomIds } : {}),
-				...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {})
-			});
-		}
-		candidate.rooms = result.document.rooms;
-		candidate.objects = result.document.objects;
-		candidate.openings = result.document.openings;
-		lineage = result.lineage
-			.filter((record) => record.kind === 'created')
-			.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const }));
-		retiredRoomIds = [...result.retiredRoomIds];
+		throw error;
 	}
-
-	return validateAndCompile(candidate, reject, (committed) => ({
-		kind: 'success',
-		document: committed,
-		lineage,
-		retiredRoomIds
-	}));
 }
 
 /**
@@ -461,7 +301,7 @@ export function planWallRoleChange(
  * start/end Junctions — an endpoint is pruned only when no surviving Wall
  * references it, and pre-existing orphan Junctions elsewhere are untouched)
  * runs face extraction + P23.8 correspondence reconciliation + the final
- * canonical gates, exactly like the chain engine and the role change. The
+ * canonical gates, exactly like the chain engine. The
  * deterministic reconciliation result is accepted as-is — deletion is not
  * intrinsically a "merge Rooms" command:
  *
@@ -481,7 +321,8 @@ export function planWallRoleChange(
  */
 function planWallRemovalSet(
 	document: LayoutDocumentWallFirst,
-	wallIds: readonly string[]
+	wallIds: readonly string[],
+	capture: LayoutIdCapture
 ): WallFirstOpPlan {
 	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
 	const removalSet = new Set(wallIds);
@@ -553,7 +394,7 @@ function planWallRemovalSet(
 			components,
 			predecessorWitnesses,
 			predecessorPolygons,
-			allocator: createAuthoringRoomAllocator()
+			allocator: createAuthoringRoomAllocator(capture)
 		});
 		if ('rejection' in result) {
 			return reject({
@@ -590,8 +431,14 @@ function planWallRemovalSet(
  */
 export function planDeleteWall(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
+	capture: LayoutIdCapture,
+	levelId: string
 ): WallFirstOpPlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) {
+		return { kind: 'rejected', rejection: { code: 'invalid_value', message: levelIssue, wallIds: [wallId] } };
+	}
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) {
 		return {
@@ -603,7 +450,14 @@ export function planDeleteWall(
 			}
 		};
 	}
-	return planWallRemovalSet(document, [wallId]);
+	try {
+		return planWallRemovalSet(document, [wallId], capture);
+	} catch (error) {
+		if (error instanceof LayoutIdCollisionError) {
+			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: [wallId] } };
+		}
+		throw error;
+	}
 }
 
 /**
@@ -945,9 +799,13 @@ export function roomExclusiveBoundaryWallIds(
  */
 export function planRemoveRoom(
 	document: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
+	capture: LayoutIdCapture,
+	levelId: string
 ): WallFirstOpPlan {
 	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject({ code: 'invalid_value', message: levelIssue, roomIds: [roomId] });
 	const room = document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room) {
 		return reject({
@@ -984,7 +842,14 @@ export function planRemoveRoom(
 			wallIds: boundaryWallIds
 		});
 	}
-	return planWallRemovalSet(document, exclusiveWallIds);
+	try {
+		return planWallRemovalSet(document, exclusiveWallIds, capture);
+	} catch (error) {
+		if (error instanceof LayoutIdCollisionError) {
+			return { kind: 'rejected', rejection: { code: 'captured_id_in_use', message: error.message, wallIds: exclusiveWallIds, roomIds: [roomId] } };
+		}
+		throw error;
+	}
 }
 
 /**
@@ -997,7 +862,6 @@ export function closedChainWalls(options: {
 	junctions: ReadonlyArray<readonly [string, number, number]>;
 	/** Walls as junction-ID pairs traversing the ring in one direction. */
 	walls: ReadonlyArray<readonly [string, string, string]>;
-	role?: LayoutWall['role'];
 	thickness?: number;
 	/**
 	 * P23.6H — required authoritative Wall height. Fixtures pass their Floor
@@ -1005,7 +869,6 @@ export function closedChainWalls(options: {
 	 */
 	height: number;
 }): Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'> {
-	const role = options.role ?? 'boundary';
 	const thickness = options.thickness ?? 0.2;
 	const height = options.height;
 	return {
@@ -1014,7 +877,6 @@ export function closedChainWalls(options: {
 			id,
 			startJunctionId: start,
 			endJunctionId: end,
-			role,
 			thickness,
 			height,
 			centerline: { kind: 'line' } as const

@@ -43,10 +43,10 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 2 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 3 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
-export const EXPERIENCE_UNIT_FORMAT_VERSION = 1 as const;
-export const RESOURCE_UNIT_FORMAT_VERSION = 1 as const;
+export const EXPERIENCE_UNIT_FORMAT_VERSION = 2 as const;
+export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
 
 /** The five admitted unit domains, in stable order. */
 export const UNIT_DOMAINS = ['layout', 'scene', 'camera', 'experience', 'resources'] as const;
@@ -134,9 +134,10 @@ export type DependencyLock = {
 export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
- * Camera-free Scene 2: the landed world-local records without the navigation
- * graph. `formatVersion: 2` is the payload's own version and matches the unit
- * header.
+ * Camera-free Scene 3: the landed world-local records without the navigation
+ * graph. `formatVersion: 3` is the payload's own version and matches the unit
+ * header. A model names a catalogue asset or a `model` resource of the same
+ * envelope; the fallback vocabulary includes the generic footprint box.
  */
 export type CameraFreeSceneDocument = {
 	formatVersion: typeof SCENE_UNIT_FORMAT_VERSION;
@@ -172,25 +173,59 @@ export type CameraUnitPayload = {
 	connections: SceneConnection[];
 };
 
+/** The closed Presentation text kinds; plain text is the only member so far. */
+export const EXPERIENCE_TEXT_KINDS = ['plain'] as const;
+
 /**
- * A labelled Presentation: the visitor-facing use of one Camera view. Two
- * Presentations may share one view, and one Presentation may be used by several
- * Stops.
+ * One Presentation's Information-panel text, bounded and kind-closed.
+ *
+ * The bound is measured in code points, so an authoring surface and the reader
+ * count the same text. A longer body is a structural refusal, never truncated.
+ */
+export const EXPERIENCE_TEXT_MAX_LENGTH = 4000;
+
+export type ExperiencePresentationText = {
+	kind: 'plain';
+	body: string;
+};
+
+/**
+ * A labelled Presentation: the visitor-facing use of the Camera Views it names.
+ *
+ * `viewIds` is display order only — it is never Guide order and never
+ * connectivity. `defaultViewId` is one of them or `null`; an unset Default is an
+ * honest state that cannot be entered. `subject` is an F.1 semantic reference
+ * with no component (a Scene entity or a Layout element), or `null` for an
+ * environment or region Presentation; no Room or clone is invented to host it.
+ * Two Presentations may share one View, and one Presentation may be used by
+ * several Stops.
  */
 export type ExperiencePresentation = {
 	id: string;
 	label: string;
-	viewId: string;
+	viewIds: readonly string[];
+	defaultViewId: string | null;
+	subject: SemanticReference | null;
+	text: ExperiencePresentationText | null;
 };
+
+/** The authored approach to a Stop: a Cut (the default) or a supported Travel. */
+export const EXPERIENCE_TRANSITIONS = ['cut', 'travel'] as const;
+
+export type ExperienceTransitionKind = (typeof EXPERIENCE_TRANSITIONS)[number];
 
 /**
  * How execution continues after a Stop. `sequence-next` follows the guide's
  * order; an explicit `stop` overrides it once, including a nonadjacent target;
  * `end` finishes the run.
+ *
+ * The edge's `transition` is the authored Cut/Travel selector for arriving at
+ * its target: absent means `cut`. Experience never silently cuts when a Travel
+ * is unsupported and never searches the Camera graph; the gap is reported.
  */
 export type ExperienceContinuation =
-	| { kind: 'sequence-next' }
-	| { kind: 'stop'; stopId: string }
+	| { kind: 'sequence-next'; transition?: ExperienceTransitionKind }
+	| { kind: 'stop'; stopId: string; transition?: ExperienceTransitionKind }
 	| { kind: 'end' };
 
 /**
@@ -201,6 +236,12 @@ export type ExperienceContinuation =
 export type ExperienceStop = {
 	id: string;
 	presentationId: string;
+	/**
+	 * The View this occurrence enters at; one of its Presentation's `viewIds`.
+	 * Absent means the Presentation's `defaultViewId`. It is the Stop's whole entry
+	 * role: hold and continuation already differ per Stop.
+	 */
+	entryViewId?: string;
 	/** An editorial station hold: finite, non-negative seconds. */
 	holdSeconds?: number;
 	/** Default continuation is the guide sequence; this field overrides it. */
@@ -254,10 +295,65 @@ export type ExperienceUnitPayload = {
 	experiences: readonly Experience[];
 };
 
-/** The admitted typed-resource kinds: the existing project texture/asset family. */
-export const RESOURCE_KINDS = ['texture', 'asset'] as const;
+/** The admitted typed-resource kinds: textures, catalogue assets and creator models. */
+export const RESOURCE_KINDS = ['texture', 'asset', 'model'] as const;
 
 export type ResourceKind = (typeof RESOURCE_KINDS)[number];
+
+/** The approved model derivative's one admitted media type. */
+export const MODEL_RESOURCE_MIME = 'model/gltf-binary' as const;
+
+/** Owner-accepted batch E bounds, enforced where a model resource is admitted. */
+export const MODEL_SOURCE_SET_MAX_BYTES = 50 * 1024 * 1024;
+export const MODEL_DERIVATIVE_MAX_BYTES = 25 * 1024 * 1024;
+
+/**
+ * The retained source file set of a model import: its manifest hash and declared
+ * extent. The hash is over the manifest, never over an individual byte stream, so
+ * it cannot be confused with the derivative's byte pin.
+ */
+export type ModelSourcePin = {
+	manifestHash: string;
+	size: number;
+	fileCount: number;
+};
+
+/** The recipe identity/version that produced the derivative (creator import). */
+export type ModelRefineRecipe = {
+	id: string;
+	version: number;
+};
+
+/**
+ * The placement definition of a creator model: the metric scale, pivot, occupied
+ * footprint and local contact the creator confirmed. Only floor placement is
+ * admitted; an instance never carries a second copy of these facts.
+ */
+export type ModelPlacement = {
+	/** Metres per source unit; finite and greater than zero. */
+	metresPerSourceUnit: number;
+	/** The derivative's local pivot, in its own metres. */
+	pivot: readonly [number, number, number];
+	/** Occupied footprint in metres around the pivot (X/Z). */
+	footprint: { readonly width: number; readonly depth: number };
+	/** The derivative's lowest local contact, in metres. */
+	contactMinY: number;
+	/** Only floor placement is admitted in this format. */
+	placement: 'floor';
+};
+
+/**
+ * The model-resource detail the approved revision supplies. The derivative's own
+ * bytes stay the resource's `pin`; this record is the retained provenance and the
+ * confirmed placement.
+ */
+export type ModelResourceDetail = {
+	source: ModelSourcePin;
+	recipe: ModelRefineRecipe;
+	/** Digest of the ingest report the approving creator confirmed. */
+	reportDigest: string;
+	placement: ModelPlacement;
+};
 
 /**
  * One typed resource. `contentRevision` is the exact content revision when the
@@ -265,6 +361,10 @@ export type ResourceKind = (typeof RESOURCE_KINDS)[number];
  * project; `unresolved` is the authored diagnostic when the binding is not yet
  * resolved. A resource with neither revision nor pin is always `unresolved` —
  * a fabricated pin is never admitted.
+ *
+ * A `model` resource is the one kind with extra retained truth: it must carry an
+ * approved derivative pin (its content revision is that pin's hash) and the
+ * `model` detail. Every other kind may omit the detail.
  */
 export type TypedResource = {
 	kind: ResourceKind;
@@ -272,6 +372,7 @@ export type TypedResource = {
 	contentRevision: string | null;
 	pin: ResourcePin | null;
 	unresolved: UnresolvedBinding | null;
+	model?: ModelResourceDetail;
 };
 
 /** The resource payload is a collection; an empty registry is valid only when unused. */

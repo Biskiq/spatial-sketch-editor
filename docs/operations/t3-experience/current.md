@@ -3,33 +3,21 @@
 Track-scoped handoff. **Replace only this file for T3 work.**
 
 ```text
-PHASE: T3.P03 Shared acceptance, isolation and measurement (H0; registered 2026-10-22, batch E) →
+PHASE: T3.P03 Shared acceptance, isolation and measurement →
        ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md
-       T3.P02 First Capture and Cut Preview (registered 2026-10-20) →
+       T3.P02 First Capture and Cut Preview →
        ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md
-       T3.P01 is CLOSED 2026-10-20 (final gate `06a8aac8`, merged `9a457f6b`, PR #158).
-ACTIVE: none. T3.P03.S01 is shipped (acceptance `owner-override`; closed stub at
-        ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/acceptance.md).
-BATON: Start T3.P03.S02 (measurement workflow, the phase's final gate) and T3.P02.S01 (first capture
-       and Cut Preview) in parallel through the runbook start step once their release-list
-       condition (T3.P03.S01 merged on `main`) holds; each rechecks its own base.
-NEXT:  the release list order. The capture slice settles the format draft's two open points (text
-       bound, entryViewId) at implementation review.
-ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) →
-       ../../roadmap/now.md →
-       ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md ·
-       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md
-       → ../../roadmap/cross-track-execution.md#authorized-batch-e-2026-10-22 (protocol)
-       → ../../reference/decisions/batch-e-authorization-2026-10-22.md (provenance)
-BLOCKER: none beyond the release-list conditions. Hard performance rows (the capture slice's F10,
-         and the measurement slice's baseline and calibration) run on the owner's MacBook Air M2,
-         16 GB, operated by the owner (E6 amendment).
-CARRY:  SEPARATE AND STILL OWED: the owner-run production activation of the F2 epoch (migration 005,
-        API and editor deploys, namespace-scoped R2 purge, smoke checks). The S04 merge executed no
-        migration against a deployed database. Residuals that move into this phase or beyond: the
-        authored Cut/Travel selector and presentation text homes (the capture slice's Experience
-        format draft; state/lifecycle homes stay later), model resource bytes (T2.P02.S01 verifies
-        them) and other resource bytes host-asserted until storage verifies them, the envelope's
-        acceptedRevision as baseline provenance only, and T4's prepared public reader under the
-        approved empty publication gap. T3 track completion remains a separate owner event.
+ACTIVE: No implementation slice is active. T3.P03.S01 and S02 are shipped; S02 was accepted as
+        `owner-override`, making P03 closable while the phase remains open pending an explicit
+        owner phase-close decision. T3.P02.S01 is accepted and shipped as `owner-override` at the
+        integrated revision recorded in its acceptance record. Unrun F10/API rows remain unclaimed.
+NEXT:   Owner decision whether to close T3.P03. No additional T3 implementation scope is released;
+        any next slice requires its own owner authorization through its phase register.
+ROUTE:  T3.P03 phase README → FINAL PHASE GATE / PHASE CLOSE; P03.S02 acceptance record retains
+        trace-method and reference-row dispositions. T3.P02 phase README → slice register and S02
+        final-gate route. P02.S01 acceptance record → integrated owner ruling and recovery anchor.
+BLOCKER: Parent-owned complete PR178 merge gate and merge; explicit owner phase-close decision for
+         T3.P03. No phase closure or new S02 authorization is recorded here.
+CARRY:  Production activation of F2 epoch migration 005 remains a separate owner-run operation.
+        T3 track completion remains a separate owner event.
 ```

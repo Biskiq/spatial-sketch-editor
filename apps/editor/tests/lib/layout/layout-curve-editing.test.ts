@@ -81,7 +81,6 @@ function documentOf(centerline: LayoutWallCenterline): LayoutDocumentWallFirst {
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'partition',
 			thickness: 0.2,
 			height: 3,
 			centerline

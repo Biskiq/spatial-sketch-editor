@@ -62,9 +62,11 @@ async function boot(
 	overrides: {
 		readonly adapter?: AcceptanceSourceAdapter<ProjectEnvelope>;
 		readonly planners?: readonly DomainPlanner<ProjectEnvelope>[];
+		/** An already-built fixture, so a replay boots from the same captured source. */
+		readonly fixture?: Awaited<ReturnType<typeof buildCurrentSourceFixture>>;
 	} = {}
 ) {
-	const fixture = await buildCurrentSourceFixture();
+	const fixture = overrides.fixture ?? (await buildCurrentSourceFixture());
 	const admitted = await admitUnitProject(fixture.project, BOOT_REVISION);
 	if (admitted.kind !== 'admitted') throw new Error(`the conformance fixture was not admitted: ${admitted.code}`);
 	const registry = createUnitPlannerRegistry<ProjectEnvelope>();
@@ -163,8 +165,11 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 	});
 
 	it('replays the same captured intent to identical contents under a fresh revision', async () => {
-		const first = await boot();
-		const second = await boot();
+		// One fixture, two coordinators: the replay compares the same captured
+		// source under the same captured intent, not two independently minted ids.
+		const fixture = await buildCurrentSourceFixture();
+		const first = await boot({ fixture });
+		const second = await boot({ fixture });
 		const contentRevision = first.coordinator.current().sourceContentId;
 
 		// Same captured inputs; a replayed set of top-level objects, not a shared

@@ -1,7 +1,7 @@
 /**
  * The one Experience interpreter (AM-6, T3.P01.S06).
  *
- * A deterministic reducer over `ExecutionProgram@1`: an initial state plus
+ * A deterministic reducer over `ExecutionProgram@2`: an initial state plus
  * ordered events produce the same state every time, and an explicit integer
  * clock supplies every hold. There is no ambient time, randomness, network,
  * renderer or Camera evaluation here — the interpreter derives editorial state
@@ -76,6 +76,12 @@ export type ExperienceRunState = {
 	readonly stopId: string | null;
 	readonly occurrenceId: string | null;
 	readonly presentationId: string | null;
+	/**
+	 * The Camera View this run presents, or `null` before any arrival. It is the
+	 * arrived Stop's own entry View, so one Presentation reused at two Stops
+	 * presents two different Views.
+	 */
+	readonly viewId: string | null;
 	readonly phase: ExperienceRunPhase;
 	/** Explicit integer clock since the run entered, in milliseconds. */
 	readonly elapsedMs: number;
@@ -91,13 +97,33 @@ export type ExperienceRunState = {
 	readonly invocation: ProgramInvocation | null;
 	/** The origin a covered detour must return to, or `null`. */
 	readonly returnToStopId: string | null;
+	/**
+	 * The Guide position a Presentation entry suspended, or `null`. Only the explicit
+	 * `resume` event returns to it; Continue never does.
+	 */
+	readonly resume: { readonly stopId: string; readonly returnToStopId: string | null } | null;
 	readonly lastEvent: ProgramEvent | null;
 };
 
 export type ExperienceEvent =
 	| { readonly kind: 'enter'; readonly runId: string; readonly runEpoch: number }
+	/**
+	 * Enter one enterable Presentation with no Stop: the guide-free Preview path.
+	 * It starts at the Presentation's Default View and never fabricates a Stop.
+	 */
+	| {
+			readonly kind: 'enter-presentation';
+			readonly runId: string;
+			readonly runEpoch: number;
+			readonly presentationId: string;
+	  }
 	| { readonly kind: 'arrival'; readonly runId: string; readonly runEpoch: number }
 	| { readonly kind: 'continue'; readonly runId: string; readonly runEpoch: number }
+	/**
+	 * Return to the Guide position a Presentation entry suspended. It is the explicit
+	 * control; Continue during a Presentation stays ignored.
+	 */
+	| { readonly kind: 'resume'; readonly runId: string; readonly runEpoch: number }
 	| { readonly kind: 'complete'; readonly runId: string; readonly runEpoch: number }
 	| { readonly kind: 'cancel'; readonly runId: string; readonly runEpoch: number }
 	| { readonly kind: 'reset'; readonly runId: string; readonly runEpoch: number }
@@ -136,7 +162,7 @@ export type ExperienceInterpreterOptions = {
 	readonly sourceContentId?: string | null;
 	/**
 	 * Presentation ids whose arrival waits for an explicit Continue. A Gate is
-	 * authored experience policy; it is passed in because `ExecutionProgram@1`
+	 * authored experience policy; it is passed in because `ExecutionProgram@2`
 	 * carries no Gate slot.
 	 */
 	readonly gates?: readonly string[];
@@ -150,9 +176,14 @@ export type ExperienceInterpreterOptions = {
 };
 
 export type ExperienceEffect =
-	| { readonly kind: 'camera'; readonly stopId: string; readonly invocation: ProgramInvocation }
+	| {
+			readonly kind: 'camera';
+			/** `null` for a Presentation entry, which has no Stop occurrence. */
+			readonly stopId: string | null;
+			readonly invocation: ProgramInvocation;
+	  }
 	| { readonly kind: 'hold'; readonly stopId: string; readonly milliseconds: number }
-	| { readonly kind: 'ready'; readonly stopId: string }
+	| { readonly kind: 'ready'; readonly stopId: string | null }
 	| { readonly kind: 'blocked'; readonly stopId: string }
 	| { readonly kind: 'panel'; readonly panel: ExperiencePanel }
 	| { readonly kind: 'open-url'; readonly url: string }
@@ -187,6 +218,7 @@ export function createExperienceRun(
 		stopId: null,
 		occurrenceId: null,
 		presentationId: null,
+		viewId: null,
 		phase: 'ready',
 		elapsedMs: 0,
 		holdRemainingMs: null,
@@ -197,6 +229,7 @@ export function createExperienceRun(
 		pendingContent: [],
 		invocation: null,
 		returnToStopId: null,
+		resume: null,
 		lastEvent: null
 	};
 }
@@ -230,12 +263,16 @@ export function reduceExperience(
 
 	if (event.kind === 'tick') return tick(state, event.milliseconds);
 	if (event.kind === 'enter') return enter(program, state, options);
+	if (event.kind === 'enter-presentation') {
+		return enterPresentation(program, state, event.presentationId);
+	}
 	if (event.kind === 'reset') return resetRun(program, state, options);
 	if (event.kind === 'cancel') return finish(program, state, 'cancel', options);
 	if (event.kind === 'complete') return finish(program, state, 'complete', options);
 	if (event.kind === 'arrival') return arrivalEvent(state);
 	if (event.kind === 'set-state') return setState(program, state, event.stateId, event.value);
 	if (event.kind === 'navigate') return navigate(program, state, event.stopId, options);
+	if (event.kind === 'resume') return resumeGuide(program, state, options);
 	return continueRun(program, state, options);
 }
 
@@ -274,8 +311,19 @@ export function createExperienceInterpreter(
 		enter(): ExperienceReduceResult {
 			return this.dispatch({ kind: 'enter', runId: current.runId, runEpoch: current.runEpoch });
 		},
+		enterPresentation(presentationId: string): ExperienceReduceResult {
+			return this.dispatch({
+				kind: 'enter-presentation',
+				runId: current.runId,
+				runEpoch: current.runEpoch,
+				presentationId
+			});
+		},
 		continue(): ExperienceReduceResult {
 			return this.dispatch({ kind: 'continue', runId: current.runId, runEpoch: current.runEpoch });
+		},
+		resume(): ExperienceReduceResult {
+			return this.dispatch({ kind: 'resume', runId: current.runId, runEpoch: current.runEpoch });
 		},
 		tick(milliseconds: number): ExperienceReduceResult {
 			return this.dispatch({ kind: 'tick', runId: current.runId, runEpoch: current.runEpoch, milliseconds });
@@ -302,12 +350,12 @@ function enter(
 	if (state.entered) return accepted(state, []);
 	if (program.entryStopId === null) {
 		return {
-			state: { ...state, entered: true, phase: 'completed', lastEvent: 'enter' },
+			state: { ...state, entered: true, resume: null, phase: 'completed', lastEvent: 'enter' },
 			outcome: 'accepted',
 			effects: [{ kind: 'completed' }]
 		};
 	}
-	const entered: ExperienceRunState = { ...state, entered: true, lastEvent: 'enter' };
+	const entered: ExperienceRunState = { ...state, entered: true, resume: null, lastEvent: 'enter' };
 	const effects: ExperienceEffect[] = [];
 	// An `enter` cancellation can have no occurrence to continue from yet; only the
 	// arrival lifecycle may request a continuation.
@@ -316,6 +364,60 @@ function enter(
 		return arrive(program, actioned.state, actioned.navigateTo, options, effects);
 	}
 	return arrive(program, actioned.state, program.entryStopId, options, effects);
+}
+
+/**
+ * Enter one Presentation with no Stop.
+ *
+ * This is the interpreter's Presentation-entry event, not a host-side shortcut:
+ * a Guide-free Experience starts at a Presentation's Default View, presents its
+ * own content, and leaves through the host's Camera return (`cancel`), so every
+ * run is still prepared, entered and exited by this one reducer.
+ */
+function enterPresentation(
+	program: ExecutionProgram,
+	state: ExperienceRunState,
+	presentationId: string
+): ExperienceReduceResult {
+	const presentation = program.presentations.find((entry) => entry.id === presentationId);
+	if (presentation === undefined) return ignored(state);
+	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
+	const panel: ExperiencePanel = {
+		presentationId: presentation.id,
+		title: presentation.label,
+		content: presentation.content.map((record) => ({ id: record.id, text: record.text }))
+	};
+	const invocation: ProgramInvocation = { kind: 'cut', viewId: presentation.defaultViewId };
+	// Entering from a Guide position suspends it; moving between extras keeps the
+	// original tour position rather than the previous Presentation.
+	const resume = state.stopId !== null
+		? { stopId: state.stopId, returnToStopId: state.returnToStopId }
+		: state.resume;
+	const next: ExperienceRunState = {
+		...state,
+		entered: true,
+		resume,
+		stopId: null,
+		occurrenceId: null,
+		presentationId: presentation.id,
+		viewId: presentation.defaultViewId,
+		phase: 'ready',
+		holdRemainingMs: null,
+		gated: false,
+		panel,
+		pendingContent: [],
+		invocation,
+		returnToStopId: null,
+		lastEvent: 'arrival'
+	};
+	return {
+		state: next,
+		outcome: 'accepted',			effects: [
+			{ kind: 'camera', stopId: null, invocation },
+			{ kind: 'panel', panel },
+			{ kind: 'ready', stopId: null }
+		]
+	};
 }
 
 function arrivalEvent(state: ExperienceRunState): ExperienceReduceResult {
@@ -453,6 +555,7 @@ function arrive(
 		stopId,
 		occurrenceId: visit.occurrenceId,
 		presentationId: presentation.id,
+		viewId: stop.viewId,
 		visited: appendVisit ? [...state.visited, visit] : state.visited,
 		panel,
 		pendingContent: [],
@@ -598,6 +701,26 @@ function advance(
 	return arrive(program, state, next.id, options, effects, true, 0, continueDepth + 1);
 }
 
+/**
+ * Return to the Guide position a Presentation entry suspended. This is a fresh
+ * arrival at that Stop (a new visit), so Continue then moves on as authored.
+ */
+function resumeGuide(
+	program: ExecutionProgram,
+	state: ExperienceRunState,
+	options: ExperienceInterpreterOptions
+): ExperienceReduceResult {
+	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
+	if (state.resume === null) return ignored(state);
+	return arrive(
+		program,
+		{ ...state, resume: null, returnToStopId: state.resume.returnToStopId },
+		state.resume.stopId,
+		options,
+		[]
+	);
+}
+
 function navigate(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
@@ -610,14 +733,14 @@ function navigate(
 	// strand the run at the inner origin. The outer excursion wins: navigate to the
 // target but keep the obligation that is already owed.
 	if (state.returnToStopId !== null) {
-		return arrive(program, state, stopId, options, []);
+		return arrive(program, { ...state, resume: null }, stopId, options, []);
 	}
 	const detour = (options.detours ?? []).find(
 		(entry) => entry.fromStopId === state.stopId && entry.toStopId === stopId
 	);
 	const next: ExperienceRunState = detour === undefined
-		? { ...state, returnToStopId: null }
-		: { ...state, returnToStopId: detour.returnToStopId };
+		? { ...state, returnToStopId: null, resume: null }
+		: { ...state, returnToStopId: detour.returnToStopId, resume: null };
 	return arrive(program, next, stopId, options, []);
 }
 
@@ -653,6 +776,7 @@ function resetRun(
 		stopId: null,
 		occurrenceId: null,
 		presentationId: null,
+		viewId: null,
 		phase: 'ready',
 		elapsedMs: 0,
 		holdRemainingMs: null,
@@ -663,6 +787,7 @@ function resetRun(
 		pendingContent: [],
 		invocation: null,
 		returnToStopId: null,
+		resume: null,
 		lastEvent: null
 	};
 	return enter(program, reset, options);
@@ -693,6 +818,7 @@ function finish(
 			values,
 			holdRemainingMs: null,
 			returnToStopId: null,
+			resume: null,
 			pendingContent: []
 		},
 		outcome: 'accepted',

@@ -60,7 +60,16 @@ function parts(): Omit<ProjectEnvelopeInput, 'acceptedRevision' | 'dependencyLoc
 						id: 'experience-a',
 						label: 'Experience a',
 						entryGuideId: 'guide-1',
-						presentations: [{ id: 'presentation-1', label: 'Entry', viewId: 'view-1' }],
+						presentations: [
+							{
+								id: 'presentation-1',
+								label: 'Entry',
+								viewIds: ['view-1'],
+								defaultViewId: 'view-1',
+								subject: null,
+								text: null
+							}
+						],
 						stops: [
 							{
 								id: 'stop-1',

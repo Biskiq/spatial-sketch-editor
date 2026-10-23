@@ -22,13 +22,12 @@ function wall(
 	id: string,
 	startJunctionId: string,
 	endJunctionId: string,
-	options: Partial<Pick<LayoutWall, 'thickness' | 'height' | 'role'>> = {}
+	options: Partial<Pick<LayoutWall, 'thickness' | 'height'>> = {}
 ): LayoutWall {
 	return {
 		id,
 		startJunctionId,
 		endJunctionId,
-		role: options.role ?? 'partition',
 		thickness: options.thickness ?? 0.2,
 		height: options.height ?? 3,
 		centerline: { kind: 'line' }
@@ -42,7 +41,7 @@ function document(
 ): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 5,
+		formatVersion: 6,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions,
 		walls,

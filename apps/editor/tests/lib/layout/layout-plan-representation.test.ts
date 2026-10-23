@@ -64,7 +64,6 @@ function rectangleDocument(options: { elevation?: number; wallHeight?: number } 
 			id,
 			startJunctionId,
 			endJunctionId,
-			role: 'boundary' as const,
 			thickness: 0.2,
 			height: options.wallHeight ?? WALL_AUTHORING_DEFAULT_HEIGHT,
 			centerline: { kind: 'line' } as const

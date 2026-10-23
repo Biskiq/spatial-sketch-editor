@@ -104,7 +104,7 @@ export async function saveRequestBody(
 		precondition
 	});
 	if (captured.kind !== 'captured') {
-		throw new Error(`fixture was not a valid F.2 envelope: ${captured.message}`);
+		throw new Error(`fixture was not a valid F.2 envelope: ${captured.message} ${JSON.stringify(captured.issues ?? [])}`);
 	}
 	return { contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME, capture: captured.capture };
 }
@@ -333,6 +333,9 @@ export function memoryObjectStore(options = {}) {
 			gets.push(key);
 			const object = objects.get(key);
 			return object ? { body: Readable.from([object.bytes]), contentLength: object.bytes.length } : null;
+		},
+		async delete(key) {
+			objects.delete(key);
 		},
 		close() {
 			closes += 1;

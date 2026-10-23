@@ -97,7 +97,13 @@ export const ARCH_FILES: string[] = [
 	// imports an `OrbitControls`, no build fails when a second renderer appears, and
 	// the shell is mountable only in a browser, so only the unconditional lane can
 	// own the guarantee.
-	'tests/lib/authoring/stage-shell-composition.test.ts'
+	'tests/lib/authoring/stage-shell-composition.test.ts',
+	// T1.P02.S01 §1: the two occupancy-derived identity allocators stay
+	// unreachable from production code. Their exclusion is only legitimate while
+	// no accepted intent reaches the curve planners that call them, and an
+	// uncalled planner is invisible to every build, type check and lane report,
+	// so only a call-site boundary can hold the condition.
+	'tests/lib/layout/layout-identity-boundary.test.ts'
 ];
 
 /**
@@ -138,7 +144,13 @@ export const HEAVY_FILES: string[] = [
 	// correspondence differential there is no cheap subset to retain — every row
 	// has the same cost shape — so the whole file moves rather than splitting
 	// into an arbitrary "representative" fast half.
-	'tests/lib/layout/p23b11-conditional-gate.test.ts'
+	'tests/lib/layout/p23b11-conditional-gate.test.ts',
+	// T1.P02.S01 acceptance criterion 2: the format 5 → 6 whole-table differential
+	// over the six CLASS 5 all-boundary kernels, against digests recorded from the
+	// base revision's compiler. A whole-table kernel differential, not a timing
+	// benchmark; it belongs here so no focused edit pays for the base-revision
+	// comparison and the acceptance gate runs it every time.
+	'tests/lib/layout/t1s01-format6-differential.test.ts'
 ];
 
 /** Everything the fast lane excludes (`test:fast` = full − these). */

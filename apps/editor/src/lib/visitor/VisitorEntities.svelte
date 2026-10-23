@@ -80,6 +80,7 @@
 					rotation={entity.rotation}
 					scale={entity.scale ?? 1}
 					fallback={entity.fallback}
+					fallbackFootprint={scene.modelFootprints?.get(entity.assetId)}
 					effective={entity.materialInstanceId ? entityEffective(entity) : null}
 					scope={textureScope}
 				/>

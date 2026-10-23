@@ -82,9 +82,11 @@ full acceptance and closeout body:
   git show f77d55542806ca66903bc6d880884b1b3ef60ef2:docs/roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/acceptance.md
 ```
 
-P1 requires PR #176 to land as a **merge commit**; squash/rebase invalidates the recovery anchor.
-After merge, verify the anchor is an ancestor of `main` and run the `git show` command above. No merge
-or post-merge check is claimed here.
+P1 required PR #176 to land as a **merge commit**; squash/rebase would invalidate the recovery
+anchor. Post-merge verification was completed on 2026-10-23: tag `closed/T3.P03.S01` peels to
+`f77d55542806ca66903bc6d880884b1b3ef60ef2`, that anchor is an ancestor of merge commit `55683981`,
+and the `git show` recovery command above resolves the full acceptance body. This verifies PR #176's
+preservation anchor only; it does not claim any later PR merge.
 
 ## Closed-work preservation report
 
@@ -100,7 +102,7 @@ new live → archive prose links:  0
 manual-owed verification rows:   1   per-merge default-timeout `npm test`
 remaining deferred items:        1   T3.P03.S02 integrated exhaustive proof
 permanent stubs added:           1   the owner-ratified hybrid preservation policy's accepted cost
-required merge method:           merge commit (P1); post-merge anchor verification remains owed
+required merge method:           merge commit (P1); post-merge anchor verification completed 2026-10-23
 ```
 
 ## Closeout self-check
@@ -116,5 +118,5 @@ baton         PASS — T3 baton names the next released work only; no closed-sli
 stable        PASS — no pending-merge state or branch-head pin in live routers
 report        PASS — preservation counts, residual owners and recovery recorded above
 scope         PASS — no implementation code changed during closeout
-P1            PASS — merge method recorded; post-merge anchor verification owed
+P1            PASS — merge commit 55683981 preserves the anchor; post-merge recovery verified 2026-10-23
 ```

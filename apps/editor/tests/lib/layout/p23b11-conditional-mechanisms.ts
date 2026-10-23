@@ -23,11 +23,16 @@
  * unchanged from the baseline (predecessor polygon, witness, face polygon, both component
  * labels), because nothing stores the baseline's verdict — the verdict is known only via
  * identity. The extent here is deliberately STRUCTURAL and cheap: changed/removed Junction
- * and Wall records, and the Rooms/faces whose boundary refs touch them, plus new-key faces
- * (a face with no baseline counterpart cannot have an unchanged polygon). Whether that
- * definition is strong enough is exactly what the gate's four-input oracle measures: if a
- * structurally-unaffected pair's polygon or label moved, the scope as defined is not sound
- * and the gate records it.
+ * and Wall records, the Rooms/faces whose boundary refs touch them, new-key faces (a face
+ * with no baseline counterpart cannot have an unchanged polygon), and any face or Room
+ * whose component LABEL re-derives. The label belongs in the extent because it is one of
+ * the four inputs: a component is labelled by its first Wall in document order, so deleting
+ * or renaming that Wall relabels every untouched face in the component even though no
+ * polygon moved. Marking those sides affected is conservative — the scope then claims less,
+ * never more — and it keeps the four-input oracle from failing on a label it never
+ * modelled. Whether the definition is strong enough is exactly what the gate measures: if
+ * a structurally-unaffected pair's polygon or label moved, the scope is not sound and the
+ * gate records it.
  *
  * NO CACHE, NO STATE: every function here is a pure read of the documents it is handed.
  */
@@ -218,6 +223,18 @@ export function chainAffectedExtent(options: {
 	const baselineFaces = extractBoundaryCandidateFaces(baseline).faces;
 	const baselineFaceByKey = new Map(baselineFaces.map((face) => [face.key, face]));
 	const candidateFaces = extractBoundaryCandidateFaces(candidate).faces;
+	// The component labels are the same authority `pairInputs` serializes, so the extent
+	// cannot disagree with the oracle about what a label is.
+	const baselineAuthorization = correspondenceAuthorization({
+		baselineRooms: baseline.rooms,
+		candidateDocument: baseline,
+		faces: baselineFaces
+	});
+	const candidateAuthorization = correspondenceAuthorization({
+		baselineRooms: baseline.rooms,
+		candidateDocument: candidate,
+		faces: candidateFaces
+	});
 	const affectedFaceKeys: string[] = [];
 	for (const face of candidateFaces) {
 		const baselineFace = baselineFaceByKey.get(face.key);
@@ -226,7 +243,20 @@ export function chainAffectedExtent(options: {
 		// be equal to it, so it can never be an excluded side.
 		const changedGeometry =
 			!baselineFace || !recordsEqual(baselineFace.polygon, face.polygon);
-		if (touchesChangedWall || changedGeometry) affectedFaceKeys.push(face.key);
+		const changedLabel =
+			baselineAuthorization.faceComponentKeyByKey.get(face.key) !==
+			candidateAuthorization.faceComponentKeyByKey.get(face.key);
+		if (touchesChangedWall || changedGeometry || changedLabel) affectedFaceKeys.push(face.key);
+	}
+	const affectedRoomIdSet = new Set(affectedRoomIds);
+	for (const room of baseline.rooms) {
+		const labelChanged =
+			baselineAuthorization.predecessorComponentKeyByRoomId.get(room.id) !==
+			candidateAuthorization.predecessorComponentKeyByRoomId.get(room.id);
+		if (labelChanged && !affectedRoomIdSet.has(room.id)) {
+			affectedRoomIdSet.add(room.id);
+			affectedRoomIds.push(room.id);
+		}
 	}
 	return {
 		changedJunctionIds,

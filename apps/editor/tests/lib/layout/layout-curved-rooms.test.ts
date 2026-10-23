@@ -75,7 +75,6 @@ function documentOf(
 		id: wall.id,
 		startJunctionId: wall.start,
 		endJunctionId: wall.end,
-		role: 'boundary' as const,
 		thickness: 0.2,
 		height: 3,
 		centerline: wall.centerline ?? LINE
@@ -250,7 +249,6 @@ describe('P23.11 slice 3 — curved Room face polygons', () => {
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: curve([0, 0], [6, 0], [2, 2], [4, 2])

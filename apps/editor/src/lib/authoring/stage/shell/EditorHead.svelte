@@ -36,6 +36,8 @@
 		 */
 		save = null,
 		onReloadRemote = () => {},
+		canPreview = false,
+		onPreview = () => {},
 		previewUnavailableReason,
 		reducedMotion,
 		onToggleReducedMotion
@@ -58,6 +60,9 @@
 		save?: HeadSave | null;
 		/** The host's replacement guard receives a conflict reload; Head never installs it. */
 		onReloadRemote?: (offer: ReloadOffer) => void;
+		/** Whether an isolated visitor Preview can be entered from this source. */
+		canPreview?: boolean;
+		onPreview?: () => void;
 		previewUnavailableReason: string;
 		reducedMotion: boolean;
 		onToggleReducedMotion: () => void;
@@ -227,18 +232,26 @@
 			</div>
 		{/if}
 
-		<div class="capability" data-unavailable-capability>
-			<button
-				type="button"
-				class="action"
-				disabled
-				aria-disabled="true"
-				title={previewUnavailableReason}
-			>
-				Preview
-			</button>
-			<span class="reason">{previewUnavailableReason}</span>
-		</div>
+		{#if canPreview}
+			<div class="capability" data-head-preview>
+				<button type="button" class="action" title="Enter an isolated visitor Preview" onclick={onPreview}>
+					Preview
+				</button>
+			</div>
+		{:else}
+			<div class="capability" data-unavailable-capability>
+				<button
+					type="button"
+					class="action"
+					disabled
+					aria-disabled="true"
+					title={previewUnavailableReason}
+				>
+					Preview
+				</button>
+				<span class="reason">{previewUnavailableReason}</span>
+			</div>
+		{/if}
 
 		<button
 			type="button"

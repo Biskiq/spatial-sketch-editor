@@ -1,7 +1,12 @@
 /**
- * Closed fixtures for the T3.P01.S06 runtime preparation. Every envelope is built
- * through the F.2 provider's own canonical writer, so the tests read the shapes a
- * real reader accepts rather than a hand-written object that happens to parse.
+ * Closed fixtures for the T3.P01.S06 runtime preparation and the T3.P02.S01
+ * format-2 consumers. Every envelope is built through the F.2 provider's own
+ * canonical writer, so the tests read the shapes a real reader accepts rather
+ * than a hand-written object that happens to parse.
+ *
+ * Experience 2 authors everything lowering needs: Presentation `viewIds`/Default,
+ * Presentation text, and the Cut/Travel choice on the continuation edge. There is
+ * no host-supplied binding or content list to add beside it.
  */
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import {
@@ -59,11 +64,30 @@ export const EXPERIENCE: ExperienceUnitPayload = {
 			label: 'Morning walk',
 			entryGuideId: 'guide-1',
 			presentations: [
-				{ id: 'presentation-1', label: 'Piano', viewId: 'view-1' },
-				{ id: 'presentation-2', label: 'Gallery', viewId: 'view-2' }
+				{
+					id: 'presentation-1',
+					label: 'Piano',
+					viewIds: ['view-1'],
+					defaultViewId: 'view-1',
+					subject: null,
+					text: { kind: 'plain', body: 'The piano.' }
+				},
+				{
+					id: 'presentation-2',
+					label: 'Gallery',
+					viewIds: ['view-2'],
+					defaultViewId: 'view-2',
+					subject: null,
+					text: null
+				}
 			],
 			stops: [
-				{ id: 'stop-1', presentationId: 'presentation-1', holdSeconds: 0.5 },
+				{
+					id: 'stop-1',
+					presentationId: 'presentation-1',
+					holdSeconds: 0.5,
+					continuation: { kind: 'sequence-next', transition: 'travel' }
+				},
 				{ id: 'stop-2', presentationId: 'presentation-2', continuation: { kind: 'end' } }
 			],
 			guides: [
@@ -109,11 +133,5 @@ export async function experienceEnvelope(overrides: {
 export const LOWERING_OPTIONS = {
 	experienceId: 'experience-1',
 	sourceContentId: 'digest-envelope',
-	sessionEpoch: 'session-1',
-	bindings: [
-		{ stopId: 'stop-2', invocation: { kind: 'travel' as const, connectionId: 'connection-1' } }
-	],
-	content: [
-		{ presentationId: 'presentation-1', records: [{ id: 'content-1', text: 'The piano.' }] }
-	]
+	sessionEpoch: 'session-1'
 };

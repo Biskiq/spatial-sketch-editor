@@ -41,6 +41,7 @@ import {
 	computeEnvelopeSourceContentId,
 	prepareUnitRuntime,
 	serializeProjectEnvelope,
+	validateProjectEnvelope,
 	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
 	type ProjectEnvelope,
@@ -147,6 +148,27 @@ function snapshotOf(
 
 const HOST_SCENE_OPTIONS = MUSEUM_SCENE_VALIDATION_OPTIONS;
 
+/**
+ * The host's catalogue plus this envelope's own approved creator models.
+ *
+ * The policy belongs here, at the editor's admission door, not in the shared
+ * unit runtime: a visitor or release host that calls `prepareUnitRuntime` keeps
+ * its own catalogue predicate and therefore refuses an id it cannot deliver.
+ */
+function sceneOptionsFor(envelope: ProjectEnvelope): typeof HOST_SCENE_OPTIONS {
+	const modelIds = new Set(
+		envelope.units.resources.data.resources
+			.filter((resource) => resource.kind === 'model' && resource.pin !== null)
+			.map((resource) => resource.id)
+	);
+	if (modelIds.size === 0) return HOST_SCENE_OPTIONS;
+	const catalogue = HOST_SCENE_OPTIONS.isKnownAssetId;
+	return {
+		...HOST_SCENE_OPTIONS,
+		isKnownAssetId: (assetId: string) => catalogue(assetId) || modelIds.has(assetId)
+	};
+}
+
 function projectIssues(issues: readonly ShapeIssue[]): ProjectIssue[] {
 	return issues.map((issue) => ({ path: issue.path, code: issue.code, message: issue.message }));
 }
@@ -161,7 +183,12 @@ export async function admitSource(
 	input: unknown,
 	context: AdmissionContext
 ): Promise<AdmissionOutcome> {
-	const prepared = prepareUnitRuntime(input, HOST_SCENE_OPTIONS);
+	// Read the envelope once so the host policy can see its model registry before
+	// Scene resolution. `prepareUnitRuntime` then performs the one canonical
+	// preparation over that same envelope.
+	const read = validateProjectEnvelope(input);
+	if (!read.success) return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(read.issues) };
+	const prepared = prepareUnitRuntime(read.envelope, sceneOptionsFor(read.envelope));
 	if (prepared.kind === 'rejected') {
 		return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(prepared.issues) };
 	}

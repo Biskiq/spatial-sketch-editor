@@ -65,7 +65,6 @@ function documentOf(centerline: LayoutWallCenterline): LayoutDocumentWallFirst {
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'partition',
 			thickness: 0.2,
 			height: 3,
 			centerline
@@ -129,7 +128,6 @@ function curvedWallDocument(): LayoutDocumentWallFirst {
 			id: 'curved',
 			startJunctionId: 'c-a',
 			endJunctionId: 'c-b',
-			role: 'partition',
 			thickness: 0.2,
 			height: 3,
 			centerline: chainOf([0, 0], [6, 0], [3, 3])
@@ -140,15 +138,14 @@ function curvedWallDocument(): LayoutDocumentWallFirst {
 
 function curvedBoundaryHostDocument(): LayoutDocumentWallFirst {
 	const document = curvedWallDocument();
-	document.walls[0]!.role = 'boundary';
 	document.junctions.push(
 		{ id: 'c-c', point: [6, 4] },
 		{ id: 'c-d', point: [0, 4] }
 	);
 	document.walls.push(
-		{ id: 'wall-right', startJunctionId: 'c-b', endJunctionId: 'c-c', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-top', startJunctionId: 'c-c', endJunctionId: 'c-d', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-left', startJunctionId: 'c-d', endJunctionId: 'c-a', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE }
+		{ id: 'wall-right', startJunctionId: 'c-b', endJunctionId: 'c-c', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'wall-top', startJunctionId: 'c-c', endJunctionId: 'c-d', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'wall-left', startJunctionId: 'c-d', endJunctionId: 'c-a', thickness: 0.2, height: 3, centerline: LINE }
 	);
 	document.rooms = [
 		{

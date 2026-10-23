@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
 	import { onMount } from 'svelte';
 import { PCFShadowMap } from 'three';
 	import { Canvas } from '@threlte/core';
@@ -22,6 +23,8 @@ import { PCFShadowMap } from 'three';
 		graph,
 		program = null,
 		experienceOptions = null,
+		/** Enter this Presentation directly through the interpreter's Presentation entry. */
+		entryPresentationId = null,
 		resolveTexture,
 		textureScope = null,
 		reducedMotion = false,
@@ -36,6 +39,7 @@ import { PCFShadowMap } from 'three';
 		/** The lowered Experience program. Absent means no guided Experience. */
 		program?: ExecutionProgram | null;
 		experienceOptions?: ExperienceInterpreterOptions | null;
+		entryPresentationId?: string | null;
 		resolveTexture: (uri: string) => string | null;
 		textureScope?: TextureLoadScope | null;
 		reducedMotion?: boolean;
@@ -60,9 +64,11 @@ import { PCFShadowMap } from 'three';
 		visitorState.reducedMotion = reducedMotion;
 	});
 	// A program may arrive after the surface mounts, and a changed program creates
-	// a fresh neutral runtime. Enter every instance, not only the first.
+	// a fresh neutral runtime. Enter every instance, not only the first. A
+	// Presentation entry starts the same run at its Default View with no Stop.
 	$effect(() => {
-		visitorState?.enter();
+		if (visitorState === null) return;
+		visitorState.start(entryPresentationId);
 	});
 
 	const presentation = $derived.by(() => {
@@ -109,7 +115,7 @@ import { PCFShadowMap } from 'three';
 		aria-label={mode === 'public' ? 'Published project canvas' : 'Visitor preview canvas'}
 		aria-describedby="visitor-preview-help"
 	>
-		<Canvas dpr={[1, 1.5]} shadows={PCFShadowMap}>
+		<Canvas createRenderer={createManagedWebGLRenderer} dpr={[1, 1.5]} shadows={PCFShadowMap}>
 			<T.Color attach="background" args={[0x050508]} />
 			<T.Fog attach="fog" args={[0x050508, 22, 54]} />
 			<T.AmbientLight intensity={0.2} />
@@ -126,13 +132,16 @@ import { PCFShadowMap } from 'three';
 			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} />
 		</Canvas>
 	</div>
-	{#if guideFreePresentations.length > 0}
+	{#if guideFreePresentations.length > 0 || visitorState?.canResume}
 		<nav class="visitor-presentations" aria-label="Presentations">
 			{#each guideFreePresentations as entry (entry.id)}
 				<button type="button" onclick={() => visitorState?.selectPresentation(entry.id)}>
 					{entry.label}
 				</button>
 			{/each}
+			{#if visitorState?.canResume}
+				<button type="button" class="visitor-resume" onclick={() => visitorState?.resume()}>Resume tour</button>
+			{/if}
 		</nav>
 	{/if}
 	{#if cameraGap}
@@ -211,7 +220,8 @@ import { PCFShadowMap } from 'three';
 		gap: 0.4rem;
 		z-index: 5;
 	}
-	.visitor-presentations button {
+	.visitor-presentations button,
+	.visitor-resume {
 		padding: 0.35rem 0.6rem;
 		border: 1px solid #635a6f;
 		border-radius: 999px;

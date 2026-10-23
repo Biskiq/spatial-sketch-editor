@@ -32,7 +32,13 @@ import { validateSceneDocument } from '../scene-codec';
 import {
 	ADMITTED_UNIT_VERSIONS,
 	CAMERA_UNIT_FORMAT_VERSION,
+	EXPERIENCE_TEXT_KINDS,
+	EXPERIENCE_TEXT_MAX_LENGTH,
+	EXPERIENCE_TRANSITIONS,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
+	MODEL_DERIVATIVE_MAX_BYTES,
+	MODEL_RESOURCE_MIME,
+	MODEL_SOURCE_SET_MAX_BYTES,
 	RESOURCE_KINDS,
 	RESOURCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,
@@ -50,9 +56,12 @@ import {
 	type ExperienceGate,
 	type ExperienceGuide,
 	type ExperiencePresentation,
+	type ExperiencePresentationText,
 	type ExperienceStop,
+	type ExperienceTransitionKind,
 	type ExperienceUnitPayload,
 	type LayoutUnitPayload,
+	type ModelResourceDetail,
 	type PayloadOf,
 	type ProjectEnvelope,
 	type ProjectUnits,
@@ -264,7 +273,7 @@ function samePin(left: ResourcePin | null, right: ResourcePin | null): boolean {
 	return left.hash === right.hash && left.mime === right.mime && left.size === right.size && left.locator === right.locator;
 }
 
-/** Strict read of the landed Layout payload (wall-first format 5). */
+/** Strict read of the landed Layout payload (wall-first format 6). */
 export function validateLayoutPayload(input: unknown): ShapeValidation<LayoutUnitPayload> {
 	const result = validateWallFirstLayoutDocument(input);
 	if (!result.success) return { success: false, issues: delegatedIssues(result.issues) };
@@ -406,25 +415,66 @@ const EXPERIENCE_KEYS = [
 	'detours'
 ] as const;
 const GATE_KEYS = ['id', 'presentationId'] as const;
-const PRESENTATION_KEYS = ['id', 'label', 'viewId'] as const;
-const STOP_KEYS = ['id', 'presentationId', 'holdSeconds', 'continuation'] as const;
+const PRESENTATION_KEYS = ['id', 'label', 'viewIds', 'defaultViewId', 'subject', 'text'] as const;
+const PRESENTATION_TEXT_KEYS = ['kind', 'body'] as const;
+const STOP_KEYS = ['id', 'presentationId', 'entryViewId', 'holdSeconds', 'continuation'] as const;
 const GUIDE_KEYS = ['id', 'label', 'stopIds', 'entryStopId'] as const;
 const DETOUR_KEYS = ['id', 'fromStopId', 'toStopId', 'returnToStopId'] as const;
 const EXPERIENCE_PAYLOAD_KEYS = ['formatVersion', 'experiences'] as const;
 
+/** An edge's authored Cut/Travel selector; absent means Cut. */
+function readTransition(reader: ShapeReader, input: unknown, path: string): ExperienceTransitionKind | null {
+	if (input === undefined) return 'cut';
+	const transition = reader.tag(input, path, EXPERIENCE_TRANSITIONS);
+	return transition as ExperienceTransitionKind | null;
+}
+
 function readContinuation(reader: ShapeReader, input: unknown, path: string): ExperienceContinuation | null {
-	if (input === undefined) return { kind: 'sequence-next' };
-	const record = reader.object(input, path, ['kind', 'stopId']);
+	if (input === undefined) return { kind: 'sequence-next', transition: 'cut' };
+	const record = reader.object(input, path, ['kind', 'stopId', 'transition']);
 	if (record === null) return null;
 	const kind = reader.tag(record.kind, `${path}.kind`, ['sequence-next', 'stop', 'end']);
 	if (kind === null) return null;
 	if (kind !== 'stop') {
 		if (record.stopId !== undefined) reader.problem(`${path}.stopId`, 'unknown-key', `${path}.stopId is not part of the ${kind} continuation`);
-		return { kind: kind as 'sequence-next' | 'end' };
+		if (kind === 'end') {
+			if (record.transition !== undefined) {
+				reader.problem(`${path}.transition`, 'unknown-key', `${path}.transition is not part of the end continuation`);
+				return null;
+			}
+			return { kind: 'end' };
+		}
+		const transition = readTransition(reader, record.transition, `${path}.transition`);
+		if (transition === null) return null;
+		return { kind: 'sequence-next', transition };
 	}
 	const stopId = reader.opaqueId(record.stopId, `${path}.stopId`);
-	if (stopId === null) return null;
-	return { kind: 'stop', stopId };
+	const transition = readTransition(reader, record.transition, `${path}.transition`);
+	if (stopId === null || transition === null) return null;
+	return { kind: 'stop', stopId, transition };
+}
+
+/** One Presentation's bounded plain text; `null` input is the explicit no-text state. */
+function readPresentationText(
+	reader: ShapeReader,
+	input: unknown,
+	path: string
+): ExperiencePresentationText | null {
+	const record = reader.object(input, path, PRESENTATION_TEXT_KEYS);
+	if (record === null) return null;
+	const kind = reader.tag(record.kind, `${path}.kind`, EXPERIENCE_TEXT_KINDS);
+	const body = reader.string(record.body, `${path}.body`);
+	if (kind === null || body === null) return null;
+	const length = [...body].length;
+	if (length > EXPERIENCE_TEXT_MAX_LENGTH) {
+		reader.problem(
+			`${path}.body`,
+			'text-too-long',
+			`${path}.body carries ${length} code points; Presentation text is bounded at ${EXPERIENCE_TEXT_MAX_LENGTH}`
+		);
+		return null;
+	}
+	return { kind: 'plain', body };
 }
 
 function readExperience(reader: ShapeReader, input: unknown, path: string): Experience | null {
@@ -440,9 +490,76 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 		if (value === null) return null;
 		const presentationId = reader.opaqueId(value.id, `${entryPath}.id`);
 		const presentationLabel = reader.string(value.label, `${entryPath}.label`);
-		const viewId = reader.opaqueId(value.viewId, `${entryPath}.viewId`);
-		if (presentationId === null || presentationLabel === null || viewId === null) return null;
-		return { id: presentationId, label: presentationLabel, viewId } satisfies ExperiencePresentation;
+		const viewIds = reader.opaqueIdArray(value.viewIds, `${entryPath}.viewIds`);
+		const defaultViewId =
+			value.defaultViewId === null
+				? null
+				: reader.opaqueId(value.defaultViewId, `${entryPath}.defaultViewId`);
+		const text = value.text === null ? null : readPresentationText(reader, value.text, `${entryPath}.text`);
+		let subject: ExperiencePresentation['subject'] = null;
+		if (value.subject !== null) {
+			const read = validateSemanticReference(value.subject);
+			if (!read.success) {
+				for (const issue of read.issues) {
+					reader.problem(`${entryPath}.subject${issue.path.slice(1)}`, issue.code, issue.message);
+				}
+				return null;
+			}
+			if (read.value.componentId !== null) {
+				reader.problem(
+					`${entryPath}.subject.componentId`,
+					'component-not-admitted',
+					'a Presentation subject names a whole subject; a component-scoped reference is not admitted'
+				);
+				return null;
+			}
+			if (read.value.capabilityId !== null) {
+				reader.problem(
+					`${entryPath}.subject.capabilityId`,
+					'component-not-admitted',
+					'a Presentation subject names a whole subject; a capability-scoped reference is not admitted'
+				);
+				return null;
+			}
+			if (read.value.domain !== 'scene' && read.value.domain !== 'layout') {
+				reader.problem(
+					`${entryPath}.subject.domain`,
+					'unsupported-subject-domain',
+					`a Presentation subject resolves to a Scene entity or a Layout element; "${read.value.domain}" is neither`
+				);
+				return null;
+			}
+			subject = read.value;
+		}
+		if (
+			presentationId === null ||
+			presentationLabel === null ||
+			viewIds === null ||
+			(value.defaultViewId !== null && defaultViewId === null) ||
+			(value.text !== null && text === null)
+		) {
+			return null;
+		}
+		if (new Set(viewIds).size !== viewIds.length) {
+			reader.problem(`${entryPath}.viewIds`, 'duplicate-identity', `${entryPath}.viewIds names a View twice`);
+			return null;
+		}
+		if (defaultViewId !== null && !viewIds.includes(defaultViewId)) {
+			reader.problem(
+				`${entryPath}.defaultViewId`,
+				'default-not-in-views',
+				`${entryPath}.defaultViewId "${defaultViewId}" is not one of this Presentation's views`
+			);
+			return null;
+		}
+		return {
+			id: presentationId,
+			label: presentationLabel,
+			viewIds,
+			defaultViewId,
+			subject,
+			text
+		} satisfies ExperiencePresentation;
 	});
 
 	const stops = readCollection(reader, record.stops, `${path}.stops`, (entry, entryPath) => {
@@ -450,13 +567,19 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 		if (value === null) return null;
 		const stopId = reader.opaqueId(value.id, `${entryPath}.id`);
 		const presentationId = reader.opaqueId(value.presentationId, `${entryPath}.presentationId`);
+		const entryViewId =
+			value.entryViewId === undefined
+				? undefined
+				: reader.opaqueId(value.entryViewId, `${entryPath}.entryViewId`);
 		const hold = value.holdSeconds === undefined ? undefined : reader.numberAtLeast(value.holdSeconds, `${entryPath}.holdSeconds`, 0, false);
 		const continuation = readContinuation(reader, value.continuation, `${entryPath}.continuation`);
 		if (stopId === null || presentationId === null || continuation === null) return null;
 		if (value.holdSeconds !== undefined && hold === null) return null;
+		if (value.entryViewId !== undefined && entryViewId === null) return null;
 		return {
 			id: stopId,
 			presentationId,
+			...(entryViewId === null || entryViewId === undefined ? {} : { entryViewId }),
 			...(hold === null || hold === undefined ? {} : { holdSeconds: hold }),
 			continuation
 		} satisfies ExperienceStop;
@@ -519,6 +642,25 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 	) {
 		return null;
 	}
+	// A Stop's entry View is one of its Presentation's views. It is checked after
+	// both collections are read, so a Stop is never rejected for a Presentation
+	// the same reader is about to report as invalid.
+	if (presentations !== null && stops !== null) {
+		const viewsByPresentation = new Map(presentations.map((entry) => [entry.id, new Set(entry.viewIds)]));
+		for (const [position, stop] of stops.entries()) {
+			if (stop.entryViewId === undefined) continue;
+			const views = viewsByPresentation.get(stop.presentationId);
+			if (views !== undefined && !views.has(stop.entryViewId)) {
+				reader.problem(
+					`${path}.stops[${position}].entryViewId`,
+					'entry-view-not-in-presentation',
+					`Stop "${stop.id}" enters at View "${stop.entryViewId}", which its Presentation does not carry`
+				);
+				return null;
+			}
+		}
+	}
+
 	const duplicate = firstDuplicate([
 		presentations.map((item) => item.id),
 		stops.map((item) => item.id),
@@ -575,10 +717,13 @@ function readCollection<T>(
 }
 
 /**
- * Strict read of the Experience 1 payload. The payload is a collection because
+ * Strict read of the Experience 2 payload. The payload is a collection because
  * several Experiences share one world; an empty collection is explicit. Stop,
  * Presentation and Guide identity are independent: repeated visits create fresh
  * runs of a Stop, and repeated guided placements use distinct Stop IDs.
+ *
+ * Format 2 is a pre-baseline cutover, not a migration: a format-1 payload is
+ * refused as an unsupported version, never negotiated or upgraded in place.
  */
 export function validateExperiencePayload(input: unknown): ShapeValidation<ExperienceUnitPayload> {
 	const reader = new ShapeReader();
@@ -610,17 +755,35 @@ export function validateExperiencePayload(input: unknown): ShapeValidation<Exper
 	};
 }
 
-const RESOURCE_KEYS = ['kind', 'id', 'contentRevision', 'pin', 'unresolved'] as const;
+const RESOURCE_KEYS = ['kind', 'id', 'contentRevision', 'pin', 'unresolved', 'model'] as const;
 const RESOURCE_PAYLOAD_KEYS = ['formatVersion', 'resources'] as const;
+const MODEL_KEYS = ['source', 'recipe', 'reportDigest', 'placement'] as const;
+const MODEL_SOURCE_KEYS = ['manifestHash', 'size', 'fileCount'] as const;
+const MODEL_RECIPE_KEYS = ['id', 'version'] as const;
+const MODEL_PLACEMENT_KEYS = [
+	'metresPerSourceUnit',
+	'pivot',
+	'footprint',
+	'contactMinY',
+	'placement'
+] as const;
+const MODEL_FOOTPRINT_KEYS = ['width', 'depth'] as const;
+const SHA256_PATTERN = /^sha256-[0-9a-f]{64}$/;
 
 /**
- * Strict read of the typed-resource payload.
+ * Strict read of the typed-resource payload (format 2).
  *
  * A resource is either resolved — an exact content revision, and for external
  * bytes a real pin — or it carries the typed diagnostic that says what is
  * missing. A resource with neither is rejected: admission never fabricates a pin,
  * and an empty registry is valid only when nothing requires a resource (which the
  * envelope reader checks against the lock).
+ *
+ * A `model` resource is the creator-import kind: its derivative bytes are its
+ * `pin` (content revision is that pin's hash), and the retained source pin, the
+ * recipe, the report digest and the placement definition are required. It is
+ * always an approved, immutable revision, so an unresolved model is a
+defect rather than a repairable binding.
  */
 export function validateResourcePayload(input: unknown): ShapeValidation<ResourceUnitPayload> {
 	const reader = new ShapeReader();
@@ -653,15 +816,53 @@ export function validateResourcePayload(input: unknown): ShapeValidation<Resourc
 			}
 			unresolved = binding.value;
 		}
+		if (value.model === null) {
+			reader.problem(`${path}.model`, 'invalid-type', `${path}.model must be a model detail object when present, not null`);
+			return failed(reader);
+		}
+		const model = value.model === undefined ? undefined : readModelDetail(reader, value.model, `${path}.model`);
 		if (kind === null || id === null || (value.pin !== null && pin === null)) return failed(reader);
+		if (value.model !== undefined && model === undefined) return failed(reader);
 		if (contentRevision === null && pin === null && unresolved === null) {
 			reader.problem(path, 'unresolved-resource-without-diagnostic', `${path} is neither pinned nor revised and carries no diagnostic`);
+			return failed(reader);
+		}
+		if (kind === 'model') {
+			if (model === undefined) {
+				reader.problem(`${path}.model`, 'missing-model-detail', `${path} is a model resource and must carry its retained source, recipe, report digest and placement`);
+				return failed(reader);
+			}
+			if (pin === null || unresolved !== null) {
+				reader.problem(`${path}.pin`, 'unapproved-model-resource', `${path} is a model resource and must be an approved revision with a derivative pin`);
+				return failed(reader);
+			}
+			if (pin.mime !== MODEL_RESOURCE_MIME) {
+				reader.problem(`${path}.pin.mime`, 'unsupported-media-type', `${path}.pin.mime must be ${MODEL_RESOURCE_MIME}`);
+				return failed(reader);
+			}
+			if (pin.size > MODEL_DERIVATIVE_MAX_BYTES) {
+				reader.problem(`${path}.pin.size`, 'out-of-range', `${path}.pin.size must not exceed ${MODEL_DERIVATIVE_MAX_BYTES} bytes`);
+				return failed(reader);
+			}
+			if (contentRevision === null || contentRevision !== pin.hash) {
+				reader.problem(`${path}.contentRevision`, 'content-revision-mismatch', `${path}.contentRevision must be the derivative pin's own hash`);
+				return failed(reader);
+			}
+		} else if (model !== undefined) {
+			reader.problem(`${path}.model`, 'unknown-key', `${path}.model is only part of a model resource`);
 			return failed(reader);
 		}
 		const key = `${kind}:${id}`;
 		if (ids.has(key)) reader.problem(`${path}.id`, 'duplicate-identity', `resource "${key}" is declared twice`);
 		ids.add(key);
-		resources.push({ kind: kind as TypedResource['kind'], id, contentRevision, pin, unresolved });
+		resources.push({
+			kind: kind as TypedResource['kind'],
+			id,
+			contentRevision,
+			pin,
+			unresolved,
+			...(model === undefined ? {} : { model })
+		});
 	}
 	if (reader.issues.length > 0) return failed(reader);
 	return {
@@ -669,6 +870,83 @@ export function validateResourcePayload(input: unknown): ShapeValidation<Resourc
 		value: { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources },
 		ignoredOptionalExtensions: []
 	};
+}
+
+/** Strict read of the retained model provenance and placement definition. */
+function readModelDetail(reader: ShapeReader, input: unknown, path: string): ModelResourceDetail | undefined {
+	const record = reader.object(input, path, MODEL_KEYS);
+	if (record === null) return undefined;
+
+	const sourceRecord = reader.object(record.source, `${path}.source`, MODEL_SOURCE_KEYS);
+	if (sourceRecord === null) return undefined;
+	const manifestHash = readModelHash(reader, sourceRecord.manifestHash, `${path}.source.manifestHash`);
+	const size = reader.integerAtLeast(sourceRecord.size, `${path}.source.size`, 1);
+	const fileCount = reader.integerAtLeast(sourceRecord.fileCount, `${path}.source.fileCount`, 1);
+	if (size !== null && size > MODEL_SOURCE_SET_MAX_BYTES) {
+		reader.problem(`${path}.source.size`, 'out-of-range', `${path}.source.size must not exceed ${MODEL_SOURCE_SET_MAX_BYTES} bytes`);
+		return undefined;
+	}
+
+	const recipeRecord = reader.object(record.recipe, `${path}.recipe`, MODEL_RECIPE_KEYS);
+	if (recipeRecord === null) return undefined;
+	const recipeId = reader.string(recipeRecord.id, `${path}.recipe.id`);
+	const recipeVersion = reader.integerAtLeast(recipeRecord.version, `${path}.recipe.version`, 1);
+	const reportDigest = readModelHash(reader, record.reportDigest, `${path}.reportDigest`);
+
+	const placementRecord = reader.object(record.placement, `${path}.placement`, MODEL_PLACEMENT_KEYS);
+	if (placementRecord === null) return undefined;
+	const metresPerSourceUnit = reader.number(placementRecord.metresPerSourceUnit, `${path}.placement.metresPerSourceUnit`);
+	if (metresPerSourceUnit !== null && metresPerSourceUnit <= 0) {
+		reader.problem(`${path}.placement.metresPerSourceUnit`, 'out-of-range', `${path}.placement.metresPerSourceUnit must be greater than zero`);
+		return undefined;
+	}
+	const pivot = reader.vector3(placementRecord.pivot, `${path}.placement.pivot`);
+	const footprintRecord = reader.object(placementRecord.footprint, `${path}.placement.footprint`, MODEL_FOOTPRINT_KEYS);
+	if (footprintRecord === null) return undefined;
+	const width = reader.number(footprintRecord.width, `${path}.placement.footprint.width`);
+	const depth = reader.number(footprintRecord.depth, `${path}.placement.footprint.depth`);
+	if ((width !== null && width <= 0) || (depth !== null && depth <= 0)) {
+		reader.problem(`${path}.placement.footprint`, 'out-of-range', `${path}.placement.footprint width and depth must be greater than zero`);
+		return undefined;
+	}
+	const contactMinY = reader.number(placementRecord.contactMinY, `${path}.placement.contactMinY`);
+	const placement = reader.tag(placementRecord.placement, `${path}.placement.placement`, ['floor'] as const);
+	if (
+		manifestHash === null ||
+		size === null ||
+		fileCount === null ||
+		recipeId === null ||
+		recipeVersion === null ||
+		reportDigest === null ||
+		metresPerSourceUnit === null ||
+		pivot === null ||
+		width === null ||
+		depth === null ||
+		contactMinY === null ||
+		placement === null
+	) {
+		return undefined;
+	}
+	return {
+		source: { manifestHash, size, fileCount },
+		recipe: { id: recipeId, version: recipeVersion },
+		reportDigest,
+		placement: {
+			metresPerSourceUnit,
+			pivot,
+			footprint: { width, depth },
+			contactMinY,
+			placement: placement as 'floor'
+		}
+	};
+}
+
+function readModelHash(reader: ShapeReader, value: unknown, path: string): string | null {
+	if (typeof value !== 'string' || !SHA256_PATTERN.test(value)) {
+		reader.problem(path, 'invalid-identity', `${path} must be a sha256 digest`);
+		return null;
+	}
+	return value;
 }
 
 type PayloadReader = (input: unknown) => ShapeValidation<UnitPayload>;
@@ -824,29 +1102,126 @@ function envelopeFindings(
 	const diagnostics: EnvelopeDiagnostic[] = [];
 	const closure: EnvelopeClosureFinding[] = [];
 	const views = new Set(units.camera.data.views.map((view) => view.id));
+	const connections = units.camera.data.connections.map((connection) => ({
+		from: connection.fromNodeId,
+		to: connection.toNodeId
+	}));
+	const supportedTravel = (fromViewId: string | null, toViewId: string | null): boolean =>
+		fromViewId !== null &&
+		toViewId !== null &&
+		connections.some(
+			(connection) =>
+				(connection.from === fromViewId && connection.to === toViewId) ||
+				(connection.from === toViewId && connection.to === fromViewId)
+		);
+	const sceneEntities = new Set(units.scene.data.entities.map((entity) => entity.id));
 
 	units.experience.data.experiences.forEach((experience, index) => {
 		const path = `$.units.experience.data.experiences[${index}]`;
+		const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
 		for (const [position, presentation] of experience.presentations.entries()) {
-			if (!views.has(presentation.viewId)) {
-				diagnostics.push({
-					path: `${path}.presentations[${position}].viewId`,
-					code: 'unresolved-view',
-					message: `presentation "${presentation.id}" names camera view "${presentation.viewId}", which this envelope does not carry`
-				});
+			for (const [viewPosition, viewId] of presentation.viewIds.entries()) {
+				if (!views.has(viewId)) {
+					diagnostics.push({
+						path: `${path}.presentations[${position}].viewIds[${viewPosition}]`,
+						code: 'unresolved-view',
+						message: `presentation "${presentation.id}" names camera view "${viewId}", which this envelope does not carry`
+					});
+				}
+			}
+			if (presentation.subject !== null) {
+				const subject = presentation.subject.subject;
+				if (presentation.subject.domain === 'scene') {
+					if (subject.kind !== 'entity') {
+						diagnostics.push({
+							path: `${path}.presentations[${position}].subject`,
+							code: 'unresolved-subject',
+							message: `presentation "${presentation.id}" names a scene subject of kind "${subject.kind}"; Preview resolves scene entities only`
+						});
+					} else if (!sceneEntities.has(subject.id)) {
+						diagnostics.push({
+							path: `${path}.presentations[${position}].subject`,
+							code: 'unresolved-subject',
+							message: `presentation "${presentation.id}" names scene entity "${subject.id}", which this envelope does not carry`
+						});
+					}
+				} else {
+					// A Layout-element subject is admitted by the format, but Preview does
+					// not resolve it yet: disclose that it stays authored rather than
+					// implying the run presents it.
+					diagnostics.push({
+						path: `${path}.presentations[${position}].subject`,
+						code: 'unresolved-subject',
+						message: `presentation "${presentation.id}" names layout "${subject.kind}" subject "${subject.id}", which Preview does not resolve yet`
+					});
+				}
 			}
 		}
-		const presentations = new Set(experience.presentations.map((presentation) => presentation.id));
+		const presentationIds = new Set(experience.presentations.map((presentation) => presentation.id));
 		const stops = new Set(experience.stops.map((stop) => stop.id));
+		/** The View a Stop occurrence enters at: its entry View or the Default. */
+		const entryViewOf = (stop: ExperienceStop): string | null => {
+			const presentation = presentationById.get(stop.presentationId);
+			return stop.entryViewId ?? presentation?.defaultViewId ?? null;
+		};
+		/**
+		 * The Stops that follow `stop` under `sequence-next`. Lowering resolves that
+		 * edge through the Guide orders it was asked to lower, and `guide-order`
+		 * rewrites a Guide without rewriting this array, so adjacency follows the
+		 * authored Guide order here too.
+		 *
+		 * There is no array-order fallback: a Stop no Guide orders is not part of any
+		 * lowered program, and an Experience with Stops but no Guide is refused by
+		 * lowering before its edges are traversed.
+		 */
+		const adjacentTargets = (stop: ExperienceStop): (ExperienceStop | undefined)[] => {
+			const successors = experience.guides.flatMap((guide) => {
+				const index = guide.stopIds.indexOf(stop.id);
+				// The last Stop of a Guide has none: its `sequence-next` edge ends the run.
+				return index >= 0 && index + 1 < guide.stopIds.length ? [guide.stopIds[index + 1]!] : [];
+			});
+			return successors.map((id) => experience.stops.find((candidate) => candidate.id === id));
+		};
 		for (const [position, stop] of experience.stops.entries()) {
-			if (!presentations.has(stop.presentationId)) {
+			if (!presentationIds.has(stop.presentationId)) {
 				diagnostics.push({
 					path: `${path}.stops[${position}].presentationId`,
 					code: 'unresolved-presentation',
 					message: `stop "${stop.id}" names presentation "${stop.presentationId}", which this Experience does not carry`
 				});
 			}
+			if (stop.entryViewId !== undefined && !views.has(stop.entryViewId)) {
+				diagnostics.push({
+					path: `${path}.stops[${position}].entryViewId`,
+					code: 'unresolved-view',
+					message: `stop "${stop.id}" enters at camera view "${stop.entryViewId}", which this envelope does not carry`
+				});
+			}
 			const continuation = stop.continuation;
+			if (
+				continuation !== undefined &&
+				continuation.kind !== 'end' &&
+				continuation.transition === 'travel'
+			) {
+				// Experience never infers a Cut and never searches the Camera graph: an
+				// unsupported Travel stays authored and is reported as a gap. Adjacency
+				// follows the Guide orders lowering reads, not this array's order.
+				const targets = continuation.kind === 'stop'
+					? [experience.stops.find((candidate) => candidate.id === continuation.stopId)]
+					: adjacentTargets(stop);
+				const reported = new Set<string>();
+				for (const target of targets) {
+					if (target === undefined || reported.has(target.id)) continue;
+					reported.add(target.id);
+					if (!supportedTravel(entryViewOf(stop), entryViewOf(target))) {
+						diagnostics.push({
+							path: `${path}.stops[${position}].continuation.transition`,
+							code: 'travel-gap',
+							message: `the Travel from stop "${stop.id}" has no Camera connection to the View of stop "${target.id}"`
+						});
+					}
+				}
+			}
 			if (continuation !== undefined && continuation.kind === 'stop' && !stops.has(continuation.stopId)) {
 				diagnostics.push({
 					path: `${path}.stops[${position}].continuation.stopId`,
@@ -867,7 +1242,7 @@ function envelopeFindings(
 			}
 		}
 		for (const [position, gate] of experience.gates.entries()) {
-			if (!presentations.has(gate.presentationId)) {
+			if (!presentationIds.has(gate.presentationId)) {
 				diagnostics.push({
 					path: `${path}.gates[${position}].presentationId`,
 					code: 'unresolved-presentation',
@@ -899,9 +1274,18 @@ function envelopeFindings(
 			code: resource.unresolved.status, message: resource.unresolved.message
 		});
 	}
+	const modelResourceIds = new Set(resources.filter((resource) => resource.kind === 'model').map((resource) => resource.id));
+	// A Scene model names either a catalogue asset or a `model` resource of this
+	// envelope. The envelope cannot know the host's catalogue, so a catalogue id
+	// keeps the landed asset requirement while a `model` resource id is satisfied
+	// by that entry instead — one id space, resolved against the registry.
 	const requiredResources = [
 		...units.scene.data.textures.map((texture) => ({ kind: 'texture', id: texture.id })),
-		...units.scene.data.entities.filter((entity) => entity.kind === 'model').map((entity) => ({ kind: 'asset', id: entity.assetId }))
+		...units.scene.data.entities
+			.filter((entity) => entity.kind === 'model')
+			.map((entity) => (modelResourceIds.has(entity.assetId)
+				? { kind: 'model', id: entity.assetId }
+				: { kind: 'asset', id: entity.assetId }))
 	];
 	for (const required of requiredResources) {
 		const resource = resources.find((candidate) => candidate.kind === required.kind && candidate.id === required.id);
@@ -909,6 +1293,28 @@ function envelopeFindings(
 			path: '$.units.resources.data.resources', code: resource === undefined ? 'missing-resource' : 'unresolved-resource',
 			message: `Scene requires ${required.kind} "${required.id}" with resolved bytes`
 		});
+	}
+
+	// A creator model is an approved external revision: the envelope must pin the
+	// exact revision it was authored against. The resource entry alone is not a
+	// binding, so a `model` resource without its lock entry is an executable
+	// closure failure (a lock without its resource is reported below).
+	for (const resource of resources) {
+		if (resource.kind !== 'model') continue;
+		const pinned = lock.entries.some(
+			(entry) =>
+				entry.domain === 'resource:model' &&
+				entry.subjectKind === 'resource' &&
+				entry.subjectId === resource.id &&
+				entry.instancePath.length === 0
+		);
+		if (!pinned) {
+			closure.push({
+				path: '$.dependencyLock.entries',
+				code: 'missing-lock',
+				message: `model resource "${resource.id}" is not pinned by a dependency-lock entry`
+			});
+		}
 	}
 
 	// Executable closure: every lock entry whose scope is a resource must be

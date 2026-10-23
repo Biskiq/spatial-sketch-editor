@@ -35,6 +35,7 @@ import {
 	type AcceptanceCoordinator,
 	type HistoryOutcome
 } from '$lib/authoring/f4';
+import { perfResult } from '$lib/platform/perf-marks';
 import { admitSource, type StageReadSnapshot } from './source-admission';
 import type { StageContentInstall, StageFacade } from './stage-facade';
 import { requalifySelectionEntry, requalifySelection } from './selection-requalification';
@@ -275,6 +276,10 @@ export function createStageAcceptanceHost(options: {
 			// and only the caller knows which committed step must be reversed.
 			return { kind: 'refused', code: installed.code, message: installed.message };
 		}
+		// T3.P03.S02: the accepted revision is installed into the Stage here. The
+		// performance harness pairs this with the frame that presents it; the input
+		// sequence is the drag sample that produced the commit.
+		perfResult('accepted-result', { sourceContentId: installed.sourceContentId });
 		const after = facade.selectionState();
 		const primaryLost =
 			beforePrimary !== null && !after.ordered.some((entry) => sameSubject(entry.reference, beforePrimary));

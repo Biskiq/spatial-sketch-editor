@@ -492,7 +492,6 @@ function unitLayout(): LayoutUnitPayload {
 			id: 'wall-1',
 			startJunctionId: 'junction-1',
 			endJunctionId: 'junction-2',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' },
@@ -503,7 +502,6 @@ function unitLayout(): LayoutUnitPayload {
 			id: 'wall-2',
 			startJunctionId: 'junction-2',
 			endJunctionId: 'junction-3',
-			role: 'partition',
 			thickness: 0.1,
 			height: 3,
 			centerline: { kind: 'line' },
@@ -570,13 +568,22 @@ const DOCUMENT = await createUnitProject({
 		]
 	},
 	experience: {
-		formatVersion: 1,
+		formatVersion: 2,
 		experiences: [
 			{
 				id: 'experience-1',
 				label: 'Walk',
 				entryGuideId: 'guide-1',
-				presentations: [{ id: 'presentation-1', label: 'Entry', viewId: 'node-1' }],
+				presentations: [
+					{
+						id: 'presentation-1',
+						label: 'Entry',
+						viewIds: ['node-1'],
+						defaultViewId: 'node-1',
+						subject: null,
+						text: null
+					}
+				],
 				stops: [{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'end' } }],
 				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
 				gates: [],

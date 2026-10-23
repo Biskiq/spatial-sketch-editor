@@ -43,10 +43,10 @@ export function buildWildRoomFixture(): LayoutDocumentWallFirst {
 			{ id: 'j-3', point: [0, 10] as LayoutVec2 }
 		],
 		walls: [
-			{ id: 'w-south', startJunctionId: 'j-0', endJunctionId: 'j-1', role: 'boundary', thickness: 0.2, height: 3, centerline: curve([0, 0], [12, 0], [6, -0.35], 'w-south:knot:1') },
-			{ id: 'w-east', startJunctionId: 'j-1', endJunctionId: 'j-2', role: 'boundary', thickness: 0.2, height: 3, centerline: multiKnot([12, 0], [12.35, 3], [11.65, 7], [12, 10], 'w-east') },
-			{ id: 'w-north', startJunctionId: 'j-2', endJunctionId: 'j-3', role: 'boundary', thickness: 0.2, height: 3, centerline: curve([12, 10], [0, 10], [6, 11.5], 'w-north:knot:1') },
-			{ id: 'w-west', startJunctionId: 'j-3', endJunctionId: 'j-0', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			{ id: 'w-south', startJunctionId: 'j-0', endJunctionId: 'j-1', thickness: 0.2, height: 3, centerline: curve([0, 0], [12, 0], [6, -0.35], 'w-south:knot:1') },
+			{ id: 'w-east', startJunctionId: 'j-1', endJunctionId: 'j-2', thickness: 0.2, height: 3, centerline: multiKnot([12, 0], [12.35, 3], [11.65, 7], [12, 10], 'w-east') },
+			{ id: 'w-north', startJunctionId: 'j-2', endJunctionId: 'j-3', thickness: 0.2, height: 3, centerline: curve([12, 10], [0, 10], [6, 11.5], 'w-north:knot:1') },
+			{ id: 'w-west', startJunctionId: 'j-3', endJunctionId: 'j-0', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 		],
 		rooms: [
 			{
@@ -80,9 +80,9 @@ export function buildWildSharedFixture(): LayoutDocumentWallFirst {
 		],
 		walls: [
 			...base.walls,
-			{ id: 'w-south-2', startJunctionId: 'j-1', endJunctionId: 'j-4', role: 'boundary', thickness: 0.2, height: 3, centerline: curve([12, 0], [24, 0], [18, -0.3], 'w-south-2:knot:1') },
-			{ id: 'w-east-2', startJunctionId: 'j-4', endJunctionId: 'j-5', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w-north-2', startJunctionId: 'j-5', endJunctionId: 'j-2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			{ id: 'w-south-2', startJunctionId: 'j-1', endJunctionId: 'j-4', thickness: 0.2, height: 3, centerline: curve([12, 0], [24, 0], [18, -0.3], 'w-south-2:knot:1') },
+			{ id: 'w-east-2', startJunctionId: 'j-4', endJunctionId: 'j-5', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'w-north-2', startJunctionId: 'j-5', endJunctionId: 'j-2', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 		],
 		rooms: [
 			base.rooms[0]!,

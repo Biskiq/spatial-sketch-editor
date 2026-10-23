@@ -99,6 +99,13 @@ import {
 	type LayoutWallCurveKnot,
 	type LayoutWallFirstRoom
 } from '@portfolio/layout-core';
+import { captureFor, capturedId } from './__fixtures__/layout-id-capture';
+
+/** One deterministic capture for this reference file's simulated operations. */
+const REFERENCE_CAPTURE = captureFor('p23b3a-reference');
+/** The captured id a clone seed derives in this file. */
+const copyId = (seed: string): string => capturedId(REFERENCE_CAPTURE, seed);
+
 // PR #115 removed the editor preview state. Ingestion is the codec alone now:
 // the assertions below round-trip through `serializeWallFirstLayoutDocument`
 // and the codec's own validator instead of the deleted preview importer.
@@ -113,7 +120,6 @@ type SeededWall = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
 	centerline?: LayoutWallCenterline;
 };
 
@@ -134,7 +140,6 @@ function documentOf(options: {
 				id: seed.id,
 				startJunctionId: seed.start,
 				endJunctionId: seed.end,
-				role: seed.role ?? 'boundary',
 				thickness: 0.2,
 				height: 3,
 				centerline: seed.centerline ?? LINE
@@ -196,7 +201,7 @@ function isolatedRoomDocument(): LayoutDocumentWallFirst {
 			{ id: 'wall-b', start: 'j-b', end: 'j-c' },
 			{ id: 'wall-c', start: 'j-c', end: 'j-d' },
 			{ id: 'wall-d', start: 'j-d', end: 'j-a' },
-			{ id: 'wall-rl', start: 'j-x', end: 'j-y', role: 'partition' }
+			{ id: 'wall-rl', start: 'j-x', end: 'j-y' }
 		]
 	});
 	return { ...base, rooms: [roomFromFace('room-1', 'Alone', faceOwningWall(base, 'wall-a1'))] };
@@ -283,14 +288,12 @@ function twoCrossingCurvedWallsDocument(): LayoutDocumentWallFirst {
 				id: 'wall-up',
 				start: 'j-up-a',
 				end: 'j-up-b',
-				role: 'partition',
 				centerline: curved([0, 0], [10, 0], [[5, 3.6]], 'wall-up')
 			},
 			{
 				id: 'wall-down',
 				start: 'j-dn-a',
 				end: 'j-dn-b',
-				role: 'partition',
 				centerline: curved([0, 6], [10, 6], [[5, 2.6]], 'wall-down')
 			}
 		]
@@ -307,8 +310,8 @@ function collinearIndependentWallsDocument(): LayoutDocumentWallFirst {
 			['j-r-b', 9, 0]
 		],
 		walls: [
-			{ id: 'wall-left', start: 'j-l-a', end: 'j-l-b', role: 'partition' },
-			{ id: 'wall-right', start: 'j-r-a', end: 'j-r-b', role: 'partition' }
+			{ id: 'wall-left', start: 'j-l-a', end: 'j-l-b' },
+			{ id: 'wall-right', start: 'j-r-a', end: 'j-r-b' }
 		]
 	});
 }
@@ -330,8 +333,8 @@ function sameComponentOverlapDocument(): LayoutDocumentWallFirst {
 			['j-c', 3, 0]
 		],
 		walls: [
-			{ id: 'wall-long', start: 'j-a', end: 'j-b', role: 'partition' },
-			{ id: 'wall-short', start: 'j-c', end: 'j-b', role: 'partition' }
+			{ id: 'wall-long', start: 'j-a', end: 'j-b' },
+			{ id: 'wall-short', start: 'j-c', end: 'j-b' }
 		]
 	});
 }
@@ -352,12 +355,11 @@ function sameComponentCurveCrossingDocument(): LayoutDocumentWallFirst {
 			['j-b', 6, 4]
 		],
 		walls: [
-			{ id: 'wall-straight', start: 'j-a', end: 'j-m', role: 'partition' },
+			{ id: 'wall-straight', start: 'j-a', end: 'j-m' },
 			{
 				id: 'wall-curved',
 				start: 'j-m',
 				end: 'j-b',
-				role: 'partition',
 				centerline: curved([6, 0], [6, 4], [[1, -2]], 'wall-curved')
 			}
 		]
@@ -389,7 +391,6 @@ function curvedBowAndRoomDocument(): LayoutDocumentWallFirst {
 				id: 'wall-bow',
 				start: 'j-bow-a',
 				end: 'j-bow-b',
-				role: 'partition',
 				centerline: curved([10, 8], [18, 8], [[14, 2.5]], 'wall-bow')
 			}
 		]
@@ -422,12 +423,11 @@ function isolatedRoomWithCurveCrossingDocument(): LayoutDocumentWallFirst {
 			{ id: 'wall-b', start: 'j-b', end: 'j-c' },
 			{ id: 'wall-c', start: 'j-c', end: 'j-d' },
 			{ id: 'wall-d', start: 'j-d', end: 'j-a' },
-			{ id: 'wall-straight', start: 'j-s', end: 'j-m', role: 'partition' },
+			{ id: 'wall-straight', start: 'j-s', end: 'j-m' },
 			{
 				id: 'wall-curved',
 				start: 'j-m',
 				end: 'j-t',
-				role: 'partition',
 				centerline: curved([40, 0], [40, 4], [[35, -2]], 'wall-curved')
 			}
 		]
@@ -451,7 +451,6 @@ function stubAttachedRoomDocument(): LayoutDocumentWallFirst {
 				id: 'wall-stub',
 				startJunctionId: 'j-c',
 				endJunctionId: 'j-c-out',
-				role: 'partition',
 				thickness: 0.2,
 				height: 3,
 				centerline: LINE
@@ -515,22 +514,21 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		};
 		const snapshot = JSON.stringify(sourceDocument);
 		const plan = success(
-			planDuplicateIsolatedRoom(sourceDocument, { roomId: 'room-1', delta: [0, 0] })
+			planDuplicateIsolatedRoom(sourceDocument, { roomId: 'room-1', delta: [0, 0] }, REFERENCE_CAPTURE, sourceDocument.floor.id)
 		);
 		const cloneRoomId = plan.createdRoomId;
-		expect(cloneRoomId).toBe('room-1-copy');
+		expect(cloneRoomId).toBe(copyId('room-1-copy'));
 		if (cloneRoomId === undefined) throw new Error('duplicate did not allocate a clone Room id');
-		expect(plan.createdJunctionIds).toEqual(['j-a-copy', 'j-b-copy', 'j-c-copy', 'j-d-copy']);
-		expect(plan.createdWallIds).toEqual([
-			'wall-a1-copy',
-			'wall-b-copy',
-			'wall-c-copy',
-			'wall-d-copy'
-		]);
-		expect(plan.createdOpeningIds).toEqual(['opening-source-copy']);
-		expect(plan.createdObjectIds).toEqual(['obj-1-copy']);
+		expect(plan.createdJunctionIds).toEqual(
+			['j-a-copy', 'j-b-copy', 'j-c-copy', 'j-d-copy'].map(copyId)
+		);
+		expect(plan.createdWallIds).toEqual(
+			['wall-a1-copy', 'wall-b-copy', 'wall-c-copy', 'wall-d-copy'].map(copyId)
+		);
+		expect(plan.createdOpeningIds).toEqual([copyId('opening-source-copy')]);
+		expect(plan.createdObjectIds).toEqual([copyId('obj-1-copy')]);
 		const repeatedPlan = success(
-			planDuplicateIsolatedRoom(sourceDocument, { roomId: 'room-1', delta: [0, 0] })
+			planDuplicateIsolatedRoom(sourceDocument, { roomId: 'room-1', delta: [0, 0] }, REFERENCE_CAPTURE, sourceDocument.floor.id)
 		);
 		expect({
 			roomId: repeatedPlan.createdRoomId,
@@ -623,10 +621,10 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		// planner produced (planner and gate agree), and moving either group leaves every
 		// authored record in the other group unchanged.
 		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
-		const moved = success(planWallFirstRoomMove(plan.document, 'room-1-copy', [30, 0]));
-		expect(moved.movedRoomIds).toEqual(['room-1-copy']);
+		const moved = success(planWallFirstRoomMove(plan.document, copyId('room-1-copy'), [30, 0]));
+		expect(moved.movedRoomIds).toEqual([copyId('room-1-copy')]);
 		expect(groupRecords(moved.document, sourceGroupIds)).toEqual(sourceGroupBefore);
-		expect(moved.document.rooms.map((room) => room.id)).toEqual(['room-1', 'room-1-copy']);
+		expect(moved.document.rooms.map((room) => room.id)).toEqual(['room-1', copyId('room-1-copy')]);
 		for (const cloneWallId of plan.createdWallIds) {
 			for (const sourceWallId of sourceWallIds) {
 				expect(wallsShareTopologyComponent(moved.document, cloneWallId, sourceWallId)).toBe(false);
@@ -640,7 +638,7 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 			0, 20
 		]);
 		expect(
-			movedSource.document.junctions.find((junction) => junction.id === 'j-a-copy')?.point
+			movedSource.document.junctions.find((junction) => junction.id === copyId('j-a-copy'))?.point
 		).toEqual([30, 0]);
 		expect(groupRecords(movedSource.document, cloneGroupIds)).toEqual(cloneGroupAfterCloneMove);
 
@@ -683,7 +681,8 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		const plan = planDuplicateIsolatedRoom(ISOLATED_ROOM_WITH_CURVE_CROSSING, {
 			roomId: 'room-1',
 			delta: [0, 0]
-		});
+		}, REFERENCE_CAPTURE,
+		ISOLATED_ROOM_WITH_CURVE_CROSSING.floor.id);
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
 		expect(plan.rejection.code).toBe('topology_invalid');
@@ -694,7 +693,7 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		// Parity is ONE rule, not a stricter duplicate: the SAME batch over a document
 		// without the crossing is admitted, and the gate agrees with it.
 		const admitted = success(
-			planDuplicateIsolatedRoom(ISOLATED_ROOM, { roomId: 'room-1', delta: [0, 0] })
+			planDuplicateIsolatedRoom(ISOLATED_ROOM, { roomId: 'room-1', delta: [0, 0] }, REFERENCE_CAPTURE, ISOLATED_ROOM.floor.id)
 		);
 		expect(validateWallFirstTopology(admitted.document)).toBeUndefined();
 	});
@@ -726,7 +725,7 @@ describe('P23B.3a S6 — the FLIPPED verdict (F3), asserted where the S1 row was
 				['j-1', 0, 0],
 				['j-2', 4, 0]
 			],
-			walls: [{ id: 'wall-a', start: 'j-1', end: 'j-2', role: 'partition' }]
+			walls: [{ id: 'wall-a', start: 'j-1', end: 'j-2' }]
 		});
 	}
 
@@ -746,7 +745,8 @@ describe('P23B.3a S6 — the FLIPPED verdict (F3), asserted where the S1 row was
 				[4, 4]
 			],
 			close: false,
-			role: 'partition'
+			capture: REFERENCE_CAPTURE,
+			levelId: baseline.floor.id,
 		});
 		const authored = success(plan);
 		const added = authored.document.walls.find((wall) => wall.id !== 'wall-a')!;
@@ -783,8 +783,9 @@ describe('P23B.3a S6 — the FLIPPED verdict (F3), asserted where the S1 row was
 				[4, 4]
 			],
 			close: false,
-			role: 'partition',
-			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'j-2' }]
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'j-2' }],
+			capture: REFERENCE_CAPTURE,
+			levelId: twoIndependentWalls().floor.id
 		});
 		const authored = success(plan);
 		const added = authored.document.walls.find((wall) => wall.id !== 'wall-a')!;
@@ -869,7 +870,7 @@ describe('P23B.3a S4 — the FLIPPED verdicts (F2, F4, F5), asserted where the S
 		// Pre-state validity: the base document is clean under the gate.
 		expect(validateWallFirstTopology(CURVED_BOW_AND_ROOM)).toBeUndefined();
 		const admitted = success(
-			planDuplicateIsolatedRoom(CURVED_BOW_AND_ROOM, { roomId: 'room-1', delta: [10, 0] })
+			planDuplicateIsolatedRoom(CURVED_BOW_AND_ROOM, { roomId: 'room-1', delta: [10, 0] }, REFERENCE_CAPTURE, CURVED_BOW_AND_ROOM.floor.id)
 		);
 		// HALF 1 — PERMANENT: the chord-only batch gate sees nothing, because every
 		// cloned chord is clear of the bow's chord. This admission is not an S7
@@ -880,7 +881,7 @@ describe('P23B.3a S4 — the FLIPPED verdicts (F2, F4, F5), asserted where the S
 		// assertion is retired in this same commit (AM-1).
 		expect(validateWallFirstTopology(admitted.document)).toBeUndefined();
 		// Agreement is not a merge: the clone is its own component, and so is the bow.
-		expect(admitted.createdRoomId).toBe('room-1-copy');
+		expect(admitted.createdRoomId).toBe(copyId('room-1-copy'));
 		for (const wallId of admitted.createdWallIds) {
 			expect(wallsShareTopologyComponent(admitted.document, 'wall-bow', wallId)).toBe(false);
 			expect(wallsShareTopologyComponent(admitted.document, 'wall-a1', wallId)).toBe(false);
@@ -889,7 +890,7 @@ describe('P23B.3a S4 — the FLIPPED verdicts (F2, F4, F5), asserted where the S
 
 	it('R-c → F2 — an UNRELATED edit is no longer refused by the pre-existing crossing it did not cause', () => {
 		const admitted = success(
-			planDuplicateIsolatedRoom(CURVED_BOW_AND_ROOM, { roomId: 'room-1', delta: [10, 0] })
+			planDuplicateIsolatedRoom(CURVED_BOW_AND_ROOM, { roomId: 'room-1', delta: [10, 0] }, REFERENCE_CAPTURE, CURVED_BOW_AND_ROOM.floor.id)
 		);
 		// S1 pinned the F-C1/F-C3 misattribution: the canonical gate refused this edit
 		// and blamed it for the CLONE's pre-existing crossing. S4 removes the
@@ -900,7 +901,7 @@ describe('P23B.3a S4 — the FLIPPED verdicts (F2, F4, F5), asserted where the S
 		// The clone keeps the crossing it was admitted with, and the bow keeps its
 		// identity: the accepted move joined neither group to the other, and it did
 		// not node, split or re-anchor anything it did not operate on.
-		expect(wallsShareTopologyComponent(moved.document, 'wall-bow', 'wall-a1-copy')).toBe(false);
+		expect(wallsShareTopologyComponent(moved.document, 'wall-bow', copyId('wall-a1-copy'))).toBe(false);
 		expect(wallsShareTopologyComponent(moved.document, 'wall-bow', 'wall-a1')).toBe(false);
 		const bowBefore = admitted.document.walls.find((wall) => wall.id === 'wall-bow');
 		const bowAfter = moved.document.walls.find((wall) => wall.id === 'wall-bow');
@@ -925,15 +926,17 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 	});
 
 	it('T7 — an intrinsic failure INSIDE one connected group stays refused', () => {
+		// Format 6 retired the authored role, so the old "Room references a
+		// non-boundary Wall" subject no longer exists. The surviving intrinsic
+		// failure inside one group is a Room boundary that references a Wall the
+		// candidate does not contain: still refused, never repaired.
 		const broken = {
 			...SHARED_WALL_ROOMS,
-			walls: SHARED_WALL_ROOMS.walls.map((wall) =>
-				wall.id === 'wall-e' ? { ...wall, role: 'partition' as const } : wall
-			)
+			walls: SHARED_WALL_ROOMS.walls.filter((wall) => wall.id !== 'wall-e')
 		};
 		const issue = validateWallFirstTopology(broken);
 		expect(issue?.code).toBe('unsupported_wall_topology');
-		expect(issue?.message).toContain('non-boundary');
+		expect(issue?.message).toContain("unknown Wall 'wall-e'");
 	});
 
 	it('T8 (PERMANENT) — a SAME-COMPONENT collinear overlap is refused atomically and keeps being refused', () => {
@@ -958,11 +961,12 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 				[3, 0]
 			],
 			close: false,
-			role: 'partition',
 			endpointJunctionSnaps: [
 				{ pointIndex: 0, junctionId: 'j-a' },
 				{ pointIndex: 1, junctionId: 'j-m' }
-			]
+			],
+			capture: REFERENCE_CAPTURE,
+			levelId: SHARED_WALL_ROOMS.floor.id
 		});
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
@@ -992,7 +996,8 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 				[11, 3]
 			],
 			close: false,
-			role: 'partition'
+			capture: REFERENCE_CAPTURE,
+			levelId: TWO_CROSSING_CURVED_WALLS.floor.id,
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -1083,8 +1088,9 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 				[10, 4]
 			],
 			close: false,
-			role: 'partition',
-			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'j-c' }]
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'j-c' }],
+			capture: REFERENCE_CAPTURE,
+			levelId: SHARED_WALL_ROOMS.floor.id
 		});
 		const authored = success(plan);
 		const baselineWallIds = new Set(SHARED_WALL_ROOMS.walls.map((wall) => wall.id));
@@ -1103,7 +1109,7 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 		// policy and remain atomic.
 		const withStub = stubAttachedRoomDocument();
 		const snapshot = JSON.stringify(withStub);
-		const plan = planDuplicateIsolatedRoom(withStub, { roomId: 'room-1', delta: [10, 0] });
+		const plan = planDuplicateIsolatedRoom(withStub, { roomId: 'room-1', delta: [10, 0] }, REFERENCE_CAPTURE, withStub.floor.id);
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
 		expect(plan.rejection.code).toBe('room_not_isolated');
@@ -1121,15 +1127,15 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 		// is the test above and is unchanged by this flip.
 		const snapshot = JSON.stringify(ISOLATED_ROOM);
 		const plan = success(
-			planDuplicateIsolatedRoom(ISOLATED_ROOM, { roomId: 'room-1', delta: [1, 0] })
+			planDuplicateIsolatedRoom(ISOLATED_ROOM, { roomId: 'room-1', delta: [1, 0] }, REFERENCE_CAPTURE, ISOLATED_ROOM.floor.id)
 		);
-		expect(plan.createdRoomId).toBe('room-1-copy');
+		expect(plan.createdRoomId).toBe(copyId('room-1-copy'));
 		expect(JSON.stringify(ISOLATED_ROOM)).toBe(snapshot);
 	});
 
 	it('R-d — the import path ADMITS an independent-group crossing today AND must keep admitting it (no flip)', () => {
 		const admitted = success(
-			planDuplicateIsolatedRoom(CURVED_BOW_AND_ROOM, { roomId: 'room-1', delta: [10, 0] })
+			planDuplicateIsolatedRoom(CURVED_BOW_AND_ROOM, { roomId: 'room-1', delta: [10, 0] }, REFERENCE_CAPTURE, CURVED_BOW_AND_ROOM.floor.id)
 		);
 		// S7 PARITY, PROVEN BY CONSTRUCTION: the batch gate IS the canonical gate now
 		// (the duplicate path calls `validateWallFirstTopology`), so there is no verdict

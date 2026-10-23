@@ -18,6 +18,8 @@
  * component and the tests drive exactly the same behaviour.
  */
 
+import { perfMark } from '$lib/platform/perf-marks';
+
 import type { ReloadOffer, SaveOutcome, SaveSnapshot, SaveState } from './save-state';
 
 export type HeadSaveCommand =
@@ -187,11 +189,16 @@ export function createHeadSave(
 		},
 		isDirty: () => state.getSnapshot().dirty,
 		async save() {
+			// T3.P03.S02: Save's local feedback, receipt and idle are measured from the
+			// command, the Save status the Head renders and the transport answer. The
+			// mark names the command instant so a click is never inferred from a frame.
+			perfMark('save:submit');
 			return commandOf(await state.save());
 		},
 		async retry() {
 			// `retry()` reuses the retained capture. A sign-in interruption is the one
 			// state where the same command is the documented resume path.
+			perfMark('save:submit', { retry: true });
 			return commandOf(await state.retry());
 		},
 		reloadRemote: () => state.reloadRemote(),

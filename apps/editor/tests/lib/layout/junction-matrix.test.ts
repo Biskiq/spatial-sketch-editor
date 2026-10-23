@@ -35,8 +35,7 @@ type WallSeed = {
 	end: [string, LayoutVec2];
 	thickness?: number;
 	height?: number;
-	role?: 'boundary' | 'partition';
-	opening?: { id: string; offset: number; width: number; height: number };
+		opening?: { id: string; offset: number; width: number; height: number };
 };
 
 function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
@@ -47,7 +46,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 5,
+		formatVersion: 6,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map(
@@ -56,7 +55,6 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 					id: wall.id,
 					startJunctionId: wall.start[0],
 					endJunctionId: wall.end[0],
-					role: wall.role ?? 'partition',
 					thickness: wall.thickness ?? 0.2,
 					height: wall.height ?? 3,
 					centerline: { kind: 'line' }
@@ -258,7 +256,7 @@ describe('P23.15 Task 6 — Junction matrix (fast lane)', () => {
 		// A single shared boundary Wall: the canonical collection holds one Wall and
 		// the compile produces one mesh for it — never one per Room.
 		const documentValue = scene([
-			{ id: 'shared', start: ['ja', [0, 0]], end: ['jb', [0, 4]], role: 'boundary' }
+			{ id: 'shared', start: ['ja', [0, 0]], end: ['jb', [0, 4]] }
 		]);
 		const { compilation, union } = buildUnion(documentValue);
 		expect(compilation.geometry.walls).toHaveLength(1);

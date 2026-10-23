@@ -25,10 +25,19 @@ import {
 	compileWallFirstLayoutGeometry,
 	planWallChain,
 	type LayoutDocumentWallFirst,
+	type LayoutIdCapture,
 	type LayoutVec2
 } from '@portfolio/layout-core';
 import type { AcceptedRevision } from '@portfolio/project-model';
 import { createEmptyUnitEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+
+/**
+ * The template's captured identity. A template is authored content, not an
+ * interactive operation, so its nonce is fixed: every boot derives the same
+ * stable template ids, and an ordinary captured edit (a fresh nonce) cannot
+ * collide with them.
+ */
+export const STARTER_TEMPLATE_ID_CAPTURE: LayoutIdCapture = { nonce: 'starter-template' };
 
 /** The starter enclosure, in project-world XZ meters: a 7 m x 6 m rectangle. */
 export const STARTER_ENCLOSURE_POINTS: readonly LayoutVec2[] = [
@@ -65,7 +74,8 @@ export function buildStarterEnclosureLayout(): LayoutDocumentWallFirst {
 		baseline,
 		points: STARTER_ENCLOSURE_POINTS.map((point) => [point[0], point[1]] as LayoutVec2),
 		close: true,
-		role: 'boundary'
+		capture: STARTER_TEMPLATE_ID_CAPTURE,
+		levelId: baseline.floor.id
 	});
 	if (plan.kind !== 'success') {
 		throw new Error(`the canonical starter enclosure no longer plans: ${plan.rejection.code}`);

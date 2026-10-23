@@ -36,6 +36,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { freshCapture } from './__fixtures__/layout-id-capture';
 import {
 	coincidesAsJunction,
 	createEmptyWallFirstLayoutDocument,
@@ -76,12 +77,12 @@ function commit(
 	startJunctionId?: string
 ): LayoutDocumentWallFirst {
 	const declaredJunctions = startJunctionId ? [{ pointIndex: 0, junctionId: startJunctionId }] : [];
-	const result = planWallSegment({
+	const result = planWallSegmentCaptured({
 		baseline,
 		start,
 		end,
-		role: 'boundary',
-		...(declaredJunctions.length > 0 ? { endpointJunctionSnaps: declaredJunctions } : {})
+		...(declaredJunctions.length > 0 ? { endpointJunctionSnaps: declaredJunctions } : {}),
+		levelId: baseline.floor.id
 	});
 	if (result.kind !== 'success') {
 		throw new Error(`expected success, got ${JSON.stringify(result)}`);
@@ -90,11 +91,11 @@ function commit(
 }
 
 function enclosure(): LayoutDocumentWallFirst {
-	const result = planWallChain({
+	const result = planWallChainCaptured({
 		baseline: baseDocument(),
 		points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)],
 		close: true,
-		role: 'boundary'
+		levelId: baseDocument().floor.id,
 	});
 	if (result.kind !== 'success') throw new Error('enclosure failed');
 	return result.document;
@@ -102,11 +103,11 @@ function enclosure(): LayoutDocumentWallFirst {
 
 /** The enclosure plus a diagonal divider: 4 corners + 2 divider ends. */
 function enclosureWithDivider(): LayoutDocumentWallFirst {
-	const divider = planWallSegment({
+	const divider = planWallSegmentCaptured({
 		baseline: enclosure(),
 		start: p(0, 1),
 		end: p(4, 2.5),
-		role: 'boundary'
+		levelId: enclosure().floor.id,
 	});
 	if (divider.kind !== 'success') throw new Error('divider failed');
 	return divider.document;
@@ -142,6 +143,15 @@ function coincidentPairs(document: LayoutDocumentWallFirst): string[] {
 		}
 	}
 	return pairs;
+}
+
+type ChainOptions = Omit<Parameters<typeof planWallChain>[0], 'capture'>;
+function planWallChainCaptured(options: ChainOptions) {
+	return planWallChain({ ...options, capture: freshCapture() });
+}
+type SegmentOptions = Omit<Parameters<typeof planWallSegment>[0], 'capture'>;
+function planWallSegmentCaptured(options: SegmentOptions) {
+	return planWallSegment({ ...options, capture: freshCapture() });
 }
 
 describe('P23.9 shared Junction identity predicate', () => {
@@ -185,11 +195,11 @@ describe('P23.9 shared Junction identity predicate', () => {
 	});
 
 	it('closes a chain only on Junction identity, never on near-coordinates', () => {
-		const exact = planWallChain({
+		const exact = planWallChainCaptured({
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), p(0, 0)],
 			close: false,
-			role: 'boundary'
+			levelId: baseDocument().floor.id,
 		});
 		expect(exact.kind).toBe('success');
 		if (exact.kind !== 'success') return;
@@ -198,11 +208,11 @@ describe('P23.9 shared Junction identity predicate', () => {
 		expect(exact.document.junctions).toHaveLength(3);
 		expect(exact.document.walls).toHaveLength(3);
 
-		const near = planWallChain({
+		const near = planWallChainCaptured({
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), [NEAR_MISS, NEAR_MISS]],
 			close: false,
-			role: 'boundary'
+			levelId: baseDocument().floor.id,
 		});
 		expect(near.kind).toBe('success');
 		if (near.kind !== 'success') return;
@@ -217,11 +227,11 @@ describe('P23.9 shared Junction identity predicate', () => {
 		// Landing *on* the first leg instead of on its Junction is a T, not a
 		// closure — and a chain may not T into itself. A truthful rejection, never
 		// a silently fused loop.
-		const ontoLeg = planWallChain({
+		const ontoLeg = planWallChainCaptured({
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), [NEAR_MISS, 0]],
 			close: false,
-			role: 'boundary'
+			levelId: baseDocument().floor.id,
 		});
 		expect(ontoLeg.kind).toBe('rejected');
 		if (ontoLeg.kind !== 'rejected') return;
@@ -236,15 +246,15 @@ describe('P23.9 shared Junction identity predicate', () => {
 		// On the bottom wall's line (y = 0), a hair inside its span: classified as
 		// endpoint-on-interior at a distance of ~1e-16 from the wall's own start
 		// Junction. Splitting there is degenerate; adoption is the correct noding.
-		const result = planWallSegment({
+		const result = planWallSegmentCaptured({
 			baseline,
 			start: [1e-16, 0],
 			end: p(6, 6),
-			role: 'boundary',
 			// P23B.3a S6 — the click resolved onto that corner Junction, so the
 			// operation declares it: the declared anchor is what makes the sub-ulp
 			// coordinate an ADOPTION instead of a second record.
-			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: corner.id }]
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: corner.id }],
+			levelId: baseline.floor.id
 		});
 		expect(result.kind).toBe('success');
 		if (result.kind !== 'success') return;
@@ -287,11 +297,11 @@ describe('P23.9 shared Junction identity predicate', () => {
 		}
 		// A gesture whose two endpoints normalize to one node is rejected outright
 		// (it has no distinct leg) rather than authoring a sub-ulp Wall.
-		const degenerate = planWallSegment({
+		const degenerate = planWallSegmentCaptured({
 			baseline,
 			start: p(0, 0),
 			end: p(1e-16, 1e-16),
-			role: 'boundary'
+			levelId: baseline.floor.id,
 		});
 		expect(degenerate.kind).toBe('rejected');
 		if (degenerate.kind !== 'rejected') return;
@@ -301,11 +311,11 @@ describe('P23.9 shared Junction identity predicate', () => {
 	it('closes a loop for a sub-ulp offset and keeps a real near-miss open', () => {
 		// 1e-10 apart: below the identity tolerance, so the run start Junction is
 		// reused and the chain closes on it.
-		const inside = planWallChain({
+		const inside = planWallChainCaptured({
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), [1e-10, 1e-10]],
 			close: false,
-			role: 'boundary'
+			levelId: baseDocument().floor.id,
 		});
 		expect(inside.kind).toBe('success');
 		if (inside.kind !== 'success') return;
@@ -314,11 +324,11 @@ describe('P23.9 shared Junction identity predicate', () => {
 		expect(inside.document.junctions.some((junction) => junction.point[0] === 1e-10)).toBe(false);
 
 		// 1e-7 apart: the ratified near-miss floor — a distinct node, an open run.
-		const outside = planWallChain({
+		const outside = planWallChainCaptured({
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), [NEAR_MISS, NEAR_MISS]],
 			close: false,
-			role: 'boundary'
+			levelId: baseDocument().floor.id,
 		});
 		expect(outside.kind).toBe('success');
 		if (outside.kind !== 'success') return;
@@ -350,7 +360,7 @@ describe('P23.9 shared Junction identity predicate', () => {
 
 		let successes = 0;
 		for (const [start, end] of gestures) {
-			const result = planWallSegment({ baseline: document, start, end, role: 'boundary' });
+			const result = planWallSegmentCaptured({ baseline: document, start, end, levelId: document.floor.id });
 			if (result.kind === 'rejected') {
 				// Honest geometry rejections are fine; a noding rejection here is the
 				// regression this bar exists to prevent.

@@ -1,6 +1,6 @@
 /**
  * Experience lowering — one selected Experience + its Camera unit -> the accepted
- * `ExecutionProgram@1` codec (AM-6, T3.P01.S06).
+ * `ExecutionProgram@2` codec (AM-6, T3.P01.S06).
  *
  * Lowering is **derivation**, not a second authored format: it reads the accepted
  * F.2 envelope, resolves every Experience/Presentation/Stop/View/connection
@@ -9,25 +9,20 @@
  * source history into the program — a program names a View (`cut`) or a real
  * Camera connection (`travel`), and the Camera authority resolves the rest.
  *
- * Two inputs are deliberately explicit because the ratified `Experience@1` shape
- * does not carry them:
+ * Experience 2 carries everything lowering needs, so there is no interim input:
+ * the Cut/Travel selector is authored on the continuation edge, a Stop's entry
+ * View is its `entryViewId` (or the Presentation's Default), and Presentation
+ * text is authored on the Presentation. Lowering never infers Travel from
+ * connectivity and never falls back from an unsupported Travel to Cut: a Travel
+ * whose pair of Views no Camera connection joins is a typed refusal, and Preview
+ * reports the same gap.
  *
- * - **invocation bindings** — Cut versus Travel is editorial intent. Lowering
- *   never infers Travel from connectivity and never falls back from a missing
- *   Travel to Cut. A binding is `{stopId, occurrence?, invocation}`; the entry
- *   stop may omit it (Cut to its View). A missing binding for a non-entry
- *   occurrence refuses. Lowering also returns a per-edge transition table for
- *   every authored approach (Guide adjacency, explicit continuations, detours),
- *   so the interpreter validates a Travel against the predecessor the run
- *   actually came from; the table is preparation output, not a program field.
- * - **presentation content** — `ProgramPresentation.content` is a required
- *   program field, while `ExperiencePresentation` carries only `label` and
- *   `viewId`. The caller supplies the text records it has; an absent map means an
- *   explicitly empty panel, not invented copy.
+ * Lowering also returns a per-edge transition table for every authored approach
+ * (Guide adjacency, explicit continuations, detours), so the interpreter
+ * validates a Travel against the predecessor the run actually came from; the
+ * table is preparation output, not a program field.
  *
- * The authored selector and content binding are a contract decision for
- * `T3.P01.S04`/`T3.P02`; naming them here is the disclosed interim input, not a
- * persisted format. Runtime-safe: no editor, renderer, Svelte or Three import.
+ * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
 
 import { CAMERA_SESSION_INSPECTION_FAMILY_ID } from '../../channels/families';
@@ -53,19 +48,6 @@ import type { Experience, ProjectEnvelope } from '../types';
 /** The family the selected Experience's run owns while it is executing. */
 const CAMERA_CHANNEL_FAMILY = CAMERA_SESSION_INSPECTION_FAMILY_ID;
 
-export type ExperienceInvocationBinding = {
-	readonly stopId: string;
-	/** Zero-based position in the lowered order; disambiguates a repeated Stop. */
-	readonly occurrence?: number;
-	readonly invocation: ProgramInvocation;
-};
-
-export type ExperienceLoweringContent = {
-	/** Text records for one Presentation, in display order. */
-	readonly presentationId: string;
-	readonly records: readonly { readonly id: string; readonly text: string }[];
-};
-
 export type ExperienceLoweringOptions = {
 	readonly experienceId: string;
 	/** The accepted snapshot identity this lowering request reads. */
@@ -73,8 +55,12 @@ export type ExperienceLoweringOptions = {
 	readonly sessionEpoch: string;
 	/** Defaults to the selected guide's `entryStopId`. */
 	readonly entryStopId?: string;
-	/** Selects an authored Guide; defaults to the Experience's entry guide. */
-	readonly guideId?: string;
+	/**
+	 * Selects an authored Guide; defaults to the Experience's entry guide. An
+	 * explicit `null` means no Guide: the program carries Presentations only, with
+	 * an empty order, and the Experience's Stops are not lowered.
+	 */
+	readonly guideId?: string | null;
 	/**
 	 * Must equal the selected Guide's authored `stopIds` exactly. It exists so a
 	 * caller can name an order explicitly, never so it can author one: a reordered,
@@ -82,8 +68,6 @@ export type ExperienceLoweringOptions = {
 	 * editorial order authority.
 	 */
 	readonly order?: readonly string[];
-	readonly bindings?: readonly ExperienceInvocationBinding[];
-	readonly content?: readonly ExperienceLoweringContent[];
 	readonly capabilities?: readonly ProgramCapability[];
 	readonly state?: readonly ProgramStateDeclaration[];
 	readonly lifecycle?: readonly ProgramLifecycleAction[];
@@ -100,9 +84,7 @@ export type ExperienceLoweringRefusal = {
 		| 'invalid-order'
 		| 'unknown-view'
 		| 'missing-entry'
-		| 'missing-binding'
-		| 'duplicate-binding'
-		| 'invalid-binding'
+		| 'travel-ambiguous'
 		| 'travel-gap'
 		| 'invalid-program';
 	readonly message: string;
@@ -126,6 +108,15 @@ export type ExperienceLoweringResult =
 			readonly program: ExecutionProgram;
 			/** Every authored edge with the invocation that actually starts from its source. */
 			readonly transitions: readonly ExperienceProgramTransition[];
+			/**
+			 * Presentations this Experience carries that no valid Default View makes
+			 * enterable. They stay authored and are never silently dropped from the
+			 * unit; Preview lists them with their reason instead of entering them.
+			 */
+			readonly unavailablePresentations: readonly {
+				readonly presentationId: string;
+				readonly reason: 'no-default-view' | 'unresolved-default-view';
+			}[];
 	  }
 	| ExperienceLoweringRefusal;
 
@@ -185,8 +176,10 @@ export function lowerExperienceProgram(
 	const entryGuide = experience.guides.find((guide) => guide.id === experience.entryGuideId) ?? null;
 	const selectedGuide = options.guideId === undefined
 		? entryGuide
-		: experience.guides.find((guide) => guide.id === options.guideId) ?? null;
-	if (options.guideId !== undefined && selectedGuide === null) {
+		: options.guideId === null
+			? null
+			: experience.guides.find((guide) => guide.id === options.guideId) ?? null;
+	if (typeof options.guideId === 'string' && selectedGuide === null) {
 		return refuse('unknown-guide', `this Experience carries no Guide "${options.guideId}"`);
 	}
 	if (options.order !== undefined) {
@@ -207,8 +200,9 @@ export function lowerExperienceProgram(
 	}
 	const order = [...(options.order ?? selectedGuide?.stopIds ?? [])];
 
-	if (order.length === 0 && experience.stops.length > 0) {
-		return refuse('missing-entry', 'the Experience has Stops but no Guide order; select a guide or supply its authored order');
+	// An explicit `guideId: null` is a Guide-free lowering, not a missing order.
+	if (order.length === 0 && experience.stops.length > 0 && options.guideId !== null) {
+		return refuse('missing-entry', 'the Experience has Stops but no Guide orders them; author a Guide before Preview can enter them');
 	}
 	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
 	for (const stopId of order) {
@@ -225,45 +219,119 @@ export function lowerExperienceProgram(
 	}
 
 	const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
-	const contentByPresentation = new Map(options.content?.map((entry) => [entry.presentationId, entry.records]) ?? []);
 	// A Presentation may exist without a Guide (AM-9). Lowering emits every
-	// Presentation this Experience carries, not only those a selected Guide's
-	// Stops use, so a guide-free Presentation stays reachable to DOM navigation
-	// and camera handoff. Each View still has to resolve; an unreachable View is
-	// refused rather than dropped.
+	// **enterable** Presentation this Experience carries, not only those a selected
+	// Guide's Stops use, so a guide-free Presentation stays reachable to DOM
+	// navigation and camera handoff. A Presentation with no Default View, or whose
+	// Default does not resolve, is not enterable: it stays authored and is reported
+	// as unavailable rather than dropped, retargeted or given an invented View.
 	const presentations: ProgramPresentation[] = [];
+	const unavailablePresentations: {
+		readonly presentationId: string;
+		readonly reason: 'no-default-view' | 'unresolved-default-view';
+	}[] = [];
 	for (const presentation of experience.presentations) {
-		if (!resolves(context, reference('camera', 'view', presentation.viewId, cameraRevision, []))) {
-			return refuse(
-				'unknown-view',
-				`Presentation "${presentation.id}" names Camera view "${presentation.viewId}", which this envelope does not resolve`
-			);
+		if (presentation.defaultViewId === null || presentation.viewIds.length === 0) {
+			unavailablePresentations.push({ presentationId: presentation.id, reason: 'no-default-view' });
+			continue;
+		}
+		const resolvedViewIds = presentation.viewIds.filter((viewId) =>
+			resolves(context, reference('camera', 'view', viewId, cameraRevision, []))
+		);
+		if (!resolvedViewIds.includes(presentation.defaultViewId)) {
+			unavailablePresentations.push({ presentationId: presentation.id, reason: 'unresolved-default-view' });
+			continue;
 		}
 		presentations.push({
 			id: presentation.id,
 			label: presentation.label,
-			viewId: presentation.viewId,
-			content: (contentByPresentation.get(presentation.id) ?? []).map((record) => ({
-				id: record.id,
-				kind: 'text',
-				text: record.text
-			}))
+			viewIds: resolvedViewIds,
+			defaultViewId: presentation.defaultViewId,
+			content: presentation.text === null
+				? []
+				: [{ id: `${presentation.id}:text`, kind: 'text', text: presentation.text.body }]
 		});
 	}
 
-	const indexed = indexBindings(options.bindings ?? []);
-	if (indexed.duplicate !== null) {
-		return refuse(
-			'duplicate-binding',
-			`Stop "${indexed.duplicate.stopId}" declares more than one invocation binding for the same occurrence`,
-			indexed.duplicate.stopId
-		);
-	}
-	const bindings = indexed.index;
 	const entryOccurrence = entryStopId === null ? -1 : order.indexOf(entryStopId);
+	const presentationOf = (stop: Experience['stops'][number]) => presentationById.get(stop.presentationId) ?? null;
+	/** The View one Stop occurrence enters at: its entry View or the Default. */
+	const entryViewOf = (stop: Experience['stops'][number]): string | null => {
+		const presentation = presentationOf(stop);
+		return stop.entryViewId ?? presentation?.defaultViewId ?? null;
+	};
+	const travelConnection = (fromViewId: string | null, toViewId: string | null):
+		| { readonly kind: 'resolved'; readonly connectionId: string }
+		| { readonly kind: 'none' }
+		| { readonly kind: 'ambiguous' } => {
+		if (fromViewId === null || toViewId === null) return { kind: 'none' };
+		const matches = envelope.units.camera.data.connections.filter(
+			(connection) =>
+				(connection.fromNodeId === fromViewId && connection.toNodeId === toViewId) ||
+				(connection.fromNodeId === toViewId && connection.toNodeId === fromViewId)
+		);
+		const resolved = matches.filter((connection) =>
+			resolves(context, reference('camera', 'connection', connection.id, cameraRevision, []))
+		);
+		if (resolved.length === 0) return { kind: 'none' };
+		if (resolved.length > 1) return { kind: 'ambiguous' };
+		return { kind: 'resolved', connectionId: resolved[0]!.id };
+	};
+	/**
+	 * The invocation for arriving at `target` from `previous`. Cut is the authored
+	 * default; a Travel names the one Camera connection joining the two Views and is
+	 * refused (never downgraded to a Cut) when the pair has none.
+	 */
+	const resolveApproach = (
+		previous: Experience['stops'][number],
+		target: Experience['stops'][number],
+		transition: 'cut' | 'travel' | undefined,
+		label: string
+	): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | ExperienceLoweringRefusal => {
+		const targetViewId = entryViewOf(target);
+		if (targetViewId === null) {
+			return refuse('missing-entry', `${label} enters Stop "${target.id}", which has no entry View`, target.id);
+		}
+		if (transition !== 'travel') {
+			return { kind: 'resolved', invocation: { kind: 'cut', viewId: targetViewId } };
+		}
+		const connection = travelConnection(entryViewOf(previous), targetViewId);
+		if (connection.kind === 'ambiguous') {
+			return refuse(
+				'travel-ambiguous',
+				`${label} binds a Travel, and more than one Camera connection joins "${entryViewOf(previous) ?? '?'}" to "${targetViewId}"; Experience never chooses between them`,
+				target.id
+			);
+		}
+		if (connection.kind === 'none') {
+			return refuse(
+				'travel-gap',
+				`${label} binds a Travel, and no Camera connection joins "${entryViewOf(previous) ?? '?'}" to "${targetViewId}"`,
+				target.id
+			);
+		}
+		return { kind: 'resolved', invocation: { kind: 'travel', connectionId: connection.connectionId } };
+	};
+	/**
+	 * The transition an adjacent pair authors. Only a `sequence-next` continuation
+	 * (or its absence) describes Guide adjacency; a Stop that continues elsewhere is
+	 * not the authored edge into the next list entry, which is then a Cut.
+	 */
+	const adjacentTransition = (
+		previous: Experience['stops'][number],
+		target: Experience['stops'][number]
+	) => {
+		const continuation = previous.continuation;
+		if (continuation === undefined || continuation.kind === 'sequence-next') {
+			return continuation?.transition ?? ('cut' as const);
+		}
+		if (continuation.kind === 'stop' && continuation.stopId === target.id) {
+			return continuation.transition ?? ('cut' as const);
+		}
+		return 'cut' as const;
+	};
 	const stops: ProgramStop[] = [];
 	const localTime: { stopId: string; holdSeconds: number }[] = [];
-	let previousViewId: string | null = null;
 	for (const [occurrence, stopId] of order.entries()) {
 		const stop = stopById.get(stopId)!;
 		const presentation = presentationById.get(stop.presentationId);
@@ -274,29 +342,47 @@ export function lowerExperienceProgram(
 				stop.id
 			);
 		}
-		const invocation = resolveInvocation(
-			envelope,
-			context,
-			cameraRevision,
-			stop,
-			presentation.viewId,
-			occurrence,
-			occurrence === entryOccurrence,
-			previousViewId,
-			bindings
-		);
-		if (invocation.kind === 'refused') return invocation;
+		const entryViewId = entryViewOf(stop);
+		if (entryViewId === null) {
+			return refuse(
+				'missing-entry',
+				`Stop "${stop.id}" has no entry View: its Presentation has no Default View and the Stop names none`,
+				stop.id
+			);
+		}
+		if (!resolves(context, reference('camera', 'view', entryViewId, cameraRevision, []))) {
+			return refuse(
+				'unknown-view',
+				`Stop "${stop.id}" enters at Camera view "${entryViewId}", which this envelope does not resolve`,
+				stop.id
+			);
+		}
+		// A Stop of a Presentation without an enterable Default View is refused even
+		// when the Stop names its own resolvable entry View: the Presentation itself
+		// is unavailable, so the Stop has no enterable Presentation to arrive in.
+		if (!presentations.some((entry) => entry.id === stop.presentationId)) {
+			return refuse(
+				'missing-entry',
+				`Stop "${stop.id}" uses Presentation "${stop.presentationId}", which has no enterable Default View`,
+				stop.id
+			);
+		}
+		const previous = occurrence === 0 ? null : stopById.get(order[occurrence - 1]!)!;
+		const approach = previous === null
+			? { kind: 'resolved' as const, invocation: { kind: 'cut' as const, viewId: entryViewId } }
+			: resolveApproach(previous, stop, adjacentTransition(previous, stop), `Guide adjacency into Stop "${stop.id}"`);
+		if (approach.kind === 'refused') return approach;
 		stops.push({
 			id: stop.id,
 			presentationId: stop.presentationId,
-			invocation: invocation.invocation,
+			viewId: entryViewId,
+			invocation: approach.invocation,
 			holdSeconds: stop.holdSeconds ?? null,
 			continuation: toProgramContinuation(stop.continuation)
 		});
 		if (stop.holdSeconds !== undefined) {
 			localTime.push({ stopId: stop.id, holdSeconds: stop.holdSeconds });
 		}
-		previousViewId = presentation.viewId;
 	}
 	for (const stop of stops) {
 		if (stop.continuation.kind === 'stop' && !order.includes(stop.continuation.stopId)) {
@@ -312,87 +398,62 @@ export function lowerExperienceProgram(
 	// adjacency, each explicit Stop continuation, and each authored detour (out and
 	// back). A runtime jump outside this table may Cut, but a Travel is never
 	// borrowed from another predecessor's connection.
-	const viewByStopId = new Map(
-		stops.map((entry) => [entry.id, presentationById.get(entry.presentationId)!.viewId])
-	);
 	const transitionByKey = new Map<string, ExperienceProgramTransition>();
 	const addTransition = (
 		fromStopId: string,
 		toStopId: string,
-		invocation: ProgramInvocation,
-		label: string
-	): ExperienceLoweringRefusal | null => {
+		invocation: ProgramInvocation
+	): void => {
 		const key = `${fromStopId}\u0000${toStopId}`;
-		if (transitionByKey.has(key)) return null;
-		if (invocation.kind === 'cut') {
-			transitionByKey.set(key, { fromStopId, toStopId, invocation });
-			return null;
-		}
-		const fromViewId = viewByStopId.get(fromStopId);
-		const toViewId = viewByStopId.get(toStopId);
-		if (fromViewId === undefined || toViewId === undefined) {
-			return refuse('unknown-stop', `${label} names a Stop outside the lowered order`, fromStopId);
-		}
-		const resolved = travelInvocation(envelope, context, cameraRevision, invocation.connectionId, fromViewId, toViewId);
-		if (resolved === null) {
-			return refuse(
-				'travel-gap',
-				`${label} needs a Camera connection between "${fromViewId}" and "${toViewId}"; connection "${invocation.connectionId}" does not resolve to one`,
-				toStopId
-			);
-		}
-		transitionByKey.set(key, { fromStopId, toStopId, invocation: resolved });
-		return null;
+		if (transitionByKey.has(key)) return;
+		transitionByKey.set(key, { fromStopId, toStopId, invocation });
 	};
 	for (const [index, stop] of stops.entries()) {
 		if (index === 0) continue;
-		const failure = addTransition(
-			stops[index - 1]!.id,
-			stop.id,
-			stop.invocation,
-			`Guide adjacency into Stop "${stop.id}"`
-		);
-		if (failure !== null) return failure;
+		addTransition(stops[index - 1]!.id, stop.id, stop.invocation);
 	}
 	for (const stop of stops) {
 		if (stop.continuation.kind !== 'stop') continue;
 		const targetId = stop.continuation.stopId;
 		const target = stops.find((entry) => entry.id === targetId);
-		if (target === undefined) continue;
-		const failure = addTransition(
-			stop.id,
-			targetId,
-			target.invocation,
+		const authored = stopById.get(stop.id)!;
+		const targetStop = stopById.get(targetId);
+		if (target === undefined || targetStop === undefined) continue;
+		const authoredContinuation = authored.continuation;
+		const transition =
+			authoredContinuation !== undefined && authoredContinuation.kind === 'stop'
+				? authoredContinuation.transition
+				: undefined;
+		const approach = resolveApproach(
+			authored,
+			targetStop,
+			transition,
 			`The explicit continuation from Stop "${stop.id}" to "${targetId}"`
 		);
-		if (failure !== null) return failure;
+		if (approach.kind === 'refused') return approach;
+		addTransition(stop.id, targetId, approach.invocation);
 	}
 	for (const detour of experience.detours) {
 		// A detour authored on a Stop outside this Guide's order is not an edge of
 		// this program; runtime policy still refuses a dangling identity.
-		if (!viewByStopId.has(detour.fromStopId)) continue;
 		const out = stops.find((entry) => entry.id === detour.toStopId);
 		const back = stops.find((entry) => entry.id === detour.returnToStopId);
 		if (out === undefined || back === undefined) continue;
-		const outFailure = addTransition(
-			detour.fromStopId,
-			detour.toStopId,
-			out.invocation,
-			`The detour from Stop "${detour.fromStopId}" to "${detour.toStopId}"`
-		);
-		if (outFailure !== null) return outFailure;
-		const backFailure = addTransition(
-			detour.toStopId,
-			detour.returnToStopId,
-			back.invocation,
-			`The detour return from Stop "${detour.toStopId}" to "${detour.returnToStopId}"`
-		);
-		if (backFailure !== null) return backFailure;
+		addTransition(detour.fromStopId, detour.toStopId, { kind: 'cut', viewId: entryViewOf(stopById.get(detour.toStopId)!)! });
+		addTransition(detour.toStopId, detour.returnToStopId, { kind: 'cut', viewId: entryViewOf(stopById.get(detour.returnToStopId)!)! });
 	}
+
+	// The entry occurrence is the run's **first arrival**, never a Travel from an
+	// occurrence this run has not visited. The authored adjacency into it stays in
+	// `transitions` (built above), so a later navigation from the real predecessor
+	// still uses its Travel while `enter` starts with a Cut.
+	// `stops` is built in `order`, so the entry occurrence's index addresses it.
+	const entryStop = entryOccurrence > 0 ? stops[entryOccurrence] : undefined;
+	if (entryStop !== undefined) entryStop.invocation = { kind: 'cut', viewId: entryStop.viewId };
 
 	const program: ExecutionProgram = {
 		kind: 'execution-program',
-		formatVersion: 1,
+		formatVersion: 2,
 		capabilities: options.capabilities ?? [],
 		experienceId: experience.id,
 		entryStopId,
@@ -411,119 +472,15 @@ export function lowerExperienceProgram(
 		const first = validated.issues[0];
 		return refuse(
 			'invalid-program',
-			first === undefined ? 'the lowered program is not a valid ExecutionProgram@1' : `${first.path} (${first.code}): ${first.message}`
+			first === undefined ? 'the lowered program is not a valid ExecutionProgram@2' : `${first.path} (${first.code}): ${first.message}`
 		);
 	}
-	return { kind: 'lowered', program: validated.value, transitions: [...transitionByKey.values()] };
-}
-
-function indexBindings(
-	bindings: readonly ExperienceInvocationBinding[]
-): {
-	readonly index: Map<string, ExperienceInvocationBinding>;
-	readonly duplicate: ExperienceInvocationBinding | null;
-} {
-	const index = new Map<string, ExperienceInvocationBinding>();
-	for (const binding of bindings) {
-		const key = bindingKey(binding.stopId, binding.occurrence);
-		if (index.has(key)) return { index, duplicate: binding };
-		index.set(key, binding);
-	}
-	return { index, duplicate: null };
-}
-
-function bindingKey(stopId: string, occurrence: number | undefined): string {
-	return occurrence === undefined ? `stop:${stopId}` : `occurrence:${stopId}:${occurrence}`;
-}
-
-/**
- * The one Travel answer: a real, F.1-resolvable Camera connection joining these
- * two views in either direction, or nothing. Connection closure is F.1's answer,
- * not a local array scan: the resolver checks the subject and its unit revision
- * against this exact snapshot.
- */
-function travelInvocation(
-	envelope: ProjectEnvelope,
-	context: ReferenceReadContext,
-	cameraRevision: string,
-	connectionId: string,
-	fromViewId: string,
-	toViewId: string
-): ProgramInvocation | null {
-	const resolution = resolveReference(
-		reference('camera', 'connection', connectionId, cameraRevision, []),
-		context
-	);
-	if (resolution.kind === 'failed') return null;
-	const connection = envelope.units.camera.data.connections.find((candidate) => candidate.id === connectionId);
-	if (connection === undefined) return null;
-	const forward = connection.fromNodeId === fromViewId && connection.toNodeId === toViewId;
-	const reverse = connection.fromNodeId === toViewId && connection.toNodeId === fromViewId;
-	return forward || reverse ? { kind: 'travel', connectionId: connection.id } : null;
-}
-
-/**
- * Resolve one Stop occurrence's Camera invocation. The entry occurrence is a Cut
- * to its View unless the caller explicitly bound it; every later occurrence must
- * be bound, and a Travel binding must name a real Camera connection between the
- * previous View and this one — never the reverse of a missing edge.
- */
-function resolveInvocation(
-	envelope: ProjectEnvelope,
-	context: ReferenceReadContext,
-	cameraRevision: string,
-	stop: Experience['stops'][number],
-	viewId: string,
-	occurrence: number,
-	isEntry: boolean,
-	previousViewId: string | null,
-	bindings: ReadonlyMap<string, ExperienceInvocationBinding>
-): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | ExperienceLoweringRefusal {
-	const binding = bindings.get(bindingKey(stop.id, occurrence)) ?? bindings.get(bindingKey(stop.id, undefined));
-	if (binding === undefined) {
-		// The entry may be authored anywhere in the Guide order; it is still the
-		// first arrival, so it defaults to a Cut and never needs an approach edge.
-		if (isEntry) return { kind: 'resolved', invocation: { kind: 'cut', viewId } };
-		return refuse(
-			'missing-binding',
-			`Stop "${stop.id}" at occurrence ${occurrence} declares no Cut/Travel binding; lowering never infers one`,
-			stop.id
-		);
-	}
-	if (binding.invocation.kind === 'cut') {
-		if (binding.invocation.viewId !== viewId) {
-			return refuse(
-				'invalid-binding',
-				`Stop "${stop.id}" binds a Cut to view "${binding.invocation.viewId}", but its Presentation uses "${viewId}"`,
-				stop.id
-			);
-		}
-		return { kind: 'resolved', invocation: { kind: 'cut', viewId } };
-	}
-	if (isEntry) {
-		return refuse(
-			'invalid-binding',
-			`Stop "${stop.id}" is the entry occurrence and cannot bind a Travel; enter through a Cut`,
-			stop.id
-		);
-	}
-	if (previousViewId === null) {
-		return refuse(
-			'invalid-binding',
-			`Stop "${stop.id}" has no predecessor View and cannot bind a Travel; enter through a Cut`,
-			stop.id
-		);
-	}
-	const invocation = binding.invocation;
-	const resolved = travelInvocation(envelope, context, cameraRevision, invocation.connectionId, previousViewId, viewId);
-	if (resolved === null) {
-		return refuse(
-			'travel-gap',
-			`Travel to Stop "${stop.id}" needs a Camera connection between "${previousViewId}" and "${viewId}"; connection "${invocation.connectionId}" does not resolve to one`,
-			stop.id
-		);
-	}
-	return { kind: 'resolved', invocation: resolved };
+	return {
+		kind: 'lowered',
+		program: validated.value,
+		transitions: [...transitionByKey.values()],
+		unavailablePresentations
+	};
 }
 
 function toProgramContinuation(continuation: Experience['stops'][number]['continuation']): ProgramContinuation {

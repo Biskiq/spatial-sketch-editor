@@ -21,12 +21,14 @@
  */
 
 import {
+	mintLayoutIdCapture,
 	nextLayoutPresetObjectId,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
 import type { AuthoringIntent, SemanticReference } from '@portfolio/project-model';
+import { perfMark } from '$lib/platform/perf-marks';
 
 import {
 	clearPausedProposal,
@@ -232,6 +234,9 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	}
 
 	async function submit(intent: AuthoringIntent): Promise<LayoutInstrumentOutcome> {
+		// T3.P03.S02: an explicit typed command starts here; the accepted result it
+		// produces is marked by the host's acceptance path.
+		perfMark('command:instrument', { taskKind: intent.kind });
 		inFlight = true;
 		try {
 			const outcome = await options.port.accept(intent);
@@ -311,6 +316,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 						projectId: options.projectId,
 						revisionId: options.port.acceptedRevision().revisionId,
 						contentRevision: options.contentRevision,
+						levelId,
 						targets: [reference()],
 						payload: { subjectKind: options.subject.kind, subjectId: options.subject.id, name }
 					})
@@ -412,6 +418,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 					projectId: options.projectId,
 					revisionId: options.port.acceptedRevision().revisionId,
 					contentRevision: options.contentRevision,
+					levelId,
 					targets: [reference()],
 					payload: { wallId: options.subject.id, height: parsed.value }
 				});
@@ -422,6 +429,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 					projectId: options.projectId,
 					revisionId: options.port.acceptedRevision().revisionId,
 					contentRevision: options.contentRevision,
+					levelId,
 					targets: [reference()],
 					payload: { wallId: options.subject.id, thickness: parsed.value }
 				});
@@ -432,6 +440,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 					projectId: options.projectId,
 					revisionId: options.port.acceptedRevision().revisionId,
 					contentRevision: options.contentRevision,
+					levelId,
 					targets: [reference()],
 					payload: { openingId: options.subject.id, field: id, value: parsed.value }
 				});
@@ -481,7 +490,10 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 					placement = { ...placement, error: parsed.reason };
 					return { kind: 'invalid', code: parsed.code, message: parsed.reason };
 				}
-				const objectId = nextLayoutPresetObjectId(options.document);
+				// T1.P02.S01 §1 — capture identity BEFORE evaluation, outside the
+				// undoable document, and let the planner re-derive it from the nonce.
+				const capture = mintLayoutIdCapture();
+				const objectId = nextLayoutPresetObjectId(options.document, capture);
 				const point: LayoutVec2 = parsed.point;
 				const outcome = await submit(
 					buildLayoutIntent({
@@ -490,12 +502,14 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 						projectId: options.projectId,
 						revisionId: options.port.acceptedRevision().revisionId,
 						contentRevision: options.contentRevision,
+						levelId,
 						targets: [],
 						payload: {
 							point: [point[0], point[1]],
 							floorElevation: options.document.floor.elevation,
 							objectId
 						},
+						capture,
 						allocatedIds: [{ kind: 'layout-object', id: objectId }]
 					})
 				);

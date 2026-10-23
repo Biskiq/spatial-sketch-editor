@@ -57,7 +57,6 @@ function singleWallDocument(centerline: LayoutWall['centerline']): LayoutDocumen
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline
@@ -129,7 +128,6 @@ function enclosureDocument(
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline
@@ -138,7 +136,6 @@ function enclosureDocument(
 			id: 'wall-b',
 			startJunctionId: 'j-b',
 			endJunctionId: 'j-c',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: straight
@@ -147,7 +144,6 @@ function enclosureDocument(
 			id: 'wall-c',
 			startJunctionId: 'j-c',
 			endJunctionId: 'j-d',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: straight
@@ -156,7 +152,6 @@ function enclosureDocument(
 			id: 'wall-d',
 			startJunctionId: 'j-d',
 			endJunctionId: 'j-a',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: straight

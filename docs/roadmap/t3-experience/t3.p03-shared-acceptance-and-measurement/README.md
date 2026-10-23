@@ -37,7 +37,7 @@ lifecycle and prerequisites only.
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T3.P03.S01 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Planner scope and build isolation](./t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md) | [record](./t3.p03.s01-planner-scope-and-build-isolation/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); released from the hold; merges first; accepted 2026-10-22 as `owner-override` (independent-review verdict waived, [ruling](./t3.p03.s01-planner-scope-and-build-isolation/acceptance.md#owner-ruling--independent-review-verdict-waived-2026-10-22)) |
-| T3.P03.S02 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Measurement workflow and final gate](./t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | [record](./t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); released from the hold; starts after S01 merges |
+| T3.P03.S02 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Measurement workflow and final gate](./t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | [record](./t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); accepted and shipped 2026-10-23 as `owner-override` at `eabd4b889bdb52d0b149b6f58aab6c4788e39952`; open trace/hard-row/calibration items remain explicitly unclaimed |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
 slice rechecks them at its own trusted base through the runbook start step. Neither slice provides a
@@ -48,7 +48,7 @@ gate. `T3.P03.S01` merged on `main` is the start gate for `T1.P02.S01`, `T2.P02.
 FINAL PHASE GATE: T3.P03.S02 → ./t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md
 
 PHASE CLOSE
-Stage:        active
+Stage:        closable
 ```
 
 ## Ownership and boundaries

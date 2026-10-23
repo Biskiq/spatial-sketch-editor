@@ -19,7 +19,7 @@ import {
 	cubicBezierPoint,
 	deriveChainSpans,
 	planConvertWallToCurve,
-	planDissolveJunction,
+	planDissolveJunction as planDissolveJunctionWithCapture,
 	planWallSplit,
 	wallCenterlineCubics,
 	wallCurveChainLength,
@@ -32,6 +32,11 @@ import {
 	type LayoutWallCurveKnot,
 	type NodingIdAllocator
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
+
+/** One captured dissolve operation: every call is a new edit with a new nonce. */
+const dissolve = (document: LayoutDocumentWallFirst, junctionId: string) =>
+	planDissolveJunctionWithCapture(document, junctionId, freshCapture(), document.floor.id);
 
 const allocator: NodingIdAllocator = {
 	nextWallId: (_document, seed) => `${seed}-frag`,
@@ -57,7 +62,6 @@ function curvedWall(
 		id,
 		startJunctionId: start,
 		endJunctionId: end,
-		role: 'boundary',
 		thickness: 0.2,
 		height: 3,
 		// Spans are derived here only to author the fixture; the dissolve
@@ -162,7 +166,7 @@ describe('curve dissolve', () => {
 		const wallB = curvedWall('wb', 'J', 'E2', [['kb', point(1, -0.8)]]);
 		const document = roomlessDocument(POINTS, [wallA, wallB]);
 
-		const plan = planDissolveJunction(document, 'J');
+		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		// Both-start configuration: lexicographic survivor is wa, joined E1→E2.
@@ -192,7 +196,7 @@ describe('curve dissolve', () => {
 		]);
 		const document = roomlessDocument(POINTS, [wallA, wallB]);
 
-		const plan = planDissolveJunction(document, 'J');
+		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		const joined = plan.document.walls.find((wall) => wall.id === 'wa')!;
@@ -232,7 +236,7 @@ describe('curve dissolve', () => {
 		expect(split.kind).toBe('success');
 		if (split.kind !== 'success') throw new Error('unreachable');
 
-		const plan = planDissolveJunction(split.document, split.junctionId);
+		const plan = dissolve(split.document, split.junctionId);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.survivorWallId).toBe('w');
@@ -260,7 +264,7 @@ describe('curve dissolve', () => {
 		expect(split.kind).toBe('success');
 		if (split.kind !== 'success') throw new Error('unreachable');
 
-		const plan = planDissolveJunction(split.document, split.junctionId);
+		const plan = dissolve(split.document, split.junctionId);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		const joined = plan.document.walls.find((entry) => entry.id === 'w')!;
@@ -286,10 +290,10 @@ describe('curve dissolve', () => {
 				{ id: 'D', point: [0, 3] }
 			],
 			walls: [
-				{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+				{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 			],
 			rooms: [
 				{
@@ -317,7 +321,7 @@ describe('curve dissolve', () => {
 		expect(split.kind).toBe('success');
 		if (split.kind !== 'success') throw new Error('unreachable');
 
-		const plan = planDissolveJunction(split.document, split.junctionId);
+		const plan = dissolve(split.document, split.junctionId);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error(`dissolve rejected: ${JSON.stringify(plan)}`);
 		expect(plan.survivorWallId).toBe('w1');
@@ -344,13 +348,12 @@ describe('curve dissolve', () => {
 				id: 'wb',
 				startJunctionId: 'J',
 				endJunctionId: 'E2',
-				role: 'boundary',
 				thickness: 0.2,
 				height: 3,
 				centerline: { kind: 'line' }
 			}
 		]);
-		const plan = planDissolveJunction(document, 'J');
+		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') throw new Error('unreachable');
 		expect(plan.rejection.code).toBe('incompatible_wall_pair');
@@ -368,14 +371,13 @@ describe('curve dissolve', () => {
 				id: 'wa',
 				startJunctionId: 'E1',
 				endJunctionId: 'J',
-				role: 'boundary',
 				thickness: 0.2,
 				height: 3,
 				centerline: { kind: 'line' }
 			},
 			wallB
 		]);
-		const plan = planDissolveJunction(document, 'J');
+		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') throw new Error('unreachable');
 		expect(plan.rejection.code).toBe('incompatible_wall_pair');

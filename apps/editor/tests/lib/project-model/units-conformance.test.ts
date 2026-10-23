@@ -85,6 +85,10 @@ async function envelope(overrides: {
 
 const PIN = { hash: 'sha256-paper', mime: 'image/png', size: 512, locator: 'objects/paper' };
 
+function entryView(id: string): CameraView {
+	return { id, label: id, eye: [0, 1.6, 2], target: [0, 1.4, 0], fov: 54, connectedViewIds: [] };
+}
+
 function readBack(value: ProjectEnvelope) {
 	return JSON.parse(serializeProjectEnvelope(value)) as unknown;
 }
@@ -174,7 +178,9 @@ function experience(id: string, viewId: string): Experience {
 		id,
 		label: id,
 		entryGuideId: 'guide-1',
-		presentations: [{ id: 'presentation-1', label: 'Entry', viewId }],
+		presentations: [
+			{ id: 'presentation-1', label: 'Entry', viewIds: [viewId], defaultViewId: viewId, subject: null, text: null }
+		],
 		stops: [
 			{
 				id: 'stop-1',
@@ -390,6 +396,175 @@ describe('references, lock diagnostics and closure', () => {
 		expect(reported.closure.map((entry) => entry.code)).toEqual(['resource-revision-mismatch']);
 	});
 
+	it('discloses a Layout-element Presentation subject Preview cannot present', async () => {
+		const base = experience('experience-a', 'view-1');
+		const built = await envelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: [entryView('view-1')],
+				connections: []
+			},
+			experience: {
+				formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+				experiences: [
+					{
+						...base,
+						presentations: [
+							{
+								...base.presentations[0]!,
+								subject: {
+									version: 1,
+									domain: 'layout',
+									revision: { kind: 'project-lock', projectId: 'project-1' },
+									subject: { kind: 'level', id: 'level-1' },
+									instancePath: [],
+									location: { kind: 'project-root' },
+									componentId: null,
+									capabilityId: null
+								}
+							}
+						]
+					}
+				]
+			}
+		});
+		const validated = validateProjectEnvelope(readBack(built));
+		expect(validated.success).toBe(true);
+		if (!validated.success) return;
+		// Admitted by the format, unresolved by Preview: the author is told instead of
+		// being left to assume the run presents it.
+		expect(validated.diagnostics).toHaveLength(1);
+		expect(validated.diagnostics[0]).toMatchObject({
+			path: '$.units.experience.data.experiences[0].presentations[0].subject',
+			code: 'unresolved-subject'
+		});
+		expect(validated.diagnostics[0]!.message).toContain('does not resolve yet');
+		expect(validated.closure).toEqual([]);
+	});
+
+	it('resolves a sequence-next Travel through the Guide order, not the Stop array order', async () => {
+		const base = experience('experience-a', 'view-1');
+		const presentation = (id: string, viewId: string) => ({
+			id,
+			label: id,
+			viewIds: [viewId],
+			defaultViewId: viewId,
+			subject: null,
+			text: null
+		});
+		const built = await envelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: [
+					{ ...entryView('view-1'), connectedViewIds: ['view-3'] },
+					entryView('view-2'),
+					{ ...entryView('view-3'), connectedViewIds: ['view-1'] }
+				],
+				connections: [{
+					id: 'connection-1',
+					fromNodeId: 'view-1',
+					toNodeId: 'view-3',
+					positionPath: { kind: 'rounded-polyline', anchors: [] },
+					clearance: 0.35
+				}]
+			},
+			experience: {
+				formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+				experiences: [
+					{
+						...base,
+						presentations: [
+							presentation('presentation-1', 'view-1'),
+							presentation('presentation-2', 'view-2'),
+							presentation('presentation-3', 'view-3')
+						],
+						// The array order puts stop-2 after stop-1; the Guide order does not.
+						stops: [
+							{
+								id: 'stop-1',
+								presentationId: 'presentation-1',
+								continuation: { kind: 'sequence-next', transition: 'travel' }
+							},
+							{ id: 'stop-2', presentationId: 'presentation-2', continuation: { kind: 'end' } },
+							{
+								id: 'stop-3',
+								presentationId: 'presentation-3',
+								continuation: { kind: 'sequence-next', transition: 'travel' }
+							}
+						],
+						guides: [
+							{
+								id: 'guide-1',
+								label: 'Guide',
+								stopIds: ['stop-1', 'stop-3', 'stop-2'],
+								entryStopId: 'stop-1'
+							}
+						]
+					}
+				]
+			}
+		});
+		const validated = validateProjectEnvelope(readBack(built));
+		expect(validated.success).toBe(true);
+		if (!validated.success) return;
+		// stop-1 travels to stop-3 (connected, no finding); stop-3 travels to
+		// stop-2 under the Guide order (no connection, one finding). Under the array
+		// order the same source would report stop-1 → stop-2 and miss stop-3's edge.
+		expect(validated.diagnostics.map((entry) => entry.path)).toEqual([
+			'$.units.experience.data.experiences[0].stops[2].continuation.transition'
+		]);
+		expect(validated.diagnostics[0]!.code).toBe('travel-gap');
+		expect(validated.diagnostics[0]!.message).toContain('stop "stop-2"');
+	});
+
+	it('reports no Travel gap when a guided Stop is the last of its Guide', async () => {
+		const base = experience('experience-a', 'view-1');
+		const presentation = (id: string, viewId: string) => ({
+			id,
+			label: id,
+			viewIds: [viewId],
+			defaultViewId: viewId,
+			subject: null,
+			text: null
+		});
+		const built = await envelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: [entryView('view-1'), entryView('view-2'), entryView('view-3')],
+				connections: []
+			},
+			experience: {
+				formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+				experiences: [
+					{
+						...base,
+						presentations: [
+							presentation('presentation-1', 'view-1'),
+							presentation('presentation-2', 'view-2'),
+							presentation('presentation-3', 'view-3')
+						],
+						stops: [
+							{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'end' } },
+							// stop-2 is the last Stop of the Guide and still authors a Travel: its
+							// `sequence-next` edge ends the run. stop-3 follows it only in the array.
+							{
+								id: 'stop-2',
+								presentationId: 'presentation-2',
+								continuation: { kind: 'sequence-next', transition: 'travel' }
+							},
+							{ id: 'stop-3', presentationId: 'presentation-3', continuation: { kind: 'end' } }
+						],
+						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' }]
+					}
+				]
+			}
+		});
+		const validated = validateProjectEnvelope(readBack(built));
+		expect(validated.success).toBe(true);
+		if (!validated.success) return;
+		expect(validated.diagnostics).toEqual([]);
+	});
+
 	it('keeps the envelope source-content digest independent of the accepted revision', async () => {
 		const built = await envelope();
 		const other = { ...built, acceptedRevision: { projectId: 'project-1', revisionId: 'revision-9' } };
@@ -417,7 +592,7 @@ describe('independent AM-2 regressions', () => {
 		const entry = { domain: 'camera' as const, subjectKind: 'view', subjectId: 'view-1', instancePath: [],
 			contentRevision: 'r', requiredCapabilities: [{ id: 'f', version: '1' }, { id: 'f', version: '2' }], pin: null };
 		expect(validateDependencyLock(lock([entry])).success).toBe(false);
-		expect(validateResourcePayload({ formatVersion: 1, resources: [{ kind: 'texture', id: 't',
+		expect(validateResourcePayload({ formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [{ kind: 'texture', id: 't',
 			contentRevision: null, pin: { ...PIN, size: 1e30 }, unresolved: null }] }).success).toBe(false);
 	});
 
@@ -427,7 +602,7 @@ describe('independent AM-2 regressions', () => {
 			{ contentRevision: 'other', pin: PIN },
 			{ contentRevision: PIN.hash, pin: null }
 		]) {
-			const built = await envelope({ resources: { formatVersion: 1, resources: [resource] }, dependencyLock: lock([{
+			const built = await envelope({ resources: { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [resource] }, dependencyLock: lock([{
 				domain: 'resource:texture', subjectKind: 'resource', subjectId: 'texture-1', instancePath: [],
 				requiredCapabilities: [], ...entry
 			}]) });
@@ -450,5 +625,145 @@ describe('independent AM-2 regressions', () => {
 it('requires distinct Stop identities for repeated authored Guide placements', () => {
 	const value = experience('experience-a', 'view-1');
 	value.guides = [{ ...value.guides[0]!, stopIds: ['stop-1', 'stop-1'] }];
-	expect(validateExperiencePayload({ formatVersion: 1, experiences: [value] }).success).toBe(false);
+	const result = validateExperiencePayload({ formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [value] });
+	expect(result.success).toBe(false);
+	if (!result.success) expect(result.issues.map((issue) => issue.code)).toContain('duplicate-identity');
+});
+
+/** A Scene or Camera semantic reference shaped as the Experience unit reads a Presentation subject. */
+function subjectReference(domain: string, componentId: string | null = null) {
+	return {
+		version: 1,
+		domain,
+		revision: { kind: 'exact', contentRevision: 'revision-1' },
+		subject: { kind: 'entity', id: 'entity-1' },
+		instancePath: [],
+		location: { kind: 'project-root' },
+		componentId,
+		capabilityId: null
+	};
+}
+
+/** The valid Experience-2 payload with one Experience, edited for a single refusal. */
+function experiencePayload(edit: (value: Experience) => unknown) {
+	return { formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [edit(experience('experience-a', 'view-1'))] };
+}
+
+describe('validateExperiencePayload refusals', () => {
+	it('accepts the valid fixture the refusal rows mutate', () => {
+		expect(validateExperiencePayload(experiencePayload((value) => value)).success).toBe(true);
+	});
+
+	it.each([
+		{
+			name: 'a format-1 payload',
+			code: 'unsupported_format_version',
+			input: () => ({ formatVersion: 1, experiences: [experience('experience-a', 'view-1')] })
+		},
+		{
+			name: 'a View repeated in one Presentation',
+			code: 'duplicate-identity',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, viewIds: ['view-1', 'view-1'] }]
+				}))
+		},
+		{
+			name: 'a Default View outside the Presentation views',
+			code: 'default-not-in-views',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, defaultViewId: 'view-missing' }]
+				}))
+		},
+		{
+			name: 'a Stop entry View its Presentation does not carry',
+			code: 'entry-view-not-in-presentation',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					stops: [{ ...value.stops[0]!, entryViewId: 'view-missing' }]
+				}))
+		},
+		{
+			name: 'a component-scoped Presentation subject',
+			code: 'component-not-admitted',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, subject: subjectReference('scene', 'component-1') }]
+				}))
+		},
+		{
+			name: 'a capability-scoped Presentation subject',
+			code: 'component-not-admitted',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [
+						{ ...value.presentations[0]!, subject: { ...subjectReference('scene'), capabilityId: 'capability-1' } }
+					]
+				}))
+		},
+		{
+			name: 'a Presentation subject in the Camera domain',
+			code: 'unsupported-subject-domain',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, subject: subjectReference('camera') }]
+				}))
+		},
+		{
+			name: 'an unknown text kind',
+			code: 'unknown-tag',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, text: { kind: 'rich', body: 'The piano.' } }]
+				}))
+		},
+		{
+			name: 'Presentation text beyond the bound',
+			code: 'text-too-long',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, text: { kind: 'plain', body: 'x'.repeat(4001) } }]
+				}))
+		},
+		{
+			name: 'an end continuation carrying a transition',
+			code: 'unknown-key',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					stops: [{ ...value.stops[0]!, continuation: { kind: 'end', transition: 'cut' } }]
+				}))
+		},
+		{
+			name: 'an unknown transition',
+			code: 'unknown-tag',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					stops: [{ ...value.stops[0]!, continuation: { kind: 'sequence-next', transition: 'bezier' } }]
+				}))
+		},
+		{
+			name: 'the legacy viewId key on a Stop',
+			code: 'unknown-key',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					stops: [{ ...value.stops[0]!, viewId: 'view-1' }]
+				}))
+		}
+	])('refuses $name with $code', ({ code, input }) => {
+		const result = validateExperiencePayload(input());
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.issues.map((issue) => issue.code)).toContain(code);
+	});
 });

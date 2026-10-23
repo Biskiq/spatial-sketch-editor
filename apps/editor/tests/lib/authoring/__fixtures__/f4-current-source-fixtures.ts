@@ -45,15 +45,16 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 import { createUnitProject } from './unit-envelope-fixtures';
+import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
 import {
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
+	nextLayoutPresetObjectId,
 	planCommitLayoutObjectPreset,
 	planExactLayoutObjectTransform,
 	wallCubicChain,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
-	type LayoutWall,
 	type LayoutWallCurveKnot
 } from '@portfolio/layout-core';
 
@@ -88,7 +89,16 @@ export type ProofLayoutSeed = {
  * through the canonical preset planner so the identity ledger is the writer's.
  */
 export function layoutSeed(): ProofLayoutSeed {
-	const plan = planCommitLayoutObjectPreset(createEmptyWallFirstLayoutDocument(), 'plinth', [0, 0], 0);
+	const document = createEmptyWallFirstLayoutDocument();
+	const capture = freshCapture();
+	const plan = planCommitLayoutObjectPreset(
+		document,
+		'plinth',
+		[0, 0],
+		0,
+		nextLayoutPresetObjectId(document, capture),
+		document.floor.id
+	);
 	if (plan.kind !== 'success' || plan.createdObjectId === undefined) {
 		throw new Error(
 			`the conformance Layout seed was refused: ${plan.kind === 'rejected' ? plan.rejection.message : 'no created object id'}`
@@ -102,11 +112,14 @@ export function withLayoutObjects(base: ProofLayoutSeed, count: number): ProofLa
 	let document = base.document;
 	let objectId = base.objectId;
 	for (let index = 1; index <= count; index += 1) {
+		const capture = freshCapture();
 		const plan = planCommitLayoutObjectPreset(
 			document,
 			index % 2 === 0 ? 'column' : 'platform',
 			[index * 3, index * 2],
-			0
+			0,
+			nextLayoutPresetObjectId(document, capture),
+			document.floor.id
 		);
 		if (plan.kind !== 'success' || plan.createdObjectId === undefined) {
 			throw new Error(`conformance Layout object ${index} was refused`);
@@ -240,9 +253,10 @@ const CHORD = 6;
 const THICK = 8;
 
 /**
- * A roomless partition Wall whose bend is mild at `[3, 0.5]` and folds the
- * offset polyline at `[3, 2]`: the document passes the strict codec and compiles
- * with one blocking `wall_offset_fold`. Mirrors `thickWallDocument` from
+ * A roomless (format 6: free-standing) Wall whose bend is mild at `[3, 0.5]` and
+ * folds the offset polyline at `[3, 2]`: the document passes the strict codec and
+ * compiles with one blocking `wall_offset_fold`. The geometry is the intent —
+ * there is no authored role to restore. Mirrors `thickWallDocument` from
  * `tests/lib/layout/layout-render-safe-validation.test.ts`.
  */
 export function foldedPartitionDocument(anchor: LayoutVec2 = [3, 2]): LayoutDocumentWallFirst {
@@ -257,11 +271,10 @@ export function foldedPartitionDocument(anchor: LayoutVec2 = [3, 2]): LayoutDocu
 			id: 'wall-p',
 			startJunctionId: 'j-p1',
 			endJunctionId: 'j-p2',
-			role: 'partition',
 			thickness: THICK,
 			height: 3,
 			centerline: wallCubicChain([knot], deriveChainSpans([[0, 0], knot.point, [CHORD, 0]]))
-		} as LayoutWall
+		}
 	];
 	return document;
 }

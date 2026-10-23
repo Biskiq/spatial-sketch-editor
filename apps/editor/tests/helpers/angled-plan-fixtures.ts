@@ -22,6 +22,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
+import { freshCapture } from '../lib/layout/__fixtures__/layout-id-capture';
 
 /**
  * P23B.3a S6 — how a fixture gesture CONNECTS to existing geometry.
@@ -111,9 +112,10 @@ export function plan(
 		baseline,
 		start,
 		end,
-		role: 'boundary',
+		capture: freshCapture(),
 		...(hostSnaps.length > 0 ? { endpointHostSnaps: hostSnaps } : {}),
-		...(junctionSnaps.length > 0 ? { endpointJunctionSnaps: junctionSnaps } : {})
+		...(junctionSnaps.length > 0 ? { endpointJunctionSnaps: junctionSnaps } : {}),
+		levelId: baseline.floor.id
 	});
 }
 
@@ -147,7 +149,8 @@ export function twoRoomsWithOneObliqueDivider(): LayoutDocumentWallFirst {
 		baseline: baseDocument(),
 		points: [p(0, -4), p(7, -4), p(7, 2), p(0, 2)],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture(),
+		levelId: baseDocument().floor.id
 	});
 	if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 	const document = commit(enclosure.document, bottomStart, bottomEnd);

@@ -27,6 +27,7 @@ import type {
 	LayoutWallCurveKnot
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
+import { LayoutIdCollisionError, layoutWorkingLevelIssue, type LayoutIdCapture } from './layout-id-capture';
 import {
 	nextWallCurveKnotId,
 	orientedWallChainKnotsAndSpans,
@@ -63,7 +64,8 @@ export type DissolveSpecificRejectionCode =
 	| 'opening_set_invalid'
 	| 'portal_relation_invalid'
 	| 'wall_height_below_opening'
-	| 'invalid_candidate_document';
+	| 'invalid_candidate_document'
+	| 'captured_id_in_use';
 
 /**
  * Dissolve rejection: the shared topology rejection shape plus the
@@ -111,12 +113,18 @@ export type DissolvePlan =
  */
 export function planDissolveJunction(
 	document: LayoutDocumentWallFirst,
-	junctionId: string
+	junctionId: string,
+	capture: LayoutIdCapture,
+	levelId: string
 ): DissolvePlan {
 	const reject = (rejection: DissolveSpecificRejection): DissolvePlan => ({
 		kind: 'rejected',
 		rejection
 	});
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) {
+		return reject({ code: 'invalid_candidate_document', message: levelIssue, junctionIds: [junctionId] });
+	}
 
 	const junction = document.junctions.find((candidate) => candidate.id === junctionId);
 	if (!junction) {
@@ -186,16 +194,14 @@ export function planDissolveJunction(
 		});
 	}
 
-	// Compatibility: role, dimensions and naming must agree (exact equality —
-	// merging across a mismatch would invent or drop authored data).
-	if (
-		first.role !== second.role ||
-		first.thickness !== second.thickness ||
-		first.height !== second.height
-	) {
+	// Compatibility: dimensions and naming must agree (exact equality — merging
+	// across a mismatch would invent or drop authored data). Format 6 has no
+	// authored role to compare: the joined Wall's role is derived from the Rooms
+	// the merged containment ends up forming.
+	if (first.thickness !== second.thickness || first.height !== second.height) {
 		return reject({
 			code: 'incompatible_wall_pair',
-			message: `Walls '${first.id}' and '${second.id}' disagree on role, thickness or height and cannot join`,
+			message: `Walls '${first.id}' and '${second.id}' disagree on thickness or height and cannot join`,
 			junctionIds: [junctionId],
 			wallIds: [first.id, second.id]
 		});
@@ -326,7 +332,6 @@ export function planDissolveJunction(
 		id: survivor.id,
 		startJunctionId: joinedStartId,
 		endJunctionId: joinedEndId,
-		role: survivor.role,
 		thickness: survivor.thickness,
 		height: survivor.height,
 		centerline: joinedCenterline,
@@ -363,22 +368,30 @@ export function planDissolveJunction(
 			predecessorPolygons.set(room.id, polygon);
 			predecessorWitnesses.set(room.id, interiorWitness(polygon));
 		}
-		const result = reconcileRooms({
-			baseline: document,
-			candidateDocument: candidate,
-			extraction,
-			components: buildCorrespondenceComponents({
-				faces: extraction.faces,
-				predecessorRoomIds: document.rooms.map((room) => room.id),
+		let result;
+		try {
+			result = reconcileRooms({
+				baseline: document,
+				candidateDocument: candidate,
+				extraction,
+				components: buildCorrespondenceComponents({
+					faces: extraction.faces,
+					predecessorRoomIds: document.rooms.map((room) => room.id),
+					predecessorWitnesses,
+					predecessorPolygons,
+					candidateDocument: candidate,
+					baselineRooms: document.rooms
+				}),
 				predecessorWitnesses,
 				predecessorPolygons,
-				candidateDocument: candidate,
-				baselineRooms: document.rooms
-			}),
-			predecessorWitnesses,
-			predecessorPolygons,
-			allocator: createAuthoringRoomAllocator()
-		});
+				allocator: createAuthoringRoomAllocator(capture)
+			});
+		} catch (error) {
+			if (error instanceof LayoutIdCollisionError) {
+				return reject({ code: 'captured_id_in_use', message: error.message, junctionIds: [junctionId] });
+			}
+			throw error;
+		}
 		if ('rejection' in result) {
 			return reject({
 				code: 'room_reconciliation_rejected',

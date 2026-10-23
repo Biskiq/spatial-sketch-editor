@@ -44,6 +44,7 @@ import {
 } from '$lib/authoring/stage/stage-facade';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
+import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
 import LayoutDimensionsInstrument from './layout/LayoutDimensionsInstrument.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
@@ -238,6 +239,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				fixed: FixedWallEndpoint,
 				wallId: string
 			): Promise<void> {
+				// T3.P03.S02: release commits exactly once; that commit is the command
+				// whose completion the performance flow measures.
+				perfMark('command:commit', { wallId });
 				const snapshot = services.stage.snapshot();
 				const outcome = await services.authoring.accept(
 					wallManipulationIntent({
@@ -400,6 +404,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							gesture.preview = null;
 							gesture.neighbours = [];
 							refusal = 'Drag the endpoint back across the fixed endpoint to name a length.';
+							// T3.P03.S02: a refused sample installs no preview, so the harness must
+							// see it as refused rather than as an input that never arrived.
+							perfMark('wall-preview:refused', { wallId: gesture.frame.wallId });
 							services.stage.notifySurfaceChange();
 							return true;
 						}
@@ -416,11 +423,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							gesture.preview = null;
 							gesture.neighbours = [];
 							refusal = planned.message;
+							perfMark('wall-preview:refused', { wallId: gesture.frame.wallId });
 						} else {
 							gesture.request = request;
 							gesture.preview = planned.wall;
 							gesture.neighbours = planned.neighbours;
 							refusal = null;
+							// The candidate is installed into the overlay here; presentation is
+							// the next frame, which the harness pairs by sequence.
+							perfInstall('wall-preview', { wallId: gesture.frame.wallId });
 						}
 						services.stage.notifySurfaceChange();
 						return true;

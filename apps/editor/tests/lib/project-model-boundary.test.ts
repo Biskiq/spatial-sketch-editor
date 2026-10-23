@@ -49,14 +49,14 @@ describe('project-model package boundary', () => {
 			layout: { unitId: 'project:layout', data: createEmptyWallFirstLayoutDocument() },
 			scene: {
 				unitId: 'project:scene',
-				data: { formatVersion: 2, textures: [], materials: [], entities: [] }
+				data: { formatVersion: units.SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [] }
 			},
 			camera: { unitId: 'project:camera', data: { formatVersion: 1, views: [], connections: [] } },
 			experience: {
 				unitId: 'project:experience',
-				data: { formatVersion: 1, experiences: [] }
+				data: { formatVersion: 2, experiences: [] }
 			},
-			resources: { unitId: 'project:resources', data: { formatVersion: 1, resources: [] } }
+			resources: { unitId: 'project:resources', data: { formatVersion: units.RESOURCE_UNIT_FORMAT_VERSION, resources: [] } }
 		});
 		expect(units.validateProjectEnvelope(envelope).success).toBe(true);
 	});

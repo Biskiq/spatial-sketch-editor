@@ -1,7 +1,9 @@
 /**
  * `layout-wall-first-codec.ts` — strict codec for the wall-first
- * `LayoutDocument` (`formatVersion: 5`), shared by P23.1 operations and the
- * canonical project Save boundary.
+ * `LayoutDocument` (`formatVersion: 6`), shared by P23.1 operations and the
+ * canonical project Save boundary. Format 6 is format 5 without the authored
+ * Wall `role`; a present `role` key is `unknown_key`, and the derived role is
+ * never persisted.
  *
  * The codec intentionally provides:
  *
@@ -51,7 +53,7 @@ import type { LayoutObject, LayoutVec2 } from './layout-types';
  * Validation result carrying the wall-first document type, not the legacy one.
  *
  * A success is **always** the canonical current-format document. There is one
- * recognized version (`5`) and no historical variant: a payload declaring anything
+ * recognized version (`6`) and no historical variant: a payload declaring anything
  * else fails as `unsupported_format_version` (P23.6I pre-baseline policy).
  */
 export type WallFirstLayoutValidationResult =
@@ -95,7 +97,6 @@ const WALL_KEYS = [
 	'id',
 	'startJunctionId',
 	'endJunctionId',
-	'role',
 	'thickness',
 	'height',
 	'centerline',
@@ -566,7 +567,6 @@ function parseWall(
 	const id = readId(record.id, `${path}.id`, issues);
 	const startJunctionId = readId(record.startJunctionId, `${path}.startJunctionId`, issues);
 	const endJunctionId = readId(record.endJunctionId, `${path}.endJunctionId`, issues);
-	const role = readEnum(record.role, `${path}.role`, ['boundary', 'partition'], issues);
 	const thickness = readPositiveNumber(record.thickness, `${path}.thickness`, issues);
 	const height = readPositiveNumber(record.height, `${path}.height`, issues);
 	// P23.11 — the centerline is required on every Wall (fresh-authority
@@ -579,7 +579,6 @@ function parseWall(
 		!id ||
 		!startJunctionId ||
 		!endJunctionId ||
-		!role ||
 		thickness === undefined ||
 		height === undefined ||
 		!centerline ||
@@ -599,7 +598,6 @@ function parseWall(
 		id,
 		startJunctionId,
 		endJunctionId,
-		role,
 		thickness,
 		height,
 		centerline,

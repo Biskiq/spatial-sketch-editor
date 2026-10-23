@@ -1,5 +1,5 @@
 /**
- * `ExecutionProgram@1` conformance (AM-6).
+ * `ExecutionProgram@2` conformance (AM-6).
  *
  * The codec freezes before the interpreter and the first authoring surface
  * exist, so the fixtures here are hand-authored and non-empty: they cover
@@ -22,7 +22,7 @@ import {
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 1,
+		formatVersion: 2,
 		capabilities: [
 			{ id: 'profile.reduced-motion', required: true },
 			{ id: 'panel.info', required: false }
@@ -33,15 +33,17 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'presentation-1',
 				label: 'Piano',
-				viewId: 'view-1',
+				viewIds: ['view-1'],
+				defaultViewId: 'view-1',
 				content: [{ id: 'content-1', kind: 'text', text: 'A restored piano.' }]
 			},
-			{ id: 'presentation-2', label: 'Gallery', viewId: 'view-2', content: [] }
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] }
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
+				viewId: 'view-1',
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				holdSeconds: 2,
 				continuation: { kind: 'sequence-next' }
@@ -49,6 +51,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
+				viewId: 'view-2',
 				invocation: { kind: 'travel', connectionId: 'connection-1' },
 				holdSeconds: null,
 				continuation: { kind: 'stop', stopId: 'stop-1' }
@@ -57,6 +60,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-3',
 				presentationId: 'presentation-1',
+				viewId: 'view-1',
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				holdSeconds: 0,
 				continuation: { kind: 'end' }
@@ -136,7 +140,7 @@ describe('the program round trips', () => {
 describe('required kind, version and capability negotiation', () => {
 	it('refuses an unknown kind, an unsupported version and an unknown key', () => {
 		expect(codes({ ...program(), kind: 'visitor-program' })).toContain('unknown-tag');
-		expect(codes({ ...program(), formatVersion: 2 })).toContain('unsupported_format_version');
+		expect(codes({ ...program(), formatVersion: 3 })).toContain('unsupported_format_version');
 		expect(codes({ ...program(), extra: true })).toContain('unknown-key');
 	});
 
@@ -298,6 +302,33 @@ describe('independent AM-6 admission regressions', () => {
 		expect(codes({ ...program(), stops: program().stops.map((stop) => stop.id === 'stop-1'
 			? { ...stop, invocation: { kind: 'cut', viewId: 'view-2' } } : stop) })).toContain('view-mismatch');
 		expect(codes({ ...program(), localTime: [{ stopId: 'stop-1', holdSeconds: 3 }] })).toContain('hold-mismatch');
+	});
+
+	it('bounds presentation text by code points, not UTF-16 units', () => {
+		const withText = (text: string) => ({
+			...program(),
+			presentations: program().presentations.map((presentation) =>
+				presentation.id === 'presentation-1'
+					? { ...presentation, content: [{ id: 'content-1', kind: 'text' as const, text }] }
+					: presentation
+			)
+		});
+		// 4,000 astral code points are 8,000 UTF-16 units: the authored bound counts
+		// code points, so this is admitted.
+		expect(validateExecutionProgram(withText('😀'.repeat(4000))).success).toBe(true);
+		expect(codes(withText('😀'.repeat(4001)))).toContain('text-too-long');
+		expect(codes(withText('a'.repeat(4001)))).toContain('text-too-long');
+	});
+
+	it('refuses a Travel at the entry Stop, which no run can start from', () => {
+		// The run has no pose before its first arrival: a Travel there names a route
+		// the runtime cannot realize and would silently degrade to a Cut.
+		const travelAtEntry = program().stops.map((stop) =>
+			stop.id === 'stop-1' ? { ...stop, invocation: { kind: 'travel' as const, connectionId: 'connection-1' } } : stop
+		);
+		expect(codes({ ...program(), stops: travelAtEntry })).toContain('entry-travel');
+		// A Travel on a later Stop stays admitted.
+		expect(validateExecutionProgram(program()).success).toBe(true);
 	});
 
 	it('admits absolute HTTP(S) activation URLs and refuses executable or relative URLs', () => {

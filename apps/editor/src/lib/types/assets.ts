@@ -35,7 +35,9 @@ export type FallbackKind =
   | 'frame'
   | 'books'
   | 'clock'
-  | 'rug';
+  | 'rug'
+  /** A creator model's approved footprint box. */
+  | 'generic';
 
 /** Normalized fallback value persisted by scene object placements. */
 export type SceneObjectFallback = FallbackKind;

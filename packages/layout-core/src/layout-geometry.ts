@@ -48,6 +48,7 @@ import {
 	type SampledSegment
 } from './layout-geometry-curve';
 import { wallCenterlineSegment, wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';
+import { deriveLayoutWallRoles } from './layout-wall-role';
 import {
 	WALL_OFFSET_FOLD_CODE,
 	WALL_OFFSET_FOLD_MESSAGE,
@@ -365,6 +366,11 @@ function compileWallFirstWithPhysicalWalls(
 			(aabb) => aabb.kind !== 'wall' && aabb.kind !== 'opening'
 		)
 	};
+	// Format 6 — the compiled Wall role is DERIVED from Room boundary membership by
+	// the one authority that owns the derivation, so compiled facts and the Card
+	// fact cannot disagree: `bounding` (one Room), `dividing` (two or more Rooms),
+	// `free-standing` (none). Nothing here reads an authored field.
+	const derivedWallRoles = deriveLayoutWallRoles(document);
 	const physicalWalls: CompiledPhysicalWall[] = [];
 	// Render-safe acceptance issues (see the per-Wall clearance gate below),
 	// appended to the shared compile result so every caller's existing
@@ -421,7 +427,7 @@ function compileWallFirstWithPhysicalWalls(
 			id: geometryId(['physical-wall', floor.id, wall.id]),
 			cacheKey: cacheKeyOf(['physical-wall', floor.id, wall.id, segment, wallOpenings, wall.thickness, floor.elevation, wall.height]),
 			wallId: wall.id,
-			role: wall.role,
+			role: derivedWallRoles.get(wall.id) ?? 'free-standing',
 			floorId: floor.id,
 			thickness: wall.thickness,
 			height: wall.height,

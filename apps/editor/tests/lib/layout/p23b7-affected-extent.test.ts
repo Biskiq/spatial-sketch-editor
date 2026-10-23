@@ -57,7 +57,6 @@ function documentOf(input: {
 				id: seed.id,
 				startJunctionId: seed.start,
 				endJunctionId: seed.end,
-				role: 'boundary',
 				thickness: 0.2,
 				height: 3,
 				centerline: seed.centerline ?? LINE

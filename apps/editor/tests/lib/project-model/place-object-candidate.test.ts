@@ -19,6 +19,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { cloneFixtureDocument } from '../content/__fixtures__/load-fixture-scene';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import {
 	FLOOR_SUPPORT_TOLERANCES,
 	createEmptyWallFirstLayoutDocument,
@@ -546,7 +547,13 @@ describe('placement source and support qualification', () => {
 it('places on a real raised compiled floor with Plan/3D parity and strict project round trip', async () => {
 	const empty = createEmptyWallFirstLayoutDocument();
 	const baseline = { ...empty, floor: { ...empty.floor, elevation: 2.5 } };
-	const planned = planWallChain({ baseline, points: [[0, 0], [7, 0], [7, 6], [0, 6]], close: true, role: 'boundary' });
+	const planned = planWallChain({
+		baseline,
+		points: [[0, 0], [7, 0], [7, 6], [0, 6]],
+		close: true,
+		capture: freshCapture(),
+		levelId: baseline.floor.id
+	});
 	if (planned.kind !== 'success') throw new Error('enclosure failed');
 	const source = await createUnitProject({ id: 'project-1', name: 'Raised gallery', layout: planned.document });
 	const compiled = compileWallFirstLayoutGeometry(source.units.layout.data);

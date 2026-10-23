@@ -26,6 +26,7 @@ import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import { layoutWorkingLevelIssue } from './layout-id-capture';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-portals';
 import {
@@ -1562,9 +1563,6 @@ export function planExactRectangleDimensions(
 	const resolved = resolveRectangle(document, roomId, options);
 	if ('rejection' in resolved) return { kind: 'rejected', rejection: resolved.rejection };
 	const { corners, roomWallIds, widthWallId, depthWallId } = resolved;
-	if (roomWallIds.some((wallId) => document.walls.find((wall) => wall.id === wallId)?.role !== 'boundary')) {
-		return reject('unsupported_geometry', 'Rectangle boundaries must use boundary Walls', [roomId]);
-	}
 	if (hasAmbiguousSharedBoundary(document, roomId, roomWallIds, corners.map((corner) => corner.id))) {
 		return reject('shared_boundary_resize_ambiguous', 'Rectangle resize would ambiguously deform a shared Wall network', [roomId, ...roomWallIds]);
 	}
@@ -1682,8 +1680,14 @@ export function planCommitLayoutObjectPreset(
 	document: LayoutDocumentWallFirst,
 	presetId: LayoutArchitecturalPresetId,
 	point: LayoutVec2,
-	floorElevation: number
+	floorElevation: number,
+	/** The identity captured before evaluation (T1.P02.S01 §1). */
+	capturedObjectId: string,
+	/** T1.P02.S01 §1 — explicit working level; must name `document.floor.id`. */
+	levelId: string
 ): PrecisionPlan {
+	const levelIssue = layoutWorkingLevelIssue(document, levelId);
+	if (levelIssue !== null) return reject('invalid_value', levelIssue, [presetId]);
 	const preset = layoutArchitecturalPreset(presetId);
 	if (!preset) return reject('invalid_reference', `Unknown architectural preset '${presetId}'`, [presetId]);
 	if (!finitePoint(point)) return reject('invalid_value', 'Preset placement point must be finite', [presetId]);
@@ -1693,8 +1697,14 @@ export function planCommitLayoutObjectPreset(
 	const position = layoutPresetPlacement(preset, point, floorElevation);
 	if (!position) return reject('invalid_value', 'Preset placement requires a finite floor elevation', [presetId]);
 
+	if (typeof capturedObjectId !== 'string' || capturedObjectId.length === 0) {
+		return reject('invalid_value', 'Preset creation requires a captured object id', [presetId]);
+	}
+	if (document.objects.some((object) => object.id === capturedObjectId)) {
+		return reject('invalid_value', `Captured Layout object id '${capturedObjectId}' is already in use`, [capturedObjectId]);
+	}
 	const candidate = cloneDocument(document);
-	const objectId = nextLayoutObjectIdIn(candidate);
+	const objectId = capturedObjectId;
 	const object: LayoutObject = {
 		id: objectId,
 		kind: preset.kind,
@@ -1705,14 +1715,6 @@ export function planCommitLayoutObjectPreset(
 	candidate.objects = [...candidate.objects, object];
 	const finalized = finalizeCandidate(candidate, 'layout-object-preset-create', [], [], [objectId]);
 	return finalized.kind === 'success' ? { ...finalized, createdObjectId: objectId } : finalized;
-}
-
-/** Deterministic `layout-object-N` allocation from the pre-commit candidate. */
-function nextLayoutObjectIdIn(document: LayoutDocumentWallFirst): string {
-	const taken = new Set(document.objects.map((object) => object.id));
-	let index = document.objects.length + 1;
-	while (taken.has(`layout-object-${index}`)) index += 1;
-	return `layout-object-${index}`;
 }
 
 /** Set exact document-level LayoutObject transform fields in a wall-first document. */
@@ -2374,9 +2376,16 @@ function validateWallFirstTopologyPass(
 		let previousEnd: string | undefined;
 		let firstStart: string | undefined;
 		for (const [index, ref] of room.boundary.entries()) {
-			const wall = wallById.get(ref.wallId)!;
-			if (wall.role !== 'boundary') {
-				return topologyFailure(room.id, ref.wallId, `Room '${room.id}' references non-boundary Wall '${ref.wallId}'`);
+			const wall = wallById.get(ref.wallId);
+			// Format 6 accepts any existing Wall as a Room boundary, so a reference to
+			// a Wall the candidate does not contain is refused here rather than read as
+			// if it existed.
+			if (!wall) {
+				return topologyFailure(
+					room.id,
+					ref.wallId,
+					`Room '${room.id}' references unknown Wall '${ref.wallId}'`
+				);
 			}
 			const start = ref.direction === 'forward' ? wall.startJunctionId : wall.endJunctionId;
 			const end = ref.direction === 'forward' ? wall.endJunctionId : wall.startJunctionId;

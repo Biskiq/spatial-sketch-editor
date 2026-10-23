@@ -445,7 +445,6 @@ function syntheticWall(id: string, junctionId: string): LayoutWall {
 		id,
 		startJunctionId: junctionId,
 		endJunctionId: junctionId,
-		role: 'boundary',
 		thickness: 0.2,
 		height: 2.6,
 		centerline: { kind: 'line' }
