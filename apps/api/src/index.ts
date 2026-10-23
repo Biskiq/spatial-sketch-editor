@@ -6,6 +6,8 @@ import { main } from './server.js';
 export * from './app.js';
 export * from './auth.js';
 export * from './asset-persistence.js';
+export * from './model-persistence.js';
+export * from './model-structure.js';
 export * from './config.js';
 export * from './database.js';
 export * from './project-persistence.js';

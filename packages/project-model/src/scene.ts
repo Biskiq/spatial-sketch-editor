@@ -25,7 +25,9 @@ export type SceneObjectFallback =
   | 'frame'
   | 'books'
   | 'clock'
-  | 'rug';
+  | 'rug'
+  /** A creator model's approved footprint box; never a catalogue object shape. */
+  | 'generic';
 
 export type CameraConnectionDirection = 'forward' | 'reverse';
 export type CameraEasing =
@@ -417,6 +419,11 @@ export type RuntimeScene = {
    * Kept for Paris activation and legacy callers that still key off `objects`.
    */
   objects: SceneObjectPlacement[];
+  /**
+   * Approved creator-model footprints (metres), keyed by `model` resource id.
+   * Read-projection data supplied by the unit runtime; never authored.
+   */
+  modelFootprints?: ReadonlyMap<string, { width: number; depth: number }>;
   /** World-space camera poses. */
   navigationNodes: NavigationNodeData[];
   /** World-space waypoints, including fresh node endpoints. */

@@ -43,10 +43,10 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 2 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 3 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 1 as const;
-export const RESOURCE_UNIT_FORMAT_VERSION = 1 as const;
+export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
 
 /** The five admitted unit domains, in stable order. */
 export const UNIT_DOMAINS = ['layout', 'scene', 'camera', 'experience', 'resources'] as const;
@@ -134,9 +134,10 @@ export type DependencyLock = {
 export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
- * Camera-free Scene 2: the landed world-local records without the navigation
- * graph. `formatVersion: 2` is the payload's own version and matches the unit
- * header.
+ * Camera-free Scene 3: the landed world-local records without the navigation
+ * graph. `formatVersion: 3` is the payload's own version and matches the unit
+ * header. A model names a catalogue asset or a `model` resource of the same
+ * envelope; the fallback vocabulary includes the generic footprint box.
  */
 export type CameraFreeSceneDocument = {
 	formatVersion: typeof SCENE_UNIT_FORMAT_VERSION;
@@ -254,10 +255,65 @@ export type ExperienceUnitPayload = {
 	experiences: readonly Experience[];
 };
 
-/** The admitted typed-resource kinds: the existing project texture/asset family. */
-export const RESOURCE_KINDS = ['texture', 'asset'] as const;
+/** The admitted typed-resource kinds: textures, catalogue assets and creator models. */
+export const RESOURCE_KINDS = ['texture', 'asset', 'model'] as const;
 
 export type ResourceKind = (typeof RESOURCE_KINDS)[number];
+
+/** The approved model derivative's one admitted media type. */
+export const MODEL_RESOURCE_MIME = 'model/gltf-binary' as const;
+
+/** Owner-accepted batch E bounds, enforced where a model resource is admitted. */
+export const MODEL_SOURCE_SET_MAX_BYTES = 50 * 1024 * 1024;
+export const MODEL_DERIVATIVE_MAX_BYTES = 25 * 1024 * 1024;
+
+/**
+ * The retained source file set of a model import: its manifest hash and declared
+ * extent. The hash is over the manifest, never over an individual byte stream, so
+ * it cannot be confused with the derivative's byte pin.
+ */
+export type ModelSourcePin = {
+	manifestHash: string;
+	size: number;
+	fileCount: number;
+};
+
+/** The recipe identity/version that produced the derivative (creator import). */
+export type ModelRefineRecipe = {
+	id: string;
+	version: number;
+};
+
+/**
+ * The placement definition of a creator model: the metric scale, pivot, occupied
+ * footprint and local contact the creator confirmed. Only floor placement is
+ * admitted; an instance never carries a second copy of these facts.
+ */
+export type ModelPlacement = {
+	/** Metres per source unit; finite and greater than zero. */
+	metresPerSourceUnit: number;
+	/** The derivative's local pivot, in its own metres. */
+	pivot: readonly [number, number, number];
+	/** Occupied footprint in metres around the pivot (X/Z). */
+	footprint: { readonly width: number; readonly depth: number };
+	/** The derivative's lowest local contact, in metres. */
+	contactMinY: number;
+	/** Only floor placement is admitted in this format. */
+	placement: 'floor';
+};
+
+/**
+ * The model-resource detail the approved revision supplies. The derivative's own
+ * bytes stay the resource's `pin`; this record is the retained provenance and the
+ * confirmed placement.
+ */
+export type ModelResourceDetail = {
+	source: ModelSourcePin;
+	recipe: ModelRefineRecipe;
+	/** Digest of the ingest report the approving creator confirmed. */
+	reportDigest: string;
+	placement: ModelPlacement;
+};
 
 /**
  * One typed resource. `contentRevision` is the exact content revision when the
@@ -265,6 +321,10 @@ export type ResourceKind = (typeof RESOURCE_KINDS)[number];
  * project; `unresolved` is the authored diagnostic when the binding is not yet
  * resolved. A resource with neither revision nor pin is always `unresolved` —
  * a fabricated pin is never admitted.
+ *
+ * A `model` resource is the one kind with extra retained truth: it must carry an
+ * approved derivative pin (its content revision is that pin's hash) and the
+ * `model` detail. Every other kind may omit the detail.
  */
 export type TypedResource = {
 	kind: ResourceKind;
@@ -272,6 +332,7 @@ export type TypedResource = {
 	contentRevision: string | null;
 	pin: ResourcePin | null;
 	unresolved: UnresolvedBinding | null;
+	model?: ModelResourceDetail;
 };
 
 /** The resource payload is a collection; an empty registry is valid only when unused. */

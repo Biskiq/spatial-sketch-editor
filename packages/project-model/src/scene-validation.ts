@@ -36,7 +36,8 @@ const FALLBACKS = new Set<SceneObjectFallback>([
 	'frame',
 	'books',
 	'clock',
-	'rug'
+	'rug',
+	'generic'
 ]);
 
 export function withSceneValidationOptions(

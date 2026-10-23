@@ -17,7 +17,7 @@ Editable entity kinds: **model** / **primitive** (`box|plane|cylinder|sphere`) /
 
 | Assets | Today |
 |------------|--------|
-| Models | Catalogue; world-local placement, no Room ownership |
+| Models | Catalogue assets or same-envelope approved model resources; world-local placement, no Room ownership |
 | Shapes | Box / plane / cylinder / sphere |
 | Lights | Point / spot / directional — aim by rotation |
 | Textures | URI/file → bind via materials (not scene objects); project assets use logical `/project-assets/{assetId}` refs resolved by authenticated context |
@@ -30,8 +30,12 @@ identity or revision policy. GLB provenance: [`assets.md`](./assets.md).
 **Current authoring.** The T2 Scene adapter places, edits, resizes, duplicates and deletes through
 unit F4 planners, sharing the Stage's single history with Layout. Definitions must already be pinned
 or procedural; the starter may capture a bounded verified palette. Missing or changed pins refuse
-placement; no resource is silently admitted. General GLB ingest remains T2's follow-on. The shared
-Stage/visitor renderers remain under `apps/editor/src/lib/museum/`, with catalogue policy in
+placement; no resource is silently admitted. T2.P02.S01 adds editor-host admission for a model
+resource in the same envelope and Save verification against the project's approved revision. Its
+`generic` fallback uses the approved footprint; part fields remain refused and `componentId` stays
+null. Import/review/approve UI and the complete placement journey remain later T2 work. The visitor
+reader remains catalogue-only. The shared Stage/visitor renderers remain under
+`apps/editor/src/lib/museum/`, with catalogue policy in
 `apps/editor/src/lib/content/scene-validation.ts`. The directory name is not a separate product.
 Open and Download use F2 source JSON. Publication UI and Camera authoring controls remain absent.
 

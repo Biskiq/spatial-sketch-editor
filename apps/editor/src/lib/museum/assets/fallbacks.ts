@@ -1,5 +1,6 @@
 import type { Vec3 } from '$lib/types/scene';
-import type { FallbackKind } from '$lib/types/assets';
+import type { Asset, FallbackKind } from '$lib/types/assets';
+import { resolveAssetFallback } from '$lib/content/assets';
 
 export type AssetFallbackKind = FallbackKind | 'book' | 'decor';
 
@@ -17,5 +18,33 @@ export const assetFallbackDimensions: Record<AssetFallbackKind, Vec3> = {
   books: [0.48, 0.15, 0.3],
   clock: [0.38, 2.11, 0.5],
   decor: [0.22, 0.38, 0.22],
-  rug: [2.6, 0.015, 1.8]
+  rug: [2.6, 0.015, 1.8],
+  // Neutral 1 m box when no approved footprint is available.
+  generic: [1, 1, 1]
 };
+
+/**
+ * The fallback box for a model kind. A creator model's approved footprint owns
+ * its width and depth; height stays a neutral 1 m until an instance supplies a
+ * placed scale. Catalogue kinds ignore the footprint argument.
+ */
+export function fallbackDimensionsFor(
+  kind: AssetFallbackKind,
+  footprint?: { width: number; depth: number }
+): Vec3 {
+  if (kind !== 'generic' || footprint === undefined) return assetFallbackDimensions[kind];
+  return [footprint.width, 1, footprint.depth];
+}
+
+/**
+ * The fallback a Scene model draws. An authored value wins; otherwise the
+ * catalogue's own fallback applies. A creator-model id is not in the catalogue
+ * at all, and its fallback is the approved footprint box — never an error.
+ */
+export function fallbackKindFor(
+  authored: AssetFallbackKind | undefined,
+  catalogueAsset: Asset | undefined
+): AssetFallbackKind {
+  if (authored !== undefined) return authored;
+  return catalogueAsset === undefined ? 'generic' : resolveAssetFallback(catalogueAsset);
+}

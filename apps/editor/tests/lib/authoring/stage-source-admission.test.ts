@@ -23,9 +23,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { validateProjectEnvelope } from '@portfolio/project-model/units';
+import { MODEL_RESOURCE_MIME, SCENE_UNIT_FORMAT_VERSION, validateProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	EXPERIENCE_UNIT_FORMAT_VERSION,
+	RESOURCE_UNIT_FORMAT_VERSION,
 	createUnitAcceptanceAdapter,
 	prepareUnitRuntime,
 	readUnitEnvelopeForSave,
@@ -305,7 +306,7 @@ describe('source admission', () => {
 		const source = await createUnitProject({
 			id: PROJECT_ID,
 			name: 'Missing model resource',
-			scene: { formatVersion: 2, textures: [], materials: [], entities: [
+			scene: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [
 				{ ...unknownAssetEntity(), assetId: 'paris-grand-piano' }
 			] }
 		});
@@ -321,6 +322,74 @@ describe('source admission', () => {
 		expect(stageEnvelope(admitted.snapshot).dependencyLock.entries).toEqual([]);
 		expect((await createUnitAcceptanceAdapter({ compound: true }).admit(source, [])).kind).toBe('rejected');
 		expect((await readUnitEnvelopeForSave(serializeProjectEnvelope(source))).kind).toBe('refused');
+	});
+
+	it('admits a Scene model naming this envelope’s approved model resource, not only the host catalogue', async () => {
+		const hash = `sha256-${'a'.repeat(64)}`;
+		const resource = {
+			kind: 'model' as const,
+			id: 'creator-model-piano',
+			contentRevision: hash,
+			pin: { hash, mime: MODEL_RESOURCE_MIME, size: 1024, locator: `/projects/${PROJECT_ID}/models/content/${hash}` },
+			unresolved: null,
+			model: {
+				source: { manifestHash: `sha256-${'b'.repeat(64)}`, size: 2048, fileCount: 2 },
+				recipe: { id: 'creator-import', version: 1 },
+				reportDigest: `sha256-${'c'.repeat(64)}`,
+				placement: {
+					metresPerSourceUnit: 0.5,
+					pivot: [0, 0, 0] as [number, number, number],
+					footprint: { width: 1.2, depth: 0.8 },
+					contactMinY: 0,
+					placement: 'floor' as const
+				}
+			}
+		};
+		const base = await createUnitProject({
+			id: PROJECT_ID,
+			name: 'Creator model resource',
+			scene: {
+				formatVersion: SCENE_UNIT_FORMAT_VERSION,
+				textures: [],
+				materials: [],
+				entities: [{ ...unknownAssetEntity(), assetId: resource.id, fallback: 'generic' }]
+			},
+			resources: { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [resource] }
+		});
+		const source: ProjectEnvelope = {
+			...base,
+			dependencyLock: {
+				formatVersion: 1,
+				entries: [
+					{
+						domain: 'resource:model',
+						subjectKind: 'resource',
+						subjectId: resource.id,
+						instancePath: [],
+						contentRevision: hash,
+						requiredCapabilities: [{ id: 'F2.unit-envelope', version: '1' }],
+						pin: resource.pin
+					}
+				]
+			}
+		};
+
+		// The museum catalogue cannot know a creator model; admission resolves the id
+		// against this envelope's own resource registry instead.
+		const outcome = await admitSource(source, CONTEXT);
+		expect(outcome.kind).toBe('admitted');
+		if (outcome.kind !== 'admitted') return;
+		expect(outcome.snapshot.domain.closure).toEqual([]);
+		expect(outcome.snapshot.domain.scene.objects.map((object) => object.assetId)).toEqual([resource.id]);
+		// The approved footprint reaches rendering as read-projection data.
+		expect(outcome.snapshot.domain.scene.modelFootprints?.get(resource.id)).toEqual({
+			width: resource.model.placement.footprint.width,
+			depth: resource.model.placement.footprint.depth
+		});
+
+		const accepted = await createUnitAcceptanceAdapter({ compound: true, resourceStaging: true }).admit(source, []);
+		expect(accepted.kind).toBe('admitted');
+		expect((await readUnitEnvelopeForSave(serializeProjectEnvelope(source))).kind).toBe('read');
 	});
 
 	it('discloses repairable authored diagnostics without blocking admission, acceptance or Save', async () => {
