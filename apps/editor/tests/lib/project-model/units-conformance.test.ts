@@ -625,5 +625,145 @@ describe('independent AM-2 regressions', () => {
 it('requires distinct Stop identities for repeated authored Guide placements', () => {
 	const value = experience('experience-a', 'view-1');
 	value.guides = [{ ...value.guides[0]!, stopIds: ['stop-1', 'stop-1'] }];
-	expect(validateExperiencePayload({ formatVersion: 1, experiences: [value] }).success).toBe(false);
+	const result = validateExperiencePayload({ formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [value] });
+	expect(result.success).toBe(false);
+	if (!result.success) expect(result.issues.map((issue) => issue.code)).toContain('duplicate-identity');
+});
+
+/** A Scene or Camera semantic reference shaped as the Experience unit reads a Presentation subject. */
+function subjectReference(domain: string, componentId: string | null = null) {
+	return {
+		version: 1,
+		domain,
+		revision: { kind: 'exact', contentRevision: 'revision-1' },
+		subject: { kind: 'entity', id: 'entity-1' },
+		instancePath: [],
+		location: { kind: 'project-root' },
+		componentId,
+		capabilityId: null
+	};
+}
+
+/** The valid Experience-2 payload with one Experience, edited for a single refusal. */
+function experiencePayload(edit: (value: Experience) => unknown) {
+	return { formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [edit(experience('experience-a', 'view-1'))] };
+}
+
+describe('validateExperiencePayload refusals', () => {
+	it('accepts the valid fixture the refusal rows mutate', () => {
+		expect(validateExperiencePayload(experiencePayload((value) => value)).success).toBe(true);
+	});
+
+	it.each([
+		{
+			name: 'a format-1 payload',
+			code: 'unsupported_format_version',
+			input: () => ({ formatVersion: 1, experiences: [experience('experience-a', 'view-1')] })
+		},
+		{
+			name: 'a View repeated in one Presentation',
+			code: 'duplicate-identity',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, viewIds: ['view-1', 'view-1'] }]
+				}))
+		},
+		{
+			name: 'a Default View outside the Presentation views',
+			code: 'default-not-in-views',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, defaultViewId: 'view-missing' }]
+				}))
+		},
+		{
+			name: 'a Stop entry View its Presentation does not carry',
+			code: 'entry-view-not-in-presentation',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					stops: [{ ...value.stops[0]!, entryViewId: 'view-missing' }]
+				}))
+		},
+		{
+			name: 'a component-scoped Presentation subject',
+			code: 'component-not-admitted',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, subject: subjectReference('scene', 'component-1') }]
+				}))
+		},
+		{
+			name: 'a capability-scoped Presentation subject',
+			code: 'component-not-admitted',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [
+						{ ...value.presentations[0]!, subject: { ...subjectReference('scene'), capabilityId: 'capability-1' } }
+					]
+				}))
+		},
+		{
+			name: 'a Presentation subject in the Camera domain',
+			code: 'unsupported-subject-domain',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, subject: subjectReference('camera') }]
+				}))
+		},
+		{
+			name: 'an unknown text kind',
+			code: 'unknown-tag',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, text: { kind: 'rich', body: 'The piano.' } }]
+				}))
+		},
+		{
+			name: 'Presentation text beyond the bound',
+			code: 'text-too-long',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					presentations: [{ ...value.presentations[0]!, text: { kind: 'plain', body: 'x'.repeat(4001) } }]
+				}))
+		},
+		{
+			name: 'an end continuation carrying a transition',
+			code: 'unknown-key',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					stops: [{ ...value.stops[0]!, continuation: { kind: 'end', transition: 'cut' } }]
+				}))
+		},
+		{
+			name: 'an unknown transition',
+			code: 'unknown-tag',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					stops: [{ ...value.stops[0]!, continuation: { kind: 'sequence-next', transition: 'bezier' } }]
+				}))
+		},
+		{
+			name: 'the legacy viewId key on a Stop',
+			code: 'unknown-key',
+			input: () =>
+				experiencePayload((value) => ({
+					...value,
+					stops: [{ ...value.stops[0]!, viewId: 'view-1' }]
+				}))
+		}
+	])('refuses $name with $code', ({ code, input }) => {
+		const result = validateExperiencePayload(input());
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.issues.map((issue) => issue.code)).toContain(code);
+	});
 });

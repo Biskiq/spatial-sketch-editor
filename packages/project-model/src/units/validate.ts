@@ -509,6 +509,14 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 				);
 				return null;
 			}
+			if (read.value.capabilityId !== null) {
+				reader.problem(
+					`${entryPath}.subject.capabilityId`,
+					'component-not-admitted',
+					'a Presentation subject names a whole subject; a capability-scoped reference is not admitted'
+				);
+				return null;
+			}
 			if (read.value.domain !== 'scene' && read.value.domain !== 'layout') {
 				reader.problem(
 					`${entryPath}.subject.domain`,

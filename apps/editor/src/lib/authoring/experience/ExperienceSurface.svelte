@@ -16,6 +16,7 @@
 	import { stageEnvelope } from '../stage/unit-stage-source';
 	import type { Experience, ExperienceContinuation, ProjectEnvelope } from '@portfolio/project-model/units';
 	import { experienceFocus } from './focus.svelte';
+	import { travelGapMessages } from './travel-gap';
 	import {
 		captureBindIntent,
 		capturedFovDegrees,
@@ -71,6 +72,9 @@
 		if (current === null || experienceFocus.stopId === null) return null;
 		return current.stops.find((entry) => entry.id === experienceFocus.stopId) ?? null;
 	});
+	const travelGaps = $derived.by(() =>
+		current === null || selectedStop === null ? [] : travelGapMessages(snapshot, current.id, selectedStop.id)
+	);
 	const stopUsage = $derived.by(() => {
 		const usage = new Map<string, string[]>();
 		for (const stop of current?.stops ?? []) {
@@ -576,6 +580,9 @@
 								A Travel is valid only where Camera connectivity joins the two Views. An unsupported Travel
 								stays authored and Preview reports the gap; nothing silently cuts.
 							</p>
+							{#each travelGaps as gap (gap)}
+								<p class="hint" role="alert">{gap}</p>
+							{/each}
 							<div class="actions">
 								<button type="button" onclick={saveStop} disabled={busy}>Save Stop</button>
 							</div>

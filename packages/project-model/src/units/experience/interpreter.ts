@@ -97,6 +97,11 @@ export type ExperienceRunState = {
 	readonly invocation: ProgramInvocation | null;
 	/** The origin a covered detour must return to, or `null`. */
 	readonly returnToStopId: string | null;
+	/**
+	 * The Guide position a Presentation entry suspended, or `null`. Only the explicit
+	 * `resume` event returns to it; Continue never does.
+	 */
+	readonly resume: { readonly stopId: string; readonly returnToStopId: string | null } | null;
 	readonly lastEvent: ProgramEvent | null;
 };
 
@@ -114,6 +119,11 @@ export type ExperienceEvent =
 	  }
 	| { readonly kind: 'arrival'; readonly runId: string; readonly runEpoch: number }
 	| { readonly kind: 'continue'; readonly runId: string; readonly runEpoch: number }
+	/**
+	 * Return to the Guide position a Presentation entry suspended. It is the explicit
+	 * control; Continue during a Presentation stays ignored.
+	 */
+	| { readonly kind: 'resume'; readonly runId: string; readonly runEpoch: number }
 	| { readonly kind: 'complete'; readonly runId: string; readonly runEpoch: number }
 	| { readonly kind: 'cancel'; readonly runId: string; readonly runEpoch: number }
 	| { readonly kind: 'reset'; readonly runId: string; readonly runEpoch: number }
@@ -219,6 +229,7 @@ export function createExperienceRun(
 		pendingContent: [],
 		invocation: null,
 		returnToStopId: null,
+		resume: null,
 		lastEvent: null
 	};
 }
@@ -261,6 +272,7 @@ export function reduceExperience(
 	if (event.kind === 'arrival') return arrivalEvent(state);
 	if (event.kind === 'set-state') return setState(program, state, event.stateId, event.value);
 	if (event.kind === 'navigate') return navigate(program, state, event.stopId, options);
+	if (event.kind === 'resume') return resumeGuide(program, state, options);
 	return continueRun(program, state, options);
 }
 
@@ -310,6 +322,9 @@ export function createExperienceInterpreter(
 		continue(): ExperienceReduceResult {
 			return this.dispatch({ kind: 'continue', runId: current.runId, runEpoch: current.runEpoch });
 		},
+		resume(): ExperienceReduceResult {
+			return this.dispatch({ kind: 'resume', runId: current.runId, runEpoch: current.runEpoch });
+		},
 		tick(milliseconds: number): ExperienceReduceResult {
 			return this.dispatch({ kind: 'tick', runId: current.runId, runEpoch: current.runEpoch, milliseconds });
 		},
@@ -335,12 +350,12 @@ function enter(
 	if (state.entered) return accepted(state, []);
 	if (program.entryStopId === null) {
 		return {
-			state: { ...state, entered: true, phase: 'completed', lastEvent: 'enter' },
+			state: { ...state, entered: true, resume: null, phase: 'completed', lastEvent: 'enter' },
 			outcome: 'accepted',
 			effects: [{ kind: 'completed' }]
 		};
 	}
-	const entered: ExperienceRunState = { ...state, entered: true, lastEvent: 'enter' };
+	const entered: ExperienceRunState = { ...state, entered: true, resume: null, lastEvent: 'enter' };
 	const effects: ExperienceEffect[] = [];
 	// An `enter` cancellation can have no occurrence to continue from yet; only the
 	// arrival lifecycle may request a continuation.
@@ -373,9 +388,15 @@ function enterPresentation(
 		content: presentation.content.map((record) => ({ id: record.id, text: record.text }))
 	};
 	const invocation: ProgramInvocation = { kind: 'cut', viewId: presentation.defaultViewId };
+	// Entering from a Guide position suspends it; moving between extras keeps the
+	// original tour position rather than the previous Presentation.
+	const resume = state.stopId !== null
+		? { stopId: state.stopId, returnToStopId: state.returnToStopId }
+		: state.resume;
 	const next: ExperienceRunState = {
 		...state,
 		entered: true,
+		resume,
 		stopId: null,
 		occurrenceId: null,
 		presentationId: presentation.id,
@@ -680,6 +701,26 @@ function advance(
 	return arrive(program, state, next.id, options, effects, true, 0, continueDepth + 1);
 }
 
+/**
+ * Return to the Guide position a Presentation entry suspended. This is a fresh
+ * arrival at that Stop (a new visit), so Continue then moves on as authored.
+ */
+function resumeGuide(
+	program: ExecutionProgram,
+	state: ExperienceRunState,
+	options: ExperienceInterpreterOptions
+): ExperienceReduceResult {
+	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
+	if (state.resume === null) return ignored(state);
+	return arrive(
+		program,
+		{ ...state, resume: null, returnToStopId: state.resume.returnToStopId },
+		state.resume.stopId,
+		options,
+		[]
+	);
+}
+
 function navigate(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
@@ -692,14 +733,14 @@ function navigate(
 	// strand the run at the inner origin. The outer excursion wins: navigate to the
 // target but keep the obligation that is already owed.
 	if (state.returnToStopId !== null) {
-		return arrive(program, state, stopId, options, []);
+		return arrive(program, { ...state, resume: null }, stopId, options, []);
 	}
 	const detour = (options.detours ?? []).find(
 		(entry) => entry.fromStopId === state.stopId && entry.toStopId === stopId
 	);
 	const next: ExperienceRunState = detour === undefined
-		? { ...state, returnToStopId: null }
-		: { ...state, returnToStopId: detour.returnToStopId };
+		? { ...state, returnToStopId: null, resume: null }
+		: { ...state, returnToStopId: detour.returnToStopId, resume: null };
 	return arrive(program, next, stopId, options, []);
 }
 
@@ -746,6 +787,7 @@ function resetRun(
 		pendingContent: [],
 		invocation: null,
 		returnToStopId: null,
+		resume: null,
 		lastEvent: null
 	};
 	return enter(program, reset, options);
@@ -776,6 +818,7 @@ function finish(
 			values,
 			holdRemainingMs: null,
 			returnToStopId: null,
+			resume: null,
 			pendingContent: []
 		},
 		outcome: 'accepted',

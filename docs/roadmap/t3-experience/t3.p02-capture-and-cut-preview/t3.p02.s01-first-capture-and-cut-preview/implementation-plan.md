@@ -16,8 +16,8 @@ in batch E ([record](../../../../reference/decisions/batch-e-authorization-2026-
 landed code as follows:
 
 - **Formats.** The [Experience format draft](./experience-format-draft.md) is the slice's format:
-  Experience unit format 2 with Presentation `viewIds`/`defaultViewId`, an F.1 `subject` (component
-  null, no Room or clone invented), closed `plain` text, Stop-local `entryViewId` and a Cut/Travel
+  Experience unit format 2 with Presentation `viewIds`/`defaultViewId`, an F.1 `subject` naming a
+  whole subject (component and capability null, no Room or clone invented), closed `plain` text, Stop-local `entryViewId` and a Cut/Travel
   selector on the continuation edge, plus a Presentation-entry event in the program. Under the
   pre-baseline rule the numbers bump and readers refuse older formats; nothing is migrated or
   negotiated. No part or annotation field enters. The draft's two open points are settled at
@@ -37,6 +37,23 @@ landed code as follows:
   is not imported.
 - **Order.** H0's `T3.P03.S01` merges first. Capture-and-bind uses the joint Camera/Experience
   planner, whose write set H0 declares.
+
+Owner rulings at implementation review (2026-10-22) narrow this scope:
+
+- **First Guide creation moves to `T3.P02.S02`.** S01 adds a Stop only to an existing Guide and has
+  no operation that creates the first one. Scope items 3, 4 and 6 land and are proven at the
+  planner, lowering and interpreter level; on the real route they become reachable with S02's
+  Guide-creation operation.
+- **Preview takeover.** Preview unmounts the Stage surface and runs its own isolated visitor canvas;
+  the Stage's Camera output ticket is not handed over, and exit remounts the Stage with authoring
+  identity, selection and history intact. The explicit Preview handover and return token of
+  [phase laws 4 and 5](../README.md) are not realized in S01 and remain a phase residual that the
+  final gate reads against those laws.
+- **Leaving a Guide is explicit both ways.** Entering a Presentation from the visitor list during a
+  Guide run suspends the Guide at the Stop the visitor left; only an explicit Resume returns there,
+  and Continue never does.
+- **Whole-subject Presentations only.** Part- and capability-scoped subjects wait for part admission;
+  several captured Views of one subject are the S01 way to present its parts.
 
 These complete the accepted P1 optional-Guide direction; they add no rich controls, part annotations,
 vertical architecture or second Camera authority.
@@ -62,7 +79,8 @@ A creator, on the shared Stage, can:
 2. **Capture a Camera View** from the current Stage framing (eye, target, FOV and the frame's aspect)
    as a deliberate, validated Camera action. Capture is not a silent side effect of selection, and it
    discloses shared reach when the View is already referenced.
-3. **Bind a Presentation** — Default role plus subject/use, and optionally a Guide Stop — in **one**
+3. **Bind a Presentation** — Default role plus subject/use, and optionally a Stop in an existing
+   Guide — in **one**
    accepted operation with one undo payload. Rebinding to a deliberately captured View is the narrow
    alternative to editing a shared one in place.
 4. **Reuse one Presentation at distinct Stops**, and **reorder Stops by stable identity**; a repeated
@@ -74,16 +92,16 @@ A creator, on the shared Stage, can:
    is selectable where Camera connectivity supports it, and an unsupported transition reports a gap;
    Experience never silently falls back to a Cut or searches the Camera graph.
 7. **Enter an isolated visitor Preview** over the same lowering/interpreter the visitor uses, and
-   **return** through the Camera return token with authoring identity, selection and history intact.
-   Source edits stop stale playback; Preview never writes source.
+   **return** to the remounted Stage with authoring identity, selection and history intact (the
+   Preview takeover ruling above). Source edits stop stale playback; Preview never writes source.
 8. **Undo/Redo, Save and reload** through F2/F4: one chronological source history for lenses and
    authoring, a conditional unit Save with conflict preservation, and a reload that preserves Views,
    Presentations, Stops and order.
 
 **Interaction surface.** Mount through the accepted public T1 Stage seam: selection, task focus and
 gestures stay host-owned; the slice contributes AM-5 task/Find/instrument entries and adapter-backed
-commands. Exactly one Camera output ticket governs inspection, Look-through, Follow and Preview
-handover. Exact numeric/keyboard routes are first-class peers of pointer routes, and every command
+commands. Exactly one Camera output ticket governs inspection, Look-through and Follow; S01's
+Preview takeover is the ruled exception above. Exact numeric/keyboard routes are first-class peers of pointer routes, and every command
 that can produce a candidate has a truthful refusal path.
 
 **Explicitly out of scope:** rich interactive control authoring beyond the first Cut Guide (Gate and
@@ -106,8 +124,8 @@ consumers; this slice does not import their implementations or shell composition
    planner result; one history entry.
 3. **Guide and editorial fields.** Order by stable identity, holds/continuation resolution by
    occurrence, and one order writer.
-4. **Preview.** Isolated session over the shared interpreter, with entry/exit through the Camera
-   return token, no editor machinery in the lazy preview chunk, and entry for a standalone
+4. **Preview.** Isolated session over the shared interpreter, entered and left by Stage takeover
+   (ruled above), with an explicit Resume back into a suspended Guide, no editor machinery in the lazy preview chunk, and entry for a standalone
    Presentation with no Guide or Stop as well as the full Guide path.
 5. **Save/reload.** Unit conditional Save with receipts and conflict preservation; strict admission for
    pre-epoch or unknown-version sources.

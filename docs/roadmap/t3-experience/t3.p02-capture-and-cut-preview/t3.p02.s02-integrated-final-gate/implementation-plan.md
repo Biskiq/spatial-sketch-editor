@@ -19,8 +19,10 @@ implemented, accepted, ready or evidenced.
 ## Prerequisite
 
 `T3.P02.S01` accepted with routine closeout, and every consumed gate `accepted` with every `Requires`
-scope `active` at this slice's own trusted base. `T3.P02.S02` adds no product feature of its own: it is
-the independent, integrated acceptance of the phase's creator loop.
+scope `active` at this slice's own trusted base. `T3.P02.S02` is the independent, integrated
+acceptance of the phase's creator loop. Its one product addition is the operation that creates the
+first Guide from a capture or Stop, which the owner moved here from `T3.P02.S01` on 2026-10-22; it
+adds no other feature.
 
 ## Scope
 
@@ -28,13 +30,15 @@ Record independent acceptance of first capture and Cut Preview on the integrated
 starter or composed subject:
 
 - Experience create/select, then capture a View and bind a Presentation with an optional Guide Stop in
-  one operation; one Presentation reused at two distinct Stops with distinct holds and entry roles;
+  one operation, including creating the first Guide; one Presentation reused at two distinct Stops with distinct holds and entry roles;
 - reorder by stable identity, bounded label/text/hold/continuation edits, and one Guide order;
 - a first coherent Cut Guide with supported existing Travel and truthful gap reporting;
 - **two Experiences over one world**, switching between them with shared-Camera reach disclosed;
 - source Undo, conditional unit Save, conflict preservation and reload;
 - a standalone Presentation with zero Guides/Stops entering and leaving Preview, plus the
-  complete Guide path; isolated visitor Preview entry and return through the Camera return token, with authoring identity,
+  complete Guide path, including leaving a Guide for a listed Presentation and the explicit Resume
+  back; isolated visitor Preview entry and return read against phase laws 4 and 5 (S01 ships the
+  owner-ruled Stage takeover without a return token), with authoring identity,
   selection and history preserved and no editor machinery in the visitor/public chunks;
 - the accessibility and reduced-motion contract, DOM reach to every admitted destination, and the
   Info Panel without raycast.

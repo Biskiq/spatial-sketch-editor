@@ -89,6 +89,15 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(visitor.ended).toBe(true);
 	});
 
+	it('a Guide-free program stays enterable from the list', () => {
+		const visitor = runtime({ entryStopId: null, stops: [] });
+		visitor.start(null);
+		expect(visitor.state.phase).toBe('ready');
+		expect(visitor.state.stopId).toBeNull();
+		expect(visitor.selectPresentation('presentation-guide-free')).toBe(true);
+		expect(visitor.currentViewId).toBe('view-3');
+	});
+
 	it('keeps a Guide-free Presentation reachable in the companion', () => {
 		const visitor = runtime();
 		visitor.enter();
@@ -193,6 +202,23 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		visitor.navigate('stop-2');
 		expect(visitor.state.stopId).toBe('stop-2');
 		expect(visitor.state.presentationId).toBe('presentation-2');
+		expect(visitor.currentViewId).toBe('view-2');
+	});
+
+	it('offers an explicit Resume only while a Presentation has suspended the Guide', () => {
+		const visitor = runtime();
+		visitor.enter();
+		visitor.continue();
+		expect(visitor.canResume).toBe(false);
+		expect(visitor.selectPresentation('presentation-guide-free')).toBe(true);
+		expect(visitor.canResume).toBe(true);
+		// Continue never returns to the suspended Stop.
+		visitor.continue();
+		expect(visitor.currentPresentation?.id).toBe('presentation-guide-free');
+		expect(visitor.canResume).toBe(true);
+		visitor.resume();
+		expect(visitor.canResume).toBe(false);
+		expect(visitor.state.stopId).toBe('stop-2');
 		expect(visitor.currentViewId).toBe('view-2');
 	});
 

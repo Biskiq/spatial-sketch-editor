@@ -29,7 +29,7 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 
-import { EXPERIENCE, experienceEnvelope } from './fixtures';
+import { EXPERIENCE, VIEWS, experienceEnvelope } from './fixtures';
 
 async function boot(): Promise<{
 	readonly source: ProjectEnvelope;
@@ -203,8 +203,9 @@ describe('capture, binding and Guide order', () => {
 		expect(refused.kind).toBe('rejected');
 		expect(coordinator.history().depth).toBe(1);
 
-		// Giving the Stop its own entry View makes the Default clearable: the run still
-		// has a View to arrive at.
+		// Giving the Stop its own entry View does not make the Default clearable: the
+		// Stop still enters through its Presentation, which would be left without an
+		// enterable Default View.
 		const entry = await coordinator.accept(
 			stopUpdateIntent({
 				envelope: source,
@@ -216,36 +217,23 @@ describe('capture, binding and Guide order', () => {
 			})
 		);
 		expect(entry.kind).toBe('accepted');
-		const cleared = await coordinator.accept(
+		const stillEntered = await coordinator.accept(
 			presentationUpdateIntent({
 				envelope: coordinator.acceptedSnapshot().domain.source,
 				revision: coordinator.acceptedRevision(),
-				ids: { operation: 'op-no-default' },
+				ids: { operation: 'op-no-default-with-entry' },
 				experienceId: 'experience-1',
 				presentationId: 'presentation-1',
 				defaultViewId: null
 			})
 		);
-		expect(cleared.kind).toBe('accepted');
-		expect(experienceOf(coordinator.acceptedSnapshot().domain.source).presentations[0]!.defaultViewId).toBeNull();
-
-		// The mirror holds too: with no Default left, the Stop cannot give up the entry
-		// View that is now its only one.
-		const orphaned = await coordinator.accept(
-			stopUpdateIntent({
-				envelope: coordinator.acceptedSnapshot().domain.source,
-				revision: coordinator.acceptedRevision(),
-				ids: { operation: 'op-no-entry' },
-				experienceId: 'experience-1',
-				stopId: 'stop-1',
-				entryViewId: null
-			})
-		);
 		// `planner-rejected` is the coordinator's code for a planner refusal; the
 		// planner's own `invalid-payload` stays in `reason`.
-		expect(orphaned).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
-		if (orphaned.kind !== 'rejected') return;
-		expect(orphaned.message).toContain('would enter at no View');
+		expect(stillEntered).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
+		if (stillEntered.kind !== 'rejected') return;
+		expect(stillEntered.message).toContain('keep a Default View');
+		expect(experienceOf(coordinator.acceptedSnapshot().domain.source).presentations[0]!.defaultViewId).toBe('view-1');
+		expect(coordinator.history().depth).toBe(2);
 	});
 });
 
@@ -319,6 +307,24 @@ describe('Preview entry rule', () => {
 		if (entry.kind !== 'program') return;
 		expect(entry.entryPresentationId).toBe('presentation-2');
 		expect(entry.title).toBe('Gallery');
+	});
+
+	it('enters a selected Presentation even when the entry Guide carries an unconnected Travel', async () => {
+		// The entry Guide's stop-1 → stop-2 Travel has no Camera connection, so the
+		// Guide cannot lower. Selecting a Presentation previews that Presentation alone
+		// and must not inherit the unrelated Guide's refusal.
+		const envelope = await experienceEnvelope({
+			camera: {
+				formatVersion: 1,
+				views: VIEWS.map((view) => ({ ...view, connectedViewIds: [] })),
+				connections: []
+			}
+		});
+		expect(entryFor(envelope).kind).toBe('unavailable');
+		const entry = entryFor(envelope, { presentationId: 'presentation-2' });
+		expect(entry.kind).toBe('program');
+		if (entry.kind !== 'program') return;
+		expect(entry.entryPresentationId).toBe('presentation-2');
 	});
 
 	it('lists enterable Presentations for a Guide-free Experience and explains an unenterable one', async () => {
