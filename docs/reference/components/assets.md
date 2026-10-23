@@ -62,10 +62,26 @@ Project registry rows
 
 P20 does **not** build the final Assets workspace. Cloud Load resolves every referenced logical
 texture before project replacement, verifies registry metadata plus MIME/size/SHA, then primes the
-existing binary store; failure leaves the current project unchanged. GLB import, provider search,
-and delete/GC remain deferred — and the editor ingest/staging UI that would have driven uploads was
-removed with the editor shell, so asset creation is an API/T2 rebuild, not a current capability.
-Built-ins retain catalogue identity — do not invent registry behavior for them.
+existing binary store; failure leaves the current project unchanged. Provider search and general
+delete/GC remain deferred. Built-ins retain catalogue identity — do not invent registry behavior for
+them.
+
+## Creator model resource storage (T2.P02.S01)
+
+The landed S01 capability is a storage and admission foundation, not an import UI. The owner-only
+API stages a declared source file set (up to 50 MiB) and derivative (up to 25 MiB), checks their
+hashes, sizes and GLB/glTF structure, and retains immutable approved revisions. Unapproved staging
+is removed after 24 hours when accessed by the staging/approval routes; there is no background
+expiry worker. The API stores source and derivative bytes in the project's private object namespace;
+it does not create the derivative. Approved revisions remain while project versions reference them;
+project deletion cleanup belongs to the later C3 work.
+
+The F2 resources unit (format 2) carries a model resource with derivative and source pins, recipe,
+report digest and placement definition. Scene format 3 may name a catalogue asset or a model resource
+locked in the same envelope. Editor host admission resolves that resource in the envelope, and Save
+checks its complete pin against an approved revision owned by the same project. The visitor/public
+release path remains catalogue-only. Import/review/approve UI, model placement and its full creator
+journey remain later T2 work.
 
 ## Published release delivery (P22 shipped 2026-09-08)
 

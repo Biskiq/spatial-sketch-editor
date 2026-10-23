@@ -3,42 +3,24 @@
 Track-scoped handoff. **Replace only this file for T2 work.**
 
 ```text
-PHASE: T2.P02 Own model import (registered 2026-10-22, batch E) →
+PHASE: T2.P02 Own model import (registered 2026-10-22, batch E; in progress) →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
        T2.P01 Supported object composition is CLOSED 2026-10-20, all four children shipped →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P02.S01 is implemented on `t2/p02-s01-model-resource-storage` at `7a90f7d8` and carries an
-        independent-review ACCEPT recorded at `5a3451fb` (two facets; the first pass returned CHANGES
-        REQUIRED and every in-scope finding was fixed at `7a90f7d8`). Owner acceptance and merge are
-        owed. The phase's later children stay held and are not on the release list; a successor
-        starts only after S01 is accepted and is itself authorized.
-BATON: S01 delivers staged model imports, immutable approved revisions, the resources-2 / Scene-3
-       formats with a `model` kind, editor-only admission of a Scene model against the envelope's
-       own model registry, the host-staging-plus-planner-`resources` dual grant, and in-transaction
-       Save verification of every model pin. Expiry sweeps on upload as well as approval; the
-       visitor/cold-release reader stays catalogue-only by construction; the generic fallback is
-       sized from the approved footprint. Evidence and limits are in
-       ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md.
-       Declared tier `architecture-integration`, run at `7a90f7d8`: project-model/API/Svelte checks
-       0 errors; DB-backed API 12 files / 88 tests, 0 fail, 0 skipped, including streamed 50/25 MiB
-       uploads; arch lane 21 / 173; affected editor contracts 39 files / 483. Not accepted and not
-       merged. The review-fix commit renders a creator model through its tolerant catalogue lookup
-       and footprint fallback, and closes the review's refusal-coverage and index-path findings;
-       non-blocking limits are recorded in the acceptance record.
-NEXT:  Owner review of PR #177 (https://github.com/Biskiq/spatial-sketch-editor/pull/177) at the
-       branch tip; owner acceptance, the complete repository gate on then-current `main`, and merge
-       follow. Owner acceptance and routine
-       closeout follow; the complete repository gate runs on then-current `main` before merge.
-ROUTE: ./README.md →
-       ../../roadmap/t2-composition/README.md (phase register) →
+SLICES: T2.P02.S01 is shipped with owner-override acceptance dated 2026-10-23. The acceptance and
+        preservation stub records the current accepted implementation identity, actual test/review
+        source identities, waived prerequisites, and closeout report:
+        ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md.
+BATON: S01 delivers owner-only model staging and immutable approved revisions, resources format 2,
+       Scene format 3, editor-host admission from the same envelope, and Save verification against an
+       approved same-project revision. The visitor/public release path stays catalogue-only. Durable
+       current behavior is in the owning assets, Scene content and persistence references.
+NEXT:  Use the phase README for the next proposed T2 scope. The owner must review its complete plan
+       and give a separate greenlight before implementation starts.
+ROUTE: ./README.md → ../../roadmap/t2-composition/README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md →
-       ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md
-       → ./current.md (this handoff) →
        ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md
-       → ../../reference/decisions/batch-e-authorization-2026-10-22.md (provenance)
-BLOCKER: None for S01 review. A later child remains unauthorized and needs its own plan approval.
-CARRY: The owner may push the local `closed/T2.P01.S03`, `closed/T2.P01.S04` and `closed/T2.P01`
-        tags. Cloud Save in a real browser session stays with the host evidence. T2 track
-        completion remains a separate owner event. Approved-revision retention is structural
-        (cascade on project deletion); the deletion path itself belongs to the later C3 work.
+BLOCKER: None for S01 under the owner override. Any next slice requires its own owner authorization.
+CARRY:  Project-deletion cleanup for approved revisions belongs to the phase's later C3 work. T2 track
+        completion remains a separate owner event.
 ```

@@ -56,7 +56,7 @@ versioned F amendments. Camera and Experience already have distinct codec-bounde
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 5, Scene 2, Camera 1, Experience 1 and resources 1.
+`units`. Unit payload versions are Layout 5, Scene 3, Camera 1, Experience 1 and resources 2.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
@@ -124,8 +124,13 @@ and asset reads return honest 404 with `Cache-Control: no-store`; no old-documen
 delivery fallback. Owned status and OCC-checked Unpublish remain. T4 owns the prepared reader.
 
 **Asset policy:** static safe URIs remain public resources; scene model entities reference shipped
-catalogue `assetId`s. Project-local GLB import is absent: the editor's ingest/resource staging path
-was removed with the editor shell, and rebuilding it is a T2 obligation, not a current capability.
+catalogue `assetId`s or a model resource pinned in the same envelope. T2.P02.S01 adds owner-only
+staging and immutable approved model revisions in the project registry; Save verifies each model's
+derivative/source pins, recipe, report digest and placement against an approved revision owned by
+that project, refusing the save without changing the stored version when they disagree. Resources
+format 2 carries the model resource and lock; Scene format 3 may reference it. The visitor/public
+reader remains catalogue-only, and the import/review/approve UI and full placement flow remain later
+T2 work.
 
 **History.** One F4 chronological stack holds at most 100 accepted operations, skips no-ops,
 truncates redo after a new edit and mints fresh revisions on Undo/Redo. Session selection, generated
