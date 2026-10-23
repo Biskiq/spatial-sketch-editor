@@ -32,12 +32,12 @@ uses a fresh context, never a user profile.
 
 | Spec | Flow | What it records |
 | --- | --- | --- |
-| `flows/startup.spec.ts` | F1 startup | hub interactive, Stage first **architectural** frame (rAF proxy, not the contract's first interactive frame), FCP, LCP, long tasks, script bytes/requests, cold and warm |
-| `flows/project-open.spec.ts` | F2 open | S (grid-3) and M (grid-7) admission → first **architectural** frame (rAF proxy), cold and warm |
-| `flows/orbit.spec.ts` | F7 orbit | 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, cold and warm |
-| `flows/save.spec.ts` | F9 Save | save:submit → local feedback presented → durable receipt → saved, through the API test-auth seam on a local stack, cold and warm |
-| `flows/cycles.spec.ts` | F13 repeated open/close | 10 cycles × (open + 20 edits + close), JS heap after forced GC, cold and repeat-use |
-| `flows/drag-correlation.spec.ts` | F3/F4/F8 methodology | input sequence → matching preview presentation, latest-input age, final-result completion, precision commit, 20 Undo/Redo cycles, cold and warm, plus the deliberately delayed-preview proof |
+| `flows/startup.spec.ts` | F1 startup | hub interactive, Stage first **architectural** frame (rAF proxy, not the contract's first interactive frame), FCP, LCP, long tasks, script bytes/requests, cold, warm and repeat-use |
+| `flows/project-open.spec.ts` | F2 open | S (grid-3) and M (grid-7) admission → first **architectural** frame (rAF proxy), cold, warm and repeat-use |
+| `flows/orbit.spec.ts` | F7 orbit | 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, cold, warm and repeat-use |
+| `flows/save.spec.ts` | F9 Save | save:submit → local feedback presented → durable receipt → saved, through the API test-auth seam on a local stack, cold, warm and repeat-use |
+| `flows/cycles.spec.ts` | F13 repeated open/close | 10 cycles × (open + 20 edits + close), JS heap after forced GC, cold, warm (one cycle after a discarded one) and repeat-use (the ten-cycle state) |
+| `flows/drag-correlation.spec.ts` | F3/F4/F8 methodology | input sequence → matching preview presentation, latest-input age, final-result completion, precision commit, 20 Undo/Redo cycles, cold, warm and repeat-use, plus the deliberately delayed-preview proof |
 | `flows/calibration.spec.ts` | CPU calibration | grid-7 compile + Stage admission, 20 runs, CDP throttling search when a reference median is supplied |
 
 ## Correlation (why the ledger exists)
@@ -87,11 +87,14 @@ report says so.
 A reduced pass (`PERF_RUNS<10` or `PERF_SAMPLES<60`) is labelled a pre-flight
 pass in every row and is never acceptance evidence.
 
-Flows with a navigation or drag (`F1`, `F2`, `F3`/`F4`/`F8`, `F7`, `F9`, `F13`)
-run cold and warm/repeat-use; cold clears the HTTP cache and cookies before every
-measured run. F13's repeated-use row is the contract's ten-cycle
-repeat-use state. The delayed-preview proof remains a warm-only diagnostic, not
-a flow row.
+Every flow row runs **cold, warm and repeat-use**. Cold clears the HTTP cache and
+cookies before every measured run; warm and repeat-use keep the same context and
+never clear. For the navigation and drag flows, a repeat-use run closes back to
+the hub and then opens a fresh project, so the cycle boundary is real. F13's
+repeat-use row is the contract's ten-cycle state; its warm row measures one
+cycle after a discarded cycle has warmed the Stage, so it is not a disguised
+cold load. The delayed-preview proof remains a warm-only diagnostic, not a flow
+row.
 
 F7 paces its 60-step orbit to a 10 s wall-clock deadline. On a 60 Hz presented
 clock that is the contract's ≥600 frames. If the browser presents below 60 Hz,

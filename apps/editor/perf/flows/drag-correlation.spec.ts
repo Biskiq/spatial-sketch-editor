@@ -31,6 +31,7 @@ import {
 import { fixtureProject } from '../lib/fixtures';
 import {
 	acceptedResultCount,
+	closeToHub,
 	commitPrecisionLength,
 	dragWallHandle,
 	gotoCreateIntent,
@@ -154,10 +155,10 @@ test.describe('F3/F4/F8 methodology', () => {
 	// test.
 	test.setTimeout(1_800_000);
 
-	test('drag correlation, precision commit and undo/redo, cold and warm', async ({ browser }, testInfo) => {
+	test('drag correlation, precision commit and undo/redo, cold, warm and repeat-use', async ({ browser }, testInfo) => {
 		const report = startReport(`drag-correlation-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const limitations = passLimitations();
-		for (const cacheState of ['cold', 'warm'] as const) {
+		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
 			const session = await newMeasuredSession(browser, {
 				viewport: VIEWPORT,
 				deviceScaleFactor: DEVICE_SCALE_FACTOR,
@@ -169,11 +170,13 @@ test.describe('F3/F4/F8 methodology', () => {
 				for (let index = 0; index < WARMUP_RUNS; index++) {
 					if (cacheState === 'cold') await clearBrowserState(session.cdp);
 					await runDrag(session);
+					if (cacheState === 'repeat-use') await closeToHub(session.page);
 				}
 				const runs: DragRun[] = [];
 				for (let index = 0; index < RUNS; index++) {
 					if (cacheState === 'cold') await clearBrowserState(session.cdp);
 					runs.push(await runDrag(session));
+					if (cacheState === 'repeat-use') await closeToHub(session.page);
 				}
 				const latencies = runs.flatMap((run) => run.latencies);
 				const ages = runs.flatMap((run) => run.ages);
@@ -225,7 +228,7 @@ test.describe('F3/F4/F8 methodology', () => {
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);
-		expect(report.rows).toHaveLength(2);
+		expect(report.rows).toHaveLength(3);
 	});
 
 	test('a deliberately delayed preview shows latency, not a dropped sample', async ({ browser }, testInfo) => {

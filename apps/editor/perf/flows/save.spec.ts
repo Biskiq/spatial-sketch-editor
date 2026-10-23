@@ -23,6 +23,7 @@ import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitati
 import { fixtureProject } from '../lib/fixtures';
 import {
 	acceptedResultCount,
+	closeToHub,
 	commitPrecisionLength,
 	gotoCreateIntent,
 	openSourceJson,
@@ -108,7 +109,7 @@ async function saveOnce(
 test.describe('F9 Save', () => {
 	test.setTimeout(900_000);
 	test.skip(apiOrigin === undefined || secret === undefined, 'requires PERF_API_ORIGIN + E2E_TEST_AUTH_SECRET (local stack only)');
-	test('save against the local test-auth stack, cold and warm', async ({ browser, baseURL }, testInfo) => {
+	test('save against the local test-auth stack, cold, warm and repeat-use', async ({ browser, baseURL }, testInfo) => {
 		const origin = apiOrigin!;
 		const report = startReport(`f9-save-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const login = await loginAs({
@@ -131,7 +132,7 @@ test.describe('F9 Save', () => {
 			secure: false
 		};
 
-		for (const cacheState of ['cold', 'warm'] as const) {
+		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
 			const session = await newMeasuredSession(browser, {
 				viewport: VIEWPORT,
 				deviceScaleFactor: DEVICE_SCALE_FACTOR,
@@ -148,6 +149,7 @@ test.describe('F9 Save', () => {
 						await session.context.addCookies([cookie]);
 					}
 					await saveOnce(session, origin);
+					if (cacheState === 'repeat-use') await closeToHub(session.page);
 				}
 				const runs: SaveRun[] = [];
 				for (let index = 0; index < RUNS; index++) {
@@ -156,6 +158,7 @@ test.describe('F9 Save', () => {
 						await session.context.addCookies([cookie]);
 					}
 					runs.push(await saveOnce(session, origin));
+					if (cacheState === 'repeat-use') await closeToHub(session.page);
 				}
 				const feedback = runs
 					.map((run) => run.submitToSavingLabel)
@@ -199,6 +202,6 @@ test.describe('F9 Save', () => {
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);
-		expect(report.rows).toHaveLength(2);
+		expect(report.rows).toHaveLength(3);
 	});
 });

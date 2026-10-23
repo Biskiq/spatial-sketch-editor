@@ -1,9 +1,9 @@
 /**
  * F7 — orbit/navigation (T3.P03.S02 harness).
  *
- * A scripted 10 s orbit + dolly on the M fixture, measured cold and warm with
- * the harness's rAF frame clock: frame intervals p50/p95/p99, long tasks and
- * dropped frames.
+ * A scripted 10 s orbit + dolly on the M fixture, measured cold, warm and
+ * repeat-use with the harness's rAF frame clock: frame intervals p50/p95/p99,
+ * long tasks and dropped frames.
  *
  * The script paces movement to a wall-clock deadline, so the orbit itself takes
  * 10 s rather than the shorter time a fixed per-step delay produced. If the
@@ -23,7 +23,7 @@ import { expect, test } from '@playwright/test';
 import { browserFacts, clearBrowserState, newMeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, passLimitations } from '../lib/config';
 import { fixtureProject } from '../lib/fixtures';
-import { gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
+import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
 import { frameIntervals, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
@@ -104,9 +104,9 @@ async function orbitOnce(
 
 test.describe('F7 orbit', () => {
 	test.setTimeout(3_000_000);
-	test('scripted orbit and dolly on M, cold and warm', async ({ browser }, testInfo) => {
+	test('scripted orbit and dolly on M, cold, warm and repeat-use', async ({ browser }, testInfo) => {
 		const report = startReport(`f7-orbit-${testInfo.project.name.replace(/\s+/g, '-')}`);
-		for (const cacheState of ['cold', 'warm'] as const) {
+		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
 			const session = await newMeasuredSession(browser, {
 				viewport: VIEWPORT,
 				deviceScaleFactor: DEVICE_SCALE_FACTOR,
@@ -117,10 +117,12 @@ test.describe('F7 orbit', () => {
 				const facts = await browserFacts(browser, session.page);
 				if (cacheState === 'cold') await clearBrowserState(session.cdp);
 				await orbitOnce(session); // discarded warm-up
+				if (cacheState === 'repeat-use') await closeToHub(session.page);
 				const runs: OrbitRun[] = [];
 				for (let index = 0; index < RUNS; index++) {
 					if (cacheState === 'cold') await clearBrowserState(session.cdp);
 					runs.push(await orbitOnce(session));
+					if (cacheState === 'repeat-use') await closeToHub(session.page);
 				}
 				const intervals = runs.flatMap((run) => run.intervals);
 				const dropped = runs.reduce(
@@ -168,6 +170,6 @@ test.describe('F7 orbit', () => {
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);
-		expect(report.rows).toHaveLength(2);
+		expect(report.rows).toHaveLength(3);
 	});
 });

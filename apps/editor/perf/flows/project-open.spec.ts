@@ -3,8 +3,9 @@
  *
  * Open JSON → canonical admission → first architectural frame, for the S
  * (grid-3) and M (grid-7) fixtures. Cold clears cache/cookies before every
- * measured navigation; warm repeats in the same context. The F2 hard row is
- * accepted only from the designated reference machine.
+ * measured navigation; warm repeats in the same context; repeat-use closes back
+ * to the hub and opens a fresh project without clearing that context. The F2
+ * hard row is accepted only from the designated reference machine.
  */
 
 import { expect, test } from '@playwright/test';
@@ -12,7 +13,7 @@ import { expect, test } from '@playwright/test';
 import { browserFacts, clearBrowserState, newMeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
 import { fixtureProject, type FixtureSize } from '../lib/fixtures';
-import { gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
+import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
 import { firstFrameAtOrAfter, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
@@ -52,26 +53,28 @@ async function openOnce(
 
 for (const size of ['S', 'M'] as const) {
 	test.describe(`F2 project open — ${size}`, () => {
-		test(`cold and warm ${size} fixture`, async ({ browser }, testInfo) => {
+		test(`cold, warm and repeat-use ${size} fixture`, async ({ browser }, testInfo) => {
 			const report = startReport(`f2-open-${size}-${testInfo.project.name.replace(/\s+/g, '-')}`);
 			const limitations = passLimitations();
-			for (const cacheState of ['cold', 'warm'] as const) {
+			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
 				const session = await newMeasuredSession(browser, {
 					viewport: VIEWPORT,
 					deviceScaleFactor: DEVICE_SCALE_FACTOR,
 					network: NETWORK,
-					cacheState: 'cold'
+					cacheState
 				});
 				try {
 					const facts = await browserFacts(browser, session.page);
 					for (let index = 0; index < WARMUP_RUNS; index++) {
 						if (cacheState === 'cold') await clearBrowserState(session.cdp);
 						await openOnce(session, size);
+						if (cacheState === 'repeat-use') await closeToHub(session.page);
 					}
 					const runs: OpenRun[] = [];
 					for (let index = 0; index < RUNS; index++) {
 						if (cacheState === 'cold') await clearBrowserState(session.cdp);
 						runs.push(await openOnce(session, size));
+						if (cacheState === 'repeat-use') await closeToHub(session.page);
 					}
 					const row: ResultRow = {
 						id: `F2-${size}-${cacheState}`,
@@ -105,7 +108,7 @@ for (const size of ['S', 'M'] as const) {
 			}
 			const path = fileReport(report);
 			console.log(`raw results: ${path}`);
-			expect(report.rows).toHaveLength(2);
+			expect(report.rows).toHaveLength(3);
 		});
 	});
 }

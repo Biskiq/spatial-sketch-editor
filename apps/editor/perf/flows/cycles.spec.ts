@@ -1,13 +1,13 @@
 /**
  * F13 — repeated open/close (leaks) (T3.P03.S02 harness).
  *
- * Ten cycles in one context: open the S fixture, accept 20 exact-length edits,
- * close to the hub, then force GC and read the JS heap. The repeat-use row cycles
- * the same context; the cold row clears cache and cookies before every open, so
- * the contract's cache dimension is covered for this flow too. Geometry/texture
- * counts, live WebGL contexts and detached nodes need a renderer probe the
- * shipped Stage does not expose; those rows stay unrun and owner-run on the
- * reference machine.
+ * One context per row: open the S fixture, accept 20 exact-length edits, close
+ * to the hub, then force GC and read the JS heap. The repeat-use row cycles the
+ * same context ten times; the cold row clears cache and cookies before every
+ * open; the warm row measures one cycle after a discarded cycle has warmed the
+ * Stage in that context. Geometry/texture counts, live WebGL contexts and
+ * detached nodes need a renderer probe the shipped Stage does not expose; those
+ * rows stay unrun and owner-run on the reference machine.
  */
 
 import { expect, test } from '@playwright/test';
@@ -32,9 +32,10 @@ const EDITS_PER_CYCLE = 20;
 
 test.describe('F13 repeated open/close', () => {
 	test.setTimeout(1_800_000);
-	test('ten cycles with twenty accepted edits each, cold and repeat-use', async ({ browser }, testInfo) => {
+	test('ten cycles with twenty accepted edits each, cold/warm/repeat-use', async ({ browser }, testInfo) => {
 		const report = startReport(`f13-cycles-${testInfo.project.name.replace(/\s+/g, '-')}`);
-		for (const cacheState of ['cold', 'repeat-use'] as const) {
+		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
+			const cycles = cacheState === 'warm' ? 1 : CYCLES;
 			const session = await newMeasuredSession(browser, {
 				viewport: VIEWPORT,
 				deviceScaleFactor: DEVICE_SCALE_FACTOR,
@@ -46,11 +47,11 @@ test.describe('F13 repeated open/close', () => {
 				const heaps: number[] = [];
 				const { page } = session;
 				if (cacheState === 'cold') await clearBrowserState(session.cdp);
-				// The initial hub document is the baseline before any Stage cycle.
+				// The hub document is the baseline before the measured cycles (after the
+				// discarded warm-up, for a warm row).
 				await page.goto('/projects');
 				await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
-				heaps.push(await heapUsedMiB(session.cdp));
-				for (let cycle = 0; cycle < CYCLES; cycle++) {
+				const runCycle = async (cycle: number): Promise<void> => {
 					if (cacheState === 'cold') await clearBrowserState(session.cdp);
 					const projectId = uniqueProjectId(`f13-${cycle}`);
 					const project = await fixtureProject('S', projectId);
@@ -64,20 +65,27 @@ test.describe('F13 repeated open/close', () => {
 					}
 					await page.goto('/projects');
 					await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
+				};
+				// A warm row is meaningless if its only cycle also performed the first
+				// Stage compilation; discard one cycle so the measured one starts warm.
+				if (cacheState === 'warm') await runCycle(0);
+				heaps.push(await heapUsedMiB(session.cdp));
+				for (let cycle = 0; cycle < cycles; cycle++) {
+					await runCycle(cycle);
 					heaps.push(await heapUsedMiB(session.cdp));
 				}
 				const growth = heaps[heaps.length - 1]! - heaps[0]!;
 				const row: ResultRow = {
 					id: `F13-cycles-S-${cacheState}`,
 					flow: 'F13 repeated open/close',
-					workload: `S fixture, ${CYCLES} cycles × (open + ${EDITS_PER_CYCLE} edits + close)`,
+					workload: `S fixture, ${cycles} cycle${cycles === 1 ? '' : 's'} × (open + ${EDITS_PER_CYCLE} edits + close)`,
 					cacheState,
 					network: NETWORK,
 					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
 					cpuRate: 1,
 					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
 					metrics: {
-						cycles: CYCLES,
+						cycles,
 						heapBaselineMiB: heaps[0] ?? Number.NaN,
 						heapFinalMiB: heaps[heaps.length - 1] ?? Number.NaN,
 						heapGrowthMiB: growth,
@@ -86,19 +94,19 @@ test.describe('F13 repeated open/close', () => {
 					stats: { heapAfterGCDistribution: summarize(heaps) },
 					limitations: [
 						...passLimitations(),
-						`${cacheState === 'cold' ? 'cold clears cache and cookies before each open; ' : ''}geometry/texture counts, live WebGL contexts and detached nodes are not captured`,
+						`${cacheState === 'cold' ? 'cold clears cache and cookies before each open; ' : ''}${cacheState === 'warm' ? 'warm is one cycle after a discarded warm-up cycle; repeat-use is ten cycles; ' : ''}geometry/texture counts, live WebGL contexts and detached nodes are not captured`,
 						'viewer and Preview enter/exit cycles are not available in this slice'
 					]
 				};
 				report.rows.push(row);
 				console.log(formatRow(row));
-				expect(heaps).toHaveLength(CYCLES + 1);
+				expect(heaps).toHaveLength(cycles + 1);
 			} finally {
 				await session.close();
 			}
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);
-		expect(report.rows).toHaveLength(2);
+		expect(report.rows).toHaveLength(3);
 	});
 });

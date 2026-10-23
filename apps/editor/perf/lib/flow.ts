@@ -20,6 +20,12 @@ export function uniqueProjectId(size: string): string {
 	return `perf-${size.toLowerCase()}-${Date.now().toString(36)}`;
 }
 
+/** Leave the Stage for the hub, ending this repeat-use cycle in the same context. */
+export async function closeToHub(page: Page): Promise<void> {
+	await page.goto('/projects');
+	await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
+}
+
 /** Navigate to a fresh create-intent project (the absent row offers the starter). */
 export async function gotoCreateIntent(page: Page, projectId: string): Promise<void> {
 	await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);

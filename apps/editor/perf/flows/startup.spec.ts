@@ -4,7 +4,8 @@
  * Measure: navigation start → hub interactive → Stage route → first
  * architectural frame on the starter, plus FCP, LCP, long tasks and script
  * bytes/requests per route. Cold clears cache/cookies before every measured
- * navigation; warm is a second navigation in the same context.
+ * navigation; warm is a second navigation in the same context; repeat-use
+ * returns to the hub and starts again in that same, uncleared context.
  *
  * These are pre-flight numbers on a developer machine. F1's Stage **first
  * architectural frame** is the rAF rendering opportunity after activation; it is
@@ -18,6 +19,7 @@ import { expect, test } from '@playwright/test';
 
 import { clearBrowserState, newMeasuredSession, browserFacts } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
+import { closeToHub } from '../lib/flow';
 import { firstFrameAtOrAfter, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
@@ -78,26 +80,27 @@ async function startOnce(
 }
 
 test.describe('F1 startup', () => {
-	test('cold and warm starter boot', async ({ browser }, testInfo) => {
+	test('cold, warm and repeat-use starter boot', async ({ browser }, testInfo) => {
 		const report = startReport(`f1-startup-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const limitations = passLimitations();
-		for (const cacheState of ['cold', 'warm'] as const) {
+		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
 			const session = await newMeasuredSession(browser, {
 				viewport: VIEWPORT,
-				deviceScaleFactor: DEVICE_SCALE_FACTOR,
-				network: NETWORK,
-				cacheState: 'cold'
-			});
+				deviceScaleFactor: DEVICE_SCALE_FACTOR,					network: NETWORK,
+					cacheState
+				});
 			try {
 				const facts = await browserFacts(browser, session.page);
 				for (let index = 0; index < WARMUP_RUNS; index++) {
 					if (cacheState === 'cold') await clearBrowserState(session.cdp);
 					await startOnce(session);
+					if (cacheState === 'repeat-use') await closeToHub(session.page);
 				}
 				const runs: StartRun[] = [];
 				for (let index = 0; index < RUNS; index++) {
 					if (cacheState === 'cold') await clearBrowserState(session.cdp);
 					runs.push(await startOnce(session));
+					if (cacheState === 'repeat-use') await closeToHub(session.page);
 				}
 				const row: ResultRow = {
 					id: `F1-starter-${cacheState}`,
@@ -133,6 +136,6 @@ test.describe('F1 startup', () => {
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);
-		expect(report.rows.length).toBeGreaterThan(0);
+		expect(report.rows).toHaveLength(3);
 	});
 });
