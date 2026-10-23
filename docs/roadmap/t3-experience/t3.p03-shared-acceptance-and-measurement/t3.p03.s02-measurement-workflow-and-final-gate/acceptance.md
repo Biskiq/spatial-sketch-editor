@@ -1,7 +1,7 @@
 # T3.P03.S02 — acceptance record: Measurement workflow and final gate
 
-**Slice:** T3.P03.S02 · **Status:** implemented and final repository gate verified on
-`t3/p03-s02-measurement-final-gate`; this review follow-up corrects F9 receipt timing, F13 application lifetime, and fail-open bundle assertions. The earlier
+**Slice:** T3.P03.S02 · **Status:** accepted (`owner-override`) and shipped on
+`t3/p03-s02-measurement-final-gate` at revision `eabd4b88` (full revision and ruling below). This review follow-up corrects F9 receipt timing, F13 application lifetime, and fail-open bundle assertions. The earlier
 F9 durable-receipt observations are withdrawn and replaced by the corrected local-stack observations
 below. The persistent F13 run exposed retained renderers; the cause is attributed and the repair
 passes collection and full-workload checks. A small native-node residual was independently attributed
@@ -13,14 +13,16 @@ replacement now passes both browsers and real zero-hold negatives. The plan's pr
 awaiting the owner. The final combined validation covers **62/62 unique passing cases**, with zero
 skips, and the parent developer review passes. The two original independent review rounds are
 historical; this follow-up has its own source and evidence review. Earlier document-reloading F13
-heap observations are withdrawn as lifecycle evidence; the owner-operated hard-row pass and owner acceptance are
-**pending** — no hard product budget is accepted here · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns
+heap observations are withdrawn as lifecycle evidence. The owner accepted this revision by explicit
+`owner-override`; reference hard rows and calibration remain unrun, and no hard product budget is
+claimed · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns
 the criteria) · **Phase:** [T3.P03](../README.md) · **Declared** `FINAL PHASE GATE` artifact of T3.P03
 
 ```text
 VERIFICATION: exhaustive   (declared by the plan; this record is the phase's final gate and S01's
                             declared integration route)
 BASE:         55683981       merge of PR #176 (T3.P03.S01 via main) on t3/p03-s02-measurement-final-gate
+REVISION:     eabd4b888974127d891cedf840e5e056ad0c016a
 STATUS:       final integrated repository gate passes, including real Rollup module proof and
               unavailable-evidence refusals. Corrected local-stack F9, renderer collection,
               trace-image and Svelte head controls pass. Final combined Chrome+Chromium coverage
@@ -30,7 +32,22 @@ STATUS:       final integrated repository gate passes, including real Rollup mod
               its causal replacement and real zero-hold negatives pass both browsers.
               Prior receipt and document-reloading F13 observations are withdrawn;
               mapped bundle checks and unavailable-attribution refusal are verified. Owner-run
-              hard rows, calibration, trace-method disposition and acceptance remain pending.
+              hard rows and calibration remain unrun and no hard budget is claimed. Trace-method
+              disposition is not ratified by this record.
+```
+
+## Owner ruling — acceptance prerequisites waived (2026-10-23)
+
+```text
+DATE:       2026-10-23
+RULING:     explicit owner override; accept and ship as owner-override, not reviewed
+SCOPE:      T3.P03.S02 only, at revision eabd4b888974127d891cedf840e5e056ad0c016a
+WAIVED:     pending independent/formal acceptance prerequisites and any missing or stale formal
+            verdict/test-evidence rows, including owner trace-method disposition and owner-operated
+            reference hard-row/calibration evidence
+NOT CLAIMED: any unrun reference/GPU row, hard product budget, calibration value, or trace option
+             (A/B/C) ratification; the existing trace deviation remains unratified
+STATE:      slice accepted and shipped as owner-override; phase is closable, not closed
 ```
 
 The trace deviation is recorded at
@@ -50,21 +67,20 @@ proves that the ordinary build neither evaluates that detail nor calls `performa
 
 **The earlier blanket criteria 1–5 claim is withdrawn.** Targeted functional corrections and the
 scope-2 diagnostic, final repository gate and complete corrected matrix are verified below.
-Owner method acceptance remains pending. By criterion:
+Owner trace-method disposition remains open and unratified. By criterion:
 
 | Criterion | Posture |
 | --- | --- |
-| 1. Cold, warm and repeat-use runs with declared statistics; delayed-preview correlation proof | **Execution verified; partial pending owner method disposition.** Combined coverage passes 62/62 cases, zero skips, at default counts with F9 enabled and 460 accepted F13 edits per browser. F13 preserves one app lifetime and verifies retired Stage/Canvas collection; warm/repeat-use baselines follow one discarded cycle, with entry heap separate. Cold clears cache/cookies per open while loaded modules/V8 stay resident. Other navigation/drag repeat-use helpers measure cache reuse through reloads. The trace comparison failure is preserved; causal held-input/real-zero controls pass both browsers. The owner has not accepted the proposed presented-frame method. |
+| 1. Cold, warm and repeat-use runs with declared statistics; delayed-preview correlation proof | **Execution verified; owner-override accepted with method disposition left open.** Combined coverage passes 62/62 cases, zero skips, at default counts with F9 enabled and 460 accepted F13 edits per browser. F13 preserves one app lifetime and verifies retired Stage/Canvas collection; warm/repeat-use baselines follow one discarded cycle, with entry heap separate. Cold clears cache/cookies per open while loaded modules/V8 stay resident. Other navigation/drag repeat-use helpers measure cache reuse through reloads. The trace comparison failure is preserved; causal held-input/real-zero controls pass both browsers. This record does not ratify a trace option. |
 | 2. Bundle report reproduces route sets and refuses an injected module | **Met as tooling with explicit evidence.** Parent's real Rollup-provenance authoring-absence check passes; known visitor presence refuses 11 hits. Empty generated maps remain insufficient on their own. Missing/malformed/partial/stale/edited evidence refuses, and map byte attribution is separate. Ordinary output without evidence also refuses source-path proof; file-only checks retain their narrower meaning. |
 | 3. Baseline record names every unrun reference/GPU row | **Met as an inventory**; the rows themselves remain unrun and no value is claimed for them. |
 | 4. S01 integrated result rechecked | **Met:** final 6 files / 88 tests and both static gates pass on the repaired source. |
 | 5. Complete repository gate | **Met:** final check, full editor 176 files / 2,264 tests, arch 21/172, heavy 8/118 and ordinary build pass. API check and fresh DB-backed 80 tests/11 reports/zero skips pass; subsequent changes do not touch API sources. Harness typing, Node regressions, trace controls and real module proof also pass. |
 
-What still gates slice acceptance: the owner's trace-method decision, the owner-operated
-hard-row/calibration pass and owner acceptance. Developer correction review and validation are
-complete. By the owner's instruction, work stops after recording these results; the owner will run
-slice close-out and merge personally. Cache reuse across full document reloads is not proof of
-application lifetime cleanup.
+Owner-override accepts this slice at the recorded revision while leaving unrun evidence unclaimed.
+The trace-method disposition and reference hard-row/calibration operation remain open as owner
+decisions and measurements; they no longer block this slice's accepted status. Cache reuse across
+full document reloads is not proof of application lifetime cleanup.
 
 ## Delivered
 
@@ -322,7 +338,8 @@ files, combined **553** aggregate `2a79c7d7ddef5f44cd7f67f340d47bc77a3eb21019523
 All 118 ordinary output files remain byte-identical, aggregate
 `f49ca0d451b147670f1edb70cd1d0d727ef121ddaedbfc8ac2eac53923a947f7`. No product rebuild occurred.
 PostgreSQL/API/preview/browser resources are closed, the temporary helper removed and ports
-43993–43995 closed. No commit, push, slice close-out, owner acceptance or merge was performed.
+43993–43995 closed. At that evidence-session point, no commit, push, slice close-out, owner
+acceptance or merge had been performed.
 
 Final evidence: `/tmp/pr180-final-matrix-evidence.md`; per-case ledger
 `/private/tmp/pr180-final-matrix-rerun/coverage-ledger.csv`; all new logs/raw reports/manifests and
@@ -696,7 +713,7 @@ that slice rather than inventing a command here.
 | --- | --- | --- |
 | F1 contract **first interactive frame** (pointer handled within 50 ms) | Harness records the first architectural rAF frame after activation; it does not dispatch a pointer and test 50 ms handling. | `cd apps/editor && npx playwright test --config perf/playwright.config.ts --project=chrome flows/startup.spec.ts` plus an owner DevTools Event Timing/pointer probe. |
 | F2 contract first interactive frame, mesh-build split, JS heap after GC | Same label gap; admission and first architectural frame are recorded, the mesh/heap probes are not. | `... flows/project-open.spec.ts --project=chrome`. |
-| F3 native Wall drawing on S/M/L; M/L drag workloads; frame p95/p99; long tasks; preview solve time; release-to-final-result split; draw calls/triangles/GPU time; baseline presented-frame coverage | No native drawing feature ships in this slice; the methodology runs on the straight-Wall Dimensions drag at S only. No renderer counter probe. Separate image/exact compositor-feedback proof passes at S; ordinary baseline rows remain rAF proxies and owner method acceptance is pending. | `... flows/drag-correlation.spec.ts --project=chrome`; separate `... flows/trace-proof.spec.ts --project=chrome` per the deviation record. |
+| F3 native Wall drawing on S/M/L; M/L drag workloads; frame p95/p99; long tasks; preview solve time; release-to-final-result split; draw calls/triangles/GPU time; baseline presented-frame coverage | No native drawing feature ships in this slice; the methodology runs on the straight-Wall Dimensions drag at S only. No renderer counter probe. Separate image/exact compositor-feedback proof passes at S; ordinary baseline rows remain rAF proxies and the owner method disposition remains open. | `... flows/drag-correlation.spec.ts --project=chrome`; separate `... flows/trace-proof.spec.ts --project=chrome` per the deviation record. |
 | F4 accept/install/mesh-rebuild split, M/L precision workloads, discrete responsiveness | Only command-to-presented-result completion is captured. | `... flows/drag-correlation.spec.ts --project=chrome` plus a trace split. |
 | F5 object import/admission; F6 placement; F10 capture/Preview; F11 viewer cold load; F12 viewer navigation | These flows belong to their consuming slices (T2.P02, T3.P02, T4); this harness does not pre-build them. | Their consuming slice's harness; no command in this slice. |
 | F7 S and L orbits, draw calls/triangles/GPU time, presented-frame trace | Only M runs here. Chrome reaches 603 frames per run in about 10.07 s; Chromium takes about 38–48 s median to reach its frame floor. No renderer counters; trace deviation applies. | `... flows/orbit.spec.ts --project=chrome` for S/L once fixtures exist; GPU probe/trace separately. |
@@ -765,9 +782,9 @@ contracts       docs/reference/components/performance.md · apps/editor/tests/RE
 ## Residuals
 
 ```text
-review          PASS — parent source/correction and combined62-case evidence review complete; owner acceptance pending
-trace           image/feedback and causal real-positive/zero controls verified both browsers; owner method disposition pending
-hard rows       owner-operated reference pass pending (E6); no budget accepted here
+review          DEVELOPER PASS — parent source/correction and combined62-case evidence review complete; slice acceptance is owner-override
+trace           image/feedback and causal real-positive/zero controls verified both browsers; owner method disposition remains open and unratified
+hard rows       owner-operated reference rows remain unrun (E6); no budget accepted here
 calibration     reference median not recorded; other machines cannot claim equivalence yet
 GPU             draw calls, triangles and GPU time/memory unrun; separate trace-image proof demonstrated
 F13             renderer/head repair and final460edits/browser verified; warmed growth recorded; no owner disposition
@@ -789,7 +806,24 @@ inventory     PASS — every unrun, partial and out-of-slice row is named with i
 correlation   PASS — association/refusal/causal hold+zero proofs and final default flow cases verified
 bundle        PASS with explicit Rollup provenance — real known-present/absent controls; unavailable evidence fails closed
 hygiene       PASS — diagnostics are explicitly gated and artifacts stay outside Git; no temporary source edits remain
-owner-run     PENDING — hard baseline and calibration rows await the owner's reference run
-trace         TOOLING PASS — association/refusal/causal controls pass; owner method acceptance remains
-review        DEVELOPER PASS — final source/evidence reviewed; 62/62 combined current cases, zero skips; owner acceptance pending
+owner-run     UNRUN — hard baseline and calibration rows remain unclaimed under the owner override
+trace         TOOLING PASS — association/refusal/causal controls pass; no trace option is ratified
+review        DEVELOPER PASS — final source/evidence review recorded; owner acceptance is `owner-override`
+```
+
+## Closed-work preservation report
+
+```text
+CLOSEOUT PRESERVATION — T3.P03.S02 (2026-10-23)
+final-gate artifact retained live: acceptance.md (phase-close evidence)
+prose compacted:                 1   review-handoff.md → stub + exact Git recovery
+renderable evidence archived:    0 files / 0 bytes
+evidence stubs / manifests:      0
+historical anchor:               eabd4b888974127d891cedf840e5e056ad0c016a · tag closed/T3.P03.S02 (local)
+manual-owed/unrun rows:          retained as unrun; no hard budget or calibration claimed
+new live → archive prose links:  0
+required merge method:           merge commit per P1; parent owns PR integration and post-merge checks
+P03.S01 post-merge anchor:        verified 2026-10-23 against PR #176 merge 55683981; tag peels to
+                                  f77d55542806ca66903bc6d880884b1b3ef60ef2 and `git show` recovery resolves
+phase state:                     closable; owner phase-close decision remains pending
 ```
