@@ -4,16 +4,19 @@ PHASE: T1.P02 Native Wall creation (registered 2026-10-22, batch E) →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21; all its registered slices are shipped.
 ACTIVE: none. T1.P02.S01 (Layout identity and format cutover) is implemented on
-        `t1/p02-s01-layout-identity-format-cutover` as `8edc6487` (the cutover) plus
-        `9be24c65` and `c4a5f60f` (the recorded adversarial review passes that closed record and test
-        findings). The branch is pushed for owner review with this baton's follow-up record
-        commit on top; unmerged, unaccepted. Verification evidence and deviations:
+        `t1/p02-s01-layout-identity-format-cutover`; current implementation revision is
+        `7e159370` and the acceptance record lists three adversarial review passes and the declared
+        architecture-integration evidence. An explicit independent-review verdict on this revision
+        is not recorded, so acceptance and closeout remain pending. Verification evidence and
+        deviations:
         ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md
-NEXT: The owner reviews and accepts T1.P02.S01, the §3 retirement slice lands under its own
-      authorization, then both merge. The next T1.P02 slice starts only once the owner releases it
-      and its base carries both, and it rechecks that base itself. The drawing policy is
-      owner-accepted (E3). Hard performance rows run on the owner's MacBook Air M2, 16 GB
-      (E6 amendment).
+NEXT: Record an explicit independent-review verdict for the current S01 implementation revision,
+      with every finding adjudicated, then the owner may accept and close S01. The §3 legacy Layout
+      retirement must be separately scoped, registered and authorized, and land before S02. After
+      S01 acceptance and that retirement, S02 still needs its own owner authorization and a complete
+      plan drafted from its current outline before implementation; the owner then releases it, and
+      S02 rechecks its base. The drawing policy is owner-accepted (E3). Hard performance rows run on
+      the owner's MacBook Air M2, 16 GB (E6 amendment).
 INHERITS: Layout format 6 only — readers refuse every other version, there is no migration or dual
       reader, and pre-baseline data is disposable. Identity is captured per operation outside the
       document and replayed by Redo; occupancy only refuses a captured id. Wall role is derived from
@@ -27,10 +30,10 @@ CARRY: SEPARATE AND STILL OWED: (1) the §3 legacy Layout types/`layout-codec`/`
       successor scope; it must land before the next T1.P02 slice and must not be carried past the
       phase, and it is not authorized by batch E; (2) the F2 open timings at S and M against the H0
       baseline on the designated M2 — S01 measured none, so its acceptance criterion 5 is only
-      partially evidenced and no performance claim is made; (3) no API-level test asserts a format-5
-      Layout refusal (the API inherits the shared reader's refusal, and the record says so);
-      (4) owner review, acceptance and merge of S01 itself, which any later base must carry before
-      it starts.
+      partially evidenced and no performance claim is made; (3) the explicit independent-review
+      verdict for `7e159370`, then owner acceptance and merge of S01, which any later base must carry
+      before it starts. The API-level format-5 refusal is now covered in `save.test.mjs` as recorded
+      in the acceptance artifact.
 ROUTE: ../../roadmap/t1-spatial-world/README.md#phase-register →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md
