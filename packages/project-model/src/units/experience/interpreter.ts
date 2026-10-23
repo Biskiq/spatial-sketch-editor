@@ -1,7 +1,7 @@
 /**
  * The one Experience interpreter (AM-6, T3.P01.S06).
  *
- * A deterministic reducer over `ExecutionProgram@1`: an initial state plus
+ * A deterministic reducer over `ExecutionProgram@2`: an initial state plus
  * ordered events produce the same state every time, and an explicit integer
  * clock supplies every hold. There is no ambient time, randomness, network,
  * renderer or Camera evaluation here — the interpreter derives editorial state
@@ -152,7 +152,7 @@ export type ExperienceInterpreterOptions = {
 	readonly sourceContentId?: string | null;
 	/**
 	 * Presentation ids whose arrival waits for an explicit Continue. A Gate is
-	 * authored experience policy; it is passed in because `ExecutionProgram@1`
+	 * authored experience policy; it is passed in because `ExecutionProgram@2`
 	 * carries no Gate slot.
 	 */
 	readonly gates?: readonly string[];

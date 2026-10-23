@@ -27,15 +27,30 @@ import {
 	EXPERIENCE_STOP_UPDATE_KIND
 } from '@portfolio/project-model/units';
 
-/** The Stage's own rendered vertical field of view, in degrees. */
-export const STAGE_CAPTURE_FOV = 50;
-
 export type CapturedViewPose = {
 	readonly label: string;
 	readonly eye: [number, number, number];
 	readonly target: [number, number, number];
 	readonly fov: number;
 };
+
+/**
+ * The vertical field of view a perspective projection actually renders, in
+ * degrees. Column-major `projectionMatrix[5]` is `1 / tan(fovY / 2)`.
+ *
+ * The capture must record the framing the creator saw, so the FOV is read from
+ * the Stage's evaluated projection rather than from a constant beside it.
+ *
+ * Precondition: a perspective projection. An orthographic projection has no
+ * perspective scale, and its `[5]` is a linear bound, so the caller refuses
+ * anything but the 3D reading before asking; this function only guards the
+ * arithmetic (missing, non-finite or non-positive scale).
+ */
+export function capturedFovDegrees(projectionMatrix: readonly number[]): number | null {
+	const scale = projectionMatrix[5];
+	if (scale === undefined || !Number.isFinite(scale) || scale <= 0) return null;
+	return (2 * Math.atan(1 / scale) * 180) / Math.PI;
+}
 
 export type CommandIds = {
 	readonly operation: string;
@@ -295,11 +310,12 @@ export function capturedViewPose(input: {
 	readonly label: string;
 	readonly eye: readonly [number, number, number];
 	readonly target: readonly [number, number, number];
+	readonly fov: number;
 }): CapturedViewPose {
 	return {
 		label: input.label,
 		eye: [input.eye[0], input.eye[1], input.eye[2]],
 		target: [input.target[0], input.target[1], input.target[2]],
-		fov: STAGE_CAPTURE_FOV
+		fov: input.fov
 	};
 }

@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import {
 	captureBindIntent,
+	capturedFovDegrees,
 	capturedViewPose,
 	guideOrderIntent,
 	presentationUpdateIntent,
@@ -55,7 +56,7 @@ function experienceOf(envelope: ProjectEnvelope) {
 	return envelope.units.experience.data.experiences[0]!;
 }
 
-const CAPTURED = capturedViewPose({ label: 'View 3', eye: [1, 1.5, 3], target: [0, 1.4, 0] });
+const CAPTURED = capturedViewPose({ label: 'View 3', eye: [1, 1.5, 3], target: [0, 1.4, 0], fov: 54 });
 
 describe('capture, binding and Guide order', () => {
 	it('captures a View and binds a Presentation and Stop in one accepted operation', async () => {
@@ -81,12 +82,13 @@ describe('capture, binding and Guide order', () => {
 
 		const installed = coordinator.acceptedSnapshot().domain.source;
 		// The capture is a Camera action: the View carries the captured framing and
-		// the Stage's own vertical FOV, never the viewport aspect.
+		// the vertical FOV the caller read from the Stage's evaluated projection,
+		// never the viewport aspect.
 		expect(installed.units.camera.data.views.find((view) => view.id === 'view-new')).toMatchObject({
 			label: 'View 3',
 			eye: [1, 1.5, 3],
 			target: [0, 1.4, 0],
-			fov: 50
+			fov: 54
 		});
 		const experience = experienceOf(installed);
 		expect(experience.presentations.find((entry) => entry.id === 'presentation-new')).toMatchObject({
@@ -183,6 +185,93 @@ describe('capture, binding and Guide order', () => {
 		);
 		expect(refused.kind).toBe('rejected');
 		expect(coordinator.history().depth).toBe(2);
+	});
+
+	it('refuses clearing a Default View a Stop still enters at', async () => {
+		const { source, coordinator } = await boot();
+		// stop-1 names no entry View, so its own entry is presentation-1's Default.
+		const refused = await coordinator.accept(
+			presentationUpdateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-no-default' },
+				experienceId: 'experience-1',
+				presentationId: 'presentation-1',
+				defaultViewId: null
+			})
+		);
+		expect(refused.kind).toBe('rejected');
+		expect(coordinator.history().depth).toBe(1);
+
+		// Giving the Stop its own entry View makes the Default clearable: the run still
+		// has a View to arrive at.
+		const entry = await coordinator.accept(
+			stopUpdateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-entry-view' },
+				experienceId: 'experience-1',
+				stopId: 'stop-1',
+				entryViewId: 'view-1'
+			})
+		);
+		expect(entry.kind).toBe('accepted');
+		const cleared = await coordinator.accept(
+			presentationUpdateIntent({
+				envelope: coordinator.acceptedSnapshot().domain.source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-no-default' },
+				experienceId: 'experience-1',
+				presentationId: 'presentation-1',
+				defaultViewId: null
+			})
+		);
+		expect(cleared.kind).toBe('accepted');
+		expect(experienceOf(coordinator.acceptedSnapshot().domain.source).presentations[0]!.defaultViewId).toBeNull();
+
+		// The mirror holds too: with no Default left, the Stop cannot give up the entry
+		// View that is now its only one.
+		const orphaned = await coordinator.accept(
+			stopUpdateIntent({
+				envelope: coordinator.acceptedSnapshot().domain.source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-no-entry' },
+				experienceId: 'experience-1',
+				stopId: 'stop-1',
+				entryViewId: null
+			})
+		);
+		// `planner-rejected` is the coordinator's code for a planner refusal; the
+		// planner's own `invalid-payload` stays in `reason`.
+		expect(orphaned).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
+		if (orphaned.kind !== 'rejected') return;
+		expect(orphaned.message).toContain('would enter at no View');
+	});
+});
+
+describe('captured field of view', () => {
+	it('reads the vertical FOV a perspective projection actually renders', () => {
+		const perspective = (fov: number, aspect: number) => {
+			const scale = 1 / Math.tan((fov * Math.PI) / 360);
+			const matrix = new Array<number>(16).fill(0);
+			matrix[0] = scale / aspect;
+			matrix[5] = scale;
+			matrix[11] = -1;
+			return matrix;
+		};
+		expect(capturedFovDegrees(perspective(54, 1.6))).toBeCloseTo(54, 10);
+		expect(capturedFovDegrees(perspective(75, 0.6))).toBeCloseTo(75, 10);
+		// The viewport aspect changes only the horizontal scale, never this reading.
+		expect(capturedFovDegrees(perspective(54, 0.4))).toBeCloseTo(
+			capturedFovDegrees(perspective(54, 2.4)) ?? Number.NaN,
+			10
+		);
+	});
+
+	it('refuses a matrix that carries no finite perspective scale', () => {
+		expect(capturedFovDegrees([])).toBeNull();
+		expect(capturedFovDegrees([1, 0, 0, 0, 0, 0])).toBeNull();
+		expect(capturedFovDegrees([1, 0, 0, 0, 0, Number.NaN])).toBeNull();
 	});
 });
 

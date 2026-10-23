@@ -1,6 +1,6 @@
 /**
  * Experience lowering — one selected Experience + its Camera unit -> the accepted
- * `ExecutionProgram@1` codec (AM-6, T3.P01.S06).
+ * `ExecutionProgram@2` codec (AM-6, T3.P01.S06).
  *
  * Lowering is **derivation**, not a second authored format: it reads the accepted
  * F.2 envelope, resolves every Experience/Presentation/Stop/View/connection
@@ -195,7 +195,7 @@ export function lowerExperienceProgram(
 	const order = [...(options.order ?? selectedGuide?.stopIds ?? [])];
 
 	if (order.length === 0 && experience.stops.length > 0) {
-		return refuse('missing-entry', 'the Experience has Stops but no Guide order; select a guide or supply its authored order');
+		return refuse('missing-entry', 'the Experience has Stops but no Guide orders them; author a Guide before Preview can enter them');
 	}
 	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
 	for (const stopId of order) {
@@ -425,6 +425,14 @@ export function lowerExperienceProgram(
 		addTransition(detour.fromStopId, detour.toStopId, { kind: 'cut', viewId: entryViewOf(stopById.get(detour.toStopId)!)! });
 		addTransition(detour.toStopId, detour.returnToStopId, { kind: 'cut', viewId: entryViewOf(stopById.get(detour.returnToStopId)!)! });
 	}
+
+	// The entry occurrence is the run's **first arrival**, never a Travel from an
+	// occurrence this run has not visited. The authored adjacency into it stays in
+	// `transitions` (built above), so a later navigation from the real predecessor
+	// still uses its Travel while `enter` starts with a Cut.
+	// `stops` is built in `order`, so the entry occurrence's index addresses it.
+	const entryStop = entryOccurrence > 0 ? stops[entryOccurrence] : undefined;
+	if (entryStop !== undefined) entryStop.invocation = { kind: 'cut', viewId: entryStop.viewId };
 
 	const program: ExecutionProgram = {
 		kind: 'execution-program',

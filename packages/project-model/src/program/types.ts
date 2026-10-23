@@ -1,5 +1,5 @@
 /**
- * `ExecutionProgram@1` — the shared visitor program codec (AM-6).
+ * `ExecutionProgram@2` — the shared visitor program codec (AM-6).
  *
  * One lowered program is executed by Preview and by a prepared release; T4
  * persists it as an immutable delivery derivative and creates no second
@@ -72,6 +72,12 @@ export type ProgramContinuation =
  * `viewId` is the View this occurrence presents — the one its Stop enters at
  * (`entryViewId` or the Presentation's Default). It is the occurrence's own fact,
  * so a Presentation reused at two Stops may present two different Views.
+ *
+ * `invocation` is the Camera intent for arriving here. The program's entry Stop
+ * is the run's first arrival and has no predecessor pose, so its invocation is
+ * always a `cut`; the reader refuses a `travel` there. Every other Stop may carry
+ * either, and the authored approach into the entry Stop stays available as its
+ * transition from the real predecessor.
  */
 export type ProgramStop = {
 	id: string;

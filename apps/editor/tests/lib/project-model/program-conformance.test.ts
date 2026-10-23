@@ -304,6 +304,33 @@ describe('independent AM-6 admission regressions', () => {
 		expect(codes({ ...program(), localTime: [{ stopId: 'stop-1', holdSeconds: 3 }] })).toContain('hold-mismatch');
 	});
 
+	it('bounds presentation text by code points, not UTF-16 units', () => {
+		const withText = (text: string) => ({
+			...program(),
+			presentations: program().presentations.map((presentation) =>
+				presentation.id === 'presentation-1'
+					? { ...presentation, content: [{ id: 'content-1', kind: 'text' as const, text }] }
+					: presentation
+			)
+		});
+		// 4,000 astral code points are 8,000 UTF-16 units: the authored bound counts
+		// code points, so this is admitted.
+		expect(validateExecutionProgram(withText('😀'.repeat(4000))).success).toBe(true);
+		expect(codes(withText('😀'.repeat(4001)))).toContain('text-too-long');
+		expect(codes(withText('a'.repeat(4001)))).toContain('text-too-long');
+	});
+
+	it('refuses a Travel at the entry Stop, which no run can start from', () => {
+		// The run has no pose before its first arrival: a Travel there names a route
+		// the runtime cannot realize and would silently degrade to a Cut.
+		const travelAtEntry = program().stops.map((stop) =>
+			stop.id === 'stop-1' ? { ...stop, invocation: { kind: 'travel' as const, connectionId: 'connection-1' } } : stop
+		);
+		expect(codes({ ...program(), stops: travelAtEntry })).toContain('entry-travel');
+		// A Travel on a later Stop stays admitted.
+		expect(validateExecutionProgram(program()).success).toBe(true);
+	});
+
 	it('admits absolute HTTP(S) activation URLs and refuses executable or relative URLs', () => {
 		for (const url of ['https://example.com/info', 'http://example.com/info']) expect(validateExecutionProgram({ ...program(),
 			lifecycle: [{ event: 'enter', action: { kind: 'open-url', url }, guard: null }] }).success).toBe(true);

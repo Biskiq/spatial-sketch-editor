@@ -201,7 +201,7 @@ describe('Experience lowering', () => {
 		expect(lowered.program.stops[1]).toMatchObject({ invocation: { kind: 'cut', viewId: 'view-2' } });
 	});
 
-	it('keeps the authored adjacency invocation for a non-first entry Stop', async () => {
+	it('enters a non-first entry Stop with a Cut and keeps its authored approach as a transition', async () => {
 		const base = EXPERIENCE.experiences[0]!;
 		const envelope = await experienceEnvelope({
 			experience: {
@@ -218,10 +218,16 @@ describe('Experience lowering', () => {
 		expect(lowered.kind).toBe('lowered');
 		if (lowered.kind !== 'lowered') return;
 		expect(lowered.program.entryStopId).toBe('stop-2');
-		// stop-1 still precedes stop-2 in the Guide order and authors its Travel, so
-		// the entry occurrence keeps that approach: entry selects where the run
-		// starts, and invents no second edge rule beside the authored one.
+		// The run has visited nothing before its first arrival, so there is no pose a
+		// Travel could start from: the entry occurrence cuts to its own View. The
+		// authored approach stays in the transition table, so a later navigation
+		// from stop-1 still realizes its Travel.
 		expect(lowered.program.stops[1]).toMatchObject({
+			invocation: { kind: 'cut', viewId: 'view-2' }
+		});
+		expect(lowered.transitions).toContainEqual({
+			fromStopId: 'stop-1',
+			toStopId: 'stop-2',
 			invocation: { kind: 'travel', connectionId: 'connection-1' }
 		});
 	});

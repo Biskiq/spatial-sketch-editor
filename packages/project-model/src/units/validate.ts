@@ -466,7 +466,7 @@ function readPresentationText(
 		reader.problem(
 			`${path}.body`,
 			'text-too-long',
-			`${path}.body carries ${length} characters; Presentation text is bounded at ${EXPERIENCE_TEXT_MAX_LENGTH}`
+			`${path}.body carries ${length} code points; Presentation text is bounded at ${EXPERIENCE_TEXT_MAX_LENGTH}`
 		);
 		return null;
 	}
@@ -984,16 +984,32 @@ function envelopeFindings(
 					});
 				}
 			}
-			if (
-				presentation.subject !== null &&
-				presentation.subject.domain === 'scene' &&
-				!sceneEntities.has(presentation.subject.subject.id)
-			) {
-				diagnostics.push({
-					path: `${path}.presentations[${position}].subject`,
-					code: 'unresolved-subject',
-					message: `presentation "${presentation.id}" names scene entity "${presentation.subject.subject.id}", which this envelope does not carry`
-				});
+			if (presentation.subject !== null) {
+				const subject = presentation.subject.subject;
+				if (presentation.subject.domain === 'scene') {
+					if (subject.kind !== 'entity') {
+						diagnostics.push({
+							path: `${path}.presentations[${position}].subject`,
+							code: 'unresolved-subject',
+							message: `presentation "${presentation.id}" names a scene subject of kind "${subject.kind}"; Preview resolves scene entities only`
+						});
+					} else if (!sceneEntities.has(subject.id)) {
+						diagnostics.push({
+							path: `${path}.presentations[${position}].subject`,
+							code: 'unresolved-subject',
+							message: `presentation "${presentation.id}" names scene entity "${subject.id}", which this envelope does not carry`
+						});
+					}
+				} else {
+					// A Layout-element subject is admitted by the format, but Preview does
+					// not resolve it yet: disclose that it stays authored rather than
+					// implying the run presents it.
+					diagnostics.push({
+						path: `${path}.presentations[${position}].subject`,
+						code: 'unresolved-subject',
+						message: `presentation "${presentation.id}" names layout "${subject.kind}" subject "${subject.id}", which Preview does not resolve yet`
+					});
+				}
 			}
 		}
 		const presentationIds = new Set(experience.presentations.map((presentation) => presentation.id));
@@ -1002,6 +1018,24 @@ function envelopeFindings(
 		const entryViewOf = (stop: ExperienceStop): string | null => {
 			const presentation = presentationById.get(stop.presentationId);
 			return stop.entryViewId ?? presentation?.defaultViewId ?? null;
+		};
+		/**
+		 * The Stops that follow `stop` under `sequence-next`. Lowering resolves that
+		 * edge through the Guide orders it was asked to lower, and `guide-order`
+		 * rewrites a Guide without rewriting this array, so adjacency follows the
+		 * authored Guide order here too.
+		 *
+		 * There is no array-order fallback: a Stop no Guide orders is not part of any
+		 * lowered program, and an Experience with Stops but no Guide is refused by
+		 * lowering before its edges are traversed.
+		 */
+		const adjacentTargets = (stop: ExperienceStop): (ExperienceStop | undefined)[] => {
+			const successors = experience.guides.flatMap((guide) => {
+				const index = guide.stopIds.indexOf(stop.id);
+				// The last Stop of a Guide has none: its `sequence-next` edge ends the run.
+				return index >= 0 && index + 1 < guide.stopIds.length ? [guide.stopIds[index + 1]!] : [];
+			});
+			return successors.map((id) => experience.stops.find((candidate) => candidate.id === id));
 		};
 		for (const [position, stop] of experience.stops.entries()) {
 			if (!presentationIds.has(stop.presentationId)) {
@@ -1025,16 +1059,22 @@ function envelopeFindings(
 				continuation.transition === 'travel'
 			) {
 				// Experience never infers a Cut and never searches the Camera graph: an
-				// unsupported Travel stays authored and is reported as a gap.
-				const target = continuation.kind === 'stop'
-					? experience.stops.find((candidate) => candidate.id === continuation.stopId)
-					: experience.stops[experience.stops.indexOf(stop) + 1];
-				if (target !== undefined && !supportedTravel(entryViewOf(stop), entryViewOf(target))) {
-					diagnostics.push({
-						path: `${path}.stops[${position}].continuation.transition`,
-						code: 'travel-gap',
-						message: `the Travel from stop "${stop.id}" has no Camera connection to the View it enters`
-					});
+				// unsupported Travel stays authored and is reported as a gap. Adjacency
+				// follows the Guide orders lowering reads, not this array's order.
+				const targets = continuation.kind === 'stop'
+					? [experience.stops.find((candidate) => candidate.id === continuation.stopId)]
+					: adjacentTargets(stop);
+				const reported = new Set<string>();
+				for (const target of targets) {
+					if (target === undefined || reported.has(target.id)) continue;
+					reported.add(target.id);
+					if (!supportedTravel(entryViewOf(stop), entryViewOf(target))) {
+						diagnostics.push({
+							path: `${path}.stops[${position}].continuation.transition`,
+							code: 'travel-gap',
+							message: `the Travel from stop "${stop.id}" has no Camera connection to the View of stop "${target.id}"`
+						});
+					}
 				}
 			}
 			if (continuation !== undefined && continuation.kind === 'stop' && !stops.has(continuation.stopId)) {
