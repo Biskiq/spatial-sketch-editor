@@ -1,13 +1,15 @@
 # T3.P02.S01 — First capture and Cut Preview: implementation plan
 
-**Slice:** T3.P02.S01 · **Status:** approved — historical batch D authorization
-([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) preserved;
-release condition is the [release list](../../../now.md); **not implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
+**Slice:** T3.P02.S01 · **Status:** shipped as `owner-override` at integrated revision
+`1bb281bb16dc839588e4174514b240de6c52bf79`; historical batch D authorization
+([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) preserved.
+This plan remains live because its declared exhaustive integration route is T3.P02.S02 ·
+**Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
 **Track:** [T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 
-The [owner hold](../../../README.md#production-implementation-hold) stays in force for every scope
-the release list omits. The runbook start step checks this slice's condition there. The historical
-batch D authorization and the registered `approved` state are preserved.
+The historical batch D authorization and approved state are preserved as provenance. S01's
+acceptance ruling and closeout status live in the [acceptance record](./acceptance.md) and
+[phase register](../README.md#slice-register); T3.P02.S02 remains proposed and unauthorized.
 
 ## Finalized convergence scope (owner-accepted 2026-10-22)
 
@@ -23,8 +25,8 @@ landed code as follows:
   negotiated. No part or annotation field enters. The draft's two open points are settled at
   implementation review: text is bounded at 4,000 code points and stays Presentation-only (no
   Stop-local text), and `entryViewId` alone carries a Stop's entry role because hold, continuation
-  target and Cut/Travel already differ per Stop. The format becomes current contract when this slice
-  lands it.
+  target and Cut/Travel already differ per Stop. S01 implemented this format; acceptance posture and
+  the exact integration evidence route are recorded below and in the acceptance record.
 - **Guide-free Preview.** Preview enters a Presentation with zero Guides and zero Stops through the
   one lowering/interpreter and exits through the same Camera return. The Guide path stays fully in
   scope.
@@ -65,9 +67,9 @@ VERIFICATION: architecture-integration
 INTEGRATION ROUTE: ../t3.p02.s02-integrated-final-gate/acceptance.md
 ```
 
-This slice is authorized and unimplemented: nothing here is accepted, ready, evidenced or shipped.
-It delivers the phase's first useful authoring surface and routes its deferred exhaustive proof
-through `T3.P02.S02`.
+This plan retains the accepted implementation scope and the deferred exhaustive proof route through
+`T3.P02.S02`. The integrated revision is owner-accepted as recorded in the routed acceptance
+artifact; this plan does not claim the unrun integration or merge gates as completed.
 
 ## Scope
 
