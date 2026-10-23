@@ -2,6 +2,7 @@
 // live wireframe in one scripted state, without the wireframe bar; atlas.html shows them side by side.
 import { S, M, R, CMP0, camState, commit, findRaw, uid } from './core.js';
 import * as T from './tools.js';
+import * as X from './exp.js';
 import { render, setTool, selectId, loadScenario, setSheet, runCap } from './app.js';
 
 const base = (k = 'boathouse') => { loadScenario(k); Object.assign(S, { lens: 'world', reading: '3d', projection: 'axo', az: 35, tool: 'select', indexOpen: true, palOpen: true, inkShape: false, cmp: { ...CMP0 } }); };
@@ -11,6 +12,7 @@ function zoomOn(id, z) {
   const c = R.CENT[id]; if (!c) return;
   cs.pan = [cs.pan[0] + c[0] - (R.V.x + R.V.w / 2), cs.pan[1] + c[1] - (R.V.y + R.V.h / 2)]; render();
 }
+const blank = () => { base(); for (const k of ['walls', 'rooms', 'openings', 'roofs', 'objects', 'artworks', 'views', 'presentations', 'pins']) M[k] = []; M.guides[0].stops = []; M.guides[0].edges = []; S.indexOpen = false; };
 const platform = () => { const id = 'room-deck'; M.rooms.push({ id, name: 'Reading deck', type: 'platform', walls: [], poly: [[13, 4.5], [17, 4.5], [17, 7.5], [13, 7.5]], z: 0.45, level: 'lv-g', structure: 'st-boat' }); return id; };
 
 export const ATLAS = {
@@ -42,6 +44,17 @@ export const ATLAS = {
   'pen-chip': () => { base(); setTool('ink'); S.inkTip = 'box'; S.palOpen = false; T.finishInk([[2, 2], [4.5, 2], [4.5, 4], [2, 4]], true); },
   'pen-intent': () => { base(); S.cmp.pen = 'intent'; setTool('ink'); S.inkShape = true; },
   'pen-pulled': () => { base(); S.indexOpen = false; const id = uid('b'); M.objects.push({ id, name: 'Shape 1', type: 'profile', fit: 'stretch', x: 3.2, y: 3, w: 2.4, d: 1.6, h: 1.1, rot: 0, z: 0, level: 'lv-g', outline: [[-0.5, -0.5], [0.1, -0.5], [0.5, 0], [0.1, 0.5], [-0.5, 0.5]] }); commit('Shape'); selectId(id); S.sizeOpen = id; zoomOn(id, 2.4); S.hh = 'h'; },
+  // Story frames (story.html): only the states the atlas lacks; the rest reuse the presets above.
+  'st-blank': () => { blank(); },
+  'st-wall-draw': () => { blank(); setTool('ink'); S.inkTip = 'line'; S.palOpen = false; S.ink = { pts: [[2, 1]], h: 0, cursor: [9, 1], tag: '7.00 m' }; },
+  'st-wall-done': () => { blank(); setTool('ink'); S.inkTip = 'line'; S.palOpen = false; T.finishInk([[2, 1], [9, 1]], false); },
+  'st-layout': () => { blank(); setTool('ink'); S.inkTip = 'box'; S.palOpen = false; T.finishInk([[2, 1], [9, 1]], false); T.finishInk([[2, 1], [9, 1], [9, 6], [2, 6]], true); T.finishInk([[9, 1], [14, 1], [14, 6], [9, 6]], true); },
+  'st-elev': () => { base(); S.indexOpen = false; S.reading = 'elev'; S.elevFace = 'S'; },
+  'st-exp': () => { base(); S.lens = 'experience'; selectId('p-torso'); },
+  'st-look': () => { base(); S.lens = 'experience'; selectId('p-torso'); X.lookThrough('v-torso'); },
+  'st-guide': () => { base(); S.lens = 'experience'; S.indexOpen = false; S.guideOpen = true; S.t = 9; selectId('s2'); },
+  'st-preview': () => { base(); S.lens = 'experience'; S.preview = { i: 1, mode: 'guided', device: 'desktop' }; },
+  'st-phone': () => { base(); S.lens = 'experience'; S.preview = { i: 2, mode: 'guided', device: 'phone' }; },
 };
 
 export function applyAtlas(key) {
