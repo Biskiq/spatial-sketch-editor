@@ -55,8 +55,12 @@ export type ExperienceLoweringOptions = {
 	readonly sessionEpoch: string;
 	/** Defaults to the selected guide's `entryStopId`. */
 	readonly entryStopId?: string;
-	/** Selects an authored Guide; defaults to the Experience's entry guide. */
-	readonly guideId?: string;
+	/**
+	 * Selects an authored Guide; defaults to the Experience's entry guide. An
+	 * explicit `null` means no Guide: the program carries Presentations only, with
+	 * an empty order, and the Experience's Stops are not lowered.
+	 */
+	readonly guideId?: string | null;
 	/**
 	 * Must equal the selected Guide's authored `stopIds` exactly. It exists so a
 	 * caller can name an order explicitly, never so it can author one: a reordered,
@@ -172,8 +176,10 @@ export function lowerExperienceProgram(
 	const entryGuide = experience.guides.find((guide) => guide.id === experience.entryGuideId) ?? null;
 	const selectedGuide = options.guideId === undefined
 		? entryGuide
-		: experience.guides.find((guide) => guide.id === options.guideId) ?? null;
-	if (options.guideId !== undefined && selectedGuide === null) {
+		: options.guideId === null
+			? null
+			: experience.guides.find((guide) => guide.id === options.guideId) ?? null;
+	if (typeof options.guideId === 'string' && selectedGuide === null) {
 		return refuse('unknown-guide', `this Experience carries no Guide "${options.guideId}"`);
 	}
 	if (options.order !== undefined) {
@@ -194,7 +200,8 @@ export function lowerExperienceProgram(
 	}
 	const order = [...(options.order ?? selectedGuide?.stopIds ?? [])];
 
-	if (order.length === 0 && experience.stops.length > 0) {
+	// An explicit `guideId: null` is a Guide-free lowering, not a missing order.
+	if (order.length === 0 && experience.stops.length > 0 && options.guideId !== null) {
 		return refuse('missing-entry', 'the Experience has Stops but no Guide orders them; author a Guide before Preview can enter them');
 	}
 	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
@@ -347,6 +354,16 @@ export function lowerExperienceProgram(
 			return refuse(
 				'unknown-view',
 				`Stop "${stop.id}" enters at Camera view "${entryViewId}", which this envelope does not resolve`,
+				stop.id
+			);
+		}
+		// A Stop of a Presentation without an enterable Default View is refused even
+		// when the Stop names its own resolvable entry View: the Presentation itself
+		// is unavailable, so the Stop has no enterable Presentation to arrive in.
+		if (!presentations.some((entry) => entry.id === stop.presentationId)) {
+			return refuse(
+				'missing-entry',
+				`Stop "${stop.id}" uses Presentation "${stop.presentationId}", which has no enterable Default View`,
 				stop.id
 			);
 		}

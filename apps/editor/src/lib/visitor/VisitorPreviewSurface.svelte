@@ -68,8 +68,7 @@ import { PCFShadowMap } from 'three';
 	// Presentation entry starts the same run at its Default View with no Stop.
 	$effect(() => {
 		if (visitorState === null) return;
-		if (entryPresentationId !== null) visitorState.selectPresentation(entryPresentationId);
-		else visitorState.enter();
+		visitorState.start(entryPresentationId);
 	});
 
 	const presentation = $derived.by(() => {
@@ -133,13 +132,16 @@ import { PCFShadowMap } from 'three';
 			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} />
 		</Canvas>
 	</div>
-	{#if guideFreePresentations.length > 0}
+	{#if guideFreePresentations.length > 0 || visitorState?.canResume}
 		<nav class="visitor-presentations" aria-label="Presentations">
 			{#each guideFreePresentations as entry (entry.id)}
 				<button type="button" onclick={() => visitorState?.selectPresentation(entry.id)}>
 					{entry.label}
 				</button>
 			{/each}
+			{#if visitorState?.canResume}
+				<button type="button" class="visitor-resume" onclick={() => visitorState?.resume()}>Resume tour</button>
+			{/if}
 		</nav>
 	{/if}
 	{#if cameraGap}
@@ -218,7 +220,8 @@ import { PCFShadowMap } from 'three';
 		gap: 0.4rem;
 		z-index: 5;
 	}
-	.visitor-presentations button {
+	.visitor-presentations button,
+	.visitor-resume {
 		padding: 0.35rem 0.6rem;
 		border: 1px solid #635a6f;
 		border-radius: 999px;

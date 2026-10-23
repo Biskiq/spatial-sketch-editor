@@ -185,7 +185,9 @@ export function previewEntryFor(input: {
 	if (focus.presentationId !== null) {
 		const lowered = lowerExperienceProgram(envelope, {
 			...baseLowering,
-			...(experience.entryGuideId === null ? {} : { guideId: experience.entryGuideId })
+			// The selected Presentation is entered alone: the unrelated entry Guide's
+			// Stops and transitions must not refuse or shape this preview.
+			guideId: null
 		});
 		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
 		const presentation = lowered.program.presentations.find((entry) => entry.id === focus.presentationId);

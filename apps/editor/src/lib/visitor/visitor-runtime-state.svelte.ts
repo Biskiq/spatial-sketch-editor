@@ -45,9 +45,31 @@ export class VisitorRuntimeState {
 		this.state = this.interpreter.enter().state;
 	}
 
+	/**
+	 * Start the run from the surface's entry choice. An explicit Presentation entry
+	 * wins; otherwise the authored entry Stop is entered when one exists. A
+	 * Guide-free program with no entry Stop stays `ready` so Presentations remain
+	 * enterable from the list.
+	 */
+	start(entryPresentationId: string | null) {
+		if (entryPresentationId !== null) {
+			this.selectPresentation(entryPresentationId);
+			return;
+		}
+		if (this.program.entryStopId !== null) this.enter();
+	}
+
 	/** The explicit Continue control. A Gate or a finished hold advances once. */
 	continue() {
 		this.state = this.interpreter.continue().state;
+	}
+
+	/**
+	 * Return to the Guide position a Presentation suspended. Only this explicit
+	 * control returns; Continue never does.
+	 */
+	resume() {
+		this.state = this.interpreter.resume().state;
 	}
 
 	/** An explicit authored destination; the Guide is never bypassed by this. */
@@ -109,6 +131,11 @@ export class VisitorRuntimeState {
 
 	get ended() {
 		return this.state.phase === 'completed' || this.state.phase === 'cancelled';
+	}
+
+	/** Whether a suspended Guide position can be returned to. */
+	get canResume(): boolean {
+		return this.state.resume !== null;
 	}
 
 	get companion() {

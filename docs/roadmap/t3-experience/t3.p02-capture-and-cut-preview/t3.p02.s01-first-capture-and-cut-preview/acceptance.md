@@ -160,8 +160,8 @@ the narrow check ran at 760 × 900 with reduced motion **on**.
 
 ## Not verified here, and why
 
-- **Guide path in the browser.** The starter source has no Guide and this slice adds no
-  Guide-creation action (no such plan item), so the open-Guide/selected-Stop and entry-Stop
+- **Guide path in the browser.** The starter source has no Guide, and the owner moved first-Guide
+  creation to `T3.P02.S02` (plan, owner rulings 2026-10-22), so the open-Guide/selected-Stop and entry-Stop
   branches of the Preview entry rule are proven by unit tests
   (`experience-authoring.test.ts` → *Preview entry rule*), not by a route journey. A real-route
   Guide journey needs an authored Guide and belongs to `T3.P02.S02`'s integrated gate.

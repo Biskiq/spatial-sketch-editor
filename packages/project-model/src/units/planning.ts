@@ -896,8 +896,10 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 			const guide = experience.guides.find((candidate) => candidate.id === guideId);
 			if (guide === undefined) return refuse('missing-target', `guide "${guideId}" is not in experience "${experience.id}"`);
 			const entry: string | null = entryViewId ?? presentation.defaultViewId;
-			if (entry === null) {
-				return refuse('missing-entry', `presentation "${presentation.id}" has no Default View, so a Stop must name its entry View`);
+			// A Presentation without a Default View is not enterable, so lowering never
+			// carries its Stops even when this Stop names its own entry View.
+			if (presentation.defaultViewId === null || entry === null) {
+				return refuse('missing-entry', `presentation "${presentation.id}" has no Default View, so a Stop cannot enter it`);
 			}
 			if (!presentation.viewIds.includes(entry)) {
 				return refuse('invalid-payload', `entry view "${entry}" is not one of presentation "${presentation.id}"'s views`);
@@ -1170,18 +1172,19 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 					defaultView = defaultViewId;
 				}
 			}
-			// Clearing the Default would orphan a Stop that names no entry View: the
-			// run has no View to arrive at, and the whole Experience would stop lowering.
-			// Only a clear is refused: an edit that never touched the Default is not
-			// blocked by a Stop the source already left without an entry View.
+			// Clearing the Default would leave a Stop of this Presentation with no
+			// enterable Presentation: lowering reports such a Presentation as
+			// unavailable and refuses the Stop's order. A Stop's own entry View does not
+			// rescue it, so any Stop of the Presentation blocks the clear. Only a clear
+			// is refused: an edit that never touched the Default is not blocked.
 			if (
 				previous.defaultViewId !== null &&
 				defaultView === null &&
-				container.stops.some((stop) => stop.presentationId === previous.id && stop.entryViewId === undefined)
+				container.stops.some((stop) => stop.presentationId === previous.id)
 			) {
 				return refuse(
 					'invalid-payload',
-					`presentation "${previous.id}" has Stops that enter at its Default View; give those Stops an entry View or keep a Default View`
+					`presentation "${previous.id}" has Stops; keep a Default View while a Stop still enters through it`
 				);
 			}
 			const updated: ExperiencePresentation = {
