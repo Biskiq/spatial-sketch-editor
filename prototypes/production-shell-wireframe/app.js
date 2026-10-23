@@ -1,4 +1,4 @@
-// Production-shell wireframe, round 1.1: render orchestration, pointer gestures, actions, keys.
+// Production-shell wireframe, round 2: render orchestration, pointer gestures, actions, keys.
 // Mock state, one render pass per change, no framework. See DESIGN-NOTE.md.
 import { icon } from './icons.js';
 import * as SC from './scene.js';
@@ -23,7 +23,7 @@ export function loadScenario(k) {
   for (const r of M.rooms) if (r.kind) { r.type = r.kind; delete r.kind; }
   for (const o of M.objects) if (o.kind) { o.type = o.kind; delete o.kind; }
   resetHistory(k === 'dense' ? 'Open Harbour museum' : 'Open Boathouse gallery');
-  Object.assign(S, { sel: null, scope: { st: null, lv: null, room: null }, facet: 'all', search: '', more: {}, tree: new Set(), sheet: { ...S.sheet, h: 0 }, focus: false, slice: null, look: null, lift: false, editShape: null, marked: new Set(), erase: null, confirm: null, readChip: null, ink: null, meas: null, placing: null, instrument: null, lookThrough: null, guideOpen: false, playing: false, t: 0, follow: false, preview: null, cams: {}, hint: null, sizeOpen: null, dimRefuse: null });
+  Object.assign(S, { sel: null, scope: { st: null, lv: null, room: null }, facet: 'all', search: '', more: {}, sheet: { ...S.sheet, h: 0 }, focus: false, slice: null, look: null, lift: false, editShape: null, marked: new Set(), erase: null, confirm: null, readChip: null, ink: null, meas: null, placing: null, instrument: null, lookThrough: null, guideOpen: false, playing: false, t: 0, follow: false, preview: null, cams: {}, hint: null, sizeOpen: null, dimRefuse: null });
 }
 
 // ---------------- the whole render ----------------
@@ -87,13 +87,14 @@ export function scopedList(e) {
 // ---------------- state transitions ----------------
 export function setTool(t) {
   if (S.tool === 'eraser' && t !== 'eraser') { S.marked.clear(); S.erase = null; S.lassoPoly = null; }
-  S.tool = t; S.ink = null; S.meas = null; S.inkHint = null; S.brushPick = false; S.eraseFilterOpen = false;
+  if (t !== S.tool) { S.palOpen = true; if (S.tool === 'ink') S.inkShape = false; } // arming opens the palette; the Shape intent ends with Ink
+  S.tool = t; S.ink = null; S.meas = null; S.inkHint = null; S.eraseHint = null; S.brushPick = false; S.eraseFilterOpen = false;
   if (t !== 'place') S.placing = null;
   if (t !== 'brush') S.brushMode = null;
   if (t === 'eraser') S.sizeOpen = null;
 }
 export function selectId(id) {
-  if (S.editShape && id !== S.editShape.id) S.editShape = null;
+  if (S.editShape && id !== S.editShape.id) { if (S.reading === 'rsect') S.reading = '3d'; S.editShape = null; }
   S.sel = id || null; S.cardMore = false; S.ctx = null; S.dimRefuse = null; S.sizeOpen = null;
   if (id) revealInIndex(id);
 }
@@ -109,14 +110,14 @@ function startLook(kind, e) {
   else if (kind === 'face') S.look = { kind: 'face', walls: [e.id] };
   else if (kind === 'facehost') S.look = { kind: 'face', walls: [e.host] };
   else if (kind === 'lift') { S.lift = !S.lift; return render(true); }
-  else if (kind === 'section') { const c = SC.entityPlanCentre(M, e); S.slice = { a: [c[0] - 30, c[1] - 0.01], b: [c[0] + 30, c[1]], flip: false, depth: 6 }; S.reading = 'section'; return render(true); }
+  else if (kind === 'section') { const c = SC.entityPlanCentre(M, e); const b = R.box; S.slice = { a: [b[0] - 0.5, c[1] - 0.01], b: [b[2] + 0.5, c[1]], z: 0, flip: false, depth: 6 }; S.reading = 'section'; return render(true); }
   else if (kind === 'editshape') return T.openEditShape(e.id);
   else if (kind === 'focus') { setSheet(e.z || 0); S.focus = true; return render(); }
   else if (kind === 'eye') { S.eye = { pos: [e.x - 2.5, e.y - 2.5, (levelAt(e.z || 0)?.z || 0) + 1.6], target: [e.x, e.y, (e.z || 0) + e.h / 2] }; S.reading = 'eye'; return render(true); }
   render(true);
 }
 function putBack() { S.look = null; S.lift = false; render(true); }
-export function parkWorld() { S.look = null; S.lift = false; S.slice = null; S.focus = false; S.instrument = null; S.ink = null; S.marked.clear(); S.erase = null; S.editShape = null; S.lookThrough = null; S.placing = null; S.playing = false; S.follow = false; if (S.reading === 'section') S.reading = '3d'; }
+export function parkWorld() { S.look = null; S.lift = false; S.slice = null; S.focus = false; S.instrument = null; S.ink = null; S.marked.clear(); S.erase = null; S.editShape = null; S.lookThrough = null; S.placing = null; S.playing = false; S.follow = false; if (S.reading === 'section' || S.reading === 'rsect') S.reading = '3d'; }
 function enterScope(k, id) {
   const sc = S.scope;
   if (k === 'project') S.scope = { st: null, lv: null, room: null };
@@ -154,8 +155,8 @@ export function runCap(c) {
 }
 
 // ---------------- pointer on the Stage ----------------
-let spaceDown = false;
-const CHROME = '.sf, #card, #lower .lower > *, .hsheet, .pop, .ctx, .readchip, .pill, .toast, .erasebar, .esfloat, .tourcard, .peektab';
+let spaceDown = false, tickT;
+const CHROME = '.sf, #card, #lower .lower > *, .hsheet, .pop, .ctx, .readchip, .pill, .toast, .erasebar, .esfloat, .tourcard, .peekarrow, .peekzone';
 function stageDown(ev) {
   if (ev.target.closest(CHROME)) return;
   closePops();
@@ -169,7 +170,7 @@ function stageDown(ev) {
   if (S.lens === 'experience') return expDown(ev, hid, uv);
   if (hnd && hnd.startsWith('sl-')) return startHandle(hnd, ev);
   if (S.editShape && hnd && /^j(add)?-/.test(hnd)) return startHandle(hnd, ev);
-  if (S.editShape && S.tool === 'ink' && S.cmp.edit === 'object') { R.D = { kind: 'inkSection', px: [px] }; S.ink = { pts: [px], px: true }; return; }
+  if (S.editShape && S.tool === 'ink' && !(S.cmp.section === 'inset' && S.editShape.view === 'section')) { R.D = { kind: 'inkSection', px: [px] }; S.ink = { pts: [px], px: true }; return; }
   if (S.tool === 'select') {
     if (hnd) return startHandle(hnd, ev);
     if (hid && ev.detail === 2) { const e = ent(hid); if (e?.kind === 'roof') return T.openEditShape(hid); if (e?.kind === 'wall') { selectId(hid); return startLook('face', e); } if (e?.kind === 'room' && e.walls.length) { selectId(hid); return startLook('unroll', e); } }
@@ -186,7 +187,7 @@ function stageDown(ev) {
   if (S.tool === 'ink') return inkDown(ev, hid, uv);
   if (S.tool === 'slice') {
     if (S.sliceMode === 'height') { S.slice = { horizontal: true, h: S.sheet.h > 0.1 ? S.sheet.h : 1.2, depth: 3 }; if (S.sheet.h < 0.1) setSheet(1.2); return render(); }
-    const p = onPlane(ev, 0); if (!p) return toast('Slice from 2D or 3D.', true); R.D = { kind: 'slice', a: p, prev: S.slice }; return;
+    const z = R.mode === 'plan' ? 0 : S.sheet.h; const p = onPlane(ev, z); if (!p) return toast('Slice from 2D or 3D.', true); R.D = { kind: 'slice', a: snapPt(p, { noEnds: true }).p, z, prev: S.slice }; return;
   }
   if (S.tool === 'eraser') {
     if (ev.shiftKey && hid) S.eraseLock = ent(hid)?.kind === 'import' ? 'object' : ent(hid)?.kind;
@@ -229,7 +230,7 @@ function inkDown(ev, hid, uv) {
   const nearEnd = e && e.kind === 'wall' && (() => { const p = onPlane(ev, e.base); return p && [e.a, e.b].some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.7); })();
   if (e && e.kind === 'wall' && !S.ink && !nearEnd && Math.abs(e.base - S.sheet.h) < 0.05) {
     if (R.mode === 'plan') { const [u, v] = toVB(ev); const L = SC.wallLen(e); const t = clamp(((u - e.a[0]) * (e.b[0] - e.a[0]) + (-v - e.a[1]) * (e.b[1] - e.a[1])) / L, 0.6, L - 0.6); const id = uid('o'); M.openings.push({ id, name: `Door ${id.slice(2)}`, host: e.id, at: t, w: 1.0, h: 2.2, sill: e.base }); commit('Ink door'); S.sel = id; return render(); }
-    R.D = { kind: 'inkOpen', wall: e, a: wallHit(e, ev), aPx: stagePx(ev) }; return;
+    R.D = { kind: 'inkOpen', wall: e, a: wallHit(e, ev), aPx: stagePx(ev), round: S.inkTip === 'round' }; return;
   }
   const h = S.sheet.h; const p0 = onPlane(ev, h); if (!p0) return toast('Ink draws on 2D, 3D, eye level or a wall laid flat.', true);
   const p = snapPt(p0).p;
@@ -240,6 +241,8 @@ function inkDown(ev, hid, uv) {
   }
   R.D = { kind: { box: 'inkBox', round: 'inkRound' }[S.inkTip] || 'inkSketch', h, a: p }; S.ink = { pts: [p], h }; renderOverlay();
 }
+/** Straight, following the gesture; with Snap on it settles onto 45° directions when it is close to one. */
+function softAngle(a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), ang = Math.atan2(dy, dx), k = Math.round(ang / (Math.PI / 4)) * (Math.PI / 4); if (!S.snap || Math.abs(ang - k) > (5 * Math.PI) / 180) return b; return [a[0] + Math.cos(k) * L, a[1] + Math.sin(k) * L]; }
 function snapAngle(a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy); const ang = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4); return [a[0] + Math.cos(ang) * L, a[1] + Math.sin(ang) * L]; }
 function wallHit(w, ev) {
   const [u, v] = toVB(ev); const L = SC.wallLen(w); let best = null;
@@ -261,7 +264,7 @@ function startHandle(h, ev) {
   const e = ent(S.sel) || (S.editShape && ent(S.editShape.id)); const uv = toVB(ev);
   const base = { sx: ev.clientX, sy: ev.clientY, start: uv };
   if (h === 'sl-flip') { S.slice.flip = !S.slice.flip; return render(true); }
-  if (h === 'sl-move' || h === 'sl-depth') { R.D = { kind: h, ...base, p0: onPlane(ev, 0), orig: clone(S.slice) }; return; }
+  if (['sl-move', 'sl-depth', 'sl-a', 'sl-b'].includes(h)) { R.D = { kind: h, ...base, p0: onPlane(ev, S.slice.z || 0), orig: clone(S.slice) }; return; }
   if (h.startsWith('jadd-') || h.startsWith('j-')) {
     const r = findRaw(S.editShape.id); let i = +h.split('-')[1];
     if (h.startsWith('jadd-')) { const a = r.prof[i], b = r.prof[i + 1]; r.prof.splice(i + 1, 0, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]); i += 1; }
@@ -278,11 +281,14 @@ function stageMove(ev) {
   if (!D) {
     const hid = ev.target.closest?.('#world [data-id]')?.dataset.id || null;
     let changed = hid !== S.hover; S.hover = hid;
+    const hh = ev.target.closest?.('#ovl [data-h]')?.dataset.h || null;
+    if (hh !== S.hh) { S.hh = hh; if (!changed) renderOverlay(); }
     if (S.tool === 'ink' && S.ink && S.inkTip === 'line') { const p = onPlane(ev, S.ink.h); if (p) { S.ink.cursor = ev.shiftKey ? snapAngle(S.ink.pts.at(-1), snapPt(p).p) : snapPt(p).p; S.ink.tag = `${f2(Math.hypot(...SC.sub(S.ink.cursor, S.ink.pts.at(-1))))} m`; } renderOverlay(); }
-    if (S.tool === 'ink' && !S.ink) { const e = ent(hid); const px = stagePx(ev); const t = e && e.kind === 'wall' && Math.abs(e.base - S.sheet.h) < 0.05 ? '→ opening in this wall' : e && e.kind === 'roof' && !e.poly ? '→ draws its section' : null; const nh = t ? { x: px[0], y: px[1], text: t } : null; if ((nh && nh.text) !== (S.inkHint && S.inkHint.text) || nh) { S.inkHint = nh; renderOverlay(); } }
+    if (S.tool === 'ink' && !S.ink) { const e = ent(hid); const px = stagePx(ev); const t = e && e.kind === 'wall' && Math.abs(e.base - S.sheet.h) < 0.05 ? (S.inkTip === 'round' ? '→ round opening in this wall' : '→ opening in this wall') : e && e.kind === 'roof' && !e.poly ? '→ draws its section' : null; const nh = t ? { x: px[0], y: px[1], text: t } : null; if ((nh && nh.text) !== (S.inkHint && S.inkHint.text) || nh) { S.inkHint = nh; renderOverlay(); } }
     if (S.tool === 'measure' && S.meas && S.meas.a && !S.meas.b) { const p = onPlane(ev, S.meas.h || 0); if (p) { S.meas.cursor = snapPt(p).p; renderOverlay(); } }
     if (S.tool === 'place' && S.placing) placeGhost(ev, hid);
     if (S.tool === 'eraser' && !S.erase && S.eraseMode === 'scrub') { const m = hid && T.passFilter(hid) ? new Set([hid]) : new Set(); if ([...m].join() !== [...S.marked].join()) { S.marked = m; changed = true; } }
+    if (S.tool === 'eraser') { const e = ent(hid); const out = e && e.kind !== 'room' && !T.passFilter(hid); const px = stagePx(ev); const nh = out ? { x: px[0], y: px[1], text: `${kindLabel[e.kind]}s are filtered out` } : null; if ((nh && nh.text) !== (S.eraseHint && S.eraseHint.text) || nh) { S.eraseHint = nh; renderOverlay(); } }
     if (changed) { renderStage(); if (S.lens === 'world') $$('.irow[data-hover]').forEach((r) => r.classList.toggle('hl', r.dataset.hover === hid)); }
     return;
   }
@@ -294,18 +300,22 @@ function stageMove(ev) {
   if (D.kind === 'inkSection') { S.ink.pts.push(stagePx(ev)); return renderOverlay(); }
   if (D.kind === 'inkBox') { const p = onPlane(ev, D.h); if (!p) return; const b = snapPt(p, { noEnds: true }).p, a = D.a; S.ink.pts = [a, [b[0], a[1]], b, [a[0], b[1]]]; S.ink.tag = `${f2(Math.abs(b[0] - a[0]))} × ${f2(Math.abs(b[1] - a[1]))} m`; return renderOverlay(); }
   if (D.kind === 'inkRound') { const p = onPlane(ev, D.h); if (!p) return; let r = Math.hypot(p[0] - D.a[0], p[1] - D.a[1]); if (S.snap) r = Math.max(0.5, Math.round(r * 4) / 4); S.ink.pts = T.circlePts(D.a, r); S.ink.tag = `⌀ ${f2(r * 2)} m`; return renderOverlay(); }
-  if (D.kind === 'inkOpen') { const b = wallHit(D.wall, ev); D.b = b; const q = stagePx(ev); S.ink = { pts: [], opening: { px: [D.aPx[0], D.aPx[1], q[0], q[1]], label: `${f2(Math.abs(b.t - D.a.t))} × ${f2(Math.abs(b.z - D.a.z))} m` } }; return renderOverlay(); }
+  if (D.kind === 'inkOpen') { const b = wallHit(D.wall, ev); D.b = b; const q = stagePx(ev); if (D.round) { const r = Math.max(0.2, Math.hypot(b.t - D.a.t, b.z - D.a.z)); S.ink = { pts: [], opening: { round: true, c: D.aPx, rpx: Math.hypot(q[0] - D.aPx[0], q[1] - D.aPx[1]), label: `⌀ ${f2(r * 2)} m · round opening` } }; } else S.ink = { pts: [], opening: { px: [D.aPx[0], D.aPx[1], q[0], q[1]], label: `${f2(Math.abs(b.t - D.a.t))} × ${f2(Math.abs(b.z - D.a.z))} m` } }; return renderOverlay(); }
   if (D.kind === 'inkOpenFlat') { D.b = uv; const a = toPx(D.a), b = toPx(uv); S.ink = { pts: [], opening: { px: [a[0], a[1], b[0], b[1]], label: `${f2(Math.abs(uv[0] - D.a[0]))} × ${f2(Math.abs(uv[1] - D.a[1]))} m` } }; return renderOverlay(); }
   if (D.kind === 'slice') {
-    // live sectional preview: the cut applies while the line is being drawn
-    let p = onPlane(ev, 0); if (!p) return; if (S.snap) p = snapAngle(D.a, p); D.b = p;
-    if (Math.hypot(p[0] - D.a[0], p[1] - D.a[1]) > 0.8) { const dir = SC.norm(SC.sub(p, D.a)); S.slice = { a: SC.sub(D.a, SC.mul(dir, 40)), b: SC.add(p, SC.mul(dir, 40)), mid: [(D.a[0] + p[0]) / 2, (D.a[1] + p[1]) / 2], flip: false, depth: D.prev?.depth || 6 }; }
+    // a finite straight cut that follows the gesture's direction; the section previews live while it is drawn
+    let p = onPlane(ev, D.z); if (!p) return; p = softAngle(D.a, p); D.b = p;
+    if (Math.hypot(p[0] - D.a[0], p[1] - D.a[1]) > 0.6) S.slice = { a: [...D.a], b: p, z: D.z, flip: false, depth: D.prev?.depth || 4 };
     return renderStage();
   }
+  if (D.kind === 'sl-a' || D.kind === 'sl-b') {
+    let p = onPlane(ev, S.slice.z || 0); if (!p) return; const other = D.kind === 'sl-a' ? S.slice.b : S.slice.a; p = softAngle(other, p);
+    if (Math.hypot(p[0] - other[0], p[1] - other[1]) < 0.6) return; S.slice[D.kind === 'sl-a' ? 'a' : 'b'] = p; D.moved = true; return renderStage();
+  }
   if (D.kind === 'sl-move' || D.kind === 'sl-depth') {
-    const p = onPlane(ev, 0); if (!p || !D.p0) return; const n0 = (() => { const d = SC.norm(SC.sub(D.orig.b, D.orig.a)); let n = [-d[1], d[0]]; if (D.orig.flip) n = [-n[0], -n[1]]; return n; })();
+    const p = onPlane(ev, D.orig.z || 0); if (!p || !D.p0) return; const n0 = (() => { const d = SC.norm(SC.sub(D.orig.b, D.orig.a)); let n = [-d[1], d[0]]; if (D.orig.flip) n = [-n[0], -n[1]]; return n; })();
     const s = (p[0] - D.p0[0]) * n0[0] + (p[1] - D.p0[1]) * n0[1];
-    if (D.kind === 'sl-move') { S.slice.a = SC.add(D.orig.a, SC.mul(n0, s)); S.slice.b = SC.add(D.orig.b, SC.mul(n0, s)); if (D.orig.mid) S.slice.mid = SC.add(D.orig.mid, SC.mul(n0, s)); }
+    if (D.kind === 'sl-move') { const k = S.snap ? Math.round(s * 4) / 4 : s; S.slice.a = SC.add(D.orig.a, SC.mul(n0, k)); S.slice.b = SC.add(D.orig.b, SC.mul(n0, k)); }
     else S.slice.depth = Math.max(0.5, Math.round((D.orig.depth + s) * 4) / 4);
     return renderStage();
   }
@@ -365,11 +375,12 @@ function stageMove(ev) {
     for (const r of D.riders) findRaw(r.id).z = (e.z || 0) + e.h; D.moved = true; const p = wpx([e.x, e.y, (e.z || 0) + e.h]);
     D.tag = p ? { x: p[0] + 18, y: p[1], text: `×${k.toFixed(2)} · ${f2(e.w)} × ${f2(e.d)} × ${f2(e.h)}` } : null; return renderStage();
   }
-  if (D.kind === 'h-w' || D.kind === 'h-d') {
+  if (/^h-[wd]-?$/.test(D.kind)) {
     const e = findRaw(D.id); const lz = D.orig.z || 0; const p = onPlane(ev, lz), p0 = R.CAM.onPlane(D.start[0], D.start[1], lz); if (!p || !p0) return;
-    const { u, v } = objFrame(D.orig); const ax = D.kind === 'h-w' ? u : v, key = D.kind === 'h-w' ? 'w' : 'd';
-    let s = (p[0] - p0[0]) * ax[0] + (p[1] - p0[1]) * ax[1]; let nv = Math.max(0.1, D.orig[key] + s); if (S.snap) nv = Math.round(nv * 20) / 20; s = nv - D.orig[key];
-    e[key] = nv; e.x = D.orig.x + ax[0] * s / 2; e.y = D.orig.y + ax[1] * s / 2; D.moved = true;
+    const { u, v } = objFrame(D.orig); const isW = D.kind.startsWith('h-w'), sg = D.kind.endsWith('-') ? -1 : 1, ax = isW ? u : v, key = isW ? 'w' : 'd';
+    // the dragged face moves; the opposite face stays where it is
+    let s = sg * ((p[0] - p0[0]) * ax[0] + (p[1] - p0[1]) * ax[1]); let nv = Math.max(0.1, D.orig[key] + s); if (S.snap) nv = Math.round(nv * 20) / 20; s = nv - D.orig[key];
+    e[key] = nv; e.x = D.orig.x + (ax[0] * sg * s) / 2; e.y = D.orig.y + (ax[1] * sg * s) / 2; D.moved = true;
     const q = wpx([e.x, e.y, lz + e.h]); const verb = key === 'w' && e.fit === 'extend' ? 'extend' : 'stretch';
     D.tag = q ? { x: q[0] + 16, y: q[1] - 16, text: `${key === 'w' ? (e.fit === 'extend' ? 'length' : 'width') : 'depth'} ${f2(nv)} · ${verb}${verb === 'stretch' && e.fit !== 'stretch' ? ' (distorts)' : ''}` } : null; return renderStage();
   }
@@ -389,6 +400,45 @@ function stageMove(ev) {
   }
   if (D.kind === 'h-end-a' || D.kind === 'h-end-b') { const w = findRaw(D.id); const p = onPlane(ev, w.base); if (!p) return; const q = snapPt(p).p; w[D.kind.endsWith('a') ? 'a' : 'b'] = q; D.moved = true; const px = wpx([...q, w.base]); D.tag = px ? { x: px[0] + 12, y: px[1] - 12, text: `${SC.wallLen(w).toFixed(2)} m` } : null; return renderStage(); }
   if (D.kind === 'h-push') { const w = findRaw(D.id); const p = onPlane(ev, w.base), p0 = R.CAM.onPlane(D.start[0], D.start[1], w.base); if (!p || !p0) return; const L = SC.wallLen(D.orig); const n = [-(D.orig.b[1] - D.orig.a[1]) / L, (D.orig.b[0] - D.orig.a[0]) / L]; let s = (p[0] - p0[0]) * n[0] + (p[1] - p0[1]) * n[1]; if (S.snap) s = Math.round(s * 10) / 10; w.a = [D.orig.a[0] + n[0] * s, D.orig.a[1] + n[1] * s]; w.b = [D.orig.b[0] + n[0] * s, D.orig.b[1] + n[1] * s]; D.moved = true; const px = wpx([(w.a[0] + w.b[0]) / 2, (w.a[1] + w.b[1]) / 2, w.base]); D.tag = px ? { x: px[0] + 14, y: px[1] + 20, text: `moved ${f2(s)} m` } : null; return renderStage(); }
+  if (D.kind === 'h-th') {
+    // the grip sits on the cap's centre line: moving away from the line on either side thickens, back towards it thins
+    const w = findRaw(D.id); const z = R.mode === 'plan' ? w.base : w.top; const p = onPlane(ev, z), p0 = R.CAM.onPlane(D.start[0], D.start[1], z); if (!p || !p0) return;
+    const L = SC.wallLen(D.orig), n = [-(D.orig.b[1] - D.orig.a[1]) / L, (D.orig.b[0] - D.orig.a[0]) / L]; const off = (q) => Math.abs((q[0] - D.orig.a[0]) * n[0] + (q[1] - D.orig.a[1]) * n[1]); const s = off(p) - off(p0);
+    w.th = +clamp((D.orig.th ?? 0.24) + s, 0.08, 0.9).toFixed(2); if (S.snap) w.th = Math.round(w.th * 50) / 50; D.moved = true; // symmetric about the wall's line; gain 1 keeps a small quantity controllable
+    const px = wpx([(w.a[0] + w.b[0]) / 2, (w.a[1] + w.b[1]) / 2, w.top]); D.tag = px ? { x: px[0] + 16, y: px[1] - 10, text: `thick ${f2(w.th)}` } : null; return renderStage();
+  }
+  if (D.kind === 'h-eave') {
+    const r = findRaw(D.id); const pc = SC.entityPlanCentre(M, ent(r.id)); const ppm = pxPerMetreUp([...pc, SC.roofEave(D.orig)]); let dz = -dy / ppm;
+    if (r.poly) { let z = Math.max(0.3, (D.orig.eave ?? 3) + dz); const m = heightMarks().find((mm) => Math.abs(mm.z - z) < 0.08); if (m && !ev.altKey) z = m.z; else if (S.snap) z = Math.round(z * 20) / 20; r.eave = +z.toFixed(2); D.moved = true; const q = wpx([...pc, r.eave]); D.tag = q ? { x: q[0] + 16, y: q[1] - 12, text: `at ${f2(r.eave)}${m && !ev.altKey ? ' · ' + m.labels[0] : ''}` } : null; return renderStage(); }
+    const pr = D.orig.prof || SC.roofProf(D.orig); const top = SC.roofTop(D.orig); const last = pr.length - 1;
+    let ez = pr[0][1] + dz; const m = heightMarks().find((mm) => Math.abs(mm.z - ez) < 0.08); if (m && !ev.altKey) ez = m.z; else if (S.snap) ez = Math.round(ez * 20) / 20;
+    ez = Math.min(ez, top - 0.1); dz = ez - pr[0][1];
+    r.prof = pr.map(([s0, z], i) => [s0, +(i === 0 || i === last ? z + dz : z).toFixed(2)]); D.moved = true;
+    const p = wpx([(r.x0 + r.x1) / 2, r.y0, SC.roofEave(r)]); D.tag = p ? { x: p[0] + 16, y: p[1] + 18, text: `eave ${f2(SC.roofEave(r))} · ridge stays${m && !ev.altKey ? ' · ' + m.labels[0] : ''}` } : null; return renderStage();
+  }
+  if (D.kind === 'h-pz') {
+    const r = findRaw(D.id); const c = SC.centroid2(D.orig.poly); const ppm = pxPerMetreUp([...c, D.orig.z]); let z = Math.max(0.05, D.orig.z - dy / ppm);
+    const m = heightMarks().find((mm) => mm.ids.every((id) => id !== r.id) && Math.abs(mm.z - z) < 0.06); if (m && !ev.altKey) z = m.z; else if (S.snap) z = Math.round(z * 20) / 20;
+    r.z = +z.toFixed(2); D.moved = true; const p = wpx([...c, r.z]); D.tag = p ? { x: p[0] + 16, y: p[1] - 14, text: `surface at ${f2(r.z)}${m && !ev.altKey ? ' · ' + m.labels[0] : ''}` } : null; return renderStage();
+  }
+  if (D.kind.startsWith('h-pv-')) {
+    const r = findRaw(D.id); const i = +D.kind.slice(5); const p = onPlane(ev, r.z); if (!p) return; const q = snapPt(p, { noEnds: true }).p; r.poly[i] = q; D.moved = true;
+    const px = wpx([...q, r.z]); D.tag = px ? { x: px[0] + 12, y: px[1] - 12, text: `${SC.polyArea(r.poly).toFixed(1)} m²` } : null; return renderStage();
+  }
+  if (['h-ow-a', 'h-ow-b', 'h-oh', 'h-os'].includes(D.kind)) {
+    const e = findRaw(D.id); const w = SC.wallById(M, e.host); if (!w) return; const hit = wallHit(w, ev); const L = SC.wallLen(w); const art = e.c != null; D.moved = true;
+    const o = { ...e }; const snap = (x) => (S.snap ? Math.round(x * 20) / 20 : x);
+    if (D.kind === 'h-ow-a' || D.kind === 'h-ow-b') { const t0 = D.orig.at - D.orig.w / 2, t1 = D.orig.at + D.orig.w / 2; let a = t0, b = t1; if (D.kind === 'h-ow-a') a = Math.min(snap(hit.t), t1 - 0.3); else b = Math.max(snap(hit.t), t0 + 0.3); o.at = (a + b) / 2; o.w = b - a; }
+    if (D.kind === 'h-oh') { if (art) o.h = Math.max(0.2, snap(Math.abs(hit.z - e.c) * 2)); else o.h = Math.max(0.3, snap(hit.z - e.sill)); }
+    if (D.kind === 'h-os') { const head = D.orig.sill + D.orig.h; o.sill = Math.max(w.base, Math.min(snap(hit.z), head - 0.3)); o.h = head - o.sill; }
+    const others = (art ? M.artworks : M.openings).filter((x) => x.host === e.host && x.id !== e.id);
+    const clash = others.find((x) => Math.abs(x.at - o.at) < (x.w + o.w) / 2 + 0.05);
+    const px = wpx([...SC.wallPoint(w, clamp(o.at, 0, L)), art ? o.c + o.h / 2 : o.sill + o.h]);
+    const bad = o.at - o.w / 2 < 0.1 || o.at + o.w / 2 > L - 0.1 ? 'past the wall end' : clash ? `overlaps ${clash.name}` : !art && o.sill + o.h > w.top - 0.05 ? `doesn't fit under ${w.name}'s top` : null;
+    if (bad) { D.tag = px ? { x: px[0] + 14, y: px[1] - 10, text: bad, refuse: true } : null; return renderOverlay(); }
+    Object.assign(e, { at: +o.at.toFixed(2), w: +o.w.toFixed(2), h: +o.h.toFixed(2), sill: o.sill != null ? +o.sill.toFixed(2) : e.sill });
+    D.tag = px ? { x: px[0] + 14, y: px[1] - 10, text: D.kind === 'h-os' ? `sill ${f2(e.sill - w.base)}` : D.kind === 'h-oh' ? `height ${f2(e.h)}` : `width ${f2(e.w)}` } : null; return renderStage();
+  }
   if (D.kind === 'h-ridge') {
     const r = findRaw(D.id); const pr = D.orig.prof || SC.roofProf(D.orig); const ppm = pxPerMetreUp([(r.x0 + r.x1) / 2, r.y0, SC.roofTop(D.orig)]); const dz = -dy / ppm;
     const flat = SC.roofFlat(D.orig); const isPeak = (i) => i > 0 && i < pr.length - 1 && pr[i][1] >= pr[i - 1][1] && pr[i][1] >= pr[i + 1][1];
@@ -404,14 +454,15 @@ function stageUp(ev) {
   if (D.kind === 'inkSection') return finishSectionStroke(S.ink.pts);
   if (D.kind === 'inkOpen' || D.kind === 'inkOpenFlat') {
     S.ink = null; let o; if (!D.b) return render();
-    if (D.kind === 'inkOpen') { const t0 = Math.min(D.a.t, D.b.t), t1 = Math.max(D.a.t, D.b.t), z0 = Math.min(D.a.z, D.b.z), z1 = Math.max(D.a.z, D.b.z); o = { host: D.wall.id, at: (t0 + t1) / 2, w: Math.max(0.6, t1 - t0), h: Math.max(0.6, z1 - z0), sill: z0 - D.wall.base < 0.3 ? D.wall.base : z0 }; }
+    if (D.kind === 'inkOpen' && D.round) { const r = Math.max(0.2, Math.hypot(D.b.t - D.a.t, D.b.z - D.a.z)); o = { host: D.wall.id, at: D.a.t, w: r * 2, h: r * 2, sill: Math.max(D.wall.base, D.a.z - r), round: true }; }
+    else if (D.kind === 'inkOpen') { const t0 = Math.min(D.a.t, D.b.t), t1 = Math.max(D.a.t, D.b.t), z0 = Math.min(D.a.z, D.b.z), z1 = Math.max(D.a.z, D.b.z); o = { host: D.wall.id, at: (t0 + t1) / 2, w: Math.max(0.6, t1 - t0), h: Math.max(0.6, z1 - z0), sill: z0 - D.wall.base < 0.3 ? D.wall.base : z0 }; }
     else { const w = D.wall; const t0 = Math.min(D.a[0], D.b[0]) - D.u0, t1 = Math.max(D.a[0], D.b[0]) - D.u0, z1 = -Math.min(D.a[1], D.b[1]), z0 = -Math.max(D.a[1], D.b[1]); o = { host: w.id, at: (t0 + t1) / 2, w: Math.max(0.4, t1 - t0), h: Math.max(0.4, z1 - Math.max(0, z0)), sill: w.base + (z0 < 0.3 ? 0 : z0) }; }
     if (S.snap) for (const k of ['at', 'w', 'h', 'sill']) o[k] = Math.round(o[k] * 20) / 20;
     const w = SC.wallById(M, o.host); if (o.sill + o.h > w.top - 0.05) { toast(`Refused: ${f2(o.sill + o.h - w.base)} m doesn't fit under ${w.name}'s top.`, true); return render(); }
-    const kind = o.sill - w.base < 0.01 ? 'Door' : 'Window'; const id = uid('o'); M.openings.push({ id, name: `${kind} ${id.slice(2)}`, ...o }); commit(`Ink ${kind.toLowerCase()}`); S.sel = id; return render();
+    const kind = o.round ? 'Round window' : o.sill - w.base < 0.01 ? 'Door' : 'Window'; const id = uid('o'); M.openings.push({ id, name: `${kind} ${id.slice(2)}`, ...o }); commit(`Ink ${kind.toLowerCase()}`); S.sel = id; return render();
   }
-  if (D.kind === 'slice') { if (!D.b || Math.hypot(D.b[0] - D.a[0], D.b[1] - D.a[1]) < 0.8) S.slice = D.prev || null; return render(); }
-  if (D.kind === 'sl-move' || D.kind === 'sl-depth') return render();
+  if (D.kind === 'slice') { if (!D.b || Math.hypot(D.b[0] - D.a[0], D.b[1] - D.a[1]) < 0.6) S.slice = D.prev || null; return render(); }
+  if (['sl-move', 'sl-depth', 'sl-a', 'sl-b'].includes(D.kind)) return render();
   if (D.kind === 'lasso') { T.markFromLasso(); return T.eraseRelease(stagePx(ev)); }
   if (D.kind === 'scrub') {
     S.lassoPoly = null;
@@ -428,7 +479,7 @@ function stageUp(ev) {
   if (D.kind === 'joint') { const r = ent(D.id); if (D.moved || D.added) commit(`Reshape ${r.name}`); return render(); }
   if (D.kind === 'h-size' && !D.moved && R.clickToOpen) { S.sizeOpen = S.sizeOpen === D.id ? null : D.id; R.clickToOpen = null; return render(); }
   if (D.kind.startsWith('h-') || D.kind === 'move' || D.kind === 'slide') {
-    if (D.moved) { const e = ent(D.id); commit(`${{ 'h-rotate': 'Turn', 'h-top': 'Raise', 'h-size': 'Scale', 'h-w': e?.fit === 'extend' ? 'Extend' : 'Stretch', 'h-d': 'Stretch', 'h-h': 'Raise', 'h-ridge': 'Reshape' }[D.kind] || 'Move'} ${e?.name || ''}`); }
+    if (D.moved && JSON.stringify(findRaw(D.id)) !== JSON.stringify(D.orig)) { const e = ent(D.id); commit(`${{ 'h-rotate': 'Turn', 'h-top': 'Raise', 'h-size': 'Scale', 'h-w': e?.fit === 'extend' ? 'Extend' : 'Stretch', 'h-w-': e?.fit === 'extend' ? 'Extend' : 'Stretch', 'h-d': 'Stretch', 'h-d-': 'Stretch', 'h-h': 'Raise', 'h-ridge': 'Reshape', 'h-eave': 'Set the eaves of', 'h-th': 'Thicken', 'h-pz': 'Raise', 'h-ow-a': 'Resize', 'h-ow-b': 'Resize', 'h-oh': 'Resize', 'h-os': 'Move the sill of' }[D.kind] || (D.kind.startsWith('h-pv-') ? 'Reshape' : null) || 'Move'} ${e?.name || ''}`); }
     return render();
   }
 }
@@ -464,7 +515,7 @@ function onClick(ev) {
   if (wf) {
     const k = wf.dataset.wf, v = wf.dataset.v;
     if (k === 'tour') startTour(v);
-    if (k === 'cmp') { S.cmp[wf.dataset.k] = v === 'true' ? true : v === 'false' ? false : v; if (wf.dataset.k === 'edit' && S.editShape) S.editShape.pos = null; }
+    if (k === 'cmp') { if (wf.dataset.k === 'pen') S.inkShape = false; S.cmp[wf.dataset.k] = v === 'true' ? true : v === 'false' ? false : v; if (wf.dataset.k === 'section' && S.editShape) { S.editShape.pos = null; T.setEditView(S.editShape.view); } }
     if (k === 'width') S.width = v;
     if (k === 'scenario') loadScenario(v);
     $('#wfmenu').style.display = 'none'; $('#wfmenu').dataset.kind = ''; render(); return;
@@ -476,7 +527,7 @@ function onClick(ev) {
   if (!b) { if (!ev.target.closest('.pop, .picker, .pfly, #findbox, #findlist') && (S.ctx || S.viewMore || S.appMenu || S.find.open || S.brushPick || S.sibs)) { closePops(); render(); } return; }
   if (b.closest('#world')) return;
   const a = b.dataset.act, v = b.dataset.v, id = b.dataset.id;
-  const keepPop = ['viewmore', 'appmenu', 'brushpick', 'efilteropen', 'sibs', 'pref-topdown', 'elevface', 'projection', 'overhead', 'efilter', 'brushset', 'findrun', 'ctxcard'];
+  const keepPop = ['viewmore', 'appmenu', 'brushpick', 'efilteropen', 'sibs', 'pref-topdown', 'elevface', 'projection', 'overhead', 'efilter', 'efilterall', 'brushset', 'findrun', 'ctxcard'];
   if (!keepPop.includes(a)) closePops();
   const A = {
     noop() { toast('Not in this wireframe.'); },
@@ -488,14 +539,16 @@ function onClick(ev) {
     indexclose() { S.indexOpen = false; if (S.cmp.collapse === 'peek' && !S.hints.peek) { S.hints.peek = true; toast('Index hidden · hover the left edge or press \\ to bring it back'); } },
     indexopen() { S.indexOpen = true; S.peek = false; }, indextoggle() { S.indexOpen = !S.indexOpen; },
     sel() { selectId(id); if (S.mid && ev.target.closest('.index.ov')) {} if (ev.detail === 2 && view(id)) return X.lookThrough(id); },
-    deselect() { if (S.editShape) S.editShape = null; selectId(null); },
+    deselect() { if (S.editShape) T.closeEditShape(); selectId(null); },
     scope() { enterScope(b.dataset.k, id); },
     sibs() { S.sibs = S.sibs === b.dataset.k ? null : b.dataset.k; },
     facet() { S.facet = v; S.more = {}; },
-    tw() { const k = b.dataset.k; if (S.tree.has(k)) S.tree.delete(k); else S.tree.add(k); const lid = k.slice(2); if (level(lid)) enterScope('lv', lid); },
     more() { S.more[b.dataset.k] = (S.more[b.dataset.k] || 40) + 200; },
     untray() { const t = M.tray.splice(+b.dataset.i, 1)[0]; const { coll, ...rest } = t; if (!SC.wallById(M, rest.host)) { M.tray.splice(+b.dataset.i, 0, t); return toast(`${rest.name}'s wall is gone — it needs a new host.`, true); } M[coll].push(rest); commit(`Put back ${rest.name}`); },
-    tool() { if (S.tool === v && v !== 'select') { setTool('select'); return; } setTool(v); },
+    tool() { if (S.tool === v && v !== 'select') { S.palOpen = !S.palOpen; S.brushPick = false; S.eraseFilterOpen = false; return; } setTool(v); },
+    palclose() { S.palOpen = false; S.brushPick = false; S.eraseFilterOpen = false; },
+    inkshape() { S.inkShape = !S.inkShape; toast(S.inkShape ? 'Shape intent: strokes become ordinary profiles until you put Ink down' : 'Back to architecture: strokes read the surface they land on'); },
+    efilterall() { for (const k of Object.keys(S.eraseFilter)) S.eraseFilter[k] = true; S.eraseFilterOpen = true; },
     opt() { S[b.dataset.k] = S[b.dataset.k] === v && b.dataset.k === 'brushMode' ? null : v; if (b.dataset.k === 'eraseMode') { S.marked.clear(); S.erase = null; S.lassoPoly = null; } if (b.dataset.k === 'sliceMode' && S.slice) S.slice = null; },
     inkmore() { toast('Room for more pens later (stair, arc, offset) — kept out of the ordinary column.'); },
     efilteropen() { S.eraseFilterOpen = !S.eraseFilterOpen; }, efilter() { S.eraseFilter[v] = !S.eraseFilter[v]; S.eraseFilterOpen = true; },
@@ -503,12 +556,13 @@ function onClick(ev) {
     brushpick() { S.brushPick = !S.brushPick; }, brushset() { S.brush = { ...S.brush, type: b.dataset.t, name: b.dataset.n, color: b.dataset.c }; S.brushPick = false; if (S.tool !== 'brush') setTool('brush'); if (S.instrument?.kind === 'assets') S.instrument = null; },
     brushscope() { S.brush.scope = v; },
     viewmore() { S.viewMore = !S.viewMore; },
-    reading() { S.look = null; S.lift = false; S.reading = v; S.viewMore = false; S.lookThrough = null; if (S.editShape && S.cmp.edit === 'object' && v !== '3d') S.cmp.edit = 'float'; return render(true); },
+    reading() { S.look = null; S.lift = false; S.reading = v; S.viewMore = false; S.lookThrough = null; return render(true); },
+    esview() { return T.setEditView(v); },
     elevface() { S.reading = 'elev'; S.elevFace = v; S.look = null; S.viewMore = false; return render(true); },
     projection() { S.projection = v; S.reading = '3d'; return render(true); }, overhead() { S.overhead = v; },
     grid() { S.grid = !S.grid; }, snap() { S.snap = !S.snap; },
     zoom() { camState().z *= +v; }, fit() { const c = camState(); c.z = 1; c.pan = [0, 0]; },
-    toheight() { setSheet(+v); }, pin() { pinHeight(v ? +v : S.sheet.h); }, hintx() { S.hint = null; S.hints.pin = true; },
+    toheight() { setSheet(+v); S.tickFlash = +v; clearTimeout(tickT); tickT = setTimeout(() => { S.tickFlash = null; renderSheet(); }, 1600); }, pin() { pinHeight(v ? +v : S.sheet.h); }, hintx() { S.hint = null; S.hints.pin = true; },
     focus() { S.focus = !S.focus; }, sheetside() { S.sheet.side = S.sheet.side === 'right' ? 'left' : 'right'; },
     cardmore() { S.cardMore = !S.cardMore; },
     look() { return startLook(v); }, putback() { return putBack(); }, lift() { S.lift = !S.lift; },
@@ -536,7 +590,7 @@ function onClick(ev) {
     'erase-cancel'() { S.marked.clear(); S.erase = null; S.lassoPoly = null; S.eraseLock = null; },
     'confirm-yes'() { const ids = S.confirm.ids; S.confirm = null; return T.eraseApply(ids); }, 'confirm-no'() { S.confirm = null; S.marked.clear(); },
     'slice-flip'() { S.slice.flip = !S.slice.flip; return render(true); }, 'slice-clear'() { S.slice = null; if (S.reading === 'section') S.reading = '3d'; return render(true); },
-    'es-done'() { S.editShape = null; }, 'es-expand'() { S.editShape.expanded = !S.editShape.expanded; }, 'es-joint'() { S.editShape.joint = +v; },
+    'es-done'() { return T.closeEditShape(); }, 'es-expand'() { S.editShape.expanded = !S.editShape.expanded; }, 'es-joint'() { S.editShape.joint = +v; },
     'es-preset'() { T.applyPreset(ent(S.editShape.id), v); },
     guide() { S.guideOpen = !S.guideOpen; if (!S.guideOpen) { S.playing = false; S.follow = false; } },
     play() { X.play(); }, follow() { S.follow = !S.follow; return render(true); },
@@ -565,10 +619,20 @@ function wfMenu(kind, anchor) {
   m.dataset.kind = kind; m.style.display = 'block'; m.style.left = Math.min(anchor.offsetLeft, window.innerWidth - 380) + 'px';
   const opt = (k, v, l) => `<button data-wf="cmp" data-k="${k}" data-v="${v}" class="${S.cmp[k] === v ? 'on' : ''}">${l}</button>`;
   if (kind === 'tours') m.innerHTML = `<h6>Guided tours · step by step</h6>${TOURS.map((t) => `<button data-wf="tour" data-v="${t.id}" class="${S.tour?.id === t.id ? 'on' : ''}">${t.t}<small>${t.d}</small></button>`).join('')}`;
-  if (kind === 'compare') m.innerHTML = `<h6>Index model</h6>${opt('index', 'scope', 'A · Scope + facets, drill in (recommended)')}${opt('index', 'tree', 'B · Outline tree, lazy and capped')}<h6>Collapsed Index</h6>${opt('collapse', 'crumb', 'A · Location crumb in the Head (recommended)')}${opt('collapse', 'peek', 'B · Nothing visible; left-edge peek and \\')}<h6>Eraser kinds</h6>${opt('eraser', 'context', 'A · Contextual: kind chips after marking, ⇧ locks to a kind (recommended)')}${opt('eraser', 'filter', 'B · Filter disclosure in the palette')}<h6>When erasing asks</h6>${opt('threshold', 'simple', 'A · Only for cross-domain consequences; ≤3 simple things go at once (recommended)')}${opt('threshold', 'topology', 'B · Also when hosts, rooms or roofs are affected; bulk always previews')}<h6>Edit shape (roof section)</h6>${opt('edit', 'object', 'C · On the roof itself + Card precision (recommended)')}${opt('edit', 'float', 'B · Floating section editor, expands')}${opt('edit', 'card', 'A · Card editing posture')}<h6>Object handles</h6>${opt('handles', 'progressive', 'A · Progressive: move, turn, scale; click scale for W · D · H (recommended)')}${opt('handles', 'immediate', 'B · Immediate: every dimension handle at once')}<h6>Tool colour</h6>${opt('toolColor', true, 'On · small swatches under tool icons')}${opt('toolColor', false, 'Off')}`;
+  if (kind === 'compare') m.innerHTML = `<div class="note">Round 2 open choices. The first option in each group is the recommendation.</div>`
+    + `<h6>Object manipulation</h6>${opt('manip', 'rays', 'A · Axis rays out of the subject (Reference B, recommended)')}${opt('manip', 'dims', 'B · Dimension lines beside the edges (Reference A)')}${opt('manip', 'knobs', 'C · Round 1.1 knobs, for comparison')}`
+    + `<h6>Width · depth · height</h6>${opt('handles', 'progressive', 'Progressive: click the scale point (recommended)')}${opt('handles', 'immediate', 'Immediate: always shown')}`
+    + `<h6>Architecture handles</h6>${opt('arch', 'rays', 'A · The same rays and points as objects (recommended)')}${opt('arch', 'grips', 'B · Edge grips: drag the edge itself, arrows on hover')}`
+    + `<h6>Roof Section 2D</h6>${opt('section', 'stage', 'A · Takes the Stage as a reading (recommended)')}${opt('section', 'inset', 'B · Inset editor over the 3D Stage')}`
+    + `<h6>Collapsed Index</h6>${opt('collapse', 'crumb', 'A · Location chip in the Head (recommended)')}${opt('collapse', 'peek', 'B · Translucent edge arrow, tap the edge on touch')}`
+    + `<h6>Collapsed palette</h6>${opt('palCue', 'caret', 'Faint caret on the armed tool (recommended)')}${opt('palCue', 'none', 'Nothing; click the tool again')}`
+    + `<h6>Eraser kinds</h6>${opt('eraser', 'filter', 'A · Filter disclosure in the palette (owner choice)')}${opt('eraser', 'context', 'B · Kind chips in the acceptance bar')}`
+    + `<h6>When erasing asks</h6>${opt('threshold', 'simple', 'Only across domains; ≤3 simple things go at once (recommended)')}${opt('threshold', 'topology', 'Also when hosts, rooms or roofs are affected')}`
+    + `<h6>One Pen, ordinary shapes</h6>${opt('pen', 'context', 'A · Context first: "Shape" is one more reading (recommended)')}${opt('pen', 'intent', 'B · A temporary Shape intent in the Ink palette')}`
+    + `<h6>Tool colour</h6>${opt('toolColor', true, 'On · small marks under tool icons')}${opt('toolColor', false, 'Off')}`;
   if (kind === 'scenario') m.innerHTML = `<h6>Project</h6><button data-wf="scenario" data-v="boathouse" class="${S.scenario === 'boathouse' ? 'on' : ''}">Boathouse gallery<small>2 rooms · ordinary</small></button><button data-wf="scenario" data-v="dense" class="${S.scenario === 'dense' ? 'on' : ''}">Harbour museum<small>3 structures · 5 Levels · 40 rooms · 104 walls (52 shared) · 275 objects</small></button>`;
   if (kind === 'width') m.innerHTML = `<h6>Simulated frame</h6>${[['fill', 'Fill window'], ['laptop', 'Laptop 1440'], ['small', 'Small laptop 1280 × 800'], ['ipadL', 'iPad landscape 1180 × 820'], ['ipadP', 'iPad portrait 820']].map(([k, l]) => `<button data-wf="width" data-v="${k}" class="${S.width === k ? 'on' : ''}">${l}</button>`).join('')}<div class="note">Phones are out of scope for the editor. Preview has its own Phone frame.</div>`;
-  if (kind === 'about') m.innerHTML = `<div class="note" style="padding:6px 8px">Round 1.1 low-fidelity wireframe. Mock state, SVG scenes, snapshot Undo. Not a contract, not production, not PLATE. Read DESIGN-NOTE.md.</div>`;
+  if (kind === 'about') m.innerHTML = `<div class="note" style="padding:6px 8px">Round 2 wireframe: the visual-language pass. Mock state, SVG scenes, snapshot Undo. Not a contract, not production, not PLATE. Read DESIGN-NOTE.md.</div>`;
 }
 
 // ---------------- keys ----------------
@@ -595,12 +659,13 @@ function onKey(ev) {
   if (mod && k.toLowerCase() === 'z') { ev.preventDefault(); return ev.shiftKey ? redo() : undo(); }
   if (k === 'Escape') return escape();
   if (k === 'Tab' && S.readChip) { ev.preventDefault(); return T.reread(); }
-  if (k === 'Enter') { if (S.ink && S.inkTip === 'line') return T.finishInk(S.ink.pts, false); if (S.erase) return T.eraseApply(); if (S.editShape) { S.editShape = null; return render(); } if (S.sel && ent(S.sel)?.kind === 'roof') return T.openEditShape(S.sel); }
+  if (k === 'Enter') { if (S.ink && S.inkTip === 'line') return T.finishInk(S.ink.pts, false); if (S.erase) return T.eraseApply(); if (S.editShape) return T.closeEditShape(); if (S.sel && ent(S.sel)?.kind === 'roof') return T.openEditShape(S.sel); }
   if (S.preview) { if (k === 'ArrowRight') { S.preview.i = clamp(S.preview.i + 1, 0, guide().stops.length - 1); X.renderPreview(); } if (k === 'ArrowLeft') { S.preview.i = clamp(S.preview.i - 1, 0, guide().stops.length - 1); X.renderPreview(); } return; }
   if (mod) return;
   const tools = S.lens === 'world' ? { v: 'select', p: 'ink', k: 'slice', e: 'eraser', b: 'brush', m: 'measure' } : { v: 'select', c: 'view', t: 'path' };
   if (tools[k.toLowerCase()]) { setTool(tools[k.toLowerCase()]); return render(); }
   if (k === 'a' && S.lens === 'world') { S.instrument = S.instrument?.kind === 'assets' ? null : { kind: 'assets', tab: 'objects' }; return render(); }
+  if (S.editShape && (k === '1' || k === '2')) return T.setEditView(k === '2' ? 'section' : '3d');
   if ('1245'.includes(k) && k.length === 1) { const r = { 1: '3d', 2: 'plan', 4: 'eye', 5: 'section' }[k]; if (r === 'section' && !S.slice) return toast('Slice first (K).', true); S.reading = r; S.look = null; S.lookThrough = null; return render(true); }
   if (k === '[' || k === ']') { S.az += k === '[' ? -15 : 15; return renderStage(); }
   if (k === '\\') { S.indexOpen = !S.indexOpen; return render(); }
@@ -619,12 +684,13 @@ function escape() {
   if (R.D) { R.D = null; loadModel(H.stack[H.i].m); S.ink = null; S.lassoPoly = null; return render(); }
   if (S.ink) { S.ink = null; return render(); }
   if (S.readChip) { S.readChip = null; return render(); }
-  if (S.editShape) { S.editShape = null; return render(); }
+  if (S.editShape) return T.closeEditShape();
   if (S.lookThrough) { S.lookThrough = null; return render(true); }
   if (S.instrument) { S.instrument = null; return render(); }
   if (S.look || S.lift) return putBack();
   if (S.slice) { S.slice = null; if (S.reading === 'section') S.reading = '3d'; return render(true); }
   if (S.focus) { S.focus = false; return render(); }
+  if (S.tool !== 'select' && S.palOpen && document.querySelector('#lower .pcol')) { S.palOpen = false; return render(); }
   if (S.tool !== 'select') { setTool('select'); return render(); }
   if (S.sel) { selectId(null); return render(); }
   if (S.guideOpen) { S.guideOpen = false; S.playing = false; return render(); }
@@ -703,7 +769,7 @@ function boot() {
   document.addEventListener('pointermove', (ev) => {
     if (S.indexOpen || S.cmp.collapse !== 'peek') return;
     const sr = $('#stage').getBoundingClientRect(); const near = ev.clientX - sr.left < 18 && ev.clientY > sr.top && ev.clientY < sr.bottom;
-    const onTab = ev.target.closest?.('.peektab');
+    const onTab = ev.target.closest?.('.peekarrow');
     if ((near || onTab) !== S.peek) { S.peek = !!(near || onTab); renderIndex(); }
   });
   document.addEventListener('input', (ev) => {
@@ -717,4 +783,6 @@ function boot() {
   render();
 }
 boot();
+const atlasKey = new URLSearchParams(location.search).get('atlas');
+if (atlasKey) import('./atlas.js').then((A) => A.applyAtlas(atlasKey));
 window.__wf = { S, M, R, H, render, loadScenario, T, X };

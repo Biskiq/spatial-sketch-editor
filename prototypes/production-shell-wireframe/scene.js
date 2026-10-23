@@ -110,14 +110,19 @@ export function find(m, id) { return entities(m).find((e) => e.id === id) || nul
 export function roomEnclosed(m, r) { return r.walls.every((id) => wallById(m, id)); }
 
 // ---------- primitives ----------
-function boxPrims(id, kind, o) {
+export function footprint(o) {
   const c = Math.cos(rad(o.rot || 0)), s = Math.sin(rad(o.rot || 0));
   const hw = o.w / 2, hd = o.d / 2;
-  const corners = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([u, v]) => [o.x + u * c - v * s, o.y + u * s + v * c]);
+  // a profile keeps its drawn outline, normalised to -0.5..0.5 so width and depth still scale it
+  const loc = o.outline ? o.outline.map(([u, v]) => [u * o.w, v * o.d]) : [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]];
+  return loc.map(([u, v]) => [o.x + u * c - v * s, o.y + u * s + v * c]);
+}
+function boxPrims(id, kind, o) {
+  const corners = footprint(o);
   const z0 = o.z || 0, z1 = z0 + o.h;
   const prims = [{ id, kind, role: 'top', pts: corners.map((p) => [...p, z1]) }];
-  for (let i = 0; i < 4; i++) {
-    const p = corners[i], q = corners[(i + 1) % 4];
+  for (let i = 0; i < corners.length; i++) {
+    const p = corners[i], q = corners[(i + 1) % corners.length];
     prims.push({ id, kind, role: 'side', pts: [[...p, z0], [...q, z0], [...q, z1], [...p, z1]], n: [q[1] - p[1], p[0] - q[0], 0] });
   }
   return prims;
@@ -129,6 +134,7 @@ function openingOutline(w, o, inset = 0) {
   const nrm = [-d[1] * inset, d[0] * inset];
   const at = (t, z) => [w.a[0] + d[0] * t + nrm[0], w.a[1] + d[1] * t + nrm[1], z];
   const t0 = o.at - o.w / 2, t1 = o.at + o.w / 2, z0 = o.sill, z1 = o.sill + o.h;
+  if (o.round) { const r = o.w / 2, zc = o.sill + o.h / 2; return Array.from({ length: 24 }, (_, k) => { const a = (k / 24) * Math.PI * 2; return at(o.at + r * Math.cos(a), zc + (o.h / 2) * Math.sin(a)); }); }
   if (!o.arch) return [at(t0, z0), at(t1, z0), at(t1, z1), at(t0, z1)];
   const r = o.w / 2, spring = z1 - r, pts = [at(t0, z0), at(t1, z0)];
   for (let k = 0; k <= 10; k++) { const a = (Math.PI * k) / 10; pts.push(at(o.at + r * Math.cos(a), spring + r * Math.sin(a))); }
@@ -148,6 +154,7 @@ export function prims(m, opt = {}) {
   }
   for (const w of m.walls) {
     out.push({ id: w.id, kind: 'wall', role: 'wall', pts: [[...w.a, w.base], [...w.b, w.base], [...w.b, w.top], [...w.a, w.top]], n: [w.b[1] - w.a[1], w.a[0] - w.b[0], 0] });
+    { const L = wallLen(w), t = (w.th ?? 0.24) / 2, n = [-(w.b[1] - w.a[1]) / L * t, (w.b[0] - w.a[0]) / L * t]; out.push({ id: w.id, kind: 'wall', role: 'cap', pts: [[w.a[0] + n[0], w.a[1] + n[1], w.top], [w.b[0] + n[0], w.b[1] + n[1], w.top], [w.b[0] - n[0], w.b[1] - n[1], w.top], [w.a[0] - n[0], w.a[1] - n[1], w.top]], n: [0, 0, 1] }); }
     for (const o of m.openings.filter((o) => o.host === w.id)) out.push({ id: o.id, kind: 'opening', role: 'hole', host: w.id, pts: openingOutline(w, o) });
     for (const a of m.artworks.filter((a) => a.host === w.id)) {
       const L = wallLen(w), d = [(w.b[0] - w.a[0]) / L, (w.b[1] - w.a[1]) / L];
@@ -269,6 +276,9 @@ export function renderSolid(m, cam, opts) {
     const c = cents[p.id] || (cents[p.id] = { u: 0, v: 0, n: 0 });
     for (const v of q) { c.u += v[0]; c.v += v[1]; c.n++; }
   }
+  // hosted openings and art sort just in front of their own wall, whatever their height on it
+  const wd = {}; for (const it of list) if (it.p.role === 'wall') wd[it.p.id] = it.depth;
+  for (const it of list) if (it.p.host && wd[it.p.host] != null) it.depth = wd[it.p.host] + (it.p.role === 'art' ? 0.03 : 0.02);
   list.sort((a, b) => a.depth - b.depth);
   // perspective: cull faces facing away is unnecessary for low-fi; painter is enough
   let svg = '';
@@ -310,7 +320,7 @@ function sheetSvg(cam, sheet) {
   let grid = '';
   for (let x = Math.ceil(x0); x <= x1; x += 1) { const a = cam.P([x, y0, sheet.h]), b = cam.P([x, y1, sheet.h]); grid += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`; }
   for (let y = Math.ceil(y0); y <= y1; y += 1) { const a = cam.P([x0, y, sheet.h]), b = cam.P([x1, y, sheet.h]); grid += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`; }
-  return `<g class="sheet"><polygon points="${pts}"/><g class="sheet-grid">${grid}</g></g>`;
+  return `<g class="sheet${sheet.outline ? ' outline' : ''}"><polygon points="${pts}"/>${sheet.outline ? '' : `<g class="sheet-grid">${grid}</g>`}</g>`;
 }
 
 // ---------- plan renderer ----------
@@ -346,7 +356,7 @@ export function renderPlan(m, opts) {
   }
   for (const w of m.walls) {
     if (hidden(w.id)) continue;
-    const L = wallLen(w), d = [(w.b[0] - w.a[0]) / L, (w.b[1] - w.a[1]) / L], n = [-d[1] * 0.12, d[0] * 0.12];
+    const L = wallLen(w), ht = (w.th ?? 0.24) / 2, d = [(w.b[0] - w.a[0]) / L, (w.b[1] - w.a[1]) / L], n = [-d[1] * ht, d[0] * ht];
     const ops = m.openings.filter((o) => o.host === w.id && o.sill - w.base < 1.2).sort((a, b) => a.at - b.at);
     let t = 0; const spans = [];
     for (const o of ops) { spans.push([t, o.at - o.w / 2]); t = o.at + o.w / 2; }
@@ -368,7 +378,7 @@ export function renderPlan(m, opts) {
       const rs = o.sill - w.base;
       if (rs < 1.2 && !o.arch && rs < 0.01) {
         // swing
-        const r = o.w, sw = [p0[0] + n[0] / 0.12 * r * -1, p0[1] + n[1] / 0.12 * r * -1];
+        const r = o.w, sw = [p0[0] + n[0] / ht * r * -1, p0[1] + n[1] / ht * r * -1];
         svg += `<g class="${cls(o.id, 'pl-open')}" data-id="${o.id}"><line x1="${p0[0]}" y1="${-p0[1]}" x2="${sw[0]}" y2="${-sw[1]}"/><path d="M ${sw[0]} ${-sw[1]} A ${r} ${r} 0 0 ${d[0] + d[1] > 0 ? 0 : 1} ${p1[0]} ${-p1[1]}"/><line class="pl-hit" x1="${p0[0]}" y1="${-p0[1]}" x2="${p1[0]}" y2="${-p1[1]}"/></g>`;
       } else if (rs < 1.2) {
         svg += `<g class="${cls(o.id, 'pl-open')}" data-id="${o.id}"><path d="M ${p0[0]} ${-p0[1]} Q ${c[0] - n[0] * 6} ${-(c[1] - n[1] * 6)} ${p1[0]} ${-p1[1]}"/><line class="pl-hit" x1="${p0[0]}" y1="${-p0[1]}" x2="${p1[0]}" y2="${-p1[1]}"/></g>`;
@@ -388,8 +398,7 @@ export function renderPlan(m, opts) {
   }
   for (const o of [...m.objects, ...m.imports]) {
     if (hidden(o.id)) continue;
-    const c = Math.cos(rad(o.rot || 0)), s = Math.sin(rad(o.rot || 0)), hw = o.w / 2, hd = o.d / 2;
-    const q = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([u, v]) => [o.x + u * c - v * s, -(o.y + u * s + v * c)]);
+    const q = footprint(o).map(([x, y]) => [x, -y]);
     svg += `<polygon class="${cls(o.id, m.imports.includes(o) ? 'pl-obj pl-import' : 'pl-obj')}" data-id="${o.id}" points="${q.map((p) => p.join(',')).join(' ')}"/>`;
     centroids[o.id] = [o.x, -o.y];
   }

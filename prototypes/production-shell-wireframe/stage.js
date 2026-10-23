@@ -2,6 +2,7 @@
 // stage furniture (2D | 3D, readings disclosure) and the compact height Sheet.
 import { icon } from './icons.js';
 import * as SC from './scene.js';
+import * as MN from './manip.js';
 import { $, S, M, R, H, UI, esc, f2, clamp, clone, ent, view, pres, guide, roomOf, findRaw, currentCam, camState, isPersp, ground, palette, flatLines, toPx, wpx, followPose, heightMarks, markAt, markName, stories, bandAt, sliceFrame, kindLabel, level } from './core.js';
 
 // ---------------- the world ----------------
@@ -20,7 +21,9 @@ export function renderStage(xfade = false) {
   else if (mode === 'plan') { res = SC.renderPlan(renderModel(), opts); base = SC.boundsOf(R.CAM, R.box); }
   else {
     res = SC.renderSolid(renderModel(), R.CAM, opts);
-    if (isPersp(R.CAM) && (S.reading === 'eye' || S.lookThrough || followPose())) { const w = 32; base = [-w / 2, (-w / 2) * (Hh / W), w, w * (Hh / W)]; } else base = SC.boundsOf(R.CAM, R.box);
+    if (isPersp(R.CAM) && (S.reading === 'eye' || S.lookThrough || followPose())) { const w = 32; base = [-w / 2, (-w / 2) * (Hh / W), w, w * (Hh / W)]; }
+    else if (S.reading === 'rsect' && S.editShape) { const r = ent(S.editShape.id); const span = r.y1 - r.y0, top = SC.roofTop(r), z0 = Math.max(0, SC.roofEave(r) - 3.2); base = [-span * 0.25, -(top + 1.6), span * 1.5, top + 1.6 - z0 + 0.6]; }
+    else base = SC.boundsOf(R.CAM, R.box);
   }
   R.CENT = res.centroids;
   const cs = camState();
@@ -70,11 +73,14 @@ export function stageOpts(mode) {
   if (mode === 'plan' && stories().length > 1) ghosts.push((id) => rng[id] && rng[id][1] <= lo + 0.06 && rng[id][0] < lo - 0.05);
   if (S.focus && !S.look) ghosts.push((id) => rng[id] && (rng[id][1] < lo + 0.15 || rng[id][0] > hi - 0.15)); // touching the band is not being in it
   if (S.slice && !S.slice.horizontal && mode !== 'plan') {
-    const { n } = sliceFrame(); const a = S.slice.a;
-    const off = (id) => { let e = map.get(id); if (!e) return 0; if ((e.kind === 'artwork' || e.kind === 'opening') && map.get(e.host)) e = map.get(e.host); /* hosted things follow their wall */ const c = SC.entityPlanCentre(M, e); return (c[0] - a[0]) * n[0] + (c[1] - a[1]) * n[1]; };
-    hidden = (id) => off(id) < -0.02;
-    ghosts.push((id) => off(id) > S.slice.depth);
+    // a drawn slice is finite: it opens the building only along the stretch that was drawn
+    const { d, n } = sliceFrame(); const a = S.slice.a, L = Math.hypot(S.slice.b[0] - a[0], S.slice.b[1] - a[1]);
+    const rel = (id) => { let e = map.get(id); if (!e) return null; if ((e.kind === 'artwork' || e.kind === 'opening') && map.get(e.host)) e = map.get(e.host); /* hosted things follow their wall */ const c = SC.entityPlanCentre(M, e); const v = [c[0] - a[0], c[1] - a[1]]; return { off: v[0] * n[0] + v[1] * n[1], along: v[0] * d[0] + v[1] * d[1] }; };
+    const inside = (q) => q && q.along > -0.3 && q.along < L + 0.3;
+    hidden = (id) => { const q = rel(id); return inside(q) && q.off < -0.02; };
+    ghosts.push((id) => { const q = rel(id); return inside(q) && q.off > S.slice.depth; });
   }
+  if (S.reading === 'rsect' && S.editShape) { const r = ent(S.editShape.id); const X = roofSectionX(r); hidden = (id) => { if (id === r.id) return false; const e = map.get(id); if (!e) return false; const c = SC.entityPlanCentre(M, (e.kind === 'artwork' || e.kind === 'opening') && map.get(e.host) ? map.get(e.host) : e); return c[0] < X - 0.05; }; }
   if (S.slice && S.slice.horizontal) ghosts.push((id) => rng[id] && rng[id][1] < S.slice.h - S.slice.depth);
   const ghost = ghosts.length ? (id) => ghosts.some((g) => g(id)) : null;
   const dim = S.editShape ? (id) => id !== S.editShape.id : null;
@@ -93,7 +99,7 @@ function nearCut(mode) {
   const c = SC.entityPlanCentre(M, room); const z = (room.z || 0) + 1.5; const dc = R.CAM.P([c[0], c[1], z])[2];
   const cut = new Set();
   for (const wid of room.walls) {
-    if (wid === S.sel) continue;
+    if (wid === S.sel || (e && e.host === wid)) continue; // never cut away the selection or the wall it is hosted on
     const w = ent(wid); if (!w) continue;
     const m = SC.entityPlanCentre(M, w);
     if (R.CAM.P([m[0], m[1], z])[2] > dc + 0.05) {
@@ -106,7 +112,7 @@ function nearCut(mode) {
 function sheetPlane() {
   if (S.lens !== 'world' || S.look || S.reading === 'plan' || S.sheet.h < 0.01) return null;
   if (!(S.sheet.drag || S.tool === 'ink' || S.focus)) return null;
-  const b = R.box; return { h: S.sheet.h, extent: [b[0] + 0.5, b[1] + 1, b[2] - 0.5, b[3] - 0.5] };
+  const b = R.box; return { h: S.sheet.h, extent: [b[0] + 0.5, b[1] + 1, b[2] - 0.5, b[3] - 0.5], outline: S.focus };
 }
 function gridSvg(mode) {
   if (!S.grid || S.lookThrough || followPose() || mode === 'unroll') return '';
@@ -128,15 +134,17 @@ export function renderOverlay() {
   if (e && R.mode === 'solid' && !S.lookThrough) s += selectionEcho(e.id);
   if (S.lens === 'world' && e && S.tool === 'select' && !S.lookThrough && R.mode !== 'unroll' && !S.editShape) s += handlesSvg(e);
   if (S.lens === 'world' && e && e.kind === 'artwork' && S.tool === 'select') s += spacingRibbons(e);
-  if (S.editShape && S.cmp.edit === 'object' && R.mode === 'solid') s += onObjectSection();
+  if (S.editShape && R.mode === 'solid') s += onObjectSection();
   if (S.ink && S.ink.pts.length) {
     const pts = S.ink.pts.map((p) => (S.ink.px ? p : wpx([p[0], p[1], S.ink.h]))).filter(Boolean);
     if (S.ink.cursor) { const c = wpx([...S.ink.cursor, S.ink.h]); if (c) pts.push(c); }
     s += `<polyline class="ink-live" points="${pts.map((p) => p.join(',')).join(' ')}"/>` + (S.ink.px ? '' : pts.map((p) => `<circle class="ink-pt" cx="${p[0]}" cy="${p[1]}" r="3"/>`).join(''));
     if (S.ink.tag && pts.length) s += tag(pts.at(-1)[0] + 12, pts.at(-1)[1] - 12, S.ink.tag);
   }
-  if (S.ink && S.ink.opening) { const q = S.ink.opening.px; s += `<rect class="ink-live" x="${Math.min(q[0], q[2])}" y="${Math.min(q[1], q[3])}" width="${Math.abs(q[2] - q[0])}" height="${Math.abs(q[3] - q[1])}"/>`; s += tag(q[2] + 10, q[3] - 10, S.ink.opening.label); }
+  if (S.ink && S.ink.opening && S.ink.opening.round) { const o = S.ink.opening; s += `<circle class="ink-live" cx="${o.c[0]}" cy="${o.c[1]}" r="${o.rpx}"/>` + tag(o.c[0] + o.rpx + 8, o.c[1], o.label); }
+  else if (S.ink && S.ink.opening) { const q = S.ink.opening.px; s += `<rect class="ink-live" x="${Math.min(q[0], q[2])}" y="${Math.min(q[1], q[3])}" width="${Math.abs(q[2] - q[0])}" height="${Math.abs(q[3] - q[1])}"/>`; s += tag(q[2] + 10, q[3] - 10, S.ink.opening.label); }
   if (S.inkHint && S.tool === 'ink' && !S.ink) s += tag(S.inkHint.x + 14, S.inkHint.y + 22, S.inkHint.text);
+  if (S.eraseHint && S.tool === 'eraser') s += tag(S.eraseHint.x + 14, S.eraseHint.y + 22, S.eraseHint.text);
   if (S.slice && !S.slice.horizontal && S.reading !== 'section' && R.mode !== 'unroll') s += sliceWidgets();
   if (S.lassoPoly && S.lassoPoly.length > 1) {
     const pts = S.lassoPoly.map(toPx).map((p) => p.join(',')).join(' ');
@@ -167,12 +175,23 @@ const G = {
   up: '<path d="M12 20V5M6 11l6-6 6 6"/>', rot: '<path d="M20 12a8 8 0 1 1-3-6.2"/><path d="M20 4v5h-5"/>', move: '<path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4"/>',
   size: '<path d="M5 19L19 5M13 5h6v6M11 19H5v-6"/>', slide: '<path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/>', flip: '<path d="M12 4v16M7 15l5 5 5-5"/>', depth: '<path d="M4 12h16M14 6l6 6-6 6"/><path d="M4 6v12"/>',
 };
-/** Local frame of an object: u along its width, v along its depth (after turn). */
-export function objFrame(o) { const a = ((o.rot || 0) * Math.PI) / 180; return { u: [Math.cos(a), Math.sin(a)], v: [-Math.sin(a), Math.cos(a)] }; }
+export const objFrame = MN.objFrame;
+/** Round 2 manipulation language (manip.js); C keeps the round 1.1 knobs for comparison. */
 function handlesSvg(e) {
+  if (S.cmp.manip !== 'knobs') {
+    if (e.kind === 'object' || e.kind === 'import') return S.cmp.manip === 'dims' ? MN.objectDims(e) : MN.objectRays(e);
+    if (e.kind === 'wall') return MN.wallHandles(e);
+    if (e.kind === 'roof') return MN.roofHandles(e);
+    if (e.kind === 'room' && e.type === 'platform') return MN.platformHandles(e);
+    if (e.kind === 'opening' || e.kind === 'artwork') return MN.hostedHandles(e);
+    return '';
+  }
+  return knobsSvg(e);
+}
+function knobsSvg(e) {
   let s = '';
   if (e.kind === 'object' || e.kind === 'import') {
-    const z0 = e.z || 0, z1 = z0 + e.h, { u, v } = objFrame(e);
+    const z0 = e.z || 0, z1 = z0 + e.h, { u, v } = MN.objFrame(e);
     const at = (du, dv, z) => wpx([e.x + u[0] * du + v[0] * dv, e.y + u[1] * du + v[1] * dv, z]);
     const base = at(0, 0, z0); if (!base) return '';
     const r = Math.max(e.w, e.d) / 2 + 0.45;
@@ -221,37 +240,66 @@ function spacingRibbons(a) {
   }
   return s;
 }
-// Slice: the cut line, which side is kept, and how deep the inspection reaches — all on the cut itself
+// Slice: a finite straight cut drawn like a Pen line, its inspection volume in translucent yellow,
+// white end points to re-draw it, the line itself to move it, and a depth ray to change how far it looks
 function sliceWidgets() {
-  const sl = S.slice; const { d, n } = sliceFrame(); const z = R.mode === 'plan' ? 0 : 0.02;
-  const a = wpx([...sl.a, z]), b = wpx([...sl.b, z]); if (!a || !b) return '';
-  let s = `<line class="slice-l" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/><line class="slice-l2" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
-  const mid = sl.mid || [(sl.a[0] + sl.b[0]) / 2, (sl.a[1] + sl.b[1]) / 2];
-  const da = SC.add(sl.a, SC.mul(n, sl.depth)), db = SC.add(sl.b, SC.mul(n, sl.depth));
-  const A = wpx([...da, z]), B = wpx([...db, z]);
-  if (A && B) s += `<line class="slice-depth" x1="${A[0]}" y1="${A[1]}" x2="${B[0]}" y2="${B[1]}"/>`;
-  const m = wpx([...mid, z]), f = wpx([...SC.add(mid, SC.mul(n, 1.2)), z]), dk = wpx([...SC.add(mid, SC.mul(n, sl.depth)), z]);
-  if (m) s += knob(m[0], m[1], 'sl-move', G.slide, 'Drag to move the cut', 'slice');
-  if (f) s += knob(f[0], f[1], 'sl-flip', G.flip, 'Click to keep the other side', 'slice sm');
-  if (dk) s += knob(dk[0], dk[1], 'sl-depth', G.depth, `Inspection depth ${f2(sl.depth)} m — drag`, 'slice sm');
-  if (R.D && ['sl-depth', 'sl-move', 'slice'].includes(R.D.kind) && dk) s += tag(dk[0] + 14, dk[1] - 10, R.D.kind === 'sl-depth' ? `depth ${f2(sl.depth)} m` : 'live section');
+  const sl = S.slice; const { d, n } = sliceFrame(); const plan = R.mode === 'plan';
+  const z = plan ? 0 : sl.z ?? 0, zTop = Math.max(z + 1, R.box[5] + 0.4);
+  const A = [...sl.a, z], B = [...sl.b, z], nD = SC.mul(n, sl.depth);
+  const P = (p) => wpx(p), q = (p) => p.map((v) => v.toFixed(1)).join(',');
+  const a = P(A), b = P(B); if (!a || !b) return '';
+  const far = (p) => [p[0] + nD[0], p[1] + nD[1], p[2]];
+  let s = '';
+  if (!plan) {
+    const quad = (pts, cls) => { const Q = pts.map(P); return Q.some((x) => !x) ? '' : `<polygon class="${cls}" points="${Q.map(q).join(' ')}"/>`; };
+    const up = (p) => [p[0], p[1], zTop];
+    s += quad([far(A), far(B), up(far(B)), up(far(A))], 'sl-vol far');
+    s += quad([A, far(A), up(far(A)), up(A)], 'sl-vol side') + quad([B, far(B), up(far(B)), up(B)], 'sl-vol side');
+    s += quad([up(A), up(B), up(far(B)), up(far(A))], 'sl-vol top');
+    s += quad([A, B, up(B), up(A)], 'sl-plane');
+  } else {
+    const Q = [A, B, far(B), far(A)].map(P); if (Q.every(Boolean)) s += `<polygon class="sl-vol top" points="${Q.map(q).join(' ')}"/>`;
+  }
+  // the cut line itself is the move grip
+  const mv = S.hh === 'sl-move' || R.D?.kind === 'sl-move';
+  s += `<g class="hit mh${mv ? ' hov' : ''}" data-h="sl-move"><title>Drag the line to move the cut</title><line class="gd-h solid" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/><line class="sl-line" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/><line class="hzl" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/></g>`;
+  for (const [h, p] of [['sl-a', a], ['sl-b', b]]) s += `<g class="hit mh${S.hh === h || R.D?.kind === h ? ' hov' : ''}" data-h="${h}"><title>Drag the end to redraw the cut</title><circle class="ap-h" cx="${p[0]}" cy="${p[1]}" r="6.4"/><circle class="ap" cx="${p[0]}" cy="${p[1]}" r="4.8"/><circle class="hz" cx="${p[0]}" cy="${p[1]}" r="12"/></g>`;
+  const mid = [(sl.a[0] + sl.b[0]) / 2, (sl.a[1] + sl.b[1]) / 2, z];
+  const m = P(mid), mf = P(far(mid));
+  if (m && mf) {
+    const dir = [mf[0] - m[0], mf[1] - m[1]], L = Math.hypot(...dir) || 1, u = [dir[0] / L, dir[1] / L], nn = [-u[1], u[0]];
+    const hd = `M${q([mf[0] - u[0] * 6 + nn[0] * 4, mf[1] - u[1] * 6 + nn[1] * 4])} L${q(mf)} L${q([mf[0] - u[0] * 6 - nn[0] * 4, mf[1] - u[1] * 6 - nn[1] * 4])}`;
+    const on = S.hh === 'sl-depth' || R.D?.kind === 'sl-depth';
+    s += `<g class="hit mh${on ? ' hov' : ''}" data-h="sl-depth"><title>Inspection depth ${f2(sl.depth)} m · drag</title><line class="gd-h" x1="${m[0]}" y1="${m[1]}" x2="${mf[0]}" y2="${mf[1]}"/><line class="gd" x1="${m[0]}" y1="${m[1]}" x2="${mf[0]}" y2="${mf[1]}"/><path class="ah-h" d="${hd}"/><path class="ah" d="${hd}"/><circle class="hz" cx="${mf[0]}" cy="${mf[1]}" r="13"/></g>`;
+    if (on || (R.D && ['sl-depth'].includes(R.D.kind))) s += tag(mf[0] + 12, mf[1] - 8, `Depth ${f2(sl.depth)} m`);
+  }
+  if (R.D && R.D.kind === 'slice') s += tag(b[0] + 12, b[1] - 10, `${f2(Math.hypot(sl.b[0] - sl.a[0], sl.b[1] - sl.a[1]))} m · live section`);
+  else if (R.D && ['sl-a', 'sl-b', 'sl-move'].includes(R.D.kind)) s += tag(b[0] + 12, b[1] - 10, 'live section');
   return s;
 }
 // Edit shape, on the object: the roof's own section plane, its profile and joints in 3D
 export function roofSectionX(r) { return S.editShape?.x ?? (r.x0 + r.x1) / 2; }
 function onObjectSection() {
   const r = ent(S.editShape.id); if (!r || r.poly) return '';
-  const x = roofSectionX(r), pr = SC.roofProf(r), L = S.lift ? 2.6 : 0;
+  const x = roofSectionX(r), pr = SC.roofProf(r), L = S.lift ? 2.6 : 0, flat = S.reading === 'rsect';
   const zTop = Math.max(...pr.map((q) => q[1])) + 0.6;
   const corners = [[r.y0 - 0.4, 0], [r.y1 + 0.4, 0], [r.y1 + 0.4, zTop], [r.y0 - 0.4, zTop]].map(([y, z]) => wpx([x, y, z + L]));
   if (corners.some((c) => !c)) return '';
-  let s = `<polygon class="sec-plane" points="${corners.map((c) => c.join(',')).join(' ')}"/>`;
+  // in 3D the section plane is drawn on the roof; in Section 2D the reading itself is the plane
+  let s = flat ? '' : `<polygon class="sec-plane" points="${corners.map((c) => c.join(',')).join(' ')}"/>`;
   const P = pr.map(([sv, z]) => wpx([x, r.y0 + sv, z + L]));
-  s += `<polyline class="sec-prof" points="${P.map((p) => p.join(',')).join(' ')}"/>`;
-  for (let i = 0; i < P.length - 1; i++) { const m = [(P[i][0] + P[i + 1][0]) / 2, (P[i][1] + P[i + 1][1]) / 2]; s += `<g class="hit" data-h="jadd-${i}"><title>Drag to add a joint</title><circle class="j-add" cx="${m[0]}" cy="${m[1]}" r="5"/></g>`; }
-  P.forEach((p, i) => { s += `<g class="hit" data-h="j-${i}"><title>Drag the joint · ⌥-click removes it</title><circle class="j-dot${S.editShape.joint === i ? ' on' : ''}" cx="${p[0]}" cy="${p[1]}" r="${S.editShape.joint === i ? 8 : 6.5}"/></g>`; });
-  const cap = wpx([x, r.y0 - 0.4, zTop + L]); if (cap) s += tag(cap[0] - 10, cap[1] - 8, `Section of ${r.name}`);
-  if (R.D && R.D.tag) {} else if (S.editShape.joint != null && P[S.editShape.joint]) { const j = pr[S.editShape.joint], p = P[S.editShape.joint]; s += tag(p[0] + 12, p[1] - 12, `${f2(j[0])} across · ${f2(j[1])} high`); }
+  s += `<polyline class="sec-prof-h" points="${P.map((p) => p.join(',')).join(' ')}"/><polyline class="sec-prof" points="${P.map((p) => p.join(',')).join(' ')}"/>`;
+  const j = S.editShape.joint;
+  if (j != null && P[j]) {
+    // the active joint shows its height and its place across the span as two quiet guides
+    const base = wpx([x, r.y0 + pr[j][0], Math.max(0, SC.roofEave(r) - (flat ? 1.5 : 0.01)) + L]), side = wpx([x, r.y0 - 0.4, pr[j][1] + L]);
+    if (base) s += `<line class="gd faint" x1="${P[j][0]}" y1="${P[j][1]}" x2="${base[0]}" y2="${base[1]}"/>`;
+    if (side && flat) s += `<line class="gd faint" x1="${P[j][0]}" y1="${P[j][1]}" x2="${side[0]}" y2="${side[1]}"/>`;
+  }
+  for (let i = 0; i < P.length - 1; i++) { const m = [(P[i][0] + P[i + 1][0]) / 2, (P[i][1] + P[i + 1][1]) / 2]; const h = `jadd-${i}`; s += `<g class="hit mh${S.hh === h ? ' hov' : ''}" data-h="${h}"><title>Drag to add a joint here</title><circle class="j-add" cx="${m[0]}" cy="${m[1]}" r="3"/><circle class="hz" cx="${m[0]}" cy="${m[1]}" r="10"/></g>`; }
+  P.forEach((p, i) => { const h = `j-${i}`; const on = j === i; s += `<g class="hit mh${S.hh === h ? ' hov' : ''}${on ? ' act' : ''}" data-h="${h}"><title>Drag the joint · ⌥-click removes it</title><circle class="ap-h" cx="${p[0]}" cy="${p[1]}" r="${on ? 7.2 : 6}"/><circle class="ap${on ? ' on' : ''}" cx="${p[0]}" cy="${p[1]}" r="${on ? 5.6 : 4.4}"/><circle class="hz" cx="${p[0]}" cy="${p[1]}" r="12"/></g>`; });
+  if (!flat) { const cap = wpx([x, r.y0 - 0.4, zTop + L]); if (cap) s += tag(cap[0] - 10, cap[1] - 8, `Section of ${r.name}`); }
+  if (R.D && R.D.tag) {} else if (j != null && P[j]) { const q = pr[j], p = P[j]; s += tag(p[0] + 12, p[1] - 12, `${f2(q[0])} across · ${f2(q[1])} high`); }
   return s;
 }
 
@@ -267,7 +315,8 @@ export function renderFurniture() {
   let h = '';
   if (!S.lookThrough && !followPose()) {
     const prim = S.reading === 'plan' ? 'plan' : S.reading === '3d' ? '3d' : null;
-    h += `<div class="sf sf-tl"><div class="vseg glass dk" role="group" aria-label="Reading"><button data-act="reading" data-v="plan" aria-pressed="${prim === 'plan' && !S.look}" title="2D (2)">2D</button><button data-act="reading" data-v="3d" aria-pressed="${prim === '3d' && !S.look}" title="3D (1)">3D</button><button class="more${!prim || S.look ? ' on' : ''}" data-act="viewmore" aria-expanded="${S.viewMore}" title="Other readings and camera options">${!prim || S.look ? `<span>${esc(readingName())}</span>` : ''}${icon('chevronDown', 13)}</button></div>`;
+    if (S.editShape) { const v = S.editShape.view; h += `<div class="sf sf-tl"><div class="vseg glass dk es" role="group" aria-label="Edit shape reading"><button data-act="esview" data-v="3d" aria-pressed="${v === '3d'}" title="Edit on the roof in 3D (1)">3D</button><button data-act="esview" data-v="section" aria-pressed="${v === 'section'}" title="Focused roof Section 2D (2)">${icon('section', 14)}Section</button></div>`; }
+    else h += `<div class="sf sf-tl"><div class="vseg glass dk" role="group" aria-label="Reading"><button data-act="reading" data-v="plan" aria-pressed="${prim === 'plan' && !S.look}" title="2D (2)">2D</button><button data-act="reading" data-v="3d" aria-pressed="${prim === '3d' && !S.look}" title="3D (1)">3D</button><button class="more${!prim || S.look ? ' on' : ''}" data-act="viewmore" aria-expanded="${S.viewMore}" title="Other readings and camera options">${!prim || S.look ? `<span>${esc(readingName())}</span>` : ''}${icon('chevronDown', 13)}</button></div>`;
     h += `<span class="drafting glass dk"><button class="${S.grid ? '' : 'off'}" data-act="grid" title="Grid ${S.grid ? 'on' : 'off'} · 1 m">Grid</button><button class="${S.snap ? '' : 'off'}" data-act="snap" title="Snap ${S.snap ? 'on' : 'off'} · 0.5 m">Snap</button></span></div>`;
   }
   if (S.viewMore) h += viewMore();
@@ -313,7 +362,7 @@ export function renderSheet() {
     const k = m.kinds.has('level') ? 'level' : m.kinds.has('pin') ? 'pin' : 'surface';
     const what = [m.kinds.has('level') ? 'Level' : '', m.kinds.has('surface') ? 'surface' : '', m.kinds.has('pin') ? 'pinned' : ''].filter(Boolean).join(' · ');
     const nm = m.labels.slice(0, 2).join(', ') + (m.labels.length > 2 ? ` +${m.labels.length - 2}` : '');
-    h += `<button class="tick ${k}${m.kinds.has('pin') && k !== 'pin' ? ' pinned' : ''}${Math.abs(m.z - S.sheet.h) < 0.02 ? ' here' : ''}" style="top:${y(m.z)}" data-act="toheight" data-v="${m.z}" aria-label="${esc(nm)} ${f2(m.z)}"><i></i><span class="lb"><b>${f2(m.z)}</b> ${esc(nm)}<small>${what}</small></span></button>`;
+    h += `<button class="tick ${k}${m.kinds.has('pin') && k !== 'pin' ? ' pinned' : ''}${Math.abs(m.z - S.sheet.h) < 0.02 ? ' here' : ''}${S.tickFlash != null && Math.abs(m.z - S.tickFlash) < 0.02 ? ' flash' : ''}" style="top:${y(m.z)}" data-act="toheight" data-v="${m.z}" aria-label="${esc(nm)} ${f2(m.z)}"><i></i><span class="lb"><b>${f2(m.z)}</b> ${esc(nm)}<small>${what}</small></span></button>`;
   }
   const canPin = S.sheet.h > 0.01 && !(here && (here.kinds.has('pin') || here.kinds.has('level')));
   h += `<div class="knob${S.sheet.drag ? ' drag' : ''}" id="sheetknob" style="top:${y(S.sheet.h)}" tabindex="0" title="Working height · drag, or double-click to type">${S.sheet.editing ? `<input id="sheetin" value="${f2(S.sheet.h)}">` : f2(S.sheet.h)}${canPin ? `<button class="pinbtn" data-act="pin" title="Pin ${f2(S.sheet.h)} as a height checkpoint">${icon('pin', 12)}</button>` : ''}${S.sheet.drag && here ? `<span class="snapname">${esc(markName(here))}</span>` : ''}</div>`;

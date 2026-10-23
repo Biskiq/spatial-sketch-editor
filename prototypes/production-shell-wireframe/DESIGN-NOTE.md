@@ -1,189 +1,255 @@
-# Integrated production shell — design note (wireframe round 1.1)
+# Integrated production shell — design note (wireframe round 2)
 
 **Status: unratified design exploration for owner review.** Nothing here amends
 [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md), the
 [spatial-instrument grammar](../../docs/reference/design-system/spatial-instrument-grammar.md),
 domain contracts or production. Proposed departures are listed in
-[§5](#5-proposed-departures-from-ratified-plate) for an explicit ruling. How to run the
-wireframe, its tours and its Compare menu is in the [README](./README.md).
+[§6](#6-proposed-departures-from-ratified-plate) for an explicit ruling. How to run the
+wireframe, its tours, its Compare menu and the atlas is in the [README](./README.md).
 
-Round 1.1 continues round 1 (commit `8ce39bc5`, PR #181) rather than replacing it. Its brief
-was simplification: start simple, draw naturally, manipulate directly, and reveal precision
-and complexity progressively, with the 3D world as the main workspace. Strongly preferred
-changes are the defaults. Each open decision is a live A/B in **Wireframe ▸ Compare**, and
-§4 gives a verdict for each.
+Round 2 continues round 1.1 (commit `a7aa0cd1`, PR #181). Its brief was a visual language:
+**simple, elegant, clear, lightweight, playful to manipulate**. The wireframe became one
+coherent vocabulary of marks, now also used on architecture, the roof section, the Slice and
+the Eraser. Every open choice is a live A/B in **Wireframe ▸ Compare**, the recommendation is
+the default, and §4 gives a verdict for each.
 
-## 1. The composition in one picture
+**The atlas.** [atlas.html](./atlas.html) is the board view: 28 frames of the live wireframe,
+each opened in one scripted state (`index.html?atlas=<key>`, presets in
+[atlas.js](./atlas.js)). The frames cannot drift from the build, and every frame links to its
+live, interactive state.
 
-```text
-HEAD   ☰ · project · World | Experience · [location chip when the Index is hidden] · Find… ⌘K · ↶ ↷ ✓ · Preview
-INDEX  │ STAGE ──────────────────────────────────────────────────────────── CARD     SHEET
-scope  │ [2D|3D ▾] [Grid Snap]        (temporary-state pill: Section · Face · Put back)  name     ┬ 13.5
-crumbs │                                                                      dims     ┼ ◉ 4.50 ⌖
-facets │                         ...world...                                  More ▾   ┼
-list   │                       ┌ palette column (icons, above the armed tool)            ┴ 0.00
-       │                       └ dock  Select · Ink · Slice · Eraser · Brush · Measure │ Library
-```
+Not reopened: the compact Height Sheet; surfaces vs pins vs Levels; direct 2D/3D switching;
+inline Card precision; Find in the Head; the permanent Brush; the contextual Library; the
+shared World/Experience shell; temporary inspection and Preview isolation; one Camera, one
+selection and chronological Undo; and no new tools.
 
-- **The Stage is the workspace.** Every other surface is small, floats over the Stage, or
-  disappears.
-- **Collapsed Index.** A hidden Index takes zero width; its location moves into the Head.
-- **The Card is the only writer for ordinary dimensions.** Advanced fields sit under More.
-- **The Height Sheet** is a thin vertical slider. It docks right by default, beside the
-  Card, and can swap to the left.
-- **The lower working edge** is the P3 dock. The armed tool's palette is one column of icons
-  directly above it, and nothing grows sideways. The forest Instrument material is now used
-  only for invoked tasks that need room: Library, Guide and repair.
+## 1. The language
 
-## 2. What changed from round 1
+Each mark tells you what kind of state you are looking at; none of them is decoration.
 
-| Brief point | Round 1 | Round 1.1 |
+| Mark | Means | Never means |
 | --- | --- | --- |
-| 1 Hierarchy | One grouped list (places, then kinds) | **A: scope model.** Breadcrumb with sibling menus, kind facets, capped lists with "Show more" and room contents in groups. **B: outline tree.** Both are projections of Layout/Scene; Room derivation is unchanged |
-| 1 Collapsed Index | Hidden Index left a strip | Collapses to **nothing**. **A:** a location chip in the Head. **B:** edge peek on hover, and `\` from either |
-| 2 Heights | Heights rail at Stage-left with named datums; raising the sheet armed Ink | **Height Sheet**: right-docked slider with ticks and one active number. The ticks distinguish **Levels** (long, structural, authored), **surfaces** (short, found on qualified horizontal tops), and **pins** (round, manual checkpoints). Labels appear on hover or drag. Pinning uses a pin on the knob. A **first-use hint** appears once after the first raised surface. Swap sides from its foot. Raising the Sheet no longer arms Ink |
-| 3 Toolbar | Light horizontal palette rows with words | Icon-only **vertical palette column** above the active tool. Ink is only Sketch · Line · Box · Round, plus a small `⋯` for future pens. The reading chip appears only when a closed stroke is ambiguous; open chains are read quietly |
-| 4 Brush | Paint was a temporary slot armed from Library | **Brush is a permanent tool.** One swatch (12 paints, 6 materials), a dropper, and a face/whole-room scope |
-| 5 Edit shape | Section-pad Instrument or split Stage, both unsatisfactory | **C: section on the object.** A section plane is drawn on the roof at its own local section, with draggable joints and `＋` midpoints; the Card gives presets and joint values. **B:** a floating section editor that expands into a joint table. **A:** a Card editing posture |
-| 6 View | One View menu holding readings, appearance, overhead and projection; 15°/90° buttons | **2D \| 3D** as the primary control. Eye level, elevations, *Face the cut* (only while a slice exists), projection and roofs-from-above sit behind `▾`. The 15°/90° buttons are gone. **Paper vs keep shaded** is an application viewing preference (☰ menu). Section is never a disabled item |
-| 7 Slice | Cut line; Section in the View menu | Live preview while dragging. On-Stage tape with move, **depth** and **flip** knobs. Pill: depth · Flip · Face · Put back. Slice at height (horizontal) is the second palette option. It is a temporary reading only |
-| 8 Eraser feedback | Erase review Instrument for scrub/lasso | A click erases at once with an Undo toast. Bulk marks then **one acceptance bar beside the gesture**. Kind chips leave a kind out. Consequences are stated in one line. A **bubble** asks only for cross-domain cases |
-| 9 Manipulation | Slide, turn and size handles | The same Tiny Glade handles, plus **independent W/D/H**. **A:** progressive (click the scale knob). **B:** immediate. The base stays on its support and height grows upward. Things on top ride along and settle when their support goes. Fit behaviours: *extend* (bench), *stretch* (plinth, imported column), *proportional* (sculpture corner knob), *fixed* (piano, where stretching distorts). Nothing is blocked by category, and the live tag names the verb |
-| 10 Card | Identity plus ≤3 facts; dimensions in a Dimensions Instrument | **Editable dimension fields in the Card**, with refusals inside the field. Advanced fields under More. No side accent borders. *In Experience* appears only when something uses the subject, and routine Details offer no *Present this* |
-| 11 Find | A dock slot opening an Instrument | **Find in the Head** with live grouped suggestions. Verbs stay distinct: *Do* (for the selection), *Arm*, *Show*, *Run*, *Go to* (navigation) and *Select* (selection). Matches in the current scope rank first; overflow hands off to the Index filter |
-| 12 Density | Labels, borders, larger popovers | Hairlines, icon-first controls with tooltips, labels on demand, no modal popups. Selection (gold), active tool (forest pressed), focus (ring), temporary inspection (pill, yellow tape, gold frame) and destructive marks (red dashes) stay distinct |
-| Tours | Text-heavy journey coach | **Eight interactive tours.** Each step has a spotlight on the relevant control, Prev / Next, an optional *Show me* demo, and a check that lights Next once the step is done |
-| Width | Narrow desktop, tablet and phone editor frames | The editor targets **small laptop and iPad**. At ≤1100 px the Index becomes an overlay that starts collapsed. Phones are out of scope for the editor; **Preview has a Phone frame** because visitors may use phones |
+| **Gold outline + translucent gold volume** | Selected geometry | Available actions, hover, inspection |
+| **Thin white dashed line with a dark halo** | A transformation is available here (axis ray, rotation ring, track, dimension line) | Geometry |
+| **Small white open arrowhead** | Which way that line drags | A button |
+| **Small white point** | An anchor: wall end, joint, slide position on a track, the scale point. It turns gold while you hold it | Selection |
+| **Translucent yellow plane or volume** | Temporary inspection: the Slice and its depth | Source; it is never saved |
+| **Red dashes** | Marked for erasing, only with the Eraser | Errors elsewhere |
+| **Dark tag, mono text** | The live value, shown **only on hover or drag** ("Height 1.10 · base stays") | Permanent W / D / H text |
 
-Also new: a **near-wall cutaway** in 3D. While you work inside a room (selection or entered
-room scope), walls on the camera side become see-through and click-through. It replaces
-round 1's dashed selection echo, which showed where a subject was but left it unreachable.
+**Retired:** large yellow knob disks, XYZ gizmos, permanent W/D/H labels, the gold joint
+buttons on the roof section, and the Card's wide editing posture.
+
+The halo is a 3 px dark under-stroke beneath every white mark. It keeps lines and arrows
+legible on pale walls, on the gold selection and on the dark grid without a second colour.
+
+**Dock and palettes.** Both are dark forest green with thin white icons. The armed tool sits
+on a soft ivory key (`--ivory #f3f0e4`) with a dark icon. Tool colour survives only as a 2 px
+mark under an icon. The palette column uses the same material as the dock, so the two read
+as one instrument.
+
+## 2. What changed from round 1.1
+
+| Brief point | Round 1.1 | Round 2 |
+| --- | --- | --- |
+| 1 Toolbar | Light P3 dock; forest-pressed active tool | **Dark forest dock** with white thin icons, an **ivory** active key and small semantic marks. The palettes share the material |
+| 2 Palette collapse | The palette closed implicitly | **Explicit.** Clicking a tool arms it and opens its palette. Clicking the armed tool again collapses or reopens it. A tiny `⌄` at the palette foot also collapses it. Choosing an option or drawing never closes it. **Esc collapses the palette before it disarms the tool.** The chosen option is remembered. Collapsed cue: a faint ivory caret above the armed key (A/B) |
+| 3 Manipulation | Gold disks, a turn knob and a scale knob, with W/D/H knobs on request | **Rays and points** (§1): a dashed rotation ring with a radius of at least 30 px, a move cross at the base, and a scale point. Opening W·D·H turns each face into a short **axis ray** past the ring, with its arrowhead; height is a ray from the top face. Progressive scaling, planar rotation, support-aware resizing (base stays, riders follow) and the corner proportional scale are kept. Nothing is blocked by category, imported assets included. The Card stays the precision writer |
+| 4 Architecture | Knobs on walls and roofs | The same vocabulary. **Wall:** end points (length), a top ray (height, snapping to Sheet heights), a two-way base ray (move parallel), and a two-way thickness arrow on the cap. **Opening:** a dashed track along the host wall with a slide point, side rays (width), a head ray and a sill ray. **Platform:** corner points and a height ray. **Roof:** a ridge ray up and an eave ray down on the nearer eave. Wall thickness is an editable Card field under More |
+| 5 Roof Edit Shape | On-object section + Card; a floating editor; a Card posture | **Default: direct 3D editing** on a roof-local section drawn on the roof, with white joint points, small midpoint `＋` and a gold profile. A **3D \| Section** segment replaces 2D \| 3D while editing; `1` / `2` switch. **Section 2D** is a roof-local reading of the same Camera: the same selection, profile, history and Done, with a cross-fade and the roof framed. It is *not* the floor Plan. The gold joint buttons are replaced by points |
+| 6 Slice | An infinite cut line, with tape knobs | **Drawn like the Pen**: a finite straight segment with a start and an end, a 45° soft snap and a live length tag. A translucent **yellow plane and depth volume** cuts only within its extent. End points redraw the line, the line moves it, and a depth ray adjusts how deep it looks. The pill (depth · Flip · Face · Put back) and the temporary-inspection rule are unchanged |
+| 7 Index | A: scope + facets, B: outline tree | **Model A only** (the tree was removed). Collapsed: **A**, the Head location chip, or **B**, a minimal translucent arrow at the left edge with no rail. On touch the arrow stays faintly visible, and a tap on the edge zone opens the Index |
+| 8 Eraser | Contextual kind chips (A) or filter funnel (B) | **Filter disclosure is the default**, as the owner preferred. A funnel in the Eraser palette opens "Erase only", a two-column kind grid with "Erase every kind". When a filter is active: a dot badge on the funnel and on the dock key, "filter leaves out …" in the acceptance bar, and a hint tag ("Walls are filtered out") when you touch a filtered kind. Immediate deletion, Undo, bulk acceptance and the cross-domain review are unchanged |
+| 9 Polish | — | See §5 for what was fixed and what remains |
+| 10 Intelligent Pen | — | Not implemented; fit is considered in §3 |
+| Pen question | — | **A: context first** (Shape is one more reading on the chip). **B: a temporary Shape intent** in the Ink palette. Evaluated in §3 |
+| Tours | Eight | **Ten.** New: *Walls, openings and platforms* and *One Pen, ordinary shapes*. Every tour was rerun with Show me |
 
 ## 3. Recommended (defaults in the wireframe)
 
 | # | Choice | Why |
 | --- | --- | --- |
-| R1 | **Dock: Select · Ink · Slice · Eraser · Brush · Measure, then Library** | Six permanent instruments, each armable with nothing selected and each with its own gesture and result. Brush earns its slot because colour is a basic act, not an import step |
-| R2 | **Palette column above the armed tool**, icons only, tooltips on hover | It is next to the cursor, stays the same width whatever the tool, and has no words to read. Future tools hide behind `⋯` |
-| R3 | **Ink reads the surface it lands on.** A chip appears only for ambiguous closed strokes (Room · Raised platform · Walls only); Tab re-reads in the same undo step | Unambiguous strokes need no question. The chip keeps clear of the Sheet |
-| R4 | **Height Sheet right, Levels ≠ surfaces ≠ pins** | One vertical instrument that says *at what height*. A Level is created only on purpose: platforms, decks and flat roofs are surfaces, and a pin is a checkpoint, never a Level |
-| R5 | **2D \| 3D primary; everything else behind ▾** | The two readings used all day are one click. Projection (Axo/Persp), reading and appearance stay separate settings, and the Camera authority is unchanged |
-| R6 | **Slice = temporary inspection** with tape, depth, flip and Put back | It never edits the building. *Face the cut* is a reading of the same Camera |
-| R7 | **Eraser: immediate, then one acceptance, then review only across domains** | Fast, undoable and honest about consequences, without a modal |
-| R8 | **Direct handles plus the Card as the one precision writer** | Drag for intent, type for precision, in one place. The Dimensions Instrument is retired |
-| R9 | **Find in the Head** with distinct verbs | Commands, tools and places are one keystroke away without merging selecting with navigating |
-| R10 | **Near-wall cutaway** while working inside a room in 3D | The subject stays visible and reachable. It is viewing state only |
-| R11 | **Experience uses the same dock home**: Select · View · Path, then Capture and Guide. Look through adds a gold frame; Preview is a takeover | Unchanged from round 1, apart from density |
+| R1 | **Dark forest dock, ivory armed key, palettes in the same material** | The dock reads as one quiet instrument over any Stage. Ivory marks the armed tool without a second hue, and colour is kept for semantics |
+| R2 | **Explicit palette collapse with remembered options; Esc collapses first** | The palette stays while you work and goes away only when you say so. Esc keeps its "one level at a time" rule |
+| R3 | **Rays and points for every transform** (Compare ▸ Object manipulation A) | One grammar for objects, walls, openings, platforms, roofs and the Slice. It is small at rest, the value shows only on hover or drag, and it scales from a 0.6 m plinth to a 24 m roof |
+| R4 | **The shared language stops at anchors and rays; each subject keeps its own handles** (Compare ▸ Architecture A) | §4 has the A/B. A wall's end is a point and its height is a ray, like an object's. A wall's thickness, an opening's track and a roof's eave are specific to that subject. There is no single universal handle |
+| R5 | **Edit Shape: direct 3D first, Section 2D as a Stage reading** (Compare ▸ Roof Section 2D A) | It keeps the 3D context by default. Section 2D is one segment away, with the same selection, history and Camera, and it cannot be confused with the floor Plan |
+| R6 | **Finite drawn Slice with a yellow depth volume** | It matches the Pen gesture, shows exactly what is cut, and leaves the rest of the building whole |
+| R7 | **Index Model A; collapsed via the Head chip** | Settled by the owner. The chip works on touch and keeps location visible |
+| R8 | **Eraser filter disclosure with layered "active" cues** | Owner preference. The badge, bar line and hit hint answer "why didn't that erase?" |
+| R9 | **One Pen, context first (Pen A)** | See below |
+
+### The Pen question: A context first vs B Shape intent
+
+One Pen, with no Object Pen and no category picked before drawing. In **A**, the Pen reads
+the surface as before, and **Shape** (an ordinary editable profile, pulled up later by its
+height ray) is always one more reading on the chip. In **B**, a Shape toggle at the top of
+the Ink palette makes every closed stroke an ordinary shape until Ink is put down.
+
+| Ambiguous stroke | A · context first | B · Shape intent on |
+| --- | --- | --- |
+| Rectangle on the ground floor of an empty room | Room (walls, default) · Raised platform · Walls only · Shape | Shape. Room needs the intent off first |
+| Closed loop with the Sheet raised to 0.90 m | Deck at 0.90 · Canopy roof · Walls on this height · Shape | Shape at 0.90 |
+| Rectangle inside a gallery: is it a plinth or a platform? | Room by default, with Shape and Raised platform one Tab away. That is the honest ambiguity, and it costs one chip choice | Shape, with no question. This is predictable, but the plinth cannot become a platform without redrawing |
+| Circle on a wall | Round window (the wall decides; no chip) | Same. The intent applies only to closed strokes on surfaces |
+| Five-point closed outline on a deck | Deck-level readings · Shape keeps the outline | Shape keeps the outline |
+
+- **Discoverability.** A shows Shape exactly where the decision is made, on the chip that
+  appears for every closed stroke. B's toggle is easy to miss, and it is easier still to
+  forget that it is on.
+- **Cost.** In A an ordinary shape costs one extra click or Tab, and only for closed strokes
+  where context guessed wrong. B saves that click across a long run of shapes, at the price
+  of one toggle and of remembering to turn it off.
+- **Predictability.** B is the most predictable while it is on. A is predictable because its
+  default never changes and the chip states the reading before anything is committed.
+
+**Recommendation: A.** Keep B as a candidate if field use shows long runs of ordinary
+shapes, e.g. furniture blocking. Unratified.
+
+**Future intelligent Pen (fit only, not implemented).** It fits A naturally: smarter
+interpretation is only a better first reading and a better-ordered chip, with Shape always
+the escape. It must keep the one-undo-step re-read, never commit an interpretation silently
+across domains, and never become a second tool.
 
 ## 4. Open decisions compared (Wireframe ▸ Compare)
 
-Each was stress-tested in the dense museum: 3 structures, 5 Levels, 40 rooms, 104 walls
-(52 shared), 96 openings, 275 objects, 105 artworks, and a 24 m sawtooth roof.
+They were stress-tested at three zoom levels, with hover and without, on a 0.6 m plinth, a
+1.8 m bench, a 6 m wall and a 24 m roof, in the Boathouse and in the dense Harbour museum.
 
-| Question | A | B (C) | Verdict |
+| Question | A (recommended) | B (C) | Verdict |
 | --- | --- | --- | --- |
-| Index model | **Scope + facets** (recommended): one scope at a time, crumbs with sibling menus, facets flatten a scope ("every object on First floor") | **Outline tree**: structure › Level › room › kind groups, capped and lazy | A. Reaching a room's contents in B takes three expansions, and the list grows past the viewport. In A the crumb is the way back and a sibling is one click. B stays useful for a whole-project overview |
-| Collapsed Index | **Head location chip** (recommended): "Main hall › First floor" opens the Index | **Edge peek**: hover the left edge for a tab | A. Peek depends on hover, which iPads lack, and on a hidden edge zone. A also keeps location visible while the Index is away |
-| Eraser arrangement | **Contextual** (recommended): gesture only (Scrub · Lasso); kind chips in the acceptance bar; ⇧ at the start locks to the touched kind | **Filter funnel**: kind toggles in a flyout beside the palette | A. The basic Eraser needs no setup, and filtering happens when there is something to filter. B suits long clean-up sessions, but a forgotten filter makes the Eraser look broken (badge shown) |
-| Review threshold | **Cross-domain only** (recommended): ≤3 simple items apply at once; more go through the acceptance bar; Experience consequences ask | **Topology too**: also ask when hosts are set aside, rooms open, roofs lose support or riders settle | A. Topology consequences are already named in the toast and are one undo away. B interrupts ordinary wall edits |
-| Edit shape | **On-object section + Card precision** (C, recommended) | **Floating editor** (B), expandable to a joint table · **Card posture** (A) | C for direct dragging, because the section is in the right local plane on the roof itself. B for long profiles and precision (all 9 sawtooth joints readable) and for narrow screens. A covers its own subject when the roof is on the right of the Stage. Keep C plus B's expand |
-| Dimension handles | **Progressive** (recommended): click the scale knob for W/D/H | **Immediate**: W/D/H always shown | A. At overview zoom, six handles on a 1.8 m bench overlap. B is quicker for furniture layout at close range, so it could become a zoom-dependent rule |
+| Object manipulation | **Axis rays** out of each face, past a minimum ring (Reference B) | **Dimension lines** offset beside the front edges with a grip point (Reference A) · **C** the round 1.1 knobs | A. B reads like a drawing and suits precise furniture layout. But its three lines converge at the front corner, crowd on small objects, and need the far edge to be visible. A keeps every ray outside the ring, so a 0.6 m plinth at overview zoom still has separated targets. C is kept only to show what was retired |
+| Width · depth · height | **Progressive**: click the scale point | **Immediate**: always shown | A at overview zoom. At close range B is quicker, so a zoom-dependent rule (show the rays when the subject is ≥ 120 px across) is a reasonable later refinement |
+| How far the language goes on architecture | **Same rays and points** as objects | **Edge grips**: the top, end and base edges are the handle, and arrows appear on hover | A. B is the most minimal at rest and reads well on long walls. But a 0.24 m wall end becomes a 3 px target, its affordance is invisible until hover (none on iPad), and it differs from objects. A costs four small marks per selected wall |
+| Roof Section 2D | **Takes the Stage** as a roof-local reading | **Inset editor** over the 3D Stage, expandable | A. The inset keeps 3D visible, but it duplicates the profile at a second scale and covers the lower right of the Stage. A gives the profile the full Stage and leaves the way back to 3D one segment away. A persistent "open Edit Shape in Section" preference is **not needed yet**. The segment remembers nothing across subjects, and that was never the obstacle |
+| Collapsed Index | **Head location chip** | **Translucent edge arrow** | A. B is now lightweight and touch-visible. Owner choice between the two, with A favoured because it also shows *where you are* |
+| Collapsed palette cue | **Faint caret** above the armed key | **Nothing** | A, but only just: the caret is 10 × 5 px at 55 % opacity. It is enough to say "there is more here" without adding a control |
+| Eraser kinds | **Filter disclosure** (owner choice) | **Kind chips** in the acceptance bar | A, as preferred. Chips remain the lighter answer for occasional use, and the funnel keeps chips' "what was left out" line |
+| When erasing asks | **Only across domains** | **Also for topology** | Unchanged from round 1.1: A |
+| One Pen | **Context first** | **Shape intent** | A (§3) |
 
-## 5. Proposed departures from ratified PLATE
+## 5. Accessibility and touch
 
-Each needs an owner ruling before it becomes a contract. D1–D8 revise round 1.
+- **Hover-free equivalents.** Every hover reveal has a touch path:
+  - Value tags appear while dragging.
+  - The scale point is a tap.
+  - The Sheet shows the snap name while dragging.
+  - The edge arrow stays at 45 % on `hover: none`, with a 14 px tap zone.
+  - Edge grips (Architecture B) have no touch equivalent, which is one reason B is not
+    recommended.
+- **Targets.** Every point has an invisible hit disc 22–26 px across, and every ray or edge
+  an invisible 14 px hit band. The rotation ring has a radius of at least 30 px. Visible
+  marks stay small. The rays deliberately
+  extend past the ring, so targets never overlap even on a 0.6 m plinth.
+- **Contrast.** White marks over a dark halo are meant to stay legible on both pale walls and
+  the dark Stage. This is not measured yet; a product pass should check 3:1 non-text
+  contrast for every mark. Gold is used only for selection and the held point. Red and yellow are never
+  the only cue: the Slice has its pill, the Eraser has a bar, and filters have a text line.
+- **Focus vs selection vs inspection.** Focus is the blue ring, selection is gold, inspection
+  is yellow plus a pill, and erase marks are red dashes. Under Focus, the Height Sheet plane
+  becomes an **outline** instead of a tint, so it no longer washes out the focused story.
+- **Keyboard.**
+  - Esc unwinds the palette first.
+  - `1` / `2` switch 3D and Section while editing a shape.
+  - Enter or Esc close Edit Shape.
+  - Every Compare variant keeps the Card fields as the keyboard path to the same value.
+- **Motion.** Entry animations are 140–220 ms fades. The atlas disables them, and a product
+  build should honour `prefers-reduced-motion` in the same way.
 
-| ID | PLATE today | Proposal (round 1.1) | Change from round 1 |
+## 6. Proposed departures from ratified PLATE
+
+Each needs an owner ruling before it becomes a contract. D1–D13 carry round 1.1 forward.
+
+| ID | PLATE today | Proposal (round 2) | Change from round 1.1 |
 | --- | --- | --- | --- |
-| D1 | Pointer families Select · Draw · Opening · Place · Measure · More (§0.8.4) | **Select · Ink · Slice · Eraser · Brush · Measure**, with Library beside them | Brush added as a permanent family. Find leaves the dock (D10) |
-| D2 | Compact pointer rail on the Paper edge | Bottom dock with an icon-only **palette column** above the armed tool | Palette rows replaced by a vertical column |
-| D3 | Three drafting words; a fourth needs a ruling | **Withdrawn.** Grid and Snap remain the drafting words; the working height lives on the Sheet (D4) | Withdrawn |
-| D4 | Stage furniture: reading cluster, rail, scale bar, datum key | **Height Sheet** slider, docked right (left on request), replacing the datum key in World 2D and 3D | It moved from left to right and became a slider. Datums are split into Levels, surfaces and pins |
-| D5 | A tool is armed only by its own control | **Withdrawn.** Raising the Sheet no longer arms Ink | Withdrawn |
-| D6 | Semantic colour roles fixed (§6.4) | Slice tape, Eraser marks, tool swatches | Unchanged |
-| D7 | Grammar silent | X-ray overhead as the default authoring reading, plus the **near-wall cutaway** while working inside a room | The selection echo is replaced by the cutaway |
-| D8 | Experience Stage toolbar (Conservatory) | Experience tools in the shared dock, with Capture and Guide | Unchanged |
-| D9 | Precision ladder ends in the **Dimensions** Instrument; the Card shows ≤3 facts | **The Card is the one writer for ordinary dimensions**: editable fields and refusals in place, advanced fields under More. The Dimensions Instrument is removed. *This changes Card/Instrument authority.* | New |
-| D10 | More / Find as a pointer-family slot | **Find in the Head**, with grouped live suggestions and distinct Go to / Select verbs | New |
-| D11 | One reading control holding readings and appearance; Paper depth by reading | **2D \| 3D primary segmented control**, with a secondary disclosure for the rest. Section only via Slice. Paper vs keep shaded as an **application preference** | New |
-| D12 | Index as a grouped locator; collapse leaves a strip | **Scope-model Index** (crumbs, sibling menus, facets), and a **zero-width collapse** with a Head location chip | New |
-| D13 | Instrument hosts invoked tasks, including Edit shape and Erase review | Instrument reserved for Library, Guide and repair. **Edit shape becomes on-object**, with Card precision. **Erase acceptance becomes a bar or bubble at the gesture** | New |
+| D1 | Pointer families Select · Draw · Opening · Place · Measure · More (§0.8.4) | **Select · Ink · Slice · Eraser · Brush · Measure**, with Library beside them | Unchanged |
+| D2 | Compact pointer rail on the Paper edge | Bottom dock in **dark forest** material with an **ivory** armed key, and an icon-only palette column in the same material. Collapse is explicit, Esc collapses first, and options are remembered | Material inverted; explicit collapse rules |
+| D3 | Three drafting words | Withdrawn | — |
+| D4 | Stage furniture incl. datum key | Height Sheet, docked right. Its plane becomes an **outline under Focus** | Outline under Focus |
+| D5 | A tool is armed only by its own control | Withdrawn | — |
+| D6 | Semantic colour roles fixed (§6.4) | Gold = selected only, white = available transform, yellow = temporary inspection volume, red = erase marks. Tool colour only as a 2 px mark | Narrowed and made explicit |
+| D7 | Grammar silent | X-ray overhead plus the near-wall cutaway. The cutaway now spares the selection's host wall | Host wall spared |
+| D8 | Experience Stage toolbar | Experience tools in the shared dock | Unchanged |
+| D9 | Precision ladder ends in Dimensions; Card ≤3 facts | **The Card is the one writer for ordinary dimensions.** *This changes Card/Instrument authority.* Wall thickness is now an advanced Card field | The Card's wide posture removed |
+| D10 | More / Find as a pointer slot | Find in the Head | Unchanged |
+| D11 | One reading control | 2D \| 3D primary. While Edit Shape is active the segment becomes **3D \| Section**, a roof-local reading of the same Camera, distinct from the floor Plan | Section 2D reading |
+| D12 | Index as grouped locator; collapse leaves a strip | **Scope-model Index (Model A)**, zero-width collapse, and a Head chip or an edge arrow | Outline tree withdrawn |
+| D13 | Instrument hosts Edit shape and Erase review | Instrument reserved for Library, Guide and repair. Edit Shape is on the object or in the Section reading. Erase acceptance is a bar or bubble, and kind filters live in the Eraser palette | Filter disclosure in the palette |
+| **D14** | The spatial-instrument grammar's knob-and-gizmo handles | **Rays and points** (§1) for every transform: axis rays, rotation ring, track, anchors, and values only on hover or drag. Gold disks, XYZ gizmos and permanent W/D/H text are retired | New |
+| **D15** | Slice as a cut line or plane across the whole working area | **A finite drawn Slice**: start and end points, a live preview, and a yellow depth volume that cuts only within its extent. Still temporary inspection, with Put back | New |
+| **D16** | Grammar silent on ordinary shapes | **Shape as a Pen reading**: an ordinary editable outline object in Scene, which its height ray pulls into a solid. No Object Pen | New |
 
-Authority note for D9: dimensions stay owned by their domain (Layout for walls, openings,
-roofs, rooms and Levels; Scene for objects and art). The Card is the only *editor surface*
-that writes them, and handles write the same facts with the same refusals. That gives one
-writer per fact at the UI level, and no second model.
+Authority notes:
 
-## 6. Remaining usability problems
+- **D9.** Dimensions stay owned by their domain: Layout for walls, openings, roofs, rooms
+  and Levels; Scene for objects and art. Handles and Card fields write the same facts with
+  the same refusals.
+- **D11.** Section 2D is a viewing state of the one Camera, not a second Camera and not a
+  second roof model.
+- **D16.** A Shape is a Scene object; this proposes no format.
 
-Problems found in the round 1.1 browser pass, which are still open:
+## 7. Remaining usability problems
 
-1. **Card posture covers its subject.** Edit-shape A widens the Card over a roof that sits on
-   the right of the Stage. It would need automatic framing into the free area, which is one
-   more reason to prefer C.
-2. **Overview-zoom handle crowding.** Progressive handles help, but small objects at 1:200
-   still stack their handles. A minimum on-screen size, or "zoom to edit", is unresolved.
-3. **The Sheet plane washes out a focused story.** In the dense museum, the translucent
-   plane at 4.50 m tints the focused First floor. An outline-only plane under Focus may be
-   enough.
-4. **Touch.** Sheet tick labels and tooltips are revealed on hover. On iPad, the only
-   reveal is the snap name while dragging. Tap-to-reveal, two-finger orbit and pen scrubbing
-   are untested.
-5. **The cutaway is automatic.** There is no held key yet to see the outside while working
-   inside a room.
-6. **Portrait Preview crops authored views.** Views framed on a desktop crop hard on a
-   phone (Arrival becomes mostly wall). Look through needs aspect safe-area guides, or Views
-   need per-aspect framing.
-7. **Ambiguous names in dense projects.** Find and the Index show room and Level context
-   ("Plinth · 1.01 d — Gallery 7 · First floor"), but similar subjects still need a thumbnail
-   or hover-highlight to tell them apart.
-8. **The overlay Index on iPad portrait** covers the left end of the dock while open.
-9. **Tour cards** can sit over neighbouring tools in the dock.
-10. **Experience hides the Sheet.** It is unclear whether View placement needs a working
-    height.
+Still open after the round 2 browser pass:
 
-Fixed during the browser pass, recorded for review:
+1. **Thickness on a wall is a fiddly gesture.** The two-way arrow on the cap thickens
+   symmetrically at gain 1, but a 0.24 m wall at overview zoom gives little travel. The Card
+   field is the real path; the arrow may belong only to close zoom.
+2. **Dimension lines (B) crowd the front corner.** Kept for comparison, but not fixable
+   without hiding one line.
+3. **Edge grips (Architecture B) are invisible on touch.**
+4. **Wall curve is specified, not built.** The atlas shows a static specimen: a hollow point
+   at the middle of a free wall would bend it, and a dashed arc previews the curve. Rooms and
+   hosted openings would need curved geometry first, and the mock walls are straight
+   segments.
+5. **The Section inset (B) covers the Stage's lower right**, where the Sheet's foot and the
+   zoom controls already sit.
+6. **iPad landscape is tight.** At 1180 × 820, with the Index open, a wall selected and the
+   Ink palette open, nothing overlaps. But only about 10 px separate the Card from the
+   Sheet. iPad portrait was checked only scaled down.
+7. **The collapsed caret is very quiet.** Testing may show it needs 70 % opacity.
+8. From round 1.1, still open: the cutaway is automatic, with no hold-to-see-outside; Preview
+   in portrait crops authored Views; similar names in dense projects need thumbnails;
+   Experience hides the Sheet.
 
-- **Scrub erasing never registered.** A gesture start was not recorded. Fast strokes now
-  sample the whole segment.
-- **Hosted art floated after a slice.** Art on a sliced-away wall stayed visible; hosted
-  items now follow their wall.
-- **Inverted story focus.** Focus ghosted the focused story and kept the one below; touching
-  a band no longer counts as being in it.
-- **Pop-ups closed by tour demos.** A tour demo's re-render made the click target detached,
-  which closed open pop-ups.
-- **Overlapping placements.** The reading chip sat over the Sheet. The floating section
-  editor sat over the Card and the dock. Toasts sat over the palette column.
-- **Find stayed open** after losing focus. Its current-scope ranking was missing.
-- **Plan labels under furniture.** Room labels were painted beneath objects.
+Fixed during the round 2 pass:
 
-## 7. Preserved boundaries and prototype shortcuts
+- **Openings painted behind their wall.** Hosted items now draw just in front of their
+  host's depth.
+- **The cutaway hid the wall of a selected opening.** The selection's host is spared.
+- **The Card collided with the Edit Shape pill** in Section 2D. The pill was replaced by the
+  3D \| Section segment.
+- **Overlay Index over the dock in iPad portrait.** The overlay now ends above the dock row,
+  and its scrim leaves the dock usable.
+- **Sheet tint competing with Focus.** It is outline-only under Focus.
+- **No-op drags entered Undo.** A turn that snapped back to 0° recorded "Turn". Drags that
+  change nothing no longer commit.
+- **Wall thickness inverted with drag direction.** It is now symmetric about the wall's
+  line.
+- **A tour step pointed at the hidden Index** on narrow frames.
+
+## 8. Preserved boundaries and prototype shortcuts
 
 **Preserved:**
 
-- One canonical selection across lenses.
-- The Card holds the selected identity and never holds tool state; the Index is a
-  navigation projection.
-- Levels are authored, never inferred from surfaces; Room derivation and Layout ownership
-  are unchanged.
-- Temporary readings (Slice, cutaway, Focus, Look through) are never source and always have
-  *Put back*.
-- One Camera authority behind every reading and the Preview.
-- Undo is separate from Esc.
-- Erasing sets hosted things aside, lets derived Rooms follow their walls, leaves roofs as
-  repairable loose ends, and names Experience references without re-pointing them.
+- One canonical selection; one Camera authority behind every reading, including Section 2D.
+- Chronological Undo, kept separate from Esc.
+- The Card holds identity and never tool state.
+- Levels are authored; surfaces and pins are not Levels.
+- Temporary readings (Slice, cutaway, Focus, Look through, Section 2D) are never source.
+- Erasing sets hosted things aside and names cross-domain consequences.
 - Preview is isolated from editor machinery.
 
 **Shortcuts (not proposals):**
 
 - Snapshot Undo.
-- Painter's-algorithm SVG; a full redraw of the dense museum takes about 250 ms in the
-  browser. This is not a performance claim.
-- Bounding and centroid lasso.
+- Painter's-algorithm SVG, with hosted items sorted by their host.
+- The finite Slice cuts by each entity's plan centre, not by geometry.
+- Roofs swept as one profile; roof-local Section 2D is a mock camera.
 - Heuristic stroke reading.
-- Roofs swept as one profile across a rectangle.
+- Bounding and centroid lasso.
 - Mock Camera interpolation.
-- Mock dense data, generated by `dense.js`.
+- Mock dense data.
 - No persistence.
 
 None of these implies a format, an evaluator or an algorithm.

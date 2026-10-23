@@ -1,4 +1,4 @@
-// Shared state for the production-shell wireframe (round 1.1).
+// Shared state for the production-shell wireframe (round 2).
 // One mutable model object M (replaced in place on Undo / scenario change), one UI state S,
 // render-time scratch R. Every mechanism is a prototype shortcut; see DESIGN-NOTE.md.
 import * as SC from './scene.js';
@@ -27,7 +27,7 @@ export const S = {
   lens: 'world', reading: '3d', elevFace: 'S', projection: 'axo', az: 35, overhead: 'xray',
   prefs: { topDown: 'paper' }, // application viewing preference: top-down readings settle onto paper, or keep shaded 3D
   tool: 'select', inkTip: 'sketch', sliceMode: 'through', measureMode: 'distance', eraseMode: 'scrub',
-  eraseFilter: { wall: true, opening: true, object: true, artwork: true, roof: true }, eraseFilterOpen: false,
+  eraseFilter: { wall: true, opening: true, object: true, artwork: true, roof: true }, eraseFilterOpen: false, palOpen: true, inkShape: false,
   brush: { type: 'paint', name: 'Clay', color: '#c98b6b', scope: 'face' }, brushPick: false,
   sel: null, hover: null, scope: { st: null, lv: null, room: null }, facet: 'all', tree: new Set(), search: '', more: {},
   indexOpen: true, indexOverlay: false, peek: false, cardMore: false,
@@ -35,14 +35,18 @@ export const S = {
   instrument: null, viewMore: false, appMenu: false, ctx: null, readChip: null, toast: null,
   placing: null, slice: null, look: null, lift: false, meas: null, ink: null,
   marked: new Set(), lassoPoly: null, erase: null, confirm: null,
-  editShape: null, sizeOpen: null,
+  editShape: null, sizeOpen: null, hh: null, tickFlash: null,
   cams: {}, eye: { pos: [3.6, -4.5, 1.6], target: [6, 3, 1.5] },
   guideOpen: false, playing: false, t: 0, follow: false, lookThrough: null, preview: null,
   width: 'fill', mid: false,
-  cmp: { index: 'scope', collapse: 'crumb', eraser: 'context', threshold: 'simple', edit: 'object', handles: 'progressive', toolColor: true },
+  cmp: null, // set below from CMP0
   find: { q: '', open: false, idx: 0 },
   tour: null, snap: true, grid: true,
 };
+
+/** Round 2 defaults for the open choices (Wireframe ▸ Compare); the first option of each is the recommendation. */
+export const CMP0 = { collapse: 'crumb', eraser: 'filter', threshold: 'simple', section: 'stage', manip: 'rays', handles: 'progressive', arch: 'rays', palCue: 'caret', pen: 'context', toolColor: true };
+S.cmp = { ...CMP0 };
 
 // ---------------- render scratch ----------------
 export const R = { V: { x: 0, y: 0, w: 1, h: 1, k: 1, ox: 0, oy: 0 }, CAM: null, CENT: {}, mode: '', D: null, box: SC.WORLD_BOX };
@@ -131,7 +135,7 @@ export function toast(msg, refusal = false, action) {
 }
 
 // ---------------- cameras & mapping ----------------
-export function camKey() { return S.look ? `look-${S.look.kind}` : S.reading === 'elev' ? `elev-${S.elevFace}` : S.reading + (S.reading === '3d' ? S.projection : ''); }
+export function camKey() { return S.look ? `look-${S.look.kind}` : S.reading === 'elev' ? `elev-${S.elevFace}` : S.reading === 'rsect' ? `rsect-${S.editShape?.id}` : S.reading + (S.reading === '3d' ? S.projection : ''); }
 export function camState() { const k = camKey() + S.scenario; return S.cams[k] || (S.cams[k] = { z: 1, pan: [0, 0] }); }
 export const focal = (lens) => lens * 0.889;
 export function followPose() { if (!(S.lens === 'experience' && S.guideOpen && S.follow)) return null; return UI.evalGuide(S.t).pose; }
@@ -145,14 +149,17 @@ export function currentCam() {
     case 'elev': return SC.camera('elev', { face: S.elevFace });
     case 'eye': return SC.camera('persp', { pos: S.eye.pos, target: S.eye.target, F: focal(24) });
     case 'section': return sectionCam();
+    case 'rsect': return roofSectionCam();
   }
   return SC.camera('axo', { az: S.az });
 }
 export function sliceFrame(sl = S.slice) { const d = SC.norm(SC.sub(sl.b, sl.a)); let n = [-d[1], d[0]]; if (sl.flip) n = [-n[0], -n[1]]; return { d, n }; }
+/** Focused roof Section 2D: the same Camera, looking along the roof's ridge at its own section plane. */
+function roofSectionCam() { const r = ent(S.editShape?.id); if (!r) return SC.camera('axo', { az: S.az }); const x = S.editShape.x ?? (r.x0 + r.x1) / 2; return SC.camera('sect', { a: [x, r.y0], d: [0, 1], n: [1, 0] }); }
 function sectionCam() { const { d, n } = sliceFrame(); return SC.camera('sect', { a: S.slice.a, d, n }); }
 export const isPersp = (c) => c && c.kind === 'persp';
 /** Paper vs mat is a viewing preference applied per reading; it never changes the reading or the source. */
-export function readingIsTopDownOrFlat() { return S.look ? true : ['plan', 'elev', 'section'].includes(S.reading); }
+export function readingIsTopDownOrFlat() { return S.look ? true : ['plan', 'elev', 'section', 'rsect'].includes(S.reading); }
 export function ground() {
   if (S.lookThrough || followPose()) return 'mat';
   if (S.look) return 'paper';

@@ -80,6 +80,8 @@ export const ICONS = {
   chevronLeft: '<path d="M15 6 L9 12 L15 18"/>',
   expand: '<path d="M14 4 H20 V10 M10 20 H4 V14 M20 4 L13 11 M4 20 L11 13"/>',
   minimize: '<path d="M20 4 L14 10 M14 5 V10 H19 M4 20 L10 14 M10 19 V14 H5"/>',
+  shape: '<rect x="4" y="4" width="16" height="16" rx="2.5" stroke-dasharray="3 2.4"/><path d="M9 15 L12 8 L15 15 Z"/>',
+  bend: '<path d="M4 18 Q12 4 20 18"/><circle cx="12" cy="11" r="1.6" fill="currentColor" stroke="none"/>',
   travel: '<path d="M7 12 H21 M17 8 L21 12 L17 16"/><path d="M3 9 H6 M3 15 H6"/>',
 };
 export function icon(name, size = 18) {

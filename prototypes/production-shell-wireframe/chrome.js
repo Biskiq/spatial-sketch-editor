@@ -1,4 +1,4 @@
-// Chrome around the Stage: Head (with live Find), Index (two navigation models + collapse
+// Chrome around the Stage: Head (with live Find), Index (scope + facets, two collapse
 // treatments) and the contextual Card (inline dimensions, progressive detail).
 import { icon } from './icons.js';
 import * as SC from './scene.js';
@@ -98,7 +98,7 @@ const FACETS = [['all', 'All', 'layers'], ['room', 'Rooms', 'plan'], ['wall', 'W
 function inScope(i, sc) { if (sc.room) return i.rooms.includes(sc.room) || i.e.id === sc.room; if (sc.lv) return i.lv === sc.lv; if (sc.st) return i.st === sc.st; return true; }
 function irow(e, meta, opts = {}) {
   const sel = S.sel === e.id ? ' sel' : '';
-  return `<div class="irow${sel}${opts.cls || ''}" style="--d:${opts.depth || 0}" data-hover="${e.id}">${opts.tw != null ? `<button class="tw" data-act="tw" data-k="${opts.tw}" aria-expanded="${S.tree.has(opts.tw)}">${icon(S.tree.has(opts.tw) ? 'chevronDown' : 'chevronRight', 12)}</button>` : opts.depth != null && S.cmp.index === 'tree' ? '<span class="tw"></span>' : ''}<button class="nmb" data-act="${opts.act || 'sel'}" data-id="${e.id}">${icon(opts.ic || kindIcon[e.kind] || 'dot', 15)}<span class="nm">${esc(e.name)}</span><span class="mt">${meta || ''}</span></button>${opts.enter ? `<button class="enter" data-act="scope" data-k="room" data-id="${e.id}" title="Go into ${esc(e.name)}">${icon('chevronRight', 13)}</button>` : ''}</div>`;
+  return `<div class="irow${sel}${opts.cls || ''}" style="--d:${opts.depth || 0}" data-hover="${e.id}"><button class="nmb" data-act="${opts.act || 'sel'}" data-id="${e.id}">${icon(opts.ic || kindIcon[e.kind] || 'dot', 15)}<span class="nm">${esc(e.name)}</span><span class="mt">${meta || ''}</span></button>${opts.enter ? `<button class="enter" data-act="scope" data-k="room" data-id="${e.id}" title="Go into ${esc(e.name)}">${icon('chevronRight', 13)}</button>` : ''}</div>`;
 }
 function metaFor(e, ctxRoom) {
   if (e.kind === 'wall') { const rs = roomsOfWall(e.id); return rs.length > 1 ? `⇄ ${esc(rs.find((r) => r.id !== ctxRoom)?.name || rs[1].name)}` : `${SC.wallLen(e).toFixed(1)} m`; }
@@ -113,7 +113,8 @@ export function renderIndex() {
   const overlay = S.mid;
   if (!S.indexOpen) {
     el.className = 'index gone'; el.innerHTML = '';
-    sh.innerHTML = S.cmp.collapse === 'peek' ? `<div class="peekzone" data-act="peekzone"></div>${S.peek ? `<button class="peektab" data-act="indexopen" title="Show the Index (\\)">${icon('indexPanel', 15)}<span>Index</span></button>` : ''}` : '';
+    // edge treatment: a minimal translucent arrow, no rail; hover or focus brightens it, a tap on the edge opens the Index
+    sh.innerHTML = S.cmp.collapse === 'peek' ? `<div class="peekzone" data-act="indexopen"></div><button class="peekarrow${S.peek ? ' on' : ''}" data-act="indexopen" title="Show the Index (\\)" aria-label="Show the Index">${icon('chevronRight', 16)}</button>` : '';
     return;
   }
   const body = indexBody();
@@ -122,7 +123,7 @@ export function renderIndex() {
 }
 function indexBody() {
   const head = `<div class="ihead"><label class="isearch">${icon('search', 14)}<input id="isearch" placeholder="${S.lens === 'world' ? 'Filter places and things' : 'Filter presentations'}" value="${esc(S.lens === 'world' ? S.search : S.exSearch || '')}"></label><button class="iconbtn" data-act="indexclose" title="Hide the Index (\\)">${icon('chevronLeft', 15)}</button></div>`;
-  return head + (S.lens === 'world' ? (S.search.trim() ? searchList() : S.cmp.index === 'tree' ? treeIndex() : scopeIndex()) : UI.expIndex());
+  return head + (S.lens === 'world' ? (S.search.trim() ? searchList() : scopeIndex()) : UI.expIndex());
 }
 function searchList() {
   const q = S.search.trim().toLowerCase(); const { info } = placeIndex();
@@ -133,7 +134,7 @@ function searchList() {
   return h + '</div>';
 }
 
-// ----- Model B: scope + facets (drill in, breadcrumb segments switch siblings) -----
+// ----- Scope + facets (drill in, breadcrumb segments switch siblings) -----
 function scopeIndex() {
   const sc = scopeNow(); const { info } = placeIndex();
   let h = `<div class="crumbs">`;
@@ -182,38 +183,9 @@ function roomContents(room, depth) {
 }
 function trayHtml() { return `<div class="igroup"><span>Set aside</span><span>${M.tray.length}</span></div>` + M.tray.map((t, i) => `<div class="irow"><span class="nmb">${icon('layers', 15)}<span class="nm">${esc(t.name)}</span></span><button class="tbtn ghost" data-act="untray" data-i="${i}">Put back</button></div>`).join(''); }
 
-// ----- Model A: outline tree (structure ▸ level ▸ room ▸ kind groups), lazy and capped -----
-function treeIndex() {
-  const { info } = placeIndex(); let h = '<div class="ilist tree">';
-  const cap = (key, list, fn) => { const n = S.more[key] || 40; return list.slice(0, n).map(fn).join('') + (list.length > n ? `<button class="imore" style="--d:4" data-act="more" data-k="${key}">Show more (${list.length - n})</button>` : ''); };
-  for (const s of M.structures) {
-    const ks = `t:${s.id}`; h += irow({ ...s, kind: 'structure' }, '', { depth: 0, tw: ks, act: 'tw', ic: 'elevation' }).replace(`data-act="tw" data-id`, `data-act="tw" data-k="${ks}" data-id`);
-    if (!S.tree.has(ks)) continue;
-    for (const l of M.levels.filter((l) => l.structure === s.id).sort((a, b) => b.z - a.z)) {
-      const kl = `t:${l.id}`; h += irow({ ...l, kind: 'level' }, f2(l.z), { depth: 1, tw: kl, act: 'tw', ic: 'layers' }).replace(`data-act="tw" data-id`, `data-act="tw" data-k="${kl}" data-id`);
-      if (!S.tree.has(kl)) continue;
-      const rooms = M.rooms.filter((r) => r.level === l.id).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-      h += cap(kl, rooms, (r) => {
-        const kr = `t:${r.id}`; let x = irow({ ...r, kind: 'room' }, metaFor({ ...r, kind: 'room' }), { depth: 2, tw: r.type === 'platform' ? null : kr });
-        if (S.tree.has(kr)) {
-          const items = [...info.values()].filter((i) => i.rooms.includes(r.id));
-          for (const [k, t] of [['wall', 'Walls'], ['opening', 'Openings'], ['artwork', 'On the walls'], ['object', 'In the room']]) {
-            const list = items.filter((i) => i.e.kind === k).map((i) => i.e); if (!list.length) continue;
-            const kg = `${kr}:${k}`; x += `<div class="irow grp" style="--d:3"><button class="tw" data-act="tw" data-k="${kg}">${icon(S.tree.has(kg) ? 'chevronDown' : 'chevronRight', 12)}</button><button class="nmb" data-act="tw" data-k="${kg}"><span class="nm">${t}</span><span class="mt">${list.length}</span></button></div>`;
-            if (S.tree.has(kg)) x += cap(kg, list, (e) => irow(e, metaFor(e, r.id), { depth: 4 }));
-          }
-        }
-        return x;
-      });
-    }
-  }
-  if (M.tray.length) h += trayHtml();
-  return h + '</div>';
-}
-/** Reveal the selection in whichever Index model is active. */
+/** Reveal the selection in the Index. */
 export function revealInIndex(id) {
-  const e = ent(id); if (!e) return; const { info } = placeIndex(); const i = info.get(id); if (!i) return;
-  if (S.cmp.index === 'tree') { if (i.st) S.tree.add(`t:${i.st}`); if (i.lv) S.tree.add(`t:${i.lv}`); if (i.rooms[0]) { S.tree.add(`t:${i.rooms[0]}`); S.tree.add(`t:${i.rooms[0]}:${e.kind === 'import' ? 'object' : e.kind}`); } }
+  const e = ent(id); if (!e) return;
   setTimeout(() => document.querySelector(`.irow.sel`)?.scrollIntoView({ block: 'nearest' }), 0);
 }
 
@@ -222,8 +194,7 @@ export function renderCard() {
   const el = $('#card'); const e = UI.selEntity();
   if (!e || S.preview || S.lookThrough) { el.innerHTML = ''; return; }
   const shift = S.sheet.side === 'right' && UI.sheetVisible() ? ' shift' : '';
-  const wide = S.editShape && S.cmp.edit === 'card' && ent(e.id)?.kind === 'roof' ? ' wide' : '';
-  el.innerHTML = `<section class="card${shift}${wide}" aria-label="Selected: ${esc(e.name)}">${S.lens === 'world' ? (ent(e.id) ? worldCard(ent(e.id)) : e.kind === 'level' ? levelCard(e) : foreignCard(e)) : ent(e.id) ? subjectCard(e) : UI.expCard(e)}</section>`;
+  el.innerHTML = `<section class="card${shift}" aria-label="Selected: ${esc(e.name)}">${S.lens === 'world' ? (ent(e.id) ? worldCard(ent(e.id)) : e.kind === 'level' ? levelCard(e) : foreignCard(e)) : ent(e.id) ? subjectCard(e) : UI.expCard(e)}</section>`;
 }
 function cardHead(kicker, name, renamable = true) {
   return `<div class="ch"><span class="kick">${kicker}</span><button class="iconbtn sm" data-act="ctxcard" title="More actions">${icon('more', 15)}</button><button class="iconbtn sm" data-act="deselect" title="Deselect (Esc)">${icon('close', 15)}</button></div><h2 ${renamable ? 'data-act="rename" title="Rename"' : ''}>${esc(name)}</h2>`;
@@ -241,7 +212,7 @@ export function looksFor(e) { return LOOKS[e.kind] || []; }
 /** The ordinary, supported dimensions of a subject: the Card is their one writer. */
 export function dimFields(e, adv = false) {
   const F = (k, l, v, o = {}) => ({ k, l, v, ...o });
-  if (e.kind === 'wall') return adv ? [F('base', 'Base', f2(e.base)), F('top', 'Top', f2(e.top)), F('th', 'Thick', '0.24', { ro: true })] : [F('len', 'Length', SC.wallLen(e).toFixed(2)), F('ht', 'Height', f2(e.top - e.base))];
+  if (e.kind === 'wall') return adv ? [F('base', 'Base', f2(e.base)), F('top', 'Top', f2(e.top)), F('th', 'Thick', f2(e.th ?? 0.24))] : [F('len', 'Length', SC.wallLen(e).toFixed(2)), F('ht', 'Height', f2(e.top - e.base))];
   if (e.kind === 'object' || e.kind === 'import') return adv ? [F('x', 'East', f2(e.x)), F('y', 'North', f2(e.y)), F('z', 'Base', f2(e.z || 0), { ro: true, t: 'Follows its support' })] : [F('w', e.fit === 'extend' ? 'Length' : 'Width', f2(e.w)), F('d', 'Depth', f2(e.d)), F('h', 'Height', f2(e.h)), F('rot', 'Turn°', Math.round(e.rot || 0))];
   if (e.kind === 'opening') { const w = SC.wallById(M, e.host); return adv ? [F('at', 'Along', f2(e.at))] : [F('w', 'Width', f2(e.w)), F('h', 'Height', f2(e.h)), F('sill', 'Sill', f2(e.sill - (w?.base || 0)))]; }
   if (e.kind === 'artwork') return adv ? [F('at', 'Along', f2(e.at))] : [F('w', 'Width', f2(e.w)), F('h', 'Height', f2(e.h)), F('c', 'Centre', f2(e.c - (SC.wallById(M, e.host)?.base || 0)))];
@@ -261,12 +232,14 @@ function kicker(e) {
   if (e.kind === 'roof') return `Roof${rm ? ' over ' + esc(rm.name) : ''}`;
   if (e.kind === 'room') return e.walls.length ? `Room · ${esc(lv?.name || '')}` : 'Platform · a surface, not a Level';
   const sup = UI.supportOf?.(e);
+  if (e.type === 'profile') return `Ordinary shape · ${esc(rm?.name || 'Outside')}${sup ? ` · on ${esc(sup)}` : ''}`;
   return `${e.imported ? 'Imported · ' : ''}${esc(rm?.name || 'Outside')}${sup ? ` · on ${esc(sup)}` : ''}`;
 }
 function worldCard(e) {
   let h = cardHead(kicker(e), e.name);
   if (S.editShape && S.editShape.id === e.id) return h + UI.editShapeCard(e);
   h += fieldsHtml(e, dimFields(e));
+  if (e.type === 'profile') h += `<div class="inexp">${icon('shape', 13)}<span>${e.h < 0.1 ? 'A drawn profile. Pull it up with the height arrow.' : 'Pulled from its profile, which stays editable.'} Taper and Revolve would join here later.</span></div>`;
   const lo = M.loose.find((l) => l.id === e.id);
   if (lo) h += `<div class="cond">${icon('warning', 14)}<span>${esc(lo.msg)}</span><button data-act="repair">Repair</button></div>`;
   const ui = usedIn(e.id);
@@ -318,6 +291,7 @@ export function applyDim(k, val) {
       raw.top = top;
     } else if (k === 'len') { if (v < 0.3) return refuse('A wall needs at least 0.30 m.'); const L = SC.wallLen(raw); const d = [(raw.b[0] - raw.a[0]) / L, (raw.b[1] - raw.a[1]) / L]; raw.b = [raw.a[0] + d[0] * v, raw.a[1] + d[1] * v]; }
     else if (k === 'base') raw.base = v;
+    else if (k === 'th') { if (v < 0.05 || v > 1.2) return refuse('Thickness between 0.05 and 1.20 m.'); raw.th = v; }
   } else if (e.kind === 'object' || e.kind === 'import') {
     if (['w', 'd', 'h'].includes(k) && v <= 0.02) return refuse('Too small to keep.');
     if (k === 'h') UI.carryRiders(raw, raw.h, v);
