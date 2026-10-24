@@ -62,7 +62,9 @@ verbatim report untouched.
   solvers (CGAL and ports) and Manifold, with measured probes on the P3 fixtures, for T1 / RR-2
   library choices. Evidence, not a dependency decision.
 - **Cinematic-scale computational strategy:** [`cinematic-scale-computational-strategy.md`](./cinematic-scale-computational-strategy.md)
-  works backward from a richly detailed museum on an 8 GB laptop. It separates semantic influence
+  works backward from a richly detailed museum on an 8 GB laptop. It treats the problem as work
+  elimination: a necessary-work ratio per stage, credit only for eliminated or reused work, and
+  a fixed-view, fixed-edit sweep that adds irrelevant complexity. It separates semantic influence
   from visual influence, and ranks five moves, each removing a category of work: maintained
   derivations, architecture-driven visibility, bounded GPU-native residency, describe-once
   sharing and screen-error detail. Each has its limit and falsifier. Measurements, arithmetic

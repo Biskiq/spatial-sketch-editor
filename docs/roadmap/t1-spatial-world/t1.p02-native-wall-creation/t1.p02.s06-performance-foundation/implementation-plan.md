@@ -55,9 +55,10 @@ The [cinematic-scale computational strategy](../../../../../broad-research/cinem
 works backward from a richly detailed museum on an 8 GB laptop. It is research input, not a
 decision. S06 takes from it only what is measurable now, inside the existing authorities:
 
+- the work-elimination accounting (I6);
 - the H9 row;
-- the museum-shaped census layout (B);
-- the deterministic censuses E1–E4 and the render counters (C).
+- the museum-shaped census layout and its irrelevance sweep (B);
+- the deterministic censuses E1–E5 and the render counters (C).
 
 Its visibility, residency, sharing, detail and scheduling moves are owner proposals (F).
 
@@ -121,6 +122,17 @@ an edit affects a small region, even when that work is O(N). A project 10× or 1
 the design thought experiment. It is **not** a benchmark, promise or gate. The ratified S/M/L hard
 rows remain the acceptance gates.
 
+**Work elimination, not acceleration.** S06 asks why work is done before asking how to do it
+faster. For each stage, the necessary-work ratio R is today's units of work over the units the
+result depends on: the edit's affected set, the visible output, or the resident set a view needs
+([strategy §3](../../../../../broad-research/cinematic-scale-computational-strategy.md#3-a-work-elimination-problem-not-a-speed-problem)).
+
+- “10× / 100× less unnecessary work” is the hypothesis R ≥ 10 / R ≥ 100 for a named stage and
+  workload. It is not an end-to-end promise.
+- A flow speeds up by at most 1 / ((1 − f) + f / R), where f is the eliminable stages' share of the
+  flow's time. So every R is reported with its share of the flow.
+- The decisive test holds the view and the edit fixed while adding irrelevant complexity (E5).
+
 **Why this is needed now, not only at scale.** This is a hand calculation from existing evidence;
 Bench 1 confirms or refutes it.
 
@@ -166,6 +178,14 @@ it does not land, the measured violation is recorded as a finding.
   compile on the same input. The full compile stays the authority, the fallback and the differential
   oracle. Incremental evaluation runs the same compiler per entity; it is never a second
   reconstruction (rule 6).
+- **I6, honest accounting:** count oracles count work on every thread, in every frame and in every
+  cache fill. Each landed change is classified as eliminated, reused (by proven content identity),
+  deferred, moved or approximated:
+  - only eliminated and reused work is credited as a reduction;
+  - deferred work is credited only when the session provably never needs it;
+  - work moved to a worker, a later frame, a cache, a server or a loading interval is reported with
+    its total cost and where it went;
+  - S06 approximates nothing.
 
 **Hypothesis matrix, by expected end-to-end benefit.** The evidence column cites the trusted base
 (`696af6ea`). The estimates are the A/B/C workload counts and the stated assumptions, not measurements.
@@ -244,7 +264,10 @@ an owner proposal in F.
    **Smoke check.** Before each handover, the agent runs a smoke check to prove the flows execute:
    every flow at every tier (S, M, L, XL and realistic-L), one run, no warmup, one sample. This
    catches timeouts or stack failures before the owner spends a pass. A smoke check is labelled
-   “smoke, not evidence” and is never cited as a measurement.
+   “smoke, not evidence”, and its timings are never cited as a measurement. The deterministic
+   counts it reads at a fixed view and edit (draws, triangles, geometries, textures, uploads,
+   resident bytes) are not timings. They are recorded as census data for E5, labelled “count,
+   not timing”.
 
    **Pass accounting.** A contaminated pass (A.8) or an aborted one (a timeout, a stack failure or a
    crash) is recorded with its cause. It does not silently count as one of the three passes, and it
@@ -294,6 +317,25 @@ an owner proposal in F.
   reviews that generator, because it lives in the shared harness. The layout feeds the censuses
   (C) and serves as a correctness-lane fixture. It is **not** a bench tier. It joins a pass only as
   a report-only row that the owner enables for that pass, like the headroom probes.
+- **Irrelevance sweep family.** The museum-shaped layout at ×1 is the base. Its fixed focus wing is
+  its visually richest part:
+  - ornament placements;
+  - textured approved derivatives, with their animation where they carry it;
+  - the Stage's existing shadowed light;
+  - one Camera View inside the wing;
+  - one fixed Wall edit for each of length, angle and rigid move.
+
+  The generator adds complexity elsewhere at ×3 and ×10 in two variants:
+  - **H, hidden and independent:** Rooms, Walls, placements and materials outside the fixed edit's
+    changed set and not visible from the fixed View or its next Stop. Part of it sits inside the
+    view frustum behind Walls, to separate occlusion from frustum culling;
+  - **D, distant and visible:** content seen through the enfilade's portals at a small projected
+    size.
+
+  Where generation completes within a stated time bound, a ×30 tier is added; beyond the largest
+  tier, slopes are extrapolated and labelled arithmetic. Irrelevance is verified, not assumed: E1
+  shows the additions lie outside the fixed edit's changed set, and E2 shows variant H is not
+  visible. The sweep uses only landed features: no new material, reflection or lighting feature.
 - **Headroom probes (optional; owner opt-in per pass; off by default).** A transparent, animated
   water-like surface shader and a fixed per-frame worker CPU budget can stand in for future
   simulation. They are harness-only, report-only and disposable, and leave product code unchanged.
@@ -345,7 +387,11 @@ them for the F7 orbit window and for the first frame of F2 and F10:
   RGBA8 with mips: 2048² × 4 B × 4/3 ≈ 21.3 MiB each (arithmetic);
 - materials created per placement;
 - shader-program compile time at the first frame;
-- idle time and long tasks per frame.
+- idle time and long tasks per frame;
+- planner evaluations per presented frame. Each dispatched pointer move runs the planner
+  synchronously today (`routes/project/[projectId]/spatial/+page.svelte:1712` into
+  `layout.adapter.ts:411`). Chrome's frame-aligned input coalescing should keep that near one,
+  which is a hypothesis this counter checks.
 
 **Deterministic censuses (agent-run, not benchmarks).** These are counts computed in Node or
 Vitest over fixture data, so they cost none of the three passes. Each is recorded in the acceptance
@@ -387,6 +433,24 @@ record with its fixture digest and labelled “census, not timing”. Each is di
 
   Compare each with the 384 MiB laptop-A GPU-memory row. This is evidence for the owner proposals
   on GPU-compressed import output and residency (F). It does not change `creator-import@1`.
+- **E5, irrelevance sweep.** Hold the focus wing's View and each fixed edit constant across ×1, ×3
+  and ×10 (and ×30 where built), for variants H and D. Count against the added entities:
+  - in Node: entities evaluated, validations, pair visits and whole-project passes per move and per
+    commit; objects cloned and history bytes per step;
+  - from the smoke run's counts: draw calls, triangles, shadow draws, geometries built and uploaded
+    per edit, materials created and resident texture bytes at the fixed View.
+
+  Report each counter's slope. The ideal is flat under H, and under D growth only with screen
+  contribution, as the [strategy §4](../../../../../broad-research/cinematic-scale-computational-strategy.md#4-the-decisive-experiment-does-cost-grow-with-irrelevant-complexity)
+  table states. A non-zero slope names its eliminating mechanism: a matrix row S06 lands, or an
+  owner proposal (F). Variant H at ×10 is also the point where R is computed for each stage.
+  E5 runs before Bench 1 on the trusted base, and again before each handover on the revision
+  handed over.
+
+**Sweep latency rows (report-only, inside the existing passes).** Every bench also runs F3 (the
+fixed edits) and F7 (the fixed View) at sweep ×1 and ×10, variant H, with the same method. These
+rows add no pass. Each handover states the time they add, and the owner may drop them for a pass.
+They show whether interaction latency, not only work, grows with irrelevant complexity.
 
 ### D. Algorithm work
 
@@ -488,7 +552,9 @@ From the measured slope, propose whether the L budgets or the representative wor
 amendment, for example whether realistic-L should replace the grid-only L tier. Also propose, as
 owner decisions with their Bench evidence and hand-calculated 10× / 100× headroom:
 
-- adding the I1–I5 locality invariants to the contract as count-based rows;
+- adding the I1–I6 locality and accounting invariants to the contract as count-based rows,
+  including “flat under hidden, independent complexity” rows for edit work, uploads and draws at a
+  fixed View and edit (E5);
 - entity-level structural sharing (H5);
 - batched, culled rendering (H6), with cell-and-portal visibility over Rooms and Openings
   (strategy M2, sized by E2) and instanced submission with shared materials (M4, sized by E3) as
@@ -514,7 +580,7 @@ run a full benchmark pass; between passes they work from Bench 1's data.
 
 1. **Set up (agent).** Run the start step and record the trusted base. Build the method and
    workloads (A, B), and the harness-flag stage marks and render counters that C needs. Run the
-   censuses E1–E4 and record them. Prove the flows execute with a smoke check only. Hand over to
+   censuses E1–E5 and record them. Prove the flows execute with a smoke check only. Hand over to
    the owner (A.7).
 2. **Bench 1: initial (owner).** One pass on the M2 with the new method at S, M and L, plus XL and
    the realistic-L load as report-only. It includes the old-method F2 S/M comparison (A.6) and the
@@ -522,14 +588,16 @@ run a full benchmark pass; between passes they work from Bench 1's data.
 3. **Optimize (agent).** Characterize from Bench 1 (C) and refit each matrix row's cost model to
    the measured per-stage times. Then land D.1–D.6 in matrix order and explore libraries (E). Check
    each change by hand calculation as defined below. Correctness lanes, differentials and count
-   oracles run as usual, since they are not benchmarks. Hand over with a predicted result per row
-   and per hypothesis.
+   oracles run as usual, since they are not benchmarks. Rerun E5 on the optimized revision, and
+   classify every landed change under I6. Hand over with a predicted result per row and per
+   hypothesis, including each counter's predicted E5 slope.
 4. **Bench 2: rerun (owner).** The same pass and workloads, on the optimized revision. The agent
    records it next to the predictions and explains every prediction miss beyond noise.
    **Falsification rule:** a hypothesis is refuted for this slice when the target stage's measured
    time does not fall within the stated margin of its prediction. This applies even when its count
    oracle dropped as predicted, because the cost model is then wrong; the agent re-attributes from
-   the traces.
+   the traces. A hypothesis that claims locality is also refuted, before any bench, if its E5
+   counter slope under variant H is not flat.
 5. **Fix (agent).** Resolve what Bench 2 shows: regressions, mispredictions and remaining hard
    misses. Keep or remove the H1 experiment on its Bench 2 evidence (D.3). Algorithm fixes may continue, but no new library candidate
    enters after Bench 2 (E). Check by hand calculation again and hand over. If a hard miss
@@ -558,7 +626,8 @@ Use the work-checkpoint skill at each handover, since the owner's runs separate 
 | Method | Precomputed JSON load in every flow; setup excluded and reported; old and new wall time in Bench 1; A.6 method validation in Bench 1; contamination rule applied |
 | Workloads | L/XL fixtures, the realistic-L load and the museum-shaped census layout validate; asset sources and licenses recorded; stack isolation recorded without credentials |
 | Characterization | From Bench 1: per-stage attribution and scaling at S/M/L for F2/F3/F4/F7/F8/F13; superlinear stages named; XL and realistic-L load reported; render counters recorded in every bench |
-| Censuses | E1–E4 recorded with fixture digests and labelled “census, not timing”; E1's per-class verdict on H1's premise recorded before Bench 1; E2–E4 attached as evidence to their owner proposals (F) |
+| Censuses | E1–E5 recorded with fixture digests and labelled “census, not timing” or “count, not timing”; E1's per-class verdict on H1's premise recorded before Bench 1; E2–E4 attached as evidence to their owner proposals (F) |
+| Irrelevance and accounting | E5 slopes for every counter on the trusted base and the Bench 3 revision; sweep latency rows from each bench (unless the owner dropped them); each stage's R at variant H ×10 with its share of the flow; every landed change classified under I6, with moved and deferred work reported at its total |
 | Algorithm | Each optimization has an equal-output heavy differential and a count oracle; a recorded hand-calculated prediction; Bench 1 versus Bench 2/3 on the same workload and environment; no format change; boundary and visitor-isolation tests green |
 | Scaling invariants | For every hypothesis S06 lands, its I1–I3 count oracle is green at S, M, L and XL, and its I5 differential is green. For every hypothesis it does not land, the measured violation and its 10× / 100× hand calculation are recorded. H6–H8 and entity-level H5 are proposed to the owner (F), never implemented silently |
 | Budgets | From Bench 3: hard S/M rows for F2, F3, F4, F7, F8, F13 and per-edit evaluation; L hard rows (F3, F4, F8, F13); a hard miss is resolved before Bench 3 or escalated to the owner per D.3; target rows dispositioned |
