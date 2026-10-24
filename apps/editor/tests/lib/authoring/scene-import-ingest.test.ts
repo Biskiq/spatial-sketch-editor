@@ -134,6 +134,42 @@ describe('creator-import@1 — the retained report', () => {
 		expect(outcome.report.placement.pivot).toBe('bottom-centre');
 	});
 
+	it('declares meshopt as required so the GLB carries no fallback bytes', async () => {
+		const bytes = await sourceGlb();
+		const outcome = await prepared([file('chair.glb', bytes)]);
+
+		// The writer keeps a fallback buffer in the JSON even when the extension is
+		// required, and a GLB carries only one BIN chunk. Requiring the extension is
+		// what makes the remaining declaration inert: every buffer past the first is
+		// the marked fallback, whose bytes are layout, never payload. The API's
+		// structure check admits exactly that shape and refuses an optional one.
+		const container = outcome.derivative.bytes;
+		const view = new DataView(container.buffer, container.byteOffset, container.byteLength);
+		const jsonLength = view.getUint32(12, true);
+		const json = JSON.parse(
+			new TextDecoder().decode(container.subarray(20, 20 + jsonLength))
+		) as {
+			buffers: {
+				byteLength: number;
+				extensions?: { EXT_meshopt_compression?: { fallback?: boolean } };
+			}[];
+			extensionsRequired: string[];
+		};
+		expect(json.extensionsRequired).toContain('EXT_meshopt_compression');
+		expect(json.buffers[0]!.extensions).toBeUndefined();
+		for (const buffer of json.buffers.slice(1)) {
+			expect(buffer.extensions?.EXT_meshopt_compression?.fallback).toBe(true);
+		}
+		let offset = 12;
+		let bin: number | null = null;
+		while (offset < container.byteLength) {
+			const length = view.getUint32(offset, true);
+			if (view.getUint32(offset + 4, true) === 0x004e4942) bin = length;
+			offset += 8 + length;
+		}
+		expect(bin).toBe(json.buffers[0]!.byteLength);
+	});
+
 	it('applies the confirmed source-unit scale exactly once', async () => {
 		const bytes = await sourceGlb();
 		const metres = await prepared([file('chair.glb', bytes)]);

@@ -22,7 +22,7 @@ import {
 	type Scene,
 	type Texture
 } from '@gltf-transform/core';
-import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extensions';
 import { getBounds, meshopt, textureCompress } from '@gltf-transform/functions';
 import { canonicalUnitJson } from '@portfolio/project-model/units';
 
@@ -521,6 +521,13 @@ async function writeDerivative(document: Document, meshoptEncoder: unknown): Pro
 	const io = new WebIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
 		'meshopt.encoder': meshoptEncoder
 	});
+	// A GLB carries exactly one buffer: the BIN chunk. An optional
+	// EXT_meshopt_compression makes the writer emit its fallback as a second,
+	// URI-less buffer with no bytes in the container, which is not a readable
+	// GLB — the API's structure check refuses it as soon as the fallback is
+	// larger than the BIN chunk. Requiring the extension (the recipe always
+	// encodes with it) drops the fallback and keeps the derivative self-contained.
+	document.createExtension(EXTMeshoptCompression).setRequired(true);
 	return io.writeBinary(document);
 }
 
