@@ -80,8 +80,26 @@ The F2 resources unit (format 2) carries a model resource with derivative and so
 report digest and placement definition. Scene format 3 may name a catalogue asset or a model resource
 locked in the same envelope. Editor host admission resolves that resource in the envelope, and Save
 checks its complete pin against an approved revision owned by the same project. The visitor/public
-release path remains catalogue-only. Import/review/approve UI, model placement and its full creator
-journey remain later T2 work.
+release path remains catalogue-only. The import procedure that produces these revisions is described in
+the next section.
+
+## Creator model import and placement (T2.P02.S02)
+
+The editor's Import procedure reads one glTF or GLB, or a glTF with its local buffers and maps, in a
+worker loaded only when Import opens. Decoders for Draco, meshopt or KTX2 sources load only when the
+source uses them. Recipe `creator-import@1` keeps every node, empty and mesh, appends one pivot root,
+re-encodes geometry with meshopt and textures as WebP, and caps textures at 2048 px with the reduction
+reported. The review separates observed content (parts, clips and variants) from what Biskiq admits,
+which is the whole object only. The creator confirms metric scale, pivot, footprint and contact (floor
+placement only) and then approves. Approval sits outside source history, and a cancelled, stale or
+project-replaced upload never installs.
+
+The API structure gate admits a required `EXT_meshopt_compression` fallback declaration in a derivative
+and still refuses an optional one. The first placement installs the `model` resource, its exact lock and
+the entity as one accepted result through the resource-granting planner; Undo removes all three. Later
+instances reuse the pins with independent instance identity. The editor resolves each distinct pin once
+per hash and shares its object URL across instances. Preview receives approved-model URLs only as a
+read-only map prop; the public `/p` route passes none.
 
 ## Published release delivery (P22 shipped 2026-09-08)
 

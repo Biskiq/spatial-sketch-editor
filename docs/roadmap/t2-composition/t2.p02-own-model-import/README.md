@@ -2,7 +2,7 @@
 
 **Phase:** T2.P02 · **Status:** registered 2026-10-22. Released scopes and their conditions are
 the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
-covers every scope that list omits. S02 is approved/released; S03 stays `proposed` · **Track:**
+covers every scope that list omits. S02 is shipped (owner-override 2026-10-24); S03 stays `proposed` · **Track:**
 [T2](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
 [T2 operations](../../../operations/t2-composition/README.md) · **Design:**
 [shell draft](./shell-draft.md)
@@ -34,10 +34,12 @@ approved revision. Its [acceptance record](./t2.p02.s01-model-resource-storage-a
 keeps owner-override acceptance, historical review/test identities and later merge-gate evidence distinct.
 The owning assets, Scene-content and persistence references describe current behavior.
 
-Import UI/worker preparation, source-unit scale/pivot confirmation, resource-backed Plan footprint and
-contact, complete manipulation and actual approved-derivative rendering/reopen/Preview remain S02.
-Current creator IDs render a generic footprint fallback; native primitive placement/contact is not
-proof of the complete creator-model journey. The catalogue optimizer is not reused for imports.
+T2.P02.S02 is shipped: import UI and worker preparation, source-unit scale/pivot confirmation,
+resource-backed Plan footprint and contact, and placement with approved-derivative rendering and reopen.
+Its owner-run rows, including Preview pixels, stay unrun and are carried by its
+[acceptance stub](./t2.p02.s02-import-review-approve-place/acceptance.md). Before S02, creator IDs
+rendered a generic footprint fallback; native primitive placement/contact was not proof of the complete
+creator-model journey. The catalogue optimizer is not reused for imports.
 
 ## Formats
 
@@ -72,13 +74,12 @@ lifecycle and prerequisites only.
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T2.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md) | [acceptance and preservation stub](./t2.p02.s01-model-resource-storage-and-admission/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7); accepted by **owner-override** 2026-10-23 for current implementation revision `623a7f73a61496d5df09c9dc0fc69ab5c6737b36`; current-verdict and current-revision evidence prerequisites waived as recorded in the acceptance stub; starts only after `T3.P03.S01` is merged on `main` |
-| T2.P02.S02 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Import, review, approve and place](./t2.p02.s02-import-review-approve-place/implementation-plan.md) | [record](./t2.p02.s02-import-review-approve-place/acceptance.md) | owner-authorized and released 2026-10-23 ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); implementation complete on `t2/p02-s02-import-review-approve-place` with the merge gate green; [record](./t2.p02.s02-import-review-approve-place/acceptance.md) carries the evidence and explicit unrun rows — status stays `approved` until the owner accepts |
+| T2.P02.S02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t2.p02.s02-import-review-approve-place/implementation-plan.md) | [acceptance and preservation stub](./t2.p02.s02-import-review-approve-place/acceptance.md) | owner-authorized and released 2026-10-23 ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); shipped through PR #185 and accepted by **owner-override** 2026-10-24 for implementation tree `082e384c`; current-verdict prerequisite waived as recorded in the acceptance stub; owner-run rows stay unrun |
 | T2.P02.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t2.p02.s03-integrated-final-gate/implementation-plan.md) | [record](./t2.p02.s03-integrated-final-gate/acceptance.md) | not authorized — starts only from its own owner authorization after S01 and S02 are accepted |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
 slice rechecks them at its own trusted base through the runbook start step. No slice here provides a
-gate. S02 carries the post-S01 plan and reconciled shell draft and is owner-authorized/released,
-starting per the release list (`docs/roadmap/now.md`); bounded T1 host review remains required. See the [next parallel batch](../../cross-track-execution.md#next-parallel-batch).
+gate. S02 is shipped; the bounded T1 host review was accepted 2026-10-24. See the [next parallel batch](../../cross-track-execution.md#next-parallel-batch).
 
 ```text
 FINAL PHASE GATE: T2.P02.S03 → ./t2.p02.s03-integrated-final-gate/acceptance.md
