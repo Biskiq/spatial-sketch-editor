@@ -492,6 +492,24 @@ fixed edits) and F7 (the fixed View) at sweep ×1 and ×10, variant H, with the 
 rows add no pass. Each handover states the time they add, and the owner may drop them for a pass.
 They show whether interaction latency, not only work, grows with irrelevant complexity.
 
+**All-visible overview records (optional, report-only).** The owner may attach up to two viewpoint
+records to existing L measurements: a full-footprint Plan overview and a high-oblique 3D overview,
+using the unchanged grid-14 or already-loaded realistic-L fixture, existing F3/F4/F7/F8 windows and
+C's existing counters. Enable them only where setup already supports the state and evidence without
+new fixture, harness or instrumentation work, or delay to Bench 1. They are off by default, owner
+opt-in per existing pass, with added wall time stated; unsupported states/counters stay unmeasured.
+Required measurement windows and cache/Undo state remain isolated from optional segments.
+
+Record pose/scale, reading, Plan parameters and evidenced coverage alongside available frame,
+edit, draw/shadow and rebuild/upload data. In-frame footprints and Plan eligibility do not prove
+exposed surfaces; fog, ceilings and occlusion may leave the intended all-visible case unverified.
+Do not add cutaway rendering or labels to obtain the record. The
+[all-visible and town-overview study](../../../../../broad-research/all-visible-editing-and-town-overview.md#smallest-optional-s06-measurements)
+details interpretation and gaps. These records extend no required instrumentation, smoke coverage,
+workload tier, budget, gate, acceptance row or benchmark pass; E1–E5, H1–H9 and the three owner-run
+passes stay unchanged. Missing coverage never triggers a rerun. Town infrastructure stays a future
+owner proposal under F.
+
 ### D. Algorithm work
 
 Work the [hypothesis matrix](#scaling-objective-and-locality) in this order: H3, then H2, then H4
