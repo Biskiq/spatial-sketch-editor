@@ -316,7 +316,7 @@ migrating existing `partition` Walls, and whether a closed ring may ever be
 intentionally non-enclosing. The owner decided both for C1 on 2026-10-22
 ([batch E](./decisions/batch-e-authorization-2026-10-22.md), E3): Layout format 6 drops the
 authored role with no migration under the pre-baseline rule, and every closed ring encloses.
-They take effect when `T1.P02.S01` lands format 6; until then the encoding above is current.
+`T1.P02.S01` landed format 6 with derived Wall roles on 2026-10-23 (PR #179).
 Division keeps the landed Room reconciliation (P23.8 lineage:
 split survivor by evidence order, one Room born). The creator-facing expression is
 [PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
@@ -384,7 +384,7 @@ editor session/selection/history/gizmo code.
 [ratification record](./decisions/product-convergence-ratification-2026-10-22.md). This section records
 the architecture destination in its owning reference. It adds no shipped capability, changes no accepted
 gate identity and grants no implementation permission. Review disposition is in the
-[amendment manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
+[amendment manifest](../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 **Identity and revision.** The owner of a semantic fact publishes correspondence when an edit
 changes an addressed identity, interval or parameterization. Layout transport maps affected input

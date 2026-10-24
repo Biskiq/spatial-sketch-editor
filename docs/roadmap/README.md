@@ -32,9 +32,9 @@ fabricates a merge, an acceptance or a closure.
 
 ## Production implementation hold
 
-**Owner direction, 2026-10-22:** production implementation is held across tracks, while the
-[convergence round](./product-convergence-2026-10-21.md#scope-and-sequence) resolves direction,
-architectural commitments and the next batch/DAG. Earlier authorization records and accepted
+**Owner direction, 2026-10-22:** production implementation is held across tracks, following the
+[ratified convergence round](../reference/decisions/product-convergence-ratification-2026-10-22.md) establishing direction and architectural commitments. The
+[current coordination](./cross-track-execution.md#next-parallel-batch) routes the next batch/DAG. Earlier authorization records and accepted
 gate/phase evidence remain valid history; they do not release this hold. Research, documentation
 and bounded disposable probes may proceed within their commissioned step. Research and
 reconciliation are complete; the hold still applies to every implementation scope absent from
@@ -162,92 +162,34 @@ decisions are archived under [`../archive/technical/p23/`](../archive/technical/
 [`../archive/technical/p23b/`](../archive/technical/p23b/). No P-level execution route remains:
 PR #115 replaced that sequence with the tracks above.
 
-## Unscheduled proposals
+## Current coordination and proposal provenance
 
-Each entry here registers no phase or slice of its own: it is either a proposal, a coordination
-proposal plus its bounded batch authorization, or a standalone maintenance scope. Registering
-execution stays an owner decision, an authorization recorded here covers only the slices it names,
-and nothing in this section is lifecycle or gate readiness.
+**Where things stand (2026-10-23).** A routing index, not a status authority: each phase
+README's slice register owns child status, [now.md](./now.md) owns launch conditions, and the
+[current coordination](./cross-track-execution.md#next-parallel-batch) owns the DAG, shared-file
+writers and merge order. Update this index only in the coordination change that moves a row.
 
-- **Product convergence (commissioned 2026-10-21; core ratified 2026-10-22), PR #173.** The
-  [convergence plan](./product-convergence-2026-10-21.md) completes research, owning-contract
-  reconciliation and the canonical roadmap/DAG. The owner accepted the core package and
-  explicitly authorized the permanent on-demand performance workflow
-  ([decision record](../reference/decisions/product-convergence-ratification-2026-10-22.md)).
-  Consumer decisions remain deferred; no new gate readiness, phase registration, milestone
-  acceptance or implementation permission follows. The H0 proposal and conditional C1/C2/S01
-  lanes identify the next scopes to register/authorize. P4, T4 and the production hold remain.
+| Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
+| --- | --- | --- | --- | --- |
+| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01 | T1.P02.S05 legacy Layout retirement | T1.P02.S02 drawing, S03 Opening, S04 final gate | S02 on S05 accepted and merged; S03 on S02; S04 on S01/S05/S02/S03 |
+| T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01 | T2.P02.S02 import, review, approve and place | T2.P02.S03 final gate | S03 on S02 accepted |
+| T3 | T3.P01 (closed); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md#slice-register) S01; [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md#slice-register) S01–S02 (closable, not closed) | T3.P02.S02 first Guide, Camera return and final gate | [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) project lifecycle (planning) | T3.P04.S01 on T3.P02.S02 accepted, explicit API handoff after T2.P02.S02 merges, and its own release |
+| T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
 
-- **H0 shared correction (proposed 2026-10-22; registered as T3.P03 in batch E).** The
-  [bounded launch scope](./convergence-shared-foundation-2026-10-22.md) prepares declared planner
-  scope enforcement, current public/Preview build boundaries and on-demand performance evidence.
-  T3 coordinates F4, with T1/visitor integration. It is registered as
-  [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md), authorized and released
-  by batch E; it creates no gate.
+Release provenance is the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md).
+Everything omitted from [now.md](./now.md) stays under the production hold. No gate, track or
+phase lifecycle changes here.
 
-- **Batch E (2026-10-22), owner-authorized** ([record](../reference/decisions/batch-e-authorization-2026-10-22.md), E1–E7). The
-  [coordination proposal](./next-batch-2026-10-22.md) found the blocking gaps and framed the
-  decisions. The owner:
-  - registered T3.P03 (H0), [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md) (C1
-    native Walls) and [T2.P02](./t2-composition/t2.p02-own-model-import/README.md) (C2 own GLB
-    import) (E1);
-  - authorized and released T3.P03 (E2);
-  - accepted the C1 drawing policy, the C2 bounds and T3.P02.S01's finalized scope (E3–E5);
-  - designated the owner's MacBook Air M2 (16 GB) as the machine hard performance rows are run and
-    accepted on, keeping laptop A as the accessibility target (E6 and its amendment);
-  - authorized and released the scopes whose conditions are the [release list](./now.md) (E7).
+Earlier convergence and batch proposals/protocols are preserved as
+[historical coordination evidence](../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md),
+including their [2026-10-22 planning proposal](../archive/roadmap/coordination-2026-10/next-batch-2026-10-22.md).
+Their authorization and ratification provenance remains in the decision records; they are
+not additional live “next” lists. The gate register and phase acceptance records retain
+accepted historical identities. No proposal or prototype substitutes for release or evidence.
 
-  Rules: [batch E protocol](./cross-track-execution.md#authorized-batch-e-2026-10-22). No gate row,
-  version or capability entry changes, and no format is ratified before its slice lands it.
+## Unscheduled proposals and maintenance evidence
 
-- **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
-  execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks
-  re-derive against; owner-confirmed 2026-10-15. It registers no gate, phase or slice, and its exact
-  interfaces stay the F amendments in
-  [`../reference/composition-execution.md`](../reference/composition-execution.md). It also carries
-  the [shared-file and merge protocol](./cross-track-execution.md#parallel-batch-2026-10-16) for the
-  four slices authorized 2026-10-16.
-
-- **Next parallel batch (2026-10-17), owner-approved** ([record](../reference/decisions/next-batch-authorization-2026-10-17.md); D1–D5 applied, D6/D7 superseded by R1-D). The [coordination proposal](./next-batch-2026-10-17.md)
-  resolves the `viewport-projection-v1` readiness cycle with an authorized narrow `T1.P01.S07` bridge. It
-  verifies `T3.P01.S03`'s prerequisite closure, drafts T4.P01 registration and the docs-only S01, and
-  states `T2.P01.S03`'s exact launch conditions. The proposal itself registers, authorizes and accepts nothing; the record does. Ruling R1-D then
-  deferred all T4 work until [Core Editor Stability](./core-editor-stability.md), the pre-publication
-  milestone whose criteria are proposed there.
-
-- **Batch B (2026-10-17), owner-authorized** ([record](../reference/decisions/batch-b-authorization-2026-10-17.md)):
-  `T1.P01.S04` (Layout precision with the Head Save integration) ∥ `T2.P01.S03` (first editing
-  surface), after S07 shipped and `viewport-projection-v1` was accepted. Shared-file and merge rules:
-  [batch B protocol](./cross-track-execution.md#authorized-batch-b-2026-10-17). No gate changes state;
-  T3.P01.S04 keeps its own [authorization path](./t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path),
-  and T4 stays deferred under R1-D.
-
-- **Batch C (2026-10-19), owner-authorized and ratified.** The [coordination proposal](./batch-c-2026-10-19.md)
-  covers three things:
-  - `T1.P01.S05` ∥ `T2.P01.S04` ([record](../reference/decisions/batch-c-authorization-2026-10-19.md));
-  - a current-source freeze before `T3.P01.S04`'s caller migration, with `T1.P01.S06` moved after the
-    cutover;
-  - the T3 cutover reconciliation ([record](../reference/decisions/t3-cutover-ratification-2026-10-19.md)):
-    owner-ruled disposable saved data, AM-7 superseded by a clean-reset AM-9, and
-    `T3.camera-experience-cutover@1` ratified at version 1, with `T3.P01.S04` authorized in two phases.
-
-  Rules: [batch C protocol](./cross-track-execution.md#authorized-batch-c-2026-10-19). At authorization,
-  the gate row was `ratified`; no capability scope was accepted. S04 closeout later accepted the
-  cutover gate itself; see its gate-register row and final-gate record.
-
-- **Batch D (2026-10-20), owner-authorized.** The
-  [record](../reference/decisions/batch-d-authorization-2026-10-20.md) is the decision provenance for four
-  things, all on the post-PR #158 base `9a457f6b`:
-  - `T1.P01.S06` (T1.P01's integrated final gate) authorized on the post-cutover tree, exhaustive scope
-    preserved, with **TD-10** repaired before or within it (D1/D2);
-  - `T3.P02 — First Capture and Cut Preview` **registered** with `T3.P02.S01` authorized and
-    `T3.P02.S02` registered `proposed` (D3);
-  - the activation sequencing reconciliation: a deployed activation is an owner-run operational step on
-    the accepted code and never a readiness gate for the next consumers (D4);
-  - the two phase closures `T2.P01` and `T3.P01`, recorded through their own phase-closeout PRs.
-
-  Rules: [batch D protocol](./cross-track-execution.md#authorized-batch-d-2026-10-20). No gate row,
-  version, capability entry or track lifecycle changes state, and nothing was deployed or activated.
+The following entries register no new phase or slice and grant no implementation permission.
 
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,

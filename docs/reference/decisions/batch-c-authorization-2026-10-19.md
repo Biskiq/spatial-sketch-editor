@@ -9,8 +9,8 @@ This record is decision provenance, like the
 [batch B record](./batch-b-authorization-2026-10-17.md). It changes no ratified contract: AM-1–AM-8
 and PLATE are unchanged, lifecycle and gate identity stay in the
 [roadmap register](../../roadmap/README.md#gate-register), and each slice's scope stays in its plan.
-The reasoning is in the [batch C proposal](../../roadmap/batch-c-2026-10-19.md). The rules are in the
-[batch C protocol](../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19).
+The reasoning is in the [batch C proposal](../../archive/roadmap/coordination-2026-10/batch-c-2026-10-19.md). The rules are in the
+[batch C protocol](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-c-2026-10-19).
 
 ## Authorization
 
@@ -66,7 +66,7 @@ Applied 2026-10-19 on PR #155, after the owner's approval:
    moved to `approved`, and each Authorization cell links this record.
 2. The phase and track status lines, both plans' status and readiness lines and the cross-track
    header now say "authorized 2026-10-19 as batch C".
-3. The [batch C protocol](../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19)
+3. The [batch C protocol](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-c-2026-10-19)
    heading reads "Authorized", and its links were updated.
 4. The T1/T2 batons name the authorized slice as NEXT.
 

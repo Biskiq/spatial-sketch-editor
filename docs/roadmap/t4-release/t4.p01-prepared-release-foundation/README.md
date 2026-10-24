@@ -4,7 +4,7 @@
 [T4 phase register](../README.md#phase-register), and nothing here is a phase, slice, gate version
 or authorization. **Frozen — deferred by owner ruling R1-D (2026-10-17, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)).**
 All T4 planning and implementation waits for [Core Editor Stability](../../core-editor-stability.md).
-The earlier D6/D7 approval and its hold ([history](../../next-batch-2026-10-17.md#application-hold-d6d7))
+The earlier D6/D7 approval and its hold ([history](../../../archive/roadmap/coordination-2026-10/next-batch-2026-10-17.md#application-hold-d6d7))
 are superseded. On resumption this draft is re-validated against then-current `main` before any use.
 Routes: [T4](../README.md) · [first-phase proposal](../first-phase-proposal.md) (scope and rationale,
 not repeated here) · [runbook](../../../operations/t4-release/README.md) ·
@@ -31,7 +31,7 @@ evidence:
 | "F5/program" and "Domain delivery" decisions | Direction ratified as [AM-8](../../../reference/composition-execution.md#am-8-prepared-delivery-direction-v1); [AM-6](../../../reference/composition-execution.md#am-6-execution-program-and-visitor-profile-v1) fixes `ExecutionProgram@1`, accepted in T3.P01.S01. Exact F5 codecs remain S02 provider work. |
 | S02 needs `F2.unit-envelope@1:unit-envelope-v1` and `F3.channels@1:inspection-v1` | Both are `active` on `main`. S02 is gated only by registration, F5@1 ratification and its own authorization. |
 | S03/S04 need `F3.channels@1:camera-handoff-v1` | Still unaccepted. Its provider is `T3.P01.S03`, owner-authorized 2026-10-17 (D5). |
-| S05 consumes `T3.camera-experience-cutover@1` | Still `undrafted`. T3 drafts it with the `T3.P01.S04` authorization request ([R6](../../cross-track-execution.md#parallel-batch-2026-10-16)). |
+| S05 consumes `T3.camera-experience-cutover@1` | Still `undrafted`. T3 drafts it with the `T3.P01.S04` authorization request ([R6](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#parallel-batch-2026-10-16)). |
 
 The proposal's remaining open items move to S01 and the owner. They are "Accepted input",
 "Activation/covered data" and "Product/durability", including the Release Baseline and any

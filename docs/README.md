@@ -74,13 +74,14 @@ shipped.
 
 The [2026-10-22 convergence ratification](./reference/decisions/product-convergence-ratification-2026-10-22.md)
 refines the core destination in the owning references and authorizes the bounded on-demand
-performance workflow. Named consumer decisions and the production implementation hold remain.
+performance workflow. Named consumer decisions remain; the [current post-Batch-E coordination](./roadmap/cross-track-execution.md#next-parallel-batch)
+routes the three owner-released lanes. The production hold remains for all omitted scopes.
 
 | Need | Read | Code |
 |------|------|------|
 | Run the project locally | [`local-development.md`](./local-development.md) — editor, API, database and worktree setup | Root npm scripts |
 | Tell me about this project | [`orientation.md`](./orientation.md), then stop | — |
-| What's next? | [`roadmap/now.md`](./roadmap/now.md), then stop (no source survey). Open a slice plan only when a lane is named | — |
+| What's next? | [`roadmap/now.md`](./roadmap/now.md) for released scopes/conditions → [current coordination](./roadmap/cross-track-execution.md#next-parallel-batch) for the DAG and ownership → owning phase/plan when a lane is named; stop without a source survey | — |
 | Ratified direction / decision provenance | [`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md), as refined by the [`2026-09-29 World \| Experience amendment`](./reference/decisions/world-experience-reconciliation-2026-09-29.md) the [2026-10-15 F-interface ratification](./reference/decisions/f-ratification-2026-10-15.md) and the [2026-10-23 production shell Round 2 ratification](./reference/decisions/production-shell-round-2-ratification-2026-10-23.md) (normative for shell composition and visual/interaction language); promoted concerns live in the routed contracts below | — |
 | Foundation contracts (F) — ratified target contract; F.1–F.5 written, implementation status inside | [`reference/composition-execution.md`](./reference/composition-execution.md) (phase registration/status → [`roadmap/f-foundation-contracts/README.md`](./roadmap/f-foundation-contracts/README.md)) | — |
 | Architecture / ownership | [`reference/architecture.md`](./reference/architecture.md) | — |

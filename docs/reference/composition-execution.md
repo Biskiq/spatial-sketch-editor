@@ -833,7 +833,7 @@ Prerequisites at the provider's trusted base: `unit-resolution-v1`, `unit-envelo
 **Owner-ratified destination, 2026-10-22, PR #173.** See the
 [ratification record](./decisions/product-convergence-ratification-2026-10-22.md). These obligations
 prepare the next consumers; landed codecs, admitted versions, capabilities and behavior above
-remain current. [Review manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
+remain current. [Review manifest](../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 - **Non-reused identity (F.1).** Every addressable subject, occurrence, component, resource and
   location has stable identity distinct from its label. An allocated identity is never re-minted

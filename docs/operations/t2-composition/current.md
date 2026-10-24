@@ -15,12 +15,17 @@ BATON: S01 delivers owner-only model staging and immutable approved revisions, r
        Scene format 3, editor-host admission from the same envelope, and Save verification against an
        approved same-project revision. The visitor/public release path stays catalogue-only. Durable
        current behavior is in the owning assets, Scene content and persistence references.
-NEXT:  Use the phase README for the next proposed T2 scope. The owner must review its complete plan
-       and give a separate greenlight before implementation starts.
+NEXT:  T2.P02.S02 is approved, owner-authorized and released per the release list (`docs/roadmap/now.md`). Recheck exact gates/scopes at the trusted base and agree the bounded
+       T1 host contribution under the plan and reconciled Round 2 shell draft. S03 stays held
+       as the proposed exhaustive final gate; no phase close or track completion is claimed.
+RELEASE: ../../reference/decisions/post-batch-e-authorization-2026-10-23.md
 ROUTE: ./README.md → ../../roadmap/t2-composition/README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md →
-       ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md
-BLOCKER: None for S01 under the owner override. Any next slice requires its own owner authorization.
-CARRY:  Project-deletion cleanup for approved revisions belongs to the phase's later C3 work. T2 track
-        completion remains a separate owner event.
+       ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md →
+       ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/implementation-plan.md
+BLOCKER: none beyond the release-list condition. Omitted scopes stay held.
+CARRY:  Project-deletion implementation and model-revision cleanup belong to T3's proposed C3
+        lifecycle work. S03 verifies retention/pin integrity without adding deletion. Further
+        planning pairs T1 face frames with solve-once placement; component provider work precedes
+        Stage part-selection/admission UI and annotations. No follow-on authorization is implied.
 ```

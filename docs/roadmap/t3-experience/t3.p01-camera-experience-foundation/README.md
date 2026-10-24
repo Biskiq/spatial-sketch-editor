@@ -156,7 +156,7 @@ eligible, and its own `conditional-save-current-v1` output is now accepted. S03'
 closure — S01's `unit-envelope-v1`/`unit-resolution-v1` and S02's `conditional-save-current-v1` — is
 complete on `main` (re-verified 2026-10-17 at `c9aa53cf`); S03 is owner-authorized 2026-10-17 (D5, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)),
 independent of T1's viewport work. As
-the [allocation](../../cross-track-execution.md#capability-readiness-amendment) records, S03 consumes
+the [allocation](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#capability-readiness-amendment) records, S03 consumes
 the still-active current-source scopes while it builds the unit implementation, but the unit
 capabilities it exports declare only F2 and the enduring `acceptance-invariants-v1`. S04 consumes only
 the unit scopes. Every non-base scope includes its declared prerequisite closure; no provider consumes
@@ -409,7 +409,7 @@ exclusions. The evidence lives at the gate artifact's recovery anchor.
 
 - **Authorized:** `T3.P01.S01` (2026-10-16, shipped in PR #131) and `T3.P01.S02` (2026-10-16, shipped
   in PR #133), which ran in parallel with `T2.P01.S02` under the
-  [pair protocol](../../cross-track-execution.md#parallel-pair-2026-10-16); `T3.P01.S03` (2026-10-17,
+  [pair protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#parallel-pair-2026-10-16); `T3.P01.S03` (2026-10-17,
   [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)), executed through its
   registered split `T3.P01.S05` (PR #140) and `T3.P01.S06` (PR #141)
   ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)) and closed

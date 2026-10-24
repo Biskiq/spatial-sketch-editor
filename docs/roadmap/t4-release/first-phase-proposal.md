@@ -247,7 +247,7 @@ prove a bounded synchronous build; measure size/duration before introducing work
 
 ## Exact dependencies and work that can run in parallel
 
-All versions/scopes are proposed. The [shared readiness amendment](../cross-track-execution.md#capability-readiness-amendment)
+All versions/scopes are proposed. The [shared readiness amendment](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#capability-readiness-amendment)
 adds Accepted capabilities to the gate row and Requires to consumer rows. Each exact scope/prerequisite
 must be accepted in current HEAD and trusted base; overall gate acceptance alone is insufficient.
 Pending extensions never count as ready. One provider per gate/version remains: F1/F3 T1 S01,

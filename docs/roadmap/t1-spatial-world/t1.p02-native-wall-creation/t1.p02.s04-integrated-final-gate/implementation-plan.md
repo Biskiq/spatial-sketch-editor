@@ -1,7 +1,7 @@
 # T1.P02.S04 — Integrated final gate: implementation plan
 
 **Slice:** T1.P02.S04 · **Status:** proposed — **not authorized**; it starts only from its own owner
-authorization after `T1.P02.S01`–`S03` are accepted · **Phase:** [T1.P02](../README.md) ·
+authorization after S01, S05, S02 and S03 are accepted · **Phase:** [T1.P02](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:**
 [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -11,14 +11,14 @@ REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1
 VERIFICATION: exhaustive
 ```
 
-This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01, S02 and
+This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01, S05, S02 and
 S03 send their deferred exhaustive proof to; its acceptance record is the phase's declared final-gate
 artifact. It is registered (batch E, E1) and unauthorized: nothing here is implemented, accepted,
 ready or evidenced.
 
 ## Prerequisite
 
-`T1.P02.S01`, `S02` and `S03` accepted with routine closeout, and every consumed gate `accepted` with
+`T1.P02.S01`, `S05`, `S02` and `S03` accepted with routine closeout, and every consumed gate `accepted` with
 every `Requires` scope `active` at this slice's own trusted base. S04 adds no product feature: it is
 the independent, integrated acceptance of native Wall creation.
 
@@ -37,7 +37,9 @@ Record independent acceptance on the integrated tree, from an empty project and 
   JSON download recovery;
 - Experience and Camera references to a deleted Wall keeping their retained identity with derived
   diagnostics;
-- the rail, Card/instrument arbitration and keyboard path as built and browser-revised, at narrow and
+- S05 legacy surface/export absence, defect-equivalent fixture coverage and preserved
+  registry/Scene-frame behavior on the integrated tree;
+- the bounded dock/Ink, Card fact migration, lower-column arbitration and keyboard path as built and browser-revised, at narrow and
   short shells and with reduced motion.
 
 ## Acceptance criteria

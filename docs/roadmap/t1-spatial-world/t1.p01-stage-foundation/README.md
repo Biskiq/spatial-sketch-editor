@@ -197,19 +197,19 @@ capability as `accepted`. S04 is accepted and shipped as batch B (2026-10-18); S
 shipped as batch C (2026-10-19); S06 is accepted and shipped 2026-10-21 under the scoped owner-override recorded in its acceptance artifact. Its exhaustive final-gate evidence supported the owner's T1.P01 closure on 2026-10-21.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
-[batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16): one writer per shared
+[batch protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#parallel-batch-2026-10-16): one writer per shared
 module, append-only barrels and lane lists, and the full merge gate rerun on the then-current `main`.
 Neither consumed the other. The host↔F4 wiring (accepted install into the Stage, Undo/Redo commands,
 replacement baseline, selection requalification, Camera-output rebase) is **S07's** by ruling D2
-(2026-10-17), and the Head Save integration is **S04's** by ruling D3. The [batch A protocol](../../cross-track-execution.md#authorized-batch-2026-10-17) governed S07
-alongside `T3.P01.S03` (both shipped). The [batch B protocol](../../cross-track-execution.md#authorized-batch-b-2026-10-17)
+(2026-10-17), and the Head Save integration is **S04's** by ruling D3. The [batch A protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-2026-10-17) governed S07
+alongside `T3.P01.S03` (both shipped). The [batch B protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-b-2026-10-17)
 governed S04 alongside `T2.P01.S03` (both shipped). Batch C (owner-authorized 2026-10-19,
 [record](../../../reference/decisions/batch-c-authorization-2026-10-19.md);
-[protocol](../../cross-track-execution.md#authorized-batch-c-2026-10-19)) authorizes S05 alongside
+[protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-c-2026-10-19)) authorizes S05 alongside
 `T2.P01.S04` and moves S06 after `T3.P01.S04` with re-declared unit scopes (ruling C3). Batch D
 (owner-authorized 2026-10-20,
 [record](../../../reference/decisions/batch-d-authorization-2026-10-20.md);
-[protocol](../../cross-track-execution.md#authorized-batch-d-2026-10-20)) then authorizes S06 on the
+[protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-d-2026-10-20)) then authorizes S06 on the
 post-cutover tree, alongside `T3.P02.S01`. S06's evidence does not depend on any unaccepted T3.P02
 implementation.
 

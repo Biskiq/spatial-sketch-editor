@@ -141,7 +141,7 @@ encoding, and the correspondence algorithm for ingest derivatives.
 **Owner-ratified destination, 2026-10-22, PR #173.** See the
 [ratification record](../decisions/product-convergence-ratification-2026-10-22.md). This is destination
 wording for new consumers; Scene unit format 2 still refuses attachments and components.
-[Review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md).
+[Review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 **Placement and attachment.** Solve-once surface placement writes an ordinary world pose and
 creates no following relationship. Deliberate attachment, if selected by the owner, has a host

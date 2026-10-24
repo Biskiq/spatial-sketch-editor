@@ -33,13 +33,13 @@ gate, with publication ownership, the strict reader and the visitor isolation al
 
 ## Delivery obligations
 
-1. **The strict snapshot reader is the current delivery path.** The P22 authored-snapshot reader
-   — the snapshot → runtime path inside the cold visitor runtime — and the API publication
-   snapshot format are **made strict by PR #115** and remain the only way a release reaches a
-   visitor (implementation-plan §5.1). They are **retired at T4**, not before: deleting them in
-   PR #115 would gain no capability and would remove the only delivery path.
-2. **The prepared-reader obligation.** T4 replaces that snapshot reader atomically with the
-   prepared reader, whose concrete dependency is the F.5 release envelope
+1. **Publication is unavailable in the current F2 source epoch.** AM-9 retired the P22
+   authored-snapshot reader at T3's clean source/runtime cutover. Publish and Update return
+   `prepared-reader-required`; public reads return honest 404 with `no-store`, with no authored
+   compatibility fallback. PR #115's strict snapshot reader is historical foundation evidence,
+   not the current delivery path. Production activation of the F2 epoch is owner-controlled.
+2. **The prepared-reader obligation.** T4 activates a coherent prepared API/browser/resource/pointer
+   path with the prepared reader, whose concrete dependency is the F.5 release envelope
    ([`composition-execution.md`](../../reference/composition-execution.md), F.5) plus the T4
    prepared-reader slice. A prepared release is an obligation and an F-gated interface, not a
    shipped capability.
@@ -62,12 +62,12 @@ gate, with publication ownership, the strict reader and the visitor isolation al
 
 ## Current vs destination contracts
 
-| Concern | Current (post-#115 foundation) | Destination |
+| Concern | Current (F2 source epoch) | Destination |
 | --- | --- | --- |
-| Release payload | authored `ProjectDocument` snapshot + asset manifest in immutable `releases` rows; `readPublicRelease` revalidates with deployed code | versioned, prepared visitor package compiled from an accepted revision × selected Experiences × a delivery profile |
-| Reader | the strict current-format reader inside the cold runtime | a separately versioned reader that never depends on the authoring validator |
+| Release payload | no authored-snapshot delivery; Publish/Update refuse `prepared-reader-required` | versioned, prepared visitor package compiled from an accepted revision × selected Experiences × a delivery profile |
+| Reader | public reads are honest 404 with `no-store`; no compatibility fallback | a separately versioned reader that never depends on the authoring validator |
 | Publication UI | **removed** with the editor shell | rebuilt against the prepared reader |
-| Provenance | build/release rows as they exist today | declared compiler identity, input locks, resource hashes and a source-revision link |
+| Provenance | prepared release provenance is not implemented | declared compiler identity, input locks, resource hashes and a source-revision link |
 
 ## Evidence roles
 
@@ -114,14 +114,14 @@ renewed owner authorization of planning first, then a separate registration/impl
   `tests/lib/visitor/visitor-cold-runtime.test.ts`,
   `tests/lib/visitor/visitor-public-route.test.ts`.
 
-**Deferred-retirement rows with exact conditions** (implementation-plan §5.1)
+**Retirement and successor obligations** (implementation-plan §5.1)
 
-- **The P22 authored-snapshot reader and the API publication snapshot format** — *retire at the T4
-  prepared-reader cutover*. Concrete dependency: F5.release-envelope plus the T4 prepared-reader
-  slice, which replaces the reader atomically. Made strict by PR #115 in the meantime; deleting it
-  earlier would remove the only delivery path.
-- **`apps/api`** — retained as foundation; **refactor later at T3/T4** (expected-revision Save at
-  T3, prepared release at T4).
+- **The P22 authored-snapshot reader and API publication snapshot format** — historical foundation,
+  retired by AM-9 at the T3 clean source/runtime cutover. Prepared delivery still requires
+  F5.release-envelope plus the T4 prepared-reader slice and coherent activation; there is no
+  current authored fallback to preserve.
+- **`apps/api`** — retained as foundation; conditional F2 Save landed at T3, while prepared
+  release remains deferred T4 work.
 
 **Capability losses this track owns rebuilding** (implementation-plan §4.4)
 

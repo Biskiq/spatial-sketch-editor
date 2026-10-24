@@ -19,18 +19,18 @@ production consumer; implementation currently follows the owner hold below.
 The owner has now accepted **P1** (meaningful interactive Presentation without a Room, Guide or
 Stop), **P2 Smart Wall** (intuitive intelligent manipulation and revision), and **P3 Vellum**
 (intuitive expressive architectural sketching), and **deferred P4**. These are creative findings,
-not blanket acceptance of each prototype feature or its implementation. The
-[convergence planning proposal](../../docs/roadmap/product-convergence-2026-10-21.md) owns this
-round's proposed synthesis, exact next-batch scopes and owner decision packet. This record keeps
+not blanket acceptance of each prototype feature or its implementation. The archived
+[convergence planning proposal](../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md) holds this
+round's historical synthesis, exact next-batch scopes and owner decision packet. This record keeps
 the single capability disposition ledger and RR question index; neither is a live work register.
 
-**Current commission, 2026-10-22:** follow the [five-step scope](../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence)
+**Commission as of 2026-10-22 (historical; current sequencing: [coordination](../../docs/roadmap/cross-track-execution.md#next-parallel-batch)):** follow the [five-step scope](../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#scope-and-sequence)
 in PR #173: revise scope/briefs → independent research → product/design/architecture and contract
 reconciliation → canonical roadmap/DAG and batch recommendation → owner review before merge.
 The [production implementation hold](../../docs/roadmap/README.md#production-implementation-hold)
 includes previously authorized work. Step 2's research results (2026-10-22) are in the three
 packets indexed in §5; they amend no contract. Step 3's core destination is owner-ratified 2026-10-22
-([record](../../docs/reference/decisions/product-convergence-ratification-2026-10-22.md)); step 4 now updates the [canonical batch/DAG](../../docs/roadmap/cross-track-execution.md#convergence-batch-and-next-planning-wave)
+([record](../../docs/reference/decisions/product-convergence-ratification-2026-10-22.md)); step 4 now updates the [canonical batch/DAG](../../docs/archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#convergence-batch-and-next-planning-wave)
 and affected roadmaps. The owning references carry the ratified core destination, with named consumer choices
 still deferred in the ratification manifest. Reconciliation stays in this PR. Merging alone does
 not release implementation.

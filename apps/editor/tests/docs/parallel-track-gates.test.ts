@@ -2035,8 +2035,9 @@ describe('the capability-readiness rule', () => {
 			// Save and viewport scopes. No slice provides a gate.
 			'T3.P03.S01': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:unit-acceptance-v1'],
 			'T3.P03.S02': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:unit-acceptance-v1'],
+			'T3.P04.S01': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:conditional-save-units-v1'],
 			...Object.fromEntries(
-				['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03'].map(
+				['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03'].map(
 					(id) => [
 						id,
 						[
@@ -2454,26 +2455,26 @@ describe('routing and skill preflights', () => {
 		const live = { nowSource, slices, batons, runbooks, router };
 		expect(releaseListProblems(live)).toEqual([]);
 
-		const withoutRow = nowSource.replace(/^\| `T3\.P03\.S01`.*\n/m, '');
+		const withoutRow = nowSource.replace(/^\| `T1\.P02\.S05`.*\n/m, '');
 		expect(releaseListProblems({ ...live, nowSource: withoutRow }).join('\n')).toContain(
-			'T3.P03.S01 says released and has no row'
+			'T1.P02.S05 says released and has no row'
 		);
-		expect(releaseListProblems({ ...live, nowSource: nowSource.replace('released; no prior merge', 'Now') }).join('\n')).toContain(
+		expect(releaseListProblems({ ...live, nowSource: nowSource.replace('released; after the post-Batch-E documentation coordination PR is merged on `main`', 'Now') }).join('\n')).toContain(
 			'evaluates the condition as Now'
 		);
-		expect(releaseListProblems({ ...live, nowSource: nowSource.replaceAll('T3.P03.S01', 'T9.P09.S09') }).join('\n')).toContain(
+		expect(releaseListProblems({ ...live, nowSource: nowSource.replaceAll('T1.P02.S05', 'T9.P09.S09') }).join('\n')).toContain(
 			'is not a slice in any phase README'
 		);
 		expect(
 			releaseListProblems({
 				...live,
-				slices: slices.map((slice) => (slice.id === 'T3.P03.S01' ? { ...slice, status: 'proposed' } : slice))
+				slices: slices.map((slice) => (slice.id === 'T1.P02.S05' ? { ...slice, status: 'proposed' } : slice))
 			}).join('\n')
 		).toContain('is proposed');
 		expect(
 			releaseListProblems({
 				...live,
-				slices: slices.map((slice) => (slice.id === 'T3.P03.S01' ? { ...slice, status: 'shipped' } : slice))
+				slices: slices.map((slice) => (slice.id === 'T1.P02.S05' ? { ...slice, status: 'shipped' } : slice))
 			})
 		).toEqual([]);
 		expect(

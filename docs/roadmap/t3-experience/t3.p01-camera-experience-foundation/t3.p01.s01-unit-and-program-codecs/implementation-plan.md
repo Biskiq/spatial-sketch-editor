@@ -24,7 +24,7 @@ unauthorized contract changes.
 `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` are accepted on post-PR #126
 `main` (`ee463d0b` is an ancestor). No F4, viewport or Save dependency. This slice consumes nothing
 from `T1.P01.S02`, `T1.P01.S03` or `T2.P01.S01`, which run in parallel under the
-[batch protocol](../../../cross-track-execution.md#parallel-batch-2026-10-16).
+[batch protocol](../../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#parallel-batch-2026-10-16).
 
 ## Produces
 
@@ -86,7 +86,7 @@ on the F1 row — plus the F2 gate evidence. This slice provides no F4 scope and
 
 ## Shared files and integration
 
-Under the [batch protocol](../../../cross-track-execution.md#parallel-batch-2026-10-16), S01 is the
+Under the [batch protocol](../../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#parallel-batch-2026-10-16), S01 is the
 sole writer of the new unit, program and converter modules in `@portfolio/project-model`, of that
 package's `exports` additions and of the additive reference-extension module. It edits no landed
 reference or channel behavior, no Scene v1 codec, no camera-core or layout-core module, no F4 module

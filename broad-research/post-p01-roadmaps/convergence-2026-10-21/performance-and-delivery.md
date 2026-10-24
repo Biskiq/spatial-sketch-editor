@@ -53,7 +53,7 @@ workflow is not installed, browser/GPU results remain unrun, and H0 implementati
   gizmo/layout UI/authoring infrastructure; runtime-safe domain evaluators (Layout
   representation) are *shared* with visitor runtimes — isolation is about editor machinery, not
   forking domain math; one canonical architectural compiler.
-- First-wave consumers ([convergence §Proposed next engineering batch](../../../docs/roadmap/product-convergence-2026-10-21.md#proposed-next-engineering-batch)):
+- First-wave consumers ([convergence §Proposed next engineering batch](../../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#proposed-next-engineering-batch)):
   **C1** native straight Walls (draw, close, divide, Opening, delete; Plan/3D agree; Undo/Redo;
   Save), **C2** own flat GLB import (upload, validate/stage, scale/pivot/footprint, approve, place,
   duplicate, Save/reopen; Preview sees the same resource), **T3.P02.S01** capture + Cut Preview
@@ -472,12 +472,12 @@ first-load and per-chunk br bytes are compared with the previous accepted record
   It covers the forbidden set in `lib/visitor/preview-surface-boundary.ts` and the `$lib/editor`
   tokens in `visitor-public-route.test.ts` / `visitor-identity-isolation.test.ts`. Record it as a
   landed-gap correction beside the convergence proposal's §Landed gaps found by the research.
-- **`docs/roadmap/product-convergence-2026-10-21.md` §C1/§C2/§Existing capture and Preview scope.**
+- **`docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md` §C1/§C2/§Existing capture and Preview scope.**
   Add each slice's pre-acceptance performance row (table above); C1 owns A-4 and immediate browser
   profiling of the measured compile-heavy paths. E-1/E-2 are bounded candidates, with the actual
   mechanism chosen from evidence and required to meet completion and main-thread budgets. Node
   costs motivate that work; reference-A pass/fail is not yet measured.
-- **`docs/roadmap/product-convergence-2026-10-21-amendments.md`.** One entry per contract amendment
+- **`docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md`.** One entry per contract amendment
   above, so step 4/5 review sees them with the others.
 
 ## Uncertainties

@@ -2,7 +2,7 @@
 
 **Phase:** T3.P02 · **Status:** registered 2026-10-20. Released scopes and their conditions are
 the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
-covers every scope that list omits. S02 stays `proposed` · **Track:** [T3](../README.md) · **Roadmap:**
+covers every scope that list omits. S02 is approved/released · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [AM-9](../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover),
@@ -45,8 +45,10 @@ finalized scope, its [Experience format draft](./t3.p02.s01-first-capture-and-cu
 and its [shell draft](./t3.p02.s01-first-capture-and-cut-preview/shell-draft.md); the owner accepted
 them and released S01 from the production hold on 2026-10-22 (batch E, [record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7).
 S01 starts only after H0's shared correction, `T3.P03.S01`, is merged on `main`; the
-[batch E protocol](../../cross-track-execution.md#authorized-batch-e-2026-10-22) owns current
-sequencing. S02 stays held and unauthorized.
+[batch E protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-e-2026-10-22) recorded the
+sequencing for that historical batch. The [post-Batch-E release](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)
+authorizes S02 per the release list (`docs/roadmap/now.md`); the
+[next parallel batch](../../cross-track-execution.md#next-parallel-batch) owns current sequencing.
 
 ## Bounded outcome
 
@@ -100,8 +102,8 @@ lifecycle and prerequisites only.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | camera-authoring-migration | [First capture and Cut Preview](./t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) | [record](./t3.p02.s01-first-capture-and-cut-preview/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); finalized and released 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7); start condition T3.P03.S01 merge satisfied by PR #176; accepted/shipped 2026-10-23 as `owner-override` at integrated revision `1bb281bb16dc839588e4174514b240de6c52bf79` |
-| T3.P02.S02 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t3.p02.s02-integrated-final-gate/implementation-plan.md) | [record](./t3.p02.s02-integrated-final-gate/acceptance.md) | not authorized — starts only from its own owner authorization after S01 is accepted |
+| T3.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | camera-authoring-migration | [First capture and Cut Preview](./t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) | [record](./t3.p02.s01-first-capture-and-cut-preview/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); historical Batch E permission 2026-10-22 ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7); start condition T3.P03.S01 merge satisfied by PR #176; accepted/shipped 2026-10-23 as `owner-override` at integrated revision `1bb281bb16dc839588e4174514b240de6c52bf79` |
+| T3.P02.S02 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t3.p02.s02-integrated-final-gate/implementation-plan.md) | [record](./t3.p02.s02-integrated-final-gate/acceptance.md) | owner-authorized and released 2026-10-23 ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); starts per the release list (`docs/roadmap/now.md`); predecessor accepted; own gates/review/evidence remain required |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `9a457f6b`; each
 slice re-verifies them at its own trusted base through the runbook start step. `F2.unit-envelope@1`
@@ -150,8 +152,9 @@ stay green and are not re-owned here. This phase adds:
 
 Verification commands and tiers are owned by
 [the test manual](../../../../apps/editor/tests/README.md#what-a-change-requires). S01 was authorized
-under the [batch D protocol](../../cross-track-execution.md#authorized-batch-d-2026-10-20); on
-resumption it runs under the authorized [batch E rules](../../cross-track-execution.md#batch-e-shared-files-and-merge-order):
+under the [batch D protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-d-2026-10-20) and shipped
+under the [batch E rules](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#batch-e-shared-files-and-merge-order) (historical).
+S02 runs under the [current shared-file and merge protocol](../../cross-track-execution.md#shared-files-and-merge-protocol):
 one writer per shared file, additive registration elsewhere, the complete merge gate rerun on
 then-current `main`, independent review per slice, and each slice's own closeout and P1 merge commit. No architecture-cycle window is proposed: the T1.P01 window is closed, T3 slices are not
 exposures of it, and this phase claims no mechanism verdict.

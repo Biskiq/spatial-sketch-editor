@@ -1,5 +1,8 @@
 # H0 — shared acceptance, isolation and performance foundation
 
+> **Archived 2026-10-23.** Relative links in this file were written from `docs/roadmap/` and may not
+> resolve from the archive; current routes start at [the roadmap](../../../roadmap/README.md).
+
 **Status: launch scope, 2026-10-22; registered, authorized and released as T3.P03 in batch E**
 ([record](../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E2). Local label H0. Its registered form is
 [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md), whose slice plans carry

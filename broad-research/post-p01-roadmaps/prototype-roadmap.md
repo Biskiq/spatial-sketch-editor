@@ -12,7 +12,7 @@ The [engineering roadmap](./engineering-authorization-roadmap.md) keeps justifie
 **Later owner verdict, 2026-10-21:** P1's Guide-free Presentation finding, P2 Smart Wall's intelligent
 manipulation/revision and P3 Vellum's expressive sketching are accepted; P4 is deferred. This file
 preserves the commissioning questions, not a demand to repeat the prototypes or evidence that every
-listed feature was accepted. The [convergence proposal](../../docs/roadmap/product-convergence-2026-10-21.md)
+listed feature was accepted. The [convergence proposal](../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md)
 and the coordination record now route the next work. In particular, the original early-P4 sequencing
 below is inactive while P4 remains deferred.
 

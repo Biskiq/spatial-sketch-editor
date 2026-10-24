@@ -2,15 +2,15 @@
 
 **Phase:** T2.P02 · **Status:** registered 2026-10-22. Released scopes and their conditions are
 the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
-covers every scope that list omits. S02 and S03 stay `proposed` · **Track:**
+covers every scope that list omits. S02 is approved/released; S03 stays `proposed` · **Track:**
 [T2](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
 [T2 operations](../../../operations/t2-composition/README.md) · **Design:**
 [shell draft](./shell-draft.md)
 
 This phase is C2 of the convergence first wave. The
-[batch E protocol](../../cross-track-execution.md#authorized-batch-e-2026-10-22) owns sequencing,
-shared files and merge order, and the [coordination proposal](../../next-batch-2026-10-22.md) keeps
-the gap findings behind it.
+[current coordination](../../cross-track-execution.md#shared-files-and-merge-protocol) owns sequencing,
+shared files and merge order. The historical [batch E protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-e-2026-10-22)
+and [coordination proposal](../../../archive/roadmap/coordination-2026-10/next-batch-2026-10-22.md) keep the gap findings behind S01.
 
 ## Outcome
 
@@ -26,22 +26,18 @@ includes publish. That sentence predates owner ruling K1; K1, the
 [Core Editor Stability](../../core-editor-stability.md) criteria and this phase exclude T4. The closed
 record is left as written.
 
-## What the code already has (verified at `f516e1ff`)
+## Landed foundation and remaining creator surface
 
-- The API's project asset registry stores images only: kind `texture`/`procedural`, PNG/WebP/JPEG
-  sniffing, a 25 MiB cap, `sha256-` hashes and mutable `pending → ready` rows whose superseded bytes
-  are orphaned. Nothing accepts GLB bytes, and no row maps to an envelope resource or pin.
-- Save carries unit documents only and never checks a pin against stored bytes; resource identity is
-  host-asserted. The live Stage host never grants resource staging, so a planner that changes
-  resources is refused.
-- A placed model names a catalogue `assetId`. Editor, API and visitor admission accept only shipped
-  catalogue IDs, so a reopened project with an uploaded model would refuse. The required `fallback`
-  is a closed furniture enum.
-- Scene placement admits native primitives only: model contact is unknown (`localContactMinY` returns
-  null), so move, resize and duplicate refuse for any model.
-- One runtime loader serves editor and visitor (`useGltf` with the meshopt decoder); Draco and KTX2 are
-  unused. The catalogue normalizer prunes and deduplicates, which the capability research showed
-  destroys parts; it is not reused for creator imports.
+S01 is shipped: resources format 2 and Scene format 3, owner-only staged source/derivative storage,
+immutable approval, same-envelope editor admission and Save verification against a same-project
+approved revision. Its [acceptance record](./t2.p02.s01-model-resource-storage-and-admission/acceptance.md)
+keeps owner-override acceptance, historical review/test identities and later merge-gate evidence distinct.
+The owning assets, Scene-content and persistence references describe current behavior.
+
+Import UI/worker preparation, source-unit scale/pivot confirmation, resource-backed Plan footprint and
+contact, complete manipulation and actual approved-derivative rendering/reopen/Preview remain S02.
+Current creator IDs render a generic footprint fallback; native primitive placement/contact is not
+proof of the complete creator-model journey. The catalogue optimizer is not reused for imports.
 
 ## Formats
 
@@ -76,13 +72,13 @@ lifecycle and prerequisites only.
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T2.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md) | [acceptance and preservation stub](./t2.p02.s01-model-resource-storage-and-admission/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7); accepted by **owner-override** 2026-10-23 for current implementation revision `623a7f73a61496d5df09c9dc0fc69ab5c6737b36`; current-verdict and current-revision evidence prerequisites waived as recorded in the acceptance stub; starts only after `T3.P03.S01` is merged on `main` |
-| T2.P02.S02 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Import, review, approve and place](./t2.p02.s02-import-review-approve-place/implementation-plan.md) (outline) | [record](./t2.p02.s02-import-review-approve-place/acceptance.md) | not authorized — starts only from its own owner authorization after S01 is accepted |
+| T2.P02.S02 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Import, review, approve and place](./t2.p02.s02-import-review-approve-place/implementation-plan.md) | [record](./t2.p02.s02-import-review-approve-place/acceptance.md) | owner-authorized and released 2026-10-23 ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); starts per the release list (`docs/roadmap/now.md`); predecessor accepted; own gates/review/evidence remain required |
 | T2.P02.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t2.p02.s03-integrated-final-gate/implementation-plan.md) | [record](./t2.p02.s03-integrated-final-gate/acceptance.md) | not authorized — starts only from its own owner authorization after S01 and S02 are accepted |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
 slice rechecks them at its own trusted base through the runbook start step. No slice here provides a
-gate. S02 carries an outline plan: it writes its complete plan after S01's acceptance, for review
-with its own authorization.
+gate. S02 carries the post-S01 plan and reconciled shell draft and is owner-authorized/released,
+starting per the release list (`docs/roadmap/now.md`); bounded T1 host review remains required. See the [next parallel batch](../../cross-track-execution.md#next-parallel-batch).
 
 ```text
 FINAL PHASE GATE: T2.P02.S03 → ./t2.p02.s03-integrated-final-gate/acceptance.md
@@ -91,7 +87,7 @@ PHASE CLOSE
 Stage:        active
 ```
 
-**S02 import pipeline** (see the [S02 outline plan](./t2.p02.s02-import-review-approve-place/implementation-plan.md)). Ingest runs in a worker loaded only when Import opens:
+**S02 import pipeline** (see the [S02 implementation plan](./t2.p02.s02-import-review-approve-place/implementation-plan.md)). Ingest runs in a worker loaded only when Import opens:
 glTF validation and the observed-versus-admitted report; decoders for Draco, meshopt or KTX2 sources
 loaded only when the source uses them; recipe `creator-import@1` keeps every node, empty and mesh
 (no prune of leaves, dedup, join or flatten), appends a pivot root, records the node map, re-encodes
@@ -119,4 +115,15 @@ cycles with repeated import/place/delete, and the Stage first-load delta (Import
 - **Excluded:** component admission or addressing, clips, variants, re-import correspondence, more
   than one model per import, formats beyond glTF/GLB, catalogue model contact, attachment, provider
   search, library scope and any T4 release closure.
-- Project deletion (C3) must delete a project's model revisions; C3 inherits that obligation.
+- Project deletion implementation belongs to T3's proposed C3 lifecycle work (T3.P04.S01), which
+  must delete the project's model revisions. S03 verifies retained revision/pin integrity without
+  adding deletion capability. No C3 authorization or acceptance is implied.
+
+## Follow-on triggers
+
+The next capability wave is planning, not authorization: T1's Wall face-frame query provides the
+surface frame for T2 solve-once placement, writing an ordinary world pose. Existing objects can
+consume it; own-GLB import and the vertical cutover are not artificial prerequisites. After this
+phase's import outcome, T2 component identity/resolution/admission and revision correspondence
+precede T1 Stage part-selection/admission UI and T3 annotations. No component capability is admitted
+by S02, no future slice IDs are minted here, and attachments remain separate.

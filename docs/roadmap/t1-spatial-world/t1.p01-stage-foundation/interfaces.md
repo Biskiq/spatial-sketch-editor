@@ -149,7 +149,7 @@ stable anchors, consumer list and version
 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)); implementation, conformance
 and acceptance still belong to the provider slices, so the drafts below remain proposals for that
 work. The Accepted-capabilities / Requires extension in
-[cross-track readiness](../../cross-track-execution.md#capability-readiness-amendment)
+[cross-track readiness](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#capability-readiness-amendment)
 is a ratified rule; the checker enforcing it is `T1.P01.S01` work, now installed and green in the
 arch lane's execution-structure gate. No change to F/reference, the global gate register or another
 track is made by this draft.
@@ -275,7 +275,7 @@ T3 S02 adds `conditional-save-current-v1` using captured local accepted source p
 expected-saved-base persistence. This is independent of F2/Stage and introduces no cloud Undo stack.
 T3 S03 adds `unit-acceptance-v1` and `conditional-save-units-v1` to the same implementation, with
 full F2/reference/lock validation, admitted resource staging, real Camera/Experience compound
-planners and whole-operation history. The [coordinated readiness proposal](../../cross-track-execution.md#capability-readiness-amendment)
+planners and whole-operation history. The [coordinated readiness proposal](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#capability-readiness-amendment)
 requires explicit capability evidence on the trusted base; base gate acceptance cannot satisfy them.
 
 T3 S04 migrates all Stage/acceptance/Save/starter callers and retires current-source adapters in one

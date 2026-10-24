@@ -277,7 +277,7 @@ No new architecture-cycle window is proposed. T1's window names its own bounded 
 not copy or enlarge that window, re-arm dormant Layout mechanisms or claim a verdict, and T2 slices
 cannot open it. Each start still runs the runbook's one-line listed-slice check against the
 then-live cycle register. S01 ran in parallel with three other slices under the
-[batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16); S02 runs in parallel with
+[batch protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#parallel-batch-2026-10-16); S02 runs in parallel with
 `T3.P01.S02` (and the still-open `T1.P01.S02`) under the
-[pair protocol](../../cross-track-execution.md#parallel-pair-2026-10-16). Each names the shared files
+[pair protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#parallel-pair-2026-10-16). Each names the shared files
 its slices may write and how merges reconcile.

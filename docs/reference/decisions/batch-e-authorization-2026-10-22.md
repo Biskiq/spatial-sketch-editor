@@ -2,7 +2,7 @@
 
 **Date:** October 22, 2026. **Status:** **owner-authorized 2026-10-22.** In the batch E planning
 review of PR #174, the owner approved decisions E1–E7 as the
-[coordination proposal](../../roadmap/next-batch-2026-10-22.md#owner-decisions) recommended them:
+[coordination proposal](../../archive/roadmap/coordination-2026-10/next-batch-2026-10-22.md#owner-decisions) recommended them:
 "I approve E1–E7 as recommended in PR #174, with E7 decided now and each start gated on T3.P03.S01
 merging."
 
@@ -13,7 +13,7 @@ records. It ratifies no contract. AM-1–AM-9, PLATE, the
 [performance contract](../components/performance.md) are unchanged. Lifecycle and gate identity stay
 in the [roadmap register](../../roadmap/README.md#gate-register), and each slice's scope stays in its
 own plan. The rules are in the
-[batch E protocol](../../roadmap/cross-track-execution.md#authorized-batch-e-2026-10-22).
+[batch E protocol](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-e-2026-10-22).
 
 **Base.** `origin/main` `f516e1ffb2239aab9b230ae1f6af8ae1bd445d4d`, the merge commit of PR #173
 (product convergence). The proposal and this record land together in PR #174.
@@ -174,7 +174,7 @@ Order:
    with `T3.P03.S02`.
 
 Shared unit type and validation modules merge serially, in the order and with the T3 F2 review
-that the [batch E protocol](../../roadmap/cross-track-execution.md#authorized-batch-e-2026-10-22)
+that the [batch E protocol](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-e-2026-10-22)
 fixes.
 
 Each slice:

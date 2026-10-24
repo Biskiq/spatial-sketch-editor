@@ -3,7 +3,7 @@
 **Track:** T2 · **Status:** approved — `T2.P01` registered 2026-10-16 and **closed 2026-10-20**, with
 all four children shipped (`T2.P01.S01` 2026-10-16, `S02` 2026-10-17, `S03` 2026-10-18 (batch B),
 `S04` final gate 2026-10-20, PR #157); `T2.P02` (own model import) registered 2026-10-22 as batch E
-with `T2.P02.S01` authorized ([track register](../README.md#track-register)) · **Runbook:**
+with `T2.P02.S01` shipped by owner-override acceptance ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t2-composition/README.md`](../../operations/t2-composition/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) ·
 **Contracts:** [`scene-content.md`](../../reference/components/scene-content.md),
@@ -42,29 +42,31 @@ gate, with Scene ownership, current-format validation and the visitor boundary s
 
 | Concern | Current (landed tree) | Destination |
 | --- | --- | --- |
-| Scene document | world-local Scene 2 in F2, no `roomId`, Scene-owned entities/materials/lights; Camera and Experience are separate units | unchanged semantic ownership; later formats need an explicit cutover |
-| Placement | T2.P01 places, moves, yaws, uniformly resizes, duplicates and deletes native primitives and admitted models through shared unit F4/history in Plan and 3D; floor support resolves Y | extend the same Scene-owned intent path to declared support/attachment capabilities |
+| Scene document | world-local Scene 3 in F2, no `roomId`, Scene-owned entities/materials/lights; Camera and Experience are separate units | unchanged semantic ownership; later formats need an explicit cutover |
+| Placement | T2.P01 places, moves, yaws, uniformly resizes, duplicates and deletes native primitives through shared unit F4/history in Plan and 3D; creator-model placement/contact remains T2.P02.S02 | extend the same Scene-owned intent path to declared support/attachment capabilities |
 | Materials / lights | catalogue and kernel validation retained; authoring surfaces removed | truthful units, atomic subset editing, explicit repair instead of silent clamping |
-| Resources | F2 resources 1 with typed definitions/revisions and dependency locks, plus the project texture registry and catalogue; general own-GLB ingest remains absent | resource admission and revision workflows, including bounded creator import and later component admission |
+| Resources | F2 resources 2 with typed definitions/revisions and dependency locks; S01 landed owner-only model staging/immutable approval and Save pin verification; creator import UI/placement remains absent | resource admission and revision workflows, including bounded creator import and later component admission |
 
 The [current Scene contract](../../reference/components/scene-content.md#current-implementation)
 and [F2 persistence contract](../../reference/components/persistence.md#one-source-format-f2-clean-epoch)
 describe the landed tree; production epoch activation remains a separate owner-controlled step.
 Landed contracts keep describing current behaviour until their explicit cutover.
 
-## Proposed continuation
+## Planning continuation
 
-The [convergence batch and next planning wave](../cross-track-execution.md#convergence-batch-and-next-planning-wave)
-and [main convergence plan](../product-convergence-2026-10-21.md#proposed-next-engineering-batch)
+Current sequencing is the [next parallel batch](../cross-track-execution.md#next-parallel-batch).
+Historically, the [convergence batch and next planning wave](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#convergence-batch-and-next-planning-wave)
+and [main convergence plan](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#proposed-next-engineering-batch)
 propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
-baseline, then C1 native Walls, C2 own-GLB import and the held T3 Capture/Preview scope. C2 planning can
-proceed while H0 is planned. It is whole-object editor import with retained original bytes/hash,
+baseline, then C1 native Walls, C2 own-GLB import and Capture/Preview. Batch E launch slices are now
+shipped; remaining scopes follow the [next parallel batch](../cross-track-execution.md#next-parallel-batch). It is whole-object editor import with retained original bytes/hash,
 recipe identity/version and a parts-safe derivative; no components are admitted or addressable, qualified
 references keep `componentId: null`, and no T4 dependency is introduced. Its consuming slice carries
 import/placement/memory evidence. It is registered as
 [T2.P02 — Own model import](./t2.p02-own-model-import/README.md) (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md)): the
 owner accepted its upload, retention and derivative bounds, authorized `T2.P02.S01` and released it
-from the hold, starting only after `T3.P03.S01` merges; S02 and S03 stay `proposed`.
+from the hold, starting only after `T3.P03.S01` merges. The owner authorized and released `T2.P02.S02` on
+2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/roadmap/now.md`); S03 stays `proposed`, unauthorized and held.
 
 The next planning wave pairs T1's face-frame query with T2 solve-once wall placement, and T1 Stage
 part selection with T2 component resolver/admission and revision correspondence; T3 annotations
@@ -112,8 +114,9 @@ shipped in PR #157 (`99c38033`), and the owner closed the phase on 2026-10-20 (i
 (materials/lights depth, attachments, definitions, and the K1 bounded editor-side GLB import) stay
 ahead of it. **`T2.P02` is registered 2026-10-22** as that K1 bounded editor-side import (batch E,
 [record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E4/E7), superseding the closed phase's deferred-table sentence that tied it to
-T4 delivery; the closed record is left as written. `T2.P02.S01` is authorized and released from the
-hold, starting only after `T3.P03.S01` merges; S02 and S03 are registered `proposed`. `Depends on`
+T4 delivery; the closed record is left as written. `T2.P02.S01` is shipped with owner-override acceptance and recorded complete merge-gate evidence;
+S02 was owner-authorized and released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)),
+starting per the release list (`docs/roadmap/now.md`); S03 is registered `proposed`, unauthorized and held. `Depends on`
 lists the external gates its slices consume. No slice provides a gate.
 
 ## Starting foundation
@@ -148,8 +151,9 @@ lists the external gates its slices consume. No slice provides a gate.
 **Capability rebuild and remaining boundary** (implementation-plan §4.4)
 
 T2.P01 restored supported Scene placement and editing in both readings through shared history and
-Save. Materials/light authoring depth, own-model import, asset upload and ingest staging remain T2
-work. The supply pipeline and normalization/footprint evidence under
+Save. T2.P02.S01 adds model staging/storage, immutable approval and resource admission; the
+creator-facing import/placement/rendering journey remains S02. Materials/light authoring depth
+and later composition capabilities remain T2 work. The supply pipeline and normalization/footprint evidence under
 `apps/editor/assets-source/pipeline/` remain evidence; C2 must establish its own source-retention and
 parts-safe derivative proof rather than reuse the catalogue optimizer unchanged.
 

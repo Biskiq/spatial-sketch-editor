@@ -243,3 +243,11 @@ adapter through fixtures the tests README forbids deleting, the arch lane pins t
 map, and one room type is still referenced by the parallel-track reader owner. The measured
 blockers, the remaining work and the state left intact are the
 [stop-and-report](t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md).
+
+
+**Registered successor (owner-released 2026-10-23):**
+[T1.P02.S05 — Legacy Layout retirement](t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/implementation-plan.md)
+now owns the complete proposed retirement scope, including fixture successors and the bounded
+cross-track registry/frame exception. It is released but not yet implemented or accepted. Its acceptance
+and merge precede S02; the phase register owns order/status. The S01 recovery anchor above remains
+the measured historical evidence, not the successor plan. This row remains open until retirement lands.

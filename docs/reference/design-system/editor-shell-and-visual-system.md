@@ -1303,7 +1303,7 @@ fallback specification that a future designer must reopen or an authority cycle.
 **Owner-ratified destination, 2026-10-22, PR #173.** See the
 [ratification record](../decisions/product-convergence-ratification-2026-10-22.md). This prepares feature
 integration within the ratified shell, not a complete new shell design.
-[Review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md).
+[Review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 An object with admitted parts offers part selection as deeper Card capability on invocation,
 keeping the placed subject's identity visible and distinct from Presentation selection. An
