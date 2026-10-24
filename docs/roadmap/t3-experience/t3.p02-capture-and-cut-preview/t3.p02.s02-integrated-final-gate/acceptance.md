@@ -6,14 +6,12 @@
 **Declared** `FINAL PHASE GATE` artifact of T3.P02
 
 ```text
-STATUS:   evidence recorded at the merged revision; acceptance-review round 4 (F1–F5) fixed and gated;
-          performance and unrun rows DEFERRED by owner ruling (2026-10-24); T1 host-patch review
-          approved; ACCEPTED 2026-10-24 as owner-override (not reviewed)
-REVISION: merge bf6b2e1f (origin/main 0b96c577 merged into the branch) plus the round-4 fix commit;
-          the gate ran on that working tree, which is the fix commit's tree (SHA in handoff.md COMMITS)
+STATUS:   ACCEPTED 2026-10-24 as owner-override (not reviewed) at merged revision 335820d6; SHIPPED by
+          slice-closeout (see Closeout); performance and unrun rows DEFERRED by owner ruling (2026-10-24)
+REVISION: merge bf6b2e1f (origin/main 0b96c577 merged into the branch) plus the round-4 fix commit 335820d6;
+          the gate ran on that working tree
 CLAIMS:   only the rows below, at that revision, on this machine
-DOES NOT: mark the slice shipped, close P02/P03, claim the owner's reference-machine rows, or claim
-          any deferred row as passing
+DOES NOT: close P02 or P03, claim the owner's reference-machine rows, or claim any deferred row as passing
 ```
 
 Authorization: [post-Batch-E owner release](../../../../reference/decisions/post-batch-e-authorization-2026-10-23.md).
@@ -29,9 +27,9 @@ re-measured. The round-4 F5 spec change is not run either. See the
 
 Independent, read-only review passes read the change as one diff: two for the slice, then two more
 (taken from opposite directions) for the warm-Preview entry, each re-reviewing the previous fix. Findings
-and resolutions are recorded in the [implementation review](./implementation-review.md#independent-review).
+and resolutions are recorded in the [implementation review](./implementation-review.md).
 Round 4 is the owner's acceptance-review pass; its findings F1–F5 and their resolutions are in the
-[implementation review, round 4](./implementation-review.md#acceptance-review-round-4).
+[implementation review, round 4](./implementation-review.md).
 
 Round 4 found: a hidden warm Preview surface kept rendering and running (F1, fixed and now asserted by a
 browser zero-draw check); the Guide key hid the Presentation's facts and its hint was false (F2, fixed,
@@ -92,7 +90,7 @@ are the same class.
 
 ## Acceptance matrix
 
-Rows follow the [plan](./implementation-plan.md#integrated-acceptance-matrix). "Browser" means a
+Rows follow the integrated acceptance matrix of the [plan](./implementation-plan.md), a closed stub whose text is preserved at its recovery anchor. "Browser" means a
 Playwright journey on the shipped route at the merged revision. Rows marked **deferred by owner ruling**
 are named in the [owner ruling](#owner-ruling--performance-and-unrun-rows-deferred-2026-10-24); they are
 not claimed as passing.
@@ -249,7 +247,7 @@ Accepting this record makes P02 **closable**, not closed.
 3. Unrun rows: **deferred by the same owner ruling, Scope B.** Also recorded for the owner's
    awareness: ordinary Presentation and Stop facts stay in the Experience lens inspector, because the
    host Card has no Experience contribution seam; this is a deferred T1 seam and is not claimed as
-   Card-hosted (see [implementation review](./implementation-review.md#bounded-round-2-expression)).
+   Card-hosted (see [implementation review](./implementation-review.md)).
 
 ## Dependencies and shared files
 
@@ -261,8 +259,42 @@ by Camera epoch). The visitor surface and Camera director gain an epoch prop and
 which is the only change to the visitor files. Perf work changes the F10/F13 flow rows, and round 4 changes the
 F10 spec's workload setup; neither adds a shared harness, fixture or lane file.
 
-## Closeout
+## Closeout (2026-10-24)
 
-Not performed. This is the phase's declared final gate, so an accepted record would make P02 **closable**,
-not closed; P02, P03 and the track registers are unchanged, and no phase-close, track-completion or cycle
-event is created here.
+`slice-closeout` ran on this record as the phase's declared FINAL PHASE GATE. The slice is shipped and
+T3.P02 is **closable, not closed**. No phase-close, track-completion or cycle event was created, P03 and
+P04 are untouched, and the phase close remains an owner-invoked request.
+
+What the closeout did, with no re-run of any check:
+
+- the implementation plan, implementation review and hand-off were compacted to closed stubs
+  (`AUTHORITY: NONE`) with exact Git recovery; this record stays live as the gate artifact;
+- the phase README's S02 row is `shipped` and its PHASE CLOSE block reads `closable`;
+- the T3 baton was rewritten (ACTIVE none); the T3 track README's Capture/Preview current-state cell and
+  the roadmap README T3 row now match S02's acceptance;
+- `docs/reference/components/camera-tour.md` records the landed Preview handover and warm surface.
+
+Deferred residuals are named in the [owner ruling](#owner-ruling--performance-and-unrun-rows-deferred-2026-10-24)
+and carried by the phase README and the T3 baton: 5 performance items (Scope A) and 9 unrun rows (Scope B).
+None is claimed as passing.
+
+```text
+CLOSEOUT PRESERVATION — T3.P02.S02 (2026-10-24)
+prose compacted:                 3   stubs at their own paths (implementation-plan, implementation-review, handoff)
+reference promotions:            1   landed Preview handover and warm-surface behaviour → reference/components/camera-tour.md
+renderable evidence archived:    0 files
+evidence stubs / manifests:      0
+transient artifacts removed:     0
+historical anchor:               335820d6060302cac1e78b9c08c75f25f7605201 · tag closed/T3.P02.S02 (local only, not pushed)
+                                 plan's last commit 6d87e25b is an ancestor of the tag
+new live → archive prose links:  0
+manual-owed verification rows:   deferred by owner ruling (Scope B); none claimed as passing
+remaining deferred items:        5 performance (Scope A) + 9 unrun (Scope B)
+permanent stubs added:           3
+post-merge anchor verification:  PENDING — after the P1 merge commit of PR 184 on main:
+                                   git merge-base --is-ancestor 335820d6060302cac1e78b9c08c75f25f7605201 main && echo "anchor reachable"
+                                   git show 335820d6060302cac1e78b9c08c75f25f7605201:<stub path> | head -3
+```
+
+Closeout ran the documentation gate only (links, written paths and anchors). It is not a product lane and does
+not replace the verification recorded above.
