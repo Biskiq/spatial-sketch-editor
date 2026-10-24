@@ -42,10 +42,13 @@ CLAIM:  Shared files claimed before edit, patch base `fff7dc14`:
          EXT_meshopt_compression fallback declaration was admitted (owner decision 2026-10-24).
          Any API edit needs `check:api` + DB-backed `test:api`.
 NEXT:  S02 implementation is COMPLETE on `t2/p02-s02-import-review-approve-place` and the
-       implementation-PR merge gate is green on the idle machine (`npm run test` 186/2,414; fast
-       155/2,113; arch 176; heavy 125; `check`/`check:api`/`check:project-model` 0 errors; build;
-       `test:api:stack` 95 pass, 0 skipped on localhost:5434; `perf:bundle` keeps Import/decoders off
-       every route load set). The browser journey RAN through the repository's local test-auth seam
+       implementation-PR merge gate was green on the idle machine before the review-fix pass
+       (`npm run test` 186/2,414; fast 155/2,113; arch 176; heavy 125; `test:api:stack` 96 pass,
+       0 skipped on localhost:5434). The review-fix pass merged `main` @ `663846af` (merge
+       `082e384c`) and re-ran on that tree: `npm run test` 189/2,440; arch 178; heavy 125;
+       `check`/`check:api`/`check:project-model` 0 errors; build; `perf:bundle` keeps Import/decoders
+       off every route load set; `test:api:stack` 97 pass, 0 skipped on the default `biskiq` stack,
+       localhost:5433. `test:fast` and the import perf flow were not re-run on that tree. The browser journey RAN through the repository's local test-auth seam
        (`/test-auth/session`, allowlisted automation identity; no Google): import of a 2 m box with a
        2050 px map → review (`1 reduced`, 2.000 × 2.000 m, contact 0.000) → approve → floor click →
        Save → fresh load rendering the same box; the saved row holds one resource, one exact lock and

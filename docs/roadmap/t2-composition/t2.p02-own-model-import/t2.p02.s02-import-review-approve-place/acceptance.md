@@ -14,6 +14,8 @@ Authorization: [post-Batch-E owner release](../../../../reference/decisions/post
 
 - **Trusted base:** `main` @ `fff7dc14` (post-Batch-E coordination merge). Start step recorded in the
   [T2 baton](../../../../operations/t2-composition/current.md) with eligibility and cycle check.
+  The branch now also carries `main` @ `663846af` (PR #184) by merge commit `082e384c`; the
+  Preview takeover conflict was resolved to main's structure with the `modelUrls` prop threaded in.
 - **Tested tree:** that base plus this slice's diff — 24 modified files and 14 new files, 4,835
   insertions / 147 deletions before the documentation edits on this page (the browser run added one
   test file and three source edits on top of the first commit). A second pass then added the import
@@ -67,14 +69,24 @@ All commands from the repository root unless noted; each ran on the tested tree.
 | `npm run check:project-model` | pass, 0 errors |
 | `npm run check` (editor, svelte-check) | pass, 0 errors, 0 warnings |
 | `npm run check:api` | pass, 0 errors (`model-structure.ts` changed) |
-| `npm run test` (full unconditional suite, the merge gate) | **186 files / 2,415 tests passed** |
-| `npm run test:arch` | 22 files / 176 tests passed |
+| `npm run test` (full unconditional suite, the merge gate) | **189 files / 2,440 tests passed** (on `082e384c`) |
+| `npm run test:arch` | 22 files / 178 tests passed |
 | `npm run test:heavy` | 9 files / 125 tests passed |
-| `npm run test:fast` | 155 files / 2,113 tests passed |
-| `npm run build` | pass (`vite build`; worker emitted as its own ES chunk) |
-| `npm run perf:bundle` | pass; Import/decoder chunks outside every route load set (numbers above) |
-| `npm run test:api:stack` (`BISKIQ_STACK=biskiq-t2`, DB port 5434) | 96 pass, 0 fail, **0 skipped** |
-| `npx playwright test --config perf/playwright.config.ts flows/import.spec.ts` (preview on `:5173`, local API on `:8788`, `PERF_RUNS=1 PERF_WARMUP=1`) | 2 passed; six F5/F6 rows (S and M × cold/warm/repeat-use) and one F13 row, reduced pre-flight — numbers below |
+| `npm run test:fast` | not re-run on `082e384c`; last recorded 155 files / 2,113 tests passed (before the merge and the fix pass) |
+| `npm run build` | pass on `082e384c` (`vite build`; worker emitted as its own ES chunk) |
+| `npm run perf:bundle` | pass on `082e384c`; Import/decoder chunks outside every route load set (numbers above) |
+| `npm run check:project-model` | pass, 0 errors on `082e384c` |
+| `npm run check:api` | pass, 0 errors on `082e384c` |
+| `npm run test:api:stack` (default `biskiq` stack, `BISKIQ_*` unset, DB port 5433) | **97 pass, 0 fail, 0 skipped** on `082e384c` (12 files, including the new meshopt refusal case) |
+| `npm run test:api:stack` (`BISKIQ_STACK=biskiq-t2`, DB port 5434, earlier pass before the fix pass) | 96 pass, 0 fail, **0 skipped** |
+| `npx playwright test --config perf/playwright.config.ts flows/import.spec.ts` (preview on `:5173`, local API on `:8788`, `PERF_RUNS=1 PERF_WARMUP=1`) | 2 passed on the pre-fix tree; **not re-run** after the model-URL route fix on `082e384c`. Six F5/F6 rows and one F13 row, reduced pre-flight — numbers below |
+
+**Fix pass on `082e384c`.** Review findings applied: the GLB structure gate now bounds meshopt
+sources and refuses fallback misuse (`5d86ebbf`); the derivative was checked against that gate with
+a real editor-produced meshopt GLB and passed with no issues (throwaway check, not committed); the
+route keeps the installed approved-model set live until its replacement resolves, shares live
+object URLs by hash, and clears only its own notice (`f8ebf4d5`, `4dcf3765`); the unread bytes copy
+is removed; and `model-bytes.test.ts` covers shared-hash fetch and dispose ordering (3 tests, passing).
 
 **Load-sensitive timeouts observed and re-run clean.** While a sibling lane's Playwright perf run
 held the machine (load average ~45), five files exceeded the 5 s per-test budget — always as
