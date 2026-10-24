@@ -20,7 +20,10 @@ ready or evidenced.
 
 `T2.P02.S01` and `S02` accepted with routine closeout, and every consumed gate `accepted` with every
 `Requires` scope `active` at this slice's own trusted base. S03 adds no product feature: it is the
-independent, integrated acceptance of own model import.
+independent, integrated acceptance of own model import. Project-deletion implementation is owned
+by T3's proposed C3 lifecycle work (T3.P04.S01), not this final gate. Its cleanup must include model
+revisions; S03 verifies retention and pin integrity while stored versions reference them and records
+that C3 carry without implementing deletion or claiming C3 accepted.
 
 ## Scope
 

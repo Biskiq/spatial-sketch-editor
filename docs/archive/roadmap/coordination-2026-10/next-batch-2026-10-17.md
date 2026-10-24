@@ -1,5 +1,8 @@
 # Next parallel batch — coordination proposal (2026-10-17)
 
+> **Archived 2026-10-23.** Relative links in this file were written from `docs/roadmap/` and may not
+> resolve from the archive; current routes start at [the roadmap](../../../roadmap/README.md).
+
 **Status:** **owner-approved 2026-10-17** ([decision record](../reference/decisions/next-batch-authorization-2026-10-17.md)).
 D1–D5 are applied in the same PR. D6/D7 were approved but held, because this proposal's D6 cannot be
 registered truthfully ([hold](#application-hold-d6d7)). Owner ruling **R1-D** then superseded them:

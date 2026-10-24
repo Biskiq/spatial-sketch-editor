@@ -5,7 +5,7 @@ approved R1–R5 as written, with R5's Guide-free Presentation fix assigned to `
 Batch C coordination session on 2026-10-19. The [approval patch](#approval-patch) is applied on the
 coordination PR (#155). The ratification and the authorization take effect when that PR merges.
 
-The reasoning is in the [batch C proposal](../../roadmap/batch-c-2026-10-19.md) §2 (C-1, C-2, C-4,
+The reasoning is in the [batch C proposal](../../archive/roadmap/coordination-2026-10/batch-c-2026-10-19.md) §2 (C-1, C-2, C-4,
 C-6, C-7). This record supersedes PR #149's
 `preflight/owner-decisions.md`: D1 and D5 are answered by R1/R4, D2 by R3, D3 by R5, and D4 lapses
 because there is no inventory.
@@ -78,7 +78,7 @@ Authorize S04 under its revised [plan](../../roadmap/t3-experience/t3.p01-camera
 with these conditions:
 
 - **Phase A** may start at authorization, on T3-owned files only, per the
-  [batch C protocol](../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19).
+  [batch C protocol](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-c-2026-10-19).
 - **Phase B** (the caller migration) starts only after the current-source freeze: `T1.P01.S05` and
   `T2.P01.S04` merged, or explicitly re-sequenced by the owner.
 - **The merge is the code cutover.** Activation on the deployed environment (migration 005 and the
@@ -112,7 +112,7 @@ Applied 2026-10-19 on PR #155, after the owner's approval:
    authorization path read ratified/authorized.
 4. The [K2 row](../../roadmap/core-editor-stability.md) records the gap as approved under R4.
 5. The conditional banners in the T3.P01 README, the S04 plan and the
-   [cross-track execution](../../roadmap/cross-track-execution.md#source-first-migration-and-activation-ownership)
+   [cross-track execution](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#source-first-migration-and-activation-ownership)
    section became ratified provenance. The cross-track AM-7 restatements were rewritten in AM-9
    terms. The frozen T4 drafts (`t4-release/**`, R1-D) are deliberately left unedited; T4 re-derives
    its inventory steps against AM-9 when its planning resumes.

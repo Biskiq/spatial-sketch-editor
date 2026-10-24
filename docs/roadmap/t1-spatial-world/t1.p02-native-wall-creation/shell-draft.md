@@ -1,75 +1,105 @@
-# T1.P02 — Shell draft: Draw, Opening and delete
+# T1.P02 — Shell draft: Ink Walls, Opening and delete
 
-**Status:** first draft for review, 2026-10-22, under PLATE's
-[feature design loop](../../../reference/design-system/editor-shell-and-visual-system.md#product-convergence-destination)
-(draft → review → build → browser observation → revise). It sets no keymap, pixel or format, and it is
-not the production shell until S02/S03 build it and the browser review revises it. Authority stays in
-[PLATE World Paper authoring](../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
-and the [lower-surface span](../../../reference/design-system/editor-shell-and-visual-system.md#contextual-lower-surface-span).
+**Status:** proposed feature composition for S02/S03 review, reconciled 2026-10-23.
+[Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md)
+is the destination; [PLATE](../../../reference/design-system/editor-shell-and-visual-system.md)
+owns composition, Card facts, tool/state language, return and responsive rules. This draft
+allocates bounded implementation work under those rules; it authorizes no production scope.
+It supersedes this phase's pointer-rail/Draw-family/Dimensions-writer draft.
 
-> **Round 2 alignment (2026-10-23).** [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md) is now the destination. Read "pointer rail", "Draw family" and "Opening family" below as the dock's **Select** and **Ink** tools (an opening is an Ink reading on a wall face), with Find in the Head and settled facts in the Card (the Dimensions Instrument is retired once a slice moves its fields; the landed one stays current until then). S02/S03 approved scope is unchanged; the naming and the order of the Ink readings are decided at the slice's shell-draft review, which this note does not preempt.
+## Current and destination
 
-## Starting point (landed partial shell)
+The landed partial shell has the Head, collapsible Index, shared Stage, overlay Card and
+contributed task Instruments. Ordinary Layout precision still writes through Dimensions;
+tasks still appear in Index groups. Those remain current until the consuming cutover ships.
+Round 2's whole World/Experience shell is destination, not a delivered state or this phase's
+mandate. The prototype's key map, pixels, hit algorithms and geometry are not requirements.
 
-Head (Undo/Redo, Save, a disabled Preview), a collapsible Index, the Stage, an overlay Card anchored
-bottom-left above the Stage, and one lower instrument at the bottom centre. Contributed tasks
-(Place object, Arrange, Compose, Layout dimensions, plinth) appear as Index groups by declared family.
-That listing departs from PLATE, where the Index is a locator and tools live on the pointer rail and
-in Find. The Card overlaps the Compose instrument at common widths (the residual S06 handed to T1).
+## Bounded S02 cutover
 
-## Proposed composition
+S02 proposes the original shared-shell integration scope in Round 2 terms:
 
-1. **Pointer rail, introduced by S02.** A compact rail on the Stage edge renders contributions by
-   their declared family, in PLATE's fixed order. It shows only families with a live grammar:
-   **Select** and **Draw** in S02, **Opening** in S03, and **Place** from the existing Scene
-   contributions and C2's import. Measure and More appear when they exist. The Index stops listing
-   tools once the rail and Find carry them. The rail is family-driven, so T2 and T3 contribute entries
-   without editing the shell.
-2. **Card and instrument arbitration.** The instrument keeps local span at the lower centre. The Card
-   docks to the free side of that span and never covers it; when both cannot fit, the Card compresses
-   to its identity line with an expand control. Opening or closing either never reframes the Stage.
-   Checked at the desktop wide width, the narrow desktop threshold and the narrow viewport.
+- Introduce **Select** and **Ink** in the bottom dock with Ink's straight-Wall reading;
+  the dark forest dock/palette, armed ivory key and single upward-growing lower column
+  follow PLATE. Expose only supported readings, not empty Slice/Eraser/Brush/Measure slots,
+  Sketch/Box/Round options, Scene Shape or roofs. Adding a tool requires its own capability.
+- Contributions describe capabilities and homes; the shell does not hard-code a T1 family
+  that T2/T3 must edit. Keep existing placement/composition tasks reachable in compatible
+  Library/Guide-style invoked homes through their owners' adapters. Audit mapping and
+  keyboard access before removing any Index task. Retire migrated task entries when their
+  dock/Find/invoked route works; do not strand or duplicate a foreign contribution.
+- Provide the bounded **Find in Head** access needed to discover and arm these tools and
+  invoke migrated existing tasks, using PLATE's explicit verbs. Do not claim the full
+  scope-model Index, global subject search or every future Find command is delivered.
+  T3 reviews Head changes; broad search/index redesign is outside this allocation.
+- Move ordinary **Layout** Wall/Opening facts into the Card, using the existing domain
+  planners/parsers/refusals and undo units. Wall thickness is advanced Card content and
+  derived role is read-only; no role chooser. Remove the migrated Dimensions writer and
+  its task/keyboard route in the same cutover. This does not silently move Scene/Camera
+  writers; review contributor compatibility with those owners. A second writer or a
+  renamed Dimensions Instrument is not the target.
+- Dock, palette and one invoked Instrument form one lower column. Card arbitration keeps
+  facts readable beside it; at constrained width collapse Card to identity with explicit
+  expansion rather than covering the task. No automatic Camera reframe. Retain PLATE's
+  task-appropriate span, canonical identity and explicit return behavior.
+
+Before build, owner/design review confirms this bounded allocation, exact Card fields and
+contributor homes. If migrating the existing contributors requires whole-shell or foreign
+semantic redesign, stop for a scope decision. Ratification alone cannot authorize that work.
 
 ## Draw (S02)
 
-| State | What the creator sees | Commit, undo and refusal |
+Ink is armable with nothing selected and arming does not change selection. Selecting a
+Junction/Wall end can supply the first point; otherwise the Stage or a typed coordinate
+supplies it. Existing Junction, explicit Wall-interior split and free-point marks differ;
+nearness without a deliberate target never connects. There is one shared Stage/Camera.
+
+| State | Visible reading | Source and unwind |
 | --- | --- | --- |
-| Armed | Draw highlighted; option strip shows Snap/Grid defaults for the next Wall and a fading key hint; selection unchanged | Esc or Select disarms; nothing is written |
-| First point | Pointer marks show the target: an existing Junction, a Wall interior (split mark) or a grid point when Snap is on | Nearness without a mark never connects |
-| Drawing | Ghost Walls with live length and angle tags; the derived consequence next to the pointer: *encloses a new Room*, *divides Kitchen*, *free-standing*; digits turn the tag into numeric entry (length, then Tab for angle) | Backspace removes the last point; Esc cancels the whole chain with no source change |
-| Finish | Click the start Junction to close, Enter to finish open, or end on an existing Wall | One accepted result and one undo step per chain; the last created Wall becomes selected and the tool stays armed |
-| Earned disclosure | When the chain splits or creates Rooms or touches referenced identities: *Creates 3 Walls · Splits Room A · one undo step*, counts read from the planner | Shown before the finishing click, never as an Apply step |
-| Refusal | Words at the pointer: *crosses Wall 12 — end on it to connect*, *overlaps Wall 4*, *closed inside Room A without connecting — connect it or draw outside* | Finishing is refused; the chain stays editable; no partial source |
-| Undo while drawing | Undo/Redo unavailable with the reason *finish or cancel the Wall first* | — |
+| Armed | Ink key and supported straight-Wall palette, remembered options; Scale/Grid/Snap remain drafting state | No source write or selection change |
+| Drawing | Ghost chain and transient length/angle facts; planner-derived free-standing/encloses/divides consequence | Each point can be typed; backtrack removes a live point; cancel discards the whole chain |
+| Finishing | Start-Junction close, open-chain finish action or deliberate existing-host end; named consequence before the gesture | Entire chain is one accepted result/undo step; last Wall selects and Ink stays armed |
+| Refused | Crossing/overlap/disconnected-nested-ring words with a repair at the gesture | No partial source; live chain remains editable |
+| Live proposal | Undo/Redo explain finish/cancel first | Generic proposal ownership, not a list of named gesture owners |
 
-Keyboard path: with a Wall end or Junction selected, Draw starts from it; otherwise the option strip
-accepts a typed start coordinate. Every subsequent point can be typed. Proposed keys, for review:
-`W` arms Draw, Enter finishes, Esc cancels, Backspace removes a point.
+Esc follows PLATE: collapse an open palette first; the following unwind cancels the live
+chain before disarming Ink. Tool switch, reading change and project replacement obey the
+session's cancellation/revalidation policy and cannot hide a live proposal. Exact key
+bindings and numeric-entry focus order are reviewed against existing commands before build;
+no prototype keymap is promoted by this draft. Keyboard-only creation, precise point/length/
+angle entry, cancellation and delete must remain complete paths.
 
-The Card never shows a role chooser: its read-only role fact reads *Bounds Room A*, *Divides A | B* or
-*Free-standing*, and it opens Details for the derivation.
+Marks follow the [spatial grammar](../../../reference/design-system/spatial-instrument-grammar.md):
+gold selection, white available transformation, yellow temporary inspection, red erase
+marks; values appear when useful on hover/drag or numeric entry. This phase adds no XYZ
+gizmo or permanent W/D/H labels. Card and marks write the same domain fact/refusal.
 
 ## Delete (S02)
 
-Delete sits in the Card's ⋯ list and on the Delete key for a selected Wall. When it removes Openings
-or merges or opens Rooms, the consequence line names them before confirming:
-*Deletes 2 Openings · Merges Rooms A and B · one undo step*. Delete is one accepted result; refusal is
-in words.
+The selected Wall's Card action and keyboard delete disclose hosted Openings and derived
+Room merge/open consequences before acceptance, with counts from the planner. One undo
+step removes the Wall and hosted Openings. Camera/Experience retain deleted IDs with
+computed diagnostics; no retargeting. A refused delete leaves source unchanged. This
+bounded delete does not implement the general Eraser tool or topology-review threshold.
 
 ## Opening (S03)
 
-Armed Opening projects a ghost onto the hovered Wall's axis, prefers the selected host on ties, and
-shows width and offset tags. Click places the default size; digits type the offset. An ineligible host
-or an overlap with another Opening refuses in words. Settled size and position stay in Dimensions,
-the one settled-measure writer. Removing an Opening is in its Card ⋯ list.
+Opening is an **Ink reading on a Wall face**, not a dock family. S03's complete plan must
+settle the supported straight opening reading, target/host preference, precision and unwind
+against the same canonical Layout planner. Show a host-relative ghost and transient offset/
+width facts; refuse ineligible hosts or overlaps in words. Ordinary settled offset, width,
+height and sill live in the Card through the fields migrated by S02. Delete stays in the
+Opening's scoped Card action. No round opening, curved Wall or general face-frame placement
+provider is inferred from the vocabulary. S03 needs its own authorization and feature review.
 
-## Review checkpoints
+## Review and observation
 
-- Before S02 build: owner or design review of the rail introduction and the Card arbitration, which
-  are the two shared-shell changes here. Everything else is local feature composition.
-- After S02 build: real-browser observation of empty → draw → close → divide → delete in Plan and 3D,
-  keyboard-only, narrow and reduced motion, recorded with revision and viewport; revise this draft.
-- After S03 build: the same observation for Opening.
+Before S02 build, review the bounded dock/Find integration, Card migration, contributor
+homes, numeric focus and command conflicts. After build observe empty/starter → draw →
+close → divide → delete in both readings, keyboard-only, narrow/short and reduced motion;
+include existing invoked tasks and Card arbitration. Record revision, viewport and observed
+result, then revise the consuming implementation. S03 repeats this for Opening.
 
-Proposed departures for owner review: none beyond PLATE. The rail and arbitration implement PLATE
-rules the partial shell has not built yet; moving tools out of the Index removes an existing departure.
+Production key map, calibrated responsive thresholds and unsupported Ink readings remain
+feature decisions; accepted drawing policy and Round 2 invariants do not. These reviews
+are slice acceptance work, not a new shell gate or production release.

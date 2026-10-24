@@ -1,38 +1,85 @@
 # T2.P02 — Shell draft: import, review and place an own model
 
-> **Round 2 alignment (2026-10-23).** [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md) is the destination: read "Place family" as the Library, "Dimensions" as the Card's fields and Stage rays and points, and Find as Find in the Head. Approved scope is unchanged; reconciliation happens at this draft's review.
+**Status:** S02 design destination, released with S02 on 2026-10-23; T1 review of the bounded host patch pending; no acceptance.
+[Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md)
+and [PLATE](../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+own the destination. This draft applies them to import; it does not commission a full shell rebuild.
+The landed Dimensions surface remains current for native primitives and catalogue objects; S02 adds Card
+fields for creator models only and cuts nothing else over.
 
-**Status:** first draft for review, 2026-10-22, under PLATE's
-[feature design loop](../../../reference/design-system/editor-shell-and-visual-system.md#product-convergence-destination).
-It sets no pixel, keymap or format, and it is revised after S02's browser observation. Authority stays
-in [PLATE](../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination):
-Import is a **procedure** (steps, validation, Apply), so it lives in the lower World Instrument and is
-reached from the **Place** family and Find; it earns no permanent chrome.
+## Home and continuity
+
+Import is a **Library procedure**, invoked from the Library beside the dock or Head Find's explicit
+command. It uses the one lower Instrument for its steps, validation and acceptance. No Import or
+Place permanent pointer tool, separate Dimensions destination, side inspector or second Stage is
+introduced. The bounded current-project approved-model entry starts another placement without
+re-import; general library management is outside S02.
+
+Keep the Head, scope Index, Stage and selected identity coherent. The Card is an overlay and the one
+writer for settled selected-object facts. A procedure's unapproved scale/pivot choices are procedure
+parameters, not competing selected-object fields. Ordinary selection does not arm placement. The
+Library's explicit placement action arms the approved model; explicit cancel returns to rest.
 
 ## Flow
 
-| Step | Instrument content | Stage and Card | Refusal and cancel |
+| Step | Library Instrument | Stage and Card | Refusal / cancel |
 | --- | --- | --- | --- |
-| Choose | *Import model…* in Place and Find opens the procedure with a file chooser and drop target; it accepts one GLB, or a glTF with its buffers and maps chosen together | Unchanged; selection kept | Wrong type or over the size bound refuses before reading, in words |
-| Read | Progress while the worker validates and prepares the derivative; Cancel always available | Unchanged | Validation errors listed plainly; Cancel discards everything |
-| Review | The ingest report: size, triangles, maps, textures reduced; *found but not used yet*: parts, animations, variants | A ghost at the Stage centre, at the proposed scale, sitting on its pivot | — |
-| Confirm size | Measured bounds shown in metres; a units choice (metres, centimetres, millimetres, inches) when the bounds look implausible, never silently guessed; pivot defaults to bottom-centre with a choice of bounds centre | The ghost updates; footprint shown on the floor | — |
-| Approve | *Approve and place* uploads source and derivative with progress, then approves | — | Network failure keeps the review for retry; a replaced project or ended session drops the result without installing |
-| Place | Place stays armed with the approved model; a click on floor support places it | The placed instance becomes selected; the Card shows name, kind *Imported model*, footprint, and a ⋯ list with Duplicate and Delete | Placement refusal stays at the pointer |
+| Choose | Import model…; one GLB or one glTF with local buffers/maps | Keep existing selection and standpoint | Wrong type/size refuses before expensive work; chooser cancellation returns focus |
+| Read | Named preparation progress and reachable Cancel | Keep context; no authored changes | Plain validation reasons; cancel releases worker and staging work |
+| Review | Observed size, triangles, maps and texture reductions; parts/animation/variants labeled found but not admitted | Unselected proposed-model ghost, not a selected authored instance | Never imply part or animation capability |
+| Confirm | Bounds in metres; explicit source-unit scale; bottom-centre or bounds-centre pivot; footprint/contact confirmation | Ghost and floor footprint update together | No silent unit guess; invalid parameters refuse beside their field |
+| Approve | Approve and place uploads source/derivative and approves the immutable revision | Approval alone keeps source and selection unchanged | Network failure retains valid review for retry; stale/project-replaced completion cannot install |
+| Place | Library shows the armed model and an explicit cancel/return | Floor pointer or keyboard/typed placement proposes one pose; accepted instance becomes selected | Local support refusal commits nothing; valid acceptance adds resource/lock/entity atomically |
 
-After approval the model is a Place entry for this project, so later instances do not re-import.
-Move, turn, resize and duplicate use the existing Scene gestures and Dimensions; contact comes from the
-approved definition, so the model sits on the floor in Plan and 3D.
+The model stays available for another explicit placement in the current project. Name, dimensions,
+angle and supported position facts live in Card fields; advanced fields use More. Duplicate/Delete
+use the fixed scoped list shared by Card ⋯, context menu and Head Find. Existing Scene semantics
+still determine support/refusal; unavailable operations earn no handle or field.
 
-## States to build and observe
+## Manipulation, state and return
 
-Ordinary use, a large file near the bound, an invalid file, a Draco/meshopt/KTX2 source, a model with
-parts or animation (reported, not offered), cancel at every step, offline during approve, keyboard-only
-use of the whole procedure, narrow viewport (the instrument keeps local span; the Card compresses per
-the T1.P02 arbitration), and reduced motion.
+Use Stage rays and points: white available transformations, gold selection, yellow temporary
+inspection; values appear on hover or drag. The gesture and Card edit the same domain fact with the
+same refusal. During a live gesture its Card field displays the transient value and cannot start a
+second writer. Valid release or explicit field commit makes one undo step; invalid release commits
+none. Numeric entry has explicit acceptance, Esc restore/cancel and no blur commit. Undo/Redo explains
+why it is unavailable while a proposal is live. Do not adopt XYZ gizmos or permanent W/D/H labels.
 
-## Review checkpoints
+The lower column grows dock → palette → invoked Instrument; palette collapse and Esc unwind one
+level at a time. Cancel is visible during preparation/upload. Keyboard operation reaches every step,
+reports progress/refusal and returns focus to the invoking Library/Find entry. Task replacement or
+project replacement invalidates late work; lens return never silently resumes a writer. A parked
+procedure resumes only explicitly after project/source/epoch revalidation, otherwise explains why
+it must restart. Preview entry/exit preserves the authoring return contract and does not install
+pending approval or placement.
 
-Before S02 build: review this flow and the report wording. After S02 build: browser observation of
-import → place → duplicate → Save → reopen → Preview, recorded with revision and viewport; revise.
-Proposed departures from PLATE: none.
+On narrow desktop the procedure and Card obey the shared arbitration: reachable local controls,
+Stage context and selected identity, without an independent viewport or permanently allocated Card
+column. Reduced motion preserves state and progress without requiring animation.
+
+## Bounded host integration
+
+T2 contributes its task/Find entry, Instrument view, Card subject/name/facts, pointer proposals,
+ghosts and overlays through the existing Stage adapter seam. T2 owns import state, validation,
+resource resolution and intents. T1 owns host/shell/route changes. The current generic Card offers
+read-only facts plus a name writer, so S02 must agree a minimal editable-field contribution with
+T1 (stable identity, units/value, transient read-only state, commit/refusal and focus return), along
+with Library/Head Find invocation and any renderer input needed. Stop and report a missing seam;
+record the T1-reviewed patch owner/merge order before implementation. This integration does not
+create a global shell prerequisite or permit T2 to rewrite the host.
+
+## Review and observation
+
+Before build, review flow/report wording, the bounded host contribution and the Card/ray cutover.
+No departure from PLATE is proposed; any required departure is named for owner review before build.
+After build, record revision, viewport, reduced motion and browser observations, then revise:
+
+- empty/starter import → approve → place → manipulate → duplicate → Save → fresh reopen → Preview;
+- ordinary/rest/selected states, near-bound and invalid inputs, conditional decoder sources and
+  observed-but-not-admitted parts/animation;
+- cancel at each step, offline approval/retry, stale approval and project replacement;
+- keyboard-only import/placement/Card editing, local refusal, narrow desktop, lens parking and
+  explicit revalidated Resume, Preview return and reduced motion.
+
+Use the Round 2 interactive states/guided tours for composition and interaction acceptance. Prototype
+pixels, mock state mechanisms and keymap are not implementation contracts.

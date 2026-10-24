@@ -179,7 +179,7 @@ are not applied again.
 **Owner-ratified destination, 2026-10-22, PR #173.** See the
 [ratification record](../decisions/product-convergence-ratification-2026-10-22.md). Existing catalogue
 preparation remains a current procedure; it does not define creator-import capability.
-[Review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md).
+[Review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 A creator import retains source bytes, content hash, and recipe identity/version. Its render
 derivative preserves addressable source structure and capability meaning, or carries sufficient
@@ -190,7 +190,10 @@ object; retaining parts enables a later component consumer without declaring tho
 A single-mesh source can still be annotated at a point. Catalogue optimizers are not reused for
 creator import unchanged without that qualification.
 
-Copyleft is aligned with the owner-directed product model. Evaluate established libraries on
-correctness, capability and measured browser cost inside the canonical ownership boundaries.
-Record the exact product/dependency licence and shipped build before a relevant dependency ships;
-this planning round selects no licence file and installs no dependency.
+Product licensing is undecided; the owner rescinded the copyleft choice
+([2026-10-23 ruling](../decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)). Evaluate
+established libraries on correctness, capability and measured browser cost inside the canonical
+ownership boundaries. Their admissibility cannot be assumed from the former copyleft direction.
+While licensing is undecided, a new dependency is admitted only under the owner's
+[permissive-only ruling](../decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction), recorded in the consuming slice's
+acceptance; this selects no licence file.

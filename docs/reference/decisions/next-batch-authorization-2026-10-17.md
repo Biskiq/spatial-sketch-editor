@@ -1,7 +1,7 @@
 # Next-batch authorization and viewport readiness route decision
 
 **Date:** October 17, 2026. **Status:** **owner-approved** — the owner approved D1–D7 of the
-[2026-10-17 next-batch proposal](../../roadmap/next-batch-2026-10-17.md#proposed-decisions) as proposed.
+[2026-10-17 next-batch proposal](../../archive/roadmap/coordination-2026-10/next-batch-2026-10-17.md#proposed-decisions) as proposed.
 D1–D5 are applied by the PR that carries this record and take effect when it merges after independent
 review. D6/D7 were first approved but held ([Application hold](#application-hold-d6d7--superseded-by-r1-d)). That hold is
 **superseded** by the later same-day ruling [R1-D](#ruling-r1-d-t4-deferral-2026-10-17), which defers
@@ -20,7 +20,7 @@ AM-1–AM-8 and PLATE are unchanged, lifecycle and gate identity stay in the
 | D2 | The host↔F4 wiring is assigned to `T1.P01.S07` (the explicit assignment the 2026-10-16 record provides for), together with adapter re-binding across installs and the AM-5 adapter contribution points. S07 has no Layout or Scene production writer. | S07 and S04 plans; T2.P01.S03 plan |
 | D3 | The Head Save integration stays with `T1.P01.S04` (decision 1 of the S02 pair record). `F4.intent-acceptance@1:conditional-save-current-v1` joins S04's `Requires` at S04's own authorization, and the integration still precedes `T2.P01.S04`. | S04 plan |
 | D4 | `T1.P01.S07` is **authorized**. It is not an architecture-cycle exposure; the T1.P01 window keeps its three. | T1.P01 slice register |
-| D5 | `T3.P01.S03` is **authorized**, under the [batch A protocol](../../roadmap/cross-track-execution.md#authorized-batch-2026-10-17) and the split-on-discovery clause in its plan. | T3.P01 slice register |
+| D5 | `T3.P01.S03` is **authorized**, under the [batch A protocol](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-2026-10-17) and the split-on-discovery clause in its plan. | T3.P01 slice register |
 
 Every consumed gate and required scope of S07 and T3.P01.S03 is `accepted` and `active` at ancestors
 of post-PR #135 `main` (`c9aa53cf`); the proposal lists the commits. Batch A runs S07 and T3.P01.S03 in

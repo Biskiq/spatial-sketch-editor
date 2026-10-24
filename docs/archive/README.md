@@ -27,6 +27,10 @@ PR #115 (WP4) kept the archive deliberately small. It holds:
 - `roadmap/p25-experience/p25-unified-design/` — the two accepted UX comparator
   JSON captures, kept **byte-identical** because a separate comparison declares
   them as its baseline.
+- `roadmap/coordination-2026-10/` — the dated October 2026 batch proposals, convergence
+  packages and the pre-consolidation cross-track protocols, archived 2026-10-23 when
+  [`../roadmap/cross-track-execution.md`](../roadmap/cross-track-execution.md) became the
+  single current coordination route. Their relative links were written from `docs/roadmap/`.
 
 The rest of the baseline archive (shipped phase diaries, handoffs, superseded
 plans, retired strategy snapshots, old shell and design specs) was deleted by

@@ -7,7 +7,7 @@ authorizations, and the two phase closures recorded below, in the post-cutover c
 records. It changes no ratified contract: AM-1–AM-9 and PLATE are unchanged, lifecycle and gate
 identity stay in the [roadmap register](../../roadmap/README.md#gate-register), and each slice's
 scope stays in its own plan. The rules are in the
-[batch D protocol](../../roadmap/cross-track-execution.md#authorized-batch-d-2026-10-20).
+[batch D protocol](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-d-2026-10-20).
 
 **Base.** `origin/main` `9a457f6b3201bc1e7b151f7beaaebe59f4f83b64`, the merge commit of PR #158 (the
 `T3.P01.S04` live ownership cutover). Verified at this base: PR #158 is a P1 merge commit whose second
@@ -136,7 +136,7 @@ Two sources had to be reconciled:
 
 1. the batch C diagram, which drew `owner-run activation → T1.P01.S06` and
    `owner-run activation → T3.P02 registration`
-   ([cross-track execution](../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19));
+   ([cross-track execution](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-c-2026-10-19));
 2. the more specific ratified text: ruling C3 ("S06 runs once, **after `T3.P01.S04` is accepted**"),
    R5 ("**the merge is the code cutover**. Activation on the deployed environment … is a separate
    owner-run step that follows the merged runbook") and AM-9 §6 (same ruling).
@@ -153,8 +153,8 @@ The four states are distinct and must not be equated:
 The diagram's edges were mechanically wrong under the newer, more specific ruling: a deployed
 activation is an operational step on the same accepted code, so it cannot be a gate on engineering
 work that consumes that code. The reconciliation is recorded in the
-[batch C section](../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19) and the
-[execution DAG](../../roadmap/cross-track-execution.md#execution-dag-and-earliest-product-milestones);
+[batch C section](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-c-2026-10-19) and the
+[execution DAG](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#execution-dag-and-earliest-product-milestones);
 no new owner decision was required, and the competing sources are named here so the correction is
 reviewable rather than silent. Activation stays owner-run, unexecuted and unclaimed; it is not part of
 any PR in this batch.
@@ -167,7 +167,7 @@ activation ordering is an operational choice, not an engineering prerequisite.
 ## Batch D coordination
 
 `T1.P01.S06` and `T3.P02.S01` run in parallel under the
-[batch D protocol](../../roadmap/cross-track-execution.md#authorized-batch-d-2026-10-20): one writer
+[batch D protocol](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-d-2026-10-20): one writer
 per shared file, additive registration elsewhere, the complete merge gate rerun on then-current
 `main`, independent review per slice, and each slice's own closeout and P1 merge commit.
 

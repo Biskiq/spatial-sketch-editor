@@ -1108,7 +1108,7 @@ same inspectable capabilities, and the destination is never presented as shipped
 **Owner-ratified destination, 2026-10-22, PR #173.** See the
 [ratification record](./decisions/product-convergence-ratification-2026-10-22.md). The accepted P1–P3
 creative findings motivate this direction; they do not adopt prototype encodings or chrome.
-[Review manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
+[Review manifest](../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 **Draw, arrange, explain, revise.** A creator can build architecture, compose their own objects,
 explain an object or an admitted part, and revise that work without losing identity or unrelated
@@ -1133,8 +1133,11 @@ or explain an unresolved reference without silently guessing a replacement.
 **Performance and design development.** Editor and viewer usability is judged in a browser on a
 regular laptop through [the proposed performance contract](./components/performance.md).
 Resolve demonstrated material costs inside the consuming slice, preserving architectural
-expressiveness. Copyleft aligns with the product direction; established libraries are welcome
-when justified by correctness, capability and performance. Shared shell rules remain PLATE-owned.
+expressiveness. Product licensing is undecided: the owner rescinded the copyleft choice
+([2026-10-23 ruling](./decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)). Established
+libraries remain candidates when justified by correctness, capability and performance; dependency
+licence compatibility must be established for the eventual product licence and shipped build;
+until then new dependencies follow the owner's permissive-only admission ruling (same record). Shared shell rules remain PLATE-owned.
 Precise integration of new prototype capabilities develops in each consuming slice through a
 reviewable draft, build, browser observation and revision; unfinished feature layout does not
 block unrelated capability planning.

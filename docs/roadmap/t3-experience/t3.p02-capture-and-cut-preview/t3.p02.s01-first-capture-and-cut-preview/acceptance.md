@@ -19,7 +19,7 @@ EVIDENCE:  The pre-rebase record reports type/check, fast 143 files/1,965 tests,
            no verification. F10 Preview performance, post-fix lens wiring and route-level Guide journey
            remain unrun/unverified here. DB-backed API verification now passes in the recorded
            merge gate below; no manual journey or performance result is claimed.
-NOT WAIVED: T3.P02.S02 remains the phase's proposed, unauthorized final integration gate; parent
+NOT WAIVED: T3.P02.S02 remains the phase's proposed, unauthorized final integration gate (true at acceptance; S02 was released 2026-10-23 — see the phase register); parent
             merge-gate results are recorded below and P1 preserves the verified recovery anchors. T3.P02 stays
             active; no phase closure or new slice release is recorded.
 RECOVERY:   git show closed/T3.P02.S01:docs/roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/acceptance.md

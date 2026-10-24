@@ -1,5 +1,8 @@
 # Next batch — H0 and first-wave launch plans (coordination proposal, 2026-10-22)
 
+> **Archived 2026-10-23.** Relative links in this file were written from `docs/roadmap/` and may not
+> resolve from the archive; current routes start at [the roadmap](../../../roadmap/README.md).
+
 **Status: decided 2026-10-22.** The owner approved E1–E7 as recommended below, deciding E7 now with
 each start gated on `T3.P03.S01` merging; the [batch E record](../reference/decisions/batch-e-authorization-2026-10-22.md) is the decision provenance.
 This page itself registers, authorizes, ratifies and releases nothing; it keeps the gap findings and

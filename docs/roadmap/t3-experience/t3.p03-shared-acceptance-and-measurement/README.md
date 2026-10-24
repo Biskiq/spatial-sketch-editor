@@ -8,10 +8,10 @@ covers every scope that list omits · **Track:**
 [F.4 destination](../../../reference/composition-execution.md#product-convergence-destination),
 [performance](../../../reference/components/performance.md)
 
-This phase is the H0 shared correction. The [H0 launch scope](../../convergence-shared-foundation-2026-10-22.md)
-keeps its rationale. The [batch E protocol](../../cross-track-execution.md#authorized-batch-e-2026-10-22)
-owns sequencing and shared files, and the [coordination proposal](../../next-batch-2026-10-22.md)
-keeps the gap findings behind it.
+This phase is the H0 shared correction. The [H0 launch scope](../../../archive/roadmap/coordination-2026-10/convergence-shared-foundation-2026-10-22.md)
+keeps its rationale. Its slices ran under the historical
+[batch E protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-e-2026-10-22); the
+[coordination proposal](../../../archive/roadmap/coordination-2026-10/next-batch-2026-10-22.md) keeps the gap findings behind it.
 
 ## Why a T3 phase with two slices
 
@@ -36,8 +36,8 @@ lifecycle and prerequisites only.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P03.S01 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Planner scope and build isolation](./t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md) | [record](./t3.p03.s01-planner-scope-and-build-isolation/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); released from the hold; merges first; accepted 2026-10-22 as `owner-override` (independent-review verdict waived, [ruling](./t3.p03.s01-planner-scope-and-build-isolation/acceptance.md#owner-ruling--independent-review-verdict-waived-2026-10-22)) |
-| T3.P03.S02 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Measurement workflow and final gate](./t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | [record](./t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); accepted and shipped 2026-10-23 as `owner-override` at `eabd4b889bdb52d0b149b6f58aab6c4788e39952`; open trace/hard-row/calibration items remain explicitly unclaimed |
+| T3.P03.S01 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Planner scope and build isolation](./t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md) | [record](./t3.p03.s01-planner-scope-and-build-isolation/acceptance.md) | historical Batch E permission 2026-10-22 ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); merges first; accepted 2026-10-22 as `owner-override` (independent-review verdict waived, [ruling](./t3.p03.s01-planner-scope-and-build-isolation/acceptance.md#owner-ruling--independent-review-verdict-waived-2026-10-22)) |
+| T3.P03.S02 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Measurement workflow and final gate](./t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | [record](./t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md) | historical Batch E permission 2026-10-22 ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); accepted and shipped 2026-10-23 as `owner-override` at `eabd4b889bdb52d0b149b6f58aab6c4788e39952`; open trace/hard-row/calibration items remain explicitly unclaimed |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
 slice rechecks them at its own trusted base through the runbook start step. Neither slice provides a

@@ -1,5 +1,13 @@
 # Product convergence — owning-contract ratification manifest
 
+> **Archived 2026-10-23.** Relative links in this file were written from `docs/roadmap/` and may not
+> resolve from the archive; current routes start at [the roadmap](../../../roadmap/README.md).
+
+> **Licensing supersession — 2026-10-23:** this archived record retains the former copyleft
+> assumption as history. The owner rescinded that choice; product licensing is undecided.
+> Its GPL-family product recommendations and inferred dependency admissibility are not current
+> decisions. See the [owner ruling](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction).
+
 **Status: core destination ratified and on-demand performance workflow authorized, 2026-10-22.**
 The owner explicitly accepted the package prepared at `88d93128`; see the durable
 [decision record](../reference/decisions/product-convergence-ratification-2026-10-22.md).

@@ -2,7 +2,7 @@
 
 **Status:** research/planning proposal, 2026-10-21; inspected baseline `78cafc3acaad0f9919855901a7ea4d98aeecd85f`. No ratification, phase registration, implementation authorization or production change. Owner acceptance of P1's meaningful interactive Presentation, P2 Smart Wall and P3 Vellum is an input; P4 is explicitly deferred. Earlier roadmap language about P4 starting early does not reopen it.
 
-**Round boundary, revised 2026-10-22:** follow the [convergence sequence](../../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence).
+**Round boundary, revised 2026-10-22:** follow the [convergence sequence](../../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#scope-and-sequence).
 Step 2 (independent research) **executed 2026-10-22 at `ce9b7156`**; `git diff 78cafc3a ce9b7156 --stat`
 touches only `broad-research/` and `docs/` (13 files), so no inspected source, test or asset changed and the
 baseline evidence stands. Results are in [§Step 2 results](#step-2-results) and the

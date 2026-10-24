@@ -193,7 +193,7 @@ inputs from accepted immutable resource pins rather than a live catalogue. Scene
 admits native procedural definitions and already pinned palette entries; a missing pin reports
 unavailable, never silently changes the lock. The F2 starter/migration may install an explicitly
 captured bounded palette as part of its baseline. Adding other resources belongs to T2's staged
-resource follow-on, not a Scene-only transform.This is one source transition, not two editable formats. Incompatible intent/revision/result semantics needs a new major; compatible registered adapter admission keeps F4@1 with explicit new evidence. Retirement ends current-source adapter admission only; the revision/result/history invariants endure as unit-capability prerequisites and shipped evidence stays valid history. The [readiness amendment](../../cross-track-execution.md#capability-readiness-amendment)
+resource follow-on, not a Scene-only transform.This is one source transition, not two editable formats. Incompatible intent/revision/result semantics needs a new major; compatible registered adapter admission keeps F4@1 with explicit new evidence. Retirement ends current-source adapter admission only; the revision/result/history invariants endure as unit-capability prerequisites and shipped evidence stays valid history. The [readiness amendment](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#capability-readiness-amendment)
 requires both Consumes and exact Requires capabilities accepted at trusted base before use.
 
 ## Minimum T1 viewport consumer contract

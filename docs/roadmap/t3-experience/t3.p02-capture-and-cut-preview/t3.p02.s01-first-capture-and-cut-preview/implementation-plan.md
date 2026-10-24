@@ -9,7 +9,7 @@ This plan remains live because its declared exhaustive integration route is T3.P
 
 The historical batch D authorization and approved state are preserved as provenance. S01's
 acceptance ruling and closeout status live in the [acceptance record](./acceptance.md) and
-[phase register](../README.md#slice-register); T3.P02.S02 remains proposed and unauthorized.
+[phase register](../README.md#slice-register), which owns T3.P02.S02's current status.
 
 ## Finalized convergence scope (owner-accepted 2026-10-22)
 
@@ -162,8 +162,8 @@ gate rechecks the integrated result; it does not defer a hard miss.
 ## Shared-file ownership
 
 Batch D's ownership rows are historical: `T1.P01.S06` has shipped and its phase is closed, and no
-closed-phase permission is reused. On resumption this slice runs under the authorized
-[batch E shared-file and merge rules](../../../cross-track-execution.md#batch-e-shared-files-and-merge-order).
+closed-phase permission is reused. On resumption this slice ran under the then-authorized
+[batch E shared-file and merge rules](../../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#batch-e-shared-files-and-merge-order).
 T3 writes the Experience and Camera units, lowering, interpreter, the Preview surface and T3 authoring
 adapters. Edits to the shared unit type and validation modules are confined to the Experience entries
 and merge serially. The Head's Preview entry and the Preview takeover are an owned integration patch

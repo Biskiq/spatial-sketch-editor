@@ -4,7 +4,7 @@
 [Decision record](../decisions/product-convergence-ratification-2026-10-22.md).
 This is the single owner of performance profiles, workloads, metric definitions and
 budget tables. No harness is installed and no browser/GPU/reference-laptop result is claimed.
-The [review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md) separates
+The [review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md) separates
 ratification, permanent workflow authorization and production hold release.
 
 Editor and viewer must remain useful on a regular laptop. Resolve demonstrated material costs

@@ -1,7 +1,8 @@
 # T1 — Spatial world
 
 **Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; `T1.P02` (native Wall
-creation) registered 2026-10-22 as batch E with `T1.P02.S01` authorized; `T1.P01.S01` shipped (shared F1/F3
+creation) registered 2026-10-22 as batch E; S01 shipped by scoped owner-override,
+S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); S02 drawing has a complete held plan and S02–S04 stay held; `T1.P01.S01` shipped (shared F1/F3
 providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
 shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
 not complete ([track register](../README.md#track-register)) · **Runbook:**
@@ -44,9 +45,9 @@ reconciliation, precision) still proven and the visitor/public boundary still gr
 
 | Concern | Current (landed tree) | Destination |
 | --- | --- | --- |
-| Layout document | F2 Layout unit, wall-first `formatVersion: 5`, one floor datum, authored `role: 'boundary' \| 'partition'` | Wall is the authored primitive and its spatial role is derived; levels and structures are first-class ([`architecture.md`](../../reference/architecture.md) §Ownership) |
+| Layout document | F2 Layout unit, wall-first `formatVersion: 6`, one floor datum, Wall role derived by the canonical compiler | Wall is the authored primitive and its spatial role is derived; levels and structures are first-class ([`architecture.md`](../../reference/architecture.md) §Ownership) |
 | Plan/3D presentation | shared Stage, inspection/selection and Layout-owned Plan representation shipped in T1.P01 | extend the runtime-safe representation over canonical compiled geometry through F.3 channels |
-| Layout authoring | native plinth, Wall/Opening precision and existing straight-Wall length/angle/move shipped; shared F4 Undo/Redo and conditional Save | bounded native Wall creation and its role/schema cutover, followed by later architectural capabilities |
+| Layout authoring | native plinth, Wall/Opening precision and existing straight-Wall length/angle/move shipped; shared F4 Undo/Redo and conditional Save | bounded native Wall creation after legacy vocabulary retirement, followed by later architectural capabilities |
 | Compiler | one canonical compiler in `@portfolio/layout-core` | unchanged ownership; representation consumes its output and never reconstructs topology |
 
 The [closed P01 outcome](./t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary) and
@@ -54,22 +55,46 @@ The [closed P01 outcome](./t1.p01-stage-foundation/README.md#outcome-and-deliber
 describe this landed tree; production epoch activation remains a separate owner-controlled step.
 Future schema/authoring changes remain proposals until their explicit cutover.
 
-## Proposed continuation
+## Planning continuation
 
-The [convergence batch and next planning wave](../cross-track-execution.md#convergence-batch-and-next-planning-wave)
-and [main convergence plan](../product-convergence-2026-10-21.md#proposed-next-engineering-batch)
+Current sequencing is the [next parallel batch](../cross-track-execution.md#next-parallel-batch).
+Historically, the [convergence batch and next planning wave](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#convergence-batch-and-next-planning-wave)
+and [main convergence plan](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#proposed-next-engineering-batch)
 propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
 baseline, then C1 native Walls alongside C2 own-model import and the held T3 Capture/Preview scope.
-T1 can plan C1 while H0 is planned: C1 keeps one datum, captures non-reusing IDs, resolves the Wall-role
+T1 can plan C1 while H0 is planned: C1 keeps one datum, captures non-reusing IDs, builds on the shipped Wall-role
 cutover and carries its compile/drag/commit/Undo performance proof. It is registered as
 [T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md) (batch E,
 [record](../../reference/decisions/batch-e-authorization-2026-10-22.md)): the owner accepted its drawing policy, authorized `T1.P02.S01` and released it from
-the hold, starting only after `T3.P03.S01` merges; S02–S04 stay `proposed`.
+the hold, starting only after `T3.P03.S01` merges. On 2026-10-23 the owner released S05 legacy retirement
+([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); it must be accepted and merged before S02. S02–S04 stay `proposed` and held;
+S02's complete plan still needs its own review and release.
 
 After that first wave, T1 supplies C3's rename/delete shell integration, the face-frame query for
 T2's solve-once wall placement, and Stage part-selection/admission UI consuming T2's component
 table, resolver and admission operations. T3 annotations follow those admitted parts. The vertical foundation cutover follows C1; a qualified overhead family follows that
-cutover and its tolerance/kernel evidence. These are proposed dependencies, not new F gates.
+cutover and its tolerance/kernel evidence. Before registering those continuations:
+
+- **Face-frame provider:** register a bounded T1 provider plan only when T2's solve-once wall
+  placement consumer names its required host/face identity, query and invalidation contract.
+  The query must consume canonical compiled geometry, settle coordinate/orientation and
+  refusal behavior with T2, and prove Plan/3D and transform parity; no consumer reconstructs
+  architecture or infers a stable face from renderer triangles.
+- **Vertical foundation:** after C1 acceptance, plan the explicit levels/datum/height and
+  structure-local frame cutover with its affected Layout/Scene/Camera/F2 owners, fixture
+  conversion and topology/tolerance/Room reconciliation proof. One current datum must not
+  be advertised as vertical support; schema/format decisions need their own reviewed plan.
+- **Coordinate qualification:** before expanding construction extent, nonzero elevations,
+  nested structure transforms or face-relative placement, record supported units, ranges,
+  precision/tolerance and forward/inverse frame conformance at the real consumer seam.
+  Preserve project/world placement and one Camera; an unsupported range/frame needs a
+  refusal and owner scope decision, not an accidental second coordinate authority.
+- **Overhead admission:** register only after vertical and tolerance/kernel qualification;
+  name the supported family, canonical representation, host and identity semantics and
+  consuming authoring proof. Prototype roof shortcuts do not qualify a production family.
+
+These are planning triggers and proposed dependencies, not new phases, accepted providers,
+released scopes or F gates.
 Feature-specific shell integration develops in its consuming slice through planning, draft, review,
 build and revision under PLATE's ratified shared invariants; a complete design for every feature is
 not a prerequisite to first-wave planning. All implementation not released by batch E remains under
@@ -146,15 +171,20 @@ scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026
   and levels). Precondition: after PR #115 they are reachable only from wall-first internals and
   tests, never from a project/API/runtime reader. **Condition (2026-10-22): the first cutover
   (format 6) landed without the separation, so it is deferred to its own authorized slice, which
-  must land before T1.P02.S02 starts** — the measured blockers and the remaining work are the
-  [stop-and-report](./t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md).
+  must land before T1.P02.S02 starts** — now registered and owner-released (2026-10-23) as
+  [T1.P02.S05](./t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/implementation-plan.md).
+  Its reviewed retirement includes the bounded project-model registry/Scene-frame consumers
+  and defect-equivalent fixture migration; implementation and acceptance are still owed.
+  The [S01 stop-and-report recovery](./t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md#recovery)
+  preserves the measured blockers. The retirement row is discharged only after implementation.
 - `layout-core` legacy generation (`layout-compat`, `layout-migration`, `layout-migration-math`)
   was removed by PR #115 with no successor detector; nothing here re-introduces one.
 
 **Capability rebuild and remaining boundary** (implementation-plan §4.4)
 
 T1.P01 restored the shell, shared Plan/3D Stage, viewport, bounded Layout editing and native plinth.
-General native Wall creation and the derived-role/schema cutover remain the next proposed boundary;
+The format-6 derived-role/schema cutover shipped in S01. Legacy retirement, then general native
+Wall creation, remain the next proposed boundary;
 levels, structures and overhead forms remain later work.
 
 **Successor obligations carried into T1** (implementation-plan §7.2)
