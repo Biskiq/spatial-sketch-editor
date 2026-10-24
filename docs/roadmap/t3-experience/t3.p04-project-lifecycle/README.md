@@ -1,7 +1,10 @@
 # T3.P04 — Project lifecycle
 
-**Phase:** T3.P04 · **Status:** planning, registered for documentation-only post-Batch-E
-coordination. No implementation is authorized or released. **Track:** [T3](../README.md) ·
+**Phase:** T3.P04 · **Status:** **approved** — registered 2026-10-22 for documentation-only
+post-Batch-E coordination, and its single child `T3.P04.S01` authorized and released 2026-10-24
+([decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
+Implementation starts once that coordination PR is merged on `main`; the authorization itself ships
+no implementation. **Track:** [T3](../README.md) ·
 **Runbook:** [T3 operations](../../../operations/t3-experience/README.md) · **Coordination:**
 [next parallel batch](../../cross-track-execution.md#next-parallel-batch)
 
@@ -24,7 +27,7 @@ publication, prepared delivery or schema migration is implied.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P04.S01 | proposed | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](./t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [pending](./t3.p04.s01-project-rename-and-delete/acceptance.md) | not authorized — follows T3.P02.S02 acceptance by T3 capacity and needs its own owner decision |
+| T3.P04.S01 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](./t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [pending](./t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized and released 2026-10-24 ([decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md); release row in [now.md](../../now.md)); not started; its bounded T1 shell patch is serialized against `T1.P02.S06` and T1-reviewed; two persistence rulings precede freezing that behaviour ([planning resolution](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)) |
 
 ```text
 FINAL PHASE GATE: T3.P04.S01 → ./t3.p04.s01-project-rename-and-delete/acceptance.md
@@ -36,3 +39,8 @@ Stage:        active
 The single child's exhaustive integrated acceptance is the phase gate. It provides no new
 capability gate/version. A passed final gate makes this phase closable; only an explicit owner
 phase-close request closes it. The F2 production epoch activation remains owner-operated.
+
+The [planning review against current `main`](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
+resolves the routine questions — durable cleanup, migration contingency, the T2 API handoff, the T1
+shell patch and Save/Delete concurrency — and escalates exactly two: which field owns the project
+name, and what delete does with a project that still has a publication. Neither is ratified here.

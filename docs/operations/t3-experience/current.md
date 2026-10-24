@@ -3,35 +3,52 @@
 Track-scoped handoff. **Replace only this file for T3 work.**
 
 ```text
-PHASE: T3.P02 First Capture and Cut Preview →
+PHASE: T3.P01 Camera/Experience foundation → closed 2026-10-20
+       T3.P02 First Capture and Cut Preview → closed 2026-10-24
        ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md
-       CLOSABLE, not closed (final gate T3.P02.S02 accepted 2026-10-24 as owner-override at 335820d6)
-       T3.P03 Shared acceptance and measurement →
+       (final gate T3.P02.S02 accepted 2026-10-24 as owner-override at 335820d6)
+       T3.P03 Shared acceptance and measurement → closed 2026-10-24
        ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md
-       CLOSABLE, not closed
-       T3.P04 Project lifecycle (planning only) →
+       (final gate T3.P03.S02 accepted 2026-10-23 as owner-override at eabd4b88)
+       T3.P04 Project lifecycle → approved
        ../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md
-ACTIVE: none. No T3 slice is in progress or authorized.
-NEXT:   Owner decision on T3.P04 (project lifecycle, planning only). Its single proposed child, project
-        rename and delete, is not authorized; the register says it needs its own owner decision after
-        T3.P02.S02 acceptance (now met), and it also needs the explicit API handoff from T2 (T2.P02.S02
-        merged 2026-10-24, PR #185).
-        Owner phase-close requests for T3.P02 and T3.P03 are owner-invoked; nothing closes them here.
-RELEASE: ../../reference/decisions/performance-foundation-authorization-2026-10-24.md
-         (the owner release of 2026-10-24 pruned T3.P02.S02 from docs/roadmap/now.md; T3.P04 is strictly
-         unrelated to its performance-first halt and still needs its own owner decision and release)
-ROUTE:   ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/acceptance.md
-         (gate artifact, live; closed stubs for its plan, review and hand-off)
-BLOCKER: none. PR 184 merged as P1 merge commit 663846af; closed/T3.P02.S02 → 335820d6 is pushed.
-CARRY:   Performance deferred (owner ruling 2026-10-24, not claimed as passing): traced Preview first frame;
+ACTIVE: T3.P04.S01 Project rename and delete — authorized and released 2026-10-24, NOT started.
+        No implementation, migration, route or UI exists for it; this coordination PR is
+        documentation only.
+NEXT:   Start T3.P04.S01 after its coordination PR merges on main:
+        1. runbook start step — re-verify F2.unit-envelope@1:unit-envelope-v1 and
+           F4.intent-acceptance@1:conditional-save-units-v1 at the slice's trusted base, and its
+           now.md row;
+        2. read the planning resolution's five issues and decide/confirm the two owner rulings
+           (project-name authority; delete of a project that still has a publication) — do not
+           freeze the rename or delete persistence behaviour before they are ruled;
+        3. T2 review of the API handoff (owned-key inventory and import-approval race) before
+           touching shared API files;
+        4. the bounded T1 shell patch is serialized against T1.P02.S06's recorded claim and
+           T1-reviewed before implementation.
+RELEASE: ../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md
+         (closes T3.P02 and T3.P03, authorizes and releases T3.P04.S01; the live release row is
+         docs/roadmap/now.md)
+         ../../reference/decisions/performance-foundation-authorization-2026-10-24.md
+         (T1.P02.S06's release and the temporary performance-first halt — unchanged by this PR;
+         T3.P04.S01 is strictly unrelated to it but must not edit S06's shared harness/fixtures)
+ROUTE:   ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md
+         → ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md
+         (closed gate artifacts remain stubs at their own paths: T3.P02.S02 and T3.P03.S02
+         acceptance.md, anchors 8cc30c94 and a65db2e0, tags closed/T3.P02 and closed/T3.P03)
+BLOCKER: none. S06 owns the T1 shell-file claim; P04 queues behind it and behind the reference-machine
+         perf lock. No T3 phase close or track event is pending.
+CARRY:   T3.P02 Scope A (performance, deferred 2026-10-24, not claimed): traced Preview first frame;
          capture/bind completion; M-workload F10 rows; F13 re-measure; reference-machine run; Stage
-         initial-load delta. Transferred as measurement to T1.P02.S06 (performance foundation). A miss in
-         T3-owned code is reported back to T3. The H0 trace-method ruling stays with the owner.
-         S06 edits the shared H0 harness and fixtures only with T3 review.
-         Unrun rows deferred (Scope B): Ask Rule; Experience paused editing; dense 20/50-View and 15/30-Stop
-         fixtures; browser Preview-replacement probe; browser Save/download/reload; touch/coarse pointer;
-         DOM reach without raycast; partial shared-Camera row; Travel/detour browser rows.
-         Deferred T1 seam: host EditorCard has no Experience contribution seam.
-         F2 epoch migration 005 production activation remains a separate owner-run operation. Track completion
-         and Core Editor Stability acceptance are separate owner events.
+         initial-load delta. Transferred as measurement to T1.P02.S06; a miss in T3-owned code is
+         reported back to T3. The H0 trace-method ruling stays with the owner.
+         T3.P02 Scope B (unrun, deferred, not waived): Ask Rule; Experience paused editing; dense
+         20/50-View and 15/30-Stop fixtures; browser Preview-replacement probe; browser
+         Save/download/reload; touch/coarse pointer; DOM reach without raycast; partial shared-Camera
+         row; Travel/detour browser rows. Owned by T3; no owner command exists for some of them.
+         T3.P03: L/XL fixtures and M/L drag rows transferred to T1.P02.S06; trace-method disposition
+         (t3p03s02 deviation record), reference hard rows and calibration stay open with the owner.
+         Deferred T1 seam: host EditorCard still has no Experience contribution seam.
+         F2 epoch migration 005 production activation remains a separate owner-run operation.
+         Track completion and Core Editor Stability acceptance are separate owner events.
 ```

@@ -1,6 +1,7 @@
 # T3.P04.S01 — Project rename and delete
 
-**Slice:** T3.P04.S01 · **Status:** proposed — not authorized or released.
+**Slice:** T3.P04.S01 · **Status:** **approved** — owner-authorized and released 2026-10-24, not
+started. The authorization ships no implementation.
 **Phase:** [T3.P04](../README.md) · **Runbook:**
 [T3 operations](../../../../operations/t3-experience/README.md) · **Coordination:**
 [next parallel batch](../../../cross-track-execution.md#next-parallel-batch)
@@ -12,13 +13,36 @@ VERIFICATION: exhaustive
 ```
 
 This is T3.P04's sole child and **FINAL PHASE GATE**. It creates no gate/version, public
-release capability, milestone acceptance or permission to implement. The proposed scope
-fulfils C3/K4; it is separate from Capture/Preview's bounded final gate.
+release capability or milestone acceptance. The proposed scope fulfils C3/K4; it is separate from
+Capture/Preview's bounded final gate.
+
+## Planning review, release and open rulings (2026-10-24)
+
+Verified against current `main` before release: every path in this plan's file-ownership table
+still exists, and no `PATCH` or `DELETE` route for a project exists yet. The review found five
+unresolved issues and records them, with proposals and alternatives, in the
+[planning resolution](./planning-resolution-2026-10-24.md): the durable deletion/cleanup
+mechanism, the migration contingency, the T2 → T3 API handoff, the T1 shell integration, and
+Save/Delete concurrency. Routine details are decided there; this plan's scope, ownership and
+verification tier are unchanged.
+
+Two decisions are the owner's because they change a persistence contract or product scope, and the
+affected behaviour is not frozen before they are ruled:
+
+- **which field owns the project name** — the authored envelope `name` is stamped into the project
+  row on every Save, so a metadata-only rename can be silently reverted or diverge;
+- **what delete does with a published project** — this plan names stored versions, staging and
+  approved resources, not publications or releases.
+
+The release ([decision](../../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md))
+covers this slice only; its start conditions are the next section, and the runbook still re-verifies
+every consumed gate and scope at the implementation's own trusted base.
 
 ## Start and ownership dependencies
 
-Start only after T3.P02.S02 is accepted, this plan is owner-authorized and separately released
-on `now.md`, and the runbook verifies every consumed gate/scope on the trusted base. Use
+T3.P02.S02 is accepted and this plan is owner-authorized and released on `now.md`; start once the
+coordination PR carrying that release merges, and after the runbook verifies every consumed
+gate/scope on the trusted base. Use
 post-S01 T2 model storage and retention interfaces on integrated `main`. Coordinate with
 then-current T2 import/placement work before changing shared API files; T3 takes the lifecycle
 API patch, T2 retains import/admission and model-format ownership. T1 owns the shell patch and
