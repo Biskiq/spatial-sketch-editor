@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MeshBasicMaterial, type Material } from 'three';
-import { compileLayoutGeometry } from '@portfolio/layout-core';
 import { buildRoomWallMesh, type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
 import {
 	buildWallHighlightMesh,
@@ -10,9 +9,10 @@ import {
 	type WallMeshMaterialFactory
 } from '$lib/render/wall-geometry-adapter';
 import { g1LineRectangleDocument, g1MultipleOpeningsDocument } from '../layout/__fixtures__/layout-g1-fixtures';
+import { compileRoom } from '../../helpers/wall-mesh-fixtures';
 
 function buildMesh(document: ReturnType<typeof g1LineRectangleDocument>): IndexedWallMesh {
-	const room = compileLayoutGeometry(document).geometry.rooms[0];
+	const room = compileRoom(document);
 	if (!room) throw new Error('fixture compiled to no room');
 	const result = buildRoomWallMesh(room);
 	if (!result.mesh) throw new Error(`builder rejected fixture: ${result.issues.map((issue) => issue.code).join(', ')}`);

@@ -48,7 +48,7 @@ with the one-Camera-authority, visitor-isolation and current-format invariants s
 | Editorial order | Experience-owned Presentations, Stops and Guides; retired Camera node-order fields are rejected | richer authored composition preserves Experience ownership and one Camera evaluation authority |
 | Experience document | F2 Experience 1 is collection-capable over the shared world; resources 2 and dependency locks are separate | extend explicit versioned formats for later annotation, interaction and invocation capabilities |
 | History / acceptance | shared F4 unit acceptance: expected revision, atomic accepted/undo results, one bounded chronological history and conditional unit Save | new consuming scopes preserve these invariants and add explicit domain admission |
-| Capture / Preview | first capture and isolated Preview shipped as `owner-override` in T3.P02.S01; first Guide creation, explicit Camera handover/return and integrated evidence remain | T3.P02.S02 completes the creator loop through shared lowering/evaluation; Preview never writes source |
+| Capture / Preview | first capture and isolated Preview shipped as `owner-override` in T3.P02.S01; first Guide creation, explicit Camera handover/return and the integrated final gate shipped as `owner-override` in T3.P02.S02 (2026-10-24); T3.P02 is closable, not closed | T3.P02.S02 completes the creator loop through shared lowering/evaluation; Preview never writes source |
 
 The [Camera contract](../../reference/components/camera-tour.md#current-vs-destination-ratified-2026-09-27-reconciled-2026-09-29)
 and [F2 persistence contract](../../reference/components/persistence.md#one-source-format-f2-clean-epoch)

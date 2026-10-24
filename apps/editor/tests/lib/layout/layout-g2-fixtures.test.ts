@@ -7,7 +7,8 @@ function vectorToTuple(point: Vector3Like): [number, number, number] {
 	return 'x' in point ? [point.x, point.y, point.z] : [point[0], point[1], point[2]];
 }
 import { geometryId } from '@portfolio/layout-core';
-import { compileLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { resolvePlanHit } from '$lib/authoring/layout/plan-hit';
 import {
 	buildG2ReferencePlanModel,
 	compileG2Fixture,
@@ -77,35 +78,41 @@ describe('G2 render-order freeze', () => {
 		expect(strokes[0]!.key).toBe(geometryId(['plan', 'stroke', 'floor-ground', 'room-rectangle']));
 		expect(strokes[0]!.points).toEqual(room.floorPolygon);
 
-		// Layer 3: one polyline per opening-free centerline span (four clean walls).
+		// Layer 3: one polyline per opening-free centerline span of each canonical
+		// Wall (four clean Walls, each compiled once).
+		const geometryWalls = geometry.walls;
 		const walls = layers.get(3)!;
-		expect(walls).toHaveLength(room.walls.reduce((sum, wall) => sum + wall.solidCenterlinePolylines.length, 0));
-		expect(walls.map((primitive) => primitive.hit)).toEqual(
-			room.walls.map((wall) => ({ kind: 'wall', roomId: 'room-rectangle', segmentId: wall.segmentId }))
+		expect(geometryWalls).toHaveLength(4);
+		expect(walls).toHaveLength(geometryWalls.reduce((sum, wall) => sum + wall.solidCenterlinePolylines.length, 0));
+		// Render order: document-order Walls, each contributing its spans in span
+		// order — an ordered list, not a set, because layer 3 is painted in it.
+		expect(walls.map((primitive) => (primitive.hit.kind === 'wall' ? primitive.hit.wallId : null))).toEqual(
+			geometryWalls.flatMap((wall) => wall.solidCenterlinePolylines.map(() => wall.wallId))
 		);
 		expect(walls.every((primitive) => primitive.style === 'wall-line')).toBe(true);
+		// Rooms carry no wall detail: the walls layer never comes from a Room.
+		expect(room.walls).toEqual([]);
 	});
 
 	it('splits openings into their own layer above walls', () => {
 		const { geometry } = compileG2Fixture(g2MultipleOpeningsDocument());
 		const model = buildG2ReferencePlanModel(geometry);
 		const layers = byLayer(model);
-		const room = geometry.rooms[0]!;
-
-		const expectedOpenings = room.walls.flatMap((wall) => wall.openings);
+		const expectedOpenings = geometry.walls.flatMap((wall) =>
+			wall.openings.map((opening) => ({ wallId: wall.wallId, opening }))
+		);
 		expect(layers.get(4)!.map((primitive) => primitive.hit)).toEqual(
-			expectedOpenings.map((opening) => ({
+			expectedOpenings.map(({ wallId, opening }) => ({
 				kind: 'opening',
-				roomId: 'room-openings',
-				segmentId: opening.segmentId,
+				wallId,
 				openingId: opening.openingId
 			}))
 		);
 		for (const primitive of layers.get(4)!) {
 			const opening = expectedOpenings.find((candidate) => {
 				const hit = primitive.hit;
-				return hit.kind === 'opening' && hit.openingId === candidate.openingId;
-			})!;
+				return hit.kind === 'opening' && hit.openingId === candidate.opening.openingId;
+			})!.opening;
 			expect(primitive.points).toEqual(opening.centerPolyline);
 		}
 		// Wall layer sits below openings in the order.
@@ -140,7 +147,7 @@ describe('G2 render-order freeze', () => {
 		// PR #115 (§7.2 A′): the fixture was the isolated Chopin layout; the claim is
 		// the kernel's document-order rule, so it now runs on a kernel fixture with
 		// multiple rooms and the expectations are unchanged.
-		const { geometry } = compileLayoutGeometry(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		const { geometry } = compileWallFirstLayoutGeometry(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
 		const model = buildG2ReferencePlanModel(geometry);
 		const layers = byLayer(model);
 		expect(layers.get(1)!.map((primitive) => (primitive.hit.kind === 'room' ? primitive.hit.roomId : null))).toEqual(
@@ -151,16 +158,24 @@ describe('G2 render-order freeze', () => {
 		);
 	});
 
-	it('omits invalid rooms from every committed layer', () => {
+	it('omits an invalid room from the room-derived layers while its Walls stay committed geometry', () => {
+		// T1.P02.S05 delta: a Room that fails to compile contributes no fill and no
+		// stroke, but its authored Walls are independent canonical geometry and
+		// still commit — a document may carry roomless Walls by design. The room
+		// layer therefore names only the resolvable Room, and the wall layer is
+		// never derived from Room membership.
 		const { geometry } = compileG2Fixture(g2InvalidGeometryDocument());
 		const model = buildG2ReferencePlanModel(geometry);
 		expect(geometry.rooms.map((room) => room.roomId)).toEqual(['room-good']);
 		for (const primitive of model) {
-			const hit = primitive.hit;
-			if (hit.kind === 'room' || hit.kind === 'wall' || hit.kind === 'opening') {
-				expect(hit.roomId).toBe('room-good');
+			if (primitive.layer === 1 || primitive.layer === 2) {
+				expect(primitive.hit).toMatchObject({ kind: 'room', roomId: 'room-good' });
 			}
 		}
+		const wallHits = model.filter((primitive) => primitive.layer === 3).map((primitive) => primitive.hit);
+		expect(new Set(wallHits.map((hit) => (hit.kind === 'wall' ? hit.wallId.split(':')[0] : null)))).toEqual(
+			new Set(['room-good', 'room-disconnected', 'room-self-intersect'])
+		);
 		// L-shape sanity: six walls, six vertices-worth of geometry preserved.
 		const lShaped = compileG2Fixture(g2LShapedDocument());
 		const lWalls = byLayer(buildG2ReferencePlanModel(lShaped.geometry)).get(3)!;
@@ -180,14 +195,12 @@ describe('G2 render-order freeze', () => {
 describe('G2 hit-priority freeze', () => {
 	const TOL = 0.25;
 
-	it('resolves a vertex at an exact corner', () => {
+	it('resolves a vertex at an exact corner, keyed by canonical Wall identity', () => {
 		const { geometry } = compileG2Fixture(g2LineRectangleDocument());
-		expect(resolveG2ReferenceHit(geometry, [0, 0], TOL)).toEqual({
-			kind: 'vertex',
-			roomId: 'room-rectangle',
-			segmentId: 'room-rectangle:wall:0',
-			vertexIndex: 0
-		});
+		const hit = resolveG2ReferenceHit(geometry, [0, 0], TOL);
+		expect(hit).toMatchObject({ kind: 'vertex', wallId: 'room-rectangle:wall:0', vertexIndex: 0 });
+		// Corner identity is the Junction point itself, never a Room/segment pair.
+		expect(hit && hit.kind === 'vertex' ? hit.point : null).toEqual([0, 0]);
 	});
 
 	it('prefers a vertex over a wall when both are within tolerance', () => {
@@ -196,13 +209,26 @@ describe('G2 hit-priority freeze', () => {
 		expect(resolveG2ReferenceHit(geometry, [0, 0.01], TOL)).toMatchObject({ kind: 'vertex' });
 	});
 
-	it('resolves an interior anchor on an auto-bezier wall', () => {
+	it('resolves a curved Wall bend point as a wallCurveControl with its authored knot id', () => {
+		// Successor of the legacy `interior-anchor` query-point case: a format-6
+		// curved Wall owns explicit bend points, and the production resolver
+		// (`resolvePlanHit`) addresses them by `{ wallId, anchorId }` from the
+		// caller's transient control candidates. Losing the knot identity here is
+		// the same defect the retired case protected.
 		const { geometry } = compileG2Fixture(g2AutoBezierDocument());
-		expect(resolveG2ReferenceHit(geometry, [3, -1], 0.3)).toEqual({
-			kind: 'interiorAnchor',
-			roomId: 'room-rectangle',
-			segmentId: 'room-rectangle:wall:0',
-			anchorId: 'room-rectangle:wall:0:anchor:1'
+		const hit = resolvePlanHit(
+			geometry.queries,
+			[3, -1],
+			0.3,
+			{
+				curveControls: [{ wallId: 'room-rectangle:wall:0', anchorId: 'room-rectangle:wall:0:knot:0', point: [3, -1] }]
+			}
+		);
+		expect(hit).toEqual({
+			kind: 'wallCurveControl',
+			wallId: 'room-rectangle:wall:0',
+			anchorId: 'room-rectangle:wall:0:knot:0',
+			point: [3, -1]
 		});
 	});
 
@@ -211,8 +237,7 @@ describe('G2 hit-priority freeze', () => {
 		// door-1 spans offset [1, 1.9] on wall:0 (z = 0).
 		expect(resolveG2ReferenceHit(geometry, [1.45, 0.05], TOL)).toEqual({
 			kind: 'opening',
-			roomId: 'room-openings',
-			segmentId: 'room-openings:wall:0',
+			wallId: 'room-openings:wall:0',
 			openingId: 'door-1'
 		});
 	});
@@ -226,8 +251,7 @@ describe('G2 hit-priority freeze', () => {
 		const { geometry } = compileG2Fixture(g2LineRectangleDocument());
 		expect(resolveG2ReferenceHit(geometry, [3, 0.05], TOL)).toEqual({
 			kind: 'wall',
-			roomId: 'room-rectangle',
-			segmentId: 'room-rectangle:wall:0'
+			wallId: 'room-rectangle:wall:0'
 		});
 	});
 

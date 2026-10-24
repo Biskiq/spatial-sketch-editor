@@ -24,7 +24,7 @@
  * scale, so acquisition stays zoom-stable (50%/100%/200% acquire the same
  * world features at the same screen distances).
  */
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import type { CompiledLayoutGeometry, CompiledQuerySpan } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';

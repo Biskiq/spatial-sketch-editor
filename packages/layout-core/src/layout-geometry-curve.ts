@@ -1,4 +1,5 @@
-import type { DraftSegment, LayoutInteriorAnchor, LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { DraftSegment, LayoutInteriorAnchor } from './layout-path';
 import { coincidesAsJunction } from './layout-junction-identity';
 import { p2311Measure } from './p2311-perf';
 

@@ -214,8 +214,8 @@ reported explicitly, never silently redirected by name or position.
 
 ### Project truth (current and destination)
 
-**Current:** one `ProjectDocument` holds separately owned `LayoutDocument` and
-`SceneDocument` domains; Layout is wall-first (`formatVersion: 5`, one floor
+**Current:** one `ProjectDocument` holds separately owned `LayoutDocumentWallFirst` and
+`SceneDocument` domains; Layout is wall-first (`formatVersion: 6`, one floor
 datum), Scene is world-local (`formatVersion: 1`, no `roomId`) with Camera data
 stored inside Scene. There is no legacy reader, detector or migration path:
 versionless room-frame payloads are no longer decoded, and a malformed or

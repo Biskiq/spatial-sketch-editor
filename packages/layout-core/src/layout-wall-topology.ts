@@ -21,7 +21,7 @@
  * 4. no distance tolerance ever decides an orientation sign; proximity only
  *    feeds the separate near-coincident *diagnostic*.
  */
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import {
 	CURVE_SELF_INTERSECTION_TOLERANCE,
 	sampledPolylineIntersects,

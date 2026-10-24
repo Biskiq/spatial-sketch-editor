@@ -15,6 +15,15 @@
  * exactly the `outputId`/`sessionEpoch`/`sourceRevision` that ticket was qualified
  * for — there is no translation table and no host-minted ticket.
  *
+ * **Preview is a handoff, not an unmount (T3.P02.S02).** Entering the isolated
+ * visitor Preview transfers this one output through the protocol's ordered
+ * handoff (`role: 'preview'`) and issues the Camera-owned return token. While the
+ * Preview holds it the inspection ticket is `null`, so no Stage intent can be
+ * presented against an output this run no longer owns; leaving Preview returns
+ * the output to the inspection run, which continues under a strictly newer epoch.
+ * A source change ends both claims and voids the return, exactly as the landed
+ * rebase says.
+ *
  * Editor machinery is absent: no Svelte, no Three, no DOM.
  */
 import {
@@ -40,6 +49,7 @@ import {
 	rebaseCameraOutputSource,
 	replaceCameraOutput,
 	returnCameraOutput,
+	type CameraOutputCancelDecision,
 	type CameraOutputDecision,
 	type CameraOutputPolicy,
 	type CameraOutputRebaseDecision,
@@ -108,7 +118,16 @@ export type CameraSession = {
 	replaceInspection(runEpoch: number, returnToken: string): CameraOutputDecision;
 	returnInspection(ticket: CameraOutputTicket): CameraOutputReturnDecision;
 	cancelInspection(ticket: CameraOutputTicket): void;
+	/** The inspection run's claim; `null` while the output is free or Preview holds it. */
 	inspectionTicket(): CameraOutputTicket | null;
+	/** Hand the one output to the isolated Preview run through an ordered handoff. */
+	handOffToPreview(runEpoch: number, returnToken: string): CameraOutputDecision;
+	/** Return the output to the inspection run the handoff replaced. */
+	returnFromPreview(ticket: CameraOutputTicket): CameraOutputReturnDecision;
+	/** End the Preview claim without a return; the protocol voids its return context. */
+	cancelPreview(ticket: CameraOutputTicket): CameraOutputCancelDecision;
+	/** The Preview run's claim, or `null` when no Preview holds this output. */
+	previewTicket(): CameraOutputTicket | null;
 };
 
 export type CameraSessionInput = {
@@ -141,6 +160,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		sourceRevision: input.snapshot.sourceContentId
 	});
 	let ticket: CameraOutputTicket | null = null;
+	let preview: CameraOutputTicket | null = null;
 
 	function inspectionRequest(runEpoch: number) {
 		return {
@@ -148,6 +168,16 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			sourceRevision: output.sourceRevision,
 			sessionEpoch: output.sessionEpoch,
 			ownerId: `${output.viewportId}:inspection`,
+			runEpoch
+		} as const;
+	}
+
+	function previewRequest(runEpoch: number) {
+		return {
+			outputId: output.outputId,
+			sourceRevision: output.sourceRevision,
+			sessionEpoch: output.sessionEpoch,
+			ownerId: `${output.viewportId}:preview`,
 			runEpoch
 		} as const;
 	}
@@ -182,7 +212,12 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			currentEvaluation = null;
 			const rebasedOutput = rebaseCameraOutputSource(output, sourceRevision);
 			output = rebasedOutput.state;
-			if (rebasedOutput.kind === 'rebased') ticket = null;
+			if (rebasedOutput.kind === 'rebased') {
+				// Both claims end and the pending return is voided: a Preview cannot
+				// return the inspection run to a source it never evaluated.
+				ticket = null;
+				preview = null;
+			}
 			return { viewport, output: rebasedOutput };
 		},
 		output: () => output,
@@ -222,6 +257,41 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 				ticket = null;
 			}
 		},
-		inspectionTicket: () => ticket
+		handOffToPreview(runEpoch, returnToken) {
+			const decision = replaceCameraOutput(output, {
+				ticket: previewRequest(runEpoch),
+				role: 'preview',
+				expected: ticket === null ? { kind: 'unowned' } : { kind: 'held', ticket },
+				returnToken
+			});
+			output = decision.state;
+			if (decision.kind === 'acquired') {
+				preview = decision.claim.ticket;
+				// The inspection run no longer owns the output, so it holds no ticket
+				// to present for a Stage intent either.
+				ticket = null;
+			}
+			return decision;
+		},
+		returnFromPreview(candidate) {
+			const context = output.claim?.returnContext ?? null;
+			const decision = returnCameraOutput(output, candidate, context?.token ?? null);
+			output = decision.state;
+			if (decision.kind === 'returned') {
+				ticket = decision.claim.ticket;
+				preview = null;
+			}
+			return decision;
+		},
+		cancelPreview(candidate) {
+			const decision = cancelCameraOutput(output, candidate);
+			output = decision.state;
+			if (decision.kind === 'cancelled' && preview !== null && preview.runEpoch === candidate.runEpoch) {
+				preview = null;
+			}
+			return decision;
+		},
+		inspectionTicket: () => ticket,
+		previewTicket: () => preview
 	};
 }

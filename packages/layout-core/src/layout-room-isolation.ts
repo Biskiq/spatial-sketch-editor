@@ -29,7 +29,7 @@
  *
  * Pure and read-only: no allocation, no document mutation, no persistence.
  */
-import type { LayoutObject } from './layout-types';
+import type { LayoutObject } from './layout-wall-first-types';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutWallFirstRoom,

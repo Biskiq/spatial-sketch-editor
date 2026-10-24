@@ -171,7 +171,11 @@ export function writeSceneCameraViewKeyframeWorldTarget(
 	return keyframe;
 }
 
-/** New targets use active-room coordinates only when inside its yaw-aware footprint. */
+/**
+ * New targets are world-space. The active-room branch is retained but unreachable
+ * while the current-format Layout Room registry is empty (`isWorldPointInsideRoomXZ`
+ * is constant `false`), so every new target takes the world-space path.
+ */
 export function createSceneCameraViewKeyframeAtWorldTarget(
 	id: string,
 	progress: number,

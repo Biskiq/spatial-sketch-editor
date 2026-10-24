@@ -1,0 +1,1745 @@
+{
+  "capturedAtRevision": "fff7dc14",
+  "compiler": "compileLayoutGeometry (legacy document adapter, retired by this slice)",
+  "howCaptured": "A committed, throw-away vitest file (zz-legacy-observation.test.ts, deleted before this slice closed) imported the eight g1 legacy documents from __fixtures__/layout-g1-fixtures.ts plus the mesh rhombus/notch helpers and built the three scale-tier legacy documents, ran the retired compileLayoutGeometry once per case and wrote the reduced records below. Nothing is hand-typed; re-running the same file at fff7dc14 reproduces the bytes.",
+  "caseAliases": "The g2 fixtures delegate to the g1 factories (layout-g2-fixtures.ts), so the g2 suite's documents are exactly these g1 cases: g2LineRectangleDocument -> g1-line-rectangle, g2LShapedDocument -> g1-l-shaped, g2AutoBezierDocument -> g1-auto-bezier, g2MultipleOpeningsDocument -> g1-multiple-openings, g2ProfileMatrixDocument -> g1-profile-matrix, g2ObjectMatrixDocument -> g1-object-matrix, g2InvalidGeometryDocument -> g1-invalid-geometry. The g2 render-order claims are observed through them.",
+  "retiredCases": "g1-multi-floor, g1-multi-floor-bad-room and g1-empty were captured for completeness but are not converted: format 6 has one floor datum, so a multi-floor legacy document has no wall-first expression and the empty document is the wall-first empty document (asserted directly).",
+  "cases": {
+    "g1-line-rectangle": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-rectangle",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              6,
+              0
+            ],
+            [
+              6,
+              4
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-rectangle:wall:0",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-rectangle:wall:1",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-rectangle:wall:2",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-rectangle:wall:3",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          6.08,
+          3.1,
+          4.08
+        ]
+      },
+      "queryCounts": {
+        "points": 4,
+        "spans": 160,
+        "polygons": 1,
+        "aabbs": 7
+      }
+    },
+    "g1-l-shaped": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-l",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              6,
+              0
+            ],
+            [
+              6,
+              3
+            ],
+            [
+              3,
+              3
+            ],
+            [
+              3,
+              6
+            ],
+            [
+              0,
+              6
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-l:wall:0",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-l:wall:1",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-l:wall:2",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-l:wall:3",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-l:wall:4",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-l:wall:5",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          6.08,
+          3.1,
+          6.08
+        ]
+      },
+      "queryCounts": {
+        "points": 6,
+        "spans": 192,
+        "polygons": 1,
+        "aabbs": 9
+      }
+    },
+    "g1-auto-bezier": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-rectangle",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              0.1875,
+              -0.066162
+            ],
+            [
+              0.375,
+              -0.138672
+            ],
+            [
+              0.5625,
+              -0.216064
+            ],
+            [
+              0.75,
+              -0.296875
+            ],
+            [
+              0.9375,
+              -0.379639
+            ],
+            [
+              1.125,
+              -0.462891
+            ],
+            [
+              1.3125,
+              -0.545166
+            ],
+            [
+              1.5,
+              -0.625
+            ],
+            [
+              1.6875,
+              -0.700928
+            ],
+            [
+              1.875,
+              -0.771484
+            ],
+            [
+              2.0625,
+              -0.835205
+            ],
+            [
+              2.25,
+              -0.890625
+            ],
+            [
+              2.4375,
+              -0.936279
+            ],
+            [
+              2.625,
+              -0.970703
+            ],
+            [
+              2.8125,
+              -0.992432
+            ],
+            [
+              3,
+              -1
+            ],
+            [
+              3.1875,
+              -0.992432
+            ],
+            [
+              3.375,
+              -0.970703
+            ],
+            [
+              3.5625,
+              -0.936279
+            ],
+            [
+              3.75,
+              -0.890625
+            ],
+            [
+              3.9375,
+              -0.835205
+            ],
+            [
+              4.125,
+              -0.771484
+            ],
+            [
+              4.3125,
+              -0.700928
+            ],
+            [
+              4.5,
+              -0.625
+            ],
+            [
+              4.6875,
+              -0.545166
+            ],
+            [
+              4.875,
+              -0.462891
+            ],
+            [
+              5.0625,
+              -0.379639
+            ],
+            [
+              5.25,
+              -0.296875
+            ],
+            [
+              5.4375,
+              -0.216064
+            ],
+            [
+              5.625,
+              -0.138672
+            ],
+            [
+              5.8125,
+              -0.066162
+            ],
+            [
+              6,
+              0
+            ],
+            [
+              6,
+              4
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-rectangle:wall:0",
+              "thickness": 0.16,
+              "length": 6.363454,
+              "sampleCount": 33,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 32
+            },
+            {
+              "segmentId": "room-rectangle:wall:1",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-rectangle:wall:2",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-rectangle:wall:3",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -1.08
+        ],
+        "max": [
+          6.08,
+          3.1,
+          4.08
+        ]
+      },
+      "queryCounts": {
+        "points": 5,
+        "spans": 176,
+        "polygons": 1,
+        "aabbs": 7
+      }
+    },
+    "g1-multiple-openings": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-openings",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              10,
+              0
+            ],
+            [
+              10,
+              4
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-openings:wall:0",
+              "thickness": 0.16,
+              "length": 10,
+              "sampleCount": 41,
+              "sectionKinds": [
+                "side",
+                "lintel",
+                "side",
+                "side",
+                "lintel",
+                "side"
+              ],
+              "openingIds": [
+                "door-1",
+                "window-1"
+              ],
+              "profiles": [
+                "rectangular",
+                "rectangular"
+              ],
+              "solidSpanCount": 47
+            },
+            {
+              "segmentId": "room-openings:wall:1",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side",
+                "lintel",
+                "side"
+              ],
+              "openingIds": [
+                "door-2"
+              ],
+              "profiles": [
+                "rectangular"
+              ],
+              "solidSpanCount": 17
+            },
+            {
+              "segmentId": "room-openings:wall:2",
+              "thickness": 0.16,
+              "length": 10,
+              "sampleCount": 41,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 40
+            },
+            {
+              "segmentId": "room-openings:wall:3",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            }
+          ],
+          "openingIds": [
+            "door-1",
+            "window-1",
+            "door-2"
+          ]
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          10.08,
+          3.1,
+          4.08
+        ]
+      },
+      "queryCounts": {
+        "points": 4,
+        "spans": 235,
+        "polygons": 1,
+        "aabbs": 10
+      }
+    },
+    "g1-profile-matrix": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-profiles",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              12,
+              0
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-profiles:wall:0",
+              "thickness": 0.16,
+              "length": 12,
+              "sampleCount": 49,
+              "sectionKinds": [
+                "side",
+                "lintel",
+                "side",
+                "side",
+                "lintel",
+                "side",
+                "side",
+                "lintel",
+                "side"
+              ],
+              "openingIds": [
+                "rect",
+                "rounded",
+                "pointed"
+              ],
+              "profiles": [
+                "rectangular",
+                "rounded",
+                "pointed"
+              ],
+              "solidSpanCount": 63
+            },
+            {
+              "segmentId": "room-profiles:wall:1",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-profiles:wall:2",
+              "thickness": 0.16,
+              "length": 12,
+              "sampleCount": 49,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 48
+            },
+            {
+              "segmentId": "room-profiles:wall:3",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            }
+          ],
+          "openingIds": [
+            "rect",
+            "rounded",
+            "pointed"
+          ]
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          12.08,
+          3.1,
+          4.08
+        ]
+      },
+      "queryCounts": {
+        "points": 4,
+        "spans": 274,
+        "polygons": 1,
+        "aabbs": 10
+      }
+    },
+    "g1-elevated-floor": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-rectangle",
+          "floorElevation": 2.5,
+          "ceilingElevation": 6.5,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              6,
+              0
+            ],
+            [
+              6,
+              4
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-rectangle:wall:0",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-rectangle:wall:1",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-rectangle:wall:2",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-rectangle:wall:3",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          2.4,
+          -0.08
+        ],
+        "max": [
+          6.08,
+          6.6,
+          4.08
+        ]
+      },
+      "queryCounts": {
+        "points": 4,
+        "spans": 160,
+        "polygons": 1,
+        "aabbs": 7
+      }
+    },
+    "g1-object-matrix": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-objects",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              10,
+              0
+            ],
+            [
+              10,
+              8
+            ],
+            [
+              0,
+              8
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-objects:wall:0",
+              "thickness": 0.16,
+              "length": 10,
+              "sampleCount": 41,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 40
+            },
+            {
+              "segmentId": "room-objects:wall:1",
+              "thickness": 0.16,
+              "length": 8,
+              "sampleCount": 33,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 32
+            },
+            {
+              "segmentId": "room-objects:wall:2",
+              "thickness": 0.16,
+              "length": 10,
+              "sampleCount": 41,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 40
+            },
+            {
+              "segmentId": "room-objects:wall:3",
+              "thickness": 0.16,
+              "length": 8,
+              "sampleCount": 33,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 32
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [
+        "obj-box",
+        "obj-plane",
+        "obj-cylinder",
+        "obj-sphere",
+        "obj-profile"
+      ],
+      "objectFootprintSizes": [
+        4,
+        4,
+        64,
+        64,
+        4
+      ],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.25,
+          -0.08
+        ],
+        "max": [
+          10.08,
+          3.1,
+          8.08
+        ]
+      },
+      "queryCounts": {
+        "points": 4,
+        "spans": 288,
+        "polygons": 6,
+        "aabbs": 12
+      }
+    },
+    "g1-invalid-geometry": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-good",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              6,
+              0
+            ],
+            [
+              6,
+              4
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-good:wall:0",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-good:wall:1",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-good:wall:2",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-good:wall:3",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [
+        {
+          "path": "floors[0].rooms[1].boundary.segments[0].end",
+          "code": "disconnected_boundary",
+          "targetId": "d:wall:0"
+        },
+        {
+          "path": "floors[0].rooms[2].boundary.segments",
+          "code": "self_intersection",
+          "targetId": "room-self-intersect"
+        }
+      ],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          6.08,
+          3.1,
+          4.08
+        ]
+      },
+      "queryCounts": {
+        "points": 4,
+        "spans": 160,
+        "polygons": 1,
+        "aabbs": 7
+      }
+    },
+    "g1-multi-floor": {
+      "floorIds": [
+        "floor-ground",
+        "floor-upper"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-ground",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              4,
+              0
+            ],
+            [
+              4,
+              4
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-ground:wall:0",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-ground:wall:1",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-ground:wall:2",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-ground:wall:3",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            }
+          ],
+          "openingIds": []
+        },
+        {
+          "roomId": "room-upper",
+          "floorElevation": 3.2,
+          "ceilingElevation": 6,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              10,
+              0
+            ],
+            [
+              13,
+              0
+            ],
+            [
+              13,
+              3
+            ],
+            [
+              10,
+              3
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-upper:wall:0",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-upper:wall:1",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-upper:wall:2",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-upper:wall:3",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          13.08,
+          6.1,
+          4.08
+        ]
+      },
+      "queryCounts": {
+        "points": 8,
+        "spans": 224,
+        "polygons": 2,
+        "aabbs": 13
+      }
+    },
+    "g1-multi-floor-bad-room": {
+      "floorIds": [
+        "floor-ground",
+        "floor-upper"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-ground",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              4,
+              0
+            ],
+            [
+              4,
+              4
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-ground:wall:0",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-ground:wall:1",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-ground:wall:2",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-ground:wall:3",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            }
+          ],
+          "openingIds": []
+        },
+        {
+          "roomId": "room-upper",
+          "floorElevation": 3.2,
+          "ceilingElevation": 6,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              10,
+              0
+            ],
+            [
+              13,
+              0
+            ],
+            [
+              13,
+              3
+            ],
+            [
+              10,
+              3
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-upper:wall:0",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-upper:wall:1",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-upper:wall:2",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            },
+            {
+              "segmentId": "room-upper:wall:3",
+              "thickness": 0.16,
+              "length": 3,
+              "sampleCount": 13,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 12
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [
+        {
+          "path": "floors[1].rooms[1].boundary.segments",
+          "code": "self_intersection",
+          "targetId": "room-broken"
+        }
+      ],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          13.08,
+          6.1,
+          4.08
+        ]
+      },
+      "queryCounts": {
+        "points": 8,
+        "spans": 224,
+        "polygons": 2,
+        "aabbs": 13
+      }
+    },
+    "g1-empty": {
+      "floorIds": [],
+      "rooms": [],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": null,
+      "queryCounts": {
+        "points": 0,
+        "spans": 0,
+        "polygons": 0,
+        "aabbs": 0
+      }
+    },
+    "mesh-rhombus": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-rhombus",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              6,
+              0
+            ],
+            [
+              11.638,
+              2.052
+            ],
+            [
+              5.638,
+              2.052
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-rhombus:wall:0",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-rhombus:wall:1",
+              "thickness": 0.16,
+              "length": 5.999812,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-rhombus:wall:2",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-rhombus:wall:3",
+              "thickness": 0.16,
+              "length": 5.999812,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          11.718,
+          3.1,
+          2.132
+        ]
+      },
+      "queryCounts": {
+        "points": 4,
+        "spans": 192,
+        "polygons": 1,
+        "aabbs": 7
+      }
+    },
+    "mesh-notch": {
+      "floorIds": [
+        "floor-ground"
+      ],
+      "rooms": [
+        {
+          "roomId": "room-notch",
+          "floorElevation": 0,
+          "ceilingElevation": 3,
+          "floorThickness": 0.1,
+          "ceilingThickness": 0.1,
+          "floorPolygon": [
+            [
+              0,
+              0
+            ],
+            [
+              6,
+              0
+            ],
+            [
+              6,
+              1
+            ],
+            [
+              4,
+              1.5
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          "walls": [
+            {
+              "segmentId": "room-notch:wall:0",
+              "thickness": 0.16,
+              "length": 6,
+              "sampleCount": 25,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 24
+            },
+            {
+              "segmentId": "room-notch:wall:1",
+              "thickness": 0.16,
+              "length": 1,
+              "sampleCount": 5,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 4
+            },
+            {
+              "segmentId": "room-notch:wall:2",
+              "thickness": 0.16,
+              "length": 2.061553,
+              "sampleCount": 10,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 9
+            },
+            {
+              "segmentId": "room-notch:wall:3",
+              "thickness": 0.16,
+              "length": 3.5,
+              "sampleCount": 15,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 14
+            },
+            {
+              "segmentId": "room-notch:wall:4",
+              "thickness": 0.16,
+              "length": 4,
+              "sampleCount": 17,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 16
+            },
+            {
+              "segmentId": "room-notch:wall:5",
+              "thickness": 0.16,
+              "length": 5,
+              "sampleCount": 21,
+              "sectionKinds": [
+                "side"
+              ],
+              "openingIds": [],
+              "profiles": [],
+              "solidSpanCount": 20
+            }
+          ],
+          "openingIds": []
+        }
+      ],
+      "objectIds": [],
+      "objectFootprintSizes": [],
+      "issues": [],
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.1,
+          -0.08
+        ],
+        "max": [
+          6.08,
+          3.1,
+          5.08
+        ]
+      },
+      "queryCounts": {
+        "points": 6,
+        "spans": 174,
+        "polygons": 1,
+        "aabbs": 9
+      }
+    }
+  },
+  "scales": {
+    "small": {
+      "roomCount": 10,
+      "objectCount": 30,
+      "compiledRoomCount": 10,
+      "issueCodes": [],
+      "totalWallSamples": 1441,
+      "openingIds": 20,
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.195369,
+          -0.08
+        ],
+        "max": [
+          51.371311,
+          3.1,
+          37.847422
+        ]
+      }
+    },
+    "medium": {
+      "roomCount": 100,
+      "objectCount": 300,
+      "compiledRoomCount": 100,
+      "issueCodes": [],
+      "totalWallSamples": 14635,
+      "openingIds": 200,
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.256573,
+          -0.08
+        ],
+        "max": [
+          136.858615,
+          3.1,
+          137.259654
+        ]
+      }
+    },
+    "large": {
+      "roomCount": 1000,
+      "objectCount": 3000,
+      "compiledRoomCount": 1000,
+      "issueCodes": [],
+      "totalWallSamples": 147908,
+      "openingIds": 2000,
+      "bounds": {
+        "min": [
+          -0.08,
+          -0.284391,
+          -0.08
+        ],
+        "max": [
+          444.971277,
+          3.1,
+          445.04156
+        ]
+      }
+    }
+  }
+}

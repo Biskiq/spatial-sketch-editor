@@ -14,7 +14,7 @@
  * Redo restore an identity nobody captured.
  */
 
-import type { LayoutVec2 } from './layout-types.js';
+import type { LayoutVec2 } from './layout-coordinates.js';
 import {
 	layoutArchitecturalPreset,
 	planCommitLayoutObjectPreset,

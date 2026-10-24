@@ -15,7 +15,7 @@
  * Deep-clone helpers exist because candidate planners must never share knot
  * arrays, span arrays or points with the baseline document.
  */
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import type {
 	LayoutWall,
 	LayoutWallCenterline,

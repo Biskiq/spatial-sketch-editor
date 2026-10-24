@@ -30,7 +30,7 @@
  * leg facts come from the incident `CompiledPhysicalWall` samples the P23.11
  * evaluator already produced.
  */
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import { p2311Measure } from './p2311-perf';
 import {
 	geometryId,

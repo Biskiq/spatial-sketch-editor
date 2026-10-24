@@ -1,16 +1,65 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripComments } from '../../helpers/import-closure';
 import {
-	compileLayoutGeometry,
-	createEmptyLayoutDocument,
-	validateLayoutDocument
+	compileWallFirstLayoutGeometry,
+	createEmptyWallFirstLayoutDocument,
+	validateWallFirstLayoutDocument
 } from '@portfolio/layout-core';
 
 const srcRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src');
 const libRoot = resolve(srcRoot, 'lib');
-const layoutDir = resolve(srcRoot, '../../../packages/layout-core/src');
+const editorRoot = resolve(srcRoot, '..');
+const packagesRoot = resolve(srcRoot, '../../../packages');
+const layoutDir = resolve(packagesRoot, 'layout-core/src');
+
+/**
+ * T1.P02.S05 — the retired legacy Layout document surface.
+ *
+ * Every name here was a live module, type, function or export before this
+ * slice; none may return. The check is single-sourced in this one predicate so
+ * the positive control (a synthetic reintroduction is detected) and the absence
+ * proof cannot disagree about the grammar.
+ */
+const RETIRED_LAYOUT_FILES = ['layout-types.ts', 'layout-codec.ts', 'layout-room-frame.ts', 'layout-portals.ts'] as const;
+const RETIRED_LAYOUT_SYMBOLS = [
+	'LayoutDocument',
+	'LayoutFloor',
+	'LayoutRoom',
+	'LayoutRoomFrame',
+	'compileLayoutGeometry',
+	'legacyCompilerSource',
+	'createEmptyLayoutDocument',
+	'validateLayoutDocument',
+	'parseLayoutDocumentJson',
+	'serializeLayoutDocument',
+	'validateLayoutRoomGeometry',
+	'validateLayoutDocumentGeometry',
+	'deriveLayoutRoomFrame',
+	'layoutRoomPoint',
+	'layoutRoomLocalPoint',
+	'normalizeLayoutRoomYaw',
+	'projectLayoutPortalRelations',
+	'portalOpeningHasRoomPair',
+	'LayoutIssue',
+	'LayoutValidationResult',
+	'LayoutDocumentValidationResult',
+	'validateLineRoom'
+] as const;
+const RETIRED_MENTION = new RegExp(
+	`\\b(?:${RETIRED_LAYOUT_SYMBOLS.join('|')})\\b|from\\s+['\"][^'\"]*/?(?:${RETIRED_LAYOUT_FILES.join('|')})(?:\\.ts)?['\"]`
+);
+
+/**
+ * Retired-name mentions in **code**, not prose: comments legitimately explain
+ * what was retired, so the shared `stripComments` reader runs first (one parser
+ * for this grammar, per the test manual's rule 7).
+ */
+function retiredMentions(source: string): string[] {
+	return [...stripComments(source).matchAll(new RegExp(RETIRED_MENTION, 'g'))].map((match) => match[0]);
+}
 
 const COMPILER_FILES = readdirSync(layoutDir)
 	.filter((name) => name.startsWith('layout-geometry') && name.endsWith('.ts') && !name.endsWith('.test.ts'))
@@ -67,10 +116,54 @@ function packageFilesDefining(signature: string): string[] {
 }
 
 describe('G1 geometry boundary', () => {
-	it('exposes the layout contract directly from layout-core', () => {
-		const document = createEmptyLayoutDocument();
-		expect(validateLayoutDocument(document).success).toBe(true);
-		expect(compileLayoutGeometry(document).issues).toEqual([]);
+	it('exposes the wall-first layout contract directly from layout-core', () => {
+		const document = createEmptyWallFirstLayoutDocument();
+		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
+		expect(compileWallFirstLayoutGeometry(document).issues).toEqual([]);
+	});
+
+	it('retires the legacy Layout document surface completely (T1.P02.S05)', () => {
+		for (const file of RETIRED_LAYOUT_FILES) {
+			expect(existsSync(resolve(layoutDir, file)), `${file} must stay deleted`).toBe(false);
+		}
+		// Every graph the plan names: the shared packages, the editor source and
+		// tests, and the perf harness that consumes the same compiler.
+		const roots = [
+			layoutDir,
+			resolve(packagesRoot, 'project-model/src'),
+			resolve(packagesRoot, 'camera-core/src'),
+			resolve(editorRoot, 'src'),
+			resolve(editorRoot, 'tests'),
+			resolve(editorRoot, 'perf')
+		];
+		const offenders: string[] = [];
+		for (const root of roots) {
+			for (const file of walk(root)) {
+				if (!['.ts', '.svelte'].includes(extname(file))) continue;
+				// This gate names every retired symbol by construction.
+				if (file.endsWith('layout-geometry-boundary.test.ts')) continue;
+				const mentions = retiredMentions(sourceOf(file));
+				if (mentions.length > 0) offenders.push(`${file}: ${[...new Set(mentions)].join(', ')}`);
+			}
+		}
+		expect(offenders).toEqual([]);
+	});
+
+	it('keeps the retirement predicate discriminating (positive controls)', () => {
+		// The absence proof above is only meaningful if the same predicate fires on
+		// each retired form: a type reference, an import of a retired module and a
+		// named function call.
+		expect(retiredMentions("import type { LayoutRoom } from './layout-types';")).not.toEqual([]);
+		expect(retiredMentions("import { compileLayoutGeometry } from '@portfolio/layout-core';")).not.toEqual([]);
+		expect(retiredMentions('const frame = deriveLayoutRoomFrame(room);')).not.toEqual([]);
+		expect(retiredMentions("import type { LayoutValidationResult } from '@portfolio/layout-core';")).not.toEqual([]);
+		// …and stays quiet on the live wall-first vocabulary it must not confuse
+		// with the retired surface.
+		expect(retiredMentions("import type { LayoutDocumentIssue } from './layout-issue';")).toEqual([]);
+		expect(retiredMentions('compileWallFirstLayoutGeometry(document)')).toEqual([]);
+		expect(retiredMentions('LayoutDocumentWallFirst')).toEqual([]);
+		expect(retiredMentions('WallFirstLayoutValidationResult')).toEqual([]);
+		expect(retiredMentions('LayoutIssueRecord')).toEqual([]);
 	});
 
 	it('keeps the compiler graph free of editor, Svelte, Three, and browser imports', () => {
@@ -98,7 +191,9 @@ describe('G1 geometry boundary', () => {
 
 	it('defines each geometry kernel exactly once, under layout-core', () => {
 		expect(packageFilesDefining('export function sampleSegment')).toEqual(['layout-geometry-curve.ts']);
-		expect(packageFilesDefining('export function compileLayoutGeometry')).toEqual(['layout-geometry.ts']);
+		expect(packageFilesDefining('export function compileWallFirstLayoutGeometry')).toEqual(['layout-geometry.ts']);
+		// One compiler entry, one compiler source: the legacy adapter is gone.
+		expect(packageFilesDefining('export function compileLayoutGeometrySource')).toEqual(['layout-geometry.ts']);
 		expect(packageFilesDefining('export function splitWallAroundOpenings')).toEqual(['layout-geometry-openings.ts']);
 		expect(packageFilesDefining('export function splitSampledWallAroundOpenings')).toEqual(['layout-geometry-openings.ts']);
 		expect(packageFilesDefining('export function buildArchProfile')).toEqual(['layout-geometry-openings.ts']);

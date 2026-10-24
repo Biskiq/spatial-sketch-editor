@@ -1,35 +1,13 @@
-import type { LayoutDocument, LayoutOpening } from './layout-types';
-import type { LayoutDocumentWallFirst } from './layout-wall-first-types';
-
-export type LayoutPortalOpeningRef = { roomId: string; openingId: string; segmentId: string };
-export type LayoutPortalRelation = { roomIds: [string, string]; openings: LayoutPortalOpeningRef[] };
-
-export function projectLayoutPortalRelations(document: LayoutDocument): LayoutPortalRelation[] {
-  const relations = new Map<string, LayoutPortalRelation>();
-  for (const floor of document.floors) {
-    for (const room of floor.rooms) {
-      for (const opening of room.openings) {
-        const relation = opening.connectsRoomIds;
-        if (!relation) continue;
-        const roomIds = [...relation].sort((a, b) => a.localeCompare(b)) as [string, string];
-        const key = roomIds.join('|');
-        const current = relations.get(key) ?? { roomIds, openings: [] };
-        current.openings.push({ roomId: room.id, openingId: opening.id, segmentId: opening.segmentId });
-        relations.set(key, current);
-      }
-    }
-  }
-  return [...relations.values()].sort((a, b) => a.roomIds.join('|').localeCompare(b.roomIds.join('|')));
-}
-
-export function portalOpeningHasRoomPair(opening: LayoutOpening, roomA: string, roomB: string): boolean {
-  const relation = opening.connectsRoomIds;
-  return Boolean(relation && relation.includes(roomA) && relation.includes(roomB));
-}
-
-// ---------------------------------------------------------------------------
-// New-schema portal adjacency (P23.3 contract, P23.0 F0 stage 5 Save-blocker)
-// ---------------------------------------------------------------------------
+/**
+ * `layout-wall-portals.ts` — wall-first Opening portal relations.
+ *
+ * T1.P02.S05 moved these live functions here from `layout-portals.ts`, whose
+ * other half (`projectLayoutPortalRelations`, `portalOpeningHasRoomPair`)
+ * projected the retired legacy Room-owned document, had no callers, and is
+ * deleted with it. Everything below reads only the canonical wall-first
+ * document, so the portal contract survives the retirement unchanged.
+ */
+import type { LayoutDocumentWallFirst, LayoutWallOpening } from './layout-wall-first-types';
 
 export type WallFirstPortalIssueCode = 'nonadjacent_portal_relation';
 
@@ -67,18 +45,17 @@ export function wallFirstAdjacentRooms(
  * the Save-blocker hole the codec cannot see: endpoint-valid but
  * nonadjacent relations.
  *
- * Read-path codecs intentionally do NOT run this — legacy nonadjacent
- * relations stay compatibility-readable (P23.0 portal compatibility). The
- * wall-first Save gate runs it fail-closed (P23.0 "block new-schema Save
- * until the relation is explicitly resolved/removed"), and layout migration
- * runs it for its non-blocking carried-relation diagnostic.
+ * Read-path codecs intentionally do NOT run this: a document with a
+ * nonadjacent relation stays readable, and the wall-first Save gate runs the
+ * rule fail-closed (P23.0 "block new-schema Save until the relation is
+ * explicitly resolved/removed").
  */
 export function validateWallFirstPortalRelations(
   document: LayoutDocumentWallFirst
 ): WallFirstPortalIssue[] {
   const issues: WallFirstPortalIssue[] = [];
   const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
-  document.openings.forEach((opening, index) => {
+  document.openings.forEach((opening: LayoutWallOpening, index: number) => {
     const relation = opening.connectsRoomIds;
     if (!relation || opening.kind !== 'door') return;
     const path = `$.openings[${index}].connectsRoomIds`;
