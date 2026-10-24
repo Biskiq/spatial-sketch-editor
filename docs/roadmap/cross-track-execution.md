@@ -166,8 +166,10 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 - **C3:** [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) is **authorized and released**
   as `T3.P04.S01` (2026-10-24) for rename/delete and guarded lifecycle, T3 persistence/API plus T1
   shell integration. It is strictly unrelated to the halt, starts after its coordination PR merges,
-  and still needs T2's API handoff and the two owner rulings its planning resolution names before
-  that behaviour is frozen. Launch nothing beyond that release row.
+  and still needs T2's API handoff — including the write-lease fence on its two model writers —
+  before implementation. Its name/publication contract questions were directed by the owner and its
+  cleanup mechanism corrected in review; the resolution names both. Launch nothing beyond that
+  release row.
 - **T1/T2 continuation:** face-frame provider/solve-once wall placement, part admission and
   annotation, vertical/coordinate qualification and overhead families are planning triggers
   in the owning tracks. They are not accepted providers or newly released scopes.

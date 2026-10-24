@@ -73,7 +73,8 @@ items keep the owners named in each phase README
 child `T3.P04.S01`: project rename/delete, guarded replacement and project-owned model cleanup.
 T3 owns persistence/API/client; T1 owns its explicit reviewed shell patch. It consumes post-S01 T2
 storage interfaces, is strictly unrelated to the performance-first halt, and starts after its
-coordination PR merges on `main`. Its planning review and the two owner rulings it needs are in the
+coordination PR merges on `main`. Its planning review, the owner's directions on the project-name
+authority and published-project deletion, and its corrected cleanup mechanism are in the
 [resolution](./t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md);
 the release authorizes implementation and no other scope.
 

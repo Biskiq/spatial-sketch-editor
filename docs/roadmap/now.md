@@ -7,7 +7,7 @@ A scope absent from this table is held. A row states the condition under which t
 | Scope | Condition | Plan |
 | --- | --- | --- |
 | `T1.P02.S06` | released; after the performance-foundation documentation coordination PR is merged on `main`; runs before every direct inheritor under the performance-first halt | [Performance foundation](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) |
-| `T3.P04.S01` | released; after this T3 coordination PR is merged on `main`; strictly unrelated to the performance-first halt, with its bounded T1 shell patch serialized against `T1.P02.S06`'s claim and T1-reviewed; the two persistence rulings in its planning resolution precede freezing that behaviour | [Project rename and delete](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) |
+| `T3.P04.S01` | released; after this T3 coordination PR is merged on `main`; strictly unrelated to the performance-first halt, with its bounded T1 shell patch serialized against `T1.P02.S06`'s claim and T1-reviewed; T2's API handoff reviews the owned-key inventory and the write-lease fence on its two model writers before implementation | [Project rename and delete](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) |
 
 Provenance: the [performance foundation owner release](../reference/decisions/performance-foundation-authorization-2026-10-24.md)
 authorizes this one scope, records the temporary performance-first halt on its direct inheritors,

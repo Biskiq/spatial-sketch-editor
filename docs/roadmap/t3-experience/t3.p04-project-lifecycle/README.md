@@ -27,7 +27,7 @@ publication, prepared delivery or schema migration is implied.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P04.S01 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](./t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [pending](./t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized and released 2026-10-24 ([decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md); release row in [now.md](../../now.md)); not started; its bounded T1 shell patch is serialized against `T1.P02.S06` and T1-reviewed; two persistence rulings precede freezing that behaviour ([planning resolution](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)) |
+| T3.P04.S01 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](./t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [pending](./t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized and released 2026-10-24 ([decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md); release row in [now.md](../../now.md)); not started; its bounded T1 shell patch is serialized against `T1.P02.S06` and T1-reviewed; the name/publication contract decisions are owner-directed and its cleanup mechanism corrected in review ([planning resolution](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)) |
 
 ```text
 FINAL PHASE GATE: T3.P04.S01 → ./t3.p04.s01-project-rename-and-delete/acceptance.md
@@ -42,5 +42,10 @@ phase-close request closes it. The F2 production epoch activation remains owner-
 
 The [planning review against current `main`](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
 resolves the routine questions — durable cleanup, migration contingency, the T2 API handoff, the T1
-shell patch and Save/Delete concurrency — and escalates exactly two: which field owns the project
-name, and what delete does with a project that still has a publication. Neither is ratified here.
+shell patch and Save/Delete concurrency — and records the owner's directions that the authored
+envelope owns the project name (rename appends one immutable version) and that delete refuses only
+while a publication is active. Its
+[review corrections](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md#review-corrections-2026-10-24)
+also replace the first draft's listing-only cleanup claim with a write-lease fence, a persisted key
+inventory and a project-scoped listing. Implementation may not merge while a project-owned object
+writer bypasses that fence.

@@ -6,6 +6,7 @@
 This is the declared **FINAL PHASE GATE** artifact. Planning and release record no implementation,
 trusted/tested revision, review, gate/capability change or acceptance. No browser, API,
 cleanup or performance result is claimed. The plan's exhaustive evidence belongs here after
-execution and independent review; passing makes P04 closable, not closed. The two owner rulings
-named in the [planning resolution](./planning-resolution-2026-10-24.md) precede the rename and
-delete persistence behaviour, and this artifact claims nothing about them.
+execution and independent review; passing makes P04 closable, not closed. The
+[planning resolution](./planning-resolution-2026-10-24.md) records the owner's name/publication
+directions and the corrected write-lease cleanup design; this artifact claims nothing about them,
+and the fence, cleanup and publication probes it lists remain unrun.
