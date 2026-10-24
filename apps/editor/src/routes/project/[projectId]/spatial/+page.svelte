@@ -52,7 +52,7 @@
 		type BootLoadOutcome,
 		type BootState
 	} from '$lib/authoring/stage/boot-state';
-	import type { AdmissionContext, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
+	import type { AdmissionContext, StageDomainRead, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 	import { STARTER_TEMPLATES } from '$lib/authoring/stage/starter-gallery';
 	import {
 		createStageSession,
@@ -240,6 +240,22 @@
 	 * restored inspection output nor be accepted by a newer run.
 	 */
 	let preview = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(null);
+	/**
+	 * The last entry a mounted visitor surface carries.
+	 *
+	 * The surface is built once and reused: leaving Preview hides it and ends its
+	 * Camera claim, but keeps the loaded chunk, renderer and scene alive, so a
+	 * repeat entry costs a fresh run rather than a rebuild. A new entry replaces
+	 * these props and its epoch creates the next run.
+	 */
+	let previewView = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(null);
+	/**
+	 * The read the mounted surface was built from, frozen at its entry.
+	 *
+	 * A hidden surface must not rebuild itself for every accepted authoring edit;
+	 * the next entry supplies the current read instead.
+	 */
+	let previewViewRead = $state.raw<StageDomainRead | null>(null);
 	type VisitorSurface = (typeof import('$lib/visitor/VisitorPreviewSurface.svelte'))['default'];
 	let previewSurface = $state.raw<VisitorSurface | null>(null);
 	let previewEpoch = 0;
@@ -249,12 +265,58 @@
 	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
-	const previewRead = $derived(
-		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain : null
-	);
+
 	const previewAvailable = $derived(
 		currentEnvelope !== null && currentEnvelope.units.experience.data.experiences.length > 0
 	);
+	let previewWarming = false;
+
+	/**
+	 * Build the visitor surface before the first press.
+	 *
+	 * The chunk, renderer and scene are the cold-entry cost, and none of them
+	 * depends on the Camera handoff. Once the source can be Previewed the editor
+	 * already knows its scene, so it builds the hidden surface at idle; the press
+	 * then only mints the run and reveals it. A failed or skipped warm-up leaves
+	 * the ordinary entry path untouched.
+	 */
+	async function warmPreview(): Promise<void> {
+		if (previewWarming || previewSurface !== null || preview !== null) return;
+		if (boot.status !== 'ready' && boot.status !== 'empty') return;
+		previewWarming = true;
+		try {
+			const snapshot = boot.snapshot;
+			const module = await import('$lib/visitor/VisitorPreviewSurface.svelte');
+			// A press that won the race owns the surface now; only the hidden
+			// scene/read is ours to install, never its entry or epoch.
+			if (preview !== null || previewView !== null) return;
+			previewSurface = module.default;
+			previewViewRead = snapshot.domain;
+			const entry = previewEntryFor({
+				envelope: stageEnvelope(snapshot),
+				sourceContentId: snapshot.sourceContentId,
+				sessionEpoch: snapshot.sessionEpoch,
+				epoch: 0,
+				focus: experienceFocus.read()
+			});
+			if (entry.kind !== 'unavailable' && previewView === null) previewView = { entry, epoch: 0 };
+			perfMark('preview:warmed');
+		} catch {
+			// The press path loads and reports its own failure.
+		} finally {
+			previewWarming = false;
+		}
+	}
+
+	$effect(() => {
+		// The Experience lens is the intent to author what Preview shows; building
+		// the hidden scene here means the first press is already warm. Building at
+		// admission was measured to block the first dock interaction, so the cost
+		// stays behind an explicit lens choice.
+		const ready = boot.status === 'ready' || boot.status === 'empty';
+		if (!ready || lens !== 'experience' || previewSurface !== null || preview !== null) return;
+		void warmPreview();
+	});
 
 	/**
 	 * Leave Preview and return the Camera output to the Stage.
@@ -292,6 +354,7 @@
 	 */
 	async function openPreview(): Promise<void> {
 		if (previewBusy || preview !== null || (boot.status !== 'ready' && boot.status !== 'empty')) return;
+		perfMark('preview:press');
 		const stage = facade;
 		if (stage === null) return;
 		const snapshot = boot.snapshot;
@@ -310,6 +373,7 @@
 				notice = entry.message;
 				return;
 			}
+			perfMark('preview:entry-resolved', { kind: entry.kind });
 			// The visitor surface is its own chunk: the Stage first-load set never
 			// carries it, and a second entry reuses what the first loaded. Only this
 			// load can fail below, and it runs **before** ownership moves, so a failure
@@ -318,6 +382,7 @@
 				try {
 					const module = await import('$lib/visitor/VisitorPreviewSurface.svelte');
 					previewSurface = module.default;
+					perfMark('preview:chunk-ready');
 				} catch {
 					notice = 'The visitor Preview could not be loaded; the Stage kept the Camera output.';
 					return;
@@ -335,6 +400,9 @@
 				return;
 			}
 			notice = '';
+			perfMark('preview:handover', { runEpoch: handover.runEpoch });
+			previewViewRead = snapshot.domain;
+			previewView = { entry, epoch: handover.runEpoch };
 			preview = { entry, epoch: handover.runEpoch };
 			perfMark('preview:entered', { runEpoch: handover.runEpoch, mode: entry.kind });
 		} finally {
@@ -2057,30 +2125,43 @@
 			</div>
 			{/if}
 
-			{#if preview !== null && previewSurface !== null && previewRead !== null}
+			{#if previewSurface !== null && previewViewRead !== null}
 				{@const Surface = previewSurface}
-				{@const entry = preview.entry}
+				{@const entry = previewView?.entry ?? null}
+				{@const read = previewViewRead}
 				<!--
 					The Preview takeover replaces the Stage rather than sitting on top of
 					a live one: the authoring canvas is unmounted, so no inspection claim,
 					gesture or overlay survives into the isolated visitor run.
+
+					Once built, the visitor surface stays mounted and is hidden between
+					sessions. Cleanup was never the ownership protocol: the Camera claim ends
+					with the return, while keeping the renderer and scene alive turns a repeat
+					entry into a new run instead of a rebuild. A hidden surface renders no
+					frames (`on-demand` while inactive) and is inert, so it cannot take input.
 				-->
-				<div class="preview-takeover" role="region" aria-label="Visitor preview">
-					{#key preview.epoch}
-						<Surface
-							geometry={previewRead.geometry}
-							scene={previewRead.scene}
-							rooms={previewRead.rooms}
-							graph={previewRead.graph}
-							program={entry.kind === 'presentations' ? entry.program ?? null : entry.program}
-							experienceOptions={entry.kind === 'presentations' ? entry.options ?? null : entry.options}
-							entryPresentationId={entry.kind === 'program' ? entry.entryPresentationId : null}
-							resolveTexture={(uri: string) => (isAllowedShippedTextureUri(uri) ? uri : null)}
-							{reducedMotion}
-							title={entry.title}
-							onExit={closePreview}
-						/>
-					{/key}
+				<div
+					class="preview-takeover"
+					role="region"
+					aria-label="Visitor preview"
+					hidden={preview === null}
+					inert={preview === null}
+				>
+					<Surface
+						geometry={read.geometry}
+						scene={read.scene}
+						rooms={read.rooms}
+						graph={read.graph}
+						program={entry === null ? null : entry.kind === 'presentations' ? entry.program ?? null : entry.program}
+						experienceOptions={entry === null ? null : entry.kind === 'presentations' ? entry.options ?? null : entry.options}
+						entryPresentationId={entry?.kind === 'program' ? entry.entryPresentationId : null}
+						runEpoch={previewView?.epoch ?? 0}
+						active={preview !== null}
+						resolveTexture={(uri: string) => (isAllowedShippedTextureUri(uri) ? uri : null)}
+						{reducedMotion}
+						title={entry?.title ?? null}
+						onExit={closePreview}
+					/>
 				</div>
 			{:else if preview !== null}
 				<p class="stage-note" role="status">Loading the visitor Preview…</p>

@@ -77,7 +77,10 @@ async function enterPreview(page: Page): Promise<void> {
 async function exitPreview(page: Page): Promise<void> {
 	await page.getByRole('button', { name: /Exit Preview/ }).click();
 	await waitForMark(page, 'preview:returned');
-	await expect(page.locator(VISITOR_CANVAS)).toHaveCount(0);
+	// The surface is kept warm for the next entry: hidden and inert, never gone.
+	await expect(page.locator(VISITOR_CANVAS)).toBeHidden();
+	await expect(page.locator(VISITOR_CANVAS)).toHaveCount(1);
+	await expect(page.locator('.preview-takeover')).toHaveAttribute('aria-label', 'Visitor preview');
 }
 
 async function expectAccepted(page: Page, previous: number): Promise<void> {
@@ -273,7 +276,8 @@ test.describe('integrated Capture / Guide / Preview journeys', () => {
 			// shows it nor enters Preview.
 			await page.getByRole('button', { name: 'World', exact: true }).click();
 			await expect(page.locator(DOCK)).toHaveCount(0);
-			await expect(page.locator(VISITOR_CANVAS)).toHaveCount(0);
+			// The warm visitor surface stays hidden; no other lens shows or enters it.
+			await expect(page.locator(VISITOR_CANVAS)).toBeHidden();
 			await page.getByRole('button', EXPERIENCE_LENS).click();
 			await expect(page.locator(DOCK)).toBeVisible();
 

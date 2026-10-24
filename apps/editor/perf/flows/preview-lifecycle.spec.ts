@@ -12,9 +12,10 @@
  * row measured here; Guide entry shares the same handover.
  *
  * F13 does not infer cleanup from a document reload: the realm must survive every
- * cycle (`performance.timeOrigin`), the isolated canvas must be gone after each
- * return, and post-GC heap is reported per cycle. The visitor chunk is loaded once
- * and reused, which is the repeat-use condition the phase requires.
+ * cycle (`performance.timeOrigin`), exactly one visitor surface may survive each
+ * return (hidden and inert — a warm Preview, not a leak), and post-GC heap is
+ * reported per cycle. The visitor chunk and its scene are built once and reused,
+ * which is the repeat-use condition the phase requires for an instant entry.
  *
  * Hard rows are accepted only from the designated reference machine (owner's
  * MacBook Air M2, 16 GB, owner-operated). Any other run is pre-flight.
@@ -52,29 +53,36 @@ async function captureOnce(page: Page): Promise<void> {
 	await waitForMark(page, 'experience:capture-accepted');
 }
 
-async function enterPreview(page: Page): Promise<void> {
+async function enterPreview(page: Page): Promise<number> {
 	await page.locator(HEAD_PREVIEW).click();
+	const press = await waitForMark(page, 'preview:press');
 	await waitForMark(page, 'preview:entered');
 	await expect(page.locator(VISITOR_CANVAS)).toBeVisible();
+	return press.time;
 }
 
 async function exitPreview(page: Page): Promise<void> {
 	await page.getByRole('button', { name: /Exit Preview/ }).click();
 	await waitForMark(page, 'preview:returned');
-	await expect(page.locator(VISITOR_CANVAS)).toHaveCount(0);
+	// The surface is kept warm for the next entry: hidden and inert, not rebuilt.
+	await expect(page.locator(VISITOR_CANVAS)).toBeHidden();
 }
 
-type CaptureRun = { readonly captureToEntered: number };
+type CaptureRun = { readonly captureToEntered: number; readonly pressToFrame: number };
 
 async function captureAndEnterOnce(session: MeasuredSession, size: FixtureSize): Promise<CaptureRun> {
 	const { page } = session;
 	await startExperienceProject(page, size);
 	await captureOnce(page);
 	const capture = await waitForMark(page, 'experience:capture-accepted');
-	await enterPreview(page);
+	const press = await enterPreview(page);
 	const entered = await waitForMark(page, 'preview:entered');
+	const frame = await waitForMark(page, 'visitor:entry-frame');
 	await exitPreview(page);
-	return { captureToEntered: entered.time - capture.time };
+	return {
+		captureToEntered: entered.time - capture.time,
+		pressToFrame: frame.time - press
+	};
 }
 
 for (const size of ['S', 'M'] as const) {
@@ -104,13 +112,19 @@ for (const size of ['S', 'M'] as const) {
 					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
 					cpuRate: 1,
 					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-					metrics: { captureToEnteredMedian: summarize(runs.map((run) => run.captureToEntered)).median },
-					stats: { captureToEntered: summarize(runs.map((run) => run.captureToEntered)) },
+					metrics: {
+						captureToEnteredMedian: summarize(runs.map((run) => run.captureToEntered)).median,
+						pressToFrameMedian: summarize(runs.map((run) => run.pressToFrame)).median
+					},
+					stats: {
+						captureToEntered: summarize(runs.map((run) => run.captureToEntered)),
+						pressToFrame: summarize(runs.map((run) => run.pressToFrame))
+					},
 					limitations: [
 						...limitations,
-						'F10 entry starts at the accepted capture/bind mark, not at the dock press',
+						'press-to-frame ends at the first rendering opportunity after the run starts, not a traced image',
 						'Guide-free entry only; a Guide entry shares the same handover path',
-						'lazy Preview chunk is loaded once per context, so cold is the only first-load row'
+						'the hidden Preview scene is warmed when the Experience lens opens, so cold measures the first press in a fresh context'
 					]
 				};
 				report.rows.push(row);
@@ -157,6 +171,9 @@ test('F13 repeated Preview enter/exit in one application lifetime', async ({ bro
 		for (let cycle = 0; cycle < cycles; cycle += 1) {
 			await enterPreview(page);
 			await exitPreview(page);
+			// Warm reuse, not accumulation: exactly one visitor surface survives
+			// every cycle, and it is hidden while the Stage is authoring.
+			await expect(page.locator(VISITOR_CANVAS)).toHaveCount(1);
 			const after = await readLedger(page);
 			const entered = [...after.records].reverse().find((record) => record.name === 'preview:entered');
 			const returned = [...after.records].reverse().find((record) => record.name === 'preview:returned');

@@ -22,14 +22,29 @@
 		graph,
 		visitor,
 		bounds = null,
+		runEpoch = 0,
 		onCameraGap
 	}: {
 		graph: NavigationGraph;
 		visitor: VisitorRuntimeState;
 		bounds?: LayoutBounds3 | null;
+		/** The run this director presents; a new run reframes from its own entry. */
+		runEpoch?: number;
 		/** Surfaces a typed handoff gap instead of silently re-routing. */
 		onCameraGap?: (message: string | null) => void;
 	} = $props();
+
+	// A reused surface keeps this component (and its look-around offset) alive.
+	// A new run starts from its own entry View, not from the previous run's aim.
+	$effect(() => {
+		void runEpoch;
+		cameraViewId = null;
+		activeMotion = null;
+		activeTargetViewId = null;
+		lookYaw = 0;
+		lookPitch = 0;
+		lookViewId = null;
+	});
 
 	const currentViewId = $derived(visitor.currentViewId);
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);

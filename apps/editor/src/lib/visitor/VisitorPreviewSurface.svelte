@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
+	import { perfMark } from '$lib/platform/perf-marks';
 	import { onMount } from 'svelte';
 import { PCFShadowMap } from 'three';
 	import { Canvas } from '@threlte/core';
@@ -25,6 +26,14 @@ import { PCFShadowMap } from 'three';
 		experienceOptions = null,
 		/** Enter this Presentation directly through the interpreter's Presentation entry. */
 		entryPresentationId = null,
+		/**
+		 * The run identity of this entry. A mounted surface is reused across Preview
+		 * sessions, so a new epoch — not a component mount — is what starts a fresh
+		 * run. It is the same epoch the Camera handoff uses.
+		 */
+		runEpoch = 0,
+		/** Whether this surface currently belongs to an open Preview session. */
+		active = true,
 		resolveTexture,
 		textureScope = null,
 		reducedMotion = false,
@@ -40,6 +49,8 @@ import { PCFShadowMap } from 'three';
 		program?: ExecutionProgram | null;
 		experienceOptions?: ExperienceInterpreterOptions | null;
 		entryPresentationId?: string | null;
+		runEpoch?: number;
+		active?: boolean;
 		resolveTexture: (uri: string) => string | null;
 		textureScope?: TextureLoadScope | null;
 		reducedMotion?: boolean;
@@ -48,11 +59,14 @@ import { PCFShadowMap } from 'three';
 		onExit?: () => void;
 	} = $props();
 
-	const visitorState = $derived.by(() =>
-		program === null || experienceOptions === null
+	const visitorState = $derived.by(() => {
+		// The run identity, not the component lifetime, creates a fresh runtime: a
+		// reused surface must not carry a previous entry's interpreter state.
+		void runEpoch;
+		return program === null || experienceOptions === null
 			? null
-			: createVisitorRuntimeState({ program, options: experienceOptions })
-	);
+			: createVisitorRuntimeState({ program, options: experienceOptions });
+	});
 	let cameraGap = $state<string | null>(null);
 	const guideFreePresentations = $derived.by(() => {
 		if (visitorState === null) return [];
@@ -69,6 +83,26 @@ import { PCFShadowMap } from 'three';
 	$effect(() => {
 		if (visitorState === null) return;
 		visitorState.start(entryPresentationId);
+	});
+	/**
+	 * This entry's first presented opportunity.
+	 *
+	 * The surface may already be mounted (a warm Preview), so a mount hook cannot
+	 * measure an entry. Two rendering opportunities after an active run starts are
+	 * used for both cases: the first may only upload the reused scene.
+	 */
+	$effect(() => {
+		const live = active;
+		const epoch = runEpoch;
+		if (!live || visitorState === null) return;
+		let inner = 0;
+		const outer = requestAnimationFrame(() => {
+			inner = requestAnimationFrame(() => perfMark('visitor:entry-frame', { runEpoch: epoch }));
+		});
+		return () => {
+			cancelAnimationFrame(outer);
+			cancelAnimationFrame(inner);
+		};
 	});
 
 	const presentation = $derived.by(() => {
@@ -92,6 +126,7 @@ import { PCFShadowMap } from 'three';
 	const publicTitle = $derived((title ?? '').trim() || 'Published project');
 
 	onMount(() => {
+		perfMark('visitor:mounted');
 		// Exercise the detached read-only resolver so preview-local URLs stay
 		// alive through the surface lifetime. When a release `textureScope`
 		// is supplied, 3D material loading uses that scoped resolver with
@@ -115,7 +150,12 @@ import { PCFShadowMap } from 'three';
 		aria-label={mode === 'public' ? 'Published project canvas' : 'Visitor preview canvas'}
 		aria-describedby="visitor-preview-help"
 	>
-		<Canvas createRenderer={createManagedWebGLRenderer} dpr={[1, 1.5]} shadows={PCFShadowMap}>
+		<Canvas
+		createRenderer={createManagedWebGLRenderer}
+		dpr={[1, 1.5]}
+		shadows={PCFShadowMap}
+		renderMode={active ? 'always' : 'on-demand'}
+	>
 			<T.Color attach="background" args={[0x050508]} />
 			<T.Fog attach="fog" args={[0x050508, 22, 54]} />
 			<T.AmbientLight intensity={0.2} />
@@ -125,6 +165,7 @@ import { PCFShadowMap } from 'three';
 					graph={graph}
 					visitor={visitorState}
 					bounds={geometry.bounds ?? null}
+					{runEpoch}
 					onCameraGap={(message) => (cameraGap = message)}
 				/>
 			{/if}
