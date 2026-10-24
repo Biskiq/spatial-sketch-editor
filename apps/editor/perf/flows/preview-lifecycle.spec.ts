@@ -187,8 +187,8 @@ test('F13 repeated Preview enter/exit in one application lifetime', async ({ bro
 			lastReturn = returned.time;
 			lastEpoch = runEpoch;
 			cycleTimes.push(returned.time - entered.time);
-			// The application realm and the Stage survive; only the isolated surface
-			// came and went.
+			// The application realm and the Stage survive; the one isolated surface is
+			// kept warm (hidden) rather than disposed and rebuilt.
 			expect(await page.evaluate(() => performance.timeOrigin)).toBe(lifetime);
 			expect(await page.locator('[aria-label="Spatial stage"]').count()).toBe(1);
 			heaps.push(await heapUsedMiB(cdp));

@@ -283,10 +283,15 @@
 	async function warmPreview(): Promise<void> {
 		if (previewWarming || previewSurface !== null || preview !== null) return;
 		if (boot.status !== 'ready' && boot.status !== 'empty') return;
+		const token = session.token();
+		const snapshot = boot.snapshot;
 		previewWarming = true;
 		try {
-			const snapshot = boot.snapshot;
 			const module = await import('$lib/visitor/VisitorPreviewSurface.svelte');
+			// A replacement during the load owns the source now: `activate` dropped
+			// the old surface and the new source warms its own scene from its own
+			// snapshot, so an old read is never installed over it.
+			if (!session.isCurrent(token) || boot.snapshot !== snapshot) return;
 			// A press that won the race owns the surface now; only the hidden
 			// scene/read is ours to install, never its entry or epoch.
 			if (preview !== null || previewView !== null) return;
@@ -330,6 +335,13 @@
 		const stage = facade;
 		const active = preview;
 		preview = null;
+		// The takeover stays mounted, so the Exit control the creator pressed is now
+		// inside an inert subtree and would keep focus while invisible. Returning
+		// drops focus to the document, as unmounting the takeover used to.
+		if (typeof document !== 'undefined') {
+			const focused = document.activeElement;
+			if (focused instanceof HTMLElement && focused.closest('.preview-takeover') !== null) focused.blur();
+		}
 		if (active === null || stage === null) return;
 		const returned = returnPreview(stage.camera);
 		perfMark('preview:returned', { outcome: returned.kind });
@@ -542,6 +554,13 @@
 		session.replace(snapshot);
 		// A Preview run and the lens focus name identities from the replaced source.
 		preview = null;
+		// The warm surface was built from the replaced source's scene, compile and
+		// program, so it cannot describe the new one: drop it (the chunk stays
+		// cached) rather than keeping another project's scene alive behind the
+		// editor. The lens effect warms the new source.
+		previewView = null;
+		previewViewRead = null;
+		previewSurface = null;
 		adapterServices = null;
 		experienceFocus.reset();
 		// The previous facade's listeners are dropped before its replacement exists,
