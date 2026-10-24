@@ -183,8 +183,9 @@ export function writeScenePathAnchorWorldPosition(
 }
 
 /**
- * New anchors belong to the active room only when their initial world hit is inside its
- * yaw-aware XZ footprint. Otherwise they remain world-space anchors.
+ * New anchors are world-space. The active-room branch is retained but unreachable
+ * while the current-format Layout Room registry is empty (`isWorldPointInsideRoomXZ`
+ * is constant `false`), so every new anchor takes the world-space path.
  */
 export function createScenePathAnchorAtWorldPoint(
 	id: string,

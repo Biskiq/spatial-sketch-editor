@@ -140,17 +140,6 @@ export type CompilerSource = {
 	/** One entry per floor, in document order (P23 review round 1 / B1). */
 	floors: readonly CompilerFloorEntry[];
 	objects: readonly LayoutObject[];
-	/**
-	 * Whether boundary segment ids are document-global (`'document'`, the
-	 * default) or only unique inside their room (`'room'`). Snap/align wall
-	 * identity derives from this via the per-span `wallKey`: room-scoped
-	 * segments are qualified by floor+room so same-named segments of different
-	 * rooms never collapse into one wall.
-	 *
-	 * Every current source is document-global — a format-6 Wall exists once in
-	 * the document — so `'room'` is an accepted input value no producer emits.
-	 */
-	wallIdScope?: 'document' | 'room';
 };
 
 export type ArchProfileKind = CompilerOpening['profile'];

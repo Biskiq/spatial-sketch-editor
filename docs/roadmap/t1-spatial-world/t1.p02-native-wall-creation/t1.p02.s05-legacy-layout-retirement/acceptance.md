@@ -1,7 +1,7 @@
 # T1.P02.S05 — acceptance record: Legacy Layout retirement
 
 **Slice:** T1.P02.S05 · **Status:** implementation complete, merge gate green, **not accepted, not
-merged** — awaiting owner acceptance and the named T3/T2 cross-track reviews · **Plan:**
+merged** — awaiting owner acceptance (named T3/T2 reviews recorded below) · **Plan:**
 [implementation-plan.md](./implementation-plan.md) · **Phase:** [T1.P02](../README.md#slice-register)
 
 ```text
@@ -39,7 +39,10 @@ new owned modules  layout-coordinates.ts  LayoutVec2 (neutral plan tuple)
 retyped compiler   CompilerSource / CompilerFloorEntry / CompilerFloorSource /
                    CompilerRoomSource (+ CompilerRoomShell) / CompilerBoundarySource /
                    CompilerOpening are owned by layout-geometry-types.ts;
-                   validatePreparedLayoutRoomGeometry takes CompilerRoomValidationSource
+                   validatePreparedLayoutRoomGeometry takes CompilerRoomValidationSource.
+                   CompilerSource.wallIdScope was removed in review: room-scoped segment ids
+                   were legacy-only, and no producer or test set `'room'`. Output is unchanged
+                   (document scope was always the effective value).
 cross-track        packages/project-model/src/scene-planning/frame.ts — normalizeFrameYaw
 exceptions         packages/project-model/src/project-layout-semantics.ts —
                    LayoutRoomRegistryEntry keeps {id, name, position, rotation}
@@ -135,7 +138,22 @@ topology-derived Rooms. No `skip`, `only`, `todo`, snapshot or tolerance was add
                                  a direct caller supplies one.
 3 multi-floor documents          No wall-first expression; the cases are retired with the
                                  observation artifact as the delta evidence.
+4 curved Wall length         A canonical physical Wall reports `length` as the arc length of its
+                             samples (`samples.at(-1).distance`); the retired room-derived wall
+                             record reported the chord sum. g1-auto-bezier `room-rectangle:wall:0`:
+                             6.363454 (observation) → 6.363855; the 33 sample points are identical
+                             (their chord sum is still 6.363454). Same sampling, different metric.
+5 invalid-geometry bounds    g1-invalid-geometry document bounds grow from max x 6.08 / z ±0.08 to
+  and issue target ids       max x 7.08 / z −0.193…4.193 because the uncompilable Rooms' Walls still
+                             compile (delta 1); the disconnected-boundary issue's targetId is the
+                             renamed Wall id `room-disconnected:wall:0` (was `d:wall:0`); codes unchanged.
 ```
+
+Reviewer differential (acceptance review, 2026-10-23): every other converted g1 case (line-rectangle,
+L-shape, multiple-openings, profile-matrix, elevated-floor, object-matrix) and all three scale tiers
+match the observation artifact on rooms, elevations, thicknesses, floor polygons, per-Wall
+length/thickness/sample count/sections/openings/profiles/solid spans, objects, issue codes and bounds
+(6 dp).
 
 ## Cross-track exceptions
 
@@ -161,21 +179,41 @@ retirement walk, the stale comments in `layout-geometry.ts`, `layout-geometry-ty
 `diagrams/architecture.md` class names, the orphan `LayoutOpening` class, the format-6 numbers in
 `persistence.md`/`north-star.md`, and the artifact's capture/alias notes.
 
-**Outstanding, required before acceptance:** the plan's named owner reviews — **T3** (reader/Camera)
-for `project-layout-semantics.ts` and **T2** (Scene) for `scene-planning/frame.ts`. Neither has been
-recorded; this record does not substitute for them and the slice is not accepted.
+### Named owner reviews
+
+Performed by the acceptance reviewer under owner direction on 2026-10-23:
+
+- **T3 (reader/Camera) — `project-layout-semantics.ts`: approved.** Consumers inspected:
+  `units/runtime.ts` (sole constructor, `createEmptyLayoutRoomRegistry`),
+  `visitor/VisitorEntities.svelte` (`getRequired` inside try/catch; reads only `id`/`position`/
+  `rotation`, which survive), `authoring/camera/editor-camera-path.ts` and `editor-camera-view.ts`
+  (`point`/`localPoint` still throw `Unknown project layout room` for a present roomId;
+  `isWorldPointInsideRoomXZ` returns false exactly as the empty registry's `get()` did). No Room
+  frame manufactured, Camera evaluation unchanged, world-local reader refusal
+  `room_id_forbidden_in_world_local` preserved.
+- **T2 (Scene) — `scene-planning/frame.ts`: approved.** `normalizeFrameYaw` is byte-identical to the
+  retired `normalizeLayoutRoomYaw` arithmetic, private to the Scene frame owner, pinned through
+  `frameYawToWorld`/`frameYawFromWorld` by `tests/lib/project-model/placement-frame.test.ts`; no
+  base test referenced the old export, so no coverage was lost. T2.P02.S02 (PR #185) does not touch
+  `frame.ts`, so no rebase order applies.
+
+The slice is still not accepted: acceptance is recorded later by closeout.
 
 ## Retained surface, deliberately not removed
 
 ```text
-wallIdScope: 'room' (CompilerSource)   an accepted input value no producer emits; the only adapter
-                                       passes 'document'. Removing it would change the shared core's
-                                       public input contract and its pinned tests, which the plan
-                                       does not ask for.
 CompilerFloorSource.height             optional storey scalar retained as the shared core's fallback;
                                        no format-6 document can define one.
 layout-wall-portals.ts                 the wall-first portal relations live here (Save-blocking
                                        adjacency); only the retired legacy projection was deleted.
+buildRoomWallMesh Room branch          VisitorLayoutShell's Room-level mesh branch and its heavy-lane
+(VisitorLayoutShell)                   watertight tests (fed by tests/helpers/wall-mesh-fixtures.ts
+                                       compileRoom, which assembles a Room with its canonical Walls) are
+                                       kept per the plan's mesh-primitive preservation; no format-6
+                                       output reaches the branch. Deferred-retirement row in the T1 README.
+isWorldPointInsideRoomXZ               editor-camera-path.ts keeps the function as constant `false`
+(Camera authoring)                     (registry empty → identical result); its two callers' active-room
+                                       branches are unreachable. Deferred-retirement row in the T1 README.
 ```
 
 ## Verification still owed

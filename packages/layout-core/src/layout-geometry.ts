@@ -143,7 +143,7 @@ export function compileWallFirstLayoutGeometry(
 			if (!start || !end) continue;
 			// The Room boundary chain must connect ref-to-ref, so the segment
 			// follows the ref's traversal direction (reverse swaps endpoints).
-			// The legacy compiler core measures opening offsets from each
+			// The shared compiler core measures opening offsets from each
 			// boundary segment's start, so reverse refs also mirror offsets
 			// (o' = L − (o + w)) to keep them measured from the canonical
 			// Wall start downstream. P23.11: the centerline adapter supplies
@@ -211,8 +211,7 @@ export function compileWallFirstLayoutGeometry(
 	// post-hoc issue append is needed here.
 	return compileWallFirstWithPhysicalWalls(document, {
 		floors: [{ floor: document.floor, rooms }],
-		objects: document.objects,
-		wallIdScope: 'document'
+		objects: document.objects
 	}, sampling);
 }
 
@@ -228,8 +227,9 @@ export function compileWallFirstLayoutGeometry(
  * validation/issues/floor logic are unchanged, except the aggregate
  * `floors[].bounds3` and `floor`/`document` query AABBs expand to include
  * canonical physical Walls (roomless Walls otherwise leave them stale). One compiler, not a second
- * geometry system. Legacy documents never enter this function, so the legacy
- * contract stays byte-identical.
+ * geometry system. It is the single wall-first adapter: only wall-first
+ * documents reach it, and direct `compileLayoutGeometrySource` callers keep
+ * the historical defaults for any absent optional field.
  */
 function compileWallFirstWithPhysicalWalls(
 	document: LayoutDocumentWallFirst,
@@ -818,21 +818,19 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 	const floors: CompiledFloor[] = [];
 	const rooms: CompiledRoom[] = [];
 	const queryBuilder = createQueryGeometryBuilder();
-	const wallIdScope = source.wallIdScope ?? 'document';
 
 	const objects = compileObjects(source.objects, issues, queryBuilder);
 
-	// Per-floor loop (P23 review round 1 / B1): the pre-cutover legacy
-	// compiler iterated every floor; the cutover must not regress that. Each
-	// floor compiles its own rooms with its own elevation frame, and issue
-	// paths stay legacy-identical (`floors[i].rooms[j]`).
+	// Per-floor loop (P23 review round 1 / B1): every floor is compiled, not
+	// only the first. Each floor compiles its own rooms with its own elevation
+	// frame, and issue paths use the `floors[i].rooms[j]` form.
 	for (const [floorIndex, floorEntry] of source.floors.entries()) {
 		const floor = floorEntry.floor;
 		const floorRoomIds: string[] = [];
-		// P23.6I — the Floor no longer carries a vertical extent, so the legacy
-		// storey scalar is kept only as a *cache-key dependency* where it exists
-		// (wall-first supplies each Room's derived ceiling instead). Legacy keys
-		// therefore stay byte-identical.
+		// P23.6I — the Floor no longer carries a vertical extent, so a storey
+		// scalar is kept only as a *cache-key dependency* where a source supplies
+		// one (wall-first supplies each Room's derived ceiling instead). Keys for
+		// sources without a storey height are therefore unchanged.
 		const floorCeilingDependencies: number[] = [];
 		let floorMin: Vec3 = [Infinity, Infinity, Infinity];
 		let floorMax: Vec3 = [-Infinity, -Infinity, -Infinity];
@@ -879,8 +877,7 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 				roomSource,
 				floor,
 				prepared.segments as SampledSegment[],
-				queryBuilder,
-				wallIdScope
+				queryBuilder
 			);
 			rooms.push(compiledRoom);
 			floorRoomIds.push(roomSource.room.id);
@@ -942,8 +939,7 @@ function compileRoom(
 	roomSource: CompilerRoomSource,
 	floor: CompilerFloorSource,
 	sampledSegments: SampledSegment[],
-	queryBuilder: QueryGeometryBuilder,
-	wallIdScope: 'document' | 'room'
+	queryBuilder: QueryGeometryBuilder
 ): CompiledRoom {
 	const room = roomSource.room;
 	const floorElevation = floor.elevation;
@@ -1025,8 +1021,7 @@ function compileRoom(
 		{ id: room.id, boundary: roomSource.boundary },
 		walls,
 		floorPolygon,
-		roomBounds3,
-		wallIdScope
+		roomBounds3
 	);
 
 	return {
@@ -1042,8 +1037,8 @@ function compileRoom(
 			room.floorThickness,
 			room.ceilingThickness,
 			roomSource.openings,
-			// Legacy callers never supply per-wall thickness, so their cache
-			// keys stay byte-identical to the pre-cutover compiler.
+			// Direct callers that omit per-wall thickness leave the optional
+			// field absent, so their Room cache keys keep the historical shape.
 			...(roomSource.wallThicknessBySegmentId
 				? [roomSource.wallThicknessBySegmentId]
 				: [])
@@ -1188,14 +1183,11 @@ function emitRoomQueryRecords(
 	room: { id: string; boundary: CompilerBoundarySource },
 	walls: readonly CompiledWall[],
 	floorPolygon: readonly LayoutVec2[],
-	roomBounds3: LayoutBounds3,
-	wallIdScope: 'document' | 'room'
+	roomBounds3: LayoutBounds3
 ): void {
 	const roomIdParts = ['room', floor.id, room.id];
 
 	for (const [segmentIndex, segment] of room.boundary.segments.entries()) {
-		const wallKey =
-			wallIdScope === 'room' ? geometryId([floor.id, room.id, segment.id]) : segment.id;
 		queryBuilder.points.push(
 			pointRecord(
 				floor.id,
@@ -1205,7 +1197,7 @@ function emitRoomQueryRecords(
 				segment.id,
 				segmentIndex,
 				[...segmentVertexPoints(segment)[0]!] as LayoutVec2,
-				wallKey
+				segment.id
 			)
 		);
 		if (segment.kind === 'auto-bezier') {
@@ -1219,7 +1211,7 @@ function emitRoomQueryRecords(
 						anchor.id,
 						anchorIndex,
 						[...anchor.point] as LayoutVec2,
-						wallKey
+						segment.id
 					)
 				);
 			}
@@ -1227,8 +1219,6 @@ function emitRoomQueryRecords(
 	}
 
 	for (const wall of walls) {
-		const wallKey =
-			wallIdScope === 'room' ? geometryId([floor.id, room.id, wall.segmentId]) : wall.segmentId;
 		for (let index = 1; index < wall.samples.length; index += 1) {
 			const start = wall.samples[index - 1]!;
 			const end = wall.samples[index]!;
@@ -1247,7 +1237,7 @@ function emitRoomQueryRecords(
 					undefined,
 					start.t,
 					end.t,
-					wallKey
+					wall.segmentId
 				)
 			);
 		}
@@ -1269,7 +1259,7 @@ function emitRoomQueryRecords(
 					opening.openingId,
 					undefined,
 					undefined,
-					wallKey
+					wall.segmentId
 				)
 			);
 		}
@@ -1436,7 +1426,7 @@ function spanRecord(
 	const aabb = bounds2(Math.min(start[0], end[0]), Math.min(start[1], end[1]), Math.max(start[0], end[0]), Math.max(start[1], end[1]));
 	// `wallKey` derives from parts already in the cache key (floor/room/
 	// segment), so it deliberately does not participate in the cache key:
-	// legacy cache keys stay byte-identical to the pre-cutover compiler.
+	// its presence never changes a cache key.
 	return {
 		id: geometryId(parts),
 		cacheKey: cacheKeyOf([

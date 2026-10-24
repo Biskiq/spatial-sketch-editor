@@ -42,7 +42,11 @@ const RETIRED_LAYOUT_SYMBOLS = [
 	'layoutRoomLocalPoint',
 	'normalizeLayoutRoomYaw',
 	'projectLayoutPortalRelations',
-	'portalOpeningHasRoomPair'
+	'portalOpeningHasRoomPair',
+	'LayoutIssue',
+	'LayoutValidationResult',
+	'LayoutDocumentValidationResult',
+	'validateLineRoom'
 ] as const;
 const RETIRED_MENTION = new RegExp(
 	`\\b(?:${RETIRED_LAYOUT_SYMBOLS.join('|')})\\b|from\\s+['\"][^'\"]*/?(?:${RETIRED_LAYOUT_FILES.join('|')})(?:\\.ts)?['\"]`
@@ -152,11 +156,14 @@ describe('G1 geometry boundary', () => {
 		expect(retiredMentions("import type { LayoutRoom } from './layout-types';")).not.toEqual([]);
 		expect(retiredMentions("import { compileLayoutGeometry } from '@portfolio/layout-core';")).not.toEqual([]);
 		expect(retiredMentions('const frame = deriveLayoutRoomFrame(room);')).not.toEqual([]);
+		expect(retiredMentions("import type { LayoutValidationResult } from '@portfolio/layout-core';")).not.toEqual([]);
 		// …and stays quiet on the live wall-first vocabulary it must not confuse
 		// with the retired surface.
 		expect(retiredMentions("import type { LayoutDocumentIssue } from './layout-issue';")).toEqual([]);
 		expect(retiredMentions('compileWallFirstLayoutGeometry(document)')).toEqual([]);
 		expect(retiredMentions('LayoutDocumentWallFirst')).toEqual([]);
+		expect(retiredMentions('WallFirstLayoutValidationResult')).toEqual([]);
+		expect(retiredMentions('LayoutIssueRecord')).toEqual([]);
 	});
 
 	it('keeps the compiler graph free of editor, Svelte, Three, and browser imports', () => {

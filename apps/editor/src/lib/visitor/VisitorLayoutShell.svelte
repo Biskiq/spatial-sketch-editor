@@ -65,8 +65,9 @@
 
 	$effect(() => {
 		const materials = createVisitorWallMaterialFactory((roomId) => roomPresentation(roomId).color);
-		// Wall-first canonical rooms carry no wall detail (their Walls render
-		// below); legacy rooms always carry walls, so this skips nothing there.
+		// Format-6 wall-first Rooms compile with no wall detail, so this branch
+		// is not reached by any format-6 output (retained; see the T1
+		// deferred-retirement rows). Their Walls render below.
 		const built: AdaptedRoom[] = geometry.rooms.flatMap((room) => {
 			if (room.walls.length === 0) return [];
 			const result = buildRoomWallMesh(room, { classifySurface: () => 'wall' });
@@ -76,9 +77,9 @@
 			const adapted = toWallBufferGeometry(result.mesh, materials.factory);
 			return [{ roomId: room.roomId, ok: true, ...adapted } as AdaptedRoom];
 		});
-		// P23.9 canonical physical Walls (wall-first only; empty for legacy):
-		// standalone meshes with no Room ownership. Legacy rooms keep their
-		// room meshes above, so nothing renders twice.
+		// P23.9 canonical physical Walls: standalone meshes with no Room
+		// ownership. Every Wall renders once through this loop, and the
+		// Room-level branch above adds nothing for format-6 output.
 		// P23.6I — a Floor datum only. There is no storey vertical extent to fall
 		// back to, and no `{ height: 3 }` compatibility literal may survive here.
 		const floorElevationById = new Map(

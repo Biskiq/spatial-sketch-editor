@@ -179,6 +179,16 @@ scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026
   preserves the measured blockers. The retirement row is discharged only after implementation.
 - `layout-core` legacy generation (`layout-compat`, `layout-migration`, `layout-migration-math`)
   was removed by PR #115 with no successor detector; nothing here re-introduces one.
+- Room-level wall mesh path (`buildRoomWallMesh` + `VisitorLayoutShell` Room branch +
+  `CompiledRoom.walls` from the shared compile core) — unreachable from format-6 output since
+  T1.P02.S05; *retire when the visitor/editor Stage renderer parity work replaces the Room-level
+  mesh tests with physical-Wall (`buildStandaloneWallMesh`) watertight coverage*; until then its
+  heavy-lane tests are the only consumer.
+- Camera authoring room-ownership branches (`isWorldPointInsideRoomXZ`, active-room branches in
+  `createScenePathAnchorAtWorldPoint` / `createSceneCameraViewKeyframeAtWorldTarget`) —
+  constant-false since T1.P02.S05 because the current-format Layout Room registry is empty;
+  *retire with the Camera codec cutover that removes room-owned Camera coordinates, under T3
+  review*.
 
 **Capability rebuild and remaining boundary** (implementation-plan §4.4)
 
