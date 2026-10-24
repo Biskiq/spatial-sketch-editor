@@ -106,6 +106,12 @@
 	import ExperienceSurface from '$lib/authoring/experience/ExperienceSurface.svelte';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
+	import {
+		enterPreview,
+		nextPreviewRunEpoch,
+		previewReturnToken,
+		returnPreview
+	} from '$lib/authoring/experience/preview-handover';
 	import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
 
 	const projectId = decodeURIComponent(page.params.projectId ?? '');
@@ -211,6 +217,7 @@
 			task = null;
 			contributionsVersion += 1;
 		}
+		// Arming the Experience dock's Guide key is not a mode: the lens owns it.
 	}
 	function resumeTask(): void {
 		const result = facade?.resumeTask();
@@ -224,10 +231,13 @@
 	let query = $state('');
 	let reducedMotion = $state(false);
 	/**
-	 * Preview takeover. The visitor surface is a lazy chunk loaded on the first
-	 * entry; a repeat entry reuses the loaded component. `epoch` is the run
-	 * identity Preview hands the interpreter, so a completion from an earlier
-	 * entry is stale rather than accepted by the current one.
+	 * The isolated visitor Preview session (T3.P02.S02).
+	 *
+	 * Entering is a **Camera handover**: the Stage's inspection run hands its one
+	 * output to the Preview run through the landed F3 ticket protocol, and leaving
+	 * returns it. `epoch` is the protocol run epoch and the interpreter's run
+	 * identity at once, so an older Preview completion can neither drive the
+	 * restored inspection output nor be accepted by a newer run.
 	 */
 	let preview = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(null);
 	type VisitorSurface = (typeof import('$lib/visitor/VisitorPreviewSurface.svelte'))['default'];
@@ -246,20 +256,47 @@
 		currentEnvelope !== null && currentEnvelope.units.experience.data.experiences.length > 0
 	);
 
+	/**
+	 * Leave Preview and return the Camera output to the Stage.
+	 *
+	 * Only a valid return restores the inspection run. When no Preview claim
+	 * survives — a source/project change ended it through the protocol's rebase —
+	 * nothing is reinstated: the Stage continues under the claim the content change
+	 * already minted, which is why a stale pose can never come back with it.
+	 */
 	function closePreview(): void {
+		const stage = facade;
+		const active = preview;
 		preview = null;
+		if (active === null || stage === null) return;
+		const returned = returnPreview(stage.camera);
+		perfMark('preview:returned', { outcome: returned.kind });
+		if (returned.kind === 'refused') notice = returned.message;
 	}
 
+	/**
+	 * Enter Preview through the Camera handover.
+	 *
+	 * Order matters: the entry rule resolves first (an unavailable entry changes no
+	 * ownership), then the isolated chunk loads (a failed load never takes the
+	 * output), and only then does the Stage hand its output to the Preview run. A
+	 * replacement or teardown that landed while the chunk loaded owns the Stage now,
+	 * so the handover is not entered against the newer source.
+	 */
 	async function openPreview(): Promise<void> {
-		if (previewBusy || (boot.status !== 'ready' && boot.status !== 'empty')) return;
+		if (previewBusy || preview !== null || (boot.status !== 'ready' && boot.status !== 'empty')) return;
+		const stage = facade;
+		if (stage === null) return;
 		const snapshot = boot.snapshot;
+		const token = session.token();
 		previewBusy = true;
 		try {
+			const runEpoch = nextPreviewRunEpoch(stage.camera.output(), ++previewEpoch);
 			const entry = previewEntryFor({
 				envelope: stageEnvelope(snapshot),
 				sourceContentId: snapshot.sourceContentId,
 				sessionEpoch: snapshot.sessionEpoch,
-				epoch: ++previewEpoch,
+				epoch: runEpoch,
 				focus: experienceFocus.read()
 			});
 			if (entry.kind === 'unavailable') {
@@ -267,13 +304,32 @@
 				return;
 			}
 			// The visitor surface is its own chunk: the Stage first-load set never
-			// carries it, and a second entry reuses what the first loaded.
+			// carries it, and a second entry reuses what the first loaded. Only this
+			// load can fail below, and it runs **before** ownership moves, so a failure
+			// never leaves the output owned by a Preview that did not mount.
 			if (previewSurface === null) {
-				const module = await import('$lib/visitor/VisitorPreviewSurface.svelte');
-				previewSurface = module.default;
+				try {
+					const module = await import('$lib/visitor/VisitorPreviewSurface.svelte');
+					previewSurface = module.default;
+				} catch {
+					notice = 'The visitor Preview could not be loaded; the Stage kept the Camera output.';
+					return;
+				}
+			}
+			// A load is asynchronous: the source this entry resolved against must still
+			// be the mounted one before ownership moves.
+			if (!session.isCurrent(token) || stage !== facade) return;
+			const handover = enterPreview(stage.camera, {
+				runEpoch,
+				returnToken: previewReturnToken(snapshot.sessionEpoch, runEpoch)
+			});
+			if (handover.kind === 'refused') {
+				notice = handover.message;
+				return;
 			}
 			notice = '';
-			preview = { entry, epoch: previewEpoch };
+			preview = { entry, epoch: handover.runEpoch };
+			perfMark('preview:entered', { runEpoch: handover.runEpoch, mode: entry.kind });
 		} finally {
 			previewBusy = false;
 		}
@@ -454,8 +510,10 @@
 		adapterServices = createStageAdapterServices(facade, mounted);
 		unsubscribeAcceptance = mounted.onChanged(() => {
 			if (acceptance !== mounted || tornDown) return;
-			// A source change invalidates the isolated run entered over the old one.
-			preview = null;
+			// A source change ends the Preview claim through the protocol's rebase (the
+			// output's source identity is no longer current), so leaving it restores
+			// nothing: the Stage continues under the claim the content change minted.
+			if (preview !== null) closePreview();
 			refreshHistory();
 			// The Save state derives its status from the accepted source, so an
 			// accepted edit is what makes the project dirty. Without this refresh
@@ -1008,6 +1066,10 @@
 			// contribution must not stop the Stage's own rendering for the rest of
 			// the session.
 			try {
+				// The isolated Preview owns the Camera output and the Stage's canvas is
+				// unmounted: evaluating or refreshing an inspection view here would be a
+				// second reader of an output this run no longer owns.
+				if (preview !== null) return;
 				const stage = stageEl;
 				if (stage !== undefined) {
 					const next = measure();
@@ -2171,12 +2233,18 @@
 		border-color: #d4ad45;
 		color: #f4d98a;
 	}
+	/*
+		Round 2's one lower working edge: the invited Guide instrument sits above the
+		surface's own dock, centred on the Stage, and the Stage stays dominant. This is
+		the Capture/Guide contribution, not a second shell column.
+	*/
 	.lens-surface {
 		position: absolute;
-		top: 3.25rem;
-		right: 0.75rem;
+		left: 50%;
 		bottom: 0.75rem;
-		width: min(42rem, calc(100% - 1.5rem));
+		transform: translateX(-50%);
+		max-height: calc(100% - 5rem);
+		width: min(52rem, calc(100% - 1.5rem));
 		display: flex;
 		min-height: 0;
 	}

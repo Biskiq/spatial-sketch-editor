@@ -11,7 +11,12 @@
  *   implicit document created by a first edit.
  * - `experience-capture-bind` creates one Camera View, one Presentation bound to
  *   it as its Default, and, when the payload asks, one Stop inserted into an
- *   existing Guide — one candidate, one acceptance, one undo.
+ *   existing Guide — or, with `firstGuide`, the Experience's first Guide and its
+ *   initial Stop — one candidate, one acceptance, one undo.
+ * - `experience-guide-create` creates the Experience's first Guide and its
+ *   initial distinct Stop from an existing Presentation, and names that Guide the
+ *   Experience's explicit entry Guide. It reuses no Camera pose and manufactures
+ *   no Connection: the Stop enters the Presentation's own View.
  * - `experience-stop-create` reuses an existing Presentation at a distinct Stop
  *   in a Guide. The Stop's entry View is its own identity, so the same
  *   Presentation may be entered at a different View at another Stop.
@@ -85,6 +90,8 @@ export const EXPERIENCE_CREATE_KIND = 'experience-create';
 export const EXPERIENCE_CAPTURE_BIND_KIND = 'experience-capture-bind';
 /** Reuse an existing Presentation at a distinct Stop. */
 export const EXPERIENCE_STOP_CREATE_KIND = 'experience-stop-create';
+/** Create the Experience's first Guide and its initial Stop from an existing Presentation. */
+export const EXPERIENCE_GUIDE_CREATE_KIND = 'experience-guide-create';
 /** Reorder a Guide's Stops by stable identity. */
 export const EXPERIENCE_GUIDE_ORDER_KIND = 'experience-guide-order';
 /** Edit one Presentation's label, text, subject or Default View. */
@@ -239,7 +246,8 @@ export function createCameraViewUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 
 const CONTINUATION_KEYS = ['kind', 'stopId', 'transition'] as const;
 const STOP_PAYLOAD_KEYS = ['holdSeconds', 'continuation', 'guideId', 'afterStopId'] as const;
-const COMPOUND_PAYLOAD_KEYS = ['view', 'presentation', 'stop', 'resource'] as const;
+const COMPOUND_PAYLOAD_KEYS = ['view', 'presentation', 'stop', 'firstGuide', 'resource'] as const;
+const FIRST_GUIDE_PAYLOAD_KEYS = ['label'] as const;
 const PRESENTATION_PAYLOAD_KEYS = ['label', 'subject', 'text'] as const;
 const TEXT_KEYS = ['kind', 'body'] as const;
 const RESOURCE_UPDATE_KEYS = ['contentRevision', 'pin'] as const;
@@ -341,7 +349,8 @@ function readContinuation(reader: ShapeReader, input: unknown, path: string): Ex
 type StopPayload = {
 	readonly holdSeconds: number | undefined;
 	readonly continuation: ExperienceContinuation | undefined;
-	readonly guideId: string;
+	/** The existing Guide the Stop joins, or `null` when the capture creates the first Guide. */
+	readonly guideId: string | null;
 	readonly afterStopId: string | null;
 };
 
@@ -350,15 +359,29 @@ function readStopPayload(reader: ShapeReader, input: unknown, path: string): Sto
 	if (record === null) return null;
 	const holdSeconds = record.holdSeconds === undefined ? undefined : reader.numberAtLeast(record.holdSeconds, `${path}.holdSeconds`, 0, false);
 	const continuation = record.continuation === undefined ? undefined : readContinuation(reader, record.continuation, `${path}.continuation`);
-	const guideId = reader.opaqueId(record.guideId, `${path}.guideId`);
+	const guideId = record.guideId === null || record.guideId === undefined
+		? null
+		: reader.opaqueId(record.guideId, `${path}.guideId`);
 	let afterStopId: string | null = null;
 	if (record.afterStopId !== undefined && record.afterStopId !== null) {
 		const parsed = reader.opaqueId(record.afterStopId, `${path}.afterStopId`);
 		if (parsed === null) return null;
 		afterStopId = parsed;
 	}
-	if (holdSeconds === null || continuation === null || guideId === null) return null;
+	if (holdSeconds === null || continuation === null) return null;
 	return { holdSeconds: holdSeconds ?? undefined, continuation: continuation ?? undefined, guideId, afterStopId };
+}
+
+/** The first Guide's authored label; its identities are the intent's captured ids. */
+function readFirstGuidePayload(
+	reader: ShapeReader,
+	input: unknown,
+	path: string
+): { readonly label: string } | null {
+	const record = reader.object(input, path, FIRST_GUIDE_PAYLOAD_KEYS);
+	if (record === null) return null;
+	const label = reader.string(record.label, `${path}.label`);
+	return label === null ? null : { label };
 }
 
 const PIN_KEYS = ['hash', 'mime', 'size', 'locator'] as const;
@@ -545,6 +568,15 @@ export function createCaptureBindPlanner(
 			// malformed Stop is a refusal, not the same absence.
 			const requestedStop = payload.stop !== null && payload.stop !== undefined;
 			const stop = requestedStop ? readStopPayload(reader, payload.stop, '$.payload.stop') : null;
+			// The first Guide is requested together with its initial Stop: capture then
+			// installs View + Presentation + Guide + Stop as one accepted result.
+			const requestedFirstGuide = payload.firstGuide !== null && payload.firstGuide !== undefined;
+			const firstGuide = requestedFirstGuide
+				? readFirstGuidePayload(reader, payload.firstGuide, '$.payload.firstGuide')
+				: null;
+			if (requestedFirstGuide && firstGuide === null) {
+				return refuse('invalid-payload', 'The first Guide payload is not a valid shape', reader.issues);
+			}
 			const requestedResource = payload.resource !== null && payload.resource !== undefined;
 			const resourceUpdate = requestedResource ? readResourceUpdate(reader, payload.resource, '$.payload.resource') : null;
 			if (
@@ -590,19 +622,69 @@ export function createCaptureBindPlanner(
 				return refuse('duplicate-identity', 'a View, a Presentation and a Stop must have distinct identities');
 			}
 
+			// The first Guide is an explicit request, never inferred from the absence of
+			// one: a capture that authors no Guide stays Guide-free.
+			let firstGuideId: string | null = null;
+			if (firstGuide !== null) {
+				if (stop === null) {
+					return refuse('unsupported-operation', 'a first Guide is created with its initial Stop; the capture carries no Stop');
+				}
+				if (stop.guideId !== null) {
+					return refuse('invalid-payload', 'the capture names both an existing Guide and a first Guide');
+				}
+				if (experience.guides.length > 0) {
+					return refuse(
+						'guide-exists',
+						`experience "${experience.id}" already carries a Guide; insert the Stop into that Guide instead of creating a first Guide`
+					);
+				}
+				if (experience.entryGuideId !== null) {
+					return refuse(
+						'missing-target',
+						`experience "${experience.id}" already names entry guide "${experience.entryGuideId}", which it does not carry`
+					);
+				}
+				const guideId = capturedId(request.intent, 'guide');
+				if (guideId === null) {
+					return refuse('unsupported-operation', 'the intent must capture exactly one guide id');
+				}
+				if (ids.has(guideId) || guideId === viewId || guideId === presentationId || guideId === stopId) {
+					return refuse('duplicate-identity', `the captured id "${guideId}" already names a subject in this envelope`);
+				}
+				if (stop.afterStopId !== null) {
+					return refuse('invalid-payload', 'the first Guide has no earlier Stop for the initial Stop to follow');
+				}
+				firstGuideId = guideId;
+			}
+			// A Stop joins a Guide: naming neither an existing Guide nor the first Guide
+			// would install a Stop no order reaches, which Preview can never enter.
+			if (stop !== null && stop.guideId === null && firstGuide === null) {
+				return refuse('missing-target', 'a Stop joins a Guide; name the existing Guide or request the first Guide');
+			}
+
 			let guide: ExperienceGuide | null = null;
 			let insertionIndex = -1;
-			if (stop !== null) {
-				const guideIndex = experience.guides.findIndex((candidate) => candidate.id === stop.guideId);
-				if (guideIndex === -1) return refuse('missing-target', `guide "${stop.guideId}" is not in experience "${experience.id}"`);
+			if (stop !== null && stop.guideId !== null) {
+				const guideId = stop.guideId;
+				const guideIndex = experience.guides.findIndex((candidate) => candidate.id === guideId);
+				if (guideIndex === -1) return refuse('missing-target', `guide "${guideId}" is not in experience "${experience.id}"`);
 				guide = experience.guides[guideIndex]!;
 				if (stop.afterStopId !== null) {
 					const at = guide.stopIds.indexOf(stop.afterStopId);
-					if (at === -1) return refuse('missing-target', `guide "${guide.id}" does not order stop "${stop.afterStopId}"`);
+					if (at === -1) return refuse('missing-target', `guide "${guideId}" does not order stop "${stop.afterStopId}"`);
 					insertionIndex = at + 1;
 				} else {
 					insertionIndex = guide.stopIds.length;
 				}
+				const authoredContinuation = stop.continuation;
+				if (
+					authoredContinuation !== undefined &&
+					authoredContinuation.kind === 'stop' &&
+					!experience.stops.some((candidate) => candidate.id === authoredContinuation.stopId)
+				) {
+					return refuse('missing-target', `the new Stop continues to stop "${authoredContinuation.stopId}", which this Experience does not carry`);
+				}
+			} else if (stop !== null) {
 				const authoredContinuation = stop.continuation;
 				if (
 					authoredContinuation !== undefined &&
@@ -631,16 +713,25 @@ export function createCaptureBindPlanner(
 							...(stop.holdSeconds === undefined ? {} : { holdSeconds: stop.holdSeconds }),
 							...(stop.continuation === undefined ? {} : { continuation: stop.continuation })
 						};
-			const guides = experience.guides.map((candidate) =>
-				guide !== null && candidate.id === guide.id && newStop !== null
-					? { ...candidate, stopIds: [...candidate.stopIds.slice(0, insertionIndex), newStop.id, ...candidate.stopIds.slice(insertionIndex)] }
-					: candidate
-			);
+			const newGuide: ExperienceGuide | null =
+				firstGuide === null || firstGuideId === null || newStop === null
+					? null
+					: { id: firstGuideId, label: firstGuide.label, stopIds: [newStop.id], entryStopId: newStop.id };
+			const guides = newGuide === null
+				? experience.guides.map((candidate) =>
+						guide !== null && candidate.id === guide.id && newStop !== null
+							? { ...candidate, stopIds: [...candidate.stopIds.slice(0, insertionIndex), newStop.id, ...candidate.stopIds.slice(insertionIndex)] }
+							: candidate
+					)
+				: [...experience.guides, newGuide];
 			const updatedExperience: Experience = {
 				...experience,
 				presentations: [...experience.presentations, newPresentation],
 				stops: newStop === null ? experience.stops : [...experience.stops, newStop],
-				guides
+				guides,
+				// The first Guide is the Experience's explicit entry Guide. Creating it
+				// never makes Guide membership mandatory for any other Presentation.
+				entryGuideId: newGuide === null ? experience.entryGuideId : newGuide.id
 			};
 			const experiences = envelope.units.experience.data.experiences.map((candidate, index) =>
 				index === experienceIndex ? updatedExperience : candidate
@@ -806,6 +897,17 @@ export function createCaptureBindPlanner(
 					after: reference(resourceTarget.domain, 'resource', updatedResource.id, [], updatedResource.contentRevision ?? updatedResource.pin!.hash)
 				});
 			}
+			if (newGuide !== null) {
+				changes.push(
+					{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId'] },
+					{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }
+				);
+				correspondence.push({
+					relation: 'created',
+					before: null,
+					after: reference('experience', 'guide', newGuide.id, [experience.id], revisionOf(candidate, 'experience'))
+				});
+			}
 			if (newStop !== null) {
 				changes.push({ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'holdSeconds', 'continuation'] });
 				if (guide !== null) changes.push({ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] });
@@ -824,6 +926,162 @@ export function createCaptureBindPlanner(
 					source: candidate,
 					changes,
 					correspondence,
+					diagnostics: []
+				}
+			};
+		}
+	};
+}
+
+/* --- First Guide creation -------------------------------------------------- */
+
+const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'holdSeconds', 'continuation'] as const;
+
+/**
+ * Create one Experience's first Guide and its initial distinct Stop.
+ *
+ * Targets: exactly one `experience:experience` reference. The Guide's label and
+ * the captured guide/stop ids are the intent's; the Stop enters the chosen
+ * Presentation at its own entry View (the Presentation's Default unless the
+ * payload names one of its views). Reusing a Presentation creates a fresh Stop
+ * identity: no Camera pose or FOV is copied and no Connection is manufactured.
+ *
+ * The first Guide is created only while the Experience carries none, and it
+ * becomes the Experience's explicit `entryGuideId`. Guide membership is never
+ * made mandatory for any other Presentation, and a source with no Guide still
+ * Preview through the visitor list.
+ */
+export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'unit.experience-guide-create',
+		kind: EXPERIENCE_GUIDE_CREATE_KIND,
+		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare(request) {
+			const envelope = envelopeOf(request);
+			const reader = new ShapeReader();
+			const payload = reader.object(request.intent.payload, '$.payload', GUIDE_CREATE_PAYLOAD_KEYS);
+			if (payload === null) return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
+			const label = reader.string(payload.label, '$.payload.label');
+			const presentationId = reader.opaqueId(payload.presentationId, '$.payload.presentationId');
+			const entryViewProvided = payload.entryViewId !== undefined && payload.entryViewId !== null;
+			const entryViewId = entryViewProvided ? reader.opaqueId(payload.entryViewId, '$.payload.entryViewId') : null;
+			const holdSeconds = payload.holdSeconds === undefined || payload.holdSeconds === null
+				? undefined
+				: reader.numberAtLeast(payload.holdSeconds, '$.payload.holdSeconds', 0, false);
+			const continuation = payload.continuation === undefined || payload.continuation === null
+				? undefined
+				: readContinuation(reader, payload.continuation, '$.payload.continuation');
+			if (
+				label === null ||
+				presentationId === null ||
+				(entryViewProvided && entryViewId === null) ||
+				(holdSeconds === null && payload.holdSeconds !== undefined) ||
+				continuation === null
+			) {
+				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
+			}
+			const target = targetOf(request.intent, 'experience', 'experience');
+			if (target === null) {
+				return refuse('unsupported-operation', 'experience-guide-create targets exactly one experience:experience reference');
+			}
+			const experienceIndex = envelope.units.experience.data.experiences.findIndex((candidate) => candidate.id === target.subject.id);
+			if (experienceIndex === -1) return refuse('missing-target', `experience "${target.subject.id}" is not in this envelope`);
+			const experience = envelope.units.experience.data.experiences[experienceIndex]!;
+			if (experience.guides.length > 0) {
+				return refuse(
+					'guide-exists',
+					`experience "${experience.id}" already carries a Guide; insert a Stop into that Guide instead of creating a first Guide`
+				);
+			}
+			if (experience.entryGuideId !== null) {
+				return refuse(
+					'missing-target',
+					`experience "${experience.id}" already names entry guide "${experience.entryGuideId}", which it does not carry`
+				);
+			}
+			const presentation = experience.presentations.find((candidate) => candidate.id === presentationId);
+			if (presentation === undefined) {
+				return refuse('missing-target', `presentation "${presentationId}" is not in experience "${experience.id}"`);
+			}
+			// A Presentation without a Default View is not enterable, so no Stop of it
+			// can join a Guide.
+			if (presentation.defaultViewId === null) {
+				return refuse('missing-entry', `presentation "${presentation.id}" has no Default View, so a Stop cannot enter it`);
+			}
+			const entry: string = entryViewId ?? presentation.defaultViewId;
+			if (!presentation.viewIds.includes(entry)) {
+				return refuse('invalid-payload', `entry view "${entry}" is not one of presentation "${presentation.id}"'s views`);
+			}
+			if (continuation !== undefined && continuation.kind === 'stop' && !experience.stops.some((candidate) => candidate.id === continuation.stopId)) {
+				return refuse('missing-target', `the new Stop continues to stop "${continuation.stopId}", which this Experience does not carry`);
+			}
+			const guideId = capturedId(request.intent, 'guide');
+			const stopId = capturedId(request.intent, 'stop');
+			if (guideId === null || stopId === null) {
+				return refuse('unsupported-operation', 'the intent must capture exactly one guide id and one stop id');
+			}
+			const ids = allIds(envelope);
+			for (const id of [guideId, stopId]) {
+				if (ids.has(id)) return refuse('duplicate-identity', `the captured id "${id}" already names a subject in this envelope`);
+			}
+			if (guideId === stopId) {
+				return refuse('duplicate-identity', 'a Guide and its initial Stop must have distinct identities');
+			}
+			const newStop: ExperienceStop = {
+				id: stopId,
+				presentationId,
+				...(entryViewId === null ? {} : { entryViewId }),
+				...(holdSeconds === undefined || holdSeconds === null ? {} : { holdSeconds }),
+				...(continuation === undefined || continuation === null ? {} : { continuation })
+			};
+			const newGuide: ExperienceGuide = { id: guideId, label, stopIds: [newStop.id], entryStopId: newStop.id };
+			const updatedExperience: Experience = {
+				...experience,
+				entryGuideId: newGuide.id,
+				stops: [...experience.stops, newStop],
+				guides: [newGuide]
+			};
+			const candidate: ProjectEnvelope = {
+				...envelope,
+				units: {
+					...envelope.units,
+					experience: {
+						header: { ...envelope.units.experience.header },
+						data: {
+							formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+							experiences: envelope.units.experience.data.experiences.map((entryExperience, index) =>
+								index === experienceIndex ? updatedExperience : entryExperience
+							)
+						}
+					}
+				}
+			};
+			return {
+				kind: 'prepared',
+				candidate: {
+					operationId: request.intent.operationId,
+					sourceKind: request.snapshot.sourceKind,
+					sourceVersion: request.snapshot.sourceVersion,
+					source: candidate,
+					changes: [
+						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId'] },
+						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'holdSeconds', 'continuation'] },
+						{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }
+					],
+					correspondence: [
+						{
+							relation: 'created',
+							before: null,
+							after: reference('experience', 'guide', newGuide.id, [experience.id], revisionOf(candidate, 'experience'))
+						},
+						{
+							relation: 'created',
+							before: null,
+							after: reference('experience', 'stop', newStop.id, [experience.id], revisionOf(candidate, 'experience'))
+						}
+					],
 					diagnostics: []
 				}
 			};
@@ -1416,6 +1674,7 @@ export function createUnitCandidatePlanners(options: CaptureBindOptions = {}): D
 		createCameraViewUpdatePlanner(),
 		createExperienceCreatePlanner(),
 		createCaptureBindPlanner(options),
+		createExperienceGuideCreatePlanner(),
 		createExperienceStopCreatePlanner(),
 		createExperienceGuideOrderPlanner(),
 		createExperiencePresentationUpdatePlanner(),

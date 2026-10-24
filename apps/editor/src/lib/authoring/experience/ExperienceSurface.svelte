@@ -12,6 +12,7 @@
 	 * order and its Cut/Travel selectors are the only editorial order it writes.
 	 */
 	import { untrack } from 'svelte';
+	import { perfMark } from '$lib/platform/perf-marks';
 	import type { StageAdapterServices } from '../stage/stage-adapter-host';
 	import { stageEnvelope } from '../stage/unit-stage-source';
 	import type { Experience, ExperienceContinuation, ProjectEnvelope } from '@portfolio/project-model/units';
@@ -22,6 +23,7 @@
 		capturedFovDegrees,
 		capturedViewPose,
 		createExperienceIntent,
+		guideCreateIntent,
 		guideOrderIntent,
 		presentationUpdateIntent,
 		stopCreateIntent,
@@ -113,6 +115,9 @@
 
 	let message = $state('');
 	let busy = $state(false);
+	/** The Guide instrument is invoked from the dock; the surface is its content. */
+	let guideOpen = $state(true);
+	let firstGuideLabelDraft = $state('');
 	let presentationLabelDraft = $state('');
 	let presentationTextDraft = $state('');
 	let stopEntryViewDraft = $state('');
@@ -213,27 +218,90 @@
 		});
 	}
 
+	/**
+	 * Capture the Stage framing as a View and bind a Presentation to it.
+	 *
+	 * With a Guide open the Stop joins that Guide; with no Guide at all the capture
+	 * stays Guide-free unless the creator asked for the first Guide, in which case
+	 * View + Presentation + Guide + Stop are one accepted install.
+	 */
 	async function captureAndBind(): Promise<void> {
 		if (current === null) return;
 		const view = currentCapturePose();
 		if (view === null) return;
 		const presentationId = newId();
+		const stopId = newId();
+		const guideId = newId();
 		const subjectEntityId = selectionSubjectEntityId();
+		const wantsFirstGuide = current.guides.length === 0 && firstGuideLabelDraft.trim() !== '';
 		const accepted = await run(() =>
 			captureBindIntent({
 				envelope: snapshot,
 				revision: revision(),
-				ids: { operation: newId(), view: newId(), presentation: presentationId, stop: newId() },
+				ids: { operation: newId(), view: newId(), presentation: presentationId, stop: stopId, guide: guideId },
 				experienceId: current.id,
 				view,
 				presentationLabel: `Presentation ${current.presentations.length + 1}`,
 				subjectEntityId,
 				text: null,
-				guideId: currentGuide?.id ?? null,
+				guideId: wantsFirstGuide ? null : currentGuide?.id ?? null,
+				firstGuideLabel: wantsFirstGuide ? firstGuideLabelDraft.trim() : null,
 				afterStopId: selectedStop?.id ?? null
 			})
 		);
-		if (accepted) experienceFocus.selectPresentation(presentationId);
+		if (accepted) {
+			experienceFocus.selectPresentation(presentationId);
+			if (wantsFirstGuide) {
+				experienceFocus.openGuide(guideId, stopId);
+				firstGuideLabelDraft = '';
+			}
+			// Measurement anchor for the capture/bind → Preview entry row.
+			perfMark('experience:capture-accepted', { firstGuide: wantsFirstGuide });
+		}
+	}
+
+	/** The Presentation a first Guide can start from: the selected Stop's, else the selection. */
+	function firstGuidePresentation(): { readonly id: string; readonly label: string } | null {
+		if (current === null) return null;
+		const fromStop = selectedStop === null
+			? null
+			: current.presentations.find((entry) => entry.id === selectedStop.presentationId) ?? null;
+		return fromStop ?? selectedPresentation;
+	}
+
+	/**
+	 * Create the Experience's first Guide and its initial distinct Stop.
+	 *
+	 * The Stop reuses the Presentation's own View: no Camera pose or FOV is copied
+	 * and no Connection is manufactured. The Experience's entry Guide is set
+	 * explicitly by the operation, never inferred.
+	 */
+	async function createFirstGuide(): Promise<void> {
+		if (current === null) return;
+		const presentation = firstGuidePresentation();
+		if (presentation === null) {
+			message = 'Select a Presentation, or a Stop whose Presentation the Guide starts from.';
+			return;
+		}
+		const guideId = newId();
+		const stopId = newId();
+		const accepted = await run(() =>
+			guideCreateIntent({
+				envelope: snapshot,
+				revision: revision(),
+				ids: { operation: newId(), guide: guideId, stop: stopId },
+				experienceId: current.id,
+				presentationId: presentation.id,
+				label: firstGuideLabelDraft.trim() === '' ? 'Guide' : firstGuideLabelDraft.trim(),
+				entryViewId: null,
+				holdSeconds: null,
+				continuation: { kind: 'sequence-next', transition: 'cut' }
+			})
+		);
+		if (accepted) {
+			experienceFocus.openGuide(guideId, stopId);
+			firstGuideLabelDraft = '';
+		}
 	}
 
 	async function rebindToCapturedView(): Promise<void> {
@@ -381,7 +449,7 @@
 			This world has no Experience yet. Create one explicitly; selecting or editing a world subject never
 			creates a document implicitly.
 		</p>
-	{:else}
+	{:else if guideOpen}
 		<div class="columns">
 			<section class="column" aria-label="Presentations">
 				<div class="column-head">
@@ -413,14 +481,10 @@
 					{/each}
 				</ul>
 
-				<div class="actions">
-					<button type="button" onclick={captureAndBind} disabled={busy}>
-						Capture View{selectionSubjectEntityId() === null ? '' : ' with selected subject'}
-					</button>
-				</div>
 				<p class="hint">
-					Capture records the Stage framing (eye, target, FOV) as a new View. The viewport's aspect is the
-					Stage frame's, not an authored View field.
+					Capture records the Stage framing (eye, target, FOV) as a new View; it is the dock's Capture
+					key, the one place that operation is exposed. The viewport's aspect is the Stage frame's, not an
+					authored View field.
 				</p>
 
 				{#if selectedPresentation !== null}
@@ -501,9 +565,32 @@
 
 				{#if currentGuide === null}
 					<p class="hint">
-						Open a Guide to edit its Stop order and transitions. Preview enters the Experience's entry Guide
-						when no Guide is open.
+						This Experience carries no Guide, so its Presentations are entered from the visitor list.
+						Creating the first Guide names it the entry Guide explicitly.
 					</p>
+					{#if current.guides.length === 0}
+						<div class="card" aria-label="First Guide">
+							<h4>First Guide</h4>
+							<p class="hint">
+								Creates one Guide with an initial distinct Stop from the selected Presentation (or the
+								selected Stop's Presentation). The Stop enters that Presentation's own View; no Camera
+								pose is copied and no Connection is made.
+							</p>
+							<label>
+								<span>Guide label</span>
+								<input bind:value={firstGuideLabelDraft} placeholder="Guide" />
+							</label>
+							<div class="actions">
+								<button
+									type="button"
+									onclick={createFirstGuide}
+									disabled={busy || firstGuidePresentation() === null}
+								>
+									Create first Guide
+								</button>
+							</div>
+						</div>
+					{/if}
 				{:else}
 					<ol class="stop-list">
 						{#each guideStops as stop, index (stop.id)}
@@ -585,13 +672,58 @@
 							{/each}
 							<div class="actions">
 								<button type="button" onclick={saveStop} disabled={busy}>Save Stop</button>
+								{#if onEnterPreview !== null}
+									<button type="button" class="quiet" onclick={() => onEnterPreview?.()}>
+										Preview from this Stop
+									</button>
+								{/if}
 							</div>
 						</div>
 					{/if}
 				{/if}
 			</section>
 		</div>
+	{:else}
+		<p class="hint">
+			The Guide instrument is closed. Open it from the dock to compose Stops, transitions and playback;
+			selection and the Card are unaffected.
+		</p>
 	{/if}
+
+	<!--
+		The Experience dock (Round 2 lower edge): Select is the pointer tool, Capture takes
+		the Stage framing as a View and Guide invokes the one contextual Guide instrument
+		above it. It is not a second writer: every key submits through this surface's one
+		acceptance port.
+	-->
+	<div class="dock" role="toolbar" aria-label="Experience dock">
+		<button
+			type="button"
+			class="key armed"
+			aria-pressed="true"
+			title="Select — the pointer selects subjects on the Stage"
+		>
+			Select
+		</button>
+		<button
+			type="button"
+			class="key"
+			onclick={captureAndBind}
+			disabled={busy || current === null}
+			title="Capture — what you see becomes a View"
+		>
+			Capture
+		</button>
+		<button
+			type="button"
+			class="key"
+			aria-pressed={guideOpen}
+			onclick={() => (guideOpen = !guideOpen)}
+			title="Guide — Stop composition, transitions and playback"
+		>
+			Guide
+		</button>
+	</div>
 
 	<p class="feedback" aria-live="polite">{message}</p>
 </section>
@@ -752,6 +884,36 @@
 	}
 	button.quiet {
 		background: transparent;
+	}
+	.dock {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.3rem;
+		background: #16211c;
+		border: 1px solid rgb(255 255 255 / 14%);
+		border-radius: 0.45rem;
+	}
+	.dock .key {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.32rem 0.55rem;
+		border: 1px solid rgb(255 255 255 / 16%);
+		border-radius: 0.3rem;
+		background: #1e2a24;
+		color: #f3f0e4;
+		font: 500 0.72rem/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+		cursor: pointer;
+	}
+	.dock .key[aria-pressed='true'] {
+		background: #f3f0e4;
+		color: #16211c;
+		border-color: #f3f0e4;
+	}
+	.dock .key:disabled {
+		opacity: 0.55;
+		cursor: default;
 	}
 	.feedback {
 		margin: 0;
