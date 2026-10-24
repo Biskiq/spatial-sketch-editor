@@ -1,13 +1,12 @@
 import type { Vec3 } from './types';
-import type { LayoutOpening, LayoutVec2 } from './layout-types';
-import type { LayoutDerivedWallRole } from './layout-wall-first-types';
-import type { SampleableSegment } from './layout-geometry-curve';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { LayoutObject, LayoutDerivedWallRole } from './layout-wall-first-types';
+import type { SampleableSegment, SampledSegment } from './layout-geometry-curve';
 
 /**
- * P23.11 — the compiler's room-boundary segment list. Identical to `DraftPath`
- * for the legacy path, but wide enough to carry the canonical Wall adapter's
- * `cubic-chain` output, which is derived geometry rather than an authored
- * `DraftSegment`.
+ * P23.11 — the compiler's room-boundary segment list: wide enough to carry the
+ * canonical Wall adapter's `cubic-chain` output, which is derived geometry
+ * rather than an authored `DraftSegment`.
  */
 export type CompilerBoundarySource = {
 	closed: true;
@@ -45,7 +44,105 @@ export type CompiledCurveSample = {
 	normal: LayoutVec2;
 };
 
-export type ArchProfileKind = LayoutOpening['profile'];
+// ---------------------------------------------------------------------------
+// Compiler input (T1.P02.S05)
+//
+// These records are the one accepted input of `compileLayoutGeometrySource`.
+// They used to be `Pick<LayoutRoom | LayoutFloor, …>` / an alias of the legacy
+// segment-hosted `LayoutOpening`, which kept the compiler coupled to the retired
+// document. They are now owned here: the compiler input is its own contract, and
+// `compileWallFirstLayoutGeometry` is its only adapter.
+// ---------------------------------------------------------------------------
+
+/**
+ * Opening shape accepted by the compiler source, hosted by a boundary segment.
+ *
+ * Wall-first Openings are mapped onto it with `segmentId = wallId`, so the one
+ * geometry compiler/output model (P23.0) reads a Wall-hosted Opening exactly as
+ * it reads any segment-hosted one. `offset` is metres from that segment's start
+ * and is the only horizontal authority the compiler reads.
+ */
+export type CompilerOpening = {
+	id: string;
+	segmentId: string;
+	kind: 'door' | 'window';
+	offset: number;
+	width: number;
+	height: number;
+	sillHeight: number;
+	profile: 'rectangular' | 'rounded' | 'pointed';
+	connectsRoomIds?: [string, string];
+};
+
+/**
+ * Compiler-source floor frame: the datum plus an optional storey scalar.
+ *
+ * `height` survives only as the shared core's fallback vertical extent for a
+ * source that supplies no per-Room derived ceiling. Format 6 has no storey
+ * height at all, so `compileWallFirstLayoutGeometry` never sets it and no
+ * persisted document can define one; only a direct caller of
+ * `compileLayoutGeometrySource` can pass it.
+ */
+export type CompilerFloorSource = {
+	id: string;
+	elevation: number;
+	height?: number;
+};
+
+/** Room shell the shared compile core reads: identity plus Room-owned surfaces. */
+export type CompilerRoomShell = {
+	id: string;
+	wallThickness: number;
+	floorThickness: number;
+	ceilingThickness: number;
+};
+
+/** One Room's worth of compiler input: shell, boundary chain and its Openings. */
+export type CompilerRoomSource = {
+	room: CompilerRoomShell;
+	boundary: CompilerBoundarySource;
+	openings: readonly CompilerOpening[];
+	/**
+	 * Per-wall thickness override keyed by boundary segment id (P23.0b: wall
+	 * thickness is Wall-owned in the wall-first schema). Absent keeps the
+	 * room-uniform fallback.
+	 */
+	wallThicknessBySegmentId?: Readonly<Record<string, number>>;
+	/**
+	 * P23.6H/P23.6I Per-wall Opening vertical limit keyed by boundary segment id
+	 * (the wall-first adapter supplies each Wall's authoritative `height`).
+	 * Absent keeps the `floor.height` rule.
+	 */
+	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>;
+	/**
+	 * P23.6I — explicit derived Room ceiling elevation (wall-first), computed once
+	 * by the adapter as `floor.elevation + max(boundary Wall heights)`. Absent means
+	 * the Floor-derived ceiling.
+	 */
+	ceilingElevation?: number;
+	/**
+	 * P23B.4 M-1 — pre-sampled room-boundary segments keyed by segment object
+	 * identity, derived through the chain-scoped sampling derivation at the
+	 * adapter (where Wall + traversal authority are known). The shared core
+	 * serves a mapped segment instead of re-sampling it.
+	 */
+	preSampled?: ReadonlyMap<SampleableSegment, SampledSegment>;
+};
+
+/** One floor's worth of compiler input: the floor frame plus its rooms. */
+export type CompilerFloorEntry = {
+	floor: CompilerFloorSource;
+	rooms: readonly CompilerRoomSource[];
+};
+
+/** Everything `compileLayoutGeometrySource` accepts. */
+export type CompilerSource = {
+	/** One entry per floor, in document order (P23 review round 1 / B1). */
+	floors: readonly CompilerFloorEntry[];
+	objects: readonly LayoutObject[];
+};
+
+export type ArchProfileKind = CompilerOpening['profile'];
 
 /** Compiled elevation profile of an opening's top boundary. */
 export type CompiledArchProfile = {
@@ -93,7 +190,7 @@ export type CompiledOpeningCenter = {
 export type CompiledOpening = CompiledIdentity & {
 	openingId: string;
 	segmentId: string;
-	kind: LayoutOpening['kind'];
+	kind: CompilerOpening['kind'];
 	/** Offset in meters along the compiled sampled arc. */
 	offset: number;
 	width: number;

@@ -17,7 +17,6 @@
  * helpers takes the resulting Y from the support, never from the frame's
  * incidental origin (see `place-object.ts`).
  */
-import { normalizeLayoutRoomYaw } from '@portfolio/layout-core';
 import type { Vec3 } from '../scene';
 import type { LocalInputFrame } from './types';
 
@@ -74,11 +73,26 @@ export function frameDirectionFromWorld(frame: LocalInputFrame, direction: Vec3)
  * renderer's normalized `[-pi, pi)` range.
  */
 export function frameYawToWorld(frame: LocalInputFrame, yaw: number): number {
-	return normalizeLayoutRoomYaw(principalYaw(frame.yaw) + principalYaw(yaw));
+	return normalizeFrameYaw(principalYaw(frame.yaw) + principalYaw(yaw));
 }
 
 export function frameYawFromWorld(frame: LocalInputFrame, yaw: number): number {
-	return normalizeLayoutRoomYaw(principalYaw(yaw) - principalYaw(frame.yaw));
+	return normalizeFrameYaw(principalYaw(yaw) - principalYaw(frame.yaw));
+}
+
+/**
+ * Normalize a composed yaw into the renderer's `[-pi, pi)` range, with `-0` and
+ * any value inside `Number.EPSILON` collapsed to exactly `0`.
+ *
+ * T1.P02.S05 moved this arithmetic here from `@portfolio/layout-core`
+ * (`normalizeLayoutRoomYaw`, retired with the legacy Room-frame document
+ * surface) with **no numerical change**: the frame it normalizes is the Scene
+ * input frame, so Scene — not Layout — owns it. Layout has no Room frame left to
+ * normalize; its Walls carry explicit centerlines.
+ */
+function normalizeFrameYaw(yaw: number): number {
+	const normalized = ((yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+	return Object.is(normalized, -0) || Math.abs(normalized) <= Number.EPSILON ? 0 : normalized;
 }
 
 // Reduce with the same trig argument reduction as the point/direction matrix.

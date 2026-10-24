@@ -39,13 +39,13 @@
  * Pure and deterministic: no timestamps, no randomness, no traversal-order
  * dependence, no allocation.
  */
-import type { LayoutDocumentIssue } from './layout-codec';
+import type { LayoutDocumentIssue } from './layout-issue';
 import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import type { LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-opening-set';
-import { validateWallFirstPortalRelations } from './layout-portals';
+import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import { resolveIsolatedRoomGroupSubgraph } from './layout-room-isolation';
 import {
 	reconcileRooms,
@@ -58,7 +58,7 @@ import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { validateWallFirstTopology } from './layout-wall-first-precision';
 import { translateWallCenterline, wallCenterlineSamples } from './layout-wall-centerline';
 import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from './layout-wall-first-types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 
 /** Why a wall-first Room move rejected; stable machine codes. */
 export type RoomMoveRejectionCode =

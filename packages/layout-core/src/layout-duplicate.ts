@@ -26,11 +26,11 @@
  * - one **isolated** Room whose bounded Wall/Junction/Opening subgraph can be
  *   cloned without detaching shared architecture.
  */
-import type { LayoutDocumentIssue } from './layout-codec';
+import type { LayoutDocumentIssue } from './layout-issue';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-opening-set';
-import { validateWallFirstPortalRelations } from './layout-portals';
+import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import { validateWallFirstTopology } from './layout-wall-first-precision';
 import { translateWallCenterline } from './layout-wall-centerline';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
@@ -51,7 +51,8 @@ import type {
 	LayoutWallFirstRoom,
 	LayoutWallOpening
 } from './layout-wall-first-types';
-import type { LayoutObject, LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { LayoutObject } from './layout-wall-first-types';
 
 /** Repeat-count cap (P23.4: `1..50` unless measured evidence justifies more). */
 export const LAYOUT_DUPLICATE_MAX_COPIES = 50 as const;

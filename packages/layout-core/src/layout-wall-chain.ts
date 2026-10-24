@@ -48,7 +48,7 @@ import type {
 	LayoutJunction,
 	LayoutWall
 } from './layout-wall-first-types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import { p2311Measure } from './p2311-perf';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
@@ -88,7 +88,7 @@ import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
 import { wallCenterlineCarriesPoint, wallCenterlineSamples } from './layout-wall-centerline';
 import { resolveWallCurveSplit } from './layout-wall-curve-algebra';
-import type { LayoutDocumentIssue } from './layout-codec';
+import type { LayoutDocumentIssue } from './layout-issue';
 import {
 	coincidesAsJunction,
 	JUNCTION_COINCIDENCE_EPSILON

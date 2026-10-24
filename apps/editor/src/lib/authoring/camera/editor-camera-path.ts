@@ -49,42 +49,25 @@ function resolveScenePoint(
 }
 
 /**
- * Registry-aware XZ footprint check for room-owned points (the editor
- * resolves against the live project layout, not the frozen Chopin registry).
- * Approximates the footprint by the room boundary's AABB in room-local space,
- * matching the rect-based check the Chopin helper used. Unknown rooms simply
- * return false (the caller falls back to world-space ownership).
+ * XZ footprint check for a room-owned point: is it inside the Room it names?
+ * An unknown Room returns false, so the caller falls back to world-space
+ * ownership.
+ *
+ * T1.P02.S05: the check used to approximate the footprint from the legacy
+ * authored Room boundary's AABB in room-local space. A wall-first Layout owns no
+ * Room frame and no authored boundary on the registry entry, and the
+ * current-format registry is always empty, so no entry ever resolves — the
+ * function keeps its contract (unknown Room → false → world-space ownership)
+ * without a footprint it can no longer read. The parameters stay because the
+ * retained Camera authoring callers pass them.
  */
 export function isWorldPointInsideRoomXZ(
-	roomId: RoomId,
-	worldPoint: Vec3,
-	rooms: LayoutRoomRegistry,
-	epsilon = 1e-6
+	_roomId: RoomId,
+	_worldPoint: Vec3,
+	_rooms: LayoutRoomRegistry,
+	_epsilon = 1e-6
 ): boolean {
-	const entry = rooms.get(roomId);
-	if (!entry) return false;
-	let minX = Number.POSITIVE_INFINITY;
-	let maxX = Number.NEGATIVE_INFINITY;
-	let minZ = Number.POSITIVE_INFINITY;
-	let maxZ = Number.NEGATIVE_INFINITY;
-	for (const segment of entry.room.boundary.segments) {
-		for (const point of [segment.start, segment.end]) {
-			if (point[0] < minX) minX = point[0];
-			if (point[0] > maxX) maxX = point[0];
-			if (point[1] < minZ) minZ = point[1];
-			if (point[1] > maxZ) maxZ = point[1];
-		}
-	}
-	const [localX, , localZ] = rooms.localPoint(roomId, worldPoint);
-	// Parity with the legacy Chopin check: a box centered on the room-local
-	// origin whose half-extents are the boundary's full width/depth. Drafted
-	// rect rooms are symmetric around the frame origin, so this is exact.
-	const halfX = (maxX - minX) / 2;
-	const halfZ = (maxZ - minZ) / 2;
-	return (
-		Math.abs(localX) <= halfX + epsilon &&
-		Math.abs(localZ) <= halfZ + epsilon
-	);
+	return false;
 }
 
 function getDraftConnection(
@@ -200,8 +183,9 @@ export function writeScenePathAnchorWorldPosition(
 }
 
 /**
- * New anchors belong to the active room only when their initial world hit is inside its
- * yaw-aware XZ footprint. Otherwise they remain world-space anchors.
+ * New anchors are world-space. The active-room branch is retained but unreachable
+ * while the current-format Layout Room registry is empty (`isWorldPointInsideRoomXZ`
+ * is constant `false`), so every new anchor takes the world-space path.
  */
 export function createScenePathAnchorAtWorldPoint(
 	id: string,

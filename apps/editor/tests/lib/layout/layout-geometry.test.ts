@@ -1,35 +1,53 @@
 import { describe, expect, it } from 'vitest';
-import { compileLayoutGeometry, compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { compileLayoutGeometrySource, compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import { geometryId } from '@portfolio/layout-core';
 import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
-import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
-import type { LayoutDocument } from '@portfolio/layout-core';
+import type { CompilerRoomSource, CompilerSource, LayoutDocumentWallFirst, LayoutVec2 } from '@portfolio/layout-core';
 import {
 	g1AutoBezierDocument,
 	g1DocumentWithRooms,
 	g1ElevatedFloorDocument,
-	g1LineSegments,
 	g1InvalidGeometryDocument,
 	g1LineRectangleDocument,
 	g1LShapedDocument,
 	g1MultipleOpeningsDocument,
 	g1ObjectMatrixDocument,
 	g1ProfileMatrixDocument,
-	g1RectangleRoom
+	g1RoomPolygon
 } from './__fixtures__/layout-g1-fixtures';
 import { normalizeForParity } from './__fixtures__/layout-g1-normalize';
 
-describe('compileLayoutGeometry', () => {
-	it('compiles a line rectangle with ordered polygon, densified lines, sections, and bounds', () => {
-		const { geometry, issues } = compileLayoutGeometry(g1LineRectangleDocument());
+/**
+ * T1.P02.S05 — this suite used to drive the retired legacy document adapter
+ * (`compileLayoutGeometry`). Every case now authors a canonical wall-first
+ * document and compiles through the one surviving entry,
+ * `compileWallFirstLayoutGeometry`; the expectations are re-expressed against
+ * canonical physical Walls (`geometry.walls`) and topology-derived Rooms
+ * (`geometry.rooms`), never against a Room-owned wall list.
+ *
+ * Two primitives cannot exist in a format-6 document at all — several Floors and
+ * a zero-Floor payload — because the format carries exactly one Floor. Their
+ * behaviour lives one level down in the compiler source, so they are asserted
+ * there (`compileLayoutGeometrySource`) rather than deleted.
+ */
+describe('compileWallFirstLayoutGeometry', () => {
+	it('compiles a line rectangle with ordered polygon, densified walls, sections, and bounds', () => {
+		const { geometry, issues } = compileWallFirstLayoutGeometry(g1LineRectangleDocument());
 		expect(issues).toEqual([]);
 		const room = geometry.rooms[0]!;
 		expect(room.roomId).toBe('room-rectangle');
 		expect(room.floorPolygon).toHaveLength(4);
 		expect(room.floorElevation).toBe(0);
+		// The Room ceiling is derived from its boundary Wall heights (3 m).
 		expect(room.ceilingElevation).toBe(3);
-		expect(room.walls).toHaveLength(4);
-		for (const wall of room.walls) {
+		expect(room.walls).toEqual([]);
+		expect(geometry.walls.map((wall) => wall.wallId)).toEqual([
+			'room-rectangle:wall:0',
+			'room-rectangle:wall:1',
+			'room-rectangle:wall:2',
+			'room-rectangle:wall:3'
+		]);
+		for (const wall of geometry.walls) {
 			// 0.25 m max sample span densifies the 6 m and 4 m edges.
 			expect(wall.samples.length).toBeGreaterThan(1);
 			for (const sample of wall.samples) {
@@ -44,10 +62,10 @@ describe('compileLayoutGeometry', () => {
 	});
 
 	it('keeps L-shaped room polygon order and line density', () => {
-		const { geometry } = compileLayoutGeometry(g1LShapedDocument());
+		const { geometry } = compileWallFirstLayoutGeometry(g1LShapedDocument());
 		const room = geometry.rooms[0]!;
 		expect(room.floorPolygon).toHaveLength(6);
-		expect(room.walls.map((wall) => wall.segmentId)).toEqual([
+		expect(geometry.walls.map((wall) => wall.wallId)).toEqual([
 			'room-l:wall:0',
 			'room-l:wall:1',
 			'room-l:wall:2',
@@ -57,10 +75,10 @@ describe('compileLayoutGeometry', () => {
 		]);
 	});
 
-	it('samples auto-bezier adaptively with monotonic distances and unit frames', () => {
-		const { geometry, issues } = compileLayoutGeometry(g1AutoBezierDocument());
+	it('samples a curved Wall adaptively with monotonic distances and unit frames', () => {
+		const { geometry, issues } = compileWallFirstLayoutGeometry(g1AutoBezierDocument());
 		expect(issues).toEqual([]);
-		const bezierWall = geometry.rooms[0]!.walls[0]!;
+		const bezierWall = geometry.walls.find((wall) => wall.wallId === 'room-rectangle:wall:0')!;
 		expect(bezierWall.samples.length).toBeGreaterThan(2);
 		for (let index = 1; index < bezierWall.samples.length; index += 1) {
 			expect(bezierWall.samples[index]!.distance).toBeGreaterThan(bezierWall.samples[index - 1]!.distance);
@@ -70,9 +88,9 @@ describe('compileLayoutGeometry', () => {
 	});
 
 	it('splits multiple openings into ordered sill/lintel/side sections without issues', () => {
-		const { geometry, issues } = compileLayoutGeometry(g1MultipleOpeningsDocument());
+		const { geometry, issues } = compileWallFirstLayoutGeometry(g1MultipleOpeningsDocument());
 		expect(issues).toEqual([]);
-		const wall = geometry.rooms[0]!.walls.find((candidate) => candidate.segmentId === 'room-openings:wall:0')!;
+		const wall = geometry.walls.find((candidate) => candidate.wallId === 'room-openings:wall:0')!;
 		expect(wall.openings.map((opening) => opening.openingId)).toEqual(['door-1', 'window-1']);
 		expect(wall.sections.some((section) => section.kind === 'lintel')).toBe(true);
 		expect(wall.sections.some((section) => section.kind === 'side' && section.openingId === 'window-1')).toBe(true);
@@ -80,9 +98,9 @@ describe('compileLayoutGeometry', () => {
 	});
 
 	it('derives all three opening elevation profiles and resolved solid-span bottoms', () => {
-		const { geometry, issues } = compileLayoutGeometry(g1ProfileMatrixDocument());
+		const { geometry, issues } = compileWallFirstLayoutGeometry(g1ProfileMatrixDocument());
 		expect(issues).toEqual([]);
-		const wall = geometry.rooms[0]!.walls[0]!;
+		const wall = geometry.walls.find((candidate) => candidate.wallId === 'room-profiles:wall:0')!;
 		const profiles = wall.openings.map((opening) => [opening.openingId, opening.profile] as const);
 		expect(profiles).toEqual([
 			['rect', 'rectangular'],
@@ -96,9 +114,10 @@ describe('compileLayoutGeometry', () => {
 	});
 
 	it('preserves elevated floor Y extents', () => {
-		const { geometry } = compileLayoutGeometry(g1ElevatedFloorDocument());
+		const { geometry } = compileWallFirstLayoutGeometry(g1ElevatedFloorDocument());
 		const room = geometry.rooms[0]!;
 		expect(room.floorElevation).toBe(2.5);
+		// The datum plus the 4 m boundary Wall height.
 		expect(room.ceilingElevation).toBe(6.5);
 		expect(geometry.bounds!.min[1]).toBeCloseTo(2.5 - room.floorThickness, 9);
 		expect(geometry.bounds!.max[1]).toBeCloseTo(6.5 + room.ceilingThickness, 9);
@@ -114,14 +133,14 @@ describe('compileLayoutGeometry', () => {
 			dimensions: [0, 1, 1],
 			roomId: 'room-objects'
 		});
-		const { geometry, issues } = compileLayoutGeometry(document);
+		const { geometry, issues } = compileWallFirstLayoutGeometry(document);
 		expect(issues.some((issue) => issue.code === 'object_invalid' && issue.targetId === 'obj-bad')).toBe(true);
 		expect(geometry.objects.map((object) => object.objectId)).not.toContain('obj-bad');
 		expect(geometry.objects.map((object) => object.objectId)).toContain('obj-box');
 	});
 
 	it('compiles object descriptors with stored transforms, footprints, and readonly profile', () => {
-		const { geometry } = compileLayoutGeometry(g1ObjectMatrixDocument());
+		const { geometry } = compileWallFirstLayoutGeometry(g1ObjectMatrixDocument());
 		expect(geometry.objects.map((object) => object.objectId)).toEqual([
 			'obj-box',
 			'obj-plane',
@@ -137,7 +156,7 @@ describe('compileLayoutGeometry', () => {
 	});
 
 	it('returns structured issues and still compiles the valid room', () => {
-		const { geometry, issues } = compileLayoutGeometry(g1InvalidGeometryDocument());
+		const { geometry, issues } = compileWallFirstLayoutGeometry(g1InvalidGeometryDocument());
 		expect(geometry.rooms.map((room) => room.roomId)).toEqual(['room-good']);
 		expect(issues.some((issue) => issue.code === 'disconnected_boundary')).toBe(true);
 		expect(issues.some((issue) => issue.code === 'self_intersection')).toBe(true);
@@ -153,102 +172,71 @@ describe('compileLayoutGeometry', () => {
 	it('is deterministic and does not mutate a deep-frozen document', () => {
 		const document = g1AutoBezierDocument();
 		const frozen = Object.freeze(JSON.parse(JSON.stringify(document)));
-		const first = compileLayoutGeometry(frozen as never);
-		const second = compileLayoutGeometry(frozen as never);
+		const first = compileWallFirstLayoutGeometry(frozen as never);
+		const second = compileWallFirstLayoutGeometry(frozen as never);
 		expect(normalizeForParity(first)).toEqual(normalizeForParity(second));
 		expect(second.issues).toEqual([]);
 	});
 
 	it('rejects pathological finite line lengths with structured sampling issues', () => {
-		const document = g1LineRectangleDocument();
-		const room = document.floors[0]!.rooms[0]!;
-		room.boundary.segments = [
-			{ id: 'huge:0', kind: 'line', start: [0, 0], end: [1e15, 0] },
-			{ id: 'huge:1', kind: 'line', start: [1e15, 0], end: [1e15, 1] },
-			{ id: 'huge:2', kind: 'line', start: [1e15, 1], end: [0, 1] },
-			{ id: 'huge:3', kind: 'line', start: [0, 1], end: [0, 0] }
+		const points: LayoutVec2[] = [
+			[0, 0],
+			[1e15, 0],
+			[1e15, 1],
+			[0, 1]
 		];
+		const document = g1DocumentWithRooms([g1RoomPolygon('room-huge', points)]);
 
-		const result = compileLayoutGeometry(document);
+		const result = compileWallFirstLayoutGeometry(document);
 		expect(result.geometry.rooms).toEqual([]);
 		expect(result.issues.some((issue) => issue.code === 'sampling_budget_exceeded')).toBe(true);
 	});
 
 	it('rejects finite coordinates whose derived line length overflows', () => {
-		const document = g1LineRectangleDocument();
-		const room = document.floors[0]!.rooms[0]!;
-		room.boundary.segments = [
-			{ id: 'overflow:0', kind: 'line', start: [1e308, 0], end: [-1e308, 0] },
-			{ id: 'overflow:1', kind: 'line', start: [-1e308, 0], end: [-1e308, 1] },
-			{ id: 'overflow:2', kind: 'line', start: [-1e308, 1], end: [1e308, 1] },
-			{ id: 'overflow:3', kind: 'line', start: [1e308, 1], end: [1e308, 0] }
+		const points: LayoutVec2[] = [
+			[1e308, 0],
+			[-1e308, 0],
+			[-1e308, 1],
+			[1e308, 1]
 		];
+		const document = g1DocumentWithRooms([g1RoomPolygon('room-overflow', points)]);
 
-		const result = compileLayoutGeometry(document);
+		const result = compileWallFirstLayoutGeometry(document);
 		expect(result.geometry.rooms).toEqual([]);
 		expect(result.issues.some((issue) => issue.code === 'sampling_length_invalid')).toBe(true);
 	});
 
 	it('emits identities and complete point-query metadata', () => {
-		const { geometry, issues } = compileLayoutGeometry(g1AutoBezierDocument());
+		const { geometry, issues } = compileWallFirstLayoutGeometry(g1AutoBezierDocument());
 		expect(issues).toEqual([]);
 		const entities = [
 			...geometry.floors,
 			...geometry.rooms,
-			...geometry.rooms.flatMap((room) => room.walls),
-			...geometry.rooms.flatMap((room) => room.openings),
+			...geometry.walls,
+			...geometry.walls.flatMap((wall) => wall.openings),
 			...geometry.objects
 		];
 		for (const entity of entities) {
 			expect(entity.id.length).toBeGreaterThan(0);
 			expect(entity.cacheKey.length).toBeGreaterThan(0);
 		}
+		expect(geometry.queries.points.length).toBeGreaterThan(0);
 		for (const point of geometry.queries.points) {
 			expect(['vertex', 'interior-anchor']).toContain(point.kind);
 			expect(point.sourceId.length).toBeGreaterThan(0);
-			expect(point.roomId).toBe('room-rectangle');
+			// Wall-first points belong to a canonical physical Wall, never a faked Room.
+			expect(point.roomId).toBeUndefined();
+			expect(point.segmentId).toBe(point.wallKey);
 			expect(point.aabb.min).toEqual(point.point);
 			expect(point.aabb.max).toEqual(point.point);
 		}
 	});
 
-	it('qualifies same-named wall query records by room', () => {
-		const document = g1LineRectangleDocument();
-		const first = document.floors[0]!.rooms[0]!;
-		const second = structuredClone(first);
-		second.id = 'room-second';
-		second.name = 'Second';
-		second.boundary.segments = second.boundary.segments.map((segment) => ({
-			...segment,
-			start: [segment.start[0] + 20, segment.start[1]],
-			end: [segment.end[0] + 20, segment.end[1]]
-		}));
-		second.boundary.segments[0]!.id = first.boundary.segments[0]!.id;
-		document.floors[0]!.rooms.push(second);
-
-		const { geometry, issues } = compileLayoutGeometry(document);
-		expect(issues).toEqual([]);
-		const sharedId = first.boundary.segments[0]!.id;
-		const spans = geometry.queries.spans.filter(
-			(span) => span.kind === 'wall' && span.segmentId === sharedId
-		);
-		expect(new Set(spans.map((span) => span.roomId))).toEqual(
-			new Set(['room-rectangle', 'room-second'])
-		);
-		expect(new Set(spans.map((span) => span.id)).size).toBe(spans.length);
-		// P23.2 review round 2 / B1: legacy wall identity is room-qualified —
-		// same-named segments of different rooms carry distinct wallKeys so
-		// snap/align consumers never merge them into one fake wall. The key
-		// is the length-prefixed tuple (delimiter joining would collide
-		// because `:` is legal inside ids).
-		const floorId = document.floors[0]!.id;
-		expect(new Set(spans.map((span) => span.wallKey))).toEqual(
-			new Set([
-				geometryId([floorId, 'room-rectangle', sharedId]),
-				geometryId([floorId, 'room-second', sharedId])
-			])
-		);
-	});
+	// P23 review round 2 / B1 retired the room-qualified legacy wall identity: a
+	// format-6 Wall is document-global and exists once, so "two Rooms with the
+	// same segment name" can no longer describe two walls. The surviving
+	// invariant — one representation per Wall, with a document-global `wallKey`
+	// — is asserted by "emits each wall-first Wall once" below.
 
 	// P23.9 canonical physical Walls: every document Wall compiles exactly
 	// once (wall-start frame, document-global ID, no fake roomId), so a wall
@@ -314,9 +302,13 @@ describe('compileLayoutGeometry', () => {
 			(span) => span.kind === 'wall' && span.segmentId === 'wall-a'
 		);
 		expect(wallASpans.length).toBeGreaterThan(0);
-		// Exactly one query representation: no fake room ownership, one wallKey.
+		// Exactly one query representation: no fake room ownership, one wallKey,
+		// and no span collapsed into another — span identity stays unique, which
+		// the retired room-qualified case also pinned before its name depended on
+		// two Rooms owning a same-named segment.
 		for (const span of wallASpans) expect(span.roomId).toBeUndefined();
 		expect(new Set(wallASpans.map((span) => span.wallKey))).toEqual(new Set(['wall-a']));
+		expect(new Set(wallASpans.map((span) => span.id)).size).toBe(wallASpans.length);
 	});
 
 	it('roomless physical Walls expand floor bounds and floor/document query AABBs', () => {
@@ -429,21 +421,71 @@ describe('compileLayoutGeometry', () => {
 		expect(ceilingIssues.map((issue) => issue.targetId).sort()).toEqual(['room-broken', 'room-empty']);
 		for (const issue of ceilingIssues) expect(issue.severity).not.toBe('warning');
 	});
+});
 
-	// P23 review round 1 / B1: the compiler cutover briefly compiled only
-	// floors[0]; multi-floor legacy documents must compile every floor with
-	// its own elevation frame.
-	it('compiles every floor of a multi-floor legacy document (B1 regression)', () => {
-		const document = g1DocumentWithRooms([g1RectangleRoom('room-ground', 0, 0, 4, 4)]);
-		document.floors.push({
-			id: 'floor-upper',
-			name: 'Upper Floor',
-			elevation: 3.2,
-			height: 2.8,
-			rooms: [g1RectangleRoom('room-upper', 10, 0, 3, 3)]
+/**
+ * The shared compile core, exercised at its own seam for the two inputs a
+ * format-6 document can never produce: several Floors, and no Floor at all.
+ * These are the successor of the legacy adapter's multi-floor/empty-document
+ * cases (P23 review round 1 / B1, "empty-floors parity"); the defect they
+ * detect is unchanged — a per-Floor loop that drops a Floor or materializes a
+ * placeholder for an absent one.
+ */
+describe('compileLayoutGeometrySource floor loop', () => {
+	function lineRectangleRoom(id: string, x: number, z: number, width: number, depth: number): CompilerRoomSource {
+		const corners: LayoutVec2[] = [
+			[x, z],
+			[x + width, z],
+			[x + width, z + depth],
+			[x, z + depth]
+		];
+		return {
+			room: { id, wallThickness: 0.16, floorThickness: 0.1, ceilingThickness: 0.1 },
+			boundary: {
+				closed: true,
+				segments: corners.map((start, index) => ({
+					id: `${id}:wall:${index}`,
+					kind: 'line' as const,
+					start,
+					end: corners[(index + 1) % corners.length]!
+				}))
+			},
+			openings: []
+		};
+	}
+
+	function selfIntersectingRoom(id: string, x: number, z: number): CompilerRoomSource {
+		const segment = (index: number, start: LayoutVec2, end: LayoutVec2) => ({
+			id: `${id}:wall:${index}`,
+			kind: 'line' as const,
+			start,
+			end
 		});
+		return {
+			room: { id, wallThickness: 0.16, floorThickness: 0.1, ceilingThickness: 0.1 },
+			boundary: {
+				closed: true,
+				segments: [
+					segment(0, [x, z], [x + 6, z]),
+					segment(1, [x + 6, z], [x, z + 3]),
+					segment(2, [x, z + 3], [x + 6, z + 3]),
+					segment(3, [x + 6, z + 3], [x, z])
+				]
+			},
+			openings: []
+		};
+	}
 
-		const { geometry, issues } = compileLayoutGeometry(document);
+	it('compiles every floor with its own elevation frame (B1 regression)', () => {
+		const source: CompilerSource = {
+			floors: [
+				{ floor: { id: 'floor-ground', elevation: 0, height: 3 }, rooms: [lineRectangleRoom('room-ground', 0, 0, 4, 4)] },
+				{ floor: { id: 'floor-upper', elevation: 3.2, height: 2.8 }, rooms: [lineRectangleRoom('room-upper', 10, 0, 3, 3)] }
+			],
+			objects: []
+		};
+
+		const { geometry, issues } = compileLayoutGeometrySource(source);
 		expect(issues).toEqual([]);
 
 		expect(geometry.floors).toHaveLength(2);
@@ -464,41 +506,29 @@ describe('compileLayoutGeometry', () => {
 		expect(geometry.bounds!.max[1]).toBeCloseTo(6.1, 9);
 	});
 
-	it('keeps legacy issue paths floor-indexed when a later floor has a bad room (B1)', () => {
-		const document = g1DocumentWithRooms([g1RectangleRoom('room-ground', 0, 0, 4, 4)]);
-		document.floors.push({
-			id: 'floor-upper',
-			name: 'Upper Floor',
-			elevation: 3.2,
-			height: 2.8,
-			rooms: [g1RectangleRoom('room-upper', 10, 0, 3, 3)]
-		});
-		const broken = g1RectangleRoom('room-broken', 20, 0, 3, 3);
-		// Self-intersecting boundary: the closing edge crosses the first edge.
-		broken.boundary.segments = g1LineSegments(
-			[
-				[20, 0],
-				[26, 0],
-				[20, 3],
-				[26, 3]
+	it('keeps issue paths floor-indexed when a later floor has a bad room (B1)', () => {
+		const source: CompilerSource = {
+			floors: [
+				{ floor: { id: 'floor-ground', elevation: 0, height: 3 }, rooms: [lineRectangleRoom('room-ground', 0, 0, 4, 4)] },
+				{
+					floor: { id: 'floor-upper', elevation: 3.2, height: 2.8 },
+					rooms: [lineRectangleRoom('room-upper', 10, 0, 3, 3), selfIntersectingRoom('room-broken', 20, 0)]
+				}
 			],
-			'room-broken:wall'
-		);
-		document.floors[1]!.rooms.push(broken);
+			objects: []
+		};
 
-		const { issues } = compileLayoutGeometry(document);
+		const { issues } = compileLayoutGeometrySource(source);
 		expect(issues.length).toBeGreaterThan(0);
 		for (const issue of issues) {
 			expect(issue.path.startsWith('floors[1].rooms[1]')).toBe(true);
 		}
 	});
 
-	// Review round 1 nit: an empty-floors document must compile to zero
-	// floors — exactly what the pre-cutover per-floor loop produced — with
+	// Review round 1 nit: an empty-floors payload must compile to zero floors —
 	// no placeholder floor materialized.
-	it('compiles an empty-floors document to zero floors (pre-cutover parity)', () => {
-		const empty: LayoutDocument = { units: 'meters', floors: [], objects: [] };
-		const { geometry, issues } = compileLayoutGeometry(empty);
+	it('compiles an empty-floor payload to zero floors (pre-cutover parity)', () => {
+		const { geometry, issues } = compileLayoutGeometrySource({ floors: [], objects: [] });
 		expect(issues).toEqual([]);
 		expect(geometry.floors).toEqual([]);
 		expect(geometry.rooms).toEqual([]);

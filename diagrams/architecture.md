@@ -13,7 +13,7 @@ is typed JSON.
 ```ts
 // One shared pipeline, three consumers, one camera track
 const project = parseMuseumProjectJson(json);                     // one project: layout + scene
-const { geometry, issues } = compileLayoutGeometry(project.layout);
+const { geometry, issues } = compileWallFirstLayoutGeometry(project.layout);
 const planModel = buildPlanRenderModel(geometry);                 // 2D plan (SVG)
 const wallMesh  = buildRoomWallMesh(geometry.rooms[0]);           // 3D walls (pure data)
 const bufferGeo = toWallBufferGeometry(wallMesh, wallMaterialFactory); // Three.js BufferGeometry
@@ -29,7 +29,7 @@ properties rather than migrated; the frozen museum files are stored in the curre
 
 | Document | Shape |
 |---|---|
-| Layout document | `units: 'meters'`, floors → rooms (stable frame + draft paths) → openings → objects (`layout-codec.ts`) |
+| Layout document | `units: 'meters'`, `formatVersion: 6`, one floor datum → junctions, walls, persistent rooms (boundary = oriented wall refs), wall-hosted openings, objects (`layout-wall-first-codec.ts`) |
 | Museum project | `id`, `name`, `layout`, `scene` (`project-codec.ts`) |
 | Scene document | `textures`, `materials`, `entities`, `clusters?`, `navigationNodes`, `connections` (`scene-codec/`) |
 | Museumpack package | manifest: `id`, `createdAt`, `generator`, `documentTitle`, textures (`package-format.ts`) |
@@ -55,8 +55,8 @@ flowchart TB
 
     subgraph Core["Shared core (src/lib)"]
         direction TB
-        CODEC["codecs<br/>layout-codec · project-codec · scene-codec"]
-        COMP["geometry derivation<br/>compileLayoutGeometry"]
+        CODEC["codecs<br/>layout-wall-first-codec · project-codec · scene-codec"]
+        COMP["geometry derivation<br/>compileWallFirstLayoutGeometry"]
         CAMROUTE["camera<br/>camera-route + camera-motion"]
     end
 
@@ -99,11 +99,11 @@ the camera tour.
 
 ```mermaid
 flowchart LR
-    A["LayoutDocument<br/>rooms, walls, openings, objects"] --> VAL["validateMuseumProject<br/>project-codec.ts"]
+    A["LayoutDocumentWallFirst (format 6)<br/>junctions, walls, rooms, openings, objects"] --> VAL["validateMuseumProject<br/>project-codec.ts"]
     B["SceneDocument v6<br/>entities, materials, camera graph"] --> VAL
     VAL --> P["MuseumProject<br/>(serialized project JSON)"]
 
-    P --> C["compileLayoutGeometry<br/>layout-geometry.ts"]
+    P --> C["compileWallFirstLayoutGeometry<br/>layout-geometry.ts"]
     C --> IR["CompiledLayoutGeometry<br/>floors · rooms · walls · openings<br/>objects · query records · bounds"]
 
     IR --> M["buildPlanRenderModel<br/>plan-render-model.ts"]
@@ -144,9 +144,9 @@ geometry → consume. Blocking issues stop before geometry; non-blocking issues 
 | Stage | What happens | Files |
 |---|---|---|
 | **Read** | `JSON.parse` turns raw text into plain objects | (built-in) |
-| **Validate structure** | Walk the object tree with typed readers (`readNumber`, `readVec3`, `readEnum`), allowed-key checks, ID pattern; one canonical shape, no versioned migrations | `layout-codec.ts`, `content/scene-codec/` (`readers.ts`, `parse-entities.ts`, `parse-document.ts`) |
-| **Cross-validate** | Field-spanning checks: duplicate IDs, dangling `segmentId`/`roomId` refs, portal relations (door ↔ room pair), finite numbers, blocking-vs-warning issues | `layout-geometry-validation.ts`, `project/project-layout-semantics.ts`, `scene-codec/parse-document.ts` |
-| **Derive geometry** | `compileLayoutGeometry`: curve sampling, arch profiles, wall sections, solid spans, query records, cache keys; pure + deterministic | `layout-geometry.ts`, `layout-geometry-curve.ts`, `layout-geometry-openings.ts`, `layout-geometry-objects.ts`, `layout-geometry-queries.ts` |
+| **Validate structure** | Walk the object tree with typed readers (`readNumber`, `readVec3`, `readEnum`), allowed-key checks, ID pattern; one canonical shape, no versioned migrations | `layout-wall-first-codec.ts`, `layout-issue.ts`, `content/scene-codec/` (`readers.ts`, `parse-entities.ts`, `parse-document.ts`) |
+| **Cross-validate** | Field-spanning checks: duplicate IDs, dangling wall/room/opening refs, portal relations (door ↔ room pair), finite numbers, blocking-vs-warning issues | `layout-geometry-validation.ts`, `project/project-layout-semantics.ts`, `scene-codec/parse-document.ts` |
+| **Derive geometry** | `compileWallFirstLayoutGeometry`: curve sampling, arch profiles, wall sections, solid spans, query records, cache keys; pure + deterministic | `layout-geometry.ts`, `layout-geometry-curve.ts`, `layout-geometry-openings.ts`, `layout-geometry-objects.ts`, `layout-geometry-queries.ts` |
 | **IR** | `CompiledLayoutGeometry` (renderer-neutral) + `CompiledLayoutGeometryResult { geometry, issues }` | `layout-geometry-types.ts` |
 | **Consume** | 2D plan render model + SVG; 3D wall meshes + Threlte; hit-testing queries | `plan-render-model.ts`, `wall-mesh-builder.ts`, `render/wall-geometry-adapter.ts`, `editor/layout/plan-hit.ts` |
 | **Camera track** | Scene graph → route → motion sampling | `museum/navigation/camera-route.ts`, `camera-motion.ts` |
@@ -155,7 +155,7 @@ geometry → consume. Blocking issues stop before geometry; non-blocking issues 
 // What "read → validate → derive → consume" looks like in code
 const project = parseMuseumProjectJson(json);              // JSON.parse → validateMuseumProject
 if (!project.success) return project.issues;               // blocking issues, no project
-const { geometry, issues } = compileLayoutGeometry(project.project.layout); // non-blocking ride along
+const { geometry, issues } = compileWallFirstLayoutGeometry(project.project.layout); // non-blocking ride along
 const planModel = buildPlanRenderModel(geometry);          // 2D
 const wallMesh  = buildRoomWallMesh(geometry.rooms[0]);    // 3D (data)
 const bufferGeo = toWallBufferGeometry(wallMesh, wallMaterialFactory); // 3D (Three.js)
@@ -164,9 +164,9 @@ const bufferGeo = toWallBufferGeometry(wallMesh, wallMaterialFactory); // 3D (Th
 ```mermaid
 flowchart TB
     J["JSON text"] --> READ["JSON.parse<br/>(plain objects)"]
-    READ --> PARSE["layout-codec · scene-codec<br/>typed readers + legacy migrate"]
-    PARSE --> VAL["validateLayoutDocumentGeometry<br/>project-layout-semantics"]
-    VAL --> DERIVE["compileLayoutGeometry<br/>curve/arch/wall math"]
+    READ --> PARSE["layout-wall-first-codec · scene-codec<br/>typed readers"]
+    PARSE --> VAL["validateWallFirstLayoutDocument<br/>project-layout-semantics"]
+    VAL --> DERIVE["compileWallFirstLayoutGeometry<br/>curve/arch/wall math"]
     DERIVE --> IR["CompiledLayoutGeometry"]
     IR --> B2["2D: buildPlanRenderModel → SVG"]
     IR --> B3["3D: buildRoomWallMesh → Threlte"]
@@ -198,26 +198,41 @@ classDiagram
 
     class MuseumProject {
         id, name: string
-        layout: LayoutDocument
+        layout: LayoutDocumentWallFirst
         scene: MuseumSceneDocument
     }
 
-    class LayoutDocument {
-        units: "meters"
-        floors: LayoutFloor[]
+    class LayoutDocumentWallFirst {
+        units: "meters", formatVersion: 6
+        floor: LayoutWallFirstFloor
+        junctions: LayoutJunction[]
+        walls: LayoutWall[]
+        rooms: LayoutWallFirstRoom[]
+        openings: LayoutWallOpening[]
         objects: LayoutObject[]
     }
-    class LayoutFloor {
+    class LayoutWallFirstFloor {
         id, name: string
-        elevation, height: number
-        rooms: LayoutRoom[]
+        elevation: number
     }
-    class LayoutRoom {
+    class LayoutJunction {
+        id: string
+        point: LayoutVec2
+    }
+    class LayoutWall {
+        id, startJunctionId, endJunctionId: string
+        thickness, height: number
+        centerline: line | cubic-chain
+    }
+    class LayoutWallFirstRoom {
         id, name: string
-        frame: LayoutRoomFrame
-        boundary: DraftPath
-        wallThickness, floorThickness, ceilingThickness: number
-        openings: LayoutOpening[]
+        boundary: OrientedWallRef[]
+        floorThickness, ceilingThickness: number
+    }
+    class LayoutWallOpening {
+        id, wallId, kind: string
+        offset, width, height, sillHeight: number
+        profile: rectangular | rounded | pointed
     }
     class DraftPath {
         closed: true
@@ -225,12 +240,6 @@ classDiagram
     }
     class DraftSegment {
         kind: line, auto-bezier
-    }
-    class LayoutOpening {
-        segmentId: string
-        offset, width, height, sillHeight: number
-        profile: rectangular, rounded, pointed
-        connectsRoomIds: [string, string]
     }
     class LayoutObject {
         kind: box | plane | cylinder | sphere | profile
@@ -302,13 +311,16 @@ classDiagram
         compiled path, easing
     }
 
-    MuseumProject --> LayoutDocument
+    MuseumProject --> LayoutDocumentWallFirst
     MuseumProject --> MuseumSceneDocument
-    LayoutDocument *-- LayoutFloor
-    LayoutDocument *-- LayoutObject
-    LayoutFloor *-- LayoutRoom
-    LayoutRoom *-- LayoutOpening
-    LayoutRoom --> DraftPath
+    LayoutDocumentWallFirst *-- LayoutWallFirstFloor
+    LayoutDocumentWallFirst *-- LayoutObject
+    LayoutDocumentWallFirst *-- LayoutJunction
+    LayoutDocumentWallFirst *-- LayoutWall
+    LayoutDocumentWallFirst *-- LayoutWallFirstRoom
+    LayoutDocumentWallFirst *-- LayoutWallOpening
+    LayoutWallFirstRoom --> OrientedWallRef
+    LayoutObject --> DraftPath
     DraftPath *-- DraftSegment
 
     CompiledLayoutGeometry *-- CompiledRoom
@@ -340,7 +352,7 @@ Two notes on shape:
 
 | Module (src/lib) | Responsibility | Files to open first |
 |---|---|---|
-| `layout/` | Layout document model, codec, geometry derivation, plan render model | `layout-types.ts`, `layout-codec.ts`, `layout-geometry.ts`, `plan-render-model.ts` |
+| `layout/` | Layout wall-first document model, codec, geometry derivation, plan representation | `layout-wall-first-types.ts`, `layout-wall-first-codec.ts`, `layout-geometry.ts`, `layout-plan-representation.ts` |
 | `project/` | MuseumProject: combines layout + scene, cross-validates | `project-codec.ts`, `project-types.ts`, `project-layout-semantics.ts` |
 | `content/` | Chopin data + scene document codec (v1→v6 migration) | `chopin-project.ts`, `scene.ts`, `scene-codec/index.ts`, `rooms.ts` (deprecated projection) |
 | `render/` | Three.js wall-geometry adapter (`IndexedWallMesh` → `BufferGeometry`) | `wall-geometry-adapter.ts` |
@@ -353,7 +365,7 @@ Two notes on shape:
 
 Key boundary/parity tests that pin the architecture:
 
-- `layout-geometry-boundary.test.ts`: exactly one `compileLayoutGeometry` definition.
+- `layout-geometry-boundary.test.ts`: exactly one `compileWallFirstLayoutGeometry` definition, and the retired legacy Layout document surface absent.
 - `plan-render-boundary.test.ts`: `plan-render-model.ts` may not import the geometry
   derivation; adapters own rendering.
 - `layout-geometry-parity.test.ts`: editor preview geometry == shared derivation output.

@@ -27,7 +27,7 @@
  * persisted as product identity.
  */
 import { geometryId } from './layout-geometry-types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
 import { orientXZ } from './layout-robust-orientation';
 import { wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';

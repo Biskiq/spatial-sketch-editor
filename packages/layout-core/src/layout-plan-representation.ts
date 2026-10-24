@@ -58,7 +58,7 @@ import type {
 	CompiledRoom,
 	LayoutBounds2
 } from './layout-geometry-types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 
 /** The four plan streams. Every emitted fragment belongs to exactly one. */
 export const PLAN_STREAMS = ['cut', 'projected', 'hidden', 'symbol'] as const;

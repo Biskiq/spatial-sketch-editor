@@ -34,7 +34,7 @@ import type {
 	LayoutWall,
 	LayoutWallOpening
 } from './layout-wall-first-types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 
 /** Fit tolerance shared with the P23.1 precision gates (unchanged semantics). */
 export const OPENING_SET_EPSILON = LAYOUT_GEOMETRY_EPSILON;

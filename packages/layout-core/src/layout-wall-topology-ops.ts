@@ -44,8 +44,8 @@ import {
 	type ComponentLineage,
 	type RoomIdAllocator
 } from './layout-room-reconciliation';
-import type { LayoutDocumentIssue } from './layout-codec';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutDocumentIssue } from './layout-issue';
+import type { LayoutVec2 } from './layout-coordinates';
 import {
 	allocateCapturedId,
 	layoutWorkingLevelIssue,

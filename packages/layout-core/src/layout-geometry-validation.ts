@@ -1,5 +1,10 @@
-import type { LayoutDocument, LayoutFloor, LayoutRoom, LayoutVec2 } from './layout-types';
-import type { CompilerBoundarySource, LayoutGeometryIssue } from './layout-geometry-types';
+import type { LayoutVec2 } from './layout-coordinates';
+import type {
+	CompilerBoundarySource,
+	CompilerFloorSource,
+	CompilerOpening,
+	LayoutGeometryIssue
+} from './layout-geometry-types';
 import {
 	CURVE_ENDPOINT_EPSILON,
 	CURVE_SELF_INTERSECTION_TOLERANCE,
@@ -63,37 +68,35 @@ export function prepareLayoutRoomSegments(
 	return { segments, issues };
 }
 
-export function validateLineRoom(room: LayoutRoom, floor: LayoutFloor, path = `rooms.${room.id}`): LayoutGeometryIssue[] {
-	return validateLayoutRoomGeometry(room, floor, path);
-}
-
-/** Convenience validator for edit candidates: prepares then validates. */
-export function validateLayoutRoomGeometry(room: LayoutRoom, floor: LayoutFloor, path = `rooms.${room.id}`): LayoutGeometryIssue[] {
-	const prepared = prepareLayoutRoomSegments(room, path);
-	return [
-		...prepared.issues,
-		...validatePreparedLayoutRoomGeometry(room, floor, prepared.segments, path)
-	];
-}
+/**
+ * The compiler-source Room slice room validation reads (T1.P02.S05): identity,
+ * the boundary chain and its segment-hosted Openings. It is the same record the
+ * shared compile core holds, so validation and compilation can never disagree
+ * about what a Room is.
+ */
+export type CompilerRoomValidationSource = {
+	id: string;
+	boundary: CompilerBoundarySource;
+	openings: readonly CompilerOpening[];
+};
 
 export function validatePreparedLayoutRoomGeometry(
-	room: { id: string; boundary: CompilerBoundarySource } & {
-		openings: readonly LayoutRoom['openings'][number][];
-	},
+	room: CompilerRoomValidationSource,
 	/**
-	 * P23.6I — `height` is now optional: the canonical wall-first Floor has no
-	 * vertical extent at all, while the legacy Room-owned Floor still drives the
-	 * Opening fit for its own Rooms (unchanged, including the positivity issue).
+	 * P23.6I — `height` is optional and no format-6 source supplies it: the
+	 * canonical wall-first Floor has no vertical extent, and each Room's Opening
+	 * fit comes from its hosting Wall instead. Only a direct caller of the shared
+	 * core can pass a storey height here, and then the fit (including the
+	 * positivity issue) is exactly the historical one.
 	 */
-	floor: Pick<LayoutFloor, 'id'> & { height?: number },
+	floor: CompilerFloorSource,
 	prepared: readonly (SampledSegment | null)[],
 	path = `rooms.${room.id}`,
 	/**
 	 * P23.6H — optional per-boundary-segment vertical limit for Opening fit,
 	 * keyed by segment id (the wall-first compiler supplies each Wall's
-	 * authoritative height). Absent keeps the historical `floor.height` rule and
-	 * byte-identical legacy behavior/cache keys; exactly one fit rule remains
-	 * (this branch), never a second validator.
+	 * authoritative height). Absent falls back to the optional `floor.height`;
+	 * exactly one fit rule remains (this branch), never a second validator.
 	 */
 	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>
 ): LayoutGeometryIssue[] {
@@ -148,7 +151,7 @@ export function validatePreparedLayoutRoomGeometry(
 		}
 	}
 
-	const openingsBySegment = new Map<string, LayoutRoom['openings']>();
+	const openingsBySegment = new Map<string, CompilerOpening[]>();
 	for (const [index, opening] of room.openings.entries()) {
 		const segment = segments.find((candidate) => candidate.id === opening.segmentId);
 		if (!segment) {
@@ -160,9 +163,9 @@ export function validatePreparedLayoutRoomGeometry(
 		if (!Number.isFinite(opening.height) || opening.height <= 0) issues.push({ path: `${path}.openings[${index}].height`, code: 'opening_height_invalid', message: 'Opening height must be finite and greater than zero.', targetId: opening.id });
 		if (!Number.isFinite(opening.sillHeight) || opening.sillHeight < 0) issues.push({ path: `${path}.openings[${index}].sillHeight`, code: 'opening_sill_invalid', message: 'Opening sill height must be finite and non-negative.', targetId: opening.id });
 		// P23.6I — provenance comes from **source presence**, never numeric equality.
-		// Comparing `heightLimit === floor.height` mislabelled a wall-first Opening
-		// whose hosting Wall happens to be exactly as tall as the legacy storey: the
-		// Opening is still constrained by its Wall and must name it.
+		// Comparing `heightLimit === floor.height` mislabelled an Opening whose
+		// hosting Wall happens to be exactly as tall as a supplied storey height:
+		// the Opening is still constrained by its Wall and must name it.
 		const wallHeightLimit = openingHeightLimitBySegmentId?.[opening.segmentId];
 		const heightLimit = wallHeightLimit ?? floor.height;
 		const usesWallHeight = wallHeightLimit !== undefined;
@@ -200,14 +203,6 @@ export function validatePreparedLayoutRoomGeometry(
 
 export function hasBlockingLayoutIssues(issues: readonly LayoutGeometryIssue[]): boolean {
 	return issues.some((issue) => issue.severity !== 'warning');
-}
-
-export function validateLayoutDocumentGeometry(document: LayoutDocument): LayoutGeometryIssue[] {
-	const issues: LayoutGeometryIssue[] = [];
-	for (const [floorIndex, floor] of document.floors.entries()) {
-		for (const [roomIndex, room] of floor.rooms.entries()) issues.push(...validateLayoutRoomGeometry(room, floor, `floors[${floorIndex}].rooms[${roomIndex}]`));
-	}
-	return issues;
 }
 
 export function isFiniteSegment(segment: SampleableSegment): boolean {
