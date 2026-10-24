@@ -5,10 +5,12 @@
 [acceptance.md](./acceptance.md) (owns the evidence and the unrun rows)
 
 ```text
-STATE:     implemented, reviewed (3 rounds), verified; owner acceptance PENDING; not merged, no closeout
+STATE:     implemented, reviewed (4 rounds), verified at the merged revision; owner acceptance PENDING;
+           performance and unrun rows deferred by owner ruling (2026-10-24); not merged, no closeout
 BRANCH:    t3/p02-s02-integrated-final-gate (PR open)
 COMMITS:   44990fad implementation · 035965e8 Preview-chrome fix · 6df26f3e journey spec ·
-           f6de016d warm Preview entry · plus the review-fix commit on top of f6de016d
+           f6de016d warm Preview entry · plus the review-fix commit on top of f6de016d ·
+           bf6b2e1f merge of origin/main 0b96c577 · the round-4 fix commit (branch HEAD, git log -1)
 CLAIMS:    only what the acceptance record states at its recorded revision, on this machine
 ```
 
@@ -40,7 +42,8 @@ interpreter over an already-admitted scene).
 **What was eliminated, not accelerated.** The surface is built once, when the Experience lens opens
 while the editor still owns the Camera, and is hidden, `inert` and `on-demand` between sessions. An
 entry then assigns the entry's read, mints the run epoch and reveals the takeover. A hidden surface
-holds no Camera claim, writes no source, takes no input and requests no frames.
+holds no Camera claim, writes no source, takes no input, and (round 4, F1) issues no WebGL draw
+calls, which a browser journey counts.
 
 **What was deliberately not done.**
 
@@ -61,10 +64,10 @@ state) can never be an active run, because activity is `preview !== null`, not t
 
 | row | median | p95 |
 | --- | --- | --- |
-| F10 S first entry in a fresh context | 67.7 ms | 113.0 ms |
-| F10 S warm / repeat-use | 52.7 / 55.0 ms | 71.8 / 173.7 ms |
-| F10 M first entry in a fresh context | 71.9 ms | 88.6 ms |
-| F10 M warm / repeat-use | 44.0 / 46.7 ms | 54.8 / 57.4 ms |
+| F10 starter, labelled S first entry in a fresh context | 67.7 ms | 113.0 ms |
+| F10 starter, labelled S warm / repeat-use | 52.7 / 55.0 ms | 71.8 / 173.7 ms |
+| F10 starter, labelled M first entry in a fresh context | 71.9 ms | 88.6 ms |
+| F10 starter, labelled M warm / repeat-use | 44.0 / 46.7 ms | 54.8 / 57.4 ms |
 
 F13 (10 enter/exit cycles): entry heap 9.54 MiB → 11.71 MiB, post-GC growth 2.16 MiB (≤ 5 MiB
 hard), dwell median 1 205.8 ms, exactly one hidden surface per cycle, realm unchanged.
@@ -95,28 +98,43 @@ Known residual, accepted rather than hidden: if a replacement lands during the w
 the new source is not warmed again until the next lens effect or press, so that one entry is a cold
 mount. It is correct, just not warm; it needs no state machinery to keep the fast path fast.
 
-## Verification at the review-fix revision
+## Review outcome, round 4
+
+The owner's acceptance review raised F1–F5 on the merged tree; all are fixed in the round-4 fix commit (see the
+[implementation review, round 4](./implementation-review.md#acceptance-review-round-4)). F1: the hidden warm
+surface no longer ticks, requests frames or starts a run while inactive, now a browser zero-draw check. F2:
+the Guide key scopes to the Guides column; the Presentation facts stay in the lens inspector (no host Card
+seam; a deferred T1 seam). F3: five refusal contracts. F4: merged origin/main. F5: the F10 spec now seeds
+its fixtures, and the recorded rows are relabelled as the starter workload.
+
+## Verification at the merged revision (bf6b2e1f plus the round-4 fix commit)
 
 ```text
-npm run check            0 errors, 0 warnings
-npm test                 185 files, 2 396 tests passed
-npm run test:arch        22 files / 176 tests — passes; the documentation-references contract is
-                         5 s-timeout sensitive and failed three runs while host load averaged 70,
-                         then passed 56/56 (4.1 s) with a raised timeout and reports no broken links
-npm run test:heavy       9 files, 125 tests passed
-integrated journeys      5 passed
-F10/F13                  not re-measured after the review fixes — owner request (2026-10-23)
+npm run check                       1825 files, 0 errors, 0 warnings
+npm test                            185 files; 2403 passed, 2 failed of 2405 (5 s timeouts under load ~58);
+                                    both pass in isolation: documentation references 25/25, P23B.11 36/36
+npm run test:arch                   22 files, 178 tests passed
+npm run test:heavy                  9 files, 125 tests passed
+npm run build                       exit 0
+check:project-model / check:camera-core / check:layout-core / check:api   exit 0
+test:api (biskiq-t3, 5435/8789)    12 suites, 95 tests, 95 passed, 0 failed, 0 skipped; stack torn down
+integrated journeys (chromium)      6 passed (49.2 s), against the documented preview on 127.0.0.1:4173
+first-guide.test.ts / visitor-camera-director.test.ts   12 / 9 passed
+preview-lifecycle.spec.ts           --list only (6 tests); not run, by owner request
 ```
+
+The full record, with the DB target and the reasons for the two earlier API attempts, is the
+[acceptance record](./acceptance.md#verification-record).
 
 ## Open items
 
-1. **Owner acceptance** of the recorded evidence; the slice is not accepted here and closeout has not
-   run, so P02 is closable, not closed, and P03/P04 are untouched.
-2. **Perf re-measure at the final revision** if the owner wants the record's rows to match the
-   review-fix commit: one clean `preview-lifecycle` pass (~10 min) and the table above is refreshed
-   from that single run. Two partial post-fix rows exist (S first entry 47.8 ms, S warm 44.7 ms) but
-   are not evidence on their own.
-3. **Dispositions** for the unrun rows in the acceptance record: the Preview-then-source-replacement
-   probe, the traced first frame and capture/bind completion, dense discovery/orientation fixtures,
-   touch/coarse pointer, DOM reach without raycast, Experience paused editing, Ask Rule, and a
-   browser Save/download/reload journey.
+1. **Owner acceptance** of the recorded evidence. Open: the owner re-reviews and records acceptance. The slice
+   is not accepted here; because a gate row is deferred, it can only be accepted as `owner-override`.
+   Closeout has not run; P02 is closable, not closed; P03/P04 are untouched.
+2. **Performance:** deferred by the owner ruling of 2026-10-24 (acceptance record, Owner ruling, Scope A):
+   the traced first frame, capture/bind completion, the absent M-workload F10 rows, the F13 re-measure at the
+   final revision, the reference-machine run and H0 ruling, and the Stage initial-load delta.
+3. **Unrun rows:** deferred by the same owner ruling (Scope B): the Preview-then-replacement probe, the dense
+   20/50-View and 15/30-Stop fixtures, touch/coarse pointer, DOM reach without raycast, Experience paused
+   editing, Ask Rule, the browser Save/download/reload journey, the partial shared-Camera row and the
+   Travel/detour browser rows.

@@ -24,8 +24,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { collectMeasuredRuns, heapUsedMiB, newMeasuredSession, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
-import type { FixtureSize } from '../lib/fixtures';
-import { uniqueProjectId, closeToHub, waitForMark } from '../lib/flow';
+import { fixtureProject, type FixtureSize } from '../lib/fixtures';
+import { uniqueProjectId, closeToHub, gotoCreateIntent, openSourceJson, waitForMark } from '../lib/flow';
 import { clearObservations, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
@@ -35,12 +35,16 @@ const CAPTURE_KEY = { name: 'Capture', exact: true } as const;
 const HEAD_PREVIEW = '[data-head-preview] button';
 const VISITOR_CANVAS = '[aria-label="Visitor preview canvas"]';
 
-/** Starter gallery → Experience lens → one Experience. The canonical creator entry. */
+/**
+ * The `size` workload is seeded from its fixture (`fixtureProject`), opened through
+ * the shipped source-JSON path, then the Experience lens. A `size` never selects a
+ * starter scene: the starter enclosure is a different workload.
+ */
 async function startExperienceProject(page: Page, size: FixtureSize): Promise<void> {
-	await page.goto(`/project/${encodeURIComponent(uniqueProjectId(`f10-${size}`))}/spatial?create=1`);
-	await page.getByRole('button', { name: 'Enclosed room' }).click();
-	await waitForMark(page, 'stage:activated');
-	await expect(page.locator('canvas').first()).toBeVisible();
+	const projectId = uniqueProjectId(`f10-${size}`);
+	const project = await fixtureProject(size, projectId);
+	await gotoCreateIntent(page, projectId);
+	await openSourceJson(page, project);
 	await page.getByRole('button', EXPERIENCE_LENS).click();
 	await page.getByRole('button', { name: 'Create Experience' }).click();
 	// The captured View must record the perspective the creator actually sees.
@@ -106,7 +110,7 @@ for (const size of ['S', 'M'] as const) {
 				const row: ResultRow = {
 					id: `F10-${size}-${cacheState}`,
 					flow: 'F10 capture/bind and Guide-free Preview entry',
-					workload: `${size} fixture starter enclosure, one captured View and Presentation, Preview entered and returned`,
+					workload: `${size} fixture (perf/lib/fixtures.ts), one captured View and Presentation, Preview entered and returned`,
 					cacheState,
 					network: NETWORK,
 					browser: `${testInfo.project.name} ${facts.chromeVersion}`,

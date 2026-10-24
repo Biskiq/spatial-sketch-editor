@@ -449,8 +449,8 @@
 			This world has no Experience yet. Create one explicitly; selecting or editing a world subject never
 			creates a document implicitly.
 		</p>
-	{:else if guideOpen}
-		<div class="columns">
+	{:else}
+		<div class="columns" class:solo={!guideOpen}>
 			<section class="column" aria-label="Presentations">
 				<div class="column-head">
 					<h3>Presentations</h3>
@@ -539,155 +539,158 @@
 				{/if}
 			</section>
 
-			<section class="column" aria-label="Guides">
-				<div class="column-head">
-					<h3>Guides</h3>
-					{#if current.guides.length === 0}
-						<span class="hint">No Guide: Presentations are entered from the visitor list.</span>
-					{:else}
-						<label class="inline">
-							<span>Open Guide</span>
-							<select
-								value={currentGuide?.id ?? ''}
-								onchange={(event) => {
-									const guide = current!.guides.find((entry) => entry.id === event.currentTarget.value) ?? null;
-									experienceFocus.openGuide(guide?.id ?? null, guide?.entryStopId ?? null);
-								}}
-							>
-								<option value="">None</option>
-								{#each current.guides as guide (guide.id)}
-									<option value={guide.id}>{guide.label}</option>
-								{/each}
-							</select>
-						</label>
-					{/if}
-				</div>
-
-				{#if currentGuide === null}
-					<p class="hint">
-						This Experience carries no Guide, so its Presentations are entered from the visitor list.
-						Creating the first Guide names it the entry Guide explicitly.
-					</p>
-					{#if current.guides.length === 0}
-						<div class="card" aria-label="First Guide">
-							<h4>First Guide</h4>
-							<p class="hint">
-								Creates one Guide with an initial distinct Stop from the selected Presentation (or the
-								selected Stop's Presentation). The Stop enters that Presentation's own View; no Camera
-								pose is copied and no Connection is made.
-							</p>
-							<label>
-								<span>Guide label</span>
-								<input bind:value={firstGuideLabelDraft} placeholder="Guide" />
-							</label>
-							<div class="actions">
-								<button
-									type="button"
-									onclick={createFirstGuide}
-									disabled={busy || firstGuidePresentation() === null}
-								>
-									Create first Guide
-								</button>
-							</div>
-						</div>
-					{/if}
-				{:else}
-					<ol class="stop-list">
-						{#each guideStops as stop, index (stop.id)}
-							<li>
-								<button
-									type="button"
-									class="row"
-									class:active={selectedStop?.id === stop.id}
-									aria-pressed={selectedStop?.id === stop.id}
-									onclick={() => experienceFocus.selectStop(stop.id)}
-								>
-									<span class="row-label">{index + 1}. {presentationLabel(stop.presentationId)}</span>
-									<span class="row-meta">
-										{stop.entryViewId ?? 'Default'} · hold {stop.holdSeconds ?? 0}s · {(stop.continuation?.kind ?? 'sequence-next')}
-										{stop.continuation !== undefined && stop.continuation.kind !== 'end'
-											? ` · ${stop.continuation.transition ?? 'cut'}`
-											: ''}
-									</span>
-								</button>
-								<span class="reorder">
-									<button type="button" class="quiet" aria-label="Move up" onclick={() => void moveStop(stop.id, -1)} disabled={index === 0 || busy}>↑</button>
-									<button type="button" class="quiet" aria-label="Move down" onclick={() => void moveStop(stop.id, 1)} disabled={index === guideStops.length - 1 || busy}>↓</button>
-								</span>
-							</li>
+			{#if guideOpen}
+				<section class="column" aria-label="Guides">
+					<div class="column-head">
+						<h3>Guides</h3>
+						{#if current.guides.length === 0}
+							<span class="hint">No Guide: Presentations are entered from the visitor list.</span>
 						{:else}
-							<li class="empty-row">This Guide has no Stops yet.</li>
-						{/each}
-					</ol>
-
-					<div class="actions">
-						<button type="button" onclick={insertStop} disabled={busy || selectedPresentation === null}>
-							Insert selected Presentation as a Stop
-						</button>
+							<label class="inline">
+								<span>Open Guide</span>
+								<select
+									value={currentGuide?.id ?? ''}
+									onchange={(event) => {
+										const guide = current!.guides.find((entry) => entry.id === event.currentTarget.value) ?? null;
+										experienceFocus.openGuide(guide?.id ?? null, guide?.entryStopId ?? null);
+									}}
+								>
+									<option value="">None</option>
+									{#each current.guides as guide (guide.id)}
+										<option value={guide.id}>{guide.label}</option>
+									{/each}
+								</select>
+							</label>
+						{/if}
 					</div>
 
-					{#if selectedStop !== null}
-						<div class="card">
-							<h4>Stop {selectedStop.id}</h4>
-							<div class="fields">
+					{#if currentGuide === null}
+						<p class="hint">
+							This Experience carries no Guide, so its Presentations are entered from the visitor list.
+							Creating the first Guide names it the entry Guide explicitly.
+						</p>
+						{#if current.guides.length === 0}
+							<div class="card" aria-label="First Guide">
+								<h4>First Guide</h4>
+								<p class="hint">
+									Creates one Guide with an initial distinct Stop from the selected Presentation (or the
+									selected Stop's Presentation). The Stop enters that Presentation's own View; no Camera
+									pose is copied and no Connection is made.
+								</p>
 								<label>
-									<span>Entry View</span>
-									<select bind:value={stopEntryViewDraft}>
-										<option value="">Presentation Default</option>
-										{#each viewsOf.get(selectedStop.presentationId) ?? [] as view (view.id)}
-											<option value={view.id}>{view.label}</option>
-										{/each}
-									</select>
+									<span>Guide label</span>
+									<input bind:value={firstGuideLabelDraft} placeholder="Guide" />
 								</label>
-								<label>
-									<span>Hold (seconds, blank for none)</span>
-									<input inputmode="decimal" bind:value={stopHoldDraft} />
-								</label>
-								<label>
-									<span>Continue to</span>
-									<select bind:value={stopTargetDraft}>
-										<option value="sequence-next">Next in Guide</option>
-										{#each current.stops as stop (stop.id)}
-											{#if stop.id !== selectedStop.id}
-												<option value={stop.id}>{stop.id}</option>
-											{/if}
-										{/each}
-										<option value="end">End</option>
-									</select>
-								</label>
-								<label>
-									<span>Transition</span>
-									<select bind:value={stopTransitionDraft} disabled={stopTargetDraft === 'end'}>
-										<option value="cut">Cut (no travel)</option>
-										<option value="travel">Travel (supported connection only)</option>
-									</select>
-								</label>
-							</div>
-							<p class="hint">
-								A Travel is valid only where Camera connectivity joins the two Views. An unsupported Travel
-								stays authored and Preview reports the gap; nothing silently cuts.
-							</p>
-							{#each travelGaps as gap (gap)}
-								<p class="hint" role="alert">{gap}</p>
-							{/each}
-							<div class="actions">
-								<button type="button" onclick={saveStop} disabled={busy}>Save Stop</button>
-								{#if onEnterPreview !== null}
-									<button type="button" class="quiet" onclick={() => onEnterPreview?.()}>
-										Preview from this Stop
+								<div class="actions">
+									<button
+										type="button"
+										onclick={createFirstGuide}
+										disabled={busy || firstGuidePresentation() === null}
+									>
+										Create first Guide
 									</button>
-								{/if}
+								</div>
 							</div>
+						{/if}
+					{:else}
+						<ol class="stop-list">
+							{#each guideStops as stop, index (stop.id)}
+								<li>
+									<button
+										type="button"
+										class="row"
+										class:active={selectedStop?.id === stop.id}
+										aria-pressed={selectedStop?.id === stop.id}
+										onclick={() => experienceFocus.selectStop(stop.id)}
+									>
+										<span class="row-label">{index + 1}. {presentationLabel(stop.presentationId)}</span>
+										<span class="row-meta">
+											{stop.entryViewId ?? 'Default'} · hold {stop.holdSeconds ?? 0}s · {(stop.continuation?.kind ?? 'sequence-next')}
+											{stop.continuation !== undefined && stop.continuation.kind !== 'end'
+												? ` · ${stop.continuation.transition ?? 'cut'}`
+												: ''}
+										</span>
+									</button>
+									<span class="reorder">
+										<button type="button" class="quiet" aria-label="Move up" onclick={() => void moveStop(stop.id, -1)} disabled={index === 0 || busy}>↑</button>
+										<button type="button" class="quiet" aria-label="Move down" onclick={() => void moveStop(stop.id, 1)} disabled={index === guideStops.length - 1 || busy}>↓</button>
+									</span>
+								</li>
+							{:else}
+								<li class="empty-row">This Guide has no Stops yet.</li>
+							{/each}
+						</ol>
+
+						<div class="actions">
+							<button type="button" onclick={insertStop} disabled={busy || selectedPresentation === null}>
+								Insert selected Presentation as a Stop
+							</button>
 						</div>
+
+						{#if selectedStop !== null}
+							<div class="card">
+								<h4>Stop {selectedStop.id}</h4>
+								<div class="fields">
+									<label>
+										<span>Entry View</span>
+										<select bind:value={stopEntryViewDraft}>
+											<option value="">Presentation Default</option>
+											{#each viewsOf.get(selectedStop.presentationId) ?? [] as view (view.id)}
+												<option value={view.id}>{view.label}</option>
+											{/each}
+										</select>
+									</label>
+									<label>
+										<span>Hold (seconds, blank for none)</span>
+										<input inputmode="decimal" bind:value={stopHoldDraft} />
+									</label>
+									<label>
+										<span>Continue to</span>
+										<select bind:value={stopTargetDraft}>
+											<option value="sequence-next">Next in Guide</option>
+											{#each current.stops as stop (stop.id)}
+												{#if stop.id !== selectedStop.id}
+													<option value={stop.id}>{stop.id}</option>
+												{/if}
+											{/each}
+											<option value="end">End</option>
+										</select>
+									</label>
+									<label>
+										<span>Transition</span>
+										<select bind:value={stopTransitionDraft} disabled={stopTargetDraft === 'end'}>
+											<option value="cut">Cut (no travel)</option>
+											<option value="travel">Travel (supported connection only)</option>
+										</select>
+									</label>
+								</div>
+								<p class="hint">
+									A Travel is valid only where Camera connectivity joins the two Views. An unsupported Travel
+									stays authored and Preview reports the gap; nothing silently cuts.
+								</p>
+								{#each travelGaps as gap (gap)}
+									<p class="hint" role="alert">{gap}</p>
+								{/each}
+								<div class="actions">
+									<button type="button" onclick={saveStop} disabled={busy}>Save Stop</button>
+									{#if onEnterPreview !== null}
+										<button type="button" class="quiet" onclick={() => onEnterPreview?.()}>
+											Preview from this Stop
+										</button>
+									{/if}
+								</div>
+							</div>
+						{/if}
 					{/if}
-				{/if}
-			</section>
+				</section>
+			{/if}
 		</div>
-	{:else}
-		<p class="hint">
-			The Guide instrument is closed. Open it from the dock to compose Stops, transitions and playback;
-			selection and the Card are unaffected.
-		</p>
+		{#if !guideOpen}
+			<p class="hint">
+				The Guide instrument is closed. Open Guide in the dock to compose Stops, transitions and playback.
+				Presentations and the selected Presentation's facts stay in this lens.
+			</p>
+		{/if}
 	{/if}
 
 	<!--
@@ -763,6 +766,9 @@
 		grid-template-columns: minmax(16rem, 1fr) minmax(16rem, 1fr);
 		gap: 0.75rem;
 		min-height: 0;
+	}
+	.columns.solo {
+		grid-template-columns: 1fr;
 	}
 	@media (max-width: 900px) {
 		.columns {

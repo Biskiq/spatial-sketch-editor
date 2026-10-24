@@ -2,7 +2,7 @@
 
 **Slice:** T3.P02.S02 · **Plan:** [Integrated final gate](./implementation-plan.md) (owns the criteria) ·
 **Acceptance:** [acceptance.md](./acceptance.md) (owns the result) · **Status:** implementation reviewed;
-owner acceptance pending. This record states what was built, the bounded decisions the plan deferred to
+owner acceptance pending; round-4 fixes gated at the merged revision; performance and unrun rows deferred by owner ruling (2026-10-24). This record states what was built, the bounded decisions the plan deferred to
 review, what the two independent review rounds found, and how each finding was resolved. It claims no
 acceptance, gate state, phase closure or commit for the slice.
 
@@ -11,7 +11,8 @@ acceptance, gate state, phase closure or commit for the slice.
 ```text
 slice     first Guide, real Camera handover/return, bounded Round 2 Capture/Guide expression
 revision  f6de016d (implementation 44990fad, Preview-chrome fix 035965e8, journey spec 6df26f3e,
-          warm-Preview entry f6de016d) + review fix fffe1c5a
+          warm-Preview entry f6de016d) + review fix fffe1c5a; merge bf6b2e1f (origin/main);
+          round-4 fix commit (F1–F5)
 writers   packages/project-model/src/units/planning.ts            additive Experience intent
           apps/editor/src/lib/authoring/experience/commands.ts     typed intents
           apps/editor/src/lib/authoring/experience/preview-handover.ts  new handover sequencing
@@ -22,6 +23,7 @@ writers   packages/project-model/src/units/planning.ts            additive Exper
           apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte  run epoch, activity, hidden reuse
           apps/editor/src/lib/visitor/VisitorCameraDirector.svelte  per-run aim reset
           tests/lib/experience/{first-guide,preview-handover}.test.ts
+          tests/lib/visitor/visitor-camera-director.test.ts (round 4: active flag)
           perf/flows/{preview-lifecycle,integrated-journeys}.spec.ts
 ```
 
@@ -73,15 +75,17 @@ rendering on demand; a Preview session only starts its run. Concretely:
 This is a rendering decision, which the phase explicitly leaves to the host: unmounting was never the
 ownership protocol. Its price is one live visitor renderer (and its scene) while the editor is open
 after the Experience lens has been used. While hidden it is put in on-demand rendering, `hidden` and
-`inert`, so it paints nothing, can take no input and is not exposed to assistive technology; that is
-a mode of the renderer, not a frame assertion, and the specs check the hidden/inert state and the
-single surface rather than counting painted frames. A source replacement drops the surface (the
+`inert`, so it can take no input and is not exposed to assistive technology. Round 4 (F1) also stops
+its director from ticking the run or requesting frames while inactive. The browser check counts WebGL
+draw calls on the hidden canvas's own context: none over one second after the exit has settled, and a
+re-entry draws again. That is a count of draw calls, not of painted frames, so it is not a
+compositor-verified image. A source replacement drops the surface (the
 chunk stays cached) instead of keeping another project's scene alive, and the next lens entry warms
 the new source.
 
-Measured on an idle host at this revision, press → first rendering opportunity of the run (10 runs per
-row, median / p95): S fixture 67.7 / 113.0 ms first entry in a fresh context, 52.7 / 71.8 ms warm,
-55.0 / 173.7 ms repeat-use; M fixture 71.9 / 88.6 ms, 44.0 / 54.8 ms, 46.7 / 57.4 ms. That is the
+Measured on an idle host at f6de016d (both labels are the starter enclosure workload; see round 4, F5), press → first rendering opportunity of the run (10 runs per
+row, median / p95): starter S-labelled 67.7 / 113.0 ms first entry in a fresh context, 52.7 / 71.8 ms warm,
+55.0 / 173.7 ms repeat-use; starter M-labelled 71.9 / 88.6 ms, 44.0 / 54.8 ms, 46.7 / 57.4 ms. That is the
 entry's own floor: the mark is taken at the second rendering opportunity after the run starts, so
 33 ms of the S repeat-use row is this harness's own frame budget at 60 Hz before any work is counted.
 The S repeat-use p95 outlier (173.7 ms) is a single 263.8 ms sample in a row whose median is 55.0 ms;
@@ -106,6 +110,11 @@ acceptance record states that limitation rather than calling it a compositor-ver
 - The first Guide's label field doubles as the capture-side request: a non-empty label asks Capture for
   the first Guide, an empty one keeps the capture Guide-free. That is the one place the request is
   expressed; there is no mode and no second Capture control.
+- Round 4 (F2): the Guide key scopes to the Guides column only. The Presentations column, the selected
+  Presentation's facts and Capture stay visible while the Guide instrument is closed, and the closed hint
+  says so. Presentation and Stop facts are ordinary editable facts; they stay in the Experience lens
+  inspector because the host Card has no Experience contribution seam. This is a deferred T1 seam, not a
+  Card-hosted expression.
 
 ## Decisions the plan left to this review
 
@@ -127,6 +136,9 @@ cancel                the host has no Preview cancel path: exit either returns o
                       exercise; the host does not use it to avoid a second exit semantics
 failure paths         the lazy visitor chunk loads before ownership moves; a failed load, a changed
                       source or a disposed facade leaves the Stage owning the output
+Presentation/Stop  stay in the Experience lens inspector, not the host Card: the T1-owned EditorCard
+                      exposes no Experience contribution seam. Reported to T1 as a deferred seam; not claimed
+                      as Card-hosted (round 4, F2).
 ```
 
 ## Independent review
@@ -207,6 +219,50 @@ run bails and `previewWarming` stays true until its `finally`, so no second warm
 next entry pays the (cached-chunk) mount once. It is correct — the press path still loads, checks and
 hands over — and avoiding it would need extra state purely to keep one entry warm.
 
+## Acceptance review (round 4)
+
+The owner's acceptance review raised five findings on the merged tree. All five are fixed in the round-4
+fix commit on top of merge `bf6b2e1f` and were gated on that working tree (results in the
+[acceptance record](./acceptance.md#verification-record)).
+
+- **F1 (major): the hidden warm Preview surface rendered and ran.** The visitor camera director's task
+  used Threlte's default auto-invalidation, so the on-demand canvas kept rendering behind the Stage once
+  the Experience lens had been opened; the run also ticked and the warm-up started with no session.
+  Resolution: `VisitorCameraDirector` takes an `active` prop (default `true`, so public and other callers
+  are unchanged) and passes `running: () => active` to its task; the director also ignores keys while
+  inactive; `VisitorPreviewSurface` starts the runtime only while active and passes `active` through. The
+  epoch reset is unchanged, and a new run still starts from its entry (the re-entry in the zero-draw
+  journey draws again). Orbit controls in neutral mode use no auto-invalidation, so they are not a source.
+  Evidence: a browser journey counts draw calls on the hidden canvas (zero over 1 s after the exit settles;
+  re-entry draws again), and two director unit contracts cover the gate.
+- **F2 (medium): the Guide key hid the Presentation's facts, and the closed hint was false.** The key
+  toggled the whole columns block. Resolution: the Presentations column is always rendered; only the Guides
+  column is conditional; the closed hint is rewritten truthfully; the one-track layout is `.columns.solo`.
+  No host Card contribution was built, because the T1-owned `EditorCard` exposes no Experience
+  contribution seam; the plan makes that a stop-and-report. The decision is recorded above under the
+  bounded Round 2 expression and in the acceptance record's Owner disposition item 3, and it is reported to
+  T1 as a deferred seam. Evidence: journey 6 asserts the closed state keeps the Presentation row and its
+  facts, shows the closed hint, and reopens the Guides column.
+- **F3 (minor): refusals claimed but not tested.** Five planner-rejected contracts were added to
+  `first-guide.test.ts`, each asserting `planner-rejected`, the planner's reason, an unchanged history depth
+  and an unchanged source: a continuation to a Stop the Experience does not carry (`missing-target`); a
+  negative hold (`invalid-payload`); a first-Guide capture when the Experience already has a Guide
+  (`guide-exists`); a capture naming both an existing Guide and a first Guide (`invalid-payload`, the
+  payload tampered because the builder refuses to author both); and a first Guide with an earlier Stop to
+  follow (`invalid-payload`, the payload tampered for the same reason).
+- **F4 (gate): not gated on then-current main.** `origin/main` 0b96c577 is merged into the branch as a
+  normal merge commit (`bf6b2e1f`; no rebase, no force). The complete exhaustive gate was then run on the
+  merged tree; results are in the acceptance record. One API stack attempt failed on the migrate step, because
+  this worktree's git-ignored `.env` lacked the documented `R2_OBJECT_NAMESPACE` key; the documented example
+  value was added there. The first `npm test` had two 5 s timeouts under host load about 58; both pass in
+  isolation, and no timeout was changed.
+- **F5 (records and spec): the F10 "M" rows measured the starter scene.** `startExperienceProject(page, size)`
+  used `size` only in the project id; both S and M clicked the starter gallery. Resolution: the spec now
+  seeds its workload through `fixtureProject()`, opens it through the source-JSON path (as the drag flows
+  do), and labels the row by its real fixture. The recorded rows are relabelled as the starter workload for
+  both S and M, no M-workload F10 measurement is claimed, and the "M meets the ambition" statement is removed.
+  The spec was not run (owner request); `--list` shows its six tests.
+
 ## Verification
 
 `VERIFICATION: exhaustive`. Commands and results are recorded in the
@@ -217,4 +273,4 @@ revision and the rows that remain unrun. No focused run is presented as acceptan
 
 The owner-operated reference-machine measurement, its trace method, the dense 20/50-View and 15/30-Stop
 browser fixtures, touch/coarse-pointer journeys and a browser Save/download/reload journey are not
-claimed here. The [acceptance record](./acceptance.md) lists every unrun row explicitly.
+claimed here. The [acceptance record](./acceptance.md) lists every unrun row explicitly. Those rows, the performance rows and the F5 M-workload gap are deferred by the owner ruling of 2026-10-24 (acceptance record, Owner ruling); none is claimed as passing.

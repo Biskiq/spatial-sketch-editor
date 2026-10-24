@@ -345,3 +345,169 @@ describe('first Guide creation', () => {
 		expect(installed.units.camera.data.connections).toEqual(beforeReuse.units.camera.data.connections);
 	});
 });
+
+
+describe('first Guide and capture-side refusals', () => {
+	// Every refusal here is a planner refusal: the coordinator reports it as
+	// `planner-rejected` with the planner's own reason, and the accepted source and
+	// history are exactly what they were before the attempt.
+	it('refuses a first Guide whose continuation names a Stop the Experience does not carry', async () => {
+		const { source, coordinator } = await boot();
+		const before = coordinator.acceptedSnapshot().domain.source;
+		const depth = coordinator.history().depth;
+		const refused = await coordinator.accept(
+			guideCreateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-guide-continue', guide: 'guide-new', stop: 'stop-new' },
+				experienceId: 'experience-1',
+				presentationId: 'presentation-1',
+				label: 'Main',
+				entryViewId: null,
+				holdSeconds: null,
+				continuation: { kind: 'stop', stopId: 'stop-missing', transition: 'cut' }
+			})
+		);
+		expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'missing-target' });
+		expect(coordinator.history().depth).toBe(depth);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(before);
+	});
+
+	it('refuses a first Guide whose initial Stop has a negative hold', async () => {
+		const { source, coordinator } = await boot();
+		const before = coordinator.acceptedSnapshot().domain.source;
+		const depth = coordinator.history().depth;
+		// The command builder passes a negative hold through unchanged, so the
+		// planner's own payload refusal is what stops it.
+		const refused = await coordinator.accept(
+			guideCreateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-guide-hold', guide: 'guide-new', stop: 'stop-new' },
+				experienceId: 'experience-1',
+				presentationId: 'presentation-1',
+				label: 'Main',
+				entryViewId: null,
+				holdSeconds: -1,
+				continuation: null
+			})
+		);
+		expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
+		expect(coordinator.history().depth).toBe(depth);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(before);
+	});
+
+	it('refuses a capture that asks for a first Guide when the Experience already has one', async () => {
+		const { source, coordinator } = await boot();
+		await coordinator.accept(
+			guideCreateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-guide', guide: 'guide-new', stop: 'stop-new' },
+				experienceId: 'experience-1',
+				presentationId: 'presentation-1',
+				label: 'Main',
+				entryViewId: null,
+				holdSeconds: null,
+				continuation: null
+			})
+		);
+		const before = coordinator.acceptedSnapshot().domain.source;
+		const depth = coordinator.history().depth;
+		const refused = await coordinator.accept(
+			captureBindIntent({
+				envelope: before,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-capture-2', view: 'view-new', presentation: 'presentation-new', stop: 'stop-second', guide: 'guide-second' },
+				experienceId: 'experience-1',
+				view: capturedViewPose({ label: 'View 3', eye: [1, 1.5, 3], target: [0, 1.4, 0], fov: 54 }),
+				presentationLabel: 'Entrance',
+				subjectEntityId: null,
+				text: null,
+				guideId: null,
+				firstGuideLabel: 'Second walk',
+				afterStopId: null
+			})
+		);
+		expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'guide-exists' });
+		expect(coordinator.history().depth).toBe(depth);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(before);
+	});
+
+	it('refuses a capture that names both an existing Guide and a first Guide', async () => {
+		const { source, coordinator } = await boot();
+		await coordinator.accept(
+			guideCreateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-guide', guide: 'guide-new', stop: 'stop-new' },
+				experienceId: 'experience-1',
+				presentationId: 'presentation-1',
+				label: 'Main',
+				entryViewId: null,
+				holdSeconds: null,
+				continuation: null
+			})
+		);
+		const before = coordinator.acceptedSnapshot().domain.source;
+		const depth = coordinator.history().depth;
+		// The command builder refuses to author both, so a valid existing-Guide capture
+		// is built and the first-Guide request is added to its payload.
+		const existingGuide = captureBindIntent({
+			envelope: before,
+			revision: coordinator.acceptedRevision(),
+			ids: { operation: 'op-capture-both', view: 'view-both', presentation: 'presentation-both', stop: 'stop-both' },
+			experienceId: 'experience-1',
+			view: capturedViewPose({ label: 'View 3', eye: [1, 1.5, 3], target: [0, 1.4, 0], fov: 54 }),
+			presentationLabel: 'Entrance',
+			subjectEntityId: null,
+			text: null,
+			guideId: 'guide-new',
+			afterStopId: null
+		});
+		const tampered: typeof existingGuide = {
+			...existingGuide,
+			payload: {
+				...(existingGuide.payload as Record<string, unknown>),
+				firstGuide: { label: 'Second walk' }
+			} as typeof existingGuide.payload,
+			allocatedIds: [...existingGuide.allocatedIds, { kind: 'guide', id: 'guide-both' }]
+		};
+		const refused = await coordinator.accept(tampered);
+		expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
+		expect(coordinator.history().depth).toBe(depth);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(before);
+	});
+
+	it('refuses a first Guide whose initial Stop names an earlier Stop to follow', async () => {
+		const { source, coordinator } = await boot();
+		const before = coordinator.acceptedSnapshot().domain.source;
+		const depth = coordinator.history().depth;
+		// The builder always sends a null afterStopId for a first Guide, so the earlier
+		// Stop is tampered in: a first Guide has no earlier Stop to follow.
+		const guideFree = captureBindIntent({
+			envelope: source,
+			revision: coordinator.acceptedRevision(),
+			ids: { operation: 'op-capture-after', view: 'view-new', presentation: 'presentation-new', stop: 'stop-new', guide: 'guide-new' },
+			experienceId: 'experience-1',
+			view: capturedViewPose({ label: 'View 3', eye: [1, 1.5, 3], target: [0, 1.4, 0], fov: 54 }),
+			presentationLabel: 'Entrance',
+			subjectEntityId: null,
+			text: null,
+			guideId: null,
+			firstGuideLabel: 'Entrance walk',
+			afterStopId: null
+		});
+		const tampered: typeof guideFree = {
+			...guideFree,
+			payload: {
+				...(guideFree.payload as Record<string, unknown>),
+				stop: { guideId: null, afterStopId: 'stop-earlier', continuation: { kind: 'sequence-next', transition: 'cut' } }
+			} as typeof guideFree.payload
+		};
+		const refused = await coordinator.accept(tampered);
+		expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
+		expect(coordinator.history().depth).toBe(depth);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(before);
+	});
+});

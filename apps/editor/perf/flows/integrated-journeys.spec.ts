@@ -83,6 +83,55 @@ async function exitPreview(page: Page): Promise<void> {
 	await expect(page.locator('.preview-takeover')).toHaveAttribute('aria-label', 'Visitor preview');
 }
 
+/**
+ * Wrap the visitor canvas's own WebGL draw entry points with a counter.
+ *
+ * The counter lives on the context object the Threlte renderer already drives, so
+ * it sees every draw (shadow passes included) and nothing from the Stage canvas.
+ * Installing it again only resets the tally.
+ */
+async function installDrawCounter(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		const canvas = document.querySelector<HTMLCanvasElement>('[data-visitor-canvas-root] canvas');
+		if (!canvas) throw new Error('the visitor canvas is not mounted');
+		const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as
+			| (Record<string, unknown> & { __visitorDrawTally?: { count: number } })
+			| null;
+		if (!gl) throw new Error('the visitor canvas has no WebGL context');
+		if (gl.__visitorDrawTally) {
+			gl.__visitorDrawTally.count = 0;
+			return;
+		}
+		const tally = { count: 0 };
+		gl.__visitorDrawTally = tally;
+		for (const name of [
+			'drawArrays',
+			'drawElements',
+			'drawArraysInstanced',
+			'drawElementsInstanced',
+			'drawRangeElements'
+		]) {
+			const draw = gl[name];
+			if (typeof draw !== 'function') continue;
+			gl[name] = function counted(this: unknown, ...args: unknown[]) {
+				tally.count += 1;
+				return (draw as (...values: unknown[]) => unknown).apply(this, args);
+			};
+		}
+	});
+}
+
+async function drawCount(page: Page): Promise<number> {
+	return page.evaluate(() => {
+		const canvas = document.querySelector<HTMLCanvasElement>('[data-visitor-canvas-root] canvas');
+		const gl = (canvas?.getContext('webgl2') ?? canvas?.getContext('webgl')) as
+			| { __visitorDrawTally?: { count: number } }
+			| null
+			| undefined;
+		return gl?.__visitorDrawTally?.count ?? -1;
+	});
+}
+
 async function expectAccepted(page: Page, previous: number): Promise<void> {
 	await expect.poll(() => acceptedResultCount(page), { timeout: 20_000 }).toBeGreaterThan(previous);
 }
@@ -132,6 +181,38 @@ test.describe('integrated Capture / Guide / Preview journeys', () => {
 			await page.getByRole('button', { name: 'Undo', exact: true }).click();
 			await expect.poll(() => acceptedResultCount(page)).toBe(afterCapture + 1);
 			await expect(presentationRows(page.locator(SURFACE))).toHaveCount(0);
+			expect(errors).toEqual([]);
+		} finally {
+			await started.close();
+		}
+	});
+
+	test('a hidden warm Preview surface issues no draw calls and draws again on re-entry', async ({ browser }) => {
+		test.setTimeout(240_000);
+		const errors: string[] = [];
+		const started = await session(browser, errors);
+		try {
+			const { page } = started;
+			await startExperience(page);
+			await capture(page);
+			await enterPreview(page);
+			await exitPreview(page);
+			// The exit's own last invalidation is allowed to land first. The counter
+			// starts only after two rendering opportunities with the surface hidden.
+			await page.evaluate(
+				() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+			);
+			await installDrawCounter(page);
+			// The surface is hidden for a full second: no run ticks, no frame is requested.
+			await page.waitForTimeout(1_000);
+			expect(await drawCount(page)).toBe(0);
+			await expect(page.locator(VISITOR_CANVAS)).toBeHidden();
+
+			// Re-entry is a new run on the same surface, and its canvas draws again. The
+			// counter moving here is also the positive control for the zero above.
+			await enterPreview(page);
+			await expect.poll(() => drawCount(page), { timeout: 10_000 }).toBeGreaterThan(0);
+			await exitPreview(page);
 			expect(errors).toEqual([]);
 		} finally {
 			await started.close();
@@ -272,6 +353,18 @@ test.describe('integrated Capture / Guide / Preview journeys', () => {
 			const { page } = started;
 			await startExperience(page);
 			await capture(page);
+			// The Guide key scopes to the Guide instrument. Closing it leaves the
+			// Presentations and the selected Presentation's facts in the lens, and the
+			// closed hint says so.
+			const surface = page.locator(SURFACE);
+			await dock(page).getByRole('button', { name: 'Guide', exact: true }).click();
+			await expect(dock(page).getByRole('button', { name: 'Guide', exact: true })).toHaveAttribute('aria-pressed', 'false');
+			await expect(surface.locator('section[aria-label="Guides"]')).toHaveCount(0);
+			await expect(surface.getByText(/The Guide instrument is closed\./)).toBeVisible();
+			await expect(presentationRows(surface).filter({ hasText: 'Presentation 1' })).toBeVisible();
+			await expect(surface.locator('div.card').filter({ hasText: 'Views' })).toBeVisible();
+			await dock(page).getByRole('button', { name: 'Guide', exact: true }).click();
+			await expect(surface.locator('section[aria-label="Guides"]')).toBeVisible();
 			// The dock is the Experience lens's contribution; another lens neither
 			// shows it nor enters Preview.
 			await page.getByRole('button', { name: 'World', exact: true }).click();

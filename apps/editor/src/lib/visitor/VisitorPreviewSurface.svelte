@@ -80,8 +80,10 @@ import { PCFShadowMap } from 'three';
 	// A program may arrive after the surface mounts, and a changed program creates
 	// a fresh neutral runtime. Enter every instance, not only the first. A
 	// Presentation entry starts the same run at its Default View with no Stop.
+	// A hidden warm surface holds no run: it is started only by an active session,
+	// so no Preview session exists until the host opens one.
 	$effect(() => {
-		if (visitorState === null) return;
+		if (visitorState === null || !active) return;
 		visitorState.start(entryPresentationId);
 	});
 	/**
@@ -166,6 +168,7 @@ import { PCFShadowMap } from 'three';
 					visitor={visitorState}
 					bounds={geometry.bounds ?? null}
 					{runEpoch}
+					{active}
 					onCameraGap={(message) => (cameraGap = message)}
 				/>
 			{/if}

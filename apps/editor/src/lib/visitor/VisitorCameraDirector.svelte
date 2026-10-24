@@ -23,6 +23,7 @@
 		visitor,
 		bounds = null,
 		runEpoch = 0,
+		active = true,
 		onCameraGap
 	}: {
 		graph: NavigationGraph;
@@ -30,6 +31,11 @@
 		bounds?: LayoutBounds3 | null;
 		/** The run this director presents; a new run reframes from its own entry. */
 		runEpoch?: number;
+		/**
+		 * Whether this director presents a live run. An inactive director neither
+		 * ticks the run nor requests frames, so a hidden, warm surface stays idle.
+		 */
+		active?: boolean;
 		/** Surfaces a typed handoff gap instead of silently re-routing. */
 		onCameraGap?: (message: string | null) => void;
 	} = $props();
@@ -208,52 +214,55 @@
 		transitionProgress = 0;
 	});
 
-	useTask((delta) => {
-		if (!cameraRef || !isAuthoredMode()) return;
-		if (visitor.state.phase === 'holding') visitor.tick(delta * 1000);
-		if (activeTargetViewId && activeMotion) {
-			if (activeMotion.durationSeconds === 0) {
-				transitionProgress = 1;
-			} else {
-				const speed = visitor.reducedMotion ? 24 : 1 / activeMotion.durationSeconds;
-				transitionProgress = Math.min(1, transitionProgress + delta * speed);
+	useTask(
+		(delta) => {
+			if (!cameraRef || !isAuthoredMode()) return;
+			if (visitor.state.phase === 'holding') visitor.tick(delta * 1000);
+			if (activeTargetViewId && activeMotion) {
+				if (activeMotion.durationSeconds === 0) {
+					transitionProgress = 1;
+				} else {
+					const speed = visitor.reducedMotion ? 24 : 1 / activeMotion.durationSeconds;
+					transitionProgress = Math.min(1, transitionProgress + delta * speed);
+				}
+				sampleCameraMotion(activeMotion, transitionProgress, motionSample);
+				if (transitionProgress >= 1) {
+					cameraViewId = activeTargetViewId;
+					activeTargetViewId = null;
+					activeMotion = null;
+				}
+			} else if (!activeTargetViewId) {
+				let node;
+				try {
+					node = getNode(cameraViewId ?? '', graph);
+				} catch {
+					return;
+				}
+				currentPosition.set(...node.position);
+				currentTarget.set(...node.cameraTarget);
+				motionSample.fov = node.fov;
 			}
-			sampleCameraMotion(activeMotion, transitionProgress, motionSample);
-			if (transitionProgress >= 1) {
-				cameraViewId = activeTargetViewId;
-				activeTargetViewId = null;
-				activeMotion = null;
+			if (canLookAround()) {
+				lookDirection.copy(currentTarget).sub(currentPosition);
+				lookSpherical.setFromVector3(lookDirection);
+				lookSpherical.theta += lookYaw;
+				lookSpherical.phi = MathUtils.clamp(
+					lookSpherical.phi + lookPitch,
+					0.08,
+					Math.PI - 0.08
+				);
+				lookDirection.setFromSpherical(lookSpherical);
+				currentTarget.copy(currentPosition).add(lookDirection);
 			}
-		} else if (!activeTargetViewId) {
-			let node;
-			try {
-				node = getNode(cameraViewId ?? '', graph);
-			} catch {
-				return;
+			cameraRef.position.copy(currentPosition);
+			cameraRef.lookAt(currentTarget);
+			if (Math.abs(cameraRef.fov - motionSample.fov) > CAMERA_FOV_UPDATE_EPSILON) {
+				cameraRef.fov = motionSample.fov;
+				cameraRef.updateProjectionMatrix();
 			}
-			currentPosition.set(...node.position);
-			currentTarget.set(...node.cameraTarget);
-			motionSample.fov = node.fov;
-		}
-		if (canLookAround()) {
-			lookDirection.copy(currentTarget).sub(currentPosition);
-			lookSpherical.setFromVector3(lookDirection);
-			lookSpherical.theta += lookYaw;
-			lookSpherical.phi = MathUtils.clamp(
-				lookSpherical.phi + lookPitch,
-				0.08,
-				Math.PI - 0.08
-			);
-			lookDirection.setFromSpherical(lookSpherical);
-			currentTarget.copy(currentPosition).add(lookDirection);
-		}
-		cameraRef.position.copy(currentPosition);
-		cameraRef.lookAt(currentTarget);
-		if (Math.abs(cameraRef.fov - motionSample.fov) > CAMERA_FOV_UPDATE_EPSILON) {
-			cameraRef.fov = motionSample.fov;
-			cameraRef.updateProjectionMatrix();
-		}
-	});
+		},
+		{ running: () => active }
+	);
 
 	function isEditableTarget(target: EventTarget | null) {
 		if (!(target instanceof HTMLElement)) return false;
@@ -278,8 +287,9 @@
 			if (event.defaultPrevented) return;
 			const canvasEl = canvas as HTMLCanvasElement;
 			const root = canvasEl.closest('[data-visitor-canvas-root]');
-			const active = document.activeElement;
-			if (root && active && !root.contains(active)) return;
+			if (!active) return;
+			const focused = document.activeElement;
+			if (root && focused && !root.contains(focused)) return;
 			if (hasModifier(event)) return;
 			if (isEditableTarget(event.target)) return;
 			if (isInteractiveTarget(event.target)) return;

@@ -22,7 +22,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const harness = vi.hoisted(() => ({
-	tasks: [] as Array<(delta: number) => void>,
+	tasks: [] as Array<{ readonly run: (delta: number) => void; readonly running: () => boolean }>,
 	starts: [] as unknown[]
 }));
 
@@ -30,8 +30,10 @@ vi.mock('@threlte/core', async () => {
 	const { default: PerspectiveCamera } = await import('./fixtures/MockPerspectiveCamera.svelte');
 	return {
 		T: { PerspectiveCamera },
-		useTask: (callback: (delta: number) => void) => {
-			harness.tasks.push(callback);
+		useTask: (callback: (delta: number) => void, options?: { running?: () => boolean }) => {
+			// Threlte runs a task only while its `running` option holds; the mock keeps
+			// that gate so a test can prove an inactive director is never ticked.
+			harness.tasks.push({ run: callback, running: options?.running ?? (() => true) });
 			return { stop() {} };
 		},
 		useThrelte: () => ({ canvas: document.createElement('canvas') })
@@ -198,20 +200,21 @@ async function mountProbe(visitor: VisitorRuntimeState): Promise<HTMLElement> {
 async function mountDirector(
 	visitor: VisitorRuntimeState,
 	onCameraGap?: (message: string | null) => void,
-	navigationGraph: NavigationGraph = graph()
+	navigationGraph: NavigationGraph = graph(),
+	active = true
 ): Promise<void> {
 	const target = document.createElement('div');
 	document.body.appendChild(target);
 	const component = mount(VisitorCameraDirector, {
 		target,
-		props: { graph: navigationGraph, visitor, onCameraGap }
+		props: { graph: navigationGraph, visitor, onCameraGap, active }
 	});
 	cleanup = () => unmount(component);
 	await tick();
 }
 
 async function frame(delta = 1 / 60): Promise<void> {
-	for (const task of harness.tasks) task(delta);
+	for (const task of harness.tasks) if (task.running()) task.run(delta);
 	await tick();
 }
 
@@ -526,5 +529,29 @@ describe('mounted visitor Camera handoff', () => {
 		const settled = mockCamera().lastPoint;
 		expect(settled.x).toBeCloseTo(0, 5);
 		expect(settled.z).toBeCloseTo(0, 5);
+	});
+
+	it('an inactive director neither ticks a held run nor moves the Camera', async () => {
+		// A warm, hidden surface mounts its director before any session exists. Its
+		// run must stay where it is until a session activates it.
+		const visitor = runtime();
+		visitor.enter();
+		// Stop 2 holds for one second: the run is in a hold the director would tick.
+		visitor.continue();
+		expect(visitor.state.phase).toBe('holding');
+		await mountDirector(visitor, undefined, graph(), false);
+		const holdBefore = visitor.state.holdRemainingMs;
+		expect(holdBefore).toBeGreaterThan(0);
+		for (let index = 0; index < 60; index += 1) await frame();
+		expect(visitor.state.holdRemainingMs).toBe(holdBefore);
+		expect(harness.starts).toHaveLength(0);
+		expect(harness.tasks.every((task) => task.running() === false)).toBe(true);
+	});
+
+	it('an active director runs its task, and the default is active', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		await mountDirector(visitor);
+		expect(harness.tasks.every((task) => task.running())).toBe(true);
 	});
 });
