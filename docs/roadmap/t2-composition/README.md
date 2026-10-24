@@ -66,7 +66,8 @@ import/placement/memory evidence. It is registered as
 [T2.P02 — Own model import](./t2.p02-own-model-import/README.md) (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md)): the
 owner accepted its upload, retention and derivative bounds, authorized `T2.P02.S01` and released it
 from the hold, starting only after `T3.P03.S01` merges. The owner authorized and released `T2.P02.S02` on
-2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/roadmap/now.md`); S03 stays `proposed`, unauthorized and held.
+2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/roadmap/now.md`); S03 stays `proposed`, unauthorized and held, and waits for
+T1.P02.S06 under the owner's [performance-first halt](../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary).
 
 The next planning wave pairs T1's face-frame query with T2 solve-once wall placement, and T1 Stage
 part selection with T2 component resolver/admission and revision correspondence; T3 annotations

@@ -1,7 +1,7 @@
 # T1.P02.S04 — Integrated final gate: implementation plan
 
 **Slice:** T1.P02.S04 · **Status:** proposed — **not authorized**; it starts only from its own owner
-authorization after S01, S05, S02 and S03 are accepted · **Phase:** [T1.P02](../README.md) ·
+authorization after S01, S05, S06, S02 and S03 are accepted · **Phase:** [T1.P02](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:**
 [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -11,14 +11,14 @@ REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1
 VERIFICATION: exhaustive
 ```
 
-This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01, S05, S02 and
-S03 send their deferred exhaustive proof to; its acceptance record is the phase's declared final-gate
+This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01, S05, S06, S02
+and S03 send their deferred exhaustive proof to; its acceptance record is the phase's declared final-gate
 artifact. It is registered (batch E, E1) and unauthorized: nothing here is implemented, accepted,
 ready or evidenced.
 
 ## Prerequisite
 
-`T1.P02.S01`, `S05`, `S02` and `S03` accepted with routine closeout, and every consumed gate `accepted` with
+`T1.P02.S01`, `S05`, `S06`, `S02` and `S03` accepted with routine closeout, and every consumed gate `accepted` with
 every `Requires` scope `active` at this slice's own trusted base. S04 adds no product feature: it is
 the independent, integrated acceptance of native Wall creation.
 
@@ -39,6 +39,8 @@ Record independent acceptance on the integrated tree, from an empty project and 
   diagnostics;
 - S05 legacy surface/export absence, defect-equivalent fixture coverage and preserved
   registry/Scene-frame behavior on the integrated tree;
+- S06's deduplication differentials and scale oracles still green, and its accepted S/M/L
+  measurements rechecked on the integrated tree with its peak-first method;
 - the bounded dock/Ink, Card fact migration, lower-column arbitration and keyboard path as built and browser-revised, at narrow and
   short shells and with reduced motion.
 
@@ -61,7 +63,8 @@ first-load delta against the [performance contract](../../../../reference/compon
 on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment). Each earlier slice
 supplies its own evidence before its acceptance; S04 verifies integration and cannot defer or erase an
 earlier hard-budget miss. One owner-ruled exception (2026-10-22): `T1.P02.S01`'s F2 open timings at S
-and M are first recorded here, against the H0 baseline.
+and M are accepted here. Since the 2026-10-24 replanning, S06's owner-run benches record F2 S/M first;
+S04 cites those numbers and rechecks them on the integrated tree with S06's method.
 
 ## Readiness declaration
 

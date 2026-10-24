@@ -20,8 +20,9 @@ Plan and 3D read the same candidate; numeric and keyboard paths have the same se
 The phase's [owner-accepted drawing policy](../README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)
 owns enclosure, connection and refusal rules; this plan does not reopen them.
 
-S01 is shipped. **S05 retirement must be accepted and merged before S02 starts.** Recheck
-its merged tree, H0 `T3.P03.S01`, consumed gates and active scopes through the runbook.
+S01 and S05 are shipped. **S06 performance foundation must be accepted and merged before S02
+starts** ([performance-first halt](../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)).
+Recheck that merged tree, H0 `T3.P03.S01`, consumed gates and active scopes through the runbook.
 This complete proposed plan still needs review, its own owner authorization and release-list
 entry; neither registration nor Round 2 ratification releases production implementation.
 
@@ -53,17 +54,17 @@ interpretation of the ratified prototype.
 
 ## Implementation sequence
 
-1. **Rebase inventory and baseline.** Inspect the accepted post-S05 compiler/planner,
+1. **Rebase inventory and baseline.** Inspect the accepted post-S06 compiler/planner,
    identity capture, Stage input/selection, F4 scope enforcement and existing task/gesture
    contributions. Record exact trusted base and affected tests. Confirm no legacy Layout
-   import remains and capture comparable S/M compile/commit/Undo and Stage-load observations
-   through the ratified [performance contract](../../../../reference/components/performance.md).
-2. **Remove repeated work before adding hot-path load.** Reuse validated compiled candidate
-   output at install and Undo/Redo admission only where revision/content identity proves it
-   is the same result; invalidation must cover replacement, new revision and changed inputs.
-   Keep immutable accepted source and derived/cache/session state separate. Prove full
-   output equivalence with a heavy-lane differential and deterministic compile-count oracle
-   across ordinary edit, refusal, Undo/Redo and replacement. Never accept stale geometry to
+   import remains and take S06's accepted S/M/L baseline on its peak-first method as the
+   comparison through the ratified [performance contract](../../../../reference/components/performance.md).
+2. **Keep repeated work out of the hot path.** The install-compile and Undo/Redo
+   re-admission deduplication, its heavy-lane differential and compile-count oracle moved
+   to [S06](../t1.p02.s06-performance-foundation/implementation-plan.md) by owner replanning
+   (2026-10-24). Every new drawing path keeps those oracles green, reuses compiled output
+   only where revision/content identity proves the same result, keeps immutable accepted
+   source and derived/cache/session state separate, and never accepts stale geometry to
    achieve a timing target.
 3. **Register bounded F4 operations.** Define one captured chain-commit intent and one
    Wall-delete intent, using current F1 references, explicit working level and the S01
@@ -144,15 +145,17 @@ viewport and observed outcome; do not label a plan or prototype screenshot as a 
 On the designated MacBook Air M2, 16 GB, record comparable workload/revision/environment for:
 F3 input-to-matching-preview, latest-input age, final-preview completion, frames and long tasks;
 per-move evaluation; F4 commit and F8 Undo/Redo at S/M; F2 open, F13 leak cycles and Stage
-first-load delta. Use the performance contract's harness/workloads and budgets, not guessed
-local thresholds. Correctness/compile-count green does not prove latency acceptance.
+first-load delta. Use the performance contract's harness/workloads and budgets on S06's
+measurement method, not guessed local thresholds. Correctness/compile-count green does not
+prove latency acceptance.
 
-If F3 misses at M after deduplication, run the bounded incremental or worker experiment
-inside the same compiler/evaluator authority and preserve the full differential oracle.
-If that still misses at L, changing “preview equals planner output” is an owner decision;
-report the measurement and stop that semantic expansion. S04 cannot erase an S02 budget miss.
-S01's **still-unrun F2 open timings at S/M** remain separately assigned to S04 against H0's
-baseline; nothing here treats them as measured or globally waived.
+The bounded incremental or worker experiment belongs to S06. If drawing's F3 misses at M on
+S06's accepted compile path, resolve it inside S02 within the same compiler/evaluator
+authority and preserve the full differential oracle. If it still misses at L, changing
+“preview equals planner output” is an owner decision; report the measurement and stop that
+semantic expansion. S04 cannot erase an S02 budget miss.
+S01's **F2 open timings at S/M** remain assigned to S04, which cites and rechecks S06's owner-run
+measurements; nothing here treats them as measured or globally waived.
 
 Record M4 as re-armed at closeout because Junction commits are rewired. This configures no
 new architecture window and records no owner architecture verdict. S04 remains the final

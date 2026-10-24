@@ -5,9 +5,11 @@ shared-file ownership and merge order. Track/phase registers own lifecycle and e
 the [release list](./now.md) owns launch conditions; the [gate register](./README.md#gate-register)
 owns accepted interfaces/evidence. This file creates no gate or acceptance record.
 
-The owner authorized and released the three primary lanes below on 2026-10-23
-([decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md)). Every omitted
-production scope remains under the [hold](./README.md#production-implementation-hold).
+The owner authorized and released `T1.P02.S06` on 2026-10-24 under a temporary performance-first
+halt ([decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md)); the
+three post-Batch-E lanes released on 2026-10-23
+([decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md)) are shipped. Every
+omitted production scope remains under the [hold](./README.md#production-implementation-hold).
 Round 2 shell ratification is destination design, not blanket implementation permission.
 
 ## Provider and acceptance matrix
@@ -61,67 +63,74 @@ private projection, navigation graph, selection store or independent pose interp
 
 ## Next parallel batch
 
-**Integrated base:** Batch E is shipped on `main`, including T3.P03 S01/S02, T1.P02.S01,
-T2.P02.S01 and T3.P02.S01; their scoped owner-overrides and residuals live in their acceptance
-records. PR #181 ratified the Round 2 destination shell. This is evidence of those scopes,
-not proof of every creator journey or of hardware performance. Each lane records/rechecks
-its own trusted base through its owning runbook before implementation.
+**Integrated base:** the post-Batch-E lanes are shipped on `main` at `696af6ea`: T1.P02.S05
+(PR #183), T3.P02.S02 (PR #184) and T2.P02.S02 (PR #185, acceptance recorded by PR #186). Their
+scoped owner-overrides, deferred rows and residuals live in their acceptance records. This is
+evidence of those scopes, not proof of every creator journey or of hardware performance. Each lane
+records and rechecks its own trusted base through its owning runbook before implementation.
 
 ```mermaid
 flowchart TD
-  E["Batch E shipped + Round 2 destination ratified"]
-  E --> R["T1.P02.S05 legacy Layout retirement — released"]
-  E --> I["T2.P02.S02 import, placement and transform completion — released"]
-  E --> P["T3.P02.S02 integrated Capture / Preview gate — released"]
-  R --> D["T1.P02.S02 drawing — held, later release"]
+  B["Post-Batch-E lanes shipped (696af6ea)"]
+  B --> P["T1.P02.S06 performance foundation — released"]
+  P --> D["T1.P02.S02 drawing — held behind S06"]
   D --> O["T1.P02.S03 Opening — held"]
   O --> F["T1.P02.S04 final gate — held"]
-  I --> IF["T2.P02.S03 integrated final gate — held"]
-  P --> C["T3.P04 project lifecycle — planning follow-on, held"]
+  P --> IF["T2.P02.S03 integrated final gate — held behind S06"]
+  B --> C["T3.P04 project lifecycle — planning, held; unrelated to the halt"]
   F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
   IF --> CES
-  P --> CES
   C --> CES
   CES --> T4["Only accepted milestone permits requesting renewed T4 planning"]
 ```
 
 | Released lane | Owning plan | Bounded responsibility / dependency |
 | --- | --- | --- |
-| T1.P02.S05 | [Legacy Layout retirement](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/implementation-plan.md) | Retire old authored types/codec/room-frame/compiler adapter, preserve algorithm proof and current format; must merge before drawing |
-| T2.P02.S02 | [Import, Place and existing transform completion](./t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/implementation-plan.md) | Consume admitted whole-object GLB resources, complete bounded placement/transform behavior and retained precision proof; no T4 dependency |
-| T3.P02.S02 | [Integrated final gate](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md) | Complete first Guide and Camera handover/return residuals, then independent integrated Capture/Preview acceptance; no T4 dependency |
+| T1.P02.S06 | [Performance foundation](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) | Peak-first, setup-free measurement on the M2; L/XL and realistic-load workloads; per-stage scaling evidence; algorithm work inside the one compiler and its consumers with equal-output proof; full-permissive library exploration; transferred S02 and T3 performance obligations; no product feature or format change |
+
+**Performance-first halt.** The [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
+behind it. None is released or started until S06 is accepted and merged. Strictly unrelated work,
+such as T3.P04 or owner phase closeouts, continues only through its own owner release. Inheritors
+rebase on S06's merged tree and measure on its method.
 
 T1's execution order is owned by the [T1.P02 register](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register);
 the roadmap's [where-things-stand index](./README.md#current-coordination-and-proposal-provenance)
 routes shipped, held and blocked scopes. No lane may implement a sibling's held scope to
 satisfy its own acceptance.
 
-**Files two released lanes both touch.** These are serialized, not split:
+**Shared files S06 touches.** S06 is the only released lane. A later release of strictly unrelated
+work edits any of these files only as a serialized patch against S06's recorded claim. The file's
+owner reviews it, as the [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+requires:
 
-| File | Lanes | Rule |
+| File or resource | Writer | Rule |
 | --- | --- | --- |
-| `packages/project-model/src/scene-planning/frame.ts` | T1.P02.S05 (writer), T2.P02.S02 (reader) | S05 owns the `normalizeLayoutRoomYaw` move. T2 does not edit `frame.ts`; if it must, it waits for S05's merge and rebases |
-| `packages/project-model/src/units/planning.ts` and units barrels | T2.P02.S02 (resource staging grant), T3.P02.S02 (Experience intents) | Additive edits only. The first lane to merge lands as is; the second rebases, resolves with the other domain's review and reruns its complete gate |
-| Stage host/shell (`routes/project/[projectId]/spatial/+page.svelte`, `authoring/stage/**`) | T2 (Card facts, Library/Find), T3 (Capture/Guide dock, Preview handover) | Each lane carries a bounded T1-reviewed patch inside its own PR; merge in acceptance order, later lane rebases and reruns |
-| `apps/api/src/app.ts` | T2.P02.S02 only in this batch | T3.P02.S02 adds no API route; T3.P04 takes API ownership only after T2.P02.S02 merges (explicit handoff), T3.P02.S02 is accepted and T3.P04 has its own release |
-| Visitor/Preview runtime (`museum/assets/AssetModel.svelte`, `visitor/**`) | T2 (approved-model resolution input), T3 (Preview lifecycle, `VisitorPreviewSurface.svelte`) | Distinct files where possible; shared files serialized in acceptance order; visitor/public boundary tests unchanged |
-| `apps/editor/perf/**` harness, fixtures and flows | All three lanes (new flows), H0 workflow owner T3 | New flow files per lane; shared harness/fixture edits serialized with T3 review |
-| `apps/editor/tests/helpers/**` and shared fixtures | T1.P02.S05 (legacy fixture retirement), others as needed | Serialize; each edit triggers every-lane + full suite; S05's fixture conversions land first when both touch one helper |
+| `apps/editor/perf/**` harness, fixtures and flows | S06 | H0 workflow owner T3 reviews shared harness and fixture edits; new flow files per lane |
+| `packages/layout-core/**`, the Layout unit, Layout adapters, Stage admission/host, `apps/editor/src/lib/layout/**` | S06 (T1) | One compiler; equal-output differential and count oracles; inheritors rebase on S06 |
+| Scene, import and render code (`authoring/adapters/scene/**`, `museum/assets/**`), Camera/Experience/Preview and `visitor/**` | T2 / T3 owners | S06 touches these only through a bounded patch reviewed by that owner; otherwise it records a named finding |
+| Dependency manifests and lockfile | S06, admitted packages only | [Full permissive licensing](../reference/decisions/performance-foundation-authorization-2026-10-24.md#full-permissive-licensing); each package, version and license recorded |
+| `apps/editor/tests/helpers/**` and shared fixtures | S06 as needed | Serialize; each edit triggers every lane plus the full suite |
+| `apps/api/**` | none in this batch | T3.P04 takes API ownership only after its own release and the explicit handoff from T2 |
+| Reference-machine measurement time (M2) | S06 | Machine-wide perf lock; no concurrent heavy lane during a measurement pass |
 
 Each lane records its shared-file claim (writer, expected patch base, reviewer) in its own
-baton before editing one of these files. DB-backed `test:api` runs use an isolated per-lane
-database or Compose stack ([local development](../local-development.md#backend-in-docker-recommended), "Parallel worktrees"),
+baton before editing one of these files. DB-backed `test:api` runs and S06's resource seeding use
+an isolated per-lane database or Compose stack ([local development](../local-development.md#backend-in-docker-recommended), "Parallel worktrees"),
 never a shared one another lane may reset. New dependencies follow the owner's
-[permissive-only admission ruling](../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction).
+[permissive-only admission ruling](../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction),
+narrowed for S06 to [full permissive licensing](../reference/decisions/performance-foundation-authorization-2026-10-24.md#full-permissive-licensing).
+The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/roadmap/cross-track-execution.md`.
 
 ## Shared files and merge protocol
 
 | Surface | Writable owner for this batch | Consumer/review boundary |
 | --- | --- | --- |
-| Legacy Layout vocabulary, compiler and `packages/project-model/src/project-layout-semantics.ts` registry exception | T1 retirement lane | T2/T3 review the minimal registry type/caller migration; preserve empty-registry refusal and world-local identity frames; coordinate Scene yaw ownership with T2 |
+| Layout compiler, kernels, representation and Stage admission | T1 (S06 in this batch) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
 | Stage host, session, input, contributions and shared shell | T1 | T2/T3 own bounded reviewed patches for their registered consumers; schedule shared-file edits with T1 and retain one host/selection/Camera authority |
-| Scene transform/resource admission, GLB import and relevant API/resource routes | T2 during import S02 | Shared F4/Save changes reviewed by T3; no foreign-domain rewrite or publication/resource-release closure |
-| Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime |
+| Scene transform/resource admission, GLB import and relevant API/resource routes | T2 (no released lane) | S06 reads the import recipe and resources format only to seed its workloads; shared F4/Save changes reviewed by T3; no foreign-domain rewrite or publication/resource-release closure |
+| Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime; S06 measures these flows and reports T3-owned misses |
+| Measurement harness (H0 workflow) | T3 | S06 edits the shared harness and fixtures through T3 review |
 | Future C3 project lifecycle persistence/API | T3 after explicit handoff from T2 | Transfer shared API editing ownership when import changes merge; C3 remains held and needs its own release |
 | Test contract, runtime-safe shared packages and boundary checks | Existing concern owner | Touch only required call sites with owner review; no duplicate protocol, silent boundary weakening or private test substitute |
 
@@ -140,11 +149,16 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 
 ## Residuals and planning follow-ons
 
-- **Performance:** keep each acceptance's explicit unmeasured rows. S01's F2 S/M open timings
-  remain assigned to T1.P02.S04 on the owner's MacBook Air M2, 16 GB, against H0's baseline.
-  H0 harness/bundle workflow shipped; unclaimed flow traces, hard rows and calibration remain
-  consumer evidence, not implied by a correctness pass. Import/transform/Preview lanes own
-  their changed-flow measurements. No new waiver is granted by this coordination.
+- **Performance:** keep each acceptance's explicit unmeasured rows. T1.P02.S06 takes, as
+  measurement on the owner's MacBook Air M2 (16 GB):
+  - S02's deduplication and experiment;
+  - T3.P02.S02's deferred Scope A rows;
+  - T3.P03.S02's L/XL and M/L drag gap.
+
+  S01's F2 S/M open timings remain assigned to T1.P02.S04, which cites and rechecks S06's numbers.
+  T2.P02.S02's owner-run rows remain with T2.P02.S03 on S06's method. Unclaimed flow traces, hard
+  rows and calibration remain consumer evidence, not implied by a correctness pass. No new waiver is
+  granted by this coordination.
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.
@@ -162,8 +176,10 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 
 ## Decision provenance
 
-The [post-Batch-E authorization](../reference/decisions/post-batch-e-authorization-2026-10-23.md)
-owns this batch's release. Accepted design stays in the ratified reference contracts.
+The [performance foundation authorization](../reference/decisions/performance-foundation-authorization-2026-10-24.md)
+owns this batch's release and the performance-first halt; the
+[post-Batch-E authorization](../reference/decisions/post-batch-e-authorization-2026-10-23.md)
+owns the shipped lanes' release. Accepted design stays in the ratified reference contracts.
 Earlier dated proposals, authorization protocols and original allocation reasoning are
 [archived historical evidence](../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md),
 not parallel current routes. The [2026-10-22 convergence ratification](../reference/decisions/product-convergence-ratification-2026-10-22.md)

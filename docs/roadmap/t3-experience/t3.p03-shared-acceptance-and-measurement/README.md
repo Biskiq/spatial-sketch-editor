@@ -51,6 +51,13 @@ PHASE CLOSE
 Stage:        closable
 ```
 
+**Transferred obligations** (owner replanning, 2026-10-24,
+[record](../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#transferred-obligations)).
+S02's unbuilt L/XL fixtures and its unrun M/L drag rows are now measured by
+[T1.P02.S06](../../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md).
+S06 edits the shared harness and fixtures with T3 review. S02's other open trace, hard-row and
+calibration items stay as its acceptance record states them.
+
 ## Ownership and boundaries
 
 | Area | Writer | Review |

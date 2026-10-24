@@ -20,11 +20,17 @@ OWNER DECISIONS (2026-10-23/24): T1 host patch accepted 2026-10-24; editable Car
        (option b); the placed-creator-model selection gap is kept unfixed as a T1/T2 follow-up.
 OWNER-RUN (unrun, not claimed): S02 shell observations, Preview pixels, reference-machine F5/F6/F13
        and GPU-memory rows, Draco/KTX2 sources, the >25 MiB derivative cap, real R2 and worker-boundary
-       timing. Each is listed in the S02 acceptance stub.
+       timing. Each is listed in the S02 acceptance stub. These stay with the final gate. T1.P02.S06
+       supplies their method and a baseline, not their acceptance. S06 may seed its realistic workload
+       through the import recipe and resources format. It changes neither, and a Scene/import/render
+       patch in S06 needs T2 review.
 FOLLOW-UPS: in-flight fetch dedupe across overlapping model resolutions; a model-failure notice can
        overwrite an unrelated route notice; the placed-model selection gap (T1/T2).
-NEXT:  Owner decision only. The phase's integrated final-gate slice is not authorized and starts only
-       from its own owner authorization. Phase close is owner-invoked and not claimed.
+NEXT:  Owner decision only. The phase's integrated final-gate slice is not authorized. It is halted
+       until T1.P02.S06 (performance foundation) is accepted and merged, and then starts only from its
+       own owner authorization. It measures on S06's method
+       (../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary).
+       Phase close is owner-invoked and not claimed.
 ROUTE: ./README.md → ../../roadmap/t2-composition/README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
 BLOCKER: none. Omitted scopes stay held.
