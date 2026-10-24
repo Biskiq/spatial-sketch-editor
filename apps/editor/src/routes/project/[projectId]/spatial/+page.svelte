@@ -271,7 +271,14 @@
 		if (active === null || stage === null) return;
 		const returned = returnPreview(stage.camera);
 		perfMark('preview:returned', { outcome: returned.kind });
-		if (returned.kind === 'refused') notice = returned.message;
+		// A return can be refused when a newer owner claimed the output while the
+		// isolated run was mounted. The Stage then owns nothing, so it mints its
+		// own inspection claim before it reports rather than leaving every Stage
+		// intent refused until a content change.
+		if (returned.kind === 'refused') {
+			stage.acquireInspection('exclusive');
+			notice = returned.message;
+		}
 	}
 
 	/**
@@ -1856,6 +1863,13 @@
 </script>
 
 <div class="editor-host">
+	<!--
+		The Head and the Index are authoring chrome, so they are not mounted while
+		the isolated Preview run owns the Camera output: a visible Undo, Save or
+		selection there would be a second writer reaching the source this run does
+		not own. Leaving Preview remounts the same host and selection state.
+	-->
+	{#if preview === null}
 	<EditorHead
 		{projectId}
 		projectName={boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : 'Loading project'}
@@ -1880,6 +1894,7 @@
 		{reducedMotion}
 		onToggleReducedMotion={() => (reducedMotion = !reducedMotion)}
 	/>
+	{/if}
 
 	{#if resumeOffer}
 		<div class="resume-offer" role="region" aria-label="Pending cloud save">
@@ -1922,6 +1937,7 @@
 	{/if}
 
 	<div class="editor-body">
+		{#if preview === null}
 		<EditorIndex
 			open={indexOpen}
 			onToggle={() => (indexOpen = !indexOpen)}
@@ -1951,6 +1967,7 @@
 			}}
 			onReveal={toggleReveal}
 		/>
+		{/if}
 
 		<div class="stage-frame">
 			{#if preview === null}
