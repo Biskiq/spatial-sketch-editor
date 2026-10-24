@@ -22,8 +22,10 @@ this slice delivers four things:
 1. A fast, honest measurement method on the designated reference machine.
 2. Measured evidence of how open, edit, Undo/Redo, orbit and memory scale from S to M to L, with XL
    and the realistic-L load as report-only rows.
-3. Algorithmic fixes for every stage that grows faster than the project, made inside the one
-   canonical compiler and its consumers, each with an equal-output proof.
+3. Locality: local interactions whose cost follows the affected set, not the project size. This
+   means removing superlinear passes and whole-project recomputation from hot paths, inside the one
+   canonical compiler and its consumers, each with an equal-output proof (see
+   [Scaling objective and locality](#scaling-objective-and-locality)).
 4. An aggressive math and geometry library exploration under full permissive licensing, with
    adoption only where a measurement and a correctness differential justify it.
 
@@ -100,6 +102,78 @@ named finding for that owner. S06 never changes another domain's semantics.
 - visitor isolation, with no editor helper in visitor or public chunks (rules 4–5);
 - one Camera authority;
 - no authored format change. If a fix seems to need one, stop and report.
+
+## Scaling objective and locality
+
+**Objective.** An ordinary local interaction costs what it changes, not what the project contains.
+Linear scaling is the floor, not the ceiling: whole-project work is a defect on any hot path where
+an edit affects a small region, even when that work is O(N). A project 10× or 100× the size of M is
+the design thought experiment. It is **not** a benchmark, promise or gate. The ratified S/M/L hard
+rows remain the acceptance gates.
+
+**Why this is needed now, not only at scale.** This is a hand calculation from existing evidence;
+Bench 1 confirms or refutes it.
+
+- The contract's per-edit Layout evaluation row is **≤ 8 ms at M, Hard**.
+- H0 calibration measured one whole-document compile of grid-7 at a 23.00 ms median on the M2.
+- Every Wall-handle pointer move (length, angle or rigid move) runs at least seven whole-document
+  passes in `finalizeWallGeometryCandidate` (`layout-core/src/layout-wall-first-precision.ts`, lines
+  1844–1960):
+  - pre-structural and pre-topology validation;
+  - face extraction;
+  - Room reconciliation;
+  - post-structural validation;
+  - portal relations;
+  - the compile.
+- So eliminating superlinear loops cannot meet that row: whole-project recompute per move misses it
+  about 3× even if the work were perfectly linear.
+
+**Notation:** N is the project's entity count; k is the affected dependency set (the entities whose
+compiled output an edit can change); V is the visible output.
+
+| Operation class | Examples | Required bound | Honest limit |
+| --- | --- | --- | --- |
+| Local | Wall-handle drag preview, F4 commit, Undo/Redo of a local edit, pick/hover | Compute O(k log N), GPU upload O(k), history memory O(changed data) per step | k is real work, and log N is index lookups; nothing here is constant-time |
+| Topology-local | Closing an enclosure, splitting or merging a Room | O(faces of the affected planar-graph component) | Can approach N in the worst case, for example one Wall closing a very large enclosure |
+| Visible-output-bound | Orbit, first frame | Per-frame O(V) | Independence from N needs batching and culling beyond S06 (H6) |
+| Genuinely global | Open, validating a loaded file, Save of the full canonical envelope, the content digest under the current format, replacement | Ω(N): linear with a small constant and never superlinear | Kept off the interactive hot path |
+
+**Invariants.** S06 enforces each one with a deterministic count oracle wherever it lands. Wherever
+it does not land, the measured violation is recorded as a finding.
+
+- **I1, locality:** for a fixed local edit, these counts stay within c·k at S, M, L and XL:
+  - entity evaluations;
+  - validations;
+  - mesh rebuilds and GPU uploads;
+  - cloned objects.
+- **I2, no superlinear pass:** every whole-project pass is O(N log N) or better, and every pair test
+  goes through an index. Pair visits stay ≤ c·(N + output pairs).
+- **I3, one evaluation per result:** compile, validation and Scene resolution run once per accepted
+  candidate. Install and Undo/Redo reuse that result by content identity.
+- **I4, defer global work:** canonical JSON and digests that no consumer needs synchronously are
+  computed lazily and memoized per immutable snapshot, with identical values.
+- **I5, incremental equals full:** every cached or incremental result equals the full canonical
+  compile on the same input. The full compile stays the authority, the fallback and the differential
+  oracle. Incremental evaluation runs the same compiler per entity; it is never a second
+  reconstruction (rule 6).
+
+**Hypothesis matrix, by expected end-to-end benefit.** The evidence column cites the trusted base
+(`696af6ea`). The estimates are the A/B/C workload counts and the stated assumptions, not measurements.
+
+| # | Today (evidence) | Today → proposed | Headroom estimate | Smallest discriminating check | Risk and semantics | Where |
+| --- | --- | --- | --- | --- | --- | --- |
+| H1 | Whole-document planner and compile on every pointer move (above) | ≥ 7 O(N) passes, plus H3's pair loops → O(k log N) incremental evaluation over the compiler's own dependency graph (Wall → Junctions → incident Walls → hosted Openings → boundary Rooms → their floor and ceiling). Per-entity results are keyed by an input digest. Global checks become index queries over the edit's swept bounds | Single-Wall drag at M: k ≈ 25–30 of N ≈ 340 entities. If per-entity cost is uniform, compile drops from 23 ms to ≈ 2 ms plus overhead. The full path grows ≥ 10× / 100× (≥ 230 ms / ≥ 2.3 s in the linear part alone), while incremental stays ≈ k | Count oracle: entities evaluated per move is constant across S/M/L/XL. Heavy differential: incremental equals full on every move of an exhaustive sweep. Bench 1/2 per-stage split | Highest value; medium-high risk (invalidation completeness). Output is identical, so “preview equals planner output” is preserved, not reopened | S06 primary experiment (D.3) |
+| H2 | The accept path repeats whole-project work: the planner compile; F4 capture `structuredClone` plus deep freeze (`f4/prepare.ts:447`, `acceptance-coordinator.ts:229–274`); acceptance normalization rehashing all five units, then validate, serialize and hash again (`units/acceptance.ts:105–255`); host re-admission validating twice, compiling, resolving Scene, hashing and serializing again (`host-acceptance.ts:245`, `source-admission.ts:182–219`) | About a dozen O(N) passes per accepted result → one compile, one validation, hashes only for changed units, serialization deferred to Save or download (I3, I4) | F4/F8 at M: an estimated 2–4× fewer whole-project passes (Bench 1 gives the per-pass split). Still O(N_layout) until H1 and H5 | Count oracle per accept: compiles 1, envelope validations 1, serializations 0 before Save, unit hashes equal to the changed units. Differential: installed snapshot, content ids and refusal verdicts equal today's | Low-medium. F4 and admission semantics are T3-owned, so T3 reviews. The admission verdict (“never a snapshot the visitor runtime could not prepare”) is unchanged | S06 (D.1, widened) |
+| H3 | Quadratic joins: Rooms × Openings with a boundary `find` (`layout-geometry.ts:177`); Walls × Openings `filter` (`layout-geometry.ts:300`); faces × predecessor Rooms in reconciliation (`layout-room-reconciliation.ts:678`) | O(R·O·B), O(W·O), O(F·R) → O(N) id indexes, and O(N log N + overlaps) with a box index for faces | Pair visits: M ≈ 20 k; L ≈ 297 k; 10× M ≈ 2.0 M; 100× M ≈ 204 M (seconds). With indexes they become linear | Count oracle on pair visits (reconciliation already counts pair classes). Full compiled result deep-equal on S/M/L/XL | Low | S06, first, because it is cheap and simplifies H1 |
+| H4 | Every geometry change, including each drag preview, rebuilds every Wall mesh, recreates the material factory and disposes all geometry (`visitor/VisitorLayoutShell.svelte:65–111`, rendered by the Stage) | O(W) CPU build plus O(W) GPU upload per frame → retained per-entity meshes rebuilt only for entities whose compiled output changed, with persistent materials | Per drag frame at M: ≈ k/W of today's mesh and upload work. Flat at 10× / 100× | Count oracle: geometries built and uploaded per single-Wall edit ≤ c·k; materials created per edit = 0. Per-Wall buffers equal a full rebuild | Medium. The file is shared with Preview under `visitor/`, so T3 reviews. Same renderer and same output | S06 (bounded patch) |
+| H5 | Each capture deep-clones and freezes the whole envelope, and each history state holds the full source plus its canonical JSON | O(N) time and memory per step → structural sharing: first unit-level (an unchanged unit is shared by reference), then entity-level copy-on-write | Memory per history step goes from ≈ the canonical envelope's size to ≈ the size of the changed data. This decides heap after 100 edits at 10× / 100× | Count oracle: objects cloned per accept ≤ c·k. Heap growth after 100 edits ∝ the changed data (F13 and heap rows) | Medium. F4 immutability and stale-writer guarantees are T3-owned | Unit-level in S06 with T3 review; entity-level persistent structure is a follow-on |
+| H6 | One mesh per Wall, Room surface and door; per-object culling; raycast picking over objects | Draw calls and culling O(N) per frame → O(visible chunks) through static batching per spatial cell with per-chunk rebuild. Picking O(log N) through a BVH | Draw calls: M ≈ 300; L ≈ 1 k; 10× M ≈ 3 k (above the 2,500 target); 100× ≈ 30 k | The benches record draw calls and frame time at S/M/L/XL, plus a draw-call count oracle | A new rendering architecture: owner decision | Measure in S06. A BVH picking probe only if picking shows in the traces; batching is a follow-on |
+| H7 | A content revision is SHA-256 over the canonical unit bytes; Save PUTs the full canonical JSON | Ω(unit bytes) per digest and per Save. This is inherent in the current format | At 100× this is hundreds of ms per Save; I4 keeps it off the hot path | Benches record F9 bytes and time at L/XL | A per-entity (Merkle) digest or a delta Save is a format/F/T3 decision | Owner decision |
+| H8 | Open is genuinely global, and about 400 ms of warm M open is unattributed outside compile and admission (53 ms) | Ω(N) → linear with a small constant. A progressive first frame by visibility is streaming-adjacent | Bench 1 attributes it; H2 and H4 also cut its repeated passes | Bench 1 per-stage attribution is itself the experiment | Progressive or streamed open belongs to T4 | Attribution and pass removal in S06; progressive open is owner/T4 |
+
+Everything in S06 runs inside the existing authorities. It adds no format, gate, rendering
+architecture, preview semantics or bench pass. A hypothesis that needs one of those stops and becomes
+an owner proposal in F.
 
 ## Scope
 
@@ -238,34 +312,51 @@ that grows faster than linear. The unattributed part of the M open is the first 
 
 ### D. Algorithm work
 
-1. **Remove repeated work first** (transferred from S02):
-   - Deduplicate the install compile, the Undo/Redo re-admission and repeated
-     representation/mesh rebuilds. Reuse a result only where revision or content identity proves it
-     is the same result, with invalidation covering replacement, a new revision and changed inputs.
-   - Prove full output equivalence with a heavy-lane differential and a deterministic compile-count
-     oracle across an ordinary edit, a refusal, Undo/Redo and replacement.
-   - Never accept stale geometry to hit a timing target.
-2. **Fix the superlinear stages.** Profiling decides where. Candidates:
-   - spatial indexing in place of pairwise scans;
-   - incremental invalidation keyed on topology identity, so one Wall edit rebuilds only the Walls,
-     Openings and Rooms it affects;
-   - instancing or batching of repeated geometry where rendering is the bound;
-   - revision-keyed bounded caches;
-   - workers for whole pure stages.
+Work the [hypothesis matrix](#scaling-objective-and-locality) in this order: H3, then H2, then H4
+alongside H1, then H5. Each hypothesis carries its count oracle and differential from the matrix.
+Linear whole-project work on a local path is a defect (I1), not only superlinear work.
 
-   A worker must meet the matching-result completion deadlines as well as the main-thread budgets.
-   Moving work off-thread alone proves nothing.
-3. **Bounded experiment** (transferred from S02). If the hand calculation after steps 1–2, or
-   Bench 2, shows F3 still missing at M, run the incremental or worker experiment inside the same compiler and evaluator authority and keep the
-   full differential oracle. If it then misses at L, changing “preview equals planner output” is an
-   owner decision: report the measurement and stop that semantic change.
-4. **Scale invariants as correctness oracles.** Deterministic count assertions, not timings, guard
-   each fix in the correctness lanes:
-   - compiles per edit;
-   - admissions per Undo/Redo;
-   - Walls rebuilt per single-Wall edit;
-   - draw calls per frame at S, M and L;
-   - for a fixed local edit, constant work across S, M and L.
+1. **Remove repeated work first** (H3, H2; this includes the work transferred from S02):
+   - Index the quadratic joins.
+   - Make the accept, install and Undo/Redo path compile, validate and resolve once per accepted
+     result.
+   - Hash only the changed units, and defer serialization to Save or download.
+   - Reuse a result only where revision or content identity proves it is the same result, with
+     invalidation covering replacement, a new revision and changed inputs.
+   - Prove full output equivalence with a heavy-lane differential and the I3 count oracle across an
+     ordinary edit, a refusal, Undo/Redo and replacement.
+   - Never accept stale geometry to hit a timing target.
+2. **Retain the representation** (H4): per-entity meshes and persistent materials, rebuilt only for
+   entities whose compiled output changed. This is a bounded patch to the shared `visitor/` shell,
+   with T3 review.
+3. **Primary experiment: locality-aware incremental evaluation** (H1; this replaces S02's
+   conditional experiment). The hand calculation above predicts that whole-document evaluation misses
+   the per-edit M row however linear it is, so this experiment is primary, not conditional on an F3
+   miss. A worker alone cannot fix it: moving 23 ms off-thread leaves both the evaluation row and
+   matching-result latency unmet.
+   - Scope it to the single-Wall drag preview and the F4 commit of length, angle and rigid-move
+     edits.
+   - Evaluate the affected set k through the compiler's own per-entity functions, with per-entity
+     results keyed by an input digest.
+   - Answer global constraints (crossings, Room disjointness, id uniqueness) by index queries over
+     the edit's swept bounds.
+   - Fall back to the full compile whenever the affected set cannot be bounded.
+   - The full compile stays the authority and the oracle (I5). The experiment is removable: if
+     Bench 2 falsifies it, or its differential is not exhaustive and green, delete it and keep the
+     full path.
+   - If the per-edit row still misses at L after it, changing “preview equals planner output” is an
+     owner decision: report the measurement and stop that semantic change.
+4. **Structural sharing** (H5, unit level): an unchanged unit is shared by reference through capture
+   and history, and only new objects are frozen. Entity-level copy-on-write is a follow-on.
+5. **Scale invariants as correctness oracles.** Deterministic count assertions, not timings, guard
+   each landed hypothesis in the correctness lanes, running at S, M, L and XL:
+   - compiles, validations and admissions per edit and per Undo/Redo (I3);
+   - entities evaluated, meshes rebuilt and objects cloned per single-Wall edit (I1);
+   - pair visits per compile (I2);
+   - draw calls per frame;
+   - for a fixed local edit, constant work across S, M, L and XL.
+
+   These run freely between benches, because they are correctness tests, not benchmarks.
 
 ### E. Math and geometry library exploration
 
@@ -311,8 +402,17 @@ consuming a prebuilt, permissively licensed WASM package is in scope.
 ### F. Tier proposal (owner decision)
 
 From the measured slope, propose whether the L budgets or the representative workload tiers need an
-amendment, for example whether realistic-L should replace the grid-only L tier. This is a proposal
-only: the performance contract changes solely by owner ratification.
+amendment, for example whether realistic-L should replace the grid-only L tier. Also propose, as
+owner decisions with their Bench evidence and hand-calculated 10× / 100× headroom:
+
+- adding the I1–I5 locality invariants to the contract as count-based rows;
+- entity-level structural sharing (H5);
+- batched, culled rendering (H6);
+- a per-entity digest or delta Save (H7);
+- progressive open (H8).
+
+These are proposals only: the performance contract and the formats change solely by owner
+ratification.
 
 ## Benchmark sequence (owner-run, at most three passes)
 
@@ -325,14 +425,19 @@ run a full benchmark pass; between passes they work from Bench 1's data.
 2. **Bench 1: initial (owner).** One pass on the M2 with the new method at S, M and L, plus XL and
    the realistic-L load as report-only. It includes the old-method F2 S/M comparison (A.6) and the
    per-stage traces. The agent records it in the acceptance record as owner-run.
-3. **Optimize (agent).** Characterize from Bench 1 (C), then deduplicate (D.1) and fix and explore
-   (D.2–D.4, E), checking each change by hand calculation as defined below. Correctness lanes,
-   differentials and count oracles run as usual, since they are not benchmarks. Hand over with the
-   predicted result per row.
+3. **Optimize (agent).** Characterize from Bench 1 (C) and refit each matrix row's cost model to
+   the measured per-stage times. Then land D.1–D.5 in matrix order and explore libraries (E). Check
+   each change by hand calculation as defined below. Correctness lanes, differentials and count
+   oracles run as usual, since they are not benchmarks. Hand over with a predicted result per row
+   and per hypothesis.
 4. **Bench 2: rerun (owner).** The same pass and workloads, on the optimized revision. The agent
    records it next to the predictions and explains every prediction miss beyond noise.
-5. **Fix (agent).** Resolve what Bench 2 shows: regressions, mispredictions, remaining hard misses
-   and the D.3 experiment if needed. Algorithm fixes may continue, but no new library candidate
+   **Falsification rule:** a hypothesis is refuted for this slice when the target stage's measured
+   time does not fall within the stated margin of its prediction. This applies even when its count
+   oracle dropped as predicted, because the cost model is then wrong; the agent re-attributes from
+   the traces.
+5. **Fix (agent).** Resolve what Bench 2 shows: regressions, mispredictions and remaining hard
+   misses. Keep or remove the H1 experiment on its Bench 2 evidence (D.3). Algorithm fixes may continue, but no new library candidate
    enters after Bench 2 (E). Check by hand calculation again and hand over. If a hard miss
    cannot be resolved without changing “preview equals planner output” or a budget, report it to the
    owner instead of fixing it.
@@ -342,7 +447,7 @@ run a full benchmark pass; between passes they work from Bench 1's data.
    or a ruling. It is never re-run silently.
 
 **Hand calculation.** For each flow and stage, the predicted time is Bench 1's measured stage time
-scaled by the change in deterministic operation counts. The counts come from the D.4 oracles (for
+scaled by the change in deterministic operation counts. The counts come from the D.5 oracles (for
 example compiles, admissions, Walls rebuilt, draw calls or pairwise tests), or from the complexity
 change with the workload sizes put in. The stages are then summed per flow and compared with the
 budget, with the margin and every assumption stated. A library candidate may add one bounded Node
@@ -360,6 +465,7 @@ Use the work-checkpoint skill at each handover, since the owner's runs separate 
 | Workloads | L/XL fixtures and the realistic-L load validate; asset sources and licenses recorded; stack isolation recorded without credentials |
 | Characterization | From Bench 1: per-stage attribution and scaling at S/M/L for F2/F3/F4/F7/F8/F13; superlinear stages named; XL and realistic-L load reported |
 | Algorithm | Each optimization has an equal-output heavy differential and a count oracle; a recorded hand-calculated prediction; Bench 1 versus Bench 2/3 on the same workload and environment; no format change; boundary and visitor-isolation tests green |
+| Scaling invariants | For every hypothesis S06 lands, its I1–I3 count oracle is green at S, M, L and XL, and its I5 differential is green. For every hypothesis it does not land, the measured violation and its 10× / 100× hand calculation are recorded. H6–H8 and entity-level H5 are proposed to the owner (F), never implemented silently |
 | Budgets | From Bench 3: hard S/M rows for F2, F3, F4, F7, F8, F13 and per-edit evaluation; L hard rows (F3, F4, F8, F13); a hard miss is resolved before Bench 3 or escalated to the owner per D.3; target rows dispositioned |
 | Libraries | Candidate matrix with license evidence; adopted packages recorded by package, version and license |
 | Transferred rows | T3.P02.S02 Scope A rows (F10 at S/M, capture/bind, F13, Stage initial-load delta) measured in the benches, each with a disposition; T3.P03.S02 L/XL gap closed; T2.P02.S03's baseline supplied without claiming its acceptance |
@@ -385,4 +491,6 @@ S06 does none of the following:
 - add a CI timing gate, benchmark registry or schedule;
 - add a new language toolchain;
 - change “preview equals planner output” semantics, or any budget, without an owner ruling;
+- implement batched or culled rendering, a new digest or Save protocol, progressive open, or
+  entity-level structural sharing (H5–H8 follow-ons are owner proposals in F);
 - record the H0 trace-method ruling, which stays the owner's.
