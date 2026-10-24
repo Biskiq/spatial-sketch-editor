@@ -51,7 +51,21 @@ import {
 } from './operations';
 import { resolveSceneSupport } from './support';
 import type { NormalizedPlacementDefinition } from './types';
+import {
+	creatorModelDefinitionKey,
+	creatorModelResourceEntry,
+	withCreatorModelResource,
+	type CreatorModelResourceEntry
+} from './model-resource';
 
+/**
+ * The four existing-object planners change Scene only.
+ *
+ * `place-object` is the **single** planner granted typed-resource staging: a
+ * creator model's first placement installs its `model` resource, exact lock and
+ * entity in one accepted result. No other Scene operation may write resources,
+ * and the host's own admission must grant staging independently.
+ */
 const SCENE_PLANNER_ADMISSION: PlannerAdmission = Object.freeze({
 	domain: 'scene',
 	compound: false,
@@ -59,12 +73,27 @@ const SCENE_PLANNER_ADMISSION: PlannerAdmission = Object.freeze({
 	resources: false
 });
 
+const SCENE_PLACEMENT_ADMISSION: PlannerAdmission = Object.freeze({
+	domain: 'scene',
+	compound: false,
+	units: false,
+	resources: true
+});
+
 export type ScenePlannerOptions = {
 	/**
 	 * The host's admitted normalized definitions, captured before planning. An
 	 * empty list admits no new placement; existing-object operations still work.
+	 *
+	 * A provider is re-read for every preparation: a creator model's definitions
+	 * come from the currently accepted envelope and are only known after an
+	 * import, while the planner registration outlives it. The intent still carries
+	 * the captured `metadataContentId`, so a changed set refuses
+	 * (`definition-changed`) instead of placing a different object.
 	 */
-	readonly definitions?: readonly NormalizedPlacementDefinition[];
+	readonly definitions?:
+		| readonly NormalizedPlacementDefinition[]
+		| (() => readonly NormalizedPlacementDefinition[]);
 };
 
 /**
@@ -74,13 +103,18 @@ export type ScenePlannerOptions = {
 export function createScenePlanners(
 	options: ScenePlannerOptions = {}
 ): readonly DomainPlanner<ProjectEnvelope>[] {
-	const definitions = new Map(
-		(options.definitions ?? []).map((definition) => [definition.definitionKey, definition])
-	);
+	const definitions = options.definitions;
+	const definitionsOf = (): ReadonlyMap<string, NormalizedPlacementDefinition> =>
+		new Map(
+			(typeof definitions === 'function' ? definitions() : (definitions ?? [])).map((definition) => [
+				definition.definitionKey,
+				definition
+			])
+		);
 	return SCENE_OPERATION_KINDS.map((kind) =>
 		scenePlanner(kind, (request) =>
 			kind === 'place-object'
-				? planPlaceObject(request, definitions)
+				? planPlaceObject(request, definitionsOf())
 				: planExistingObject(request, kind)
 		)
 	);
@@ -93,7 +127,7 @@ function scenePlanner(
 	return {
 		id: `scene.${kind}`,
 		kind,
-		admission: SCENE_PLANNER_ADMISSION,
+		admission: kind === 'place-object' ? SCENE_PLACEMENT_ADMISSION : SCENE_PLANNER_ADMISSION,
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare
@@ -145,6 +179,60 @@ function planPlaceObject(
 		);
 	}
 
+	// A first creator-model placement introduces its resource and exact lock in the
+	// same accepted result as the entity. The definition must already name that
+	// resource, so a payload can never register one model and place another.
+	let resourceEntry: CreatorModelResourceEntry | null = null;
+	if (payload.modelResource !== undefined) {
+		if (
+			definition.creationDefaults.kind !== 'model' ||
+			definition.creationDefaults.assetId !== payload.modelResource.id ||
+			definition.definitionKey !== creatorModelDefinitionKey(payload.modelResource.id)
+		) {
+			return rejected(
+				'invalid-value',
+				'The placement resource does not match the definition it is placed with.',
+				[payload.modelResource.id, definition.creationDefaults.kind === 'model' ? definition.creationDefaults.assetId : definition.definitionKey]
+			);
+		}
+		resourceEntry = creatorModelResourceEntry(payload.modelResource.id, payload.modelResource);
+		if (resourceEntry === null) {
+			return rejected(
+				'invalid-value',
+				'The approved model revision is not a well-formed creator model resource.',
+				[payload.modelResource.reportDigest]
+			);
+		}
+		// The definition and the introduced resource must describe the same object:
+		// the same confirmed footprint and contact, and the same recorded report the
+		// definition's provenance names. Otherwise the entity pose (computed from
+		// the definition) and the stored placement would disagree from the first frame.
+		const detail = resourceEntry.resource.model;
+		const provenance = definition.admission.provenance;
+		const extent = definitionFootprintExtent(definition);
+		if (
+			detail === undefined ||
+			provenance.kind !== 'verified-model' ||
+			provenance.verificationId !== `creator-import:${payload.modelResource.reportDigest}` ||
+			!sameMeter(detail.placement.footprint.width, extent.width) ||
+			!sameMeter(detail.placement.footprint.depth, extent.depth) ||
+			!sameMeter(detail.placement.contactMinY, definition.contactMinY)
+		) {
+			return rejected(
+				'invalid-value',
+				'The introduced model resource and the placement definition disagree about the approved footprint or contact.',
+				['model-resource-agreement']
+			);
+		}
+		if (request.snapshot.domain.source.units.resources.data.resources.some((resource) => resource.id === payload.modelResource!.id)) {
+			return rejected(
+				'invalid-value',
+				`Model resource "${payload.modelResource.id}" is already in the accepted envelope; place another instance without introducing it again.`,
+				['duplicate-resource']
+			);
+		}
+	}
+
 	const point = composedPoint(payload.worldXZ, payload.frame);
 	if (point === null) return rejected('invalid-value', 'The placement X/Z is not finite.', ['worldXZ']);
 	const support = resolveSceneSupport({
@@ -185,7 +273,30 @@ function planPlaceObject(
 		entityId: allocation.entityId,
 		scene: prepared.candidate.scene
 	});
-	return toOutcome(request, 'place-object', result);
+	return toOutcome(request, 'place-object', result, resourceEntry);
+}
+
+/** The occupied X/Z extent of a definition's canonical footprint. */
+function definitionFootprintExtent(definition: NormalizedPlacementDefinition): {
+	readonly width: number;
+	readonly depth: number;
+} {
+	let minX = Infinity;
+	let maxX = -Infinity;
+	let minZ = Infinity;
+	let maxZ = -Infinity;
+	for (const [x, z] of definition.footprintMeters) {
+		minX = Math.min(minX, x);
+		maxX = Math.max(maxX, x);
+		minZ = Math.min(minZ, z);
+		maxZ = Math.max(maxZ, z);
+	}
+	return { width: maxX - minX, depth: maxZ - minZ };
+}
+
+/** Confirmed metric facts compare at the precision the recipe records. */
+function sameMeter(left: number, right: number): boolean {
+	return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= 1e-9;
 }
 
 function planExistingObject(
@@ -303,22 +414,41 @@ function planOperation(
 function toOutcome(
 	request: PlannerRequest<ProjectEnvelope>,
 	kind: SceneOperationKind,
-	result: SceneOperationResult
+	result: SceneOperationResult,
+	resourceEntry: CreatorModelResourceEntry | null = null
 ): PlannerOutcome<ProjectEnvelope> {
 	if (result.kind === 'rejected') {
 		return rejected(result.code, result.message, result.diagnostics.map((issue) => issue.message));
+	}
+	const sceneSource = replaceUnitData(request.snapshot.domain.source, 'scene', result.scene);
+	const source = resourceEntry === null ? sceneSource : withCreatorModelResource(sceneSource, resourceEntry);
+	if (source === null) {
+		return rejected(
+			'invalid-value',
+			'The model resource could not be added to the candidate envelope.',
+			[resourceEntry?.resource.id ?? 'model-resource']
+		);
 	}
 	const candidate: PreparedCandidate<ProjectEnvelope> = {
 		operationId: request.intent.operationId,
 		sourceKind: request.snapshot.sourceKind,
 		sourceVersion: request.snapshot.sourceVersion,
-		source: replaceUnitData(request.snapshot.domain.source, 'scene', result.scene),
+		source,
 		changes: [
 			{
 				kind: `scene-${kind}`,
 				subjectIds: [result.entityId],
 				fields: [...result.fields]
-			}
+			},
+			...(resourceEntry === null
+				? []
+				: [
+						{
+							kind: 'resource-model-created',
+							subjectIds: [resourceEntry.resource.id],
+							fields: ['pin', 'model', 'lock']
+						}
+					])
 		],
 		correspondence: result.correspondence.map((entry) => ({
 			relation: entry.relation,

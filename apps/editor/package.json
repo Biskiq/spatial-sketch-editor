@@ -18,11 +18,16 @@
     "perf:bundle": "node perf/bundle-report.mjs"
   },
   "dependencies": {
+    "@gltf-transform/core": "^4.4.1",
+    "@gltf-transform/extensions": "^4.4.1",
+    "@gltf-transform/functions": "^4.4.1",
     "@portfolio/camera-core": "*",
     "@portfolio/layout-core": "*",
     "@portfolio/project-model": "*",
     "@threlte/core": "^8.0.4",
     "@threlte/extras": "^9.0.2",
+    "draco3d": "^1.5.7",
+    "meshoptimizer": "^1.1.1",
     "three": "^0.186.1"
   },
   "devDependencies": {

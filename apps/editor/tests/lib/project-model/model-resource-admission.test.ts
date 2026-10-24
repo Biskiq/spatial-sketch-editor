@@ -18,6 +18,11 @@ import { describe, expect, it } from 'vitest';
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
 import type { PlannerAdmission } from '@portfolio/project-model';
 import {
+	creatorModelDefinition,
+	creatorModelResourceEntry,
+	withCreatorModelResource
+} from '@portfolio/project-model/scene-planning';
+import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	MODEL_RESOURCE_MIME,
@@ -350,5 +355,116 @@ describe('the resource grant is the host’s plus the planner’s', () => {
 		const { before, after } = await pair();
 		const adapter = createUnitAcceptanceAdapter({ compound: true, resourceStaging: true });
 		expect(adapter.validateChange!(before, after, planner)).toEqual([]);
+	});
+});
+
+/**
+ * T2.P02.S02 — approval → resource + lock, and resource → placement definition.
+ *
+ * These are the two translations the import journey adds over S01's storage. Both
+ * are total and refuse rather than repair, so an unplaceable or unpinnable
+ * approval can never reach the floor through a fallback.
+ */
+describe('creator model placement translation', () => {
+	function approval(overrides: Record<string, unknown> = {}) {
+		return {
+			derivative: {
+				hash: DERIVATIVE_HASH,
+				mime: MODEL_RESOURCE_MIME,
+				size: 4096,
+				locator: `/projects/project-1/models/content/${DERIVATIVE_HASH}`
+			},
+			source: { manifestHash: SOURCE_MANIFEST_HASH, size: 8192, fileCount: 2 },
+			recipe: { id: 'creator-import@1', version: 1 },
+			reportDigest: REPORT_DIGEST,
+			placement: {
+				metresPerSourceUnit: 0.01,
+				pivot: [0, 0, 0] as [number, number, number],
+				footprint: { width: 0.8, depth: 0.6 },
+				contactMinY: -0.25
+			},
+			...overrides
+		} as Parameters<typeof creatorModelResourceEntry>[1];
+	}
+
+	it('turns one approval into a pinned model resource and its exact lock', () => {
+		const entry = creatorModelResourceEntry(MODEL_ID, approval());
+		expect(entry).not.toBeNull();
+		expect(entry!.resource).toMatchObject({
+			kind: 'model',
+			id: MODEL_ID,
+			contentRevision: DERIVATIVE_HASH,
+			pin: { hash: DERIVATIVE_HASH, mime: MODEL_RESOURCE_MIME, size: 4096 },
+			unresolved: null
+		});
+		expect(entry!.lock).toMatchObject({
+			domain: 'resource:model',
+			subjectId: MODEL_ID,
+			contentRevision: DERIVATIVE_HASH,
+			pin: { hash: DERIVATIVE_HASH }
+		});
+	});
+
+	it('refuses an approval the editor cannot pin or place', () => {
+		const cases: [string, Record<string, unknown>][] = [
+			['wrong media type', { derivative: { ...approval().derivative, mime: 'model/gltf+json' } }],
+			['bad pin hash', { derivative: { ...approval().derivative, hash: 'sha256-nope' } }],
+			['zero derivative', { derivative: { ...approval().derivative, size: 0 } }],
+			['unknown recipe', { recipe: { id: 'creator-import@2', version: 2 } }],
+			['bad report digest', { reportDigest: 'not-a-digest' }],
+			['non-positive scale', { placement: { ...approval().placement, metresPerSourceUnit: 0 } }],
+			['degenerate footprint', { placement: { ...approval().placement, footprint: { width: 0, depth: 0.6 } } }],
+			['non-finite contact', { placement: { ...approval().placement, contactMinY: Number.NaN } }],
+			['no source files', { source: { ...approval().source, fileCount: 0 } }]
+		];
+		for (const [label, overrides] of cases) {
+			expect(creatorModelResourceEntry(MODEL_ID, approval(overrides)), label).toBeNull();
+		}
+		expect(creatorModelResourceEntry('   ', approval())).toBeNull();
+	});
+
+	it('derives the normalized definition from the confirmed placement, not from a mesh', async () => {
+		const entry = creatorModelResourceEntry(MODEL_ID, approval())!;
+		const definition = await creatorModelDefinition(entry.resource, 'Chair');
+		expect(definition).not.toBeNull();
+		expect(definition!.definitionKey).toBe('model:creator-model-1');
+		expect(definition!.contactMinY).toBe(-0.25);
+		expect(definition!.footprintMeters).toEqual([
+			[-0.4, -0.3],
+			[0.4, -0.3],
+			[0.4, 0.3],
+			[-0.4, 0.3]
+		]);
+		expect(definition!.creationDefaults).toEqual({
+			kind: 'model',
+			name: 'Chair',
+			assetId: MODEL_ID,
+			fallback: 'generic'
+		});
+		expect(definition!.admission.provenance).toEqual({
+			kind: 'verified-model',
+			verificationId: `creator-import:${REPORT_DIGEST}`
+		});
+
+		// The identity covers the captured metadata: a different name is a different
+		// definition, so a replayed placement refuses instead of renaming silently.
+		const renamed = await creatorModelDefinition(entry.resource, 'Stool');
+		expect(renamed!.metadataContentId).not.toBe(definition!.metadataContentId);
+		// And it is stable for the same facts.
+		const again = await creatorModelDefinition(entry.resource, 'Chair');
+		expect(again!.metadataContentId).toBe(definition!.metadataContentId);
+	});
+
+	it('adds the resource and lock together, and refuses a duplicate or a broken pin', async () => {
+		const source = await envelope();
+		const entry = creatorModelResourceEntry(MODEL_ID, approval())!;
+		const once = withCreatorModelResource(source, entry);
+		expect(once).not.toBeNull();
+		expect(once!.units.resources.data.resources.map((resource) => resource.id)).toEqual([MODEL_ID]);
+		expect(once!.dependencyLock.entries.filter((lock) => lock.subjectId === MODEL_ID)).toHaveLength(1);
+		// The original envelope is untouched: the caller installs the candidate.
+		expect(source.units.resources.data.resources.some((resource) => resource.id === MODEL_ID)).toBe(false);
+		// A second introduction of the same id refuses rather than silently de-duping.
+		expect(withCreatorModelResource(once!, entry)).toBeNull();
 	});
 });

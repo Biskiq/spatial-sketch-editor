@@ -38,6 +38,11 @@
     scale = 1,
     fallback,
     fallbackFootprint,
+    /**
+     * Approved creator-model bytes, resolved by whoever owns the project session.
+     * The URL is runtime data: this component never knows how it was authorised.
+     */
+    resolvedUrl = null,
     enabled = true,
     visible = true,
     wireframe = false,
@@ -60,6 +65,8 @@
     fallback?: FallbackKind;
     /** Approved creator-model footprint (metres); sizes the generic fallback box. */
     fallbackFootprint?: { width: number; depth: number };
+    /** A resolved approved derivative URL; null falls back to the catalogue asset. */
+    resolvedUrl?: string | null;
     enabled?: boolean;
     visible?: boolean;
     wireframe?: boolean;
@@ -87,12 +94,25 @@
   /** Internal load flag — avoid writing `$bindable status` inside the loader effect. */
   let loadStatus = $state<AssetLoadStatus>('idle');
 
+  // A resolved approved derivative wins over the catalogue file: a creator model
+  // is not in the catalogue at all, and its bytes come from the project's own
+  // approved revision. The catalogue path is unchanged when nothing is resolved.
+  const loadUrl = $derived(
+    resolvedUrl ??
+      (asset?.productionFile !== undefined &&
+      (asset.status === 'approved' || asset.status === 'testing')
+        ? asset.productionFile
+        : null)
+  );
+
+  // A creator model has no catalogue record, so its shadow flags come from the
+  // renderer's defaults rather than from an asset entry that does not exist.
+  const castShadow = $derived(asset?.castShadow ?? true);
+  const receiveShadow = $derived(asset?.receiveShadow ?? true);
+
   $effect(() => {
-    const shouldLoad =
-      enabled &&
-      Boolean(asset?.productionFile) &&
-      (asset?.status === 'approved' || asset?.status === 'testing');
-    const url = asset?.productionFile;
+    const shouldLoad = enabled && Boolean(loadUrl);
+    const url = loadUrl;
 
     if (!shouldLoad || !url) {
       instance = undefined;
@@ -113,8 +133,8 @@
       const activeScope = scope;
       ownedInstance = cloneModelScene(
         gltf.scene,
-        shadows && asset.castShadow,
-        shadows && asset.receiveShadow
+        shadows && castShadow,
+        shadows && receiveShadow
       );
       if (activeEffective) {
         // Drop any prior remap before re-applying to the new instance.

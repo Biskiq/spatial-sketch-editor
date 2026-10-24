@@ -28,10 +28,13 @@
  */
 
 import {
+	creatorModelResourcePayload,
 	floorTransformSupport,
 	planMoveHorizontal,
 	planResizeOnFloor,
 	planSetYaw,
+	type CreatorModelResourceEntry,
+	type NormalizedPlacementDefinition,
 	type SceneOperationContext,
 	type SceneOperationResult
 } from '@portfolio/project-model/scene-planning';
@@ -41,7 +44,7 @@ import type { FrameReference, SemanticReference } from '@portfolio/project-model
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
+import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 
 import {
 	nativePlacementContactMinY,
@@ -71,6 +74,12 @@ export type SceneEditingSnapshot = {
 		readonly layout: LayoutUnitPayload;
 		readonly scene: CameraFreeSceneDocument;
 	};
+	/**
+	 * The approved floor contact of one model instance, read from the accepted
+	 * envelope's `model` resource. A creator model's contact is authored metadata,
+	 * not a live mesh bound, so only the resource can answer it.
+	 */
+	readonly contactMinYFor?: (entity: SceneEntity) => number | null;
 	readonly compileGeneration: string;
 	readonly evaluationId: string;
 	/**
@@ -104,6 +113,20 @@ export type SceneCandidate = {
 	readonly scale: number;
 	/** Present only when snap was applied; feedback must show it. */
 	readonly snappedStep: number | null;
+	/** A creator model's confirmed footprint, so its ghost is its own extent. */
+	readonly footprint?: { readonly width: number; readonly depth: number };
+};
+
+/**
+ * One approved creator model armed for placement.
+ *
+ * `resource` is present only while the resource is not yet in the accepted
+ * envelope: the first placement installs it with the entity. Later placements
+ * reuse the accepted resource and lock and carry `null`.
+ */
+export type ArmedModelPlacement = {
+	readonly definition: NormalizedPlacementDefinition;
+	readonly resource: CreatorModelResourceEntry | null;
 };
 
 export type SceneSessionOutcome =
@@ -130,6 +153,18 @@ export type ScenePlacementSession = {
 	/** The primitive pointer Place will propose; explicit, defaulting to `box`. */
 	placePrimitive(): NativePlacementPrimitive;
 	setPlacePrimitive(primitive: NativePlacementPrimitive): void;
+	/** Arm one approved creator model for the next floor placement, or clear it. */
+	setArmedModel(model: ArmedModelPlacement | null): void;
+	armedModel(): ArmedModelPlacement | null;
+	/** Begin one pointer placement of the armed creator model. */
+	beginPlaceModel(model: ArmedModelPlacement): SceneSessionOutcome;
+	/** Preview one creator-model placement at a resolved floor elevation. */
+	previewPlaceModel(
+		model: ArmedModelPlacement,
+		x: number,
+		z: number,
+		supportElevation: number
+	): SceneSessionOutcome;
 	previewMove(x: number, z: number): SceneSessionOutcome;
 	previewYaw(radians: number): SceneSessionOutcome;
 	/** Begin one uniform Resize of the selected entity under the host lease. */
@@ -322,8 +357,18 @@ function parseNumber(text: string): { ok: true; value: number } | { ok: false; c
 	return { ok: true, value };
 }
 
-/** Local bottom contact of one entity, or `null` when the planner must refuse. */
-export function localContactMinY(entity: SceneEntity): number | null {
+/**
+ * Local bottom contact of one entity, or `null` when the planner must refuse.
+ *
+ * A creator model's contact is the approved resource's recorded contact, passed
+ * in by the caller that can read the envelope; it is never measured here.
+ */
+export function localContactMinY(entity: SceneEntity, modelContactMinY?: number | null): number | null {
+	if (entity.kind === 'model') {
+		return typeof modelContactMinY === 'number' && Number.isFinite(modelContactMinY)
+			? modelContactMinY
+			: null;
+	}
 	if (entity.kind !== 'primitive') return null;
 	switch (entity.primitive) {
 		case 'box':
@@ -355,7 +400,10 @@ export type SceneComposeSupport = {
  * lease and then refuse (and the adapter would advertise a `Scale` fact that
  * cannot be written). Delete needs no contact.
  */
-export function sceneComposeSupport(entity: SceneEntity): SceneComposeSupport {
+export function sceneComposeSupport(
+	entity: SceneEntity,
+	modelContactMinY?: number | null
+): SceneComposeSupport {
 	// The planner's own gate first: lights, vertical planes, tilted primitives and
 	// primitives with no analytic contact are unsupported there, so the UI must not
 	// offer them either.
@@ -363,7 +411,7 @@ export function sceneComposeSupport(entity: SceneEntity): SceneComposeSupport {
 	if (!planner.supported) {
 		return { resize: false, duplicate: false, code: 'unsupported-transform', reason: planner.message };
 	}
-	if (localContactMinY(entity) === null) {
+	if (localContactMinY(entity, modelContactMinY) === null) {
 		return {
 			resize: false,
 			duplicate: false,
@@ -399,6 +447,8 @@ export function createSceneSession(input: {
 	let entryError: string | null = null;
 	let lastPlacedEntityId: string | null = null;
 	let placePrimitive: NativePlacementPrimitive = 'box';
+	let armedModelPlacement: ArmedModelPlacement | null = null;
+	let candidateModel: ArmedModelPlacement | null = null;
 	let placementCommitted: ((placedEntityId: string | null) => void) | null = null;
 
 	/**
@@ -423,6 +473,11 @@ export function createSceneSession(input: {
 
 	function entityOf(id: string): SceneEntity | null {
 		return input.snapshot.source.scene.entities.find((entity) => entity.id === id) ?? null;
+	}
+
+	/** The approved floor contact of one entity, when the envelope records it. */
+	function contactOf(entity: SceneEntity): number | null {
+		return input.snapshot.contactMinYFor?.(entity) ?? null;
 	}
 
 	/** The canonical uniform scale of an entity; an absent value is the identity. */
@@ -475,7 +530,7 @@ export function createSceneSession(input: {
 			candidate = null;
 			return { kind: 'refused', code: 'missing-target', message: 'The entity no longer exists.' };
 		}
-		const contactMinY = localContactMinY(entity);
+		const contactMinY = localContactMinY(entity, contactOf(entity));
 		if (contactMinY === null) {
 			candidate = null;
 			return {
@@ -521,7 +576,7 @@ export function createSceneSession(input: {
 			candidate = null;
 			return { kind: 'refused', code: 'missing-target', message: 'The entity no longer exists.' };
 		}
-		const contactMinY = localContactMinY(entity);
+		const contactMinY = localContactMinY(entity, contactOf(entity));
 		if (contactMinY === null) {
 			candidate = null;
 			return {
@@ -607,6 +662,7 @@ export function createSceneSession(input: {
 	function withdraw(): void {
 		release();
 		candidate = null;
+		candidateModel = null;
 		entryError = null;
 	}
 
@@ -636,6 +692,55 @@ export function createSceneSession(input: {
 			snappedStep: step
 		};
 		candidate = next;
+		return { kind: 'candidate', candidate: next };
+	}
+
+	/** The occupied X/Z extent of one definition's canonical footprint. */
+	function footprintOf(definition: NormalizedPlacementDefinition): { width: number; depth: number } {
+		let minX = Infinity;
+		let maxX = -Infinity;
+		let minZ = Infinity;
+		let maxZ = -Infinity;
+		for (const [x, z] of definition.footprintMeters) {
+			minX = Math.min(minX, x);
+			maxX = Math.max(maxX, x);
+			minZ = Math.min(minZ, z);
+			maxZ = Math.max(maxZ, z);
+		}
+		return {
+			width: Number.isFinite(maxX - minX) ? maxX - minX : 1,
+			depth: Number.isFinite(maxZ - minZ) ? maxZ - minZ : 1
+		};
+	}
+
+	/** One creator-model placement preview; the same candidate is committed. */
+	function placeModelCandidate(
+		model: ArmedModelPlacement,
+		x: number,
+		z: number,
+		supportElevation: number
+	): SceneSessionOutcome {
+		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
+			candidate = null;
+			candidateModel = null;
+			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
+		}
+		const step = snap === null || !(snap > 0) ? null : snap;
+		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
+		const next: SceneCandidate = {
+			kind: 'place',
+			entityId: null,
+			primitive: null,
+			position: [worldXZ[0], supportElevation - model.definition.contactMinY, worldXZ[1]],
+			rotation: [0, 0, 0],
+			worldXZ,
+			yaw: 0,
+			scale: 1,
+			snappedStep: step,
+			footprint: footprintOf(model.definition)
+		};
+		candidate = next;
+		candidateModel = model;
 		return { kind: 'candidate', candidate: next };
 	}
 
@@ -714,6 +819,59 @@ export function createSceneSession(input: {
 		return { kind: 'committed' };
 	}
 
+	/**
+	 * The one creator-model placement intent.
+	 *
+	 * The first placement carries the approved resource and its exact lock so the
+	 * entity, resource and pin install as one accepted result; a later placement
+	 * of an already-approved model omits the introduction and reuses the accepted
+	 * resource, adding only a distinct entity identity.
+	 */
+	async function acceptModelPlacement(
+		model: ArmedModelPlacement,
+		worldXZ: readonly [number, number]
+	): Promise<SceneSessionOutcome> {
+		const definition = model.definition;
+		if (definition.creationDefaults.kind !== 'model') {
+			return { kind: 'refused', code: 'missing-definition', message: 'That definition is not a creator model.' };
+		}
+		const allocatedId = `entity-${mint()}`;
+		const intentToAccept: AuthoringIntent = {
+			version: 1,
+			kind: 'place-object',
+			operationId: mint(),
+			expectedRevision: {
+				projectId: input.snapshot.projectId,
+				revisionId: input.port.acceptedRevision().revisionId
+			},
+			targets: [],
+			payload: {
+				definitionKey: definition.definitionKey,
+				metadataContentId: definition.metadataContentId,
+				worldXZ: [worldXZ[0], worldXZ[1]],
+				yaw: 0,
+				frame: FRAME,
+				frameReference: PROJECT_WORLD,
+				...(model.resource === null ? {} : { modelResource: creatorModelResourcePayload(model.resource) })
+			},
+			capturedInputs: [],
+			allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+		};
+		let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
+		try {
+			outcome = await input.port.accept(intentToAccept);
+		} catch (error) {
+			return {
+				kind: 'failed',
+				code: 'accept-failed',
+				message: error instanceof Error ? error.message : 'The accepted install failed.'
+			};
+		}
+		if (outcome.kind === 'refused') return outcome;
+		lastPlacedEntityId = allocatedId;
+		return { kind: 'committed' };
+	}
+
 	const session: ScenePlacementSession = {
 		armed: () => mode,
 		arm(next) {
@@ -730,7 +888,7 @@ export function createSceneSession(input: {
 			}
 			// The refusal is the begin: a subject the planner cannot transform must
 			// never take the lease, so Undo never reports a proposal that cannot exist.
-			const support = sceneComposeSupport(entity);
+			const support = sceneComposeSupport(entity, contactOf(entity));
 			if (!support.resize) {
 				return {
 					kind: 'refused',
@@ -783,7 +941,7 @@ export function createSceneSession(input: {
 			if (entity === null) {
 				return { kind: 'refused', code: 'missing-target', message: `No Scene entity "${id}".` };
 			}
-			const support = sceneComposeSupport(entity);
+			const support = sceneComposeSupport(entity, contactOf(entity));
 			if (!support.duplicate) {
 				return {
 					kind: 'refused',
@@ -791,7 +949,7 @@ export function createSceneSession(input: {
 					message: support.reason ?? 'Duplicate is unavailable.'
 				};
 			}
-			const contactMinY = localContactMinY(entity);
+			const contactMinY = localContactMinY(entity, contactOf(entity));
 			if (contactMinY === null) {
 				return { kind: 'refused', code: 'missing-contact-metadata', message: 'The entity has no verified contact.' };
 			}
@@ -836,6 +994,10 @@ export function createSceneSession(input: {
 		},
 		beginPlace(primitive) {
 			release();
+			// An explicit native primitive is the placement this gesture will show;
+			// an armed creator model does not silently substitute itself.
+			armedModelPlacement = null;
+			candidateModel = null;
 			lease = input.port.acquireGesture({
 				owner: 'scene-transform',
 				evaluationId: evaluationIdNow(),
@@ -859,6 +1021,29 @@ export function createSceneSession(input: {
 		placePrimitive: () => placePrimitive,
 		setPlacePrimitive(primitive) {
 			placePrimitive = primitive;
+			// Choosing a native primitive is an explicit replacement of an armed model.
+			armedModelPlacement = null;
+			candidateModel = null;
+		},
+		setArmedModel(model) {
+			armedModelPlacement = model;
+			candidateModel = null;
+		},
+		armedModel: () => armedModelPlacement,
+		beginPlaceModel(model) {
+			// The lease comes from the same begin path a native placement uses; the
+			// model is re-armed afterwards because that path clears an armed model on
+			// purpose (an explicit primitive replaces it).
+			const outcome = session.beginPlace('box');
+			if (outcome.kind === 'refused') return outcome;
+			armedModelPlacement = model;
+			mode = 'place';
+			return outcome;
+		},
+		previewPlaceModel(model, x, z, supportElevation) {
+			mode = 'place';
+			armedModelPlacement = model;
+			return placeModelCandidate(model, x, z, supportElevation);
 		},
 		previewMove(x, z) {
 			return moveCandidate(x, z, snap !== null);
@@ -936,7 +1121,7 @@ export function createSceneSession(input: {
 				withdraw();
 				return { kind: 'refused', code: 'missing-target', message: 'The entity no longer exists.' };
 			}
-			const contactMinY = localContactMinY(entity);
+			const contactMinY = localContactMinY(entity, contactOf(entity));
 			if (contactMinY === null) {
 				withdraw();
 				return { kind: 'refused', code: 'missing-contact-metadata', message: 'The entity has no verified contact.' };
@@ -1000,7 +1185,7 @@ export function createSceneSession(input: {
 			return { kind: 'committed' };
 		},
 		async commitPlace() {
-			if (candidate === null || candidate.kind !== 'place' || candidate.primitive === null) {
+			if (candidate === null || candidate.kind !== 'place' || (candidate.primitive === null && candidateModel === null)) {
 				release();
 				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid placement before committing.' };
 			}
@@ -1011,19 +1196,33 @@ export function createSceneSession(input: {
 				return { kind: 'refused', code: 'no-candidate', message: 'The preview was cancelled by a reading change.' };
 			}
 			lastPlacedEntityId = null;
-			const outcome = await acceptPlacement(candidate.primitive, candidate.worldXZ);
+			const worldXZ = candidate.worldXZ;
+			const model = candidateModel;
+			const outcome = model === null
+				? candidate.primitive === null
+					? { kind: 'refused' as const, code: 'no-candidate', message: 'Preview a valid placement before committing.' }
+					: await acceptPlacement(candidate.primitive, worldXZ)
+				: await acceptModelPlacement(model, worldXZ);
 			if (outcome.kind !== 'committed') {
 				withdraw();
 				return outcome;
 			}
 			// The committed pose is exactly the displayed candidate, and Place stays
-			// armed: a release never disarms the tool, only Esc/Select does.
+			// armed: a release never disarms the tool, only Esc/Select does. The model
+			// itself is consumed by its placement, so the next release is a native
+			// primitive unless the Library arms another model.
 			release();
 			candidate = null;
+			candidateModel = null;
+			armedModelPlacement = null;
 			notifyPlacementCommitted();
 			return { kind: 'committed' };
 		},
 		async place(primitive, x, z) {
+			// The typed form places the primitive it names. An armed creator model is
+			// pointer-placed, so it is released here rather than silently ignored.
+			armedModelPlacement = null;
+			candidateModel = null;
 			lastPlacedEntityId = null;
 			if (!Number.isFinite(x) || !Number.isFinite(z)) {
 				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
@@ -1054,8 +1253,11 @@ export function createSceneSession(input: {
 			entityId = null;
 			candidate = null;
 			entryError = null;
-			// Esc/Select disarms Place per the editing-surface contract.
+			// Esc/Select disarms Place per the editing-surface contract, and the armed
+			// creator model returns to rest with it.
 			mode = 'select';
+			candidateModel = null;
+			armedModelPlacement = null;
 		},
 		baseline: () => (baseline === null ? null : { position: [...baseline.position] as Vec3, rotation: [...baseline.rotation] as Vec3 })
 	};
@@ -1069,11 +1271,20 @@ export function sceneSessionFromServices(input: {
 }): ScenePlacementSession {
 	const snapshot = input.services.stage.snapshot();
 	const source = { layout: stageLayout(snapshot), scene: stageScene(snapshot) };
+	// A creator model's floor contact is approved metadata: read it from the
+	// accepted envelope's `model` resource, never from a live mesh bound.
+	const modelContacts = new Map<string, number>();
+	for (const resource of stageEnvelope(snapshot).units.resources.data.resources) {
+		if (resource.kind === 'model' && resource.model !== undefined) {
+			modelContacts.set(resource.id, resource.model.placement.contactMinY);
+		}
+	}
 	return createSceneSession({
 		snapshot: {
 			projectId: snapshot.acceptedRevision.projectId,
 			contentRevision: stageUnitRevision(snapshot, 'scene'),
 			source,
+			contactMinYFor: (entity) => (entity.kind === 'model' ? modelContacts.get(entity.assetId) ?? null : null),
 			compileGeneration: snapshot.compileGeneration,
 			evaluationId: input.evaluationId,
 			currentEvaluationId: () => input.services.stage.evaluationId()

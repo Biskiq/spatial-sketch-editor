@@ -102,6 +102,7 @@
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
+	import { approvedModelPins, resolveApprovedModels } from '$lib/authoring/scene/model-bytes';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
 	import ExperienceSurface from '$lib/authoring/experience/ExperienceSurface.svelte';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
@@ -285,6 +286,19 @@
 	let rect = $state<ViewportRect | null>(null);
 	let markers = $state<readonly StageOverlayContribution[]>([]);
 	let ghosts = $state<readonly StageGhostMesh[]>([]);
+	/**
+	 * Approved creator-model bytes for the accepted source, keyed by model resource
+	 * id. They are resolved from the resource pins — never from an import
+	 * session — so a fresh reopen fetches the same immutable derivative, and the
+	 * Preview surface receives plain URLs without learning how they were
+	 * authorised.
+	 */
+	let modelUrls = $state<ReadonlyMap<string, string>>(new Map());
+	let modelResolution: { dispose(): void } | null = null;
+	/** Monotone ticket: only the newest resolution may install its URLs. */
+	let modelGeneration = 0;
+	/** The pin set the current URLs were resolved for; an unchanged set is reused. */
+	let modelPinSignature = '';
 	let selectionMarker = $state<{ css: readonly [number, number]; label: string } | null>(null);
 	let notice = $state('');
 	let pendingReplacement = $state<null | 'starter' | 'empty' | 'source'>(null);
@@ -452,6 +466,7 @@
 		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
 		acceptance = mounted;
 		adapterServices = createStageAdapterServices(facade, mounted);
+		void resolveModels(snapshot);
 		unsubscribeAcceptance = mounted.onChanged(() => {
 			if (acceptance !== mounted || tornDown) return;
 			// A source change invalidates the isolated run entered over the old one.
@@ -464,6 +479,8 @@
 			headSave?.refresh();
 			if (facade !== null && (boot.status === 'ready' || boot.status === 'empty')) {
 				boot = { ...boot, snapshot: facade.snapshot() };
+				// A newly placed (or removed) model changes the pins this route holds.
+				void resolveModels(facade.snapshot());
 			}
 			task = facade?.session.task() ?? null;
 			selection = facade ? primaryEntry(facade.selectionState()) : null;
@@ -1062,9 +1079,64 @@
 			unsubscribeContributions = null;
 			acceptance?.dispose();
 			facade?.dispose();
+			// The route owns every approved-model URL it acquired; the visitor
+			// surface never revokes what it was handed.
+			modelResolution?.dispose();
+			modelResolution = null;
+			modelUrls = new Map();
+			modelPinSignature = '';
 			session.dispose();
 		};
 	});
+
+	/**
+	 * Resolve every approved creator-model derivative for one accepted source.
+	 *
+	 * The pins come from the envelope's `model` resources, so this is the same
+	 * resolution a fresh reopen performs: a stale import-session URL is never
+	 * reused, and a source change releases exactly the URLs the previous source
+	 * acquired. A failed model stays a failure and the fallback box carries the
+	 * approved footprint; it is never drawn as if the bytes had loaded.
+	 */
+	async function resolveModels(snapshot: Parameters<typeof stageEnvelope>[0]): Promise<void> {
+		const pins = approvedModelPins(stageEnvelope(snapshot));
+		// An edit that does not change the approved pins keeps the URLs it already
+		// has: revoking and re-downloading every derivative on each accepted command
+		// would flash the fallback box and re-fetch immutable bytes.
+		const signature = pins.map((pin) => `${pin.assetId}@${pin.hash}`).join('|');
+		if (signature === modelPinSignature && modelResolution !== null) return;
+		modelPinSignature = signature;
+		const generation = ++modelGeneration;
+		modelResolution?.dispose();
+		modelResolution = null;
+		modelUrls = new Map();
+		let resolved: Awaited<ReturnType<typeof resolveApprovedModels>> | null = null;
+		try {
+			// The session's cancellation registry is the one abort authority: a
+			// replacement or teardown ends this read, exactly like a project load.
+			resolved = await runBoundLoad(session, (signal) =>
+				resolveApprovedModels({
+					envelope: stageEnvelope(snapshot),
+					projectId: snapshot.acceptedRevision.projectId,
+					apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
+					signal
+				})
+			);
+		} catch {
+			// A failed resolution installs nothing; the Stage keeps the truthful
+			// fallback rather than a half-applied model set.
+		}
+		if (resolved === null || tornDown || generation !== modelGeneration) {
+			resolved?.dispose();
+			return;
+		}
+		modelResolution = resolved;
+		modelUrls = resolved.urls;
+		// A model whose bytes are unavailable is stated, not dressed as a loaded
+		// mesh: the fallback box carries the approved footprint and this note names
+		// the reason.
+		notice = resolved.failures.size === 0 ? '' : [...resolved.failures.values()][0]!;
+	}
 
 	/* --- Camera intents ----------------------------------------------------- */
 
@@ -1920,6 +1992,7 @@
 						rooms={boot.snapshot.domain.rooms}
 						{evaluation}
 						{ghosts}
+						{modelUrls}
 					/>
 				{/if}
 				<div class="overlay-layer">
@@ -1997,6 +2070,7 @@
 							experienceOptions={entry.kind === 'presentations' ? entry.options ?? null : entry.options}
 							entryPresentationId={entry.kind === 'program' ? entry.entryPresentationId : null}
 							resolveTexture={(uri: string) => (isAllowedShippedTextureUri(uri) ? uri : null)}
+							{modelUrls}
 							{reducedMotion}
 							title={entry.title}
 							onExit={closePreview}

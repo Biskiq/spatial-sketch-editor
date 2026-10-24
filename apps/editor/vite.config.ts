@@ -16,6 +16,11 @@ export default defineConfig({
 		},
 		// Keep museum's dep cache out of shared paths so preview/dev restarts
 		// don't race on stale hashed chunks under node_modules/.vite/deps.
+		// The import worker (`authoring/adapters/scene/import/worker.ts`) is reached
+		// through `new Worker(new URL(…, import.meta.url))`. ES is the only format
+		// Rollup can code-split, so the lazy worker chunk (glTF reader, decoders,
+		// encoders) stays out of the Stage's first-load set.
+		worker: { format: 'es' },
 		cacheDir: 'node_modules/.vite/editor',
 	optimizeDeps: {
 		// Prebundle Three/Threlte and deep JSM/addons up front. Late discovery

@@ -162,12 +162,17 @@ export function createStageAcceptanceHost(options: {
 }): StageAcceptanceHost {
 	const { facade, baseline } = options;
 	const sessionEpoch = options.sessionEpoch;
-	const registry = createUnitPlannerRegistry<ProjectEnvelope>();
+	// T2.P02.S02's bounded host contribution: the coordinator that serves this
+	// Stage grants resource staging, so the one placement planner that declares it
+	// can install a creator model's resource, exact lock and entity together.
+	// Per H0's scope, the grant is the host's; each planner still declares its own
+	// resource need, and every other Scene planner keeps `resources: false`.
+	const registry = createUnitPlannerRegistry<ProjectEnvelope>({ resourceStaging: true });
 	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({
-		// F.2 unit admission: compound Camera/Experience operations are admitted;
-		// resource staging is not granted by this host.
-		adapter: createUnitAcceptanceAdapter({ compound: true }),
-		preparation: createUnitAcceptancePreparation({ registry, sessionEpoch }),
+		// F.2 unit admission: compound Camera/Experience operations are admitted, and
+		// typed-resource staging is granted to a planner that declares it.
+		adapter: createUnitAcceptanceAdapter({ compound: true, resourceStaging: true }),
+		preparation: createUnitAcceptancePreparation({ registry, sessionEpoch, resourceStaging: true }),
 		sessionEpoch,
 		baseline: {
 			revision: baseline.revision,

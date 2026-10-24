@@ -17,7 +17,13 @@ import { describe, expect, it } from 'vitest';
 import {
 	createScenePlanners,
 	checkSceneRecordScope,
-	finalizeSceneCandidate
+	finalizeSceneCandidate,
+	type NormalizedPlacementDefinition
+} from '@portfolio/project-model/scene-planning';
+import {
+	creatorModelDefinition,
+	creatorModelResourceEntry,
+	creatorModelResourcePayload
 } from '@portfolio/project-model/scene-planning';
 import {
 	type AuthoringIntent,
@@ -233,7 +239,13 @@ function cameraBytes(camera: ProjectEnvelope['units']['camera']['data']): string
 	return JSON.stringify({ views: camera.views, connections: camera.connections });
 }
 
-async function boot(options: { readonly elevation?: number } = {}) {
+async function boot(
+	options: {
+		readonly elevation?: number;
+		/** Extra admitted definitions, e.g. an approved creator model's. */
+		readonly definitions?: readonly NormalizedPlacementDefinition[];
+	} = {}
+) {
 	const { project, layoutObjectId } = conformanceProject(options.elevation ?? ELEVATION);
 	const envelope = await createUnitProject({
 		id: project.id,
@@ -247,7 +259,10 @@ async function boot(options: { readonly elevation?: number } = {}) {
 		throw new Error(`the conformance project was not admitted: ${JSON.stringify(admitted.issues)}`);
 	}
 	const definition = await nativePlacementDefinition('box');
-	const scenePlanners = createScenePlanners({ definitions: [definition] });
+	const definitions = [definition, ...(options.definitions ?? [])];
+	// A provider, as the adapter registers it: a definition captured after mount
+	// (an approved creator model) is reachable without re-registering a planner.
+	const scenePlanners = createScenePlanners({ definitions: () => definitions });
 	const coordinator = await createUnitCoordinator({
 		sessionEpoch: 'session-1',
 		baseline: {
@@ -887,5 +902,232 @@ describe('Scene operations through the F.4 coordinator', () => {
 			).toBe(bootCamera);
 		}
 		expect(validateProjectEnvelope(coordinator.current().source).success).toBe(true);
+	});
+});
+
+/**
+ * T2.P02.S02 — a creator model's first placement is one accepted result.
+ *
+ * The resource, its exact lock and the entity install together, Undo removes all
+ * three and Redo restores the captured identities; a later instance reuses the
+ * accepted pins and adds only a distinct entity. The resource is read from the
+ * accepted envelope, never from a second catalogue.
+ */
+describe('creator model placement through the F.4 coordinator', () => {
+	const HASH_A = `sha256-${'a'.repeat(64)}`;
+	const HASH_B = `sha256-${'b'.repeat(64)}`;
+	const REPORT = `sha256-${'c'.repeat(64)}`;
+
+	function approval() {
+		return {
+			derivative: { hash: HASH_A, mime: 'model/gltf-binary', size: 4096, locator: `models/${HASH_A}.glb` },
+			source: { manifestHash: HASH_B, size: 8192, fileCount: 2 },
+			recipe: { id: 'creator-import@1', version: 1 },
+			reportDigest: REPORT,
+			placement: {
+				metresPerSourceUnit: 1,
+				pivot: [0, 0, 0] as [number, number, number],
+				footprint: { width: 0.8, depth: 0.6 },
+				contactMinY: -0.25
+			}
+		};
+	}
+
+	function modelResource(id = 'model-chair') {
+		const entry = creatorModelResourceEntry(id, approval());
+		if (entry === null) throw new Error('the fixture approval is not a well-formed resource');
+		return entry;
+	}
+
+	it('installs resource, exact lock and entity once, then Undo removes all three and Redo restores them', async () => {
+		const entry = modelResource();
+		const definition = await creatorModelDefinition(entry.resource, 'Chair');
+		expect(definition).not.toBeNull();
+		const { coordinator, admitted } = await boot({ definitions: [definition!] });
+		const placed = await coordinator.accept(
+			placeIntent({
+				intentRevision: now(coordinator).intentRevision,
+				operationId: 'op-model-place',
+				entityId: 'entity-chair',
+				payload: {
+					definitionKey: definition!.definitionKey,
+					metadataContentId: definition!.metadataContentId,
+					worldXZ: [3, 2],
+					yaw: 0,
+					frame: { origin: [0, 0, 0], yaw: 0 },
+					frameReference: { version: 1, kind: 'project-world' },
+					modelResource: creatorModelResourcePayload(entry)
+				}
+			})
+		);
+		expect(placed.kind).toBe('accepted');
+		if (placed.kind !== 'accepted') return;
+
+		const accepted = coordinator.current();
+		const resources = accepted.source.units.resources.data.resources;
+		expect(resources.map((resource) => resource.id)).toEqual(['model-chair']);
+		expect(resources[0]!.pin).toEqual({ hash: HASH_A, mime: 'model/gltf-binary', size: 4096, locator: `models/${HASH_A}.glb` });
+		expect(resources[0]!.model?.placement.contactMinY).toBe(-0.25);
+		const locks = accepted.source.dependencyLock.entries.filter((lock) => lock.subjectId === 'model-chair');
+		expect(locks).toHaveLength(1);
+		expect(locks[0]).toMatchObject({ domain: 'resource:model', contentRevision: HASH_A });
+		const entity = accepted.source.units.scene.data.entities.at(-1)!;
+		expect(entity).toMatchObject({ id: 'entity-chair', kind: 'model', assetId: 'model-chair' });
+		// One accepted result installs the entity, and the resource and lock arrive in
+		// the same candidate envelope they are pinned from.
+		expect(placed.correspondence).toEqual([
+			{ relation: 'created', before: null, after: expect.objectContaining({ subject: { kind: 'entity', id: 'entity-chair' } }) }
+		]);
+		expect(validateProjectEnvelope(accepted.source).success).toBe(true);
+
+		const undo = await coordinator.undo();
+		expect(undo.kind).toBe('restored');
+		expect(coordinator.current().canonicalJson).toBe(admitted.canonicalJson);
+		expect(coordinator.current().source.units.resources.data.resources).toHaveLength(0);
+		expect(coordinator.current().source.dependencyLock.entries.some((lock) => lock.subjectId === 'model-chair')).toBe(false);
+		expect(coordinator.current().source.units.scene.data.entities.some((candidate) => candidate.id === 'entity-chair')).toBe(false);
+
+		const redo = await coordinator.redo();
+		expect(redo.kind).toBe('restored');
+		const restored = coordinator.current();
+		expect(restored.canonicalJson).toBe(accepted.canonicalJson);
+		expect(restored.source.units.resources.data.resources[0]?.pin?.hash).toBe(HASH_A);
+		expect(restored.source.units.scene.data.entities.at(-1)!.id).toBe('entity-chair');
+	});
+
+	it('places another instance from the accepted pins without introducing a second resource', async () => {
+		const entry = modelResource();
+		const definition = await creatorModelDefinition(entry.resource, 'Chair');
+		const { coordinator } = await boot({ definitions: [definition!] });
+		const payload = (worldXZ: [number, number], metadataContentId: string) => ({
+			definitionKey: definition!.definitionKey,
+			metadataContentId,
+			worldXZ,
+			yaw: 0,
+			frame: { origin: [0, 0, 0], yaw: 0 },
+			frameReference: { version: 1, kind: 'project-world' }
+		});
+		const first = await coordinator.accept(
+			placeIntent({
+				intentRevision: now(coordinator).intentRevision,
+				operationId: 'op-model-1',
+				entityId: 'entity-chair-1',
+				payload: { ...payload([3, 2], definition!.metadataContentId), modelResource: creatorModelResourcePayload(entry) }
+			})
+		);
+		expect(first.kind).toBe('accepted');
+
+		// The second placement resolves the definition from the accepted envelope:
+		// same pins, a different entity identity, no new resource.
+		const acceptedResource = coordinator
+			.current()
+			.source.units.resources.data.resources.find((resource) => resource.id === 'model-chair')!;
+		const secondDefinition = await creatorModelDefinition(acceptedResource, 'Chair');
+		expect(secondDefinition!.definitionKey).toBe(definition!.definitionKey);
+		const second = await coordinator.accept(
+			placeIntent({
+				intentRevision: now(coordinator).intentRevision,
+				operationId: 'op-model-2',
+				entityId: 'entity-chair-2',
+				payload: payload([5, 2], secondDefinition!.metadataContentId)
+			})
+		);
+		expect(second.kind).toBe('accepted');
+		if (second.kind !== 'accepted') return;
+		expect(second.correspondence).toEqual([
+			{ relation: 'created', before: null, after: expect.objectContaining({ subject: { kind: 'entity', id: 'entity-chair-2' } }) }
+		]);
+
+		const source = coordinator.current().source;
+		expect(source.units.resources.data.resources).toHaveLength(1);
+		expect(source.dependencyLock.entries.filter((lock) => lock.subjectId === 'model-chair')).toHaveLength(1);
+		const models = source.units.scene.data.entities.filter((entity) => entity.kind === 'model');
+		expect(models.map((entity) => entity.id)).toEqual(['entity-chair-1', 'entity-chair-2']);
+		expect(new Set(models.map((entity) => entity.assetId))).toEqual(new Set(['model-chair']));
+		// The approved contact resolves the floor pose: contact -0.25 m under the
+		// 2.5 m elevation seat.
+		expect(models[0]!.position[1]).toBeCloseTo(ELEVATION + 0.25, 6);
+	});
+
+	it('refuses a mismatched, duplicated or stale resource introduction without writing anything', async () => {
+		const entry = modelResource();
+		const other = modelResource('model-other');
+		const definition = await creatorModelDefinition(entry.resource, 'Chair');
+		const { coordinator, admitted } = await boot({ definitions: [definition!] });
+
+		const mismatched = await coordinator.accept(
+			placeIntent({
+				intentRevision: now(coordinator).intentRevision,
+				operationId: 'op-model-mismatch',
+				entityId: 'entity-chair',
+				payload: {
+					definitionKey: definition!.definitionKey,
+					metadataContentId: definition!.metadataContentId,
+					worldXZ: [3, 2],
+					yaw: 0,
+					frame: { origin: [0, 0, 0], yaw: 0 },
+					frameReference: { version: 1, kind: 'project-world' },
+					modelResource: creatorModelResourcePayload(other)
+				}
+			})
+		);
+		expect(mismatched.kind).toBe('rejected');
+		expect(coordinator.current().canonicalJson).toBe(admitted.canonicalJson);
+
+		const accepted = await coordinator.accept(
+			placeIntent({
+				intentRevision: now(coordinator).intentRevision,
+				operationId: 'op-model-ok',
+				entityId: 'entity-chair',
+				payload: {
+					definitionKey: definition!.definitionKey,
+					metadataContentId: definition!.metadataContentId,
+					worldXZ: [3, 2],
+					yaw: 0,
+					frame: { origin: [0, 0, 0], yaw: 0 },
+					frameReference: { version: 1, kind: 'project-world' },
+					modelResource: creatorModelResourcePayload(entry)
+				}
+			})
+		);
+		expect(accepted.kind).toBe('accepted');
+		const afterAccept = coordinator.current();
+
+		const duplicate = await coordinator.accept(
+			placeIntent({
+				intentRevision: now(coordinator).intentRevision,
+				operationId: 'op-model-duplicate',
+				entityId: 'entity-chair-dup',
+				payload: {
+					definitionKey: definition!.definitionKey,
+					metadataContentId: definition!.metadataContentId,
+					worldXZ: [5, 2],
+					yaw: 0,
+					frame: { origin: [0, 0, 0], yaw: 0 },
+					frameReference: { version: 1, kind: 'project-world' },
+					modelResource: creatorModelResourcePayload(entry)
+				}
+			})
+		);
+		expect(duplicate.kind).toBe('rejected');
+		expect(coordinator.current().canonicalJson).toBe(afterAccept.canonicalJson);
+
+		const stale = await coordinator.accept(
+			placeIntent({
+				intentRevision: now(coordinator).intentRevision,
+				operationId: 'op-model-stale',
+				entityId: 'entity-chair-stale',
+				payload: {
+					definitionKey: definition!.definitionKey,
+					metadataContentId: `sha256-${'d'.repeat(64)}`,
+					worldXZ: [6, 2],
+					yaw: 0,
+					frame: { origin: [0, 0, 0], yaw: 0 },
+					frameReference: { version: 1, kind: 'project-world' }
+				}
+			})
+		);
+		expect(stale.kind).toBe('rejected');
+		expect(coordinator.current().canonicalJson).toBe(afterAccept.canonicalJson);
 	});
 });

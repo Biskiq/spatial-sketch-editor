@@ -31,6 +31,12 @@ export type PlanSceneEffectiveScale = number | Vec3;
 export type PlanSceneFootprintOptions = {
 	/** Asset metadata source. Defaults to the checked-in catalogue. */
 	assetById?: (assetId: string) => Pick<Asset, 'placementSurface' | 'footprint'> | undefined;
+	/**
+	 * Approved creator-model footprint by model resource id. A creator model is not
+	 * in the catalogue, so its confirmed footprint is the only extent Plan can
+	 * draw — the same extent the renderer and the planner use.
+	 */
+	modelFootprintById?: (assetId: string) => { readonly width: number; readonly depth: number } | undefined;
 	/** Resolves session-aware scale; document scalar remains the fallback. */
 	getEffectiveScale?: (entity: SceneEntity) => PlanSceneEffectiveScale | undefined;
 	/** UI-only presentation; geometry/eligibility stays independent of it. */
@@ -57,7 +63,7 @@ export function buildPlanSceneFootprintProjection(
 
 	for (const entity of document.entities) {
 		if (entity.kind === 'light') continue;
-		const localOutline = footprintForEntity(entity, assetById);
+		const localOutline = footprintForEntity(entity, assetById, options.modelFootprintById);
 		if (!localOutline) continue;
 		const scale = resolveScale(entity, options.getEffectiveScale?.(entity));
 		if (!scale) continue;
@@ -79,9 +85,18 @@ export function buildPlanSceneFootprintProjection(
 
 function footprintForEntity(
 	entity: SceneEntity,
-	assetById: (assetId: string) => Pick<Asset, 'placementSurface' | 'footprint'> | undefined
+	assetById: (assetId: string) => Pick<Asset, 'placementSurface' | 'footprint'> | undefined,
+	modelFootprintById?: (assetId: string) => { readonly width: number; readonly depth: number } | undefined
 ): readonly [number, number][] | null {
 	if (entity.kind === 'model') {
+		// An approved creator model has no catalogue entry; its footprint is the
+		// confirmed one from the placement review, never a guessed box.
+		const approved = modelFootprintById?.(entity.assetId);
+		if (approved !== undefined) {
+			return positiveDimensions(approved.width, approved.depth)
+				? rectangle(approved.width, approved.depth)
+				: null;
+		}
 		const asset = assetById(entity.assetId);
 		if (!asset || asset.placementSurface !== 'floor' || validateAssetFootprint(asset.footprint)) return null;
 		return normalizeAssetFootprintOutline(asset.footprint!);

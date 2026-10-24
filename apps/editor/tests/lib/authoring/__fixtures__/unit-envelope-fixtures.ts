@@ -220,7 +220,10 @@ export async function admitUnitContent(input: unknown): Promise<
 	};
 }
 
-/** A coordinator wired exactly as the Stage host wires it (compound unit admission). */
+/**
+ * A coordinator wired exactly as the Stage host wires it (compound unit
+ * admission, typed-resource staging granted to the planner that declares it).
+ */
 export async function createUnitCoordinator(input: {
 	readonly baseline:
 		| ProjectEnvelope
@@ -234,6 +237,13 @@ export async function createUnitCoordinator(input: {
 	readonly planners?: readonly DomainPlanner<ProjectEnvelope>[];
 	readonly sessionEpoch?: string;
 	readonly mintRevisionId?: (ordinal: number) => string;
+	/**
+	 * Resource staging is the host's grant, not a planner's: the current Stage host
+	 * grants it so a creator model's first placement can install its resource,
+	 * exact lock and entity together. A caller that withholds it proves the
+	 * admission refuses a planner that declares the need.
+	 */
+	readonly resourceStaging?: boolean;
 }): Promise<AcceptanceCoordinator<ProjectEnvelope>> {
 	const sessionEpoch = input.sessionEpoch ?? DEFAULT_SESSION_EPOCH;
 	const source = 'source' in input.baseline ? input.baseline.source : input.baseline;
@@ -246,10 +256,11 @@ export async function createUnitCoordinator(input: {
 		'source' in input.baseline && input.baseline.sourceContentId !== undefined
 			? input.baseline.sourceContentId
 			: await computeEnvelopeSourceContentId(source);
-	const registry = createUnitPlannerRegistry<ProjectEnvelope>();
+	const resourceStaging = input.resourceStaging !== false;
+	const registry = createUnitPlannerRegistry<ProjectEnvelope>({ resourceStaging });
 	return createAcceptanceCoordinator<ProjectEnvelope>({
-		adapter: createUnitAcceptanceAdapter({ compound: true }),
-		preparation: createUnitAcceptancePreparation({ registry, sessionEpoch }),
+		adapter: createUnitAcceptanceAdapter({ compound: true, resourceStaging }),
+		preparation: createUnitAcceptancePreparation({ registry, sessionEpoch, resourceStaging }),
 		sessionEpoch,
 		baseline: {
 			revision,
