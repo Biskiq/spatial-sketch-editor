@@ -577,7 +577,9 @@ test('approval admits a required meshopt fallback buffer and refuses an optional
 	const source = validSourceGlb();
 	// The glTF-Transform writer emits this shape for every compressed GLB: the
 	// container carries the compressed buffer only, and the fallback is a
-	// declaration marked on a second, URI-less buffer.
+	// declaration marked on a second, URI-less buffer. Its view is the uncompressed
+	// window, and the EXT_meshopt_compression record on that view names the
+	// compressed bytes in buffer 0 (8 bytes, the BIN chunk).
 	const fallbackGlb = (required) =>
 		glb(
 			{
@@ -588,7 +590,11 @@ test('approval admits a required meshopt fallback buffer and refuses an optional
 				],
 				bufferViews: [
 					{ buffer: 0, byteLength: 8 },
-					{ buffer: 1, byteLength: 4096 }
+					{
+						buffer: 1,
+						byteLength: 4096,
+						extensions: { EXT_meshopt_compression: { buffer: 0, byteOffset: 0, byteLength: 8 } }
+					}
 				],
 				extensionsUsed: ['EXT_meshopt_compression'],
 				...(required ? { extensionsRequired: ['EXT_meshopt_compression'] } : {})
@@ -617,7 +623,88 @@ test('approval admits a required meshopt fallback buffer and refuses an optional
 	await upload(projectId, optionalCreated, owner, 'model.glb.derivative.glb', fallbackGlb(false));
 	const optionalApproval = await approve(projectId, optionalCreated.importId, owner);
 	assert.equal(optionalApproval.statusCode, 400, JSON.stringify(optionalApproval.json()));
-	assert.match(optionalApproval.json().error.message, /buffer-out-of-bounds/);
+	assert.match(optionalApproval.json().error.message, /glb-buffer-not-first/);
+});
+
+test('approval refuses a meshopt structure that reads bytes the container does not hold', async () => {
+	const owner = await sessionCookie(app, `google:p02-meshopt-refuse-${randomUUID()}`);
+	const { projectId } = await newProject(owner);
+	const source = validSourceGlb();
+	const refuse = async (label, bytes) => {
+		const staged = await stage(projectId, owner, [
+			{ role: 'source', path: 'model.glb', bytes: source },
+			{ role: 'derivative', path: 'model.glb.derivative.glb', bytes }
+		]);
+		assert.equal(staged.statusCode, 201, `${label}: ${JSON.stringify(staged.json())}`);
+		const created = staged.json();
+		await upload(projectId, created, owner, 'model.glb', source);
+		await upload(projectId, created, owner, 'model.glb.derivative.glb', bytes);
+		const approval = await approve(projectId, created.importId, owner);
+		assert.equal(approval.statusCode, 400, `${label}: ${JSON.stringify(approval.json())}`);
+		assert.equal(approval.json().error.code, 'model_structure_refused', label);
+		return approval.json().error.message;
+	};
+	const declaration = (buffers, bufferViews) =>
+		glb(
+			{
+				asset: { version: '2.0' },
+				buffers,
+				bufferViews,
+				extensionsUsed: ['EXT_meshopt_compression'],
+				extensionsRequired: ['EXT_meshopt_compression']
+			},
+			Buffer.alloc(8, 2)
+		);
+	const fallbackBuffer = { byteLength: 4096, extensions: { EXT_meshopt_compression: { fallback: true } } };
+	const compressedRef = (overrides) => ({
+		extensions: { EXT_meshopt_compression: { buffer: 0, byteOffset: 0, byteLength: 8, ...overrides } }
+	});
+
+	// The compressed reference reads 8 bytes at offset 4 of an 8-byte BIN chunk.
+	assert.match(
+		await refuse(
+			'compressed reference out of bounds',
+			declaration(
+				[{ byteLength: 8 }, fallbackBuffer],
+				[
+					{ buffer: 0, byteLength: 8, ...compressedRef({ byteOffset: 4 }) },
+					{ buffer: 1, byteLength: 4096, ...compressedRef() }
+				]
+			)
+		),
+		/meshopt-source-out-of-bounds/
+	);
+
+	// A view on the fallback buffer without the extension reads bytes the
+	// container does not hold.
+	assert.match(
+		await refuse(
+			'plain view on the fallback buffer',
+			declaration([{ byteLength: 8 }, fallbackBuffer], [{ buffer: 0, byteLength: 8 }, { buffer: 1, byteLength: 4096 }])
+		),
+		/fallback-view-not-compressed/
+	);
+
+	// The compressed source names the fallback, which holds no compressed bytes.
+	assert.match(
+		await refuse(
+			'compressed source is the fallback',
+			declaration(
+				[{ byteLength: 8 }, fallbackBuffer],
+				[{ buffer: 0, byteLength: 8 }, { buffer: 1, byteLength: 4096, ...compressedRef({ buffer: 1 }) }]
+			)
+		),
+		/meshopt-source-is-fallback/
+	);
+
+	// Index 0 is the GLB binary buffer and can never be the fallback.
+	assert.match(
+		await refuse(
+			'fallback at index 0',
+			declaration([{ byteLength: 8, extensions: { EXT_meshopt_compression: { fallback: true } } }], [{ buffer: 0, byteLength: 8 }])
+		),
+		/invalid-meshopt-fallback/
+	);
 });
 
 test('a glTF source set with its referenced buffer and a self-contained derivative is approved', async () => {
