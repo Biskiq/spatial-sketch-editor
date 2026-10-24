@@ -74,10 +74,12 @@ npm run test:api:stack (BISKIQ_STACK=biskiq-t1, BISKIQ_DB_PORT=5436)
 
 DB target for the API run: the isolated local Compose database of stack `biskiq-t1` on
 `127.0.0.1:5436` (`postgresql://biskiq@localhost:5436/biskiq`); no credentials are recorded here and
-the shared stack was never reset. `stack:up` itself could not start the `migrate`/`api` services in
-this worktree because the local `.env` has no `R2_OBJECT_NAMESPACE` (`apps/api/src/config.ts:135`
-requires it); only `db` was started, which is all `test:api` needs. That is an environment gap, not
-a code change.
+the shared stack was never reset. The full local stack was also brought up once for this slice with
+`BISKIQ_STACK=biskiq-t1 BISKIQ_DB_PORT=5436 BISKIQ_API_PORT=8790 npm run stack:up`: db healthy,
+migrate exited 0, api healthy, `GET /health/ready` 200, then torn down. That run needed one local
+environment fix, not a code change — this worktree's `.env` lacked `R2_OBJECT_NAMESPACE`
+(`apps/api/src/config.ts:135`), which the owner authorized as `R2_OBJECT_NAMESPACE=local`. The file
+is gitignored and no value is recorded here.
 
 **Fast-lane timing control.** An earlier `test:fast` run failed with
 `p23b11-correspondence-reference.test.ts › nonce locality … Test timed out in 5000ms` while the
