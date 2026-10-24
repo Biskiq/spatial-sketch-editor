@@ -36,6 +36,7 @@ import { PCFShadowMap } from 'three';
 		active = true,
 		resolveTexture,
 		textureScope = null,
+		modelUrls = null,
 		reducedMotion = false,
 		mode = 'preview',
 		title = null,
@@ -53,6 +54,8 @@ import { PCFShadowMap } from 'three';
 		active?: boolean;
 		resolveTexture: (uri: string) => string | null;
 		textureScope?: TextureLoadScope | null;
+		/** Runtime-safe approved model bytes, resolved by the owning session. */
+		modelUrls?: ReadonlyMap<string, string> | null;
 		reducedMotion?: boolean;
 		mode?: 'preview' | 'public';
 		title?: string | null;
@@ -173,7 +176,7 @@ import { PCFShadowMap } from 'three';
 				/>
 			{/if}
 			<VisitorLayoutShell {geometry} {presentation} textureScope={textureScope} />
-			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} />
+			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} {modelUrls} />
 		</Canvas>
 	</div>
 	{#if guideFreePresentations.length > 0 || visitorState?.canResume}

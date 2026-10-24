@@ -1313,15 +1313,23 @@ describe('Scene adapter registration', () => {
 		expect(registration.kind).toBe('registered');
 
 		const tasks = facade.tasks().filter((task) => task.adapterId === 'scene');
-		expect(tasks.map((task) => task.taskKind)).toEqual(['scene-compose', 'scene-arrange', 'place-object']);
+		expect(tasks.map((task) => task.taskKind)).toEqual([
+			'scene-compose',
+			'scene-arrange',
+			'place-object',
+			'import-model'
+		]);
 
+		// Import is a Library procedure invoked by name: it appears in Find with
+		// its own family and capability, and never as a permanent pointer tool.
 		const findEntries = facade.findEntries().filter((entry) => entry.adapterId === 'scene');
 		expect(findEntries.map((entry) => [entry.railFamily, entry.capability, entry.taskKind])).toEqual([
 			['arrange', 'scene', 'scene-compose'],
 			['arrange', 'scene', 'scene-compose'],
 			['arrange', 'scene', 'scene-compose'],
 			['arrange', 'scene', 'scene-arrange'],
-			['place', 'scene', 'place-object']
+			['place', 'scene', 'place-object'],
+			['library', 'own model', 'import-model']
 		]);
 
 		const facts = facade.cardFacts({ sourceId: FIXTURE_ENTITY_ID, sourceKind: 'entity', ref: null });

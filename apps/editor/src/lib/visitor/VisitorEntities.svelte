@@ -23,11 +23,17 @@
 	let {
 		scene,
 		rooms,
-		textureScope = null
+		textureScope = null,
+		modelUrls = null
 	}: {
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
 		textureScope?: TextureLoadScope | null;
+		/**
+		 * Runtime-safe approved model bytes: model resource id → derivative URL. The
+		 * editor and Preview resolve them; this renderer never learns how.
+		 */
+		modelUrls?: ReadonlyMap<string, string> | null;
 	} = $props();
 
 	const roomGroups = $derived.by(() => {
@@ -81,6 +87,7 @@
 					scale={entity.scale ?? 1}
 					fallback={entity.fallback}
 					fallbackFootprint={scene.modelFootprints?.get(entity.assetId)}
+					resolvedUrl={modelUrls?.get(entity.assetId) ?? null}
 					effective={entity.materialInstanceId ? entityEffective(entity) : null}
 					scope={textureScope}
 				/>

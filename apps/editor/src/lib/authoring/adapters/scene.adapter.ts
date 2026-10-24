@@ -24,7 +24,7 @@ import type {
 	StageGhostMesh,
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
-import { stageScene } from '$lib/authoring/stage/unit-stage-source';
+import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import {
 	NATIVE_PLACEMENT_PRIMITIVES,
 	nativePlacementDefinition
@@ -34,9 +34,22 @@ import {
 	floorSupportSnapshotOf,
 	queryFloorSupports
 } from '@portfolio/layout-core';
-import { createScenePlanners, sceneSupportGenerationId } from '@portfolio/project-model/scene-planning';
+import {
+	approvedModelResources,
+	createScenePlanners,
+	creatorModelDefinition,
+	sceneSupportGenerationId,
+	type NormalizedPlacementDefinition
+} from '@portfolio/project-model/scene-planning';
 
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
+import ImportModelInstrument from './scene/import/ImportModelInstrument.svelte';
+import {
+	clearCreatorDefinitions,
+	creatorDefinitions,
+	rememberCreatorDefinition,
+	takeArmedModel
+} from './scene/import/definitions';
 import { candidateGhost } from './scene/candidate-ghost';
 import {
 	publishSceneSurface,
@@ -61,6 +74,13 @@ const SCENE_PLACE_TASK = 'scene-place';
  * Find entries below all open it so each command is discoverable by name.
  */
 const SCENE_COMPOSE_TASK = 'scene-compose';
+/**
+ * T2.P02.S02's `creator-import@1` procedure: choose, read, review, approve and
+ * arm one of the creator's own models. Library and Head Find invoke it; there is
+ * no permanent pointer tool for Import.
+ */
+const SCENE_IMPORT_TASK = 'scene-import';
+const SCENE_IMPORT_KIND = 'import-model';
 
 function entityFacts(
 	source: ReturnType<typeof stageScene>,
@@ -162,11 +182,17 @@ function pointerPlaceSupport(
 }
 
 export const createAdapter: StageAdapterFactory = (services) => {
-	const planners = createScenePlanners();
+	// Every planner is registered once, and the placement planner's definitions
+	// are re-read for each preparation instead of being frozen at registration:
+	// a native definition's metadata identity is captured asynchronously, and an
+	// approved creator model becomes placeable after the adapter is already
+	// mounted. The intent still carries `metadataContentId`, so a stale
+	// definition refuses (`definition-changed`) rather than placing something
+	// else. Catalogue models stay excluded until their r186 contact verification
+	// is recorded; only admitted natives and approved creator models are here.
+	const admitted: NormalizedPlacementDefinition[] = [];
+	const planners = createScenePlanners({ definitions: () => [...admitted, ...creatorDefinitions()] });
 	for (const planner of planners) {
-		// Placement needs its admitted definitions, which carry an asynchronously
-		// captured metadata identity; it is registered once that identity exists.
-		if (planner.kind === 'place-object') continue;
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
@@ -174,26 +200,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			);
 		}
 	}
-	// Only the native primitives are admitted today; catalogue models stay
-	// excluded until their r186 contact verification is recorded. The promise
-	// settles in a microtask, long before the first accepted evaluation binds.
-	void Promise.all(NATIVE_PLACEMENT_PRIMITIVES.map((primitive) => nativePlacementDefinition(primitive)))
-		.then((definitions) => {
-			const definitionPlace = createScenePlanners({ definitions }).find(
-				(planner) => planner.kind === 'place-object'
-			);
-			if (definitionPlace === undefined) return;
-			const registration = services.authoring.registerPlanner(definitionPlace);
-			// A refusal here means the epoch ended before registration; the adapter
-			// is already unbound, so there is no live surface to report it on.
-			if (registration.kind !== 'registered') return;
-		});
+	void Promise.all(
+		NATIVE_PLACEMENT_PRIMITIVES.map((primitive) => nativePlacementDefinition(primitive))
+	).then((definitions) => {
+		admitted.push(...definitions);
+	});
 
 	const adapter: StageAdapter = {
 		id: 'scene',
 		requiredCapabilities: ['stage-instrument-v1'],
 		bind(context): StageAdapterBinding {
 			const source = stageScene(context.snapshot);
+			// The accepted resource is the authority for every later placement, so a
+			// rebind replaces whatever the procedure captured before the install.
+			// Async: the definition identity hashes the captured metadata.
+			clearCreatorDefinitions();
+			void (async () => {
+				for (const resource of approvedModelResources(stageEnvelope(context.snapshot))) {
+					const definition = await creatorModelDefinition(resource, 'Imported model');
+					if (definition !== null) rememberCreatorDefinition(definition);
+				}
+			})();
 			// One drag at a time: the press origin and the yaw it started from, so a
 			// shift-drag is a rotation of the same captured baseline.
 			let dragOrigin: { readonly x: number; readonly yaw: number } | null = null;
@@ -346,6 +373,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						label: 'Compose',
 						targetRef: context.selection()?.ref ?? null,
 						order: 5
+					},
+					{
+						id: SCENE_IMPORT_TASK,
+						taskKind: SCENE_IMPORT_KIND,
+						label: 'Import model',
+						targetRef: null,
+						order: 30
 					}
 				],
 				findEntries: [
@@ -388,6 +422,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						railFamily: 'arrange',
 						capability: 'scene',
 						order: 7
+					},
+					// Library and Head Find both read these entries: Import is a
+					// procedure invoked by name, never a permanent pointer tool.
+					{
+						id: SCENE_IMPORT_TASK,
+						taskKind: SCENE_IMPORT_KIND,
+						label: 'Import model…',
+						railFamily: 'library',
+						capability: 'own model',
+						order: 30
 					}
 				],
 				// The pointer claim is offered before the host's navigation gesture and
@@ -412,8 +456,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (intent.phase === 'down') {
 						if (openTaskKind === 'place-object') {
+							// An approved model armed by Import places exactly like a native
+							// primitive: press, preview on the compiled floor, release to commit.
+							const armed = session.armedModel();
 							const primitive = session.placePrimitive();
-							const begun = session.beginPlace(primitive);
+							const begun = armed === null ? session.beginPlace(primitive) : session.beginPlaceModel(armed);
 							if (begun.kind === 'refused') {
 								gestureSurface = null;
 								return false;
@@ -426,7 +473,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								gestureSurface = null;
 								return false;
 							}
-							session.previewPlace(primitive, support.x, support.z, support.elevation);
+							if (armed === null) session.previewPlace(primitive, support.x, support.z, support.elevation);
+							else session.previewPlaceModel(armed, support.x, support.z, support.elevation);
 							return true;
 						}
 						const primary = adapterContext.selectionState().primary;
@@ -445,9 +493,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (intent.phase === 'up') {
 						dragOrigin = null;
 						gestureSurface = null;
-						const proposed = session.candidate();
-						if (openTaskKind === 'place-object') {
-							if (proposed !== null && proposed.kind === 'place') void commitPointerPlace(session);
+						const proposed = session.candidate();					if (openTaskKind === 'place-object') {
+						if (proposed !== null && proposed.kind === 'place') void commitPointerPlace(session);
 							else if (session.armed() === 'place') session.abortGesture();
 							else session.cancel();
 							return true;
@@ -477,12 +524,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							session.invalidatePreview();
 							return true;
 						}
-						session.previewPlace(
-							session.placePrimitive(),
-							support.x,
-							support.z,
-							support.elevation
-						);
+						const armed = session.armedModel();
+						if (armed === null) {
+							session.previewPlace(
+								session.placePrimitive(),
+								support.x,
+								support.z,
+								support.elevation
+							);
+						} else {
+							session.previewPlaceModel(armed, support.x, support.z, support.elevation);
+						}
 						return true;
 					}
 					// move: the pointer ray is resolved against the geometry the Stage
@@ -560,12 +612,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				instrument(task) {
 					openTaskKind = task.kind;
+					if (task.kind === SCENE_IMPORT_KIND) {
+						// Import reads and approves only. It arms a model for the next floor
+						// placement but installs nothing until that placement commits.
+						return {
+							summary: 'Import a model',
+							view: { component: ImportModelInstrument, services }
+						};
+					}
 					// Arm the surface for the reading the instrument will actually read,
 					// not the bind-time one: a reading change does not rebuild the binding.
 					const evaluation = services.stage.evaluation();
 					if (task.kind === 'place-object' && evaluation !== null) {
 						taskSurface = surfaceFor(evaluation, services.stage.snapshot());
 						taskSurface.session.arm('place');
+						// Import leaves the approved model it has not placed yet; the
+						// session this task owns is the one that receives it.
+						const pending = takeArmedModel();
+						if (pending !== null) taskSurface.session.setArmedModel(pending);
 						// Typed and pointer Place commit through this session; completing here
 						// is what keeps the tool persistent and selects the new entity for a
 						// typed commit too.

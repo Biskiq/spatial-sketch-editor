@@ -33,7 +33,8 @@
 		scene,
 		rooms,
 		evaluation,
-		ghosts = []
+		ghosts = [],
+		modelUrls = null
 	}: {
 		geometry: CompiledLayoutGeometry;
 		scene: RuntimeScene;
@@ -41,6 +42,8 @@
 		evaluation: ViewportEvaluation | null;
 		/** Adapter-proposed poses, drawn here by the one Canvas. */
 		ghosts?: readonly StageGhostMesh[];
+		/** Resolved approved creator-model bytes, owned by the route's session. */
+		modelUrls?: ReadonlyMap<string, string> | null;
 	} = $props();
 
 	const presentation = $derived.by(() => {
@@ -58,7 +61,7 @@
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 	<StageCamera {evaluation} />
 	<VisitorLayoutShell {geometry} {presentation} />
-	<VisitorEntities {scene} {rooms} />
+	<VisitorEntities {scene} {rooms} {modelUrls} />
 	<!--
 		Proposed-pose ghosts: the object's own shape at the captured pose, translucent
 		and depth-write-free so the accepted body stays readable underneath. They are

@@ -335,11 +335,15 @@ describe('scene operation planners — registration', () => {
 			'delete-one'
 		]);
 		for (const planner of planners) {
+			// `place-object` is the single Scene planner that declares typed-resource
+			// staging: a creator model's first placement installs its resource, exact
+			// lock and entity as one accepted result. Every other Scene operation
+			// keeps Scene-only admission.
 			expect(planner.admission).toEqual({
 				domain: 'scene',
 				compound: false,
 				units: false,
-				resources: false
+				resources: planner.kind === 'place-object'
 			});
 			expect(planner.sourceKinds).toEqual([UNIT_SOURCE_KIND]);
 			expect(planner.sourceVersions).toEqual([UNIT_SOURCE_VERSION]);

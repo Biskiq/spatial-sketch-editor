@@ -28,6 +28,7 @@ const GLB_VERSION = 2;
 const CHUNK_JSON = 0x4e4f534a; // 'JSON'
 const CHUNK_BIN = 0x004e4942; // 'BIN\0'
 const GLTF_VERSION = '2.0';
+const MESHOPT_EXTENSION = 'EXT_meshopt_compression';
 
 type GltfDocument = Record<string, unknown>;
 
@@ -162,6 +163,79 @@ function readRecordList(value: unknown, path: string): GltfDocument[] {
 	});
 }
 
+/**
+ * True for the buffer a required EXT_meshopt_compression declares as its
+ * fallback.
+ *
+ * The glTF-Transform writer emits that buffer in a GLB's JSON even when the
+ * extension is required, and the container carries only the compressed buffer,
+ * so its declared bytes are a layout, not payload. It is admitted only when the
+ * document requires the extension: then no conformant consumer may read the
+ * fallback. Its declared length is not payload, so it is not bounded against the
+ * container; every view bound to it must carry EXT_meshopt_compression, whose
+ * source is checked against the real compressed bytes (`checkMeshoptSource`).
+ * An optional extension keeps its fallback bytes in the container, so the usual
+ * bounds check still applies.
+ */
+function isRequiredMeshoptFallback(document: GltfDocument, buffer: GltfDocument): boolean {
+	const required = document.extensionsRequired;
+	if (!Array.isArray(required) || !required.includes(MESHOPT_EXTENSION)) return false;
+	const extensions = buffer.extensions;
+	if (typeof extensions !== 'object' || extensions === null || Array.isArray(extensions)) return false;
+	const meshopt = (extensions as Record<string, unknown>)[MESHOPT_EXTENSION];
+	if (typeof meshopt !== 'object' || meshopt === null || Array.isArray(meshopt)) return false;
+	return (meshopt as Record<string, unknown>).fallback === true;
+}
+
+/** The EXT_meshopt_compression record on a bufferView, or null when it carries none. */
+function readMeshoptViewExtension(view: GltfDocument, viewPath: string): GltfDocument | null {
+	const extensions = view.extensions;
+	if (extensions === undefined) return null;
+	if (typeof extensions !== 'object' || extensions === null || Array.isArray(extensions)) {
+		fail(`${viewPath}.extensions`, 'invalid-document', `${viewPath}.extensions must be an object`);
+	}
+	const meshopt = (extensions as Record<string, unknown>)[MESHOPT_EXTENSION];
+	if (meshopt === undefined) return null;
+	if (typeof meshopt !== 'object' || meshopt === null || Array.isArray(meshopt)) {
+		fail(`${viewPath}.extensions.${MESHOPT_EXTENSION}`, 'invalid-document', `${viewPath}.extensions.${MESHOPT_EXTENSION} must be an object`);
+	}
+	return meshopt as GltfDocument;
+}
+
+/**
+ * Bound the compressed bytes a meshopt-compressed view reads. The extension's
+ * `buffer` names where the compressed data lives; it must be a real buffer that
+ * holds bytes (never a fallback) and the declared range must lie inside it.
+ */
+function checkMeshoptSource(input: {
+	meshopt: GltfDocument;
+	viewPath: string;
+	bufferCount: number;
+	fallbackBuffers: ReadonlySet<number>;
+	availableBytes: readonly number[];
+}): void {
+	const { meshopt, viewPath, bufferCount, fallbackBuffers, availableBytes } = input;
+	const extensionPath = `${viewPath}.extensions.${MESHOPT_EXTENSION}`;
+	const source = meshopt.buffer;
+	if (typeof source !== 'number' || !Number.isSafeInteger(source) || source < 0 || source >= bufferCount) {
+		fail(`${extensionPath}.buffer`, 'invalid-buffer-index', `${extensionPath}.buffer must name one of the document's buffers`);
+	}
+	if (fallbackBuffers.has(source)) {
+		fail(`${extensionPath}.buffer`, 'meshopt-source-is-fallback', `${extensionPath}.buffer names fallback buffer ${source}, which holds no compressed bytes`);
+	}
+	const sourceOffset = meshopt.byteOffset === undefined ? 0 : meshopt.byteOffset;
+	if (typeof sourceOffset !== 'number' || !Number.isSafeInteger(sourceOffset) || sourceOffset < 0) {
+		fail(`${extensionPath}.byteOffset`, 'invalid-buffer-offset', `${extensionPath}.byteOffset must be a non-negative safe integer`);
+	}
+	const sourceLength = meshopt.byteLength;
+	if (typeof sourceLength !== 'number' || !Number.isSafeInteger(sourceLength) || sourceLength <= 0) {
+		fail(`${extensionPath}.byteLength`, 'invalid-buffer-length', `${extensionPath}.byteLength must be a positive safe integer`);
+	}
+	if (sourceOffset + sourceLength > availableBytes[source]!) {
+		fail(extensionPath, 'meshopt-source-out-of-bounds', `${extensionPath} reads ${sourceLength} bytes at ${sourceOffset} of buffer ${source}, which holds ${availableBytes[source]}`);
+	}
+}
+
 function readByteLength(record: GltfDocument, path: string): number {
 	const value = record.byteLength;
 	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
@@ -188,16 +262,33 @@ function checkGltfDocument(input: {
 	const baseDirectory = directoryOf(path);
 	const buffers = readRecordList(document.buffers, `${path}.buffers`);
 	const availableBytes: number[] = [];
+	const fallbackBuffers = new Set<number>();
 	for (const [index, buffer] of buffers.entries()) {
 		const bufferPath = `${path}.buffers[${index}]`;
 		const byteLength = readByteLength(buffer, bufferPath);
 		const uri = buffer.uri;
+		const fallback = isRequiredMeshoptFallback(document, buffer);
+		// Index 0 is the GLB binary buffer (or the first external buffer): the
+		// meshopt fallback is always a later declaration.
+		if (fallback && index === 0) {
+			fail(bufferPath, 'invalid-meshopt-fallback', `${bufferPath} is the first buffer and cannot be the meshopt fallback; only a later buffer may be one`);
+		}
+		if (fallback) fallbackBuffers.add(index);
 		if (uri === undefined) {
 			if (container === null) {
 				fail(bufferPath, 'missing-buffer-uri', `${bufferPath} carries no URI outside a GLB container`);
 			}
 			if (container.binLength === null) {
 				fail(bufferPath, 'missing-glb-bin-chunk', `${bufferPath} names the GLB binary buffer and the container has no BIN chunk`);
+			}
+			// A GLB stores only its first buffer. A later URI-less buffer is
+			// admissible only as a required meshopt fallback, whose bytes are not held.
+			if (index > 0 && !fallback) {
+				fail(bufferPath, 'glb-buffer-not-first', `${bufferPath} carries no URI; a GLB stores only its first buffer, and a later buffer must be a required meshopt fallback`);
+			}
+			if (fallback) {
+				availableBytes.push(byteLength);
+				continue;
 			}
 			if (byteLength > container.binLength) {
 				fail(bufferPath, 'buffer-out-of-bounds', `${bufferPath} declares ${byteLength} bytes and the BIN chunk carries ${container.binLength}`);
@@ -244,8 +335,17 @@ function checkGltfDocument(input: {
 		if (typeof byteLength !== 'number' || !Number.isSafeInteger(byteLength) || byteLength <= 0) {
 			fail(`${viewPath}.byteLength`, 'invalid-buffer-length', `${viewPath}.byteLength must be a positive safe integer`);
 		}
+		const meshopt = readMeshoptViewExtension(view, viewPath);
+		// A view on the fallback reads bytes the container does not hold; only a
+		// compressed view (whose source is checked below) may name it.
+		if (fallbackBuffers.has(bufferIndex) && meshopt === null) {
+			fail(viewPath, 'fallback-view-not-compressed', `${viewPath} is bound to meshopt fallback buffer ${bufferIndex} without EXT_meshopt_compression; the container holds none of its bytes`);
+		}
 		if (byteOffset + byteLength > availableBytes[bufferIndex]!) {
 			fail(viewPath, 'buffer-view-out-of-bounds', `${viewPath} ends past its buffer's declared bytes`);
+		}
+		if (meshopt !== null) {
+			checkMeshoptSource({ meshopt, viewPath, bufferCount: buffers.length, fallbackBuffers, availableBytes });
 		}
 	}
 	const images = readRecordList(document.images, `${path}.images`);

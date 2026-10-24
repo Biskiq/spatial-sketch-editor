@@ -671,6 +671,7 @@
 			</label>
 			<button type="button" onclick={place}>Place</button>
 		</div>
+		<p class="hint">An imported model is placed by clicking its floor position; these typed fields place a native primitive.</p>
 		{@render snapRow()}
 	{/if}
 

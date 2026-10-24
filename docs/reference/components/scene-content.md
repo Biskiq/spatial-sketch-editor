@@ -33,8 +33,8 @@ or procedural; the starter may capture a bounded verified palette. Missing or ch
 placement; no resource is silently admitted. T2.P02.S01 adds editor-host admission for a model
 resource in the same envelope and Save verification against the project's approved revision. Its
 `generic` fallback uses the approved footprint; part fields remain refused and `componentId` stays
-null. Import/review/approve UI and the complete placement journey remain later T2 work. The visitor
-reader remains catalogue-only. The shared Stage/visitor renderers remain under
+null. T2.P02.S02 adds the import procedure and the placement journey; its owner-run rows, including
+Preview pixels, stay unrun in its acceptance stub. The visitor reader remains catalogue-only. The shared Stage/visitor renderers remain under
 `apps/editor/src/lib/museum/`, with catalogue policy in
 `apps/editor/src/lib/content/scene-validation.ts`. The directory name is not a separate product.
 Open and Download use F2 source JSON. Publication UI and Camera authoring controls remain absent.

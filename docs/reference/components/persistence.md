@@ -130,8 +130,8 @@ staging and immutable approved model revisions in the project registry; Save ver
 derivative/source pins, recipe, report digest and placement against an approved revision owned by
 that project, refusing the save without changing the stored version when they disagree. Resources
 format 2 carries the model resource and lock; Scene format 3 may reference it. The visitor/public
-reader remains catalogue-only, and the import/review/approve UI and full placement flow remain later
-T2 work.
+reader remains catalogue-only. T2.P02.S02 adds the import and placement flow that writes these revisions
+and their Scene references through the S01 routes and Save verification, which it reuses unchanged.
 
 **History.** One F4 chronological stack holds at most 100 accepted operations, skips no-ops,
 truncates redo after a new edit and mints fresh revisions on Undo/Redo. Session selection, generated

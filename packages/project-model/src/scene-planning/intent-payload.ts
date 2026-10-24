@@ -25,6 +25,7 @@ import type { LocalInputFrame } from './types';
 import type { SceneSupportChoice } from './support';
 import type { CapturedIdAllocation } from '../f4/types';
 import type { SceneOperationKind } from './operations';
+import type { CreatorModelResourcePayload } from './model-resource';
 
 export type SceneOperationPayload =
 	| {
@@ -36,6 +37,12 @@ export type SceneOperationPayload =
 			readonly frame: LocalInputFrame;
 			readonly frameReference: FrameReference;
 			readonly choice?: SceneSupportChoice;
+			/**
+			 * First placement of an approved creator model: the exact resource and lock
+			 * installed in the same accepted result as the entity. Later instances omit
+			 * it and resolve the definition from the accepted envelope.
+			 */
+			readonly modelResource?: { readonly id: string } & CreatorModelResourcePayload;
 	  }
 	| {
 			readonly kind: 'move-horizontal';
@@ -118,7 +125,8 @@ function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): SceneOperati
 		'yaw',
 		'frame',
 		'frameReference',
-		'supportChoice'
+		'supportChoice',
+		'modelResource'
 	]);
 	if (record === null) return null;
 	const definitionKey = reader.opaqueId(record.definitionKey, `${path}.definitionKey`);
@@ -128,6 +136,10 @@ function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): SceneOperati
 	const frame = readFrame(reader, record.frame, `${path}.frame`);
 	const frameReference = readFrameReference(reader, record.frameReference, `${path}.frameReference`, frame);
 	const choice = readSupportChoice(reader, record.supportChoice, `${path}.supportChoice`);
+	const modelResource =
+		record.modelResource === undefined
+			? null
+			: readCreatorModelResourcePayload(reader, record.modelResource, `${path}.modelResource`);
 	if (
 		definitionKey === null ||
 		metadataContentId === null ||
@@ -135,7 +147,8 @@ function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): SceneOperati
 		yaw === null ||
 		frame === null ||
 		!frameReference.ok ||
-		choice === undefined
+		choice === undefined ||
+		(record.modelResource !== undefined && modelResource === null)
 	) {
 		return null;
 	}
@@ -147,7 +160,91 @@ function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): SceneOperati
 		yaw,
 		frame,
 		frameReference: frameReference.value,
-		...(choice.choice === undefined ? {} : { choice: choice.choice })
+		...(choice.choice === undefined ? {} : { choice: choice.choice }),
+		...(modelResource === null ? {} : { modelResource })
+	};
+}
+
+/**
+ * Read the optional first-placement resource introduction.
+ *
+ * Every field is required and finite; the planner re-validates the pin against
+ * the approved model rules before installing anything, so this reader only
+ * proves the captured payload is shaped like a resource at all.
+ */
+function readCreatorModelResourcePayload(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string
+): ({ readonly id: string } & CreatorModelResourcePayload) | null {
+	const record = reader.object(raw, path, ['id', 'derivative', 'source', 'recipe', 'reportDigest', 'placement']);
+	if (record === null) return null;
+	const id = reader.opaqueId(record.id, `${path}.id`);
+	const derivative = reader.object(record.derivative, `${path}.derivative`, ['hash', 'mime', 'size', 'locator']);
+	const source = reader.object(record.source, `${path}.source`, ['manifestHash', 'size', 'fileCount']);
+	const recipe = reader.object(record.recipe, `${path}.recipe`, ['id', 'version']);
+	const reportDigest = reader.opaqueId(record.reportDigest, `${path}.reportDigest`);
+	const placement = reader.object(record.placement, `${path}.placement`, [
+		'metresPerSourceUnit',
+		'pivot',
+		'footprint',
+		'contactMinY'
+	]);
+	if (
+		id === null ||
+		derivative === null ||
+		source === null ||
+		recipe === null ||
+		reportDigest === null ||
+		placement === null
+	) {
+		return null;
+	}
+	const hash = reader.opaqueId(derivative.hash, `${path}.derivative.hash`);
+	const mime = reader.string(derivative.mime, `${path}.derivative.mime`);
+	const size = reader.integerAtLeast(derivative.size, `${path}.derivative.size`, 1);
+	const locator = reader.string(derivative.locator, `${path}.derivative.locator`);
+	const manifestHash = reader.opaqueId(source.manifestHash, `${path}.source.manifestHash`);
+	const sourceSize = reader.integerAtLeast(source.size, `${path}.source.size`, 0);
+	const fileCount = reader.integerAtLeast(source.fileCount, `${path}.source.fileCount`, 1);
+	const recipeId = reader.string(recipe.id, `${path}.recipe.id`);
+	const recipeVersion = reader.integerAtLeast(recipe.version, `${path}.recipe.version`, 1);
+	const metresPerSourceUnit = reader.numberAtLeast(placement.metresPerSourceUnit, `${path}.placement.metresPerSourceUnit`, 0, true);
+	const pivot = reader.vector3(placement.pivot, `${path}.placement.pivot`);
+	const footprint = reader.object(placement.footprint, `${path}.placement.footprint`, ['width', 'depth']);
+	const contactMinY = reader.number(placement.contactMinY, `${path}.placement.contactMinY`);
+	if (
+		hash === null ||
+		mime === null ||
+		size === null ||
+		locator === null ||
+		manifestHash === null ||
+		sourceSize === null ||
+		fileCount === null ||
+		recipeId === null ||
+		recipeVersion === null ||
+		metresPerSourceUnit === null ||
+		pivot === null ||
+		footprint === null ||
+		contactMinY === null
+	) {
+		return null;
+	}
+	const width = reader.numberAtLeast(footprint.width, `${path}.placement.footprint.width`, 0, true);
+	const depth = reader.numberAtLeast(footprint.depth, `${path}.placement.footprint.depth`, 0, true);
+	if (width === null || depth === null) return null;
+	return {
+		id,
+		derivative: { hash, mime, size, locator },
+		source: { manifestHash, size: sourceSize, fileCount },
+		recipe: { id: recipeId, version: recipeVersion },
+		reportDigest,
+		placement: {
+			metresPerSourceUnit,
+			pivot: [pivot[0], pivot[1], pivot[2]],
+			footprint: { width, depth },
+			contactMinY
+		}
 	};
 }
 
