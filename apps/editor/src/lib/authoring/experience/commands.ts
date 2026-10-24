@@ -21,6 +21,7 @@ import type {
 import {
 	EXPERIENCE_CAPTURE_BIND_KIND,
 	EXPERIENCE_CREATE_KIND,
+	EXPERIENCE_GUIDE_CREATE_KIND,
 	EXPERIENCE_GUIDE_ORDER_KIND,
 	EXPERIENCE_PRESENTATION_UPDATE_KIND,
 	EXPERIENCE_STOP_CREATE_KIND,
@@ -58,6 +59,7 @@ export type CommandIds = {
 	readonly view?: string;
 	readonly presentation?: string;
 	readonly stop?: string;
+	readonly guide?: string;
 };
 
 function intent(
@@ -171,13 +173,29 @@ export function captureBindIntent(input: {
 	readonly subjectEntityId: string | null;
 	readonly text: { kind: 'plain'; body: string } | null;
 	readonly guideId: string | null;
+	/**
+	 * Create the Experience's first Guide and this Stop as its initial Stop.
+	 * Only meaningful without `guideId`: the capture then installs View +
+	 * Presentation + Guide + Stop as one accepted result.
+	 */
+	readonly firstGuideLabel?: string | null;
 	readonly afterStopId: string | null;
 }): AuthoringIntent {
+	const firstGuideLabel = input.firstGuideLabel ?? null;
+	if (firstGuideLabel !== null && input.guideId !== null) {
+		throw new Error('captureBindIntent: a capture authors either an existing Guide Stop or a first Guide, never both');
+	}
 	const allocated: AuthoringIntent['allocatedIds'][number][] = [
 		{ kind: 'view', id: input.ids.view! },
 		{ kind: 'presentation', id: input.ids.presentation! }
 	];
 	if (input.guideId !== null) allocated.push({ kind: 'stop', id: input.ids.stop! });
+	if (firstGuideLabel !== null) {
+		if (input.ids.guide === undefined) {
+			throw new Error('captureBindIntent: a first Guide needs a captured guide id');
+		}
+		allocated.push({ kind: 'stop', id: input.ids.stop! }, { kind: 'guide', id: input.ids.guide });
+	}
 	return intent(
 		EXPERIENCE_CAPTURE_BIND_KIND,
 		input.ids,
@@ -191,16 +209,57 @@ export function captureBindIntent(input: {
 					input.subjectEntityId === null ? null : sceneEntitySubject(input.envelope, input.subjectEntityId),
 				text: input.text
 			},
-			stop:
-				input.guideId === null
-					? null
-					: {
+			// A Guide-free capture sends no Stop at all; it never manufactures a Guide
+			// or a Stop to hang one on.
+			...(input.guideId === null && firstGuideLabel === null
+				? { stop: null }
+				: {
+						stop: {
 							guideId: input.guideId,
-							afterStopId: input.afterStopId,
+							afterStopId: input.guideId === null ? null : input.afterStopId,
 							continuation: { kind: 'sequence-next', transition: 'cut' }
 						}
+					}),
+			...(firstGuideLabel === null ? {} : { firstGuide: { label: firstGuideLabel } })
 		},
 		allocated
+	);
+}
+
+/**
+ * Create the Experience's first Guide and its initial distinct Stop.
+ *
+ * The Stop enters the chosen Presentation at its own View — an explicit
+ * `entryViewId` or the Presentation's Default. Reusing a Presentation creates a
+ * fresh Stop identity; no Camera pose/FOV is copied and no Connection is made.
+ */
+export function guideCreateIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: { readonly projectId: string; readonly revisionId: string };
+	readonly ids: CommandIds;
+	readonly experienceId: string;
+	readonly presentationId: string;
+	readonly label: string;
+	readonly entryViewId: string | null;
+	readonly holdSeconds: number | null;
+	readonly continuation: ExperienceContinuation | null;
+}): AuthoringIntent {
+	return intent(
+		EXPERIENCE_GUIDE_CREATE_KIND,
+		input.ids,
+		input.revision,
+		[experienceReference(input.envelope, input.experienceId)],
+		{
+			label: input.label,
+			presentationId: input.presentationId,
+			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
+			...(input.holdSeconds === null ? {} : { holdSeconds: input.holdSeconds }),
+			...(input.continuation === null ? {} : { continuation: input.continuation })
+		},
+		[
+			{ kind: 'guide', id: input.ids.guide! },
+			{ kind: 'stop', id: input.ids.stop! }
+		]
 	);
 }
 

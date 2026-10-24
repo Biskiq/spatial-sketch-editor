@@ -40,7 +40,7 @@ inputs. The visitor cold runtime
 documents through this same authority, and the visitor-only app components are
 `VisitorCameraDirector.svelte`, `VisitorEntities.svelte`, `VisitorLayoutShell.svelte`
 and `VisitorPreviewSurface.svelte`. The public `/p/:publicationId` route currently receives an honest 404 under AM-9; T4 owns the
-prepared-reader activation. No old-source fallback is served.
+prepared-reader activation. No old-source fallback is served. In the editor, Preview entry and return run through the F3 Camera-output ticket (`enterPreview`, `returnPreview`, `cancelPreview`); the visitor surface is built when the Experience lens opens and stays hidden, inert and on-demand between sessions, so an entry starts a run over the already-built scene and issues no draw while hidden.
 
 **What #115 removed.** The editor's Camera surfaces are gone with the editor shell:
 there is no Camera Plan, no camera timeline or transport, no camera-graph
