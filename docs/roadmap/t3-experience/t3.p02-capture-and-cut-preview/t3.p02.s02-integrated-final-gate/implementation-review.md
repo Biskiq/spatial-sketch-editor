@@ -10,13 +10,17 @@ acceptance, gate state, phase closure or commit for the slice.
 
 ```text
 slice     first Guide, real Camera handover/return, bounded Round 2 Capture/Guide expression
-revision  6df26f3e (implementation 44990fad, Preview-chrome fix 035965e8, journey spec 6df26f3e)
+revision  f6de016d (implementation 44990fad, Preview-chrome fix 035965e8, journey spec 6df26f3e,
+          warm-Preview entry f6de016d) + review fix fffe1c5a
 writers   packages/project-model/src/units/planning.ts            additive Experience intent
           apps/editor/src/lib/authoring/experience/commands.ts     typed intents
           apps/editor/src/lib/authoring/experience/preview-handover.ts  new handover sequencing
           apps/editor/src/lib/authoring/stage/camera-session.ts   existing-session handoff methods
           apps/editor/src/lib/authoring/experience/ExperienceSurface.svelte  dock, first Guide, playback
-          apps/editor/src/routes/project/[projectId]/spatial/+page.svelte   Preview entry/exit, chrome guard
+          apps/editor/src/routes/project/[projectId]/spatial/+page.svelte   Preview entry/exit, chrome guard,
+                                                                  warm surface lifetime
+          apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte  run epoch, activity, hidden reuse
+          apps/editor/src/lib/visitor/VisitorCameraDirector.svelte  per-run aim reset
           tests/lib/experience/{first-guide,preview-handover}.test.ts
           perf/flows/{preview-lifecycle,integrated-journeys}.spec.ts
 ```
@@ -50,6 +54,44 @@ Experience lowering/interpreter and Camera authority; it writes no source, selec
 minting plus the host's two transitions. It adds no ownership state: `CameraSession` remains the one
 holder of `ticket` and `preview`. No new host authority or general shell API was added.
 
+### Warm Preview entry
+
+A repeat entry used to rebuild the whole visitor surface — chunk, renderer, scene graph, textures and
+first frame — on the press path. Nothing about the Camera handoff requires that. The surface is now
+built once, at the Experience lens while the editor still owns the Camera, and stays hidden, inert and
+rendering on demand; a Preview session only starts its run. Concretely:
+
+- the visitor chunk, renderer and scene are built when the Experience lens opens, so the first press
+  does not pay them;
+- leaving Preview hides the takeover (`hidden`, `inert`, `on-demand`) instead of destroying it, and
+  the source read it was built from is frozen so accepted authoring edits do not rebuild a hidden scene;
+- the run identity is the entry's Camera epoch, not the component lifetime: a new epoch recreates the
+  interpreter and resets the Camera director's aim, so a reused surface still starts a fresh run;
+- no ownership changes: the Camera claim is taken and returned exactly as before, and the hidden
+  surface holds no claim, writes no source and takes no input.
+
+This is a rendering decision, which the phase explicitly leaves to the host: unmounting was never the
+ownership protocol. Its price is one live visitor renderer (and its scene) while the editor is open
+after the Experience lens has been used. While hidden it is put in on-demand rendering, `hidden` and
+`inert`, so it paints nothing, can take no input and is not exposed to assistive technology; that is
+a mode of the renderer, not a frame assertion, and the specs check the hidden/inert state and the
+single surface rather than counting painted frames. A source replacement drops the surface (the
+chunk stays cached) instead of keeping another project's scene alive, and the next lens entry warms
+the new source.
+
+Measured on an idle host at this revision, press → first rendering opportunity of the run (10 runs per
+row, median / p95): S fixture 67.7 / 113.0 ms first entry in a fresh context, 52.7 / 71.8 ms warm,
+55.0 / 173.7 ms repeat-use; M fixture 71.9 / 88.6 ms, 44.0 / 54.8 ms, 46.7 / 57.4 ms. That is the
+entry's own floor: the mark is taken at the second rendering opportunity after the run starts, so
+33 ms of the S repeat-use row is this harness's own frame budget at 60 Hz before any work is counted.
+The S repeat-use p95 outlier (173.7 ms) is a single 263.8 ms sample in a row whose median is 55.0 ms;
+no row shows work proportional to the scene, which is the point of not rebuilding it.
+
+The harness has no press → frame row from before this change, so the improvement is stated as the
+current measurement and the code fact that the press path no longer creates a surface; it is not
+recorded as a measured before/after delta. The measurement is an opportunity, not a traced image; the
+acceptance record states that limitation rather than calling it a compositor-verified frame.
+
 ### Bounded Round 2 expression
 
 - The Experience dock is the lower working edge: `Select` (the pointer tool), `Capture` and `Guide`.
@@ -68,6 +110,8 @@ holder of `ticket` and `preview`. No new host authority or general shell API was
 ## Decisions the plan left to this review
 
 ```text
+warm surface          built at the Experience lens, hidden/inert between sessions, run identity by
+                      Camera epoch; the read is frozen per entry so hidden surfaces do not rebuild
 entry stop            the first Guide's entry Stop is its initial Stop (the only Stop it has); later
                       Stops are added through the existing stop-create intent
 entry Guide           set only when the first Guide is created, never inferred for other Presentations;
@@ -87,7 +131,8 @@ failure paths         the lazy visitor chunk loads before ownership moves; a fai
 
 ## Independent review
 
-Two independent passes read the change as one diff. No file was edited by a reviewer.
+Independent passes read the change as one diff; rounds 1–2 reviewed the slice, round 3 (two
+reviewers, opposite directions) reviewed the warm-Preview entry. No file was edited by a reviewer.
 
 ```text
 round 1  major  capture-bind accepted a Stop with guideId:null and no firstGuide, installing a Stop no
@@ -104,6 +149,14 @@ round 2  medium the Head and Index stayed mounted over the isolated run (authori
          minor  two journey-spec comments claimed more than their assertions proved
          clean  handoff/return protocol use, facade epoch order, first-Guide identity and Camera
                 non-copy, authorship/authority and boundary suites
+round 3  medium a source replacement kept the warm surface (its old scene, geometry and program alive)
+                and could race an in-flight warm-up into installing the replaced snapshot
+         minor  focus stayed on the Exit control inside the now-inert takeover after a return
+         minor  a stale spec comment still said the surface "came and went"
+         minor  the record claimed the press path was "the run only", although a changed read re-adapts
+                the layout shells
+         clean  no claim held or observed while hidden, no input or a11y reach, epoch 0 never active,
+                fresh run per entry, no stale frame at reveal, specs assert what they prove
 ```
 
 Resolution, all in this slice:
@@ -120,6 +173,39 @@ Resolution, all in this slice:
    Stage is never left without a claim after a newer owner claimed the output.
 7. The journey spec now asserts the isolation it describes and proves reuse with the Presentation card's
    own fact list (one View), not only row text.
+8. `activate` drops the warm surface with the source it was built from, and `warmPreview` rechecks the
+   session token and the boot snapshot after its import, so a replacement neither keeps another
+   project's scene alive nor installs a replaced snapshot's read; the lens effect warms the new source.
+9. `closePreview` blurs a focused control inside the takeover, restoring the focus-to-document the
+   unmount used to give.
+10. The spec comment and the performance prose now say what the code does: the surface is kept warm
+    rather than disposed, and a changed read re-adapts the layout shells on entry.
+11. Two hardening notes were considered and declined as unreachable in ordinary use and outside the
+    bounded host patch: the director's key guard when `document.activeElement` is null, and a
+    redundant static-attribute assertion in the journey spec.
+
+## Self review of the review fixes (owner request)
+
+At the owner's request the fixes were re-read hunk by hunk instead of being re-measured. What that
+check established:
+
+- `activate` clears the surface, its view and its read in the same synchronous block that nulls
+  `preview` and disposes the facade, so no frame can render the replaced scene and the takeover's
+  `{#if}` unmounts exactly as it did when unmounting *was* the exit path.
+- `warmPreview` captures the session token and the snapshot **before** its `await` and re-checks both
+  after it; the install block is synchronous, so it either lands before a press (which then owns the
+  surface) or bails. `openPreview`'s own post-import checks are unchanged.
+- Clearing `previewSurface` re-arms the lens effect, so a replacement warms the new source; no other
+  reader treats a non-null surface as a live session (activity is `preview !== null`).
+- The blur only fires when the focused element is inside `.preview-takeover`, so Escape, lens switch
+  and a source-change return cannot steal focus from anywhere else.
+- No new import, export, route, binding or authority was introduced, which is why the arch and boundary
+  lanes are unaffected by the fix.
+
+One residual found and left as is: if a replacement lands *during* the warm-up's import, the in-flight
+run bails and `previewWarming` stays true until its `finally`, so no second warm is attempted and the
+next entry pays the (cached-chunk) mount once. It is correct — the press path still loads, checks and
+hands over — and avoiding it would need extra state purely to keep one entry warm.
 
 ## Verification
 
