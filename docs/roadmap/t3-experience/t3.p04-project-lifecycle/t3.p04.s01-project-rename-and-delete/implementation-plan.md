@@ -199,9 +199,11 @@ Required behavioral probes:
 - **Late-write regression (follow-up F1):** with a fake store holding the `PutObject`, the writer's
   heartbeat stops and its lease expires while its enforced deadline is still ahead — delete revokes
   and refuses, cleanup's empty listings before the bound still report `pending`, the deadline then
-  aborts the held write so nothing commits, and only the run past the bound marks `complete`. In the
-  hostile variant the fake commits after completion; the verify run must find and delete the key and
-  report it, never claim completion for a key it can still see.
+  aborts the held write so nothing commits, and only the run past the bound marks `complete`. A
+  second probe holds a write past its deadline and asserts the handler has already aborted it, so
+  conforming code cannot produce a post-bound commit at all. In the hostile variant the fake commits
+  after completion; the verify run must find and delete the key and report it, never claim completion
+  for a key it can still see.
 - **Inventory probes (follow-up F2):** a project with an approved revision whose source set has
   several files deletes every source copy, and the persisted key set equals what approval wrote;
   a revision backfilled from retained import paths cleans the same keys; a `sweep-dependent`

@@ -141,7 +141,9 @@ in the future):
    `pending` — the bound, not the empty listing, is what licenses `complete`;
 3. past the bound the handler's `AbortController` fires, the store aborts the held write and nothing
    commits, so the next run marks `complete`;
-4. the hostile variant lets the fake commit after `complete`; the CLI verify run must find the key,
+4. a write held past its deadline is aborted by the handler before it can commit, so conforming
+   code cannot produce a post-bound key;
+5. the hostile variant lets the fake commit after `complete`; the CLI verify run must find the key,
    delete it and report it, and a completion must never be claimed for a key the caller could still
    see.
 
