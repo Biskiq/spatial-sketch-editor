@@ -134,7 +134,9 @@ and guarded-replacement flow; cancellation preserves everything. Only confirmed 
 success retires that session and returns to the existing project list/empty state. Preserve
 source download/recovery where the guard offers it. A stale response after switching project
 must not clear the newer session. Partial network failure retains enough operation state to
-refresh/retry safely; UI distinguishes inaccessible project from pending byte cleanup.
+refresh/retry safely; UI distinguishes inaccessible project from pending byte cleanup. Type the
+fence's `project-busy` refusal as retryable (keep the confirmation and offer retry) rather than as a
+generic failure, and do not treat it as a permanent refusal.
 
 ## File ownership
 
@@ -143,7 +145,7 @@ refresh/retry safely; UI distinguishes inaccessible project from pending byte cl
 | `apps/api/src/{app.ts,project-persistence.ts,save-persistence.ts}` | T3; T2 shared-file coordination | Owner-scoped routes, locking, metadata/preconditions, lifecycle transaction |
 | `apps/api/src/{model-persistence.ts,asset-persistence.ts,object-store.ts,purge-objects.ts,r2-purge.ts}` | T3 lifecycle patch reviewed by T2 | Exact owned-key inventory, the write-lease fence at all three writer call sites, per-writer compensation on failed finalization, and idempotent cleanup; import/admission remains T2-owned |
 | `apps/api/migrations/` | T3 with T2 review if required | The two lifecycle tables (deletion record with key inventory, write leases); migration replay and failure recovery proved |
-| `apps/editor/src/lib/platform/project-persistence.ts` | T3 | Typed lifecycle client and stale/conflict/network handling |
+| `apps/editor/src/lib/platform/project-persistence.ts` | T3 | Typed lifecycle client and stale/conflict/busy/network handling |
 | Existing project list/control surfaces and `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` or `authoring/stage/shell/` where required | T1-owned, explicit reviewed integration patch | Rename/Delete controls, guarded session replacement and title refresh only |
 | `apps/api/tests/{projects,save-units,model-resources,r2-purge}.test.mjs`, API fixtures | T3; T2 review of model probes | Real-DB lifecycle/concurrency/cleanup and isolation |
 | `apps/editor/tests/lib/platform/project-persistence.test.ts` and affected host/project-session contracts | T3 with T1 review | Client/refusal/race and dirty-session behavior |
