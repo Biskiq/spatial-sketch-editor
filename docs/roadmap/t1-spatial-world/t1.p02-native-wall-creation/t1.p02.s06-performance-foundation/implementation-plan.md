@@ -51,6 +51,16 @@ on the M2:
 The [geometry library harvest](../../../../../broad-research/geometry-library-harvest.md) is planning
 evidence for library fit (its §4 rules) and is not a decision.
 
+The [cinematic-scale computational strategy](../../../../../broad-research/cinematic-scale-computational-strategy.md)
+works backward from a richly detailed museum on an 8 GB laptop. It is research input, not a
+decision. S06 takes from it only what is measurable now, inside the existing authorities:
+
+- the H9 row;
+- the museum-shaped census layout (B);
+- the deterministic censuses E1–E4 and the render counters (C).
+
+Its visibility, residency, sharing, detail and scheduling moves are owner proposals (F).
+
 ## Owner direction
 
 - **Machine:** the designated MacBook Air M2 (16 GB), on battery, Low Power Mode off, Chrome
@@ -170,6 +180,9 @@ it does not land, the measured violation is recorded as a finding.
 | H6 | One mesh per Wall, Room surface and door; per-object culling; raycast picking over objects | Draw calls and culling O(N) per frame → O(visible chunks) through static batching per spatial cell with per-chunk rebuild. Picking O(log N) through a BVH | Draw calls: M ≈ 300; L ≈ 1 k; 10× M ≈ 3 k (above the 2,500 target); 100× ≈ 30 k | The benches record draw calls and frame time at S/M/L/XL, plus a draw-call count oracle | A new rendering architecture: owner decision | Measure in S06. A BVH picking probe only if picking shows in the traces; batching is a follow-on |
 | H7 | A content revision is SHA-256 over the canonical unit bytes; Save PUTs the full canonical JSON | Ω(unit bytes) per digest and per Save. This is inherent in the current format | At 100× this is hundreds of ms per Save; I4 keeps it off the hot path | Benches record F9 bytes and time at L/XL | A per-entity (Merkle) digest or a delta Save is a format/F/T3 decision | Owner decision |
 | H8 | Open is genuinely global, and about 400 ms of warm M open is unattributed outside compile and admission (53 ms) | Ω(N) → linear with a small constant. A progressive first frame by visibility is streaming-adjacent | Bench 1 attributes it; H2 and H4 also cut its repeated passes | Bench 1 per-stage attribution is itself the experiment | Progressive or streamed open belongs to T4 | Attribution and pass removal in S06; progressive open is owner/T4 |
+| H9 | Repeated identical frame work. The Stage's one shadow-casting directional light (`StageCanvas.svelte:56–61`) keeps three.js's default `shadowMap.autoUpdate`; nothing in `apps/editor/src/lib` turns it off. So every rendered frame, including each orbit frame, re-renders the shadow map, although the light and its shadow camera are fixed in world space and the Wall and object casters are static | One shadow pass over every caster per rendered frame → a shadow pass only on frames where a caster, the light or the shadow camera changed (an edit, a placement or an animated caster) | Per orbit frame: one fewer pass over the casters. With C caster meshes and M visible meshes the pass is C/(C+M) of the frame's draw submissions, close to half when most meshes cast. The saving is flat in N during orbit | Count oracle: shadow-map renders during a fixed orbit = 0, and = 1 after an edit. Differential: the framebuffer read back after the orbit equals the always-update path's | Low. Same renderer and same image; an animated caster keeps per-frame updates. Preview's directional light (`VisitorPreviewSurface.svelte:167`) casts no shadow today, so H9 is Stage-only. Preview renders every frame while active (`renderMode` `'always'`, line 162), including at rest; the benches count frames rendered at rest there as a T3 finding | S06 (bounded; the Stage is T1-owned) |
+
+H9 is appended rather than ranked so that earlier citations keep their numbers.
 
 Everything in S06 runs inside the existing authorities. It adds no format, gate, rendering
 architecture, preview semantics or bench pass. A hypothesis that needs one of those stops and becomes
@@ -268,6 +281,19 @@ an owner proposal in F.
 
   Assets come from CC0 or permissive sources and are downloaded only with owner approval per
   source. They stay outside the repository, and their source and license are recorded.
+- **Museum-shaped census layout.** The grids are regular by construction. This layout is one
+  realistic, non-grid layout with ordinary counts rather than inflated ones. The same generator
+  builds it through the public planners:
+  - about 60 Rooms of varied sizes, about 360 Walls and about 140 door and window Openings;
+  - an enfilade of aligned doors, a corridor loop and one large hall;
+  - door `connectsRoomIds` relations;
+  - authored Camera Views with their connections, and an Experience route of Stops;
+  - repeated placements of the realistic-L load's approved derivatives.
+
+  The Camera and Experience content is generated through T3's own public operations, and T3
+  reviews that generator, because it lives in the shared harness. The layout feeds the censuses
+  (C) and serves as a correctness-lane fixture. It is **not** a bench tier. It joins a pass only as
+  a report-only row that the owner enables for that pass, like the headroom probes.
 - **Headroom probes (optional; owner opt-in per pass; off by default).** A transparent, animated
   water-like surface shader and a fixed per-frame worker CPU budget can stand in for future
   simulation. They are harness-only, report-only and disposable, and leave product code unchanged.
@@ -310,10 +336,63 @@ Attribute time to these stages:
 For each stage, report how its cost scales against walls, rooms and objects, and name every stage
 that grows faster than linear. The unattributed part of the M open is the first target.
 
+**Render counters.** These are fields in the same pass, not extra passes. Every bench also records
+them for the F7 orbit window and for the first frame of F2 and F10:
+
+- draw calls, triangles, programs, geometries and textures, from `renderer.info`;
+- shadow-map renders and shadow draw calls per frame, and frames rendered while at rest (H9);
+- texture bytes, both at their stored format and at their GPU format. A 2K WebP map decodes to
+  RGBA8 with mips: 2048² × 4 B × 4/3 ≈ 21.3 MiB each (arithmetic);
+- materials created per placement;
+- shader-program compile time at the first frame;
+- idle time and long tasks per frame.
+
+**Deterministic censuses (agent-run, not benchmarks).** These are counts computed in Node or
+Vitest over fixture data, so they cost none of the three passes. Each is recorded in the acceptance
+record with its fixture digest and labelled “census, not timing”. Each is disposable harness code.
+
+- **E1, dependency census.** For every Wall in the S, M, L, XL and museum-shaped fixtures, and for
+  each edit class (length, angle, rigid move):
+  - apply a small, distinct edit through the public planners;
+  - diff the full compiles before and after;
+  - k is the number of entities whose compiled output changed.
+
+  Report the distribution of k and of k/N. This sizes H1's affected set and its fallback rate
+  before Bench 1. A k found this way is the changed set, a lower bound on what an incremental
+  evaluator must evaluate; D.3's count oracle measures the evaluated set. An edit class whose
+  median k/N on the museum-shaped layout exceeds 20 % refutes H1's premise for that class. D.3
+  then records it and keeps the full path for that class.
+- **E2, visibility census.** For each authored Camera View and Stop pose in the museum-shaped
+  layout, count the Rooms reachable from the pose's Room. A Room counts when it is reached through
+  Openings whose rectangles intersect the successively clipped view frustum, against all Rooms. Each
+  Opening joins the two Rooms adjacent to its host Wall, and doors also carry the authored,
+  validated `connectsRoomIds` pair (`layout-wall-portals.ts`). The traversal is conservative: it may
+  overcount visible Rooms, never undercount them. Report the median and worst visible fraction, and
+  name the worst sightline. This is evidence for the cell-and-portal owner proposal (F); a median
+  above 40 % weakens it.
+- **E3, sharing census.** Over the realistic-L load and the museum-shaped placements, count:
+  - placements;
+  - unique definitions;
+  - unique (definition, mesh, material) triples;
+  - materials created per placement.
+
+  `cloneModelScene` (`museum/assets/model-utils.ts:9–35`) clones each placement's materials,
+  because per-placement state such as `setModelWireframe` mutates them. The ratio of placements to
+  unique triples bounds what instancing could save. The result is a finding for T2, which owns
+  the clone; S06 does not change it.
+- **E4, residency census.** For each authored Stop in the museum-shaped layout, take the textures
+  referenced by the E2-visible Rooms plus those of the next Stop. Report their bytes:
+  - at today's GPU format (RGBA8 with mips);
+  - by arithmetic, at a 1 B/px and at a 0.5 B/px GPU-compressed format.
+
+  Compare each with the 384 MiB laptop-A GPU-memory row. This is evidence for the owner proposals
+  on GPU-compressed import output and residency (F). It does not change `creator-import@1`.
+
 ### D. Algorithm work
 
 Work the [hypothesis matrix](#scaling-objective-and-locality) in this order: H3, then H2, then H4
-alongside H1, then H5. Each hypothesis carries its count oracle and differential from the matrix.
+alongside H1, then H5, then H9. Each hypothesis carries its count oracle and differential from the
+matrix.
 Linear whole-project work on a local path is a defect (I1), not only superlinear work.
 
 1. **Remove repeated work first** (H3, H2; this includes the work transferred from S02):
@@ -353,10 +432,14 @@ Linear whole-project work on a local path is a defect (I1), not only superlinear
    - compiles, validations and admissions per edit and per Undo/Redo (I3);
    - entities evaluated, meshes rebuilt and objects cloned per single-Wall edit (I1);
    - pair visits per compile (I2);
-   - draw calls per frame;
+   - draw calls per frame, and shadow-map renders per orbit frame (H9);
    - for a fixed local edit, constant work across S, M, L and XL.
 
    These run freely between benches, because they are correctness tests, not benchmarks.
+6. **Remove repeated identical frame work** (H9). Re-render the Stage shadow map only when a caster,
+   the light or the shadow camera changes, with explicit invalidation from the representation's
+   rebuild, placement changes and animated casters. Prove it with H9's count oracle and framebuffer
+   differential. Preview's at-rest frames are recorded for T3, not changed here.
 
 ### E. Math and geometry library exploration
 
@@ -407,12 +490,22 @@ owner decisions with their Bench evidence and hand-calculated 10× / 100× headr
 
 - adding the I1–I5 locality invariants to the contract as count-based rows;
 - entity-level structural sharing (H5);
-- batched, culled rendering (H6);
+- batched, culled rendering (H6), with cell-and-portal visibility over Rooms and Openings
+  (strategy M2, sized by E2) and instanced submission with shared materials (M4, sized by E3) as
+  its candidate shapes;
 - a per-entity digest or delta Save (H7);
-- progressive open (H8).
+- progressive open (H8);
+- the exactness boundary as a contract principle, ratified before any detail-level work.
+  Presentation may approximate; picking, snapping, dimensions, validation and acceptance read the
+  exact semantic representation (strategy §2);
+- GPU-compressed texture output as a `creator-import@2` recipe, plus a bounded residency and
+  prefetch manager (M3, sized by E4 and the render counters);
+- screen-space-error tessellation and detail levels (M5), a frame-budget scheduler, and release-time
+  precompute of lighting, visibility and detail levels in T4.
 
-These are proposals only: the performance contract and the formats change solely by owner
-ratification.
+The [strategy study](../../../../../broad-research/cinematic-scale-computational-strategy.md) gives
+each one's mechanism, limit and falsifier. These are proposals only: the performance contract and
+the formats change solely by owner ratification.
 
 ## Benchmark sequence (owner-run, at most three passes)
 
@@ -420,13 +513,14 @@ The owner set this sequence on 2026-10-24 so that the costly benchmark is not re
 run a full benchmark pass; between passes they work from Bench 1's data.
 
 1. **Set up (agent).** Run the start step and record the trusted base. Build the method and
-   workloads (A, B) and the harness-flag stage marks that C needs. Prove the flows execute with a
-   smoke check only. Hand over to the owner (A.7).
+   workloads (A, B), and the harness-flag stage marks and render counters that C needs. Run the
+   censuses E1–E4 and record them. Prove the flows execute with a smoke check only. Hand over to
+   the owner (A.7).
 2. **Bench 1: initial (owner).** One pass on the M2 with the new method at S, M and L, plus XL and
    the realistic-L load as report-only. It includes the old-method F2 S/M comparison (A.6) and the
    per-stage traces. The agent records it in the acceptance record as owner-run.
 3. **Optimize (agent).** Characterize from Bench 1 (C) and refit each matrix row's cost model to
-   the measured per-stage times. Then land D.1–D.5 in matrix order and explore libraries (E). Check
+   the measured per-stage times. Then land D.1–D.6 in matrix order and explore libraries (E). Check
    each change by hand calculation as defined below. Correctness lanes, differentials and count
    oracles run as usual, since they are not benchmarks. Hand over with a predicted result per row
    and per hypothesis.
@@ -462,8 +556,9 @@ Use the work-checkpoint skill at each handover, since the owner's runs separate 
 | --- | --- |
 | Benchmark budget | At most three owner-run passes (Bench 1–3), each recorded with revision, wall time, setup share, load check and lock holder; no agent-run full pass; every smoke check and hand-calculated prediction labelled as such |
 | Method | Precomputed JSON load in every flow; setup excluded and reported; old and new wall time in Bench 1; A.6 method validation in Bench 1; contamination rule applied |
-| Workloads | L/XL fixtures and the realistic-L load validate; asset sources and licenses recorded; stack isolation recorded without credentials |
-| Characterization | From Bench 1: per-stage attribution and scaling at S/M/L for F2/F3/F4/F7/F8/F13; superlinear stages named; XL and realistic-L load reported |
+| Workloads | L/XL fixtures, the realistic-L load and the museum-shaped census layout validate; asset sources and licenses recorded; stack isolation recorded without credentials |
+| Characterization | From Bench 1: per-stage attribution and scaling at S/M/L for F2/F3/F4/F7/F8/F13; superlinear stages named; XL and realistic-L load reported; render counters recorded in every bench |
+| Censuses | E1–E4 recorded with fixture digests and labelled “census, not timing”; E1's per-class verdict on H1's premise recorded before Bench 1; E2–E4 attached as evidence to their owner proposals (F) |
 | Algorithm | Each optimization has an equal-output heavy differential and a count oracle; a recorded hand-calculated prediction; Bench 1 versus Bench 2/3 on the same workload and environment; no format change; boundary and visitor-isolation tests green |
 | Scaling invariants | For every hypothesis S06 lands, its I1–I3 count oracle is green at S, M, L and XL, and its I5 differential is green. For every hypothesis it does not land, the measured violation and its 10× / 100× hand calculation are recorded. H6–H8 and entity-level H5 are proposed to the owner (F), never implemented silently |
 | Budgets | From Bench 3: hard S/M rows for F2, F3, F4, F7, F8, F13 and per-edit evaluation; L hard rows (F3, F4, F8, F13); a hard miss is resolved before Bench 3 or escalated to the owner per D.3; target rows dispositioned |
@@ -493,4 +588,7 @@ S06 does none of the following:
 - change “preview equals planner output” semantics, or any budget, without an owner ruling;
 - implement batched or culled rendering, a new digest or Save protocol, progressive open, or
   entity-level structural sharing (H5–H8 follow-ons are owner proposals in F);
+- implement portal visibility, instancing or shared materials, GPU-compressed textures, residency
+  or prefetch, detail levels, a frame scheduler or release precompute (strategy M2–M5; owner
+  proposals in F);
 - record the H0 trace-method ruling, which stays the owner's.

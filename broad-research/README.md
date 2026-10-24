@@ -61,6 +61,13 @@ verbatim report untouched.
   compares P3 Vellum's roof/footprint algorithms with polygon-clipping, Clipper2, straight-skeleton
   solvers (CGAL and ports) and Manifold, with measured probes on the P3 fixtures, for T1 / RR-2
   library choices. Evidence, not a dependency decision.
+- **Cinematic-scale computational strategy:** [`cinematic-scale-computational-strategy.md`](./cinematic-scale-computational-strategy.md)
+  works backward from a richly detailed museum on an 8 GB laptop. It separates semantic influence
+  from visual influence, and ranks five moves, each removing a category of work: maintained
+  derivations, architecture-driven visibility, bounded GPU-native residency, describe-once
+  sharing and screen-error detail. Each has its limit and falsifier. Measurements, arithmetic
+  and hypotheses are labelled. Research input for T1.P02.S06 and owner review, not a contract,
+  plan or decision.
 
 ## Cross-domain synthesis
 
