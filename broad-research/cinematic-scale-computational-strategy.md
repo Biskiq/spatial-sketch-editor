@@ -35,7 +35,7 @@ quality cuts.
 | Texture GPU memory | `creator-import@1` emits WebP and refuses KTX2 (`apps/editor/src/lib/authoring/adapters/scene/import/ingest.ts:493–502`), so every map is decoded to RGBA8 on the GPU | [A] 2048² × 4 B × 4/3 mips = 21.3 MiB per map; 120 maps = **2,560 MiB** | Contract GPU-memory hard row: ≤ 384 MiB at M on laptop A |
 | Draw submissions | One draw per mesh per placement. Placements share geometry, but each clones its materials (`apps/editor/src/lib/museum/assets/model-utils.ts:14–31`). No instancing exists. One shadow-casting directional light re-renders its casters on every rendered frame (`StageCanvas.svelte:56–61`) | [A] ≈ 3,000 × 2 meshes + ≈ 600 Layout meshes ≈ **6,600 per pass**, plus a shadow pass over the casters | Contract draw-call target ≤ 1,000 (M), ≤ 2,500 (L) |
 | Triangles | Fixed meshes at one detail level; no LOD | [A] at 3 k triangles per ornament placement ≈ 9 M in the scene; per-object frustum culling might halve it | [H] an integrated GPU sustains roughly 1–2 M lit triangles per 60 Hz frame |
-| Semantic edit | Whole-document planner and compile per pointer move (S06 matrix H1) | [M] 23.00 ms for grid-7 (≈ 340 entities; H0 calibration). [A] linear extrapolation to ≈ 860 entities gives ≈ 58 ms per move | Contract per-edit evaluation ≤ 8 ms (M), ≤ 16 ms (L) |
+| Semantic edit | Whole-document planner and compile per pointer move (S06 matrix H1) | [M] 23.00 ms for one grid-7 compile (≈ 340 entities; H0 calibration). That is a compile calibration, not a measured drag window. [A] Linear extrapolation to ≈ 860 entities gives ≈ 58 ms per compile, and each move runs at least one compile among ≥ 7 passes. Bench 1 measures the drag window | Contract per-edit evaluation ≤ 8 ms (M), ≤ 16 ms (L) |
 
 None of these four overruns comes from slow kernels. Each comes from doing work that does not
 contribute to the result: regenerating unchanged derivations, holding non-visible or uncompressed
@@ -129,14 +129,20 @@ to verify irrelevance.
 - a fixed, visually rich focus wing with ornament placements, textured materials, the shadowed
   light, a Camera View inside it and one fixed Wall edit;
 - added complexity at ×1, ×3 and ×10, in two variants:
-  - **H (hidden and independent):** Rooms, Walls, placements and materials that are outside the
-    fixed edit's semantic influence set and not visible from the fixed View or its next Stop.
-    Some sit inside the view frustum behind Walls, so that the test exercises occlusion and not
-    just frustum culling;
+  - **H (hidden, independent and visually non-influential):** Rooms, Walls, placements and
+    materials that are outside the fixed edit's semantic influence set and do not affect the fixed
+    View's image. Some sit inside the view frustum behind Walls, so that the test exercises
+    occlusion and not just frustum culling. Not being visible is not enough: hidden geometry can
+    still shadow or light visible surfaces. So H adds no lights (in today's forward renderer every
+    light costs every lit material) and stays outside every shadow camera reaching the wing. The
+    renderer has no reflections or global illumination today;
   - **D (distant and visible):** content seen through the enfilade's portals at a small projected
     size.
-- irrelevance is verified, not assumed. A dependency census shows variant H lies outside the edit's
-  changed set, and a visibility census shows it cannot be seen.
+- irrelevance is verified, not assumed:
+  - a dependency census shows variant H lies outside the edit's changed set;
+  - portal traversal gives only conservative visibility;
+  - the proof of visual non-influence is framebuffer equality at the fixed View between ×1 and
+    each ×k. A pixel difference moves the content out of H.
 
 **Ideal against predicted.** The predictions come from today's code and are hypotheses until
 counted. Counter slopes are deterministic, so they can be counted without a benchmark. Latency
@@ -144,14 +150,15 @@ slopes need the owner's benches.
 
 | Counter (fixed edit or view) | Ideal under H | Ideal under D | Predicted today | Eliminating mechanism |
 | --- | --- | --- | --- | --- |
-| Entities evaluated, validations, pair visits per move | Flat | Flat | Linear; pair visits superlinear (≥ 7 whole-document passes, quadratic joins) | M1 (S06 H1, H3) |
+| Affected-entity evaluations and validations per move | Flat | Flat | Linear (≥ 7 whole-document passes) | M1 (S06 H1) |
+| Index node visits per move | Logarithmic | Logarithmic | No indexes; pair visits superlinear (quadratic joins) | S06 H3, H1 |
 | Whole-project passes per commit and Undo/Redo | Flat | Flat | Linear (about a dozen O(N) passes) | S06 H2; M1 for the rest |
 | Meshes rebuilt, buffers uploaded, materials created per move | Flat (≈ k) | Flat | Linear in Walls: every Wall mesh is rebuilt | S06 H4 |
-| Objects cloned and history bytes per step | Flat | Flat | Linear: the whole envelope is cloned | S06 H5 (unit level); entity level is the owner's |
+| Objects cloned and history bytes per step | Flat | Flat | Linear: the whole envelope is cloned | S06 H5 shares unchanged units only, so cost stays linear in the edited unit (Layout additions under H still count). Entity-level copy-on-write is the owner's |
 | Shadow draws per orbit frame | 0 | 0 | Every caster in the shadow frustum, every frame | S06 H9 |
 | Draw calls per frame | Flat | Grows with screen contribution only | Linear for hidden content inside the frustum (no occlusion culling) | M2, M4 (owner) |
 | Triangles per frame | Flat | Grows with screen contribution only | Linear | M5 (owner) |
-| Resident GPU bytes | Flat | Grows with visible detail only | Linear in every placed material, at RGBA8 | M3 (owner) |
+| Resident GPU bytes (textures, geometry buffers, shadow maps, render targets) | Flat | Grows with visible detail only | Linear in every placed material, at RGBA8, and in every resident mesh | M3 (owner) |
 | JS heap | Grows only with the resident source | Same | Linear in the source, compiled output and representation | M3 and out-of-core residency (owner, T4) |
 | F3 drag latency and F7 frame time | Flat | F7 grows with screen contribution only | Linear, from the rows above | All of the above |
 | F2 open and F9 Save | Ω(N) parse and validate; Ω(unit bytes) under today's format | Same | Linear; first-frame preparation also linear | Progressive open (H8), delta Save (H7): owner |
@@ -159,8 +166,10 @@ slopes need the owner's benches.
 The sweep falsifies in both directions:
 
 - A counter that is already flat today shows its stage needs no mechanism.
-- A landed mechanism that leaves its counter's slope non-zero under H is refuted, whatever its
-  timing.
+- Each counter is held to the bound of its work class: flat, logarithmic (index traversal) or
+  bounded by the changed units. A slope above its bound triggers attribution, not automatic
+  refutation. A landed mechanism is refuted when the attributed excess lies in its own work class,
+  whatever its timing.
 
 ## 5. Strategy, in priority order
 
@@ -246,7 +255,9 @@ about to be.
 
 **Expected gain.** [A] Format alone: BC7/ASTC (1 B/px) takes 120 maps from 2,560 MiB to 640 MiB;
 ETC1S-class (0.5 B/px) takes them to 320 MiB. [H] Residency at about 20 % of materials per stop
-then gives ≈ 128 MiB or ≈ 64 MiB. That is 20–40× in all, inside the 384 MiB laptop-A row.
+then gives ≈ 128 MiB or ≈ 64 MiB. That is 20–40× in texture bytes. It is not total GPU memory:
+geometry buffers, shadow maps and render targets also count against the 384 MiB laptop-A row, so
+texture savings are reported next to them.
 
 **Fundamental limit.** Cold first visit: the visible set must still arrive over the network. Fast
 Camera cuts outrun prefetch; the mitigation is an authored-route lookahead and a low-mip floor
@@ -378,7 +389,7 @@ visitor's session, but it is not eliminated.
 
 | Item | Now, in S06 (no format, semantics or architecture change) | Owner decision (future) |
 | --- | --- | --- |
-| M1 derivations | H1 incremental-evaluation experiment; dependency census E1; invariants I1–I5 | General derivation graph; I1–I5 as contract rows |
+| M1 derivations | H1 incremental-evaluation experiment; dependency census E1; invariants I1–I6 | General derivation graph; I1–I6 as contract rows |
 | M2 visibility and influence | Visibility census E2 over a realistic, museum-shaped layout and its authored Views | Cell/portal rendering and influence-scoped lighting in the shared runtime |
 | M3 residency | Residency census E4; GPU texture bytes by format in the benches | `creator-import@2` GPU-compressed output; a residency and prefetch manager; a bounded local cache |
 | M4 sharing | Sharing census E3; draws and material count per repeated placement in the benches | Instanced submission; shared materials; procedural ornament definitions |

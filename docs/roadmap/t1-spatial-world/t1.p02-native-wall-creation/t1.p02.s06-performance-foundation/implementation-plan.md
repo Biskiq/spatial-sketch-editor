@@ -133,11 +133,13 @@ result depends on: the edit's affected set, the visible output, or the resident 
   flow's time. So every R is reported with its share of the flow.
 - The decisive test holds the view and the edit fixed while adding irrelevant complexity (E5).
 
-**Why this is needed now, not only at scale.** This is a hand calculation from existing evidence;
-Bench 1 confirms or refutes it.
+**Why H1 is motivated now, not only at scale.** This is a prediction from existing evidence, not a
+measured budget miss. Bench 1 resolves it.
 
 - The contract's per-edit Layout evaluation row is **≤ 8 ms at M, Hard**.
 - H0 calibration measured one whole-document compile of grid-7 at a 23.00 ms median on the M2.
+  That is a compile calibration on its own, not a measurement of the drag-stage window, which has
+  not been traced at M.
 - Every Wall-handle pointer move (length, angle or rigid move) runs at least seven whole-document
   passes in `finalizeWallGeometryCandidate` (`layout-core/src/layout-wall-first-precision.ts`, lines
   1844–1960):
@@ -147,15 +149,17 @@ Bench 1 confirms or refutes it.
   - post-structural validation;
   - portal relations;
   - the compile.
-- So eliminating superlinear loops cannot meet that row: whole-project recompute per move misses it
-  about 3× even if the work were perfectly linear.
+- If the drag window contains at least one whole-document compile of about the calibrated cost, it
+  exceeds that row about 3× before the other six passes are counted. In that case removing
+  superlinear loops cannot meet the row, even if the remaining work were perfectly linear. Until
+  Bench 1's per-stage F3 split confirms it, no budget miss is claimed.
 
 **Notation:** N is the project's entity count; k is the affected dependency set (the entities whose
 compiled output an edit can change); V is the visible output.
 
 | Operation class | Examples | Required bound | Honest limit |
 | --- | --- | --- | --- |
-| Local | Wall-handle drag preview, F4 commit, Undo/Redo of a local edit, pick/hover | Compute O(k log N), GPU upload O(k), history memory O(changed data) per step | k is real work, and log N is index lookups; nothing here is constant-time |
+| Local | Wall-handle drag preview, F4 commit, Undo/Redo of a local edit, pick/hover | Per I1's work classes: affected-entity evaluation O(k); index traversal O(k log N); representation updates and GPU uploads O(k); history memory O(changed units) in S06, O(changed entities) only with entity-level sharing; named global operations counted separately | k is real work, and log N is index lookups; nothing here is constant-time |
 | Topology-local | Closing an enclosure, splitting or merging a Room | O(faces of the affected planar-graph component) | Can approach N in the worst case, for example one Wall closing a very large enclosure |
 | Visible-output-bound | Orbit, first frame | Per-frame O(V) | Independence from N needs batching and culling beyond S06 (H6) |
 | Genuinely global | Open, validating a loaded file, Save of the full canonical envelope, the content digest under the current format, replacement | Ω(N): linear with a small constant and never superlinear | Kept off the interactive hot path |
@@ -163,17 +167,27 @@ compiled output an edit can change); V is the visible output.
 **Invariants.** S06 enforces each one with a deterministic count oracle wherever it lands. Wherever
 it does not land, the measured violation is recorded as a finding.
 
-- **I1, locality:** for a fixed local edit, these counts stay within c·k at S, M, L and XL:
-  - entity evaluations;
-  - validations;
-  - mesh rebuilds and GPU uploads;
-  - cloned objects.
+- **I1, locality, by work class.** For a fixed local edit, at S, M, L and XL and across E5's sweep,
+  each class has its own count oracle and bound:
+  - **affected-entity work** (entity evaluations, and validations of affected entities): ≤ c·k, flat
+    in unrelated N;
+  - **index traversal** (node visits in spatial and identity indexes): ≤ c·(k + output)·log N.
+    Logarithmic growth is permitted, and an index visit is never counted as an entity evaluation;
+  - **representation updates** (meshes built, buffer bytes uploaded, materials created): ≤ c·k,
+    flat;
+  - **named global operations** that the current contracts require, such as changed-unit canonical
+    serialization and its content digest (I4, H7): counted separately, bounded by the size of the
+    changed units, and never presented as local;
+  - **cloned objects:** bounded by the size of the changed units in S06 (unit-level H5). ≤ c·k only
+    with entity-level sharing, which is an owner follow-on.
 - **I2, no superlinear pass:** every whole-project pass is O(N log N) or better, and every pair test
   goes through an index. Pair visits stay ≤ c·(N + output pairs).
-- **I3, one evaluation per result:** compile, validation and Scene resolution run once per accepted
-  candidate. Install and Undo/Redo reuse that result by content identity.
-- **I4, defer global work:** canonical JSON and digests that no consumer needs synchronously are
-  computed lazily and memoized per immutable snapshot, with identical values.
+- **I3, one evaluation per result:** each distinct check, the compile and Scene resolution run once
+  per accepted candidate. Install and Undo/Redo reuse a result only where content identity proves
+  the same input to the same check. Checks that certify different facts are never merged (D.1).
+- **I4, defer global work:** canonical JSON and digests that D.1's inventory shows no consumer needs
+  synchronously are computed lazily and memoized per immutable snapshot, with identical values.
+  Content revisions of changed units stay exact canonical digests wherever a consumer needs them.
 - **I5, incremental equals full:** every cached or incremental result equals the full canonical
   compile on the same input. The full compile stays the authority, the fallback and the differential
   oracle. Incremental evaluation runs the same compiler per entity; it is never a second
@@ -192,15 +206,15 @@ it does not land, the measured violation is recorded as a finding.
 
 | # | Today (evidence) | Today → proposed | Headroom estimate | Smallest discriminating check | Risk and semantics | Where |
 | --- | --- | --- | --- | --- | --- | --- |
-| H1 | Whole-document planner and compile on every pointer move (above) | ≥ 7 O(N) passes, plus H3's pair loops → O(k log N) incremental evaluation over the compiler's own dependency graph (Wall → Junctions → incident Walls → hosted Openings → boundary Rooms → their floor and ceiling). Per-entity results are keyed by an input digest. Global checks become index queries over the edit's swept bounds | Single-Wall drag at M: k ≈ 25–30 of N ≈ 340 entities. If per-entity cost is uniform, compile drops from 23 ms to ≈ 2 ms plus overhead. The full path grows ≥ 10× / 100× (≥ 230 ms / ≥ 2.3 s in the linear part alone), while incremental stays ≈ k | Count oracle: entities evaluated per move is constant across S/M/L/XL. Heavy differential: incremental equals full on every move of an exhaustive sweep. Bench 1/2 per-stage split | Highest value; medium-high risk (invalidation completeness). Output is identical, so “preview equals planner output” is preserved, not reopened | S06 primary experiment (D.3) |
-| H2 | The accept path repeats whole-project work: the planner compile; F4 capture `structuredClone` plus deep freeze (`f4/prepare.ts:447`, `acceptance-coordinator.ts:229–274`); acceptance normalization rehashing all five units, then validate, serialize and hash again (`units/acceptance.ts:105–255`); host re-admission validating twice, compiling, resolving Scene, hashing and serializing again (`host-acceptance.ts:245`, `source-admission.ts:182–219`) | About a dozen O(N) passes per accepted result → one compile, one validation, hashes only for changed units, serialization deferred to Save or download (I3, I4) | F4/F8 at M: an estimated 2–4× fewer whole-project passes (Bench 1 gives the per-pass split). Still O(N_layout) until H1 and H5 | Count oracle per accept: compiles 1, envelope validations 1, serializations 0 before Save, unit hashes equal to the changed units. Differential: installed snapshot, content ids and refusal verdicts equal today's | Low-medium. F4 and admission semantics are T3-owned, so T3 reviews. The admission verdict (“never a snapshot the visitor runtime could not prepare”) is unchanged | S06 (D.1, widened) |
+| H1 | Whole-document planner and compile on every pointer move (above) | ≥ 7 O(N) passes, plus H3's pair loops → O(k log N) incremental evaluation over the compiler's own dependency graph (Wall → Junctions → incident Walls → hosted Openings → boundary Rooms → their floor and ceiling). Per-entity results are keyed by an input digest. Global checks become index queries over the edit's swept bounds | Single-Wall drag at M: k ≈ 25–30 of N ≈ 340 entities. If per-entity cost is uniform, compile drops from 23 ms to ≈ 2 ms plus overhead. The full path grows ≥ 10× / 100× (≥ 230 ms / ≥ 2.3 s in the linear part alone), while incremental stays ≈ k | Count oracles per I1 class: affected-entity evaluations per move flat across S/M/L/XL; index node visits within c·(k + output)·log N. Heavy differential: incremental equals full on every move of an exhaustive sweep. Bench 1/2 per-stage split | Highest value; medium-high risk (invalidation completeness). Output is identical, so “preview equals planner output” is preserved, not reopened | S06 primary experiment (D.3) |
+| H2 | The accept path repeats whole-project work: the planner compile; F4 capture `structuredClone` plus deep freeze (`f4/prepare.ts:447`, `acceptance-coordinator.ts:229–274`); acceptance normalization rehashing all five units, then validate, serialize and hash again (`units/acceptance.ts:105–255`); host re-admission validating twice, compiling, resolving Scene, hashing and serializing again (`host-acceptance.ts:245`, `source-admission.ts:182–219`) | About a dozen O(N) passes per accepted result → one compile, each distinct check once, exact hashes for changed units with unchanged units' revisions reused, and serialization deferred to Save or download where no synchronous consumer needs it (I3, I4). D.1 first inventories each check, the fact it certifies and its consumer: planner structural and topology validation; F4 acceptance normalization and envelope validation; the F.2 dependency-lock check (`validateDependencyLock`, `units/validate.ts`); and Stage admission (`prepareUnitRuntime`, `units/runtime.ts:108`) | F4/F8 at M: an estimated 2–4× fewer whole-project passes (Bench 1 gives the per-pass split). Still O(N_layout) until H1 and H5 | Count oracle per accept: compiles 1, each inventoried check 1, serializations 0 before Save where the inventory allows, unit hashes equal to the changed units. Differential: installed snapshot, content revisions, dependency-lock verdicts and refusal verdicts equal today's | Low-medium. F4 and admission semantics are T3-owned, so T3 reviews. The admission verdict (“never a snapshot the visitor runtime could not prepare”) is unchanged. A change that needs new hashing or admission semantics is escalated to the owner, not made | S06 (D.1, widened) |
 | H3 | Quadratic joins: Rooms × Openings with a boundary `find` (`layout-geometry.ts:177`); Walls × Openings `filter` (`layout-geometry.ts:300`); faces × predecessor Rooms in reconciliation (`layout-room-reconciliation.ts:678`) | O(R·O·B), O(W·O), O(F·R) → O(N) id indexes, and O(N log N + overlaps) with a box index for faces | Pair visits: M ≈ 20 k; L ≈ 297 k; 10× M ≈ 2.0 M; 100× M ≈ 204 M (seconds). With indexes they become linear | Count oracle on pair visits (reconciliation already counts pair classes). Full compiled result deep-equal on S/M/L/XL | Low | S06, first, because it is cheap and simplifies H1 |
 | H4 | Every geometry change, including each drag preview, rebuilds every Wall mesh, recreates the material factory and disposes all geometry (`visitor/VisitorLayoutShell.svelte:65–111`, rendered by the Stage) | O(W) CPU build plus O(W) GPU upload per frame → retained per-entity meshes rebuilt only for entities whose compiled output changed, with persistent materials | Per drag frame at M: ≈ k/W of today's mesh and upload work. Flat at 10× / 100× | Count oracle: geometries built and uploaded per single-Wall edit ≤ c·k; materials created per edit = 0. Per-Wall buffers equal a full rebuild | Medium. The file is shared with Preview under `visitor/`, so T3 reviews. Same renderer and same output | S06 (bounded patch) |
-| H5 | Each capture deep-clones and freezes the whole envelope, and each history state holds the full source plus its canonical JSON | O(N) time and memory per step → structural sharing: first unit-level (an unchanged unit is shared by reference), then entity-level copy-on-write | Memory per history step goes from ≈ the canonical envelope's size to ≈ the size of the changed data. This decides heap after 100 edits at 10× / 100× | Count oracle: objects cloned per accept ≤ c·k. Heap growth after 100 edits ∝ the changed data (F13 and heap rows) | Medium. F4 immutability and stale-writer guarantees are T3-owned | Unit-level in S06 with T3 review; entity-level persistent structure is a follow-on |
+| H5 | Each capture deep-clones and freezes the whole envelope, and each history state holds the full source plus its canonical JSON | O(N) time and memory per step → structural sharing: first unit-level (an unchanged unit is shared by reference), then entity-level copy-on-write | Memory per history step goes from ≈ the canonical envelope's size to ≈ the size of the changed units. An edit to the Layout unit still copies that unit, O(N_layout): history proportional to changed entities needs entity-level copy-on-write (follow-on) | Count oracle: objects cloned per accept bounded by the changed units' size, and unchanged units identical by reference. Heap growth after 100 edits ∝ the changed units' size (F13 and heap rows) | Medium. F4 immutability and stale-writer guarantees are T3-owned | Unit-level in S06 with T3 review; entity-level persistent structure is a follow-on |
 | H6 | One mesh per Wall, Room surface and door; per-object culling; raycast picking over objects | Draw calls and culling O(N) per frame → O(visible chunks) through static batching per spatial cell with per-chunk rebuild. Picking O(log N) through a BVH | Draw calls: M ≈ 300; L ≈ 1 k; 10× M ≈ 3 k (above the 2,500 target); 100× ≈ 30 k | The benches record draw calls and frame time at S/M/L/XL, plus a draw-call count oracle | A new rendering architecture: owner decision | Measure in S06. A BVH picking probe only if picking shows in the traces; batching is a follow-on |
 | H7 | A content revision is SHA-256 over the canonical unit bytes; Save PUTs the full canonical JSON | Ω(unit bytes) per digest and per Save. This is inherent in the current format | At 100× this is hundreds of ms per Save; I4 keeps it off the hot path | Benches record F9 bytes and time at L/XL | A per-entity (Merkle) digest or a delta Save is a format/F/T3 decision | Owner decision |
 | H8 | Open is genuinely global, and about 400 ms of warm M open is unattributed outside compile and admission (53 ms) | Ω(N) → linear with a small constant. A progressive first frame by visibility is streaming-adjacent | Bench 1 attributes it; H2 and H4 also cut its repeated passes | Bench 1 per-stage attribution is itself the experiment | Progressive or streamed open belongs to T4 | Attribution and pass removal in S06; progressive open is owner/T4 |
-| H9 | Repeated identical frame work. The Stage's one shadow-casting directional light (`StageCanvas.svelte:56–61`) keeps three.js's default `shadowMap.autoUpdate`; nothing in `apps/editor/src/lib` turns it off. So every rendered frame, including each orbit frame, re-renders the shadow map, although the light and its shadow camera are fixed in world space and the Wall and object casters are static | One shadow pass over every caster per rendered frame → a shadow pass only on frames where a caster, the light or the shadow camera changed (an edit, a placement or an animated caster) | Per orbit frame: one fewer pass over the casters. With C caster meshes and M visible meshes the pass is C/(C+M) of the frame's draw submissions, close to half when most meshes cast. The saving is flat in N during orbit | Count oracle: shadow-map renders during a fixed orbit = 0, and = 1 after an edit. Differential: the framebuffer read back after the orbit equals the always-update path's | Low. Same renderer and same image; an animated caster keeps per-frame updates. Preview's directional light (`VisitorPreviewSurface.svelte:167`) casts no shadow today, so H9 is Stage-only. Preview renders every frame while active (`renderMode` `'always'`, line 162), including at rest; the benches count frames rendered at rest there as a T3 finding | S06 (bounded; the Stage is T1-owned) |
+| H9 | Repeated identical frame work. The Stage's shadow-casting directional light (`StageCanvas.svelte:56–61`), and any Scene light authored with `castShadow` (`museum/entities/EntityLight.svelte`; a point light renders six shadow faces), keep three.js's default `shadowMap.autoUpdate`; nothing in `apps/editor/src/lib` turns it off. So every rendered frame, including each orbit frame, re-renders every shadow map, although the lights and their shadow cameras are fixed in world space and the Wall and object casters are static | One shadow pass over every caster per rendered frame → a shadow pass only on frames where a caster, the light or the shadow camera changed (an edit, a placement or an animated caster) | Per orbit frame: one fewer pass over the casters. With C caster meshes and M visible meshes the pass is C/(C+M) of the frame's draw submissions, close to half when most meshes cast. The saving is flat in N during orbit | Count oracle: shadow-map renders during a fixed orbit = 0, and exactly one per affected shadow map after each D.6 trigger. Differential: the framebuffer read back equals the always-update path's for the unchanged orbit and for every trigger | Low. Same renderer and same image; an animated caster keeps per-frame updates. Preview's directional light (`VisitorPreviewSurface.svelte:167`) casts no shadow today, so H9 is Stage-only. Preview renders every frame while active (`renderMode` `'always'`, line 162), including at rest; the benches count frames rendered at rest there as a T3 finding | S06 (bounded; the Stage is T1-owned) |
 
 H9 is appended rather than ranked so that earlier citations keep their numbers.
 
@@ -326,16 +340,30 @@ an owner proposal in F.
   - one fixed Wall edit for each of length, angle and rigid move.
 
   The generator adds complexity elsewhere at ×3 and ×10 in two variants:
-  - **H, hidden and independent:** Rooms, Walls, placements and materials outside the fixed edit's
-    changed set and not visible from the fixed View or its next Stop. Part of it sits inside the
-    view frustum behind Walls, to separate occlusion from frustum culling;
+  - **H, hidden, independent and visually non-influential:** Rooms, Walls, placements and
+    materials outside the fixed edit's changed set, with no influence on the fixed View's image.
+    Part of it sits inside the view frustum behind Walls, to separate occlusion from frustum
+    culling. Not being visible is not enough, because hidden geometry can still shadow or light
+    visible surfaces. So variant H is built under control:
+    - it adds no lights. In today's forward renderer every light enters every lit material's
+      shader and cost, so an added light is never irrelevant. That is a finding for the owner's
+      Room-scoped light proposal (F), not part of H;
+    - it lies outside every shadow camera's frustum that reaches the focus wing;
+    - the renderer has no environment maps, reflections or global illumination today (no
+      `envMap`, PMREM or reflector in `apps/editor/src/lib`), so no other channel exists;
   - **D, distant and visible:** content seen through the enfilade's portals at a small projected
     size.
 
   Where generation completes within a stated time bound, a ×30 tier is added; beyond the largest
-  tier, slopes are extrapolated and labelled arithmetic. Irrelevance is verified, not assumed: E1
-  shows the additions lie outside the fixed edit's changed set, and E2 shows variant H is not
-  visible. The sweep uses only landed features: no new material, reflection or lighting feature.
+  tier, slopes are extrapolated and labelled arithmetic. Irrelevance is verified, not assumed:
+  - E1 shows the additions lie outside the fixed edit's changed set (semantic independence);
+  - E2's portal traversal gives conservative visibility only, never proof of visual irrelevance;
+  - the proof of visual non-influence is an image comparison: the fixed View's framebuffer is read
+    back at ×1 and at each ×k, after the fixed edit as well as before it, and must be identical.
+
+  A pixel difference reclassifies the added content as visually influential, and it leaves
+  variant H. Only then is a growing render cost under H unnecessary work. The sweep uses only landed
+  features: no new material, reflection or lighting feature.
 - **Headroom probes (optional; owner opt-in per pass; off by default).** A transparent, animated
   water-like surface shader and a fixed per-frame worker CPU budget can stand in for future
   simulation. They are harness-only, report-only and disposable, and leave product code unchanged.
@@ -385,6 +413,8 @@ them for the F7 orbit window and for the first frame of F2 and F10:
 - shadow-map renders and shadow draw calls per frame, and frames rendered while at rest (H9);
 - texture bytes, both at their stored format and at their GPU format. A 2K WebP map decodes to
   RGBA8 with mips: 2048² × 4 B × 4/3 ≈ 21.3 MiB each (arithmetic);
+- geometry-buffer, shadow-map and render-target bytes, so that GPU memory is reported in total and
+  not as textures alone;
 - materials created per placement;
 - shader-program compile time at the first frame;
 - idle time and long tasks per frame;
@@ -403,8 +433,11 @@ record with its fixture digest and labelled “census, not timing”. Each is di
   - diff the full compiles before and after;
   - k is the number of entities whose compiled output changed.
 
-  Report the distribution of k and of k/N. This sizes H1's affected set and its fallback rate
-  before Bench 1. A k found this way is the changed set, a lower bound on what an incremental
+  Enumeration is exhaustive at S and M. At L, XL and the museum-shaped layout it is a seeded,
+  stratified sample that covers every edit class, with Walls stratified by Junction degree, hosted
+  Openings and Room-boundary membership. Each tier has a recorded runtime bound (default 10 minutes
+  per tier on the M2), and the report states the sample and its limits. Report the distribution of
+  k and of k/N. This sizes H1's affected set and its fallback rate before Bench 1. A k found this way is the changed set, a lower bound on what an incremental
   evaluator must evaluate; D.3's count oracle measures the evaluated set. An edit class whose
   median k/N on the museum-shaped layout exceeds 20 % refutes H1's premise for that class. D.3
   then records it and keeps the full path for that class.
@@ -413,7 +446,8 @@ record with its fixture digest and labelled “census, not timing”. Each is di
   Openings whose rectangles intersect the successively clipped view frustum, against all Rooms. Each
   Opening joins the two Rooms adjacent to its host Wall, and doors also carry the authored,
   validated `connectsRoomIds` pair (`layout-wall-portals.ts`). The traversal is conservative: it may
-  overcount visible Rooms, never undercount them. Report the median and worst visible fraction, and
+  overcount visible Rooms, never undercount them. It bounds direct visibility only. Shadows and
+  light reach beyond it, so it never proves visual irrelevance on its own (E5). Report the median and worst visible fraction, and
   name the worst sightline. This is evidence for the cell-and-portal owner proposal (F); a median
   above 40 % weakens it.
 - **E3, sharing census.** Over the realistic-L load and the museum-shaped placements, count:
@@ -431,19 +465,25 @@ record with its fixture digest and labelled “census, not timing”. Each is di
   - at today's GPU format (RGBA8 with mips);
   - by arithmetic, at a 1 B/px and at a 0.5 B/px GPU-compressed format.
 
-  Compare each with the 384 MiB laptop-A GPU-memory row. This is evidence for the owner proposals
-  on GPU-compressed import output and residency (F). It does not change `creator-import@1`.
+  These are texture bytes only, one part of GPU memory. Report them next to the geometry-buffer,
+  shadow-map and render-target bytes from the render counters, against the 384 MiB laptop-A total
+  row. A texture saving is never presented as total GPU-memory compliance. This is evidence for the
+  owner proposals on GPU-compressed import output and residency (F). It does not change
+  `creator-import@1`.
 - **E5, irrelevance sweep.** Hold the focus wing's View and each fixed edit constant across ×1, ×3
   and ×10 (and ×30 where built), for variants H and D. Count against the added entities:
-  - in Node: entities evaluated, validations, pair visits and whole-project passes per move and per
-    commit; objects cloned and history bytes per step;
+  - in Node: affected-entity evaluations, validations, index node visits, pair visits, named global
+    operations and whole-project passes per move and per commit; objects cloned and history bytes
+    per step;
   - from the smoke run's counts: draw calls, triangles, shadow draws, geometries built and uploaded
     per edit, materials created and resident texture bytes at the fixed View.
 
-  Report each counter's slope. The ideal is flat under H, and under D growth only with screen
-  contribution, as the [strategy §4](../../../../../broad-research/cinematic-scale-computational-strategy.md#4-the-decisive-experiment-does-cost-grow-with-irrelevant-complexity)
-  table states. A non-zero slope names its eliminating mechanism: a matrix row S06 lands, or an
-  owner proposal (F). Variant H at ×10 is also the point where R is computed for each stage.
+  Report each counter's slope and compare it with the bound for its I1 work class: flat,
+  logarithmic, or bounded by the changed units. The ideals under H and D are in the
+  [strategy §4](../../../../../broad-research/cinematic-scale-computational-strategy.md#4-the-decisive-experiment-does-cost-grow-with-irrelevant-complexity)
+  table. A slope above its class bound triggers attribution to a stage and a counter. It does not
+  refute anything by itself. The attributed excess names its eliminating mechanism: a matrix row S06
+  lands, or an owner proposal (F). Variant H at ×10 is also the point where R is computed for each stage.
   E5 runs before Bench 1 on the trusted base, and again before each handover on the revision
   handed over.
 
@@ -461,9 +501,16 @@ Linear whole-project work on a local path is a defect (I1), not only superlinear
 
 1. **Remove repeated work first** (H3, H2; this includes the work transferred from S02):
    - Index the quadratic joins.
-   - Make the accept, install and Undo/Redo path compile, validate and resolve once per accepted
-     result.
-   - Hash only the changed units, and defer serialization to Save or download.
+   - **Inventory before removing.** For every validation, hash and serialization on the accept,
+     install and Undo/Redo path, record the fact it certifies and every consumer that reads it:
+     planner validation, F4 acceptance, the F.2 dependency-lock check and Stage admission. Two
+     checks are the same check only when they certify the same fact over the same input.
+   - Make the path compile and resolve once, and run each distinct check once, per accepted result.
+   - Hash only the changed units, exactly as today, and reuse unchanged units' revisions. Defer
+     serialization to Save or download only where the inventory shows no synchronous consumer.
+   - Preserve exact content revisions, refusal behavior, dependency-lock guarantees and accepted
+     snapshots. A change that needs new hashing or admission semantics stops and goes to the
+     owner.
    - Reuse a result only where revision or content identity proves it is the same result, with
      invalidation covering replacement, a new revision and changed inputs.
    - Prove full output equivalence with a heavy-lane differential and the I3 count oracle across an
@@ -473,10 +520,13 @@ Linear whole-project work on a local path is a defect (I1), not only superlinear
    entities whose compiled output changed. This is a bounded patch to the shared `visitor/` shell,
    with T3 review.
 3. **Primary experiment: locality-aware incremental evaluation** (H1; this replaces S02's
-   conditional experiment). The hand calculation above predicts that whole-document evaluation misses
-   the per-edit M row however linear it is, so this experiment is primary, not conditional on an F3
-   miss. A worker alone cannot fix it: moving 23 ms off-thread leaves both the evaluation row and
-   matching-result latency unmet.
+   conditional experiment). The prediction above, which Bench 1 must confirm, is that whole-document
+   evaluation misses the per-edit M row however linear it is. E1 and E5 motivate the experiment
+   independently of that prediction, so it is primary, not conditional on an F3 miss. If Bench 1
+   shows the per-edit row met at M and L with margin, D.3 still runs as the locality experiment, but
+   it is not presented as fixing a budget miss. A worker alone cannot fix a miss: moving the work
+   off-thread leaves both the evaluation row and matching-result latency unmet, and it is moved work
+   (I6).
    - Scope it to the single-Wall drag preview and the F4 commit of length, angle and rigid-move
      edits.
    - Evaluate the affected set k through the compiler's own per-entity functions, with per-entity
@@ -490,20 +540,37 @@ Linear whole-project work on a local path is a defect (I1), not only superlinear
    - If the per-edit row still misses at L after it, changing “preview equals planner output” is an
      owner decision: report the measurement and stop that semantic change.
 4. **Structural sharing** (H5, unit level): an unchanged unit is shared by reference through capture
-   and history, and only new objects are frozen. Entity-level copy-on-write is a follow-on.
+   and history, and only new objects are frozen. S06 guarantees only what this proves: unchanged-unit
+   reuse and less duplication. An edit to the Layout unit still copies that unit. Entity-level
+   copy-on-write, and history proportional to changed entities, remain owner follow-on work.
 5. **Scale invariants as correctness oracles.** Deterministic count assertions, not timings, guard
    each landed hypothesis in the correctness lanes, running at S, M, L and XL:
    - compiles, validations and admissions per edit and per Undo/Redo (I3);
-   - entities evaluated, meshes rebuilt and objects cloned per single-Wall edit (I1);
+   - per single-Wall edit, each I1 work class against its own bound: affected-entity evaluations,
+     index node visits, representation updates, named global operations and objects cloned;
    - pair visits per compile (I2);
    - draw calls per frame, and shadow-map renders per orbit frame (H9);
-   - for a fixed local edit, constant work across S, M, L and XL.
+   - for a fixed local edit, each class within its bound across S, M, L and XL.
 
    These run freely between benches, because they are correctness tests, not benchmarks.
-6. **Remove repeated identical frame work** (H9). Re-render the Stage shadow map only when a caster,
-   the light or the shadow camera changes, with explicit invalidation from the representation's
-   rebuild, placement changes and animated casters. Prove it with H9's count oracle and framebuffer
-   differential. Preview's at-rest frames are recorded for T3, not changed here.
+6. **Remove repeated identical frame work** (H9). Re-render a shadow map only when something it
+   depends on changes. The invalidation contract covers every trigger:
+   - a caster's or receiver's geometry: the representation's rebuild, Scene placement added, moved
+     or removed, and a ghost mesh that casts;
+   - a caster's or receiver's transform, visibility or `castShadow`/`receiveShadow` flags, and any
+     material change that affects depth (alpha test, transparency, side or displacement);
+   - a Scene light added, removed or changed in position, target, shadow camera, bias or map size;
+   - an imported model's asynchronous arrival or disposal;
+   - an animated caster, which keeps per-frame updates while it animates;
+   - Undo/Redo, replacement and reading changes, through the same signals as any other source
+     change;
+   - renderer lifecycle: context loss and restore, renderer recreation, and any resize that changes
+     shadow resources.
+
+   Prove it with H9's count oracle, and with a framebuffer differential against the always-update
+   path for the unchanged orbit and for every trigger, changed and unchanged. A trigger whose exact
+   invalidation cannot be established keeps today's per-frame update. Preview's at-rest frames are
+   recorded for T3, not changed here.
 
 ### E. Math and geometry library exploration
 
@@ -596,8 +663,9 @@ run a full benchmark pass; between passes they work from Bench 1's data.
    **Falsification rule:** a hypothesis is refuted for this slice when the target stage's measured
    time does not fall within the stated margin of its prediction. This applies even when its count
    oracle dropped as predicted, because the cost model is then wrong; the agent re-attributes from
-   the traces. A hypothesis that claims locality is also refuted, before any bench, if its E5
-   counter slope under variant H is not flat.
+   the traces. Before any bench, an E5 slope above its I1 class bound triggers attribution. A
+   hypothesis that claims locality is refuted only when the attributed excess lies in its own work
+   class, for example evaluations of entities outside the affected set.
 5. **Fix (agent).** Resolve what Bench 2 shows: regressions, mispredictions and remaining hard
    misses. Keep or remove the H1 experiment on its Bench 2 evidence (D.3). Algorithm fixes may continue, but no new library candidate
    enters after Bench 2 (E). Check by hand calculation again and hand over. If a hard miss
@@ -627,9 +695,9 @@ Use the work-checkpoint skill at each handover, since the owner's runs separate 
 | Workloads | L/XL fixtures, the realistic-L load and the museum-shaped census layout validate; asset sources and licenses recorded; stack isolation recorded without credentials |
 | Characterization | From Bench 1: per-stage attribution and scaling at S/M/L for F2/F3/F4/F7/F8/F13; superlinear stages named; XL and realistic-L load reported; render counters recorded in every bench |
 | Censuses | E1–E5 recorded with fixture digests and labelled “census, not timing” or “count, not timing”; E1's per-class verdict on H1's premise recorded before Bench 1; E2–E4 attached as evidence to their owner proposals (F) |
-| Irrelevance and accounting | E5 slopes for every counter on the trusted base and the Bench 3 revision; sweep latency rows from each bench (unless the owner dropped them); each stage's R at variant H ×10 with its share of the flow; every landed change classified under I6, with moved and deferred work reported at its total |
+| Irrelevance and accounting | E5 slopes for every counter on the trusted base and the Bench 3 revision; sweep latency rows from each bench (unless the owner dropped them); each stage's R at variant H ×10 with its share of the flow; every landed change classified under I6, with moved and deferred work reported at its total; variant H's visual non-influence proven by framebuffer equality; no stage R presented as an application-level speedup |
 | Algorithm | Each optimization has an equal-output heavy differential and a count oracle; a recorded hand-calculated prediction; Bench 1 versus Bench 2/3 on the same workload and environment; no format change; boundary and visitor-isolation tests green |
-| Scaling invariants | For every hypothesis S06 lands, its I1–I3 count oracle is green at S, M, L and XL, and its I5 differential is green. For every hypothesis it does not land, the measured violation and its 10× / 100× hand calculation are recorded. H6–H8 and entity-level H5 are proposed to the owner (F), never implemented silently |
+| Scaling invariants | For every hypothesis S06 lands, its I1–I3 count oracles are green at S, M, L and XL, each I1 work class against its own bound, and its I5 differential is green. H5's guarantee is limited to unchanged-unit reuse. H2 keeps its D.1 inventory, with exact revisions and verdicts. H9 keeps its full trigger contract and framebuffer differentials. For every hypothesis it does not land, the measured violation and its 10× / 100× hand calculation are recorded. H6–H8 and entity-level H5 are proposed to the owner (F), never implemented silently |
 | Budgets | From Bench 3: hard S/M rows for F2, F3, F4, F7, F8, F13 and per-edit evaluation; L hard rows (F3, F4, F8, F13); a hard miss is resolved before Bench 3 or escalated to the owner per D.3; target rows dispositioned |
 | Libraries | Candidate matrix with license evidence; adopted packages recorded by package, version and license |
 | Transferred rows | T3.P02.S02 Scope A rows (F10 at S/M, capture/bind, F13, Stage initial-load delta) measured in the benches, each with a disposition; T3.P03.S02 L/XL gap closed; T2.P02.S03's baseline supplied without claiming its acceptance |
