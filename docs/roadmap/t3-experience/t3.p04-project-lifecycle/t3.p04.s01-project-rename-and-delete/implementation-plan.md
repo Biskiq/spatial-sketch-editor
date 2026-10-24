@@ -16,7 +16,7 @@ This is T3.P04's sole child and **FINAL PHASE GATE**. It creates no gate/version
 release capability or milestone acceptance. The proposed scope fulfils C3/K4; it is separate from
 Capture/Preview's bounded final gate.
 
-## Planning review, release and owner directions (2026-10-24)
+## Planning review, release and proposed rulings (2026-10-24)
 
 Verified against current `main` before release: every path in this plan's file-ownership table
 still exists, and no `PATCH` or `DELETE` route for a project exists yet. The review found five
@@ -25,16 +25,21 @@ unresolved issues and records them, with proposals and alternatives, in the
 mechanism, the migration contingency, the T2 → T3 API handoff, the T1 shell integration, and
 Save/Delete concurrency. This plan's ownership and verification tier are unchanged.
 
-**Owner review 2026-10-24 — rulings and two amendments.** The review accepted the release and
-returned the deletion architecture for correction; the resolution's
-[review corrections](./planning-resolution-2026-10-24.md#review-corrections-2026-10-24) name each one.
-Two owner directions amend this plan's text below, deliberately and visibly:
+**Two reviews, 2026-10-24 — corrections and proposed rulings.** The first review accepted the release
+and returned the deletion architecture; the second returned the fence's expiry hole and an inventory
+gap. The resolution's [review corrections](./planning-resolution-2026-10-24.md#review-corrections)
+name every change. Two **proposed** owner rulings, neither ratified, would amend this plan's text
+below, deliberately and visibly:
 
-- **which field owns the project name (R1)** — the authored envelope `name` is the only truth.
-  Rename therefore writes one **new immutable version**, not metadata-only; the plan's former
-  "preserves source revision" sentence is superseded.
-- **what delete does with a published project (R2)** — delete refuses only while a publication is
-  **active**, and removes the retained inactive publication and its releases after unpublication.
+- **which field owns the project name (R1, proposed)** — the authored envelope `name` would be the
+  only truth. Rename therefore writes one **new immutable version**, not metadata-only; the plan's
+  former "preserves source revision" sentence would be superseded.
+- **what delete does with a published project (R2, proposed)** — delete would refuse only while a
+  publication is **active**, and remove the retained inactive publication and its releases after
+  unpublication.
+
+Until the owner ratifies both, this plan's rename/delete persistence behaviour is **not frozen**: the
+sections below state the proposed behaviour, and implementation may not treat it as settled.
 
 The release ([decision](../../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md))
 covers this slice only; its start conditions are the next section, and the runbook still re-verifies
@@ -65,8 +70,9 @@ A successful rename appends **one new immutable version** whose only change is `
 same admission/conditional-save path a Save uses, and returns a refreshed summary and saved-base
 metadata needed by the next conditional Save. It preserves source units, Camera/Experience
 identities, every previous version, stable source identities and publication pins; the
-[owner direction](./planning-resolution-2026-10-24.md#r1--which-field-owns-the-project-name-owner-direction-the-authored-envelope)
-ows the persistence contract. It must not manufacture a revision identity: a fresh id is minted and
+[proposed ruling](./planning-resolution-2026-10-24.md#r1--which-field-owns-the-project-name-proposed-the-authored-envelope)
+(**pending ratification**) owns the persistence contract. It must not manufacture a revision
+identity: a fresh id is minted and
 never reused for different contents (`revision-reuse` governs), the name-only document passes ordinary
 unit validation, and a refusal writes nothing. Unchanged names are a no-op.
 
@@ -82,25 +88,30 @@ re-applying the old name. An active publication keeps serving its pinned pre-ren
 Add authenticated owner-scoped `DELETE /projects/:projectId` with the expected saved base
 and an explicit UI confirmation naming the project. Revalidate owner and precondition under
 the project lock; prevent a racing Save **and every project-owned object writer** — asset upload,
-import upload and model approval — from recreating or writing into the deleted project. That fence
-is a durable in-flight write lease the writers take before their first byte and delete respects
-(retryable `project-busy`), plus each writer's own compensation on failed finalization: a listing
-sweep alone cannot prove no writer is still running. A stale request refuses without destroying
-local work. Retrying an already completed deletion is safe, with the existing not-found/privacy
-policy applied consistently.
+import upload and model approval — from recreating or writing into the deleted project. The fence is a
+revocable write lease the writers take before their first byte: they heartbeat while streaming, abort
+the stream and the `PutObject` the moment a renewal reports revocation **or fails**, and cannot write
+past a non-extendable handler deadline. Delete revokes live leases and refuses `project-busy`, then
+proceeds only when every lease is released or past its deadline; a listing sweep alone cannot prove
+no writer is still running. Each writer also compensates its own keys on failed finalization. A
+stale request refuses without destroying local work. Retrying an already completed deletion is safe, with the
+existing not-found/privacy policy applied consistently.
 
 A project with an **active** publication refuses with an explicit unpublish-first message and is left
-untouched. After unpublication the deletion removes the retained inactive publication and its
-dependent releases; a public link never stops resolving as a silent side effect of a delete that had
-an active publication.
+untouched (**proposed** R2, pending ratification). After unpublication the deletion removes the
+retained inactive publication and its dependent releases; a public link never stops resolving as a
+silent side effect of a delete that had an active publication.
 
 Inventory the project's object keys from authoritative rows before cascade deletion removes
-them: staged import files, retained approved model originals/derivative bytes, and any
+them: staged import files, the approved derivative **and every approved source-file copy** (today
+recorded nowhere, so the revision's key set is persisted with the row that owns it), and any
 project-owned asset bytes covered by the existing persistence contract. Use T2's project
 namespace and retained-source metadata, never delete by an unchecked user key or a global
 content hash. All stored project versions are deleted with the project; approval retention
 is not limited to the current envelope's pins. Prove another project's identical-content
 resource survives. Imported resource units/recipes and T2's admission semantics are unchanged.
+The inventory claims only keys an owning row records; a key written by a crashed writer is covered
+by the completion sweep alone, and the record says so instead of overstating coverage.
 
 Database and object-store deletion are not one transaction. In the implementation review,
 fix the concrete durable retry/cleanup record using the existing persistence infrastructure:
@@ -111,10 +122,13 @@ the staging helper's best-effort deletion as proof that approved bytes were remo
 durable cleanup record needs a migration, scope it explicitly to lifecycle cleanup and review it
 with T2; no generic background platform, schedule or new dependency is authorized.
 
-Acknowledge completion only when all of the following hold: the record committed, no unexpired
-project write lease remains, the inventory keys are deleted, and **two consecutive project-scoped
-listings** (filtered to `projects/<ns>/<projectId>/`; `ObjectStore.list()` returns the whole bucket)
-are empty after a bounded quiet interval. Sibling projects' keys are ignored, never an error.
+Acknowledge completion only when all of the following hold: the record committed with `fenced_at`;
+every write lease is released or past its non-extendable deadline; the enforced write bound
+(`MAX_WRITE` + renewal + abort margin) has elapsed since `fenced_at`; the inventory keys are deleted;
+and **two consecutive project-scoped listings** (filtered to `projects/<ns>/<projectId>/`;
+`ObjectStore.list()` returns the whole bucket) spaced by that bound are empty. Sibling projects'
+keys are ignored, never an error. A lease's mere expiry is not enough: the handler deadline and the
+revocation check on each heartbeat are what make the bound enforceable.
 Exercise a retry through the owned lifecycle cleanup entry point; pending cleanup is an explicit
 result, not a false completed-success claim. Missing storage support or an incompatible object-store
 interface is a stop-and-report before implementation of deletion.
@@ -144,7 +158,7 @@ generic failure, and do not treat it as a permanent refusal.
 | --- | --- | --- |
 | `apps/api/src/{app.ts,project-persistence.ts,save-persistence.ts}` | T3; T2 shared-file coordination | Owner-scoped routes, locking, metadata/preconditions, lifecycle transaction |
 | `apps/api/src/{model-persistence.ts,asset-persistence.ts,object-store.ts,purge-objects.ts,r2-purge.ts}` | T3 lifecycle patch reviewed by T2 | Exact owned-key inventory, the write-lease fence at all three writer call sites, per-writer compensation on failed finalization, and idempotent cleanup; import/admission remains T2-owned |
-| `apps/api/migrations/` | T3 with T2 review if required | The two lifecycle tables (deletion record with key inventory, write leases); migration replay and failure recovery proved |
+| `apps/api/migrations/` | T3; T2 review of the `model_revisions` column | The two lifecycle tables (deletion record with key inventory and fence timestamp, revocable write leases), `model_revisions.source_keys` with its derived backfill; migration replay and failure recovery proved |
 | `apps/editor/src/lib/platform/project-persistence.ts` | T3 | Typed lifecycle client and stale/conflict/busy/network handling |
 | Existing project list/control surfaces and `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` or `authoring/stage/shell/` where required | T1-owned, explicit reviewed integration patch | Rename/Delete controls, guarded session replacement and title refresh only |
 | `apps/api/tests/{projects,save-units,model-resources,r2-purge}.test.mjs`, API fixtures | T3; T2 review of model probes | Real-DB lifecycle/concurrency/cleanup and isolation |
@@ -177,12 +191,25 @@ Required behavioral probes:
 - Confirmed delete removes all project versions and owned staging/approved resource rows;
   byte inventory is deleted or durably pending with tested retry. Inject object-store and
   transaction failures, process restart/retry and concurrent approval. No silent orphan claim.
-- **Fence probes:** an upload in flight makes delete refuse `project-busy` and then succeed
-  once the lease is released; a delete that commits first makes a new upload refuse before any
-  object is written; a failed asset-upload finalize and a refused approval leave no object
-  behind. Each of the three writers is exercised through the lease, not just the approval path.
+- **Fence probes:** an upload in flight makes delete revoke its lease and refuse `project-busy`;
+  the writer's next heartbeat observes the revocation, aborts the stream and releases, and the
+  retried delete proceeds. A delete that commits first makes a new upload refuse before any object
+  is written. A failed asset-upload finalize and a refused approval leave no object behind. Each of
+  the three writers is exercised through the lease, not just the approval path.
+- **Late-write regression (follow-up F1):** with a fake store holding the `PutObject`, the writer's
+  heartbeat stops and its lease expires while its enforced deadline is still ahead — delete revokes
+  and refuses, cleanup's empty listings before the bound still report `pending`, the deadline then
+  aborts the held write so nothing commits, and only the run past the bound marks `complete`. In the
+  hostile variant the fake commits after completion; the verify run must find and delete the key and
+  report it, never claim completion for a key it can still see.
+- **Inventory probes (follow-up F2):** a project with an approved revision whose source set has
+  several files deletes every source copy, and the persisted key set equals what approval wrote;
+  a revision backfilled from retained import paths cleans the same keys; a `sweep-dependent`
+  revision is reported as such rather than counted as inventory coverage; deleting an already
+  absent inventory key is a no-op.
 - **Cleanup probes:** the completion check ignores a sibling project's keys, and an object
-  visible only on a later listing keeps the record `pending` until two quiet scoped listings.
+  visible only on a later listing keeps the record `pending` until the bound has passed and two
+  scoped listings spaced by it are empty.
 - **Publication probes:** an active publication refuses delete with the unpublish-first message
   and leaves the project and the public link untouched; after unpublication the project deletes,
   its retained inactive publication and releases are removed, and the public link stops

@@ -5,9 +5,9 @@ authorize and release `T3.P04.S01`, in one documentation-only T3 coordination PR
 acceptance evidence, run documentation tests only, keep S06 untouched, and stop before merge.
 
 This record is the provenance for three lifecycle events. It creates no gate or version, changes no
-authored format or persistence contract itself — the owner's directions on P04's two contract
-questions live in that slice's planning resolution — authorizes no implementation in its own PR, and
-schedules nothing beyond what it names.
+authored format or persistence contract itself — the **proposed** rulings on P04's two contract
+questions live in that slice's planning resolution and take effect only if the owner ratifies them —
+authorizes no implementation in its own PR, and schedules nothing beyond what it names.
 
 ```text
 1  T3.P02 First Capture and Cut Preview   → closed 2026-10-24 (final gate T3.P02.S02)
@@ -63,17 +63,19 @@ every consumed gate and scope at the implementation's own trusted base. Its plan
 current `main`, and the issues it resolves or escalates, are recorded in the
 [planning resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md).
 
-**Owner review of the planning resolution (2026-10-24) recorded the two contract decisions and
-returned the deletion mechanism for correction.** The owner directed that the authored envelope owns
-the project **name** (rename appends one immutable version) and that delete refuses only while a
-publication is **active**, removing the retained inactive publication after unpublication. The same
-review corrected the durable-cleanup design in the
-[resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md#review-corrections-2026-10-24):
-a write-lease fence over every project-owned object writer (F1), a persisted key inventory (F2) and a
-project-scoped listing (F3). These are recorded owner directions and a corrected mechanism, not new
-scope; the resolution names what changed in the plan. T2's acceptance of the fence on its two model
-writers remains a merge condition for P04 implementation, and this authorization PR ratifies no
-other contract change.
+**Two owner reviews of the planning resolution (2026-10-24) corrected the deletion mechanism and left
+two contract questions proposed, not ratified.** The resolution now proposes that the authored
+envelope owns the project **name** (rename appends one immutable version) and that delete refuses only
+while a publication is **active**, removing the retained inactive publication after unpublication.
+Neither is in force: this PR records them for the owner's ruling and freezes no behaviour.
+
+The same reviews corrected the durable-cleanup design in the
+[resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md#review-corrections):
+a revocable write fence over every project-owned object writer with an enforced write bound (F1), a
+persisted key inventory that includes the approved revision's source copies (F2), and a
+project-scoped listing (F3). These are mechanism corrections, not new scope; the resolution names
+what changed in the plan. T2's acceptance of the fence and of the `source_keys` column remains a
+merge condition for P04 implementation, and this PR ratifies no contract change.
 
 P04 is **strictly unrelated** to the performance-first halt. The
 [halt](../../roadmap/README.md#production-implementation-hold) and the
@@ -92,7 +94,7 @@ carries documentation only. None of the following is created, changed, accepted 
 
 - a gate or gate version (P04 provides none);
 - an authored format, persistence contract, migration or API route — this record creates none, and
-  the planning resolution records directions and a mechanism, not built behaviour;
+  the planning resolution records proposed rulings and a mechanism, not built behaviour;
 - a T1 or T2 slice release, or any change to T1's baton;
 - a performance budget, CI timing gate or benchmark registry;
 - a phase closure beyond these two, track completion, or T4 authorization;

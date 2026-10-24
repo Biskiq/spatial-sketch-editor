@@ -6,28 +6,30 @@ criteria) · **Phase:** [T3.P04](../README.md) · **Authorization:**
 
 This record resolves the plan's open implementation questions against the tree at `main`
 `2215af34`. It changes no format or verification tier, and it amends ownership only where §3 says
-so. It decides the routine mechanisms, records the owner's directions on the two questions that
-change a persistence contract or product scope, and names every amendment to the plan. Nothing here
-authorizes implementation, and no behaviour below is built.
+so. It decides the routine mechanisms, proposes the two rulings that change a persistence contract
+or product scope, and names every amendment to the plan. Nothing here authorizes implementation, and
+no behaviour below is built.
 
-**Revised 2026-10-24 after owner review.** The review accepted the phase closures, the release and
-the preservation, and returned the deletion architecture for correction: the first draft claimed a
-prefix sweep plus an empty second listing proved cleanup complete, which the current code does not
-guarantee. Section 1 now specifies a deletion/write fence with per-writer compensation (F1), section
-2 restores the durable key inventory the approved plan requires (F2), and section 3 makes the
-listing project-scoped (F3). The two rulings are corrected in place (R2's precondition was
-unsatisfiable). Nothing in the accepted plan's durability contract is weakened silently; every
-amendment below is named and attributed.
+**Revised twice on 2026-10-24 after review.** The first review rejected the claim that a prefix
+sweep plus an empty second listing proved cleanup complete. That produced the write fence, the
+persisted inventory and the project-scoped listing; the second review found the fence's remaining
+hole (a lease that merely expires does not prove its writer stopped) and an inventory gap (approved
+model source copies are not recorded in any column). Section 1 now revokes leases and requires an
+acknowledged stop or an enforced write deadline before completion, section 2 persists the revision's
+full key set, and section 3 states the inventory's exact coverage rather than overstating it. R1 and
+R2 are recorded as **proposed** rulings and remain unfrozen until the owner ratifies them.
 
 ```text
-DECIDED HERE (routine, inside the plan's stated allowance)
-  1  durable deletion/cleanup mechanism      → write-lease fence + persisted inventory + scoped sweep
-  2  migration contingency                    → migration 007 (two tables), no CASCADE retrofit
-  3  T2 → T3 API handoff                      → one inventory + the fence on all three writers
+DECIDED HERE (routine mechanism, inside the plan's stated allowance)
+  1  durable deletion/cleanup mechanism      → revocable write lease + enforced deadline + persisted
+                                               inventory + bounded, scoped completion sweep
+  2  migration contingency                    → migration 007 (two tables + one column), no CASCADE retrofit
+  3  T2 → T3 API handoff                      → one inventory + the fence on all three writers +
+                                               a persisted approved-source key set
   4  T1 shell integration                     → list-row actions + Head commands, no new shell
   5  Save/Delete concurrency                  → one project row lock + expected base, ordered deletes
 
-OWNER DIRECTION (2026-10-24 review, recorded in R1/R2 below)
+PROPOSED OWNER RULINGS — NOT RATIFIED (R1/R2 below; nothing is frozen until they are)
   R1  the authored envelope owns the name     → rename appends one immutable version, F4-reconciled
   R2  delete of a project with a publication  → refuse only while a publication is ACTIVE
 ```
@@ -44,6 +46,8 @@ OWNER DIRECTION (2026-10-24 review, recorded in R1/R2 below)
 | Project-owned keys are project-prefixed | `asset-persistence.ts`: `projects/<ns>/<project>/assets/<uuid>/<hex>`; `model-persistence.ts`: `…/models/imports/<importId>/<fileId>` and `…/models/revisions/<contentHash>/<name>` | The key shapes are project-scoped, but **listing is not**: `ObjectStore.list()` returns every visible key in the bucket. A sweep must filter to the project prefix and must not treat sibling keys as an error (§1, F3) |
 | The existing purge is asset-shaped and would refuse | `r2-purge.ts` verifies every listed key against an **assets-only** pattern; a bucket holding model keys throws `R2PurgeRefusal` | Cleanup needs the prefix owned by the lifecycle, and `r2-purge`'s ownership predicate must learn the model shapes |
 | Approval writes bytes before its row | `model-persistence.ts` `putBytes(...)` then `INSERT INTO model_revisions … ON CONFLICT DO NOTHING` | A delete concurrent with an approval can leave bytes with **no row to inventory**; the write must be fenced and compensated, not merely swept (§1, F1) |
+| Approval writes source copies that no column records | `approveModelImport` writes `projects/<ns>/<projectId>/models/revisions/<contentHash>/source/<path>` per source file; `model_revisions` stores only `derivative_key`, and `model_import_files.object_key` names the staging keys | The inventory misses every approved source copy unless the revision's key set is persisted (§2, follow-up F2) |
+| Every object write runs in this API process | `uploadAsset` and `uploadModelFile` stream the body and `approveModelImport` uses `putBytes`; no presigned client `PUT` exists | A revocation check and a hard write deadline can be enforced in-handler; a client-held credential could not be fenced (§1) |
 | Writers do not all clean up after themselves | `asset-persistence.ts` marks its row `failed` on a stream error and writes nothing back on a failed finalize; `model-persistence.ts` deletes its key on stream/hash/finalize failure but the approval path has no compensation | Compensation is part of the fix, because a process death is not a refused write (§1) |
 | Unpublish retains the publication row | `publication-persistence.ts` `unpublishVersion` sets `active_version = NULL` and keeps the row and its `public_id` | A "refuse while a publication row exists" precondition would make a formerly published project permanently undeletable — R2's corrected ruling |
 | Nothing ships a lifecycle control | `apps/editor/src/routes/projects/+page.svelte` lists projects and opens them; `EditorHead` renders `projectName` with Save/Preview; no rename or delete affordance exists | The T1 patch is a small **new** control group, not wiring to an existing one |
@@ -66,37 +70,80 @@ streaming, delete removes every row, cleanup lists (the object is not visible ye
 marks complete, and the upload finishes writing. Its finalize fails because the project is gone, and
 the bytes remain with `cleanup: complete` on the record.
 
-**Deletion/write fence (preferred).** One fence covers every project-owned object writer, built on
-the row lock the Save path already uses plus a durable lease:
+**Why expiry alone is not a fence (follow-up review).** An expired lease says only that a heartbeat
+stopped, not that its writer stopped. A partitioned process, a stalled body stream or a slow
+`PutObject` can outlive `expires_at`, commit after cleanup listed twice and wrote `complete`, and
+leave an orphaned object behind a record that claims it is gone. Expiry is a liveness guess; a real
+fence needs an **acknowledged stop**, or a **hard bound** enforced by the code doing the writing.
+Both are used here, because neither covers the other's failure.
 
-- **Writer lease.** Before the first byte, the writer transaction takes
+**Deletion/write fence (preferred).** A revocable, acknowledged lease with a hard deadline, built on
+the project row lock Save already uses:
+
+- **Start.** Before the first byte the writer takes
   `SELECT 1 FROM projects WHERE id = $1 AND owner_id = $2 FOR KEY SHARE` (compatible with other
-  writers, conflicts with delete's `FOR UPDATE`) and inserts a `project_write_leases` row
-  (`lease_id`, `project_id`, `kind`, `started_at`, `expires_at`). A missing project row refuses before
-  any byte is written. The lease is released in a `finally` on every exit path.
-- **Delete.** Under the same row lock it verifies owner and expected base, and **refuses with a
-  retryable `project-busy` while any unexpired lease exists for the project**, writing nothing.
-  Otherwise it reads the inventory, inserts the deletion record and deletes the rows in one
-  transaction.
-- **Why the race closes.** The lease insert and the delete serialize on the project row: either the
-  lease commits first and delete refuses, or delete commits first and the writer's `FOR KEY SHARE`
-  finds no row. After the delete commits, no permitted writer can create a key under the prefix.
+  writers, conflicts with delete's `FOR UPDATE`) and inserts `project_write_leases` (`lease_id`,
+  `project_id`, `kind`, `started_at`, `heartbeat_at`, `deadline_at`, `revoked_at`, `released_at`).
+  A missing project row refuses before any byte is written.
+- **Heartbeat that reports revocation.** While streaming, the handler renews every `RENEW` (2 s) with
+  `UPDATE project_write_leases SET heartbeat_at = now() WHERE lease_id = $1 AND revoked_at IS NULL
+  RETURNING project_id`. An empty result means *revoked*: the handler immediately destroys the
+  inbound stream, aborts the `PutObject` and writes nothing further. A renewal that **errors** is
+  treated the same way — fail closed, never assume the lease is still held. This is the acknowledged
+  stop, and the lease is released (`released_at = now()`) in a `finally` on success and on failure.
+- **Hard deadline.** `deadline_at = started_at + MAX_WRITE` and is **never extended**. An
+  `AbortController` fires at it in the handler whether or not revocation was noticed, so a writer
+  that cannot reach the database still cannot write past its bound. `MAX_WRITE` is set from the
+  route's enforced request timeout, not guessed.
+- **Delete revokes, then proceeds.** Under the project row `FOR UPDATE` it verifies owner and
+  expected base, then revokes every lease that is neither released nor revoked (`revoked_at =
+  now()`) and refuses with retryable `project-busy`, writing nothing. It deletes only when **every
+  lease is released or past `deadline_at`**; a revoked-but-unreleased lease inside its deadline is
+  still a live writer, so that attempt refuses `project-busy` again rather than waiting in-process.
+  When it does proceed it records `fenced_at = now()`.
+- **Loop bound.** A live writer costs one `project-busy` (it releases within `RENEW` plus its abort
+  time); a partitioned one costs retries until its `deadline_at`. That is why the bound must be
+  modest, and why the client treats `project-busy` as retry rather than failure.
 - **Compensation, not only the fence.** Each writer deletes the keys it wrote when its finalization
-  fails (asset upload and model approval need this added; model upload already does). A process death
-  is not a refused write, so the fence alone is not the whole answer.
-- **Lease expiry.** `expires_at` must exceed the maximum upload-route duration for the bounded
-  content sizes (25/50 MiB). An expired lease is reaped and never trusted; cleanup cannot complete
-  while a lease for the project is unexpired.
+  fails (asset upload and model approval need this added; model upload already does).
 
 **Cleanup and the completion check.** After commit, cleanup deletes the **persisted inventory** keys
 (§2), then runs a **project-scoped** listing (F3): filter `ObjectStore.list()` to
 `projects/<ns>/<projectId>/` and ignore every other key rather than refusing it. Completion requires
-all of: the tombstone committed; no unexpired lease; the inventory keys deleted; and **two
-consecutive empty scoped listings separated by a bounded quiet interval after the last lease
-expiry**. Only then does the record reach `state = 'complete'`. Otherwise the response is
-`cleanup: pending`, retried by (a) repeating the `DELETE` and (b) the owner-run CLI in the existing
-`purge-objects.ts` style (`npm run cleanup:projects`, pending records only). No scheduler, daemon or
-new dependency.
+all of:
+
+1. the tombstone committed and `fenced_at` recorded;
+2. every lease released, or past its `deadline_at`;
+3. `now() - fenced_at >= MAX_WRITE + RENEW + abort margin`, so no request that began before the
+   fence can still be writing;
+4. the inventory keys deleted; and
+5. two consecutive scoped listings, both empty, the second taken **at or after** that bound (so a
+   key from a write that started before the fence has had its whole lifetime to appear).
+
+Only then does the record reach `state = 'complete'`. Otherwise the response is `cleanup: pending`,
+retried by (a) repeating the `DELETE` and (b) the owner-run CLI in the existing `purge-objects.ts`
+style (`npm run cleanup:projects`, pending and stale records). No scheduler, daemon or new
+dependency.
+
+**What the fence still cannot prevent, stated rather than papered over.** A `PutObject` that has
+received all its bytes may commit on the store after its handler died and its socket closed: R2
+discards an incomplete upload, but a complete one whose response was lost is durable and becomes
+visible. That is why completion rests on a listing **after the enforced bound** rather than on the
+lease, and why a later run that finds a key under a completed record reports the discrepancy and
+deletes it — defense in depth, not a second guarantee.
+
+**Regression scenario — a write that completes after lease expiry.** The fake `ObjectStore` holds
+the `PutObject` while the writer's heartbeat stops and its lease expires early (`deadline_at` still
+in the future):
+
+1. delete revokes and answers `project-busy`; nothing is removed;
+2. before `deadline_at`, cleanup lists twice, finds the prefix empty and must still report
+   `pending` — the bound, not the empty listing, is what licenses `complete`;
+3. past the bound the handler's `AbortController` fires, the store aborts the held write and nothing
+   commits, so the next run marks `complete`;
+4. the hostile variant lets the fake commit after `complete`; the CLI verify run must find the key,
+   delete it and report it, and a completion must never be claimed for a key the caller could still
+   see.
 
 **Why the inventory survives and the sweep does not replace it.** The inventory is the durable truth
 the approved plan requires; the scoped sweep is the completion oracle that catches keys written by a
@@ -107,28 +154,39 @@ never committed. Neither is sufficient alone.
 schema, but no durable in-flight record, hard to test without blocking, and a hung session blocks
 deletion indefinitely. (b) **Tombstone-only denial** at writer start — the plan's "deny further
 project access": covers new writers only, not in-flight ones. (c) **Grace-period sweeps** without a
-fence: no guarantee and an unbounded wait. The preferred design keeps (b) as its first step and adds
-the lease and compensation.
+fence: no guarantee and an unbounded wait. (d) **Per-chunk object-store conditional writes**
+(`If-Match` on a fence object): R2 conditions are per object, not per prefix, so they cannot gate a
+write to a different key — rejected. The preferred design keeps (b) as its first step and adds the
+revocable lease, the enforced deadline and compensation.
 
 **Tradeoff and risk.** The fence adds a lease table, a `FOR KEY SHARE` on every upload and approval,
-and a retryable `project-busy` outcome; delete gains a bounded refusal path that a client must
-surface as retry, not error. That is the price of not claiming a completeness it cannot prove. It
-also makes the §3 handoff a merge condition: the fence is only real if all three writers use it.
+a 2 s renewal while streaming (one cheap `UPDATE`), a retryable `project-busy` path and a delete that
+can answer `pending` for up to the write bound. `MAX_WRITE` must be sized to the slowest *permitted*
+upload (the 50 MiB source set at the deployment's minimum throughput) with margin, and it must be a
+hard route limit — an upload that cannot finish inside it is refused explicitly rather than silently
+aborted at the bound. That is the price of not claiming a completeness it
+cannot prove. It also makes the §3 handoff a merge condition: the fence is only real if all three
+writers use it.
 
 ## 2. Migration contingency — decided
 
-Add **migration 007** with the two lifecycle tables (idempotent `CREATE TABLE IF NOT EXISTS`,
-guarded constraints), matching the replay-safe style of `001`–`006` under the runner's session
-advisory lock:
+Add **migration 007** with the two lifecycle tables and one column (idempotent
+`CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`, guarded constraints), matching the
+replay-safe style of `001`–`006` under the runner's session advisory lock:
 
 - `project_deletions` — `project_id` primary key, `owner_id`, `object_namespace`, `state`
-  (`pending|complete`), **`key_inventory jsonb`**, `attempts`, `last_error`, timestamps, index on
-  `(state, created_at)`. **No foreign key to `projects`**: the project row is deleted in the same
-  transaction that inserts the record. Owner-scoped, so a retry cannot resume another owner's
+  (`pending|complete`), **`key_inventory jsonb`**, `fenced_at`, `attempts`, `last_error`, timestamps,
+  index on `(state, created_at)`. **No foreign key to `projects`**: the project row is deleted in the
+  same transaction that inserts the record. Owner-scoped, so a retry cannot resume another owner's
   cleanup.
-- `project_write_leases` — `lease_id` primary key, `project_id`, `kind`, `started_at`, `expires_at`,
-  index on `(project_id, expires_at)`. **No foreign key either**, so a crashed writer's expired lease
-  remains reapable after its project is gone.
+- `project_write_leases` — `lease_id` primary key, `project_id`, `kind`, `started_at`, `heartbeat_at`,
+  `deadline_at`, `revoked_at`, `released_at`, index on `(project_id, deadline_at)`. **No foreign key
+  either**, so a dead writer's lease stays inspectable after its project is gone.
+- `model_revisions.source_keys jsonb` (added to the T2-owned table, T2 review): the approved
+  revision's full source-copy key set. Nullable, because pre-007 rows are backfilled rather than
+  blocked; guarded by `CHECK (source_keys IS NULL OR jsonb_typeof(source_keys) = 'array')`. The
+  approval path always populates it, and a `NULL` seen at deletion time marks that revision
+  `sweep-dependent` (below). A replay is a no-op.
 
 **The inventory is persisted, not recomputed.** This corrects F2 and restores the approved plan's
 contract: after the rows are deleted, the inventory can no longer be read from them, so a crash
@@ -136,27 +194,57 @@ between commit and cleanup would lose it. The keys read inside the deletion tran
 into `key_inventory`, and cleanup deletes from that record idempotently on every retry. The prefix
 listing is a *completion check*, not a substitute.
 
+**Approved source copies are a recorded key set (follow-up F2).** `approveModelImport` writes one
+derivative plus one object per source file at
+`projects/<ns>/<projectId>/models/revisions/<contentHash>/source/<path>`, and the table stores only
+`derivative_key`. An inventory built from today's columns therefore misses **every approved source
+copy** — the exact gap the review found. The fix is the column above, written in the same `INSERT`
+as the revision that owns the bytes and produced by one `revisionObjectKeys(projectId, namespace,
+contentHash, sourcePaths)` helper that both the approval path and `ownedObjectKeys` call, so the two
+cannot drift. Backfill for pre-007 revisions derives the same keys from the retained
+`model_imports.revision_id` → `model_import_files.path` rows (`role = 'source'`); a revision whose
+import rows are gone cannot be backfilled and is recorded `sweep-dependent`, with its cleanup resting
+on the scoped listing rather than claiming inventory coverage it does not have.
+
+**Coverage statement — no overstatement.** `key_inventory` is complete for keys an owning row
+records: `assets.object_key`, `model_import_files.object_key` (staging keys; some are already
+removed, so deletion is idempotent), `model_revisions.derivative_key`, and
+`model_revisions.source_keys`. It is **not** a claim about keys written by a writer that crashed
+before its row committed; those are covered only by the bound-plus-sweep completion check. Cleanup
+never reports `complete` from the inventory alone.
+
 **No CASCADE retrofit.** Adding `ON DELETE CASCADE` to `project_versions`, `assets` or `publications`
 would delete rows before the inventory is read and would make the durable record's content
 unknowable. The explicit ordered delete is the mechanism; `006`'s existing cascade for model rows
 stays as recorded.
 
-**Contingency rules.** The table is empty at creation, so no backfill and no epoch activation applies;
-`005`'s production activation remains a separate owner-run operation and 007 rides the same owner-run
+**Contingency rules.** The two lifecycle tables are empty at creation, so only `source_keys` needs a
+backfill, and that backfill is derived and idempotent; no epoch activation applies. `005`'s
+production activation remains a separate owner-run operation and 007 rides the same owner-run
 migration step. If implementation finds it needs a migration outside lifecycle cleanup, or a store
-that supports neither prefix listing nor the three row sources, that is a **stop-and-report** before
+that supports neither prefix listing nor the four row sources, that is a **stop-and-report** before
 deletion is written — not a workaround.
 
 ## 3. T2 → T3 API handoff — decided, T2 review required
 
 **Consumed read-only:** `assets.object_key`; `model_import_files.object_key`, `.state`,
-`.expires_at`; `model_revisions.derivative_key`; `ObjectStore.list`/`delete`; the owner checks and
-byte-write sequences in `uploadAsset`, `uploadModelFile` and `approveModelImport`.
+`.expires_at`; `model_revisions.derivative_key` and the new `.source_keys`;
+`ObjectStore.list`/`delete`; the owner checks and byte-write sequences in `uploadAsset`,
+`uploadModelFile` and `approveModelImport`.
 
 **Proposal (preferred).** One `ownedObjectKeys(db, projectId)` function in T3's lifecycle module is the
 single inventory, reviewed by T2. A written invariant binds future work: *a new project-scoped object
-key must be added to that function and must live under `projects/<ns>/<projectId>/`.* T3 takes the
-lifecycle route and its client; T2 keeps import, admission, model formats and the approval path.
+key must live under `projects/<ns>/<projectId>/`, must be recorded by the row that owns it, and must
+be added to that function.* T3 takes the lifecycle route and its client; T2 keeps import, admission,
+model formats and the approval path.
+
+**Two T2-owned changes ride this handoff.** (1) `model_revisions.source_keys` in migration 007 and the
+shared `revisionObjectKeys` helper, without which the inventory silently omits approved source
+copies; (2) the write lease in `uploadModelFile` and `approveModelImport` and their missing
+compensation. Both need T2 review because they touch model storage and the approval path; neither is
+optional. If T2 would rather own the column itself, its migration and the helper move to a T2
+migration, and 007 keeps only the lifecycle tables — the requirement is the persisted set, not who
+writes the DDL.
 
 **The fence is a merge condition, not a suggestion (F1).** A shared helper
 `withProjectWriteLease(pool, ownerId, projectId, kind, fn)` lives in T3's lifecycle module and is the
@@ -207,23 +295,26 @@ and compares the same `saved_base_token` the Save path compares. A stale rename 
 - *Save then delete:* delete's base check refuses; nothing is destroyed.
 - *Delete then Save:* `loadProject`/Save answer not-found; the draft stays local and the route offers
   download/recovery where it already does.
-- *Writer in flight, then delete:* an unexpired lease refuses delete with retryable `project-busy`;
-  nothing is deleted, so the writer finalizes normally. The client shows retry, not failure.
+- *Writer in flight, then delete:* delete revokes every live lease and answers retryable
+  `project-busy`; the writer's next heartbeat reports the revocation, it aborts the stream and the
+  `PutObject`, releases the lease and writes nothing more. The retried delete then proceeds. Nothing
+  is deleted on the first attempt, and the client shows retry, not failure.
 - *Delete commits, then a writer starts:* the lease's `FOR KEY SHARE` finds no project row and the
   write refuses before a byte is written (upload) — for approval, the foreign key refuses the
   revision insert as before.
 - *Delete then create-only with the same id:* the durable `project_deletions` record makes the
   create-only path answer `collision` instead of resurrecting an empty project. This is one additive
   read in the create-only branch; it changes no existing refusal's meaning.
-- *Lease held by a crashed process:* it expires, cleanup reaps it, and delete proceeds; completion
-  still waits for the quiet-interval check (§1).
+- *Lease held by a crashed or partitioned writer:* nothing renews it, so it passes `deadline_at`;
+  delete proceeds without waiting for an acknowledgment, and the handler-side deadline means no
+  process can still be streaming past that point. Completion still waits for the enforced bound (§1).
 
 **Client rules.** Every lifecycle result carries its `projectId`; a response whose id no longer
 matches the mounted session is dropped (the same rule the Save client already needs after a project
 switch). Partial network failure keeps the operation state so the UI can refresh/retry, and the UI
 distinguishes "inaccessible project" from "pending byte cleanup".
 
-## R1 — Which field owns the project name? (owner direction: the authored envelope)
+## R1 — Which field owns the project name? (proposed: the authored envelope)
 
 **The conflict.** The plan requires rename to preserve source units, source revision, history and
 stored versions. But Save stamps `projects.name` from the admitted source's `name` on every save, and
@@ -231,12 +322,13 @@ the list and title read the row. So a metadata-only rename is reverted by the ne
 that still carries the old name; leaving the two in place instead creates a silent divergence between
 the list, the title and the stored envelope.
 
-**Owner direction (2026-10-24): option A.** The authored envelope `name` is the only truth. Rename
-writes it as one new immutable version and retains every previous version, stable source identities
-and publication pins. The alternative — the row owning the display name while Save stops stamping it
-— would keep two writable names and changes what conditional Save writes; it is rejected. This is an
-**intentional amendment** to the plan's metadata-only rename and its "preserves source revision"
-sentence, recorded here and in the plan, not a routine detail.
+**Proposed ruling (2026-10-24, awaiting ratification): option A.** The authored envelope `name` is the
+only truth. Rename writes it as one new immutable version and retains every previous version, stable
+source identities and publication pins. The alternative — the row owning the display name while Save
+stops stamping it — would keep two writable names and changes what conditional Save writes; it is
+rejected. This is an **intentional amendment** to the plan's metadata-only rename and its "preserves
+source revision" sentence, recorded here and in the plan, not a routine detail, and it is **not
+frozen** until the owner ratifies it.
 
 **How it works, without inventing a revision identity.** `project_versions.document` holds the whole
 document and `loadProject` already reads it, so the server can load the latest document, change only
@@ -262,9 +354,9 @@ publication. That is correct for an immutable release and is recorded here so im
 "fix" it by rewriting a pinned version.
 
 **Cost.** Rename becomes a version-producing write (one extra document version and receipt per
-rename) rather than a row update. Accepted by the owner.
+rename) rather than a row update. Proposed, not yet accepted.
 
-## R2 — What does delete do with a published project? (owner direction: active only)
+## R2 — What does delete do with a published project? (proposed: active only)
 
 **The gap.** The plan's cleanup list covers stored versions, staging and approved model resources, and
 its probes never mention `publications` or `releases`. Yet `publications.project_id` references the
@@ -278,7 +370,8 @@ API-level rows can exist.
 published project could never be deleted. The owner raised this in review, and it is why R2's
 precondition is stated as *active*, not *present*.
 
-**Owner direction (2026-10-24).** Refuse delete **only while a publication is active**
+**Proposed ruling (2026-10-24, awaiting ratification).** Refuse delete **only while a publication is
+active**
 (`publications.active_version IS NOT NULL`), with an explicit "unpublish this project before deleting
 it" refusal and the project untouched. After unpublication the project is deletable: the deletion
 transaction removes the retained inactive `publications` row and its dependent `releases` rows before
@@ -295,24 +388,34 @@ Row-existence refusal: rejected as unsatisfiable, above.
 an inactive publication, says its public link will stop resolving. A project with an active
 publication shows the unpublish-first refusal instead of a doomed confirmation.
 
-## Review corrections (2026-10-24)
+## Review corrections
 
-Every change below answers a finding in the owner's review of this resolution's first draft.
+Two review rounds on 2026-10-24. Every change below answers a finding; nothing was amended silently.
+
+### Round 1 — deletion architecture
 
 | Finding | Correction |
 | --- | --- |
-| **F1** — an in-flight writer can create a key after cleanup "completed" | §1 replaces the listing-only completion test with a durable **write-lease fence** on all three object writers, a retryable `project-busy` refusal, and per-writer compensation on failed finalization. Completion now requires no unexpired lease and two quiet scoped listings. |
+| **F1** — an in-flight writer can create a key after cleanup "completed" | §1 replaces the listing-only completion test with a write fence on all three object writers, a retryable `project-busy` refusal, and per-writer compensation on failed finalization. |
 | **F2** — the durable record dropped the plan's key inventory | §2 adds `key_inventory jsonb` to `project_deletions`; the inventory read inside the deletion transaction is the durable truth, and the scoped listing is only the completion check. |
-| **F3** — `ObjectStore.list()` returns the whole bucket | §1 requires a project-scoped listing (filter or an optional `prefix` parameter). Sibling projects' keys are ignored, never treated as a cleanup error, and this stays distinct from `r2-purge`'s global epoch contract. |
-| **R1** — name authority | The authored envelope owns the name; rename appends one immutable version through the shared save path, with the three F4 obligations above and dirty-draft preservation. |
+| **F3** — `ObjectStore.list()` returns the whole bucket | §1 requires a project-scoped listing. Sibling projects' keys are ignored, never treated as a cleanup error, and this stays distinct from `r2-purge`'s global epoch contract. |
+| **R1** — name authority | The authored envelope would own the name; rename appends one immutable version through the shared save path, with the three F4 obligations above and dirty-draft preservation. |
 | **R2** — publication precondition | Refuse only while the publication is **active**; remove the retained inactive row and its dependent releases after unpublication. The first draft's row-existence precondition was unsatisfiable. |
 
-**What this amends in the previously approved plan.** These are named, not silent:
+### Round 2 — the expiry hole and the source-copy gap
 
-- rename changes from metadata-only to one immutable version (owner-directed, R1);
-- cleanup gains a durable writer fence and per-writer compensation, and one migration table becomes
-  two (F1, F2);
-- delete gains a defined publication rule it previously lacked (R2).
+| Finding | Correction |
+| --- | --- |
+| **F1 (follow-up)** — lease expiry does not prove an in-flight write has terminated | §1 makes the lease **revocable**: the writer heartbeats every 2 s and an empty renewal result aborts the stream and the `PutObject`; delete revokes and answers `project-busy`, then proceeds only when every lease is released or past a non-extendable `deadline_at` enforced in the handler. Completion waits out that enforced bound, then requires two empty scoped listings. A regression scenario for a write that outlives its lease is specified. |
+| **F2 (follow-up)** — approved model source copies are absent from the persisted inventory | §2 adds `model_revisions.source_keys`, written in the same `INSERT` as the owning row through the shared `revisionObjectKeys` helper, backfilled from retained import paths, and marked `sweep-dependent` where backfill is impossible. A coverage statement limits the inventory's claim to keys an owning row records. |
+| **R1 / R2 status** | Recorded as **proposed** rulings awaiting ratification, not as owner decisions; no behaviour is frozen. |
+
+### What this amends in the approved plan (named, not silent)
+
+- rename changes from metadata-only to one immutable version (**proposed** R1);
+- cleanup gains a revocable fence, a persisted complete key set, and one migration carrying two
+  tables plus one column (F1, F2);
+- delete gains a defined publication rule it previously lacked (**proposed** R2).
 
 The plan's verification tier, file ownership and scope boundaries are unchanged; the amended text is
 in [the plan](./implementation-plan.md).
@@ -321,12 +424,15 @@ in [the plan](./implementation-plan.md).
 
 ```text
 authorization      T3.P04.S01 released; implementation may start after the coordination PR merges
-decided            5 mechanisms above; the fence and persisted inventory are corrections, not new scope
-owner direction    R1 authored envelope, one new version · R2 active-only delete refusal
-merge condition    T2 applies the lease to uploadModelFile and approveModelImport (+compensation);
-                   an unfenced writer is a stop-and-report, not a sweep-only fallback
-not ratified       no format, gate, capability, performance budget, publication lifecycle or other scope
+decided            5 mechanisms; the revocable fence, the source-key column and the coverage
+                   statement correct the plan's mechanism, not its product scope
+proposed rulings   R1 authored envelope, one new version · R2 active-only delete refusal
+                   — NEITHER IS FROZEN UNTIL THE OWNER RATIFIES IT
+merge condition    T2 reviews the source_keys column and applies the lease to uploadModelFile and
+                   approveModelImport (+compensation); an unfenced writer or an unrecorded source
+                   key set is a stop-and-report, not a sweep-only fallback
+not ratified       no format, gate, capability, performance budget, publication lifecycle or scope
 not built          no route, migration, client call, control or cleanup code in this PR
-owners             T3 persistence/API/client · T2 import/admission + fence handoff review ·
+owners             T3 persistence/API/client · T2 import/admission + handoff review ·
                    T1 shell patch + review · S06 untouched, harness untouched
 ```

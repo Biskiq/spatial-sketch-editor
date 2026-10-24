@@ -19,13 +19,15 @@ NEXT:   Start T3.P04.S01 after its coordination PR merges on main:
         1. runbook start step — re-verify F2.unit-envelope@1:unit-envelope-v1 and
            F4.intent-acceptance@1:conditional-save-units-v1 at the slice's trusted base, and its
            now.md row;
-        2. read the planning resolution's five mechanisms and its review corrections — the
-           owner-directed decisions (authored envelope owns the name, rename appends one
-           immutable version; delete refuses only an ACTIVE publication) are recorded, and the
-           cleanup design is a write-lease fence plus persisted inventory, not a listing sweep;
-        3. T2 review of the API handoff (owned-key inventory, and the fence at uploadModelFile
-           and approveModelImport with per-writer compensation) before touching shared API
-           files — no project-owned writer may bypass the lease;
+        2. read the planning resolution's five mechanisms and its two review corrections — the
+           name/publication contract rulings are PROPOSED and not ratified, so nothing about
+           rename/delete persistence is frozen; the cleanup design is a revocable write lease
+           with an enforced write bound, a persisted complete key set (including approved source
+           copies) and a bounded scoped sweep, not a listing-only sweep;
+        3. T2 review of the API handoff (owned-key inventory, the `model_revisions.source_keys`
+           column and its backfill, and the revocable lease at uploadModelFile and
+           approveModelImport with per-writer compensation) before touching shared API files —
+           no project-owned writer may bypass the lease;
         4. the bounded T1 shell patch is serialized against T1.P02.S06's recorded claim and
            T1-reviewed before implementation.
 RELEASE: ../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md
