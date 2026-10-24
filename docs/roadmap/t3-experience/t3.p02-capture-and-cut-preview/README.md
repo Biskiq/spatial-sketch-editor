@@ -1,8 +1,12 @@
 # T3.P02 — First Capture and Cut Preview
 
-**Phase:** T3.P02 · **Status:** registered 2026-10-20. Released scopes and their conditions are
-the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
-covers every scope that list omits. S02 is shipped as `owner-override` (2026-10-24) and the phase is closable, not closed · **Track:** [T3](../README.md) · **Roadmap:**
+**Phase:** T3.P02 · **Status:** **closed 2026-10-24** — registered 2026-10-20; both children
+shipped, the final gate `T3.P02.S02` accepted as `owner-override` (2026-10-24), and the phase closed
+by the owner-invoked closeout that carries the `PHASE CLOSE` block below
+([owner decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
+Released scopes and their conditions are the [release list](../../now.md); the
+[production hold](../../README.md#production-implementation-hold) covers every scope that list
+omits, and this phase's closure releases nothing · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [AM-9](../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover),
@@ -103,7 +107,7 @@ lifecycle and prerequisites only.
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T3.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | camera-authoring-migration | [First capture and Cut Preview](./t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) | [record](./t3.p02.s01-first-capture-and-cut-preview/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); historical Batch E permission 2026-10-22 ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7); start condition T3.P03.S01 merge satisfied by PR #176; accepted/shipped 2026-10-23 as `owner-override` at integrated revision `1bb281bb16dc839588e4174514b240de6c52bf79` |
-| T3.P02.S02 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t3.p02.s02-integrated-final-gate/implementation-plan.md) | [record](./t3.p02.s02-integrated-final-gate/acceptance.md) | owner-authorized 2026-10-23 in the post-Batch-E release ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); accepted and shipped 2026-10-24 as `owner-override` at merged revision `335820d6060302cac1e78b9c08c75f25f7605201` (merge `bf6b2e1f`, PR 184); the FINAL PHASE GATE makes this phase closable, not closed; performance and unrun rows deferred by owner ruling |
+| T3.P02.S02 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate (closed stub)](./t3.p02.s02-integrated-final-gate/implementation-plan.md) | [final-gate acceptance record (closed stub)](./t3.p02.s02-integrated-final-gate/acceptance.md) | owner-authorized 2026-10-23 in the post-Batch-E release ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); accepted and shipped 2026-10-24 as `owner-override` at merged revision `335820d6060302cac1e78b9c08c75f25f7605201` (merge `bf6b2e1f`, PR 184); phase **closed 2026-10-24** (PHASE CLOSE below); performance and unrun rows deferred by owner ruling |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `9a457f6b`; each
 slice re-verifies them at its own trusted base through the runbook start step. `F2.unit-envelope@1`
@@ -115,7 +119,21 @@ S01's acceptance records the creator loop as a slice outcome, not as a capabilit
 FINAL PHASE GATE: T3.P02.S02 → ./t3.p02.s02-integrated-final-gate/acceptance.md
 
 PHASE CLOSE
-Stage:        closable
+Stage:        closed
+Closed:       2026-10-24 — owner ratification: closed by owner ruling 2026-10-24, recorded in
+              the T3 phase-close and P04 authorization decision
+              (docs/reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)
+Final gate:   T3.P02.S02 → ./t3.p02.s02-integrated-final-gate/acceptance.md — accepted
+              2026-10-24 as `owner-override` at `335820d6` (merge `bf6b2e1f`, PR 184)
+Integration:  the gate artifact's integrated acceptance at that revision: complete editor suite
+              2403/2405 with both failures proved to be host-load 5 s timeouts that pass in
+              isolation (25/25 and 36/36), arch 178, heavy 125, root build, package checks,
+              DB-backed API 95/95 with zero skips, 6 integrated browser journeys, and the
+              focused first-Guide and visitor-director suites. Validated as recorded, not
+              re-executed by this close.
+Preservation: the gate artifact is a closed-work stub at its own path; its accepted body (300
+              lines) is recoverable at `8cc30c94` with tag `closed/T3.P02`. The S02 plan, review
+              and hand-off were already stubs. The preservation report is in the stub.
 ```
 
 **Carried residuals** (owner ruling 2026-10-24; deferred, not claimed as passing). Performance: the traced
@@ -128,7 +146,9 @@ T3-owned code returns to T3, and the H0 trace-method ruling stays with the owner
 fixtures, the browser Preview-replacement probe, the browser Save/download/reload journey, touch/coarse pointer,
 DOM reach without raycast, the partial shared-Camera row and the Travel/detour browser rows. Their record is the
 [owner ruling](./t3.p02.s02-integrated-final-gate/acceptance.md#owner-ruling--performance-and-unrun-rows-deferred-2026-10-24).
-Closing this phase is an owner-invoked request; these residuals travel with it.
+The phase closed 2026-10-24 with every residual above intact: closure changed no row's disposition
+and no owner. The Scope A items remain transferred to `T1.P02.S06`, the Scope B items remain with T3
+and unclaimed, and the gate artifact stub names each one.
 
 ## Acceptance evidence to carry
 
