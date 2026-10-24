@@ -46,6 +46,15 @@ vocabulary and registered states; do not invent a new gate or a `held` lifecycle
 Only an owner release writes the [release list](./now.md), including pruning a row whose slice has shipped.
 A closeout does not.
 
+**Performance-first halt (owner direction, 2026-10-24, temporary).** `T1.P02.S06` runs before every
+direct inheritor of its compile/admission/representation path, harness method, fixtures and
+re-baselined hard rows: T1.P02's drawing, Opening and final gate, T2.P02's final gate, and the Core
+Editor Stability acceptance plan with T4 behind it. No direct inheritor is released or started until S06
+is accepted and merged, unless the owner records an explicit ruling to lift the halt earlier.
+Strictly unrelated work continues only through its own owner release. The
+[decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+owns the definition; this adds no lifecycle status.
+
 ## Track register
 
 Every track and every repository phase is registered here exactly once. The track or phase
@@ -171,12 +180,13 @@ writers and merge order. Update this index only in the coordination change that 
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05 | — | T1.P02.S02 drawing, S03 Opening, S04 final gate | S02 on its own owner authorization, plan review and T3/T2 reviews; S03 on S02; S04 on S01/S05/S02/S03 |
-| T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01 | T2.P02.S02 import, review, approve and place | T2.P02.S03 final gate | S03 on S02 accepted |
-| T3 | T3.P01 (closed); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md#slice-register) S01–S02 (closable, not closed); [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md#slice-register) S01–S02 (closable, not closed) | — | [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) project lifecycle (planning) | T3.P04.S01 owner authorization (T3.P02.S02 accepted 2026-10-24), explicit API handoff after T2.P02.S02 merges, and its own release |
+| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05 | T1.P02.S06 performance foundation | T1.P02.S02 drawing, S03 Opening, S04 final gate (performance-first halt) | S02 on S06 accepted and merged, then its own owner authorization, plan review and T3/T2 reviews; S03 on S02; S04 on S01/S05/S06/S02/S03 |
+| T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01, S02 | — | T2.P02.S03 final gate (performance-first halt) | S03 on T1.P02.S06 accepted and merged, then its own owner authorization |
+| T3 | T3.P01 (closed); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md#slice-register) S01–S02 (closable, not closed); [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md#slice-register) S01–S02 (closable, not closed) | — | [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) project lifecycle (planning; strictly unrelated to the halt) | T3.P04.S01 owner authorization (T3.P02.S02 accepted and T2.P02.S02 merged, 2026-10-24), the explicit API handoff from T2, and its own release |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
 
-Release provenance is the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md).
+Release provenance is the [performance foundation decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md);
+the shipped post-Batch-E lanes keep the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md).
 Everything omitted from [now.md](./now.md) stays under the production hold. No gate, track or
 phase lifecycle changes here.
 
