@@ -102,7 +102,11 @@
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
-	import { approvedModelPins, resolveApprovedModels } from '$lib/authoring/scene/model-bytes';
+	import {
+		approvedModelPins,
+		resolveApprovedModels,
+		type ApprovedModelSources
+	} from '$lib/authoring/scene/model-bytes';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
 	import ExperienceSurface from '$lib/authoring/experience/ExperienceSurface.svelte';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
@@ -297,8 +301,12 @@
 	let modelResolution: { dispose(): void } | null = null;
 	/** Monotone ticket: only the newest resolution may install its URLs. */
 	let modelGeneration = 0;
-	/** The pin set the current URLs were resolved for; an unchanged set is reused. */
+	/** The pin set of the newest request, installed or in flight; an unchanged set is reused. */
 	let modelPinSignature = '';
+	/** The pin set the installed URLs were resolved for. */
+	let installedModelSignature = '';
+	/** The model-failure notice this resolver last set, so an unrelated notice survives. */
+	let modelNotice: string | null = null;
 	let selectionMarker = $state<{ css: readonly [number, number]; label: string } | null>(null);
 	let notice = $state('');
 	let pendingReplacement = $state<null | 'starter' | 'empty' | 'source'>(null);
@@ -1085,6 +1093,7 @@
 			modelResolution = null;
 			modelUrls = new Map();
 			modelPinSignature = '';
+			installedModelSignature = '';
 			session.dispose();
 		};
 	});
@@ -1104,38 +1113,57 @@
 		// has: revoking and re-downloading every derivative on each accepted command
 		// would flash the fallback box and re-fetch immutable bytes.
 		const signature = pins.map((pin) => `${pin.assetId}@${pin.hash}`).join('|');
-		if (signature === modelPinSignature && modelResolution !== null) return;
+		if (signature === modelPinSignature) return;
 		modelPinSignature = signature;
 		const generation = ++modelGeneration;
-		modelResolution?.dispose();
-		modelResolution = null;
-		modelUrls = new Map();
-		let resolved: Awaited<ReturnType<typeof resolveApprovedModels>> | null = null;
+		// The installed set stays live while the new one resolves. Shared hashes keep
+		// their references through the object-URL ref count, so they are neither
+		// revoked nor re-fetched; the old set is released only once its replacement
+		// is installed.
+		const landed: { value: ApprovedModelSources | null } = { value: null };
+		let installable = false;
 		try {
 			// The session's cancellation registry is the one abort authority: a
 			// replacement or teardown ends this read, exactly like a project load.
-			resolved = await runBoundLoad(session, (signal) =>
-				resolveApprovedModels({
-					envelope: stageEnvelope(snapshot),
-					projectId: snapshot.acceptedRevision.projectId,
-					apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
-					signal
-				})
-			);
+			// `runBoundLoad` discards the value of a cancelled read, so the value is
+			// captured here and released below rather than leaked.
+			installable =
+				(await runBoundLoad(session, async (signal) => {
+					landed.value = await resolveApprovedModels({
+						envelope: stageEnvelope(snapshot),
+						projectId: snapshot.acceptedRevision.projectId,
+						apiOrigin: env.PUBLIC_API_ORIGIN ?? '',
+						signal
+					});
+					return landed.value;
+				})) !== null;
 		} catch {
-			// A failed resolution installs nothing; the Stage keeps the truthful
-			// fallback rather than a half-applied model set.
+			// A failed resolution installs nothing: the Stage keeps the installed set
+			// and the fallback for any model outside it.
 		}
-		if (resolved === null || tornDown || generation !== modelGeneration) {
+		const resolved = landed.value;
+		if (!installable || resolved === null || tornDown || generation !== modelGeneration) {
+			// A stale, cancelled or failed attempt releases only what it acquired.
 			resolved?.dispose();
+			if (!tornDown && generation === modelGeneration) modelPinSignature = installedModelSignature;
 			return;
 		}
+		const previous = modelResolution;
 		modelResolution = resolved;
+		installedModelSignature = signature;
 		modelUrls = resolved.urls;
+		previous?.dispose();
 		// A model whose bytes are unavailable is stated, not dressed as a loaded
 		// mesh: the fallback box carries the approved footprint and this note names
-		// the reason.
-		notice = resolved.failures.size === 0 ? '' : [...resolved.failures.values()][0]!;
+		// the reason. A successful resolution clears only a notice it set itself.
+		const failure = resolved.failures.size === 0 ? null : [...resolved.failures.values()][0]!;
+		if (failure !== null) {
+			notice = failure;
+			modelNotice = failure;
+		} else {
+			if (modelNotice !== null && notice === modelNotice) notice = '';
+			modelNotice = null;
+		}
 	}
 
 	/* --- Camera intents ----------------------------------------------------- */
