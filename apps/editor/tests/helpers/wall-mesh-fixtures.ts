@@ -5,21 +5,41 @@
  * document builders instead of duplicating them across lanes.
  */
 import { expect } from 'vitest';
-import { compileLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import { type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
 import {
 	g1DocumentWithRooms,
 	g1LineRectangleDocument,
-	g1LineSegments,
-	g1RectangleRoom
+	g1RoomPolygon
 } from '../lib/layout/__fixtures__/layout-g1-fixtures';
-import type { CompiledRoom } from '@portfolio/layout-core';
+import type { CompiledRoom, CompiledWall, LayoutDocumentWallFirst } from '@portfolio/layout-core';
 
-export function compileRoom(document: ReturnType<typeof g1LineRectangleDocument>): CompiledRoom {
-	const geometry = compileLayoutGeometry(document).geometry;
+/**
+ * Compile a wall-first fixture into its single Room **with its boundary Walls**,
+ * which is the input the Room-level mesh builder takes.
+ *
+ * T1.P02.S05: a canonical wall-first `CompiledRoom` deliberately carries no wall
+ * detail (each physical Wall is compiled once, document-globally). `buildRoomWallMesh`
+ * is still shipped for the Room-level shell path, so this helper assembles its
+ * input from the same canonical output — no second compiler and no re-sampling:
+ * each physical Wall is taken verbatim, named by the boundary segment it plays
+ * (segmentId = wallId, exactly the mapping the compiler adapter uses), and
+ * ordered by the Room's authored boundary traversal so corner welding sees the
+ * real adjacency. Nothing here derives geometry.
+ */
+export function compileRoom(document: LayoutDocumentWallFirst): CompiledRoom {
+	const geometry = compileWallFirstLayoutGeometry(document).geometry;
 	const room = geometry.rooms[0];
 	if (!room) throw new Error('fixture compiled to no room');
-	return room;
+	const wallById = new Map(geometry.walls.map((wall) => [wall.wallId, wall]));
+	const roomSource = document.rooms.find((candidate) => candidate.id === room.roomId);
+	if (!roomSource) throw new Error(`compiled Room ${room.roomId} has no authored source`);
+	const walls: CompiledWall[] = roomSource.boundary.map((ref) => {
+		const wall = wallById.get(ref.wallId);
+		if (!wall) throw new Error(`Room ${room.roomId} references uncompiled Wall ${ref.wallId}`);
+		return { ...wall, segmentId: wall.wallId };
+	});
+	return { ...room, walls };
 }
 
 /** Assert every geometric edge (by quantized position) is shared by exactly `expected` triangles. */
@@ -425,32 +445,26 @@ export function assertFinite(mesh: IndexedWallMesh): void {
 	for (const value of mesh.uvs) expect(Number.isFinite(value)).toBe(true);
 }
 
-export function rhombusDocument(): ReturnType<typeof g1DocumentWithRooms> {
-	const room = g1RectangleRoom('room-rhombus', 0, 0, 6, 4);
-	room.boundary.segments = g1LineSegments(
-		[
+export function rhombusDocument(): LayoutDocumentWallFirst {
+	return g1DocumentWithRooms([
+		g1RoomPolygon('room-rhombus', [
 			[0, 0],
 			[6, 0],
 			[11.638, 2.052],
 			[5.638, 2.052]
-		],
-		'room-rhombus:wall'
-	);
-	return g1DocumentWithRooms([room]);
+		])
+	]);
 }
 
-export function notchDocument(): ReturnType<typeof g1DocumentWithRooms> {
-	const room = g1RectangleRoom('room-notch', 0, 0, 6, 4);
-	room.boundary.segments = g1LineSegments(
-		[
+export function notchDocument(): LayoutDocumentWallFirst {
+	return g1DocumentWithRooms([
+		g1RoomPolygon('room-notch', [
 			[0, 0],
 			[6, 0],
 			[6, 1],
 			[4, 1.5],
 			[4, 5],
 			[0, 5]
-		],
-		'room-notch:wall'
-	);
-	return g1DocumentWithRooms([room]);
+		])
+	]);
 }

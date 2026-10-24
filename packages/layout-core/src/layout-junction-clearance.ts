@@ -45,7 +45,7 @@
  * There is no renderer, no Three.js and no document read here: the predicate is
  * a pure function of already-compiled facts.
  */
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import type {
 	CompiledJunction,
 	CompiledJunctionLeg,

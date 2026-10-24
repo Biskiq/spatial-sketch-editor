@@ -45,9 +45,10 @@ import {
 	emptyLayoutIdentityLedger,
 	parseLayoutReference
 } from './layout-identity';
-import type { LayoutDocumentIssue } from './layout-codec';
-import { LayoutDocumentValidationError } from './layout-codec';
-import type { LayoutObject, LayoutVec2 } from './layout-types';
+import type { LayoutDocumentIssue } from './layout-issue';
+import { LayoutDocumentValidationError } from './layout-issue';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { LayoutObject } from './layout-wall-first-types';
 
 /**
  * Validation result carrying the wall-first document type, not the legacy one.
@@ -860,7 +861,7 @@ function parsePath(
 	input: unknown,
 	path: string,
 	issues: LayoutDocumentIssue[]
-): ParsedValue<import('./layout-types').DraftPath> {
+): ParsedValue<import('./layout-path').DraftPath> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
 	assertAllowedKeys(record, PATH_KEYS, path, issues);
@@ -881,7 +882,7 @@ function parseSegment(
 	input: unknown,
 	path: string,
 	issues: LayoutDocumentIssue[]
-): ParsedValue<import('./layout-types').DraftSegment> {
+): ParsedValue<import('./layout-path').DraftSegment> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
 	const kind = readString(record.kind, `${path}.kind`, issues);
@@ -915,7 +916,7 @@ function parseInteriorAnchors(
 	input: unknown,
 	path: string,
 	issues: LayoutDocumentIssue[]
-): ParsedValue<import('./layout-types').LayoutInteriorAnchor[]> {
+): ParsedValue<import('./layout-path').LayoutInteriorAnchor[]> {
 	const anchors = parseArray(input, path, issues, parseInteriorAnchor);
 	if (!anchors) return undefined;
 	validateUniqueIds(anchors, path, issues, (anchor) => anchor.id);
@@ -931,7 +932,7 @@ function parseInteriorAnchor(
 	input: unknown,
 	path: string,
 	issues: LayoutDocumentIssue[]
-): ParsedValue<import('./layout-types').LayoutInteriorAnchor> {
+): ParsedValue<import('./layout-path').LayoutInteriorAnchor> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
 	assertAllowedKeys(record, INTERIOR_ANCHOR_KEYS, path, issues);

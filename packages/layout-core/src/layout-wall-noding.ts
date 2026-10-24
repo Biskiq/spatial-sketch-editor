@@ -30,7 +30,7 @@ import type {
 	LayoutWallFirstRoom,
 	OrientedWallRef
 } from './layout-wall-first-types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import { coincidesAsJunction } from './layout-junction-identity';
 import { CURVE_ARC_LENGTH_TOLERANCE } from './layout-geometry-curve';
 import { resolveWallCurveSplit } from './layout-wall-curve-algebra';

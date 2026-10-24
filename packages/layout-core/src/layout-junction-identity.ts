@@ -6,7 +6,7 @@
  * that cannot express a separate authored node; callers adopt the existing
  * Junction's stored coordinate when the predicate matches.
  */
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 
 /** Maximum world-space distance at which two coordinates describe one Junction. */
 export const JUNCTION_COINCIDENCE_EPSILON = 1e-9;

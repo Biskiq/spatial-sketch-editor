@@ -5,7 +5,8 @@
  * the P23 umbrella ([P23 umbrella §F0.1](../../../../docs/roadmap/p23-layout-depth/2026-09-07-P23-layout-depth-minimum-build.md))
  * and the P23.0 child plan. The Foundation Gate is closed; these records are
  * now consumed by the wall-first Save and P23.1 precise semantic operations.
- * Legacy Room-owned records remain available through the compatibility path.
+ * T1.P02.S05 retired the legacy Room-owned document surface: these records are
+ * the only authored Layout shape, and there is no compatibility path.
  *
  * Identity rules (P23 umbrella F0.1, P23.0 "Identity rules"):
  * - Junction IDs are the only normal-authoring connectivity authority.
@@ -18,7 +19,31 @@
  *   allocation (allocation happens in P23.8/P23.0b authoring operations, not
  *   in this codec).
  */
-import type { LayoutObject, LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { DraftPath } from './layout-path';
+import type { Vec3 } from './types';
+
+/**
+ * Document-level Layout object (T1.P02.S05 moved it out of the retired legacy
+ * document barrel).
+ *
+ * Objects stay document-level and project/world-local: they are not owned by a
+ * Floor, a Room or a Wall, and their transform is the authored world transform.
+ * `roomId` is an optional **reference** to a persistent Room, never an
+ * ownership fact, and the wall-first reader resolves it against the current
+ * Rooms (an unknown reference is `missing_reference`). `profile` is an authored
+ * closed plan path used by the `profile` kind — the only remaining `DraftPath`
+ * consumer.
+ */
+export type LayoutObject = {
+	id: string;
+	kind: 'box' | 'plane' | 'cylinder' | 'sphere' | 'profile';
+	position: Vec3;
+	rotation: Vec3;
+	dimensions: Vec3;
+	profile?: DraftPath;
+	roomId?: string;
+};
 
 /**
  * Explicit wall-first format discriminator value (current canonical format).

@@ -26,7 +26,7 @@ import type {
 	LayoutWallCenterline,
 	LayoutWallCurveKnot
 } from './layout-wall-first-types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import { LayoutIdCollisionError, layoutWorkingLevelIssue, type LayoutIdCapture } from './layout-id-capture';
 import {
 	nextWallCurveKnotId,
@@ -49,7 +49,7 @@ import {
 	type WallFirstOpRejection
 } from './layout-wall-topology-ops';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
-import { validateWallFirstPortalRelations } from './layout-portals';
+import { validateWallFirstPortalRelations } from './layout-wall-portals';
 
 /** Dissolve-only rejection codes; stable machine codes per operation. */
 export type DissolveSpecificRejectionCode =

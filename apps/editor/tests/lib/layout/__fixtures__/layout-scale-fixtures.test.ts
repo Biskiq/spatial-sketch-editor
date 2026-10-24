@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileLayoutGeometry } from '@portfolio/layout-core';
-import { validateLayoutDocument } from '@portfolio/layout-core';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
 import {
 	buildScaleFixture,
 	SCALE_FIXTURE_SEEDS,
@@ -26,7 +25,9 @@ describe('layout-scale-fixtures', () => {
 			const tier = _tier as ScaleFixtureTier;
 			const spec = SCALE_FIXTURE_SEEDS[tier];
 			const document = buildScaleFixture(spec);
-			expect(document.floors[0]!.rooms).toHaveLength(roomCount);
+			expect(document.rooms).toHaveLength(roomCount);
+			expect(document.walls).toHaveLength(roomCount * 4);
+			expect(document.junctions).toHaveLength(roomCount * 4);
 			expect(document.objects).toHaveLength(roomCount * spec.objectsPerRoom);
 		}
 	);
@@ -35,13 +36,17 @@ describe('layout-scale-fixtures', () => {
 		for (const tier of ['small', 'medium', 'large'] as const) {
 			const spec = SCALE_FIXTURE_SEEDS[tier];
 			const document = buildScaleFixture(spec);
-			const rooms = document.floors[0]!.rooms;
-			const bezierRooms = rooms.filter((room) => room.boundary.segments.some((segment) => segment.kind === 'auto-bezier'));
-			const bezierFraction = bezierRooms.length / rooms.length;
+			const curvedWallIds = new Set(
+				document.walls.filter((wall) => wall.centerline.kind === 'cubic-chain').map((wall) => wall.id)
+			);
+			const curvedRooms = document.rooms.filter((room) =>
+				room.boundary.some((ref) => curvedWallIds.has(ref.wallId))
+			);
+			const bezierFraction = curvedRooms.length / document.rooms.length;
 			expect(bezierFraction).toBeGreaterThan(0.1);
 			expect(bezierFraction).toBeLessThan(0.6);
 
-			const openings = rooms.flatMap((room) => room.openings);
+			const openings = document.openings;
 			expect(openings).toHaveLength(roomCountFor(tier) * spec.openingsPerRoom);
 			expect(openings.every((opening) => ['rectangular', 'rounded', 'pointed'].includes(opening.profile))).toBe(true);
 			expect(openings.some((opening) => opening.kind === 'door')).toBe(true);
@@ -51,6 +56,17 @@ describe('layout-scale-fixtures', () => {
 			expect(kinds.size).toBeGreaterThan(2);
 		}
 	});
+
+	it('passes the strict wall-first codec at the small and medium scales', () => {
+		for (const tier of ['small', 'medium'] as const) {
+			const document = buildScaleFixture(SCALE_FIXTURE_SEEDS[tier]);
+			const validated = validateWallFirstLayoutDocument(document);
+			expect(
+				validated.success,
+				`codec rejected ${tier}: ${JSON.stringify(validated.success ? [] : validated.issues)}`
+			).toBe(true);
+		}
+	}, 30000);
 });
 
 function roomCountFor(tier: ScaleFixtureTier): number {

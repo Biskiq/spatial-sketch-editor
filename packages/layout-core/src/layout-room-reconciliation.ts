@@ -39,7 +39,7 @@ import type {
 	LayoutWallOpening,
 	OrientedWallRef
 } from './layout-wall-first-types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import { wallCenterlineSamples } from './layout-wall-centerline';
 import { topologyComponentKeyByWallId } from './layout-topology-components';
 import {

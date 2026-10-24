@@ -2,7 +2,7 @@
 
 **Phase:** T1.P02 · **Status:** registered 2026-10-22. Released scopes and their conditions are
 the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
-covers every scope that list omits. S05 is approved/released; S02–S04 stay `proposed` · **Track:** [T1](../README.md) ·
+covers every scope that list omits. S01 and S05 are shipped; S02–S04 stay `proposed` · **Track:** [T1](../README.md) ·
 **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Design:**
 [shell draft](./shell-draft.md)
@@ -80,14 +80,14 @@ lifecycle and prerequisites only.
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T1.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Layout identity and format cutover (closed stub)](./t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md) | [record (closed stub)](./t1.p02.s01-layout-identity-and-format-cutover/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7); accepted and shipped 2026-10-23 as `owner-override` for PR #179 source revision `7e159370` and rebased integration `401b612f`; waived independent-review verdict and S01 F2 S/M timing prerequisites only; S/M measurements remain unrun and assigned to S04; P1 merge commit required for recovery |
-| T1.P02.S05 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Legacy Layout retirement](./t1.p02.s05-legacy-layout-retirement/implementation-plan.md) | [record](./t1.p02.s05-legacy-layout-retirement/acceptance.md) | owner-authorized and released 2026-10-23 ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); starts per the release list (`docs/roadmap/now.md`); predecessor accepted; own gates/review/evidence remain required |
-| T1.P02.S02 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Draw, close, divide and delete](./t1.p02.s02-draw-close-divide-delete/implementation-plan.md) | [record](./t1.p02.s02-draw-close-divide-delete/acceptance.md) | held; not authorized — after S05 is accepted and merged; complete plan and bounded shell allocation need review and its own owner authorization |
+| T1.P02.S05 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Legacy Layout retirement](./t1.p02.s05-legacy-layout-retirement/implementation-plan.md) | [record](./t1.p02.s05-legacy-layout-retirement/acceptance.md) | owner-authorized and released 2026-10-23 ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); accepted 2026-10-23 as `owner-override` (full-suite clean-run waiver only, on revision `588cc70f`; [acceptance stub](./t1.p02.s05-legacy-layout-retirement/acceptance.md)); shipped by PR #183 |
+| T1.P02.S02 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Draw, close, divide and delete](./t1.p02.s02-draw-close-divide-delete/implementation-plan.md) | [record](./t1.p02.s02-draw-close-divide-delete/acceptance.md) | held; not authorized — S05 shipped (PR #183); still needs its plan review, the T3 review of the shared Head/F4 shell allocation, T2/T3 contribution-compatibility review and its own owner authorization |
 | T1.P02.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Opening family](./t1.p02.s03-opening-family/implementation-plan.md) (outline) | [record](./t1.p02.s03-opening-family/acceptance.md) | not authorized — starts only from its own owner authorization after S02 is accepted |
 | T1.P02.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p02.s04-integrated-final-gate/implementation-plan.md) | [record](./t1.p02.s04-integrated-final-gate/acceptance.md) | not authorized — starts only from its own owner authorization after S01, S05, S02 and S03 are accepted |
 
 The consumed gates and scopes were accepted/active at the batch E base; each slice rechecks
 them at its own trusted base through the runbook. No slice provides a gate. S05 and S02 carry
-complete plans; S05 is authorized/released and S02 remains held; S03 is an outline to complete
+complete plans; S05 is shipped (PR #183) and S02 remains held; S03 is an outline to complete
 after its predecessor's acceptance. S05 retires S01's residual legacy surface; S02 adds drawing
 and the bounded dock/Card cutover; S03 adds Opening; S04 owns integrated exhaustive proof,
 including S05 and S01's still-unrun F2 S/M timings on the designated M2. No registration
@@ -111,8 +111,8 @@ owner call inside S02.
 ## Dependencies and boundaries
 
 - **Before implementation:** H0's `T3.P03.S01` merged (S01 changes F4 intent capture; S02 adds
-  Layout planners under enforced scope). S05 must be accepted and merged before S02; every
-  proposed slice needs its own release. The policy above is accepted. Nothing waits on C2 or
+  Layout planners under enforced scope). S05 is shipped (PR #183), so S02 may start only
+  after its own authorization and reviews; every proposed slice needs its own release. The policy above is accepted. Nothing waits on C2 or
   T3.P02.
 - **Reference hardware:** hard performance rows are run and accepted on the designated reference
   machine, the owner's MacBook Air M2 with 16 GB ([batch E, E6 amendment](../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)). Laptop A
@@ -120,7 +120,7 @@ owner call inside S02.
 - **T1 writes:** layout-core, the Layout unit in project-model, Layout adapters, the Stage host and
   shell, the starter gallery. Changes to shared F4 capture or the Head are reviewed by T3; the dock/invoked-home
   contribution seam admits T2/T3 capabilities without shell edits per tool. S05's bounded
-  project-model registry/frame exception needs reader/Camera and Scene owner review.
+  project-model registry/frame exception was reviewed by T3 (reader/Camera) and T2 (Scene).
 - **Excluded:** curved or circular drawing, levels, structures, datums, overheads, attachments, the
   face-frame query (next wave), compound acceptance of new cross-domain operations.
 - **Architecture cycle:** the T1.P01 window is closed with the owner verdict still owed; this phase

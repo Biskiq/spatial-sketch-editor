@@ -1,5 +1,6 @@
 import type { Vec3 } from './types';
-import type { LayoutObject, LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { LayoutObject } from './layout-wall-first-types';
 import type { CompiledLayoutObject } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
 

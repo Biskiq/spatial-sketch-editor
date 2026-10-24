@@ -31,7 +31,7 @@
  *   knot) uses {@link resolveWallCurveSplitAtKnot}, which needs no tolerance at
  *   all.
  */
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutWallCubicSpan, LayoutWallCurveKnot } from './layout-wall-first-types';
 import {
 	CURVE_ARC_LENGTH_TOLERANCE,

@@ -46,7 +46,7 @@
  * Pure module: JSON data in, JSON data out. No DOM, no Svelte, no mutation of the
  * input document.
  */
-import type { LayoutDocumentIssue } from './layout-codec';
+import type { LayoutDocumentIssue } from './layout-issue';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutIdentityFamily,

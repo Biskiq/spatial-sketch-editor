@@ -24,7 +24,7 @@
  * never support authorities. The input is read, never mutated.
  */
 import type { Vec3 } from './types';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import type {
 	CompiledFloor,
 	CompiledLayoutGeometry,

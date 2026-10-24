@@ -25,7 +25,7 @@ import {
 	LAYOUT_GEOMETRY_EPSILON
 } from './layout-geometry-openings';
 import { sampledPolylineSelfIntersects, type CurveSample } from './layout-geometry-curve';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 
 /** Which way a finite-thickness Wall fails to clear itself. */
 export type WallOffsetClearanceFailure = 'fold' | 'neck';

@@ -6,10 +6,10 @@ projects into the camera tour. Only authored data persists.
 
 ```mermaid
 flowchart LR
-    A["LayoutDocument<br/>rooms, walls, openings, objects"] --> B["Validate<br/>strict schema + cross-validation"]
+    A["LayoutDocumentWallFirst (format 6)<br/>junctions, walls, rooms, openings, objects"] --> B["Validate<br/>strict schema + cross-validation"]
     B --> C["Project JSON<br/>serialized MuseumProject"]
 
-    C --> D["Geometry derivation<br/>compileLayoutGeometry()"]
+    C --> D["Geometry derivation<br/>compileWallFirstLayoutGeometry()"]
     D --> E["Compiled geometry<br/>points, spans, polygons,<br/>normals, bounds, queries"]
     E --> F["2D Plan (SVG)<br/>PlanRenderModel"]
     E --> G["3D Preview<br/>procedural Three.js"]

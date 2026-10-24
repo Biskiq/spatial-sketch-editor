@@ -26,7 +26,7 @@
  * Unlicense / public-domain dedication; `orient2d` only.
  */
 import { orient2d } from 'robust-predicates';
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 
 export function orientXZ(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2): number {
 	// Museum standard: positive => c is left of directed a→b in X/Z. The
