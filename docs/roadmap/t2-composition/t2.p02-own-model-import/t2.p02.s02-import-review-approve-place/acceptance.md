@@ -14,9 +14,10 @@ Authorization: [post-Batch-E owner release](../../../../reference/decisions/post
 
 - **Trusted base:** `main` @ `fff7dc14` (post-Batch-E coordination merge). Start step recorded in the
   [T2 baton](../../../../operations/t2-composition/current.md) with eligibility and cycle check.
-- **Tested tree:** that base plus this slice's diff — 22 modified files and 13 new files, 1,147
-  insertions / 132 deletions before the documentation edits on this page. The PR head is the same tree
-  plus this record.
+- **Tested tree:** that base plus this slice's diff — 24 modified files and 14 new files, 4,835
+  insertions / 147 deletions before the documentation edits on this page (the browser run added one
+  test file and three source edits on top of the first commit). The PR head is the same tree plus
+  this record.
 - **Machine:** owner's MacBook Air M2 / 16 GB, macOS (local checkout). Node/npm per the repository
   lockfile; Playwright browsers as installed by the harness.
 - **Databases:** DB-backed API evidence used the lane's own Compose stack —
@@ -24,8 +25,9 @@ Authorization: [post-Batch-E owner release](../../../../reference/decisions/post
   `postgresql://biskiq:biskiq@localhost:5434/biskiq`. No sibling lane's database was used or reset.
   `stack:up` needed `R2_OBJECT_NAMESPACE` supplied for the migrate service; the API tests ran against
   the S01 object-store contract, not real R2.
-- **Viewport / reduced motion:** not exercised (see unrun rows); the shipped shell's own acceptance is
-  owned by T1 and was not re-run here.
+- **Viewport / reduced motion:** the browser journey below ran at 1600 × 1000 in headless Chromium with
+  default motion; narrow desktop, keyboard-only and reduced motion remain unrun (see unrun rows). The
+  shipped shell's own acceptance is owned by T1 and was not re-run here.
 
 ## Criteria and results
 
@@ -44,6 +46,8 @@ Authorization: [post-Batch-E owner release](../../../../reference/decisions/post
 | Later instance reuses pins, adds distinct identity | **Pass** | same file: second placement omits the introduction, yields one resource, one lock, two entities sharing `assetId` |
 | Refusal changes none of them | **Pass** | same file: mismatched resource/definition, duplicate introduction and stale metadata identity each reject with an unchanged canonical JSON |
 | Resource and definition must agree about the approved object | **Pass** | `planners.ts` compares confirmed footprint/contact and the definition's provenance digest with the introduced payload; `model-resource-admission.test.ts` covers the translation, `scene-operation-acceptance.test.ts` the mismatch refusal |
+| A real textured source survives import → approve → place → Save → reopen | **Pass (browser)** | One 2 m box with a 2050 × 2050 map: review reported `1 nodes · 1 meshes · 12 triangles · 1 textures`, `Textures capped at 2048 px: 1 reduced`, footprint 2.000 × 2.000 m, contact 0.000 m. The uploaded derivative (21,540 bytes) decodes to nodes `paint-box` + `creator-import-pivot` and a `image/webp` 2048 × 2048 texture. The model rendered in 3D, Save persisted it, and a fresh load rendered it again from the pin. |
+| Saved project holds resource + lock + entity for that placement | **Pass (API read)** | `GET /projects/:id` on the saved row: one `model` resource with a `sha256-…` pin (mime `model/gltf-binary`, 21,540 bytes), one `resource:model` lock at the same hash, one `kind: 'model'` entity naming that resource. |
 | Contact/Plan/render agreement for an approved model | **Pass (unit)** | `scene-model-render.test.ts`: Plan draws the confirmed footprint and rotates with yaw; the session's contact answers come from the envelope; Resize/Duplicate are offered only with an approved contact. Rendered pixels unrun |
 | Two instances share one immutable resource; independent identity | **Pass (unit)** | same file: one fetch and one object URL per hash with a reference per instance; disposal releases exactly the acquired references; a second resolution acquires again |
 | A failed model is reasoned, not dressed as loaded | **Pass (unit)** | same file: failures are reported per resource; the route shows the first reason in its status note |
@@ -61,20 +65,70 @@ All commands from the repository root unless noted; each ran on the tested tree.
 | `npm run check:project-model` | pass, 0 errors |
 | `npm run check` (editor, svelte-check) | pass, 0 errors, 0 warnings |
 | `npm run check:api` | pass (no API source changed) |
-| `npm run test` (full unconditional suite, the merge gate) | **185 files / 2,410 tests passed** |
+| `npm run test` (full unconditional suite, the merge gate) | **186 files / 2,414 tests passed** |
 | `npm run test:arch` | 22 files / 176 tests passed |
 | `npm run test:heavy` | 9 files / 125 tests passed |
-| `npm run test:fast` | 153 files / 2,108 tests passed; one file failed — see the fast-lane row below |
+| `npm run test:fast` | 155 files / 2,113 tests passed |
 | `npm run build` | pass (`vite build`; worker emitted as its own ES chunk) |
 | `npm run perf:bundle` | pass; Import/decoder chunks outside every route load set (numbers above) |
 | `npm run test:api:stack` (`BISKIQ_STACK=biskiq-t2`, DB port 5434) | 95 pass, 0 fail, **0 skipped** |
 
-**Fast-lane note (not a pass).** `tests/lib/layout/p23b11-correspondence-reference.test.ts`
-(“another capture moves identity only…”) exceeds the fast lane's 5 s per-test budget when the whole
-lane runs in parallel; alone it passes 36/36 in 4.65 s with that case at 3.4 s. The file is
-T1/Layout-owned, is unchanged by this slice, and is green in the unconditional `npm run test` run
-above. It is recorded as a load-sensitive timeout in the fast lane, not as a slice pass and not as a
-behavior regression.
+**Load-sensitive timeouts observed and re-run clean.** While a sibling lane's Playwright perf run
+held the machine (load average ~45), five files exceeded the 5 s per-test budget — always as
+`Test timed out in 5000ms`, never an assertion failure — including
+`tests/lib/layout/p23b11-correspondence-reference.test.ts` and the documentation link scanner. On the
+idle machine the same tree passes `test` (186/2,414), `test:fast` (155/2,113), `test:arch` (176) and
+`test:heavy` (125). The timeouts are recorded as environment contention, not as a slice pass and not
+as a behavior regression.
+
+## Browser journey (local test-auth)
+
+An authenticated editor session was available through the repository's own local seam, not Google:
+`POST /test-auth/session` with the lane's `E2E_TEST_AUTH_SECRET` mints the canonical session for
+`agent-user-a` (see [.env.example](../../../../../.env.example) and
+[test-auth.ts](../../../../../apps/editor/tests/e2e/test-auth.ts)). The cookie was installed in a
+fresh Chromium context at `localhost`; the API answered `/auth/me` authenticated and `/projects` 200
+with it, 401 without. The editor ran on `:5173` with `PUBLIC_API_ORIGIN=http://localhost:8788`
+(SvelteKit reads `apps/editor/.env`, so the variable must be exported to `npm run dev` or placed in an
+ignored `apps/editor/.env`).
+
+Journey, at 1600 × 1000:
+
+1. **Start creating → Enclosed room → Save to Cloud.** A starter baseline is local; the first Save
+   creates the project row and answers `Saved · All accepted changes are saved.`
+2. **Index → Library · Own model → Import model…** opens the instrument. One generated GLB (2 m box,
+   2050 × 2050 PNG map, 82,152 bytes) was chosen.
+3. **Read model** reported `1 nodes (0 empty) · 1 meshes · 12 triangles · 1 textures`,
+   `Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m`, and
+   `Textures capped at 2048 px: 1 reduced`; parts/clips/variants were labelled reported, not admitted.
+4. **Approve and place** staged and pinned the derivative, then opened Place with
+   `An imported model is placed by clicking its floor position`.
+5. **Clicking the floor** placed the textured box at that point; the Head turned to
+   `Save changes · Unsaved changes`.
+6. **Save changes** persisted; the saved row has one `model` resource (pin `sha256-bae127…`, 21,540
+   bytes), one `resource:model` lock at that hash, and one `kind: 'model'` entity.
+7. **Fresh load** of the same URL rendered the same textured box from the pin, with
+   `Nothing to undo yet` and `All accepted changes are saved.`
+
+The uploaded derivative was read back independently: 21,540 bytes, nodes `paint-box` +
+`creator-import-pivot`, one `image/webp` texture at 2048 × 2048 (source 2050 × 2050). No page errors;
+the only failed request in the console was a favicon 404.
+
+### Findings from the browser run (fixed)
+
+The first two attempts failed at seams the unit tests could not see. Both are fixed and covered:
+
+- **Staging omitted the recipe.** `createImport` sent `files` only, and S01's strict body reader
+  requires `files` **and** `recipe` (and rejects undeclared fields), so every approve answered
+  `400 invalid_model_import`. The client now sends the caller's recipe identity, and
+  `tests/lib/platform/model-import-client.test.ts` pins the body to the server's shape.
+- **A GLB source collided with its own derivative path.** `derivativePathFor('paint-box.glb')`
+  returned `paint-box.glb`, and staging refuses a repeated declared path. The derivative name now
+  keeps `model.glb` for a glTF source and falls back to `<stem>.derived.glb` (then `-2`, …) when the
+  source set already claims the name; the ingest test covers both.
+- **An unsaved project reported a bare 404.** Import stages against a project row, so a brand-new
+  local baseline must be saved first. The procedure now says
+  `Save this project before importing a model: an import belongs to a saved project.`
 
 ## New dependencies (permissive-only ruling)
 
@@ -92,23 +146,24 @@ only checks structure and pins. No copyleft, source-available or unclear licence
 
 ## Unrun rows (owner-run / blocked here)
 
-1. **Every browser journey and shell observation.** No authenticated editor session was available in
-   this environment: the lane stack needs an interactive sign-in and Google's callback for the local
-   origin was not confirmed. Nothing about selection/rest, near-bound files, cancel at each step,
-   offline approval/retry, keyboard-only procedures and transforms, local refusal text, narrow
-   desktop, reduced-motion, lens park/Resume or Preview exit is claimed from observation. The unit
-   and acceptance evidence above is not a substitute.
+1. **Remaining browser and shell observations.** The import → review → approve → place → Save →
+   reopen journey now ran (see below), but selection/rest, near-bound file pickers, cancel at each
+   step, offline approval/retry, keyboard-only procedures and transforms, local refusal text, narrow
+   desktop, reduced-motion, lens park/Resume and Preview exit did not. The unit and acceptance
+   evidence above is not a substitute for those.
 2. **Preview rendering of an actual mapped derivative.** Wiring, props and boundary rules are in
-   place and unit-tested; no browser run shows the model inside Preview.
+   place and unit-tested; no browser run shows the model inside Preview. Preview refuses to open
+   without an admitted Experience (`Create an Experience in the Experience lens to Preview it.`),
+   and authoring one is the Experience lens's own scope, not this slice's.
 3. **Performance rows.** No F5 admission long tasks / worker time / peak heap / GPU-memory delta /
    chosen→placed, no F6 S/M placement timing, no hard GPU row at M, no F13 repeated
    import/place/delete with shared-instance disposal, and no `apps/editor/perf/flows/` import flow.
    Rationale: the flow needs an authenticated stack and a real import fixture, so authoring it
    without a way to run it would ship an unverified spec. The bundle/load-set evidence above is the
    only delivery-side row recorded. These remain owed on this machine before acceptance.
-4. **Texture reduction and conditional decoders with real maps/sources.** The `2048 px` cap and WebP
-   encode path, the Draco decoder load and a KTX2 (`KHR_texture_basisu`) refusal/report are not
-   exercised: no fixture with textures was run.
+4. **Conditional decoders with real sources.** The WebP encode and the `2048 px` cap are now proven
+   with a real 2050 px map (see the browser row), but a Draco-compressed source and a real KTX2
+   (`KHR_texture_basisu`) source were not exercised.
 5. **Worker-message timing and cancellation across the worker boundary.** The worker protocol is
    implemented; only the in-process recipe and the session's generation guard are tested.
 6. **Derivative > 25 MiB refusal** and a **real 50 MiB+ source** were not built as fixtures; only the

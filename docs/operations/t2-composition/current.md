@@ -40,14 +40,23 @@ CLAIM:  Shared files claimed before edit, patch base `fff7dc14`:
        · `apps/api/src/{app.ts,model-persistence.ts}` — claimed but so far UNCHANGED: S01's routes are
          reused, not duplicated. Any edit needs `check:api` + DB-backed `test:api`.
 NEXT:  S02 implementation is COMPLETE on `t2/p02-s02-import-review-approve-place` and the
-       implementation-PR merge gate is green (`npm run test` 185/2,410; arch 176; heavy 125;
-       `check`/`check:api`/`check:project-model` 0 errors; build; `test:api:stack` 95 pass,
-       0 skipped on localhost:5434; `perf:bundle` keeps Import/decoders off every route load set).
-       [acceptance.md](../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/acceptance.md)
-       records the evidence, the independent-review dispositions, the licence table and the explicit
-       unrun rows. OWNER ACCEPTANCE IS OWED and the PR is not merged. Unrun: every browser journey,
-       Preview pixels and all F5/F6/GPU/F13/first-load flow rows (no authenticated session here),
-       texture/decoder fixtures with real maps, and the >25 MiB derivative cap.
+       implementation-PR merge gate is green on the idle machine (`npm run test` 186/2,414; fast
+       155/2,113; arch 176; heavy 125; `check`/`check:api`/`check:project-model` 0 errors; build;
+       `test:api:stack` 95 pass, 0 skipped on localhost:5434; `perf:bundle` keeps Import/decoders off
+       every route load set). The browser journey RAN through the repository's local test-auth seam
+       (`/test-auth/session`, allowlisted automation identity; no Google): import of a 2 m box with a
+       2050 px map → review (`1 reduced`, 2.000 × 2.000 m, contact 0.000) → approve → floor click →
+       Save → fresh load rendering the same box; the saved row holds one resource, one exact lock and
+       one entity, and the uploaded derivative decodes to `paint-box` + `creator-import-pivot` with a
+       2048 × 2048 WebP map. That run found and fixed two integration bugs unit stubs could not see:
+       staging omitted `recipe` (every approve was a 400) and a GLB source collided with its own
+       derivative path. [acceptance.md](../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/acceptance.md)
+       records the evidence, the review dispositions, the licence table and the explicit unrun rows.
+       OWNER ACCEPTANCE IS OWED and the PR is not merged. Unrun: the remaining shell observations
+       (selection/rest, cancel at each step, offline retry, keyboard-only, narrow desktop, reduced
+       motion, Preview exit), Preview pixels (Preview needs an admitted Experience — Experience lens
+       scope), all F5/F6/GPU/F13 flow rows, Draco/KTX2 sources, the >25 MiB derivative cap, the real
+       R2 deployment and the worker-boundary timing.
        STOP-AND-REPORT: editable numeric Card facts need T1's agreement before build (a new host
        interface); this PR keeps the landed read-only Card facts and puts numeric edits in the
        adapter instrument.

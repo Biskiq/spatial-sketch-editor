@@ -34,7 +34,8 @@ import {
 	type CreatorImportProgress,
 	type CreatorImportReport,
 	type CreatorImportSourceFile,
-	type CreatorImportStagedFile
+	type CreatorImportStagedFile,
+	type CreatorImportStaging
 } from './types';
 import { createImportWorkerClient, type CreatorImportWorkerClient } from './worker-client';
 
@@ -310,11 +311,25 @@ export class CreatorImportSession {
 		const run = async (): Promise<void> => {
 			if (this.staging === null) {
 				const derivativeHash = await sha256Hex(prepared.derivative.bytes);
-				const staged = await client.createImport({
-					projectId: this.projectId,
-					source: prepared.source,
-					derivative: { path: prepared.derivative.path, size: prepared.derivative.bytes.byteLength, hash: derivativeHash }
-				});
+				let staged: CreatorImportStaging;
+				try {
+					staged = await client.createImport({
+						projectId: this.projectId,
+						recipe: { id: CREATOR_IMPORT_RECIPE.id, version: CREATOR_IMPORT_RECIPE.version },
+						source: prepared.source,
+						derivative: { path: prepared.derivative.path, size: prepared.derivative.bytes.byteLength, hash: derivativeHash }
+					});
+				} catch (error) {
+					// Staging belongs to a project row the server knows. A brand-new
+					// local baseline has none yet, and "Not Found" would not tell the
+					// creator what to do about it.
+					if (error instanceof ModelImportClientError && error.code === 'not-found') {
+						throw new Error(
+							'Save this project before importing a model: an import belongs to a saved project.'
+						);
+					}
+					throw error;
+				}
 				if (!live()) return;
 				this.staging = { importId: staged.importId, files: staged.files, uploaded: new Set() };
 				this.set({ staging: { importId: staged.importId, uploaded: 0, total: staged.files.length } });

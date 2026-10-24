@@ -608,7 +608,10 @@ export async function ingestCreatorImport(
 			hash: await sha256Hex(file.bytes)
 		}))
 	);
-	const derivativePath = derivativePathFor(validation.glb?.path ?? validation.gltf?.path ?? 'model.glb');
+	const derivativePath = derivativePathFor(
+		validation.glb?.path ?? validation.gltf?.path ?? 'model.glb',
+		request.files.map((file) => file.path)
+	);
 	const report: CreatorImportReport = {
 		schema: 1,
 		recipe: { id: CREATOR_IMPORT_RECIPE.id, version: CREATOR_IMPORT_RECIPE.version },
@@ -660,9 +663,24 @@ async function resolveMeshoptEncoder(environment: CreatorImportEnvironment): Pro
 	return module.MeshoptEncoder;
 }
 
-/** The derivative keeps the source's name with a `.glb` container. */
-export function derivativePathFor(sourcePath: string): string {
+/**
+ * The derivative keeps the source's name with a `.glb` container.
+ *
+ * Staging declares the source set and the derivative together and refuses a
+ * repeated path, so a GLB source (whose `.glb` name the derivative would reuse)
+ * must yield a distinct name. A glTF source keeps `model.glb`, because no source
+ * file claims it.
+ */
+export function derivativePathFor(sourcePath: string, taken: readonly string[] = []): string {
 	const base = sourcePath.split('/').pop() ?? 'model.glb';
 	const stem = base.replace(/\.[^.]+$/, '');
-	return `${stem.length === 0 ? 'model' : stem}.glb`;
+	const name = stem.length === 0 ? 'model' : stem;
+	const preferred = `${name}.glb`;
+	if (!taken.includes(preferred)) return preferred;
+	const suffixed = `${name}.derived.glb`;
+	if (!taken.includes(suffixed)) return suffixed;
+	for (let index = 2; ; index += 1) {
+		const candidate = `${name}.derived-${index}.glb`;
+		if (!taken.includes(candidate)) return candidate;
+	}
 }

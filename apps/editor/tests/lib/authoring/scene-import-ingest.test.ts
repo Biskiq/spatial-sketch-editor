@@ -114,7 +114,7 @@ describe('creator-import@1 — the retained report', () => {
 		const bytes = await sourceGlb();
 		const outcome = await prepared([file('chair.glb', bytes)]);
 
-		expect(outcome.derivative.path).toBe('chair.glb');
+		expect(outcome.derivative.path).toBe('chair.derived.glb');
 		await MeshoptDecoder.ready;
 		const derivative = await new WebIO()
 			.registerExtensions(ALL_EXTENSIONS)
@@ -311,12 +311,16 @@ describe('creator-import@1 — refusals install nothing', () => {
 		);
 		expect(outcome).toMatchObject({ kind: 'refused', code: 'cancelled' });
 	});
-});
-
-describe('creator-import@1 — derivative naming', () => {
+});	describe('creator-import@1 — derivative naming', () => {
 	it('keeps the source stem and writes one .glb container', () => {
 		expect(derivativePathFor('models/Chair.gltf')).toBe('Chair.glb');
 		expect(derivativePathFor('chair.glb')).toBe('chair.glb');
 		expect(derivativePathFor('.glb')).toBe('model.glb');
+	});
+
+	it('never reuses a path the declared source set already claims', () => {
+		expect(derivativePathFor('chair.glb', ['chair.glb'])).toBe('chair.derived.glb');
+		expect(derivativePathFor('model.gltf', ['model.gltf', 'model.bin'])).toBe('model.glb');
+		expect(derivativePathFor('chair.glb', ['chair.glb', 'chair.derived.glb'])).toBe('chair.derived-2.glb');
 	});
 });

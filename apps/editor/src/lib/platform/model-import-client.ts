@@ -43,6 +43,8 @@ export class ModelImportClientError extends Error {
 export type ModelImportClient = {
 	createImport(input: {
 		projectId: string;
+		/** The recipe identity the caller derived the bytes with. */
+		recipe: { readonly id: string; readonly version: number };
 		source: readonly { path: string; size: number; hash: string }[];
 		derivative: { path: string; size: number; hash: string };
 	}): Promise<CreatorImportStaging>;
@@ -226,6 +228,10 @@ export function createModelImportClient(
 			const body = await json(paths(input.projectId).imports, {
 				method: 'POST',
 				body: JSON.stringify({
+					// The server requires the recipe identity beside the declaration and
+					// rejects an undeclared field, so it is sent from the caller's own
+					// recipe rather than re-declared here.
+					recipe: { id: input.recipe.id, version: input.recipe.version },
 					files: [
 						...input.source.map((file) => ({ role: 'source', ...file })),
 						{ role: 'derivative', ...input.derivative }
