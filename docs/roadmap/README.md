@@ -171,7 +171,7 @@ writers and merge order. Update this index only in the coordination change that 
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01 | T1.P02.S05 legacy Layout retirement | T1.P02.S02 drawing, S03 Opening, S04 final gate | S02 on S05 accepted and merged; S03 on S02; S04 on S01/S05/S02/S03 |
+| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05 | — | T1.P02.S02 drawing, S03 Opening, S04 final gate | S02 on its own owner authorization, plan review and T3/T2 reviews; S03 on S02; S04 on S01/S05/S02/S03 |
 | T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01 | T2.P02.S02 import, review, approve and place | T2.P02.S03 final gate | S03 on S02 accepted |
 | T3 | T3.P01 (closed); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md#slice-register) S01; [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md#slice-register) S01–S02 (closable, not closed) | T3.P02.S02 first Guide, Camera return and final gate | [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) project lifecycle (planning) | T3.P04.S01 on T3.P02.S02 accepted, explicit API handoff after T2.P02.S02 merges, and its own release |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
