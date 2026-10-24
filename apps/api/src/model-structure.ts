@@ -28,6 +28,7 @@ const GLB_VERSION = 2;
 const CHUNK_JSON = 0x4e4f534a; // 'JSON'
 const CHUNK_BIN = 0x004e4942; // 'BIN\0'
 const GLTF_VERSION = '2.0';
+const MESHOPT_EXTENSION = 'EXT_meshopt_compression';
 
 type GltfDocument = Record<string, unknown>;
 
@@ -162,6 +163,28 @@ function readRecordList(value: unknown, path: string): GltfDocument[] {
 	});
 }
 
+/**
+ * True for the buffer a required EXT_meshopt_compression declares as its
+ * fallback.
+ *
+ * The glTF-Transform writer emits that buffer in a GLB's JSON even when the
+ * extension is required, and the container carries only the compressed buffer,
+ * so its declared bytes are a layout, not payload. It is admitted only when the
+ * document requires the extension: then no conformant consumer may read the
+ * fallback, and the views bound to it are checked against its declared length.
+ * An optional extension keeps its fallback bytes in the container, so the usual
+ * bounds check still applies.
+ */
+function isRequiredMeshoptFallback(document: GltfDocument, buffer: GltfDocument): boolean {
+	const required = document.extensionsRequired;
+	if (!Array.isArray(required) || !required.includes(MESHOPT_EXTENSION)) return false;
+	const extensions = buffer.extensions;
+	if (typeof extensions !== 'object' || extensions === null || Array.isArray(extensions)) return false;
+	const meshopt = (extensions as Record<string, unknown>)[MESHOPT_EXTENSION];
+	if (typeof meshopt !== 'object' || meshopt === null || Array.isArray(meshopt)) return false;
+	return (meshopt as Record<string, unknown>).fallback === true;
+}
+
 function readByteLength(record: GltfDocument, path: string): number {
 	const value = record.byteLength;
 	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
@@ -198,6 +221,10 @@ function checkGltfDocument(input: {
 			}
 			if (container.binLength === null) {
 				fail(bufferPath, 'missing-glb-bin-chunk', `${bufferPath} names the GLB binary buffer and the container has no BIN chunk`);
+			}
+			if (isRequiredMeshoptFallback(document, buffer)) {
+				availableBytes.push(byteLength);
+				continue;
 			}
 			if (byteLength > container.binLength) {
 				fail(bufferPath, 'buffer-out-of-bounds', `${bufferPath} declares ${byteLength} bytes and the BIN chunk carries ${container.binLength}`);

@@ -571,6 +571,55 @@ test('approval refuses a non-glTF derivative and a source set missing a referenc
 	assert.match(danglingApproval.json().error.message, /invalid-buffer-view-index/);
 });
 
+test('approval admits a required meshopt fallback buffer and refuses an optional one', async () => {
+	const owner = await sessionCookie(app, `google:p02-meshopt-${randomUUID()}`);
+	const { projectId } = await newProject(owner);
+	const source = validSourceGlb();
+	// The glTF-Transform writer emits this shape for every compressed GLB: the
+	// container carries the compressed buffer only, and the fallback is a
+	// declaration marked on a second, URI-less buffer.
+	const fallbackGlb = (required) =>
+		glb(
+			{
+				asset: { version: '2.0' },
+				buffers: [
+					{ byteLength: 8 },
+					{ byteLength: 4096, extensions: { EXT_meshopt_compression: { fallback: true } } }
+				],
+				bufferViews: [
+					{ buffer: 0, byteLength: 8 },
+					{ buffer: 1, byteLength: 4096 }
+				],
+				extensionsUsed: ['EXT_meshopt_compression'],
+				...(required ? { extensionsRequired: ['EXT_meshopt_compression'] } : {})
+			},
+			Buffer.alloc(8, 2)
+		);
+
+	const admitted = await stage(projectId, owner, [
+		{ role: 'source', path: 'model.glb', bytes: source },
+		{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: fallbackGlb(true) }
+	]);
+	const admittedCreated = admitted.json();
+	await upload(projectId, admittedCreated, owner, 'model.glb', source);
+	const admittedUpload = await upload(projectId, admittedCreated, owner, 'model.glb.derivative.glb', fallbackGlb(true));
+	assert.equal(admittedUpload.statusCode, 200, JSON.stringify(admittedUpload.json()));
+	const admittedApproval = await approve(projectId, admittedCreated.importId, owner);
+	assert.equal(admittedApproval.statusCode, 200, JSON.stringify(admittedApproval.json()));
+	assert.equal(admittedApproval.json().derivative.size, fallbackGlb(true).length);
+
+	const optional = await stage(projectId, owner, [
+		{ role: 'source', path: 'model.glb', bytes: source },
+		{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: fallbackGlb(false) }
+	]);
+	const optionalCreated = optional.json();
+	await upload(projectId, optionalCreated, owner, 'model.glb', source);
+	await upload(projectId, optionalCreated, owner, 'model.glb.derivative.glb', fallbackGlb(false));
+	const optionalApproval = await approve(projectId, optionalCreated.importId, owner);
+	assert.equal(optionalApproval.statusCode, 400, JSON.stringify(optionalApproval.json()));
+	assert.match(optionalApproval.json().error.message, /buffer-out-of-bounds/);
+});
+
 test('a glTF source set with its referenced buffer and a self-contained derivative is approved', async () => {
 	const owner = await sessionCookie(app, `google:p02-gltf-${randomUUID()}`);
 	const { projectId } = await newProject(owner);
