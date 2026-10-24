@@ -83,6 +83,8 @@ supplies authoring depth. None supplies a production renderer, schema, camera ev
 history implementation. In particular, the prototype's sub-degree perspective Plan and
 whole-world refitting buttons are not selected mechanisms.
 
+EVIDENCE-PATHS: start — these rows record the files inspected while planning T1.P01 (2026-10-22); the written paths are evidence at that revision, not routes today (T1.P02.S05 has since retired part of the legacy Layout surface)
+
 | Evidence inspected | Planning consequence |
 | --- | --- |
 | `packages/layout-core/src/layout-geometry.ts`, `layout-geometry-types.ts`, `layout-wall-first-precision.ts`, `layout-wall-openings.ts` | Reuse `compileWallFirstLayoutGeometry`, compiled query/solid records and operation-specific planners; do not recreate topology in a view or impose one universal planner result type. Current scalar and straight-Wall precision already have a bounded implementation basis. |
@@ -91,6 +93,13 @@ whole-world refitting buttons are not selected mechanisms.
 | [Retained authoring inventory](../../../../apps/editor/src/lib/authoring/README.md), `authoring/layout/plan-hit.ts`, `layout-exact-input.ts`, `authoring/a11y/roving-focus.ts` | Reuse pure hit/precision/focus semantics selectively. The Plan hit resolver takes world points and tolerance; it cannot become another affine viewport. Blank numeric parsing and fixed traversal need new composed-surface proof. |
 | `packages/project-model/src/units`, `apps/editor/src/lib/platform/project-persistence.ts`, the spatial route | The current boot, validation and serialization are one F.2 envelope, and API reads exist; the route is a notice and Save lacks expected revision. Rebuild the host, with explicit replacement guards; do not restore the old shell wholesale. |
 | `packages/layout-core/src/layout-room-frame.ts`, current Scene/Room types | The retained frame helper consumes legacy Room frames; current wall-first Rooms carry no frame and Scene roots are world-local. Preserve explicit room-local conversion semantics when a real frame is supplied, without inventing Room ownership or reintroducing legacy decoding. |
+
+EVIDENCE-PATHS: end
+
+**Superseded since:** T1.P02.S05 (2026-10-23) retired `layout-room-frame.ts` and the legacy
+Room-owned Layout document with it; the yaw normalization it mentioned now lives in Scene's
+`scene-planning/frame.ts` (`packages/project-model/src/scene-planning/frame.ts`), and no Layout
+Room frame exists for a helper to consume.
 
 **Reference reconciliation finding, not an amendment:**
 [persistence](../../../reference/components/persistence.md#one-source-format-f2-clean-epoch) says

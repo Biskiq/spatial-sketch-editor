@@ -18,7 +18,7 @@
  * keeps its canonical start → end direction for length and angle edits; the
  * selected fixed endpoint is never silently swapped.
  */
-import type { LayoutDocumentIssue } from './layout-codec';
+import type { LayoutDocumentIssue } from './layout-issue';
 import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { p2311Measure } from './p2311-perf';
@@ -28,7 +28,7 @@ import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { layoutWorkingLevelIssue } from './layout-id-capture';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
-import { validateWallFirstPortalRelations } from './layout-portals';
+import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import {
 	reconcileRooms,
 	type ComponentLineage,
@@ -80,7 +80,8 @@ import {
 	type TopologySegment
 } from './layout-wall-topology';
 import type { CurveSample } from './layout-geometry-curve';
-import type { LayoutObject, LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { LayoutObject } from './layout-wall-first-types';
 import type { Vec3 } from './types';
 
 const POINT_EPSILON = LAYOUT_GEOMETRY_EPSILON;

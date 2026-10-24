@@ -14,7 +14,7 @@
  * module is pure planning — it never mutates a document and never writes
  * history; the editor transaction runner owns commit semantics.
  */
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
 import type { CompiledLayoutGeometry, CompiledQuerySpan } from './layout-geometry-types';
 import { dedupeWallSpans, objectFootprintCenter, type MergedWallSpan } from './layout-snap';
 

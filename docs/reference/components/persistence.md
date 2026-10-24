@@ -68,10 +68,11 @@ executable resource closure. The Stage discloses diagnostics and closure for ins
 inventing resources; closure refuses F4 acceptance, Save and release. An unresolved View remains
 repairable authored state and disables the affected visitor behavior.
 
-**Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 5`): one
-floor datum, junctions → walls → reconciled rooms → openings → layout objects, project/world-local.
-The former versionless shape (floors → rooms each carrying a finite `frame.origin: [x, z]` plus a
-normalized radian `frame.yaw`) is **no longer decoded**. Opening `offset` = meters along a segment,
+**Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 6`, the only
+recognised version): one floor datum, junctions → walls → reconciled rooms → openings → layout
+objects, project/world-local. The former versionless shape (floors → rooms each carrying a finite
+`frame.origin: [x, z]` plus a normalized radian `frame.yaw`) is **no longer decoded**, and
+T1.P02.S05 removed its reader, codec and Room-frame helper entirely. Opening `offset` = meters along a segment,
 never a sample index. Door-only `connectsRoomIds: [string, string]` relations are explicit,
 validated, never inferred from geometry; windows unpaired. The authored layout contract and
 renderer-neutral compiler live in `@portfolio/layout-core`; the editor compatibility facades that

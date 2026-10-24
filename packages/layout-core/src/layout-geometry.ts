@@ -1,16 +1,12 @@
 import type { Vec3 } from './types';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { LayoutDocumentWallFirst, LayoutObject } from './layout-wall-first-types';
 import type {
-	DraftPath,
-	DraftSegment,
-	LayoutDocument,
-	LayoutFloor,
-	LayoutObject,
-	LayoutOpening,
-	LayoutRoom,
-	LayoutVec2
-} from './layout-types';
-import type { LayoutDocumentWallFirst } from './layout-wall-first-types';
-import type {
+	CompilerFloorEntry,
+	CompilerFloorSource,
+	CompilerOpening,
+	CompilerRoomSource,
+	CompilerSource,
 	CompiledCurveSample,
 	CompiledFloor,
 	CompiledJunction,
@@ -73,121 +69,13 @@ import { bounds2, createQueryGeometryBuilder, polygonBounds2, type QueryGeometry
 const OPENING_CENTER_EPSILON = 0.01;
 
 /**
- * Opening shape accepted by the compiler source: the legacy segment-hosted
- * opening. Wall-first openings are mapped onto it with `segmentId = wallId`
- * (see `compileWallFirstLayoutGeometry`) so exactly one compiler consumes
- * both generations (P23.0: one geometry compiler/output model remains
- * authoritative).
- */
-export type CompilerOpening = LayoutOpening;
-
-/**
- * Internal compiler-source room: everything the shared compile core reads
- * from a room. The legacy document maps 1:1; the wall-first document maps
- * Walls to line segments and Wall-hosted openings to segment-hosted ones.
- */
-export type CompilerRoomSource = {
-	room: Pick<LayoutRoom, 'id' | 'wallThickness' | 'floorThickness' | 'ceilingThickness'>;
-	boundary: CompilerBoundarySource;
-	openings: readonly CompilerOpening[];
-	/**
-	 * Per-wall thickness override keyed by boundary segment id (P23.0b: wall
-	 * thickness is Wall-owned in the wall-first schema; the legacy schema is
-	 * room-uniform and leaves this absent). Absent keeps legacy behavior and
-	 * legacy cache keys byte-identical.
-	 */
-	wallThicknessBySegmentId?: Readonly<Record<string, number>>;
-	/**
-	 * P23.6H/P23.6I Per-wall Opening vertical limit keyed by boundary segment id
-	 * (the wall-first adapter supplies each Wall's authoritative `height`; the
-	 * legacy schema is floor-envelope and leaves this absent). Absent keeps the
-	 * historical `floor.height` rule and byte-identical legacy behavior.
-	 */
-	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>;
-	/**
-	 * P23.6I — explicit derived Room ceiling elevation (wall-first), computed once
-	 * by the adapter as `floor.elevation + max(boundary Wall heights)`. Absent on
-	 * the legacy path, where the ceiling stays Floor-derived and output stays
-	 * byte-identical. This is the same optional-override pattern as
-	 * `wallThicknessBySegmentId`/`openingHeightLimitBySegmentId`: exactly one Room
-	 * compile path, no second compiler.
-	 */
-	ceilingElevation?: number;
-	/**
-	 * P23B.4 M-1 — pre-sampled room-boundary segments keyed by segment object
-	 * identity, derived through the chain-scoped sampling derivation at the
-	 * adapter (where Wall + traversal authority are known). The shared core
-	 * serves a mapped segment instead of re-sampling it; absent keeps the
-	 * historical per-segment sampling and byte-identical legacy behavior.
-	 */
-	preSampled?: ReadonlyMap<SampleableSegment, SampledSegment>;
-};
-
-/**
- * Internal compiler-source floor frame.
+ * Compile the authored Layout once into render-neutral geometry consumed by
+ * Plan, editor 3D, and visitor 3D. Pure, deterministic, non-mutating,
+ * visitor-safe. T1.P02.S05 retired the legacy adapter: every document is wall-first
+ * and this is the one compiler entry.
  *
- * Legacy floors map 1:1 and still carry the storey `height` (which drives their
- * Room ceilings and cache keys byte-identically). P23.6I removed the canonical
- * wall-first Floor scalar, so a wall-first frame supplies only `id`/`elevation`
- * and each Room carries its own derived `ceilingElevation`.
- */
-export type CompilerFloorSource = Pick<LayoutFloor, 'id' | 'elevation'> & {
-	height?: number;
-};
-
-/**
- * Internal compiler-source accepted by `compileLayoutGeometrySource`. The
- * public `compileLayoutGeometry` is a thin adapter over this, so every
- * generation compiles through the same code path.
- */
-export type CompilerSource = {
-	/** One entry per floor, in document order (P23 review round 1 / B1). */
-	floors: readonly CompilerFloorEntry[];
-	objects: readonly LayoutObject[];
-	/**
-	 * Whether wall segment ids are document-global (wall-first: `'document'`)
-	 * or only unique inside their room (legacy: `'room'`). Snap/align wall
-	 * identity derives from this via the per-span `wallKey`; legacy segments
-	 * are qualified by floor+room so same-named segments of different rooms
-	 * never collapse into one wall.
-	 */
-	wallIdScope?: 'document' | 'room';
-};
-
-/** One floor's worth of compiler input: the floor frame plus its rooms. */
-export type CompilerFloorEntry = {
-	floor: CompilerFloorSource;
-	rooms: readonly CompilerRoomSource[];
-};
-
-/** Legacy compiler source: identity mapping onto the shared core. */
-export function legacyCompilerSource(document: LayoutDocument): CompilerSource {
-	// Identity mapping with no placeholder: an empty-floors document compiles
-	// to zero floors, exactly as the pre-cutover per-floor loop did (review
-	// round 1 nit).
-	const floors: CompilerFloorEntry[] = document.floors.map((floor) => ({
-		floor,
-		rooms: floor.rooms.map((room) => ({
-			room,
-			boundary: room.boundary,
-			openings: room.openings
-		}))
-	}));
-	return { floors, objects: document.objects, wallIdScope: 'room' };
-}
-
-/**
- * Compile a LayoutDocument once into render-neutral geometry consumed by Plan,
- * editor 3D, and visitor 3D. Pure, deterministic, non-mutating, visitor-safe.
- */
-export function compileLayoutGeometry(document: LayoutDocument): CompiledLayoutGeometryResult {
-	return compileLayoutGeometrySource(legacyCompilerSource(document));
-}
-
-/**
- * Compile a wall-first Layout through the same shared core (P23.0 compiler
- * cutover): document-global Walls become the boundary segments (identity:
- * `wallId` — the wall-first compiler source sets `segmentId = wallId`),
+ * Document-global Walls become the boundary segments (identity: `wallId` — the
+ * compiler source sets `segmentId = wallId`),
  * Room-hosted openings rebase onto their Wall, Room boundaries map to the
  * Wall segments each Room references, and Wall-owned thickness flows through
  * the per-wall override. Query/selection identities for physical walls carry
@@ -920,9 +808,10 @@ function spanRecordPhysical(
 
 /**
  * Shared compile core (P23.0 compiler cutover): one geometry compiler/output
- * model for every document generation. Legacy and wall-first callers differ
- * only in the `CompilerSource` adapter they supply. Diagnostics paths remain
- * room-indexed (`rooms[i]`) so legacy consumers see identical issue paths.
+ * model. `compileWallFirstLayoutGeometry` is its only adapter since T1.P02.S05;
+ * a direct caller may still supply any `CompilerSource` shape, whose optional
+ * fields keep their historical defaults. Diagnostics paths remain room-indexed
+ * (`rooms[i]`) so existing issue expectations are unchanged.
  */
 export function compileLayoutGeometrySource(source: CompilerSource): CompiledLayoutGeometryResult {
 	const issues: LayoutGeometryIssue[] = [];
@@ -951,10 +840,10 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 		for (const [roomIndex, roomSource] of floorEntry.rooms.entries()) {
 			const path = `floors[${floorIndex}].rooms[${roomIndex}]`;
 			// P23.6I D7 (review closeout) — a Room with no vertical datum
-			// (neither a wall-first derived ceiling nor a legacy Floor height)
-			// never acquires an invented ceiling: skip it and block by name
-			// instead of compiling a fake zero-height Room at the elevation.
-			// Legacy frames always carry `height`, so legacy output is unchanged.
+			// (neither a derived ceiling nor a supplied Floor height) never acquires
+			// an invented ceiling: skip it and block by name instead of compiling a
+			// fake zero-height Room at the elevation. No current source supplies a
+			// Floor height, so this is the only branch a format-6 Room can reach.
 			if (roomSource.ceilingElevation === undefined && floor.height === undefined) {
 				issues.push({
 					path: `${path}.boundary`,
@@ -1059,11 +948,12 @@ function compileRoom(
 	const room = roomSource.room;
 	const floorElevation = floor.elevation;
 	// P23.6I — a wall-first Room carries its derived ceiling (`floor.elevation +
-	// max(boundary Wall heights)`); the legacy path supplies nothing and keeps the
-	// storey-derived ceiling, so legacy output stays byte-identical.
+	// max(boundary Wall heights)`); a source that supplies no derived ceiling
+	// keeps the storey-derived one, and no format-6 source supplies a storey
+	// height, so a wall-first Room always takes the derived value here.
 	const ceilingElevation = roomSource.ceilingElevation ?? floor.elevation + (floor.height ?? 0);
-	// Vertical extent handed to the shared Opening-splitting helper. Legacy equals
-	// `floor.height` exactly; wall-first uses its derived ceiling.
+	// Vertical extent handed to the shared Opening-splitting helper: absent a
+	// derived ceiling it equals `floor.height` exactly.
 	const roomVerticalExtent = ceilingElevation - floorElevation;
 
 	const floorPolygon: LayoutVec2[] = roomSource.boundary.segments.flatMap((segment, index) => {
@@ -1174,7 +1064,7 @@ function compileRoom(
 }
 
 function compileOpening(
-	opening: LayoutOpening,
+	opening: CompilerOpening,
 	sampled: SampledSegment,
 	floorId: string,
 	roomId: string,

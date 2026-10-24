@@ -16,7 +16,7 @@
  * result into these planners expecting it to be accepted: a raw drag 2 m past
  * the Wall end rejects rather than becoming an end-placed commit.
  */
-import type { LayoutDocumentIssue } from './layout-codec';
+import type { LayoutDocumentIssue } from './layout-issue';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import {
@@ -24,7 +24,7 @@ import {
 	validateWallFirstOpeningSet,
 	wallFirstWallLength
 } from './layout-opening-set';
-import { validateWallFirstPortalRelations } from './layout-portals';
+import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import {
 	allocateCapturedId,

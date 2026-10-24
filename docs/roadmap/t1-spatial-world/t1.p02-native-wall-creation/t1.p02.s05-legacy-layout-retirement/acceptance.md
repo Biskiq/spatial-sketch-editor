@@ -1,19 +1,185 @@
 # T1.P02.S05 — acceptance record: Legacy Layout retirement
 
-**Slice:** T1.P02.S05 · **Status:** approved and owner-authorized/released — no acceptance
-recorded · **Plan:** [implementation-plan.md](./implementation-plan.md) ·
-**Phase:** [T1.P02](../README.md#slice-register)
+**Slice:** T1.P02.S05 · **Status:** implementation complete, merge gate green, **not accepted, not
+merged** — awaiting owner acceptance and the named T3/T2 cross-track reviews · **Plan:**
+[implementation-plan.md](./implementation-plan.md) · **Phase:** [T1.P02](../README.md#slice-register)
 
-No implementation, tested revision, reviewer verdict, performance measurement or capability
-outcome is recorded. This placeholder cannot be cited as readiness or acceptance evidence.
-Record the plan's architecture-integration evidence, complete implementation-PR merge gate,
-defect-equivalent fixture mapping, retired-surface proof and cross-track owner review here
-when performed. Integrated exhaustive proof routes to
-[T1.P02.S04](../t1.p02.s04-integrated-final-gate/acceptance.md).
+```text
+CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
+TIER:     architecture-integration; integrated exhaustive proof stays T1.P02.S04
+ROUTE:    ../t1.p02.s04-integrated-final-gate/acceptance.md
+AUTHORITY: NONE YET — the phase README owns slice status. Nothing here accepts the slice,
+          discharges the retirement condition or unblocks S02.
+```
 
-S02 stays blocked until this separately authorized scope is accepted and merged. S01's
-unrun F2 S/M timings stay assigned to S04; this record grants no waiver or phase closure.
+S02 stays blocked until this scope is owner-accepted and merged. S01's unrun F2 S/M timings stay
+assigned to S04; this record grants no waiver, no performance claim and no phase closure.
 
-Authorization: [post-Batch-E owner release](../../../../reference/decisions/post-batch-e-authorization-2026-10-23.md).
-Implementation starts per the release list (`docs/roadmap/now.md`); this pending
-record claims no acceptance or newly run evidence.
+## Delivered
+
+The Room-owned legacy Layout document surface is gone; the format-6 wall-first reader, identities,
+one canonical compiler and compiled behaviour are unchanged.
+
+```text
+deleted modules    packages/layout-core/src/layout-types.ts
+                   packages/layout-core/src/layout-codec.ts
+                   packages/layout-core/src/layout-room-frame.ts
+                   packages/layout-core/src/layout-portals.ts (legacy half)
+deleted exports    LayoutIssue, LayoutValidationResult, LayoutDocumentValidationResult
+                   compileLayoutGeometry, legacyCompilerSource
+                   deriveLayoutRoomFrame, layoutRoomPoint, layoutRoomLocalPoint,
+                   normalizeLayoutRoomYaw (moved to Scene, see below)
+                   validateLayoutRoomGeometry, validateLayoutDocumentGeometry, validateLineRoom
+                   createEmptyLayoutDocument, parseLayoutDocumentJson, serializeLayoutDocument,
+                   validateLayoutDocument, projectLayoutPortalRelations, portalOpeningHasRoomPair
+new owned modules  layout-coordinates.ts  LayoutVec2 (neutral plan tuple)
+                   layout-path.ts         DraftPath / DraftSegment / LayoutInteriorAnchor
+                   layout-issue.ts        LayoutDocumentIssue / LayoutDocumentValidationError
+                   layout-wall-portals.ts the live wall-first portal relations only
+retyped compiler   CompilerSource / CompilerFloorEntry / CompilerFloorSource /
+                   CompilerRoomSource (+ CompilerRoomShell) / CompilerBoundarySource /
+                   CompilerOpening are owned by layout-geometry-types.ts;
+                   validatePreparedLayoutRoomGeometry takes CompilerRoomValidationSource
+cross-track        packages/project-model/src/scene-planning/frame.ts — normalizeFrameYaw
+exceptions         packages/project-model/src/project-layout-semantics.ts —
+                   LayoutRoomRegistryEntry keeps {id, name, position, rotation}
+docs               docs/reference/architecture.md, docs/reference/components/persistence.md,
+                   docs/reference/north-star.md (current-encoding number), diagrams/architecture.md,
+                   diagrams/overall-flow.md, docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
+                   (EVIDENCE-PATHS history), docs/operations/t1-spatial-world/current.md (baton)
+```
+
+`compileWallFirstLayoutGeometry` → `compileLayoutGeometrySource` is the single compiler dataflow;
+no second reader, migration, alias, forwarding shim or legacy compatibility path remains. New
+dependencies: **none**.
+
+## Gate evidence
+
+```text
+revision tested    worktree tip of t1/p02-s05-legacy-layout-retirement, trusted base main fff7dc14
+                   (recorded again in the PR body; this worktree is uncommitted at gate time)
+npm run check                  0 errors, 0 warnings (svelte-check)
+npm run check:layout-core      clean (tsc --noEmit)
+npm run check:project-model    clean (tsc --noEmit)
+npm run check:camera-core      clean (tsc --noEmit)
+npm run check:api              clean (tsc --noEmit)
+npm run build                  adapter-vercel build produced (.svelte-kit/output)
+apps/editor npm run test:fast  152 files / 2082 tests, 0 failed
+apps/editor npm run test:heavy 9 files / 125 tests, 0 failed
+apps/editor npm run test:arch  22 files / 178 tests, 0 failed
+apps/editor npm run test:full  183 files / 2385 tests, 0 failed (same effective suite as npm test)
+npm run test:api:stack (BISKIQ_STACK=biskiq-t1, BISKIQ_DB_PORT=5436)
+                               12 reports / 95 tests, 95 pass, 0 fail, 0 skipped, 0 todo
+```
+
+DB target for the API run: the isolated local Compose database of stack `biskiq-t1` on
+`127.0.0.1:5436` (`postgresql://biskiq@localhost:5436/biskiq`); no credentials are recorded here and
+the shared stack was never reset. `stack:up` itself could not start the `migrate`/`api` services in
+this worktree because the local `.env` has no `R2_OBJECT_NAMESPACE` (`apps/api/src/config.ts:135`
+requires it); only `db` was started, which is all `test:api` needs. That is an environment gap, not
+a code change.
+
+**Fast-lane timing control.** An earlier `test:fast` run failed with
+`p23b11-correspondence-reference.test.ts › nonce locality … Test timed out in 5000ms` while the
+machine carried load average 63–73 from the two sibling lanes. The same lane was then run on the
+untouched trusted base (changes stashed, then restored byte-identically) and failed the same way,
+with that case at 4001 ms against the 5000 ms default. The final fast, heavy, arch and full runs
+above are all green.
+
+## Fixture coverage mapping (retired assertion → wall-first successor)
+
+Pre-removal observations: [observations/legacy-compiled-observations.json](./observations/legacy-compiled-observations.json),
+captured at `fff7dc14` by running the retired `compileLayoutGeometry` over the legacy documents
+(the capturing file was scratch and is deleted). It records, per case, floor ids, per-Room
+elevation/ceiling/thickness, floor polygon, walls, openings, objects, query counts and bounds; the
+`howCaptured` / `caseAliases` / `retiredCases` fields state how it was produced, that the g2 fixtures
+delegate to the g1 factories, and which cases are deliberately not converted.
+
+```text
+g1-line-rectangle        rectangle topology, four Walls, room + wall query records   → layout-g1-fixtures.ts
+g1-l-shaped              L-shape closure, six Walls, wall-line render order          → layout-g1-fixtures.ts
+g1-auto-bezier           curved boundary/Wall sampling and knot spans                → layout-g1-fixtures.ts
+g1-multiple-openings     multiple Wall-hosted openings, offsets, host rebase         → layout-g1-fixtures.ts
+g1-profile-matrix        rectangular/rounded/pointed arch profiles                   → layout-g1-fixtures.ts
+g1-elevated-floor        non-zero floor datum → floor/ceiling elevations             → layout-g1-fixtures.ts
+g1-object-matrix         object kinds, footprints, rotation-aware bounds             → layout-g1-fixtures.ts
+g1-invalid-geometry      disconnected chain + bow-tie self-intersection defects      → layout-g1-fixtures.ts
+mesh-rhombus / mesh-notch  watertight mesh matrices (heavy lane)                      → tests/helpers/wall-mesh-fixtures.ts
+scales small/medium/large  determinism, seed divergence, pinned mix, compile at scale → __fixtures__/layout-scale-fixtures.ts
+qualifies same-named wall query records by room (retired) → "emits each wall-first Wall once with no
+                        per-Room wall duplication" (layout-geometry.test.ts), plus the restored
+                        per-span id uniqueness assertion in the same case
+room-derived wall detail → "Rooms carry no wall detail: the walls layer never comes from a Room"
+                        (layout-g2-fixtures.test.ts), now an ordered layer-3 assertion
+legacy multi-floor cases → retired, not converted: format 6 has one floor datum; the empty document
+                        is asserted directly (validate + compile) in layout-geometry-boundary.test.ts
+```
+
+Each converted case keeps the same defect it detected (topology closure, orientation, opening host
+and offset, profile, elevation datum, object footprint, disconnected/self-intersecting boundary,
+mesh watertightness, determinism, seed divergence). No assertion was narrowed to match output: the
+fixtures author Junctions, Walls, Rooms and Openings, and every expectation is explained by
+topology-derived Rooms. No `skip`, `only`, `todo`, snapshot or tolerance was added.
+
+## Intentional semantic deltas
+
+```text
+1 rooms of an uncompilable Room  A Room that fails to compile contributes no fill/stroke, but its
+                                 authored Walls are independent canonical geometry and still
+                                 commit to layer 3. Recorded inline in
+                                 layout-g2-fixtures.test.ts ("T1.P02.S05 delta").
+2 ceiling from Walls             Room ceilings come from boundary Wall heights; the retired Floor
+                                 storey scalar is gone, so floor-derived ceilings exist only when
+                                 a direct caller supplies one.
+3 multi-floor documents          No wall-first expression; the cases are retired with the
+                                 observation artifact as the delta evidence.
+```
+
+## Cross-track exceptions
+
+```text
+frame.ts            normalizeLayoutRoomYaw moved to Scene as private normalizeFrameYaw with identical
+                    arithmetic (`((yaw + PI) % 2PI + 2PI) % 2PI - PI`, `-0`/EPSILON → 0). Still
+                    pinned by tests/lib/project-model/placement-frame.test.ts. Scene owns the only
+                    surviving frame; layout-core has no Room frame left.
+project-layout-      LayoutRoomRegistryEntry loses `floor`/`room`; {id, name, position, rotation}
+semantics.ts         remain. createEmptyLayoutRoomRegistry is the only constructor, entries stay [],
+                    get() → undefined, getRequired/point/localPoint still throw
+                    `Unknown project layout room: <id>`, pointInFrame/localPointInFrame stay the
+                    identity tuple while refusing a present roomId. No Room frame is manufactured,
+                    no Camera evaluation changes, and the world-local Scene reader still refuses an
+                    authored roomId (`room_id_forbidden_in_world_local`).
+```
+
+Review status: an independent in-slice diff review ran over four slices (packages, cross-track +
+editor consumer, fixture/test conversion, docs/artifact) and its findings were resolved before the
+gate — the ordered layer-3 assertion, the per-span id uniqueness assertion, the perf root in the
+retirement walk, the stale comments in `layout-geometry.ts`, `layout-geometry-types.ts`,
+`layout-geometry-validation.ts`, `layout-wall-portals.ts` and `editor-camera-path.ts`, the
+`diagrams/architecture.md` class names, the orphan `LayoutOpening` class, the format-6 numbers in
+`persistence.md`/`north-star.md`, and the artifact's capture/alias notes.
+
+**Outstanding, required before acceptance:** the plan's named owner reviews — **T3** (reader/Camera)
+for `project-layout-semantics.ts` and **T2** (Scene) for `scene-planning/frame.ts`. Neither has been
+recorded; this record does not substitute for them and the slice is not accepted.
+
+## Retained surface, deliberately not removed
+
+```text
+wallIdScope: 'room' (CompilerSource)   an accepted input value no producer emits; the only adapter
+                                       passes 'document'. Removing it would change the shared core's
+                                       public input contract and its pinned tests, which the plan
+                                       does not ask for.
+CompilerFloorSource.height             optional storey scalar retained as the shared core's fallback;
+                                       no format-6 document can define one.
+layout-wall-portals.ts                 the wall-first portal relations live here (Save-blocking
+                                       adjacency); only the retired legacy projection was deleted.
+```
+
+## Verification still owed
+
+```text
+T1.P02.S04   integrated exhaustive proof, S01's F2 S/M open timings on the designated M2
+S02          owner authorization, a complete plan drafted from its outline, and this slice's
+             acceptance + merge first
+```

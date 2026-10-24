@@ -2,12 +2,13 @@ import type { NavigationGraph } from '$lib/content/scene';
 import type { RuntimeConnection, NavigationNodeData, Vec3 } from '$lib/types/scene';
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import {
+	compileWallFirstLayoutGeometry,
+	findPolygonContaining,
 	geometryId,
+	projectPointToSpans,
 	type CompiledLayoutGeometry,
 	type CompiledQuerySpan
 } from '@portfolio/layout-core';
-import { compileLayoutGeometry } from '@portfolio/layout-core';
-import { findPolygonContaining, projectPointToSpans } from '@portfolio/layout-core';
 import {
 	g1AutoBezierDocument,
 	g1ElevatedFloorDocument,
@@ -73,10 +74,16 @@ export function g2InvalidGeometryDocument() {
 
 // --- Reference plan model --------------------------------------------------
 
+/**
+ * T1.P02.S05 — hit identities follow the canonical wall-first contract: a
+ * committed Wall is addressed by its document-global `wallId` and an Opening by
+ * `{ wallId, openingId }`. There is no Room context to carry, because a physical
+ * Wall is compiled once and owns no Room.
+ */
 export type G2ReferenceHitIdentity =
 	| { kind: 'room'; roomId: string }
-	| { kind: 'wall'; roomId: string; segmentId: string }
-	| { kind: 'opening'; roomId: string; segmentId: string; openingId: string }
+	| { kind: 'wall'; wallId: string }
+	| { kind: 'opening'; wallId: string; openingId: string }
 	| { kind: 'object'; objectId: string };
 
 export type G2ReferencePrimitive = {
@@ -132,34 +139,31 @@ export function buildG2ReferencePlanModel(compiled: CompiledLayoutGeometry): G2R
 		});
 	}
 
-	// Layer 3 — walls, one polyline per opening-free centerline span.
-	for (const room of compiled.rooms) {
-		const floorId = floorByRoom.get(room.roomId) ?? 'unknown-floor';
-		for (const wall of room.walls) {
-			wall.solidCenterlinePolylines.forEach((polyline, index) => {
-				primitives.push({
-					layer: 3,
-					kind: 'polyline',
-					key: geometryId(['plan', 'wall', floorId, room.roomId, wall.segmentId, String(index)]),
-					style: 'wall-line',
-					points: polyline.map(([x, z]) => [x, z] as LayoutVec2),
-					hit: { kind: 'wall', roomId: room.roomId, segmentId: wall.segmentId }
-				});
+	// Layer 3 — walls, one polyline per opening-free centerline span of each
+	// canonical physical Wall (compiled order, never per incident Room).
+	for (const wall of compiled.walls) {
+		wall.solidCenterlinePolylines.forEach((polyline, index) => {
+			primitives.push({
+				layer: 3,
+				kind: 'polyline',
+				key: geometryId(['plan', 'wall', wall.floorId, wall.wallId, String(index)]),
+				style: 'wall-line',
+				points: polyline.map(([x, z]) => [x, z] as LayoutVec2),
+				hit: { kind: 'wall', wallId: wall.wallId }
 			});
-		}
+		});
 	}
 
 	// Layer 4 — openings, one polyline per compiled opening centerline.
-	for (const room of compiled.rooms) {
-		const floorId = floorByRoom.get(room.roomId) ?? 'unknown-floor';
-		for (const opening of room.openings) {
+	for (const wall of compiled.walls) {
+		for (const opening of wall.openings) {
 			primitives.push({
 				layer: 4,
 				kind: 'polyline',
-				key: geometryId(['plan', 'opening', floorId, room.roomId, opening.openingId]),
+				key: geometryId(['plan', 'opening', wall.floorId, opening.openingId]),
 				style: 'opening-line',
 				points: opening.centerPolyline.map(([x, z]) => [x, z] as LayoutVec2),
-				hit: { kind: 'opening', roomId: room.roomId, segmentId: opening.segmentId, openingId: opening.openingId }
+				hit: { kind: 'opening', wallId: wall.wallId, openingId: opening.openingId }
 			});
 		}
 	}
@@ -182,52 +186,47 @@ export function buildG2ReferencePlanModel(compiled: CompiledLayoutGeometry): G2R
 // --- Reference hit resolution ---------------------------------------------
 
 export type G2ReferenceHitResult =
-	| { kind: 'vertex'; roomId: string; segmentId: string; vertexIndex: number }
-	| { kind: 'interiorAnchor'; roomId: string; segmentId: string; anchorId: string }
-	| { kind: 'opening'; roomId: string; segmentId: string; openingId: string }
+	| { kind: 'vertex'; wallId: string; vertexIndex: number; point: LayoutVec2 }
+	| { kind: 'opening'; wallId: string; openingId: string }
 	| { kind: 'object'; objectId: string }
-	| { kind: 'wall'; roomId: string; segmentId: string }
+	| { kind: 'wall'; wallId: string }
 	| { kind: 'room'; roomId: string }
 	| null;
 
-function wallSpansByRoomSegment(compiled: CompiledLayoutGeometry): Map<string, Map<string, CompiledQuerySpan[]>> {
-	const byRoom = new Map<string, Map<string, CompiledQuerySpan[]>>();
+type PhysicalWallSpans = {
+	wallSpans: CompiledQuerySpan[];
+	openingSpans: CompiledQuerySpan[];
+};
+
+/** Canonical physical Wall spans grouped by `wallId`; room-derived records are skipped. */
+function physicalSpansByWall(compiled: CompiledLayoutGeometry): Map<string, PhysicalWallSpans> {
+	const byWall = new Map<string, PhysicalWallSpans>();
 	for (const span of compiled.queries.spans) {
-		if (span.kind !== 'wall') continue;
-		if (span.roomId === undefined) continue;
-		let bySegment = byRoom.get(span.roomId);
-		if (!bySegment) {
-			bySegment = new Map();
-			byRoom.set(span.roomId, bySegment);
-		}
-		const spans = bySegment.get(span.segmentId) ?? [];
-		spans.push(span);
-		bySegment.set(span.segmentId, spans);
+		if (span.roomId !== undefined) continue;
+		if (span.kind !== 'wall' && span.kind !== 'opening') continue;
+		const wallId = span.wallKey ?? span.segmentId;
+		const group = byWall.get(wallId) ?? { wallSpans: [], openingSpans: [] };
+		if (span.kind === 'wall') group.wallSpans.push(span);
+		else group.openingSpans.push(span);
+		byWall.set(wallId, group);
 	}
-	return byRoom;
+	return byWall;
 }
 
-function nearestPointHit(
+function nearestVertexHit(
 	compiled: CompiledLayoutGeometry,
 	point: LayoutVec2,
-	tolerance: number,
-	kind: 'vertex' | 'interior-anchor'
+	tolerance: number
 ): G2ReferenceHitResult {
-	let best: G2ReferenceHitResult = null;
-	let bestDistance = tolerance;
+	let best: { wallId: string; vertexIndex: number; point: LayoutVec2; distance: number } | null = null;
 	for (const record of compiled.queries.points) {
-		if (record.kind !== kind) continue;
-		if (record.roomId === undefined) continue;
+		if (record.kind !== 'vertex') continue;
 		const distance = Math.hypot(record.point[0] - point[0], record.point[1] - point[1]);
-		if (distance <= bestDistance) {
-			best =
-				kind === 'vertex'
-					? { kind: 'vertex', roomId: record.roomId, segmentId: record.segmentId, vertexIndex: record.sourceIndex }
-					: { kind: 'interiorAnchor', roomId: record.roomId, segmentId: record.segmentId, anchorId: record.sourceId };
-			bestDistance = distance;
-		}
+		if (distance > tolerance) continue;
+		if (best && distance >= best.distance) continue;
+		best = { wallId: record.segmentId, vertexIndex: record.sourceIndex, point: record.point, distance };
 	}
-	return best;
+	return best ? { kind: 'vertex', wallId: best.wallId, vertexIndex: best.vertexIndex, point: best.point } : null;
 }
 
 function nearestOpeningHit(
@@ -235,18 +234,11 @@ function nearestOpeningHit(
 	point: LayoutVec2,
 	tolerance: number
 ): G2ReferenceHitResult {
-	const spansByRoom = wallSpansByRoomSegment(compiled);
-	for (const room of [...compiled.rooms].reverse()) {
-		for (const opening of [...room.openings].reverse()) {
-			const spans = spansByRoom.get(room.roomId)?.get(opening.segmentId) ?? [];
-			const projection = projectPointToSpans(point, spans);
+	for (const [wallId, group] of physicalSpansByWall(compiled)) {
+		for (const span of group.openingSpans) {
+			const projection = projectPointToSpans(point, [span]);
 			if (!projection || projection.distance > tolerance) continue;
-			if (
-				projection.offset >= opening.offset - tolerance &&
-				projection.offset <= opening.offset + opening.width + tolerance
-			) {
-				return { kind: 'opening', roomId: room.roomId, segmentId: opening.segmentId, openingId: opening.openingId };
-			}
+			return { kind: 'opening', wallId, openingId: span.openingId! };
 		}
 	}
 	return null;
@@ -257,35 +249,34 @@ function nearestWallHit(
 	point: LayoutVec2,
 	tolerance: number
 ): G2ReferenceHitResult {
-	const spansByRoom = wallSpansByRoomSegment(compiled);
-	let best: { roomId: string; segmentId: string; distance: number } | null = null;
-	for (const room of [...compiled.rooms].reverse()) {
-		for (const [segmentId, spans] of spansByRoom.get(room.roomId) ?? []) {
-			const projection = projectPointToSpans(point, spans);
-			if (!projection || projection.distance > tolerance) continue;
-			if (!best || projection.distance < best.distance) {
-				best = { roomId: room.roomId, segmentId, distance: projection.distance };
-			}
-		}
+	let best: { wallId: string; distance: number } | null = null;
+	for (const [wallId, group] of physicalSpansByWall(compiled)) {
+		const projection = projectPointToSpans(point, group.wallSpans);
+		if (!projection || projection.distance > tolerance) continue;
+		if (best && projection.distance >= best.distance) continue;
+		best = { wallId, distance: projection.distance };
 	}
-	return best ? { kind: 'wall', roomId: best.roomId, segmentId: best.segmentId } : null;
+	return best ? { kind: 'wall', wallId: best.wallId } : null;
 }
 
 /**
  * Test-only reference implementing the locked hit priority:
- * vertex → interior anchor → opening → object → wall → room. Mirrors the
- * viewport's `findPlanHitTarget` ordering so the real `plan-hit` module can be
- * parity-checked against these goldens.
+ * vertex → opening → object → wall → room. Mirrors the viewport's canonical
+ * wall-first branch in `findPlanHitTarget` so the real `plan-hit` module can be
+ * parity-checked against these goldens. Two tiers of the viewport resolver are
+ * outside a compiled-geometry-only reference: the `interior-anchor` point tier
+ * (compiled wall-first records carry `vertex` points only — Wall bends are
+ * Wall-owned knots, not authored path anchors) and the curve-control candidates
+ * (transient editing state owned by the caller, resolved by `resolvePlanHit`
+ * directly — see the g2 suite).
  */
 export function resolveG2ReferenceHit(
 	compiled: CompiledLayoutGeometry,
 	point: LayoutVec2,
 	tolerance: number
 ): G2ReferenceHitResult {
-	const vertex = nearestPointHit(compiled, point, tolerance, 'vertex');
+	const vertex = nearestVertexHit(compiled, point, tolerance);
 	if (vertex) return vertex;
-	const anchor = nearestPointHit(compiled, point, tolerance, 'interior-anchor');
-	if (anchor) return anchor;
 	const opening = nearestOpeningHit(compiled, point, tolerance);
 	if (opening) return opening;
 	const objectPolygon = findPolygonContaining(
@@ -383,5 +374,5 @@ export function g2SceneNavigationGraph(): NavigationGraph {
 
 /** Compile a G2 fixture document into render-neutral geometry plus issues. */
 export function compileG2Fixture(document: ReturnType<typeof g2LineRectangleDocument>) {
-	return compileLayoutGeometry(document);
+	return compileWallFirstLayoutGeometry(document);
 }

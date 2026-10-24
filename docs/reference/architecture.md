@@ -105,7 +105,7 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 
 | Authority | Owns | Current encoding (until cutover) |
 |---|---|---|
-| **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocument` (`@portfolio/layout-core`), wall-first `formatVersion: 5`, one floor datum |
+| **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 6`: Junctions, Walls, persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path |
 | **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 2 (`@portfolio/project-model`), world-local, no `roomId` |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
 | **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 1, collection-capable); later authoring amendments remain future work |
@@ -251,11 +251,11 @@ interior-only.
 
 | Concern | Current source of truth |
 |---------|-----------------|
-| Rooms, frames, boundaries, openings | `units.layout.data` / `LayoutDocument` (`@portfolio/layout-core`) |
+| Junctions, Walls, Room boundaries, Wall-hosted openings | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`) |
 | Rough parametric layout objects | `project.layout.objects` |
 | Scene models, primitives, lights, materials | `project.scene` / `SceneDocument` (`@portfolio/project-model`) |
 | Camera nodes, connections, paths, view tracks | `project.scene` (until the Camera codec cutover) |
-| Derived geometry | pure `compileLayoutGeometry()` (`@portfolio/layout-core`) |
+| Derived geometry | pure `compileWallFirstLayoutGeometry()` → `compileLayoutGeometrySource` (`@portfolio/layout-core`) |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |
 | Cross-domain reference (F.1) and channel (F.3) interfaces | `packages/project-model/src/references` · `packages/project-model/src/channels` — shared runtime-safe interfaces with no editor/renderer dependency; their accepted readiness is recorded in the [gate register](../roadmap/README.md#gate-register) |
 | Plan presentation | T1.P01.S02 adds the orthographic Plan reading and Layout Plan representation over compiled geometry. The current Stage draws the canonical geometry in both readings; Plan membership, Reveal, Index and hit eligibility use the representation, but it does not draw a Plan cut. Plan-cut rendering remains future work |
@@ -306,9 +306,9 @@ primitive, and its spatial role is derived: Walls taking part in a closed
 enclosure bound it, a Wall that encloses nothing is free-standing, and a Wall
 drawn across an enclosed Room divides it, producing the derived Room topology
 through the canonical compiler and its lineage. Rooms stay derived, and no Room
-geometry becomes editable. *Current encoding until an explicit Layout cutover:*
-the wall-first document stores an authored `role: 'boundary' | 'partition'`, and
-only `boundary` Walls take part in face extraction (`LayoutWallRole`). The editor
+geometry becomes editable. *Pre-format-6 encoding (retired):* the wall-first
+document used to store an authored `role: 'boundary' | 'partition'`, and only
+`boundary` Walls took part in face extraction. The editor
 that drew a chain and planned role changes was removed by #115, so nothing in
 the product writes the authored role today; the cutover retires creator-chosen
 roles as creator-facing operations, and Layout must decide two things then:
@@ -329,7 +329,7 @@ component contracts under [`components/`](./components/).
 
 ## Geometry boundary
 
-`LayoutDocument` = authored semantic CAD. `CompiledLayoutGeometry` = derived,
+`LayoutDocumentWallFirst` = authored semantic CAD (Junctions, Walls, persistent Rooms, Wall-hosted Openings, objects). `CompiledLayoutGeometry` = derived,
 cacheable, renderer-neutral, never serialized; both are owned by
 `@portfolio/layout-core`. No SVG strings, `THREE.*`, DOM,
 WebGL/WebGPU handles, materials, cameras, or UI state below the layout

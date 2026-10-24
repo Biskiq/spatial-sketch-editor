@@ -1,4 +1,6 @@
-import type { DraftSegment, LayoutOpening, LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from './layout-coordinates';
+import type { CompilerOpening } from './layout-geometry-types';
+import type { DraftSegment } from './layout-path';
 import type { CompiledArchProfile, CompiledWallSection } from './layout-geometry-types';
 import {
 	pointAlongSamples,
@@ -28,7 +30,7 @@ export type WallOpeningInterval = {
 	endDistance: number;
 	sillHeight: number;
 	height: number;
-	profile: LayoutOpening['profile'];
+	profile: CompilerOpening['profile'];
 };
 
 export function lineLength(start: LayoutVec2, end: LayoutVec2): number {
@@ -36,7 +38,7 @@ export function lineLength(start: LayoutVec2, end: LayoutVec2): number {
 }
 
 export function buildArchProfile(
-	kind: LayoutOpening['profile'],
+	kind: CompilerOpening['profile'],
 	width: number,
 	height: number,
 	epsilon = ARCH_PROFILE_EPSILON
@@ -84,7 +86,7 @@ export function archProfileTopAt(profile: ArchProfile, x: number): number {
 
 export function openingIntervals(
 	segment: SampleableSegment,
-	openings: readonly LayoutOpening[]
+	openings: readonly CompilerOpening[]
 ): WallOpeningInterval[] {
 	return openings
 		.filter((opening) => opening.segmentId === segment.id)
@@ -107,7 +109,7 @@ export function openingIntervals(
  */
 export function splitWallAroundOpenings(
 	segment: SampleableSegment,
-	openings: readonly LayoutOpening[],
+	openings: readonly CompilerOpening[],
 	wallHeight: number
 ): CompiledWallSection[] {
 	return splitSampledWallAroundOpenings(sampleSegment(segment), segment, openings, wallHeight);
@@ -116,7 +118,7 @@ export function splitWallAroundOpenings(
 export function splitSampledWallAroundOpenings(
 	sampled: SampledSegment,
 	segment: SampleableSegment,
-	openings: readonly LayoutOpening[],
+	openings: readonly CompilerOpening[],
 	wallHeight: number
 ): CompiledWallSection[] {
 	const length = sampled.length;
@@ -170,7 +172,7 @@ export function splitSampledWallAroundOpenings(
 
 export function offsetInsideOpeningIntervals(
 	offset: number,
-	openings: readonly Pick<LayoutOpening, 'offset' | 'width'>[],
+	openings: readonly Pick<CompilerOpening, 'offset' | 'width'>[],
 	epsilon = 1e-6
 ): boolean {
 	return openings.some((opening) => {
@@ -187,7 +189,7 @@ export function offsetInsideOpeningIntervals(
  */
 export function wallPolylinesAroundOpenings(
 	samples: readonly CurveSample[],
-	openings: readonly Pick<LayoutOpening, 'offset' | 'width'>[]
+	openings: readonly Pick<CompilerOpening, 'offset' | 'width'>[]
 ): LayoutVec2[][] {
 	if (samples.length === 0) return [];
 	if (samples.length === 1) return [[[...samples[0]!.point] as LayoutVec2]];
