@@ -7,13 +7,11 @@ lives in [assets](../../../../reference/components/assets.md#creator-model-impor
 
 ## Acceptance and source identity
 
-**Owner-override accepted 2026-10-24** for PR #185 at implementation tree `082e384c`. The branch head
-differs from that tree only by documentation. The owner's closeout request states that the owner
-reviewed the slice, the review fixes are pushed and the merge gate passed, and it authorizes closeout
-and merge. That ruling waives the current-revision independent-verdict prerequisite: the independent
-review recorded in the full record covers the pre-fix revision, and no separate verdict is recorded for
-the post-review fixes `5d86ebbf`, `4dcf3765` and `f8ebf4d5`. The status is `owner-override`, never
-`reviewed`.
+**Accepted 2026-10-24** for PR #185 at implementation tree `082e384c`. The branch head differs from
+that tree only by documentation. The independent review recorded in the full record covers the pre-fix
+revision; the owner's review of the post-review fixes `5d86ebbf`, `4dcf3765` and `f8ebf4d5` is the
+current-revision verdict (owner ruling 2026-10-24), so no prerequisite is waived. The merge gate passed
+on that tree.
 
 Owner decisions carried from the slice (recorded, not re-decided here):
 

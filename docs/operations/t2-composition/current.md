@@ -9,7 +9,7 @@ PHASE: T2.P02 Own model import (registered 2026-10-22, batch E; in progress, S03
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
 SLICES: T2.P02.S01 is shipped with owner-override acceptance 2026-10-23 →
         ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md
-        T2.P02.S02 is shipped (PR #185) with owner-override acceptance 2026-10-24 for implementation
+        T2.P02.S02 is shipped (PR #185), accepted 2026-10-24 for implementation
         tree `082e384c` →
         ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/acceptance.md
 BATON: S02 delivers the own-GLB import procedure (review, scale/pivot/footprint/contact, approve),
