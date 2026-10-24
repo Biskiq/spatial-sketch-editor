@@ -25,8 +25,8 @@ export type ApprovedModelSources = {
 };
 
 type CachedBytes = {
+	/** The object URL is the only handle kept; the Blob behind it owns the bytes. */
 	readonly url: string;
-	readonly bytes: Uint8Array;
 	refs: number;
 };
 
@@ -40,7 +40,7 @@ function acquire(hash: string, bytes: Uint8Array): string {
 		return existing.url;
 	}
 	const url = URL.createObjectURL(new Blob([bytes.slice() as unknown as BlobPart], { type: 'model/gltf-binary' }));
-	cache.set(hash, { url, bytes, refs: 1 });
+	cache.set(hash, { url, refs: 1 });
 	return url;
 }
 
@@ -111,11 +111,12 @@ export async function resolveApprovedModels(
 		if (seen.has(pin.assetId)) continue;
 		seen.add(pin.assetId);
 		// Two instances of one immutable revision share one fetch and one URL: the
-		// pin hash is the byte identity, so the second instance adds a reference
-		// rather than downloading the same derivative again.
-		const alreadyResolved = acquired.includes(pin.hash) ? retainExisting(pin.hash) : null;
-		if (alreadyResolved !== null) {
-			urls.set(pin.assetId, alreadyResolved);
+		// pin hash is the byte identity, so a live cache entry, whether taken by
+		// this resolution or an earlier one still held, adds a reference rather
+		// than downloading the same derivative again.
+		const retained = retainExisting(pin.hash);
+		if (retained !== null) {
+			urls.set(pin.assetId, retained);
 			acquired.push(pin.hash);
 			continue;
 		}
