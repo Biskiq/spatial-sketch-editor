@@ -88,8 +88,9 @@ are proposals the implementation may refine within the same owner and directory.
 | `packages/project-model/src/scene-planning/**` (`planners.ts` `SCENE_PLANNER_ADMISSION` per-planner resources grant, operations, support) | T2; T1.P02.S05 also edits `scene-planning/frame.ts` | Atomic resource + lock + entity placement; serialize with S05 per the [shared-file table](../../../cross-track-execution.md#shared-files-and-merge-protocol) |
 | `packages/project-model/src/units/**` (resource staging in `units/planning.ts`, barrels) | T2 writes; T3 F2 review | Only what the resources grant needs; T3.P02.S02 also edits `units/planning.ts` — serialize per the shared-file table |
 | `apps/editor/src/lib/museum/assets/AssetModel.svelte`, `apps/editor/src/lib/visitor/VisitorEntities.svelte` and the Preview threading | T2; T3 reviews Preview, visitor boundary checks unchanged | Runtime-safe approved-derivative resolution, fetch/cache/dispose |
-| Stage host/Card/Find contribution extension (`apps/editor/src/lib/authoring/stage/**`, shell) | T1 writes or reviews a bounded T2 patch | Editable Card facts, Library/Head Find invocation; serialize with T3's host patch per the shared-file table |
+| Stage host/Card/Find contribution extension (`apps/editor/src/lib/authoring/stage/**`, shell) | T1 writes or reviews a bounded T2 patch | Library/Head Find invocation and runtime-safe model input; the Card stays read-only with its name writer (owner decision 2026-10-23), numeric edits live in the adapter instrument; serialize with T3's host patch per the shared-file table |
 | `apps/api/src/{app.ts,model-persistence.ts}`, `apps/api/migrations/` only if required | T2 during S02 | Only what the import journey needs; S01's immutable byte route is reused, not duplicated |
+| `apps/api/src/model-structure.ts` | T2 during S02 | The approval gate's own structure rule: admit the fallback declaration a *required* `EXT_meshopt_compression` writes into a GLB, keep refusing an optional one (owner decision 2026-10-24); `check:api` and DB-backed `test:api` required |
 | Tests: `apps/editor/tests/lib/authoring/scene/**`, `tests/lib/project-model/{model-resource-admission,place-object-candidate,scene-operation-planners}.test.ts`, `tests/lib/visitor/**`, `apps/api/tests/model-resources.test.mjs`; perf: a new import/place flow under `apps/editor/perf/flows/` | T2 | Contract, lifecycle, boundary, DB-backed API and F5/F6/F13/first-load evidence |
 
 **Dependencies.** Licensing is [undecided](../../../../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction).
@@ -108,13 +109,15 @@ session through the one host lifecycle. Resume revalidates project/epoch/source 
 The domain adapter owns values, validation and intents; host chrome only renders and routes them.
 
 The landed generic Card exposes read-only facts and a name writer, not all Round 2 numeric writers.
-Before build, specify the smallest T1-reviewed contribution extension for editable Scene facts
-(field identity/label/unit/value, live read-only state, commit/refusal and focus return), Library/Head
-Find invocation, and any required runtime-safe model-render input. Numeric edits and rays submit the
-same domain intents. This is a bounded consuming-slice integration patch, not a prerequisite to
-rebuild the entire shell. T2 must stop and report any host/shell/route need to T1; no unilateral edits
-there or new host state/selection/acceptance authority. Record the agreed file owner and merge order
-before that patch is built. Unavailable domain operations receive no handle or writable field.
+**Owner decision 2026-10-23 (option b):** this slice does not add a writable numeric Card fact — that
+would be a new host interface. The Card keeps its landed read-only facts and name writer, and numeric
+entry (metres per source unit) stays in the adapter instrument, which owns its fields, units,
+finite-value validation, explicit commit and focus return. Library/Head Find invocation and the
+runtime-safe model-render input are the only host-side contributions; both landed through existing
+paths. Any future editable Card fact is a separate T1-reviewed extension, not a prerequisite to
+rebuild the shell. T2 stops and reports any further host/shell/route need to T1; no unilateral edits
+there or new host state/selection/acceptance authority. Unavailable domain operations receive no
+handle or writable field.
 
 T2 owns Scene/resources closure, planners/adapters, Import and necessary API changes. Shared
 `units/**` changes need T3's F2 review and serialized merging. F4 host changes need T3 review.
@@ -133,15 +136,19 @@ placements or changed pins. Expired staging restarts honestly; access-triggered 
 current behavior, with no background worker promised here.
 
 Keep selection while reviewing; approval alone changes no source/history/selection. Floor placement
-selects the accepted entity. Invalid or stale placement refuses locally with no partial resource,
+selects the accepted entity. **Owner decision 2026-10-24 (keep):** a placed creator model is not
+observably selected in the shipped UI — the Compose Delete task still reports `Compose no entity`
+after a floor commit, so selection of a Scene-only subject is recorded as a follow-up rather than
+extended inside this slice, and the F13 harness reverses each accepted placement with Undo. Invalid or stale placement refuses locally with no partial resource,
 lock, entity or history entry. Source validation, API pin mismatch, missing bytes and decode failure
 show distinct reasoned states; a fallback must not be reported as successful mapped-model rendering.
 
 The whole procedure and placement have keyboard paths, visible labels/focus, progress announcements,
-reachable Cancel and local refusal text. Card fields support units, finite-value validation and
-explicit commit; blur never commits. During a ray gesture the field displays the live value without
-becoming a second writer. Esc unwinds numeric entry/proposal/procedure deliberately; focus returns
-to the invoking Library/Find control. Narrow desktop and reduced motion preserve reachable controls,
+reachable Cancel and local refusal text. Numeric fields (in the adapter instrument; a Card field only
+under a later host extension) support units, finite-value validation and explicit commit; blur never
+commits. During a ray gesture the field displays the live value without becoming a second writer. Esc
+unwinds numeric entry/proposal/procedure deliberately; focus returns to the invoking Library/Find
+control. Narrow desktop and reduced motion preserve reachable controls,
 Stage context and explicit Preview return. No wireframe keymap is adopted by implication.
 
 ## Acceptance and evidence

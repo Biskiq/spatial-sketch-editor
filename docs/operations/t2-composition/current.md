@@ -37,8 +37,10 @@ CLAIM:  Shared files claimed before edit, patch base `fff7dc14`:
          `visitor/VisitorPreviewSurface.svelte`) — T2 writer for the approved-model resolution input;
          T3 reviews Preview/visitor-boundary unchanged (bounded prop threading only).
        · `apps/editor/perf/flows/**` — new S02 flow only; shared harness/fixture edits untouched.
-       · `apps/api/src/{app.ts,model-persistence.ts}` — claimed but so far UNCHANGED: S01's routes are
-         reused, not duplicated. Any edit needs `check:api` + DB-backed `test:api`.
+       · `apps/api/src/{app.ts,model-persistence.ts}` — S01's routes are reused, not duplicated.
+       · `apps/api/src/model-structure.ts` — the import's own structure gate: the required
+         EXT_meshopt_compression fallback declaration was admitted (owner decision 2026-10-24).
+         Any API edit needs `check:api` + DB-backed `test:api`.
 NEXT:  S02 implementation is COMPLETE on `t2/p02-s02-import-review-approve-place` and the
        implementation-PR merge gate is green on the idle machine (`npm run test` 186/2,414; fast
        155/2,113; arch 176; heavy 125; `check`/`check:api`/`check:project-model` 0 errors; build;
@@ -52,11 +54,24 @@ NEXT:  S02 implementation is COMPLETE on `t2/p02-s02-import-review-approve-place
        staging omitted `recipe` (every approve was a 400) and a GLB source collided with its own
        derivative path. [acceptance.md](../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/acceptance.md)
        records the evidence, the review dispositions, the licence table and the explicit unrun rows.
+       A second, engine-level import run (S box and M ~9k-triangle sphere, 512 px maps) then found a
+       third integration defect: a meshopt-compressed GLB carries an EXT_meshopt_compression fallback
+       buffer that the container never holds, and the API's structure gate refused the larger model
+       (`buffer-out-of-bounds`) once that declaration exceeded the BIN chunk. Fixed per owner decision
+       2026-10-24: the recipe requires the extension, and the gate admits a required fallback
+       declaration while still refusing an optional one (both sides tested). The harness flow
+       `apps/editor/perf/flows/import.spec.ts` now exists and ran a reduced pre-flight pass
+       (`PERF_RUNS=1`, labelled not-acceptance): F5/F6 S and M × cold/warm/repeat-use, and F13
+       10 × place-another + Undo with post-GC heap 9.51 → 12.42 MiB (+2.91 MiB). Owner decision
+       2026-10-24 also KEPT one observed gap unfixed: a placed creator model is not canonically
+       selected by any reachable UI path (the Compose Delete task needs a selection, and 3D picking
+       does not exist yet), so F13 removes each cycle through the Head's Undo instead. Reference-
+       machine budgets, GPU-memory rows and the remaining shell observations stay owner-run.
        OWNER ACCEPTANCE IS OWED and the PR is not merged. Unrun: the remaining shell observations
        (selection/rest, cancel at each step, offline retry, keyboard-only, narrow desktop, reduced
        motion, Preview exit), Preview pixels (Preview needs an admitted Experience — Experience lens
-       scope), all F5/F6/GPU/F13 flow rows, Draco/KTX2 sources, the >25 MiB derivative cap, the real
-       R2 deployment and the worker-boundary timing.
+       scope), the reference-machine F5/F6/F13 budgets and the GPU-memory row, Draco/KTX2 sources,
+       the >25 MiB derivative cap, the real R2 deployment and the worker-boundary timing.
        STOP-AND-REPORT: editable numeric Card facts need T1's agreement before build (a new host
        interface); this PR keeps the landed read-only Card facts and puts numeric edits in the
        adapter instrument.

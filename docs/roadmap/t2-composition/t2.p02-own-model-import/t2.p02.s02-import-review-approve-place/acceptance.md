@@ -16,8 +16,9 @@ Authorization: [post-Batch-E owner release](../../../../reference/decisions/post
   [T2 baton](../../../../operations/t2-composition/current.md) with eligibility and cycle check.
 - **Tested tree:** that base plus this slice's diff — 24 modified files and 14 new files, 4,835
   insertions / 147 deletions before the documentation edits on this page (the browser run added one
-  test file and three source edits on top of the first commit). The PR head is the same tree plus
-  this record.
+  test file and three source edits on top of the first commit). A second pass then added the import
+  perf flow and the meshopt-admission fix (recipe + API gate) described below. The PR head is the same
+  tree plus this record.
 - **Machine:** owner's MacBook Air M2 / 16 GB, macOS (local checkout). Node/npm per the repository
   lockfile; Playwright browsers as installed by the harness.
 - **Databases:** DB-backed API evidence used the lane's own Compose stack —
@@ -48,6 +49,7 @@ Authorization: [post-Batch-E owner release](../../../../reference/decisions/post
 | Resource and definition must agree about the approved object | **Pass** | `planners.ts` compares confirmed footprint/contact and the definition's provenance digest with the introduced payload; `model-resource-admission.test.ts` covers the translation, `scene-operation-acceptance.test.ts` the mismatch refusal |
 | A real textured source survives import → approve → place → Save → reopen | **Pass (browser)** | One 2 m box with a 2050 × 2050 map: review reported `1 nodes · 1 meshes · 12 triangles · 1 textures`, `Textures capped at 2048 px: 1 reduced`, footprint 2.000 × 2.000 m, contact 0.000 m. The uploaded derivative (21,540 bytes) decodes to nodes `paint-box` + `creator-import-pivot` and a `image/webp` 2048 × 2048 texture. The model rendered in 3D, Save persisted it, and a fresh load rendered it again from the pin. |
 | Saved project holds resource + lock + entity for that placement | **Pass (API read)** | `GET /projects/:id` on the saved row: one `model` resource with a `sha256-…` pin (mime `model/gltf-binary`, 21,540 bytes), one `resource:model` lock at the same hash, one `kind: 'model'` entity naming that resource. |
+| Approval gate admits a required `EXT_meshopt_compression` fallback and refuses an optional one | **Pass** | recipe: `scene-import-ingest.test.ts` requires the extension and proves the BIN chunk is the only carried buffer; gate: `apps/api/tests/model-resources.test.mjs` approves the required-fallback GLB and refuses the same GLB without the extension in `extensionsRequired` |
 | Contact/Plan/render agreement for an approved model | **Pass (unit)** | `scene-model-render.test.ts`: Plan draws the confirmed footprint and rotates with yaw; the session's contact answers come from the envelope; Resize/Duplicate are offered only with an approved contact. Rendered pixels unrun |
 | Two instances share one immutable resource; independent identity | **Pass (unit)** | same file: one fetch and one object URL per hash with a reference per instance; disposal releases exactly the acquired references; a second resolution acquires again |
 | A failed model is reasoned, not dressed as loaded | **Pass (unit)** | same file: failures are reported per resource; the route shows the first reason in its status note |
@@ -64,14 +66,15 @@ All commands from the repository root unless noted; each ran on the tested tree.
 | --- | --- |
 | `npm run check:project-model` | pass, 0 errors |
 | `npm run check` (editor, svelte-check) | pass, 0 errors, 0 warnings |
-| `npm run check:api` | pass (no API source changed) |
-| `npm run test` (full unconditional suite, the merge gate) | **186 files / 2,414 tests passed** |
+| `npm run check:api` | pass, 0 errors (`model-structure.ts` changed) |
+| `npm run test` (full unconditional suite, the merge gate) | **186 files / 2,415 tests passed** |
 | `npm run test:arch` | 22 files / 176 tests passed |
 | `npm run test:heavy` | 9 files / 125 tests passed |
 | `npm run test:fast` | 155 files / 2,113 tests passed |
 | `npm run build` | pass (`vite build`; worker emitted as its own ES chunk) |
 | `npm run perf:bundle` | pass; Import/decoder chunks outside every route load set (numbers above) |
-| `npm run test:api:stack` (`BISKIQ_STACK=biskiq-t2`, DB port 5434) | 95 pass, 0 fail, **0 skipped** |
+| `npm run test:api:stack` (`BISKIQ_STACK=biskiq-t2`, DB port 5434) | 96 pass, 0 fail, **0 skipped** |
+| `npx playwright test --config perf/playwright.config.ts flows/import.spec.ts` (preview on `:5173`, local API on `:8788`, `PERF_RUNS=1 PERF_WARMUP=1`) | 2 passed; six F5/F6 rows (S and M × cold/warm/repeat-use) and one F13 row, reduced pre-flight — numbers below |
 
 **Load-sensitive timeouts observed and re-run clean.** While a sibling lane's Playwright perf run
 held the machine (load average ~45), five files exceeded the 5 s per-test budget — always as
@@ -114,6 +117,24 @@ The uploaded derivative was read back independently: 21,540 bytes, nodes `paint-
 `creator-import-pivot`, one `image/webp` texture at 2048 × 2048 (source 2050 × 2050). No page errors;
 the only failed request in the console was a favicon 404.
 
+### Findings from the second (engine-level) run (fixed)
+
+The import/perf pass ran the shipped preview against the lane API stack with generated models: an S
+1 m box and an M ~9k-triangle sphere, both with 512 px maps. It found a third integration defect and
+closed it:
+
+- **A meshopt-compressed derivative was refused once its fallback declaration grew.** The browser
+  recipe writes the derivative through `@gltf-transform`; with `EXT_meshopt_compression` registered
+  the writer emits the extension's fallback buffer as a second, URI-less buffer even when the
+  extension is required, while the GLB container carries only the compressed BIN chunk. S slipped
+  through by size (552 declared vs 816 BIN bytes); M was refused at approval
+  (`400 model_structure_refused: buffer-out-of-bounds: $.derivative.buffers[1] declares 150356 bytes
+  and the BIN chunk carries 55108`). Fixed per owner decision 2026-10-24 (item 3): the recipe now
+  marks `EXT_meshopt_compression` required (the derivative genuinely needs it), and the API's
+  structure gate admits a fallback declaration only for a required extension, still bounding its
+  views by the declared length and still refusing an optional one. Both sides have their own test.
+  Re-run: S and M approve (`200`), and the M derivative is 57,468 bytes.
+
 ### Findings from the browser run (fixed)
 
 The first two attempts failed at seams the unit tests could not see. Both are fixed and covered:
@@ -154,13 +175,20 @@ only checks structure and pins. No copyleft, source-available or unclear licence
 2. **Preview rendering of an actual mapped derivative.** Wiring, props and boundary rules are in
    place and unit-tested; no browser run shows the model inside Preview. Preview refuses to open
    without an admitted Experience (`Create an Experience in the Experience lens to Preview it.`),
-   and authoring one is the Experience lens's own scope, not this slice's.
-3. **Performance rows.** No F5 admission long tasks / worker time / peak heap / GPU-memory delta /
-   chosen→placed, no F6 S/M placement timing, no hard GPU row at M, no F13 repeated
-   import/place/delete with shared-instance disposal, and no `apps/editor/perf/flows/` import flow.
-   Rationale: the flow needs an authenticated stack and a real import fixture, so authoring it
-   without a way to run it would ship an unverified spec. The bundle/load-set evidence above is the
-   only delivery-side row recorded. These remain owed on this machine before acceptance.
+   and authoring one is the Experience lens's own scope, not this slice's. **Owner decision
+   2026-10-23: accepted on the wiring and boundary evidence; S03 rechecks Preview with a real
+   mapped derivative.**
+3. **Performance rows — pre-flight only.** `apps/editor/perf/flows/import.spec.ts` now exists and ran
+   on this machine against the lane's local API (reduced pass: `PERF_RUNS=1`, one warm-up), so these
+   are **not** acceptance evidence and no hard budget is claimed. F5/F6 S: admission 1078 ms (cold) /
+   978 (warm) / 935 (repeat), approve 2555 / 2608 / 2648, chosen→placed 4178 / 4158 / 4115; M:
+   admission 1136 / 1000 / 1278, approve 3198 / 2737 / 3257, chosen→placed 4876 / 4283 / 5074; peak
+   heap 9.6 MiB (S) and 12.8 MiB (M) against 7.9 MiB before. F13 (10 × place-another + Undo, one warm
+   context): post-GC heap 9.51 → 12.42 MiB, +2.91 MiB, the 5 MiB budget's first pre-flight reading.
+   Still owed on the reference machine, as the contract requires: ten measured runs per row,
+   worker-thread time split out, the GPU-memory row at M (`GPU memory is not exposed by Chromium`),
+   and F5/F6/F13 at the contract's full workload. F13 removes each cycle through the Head's Undo, not
+   the Compose Delete task — see the kept selection gap below.
 4. **Conditional decoders with real sources.** The WebP encode and the `2048 px` cap are now proven
    with a real 2050 px map (see the browser row), but a Draco-compressed source and a real KTX2
    (`KHR_texture_basisu`) source were not exercised.
@@ -203,14 +231,22 @@ their disposition:
 
 ## Stop-and-report items (host/shell and scope)
 
-1. **Editable Card facts are not implemented.** The plan's bounded host contribution names editable
-   Scene facts (field identity/label/unit/value, live read-only state during a ray, commit/refusal,
-   focus return) plus Library/Head Find invocation. Find/task/instrument invocation ships here through
-   the existing `stage-instrument-v1` contributions and needed no host change; a **writable numeric
-   Card fact would be a new host interface** and, per the plan, T2 must not add host authority
-   unilaterally. Scene numeric edits therefore stay in the adapter's instrument, and the Card keeps
-   its landed read-only facts plus the name writer. This needs T1's agreement (and T1's file
-   ownership) before it can be built; it is **not claimed** and not silently narrowed.
+1. **Placed creator model is not selected — kept as a gap (owner decision 2026-10-24, item 4).** The
+   adapter's placement completion asks the Stage to select the new entity, but a local browser run
+   shows the Head/Index still on the previous Layout subject immediately after a floor commit
+   (~250 ms and 2.5 s), so the Compose `Delete` task answers `Compose no entity` with Delete
+   disabled, and no 3D picking path exists to select it by hand. The cause was not resolved here;
+   the owner kept this gap rather than extending the slice, so the F13 flow reverses each placement
+   with Undo and the browser journey stops at place → Save → reopen. Selection of a Scene-only
+   subject (and the Delete/Resize/Duplicate affordances that need it) is a follow-up for T1/T2, not
+   claimed by this record.
+
+1. **Editable Card facts — resolved as not in scope (owner decision 2026-10-23, option b).** The plan
+   is amended: the Card keeps its landed read-only facts and name writer, and numeric entry stays in
+   the adapter instrument, which owns units, finite-value validation, explicit commit and focus
+   return. Find/task/instrument invocation ships through the existing `stage-instrument-v1`
+   contributions and needed no host change. No writable numeric Card fact is built or claimed; a
+   future one is a separate T1-reviewed extension, not a prerequisite for this slice.
 2. **Host patch inside this PR, for T1 review:** `authoring/stage/shell/StageCanvas.svelte`
    (`modelUrls` prop → `VisitorEntities`), `authoring/stage/host-acceptance.ts` (the host's resource
    staging grant), and the route's approved-model resolution/threading. These are the only Stage-side
