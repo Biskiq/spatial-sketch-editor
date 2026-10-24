@@ -5,7 +5,8 @@ PHASE: T1.P02 Native Wall creation →
        T1.P01 closed 2026-10-21; its registered slices are shipped.
 ACTIVE: T1.P02.S05 — legacy Layout retirement. Implementation, independent review and the complete
        implementation-PR merge gate are done in worktree `batch-2026-10-23/T1.P02.S05` on branch
-       `t1/p02-s05-legacy-layout-retirement` (trusted base `main` fff7dc14); PR opened, NOT merged.
+       `t1/p02-s05-legacy-layout-retirement` (trusted base `main` fff7dc14) at implementation
+       commit 4b385b33; PR #183 is open and NOT merged.
        Evidence: ../t1.p02.s05-legacy-layout-retirement/acceptance.md. S01 shipped by scoped
        owner-override; the phase remains active.
 NEXT: Owner acceptance of the open PR, including the plan's named owner reviews — T3 (reader/Camera)

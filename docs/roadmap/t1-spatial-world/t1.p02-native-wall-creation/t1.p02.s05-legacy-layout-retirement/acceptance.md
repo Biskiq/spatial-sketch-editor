@@ -56,8 +56,8 @@ dependencies: **none**.
 ## Gate evidence
 
 ```text
-revision tested    worktree tip of t1/p02-s05-legacy-layout-retirement, trusted base main fff7dc14
-                   (recorded again in the PR body; this worktree is uncommitted at gate time)
+revision tested    implementation commit 4b385b33 on t1/p02-s05-legacy-layout-retirement,
+                   trusted base main fff7dc14; PR #183 (open, not merged)
 npm run check                  0 errors, 0 warnings (svelte-check)
 npm run check:layout-core      clean (tsc --noEmit)
 npm run check:project-model    clean (tsc --noEmit)
