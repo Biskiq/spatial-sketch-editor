@@ -7,8 +7,8 @@
 
 ```text
 STATUS:   evidence recorded at the merged revision; acceptance-review round 4 (F1–F5) fixed and gated;
-          performance and unrun rows DEFERRED by owner ruling (2026-10-24); owner acceptance PENDING
-          (the slice can be accepted only as owner-override, not as reviewed)
+          performance and unrun rows DEFERRED by owner ruling (2026-10-24); T1 host-patch review
+          approved; ACCEPTED 2026-10-24 as owner-override (not reviewed)
 REVISION: merge bf6b2e1f (origin/main 0b96c577 merged into the branch) plus the round-4 fix commit;
           the gate ran on that working tree, which is the fix commit's tree (SHA in handoff.md COMMITS)
 CLAIMS:   only the rows below, at that revision, on this machine
@@ -188,10 +188,62 @@ claim of passing.
   profiling of the S→M project-open slope, and a contract tier amendment — **outside this slice**;
 - because a gate row is deferred, **the slice can only be accepted as `owner-override`, not `reviewed`**.
 
+## T1 review of the host patch (2026-10-24)
+
+The plan requires T1 review of the bounded host patch before merge. Reviewed at `335820d6` as one diff
+against `main` `0b96c577`: `routes/project/[projectId]/spatial/+page.svelte`,
+`authoring/stage/camera-session.ts` and the `.lens-surface` placement.
+
+- `CameraSession` gains `handOffToPreview` / `returnFromPreview` / `cancelPreview` / `previewTicket`.
+  They mirror the landed `replaceInspection` / `returnInspection` / `cancelInspection` over the same F3
+  `replaceCameraOutput` / `returnCameraOutput` / `cancelCameraOutput` calls. The output identity,
+  session epoch and source revision are unchanged, and a source rebase clears both claims. This adds
+  no host authority, no general shell API and no facade-contract change. **Approved.**
+- Host wiring has three parts:
+  - Preview entry resolves first, loads the chunk second and moves ownership last, rechecking the
+    session token and facade after the await;
+  - a refused return re-acquires the inspection claim;
+  - the Head and Index are unmounted while Preview owns the output, and the Stage measure loop is
+    guarded.
+
+  This reads correctly, and no Stage intent can present against an output the Stage does not hold.
+  **Approved.**
+- The warm surface lifetime is dropped with its source on `activate`, and after round 4 it is idle while
+  hidden (zero WebGL draws, browser-asserted). **Approved.**
+- **Deferred T1 seam:** the host `EditorCard` exposes no Experience contribution seam, so Presentation
+  and Stop facts stay in the Experience lens inspector. That is recorded, not built here.
+- **Shared-file note:** PR #185 (T2.P02.S02) also edits `+page.svelte` and `VisitorPreviewSurface.svelte`.
+  Whichever merges second merges `main` and reruns its gate.
+
+## Acceptance (2026-10-24)
+
+**Accepted as `owner-override`** at `335820d6` (merge `bf6b2e1f` of `main` `0b96c577` plus the round-4 fix).
+The owner delegated acceptance, closeout and merge after re-review ("you authorize the close out and merge
+after re-review and acceptable state"). The acceptance-review re-review (round 4) found F1–F5 resolved. The
+evidence:
+
+- F1 is asserted by the zero-draw journey with its positive control;
+- F2 by the Guide-key journey;
+- F3 by five refusal contracts;
+- F4 by the merged-tree gate above;
+- F5 by the corrected spec and relabelled rows.
+
+`owner-override`, not `reviewed`, because the gate rows in the
+[owner ruling](#owner-ruling--performance-and-unrun-rows-deferred-2026-10-24) are deferred rather than
+met. Two further points on the full suite:
+
+- it ran at 2403/2405, and both failures were 5 s timeouts under host load ≈ 58 that pass in isolation
+  (25/25, 36/36). That is accepted on the same basis the owner ruled for T1.P02.S05 on 2026-10-23
+  (affected files passing alone; no full-suite rerun), and is recorded here rather than claimed as a
+  clean run;
+- every other lane passed at this revision, including `test:api` 95/95 with 0 skips.
+
+Accepting this record makes P02 **closable**, not closed.
+
 ## Owner disposition required
 
-1. Accept or reject this record as the phase's final-gate evidence. **Open:** the owner re-reviews and
-   records the acceptance; the slice is **not** accepted here, and registers, baton and closeout are untouched.
+1. Accept or reject this record as the phase's final-gate evidence. **Accepted as `owner-override`**
+   (2026-10-24) — see [Acceptance](#acceptance-2026-10-24).
 2. Performance: **deferred by the [owner ruling (2026-10-24)](#owner-ruling--performance-and-unrun-rows-deferred-2026-10-24),
    Scope A.** No performance row is claimed as passing.
 3. Unrun rows: **deferred by the same owner ruling, Scope B.** Also recorded for the owner's
