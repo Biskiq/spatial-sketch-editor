@@ -209,7 +209,12 @@ export function createProjectApi(
 			)
 				.then(readSaveAcknowledgement)
 				.then((acknowledgement) => {
-					if (acknowledgement.projectId !== projectId) throw invalidResponse();
+					if (
+						acknowledgement.projectId !== projectId ||
+						(acknowledgement.savedRevision && acknowledgement.savedRevision.projectId !== projectId)
+					) {
+						throw invalidResponse();
+					}
 					return acknowledgement;
 				}),
 		deleteProject: (projectId, request, signal) =>

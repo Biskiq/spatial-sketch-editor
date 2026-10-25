@@ -26,8 +26,8 @@ NEXT:   1. Obtain T2 review of the [API handoff material](../../roadmap/t3-exper
            do not touch claimed files.
         3. Complete the T3-owned lifecycle API and remaining lifecycle/concurrency/cleanup probes
            after the T2 handoff review; the T1-owned dirty-state integration remains with its shell
-           review. Verification is exhaustive, but the owner has deferred all tests, builds and
-           other heavy verification until S06 is explicitly finished.
+           review. Verification is exhaustive; the owner authorized test/build execution on
+           2026-10-25. Lifecycle, DB-backed API, browser and performance obligations remain open.
         4. Keep draft PR #191 in draft while reviews and required verification remain pending; do
            not accept/close the slice or phase or merge it.
 RELEASE: ../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md
@@ -41,8 +41,8 @@ ROUTE:   ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project
          (closed gate artifacts remain stubs at their own paths: T3.P02.S02 and T3.P03.S02
          acceptance.md, anchors 8cc30c94 and a65db2e0, tags closed/T3.P02 and closed/T3.P03)
 BLOCKER: T2 review gates shared API edits. S06's recorded claim and required T1 review gate only the
-         shell patch. The reference-machine benchmark prohibits tests/builds/heavy verification
-         until the owner confirms S06 is finished; do not infer completion or poll for it.
+         shell patch. The 2026-10-25 verification authorization does not establish S06 completion,
+         release its shared shell/harness ownership, or accept this slice.
 CARRY:   T3.P02 Scope A (performance, deferred 2026-10-24, not claimed): traced Preview first frame;
          capture/bind completion; M-workload F10 rows; F13 re-measure; reference-machine run; Stage
          initial-load delta. Transferred as measurement to T1.P02.S06; a miss in T3-owned code is

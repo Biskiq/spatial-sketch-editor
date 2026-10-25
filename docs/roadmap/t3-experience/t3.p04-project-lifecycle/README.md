@@ -10,9 +10,9 @@ from merged coordination base `976323da9e18e96978649e595bc555021964631a` on 2026
 
 This is the separate C3 project rename/delete obligation assigned to T3 persistence/API and
 T1 shell integration by K4 in [Core Editor Stability](../../core-editor-stability.md#sequencing-findings).
-It is a proposed continuation after T3's Capture/Preview integrated final gate by capacity;
-it does not block the immediate parallel batch. The milestone's criteria and acceptance route
-remain separate owner decisions. Registration of planning is not a release of the hold.
+It was authorized and released as `T3.P04.S01` on 2026-10-24 after T3's Capture/Preview integrated
+final gate; it is strictly unrelated to the performance-first halt and does not block the immediate
+parallel batch. The milestone's criteria and acceptance route remain separate owner decisions.
 
 ## Bounded outcome and ownership
 

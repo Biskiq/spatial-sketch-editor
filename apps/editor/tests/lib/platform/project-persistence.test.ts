@@ -219,6 +219,56 @@ describe('project lifecycle transport', () => {
 		});
 	});
 
+	it('refuses a rename acknowledgement whose saved revision belongs to another project', async () => {
+		const { sourceContentId } = await fixture();
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async () =>
+				new Response(
+					JSON.stringify({
+						...acknowledgement(sourceContentId),
+						savedRevision: { projectId: 'project:other', revisionId: 'revision-other' },
+						name: 'Renamed project',
+						version: 4
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(
+			api.renameProject(PROJECT_ID, { name: 'Renamed project', precondition })
+		).rejects.toMatchObject({
+			name: 'ProjectPersistenceError',
+			code: 'server'
+		});
+	});
+
+	it('refuses a rename acknowledgement whose outer project ID differs', async () => {
+		const { sourceContentId } = await fixture();
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async () =>
+				new Response(
+					JSON.stringify({
+						...acknowledgement(sourceContentId),
+						projectId: 'project:other',
+						name: 'Renamed project',
+						version: 4
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(
+			api.renameProject(PROJECT_ID, { name: 'Renamed project', precondition })
+		).rejects.toMatchObject({
+			name: 'ProjectPersistenceError',
+			code: 'server'
+		});
+	});
+
 	it('sends the expected base on DELETE and preserves pending cleanup as a successful result', async () => {
 		const calls: { url: string; init: RequestInit }[] = [];
 		const api = createProjectApi({

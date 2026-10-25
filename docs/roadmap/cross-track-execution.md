@@ -87,7 +87,7 @@ flowchart TD
 | Released lane | Owning plan | Bounded responsibility / dependency |
 | --- | --- | --- |
 | T1.P02.S06 | [Performance foundation](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) | Peak-first, setup-free measurement on the M2; L/XL and realistic-load workloads; per-stage scaling evidence; algorithm work inside the one compiler and its consumers with equal-output proof; full-permissive library exploration; transferred S02 and T3 performance obligations; no product feature or format change |
-| T3.P04.S01 | [Project rename and delete](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) | Owner-scoped rename/delete, project-scoped resource cleanup and a bounded T1-reviewed shell patch; starts after [the release](../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md) merges, with T2's API handoff and the two [planning rulings](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md) before that behaviour freezes; no gate and no format change |
+| T3.P04.S01 | [Project rename and delete](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) | Owner-scoped rename/delete, project-scoped resource cleanup and a bounded T1-reviewed shell patch; implementation started after [the release](../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md) merged. R1/R2 were owner-ratified 2026-10-25 (see C3 below); T2's API handoff gates shared API edits, while T1 review and `T1.P02.S06`'s recorded claim gate the shell patch. The 2026-10-24 planning resolution retains proposal and cleanup history; no gate or format change |
 
 **Performance-first halt.** The [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
@@ -164,12 +164,14 @@ closeout updates only the owning baton; cross-track status stays in its owning r
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.
 - **C3:** [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) is **authorized and released**
-  as `T3.P04.S01` (2026-10-24) for rename/delete and guarded lifecycle, T3 persistence/API plus T1
-  shell integration. It is strictly unrelated to the halt, starts after its coordination PR merges,
-  and still needs T2's API handoff — including the write-lease fence on its two model writers —
-  before implementation. Its name/publication questions are **proposed** rulings awaiting the
-  owner's ratification, and its cleanup mechanism was corrected twice in review; the resolution names
-  both. Launch nothing beyond that release row.
+  as `T3.P04.S01` for rename/delete and guarded lifecycle, with T3 persistence/API and T1 shell
+  integration. It is strictly unrelated to the halt, and implementation started after coordination
+  PR #188 merged. R1/R2 were owner-ratified 2026-10-25 ([review on PR #188](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932)),
+  superseding the 2026-10-24 proposal history in the [planning resolution](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md).
+  T2's API handoff — including the write-lease fence on its two model writers — must be reviewed
+  before shared API edits. The bounded T1 shell patch still requires T1 pre-implementation review
+  and serialization behind `T1.P02.S06`'s recorded shell-file claim. The planning resolution also
+  records the cleanup corrections.
 - **T1/T2 continuation:** face-frame provider/solve-once wall placement, part admission and
   annotation, vertical/coordinate qualification and overhead families are planning triggers
   in the owning tracks. They are not accepted providers or newly released scopes.

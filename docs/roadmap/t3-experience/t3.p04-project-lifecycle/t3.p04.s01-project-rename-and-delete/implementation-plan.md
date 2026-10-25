@@ -28,8 +28,9 @@ unpublication. The behavior below is the current contract.
 The slice was released by the [T3 phase authorization](../../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)
 and started at merged base `976323da9e18e96978649e595bc555021964631a`. The runbook start checks
 confirmed the consumed gate versions active at that base and found no T3.P04.S01 architecture-cycle
-exposure hook. The exhaustive verification declaration remains in force; execution is deferred by
-the owner until T1.P02.S06 is explicitly finished.
+exposure hook. The exhaustive verification declaration remains in force. The owner authorized
+test/build execution on 2026-10-25; this does not establish S06 completion, release its shared
+shell/harness ownership, or accept this slice.
 
 ## Start and ownership dependencies
 

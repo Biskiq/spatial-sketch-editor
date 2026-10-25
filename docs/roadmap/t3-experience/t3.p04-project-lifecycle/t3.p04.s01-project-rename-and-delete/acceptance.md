@@ -7,9 +7,11 @@ no acceptance recorded.
 
 This is the declared **FINAL PHASE GATE** artifact. The owner ratified R1/R2 on 2026-10-25
 ([PR #188 review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932));
-the [implementation plan](./implementation-plan.md) carries those current rules. This PR records
-no completed acceptance, trusted/tested revision, review, gate/capability change or test result.
-Tests, builds, browser/API probes and other heavy verification are explicitly deferred by the owner
-until T1.P02.S06 is confirmed finished. The plan's exhaustive evidence belongs here after execution
-and independent review; passing makes P04 closable, not closed. The fence, late-write, inventory,
-publication, dirty-state and cleanup probes remain unrun.
+the [implementation plan](./implementation-plan.md) carries those current rules. The owner
+authorized test/build execution on 2026-10-25, superseding the earlier blanket deferral. This
+permits verification but does not establish S06 completion, release its shared shell/harness
+ownership, or accept this slice. No full-slice acceptance, gate/capability change or independent
+review is recorded here; lifecycle, DB-backed API, browser and performance obligations remain open.
+The plan's exhaustive evidence belongs here after execution and independent review; passing makes
+P04 closable, not closed. The fence, late-write, inventory, publication, dirty-state and cleanup
+probes remain unrun.
