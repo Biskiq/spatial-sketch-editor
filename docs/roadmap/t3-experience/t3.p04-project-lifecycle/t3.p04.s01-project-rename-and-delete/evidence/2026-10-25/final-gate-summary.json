@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-25",
+  "verificationCodeRevision": "7c7cea0dd6c1b4a3159d9c86a2e7879874a0800e",
+  "subsequentQaOnlyRevisions": [
+    "bbe4a03d0d5804d9c9de029e731768ea4d25b54f",
+    "4c0e3e6dc81fe71b77e5e264aa8b86bd3f661393"
+  ],
+  "commands": [
+    {
+      "name": "editor full suite",
+      "command": "npm run test -w @portfolio/editor -- --maxWorkers=4",
+      "status": "passed",
+      "files": { "passed": 190 },
+      "tests": { "passed": 2458, "failed": 0, "skipped": 0 },
+      "durationMs": 55940
+    },
+    {
+      "name": "architecture",
+      "command": "npm run test:arch",
+      "status": "passed",
+      "files": { "passed": 22 },
+      "tests": { "passed": 178, "failed": 0, "skipped": 0 },
+      "durationMs": 5320
+    },
+    {
+      "name": "heavy",
+      "command": "npm run test:heavy",
+      "status": "passed",
+      "files": { "passed": 9 },
+      "tests": { "passed": 125, "failed": 0, "skipped": 0 },
+      "durationMs": 30870
+    },
+    { "name": "editor check", "command": "npm run check", "status": "passed", "errors": 0, "warnings": 0 },
+    { "name": "editor build", "command": "npm run build", "status": "passed" },
+    { "name": "camera-core", "command": "npm run check:camera-core", "status": "passed" },
+    { "name": "layout-core", "command": "npm run check:layout-core", "status": "passed" },
+    { "name": "project-model", "command": "npm run check:project-model", "status": "passed" },
+    { "name": "API check", "command": "npm run check:api", "status": "passed" },
+    {
+      "name": "DB-backed API tests",
+      "command": "DATABASE_URL=postgresql://localhost/biskiq_t3p04s01_api_final_20261025 npm run test:api",
+      "status": "passed",
+      "tests": { "passed": 110, "failed": 0, "skipped": 0 },
+      "databaseCreatedForRun": true,
+      "databaseDroppedAfterRun": true,
+      "databaseName": "biskiq_t3p04s01_api_final_20261025",
+      "rawLog": "api-test.log"
+    }
+  ],
+  "notes": [
+    "The editor suite used four workers; its full-tree documentation test now has a test-specific 15-second timeout. The final suite completed with zero skips.",
+    "The architecture route assertion now allows the lifecycle action AbortController only through the session writer registry while keeping project reads on runBoundLoad.",
+    "No project or API source changed after the gate revision; later revisions corrected QA timing instrumentation and the local fixture lease policy.",
+    "The build passed with nonfatal Vite externalization warnings for node:fs, node:path, fs and path from @gltf-transform/core and draco3d.",
+    "After adding the verification report and evidence links, test:arch passed again: 22 files and 178 tests in 2.64 seconds."
+  ]
+}

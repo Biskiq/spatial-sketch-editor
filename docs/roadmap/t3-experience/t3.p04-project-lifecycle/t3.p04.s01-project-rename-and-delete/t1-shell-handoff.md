@@ -36,8 +36,12 @@ integration and verification boundary; it does not close T3.P04.S01 acceptance.
   rename through Undo/Redo/Save/reopen, active-publication refusal, current-project delete guarding,
   and stale completion after project replacement. The route and component test outcomes are recorded
   in the current T3 baton after the final affected test run.
-- `npm run check` is recorded in the T3 baton. Browser journeys, integrated accessibility review,
-  and performance verification remain open and belong to the integrated acceptance pass.
+- The final editor, architecture, heavy, build, package and DB-backed API gates passed; the results
+  and exact revision are recorded in the [T3 acceptance evidence](./evidence/2026-10-25/verification.md).
+- The integrated Chromium route journey passed through Hub, current Stage, dirty rename/delete,
+  stale responses, publication handling, cleanup retry, keyboard focus/escape, and 320×800 coarse
+  touch. Dedicated assistive-technology review and owner-operated F9 hard performance rows remain
+  open; the browser evidence does not accept or close this slice.
 
 ## Preserved boundaries
 
@@ -47,5 +51,5 @@ integration and verification boundary; it does not close T3.P04.S01 acceptance.
   Delete does not navigate away before the API acknowledges deletion; pending byte cleanup is shown
   separately from project-access deletion.
 - T3.P04.S01 remains in progress. This handoff is implementation evidence, not acceptance or merge
-  authorization. Keep draft PR #191 open while the integrated browser, accessibility, and performance
-  gates remain.
+  authorization. Keep draft PR #191 open while the owner-run performance and accessibility review,
+  exhaustive residuals, and independent slice acceptance remain.
