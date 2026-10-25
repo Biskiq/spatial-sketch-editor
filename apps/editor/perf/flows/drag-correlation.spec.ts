@@ -19,6 +19,15 @@
  * compile was served by a reuse cache: it is counted separately and never
  * enters the F3/F4 windows.
  *
+ * The owner's D1 ruling (2026-10-24) adds, outside every timed window: the JS
+ * heap after a forced GC (with the DOM counters) after the open and after the
+ * F3/F4/F8 sequence, and the Stage's live geometries, textures, programs,
+ * materials and meshes after each accepted commit. D4: a renderer crash on a
+ * report-only row is recorded once as a bounded failure row and the tier's
+ * remaining cache states are not attempted; a crash at S, M or L still fails.
+ * D5: `PERF_XL_DRAG_CACHE` (the bench's `--xl-drag-cache`) names the grid-XL
+ * cache states a pass runs; the others are reported as unrun rows.
+ *
  * These are methodology numbers, not budget claims. F3's hard rows are accepted
  * only from the designated reference machine.
  */
@@ -53,7 +62,14 @@ import { correlateInputs, firstFrameAtOrAfter, latestInputAge, readLedger } from
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
 import {
+	crashBounded,
+	crashRow,
 	E5_FOCUS_WALL_NAME,
+	heapMetrics,
+	isRendererCrash,
+	ownershipMetrics,
+	readHeapAfterGc,
+	readOwnership,
 	readRenderCounters,
 	readWork,
 	renderCounterDelta,
@@ -67,6 +83,8 @@ import {
 	tierWorkloadLabel,
 	workDelta,
 	workMetrics,
+	type HeapSample,
+	type Ownership,
 	type RenderCounters,
 	type WorkSnapshot,
 	unrunRow
@@ -81,6 +99,13 @@ const UNDO_REDO_CYCLES = smokeOr(20);
 /** In-session samples per run at the loaded peak state (A.4). */
 const DRAG_SAMPLES = smokeOr(Number(process.env.PERF_DRAG_SAMPLES ?? 5));
 const DRAG_INPUTS = smokeOr(INPUT_SAMPLES);
+const CACHE_STATES = ['cold', 'warm', 'repeat-use'] as const;
+/** D5: the grid-XL cache states this pass runs (every state unless the bench names some). */
+function dragCacheStates(tier: WorkloadId): readonly (typeof CACHE_STATES)[number][] {
+	const named = process.env.PERF_XL_DRAG_CACHE;
+	if (tier !== 'grid-XL' || named === undefined) return CACHE_STATES;
+	return CACHE_STATES.filter((state) => named.split(',').includes(state));
+}
 const HANDLER_INPUT_CLOCK_LIMITATION =
 	'input-to-matching-preview uses the pointermove handler mark (performance.now()), not the event timestamp; time queued before handler entry is omitted';
 
@@ -107,6 +132,10 @@ type DragRun = {
 	readonly commitWork: WorkSnapshot;
 	readonly undoRedoWork: WorkSnapshot;
 	readonly dragRender: Record<string, RenderCounters>;
+	readonly heapAfterOpen: HeapSample;
+	readonly heapAfterSequence: HeapSample;
+	/** After each accepted commit (drag and typed), outside the timed windows. */
+	readonly ownership: Ownership[];
 };
 
 function addWork(into: WorkSnapshot, window: WorkSnapshot): void {
@@ -159,7 +188,14 @@ async function runDrag(
 	await openSourceJson(page, project);
 	await waitForStageSettled(page);
 	await openWall();
+	// Setup, outside every window: the retained heap at the loaded peak (D1).
+	const heapAfterOpen = await readHeapAfterGc(session.cdp);
 	const setupMs = performance.now() - started;
+	const ownership: Ownership[] = [];
+	const recordOwnership = async () => {
+		const counts = await readOwnership(page);
+		if (counts !== null) ownership.push(counts);
+	};
 
 	const dragWork: WorkSnapshot = { spans: {}, counts: {} };
 	const commitWork: WorkSnapshot = { spans: {}, counts: {} };
@@ -183,6 +219,7 @@ async function runDrag(
 		await waitForAcceptedResult(page, beforeDrag);
 		const dragWindow = workDelta(workBefore, await readWork(page));
 		const sampleRender = renderCounterDelta(renderBefore, await readRenderCounters(page));
+		await recordOwnership();
 		let ledger = await readLedger(page);
 		const commit = commandCompletion(ledger.records, ledger.ticks, 'command:commit');
 		const served = (dragWindow.counts.compile ?? 0) === 0;
@@ -202,6 +239,7 @@ async function runDrag(
 		await commitPrecisionLength(page, 4.5 + sample * 0.01);
 		await waitForAcceptedResult(page, beforePrecision);
 		const precisionWindow = workDelta(precisionBefore, await readWork(page));
+		await recordOwnership();
 		ledger = await readLedger(page);
 		const precision = commandCompletion(ledger.records, ledger.ticks, 'command:instrument');
 		if ((precisionWindow.counts.compile ?? 0) === 0) cacheServed += 1;
@@ -223,6 +261,7 @@ async function runDrag(
 	await undoRedoCycles(page, UNDO_REDO_CYCLES);
 	expect(await acceptedResultCount(page)).toBeGreaterThanOrEqual(beforeUndoRedo + UNDO_REDO_CYCLES * 2 - 2);
 	addWork(undoRedoWork, workDelta(undoBefore, await readWork(page)));
+	const heapAfterSequence = await readHeapAfterGc(session.cdp);
 
 	const ledger = await readLedger(page);
 	const correlated = correlateInputs(ledger.records, ledger.ticks);
@@ -264,7 +303,10 @@ async function runDrag(
 		dragWork,
 		commitWork,
 		undoRedoWork,
-		dragRender
+		dragRender,
+		heapAfterOpen,
+		heapAfterSequence,
+		ownership
 	};
 }
 
@@ -285,18 +327,37 @@ test.describe('F3/F4/F8 methodology', () => {
 				return;
 			}
 			const limitations = [...passLimitations(), ...tierLimitations(tier)];
-			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-				const { results: runs, facts } = await collectMeasuredRuns(
-					browser,
-					{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
-					{
-						cacheState,
-						warmup: smokeOr(WARMUP_RUNS, 0),
-						runs: smokeOr(RUNS),
-						afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
-					},
-					(session) => runDrag(session, tier)
-				);
+			const flowName = 'F3/F4/F8 on the shipped straight-Wall drag';
+			const runStates = dragCacheStates(tier);
+			let crashed = false;
+			for (const cacheState of CACHE_STATES) {
+				if (crashed || !runStates.includes(cacheState)) {
+					const reason = crashed
+						? 'not attempted: the renderer crashed earlier at this tier (owner D4 bound)'
+						: `not run in this pass: the owner's D5 ruling runs grid-XL F3/F4/F8 ${runStates.join(', ')} only`;
+					report.rows.push(unrunRow(`F3-${tier}-${cacheState}`, flowName, tierWorkloadLabel(tier), testInfo.project.name, reason));
+					continue;
+				}
+				let collected: Awaited<ReturnType<typeof collectMeasuredRuns<DragRun>>>;
+				try {
+					collected = await collectMeasuredRuns(
+						browser,
+						{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
+						{
+							cacheState,
+							warmup: smokeOr(WARMUP_RUNS, 0),
+							runs: smokeOr(RUNS),
+							afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+						},
+						(session) => runDrag(session, tier)
+					);
+				} catch (error) {
+					if (!crashBounded(tier) || !isRendererCrash(error)) throw error;
+					report.rows.push(crashRow(`F3-${tier}-${cacheState}`, flowName, tierWorkloadLabel(tier), testInfo.project.name, cacheState, error));
+					crashed = true;
+					continue;
+				}
+				const { results: runs, facts } = collected;
 				const latencies = runs.flatMap((run) => run.latencies);
 				const ages = runs.flatMap((run) => run.ages);
 				const undo = runs.flatMap((run) => run.undoCompletion);
@@ -313,9 +374,10 @@ test.describe('F3/F4/F8 methodology', () => {
 				const wallMs = runs.reduce((total, run) => total + run.wallMs, 0);
 				const prefix = (metrics: Record<string, number>, name: string) =>
 					Object.fromEntries(Object.entries(metrics).map(([key, value]) => [`${name}:${key}`, value]));
+				const last = runs[runs.length - 1];
 				const row: ResultRow = {
 					id: `F3-${tier}-${cacheState}`,
-					flow: 'F3/F4/F8 on the shipped straight-Wall drag',
+					flow: flowName,
 					workload: `${tierWorkloadLabel(tier)}; ${DRAG_SAMPLES} samples × ${DRAG_INPUTS} pointer inputs per run (handler-mark input clock), distinct exact lengths, ${UNDO_REDO_CYCLES} Undo/Redo cycles`,
 					cacheState,
 					network: NETWORK,
@@ -341,12 +403,16 @@ test.describe('F3/F4/F8 methodology', () => {
 						// Planner evaluations per presented frame (C): each pointer move plans
 						// synchronously, so this checks frame-aligned input coalescing.
 						'drag:compilesPerPresentedFrame': (() => {
-							const last = runs[runs.length - 1];
 							const frames = last?.dragRender.stage?.frames ?? 0;
 							return last === undefined || frames === 0 ? null : (last.dragWork.counts.compile ?? 0) / Math.max(1, DRAG_SAMPLES - last.cacheServed) / frames;
-						})()
+						})(),
+						...heapMetrics('open', last?.heapAfterOpen),
+						...heapMetrics('sequence', last?.heapAfterSequence),
+						...ownershipMetrics('commit', last?.ownership ?? [])
 					},
 					stats: {
+						heapAfterOpenMiB: summarize(runs.map((run) => run.heapAfterOpen.heapMiB)),
+						heapAfterSequenceMiB: summarize(runs.map((run) => run.heapAfterSequence.heapMiB)),
 						inputToMatchingPreview: summarize(latencies),
 						commitCompletion: summarize(commit),
 						precisionCompletion: summarize(precision),
@@ -358,7 +424,8 @@ test.describe('F3/F4/F8 methodology', () => {
 						HANDLER_INPUT_CLOCK_LIMITATION,
 						'no drawing feature exists in this slice: F3 measures the methodology on the shipped Wall drag',
 						'cache-served samples (no compile in the window) are counted separately and excluded from the windows',
-						'drag:*/precision:* stage rows are per measured sample; undoRedo:* per command'
+						'drag:*/precision:* stage rows are per measured sample; undoRedo:* per command',
+						'open:postGc/sequence:postGc: JS heap after a forced GC and DOM counters, outside the timed windows (D1); commit:ownership: Stage live objects after each accepted commit, last run'
 					]
 				};
 				report.rows.push(row);

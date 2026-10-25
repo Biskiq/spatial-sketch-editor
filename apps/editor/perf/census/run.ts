@@ -139,7 +139,7 @@ async function main(): Promise<void> {
 		const baseEntityKeys = new Set(compiledEntities(compileWallFirstLayoutGeometry(baseDocument).geometry).keys());
 		const baseEntityCount = baseDocument.walls.length + baseDocument.junctions.length + baseDocument.openings.length + baseDocument.rooms.length;
 		const rows: E5Row[] = [];
-		for (const [id, factor, variant] of [['museum', 1, 'base'], ['sweep-H3', 3, 'H'], ['sweep-H10', 10, 'H'], ['sweep-D3', 3, 'D'], ['sweep-D10', 10, 'D']] as const) {
+		for (const [id, factor, variant] of [['museum', 1, 'base'], ['sweep-H3', 3, 'H'], ['sweep-H10', 10, 'H'], ['sweep-D3', 3, 'D'], ['sweep-D10', 10, 'D'], ['sweep-C3', 3, 'C'], ['sweep-C10', 10, 'C']] as const) {
 			const workload = available(id);
 			if (workload === null) continue;
 			digests[id] = workload.meta.contentDigest;
@@ -159,7 +159,7 @@ async function main(): Promise<void> {
 			''
 		);
 		const phases = ['move', 'commit', 'undo', 'redo'] as const;
-		for (const variant of ['H', 'D'] as const) {
+		for (const variant of ['H', 'D', 'C'] as const) {
 			const ofVariant = slopes.filter((slope) => slope.variant === variant);
 			if (ofVariant.length === 0) continue;
 			const added = Math.max(...ofVariant.map((slope) => slope.addedEntitiesAtTop));
@@ -177,8 +177,8 @@ async function main(): Promise<void> {
 			}
 			markdown.push('');
 		}
-		markdown.push('', '**Necessary-work ratio R at variant H ×10 (per move; the flow share f comes from Bench 1):**', '');
-		for (const ratio of ratios) markdown.push(`- ${ratio.editClass} — ${ratio.stage}: ${ratio.work.toFixed(0)} units for k = ${ratio.k} → R ≈ ${ratio.R.toFixed(1)}`);
+		markdown.push('', '**Necessary-work ratio R at ×10, variants H and C (per move; the flow share f comes from Bench 1):**', '');
+		for (const ratio of ratios) markdown.push(`- ${ratio.variant} ${ratio.editClass} — ${ratio.stage}: ${ratio.work.toFixed(0)} units for k = ${ratio.k} → R ≈ ${ratio.R.toFixed(1)}`);
 		markdown.push('');
 	}
 

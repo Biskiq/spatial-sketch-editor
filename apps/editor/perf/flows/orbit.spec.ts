@@ -17,22 +17,41 @@
  * T1.P02.S06 tiers the flow and attaches the render counters: draw calls,
  * triangles, shadow-map passes and shadow draws per frame, programs, geometries
  * and textures, planner/compile work per frame during the orbit, and frames
- * rendered at rest in a 2 s idle window after it. GPU time is not captured.
- * F7's frame-time budget is a hard row on the reference machine, never a claim
- * from a pre-flight or smoke pass.
+ * rendered at rest in a 2 s idle window after it. F7's frame-time budget is a
+ * hard row on the reference machine, never a claim from a pre-flight or smoke
+ * pass.
+ *
+ * The owner's D1 ruling (2026-10-24) adds, inside each run and after the
+ * required window (no extra open):
+ *
+ * - the orbit starts from the shipped Fit, not the default view, which for the
+ *   museum family showed nothing until Fit;
+ * - two **all-visible windows**, 3D after Fit and the Plan reading after Fit:
+ *   a 1 s rest, a one-frame compatible-bin census ("count, not timing": a
+ *   logical model of the physical frame) and a 3 s scripted pan and zoom, each
+ *   with the render counters, resident bytes and frame intervals;
+ * - CPU time inside each `render()` call in every window, and GPU time where
+ *   `EXT_disjoint_timer_query_webgl2` is exposed (otherwise the reason).
  */
 
 import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
-import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
+import { closeToHub, fitStage, gotoCreateIntent, openSourceJson, scriptedPanZoom, setStageReading, uniqueProjectId, waitForStageSettled } from '../lib/flow';
 import { frameIntervals, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
 import {
+	binCensusMetrics,
+	crashBounded,
+	crashRow,
+	isRendererCrash,
+	readBinCensus,
 	readRenderCounters,
+	readRenderTime,
 	readResidentBytes,
+	renderTimeMetrics,
 	readWork,
 	renderCounterDelta,
 	renderMetrics,
@@ -47,7 +66,9 @@ import {
 	tierWorkloadLabel,
 	workDelta,
 	workMetrics,
+	type BinCensus,
 	type RenderCounters,
+	type RenderTime,
 	type ResidentBytes,
 	type WorkSnapshot,
 	unrunRow
@@ -61,6 +82,20 @@ const IDLE_MS = 2_000;
 const MAX_ORBIT_MS = 60_000;
 const STEPS_PER_ORBIT = 60;
 const STEP_MS = ORBIT_MS / STEPS_PER_ORBIT;
+/** The all-visible windows (D1): a rest after Fit, then a scripted pan and zoom. */
+const VIEW_REST_MS = 1_000;
+const VIEW_MOVE_MS = 3_000;
+
+type ViewWindow = {
+	readonly rest: Record<string, RenderCounters>;
+	readonly restTime: RenderTime | null;
+	readonly move: Record<string, RenderCounters>;
+	readonly moveTime: RenderTime | null;
+	readonly intervals: number[];
+	readonly bins: BinCensus | null;
+	readonly resident: ResidentBytes | null;
+	readonly work: WorkSnapshot;
+};
 
 type OrbitRun = {
 	readonly intervals: number[];
@@ -73,9 +108,33 @@ type OrbitRun = {
 	readonly idleRender: Record<string, RenderCounters>;
 	readonly work: WorkSnapshot;
 	readonly resident: ResidentBytes | null;
+	readonly orbitTime: RenderTime | null;
+	readonly views: { readonly all3d: ViewWindow; readonly plan: ViewWindow };
 };
 
 type TickWindow = Window & { __BISKIQ_PERF_TICKS__?: number[] };
+
+/** One all-visible window at the settled current framing: rest, census, pan and zoom. */
+async function viewWindow(page: import('@playwright/test').Page): Promise<ViewWindow> {
+	await resetRenderMaxima(page);
+	const restBefore = await readRenderCounters(page);
+	await page.waitForTimeout(VIEW_REST_MS);
+	const rest = renderCounterDelta(restBefore, await readRenderCounters(page));
+	const restTime = await readRenderTime(page);
+	const bins = await readBinCensus(page);
+	const resident = await readResidentBytes(page);
+	await resetRenderMaxima(page);
+	const moveBefore = await readRenderCounters(page);
+	const workBefore = await readWork(page);
+	const started = await page.evaluate(() => performance.now());
+	await scriptedPanZoom(page, VIEW_MOVE_MS);
+	const ended = await page.evaluate(() => performance.now());
+	const move = renderCounterDelta(moveBefore, await readRenderCounters(page));
+	const moveTime = await readRenderTime(page);
+	const work = workDelta(workBefore, await readWork(page));
+	const intervals = frameIntervals((await readLedger(page)).ticks, started, ended);
+	return { rest, restTime, move, moveTime, intervals, bins, resident, work };
+}
 
 async function orbitOnce(session: MeasuredSession, tier: WorkloadId): Promise<OrbitRun> {
 	const { page } = session;
@@ -84,6 +143,11 @@ async function orbitOnce(session: MeasuredSession, tier: WorkloadId): Promise<Or
 	await gotoCreateIntent(page, projectId);
 	await openSourceJson(page, tierProject(tier, projectId));
 	await expect(page.locator('canvas').first()).toBeVisible();
+	await waitForStageSettled(page);
+	// F7 starts in 3D from the shipped Fit (D1, F6a): every footprint in frame.
+	// A reused context may restore the previous run's Plan reading.
+	await setStageReading(page, '3D');
+	await fitStage(page);
 	const setupMs = performance.now() - setupStarted;
 	await resetRenderMaxima(page);
 	const renderBefore = await readRenderCounters(page);
@@ -123,6 +187,7 @@ async function orbitOnce(session: MeasuredSession, tier: WorkloadId): Promise<Or
 	}
 	const ended = await page.evaluate(() => performance.now());
 	const render = renderCounterDelta(renderBefore, await readRenderCounters(page));
+	const orbitTime = await readRenderTime(page);
 	const work = workDelta(workBefore, await readWork(page));
 	await page.mouse.up();
 	await page.keyboard.up('Shift');
@@ -135,6 +200,12 @@ async function orbitOnce(session: MeasuredSession, tier: WorkloadId): Promise<Or
 	const resident = await readResidentBytes(page);
 	const ledger = await readLedger(page);
 	const intervals = frameIntervals(ledger.ticks, started, ended);
+	// The all-visible windows (D1), after the required orbit and idle windows.
+	await fitStage(page);
+	const all3d = await viewWindow(page);
+	await setStageReading(page, 'Plan');
+	await fitStage(page);
+	const plan = await viewWindow(page);
 	return {
 		intervals,
 		longTasks: ledger.longTasks.filter((entry) => entry.start >= started && entry.start <= ended).length,
@@ -147,7 +218,29 @@ async function orbitOnce(session: MeasuredSession, tier: WorkloadId): Promise<Or
 		render,
 		idleRender,
 		work,
-		resident
+		resident,
+		orbitTime,
+		views: { all3d, plan }
+	};
+}
+
+/** One all-visible window's row metrics (from the last run, like the orbit's counters). */
+function viewMetrics(name: string, window: ViewWindow): Record<string, number | string | null> {
+	const perFrame = (counters: RenderCounters | undefined, field: 'drawCalls' | 'triangles') =>
+		counters === undefined || counters.frames === 0 ? null : counters[field] / counters.frames;
+	return {
+		[`${name}:rest:frames`]: window.rest.stage?.frames ?? 0,
+		[`${name}:rest:drawCallsPerFrame`]: perFrame(window.rest.stage, 'drawCalls'),
+		[`${name}:rest:trianglesPerFrame`]: perFrame(window.rest.stage, 'triangles'),
+		...renderTimeMetrics(`${name}:rest`, window.rest.stage, window.restTime),
+		[`${name}:move:frames`]: window.move.stage?.frames ?? 0,
+		[`${name}:move:drawCallsPerFrame`]: perFrame(window.move.stage, 'drawCalls'),
+		[`${name}:move:trianglesPerFrame`]: perFrame(window.move.stage, 'triangles'),
+		[`${name}:move:maxDrawCallsPerFrame`]: window.move.stage?.maxDrawCallsPerFrame ?? 0,
+		[`${name}:move:compiles`]: window.work.counts.compile ?? 0,
+		...renderTimeMetrics(`${name}:move`, window.move.stage, window.moveTime),
+		...binCensusMetrics(name, window.bins),
+		...residentMetrics(window.resident, name)
 	};
 }
 
@@ -163,18 +256,32 @@ test.describe('F7 orbit', () => {
 				return;
 			}
 			const runCount = smokeOr(RUNS);
+			let crashed = false;
 			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-				const { results: runs, facts } = await collectMeasuredRuns(
-					browser,
-					{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
-					{
-						cacheState,
-						warmup: smokeOr(WARMUP_RUNS, 0),
-						runs: runCount,
-						afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
-					},
-					(session) => orbitOnce(session, tier)
-				);
+				if (crashed) {
+					report.rows.push(unrunRow(`F7-orbit-${tier}-${cacheState}`, 'F7 orbit/navigation', tierWorkloadLabel(tier), testInfo.project.name, 'not attempted: the renderer crashed earlier at this tier (owner D4 bound)'));
+					continue;
+				}
+				let collected: Awaited<ReturnType<typeof collectMeasuredRuns<OrbitRun>>>;
+				try {
+					collected = await collectMeasuredRuns(
+						browser,
+						{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
+						{
+							cacheState,
+							warmup: smokeOr(WARMUP_RUNS, 0),
+							runs: runCount,
+							afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+						},
+						(session) => orbitOnce(session, tier)
+					);
+				} catch (error) {
+					if (!crashBounded(tier) || !isRendererCrash(error)) throw error;
+					report.rows.push(crashRow(`F7-orbit-${tier}-${cacheState}`, 'F7 orbit/navigation', tierWorkloadLabel(tier), testInfo.project.name, cacheState, error));
+					crashed = true;
+					continue;
+				}
+				const { results: runs, facts } = collected;
 				const intervals = runs.flatMap((run) => run.intervals);
 				const dropped = runs.reduce(
 					(sum, run) => sum + run.intervals.filter((interval) => interval > 33.4).length,
@@ -213,17 +320,32 @@ test.describe('F7 orbit', () => {
 						'idle:render:stage:frames': last.idleRender.stage?.frames ?? 0,
 						'idle:render:stage:framesAtRest': last.idleRender.stage?.framesAtRest ?? 0,
 						idleWindowMs: IDLE_MS,
-						...residentMetrics(last.resident, 'orbit')
+						...residentMetrics(last.resident, 'orbit'),
+						...renderTimeMetrics('orbit', last.render.stage, last.orbitTime),
+						allVisibleRestMs: VIEW_REST_MS,
+						allVisibleMoveMs: VIEW_MOVE_MS,
+						...viewMetrics('all3d', last.views.all3d),
+						...viewMetrics('plan', last.views.plan)
 					},
 					stats: {
 						frameInterval: summarize(intervals),
 						durationMs: summarize(runs.map((run) => run.durationMs)),
-						framesPerRun: summarize(runs.map((run) => run.frames))
+						framesPerRun: summarize(runs.map((run) => run.frames)),
+						orbitRenderCpuMs: summarize(runs.flatMap((run) => run.orbitTime?.cpuSamples ?? [])),
+						all3dMoveFrameInterval: summarize(runs.flatMap((run) => run.views.all3d.intervals)),
+						all3dMoveRenderCpuMs: summarize(runs.flatMap((run) => run.views.all3d.moveTime?.cpuSamples ?? [])),
+						all3dRestRenderCpuMs: summarize(runs.flatMap((run) => run.views.all3d.restTime?.cpuSamples ?? [])),
+						planMoveFrameInterval: summarize(runs.flatMap((run) => run.views.plan.intervals)),
+						planMoveRenderCpuMs: summarize(runs.flatMap((run) => run.views.plan.moveTime?.cpuSamples ?? [])),
+						planRestRenderCpuMs: summarize(runs.flatMap((run) => run.views.plan.restTime?.cpuSamples ?? []))
 					},
 					limitations: [
 						...passLimitations(),
 						...tierLimitations(tier),
-						'GPU time is not captured; render counters are Three renderer.info per frame (count, not timing)',
+						'render counters are Three renderer.info per frame (count, not timing); renderCpu is main-thread time inside render() (CPU submission), not GPU time',
+						'GPU time only where EXT_disjoint_timer_query_webgl2 resolved frames (gpuTimer says which); never inferred',
+						'all-visible windows (D1): 3D and Plan after the shipped Fit, each a 1 s rest, a one-frame compatible-bin census (count, not timing: a logical model of the physical frame) and a 3 s scripted pan/zoom',
+						'the orbit starts from the shipped Fit (D1); earlier F7 rows started from the default view',
 						'frame intervals are rAF-to-rAF on a 60 Hz panel and do not substitute for presented-result latency',
 						`runs extend past ${ORBIT_MS} ms only when the display cannot deliver ${FRAME_FLOOR} frames in that time`
 					]

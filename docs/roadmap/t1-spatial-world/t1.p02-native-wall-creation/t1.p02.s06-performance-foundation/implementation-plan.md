@@ -487,6 +487,53 @@ record with its fixture digest and labelled “census, not timing”. Each is di
   E5 runs before Bench 1 on the trusted base, and again before each handover on the revision
   handed over.
 
+### C.2 Scale-identification amendment (owner-ratified 2026-10-24)
+
+**Ratified.** On 2026-10-24 the owner approved decisions D1–D9 of the
+[decision package](./scale-reconciliation.md#6-owner-decisions) as recommended. This amendment
+supersedes PR #189's pending C.1 proposal where they differ. It adds report-only diagnostics and
+one sweep variant inside the existing runs. It adds no workload tier, gate, budget or pass, and it
+keeps E1–E5, H1–H9, I1–I6, every required row, the sample and cache rules, the peak-first order,
+the lock and the pass accounting.
+
+- **All-visible windows (D1).** F7 starts from the shipped Fit. After its required windows, each
+  F7 run adds a 3D window after Fit and a Plan window after Fit. Each has a 1 s rest, a one-frame
+  compatible-bin census and a 3 s scripted pan and zoom, with render counters, resident bytes and
+  frame intervals.
+- **Submission versus GPU (D1).** Every render window records the CPU time inside each `render()`
+  call. GPU time comes from `EXT_disjoint_timer_query_webgl2` where the browser exposes it;
+  otherwise the row records why. GPU time is never inferred.
+- **Compatible bins (D1).** The distinct (program, material state, geometry layout) and
+  (program, material state, geometry) groups among one frame's main-pass draws. This is a logical
+  model of the physical frame, labelled "count, not timing".
+- **Ownership and residency (D1).** Post-GC heap and DOM counters after the open and after the
+  F3/F4/F8 sequence. In F13, after the open and after the twenty edits of each cycle, which gives
+  the heap retained per accepted edit. The Stage's live geometries, textures, programs, materials
+  and meshes after each accepted commit. All of it is read outside the timed windows.
+- **Superlinear attribution (D1).** Inert work counts for every pair loop that the compiler, the
+  topology gates and admission run: Junction×Junction, Wall×Wall chord and curve gates, Wall×query
+  AABB and object×Room, beside the three H3 joins. Also counted: linear identity lookups and
+  cache-key characters.
+- **Connected sweep variant C (D3).** Blocks joined to the museum's Wall graph through a shared
+  corner Junction, then through each block's shared Wall run, with doors and windows. C runs at ×3
+  and ×10 in E5 (Node and browser) and is recorded, not asserted. The sweep latency rows stay at
+  museum ×1 and H×10.
+- **Scale feasibility census (D2).** Node only. grid-L is assembled into one connected layout at
+  about 1k, 3k and 10k Rooms under A.1's assembly exception, then admitted and planned through the
+  canonical path, with a 10-minute bound per point. It is never admitted in a browser or inside a
+  pass.
+- **Bounded failure rows (D4).** A renderer crash on a report-only row is recorded once, and the
+  tier's remaining cache states are not attempted. A crash at S, M or L still fails its phase.
+- **grid-XL cache states (D5).** Bench 1 runs grid-XL's F3/F4/F8 warm only
+  (`--xl-drag-cache warm`). Bench 3 runs every state.
+- **Laboratory (D6).** The execution-plan lab is planned after Bench 1, for Bench 2, under its own
+  approval.
+- **PR #189 (D7).** It merges as research, and its C.1 text is superseded by this amendment.
+- **Chrome pin (D8).** Every pass runs the pinned branded Chrome build (`perf/chrome-pin.json`,
+  155.0.8059.85), and the bench refuses any other build. The owner re-pins with a recorded reason.
+- **realistic-L (D9).** It stays unrun until its assets are approved and an isolated API stack
+  exists.
+
 **Sweep latency rows (report-only, inside the existing passes).** Every bench also runs F3 (the
 fixed edits) and F7 (the fixed View) at sweep ×1 and ×10, variant H, with the same method. These
 rows add no pass. Each handover states the time they add, and the owner may drop them for a pass.

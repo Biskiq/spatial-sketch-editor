@@ -2,7 +2,7 @@
  * E5 — irrelevance sweep, Node counters (T1.P02.S06 C). "Census, not timing."
  *
  * Hold the focus wing's fixed Wall edits constant across the museum at ×1 and
- * the sweep workloads at ×3 and ×10 (variants H and D), and count the work
+ * the sweep workloads at ×3 and ×10 (variants H, D and the connected C), and count the work
  * each edit does:
  *
  * - **per move** — the shipped per-move planner (`planWallManipulation`, what
@@ -36,8 +36,10 @@ import type { LoadedWorkload } from '../lib/workloads/registry';
 import { changedEntities, compiledEntities } from './compiled-diff';
 import { candidateDocument, EDIT_CLASSES, fixedEdit, type EditClass } from './e1-dependency';
 import {
+	allPairVisits,
 	countWork,
 	countWorkAsync,
+	lookupVisits,
 	entityEvaluations,
 	pairVisits,
 	wholeDocumentPasses,
@@ -55,7 +57,7 @@ export type E5Row = {
 	readonly workload: string;
 	readonly contentDigest: string;
 	readonly factor: number;
-	readonly variant: 'base' | 'H' | 'D';
+	readonly variant: 'base' | 'H' | 'D' | 'C';
 	readonly addedEntities: number;
 	readonly editClass: EditClass;
 	readonly phase: E5Phase;
@@ -66,6 +68,9 @@ export type E5Row = {
 		readonly entityEvaluations: number;
 		readonly wholeDocumentPasses: number;
 		readonly pairVisits: number;
+		readonly allPairVisits: number;
+		readonly lookupVisits: number;
+		readonly cacheKeyChars: number;
 		readonly envelopeValidations: number;
 		readonly serializations: number;
 		readonly digests: number;
@@ -89,6 +94,9 @@ function derive(counts: WorkCounts, historyBytesPerStep: number | null): E5Row['
 		entityEvaluations: entityEvaluations(counts),
 		wholeDocumentPasses: wholeDocumentPasses(counts),
 		pairVisits: pairVisits(counts),
+		allPairVisits: allPairVisits(counts),
+		lookupVisits: lookupVisits(counts),
+		cacheKeyChars: counts['cache-key:chars'] ?? 0,
 		envelopeValidations: counts['envelope:validate'] ?? 0,
 		serializations: counts['envelope:serialize'] ?? 0,
 		digests: counts.digest ?? 0,
@@ -132,7 +140,7 @@ async function mountHost(envelope: ProjectEnvelope, canonicalJson: string) {
 export async function runE5Workload(input: {
 	readonly workload: LoadedWorkload;
 	readonly factor: number;
-	readonly variant: 'base' | 'H' | 'D';
+	readonly variant: 'base' | 'H' | 'D' | 'C';
 	/** The ×1 museum's compiled entity keys: anything else in a changed set was added. */
 	readonly baseEntityKeys: ReadonlySet<string>;
 	readonly baseEntityCount: number;
@@ -202,6 +210,9 @@ export const COUNTER_CLASSES: Readonly<Record<keyof E5Row['derived'], { readonly
 	entityEvaluations: { workClass: 'affected-entity work', bound: 'flat' },
 	wholeDocumentPasses: { workClass: 'affected-entity work (each pass evaluates every entity)', bound: 'flat' },
 	pairVisits: { workClass: 'affected-entity work (pair joins, I2)', bound: 'flat' },
+	allPairVisits: { workClass: 'affected-entity work (every counted pair loop, I2)', bound: 'flat' },
+	lookupVisits: { workClass: 'affected-entity work (linear identity lookups)', bound: 'flat' },
+	cacheKeyChars: { workClass: 'named global operation (cache-key serialization)', bound: 'changed-units' },
 	envelopeValidations: { workClass: 'named global operation (envelope validation)', bound: 'flat' },
 	serializations: { workClass: 'named global operation (canonical serialization)', bound: 'flat' },
 	digests: { workClass: 'named global operation (content digest)', bound: 'flat' },
@@ -221,6 +232,9 @@ export const ATTRIBUTION: Readonly<Record<keyof E5Row['derived'], string>> = {
 	entityEvaluations: 'H1 incremental evaluation over the compiler’s dependency graph',
 	wholeDocumentPasses: 'H1 (global checks as index queries over the swept bounds); H2 (each distinct check once)',
 	pairVisits: 'H3 indexed joins',
+	allPairVisits: 'H3 indexed joins; the topology gates evaluated over the swept bounds (H1)',
+	lookupVisits: 'an identity index (Map) instead of linear lookups',
+	cacheKeyChars: 'H1 (keys of unchanged entities reused); keys that do not serialize whole collections',
 	envelopeValidations: 'H2 check inventory (each distinct check once)',
 	serializations: 'H2/I4 serialization deferred to Save where no synchronous consumer needs it',
 	digests: 'H2 unchanged units reuse their revisions',
@@ -232,7 +246,7 @@ export const ATTRIBUTION: Readonly<Record<keyof E5Row['derived'], string>> = {
 };
 
 export type E5Slope = {
-	readonly variant: 'H' | 'D';
+	readonly variant: 'H' | 'D' | 'C';
 	readonly editClass: EditClass;
 	readonly phase: E5Phase;
 	readonly counter: keyof E5Row['derived'];
@@ -248,7 +262,7 @@ export type E5Slope = {
 
 export function e5Slopes(rows: readonly E5Row[]): E5Slope[] {
 	const slopes: E5Slope[] = [];
-	for (const variant of ['H', 'D'] as const) {
+	for (const variant of ['H', 'D', 'C'] as const) {
 		for (const editClass of EDIT_CLASSES) {
 			for (const phase of ['move', 'commit', 'undo', 'redo'] as const) {
 				const base = rows.find((row) => row.variant === 'base' && row.editClass === editClass && row.phase === phase);
@@ -288,17 +302,20 @@ export function e5Slopes(rows: readonly E5Row[]): E5Slope[] {
 }
 
 /**
- * R at variant H ×10 for the per-move stages that evaluate entities: today's
- * units of work over the units the result depends on (the changed set k).
+ * R at ×10 (variant H, and the connected variant C) for the per-move stages
+ * that evaluate entities: today's units of work over the units the result
+ * depends on (the changed set k).
  */
-export function necessaryWorkRatios(rows: readonly E5Row[]): { editClass: EditClass; stage: string; work: number; k: number; R: number }[] {
-	const result: { editClass: EditClass; stage: string; work: number; k: number; R: number }[] = [];
+export function necessaryWorkRatios(rows: readonly E5Row[]): { variant: 'H' | 'C'; editClass: EditClass; stage: string; work: number; k: number; R: number }[] {
+	const result: { variant: 'H' | 'C'; editClass: EditClass; stage: string; work: number; k: number; R: number }[] = [];
 	for (const row of rows) {
-		if (row.variant !== 'H' || row.factor !== 10 || row.phase !== 'move' || row.changedSet === undefined) continue;
+		if ((row.variant !== 'H' && row.variant !== 'C') || row.factor !== 10 || row.phase !== 'move' || row.changedSet === undefined) continue;
+		const variant = row.variant;
 		const k = Math.max(1, row.changedSet.k);
 		const perPass = row.derived.entityEvaluations / Math.max(1, row.derived.compiles);
-		result.push({ editClass: row.editClass, stage: 'compile (entity evaluations per compile)', work: perPass, k, R: perPass / k });
+		result.push({ variant, editClass: row.editClass, stage: 'compile (entity evaluations per compile)', work: perPass, k, R: perPass / k });
 		result.push({
+			variant,
 			editClass: row.editClass,
 			stage: 'whole-document passes (each evaluates every entity)',
 			work: row.derived.wholeDocumentPasses * perPass,

@@ -182,10 +182,15 @@ async function withSession<T>(
 	}
 }
 
-/** Browser and platform version facts recorded with every result. */
+/**
+ * Browser and platform version facts recorded with every result.
+ * `chromeVersion` is the launched binary's own version: the `Desktop Chrome`
+ * device descriptor overrides the user agent with Playwright's bundled
+ * Chromium version, so the UA token (`userAgentChrome`) can name another build.
+ */
 export async function browserFacts(browser: Browser, page: Page): Promise<Record<string, string>> {
 	const ua = await page.evaluate(() => navigator.userAgent);
-	const chrome = /Chrome\/([\d.]+)/.exec(ua)?.[1] ?? 'unknown';
+	const userAgentChrome = /Chrome\/([\d.]+)/.exec(ua)?.[1] ?? 'unknown';
 	const platform = await page.evaluate(() => (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform);
-	return { browserVersion: browser.version(), chromeVersion: chrome, platform, userAgent: ua };
+	return { browserVersion: browser.version(), chromeVersion: browser.version(), userAgentChrome, platform, userAgent: ua };
 }

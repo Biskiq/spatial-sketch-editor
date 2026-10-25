@@ -77,3 +77,22 @@ export function entityEvaluations(counts: WorkCounts): number {
 export function pairVisits(counts: WorkCounts): number {
 	return (counts['pairs:room-opening'] ?? 0) + (counts['pairs:wall-opening'] ?? 0) + (counts['pairs:face-room'] ?? 0);
 }
+
+/**
+ * Every counted pair loop's visits (the owner's D1 ruling): the three join
+ * candidates plus the topology gates' Junction×Junction and Wall×Wall loops,
+ * the curve-crossing gate, the Wall×query-AABB reconciliation and the
+ * object×Room scan. Same-component evaluations are a subset and not added.
+ */
+export function allPairVisits(counts: WorkCounts): number {
+	return Object.entries(counts)
+		.filter(([name]) => name.startsWith('pairs:') && !name.endsWith(':same-component'))
+		.reduce((sum, [, value]) => sum + value, 0);
+}
+
+/** Linear lookups' collection sizes (an upper bound on their visits): what an identity index removes. */
+export function lookupVisits(counts: WorkCounts): number {
+	return Object.entries(counts)
+		.filter(([name]) => name.startsWith('lookup:'))
+		.reduce((sum, [, value]) => sum + value, 0);
+}

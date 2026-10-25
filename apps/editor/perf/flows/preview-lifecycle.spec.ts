@@ -206,7 +206,8 @@ test('F13 repeated Preview enter/exit in one application lifetime', async ({ bro
 			workload: `${cycles} enter/exit cycles in one application lifetime, one captured Presentation, S fixture`,
 			cacheState: 'repeat-use',
 			network: NETWORK,
-			browser: `${testInfo.project.name} ${await page.evaluate(() => navigator.userAgent.match(/Chrome\/([\d.]+)/)?.[1] ?? 'unknown')}`,
+			// The launched binary's version; the device descriptor's UA names Playwright's Chromium.
+			browser: `${testInfo.project.name} ${browser.version()}`,
 			cpuRate: 1,
 			viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
 			metrics: {

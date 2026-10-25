@@ -149,6 +149,60 @@ export async function waitForStageSettled(page: Page, timeoutMs = LARGE_TIER_WAI
 }
 
 /**
+ * Setup only: wait until the Stage camera stops moving (its last rendered
+ * world matrix and projection are equal across two samples), so a window
+ * starts at a settled Fit or reading instead of inside its transition.
+ */
+export async function waitForCameraSettled(page: Page, timeoutMs = 20_000): Promise<void> {
+	const started = Date.now();
+	let previous = '';
+	while (Date.now() - started < timeoutMs) {
+		await page.waitForTimeout(250);
+		const pose = await page.evaluate(() => {
+			type Camera = { matrixWorld: { elements: number[] }; projectionMatrix: { elements: number[] } };
+			const camera = (window as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, { camera: Camera }> }).__BISKIQ_PERF_RENDER_REFS__?.stage?.camera;
+			return camera === undefined ? '' : [...camera.matrixWorld.elements, ...camera.projectionMatrix.elements].map((value) => value.toFixed(6)).join(',');
+		});
+		if (pose !== '' && pose === previous) return;
+		previous = pose;
+	}
+	throw new Error(`the Stage camera did not settle within ${timeoutMs / 1000} s`);
+}
+
+/** The shipped Fit control: every footprint in frame. Setup, outside the timed windows. */
+export async function fitStage(page: Page): Promise<void> {
+	await page.locator('.stage-actions').getByRole('button', { name: 'Fit', exact: true }).click();
+	await waitForCameraSettled(page);
+}
+
+/** The shipped reading toggle (Plan or 3D), waited until the reading has settled. */
+export async function setStageReading(page: Page, reading: 'Plan' | '3D'): Promise<void> {
+	const button = page.locator('.stage-actions').getByRole('button', { name: reading, exact: true });
+	await button.click();
+	await expect(button).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 });
+	await waitForCameraSettled(page);
+}
+
+/**
+ * A scripted pan and zoom on the shipped Stage controls for `durationMs`: the
+ * keyboard pans (arrow keys) and wheel zooms at the Stage center, alternating
+ * so the framing returns close to where it started. Paced to wall-clock time.
+ */
+export async function scriptedPanZoom(page: Page, durationMs: number): Promise<void> {
+	const box = await page.locator('.stage').first().boundingBox();
+	if (box === null) throw new Error('the Stage has no box');
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	const keys = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'];
+	const started = Date.now();
+	for (let step = 0; Date.now() - started < durationMs; step++) {
+		if (step % 2 === 0) await page.keyboard.press(keys[(step / 2) % keys.length]!);
+		else await page.mouse.wheel(0, step % 4 === 1 ? -60 : 60);
+		const wait = started + (step + 1) * 100 - Date.now();
+		if (wait > 0) await page.waitForTimeout(wait);
+	}
+}
+
+/**
  * Select one Wall by id through the Index search (the Index labels a Wall
  * `wall · <id>`), then open its contributed Dimensions task.
  */

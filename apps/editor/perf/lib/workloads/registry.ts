@@ -43,6 +43,8 @@ export type WorkloadId =
 	| 'sweep-H10'
 	| 'sweep-D3'
 	| 'sweep-D10'
+	| 'sweep-C3'
+	| 'sweep-C10'
 	| 'realistic-L';
 
 export type WorkloadSpec = {
@@ -65,6 +67,8 @@ export const WORKLOADS: Readonly<Record<WorkloadId, WorkloadSpec>> = {
 	'sweep-H10': { id: 'sweep-H10', projectId: 'perf-sweep-h10', name: 'Perf sweep H ×10', params: { kind: 'sweep', variant: 'H', factor: 10 } },
 	'sweep-D3': { id: 'sweep-D3', projectId: 'perf-sweep-d3', name: 'Perf sweep D ×3', params: { kind: 'sweep', variant: 'D', factor: 3 } },
 	'sweep-D10': { id: 'sweep-D10', projectId: 'perf-sweep-d10', name: 'Perf sweep D ×10', params: { kind: 'sweep', variant: 'D', factor: 10 } },
+	'sweep-C3': { id: 'sweep-C3', projectId: 'perf-sweep-c3', name: 'Perf sweep C ×3', params: { kind: 'sweep', variant: 'C', factor: 3 } },
+	'sweep-C10': { id: 'sweep-C10', projectId: 'perf-sweep-c10', name: 'Perf sweep C ×10', params: { kind: 'sweep', variant: 'C', factor: 10 } },
 	'realistic-L': {
 		id: 'realistic-L',
 		projectId: 'perf-realistic-l',

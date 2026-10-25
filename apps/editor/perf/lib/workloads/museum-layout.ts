@@ -186,8 +186,12 @@ export function buildMuseumLayout(captures: CaptureSource): MuseumLayout {
 	return { document: d, focusWallId: focus[0]!.id };
 }
 
-/** Sweep variants: hidden-and-independent (H) or distant-and-visible (D). */
-export type SweepVariant = 'H' | 'D';
+/**
+ * Sweep variants: hidden-and-independent (H), distant-and-visible (D) or
+ * connected (C, the owner's D3 ruling): C joins the museum's Wall graph and
+ * carries Openings, so the Room×Opening and Wall×Opening pair terms grow with it.
+ */
+export type SweepVariant = 'H' | 'D' | 'C';
 
 /** The museum's own size in the units the sweep scales: one ×1 base worth of complexity. */
 export const SWEEP_BLOCK = { k: 7, cell: 6 } as const;
@@ -200,10 +204,15 @@ export const SWEEP_BLOCK = { k: 7, cell: 6 } as const;
  *   directional shadow camera around the origin. Their first block is inside
  *   the fixed View's horizontal frustum, behind the focus wing's Walls.
  * - **D** blocks continue the enfilade's axis eastwards, beyond the east window.
+ * - **C** blocks form one strip eastwards from the museum's north-east corner
+ *   (z ∈ [48, 90]): the first shares that corner Junction, each later one the
+ *   previous block's east Wall run, so the museum and every block are one
+ *   connected Wall graph. The strip stays north of the enfilade's sightline.
  */
 export function sweepBlockOrigin(variant: SweepVariant, index: number): LayoutVec2 {
 	const size = SWEEP_BLOCK.k * SWEEP_BLOCK.cell;
 	const gap = 12;
+	if (variant === 'C') return [MUSEUM_BOUNDS.x1 + index * size, MUSEUM_BOUNDS.z1];
 	if (variant === 'D') return [MUSEUM_BOUNDS.x1 + 30 + index * (size + gap), 1.5 - size / 2];
 	const column = Math.floor(index / 2);
 	const north = index % 2 === 0;
@@ -211,8 +220,76 @@ export function sweepBlockOrigin(variant: SweepVariant, index: number): LayoutVe
 }
 
 /**
- * Add `blocks` independent gallery blocks for a sweep variant. Blocks add Rooms
- * and Walls only: no Opening (nothing to see through), no light.
+ * One connected k×k block (variant C). Its outline is drawn as open chains
+ * snapped to the Junctions it shares: the museum's corner for the first block,
+ * the previous block's east corners for the rest, whose east Wall run is this
+ * block's west side. Interior lines snap onto the outline, like a creator's
+ * gesture.
+ */
+function drawConnectedBlock(
+	document: LayoutDocumentWallFirst,
+	origin: LayoutVec2,
+	k: number,
+	cell: number,
+	captures: CaptureSource,
+	sharesWest: boolean
+): LayoutDocumentWallFirst {
+	const [ox, oz] = origin;
+	const size = k * cell;
+	let current = sharesWest
+		? drawChain(document, [[ox, oz], [ox + size, oz], [ox + size, oz + size], [ox, oz + size]], { captures })
+		: drawChain(
+				drawChain(document, [[ox, oz], [ox + size, oz], [ox + size, oz + size]], { captures }),
+				[[ox, oz], [ox, oz + size], [ox + size, oz + size]],
+				{ captures }
+			);
+	for (let index = 1; index < k; index++) {
+		current = drawChain(current, [[ox + index * cell, oz], [ox + index * cell, oz + size]], { captures });
+	}
+	for (let index = 1; index < k; index++) {
+		current = drawChain(current, [[ox, oz + index * cell], [ox + size, oz + index * cell]], { captures });
+	}
+	return current;
+}
+
+/**
+ * A connected block's Openings, about 63 per block: a door on every Wall
+ * between two Rooms of a row (each row is an enfilade), a door chain up the
+ * middle column, one door through the shared west Wall run, and a window on
+ * each span of the south and north sides.
+ */
+function addConnectedBlockOpenings(
+	document: LayoutDocumentWallFirst,
+	origin: LayoutVec2,
+	k: number,
+	cell: number,
+	captures: CaptureSource,
+	sharesWest: boolean
+): LayoutDocumentWallFirst {
+	const [ox, oz] = origin;
+	const size = k * cell;
+	const middle = Math.floor(k / 2);
+	let current = document;
+	for (let index = 1; index < k; index++) {
+		current = doorsOn(current, wallsAlong(current, [ox + index * cell, oz], [ox + index * cell, oz + size]), captures);
+	}
+	for (let index = 1; index < k; index++) {
+		const z = oz + index * cell;
+		current = doorsOn(current, wallsAlong(current, [ox + middle * cell, z], [ox + (middle + 1) * cell, z]), captures);
+	}
+	if (sharesWest) current = doorsOn(current, wallsAlong(current, [ox, oz + middle * cell], [ox, oz + (middle + 1) * cell]), captures);
+	for (const z of [oz, oz + size]) {
+		for (const span of wallsAlong(current, [ox, z], [ox + size, z])) {
+			if (span.length >= 4) current = addCenteredOpening(current, span.id, 'window', captures);
+		}
+	}
+	return current;
+}
+
+/**
+ * Add `blocks` gallery blocks for a sweep variant. H and D blocks are
+ * independent and add Rooms and Walls only: no Opening (nothing to see
+ * through), no light. C blocks are connected and carry Openings.
  */
 export function addSweepBlocks(
 	document: LayoutDocumentWallFirst,
@@ -223,7 +300,13 @@ export function addSweepBlocks(
 ): LayoutDocumentWallFirst {
 	let current = document;
 	for (let index = firstIndex; index < firstIndex + blocks; index++) {
-		current = drawGridBlock(current, sweepBlockOrigin(variant, index), SWEEP_BLOCK.k, SWEEP_BLOCK.cell, captures);
+		const origin = sweepBlockOrigin(variant, index);
+		if (variant === 'C') {
+			current = drawConnectedBlock(current, origin, SWEEP_BLOCK.k, SWEEP_BLOCK.cell, captures, index > 0);
+			current = addConnectedBlockOpenings(current, origin, SWEEP_BLOCK.k, SWEEP_BLOCK.cell, captures, index > 0);
+		} else {
+			current = drawGridBlock(current, origin, SWEEP_BLOCK.k, SWEEP_BLOCK.cell, captures);
+		}
 	}
 	return current;
 }

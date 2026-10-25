@@ -21,7 +21,7 @@
 import type { LayoutDocumentIssue } from './layout-issue';
 import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
-import { p2311Measure } from './p2311-perf';
+import { countWork, p2311Measure } from './p2311-perf';
 import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
@@ -2249,6 +2249,9 @@ function validateWallFirstTopologyPass(
 		}
 	} else {
 		for (let first = 0; first < document.junctions.length; first += 1) {
+			// T1.P02.S06 work counts (inert without an observer): pairs visited, and
+			// the same-component pairs that reach the predicate.
+			countWork('pairs:junction-junction', document.junctions.length - first - 1);
 			for (let second = first + 1; second < document.junctions.length; second += 1) {
 				if (
 					keyByJunctionId.get(document.junctions[first]!.id) !==
@@ -2256,6 +2259,7 @@ function validateWallFirstTopologyPass(
 				) {
 					continue;
 				}
+				countWork('pairs:junction-junction:same-component');
 				observeTopologyEvaluation('junction-coincidence', [
 					document.junctions[first]!.id,
 					document.junctions[second]!.id
@@ -2332,10 +2336,12 @@ function validateWallFirstTopologyPass(
 		}
 	} else {
 		for (let first = 0; first < walls.length; first += 1) {
+			countWork('pairs:wall-wall', walls.length - first - 1);
 			for (let second = first + 1; second < walls.length; second += 1) {
 				const a = walls[first]!;
 				const b = walls[second]!;
 				if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
+				countWork('pairs:wall-wall:same-component');
 				observeTopologyEvaluation('wall-chord', [a.id, b.id]);
 				const failure = chordFailure(a.id, b.id);
 				if (failure) return failure;
@@ -2645,6 +2651,7 @@ export function detectWallCurveTopologyCrossings(
 		return undefined;
 	}
 	for (let first = 0; first < document.walls.length; first += 1) {
+		countWork('pairs:wall-wall-curve', document.walls.length - first - 1);
 		for (let second = first + 1; second < document.walls.length; second += 1) {
 			const a = document.walls[first]!;
 			const b = document.walls[second]!;
@@ -2684,6 +2691,8 @@ function wallEndpoints(
 	document: LayoutDocumentWallFirst,
 	wall: LayoutWall
 ): { start: LayoutVec2; end: LayoutVec2; length: number } | undefined {
+	// Two linear Junction lookups per Wall (an upper bound on the visits).
+	countWork('lookup:junctions', 2 * document.junctions.length);
 	const start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
 	const end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
 	if (!start || !end) return undefined;

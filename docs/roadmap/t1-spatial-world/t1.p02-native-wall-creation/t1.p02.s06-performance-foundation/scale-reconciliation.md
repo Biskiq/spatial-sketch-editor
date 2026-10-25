@@ -1,11 +1,13 @@
 # T1.P02.S06 — world-scale reconciliation and Bench 1 decision package
 
-**Status: owner decision required. Bench 1 has not run.** This page reconciles PR #189's
-world-scale research ([synthesis][synthesis], [scale-measurement proposal][proposal], pending
-[C.1 amendment][c1]) with the S06 setup as implemented in PR #190. It proposes a revised
-measurement scope and implements none of it. The [approved plan](./implementation-plan.md), its
-E1–E5, H1–H9 and I1–I6, the correctness contracts and the three owner-run passes stay unchanged
-until the owner rules on §6.
+**Status: ruled 2026-10-24.** The owner approved D1–D9 (§6) as recommended. The approved
+extensions are implemented in PR #190 as the plan's
+[C.2 amendment](./implementation-plan.md#c2-scale-identification-amendment-owner-ratified-2026-10-24),
+which supersedes PR #189's pending C.1 where they differ; §7 records what changed and what the
+implementation found. This page reconciles PR #189's world-scale research
+([synthesis][synthesis], [scale-measurement proposal][proposal], pending [C.1 amendment][c1]) with
+the S06 setup. §1–§6 are the decision package as the owner ruled on it. The plan's E1–E5, H1–H9 and
+I1–I6, the correctness contracts and the three owner-run passes are unchanged.
 
 The target is accepted: routine editing of 10,000+ Rooms, 100,000+ architectural entities and
 millions of visual details. This page asks what the three passes must capture so that Bench 1
@@ -162,6 +164,24 @@ the frozen command and the updated duration. On the owner's direction (2026-10-2
 then starts Bench 1 itself on the designated machine, detached and without waiting for it, and
 its task ends there. Everything else about the pass is unchanged: the owner rules on whether it
 counts (A.7).
+
+## 7. Rulings and implementation (2026-10-24)
+
+The owner approved D1–D9 as recommended. PR #190 implements D1–D5 and D8 as the plan's C.2
+amendment. D6 (the lab plan) follows Bench 1, D7 (merging PR #189 as research) is left to that
+PR's owner, and D9 is unchanged. On the owner's direction the agent then starts Bench 1 itself;
+the [acceptance record](./acceptance.md#bench-1-launch) records the launch.
+
+Implementing the extensions and the re-smoke produced five findings. They refine §1, which stays
+as the owner ruled on it.
+
+| # | Finding | Label | Consequence |
+| --- | --- | --- | --- |
+| F8 | Every browser timing and heap figure in §1 (F1, F2, F4) came from a **Svelte dev-mode build**. `vite-node` sets `NODE_ENV=development`, and the bench's `vite build` inherited it: all 38 client chunks carried dev metadata, against 0 in a clean build. The draw, mesh and work counts (F3, F5) do not depend on it. | harness defect, fixed | The bench now strips `NODE_ENV` from every child and refuses a build with dev markers. The re-smoke on the production build replaces those figures. |
+| F9 | The open's superlinear term is in **Stage mount, not admission**. In Node, grid-XL admission takes 0.6 s. Of the 23.0 s browser open on the production build, about 86 % of self time is one native DOM insertion: Threlte's Context inserting its children fragment (Svelte's comment anchors) into the `<canvas>` element. It grows ×4.4 from L to XL. | agent probe | This corrects F1's consequence. The H3 pair loops are not the open's dominant term. Bench 1's per-stage spans and traces measure it. |
+| F10 | Per move, the planner's superlinear self time from L to XL (N doubles): the topology gates' Junction×Junction and Wall×Wall loops (`validateWallFirstTopologyPass` ×4.6, `chordFailure` ×4.4, `coincidenceFailure` ×6.7), `bounds2` ×7.5, `cacheKeyOf` ×3.9, and linear Junction lookups in `wallFirstWallSpan`. | agent probe | These loops are now counted (`pairs:junction-junction`, `pairs:wall-wall`, `lookup:junctions`, `cache-key:chars`). Bench 1 can fit time against them. |
+| F11 | Scale census (D2), connected grid-L tiles in Node. **1k** (1,176 Rooms, 2,422 Walls and Openings): admitted in 2.4 s; one per-move plan 3.8 s; peak RSS 3.1 GiB. **3k** (3,136 Rooms, 6,384 Walls and Openings, 16 MB source): admitted in 9.6 s, with 93 M pair visits and 4.4 G cache-key characters; one per-move plan 22.6 s, with 9 whole-document passes, 185 M pair visits and 124 M Junction lookups; heap after 3.6 GiB, peak RSS 5.3 GiB. **10k** (9,604 Rooms, 19,404 Walls): admission ran out of the 12 GiB Node heap after about 30 s. | census, not timing | Per-move planning grows about ×6 for ×2.7 Rooms, and memory is the first wall at 10k, before any browser. The F10 loops and the cache keys are the counted candidates. Product rows stay at S–XL and the sweep. |
+| F12 | On the production build, sweep-H10's F3/F4/F8 row **completes** instead of crashing the tab (heap 898 MiB after the open, 1,475 MiB after the sequence). D4's bound does not trigger. Each H10 run costs about 24 min: a 173 s open, then about 11 s per accepted result and about 2 s per drag input. | smoke, not evidence | As ruled, Bench 1 runs this row in all three cache states, about 13 h of the pass. The acceptance record gives the total. Limiting it the way D5 limits grid-XL would need a new owner ruling. |
 
 [synthesis]: https://github.com/Biskiq/spatial-sketch-editor/blob/103fc631/broad-research/all-visible-editing-and-town-overview.md
 [proposal]: https://github.com/Biskiq/spatial-sketch-editor/blob/103fc631/docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/scale-measurement-proposal.md

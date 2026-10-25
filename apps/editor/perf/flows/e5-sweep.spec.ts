@@ -12,7 +12,13 @@
  * - **visual non-influence**: the Stage scene rendered at the authored fixed
  *   View ("Focus wing — enfilade") and read back from the drawing buffer, before
  *   and after the fixed edit. Variant H must be pixel-identical to ×1; variant D
- *   (beyond the fixed view's far end, on its axis) is recorded, not asserted.
+ *   (beyond the fixed view's far end, on its axis) and the connected variant C
+ *   (the owner's D3 ruling; joined to the museum, with Openings) are recorded,
+ *   not asserted.
+ *
+ * A renderer crash at a D or C workload is recorded as a bounded failure row
+ * for that workload (the owner's D4 ruling) and the sweep continues; a crash at
+ * the museum or an H workload fails the census, since they carry its proof.
  *
  * The readback renders the same scene with a clone of the Stage camera posed at
  * the View, synchronously, then reads the buffer in the same task; the Stage's
@@ -27,7 +33,9 @@ import { acceptedResultCount, commitPrecisionLength, gotoCreateIntent, openSourc
 import { fileReport, startReport } from '../lib/report';
 import {
 	COUNT_LABEL,
+	crashRow,
 	E5_FIXED_VIEW_LABEL,
+	isRendererCrash,
 	E5_FOCUS_WALL_NAME,
 	readRenderCounters,
 	readResidentBytes,
@@ -49,12 +57,14 @@ const FIXED_VIEW_LABEL = E5_FIXED_VIEW_LABEL;
 const FOCUS_WALL_NAME = E5_FOCUS_WALL_NAME;
 const REST_WINDOW_MS = 1_000;
 
-const SWEEP: readonly { readonly id: WorkloadId; readonly factor: number; readonly variant: 'base' | 'H' | 'D' }[] = [
+const SWEEP: readonly { readonly id: WorkloadId; readonly factor: number; readonly variant: 'base' | 'H' | 'D' | 'C' }[] = [
 	{ id: 'museum', factor: 1, variant: 'base' },
 	{ id: 'sweep-H3', factor: 3, variant: 'H' },
 	{ id: 'sweep-H10', factor: 10, variant: 'H' },
 	{ id: 'sweep-D3', factor: 3, variant: 'D' },
-	{ id: 'sweep-D10', factor: 10, variant: 'D' }
+	{ id: 'sweep-D10', factor: 10, variant: 'D' },
+	{ id: 'sweep-C3', factor: 3, variant: 'C' },
+	{ id: 'sweep-C10', factor: 10, variant: 'C' }
 ];
 
 type View = { eye: number[]; target: number[]; fov: number };
@@ -202,6 +212,10 @@ test.describe('E5 browser counts and visual non-influence', () => {
 					},
 					limitations: [COUNT_LABEL, ...(SMOKE ? [SMOKE_LABEL] : []), 'framebuffer read back from a clone of the Stage camera posed at the fixed View; stage time is never cited']
 				});
+			} catch (error) {
+				// Only the recorded variants are bounded; the museum and H carry the proof.
+				if ((entry.variant !== 'D' && entry.variant !== 'C') || !isRendererCrash(error)) throw error;
+				report.rows.push(crashRow(`E5-${entry.id}`, 'E5 browser counts', `${entry.id} (×${entry.factor}, variant ${entry.variant})`, testInfo.project.name, 'warm', error));
 			} finally {
 				await session.close();
 			}
@@ -215,7 +229,7 @@ test.describe('E5 browser counts and visual non-influence', () => {
 			verdicts[`${entry.id}:afterEditDifferingPixels`] = differingPixels(base.after, at.after);
 		}
 		if (base !== undefined) verdicts['museum:editChangedPixels'] = differingPixels(base.before, base.after);
-		report.rows.push({ id: 'E5-visual-non-influence', flow: 'E5 framebuffer equality', browser: testInfo.project.name, cpuRate: 1, viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`, metrics: verdicts, limitations: [COUNT_LABEL, 'variant H must be pixel-identical to ×1 at the fixed View; variant D is recorded, not asserted'] });
+		report.rows.push({ id: 'E5-visual-non-influence', flow: 'E5 framebuffer equality', browser: testInfo.project.name, cpuRate: 1, viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`, metrics: verdicts, limitations: [COUNT_LABEL, 'variant H must be pixel-identical to ×1 at the fixed View; variants D and C are recorded, not asserted'] });
 		console.log(`E5 visual non-influence: ${JSON.stringify(verdicts)}`);
 		console.log(`raw results: ${fileReport(report)}`);
 		// The proof: the edit is visible at the fixed View (the check can see a

@@ -36,15 +36,15 @@ series, never a user profile.
 | --- | --- | --- |
 | `flows/startup.spec.ts` | F1 startup | hub interactive, Stage first **architectural** frame (rAF proxy, not the contract's first interactive frame), FCP, LCP, long tasks, script bytes/requests, cold, warm and repeat-use |
 | `flows/project-open.spec.ts` | F2 open | each tier's cached workload: admission → first **architectural** frame (rAF proxy), cold, warm and repeat-use, with per-stage spans, work counts, render counters and setup share; plus the A.6 old-method rows `F2-old-S/M` |
-| `flows/orbit.spec.ts` | F7 orbit | per tier: 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, render counters per frame (draws, triangles, shadow passes/draws), compiles per frame, frames rendered at rest, cold, warm and repeat-use |
+| `flows/orbit.spec.ts` | F7 orbit | per tier: 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, render counters per frame (draws, triangles, shadow passes/draws), CPU time in `render()`, compiles per frame, frames rendered at rest, cold, warm and repeat-use; the orbit starts from the shipped Fit, then (C.2) an all-visible 3D window and an all-visible Plan window after Fit, each a 1 s rest, a compatible-bin census and a 3 s scripted pan/zoom |
 | `flows/save.spec.ts` | F9 Save | save:submit → Saving-label DOM update → parsed durable receipt → Saved-label DOM update, through the API test-auth seam on a local stack, cold, warm and repeat-use; label mutations do not prove presentation |
-| `flows/cycles.spec.ts` | F13 repeated open/close | per tier: cold (10 measured cycles), warm (1 discarded + 1 measured) and repeat-use (1 discarded + 10 measured); 20 edits per cycle and JS heap after forced GC, with entry heap reported separately from the measured baseline; the Stage's live geometries/textures/programs per cycle |
+| `flows/cycles.spec.ts` | F13 repeated open/close | per tier: cold (10 measured cycles), warm (1 discarded + 1 measured) and repeat-use (1 discarded + 10 measured); 20 edits per cycle and JS heap after forced GC, with entry heap reported separately from the measured baseline; post-GC heap after each open and after its 20 edits (retained bytes per edit), DOM nodes and the Stage's live geometries/textures/programs/materials/meshes per cycle |
 | `flows/head-lifetime.spec.ts` | Route head ownership regression | cold SSR/hydration, dynamic publication title/noindex and exact connected head-node counts over repeated client navigation; isolated metadata correctness, not a flow baseline |
 | `flows/renderer-lifetime.spec.ts` | Concurrent renderer ownership regression | actual WebGL secondary-Canvas collection while a survivor keeps identical rendered pixels and render-target state; isolated correctness fixture, not a flow baseline |
-| `flows/drag-correlation.spec.ts` | F3/F4/F8 methodology | per tier, in-session at the loaded peak: distinct drags and typed lengths each reset by Undo (cache-served samples counted apart), input sequence → matching preview presentation, latest-input age, final-result completion, 20 Undo/Redo cycles, per-stage spans and work counts, cold, warm and repeat-use, plus the deliberately delayed-preview proof (grid-S) |
+| `flows/drag-correlation.spec.ts` | F3/F4/F8 methodology | per tier, in-session at the loaded peak: distinct drags and typed lengths each reset by Undo (cache-served samples counted apart), input sequence → matching preview presentation, latest-input age, final-result completion, 20 Undo/Redo cycles, per-stage spans and work counts, post-GC heap after the open and after the sequence, the Stage's ownership counts after each accepted commit, cold, warm and repeat-use, plus the deliberately delayed-preview proof (grid-S) |
 | `flows/trace-proof.spec.ts` | Separate trace-image diagnostic | exact preview sequence/geometry identity and marker pixel in Chrome trace images, exact compositor presentation-feedback span, clock anchors, mismatch and delayed-preview controls; no hard budget claim |
 | `flows/stage-trace.spec.ts` | Per-stage traces (S06 C) | one traced window per flow and tier (F2, F3, F4, F8, F7): main-thread busy/idle, GC, script, style/layout, paint and GPU-process time beside the window's stage spans; attribution, never a timing row |
-| `flows/e5-sweep.spec.ts` | E5 browser counts (S06 C) | museum ×1 and the H/D sweeps: render counters at rest, the fixed edit's work, and framebuffer equality at the fixed View before and after the edit (H must match ×1); count, not timing |
+| `flows/e5-sweep.spec.ts` | E5 browser counts (S06 C) | museum ×1 and the H/D/C sweeps: render counters at rest, the fixed edit's work, and framebuffer equality at the fixed View before and after the edit (H must match ×1; D and C are recorded); count, not timing |
 | `flows/calibration.spec.ts` | CPU calibration | grid-7 compile + Stage admission, 20 runs, CDP throttling search when a reference median is supplied |
 
 ## Bench setup (T1.P02.S06)
@@ -58,8 +58,9 @@ cd apps/editor
 npm run perf:workloads                     # generate missing/stale workloads (setup, ~25 min for all)
 npm run perf:workloads -- --verify         # reproducibility: rebuild S, M and museum, compare digests (~1.5 min)
 npm run perf:census                        # E1–E5 Node censuses: census, not timing (~15 min)
+npm run perf:scale -- --point 1k           # D2 scale feasibility census, Node only (1k, 3k, 10k; ≤10 min each)
 npm run perf:bench -- --smoke              # smoke check of every flow at every tier: smoke, not evidence
-npm run perf:bench -- --label bench-1      # one owner-run pass on the M2
+npm run perf:bench -- --label bench-1 --xl-drag-cache warm   # Bench 1 on the M2 (D5: grid-XL F3/F4/F8 warm only)
 ```
 
 **Workloads (A.1, B).** `perf/generate-workloads.ts` builds every workload once
@@ -79,6 +80,7 @@ run (`loadWorkload`). Flows load the JSON under their own project id
 | `realistic-L` | grid-14 + approved GLB derivatives | bench tier, **blocked** (below) |
 | `museum` | 328 Walls, 56 Rooms, 137 Openings (115 doors with `connectsRoomIds`), enfilade, corridor ring, central hall, 92 catalogue placements, 18 Views with Camera connections, an 18-Stop Experience route | censuses, E5 base, optional latency rows |
 | `sweep-H3/H10`, `sweep-D3/D10` | the museum plus independent 7×7 blocks (H: hidden, behind Walls, outside the focus wing's shadow camera, no lights; D: on the enfilade axis beyond the wing) | E5 irrelevance sweep |
+| `sweep-C3/C10` | the museum plus **connected** blocks (C, D3 ruling): the first block snaps to the museum's north-east corner Junction, each later one to the previous block's east corners, with about 63 doors and windows per block | E5 irrelevance sweep, recorded, not asserted |
 
 The museum and sweep placements use the shipped catalogue GLBs (product assets
 with recorded licenses) until the realistic-L derivatives are approved. ×30 is not
@@ -105,9 +107,34 @@ measured window; `stage-trace.spec.ts` adds one traced window per flow for
 GC/idle attribution. `readResidentBytes` traverses a surface's last rendered
 scene once at a fixed point (after F2's open, after F7's orbit, at E5's fixed
 View): unique textures with stored and RGBA8+mips bytes, geometry-buffer bytes,
-shadow-map and drawing-buffer bytes, materials and meshes. GPU time and
-shader-compile time at the first frame are not captured (the traced windows show
-the main-thread cost of the first render).
+shadow-map and drawing-buffer bytes, materials and meshes. Shader-compile time
+at the first frame is not captured (the traced windows show the main-thread cost
+of the first render).
+
+**Scale-identification counters (C.2, owner-ratified 2026-10-24).** Each
+renderer also records the CPU time inside every `render()` call (sum, maximum
+and up to 20,000 samples per window) and GPU time through
+`EXT_disjoint_timer_query_webgl2` where the browser exposes it; otherwise the
+row records why (`gpuUnavailableReason`), and GPU time is never inferred. On
+request, one frame's main-pass draws are binned into compatible groups:
+distinct (program, material state, geometry layout) and (program, material
+state, geometry), a logical model labelled "count, not timing". Outside the
+timed windows, `readHeapAfterGc` takes the post-GC heap with CDP's DOM counters
+and `readOwnership` the Stage's live geometries, textures, programs, materials
+and meshes. The work observer adds every pair loop the compiler, the topology
+gates and admission run (`pairs:junction-junction`, `pairs:wall-wall`,
+`pairs:wall-wall-curve`, `pairs:wall-aabb`, `pairs:object-room`; the
+`:same-component` share is counted apart), linear identity lookups
+(`lookup:junctions`) and cache-key characters (`cache-key:chars`). The census
+derives `allPairVisits` and `lookupVisits` from them.
+
+**Scale census (D2).** `perf/census/scale.ts` assembles the planner-built grid-L
+block into one connected layout of about 1k, 3k and 10k Rooms (A.1's assembly
+exception: shared boundary Junctions and Walls deduplicated, ids remapped), then
+admits it and plans one move through the canonical path only. Each point runs in
+its own child under a 10-minute bound with a 12 GiB heap; a point that runs out
+of time or memory is recorded with the phase it reached, never retried. It runs
+in Node only, never in a browser or inside a pass: "census, not timing".
 
 **A pass (`perf:bench`).** One invocation: the machine-wide lock
 (`/tmp/biskiq-perf.lock`), load average, top processes, `pmset -g therm` and power
@@ -121,8 +148,28 @@ manifest in the pass directory records commit, dirty tree, fixture digests,
 contamination, every phase's wall time and exit, and the setup share. A failed
 phase marks the pass aborted with its cause; nothing is retried. Ctrl-C stops the
 pass at the next phase boundary, records the interrupt, writes the manifest and
-releases the lock. Exit codes: 0 clean, 1 aborted, 5 contaminated, 130/143
-interrupted. The report-only
+releases the lock. Exit codes: 0 clean, 1 aborted, 5 contaminated, 6 Chrome
+build differs from the pin, 130/143 interrupted.
+
+Since the C.2 amendment, a pass also:
+
+- **pins Chrome (D8).** It refuses to start unless branded Chrome matches
+  `perf/chrome-pin.json` (smoke runs only record a mismatch). The owner re-pins
+  with a recorded reason.
+- **builds for production.** vite-node sets `NODE_ENV=development`, which a
+  child `vite build` would inherit and compile Svelte in dev mode, so every child
+  runs without `NODE_ENV`. The pass aborts if any client chunk carries Svelte's
+  dev-mode file metadata.
+- **bounds report-only crashes (D4).** A renderer crash on a report-only row
+  (grid-XL, the sweep latency rows) becomes one failure row with the error, the
+  tier's remaining cache states are reported unrun, and the phase continues. A
+  crash at S, M or L still fails its phase. In E5 only the recorded variants
+  (D, C) are bounded; the museum and H carry the proof, so a crash there fails.
+- **takes `--xl-drag-cache <cold|warm|repeat-use>` (D5).** It limits grid-XL's
+  F3/F4/F8 to one cache state. The manifest records the states and every
+  deviation from the plan's machine rules (for example, AC power).
+
+The report-only
 sweep latency rows (F3/F4/F8 on the focus Wall and F7, museum ×1 and sweep-H10)
 run in every pass unless the owner drops them, and the bundle report written
 after the build supplies the Stage initial-load delta.

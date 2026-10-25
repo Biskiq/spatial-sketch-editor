@@ -35,6 +35,7 @@ import type {
 	LayoutWallOpening
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
+import { countWork } from './p2311-perf';
 
 /** Fit tolerance shared with the P23.1 precision gates (unchanged semantics). */
 export const OPENING_SET_EPSILON = LAYOUT_GEOMETRY_EPSILON;
@@ -75,6 +76,9 @@ export function wallFirstWallSpan(
 	wall: LayoutWall,
 	sampling?: WallSamplingDerivation
 ): { start: LayoutVec2; end: LayoutVec2; length: number } | undefined {
+	// T1.P02.S06 work count (inert without an observer): two linear Junction
+	// lookups per call, an upper bound on the visits.
+	countWork('lookup:junctions', 2 * document.junctions.length);
 	const start = document.junctions.find(
 		(junction) => junction.id === wall.startJunctionId
 	)?.point;

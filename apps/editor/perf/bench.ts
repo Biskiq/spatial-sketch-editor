@@ -4,6 +4,7 @@
  *   npm run perf:bench --workspace @portfolio/editor -- --label bench-1
  *   npm run perf:bench --workspace @portfolio/editor -- --smoke      # smoke, not evidence
  *   … -- --no-sweep-latency                                            # owner drops the sweep rows
+ *   … -- --xl-drag-cache warm                                          # D5: grid-XL F3/F4/F8 warm only
  *
  * A pass is one invocation that produces every row it needs:
  *
@@ -11,8 +12,13 @@
  *    top processes, the thermal state and the power source, and marks the pass
  *    contaminated when it starts above the load threshold (default 4.0) or a
  *    Vitest lane is running;
- * 2. refuses unless every workload it loads is generated and fresh;
- * 3. builds the production bundle once and serves it for every phase;
+ * 2. refuses unless every workload it loads is generated and fresh, and (except
+ *    in smoke mode) unless the installed Chrome is the pinned build
+ *    (`chrome-pin.json`, the owner's D8 ruling);
+ * 3. builds the production bundle once, refuses a bundle that carries Svelte
+ *    dev-mode instrumentation, and serves it for every phase. Children never
+ *    inherit `vite-node`'s `NODE_ENV=development`, which would make Vite compile
+ *    Svelte in dev mode;
  * 4. runs the tiers peak first (realistic-L, L, XL, M, S: A.3, the same order in
  *    every pass), recording the thermal state at each tier boundary and a
  *    recorded cool-down before M and S; each tier runs F2 (with A.6's old-method
@@ -40,6 +46,8 @@ import { commitSha, machineFacts, resultsDirectory } from './lib/report';
 import { BENCH_TIERS, REGENERATE_COMMAND, workloadStatus, type WorkloadId } from './lib/workloads/registry';
 
 const EDITOR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const CHROME_PIN_PATH = join(EDITOR, 'perf', 'chrome-pin.json');
+const CHROME_BINARY = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const LOCK_DIR = '/tmp/biskiq-perf.lock';
 const DEFAULT_LOAD_THRESHOLD = 4.0;
 
@@ -55,6 +63,12 @@ const PORT = process.env.PERF_PORT ?? '4173';
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const TIERS = (argument('--tiers')?.split(',') as WorkloadId[] | undefined) ?? [...BENCH_TIERS];
 const COOLDOWN_SECONDS = SMOKE ? 0 : Number(process.env.PERF_COOLDOWN_SECONDS ?? 180);
+/** grid-XL's report-only F3/F4/F8 cache states (D5): every state unless the owner names some. */
+const XL_DRAG_CACHE = argument('--xl-drag-cache');
+if (XL_DRAG_CACHE !== undefined && !XL_DRAG_CACHE.split(',').every((state) => ['cold', 'warm', 'repeat-use'].includes(state))) {
+	console.error(`--xl-drag-cache takes cold, warm and/or repeat-use, not ${XL_DRAG_CACHE}`);
+	process.exit(2);
+}
 /** The report-only sweep latency rows run in every bench unless the owner drops them for a pass (C). */
 const SWEEP_LATENCY = !process.argv.includes('--no-sweep-latency') && process.env.PERF_SWEEP_LATENCY !== '0';
 const LOAD_THRESHOLD = Number(process.env.PERF_LOAD_THRESHOLD ?? DEFAULT_LOAD_THRESHOLD);
@@ -63,6 +77,13 @@ if (LOAD_THRESHOLD !== DEFAULT_LOAD_THRESHOLD && LOAD_THRESHOLD_REASON === undef
 	console.error('PERF_LOAD_THRESHOLD differs from 4.0: set PERF_LOAD_THRESHOLD_REASON to record why (A.8).');
 	process.exit(2);
 }
+
+/**
+ * The environment every child runs in. `vite-node` sets `NODE_ENV=development`
+ * for this process; a `vite build` that inherits it compiles Svelte in dev
+ * mode, so the bench would time a build no creator runs.
+ */
+const CHILD_ENV: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => name !== 'NODE_ENV'));
 
 const TIER_FLOWS = ['flows/project-open.spec.ts', 'flows/drag-correlation.spec.ts', 'flows/orbit.spec.ts', 'flows/cycles.spec.ts', 'flows/stage-trace.spec.ts'];
 
@@ -147,7 +168,7 @@ function playwright(phase: string, specs: string[], env: Record<string, string>)
 	const result = spawnSync('npx', ['playwright', 'test', '--config', 'perf/playwright.config.ts', `--project=${PROJECT}`, `--output=${output}`, ...specs], {
 		cwd: EDITOR,
 		stdio: 'inherit',
-		env: { ...process.env, ...env }
+		env: { ...CHILD_ENV, ...env }
 	});
 	return result.status;
 }
@@ -158,6 +179,29 @@ function startCrashHandlerWatchdog(logPath: string): ChildProcess {
 	// Its stderr goes to the log, so a failing watchdog is visible in the pass directory.
 	const errors = openSync(logPath, 'a');
 	return spawn('node', ['perf/lib/crash-handler-watchdog.mjs', logPath, ...preexisting], { cwd: EDITOR, stdio: ['ignore', 'ignore', errors] });
+}
+
+type ChromePin = { readonly version: string; readonly pinnedAt: string; readonly ruling: string };
+
+/** The installed branded Chrome against the pinned build (D8): one build for all three passes. */
+function chromeAgainstPin(): { installed: string; pinned: ChromePin | null; matches: boolean } {
+	const installed = /([\d.]+)\s*$/.exec(run(CHROME_BINARY, ['--version']))?.[1] ?? 'unavailable';
+	const pinned = existsSync(CHROME_PIN_PATH) ? (JSON.parse(readFileSync(CHROME_PIN_PATH, 'utf8')) as ChromePin) : null;
+	return { installed, pinned, matches: pinned !== null && pinned.version === installed };
+}
+
+/**
+ * The client chunks that carry Svelte dev-mode instrumentation: a dev build
+ * stamps each component with its absolute source path (`x[FILENAME]="/…/X.svelte"`).
+ */
+function devModeChunks(): string[] {
+	const root = join(EDITOR, '.svelte-kit', 'output', 'client', '_app', 'immutable');
+	const marker = /\[[\w$]{1,3}\]="\/[^"]*\.svelte"/;
+	const listed = run('find', [root, '-name', '*.js']);
+	const chunks = listed.startsWith('unavailable') ? [] : listed.split('\n').filter((path) => path !== '');
+	// No chunk to inspect is not a clean build: the guard must see the bundle it passes.
+	if (chunks.length === 0) throw new Error(`the build has no client chunks under ${root}`);
+	return chunks.filter((path) => marker.test(readFileSync(path, 'utf8')));
 }
 
 async function waitForServer(): Promise<void> {
@@ -174,7 +218,7 @@ async function waitForServer(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-	const needed: WorkloadId[] = [...TIERS, 'museum', 'sweep-H3', 'sweep-H10', 'sweep-D3', 'sweep-D10'];
+	const needed: WorkloadId[] = [...TIERS, 'museum', 'sweep-H3', 'sweep-H10', 'sweep-D3', 'sweep-D10', 'sweep-C3', 'sweep-C10'];
 	const unready = needed
 		.map((id) => [id, workloadStatus(id)] as const)
 		.filter(([, status]) => status.kind !== 'fresh' && status.kind !== 'blocked');
@@ -190,6 +234,12 @@ async function main(): Promise<void> {
 		})
 	);
 
+	const chrome = chromeAgainstPin();
+	if (!chrome.matches && !SMOKE) {
+		console.error(`installed Chrome ${chrome.installed} is not the pinned build ${chrome.pinned?.version ?? '(no perf/chrome-pin.json)'}: every pass runs one Chrome build (D8). The owner re-pins with a recorded reason.`);
+		process.exit(6);
+	}
+
 	takeLock();
 	const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 	const passDir = join(resultsDirectory(), `${stamp}-${LABEL}`);
@@ -198,10 +248,18 @@ async function main(): Promise<void> {
 	const contamination: string[] = [];
 	if (start.loadAverage1m > LOAD_THRESHOLD) contamination.push(`1-minute load ${start.loadAverage1m} > ${LOAD_THRESHOLD} at start`);
 	if (start.vitestRunning) contamination.push('a Vitest process was running at start');
+	// Recorded, not contamination: the owner rules on each (A.7).
+	const deviations: string[] = [];
+	if (!SMOKE && !/Battery Power/.test(start.power)) deviations.push(`power source at start: ${start.power} (the owner direction is on battery, Low Power Mode off)`);
 	const phases: Phase[] = [];
 	const passStarted = performance.now();
 	let server: ChildProcess | null = null;
-	const flowEnv = { PERF_BASE_URL: BASE_URL, PERF_RESULTS_DIR: passDir, ...(SMOKE ? { PERF_SMOKE: '1' } : {}) };
+	const flowEnv = {
+		PERF_BASE_URL: BASE_URL,
+		PERF_RESULTS_DIR: passDir,
+		...(SMOKE ? { PERF_SMOKE: '1' } : {}),
+		...(XL_DRAG_CACHE === undefined ? {} : { PERF_XL_DRAG_CACHE: XL_DRAG_CACHE })
+	};
 	const writeManifest = (end: Snapshot | null) => {
 		const totalSeconds = (performance.now() - passStarted) / 1000;
 		const setupSeconds = phases.filter((phase) => phase.kind === 'setup').reduce((sum, phase) => sum + phase.wallSeconds, 0);
@@ -218,6 +276,9 @@ async function main(): Promise<void> {
 			loadThreshold: { value: LOAD_THRESHOLD, ...(LOAD_THRESHOLD_REASON === undefined ? {} : { reason: LOAD_THRESHOLD_REASON }) },
 			contaminated: contamination.length > 0,
 			contamination,
+			deviations,
+			chrome,
+			xlDragCacheStates: XL_DRAG_CACHE ?? 'cold,warm,repeat-use',
 			aborted: aborted.length > 0,
 			abortCauses: aborted.map((phase) => `${phase.name}: ${phase.cause}`),
 			tiers: TIERS,
@@ -261,13 +322,15 @@ async function main(): Promise<void> {
 		if (interrupted !== null) throw new Error(`interrupted by ${interrupted}`);
 	};
 	try {
-		phases.push(timed('build', 'setup', () => spawnSync('npm', ['run', 'build'], { cwd: EDITOR, stdio: 'inherit', env: process.env }).status));
+		phases.push(timed('build', 'setup', () => spawnSync('npm', ['run', 'build'], { cwd: EDITOR, stdio: 'inherit', env: CHILD_ENV }).status));
 		await boundary();
 		if (phases[0]!.cause !== undefined) throw new Error(`build failed: ${phases[0]!.cause}`);
+		const devChunks = devModeChunks();
+		if (devChunks.length > 0) throw new Error(`the build carries Svelte dev-mode instrumentation in ${devChunks.length} chunks (first: ${devChunks[0]}): not a production build`);
 		// The Stage initial-load delta (transferred row): the delivery report over this build.
-		phases.push(timed('bundle report', 'setup', () => spawnSync('node', ['perf/bundle-report.mjs', '--json', join(passDir, 'bundle-report.json')], { cwd: EDITOR, stdio: 'inherit', env: process.env }).status));
+		phases.push(timed('bundle report', 'setup', () => spawnSync('node', ['perf/bundle-report.mjs', '--json', join(passDir, 'bundle-report.json')], { cwd: EDITOR, stdio: 'inherit', env: CHILD_ENV }).status));
 		const serverStarted = performance.now();
-		server = spawn('node', ['perf/serve.mjs'], { cwd: EDITOR, stdio: 'inherit', env: { ...process.env, PERF_SKIP_BUILD: '1', PERF_PORT: PORT } });
+		server = spawn('node', ['perf/serve.mjs'], { cwd: EDITOR, stdio: 'inherit', env: { ...CHILD_ENV, PERF_SKIP_BUILD: '1', PERF_PORT: PORT } });
 		await waitForServer();
 		phases.push({ name: 'serve', kind: 'setup', startedAt: new Date().toISOString(), wallSeconds: Number(((performance.now() - serverStarted) / 1000).toFixed(1)), exitCode: 0 });
 

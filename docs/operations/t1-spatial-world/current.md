@@ -3,18 +3,20 @@
 PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01 and S05 are shipped.
-ACTIVE: T1.P02.S06 (performance foundation), setup step (agent). Started 2026-10-24 through the
-        runbook start step at trusted base 2215af341a650ac3a99a0fbb36e48de7e901411e (merged `main`).
-        Setup is implemented in PR #190 and stopped before the Bench 1 handover for an owner
-        scope decision: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/scale-reconciliation.md
-        (D1–D9, reconciling PR #189's world-scale research). No bench pass and no H1–H9 change is made.
-        After the rulings, the approved extensions and their smoke check, the agent starts Bench 1
-        itself on the owner's direction (2026-10-24) and stops there.
+ACTIVE: T1.P02.S06 (performance foundation), Bench 1. Started 2026-10-24 through the runbook start
+        step at trusted base 2215af341a650ac3a99a0fbb36e48de7e901411e (merged `main`). The setup is
+        implemented in PR #190. The owner ruled D1–D9 of the decision package as recommended
+        (2026-10-24): ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/scale-reconciliation.md
+        The approved extensions are the plan's C.2 amendment; their smoke check passed. On the
+        owner's direction (2026-10-24) the agent launched Bench 1 itself from PR #190's head,
+        detached, and its task ended at the launch. The owner rules on whether the pass counts
+        (A.7); the agent records it as owner-directed. No H1–H9 change is made.
 NEXT:   T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
         It runs on an owner-run benchmark budget of at most three passes:
         set up (agent) → Bench 1 (owner) → optimize with hand calculation (agent) → Bench 2
         (owner) → fix (agent) → Bench 3 final acceptance (owner).
         Agents never run a full benchmark pass; they run smoke checks only, labelled as such.
+        The one exception is owner-directed: the owner had the agent launch Bench 1 (2026-10-24).
         It covers:
         - the peak-first, setup-free harness method on the designated MacBook Air M2 (16 GB);
         - L/XL and realistic-load workloads;

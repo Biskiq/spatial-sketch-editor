@@ -13,6 +13,11 @@
  * chooser) and records the Stage renderer's live geometries, textures and
  * programs at the end of each cycle. Live WebGL contexts and detached nodes are
  * not captured.
+ *
+ * The owner's D1 ruling adds two post-GC readings inside each measured cycle,
+ * with the project open: after the open and after its twenty accepted edits.
+ * Their difference over the edits is the heap each accepted edit retains while
+ * its history grows ("retained per edit").
  */
 
 import { expect, test } from '@playwright/test';
@@ -31,7 +36,7 @@ import {
 import { clearObservations } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
-import { readRenderCounters, selectedTiers, smokeOr, tierAvailability, tierLimitations, tierProject, tierWorkloadLabel, unrunRow } from '../lib/tiers';
+import { readHeapAfterGc, readOwnership, readRenderCounters, selectedTiers, smokeOr, tierAvailability, tierLimitations, tierProject, tierWorkloadLabel, unrunRow, type HeapSample, type Ownership } from '../lib/tiers';
 
 const CYCLES = smokeOr(10);
 const EDITS_PER_CYCLE = smokeOr(20);
@@ -60,6 +65,9 @@ test.describe('F13 repeated open/close', () => {
 				const heaps: number[] = [];
 				const resources: { documents: number; nodes: number; jsEventListeners: number }[] = [];
 				const gpuObjects: { geometries: number; textures: number; programs: number }[] = [];
+				const openHeaps: HeapSample[] = [];
+				const peakHeaps: HeapSample[] = [];
+				const peakOwnership: Ownership[] = [];
 				const capture = async (sample: string) => {
 					const heapMiB = await heapUsedMiB(session.cdp);
 					expect(
@@ -83,15 +91,21 @@ test.describe('F13 repeated open/close', () => {
 				});
 				await clearObservations(page);
 				const entrySample = await capture('entry-before-warmup');
-				const runCycle = async (): Promise<void> => {
+				const runCycle = async (measured: boolean): Promise<void> => {
 					if (cacheState === 'cold') await clearBrowserState(session.cdp);
 					const projectId = await openProjectFromHub(page);
 					await openSourceJson(page, tierProject(tier, projectId));
 					await selectFirstWallAndOpenDimensions(page);
+					if (measured) openHeaps.push(await readHeapAfterGc(session.cdp));
 					for (let edit = 0; edit < EDITS_PER_CYCLE; edit++) {
 						const before = await acceptedResultCount(page);
 						await commitPrecisionLength(page, edit % 2 === 0 ? 4.5 : 5);
 						await waitForAcceptedResult(page, before);
+					}
+					if (measured) {
+						peakHeaps.push(await readHeapAfterGc(session.cdp));
+						const counts = await readOwnership(page);
+						if (counts !== null) peakOwnership.push(counts);
 					}
 					const stage = (await readRenderCounters(page)).stage;
 					gpuObjects.push({ geometries: stage?.geometries ?? 0, textures: stage?.textures ?? 0, programs: stage?.programs ?? 0 });
@@ -105,14 +119,14 @@ test.describe('F13 repeated open/close', () => {
 				// load is excluded from measured growth. Keep its entry heap above so
 				// this startup cost remains visible in the report.
 				for (let cycle = 0; cycle < warmupCycles; cycle++) {
-					await runCycle();
+					await runCycle(false);
 					await clearObservations(page);
 				}
 				const baselineSample = warmupCycles === 0 ? entrySample : await capture('measured-baseline-after-warmup');
 				heaps.push(baselineSample.heapMiB);
 				resources.push(baselineSample.counts);
 				for (let cycle = 0; cycle < measuredCycles; cycle++) {
-					await runCycle();
+					await runCycle(true);
 					await clearObservations(page);
 					const sample = await capture(`measured-cycle-${cycle + 1}`);
 					heaps.push(sample.heapMiB);
@@ -143,15 +157,26 @@ test.describe('F13 repeated open/close', () => {
 						domDocumentsPerCycle: resources.map((value) => value.documents).join(','),
 						stageGeometriesPerCycle: gpuObjects.map((value) => value.geometries).join(','),
 						stageTexturesPerCycle: gpuObjects.map((value) => value.textures).join(','),
-						stageProgramsPerCycle: gpuObjects.map((value) => value.programs).join(',')
+						stageProgramsPerCycle: gpuObjects.map((value) => value.programs).join(','),
+						heapOpenPerCycle: openHeaps.map((value) => Number(value.heapMiB.toFixed(2))).join(','),
+						heapPeakPerCycle: peakHeaps.map((value) => Number(value.heapMiB.toFixed(2))).join(','),
+						retainedPerEditMiB: summarize(peakHeaps.map((peak, index) => (peak.heapMiB - (openHeaps[index]?.heapMiB ?? Number.NaN)) / EDITS_PER_CYCLE)).median,
+						domNodesAtPeakPerCycle: peakHeaps.map((value) => value.nodes).join(','),
+						stageMaterialsAtPeakPerCycle: peakOwnership.map((value) => value.materials).join(','),
+						stageMeshesAtPeakPerCycle: peakOwnership.map((value) => value.meshes).join(',')
 					},
-					stats: { heapAfterGCDistribution: summarize(heaps) },
+					stats: {
+						heapAfterGCDistribution: summarize(heaps),
+						heapOpenMiB: summarize(openHeaps.map((value) => value.heapMiB)),
+						heapPeakMiB: summarize(peakHeaps.map((value) => value.heapMiB))
+					},
 					limitations: [
 						...passLimitations(),
 						`${cacheState === 'cold' ? 'cold starts in a fresh context and clears cache/cookies before each measured open; the V8 code cache is not reset within the ten-cycle run; ' : ''}${cacheState !== 'cold' ? 'entry heap is recorded before one discarded warm-up cycle; baseline and growth start after warm-up; ' : ''}${cacheState === 'warm' ? 'warm measures one cycle after its discarded warm-up; ' : ''}${cacheState === 'repeat-use' ? 'repeat-use measures ten cycles after its discarded warm-up; ' : ''}live WebGL contexts and detached nodes are not captured; Stage geometries/textures/programs are the renderer's live counts at each cycle's end (count, not timing)`,
 						...tierLimitations(tier),
 						'all cycles preserve one application realm via New Project and browser Back; harness observation buffers are cleared before GC; other harness overhead remains',
-						'viewer and Preview enter/exit cycles are not available in this slice'
+						'viewer and Preview enter/exit cycles are not available in this slice',
+						'heapOpen/heapPeak (D1): post-GC heap with the project open, after the open and after the twenty edits; retainedPerEditMiB is their median difference per edit'
 					]
 				};
 				report.rows.push(row);

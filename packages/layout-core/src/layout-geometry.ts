@@ -398,6 +398,7 @@ function compileWallFirstWithPhysicalWalls(
 		// stale by construction once resolved geometry extends the Wall. Reconcile
 		// it from the final bounds instead of leaving a pre-resolution record.
 		const index = queryBuilder.aabbs.findIndex((record) => record.kind === 'wall' && record.sourceId === wall.wallId);
+		countWork('pairs:wall-aabb', index === -1 ? queryBuilder.aabbs.length : index + 1);
 		if (index !== -1) {
 			queryBuilder.aabbs[index] = aabbRecord('wall', wall.wallId, ['wall', floor.id, wall.wallId], wall.bounds3.min, wall.bounds3.max);
 		}
@@ -903,6 +904,7 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 
 		for (const object of objects) {
 			if (!object.roomId) continue;
+			countWork('pairs:object-room', floorEntry.rooms.length);
 			const owned = floorEntry.rooms.some((roomSource) => roomSource.room.id === object.roomId);
 			if (owned) includeBounds3(floorMin, floorMax, object.worldAabb.min, object.worldAabb.max);
 		}
@@ -1394,7 +1396,10 @@ function finiteBounds3(min: Vec3, max: Vec3): LayoutBounds3 | null {
 }
 
 function cacheKeyOf(parts: readonly unknown[]): string {
-	return JSON.stringify(parts);
+	const key = JSON.stringify(parts);
+	// T1.P02.S06 work count (inert without an observer): the bytes serialized into cache keys.
+	countWork('cache-key:chars', key.length);
+	return key;
 }
 
 function pointRecord(

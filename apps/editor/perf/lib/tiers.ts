@@ -15,11 +15,14 @@
  *   view and edit are labelled "count, not timing".
  */
 
-import type { Page } from '@playwright/test';
+import type { CDPSession, Page } from '@playwright/test';
+
+import { heapUsedMiB } from './browser';
 
 import { DEVICE_SCALE_FACTOR, VIEWPORT } from './config';
 import type { FixtureProject } from './fixtures';
 import type { ResultRow } from './report';
+import { summarize } from './stats';
 import { BENCH_TIERS, loadWorkload, workloadJsonFor, workloadStatus, WORKLOADS, type WorkloadId } from './workloads/registry';
 
 export const SMOKE = process.env.PERF_SMOKE === '1';
@@ -99,6 +102,41 @@ export function unrunRow(id: string, flow: string, workload: string, browser: st
 	};
 }
 
+/**
+ * Tiers whose rows a renderer crash may end as a bounded failure row (the
+ * owner's D4 ruling): the report-only tiers and the sweep latency workloads.
+ * A crash at a hard tier (S, M, L) still fails its phase.
+ */
+export function crashBounded(tier: WorkloadId): boolean {
+	return REPORT_ONLY_TIERS.has(tier) || (SWEEP_LATENCY_TIERS.includes(tier) && !(BENCH_TIERS as readonly WorkloadId[]).includes(tier));
+}
+
+/** Whether a flow error is the tab's renderer crashing (Chrome's OOM ends a tab this way). */
+export function isRendererCrash(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return /crash|has been closed/i.test(message);
+}
+
+/** The bounded failure row (D4): recorded once; the tier's remaining cache states are not attempted. */
+export function crashRow(id: string, flow: string, workload: string, browser: string, cacheState: string, error: unknown): ResultRow {
+	const message = (error instanceof Error ? error.message : String(error)).split('\n')[0]!.slice(0, 300);
+	console.log(`${id}: renderer crashed — ${message}`);
+	return {
+		id,
+		flow,
+		workload,
+		cacheState,
+		browser,
+		cpuRate: 1,
+		viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+		metrics: { failed: 'renderer crashed', error: message },
+		limitations: [
+			...(SMOKE ? [SMOKE_LABEL] : []),
+			'bounded failure row (owner D4): the tab crashed on this report-only row; it is recorded once and the remaining cache states at this tier are not attempted'
+		]
+	};
+}
+
 /** In smoke mode one run, no warm-up and one sample; otherwise the contract's counts. */
 export function smokeOr<T extends number>(value: T, smokeValue = 1): number {
 	return SMOKE ? smokeValue : value;
@@ -119,10 +157,17 @@ export type RenderCounters = {
 	readonly textures: number;
 	readonly maxDrawCallsPerFrame: number;
 	readonly maxTrianglesPerFrame: number;
+	/** Main-thread time inside `render()` (CPU submission), summed over the window. */
+	readonly renderCpuMs: number;
+	readonly maxRenderCpuMs: number;
+	/** GPU time from resolved timer queries; zero frames where the extension is absent. */
+	readonly gpuMs: number;
+	readonly gpuFrames: number;
+	readonly gpuDisjointFrames: number;
 };
 
 type CounterWindow = Window & {
-	__BISKIQ_PERF_RENDER__?: Record<string, { counters: Record<string, number> }>;
+	__BISKIQ_PERF_RENDER__?: Record<string, { counters: Record<string, number>; cpuSamples: number[]; gpu: { available: boolean; reason?: string }; binCensusRequested?: boolean; binCensus?: Record<string, number> }>;
 	__BISKIQ_PERF_WORK__?: { spans: Record<string, { count: number; totalMs: number; maxMs: number }>; counts: Record<string, number> };
 };
 
@@ -136,7 +181,7 @@ export async function readRenderCounters(page: Page): Promise<Record<string, Rec
 
 /** Counters accumulated between two snapshots, per surface; `programs` etc. are levels, not sums. */
 export function renderCounterDelta(before: Record<string, Record<string, number>>, after: Record<string, Record<string, number>>): Record<string, RenderCounters> {
-	const levels = new Set(['programs', 'geometries', 'textures', 'maxDrawCallsPerFrame', 'maxTrianglesPerFrame']);
+	const levels = new Set(['programs', 'geometries', 'textures', 'maxDrawCallsPerFrame', 'maxTrianglesPerFrame', 'maxRenderCpuMs']);
 	const result: Record<string, RenderCounters> = {};
 	for (const [surface, counters] of Object.entries(after)) {
 		const base = before[surface] ?? {};
@@ -147,14 +192,144 @@ export function renderCounterDelta(before: Record<string, Record<string, number>
 	return result;
 }
 
-/** Window maxima restart at each snapshot so a window reports its own peak. */
+/** Window maxima and per-frame CPU samples restart at each snapshot so a window reports its own. */
 export async function resetRenderMaxima(page: Page): Promise<void> {
 	await page.evaluate(() => {
 		for (const state of Object.values((window as CounterWindow).__BISKIQ_PERF_RENDER__ ?? {})) {
 			state.counters.maxDrawCallsPerFrame = 0;
 			state.counters.maxTrianglesPerFrame = 0;
+			state.counters.maxRenderCpuMs = 0;
+			state.cpuSamples.length = 0;
 		}
 	});
+}
+
+// --- Render time, GPU probe and compatible bins (owner's D1) ----------------
+
+export type RenderTime = { readonly cpuSamples: number[]; readonly gpu: { readonly available: boolean; readonly reason?: string } };
+
+/** The window's per-frame CPU render samples (since the last reset) and the GPU probe's state. */
+export async function readRenderTime(page: Page, surface: 'stage' | 'preview' = 'stage'): Promise<RenderTime | null> {
+	return page.evaluate((name) => {
+		const state = (window as CounterWindow).__BISKIQ_PERF_RENDER__?.[name];
+		return state === undefined ? null : { cpuSamples: [...state.cpuSamples], gpu: { ...state.gpu } };
+	}, surface);
+}
+
+/**
+ * CPU submission and GPU time for one window. GPU time is reported only where
+ * the timer extension resolved frames; otherwise the row says why it is absent.
+ */
+export function renderTimeMetrics(prefix: string, counters: RenderCounters | undefined, time: RenderTime | null): Record<string, number | string | null> {
+	if (counters === undefined || time === null) return { [`${prefix}:renderCpu`]: 'no frame rendered' };
+	const samples = summarize(time.cpuSamples);
+	return {
+		[`${prefix}:renderCpuMsPerFrame`]: counters.frames > 0 ? counters.renderCpuMs / counters.frames : null,
+		[`${prefix}:renderCpuMsP50`]: samples.median,
+		[`${prefix}:renderCpuMsP95`]: samples.p95,
+		[`${prefix}:renderCpuMsMax`]: counters.maxRenderCpuMs,
+		[`${prefix}:gpuMsPerFrame`]: counters.gpuFrames > 0 ? counters.gpuMs / counters.gpuFrames : null,
+		[`${prefix}:gpuFrames`]: counters.gpuFrames,
+		[`${prefix}:gpuDisjointFrames`]: counters.gpuDisjointFrames,
+		[`${prefix}:gpuTimer`]: time.gpu.available ? 'EXT_disjoint_timer_query_webgl2' : `unavailable: ${time.gpu.reason ?? 'unknown'}`
+	};
+}
+
+export type BinCensus = {
+	readonly draws: number;
+	readonly triangles: number;
+	readonly programs: number;
+	readonly materialStates: number;
+	/** Distinct (program, material state, geometry layout): the draws a static merge could reach. */
+	readonly mergeBins: number;
+	/** Distinct (program, material state, geometry): the draws instancing could reach. */
+	readonly instanceBins: number;
+};
+
+/**
+ * One frame's compatible-bin census on a surface: a logical model of the
+ * physical frame ("count, not timing"). It needs the surface to render a frame;
+ * a surface that renders only on demand and draws nothing within the wait
+ * reports null.
+ */
+export async function readBinCensus(page: Page, surface: 'stage' | 'preview' = 'stage', timeoutMs = 3_000): Promise<BinCensus | null> {
+	const requested = await page.evaluate((name) => {
+		const state = (window as CounterWindow).__BISKIQ_PERF_RENDER__?.[name];
+		if (state === undefined) return false;
+		delete state.binCensus;
+		state.binCensusRequested = true;
+		return true;
+	}, surface);
+	if (!requested) return null;
+	try {
+		await page.waitForFunction((name) => (window as CounterWindow).__BISKIQ_PERF_RENDER__?.[name]?.binCensus !== undefined, surface, { timeout: timeoutMs, polling: 50 });
+	} catch {
+		await page.evaluate((name) => {
+			const state = (window as CounterWindow).__BISKIQ_PERF_RENDER__?.[name];
+			if (state !== undefined) state.binCensusRequested = false;
+		}, surface);
+		return null;
+	}
+	return page.evaluate((name) => ((window as CounterWindow).__BISKIQ_PERF_RENDER__?.[name]?.binCensus ?? null) as BinCensus | null, surface);
+}
+
+export function binCensusMetrics(prefix: string, census: BinCensus | null): Record<string, number | string> {
+	if (census === null) return { [`${prefix}:bins`]: 'no frame rendered within the census wait' };
+	return Object.fromEntries(Object.entries(census).map(([name, value]) => [`${prefix}:bins:${name}`, value]));
+}
+
+// --- Ownership after commits (owner's D1) -----------------------------------
+
+export type Ownership = { readonly geometries: number; readonly textures: number; readonly programs: number; readonly materials: number; readonly meshes: number };
+
+/**
+ * The Stage renderer's live GPU objects and the materials and meshes its last
+ * rendered scene holds: read after an accepted commit, outside every timed window.
+ */
+export async function readOwnership(page: Page): Promise<Ownership | null> {
+	return page.evaluate(() => {
+		type Node = { isMesh?: boolean; material?: unknown; traverse(visit: (node: Node) => void): void };
+		const ref = (window as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, { scene: Node; renderer: { info: { memory: { geometries: number; textures: number }; programs?: unknown[] | null } } }> }).__BISKIQ_PERF_RENDER_REFS__?.stage;
+		if (ref === undefined) return null;
+		const materials = new Set<unknown>();
+		let meshes = 0;
+		ref.scene.traverse((node) => {
+			if (!node.isMesh) return;
+			meshes += 1;
+			for (const material of Array.isArray(node.material) ? node.material : [node.material]) if (material) materials.add(material);
+		});
+		return { geometries: ref.renderer.info.memory.geometries, textures: ref.renderer.info.memory.textures, programs: ref.renderer.info.programs?.length ?? 0, materials: materials.size, meshes };
+	});
+}
+
+/** First, last and the per-commit slope of each ownership count over a run's commits. */
+export function ownershipMetrics(prefix: string, series: readonly Ownership[]): Record<string, number> {
+	if (series.length === 0) return {};
+	const first = series[0]!;
+	const last = series[series.length - 1]!;
+	const metrics: Record<string, number> = { [`${prefix}:ownership:commits`]: series.length };
+	for (const name of Object.keys(first) as (keyof Ownership)[]) {
+		metrics[`${prefix}:ownership:${name}:first`] = first[name];
+		metrics[`${prefix}:ownership:${name}:last`] = last[name];
+		if (series.length > 1) metrics[`${prefix}:ownership:${name}:perCommit`] = (last[name] - first[name]) / (series.length - 1);
+	}
+	return metrics;
+}
+
+// --- Post-GC heap (owner's D1) ----------------------------------------------
+
+export type HeapSample = { readonly heapMiB: number; readonly documents: number; readonly nodes: number; readonly jsEventListeners: number };
+
+/** JS heap after a forced GC and the DOM counters, outside every timed window. */
+export async function readHeapAfterGc(cdp: CDPSession): Promise<HeapSample> {
+	const heapMiB = await heapUsedMiB(cdp);
+	const counts = (await cdp.send('Memory.getDOMCounters')) as { documents: number; nodes: number; jsEventListeners: number };
+	return { heapMiB, documents: counts.documents, nodes: counts.nodes, jsEventListeners: counts.jsEventListeners };
+}
+
+export function heapMetrics(prefix: string, sample: HeapSample | undefined): Record<string, number> {
+	if (sample === undefined) return {};
+	return Object.fromEntries(Object.entries(sample).map(([name, value]) => [`${prefix}:postGc:${name}`, value]));
 }
 
 // --- Work ledger -----------------------------------------------------------
