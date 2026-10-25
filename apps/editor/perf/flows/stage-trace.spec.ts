@@ -25,7 +25,7 @@ import {
 } from '../lib/flow';
 import { fileReport, formatRow, startReport } from '../lib/report';
 import { startStageTrace, summarizeStageTrace, type StageTraceSummary } from '../lib/stage-trace';
-import { readWork, selectedTiers, SMOKE_LABEL, SMOKE, tierAvailability, tierProject, tierWorkloadLabel, workDelta, workMetrics } from '../lib/tiers';
+import { readWork, selectedTiers, SMOKE_LABEL, SMOKE, tierAvailability, tierProject, tierWorkloadLabel, workDelta, workMetrics, unrunRow } from '../lib/tiers';
 
 async function traced(page: Page, cdp: Parameters<typeof startStageTrace>[0], work: () => Promise<void>): Promise<{ trace: StageTraceSummary; stages: Record<string, number> }> {
 	const before = await readWork(page);
@@ -42,7 +42,8 @@ test.describe('per-stage traces', () => {
 			const report = startReport(`stage-trace-${tier}-${testInfo.project.name.replace(/\s+/g, '-')}`);
 			const availability = tierAvailability(tier);
 			if (!availability.available) {
-				console.log(`stage trace ${tier}: unrun — ${availability.reason}`);
+				report.rows.push(unrunRow(`trace-${tier}-unrun`, 'per-stage traced windows', tierWorkloadLabel(tier), testInfo.project.name, availability.reason));
+				fileReport(report);
 				return;
 			}
 			const session = await newMeasuredSession(browser, { viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK, cacheState: 'warm' });

@@ -40,7 +40,8 @@ import {
 	tierAvailability,
 	tierProject,
 	workDelta,
-	workMetrics
+	workMetrics,
+	unrunRow
 } from '../lib/tiers';
 import type { WorkloadId } from '../lib/workloads/registry';
 
@@ -98,9 +99,16 @@ async function framebufferAt(page: Page, view: View): Promise<Framebuffer> {
 		camera.aspect = width / height;
 		camera.updateProjectionMatrix();
 		camera.updateMatrixWorld(true);
-		stage.renderer.render(stage.scene, camera);
+		// The readback is not a Stage frame: pause the counters for this one render.
+		const flags = window as unknown as { __BISKIQ_PERF_RENDER_PAUSED__?: boolean };
 		const pixels = new Uint8Array(width * height * 4);
-		gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+		flags.__BISKIQ_PERF_RENDER_PAUSED__ = true;
+		try {
+			stage.renderer.render(stage.scene, camera);
+			gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+		} finally {
+			flags.__BISKIQ_PERF_RENDER_PAUSED__ = false;
+		}
 		let uniform = true;
 		for (let index = 4; index < pixels.length && uniform; index += 4) {
 			if (pixels[index] !== pixels[0] || pixels[index + 1] !== pixels[1] || pixels[index + 2] !== pixels[2] || pixels[index + 3] !== pixels[3]) uniform = false;
@@ -132,8 +140,7 @@ test.describe('E5 browser counts and visual non-influence', () => {
 		for (const entry of SWEEP) {
 			const availability = tierAvailability(entry.id);
 			if (!availability.available) {
-				console.log(`E5 ${entry.id}: unrun — ${availability.reason}`);
-				report.rows.push({ id: `E5-${entry.id}-unrun`, flow: 'E5 browser counts', workload: entry.id, browser: testInfo.project.name, cpuRate: 1, viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`, metrics: { unrun: availability.reason }, limitations: [COUNT_LABEL] });
+				report.rows.push(unrunRow(`E5-${entry.id}-unrun`, 'E5 browser counts', entry.id, testInfo.project.name, availability.reason));
 				continue;
 			}
 			// One warm session per workload: E5 counts, not cache-state timings.

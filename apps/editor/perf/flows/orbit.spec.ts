@@ -49,7 +49,8 @@ import {
 	workMetrics,
 	type RenderCounters,
 	type ResidentBytes,
-	type WorkSnapshot
+	type WorkSnapshot,
+	unrunRow
 } from '../lib/tiers';
 import type { WorkloadId } from '../lib/workloads/registry';
 
@@ -157,17 +158,7 @@ test.describe('F7 orbit', () => {
 			const report = startReport(`f7-orbit-${tier}-${testInfo.project.name.replace(/\s+/g, '-')}`);
 			const availability = tierAvailability(tier);
 			if (!availability.available) {
-				report.rows.push({
-					id: `F7-${tier}-unrun`,
-					flow: 'F7 orbit/navigation',
-					workload: tierWorkloadLabel(tier),
-					browser: testInfo.project.name,
-					cpuRate: 1,
-					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-					metrics: { unrun: availability.reason },
-					limitations: ['unrun tier: reported, not skipped silently']
-				});
-				console.log(`F7 ${tier}: unrun — ${availability.reason}`);
+				report.rows.push(unrunRow(`F7-${tier}-unrun`, 'F7 orbit/navigation', tierWorkloadLabel(tier), testInfo.project.name, availability.reason));
 				fileReport(report);
 				return;
 			}

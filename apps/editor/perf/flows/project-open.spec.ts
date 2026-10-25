@@ -41,7 +41,8 @@ import {
 	workMetrics,
 	type RenderCounters,
 	type ResidentBytes,
-	type WorkSnapshot
+	type WorkSnapshot,
+	unrunRow
 } from '../lib/tiers';
 import type { WorkloadId } from '../lib/workloads/registry';
 
@@ -100,10 +101,9 @@ function mergeWindows(runs: readonly OpenRun[]): { work: WorkSnapshot; render: R
 	const work: WorkSnapshot = { spans: {}, counts: {} };
 	for (const run of runs) {
 		for (const [name, span] of Object.entries(run.work.spans)) {
-			const into = (work.spans[name] ??= { count: 0, totalMs: 0, maxMs: 0 });
+			const into = (work.spans[name] ??= { count: 0, totalMs: 0 });
 			into.count += span.count;
 			into.totalMs += span.totalMs;
-			into.maxMs = Math.max(into.maxMs, span.maxMs);
 		}
 		for (const [name, value] of Object.entries(run.work.counts)) work.counts[name] = (work.counts[name] ?? 0) + value;
 	}
@@ -138,17 +138,7 @@ for (const entry of sources) {
 			if (entry.source.method === 'new') {
 				const availability = tierAvailability(entry.source.tier);
 				if (!availability.available) {
-					report.rows.push({
-						id: `F2-${entry.id}-unrun`,
-						flow: 'F2 project open',
-						workload: entry.workload,
-						browser: testInfo.project.name,
-						cpuRate: 1,
-						viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-						metrics: { unrun: availability.reason },
-						limitations: ['unrun tier: reported, not skipped silently']
-					});
-					console.log(`F2 ${entry.id}: unrun — ${availability.reason}`);
+					report.rows.push(unrunRow(`F2-${entry.id}-unrun`, 'F2 project open', entry.workload, testInfo.project.name, availability.reason));
 					fileReport(report);
 					return;
 				}

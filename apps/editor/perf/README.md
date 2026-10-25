@@ -93,8 +93,9 @@ reports a `…-unrun` row with that reason, and the pass manifest records it.
 
 **Counters (C).** Product code exposes two inert seams that do nothing without the
 harness flag: `perfRenderer` hands each surface's WebGL renderer to the harness,
-which counts Three's own `renderer.info` per frame (draws, triangles, shadow-map
-passes and shadow draws, programs, geometries, textures, frames at rest), and
+which counts Three's own `renderer.info` per frame (main-pass draws, triangles,
+shadow-map passes and shadow draws, programs, geometries, textures, frames at
+rest; `drawCalls` excludes the shadow pass, which `shadowDrawCalls` counts), and
 `installPerfWorkObserver` aggregates layout-core's work observer into
 `__BISKIQ_PERF_WORK__`: spans for compile, admission (parse, runtime, digest,
 serialize, freeze), envelope validation, Scene resolve and Layout representation,
@@ -118,7 +119,10 @@ M and S; then the E5 browser counts and the transferred rows (F1, F10, and F5/F6
 when `PERF_API_ORIGIN` and `E2E_TEST_AUTH_SECRET` name a local stack). The
 manifest in the pass directory records commit, dirty tree, fixture digests,
 contamination, every phase's wall time and exit, and the setup share. A failed
-phase marks the pass aborted with its cause; nothing is retried. The report-only
+phase marks the pass aborted with its cause; nothing is retried. Ctrl-C stops the
+pass at the next phase boundary, records the interrupt, writes the manifest and
+releases the lock. Exit codes: 0 clean, 1 aborted, 5 contaminated, 130/143
+interrupted. The report-only
 sweep latency rows (F3/F4/F8 on the focus Wall and F7, museum ×1 and sweep-H10)
 run in every pass unless the owner drops them, and the bundle report written
 after the build supplies the Stage initial-load delta.

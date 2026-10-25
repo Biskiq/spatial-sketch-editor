@@ -25,7 +25,10 @@
  *    and the load average at the end, releases the lock and writes the manifest.
  *
  * A phase that fails is recorded with its cause and the pass is marked aborted.
- * It is never retried here: the owner rules whether the pass counts (A.7).
+ * It is never retried here: the owner rules whether the pass counts (A.7). An
+ * interrupt (Ctrl-C, SIGTERM) is recorded the same way, with the manifest
+ * written and the lock released. The exit code says which: 0 clean, 1 aborted,
+ * 5 contaminated (and not aborted).
  */
 import { execFileSync, spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -231,8 +234,30 @@ async function main(): Promise<void> {
 	};
 	const watchdogLog = join(passDir, 'crash-handler-watchdog.log');
 	const watchdog = startCrashHandlerWatchdog(watchdogLog);
+	const finish = (): ReturnType<typeof writeManifest> => {
+		server?.kill('SIGTERM');
+		watchdog.kill('SIGTERM');
+		const end = snapshot();
+		const manifest = writeManifest(end);
+		releaseLock();
+		console.log(`\n[bench] ${manifest.label}: ${manifest.accounting.totalSeconds} s total, setup ${manifest.accounting.setupSeconds} s, cool-down ${manifest.accounting.cooldownSeconds} s`);
+		console.log(`[bench] load ${start.loadAverage1m} → ${end.loadAverage1m}; contaminated: ${manifest.contaminated ? manifest.contamination.join('; ') : 'no'}; aborted: ${manifest.aborted ? manifest.abortCauses.join('; ') : 'no'}`);
+		console.log(`[bench] results: ${passDir}`);
+		process.exitCode = manifest.aborted ? 1 : manifest.contaminated ? 5 : 0;
+		return manifest;
+	};
+	// An interrupt still leaves a manifest and a free lock. Ctrl-C also reaches
+	// the running Playwright process, which ends its phase; the handler only runs
+	// once the synchronous phase returns, so the pass stops at the next boundary.
+	let interrupted: NodeJS.Signals | null = null;
+	for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => (interrupted = signal));
+	const boundary = async (): Promise<void> => {
+		await new Promise((resolvePromise) => setImmediate(resolvePromise));
+		if (interrupted !== null) throw new Error(`interrupted by ${interrupted}`);
+	};
 	try {
 		phases.push(timed('build', 'setup', () => spawnSync('npm', ['run', 'build'], { cwd: EDITOR, stdio: 'inherit', env: process.env }).status));
+		await boundary();
 		if (phases[0]!.cause !== undefined) throw new Error(`build failed: ${phases[0]!.cause}`);
 		// The Stage initial-load delta (transferred row): the delivery report over this build.
 		phases.push(timed('bundle report', 'setup', () => spawnSync('node', ['perf/bundle-report.mjs', '--json', join(passDir, 'bundle-report.json')], { cwd: EDITOR, stdio: 'inherit', env: process.env }).status));
@@ -248,28 +273,26 @@ async function main(): Promise<void> {
 					spawnSync('sleep', [String(COOLDOWN_SECONDS)]);
 					return 0;
 				}, { thermalBefore: before }));
+				await boundary();
 			}
 			phases.push(timed(`tier ${tier}`, 'flows', () => playwright(TIER_FLOWS, { ...flowEnv, PERF_TIERS: tier }), { thermalBefore: run('pmset', ['-g', 'therm']) }));
+			await boundary();
 		}
 		phases.push(timed('E5 browser counts', 'flows', () => playwright(['flows/e5-sweep.spec.ts'], flowEnv), { thermalBefore: run('pmset', ['-g', 'therm']) }));
+		await boundary();
 		if (SWEEP_LATENCY) {
 			// F3 (the fixed edits on the focus Wall) and F7 at sweep ×1 and ×10, variant H.
 			phases.push(timed('sweep latency rows (report-only)', 'flows', () => playwright(['flows/drag-correlation.spec.ts', 'flows/orbit.spec.ts'], { ...flowEnv, PERF_TIERS: 'museum,sweep-H10' }), { thermalBefore: run('pmset', ['-g', 'therm']) }));
+			await boundary();
 		}
 		const transferred = ['flows/startup.spec.ts', 'flows/preview-lifecycle.spec.ts', ...(process.env.PERF_API_ORIGIN !== undefined && process.env.E2E_TEST_AUTH_SECRET !== undefined ? ['flows/import.spec.ts'] : [])];
 		phases.push(timed(`transferred rows (${transferred.map((spec) => spec.replace(/^flows\/|\.spec\.ts$/g, '')).join(', ')})`, 'flows', () => playwright(transferred, flowEnv), { thermalBefore: run('pmset', ['-g', 'therm']) }));
 	} catch (error) {
 		phases.push({ name: 'pass', kind: 'flows', startedAt: new Date().toISOString(), wallSeconds: 0, exitCode: null, cause: error instanceof Error ? error.message : String(error) });
 	} finally {
-		server?.kill('SIGTERM');
-		watchdog.kill('SIGTERM');
-		const end = snapshot();
-		const manifest = writeManifest(end);
-		releaseLock();
-		console.log(`\n[bench] ${manifest.label}: ${manifest.accounting.totalSeconds} s total, setup ${manifest.accounting.setupSeconds} s, cool-down ${manifest.accounting.cooldownSeconds} s`);
-		console.log(`[bench] load ${start.loadAverage1m} → ${end.loadAverage1m}; contaminated: ${manifest.contaminated ? manifest.contamination.join('; ') : 'no'}; aborted: ${manifest.aborted ? manifest.abortCauses.join('; ') : 'no'}`);
-		console.log(`[bench] results: ${passDir}`);
+		finish();
 	}
+	if (interrupted !== null) process.exit(interrupted === 'SIGINT' ? 130 : 143);
 }
 
 main().catch((error: unknown) => {

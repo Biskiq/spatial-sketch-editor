@@ -15,7 +15,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -150,28 +150,52 @@ export type WorkloadStatus =
 	| { readonly kind: 'fresh'; readonly meta: WorkloadMeta }
 	| { readonly kind: 'missing' | 'stale' | 'corrupt' | 'blocked'; readonly reason: string };
 
+/** One verified read per file version: a flow asks for status, label and envelope every run. */
+const verified = new Map<WorkloadId, { version: string; status: WorkloadStatus; json: string | null }>();
+
+function fileVersion(paths: { json: string; meta: string }): string {
+	const json = statSync(paths.json);
+	const meta = statSync(paths.meta);
+	return `${json.mtimeMs}:${json.size}:${meta.mtimeMs}:${meta.size}`;
+}
+
 export function workloadStatus(id: WorkloadId): WorkloadStatus {
+	return verifiedRead(id).status;
+}
+
+function verifiedRead(id: WorkloadId): { status: WorkloadStatus; json: string | null } {
 	const spec = WORKLOADS[id];
-	if (spec.blocked !== undefined) return { kind: 'blocked', reason: spec.blocked };
+	if (spec.blocked !== undefined) return { status: { kind: 'blocked', reason: spec.blocked }, json: null };
 	const paths = workloadPaths(id);
-	if (!existsSync(paths.json) || !existsSync(paths.meta)) return { kind: 'missing', reason: `${id} is not generated` };
+	if (!existsSync(paths.json) || !existsSync(paths.meta)) return { status: { kind: 'missing', reason: `${id} is not generated` }, json: null };
+	const version = fileVersion(paths);
+	const cached = verified.get(id);
+	if (cached?.version === version) return cached;
+	const read = verifyFiles(id, spec, paths);
+	verified.set(id, { version, ...read });
+	return read;
+}
+
+function verifyFiles(id: WorkloadId, spec: WorkloadSpec, paths: { json: string; meta: string }): { status: WorkloadStatus; json: string | null } {
 	const meta = JSON.parse(readFileSync(paths.meta, 'utf8')) as WorkloadMeta;
 	if (meta.inputKey !== workloadInputKey(spec)) {
-		return { kind: 'stale', reason: `${id} was generated from different inputs, formats or generator source` };
+		return { status: { kind: 'stale', reason: `${id} was generated from different inputs, formats or generator source` }, json: null };
 	}
-	if (sha256(readFileSync(paths.json)) !== meta.contentDigest) {
-		return { kind: 'corrupt', reason: `${id}.json does not match its recorded content digest` };
+	const bytes = readFileSync(paths.json);
+	if (sha256(bytes) !== meta.contentDigest) {
+		return { status: { kind: 'corrupt', reason: `${id}.json does not match its recorded content digest` }, json: null };
 	}
-	return { kind: 'fresh', meta };
+	return { status: { kind: 'fresh', meta }, json: bytes.toString('utf8') };
 }
 
 export const REGENERATE_COMMAND = 'npm run perf:workloads --workspace @portfolio/editor';
 
 /** Read a fresh workload or refuse: a measured run never generates. */
 export function loadWorkload(id: WorkloadId): LoadedWorkload {
-	const status = workloadStatus(id);
-	if (status.kind !== 'fresh') throw new Error(`workload ${id}: ${status.reason}. Run \`${REGENERATE_COMMAND}\` first.`);
-	return { spec: WORKLOADS[id], meta: status.meta, canonicalJson: readFileSync(workloadPaths(id).json, 'utf8') };
+	const { status, json } = verifiedRead(id);
+	if (status.kind !== 'fresh' || json === null) throw new Error(`workload ${id}: ${status.kind === 'fresh' ? 'unreadable' : status.reason}. Run \`${REGENERATE_COMMAND}\` first.`);
+	// The bytes verified against the digest are the bytes the run loads.
+	return { spec: WORKLOADS[id], meta: status.meta, canonicalJson: json };
 }
 
 /**

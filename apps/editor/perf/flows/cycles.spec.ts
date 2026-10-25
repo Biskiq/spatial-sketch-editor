@@ -31,7 +31,7 @@ import {
 import { clearObservations } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
-import { readRenderCounters, selectedTiers, smokeOr, tierAvailability, tierLimitations, tierProject, tierWorkloadLabel } from '../lib/tiers';
+import { readRenderCounters, selectedTiers, smokeOr, tierAvailability, tierLimitations, tierProject, tierWorkloadLabel, unrunRow } from '../lib/tiers';
 
 const CYCLES = smokeOr(10);
 const EDITS_PER_CYCLE = smokeOr(20);
@@ -42,17 +42,7 @@ test.describe('F13 repeated open/close', () => {
 		const report = startReport(`f13-cycles-${tier}-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const availability = tierAvailability(tier);
 		if (!availability.available) {
-			report.rows.push({
-				id: `F13-${tier}-unrun`,
-				flow: 'F13 repeated open/close',
-				workload: tierWorkloadLabel(tier),
-				browser: testInfo.project.name,
-				cpuRate: 1,
-				viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-				metrics: { unrun: availability.reason },
-				limitations: ['unrun tier: reported, not skipped silently']
-			});
-			console.log(`F13 ${tier}: unrun — ${availability.reason}`);
+			report.rows.push(unrunRow(`F13-${tier}-unrun`, 'F13 repeated open/close', tierWorkloadLabel(tier), testInfo.project.name, availability.reason));
 			fileReport(report);
 			return;
 		}

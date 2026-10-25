@@ -67,7 +67,8 @@ import {
 	workDelta,
 	workMetrics,
 	type RenderCounters,
-	type WorkSnapshot
+	type WorkSnapshot,
+	unrunRow
 } from '../lib/tiers';
 import type { WorkloadId } from '../lib/workloads/registry';
 
@@ -109,10 +110,9 @@ type DragRun = {
 
 function addWork(into: WorkSnapshot, window: WorkSnapshot): void {
 	for (const [name, span] of Object.entries(window.spans)) {
-		const target = (into.spans[name] ??= { count: 0, totalMs: 0, maxMs: 0 });
+		const target = (into.spans[name] ??= { count: 0, totalMs: 0 });
 		target.count += span.count;
 		target.totalMs += span.totalMs;
-		target.maxMs = Math.max(target.maxMs, span.maxMs);
 	}
 	for (const [name, value] of Object.entries(window.counts)) into.counts[name] = (into.counts[name] ?? 0) + value;
 }
@@ -180,12 +180,14 @@ async function runDrag(
 		});
 		await waitForAcceptedResult(page, beforeDrag);
 		const dragWindow = workDelta(workBefore, await readWork(page));
-		dragRender = renderCounterDelta(renderBefore, await readRenderCounters(page));
+		const sampleRender = renderCounterDelta(renderBefore, await readRenderCounters(page));
 		let ledger = await readLedger(page);
 		const commit = commandCompletion(ledger.records, ledger.ticks, 'command:commit');
 		const served = (dragWindow.counts.compile ?? 0) === 0;
 		if (served) cacheServed += 1;
 		else {
+			// Render counts follow the timing windows: the last measured sample, never a cache-served one.
+			dragRender = sampleRender;
 			addWork(dragWork, dragWindow);
 			if (commit !== null) commitCompletions.push(commit);
 		}
@@ -276,17 +278,7 @@ test.describe('F3/F4/F8 methodology', () => {
 			const report = startReport(`drag-correlation-${tier}-${testInfo.project.name.replace(/\s+/g, '-')}`);
 			const availability = tierAvailability(tier);
 			if (!availability.available) {
-				report.rows.push({
-					id: `F3-${tier}-unrun`,
-					flow: 'F3/F4/F8 on the shipped straight-Wall drag',
-					workload: tierWorkloadLabel(tier),
-					browser: testInfo.project.name,
-					cpuRate: 1,
-					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-					metrics: { unrun: availability.reason },
-					limitations: ['unrun tier: reported, not skipped silently']
-				});
-				console.log(`F3 ${tier}: unrun — ${availability.reason}`);
+				report.rows.push(unrunRow(`F3-${tier}-unrun`, 'F3/F4/F8 on the shipped straight-Wall drag', tierWorkloadLabel(tier), testInfo.project.name, availability.reason));
 				fileReport(report);
 				return;
 			}

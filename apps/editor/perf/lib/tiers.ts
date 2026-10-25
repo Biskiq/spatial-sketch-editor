@@ -17,7 +17,9 @@
 
 import type { Page } from '@playwright/test';
 
+import { DEVICE_SCALE_FACTOR, VIEWPORT } from './config';
 import type { FixtureProject } from './fixtures';
+import type { ResultRow } from './report';
 import { BENCH_TIERS, loadWorkload, workloadJsonFor, workloadStatus, WORKLOADS, type WorkloadId } from './workloads/registry';
 
 export const SMOKE = process.env.PERF_SMOKE === '1';
@@ -82,6 +84,21 @@ export function tierLimitations(tier: WorkloadId): string[] {
 	];
 }
 
+/** The row a flow files for a tier it cannot run: reported, never skipped silently. */
+export function unrunRow(id: string, flow: string, workload: string, browser: string, reason: string): ResultRow {
+	console.log(`${id}: unrun — ${reason}`);
+	return {
+		id,
+		flow,
+		workload,
+		browser,
+		cpuRate: 1,
+		viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+		metrics: { unrun: reason },
+		limitations: ['unrun tier: reported, not skipped silently']
+	};
+}
+
 /** In smoke mode one run, no warm-up and one sample; otherwise the contract's counts. */
 export function smokeOr<T extends number>(value: T, smokeValue = 1): number {
 	return SMOKE ? smokeValue : value;
@@ -142,8 +159,12 @@ export async function resetRenderMaxima(page: Page): Promise<void> {
 
 // --- Work ledger -----------------------------------------------------------
 
+/**
+ * Spans carry count and total only. The product ledger's running maximum is not
+ * windowed: a window that did not raise it has no exact maximum of its own.
+ */
 export type WorkSnapshot = {
-	readonly spans: Record<string, { count: number; totalMs: number; maxMs: number }>;
+	readonly spans: Record<string, { count: number; totalMs: number }>;
 	readonly counts: Record<string, number>;
 };
 
@@ -152,7 +173,7 @@ export async function readWork(page: Page): Promise<WorkSnapshot> {
 		const ledger = (window as CounterWindow).__BISKIQ_PERF_WORK__;
 		return ledger === undefined
 			? { spans: {}, counts: {} }
-			: { spans: JSON.parse(JSON.stringify(ledger.spans)), counts: { ...ledger.counts } };
+			: { spans: Object.fromEntries(Object.entries(ledger.spans).map(([name, span]) => [name, { count: span.count, totalMs: span.totalMs }])), counts: { ...ledger.counts } };
 	});
 }
 
@@ -160,11 +181,9 @@ export async function readWork(page: Page): Promise<WorkSnapshot> {
 export function workDelta(before: WorkSnapshot, after: WorkSnapshot): WorkSnapshot {
 	const spans: WorkSnapshot['spans'] = {};
 	for (const [name, span] of Object.entries(after.spans)) {
-		const base = before.spans[name] ?? { count: 0, totalMs: 0, maxMs: 0 };
+		const base = before.spans[name] ?? { count: 0, totalMs: 0 };
 		if (span.count === base.count) continue;
-		// The ledger keeps a running maximum, so a window's max is exact only when
-		// it raised it; otherwise the window's mean bounds it from below.
-		spans[name] = { count: span.count - base.count, totalMs: span.totalMs - base.totalMs, maxMs: span.maxMs > base.maxMs ? span.maxMs : (span.totalMs - base.totalMs) / (span.count - base.count) };
+		spans[name] = { count: span.count - base.count, totalMs: span.totalMs - base.totalMs };
 	}
 	const counts: Record<string, number> = {};
 	for (const [name, value] of Object.entries(after.counts)) {

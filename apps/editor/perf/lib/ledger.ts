@@ -85,8 +85,12 @@ export function perfInitScript(options: HarnessOptions): void {
 	// T1.P02.S06 render counters. The product hands each surface's renderer to
 	// this hook (`perfRenderer`); the harness wraps that instance's `render` and
 	// its shadow map's `render`, so the counts are Three's own `info` per frame.
-	// Shadow draws are the calls issued inside the shadow pass. A frame is "at
+	// Three resets `info` before the shadow pass, so its calls include shadow
+	// draws: `drawCalls` is the main pass only (total minus the calls issued
+	// inside the shadow pass) and `shadowDrawCalls` the rest. A frame is "at
 	// rest" when no pointer, wheel or key input arrived in the preceding second.
+	// A harness readback sets `__BISKIQ_PERF_RENDER_PAUSED__` so its own render is
+	// neither counted nor recorded as the surface's last scene and camera.
 	type RenderInfo = { render: { calls: number; triangles: number }; memory: { geometries: number; textures: number }; programs?: unknown[] | null };
 	type HookedRenderer = {
 		render(scene: unknown, camera: unknown): void;
@@ -109,27 +113,31 @@ export function perfInitScript(options: HarnessOptions): void {
 		const counters = state.counters;
 		const shadowMap = renderer.shadowMap;
 		const shadowRender = shadowMap.render.bind(shadowMap);
+		let shadowCallsThisFrame = 0;
 		shadowMap.render = (...args: unknown[]) => {
 			const before = renderer.info.render.calls;
 			shadowRender(...args);
-			const issued = renderer.info.render.calls - before;
-			if (issued > 0) {
-				counters.shadowMapRenders! += 1;
-				counters.shadowDrawCalls! += issued;
-			}
+			shadowCallsThisFrame += renderer.info.render.calls - before;
 		};
 		// The managed renderer reassigns `render` after its lookup discovery and at
 		// dispose; an accessor keeps this wrapper outermost across reassignment.
 		let inner = renderer.render;
 		const counted = (scene: unknown, camera: unknown) => {
+			shadowCallsThisFrame = 0;
 			inner.call(renderer, scene, camera);
+			if ((target as unknown as Record<string, unknown>).__BISKIQ_PERF_RENDER_PAUSED__ === true) return;
 			renderRefs[surface] = { renderer, scene, camera };
 			const info = renderer.info;
+			const mainPassCalls = info.render.calls - shadowCallsThisFrame;
 			counters.frames! += 1;
 			if (performance.now() - lastInputAt > 1000) counters.framesAtRest! += 1;
-			counters.drawCalls! += info.render.calls;
+			if (shadowCallsThisFrame > 0) {
+				counters.shadowMapRenders! += 1;
+				counters.shadowDrawCalls! += shadowCallsThisFrame;
+			}
+			counters.drawCalls! += mainPassCalls;
 			counters.triangles! += info.render.triangles;
-			counters.maxDrawCallsPerFrame = Math.max(counters.maxDrawCallsPerFrame!, info.render.calls);
+			counters.maxDrawCallsPerFrame = Math.max(counters.maxDrawCallsPerFrame!, mainPassCalls);
 			counters.maxTrianglesPerFrame = Math.max(counters.maxTrianglesPerFrame!, info.render.triangles);
 			counters.programs = info.programs?.length ?? 0;
 			counters.geometries = info.memory.geometries;
@@ -187,6 +195,10 @@ export async function clearObservations(page: import('@playwright/test').Page): 
 			target.__BISKIQ_PERF_LONG_TASKS__, target.__BISKIQ_PERF_EVENTS__]) {
 			if (entries) entries.length = 0;
 		}
+		// The last rendered scene per surface: a closed project's scene graph must
+		// not survive a forced GC because the harness still points at it.
+		const refs = (target as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, unknown> }).__BISKIQ_PERF_RENDER_REFS__;
+		if (refs) for (const surface of Object.keys(refs)) delete refs[surface];
 		performance.clearMarks();
 	});
 }
