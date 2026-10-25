@@ -17,17 +17,22 @@ ACTIVE: T3.P04.S01 Project rename and delete — implementation started 2026-10-
         R1/R2 were ratified by the owner on 2026-10-25. Draft PR #191 now contains the T3 API
         lifecycle routes, migration 007, three writer leases, compensation, owned-key cleanup and
         retry CLI, plus the two P1 backend fixes for monotonic lease deadlines and advisory-client
-        reuse. The T2 shared API review gate is satisfied by PR #191 review 5643653030. The API
+        reuse. The T2 shared API review gate is satisfied by PR #191 review 5643653030. The T1
+        pre-implementation review was approved in PR #191 review 5643884439; the bounded project
+        list, Head and current-route integration is implemented in the branch. A read-only three-way
+        route compatibility check against S06 commit
+        `1747aaeee9bdee3bfafc1a88eb1a09ee40361e92` completed without conflicts; S06's additive
+        perf-work observer composes with the lifecycle route additions, and no S06 checkout, harness
+        or fixture was edited. Editor `npm run check` passed with zero errors/warnings, and 10
+        affected fast-contract files passed 144 tests on this implementation revision. The API
         suite passed 110 tests with zero skips at `821adf6a9bb04f66287f333720191e4d59b48253`;
         detailed fail-before/pass-after evidence is in
         [backend concurrency/deadline evidence](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/backend-concurrency-deadline-evidence-2026-10-25.md).
         Slice acceptance remains pending.
-NEXT:   1. Keep the bounded T1 shell patch behind T1.P02.S06's recorded shell-file claim and T1
-           pre-implementation review ([handoff material](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/t1-shell-handoff.md));
-           do not touch claimed files.
-        2. Finish the T1-owned dirty-state integration and the remaining integrated client, browser,
-           accessibility and performance verification. API coverage does not close these gates.
-        3. Keep draft PR #191 in draft while those reviews and required verification remain pending;
+NEXT:   1. Run the remaining integrated client journeys, browser, accessibility and performance
+           verification on the integrated revision. API and fast-contract coverage do not close these
+           gates ([T1 integration handoff](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/t1-shell-handoff.md)).
+        2. Keep draft PR #191 in draft while those reviews and required verification remain pending;
            do not accept/close the slice or phase or merge it.
 RELEASE: ../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md
          (closes T3.P02 and T3.P03, authorizes and releases T3.P04.S01; the live release row is
@@ -39,9 +44,9 @@ ROUTE:   ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project
          → ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md
          (closed gate artifacts remain stubs at their own paths: T3.P02.S02 and T3.P03.S02
          acceptance.md, anchors 8cc30c94 and a65db2e0, tags closed/T3.P02 and closed/T3.P03)
-BLOCKER: T1's recorded S06 claim and required pre-implementation review still gate the shell patch;
-         integrated acceptance remains open. The 2026-10-25 verification authorization does not
-         establish S06 completion, release its shared shell/harness ownership, or accept this slice.
+BLOCKER: Integrated acceptance remains open. The T1 review authorizes the bounded shell integration,
+         not S06 completion or release of its shared harness ownership. The 2026-10-25 verification
+         authorization does not accept this slice or authorize merge.
 API:     Route contract is `PATCH /projects/:projectId` with `{name, precondition}` and
          `DELETE /projects/:projectId` with `{precondition}`; both require an expected saved-base
          token. Upload writes use a 180 s request bound, a fixed 170 s SQL lease, a 2 s heartbeat

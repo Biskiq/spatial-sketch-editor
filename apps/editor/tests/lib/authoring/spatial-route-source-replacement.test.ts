@@ -23,6 +23,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const harness = vi.hoisted(() => ({
 	document: null as unknown,
 	loadCalls: 0,
+	version: 1,
+	savedBaseToken: 'token-1',
+	publicationReads: 0,
+	publication: {
+		publicationId: null as string | null,
+		activeVersion: null as number | null,
+		revision: 0,
+		currentVersion: 1,
+		createdAt: null as string | null,
+		updatedAt: null as string | null
+	},
+	renameCalls: [] as { projectId: string; request: unknown; signal?: AbortSignal }[],
+	deleteCalls: [] as { projectId: string; request: unknown }[],
+	deferDelete: false,
+	releaseDelete: null as (() => void) | null,
+	services: null as unknown,
+	deferRename: false,
+	releaseRename: null as (() => void) | null,
 	// TD-10's harness: hold one admission open so a newer replacement can land
 	// while the older result is still unresolved.
 	deferNextBootFromSource: false,
@@ -33,9 +51,17 @@ const harness = vi.hoisted(() => ({
 // test doubles aliased in `vitest.shared.ts`; SvelteKit's virtual modules do not
 // exist in this Vite graph.
 
-// The route's replacement decision is independent of which domain adapters are
-// registered; an empty catalogue keeps the harness off the instrument tree.
-vi.mock('$lib/authoring/adapters/catalog', () => ({ stageAdapterFactories: [] }));
+vi.mock('$lib/authoring/adapters/catalog', async () => {
+	const { createDomainConsumer } = await import('./__fixtures__/stage-domain-consumer');
+	return {
+		stageAdapterFactories: [
+			(port: import('$lib/authoring/stage/stage-adapter-host').StageAdapterServices) => {
+				harness.services = port;
+				return createDomainConsumer('unused-layout-object', [])(port);
+			}
+		]
+	};
+});
 
 vi.mock('$lib/authoring/stage/shell/EditorHead.svelte', async () => ({
 	default: (await import('./fixtures/HeadProbe.svelte')).default
@@ -45,16 +71,10 @@ vi.mock('$lib/authoring/stage/shell/StageCanvas.svelte', async () => ({
 	default: (await import('./fixtures/StageCanvasProbe.svelte')).default
 }));
 
-vi.mock('$lib/platform/project-persistence', () => {
-	class ProjectPersistenceError extends Error {
-		readonly code: string;
-		constructor(code: string, message = code) {
-			super(message);
-			this.code = code;
-		}
-	}
+vi.mock('$lib/platform/project-persistence', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/platform/project-persistence')>();
 	return {
-		ProjectPersistenceError,
+		...actual,
 		// The route constructs the auth port before deciding whether an API origin
 		// exists; the harness never signs in.
 		createProjectAuth: () => ({
@@ -67,17 +87,57 @@ vi.mock('$lib/platform/project-persistence', () => {
 			signOut: async () => undefined
 		}),
 		createProjectApi: () => ({
-			async loadProject() {
+			async loadProject(projectId: string) {
 				harness.loadCalls += 1;
+				const document = harness.document as ProjectEnvelope;
+				const { computeEnvelopeSourceContentId } = await import('@portfolio/project-model/units');
 				return {
-					document: harness.document,
-					savedBaseToken: 'token-1',
-					savedRevision: { projectId: 'project-1', revisionId: 'revision-1' },
-					savedSourceContentId: 'content-1'
+					projectId,
+					name: document.name,
+					version: harness.version,
+					updatedAt: '2026-10-19T00:00:00.000Z',
+					document,
+			savedBaseToken: harness.loadCalls === 1 ? 'token-1' : harness.savedBaseToken,
+					savedRevision: document.acceptedRevision,
+					savedSourceContentId: await computeEnvelopeSourceContentId(document)
 				};
 			},
+			async getPublicationStatus() {
+				harness.publicationReads += 1;
+				return harness.publication;
+			},
+			async renameProject(projectId: string, request: { name: string }, signal?: AbortSignal) {
+				harness.renameCalls.push({ projectId, request, signal });
+				if (harness.deferRename) {
+					harness.deferRename = false;
+					await new Promise<void>((resolve) => { harness.releaseRename = resolve; });
+				}
+				const { computeEnvelopeSourceContentId } = await import('@portfolio/project-model/units');
+				const savedRevision = { projectId, revisionId: 'revision-renamed' };
+				const document = { ...(harness.document as ProjectEnvelope), name: request.name, acceptedRevision: savedRevision };
+				harness.document = document;
+			harness.savedBaseToken = 'saved-base:00000000-0000-4000-8000-000000000002';
+				harness.version += 1;
+				return {
+					projectId,
+					name: request.name,
+					version: harness.version,
+					updatedAt: '2026-10-20T00:00:00.000Z',
+					savedBaseToken: harness.savedBaseToken,
+					savedRevision,
+					sourceContentId: await computeEnvelopeSourceContentId(document)
+				};
+			},
+			async deleteProject(projectId: string, request: unknown) {
+				harness.deleteCalls.push({ projectId, request });
+				if (harness.deferDelete) {
+					harness.deferDelete = false;
+					await new Promise<void>((resolve) => { harness.releaseDelete = resolve; });
+				}
+				return { projectId, cleanup: 'pending' as const };
+			},
 			async saveAcceptedSource() {
-				throw new ProjectPersistenceError('network', 'the harness never saves');
+				throw new actual.ProjectPersistenceError('network', 'the harness never saves');
 			}
 		})
 	};
@@ -104,10 +164,14 @@ vi.mock('$lib/authoring/stage/boot-state', async (importOriginal) => {
 });
 
 import { mount, tick, unmount } from 'svelte';
-import { serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { createEmptyUnitSceneDocument, serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import type { ReloadOffer } from '$lib/authoring/save/save-state';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
+import { consumerSceneEdit } from './__fixtures__/stage-domain-consumer';
+import { primitiveEntity } from './__fixtures__/f4-current-source-fixtures';
 import { resetReloadOffer, setReloadOffer } from './fixtures/reload-offer';
+import { navigations, resetNavigations } from './fixtures/app-navigation';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 
 let component: ReturnType<typeof mount> | null = null;
@@ -143,13 +207,39 @@ async function settled(): Promise<void> {
 }
 
 beforeEach(async () => {
-	mountedProject = await createUnitProject({ id: 'project-1', name: 'Mounted project' });
+	mountedProject = await createUnitProject({
+		id: 'project-1',
+		name: 'Mounted project',
+		scene: {
+			...createEmptyUnitSceneDocument(),
+			entities: [primitiveEntity(0)]
+		}
+	});
 	harness.document = mountedProject;
 	harness.loadCalls = 0;
+	harness.version = 1;
+	harness.savedBaseToken = 'saved-base:00000000-0000-4000-8000-000000000001';
+	harness.publicationReads = 0;
+	harness.publication = {
+		publicationId: null,
+		activeVersion: null,
+		revision: 0,
+		currentVersion: 1,
+		createdAt: null,
+		updatedAt: null
+	};
+	harness.renameCalls = [];
+	harness.deleteCalls = [];
+	harness.deferDelete = false;
+	harness.releaseDelete = null;
+	harness.services = null;
+	harness.deferRename = false;
+	harness.releaseRename = null;
 	harness.deferNextBootFromSource = false;
 	harness.releaseBootFromSource = null;
 	nextFile = null;
 	resetReloadOffer();
+	resetNavigations();
 
 	// jsdom has no layout/WebGL loop; the route's frame loop is unrelated to the
 	// replacement decision this suite exercises.
@@ -187,6 +277,11 @@ afterEach(() => {
 	nextFile = null;
 	harness.releaseBootFromSource?.();
 	harness.releaseBootFromSource = null;
+	harness.releaseRename?.();
+	harness.releaseRename = null;
+	harness.releaseDelete?.();
+	harness.releaseDelete = null;
+	resetNavigations();
 	resetReloadOffer();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
@@ -437,5 +532,139 @@ describe('spatial route source replacement', () => {
 		expect(head().dataset.project).toBe('Opened project');
 		expect(stageCanvas()).toBe(openedCanvas);
 		expect(target.textContent).not.toContain('The remote copy was not installed');
+	});
+
+	it('pre-reads a name-only Cloud change, adopts it, and renames with the refreshed saved-base token', async () => {
+		await mountReady();
+		const remoteRevision = { projectId: 'project-1', revisionId: 'revision-external-rename' };
+		harness.document = { ...mountedProject, name: 'Remote name', acceptedRevision: remoteRevision };
+		harness.savedBaseToken = 'saved-base:00000000-0000-4000-8000-000000000003';
+		harness.version = 2;
+
+		button('Rename').click();
+		const dialog = target.querySelector('dialog')!;
+		await vi.waitFor(() => expect(dialog.hasAttribute('open')).toBe(true));
+		const input = dialog.querySelector('input')!;
+		expect(input.value).toBe('Remote name');
+		expect(head().dataset.project).toBe('Remote name');
+		expect(head().dataset.saveBase).toBe('saved-base:00000000-0000-4000-8000-000000000003');
+		expect(harness.loadCalls).toBe(2);
+
+		input.value = 'Final name';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await settled();
+		(dialog.querySelector('button[type="submit"]') as HTMLButtonElement).click();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Final name'));
+
+		expect(harness.renameCalls).toHaveLength(1);
+		expect(harness.renameCalls[0]!.projectId).toBe('project-1');
+		expect(harness.renameCalls[0]!.request).toMatchObject({
+			name: 'Final name',
+			precondition: { kind: 'expected-saved-base', token: 'saved-base:00000000-0000-4000-8000-000000000003' }
+		});
+		expect(head().dataset.saveBase).toBe('saved-base:00000000-0000-4000-8000-000000000002');
+		expect(head().dataset.saveStatus).toBe('saved');
+	});
+
+	it('refuses active-publication deletion before opening confirmation and navigates after pending cleanup acknowledgement', async () => {
+		await mountReady();
+		harness.publication = {
+			publicationId: 'publication-1',
+			activeVersion: 1,
+			revision: 4,
+			currentVersion: 1,
+			createdAt: '2026-10-18T00:00:00.000Z',
+			updatedAt: '2026-10-19T00:00:00.000Z'
+		};
+		button('Delete').click();
+		await settled();
+		expect(harness.publicationReads).toBe(1);
+		expect(target.querySelector('dialog')?.hasAttribute('open')).toBe(false);
+		expect(target.textContent).toContain('Unpublish this project before deleting it.');
+		expect(harness.deleteCalls).toHaveLength(0);
+
+		harness.publication = { ...harness.publication, activeVersion: null };
+		button('Delete').click();
+		const dialog = target.querySelector('dialog')!;
+		await vi.waitFor(() => expect(dialog.hasAttribute('open')).toBe(true));
+		expect(dialog.textContent).toContain('inactive public link');
+		(dialog.querySelector('[data-primary-action]') as HTMLButtonElement).click();
+		await vi.waitFor(() => expect(navigations).toHaveLength(1));
+		expect(harness.deleteCalls).toHaveLength(1);
+		expect(navigations[0]).toContain('/projects?deleted=pending');
+		expect(navigations[0]).toContain('name=Mounted+project');
+	});
+
+	it('uses the unsaved-work guard for current deletion and blocks edits until its acknowledgement', async () => {
+		await mountReady();
+		const services = harness.services as StageAdapterServices;
+		expect((await consumerSceneEdit(services)).kind).toBe('installed');
+		await vi.waitFor(() => expect(head().dataset.saveStatus).toBe('dirty'));
+		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+		harness.publication = {
+			publicationId: null,
+			activeVersion: null,
+			revision: 0,
+			currentVersion: 1,
+			createdAt: null,
+			updatedAt: null
+		};
+
+		button('Delete').click();
+		const dialog = target.querySelector('dialog')!;
+		await vi.waitFor(() => expect(dialog.hasAttribute('open')).toBe(true));
+		(dialog.querySelector('[data-primary-action]') as HTMLButtonElement).click();
+		await settled();
+		expect(confirm).toHaveBeenCalledOnce();
+		expect(harness.deleteCalls).toHaveLength(0);
+		expect(head().dataset.saveStatus).toBe('dirty');
+
+		confirm.mockReturnValue(true);
+		harness.deferDelete = true;
+		(dialog.querySelector('[data-primary-action]') as HTMLButtonElement).click();
+		await vi.waitFor(() => expect(harness.releaseDelete).not.toBeNull());
+		expect(confirm).toHaveBeenCalledTimes(2);
+		expect(stageCanvas()).not.toBeNull();
+		expect((await consumerSceneEdit(services)).kind).toBe('refused');
+		expect(navigations).toEqual([]);
+
+		harness.releaseDelete?.();
+		await vi.waitFor(() => expect(navigations).toHaveLength(1));
+		expect(harness.deleteCalls).toHaveLength(1);
+		expect(navigations[0]).toContain('/projects?deleted=pending');
+	});
+
+	it('drops a delayed rename after another source replaces the open project', async () => {
+		await mountReady();
+		harness.deferRename = true;
+		button('Rename').click();
+		const dialog = target.querySelector('dialog')!;
+		await vi.waitFor(() => expect(dialog.hasAttribute('open')).toBe(true));
+		const input = dialog.querySelector('input')!;
+		input.value = 'Late rename';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await settled();
+		(dialog.querySelector('button[type="submit"]') as HTMLButtonElement).click();
+		await vi.waitFor(() => expect(harness.releaseRename).not.toBeNull());
+		const requestSignal = harness.renameCalls[0]!.signal;
+
+		const remote = await createUnitProject({ id: 'project-1', name: 'Replacement project' });
+		setReloadOffer({
+			kind: 'reload',
+			projectId: 'project-1',
+			document: remote,
+			savedBaseToken: 'remote-token',
+			savedRevision: remote.acceptedRevision,
+			savedSourceContentId: 'remote-content'
+		});
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Replacement project'));
+		expect(requestSignal?.aborted).toBe(true);
+
+		harness.releaseRename?.();
+		await settled();
+		expect(head().dataset.project).toBe('Replacement project');
+		expect(head().dataset.saveBase).toBe('remote-token');
+		expect(navigations).toEqual([]);
 	});
 });

@@ -55,6 +55,9 @@ function stub(initial: SaveSnapshot, outcome: SaveOutcome = { kind: 'stale-epoch
 			for (const listener of listeners) listener(current);
 			return current;
 		},
+		adoptSavedBase() {
+			return true;
+		},
 		async save() {
 			return outcome;
 		},

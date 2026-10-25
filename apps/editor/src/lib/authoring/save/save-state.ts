@@ -195,6 +195,8 @@ export type SaveState = {
 	 * accepted edit is never reported as saved.
 	 */
 	refresh(): SaveSnapshot;
+	/** Move the saved base after a confirmed metadata-only server operation. */
+	adoptSavedBase(baseline: SaveBaseline): boolean;
 	/**
 	 * The one command. Reuses a retained capture/precondition when it is still
 	 * exact. An outcome is a historical fact about that request; read the snapshot
@@ -654,6 +656,17 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			if (status === 'refused' || status === 'error' || status === 'auth-required') return snapshot();
 			status = derivedStatus();
 			return emit();
+		},
+		adoptSavedBase(next) {
+			const current = readCurrent();
+			if (inFlight || preparing || pending || current === null) return false;
+			if (next.savedRevision !== null && next.savedRevision.projectId !== current.revision.projectId) return false;
+			baseline = { ...next };
+			conflict = null;
+			error = null;
+			status = derivedStatus();
+			emit();
+			return true;
 		},
 		save: saveCommand,
 		retry(signal) {

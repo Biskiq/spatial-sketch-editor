@@ -64,6 +64,49 @@ export type ProjectSummary = {
 	updatedAt: string;
 };
 
+export const PROJECT_NAME_MAX_LENGTH = 128;
+
+export type ProjectPublicationStatus = {
+	publicationId: string | null;
+	activeVersion: number | null;
+	revision: number;
+	currentVersion: number;
+	createdAt: string | null;
+	updatedAt: string | null;
+};
+
+/** Metadata read immediately before a project lifecycle form is opened. */
+export type PreparedProjectLifecycle = {
+	projectId: string;
+	name: string;
+	version: number;
+	precondition: ProjectLifecyclePrecondition;
+	publication?: ProjectPublicationStatus;
+	/** Set only for a conflict offer that requires an explicit refresh and retry. */
+	requiresExplicitRefresh?: boolean;
+};
+
+export type ProjectLifecyclePrepareResult =
+	| { kind: 'ready'; prepared: PreparedProjectLifecycle }
+	| { kind: 'stale' }
+	| { kind: 'blocked'; message: string }
+	| { kind: 'error'; message: string };
+
+export type ProjectLifecycleActionResult =
+	| { kind: 'renamed'; name: string; version: number }
+	| { kind: 'deleted'; cleanup: DeleteProjectAcknowledgement['cleanup'] }
+	| { kind: 'unchanged' }
+	| { kind: 'stale' }
+	| {
+			kind: 'conflict';
+			message: string;
+			remoteName: string | null;
+			/** Fresh metadata only when the remote change is safe to retry against. */
+			retryPrepared: PreparedProjectLifecycle | null;
+	  }
+	| { kind: 'refused'; message: string; retryable?: boolean }
+	| { kind: 'error'; message: string; retryable: boolean };
+
 export type SavedProject = Omit<ProjectSummary, 'id'> & { projectId: string };
 export type ProjectLifecyclePrecondition = Extract<SavePrecondition, { kind: 'expected-saved-base' }>;
 export type RenameProjectRequest = {
@@ -119,6 +162,8 @@ export type ProjectApi = {
 		request: DeleteProjectRequest,
 		signal?: AbortSignal
 	): Promise<DeleteProjectAcknowledgement>;
+	/** Owner-scoped publication read used to prevent a doomed delete confirmation. */
+	getPublicationStatus(projectId: string, signal?: AbortSignal): Promise<ProjectPublicationStatus>;
 	loadProject(projectId: string, signal?: AbortSignal): Promise<LoadedProject>;
 	listAssets(projectId: string, signal?: AbortSignal): Promise<ProjectAssetMetadata[]>;
 	registerAsset(projectId: string, name: string, signal?: AbortSignal): Promise<ProjectAssetMetadata>;
@@ -144,7 +189,8 @@ export type ProjectPersistenceErrorCode =
 	/** `create-only` found an existing project; owner-blind. */
 	| 'collision'
 	/** A project-owned object writer still holds a live lease; retry after it stops. */
-	| 'project-busy';
+	| 'project-busy'
+	| 'unpublish-first';
 
 export class ProjectPersistenceError extends Error {
 	constructor(
@@ -230,6 +276,14 @@ export function createProjectApi(
 					if (acknowledgement.projectId !== projectId) throw invalidResponse();
 					return acknowledgement;
 				}),
+		getPublicationStatus: (projectId, signal) =>
+			requestJson(
+				requestFetch,
+				origin,
+				`/projects/${encodeURIComponent(projectId)}/publication`,
+				{ method: 'GET' },
+				signal
+			).then(readPublicationStatus),
 		loadProject: (projectId, signal) =>
 			requestJson(
 				requestFetch,
@@ -607,6 +661,14 @@ function responseError(status: number, body: unknown): ProjectPersistenceError {
 			serverCode
 		);
 	}
+	if (serverCode === 'unpublish-first') {
+		return new ProjectPersistenceError(
+			'unpublish-first',
+			readErrorMessage(body) ?? 'Unpublish this project before deleting it',
+			status,
+			serverCode
+		);
+	}
 	if (status === 401) return new ProjectPersistenceError('auth', 'Sign-in is required', status, serverCode);
 	if (status === 404) return new ProjectPersistenceError('not-found', 'Project not found', status, serverCode);
 	if (status === 413) return new ProjectPersistenceError('too-large', 'Project payload is too large', status, serverCode);
@@ -741,6 +803,21 @@ function readLoadedProject(value: unknown): LoadedProject {
 	};
 }
 
+function readPublicationStatus(value: unknown): ProjectPublicationStatus {
+	const keys = ['publicationId', 'activeVersion', 'revision', 'currentVersion', 'createdAt', 'updatedAt'] as const;
+	if (!isRecord(value) || Object.keys(value).length !== keys.length || keys.some((key) => !(key in value))) {
+		throw invalidResponse();
+	}
+	return {
+		publicationId: readNullableString(value.publicationId),
+		activeVersion: readNullableVersion(value.activeVersion),
+		revision: readVersion(value.revision),
+		currentVersion: readVersion(value.currentVersion),
+		createdAt: readNullableString(value.createdAt),
+		updatedAt: readNullableString(value.updatedAt)
+	};
+}
+
 function readRevision(value: unknown): { projectId: string; revisionId: string } {
 	if (!isRecord(value)) throw invalidResponse();
 	return { projectId: readString(value.projectId), revisionId: readString(value.revisionId) };
@@ -780,6 +857,11 @@ function readSummary(value: unknown): ProjectSummary {
 function readVersion(value: unknown): number {
 	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw invalidResponse();
 	return value;
+}
+
+function readNullableVersion(value: unknown): number | null {
+	if (value === null || value === undefined) return null;
+	return readVersion(value);
 }
 
 function readAssetId(value: unknown): string {

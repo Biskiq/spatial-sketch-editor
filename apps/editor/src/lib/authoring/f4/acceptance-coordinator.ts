@@ -58,6 +58,11 @@ export type ReplaceOutcome =
 			readonly issues: readonly ShapeIssue[];
 	  };
 
+export type MetadataAdoptionOutcome<Source> =
+	| { readonly kind: 'adopted'; readonly current: AdmittedSource<Source>; readonly previousSourceContentId: string }
+	| { readonly kind: 'unchanged'; readonly sourceContentId: string }
+	| { readonly kind: 'refused'; readonly code: 'busy' | 'superseded-epoch' | 'admission-refused' | 'reused-revision'; readonly message: string };
+
 /** Optional host admission runs before replacement commits any source/history baseline. */
 export type ReplacementValidation<Source> = (source: AdmittedSource<Source>, sessionEpoch: SessionEpoch) => Promise<
 	{ readonly kind: 'valid' } | { readonly kind: 'refused'; readonly code: string; readonly message: string }
@@ -101,6 +106,12 @@ export type AcceptanceCoordinator<Source> = {
 	undo(): Promise<HistoryOutcome<Source>>;
 	redo(): Promise<HistoryOutcome<Source>>;
 	history(): { readonly depth: number; readonly position: number; readonly limit: number };
+	/**
+	 * Re-admit source metadata across the retained history without adding an Undo
+	 * step. The host owns the narrowly scoped transform; changed bytes receive a
+	 * fresh accepted revision, and every historical state keeps its domain edits.
+	 */
+	adoptMetadata(transform: (source: Source) => unknown): Promise<MetadataAdoptionOutcome<Source>>;
 	canUndo(): boolean;
 	canRedo(): boolean;
 	/**
@@ -256,6 +267,64 @@ export function createAcceptanceCoordinator<Source>(
 		},
 		undo: () => restore('undo'), redo: () => restore('redo'),
 		history: () => ({ depth: history.depth, position: history.position, limit: history.limit }),
+		async adoptMetadata(transform) {
+			if (replacing) return { kind: 'refused', code: 'busy', message: 'Another source operation is in progress.' };
+			const requestGeneration = ++generation;
+			replacing = true;
+			const before = current;
+			const states = history.states();
+			const cursor = history.position;
+			try {
+				const rebased: HistoryState<Source>[] = [];
+				for (const state of states) {
+					let source: unknown;
+					try {
+						source = transform(state.source);
+					} catch {
+						return { kind: 'refused', code: 'admission-refused', message: 'The source metadata could not be adopted.' };
+					}
+					const admission = await admit(source, state.blockingIssues);
+					if (generation !== requestGeneration) {
+						return { kind: 'refused', code: 'superseded-epoch', message: 'A newer source operation superseded metadata adoption.' };
+					}
+					if (admission.kind === 'rejected') {
+						return { kind: 'refused', code: 'admission-refused', message: admission.message };
+					}
+					rebased.push(immutableF4Data({
+						source: admission.source,
+						canonicalJson: admission.canonicalJson,
+						sourceContentId: admission.sourceContentId,
+						operationId: state.operationId,
+						blockingIssues: admission.blockingIssues,
+						correspondence: state.correspondence
+					}));
+				}
+				if (generation !== requestGeneration || current !== before) {
+					return { kind: 'refused', code: 'superseded-epoch', message: 'The accepted source changed during metadata adoption.' };
+				}
+				const adopted = rebased[cursor];
+				if (!adopted) return { kind: 'refused', code: 'admission-refused', message: 'The accepted history could not be rebased.' };
+				if (adopted.canonicalJson === before.canonicalJson && adopted.sourceContentId === before.sourceContentId) {
+					// A previous/current state can already carry the requested metadata
+					// while another retained state still needs rebasing. Keep the cursor
+					// and current revision stable, but make every reachable state agree.
+					if (rebased.some((state, index) =>
+						state.canonicalJson !== states[index]?.canonicalJson ||
+						state.sourceContentId !== states[index]?.sourceContentId
+					)) history.rebaseStates(rebased);
+					return { kind: 'unchanged', sourceContentId: before.sourceContentId };
+				}
+				const revision = freshRevision();
+				if (!revision) return { kind: 'refused', code: 'reused-revision', message: 'Metadata adoption requires a fresh accepted revision.' };
+				history.rebaseStates(rebased);
+				current = freezeF4Data({ ...adopted, revision });
+				seenRevisions.add(revisionKey(revision));
+				installs += 1;
+				return { kind: 'adopted', current, previousSourceContentId: before.sourceContentId };
+			} finally {
+				if (generation === requestGeneration) replacing = false;
+			}
+		},
 		canUndo: () => history.canUndo(), canRedo: () => history.canRedo(),
 		async replace(input, validate) {
 			const requestGeneration = ++generation;

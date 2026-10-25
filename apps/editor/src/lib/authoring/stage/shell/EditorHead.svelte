@@ -14,6 +14,12 @@
 	import { resolveRovingIndex, tablistTabIndex } from '$lib/authoring/a11y/roving-focus';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
+	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
+	import type {
+		PreparedProjectLifecycle,
+		ProjectLifecycleActionResult,
+		ProjectLifecyclePrepareResult
+	} from '$lib/platform/project-persistence';
 
 	let {
 		projectId,
@@ -40,7 +46,16 @@
 		onPreview = () => {},
 		previewUnavailableReason,
 		reducedMotion,
-		onToggleReducedMotion
+		onToggleReducedMotion,
+		projectActionsUnavailableReason = null,
+		projectActionBusy = false,
+		onPrepareRename = async () => ({ kind: 'blocked' as const, message: 'Project actions are unavailable.' }),
+		onRenameProject = async () => ({ kind: 'refused' as const, message: 'Project actions are unavailable.' }),
+		onPrepareDelete = async () => ({ kind: 'blocked' as const, message: 'Project actions are unavailable.' }),
+		onDeleteProject = async () => ({ kind: 'refused' as const, message: 'Project actions are unavailable.' }),
+		onProjectActionComplete = async () => {},
+		onProjectActionBusyChange = () => {},
+		onRefreshRemoteProject = null
 	}: {
 		projectId: string;
 		projectName: string;
@@ -66,6 +81,15 @@
 		previewUnavailableReason: string;
 		reducedMotion: boolean;
 		onToggleReducedMotion: () => void;
+		projectActionsUnavailableReason?: string | null;
+		projectActionBusy?: boolean;
+		onPrepareRename?: () => Promise<ProjectLifecyclePrepareResult>;
+		onRenameProject?: (prepared: PreparedProjectLifecycle, name: string) => Promise<ProjectLifecycleActionResult>;
+		onPrepareDelete?: () => Promise<ProjectLifecyclePrepareResult>;
+		onDeleteProject?: (prepared: PreparedProjectLifecycle) => Promise<ProjectLifecycleActionResult>;
+		onProjectActionComplete?: (result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>) => void | Promise<void>;
+		onProjectActionBusyChange?: (busy: boolean) => void;
+		onRefreshRemoteProject?: (() => void | boolean | Promise<void | boolean>) | null;
 	} = $props();
 
 	const LENSES = [
@@ -101,7 +125,7 @@
 	});
 
 	async function runSave(): Promise<void> {
-		if (save === null || saveControl === null) return;
+		if (projectActionBusy || save === null || saveControl === null) return;
 		const status = save.snapshot().status;
 		if (status === 'refused' || status === 'error' || status === 'auth-required') await save.retry();
 		else await save.save();
@@ -162,6 +186,19 @@
 	</div>
 
 	<div class="actions">
+		<ProjectLifecycleActions
+			{projectId}
+			{projectName}
+			variant="head"
+			disabledReason={projectActionsUnavailableReason}
+			onPrepareRename={onPrepareRename}
+			onRename={onRenameProject}
+			onPrepareDelete={onPrepareDelete}
+			onDelete={onDeleteProject}
+			onComplete={onProjectActionComplete}
+			onBusyChange={onProjectActionBusyChange}
+			onRefreshRemote={onRefreshRemoteProject}
+		/>
 		<div class="capability" data-editor-history data-unavailable-capability={!canUndo && !canRedo ? '' : undefined}>
 			<div class="history-actions">
 				<button
@@ -213,9 +250,9 @@
 				<button
 					type="button"
 					class="action"
-					disabled={saveControl.disabled}
-					aria-disabled={saveControl.disabled}
-					title={saveControl.reason ?? saveControl.label}
+					disabled={saveControl.disabled || projectActionBusy}
+					aria-disabled={saveControl.disabled || projectActionBusy}
+					title={projectActionBusy ? 'Project rename or deletion is in progress.' : saveControl.reason ?? saveControl.label}
 					onclick={() => void runSave()}
 				>
 					{saveControl.label}

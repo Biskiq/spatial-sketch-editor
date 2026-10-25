@@ -189,6 +189,31 @@ describe('client Save transport', () => {
 describe('project lifecycle transport', () => {
 	const precondition = { kind: 'expected-saved-base' as const, token: TOKEN };
 
+	it('pre-reads the owner-scoped publication state before a delete confirmation', async () => {
+		const calls: { url: string; init: RequestInit }[] = [];
+		const status = {
+			publicationId: 'publication-1',
+			activeVersion: null,
+			revision: 4,
+			currentVersion: 3,
+			createdAt: '2026-10-20T00:00:00.000Z',
+			updatedAt: '2026-10-21T00:00:00.000Z'
+		};
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async (url, init) => {
+				calls.push({ url, init: init ?? {} });
+				return new Response(JSON.stringify(status), { status: 200, headers: { 'content-type': 'application/json' } });
+			}
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(api.getPublicationStatus(PROJECT_ID)).resolves.toEqual(status);
+		expect(calls).toHaveLength(1);
+		expect(calls[0]!.url).toBe(`https://api.example/projects/${encodeURIComponent(PROJECT_ID)}/publication`);
+		expect(calls[0]!.init.method).toBe('GET');
+	});
+
 	it('sends a conditional PATCH and returns the refreshed rename acknowledgement', async () => {
 		const { sourceContentId } = await fixture();
 		const calls: { url: string; init: RequestInit }[] = [];
@@ -322,6 +347,23 @@ describe('project lifecycle transport', () => {
 				status: failure.status
 			});
 		}
+	});
+
+	it('types the active-publication delete refusal for the confirmation path', async () => {
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async () => new Response(JSON.stringify({ error: { code: 'unpublish-first', message: 'Unpublish first' } }), {
+				status: 409,
+				headers: { 'content-type': 'application/json' }
+			})
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(api.deleteProject(PROJECT_ID, { precondition })).rejects.toMatchObject({
+			name: 'ProjectPersistenceError',
+			code: 'unpublish-first',
+			message: 'Unpublish first'
+		});
 	});
 
 	it('refuses a lifecycle acknowledgement for a different project', async () => {

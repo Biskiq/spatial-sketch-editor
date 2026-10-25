@@ -21,7 +21,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model';
-import { createUnitSaveHandler, type ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	computeEnvelopeSourceContentId,
+	createUnitSaveHandler,
+	serializeProjectEnvelope,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import type { SaveAcknowledgement, SaveRequest } from '@portfolio/project-model/save';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
@@ -31,8 +36,10 @@ import { sceneSurfaceFor } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
+import { layoutSelectionReference } from '$lib/authoring/stage/semantic-selection';
 import { createStageFacade, type StageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
+import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import {
 	createHeadSave,
@@ -255,6 +262,83 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 		expect(statusOf(mounted.target)).toBe('dirty');
 		expect(mounted.target.querySelector('[data-unsaved-work]')).not.toBeNull();
 		expect(saveButton(mounted.target).textContent?.trim()).toBe('Save changes');
+	});
+
+	it('adopts a Cloud rename across dirty history, Undo/Redo, Save and reopen', async () => {
+		const mounted = await mountHead();
+		await resizeTo(mounted, 2, 2);
+		const beforeHistory = mounted.host.history();
+		const snapshot = mounted.facade.snapshot();
+		const wallId = stageLayout(snapshot).walls[0]!.id;
+		const representation = {
+			sourceId: wallId,
+			sourceKind: 'wall' as const,
+			generationId: snapshot.compileGeneration,
+			stream: 'projected' as const,
+			subRef: null
+		};
+		const reference = layoutSelectionReference(representation, snapshot);
+		expect(mounted.facade.setSelection({
+			ordered: [{ reference, representation }],
+			primary: reference
+		}).kind).toBe('selected');
+		const selectionBefore = mounted.facade.selectionState();
+		expect(mounted.facade.session.openTask({ kind: 'project-action-test', label: 'Project action test', lens: 'world', targetRef: null })).toBe(true);
+		const taskBefore = mounted.facade.session.task();
+		expect(taskBefore).not.toBeNull();
+
+		const savedRevision = { projectId: PROJECT_ID, revisionId: 'revision-cloud-rename' };
+		const oldSaved = JSON.parse(mounted.state.getSnapshot().savedCanonicalJson!) as ProjectEnvelope;
+		const renamedSaved: ProjectEnvelope = { ...oldSaved, name: 'Cloud project name', acceptedRevision: savedRevision };
+		const renamedCanonical = serializeProjectEnvelope(renamedSaved);
+		const renamedContentId = await computeEnvelopeSourceContentId(renamedSaved);
+		const lock = mounted.host.beginProjectAction();
+		expect(lock.kind).toBe('locked');
+		if (lock.kind !== 'locked') throw new Error('project action lock was refused');
+		await expect(mounted.host.adoptProjectName({ name: renamedSaved.name, savedRevision })).resolves.toMatchObject({ kind: 'adopted' });
+		lock.release();
+		expect(mounted.host.history()).toEqual(beforeHistory);
+		expect(mounted.facade.snapshot().domain.name).toBe('Cloud project name');
+		expect(mounted.facade.selectionState()).toEqual(selectionBefore);
+		expect(mounted.facade.session.task()).toEqual(taskBefore);
+		expect(mounted.state.adoptSavedBase({
+			savedBaseToken: NEXT_TOKEN,
+			savedRevision,
+			savedCanonicalJson: renamedCanonical,
+			savedSourceContentId: renamedContentId
+		})).toBe(true);
+		expect(mounted.head.isDirty()).toBe(true);
+
+		await expect(mounted.host.undo()).resolves.toMatchObject({ kind: 'installed' });
+		expect(mounted.facade.snapshot().domain.name).toBe('Cloud project name');
+		expect(mounted.facade.snapshot().domain.scene.entities[0]).not.toHaveProperty('scale');
+		expect(mounted.state.getSnapshot().status).toBe('saved');
+		await expect(mounted.host.redo()).resolves.toMatchObject({ kind: 'installed' });
+		expect(mounted.facade.snapshot().domain.name).toBe('Cloud project name');
+		expect(mounted.facade.snapshot().domain.scene.entities[0]).toMatchObject({ scale: 2 });
+		expect(mounted.state.getSnapshot().status).toBe('dirty');
+
+		saveButton(mounted.target).click();
+		await eventually(() => mounted.pending.length === 1);
+		const captured = mounted.pending[0]!.request;
+		expect(JSON.parse(captured.capture.canonicalJson)).toMatchObject({ name: 'Cloud project name' });
+		mounted.pending[0]!.resolve({
+			kind: 'saved',
+			acknowledgement: {
+				...acknowledgementOf(captured, NEXT_TOKEN),
+				name: 'Cloud project name',
+				savedRevision: captured.capture.acceptedRevision
+			}
+		});
+		await eventually(() => mounted.state.getSnapshot().status === 'saved');
+
+		const savedDocument = JSON.parse(captured.capture.canonicalJson) as ProjectEnvelope;
+		const reopened = await admitSource(savedDocument, {
+			sessionEpoch: 'session-head-journey-reopened',
+			acceptedRevision: captured.capture.acceptedRevision
+		});
+		expect(reopened.kind).toBe('admitted');
+		if (reopened.kind === 'admitted') expect(reopened.snapshot.domain.name).toBe('Cloud project name');
 	});
 
 	it('keeps newer edits unsaved when an in-flight older Save is acknowledged', async () => {

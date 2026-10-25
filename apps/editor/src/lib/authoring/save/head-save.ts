@@ -61,6 +61,8 @@ export type HeadSave = {
 	subscribe(listener: (snapshot: SaveSnapshot) => void): () => void;
 	/** Refresh after an accepted edit; cheap and idempotent. */
 	refresh(): SaveSnapshot;
+	/** Adopt a refreshed saved base after project metadata changes in Cloud. */
+	adoptSavedBase(baseline: Parameters<SaveState['adoptSavedBase']>[0]): boolean;
 	control(): HeadSaveControl;
 	/** The explicit unsaved-work fact the host uses at exit and replacement. */
 	unsavedWork(): HeadSaveExitSignal;
@@ -153,6 +155,7 @@ export function createHeadSave(
 		snapshot: () => state.getSnapshot(),
 		subscribe: (listener) => state.subscribe(listener),
 		refresh: () => state.refresh(),
+		adoptSavedBase: (baseline) => state.adoptSavedBase(baseline),
 		control() {
 			const snapshot = state.getSnapshot();
 			const unavailableReason = options.unavailableReason ?? null;
