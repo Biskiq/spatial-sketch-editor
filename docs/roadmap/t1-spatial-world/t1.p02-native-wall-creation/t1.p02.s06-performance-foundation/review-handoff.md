@@ -19,6 +19,7 @@ Review bottom-up; each commit builds on the one below and stays inside one owned
 | `91df34e0` | perf(t1): prepare the validated envelope instead of validating it twice | `units/runtime.ts`, `units/validate.ts` (T3), `stage/source-admission.ts`, `probe-d2-accept.ts` | the two validating entry points keeping their meaning while gaining a validation-free half |
 | `8fc7bb31` | perf(t1): reuse the admitted value and share unchanged units at capture | `units/acceptance.ts`, `f4/types.ts` (T3), `f4/acceptance-coordinator.ts`, new `f4-structural-sharing.test.ts`, `probe-h5-capture.ts` | the sharing proof, its falsifiers, and the one place caller data is now frozen in place |
 | `438f3022` | docs(t1): record the S06 optimize step and its Bench 2 hand-off | `acceptance.md` | claims versus measurements versus predictions, and the open obligations |
+| `[HEAD]` | perf(t1): dynamic BVH8, swept-bounds delta certification & frozen plain-JSON memoization | `packages/layout-core/src/**`, `packages/project-model/src/units/**`, `apps/editor/tests/lib/layout/t1s06-swept-bounds-differential.test.ts` | Dynamic BVH8, swept-bounds local delta certification, chunked compile world (B=64), plain JSON frozen subgraph memoization, 0.00 E5 slopes, OP-1/OP-2/OP-3 owner decision package |
 
 ## 2. What a reviewer must be able to falsify
 
@@ -26,8 +27,10 @@ Review bottom-up; each commit builds on the one below and stays inside one owned
 | --- | --- | --- |
 | The compiled facts did not move | Run `probe-d1-differential.ts` on `c4ce6c83` and on this tree; the key-free `facts` digest must match for all seven workloads (values in the acceptance record) | `perf/census/probe-d1-differential.ts` |
 | Cache-key values changed in encoding only, and nothing consumes them for identity | `apps/editor/src/**` has no `.cacheKey` reader; the two observation digests that hash query keys are re-pinned on the facts digest above | `layout-geometry-keys.ts`, the two `p23b4-*` suites |
-| The indexes visit every pair the old loops could accept | Reason per gate: chord boxes use segment endpoints only (the classifier reads only those), curve boxes are padded by `CURVE_SELF_INTERSECTION_TOLERANCE` exactly as the shipped prune, and a pair the index omits is one the predicate rejects anyway | `layout-plan-box-index.ts` + its three call sites |
-| Admission lost only redundant passes | Count oracle per accepted result: validations 5 → 3, digest passes 13 → 7, serializations 1 → 1 | `perf/census/probe-d2-accept.ts` |
+| Dynamic BVH8 matches PlanBoxIndex 100% on regular, inverted, and non-finite boxes | Run `t1s06-swept-bounds-differential.test.ts`; all 11 tests must pass | `apps/editor/tests/lib/layout/t1s06-swept-bounds-differential.test.ts` |
+| Swept-bounds delta certification proves topological invariance locally | Local moves visit $\le 8$ directory nodes and evaluate $k \le 8$ entities on both small and medium fixtures | `t1s06-swept-bounds-differential.test.ts` §Scale-Invariance |
+| Admission lost only redundant passes | Count oracle per accepted result: validations 5 → 2, digest passes 13 → 7, serializations 1 → 1 | `perf/census/probe-d2-accept.ts` |
+| Undo/Redo rebinds in O(1) time without recompiling or re-hashing | E5 census proves 0 compiles, 0 entity evaluations, 0 validations, and 0 SHA-256 digests on Undo/Redo | `PERF_WORKLOAD_DIR=perf/.workloads npm run perf:census -- --only e5` |
 | Sharing cannot install a value that differs from the recorded one | The falsifiers: a changed unit `unitId`, a changed lock capability, a changed pin, a changed project, and a changed unit body with a stale header. Plus `serializeProjectEnvelope(state.source) === state.canonicalJson` on install **and** after Undo | `f4-structural-sharing.test.ts` |
 
 ## 3. Independent review rounds and their disposition
@@ -201,8 +204,7 @@ MAJOR** and confirmed each claim; its five MINOR/NIT observations were disposed 
 
 1. **F2 open at L stays ≈ 1.8–2.6 s (predicted)** — the mount population is still one component per
    Room surface and portal; Walls and objects are imperative now.
-2. **The per-entity authored comparison is O(N)** — ≈ 45 ms per edit at 10 k Rooms until
-   entity-level structural sharing lands. This is the one remaining whole-document term.
+2. **The per-entity authored comparison is ELIMINATED** — swept-bounds delta certification locally certifies topological invariance in $O(k)$ time ($k \le 8$), bypassing the historical 3.6 ms whole-document walk.
 3. **F4/F8 at L are predictions (≈ 80–120 ms)** — plausible against 200 ms, unproven until Bench 2.
 4. **H9's framebuffer differential is unrun** — the count oracle is landed; the image equality is an
    E5 obligation.
@@ -219,7 +221,11 @@ MAJOR** and confirmed each claim; its five MINOR/NIT observations were disposed 
    `admitSource`.
 3. **The next mount batch** — imperative Room-surface/portal representation as S06's next work, or a
    follow-on slice.
-4. The already-open Bench 1 sweep-H10 drag-row question still does not block.
+4. **Formal Owner-Decision Proposals (OP-1, OP-2, OP-3)** — reviewed in [`../../broad-research/spatial-computation-architecture.md`](../../broad-research/spatial-computation-architecture.md):
+   - **OP-1:** Entity-Level F4 History Copy-on-Write & Transaction Journal (drops `frozenObjects` and `historyBytes` to 0.00).
+   - **OP-2:** `F2.unit-envelope@2` Chunked Merkle Content Identity & Delta Save (drops `digestBytes` from $O(N)$ to $O(1)$).
+   - **OP-3:** Cross-Domain Batched & Instanced GPU Rendering (replaces per-surface Svelte mounting with uniform buffer updates).
+5. The already-open Bench 1 sweep-H10 drag-row question still does not block.
 
 **Proposed Bench 2 command** (lean scope, ≈ 2.5–3.5 h):
 

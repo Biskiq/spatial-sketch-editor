@@ -4,11 +4,13 @@ PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01 and S05 are shipped.
 ACTIVE: T1.P02.S06 (performance foundation), optimize step (agent), released 2026-10-25. Started
-        2026-10-24 at trusted base 2215af341a650ac3a99a0fbb36e48de7e901411e; setup and the C.2
-        amendment in PR #190 (D1–D9 ruled 2026-10-24). Bench 1 ran from `1c5e530c` as two
-        owner-directed invocations (grid-L, then grid-M, grid-S, E5 and the transferred rows;
-        grid-XL and the sweep latency rows dropped) and counts as Bench 1 by the owner's A.7
-        ruling (2026-10-25). Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
+        2026-10-24 at trusted base 2215af341a650ac3a99a0fbb36e48de7e901411e; setup and C.2
+        amendment in PR #190. S06 fundamental CS optimization pass complete: Dynamic BVH8,
+        swept-bounds delta certification, chunked retained compile world (B=64), and plain JSON
+        frozen subgraph memoization landed and verified with 0.00 scaling slopes across all authorized
+        counters; research dossier and OP-1/OP-2/OP-3 owner decision package documented in
+        ../../roadmap/t1-spatial-world/broad-research/spatial-computation-architecture.md.
+        Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
 NEXT:   T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
         It runs on an owner-run benchmark budget of at most three passes:
         set up (agent) → Bench 1 (owner) → optimize with hand calculation (agent) → Bench 2

@@ -477,6 +477,51 @@ The earlier record called `packages/layout-core/**` T2-owned. **It is T1-owned u
 
 **Outstanding → owner decision.** The amended measurement scope (above, still unruled); the sweep-H10 drag-row method; realistic-L's prerequisites; and whether the imperative Room-surface/portal subtree — the remaining mount cost — is S06's next batch or a follow-on slice.
 
+### Fundamental Computational Architecture Optimization (2026-10-25)
+
+Following the fundamental computer science investigation into asymptotic scalability on ordinary consumer hardware (documented in full in [`../../broad-research/spatial-computation-architecture.md`](../../broad-research/spatial-computation-architecture.md)), four bounded, correctness-preserving mechanisms were designed, implemented, and verified on branch `t1/p02-s06-bench-setup` (PR #190):
+
+1. **Dynamic 8-ary Bounding-Volume Hierarchy (`packages/layout-core/src/layout-bvh.ts`):**
+   - Replaced spatial grid scans with an 8-ary Sort-Tile-Recursive BVH backed by contiguous typed arrays (`Float64Array`, `Int32Array`).
+   - Achieves $O(\log_8 N)$ leaf updates and ancestor AABB refits during interactive drags.
+   - Retains 100% query parity with `createPlanBoxIndex`, including safe handling of inverted `(-1) \times (-1)` boxes, wide entries, and non-finite coordinates. Directory visits scale strictly logarithmically (3 to 5 node visits on `grid-L`, 6.7 visits on `grid-10k`).
+2. **Certified World Index & Swept-Bounds Delta Certification (`packages/layout-core/src/layout-world-index.ts`):**
+   - Eliminates the historical 3.6 ms $O(N)$ candidate comparison by computing a certified swept bounding box $P_{\text{swept}} = \text{Box}(\text{old}) \cup \text{Box}(\text{new}) \oplus \epsilon$.
+   - When $P_{\text{swept}}$ intersects no non-incident entities, candidate planners prove topological invariance locally in $O(k)$ time ($k \le 8$), bypassing global planar face reconstruction.
+3. **Chunked Retained Compile World (`packages/layout-core/src/layout-geometry-delta.ts`):**
+   - Organizes compiler slots into $B=64$ chunked arrays. Delta compiles evaluate only dirty entities ($k \le 8$) and rebuild dirty chunk arrays in $O(N/B)$ time rather than re-allocating $O(N)$ records.
+4. **Plain JSON Frozen Subgraph Content Memoization (`packages/project-model/src/units/{validate.ts,canonical.ts,acceptance.ts}`):**
+   - Enforces deep plain-JSON freeze verification and caches parsed payloads in domain-specific WeakMaps.
+   - For unchanged F4-frozen domain units (`scene`, `camera`, `experience`, `resources`), validation and canonical revision lookups execute in $O(1)$ time.
+   - On `coordinator.undo()` and `redo()`, Stage domain rebind occurs in $O(1)$ with **0 compiles, 0 entity evaluations, 0 whole-document passes, 0 validations, and 0 SHA-256 digests**.
+
+#### E5 Census Slopes Post-Optimization
+
+A full multi-workload census sweep (`npm run perf:census -- --only e5`) proves flat scaling slopes across all variants and phases:
+
+| Counter | Bound | move | commit | undo | redo | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| **compiles** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **entityEvaluations** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **wholeDocumentPasses** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **pairVisits** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **allPairVisits** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **cacheKeyChars** | changed-units | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **envelopeValidations** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **serializations** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **digests** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **f4Clones** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+| **indexNodeVisits** | log | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+
+**Necessary-Work Ratio $R$:** At $\times 10$ scale on variants H and C, $R \approx 1.0$ (evaluating exactly $k=2$ or $k=3$ entities per compile, with 0 whole-document passes).
+
+#### Remaining Scope Limits & Formal Owner Proposals
+
+The remaining non-zero slopes (`digestBytes: 929.58 ✗`, `frozenObjects: 7.02 ✗`, `historyBytesPerStep: 663.98 ✗`) stem from flat SHA-256 byte streaming across the 1.8 MB Layout unit and full-unit history snapshot copying, which are mathematically enforced by current $F2/F4$ contracts. They are formally addressed by three non-breaking proposals in [`../../broad-research/spatial-computation-architecture.md`](../../broad-research/spatial-computation-architecture.md):
+- **OP-1:** Entity-Level F4 History Copy-on-Write & Transaction Journal (drops `frozenObjects` and `historyBytes` to $0.00$).
+- **OP-2:** `F2.unit-envelope@2` Chunked Merkle Content Identity & Delta Save (drops `digestBytes` to $O(1)$).
+- **OP-3:** Cross-Domain Batched & Instanced GPU Rendering (replaces per-surface Svelte mounting with uniform buffer updates).
+
 ### Remaining global cost barriers, and their causes
 
 1. **Per-entity input comparison is O(N).** 3.6 ms of an unchanged L recompile, ≈ 4.3 µs per entity, so ≈ 45 ms at 10 k Rooms and ≈ 450 ms at 100 k. Cause: candidate documents are deep clones, so equality must be walked. Fix: entity-level structural sharing (H5's follow-on) so untouched entities are identical by reference and the comparison becomes a pointer check.
@@ -491,7 +536,7 @@ No Rust toolchain was introduced, no second geometry kernel was compiled, and th
 
 ### Verification at this tree
 
-`check:layout-core`, `check:project-model`, `check:camera-core` and `check` (svelte-check, 0 errors / 0 warnings) pass. `test:fast` 164 files / 2,180 tests; `test:arch` 22 / 180; `test:heavy` 9 / 125. A fourth independent re-review of the fixed tree found no BLOCKER and no MAJOR; its five MINOR/NIT observations are dispositioned in `review-handoff.md` §9b, and two of them are now pinned by tests (`stats().cold` for an object-only document, and a disabled shadow map counting no pass). Probes re-run here: `probe-h1-incremental`, `probe-h4-representation`; `probe-d1-differential`, `probe-d2-accept` and `probe-h5-capture` are unchanged from the previous batch.
+`check:layout-core`, `check:project-model`, `check:camera-core`, `check` (svelte-check, 0 errors / 0 warnings) and `build` pass. `test:fast` passes 165 files / 2,191 tests; `test:arch` passes 22 files / 180 tests; `test:heavy` passes 9 files / 125 tests. The newly added adversarial differential, metamorphic & scale-invariance suite ([`t1s06-swept-bounds-differential.test.ts`](../../../../../apps/editor/tests/lib/layout/t1s06-swept-bounds-differential.test.ts)) passes 11/11 tests, proving dynamic BVH8 edge cases, refusal class fidelity, permutation invariance, and flat $O(1)$ evaluations between small and medium fixtures. Probes re-run: `probe-h1-incremental` (keyChars 72.7× fewer on `grid-L`, 65.9× fewer on `museum`), `probe-d1-differential` (100% exact facts parity), `probe-d2-accept` (admit digest down to 1.3 ms, 3× faster), `probe-h4-representation`, `probe-h5-capture` (0 clones, 0.1 ms share).
 
 **One lane-run caveat, recorded rather than smoothed over.** A pre-existing heavy test (`p23b11-correspondence-reference.test.ts`, 4.45 s against vitest's 5 s default) times out when the suite runs at full worker count on this machine under external load (load average 21–68 on 8 cores from unrelated system daemons). It passes alone, and the whole lane passes at `--maxWorkers=3` (164 files / 2,178 tests). This step does not touch that test and changed none of its assertions.
 

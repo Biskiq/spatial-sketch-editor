@@ -109,6 +109,12 @@ the [owner hold](../README.md#production-implementation-hold).
 - [`planning-evidence.md`](./planning-evidence.md) — obligations and open decisions carried
   forward from the retired P26 material. It is evidence for planning, not a plan or an
   authorization.
+- [`broad-research/README.md`](./broad-research/README.md) — router for track-level
+  computational architecture investigations.
+- [`broad-research/spatial-computation-architecture.md`](./broad-research/spatial-computation-architecture.md) —
+  Fundamental Computational Architecture Challenge: comprehensive computer science analysis across
+  persistent data structures, incremental and self-adjusting computation, database IVM, planar
+  subdivisions, dynamic BVH, canonical content hashing, and owner decision proposals (OP-1, OP-2, OP-3).
 - [`prototypes/spatial-authoring/`](../../../prototypes/spatial-authoring/) (World) and the
   Paper family — runnable interaction references and QA; their geometry and parameterizations
   are not requirements.
