@@ -28,6 +28,7 @@
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import StageCamera from './StageCamera.svelte';
+	import StageShadowTriggers from './StageShadowTriggers.svelte';
 
 	let {
 		geometry,
@@ -61,6 +62,13 @@
 	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} castShadow />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 	<StageCamera {evaluation} />
+	<!--
+		T1.P02.S06 D.6 (H9) — the Stage's shadow maps are rendered when their own
+		dependencies change, not on every frame. Mounted inside this one Canvas
+		because it owns this renderer's shadow map; see the component for the full
+		trigger contract.
+	-->
+	<StageShadowTriggers {geometry} {scene} {modelUrls} />
 	<VisitorLayoutShell {geometry} {presentation} />
 	<VisitorEntities {scene} {rooms} {modelUrls} />
 	<!--
