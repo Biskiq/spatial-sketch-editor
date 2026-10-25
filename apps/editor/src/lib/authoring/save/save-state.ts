@@ -40,6 +40,7 @@
  */
 
 import type { AcceptedRevision } from '@portfolio/project-model';
+import type { SaveWorkInstrumentation } from '@portfolio/project-model/units';
 import {
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
@@ -53,6 +54,7 @@ import type {
 	SaveRequest
 } from '@portfolio/project-model/save';
 import { SAVE_CONTENT_IDENTITY_SCHEME, sameAcceptedRevision } from '@portfolio/project-model/save';
+import { perfMarksEnabled, perfMeasureAsync, perfMeasureSync } from '$lib/platform/perf-marks';
 
 /** The exact source a Save captures, read from the coordinator. */
 export type SaveSourceState = {
@@ -241,6 +243,10 @@ const EMPTY_BASELINE: SaveBaseline = {
 };
 
 export function createSaveState(options: SaveStateOptions): SaveState {
+	const instrumentation: SaveWorkInstrumentation | undefined = perfMarksEnabled()
+		? { sync: perfMeasureSync, async: perfMeasureAsync }
+		: undefined;
+	let suppressNotificationMeasurement = false;
 	const mintOperationId = options.mintOperationId ?? (() => globalThis.crypto.randomUUID());
 	let baseline = options.baseline ?? EMPTY_BASELINE;
 	let status: SaveStatus = baseline.savedBaseToken === null ? 'never-saved' : 'saved';
@@ -283,6 +289,10 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 
 	function epoch(): string {
 		return String(options.coordinator.sessionEpoch());
+	}
+
+	function hasInFlightEpoch(expected: string): boolean {
+		return inFlight?.epoch === expected;
 	}
 
 	function currentCanonical(): string | null {
@@ -359,9 +369,14 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 	}
 
 	function emit(): SaveSnapshot {
-		const next = snapshot();
-		for (const listener of listeners) listener(next);
-		return next;
+		const notify = (): SaveSnapshot => {
+			const next = snapshot();
+			for (const listener of listeners) listener(next);
+			return next;
+		};
+		return instrumentation && !suppressNotificationMeasurement
+			? instrumentation.sync('save.state-notification', notify)
+			: notify();
 	}
 
 	function currentPrecondition(): SavePrecondition {
@@ -401,14 +416,16 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		  };
 
 	async function prepareRequest(current: SaveSourceState): Promise<CapturePreparation> {
-		const retained = retainedCapture(current);
+		const retained = instrumentation
+			? instrumentation.sync('save.retained-capture-check', () => retainedCapture(current))
+			: retainedCapture(current);
 		if (retained) return { kind: 'ready', pending: retained };
 		// Capture through the persistence boundary the server reads, not by
 		// hand-serializing the admitted source: the coordinator's revision is
 		// stamped into the saved bytes while the source itself keeps its embedded
 		// baseline revision. A hand-built capture would disagree with the server's
 		// re-serialization and be refused on every live Save.
-		const captured = await captureUnitSave({
+		const capture = () => captureUnitSave({
 			snapshot: {
 				acceptedRevision: current.revision,
 				sourceContentId: current.sourceContentId,
@@ -421,32 +438,41 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			},
 			operationId: mintOperationId(),
 			precondition: currentPrecondition()
-		});
+		}, instrumentation);
+		const captured = instrumentation
+			? await instrumentation.async('save.capture-wall', capture)
+			: await capture();
 		if (captured.kind === 'refused') return captured;
-		return {
+		const prepare = (): CapturePreparation => ({
 			kind: 'ready',
 			pending: {
 				request: { contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME, capture: captured.capture },
 				sourceCanonicalJson: current.canonicalJson
 			}
-		};
+		});
+		return instrumentation ? instrumentation.sync('save.capture-request-assembly', prepare) : prepare();
 	}
 
 	async function run(prepared: PendingCapture, signal?: AbortSignal): Promise<SaveOutcome> {
 		if (inFlight) return { kind: 'busy' };
 		const request = prepared.request;
-		pending = prepared;
 		const requestEpoch = epoch();
 		const capturedJson = request.capture.canonicalJson;
-		inFlight = { epoch: requestEpoch, canonicalJson: capturedJson };
-		status = 'saving';
-		error = null;
-		conflict = null;
-		emit();
+		const startTransport = (): Promise<SaveTransportResult> => {
+			pending = prepared;
+			inFlight = { epoch: requestEpoch, canonicalJson: capturedJson };
+			status = 'saving';
+			error = null;
+			conflict = null;
+			emit();
+			return options.save(request, signal);
+		};
 
 		let result: SaveTransportResult;
 		try {
-			result = await options.save(request, signal);
+			result = await (instrumentation
+				? instrumentation.sync('save.transport-start-state-update', startTransport)
+				: startTransport());
 		} catch (failure) {
 			result = {
 				kind: 'error',
@@ -458,7 +484,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		// A response from a replaced session epoch is dropped. It neither marks
 		// anything saved nor installs anything, and it cannot clear the new
 		// session's state.
-		if (epoch() !== requestEpoch || inFlight?.epoch !== requestEpoch) {
+		if (epoch() !== requestEpoch || !hasInFlightEpoch(requestEpoch)) {
 			inFlight = null;
 			// The replaced session owns neither this outcome nor its capture: the
 			// state now describes another project, so retrying the old capture
@@ -472,43 +498,52 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 
 		switch (result.kind) {
 			case 'saved': {
-				const acknowledged = result.acknowledgement;
-				// The acknowledgement answers exactly this capture. A response that
-				// describes other contents or another project is a protocol
-				// violation, not a saved state: adopting it would pair a foreign
-				// token/digest with these bytes. Refuse it instead of marking saved,
-				// and do not keep the capture — a replay returns the same answer.
-				if (
-					acknowledged.projectId !== request.capture.projectId ||
-					!sameAcceptedRevision(acknowledged.savedRevision, request.capture.acceptedRevision) ||
-					acknowledged.sourceContentId !== request.capture.sourceContentId
-				) {
-					pending = null;
-					error = {
-						code: 'server',
-						message: 'The Save acknowledgement does not describe the captured source',
-						retryable: false
+				const accept = (): SaveOutcome => {
+					const acknowledged = result.acknowledgement;
+					// The acknowledgement answers exactly this capture. A response that
+					// describes other contents or another project is a protocol
+					// violation, not a saved state: adopting it would pair a foreign
+					// token/digest with these bytes. Refuse it instead of marking saved,
+					// and do not keep the capture — a replay returns the same answer.
+					if (
+						acknowledged.projectId !== request.capture.projectId ||
+						!sameAcceptedRevision(acknowledged.savedRevision, request.capture.acceptedRevision) ||
+						acknowledged.sourceContentId !== request.capture.sourceContentId
+					) {
+						pending = null;
+						error = {
+							code: 'server',
+							message: 'The Save acknowledgement does not describe the captured source',
+							retryable: false
+						};
+						status = 'error';
+						emit();
+						return { kind: 'error', message: error.message };
+					}
+					baseline = {
+						savedBaseToken: acknowledged.savedBaseToken,
+						savedRevision: acknowledged.savedRevision,
+						// The saved base compares against the admitted source text, not the
+						// stamped persistence bytes: the envelope's embedded revision is
+						// baseline provenance and does not move when the coordinator mints.
+						savedCanonicalJson: prepared.sourceCanonicalJson,
+						savedSourceContentId: acknowledged.sourceContentId
 					};
-					status = 'error';
+					pending = null;
+					// Acknowledgment marks only the captured contents; edits made during
+					// the Save stay dirty.
+					const kind = currentCanonical() === prepared.sourceCanonicalJson ? 'saved' : 'dirty';
+					status = kind;
 					emit();
-					return { kind: 'error', message: error.message };
-				}
-				baseline = {
-					savedBaseToken: acknowledged.savedBaseToken,
-					savedRevision: acknowledged.savedRevision,
-					// The saved base compares against the admitted source text, not the
-					// stamped persistence bytes: the envelope's embedded revision is
-					// baseline provenance and does not move when the coordinator mints.
-					savedCanonicalJson: prepared.sourceCanonicalJson,
-					savedSourceContentId: acknowledged.sourceContentId
+					return { kind, acknowledgement: acknowledged };
 				};
-				pending = null;
-				// Acknowledgment marks only the captured contents; edits made during
-				// the Save stay dirty.
-				const kind = currentCanonical() === prepared.sourceCanonicalJson ? 'saved' : 'dirty';
-				status = kind;
-				emit();
-				return { kind, acknowledgement: acknowledged };
+				if (!instrumentation) return accept();
+				suppressNotificationMeasurement = true;
+				try {
+					return instrumentation.sync('save.acknowledgement-state-update', accept);
+				} finally {
+					suppressNotificationMeasurement = false;
+				}
 			}
 			case 'conflict': {
 				pending = null;
@@ -587,7 +622,9 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 	}
 
 	async function saveCommand(signal?: AbortSignal): Promise<SaveOutcome> {
-		const current = readCurrent();
+		const current = instrumentation
+			? instrumentation.sync('save.accepted-source-read', readCurrent)
+			: readCurrent();
 		if (!current) return { kind: 'unavailable' };
 		// An in-flight Save is busy, not unresolved: its own response is still the
 		// answer, and `retry()` must not race it either. Capture preparation is part
@@ -598,14 +635,23 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		// would drop that recovery and send a precondition the server may already
 		// have moved, so the ambiguity is settled first (`retry()`). Once it is, the
 		// newer contents save normally under a fresh operation ID.
-		if (pending && retainedCapture(current) === null) return { kind: 'unresolved' };
+		const hasUnresolvedCapture = pending && (instrumentation
+			? instrumentation.sync('save.retained-capture-command-check', () => retainedCapture(current) === null)
+			: retainedCapture(current) === null);
+		if (hasUnresolvedCapture) return { kind: 'unresolved' };
 
-		preparing = true;
-		const requestEpoch = epoch();
-		status = 'saving';
-		error = null;
-		conflict = null;
-		emit();
+		const startPreparation = (): string => {
+			preparing = true;
+			const requestEpoch = epoch();
+			status = 'saving';
+			error = null;
+			conflict = null;
+			emit();
+			return requestEpoch;
+		};
+		const requestEpoch = instrumentation
+			? instrumentation.sync('save.capture-start-state-update', startPreparation)
+			: startPreparation();
 		let preparation: CapturePreparation;
 		try {
 			preparation = await prepareRequest(current);
@@ -620,28 +666,33 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			emit();
 			return { kind: 'error', message: error.message };
 		}
-		preparing = false;
+		const finishPreparation = (): Promise<SaveOutcome> | SaveOutcome => {
+			preparing = false;
 
-		// The capture was stamped from a session that may no longer be installed.
-		// Do not retain it under the new session's state.
-		if (epoch() !== requestEpoch) {
-			status = derivedStatus();
-			emit();
-			return { kind: 'stale-epoch' };
-		}
-		if (preparation.kind === 'refused') {
-			error = {
-				code: preparation.code,
-				message: preparation.message,
-				issues: preparation.issues,
-				retryable: false
-			};
-			pending = null;
-			status = 'refused';
-			emit();
-			return { kind: 'refused', code: preparation.code, message: preparation.message };
-		}
-		return run(preparation.pending, signal);
+			// The capture was stamped from a session that may no longer be installed.
+			// Do not retain it under the new session's state.
+			if (epoch() !== requestEpoch) {
+				status = derivedStatus();
+				emit();
+				return { kind: 'stale-epoch' };
+			}
+			if (preparation.kind === 'refused') {
+				error = {
+					code: preparation.code,
+					message: preparation.message,
+					issues: preparation.issues,
+					retryable: false
+				};
+				pending = null;
+				status = 'refused';
+				emit();
+				return { kind: 'refused', code: preparation.code, message: preparation.message };
+			}
+			return run(preparation.pending, signal);
+		};
+		return instrumentation
+			? instrumentation.sync('save.capture-outcome-dispatch', finishPreparation)
+			: finishPreparation();
 	}
 
 	return {

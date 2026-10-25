@@ -28,7 +28,7 @@ samples recorded the visible “Saving…” label at the render boundary, then 
 by exact source/frame identity to one nonforked `STATE_PRESENTED_ALL` report before the durable
 receipt. Event Timing reported all 10 events in every cell, with none censored below 16 ms.
 
-| Fixture | Cache | Trace-reported feedback p50 / p95 (ms) | Main-thread RunTask work p50 / p95 (ms) | Click → durable receipt p50 / p95 (ms) | `Server-Timing` p50 / p95 (ms) |
+| Fixture | Cache | Trace-reported feedback p50 / p95 (ms) | Click-to-receipt RunTask union p50 / p95 (ms), diagnostic only | Click → durable receipt p50 / p95 (ms) | `Server-Timing` p50 / p95 (ms) |
 | --- | --- | ---: | ---: | ---: | ---: |
 | S | Cold | 60.0 / 71.3 | 19.2 / 23.6 | 120.3 / 127.0 | 86.7 / 93.3 |
 | S | Warm | 70.8 / 71.1 | 17.9 / 32.6 | 120.0 / 122.4 | 85.4 / 116.0 |
@@ -38,11 +38,13 @@ receipt. Event Timing reported all 10 events in every cell, with none censored b
 | M | Repeat-use | 67.0 / 69.2 | 113.9 / 122.6 | 529.9 / 580.1 | 516.8 / 570.5 |
 
 The receipt allowance derived from request bytes and N1 is 651.5 ms for S and 1,056.3 ms for M;
-measured p95 values are below those amounts. The run remains observation-only: it was agent-operated
-on AC power with Low Power Mode off; storage was process-local memory; and M used a minimal valid
-retained GLB source and derivative, not the expected full 15 MiB catalog. The Chrome compositor
-report is browser-reported feedback, not physical panel scanout proof. The reference battery hard
-row remains with the owner.
+measured p95 values are below those amounts. The RunTask column is the full click-to-receipt window,
+including ambient Stage/rendering work during WebCrypto and network waits; it is diagnostic only and
+does not measure Save-owned CPU against the 50 ms hard budget. The owner accepted an automated
+AC-powered run on the Mac14,2 reference machine for this slice, so agent operation and AC power are
+not themselves acceptance blockers. Storage was process-local memory; M used a minimal valid retained
+GLB source and derivative, not the expected full typical-M workload. The Chrome compositor report is
+browser-reported feedback and does not prove physical panel scanout.
 
 The complete sample data and distributions are in
 [project-lifecycle-final-chrome-f9-s-m.json](./project-lifecycle-final-chrome-f9-s-m.json).
@@ -54,6 +56,27 @@ state. The [final F9 result](./project-lifecycle-final-chrome-f9-playwright-resu
 [browser/API lifecycle evidence](./project-lifecycle-final-chrome-supervisor-result.json) are stored
 beside the report. Existing bounded browser semantics coverage remains; no separate manual
 screen-reader/assistive-technology audit was run or added as a gate.
+
+## F9 CPU attribution implementation follow-up — 2026-10-25
+
+The table above is the earlier trace result. Its RunTask union includes ambient Stage/rendering
+work during WebCrypto and network waits, so it cannot be compared with the F9 ≤50 ms Save-owned
+main-thread budget. The harness now keeps that window as a diagnostic and calculates Save-owned
+work from named synchronous scopes plus the renderer tasks containing the Saving and Saved status
+mutations. It unions overlapping intervals once and records async hash elapsed time separately. The
+request boundary is after JSON body construction and immediately before fetch dispatch.
+
+The accompanying [static check record](./f9-attribution-static-checks.json) contains the worktree
+identity and exact check commands: eight focused test files passed (73 tests), the project-model and
+editor checks passed (the editor check reported zero errors and warnings), and the focused
+Playwright harness TypeScript check passed. It also records the source patch hash.
+
+No new F9 browser sample or numeric CPU/feedback verdict is claimed. `AGENTS.md` requires the
+browser-hygiene skill before any browser launch; that skill is absent from the available skill
+catalog and configured skill roots, so this follow-up did not launch Playwright or a supervised
+browser. The owner accepted an automated AC-powered observation on the Mac14,2 reference machine
+for this slice, and the numeric F9 hard limits remain unchanged. A fresh attribution run and
+independent slice review remain pending.
 
 ## Initial revisions and full gate
 
@@ -90,24 +113,24 @@ The collected facts and API timings are in [project-lifecycle-browser-facts.json
 
 The corrected F9 run used the same code revision and browser/API setup with a separate private database, `biskiq_t3p04s01_f9_final_20261025`, also dropped after the run. It performed one warm-up and ten measured rename/Save cycles for each cache state. The fixture was M grid-7 (112 walls, 112 openings, 49 rooms) with one minimal valid approved source GLB and one retained derivative; both object keys remained present through each saved revision.
 
-| Cache | Local feedback p50 / p95 | Event Timing p50 / p95 | Main-thread RunTask sum p50 / p95 | Click → durable receipt p50 / p95 | Request bytes p50 / p95 | API `Server-Timing` p50 / p95 |
+| Cache | Local feedback p50 / p95 | Event Timing p50 / p95 | Click-to-receipt RunTask union p50 / p95 (diagnostic only) | Click → durable receipt p50 / p95 | Request bytes p50 / p95 | API `Server-Timing` p50 / p95 |
 |---|---:|---:|---:|---:|---:|---:|
 | Cold | 19.6 / 27.8 ms | 224 / 560 ms | 1,574 / 3,700 ms | 861 / 1,722 ms | 297,691 B | 566 / 825 ms |
 | Warm | 17.0 / 19.5 ms | 160 / 200 ms | 1,230 / 1,592 ms | 712 / 928 ms | 297,691 B | 514 / 545 ms |
 | Repeat-use | 16.5 / 20.2 ms | 152 / 288 ms | 1,193 / 1,321 ms | 672 / 731 ms | 297,697 B | 511 / 525 ms |
 
-Each group has 10 rows; p95 is the maximum in this ten-sample set. Event Timing observed all 10 events per group, with none censored below the 16 ms observer threshold. Cold click-to-receipt p95 (1,722 ms) is above the harness's derived 1,056 ms receipt allowance; warm and repeat-use p95 are below it. This is an exploratory finding, not a hard-budget verdict: the operator was the agent, storage was in memory, and the retained GLB is not the expected full 15 MiB catalog. The F9 JSON includes every sample, all distributions, source/derivative key names, browser facts, and limitations: [project-lifecycle-f9-m.json](./project-lifecycle-f9-m.json). The separate F9 API timings, store inventory and supervisor record are [project-lifecycle-f9-api-timings.json](./project-lifecycle-f9-api-timings.json), [project-lifecycle-f9-store-manifest.json](./project-lifecycle-f9-store-manifest.json), and [project-lifecycle-f9-run-summary.json](./project-lifecycle-f9-run-summary.json).
+Each group has 10 rows; p95 is the maximum in this ten-sample set. Event Timing observed all 10 events per group, with none censored below the 16 ms observer threshold. Cold click-to-receipt p95 (1,722 ms) is above the harness's derived 1,056 ms receipt allowance; warm and repeat-use p95 are below it. These are exploratory receipt and window diagnostics, not a Save-owned CPU result or hard-budget verdict. The F9 JSON includes every sample, all distributions, source/derivative key names, browser facts, and limitations: [project-lifecycle-f9-m.json](./project-lifecycle-f9-m.json). The separate F9 API timings, store inventory and supervisor record are [project-lifecycle-f9-api-timings.json](./project-lifecycle-f9-api-timings.json), [project-lifecycle-f9-store-manifest.json](./project-lifecycle-f9-store-manifest.json), and [project-lifecycle-f9-run-summary.json](./project-lifecycle-f9-run-summary.json).
 
 ## Earlier environment and limitations
 
 - Hardware: MacBook Air `Mac14,2`, Apple M2 (8 cores: 4 performance + 4 efficiency), 16 GB RAM; macOS 15.7.2; AC power, battery charged, Low Power Mode off. Runtime: Node 26.7.0, npm 11.19.0, PostgreSQL 14.19.
 - Browser: Playwright's bundled headless Chromium 153.0.8010.12. The main route used 1440×900 CSS pixels at DPR 1 and reduced motion; a separate touch context used 320×800 CSS pixels at DPR 2. F9 used 1920×1080 at DPR 1, no-preference motion, N1 latency 40 ms / upload 625 kB/s / download 2.5 MB/s, with CPU rate 1.
 - The measured M payload is small and exercises retention and repeated Save behavior; it does not stand in for a large production catalog. The local memory ObjectStore exercises API ownership, inventory, retry and sibling isolation, but does not prove remote S3/R2 cancellation or commit timing.
-- `feedbackMs` is click-to-rAF-callback execution after the saving-status DOM mutation. It is a presentation opportunity proxy, not proof that pixels reached the display. RunTask is the sum of renderer-main-thread `RunTask` events in the Save interval, not one contiguous task. Event Timing's 16 ms threshold is explicit.
+- `feedbackMs` is click-to-rAF-callback execution after the saving-status DOM mutation. It is a presentation opportunity proxy, not proof that pixels reached the display. The older RunTask figures are the union of renderer-main-thread `RunTask` events in the Save interval, not a Save-owned CPU metric. Event Timing's 16 ms threshold is explicit.
 - The user agent reported by bundled Chromium is `Chrome/153.0.8010.12` with a `Windows NT 10.0` UA string while `navigator.platform` reports `MacIntel`; this is not a branded macOS Chrome, Safari, or cross-engine run.
 - The successful Vite build emitted nonfatal externalization warnings for Node built-ins (`node:fs`, `node:path`, `fs`, `path`) referenced by `@gltf-transform/core` and `draco3d`; no build error resulted.
-- Browser QA covered the bounded keyboard, dialog semantics and coarse-touch behaviors; no screen reader or dedicated assistive-technology audit was run, and no separate manual audit gate is added. The F9 hard row still requires the owner-operated reference procedure.
+- Browser QA covered the bounded keyboard, dialog semantics and coarse-touch behaviors; no screen reader or dedicated assistive-technology audit was run, and no separate manual audit gate is added. The numeric F9 hard rows still require fresh samples with Save-owned CPU attribution.
 
 ## Exhaustive-case disposition after the residual follow-up
 
-The follow-up suite now covers the previously listed multi-source approved revision, process-restart cleanup recovery, and hostile delayed remote commit after completion proof, alongside lease revocation, deadlines, migration replay/backfill, owned-prefix inventory, late-visible-key repair and spaced cleanup proof. The integrated browser run covers real UI/session behavior, bounded dialog semantics and local-store sibling isolation. Those API residuals are complete; the owner-operated F9 hard row and independent slice review remain. No separate manual assistive-technology audit gate is added. The slice remains pending acceptance.
+The follow-up suite now covers the previously listed multi-source approved revision, process-restart cleanup recovery, and hostile delayed remote commit after completion proof, alongside lease revocation, deadlines, migration replay/backfill, owned-prefix inventory, late-visible-key repair and spaced cleanup proof. The integrated browser run covers real UI/session behavior, bounded dialog semantics and local-store sibling isolation. Those API residuals are complete; fresh F9 attribution evidence and independent slice review remain. No separate manual assistive-technology audit gate is added. The slice remains pending acceptance.

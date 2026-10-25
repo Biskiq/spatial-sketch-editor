@@ -56,7 +56,8 @@ import { createUnitTargetInspector, prepareUnitIntent } from '../f4/unit-accepta
 import {
 	computeEnvelopeSourceContentId,
 	computeUnitContentRevision,
-	verifyUnitContentRevisions
+	verifyUnitContentRevisions,
+	type SaveWorkInstrumentation
 } from './canonical';
 import { serializeProjectEnvelope, validateProjectEnvelope, type EnvelopeClosureFinding } from './validate';
 import { UNIT_DOMAINS, type ProjectEnvelope, type ProjectUnits, type UnitDomain } from './types';
@@ -102,30 +103,38 @@ function issue(path: string, code: string, message: string): ShapeIssue {
  * an external pin here would fabricate a byte identity, which this provider never
  * does.
  */
-export async function normalizeUnitEnvelope(envelope: ProjectEnvelope): Promise<ProjectEnvelope> {
+export async function normalizeUnitEnvelope(
+	envelope: ProjectEnvelope,
+	instrumentation?: SaveWorkInstrumentation
+): Promise<ProjectEnvelope> {
 	const declared = envelope.units;
 	const [layout, scene, camera, experience, resources] = await Promise.all([
-		computeUnitContentRevision(declared.layout.data),
-		computeUnitContentRevision(declared.scene.data),
-		computeUnitContentRevision(declared.camera.data),
-		computeUnitContentRevision(declared.experience.data),
-		computeUnitContentRevision(declared.resources.data)
+		computeUnitContentRevision(declared.layout.data, instrumentation, 'save.unit.layout'),
+		computeUnitContentRevision(declared.scene.data, instrumentation, 'save.unit.scene'),
+		computeUnitContentRevision(declared.camera.data, instrumentation, 'save.unit.camera'),
+		computeUnitContentRevision(declared.experience.data, instrumentation, 'save.unit.experience'),
+		computeUnitContentRevision(declared.resources.data, instrumentation, 'save.unit.resources')
 	]);
-	const units: ProjectUnits = {
-		layout: { header: { ...declared.layout.header, contentRevision: layout }, data: declared.layout.data },
-		scene: { header: { ...declared.scene.header, contentRevision: scene }, data: declared.scene.data },
-		camera: { header: { ...declared.camera.header, contentRevision: camera }, data: declared.camera.data },
-		experience: { header: { ...declared.experience.header, contentRevision: experience }, data: declared.experience.data },
-		resources: { header: { ...declared.resources.header, contentRevision: resources }, data: declared.resources.data }
+	const assemble = (): ProjectEnvelope => {
+		const units: ProjectUnits = {
+			layout: { header: { ...declared.layout.header, contentRevision: layout }, data: declared.layout.data },
+			scene: { header: { ...declared.scene.header, contentRevision: scene }, data: declared.scene.data },
+			camera: { header: { ...declared.camera.header, contentRevision: camera }, data: declared.camera.data },
+			experience: { header: { ...declared.experience.header, contentRevision: experience }, data: declared.experience.data },
+			resources: { header: { ...declared.resources.header, contentRevision: resources }, data: declared.resources.data }
+		};
+		const unitRevision = (domain: UnitDomain): string => units[domain].header.contentRevision;
+		const entries = envelope.dependencyLock.entries.map((entry) => {
+			if (entry.domain.startsWith('resource:')) return entry;
+			const domain = entry.domain as UnitDomain;
+			if (!UNIT_DOMAINS.includes(domain)) return entry;
+			return { ...entry, contentRevision: unitRevision(domain) };
+		});
+		return { ...envelope, units, dependencyLock: { ...envelope.dependencyLock, entries } };
 	};
-	const unitRevision = (domain: UnitDomain): string => units[domain].header.contentRevision;
-	const entries = envelope.dependencyLock.entries.map((entry) => {
-		if (entry.domain.startsWith('resource:')) return entry;
-		const domain = entry.domain as UnitDomain;
-		if (!UNIT_DOMAINS.includes(domain)) return entry;
-		return { ...entry, contentRevision: unitRevision(domain) };
-	});
-	return { ...envelope, units, dependencyLock: { ...envelope.dependencyLock, entries } };
+	return instrumentation
+		? instrumentation.sync('save.normalize-headers-and-locks', assemble)
+		: assemble();
 }
 
 function lockReference(entry: ProjectEnvelope['dependencyLock']['entries'][number]): SemanticReference {
@@ -151,31 +160,37 @@ function lockReference(entry: ProjectEnvelope['dependencyLock']['entries'][numbe
  * embedded revision, which is the preparation/baseline identity in the first case
  * and the saved revision in the second; neither is a second revision authority.
  */
-export async function verifyUnitDependencyLocks(envelope: ProjectEnvelope): Promise<ShapeIssue[]> {
-	const sourceContentId = await computeEnvelopeSourceContentId(envelope);
-	const context = createUnitReadContext({ envelope, sourceContentId, sessionEpoch: 'unit-lock-verification' });
-	const issues: ShapeIssue[] = [];
-	for (const [index, entry] of envelope.dependencyLock.entries.entries()) {
-		const path = `$.dependencyLock.entries[${index}]`;
-		const resolution = resolveReference(lockReference(entry), context);
-		if (resolution.kind === 'failed') {
-			issues.push(issue(path, resolution.code, resolution.message));
-			continue;
+export async function verifyUnitDependencyLocks(
+	envelope: ProjectEnvelope,
+	instrumentation?: SaveWorkInstrumentation
+): Promise<ShapeIssue[]> {
+	const sourceContentId = await computeEnvelopeSourceContentId(envelope, instrumentation, 'save.lock-source-id');
+	const verify = (): ShapeIssue[] => {
+		const context = createUnitReadContext({ envelope, sourceContentId, sessionEpoch: 'unit-lock-verification' });
+		const issues: ShapeIssue[] = [];
+		for (const [index, entry] of envelope.dependencyLock.entries.entries()) {
+			const path = `$.dependencyLock.entries[${index}]`;
+			const resolution = resolveReference(lockReference(entry), context);
+			if (resolution.kind === 'failed') {
+				issues.push(issue(path, resolution.code, resolution.message));
+				continue;
+			}
+			// For a unit subject the resolver answers the unit's content revision; for a
+			// typed resource it answers the resource revision or its pin hash. Both are
+			// the concrete identity the entry must have pinned.
+			if (resolution.subject.contentRevision !== entry.contentRevision) {
+				issues.push(
+					issue(
+						path,
+						'lock-revision-mismatch',
+						`the lock pins "${entry.subjectId}" to ${entry.contentRevision} and the envelope resolves ${resolution.subject.contentRevision}`
+					)
+				);
+			}
 		}
-		// For a unit subject the resolver answers the unit's content revision; for a
-		// typed resource it answers the resource revision or its pin hash. Both are
-		// the concrete identity the entry must have pinned.
-		if (resolution.subject.contentRevision !== entry.contentRevision) {
-			issues.push(
-				issue(
-					path,
-					'lock-revision-mismatch',
-					`the lock pins "${entry.subjectId}" to ${entry.contentRevision} and the envelope resolves ${resolution.subject.contentRevision}`
-				)
-			);
-		}
-	}
-	return issues;
+		return issues;
+	};
+	return instrumentation ? instrumentation.sync('save.dependency-lock-resolution', verify) : verify();
 }
 
 function closureIssues(closure: readonly EnvelopeClosureFinding[]): ShapeIssue[] {

@@ -26,7 +26,7 @@ import {
 	waitForAcceptedResult
 } from '../lib/flow';
 import { perfInitScript, readLedger } from '../lib/ledger';
-import { attributeSaveTrace, findSaveFeedbackPresentation } from '../lib/save-trace';
+import { attributeSaveOwnedWork, attributeSaveTrace, findSaveFeedbackPresentation } from '../lib/save-trace';
 import { clockAnchor, startChromeTrace, type TraceEvent } from '../lib/trace-proof';
 import { resolveTracePresentation } from '../lib/trace-presentation';
 import { SAVE_CONTENT_IDENTITY_SCHEME } from '@portfolio/project-model/save';
@@ -64,10 +64,12 @@ type SaveSample = {
 	cache: 'cold' | 'warm' | 'repeat-use';
 	index: number;
 	clickMs: number;
-	submitMs: number;
+	commandMs: number;
+	requestMs: number;
 	receiptMs: number;
-	clickToSubmitMs: number;
-	submitToReceiptMs: number;
+	clickToCommandMs: number;
+	commandToRequestMs: number;
+	requestToReceiptMs: number;
 	savingDomMutationMs: number;
 	savingPaintBoundaryMs: number;
 	savingPaintLabel: string;
@@ -83,13 +85,21 @@ type SaveSample = {
 	feedbackOpportunityMs: number | null;
 	eventTimingMs: number | null;
 	eventTimingCensoredBelowMs: number;
-	mainThreadWorkMs: number;
-	mainThreadTaskCount: number;
-	mainThreadClickToSubmitWorkMs: number;
-	mainThreadSubmitToReceiptWorkMs: number;
-	mainThreadBlockingWorkMs: number;
-	mainThreadBlockingTaskCount: number;
-	mainThreadMaxTaskMs: number;
+	saveAttributedMainThreadWorkMs: number;
+	saveSyncScopeUnionMs: number;
+	saveFeedbackTaskWorkMs: number;
+	saveWorkOverlapMs: number;
+	saveFeedbackTaskCount: number;
+	saveWorkPhases: Array<{ phase: string; elapsedMs: number }>;
+	saveAsyncWallPhases: Array<{ phase: string; elapsedMs: number }>;
+	mainThreadRunTaskWindowWorkMs: number;
+	mainThreadRunTaskWindowTaskCount: number;
+	mainThreadRunTaskWindowClickToCommandWorkMs: number;
+	mainThreadRunTaskWindowCommandToRequestWorkMs: number;
+	mainThreadRunTaskWindowRequestToReceiptWorkMs: number;
+	mainThreadRunTaskWindowBlockingWorkMs: number;
+	mainThreadRunTaskWindowBlockingTaskCount: number;
+	mainThreadRunTaskWindowMaxTaskMs: number;
 	backgroundRendererWorkMs: number;
 	backgroundRendererTaskCount: number;
 	clickToReceiptMs: number;
@@ -969,12 +979,20 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 				await waitForAcceptedResult(page, beforeEdit);
 				const saveButton = page.locator('[data-head-save] button').first();
 				await expect(saveButton).toBeEnabled();
-				await page.evaluate(() => {
-					const root = window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: { click: number; mutation: number; frame: number; paintLabel: string | null; statuses: string[] } | null };
+				const savingMarker = `save:ui:saving:${size}:${cache}:${index}:${cycleNumber}`;
+				const savedMarker = `save:ui:saved:${size}:${cache}:${index}:${cycleNumber}`;
+				await page.evaluate(({ savingMarker, savedMarker }) => {
+					const root = window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: {
+						click: number; mutation: number; savedMutation: number; frame: number; paintLabel: string | null;
+						statuses: string[]; savingMarker: string; savedMarker: string;
+					} | null };
 					root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = null;
 					document.addEventListener('click', (event) => {
 						if (!(event.target instanceof Element) || !event.target.closest('[data-head-save] button')) return;
-						root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { click: performance.now(), mutation: 0, frame: 0, paintLabel: null, statuses: [] };
+						root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = {
+							click: performance.now(), mutation: 0, savedMutation: 0, frame: 0, paintLabel: null,
+							statuses: [], savingMarker, savedMarker
+						};
 					}, { capture: true, once: true });
 					const observer = new MutationObserver((records) => {
 						const feedback = root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__;
@@ -983,30 +1001,36 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 						const currentStatus = saveControl?.getAttribute('data-save-status') ?? 'missing';
 						const currentLabel = saveControl?.querySelector('button')?.textContent?.trim() ?? 'missing';
 						feedback.statuses.push(`${currentStatus}:${currentLabel}`);
-						const savingRecord = records.find((record) => record.attributeName === 'data-save-status');
-						if (savingRecord == null || currentStatus !== 'saving' || currentLabel !== 'Saving…' || feedback.mutation !== 0) return;
-						const mutation = performance.now();
-						feedback.mutation = mutation;
-						// The second rAF runs after one complete render opportunity.
-						// Verify the visible control still says Saving at that boundary;
-						// a dirty-state frame cannot stand in for the feedback.
-						requestAnimationFrame(() => requestAnimationFrame(() => {
-							const current = root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__;
-							if (current == null) return;
-							const paintedControl = document.querySelector('[data-head-save]');
-							const paintedStatus = paintedControl?.getAttribute('data-save-status') ?? 'missing';
-							const paintedLabel = paintedControl?.querySelector('button')?.textContent?.trim() ?? 'missing';
-							current.statuses.push(`paint-boundary:${paintedStatus}:${paintedLabel}`);
-							if (paintedStatus === 'saving' && paintedLabel === 'Saving…') {
-								root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { ...current, frame: performance.now(), paintLabel: paintedLabel };
-							}
+						if (!records.some((record) => record.attributeName === 'data-save-status')) return;
+						if (currentStatus === 'saving' && currentLabel === 'Saving…' && feedback.mutation === 0) {
+							feedback.mutation = performance.now();
+							performance.mark(feedback.savingMarker);
+							// The second rAF runs after one complete render opportunity.
+							// Verify the visible control still says Saving at that boundary.
+							requestAnimationFrame(() => requestAnimationFrame(() => {
+								const current = root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__;
+								if (current == null) return;
+								const paintedControl = document.querySelector('[data-head-save]');
+								const paintedStatus = paintedControl?.getAttribute('data-save-status') ?? 'missing';
+								const paintedLabel = paintedControl?.querySelector('button')?.textContent?.trim() ?? 'missing';
+								current.statuses.push(`paint-boundary:${paintedStatus}:${paintedLabel}`);
+								if (paintedStatus === 'saving' && paintedLabel === 'Saving…') {
+									root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { ...current, frame: performance.now(), paintLabel: paintedLabel };
+								}
+							}));
+						}
+						if (currentStatus === 'saved' && feedback.savedMutation === 0) {
+							feedback.savedMutation = performance.now();
+							performance.mark(feedback.savedMarker);
 							observer.disconnect();
-						}));
+						}
 					});
 					observer.observe(document.documentElement, { attributes: true, attributeOldValue: true, subtree: true, attributeFilter: ['data-save-status'] });
-				});
+				}, { savingMarker, savedMarker });
 
-				const eventCountBefore = (await readLedger(page)).events.length;
+				const beforeLedger = await readLedger(page);
+				const eventCountBefore = beforeLedger.events.length;
+				const recordCountBefore = beforeLedger.records.length;
 				const startTrace = await startChromeTrace(cdp, { screenshotMaxSize: 1920, screenshotMaxCount: 24 });
 				let traceEvents: TraceEvent[] | null = null;
 				let startAnchor;
@@ -1032,14 +1056,22 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 				const bytes = Number(receipt!.request().postDataBuffer()?.byteLength ?? 0);
 				const acknowledgement = await jsonResponse(receipt!);
 				const ledger = await readLedger(page);
-				const saveMarks = ledger.records.filter((record) => record.kind === 'mark' && ['save:submit', 'save:receipt'].includes(record.name));
-				const submit = [...saveMarks].reverse().find((record) => record.name === 'save:submit');
+				const operationRecords = ledger.records.slice(recordCountBefore);
+				const saveMarks = operationRecords.filter((record) => record.kind === 'mark' && ['save:command', 'save:request', 'save:receipt'].includes(record.name));
+				const command = [...saveMarks].reverse().find((record) => record.name === 'save:command');
+				const request = [...saveMarks].reverse().find((record) => record.name === 'save:request');
 				const savedMark = [...saveMarks].reverse().find((record) => record.name === 'save:receipt');
-				if (!submit || !savedMark) throw new Error('Save ledger did not capture submit and durable receipt');
-				const feedback = await page.evaluate(() => (window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: { click: number; mutation: number; frame: number; paintLabel: string | null; statuses: string[] } | null }).__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ ?? null);
-				if (!feedback || feedback.click <= 0 || feedback.mutation <= 0 || feedback.frame <= 0 || feedback.paintLabel !== 'Saving…') throw new Error(`Save feedback probe was incomplete: ${JSON.stringify({ feedback, status: await page.locator('[data-head-save]').getAttribute('data-save-status'), label: await page.locator('[data-head-save] button').first().textContent() })}`);
-				const boundaries = { clickMs: feedback.click, submitMs: submit.time, receiptMs: savedMark.time };
+				if (!command || !request || !savedMark) throw new Error('Save ledger did not capture command, HTTP dispatch, and durable receipt');
+				const feedback = await page.evaluate(() => (window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: {
+					click: number; mutation: number; savedMutation: number; frame: number; paintLabel: string | null;
+					statuses: string[]; savingMarker: string; savedMarker: string;
+				} | null }).__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ ?? null);
+				if (!feedback || feedback.click <= 0 || feedback.mutation <= 0 || feedback.savedMutation <= 0 || feedback.frame <= 0 || feedback.paintLabel !== 'Saving…') {
+					throw new Error(`Save feedback probe was incomplete: ${JSON.stringify({ feedback, status: await page.locator('[data-head-save]').getAttribute('data-save-status'), label: await page.locator('[data-head-save] button').first().textContent() })}`);
+				}
+				const boundaries = { clickMs: feedback.click, commandMs: command.time, requestMs: request.time, receiptMs: savedMark.time };
 				const attribution = attributeSaveTrace(traceEvents!, [startAnchor!, endAnchor!], boundaries);
+				const saveOwnedWork = attributeSaveOwnedWork(traceEvents!, attribution.clockOffsetMs, operationRecords, [feedback.savingMarker, feedback.savedMarker]);
 				const presentation = findSaveFeedbackPresentation(traceEvents!, attribution.clockOffsetMs, feedback.click, feedback.mutation, feedback.frame, savedMark.time);
 				if (!presentation) {
 					const screenshots = traceEvents!.filter((event) => event.name === 'Screenshot' && typeof event.args?.snapshot === 'string');
@@ -1083,10 +1115,12 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 				const sample: SaveSample = {
 					size, cache, index,
 					clickMs: boundaries.clickMs,
-					submitMs: boundaries.submitMs,
+					commandMs: boundaries.commandMs,
+					requestMs: boundaries.requestMs,
 					receiptMs: boundaries.receiptMs,
-					clickToSubmitMs: attribution.clickToSubmitMs,
-					submitToReceiptMs: attribution.submitToReceiptMs,
+					clickToCommandMs: attribution.clickToCommandMs,
+					commandToRequestMs: attribution.commandToRequestMs,
+					requestToReceiptMs: attribution.requestToReceiptMs,
 					feedbackMs: presentation.feedbackMs,
 					savingDomMutationMs: feedback.mutation,
 					savingPaintBoundaryMs: feedback.frame,
@@ -1102,13 +1136,21 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 					feedbackOpportunityMs: feedback.frame - feedback.click,
 					eventTimingMs: relevantEvent?.duration ?? null,
 					eventTimingCensoredBelowMs: relevantEvent ? 0 : 16,
-					mainThreadWorkMs: attribution.mainThread.workMs,
-					mainThreadTaskCount: attribution.mainThread.taskCount,
-					mainThreadClickToSubmitWorkMs: attribution.mainThread.clickToSubmitWorkMs,
-					mainThreadSubmitToReceiptWorkMs: attribution.mainThread.submitToReceiptWorkMs,
-					mainThreadBlockingWorkMs: attribution.mainThread.blockingWorkMs,
-					mainThreadBlockingTaskCount: attribution.mainThread.blockingTaskCount,
-					mainThreadMaxTaskMs: attribution.mainThread.maxTaskMs,
+					saveAttributedMainThreadWorkMs: saveOwnedWork.workMs,
+					saveSyncScopeUnionMs: saveOwnedWork.syncScopeUnionMs,
+					saveFeedbackTaskWorkMs: saveOwnedWork.feedbackTaskWorkMs,
+					saveWorkOverlapMs: saveOwnedWork.overlapMs,
+					saveFeedbackTaskCount: saveOwnedWork.feedbackTaskCount,
+					saveWorkPhases: saveOwnedWork.syncPhases,
+					saveAsyncWallPhases: saveOwnedWork.asyncWallPhases,
+					mainThreadRunTaskWindowWorkMs: attribution.mainThread.workMs,
+					mainThreadRunTaskWindowTaskCount: attribution.mainThread.taskCount,
+					mainThreadRunTaskWindowClickToCommandWorkMs: attribution.mainThread.clickToCommandWorkMs,
+					mainThreadRunTaskWindowCommandToRequestWorkMs: attribution.mainThread.commandToRequestWorkMs,
+					mainThreadRunTaskWindowRequestToReceiptWorkMs: attribution.mainThread.requestToReceiptWorkMs,
+					mainThreadRunTaskWindowBlockingWorkMs: attribution.mainThread.blockingWorkMs,
+					mainThreadRunTaskWindowBlockingTaskCount: attribution.mainThread.blockingTaskCount,
+					mainThreadRunTaskWindowMaxTaskMs: attribution.mainThread.maxTaskMs,
 					backgroundRendererWorkMs: attribution.backgroundRenderer.workMs,
 					backgroundRendererTaskCount: attribution.backgroundRenderer.taskCount,
 					clickToReceiptMs: attribution.operationMs,
@@ -1159,11 +1201,15 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 				const rows = samples.filter((sample) => sample.size === size && sample.cache === cache);
 				return [cache, {
 					localFeedbackPresentedMs: summarize(rows.map((row) => row.feedbackMs)),
-					mainThreadWorkMs: summarize(rows.map((row) => row.mainThreadWorkMs)),
-					mainThreadBlockingWorkMs: summarize(rows.map((row) => row.mainThreadBlockingWorkMs)),
-					mainThreadMaxTaskMs: summarize(rows.map((row) => row.mainThreadMaxTaskMs)),
-					clickToSubmitMs: summarize(rows.map((row) => row.clickToSubmitMs)),
-					submitToDurableReceiptMs: summarize(rows.map((row) => row.submitToReceiptMs)),
+					saveAttributedMainThreadWorkMs: summarize(rows.map((row) => row.saveAttributedMainThreadWorkMs)),
+					saveSyncScopeUnionMs: summarize(rows.map((row) => row.saveSyncScopeUnionMs)),
+					saveFeedbackTaskWorkMs: summarize(rows.map((row) => row.saveFeedbackTaskWorkMs)),
+					mainThreadRunTaskWindowWorkMs: summarize(rows.map((row) => row.mainThreadRunTaskWindowWorkMs)),
+					mainThreadRunTaskWindowBlockingWorkMs: summarize(rows.map((row) => row.mainThreadRunTaskWindowBlockingWorkMs)),
+					mainThreadRunTaskWindowMaxTaskMs: summarize(rows.map((row) => row.mainThreadRunTaskWindowMaxTaskMs)),
+					clickToCommandMs: summarize(rows.map((row) => row.clickToCommandMs)),
+					commandToHttpRequestMs: summarize(rows.map((row) => row.commandToRequestMs)),
+					httpRequestToDurableReceiptMs: summarize(rows.map((row) => row.requestToReceiptMs)),
 					clickToDurableReceiptMs: summarize(rows.map((row) => row.clickToReceiptMs)),
 					wireBytes: summarize(rows.map((row) => row.wireBytes)),
 					serverTimingMs: summarize(rows.flatMap((row) => row.serverTimingMs === null ? [] : [row.serverTimingMs])),
@@ -1185,18 +1231,20 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 			measuredRunsPerSizeAndCacheState: 10,
 			trace: {
 				method: 'CDP devtools.timeline + screenshot + compositor presentation reports',
-				mainThreadWork: 'union of clipped CrRendererMain RunTask intervals from Save click through durable receipt; click-to-submit and submit-to-receipt split also recorded',
+				mainThreadWork: 'union of Save-owned synchronous scope timestamps plus the CrRendererMain RunTask containing the Saving and Saved DOM mutations; ambient renderer tasks during WebCrypto/network waits are excluded; overlap is unioned once',
+				mainThreadRunTaskWindowWork: 'separate diagnostic union of all CrRendererMain RunTask intervals from Save click through durable receipt; includes unrelated Stage/rendering work during waits and is not a Save-work metric',
+				requestBoundary: 'save:request is marked immediately before fetch after JSON request-body construction',
 				backgroundRendererWork: 'same renderer process non-main-thread RunTask interval union',
 				feedback: 'first screenshot after the Saving label survives one render opportunity, joined by exact source/frame identity to one STATE_PRESENTED_ALL reporter before durable receipt',
 				visualEvidence: 'representative CDP trace screenshots for S/warm and M cache cells; all six cells retain exact frame-identity presentation data for every measured sample',
 				physicalDisplayPresentationMs: null
 			},
 			statistics: distributions,
-			hardBudgetDisposition: 'observation only: automated agent-operated run on AC power; the reference battery condition and owner-operated acceptance are not satisfied',
+			hardBudgetDisposition: 'per-slice owner ruling dated 2026-10-25 accepts this automated run on the Mac14,2 reference machine while on AC power; numeric F9 hard budgets remain binding and are evaluated from Save-attributed work and presented-feedback p95',
 			limitations: [
 				'Chrome compositor presentation feedback is browser-reported and does not prove physical panel scanout.',
 				'Event Timing entries have a 16 ms threshold; missing eligible click entries are right-censored below that threshold.',
-				'M uses a minimal valid retained GLB source and derivative; the model bytes do not represent the full 15 MiB expected catalog.'
+				'The lifecycle M fixture is grid-7 with one scene model entity and one retained source/derivative pair. The source bytes are not posted by Save; this meets the slice plan retained-model requirement but does not reproduce the typical M fixture of 60 objects and 15 distinct GLBs.'
 			]
 		};
 		await writeFile(resolve(resultsDir!, 'project-lifecycle-f9-s-m-branded-chrome.json'), JSON.stringify(output, null, 2));

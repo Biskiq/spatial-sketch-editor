@@ -1,0 +1,95 @@
+{
+  "slice": "T3.P04.S01",
+  "pullRequest": 191,
+  "date": "2026-10-25",
+  "status": "attribution implementation and static checks complete; fresh numeric F9 sample pending",
+  "worktree": {
+    "path": "/Users/tony/Documents/Biskiq/batch-2026-10-25/T3.P04.S01",
+    "branch": "t3/p04-s01-project-rename-delete",
+    "baseHead": "2b4c30f80f7c4a3e1f1bc9a91bd27ac93e3a1759",
+    "sourcePatchSha256": "d8f924f4758353144929f52b713af892700c474732e9834ab2e042b7bcdcfeb6",
+    "sourceChangesIncludedInHash": [
+      "apps/editor/perf/README.md",
+      "apps/editor/perf/flows/project-lifecycle.spec.ts",
+      "apps/editor/perf/flows/save.spec.ts",
+      "apps/editor/perf/lib/save-trace.ts",
+      "apps/editor/src/lib/authoring/save/head-save.ts",
+      "apps/editor/src/lib/authoring/save/save-state.ts",
+      "apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte",
+      "apps/editor/src/lib/platform/perf-marks.ts",
+      "apps/editor/src/lib/platform/project-persistence.ts",
+      "apps/editor/src/routes/project/[projectId]/spatial/+page.svelte",
+      "apps/editor/tests/lib/authoring/save-receipt-timing.test.ts",
+      "apps/editor/tests/lib/platform/perf-marks.test.ts",
+      "apps/editor/tests/lib/platform/save-trace.test.ts",
+      "apps/editor/tests/lib/project-model/units-canonical-form.test.ts",
+      "packages/project-model/src/package-sha.ts",
+      "packages/project-model/src/units/acceptance.ts",
+      "packages/project-model/src/units/canonical.ts",
+      "packages/project-model/src/units/save.ts"
+    ]
+  },
+  "ownerRuling": {
+    "date": "2026-10-25",
+    "decision": "automated AC-powered observation on the Mac14,2 reference machine is accepted for this slice",
+    "numericBudgetsRemainBinding": true,
+    "saveAttributedMainThreadWorkMsMax": 50,
+    "presentedFeedbackP95MsMax": 100
+  },
+  "attribution": {
+    "saveOwnedMainThreadWork": "union of named synchronous Save scopes and renderer-main-thread RunTask intervals containing the Saving and Saved status mutations; overlaps count once",
+    "syncScopeExamples": [
+      "accepted source read and retained-capture checks",
+      "capture validation and canonical unit/envelope encoding",
+      "SHA byte preparation, digest dispatch, and digest formatting",
+      "unit normalization, dependency-lock resolution, and envelope serialization",
+      "Save request JSON construction and fetch dispatch",
+      "acknowledgement decoding and acknowledgement/state update"
+    ],
+    "asyncHashElapsedTime": "reported separately; not added as main-thread CPU",
+    "requestBoundary": "save:request is recorded after JSON request-body construction and immediately before fetch dispatch",
+    "oldClickToReceiptRunTaskUnion": "retained as a diagnostic only; it includes ambient Stage/rendering work during WebCrypto and network waits"
+  },
+  "checks": [
+    {
+      "command": "npm run test:fast -w @portfolio/editor -- tests/lib/platform/perf-marks.test.ts tests/lib/platform/save-trace.test.ts tests/lib/platform/project-persistence.test.ts tests/lib/authoring/save-receipt-timing.test.ts tests/lib/authoring/save-state.test.ts tests/lib/authoring/head-save.test.ts tests/lib/authoring/head-save-journey.test.ts tests/lib/project-model/units-canonical-form.test.ts",
+      "status": "passed",
+      "filesPassed": 8,
+      "testsPassed": 73
+    },
+    {
+      "command": "npm run test -w @portfolio/editor -- tests/lib/project-model-boundary.test.ts",
+      "status": "passed",
+      "filesPassed": 1,
+      "testsPassed": 4
+    },
+    {
+      "command": "npm run check:project-model",
+      "status": "passed"
+    },
+    {
+      "command": "npm run check -w @portfolio/editor",
+      "status": "passed",
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "command": "npx tsc --noEmit --target ESNext --module ESNext --moduleResolution bundler --strict --skipLibCheck --types node apps/editor/perf/flows/project-lifecycle.spec.ts apps/editor/perf/flows/save.spec.ts apps/editor/perf/lib/save-trace.ts",
+      "status": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    }
+  ],
+  "browserRun": {
+    "status": "not-run",
+    "reason": "AGENTS.md requires the browser-hygiene skill before any browser launch. That skill is absent from the available skill catalog and configured skill roots, so no Playwright or supervised browser run was launched.",
+    "consequence": "No new Save-attributed CPU or feedback percentile is claimed; the numeric F9 row remains pending a fresh run."
+  },
+  "fixtureScope": {
+    "M": "grid-7, 112 walls, 112 openings, 49 rooms, one scene model entity, one retained source and one derivative",
+    "qualification": "meets the slice plan retained-model requirement; does not represent typical M with 60 objects and 15 distinct GLBs"
+  },
+  "acceptance": "pending fresh F9 attribution sample and independent slice review; PR remains draft"
+}

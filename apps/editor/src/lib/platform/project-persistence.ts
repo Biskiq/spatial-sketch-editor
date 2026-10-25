@@ -11,6 +11,7 @@ import {
 	type SavePrecondition
 } from '@portfolio/project-model/save';
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
+import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
 
 export type ProjectLoginIntent = 'projects' | 'save';
 
@@ -237,14 +238,20 @@ export function createProjectApi(
 	return {
 		listProjects: (signal) =>
 			requestJson(requestFetch, origin, '/projects', { method: 'GET' }, signal).then(readProjectList),
-		saveAcceptedSource: (request, signal) =>
-			requestJson(
+		saveAcceptedSource: (request, signal) => {
+			const body = perfMeasureSync('save.request-json', () => JSON.stringify(request));
+			return requestJson(
 				requestFetch,
 				origin,
 				`/projects/${encodeURIComponent(request.capture.projectId)}`,
-				{ method: 'PUT', body: JSON.stringify(request) },
-				signal
-			).then(readSaveAcknowledgement),
+				{ method: 'PUT', body },
+				signal,
+				() => perfMark('save:request', {
+					projectId: request.capture.projectId,
+					operationId: request.capture.operationId
+				})
+			).then((value) => perfMeasureSync('save.acknowledgement-decode', () => readSaveAcknowledgement(value)));
+		},
 		renameProject: (projectId, request, signal) =>
 			requestJson(
 				requestFetch,
@@ -495,20 +502,28 @@ async function requestJson(
 	origin: string,
 	path: string,
 	init: RequestInit,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	onBeforeFetch?: () => void
 ): Promise<unknown> {
 	let response: Response;
 	try {
-		response = await fetchImpl(`${origin}${path}`, {
-			...init,
-			credentials: 'include',
-			signal,
-			headers: {
-				Accept: 'application/json',
-				...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-				...(init.headers ?? {})
-			}
-		});
+		const dispatch = () => {
+			const url = `${origin}${path}`;
+			const request: RequestInit = {
+				...init,
+				credentials: 'include',
+				signal,
+				headers: {
+					Accept: 'application/json',
+					...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+					...(init.headers ?? {})
+				}
+			};
+			onBeforeFetch?.();
+			return fetchImpl(url, request);
+		};
+		const pendingResponse = onBeforeFetch ? perfMeasureSync('save.request-dispatch', dispatch) : dispatch();
+		response = await pendingResponse;
 	} catch (error) {
 		if (isAbort(error, signal)) throw error;
 		throw new ProjectPersistenceError('network', 'Cloud request failed');

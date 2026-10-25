@@ -15,6 +15,7 @@
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
 	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
+	import { perfMeasureSync } from '$lib/platform/perf-marks';
 	import type {
 		PreparedProjectLifecycle,
 		ProjectLifecycleActionResult,
@@ -109,7 +110,9 @@
 	$effect(() => {
 		const current = save;
 		if (current === null) return;
-		return untrack(() => current.subscribe(() => (saveVersion += 1)));
+		return untrack(() => current.subscribe(() =>
+			perfMeasureSync('save.head-state-signal', () => (saveVersion += 1))
+		));
 	});
 	const saveControl = $derived.by(() => {
 		void saveVersion;

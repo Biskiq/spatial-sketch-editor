@@ -35,7 +35,7 @@
 		type ProjectLifecycleActionResult,
 		type ProjectLifecyclePrepareResult
 	} from '$lib/platform/project-persistence';
-	import { perfInput, perfMark, perfMarksEnabled, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
+	import { perfInput, perfMark, perfMarksEnabled, perfMeasureSync, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
 	import {
 		discardPendingCapture,
 		persistPendingCapture,
@@ -678,7 +678,9 @@
 		const mountedHeadSave = headSave;
 		if (mountedHeadSave !== null) {
 			unsubscribeHeadSave = mountedHeadSave.subscribe(() => {
-				if (headSave === mountedHeadSave) headSaveVersion += 1;
+				if (headSave === mountedHeadSave) {
+					perfMeasureSync('save.page-state-signal', () => (headSaveVersion += 1));
+				}
 			});
 		}
 		// A resumed capture belongs to the epoch that consumed it.

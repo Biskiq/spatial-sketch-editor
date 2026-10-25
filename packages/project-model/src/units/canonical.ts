@@ -23,7 +23,7 @@
  */
 
 import { validateUnitPayload } from './validate';
-import { sha256Bytes } from '../package-sha';
+import { sha256Bytes, type SynchronousWorkMeasure } from '../package-sha';
 import {
 	ADMITTED_UNIT_VERSIONS,
 	type DependencyLock,
@@ -39,6 +39,12 @@ import {
 	type PayloadOf,
 	type UnitHeader
 } from './types';
+
+/** Optional, runtime-neutral probes for a Save's own synchronous and async work. */
+export type SaveWorkInstrumentation = {
+	sync: SynchronousWorkMeasure;
+	async: <T>(phase: string, work: () => Promise<T>) => Promise<T>;
+};
 
 /**
  * Deterministic canonical JSON for authored domain data: object keys sorted,
@@ -74,8 +80,14 @@ export function canonicalUnitBytes(data: unknown): Uint8Array {
 }
 
 /** One unit's content revision: `sha256Bytes` over its canonical domain data. */
-export async function computeUnitContentRevision(data: unknown): Promise<string> {
-	return sha256Bytes(canonicalUnitBytes(data));
+export async function computeUnitContentRevision(
+	data: unknown,
+	instrumentation?: SaveWorkInstrumentation,
+	phase = 'unit-content'
+): Promise<string> {
+	if (!instrumentation) return sha256Bytes(canonicalUnitBytes(data));
+	const bytes = instrumentation.sync(`${phase}.canonical-encode`, () => canonicalUnitBytes(data));
+	return instrumentation.async(`${phase}.sha256-wall`, () => sha256Bytes(bytes, instrumentation.sync, `${phase}.sha256`));
 }
 
 /** Build a header for validated domain data at the domain's admitted version. */
@@ -136,8 +148,14 @@ function unitCores(units: ProjectUnits): Record<string, unknown> {
 }
 
 /** The envelope's source-content digest: canonical authored contents, no revision. */
-export async function computeEnvelopeSourceContentId(envelope: ProjectEnvelope): Promise<string> {
-	return sha256Bytes(canonicalUnitBytes(envelopeSourceCore(envelope)));
+export async function computeEnvelopeSourceContentId(
+	envelope: ProjectEnvelope,
+	instrumentation?: SaveWorkInstrumentation,
+	phase = 'envelope-source'
+): Promise<string> {
+	if (!instrumentation) return sha256Bytes(canonicalUnitBytes(envelopeSourceCore(envelope)));
+	const bytes = instrumentation.sync(`${phase}.canonical-encode`, () => canonicalUnitBytes(envelopeSourceCore(envelope)));
+	return instrumentation.async(`${phase}.sha256-wall`, () => sha256Bytes(bytes, instrumentation.sync, `${phase}.sha256`));
 }
 
 export type ContentRevisionMismatch = {

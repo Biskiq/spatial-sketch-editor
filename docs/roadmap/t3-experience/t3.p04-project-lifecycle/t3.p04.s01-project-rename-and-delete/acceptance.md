@@ -12,8 +12,10 @@ authorized test/build execution on 2026-10-25, superseding the earlier blanket d
 permits verification but does not establish S06 completion, release its shared shell/harness
 ownership, or accept this slice. No full-slice acceptance, gate/capability change or independent
 review is recorded here. Verification is recorded below and in the linked evidence; the listed
-residual API cases are covered by the later follow-up, while owner-operated performance review and
-independent slice review remain open. Passing makes P04 closable, not closed.
+residual API cases are covered by the later follow-up. On 2026-10-25 the owner accepted an automated
+AC-powered observation on the Mac14,2 reference machine for this slice; the numeric F9 hard budgets
+remain binding. A fresh F9 run using the Save-owned CPU attribution recorded below and independent
+slice review remain open. Passing makes P04 closable, not closed.
 
 ## Initial integrated verification record — 2026-10-25
 
@@ -62,7 +64,7 @@ samples recorded the visible “Saving…” label at the render boundary, exact
 identity, and a unique nonforked `STATE_PRESENTED_ALL` report before the durable receipt. Event Timing
 reported all ten events in every cell; none were censored below 16 ms. The p50/p95 distributions are:
 
-| Fixture | Cache | Trace-reported feedback (ms) | Main-thread RunTask work (ms) | Click → durable receipt (ms) | Server-Timing (ms) |
+| Fixture | Cache | Trace-reported feedback (ms) | Click-to-receipt RunTask union (ms), diagnostic only | Click → durable receipt (ms) | Server-Timing (ms) |
 | --- | --- | ---: | ---: | ---: | ---: |
 | S | Cold | 60.0 / 71.3 | 19.2 / 23.6 | 120.3 / 127.0 | 86.7 / 93.3 |
 | S | Warm | 70.8 / 71.1 | 17.9 / 32.6 | 120.0 / 122.4 | 85.4 / 116.0 |
@@ -72,10 +74,14 @@ reported all ten events in every cell; none were censored below 16 ms. The p50/p
 | M | Repeat-use | 67.0 / 69.2 | 113.9 / 122.6 | 529.9 / 580.1 | 516.8 / 570.5 |
 
 The receipt allowance derived from payload size and N1 is 651.5 ms for S and 1,056.3 ms for M;
-the observed p95 values are below those amounts. This run is still observation-only: the machine was
-on AC power with Low Power Mode off, the operator was the agent, storage was process-local memory,
-and M used a minimal valid retained GLB rather than the expected full 15 MiB catalog. Chrome's
-compositor report is browser-reported presentation and does not prove physical panel scanout.
+the observed p95 values are below those amounts. The RunTask column is the union of every renderer
+main-thread task between click and receipt, including Stage work during WebCrypto and network waits;
+it is not Save-attributed CPU work and must not be compared with the 50 ms F9 hard budget. This run
+therefore does not settle the numeric CPU row. The owner has accepted the automated AC-powered
+procedure for this slice, so agent operation and AC power are not themselves acceptance blockers.
+Storage was process-local memory, and M used a minimal valid retained GLB rather than a full typical
+M catalog. Chrome's compositor report is browser-reported presentation and does not prove physical
+panel scanout.
 
 Evidence: [F9 distributions and sample rows](./evidence/2026-10-25/project-lifecycle-final-chrome-f9-s-m.json),
 [API test log](./evidence/2026-10-25/api-residual-test.log), [headed Chrome result](./evidence/2026-10-25/project-lifecycle-final-chrome-f9-playwright-result.json),
@@ -86,12 +92,31 @@ Evidence: [F9 distributions and sample rows](./evidence/2026-10-25/project-lifec
 The bounded browser semantics assertions remain in the integrated journey. No separate manual
 screen-reader/assistive-technology audit was run or added as a gate.
 
+## F9 CPU attribution follow-up — 2026-10-25
+
+The previous F9 samples reported the full click-to-receipt RunTask union, which includes ambient
+Stage/rendering work while the Save waits for WebCrypto and the API. The updated harness reports that
+window only as a diagnostic. It measures named synchronous Save scopes (validation, canonical
+encoding and SHA preparation/dispatch/formatting, normalization, lock resolution, serialization,
+request construction/dispatch, and acknowledgement/state work), then unions those timestamps with
+the renderer tasks containing the Saving and Saved status mutations. Overlap is counted once;
+async hash elapsed time is recorded separately and is not added as main-thread CPU. The request
+boundary is after JSON construction and immediately before fetch dispatch.
+
+The per-slice owner ruling accepts an automated run on the Mac14,2 reference machine while on AC
+power. It does not change the F9 hard limits: Save-attributed main-thread work ≤50 ms and presented
+feedback p95 ≤100 ms. The old whole-window RunTask figures cannot answer the CPU row, and no new
+numeric F9 sample is recorded here. The M lifecycle fixture retains one model source/derivative pair
+and meets this slice plan's retained-model requirement; it does not represent the typical M shape of
+60 objects and 15 distinct GLBs. The [static check record](./evidence/2026-10-25/f9-attribution-static-checks.json)
+records the implementation revision, checks, and why the fresh browser run remains pending.
+
 ## Remaining acceptance work
 
+- Record a fresh F9 run with the updated Save-owned CPU attribution, then compare the numeric hard
+  budgets. The owner accepts the automated procedure on the Mac14,2 reference machine while on AC;
+  battery operation is not a blocker for this slice.
 - Complete the independent slice review and record the separate owner acceptance/closeout operation.
-- Run the F9 hard performance rows under the owner-operated reference procedure on battery with Low
-  Power Mode off. The present AC-powered agent run does not satisfy that row; its M fixture uses a
-  minimal valid retained source/derivative rather than the expected full 15 MiB model catalog.
 
 Keep PR #191 in draft. No slice acceptance, merge, deployment, phase closeout, or S06 completion is
 authorized or claimed by this verification record.

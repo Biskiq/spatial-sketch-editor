@@ -3,7 +3,8 @@ import { resolveTracePresentation } from './trace-presentation';
 
 export type SaveOperationBoundaries = {
 	clickMs: number;
-	submitMs: number;
+	commandMs: number;
+	requestMs: number;
 	receiptMs: number;
 };
 
@@ -18,13 +19,15 @@ export type SaveTraceAttribution = {
 	clockOffsetMs: number;
 	clockSpreadMs: number;
 	operationMs: number;
-	clickToSubmitMs: number;
-	submitToReceiptMs: number;
+	clickToCommandMs: number;
+	commandToRequestMs: number;
+	requestToReceiptMs: number;
 	mainThread: {
 		workMs: number;
 		taskCount: number;
-		clickToSubmitWorkMs: number;
-		submitToReceiptWorkMs: number;
+		clickToCommandWorkMs: number;
+		commandToRequestWorkMs: number;
+		requestToReceiptWorkMs: number;
 		blockingWorkMs: number;
 		blockingTaskCount: number;
 		maxTaskMs: number;
@@ -33,6 +36,23 @@ export type SaveTraceAttribution = {
 		workMs: number;
 		taskCount: number;
 	};
+};
+
+export type SaveWorkRecord = {
+	kind: string;
+	name: string;
+	time: number;
+	detail?: Readonly<Record<string, unknown>>;
+};
+
+export type SaveOwnedWorkAttribution = {
+	workMs: number;
+	syncScopeUnionMs: number;
+	feedbackTaskWorkMs: number;
+	overlapMs: number;
+	feedbackTaskCount: number;
+	syncPhases: Array<{ phase: string; elapsedMs: number }>;
+	asyncWallPhases: Array<{ phase: string; elapsedMs: number }>;
 };
 
 export type SaveFeedbackPresentation = {
@@ -71,15 +91,15 @@ function workForWindow(tasks: readonly TaskSlice[], startMs: number, endMs: numb
 	}));
 }
 
-/** Attribute trace tasks only to the measured click → receipt interval. */
+/** Report the renderer-main RunTask union during click → receipt as a window diagnostic. */
 export function attributeSaveTrace(
 	events: readonly TraceEvent[],
 	anchors: readonly ClockAnchor[],
 	boundaries: SaveOperationBoundaries
 ): SaveTraceAttribution {
-	const { clickMs, submitMs, receiptMs } = boundaries;
-	if (![clickMs, submitMs, receiptMs].every(Number.isFinite) || clickMs > submitMs || submitMs > receiptMs) {
-		throw new Error('Save click, submit, and receipt boundaries must be finite and ordered');
+	const { clickMs, commandMs, requestMs, receiptMs } = boundaries;
+	if (![clickMs, commandMs, requestMs, receiptMs].every(Number.isFinite) || clickMs > commandMs || commandMs > requestMs || requestMs > receiptMs) {
+		throw new Error('Save click, command, request, and receipt boundaries must be finite and ordered');
 	}
 	const clock = normalizeTraceClock(events, anchors);
 	const threadNames = new Map<string, string>();
@@ -119,13 +139,15 @@ export function attributeSaveTrace(
 		clockOffsetMs: clock.offsetMs,
 		clockSpreadMs: clock.spreadMs,
 		operationMs: receiptMs - clickMs,
-		clickToSubmitMs: submitMs - clickMs,
-		submitToReceiptMs: receiptMs - submitMs,
+		clickToCommandMs: commandMs - clickMs,
+		commandToRequestMs: requestMs - commandMs,
+		requestToReceiptMs: receiptMs - requestMs,
 		mainThread: {
 			workMs: workForWindow(mainTasks, clickMs, receiptMs),
 			taskCount: mainTasks.length,
-			clickToSubmitWorkMs: workForWindow(mainTasks, clickMs, submitMs),
-			submitToReceiptWorkMs: workForWindow(mainTasks, submitMs, receiptMs),
+			clickToCommandWorkMs: workForWindow(mainTasks, clickMs, commandMs),
+			commandToRequestWorkMs: workForWindow(mainTasks, commandMs, requestMs),
+			requestToReceiptWorkMs: workForWindow(mainTasks, requestMs, receiptMs),
 			blockingWorkMs: unionDuration(blockingTasks),
 			blockingTaskCount: blockingTasks.length,
 			maxTaskMs: Math.max(0, ...mainTasks.map((task) => task.endMs - task.startMs))
@@ -134,6 +156,76 @@ export function attributeSaveTrace(
 			workMs: unionDuration(backgroundTasks),
 			taskCount: backgroundTasks.length
 		}
+	};
+}
+
+/**
+ * Count Save-owned synchronous scopes plus the two main-thread tasks that
+ * perform the Saving/Saved DOM updates. This excludes ambient renderer frames
+ * during crypto and network waits; overlapping scopes are unioned once.
+ */
+export function attributeSaveOwnedWork(
+	events: readonly TraceEvent[],
+	clockOffsetMs: number,
+	records: readonly SaveWorkRecord[],
+	feedbackMarkers: readonly string[]
+): SaveOwnedWorkAttribution {
+	const threadNames = new Map<string, string>();
+	for (const event of events) {
+		if (event.name === 'thread_name' && typeof event.pid === 'number' && typeof event.tid === 'number' && typeof event.args?.name === 'string') {
+			threadNames.set(`${event.pid}:${event.tid}`, event.args.name);
+		}
+	}
+	const mainThreads = new Set([...threadNames]
+		.filter(([, name]) => name === 'CrRendererMain')
+		.map(([thread]) => thread));
+	const mainTasks = events.flatMap((event) => {
+		if (event.name !== 'RunTask' || event.ph !== 'X' || typeof event.dur !== 'number' || event.dur < 0 ||
+			typeof event.pid !== 'number' || typeof event.tid !== 'number' || !mainThreads.has(`${event.pid}:${event.tid}`)) return [];
+		const startMs = event.ts / 1000 - clockOffsetMs;
+		return [{ startMs, endMs: (event.ts + event.dur) / 1000 - clockOffsetMs }];
+	});
+	const feedbackTasks = feedbackMarkers.map((marker) => {
+		const marks = events.filter((event) => event.name === marker);
+		if (marks.length !== 1) throw new Error(`Expected one trace marker ${marker}, got ${marks.length}`);
+		const markMs = marks[0]!.ts / 1000 - clockOffsetMs;
+		const tasks = mainTasks.filter((task) => task.startMs <= markMs && markMs <= task.endMs);
+		if (tasks.length !== 1) throw new Error(`Expected one main-thread task for ${marker}, got ${tasks.length}`);
+		return tasks[0]!;
+	});
+	const syncPhases = records.flatMap((record) => {
+		if (record.kind !== 'mark' || record.name !== 'save:work' || typeof record.detail?.phase !== 'string' ||
+			typeof record.detail.elapsedMs !== 'number' || !Number.isFinite(record.detail.elapsedMs) || record.detail.elapsedMs < 0) return [];
+		return [{ phase: record.detail.phase, elapsedMs: record.detail.elapsedMs }];
+	});
+	const syncIntervals = records.flatMap((record) => {
+		if (record.kind !== 'mark' || record.name !== 'save:work' || typeof record.detail?.phase !== 'string' ||
+			typeof record.detail.elapsedMs !== 'number' || !Number.isFinite(record.detail.elapsedMs) || record.detail.elapsedMs < 0) return [];
+		const startMs = typeof record.detail.startMs === 'number' && Number.isFinite(record.detail.startMs)
+			? record.detail.startMs
+			: record.time - record.detail.elapsedMs;
+		const endMs = typeof record.detail.endMs === 'number' && Number.isFinite(record.detail.endMs)
+			? record.detail.endMs
+			: record.time;
+		return endMs >= startMs ? [{ startMs, endMs }] : [];
+	});
+	const asyncWallPhases = records.flatMap((record) =>
+		record.kind === 'mark' && record.name === 'save:async-wall' && typeof record.detail?.phase === 'string' &&
+		typeof record.detail.elapsedMs === 'number' && Number.isFinite(record.detail.elapsedMs) && record.detail.elapsedMs >= 0
+			? [{ phase: record.detail.phase, elapsedMs: record.detail.elapsedMs }]
+			: []
+	);
+	const syncScopeUnionMs = unionDuration(syncIntervals);
+	const feedbackTaskWorkMs = unionDuration(feedbackTasks);
+	const combinedWorkMs = unionDuration([...syncIntervals, ...feedbackTasks]);
+	return {
+		workMs: combinedWorkMs,
+		syncScopeUnionMs,
+		feedbackTaskWorkMs,
+		overlapMs: Math.max(0, syncScopeUnionMs + feedbackTaskWorkMs - combinedWorkMs),
+		feedbackTaskCount: feedbackTasks.length,
+		syncPhases,
+		asyncWallPhases
 	};
 }
 

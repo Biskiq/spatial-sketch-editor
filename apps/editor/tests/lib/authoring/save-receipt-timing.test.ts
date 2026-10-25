@@ -62,14 +62,14 @@ function records(): PerfRecord[] {
 	return perfGlobal.__BISKIQ_PERF_RECORDS__ ?? [];
 }
 
-async function runSave(submitAt: number, receiptAt: number, operationId: string): Promise<number> {
+async function runSave(commandAt: number, receiptAt: number, operationId: string): Promise<number> {
 	const recordStart = records().length;
 	currentOperationId = operationId;
-	clock = submitAt;
+	clock = commandAt;
 	const completion = head.save();
 	const runRecords = records().slice(recordStart);
-	const submit = runRecords.find((record) => record.name === 'save:submit');
-	if (submit === undefined) throw new Error('Head did not record the Save submit mark');
+	const command = runRecords.find((record) => record.name === 'save:command');
+	if (command === undefined) throw new Error('Head did not record the Save command mark');
 
 	const response = pending.get(operationId);
 	if (response === undefined) throw new Error('The fake API did not receive the Save');
@@ -85,7 +85,7 @@ async function runSave(submitAt: number, receiptAt: number, operationId: string)
 			record.detail?.operationId === operationId
 	);
 	if (receipt === undefined) throw new Error('The API transport did not mark the matching successful receipt');
-	return receipt.time - submit.time;
+	return receipt.time - command.time;
 }
 
 beforeEach(() => {
