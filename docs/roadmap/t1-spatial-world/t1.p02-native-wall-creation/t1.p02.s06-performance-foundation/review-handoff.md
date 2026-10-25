@@ -110,3 +110,103 @@ Node count, an exact-output digest, or a hand calculation labelled as a predicti
 ```
 npm run perf:bench --workspace @portfolio/editor -- --label bench-2 --tiers grid-S,grid-M,grid-L --no-sweep-latency
 ```
+
+---
+
+# Review hand-off — second batch (H1, H4, H9)
+
+**Status:** implementation review / Bench 2 readiness (2026-10-25). Bench 2 has **not** run and
+nothing is merged or pushed. This batch continues the branch at `245dd9a4`; everything the section
+above records stays binding evidence, and none of its corrections were reverted.
+
+## 7. Commit map for this batch
+
+| Commit | Title | Surfaces | Read it for |
+| --- | --- | --- | --- |
+| `1c003057` | perf(t1): compile only the Layout entities an edit moved (H1) | `packages/layout-core/src/**` (T1), `stage/host-acceptance.ts`, `stage/source-admission.ts`, `units/runtime.ts` (T3), `adapters/layout/precision.ts`, two re-pinned `p23b4` suites | the single compiler with a retained store, the differential that includes every `cacheKey`, and the Opening key that now names its host Wall's geometry |
+| `9221aa77` | perf(t1): build a Wall's query records straight into the shared builder | `layout-geometry.ts` | the cold path that no longer copies per-Wall record slices — and the AABB reconciliation that a cold compile needs |
+| `6e4df860` | perf(t1): retain the Stage's Layout representation and its shadow maps | `lib/render/**` (new), `visitor/VisitorLayoutShell.svelte`, `stage/shell/**`, `probe-h4-representation.ts` | one mesh per compiled entity keyed by its own `cacheKey`, the ordered swap, and what the shell still owns |
+| `9bc4774f` | fix(t1): close the review's retention and Stage-wiring findings | the same files + falsifiers | every BLOCKER and MAJOR below, each with the test that would have caught it |
+| `fef72f4e` | perf(t1): stop the Stage rendering when nothing changed | `stage/shell/StageCamera.svelte` | the per-frame invalidation that made an idle Stage render |
+
+## 8. What a reviewer must be able to falsify
+
+| Claim | How to falsify it | Where |
+| --- | --- | --- |
+| A session result equals a cold compile, keys included, for every edit class | `t1s06-incremental-compile.test.ts`; then delete a line from a retention key and watch it fail. Two were verified this way: the Room's first-Wall thickness fallback and the Junction's Floor datum | `packages/layout-core/src/layout-geometry.ts`, the H1 suite |
+| The per-edit evaluated set is a property of the edit, not the document | `probe-h1-incremental.ts`: 15.5 / 12.8 / 13.3 entities per edit at S / M / L, with 49 / 225 / 841 in the document | same |
+| Cache-key work falls with document size | the probe's second line: 3.3× / 16.5× / 38.9× fewer characters per edit than a cold compile at S / M / L | same |
+| The remaining O(N) term is the authored comparison, not evaluation | an unchanged recompile at L costs 3.6 ms with 0 entities evaluated; the per-edit figure is ≈ 4.3 µs per entity | `probe-h1-incremental.ts` + the session's stats |
+| A compile rebuilds only the meshes whose compiled value changed | `probe-h4-representation.ts` (throws on a whole-document rebuild): 10.2 / 11.7 / 12.7 of 24 / 112 / 420 at S / M / L | `lib/render/layout-wall-representation.ts` |
+| Superseded representation is released, not accumulated | the same probe's ledger: built = disposed at every tier, one live geometry per Wall, zero children after teardown | same |
+| A retained mesh equals a from-scratch one | both representation suites compare positions, scales and every position buffer against a fresh build | `tests/lib/render/*` |
+| An idle Stage renders nothing, and an orbit re-renders no shadow map | `shadow-invalidation.test.ts` (fake shadow map following three's own early-out): zero passes over 60 orbit frames; the camera task no longer invalidates itself | `lib/render/shadow-invalidation.ts`, `stage/shell/StageCamera.svelte` |
+| The plan-box index cannot drop an inverted box | `t1s06-plan-box-index.test.ts`, including a box inverted on both axes | `layout-plan-box-index.ts` |
+
+**Not falsifiable from this tree.** The H9 framebuffer differential needs a browser and was not run;
+the mount cost, the F4/F8/F13 timings and the idle-frame count are Bench 2 rows. Predictions in the
+acceptance record are labelled as predictions.
+
+## 9. Independent review rounds (this batch) and their disposition
+
+Three independent, read-only reviewers ran in parallel with different lenses (retention proofs;
+rendering ownership and lifecycle; scope, evidence and accidental semantic change). Their findings:
+
+| Finding | Severity | Disposition |
+| --- | --- | --- |
+| A Room's compiled `wallThickness` falls back to `document.walls[0]`, which no Room key named — editing that Wall left every other Room stale | BLOCKER | **Fixed** + falsifier (verified by removing the key line) |
+| A Junction's key omitted the Floor id and elevation; a Room's key omitted the Floor id and the sampling flag | BLOCKER | **Fixed** + falsifiers |
+| The shell's representation effect returned `dispose()`, which Svelte runs before every re-run — the first edit would have thrown | BLOCKER | **Fixed** (separate update and teardown effects) + boundary assertion |
+| Shadow triggers ignored the Room registry and had no safe mode for a model whose meshes arrive after its URL | MAJOR | **Fixed**: `rooms` trigger + per-frame arm for a Scene with a model entity |
+| The shadow mode could not change after mount; two mounts could fight over one shadow map | MAJOR | **Fixed**: `setAlwaysUpdate`, ref-counted shared controller |
+| The `passes`/`maps` counters were wrong for a pass with no casting light and for point lights | MINOR | **Fixed** |
+| The room-derived path created and disposed a material factory per compile | MINOR | **Fixed**: skipped when no Room carries wall detail |
+| The Wall representation resolved tints through a Room map it never used | MINOR | **Fixed**: neutral constant; the factory receives the Wall's own id, so behaviour is identical |
+| The H1 probe printed the cold key count as "incremental"; the H4 probe only printed | MINOR | **Fixed**: real incremental counts; the H4 probe throws |
+| The inverted-box defect had no direct test | MINOR | **Fixed**: `t1s06-plan-box-index.test.ts` |
+| Retention keys' preconditions were undocumented (process-constant sampling derivation; a Junction resolver pure in the key's facts; `sameAuthored` total on plain records) | MINOR | **Documented** where the reliance is |
+| The object representation has no L-scale workload (the cached workloads carry no Layout objects) | MAJOR (evidence) | **Recorded as a gap**, not claimed closed |
+| A pre-existing heavy test exceeds vitest's 5 s default under full-worker load on this machine | MINOR (evidence) | **Recorded**; the test is untouched, passes alone, and the lane passes at `--maxWorkers=3` |
+
+## 10. Verification actually run (this tree)
+
+| Gate | Result |
+| --- | --- |
+| `check:layout-core`, `check:project-model`, `check:camera-core` | pass |
+| `check` (svelte-check) | 0 errors, 0 warnings |
+| `test:fast` | 164 files, 2,178 tests (at `--maxWorkers=3`; one pre-existing heavy test times out at full worker count under external load) |
+| `test:arch` | 22 files, 180 tests |
+| `test:heavy` | 9 files, 125 tests |
+| `probe-h1-incremental`, `probe-h4-representation` | re-run here; counts in the acceptance record |
+
+**No browser benchmark was run.**
+
+## 11. Known risks after this batch
+
+1. **F2 open at L stays ≈ 1.8–2.6 s (predicted)** — the mount population is still one component per
+   Room surface and portal; Walls and objects are imperative now.
+2. **The per-entity authored comparison is O(N)** — ≈ 45 ms per edit at 10 k Rooms until
+   entity-level structural sharing lands. This is the one remaining whole-document term.
+3. **F4/F8 at L are predictions (≈ 80–120 ms)** — plausible against 200 ms, unproven until Bench 2.
+4. **H9's framebuffer differential is unrun** — the count oracle is landed; the image equality is an
+   E5 obligation.
+5. **The object representation has fixture-level evidence only.**
+6. **An idle-stage regression would be silent in the lanes** (no headless renderer): the wiring is
+   pinned by source assertions, the behaviour by Bench 2's F7 rest-frame row.
+
+## 12. Owner decisions required before Bench 2
+
+1. **Amended measurement scope** — ratify omitting grid-XL *timing* and the sweep latency rows, while
+   keeping grid-XL's functional clause (no crash, no > 1 s block, honest progress/refusal) and H9's
+   framebuffer differential.
+2. **T3 review** of the optional compile-session parameter on `prepareValidatedUnitRuntime` /
+   `admitSource`.
+3. **The next mount batch** — imperative Room-surface/portal representation as S06's next work, or a
+   follow-on slice.
+4. The already-open Bench 1 sweep-H10 drag-row question still does not block.
+
+**Proposed Bench 2 command** (lean scope, ≈ 2.5–3.5 h):
+
+```
+npm run perf:bench --workspace @portfolio/editor -- --label bench-2 --tiers grid-S,grid-M,grid-L --no-sweep-latency
+```

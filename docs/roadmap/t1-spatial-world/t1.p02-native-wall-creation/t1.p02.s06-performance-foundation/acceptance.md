@@ -2,8 +2,9 @@
 
 **Slice:** T1.P02.S06 · **Status:** approved and released; setup step implemented (PR #190) with
 the owner-ratified C.2 amendment; Bench 1 recorded (owner-directed, counted by the owner's A.7
-ruling, 2026-10-25); optimize step released and implemented in part (D.1, D.2, D.4; D.3/H4–D.6
-not landed); Bench 2 not run; not accepted ·
+ruling, 2026-10-25); optimize step released and implemented (D.1, D.2, D.3, D.4 and D.6 landed;
+D.5's entity-level sharing deferred; owner ruling on the amended measurement scope still open);
+Bench 2 not run; not accepted ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -226,9 +227,10 @@ first pass under the A.7 ruling, and its characterization is accepted as the imp
 point. H6/H8/H10, WebGPU, a new Plan renderer, HLOD, streaming, new content identity and the
 world-scale laboratory stay out of scope.
 
-**Landed in this step (branch `t1/p02-s06-bench-setup`, PR #190):** D.1 (H3), D.2 (H2) and D.4
-(H5). **Not landed:** D.3 (H1, H4) and D.6 (H9). Nothing below is Bench 2 evidence: every figure is
-a deterministic Node count or a disposable diagnostic, and each is labelled as such.
+**Landed in this step (branch `t1/p02-s06-bench-setup`, PR #190):** D.1 (H3), D.2 (H2), D.3 (H1 and
+H4) and D.6 (H9). D.5's entity-level structural sharing is deferred, as the plan records. Nothing
+below is Bench 2 evidence: every figure is a deterministic Node count, an exact-output differential
+or a disposable diagnostic, and each is labelled as such.
 
 ### Amended measurement scope — request recorded, not yet ruled
 
@@ -360,92 +362,148 @@ its several-megabyte canonical string — on every accepted result.
   whose `unitId` changed while the data did not is never shared; a lock entry whose capability or pin
   changed while its revision did not is never shared; two different projects are never shared.
 
-### Not landed, and why
+### D.3 / H1 — the incremental compile (landed)
 
-| Item | State | What it costs today | What it needs |
-| --- | --- | --- | --- |
-| D.3 / H4 representation (retained per-entity meshes, one imperative subtree) | **Not landed** | F4 at L still spends 167 ms in two representation builds; F8 164 ms; F2 at L 4.9 s in the Stage mount | T3-owned shared Stage code and a Svelte-component-per-mesh rewrite; a dedicated slice with its own correctness gates |
-| D.3 / H4 ownership (release superseded geometries) | **Not landed** | +2,968 live geometries per commit at L — a **hard** F13 clause ("geometries and textures back to baseline") still missed | Same rewrite owns the lifetime; a standalone release pass would fight the mount path |
-| D.3 / H1 incremental compiler | **Not landed** | The second compile per accepted result (~95 ms at L), the whole move compile, and the per-edit evaluation budget (≤ 8 ms at M, ≤ 16 ms at L) which D.1 does not reach | The locality derivation, its dependency set and the full-compile oracle; the largest single experiment in the matrix |
-| D.6 / H9 shadow invalidation, render-on-demand | **Not landed** | F7 meets every row; idle-frame rendering is a flat saving, not a budget risk | A browser framebuffer differential, which this step did not run |
+**Changes.** `createLayoutCompileSession` / `withLayoutCompileSession` (`packages/layout-core/src/layout-geometry.ts`, `layout-geometry-reuse.ts`): the canonical compiler takes an optional retained store. Each Wall, Junction, Room source and compiled object and Room keeps the value it produced plus the authored inputs it was computed from; an entity whose inputs are unchanged is installed **by reference**. There is one compiler and one assembly, so a session result is the cold result by construction rather than by a second implementation.
 
-**Review finding carried forward (pre-existing, not introduced here).** A physical Opening's key
-embeds `['physical-wall-geometry', floorId, wallId]` — the host Wall's *identity*, not its geometry —
-and `layout-geometry.ts` did so before this change as well (the same literal appears in the removed
-line of the D.1 diff). An Opening's compiled point and tangent change when its Wall moves while that
-key does not, so the key is not change-detecting for retention. Nothing consumes `.cacheKey` for
-retention today; it matters to H4, and it is recorded here rather than changed, because changing it
-would re-pin the observation digests again.
+Consumers: the layout planners share one process-local session (`adapters/layout/precision.ts`); a Stage host keeps one for its lifetime (`stage/host-acceptance.ts`); `admitSource` / `prepareValidatedUnitRuntime` take it as an optional argument, and boot, Preview and the visitor runtime pass nothing.
 
-### Predicted position after D.1, D.2 and D.4 (hand calculation, not evidence)
+**Keys — the prerequisites review had carried forward are landed.** Retention is proved by keys, so each key now names everything its compiled value reads:
 
-Bench 1's stage split scaled by the measured counts. Stage rows are **disjoint** as Bench 1 listed
-them; the representation and mount terms are unchanged, which is why the L rows stay over budget.
+- an Opening's key embeds its host Wall's **geometry** (centerline, thickness, height, Floor datum), not only its identity;
+- a Room's key carries the Floor id and elevation, the document's first-Wall thickness fallback, and whether a sampling derivation was supplied;
+- a Junction's key carries the Floor id and elevation as well as its point and legs;
+- the plan-box index tests inversion **per axis**, so a box inverted on both axes (positive span, negative extent) is kept instead of silently dropped, and a direct index suite pins it.
 
-| Row (budget) | Bench 1 p95 | Predicted now | Verdict |
-| --- | --- | --- | --- |
-| F3 at M (≤ 50 ms hard) | 48 ms | ~18–22 ms | ✓ |
-| F3 at L (≤ 100 ms hard) | 216–233 ms | ~70–90 ms | ✓ predicted |
-| F4 at M (≤ 100 ms hard) | 163–174 ms | ~100–110 ms | **risk** |
-| F4 at L (≤ 200 ms hard) | 717–784 ms | ~400–430 ms | **hard miss** |
-| F8 at M (≤ 100 ms hard) | 112 ms | ~85–95 ms | borderline |
-| F8 at L (≤ 200 ms hard) | 637–671 ms | ~300–360 ms | **hard miss** |
-| Per-edit Layout evaluation at M (≤ 8 ms hard) | move 31 ms, compile 24 ms | ~17–20 ms | **hard miss**, H1 |
-| Per-edit Layout evaluation at L (≤ 16 ms hard) | move 164 ms, compile 118 ms | ~75–90 ms | **hard miss**, H1 |
-| F2 admission at L | 219 ms | ~105–115 ms | ✓ |
-| F2 open at L (Target ≤ 2.0 s) | 5,216 ms | ~5.1 s | unchanged (mount) |
-| F13 per accepted edit at L (≤ 5 MiB warm, geometries back to baseline) | 6.0–6.2 MiB and +2,968 geometries | ~5.9 MiB and +2,968 | **hard clause still missed** (H4) |
+The two `p23b4` observation digests were re-pinned in `1c003057` because the Opening key's value changed: the sampled fixtures' `compiled` digests moved `6b5f6c5c…` → `1999efc1…` and `a386d7f6…` → `2c25ca62…`, and every verdict string stayed `topology=admitted openingIssues=[] compileIssues=[]`.
 
-### Review corrections applied
+**Consumer inventory update.** `apps/editor/src/**` now reads `.cacheKey` for the first time: the retained Wall and object representations key their meshes on the compiled Wall/object key and on the Junction keys at a Wall's ends. The keys are therefore load-bearing for rendered output as well as for compile retention.
 
-An independent four-lens review (admission semantics, layout-core indexing, evidence integrity,
-code quality) produced these changes to the work above, all included in this commit: the sharing
-predicate now compares the whole unit header and every lock-entry field (a revision-only predicate
-could install a baseline `unitId` under a captured revision); the Room × Opening join restores
-document order for a boundary-ordered walk; the Junction sweep falls back to exhaustive enumeration
-when a coordinate is non-finite (a `NaN` makes the sort comparator inconsistent); the plan-box index
-keeps inverted boxes in its `wide` list and restarts its query stamp before `Int32` wrap; the pair
-counts count unique pairs again so they remain comparable with Bench 1; the H5 probe measures the
-coordinator's real copy arm and no longer prints GC noise as retained heap; and the record above
-gained the missing hard rows, the recorded facts digests, the corrected F8-at-L arithmetic and the
-two open hard clauses.
+**Differential.** `t1s06-incremental-compile.test.ts` compares a session compile with `compileWallFirstLayoutGeometry` **with every `cacheKey` included** across the three invalidation arms (own authored fields, host geometry, neighbour identity), plus the Floor datum, a first-Wall thickness edit and a cross-document session. Each key line was falsified by removing it and watching the differential fail; the Room fallback-thickness and Junction Floor-datum cases were both caught that way.
 
-### Required reviews
+**Counts** (`probe-h1-incremental.ts`; deterministic counts, single-sample durations labelled diagnostic):
 
-`packages/project-model/src/units/**` and `packages/project-model/src/f4/**` (admission and the
-adapter contract) are T3-owned: the additions are `shareUnchanged` (optional) and
-`prepareValidatedUnitRuntime` / `serializeValidatedProjectEnvelope` (splits that keep the validating
-entry points as the only public meaning — each must be handed the value
-`validateProjectEnvelope` returned for that same input). The coordinator and Stage admission are
-editor-side T3 surfaces. D.1 is `packages/layout-core` (T2). None of these changes a canonical
-geometry, an authored format, a selection/preview semantic, visitor isolation or a refusal code.
+| Workload | Entities | Cold compile (diagnostic) | Evaluated per edit (24-edit average) | Reused | Cache-key chars: cold → per edit |
+| --- | --- | --- | --- | --- | --- |
+| grid-S | 49 | 15.8 ms | 15.5 | 34 | 428 k → 130 k (3.3×) |
+| grid-M | 225 | 23.0 ms | 12.8 | 212 | 2.84 M → 172 k (16.5×) |
+| grid-L | 841 | 100.0 ms | 13.3 | 828 | 17.1 M → 440 k (38.9×) |
+| museum | 771 | 57.2 ms | 12.3 | 759 | 6.30 M → 134 k (46.9×) |
+
+The evaluated set is a property of the edit's neighbourhood, not of the document: 13.3 entities at L against 841 (63×), and the same 13.3 at M where the document has 100 Rooms. Cache-key characters fall 38.9× at L, and the ratio grows with document size — the direction I1 asks for.
+
+**What remains O(N), precisely.** A session still visits every entity once to compare its authored inputs (3.6 ms of an unchanged recompile at L, ≈ 4.3 µs per entity, so ≈ 45 ms at 10 k Rooms and ≈ 450 ms at 100 k). The cause is the authored document: each candidate is a deep clone, so unchanged entities are *equal but not identical*, and proving equality means walking them. Removing that term needs entity-level structural sharing — a candidate that shares unchanged entities by reference — which the plan defers beyond S06. Assembling the compiled snapshot (pushing every entity's records into fresh arrays) is also O(N) pointer work at a much smaller constant (≈ 0.2 ms at L).
+
+### D.3 / H4 — retained Stage representation (landed)
+
+**Changes.** `lib/render/layout-wall-representation.ts` and `lib/render/layout-object-representation.ts` each own one imperative subtree: one mesh per compiled Wall and per compiled object, keyed by the entity's `cacheKey` (plus the Junction keys at a Wall's ends), swapped in place, released in the same update, with materials created once for the representation's lifetime. Room floor and ceiling `Shape`s are retained by Room key in the shell. The shell mounts each subtree once (`<T is={…} />`), so what used to be one Svelte component pair per drawn entity is now one object.
+
+Two defects were found while landing it and are fixed here:
+
+- assigning `children[index] = mesh` instead of attaching through `add()` left `parent` unset, which silently disabled `removeFromParent()` and leaked the mesh — `attachAt()` plus `parent` assertions in both suites;
+- the shell's update effect returned `dispose()`, and Svelte runs a returned cleanup before each re-run, so every compile would have disposed the representation and then updated a disposed one — update and teardown are separate effects, pinned by the boundary test.
+
+**Counts** (`probe-h4-representation.ts`, ten sequential single-Junction edits, throws on violation):
+
+| Workload | Walls | Wall meshes rebuilt per edit | Meshes retained per edit | Live meshes after 10 edits | Geometries built / disposed |
+| --- | --- | --- | --- | --- | --- |
+| grid-S | 24 | 10.2 | 14 | 24 | 126 / 126 |
+| grid-M | 112 | 11.7 | 100 | 112 | 229 / 229 |
+| grid-L | 420 | 12.7 | 407 | 420 | 547 / 547 |
+| museum | 328 | 10.0 | 318 | 328 | 428 / 428 |
+
+The chained grid plans re-miter along the chain (12.7 of 420 at L); on the isolated-cell fixture the bound is 4. Either way the mesh population stays one per entity and the geometry ledger balances — F13's *"geometries back to baseline"* clause in count form.
+
+**Object coverage gap, recorded.** The retained-cache workloads carry **no Layout objects** (their 3-D content is Scene placements), so `layout-object-representation.ts` has fixture-level evidence only: 30 objects at S, one mesh each, one shared material, `built = 1` for a one-object move, `disposed = 1` per release, buffers equal to a from-scratch build. Bench 2's E5 rows will not close that either; it needs a workload with Layout objects, which is a workload change, not an S06 one.
+
+### D.6 / H9 — shadow and idle rendering (landed)
+
+`lib/render/shadow-invalidation.ts` owns the Stage's shadow-map decision: `autoUpdate = false`, one pass per reported dependency change, `needsUpdate` on mount and on `webglcontextrestored`. `StageShadowTriggers.svelte` reports the compiled `geometry`, the resolved `scene`, the Room registry and `modelUrls`; the camera is deliberately not a trigger.
+
+Two conservative arms keep correctness where an exact trigger cannot be established:
+
+- a Scene that carries a **model entity** keeps today's per-frame updates, because a parsed model's meshes arrive after its URL and that arrival is not observable at this boundary;
+- an **animated caster** would set the same mode; no Stage caster animates today.
+
+**Idle rendering.** The camera realizer's task invalidated every frame it ran, which is why Bench 1 counted 120 of 120 idle frames. It no longer invalidates itself: a new evaluation asks for one frame, and every other image-changing input invalidates through Threlte's own reactivity.
+
+**Oracle.** `shadow-invalidation.test.ts` proves, with a fake shadow map that follows three's own contract: one pass on mount, **zero** across 60 orbit frames, one per trigger after coalescing, six maps for a point light, zero passes with no casting light, mode switching, context restore, shared ownership across mounts, and restore on dispose. What is **not** run is the plan's **framebuffer differential** (the same orbit image under always-update and under invalidation, and after every trigger). It needs the browser, so it is an explicit Bench 2 E5 obligation below, not a claimed pass.
+
+### F4 compile hand-over — resolved without a new contract
+
+The previous record's open decision asked whether an adapter may attest the acceptance proof so the host reuses the planner's compile. **That contract change is not needed and was not made.** Admission's compile is now the same compiler over the session's retained store, so the second compile per accepted result is ≈ 6 ms at L instead of ≈ 95–170 ms, with no new authority and no unchecked attestation. The one shared-authority surface that changed is an **optional parameter**: `prepareValidatedUnitRuntime(validated, sceneOptions, compileSession?)` and `admitSource(input, context, { compileSession })`. Both keep their validating entry points as the only public meaning, and a caller that passes nothing keeps the cold compile. **T3 review is required for those two signatures.**
+
+### Corrected ownership
+
+The earlier record called `packages/layout-core/**` T2-owned. **It is T1-owned under S06.** The T3-owned surfaces this step touches are `packages/project-model/src/units/**` (the optional session on `prepareValidatedUnitRuntime`), the editor's Stage admission (`stage/source-admission.ts`, `stage/host-acceptance.ts`), and the shared visitor/Stage rendering files (`visitor/VisitorLayoutShell.svelte`, `authoring/stage/shell/**`, `lib/render/**`). No canonical geometry, authored format, selection/preview semantic, visitor isolation rule or refusal code changed.
+
+### Outstanding obligations — disposition
+
+| Obligation | State at this tree | Where it closes |
+| --- | --- | --- |
+| Per-edit Layout evaluation ≤ 8 ms M / ≤ 16 ms L (hard) | **predicted met**: per-edit compile 4.9 ms at M and 5.7–6.5 ms at L (Node diagnostic) against 23 / 100 ms cold | Bench 2 F3/F4 |
+| F13 "geometries back to baseline" (hard) | **structurally met and counted**: 547 built = 547 disposed, one live geometry per Wall | Bench 2 F13 |
+| F13 ≤ 5 MiB retained per accepted edit (hard) | **predicted met**: the representation no longer rebuilds or accumulates the document; heap attribution is browser-only | Bench 2 F13 |
+| F2 open at L (Target ≤ 2.0 s) | **predicted ≈ 1.8–2.6 s**, not the 500 ms engineering objective: the mount population is still one component per Room surface and portal | next mount batch + Bench 2 F2 |
+| F3 ≤ 100 ms p95 L, F4 ≤ 200 ms, F8 ≤ 200 ms (hard) | **predicted met** (≈ 40–60 / 80–120 / 80–120 ms) — predictions, not evidence | Bench 2 |
+| grid-XL hard clause: no crash, no > 1 s main-thread block, honest progress/refusal | **open, unchanged**; the *timing* omission is the proposed scope ruling, the functional clause is not omitted | grid-XL smoke + `T1.P02.S04` gate |
+| H9 framebuffer differential | **open**: the count oracle is landed, the image comparison is not run | Bench 2 E5 |
+| E5 semantic independence, browser, 7 workloads | **open for this revision** | Bench 2 |
+| realistic-L | unrun, prerequisites unchanged (D9) | unchanged |
+| H10 and sweep latency omission | **needs the owner ruling recorded above**; this table waives nothing | owner |
+
+### Reconciliation of every review finding
+
+**Previously fixed → preserved.** The D.1/D.2/D.4 corrections recorded in `review-handoff.md` at `245dd9a4` are untouched and their falsifiers still run: the sharing predicate compares the whole unit header and every lock field; the Room × Opening join restores document order and multiplicity; the Junction sweep falls back to exhaustive enumeration on a non-finite coordinate; the plan-box index keeps inverted boxes in `wide` and restarts its stamp; pair counts count unique pairs; the H5 probe measures the coordinator's real capture.
+
+**Newly identified → fixed in this step.**
+
+| Finding | Severity | Disposition |
+| --- | --- | --- |
+| A Room's compiled `wallThickness` falls back to the document's first Wall, which no Room key named, so editing that Wall left every other Room stale | BLOCKER | **Fixed** + falsifier |
+| A Junction's key omitted the Floor id (compiled id) and elevation (bounds), and a Room's key omitted the Floor id and the sampling-derivation flag | BLOCKER | **Fixed** + falsifiers |
+| The shell's update effect disposed the representation on every re-run, so the first edit would have thrown | BLOCKER | **Fixed** + boundary assertion |
+| Shadow triggers ignored the Room registry, and had no safe mode for a model whose meshes arrive after its URL | MAJOR | **Fixed**: `rooms` is a trigger; a Scene with a model entity keeps per-frame updates |
+| The shadow mode could not change after mount, and two mounts could fight over one shadow map | MAJOR | **Fixed**: `setAlwaysUpdate`, shared ref-counted controller |
+| Pass/map counters over- and under-counted (a pass with no casting light; a point light is six maps) | MINOR | **Fixed** |
+| The room-derived representation path created and disposed a material factory on every compile | MINOR | **Fixed**: skipped when no Room carries wall detail |
+| The Wall representation resolved tints through a Room map it never used (a Wall's mesh carries its own id as `roomId`) | MINOR | **Fixed**: neutral tint constant, behaviour identical to the old factory call |
+| The H1 probe printed the cold cache-key count as "incremental" | MINOR | **Fixed**: measures the incremental passes |
+| The H4 probe printed without failing | MINOR | **Fixed**: throws on a whole-document rebuild or an unbalanced ledger |
+| The doubly inverted box had no direct test | MINOR | **Fixed**: index suite with 4 cases |
+| Retention keys' preconditions (sampling derivation is process-constant; the Junction resolver is pure in the key's facts; `sameAuthored` is total on plain records) were undocumented | MINOR | **Documented** in the modules that rely on them |
+
+**Outstanding → owner decision.** The amended measurement scope (above, still unruled); the sweep-H10 drag-row method; realistic-L's prerequisites; and whether the imperative Room-surface/portal subtree — the remaining mount cost — is S06's next batch or a follow-on slice.
+
+### Remaining global cost barriers, and their causes
+
+1. **Per-entity input comparison is O(N).** 3.6 ms of an unchanged L recompile, ≈ 4.3 µs per entity, so ≈ 45 ms at 10 k Rooms and ≈ 450 ms at 100 k. Cause: candidate documents are deep clones, so equality must be walked. Fix: entity-level structural sharing (H5's follow-on) so untouched entities are identical by reference and the comparison becomes a pointer check.
+2. **Compiled-snapshot assembly is O(N).** Every compile pushes every entity's retained records into fresh arrays (≈ 0.2 ms at L). Cause: the compiled result is a plain snapshot with full arrays. Fix, if the plain-snapshot contract can be kept: retained arrays spliced per changed segment.
+3. **The Stage mount is still one Svelte component per Room surface and portal.** 196 Rooms × 2 + ≈ 420 portals at L; floors and ceilings need `MuseumMaterial`'s texture scope. This is the remaining lever on F2's 5.2 s open. Fix: an imperative Room-surface subtree with a persistent material, the pattern walls and objects already use.
+4. **Planner and admission still compile twice per accepted result.** Both are incremental now, so the duplicate is ≈ 6 ms rather than ≈ 95 ms; removing it entirely needs the F4 hand-over contract the owner has not ruled.
+5. **Per-mesh draw submission (H6).** 2,269 draws at L fall into 7 merge bins, and CPU submission exceeds GPU from M upward. Out of scope by the owner's direction; the evidence stands for the proposal.
+
+### Rust/WASM — recommendation
+
+No Rust toolchain was introduced, no second geometry kernel was compiled, and the optimization work did not wait on a language comparison. With H3 and H1 landed, the remaining irreducible numeric kernels are small shares of an edit: Junction offset/miter resolution (microseconds), curve sampling per Wall (≈ 10 µs for a curved Wall), Opening section cuts (≈ 5 µs per Opening), and robust orientation predicates. Their inputs are plain JS coordinate arrays and their outputs feed the same compiled objects, so a WASM boundary would copy coordinates per call and add marshalling to every retained unit. At the measured per-edit cost (≈ 6 ms at L, of which ≈ 0.4 ms is geometry maths and ≈ 3.6 ms is authored comparison), the best case for a WASM kernel is single-digit milliseconds at 10 k Rooms, with the interoperability cost paid per entity. **Recommendation: stay with TypeScript.** A bounded experiment should only be proposed if (a) entity-level structural sharing lands and the authored comparison disappears, and (b) a profile then attributes a majority of an edit to one numeric kernel.
 
 ### Verification at this tree
 
-`check:layout-core`, `check:project-model`, `check:camera-core` and `check` (svelte-check, 0 errors
-and 0 warnings) pass; `test:fast` 159 files / 2,147 tests pass; `test:arch` 22 / 178 and `test:heavy`
-9 / 125 pass. The probes (`perf/census/probe-d1-differential.ts`, `probe-d2-accept.ts`,
-`probe-h5-capture.ts`) are Node-only, take `PERF_WORKLOAD_DIR` pointing at the cached workloads, and
-are in no lane. No browser benchmark was run in this step.
+`check:layout-core`, `check:project-model`, `check:camera-core` and `check` (svelte-check, 0 errors / 0 warnings) pass. `test:fast` 164 files / 2,178 tests; `test:arch` 22 / 180; `test:heavy` 9 / 125. Probes re-run here: `probe-h1-incremental`, `probe-h4-representation`; `probe-d1-differential`, `probe-d2-accept` and `probe-h5-capture` are unchanged from the previous batch.
 
-### Bench 2 readiness — lean proposed command
+**One lane-run caveat, recorded rather than smoothed over.** A pre-existing heavy test (`p23b11-correspondence-reference.test.ts`, 4.45 s against vitest's 5 s default) times out when the suite runs at full worker count on this machine under external load (load average 21–68 on 8 cores from unrelated system daemons). It passes alone, and the whole lane passes at `--maxWorkers=3` (164 files / 2,178 tests). This step does not touch that test and changed none of its assertions.
+
+### Bench 2 readiness — lean proposed command (unchanged)
 
 ```
 npm run perf:bench --workspace @portfolio/editor -- --label bench-2 --tiers grid-S,grid-M,grid-L --no-sweep-latency
 ```
 
-Same method, budgets and cache states as Bench 1b for the hard tiers, plus E5 over the seven
-workloads and the transferred rows; no grid-XL tier and no sweep latency rows (subject to the scope
-ruling above). Expected runtime ≈ 3 h (2.5–3.5 h): Bench 1b took 95 min for grid-M 2,555 s +
-grid-S 1,737 s + E5 858 s + transferred 148 s, and grid-L alone was 7,234 s at Bench 1's slower
-revision. Run E5 alone first if the pass is split.
+Same method, budgets and cache states as Bench 1b for the hard tiers, plus E5 over the seven workloads and the transferred rows; no grid-XL tier and no sweep latency rows, subject to the scope ruling above. Expected runtime ≈ 2.5–3.5 h: Bench 1b took 95 min for grid-M + grid-S + E5 + transferred rows, and grid-L alone was 7,234 s on a revision roughly 2.5× slower than this one. Run E5 alone first if the pass is split.
 
 ### Owner decisions genuinely required
 
-1. **Amended measurement scope** (above) — ratify, or keep grid-XL and the sweep rows in Bench 2/3.
-2. **F4 hand-over contract** — may an adapter attest the acceptance proof on its candidate so the
-   host admission reuses the planner's compile (one compile per accepted result)? Without it F4 at L
-   cannot meet 200 ms even after H4; it needs T3 contract review, and its alternative is H1.
-3. **H4 in this PR or a follow-up slice** — it is the only lever for F2 at L, the representation half
-   of F4/F8, the F13 geometry clause and the Opening-key retention gap named above.
-4. The already-open Bench 1 question (sweep-H10 drag row method for Bench 2/3) still does not block.
+1. **Amended measurement scope** — ratify omitting grid-XL timing and the sweep latency rows, with the XL functional clause and H9's framebuffer differential kept, or keep those rows in Bench 2/3.
+2. **T3 review** of the optional compile-session parameter through `prepareValidatedUnitRuntime` / `admitSource`.
+3. **The next mount batch** — whether the imperative Room-surface/portal representation is S06's next work or a follow-on slice.
+4. The already-open Bench 1 question about the sweep-H10 drag-row method still does not block.
