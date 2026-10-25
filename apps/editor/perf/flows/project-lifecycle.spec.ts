@@ -26,6 +26,9 @@ import {
 	waitForAcceptedResult
 } from '../lib/flow';
 import { perfInitScript, readLedger } from '../lib/ledger';
+import { attributeSaveTrace, findSaveFeedbackPresentation } from '../lib/save-trace';
+import { clockAnchor, startChromeTrace, type TraceEvent } from '../lib/trace-proof';
+import { resolveTracePresentation } from '../lib/trace-presentation';
 import { SAVE_CONTENT_IDENTITY_SCHEME } from '@portfolio/project-model/save';
 import {
 	captureUnitSave,
@@ -55,21 +58,47 @@ if (!apiOrigin || !authSecret || !resultsDir || !databaseUrl) {
 
 type Session = { cookie: string; userId: string };
 type ApiJson = Record<string, unknown>;
+type FixtureSize = 'S' | 'M';
 type SaveSample = {
+	size: FixtureSize;
 	cache: 'cold' | 'warm' | 'repeat-use';
 	index: number;
-	feedbackMs: number | null;
-	feedbackApproximation: 'click to first rAF after saving status DOM mutation';
+	clickMs: number;
+	submitMs: number;
+	receiptMs: number;
+	clickToSubmitMs: number;
+	submitToReceiptMs: number;
+	savingDomMutationMs: number;
+	savingPaintBoundaryMs: number;
+	savingPaintLabel: string;
+	feedbackMs: number;
+	feedbackEvidence: {
+		kind: 'trace-screenshot-exact-frame-reported-presented';
+		screenshotEventPageMs: number;
+		presentedPageMs: number;
+		sourceId: number;
+		frameSequence: number;
+		clockSpreadMs: number;
+	};
+	feedbackOpportunityMs: number | null;
 	eventTimingMs: number | null;
 	eventTimingCensoredBelowMs: number;
-	mainThreadRunTaskMs: number | null;
-	mainThreadTaskCount: number | null;
+	mainThreadWorkMs: number;
+	mainThreadTaskCount: number;
+	mainThreadClickToSubmitWorkMs: number;
+	mainThreadSubmitToReceiptWorkMs: number;
+	mainThreadBlockingWorkMs: number;
+	mainThreadBlockingTaskCount: number;
+	mainThreadMaxTaskMs: number;
+	backgroundRendererWorkMs: number;
+	backgroundRendererTaskCount: number;
 	clickToReceiptMs: number;
 	wireBytes: number;
 	serverTimingMs: number | null;
 	resourceTimingMs: number | null;
 	predictedReceiptAllowanceMs: number;
 	projectVersion: number;
+	projectId: string;
 };
 
 function cookieForBrowser(pair: string, baseURL: string) {
@@ -414,6 +443,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		await renameButton.click();
 		const renameDialog = page.getByRole('dialog', { name: 'Rename project' });
 		const nameInput = renameDialog.getByRole('textbox', { name: 'Project name' });
+		await expect(renameDialog).toHaveAttribute('aria-modal', 'true');
 		await expect(nameInput).toBeFocused();
 		await captureScreenshot(page, 'project-lifecycle-rename-dialog.png');
 		await nameInput.press('Escape');
@@ -577,6 +607,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		await currentDelete.click();
 		const deleteDialog = page.getByRole('dialog', { name: 'Delete S01 dirty rename?' });
 		await expect(deleteDialog).toBeVisible();
+		await expect(deleteDialog).toHaveAttribute('aria-modal', 'true');
 		let dismissedDirtyConfirm = false;
 		page.once('dialog', async (dialog) => {
 			dismissedDirtyConfirm = dialog.type() === 'confirm';
@@ -814,9 +845,10 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 	}
 });
 
-test('F9 M lifecycle workload retains approved model bytes across cold, warm, and repeat-use Saves', async ({ browser, baseURL }, testInfo) => {
-	test.setTimeout(1_200_000);
+test('F9 S/M Save workload records presented feedback, renderer work, and durable receipts in branded Chrome', async ({ browser, baseURL }, testInfo) => {
+	test.setTimeout(2_400_000);
 	if (!baseURL) throw new Error('PERF_BASE_URL is required');
+	expect(testInfo.project.name).toBe('chrome');
 	const pool = new Pool({ connectionString: databaseUrl, max: 4 });
 	const auth = await authenticate(baseURL);
 	const setupContext = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
@@ -824,235 +856,359 @@ test('F9 M lifecycle workload retains approved model bytes across cold, warm, an
 	await setupContext.addCookies([cookieForBrowser(auth.cookie, baseURL)]);
 	const setupPage = await setupContext.newPage();
 	const samples: SaveSample[] = [];
+	const screenshots: string[] = [];
+	let browserVersionFacts: Record<string, unknown> = {};
+	let machineFacts: Record<string, unknown> = {};
+	try { machineFacts = JSON.parse(process.env.PERF_MACHINE_FACTS ?? '{}') as Record<string, unknown>; } catch { machineFacts = {}; }
+	const uaFacts = await setupPage.evaluate(() => ({
+		userAgent: navigator.userAgent,
+		platform: navigator.platform,
+		userAgentDataPlatform: (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? null
+	}));
+	expect(uaFacts.userAgent).toMatch(/Chrome\//);
+	expect(uaFacts.userAgent).not.toMatch(/Edg\//);
+	expect(uaFacts.platform).toMatch(/Mac/);
+	if (uaFacts.userAgentDataPlatform !== null) expect(uaFacts.userAgentDataPlatform).toBe('macOS');
 	const facts = {
 		flow: 'F9 Save',
-		fixture: 'M grid-7 with retained approved model source and derivative',
-		facts: { walls: 112, openings: 112, rooms: 49, modelSourceFiles: 1, approvedDerivatives: 1 },
-		browserVersion: browser.version(),
-		browserProject: testInfo.project.name,
+		fixtures: {
+			S: { grid: 3, walls: 24, openings: 24, rooms: 9, modelSourceFiles: 0, approvedDerivatives: 0 },
+			M: { grid: 7, walls: 112, openings: 112, rooms: 49, modelSourceFiles: 1, approvedDerivatives: 1,
+				modelSource: 'minimal valid GLB retained source', derivative: 'minimal valid GLB approved derivative' }
+		},
+		browser: {
+			project: testInfo.project.name,
+			playwrightVersion: browser.version(),
+			...uaFacts,
+			chromeCliVersion: machineFacts.chromeCliVersion ?? null,
+			cdpVersion: browserVersionFacts
+		},
+		machine: machineFacts,
 		viewport: { width: 1920, height: 1080 },
 		deviceScaleFactor: 1,
-		input: 'mouse and keyboard',
+		input: 'mouse',
 		reducedMotion: 'no-preference',
-		network: { profile: 'N1', ...N1 },
+		network: { profile: 'N1', latencyMs: N1.latencyMs, uploadBytesPerSecond: N1.uploadBytesPerSecond, downloadBytesPerSecond: N1.downloadBytesPerSecond },
 		cpuRate: 1,
-		operatorDisposition: 'agent-operated M2; observed timings are pre-flight and do not satisfy owner-operated hard-row acceptance',
+		powerQualification: {
+			observedPowerSource: machineFacts.powerSource ?? 'unavailable',
+			lowPowerMode: machineFacts.lowPowerMode ?? 'unavailable',
+			matchesBatteryReferenceCondition: machineFacts.powerSource === 'Battery Power' && machineFacts.lowPowerMode === false
+		},
+		operatorDisposition: 'automated agent-operated observation on the owner reference hardware; not an owner-operated hard-row acceptance',
 		measurements: samples
 	};
+	const cdp = await setupContext.newCDPSession(setupPage);
+	try {
+		browserVersionFacts = await cdp.send('Browser.getVersion');
+	} finally {
+		await cdp.detach();
+	}
+	const cliChromeVersion = /Google Chrome ([\d.]+)/.exec(String(machineFacts.chromeCliVersion ?? ''))?.[1];
+	const cdpChromeVersion = /Chrome\/([\d.]+)/.exec(String(browserVersionFacts.product ?? ''))?.[1];
+	expect(cdpChromeVersion).toBe(cliChromeVersion);
+	facts.browser.cdpVersion = browserVersionFacts;
+	await setupPage.bringToFront();
 	try {
 		await setupPage.goto('/projects');
 		await expect(setupPage.getByRole('button', { name: 'New Project' })).toBeVisible();
-		const mProject = await createSavedFixture(setupPage, 'M');
-		const modelKeys = await attachApprovedModel(setupPage, pool, mProject);
-		await openFromHub(setupPage, mProject.projectId, mProject.envelope.name);
-		await expect(setupPage.getByRole('button', { name: 'Rename ' + mProject.envelope.name, exact: true })).toBeVisible();
-		await expect.poll(async () => {
-			const rows = await pool.query('SELECT source_keys FROM model_revisions WHERE project_id = $1', [mProject.projectId]);
-			return rows.rows[0]?.source_keys?.length ?? 0;
-		}).toBe(1);
-		const savedSource = await currentProjectState(pool, mProject.projectId);
-		if (!savedSource) throw new Error('M model fixture disappeared before measurements');
+
+		async function createWorkload(size: FixtureSize) {
+			await setupPage.goto('/projects');
+			await expect(setupPage.getByRole('button', { name: 'New Project' })).toBeVisible();
+			const generated = await fixtureProject(size, await openProjectFromHub(setupPage));
+			await openSourceJson(setupPage, generated);
+			await saveThroughHead(setupPage, generated.projectId);
+			let modelKeys: { sourceKey: string; derivativeKey: string } | null = null;
+			if (size === 'M') modelKeys = await attachApprovedModel(setupPage, pool, generated);
+			await openFromHub(setupPage, generated.projectId, generated.envelope.name);
+			if (size === 'M') {
+				await expect.poll(async () => {
+					const rows = await pool.query('SELECT source_keys FROM model_revisions WHERE project_id = $1', [generated.projectId]);
+					return rows.rows[0]?.source_keys?.length ?? 0;
+				}).toBe(1);
+			}
+			return { fixture: generated, modelKeys };
+		}
+
+		const workloads = {
+			S: await createWorkload('S'),
+			M: await createWorkload('M')
+		};
 		await setupContext.close();
 
-		let currentName = savedSource.name;
-		let cycleNumber = 0;
-		async function lifecycleSaveRun(session: MeasuredSession, cache: SaveSample['cache'], index: number): Promise<SaveSample> {
-			cycleNumber += 1;
-			const { page, cdp } = session;
-			await page.goto('/projects');
-			await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
-			await openFromHub(page, mProject.projectId, currentName);
-			const nextName = `F9 ${cache} ${String(cycleNumber).padStart(2, '0')}`;
-			await page.getByRole('button', { name: `Rename ${currentName}`, exact: true }).click();
-			const renameDialog = page.getByRole('dialog', { name: 'Rename project' });
-			await renameDialog.getByRole('textbox', { name: 'Project name' }).fill(nextName);
-			await renameDialog.getByRole('button', { name: 'Rename project', exact: true }).click();
-			await expect(renameDialog).toBeHidden({ timeout: 60_000 });
-			currentName = nextName;
-
-			await selectFirstWallAndOpenDimensions(page);
-			const beforeEdit = await acceptedResultCount(page);
-			await commitPrecisionLength(page, 4.5 + cycleNumber / 100);
-			await waitForAcceptedResult(page, beforeEdit);
-
-			await page.evaluate(() => {
-				const target = document.querySelector('[data-head-save]');
-				const root = window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: { click: number; mutation: number; frame: number } | null };
-				root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = null;
-				if (!target) return;
-				const button = target.querySelector('button');
-				button?.addEventListener('click', () => {
-					root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { click: performance.now(), mutation: 0, frame: 0 };
-				}, { capture: true, once: true });
-				new MutationObserver(() => {
-					const feedback = root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__;
-					if (target.getAttribute('data-save-status') !== 'saving' || feedback == null || feedback.frame !== 0) return;
-					const mutation = performance.now();
-					requestAnimationFrame(() => {
-						const frame = performance.now();
-						root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { ...feedback, mutation, frame };
-					});
-				}).observe(target, { attributes: true, attributeFilter: ['data-save-status'] });
-				performance.mark('f9:measurement-start');
-			});
-			const eventCountBefore = (await readLedger(page)).events.length;
-			let traceComplete!: (value: { stream?: string }) => void;
-			const complete = new Promise<{ stream?: string }>((resolveComplete) => (traceComplete = resolveComplete));
-			const chunks: string[] = [];
-			const onComplete = (value: { stream?: string }) => traceComplete(value);
-			cdp.on('Tracing.tracingComplete', onComplete);
-			await cdp.send('Tracing.start', {
-				categories: 'devtools.timeline,disabled-by-default-devtools.timeline,blink.user_timing',
-				transferMode: 'ReturnAsStream'
-			});
-			const endpoint = `${apiOrigin}/projects/${encodeURIComponent(mProject.projectId)}`;
-			const receiptWait = page.waitForResponse(
-				(response) => response.url() === endpoint && response.request().method() === 'PUT',
-				{ timeout: 120_000 }
-			);
-			await page.locator('[data-head-save] button').first().click();
-			const receipt = await receiptWait;
-			if (!receipt.ok()) throw new Error(`M Save returned ${receipt.status()}: ${await receipt.text()}`);
-			await expect(page.locator('[data-head-save]')).toHaveAttribute('data-save-status', 'saved', { timeout: 120_000 });
-			await cdp.send('Tracing.end');
-			const traceResult = await complete;
-			cdp.off('Tracing.tracingComplete', onComplete);
-			if (traceResult.stream) {
-				let eof = false;
-				while (!eof) {
-					const chunk = await cdp.send('IO.read', { handle: traceResult.stream, size: 1_000_000 });
-					chunks.push(chunk.data as string);
-					eof = Boolean(chunk.eof);
-				}
-				await cdp.send('IO.close', { handle: traceResult.stream });
-			}
-			const traceText = chunks.join('');
-			let mainThreadRunTaskMs: number | null = null;
-			let mainThreadTaskCount: number | null = null;
-			if (traceText) {
-				const trace = JSON.parse(traceText) as { traceEvents?: Array<{ name?: string; ph?: string; dur?: number; pid?: number; tid?: number; args?: { name?: string } }> };
-				const events = trace.traceEvents ?? [];
-				const mainThread = new Set(events.filter((entry) => entry.name === 'thread_name' && entry.args?.name === 'CrRendererMain').map((entry) => `${entry.pid}:${entry.tid}`));
-				const tasks = events.filter((entry) => entry.name === 'RunTask' && entry.ph === 'X' && typeof entry.dur === 'number' && mainThread.has(`${entry.pid}:${entry.tid}`));
-				mainThreadRunTaskMs = tasks.reduce((total, entry) => total + (entry.dur ?? 0), 0) / 1000;
-				mainThreadTaskCount = tasks.length;
-			}
-			const bytes = Number(receipt.request().postDataBuffer()?.byteLength ?? 0);
-			const body = await jsonResponse(receipt);
-			const acknowledgement = body as ApiJson;
-			const ledger = await readLedger(page);
-			const saveMarks = ledger.records.filter((record) => record.kind === 'mark' && ['save:submit', 'save:receipt'].includes(record.name));
-			const submit = [...saveMarks].reverse().find((record) => record.name === 'save:submit');
-			const savedMark = [...saveMarks].reverse().find((record) => record.name === 'save:receipt');
-			if (!submit || !savedMark) throw new Error('Save ledger did not capture submit and durable receipt');
-			const feedback = await page.evaluate(() => (window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: { click: number; mutation: number; frame: number } | null }).__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ ?? null);
-			const relevantEvent = ledger.events.slice(eventCountBefore).find((entry) => entry.name.toLowerCase().includes('save')) ?? ledger.events.slice(eventCountBefore)[0];
-			const timing = await page.evaluate((url) => {
-				const item = performance.getEntriesByType('resource').filter((entry) => entry.name === url).at(-1) as PerformanceResourceTiming | undefined;
-				return item ? { duration: item.duration, serverTiming: item.serverTiming.map((value) => ({ name: value.name, duration: value.duration })) } : null;
-			}, endpoint);
-			const loaded = await currentProjectState(pool, mProject.projectId);
-			if (!loaded) throw new Error('M project disappeared after Save');
-			const sample: SaveSample = {
-				cache,
-				index,
-				feedbackMs: feedback ? feedback.frame - feedback.click : null,
-				feedbackApproximation: 'click to first rAF after saving status DOM mutation',
-				eventTimingMs: relevantEvent?.duration ?? null,
-				eventTimingCensoredBelowMs: relevantEvent ? 0 : 16,
-				mainThreadRunTaskMs,
-				mainThreadTaskCount,
-				clickToReceiptMs: savedMark.time - submit.time,
-				wireBytes: bytes,
-				serverTimingMs: timing?.serverTiming.find((entry) => entry.name === 'lifecycle')?.duration ?? null,
-				resourceTimingMs: timing?.duration ?? null,
-				predictedReceiptAllowanceMs: (8 * bytes) / (5_000) + 2 * N1.latencyMs + 500,
-				projectVersion: loaded.version
-			};
-			await page.goto('/projects');
-			return sample;
-		}
-
-		async function measuredSession(cache: SaveSample['cache'], index: number): Promise<SaveSample> {
-			const session = await newMeasuredSession(browser, {
-				viewport: { width: 1920, height: 1080 },
-				deviceScaleFactor: 1,
-				network: 'N1',
-				cacheState: cache
-			});
-			try {
-				await session.context.addCookies([cookieForBrowser(auth.cookie, baseURL!)]);
-				const result = await lifecycleSaveRun(session, cache, index);
-				return result;
-			} finally {
-				await session.close();
-			}
-		}
-
-		await measuredSession('cold', 0); // one discarded cold warm-up
-		for (let index = 0; index < 10; index++) {
-			const run = await measuredSession('cold', index + 1);
-			samples.push(run);
-		}
-
-		for (const cache of ['warm', 'repeat-use'] as const) {
-			const session = await newMeasuredSession(browser, {
-				viewport: { width: 1920, height: 1080 },
-				deviceScaleFactor: 1,
-				network: 'N1',
-				cacheState: cache
-			});
-			try {
-				await session.context.addCookies([cookieForBrowser(auth.cookie, baseURL)]);
-				await lifecycleSaveRun(session, cache, 0); // one discarded warm-up
-				for (let index = 0; index < 10; index++) samples.push(await lifecycleSaveRun(session, cache, index + 1));
-			} finally {
-				await session.close();
-			}
-		}
-
 		const summarize = (values: number[]) => {
-			const sorted = [...values].sort((a, b) => a - b);
-			const at = (p: number) => sorted[Math.min(sorted.length - 1, Math.ceil(p * sorted.length) - 1)];
-			return { n: sorted.length, p50: at(0.50), p75: at(0.75), p95: at(0.95), max: sorted.at(-1) };
+			if (!values.length) return { n: 0, p50: null, p75: null, p95: null, p99: null, max: null, spread: null };
+			const sorted = [...values].sort((left, right) => left - right);
+			const at = (percentile: number) => sorted[Math.min(sorted.length - 1, Math.ceil(percentile * sorted.length) - 1)]!;
+			return { n: sorted.length, p50: at(0.50), p75: at(0.75), p95: at(0.95), p99: at(0.99), max: sorted.at(-1)!, spread: sorted.at(-1)! - sorted[0]! };
 		};
-		const statistics = Object.fromEntries((['cold', 'warm', 'repeat-use'] as const).map((cache) => {
-			const rows = samples.filter((sample) => sample.cache === cache);
-			return [cache, {
-				localFeedbackMs: summarize(rows.flatMap((row) => row.feedbackMs === null ? [] : [row.feedbackMs])),
-				mainThreadRunTaskMs: summarize(rows.flatMap((row) => row.mainThreadRunTaskMs === null ? [] : [row.mainThreadRunTaskMs])),
-				clickToDurableReceiptMs: summarize(rows.map((row) => row.clickToReceiptMs)),
-				wireBytes: summarize(rows.map((row) => row.wireBytes)),
-				serverTimingMs: summarize(rows.flatMap((row) => row.serverTimingMs === null ? [] : [row.serverTimingMs])),
-				eventTimingObserved: rows.filter((row) => row.eventTimingMs !== null).length,
-				eventTimingCensoredBelow16ms: rows.filter((row) => row.eventTimingMs === null).length,
-				allSamples: rows
-			}];
-		}));
+
+		for (const size of ['S', 'M'] as const) {
+			const { fixture, modelKeys } = workloads[size];
+			let currentName = fixture.envelope.name;
+			let cycleNumber = 0;
+			async function lifecycleSaveRun(session: MeasuredSession, cache: SaveSample['cache'], index: number): Promise<SaveSample> {
+				cycleNumber++;
+				const { page, cdp } = session;
+				await page.bringToFront();
+				await page.goto('/projects');
+				await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
+				await openFromHub(page, fixture.projectId, currentName);
+				const nextName = `F9 ${size} ${cache} ${String(cycleNumber).padStart(2, '0')}`;
+				await page.getByRole('button', { name: `Rename ${currentName}`, exact: true }).click();
+				const renameDialog = page.getByRole('dialog', { name: 'Rename project' });
+				await renameDialog.getByRole('textbox', { name: 'Project name' }).fill(nextName);
+				await renameDialog.getByRole('button', { name: 'Rename project', exact: true }).click();
+				await expect(renameDialog).toBeHidden({ timeout: 60_000 });
+				currentName = nextName;
+
+				await selectFirstWallAndOpenDimensions(page);
+				const beforeEdit = await acceptedResultCount(page);
+				await commitPrecisionLength(page, 4.5 + cycleNumber / 100);
+				await waitForAcceptedResult(page, beforeEdit);
+				const saveButton = page.locator('[data-head-save] button').first();
+				await expect(saveButton).toBeEnabled();
+				await page.evaluate(() => {
+					const root = window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: { click: number; mutation: number; frame: number; paintLabel: string | null; statuses: string[] } | null };
+					root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = null;
+					document.addEventListener('click', (event) => {
+						if (!(event.target instanceof Element) || !event.target.closest('[data-head-save] button')) return;
+						root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { click: performance.now(), mutation: 0, frame: 0, paintLabel: null, statuses: [] };
+					}, { capture: true, once: true });
+					const observer = new MutationObserver((records) => {
+						const feedback = root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__;
+						if (feedback == null) return;
+						const saveControl = document.querySelector('[data-head-save]');
+						const currentStatus = saveControl?.getAttribute('data-save-status') ?? 'missing';
+						const currentLabel = saveControl?.querySelector('button')?.textContent?.trim() ?? 'missing';
+						feedback.statuses.push(`${currentStatus}:${currentLabel}`);
+						const savingRecord = records.find((record) => record.attributeName === 'data-save-status');
+						if (savingRecord == null || currentStatus !== 'saving' || currentLabel !== 'Saving…' || feedback.mutation !== 0) return;
+						const mutation = performance.now();
+						feedback.mutation = mutation;
+						// The second rAF runs after one complete render opportunity.
+						// Verify the visible control still says Saving at that boundary;
+						// a dirty-state frame cannot stand in for the feedback.
+						requestAnimationFrame(() => requestAnimationFrame(() => {
+							const current = root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__;
+							if (current == null) return;
+							const paintedControl = document.querySelector('[data-head-save]');
+							const paintedStatus = paintedControl?.getAttribute('data-save-status') ?? 'missing';
+							const paintedLabel = paintedControl?.querySelector('button')?.textContent?.trim() ?? 'missing';
+							current.statuses.push(`paint-boundary:${paintedStatus}:${paintedLabel}`);
+							if (paintedStatus === 'saving' && paintedLabel === 'Saving…') {
+								root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { ...current, frame: performance.now(), paintLabel: paintedLabel };
+							}
+							observer.disconnect();
+						}));
+					});
+					observer.observe(document.documentElement, { attributes: true, attributeOldValue: true, subtree: true, attributeFilter: ['data-save-status'] });
+				});
+
+				const eventCountBefore = (await readLedger(page)).events.length;
+				const startTrace = await startChromeTrace(cdp, { screenshotMaxSize: 1920, screenshotMaxCount: 24 });
+				let traceEvents: TraceEvent[] | null = null;
+				let startAnchor;
+				let endAnchor;
+				let receipt: Response;
+				try {
+					startAnchor = await clockAnchor(page, `f9:${size}:${cache}:${index}:before`);
+					const endpoint = `${apiOrigin}/projects/${encodeURIComponent(fixture.projectId)}`;
+					const receiptWait = page.waitForResponse((response) => response.url() === endpoint && response.request().method() === 'PUT', { timeout: 120_000 });
+					await page.locator('[data-head-save] button').first().click();
+					const saveButton = page.locator('[data-head-save] button').first();
+					await expect(saveButton).toHaveText('Saving…', { timeout: 2_000 });
+					receipt = await receiptWait;
+					if (!receipt.ok()) throw new Error(`${size} Save returned ${receipt.status()}: ${await receipt.text()}`);
+					await expect(page.locator('[data-head-save]')).toHaveAttribute('data-save-status', 'saved', { timeout: 120_000 });
+					await expect.poll(async () => page.evaluate(() => (window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: { frame: number } | null }).__PROJECT_LIFECYCLE_SAVE_FEEDBACK__?.frame ?? 0), { timeout: 2_000 }).toBeGreaterThan(0);
+					endAnchor = await clockAnchor(page, `f9:${size}:${cache}:${index}:after`);
+					traceEvents = await startTrace();
+				} finally {
+					if (traceEvents === null) await startTrace().catch(() => undefined);
+				}
+
+				const bytes = Number(receipt!.request().postDataBuffer()?.byteLength ?? 0);
+				const acknowledgement = await jsonResponse(receipt!);
+				const ledger = await readLedger(page);
+				const saveMarks = ledger.records.filter((record) => record.kind === 'mark' && ['save:submit', 'save:receipt'].includes(record.name));
+				const submit = [...saveMarks].reverse().find((record) => record.name === 'save:submit');
+				const savedMark = [...saveMarks].reverse().find((record) => record.name === 'save:receipt');
+				if (!submit || !savedMark) throw new Error('Save ledger did not capture submit and durable receipt');
+				const feedback = await page.evaluate(() => (window as Window & { __PROJECT_LIFECYCLE_SAVE_FEEDBACK__?: { click: number; mutation: number; frame: number; paintLabel: string | null; statuses: string[] } | null }).__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ ?? null);
+				if (!feedback || feedback.click <= 0 || feedback.mutation <= 0 || feedback.frame <= 0 || feedback.paintLabel !== 'Saving…') throw new Error(`Save feedback probe was incomplete: ${JSON.stringify({ feedback, status: await page.locator('[data-head-save]').getAttribute('data-save-status'), label: await page.locator('[data-head-save] button').first().textContent() })}`);
+				const boundaries = { clickMs: feedback.click, submitMs: submit.time, receiptMs: savedMark.time };
+				const attribution = attributeSaveTrace(traceEvents!, [startAnchor!, endAnchor!], boundaries);
+				const presentation = findSaveFeedbackPresentation(traceEvents!, attribution.clockOffsetMs, feedback.click, feedback.mutation, feedback.frame, savedMark.time);
+				if (!presentation) {
+					const screenshots = traceEvents!.filter((event) => event.name === 'Screenshot' && typeof event.args?.snapshot === 'string');
+					const reporters = traceEvents!.filter((event) => event.name === 'PipelineReporter');
+					const diagnostic = {
+						boundaries,
+						clock: { offsetMs: attribution.clockOffsetMs, spreadMs: attribution.clockSpreadMs },
+						feedback,
+						screenshotCount: screenshots.length,
+						screenshots: screenshots.map((event) => {
+							const resolved = resolveTracePresentation(event, traceEvents!);
+							return {
+								screenshotEventPageMs: event.ts / 1000 - attribution.clockOffsetMs,
+								sourceId: event.args?.source_id ?? null,
+								frameSequence: event.args?.frame_sequence ?? null,
+								presentationStatus: resolved.status,
+								presentationPageMs: resolved.traceTimeUs === null ? null : resolved.traceTimeUs / 1000 - attribution.clockOffsetMs
+							};
+						}),
+						pipelineReporterCount: reporters.length,
+						pipelineReporterStates: [...new Set(reporters.map((event) => {
+							const report = event.args?.frame_reporter as Record<string, unknown> | undefined;
+							return String(report?.state ?? 'missing-state');
+						}))],
+						pipelineReporterSamples: reporters.slice(0, 40).map((event) => {
+							const report = event.args?.frame_reporter as Record<string, unknown> | undefined;
+							return { ph: event.ph, ts: event.ts, dur: event.dur, sourceId: report?.frame_source, frameSequence: report?.frame_sequence, state: report?.state, frameType: report?.frame_type, host: report?.layer_tree_host_id };
+						})
+					};
+					await writeFile(resolve(resultsDir!, `project-lifecycle-f9-presentation-debug-${size.toLowerCase()}-${cache}-${index}.json`), JSON.stringify(diagnostic, null, 2));
+					throw new Error(`No trace screenshot joined STATE_PRESENTED_ALL before receipt: ${JSON.stringify({ screenshotCount: screenshots.length, pipelineReporterCount: reporters.length, states: diagnostic.pipelineReporterStates })}`);
+				}
+				const endpoint = `${apiOrigin}/projects/${encodeURIComponent(fixture.projectId)}`;
+				const timing = await page.evaluate((url) => {
+					const item = performance.getEntriesByType('resource').filter((entry) => entry.name === url).at(-1) as PerformanceResourceTiming | undefined;
+					return item ? { duration: item.duration, serverTiming: item.serverTiming.map((value) => ({ name: value.name, duration: value.duration })) } : null;
+				}, endpoint);
+				const relevantEvent = ledger.events.slice(eventCountBefore).find((entry) => entry.name.toLowerCase().includes('save')) ?? ledger.events.slice(eventCountBefore)[0];
+				const loaded = await currentProjectState(pool, fixture.projectId);
+				if (!loaded) throw new Error(`${size} fixture disappeared after Save`);
+				const sample: SaveSample = {
+					size, cache, index,
+					clickMs: boundaries.clickMs,
+					submitMs: boundaries.submitMs,
+					receiptMs: boundaries.receiptMs,
+					clickToSubmitMs: attribution.clickToSubmitMs,
+					submitToReceiptMs: attribution.submitToReceiptMs,
+					feedbackMs: presentation.feedbackMs,
+					savingDomMutationMs: feedback.mutation,
+					savingPaintBoundaryMs: feedback.frame,
+					savingPaintLabel: feedback.paintLabel,
+					feedbackEvidence: {
+						kind: 'trace-screenshot-exact-frame-reported-presented',
+						screenshotEventPageMs: presentation.screenshotEventPageMs,
+						presentedPageMs: presentation.presentedPageMs,
+						sourceId: presentation.sourceId,
+						frameSequence: presentation.frameSequence,
+						clockSpreadMs: attribution.clockSpreadMs
+					},
+					feedbackOpportunityMs: feedback.frame - feedback.click,
+					eventTimingMs: relevantEvent?.duration ?? null,
+					eventTimingCensoredBelowMs: relevantEvent ? 0 : 16,
+					mainThreadWorkMs: attribution.mainThread.workMs,
+					mainThreadTaskCount: attribution.mainThread.taskCount,
+					mainThreadClickToSubmitWorkMs: attribution.mainThread.clickToSubmitWorkMs,
+					mainThreadSubmitToReceiptWorkMs: attribution.mainThread.submitToReceiptWorkMs,
+					mainThreadBlockingWorkMs: attribution.mainThread.blockingWorkMs,
+					mainThreadBlockingTaskCount: attribution.mainThread.blockingTaskCount,
+					mainThreadMaxTaskMs: attribution.mainThread.maxTaskMs,
+					backgroundRendererWorkMs: attribution.backgroundRenderer.workMs,
+					backgroundRendererTaskCount: attribution.backgroundRenderer.taskCount,
+					clickToReceiptMs: attribution.operationMs,
+					wireBytes: bytes,
+					serverTimingMs: timing?.serverTiming.find((entry) => entry.name === 'lifecycle')?.duration ?? null,
+					resourceTimingMs: timing?.duration ?? null,
+					predictedReceiptAllowanceMs: (8 * bytes) / 5_000 + 2 * N1.latencyMs + 500,
+					projectVersion: loaded.version,
+					projectId: fixture.projectId
+				};
+				// Save representative trace snapshots only for the visible S/warm
+				// and M cells; the S/cold snapshot can retain a prior dirty frame.
+				if (index === 1 && ((size === 'S' && cache === 'warm') || size === 'M')) {
+					const path = resolve(resultsDir!, `project-lifecycle-f9-feedback-${size.toLowerCase()}-${cache}.jpg`);
+					await writeFile(path, new Uint8Array(Buffer.from(presentation.screenshot.args!.snapshot as string, 'base64')));
+					screenshots.push(path);
+				}
+				await page.goto('/projects');
+				return sample;
+			}
+
+			async function measuredSession(cache: SaveSample['cache'], index: number): Promise<SaveSample> {
+				const session = await newMeasuredSession(browser, {
+					viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, network: 'N1', cacheState: cache
+				});
+				try {
+					await session.context.addCookies([cookieForBrowser(auth.cookie, baseURL!)]);
+					return await lifecycleSaveRun(session, cache, index);
+				} finally { await session.close(); }
+			}
+
+			await measuredSession('cold', 0); // one discarded cold warm-up
+			for (let index = 1; index <= 10; index++) samples.push(await measuredSession('cold', index));
+			for (const cache of ['warm', 'repeat-use'] as const) {
+				const session = await newMeasuredSession(browser, {
+					viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, network: 'N1', cacheState: cache
+				});
+				try {
+					await session.context.addCookies([cookieForBrowser(auth.cookie, baseURL!)]);
+					await lifecycleSaveRun(session, cache, 0); // one discarded warm-up
+					for (let index = 1; index <= 10; index++) samples.push(await lifecycleSaveRun(session, cache, index));
+				} finally { await session.close(); }
+			}
+		}
+
+		const distributions = Object.fromEntries((['S', 'M'] as const).map((size) => [size,
+			Object.fromEntries((['cold', 'warm', 'repeat-use'] as const).map((cache) => {
+				const rows = samples.filter((sample) => sample.size === size && sample.cache === cache);
+				return [cache, {
+					localFeedbackPresentedMs: summarize(rows.map((row) => row.feedbackMs)),
+					mainThreadWorkMs: summarize(rows.map((row) => row.mainThreadWorkMs)),
+					mainThreadBlockingWorkMs: summarize(rows.map((row) => row.mainThreadBlockingWorkMs)),
+					mainThreadMaxTaskMs: summarize(rows.map((row) => row.mainThreadMaxTaskMs)),
+					clickToSubmitMs: summarize(rows.map((row) => row.clickToSubmitMs)),
+					submitToDurableReceiptMs: summarize(rows.map((row) => row.submitToReceiptMs)),
+					clickToDurableReceiptMs: summarize(rows.map((row) => row.clickToReceiptMs)),
+					wireBytes: summarize(rows.map((row) => row.wireBytes)),
+					serverTimingMs: summarize(rows.flatMap((row) => row.serverTimingMs === null ? [] : [row.serverTimingMs])),
+					feedbackOpportunityProxyMs: summarize(rows.map((row) => row.feedbackOpportunityMs ?? 0)),
+					eventTimingObserved: rows.filter((row) => row.eventTimingMs !== null).length,
+					eventTimingCensoredBelow16ms: rows.filter((row) => row.eventTimingMs === null).length,
+					allSamples: rows
+				}];
+			}))
+		]));
 		const output = {
 			...facts,
 			buildRevision: process.env.GIT_HEAD,
 			apiOrigin,
 			database: 'task-private local PostgreSQL database; dropped by shell trap',
 			objectStore: 'same Fastify process memory store; no R2 access',
-			modelKeys,
-			warmupRuns: 1,
-			measuredRunsPerCacheState: 10,
-			statistics,
-			hardBudgetDisposition: 'pre-flight only: agent-operated run; reference-machine hard rows require owner operation',
+			modelKeys: workloads.M.modelKeys,
+			warmupRunsPerSizeAndCacheState: 1,
+			measuredRunsPerSizeAndCacheState: 10,
+			trace: {
+				method: 'CDP devtools.timeline + screenshot + compositor presentation reports',
+				mainThreadWork: 'union of clipped CrRendererMain RunTask intervals from Save click through durable receipt; click-to-submit and submit-to-receipt split also recorded',
+				backgroundRendererWork: 'same renderer process non-main-thread RunTask interval union',
+				feedback: 'first screenshot after the Saving label survives one render opportunity, joined by exact source/frame identity to one STATE_PRESENTED_ALL reporter before durable receipt',
+				visualEvidence: 'representative CDP trace screenshots for S/warm and M cache cells; all six cells retain exact frame-identity presentation data for every measured sample',
+				physicalDisplayPresentationMs: null
+			},
+			statistics: distributions,
+			hardBudgetDisposition: 'observation only: automated agent-operated run on AC power; the reference battery condition and owner-operated acceptance are not satisfied',
 			limitations: [
-				'First rAF after the saving DOM state is a presentation opportunity approximation; no trace image proves visible pixels.',
-				'Event Timing uses a 16 ms threshold; missing eligible click entries are right-censored below that threshold.',
-				'RunTask aggregation covers Save click through API response and is a main-thread task sum, not one contiguous block.',
-				'The model file is a minimal valid retained source/derivative fixture and does not represent the full expected 15 MiB M catalog.'
+				'Chrome compositor presentation feedback is browser-reported and does not prove physical panel scanout.',
+				'Event Timing entries have a 16 ms threshold; missing eligible click entries are right-censored below that threshold.',
+				'M uses a minimal valid retained GLB source and derivative; the model bytes do not represent the full 15 MiB expected catalog.'
 			]
 		};
-		await writeFile(resolve(resultsDir!, 'project-lifecycle-f9-m.json'), JSON.stringify(output, null, 2));
-		await testInfo.attach('project-lifecycle-f9-m.json', { body: Buffer.from(JSON.stringify(output, null, 2)), contentType: 'application/json' });
-		expect(samples.filter((sample) => sample.cache === 'cold')).toHaveLength(10);
-		expect(samples.filter((sample) => sample.cache === 'warm')).toHaveLength(10);
-		expect(samples.filter((sample) => sample.cache === 'repeat-use')).toHaveLength(10);
-		expect(samples.every((sample) => sample.wireBytes > 0 && sample.projectVersion > 1)).toBe(true);
+		await writeFile(resolve(resultsDir!, 'project-lifecycle-f9-s-m-branded-chrome.json'), JSON.stringify(output, null, 2));
+		await testInfo.attach('project-lifecycle-f9-s-m-branded-chrome.json', { body: Buffer.from(JSON.stringify(output, null, 2)), contentType: 'application/json' });
+		for (const path of screenshots) await testInfo.attach(path.split('/').at(-1)!, { path, contentType: 'image/jpeg' });
+		expect(samples.filter((sample) => sample.size === 'S' && sample.cache === 'cold')).toHaveLength(10);
+		expect(samples.filter((sample) => sample.size === 'S' && sample.cache === 'warm')).toHaveLength(10);
+		expect(samples.filter((sample) => sample.size === 'S' && sample.cache === 'repeat-use')).toHaveLength(10);
+		expect(samples.filter((sample) => sample.size === 'M' && sample.cache === 'cold')).toHaveLength(10);
+		expect(samples.filter((sample) => sample.size === 'M' && sample.cache === 'warm')).toHaveLength(10);
+		expect(samples.filter((sample) => sample.size === 'M' && sample.cache === 'repeat-use')).toHaveLength(10);
+		expect(samples.every((sample) => sample.wireBytes > 0 && sample.projectVersion > 1 && sample.feedbackMs >= 0)).toBe(true);
 	} finally {
 		await setupContext.close().catch(() => undefined);
 		await pool.end().catch(() => undefined);

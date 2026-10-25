@@ -12,7 +12,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
 
@@ -40,8 +40,35 @@ const storeControlPath = resolve(resultsDir, 'project-lifecycle-store-control.js
 const storeManifestPath = resolve(resultsDir, 'project-lifecycle-store-manifest.json');
 const cleanupQueuePath = resolve(resultsDir, 'project-lifecycle-cleanup-retry.json');
 const apiTimingPath = resolve(resultsDir, 'project-lifecycle-api-timings.json');
+const machineFactsPath = resolve(resultsDir, 'project-lifecycle-machine-facts.json');
 await writeFile(storeControlPath, JSON.stringify({ blockedProjectIds: [] }, null, 2));
 await writeFile(cleanupQueuePath, JSON.stringify({ jobs: [] }, null, 2));
+
+function readMachineFacts() {
+  const command = (file, args) => {
+    try { return execFileSync(file, args, { encoding: 'utf8', timeout: 5_000 }).trim(); }
+    catch (error) { return `unavailable: ${error instanceof Error ? error.message : String(error)}`; }
+  };
+  const battery = command('/usr/bin/pmset', ['-g', 'batt']);
+  const lowPower = command('/usr/bin/pmset', ['-g']);
+  const powerMatch = /Now drawing from '([^']+)'/.exec(battery);
+  const lowPowerMatch = /^\s*lowpowermode\s+(\d+)\s*$/m.exec(lowPower);
+  const chrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  return {
+    capturedAt: new Date().toISOString(),
+    machineModel: command('/usr/sbin/sysctl', ['-n', 'hw.model']),
+    macOSVersion: command('/usr/bin/sw_vers', ['-productVersion']),
+    powerSource: powerMatch?.[1] ?? 'unavailable',
+    batteryPowerDetails: battery,
+    lowPowerMode: lowPowerMatch ? lowPowerMatch[1] === '1' : 'unavailable',
+    lowPowerModeDetails: lowPower,
+    chromeExecutable: chrome,
+    chromeCliVersion: command(chrome, ['--version'])
+  };
+}
+
+const machineFactsAtStart = readMachineFacts();
+process.env.PERF_MACHINE_FACTS = JSON.stringify(machineFactsAtStart);
 
 async function freePort(except = new Set()) {
   for (;;) {
@@ -272,13 +299,16 @@ try {
 
   const cliPath = resolve(repoRoot, 'node_modules/@playwright/test/cli.js');
   const grep = process.env.PROJECT_LIFECYCLE_QA_GREP;
+  const project = process.env.PROJECT_LIFECYCLE_QA_PROJECT ?? 'chromium';
+  if (!['chromium', 'chrome'].includes(project)) throw new Error(`Unsupported QA Playwright project: ${project}`);
   playwrightChild = spawn(process.execPath, [
     cliPath,
     'test',
     '--config',
     'perf/playwright.config.ts',
-    '--project=chromium',
+    `--project=${project}`,
     '--workers=1',
+    ...(process.env.PROJECT_LIFECYCLE_QA_HEADED === '1' ? ['--headed'] : []),
     ...(grep ? ['--grep', grep] : []),
     'perf/flows/project-lifecycle.spec.ts'
   ], {
@@ -311,6 +341,13 @@ try {
   } catch {
     browserFacts = null;
   }
+  const machineFactsAtEnd = readMachineFacts();
+  await writeFile(machineFactsPath, JSON.stringify({
+    start: machineFactsAtStart,
+    end: machineFactsAtEnd,
+    powerSourceStable: machineFactsAtStart.powerSource === machineFactsAtEnd.powerSource,
+    lowPowerModeStable: machineFactsAtStart.lowPowerMode === machineFactsAtEnd.lowPowerMode
+  }, null, 2)).catch(() => undefined);
   await writeFile(apiTimingPath, JSON.stringify(apiTimings, null, 2)).catch(() => undefined);
   await writeStoreManifest(baseStore.objects).catch(() => undefined);
   if (previewServer) await previewServer.close().catch(() => undefined);
@@ -318,6 +355,7 @@ try {
   else if (pool) await pool.end().catch(() => undefined);
   await writeFile(resolve(resultsDir, 'project-lifecycle-supervisor-result.json'), JSON.stringify({
     browserFacts,
+    machineFacts: { start: machineFactsAtStart, end: machineFactsAtEnd },
     cleanupResult,
     apiTimingCount: apiTimings.length,
     objectCountAtShutdown: baseStore.objects.size,

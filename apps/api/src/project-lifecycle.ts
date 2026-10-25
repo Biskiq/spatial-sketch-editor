@@ -417,24 +417,34 @@ export async function runProjectDeletionCleanup(
 		const deletedKeys = new Set<string>();
 		const isCompleted = row.status === 'complete';
 		const objectSignal = AbortSignal.timeout(PROJECT_CLEANUP_OBJECT_TIMEOUT_MS);
-		try {
-			for (const key of inventory) {
-				await objectStore.delete!(key, objectSignal);
-				deletedKeys.add(key);
-			}
+		const listScopedKeys = async (): Promise<string[]> => {
 			const bucketKeys = await objectStore.list!(objectSignal);
 			if (!Array.isArray(bucketKeys) || bucketKeys.some((key) => typeof key !== 'string')) {
 				throw new Error('ObjectStore.list returned an invalid key set');
 			}
-			const scopedKeys = [...new Set(bucketKeys.filter((key) => key.startsWith(prefix)))];
-			for (const key of scopedKeys) {
-				assertOwnedKey(key, prefix);
-				await objectStore.delete!(key, objectSignal);
-				deletedKeys.add(key);
-			}
-			const now = policy.clock();
+			return [...new Set(bucketKeys.filter((key) => key.startsWith(prefix)))];
+		};
+		try {
 			if (isCompleted) {
-				if (scopedKeys.length > 0) {
+				// Observe completed-record bytes before deleting the durable inventory.
+				// A remote PUT may have committed after the earlier completion proof
+				// even when its key is already in that inventory. Deleting inventory
+				// first would hide that late commit from the repair/re-proof path.
+				const lateKeys = new Set<string>();
+				for (const key of await listScopedKeys()) {
+					assertOwnedKey(key, prefix);
+					lateKeys.add(key);
+					await objectStore.delete!(key, objectSignal);
+					deletedKeys.add(key);
+				}
+				for (const key of await listScopedKeys()) {
+					assertOwnedKey(key, prefix);
+					lateKeys.add(key);
+					await objectStore.delete!(key, objectSignal);
+					deletedKeys.add(key);
+				}
+				const now = policy.clock();
+				if (lateKeys.size > 0) {
 					await db.query(
 						"UPDATE project_deletions SET status = 'pending', first_empty_at = NULL,\n" +
 							"completed_at = NULL, last_attempt_at = $2, attempt_count = attempt_count + 1,\n" +
@@ -446,7 +456,7 @@ export async function runProjectDeletionCleanup(
 						status: 'pending',
 						sweepDependent: readBoolean(row.sweepDependent),
 						deletedKeys: [...deletedKeys],
-						repairedLateKeys: scopedKeys
+						repairedLateKeys: [...lateKeys]
 					};
 				}
 				await db.query(
@@ -462,7 +472,17 @@ export async function runProjectDeletionCleanup(
 					repairedLateKeys: []
 				};
 			}
-
+			for (const key of inventory) {
+				await objectStore.delete!(key, objectSignal);
+				deletedKeys.add(key);
+			}
+			const scopedKeys = await listScopedKeys();
+			for (const key of scopedKeys) {
+				assertOwnedKey(key, prefix);
+				await objectStore.delete!(key, objectSignal);
+				deletedKeys.add(key);
+			}
+			const now = policy.clock();
 			const fencedAt = readTimestampMs(row.fencedAt);
 			const cleanupBound = readSafeInteger(row.cleanupBoundMs);
 			const firstEmptyAt = row.firstEmptyAt === null || row.firstEmptyAt === undefined

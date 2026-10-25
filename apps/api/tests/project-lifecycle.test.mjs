@@ -7,7 +7,11 @@
  */
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
@@ -23,6 +27,7 @@ import {
 	saveRequestBody,
 	sessionCookie
 } from './test-support.mjs';
+import { persistentObjectStore } from './fixtures/persistent-object-store.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
 const OBJECT_NAMESPACE = 'test';
@@ -67,8 +72,8 @@ function currentPrecondition(token) {
 	return { kind: 'expected-saved-base', token };
 }
 
-async function save(projectId, cookie = ownerCookie, name = 'Project') {
-	return app.inject({
+async function save(projectId, cookie = ownerCookie, name = 'Project', targetApp = app) {
+	return targetApp.inject({
 		method: 'PUT',
 		url: `/projects/${projectId}`,
 		headers: { cookie, 'content-type': 'application/json' },
@@ -85,8 +90,8 @@ async function rename(projectId, cookie, name, token) {
 	});
 }
 
-async function removeProject(projectId, token, cookie = ownerCookie) {
-	return app.inject({
+async function removeProject(projectId, token, cookie = ownerCookie, targetApp = app) {
+	return targetApp.inject({
 		method: 'DELETE',
 		url: `/projects/${projectId}`,
 		headers: { cookie, 'content-type': 'application/json' },
@@ -94,8 +99,8 @@ async function removeProject(projectId, token, cookie = ownerCookie) {
 	});
 }
 
-async function registerAsset(projectId, cookie = ownerCookie) {
-	const registered = await app.inject({
+async function registerAsset(projectId, cookie = ownerCookie, targetApp = app) {
+	const registered = await targetApp.inject({
 		method: 'POST',
 		url: `/projects/${projectId}/assets`,
 		headers: { cookie, 'content-type': 'application/json' },
@@ -133,6 +138,18 @@ function validGlb(fill) {
 		{ asset: { version: '2.0' }, buffers: [{ byteLength: bytes.length }], bufferViews: [{ buffer: 0, byteLength: bytes.length }] },
 		bytes
 	);
+}
+
+function gltfWithExternalBuffer() {
+	const buffer = Buffer.from([3, 5, 7, 11]);
+	return {
+		document: Buffer.from(JSON.stringify({
+			asset: { version: '2.0' },
+			buffers: [{ uri: 'buffer.bin', byteLength: buffer.length }],
+			bufferViews: [{ buffer: 0, byteLength: buffer.length }]
+		}), 'utf8'),
+		buffer
+	};
 }
 
 function declaration(files) {
@@ -177,9 +194,9 @@ async function approve(projectId, importId) {
 	});
 }
 
-async function uploadAsset(projectId, assetId) {
+async function uploadAsset(projectId, assetId, targetApp = app) {
 	const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
-	return app.inject({
+	return targetApp.inject({
 		method: 'PUT',
 		url: `/projects/${projectId}/assets/${assetId}/content`,
 		headers: {
@@ -321,6 +338,47 @@ function blockNextPut() {
 	return entered;
 }
 
+async function runCleanupChild({ projectId, storeDirectory, nowMs, verifyCompleted = false }) {
+	const childPath = fileURLToPath(new URL('./fixtures/project-lifecycle-cleanup-child.mjs', import.meta.url));
+	const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
+	const viteNodePath = join(repoRoot, 'node_modules/vite-node/vite-node.mjs');
+	return await new Promise((resolveChild, rejectChild) => {
+		const child = spawn(process.execPath, [
+			viteNodePath,
+			childPath,
+			projectId,
+			storeDirectory,
+			String(nowMs),
+			...(verifyCompleted ? ['--verify-completed'] : [])
+		], {
+			cwd: repoRoot,
+			env: { ...process.env, DATABASE_URL },
+			stdio: ['ignore', 'pipe', 'pipe']
+		});
+		let stdout = '';
+		let stderr = '';
+		const timer = setTimeout(() => child.kill('SIGTERM'), 20_000);
+		child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
+		child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
+		child.once('error', (error) => {
+			clearTimeout(timer);
+			rejectChild(error);
+		});
+		child.once('exit', (code, signal) => {
+			clearTimeout(timer);
+			if (code !== 0) {
+				rejectChild(new Error(`cleanup child exited ${code ?? signal}: ${stderr}`));
+				return;
+			}
+			try {
+				resolveChild(JSON.parse(stdout));
+			} catch (error) {
+				rejectChild(new Error(`cleanup child returned invalid JSON: ${stderr || String(error)}; stdout=${stdout}`));
+			}
+		});
+	});
+}
+
 async function assertWriterFenced(projectId, token, writerPromise, entered, afterStopped) {
 	await entered;
 	const busy = await removeProject(projectId, token);
@@ -456,10 +514,11 @@ WHERE p.project_id = $1 AND l.id = $2::uuid`,
 test('model approval serializes identical revisions, migration replay backfills source keys, and delete inventories them', async () => {
 	const projectId = track();
 	const saved = await save(projectId, ownerCookie, 'Model project');
-	const source = validGlb(1);
+	const sourceSet = gltfWithExternalBuffer();
 	const derivative = validGlb(2);
 	const files = [
-		{ role: 'source', path: 'source.glb', bytes: source },
+		{ role: 'source', path: 'model/scene.gltf', bytes: sourceSet.document },
+		{ role: 'source', path: 'model/buffer.bin', bytes: sourceSet.buffer },
 		{ role: 'derivative', path: 'derivative.glb', bytes: derivative }
 	];
 	const first = await stageModel(projectId, files);
@@ -471,6 +530,7 @@ test('model approval serializes identical revisions, migration replay backfills 
 		}
 	}
 
+	const writesBeforeApproval = store.puts.length;
 	const [approvedFirst, approvedSecond] = await Promise.all([
 		approve(projectId, first.importId),
 		approve(projectId, second.importId)
@@ -485,16 +545,46 @@ test('model approval serializes identical revisions, migration replay backfills 
 	);
 	assert.equal(revisionRows.rows.length, 1);
 	const revision = revisionRows.rows[0];
+	assert.equal(revision.source_file_count, 2);
 	assert.equal(revision.source_keys.length, revision.source_file_count);
 	assert.ok(revision.source_keys.every((key) => store.objects.has(key)));
-	const expectedSource = revision.source_keys[0];
+	const actualSourceCopies = store.puts.slice(writesBeforeApproval)
+		.map((entry) => entry.key)
+		.filter((key) => key.includes('/models/revisions/') && !key.endsWith('/derivative.glb'));
+	assert.equal(actualSourceCopies.length, 2, 'approval wrote one source copy for each admitted source file');
+	assert.deepEqual(new Set(revision.source_keys), new Set(actualSourceCopies));
+	assert.ok(store.objects.has(revision.derivative_key));
+	const expectedSourceKeys = [...revision.source_keys];
 
 	await pool.query('UPDATE model_revisions SET source_keys = NULL WHERE id = $1::uuid', [revision.id]);
 	const migrationSql = await readFile(new URL('../migrations/007-project-lifecycle.sql', import.meta.url), 'utf8');
 	await pool.query(migrationSql);
 	await pool.query(migrationSql);
 	const replayed = await pool.query('SELECT source_keys FROM model_revisions WHERE id = $1::uuid', [revision.id]);
-	assert.deepEqual(replayed.rows[0].source_keys, [expectedSource]);
+	assert.deepEqual(new Set(replayed.rows[0].source_keys), new Set(expectedSourceKeys));
+
+	const siblingProjectId = track();
+	const siblingSaved = await save(siblingProjectId, ownerCookie, 'Identical model sibling');
+	assert.equal(siblingSaved.statusCode, 200, JSON.stringify(siblingSaved.json()));
+	const siblingImport = await stageModel(siblingProjectId, files);
+	for (const file of files) {
+		const uploaded = await uploadModelFile(siblingProjectId, siblingImport, file.path, file.bytes);
+		assert.equal(uploaded.statusCode, 200, JSON.stringify(uploaded.json()));
+	}
+	const siblingApproved = await approve(siblingProjectId, siblingImport.importId);
+	assert.equal(siblingApproved.statusCode, 200, JSON.stringify(siblingApproved.json()));
+	const siblingRevision = await pool.query(
+		'SELECT derivative_key, source_keys FROM model_revisions WHERE project_id = $1',
+		[siblingProjectId]
+	);
+	const siblingKeys = [siblingRevision.rows[0].derivative_key, ...siblingRevision.rows[0].source_keys];
+	assert.notDeepEqual(new Set(siblingKeys), new Set([revision.derivative_key, ...expectedSourceKeys]));
+
+	const unapprovedImport = await stageModel(projectId, files);
+	for (const file of files) {
+		const uploaded = await uploadModelFile(projectId, unapprovedImport, file.path, file.bytes);
+		assert.equal(uploaded.statusCode, 200, JSON.stringify(uploaded.json()));
+	}
 
 	// A historical revision whose approved import record is absent stays explicit
 	// about the required exact-prefix sweep.
@@ -505,28 +595,53 @@ id, project_id, content_hash, derivative_hash, derivative_mime, derivative_bytes
 source_manifest_hash, source_bytes, source_file_count, recipe_id, recipe_version, report_digest, placement, source_keys
 )
 SELECT $1::uuid, project_id, $2, derivative_hash, derivative_mime, derivative_bytes,
-       'projects/test/' || project_id || '/models/revisions/legacy/derivative.glb',
+		       'projects/' || $4 || '/' || project_id || '/models/revisions/legacy/derivative.glb',
        source_manifest_hash, source_bytes, source_file_count, recipe_id, recipe_version, report_digest, placement, NULL
 FROM model_revisions WHERE id = $3::uuid`,
-		[randomUUID(), legacyHash, revision.id]
+		[randomUUID(), legacyHash, revision.id, OBJECT_NAMESPACE]
 	);
+	const legacyDerivativeKey = `projects/${OBJECT_NAMESPACE}/${projectId}/models/revisions/legacy/derivative.glb`;
+	store.objects.set(legacyDerivativeKey, { bytes: Buffer.from('legacy-derivative'), options: {} });
 
 	const prefix = `projects/${OBJECT_NAMESPACE}/${projectId}/`;
-	const sibling = `projects/${OBJECT_NAMESPACE}/${projectId}-sibling/models/orphan.glb`;
-	store.objects.set(sibling, { bytes: Buffer.from('sibling'), options: {} });
+	const expectedOwnedKeys = [...store.objects.keys()].filter((key) => key.startsWith(prefix)).sort();
+	const expectedSiblingKeys = [...store.objects.keys()].filter((key) => key.startsWith(`projects/${OBJECT_NAMESPACE}/${siblingProjectId}/`)).sort();
+	const expectedInventory = await pool.query(
+		`SELECT object_key AS key FROM assets WHERE project_id = $1 AND object_key IS NOT NULL
+		 UNION SELECT f.object_key FROM model_import_files f JOIN model_imports i ON i.id = f.import_id
+		  WHERE i.project_id = $1 AND f.object_key IS NOT NULL
+		 UNION SELECT derivative_key FROM model_revisions WHERE project_id = $1
+		 UNION SELECT jsonb_array_elements_text(source_keys) FROM model_revisions WHERE project_id = $1`,
+		[projectId]
+	);
+	assert.ok(expectedOwnedKeys.some((key) => key.includes(`/models/imports/${unapprovedImport.importId}/`)));
+	assert.deepEqual(new Set(expectedSiblingKeys), new Set(siblingKeys));
+	fakeNow = new Date();
 	const deleted = await removeProject(projectId, saved.json().savedBaseToken);
 	assert.equal(deleted.statusCode, 202, JSON.stringify(deleted.json()));
-	assert.equal(store.objects.has(revision.derivative_key), false);
-	assert.equal(store.objects.has(expectedSource), false);
-	assert.equal(store.objects.has(sibling), true);
+	for (const key of expectedOwnedKeys) assert.equal(store.objects.has(key), false, `owned key should be removed: ${key}`);
+	for (const key of expectedSiblingKeys) assert.equal(store.objects.has(key), true, `identical-content sibling key should survive: ${key}`);
 	const tombstone = await pool.query(
-		'SELECT key_inventory, sweep_dependent FROM project_deletions WHERE project_id = $1',
+		'SELECT key_inventory, sweep_dependent, first_empty_at, fenced_at, cleanup_bound_ms FROM project_deletions WHERE project_id = $1',
 		[projectId]
 	);
 	assert.equal(tombstone.rows[0].sweep_dependent, true);
-	assert.ok(tombstone.rows[0].key_inventory.includes(revision.derivative_key));
-	assert.ok(tombstone.rows[0].key_inventory.includes(expectedSource));
+	assert.deepEqual(tombstone.rows[0].key_inventory, expectedInventory.rows.map((row) => row.key).sort());
 	assert.ok(tombstone.rows[0].key_inventory.every((key) => key.startsWith(prefix)));
+	assert.equal(tombstone.rows[0].first_empty_at, null);
+	const fencedAt = new Date(tombstone.rows[0].fenced_at).getTime();
+	const cleanupBound = Number(tombstone.rows[0].cleanup_bound_ms);
+	fakeNow = new Date(fencedAt + cleanupBound);
+	const firstEmpty = await removeProject(projectId, saved.json().savedBaseToken);
+	assert.equal(firstEmpty.statusCode, 202, JSON.stringify(firstEmpty.json()));
+	fakeNow = new Date(fencedAt + cleanupBound * 2);
+	const completed = await removeProject(projectId, saved.json().savedBaseToken);
+	assert.equal(completed.statusCode, 200, JSON.stringify(completed.json()));
+	assert.equal(completed.json().cleanup, 'complete');
+	for (const key of expectedOwnedKeys) assert.equal(store.objects.has(key), false, `owned prefix key should be swept: ${key}`);
+	for (const key of expectedSiblingKeys) assert.equal(store.objects.has(key), true);
+	assert.equal((await pool.query('SELECT count(*)::int AS count FROM projects WHERE id = $1', [siblingProjectId])).rows[0].count, 1);
+	assert.equal((await pool.query('SELECT count(*)::int AS count FROM projects WHERE id = $1', [projectId])).rows[0].count, 0);
 });
 
 test('approval and deletion cleanup progress with concurrent advisory waiters on a restricted pool', async () => {
@@ -861,4 +976,241 @@ test('a live writer is stopped at its fixed lease deadline without delete traffi
 	assert.ok(lease.rows[0].released_at);
 	const deleted = await removeProject(projectId, saved.json().savedBaseToken);
 	assert.equal(deleted.statusCode, 202, JSON.stringify(deleted.json()));
+});
+
+test('cleanup resumes from the durable tombstone and inventory in fresh cleanup processes after API shutdown', async () => {
+	const projectId = track();
+	const storeDirectory = await mkdtemp(join(tmpdir(), 'p04s01-restart-store-'));
+	const restartPool = new Pool({ connectionString: DATABASE_URL, application_name: 'p04s01-restart-api-process' });
+	let restartApp;
+	let childResults = [];
+	try {
+		const fileStore = persistentObjectStore(storeDirectory);
+		restartApp = createApp({
+			pool: restartPool,
+			objectStore: fileStore,
+			objectNamespace: OBJECT_NAMESPACE,
+			sessionKey: SESSION_KEY,
+			projectLifecyclePolicy: { ...POLICY, clock: () => new Date(fakeNow) },
+			logger: false
+		});
+		const saved = await save(projectId, ownerCookie, 'Restart cleanup', restartApp);
+		assert.equal(saved.statusCode, 200, JSON.stringify(saved.json()));
+		const asset = await registerAsset(projectId, ownerCookie, restartApp);
+		const upload = await uploadAsset(projectId, asset.id, restartApp);
+		assert.equal(upload.statusCode, 200, JSON.stringify(upload.json()));
+		const actualAssetKey = (await pool.query('SELECT object_key FROM assets WHERE id = $1::uuid', [asset.id])).rows[0].object_key;
+		assert.deepEqual(await fileStore.list(), [actualAssetKey]);
+
+		await writeFile(join(storeDirectory, 'block-deletes'), 'blocked until the API process exits');
+		fakeNow = new Date();
+		const deleted = await removeProject(projectId, saved.json().savedBaseToken, ownerCookie, restartApp);
+		assert.equal(deleted.statusCode, 202, JSON.stringify(deleted.json()));
+		assert.equal(deleted.json().cleanup, 'pending');
+		const durable = await restartPool.query(
+			'SELECT status, key_inventory, fenced_at, cleanup_bound_ms, first_empty_at FROM project_deletions WHERE project_id = $1',
+			[projectId]
+		);
+		assert.equal(durable.rows[0].status, 'pending');
+		assert.deepEqual(durable.rows[0].key_inventory, [actualAssetKey]);
+		assert.equal(durable.rows[0].first_empty_at, null);
+		assert.deepEqual(await fileStore.list(), [actualAssetKey], 'the failed in-process delete leaves persistent bytes for recovery');
+
+		await restartApp.close();
+		restartApp = undefined;
+		await rm(join(storeDirectory, 'block-deletes'), { force: true });
+
+		const fencedAt = new Date(durable.rows[0].fenced_at).getTime();
+		const bound = Number(durable.rows[0].cleanup_bound_ms);
+		childResults.push(await runCleanupChild({ projectId, storeDirectory, nowMs: fencedAt + bound - 1 }));
+		childResults.push(await runCleanupChild({ projectId, storeDirectory, nowMs: fencedAt + bound }));
+		const firstEmptyAt = new Date(childResults[1].tombstone.first_empty_at).getTime();
+		childResults.push(await runCleanupChild({ projectId, storeDirectory, nowMs: firstEmptyAt + bound - 1 }));
+		childResults.push(await runCleanupChild({ projectId, storeDirectory, nowMs: firstEmptyAt + bound }));
+		childResults.push(await runCleanupChild({ projectId, storeDirectory, nowMs: firstEmptyAt + bound, verifyCompleted: true }));
+
+		assert.deepEqual(childResults.map((result) => result.cleanup.status), ['pending', 'pending', 'pending', 'complete', 'complete']);
+		assert.deepEqual(childResults.map((result) => result.tombstone.status), ['pending', 'pending', 'pending', 'complete', 'complete']);
+		assert.equal(childResults[0].cleanup.deletedKeys.includes(actualAssetKey), true);
+		assert.deepEqual(childResults[0].remainingKeys, []);
+		assert.equal(childResults[1].tombstone.first_empty_at, new Date(fencedAt + bound).toISOString());
+		assert.equal(childResults[2].cleanup.status, 'pending', 'the second empty proof cannot precede the persisted bound');
+		assert.equal(childResults[4].includeCompleted, true, 'the completed tombstone was selected by the owner verification mode');
+		assert.equal(new Set(childResults.map((result) => result.pid)).size, childResults.length, 'each retry ran in a distinct fresh process');
+		assert.ok(childResults.every((result) => result.pid !== process.pid), 'retries ran outside the API test process');
+		assert.deepEqual(childResults[4].remainingKeys, []);
+	} finally {
+		if (restartApp) await restartApp.close().catch(() => undefined);
+		await restartPool.end().catch(() => undefined);
+		await rm(storeDirectory, { recursive: true, force: true });
+	}
+});
+
+test('a hostile delayed remote commit is found after completion and forces a spaced re-proof', async () => {
+	const projectId = track();
+	const events = [];
+	let remoteWrite;
+	let enteredResolve;
+	const entered = new Promise((resolveEntered) => { enteredResolve = resolveEntered; });
+	const hostileStore = {
+		async put(key, body, metadata) {
+			if (!remoteWrite?.expectedAssetSegment || !key.includes(remoteWrite.expectedAssetSegment)) return store.put(key, body, metadata);
+			if (metadata.signal.aborted) throw metadata.signal.reason;
+			const chunks = [];
+			for await (const chunk of body) chunks.push(Buffer.from(chunk));
+			remoteWrite = { ...remoteWrite, key, bytes: Buffer.concat(chunks), clientSignal: metadata.signal, state: 'client-waiting' };
+			events.push('remote-write-registered-in-flight');
+			enteredResolve();
+			await new Promise((resolveWrite, rejectWrite) => {
+				const abort = () => {
+					remoteWrite.state = 'client-aborted-remote-commit-still-pending';
+					events.push('client-put-aborted');
+					rejectWrite(metadata.signal.reason);
+				};
+				if (metadata.signal.aborted) abort();
+				else metadata.signal.addEventListener('abort', abort, { once: true });
+			});
+		},
+		get: (...args) => store.get(...args),
+		async delete(key, signal) {
+			await store.delete(key, signal);
+		},
+		async list(signal) {
+			return store.list(signal);
+		}
+	};
+	const hostilePool = new Pool({ connectionString: DATABASE_URL, application_name: 'p04s01-hostile-late-commit' });
+	const hostileApp = createApp({
+		pool: hostilePool,
+		objectStore: hostileStore,
+		objectNamespace: OBJECT_NAMESPACE,
+		sessionKey: SESSION_KEY,
+		projectLifecyclePolicy: { ...POLICY, clock: () => new Date(fakeNow) },
+		logger: false
+	});
+	try {
+		const saved = await save(projectId, ownerCookie, 'Hostile late commit', hostileApp);
+		assert.equal(saved.statusCode, 200, JSON.stringify(saved.json()));
+		const asset = await registerAsset(projectId, ownerCookie, hostileApp);
+		remoteWrite = { expectedAssetSegment: `/${asset.id}/`, state: 'not-started' };
+		fakeNow = new Date();
+		const startedAt = Date.now();
+		const writer = uploadAsset(projectId, asset.id, hostileApp);
+		await within(entered, 2_000, 'hostile remote PUT never entered the in-flight state');
+		const actualAssetKey = remoteWrite.key;
+		assert.ok(remoteWrite.bytes.length > 0, 'fake remote commit owns the complete request bytes before its response is held');
+		const busy = await removeProject(projectId, saved.json().savedBaseToken, ownerCookie, hostileApp);
+		assert.equal(busy.statusCode, 409, JSON.stringify(busy.json()));
+		assert.equal(busy.json().error.code, 'project-busy');
+		events.push('committed-lease-revocation-refused-delete');
+		const abortedWriter = await within(writer, 2_000, 'the client PUT did not abort after the committed revocation');
+		assert.equal(abortedWriter.statusCode, 409, JSON.stringify(abortedWriter.json()));
+		assert.equal(abortedWriter.json().error.code, 'project-busy');
+		assert.ok(Date.now() - startedAt < POLICY.leaseDeadlineMs, 'the conforming handler aborts and releases before its lease deadline');
+		assert.equal(remoteWrite.clientSignal.aborted, true);
+		assert.equal(remoteWrite.state, 'client-aborted-remote-commit-still-pending');
+		await waitForLeaseRelease(projectId);
+		const lease = await pool.query(
+			'SELECT revoked_at, released_at FROM project_write_leases WHERE project_id = $1 ORDER BY started_at DESC LIMIT 1',
+			[projectId]
+		);
+		assert.ok(lease.rows[0].revoked_at);
+		assert.ok(lease.rows[0].released_at);
+		events.push('conforming-handler-released-lease');
+
+		const deleted = await removeProject(projectId, saved.json().savedBaseToken, ownerCookie, hostileApp);
+		assert.equal(deleted.statusCode, 202, JSON.stringify(deleted.json()));
+		const tombstone = await pool.query(
+			'SELECT status, key_inventory, fenced_at, cleanup_bound_ms, first_empty_at FROM project_deletions WHERE project_id = $1',
+			[projectId]
+		);
+		assert.equal(tombstone.rows[0].status, 'pending');
+		assert.ok(tombstone.rows[0].key_inventory.includes(actualAssetKey));
+		assert.equal(tombstone.rows[0].first_empty_at, null);
+		assert.equal(store.objects.has(actualAssetKey), false, 'client compensation and the first cleanup attempt see no committed remote object');
+		const fencedAt = new Date(tombstone.rows[0].fenced_at).getTime();
+		const bound = Number(tombstone.rows[0].cleanup_bound_ms);
+		const cleanupObservations = [{ at: fakeNow.getTime(), status: 'pending', proof: 'delete-handler listing before bound' }];
+
+		fakeNow = new Date(fencedAt + bound - 1);
+		const beforeBound = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(beforeBound.status, 'pending');
+		cleanupObservations.push({ at: fakeNow.getTime(), status: beforeBound.status, proof: 'one millisecond before fence bound' });
+
+		fakeNow = new Date(fencedAt + bound);
+		const firstEmpty = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(firstEmpty.status, 'pending');
+		const afterFirstEmpty = await pool.query('SELECT first_empty_at FROM project_deletions WHERE project_id = $1', [projectId]);
+		assert.equal(new Date(afterFirstEmpty.rows[0].first_empty_at).getTime(), fakeNow.getTime());
+		cleanupObservations.push({ at: fakeNow.getTime(), status: firstEmpty.status, proof: 'first scoped empty listing at bound' });
+
+		fakeNow = new Date(fakeNow.getTime() + bound - 1);
+		const tooSoon = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(tooSoon.status, 'pending');
+		cleanupObservations.push({ at: fakeNow.getTime(), status: tooSoon.status, proof: 'one millisecond before spacing bound' });
+
+		fakeNow = new Date(fakeNow.getTime() + 1);
+		const complete = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(complete.status, 'complete');
+		cleanupObservations.push({ at: fakeNow.getTime(), status: complete.status, proof: 'second scoped empty listing at bound' });
+		events.push('cleanup-completed-before-hostile-commit');
+
+		store.objects.set(remoteWrite.key, { bytes: remoteWrite.bytes, options: { hostileLateCommit: true } });
+		remoteWrite.state = 'committed-after-cleanup-complete';
+		events.push('hostile-remote-commit-after-client-abort-and-completion');
+		const repaired = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(repaired.status, 'pending');
+		assert.deepEqual(repaired.repairedLateKeys, [actualAssetKey]);
+		assert.equal(store.objects.has(actualAssetKey), false);
+		events.push('completed-record-verification-reported-and-removed-late-key');
+		const secondFirstEmpty = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(secondFirstEmpty.status, 'pending');
+		const reproof = await pool.query('SELECT first_empty_at FROM project_deletions WHERE project_id = $1', [projectId]);
+		const reproofStart = new Date(reproof.rows[0].first_empty_at).getTime();
+		fakeNow = new Date(reproofStart + bound - 1);
+		const reproofTooSoon = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(reproofTooSoon.status, 'pending');
+		fakeNow = new Date(reproofStart + bound);
+		const reproved = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(reproved.status, 'complete');
+		const repeated = await runProjectDeletionCleanup(pool, hostileStore, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+		assert.equal(repeated.status, 'complete');
+		events.push('pending-reproved-complete-after-spaced-empty-listings');
+
+		assert.deepEqual(cleanupObservations.map((item) => item.status), ['pending', 'pending', 'pending', 'pending', 'complete']);
+		for (const event of [
+			'remote-write-registered-in-flight',
+			'client-put-aborted',
+			'committed-lease-revocation-refused-delete',
+			'conforming-handler-released-lease',
+			'cleanup-completed-before-hostile-commit',
+			'hostile-remote-commit-after-client-abort-and-completion',
+			'completed-record-verification-reported-and-removed-late-key',
+			'pending-reproved-complete-after-spaced-empty-listings'
+		]) assert.ok(events.includes(event), `expected event: ${event}`);
+	} finally {
+		await hostileApp.close();
+	}
+});
+
+test('cleanup completion retains no in-memory requirement across repeated owner verification', async () => {
+	const projectId = track();
+	const saved = await save(projectId, ownerCookie, 'Repeat completed cleanup');
+	assert.equal(saved.statusCode, 200, JSON.stringify(saved.json()));
+	const asset = await registerAsset(projectId);
+	assert.equal((await uploadAsset(projectId, asset.id)).statusCode, 200);
+	const actualAssetKey = (await pool.query('SELECT object_key FROM assets WHERE id = $1::uuid', [asset.id])).rows[0].object_key;
+	fakeNow = new Date();
+	assert.equal((await removeProject(projectId, saved.json().savedBaseToken)).statusCode, 202);
+	const record = await pool.query('SELECT fenced_at, cleanup_bound_ms, first_empty_at FROM project_deletions WHERE project_id = $1', [projectId]);
+	const fencedAt = new Date(record.rows[0].fenced_at).getTime();
+	const bound = Number(record.rows[0].cleanup_bound_ms);
+	fakeNow = new Date(fencedAt + bound);
+	assert.equal((await runProjectDeletionCleanup(pool, store, projectId, { ...POLICY, clock: () => new Date(fakeNow) })).status, 'pending');
+	fakeNow = new Date(fakeNow.getTime() + bound);
+	assert.equal((await runProjectDeletionCleanup(pool, store, projectId, { ...POLICY, clock: () => new Date(fakeNow) })).status, 'complete');
+	const verify1 = await runProjectDeletionCleanup(pool, store, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+	const verify2 = await runProjectDeletionCleanup(pool, store, projectId, { ...POLICY, clock: () => new Date(fakeNow) });
+	assert.deepEqual([verify1.status, verify2.status], ['complete', 'complete']);
+	assert.equal(store.objects.has(actualAssetKey), false);
 });

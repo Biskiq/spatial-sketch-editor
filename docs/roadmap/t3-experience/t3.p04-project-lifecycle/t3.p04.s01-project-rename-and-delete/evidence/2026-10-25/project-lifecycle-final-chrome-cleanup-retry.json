@@ -1,0 +1,29 @@
+{
+  "jobs": [
+    {
+      "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+      "fencedAt": "2026-10-25T18:01:02.059Z",
+      "cleanupBoundMs": 5750,
+      "expectedKeys": [],
+      "siblingKeys": []
+    },
+    {
+      "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+      "fencedAt": "2026-10-25T18:01:03.617Z",
+      "cleanupBoundMs": 5750,
+      "expectedKeys": [
+        "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+      ],
+      "siblingKeys": [
+        "projects/t3p04s01qa/project:e678056e-cc05-49ff-b798-cf15997ec1bb/assets/1bfca054-3e7a-4078-af6a-960705b85144/9c3af204767375667ec543e0883b348d"
+      ]
+    },
+    {
+      "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+      "fencedAt": "2026-10-25T18:01:04.317Z",
+      "cleanupBoundMs": 5750,
+      "expectedKeys": [],
+      "siblingKeys": []
+    }
+  ]
+}

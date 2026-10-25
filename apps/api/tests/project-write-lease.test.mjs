@@ -7,7 +7,7 @@ import {
 	withProjectWriteLease
 } from '../dist/project-write-lease.js';
 
-function scriptedPool({ afterProjectRead, afterInsert, beforeCommit } = {}) {
+function scriptedPool({ afterProjectRead, afterInsert, beforeCommit, failRenewal } = {}) {
 	const events = [];
 	return {
 		events,
@@ -36,6 +36,9 @@ function scriptedPool({ afterProjectRead, afterInsert, beforeCommit } = {}) {
 		},
 		async query(text) {
 			events.push(text);
+			if (text.includes('SET heartbeat_at') && failRenewal?.()) {
+				throw new Error('injected lease-renewal database failure');
+			}
 			if (text.includes('UPDATE project_write_leases')) return { rows: [] };
 			throw new Error(`Unexpected pool query: ${text}`);
 		},
@@ -113,4 +116,30 @@ test('synchronous lease checks abort writes after an elapsed-time jump even if t
 
 	assert.equal(signal.aborted, true);
 	assert.equal(byteWriteStarted, false);
+});
+
+test('a renewal database error fails closed and releases the write lease', async () => {
+	const time = { now: 0 };
+	let leaseInserted = false;
+	const pool = scriptedPool({
+		afterInsert: () => { leaseInserted = true; },
+		failRenewal: () => leaseInserted
+	});
+	let signal;
+	let writeStarted = false;
+
+	await assert.rejects(
+		withProjectWriteLease(pool, 'owner-1', 'project-1', async (lease) => {
+			signal = lease.signal;
+			await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+			lease.assertActive();
+			writeStarted = true;
+		}, { policy: fakePolicy(time) }),
+		ProjectWriteAbortedError
+	);
+
+	assert.equal(signal.aborted, true);
+	assert.equal(writeStarted, false);
+	assert.ok(pool.events.some((event) => event.includes('SET heartbeat_at')));
+	assert.ok(pool.events.some((event) => event.includes('SET released_at')));
 });
