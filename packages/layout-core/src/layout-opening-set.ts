@@ -64,6 +64,28 @@ export type OpeningSetIssue = {
 };
 
 /**
+ * Identity indexes over one document (T1.P02.S06 D.1 / H3).
+ *
+ * `wallFirstWallSpan` resolves two Junction ids per call. A caller that resolves
+ * many Walls — the whole-hosting-Wall Opening set, which used to scan the
+ * Junction list twice per Opening (34.6 M `lookup:junctions` per grid-L drag
+ * run in Bench 1) — builds this once and passes it, so a lookup is an identity
+ * map read and the count oracle reports two visits instead of the document size.
+ */
+export type WallFirstWallIndex = {
+	readonly wallById: ReadonlyMap<string, LayoutWall>;
+	readonly pointById: ReadonlyMap<string, LayoutVec2>;
+};
+
+/** Build the identity indexes for one document. */
+export function wallFirstWallIndex(document: LayoutDocumentWallFirst): WallFirstWallIndex {
+	return {
+		wallById: new Map(document.walls.map((wall) => [wall.id, wall] as const)),
+		pointById: new Map(document.junctions.map((junction) => [junction.id, junction.point] as const))
+	};
+}
+
+/**
  * Canonical Wall span in document X/Z space (meters).
  *
  * P23.11 — `length` is the **sampled arc length** of the Wall's canonical
@@ -74,17 +96,27 @@ export type OpeningSetIssue = {
 export function wallFirstWallSpan(
 	document: LayoutDocumentWallFirst,
 	wall: LayoutWall,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
+	index?: WallFirstWallIndex
 ): { start: LayoutVec2; end: LayoutVec2; length: number } | undefined {
-	// T1.P02.S06 work count (inert without an observer): two linear Junction
-	// lookups per call, an upper bound on the visits.
-	countWork('lookup:junctions', 2 * document.junctions.length);
-	const start = document.junctions.find(
-		(junction) => junction.id === wall.startJunctionId
-	)?.point;
-	const end = document.junctions.find(
-		(junction) => junction.id === wall.endJunctionId
-	)?.point;
+	let start: LayoutVec2 | undefined;
+	let end: LayoutVec2 | undefined;
+	if (index) {
+		// Two identity lookups; the index removes the linear scan.
+		countWork('lookup:junctions', 2);
+		start = index.pointById.get(wall.startJunctionId);
+		end = index.pointById.get(wall.endJunctionId);
+	} else {
+		// T1.P02.S06 work count (inert without an observer): two linear Junction
+		// lookups per call, an upper bound on the visits.
+		countWork('lookup:junctions', 2 * document.junctions.length);
+		start = document.junctions.find(
+			(junction) => junction.id === wall.startJunctionId
+		)?.point;
+		end = document.junctions.find(
+			(junction) => junction.id === wall.endJunctionId
+		)?.point;
+	}
 	if (!start || !end) return undefined;
 	const sampled = sampling
 		? sampling.samples(wall, start, end, 'forward')
@@ -96,11 +128,12 @@ export function wallFirstWallSpan(
 /** Canonical Wall length in meters, or `undefined` when the span is unresolved. */
 export function wallFirstWallLength(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
+	index?: WallFirstWallIndex
 ): number | undefined {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const wall = index ? index.wallById.get(wallId) : document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return undefined;
-	return wallFirstWallSpan(document, wall)?.length;
+	return wallFirstWallSpan(document, wall, undefined, index)?.length;
 }
 
 /**
@@ -113,13 +146,15 @@ export function validateWallFirstOpeningSet(
 	sampling?: WallSamplingDerivation
 ): OpeningSetIssue[] {
 	const issues: OpeningSetIssue[] = [];
-	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
+	// One identity index serves every Opening's host-Wall span below.
+	const walls = wallFirstWallIndex(document);
+	const wallById = walls.wallById;
 	const openingsByWall = new Map<string, LayoutWallOpening[]>();
 
 	document.openings.forEach((opening, index) => {
 		const path = `$.openings[${index}]`;
 		const wall = wallById.get(opening.wallId);
-		const span = wall ? wallFirstWallSpan(document, wall, sampling) : undefined;
+		const span = wall ? wallFirstWallSpan(document, wall, sampling, walls) : undefined;
 		if (!wall || !span || !(span.length > OPENING_SET_EPSILON)) {
 			issues.push({
 				openingId: opening.id,

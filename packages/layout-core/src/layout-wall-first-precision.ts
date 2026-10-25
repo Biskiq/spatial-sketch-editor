@@ -66,7 +66,9 @@ import {
 	type NodingIdAllocator,
 	type NodingPlan
 } from './layout-wall-noding';
-import { coincidesAsJunction } from './layout-junction-identity';
+import { coincidesAsJunction, coincidentJunctionPairs } from './layout-junction-identity';
+import { createPlanBoxIndex, type PlanBox } from './layout-plan-box-index';
+import { CURVE_SELF_INTERSECTION_TOLERANCE } from './layout-geometry-curve';
 import {
 	topologyComponentKeyByJunctionId,
 	topologyComponentKeyByWallId
@@ -2227,6 +2229,9 @@ function validateWallFirstTopologyPass(
 	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
 	const junctionIndexById = new Map(document.junctions.map((junction, index) => [junction.id, index] as const));
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction] as const));
+	// T1.P02.S06 D.1 (H3) — one id→point index for every Wall this pass resolves,
+	// instead of two linear Junction scans per Wall.
+	const junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point] as const));
 	// The predicate itself, so a scoped pass evaluates the SAME rule with the same path, code,
 	// message and target as the canonical loop (INV-3).
 	const coincidenceFailure = (firstId: string, secondId: string): LayoutGeometryIssue | undefined => {
@@ -2248,25 +2253,22 @@ function validateWallFirstTopologyPass(
 			if (failure) return failure;
 		}
 	} else {
-		for (let first = 0; first < document.junctions.length; first += 1) {
-			// T1.P02.S06 work counts (inert without an observer): pairs visited, and
-			// the same-component pairs that reach the predicate.
-			countWork('pairs:junction-junction', document.junctions.length - first - 1);
-			for (let second = first + 1; second < document.junctions.length; second += 1) {
-				if (
-					keyByJunctionId.get(document.junctions[first]!.id) !==
-					keyByJunctionId.get(document.junctions[second]!.id)
-				) {
-					continue;
-				}
-				countWork('pairs:junction-junction:same-component');
-				observeTopologyEvaluation('junction-coincidence', [
-					document.junctions[first]!.id,
-					document.junctions[second]!.id
-				]);
-				const failure = coincidenceFailure(document.junctions[first]!.id, document.junctions[second]!.id);
-				if (failure) return failure;
-			}
+		// T1.P02.S06 D.1 (H3) — the coincidence rule is an index query, not an
+		// O(J²) sweep: `coincidentJunctionPairs` hands back the pairs that CAN
+		// coincide (a superset), in this loop's own order. The predicate, its
+		// component scope and the first-wins rule are the shipped ones below.
+		const candidates = coincidentJunctionPairs(document.junctions);
+		// Work counts (inert without an observer): pairs the index leaves to the
+		// rule, and the same-component pairs that reach the predicate.
+		countWork('pairs:junction-junction', candidates.length);
+		for (const [first, second] of candidates) {
+			const firstId = document.junctions[first]!.id;
+			const secondId = document.junctions[second]!.id;
+			if (keyByJunctionId.get(firstId) !== keyByJunctionId.get(secondId)) continue;
+			countWork('pairs:junction-junction:same-component');
+			observeTopologyEvaluation('junction-coincidence', [firstId, secondId]);
+			const failure = coincidenceFailure(firstId, secondId);
+			if (failure) return failure;
 		}
 	}
 
@@ -2274,7 +2276,7 @@ function validateWallFirstTopologyPass(
 	// CHECKED for zero length is what a subject scopes.
 	const wallSegments = new Map<string, TopologySegment>();
 	for (const wall of document.walls) {
-		const endpoints = wallEndpoints(document, wall);
+		const endpoints = wallEndpoints(document, wall, junctionPointById);
 		if (!endpoints || !(endpoints.length > POINT_EPSILON)) continue;
 		wallSegments.set(wall.id, { id: wall.id, start: endpoints.start, end: endpoints.end });
 	}
@@ -2335,11 +2337,23 @@ function validateWallFirstTopologyPass(
 			if (failure) return failure;
 		}
 	} else {
-		for (let first = 0; first < walls.length; first += 1) {
-			countWork('pairs:wall-wall', walls.length - first - 1);
-			for (let second = first + 1; second < walls.length; second += 1) {
-				const a = walls[first]!;
-				const b = walls[second]!;
+		// T1.P02.S06 D.1 (H3) — Wall × Wall through a plan-space box index (I2).
+		// Two Wall segments whose boxes are disjoint cannot share an endpoint,
+		// cross or overlap, so the chord classifier would answer `none`; the index
+		// visits only the pairs whose boxes overlap, in this loop's own order.
+		const indexedWalls = walls.filter((wall) => wallSegments.has(wall.id));
+		const wallBoxes = indexedWalls.map((wall) => segmentPlanBox(wallSegments.get(wall.id)!));
+		const wallBoxIndex = createPlanBoxIndex(wallBoxes);
+		for (let first = 0; first < indexedWalls.length; first += 1) {
+			const a = indexedWalls[first]!;
+			const candidates = wallBoxIndex.overlaps(wallBoxes[first]!);
+			for (const second of candidates) {
+				if (second <= first) continue;
+				// Counted per UNIQUE pair, exactly as the nested loop did, so the
+				// number stays comparable with Bench 1's 10.7 M Wall × Wall visits
+				// (the query returns each pair from both sides plus a self hit).
+				countWork('pairs:wall-wall');
+				const b = indexedWalls[second]!;
 				if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
 				countWork('pairs:wall-wall:same-component');
 				observeTopologyEvaluation('wall-chord', [a.id, b.id]);
@@ -2356,7 +2370,8 @@ function validateWallFirstTopologyPass(
 		wallSegments,
 		options.sampling,
 		options.disableExtentPruneForTest,
-		subject ? { wallIds: subject.wallIds, pairs: subject.wallPairs } : undefined
+		subject ? { wallIds: subject.wallIds, pairs: subject.wallPairs } : undefined,
+		junctionPointById
 	);
 	if (curveCrossing) {
 		if (curveCrossing.kind === 'self') {
@@ -2569,7 +2584,8 @@ export function detectWallCurveTopologyCrossings(
 	wallSegments: ReadonlyMap<string, TopologySegment>,
 	sampling?: WallSamplingDerivation,
 	disableExtentPruneForTest?: boolean,
-	subject?: WallCurveTopologyCrossingSubject
+	subject?: WallCurveTopologyCrossingSubject,
+	points?: ReadonlyMap<string, LayoutVec2>
 ): WallCurveTopologyCrossing | undefined {
 	const sampledWalls = new Map<string, SampledTopologyWall>();
 	for (const wall of document.walls) {
@@ -2579,7 +2595,7 @@ export function detectWallCurveTopologyCrossings(
 		if (wall.centerline.kind === 'line') {
 			samples = chordPolyline(segment);
 		} else {
-			const endpoints = wallEndpoints(document, wall);
+			const endpoints = wallEndpoints(document, wall, points);
 			const sampled = endpoints
 				? sampling
 					? sampling.samples(wall, endpoints.start, endpoints.end, 'forward')
@@ -2650,23 +2666,59 @@ export function detectWallCurveTopologyCrossings(
 		}
 		return undefined;
 	}
-	for (let first = 0; first < document.walls.length; first += 1) {
-		countWork('pairs:wall-wall-curve', document.walls.length - first - 1);
-		for (let second = first + 1; second < document.walls.length; second += 1) {
-			const a = document.walls[first]!;
-			const b = document.walls[second]!;
+	// P23B.4 M-2a: conservative extent prune — a pair whose swept extents cannot
+	// overlap cannot newly cross. Test-only bypass (F2) recovers the genuine
+	// exhaustive loop with only this gate absent; never set in production.
+	if (disableExtentPruneForTest) {
+		for (let first = 0; first < document.walls.length; first += 1) {
+			countWork('pairs:wall-wall-curve', document.walls.length - first - 1);
+			for (let second = first + 1; second < document.walls.length; second += 1) {
+				const a = document.walls[first]!;
+				const b = document.walls[second]!;
+				if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
+				// Two straight Walls are already fully decided by the chord gate.
+				if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
+				const sampledA = sampledWalls.get(a.id);
+				const sampledB = sampledWalls.get(b.id);
+				if (!sampledA || !sampledB) continue;
+				const shared = sharedJunctionIds(a, b)[0];
+				observeTopologyEvaluation('wall-pair-crossing', [a.id, b.id]);
+				if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
+				return shared
+					? { kind: 'pair', wallIds: [a.id, b.id], sharedJunctionId: shared }
+					: { kind: 'pair', wallIds: [a.id, b.id] };
+			}
+		}
+		return undefined;
+	}
+	// T1.P02.S06 D.1 (H3) — the same prune, made an index query. Every pair whose
+	// tolerance-expanded sample boxes overlap is a candidate, in the shipped order;
+	// a pair the index omits is one `sampledWallExtentsOverlap` would have
+	// rejected anyway (OR-9), so the verdict, the reporting and the first-wins rule
+	// are unchanged. Boxes are computed once per Wall, not once per pair.
+	const indexedWalls: LayoutWall[] = [];
+	const sampledBoxes: PlanBox[] = [];
+	for (const wall of document.walls) {
+		const sampled = sampledWalls.get(wall.id);
+		if (!sampled) continue;
+		indexedWalls.push(wall);
+		sampledBoxes.push(sampledPlanBox(sampled.samples, CURVE_SELF_INTERSECTION_TOLERANCE));
+	}
+	const sampledBoxIndex = createPlanBoxIndex(sampledBoxes);
+	for (let first = 0; first < indexedWalls.length; first += 1) {
+		const a = indexedWalls[first]!;
+		const candidates = sampledBoxIndex.overlaps(sampledBoxes[first]!);
+		for (const second of candidates) {
+			if (second <= first) continue;
+			// Per unique pair, as the nested loop counted it (the query returns a
+			// pair from both sides plus a self hit).
+			countWork('pairs:wall-wall-curve');
+			const b = indexedWalls[second]!;
 			if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
 			// Two straight Walls are already fully decided by the chord gate.
 			if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
-			const sampledA = sampledWalls.get(a.id);
-			const sampledB = sampledWalls.get(b.id);
-			if (!sampledA || !sampledB) continue;
-			// P23B.4 M-2a: conservative extent prune — a pair whose swept extents
-			// cannot overlap cannot newly cross. Same predicate, same reporting,
-			// same first-wins order; only rejected-anyway pairs are skipped (OR-9).
-			// Test-only bypass (F2): `disableExtentPruneForTest` recovers the genuine
-			// exhaustive behavior with only this gate absent. Never set in production.
-			if (!disableExtentPruneForTest && !sampledWallExtentsOverlap(sampledA, sampledB)) continue;
+			const sampledA = sampledWalls.get(a.id)!;
+			const sampledB = sampledWalls.get(b.id)!;
 			const shared = sharedJunctionIds(a, b)[0];
 			observeTopologyEvaluation('wall-pair-crossing', [a.id, b.id]);
 			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
@@ -2687,16 +2739,58 @@ function topologyFailure(firstId: string, secondId: string | undefined, message:
 	};
 }
 
+/**
+ * One Wall's resolved endpoints. `points` is an optional id→point index for
+ * callers that resolve many Walls (T1.P02.S06 D.1: the topology gates); without
+ * it the historical linear Junction scan runs, so a one-off caller is unchanged.
+ */
 function wallEndpoints(
 	document: LayoutDocumentWallFirst,
-	wall: LayoutWall
+	wall: LayoutWall,
+	points?: ReadonlyMap<string, LayoutVec2>
 ): { start: LayoutVec2; end: LayoutVec2; length: number } | undefined {
-	// Two linear Junction lookups per Wall (an upper bound on the visits).
-	countWork('lookup:junctions', 2 * document.junctions.length);
-	const start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
-	const end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
+	let start: LayoutVec2 | undefined;
+	let end: LayoutVec2 | undefined;
+	if (points) {
+		// Two identity lookups; the index removes the linear scan entirely.
+		countWork('lookup:junctions', 2);
+		start = points.get(wall.startJunctionId);
+		end = points.get(wall.endJunctionId);
+	} else {
+		// Two linear Junction lookups per Wall (an upper bound on the visits).
+		countWork('lookup:junctions', 2 * document.junctions.length);
+		start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
+		end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
+	}
 	if (!start || !end) return undefined;
 	return { start, end, length: distance(start, end) };
+}
+
+/** Inclusive plan-space box of one resolved Wall segment. */
+function segmentPlanBox(segment: TopologySegment): PlanBox {
+	return {
+		minX: Math.min(segment.start[0], segment.end[0]),
+		minZ: Math.min(segment.start[1], segment.end[1]),
+		maxX: Math.max(segment.start[0], segment.end[0]),
+		maxZ: Math.max(segment.start[1], segment.end[1])
+	};
+}
+
+/** Inclusive plan-space box of a sampled polyline, expanded by `pad` on each side. */
+function sampledPlanBox(samples: readonly CurveSample[], pad: number): PlanBox {
+	let minX = Infinity;
+	let minZ = Infinity;
+	let maxX = -Infinity;
+	let maxZ = -Infinity;
+	for (const sample of samples) {
+		const x = sample.point[0];
+		const z = sample.point[1];
+		if (x < minX) minX = x;
+		if (z < minZ) minZ = z;
+		if (x > maxX) maxX = x;
+		if (z > maxZ) maxZ = z;
+	}
+	return { minX: minX - pad, minZ: minZ - pad, maxX: maxX + pad, maxZ: maxZ + pad };
 }
 
 function currentJunctionPoint(document: LayoutDocumentWallFirst, junctionId: string): LayoutVec2 {
