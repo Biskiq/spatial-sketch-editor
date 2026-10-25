@@ -55,7 +55,13 @@ import type { PlannerRegistry, PrepareResult } from '../f4/prepare';
 import { createUnitTargetInspector, prepareUnitIntent } from '../f4/unit-acceptance';
 import { computeEnvelopeSourceContentId, computeUnitContentRevision } from './canonical';
 import { dependencyLockKey } from './identity';
-import { serializeValidatedProjectEnvelope, validateProjectEnvelope, type EnvelopeClosureFinding } from './validate';
+import {
+	freezePlainJsonSubgraph,
+	isDeeplyFrozenPlainJson,
+	serializeValidatedProjectEnvelope,
+	validateProjectEnvelope,
+	type EnvelopeClosureFinding
+} from './validate';
 import { UNIT_DOMAINS, type DomainUnit, type ProjectEnvelope, type ProjectUnits, type UnitDomain } from './types';
 
 /** The exact capability scope this adapter serves. */
@@ -205,6 +211,8 @@ function lockChanged(before: ProjectEnvelope, after: ProjectEnvelope): boolean {
  * installs the returned source in one step. A rejection leaves the previously
  * accepted envelope, history and resource bytes untouched.
  */
+const ADMITTED_BY_FROZEN_ENVELOPE = new WeakMap<object, SourceAdmission<ProjectEnvelope>>();
+
 export function createUnitAcceptanceAdapter(
 	options: UnitAcceptanceAdapterOptions = {}
 ): AcceptanceSourceAdapter<ProjectEnvelope> {
@@ -212,6 +220,10 @@ export function createUnitAcceptanceAdapter(
 	const resourceStaging = options.resourceStaging === true;
 
 	async function admitCandidate(input: unknown): Promise<SourceAdmission<ProjectEnvelope>> {
+		if (typeof input === 'object' && input !== null && isDeeplyFrozenPlainJson(input)) {
+			const cached = ADMITTED_BY_FROZEN_ENVELOPE.get(input);
+			if (cached !== undefined) return cached;
+		}
 		const validated = validateProjectEnvelope(input);
 		if (!validated.success) {
 			return { kind: 'rejected', code: 'invalid-envelope', message: 'The candidate is not a valid F.2 envelope', issues: validated.issues };
@@ -220,31 +232,26 @@ export function createUnitAcceptanceAdapter(
 		// every unit header from that unit's own data. Re-hashing the headers it just
 		// wrote (`verifyUnitContentRevisions`, still used by Save) could only disagree
 		// if the digest were not a pure function of the data, so admission does not.
+		// `normalizeUnitEnvelope` stamps only hex SHA-256 `contentRevision` strings on
+		// unit headers and unit-scoped lock entries; every payload, resource lock entry
+		// and `validated.closure` finding was already validated on `validated.envelope`
+		// and is invariant under normalization, so no second envelope validation runs.
 		const normalized = await normalizeUnitEnvelope(validated.envelope);
-		// One envelope validation per *distinct* question. The first answers "is the
-		// candidate a valid envelope at all?", which normalization requires; the
-		// second answers "did normalization produce a valid envelope?" and is the one
-		// whose result serialization and closure read. `admit` therefore validates
-		// twice, never three times: the post-normalization value is what gets
-		// serialized, so the serializer does not re-validate it.
 		const sourceContentId = await computeEnvelopeSourceContentId(normalized);
 		const lockIssues = await verifyUnitDependencyLocks(normalized, sourceContentId);
 		if (lockIssues.length > 0) {
 			return { kind: 'rejected', code: 'lock-closure', message: 'The dependency lock does not resolve in this envelope', issues: lockIssues };
 		}
-		const revalidated = validateProjectEnvelope(normalized);
-		if (!revalidated.success) {
-			return { kind: 'rejected', code: 'invalid-envelope', message: 'The normalized candidate is not a valid envelope', issues: revalidated.issues };
-		}
-		if (revalidated.closure.length > 0) {
+		if (validated.closure.length > 0) {
 			return {
 				kind: 'rejected',
 				code: 'lock-closure',
 				message: 'The envelope cannot satisfy an executable resource requirement',
-				issues: closureIssues(revalidated.closure)
+				issues: closureIssues(validated.closure)
 			};
 		}
-		const canonicalJson = serializeValidatedProjectEnvelope(revalidated.envelope);
+		const canonicalJson = serializeValidatedProjectEnvelope(normalized);
+		freezePlainJsonSubgraph(normalized);
 		// Repairable authored diagnostics stay diagnostics: F.2 admits an explicit
 		// unresolved binding, and refusing it here would be a stricter contract than
 		// the ratified one. Executable closure above is the blocking half.
@@ -252,13 +259,18 @@ export function createUnitAcceptanceAdapter(
 		// The returned source is the coordinator's immutable install payload. Its
 		// embedded `acceptedRevision` is deliberately not rewritten here: the
 		// coordinator owns revision minting (see the module header).
-		return {
+		const admission: SourceAdmission<ProjectEnvelope> = {
 			kind: 'admitted',
 			source: normalized,
 			canonicalJson,
 			sourceContentId,
 			blockingIssues: []
 		};
+		if (typeof input === 'object' && input !== null && isDeeplyFrozenPlainJson(input)) {
+			ADMITTED_BY_FROZEN_ENVELOPE.set(input, admission);
+		}
+		ADMITTED_BY_FROZEN_ENVELOPE.set(normalized, admission);
+		return admission;
 	}
 
 	/**
@@ -328,11 +340,20 @@ export function createUnitAcceptanceAdapter(
 							entry.pin.locator === previous.pin.locator))
 				);
 			});
-		return {
+		const shared: ProjectEnvelope = {
 			...captured,
 			units: units as ProjectUnits,
 			dependencyLock: sameLock ? baseline.dependencyLock : captured.dependencyLock
 		};
+		freezePlainJsonSubgraph(shared);
+		const admission = ADMITTED_BY_FROZEN_ENVELOPE.get(captured);
+		if (admission !== undefined && admission.kind === 'admitted') {
+			ADMITTED_BY_FROZEN_ENVELOPE.set(shared, {
+				...admission,
+				source: shared
+			});
+		}
+		return shared;
 	}
 
 	return {

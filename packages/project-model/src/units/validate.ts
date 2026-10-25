@@ -22,7 +22,12 @@
  */
 
 import { dependencyLockKey } from './identity';
-import { countWork, p2311Measure, validateWallFirstLayoutDocument } from '@portfolio/layout-core';
+import {
+	countWork,
+	linkClonedCowCandidate,
+	p2311Measure,
+	validateWallFirstLayoutDocument
+} from '@portfolio/layout-core';
 import { ShapeReader, type ShapeIssue, type ShapeValidation } from '../strict-shape';
 import { validateAcceptedRevision, validateSemanticReference } from '../references/validate';
 import { REFERENCE_FAILURE_CODES, isReferenceDomain } from '../references/types';
@@ -277,6 +282,9 @@ function samePin(left: ResourcePin | null, right: ResourcePin | null): boolean {
 export function validateLayoutPayload(input: unknown): ShapeValidation<LayoutUnitPayload> {
 	const result = validateWallFirstLayoutDocument(input);
 	if (!result.success) return { success: false, issues: delegatedIssues(result.issues) };
+	if (typeof input === 'object' && input !== null) {
+		linkClonedCowCandidate(input as LayoutUnitPayload, result.document);
+	}
 	return { success: true, value: result.document, ignoredOptionalExtensions: [] };
 }
 
@@ -951,6 +959,67 @@ function readModelHash(reader: ShapeReader, value: unknown, path: string): strin
 
 type PayloadReader = (input: unknown) => ShapeValidation<UnitPayload>;
 
+const DEEPLY_FROZEN_PLAIN_JSON = new WeakSet<object>();
+
+/**
+ * Returns true if and only if `value` is deeply frozen plain JSON (plain Object
+ * or Array with no getters/setters/symbols/prototype modifications).
+ * Verified objects are remembered in `DEEPLY_FROZEN_PLAIN_JSON` for O(1) checks.
+ */
+export function isDeeplyFrozenPlainJson(value: unknown): value is object {
+	if (typeof value !== 'object' || value === null) return false;
+	if (DEEPLY_FROZEN_PLAIN_JSON.has(value)) return true;
+	if (!Object.isFrozen(value)) return false;
+
+	const proto = Object.getPrototypeOf(value);
+	if (proto !== Object.prototype && proto !== Array.prototype && proto !== null) {
+		return false;
+	}
+
+	const descriptors = Object.getOwnPropertyDescriptors(value);
+	for (const key of Object.keys(descriptors)) {
+		const desc = descriptors[key]!;
+		if (desc.get !== undefined || desc.set !== undefined) return false;
+		const val = desc.value;
+		if (typeof val === 'object' && val !== null) {
+			if (!isDeeplyFrozenPlainJson(val)) return false;
+		}
+	}
+
+	DEEPLY_FROZEN_PLAIN_JSON.add(value);
+	return true;
+}
+
+/**
+ * Recursively freezes plain JSON object trees and marks each in `DEEPLY_FROZEN_PLAIN_JSON`.
+ */
+export function freezePlainJsonSubgraph<T>(value: T): T {
+	if (typeof value !== 'object' || value === null) return value;
+	if (DEEPLY_FROZEN_PLAIN_JSON.has(value as object)) return value;
+	const obj = value as Record<string, unknown>;
+	for (const key of Object.keys(obj)) {
+		const child = obj[key];
+		if (typeof child === 'object' && child !== null) {
+			freezePlainJsonSubgraph(child);
+		}
+	}
+	if (!Object.isFrozen(obj)) {
+		Object.freeze(obj);
+	}
+	DEEPLY_FROZEN_PLAIN_JSON.add(obj);
+	return value;
+}
+
+const VALIDATED_PAYLOAD_CACHE: {
+	[D in UnitDomain]: WeakMap<object, ShapeValidation<UnitPayload>>;
+} = {
+	layout: new WeakMap(),
+	scene: new WeakMap(),
+	camera: new WeakMap(),
+	experience: new WeakMap(),
+	resources: new WeakMap()
+};
+
 const PAYLOAD_READERS: Readonly<Record<UnitDomain, PayloadReader>> = {
 	layout: validateLayoutPayload as PayloadReader,
 	scene: validateCameraFreeScenePayload as PayloadReader,
@@ -965,6 +1034,25 @@ const PAYLOAD_READERS: Readonly<Record<UnitDomain, PayloadReader>> = {
  * version is a version negotiation failure, not a variant to interpret.
  */
 export function validateUnitPayload(domain: UnitDomain, input: unknown): ShapeValidation<UnitPayload> {
+	if (typeof input === 'object' && input !== null && isDeeplyFrozenPlainJson(input)) {
+		const cached = VALIDATED_PAYLOAD_CACHE[domain].get(input);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const result = PAYLOAD_READERS[domain](input);
+		if (result.success) {
+			freezePlainJsonSubgraph(result.value);
+			if (domain === 'layout') {
+				linkClonedCowCandidate(
+					input as unknown as Parameters<typeof linkClonedCowCandidate>[0],
+					result.value as unknown as Parameters<typeof linkClonedCowCandidate>[1]
+				);
+			}
+			VALIDATED_PAYLOAD_CACHE[domain].set(input, result);
+			VALIDATED_PAYLOAD_CACHE[domain].set(result.value as object, result);
+		}
+		return result;
+	}
 	return PAYLOAD_READERS[domain](input);
 }
 
@@ -1034,9 +1122,25 @@ function readDomainUnit<D extends UnitDomain>(
  * registry does not carry, which makes publication refuse while admission stays
  * possible.
  */
+const VALIDATED_ENVELOPE_CACHE = new WeakMap<object, EnvelopeValidation>();
+
 export function validateProjectEnvelope(input: unknown): EnvelopeValidation {
 	countWork('envelope:validate');
-	return p2311Measure('envelope-validate', () => validateProjectEnvelopeOnce(input));
+	if (typeof input === 'object' && input !== null && isDeeplyFrozenPlainJson(input)) {
+		const cached = VALIDATED_ENVELOPE_CACHE.get(input);
+		if (cached !== undefined) return cached;
+	}
+	return p2311Measure('envelope-validate', () => {
+		const result = validateProjectEnvelopeOnce(input);
+		if (result.success) {
+			freezePlainJsonSubgraph(result.envelope);
+			if (typeof input === 'object' && input !== null && isDeeplyFrozenPlainJson(input)) {
+				VALIDATED_ENVELOPE_CACHE.set(input, result);
+			}
+			VALIDATED_ENVELOPE_CACHE.set(result.envelope, result);
+		}
+		return result;
+	});
 }
 
 function validateProjectEnvelopeOnce(input: unknown): EnvelopeValidation {
@@ -1107,18 +1211,15 @@ function envelopeFindings(
 	const diagnostics: EnvelopeDiagnostic[] = [];
 	const closure: EnvelopeClosureFinding[] = [];
 	const views = new Set(units.camera.data.views.map((view) => view.id));
-	const connections = units.camera.data.connections.map((connection) => ({
-		from: connection.fromNodeId,
-		to: connection.toNodeId
-	}));
+	const connectionPairs = new Set<string>();
+	for (const connection of units.camera.data.connections) {
+		connectionPairs.add(`${connection.fromNodeId}\0${connection.toNodeId}`);
+		connectionPairs.add(`${connection.toNodeId}\0${connection.fromNodeId}`);
+	}
 	const supportedTravel = (fromViewId: string | null, toViewId: string | null): boolean =>
 		fromViewId !== null &&
 		toViewId !== null &&
-		connections.some(
-			(connection) =>
-				(connection.from === fromViewId && connection.to === toViewId) ||
-				(connection.from === toViewId && connection.to === fromViewId)
-		);
+		connectionPairs.has(`${fromViewId}\0${toViewId}`);
 	const sceneEntities = new Set(units.scene.data.entities.map((entity) => entity.id));
 
 	units.experience.data.experiences.forEach((experience, index) => {
@@ -1163,7 +1264,25 @@ function envelopeFindings(
 			}
 		}
 		const presentationIds = new Set(experience.presentations.map((presentation) => presentation.id));
+		const stopById = new Map<string, ExperienceStop>();
+		for (const stop of experience.stops) {
+			if (!stopById.has(stop.id)) stopById.set(stop.id, stop);
+		}
 		const stops = new Set(experience.stops.map((stop) => stop.id));
+		const successorIdsByStopId = new Map<string, string[]>();
+		for (const guide of experience.guides) {
+			// Match `guide.stopIds.indexOf(stop.id)` exactly: only the first occurrence
+			// of a stopId inside one Guide contributes its immediate successor.
+			const seenInGuide = new Set<string>();
+			for (let idx = 0; idx + 1 < guide.stopIds.length; idx += 1) {
+				const sId = guide.stopIds[idx]!;
+				if (seenInGuide.has(sId)) continue;
+				seenInGuide.add(sId);
+				const list = successorIdsByStopId.get(sId);
+				if (list) list.push(guide.stopIds[idx + 1]!);
+				else successorIdsByStopId.set(sId, [guide.stopIds[idx + 1]!]);
+			}
+		}
 		/** The View a Stop occurrence enters at: its entry View or the Default. */
 		const entryViewOf = (stop: ExperienceStop): string | null => {
 			const presentation = presentationById.get(stop.presentationId);
@@ -1179,14 +1298,8 @@ function envelopeFindings(
 		 * lowered program, and an Experience with Stops but no Guide is refused by
 		 * lowering before its edges are traversed.
 		 */
-		const adjacentTargets = (stop: ExperienceStop): (ExperienceStop | undefined)[] => {
-			const successors = experience.guides.flatMap((guide) => {
-				const index = guide.stopIds.indexOf(stop.id);
-				// The last Stop of a Guide has none: its `sequence-next` edge ends the run.
-				return index >= 0 && index + 1 < guide.stopIds.length ? [guide.stopIds[index + 1]!] : [];
-			});
-			return successors.map((id) => experience.stops.find((candidate) => candidate.id === id));
-		};
+		const adjacentTargets = (stop: ExperienceStop): (ExperienceStop | undefined)[] =>
+			(successorIdsByStopId.get(stop.id) ?? []).map((id) => stopById.get(id));
 		for (const [position, stop] of experience.stops.entries()) {
 			if (!presentationIds.has(stop.presentationId)) {
 				diagnostics.push({
@@ -1212,7 +1325,7 @@ function envelopeFindings(
 				// unsupported Travel stays authored and is reported as a gap. Adjacency
 				// follows the Guide orders lowering reads, not this array's order.
 				const targets = continuation.kind === 'stop'
-					? [experience.stops.find((candidate) => candidate.id === continuation.stopId)]
+					? [stopById.get(continuation.stopId)]
 					: adjacentTargets(stop);
 				const reported = new Set<string>();
 				for (const target of targets) {
@@ -1273,7 +1386,10 @@ function envelopeFindings(
 	});
 
 	const resources = units.resources.data.resources;
+	const resourceByKindAndId = new Map<string, TypedResource>();
 	for (const [index, resource] of resources.entries()) {
+		const key = `${resource.kind}\0${resource.id}`;
+		if (!resourceByKindAndId.has(key)) resourceByKindAndId.set(key, resource);
 		if (resource.unresolved !== null) diagnostics.push({
 			path: `$.units.resources.data.resources[${index}].unresolved`,
 			code: resource.unresolved.status, message: resource.unresolved.message
@@ -1293,7 +1409,7 @@ function envelopeFindings(
 				: { kind: 'asset', id: entity.assetId }))
 	];
 	for (const required of requiredResources) {
-		const resource = resources.find((candidate) => candidate.kind === required.kind && candidate.id === required.id);
+		const resource = resourceByKindAndId.get(`${required.kind}\0${required.id}`);
 		if (resource === undefined || resource.unresolved !== null) closure.push({
 			path: '$.units.resources.data.resources', code: resource === undefined ? 'missing-resource' : 'unresolved-resource',
 			message: `Scene requires ${required.kind} "${required.id}" with resolved bytes`
@@ -1304,16 +1420,19 @@ function envelopeFindings(
 	// exact revision it was authored against. The resource entry alone is not a
 	// binding, so a `model` resource without its lock entry is an executable
 	// closure failure (a lock without its resource is reported below).
+	const pinnedModelResourceIds = new Set<string>();
+	for (const entry of lock.entries) {
+		if (
+			entry.domain === 'resource:model' &&
+			entry.subjectKind === 'resource' &&
+			entry.instancePath.length === 0
+		) {
+			pinnedModelResourceIds.add(entry.subjectId);
+		}
+	}
 	for (const resource of resources) {
 		if (resource.kind !== 'model') continue;
-		const pinned = lock.entries.some(
-			(entry) =>
-				entry.domain === 'resource:model' &&
-				entry.subjectKind === 'resource' &&
-				entry.subjectId === resource.id &&
-				entry.instancePath.length === 0
-		);
-		if (!pinned) {
+		if (!pinnedModelResourceIds.has(resource.id)) {
 			closure.push({
 				path: '$.dependencyLock.entries',
 				code: 'missing-lock',
@@ -1330,7 +1449,7 @@ function envelopeFindings(
 		const kind = entry.domain.slice('resource:'.length);
 		const path = `$.dependencyLock.entries[${index}]`;
 		const record = entry.subjectKind === 'resource' && entry.instancePath.length === 0
-			? resources.find((resource) => resource.kind === kind && resource.id === entry.subjectId) : undefined;
+			? resourceByKindAndId.get(`${kind}\0${entry.subjectId}`) : undefined;
 		if (record === undefined) {
 			closure.push({
 				path,

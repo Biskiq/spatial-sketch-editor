@@ -40,30 +40,76 @@ import {
 	type UnitHeader
 } from './types';
 
+const CANONICAL_JSON_BY_FROZEN_OBJECT = new WeakMap<object, string>();
+const UNIT_REVISION_BY_FROZEN_OBJECT = new WeakMap<object, string>();
+
+function isPlainJsonContainer(value: object): boolean {
+	if (Array.isArray(value)) return true;
+	const proto = Object.getPrototypeOf(value);
+	return proto === Object.prototype || proto === null;
+}
+
+type CanonicalizedResult = {
+	readonly json: string;
+	readonly deeplyFrozen: boolean;
+};
+
 /**
  * Deterministic canonical JSON for authored domain data: object keys sorted,
  * `undefined` values omitted, finite numbers in their JSON form. Anything a
  * validated unit cannot carry (a function, a symbol, a non-finite number) is a
  * defect and throws rather than serializing to a silently different value.
+ *
+ * Inductively memoizes canonical substrings in a `WeakMap` **only** for plain
+ * JSON containers whose entire transitive subgraph is verified `Object.isFrozen`,
+ * preserving 100% identical canonical bytes while making repeated digests over
+ * unchanged F4-frozen units O(1).
  */
 export function canonicalUnitJson(value: unknown): string {
-	return canonicalize(value);
+	return canonicalizeTracked(value).json;
 }
 
-function canonicalize(value: unknown): string {
-	if (value === null) return 'null';
-	if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+function canonicalizeTracked(value: unknown): CanonicalizedResult {
+	if (value === null) return { json: 'null', deeplyFrozen: true };
+	if (typeof value === 'string' || typeof value === 'boolean') {
+		return { json: JSON.stringify(value), deeplyFrozen: true };
+	}
 	if (typeof value === 'number') {
 		if (!Number.isFinite(value)) throw new TypeError('A unit value may not contain a non-finite number');
-		return JSON.stringify(value);
+		return { json: JSON.stringify(value), deeplyFrozen: true };
 	}
-	if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
+	if (Array.isArray(value)) {
+		const cached = CANONICAL_JSON_BY_FROZEN_OBJECT.get(value);
+		if (cached !== undefined) return { json: cached, deeplyFrozen: true };
+		let deeplyFrozen = Object.isFrozen(value);
+		const parts = new Array<string>(value.length);
+		for (let i = 0; i < value.length; i += 1) {
+			const child = canonicalizeTracked(value[i]);
+			parts[i] = child.json;
+			if (!child.deeplyFrozen) deeplyFrozen = false;
+		}
+		const json = `[${parts.join(',')}]`;
+		if (deeplyFrozen) CANONICAL_JSON_BY_FROZEN_OBJECT.set(value, json);
+		return { json, deeplyFrozen };
+	}
 	if (typeof value === 'object') {
+		const cached = CANONICAL_JSON_BY_FROZEN_OBJECT.get(value);
+		if (cached !== undefined) return { json: cached, deeplyFrozen: true };
+		let deeplyFrozen = Object.isFrozen(value) && isPlainJsonContainer(value);
 		const record = value as Record<string, unknown>;
 		const keys = Object.keys(record)
 			.filter((key) => record[key] !== undefined)
 			.sort();
-		return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalize(record[key])}`).join(',')}}`;
+		const parts = new Array<string>(keys.length);
+		for (let i = 0; i < keys.length; i += 1) {
+			const key = keys[i]!;
+			const child = canonicalizeTracked(record[key]);
+			parts[i] = `${JSON.stringify(key)}:${child.json}`;
+			if (!child.deeplyFrozen) deeplyFrozen = false;
+		}
+		const json = `{${parts.join(',')}}`;
+		if (deeplyFrozen) CANONICAL_JSON_BY_FROZEN_OBJECT.set(value, json);
+		return { json, deeplyFrozen };
 	}
 	throw new TypeError(`A unit value may not contain a ${typeof value}`);
 }
@@ -75,6 +121,14 @@ export function canonicalUnitBytes(data: unknown): Uint8Array {
 
 /** One unit's content revision: `sha256Bytes` over its canonical domain data. */
 export async function computeUnitContentRevision(data: unknown): Promise<string> {
+	if (typeof data === 'object' && data !== null) {
+		const cachedRevision = UNIT_REVISION_BY_FROZEN_OBJECT.get(data);
+		if (cachedRevision !== undefined) return cachedRevision;
+		const { json, deeplyFrozen } = canonicalizeTracked(data);
+		const revision = await sha256Bytes(new TextEncoder().encode(json));
+		if (deeplyFrozen) UNIT_REVISION_BY_FROZEN_OBJECT.set(data, revision);
+		return revision;
+	}
 	return sha256Bytes(canonicalUnitBytes(data));
 }
 
