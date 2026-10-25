@@ -905,7 +905,7 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 			lowPowerMode: machineFacts.lowPowerMode ?? 'unavailable',
 			matchesBatteryReferenceCondition: machineFacts.powerSource === 'Battery Power' && machineFacts.lowPowerMode === false
 		},
-		operatorDisposition: 'automated AC-powered observation accepted for this slice under the owner ruling dated 2026-10-25',
+		operatorDisposition: 'automated observation on the owner reference hardware accepted for this slice under the owner ruling dated 2026-10-25; power state is recorded separately',
 		measurements: samples
 	};
 	const cdp = await setupContext.newCDPSession(setupPage);
