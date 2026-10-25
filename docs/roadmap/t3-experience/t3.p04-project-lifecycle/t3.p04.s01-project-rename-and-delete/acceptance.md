@@ -12,10 +12,46 @@ authorized test/build execution on 2026-10-25, superseding the earlier blanket d
 permits verification but does not establish S06 completion, release its shared shell/harness
 ownership, or accept this slice. No full-slice acceptance, gate/capability change or independent
 review is recorded here. Verification is recorded below and in the linked evidence; the listed
-residual API cases are covered by the later follow-up. On 2026-10-25 the owner accepted an automated
-AC-powered observation on the Mac14,2 reference machine for this slice; the numeric F9 hard budgets
-remain binding. A fresh F9 run using the Save-owned CPU attribution recorded below and independent
-slice review remain open. Passing makes P04 closable, not closed.
+residual API cases are covered by the later follow-up. On 2026-10-25 the owner accepted automated
+reference-machine observation for this slice and clarified that AC/battery and agent-operation
+differences are not blockers; the numeric F9 hard budgets remain binding. The fresh attributed F9
+run is recorded below; independent slice review remains open. Passing makes P04 closable, not closed.
+
+## Fresh corrected F9 verification — 2026-10-25
+
+The F9-only headed Chrome run passed one test with 60 measured saves: ten each for S/M ×
+cold/warm/repeat-use, plus one warm-up per cell. All samples joined the exact screenshot source/frame
+identity to a unique nonforked `STATE_PRESENTED_ALL` report before receipt. Event Timing observed all
+ten clicks in each cell; none were censored below 16 ms.
+
+| Fixture | Cache | Save-owned main-thread work p50 / p95 / max (ms) | Presented feedback p50 / p95 (ms) | Receipt p95 (ms) | Receipt target (ms) |
+| --- | --- | ---: | ---: | ---: | ---: |
+| S | Cold | 6.0 / 7.4 / 7.4 | 69.4 / 86.1 | 125.7 | 651.5 |
+| S | Warm | 4.9 / 5.5 / 5.5 | 70.2 / 70.6 | 122.5 | 651.5 |
+| S | Repeat-use | 5.0 / 5.4 / 5.4 | 69.8 / 87.3 | 123.4 | 651.5 |
+| M | Cold | 15.6 / 17.1 / 17.1 | 66.7 / 67.5 | 535.9 | 1,056.3 |
+| M | Warm | 14.8 / 16.3 / 16.3 | 66.1 / 68.3 | 534.7 | 1,056.3 |
+| M | Repeat-use | 15.1 / 33.3 / 33.3 | 67.4 / 83.7 | 535.1 | 1,056.3 |
+
+All 60 samples were within the Save-owned work limit of 50 ms and the presented-feedback p95 limit
+of 100 ms. Every click-to-durable-receipt sample was within its N1 payload-based target. The earlier
+whole-window RunTask union remains a diagnostic and is not used as Save CPU.
+
+The test used Google Chrome `155.0.8059.85`, Mac14,2 / macOS 15.7.2, 1920×1080 CSS at DPR 1, and
+N1 networking (40 ms latency, 625 kB/s upload, 2.5 MB/s download). Machine capture recorded battery
+power at 100% and Low Power Mode off; the owner ruling explicitly accepts the AC/battery difference
+and automated operator for this slice. M was grid-7 (112 walls, 112 openings, 49 rooms) with one
+minimal valid GLB source/derivative pair; the source bytes are not part of the Save request. This
+meets the slice retained-model requirement and does not claim the typical M catalog workload.
+
+The measured browser source is commit `31c83a7cbfc126690272c5de14c132b518d31825`, tree
+`ac154840d056b9461ef9b658255a4e84e381ee20`; the built product code is commit
+`65689f4f34d4ae07ed863b32703b9aa27ea4568c`, tree `7999d5e24ff654d896d46d373483dcc3c68ea71c`.
+The worktree was clean at capture. The private database was dropped by the exit trap, the supervisor
+closed its browser/API/preview resources, the in-memory store had no R2 connection, and there were no
+agent-browser sessions before the run.
+
+Evidence: [sample distributions and frame identities](./evidence/2026-10-25/f9-attribution-31c83a7c/project-lifecycle-f9-s-m-branded-chrome.json), [verification transcript](./evidence/2026-10-25/f9-attribution-31c83a7c/foreground-supervisor.log), [machine facts](./evidence/2026-10-25/f9-attribution-31c83a7c/project-lifecycle-machine-facts.json), [supervisor cleanup](./evidence/2026-10-25/f9-attribution-31c83a7c/project-lifecycle-supervisor-result.json), [S warm frame](./evidence/2026-10-25/f9-attribution-31c83a7c/project-lifecycle-f9-feedback-s-warm.jpg), and M frames ([cold](./evidence/2026-10-25/f9-attribution-31c83a7c/project-lifecycle-f9-feedback-m-cold.jpg), [warm](./evidence/2026-10-25/f9-attribution-31c83a7c/project-lifecycle-f9-feedback-m-warm.jpg), [repeat-use](./evidence/2026-10-25/f9-attribution-31c83a7c/project-lifecycle-f9-feedback-m-repeat-use.jpg)).
 
 ## Initial integrated verification record — 2026-10-25
 
@@ -42,7 +78,7 @@ See [verification.md](./evidence/2026-10-25/verification.md) for the initial gat
 residual follow-up, including tested revisions, commands, browser and machine profile, distributions,
 cleanup tombstones, logs, screenshots, and current limitations. Detailed JSON evidence is stored beside it.
 
-## Residual API and headed Chrome follow-up — 2026-10-25
+## Prior residual API and headed Chrome follow-up — 2026-10-25
 
 **Code/evidence commit:** `e41dffea`; PR #191 remains a draft.
 
@@ -57,7 +93,7 @@ renewal database failure also fails closed and releases the lease. The implement
 completed prefix before removing durable inventory, so a late object under a known key cannot be
 hidden from repair.
 
-The final strict headed Chrome F9 run passed on Google Chrome `155.0.8059.85` on Mac14,2 / macOS
+An earlier strict headed Chrome F9 run passed on Google Chrome `155.0.8059.85` on Mac14,2 / macOS
 15.7.2. It used 1920×1080 at DPR 1, N1 networking (40 ms latency, 625 kB/s upload, 2.5 MB/s
 download), one warm-up and ten measured samples for every S/M × cold/warm/repeat-use cell. All 60
 samples recorded the visible “Saving…” label at the render boundary, exact screenshot source/frame
@@ -77,8 +113,9 @@ The receipt allowance derived from payload size and N1 is 651.5 ms for S and 1,0
 the observed p95 values are below those amounts. The RunTask column is the union of every renderer
 main-thread task between click and receipt, including Stage work during WebCrypto and network waits;
 it is not Save-attributed CPU work and must not be compared with the 50 ms F9 hard budget. This run
-therefore does not settle the numeric CPU row. The owner has accepted the automated AC-powered
-procedure for this slice, so agent operation and AC power are not themselves acceptance blockers.
+therefore does not settle the numeric CPU row; the fresh attribution verdict is recorded above. The
+owner has accepted automated reference-machine observation for this slice and waived the AC/battery
+distinction and agent-operator criterion.
 Storage was process-local memory, and M used a minimal valid retained GLB rather than a full typical
 M catalog. Chrome's compositor report is browser-reported presentation and does not prove physical
 panel scanout.
@@ -92,7 +129,7 @@ Evidence: [F9 distributions and sample rows](./evidence/2026-10-25/project-lifec
 The bounded browser semantics assertions remain in the integrated journey. No separate manual
 screen-reader/assistive-technology audit was run or added as a gate.
 
-## F9 CPU attribution follow-up — 2026-10-25
+## Prior static attribution checkpoint — superseded by the fresh run above
 
 The previous F9 samples reported the full click-to-receipt RunTask union, which includes ambient
 Stage/rendering work while the Save waits for WebCrypto and the API. The updated harness reports that
@@ -103,19 +140,15 @@ the renderer tasks containing the Saving and Saved status mutations. Overlap is 
 async hash elapsed time is recorded separately and is not added as main-thread CPU. The request
 boundary is after JSON construction and immediately before fetch dispatch.
 
-The per-slice owner ruling accepts an automated run on the Mac14,2 reference machine while on AC
-power. It does not change the F9 hard limits: Save-attributed main-thread work ≤50 ms and presented
-feedback p95 ≤100 ms. The old whole-window RunTask figures cannot answer the CPU row, and no new
-numeric F9 sample is recorded here. The M lifecycle fixture retains one model source/derivative pair
-and meets this slice plan's retained-model requirement; it does not represent the typical M shape of
-60 objects and 15 distinct GLBs. The [static check record](./evidence/2026-10-25/f9-attribution-static-checks.json)
-records the implementation revision, checks, and why the fresh browser run remains pending.
+This checkpoint recorded the attribution implementation and focused static checks before the new
+browser sample. Its then-pending numeric verdict is superseded by the fresh run above. The M lifecycle
+fixture retains one model source/derivative pair and meets this slice plan's retained-model
+requirement; it does not represent the typical M shape of 60 objects and 15 distinct GLBs. The
+[static check record](./evidence/2026-10-25/f9-attribution-static-checks.json) retains the
+implementation revision and check commands.
 
 ## Remaining acceptance work
 
-- Record a fresh F9 run with the updated Save-owned CPU attribution, then compare the numeric hard
-  budgets. The owner accepts the automated procedure on the Mac14,2 reference machine while on AC;
-  battery operation is not a blocker for this slice.
 - Complete the independent slice review and record the separate owner acceptance/closeout operation.
 
 Keep PR #191 in draft. No slice acceptance, merge, deployment, phase closeout, or S06 completion is

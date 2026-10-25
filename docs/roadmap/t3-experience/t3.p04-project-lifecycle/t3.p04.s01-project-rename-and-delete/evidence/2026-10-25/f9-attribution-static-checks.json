@@ -2,7 +2,7 @@
   "slice": "T3.P04.S01",
   "pullRequest": 191,
   "date": "2026-10-25",
-  "status": "attribution implementation and static checks complete; fresh numeric F9 sample pending",
+  "status": "attribution implementation and static checks complete; fresh numeric F9 sample passed; independent slice review pending",
   "worktree": {
     "path": "/Users/tony/Documents/Biskiq/batch-2026-10-25/T3.P04.S01",
     "branch": "t3/p04-s01-project-rename-delete",
@@ -31,7 +31,7 @@
   },
   "ownerRuling": {
     "date": "2026-10-25",
-    "decision": "automated AC-powered observation on the Mac14,2 reference machine is accepted for this slice",
+    "decision": "automated reference-machine observation accepted; AC/battery and automated-operator differences are not blockers for this slice",
     "numericBudgetsRemainBinding": true,
     "saveAttributedMainThreadWorkMsMax": 50,
     "presentedFeedbackP95MsMax": 100
@@ -83,13 +83,83 @@
     }
   ],
   "browserRun": {
-    "status": "not-run",
-    "reason": "AGENTS.md requires the browser-hygiene skill before any browser launch. That skill is absent from the available skill catalog and configured skill roots, so no Playwright or supervised browser run was launched.",
-    "consequence": "No new Save-attributed CPU or feedback percentile is claimed; the numeric F9 row remains pending a fresh run."
+    "status": "passed",
+    "captureCommit": "31c83a7cbfc126690272c5de14c132b518d31825",
+    "captureTree": "ac154840d056b9461ef9b658255a4e84e381ee20",
+    "productCodeCommit": "65689f4f34d4ae07ed863b32703b9aa27ea4568c",
+    "productCodeTree": "7999d5e24ff654d896d46d373483dcc3c68ea71c",
+    "captureSourcePatchSha256": "96b07836d554341a0e98272d1bdf77c6455e8cfc4347aa7cd7f8d8b5962ddd12",
+    "worktreeStatusAtLaunch": "clean",
+    "command": "from apps/editor: ../../node_modules/.bin/vite-node --script perf/run-project-lifecycle-qa.mjs",
+    "selection": {
+      "project": "chrome",
+      "headed": true,
+      "grep": "F9 S/M Save workload",
+      "warmupRunsPerCell": 1,
+      "measuredRunsPerCell": 10,
+      "network": "N1"
+    },
+    "startedAt": "2026-10-25T18:52:35.642Z",
+    "endedAt": "2026-10-25T18:55:15.258Z",
+    "testResult": "1 passed",
+    "samples": 60,
+    "saveOwnedMainThreadOver50ms": 0,
+    "presentedFeedbackOver100ms": 0,
+    "receiptTargetMisses": 0,
+    "presentationProof": {
+      "allSamplesJoinedExactScreenshotSourceFrameToUniqueNonforkedStatePresentedAll": true,
+      "eventTimingObserved": 60,
+      "eventTimingCensoredBelow16ms": 0
+    },
+    "power": {
+      "observed": "Battery Power",
+      "batteryPercent": 100,
+      "lowPowerMode": false,
+      "ownerAcceptedPowerSourceDifference": true
+    },
+    "fixtureScope": {
+      "M": "grid-7, 112 walls, 112 openings, 49 rooms, one minimal valid retained source GLB and derivative; source bytes are not in Save request"
+    },
+    "database": {
+      "name": "biskiq_t3p04s01_f9attr_20261025_81907",
+      "private": true,
+      "droppedByExitTrap": true,
+      "postRunCatalogCount": 0
+    },
+    "cleanup": {
+      "supervisorClosedBrowserApiAndPreview": true,
+      "store": "process-local memory, no R2",
+      "agentBrowserSessionsBeforeRun": 0
+    },
+    "evidenceDirectory": "evidence/2026-10-25/f9-attribution-31c83a7c",
+    "reportMetadataCorrection": "QA-only disposition label corrected after capture; the report and later source commit state owner acceptance without falsely claiming AC power.",
+    "reportMetadataCorrectionCommit": "596e8b9cffa9e6ec4e16c94d6249fbe0a4cc1be2",
+    "reportMetadataCorrectionTree": "c290b461153745e194c57e935eaba14792bbedd4"
   },
   "fixtureScope": {
     "M": "grid-7, 112 walls, 112 openings, 49 rooms, one scene model entity, one retained source and one derivative",
     "qualification": "meets the slice plan retained-model requirement; does not represent typical M with 60 objects and 15 distinct GLBs"
   },
-  "acceptance": "pending fresh F9 attribution sample and independent slice review; PR remains draft"
+  "acceptance": "F9 numeric verification passed; slice remains pending independent review and separate owner acceptance/closeout; PR remains draft",
+  "freshRunChecks": [
+    {
+      "command": "npm run build:api && npm run build",
+      "status": "passed",
+      "revision": "31c83a7cbfc126690272c5de14c132b518d31825",
+      "note": "Editor build emitted the known nonfatal Node built-in externalization warnings."
+    },
+    {
+      "command": "npx tsc --noEmit --target ESNext --module ESNext --moduleResolution bundler --strict --skipLibCheck --types node apps/editor/perf/flows/project-lifecycle.spec.ts apps/editor/perf/flows/save.spec.ts apps/editor/perf/lib/save-trace.ts",
+      "status": "passed",
+      "revision": "596e8b9cffa9e6ec4e16c94d6249fbe0a4cc1be2",
+      "scope": "F9 harness metadata correction"
+    },
+    {
+      "command": "npx vitest run --config vitest.arch.config.ts tests/docs",
+      "status": "passed",
+      "filesPassed": 2,
+      "testsPassed": 56,
+      "scope": "documentation-reference lane after evidence updates"
+    }
+  ]
 }

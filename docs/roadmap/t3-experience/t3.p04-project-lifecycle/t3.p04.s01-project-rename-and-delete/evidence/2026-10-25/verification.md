@@ -2,7 +2,58 @@
 
 **Disposition:** verification recorded; slice acceptance remains pending. See the [acceptance record](../../acceptance.md).
 
-## Residual API and headed Chrome follow-up — 2026-10-25
+## Fresh corrected F9 attribution run — 2026-10-25
+
+The F9-only headed Chrome test passed at capture commit `31c83a7cbfc126690272c5de14c132b518d31825`,
+tree `ac154840d056b9461ef9b658255a4e84e381ee20`; the worktree was clean. API/editor artifacts were
+rebuilt at that revision. The product-code portion is commit `65689f4f34d4ae07ed863b32703b9aa27ea4568c`,
+tree `7999d5e24ff654d896d46d373483dcc3c68ea71c`. Commit
+`596e8b9cffa9e6ec4e16c94d6249fbe0a4cc1be2` makes a QA metadata-only correction to remove an
+incorrect AC-powered label; it does not change the measured flow or product code.
+
+The run used Google Chrome `155.0.8059.85` on Mac14,2 / macOS 15.7.2, 1920×1080 CSS at DPR 1,
+N1 networking (40 ms latency, 625 kB/s upload, 2.5 MB/s download), one warm-up and ten measured runs
+per S/M × cold/warm/repeat-use cell. All 60 samples recorded the visible “Saving…” render-boundary
+label and joined an exact screenshot source/frame identity to one nonforked `STATE_PRESENTED_ALL`
+report before durable receipt. Event Timing observed all ten events in each cell, with none censored
+below 16 ms.
+
+| Fixture | Cache | Save-owned work p50 / p95 / max (ms) | Presented feedback p50 / p95 (ms) | Click → receipt p95 (ms) | Receipt target (ms) |
+| --- | --- | ---: | ---: | ---: | ---: |
+| S | Cold | 6.0 / 7.4 / 7.4 | 69.4 / 86.1 | 125.7 | 651.5 |
+| S | Warm | 4.9 / 5.5 / 5.5 | 70.2 / 70.6 | 122.5 | 651.5 |
+| S | Repeat-use | 5.0 / 5.4 / 5.4 | 69.8 / 87.3 | 123.4 | 651.5 |
+| M | Cold | 15.6 / 17.1 / 17.1 | 66.7 / 67.5 | 535.9 | 1,056.3 |
+| M | Warm | 14.8 / 16.3 / 16.3 | 66.1 / 68.3 | 534.7 | 1,056.3 |
+| M | Repeat-use | 15.1 / 33.3 / 33.3 | 67.4 / 83.7 | 535.1 | 1,056.3 |
+
+All 60 Save-owned main-thread samples are below the 50 ms hard limit; all six presented-feedback
+p95 values are below 100 ms. Every click-to-receipt sample is within its per-sample N1 target derived
+from actual request bytes. The target remains a target, not a promoted hard service budget. Whole
+click-to-receipt RunTask union includes ambient Stage work during async waits and remains diagnostic.
+
+Machine facts recorded battery power at 100%, with Low Power Mode off. The owner ruling accepts
+automated reference-machine observation and explicitly waives the AC/battery distinction for this
+slice. M was grid-7 (112 walls, 112 openings, 49 rooms), with one minimal valid retained GLB source
+and derivative; source bytes are not posted in Save. This meets the slice plan's retained-model
+requirement but is not the typical 60-object / 15-GLB M workload.
+
+The approved foreground supervisor ran from `apps/editor` with
+`PROJECT_LIFECYCLE_QA_PROJECT=chrome`, `PROJECT_LIFECYCLE_QA_HEADED=1`,
+`PROJECT_LIFECYCLE_QA_GREP='F9 S/M Save workload'`, `PERF_RUNS=10`, `PERF_WARMUP=1`, and
+`PERF_NETWORK=N1`. It used the private local database
+`biskiq_t3p04s01_f9attr_20261025_81907`; the exit trap dropped it and a post-run catalog query
+confirmed it absent. The supervisor confirms the Playwright child, API and preview closed. Storage
+was process-local memory with no R2 access; there were no agent-browser sessions before the run.
+
+`npm run build:api` and `npm run build` passed at the capture revision; Vite emitted only the known
+nonfatal Node built-in externalization warnings. The focused Playwright harness TypeScript check
+passed after the QA metadata correction. The documentation-reference architecture lane passed
+2 files / 56 tests after these evidence links and acceptance text were added.
+
+Evidence: [all samples and distributions](./f9-attribution-31c83a7c/project-lifecycle-f9-s-m-branded-chrome.json), [foreground supervisor log](./f9-attribution-31c83a7c/foreground-supervisor.log), [machine facts](./f9-attribution-31c83a7c/project-lifecycle-machine-facts.json), [API timings](./f9-attribution-31c83a7c/project-lifecycle-api-timings.json), [store manifest](./f9-attribution-31c83a7c/project-lifecycle-store-manifest.json), [supervisor cleanup record](./f9-attribution-31c83a7c/project-lifecycle-supervisor-result.json), [S warm frame](./f9-attribution-31c83a7c/project-lifecycle-f9-feedback-s-warm.jpg), and M frames ([cold](./f9-attribution-31c83a7c/project-lifecycle-f9-feedback-m-cold.jpg), [warm](./f9-attribution-31c83a7c/project-lifecycle-f9-feedback-m-warm.jpg), [repeat-use](./f9-attribution-31c83a7c/project-lifecycle-f9-feedback-m-repeat-use.jpg)).
+
+## Prior residual API and headed Chrome run — 2026-10-25
 
 The residual implementation and evidence were committed as `e41dffea4eb24832b4d21a3cab005c5d5893faf4`.
 The strict F9 run used that exact working-tree content; its JSON records the pre-commit `HEAD` and
@@ -21,7 +72,7 @@ closed and releases the lease. Completed-record cleanup now lists the owned pref
 durable inventory, so a late object under a previously inventoried key cannot be hidden from repair.
 The full test transcript is [api-residual-test.log](./api-residual-test.log).
 
-The final strict headed Chrome F9-only run passed on Google Chrome `155.0.8059.85` on Mac14,2 / macOS
+An earlier strict headed Chrome F9-only run passed on Google Chrome `155.0.8059.85` on Mac14,2 / macOS
 15.7.2. It used 1920×1080 at DPR 1, N1 networking (40 ms latency, 625 kB/s upload, 2.5 MB/s
 download), one warm-up and ten measured samples for each S/M × cold/warm/repeat-use cell. All 60
 samples recorded the visible “Saving…” label at the render boundary, then joined a trace screenshot
@@ -40,11 +91,11 @@ receipt. Event Timing reported all 10 events in every cell, with none censored b
 The receipt allowance derived from request bytes and N1 is 651.5 ms for S and 1,056.3 ms for M;
 measured p95 values are below those amounts. The RunTask column is the full click-to-receipt window,
 including ambient Stage/rendering work during WebCrypto and network waits; it is diagnostic only and
-does not measure Save-owned CPU against the 50 ms hard budget. The owner accepted an automated
-AC-powered run on the Mac14,2 reference machine for this slice, so agent operation and AC power are
-not themselves acceptance blockers. Storage was process-local memory; M used a minimal valid retained
-GLB source and derivative, not the expected full typical-M workload. The Chrome compositor report is
-browser-reported feedback and does not prove physical panel scanout.
+does not measure Save-owned CPU against the 50 ms hard budget. The owner accepted automated
+reference-machine observation and waived the AC/battery distinction for this slice, so operator and
+power state are not acceptance blockers. Storage was process-local memory; M used a minimal valid
+retained GLB source and derivative, not the expected full typical-M workload. The Chrome compositor
+report is browser-reported feedback and does not prove physical panel scanout.
 
 The complete sample data and distributions are in
 [project-lifecycle-final-chrome-f9-s-m.json](./project-lifecycle-final-chrome-f9-s-m.json).
@@ -57,7 +108,7 @@ state. The [final F9 result](./project-lifecycle-final-chrome-f9-playwright-resu
 beside the report. Existing bounded browser semantics coverage remains; no separate manual
 screen-reader/assistive-technology audit was run or added as a gate.
 
-## F9 CPU attribution implementation follow-up — 2026-10-25
+## Prior static F9 attribution checkpoint — superseded by the fresh run above
 
 The table above is the earlier trace result. Its RunTask union includes ambient Stage/rendering
 work during WebCrypto and network waits, so it cannot be compared with the F9 ≤50 ms Save-owned
@@ -71,12 +122,9 @@ identity and exact check commands: eight focused test files passed (73 tests), t
 editor checks passed (the editor check reported zero errors and warnings), and the focused
 Playwright harness TypeScript check passed. It also records the source patch hash.
 
-No new F9 browser sample or numeric CPU/feedback verdict is claimed. `AGENTS.md` requires the
-browser-hygiene skill before any browser launch; that skill is absent from the available skill
-catalog and configured skill roots, so this follow-up did not launch Playwright or a supervised
-browser. The owner accepted an automated AC-powered observation on the Mac14,2 reference machine
-for this slice, and the numeric F9 hard limits remain unchanged. A fresh attribution run and
-independent slice review remain pending.
+At this checkpoint, the fresh numeric sample was still pending; that status is historical and is
+superseded by the fresh run at the top of this record. The owner ruling does not change the numeric
+F9 hard limits, and independent slice review remains pending.
 
 ## Initial revisions and full gate
 
@@ -129,8 +177,8 @@ Each group has 10 rows; p95 is the maximum in this ten-sample set. Event Timing 
 - `feedbackMs` is click-to-rAF-callback execution after the saving-status DOM mutation. It is a presentation opportunity proxy, not proof that pixels reached the display. The older RunTask figures are the union of renderer-main-thread `RunTask` events in the Save interval, not a Save-owned CPU metric. Event Timing's 16 ms threshold is explicit.
 - The user agent reported by bundled Chromium is `Chrome/153.0.8010.12` with a `Windows NT 10.0` UA string while `navigator.platform` reports `MacIntel`; this is not a branded macOS Chrome, Safari, or cross-engine run.
 - The successful Vite build emitted nonfatal externalization warnings for Node built-ins (`node:fs`, `node:path`, `fs`, `path`) referenced by `@gltf-transform/core` and `draco3d`; no build error resulted.
-- Browser QA covered the bounded keyboard, dialog semantics and coarse-touch behaviors; no screen reader or dedicated assistive-technology audit was run, and no separate manual audit gate is added. The numeric F9 hard rows still require fresh samples with Save-owned CPU attribution.
+- Browser QA covered the bounded keyboard, dialog semantics and coarse-touch behaviors; no screen reader or dedicated assistive-technology audit was run, and no separate manual audit gate is added. The fresh attributed F9 verdict is recorded above.
 
 ## Exhaustive-case disposition after the residual follow-up
 
-The follow-up suite now covers the previously listed multi-source approved revision, process-restart cleanup recovery, and hostile delayed remote commit after completion proof, alongside lease revocation, deadlines, migration replay/backfill, owned-prefix inventory, late-visible-key repair and spaced cleanup proof. The integrated browser run covers real UI/session behavior, bounded dialog semantics and local-store sibling isolation. Those API residuals are complete; fresh F9 attribution evidence and independent slice review remain. No separate manual assistive-technology audit gate is added. The slice remains pending acceptance.
+The follow-up suite now covers the previously listed multi-source approved revision, process-restart cleanup recovery, and hostile delayed remote commit after completion proof, alongside lease revocation, deadlines, migration replay/backfill, owned-prefix inventory, late-visible-key repair and spaced cleanup proof. The integrated browser run covers real UI/session behavior, bounded dialog semantics and local-store sibling isolation. Those API residuals and fresh F9 attribution evidence are complete; independent slice review remains. No separate manual assistive-technology audit gate is added. The slice remains pending acceptance.
