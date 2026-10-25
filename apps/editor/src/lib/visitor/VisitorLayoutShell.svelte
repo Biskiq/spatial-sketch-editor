@@ -6,7 +6,7 @@
 	import type { VisitorRoomPresentation } from './room-presentation';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import { buildRoomWallMesh, buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
-	import { sphereRenderScale } from '@portfolio/layout-core';
+	import { p2311Measure, sphereRenderScale } from '@portfolio/layout-core';
 	import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
 	import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
@@ -63,7 +63,9 @@
 	let adaptedRooms = $state<AdaptedRoom[]>([]);
 	let adaptedWalls = $state<AdaptedWall[]>([]);
 
-	$effect(() => {
+	// The representation build is one harness-gated span (T1.P02.S06 stage
+	// attribution); `p2311Measure` is inert without the work observer.
+	$effect(() => p2311Measure('layout-representation', () => {
 		const materials = createVisitorWallMaterialFactory((roomId) => roomPresentation(roomId).color);
 		// Format-6 wall-first Rooms compile with no wall detail, so this branch
 		// is not reached by any format-6 output (retained; see the T1
@@ -108,7 +110,7 @@
 			for (const wall of walls) if (wall.ok) wall.dispose();
 			materials.dispose();
 		};
-	});
+	}));
 
 	function adaptedFor(roomId: string): AdaptedRoom | undefined {
 		return adaptedRooms.find((room) => room.roomId === roomId);

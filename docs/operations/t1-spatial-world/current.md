@@ -3,9 +3,9 @@
 PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01 and S05 are shipped.
-ACTIVE: none yet. T1.P02.S06 (performance foundation) is owner-authorized and released
-        2026-10-24. It starts per ../../roadmap/now.md once the performance-foundation coordination
-        PR is merged, through the runbook start step at a recorded trusted base.
+ACTIVE: T1.P02.S06 (performance foundation), setup step (agent). Started 2026-10-24 through the
+        runbook start step at trusted base 2215af341a650ac3a99a0fbb36e48de7e901411e (merged `main`).
+        The setup stops at the Bench 1 owner handover; no bench pass and no H1–H9 change is made.
 NEXT:   T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
         It runs on an owner-run benchmark budget of at most three passes:
         set up (agent) → Bench 1 (owner) → optimize with hand calculation (agent) → Bench 2
@@ -22,8 +22,10 @@ NEXT:   T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creatio
         review, the T3 review of the shared Head/F4 shell allocation and the T2/T3
         contribution-compatibility review. Then S03 (outline, held) and S04 (final gate).
         Order: S06 → S02 → S03 → S04.
-CLAIMS: before editing apps/editor/perf/** or shared test helpers, S06 records here the writer,
-        the expected patch base and the T3 reviewer. Every owner-run pass on the M2 holds the
+CLAIMS: S06 setup holds apps/editor/perf/**. Writer: the T1 S06 setup agent, branch
+        `t1/p02-s06-bench-setup`; expected patch base 2215af34; reviewer: T3 (shared harness,
+        fixtures, flows and the Camera/Experience fixture generator). No shared test helper under
+        apps/editor/tests/helpers/** is edited. Every owner-run pass on the M2 holds the
         machine-wide perf lock.
 CARRY:  - Transferred to S06 (owner replanning 2026-10-24):
           - S02's install-compile and Undo/Redo dedupe and the incremental/worker experiment;

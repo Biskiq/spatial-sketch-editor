@@ -1,34 +1,74 @@
 /**
- * F2 — project open (T3.P03.S02 harness).
+ * F2 — project open (T3.P03.S02 harness; tiered by T1.P02.S06).
  *
- * Open JSON → canonical admission → first architectural frame, for the S
- * (grid-3) and M (grid-7) fixtures. Cold creates a fresh context for every run;
- * warm and repeat-use keep one context, and repeat-use closes back to the hub
- * before opening a fresh project. The F2 hard row is accepted only from the
- * designated reference machine.
+ * Open JSON → canonical admission → first architectural frame. Each tier loads
+ * its precomputed workload through the real Open-source-JSON chooser, since
+ * opening is what F2 measures (A.2). Tiers run peak first (A.3).
+ *
+ * A.6 method validation: grid-S and grid-M also run under the **old method**
+ * (topology rebuilt through the planners inside the run, then opened), on the
+ * same revision. Those rows are labelled `F2-old-*`, never merged with the new
+ * method's rows, and carry the old method's wall time.
+ *
+ * Cold creates a fresh context for every run; warm and repeat-use keep one
+ * context, and repeat-use closes back to the hub before opening a fresh
+ * project. Hard rows are accepted only from the designated reference machine.
  */
 
 import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
-import { fixtureProject, type FixtureSize } from '../lib/fixtures';
+import { fixtureProject, type FixtureProject, type FixtureSize } from '../lib/fixtures';
 import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
 import { firstFrameAtOrAfter, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
+import {
+	readRenderCounters,
+	readResidentBytes,
+	readWork,
+	renderCounterDelta,
+	renderMetrics,
+	residentMetrics,
+	selectedTiers,
+	smokeOr,
+	tierAvailability,
+	tierLimitations,
+	tierProject,
+	tierWorkloadLabel,
+	workDelta,
+	workMetrics,
+	type RenderCounters,
+	type ResidentBytes,
+	type WorkSnapshot
+} from '../lib/tiers';
+import type { WorkloadId } from '../lib/workloads/registry';
 
 type OpenRun = {
 	readonly admission: number;
 	readonly admittedToFrame: number;
 	readonly total: number;
+	readonly setupMs: number;
+	readonly wallMs: number;
+	readonly work: WorkSnapshot;
+	readonly render: Record<string, RenderCounters>;
+	readonly resident: ResidentBytes | null;
 };
 
-async function openOnce(session: MeasuredSession, size: FixtureSize): Promise<OpenRun> {
+type Source = { readonly method: 'new'; readonly tier: WorkloadId } | { readonly method: 'old'; readonly size: FixtureSize };
+
+async function openOnce(session: MeasuredSession, source: Source): Promise<OpenRun> {
 	const { page } = session;
-	const projectId = uniqueProjectId(`f2-${size}`);
-	const project = await fixtureProject(size, projectId);
+	const started = performance.now();
+	const projectId = uniqueProjectId(`f2-${source.method === 'new' ? source.tier : `old-${source.size}`}`);
+	// The old method rebuilds topology through the planners here; the new one
+	// reads the cached canonical JSON. Both are setup, outside the window.
+	const project: FixtureProject = source.method === 'new' ? tierProject(source.tier, projectId) : await fixtureProject(source.size, projectId);
 	await gotoCreateIntent(page, projectId);
+	const setupMs = performance.now() - started;
+	const workBefore = await readWork(page);
+	const renderBefore = await readRenderCounters(page);
 	await openSourceJson(page, project);
 	await expect(page.locator('canvas').first()).toBeVisible();
 	await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -41,34 +81,98 @@ async function openOnce(session: MeasuredSession, size: FixtureSize): Promise<Op
 	// harness time, never product time.
 	const frame = firstFrameAtOrAfter(ledger.ticks, admitted.time);
 	if (frame === null) throw new Error('no frame after admission');
+	const work = workDelta(workBefore, await readWork(page));
+	const render = renderCounterDelta(renderBefore, await readRenderCounters(page));
+	const resident = await readResidentBytes(page);
 	return {
 		admission: admitted.time - requested.time,
 		admittedToFrame: frame - admitted.time,
-		total: frame - requested.time
+		total: frame - requested.time,
+		setupMs,
+		wallMs: performance.now() - started,
+		work,
+		render,
+		resident
 	};
 }
 
-for (const size of ['S', 'M'] as const) {
-	test.describe(`F2 project open — ${size}`, () => {
-		test(`cold, warm and repeat-use ${size} fixture`, async ({ browser }, testInfo) => {
-			const report = startReport(`f2-open-${size}-${testInfo.project.name.replace(/\s+/g, '-')}`);
-			const limitations = passLimitations();
+function mergeWindows(runs: readonly OpenRun[]): { work: WorkSnapshot; render: Record<string, RenderCounters> } {
+	const work: WorkSnapshot = { spans: {}, counts: {} };
+	for (const run of runs) {
+		for (const [name, span] of Object.entries(run.work.spans)) {
+			const into = (work.spans[name] ??= { count: 0, totalMs: 0, maxMs: 0 });
+			into.count += span.count;
+			into.totalMs += span.totalMs;
+			into.maxMs = Math.max(into.maxMs, span.maxMs);
+		}
+		for (const [name, value] of Object.entries(run.work.counts)) work.counts[name] = (work.counts[name] ?? 0) + value;
+	}
+	// Render counters are deterministic per open; the last run represents the row.
+	return { work, render: runs[runs.length - 1]?.render ?? {} };
+}
+
+const sources: { readonly id: string; readonly source: Source; readonly workload: string; readonly limitations: string[] }[] = [
+	...selectedTiers().map((tier) => ({
+		id: tier,
+		source: { method: 'new', tier } as const,
+		workload: tierWorkloadLabel(tier),
+		limitations: tierLimitations(tier)
+	})),
+	// A.6: the old method, F2 S/M only, on the same revision.
+	...(['S', 'M'] as const)
+		.filter((size) => selectedTiers().includes(`grid-${size}`))
+		.map((size) => ({
+			id: `old-${size}`,
+			source: { method: 'old', size } as const,
+			workload: `old method: grid-${size === 'S' ? 3 : 7} rebuilt through the planners in the run (A.6)`,
+			limitations: tierLimitations(`grid-${size}`)
+		}))
+];
+
+for (const entry of sources) {
+	test.describe(`F2 project open — ${entry.id}`, () => {
+		// Ten runs per cache state of a large tier's open: measured work, not a hang.
+		test.setTimeout(7_200_000);
+		test(`cold, warm and repeat-use ${entry.id}`, async ({ browser }, testInfo) => {
+			const report = startReport(`f2-open-${entry.id}-${testInfo.project.name.replace(/\s+/g, '-')}`);
+			if (entry.source.method === 'new') {
+				const availability = tierAvailability(entry.source.tier);
+				if (!availability.available) {
+					report.rows.push({
+						id: `F2-${entry.id}-unrun`,
+						flow: 'F2 project open',
+						workload: entry.workload,
+						browser: testInfo.project.name,
+						cpuRate: 1,
+						viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+						metrics: { unrun: availability.reason },
+						limitations: ['unrun tier: reported, not skipped silently']
+					});
+					console.log(`F2 ${entry.id}: unrun — ${availability.reason}`);
+					fileReport(report);
+					return;
+				}
+			}
+			const limitations = [...passLimitations(), ...entry.limitations];
 			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
 				const { results: runs, facts } = await collectMeasuredRuns(
 					browser,
 					{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
 					{
 						cacheState,
-						warmup: WARMUP_RUNS,
-						runs: RUNS,
+						warmup: smokeOr(WARMUP_RUNS, 0),
+						runs: smokeOr(RUNS),
 						afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
 					},
-					(session) => openOnce(session, size)
+					(session) => openOnce(session, entry.source)
 				);
+				const windows = mergeWindows(runs);
+				const setupMs = runs.reduce((sum, run) => sum + run.setupMs, 0);
+				const wallMs = runs.reduce((sum, run) => sum + run.wallMs, 0);
 				const row: ResultRow = {
-					id: `F2-${size}-${cacheState}`,
-					flow: 'F2 project open',
-					workload: `${size} fixture (${size === 'S' ? 'grid-3, ~20 walls' : 'grid-7, ~100 walls'})`,
+					id: `F2-${entry.id}-${cacheState}`,
+					flow: entry.source.method === 'old' ? 'F2 project open (old method, A.6)' : 'F2 project open',
+					workload: entry.workload,
 					cacheState,
 					network: NETWORK,
 					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
@@ -77,7 +181,13 @@ for (const size of ['S', 'M'] as const) {
 					metrics: {
 						admissionMedian: summarize(runs.map((run) => run.admission)).median,
 						admittedToFrameMedian: summarize(runs.map((run) => run.admittedToFrame)).median,
-						totalMedian: summarize(runs.map((run) => run.total)).median
+						totalMedian: summarize(runs.map((run) => run.total)).median,
+						setupMs,
+						wallMs,
+						setupShare: wallMs > 0 ? setupMs / wallMs : null,
+						...workMetrics(windows.work, runs.length),
+						...renderMetrics(windows.render),
+						...residentMetrics(runs[runs.length - 1]?.resident ?? null, 'open')
 					},
 					stats: {
 						admission: summarize(runs.map((run) => run.admission)),
@@ -86,7 +196,8 @@ for (const size of ['S', 'M'] as const) {
 					limitations: [
 						...limitations,
 						'F2 flow starts at the chosen file, not at the Open button (the dialog is not admission work)',
-						'first architectural frame is attributed to the rAF rendering opportunity'
+						'first architectural frame is attributed to the rAF rendering opportunity',
+						'stage:* rows are per-run means of the work ledger inside the window; work:* are deterministic counts'
 					]
 				};
 				report.rows.push(row);

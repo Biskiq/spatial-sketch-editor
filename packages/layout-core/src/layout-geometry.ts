@@ -35,7 +35,7 @@ import {
 	JUNCTION_BAND_EPSILON,
 	resolveJunctionGeometry
 } from './layout-junction-resolution';
-import { p2311Measure } from './p2311-perf';
+import { countWork, p2311Measure } from './p2311-perf';
 import {
 	pointAlongSamples,
 	sampleSegment,
@@ -82,6 +82,20 @@ const OPENING_CENTER_EPSILON = 0.01;
  * the `wallId`; Room-derived semantic records retain `roomId`.
  */
 export function compileWallFirstLayoutGeometry(
+	document: LayoutDocumentWallFirst,
+	sampling?: WallSamplingDerivation
+): CompiledLayoutGeometryResult {
+	// Work observation (inert without an observer): one compile evaluates every
+	// authored entity, which is what the S06 count oracles compare against.
+	countWork('compile');
+	countWork('compile:walls', document.walls.length);
+	countWork('compile:junctions', document.junctions.length);
+	countWork('compile:openings', document.openings.length);
+	countWork('compile:rooms', document.rooms.length);
+	return p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling));
+}
+
+function compileWallFirstLayoutGeometryOnce(
 	document: LayoutDocumentWallFirst,
 	sampling?: WallSamplingDerivation
 ): CompiledLayoutGeometryResult {
@@ -174,6 +188,7 @@ export function compileWallFirstLayoutGeometry(
 				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
 			}
 		}
+		countWork('pairs:room-opening', document.openings.length);
 		for (const opening of document.openings) {
 			const ref = room.boundary.find((candidate) => candidate.wallId === opening.wallId);
 			if (!ref) continue;
@@ -296,6 +311,7 @@ function compileWallFirstWithPhysicalWalls(
 				continue;
 			}
 		}
+		countWork('pairs:wall-opening', document.openings.length);
 		const wallOpenings: CompilerOpening[] = document.openings
 			.filter((opening) => opening.wallId === wall.id)
 			.map((opening) => ({ ...opening, segmentId: opening.wallId }));

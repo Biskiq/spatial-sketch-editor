@@ -35,15 +35,109 @@ series, never a user profile.
 | Spec | Flow | What it records |
 | --- | --- | --- |
 | `flows/startup.spec.ts` | F1 startup | hub interactive, Stage first **architectural** frame (rAF proxy, not the contract's first interactive frame), FCP, LCP, long tasks, script bytes/requests, cold, warm and repeat-use |
-| `flows/project-open.spec.ts` | F2 open | S (grid-3) and M (grid-7) admission → first **architectural** frame (rAF proxy), cold, warm and repeat-use |
-| `flows/orbit.spec.ts` | F7 orbit | 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, cold, warm and repeat-use |
+| `flows/project-open.spec.ts` | F2 open | each tier's cached workload: admission → first **architectural** frame (rAF proxy), cold, warm and repeat-use, with per-stage spans, work counts, render counters and setup share; plus the A.6 old-method rows `F2-old-S/M` |
+| `flows/orbit.spec.ts` | F7 orbit | per tier: 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, render counters per frame (draws, triangles, shadow passes/draws), compiles per frame, frames rendered at rest, cold, warm and repeat-use |
 | `flows/save.spec.ts` | F9 Save | save:submit → Saving-label DOM update → parsed durable receipt → Saved-label DOM update, through the API test-auth seam on a local stack, cold, warm and repeat-use; label mutations do not prove presentation |
-| `flows/cycles.spec.ts` | F13 repeated open/close | cold (10 measured cycles), warm (1 discarded + 1 measured) and repeat-use (1 discarded + 10 measured); 20 edits per cycle and JS heap after forced GC, with entry heap reported separately from the measured baseline |
+| `flows/cycles.spec.ts` | F13 repeated open/close | per tier: cold (10 measured cycles), warm (1 discarded + 1 measured) and repeat-use (1 discarded + 10 measured); 20 edits per cycle and JS heap after forced GC, with entry heap reported separately from the measured baseline; the Stage's live geometries/textures/programs per cycle |
 | `flows/head-lifetime.spec.ts` | Route head ownership regression | cold SSR/hydration, dynamic publication title/noindex and exact connected head-node counts over repeated client navigation; isolated metadata correctness, not a flow baseline |
 | `flows/renderer-lifetime.spec.ts` | Concurrent renderer ownership regression | actual WebGL secondary-Canvas collection while a survivor keeps identical rendered pixels and render-target state; isolated correctness fixture, not a flow baseline |
-| `flows/drag-correlation.spec.ts` | F3/F4/F8 methodology | input sequence → matching preview presentation, latest-input age, final-result completion, precision commit, 20 Undo/Redo cycles, cold, warm and repeat-use, plus the deliberately delayed-preview proof |
+| `flows/drag-correlation.spec.ts` | F3/F4/F8 methodology | per tier, in-session at the loaded peak: distinct drags and typed lengths each reset by Undo (cache-served samples counted apart), input sequence → matching preview presentation, latest-input age, final-result completion, 20 Undo/Redo cycles, per-stage spans and work counts, cold, warm and repeat-use, plus the deliberately delayed-preview proof (grid-S) |
 | `flows/trace-proof.spec.ts` | Separate trace-image diagnostic | exact preview sequence/geometry identity and marker pixel in Chrome trace images, exact compositor presentation-feedback span, clock anchors, mismatch and delayed-preview controls; no hard budget claim |
+| `flows/stage-trace.spec.ts` | Per-stage traces (S06 C) | one traced window per flow and tier (F2, F3, F4, F8, F7): main-thread busy/idle, GC, script, style/layout, paint and GPU-process time beside the window's stage spans; attribution, never a timing row |
+| `flows/e5-sweep.spec.ts` | E5 browser counts (S06 C) | museum ×1 and the H/D sweeps: render counters at rest, the fixed edit's work, and framebuffer equality at the fixed View before and after the edit (H must match ×1); count, not timing |
 | `flows/calibration.spec.ts` | CPU calibration | grid-7 compile + Stage admission, 20 runs, CDP throttling search when a reference median is supplied |
+
+## Bench setup (T1.P02.S06)
+
+T1.P02.S06 builds the method, the workloads and the counters before its three
+owner-run benches ([plan](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)).
+Agents never run a pass; they run only the smoke check and the censuses.
+
+```sh
+cd apps/editor
+npm run perf:workloads                     # generate missing/stale workloads (setup, ~25 min for all)
+npm run perf:workloads -- --verify         # reproducibility: rebuild S, M and museum, compare digests (~1.5 min)
+npm run perf:census                        # E1–E5 Node censuses: census, not timing (~15 min)
+npm run perf:bench -- --smoke              # smoke check of every flow at every tier: smoke, not evidence
+npm run perf:bench -- --label bench-1      # one owner-run pass on the M2
+```
+
+**Workloads (A.1, B).** `perf/generate-workloads.ts` builds every workload once
+through the public layout-core planners, the canonical compiler and, for the
+museum family, T3's public Experience operations, admits it through
+`admitSourceJson` with no blocking issue, closure or diagnostic, and writes the
+canonical envelope plus a meta file into the git-ignored cache. Captured ids come
+from fixed sequences, so identical inputs give byte-identical JSON; the meta's
+input key covers the workload parameters, every unit's format number and the
+generator sources, and a stale, missing or corrupt workload refuses every measured
+run (`loadWorkload`). Flows load the JSON under their own project id
+(`workloadJsonFor` rewrites only the id token; setup, outside every window).
+
+| Workload | What | Role |
+| --- | --- | --- |
+| `grid-S`, `grid-M`, `grid-L`, `grid-XL` | grid-3/7/14/20 with doors and windows | bench tiers (XL report-only) |
+| `realistic-L` | grid-14 + approved GLB derivatives | bench tier, **blocked** (below) |
+| `museum` | 328 Walls, 56 Rooms, 137 Openings (115 doors with `connectsRoomIds`), enfilade, corridor ring, central hall, 92 catalogue placements, 18 Views with Camera connections, an 18-Stop Experience route | censuses, E5 base, optional latency rows |
+| `sweep-H3/H10`, `sweep-D3/D10` | the museum plus independent 7×7 blocks (H: hidden, behind Walls, outside the focus wing's shadow camera, no lights; D: on the enfilade axis beyond the wing) | E5 irrelevance sweep |
+
+The museum and sweep placements use the shipped catalogue GLBs (product assets
+with recorded licenses) until the realistic-L derivatives are approved. ×30 is not
+built: generation grows about quadratically (≈ 2 h extrapolated), beyond the bound,
+so E5 slopes above ×10 are arithmetic only.
+
+**Realistic-L.** Blocked on two owner prerequisites: per-source approval of each
+CC0/permissive GLB source (download outside the repository, source and license
+recorded), and `creator-import@1` seeding as resource revisions on an isolated
+per-lane API/Compose stack, never a shared database. Until then every flow
+reports a `…-unrun` row with that reason, and the pass manifest records it.
+
+**Counters (C).** Product code exposes two inert seams that do nothing without the
+harness flag: `perfRenderer` hands each surface's WebGL renderer to the harness,
+which counts Three's own `renderer.info` per frame (draws, triangles, shadow-map
+passes and shadow draws, programs, geometries, textures, frames at rest), and
+`installPerfWorkObserver` aggregates layout-core's work observer into
+`__BISKIQ_PERF_WORK__`: spans for compile, admission (parse, runtime, digest,
+serialize, freeze), envelope validation, Scene resolve and Layout representation,
+and deterministic counts (compiles, entity sets, pair visits, digests and bytes,
+serializations, F4 clones and frozen objects). Flows diff both around each
+measured window; `stage-trace.spec.ts` adds one traced window per flow for
+GC/idle attribution. `readResidentBytes` traverses a surface's last rendered
+scene once at a fixed point (after F2's open, after F7's orbit, at E5's fixed
+View): unique textures with stored and RGBA8+mips bytes, geometry-buffer bytes,
+shadow-map and drawing-buffer bytes, materials and meshes. GPU time and
+shader-compile time at the first frame are not captured (the traced windows show
+the main-thread cost of the first render).
+
+**A pass (`perf:bench`).** One invocation: the machine-wide lock
+(`/tmp/biskiq-perf.lock`), load average, top processes, `pmset -g therm` and power
+source at the start and end (a start above 4.0 or a running Vitest process marks
+it contaminated), one production build, then the tiers peak first — realistic-L,
+L, XL, M, S — each running F2 (+ A.6 at S/M), F3/F4/F8, F7, F13 and the traced
+windows, with the thermal state at every boundary and a recorded cool-down before
+M and S; then the E5 browser counts and the transferred rows (F1, F10, and F5/F6
+when `PERF_API_ORIGIN` and `E2E_TEST_AUTH_SECRET` name a local stack). The
+manifest in the pass directory records commit, dirty tree, fixture digests,
+contamination, every phase's wall time and exit, and the setup share. A failed
+phase marks the pass aborted with its cause; nothing is retried. The report-only
+sweep latency rows (F3/F4/F8 on the focus Wall and F7, museum ×1 and sweep-H10)
+run in every pass unless the owner drops them, and the bundle report written
+after the build supplies the Stage initial-load delta.
+
+**Chrome crash-handler watchdog.** After a heavy session (observed at grid-XL),
+branded Chrome's `chrome_crashpad_handler` can outlive the browser while holding
+its stderr, a socket to the Playwright worker, which then never exits after its
+last test. During a pass, a watchdog stops only such orphans (re-parented to
+launchd, absent at the pass start, stderr a socket, no Playwright-launched Chrome
+running); the owner's own Chrome keeps its handler. Its actions are listed in the
+manifest. Running a tiered spec directly, outside `perf:bench`, has no watchdog;
+start one beside it with `node perf/lib/crash-handler-watchdog.mjs <log> $(pgrep -f chrome_crashpad_handler)`.
+The watchdog is a file, not an inline `node -e` script, so that its own command
+line can never match the Playwright-Chrome check (an inline version always did).
+
+**Node.** The S06 setup ran on Node 26.7. Node 22.11 fails the editor's jsdom
+suites (`ERR_REQUIRE_ESM` from jsdom's encoding dependency) and Node 23.7 fails
+them in undici's zlib decompressor; use a current Node release for the gates and
+the passes.
 
 ## Correlation (why the ledger exists)
 
@@ -130,6 +224,14 @@ coarse and the report says so.
 | `PERF_RUNS` | measured runs per flow × workload × cache state (default 10) |
 | `PERF_WARMUP` | discarded warm-up runs (default 1) |
 | `PERF_SAMPLES` | pointer samples per continuous drag (default 60) |
+| `PERF_TIERS` | comma list of workloads for the tiered flows (default: the bench tiers, peak first; the order never changes) |
+| `PERF_SMOKE` | `1` = smoke check: one run, no warm-up, one sample, rows labelled “smoke, not evidence” |
+| `PERF_DRAG_SAMPLES` | in-session F3/F4 samples per run at the loaded peak (default 5) |
+| `PERF_WORKLOAD_DIR` | workload cache (default `perf/.workloads`, git-ignored) |
+| `PERF_PROJECT` / `--project` | Playwright project for `perf:bench` (default `chrome`, the gating browser) |
+| `PERF_COOLDOWN_SECONDS` | recorded cool-down before the M and S tiers (default 180; 0 in smoke) |
+| `PERF_LOAD_THRESHOLD` (+ `_REASON`) | contamination threshold on the 1-minute load average (default 4.0; a change needs a recorded reason) |
+| `PERF_SWEEP_LATENCY=0` / `--no-sweep-latency` | drop the report-only sweep latency rows (F3/F4/F8 on the focus Wall and F7, at museum ×1 and sweep-H10) for one pass; they run by default |
 | `PERF_NETWORK` | `N0`, `N1` (default) or `N2` |
 | `PERF_RESULTS_DIR` | raw result directory (default `$TMPDIR/biskiq-perf-results`) |
 | `PERF_POWER_STATE` | declared power state, recorded with each result |

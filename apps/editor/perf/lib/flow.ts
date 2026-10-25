@@ -12,6 +12,9 @@ import { expect, type Dialog, type Page } from '@playwright/test';
 import type { FixtureProject } from './fixtures';
 import { readLedger, type LedgerRecord } from './ledger';
 
+/** How long a harness step waits for a large tier's admission or result; never a measured bound. */
+export const LARGE_TIER_WAIT_MS = 300_000;
+
 export function uniqueProjectId(size: string): string {
 	return `perf-${size.toLowerCase()}-${Date.now().toString(36)}`;
 }
@@ -92,7 +95,8 @@ export async function openSourceJson(page: Page, project: FixtureProject): Promi
 	} finally {
 		await input.dispose();
 	}
-	await waitForMark(page, 'f2:open-admitted');
+	// A wait bound, not a budget: an XL admission takes longer than the default.
+	await waitForMark(page, 'f2:open-admitted', LARGE_TIER_WAIT_MS);
 	await expect(page.locator('canvas').first()).toBeVisible();
 }
 
@@ -114,6 +118,21 @@ export async function waitForMark(page: Page, name: string, timeout = 20_000): P
 /** Select the first Wall through the Index, then open its contributed Dimensions task. */
 export async function selectFirstWallAndOpenDimensions(page: Page): Promise<void> {
 	const wallRow = page.locator('button.item-row', { hasText: 'Wall' }).first();
+	await expect(wallRow).toBeVisible();
+	await wallRow.click();
+	const dimensions = page.locator('.contributed-item button.item-row', { hasText: 'Dimensions' }).first();
+	await expect(dimensions).toBeVisible();
+	await dimensions.click();
+	await expect(handleLocator(page, 'Wall end')).toBeVisible();
+}
+
+/**
+ * Select one Wall by id through the Index search (the Index labels a Wall
+ * `wall · <id>`), then open its contributed Dimensions task.
+ */
+export async function selectWallAndOpenDimensions(page: Page, wallId: string): Promise<void> {
+	await page.locator('#plate-index-search').fill(wallId);
+	const wallRow = page.locator('button.item-row', { hasText: wallId }).first();
 	await expect(wallRow).toBeVisible();
 	await wallRow.click();
 	const dimensions = page.locator('.contributed-item button.item-row', { hasText: 'Dimensions' }).first();
@@ -188,7 +207,7 @@ export async function waitForAcceptedResult(page: Page, previous: number): Promi
 				(record) => record.kind === 'result' && record.name === 'accepted-result'
 			).length > count,
 		previous,
-		{ timeout: 60_000, polling: 50 }
+		{ timeout: LARGE_TIER_WAIT_MS, polling: 50 }
 	);
 	const ledger = await readLedger(page);
 	const results = ledger.records.filter((record) => record.kind === 'result' && record.name === 'accepted-result');

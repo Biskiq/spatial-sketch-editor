@@ -22,7 +22,7 @@
  */
 
 import { dependencyLockKey } from './identity';
-import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { countWork, p2311Measure, validateWallFirstLayoutDocument } from '@portfolio/layout-core';
 import { ShapeReader, type ShapeIssue, type ShapeValidation } from '../strict-shape';
 import { validateAcceptedRevision, validateSemanticReference } from '../references/validate';
 import { REFERENCE_FAILURE_CODES, isReferenceDomain } from '../references/types';
@@ -1035,6 +1035,11 @@ function readDomainUnit<D extends UnitDomain>(
  * possible.
  */
 export function validateProjectEnvelope(input: unknown): EnvelopeValidation {
+	countWork('envelope:validate');
+	return p2311Measure('envelope-validate', () => validateProjectEnvelopeOnce(input));
+}
+
+function validateProjectEnvelopeOnce(input: unknown): EnvelopeValidation {
 	const reader = new ShapeReader();
 	const record = reader.object(input, '$', ENVELOPE_KEYS);
 	if (record === null) return { success: false, issues: reader.issues };
@@ -1356,6 +1361,7 @@ function envelopeFindings(
 
 /** Serialize a validated envelope in its canonical field order. */
 export function serializeProjectEnvelope(envelope: ProjectEnvelope): string {
+	countWork('envelope:serialize');
 	const result = validateProjectEnvelope(envelope);
 	if (!result.success) {
 		const first = result.issues[0]!;

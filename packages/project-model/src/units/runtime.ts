@@ -12,6 +12,8 @@
 
 import {
 	compileWallFirstLayoutGeometry,
+	countWork,
+	p2311Measure,
 	type CompiledLayoutGeometry,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
@@ -109,6 +111,7 @@ export function prepareUnitRuntime(
 	input: unknown,
 	sceneOptions: SceneValidationOptions = {}
 ): UnitRuntimePreparation {
+	countWork('unit-runtime:prepare');
 	const validated = validateProjectEnvelope(input);
 	if (!validated.success) {
 		return { kind: 'rejected', reason: 'invalid-envelope', issues: validated.issues };
@@ -118,9 +121,11 @@ export function prepareUnitRuntime(
 
 	let runtimeScene: RuntimeScene;
 	try {
-		runtimeScene = resolveSceneDocument(
-			sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
-			sceneOptions
+		runtimeScene = p2311Measure('scene-resolve', () =>
+			resolveSceneDocument(
+				sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
+				sceneOptions
+			)
 		);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Scene preparation failed';

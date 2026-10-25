@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
+	import { perfRenderer } from '$lib/platform/perf-marks';
 	/**
 	 * The **one persistent Stage Canvas**.
 	 *
@@ -53,7 +54,7 @@
 	});
 </script>
 
-<Canvas createRenderer={createManagedWebGLRenderer} dpr={[1, 1.5]} shadows={PCFShadowMap}>
+<Canvas createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas), 'stage')} dpr={[1, 1.5]} shadows={PCFShadowMap}>
 	<T.Color attach="background" args={[0x111117]} />
 	<T.Fog attach="fog" args={[0x111117, 40, 120]} />
 	<T.AmbientLight intensity={0.35} />

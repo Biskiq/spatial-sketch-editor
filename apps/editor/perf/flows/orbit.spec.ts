@@ -14,24 +14,49 @@
  * actual duration and frames per run instead of claiming a duration it did not
  * achieve.
  *
- * Draw calls, triangles and GPU time need a renderer probe the shipped Stage
- * does not expose; those rows stay unrun and owner-run on the reference
- * machine. F7's frame-time budget is a hard row there, never a claim from this
- * pre-flight pass.
+ * T1.P02.S06 tiers the flow and attaches the render counters: draw calls,
+ * triangles, shadow-map passes and shadow draws per frame, programs, geometries
+ * and textures, planner/compile work per frame during the orbit, and frames
+ * rendered at rest in a 2 s idle window after it. GPU time is not captured.
+ * F7's frame-time budget is a hard row on the reference machine, never a claim
+ * from a pre-flight or smoke pass.
  */
 
 import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
-import { fixtureProject } from '../lib/fixtures';
 import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
 import { frameIntervals, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
+import {
+	readRenderCounters,
+	readResidentBytes,
+	readWork,
+	renderCounterDelta,
+	renderMetrics,
+	residentMetrics,
+	resetRenderMaxima,
+	selectedTiers,
+	SMOKE,
+	smokeOr,
+	tierAvailability,
+	tierLimitations,
+	tierProject,
+	tierWorkloadLabel,
+	workDelta,
+	workMetrics,
+	type RenderCounters,
+	type ResidentBytes,
+	type WorkSnapshot
+} from '../lib/tiers';
+import type { WorkloadId } from '../lib/workloads/registry';
 
-const ORBIT_MS = 10_000;
-const FRAME_FLOOR = 600;
+/** A smoke orbit proves the flow executes; it never reaches the contract's floor. */
+const ORBIT_MS = SMOKE ? 2_000 : 10_000;
+const FRAME_FLOOR = SMOKE ? 0 : 600;
+const IDLE_MS = 2_000;
 const MAX_ORBIT_MS = 60_000;
 const STEPS_PER_ORBIT = 60;
 const STEP_MS = ORBIT_MS / STEPS_PER_ORBIT;
@@ -42,17 +67,26 @@ type OrbitRun = {
 	readonly longestTask: number;
 	readonly durationMs: number;
 	readonly frames: number;
+	readonly setupMs: number;
+	readonly render: Record<string, RenderCounters>;
+	readonly idleRender: Record<string, RenderCounters>;
+	readonly work: WorkSnapshot;
+	readonly resident: ResidentBytes | null;
 };
 
 type TickWindow = Window & { __BISKIQ_PERF_TICKS__?: number[] };
 
-async function orbitOnce(session: MeasuredSession): Promise<OrbitRun> {
+async function orbitOnce(session: MeasuredSession, tier: WorkloadId): Promise<OrbitRun> {
 	const { page } = session;
-	const projectId = uniqueProjectId('f7');
-	const project = await fixtureProject('M', projectId);
+	const setupStarted = performance.now();
+	const projectId = uniqueProjectId(`f7-${tier}`);
 	await gotoCreateIntent(page, projectId);
-	await openSourceJson(page, project);
+	await openSourceJson(page, tierProject(tier, projectId));
 	await expect(page.locator('canvas').first()).toBeVisible();
+	const setupMs = performance.now() - setupStarted;
+	await resetRenderMaxima(page);
+	const renderBefore = await readRenderCounters(page);
+	const workBefore = await readWork(page);
 	const stage = page.locator('.stage').first();
 	const box = await stage.boundingBox();
 	if (box === null) throw new Error('the Stage has no box');
@@ -87,8 +121,17 @@ async function orbitOnce(session: MeasuredSession): Promise<OrbitRun> {
 			startTicks;
 	}
 	const ended = await page.evaluate(() => performance.now());
+	const render = renderCounterDelta(renderBefore, await readRenderCounters(page));
+	const work = workDelta(workBefore, await readWork(page));
 	await page.mouse.up();
 	await page.keyboard.up('Shift');
+	// Idle: no input for IDLE_MS. The counters' "at rest" frames need a second
+	// without input, so the window starts after it.
+	await page.waitForTimeout(1_100);
+	const idleBefore = await readRenderCounters(page);
+	await page.waitForTimeout(IDLE_MS);
+	const idleRender = renderCounterDelta(idleBefore, await readRenderCounters(page));
+	const resident = await readResidentBytes(page);
 	const ledger = await readLedger(page);
 	const intervals = frameIntervals(ledger.ticks, started, ended);
 	return {
@@ -98,69 +141,110 @@ async function orbitOnce(session: MeasuredSession): Promise<OrbitRun> {
 			.filter((entry) => entry.start >= started && entry.start <= ended)
 			.reduce((max, entry) => Math.max(max, entry.duration), 0),
 		durationMs: ended - started,
-		frames: intervals.length
+		frames: intervals.length,
+		setupMs,
+		render,
+		idleRender,
+		work,
+		resident
 	};
 }
 
 test.describe('F7 orbit', () => {
 	test.setTimeout(3_000_000);
-	test('scripted orbit and dolly on M, cold, warm and repeat-use', async ({ browser }, testInfo) => {
-		const report = startReport(`f7-orbit-${testInfo.project.name.replace(/\s+/g, '-')}`);
-		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-			const { results: runs, facts } = await collectMeasuredRuns(
-				browser,
-				{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
-				{
+	for (const tier of selectedTiers()) {
+		test(`scripted orbit and dolly at ${tier}, cold, warm and repeat-use`, async ({ browser }, testInfo) => {
+			const report = startReport(`f7-orbit-${tier}-${testInfo.project.name.replace(/\s+/g, '-')}`);
+			const availability = tierAvailability(tier);
+			if (!availability.available) {
+				report.rows.push({
+					id: `F7-${tier}-unrun`,
+					flow: 'F7 orbit/navigation',
+					workload: tierWorkloadLabel(tier),
+					browser: testInfo.project.name,
+					cpuRate: 1,
+					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+					metrics: { unrun: availability.reason },
+					limitations: ['unrun tier: reported, not skipped silently']
+				});
+				console.log(`F7 ${tier}: unrun — ${availability.reason}`);
+				fileReport(report);
+				return;
+			}
+			const runCount = smokeOr(RUNS);
+			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
+				const { results: runs, facts } = await collectMeasuredRuns(
+					browser,
+					{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
+					{
+						cacheState,
+						warmup: smokeOr(WARMUP_RUNS, 0),
+						runs: runCount,
+						afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+					},
+					(session) => orbitOnce(session, tier)
+				);
+				const intervals = runs.flatMap((run) => run.intervals);
+				const dropped = runs.reduce(
+					(sum, run) => sum + run.intervals.filter((interval) => interval > 33.4).length,
+					0
+				);
+				const last = runs[runs.length - 1]!;
+				const frameCount = Math.max(1, last.render.stage?.frames ?? 0);
+				const perFrame = Object.fromEntries(
+					Object.entries(last.render.stage ?? {})
+						.filter(([name]) => ['drawCalls', 'triangles', 'shadowMapRenders', 'shadowDrawCalls'].includes(name))
+						.map(([name, value]) => [`render:stage:${name}PerFrame`, value / frameCount])
+				);
+				const orbitWork = workMetrics(last.work);
+				const row: ResultRow = {
+					id: `F7-orbit-${tier}-${cacheState}`,
+					flow: 'F7 orbit/navigation',
+					workload: `${tierWorkloadLabel(tier)}, ${ORBIT_MS / 1000} s scripted orbit + dolly, extended only to reach the ${FRAME_FLOOR}-frame floor`,
 					cacheState,
-					warmup: WARMUP_RUNS,
-					runs: RUNS,
-					afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
-				},
-				orbitOnce
-			);
-			const intervals = runs.flatMap((run) => run.intervals);
-			const dropped = runs.reduce(
-				(sum, run) => sum + run.intervals.filter((interval) => interval > 33.4).length,
-				0
-			);
-			const row: ResultRow = {
-				id: `F7-orbit-M-${cacheState}`,
-				flow: 'F7 orbit/navigation',
-				workload: 'M fixture, 10 s scripted orbit + dolly, extended only to reach the 600-frame floor',
-				cacheState,
-				network: NETWORK,
-				browser: `${testInfo.project.name} ${facts.chromeVersion}`,
-				cpuRate: 1,
-				viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-				metrics: {
-					frames: intervals.length,
-					framesPerRunMin: Math.min(...runs.map((run) => run.frames)),
-					durationMsMedian: summarize(runs.map((run) => run.durationMs)).median,
-					durationMsMin: Math.min(...runs.map((run) => run.durationMs)),
-					droppedFramesOver33ms: dropped,
-					longTaskCount: runs.reduce((sum, run) => sum + run.longTasks, 0),
-					longestTask: runs.reduce((max, run) => Math.max(max, run.longestTask), 0)
-				},
-				stats: {
-					frameInterval: summarize(intervals),
-					durationMs: summarize(runs.map((run) => run.durationMs)),
-					framesPerRun: summarize(runs.map((run) => run.frames))
-				},
-				limitations: [
-					...passLimitations(),
-					'draw calls, triangles and GPU time are not captured (no renderer probe on the shipped Stage)',
-					'S and L orbit rows stay unrun in this slice',
-					'frame intervals are rAF-to-rAF on a 60 Hz panel and do not substitute for presented-result latency',
-					`runs extend past ${ORBIT_MS} ms only when the display cannot deliver ${FRAME_FLOOR} frames in that time`
-				]
-			};
-			report.rows.push(row);
-			console.log(formatRow(row));
-			expect(runs).toHaveLength(RUNS);
-			for (const run of runs) expect(run.frames).toBeGreaterThanOrEqual(FRAME_FLOOR);
-		}
-		const path = fileReport(report);
-		console.log(`raw results: ${path}`);
-		expect(report.rows).toHaveLength(3);
-	});
+					network: NETWORK,
+					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
+					cpuRate: 1,
+					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+					metrics: {
+						frames: intervals.length,
+						framesPerRunMin: Math.min(...runs.map((run) => run.frames)),
+						durationMsMedian: summarize(runs.map((run) => run.durationMs)).median,
+						durationMsMin: Math.min(...runs.map((run) => run.durationMs)),
+						droppedFramesOver33ms: dropped,
+						longTaskCount: runs.reduce((sum, run) => sum + run.longTasks, 0),
+						longestTask: runs.reduce((max, run) => Math.max(max, run.longestTask), 0),
+						setupMs: runs.reduce((sum, run) => sum + run.setupMs, 0),
+						...renderMetrics(last.render),
+						...perFrame,
+						...Object.fromEntries(Object.entries(orbitWork).map(([name, value]) => [`orbit:${name}`, value])),
+						'orbit:compilesPerFrame': (last.work.counts.compile ?? 0) / frameCount,
+						'idle:render:stage:frames': last.idleRender.stage?.frames ?? 0,
+						'idle:render:stage:framesAtRest': last.idleRender.stage?.framesAtRest ?? 0,
+						idleWindowMs: IDLE_MS,
+						...residentMetrics(last.resident, 'orbit')
+					},
+					stats: {
+						frameInterval: summarize(intervals),
+						durationMs: summarize(runs.map((run) => run.durationMs)),
+						framesPerRun: summarize(runs.map((run) => run.frames))
+					},
+					limitations: [
+						...passLimitations(),
+						...tierLimitations(tier),
+						'GPU time is not captured; render counters are Three renderer.info per frame (count, not timing)',
+						'frame intervals are rAF-to-rAF on a 60 Hz panel and do not substitute for presented-result latency',
+						`runs extend past ${ORBIT_MS} ms only when the display cannot deliver ${FRAME_FLOOR} frames in that time`
+					]
+				};
+				report.rows.push(row);
+				console.log(formatRow(row));
+				expect(runs).toHaveLength(runCount);
+				for (const run of runs) expect(run.frames).toBeGreaterThanOrEqual(FRAME_FLOOR);
+			}
+			const path = fileReport(report);
+			console.log(`raw results: ${path}`);
+			expect(report.rows).toHaveLength(3);
+		});
+	}
 });

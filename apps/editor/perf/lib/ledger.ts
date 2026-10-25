@@ -82,6 +82,68 @@ export function perfInitScript(options: HarnessOptions): void {
 	};
 	nativeRaf(tick);
 
+	// T1.P02.S06 render counters. The product hands each surface's renderer to
+	// this hook (`perfRenderer`); the harness wraps that instance's `render` and
+	// its shadow map's `render`, so the counts are Three's own `info` per frame.
+	// Shadow draws are the calls issued inside the shadow pass. A frame is "at
+	// rest" when no pointer, wheel or key input arrived in the preceding second.
+	type RenderInfo = { render: { calls: number; triangles: number }; memory: { geometries: number; textures: number }; programs?: unknown[] | null };
+	type HookedRenderer = {
+		render(scene: unknown, camera: unknown): void;
+		info: RenderInfo;
+		shadowMap: { render(...args: unknown[]): void };
+	};
+	const renderSurfaces: Record<string, { counters: Record<string, number> }> = {};
+	const renderRefs: Record<string, { renderer: HookedRenderer; scene: unknown; camera: unknown }> = {};
+	(target as unknown as Record<string, unknown>).__BISKIQ_PERF_RENDER__ = renderSurfaces;
+	(target as unknown as Record<string, unknown>).__BISKIQ_PERF_RENDER_REFS__ = renderRefs;
+	let lastInputAt = -Infinity;
+	for (const type of ['pointerdown', 'pointermove', 'wheel', 'keydown']) {
+		window.addEventListener(type, () => (lastInputAt = performance.now()), { capture: true, passive: true });
+	}
+	(target as unknown as Record<string, unknown>).__BISKIQ_PERF_ON_RENDERER__ = (candidate: object, surface: string) => {
+		const renderer = candidate as HookedRenderer;
+		const state = (renderSurfaces[surface] ??= {
+			counters: { frames: 0, framesAtRest: 0, drawCalls: 0, triangles: 0, shadowMapRenders: 0, shadowDrawCalls: 0, programs: 0, geometries: 0, textures: 0, maxDrawCallsPerFrame: 0, maxTrianglesPerFrame: 0 }
+		});
+		const counters = state.counters;
+		const shadowMap = renderer.shadowMap;
+		const shadowRender = shadowMap.render.bind(shadowMap);
+		shadowMap.render = (...args: unknown[]) => {
+			const before = renderer.info.render.calls;
+			shadowRender(...args);
+			const issued = renderer.info.render.calls - before;
+			if (issued > 0) {
+				counters.shadowMapRenders! += 1;
+				counters.shadowDrawCalls! += issued;
+			}
+		};
+		// The managed renderer reassigns `render` after its lookup discovery and at
+		// dispose; an accessor keeps this wrapper outermost across reassignment.
+		let inner = renderer.render;
+		const counted = (scene: unknown, camera: unknown) => {
+			inner.call(renderer, scene, camera);
+			renderRefs[surface] = { renderer, scene, camera };
+			const info = renderer.info;
+			counters.frames! += 1;
+			if (performance.now() - lastInputAt > 1000) counters.framesAtRest! += 1;
+			counters.drawCalls! += info.render.calls;
+			counters.triangles! += info.render.triangles;
+			counters.maxDrawCallsPerFrame = Math.max(counters.maxDrawCallsPerFrame!, info.render.calls);
+			counters.maxTrianglesPerFrame = Math.max(counters.maxTrianglesPerFrame!, info.render.triangles);
+			counters.programs = info.programs?.length ?? 0;
+			counters.geometries = info.memory.geometries;
+			counters.textures = info.memory.textures;
+		};
+		Object.defineProperty(renderer, 'render', {
+			configurable: true,
+			get: () => counted,
+			set: (next: HookedRenderer['render']) => {
+				inner = next;
+			}
+		});
+	};
+
 	try {
 		new PerformanceObserver((list) => {
 			for (const entry of list.getEntries()) {

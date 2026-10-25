@@ -40,6 +40,7 @@ import type {
 	OrientedWallRef
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
+import { countWork } from './p2311-perf';
 import { wallCenterlineSamples } from './layout-wall-centerline';
 import { topologyComponentKeyByWallId } from './layout-topology-components';
 import {
@@ -675,6 +676,7 @@ export function buildCorrespondenceComponents(options: {
 	}
 	/** Keys left after the ambiguity refusal: exactly the faces owned by ONE Room. */
 	const unambiguousFaceKeys = new Set(claimFaceKeyByRoomId.values());
+	countWork('pairs:face-room', faces.length * predecessorRoomIds.length);
 	faces.forEach((face, faceIndex) => {
 		const faceBox = faceBoxes[faceIndex] ?? null;
 		predecessorRoomIds.forEach((roomId, predIndex) => {

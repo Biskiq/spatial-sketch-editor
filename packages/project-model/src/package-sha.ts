@@ -4,7 +4,11 @@
  * Uses the Web Crypto API exposed by Node 20+ and modern browsers so the
  * package has one cross-runtime implementation and no editor dependency.
  */
+import { countWork } from '@portfolio/layout-core';
+
 export async function sha256Bytes(bytes: Uint8Array): Promise<string> {
+	countWork('digest');
+	countWork('digest:bytes', bytes.byteLength);
 	const sub = new Uint8Array(bytes);
 	const buf = sub.buffer.slice(sub.byteOffset, sub.byteOffset + sub.byteLength) as ArrayBuffer;
 	const digest = await globalThis.crypto.subtle.digest('SHA-256', buf);

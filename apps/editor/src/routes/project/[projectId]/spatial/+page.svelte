@@ -33,6 +33,7 @@
 		type ProjectApi
 	} from '$lib/platform/project-persistence';
 	import { perfInput, perfMark, perfMarksEnabled, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
+	import { installPerfWorkObserver } from '$lib/platform/perf-work';
 	import {
 		discardPendingCapture,
 		persistPendingCapture,
@@ -118,6 +119,9 @@
 		returnPreview
 	} from '$lib/authoring/experience/preview-handover';
 	import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
+
+	// Harness-gated work ledger (T1.P02.S06); inert without the perf flag.
+	installPerfWorkObserver();
 
 	const projectId = decodeURIComponent(page.params.projectId ?? '');
 	const intent: BootIntent = bootIntentFromSearch(page.url.searchParams);

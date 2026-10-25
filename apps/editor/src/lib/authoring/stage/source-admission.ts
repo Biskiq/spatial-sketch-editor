@@ -27,6 +27,8 @@
  */
 import {
 	hasBlockingLayoutIssues,
+	measureWorkAsync,
+	p2311Measure,
 	type CompiledLayoutGeometry,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
@@ -183,12 +185,20 @@ export async function admitSource(
 	input: unknown,
 	context: AdmissionContext
 ): Promise<AdmissionOutcome> {
+	// Harness-gated stage span (inert without the work observer).
+	return measureWorkAsync('admission', () => admitSourceOnce(input, context));
+}
+
+async function admitSourceOnce(
+	input: unknown,
+	context: AdmissionContext
+): Promise<AdmissionOutcome> {
 	// Read the envelope once so the host policy can see its model registry before
 	// Scene resolution. `prepareUnitRuntime` then performs the one canonical
 	// preparation over that same envelope.
 	const read = validateProjectEnvelope(input);
 	if (!read.success) return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(read.issues) };
-	const prepared = prepareUnitRuntime(read.envelope, sceneOptionsFor(read.envelope));
+	const prepared = p2311Measure('admission:runtime', () => prepareUnitRuntime(read.envelope, sceneOptionsFor(read.envelope)));
 	if (prepared.kind === 'rejected') {
 		return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(prepared.issues) };
 	}
@@ -215,10 +225,10 @@ export async function admitSource(
 
 	// The canonical form is computed once here: its bytes are both what the content
 	// identity describes and what the host records as the accepted baseline.
-	const sourceContentId = await computeEnvelopeSourceContentId(envelope);
-	const canonicalJson = serializeProjectEnvelope(envelope);
+	const sourceContentId = await measureWorkAsync('admission:digest', () => computeEnvelopeSourceContentId(envelope));
+	const canonicalJson = p2311Measure('admission:serialize', () => serializeProjectEnvelope(envelope));
 	const domain = domainOf(envelope, sourceContentId, context, prepared);
-	freezeF4Data(domain);
+	p2311Measure('admission:freeze', () => freezeF4Data(domain));
 	return { kind: 'admitted', snapshot: snapshotOf(envelope, sourceContentId, canonicalJson, context, domain) };
 }
 
@@ -235,7 +245,7 @@ export async function admitSourceJson(
 ): Promise<AdmissionOutcome> {
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(json) as unknown;
+		parsed = p2311Measure('admission:parse', () => JSON.parse(json) as unknown);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Invalid JSON';
 		return {
