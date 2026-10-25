@@ -31,6 +31,15 @@ import {
 	uploadAsset
 } from './asset-persistence.js';
 import {
+	ActivePublicationDeleteError,
+	deleteProject as deleteProjectLifecycle,
+	parseDeleteProjectRequest,
+	parseRenameProjectRequest,
+	ProjectDeletionBusyError,
+	ProjectLifecycleInputError,
+	renameProject as renameProjectLifecycle
+} from './project-lifecycle.js';
+import {
 	approveModelImport,
 	cancelModelImport,
 	createModelImport,
@@ -43,6 +52,11 @@ import {
 import type { ObjectStore } from './object-store.js';
 import { listProjects, loadProject, ProjectNotFoundError } from './project-persistence.js';
 import { SaveRefusalError, saveAcceptedSource } from './save-persistence.js';
+import {
+	ProjectWriteAbortedError,
+	resolveProjectLifecyclePolicy,
+	type ProjectLifecyclePolicy
+} from './project-write-lease.js';
 import {
 	getPublicationStatus,
 	PublicationConflictError,
@@ -69,6 +83,8 @@ export type ApiAppOptions = {
 	/** Deployment-owned key namespace; production passes `R2_OBJECT_NAMESPACE`. */
 	objectNamespace?: string;
 	logger?: FastifyServerOptions['logger'];
+	/** Timeout/clock injection seam for deterministic lifecycle fault tests. */
+	projectLifecyclePolicy?: Partial<ProjectLifecyclePolicy>;
 	/**
 	 * Test-only authentication issuer. When present (and sessions are
 	 * enabled) a single `POST /test-auth/session` route is registered that
@@ -93,8 +109,10 @@ export function createApp({
 	objectStore,
 	objectNamespace = 'default',
 	testAuth,
+	projectLifecyclePolicy,
 	logger = true
 }: ApiAppOptions): FastifyInstance {
+	const lifecyclePolicy = resolveProjectLifecyclePolicy(projectLifecyclePolicy);
 	const safeLogger =
 		logger === true
 			? { serializers: { req: safeRequestLog } }
@@ -378,6 +396,63 @@ export function createApp({
 		}
 	});
 
+	app.patch('/projects/:projectId', async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		if (!userId) return unauthorized(reply);
+		const projectId = (request.params as { projectId?: unknown }).projectId;
+		if (!isValidProjectId(projectId)) {
+			return reply.code(400).send(errorBody('invalid_project_id', 'Invalid project ID'));
+		}
+		const parsed = parseRenameProjectRequest(request.body);
+		if (parsed.kind === 'invalid') return reply.code(400).send(errorBody(parsed.code, parsed.message));
+		try {
+			return await renameProjectLifecycle(pool, userId, projectId, parsed.request);
+		} catch (error) {
+			if (error instanceof ProjectNotFoundError) return notFound(reply);
+			if (error instanceof SaveRefusalError) return saveRefusal(reply, error);
+			if (error instanceof ProjectLifecycleInputError) {
+				return reply.code(error.statusCode).send(errorBody(error.code, error.message));
+			}
+			return databaseFailure(app, reply, error, 'Project rename failed');
+		}
+	});
+
+	app.delete('/projects/:projectId', async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		if (!userId) return unauthorized(reply);
+		const projectId = (request.params as { projectId?: unknown }).projectId;
+		if (!isValidProjectId(projectId)) {
+			return reply.code(400).send(errorBody('invalid_project_id', 'Invalid project ID'));
+		}
+		const parsed = parseDeleteProjectRequest(request.body);
+		if (parsed.kind === 'invalid') return reply.code(400).send(errorBody(parsed.code, parsed.message));
+		if (!objectStore?.list || !objectStore.delete) {
+			return reply.code(503).send(errorBody('storage_unavailable', 'Project cleanup is temporarily unavailable'));
+		}
+		try {
+			const acknowledgement = await deleteProjectLifecycle(
+				pool,
+				userId,
+				projectId,
+				parsed.request,
+				objectNamespace,
+				objectStore,
+				lifecyclePolicy
+			);
+			return reply.code(acknowledgement.cleanup === 'complete' ? 200 : 202).send(acknowledgement);
+		} catch (error) {
+			if (error instanceof ProjectNotFoundError) return notFound(reply);
+			if (error instanceof SaveRefusalError) return saveRefusal(reply, error);
+			if (error instanceof ActivePublicationDeleteError) {
+				return reply.code(409).send(errorBody(error.code, error.message));
+			}
+			if (error instanceof ProjectDeletionBusyError) {
+				return reply.code(409).send(errorBody(error.code, error.message));
+			}
+			return databaseFailure(app, reply, error, 'Project deletion failed');
+		}
+	});
+
 	app.get('/projects/:projectId', async (request, reply) => {
 		const userId = sessionUserId(request, sessionsEnabled);
 		if (!userId) return unauthorized(reply);
@@ -484,7 +559,10 @@ export function createApp({
 		}
 	});
 
-	app.put('/projects/:projectId/models/imports/:importId/files/:fileId/content', { onRequest: requireModelSession }, async (request, reply) => {
+	app.put('/projects/:projectId/models/imports/:importId/files/:fileId/content', {
+		onRequest: requireModelSession,
+		handlerTimeout: lifecyclePolicy.handlerTimeoutMs
+	}, async (request, reply) => {
 		const userId = sessionUserId(request, sessionsEnabled);
 		const { projectId, importId, fileId } = request.params as { projectId?: unknown; importId?: unknown; fileId?: unknown };
 		if (!userId) return unauthorized(reply);
@@ -496,6 +574,7 @@ export function createApp({
 		if (!(request.body instanceof Readable)) {
 			return modelInputFailure(reply, new ModelInputError('invalid_upload', 400, 'Invalid upload body'));
 		}
+		const requestDeadline = createProjectWriteRequestSignal(request, lifecyclePolicy.handlerTimeoutMs);
 		try {
 			return await uploadModelFile(
 				pool,
@@ -506,10 +585,13 @@ export function createApp({
 				contentLength,
 				request.body,
 				objectStore,
-				objectNamespace
+				objectNamespace,
+				{ parentSignal: requestDeadline.signal, policy: lifecyclePolicy }
 			);
 		} catch (error) {
 			return modelFailure(app, reply, error, 'Model file upload failed');
+		} finally {
+			requestDeadline.dispose();
 		}
 	});
 
@@ -528,21 +610,36 @@ export function createApp({
 		}
 	});
 
-	app.post('/projects/:projectId/models/imports/:importId/approve', { onRequest: requireModelSession }, async (request, reply) => {
+	app.post('/projects/:projectId/models/imports/:importId/approve', {
+		onRequest: requireModelSession,
+		handlerTimeout: lifecyclePolicy.handlerTimeoutMs
+	}, async (request, reply) => {
 		const userId = sessionUserId(request, sessionsEnabled);
 		const { projectId, importId } = request.params as { projectId?: unknown; importId?: unknown };
 		if (!userId) return unauthorized(reply);
 		if (!isValidProjectId(projectId) || !isValidAssetId(importId)) {
 			return modelInputFailure(reply, new ModelInputError('invalid_model_file', 400, 'Invalid model import identifier'));
 		}
+		const requestDeadline = createProjectWriteRequestSignal(request, lifecyclePolicy.handlerTimeoutMs);
 		try {
 			if (!isJsonContentType(request.headers['content-type'])) {
 				return modelInputFailure(reply, new ModelInputError('unsupported_media_type', 415, 'Unsupported Media Type'));
 			}
-			const revision = await approveModelImport(pool, userId, projectId, importId, request.body, objectStore, objectNamespace);
+			const revision = await approveModelImport(
+				pool,
+				userId,
+				projectId,
+				importId,
+				request.body,
+				objectStore,
+				objectNamespace,
+				{ parentSignal: requestDeadline.signal, policy: lifecyclePolicy }
+			);
 			return reply.code(200).send(revision);
 		} catch (error) {
 			return modelFailure(app, reply, error, 'Model approval failed');
+		} finally {
+			requestDeadline.dispose();
 		}
 	});
 
@@ -631,7 +728,10 @@ export function createApp({
 		}
 	});
 
-	app.put('/projects/:projectId/assets/:assetId/content', { onRequest: requireAssetUpload }, async (request, reply) => {
+	app.put('/projects/:projectId/assets/:assetId/content', {
+		onRequest: requireAssetUpload,
+		handlerTimeout: lifecyclePolicy.handlerTimeoutMs
+	}, async (request, reply) => {
 		const userId = sessionUserId(request, sessionsEnabled);
 		const { projectId, assetId } = request.params as { projectId?: unknown; assetId?: unknown };
 		if (!userId) return unauthorized(reply);
@@ -643,6 +743,7 @@ export function createApp({
 		if (!(request.body instanceof Readable)) {
 			return assetInputFailure(reply, new AssetInputError('invalid_upload', 400, 'Invalid upload body'));
 		}
+		const requestDeadline = createProjectWriteRequestSignal(request, lifecyclePolicy.handlerTimeoutMs);
 		try {
 			return await uploadAsset(
 				pool,
@@ -652,10 +753,13 @@ export function createApp({
 				contentLength,
 				request.body,
 				objectStore,
-				objectNamespace
+				objectNamespace,
+				{ parentSignal: requestDeadline.signal, policy: lifecyclePolicy }
 			);
 		} catch (error) {
 			return assetFailure(app, reply, error, 'Asset upload failed');
+		} finally {
+			requestDeadline.dispose();
 		}
 	});
 
@@ -702,20 +806,65 @@ function modelInputFailure(reply: FastifyReply, error: ModelInputError) {
 function modelFailure(app: FastifyInstance, reply: FastifyReply, error: unknown, message: string) {
 	if (error instanceof ModelInputError) return modelInputFailure(reply, error);
 	if (error instanceof ModelNotFoundError) return notFound(reply);
+	if (error instanceof ProjectNotFoundError) return notFound(reply);
+	if (error instanceof ProjectWriteAbortedError) {
+		if (reply.sent) return reply;
+		return reply.code(409).send(errorBody('project-busy', 'The project write was stopped; retry after the project operation resolves'));
+	}
 	return databaseFailure(app, reply, error, message);
 }
 
 function assetFailure(app: FastifyInstance, reply: FastifyReply, error: unknown, message: string) {
 	if (error instanceof AssetInputError) return assetInputFailure(reply, error);
 	if (error instanceof AssetNotFoundError) return notFound(reply);
+	if (error instanceof ProjectNotFoundError) return notFound(reply);
 	if (error instanceof AssetNotReadyError) {
 		return reply.code(409).send(errorBody('asset_not_ready', 'Asset Not Ready'));
+	}
+	if (error instanceof ProjectWriteAbortedError) {
+		if (reply.sent) return reply;
+		return reply.code(409).send(errorBody('project-busy', 'The project write was stopped; retry after the project operation resolves'));
 	}
 	return databaseFailure(app, reply, error, message);
 }
 
 function isOctetStream(value: string | undefined): boolean {
 	return value?.split(';', 1)[0]?.trim().toLowerCase() === 'application/octet-stream';
+}
+
+/**
+ * Fastify's signal also aborts when Node emits `IncomingMessage.close` after a
+ * normal streamed request body completes. Ignore that completion event while
+ * preserving true client disconnects and the handler deadline; the local timer
+ * covers the full route work even when Fastify clears its timer on raw close.
+ */
+function createProjectWriteRequestSignal(
+	request: FastifyRequest,
+	timeoutMs: number
+): { signal: AbortSignal; dispose(): void } {
+	const fastifySignal = request.signal;
+	const controller = new AbortController();
+	const onAbort = () => {
+		const reason = fastifySignal.reason as { code?: unknown } | undefined;
+		if (!request.raw.aborted && reason?.code !== 'FST_ERR_HANDLER_TIMEOUT') return;
+		if (!controller.signal.aborted) {
+			controller.abort(new ProjectWriteAbortedError('The client disconnected or the request exceeded its handler deadline'));
+		}
+	};
+	fastifySignal.addEventListener('abort', onAbort);
+	if (fastifySignal.aborted) onAbort();
+	const timer = setTimeout(() => {
+		if (!controller.signal.aborted) {
+			controller.abort(new ProjectWriteAbortedError('The request exceeded its handler deadline'));
+		}
+	}, timeoutMs);
+	return {
+		signal: controller.signal,
+		dispose() {
+			clearTimeout(timer);
+			fastifySignal.removeEventListener('abort', onAbort);
+		}
+	};
 }
 
 function isJsonContentType(value: string | undefined): boolean {

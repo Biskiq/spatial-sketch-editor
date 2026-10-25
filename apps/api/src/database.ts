@@ -11,7 +11,7 @@ export interface DatabaseClient {
 		text: string,
 		values?: unknown[]
 	): Promise<DatabaseQueryResult<Row>>;
-	release(): void;
+	release(error?: Error): void;
 }
 
 export interface DatabasePool {

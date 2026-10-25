@@ -14,22 +14,18 @@ PHASE: T3.P01 Camera/Experience foundation → closed 2026-10-20
        ../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md
 ACTIVE: T3.P04.S01 Project rename and delete — implementation started 2026-10-25 from trusted
         base `976323da9e18e96978649e595bc555021964631a` (PR #188 merged on main).
-        R1/R2 were ratified by the owner on 2026-10-25; the plan and phase references carry the
-        accepted rules. Draft implementation PR #191 is open with T3's additive client transport,
-        unrun client probes and the T1/T2 handoff material; acceptance remains pending.
-NEXT:   1. Obtain T2 review of the [API handoff material](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/t2-api-handoff.md)
-           before editing shared API files: owned-key inventory, `model_revisions.source_keys`
-           migration/backfill, and revocable leases plus compensation at `uploadModelFile` and
-           `approveModelImport`.
-        2. Keep the bounded T1 shell patch behind T1.P02.S06's recorded shell-file claim and T1
+        R1/R2 were ratified by the owner on 2026-10-25. Draft PR #191 now contains the T3 API
+        lifecycle routes, migration 007, three writer leases, compensation, owned-key cleanup and
+        retry CLI. The T2 shared API review gate is satisfied by PR #191 review 5643653030. The
+        API suite passed 105 tests with zero skips against the private database
+        `biskiq_p04_s01_20261025`; its cleanup is recorded below. Slice acceptance remains pending.
+NEXT:   1. Keep the bounded T1 shell patch behind T1.P02.S06's recorded shell-file claim and T1
            pre-implementation review ([handoff material](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/t1-shell-handoff.md));
            do not touch claimed files.
-        3. Complete the T3-owned lifecycle API and remaining lifecycle/concurrency/cleanup probes
-           after the T2 handoff review; the T1-owned dirty-state integration remains with its shell
-           review. Verification is exhaustive; the owner authorized test/build execution on
-           2026-10-25. Lifecycle, DB-backed API, browser and performance obligations remain open.
-        4. Keep draft PR #191 in draft while reviews and required verification remain pending; do
-           not accept/close the slice or phase or merge it.
+        2. Finish the T1-owned dirty-state integration and the remaining integrated client, browser,
+           accessibility and performance verification. API coverage does not close these gates.
+        3. Keep draft PR #191 in draft while those reviews and required verification remain pending;
+           do not accept/close the slice or phase or merge it.
 RELEASE: ../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md
          (closes T3.P02 and T3.P03, authorizes and releases T3.P04.S01; the live release row is
          docs/roadmap/now.md)
@@ -40,9 +36,18 @@ ROUTE:   ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project
          → ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md
          (closed gate artifacts remain stubs at their own paths: T3.P02.S02 and T3.P03.S02
          acceptance.md, anchors 8cc30c94 and a65db2e0, tags closed/T3.P02 and closed/T3.P03)
-BLOCKER: T2 review gates shared API edits. S06's recorded claim and required T1 review gate only the
-         shell patch. The 2026-10-25 verification authorization does not establish S06 completion,
-         release its shared shell/harness ownership, or accept this slice.
+BLOCKER: T1's recorded S06 claim and required pre-implementation review still gate the shell patch;
+         integrated acceptance remains open. The 2026-10-25 verification authorization does not
+         establish S06 completion, release its shared shell/harness ownership, or accept this slice.
+API:     Route contract is `PATCH /projects/:projectId` with `{name, precondition}` and
+         `DELETE /projects/:projectId` with `{precondition}`; both require an expected saved-base
+         token. Upload writes use a 180 s request bound, a fixed 170 s lease, 2 s heartbeat and 5 s
+         abort margin; cleanup waits 187 s before its first empty listing and another 187 s before
+         the second. Owner-run retries use `npm run cleanup:project-deletions`; pass
+         `--verify-completed` to check and repair completed tombstones.
+VERIFY:  `npm run check:api` and `DATABASE_URL=postgresql://localhost:5432/biskiq_p04_s01_20261025 npm run test:api`
+         passed on 2026-10-25 (105 passed, 0 failed, 0 skipped). The private database was dropped
+         after the run; the shared S06 databases were not changed.
 CARRY:   T3.P02 Scope A (performance, deferred 2026-10-24, not claimed): traced Preview first frame;
          capture/bind completion; M-workload F10 rows; F13 re-measure; reference-machine run; Stage
          initial-load delta. Transferred as measurement to T1.P02.S06; a miss in T3-owned code is

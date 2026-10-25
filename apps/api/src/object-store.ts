@@ -11,12 +11,12 @@ export type ObjectStore = {
 	put(
 		key: string,
 		body: Readable,
-		options: { contentType: string; contentLength: number }
+		options: { contentType: string; contentLength: number; signal: AbortSignal }
 	): Promise<void>;
 	get(key: string): Promise<{ body: Readable; contentLength: number } | null>;
-	/** List every key this application can see. Used only by the epoch purge. */
-	list?(): Promise<string[]>;
-	delete?(key: string): Promise<void>;
+	/** List every key this application can see. Callers must scope their own prefix. */
+	list?(signal?: AbortSignal): Promise<string[]>;
+	delete?(key: string, signal?: AbortSignal): Promise<void>;
 	close?(): void | Promise<void>;
 };
 
@@ -46,7 +46,8 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 					Body: body,
 					ContentType: options.contentType,
 					ContentLength: options.contentLength
-				})
+				}),
+				{ abortSignal: options.signal }
 			);
 		},
 		async get(key) {
@@ -64,7 +65,7 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 				throw error;
 			}
 		},
-		async list() {
+		async list(signal) {
 			const keys: string[] = [];
 			let continuationToken: string | undefined;
 			do {
@@ -72,7 +73,8 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 					new ListObjectsV2Command({
 						Bucket: config.r2Bucket,
 						ContinuationToken: continuationToken
-					})
+					}),
+					{ abortSignal: signal }
 				);
 				for (const object of page.Contents ?? []) {
 					if (typeof object.Key === 'string') keys.push(object.Key);
@@ -81,8 +83,11 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 			} while (continuationToken !== undefined);
 			return keys;
 		},
-		async delete(key) {
-			await client.send(new DeleteObjectCommand({ Bucket: config.r2Bucket, Key: key }));
+		async delete(key, signal) {
+			await client.send(
+				new DeleteObjectCommand({ Bucket: config.r2Bucket, Key: key }),
+				{ abortSignal: signal }
+			);
 		},
 		close() {
 			client.destroy();

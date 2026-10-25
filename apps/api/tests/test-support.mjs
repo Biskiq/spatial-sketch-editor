@@ -227,6 +227,15 @@ export function assetMemoryPool(options = {}) {
 
 	function query(text, values = []) {
 		calls.push({ text, values });
+		if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') {
+			return Promise.resolve({ rows: [] });
+		}
+		if (text.includes('FROM projects p') && text.includes('FOR KEY SHARE')) {
+			const project = projectFor(values[0], values[1]);
+			return Promise.resolve({ rows: project ? [{ id: project.id }] : [] });
+		}
+		if (text.includes('INSERT INTO project_write_leases')) return Promise.resolve({ rows: [] });
+		if (text.includes('UPDATE project_write_leases')) return Promise.resolve({ rows: [] });
 		if (text.includes('INSERT INTO assets')) {
 			const [id, projectId, name, ownerId, objectKey] = values;
 			if (!projectFor(projectId, ownerId)) return Promise.resolve({ rows: [] });
@@ -306,6 +315,9 @@ export function assetMemoryPool(options = {}) {
 		assets,
 		calls,
 		query,
+		async connect() {
+			return { query, release() {} };
+		},
 		async end() {}
 	};
 }
@@ -323,8 +335,11 @@ export function memoryObjectStore(options = {}) {
 			return closes;
 		},
 		async put(key, body, metadata) {
+			if (metadata.signal.aborted) throw metadata.signal.reason;
+			if (options.onPut) await options.onPut(key, metadata.signal);
 			const chunks = [];
 			for await (const chunk of body) chunks.push(Buffer.from(chunk));
+			if (metadata.signal.aborted) throw metadata.signal.reason;
 			puts.push({ key, options: metadata, bytes: Buffer.concat(chunks) });
 			if (options.failPut) throw new Error('injected R2 failure');
 			objects.set(key, { bytes: Buffer.concat(chunks), options: metadata });
@@ -336,6 +351,9 @@ export function memoryObjectStore(options = {}) {
 		},
 		async delete(key) {
 			objects.delete(key);
+		},
+		async list() {
+			return [...objects.keys()];
 		},
 		close() {
 			closes += 1;

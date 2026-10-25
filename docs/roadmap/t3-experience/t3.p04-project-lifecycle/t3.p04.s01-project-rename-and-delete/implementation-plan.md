@@ -42,8 +42,10 @@ API patch, T2 retains import/admission and model-format ownership. T1 owns the s
 reviews it before implementation. This capacity ordering imposes no predecessor on the
 immediate T1/T2/T3 parallel batch.
 
-The outstanding review surfaces are prepared in the [T2 API handoff](./t2-api-handoff.md) and the
-[T1 shell handoff](./t1-shell-handoff.md). Neither substitutes for the required owner review.
+The bounded shared API patch was reviewed and approved before implementation in the [PR #191
+review](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5643653030),
+recorded in the [T2 API handoff](./t2-api-handoff.md). The independent T1 shell handoff remains
+serialized behind its file claim and pre-implementation review.
 
 ## Concrete behavior
 

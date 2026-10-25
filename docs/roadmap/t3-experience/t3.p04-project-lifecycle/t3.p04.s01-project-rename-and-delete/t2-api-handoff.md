@@ -1,11 +1,13 @@
 # T2 API handoff — project-owned object writes
 
-**Review required before T3 edits shared API files.** This is implementation review material for
-T2's ownership of model import/admission and the project-scoped model-storage boundary. It does not
-record T2 approval. PR #188 reviewed and merged the planning release only; that review is not the
-required API handoff.
+**Pre-implementation API boundary review completed 2026-10-25.** The coordinator reviewed this
+handoff against the actual conditional Save transactions, all three object writers, migration 006,
+the S3 adapter, and the Fastify server on [PR #191 review
+5643653030](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5643653030)
+and approved the bounded shared API patch in this PR. This records that specific review; it does
+not claim a separate signoff from another chat or transfer T2's import/admission ownership.
 
-## Current code facts
+## Baseline reviewed before implementation
 
 - `apps/api/src/asset-persistence.ts` writes asset objects beneath
   `projects/<namespace>/<projectId>/assets/<assetId>/<random>` after claiming the asset row. A
@@ -77,16 +79,33 @@ The migration remains replay-safe and does not activate the F2 epoch or add a ba
 platform. Project deletion stays owner-scoped and isolated from other projects and owners, including
 identical-content models.
 
-## T2 review requested
+## Review disposition
 
 - Confirm the complete key inventory, retained-source backfill and `sweep-dependent` behavior.
 - Review the source-key helper and column as part of model revision approval ownership.
 - Review the lease call site and compensation at both `uploadModelFile` and `approveModelImport`,
   including the concurrent same-content approval case.
 - Confirm the object-store signal/deadline design and what explicit server timeout will enforce it.
-- Confirm no model storage/admission or publication behavior changes beyond this handoff.
+- Keep the patch within the approved lifecycle boundary. Model storage/admission, import format,
+  publication behavior, epoch activation, and public delivery remain unchanged.
 
-Until that review is recorded, T3 will keep changes out of `apps/api/src/app.ts`,
-`project-persistence.ts`, `model-persistence.ts`, `asset-persistence.ts`, `object-store.ts`,
-`purge-objects.ts`, `r2-purge.ts`, and `apps/api/migrations/`. The client transport can proceed as a
-T3-owned, additive surface; no API acceptance or verification is claimed here.
+The review gate for the bounded shared API patch is satisfied. T3 may edit the listed API and
+migration files for the approved lifecycle behavior; no acceptance or verification is implied by
+the review itself.
+
+## Implementation and verification record
+
+The reviewed API patch is implemented in draft PR #191. It adds owner-scoped
+`PATCH /projects/:projectId` (`{name, precondition}`) and
+`DELETE /projects/:projectId` (`{precondition}`), migration 007, and the owner-run
+`npm run cleanup:project-deletions` retry entry point (`--verify-completed` checks and repairs
+completed tombstones). Asset upload, staged model-file upload, and model approval use the fixed
+170-second lease and 180-second handler bound; cleanup requires two empty project-prefix listings
+spaced by the persisted 187-second bound. The API does not claim to implement the T1 editor controls.
+
+On 2026-10-25, `npm run check:api` and the complete
+`DATABASE_URL=postgresql://localhost:5432/biskiq_p04_s01_20261025 npm run test:api` run passed:
+105 passed, 0 failed, 0 skipped. The private database was dropped after verification; shared S06
+databases were not changed. This backend result does not close slice acceptance: T1 shell integration,
+integrated editor/browser/accessibility/performance verification, and remaining independent review
+are still pending. The slice and PR remain in progress/draft.
