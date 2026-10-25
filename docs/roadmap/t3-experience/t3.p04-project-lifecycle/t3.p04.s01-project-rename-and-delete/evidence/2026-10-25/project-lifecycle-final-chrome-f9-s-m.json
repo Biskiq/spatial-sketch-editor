@@ -5594,5 +5594,7 @@
     "Event Timing entries have a 16 ms threshold; missing eligible click entries are right-censored below that threshold.",
     "M uses a minimal valid retained GLB source and derivative; the model bytes do not represent the full 15 MiB expected catalog."
   ],
-  "visualEvidence": "Representative trace screenshots are checked in for S/warm and M cache cells; all six cells retain exact frame-identity presentation data for every measured sample."
+  "visualEvidence": "Representative trace screenshots are checked in for S/warm and M cache cells; all six cells retain exact frame-identity presentation data for every measured sample.",
+  "sourceTreeCommit": "e41dffea4eb24832b4d21a3cab005c5d5893faf4",
+  "sourceTreeNote": "The browser run used this working-tree content; buildRevision records HEAD before the working tree was committed."
 }

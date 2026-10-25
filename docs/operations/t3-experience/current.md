@@ -28,17 +28,20 @@ ACTIVE: T3.P04.S01 Project rename and delete — implementation started 2026-10-
         suite passed 110 tests with zero skips at `821adf6a9bb04f66287f333720191e4d59b48253`;
         detailed fail-before/pass-after evidence is in
         [backend concurrency/deadline evidence](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/backend-concurrency-deadline-evidence-2026-10-25.md).
-QA:     Latest full gate passed at `7c7cea0dd6c1b4a3159d9c86a2e7879874a0800e`: editor 190 files/
-        2,458 tests, arch 22/178, heavy 9/125, check/build/package checks, and DB API 110/110 with
-        zero skips. The private API DB was dropped. Final Hub/Stage browser and corrected F9 runs
-        passed at QA-only follow-up `4c0e3e6dc81fe71b77e5e264aa8b86bd3f661393`; see the acceptance
+        Residual lifecycle API and Chrome F9 work is committed in `e41dffea`.
+QA:     The initial full repository gate passed at `7c7cea0dd6c1b4a3159d9c86a2e7879874a0800e`:
+        editor 190 files/2,458 tests, arch 22/178, heavy 9/125, package checks, and DB API 110/110.
+        Residual validation at `e41dffea`: API check and full DB suite passed (114 tests, zero
+        failures/skips); editor check and build passed; focused Save-trace tests passed 2/2. The
+        integrated Chrome lifecycle journey passed, and the final strict F9 run passed 60 measured
+        S/M rows with exact screenshot/frame presentation joins in Chrome 155.0.8059.85. The agent
+        run was on AC power, so it is observation-only for the owner battery hard row. See the
         [evidence report](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/evidence/2026-10-25/verification.md).
-        Owner-operated hard performance rows remain open. Slice acceptance remains pending.
-NEXT:   1. Complete the owner-operated F9 reference rows and dedicated accessibility/assistive-tech
-           review; the agent-operated M2 timings do not satisfy hard-row acceptance.
-        2. Close the remaining exhaustive cases (multi-source inventory, process-restart cleanup,
-           hostile late object-store commit), then obtain independent slice review; keep PR #191 draft.
-           Do not accept/close the slice or phase or merge it.
+        Slice acceptance remains pending.
+NEXT:   1. Run the F9 hard rows under the owner-operated reference procedure on battery with Low
+           Power Mode off; the current agent-operated AC run is observation-only.
+        2. Obtain independent slice review. Keep PR #191 draft. Do not accept/close the slice or
+           phase or merge it.
 RELEASE: ../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md
          (closes T3.P02 and T3.P03, authorizes and releases T3.P04.S01; the live release row is
          docs/roadmap/now.md)
@@ -49,10 +52,12 @@ ROUTE:   ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project
          → ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md
          (closed gate artifacts remain stubs at their own paths: T3.P02.S02 and T3.P03.S02
          acceptance.md, anchors 8cc30c94 and a65db2e0, tags closed/T3.P02 and closed/T3.P03)
-BLOCKER: Owner acceptance remains open. Browser/API coverage and the complete local gate are recorded,
-         but owner-run performance rows, assistive-tech review, exhaustive residuals and independent
-         slice review remain. The T1 review authorizes the bounded shell integration, not S06 completion
-         or release of its shared harness ownership. Verification does not accept the slice or authorize merge.
+BLOCKER: Owner acceptance remains open. The previously listed residual API cases are covered and the
+         new S/M Chrome measurement is recorded. Owner-operated battery-reference performance rows
+         and independent slice review remain. Existing bounded browser semantics coverage is retained;
+         no separate manual screen-reader audit gate is added. The T1 review authorizes the bounded
+         shell integration, not S06 completion or release of its shared harness ownership. Verification
+         does not accept the slice or authorize merge.
 API:     Route contract is `PATCH /projects/:projectId` with `{name, precondition}` and
          `DELETE /projects/:projectId` with `{precondition}`; both require an expected saved-base
          token. Upload writes use a 180 s request bound, a fixed 170 s SQL lease, a 2 s heartbeat
@@ -62,19 +67,18 @@ API:     Route contract is `PATCH /projects/:projectId` with `{name, preconditio
          client after lock acquisition. Cleanup waits 187 s before its first empty listing and
          another 187 s before the second. Owner-run retries use `npm run cleanup:project-deletions`;
          pass `--verify-completed` to check and repair completed tombstones.
-VERIFY:  Latest local full gate at `7c7cea0dd6c1b4a3159d9c86a2e7879874a0800e`: editor 190 files/
-         2,458 tests with 4 workers; arch 22/178; heavy 9/125; `npm run check` zero errors/warnings;
-         build and camera-core/layout-core/project-model/API checks passed. The fresh
-         `biskiq_t3p04s01_api_final_20261025` database API suite passed 110, 0 failed, 0 skipped and
-         was dropped. Final integrated Chromium lifecycle and corrected F9 runs passed at
-         `4c0e3e6dc81fe71b77e5e264aa8b86bd3f661393` using separate disposable databases and a
-         process-local ObjectStore. F9 local-feedback p95 was 27.8/19.5/20.2 ms cold/warm/repeat;
-         receipt p95 was 1,722/928/731 ms. Agent-operated only; not owner hard-row acceptance.
-         Earlier `npm run check:api` and
-         `DATABASE_URL=postgresql://localhost:5432/biskiq_p04_s01_p1_821adf_20261025 npm run test:api`
-         passed at `821adf6a9bb04f66287f333720191e4d59b48253` on 2026-10-25
-         (110 passed, 0 failed, 0 skipped). The private DB was dropped. Baseline regressions at
-         `d009cf83` fail as recorded in the evidence file; shared S06 databases were untouched.
+VERIFY:  Residual code and evidence are in `e41dffea`. `npm run check:api` passed; `npm run test:api`
+         passed 114, 0 failed, 0 skipped on a fresh private DB, dropped by shell trap. Editor check,
+         editor build and focused Save-trace tests passed. Integrated headed Chrome lifecycle UI/API
+         coverage passed. The final strict Chrome F9 run recorded 10 measured samples for each S/M ×
+         cold/warm/repeat-use cell; every sample has the visible Saving label at the render boundary
+         and an exact screenshot source/frame join to `STATE_PRESENTED_ALL` before the durable receipt.
+         Browser-reported feedback p95 spans 68.1–69.5 ms for M and 71.1–71.3 ms for S; p95 durable
+         receipt spans 551.7–627.6 ms for M and 122.2–127.0 ms for S. Chrome was 155.0.8059.85 on
+         Mac14,2/macOS 15.7.2; power remained AC with Low Power Mode off. Agent-operated, process-local
+         ObjectStore and a minimal retained GLB; not owner hard-row acceptance or physical scanout.
+         Full detail and prior gate history are in the evidence report. Shared S06 databases were
+         untouched.
 CARRY:   T3.P02 Scope A (performance, deferred 2026-10-24, not claimed): traced Preview first frame;
          capture/bind completion; M-workload F10 rows; F13 re-measure; reference-machine run; Stage
          initial-load delta. Transferred as measurement to T1.P02.S06; a miss in T3-owned code is
