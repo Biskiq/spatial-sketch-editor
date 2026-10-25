@@ -198,9 +198,9 @@ this section.
 
 1. **Owner gate still open.** A ruling on the sweep-H10 drag row for Bench 2 and 3: full method,
    warm only, or one run. It does not block the optimize step.
-2. **Characterize (plan C, step 3).** Refit each matrix row's cost model to Bench 1's per-stage
-   spans (`drag:stage:*`, `precision:stage:*`, `undoRedo:stage:*`) and work counts. Compare each
-   hard row against the performance contract's budgets.
+2. **Characterize (plan C, step 3). Done 2026-10-25:** [characterization.md](./characterization.md)
+   gives the budget position, the per-stage split, the named superlinear terms and the refit
+   order. Hard misses: F4 and F8 at M and L, F3 at L.
 3. **Candidates the evidence names, in matrix order (D.1–D.6), each checked by hand calculation:**
    - whole-document recompiles per move and commit (H1; E5's R of 2,000–36,000 at ×10);
    - the topology gates' Junction×Junction and Wall×Wall loops and the Wall×Opening and
