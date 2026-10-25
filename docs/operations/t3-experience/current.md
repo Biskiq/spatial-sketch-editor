@@ -16,9 +16,12 @@ ACTIVE: T3.P04.S01 Project rename and delete — implementation started 2026-10-
         base `976323da9e18e96978649e595bc555021964631a` (PR #188 merged on main).
         R1/R2 were ratified by the owner on 2026-10-25. Draft PR #191 now contains the T3 API
         lifecycle routes, migration 007, three writer leases, compensation, owned-key cleanup and
-        retry CLI. The T2 shared API review gate is satisfied by PR #191 review 5643653030. The
-        API suite passed 105 tests with zero skips against the private database
-        `biskiq_p04_s01_20261025`; its cleanup is recorded below. Slice acceptance remains pending.
+        retry CLI, plus the two P1 backend fixes for monotonic lease deadlines and advisory-client
+        reuse. The T2 shared API review gate is satisfied by PR #191 review 5643653030. The API
+        suite passed 110 tests with zero skips at `821adf6a9bb04f66287f333720191e4d59b48253`;
+        detailed fail-before/pass-after evidence is in
+        [backend concurrency/deadline evidence](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/backend-concurrency-deadline-evidence-2026-10-25.md).
+        Slice acceptance remains pending.
 NEXT:   1. Keep the bounded T1 shell patch behind T1.P02.S06's recorded shell-file claim and T1
            pre-implementation review ([handoff material](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/t1-shell-handoff.md));
            do not touch claimed files.
@@ -41,13 +44,18 @@ BLOCKER: T1's recorded S06 claim and required pre-implementation review still ga
          establish S06 completion, release its shared shell/harness ownership, or accept this slice.
 API:     Route contract is `PATCH /projects/:projectId` with `{name, precondition}` and
          `DELETE /projects/:projectId` with `{precondition}`; both require an expected saved-base
-         token. Upload writes use a 180 s request bound, a fixed 170 s lease, 2 s heartbeat and 5 s
-         abort margin; cleanup waits 187 s before its first empty listing and another 187 s before
-         the second. Owner-run retries use `npm run cleanup:project-deletions`; pass
-         `--verify-completed` to check and repair completed tombstones.
-VERIFY:  `npm run check:api` and `DATABASE_URL=postgresql://localhost:5432/biskiq_p04_s01_20261025 npm run test:api`
-         passed on 2026-10-25 (105 passed, 0 failed, 0 skipped). The private database was dropped
-         after the run; the shared S06 databases were not changed.
+         token. Upload writes use a 180 s request bound, a fixed 170 s SQL lease, a 2 s heartbeat
+         and a 5 s abort margin. The enforced local deadline starts before lease acquisition and
+         is checked synchronously at byte-write/finalization boundaries. Approval and deletion
+         cleanup use their held advisory client for protected SQL; approval renewal shares that
+         client after lock acquisition. Cleanup waits 187 s before its first empty listing and
+         another 187 s before the second. Owner-run retries use `npm run cleanup:project-deletions`;
+         pass `--verify-completed` to check and repair completed tombstones.
+VERIFY:  `npm run check:api` and
+         `DATABASE_URL=postgresql://localhost:5432/biskiq_p04_s01_p1_821adf_20261025 npm run test:api`
+         passed at `821adf6a9bb04f66287f333720191e4d59b48253` on 2026-10-25
+         (110 passed, 0 failed, 0 skipped). The private DB was dropped. Baseline regressions at
+         `d009cf83` fail as recorded in the evidence file; shared S06 databases were untouched.
 CARRY:   T3.P02 Scope A (performance, deferred 2026-10-24, not claimed): traced Preview first frame;
          capture/bind completion; M-workload F10 rows; F13 re-measure; reference-machine run; Stage
          initial-load delta. Transferred as measurement to T1.P02.S06; a miss in T3-owned code is
