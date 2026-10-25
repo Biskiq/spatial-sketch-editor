@@ -42,4 +42,8 @@ export * from './layout-wall-topology-ops';
 export * from './layout-wall-dissolve';
 export * from './layout-floor-support';
 export * from './layout-plan-representation';
+// T1.P02.S06 D.1 (H3) — the plan-space box index behind the pair gates. Exported
+// so its superset contract (every pair the predicate can accept is returned) is
+// testable directly, including the inverted-box fallback.
+export * from './layout-plan-box-index';
 export * from './layout-preset-explicit';

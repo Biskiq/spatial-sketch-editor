@@ -51,7 +51,7 @@ import {
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { toWallBufferGeometry, type WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';
 import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
-import { neutralVisitorRoomPresentation, type VisitorRoomPresentation } from '$lib/visitor/room-presentation';
+import { neutralVisitorRoomPresentation } from '$lib/visitor/room-presentation';
 
 /** One retained Wall: what it was built from and how to release it. */
 type RetainedWall = {
@@ -77,10 +77,7 @@ export type WallRepresentationStats = {
 export type WallRepresentation = {
 	/** The subtree to mount; it is never replaced, only reconciled. */
 	readonly object3d: Group;
-	update(
-		geometry: CompiledLayoutGeometry,
-		presentation: Readonly<Record<string, VisitorRoomPresentation>>
-	): WallRepresentationStats;
+	update(geometry: CompiledLayoutGeometry): WallRepresentationStats;
 	/** Release every retained mesh and material. Idempotent. */
 	dispose(): void;
 };
@@ -118,9 +115,20 @@ function failureBox(bounds: LayoutBounds3): { position: [number, number, number]
  * A Wall's retention key.
  *
  * The builder reads the compiled Wall and the resolved joins at its two ends;
- * nothing else. A Junction's `cacheKey` already names its point and every leg's
- * frame, thickness, height, role and endpoint Opening bands, so two equal
- * Junction keys mean identical resolved end geometry.
+ * nothing else. A Junction's `cacheKey` names its point and every leg's frame,
+ * thickness, height, role and endpoint Opening bands.
+ *
+ * Two preconditions make an equal key mean an equal mesh:
+ *
+ * - **The Junction resolution is a pure function of the facts in that key.** A
+ *   future resolver input (a tolerance, a global option, a neighbour's datum)
+ *   must join the Junction key in `layout-core`, or a changed miter would keep a
+ *   stale mesh.
+ * - **The sampling derivation is process-constant.** A Wall's samples come from
+ *   `sampleSegment` or from a shared derivation whose density and tolerance are
+ *   fixed for the life of the page; a change to those parameters would change
+ *   the mesh without changing any authored input. If they ever become
+ *   configurable, their signature belongs in the Wall key in `layout-core`.
  */
 function wallKey(wall: CompiledPhysicalWall, endKeys: ReadonlyMap<string, string>): string {
 	return `${wall.cacheKey}\u0000${endKeys.get(wall.wallId) ?? ''}`;
@@ -147,14 +155,13 @@ export function createWallRepresentation(): WallRepresentation {
 	const materialsSeen = new Set<Material>();
 	let disposed = false;
 
-	// The resolver reads this map rather than closing over one presentation value,
-	// so the factory can live for the whole representation. Physical Walls carry
-	// their own wall id as `roomId` (they belong to no Room), so this resolves to
-	// the neutral visitor tint exactly as the component-per-mesh shell did.
-	const tintByRoom = new Map<string, string>();
-	const factory = createVisitorWallMaterialFactory(
-		(roomId) => tintByRoom.get(roomId) ?? neutralVisitorRoomPresentation.color
-	);
+	// A physical Wall belongs to no Room: the mesh builder resolves its surface
+	// with the Wall's own id as `roomId`, so the tint is always the neutral
+	// visitor one. That is what the component-per-mesh shell produced too, and
+	// keeping it constant is what lets the factory outlive every compile (a
+	// Room-tinted lookup would also make the representation depend on Room
+	// presentation, an input no Wall mesh reads).
+	const factory = createVisitorWallMaterialFactory(() => neutralVisitorRoomPresentation.color);
 	const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh) => {
 		const resolved = factory.factory(surfaceKey, mesh);
 		materialsSeen.add(resolved.material);
@@ -196,11 +203,8 @@ export function createWallRepresentation(): WallRepresentation {
 	return {
 		object3d,
 
-		update(geometry, presentation) {
+		update(geometry) {
 			if (disposed) throw new Error('the layout wall representation has been disposed');
-			tintByRoom.clear();
-			for (const [roomId, room] of Object.entries(presentation)) tintByRoom.set(roomId, room.color);
-
 			const endKeys = endKeysByWall(geometry);
 			const endsByWall = legJoinsByWall(geometry.junctions);
 			const elevationByFloor = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const));

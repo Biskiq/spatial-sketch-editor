@@ -65,6 +65,18 @@ function setWallThickness(document: LayoutDocumentWallFirst, wallId: string, thi
 	return next;
 }
 
+function setFloorElevation(document: LayoutDocumentWallFirst, elevation: number): LayoutDocumentWallFirst {
+	const next = clone(document);
+	next.floor.elevation = elevation;
+	return next;
+}
+
+function renameFloor(document: LayoutDocumentWallFirst, floorId: string): LayoutDocumentWallFirst {
+	const next = clone(document);
+	next.floor.id = floorId;
+	return next;
+}
+
 function moveOpening(document: LayoutDocumentWallFirst, openingId: string, offset: number): LayoutDocumentWallFirst {
 	const next = clone(document);
 	const opening = next.openings.find((candidate) => candidate.id === openingId);
@@ -161,6 +173,49 @@ describe('T1.P02.S06 H1 — incremental canonical compile', () => {
 			expect(changed, `${edit.name} changed output`).toBe(edit.expectChange);
 			previous = JSON.stringify(compiled.geometry);
 		}
+	});
+
+	it('equals a cold compile when a document-level datum moves, including one no Room owns', () => {
+		const base = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
+		const session = createLayoutCompileSession();
+		session.compile(base);
+
+		// Each of these moves a compiled field of *every* Room or Junction without
+		// touching the entity's own authored record, so a retention signature that
+		// omits it would install a stale value: the Floor datum (Room and Junction
+		// ids, Junction vertical extent), the Floor elevation (bounds), and the
+		// document's first Wall thickness (the Room source's fallback thickness,
+		// which reaches the compiled Room even when that Wall bounds no Room).
+		const cases: Array<{ name: string; next: LayoutDocumentWallFirst }> = [
+			{ name: 'floor elevation', next: setFloorElevation(base, base.floor.elevation + 0.4) },
+			{ name: 'floor id', next: renameFloor(base, 'floor-renamed') },
+			{ name: 'first wall thickness', next: setWallThickness(base, base.walls[0]!.id, base.walls[0]!.thickness + 0.03) }
+		];
+
+		for (const entry of cases) {
+			const compiled = session.compile(entry.next);
+			expect(JSON.stringify(compiled.geometry), entry.name).toBe(exactCompiled(entry.next));
+			expect(JSON.stringify(compiled.issues), entry.name).toBe(issuesOf(entry.next));
+		}
+	});
+
+	it('never reuses a unit across documents that share ids but differ in document data', () => {
+		// The adapter keeps one session for its own planners (a page-level store),
+		// so a session can be handed a different document. Units are keyed by id, so
+		// the signatures must carry every document-level input the shared ids rely
+		// on — this is the falsifier for that, not a claim that a session is scoped.
+		const first = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
+		const session = createLayoutCompileSession();
+		session.compile(first);
+
+		const other = clone(first);
+		other.floor.elevation = 2.5;
+		other.floor.id = 'floor-mezzanine';
+		for (const room of other.rooms) room.ceilingThickness = 0.35;
+
+		const compiled = session.compile(other);
+		expect(JSON.stringify(compiled.geometry)).toBe(exactCompiled(other));
+		expect(JSON.stringify(compiled.issues)).toBe(issuesOf(other));
 	});
 
 	it('rebuilds a bounded set of entities for one Wall edit, independent of unrelated Room count', () => {

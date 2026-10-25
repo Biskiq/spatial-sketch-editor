@@ -95,10 +95,14 @@
 	 */
 	const walls = createWallRepresentation();
 
+	// Update and teardown are separate effects on purpose: Svelte runs a
+	// returned cleanup before each re-run of the same effect, and `geometry`
+	// changes identity on every compile, so a combined effect would dispose the
+	// representation immediately before every update.
 	$effect(() => {
-		walls.update(geometry, presentation);
-		return () => walls.dispose();
+		walls.update(geometry);
 	});
+	$effect(() => () => walls.dispose());
 
 	/**
 	 * The retained Layout object representation (T1.P02.S06 D.3 / H4): one mesh per
@@ -109,8 +113,8 @@
 
 	$effect(() => {
 		objects.update(geometry);
-		return () => objects.dispose();
 	});
+	$effect(() => () => objects.dispose());
 
 	$effect(() => {
 		// Bound the shape cache by the rooms this geometry actually has.
@@ -124,6 +128,15 @@
 	// The representation build is one harness-gated span (T1.P02.S06 stage
 	// attribution); `p2311Measure` is inert without the work observer.
 	$effect(() => p2311Measure('layout-representation', () => {
+		// A wall-first Room carries no Room-owned wall detail (its Walls render
+		// through the canonical physical-Wall representation), so this path builds
+		// nothing — and must not create a material factory per compile just to
+		// dispose it again. The legacy path keeps its own factory when a Room does
+		// carry wall detail.
+		if (!geometry.rooms.some((room) => room.walls.length > 0)) {
+			adaptedRooms = [];
+			return;
+		}
 		const materials = createVisitorWallMaterialFactory((roomId) => roomPresentation(roomId).color);
 		const built: AdaptedRoom[] = geometry.rooms.flatMap((room) => {
 			if (room.walls.length === 0) return [];

@@ -70,6 +70,7 @@ for (const name of WORKLOADS) {
 	let incrementalMs = 0;
 	let evaluated = 0;
 	let reused = 0;
+	let incrementalKeyChars = 0;
 	for (let index = 0; index < EDITS; index += 1) {
 		const candidate = edited(document, index);
 		// Shadow the session's own measurement so the counts come from the same
@@ -77,6 +78,7 @@ for (const name of WORKLOADS) {
 		const started = performance.now();
 		const observed = countWork(() => session.compile(candidate));
 		incrementalMs += performance.now() - started;
+		incrementalKeyChars += observed.counts['cache-key:chars'] ?? 0;
 		evaluated +=
 			(observed.counts['reuse:walls-evaluated'] ?? 0) +
 			(observed.counts['reuse:junctions-evaluated'] ?? 0) +
@@ -101,9 +103,12 @@ for (const name of WORKLOADS) {
 		`${name}: entities ${entities} cold ${coldRun.ms.toFixed(1)} ms evaluated ${entities} | ` +
 			`per-edit ${(incrementalMs / EDITS).toFixed(2)} ms evaluated ${(evaluated / EDITS).toFixed(1)} reused ${(reused / EDITS).toFixed(0)}`
 	);
+	// Keys are built only for evaluated entities, so this is the retention proof's
+	// own cost: the cold count is what the same compiler spends on a full compile.
 	const coldKeys = coldRun.counts['cache-key:chars'] ?? 0;
 	void cold;
 	console.log(
-		`  keyChars cold ${coldKeys} incremental ${((evaluated / EDITS) === 0 ? 0 : coldKeys).toFixed(0)} (keys are only built for evaluated entities)`
+		`  keyChars cold ${coldKeys} per edit ${(incrementalKeyChars / EDITS).toFixed(0)} ` +
+			`(${(coldKeys / Math.max(1, incrementalKeyChars / EDITS)).toFixed(1)}x fewer)`
 	);
 }

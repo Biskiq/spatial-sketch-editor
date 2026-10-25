@@ -68,7 +68,7 @@
 		because it owns this renderer's shadow map; see the component for the full
 		trigger contract.
 	-->
-	<StageShadowTriggers {geometry} {scene} {modelUrls} />
+	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} />
 	<VisitorLayoutShell {geometry} {presentation} />
 	<VisitorEntities {scene} {rooms} {modelUrls} />
 	<!--

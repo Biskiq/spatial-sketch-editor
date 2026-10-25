@@ -16,20 +16,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { BufferGeometry } from 'three';
 import {
 	compileWallFirstLayoutGeometry,
-	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
 
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../layout/__fixtures__/layout-scale-fixtures';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
-import { neutralVisitorRoomPresentation } from '$lib/visitor/room-presentation';
 
-function presentationFor(geometry: CompiledLayoutGeometry) {
-	return Object.fromEntries(geometry.rooms.map((room) => [room.roomId, neutralVisitorRoomPresentation]));
-}
-
-function compiled(document: LayoutDocumentWallFirst): CompiledLayoutGeometry {
+function compiled(document: LayoutDocumentWallFirst) {
 	return compileWallFirstLayoutGeometry(document).geometry;
 }
 
@@ -55,9 +49,8 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const geometry = compiled(document);
 		const representation = createWallRepresentation();
-		const presentation = presentationFor(geometry);
 
-		const first = representation.update(geometry, presentation);
+		const first = representation.update(geometry);
 		expect(first.walls).toBe(geometry.walls.length);
 		expect(first.built).toBe(geometry.walls.length);
 		expect(first.retained).toBe(0);
@@ -65,7 +58,7 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 		expect(representation.object3d.children).toHaveLength(geometry.walls.length);
 
 		const before = meshes(representation);
-		const second = representation.update(geometry, presentation);
+		const second = representation.update(geometry);
 		expect(second.built).toBe(0);
 		expect(second.retained).toBe(geometry.walls.length);
 		expect(second.released).toBe(0);
@@ -77,20 +70,27 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 		representation.dispose();
 	});
 
-	it('rebuilds only the Walls a single Wall edit moved, and keeps every other mesh', () => {
+	it('rebuilds only the Walls a single Wall edit moved, and keeps every other mesh (isolated-cell fixture)', () => {
+		// This fixture is the isolated-cell plan, where a Junction edit touches that
+		// cell's two Walls and their neighbours (measured bound: ≤ 4). A *chained*
+		// plan re-miters further along the chain — `probe-h4-representation.ts`
+		// counts 10.2 / 11.7 / 12.7 of 24 / 112 / 420 Walls at S / M / L — so the
+		// absolute bound here is fixture-specific and the invariant below
+		// (built + retained = walls) is the one that holds everywhere.
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const representation = createWallRepresentation();
 		const base = compiled(document);
-		representation.update(base, presentationFor(base));
+		representation.update(base);
 		const before = meshes(representation);
 
 		const next = compiled(moved(document));
-		const stats = representation.update(next, presentationFor(next));
+		const stats = representation.update(next);
 
 		// A moved endpoint re-resolves its Junction, so that Junction's Walls
 		// re-miter; nothing else may be rebuilt.
 		expect(stats.built).toBeLessThanOrEqual(4);
 		expect(stats.built).toBeGreaterThan(0);
+		expect(stats.built + stats.retained).toBe(stats.walls);
 		expect(stats.retained).toBe(next.walls.length - stats.built);
 		expect(stats.released).toBe(0);
 
@@ -114,7 +114,7 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const representation = createWallRepresentation();
 		const base = compiled(document);
-		representation.update(base, presentationFor(base));
+		representation.update(base);
 
 		const removed = base.walls.at(-1)!;
 		const pruned = {
@@ -122,7 +122,7 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 			walls: base.walls.filter((wall) => wall.wallId !== removed.wallId)
 		};
 		const disposeSpy = vi.spyOn(BufferGeometry.prototype, 'dispose');
-		const stats = representation.update(pruned, presentationFor(base));
+		const stats = representation.update(pruned);
 		expect(stats.released).toBe(1);
 		expect(stats.built).toBe(0);
 		expect(disposeSpy).toHaveBeenCalled();
@@ -139,11 +139,11 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 
 		const incremental = createWallRepresentation();
 		const base = compiled(document);
-		incremental.update(base, presentationFor(base));
-		incremental.update(geometry, presentationFor(geometry));
+		incremental.update(base);
+		incremental.update(geometry);
 
 		const fresh = createWallRepresentation();
-		fresh.update(geometry, presentationFor(geometry));
+		fresh.update(geometry);
 
 		const incrementalMeshes = meshes(incremental);
 		const freshMeshes = meshes(fresh);
@@ -160,15 +160,27 @@ describe('T1.P02.S06 H4 — retained wall representation', () => {
 		fresh.dispose();
 	});
 
-	it('disposes every mesh and material exactly once', () => {
+	it('disposes every mesh buffer exactly once', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const geometry = compiled(document);
 		const representation = createWallRepresentation();
-		representation.update(geometry, presentationFor(geometry));
-		const disposeSpy = vi.spyOn(BufferGeometry.prototype, 'dispose');
+		representation.update(geometry);
+		// Count per geometry, not per call: "at least N calls" also passes on a
+		// double dispose, which is the failure mode that matters here.
+		const disposed = new Map<object, number>();
+		const original = BufferGeometry.prototype.dispose;
+		const disposeSpy = vi
+			.spyOn(BufferGeometry.prototype, 'dispose')
+			.mockImplementation(function counted(this: BufferGeometry) {
+				disposed.set(this, (disposed.get(this) ?? 0) + 1);
+				original.call(this);
+			});
+
 		representation.dispose();
-		expect(disposeSpy.mock.calls.length).toBeGreaterThanOrEqual(geometry.walls.length);
+		expect(disposed.size).toBe(geometry.walls.length);
+		expect([...disposed.values()].every((count) => count === 1)).toBe(true);
 		expect(representation.object3d.children).toHaveLength(0);
+
 		disposeSpy.mockClear();
 		representation.dispose();
 		expect(disposeSpy).not.toHaveBeenCalled();

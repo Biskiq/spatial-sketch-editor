@@ -119,6 +119,69 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		expect(controller.stats().passes).toBe(2);
 	});
 
+	it('counts six shadow maps for a point light and none for a pass without casting lights', () => {
+		const lights: ShadowCasterLight[] = [{ castShadow: true, isPointLight: true }];
+		const point = fakeShadowMap(lights);
+		const controller = createShadowInvalidation({ shadowMap: point.state.shadowMap });
+		point.frame();
+		expect(controller.stats()).toEqual({ passes: 1, maps: 6, invalidations: 0 });
+		controller.dispose();
+
+		// No casting light: three renders nothing, so the oracle must read nothing.
+		const unlit = fakeShadowMap([{ castShadow: false }]);
+		const idle = createShadowInvalidation({ shadowMap: unlit.state.shadowMap });
+		unlit.frame();
+		expect(idle.stats()).toEqual({ passes: 0, maps: 0, invalidations: 0 });
+		idle.dispose();
+	});
+
+	it('switches between render-on-change and per-frame updates on one renderer', () => {
+		const { frame, state } = fakeShadowMap();
+		const controller = createShadowInvalidation({ shadowMap: state.shadowMap });
+		frame();
+		expect(controller.stats().passes).toBe(1);
+
+		// A model entity arrives in the resolved Scene: its meshes are added after
+		// its URL resolves, so every frame updates until it settles.
+		controller.setAlwaysUpdate(true);
+		frame();
+		frame();
+		expect(controller.stats().passes).toBe(3);
+		expect(state.shadowMap.autoUpdate).toBe(true);
+
+		controller.setAlwaysUpdate(false);
+		// Leaving per-frame mode renders once, so the last per-frame map is not
+		// left standing, and then settles.
+		frame();
+		frame();
+		frame();
+		expect(controller.stats().passes).toBe(4);
+		expect(state.shadowMap.autoUpdate).toBe(false);
+
+		controller.dispose();
+	});
+
+	it('shares one controller between two mounts of the same renderer', () => {
+		const { frame, state } = fakeShadowMap();
+		const requestFrame = vi.fn();
+		const first = createShadowInvalidation({ shadowMap: state.shadowMap, requestFrame });
+		const second = createShadowInvalidation({ shadowMap: state.shadowMap, requestFrame });
+		expect(second).toBe(first);
+		frame();
+		expect(first.stats().passes).toBe(1);
+
+		// One mount leaving must not hand the renderer back to per-frame updates
+		// while the other still owns the trigger set.
+		second.dispose();
+		expect(state.shadowMap.autoUpdate).toBe(false);
+		first.invalidate();
+		frame();
+		expect(first.stats().passes).toBe(2);
+
+		first.dispose();
+		expect(state.shadowMap.autoUpdate).toBe(true);
+	});
+
 	it('restores the renderer on dispose exactly once', () => {
 		const { frame, state } = fakeShadowMap();
 		const controller = createShadowInvalidation({ shadowMap: state.shadowMap });

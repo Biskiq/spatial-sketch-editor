@@ -99,18 +99,40 @@ for (const name of WORKLOADS) {
 		meshesRetained += wallStats.retained + objectStats.retained;
 	}
 
+	// What is live *after* the edits: one mesh per current Wall and object, which
+	// is the F13 clause (superseded representation does not accumulate).
+	const liveWalls = walls.object3d.children.length;
+	const liveAfterEdits = liveWalls + objects.object3d.children.length;
+
 	// Release everything the representation owns: after this, every geometry it
 	// ever built must have been disposed exactly once, and the scene graph empty.
 	walls.dispose();
 	objects.dispose();
+	const afterTeardown = walls.object3d.children.length + objects.object3d.children.length;
+	const disposedHere = disposed - disposedAtStart;
 
 	console.log(
 		`${name}: walls ${wallCount} objects ${objectCount} | per edit built ` +
-			`${(wallsBuilt / EDITS).toFixed(1)} walls + ${(objectsBuilt / EDITS).toFixed(1)} objects and ` +
-			`retained ${(meshesRetained / EDITS).toFixed(0)} meshes | released in-flight ${wallsReleased} | ` +
-			`geometries built ${meshesBuilt}, disposed ${disposed - disposedAtStart} (equal = returned to baseline) | ` +
-			`children after teardown ${walls.object3d.children.length + objects.object3d.children.length}`
+			`${(wallsBuilt / EDITS).toFixed(1)} walls + ${(objectsBuilt / EDITS).toFixed(1)} objects and retained ` +
+			`${(meshesRetained / EDITS).toFixed(0)} meshes | released in-flight ${wallsReleased} | ` +
+			`live after ${EDITS} edits ${liveAfterEdits} | geometries built ${meshesBuilt}, ` +
+			`disposed ${disposedHere} | after teardown ${afterTeardown} meshes`
 	);
+
+	// The probe fails rather than reports: a whole-document rebuild, an
+	// accumulating representation or an unbalanced geometry ledger is a
+	// regression, and a printed number nobody reads is not an oracle.
+	const currentEntities = wallCount + objectCount;
+	if (liveWalls !== wallCount || liveAfterEdits !== currentEntities) {
+		throw new Error(`${name}: the representation does not hold one mesh per entity (${liveAfterEdits} of ${currentEntities})`);
+	}
+	if (wallCount > 8 && wallsBuilt / EDITS >= wallCount) {
+		throw new Error(`${name}: a single edit rebuilt every Wall (${(wallsBuilt / EDITS).toFixed(1)} of ${wallCount})`);
+	}
+	if (disposedHere !== meshesBuilt) {
+		throw new Error(`${name}: geometries built (${meshesBuilt}) != disposed (${disposedHere})`);
+	}
+	if (afterTeardown !== 0) throw new Error(`${name}: ${afterTeardown} meshes survived teardown`);
 }
 
 BufferGeometry.prototype.dispose = dispose;

@@ -4,29 +4,34 @@
  * three's `WebGLShadowMap` defaults to `autoUpdate = true`, so **every rendered
  * frame** re-renders every shadow map — including every orbit frame, although the
  * Stage's lights and their shadow cameras are fixed in world space and its
- * casters are static between edits. Bench 1 counted that as one extra pass over
- * every caster per orbit frame (F7's CPU-per-frame row at L: 7.0 ms).
+ * casters are static between edits. Bench 1 records the Stage's CPU time inside
+ * `render()` per frame (F7: 7.0 ms at L) without attributing a share to the shadow
+ * pass; the claim here is the count, not a duration.
  *
  * This module owns that decision instead: the Stage keeps `autoUpdate = false`
  * and re-renders a shadow map only when something a shadow map actually depends
- * on changed. The trigger contract is the plan's (D.6), and every arm of it has a
- * caller:
+ * on changed. The trigger contract is the plan's (D.6):
  *
- * - a **caster's geometry** — the retained Wall representation's rebuild, a
+ * - a **caster's geometry** — the retained Wall/object representation's rebuild, a
  *   Scene placement added, moved or removed, an imported model's arrival or
- *   disposal, a ghost that casts: `SceneShadowTriggers.svelte` watches the
- *   `geometry`, `scene` and `modelUrls` identities, which is exactly what
+ *   disposal, a ghost that casts: the wiring watches the compiled `geometry`, the
+ *   resolved `scene`, the Room registry and `modelUrls`, which is exactly what
  *   changes when any of those happen (Undo/Redo, replacement and reads included,
  *   because they all install a new compiled geometry or Scene);
  * - a **caster's or receiver's transform, visibility or flags, or a
- *   depth-affecting material change** — the same identity watches: every mesh
- *   the Stage draws is derived from `geometry` or `scene`;
+ *   depth-affecting material change** — the same identities: every mesh the Stage
+ *   draws is derived from `geometry`, `scene` or `rooms`;
  * - a **Scene light** added, removed or changed — `scene` identity again;
- * - an **animated caster** — `alwaysUpdate` keeps today's per-frame behaviour for
- *   that surface; the Stage has none, and setting it is the honest fallback when
- *   an exact trigger cannot be established;
- * - **renderer lifecycle** — a fresh renderer starts invalidated, and a restored
- *   WebGL context invalidates, because the maps were lost with the context.
+ * - an **animated caster, or a caster whose arrival is asynchronous and therefore
+ *   not observable at this boundary** (a resolved creator model parses after its
+ *   URL arrives) — {@link ShadowInvalidation.setAlwaysUpdate} keeps today's
+ *   per-frame behaviour for that surface. The wiring turns it on whenever the
+ *   resolved Scene carries a model entity, which is the plan's rule that a
+ *   trigger whose exact invalidation cannot be established keeps the per-frame
+ *   update;
+ * - **renderer lifecycle** — a fresh controller starts invalidated, and a restored
+ *   WebGL context invalidates, because the maps were lost with the context. A
+ *   recreated renderer is a new mount and therefore a new controller.
  *
  * What is deliberately *not* a trigger: the camera. A shadow map is rendered from
  * the light's shadow camera, so orbiting the view changes no shadow texel. That
@@ -44,12 +49,15 @@ export type ShadowMapLike = {
 };
 
 /** The slice of a light this module needs, for counting. */
-export type ShadowCasterLight = { readonly castShadow?: boolean };
+export type ShadowCasterLight = { readonly castShadow?: boolean; readonly isPointLight?: boolean };
 
 export type ShadowInvalidationStats = {
 	/** Shadow passes that actually rendered (not the no-op calls three skips). */
 	readonly passes: number;
-	/** Shadow maps rendered: one per casting light per pass. */
+	/**
+	 * Shadow maps rendered: one per casting light per pass, and six for a point
+	 * light (a cube shadow renders one face per axis).
+	 */
 	readonly maps: number;
 	/** Times a caller reported a dependency change. */
 	readonly invalidations: number;
@@ -62,8 +70,8 @@ export type ShadowInvalidationOptions = {
 	/** The canvas, so a restored WebGL context re-renders the maps it lost. */
 	canvas?: EventTarget | null;
 	/**
-	 * Keep today's per-frame shadow updates. Correct for an animated caster and
-	 * for any surface whose exact invalidation has not been established.
+	 * Keep today's per-frame shadow updates from the start. Correct for an animated
+	 * caster and for any surface whose exact invalidation has not been established.
 	 */
 	alwaysUpdate?: boolean;
 };
@@ -71,16 +79,35 @@ export type ShadowInvalidationOptions = {
 export type ShadowInvalidation = {
 	/** Report that something a shadow map depends on changed. Coalesces per frame. */
 	invalidate(): void;
+	/**
+	 * Switch between "render on change" and today's per-frame updates. Switching
+	 * back re-renders once, because the last frame under per-frame updates is not
+	 * necessarily the current one.
+	 */
+	setAlwaysUpdate(alwaysUpdate: boolean): void;
 	/** The count oracle's read: never a duration. */
 	stats(): ShadowInvalidationStats;
 	/** Restore the renderer's default behaviour and stop observing. Idempotent. */
 	dispose(): void;
 };
 
+/** Shadow maps a controller already owns, so two mounts cannot fight over one. */
+const owners = new WeakMap<ShadowMapLike, { controller: ShadowInvalidation; mounts: number }>();
+
 export function createShadowInvalidation(options: ShadowInvalidationOptions): ShadowInvalidation {
-	const { shadowMap, requestFrame, canvas = null, alwaysUpdate = false } = options;
+	const existing = owners.get(options.shadowMap);
+	if (existing) {
+		// A second mount shares the one controller: a second wrapper would count
+		// every pass twice, and either `dispose` would silently restore the
+		// other's per-frame behaviour.
+		existing.mounts += 1;
+		return existing.controller;
+	}
+
+	const { shadowMap, requestFrame, canvas = null } = options;
 	const originalRender = shadowMap.render;
 	const originalAutoUpdate = shadowMap.autoUpdate;
+	let alwaysUpdate = options.alwaysUpdate ?? false;
 	let passes = 0;
 	let maps = 0;
 	let invalidations = 0;
@@ -91,9 +118,10 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 	// actually renders, which is what the H9 oracle means by "shadow-map renders
 	// during a fixed orbit = 0".
 	shadowMap.render = function counted(lights, scene, camera): void {
-		if (shadowMap.autoUpdate || shadowMap.needsUpdate) {
+		const casting = shadowMap.autoUpdate || shadowMap.needsUpdate ? lights.filter((light) => light.castShadow) : [];
+		if (casting.length > 0) {
 			passes += 1;
-			for (const light of lights) if (light.castShadow) maps += 1;
+			for (const light of casting) maps += light.isPointLight ? 6 : 1;
 		}
 		originalRender.call(shadowMap, lights, scene, camera);
 	};
@@ -111,15 +139,30 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 	};
 	canvas?.addEventListener('webglcontextrestored', restored);
 
-	return {
+	const controller: ShadowInvalidation = {
 		invalidate() {
 			if (disposed || alwaysUpdate) return;
 			invalidations += 1;
 			shadowMap.needsUpdate = true;
 			requestFrame?.();
 		},
+		setAlwaysUpdate(next) {
+			if (disposed || next === alwaysUpdate) return;
+			alwaysUpdate = next;
+			shadowMap.autoUpdate = next;
+			// One render after either switch: leaving per-frame mode must not leave
+			// the map from the last frame, and entering it does no harm.
+			shadowMap.needsUpdate = true;
+			requestFrame?.();
+		},
 		stats: () => ({ passes, maps, invalidations }),
 		dispose() {
+			const owner = owners.get(shadowMap);
+			if (owner) {
+				owner.mounts -= 1;
+				if (owner.mounts > 0) return;
+				owners.delete(shadowMap);
+			}
 			if (disposed) return;
 			disposed = true;
 			canvas?.removeEventListener('webglcontextrestored', restored);
@@ -127,4 +170,7 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 			shadowMap.autoUpdate = originalAutoUpdate;
 		}
 	};
+
+	owners.set(shadowMap, { controller, mounts: 1 });
+	return controller;
 }

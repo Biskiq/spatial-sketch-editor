@@ -56,6 +56,15 @@ import type {
  * `Object.is` is used instead of `===` on purpose: `NaN === NaN` is false, and
  * two authored `NaN`s describe the same compiled output (an issue), so treating
  * them as equal is both correct and cheap — while `+0`/`-0` stay distinct.
+ *
+ * The restriction to plain records is load-bearing: two `Map`, `Set` or `Date`
+ * instances have no own enumerable keys, so they would compare equal. Authored
+ * Layout holds none of those (the codec rejects them), and a session that was
+ * handed one would reuse a stale unit rather than fail loudly.
+ *
+ * A throwing compile can leave units in the store from the pass that failed.
+ * Each unit still re-checks its own inputs, so no stale value can be installed;
+ * what is stale is `stats()`, which describes the last compile that returned.
  */
 export function sameAuthored(left: unknown, right: unknown): boolean {
 	if (Object.is(left, right)) return true;

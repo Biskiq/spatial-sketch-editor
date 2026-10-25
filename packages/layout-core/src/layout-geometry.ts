@@ -208,6 +208,20 @@ function compileWallFirstLayoutGeometryOnce(
 					room,
 					ceilingElevationByRoomId.get(room.id) ?? null,
 					floorElevationOf(document),
+					// The Floor datum is part of the Room's *compiled identity*
+					// (`geometryId(['room', floor.id, room.id])`), and the shared core
+					// derives the Floor's room list from these rooms, so a renamed Floor
+					// must re-evaluate every Room.
+					document.floor.id,
+					// The Room source carries the document's first Wall thickness as its
+					// fallback (`wallThickness: document.walls[0]?.thickness ?? 0.1`),
+					// which lands in the compiled Room's own `wallThickness` and key.
+					// Editing that Wall therefore moves every Room's output, even when
+					// the edited Wall is not on this Room's boundary.
+					document.walls[0]?.thickness ?? 0.1,
+					// A different sampling derivation is a different input: the retained
+					// source embeds `preSampled` only when one is supplied.
+					sampling !== undefined,
 					...room.boundary.map((ref) => {
 						const wall = wallById.get(ref.wallId);
 						return [
@@ -570,8 +584,8 @@ function compileWallFirstWithPhysicalWalls(
 		const baseBounds2: LayoutBounds2 = { min: [...wallBounds2Value.min] as LayoutVec2, max: [...wallBounds2Value.max] as LayoutVec2 };
 		const baseBounds3: LayoutBounds3 = { min: [...wallBounds3Value.min] as Vec3, max: [...wallBounds3Value.max] as Vec3 };
 		const wallAabb = aabbRecord('wall', wall.id, ['wall', floor.id, wall.id], baseBounds3.min, baseBounds3.max);
-		wallAabbIndexByWallId.set(wall.id, queryBuilder.aabbs.length);
 		queryBuilder.aabbs.push(wallAabb);
+		wallAabbIndexByWallId.set(wall.id, queryBuilder.aabbs.length - 1);
 		baseBoundsByWallId.set(wall.id, { bounds2: baseBounds2, bounds3: baseBounds3 });
 		if (retentionKey) authoredByWallId.set(wall.id, retentionKey);
 		if (wallRecords) recordsByWallId.set(wall.id, { ...wallRecords, aabbs: [...wallRecords.aabbs, wallAabb] });
@@ -816,10 +830,12 @@ function compileWallFirstJunctions(
 				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0)
 		);
 		// T1.P02.S06 D.3 (H1) — a Junction's resolved geometry is a function of its
-		// point and the endpoint facts of every incident Wall leg. Both are in
-		// hand here, so an unchanged pair reuses the retained resolution (and its
-		// issues, replayed in the same order).
-		const junctionAuthored = [point, legs];
+		// point, the endpoint facts of every incident Wall leg, the Floor id (its
+		// compiled id is `compiledJunctionId(floor.id, junctionId)`) and the Floor
+		// elevation (its `bounds3` vertical extent). All four are in hand here, so
+		// an unchanged set reuses the retained resolution (and its issues,
+		// replayed in the same order).
+		const junctionAuthored = [point, legs, document.floor.id, floorElevationOf(document)];
 		if (reuse) reuse.counters.signatureVisits += 1;
 		const retainedJunction = reuse?.junctions.get(junctionId);
 		if (reuse && retainedJunction && sameAuthored(retainedJunction.authored, junctionAuthored)) {

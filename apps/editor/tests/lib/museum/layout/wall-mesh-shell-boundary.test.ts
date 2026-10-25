@@ -95,6 +95,13 @@ describe('G4 visitor shell boundary', () => {
 		expect(owned).toContain('MeshStandardMaterial');
 		expect(shell()).toContain('createObjectRepresentation');
 		expect(shell()).toContain('objects.object3d');
+		// Teardown must not live in the update effect: Svelte runs a returned
+		// cleanup before each re-run, and `geometry` changes identity on every
+		// compile, so a combined effect would dispose the representation and then
+		// update a disposed one.
+		expect(shell()).toContain('$effect(() => () => walls.dispose());');
+		expect(shell()).toContain('$effect(() => () => objects.dispose());');
+		expect(shell()).not.toMatch(/\$effect\(\(\) => \{[\s\S]{0,200}?return \(\) => (walls|objects)\.dispose\(\);/);
 		// The per-object component loop is gone, so nothing re-creates a geometry
 		// per render from the compiled object list.
 		expect(shell()).not.toContain('geometry.objects as object');
@@ -106,12 +113,15 @@ describe('G4 visitor shell boundary', () => {
 		// because it needs that renderer; the trigger set is the plan's D.6
 		// contract, and the camera is deliberately not one of them.
 		expect(stageCanvas()).toContain('StageShadowTriggers');
-		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} {scene} {modelUrls} />');
+		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} />');
 		const triggers = shadowTriggers();
 		expect(triggers).toContain('createShadowInvalidation');
 		expect(triggers).toContain('renderer.shadowMap');
 		expect(triggers).toContain('requestFrame: invalidate');
 		expect(triggers).toContain('shadows.dispose()');
+		// A caster whose arrival cannot be observed (a parsed model) keeps today's
+		// per-frame updates instead of a trigger that might miss it.
+		expect(triggers).toContain('setAlwaysUpdate');
 		const controller = shadowInvalidation();
 		expect(controller).toContain('webglcontextrestored');
 		expect(controller).toContain('autoUpdate');
