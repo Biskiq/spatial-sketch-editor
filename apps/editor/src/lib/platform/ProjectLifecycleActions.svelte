@@ -310,6 +310,7 @@
 	.inline-message { margin: 0.25rem 0 0; }
 	dialog {
 		width: min(28rem, calc(100vw - 2rem));
+		box-sizing: border-box;
 		max-height: min(90dvh, 40rem);
 		padding: 1.2rem;
 		border: 1px solid var(--lifecycle-edge);
