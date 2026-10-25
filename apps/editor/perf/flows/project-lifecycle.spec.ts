@@ -888,7 +888,10 @@ test('F9 M lifecycle workload retains approved model bytes across cold, warm, an
 					const feedback = root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__;
 					if (target.getAttribute('data-save-status') !== 'saving' || feedback == null || feedback.frame !== 0) return;
 					const mutation = performance.now();
-					requestAnimationFrame((frame) => { root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { ...feedback, mutation, frame }; });
+					requestAnimationFrame(() => {
+						const frame = performance.now();
+						root.__PROJECT_LIFECYCLE_SAVE_FEEDBACK__ = { ...feedback, mutation, frame };
+					});
 				}).observe(target, { attributes: true, attributeFilter: ['data-save-status'] });
 				performance.mark('f9:measurement-start');
 			});
