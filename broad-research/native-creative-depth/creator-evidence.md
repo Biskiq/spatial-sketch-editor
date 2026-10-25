@@ -14,7 +14,9 @@ This document collects what creators struggle with when they make ordinary archi
    - **Semantic:** the tool does not know what a stair, roof, opening or pattern is.
 
    Biskiq's semantic model addresses the second kind structurally. The first kind needs a small set of robust generators underneath it, not a general kernel.
-3. **O** The most expensive SketchUp recipe in the corpus is an opening in a curved wall. It takes 4 steps with paid Solid Tools and about 14 steps for an arched head, with optional lofting. **Biskiq production already solves this case analytically.** Its Wall-hosted Openings are cut in the Wall's own (s, z) coordinates, with no boolean ([assessment §1](../procedural-architectural-authoring-assessment.md#1-executive-verdict)).
+3. **O** The most expensive SketchUp recipe in the corpus is an opening in a curved wall. It takes 4 steps with paid Solid Tools and about 14 steps for an arched head, with optional lofting.
+   - **Biskiq production has the geometric foundation for this case.** Wall-hosted Openings are cut analytically in the Wall's own (s, z) coordinates, with no boolean ([assessment §1](../procedural-architectural-authoring-assessment.md#1-executive-verdict)). The production mesher builds them on curved Walls with reveals and real-scale UVs ([probe](./probe-methods.md#4-results-the-matched-40-opening-wall)).
+   - **It does not have the creator workflow.** No creator can draw a curved Wall or place an Opening in one today, and no planned slice delivers that yet ([§4.1](#41-element-table)).
 4. **O** Many failures reported as modeling problems are design errors that the geometry tool cannot see:
    - inconsistent rise and run;
    - a walking line that does not match the rail;
@@ -38,15 +40,17 @@ This document collects what creators struggle with when they make ordinary archi
 - **Sources.** Public SketchUp, SketchUcation, Rhino (McNeel), Shapr3D, Onshape, Autodesk, Chief Architect, Sweet Home 3D, Graphisoft and AAM community threads, vendor documentation and product pages. Two research passes covered architectural elements, and objects, surfaces and patterns.
 - **Counts are not prevalence.** A table row counts fetched cases. Forums over-represent hard problems and under-represent things that are easy or bought as assets.
 - **Access limits.**
-  - Reddit was unreachable through every route tried, including the in-app browser.
+  - Reddit was unreachable through every route tried on 25 October 2026. A direct request returned HTTP 403; the web-fetch tool refuses reddit.com; the in-app browser blocks reddit.com and old.reddit.com by policy; a web search found no index of the thread.
   - Autodesk and AUGI pages often returned 403, so Revit items are search-result summaries.
   - Graphisoft community pages were blocked.
   - The shared search budget ran out before glass balustrades, bay windows, Archicad railings and Vectorworks were covered.
-- **The anchor thread is unverified.** The cited Reddit thread ([r/Sketchup, "Trouble with faces"](https://www.reddit.com/r/Sketchup/comments/1xcfrht/trouble_with_faces/)) could not be read. [Section 3](#3-the-anchor-case-a-surface-between-two-nonplanar-curves) describes the case from the brief's summary and from closely matching SketchUp threads, not from that post.
+- **The anchor thread is unverified by this research.** The cited Reddit thread ([r/Sketchup, "Trouble with faces"](https://www.reddit.com/r/Sketchup/comments/1xcfrht/trouble_with_faces/)) could not be read. [Section 3](#3-the-anchor-case-a-surface-between-two-nonplanar-curves) describes the case from the brief's summary and from closely matching SketchUp threads, not from that post.
+  - Peer review reports that the thread is accessible and gives direct evidence of the author's manual workaround. That report is recorded here but not adopted, because this package does not quote or paraphrase content it could not read ([review response §5](./review-response.md#5-source-evidence)).
+  - If the workaround is manual stitching or triangulation, it adds a rung to the escalation ladder in §3 and strengthens its inferences. If the thread shows a different intention, the anchor framing should be corrected.
 
 ## 3. The anchor case: a surface between two nonplanar curves
 
-**The intention.** Fill the band between two helical edges of a spiral-stair railing, such as an inner and outer edge, or a tread edge and the rail.
+**The intention.** Fill the band between two helical edges of a spiral-stair railing, such as an inner and outer edge, or a tread edge and the rail. This is the brief's summary of the anchor thread, which this research could not read ([§2](#2-method-and-limits)).
 
 **O** **Why it fails in SketchUp**, from matching threads:
 
@@ -84,9 +88,9 @@ Each row condenses many cases. Citations are representative, not exhaustive.
 | Curved and spiral stair rails | A rail that rises with the stair without twisting | Follow Me rotates the profile; different extensions give different frames; experts disagree whether the profile should stay vertical or follow the pitch ([2018](https://forums.sketchup.com/t/curved-staircase-railing-losing-orientation/75030), [volute 2018](https://forums.sketchup.com/t/staircase-handrail/66817)) | Hours to about a week; 1–5 extensions; several cases left unfinished ([2025](https://forums.sketchup.com/t/how-can-i-create-this/330766)) | **Prototype:** P3 stair from surface to surface. No production stair | A sweep with a visible frame mode (upright or pitch-normal). A rail path derived from nosings plus height |
 | Stair layout | Consistent rise, run, walking line, winders and landings | Layout errors surface as geometry failures: uneven slope, winders not converging, floating rail ([irregular stair 2025–26](https://forums.sketchup.com/t/irregular-staircase/333386), [tricky stairs 2024](https://forums.sketchup.com/t/tricky-stairs/271116)) | Week-long threads; advice to redesign | **Ratified:** stairs named as a good candidate in the [North Star](../../docs/reference/north-star.md#permanent-non-goals); depth is evidence-gated | A typed stair with derived treads, stringers, soffit and rails, plus rise/run validation that explains itself |
 | Railings in BIM | Rails that continue across landings and turns | Typed railings float at landings, will not join across runs, or need several railings and in-place sweeps ([Revit summaries](https://forums.autodesk.com/t5/revit-architecture-forum/join-railings-on-adjacent-stairs/m-p/12175589)) | Users leave the semantic system | — | **Transition rules** (landing, turn, termination) matter more than the straight run |
-| Roofs on irregular footprints | Hips and valleys on any outline; dormers; walls meeting the roof | Each plane is built by hand; a vertex slightly off-plane breaks a face; repeated Intersect passes leave holes and reversed faces ([2020](https://forums.sketchup.com/t/hip-roof-design/144979), [2021](https://forums.sketchup.com/t/roof-intersections/160238)) | Expert recipes; extensions such as Instant Roof (US$39 a year) and Medeek ($180) | **Prototype:** Vellum overheads with Edit shape. **Ratified:** Edit shape for roofs in [PLATE §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) | A footprint roof with per-edge slope, hosted dormers and walls that meet the roof. Visible failure with a fallback |
-| Complex roofs, by specialists | Intersecting roofs with dormers | A dedicated framing extension called complex roofs its "biggest hurdle" in 2017 ([forum](https://forums.sketchup.com/t/medeek-truss/16452?page=34)). They are still "under construction" on its October 2026 product page ([Medeek](https://design.medeek.com/resources/medeektrussplugin.html)) | Years of specialist effort | — | **I** Scope native roofs to common cases; leave the rest to manual planes or specialists |
-| Openings in curved walls | Put this window in that wall | A cut-opening component cuts only one flat face; a faceted curved wall offers none ([tutorial 396](https://sketchucation.com/resources/tutorials/beginner/396-window-in-a-round-wall), [arched, tutorial 397](https://sketchucation.com/resources/tutorials/intermediate/397-arched-window-curved-wall)) | 4 steps with Solid Tools; about 14 for arched heads | **Production:** Openings cut in the Wall's (s, z) frame, with rectangular, rounded and pointed profiles | Extend the same host-local pattern; do not add a general boolean |
+| Roofs on irregular footprints | Hips and valleys on any outline; dormers; walls meeting the roof | Each plane is built by hand; a vertex slightly off-plane breaks a face; repeated Intersect passes leave holes and reversed faces ([2020](https://forums.sketchup.com/t/hip-roof-design/144979), [2021](https://forums.sketchup.com/t/roof-intersections/160238)) | Expert recipes; extensions such as Instant Roof (US$39 a year) and Medeek ($180) | **Prototype:** Vellum overheads with Edit shape; wing roofs on L, T, U and plus plans of up to four rectilinear wings; a join of two compatible gables with a valley. **Ratified:** Edit shape for roofs in [PLATE §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) | A footprint roof with per-edge slope, hosted dormers and walls that meet the roof. Visible failure with a fallback |
+| Complex roofs, by specialists | Intersecting roofs with dormers | A dedicated framing extension called complex roofs its "biggest hurdle" in 2017 ([forum](https://forums.sketchup.com/t/medeek-truss/16452?page=34)). They are still "under construction" on its October 2026 product page ([Medeek](https://design.medeek.com/resources/medeektrussplugin.html)) | Years of specialist effort | **Deferred in P3:** joins across pitches or families, off-axis and freehand plans, courtyards, dormers and lean-tos ([record §6](../../prototypes/p3-vellum/plans/roof-footprints-final-polish.md#6-deferred--carry-to-t1--rr-2)) | **I** The boundary is set by operation, not by name ([§4.3](#43-roofs-show-the-limit-of-native-depth)): bounded joins, skeleton hips and hosted dormers may be native; framing and non-height-field massing stay specialist |
+| Openings in curved walls | Put this window in that wall | A cut-opening component cuts only one flat face; a faceted curved wall offers none ([tutorial 396](https://sketchucation.com/resources/tutorials/beginner/396-window-in-a-round-wall), [arched, tutorial 397](https://sketchucation.com/resources/tutorials/intermediate/397-arched-window-curved-wall)) | 4 steps with Solid Tools; about 14 for arched heads | **Production geometry:** Openings cut in the Wall's (s, z) frame, with rectangular, rounded and pointed profiles, meshed on curved Walls. **No workflow:** Opening create and delete are planned in layout-core but "none is wired to the editor"; the Opening slice excludes curved hosts; curve authoring has no slice ([T1.P02](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md), [S03 outline](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/implementation-plan.md)) | Extend the same host-local pattern; do not add a general boolean. The missing piece is authoring, not geometry |
 | Moldings, cornices, crown and baseboards | One profile around a room, swapped for design options | Wide profiles fold at short segments and tight radii; output is non-manifold; a boolean on it can reportedly wipe the parent collection ([Ruby API, 2026](https://forums.sketchup.com/t/safely-merging-followme-cornice-groups-at-a-90-corner-non-manifold-boolean-reliability-su-2017-through-2026/346777)). Swapping a profile means re-sweeping every run: "No. There isn't. Not natively." ([2022](https://forums.sketchup.com/t/modeling-and-updating-trim-molding-profiles/194676)) | Rework for every design option | **Production:** Walls, Openings and derived Rooms supply the paths | A persistent profile on a path, with paths from room boundaries, wall tops or opening outlines, plus a corner rule. It regenerates on edit |
 | Sloped ceilings and compound corners | The same stock crown everywhere | A perpendicular sweep reshapes the profile: "The projection does change the profile" ([2020](https://forums.sketchup.com/t/crown-molding-angles-design/116269)) | Carpentry-style jigs | — | Say so and offer choices: keep the profile and accept a gap, cope the joint, or use a rake variant |
 | Columns, domes, vaults and coffers | Fluted, tapered shafts; vaults of unequal span; coffers on a slope | Fluting on a taper needs a loft, not a sweep. Groin curves of unequal spans are not planar. Semantic soffit tools assume horizontal ([live session 2020](https://forums.sketchup.com/t/modeling-some-fancy-columns-live/122329), [vault](https://community.sketchucation.com/post/1375124), [Chief 2022](https://chieftalk.chiefarchitect.com/topic/34499-create-a-vaulted-and-coffered-ceiling-with-trim-reference-pic-included)) | "After 6 failed attempts"; workarounds lose material-list tracking | **Prototype:** Vellum revolve overheads | A revolve with a radial modulation (flutes). Ceiling types as overhead readings. Classical orders as assets |
@@ -103,11 +107,46 @@ A professional stair builder in 2020 said dedicated stair software exists but is
 
 **I** A semantic stair is valuable only if it covers transitions: landings, turns, terminations and changes of pitch. Revit's evidence shows that typed systems fail at exactly those edges, and users then leave them for in-place sweeps or three separate railings.
 
+**I** **A helical stair is not geometrically deeper than an L stair.** A circular helical stair is one walking line on a helix, treads distributed under a total-rise constraint, and rails swept with an explicit frame. Its hard parts are the L stair's hard parts: validation along the walking line, and the transitions where the helix meets a landing or a straight run. Handrail easements and wreaths made for joinery are fabrication work. Where the native line falls is tested by [P12](./proof-agenda.md#p12-where-native-depth-stops-compound-roofs-and-helical-stairs).
+
 ### 4.3 Roofs show the limit of native depth
 
 **O** Selection-driven roof tools make conventional roofs quick. Instant Roof's promotional article claims a complex roof takes about three seconds once learned ([SketchUp blog, 2023](https://sketchup.trimble.com/en/blog/article/instant-roof-instant-productivity)). Intersecting, dormered renovation roofs remain manual, even in a dedicated extension with 103,950 installations.
 
-**I** Vellum's overhead families and Edit shape already demonstrate the conventional case as interaction intent. Native roof scope should stop at common footprints. It should fail visibly with a fallback (split the footprint, or a flat or manual plane), rather than chase every permutation.
+**O** **What P3 resolved and deferred.** Vellum's [roof footprints record](../../prototypes/p3-vellum/plans/roof-footprints-final-polish.md) is more specific than "common footprints".
+
+It **resolved**, as interaction intent:
+
+- wing roofs on L, T, U and plus plans of up to four rectilinear wings, with level eaves and meeting valleys;
+- an explicit join of two gables with the same eave, pitch, hip and fit, into one roof with a valley, previewed and one undo step;
+- refusal with the reason wherever a one-span roof would stop in mid-air.
+
+It **deferred**:
+
+- joins across families, eaves or pitches, which "need true surface–surface intersection, beyond the planar envelope";
+- off-axis, curved or freehand plans, and plans of more than four rectangles;
+- courtyards;
+- stepped or one-sided wing sections;
+- dormers and lean-tos, as "new massing semantics".
+
+The record also names each production direction:
+
+- a height-field upper envelope over an exact planar arrangement, with valley and abutment classification;
+- straight-skeleton hips for arbitrary polygons;
+- dormers and lean-tos as a Layout relation and a feature on top of the envelope.
+
+**I** **The boundary should be set by operation, not by element name.** Each deferred case maps to a bounded operation in the profile, carrier and rule language, or it does not:
+
+- **Plausibly native:**
+  - joins across pitches, as an envelope of planes;
+  - hips on arbitrary polygons, by straight skeleton;
+  - gable and shed dormers, as profiles hosted in a roof plane's local frame, the roof analogue of an Opening in a Wall's (s, z) frame.
+- **Plausibly specialist:**
+  - roofs that pass over other roofs, which are not a height field;
+  - curved-surface intersections between families, such as a vault meeting a gable at unequal spans;
+  - framing and trusses.
+
+Native roofs should still fail visibly with a fallback (split the footprint, or a flat or manual plane), rather than chase every permutation. Where the line falls is a hypothesis, tested by [P12](./proof-agenda.md#p12-where-native-depth-stops-compound-roofs-and-helical-stairs) and analysed in [synthesis §6.1](./synthesis-and-direction.md#61-where-native-depth-stops-compound-roofs-and-helical-forms).
 
 ## 5. Objects, surfaces and patterns
 
@@ -221,7 +260,7 @@ A museum-professionals thread (May 2023) reports SketchUp in use for exhibit pla
 
 All points in this section are inference. They feed the [capability map](./synthesis-and-direction.md#6-capability-map-native-asset-extension-specialist).
 
-1. **Biskiq has already solved the most documented SketchUp pain.** Curved-wall openings work in production. The gap is that creators cannot yet draw Walls in production, cannot make custom forms, and lack presentation depth.
+1. **Biskiq has the geometric foundation for the most documented SketchUp pain, not the workflow.** Curved-wall openings compile and mesh analytically in production. A creator cannot yet draw a Wall, place an Opening, or author a curve, and curved hosts sit outside every planned slice. The gaps are authoring, custom forms and presentation depth. The geometry, the part that defeats SketchUp users, is already solved by construction.
 2. **Families that know their carriers beat free surfaces.** The surface between rail edges, the rail path along nosings, trim along a room, flutes around a shaft: in each case the carrier comes from a host the family already knows.
 3. **Validation is a feature.** Stair rules, roof feasibility and opening fit explain failures before they become geometry.
 4. **Edits after creation are the 10-hour win.** Swapping a trim profile, changing a count, or moving a wall with its hosted work intact.

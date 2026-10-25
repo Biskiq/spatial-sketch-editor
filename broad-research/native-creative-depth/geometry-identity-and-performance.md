@@ -6,45 +6,55 @@
 
 This document asks which representation, evaluators and identity rules would let Biskiq offer native form creation on an ordinary laptop browser, within current contracts. It covers 3D form operations, and so extends the [geometry-library harvest](../geometry-library-harvest.md#5-recommendation-matrix-reconciled-2026-10-22), which covered 2D roof-footprint work. It also extends the original study's [§8](../spatial-modeling-depth-research-2026-10-25.md#8-the-most-useful-architectural-direction) and [§9](../spatial-modeling-depth-research-2026-10-25.md#9-geometry-technology-compare-responsibility-and-cost).
 
-> **About the local measurements.** Figures marked *probe* were measured on 25 October 2026 for this research only, by disposable scripts on an Apple M2 with 16 GB RAM running Node 26.7 (V8). Node is close to Chrome but is not a browser. Safari, Firefox and 8 GB laptops will differ. The scripts and installed packages lived in a session scratch directory and are **not** part of this repository, so no dependency was added or adopted. Treat the figures as orders of magnitude to be re-measured by the [proof agenda](./proof-agenda.md#p6-evaluator-placement-and-the-kernel-question), not as evidence for any gate.
+> **About the local measurements.** Figures marked *probe* were measured on 25 October 2026 for this research only, by disposable scripts on an Apple M2 with 16 GB RAM running Node 26.7 (V8). After peer review they were re-run, and the wall comparison was replaced by a **matched** probe: every route produces the same meshed, copied-out output, with validity checks. [Probe methods](./probe-methods.md) holds the method, the scripts verbatim, the raw output and the limitations. Node is close to Chrome but is not a browser. Safari, Firefox and 8 GB laptops will differ. No script or package was added to the repository, and no dependency was adopted. Treat the figures as relative costs on one fixture and orders of magnitude, to be re-measured by the [proof agenda](./proof-agenda.md#p6-evaluator-placement-and-the-kernel-question). They are not evidence for or against any gate.
 
 ## 1. Findings in brief
 
 1. **I** **The required representation is authored intent with analytic curves**: profiles, carriers, rules and parameters. Tessellation should happen late, inside derivatives that can be thrown away. Generated geometry is already excluded from authored truth ([North Star](../../docs/reference/north-star.md#permanent-non-goals)). A kernel's main advantage, exact persisted topology, is therefore largely beside the point for Biskiq.
-2. **O, probe** **Plain TypeScript covers almost every operation the creator evidence asks for, in under a millisecond:**
-   - a double-reflection rotation-minimizing sweep along a helix (about 96,000 triangles): 0.82 ms median;
-   - a ruled strip between two helical polylines with unequal sample counts: 0.18 ms;
-   - a 100 × 100 Coons patch: 0.21 ms.
+2. **O, probe** **The core curve constructions the creator evidence asks for are cheap in plain JavaScript:**
+   - a double-reflection rotation-minimizing sweep along a helix (about 96,000 triangles): 0.83 ms median;
+   - a ruled strip between two helical polylines with unequal sample counts: 0.19 ms;
+   - a 100 × 100 Coons patch: 0.20 ms.
 
-   All three were bit-identical across runs.
-3. **O, probe** **Domain construction beats generic booleans by orders of magnitude.** A wall with 40 openings took:
+   These figures cover **positions (and sweep indices) only**. They exclude normals, UVs, caps, validation and GPU upload, and their bit-identical results were checked within one process only. They show the mathematics is not the cost. They do not show a finished family fits a budget.
+3. **O, probe** **On identical output, construction beats general booleans within each library, and the library matters as much as the language.** All routes below produce the same meshed wall with 40 openings, copied out to JavaScript ([probe methods §4](./probe-methods.md#4-results-the-matched-40-opening-wall)).
 
-   | Method | Time |
-   | --- | --- |
-   | Extrusion with holes (Manifold `CrossSection.extrude`) | 0.69 ms |
-   | Manifold batch difference | 3 ms |
-   | OCCT sequential cuts | 777 ms |
+   | Route | p50 | Valid closed mesh |
+   | --- | --- | --- |
+   | three.js `ExtrudeGeometry`, plain JavaScript | 0.77 ms | **No**: 160 open edges (T-junctions) |
+   | Manifold extrusion with holes | 1.29 ms | Yes |
+   | Manifold, 40 sequential or one batch boolean | 3.5–3.7 ms | Yes |
+   | OCCT extrusion with holes, meshed | 120 ms | Yes |
+   | OCCT, one batch or 40 sequential cuts, meshed | 199–717 ms | Yes |
 
-   Biskiq's production Openings already use domain construction: they are cut analytically in the Wall's frame, with no boolean.
-4. **O** **Only one 3D solid kernel is permissive, maintained, small and robust:** Manifold (`manifold-3d` 3.5.4, Apache-2.0).
-   - Its WASM core is about 159 KB brotli, plus about 17 KB of glue ([npm](https://registry.npmjs.org/manifold-3d)). It initialized in about 6 ms (*probe*).
+   **I** Three narrower lessons replace the first revision's "orders of magnitude" headline, which compared unlike routes:
+   - the operation chosen moves cost about threefold in Manifold and sixfold in OCCT;
+   - at a matched operation Manifold was 50–200 times faster than OCCT on this fixture;
+   - plain JavaScript was not faster than WASM by default, and its output was not closed.
+4. **O, probe** **Biskiq's production wall path is the relevant hot path, and it is already in TypeScript.** Compiling and meshing one wall with 40 Openings took 3.3 ms p50 straight with rectangular heads and 9.3 ms p50 curved with rounded heads. Meshing rounded heads dominates; compiling takes about 1 ms. Its output is far richer than the kernel routes: normals, metric UVs, reveals and a role-tagged pick partition. **I** A single wall this dense lies outside the [budget fixtures](../../docs/reference/components/performance.md#budgets), so this is not a budget verdict. It locates where evaluation cost concentrates, on dense, arched hosts, and the levers are algorithmic: evaluate only the changed host, choose arch tessellation density, label a preview level of detail. That path belongs to [S06](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md).
+5. **O** **Only one 3D solid kernel is permissive, maintained, small and robust:** Manifold (`manifold-3d` 3.5.4, Apache-2.0).
+   - Its WASM core is 155 KiB brotli, plus 17 KiB of glue (*probe*, matching [npm](https://registry.npmjs.org/manifold-3d)). Initialization took 6–17 ms across runs.
    - It is single-threaded, and it reports which input each output triangle came from ([Manifold](https://github.com/elalish/manifold)).
-   - **Blocked:** every OCCT path is LGPL-2.1 and so fails current admission. OCCT's WASM is about 4.8 MB brotli, roughly 19 times the whole visitor first-load budget.
+   - **Blocked:** every OCCT path is LGPL-2.1 and so fails current admission. OCCT's WASM is 4,895 KiB brotli, about 19.6 times the whole visitor first-load budget.
    - **Immature:** Truck (Apache-2.0) is the only permissive B-rep option. It has no npm build, and its fillet and offset are unreleased.
-5. **I** **No isolated CPU bottleneck justifies Rust/WASM for the operations the evidence asks for.**
-   - The technology gate requires such a bottleneck *and* a boundary-inclusive proof ([North Star](../../docs/reference/north-star.md#technology-gates)).
-   - Domain operations run well inside the per-edit budget of 4, 8 and 16 ms.
-   - The one heavy operation, a general solid boolean, already has an admissible WASM library to compare against. Writing a custom kernel would be a research project.
-6. **O** **No kernel reliably reports its own failures:**
+6. **I** **No evidence gathered here meets the Rust/WASM gate, and none rules it out.**
+   - The [technology gate](../../docs/reference/north-star.md#technology-gates) requires an isolated CPU bottleneck *and* a boundary-inclusive proof.
+   - No purpose-built Rust/WASM module was measured, nothing ran in a browser, and only one Biskiq hot path was probed.
+   - The one Biskiq path measured is TypeScript at a few milliseconds per dense wall, with algorithmic levers not yet used.
+   - Manifold is already C++ compiled to WASM, so "WASM or not" is the wrong framing. The open question is whether a purpose-built module ever beats a well-structured TypeScript evaluator after boundary costs.
+
+   **R** Schedule no custom Rust/WASM work on this evidence. That is a statement about the evidence, not a forecast.
+7. **O** **No kernel reliably reports its own failures:**
    - Manifold issue #1888 (open) loses volume while returning `NoError` on near-coincident inputs ([issue](https://github.com/elalish/manifold/issues/1888)).
    - A replicad/OCCT issue produces silently empty booleans that report success ([replicad #272](https://github.com/sgenoud/replicad/issues/272)).
 
    **I** Whatever evaluates booleans needs an independent post-condition validator that turns failure into Biskiq's typed refusal.
-7. **I** **Identity can be designed rather than recovered.** Generators can name their outputs by *role*, derived from persisted authored keys, for example the start cap, `side(segment k)`, or `member(slot n)`.
+8. **I** **Identity can be designed rather than recovered.** Generators can name their outputs by *role*, derived from persisted authored keys, for example the start cap, `side(segment k)`, or `member(slot n)`.
    - This avoids FreeCAD's topological-naming problem for bounded families.
    - It fits the ratified rule that owners publish correspondence and consumers never infer it by name, order or proximity ([architecture](../../docs/reference/architecture.md#product-convergence-destination)).
    - Mesh provenance (Manifold's input and face IDs) is needed only inside boolean steps.
-8. **O** **Most practice gets by with coarse identity.**
+   - **O** **Production already does this at surface granularity.** The wall mesher's `Layout3dTriangleRef` gives every triangle exactly one pick owner. The owner is keyed by Room, wall segment and surface role (`side`, `lintel`, `bridge`), or by Opening and surface role (`jamb`, `sill`, `lintel`, `arch-reveal`), never by triangle order ([`wall-mesh-builder.ts`](../../apps/editor/src/lib/layout/wall-mesh-builder.ts)).
+9. **O** **Most practice gets by with coarse identity.**
    - CAD users are taught to reference datum planes rather than generated faces.
    - BIM identity is per element.
    - Manifold carries materials per input mesh.
@@ -58,7 +68,7 @@ This document asks which representation, evaluators and identity rules would let
 | Authored intent | Profiles (2D, with stable point keys and crease or round flags), carriers (paths, host frames), rules (count, spacing, frame mode, corner policy), parameters | Vellum's `Overhead` already stores a profile of `{u, h, crease, id}` points with stable identity across edits ([`prototypes/p3-vellum/src/model/types.ts`](../../prototypes/p3-vellum/src/model/types.ts)) | The family's source. Small and versionable |
 | Analytic evaluation | Arcs, cubic chains, helices, arc-length parameterization, 2D offsets | Production Walls are lines or cubic chains, with an arc-length tolerance of 1e-6 m ([`packages/layout-core/src/layout-geometry-curve.ts`](../../packages/layout-core/src/layout-geometry-curve.ts)) | Exact where possible; precision declared against coordinate range and local frame |
 | Derived geometry | Triangles, normals, UVs, role tables, provenance tables | Generated geometry is never authored truth | Disposable; regenerated deterministically; cached by source key |
-| Display and interaction | Instance buffers, level-of-detail tessellation, hit ranges mapped to roles | Production compiled records already carry pick ranges with source identity ([assessment §1](../procedural-architectural-authoring-assessment.md#1-executive-verdict)) | Faithful to source; never a writer |
+| Display and interaction | Instance buffers, level-of-detail tessellation, hit ranges mapped to roles | The production wall mesh carries `pickRanges`, a sorted partition of the index buffer in which every triangle has one role-tagged owner ([`wall-mesh-builder.ts`](../../apps/editor/src/lib/layout/wall-mesh-builder.ts); [assessment §1](../procedural-architectural-authoring-assessment.md#1-executive-verdict)) | Faithful to source; never a writer |
 
 **I** **Host-local frames carry more weight than any kernel.** A Wall already has an exact (s, z) frame, and Openings are cut in it. The same idea extends to other hosts:
 
@@ -67,7 +77,7 @@ This document asks which representation, evaluators and identity rules would let
 - a room boundary's offset frame for trim;
 - a Shape's own outline plane.
 
-Drawing, measuring, texturing and hosting all become 2D problems in an exact frame. This is why curved-wall windows are easy in Biskiq and hard in SketchUp.
+Drawing, measuring, texturing and hosting all become 2D problems in an exact frame. This is why a curved-wall window is a solved *geometric* problem in Biskiq's compiler and a hard one in SketchUp. The creator *workflow* for it does not exist yet: Opening authoring is not wired to the editor, and curved hosts are outside every planned slice ([synthesis §2](./synthesis-and-direction.md#2-status-ledger-what-exists-by-kind-of-evidence)).
 
 **I** **Store analytic curves and tessellate by level of detail.** Representational failures M9 to M11 ([creator evidence §6](./creator-evidence.md#6-twelve-recurring-mechanisms)) disappear when the user never sees segment counts.
 
@@ -79,19 +89,19 @@ Drawing, measuring, texturing and hosting all become 2D problems in an exact fra
 
 | Operation | Creator need it serves | Plain TS? | Candidate admissible library | Blocked or immature options | Verdict (**I**) |
 | --- | --- | --- | --- | --- | --- |
-| Extrude with holes | Plinths, platforms, panels, walls with openings | Yes; 0.69 ms for 40 holes (*probe*, Manifold extrude) | Manifold `CrossSection.extrude`; three.js `ExtrudeGeometry` (MIT) | — | Native; first family |
+| Extrude with holes | Plinths, platforms, panels, walls with openings | Yes; 40 holes in 0.77 ms with three.js, but with T-junctions, against 1.29 ms closed with Manifold (*probe*, [matched](./probe-methods.md#4-results-the-matched-40-opening-wall)) | Manifold `CrossSection.extrude`; three.js `ExtrudeGeometry` (MIT), whose earcut caps need T-junction-free triangulation before any validator | — | Native; first family |
 | Revolve, full or partial | Columns, vessels, lamps, turned legs | Yes | Manifold revolve; three.js `LatheGeometry` | — | Native; near-first |
-| Sweep along a 2D or 3D path, with frame mode | Rails, trim, pipes, edges | Yes; 0.82 ms (*probe*) using the double reflection method ([Wang et al. 2008](https://www.microsoft.com/en-us/research/publication/computation-rotation-minimizing-frames/)) | Own code. three.js frames use second-order rotation and `acos`, which is fine for display | OCCT pipe shell (LGPL) | Native. Refuse in words when the profile radius exceeds the local curvature radius |
-| Ruled strip between two carriers | Spiral-rail infill, soffits, canopy edges | Yes; 0.18 ms (*probe*) | Own code; Truck `homotopy` has no npm build | — | Native within families. Anchor the arc-length pairing at authored stations |
+| Sweep along a 2D or 3D path, with frame mode | Rails, trim, pipes, edges | Yes; 0.83 ms for positions and indices (*probe*) using the double reflection method ([Wang et al. 2008](https://www.microsoft.com/en-us/research/publication/computation-rotation-minimizing-frames/)) | Own code. three.js frames use second-order rotation and `acos`, which is fine for display | OCCT pipe shell (LGPL) | Native. Refuse in words when the profile radius exceeds the local curvature radius |
+| Ruled strip between two carriers | Spiral-rail infill, soffits, canopy edges | Yes; 0.19 ms for positions (*probe*) | Own code; Truck `homotopy` has no npm build | — | Native within families. Anchor the arc-length pairing at authored stations |
 | Loft between two or three profiles | Square-to-round tapers, transitions | Yes for single-contour profiles. Correspondence is the real work: corners first, then arc length, then the seam rotation | three.js `LoftGeometry` (added June 2026, equal counts only) | OCCT ThruSections (LGPL) | Gated. Refuse when hole counts differ unless the user supplies correspondence |
-| Coons patch, four-sided | Canopies, shade sails | Yes; 0.21 ms (*probe*) | Own code | OCCT GeomFill (LGPL) | Bounded native candidate |
+| Coons patch, four-sided | Canopies, shade sails | Yes; 0.20 ms for positions (*probe*) | Own code | OCCT GeomFill (LGPL) | Bounded native candidate |
 | Gordon surface (curve network) | Freeform networks | Medium-hard | Reference only: TiGL is Apache-2.0 but depends on OCCT | — | Specialist |
 | 2D offset of polylines and arcs | Trim offsets, reveals, insets, thickness | Yes | Clipper2 (BSL-1.0) as a TypeScript port or WASM; @flatten-js/core (MIT) | — | Native. Wide leverage beyond roofs |
 | Profile-corner rounding and chamfer | Rounded edges on any profile family | Yes; analytic arcs before extrusion | Own code; Clipper2 round joins | — | **Native baseline** |
 | Rounded rim between cap and side | Soft-edged plinths, tabletops | Yes, by insetting profiles at several heights ("bevel-extrude") | Clipper2 | — | Native. Refuse when the radius exceeds half the minimum feature width |
-| 3D fillet across arbitrary faces | Fabrication-grade blends | No | — | OCCT 16–36 ms and fragile (*probe*; [replicad #241](https://github.com/sgenoud/replicad/issues/241)); Truck unreleased | Out of scope |
-| Visual rounding only | Presentation softness | Yes | Manifold `smoothOut`/`refine` (0.68 ms, *probe*); a shader normal bevel | — | Optional display polish. Never offered as geometry |
-| Mesh or solid booleans | Cutting found objects, custom voids | Not robustly | Manifold, in a worker with a validator | three-bvh-csg breaks on coplanar cases; JSCAD took 14 s on a 32k-polygon sphere; Cherchi bundles LGPL predicates; CGAL and libigl are GPL or MPL | Gated. Prefer host-local cuts and families |
+| 3D fillet across arbitrary faces | Fabrication-grade blends | No | — | OCCT 15–38 ms p50 and fragile (*probe*; [replicad #241](https://github.com/sgenoud/replicad/issues/241)); Truck unreleased | Out of scope |
+| Visual rounding only | Presentation softness | Yes | Manifold `smoothOut`/`refine` (about 0.7 ms, *probe*); a shader normal bevel | — | Optional display polish. Never offered as geometry |
+| Mesh or solid booleans | Cutting found objects, custom voids | Not robustly | Manifold, in a worker with a validator | three-bvh-csg breaks on coplanar cases and left 3,856 open edges on the 40-opening wall; JSCAD took 14–16 s on a 32k-polygon sphere; Cherchi bundles LGPL predicates; CGAL and libigl are GPL or MPL | Gated. Prefer host-local cuts and families |
 | Shell or hollow of an arbitrary solid | Hollowed objects | No | Manifold `levelSet` (approximate) | OCCT shell (LGPL) | Out of scope |
 | Arrays along curves | Balusters, slats, flutes, lights | Yes; rotation-minimizing frames plus instancing | three.js instancing (MIT) | — | Native |
 | Subdivision with creases | Soft goods, cushions | Yes; about 500 lines | three-subdivide (MIT) | OpenSubdiv (TOST-1.0, unclear) | Bounded candidate, for example a cushion "puff" |
@@ -105,12 +115,12 @@ Drawing, measuring, texturing and hosting all become 2D problems in an exact fra
 
 | Option | Evidence | Fit (**I**) |
 | --- | --- | --- |
-| **Domain generators in TypeScript** | Sub-millisecond probes for sweep, ruled, Coons and extrusion. Determinism depends on avoiding `Math.sin`, `cos` and `atan2` in identity-relevant paths: ECMAScript specifies them as "implementation-approximated", while `Math.sqrt` is correctly rounded ([ECMA-262](https://tc39.es/ecma262/#sec-math.sin)) | **Default.** Owns intent, correspondence, refusal and host frames |
-| **Manifold, lazily loaded in a worker** | Apache-2.0. About 176 KB brotli for core plus glue; a requested core-only package is still open ([#1902](https://github.com/elalish/manifold/issues/1902)). Single-threaded, so no cross-origin isolation is needed. Objects need explicit `delete()`. A 131,000-triangle union took 130 ms (*probe*), beyond the drag budget | **The one kernel worth a spike**, for explicit booleans on Scene objects. Use a proxy preview while dragging and run the boolean on commit, with the validator |
-| **Custom Rust/WASM module** | No bottleneck identified. Worker transfer of a 4.2 MiB result is effectively free at 0.03 ms (*probe*), but a structured-clone copy costs 1.35 ms. Copying a 185,000-triangle mesh out of a WASM heap costs about 3 ms | **Not justified now.** Revisit only if a measured hotspot appears, such as large distributions or picking |
+| **Domain generators in TypeScript** | Sub-millisecond probes for the curve mathematics of sweep, ruled and Coons constructions (positions only). The production wall compiler and mesher took 3.3–9.3 ms p50 for one wall with 40 Openings, with complete output ([probe methods](./probe-methods.md#4-results-the-matched-40-opening-wall)). Determinism depends on avoiding `Math.sin`, `cos` and `atan2` in identity-relevant paths: ECMAScript specifies them as "implementation-approximated", while `Math.sqrt` is correctly rounded ([ECMA-262](https://tc39.es/ecma262/#sec-math.sin)) | **Default.** Owns intent, correspondence, refusal and host frames |
+| **Manifold, lazily loaded in a worker** | Apache-2.0. 172 KiB brotli for core plus glue (*probe*); a requested core-only package is still open ([#1902](https://github.com/elalish/manifold/issues/1902)). Single-threaded, so no cross-origin isolation is needed. Objects need explicit `delete()`. A 131,000-triangle union took 130 ms (*probe*), beyond the drag budget | **The one kernel worth a spike**, for explicit booleans on Scene objects. Use a proxy preview while dragging and run the boolean on commit, with the validator |
+| **Custom Rust/WASM module** | **Not measured.** No purpose-built module was compared with a TypeScript evaluator on the same job. Boundary costs were measured: transferring a 4.2 MiB result to a worker takes 0.02–0.03 ms, a structured-clone copy 0.8–1.4 ms, and copying a 185,000-triangle mesh out of a WASM heap about 3 ms (*probe*) | **Not established either way.** The gate is unmet, so schedule nothing. Candidate hot paths for a gate-quality proof: opening-dense arched hosts, large distributions and picking, each after its algorithmic levers are used |
 | **Threaded WASM** | Needs `SharedArrayBuffer`, and therefore COOP/COEP headers. Under COEP, cross-origin assets and embeds must opt in ([web.dev](https://web.dev/articles/coop-coep)) | **Avoid.** It would constrain visitor pages and third-party assets |
 | **WebGPU compute for geometry** | No deterministic geometry kernel found. WGSL is float32, and atomics are nondeterministic | Display effects only, for example deforming instances along a curve |
-| **OCCT and wrappers** | LGPL-2.1; the wrapper's MIT licence does not change the licence of the WASM it loads. About 4.84 MB brotli; 92 ms to initialize after download; heap starts at 100 MB and grew toward 1 GB in a short probe. Stable opencascade.js release dates from 2020 | **Blocked**, and also a poor fit on size and memory. Useful only as a non-shipped reference |
+| **OCCT and wrappers** | LGPL-2.1; the wrapper's MIT licence does not change the licence of the WASM it loads. 4,895 KiB brotli; 92–221 ms to initialize after download across runs. WASM heap length read 100 MiB after initialization and 1,073 MiB after 40 sequential cuts. That is reserved linear memory, which never shrinks, not live use. The roughly 200 KB leaked per fuse is reported in [replicad #282](https://github.com/sgenoud/replicad/issues/282), not measured here. Stable opencascade.js release dates from 2020 | **Blocked**, and also a poor fit on size and memory. Useful only as a non-shipped reference |
 | **Truck** | Apache-2.0 Rust B-rep with booleans; released crates date from September 2024; no npm or WASM artifact; fillet and offset unreleased ([repo](https://github.com/ricosjp/truck)) | Unknown. A spike only if fabrication-grade B-rep becomes a product need |
 | **Commercial kernels (Parasolid, ACIS, C3D)** | Shapr3D and Plasticity ship Parasolid in native apps. Onshape is listed as a Parasolid cloud customer ([Siemens](https://www.siemens.com/en-us/products/plm-components/parasolid/)). No client-side browser shipment found | Not available to a permissive, local-first browser product |
 
@@ -235,11 +245,13 @@ These requirements are the same identity seam as generated parts.
 - **Correspondence costs too much.** Its overhead dominates evaluation on the reference laptops.
 - **Booleans are the main path.** Users' ordinary tasks need booleans on found objects much more than the evidence suggests, and Manifold's validated path cannot meet commit latency or memory on 8 GB machines.
 - **Coarse identity is not enough.** Reference-granularity logs show frequent sub-role references.
-- **A real hotspot appears.** A measured, isolated bottleneck emerges (for example picking or evaluating thousands of distributed members) that a WASM module removes after boundary costs. That would satisfy the existing Rust/WASM gate rather than contradict this document.
+- **A real hotspot appears.** A measured, isolated bottleneck emerges that a WASM module removes after boundary costs. Examples: picking, evaluating thousands of distributed members, or meshing opening-dense arched hosts once incremental evaluation and tessellation density are tuned. That would satisfy the existing Rust/WASM gate rather than contradict this document.
+- **Valid output costs more than it seems.** Making plain-JavaScript constructions free of T-junctions and closed, as a validator or boolean requires, erases their speed advantage over Manifold.
 
 ## 9. Gaps
 
-- No browser measurements were made, and 8 GB behavior is extrapolated.
+- No browser measurements were made, and 8 GB behavior is extrapolated. [Probe methods §6](./probe-methods.md#6-limitations) lists every limitation of the local figures.
+- No purpose-built Rust/WASM module was measured. Only one Biskiq hot path, the wall compiler and mesher, was probed, and only for one host.
 - Truck was not benchmarked; Manifold's memory high-water mark was not measured.
 - Whether Manifold face IDs survive smoothing and level-set operations was not tested.
 - No permissive TypeScript Coons or Gordon library was found.

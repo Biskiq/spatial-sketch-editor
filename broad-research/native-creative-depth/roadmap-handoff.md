@@ -16,7 +16,7 @@ It deliberately avoids mapping conclusions onto the current T1–T4 phase struct
 
 **Ready for roadmap reconciliation as research input.** A planning agent can use this package without another broad research round. Specifically, it can:
 
-- register the eleven proofs in the [proof agenda](./proof-agenda.md) as unscheduled research proposals, for the owner to commission;
+- register the twelve proofs in the [proof agenda](./proof-agenda.md) as unscheduled research proposals, for the owner to commission;
 - prepare decision D1 (scope statement) and the architecture-cycle questions D2–D4 for their authorities;
 - use the briefs in [§5](#5-planning-ready-briefs) as the starting text of future plans once the relevant decisions and proofs exist.
 
@@ -34,18 +34,18 @@ The tranches below are ordered by dependency and evidence, not by track. Each li
 
 | Tranche | Contents | Why here | Briefs |
 | --- | --- | --- | --- |
-| **A. The complete loop, made attractive** | Wall drawing (held today), host-local Openings (production), placement, a lighting look, saved views, still capture, visitor preview | Without it no form capability can be judged. P1 decides whether presentation outranks forms | B1 |
-| **B. Context forms** | A Shape extrusion family with profile rounding; one profile editor everywhere; revolve as a kind; validation and refusal vocabulary; arc-length UVs | Strongest evidence; smallest new concept; carriers already exist | B2, B3, B4, B10, B8 (UV part) |
+| **A. The complete loop, made attractive** | Wall drawing (held); Opening authoring (planned in layout-core, not wired; S03 not authorized); host-local Opening geometry (production); placement, a lighting look, saved views, still capture, visitor preview. Curved hosts need a curve-authoring scope that no plan contains | Without it no form capability can be judged. P1 decides whether presentation outranks forms | B1 |
+| **B. Context forms** | A Shape extrusion family with profile rounding; one profile editor everywhere; revolve as a kind; validation and refusal vocabulary; arc-length UVs; **basic spatial drafting**: axis locks, vertical linework, tilted host faces and offset planes | Strongest evidence; smallest new concept; carriers already exist. Profiles are drawn with basic drafting | B2, B3, B4, B10, B12, B8 (UV part) |
 | **C. Following and repeating** | Profile on carrier (trim, edge bands); distributions with anchors; role-address identity | The ten-hour revision value; depends on B and on the identity policy | B5, B6, B11 |
 | **D. Found objects and handoff** | Light edit kit; non-destructive re-import; imports in family slots; glTF out | Content-in is most of a real scene. Can proceed in parallel with B and C after A | B9 |
 | **E. Material-level detail** | Cut-out materials with correct shadows; decals; text and SVG profiles; standees | Cheap depth, if P7 confirms it works in motion | B8 |
-| **F. Few deep recipes** | Railing and stair with transitions; shelving and display bays; exhibition families | Only after B and C prove the language; P4 decides | B7 |
-| **G. Gated depth** | Loft, Coons spans, membranes, cushions, terrain heightfields, booleans on found objects, signed-distance forms | Each needs its own demand evidence and P6 | none until a proof passes |
+| **F. Few deep recipes** | Railing and stair with transitions; shelving and display bays; exhibition families; bounded compound roofs and helical stairs if P12 places them natively | Only after B and C prove the language; P4 and P12 decide | B7 |
+| **G. Gated depth** | Loft, Coons spans, membranes, cushions, terrain heightfields, booleans on found objects, signed-distance forms, free workplanes and unrestricted 3D chains | Each needs its own demand evidence: P6 for kernels, P2 for drafting rungs 4 and 5 | none until a proof passes |
 
 **R** **Difference from the original study's [adoption order](../spatial-modeling-depth-research-2026-10-25.md#12-suggested-adoption-order):**
 
 - Found objects (D) and profile rounding (B) move earlier.
-- Carriers from context replace arbitrary-plane drawing as the second step.
+- Carriers from context and basic spatial drafting form the second step. That keeps the study's first-hour drafting. Arbitrary workplanes and cross-plane chains move to gated depth.
 - Material-level detail becomes its own tranche.
 
 ## 3. Dependency graph
@@ -68,6 +68,8 @@ flowchart TD
   P4["P4 deep recipe"]
   P8["P8 found objects"]
   P6["P6 evaluator and kernel"]
+  P12["P12 where native depth stops"]
+  D12["D12 roof and helix boundary (owner)"]
   A["Tranche A complete loop"]
   B["Tranche B context forms"]
   C["Tranche C following and repeating"]
@@ -95,7 +97,10 @@ flowchart TD
   P4 --> F
   P8 --> P6
   P4 --> P6
+  S06 --> P6
   P6 --> G
+  P2 --> G
+  P3 --> P12 --> D12 --> F
 ```
 
 **Reading the graph.**
@@ -115,12 +120,13 @@ Each decision names its authority, a recommended default, and the evidence that 
 | D3 | **Shared numeric modules** used by the Layout compiler and Scene evaluation | Architecture cycle (kernel substrate, an open mechanism) | Pure, deterministic, runtime-safe modules that take numbers and return numbers. They hold no domain types and no truth | P6 shows an evaluator boundary that cannot stay pure |
 | D4 | **Identity policy:** role addresses, published correspondence, resolution by reference kind, coarse defaults | Architecture cycle (correspondence algorithms are open) | Ratify after P5 passes | Any P5 silent-retarget failure; P9 showing frequent sub-role references |
 | D5 | **Circle on a wall**, from the original study's [§10](../spatial-modeling-depth-research-2026-10-25.md#two-interaction-conflicts-deserve-explicit-decisions) | Owner ruling on a PLATE amendment | Keep "a circle on a wall face is a round Opening, with no chip". Add the alternative "Shape on this face" (medallion, relief, sign) as a re-read within the same undo step. The retained Shape intent toggle stays the fallback | Wrong-first-reading rates in P2 |
-| D6 | **Drawing context:** readings plus picked carriers before arbitrary workplanes | Owner (product), informed by design | Yes. Defer explicit workplanes and free three-dimensional chains until P2 names the tasks that need them | P2 finds two or more ordinary tasks impossible |
+| D6 | **Drawing context:** basic spatial drafting is foundational; free workplanes and unrestricted chains must earn their place | Owner (product), informed by design. Extending Ink's readings to further host faces would be a PLATE amendment | Yes. The foundation covers P2's rungs 1–3: readings, picked carriers, axis locks, vertical linework, planar host faces at any orientation, and planes offset from a host. Defer free workplanes (rung 4) and unrestricted cross-plane chains (rung 5) until P2 names the ordinary tasks that need them | P2 finds rungs 2 or 3 unused, which would narrow the foundation, or finds two or more ordinary tasks impossible under the rung-3 ceiling, which would admit rung 4 |
 | D7 | **Found-object edit kit:** per-axis scale to dimension, mirror, re-pivot, re-material by slot | Architecture cycle (Scene transform contract) | Admit after P8 | P8 shows these edits are rarely used, or that booleans dominate |
 | D8 | **Escape that keeps meaning:** a family member can be custom while the family keeps its label; "bake to plain objects" is explicit and one-way | Architecture cycle (each family's owner) | Yes, as a family-contract requirement | P4 shows creators prefer full detachment |
 | D9 | **Kernel admission** | Owner (dependency admission) | Admit nothing now. Commission a Manifold spike (Apache-2.0, editor-only, lazy, in a worker, behind a validator) only if P4 or P8 show booleans in ordinary tasks. Record Clipper2's BSL-1.0 explicitly when a lane needs it, since the admission examples do not name it | P6 results |
 | D10 | **Licence-blocked interchange:** IFC through web-ifc (MPL-2.0); STEP through OCCT (LGPL) | Owner (licensing) | No action. Leave both to the eventual licensing decision | A licensing decision |
 | D11 | **Recipe admission policy** | Owner (product) | Few deep recipes. Each must reuse the profile, carrier and rule language, pass the original study's [feature-admission test](../spatial-modeling-depth-research-2026-10-25.md#a-feature-admission-test), and ship transitions, validation, slots and the escape | P4 |
+| D12 | **Native boundary for compound roofs and helical stairs** | Owner (product), after P12; the coverage thresholds are set before P12 runs | Set the boundary by operation, not by element name ([synthesis §6.1](./synthesis-and-direction.md#61-where-native-depth-stops-compound-roofs-and-helical-forms)). Bounded joins, skeleton hips, hosted dormers and circular helical stairs are candidates. Framing, non-height-field massing and joinery-grade handrails stay specialist | P12 coverage, survival and refusal results |
 
 ## 5. Planning-ready briefs
 
@@ -137,10 +143,15 @@ Each brief is written so that a later planning agent can turn it into a plan onc
   - Still capture.
   - Visitor preview.
 - **Scope out.** New form families.
-- **Prerequisites.** S06 accepted; the Wall-drawing release.
+- **Prerequisites.**
+  - S06 accepted.
+  - The Wall-drawing release (S02), which draws straight Walls.
+  - The Opening family (S03), which excludes curved hosts.
+  - For curved walls, a curve-authoring scope. **None exists in any plan.**
 - **Evidence.** P1.
 - **Touches.** T1.P02 (drawing, Openings); T2 placement; T3 Experience views.
 - **Risk.** The time split shows setup, not geometry, as the blocker. That is a valid result.
+- **Note.** The geometry for arched Openings in curved Walls is production. The workflow is what is missing.
 
 ### B2. Shape extrusion family with profile rounding
 
@@ -227,10 +238,13 @@ Each brief is written so that a later planning agent can turn it into a plan onc
   - An infill span.
   - Module slots that accept imported posts.
   - "Make custom" that keeps the label.
-- **Scope out.** Winders, helical stairs with custom stringers, and fabrication documentation.
+- **Scope out.**
+  - Winders and helical stairs, until P12 and D12 place them.
+  - Handrail wreaths and easements made for joinery.
+  - Fabrication documentation.
 - **Owner.** Layout.
 - **Prerequisites.** B3, B5, B6, D8, D11.
-- **Evidence.** P4.
+- **Evidence.** P4; P12 for any helical extension.
 
 ### B8. Material-level detail and real-scale texture
 
@@ -289,7 +303,22 @@ Each brief is written so that a later planning agent can turn it into a plan onc
 - **Owner.** Architecture cycle, then each domain.
 - **Prerequisites.** P5.
 - **Evidence.** P5, P9.
-- **Touches.** The ratified correspondence transport; Scene attachment; Experience references.
+- **Touches.** The ratified correspondence transport; Scene attachment; Experience references. The production wall mesher's role-tagged pick partition is the existing precedent at surface granularity.
+
+### B12. Basic spatial drafting
+
+- **Intent.** Precise drawing on, and relative to, existing surfaces, without a workplane system.
+- **Scope in.**
+  - Axis locks during an Ink stroke: plan axes, the vertical, and host-local axes.
+  - Vertical linework, where the owning domain accepts linework as source.
+  - Planar host faces at any orientation as drawing surfaces, for example roof planes, ramp tops and tilted panel faces, each read by its owning domain.
+  - Planes offset from a host face.
+  - Numeric entry at the gesture, following the precision ladder.
+- **Scope out.** Free workplanes on no host (P2 rung 4) and unrestricted cross-plane chains (rung 5).
+- **Owner.** The shell pattern, with each reading owned by its host's domain.
+- **Prerequisites.** D6. A PLATE amendment if Ink's readings extend beyond ground, a raised sheet and a wall face.
+- **Evidence.** P2.
+- **Touches.** PLATE Ink and Height Sheet; T1.P02 drawing.
 
 ## 6. What not to schedule
 
@@ -304,7 +333,8 @@ Each brief is written so that a later planning agent can turn it into a plan onc
 - sculpting;
 - UV unwrapping;
 - a signed-distance editing mode;
-- a Rust/WASM kernel;
+- a custom Rust/WASM module or kernel, before a measured hotspot meets the North Star gate;
+- free workplanes or unrestricted cross-plane chains, before P2;
 - threaded WASM;
 - any OCCT-based path;
 - a broad recipe catalog;
@@ -315,6 +345,14 @@ Each brief is written so that a later planning agent can turn it into a plan onc
 
 - **Production hold.** Every implementation scope absent from the [release list](../../docs/roadmap/now.md) stays held. This package releases nothing. It is not a release under the [production hold](../../docs/roadmap/README.md#production-implementation-hold).
 - **Performance-first halt.** Wall drawing and Openings inherit S06. Tranche A therefore waits for S06 acceptance, and proofs that need drawing use prototype drawing until then.
+- **Observation: curved hosts are unplanned.** The geometry is production, but the creator workflow has gaps:
+  - Opening create and delete are planned in layout-core but not wired to the editor.
+  - The Opening family (S03) excludes curved hosts.
+  - T1.P02's outcome draws straight Walls.
+  - Curve authoring waits for "the first curve-authoring slice", which no plan scopes.
+
+  This package's anchor workflow, a window in a curved wall, therefore has no planned delivery. It is recorded for reconciliation, not proposed as a scope.
+- **Observation: dense-host evaluation belongs to S06.** The production wall path measured 3–9 ms per 40-opening wall in Node ([probe methods §4](./probe-methods.md#4-results-the-matched-40-opening-wall)). S06 owns the compile and representation path and its harness. This package adds no measurement obligation to S06.
 - **Ratified authorities preserved.**
   - The PLATE shell's dock, readings, precision ladder and Card rule are used as they stand. D5 is the only proposed amendment.
   - The convergence ratification's family-by-family growth, typed refusals and correspondence transport are assumed.

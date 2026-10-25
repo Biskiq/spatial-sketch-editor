@@ -19,7 +19,15 @@ Biskiq already owns that context. Walls with exact curved frames, hosted Opening
 1. **One small creative language: profile, carrier and rule.** A *profile* is a 2D section or outline. A *carrier* is where it goes, usually taken from an existing host. A *rule* says how the two meet: extrude, revolve, sweep, distribute, subdivide, or span between two carriers.
 
    Domain-owned *families* compose the language and add meaning, validation and refusal. One family is a railing on a stair, which belongs to architecture. Another is a lamp revolved from a profile, which belongs to Scene. ([§4](#4-one-creative-language-profile-carrier-and-rule))
-2. **Draw on things, not in space.** Profiles and outlines are drawn in readings that provide an exact surface: ground, a raised sheet, Face, Unroll, Section and Edit shape. Carriers are picked from hosts more often than drawn. Free three-dimensional chains are a late, narrow need.
+2. **Draw on things first, with basic spatial drafting as part of the foundation.** Profiles and outlines are drawn in readings that provide an exact surface: ground, a raised sheet, Face, Unroll, Section and Edit shape. Carriers are picked from hosts more often than drawn.
+
+   **Basic spatial drafting** belongs in the foundation:
+   - axis locks;
+   - vertical linework;
+   - planar host faces at any orientation, such as a roof plane or a ramp;
+   - planes offset from a host.
+
+   A free workplane on no host must earn its place, and unrestricted cross-plane chains are a late, narrow need ([§5](#5-how-the-language-fits-the-ratified-shell); [P2](./proof-agenda.md#p2-a-drafting-ladder-from-host-surfaces-to-free-chains)).
 3. **Presentation depth has equal standing.** This means:
    - real-scale texture coordinates on every generated form;
    - profile-level rounding;
@@ -34,7 +42,7 @@ Biskiq already owns that context. Walls with exact curved frames, hosted Opening
 6. **Identity is designed, not recovered.** Families name their parts by role, using persisted authored keys. Their owners publish correspondence. References default to whole objects or role groups. ([geometry §5](./geometry-identity-and-performance.md#5-identity-and-correspondence))
 7. **The technical base is TypeScript domain evaluators.** They run inside the owning compilers and share small, runtime-safe numeric modules: curves, offsets, frames, sweeps, tessellation and UVs.
    - **Manifold** remains the only admissible solid-boolean library. It would be a gated, editor-only spike for explicit Scene booleans.
-   - **No Rust/WASM** work is justified by the evidence.
+   - **No custom Rust/WASM case is established.** No evidence gathered meets the North Star gate, and none rules it out. The one production hot path measured, the wall compiler and mesher, is TypeScript with algorithmic levers still unused ([geometry §1](./geometry-identity-and-performance.md#1-findings-in-brief)).
    - **No heavy kernel** reaches the visitor runtime. Visitors receive compiled derivatives, or re-evaluate cheap families with the same runtime-safe evaluators. ([geometry §4](./geometry-identity-and-performance.md#4-typescript-rustwasm-and-specialized-kernels))
 
 **R** **What stays outside:**
@@ -66,8 +74,10 @@ The creator never meets a face that will not form, a profile that twists, a tole
 | Capability relevant to native form | Status | Evidence | Consequence |
 | --- | --- | --- | --- |
 | Curved Walls as cubic chains with arc-length parameterization | **Production** | `LayoutWallCenterline` (`'line' \| 'cubic-chain'`) in [`packages/layout-core/src/layout-wall-first-types.ts`](../../packages/layout-core/src/layout-wall-first-types.ts); arc-length tolerance 1e-6 m in [`packages/layout-core/src/layout-geometry-curve.ts`](../../packages/layout-core/src/layout-geometry-curve.ts) | A curved host already has an exact (s, z) frame. Host-local drawing extends existing mathematics |
-| Openings cut in the Wall's (s, z) frame: rectangular, rounded or pointed, with metre offsets from the Wall start, and no CSG | **Production** | `LayoutWallOpening`; [assessment §1](../procedural-architectural-authoring-assessment.md#1-executive-verdict) | The SketchUp curved-wall-window failure class is solved analytically. Generalize the pattern, not a boolean kernel |
-| Metric arc-length UVs on Walls | **Production** (per the assessment) | [assessment §1](../procedural-architectural-authoring-assessment.md#1-executive-verdict) | Generated forms can own real-scale texture coordinates by construction |
+| Openings cut in the Wall's (s, z) frame: rectangular, rounded or pointed, with metre offsets from the Wall start, and no CSG | **Production** (geometry) | `LayoutWallOpening`; [assessment §1](../procedural-architectural-authoring-assessment.md#1-executive-verdict); a curved wall with 40 arched Openings compiles and meshes without issues ([probe](./probe-methods.md#4-results-the-matched-40-opening-wall)) | The *geometry* of the SketchUp curved-wall-window failure class is solved analytically. Generalize the pattern, not a boolean kernel |
+| Wall mesher: metric arc-length UVs, opening reveals, a role-tagged pick partition, fail-closed issues; shared with the visitor runtime | **Production** | [`wall-mesh-builder.ts`](../../apps/editor/src/lib/layout/wall-mesh-builder.ts) (`Layout3dTriangleRef`, `pickRanges`) | Generated forms can own real-scale UVs and role-addressed surfaces by construction. Identity by role already ships at surface granularity |
+| Opening authoring on the Stage | **Not wired.** Layout-core plans Opening create and delete, but "none is wired to the editor". The Opening family slice (S03) is not authorized | [T1.P02](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md); [S03 outline](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/implementation-plan.md) | **The creator workflow does not exist yet.** The foundation is production; the workflow is two held or unauthorized slices away |
+| Curved hosts and curve authoring | **Unplanned.** S03 excludes curved hosts; curve allocators stay outside accepted intents "until the first curve-authoring slice", which no plan scopes; T1.P02's outcome draws straight Walls | S03 outline; [S05 plan](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/implementation-plan.md) | No planned slice lets a creator put a window in a curved wall. This is a reconciliation observation, not a promotion ([handoff §7](./roadmap-handoff.md#7-reconciliation-with-current-authorities-and-roadmap)) |
 | Exact planar noding and face extraction (`robust-predicates`) | **Production** | [harvest §1](../geometry-library-harvest.md#1-what-p3-has-and-what-it-relies-on) | A robust 2D base exists. There are no area booleans or offsets yet |
 | Primitives (box, plane, cylinder, sphere) and the creator's own GLB models placed on compiled support; move, yaw, uniform resize, duplicate, delete | **Production** (T2.P01; T2.P02.S02) | [Scene content](../../docs/reference/components/scene-content.md#current-implementation) | Imported objects have a working path. Native custom forms and non-uniform edits do not |
 | One accepted history, typed intents, F4 acceptance | **Production** (T3.P01) | [North Star](../../docs/reference/north-star.md#shared-authoring-operations) | Every form operation can be one accepted intent with one undo step |
@@ -95,20 +105,20 @@ The [original study](../spatial-modeling-depth-research-2026-10-25.md) is preser
 | --- | --- | --- | --- |
 | Five capabilities: drawing, editable forms, reusable detail, revision continuity, visual completion ([§1](../spatial-modeling-depth-research-2026-10-25.md#1-recommendation)) | **Confirmed** | All research passes | Keep the five. This package supplies the language that joins the first three |
 | Placement, materials, lighting and framing deserve equal standing | **Confirmed and strengthened** | Experts' "fake it" default; clients value stills ([approaches §7](./approaches-and-precedents.md#7-finish-presentation-and-handoff-precedents)) | Material-level detail and still capture enter the native core |
-| Spatial Ink as foundation, including arbitrary planes and cross-plane three-dimensional chains ([§4.1](../spatial-modeling-depth-research-2026-10-25.md#41-spatial-ink-three-dimensions-with-understandable-depth)) | **Challenged in emphasis** | Drawing without a surface is error-prone ([Arora 2017](https://research.autodesk.com/publications/experimental-evaluation-of-sketching-on-surfaces-in-vr)). Community 3D paths (rails, ramps) derive from hosts. The ratified readings already provide surfaces | Prioritize **drawing in readings and picking carriers**. Arbitrary workplanes and free chains become a later, narrow capability that must justify itself. [P2](./proof-agenda.md#p2-draw-on-things-or-in-space) tests this |
+| Spatial Ink as foundation ([§4.1](../spatial-modeling-depth-research-2026-10-25.md#41-spatial-ink-three-dimensions-with-understandable-depth)): its first-hour column ("draw on a visible face or plane; pull a line vertically") and its ten-hour column (arbitrary planes and cross-plane chains) | **Confirmed for basic spatial drafting; challenged for arbitrary planes and free chains as foundation.** The first revision of this package overstated the disagreement; the study already said "the priority is a reliable drawing context" | Drawing without a surface is error-prone ([Arora 2017](https://research.autodesk.com/publications/experimental-evaluation-of-sketching-on-surfaces-in-vr)). Community 3D paths (rails, ramps) derive from hosts. The ratified readings already provide surfaces | Basic drafting is foundational: drawing in readings, picked carriers, axis locks, vertical linework, tilted host faces, offset planes. Free workplanes and unrestricted chains must justify themselves. [P2](./proof-agenda.md#p2-a-drafting-ladder-from-host-surfaces-to-free-chains) tests where the line falls |
 | Editable profiles and extrusion as the first native form ([§4.2](../spatial-modeling-depth-research-2026-10-25.md#42-forms-preserve-the-idea-that-generated-them)) | **Confirmed, with two additions** | Users expect native rounding; revolve covers lamps, vessels and columns cheaply | Ship profile-corner rounding with the first family. Bring revolve forward |
 | Repetition, with explicit identity ([§4.3](../spatial-modeling-depth-research-2026-10-25.md#43-repetition-more-authored-intent-less-repetitive-labor)) | **Confirmed; concrete policy proposed** | No system keeps per-member overrides through regeneration ([approaches §5](./approaches-and-precedents.md#5-procedural-and-recipe-systems)) | Ordinal slots with suppression, anchors that pin positions, and orphaned overrides kept visible |
 | Relationships: transient assistance is not persistent relation ([§4.4](../spatial-modeling-depth-research-2026-10-25.md#44-relationships-the-most-valuable-hidden-depth)) | **Confirmed** | Solid Edge Live Rules show the cost of inferred relations | Declared relations heal; snaps stay transient |
 | Finish ([§4.5](../spatial-modeling-depth-research-2026-10-25.md#45-finish-make-rough-work-presentable-and-refined-work-distinctive)) | **Confirmed and extended** | Box projection fails on curves; cut-out shadow complaints; live-link identity failures | Arc-length UVs for every family, cut-out materials, decals and standees, and finish overrides keyed by role |
 | Recipes: selective, after foundations ([§4.6](../spatial-modeling-depth-research-2026-10-25.md#46-recipes-domain-knowledge-without-specialist-workbenches)) | **Confirmed and sharpened** | Users reject recipes that trap them; transitions break typed systems; recipes consume assets | **Few deep recipes**, with transition rules, module slots for imports, validation, and an escape hatch that **keeps the semantic label** |
-| Limited loft, rounding and explicit booleans are research-gated | **Partly challenged** | Profile rounding is cheap and expected. A ruled strip between carriers costs 0.2 ms (*probe*). General loft correspondence is hard. 3D fillets need a kernel | Rounding: baseline, not gated. Ruled strips: inside families. Loft and booleans: still gated. 3D fillets: out of scope |
+| Limited loft, rounding and explicit booleans are research-gated | **Partly challenged** | Profile rounding is cheap and expected. The positions of a ruled strip between carriers cost 0.2 ms (*probe*). General loft correspondence is hard. 3D fillets need a kernel | Rounding: baseline, not gated. Ruled strips: inside families. Loft and booleans: still gated. 3D fillets: out of scope |
 | Geometry-to-semantic interpretation, investigated with care | **Confirmed, with a warning** | Live Rules need constant overrides; Tiny Glade's in-context readings delight | Readings stay limited to what domains support, visible before commit, one undo step away |
 | Reference, trace and handoff as essential | **Confirmed and elevated** | Asset-first tools survive; AI erodes the freeform layer; platform closures | Add a **found-object edit kit** and **non-destructive re-import**. Imports fill family slots |
 | Four responsibilities: intent, meaning, evaluation, display ([§8.1](../spatial-modeling-depth-research-2026-10-25.md#81-separate-four-responsibilities)) | **Confirmed** | Kernel persistence adds nothing when generated geometry is never authored truth | Keep the split |
-| Identity is the hardest seam ([§8.2](../spatial-modeling-depth-research-2026-10-25.md#82-the-hardest-seam-is-stable-identity)) | **Confirmed; less of a blocker than feared for bounded families** | Role addresses from authored keys avoid topological naming. Practice gets by with coarse identity | Role-address policy plus measurement before investing in boolean-split tracking |
+| Identity is the hardest seam ([§8.2](../spatial-modeling-depth-research-2026-10-25.md#82-the-hardest-seam-is-stable-identity)) | **Confirmed; less of a blocker than feared for bounded families** | Role addresses from authored keys avoid topological naming. Practice gets by with coarse identity. The production wall mesher already assigns every triangle one role-tagged owner | Role-address policy plus measurement before investing in boolean-split tracking |
 | Truthful previews ([§8.4](../spatial-modeling-depth-research-2026-10-25.md#84-cheap-previews-must-remain-truthful)) | **Confirmed** | Domain paths are fast enough to preview exactly | Booleans: proxy during drag, exact on commit, with the proxy honestly labeled |
 | Surface hosting needs more than face editing ([§8.5](../spatial-modeling-depth-research-2026-10-25.md#85-surface-hosting-needs-more-than-generic-face-editing)) | **Confirmed and generalized** | Production Openings already prove the host-frame pattern | Host-local frames become the general mechanism: wall, roof plane, walking line, room offset, Shape plane |
-| TypeScript first, specialized modules only where justified ([§9](../spatial-modeling-depth-research-2026-10-25.md#9-geometry-technology-compare-responsibility-and-cost)) | **Confirmed with measurements** | Sub-millisecond domain probes; OCCT blocked and heavy; Truck immature | No Rust/WASM. Manifold is the one boolean spike, later |
+| TypeScript first, specialized modules only where justified ([§9](../spatial-modeling-depth-research-2026-10-25.md#9-geometry-technology-compare-responsibility-and-cost)) | **Confirmed in direction; the measurements were narrowed after review** | A matched probe: construction beats booleans within each library; Manifold beats OCCT 50–200 times on one fixture; plain JavaScript was not closed by default. The production wall path is TypeScript at 3–9 ms per dense wall. OCCT is blocked and heavy; Truck is immature ([probe methods](./probe-methods.md)) | No custom Rust/WASM case is established; the gate is unmet. Manifold is the one boolean spike, later. Dense-host evaluation is S06's to measure |
 | Circle on a wall ([§10](../spatial-modeling-depth-research-2026-10-25.md#two-interaction-conflicts-deserve-explicit-decisions)) | **Resolution path proposed** | Context readings delight when visible and reversible | Keep the rule; offer the alternative reading inside the same undo step ([D5](./roadmap-handoff.md#4-owner-decisions)) |
 | Adoption order ([§12](../spatial-modeling-depth-research-2026-10-25.md#12-suggested-adoption-order)) | **Re-weighted** | See above | Found objects, rounding and carriers from context move earlier; arbitrary planes move later ([handoff §2](./roadmap-handoff.md#2-capability-tranches)) |
 | Drift risks ([§13](../spatial-modeling-depth-research-2026-10-25.md#13-what-would-cause-drift)) | **Confirmed; four added** | [§9](#9-risks-and-falsifiers) | Recipe catalog sprawl, reading inference creep, presentation-only fakery, and AI-as-answer |
@@ -122,9 +132,10 @@ The [original study](../spatial-modeling-depth-research-2026-10-25.md) is preser
 - imports in semantic slots;
 - exhibition families;
 - material-level detail;
-- the evidence that curved-wall openings are already solved;
+- the distinction between the geometric foundation for curved-wall openings, which is production, and the creator workflow, which is unbuilt and partly unplanned;
 - the role-address identity policy with falsification tests;
-- measured kernel evidence.
+- matched kernel evidence and a measurement of the production wall path, with reproducible [probe methods](./probe-methods.md);
+- a boundary analysis for compound roofs and helical forms ([§6.1](#61-where-native-depth-stops-compound-roofs-and-helical-forms)).
 
 ## 4. One creative language: profile, carrier and rule
 
@@ -198,6 +209,7 @@ The family is where specialized behavior lives, for example stair rise and run r
 | --- | --- | --- |
 | Draw an outline on the ground or a raised sheet | Ink, then a reading chip, then **Shape**, pulled by a height ray | Shape's family parameters: rim radius, holes, taper |
 | Draw on a wall | Ink on a wall face; Face or Unroll as a reading; host preference | The circle-on-wall alternative ([D5](./roadmap-handoff.md#4-owner-decisions)) |
+| Basic spatial drafting: a vertical line, an axis-locked stroke, drawing on a tilted host face, drawing on a plane offset from a host | Ink, with its Line option, reads ground, a raised sheet or a wall face; the raised sheet is a horizontal offset plane at any Height Sheet height; the height ray is a vertical pull; axis rays are an existing transformation mark | Axis locks during an Ink stroke; whether vertical linework is source or an object; which further planar host faces Ink reads, such as roof planes and ramps, which would extend PLATE's list (an owner decision); offset planes from a wall face. The drawn vertical Slice stays inspection, never source ([P2](./proof-agenda.md#p2-a-drafting-ladder-from-host-surfaces-to-free-chains)) |
 | Edit a profile | Edit shape, as already ratified for roofs: a local section with joint points and ＋ marks | Generalize it to every profile family |
 | Turn a Shape into a revolve or sweep | The Card's kind fact ("a supported kind change sits on the kind fact itself") | Which kinds a Shape supports; how a carrier is picked |
 | Pick a carrier | Select with host preference; the scoped ⋯ list on a selected profile; a Library item placed onto a host | A "run along…" capability, registered through capability placement |
@@ -215,12 +227,15 @@ The family is where specialized behavior lives, for example stair rise and run r
 
 | Capability | Example tasks | Placement (**R**) | Owner (**I**) | Evidence strength |
 | --- | --- | --- | --- | --- |
-| Host-local cutting (Openings) | Windows in curved walls; arched heads; niches | **Native**: production, extend kinds | Layout | Strong (pain documented; production solved) |
+| Host-local cutting (Openings) | Windows in curved walls; arched heads; niches | **Native**: geometry in production; authoring not wired; curved hosts unplanned | Layout | Strong (pain documented; geometry solved; workflow missing) |
+| Basic spatial drafting | Vertical lines; axis-locked strokes; drawing on a roof plane, ramp or tilted panel; a plane offset from a wall | **Native**, foundational | Shell, with readings owned by each host's domain | Moderate (original study; PLATE vocabulary; P2 pending) |
+| Free workplanes and unrestricted 3D chains | A plane hinged on a picked edge; a nonplanar path drawn in space | **Gated** behind P2 rungs 4 and 5 | Shell | Weak (community 3D paths mostly derive from hosts) |
 | Profile families: extrude, with rounding | Plinths, platforms, panels, counters | **Native**, first | Scene (Shape) | Strong |
 | Revolve family | Lamps, vessels, columns, turned legs | **Native**, early | Scene | Moderate |
 | Profile on carrier | Trim, baseboards, casings, rails, edge bands | **Native** | Layout (on architecture), Scene (on objects) | Strong |
 | Distributions | Balusters, slats, flutes, lights, display bays | **Native** | By host | Strong |
 | Few deep recipes | Railing with transitions; straight, L and U stairs; simple roofs; shelving | **Native**, selective | Layout or Scene | Strong pain, with a warning about trapping |
+| Bounded compound roofs and helical stairs | Joins across pitches; hips on irregular polygons; gable and shed dormers; a circular helical stair with rails | **Candidate native**, gated by P12 ([§6.1](#61-where-native-depth-stops-compound-roofs-and-helical-forms)) | Layout | Strong pain; the native boundary is unproven |
 | Exhibition families | Vitrine, plinth, partition, slat screen, graphics panel | **Native** (compositions of the above) | Scene | Inferred (forum evidence thin) |
 | Validation and diagnostics | Rise and run, roof feasibility, opening fit, self-intersection | **Native**, from the first family | Each family's owner | Strong |
 | Real-scale UVs, creases, rounding | Every generated form | **Native** | Evaluators | Strong |
@@ -233,7 +248,45 @@ The family is where specialized behavior lives, for example stair rise and run r
 | Freeform objects, furniture, sculpture, ornament, manufacturer items | Chairs, art, capitals, volutes | **Asset and AI**, via canonical ingest | Scene ingest | Strong |
 | Recipe or profile packs | Regional moldings, stair styles | **Extension** later, as library resources | Library | — |
 | IFC, STEP and DWG import | BIM context; CAD parts | **Specialist or extension**; blocked by current licences | Ingest | — |
-| Fabrication solids, 3D fillets, freeform surfacing, framing, MEP, complex roofs, winder and helical stairs, sculpting, UV unwrapping, construction documents | — | **Specialist** (external) | — | Strong |
+| Fabrication solids, 3D fillets, freeform surfacing, framing and trusses, MEP, roofs that are not a height field, curved-surface roof intersections between families, handrail wreaths and easements for joinery, sculpting, UV unwrapping, construction documents | — | **Specialist** (external) | — | Strong |
+
+The first revision of this map placed "complex roofs, winder and helical stairs" wholly under specialist work. That contradicted the anchor case and §4.2, which assign helical rails to a family that knows its carriers. The split above replaces it.
+
+### 6.1 Where native depth stops: compound roofs and helical forms
+
+**I** The native boundary should be set by the **geometric operation** a case needs, not by the element's name. A case is a native candidate when it reduces to the language: a profile, a carrier taken from a host, and a bounded rule, all evaluated analytically in a host frame. It is specialist when it needs one of the operations this package keeps outside: general surface–surface intersection, solid booleans as the main path, free three-dimensional chains, or fabrication-grade continuity.
+
+| Case | Bounded operation it reduces to | Evidence | Placement (**I**) |
+| --- | --- | --- | --- |
+| Gables joined at one eave and pitch; wing roofs on L, T, U and plus plans | Planar upper envelope; rectilinear wing decomposition | **Prototype** in P3, with refusals ([record §3](../../prototypes/p3-vellum/plans/roof-footprints-final-polish.md#3-supported-footprint-families-p3)) | Native |
+| Joins across pitches, eaves or families of planar roofs | A height-field upper envelope over an exact planar arrangement, with valley and abutment classification | P3's recorded production direction; not built | Candidate native |
+| Hips on arbitrary polygons | Straight skeleton of the footprint, then per-edge planes | Robust implementations are hard. CGAL's is GPL, so a permissive one would be needed | Candidate native; the robustness risk is real |
+| Gable and shed dormers; a lean-to against a taller wall | A profile hosted in a roof plane's (or wall's) local frame, extruded until it meets the host plane: a plane–plane intersection | The roof analogue of an Opening in a Wall's (s, z) frame; P3 calls it "a Layout relation and a feature on top of the envelope" | Candidate native |
+| Courtyards in a cover | Rings with holes through the cover pipeline | Deferred in P3 | Candidate native |
+| A roof passing over another roof; eyebrow dormers; vault meeting gable at unequal spans | Not a height field; curved surface–surface intersection | Medeek's complex roofs still "under construction" after years | Specialist |
+| Framing, trusses, structural roofs | Member layout and engineering | Dedicated extensions | Specialist |
+| Circular helical stair, constant radius, with inner and outer rails | Helix carrier; treads distributed under a total-rise constraint; rails swept with an explicit frame; a ruled band between rails paired at authored stations | Positions for sweep and ruled strip cost under 1 ms (*probe*); the anchor case's inferences | Candidate native |
+| Helical rail joined to a straight landing rail | A tangent-continuous transition curve between a helix and a line | Revit's railings fail at exactly these transitions | Candidate native if a bounded transition (for example a cubic blend with G1 continuity) satisfies creators; specialist if fair-curve joinery is needed |
+| Variable-radius or elliptical spirals with balanced winders; wreathed handrails for fabrication | Fair-curve design and joinery geometry | Stair-builder evidence: dedicated software is expensive and CNC-oriented | Specialist |
+
+**What would prove either position.** [P12](./proof-agenda.md#p12-where-native-depth-stops-compound-roofs-and-helical-stairs) runs two fixture corpora drawn from the creator evidence.
+
+The **native position holds** if bounded families:
+
+- cover a stated share of ordinary cases without manual planes;
+- refuse the rest in words;
+- keep hosted features, such as dormers and rail transitions, through pitch, footprint, rise and radius edits;
+- meet the per-edit budget at the M scale.
+
+The **specialist position holds** if:
+
+- reaching the common cases needs general surface–surface intersection, solid booleans or free 3D chains;
+- refusal rates on ordinary renovation roofs stay high;
+- hosted features do not survive edits.
+
+The shares are decision points for the owner, not sourced numbers.
+
+**I** Showing a case can be native does not make it worth scheduling. P12 decides placement on the capability map. D1, P3 and P4 still decide whether any recipe is built.
 
 ## 7. Ownership and architecture seams
 
@@ -272,7 +325,7 @@ An illustrative project shows how the pieces combine: a small photography exhibi
 
 | Time | Creator action | Capability exercised |
 | --- | --- | --- |
-| 0–3 min | Ink a curved enclosure; read it as Walls; add two arched windows on the curve | Wall drawing (held today); host-local Openings (production) |
+| 0–3 min | Ink a curved enclosure; read it as Walls; add two arched windows on the curve | Wall drawing (held); curve authoring (unplanned); Opening authoring (not wired; S03 excludes curved hosts); host-local Opening geometry (production) |
 | 3–6 min | Ink three outlines on the floor and read them as Shapes; set heights; round the rims | Extrude family with rounding |
 | 6–9 min | Place supplied prints on the curved wall; distribute twelve picture lights along it | Solve-once placement; distribution on a host carrier |
 | 9–12 min | Pick the room boundary and add a baseboard from the profile library | Profile on carrier; arc-length UVs |
@@ -289,12 +342,12 @@ An illustrative project shows how the pieces combine: a small photography exhibi
 | --- | --- | --- | --- |
 | Families feel rigid ("my lamp isn't a revolve") | Evidence shows users then fall back to images and assets | Frequent escapes or abandoned families in [P3](./proof-agenda.md#p3-profile-families-stay-editable) | Strengthen import and escape first; add a family only for recurring demand |
 | Recipe catalog sprawl | Every vendor ends with incompatible wizards | A new recipe needs a new concept | Admission test: it must reuse the language |
-| Reading inference creep | Live Rules needed constant overrides | Wrong first readings above a threshold in [P2](./proof-agenda.md#p2-draw-on-things-or-in-space) | Keep readings few and visible; prefer explicit kind changes |
+| Reading inference creep | Live Rules needed constant overrides | Wrong first readings above a threshold in [P2](./proof-agenda.md#p2-a-drafting-ladder-from-host-surfaces-to-free-chains) | Keep readings few and visible; prefer explicit kind changes |
 | Fakes read flat in motion | Cut-outs and decals are tuned for stills | Visitors notice cards edge-on in [P7](./proof-agenda.md#p7-material-level-detail-in-motion) | Limit fakes to distant or lateral roles; real geometry for hero objects |
 | AI makes native forms unnecessary faster than expected | Part-aware, editable AI generation is advancing | AI props can be dimensioned and revised reliably | Shift investment toward slots, the edit kit and agent operations |
 | AI cannot use families well | Agents need robust typed operations | An agent fails on the [P10](./proof-agenda.md#p10-agents-operate-families) family tasks | Improve operation design, not agent prompts |
 | Identity policy too strict | Users expect "the same face" to persist | Unresolved states per 100 edits in [P5](./proof-agenda.md#p5-identity-through-ordinary-revision) | Richer authored continuation in the profile editor, never guessing |
-| Performance on 8 GB laptops | WASM heaps never shrink; distributions multiply members | [P6](./proof-agenda.md#p6-evaluator-placement-and-the-kernel-question) memory and latency on reference laptop A | Instancing, level of detail, lazy kernels, refusal at limits |
+| Performance on 8 GB laptops | WASM heaps never shrink; distributions multiply members; the production wall path already costs 3–9 ms per opening-dense wall in Node on the M2 | [P6](./proof-agenda.md#p6-evaluator-placement-and-the-kernel-question) memory and latency on reference laptop A; S06's per-edit evaluation rows | Evaluate only the changed host; tessellation density by level of detail; instancing; lazy kernels; refusal at limits |
 | Shared numeric modules become a second compiler | Convenience pressure to compute truth there | Domain facts appearing in shared code | Review rule: shared modules take numbers and return numbers |
 | Scope creep beyond the non-goal | Each family invites the next | Requests for B-rep features | The D1 scope statement plus the original study's [feature-admission test](../spatial-modeling-depth-research-2026-10-25.md#a-feature-admission-test) |
 | The 15-minute target fails for non-geometric reasons | Scene setup may dominate | [P1](./proof-agenda.md#p1-a-convincing-place-in-fifteen-minutes) time split | Prioritize presentation defaults and content-in over forms |

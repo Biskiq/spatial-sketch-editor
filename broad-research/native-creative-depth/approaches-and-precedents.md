@@ -108,7 +108,7 @@ Biskiq's answer can be simpler, because its parameters are already the authored 
 - Readings such as Face, Unroll, Section and the Height Sheet provide drawing surfaces.
 - Shape outlines stay editable.
 
-They also **challenge** the original study's emphasis on arbitrary-plane drawing and cross-plane 3D chains ([§4.1](../spatial-modeling-depth-research-2026-10-25.md#41-spatial-ink-three-dimensions-with-understandable-depth)). The research favors drawing *on* something. The [synthesis](./synthesis-and-direction.md#3-what-this-package-confirms-and-challenges-in-the-original-study) develops this point.
+They also **challenge** placing arbitrary workplanes and cross-plane 3D chains in the foundation, which is the ten-hour column of the original study's [§4.1](../spatial-modeling-depth-research-2026-10-25.md#41-spatial-ink-three-dimensions-with-understandable-depth). They favor drawing *on* something, together with basic spatial drafting: axis locks, vertical lines, tilted host faces and offset planes. The study's first-hour column already asked for that drafting. The [synthesis](./synthesis-and-direction.md#3-what-this-package-confirms-and-challenges-in-the-original-study) develops this point.
 
 **I** **A bounded signed-distance niche** could serve soft sculptural Scene objects, such as organic plinths and exhibition forms, through a bake to mesh. It is not a fit for architecture. Its value is unproven, and import may serve the same need.
 
