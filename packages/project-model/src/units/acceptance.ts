@@ -53,13 +53,10 @@ import type {
 } from '../f4/types';
 import type { PlannerRegistry, PrepareResult } from '../f4/prepare';
 import { createUnitTargetInspector, prepareUnitIntent } from '../f4/unit-acceptance';
-import {
-	computeEnvelopeSourceContentId,
-	computeUnitContentRevision,
-	verifyUnitContentRevisions
-} from './canonical';
-import { serializeProjectEnvelope, validateProjectEnvelope, type EnvelopeClosureFinding } from './validate';
-import { UNIT_DOMAINS, type ProjectEnvelope, type ProjectUnits, type UnitDomain } from './types';
+import { computeEnvelopeSourceContentId, computeUnitContentRevision } from './canonical';
+import { dependencyLockKey } from './identity';
+import { serializeValidatedProjectEnvelope, validateProjectEnvelope, type EnvelopeClosureFinding } from './validate';
+import { UNIT_DOMAINS, type DomainUnit, type ProjectEnvelope, type ProjectUnits, type UnitDomain } from './types';
 
 /** The exact capability scope this adapter serves. */
 export const UNIT_ACCEPTANCE_SCOPE = 'unit-acceptance-v1' as const;
@@ -151,8 +148,17 @@ function lockReference(entry: ProjectEnvelope['dependencyLock']['entries'][numbe
  * embedded revision, which is the preparation/baseline identity in the first case
  * and the saved revision in the second; neither is a second revision authority.
  */
-export async function verifyUnitDependencyLocks(envelope: ProjectEnvelope): Promise<ShapeIssue[]> {
-	const sourceContentId = await computeEnvelopeSourceContentId(envelope);
+export async function verifyUnitDependencyLocks(
+	envelope: ProjectEnvelope,
+	/**
+	 * The caller's already-computed `computeEnvelopeSourceContentId` for exactly
+	 * this envelope. It is an answer, not an input: the read context only needs a
+	 * stable local identity, so a caller that has one passes it instead of paying
+	 * for the same canonical hashing of the whole envelope twice.
+	 */
+	knownSourceContentId?: string
+): Promise<ShapeIssue[]> {
+	const sourceContentId = knownSourceContentId ?? (await computeEnvelopeSourceContentId(envelope));
 	const context = createUnitReadContext({ envelope, sourceContentId, sessionEpoch: 'unit-lock-verification' });
 	const issues: ShapeIssue[] = [];
 	for (const [index, entry] of envelope.dependencyLock.entries.entries()) {
@@ -210,19 +216,19 @@ export function createUnitAcceptanceAdapter(
 		if (!validated.success) {
 			return { kind: 'rejected', code: 'invalid-envelope', message: 'The candidate is not a valid F.2 envelope', issues: validated.issues };
 		}
+		// Derived identity has exactly one author here: `normalizeUnitEnvelope` stamps
+		// every unit header from that unit's own data. Re-hashing the headers it just
+		// wrote (`verifyUnitContentRevisions`, still used by Save) could only disagree
+		// if the digest were not a pure function of the data, so admission does not.
 		const normalized = await normalizeUnitEnvelope(validated.envelope);
-		const revisionMismatches = await verifyUnitContentRevisions(normalized);
-		if (revisionMismatches.length > 0) {
-			return {
-				kind: 'rejected',
-				code: 'content-revision-mismatch',
-				message: 'A unit content revision does not match its canonical data',
-				issues: revisionMismatches.map((mismatch) =>
-					issue(mismatch.path, 'content-revision-mismatch', `declared ${mismatch.declared}, recomputed ${mismatch.recomputed}`)
-				)
-			};
-		}
-		const lockIssues = await verifyUnitDependencyLocks(normalized);
+		// One envelope validation per *distinct* question. The first answers "is the
+		// candidate a valid envelope at all?", which normalization requires; the
+		// second answers "did normalization produce a valid envelope?" and is the one
+		// whose result serialization and closure read. `admit` therefore validates
+		// twice, never three times: the post-normalization value is what gets
+		// serialized, so the serializer does not re-validate it.
+		const sourceContentId = await computeEnvelopeSourceContentId(normalized);
+		const lockIssues = await verifyUnitDependencyLocks(normalized, sourceContentId);
 		if (lockIssues.length > 0) {
 			return { kind: 'rejected', code: 'lock-closure', message: 'The dependency lock does not resolve in this envelope', issues: lockIssues };
 		}
@@ -238,6 +244,7 @@ export function createUnitAcceptanceAdapter(
 				issues: closureIssues(revalidated.closure)
 			};
 		}
+		const canonicalJson = serializeValidatedProjectEnvelope(revalidated.envelope);
 		// Repairable authored diagnostics stay diagnostics: F.2 admits an explicit
 		// unresolved binding, and refusing it here would be a stricter contract than
 		// the ratified one. Executable closure above is the blocking half.
@@ -245,8 +252,6 @@ export function createUnitAcceptanceAdapter(
 		// The returned source is the coordinator's immutable install payload. Its
 		// embedded `acceptedRevision` is deliberately not rewritten here: the
 		// coordinator owns revision minting (see the module header).
-		const canonicalJson = serializeProjectEnvelope(normalized);
-		const sourceContentId = await computeEnvelopeSourceContentId(normalized);
 		return {
 			kind: 'admitted',
 			source: normalized,
@@ -256,10 +261,85 @@ export function createUnitAcceptanceAdapter(
 		};
 	}
 
+	/**
+	 * Capture by content identity (D.4/H5).
+	 *
+	 * A unit is shared when **the whole unit** is the same value: its data hashes to
+	 * the same content revision AND its header carries the same `unitId`,
+	 * `formatVersion` and `domain`. The revision alone is not enough — it is a digest
+	 * of `data` only, while `unitId` and `formatVersion` are authored header facts
+	 * the envelope digest covers, so sharing on the revision alone could install the
+	 * baseline's `unitId` under the captured revision and make the state disagree
+	 * with its own `canonicalJson`.
+	 *
+	 * The dependency lock is shared only when it is the same value under the same
+	 * rule: same length, and every entry equal in the identity `dependencyLockKey`
+	 * owns (domain, subject kind, subject id, instance path), in the revision it
+	 * pins, in the capabilities it requires and in its byte `pin`. `formatVersion` is
+	 * a literal, so it cannot differ between two admitted envelopes.
+	 *
+	 * Precondition: both arguments are **admissions of the same project**, so their
+	 * unit data is canonical. Revision equality is data equality under that
+	 * precondition; an arbitrary object graph could differ in an `undefined`-valued
+	 * key that the canonical digest drops, which is why this is a capture hook and
+	 * not a general-purpose deduplicator.
+	 */
+	function shareUnchanged(captured: ProjectEnvelope, baseline: ProjectEnvelope): ProjectEnvelope {
+		// Two admissions of different projects have no equal immutable parts to share:
+		// the coordinator refuses such an install anyway, and a share across projects
+		// would be a claim this hook cannot make.
+		if (captured.id !== baseline.id) return captured;
+		const units = { ...captured.units } as Record<UnitDomain, DomainUnit<unknown>>;
+		for (const domain of UNIT_DOMAINS) {
+			const declared = captured.units[domain] as DomainUnit<unknown> | undefined;
+			const previous = baseline.units[domain] as DomainUnit<unknown> | undefined;
+			// Not an admitted envelope: share nothing, rather than throw in a capture
+			// path whose only caller always holds admitted values.
+			if (declared === undefined || previous === undefined) continue;
+			const sameHeader =
+				declared.header !== undefined &&
+				previous.header !== undefined &&
+				declared.header.contentRevision === previous.header.contentRevision &&
+				declared.header.domain === previous.header.domain &&
+				declared.header.unitId === previous.header.unitId &&
+				declared.header.formatVersion === previous.header.formatVersion;
+			if (sameHeader) units[domain] = previous;
+		}
+		const sameLock =
+			captured.dependencyLock.entries.length === baseline.dependencyLock.entries.length &&
+			captured.dependencyLock.entries.every((entry, index) => {
+				const previous = baseline.dependencyLock.entries[index];
+				if (previous === undefined) return false;
+				return (
+					dependencyLockKey(entry.domain, entry.subjectKind, entry.subjectId, entry.instancePath) ===
+						dependencyLockKey(previous.domain, previous.subjectKind, previous.subjectId, previous.instancePath) &&
+					entry.contentRevision === previous.contentRevision &&
+					entry.requiredCapabilities.length === previous.requiredCapabilities.length &&
+					entry.requiredCapabilities.every((capability, position) => {
+						const pinned = previous.requiredCapabilities[position];
+						return pinned !== undefined && pinned.id === capability.id && pinned.version === capability.version;
+					}) &&
+					(entry.pin === previous.pin ||
+						(entry.pin !== null &&
+							previous.pin !== null &&
+							entry.pin.hash === previous.pin.hash &&
+							entry.pin.mime === previous.pin.mime &&
+							entry.pin.size === previous.pin.size &&
+							entry.pin.locator === previous.pin.locator))
+				);
+			});
+		return {
+			...captured,
+			units: units as ProjectUnits,
+			dependencyLock: sameLock ? baseline.dependencyLock : captured.dependencyLock
+		};
+	}
+
 	return {
 		sourceKind: UNIT_ENVELOPE_SOURCE_KIND,
 		sourceVersion: UNIT_ENVELOPE_SOURCE_VERSION,
 		admit: admitCandidate,
+		shareUnchanged,
 		validateChange(before, after, admission) {
 			const issues: ShapeIssue[] = [];
 			if (before.id !== after.id) issues.push(issue('$.id', 'project-mismatch', 'an accepted operation cannot change the project identity'));

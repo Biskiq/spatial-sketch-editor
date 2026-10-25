@@ -247,7 +247,14 @@ export function createAcceptanceCoordinator<Source>(
 			const revision = freshRevision();
 			if (!revision) return rejection(intent, 'admission-refused', 'reused-revision', 'Revision mint must return a fresh valid identity');
 			const correspondence = qualifyCorrespondence(candidate.correspondence, before.sourceContentId, admission.sourceContentId);
-			const state = immutableF4Data({ source: admission.source, canonicalJson: admission.canonicalJson, sourceContentId: admission.sourceContentId,
+			// Capture, not copy (D.4/H5). The adapter's admitted source is this
+			// boundary's own fresh value, so freezing it in place is ownership taken, not
+			// caller data frozen; the parts it proves unchanged are the previous state's
+			// already-immutable objects, which `freezeF4Data` returns untouched. What
+			// this removes is a `structuredClone` of the whole source — including its
+			// several-megabyte canonical string — on every accepted result.
+			const captured = adapter.shareUnchanged?.(admission.source, before.source) ?? admission.source;
+			const state = freezeF4Data({ source: captured, canonicalJson: admission.canonicalJson, sourceContentId: admission.sourceContentId,
 				operationId: intent.operationId, blockingIssues: admission.blockingIssues, correspondence });
 			const after = install(state, revision, true);
 			return freezeF4Data({ kind: 'accepted', operationId: intent.operationId, beforeRevision: before.revision, afterRevision: after.revision,
