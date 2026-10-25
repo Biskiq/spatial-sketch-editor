@@ -181,7 +181,10 @@ export type LayoutCompileStats = {
 	readonly objectsReused: number;
 	/** Structural authored-input comparisons taken to decide the above. */
 	readonly signatureVisits: number;
-	/** True when this compile had no retained store at all (a cold compile). */
+	/**
+	 * True when the store held no retained unit of any class when this compile
+	 * began, so every entity had to be evaluated (a cold compile).
+	 */
 	readonly cold: boolean;
 	/** Authored entities the document indexes saw, regardless of reuse. */
 	readonly entities: number;

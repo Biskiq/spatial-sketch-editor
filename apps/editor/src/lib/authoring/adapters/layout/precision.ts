@@ -193,6 +193,14 @@ function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope
  * are unchanged, which is the retention proof the canonical compiler checks per
  * entity. It is a cache, not decision state, and it is pruned to the document it
  * last compiled.
+ *
+ * Lifetime, stated rather than implied: this store lives as long as the module,
+ * so after a document is closed it still holds that document's units (samples,
+ * sections, query records — bounded by one document, never accumulating across
+ * documents, because each compile prunes what the new document does not
+ * contain). It is not part of any undo history or authored state, and no
+ * consumer can observe it. The Stage host does not use this store at all; it
+ * owns one for its own lifetime, released with the host's closure.
  */
 const plannerCompileSession = createLayoutCompileSession();
 

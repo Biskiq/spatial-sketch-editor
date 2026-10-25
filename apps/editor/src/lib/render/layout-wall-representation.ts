@@ -129,6 +129,12 @@ function failureBox(bounds: LayoutBounds3): { position: [number, number, number]
  *   fixed for the life of the page; a change to those parameters would change
  *   the mesh without changing any authored input. If they ever become
  *   configurable, their signature belongs in the Wall key in `layout-core`.
+ * - **The key distinguishes every authored value the builder can see.** It is a
+ *   JSON serialization, in which `NaN` and `null` both read as `null`; the codec
+ *   rejects non-finite authored numbers, so two documents that can be opened
+ *   never share a key while differing in a coordinate. Reuse is compared as a
+ *   string here, so that domain guarantee is what makes the comparison a proof
+ *   rather than an approximation.
  */
 function wallKey(wall: CompiledPhysicalWall, endKeys: ReadonlyMap<string, string>): string {
 	return `${wall.cacheKey}\u0000${endKeys.get(wall.wallId) ?? ''}`;

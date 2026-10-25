@@ -279,6 +279,29 @@ describe('T1.P02.S06 H1 — incremental canonical compile', () => {
 		expect(session.retained().objects).toBe(document.objects.length - 1);
 	});
 
+	it('reports a warm compile for a document whose retained units are objects only', () => {
+		// The store holds four classes of unit. A document with no Walls, Junctions
+		// or Rooms retains objects only, and a "cold" test that looked at Walls and
+		// Room sources alone would call its second compile cold while its objects
+		// were in fact reused.
+		const base = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
+		const document: LayoutDocumentWallFirst = {
+			...clone(base),
+			walls: [],
+			junctions: [],
+			rooms: [],
+			openings: []
+		};
+		expect(document.objects.length).toBeGreaterThan(0);
+		const session = createLayoutCompileSession();
+		const first = session.compile(document);
+		expect(session.stats().cold).toBe(true);
+		const second = session.compile(document);
+		expect(session.stats().cold).toBe(false);
+		expect(session.stats().objectsReused).toBe(document.objects.length);
+		expect(JSON.stringify(second.geometry)).toBe(JSON.stringify(first.geometry));
+	});
+
 	it('a reset session is cold again and still equal', () => {
 		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.small);
 		const session = createLayoutCompileSession();

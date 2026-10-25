@@ -25,7 +25,6 @@ import { join } from 'node:path';
 
 import { BufferGeometry } from 'three';
 import {
-	compileWallFirstLayoutGeometry,
 	createLayoutCompileSession,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
@@ -33,7 +32,6 @@ import {
 
 import { createObjectRepresentation } from '../../src/lib/render/layout-object-representation';
 import { createWallRepresentation } from '../../src/lib/render/layout-wall-representation';
-import { neutralVisitorRoomPresentation } from '../../src/lib/visitor/room-presentation';
 
 const WORKLOADS = ['grid-S', 'grid-M', 'grid-L', 'museum'] as const;
 const EDITS = 10;
@@ -72,11 +70,11 @@ for (const name of WORKLOADS) {
 	const session = createLayoutCompileSession();
 	const walls = createWallRepresentation();
 	const objects = createObjectRepresentation();
-	const presentation = (geometry: ReturnType<typeof compileWallFirstLayoutGeometry>['geometry']) =>
-		Object.fromEntries(geometry.rooms.map((room) => [room.roomId, neutralVisitorRoomPresentation]));
 
 	const first = session.compile(document).geometry;
-	walls.update(first, presentation(first));
+	// `update` takes only the compiled geometry: the Wall tint is the constant
+	// neutral one, so there is no presentation input to pass (and none to key).
+	walls.update(first);
 	objects.update(first);
 	const wallCount = walls.object3d.children.length;
 	const objectCount = objects.object3d.children.length;
@@ -89,7 +87,7 @@ for (const name of WORKLOADS) {
 	let meshesRetained = 0;
 	for (let index = 0; index < EDITS; index += 1) {
 		const next = session.compile(edited(document, index)).geometry;
-		const wallStats = walls.update(next, presentation(next));
+		const wallStats = walls.update(next);
 		const objectStats = objects.update(next);
 		wallsBuilt += wallStats.built;
 		wallsKept += wallStats.retained;

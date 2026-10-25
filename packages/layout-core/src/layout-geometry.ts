@@ -116,7 +116,15 @@ export function compileWallFirstLayoutGeometry(
 	// T1.P02.S06 D.3 (H1) — an incremental compile reports its own work: how many
 	// entities the canonical builders ran for, how many retained values were
 	// installed by reference, and how many structural comparisons that took.
-	const cold = reuse.walls.size === 0 && reuse.roomSources.size === 0;
+	// "Cold" means the store held no unit of any class when this compile began, so
+	// nothing could have been reused. Every class is tested: an object-only
+	// document has no Walls or Room sources, and a Walls-and-Room-sources test
+	// alone would call its second compile cold while its objects were reused.
+	const cold =
+		reuse.walls.size === 0 &&
+		reuse.junctions.size === 0 &&
+		reuse.roomSources.size === 0 &&
+		reuse.objects.size === 0;
 	beginLayoutCompile(reuse);
 	const result = p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling, reuse));
 	const stats = finishLayoutCompile(reuse, cold);

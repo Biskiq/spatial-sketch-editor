@@ -45,6 +45,8 @@
 export type ShadowMapLike = {
 	autoUpdate: boolean;
 	needsUpdate: boolean;
+	/** Optional because a fake in a test may omit it; `false` disables shadows. */
+	enabled?: boolean;
 	render(lights: readonly ShadowCasterLight[], scene: unknown, camera: unknown): void;
 };
 
@@ -118,7 +120,10 @@ export function createShadowInvalidation(options: ShadowInvalidationOptions): Sh
 	// actually renders, which is what the H9 oracle means by "shadow-map renders
 	// during a fixed orbit = 0".
 	shadowMap.render = function counted(lights, scene, camera): void {
-		const casting = shadowMap.autoUpdate || shadowMap.needsUpdate ? lights.filter((light) => light.castShadow) : [];
+		// A disabled shadow map renders nothing however the flags stand, so counting
+		// it would overstate the oracle.
+		const active = shadowMap.enabled !== false && (shadowMap.autoUpdate || shadowMap.needsUpdate);
+		const casting = active ? lights.filter((light) => light.castShadow) : [];
 		if (casting.length > 0) {
 			passes += 1;
 			for (const light of casting) maps += light.isPointLight ? 6 : 1;

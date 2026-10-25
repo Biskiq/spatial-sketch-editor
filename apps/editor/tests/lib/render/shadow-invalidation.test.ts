@@ -22,7 +22,9 @@ function fakeShadowMap(lights: ShadowCasterLight[] = [{ castShadow: true }]) {
 		shadowMap: {
 			autoUpdate: true,
 			needsUpdate: false,
+			enabled: true,
 			render() {
+				if (!state.shadowMap.enabled) return;
 				if (!state.shadowMap.autoUpdate && !state.shadowMap.needsUpdate) return;
 				state.shadowMap.needsUpdate = false;
 				state.renders += 1;
@@ -133,6 +135,19 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		unlit.frame();
 		expect(idle.stats()).toEqual({ passes: 0, maps: 0, invalidations: 0 });
 		idle.dispose();
+	});
+
+	it('counts nothing for a shadow map the renderer has disabled', () => {
+		// `shadowMap.enabled = false` makes three render no map however the flags
+		// stand, so a pass counted here would be a pass that never happened.
+		const { frame, state } = fakeShadowMap();
+		const controller = createShadowInvalidation({ shadowMap: state.shadowMap });
+		state.shadowMap.enabled = false;
+		controller.invalidate();
+		frame();
+		expect(controller.stats().passes).toBe(0);
+		expect(state.renders).toBe(0);
+		controller.dispose();
 	});
 
 	it('switches between render-on-change and per-frame updates on one renderer', () => {
