@@ -2,7 +2,8 @@
 
 **Slice:** T1.P02.S06 · **Status:** approved and released; setup step implemented (PR #190) with
 the owner-ratified C.2 amendment; Bench 1 recorded (owner-directed, counted by the owner's A.7
-ruling, 2026-10-25); optimize step released; not accepted ·
+ruling, 2026-10-25); optimize step released and implemented in part (D.1, D.2, D.4; D.3/H4–D.6
+not landed); Bench 2 not run; not accepted ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -216,3 +217,235 @@ this section.
    comparable.
 5. **Pending outside S06.** PR #189's merge as research (D7, its owner); the realistic-L
    prerequisites (D9); the execution-plan lab plan, due before Bench 2 (D6).
+
+## Optimize step (D.1–D.6) — implementation state (2026-10-25)
+
+**Owner direction (2026-10-25).** Move to optimization; do not reopen Bench 1, repeat broad
+profiling or re-quantify confirmed superlinear behaviour. Bench 1 and Bench 1b jointly count as the
+first pass under the A.7 ruling, and its characterization is accepted as the implementation starting
+point. H6/H8/H10, WebGPU, a new Plan renderer, HLOD, streaming, new content identity and the
+world-scale laboratory stay out of scope.
+
+**Landed in this step (branch `t1/p02-s06-bench-setup`, PR #190):** D.1 (H3), D.2 (H2) and D.4
+(H5). **Not landed:** D.3 (H1, H4) and D.6 (H9). Nothing below is Bench 2 evidence: every figure is
+a deterministic Node count or a disposable diagnostic, and each is labelled as such.
+
+### Amended measurement scope — request recorded, not yet ruled
+
+Bench 1 and Bench 1b jointly count as the first of three passes (A.7). The remaining passes are
+proposed as follows. **The omissions stay open obligations until the owner rules**; nothing here
+waives them.
+
+| Obligation | Proposed Bench 2/3 disposition | Why |
+| --- | --- | --- |
+| Hard S/M/L rows: F2 admission and open, F3, F4, F8, F7, F13, D4, and the per-edit evaluation budget | **Kept unchanged** — same method, same budgets, same cache states | These are the hard budgets; nothing here dilutes them |
+| `grid-XL` browser timing | **Omitted** from Bench 2/3; the existing grid-XL smoke and census rows stay labelled *probe* | 4–8 h per pass for a Target row that the L row already bounds. Its **hard** clause — no crash, no context loss, no single main-thread block over 1 s, an honest progress/refusal state — stays open and is rechecked by the grid-XL smoke and the T1.P02.S04 gate |
+| Sweep latency rows (H3/H10/D3/D10 latency, incl. F3/F4/F8 at sweep-H10) | **Omitted** from Bench 2/3 | 20+ h per pass, mostly the report-only F3/F4/F8 leg; E5 already carries the semantic-independence and pixel evidence at ×3/×10 |
+| E5 (browser, all seven workloads) | **Kept** — E5 on the optimized revision before Bench 2, as the plan requires | The correctness differential the optimize step must not lose |
+| realistic-L | Stays unrun (prerequisites unchanged, D9) | Unchanged |
+
+Proposed ruling for the record: *"Bench 2 and Bench 3 run the hard S/M/L tiers at Bench 1's method,
+with E5; grid-XL timing and the sweep latency rows are deferred to the T1.P02.S04 exhaustive gate,
+not waived."* Until that ruling exists this record disposes of none of those rows.
+
+### D.1 / H3 — repeated work inside the compile
+
+**Changes.** Cache keys are built once from their parts and embed nested keys by reference instead
+of re-serializing and re-escaping them (`layout-geometry-keys.ts`); the Room × Opening,
+Wall × Opening, Wall × query-AABB and face × Room joins are id-indexed (`layout-geometry.ts`,
+`layout-opening-set.ts`); the topology gate's Junction × Junction and Wall × Wall loops, the
+curve-crossing gate and the plan-box lookups are indexed (`layout-plan-box-index.ts`,
+`layout-wall-first-precision.ts`, `layout-junction-identity.ts`); the room-path compile no longer
+recomputes segment and opening dependencies per query record.
+
+**Differential — exact, and recorded here so it is auditable from the record.** A digest of each
+workload's compiled output with **every `cacheKey` removed** (`probe-d1-differential.ts`) is
+identical at the pre-change revision (`c4ce6c83`) and this tree:
+
+| Workload | Facts digest (both revisions) |
+| --- | --- |
+| grid-S | `91b50932995f…` |
+| grid-M | `eb25da47ba61…` |
+| grid-L | `d7becd96a605…` |
+| museum | `5fdfef03dabd…` |
+| sweep-H3 | `37825f6ef6b4…` |
+| sweep-D3 | `ad98701a54a4…` |
+| sweep-C3 | `0eaa7b14afa2…` |
+
+Those seven are the workloads the probe compiles (the four larger sweep and XL documents are not
+cached in this tree). Key **values** changed in encoding only. The **consumer inventory** the plan
+requires: `apps/editor/src/**` reads `.cacheKey` nowhere (0 matches); the only consumers are
+layout-core's own geometry and the two observation digests below.
+
+**Counts, grid-L, Node** (`probe-d1-differential.ts`, one sample per revision, same probe both
+trees; durations are single-sample and run-to-run variance is a few per cent):
+
+| Count | Before | After |
+| --- | --- | --- |
+| Compile, all passes (`totalMs`) | 200.0 ms | 95.3 ms |
+| `cache-key:chars` | 97.4 M | 17.0 M |
+| Cache keys in the output | 24,616 | 24,616 (encoding, not count) |
+| Join visits (Room × Opening + Wall × Opening + Wall × AABB + object × Room) | 429,552 | 1,420 |
+| Topology Wall × Wall pairs | 87,990 | 1,174 |
+| Topology Junction × Junction pairs | 25,200 | 0 |
+| Topology curve pairs | 87,990 | 1,174 |
+| `lookup:junctions` | 567,000 | 2,520 (2 per Wall, no scan) |
+| Topology gate | 40.2 ms | 5.8 ms |
+| Opening set | 2.4 ms | 1.7 ms |
+
+Two labels changed meaning and are not one series: `pairs:wall-wall`, `pairs:wall-wall-curve` and
+`pairs:junction-junction` now count **unique pairs handed to the rule** (the old loops counted every
+visited pair), and `lookup:junctions` now counts **identity lookups** (2 per Wall) instead of scan
+visits. The pre-change figures were re-measured with the same probe in the same units, so the pairs
+above are comparable.
+
+**Hand calculation against Bench 1.** Bench 1's L compile was 118 ms of a 164 ms move
+(characterization §2); halving it puts the compile at ~59 ms and the indexed topology checks (27 ms
+at L, exponent ≈ 1.9) at a few ms. Predicted F3 at L ≈ 70–90 ms against the 100 ms hard row (was
+216–233 ms p95). Confirmed only by Bench 2.
+
+### D.2 / H2 — one check per fact on the accept path
+
+**Changes.** Admission (`units/acceptance.ts`) drops a post-normalization unit-revision rehash that
+could not disagree with the values normalization had just stamped, and serializes the envelope from
+the value validation returned (`serializeValidatedProjectEnvelope`) instead of validating it again
+to trust it; the dependency-lock check reuses the envelope digest admission already computed. Stage
+admission (`source-admission.ts`) prepares the **validated** envelope
+(`prepareValidatedUnitRuntime`) instead of validating the same bytes twice.
+
+**Counts, the admission pair of one accepted result at grid-L, Node** (`probe-d2-accept.ts`, one
+sample per revision, same probe both trees). It measures the adapter's `admit` plus the host
+admission half over one unchanged grid-L envelope: no planner, no candidate clone, no compile
+before admission.
+
+| Count | Before | After |
+| --- | --- | --- |
+| Envelope validations | 5 | 3 |
+| Canonical digest passes | 13 | 7 |
+| Digested bytes | 4.08 MB | 2.45 MB |
+| Envelope serializations | 1 | 1 |
+| Runtime preparations / compiles in admission | 1 / 1 | 1 / 1 |
+| Adapter admission | 31.9 ms | 18.6 ms |
+| Host admission | 255.7 ms | 116.3 ms |
+| Admission total | 297.1 ms | 137.9 ms |
+
+Most of that fall is D.1's compile (the same probe reports the compile span 250.4 → 118.6 ms; the
+D.1 probe's 200.0 → 95.3 ms is a different measurement — seven compiles in one process, layout-core
+warm, versus the first compile in a cold process here). **One duplicate compile per accepted result
+remains** (planner, then admission) — see the risk table.
+
+### D.4 / H5 — unit-level structural sharing
+
+**Changes.** `AcceptanceSourceAdapter` gains an optional, adapter-owned `shareUnchanged(captured,
+baseline)`; the unit adapter implements it on **unit identity**: the data hashes to the same content
+revision *and* the header carries the same `unitId`, `formatVersion` and `domain` (the revision
+covers `data` only, so it alone is not the whole unit). Lock entries are shared only when the
+identity key, revision, required capabilities and byte pin all match. The coordinator's capture
+therefore freezes what it was handed instead of `structuredClone`-ing the whole source — including
+its several-megabyte canonical string — on every accepted result.
+
+**Differential and counts**, grid-L, Node (`probe-h5-capture.ts`; 10 tests in
+`tests/lib/authoring/f4-structural-sharing.test.ts`):
+
+- capture clone per accept: **1 → 0** (`f4:clone` 1 in the copy arm, 0 in the share arm);
+- capture step: **2.5 ms → 0.5 ms** (single sample);
+- four of five units (Scene, Camera, Experience, Resources for a Layout edit) are shared by identity,
+  so a 100-entry history holds one copy of them;
+- **null result:** `f4:freeze-object` does *not* fall at grid-L (2,927 both arms) because the frozen
+  graph is dominated by the one rebuilt Layout unit. H5's predicted freeze reduction is therefore
+  unproven; the measured gain is the clone and the retained memory it removes;
+- `serializeProjectEnvelope(shared)` equals the recorded `canonicalJson` byte for byte and
+  `computeEnvelopeSourceContentId(shared)` equals the recorded content id;
+- falsifiers: a unit whose data changed is never shared even when its header is left stale; a header
+  whose `unitId` changed while the data did not is never shared; a lock entry whose capability or pin
+  changed while its revision did not is never shared; two different projects are never shared.
+
+### Not landed, and why
+
+| Item | State | What it costs today | What it needs |
+| --- | --- | --- | --- |
+| D.3 / H4 representation (retained per-entity meshes, one imperative subtree) | **Not landed** | F4 at L still spends 167 ms in two representation builds; F8 164 ms; F2 at L 4.9 s in the Stage mount | T3-owned shared Stage code and a Svelte-component-per-mesh rewrite; a dedicated slice with its own correctness gates |
+| D.3 / H4 ownership (release superseded geometries) | **Not landed** | +2,968 live geometries per commit at L — a **hard** F13 clause ("geometries and textures back to baseline") still missed | Same rewrite owns the lifetime; a standalone release pass would fight the mount path |
+| D.3 / H1 incremental compiler | **Not landed** | The second compile per accepted result (~95 ms at L), the whole move compile, and the per-edit evaluation budget (≤ 8 ms at M, ≤ 16 ms at L) which D.1 does not reach | The locality derivation, its dependency set and the full-compile oracle; the largest single experiment in the matrix |
+| D.6 / H9 shadow invalidation, render-on-demand | **Not landed** | F7 meets every row; idle-frame rendering is a flat saving, not a budget risk | A browser framebuffer differential, which this step did not run |
+
+**Review finding carried forward (pre-existing, not introduced here).** A physical Opening's key
+embeds `['physical-wall-geometry', floorId, wallId]` — the host Wall's *identity*, not its geometry —
+and `layout-geometry.ts` did so before this change as well (the same literal appears in the removed
+line of the D.1 diff). An Opening's compiled point and tangent change when its Wall moves while that
+key does not, so the key is not change-detecting for retention. Nothing consumes `.cacheKey` for
+retention today; it matters to H4, and it is recorded here rather than changed, because changing it
+would re-pin the observation digests again.
+
+### Predicted position after D.1, D.2 and D.4 (hand calculation, not evidence)
+
+Bench 1's stage split scaled by the measured counts. Stage rows are **disjoint** as Bench 1 listed
+them; the representation and mount terms are unchanged, which is why the L rows stay over budget.
+
+| Row (budget) | Bench 1 p95 | Predicted now | Verdict |
+| --- | --- | --- | --- |
+| F3 at M (≤ 50 ms hard) | 48 ms | ~18–22 ms | ✓ |
+| F3 at L (≤ 100 ms hard) | 216–233 ms | ~70–90 ms | ✓ predicted |
+| F4 at M (≤ 100 ms hard) | 163–174 ms | ~100–110 ms | **risk** |
+| F4 at L (≤ 200 ms hard) | 717–784 ms | ~400–430 ms | **hard miss** |
+| F8 at M (≤ 100 ms hard) | 112 ms | ~85–95 ms | borderline |
+| F8 at L (≤ 200 ms hard) | 637–671 ms | ~300–360 ms | **hard miss** |
+| Per-edit Layout evaluation at M (≤ 8 ms hard) | move 31 ms, compile 24 ms | ~17–20 ms | **hard miss**, H1 |
+| Per-edit Layout evaluation at L (≤ 16 ms hard) | move 164 ms, compile 118 ms | ~75–90 ms | **hard miss**, H1 |
+| F2 admission at L | 219 ms | ~105–115 ms | ✓ |
+| F2 open at L (Target ≤ 2.0 s) | 5,216 ms | ~5.1 s | unchanged (mount) |
+| F13 per accepted edit at L (≤ 5 MiB warm, geometries back to baseline) | 6.0–6.2 MiB and +2,968 geometries | ~5.9 MiB and +2,968 | **hard clause still missed** (H4) |
+
+### Review corrections applied
+
+An independent four-lens review (admission semantics, layout-core indexing, evidence integrity,
+code quality) produced these changes to the work above, all included in this commit: the sharing
+predicate now compares the whole unit header and every lock-entry field (a revision-only predicate
+could install a baseline `unitId` under a captured revision); the Room × Opening join restores
+document order for a boundary-ordered walk; the Junction sweep falls back to exhaustive enumeration
+when a coordinate is non-finite (a `NaN` makes the sort comparator inconsistent); the plan-box index
+keeps inverted boxes in its `wide` list and restarts its query stamp before `Int32` wrap; the pair
+counts count unique pairs again so they remain comparable with Bench 1; the H5 probe measures the
+coordinator's real copy arm and no longer prints GC noise as retained heap; and the record above
+gained the missing hard rows, the recorded facts digests, the corrected F8-at-L arithmetic and the
+two open hard clauses.
+
+### Required reviews
+
+`packages/project-model/src/units/**` and `packages/project-model/src/f4/**` (admission and the
+adapter contract) are T3-owned: the additions are `shareUnchanged` (optional) and
+`prepareValidatedUnitRuntime` / `serializeValidatedProjectEnvelope` (splits that keep the validating
+entry points as the only public meaning — each must be handed the value
+`validateProjectEnvelope` returned for that same input). The coordinator and Stage admission are
+editor-side T3 surfaces. D.1 is `packages/layout-core` (T2). None of these changes a canonical
+geometry, an authored format, a selection/preview semantic, visitor isolation or a refusal code.
+
+### Verification at this tree
+
+`check:layout-core`, `check:project-model`, `check:camera-core` and `check` (svelte-check, 0 errors
+and 0 warnings) pass; `test:fast` 159 files / 2,147 tests pass; `test:arch` 22 / 178 and `test:heavy`
+9 / 125 pass. The probes (`perf/census/probe-d1-differential.ts`, `probe-d2-accept.ts`,
+`probe-h5-capture.ts`) are Node-only, take `PERF_WORKLOAD_DIR` pointing at the cached workloads, and
+are in no lane. No browser benchmark was run in this step.
+
+### Bench 2 readiness — lean proposed command
+
+```
+npm run perf:bench --workspace @portfolio/editor -- --label bench-2 --tiers grid-S,grid-M,grid-L --no-sweep-latency
+```
+
+Same method, budgets and cache states as Bench 1b for the hard tiers, plus E5 over the seven
+workloads and the transferred rows; no grid-XL tier and no sweep latency rows (subject to the scope
+ruling above). Expected runtime ≈ 3 h (2.5–3.5 h): Bench 1b took 95 min for grid-M 2,555 s +
+grid-S 1,737 s + E5 858 s + transferred 148 s, and grid-L alone was 7,234 s at Bench 1's slower
+revision. Run E5 alone first if the pass is split.
+
+### Owner decisions genuinely required
+
+1. **Amended measurement scope** (above) — ratify, or keep grid-XL and the sweep rows in Bench 2/3.
+2. **F4 hand-over contract** — may an adapter attest the acceptance proof on its candidate so the
+   host admission reuses the planner's compile (one compile per accepted result)? Without it F4 at L
+   cannot meet 200 ms even after H4; it needs T3 contract review, and its alternative is H1.
+3. **H4 in this PR or a follow-up slice** — it is the only lever for F2 at L, the representation half
+   of F4/F8, the F13 geometry clause and the Opening-key retention gap named above.
+4. The already-open Bench 1 question (sweep-H10 drag row method for Bench 2/3) still does not block.
