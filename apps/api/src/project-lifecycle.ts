@@ -405,8 +405,8 @@ export async function runProjectDeletionCleanup(
 	if (!objectStore?.list || !objectStore.delete) {
 		throw new Error('Project cleanup requires object-store list and delete support');
 	}
-	return withProjectAdvisoryLock(pool, 'project-deletion-cleanup', projectId, async () => {
-		const row = await readDeletionRecord(pool, projectId);
+	return withProjectAdvisoryLock(pool, 'project-deletion-cleanup', projectId, async (db) => {
+		const row = await readDeletionRecord(db, projectId);
 		if (!row) throw new ProjectNotFoundError();
 		const prefix = projectPrefix(readString(row.namespace), readString(row.projectId));
 		const inventory = readJsonbArray(row.keyInventory).map((key) => {
@@ -435,7 +435,7 @@ export async function runProjectDeletionCleanup(
 			const now = policy.clock();
 			if (isCompleted) {
 				if (scopedKeys.length > 0) {
-					await pool.query(
+					await db.query(
 						"UPDATE project_deletions SET status = 'pending', first_empty_at = NULL,\n" +
 							"completed_at = NULL, last_attempt_at = $2, attempt_count = attempt_count + 1,\n" +
 							"last_error = $3 WHERE project_id = $1",
@@ -449,7 +449,7 @@ export async function runProjectDeletionCleanup(
 						repairedLateKeys: scopedKeys
 					};
 				}
-				await pool.query(
+				await db.query(
 					"UPDATE project_deletions SET last_attempt_at = $2, attempt_count = attempt_count + 1,\n" +
 						"last_error = NULL WHERE project_id = $1 AND status = 'complete'",
 					[projectId, now]
@@ -469,7 +469,7 @@ export async function runProjectDeletionCleanup(
 				? null
 				: readTimestampMs(row.firstEmptyAt);
 			if (scopedKeys.length > 0) {
-				await pool.query(
+				await db.query(
 					"UPDATE project_deletions SET first_empty_at = NULL, last_attempt_at = $2,\n" +
 						"attempt_count = attempt_count + 1, last_error = NULL\n" +
 						"WHERE project_id = $1 AND status = 'pending'",
@@ -486,7 +486,7 @@ export async function runProjectDeletionCleanup(
 
 			const earliestListingAt = fencedAt + cleanupBound;
 			if (now.getTime() < earliestListingAt) {
-				await recordPendingCleanupAttempt(pool, projectId, now);
+				await recordPendingCleanupAttempt(db, projectId, now);
 				return {
 					projectId,
 					status: 'pending',
@@ -496,7 +496,7 @@ export async function runProjectDeletionCleanup(
 				};
 			}
 			if (firstEmptyAt === null) {
-				await pool.query(
+				await db.query(
 					"UPDATE project_deletions SET first_empty_at = $2, last_attempt_at = $2,\n" +
 						"attempt_count = attempt_count + 1, last_error = NULL\n" +
 						"WHERE project_id = $1 AND status = 'pending' AND first_empty_at IS NULL",
@@ -511,7 +511,7 @@ export async function runProjectDeletionCleanup(
 				};
 			}
 			if (now.getTime() < firstEmptyAt + cleanupBound) {
-				await recordPendingCleanupAttempt(pool, projectId, now);
+				await recordPendingCleanupAttempt(db, projectId, now);
 				return {
 					projectId,
 					status: 'pending',
@@ -520,7 +520,7 @@ export async function runProjectDeletionCleanup(
 					repairedLateKeys: []
 				};
 			}
-			await pool.query(
+			await db.query(
 				"UPDATE project_deletions SET status = 'complete', completed_at = $2,\n" +
 					"last_attempt_at = $2, attempt_count = attempt_count + 1, last_error = NULL\n" +
 					"WHERE project_id = $1 AND status = 'pending' AND first_empty_at = $3",
@@ -534,7 +534,7 @@ export async function runProjectDeletionCleanup(
 				repairedLateKeys: []
 			};
 		} catch (error) {
-			await pool.query(
+			await db.query(
 				"UPDATE project_deletions SET last_attempt_at = $2,\n" +
 					"attempt_count = attempt_count + 1, last_error = $3\n" +
 					"WHERE project_id = $1",
@@ -552,8 +552,8 @@ export async function runProjectDeletionCleanup(
 	});
 }
 
-async function recordPendingCleanupAttempt(pool: DatabasePool, projectId: string, now: Date): Promise<void> {
-	await pool.query(
+async function recordPendingCleanupAttempt(db: Pick<DatabasePool, 'query'>, projectId: string, now: Date): Promise<void> {
+	await db.query(
 		"UPDATE project_deletions SET last_attempt_at = $2, attempt_count = attempt_count + 1,\n" +
 			"last_error = NULL WHERE project_id = $1 AND status = 'pending'",
 		[projectId, now]

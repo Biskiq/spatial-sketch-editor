@@ -14,6 +14,7 @@ import test, { after, before } from 'node:test';
 import { createApp } from '../dist/app.js';
 import { runMigrations } from '../dist/migrate.js';
 import { listProjectDeletionIds, runProjectDeletionCleanup } from '../dist/project-lifecycle.js';
+import { withProjectAdvisoryLock } from '../dist/project-write-lease.js';
 
 import {
 	SESSION_KEY,
@@ -267,6 +268,46 @@ async function waitForLeaseRelease(projectId) {
 	assert.fail('revoked writer did not release its lease');
 }
 
+async function waitForAdvisoryWait() {
+	const deadline = Date.now() + 2_000;
+	while (Date.now() < deadline) {
+		const result = await pool.query(
+			`SELECT count(*)::int AS count
+FROM pg_stat_activity
+WHERE datname = current_database() AND wait_event_type = 'Lock' AND wait_event = 'advisory'
+		AND query ILIKE '%pg_advisory_lock%'`
+		);
+		if (result.rows[0].count > 0) return;
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	assert.fail('the competing operation did not reach the advisory lock');
+}
+
+async function within(promise, timeoutMs, message) {
+	let timer;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise((_, reject) => {
+				timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+			})
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
+async function assertAdvisoryLockReleased(scope, key) {
+	const db = await pool.connect();
+	try {
+		const result = await db.query('SELECT pg_try_advisory_lock(hashtext($1), hashtext($2)) AS acquired', [scope, key]);
+		assert.equal(result.rows[0].acquired, true, `advisory lock ${scope}/${key} should be released`);
+		await db.query('SELECT pg_advisory_unlock(hashtext($1), hashtext($2))', [scope, key]);
+	} finally {
+		db.release();
+	}
+}
+
 function blockNextPut() {
 	let enteredResolve;
 	const entered = new Promise((resolve) => (enteredResolve = resolve));
@@ -486,6 +527,236 @@ FROM model_revisions WHERE id = $3::uuid`,
 	assert.ok(tombstone.rows[0].key_inventory.includes(revision.derivative_key));
 	assert.ok(tombstone.rows[0].key_inventory.includes(expectedSource));
 	assert.ok(tombstone.rows[0].key_inventory.every((key) => key.startsWith(prefix)));
+});
+
+test('approval and deletion cleanup progress with concurrent advisory waiters on a restricted pool', async () => {
+	const projectId = track();
+	const saved = await save(projectId, ownerCookie, 'Restricted pool approval');
+	const source = validGlb(3);
+	const derivative = validGlb(4);
+	const files = [
+		{ role: 'source', path: 'source.glb', bytes: source },
+		{ role: 'derivative', path: 'derivative.glb', bytes: derivative }
+	];
+	const first = await stageModel(projectId, files);
+	const second = await stageModel(projectId, files);
+	for (const imported of [first, second]) {
+		for (const file of files) {
+			const uploaded = await uploadModelFile(projectId, imported, file.path, file.bytes);
+			assert.equal(uploaded.statusCode, 200, JSON.stringify(uploaded.json()));
+		}
+	}
+
+	const restrictedPool = new Pool({
+		connectionString: DATABASE_URL,
+		max: 2,
+		connectionTimeoutMillis: 1_000,
+		query_timeout: 3_000,
+		application_name: 'p04s01-restricted-pool-regression'
+	});
+	const restrictedStore = {
+		put: (...args) => store.put(...args),
+		get: (...args) => store.get(...args),
+		delete: (...args) => store.delete(...args),
+		list: (...args) => store.list(...args)
+	};
+	const restrictedApp = createApp({
+		pool: restrictedPool,
+		objectStore: restrictedStore,
+		objectNamespace: OBJECT_NAMESPACE,
+		sessionKey: SESSION_KEY,
+		projectLifecyclePolicy: { ...POLICY, clock: () => new Date(fakeNow) },
+		logger: false
+	});
+	let releaseRevisionPut;
+	let revisionPutEntered;
+	const revisionPutBlocked = new Promise((resolve) => (revisionPutEntered = resolve));
+	const revisionPutGate = new Promise((resolve) => (releaseRevisionPut = resolve));
+	let blockOneRevisionPut = true;
+	storeOptions.onPut = async (key, signal) => {
+		if (!blockOneRevisionPut || !key.includes('/models/revisions/')) return;
+		blockOneRevisionPut = false;
+		revisionPutEntered(key);
+		await new Promise((resolve, reject) => {
+			const onAbort = () => reject(signal.reason instanceof Error ? signal.reason : new Error('approval aborted'));
+			const finish = () => {
+				signal.removeEventListener('abort', onAbort);
+				resolve();
+			};
+			signal.addEventListener('abort', onAbort, { once: true });
+			revisionPutGate.then(finish);
+			if (signal.aborted) onAbort();
+		});
+	};
+	try {
+		await restrictedApp.ready();
+		const approveThroughRestrictedApp = (importId) =>
+			restrictedApp.inject({
+				method: 'POST',
+				url: `/projects/${projectId}/models/imports/${importId}/approve`,
+				headers: { cookie: ownerCookie, 'content-type': 'application/json' },
+				payload: { reportDigest: REPORT_DIGEST, placement: PLACEMENT }
+			});
+		const approvalOne = approveThroughRestrictedApp(first.importId);
+		const revisionPutKey = await within(revisionPutBlocked, 2_000, 'approval never began its revision write');
+		const approvalTwo = approveThroughRestrictedApp(second.importId);
+		await waitForAdvisoryWait();
+		releaseRevisionPut();
+		const approvals = await Promise.all([approvalOne, approvalTwo]);
+		assert.ok(approvals.every((response) => response.statusCode === 200), approvals.map((response) => response.body).join('\n'));
+		assert.equal(approvals[0].json().revisionId, approvals[1].json().revisionId);
+		const revision = await pool.query(
+			'SELECT derivative_key, source_keys FROM model_revisions WHERE project_id = $1',
+			[projectId]
+		);
+		assert.equal(revision.rows.length, 1);
+		const derivativeKey = revision.rows[0].derivative_key;
+		const sourceKey = revision.rows[0].source_keys[0];
+		assert.deepEqual(store.objects.get(derivativeKey).bytes, derivative);
+		assert.deepEqual(store.objects.get(sourceKey).bytes, source);
+		assert.ok(store.objects.has(revisionPutKey), 'the winning deterministic revision bytes remain stored');
+		const importStates = await pool.query(
+			"SELECT state FROM model_imports WHERE id = ANY ($1::uuid[]) ORDER BY id",
+			[[first.importId, second.importId]]
+		);
+		assert.deepEqual(importStates.rows.map((row) => row.state), ['approved', 'approved']);
+		assert.equal(restrictedPool.waitingCount, 0);
+		assert.equal(restrictedPool.idleCount, restrictedPool.totalCount);
+		await assertAdvisoryLockReleased('model-approval', `${projectId}:${approvals[0].json().contentHash}`);
+
+		const cleanupProjectId = track();
+		const cleanupSaved = await save(cleanupProjectId, ownerCookie, 'Restricted pool cleanup');
+		const deletion = await restrictedApp.inject({
+			method: 'DELETE',
+			url: `/projects/${cleanupProjectId}`,
+			headers: { cookie: ownerCookie, 'content-type': 'application/json' },
+			payload: { precondition: currentPrecondition(cleanupSaved.json().savedBaseToken) }
+		});
+		assert.equal(deletion.statusCode, 202, JSON.stringify(deletion.json()));
+		assert.equal(deletion.json().cleanup, 'pending');
+
+		const originalList = store.list;
+		let releaseList;
+		let listEntered;
+		const listEnteredPromise = new Promise((resolve) => (listEntered = resolve));
+		const listGate = new Promise((resolve) => (releaseList = resolve));
+		let blockOneList = true;
+		store.list = async (...args) => {
+			if (blockOneList) {
+				blockOneList = false;
+				listEntered();
+				await listGate;
+			}
+			return originalList(...args);
+		};
+		try {
+			const cleanupPolicy = { ...POLICY, clock: () => new Date(fakeNow) };
+			const cleanupOne = runProjectDeletionCleanup(restrictedPool, restrictedStore, cleanupProjectId, cleanupPolicy);
+			await within(listEnteredPromise, 2_000, 'cleanup never reached its object listing');
+			const cleanupTwo = runProjectDeletionCleanup(restrictedPool, restrictedStore, cleanupProjectId, cleanupPolicy);
+			await waitForAdvisoryWait();
+			releaseList();
+			const cleanups = await Promise.all([cleanupOne, cleanupTwo]);
+			assert.deepEqual(cleanups.map((result) => result.status), ['pending', 'pending']);
+		} finally {
+			releaseList();
+			store.list = originalList;
+		}
+		const attempt = await pool.query('SELECT attempt_count, first_empty_at FROM project_deletions WHERE project_id = $1', [cleanupProjectId]);
+		assert.equal(attempt.rows[0].attempt_count, 3, 'the delete and both serialized cleanup attempts are recorded');
+		assert.ok(attempt.rows[0].first_empty_at);
+		assert.equal(restrictedPool.waitingCount, 0);
+		assert.equal(restrictedPool.idleCount, restrictedPool.totalCount);
+		await assertAdvisoryLockReleased('project-deletion-cleanup', cleanupProjectId);
+
+		await assert.rejects(
+			withProjectAdvisoryLock(restrictedPool, 'project-deletion-test-error', cleanupProjectId, async () => {
+				throw new Error('injected protected-work failure');
+			}),
+			/injected protected-work failure/
+		);
+		await assertAdvisoryLockReleased('project-deletion-test-error', cleanupProjectId);
+	} finally {
+		storeOptions.onPut = undefined;
+		if (restrictedApp) await restrictedApp.close();
+		else await restrictedPool.end();
+	}
+});
+
+test('a single-connection pool can complete one approval and one deletion cleanup', async () => {
+	const oneSlotPool = new Pool({
+		connectionString: DATABASE_URL,
+		max: 1,
+		connectionTimeoutMillis: 1_000,
+		query_timeout: 3_000,
+		application_name: 'p04s01-single-connection-regression'
+	});
+	const oneSlotStore = {
+		put: (...args) => store.put(...args),
+		get: (...args) => store.get(...args),
+		delete: (...args) => store.delete(...args),
+		list: (...args) => store.list(...args)
+	};
+	const oneSlotApp = createApp({
+		pool: oneSlotPool,
+		objectStore: oneSlotStore,
+		objectNamespace: OBJECT_NAMESPACE,
+		sessionKey: SESSION_KEY,
+		projectLifecyclePolicy: { ...POLICY, clock: () => new Date(fakeNow) },
+		logger: false
+	});
+	try {
+		await oneSlotApp.ready();
+		const projectId = track();
+		await save(projectId, ownerCookie, 'Single-connection approval');
+		const source = validGlb(5);
+		const derivative = validGlb(6);
+		const imported = await stageModel(projectId, [
+			{ role: 'source', path: 'source.glb', bytes: source },
+			{ role: 'derivative', path: 'derivative.glb', bytes: derivative }
+		]);
+		for (const file of [
+			{ path: 'source.glb', bytes: source },
+			{ path: 'derivative.glb', bytes: derivative }
+		]) {
+			const uploaded = await uploadModelFile(projectId, imported, file.path, file.bytes);
+			assert.equal(uploaded.statusCode, 200, JSON.stringify(uploaded.json()));
+		}
+		const approval = await oneSlotApp.inject({
+			method: 'POST',
+			url: `/projects/${projectId}/models/imports/${imported.importId}/approve`,
+			headers: { cookie: ownerCookie, 'content-type': 'application/json' },
+			payload: { reportDigest: REPORT_DIGEST, placement: PLACEMENT }
+		});
+		assert.equal(approval.statusCode, 200, JSON.stringify(approval.json()));
+		const revision = await pool.query('SELECT derivative_key, source_keys FROM model_revisions WHERE project_id = $1', [projectId]);
+		assert.deepEqual(store.objects.get(revision.rows[0].derivative_key).bytes, derivative);
+		assert.deepEqual(store.objects.get(revision.rows[0].source_keys[0]).bytes, source);
+
+		const cleanupProjectId = track();
+		const saved = await save(cleanupProjectId, ownerCookie, 'Single-connection cleanup');
+		const deleted = await oneSlotApp.inject({
+			method: 'DELETE',
+			url: `/projects/${cleanupProjectId}`,
+			headers: { cookie: ownerCookie, 'content-type': 'application/json' },
+			payload: { precondition: currentPrecondition(saved.json().savedBaseToken) }
+		});
+		assert.equal(deleted.statusCode, 202, JSON.stringify(deleted.json()));
+		assert.equal(deleted.json().cleanup, 'pending');
+		const record = await pool.query(
+			'SELECT attempt_count, first_empty_at FROM project_deletions WHERE project_id = $1',
+			[cleanupProjectId]
+		);
+		assert.equal(record.rows[0].attempt_count, 1);
+		assert.ok(record.rows[0].first_empty_at);
+		await oneSlotPool.query('SELECT 1');
+		assert.equal(oneSlotPool.waitingCount, 0);
+		assert.equal(oneSlotPool.idleCount, oneSlotPool.totalCount);
+		await assertAdvisoryLockReleased('model-approval', `${projectId}:${approval.json().contentHash}`);
+		await assertAdvisoryLockReleased('project-deletion-cleanup', cleanupProjectId);
+	} finally {
+		await oneSlotApp.close();
+	}
 });
 
 test('failed approval finalization compensates newly written revision keys', async () => {

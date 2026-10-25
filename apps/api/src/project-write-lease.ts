@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 
 import { UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 
-import type { DatabasePool } from './database.js';
+import type { DatabaseClient, DatabasePool } from './database.js';
 import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
 
 /**
@@ -24,6 +25,7 @@ export type ProjectLifecyclePolicy = {
 	renewalIntervalMs: number;
 	abortMarginMs: number;
 	clock: () => Date;
+	monotonicClock: () => number;
 };
 
 export const DEFAULT_PROJECT_LIFECYCLE_POLICY: ProjectLifecyclePolicy = {
@@ -31,7 +33,8 @@ export const DEFAULT_PROJECT_LIFECYCLE_POLICY: ProjectLifecyclePolicy = {
 	leaseDeadlineMs: PROJECT_WRITE_LEASE_DEADLINE_MS,
 	renewalIntervalMs: PROJECT_WRITE_RENEWAL_INTERVAL_MS,
 	abortMarginMs: PROJECT_WRITE_ABORT_MARGIN_MS,
-	clock: () => new Date()
+	clock: () => new Date(),
+	monotonicClock: () => performance.now()
 };
 
 export function resolveProjectLifecyclePolicy(
@@ -48,7 +51,8 @@ export function resolveProjectLifecyclePolicy(
 		policy.leaseDeadlineMs >= policy.handlerTimeoutMs ||
 		policy.renewalIntervalMs <= 0 ||
 		policy.renewalIntervalMs >= policy.leaseDeadlineMs ||
-		policy.abortMarginMs <= 0
+		policy.abortMarginMs <= 0 ||
+		typeof policy.monotonicClock !== 'function'
 	) {
 		throw new Error('Invalid project lifecycle timeout policy');
 	}
@@ -72,6 +76,8 @@ export type ProjectWriteContext = {
 	leaseId: string;
 	signal: AbortSignal;
 	assertActive(): void;
+	/** Run protected DB work and lease renewal on a connection already held by an advisory lock. */
+	withDatabaseClient<T>(db: DatabaseClient, work: () => Promise<T>): Promise<T>;
 };
 
 /**
@@ -84,35 +90,16 @@ export async function withProjectWriteLease<T>(
 	ownerId: string,
 	projectId: string,
 	work: (context: ProjectWriteContext) => Promise<T>,
-	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy } = {}
+	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy; deferHeartbeat?: boolean } = {}
 ): Promise<T> {
 	const policy = options.policy ?? DEFAULT_PROJECT_LIFECYCLE_POLICY;
 	if (options.parentSignal?.aborted) throw new ProjectWriteAbortedError();
+	// SQL starts its deadline during INSERT. Anchor the stricter local deadline
+	// before acquiring the client/row lock so transaction and response latency
+	// consume usable lifetime instead of restarting a fresh local timer afterward.
+	const acquisitionStartedAt = policy.monotonicClock();
+	const localDeadlineAt = acquisitionStartedAt + policy.leaseDeadlineMs - policy.abortMarginMs;
 	const leaseId = randomUUID();
-	await withTransaction(pool, async (db) => {
-		const project = await queryRows<{ id: unknown }>(
-			db,
-			`SELECT p.id
-FROM projects p
-WHERE p.id = $1 AND p.owner_id = $2
-	AND EXISTS (
-		SELECT 1 FROM project_versions v
-		WHERE v.project_id = p.id AND v.source_format = $3
-	)
-FOR KEY SHARE`,
-			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
-		);
-		if (!project[0]) throw new ProjectNotFoundError();
-		await db.query(
-			`INSERT INTO project_write_leases (
-	id, project_id, owner_id, started_at, heartbeat_at, deadline_at
-)
-VALUES ($1::uuid, $2, $3, clock_timestamp(), clock_timestamp(),
-	clock_timestamp() + ($4::double precision * interval '1 millisecond'))`,
-			[leaseId, projectId, ownerId, policy.leaseDeadlineMs]
-		);
-	});
-
 	const controller = new AbortController();
 	const abort = (error: ProjectWriteAbortedError) => {
 		if (!controller.signal.aborted) controller.abort(error);
@@ -121,62 +108,139 @@ VALUES ($1::uuid, $2, $3, clock_timestamp(), clock_timestamp(),
 	options.parentSignal?.addEventListener('abort', onParentAbort, { once: true });
 	if (options.parentSignal?.aborted) onParentAbort();
 	const assertActive = () => {
+		if (policy.monotonicClock() >= localDeadlineAt) {
+			abort(new ProjectWriteAbortedError('The project write exceeded its fixed lease deadline'));
+		}
 		if (controller.signal.aborted) {
 			const reason = controller.signal.reason;
 			throw reason instanceof ProjectWriteAbortedError ? reason : new ProjectWriteAbortedError();
 		}
 	};
-
-	// The lease's SQL deadline starts before this local timer. Subtract the abort
-	// margin so local cancellation always precedes the durable database deadline.
 	const deadlineTimer = setTimeout(
 		() => abort(new ProjectWriteAbortedError('The project write exceeded its fixed lease deadline')),
-		Math.max(1, policy.leaseDeadlineMs - policy.abortMarginMs)
+		Math.max(1, localDeadlineAt - policy.monotonicClock())
 	);
-	let renewalPending = false;
-	const heartbeatTimer = setInterval(() => {
-		if (renewalPending || controller.signal.aborted) return;
-		renewalPending = true;
-		void renewProjectWriteLease(pool, leaseId)
-			.then((renewed) => {
-				if (!renewed) abort(new ProjectWriteAbortedError('The project write lease was revoked or reached its deadline'));
-			})
-			.catch(() => abort(new ProjectWriteAbortedError('The project write lease could not be renewed')))
-			.finally(() => {
-				renewalPending = false;
-			});
-	}, policy.renewalIntervalMs);
+	let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+	let renewalTarget: Pick<DatabasePool, 'query'> = pool;
+	let renewalTask: Promise<void> | undefined;
+	let databaseClientBound = false;
+	let leaseMayExist = false;
+	const startHeartbeat = () => {
+		heartbeatTimer = setInterval(() => {
+			if (renewalTask || controller.signal.aborted) return;
+			const target = renewalTarget;
+			let task!: Promise<void>;
+			task = (async () => {
+				try {
+					assertActive();
+					const renewed = await renewProjectWriteLease(target, leaseId);
+					assertActive();
+					if (!renewed) abort(new ProjectWriteAbortedError('The project write lease was revoked or reached its deadline'));
+				} catch (error) {
+					if (error instanceof ProjectWriteAbortedError) abort(error);
+					else abort(new ProjectWriteAbortedError('The project write lease could not be renewed'));
+				} finally {
+					if (renewalTask === task) renewalTask = undefined;
+				}
+			})();
+			renewalTask = task;
+		}, policy.renewalIntervalMs);
+	};
 
 	let value: T | undefined;
 	let operationError: unknown;
 	try {
 		assertActive();
-		value = await work({ leaseId, signal: controller.signal, assertActive });
+		await withTransaction(pool, async (db) => {
+			const project = await queryRows<{ id: unknown }>(
+				db,
+				`SELECT p.id
+FROM projects p
+WHERE p.id = $1 AND p.owner_id = $2
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $3
+	)
+FOR KEY SHARE`,
+				[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+			);
+			if (!project[0]) throw new ProjectNotFoundError();
+			assertActive();
+			// A failed INSERT/COMMIT response can be ambiguous; a release attempt is
+			// harmless if the transaction rolled back and necessary if it committed.
+			leaseMayExist = true;
+			await db.query(
+				`INSERT INTO project_write_leases (
+	id, project_id, owner_id, started_at, heartbeat_at, deadline_at
+)
+VALUES ($1::uuid, $2, $3, clock_timestamp(), clock_timestamp(),
+	clock_timestamp() + ($4::double precision * interval '1 millisecond'))`,
+				[leaseId, projectId, ownerId, policy.leaseDeadlineMs]
+			);
+		});
+		// A delayed COMMIT/response may return after the usable lifetime. Reject it
+		// before invoking any writer callback, regardless of timer delivery.
+		assertActive();
+		if (!options.deferHeartbeat) startHeartbeat();
+		const withDatabaseClient = async <R>(db: DatabaseClient, callback: () => Promise<R>): Promise<R> => {
+			if (databaseClientBound) throw new Error('A project write lease can bind to only one advisory connection');
+			if (heartbeatTimer) clearInterval(heartbeatTimer);
+			heartbeatTimer = undefined;
+			if (renewalTask) await renewalTask;
+			assertActive();
+			renewalTarget = db;
+			let renewed: boolean;
+			try {
+				renewed = await renewProjectWriteLease(db, leaseId);
+			} catch {
+				abort(new ProjectWriteAbortedError('The project write lease could not be renewed'));
+				assertActive();
+				throw new ProjectWriteAbortedError('The project write lease could not be renewed');
+			}
+			if (!renewed) abort(new ProjectWriteAbortedError('The project write lease was revoked or reached its deadline'));
+			assertActive();
+			databaseClientBound = true;
+			startHeartbeat();
+			try {
+				return await callback();
+			} finally {
+				if (heartbeatTimer) clearInterval(heartbeatTimer);
+				heartbeatTimer = undefined;
+				if (renewalTask) await renewalTask;
+				// The enclosing advisory-lock helper releases this client immediately
+				// after the callback. No further heartbeat is scheduled for this lease.
+				renewalTarget = pool;
+			}
+		};
+		value = await work({ leaseId, signal: controller.signal, assertActive, withDatabaseClient });
 		assertActive();
 	} catch (error) {
 		operationError = error;
 	} finally {
 		clearTimeout(deadlineTimer);
-		clearInterval(heartbeatTimer);
+		if (heartbeatTimer) clearInterval(heartbeatTimer);
+		if (renewalTask) await renewalTask;
 		options.parentSignal?.removeEventListener('abort', onParentAbort);
-		try {
-			await pool.query(
-				`UPDATE project_write_leases
+		if (leaseMayExist) {
+			try {
+				await pool.query(
+					`UPDATE project_write_leases
 SET released_at = COALESCE(released_at, clock_timestamp())
 WHERE id = $1::uuid AND released_at IS NULL`,
-				[leaseId]
-			);
-		} catch (error) {
-			if (operationError === undefined) operationError = error;
+					[leaseId]
+				);
+			} catch (error) {
+				if (operationError === undefined) operationError = error;
+			}
 		}
 	}
 	if (operationError !== undefined) throw operationError;
 	return value as T;
 }
 
-async function renewProjectWriteLease(pool: DatabasePool, leaseId: string): Promise<boolean> {
+async function renewProjectWriteLease(db: Pick<DatabasePool, 'query'>, leaseId: string): Promise<boolean> {
 	const rows = await queryRows<{ id: unknown }>(
-		pool,
+		db,
 		`UPDATE project_write_leases
 SET heartbeat_at = clock_timestamp()
 WHERE id = $1::uuid AND revoked_at IS NULL AND released_at IS NULL
@@ -196,7 +260,7 @@ export async function withProjectAdvisoryLock<T>(
 	pool: DatabasePool,
 	scope: string,
 	key: string,
-	work: () => Promise<T>
+	work: (db: DatabaseClient) => Promise<T>
 ): Promise<T> {
 	if (!pool.connect) throw new Error('Database transactions are unavailable');
 	const db = await pool.connect();
@@ -207,7 +271,7 @@ export async function withProjectAdvisoryLock<T>(
 	try {
 		await db.query('SELECT pg_advisory_lock(hashtext($1), hashtext($2))', [scope, key]);
 		locked = true;
-		value = await work();
+		value = await work(db);
 	} catch (error) {
 		workError = error;
 	} finally {

@@ -254,7 +254,7 @@ RETURNING ${returningColumns('a.')}`,
 
 			let uploaded: UploadedAsset;
 			try {
-				uploaded = await streamAsset(body, contentLength, objectStore, objectKey, signal);
+				uploaded = await streamAsset(body, contentLength, objectStore, objectKey, signal, assertActive);
 			} catch (error) {
 				try {
 					await pool.query(
@@ -298,6 +298,7 @@ WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 RETURNING ${returningColumns('a.')}`,
 					[assetId, projectId, ownerId, uploaded.mime, uploaded.byteSize, uploaded.sha256, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
 				);
+				assertActive();
 			} catch (error) {
 				// A failed database response can follow a committed UPDATE. Preserve
 				// the object only when a read proves the ready row owns this exact key;
@@ -334,7 +335,8 @@ async function streamAsset(
 	contentLength: number,
 	objectStore: ObjectStore,
 	key: string,
-	signal: AbortSignal
+	signal: AbortSignal,
+	assertActive: () => void
 ): Promise<UploadedAsset> {
 	const output = new PassThrough();
 	output.on('error', () => {});
@@ -354,6 +356,7 @@ async function streamAsset(
 	if (signal.aborted) onAbort();
 
 	const begin = async (detectedMime: AssetMime) => {
+		assertActive();
 		mime = detectedMime;
 		putPromise = objectStore.put(key, output, {
 			contentType: detectedMime,
@@ -370,6 +373,7 @@ async function streamAsset(
 
 	try {
 		for await (const value of source) {
+			assertActive();
 			const chunk = toBuffer(value);
 			byteSize += chunk.length;
 			if (byteSize > MAX_ASSET_BYTES) {
@@ -403,6 +407,7 @@ async function streamAsset(
 			if (!detected) throw new AssetInputError('unsupported_media_type', 415, 'Unsupported image bytes');
 			await begin(detected);
 		}
+		assertActive();
 		if (byteSize !== contentLength) {
 			throw new AssetInputError('invalid_upload', 400, 'Upload length does not match Content-Length');
 		}
