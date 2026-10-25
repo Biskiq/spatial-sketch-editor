@@ -5,9 +5,9 @@ authorize and release `T3.P04.S01`, in one documentation-only T3 coordination PR
 acceptance evidence, run documentation tests only, keep S06 untouched, and stop before merge.
 
 This record is the provenance for three lifecycle events. It creates no gate or version, changes no
-authored format or persistence contract itself — the **proposed** rulings on P04's two contract
-questions live in that slice's planning resolution and take effect only if the owner ratifies them —
-authorizes no implementation in its own PR, and schedules nothing beyond what it names.
+authored format or persistence contract itself, authorizes no implementation in its own PR, and
+schedules nothing beyond what it names. At the time of authorization, P04's two contract questions
+were proposals pending owner ratification; their final disposition is recorded below.
 
 ```text
 1  T3.P02 First Capture and Cut Preview   → closed 2026-10-24 (final gate T3.P02.S02)
@@ -58,24 +58,41 @@ single child and releases it on [the release list](../../roadmap/now.md):
 | --- | --- | --- |
 | T3.P04.S01 | Owner-scoped project rename and delete with stale/conflict protection, project-scoped resource cleanup, and a bounded T1-reviewed shell patch | [plan](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) |
 
-The release starts once this documentation PR is merged on `main`, and the runbook still re-verifies
-every consumed gate and scope at the implementation's own trusted base. Its planning review against
-current `main`, and the issues it resolves or escalates, are recorded in the
+The release was recorded when this documentation PR merged on `main`; the runbook re-verified every
+consumed gate and scope at the implementation's own trusted base. Its planning review against
+current `main`, and the issues it resolved or escalated, are recorded in the
 [planning resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md).
 
-**Two owner reviews of the planning resolution (2026-10-24) corrected the deletion mechanism and left
-two contract questions proposed, not ratified.** The resolution now proposes that the authored
-envelope owns the project **name** (rename appends one immutable version) and that delete refuses only
-while a publication is **active**, removing the retained inactive publication after unpublication.
-Neither is in force: this PR records them for the owner's ruling and freezes no behaviour.
+**Two owner reviews of the planning resolution (2026-10-24) corrected the deletion mechanism and
+raised two contract questions.** The owner ratified both on 2026-10-25 in
+[PR #188 review 5641779932](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932):
+the authored envelope owns the project **name** (rename appends one immutable version), and delete
+refuses only while a publication is **active**, removing the retained inactive publication after
+unpublication. They are now current behavior; the owning persistence contract records the result.
 
 The same reviews corrected the durable-cleanup design in the
-[resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md#review-corrections):
+[resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md):
 a revocable write fence over every project-owned object writer with an enforced write bound (F1), a
 persisted key inventory that includes the approved revision's source copies (F2), and a
 project-scoped listing (F3). These are mechanism corrections, not new scope; the resolution names
-what changed in the plan. T2's acceptance of the fence and of the `source_keys` column remains a
-merge condition for P04 implementation, and this PR ratifies no contract change.
+what changed in the plan. At authorization time, T2's acceptance of the fence and `source_keys`
+column remained a merge condition, and this PR ratified no contract change.
+
+## Post-release disposition — 2026-10-25
+
+The owner ratified the authored-envelope name rule and active-publication delete rule in PR #188
+review 5641779932; the accepted current contract is
+[`reference/components/persistence.md`](../components/persistence.md). T2's shared API review
+prerequisite passed in PR #191 review 5643653030, and T1 pre-implementation approval passed in review
+5643884439. The read-only S06 route-compatibility check found no conflict; S06's completion and shared
+harness ownership were not changed.
+
+PR #191's final independent review 5644765570 accepted the implementation at `550f8a9b` with no
+open correctness finding. The exhaustive integrated gate and formal slice acceptance are recorded in
+the [T3.P04.S01 acceptance artifact](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md).
+T3.P04 is CLOSABLE and remains active pending the separate owner phase-close decision. No T3 track
+completion, F2 production activation, publication activation, deployment or architecture-cycle
+transition is implied.
 
 P04 is **strictly unrelated** to the performance-first halt. The
 [halt](../../roadmap/README.md#production-implementation-hold) and the

@@ -27,24 +27,23 @@ publication, prepared delivery or schema migration is implied.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P04.S01 | in-progress | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](./t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [pending](./t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized/released 2026-10-24; implementation started on merged base `976323da9e18e96978649e595bc555021964631a`; R1/R2 ratified 2026-10-25 ([owner review on PR #188](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932)); bounded shared API patch review completed on PR #191 ([review](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5643653030)); the bounded T1 shell patch remains serialized behind `T1.P02.S06` and requires T1 pre-implementation review; cleanup fence/inventory decisions remain in the [planning resolution](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md) |
+| T3.P04.S01 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](./t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [accepted 2026-10-25](./t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized/released 2026-10-24; accepted after final independent PR #191 review ([review](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5644765570)) and the exhaustive integrated gate recorded in the acceptance artifact |
 
 ```text
 FINAL PHASE GATE: T3.P04.S01 → ./t3.p04.s01-project-rename-and-delete/acceptance.md
 
 PHASE CLOSE
-Stage:        active
+Stage:        closable
 ```
 
-The single child's exhaustive integrated acceptance is the phase gate. It provides no new
-capability gate/version. A passed final gate makes this phase closable; only an explicit owner
-phase-close request closes it. The F2 production epoch activation remains owner-operated.
+The single child shipped on 2026-10-25 and passed its exhaustive integrated final gate. It provides
+no new capability gate/version. The phase remains active and CLOSABLE; only a separate explicit
+owner phase-close request closes it. The F2 production epoch activation remains owner-operated.
 
-The [planning resolution](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
-records the cleanup and migration mechanisms, the T2 API handoff, the T1 shell patch, and Save/Delete
-concurrency. The owner ratified both product rules on 2026-10-25: the authored envelope owns the
-project name and rename appends one immutable version; delete refuses only while a publication is
-active. The [implementation plan](./t3.p04.s01-project-rename-and-delete/implementation-plan.md)
-is the current contract. Cleanup still requires a revocable write fence with an enforced write bound,
-a persisted complete key inventory, and two empty project-scoped listings spaced by that bound.
-Implementation may not merge while any project-owned object writer bypasses the fence.
+The accepted lifecycle contract is promoted to
+[`reference/components/persistence.md`](../../../reference/components/persistence.md). The acceptance
+artifact owns slice acceptance and gate evidence; planning, handoff and verification records are
+recoverable from stubs at their former paths. The owner-ratified contract makes the authored envelope
+own the project name, routes rename through immutable Save history, and refuses delete while a
+publication is active. Delete fences project writers, inventories exact owned keys, and uses durable
+retryable cleanup. No new gate/version is introduced.

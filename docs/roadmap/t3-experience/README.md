@@ -69,14 +69,14 @@ on the integrated tree; it was accepted 2026-10-24
 items keep the owners named in each phase README
 ([closure decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
 
-[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) is **active** with its single child
-`T3.P04.S01`: project rename/delete, guarded replacement and project-owned model cleanup. T3 owns
-persistence/API/client; T1 owns its explicit reviewed shell patch. It consumes post-S01 T2 storage
-interfaces and is strictly unrelated to the performance-first halt. Implementation started on
-merged base `976323da9e18e96978649e595bc555021964631a`. The owner ratified project-name authority and
-the active-publication deletion rule on 2026-10-25 ([PR #188 review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932));
-T2 handoff and T1 shell reviews remain required. The [planning resolution](./t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
-records the cleanup and migration decisions; the release authorizes this implementation scope only.
+[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) remains **active and CLOSABLE** after its sole
+child `T3.P04.S01` shipped and passed its final gate on 2026-10-25. The accepted capability is
+project rename/delete, guarded replacement and project-owned model cleanup, implemented on T3
+persistence/API/client and the reviewed T1 shell. The T1 and T2 review prerequisites are satisfied;
+the final independent review and exhaustive integrated evidence are recorded in the
+[acceptance artifact](./t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md).
+The owner phase-close decision remains pending. This phase remains strictly unrelated to the
+performance-first halt and introduces no gate/version or release authorization.
 
 New consuming UI follows Round 2's shared dock, Capture/Guide, contextual Guide Instrument
 and Card writer contract through current host APIs; a bounded integration patch is not a
