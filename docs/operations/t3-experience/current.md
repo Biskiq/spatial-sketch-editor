@@ -15,8 +15,8 @@ PHASE: T3.P01 Camera/Experience foundation → closed 2026-10-20
 ACTIVE: T3.P04.S01 Project rename and delete — implementation started 2026-10-25 from trusted
         base `976323da9e18e96978649e595bc555021964631a` (PR #188 merged on main).
         R1/R2 were ratified by the owner on 2026-10-25; the plan and phase references carry the
-        accepted rules. T3's additive client transport and unrun client probes are prepared;
-        acceptance remains pending.
+        accepted rules. Draft implementation PR #191 is open with T3's additive client transport,
+        unrun client probes and the T1/T2 handoff material; acceptance remains pending.
 NEXT:   1. Obtain T2 review of the [API handoff material](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/t2-api-handoff.md)
            before editing shared API files: owned-key inventory, `model_revisions.source_keys`
            migration/backfill, and revocable leases plus compensation at `uploadModelFile` and
@@ -28,8 +28,8 @@ NEXT:   1. Obtain T2 review of the [API handoff material](../../roadmap/t3-exper
            after the T2 handoff review; the T1-owned dirty-state integration remains with its shell
            review. Verification is exhaustive, but the owner has deferred all tests, builds and
            other heavy verification until S06 is explicitly finished.
-        4. Open a draft implementation PR while reviews and required verification remain pending;
-           do not accept/close the slice or phase or merge it.
+        4. Keep draft PR #191 in draft while reviews and required verification remain pending; do
+           not accept/close the slice or phase or merge it.
 RELEASE: ../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md
          (closes T3.P02 and T3.P03, authorizes and releases T3.P04.S01; the live release row is
          docs/roadmap/now.md)

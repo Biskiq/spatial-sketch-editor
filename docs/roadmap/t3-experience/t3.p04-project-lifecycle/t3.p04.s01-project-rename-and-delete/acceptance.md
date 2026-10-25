@@ -1,6 +1,7 @@
 # T3.P04.S01 — Project rename and delete: pending acceptance
 
 **Status:** implementation in progress from base `976323da9e18e96978649e595bc555021964631a`;
+draft [implementation PR #191](https://github.com/Biskiq/spatial-sketch-editor/pull/191) open;
 no acceptance recorded.
 **Plan:** [implementation-plan.md](./implementation-plan.md) · **Phase:** [T3.P04](../README.md)
 
