@@ -3,8 +3,10 @@
 **Track:** T3 · **Status:** approved — `T3.P01` registered 2026-10-16 and **closed 2026-10-20**, with
 all six children shipped (`T3.P01.S01` 2026-10-16 (PR #131), `S02` 2026-10-16 (PR #133), `S03`
 through its split halves `S05` (PR #140) and `S06` (PR #141), and the final gate `S04` 2026-10-20
-(PR #158, `9a457f6b`)); `T3.P02` registered 2026-10-20, and `T3.P03` (H0) registered 2026-10-22 as
-batch E; `T3.P04` is registered as planning-only post-Batch-E coordination ([phase register](#phase-register)) · **Runbook:**
+(PR #158, `9a457f6b`)); `T3.P02` registered 2026-10-20 and **closed 2026-10-24** (final gate
+`T3.P02.S02`), `T3.P03` (H0) registered 2026-10-22 as batch E and **closed 2026-10-24** (final gate
+`T3.P03.S02`), and `T3.P04` registered as planning-only post-Batch-E coordination and
+**authorized and released as `T3.P04.S01` on 2026-10-24** ([phase register](#phase-register)) · **Runbook:**
 [`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·
@@ -48,7 +50,7 @@ with the one-Camera-authority, visitor-isolation and current-format invariants s
 | Editorial order | Experience-owned Presentations, Stops and Guides; retired Camera node-order fields are rejected | richer authored composition preserves Experience ownership and one Camera evaluation authority |
 | Experience document | F2 Experience 1 is collection-capable over the shared world; resources 2 and dependency locks are separate | extend explicit versioned formats for later annotation, interaction and invocation capabilities |
 | History / acceptance | shared F4 unit acceptance: expected revision, atomic accepted/undo results, one bounded chronological history and conditional unit Save | new consuming scopes preserve these invariants and add explicit domain admission |
-| Capture / Preview | first capture and isolated Preview shipped as `owner-override` in T3.P02.S01; first Guide creation, explicit Camera handover/return and the integrated final gate shipped as `owner-override` in T3.P02.S02 (2026-10-24); T3.P02 is closable, not closed | T3.P02.S02 completes the creator loop through shared lowering/evaluation; Preview never writes source |
+| Capture / Preview | first capture and isolated Preview shipped as `owner-override` in T3.P02.S01; first Guide creation, explicit Camera handover/return and the integrated final gate shipped as `owner-override` in T3.P02.S02 (2026-10-24); T3.P02 closed 2026-10-24 | T3.P02.S02 completes the creator loop through shared lowering/evaluation; Preview never writes source |
 
 The [Camera contract](../../reference/components/camera-tour.md#current-vs-destination-ratified-2026-09-27-reconciled-2026-09-29)
 and [F2 persistence contract](../../reference/components/persistence.md#one-source-format-f2-clean-epoch)
@@ -57,21 +59,25 @@ No old-source converter, dual writer or Camera-order authority remains.
 
 ## Planning continuation
 
-The [next parallel batch](../cross-track-execution.md#next-parallel-batch) routes
-[T3.P02.S02](./t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md)
-as the immediate T3 continuation alongside T1 Layout and T2 import/placement. Batch E's H0
-correction and first capture are shipped; P03 is closable, not closed. P02's final gate adds
-first Guide creation, resolves Preview's Camera output/return-ticket residual against the
-existing phase laws, and proves the complete creator loop, accessibility/isolation and
-performance on the integrated tree. The owner authorized and released `T3.P02.S02` on 2026-10-23
-([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/roadmap/now.md`). It has no dependency on the unfinished T1/T2
-features or T4.
+Batch E's H0 correction and first capture shipped. The phase's final gate,
+[T3.P02.S02](./t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md),
+added first Guide creation, resolved the Preview Camera output/return-ticket residual against the
+existing phase laws, and proved the complete creator loop, accessibility/isolation and performance
+on the integrated tree; it was accepted 2026-10-24
+([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)). Both `T3.P02` and
+`T3.P03` are **closed 2026-10-24**; their gate artifacts are preserved stubs and their deferred
+items keep the owners named in each phase README
+([closure decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
 
-[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) is registered **planning** with one proposed
-exhaustive child: project rename/delete, guarded replacement and project-owned model cleanup.
-T3 owns persistence/API/client; T1 owns its explicit reviewed shell patch. It follows P02's
-final gate by T3 capacity, consumes post-S01 T2 storage interfaces, and does not block the
-immediate parallel batch. Registration authorizes no implementation or release.
+[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) is **authorized and released** as its single
+child `T3.P04.S01`: project rename/delete, guarded replacement and project-owned model cleanup.
+T3 owns persistence/API/client; T1 owns its explicit reviewed shell patch. It consumes post-S01 T2
+storage interfaces, is strictly unrelated to the performance-first halt, and starts after its
+coordination PR merges on `main`. Its planning review, the **proposed** rulings on project-name
+authority and published-project deletion (awaiting ratification), and its twice-corrected cleanup
+mechanism are in the
+[resolution](./t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md);
+the release authorizes implementation and no other scope.
 
 New consuming UI follows Round 2's shared dock, Capture/Guide, contextual Guide Instrument
 and Card writer contract through current host APIs; a bounded integration patch is not a
@@ -97,9 +103,9 @@ register owns lifecycle only.
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
 | T3.P01 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
-| T3.P02 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | [T3.P02 — First Capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md) |
-| T3.P03 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P03 — Shared acceptance, isolation and measurement](./t3.p03-shared-acceptance-and-measurement/README.md) |
-| T3.P04 | planning | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P04 — Project lifecycle](./t3.p04-project-lifecycle/README.md) |
+| T3.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | [T3.P02 — First Capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md) |
+| T3.P03 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P03 — Shared acceptance, isolation and measurement](./t3.p03-shared-acceptance-and-measurement/README.md) |
+| T3.P04 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P04 — Project lifecycle](./t3.p04-project-lifecycle/README.md) |
 
 T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
@@ -127,13 +133,28 @@ precondition — an accepted `T3.camera-experience-cutover@1` — was met by `T3
 after `T3.P03.S01` merges. `T3.P02.S02`, the phase's final gate, was owner-authorized and released 2026-10-23
 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/roadmap/now.md`); `T3.P02.S01` is shipped. `Depends on` lists the external gates its slices consume; `F2.unit-envelope@1`,
 `F3.channels@1` and the F4 unit scopes come from `T3.P01`'s accepted outputs, and
-`T3.camera-experience-cutover@1` from `T3.P01.S04`.
+`T3.camera-experience-cutover@1` from `T3.P01.S04`. Both children shipped and the phase
+**closed 2026-10-24** (its `PHASE CLOSE` block and the
+[closure decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md));
+its Scope A performance rows stay transferred to `T1.P02.S06` and its Scope B rows stay deferred
+with T3.
 
 **`T3.P03` is registered 2026-10-22** (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E2) as the H0 shared correction:
 per-planner scope enforcement and build isolation (`T3.P03.S01`) and the on-demand measurement
 workflow as its final gate (`T3.P03.S02`). Both are authorized, and T3.P03 is released from the hold.
 `T3.P03.S01` merges first; its merge is the start gate for `T1.P02.S01`, `T2.P02.S01` and
-`T3.P02.S01`. No slice provides a gate.
+`T3.P02.S01`. No slice provides a gate. Both children shipped and the phase **closed 2026-10-24**
+(its `PHASE CLOSE` block and the
+[closure decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md));
+the L/XL fixtures and M/L drag rows stay transferred to `T1.P02.S06`, and the trace-method
+disposition, reference hard rows and calibration stay open with the owner.
+
+**`T3.P04.S01` is authorized and released 2026-10-24** ([decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md))
+after the planning phase registered on 2026-10-22. The phase row becomes `approved` and the child
+`approved`; implementation starts once the coordination PR merges on `main`. The release is
+strictly unrelated to the [performance-first halt](../README.md#production-implementation-hold), so
+its bounded T1 shell patch is serialized against `T1.P02.S06`'s claim under the existing rules.
+`T3.P04.S01` provides no gate.
 
 ## Starting foundation
 
