@@ -558,8 +558,15 @@ function compileWallFirstWithPhysicalWalls(
 			}
 		}
 		physicalWalls.push(compiled);
-		const wallRecords = emitPhysicalWallQueryRecords(floor, wall, sampled, compiledOpenings, solidSpans);
-		pushRetainedRecords(queryBuilder, wallRecords);
+		const wallRecords = emitPhysicalWallQueryRecords(
+			queryBuilder,
+			floor,
+			wall,
+			sampled,
+			compiledOpenings,
+			solidSpans,
+			reuse !== undefined
+		);
 		const baseBounds2: LayoutBounds2 = { min: [...wallBounds2Value.min] as LayoutVec2, max: [...wallBounds2Value.max] as LayoutVec2 };
 		const baseBounds3: LayoutBounds3 = { min: [...wallBounds3Value.min] as Vec3, max: [...wallBounds3Value.max] as Vec3 };
 		const wallAabb = aabbRecord('wall', wall.id, ['wall', floor.id, wall.id], baseBounds3.min, baseBounds3.max);
@@ -567,7 +574,7 @@ function compileWallFirstWithPhysicalWalls(
 		queryBuilder.aabbs.push(wallAabb);
 		baseBoundsByWallId.set(wall.id, { bounds2: baseBounds2, bounds3: baseBounds3 });
 		if (retentionKey) authoredByWallId.set(wall.id, retentionKey);
-		recordsByWallId.set(wall.id, { ...wallRecords, aabbs: [...wallRecords.aabbs, wallAabb] });
+		if (wallRecords) recordsByWallId.set(wall.id, { ...wallRecords, aabbs: [...wallRecords.aabbs, wallAabb] });
 		for (const issue of wallClearanceIssues) wallIssues.push(issue);
 		issuesByWallId.set(wall.id, wallClearanceIssues);
 		// Endpoint legs are the Junction pass's input; deriving them here means a
@@ -619,12 +626,19 @@ function compileWallFirstWithPhysicalWalls(
 			// record; T1.P02.S06 D.1 (H3) recorded its position, so this is one
 			// lookup instead of an AABB-list scan per Wall.
 			const index = wallAabbIndexByWallId.get(wall.wallId);
-			const records = recordsByWallId.get(wall.wallId);
 			countWork('pairs:wall-aabb', index === undefined ? 0 : 1);
-			if (index !== undefined && records) {
+			if (index !== undefined) {
 				const wallAabb = aabbRecord('wall', wall.wallId, ['wall', floor.id, wall.wallId], bounds3.min, bounds3.max);
+				// Patch the emitted record in place. This is not a session-only
+				// path: a cold compile's Wall AABB is created before Junction
+				// resolution, so it is stale by construction whenever a miter/bevel
+				// extends the Wall, and this is what corrects it.
 				queryBuilder.aabbs[index] = wallAabb;
-				recordsByWallId.set(wall.wallId, { ...records, aabbs: [...records.aabbs.slice(0, -1), wallAabb] });
+				const records = recordsByWallId.get(wall.wallId);
+				if (records) {
+					// A retained Wall's own AABB is the last record it contributed.
+					recordsByWallId.set(wall.wallId, { ...records, aabbs: [...records.aabbs.slice(0, -1), wallAabb] });
+				}
 			}
 		}
 		includePhysicalBounds(bounds3.min, bounds3.max);
@@ -966,13 +980,18 @@ function includeBounds2(bounds: LayoutBounds2, min: LayoutVec2, max: LayoutVec2)
  * records in the same order.
  */
 function emitPhysicalWallQueryRecords(
+	queryBuilder: QueryGeometryBuilder,
 	floor: CompilerFloorSource,
 	wall: LayoutDocumentWallFirst['walls'][number],
 	sampled: SampledSegment,
 	openings: readonly CompiledOpening[],
-	solidSpans: readonly CompiledSolidSpan[]
-): RetainedQueryRecords {
-	const queryBuilder: QueryGeometryBuilder = { points: [], spans: [], polygons: [], aabbs: [] };
+	solidSpans: readonly CompiledSolidSpan[],
+	/** Also return the records this Wall contributed (only a session needs them). */
+	collect: boolean
+): RetainedQueryRecords | null {
+	const pointsStart = queryBuilder.points.length;
+	const spansStart = queryBuilder.spans.length;
+	const aabbsStart = queryBuilder.aabbs.length;
 	const wallKey = wall.id;
 	queryBuilder.points.push(
 		pointRecordPhysical(floor.id, wall.id, 'vertex', wall.id, 0, [...sampled.samples[0]!.point] as LayoutVec2, wallKey),
@@ -1045,7 +1064,15 @@ function emitPhysicalWallQueryRecords(
 			)
 		);
 	}
-	return { points: queryBuilder.points, spans: queryBuilder.spans, polygons: [], aabbs: queryBuilder.aabbs };
+	if (!collect) return null;
+	// Only a session retains records; a cold compile pushes into the shared builder
+	// and pays no per-Wall allocation at all.
+	return {
+		points: queryBuilder.points.slice(pointsStart),
+		spans: queryBuilder.spans.slice(spansStart),
+		polygons: [],
+		aabbs: queryBuilder.aabbs.slice(aabbsStart)
+	};
 }
 
 /** Append one entity's retained query records, preserving their order. */
