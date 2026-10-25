@@ -168,13 +168,29 @@ rendering ownership and lifecycle; scope, evidence and accidental semantic chang
 | The object representation has no L-scale workload (the cached workloads carry no Layout objects) | MAJOR (evidence) | **Recorded as a gap**, not claimed closed |
 | A pre-existing heavy test exceeds vitest's 5 s default under full-worker load on this machine | MINOR (evidence) | **Recorded**; the test is untouched, passes alone, and the lane passes at `--maxWorkers=3` |
 
+## 9b. Re-review round on the fixed tree
+
+A fourth independent reviewer re-examined the fixed tree against seven claims (key completeness,
+`sameAuthored` totality, post-failure store state, cross-document reuse, the index's superset
+property, mesh-key completeness, disposal balance, shadow state). It found **no BLOCKER and no
+MAJOR** and confirmed each claim; its five MINOR/NIT observations were disposed as follows.
+
+| Finding | Severity | Disposition |
+| --- | --- | --- |
+| The H4 probe still passed a second argument to `update()`, advertising a Room-presentation input the representation no longer has | MINOR | **Fixed**: argument and unused import removed |
+| `stats().cold` tested only Walls and Room sources, so an object-only document's second compile reported cold while its objects were reused | MINOR | **Fixed**: every unit class is tested, and a new case compiles a document with objects and no Walls/Junctions/Rooms twice |
+| The planners' shared store lives for the module's lifetime and has no release path | MINOR | **Documented** in the module: bounded by one document (pruned every compile), not observable, and the Stage host owns a separate store released with its closure. No teardown hook was invented for it |
+| A `cacheKey` is a JSON string, where `NaN` and `null` collapse; mesh retention compares strings | NIT | **Documented** as a precondition, discharged by canonicalisation rejecting non-finite numbers |
+| `ShadowMapLike` had no `enabled`, so a disabled shadow map would still be counted | NIT | **Fixed**: counting requires `enabled !== false`, with a test |
+| A second mount of a shared shadow map has its own `requestFrame`/`canvas` ignored; duplicate authored ids would orphan one mesh | NIT | **Recorded as accepted limits**: the shadow map has one owner by design, and the codec's id-uniqueness invariant is what prevents duplicates |
+
 ## 10. Verification actually run (this tree)
 
 | Gate | Result |
 | --- | --- |
 | `check:layout-core`, `check:project-model`, `check:camera-core` | pass |
 | `check` (svelte-check) | 0 errors, 0 warnings |
-| `test:fast` | 164 files, 2,178 tests (at `--maxWorkers=3`; one pre-existing heavy test times out at full worker count under external load) |
+| `test:fast` | 164 files, 2,180 tests (at `--maxWorkers=3`; one pre-existing heavy test times out at full worker count under external load) |
 | `test:arch` | 22 files, 180 tests |
 | `test:heavy` | 9 files, 125 tests |
 | `probe-h1-incremental`, `probe-h4-representation` | re-run here; counts in the acceptance record |

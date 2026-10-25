@@ -392,6 +392,8 @@ The two `p23b4` observation digests were re-pinned in `1c003057` because the Ope
 
 The evaluated set is a property of the edit's neighbourhood, not of the document: 13.3 entities at L against 841 (63×), and the same 13.3 at M where the document has 100 Rooms. Cache-key characters fall 38.9× at L, and the ratio grows with document size — the direction I1 asks for.
 
+**Store bounds and lifetime.** A store holds at most the current document's units: every compile prunes the ids the new document no longer contains, and `released()` reports how many went. Three stores exist — the Stage host's (local to the host closure, released with it), the planners' (module-level, so it holds the last planned document's units after that document closes; bounded by one document, never accumulating across documents, and not observable by any consumer), and one created per probe or test. This is an F13 attribution note, not an accumulating resource: no store grows with edit count or with documents opened, and none of them retains a superseded compiled value — the units are the current values.
+
 **What remains O(N), precisely.** A session still visits every entity once to compare its authored inputs (3.6 ms of an unchanged recompile at L, ≈ 4.3 µs per entity, so ≈ 45 ms at 10 k Rooms and ≈ 450 ms at 100 k). The cause is the authored document: each candidate is a deep clone, so unchanged entities are *equal but not identical*, and proving equality means walking them. Removing that term needs entity-level structural sharing — a candidate that shares unchanged entities by reference — which the plan defers beyond S06. Assembling the compiled snapshot (pushing every entity's records into fresh arrays) is also O(N) pointer work at a much smaller constant (≈ 0.2 ms at L).
 
 ### D.3 / H4 — retained Stage representation (landed)
@@ -489,7 +491,7 @@ No Rust toolchain was introduced, no second geometry kernel was compiled, and th
 
 ### Verification at this tree
 
-`check:layout-core`, `check:project-model`, `check:camera-core` and `check` (svelte-check, 0 errors / 0 warnings) pass. `test:fast` 164 files / 2,178 tests; `test:arch` 22 / 180; `test:heavy` 9 / 125. Probes re-run here: `probe-h1-incremental`, `probe-h4-representation`; `probe-d1-differential`, `probe-d2-accept` and `probe-h5-capture` are unchanged from the previous batch.
+`check:layout-core`, `check:project-model`, `check:camera-core` and `check` (svelte-check, 0 errors / 0 warnings) pass. `test:fast` 164 files / 2,180 tests; `test:arch` 22 / 180; `test:heavy` 9 / 125. A fourth independent re-review of the fixed tree found no BLOCKER and no MAJOR; its five MINOR/NIT observations are dispositioned in `review-handoff.md` §9b, and two of them are now pinned by tests (`stats().cold` for an object-only document, and a disabled shadow map counting no pass). Probes re-run here: `probe-h1-incremental`, `probe-h4-representation`; `probe-d1-differential`, `probe-d2-accept` and `probe-h5-capture` are unchanged from the previous batch.
 
 **One lane-run caveat, recorded rather than smoothed over.** A pre-existing heavy test (`p23b11-correspondence-reference.test.ts`, 4.45 s against vitest's 5 s default) times out when the suite runs at full worker count on this machine under external load (load average 21–68 on 8 cores from unrelated system daemons). It passes alone, and the whole lane passes at `--maxWorkers=3` (164 files / 2,178 tests). This step does not touch that test and changed none of its assertions.
 
