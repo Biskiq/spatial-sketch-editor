@@ -184,6 +184,12 @@ FOR UPDATE`,
 		let latestVersion: number;
 		if (capture.precondition.kind === 'create-only') {
 			if (row) throw new SaveRefusalError('collision', 'A project with this ID already exists');
+			const tombstone = await queryRows<{ projectId: unknown }>(
+				db,
+				`SELECT project_id AS "projectId" FROM project_deletions WHERE project_id = $1`,
+				[capture.projectId]
+			);
+			if (tombstone[0]) throw new SaveRefusalError('collision', 'A project with this ID already exists');
 			// The user row is created only when this Save actually creates a
 			// project; a refused Save writes nothing, not even an owner record.
 			await db.query(

@@ -1,0 +1,165 @@
+{
+  "slice": "T3.P04.S01",
+  "pullRequest": 191,
+  "date": "2026-10-25",
+  "status": "attribution implementation and static checks complete; fresh numeric F9 sample passed; independent slice review pending",
+  "worktree": {
+    "path": "/Users/tony/Documents/Biskiq/batch-2026-10-25/T3.P04.S01",
+    "branch": "t3/p04-s01-project-rename-delete",
+    "baseHead": "2b4c30f80f7c4a3e1f1bc9a91bd27ac93e3a1759",
+    "sourcePatchSha256": "d8f924f4758353144929f52b713af892700c474732e9834ab2e042b7bcdcfeb6",
+    "sourceChangesIncludedInHash": [
+      "apps/editor/perf/README.md",
+      "apps/editor/perf/flows/project-lifecycle.spec.ts",
+      "apps/editor/perf/flows/save.spec.ts",
+      "apps/editor/perf/lib/save-trace.ts",
+      "apps/editor/src/lib/authoring/save/head-save.ts",
+      "apps/editor/src/lib/authoring/save/save-state.ts",
+      "apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte",
+      "apps/editor/src/lib/platform/perf-marks.ts",
+      "apps/editor/src/lib/platform/project-persistence.ts",
+      "apps/editor/src/routes/project/[projectId]/spatial/+page.svelte",
+      "apps/editor/tests/lib/authoring/save-receipt-timing.test.ts",
+      "apps/editor/tests/lib/platform/perf-marks.test.ts",
+      "apps/editor/tests/lib/platform/save-trace.test.ts",
+      "apps/editor/tests/lib/project-model/units-canonical-form.test.ts",
+      "packages/project-model/src/package-sha.ts",
+      "packages/project-model/src/units/acceptance.ts",
+      "packages/project-model/src/units/canonical.ts",
+      "packages/project-model/src/units/save.ts"
+    ]
+  },
+  "ownerRuling": {
+    "date": "2026-10-25",
+    "decision": "automated reference-machine observation accepted; AC/battery and automated-operator differences are not blockers for this slice",
+    "numericBudgetsRemainBinding": true,
+    "saveAttributedMainThreadWorkMsMax": 50,
+    "presentedFeedbackP95MsMax": 100
+  },
+  "attribution": {
+    "saveOwnedMainThreadWork": "union of named synchronous Save scopes and renderer-main-thread RunTask intervals containing the Saving and Saved status mutations; overlaps count once",
+    "syncScopeExamples": [
+      "accepted source read and retained-capture checks",
+      "capture validation and canonical unit/envelope encoding",
+      "SHA byte preparation, digest dispatch, and digest formatting",
+      "unit normalization, dependency-lock resolution, and envelope serialization",
+      "Save request JSON construction and fetch dispatch",
+      "acknowledgement decoding and acknowledgement/state update"
+    ],
+    "asyncHashElapsedTime": "reported separately; not added as main-thread CPU",
+    "requestBoundary": "save:request is recorded after JSON request-body construction and immediately before fetch dispatch",
+    "oldClickToReceiptRunTaskUnion": "retained as a diagnostic only; it includes ambient Stage/rendering work during WebCrypto and network waits"
+  },
+  "checks": [
+    {
+      "command": "npm run test:fast -w @portfolio/editor -- tests/lib/platform/perf-marks.test.ts tests/lib/platform/save-trace.test.ts tests/lib/platform/project-persistence.test.ts tests/lib/authoring/save-receipt-timing.test.ts tests/lib/authoring/save-state.test.ts tests/lib/authoring/head-save.test.ts tests/lib/authoring/head-save-journey.test.ts tests/lib/project-model/units-canonical-form.test.ts",
+      "status": "passed",
+      "filesPassed": 8,
+      "testsPassed": 73
+    },
+    {
+      "command": "npm run test -w @portfolio/editor -- tests/lib/project-model-boundary.test.ts",
+      "status": "passed",
+      "filesPassed": 1,
+      "testsPassed": 4
+    },
+    {
+      "command": "npm run check:project-model",
+      "status": "passed"
+    },
+    {
+      "command": "npm run check -w @portfolio/editor",
+      "status": "passed",
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "command": "npx tsc --noEmit --target ESNext --module ESNext --moduleResolution bundler --strict --skipLibCheck --types node apps/editor/perf/flows/project-lifecycle.spec.ts apps/editor/perf/flows/save.spec.ts apps/editor/perf/lib/save-trace.ts",
+      "status": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    }
+  ],
+  "browserRun": {
+    "status": "passed",
+    "captureCommit": "31c83a7cbfc126690272c5de14c132b518d31825",
+    "captureTree": "ac154840d056b9461ef9b658255a4e84e381ee20",
+    "productCodeCommit": "65689f4f34d4ae07ed863b32703b9aa27ea4568c",
+    "productCodeTree": "7999d5e24ff654d896d46d373483dcc3c68ea71c",
+    "captureSourcePatchSha256": "96b07836d554341a0e98272d1bdf77c6455e8cfc4347aa7cd7f8d8b5962ddd12",
+    "worktreeStatusAtLaunch": "clean",
+    "command": "from apps/editor: ../../node_modules/.bin/vite-node --script perf/run-project-lifecycle-qa.mjs",
+    "selection": {
+      "project": "chrome",
+      "headed": true,
+      "grep": "F9 S/M Save workload",
+      "warmupRunsPerCell": 1,
+      "measuredRunsPerCell": 10,
+      "network": "N1"
+    },
+    "startedAt": "2026-10-25T18:52:35.642Z",
+    "endedAt": "2026-10-25T18:55:15.258Z",
+    "testResult": "1 passed",
+    "samples": 60,
+    "saveOwnedMainThreadOver50ms": 0,
+    "presentedFeedbackOver100ms": 0,
+    "receiptTargetMisses": 0,
+    "presentationProof": {
+      "allSamplesJoinedExactScreenshotSourceFrameToUniqueNonforkedStatePresentedAll": true,
+      "eventTimingObserved": 60,
+      "eventTimingCensoredBelow16ms": 0
+    },
+    "power": {
+      "observed": "Battery Power",
+      "batteryPercent": 100,
+      "lowPowerMode": false,
+      "ownerAcceptedPowerSourceDifference": true
+    },
+    "fixtureScope": {
+      "M": "grid-7, 112 walls, 112 openings, 49 rooms, one minimal valid retained source GLB and derivative; source bytes are not in Save request"
+    },
+    "database": {
+      "name": "biskiq_t3p04s01_f9attr_20261025_81907",
+      "private": true,
+      "droppedByExitTrap": true,
+      "postRunCatalogCount": 0
+    },
+    "cleanup": {
+      "supervisorClosedBrowserApiAndPreview": true,
+      "store": "process-local memory, no R2",
+      "agentBrowserSessionsBeforeRun": 0
+    },
+    "evidenceDirectory": "evidence/2026-10-25/f9-attribution-31c83a7c",
+    "reportMetadataCorrection": "QA-only disposition label corrected after capture; the report and later source commit state owner acceptance without falsely claiming AC power.",
+    "reportMetadataCorrectionCommit": "596e8b9cffa9e6ec4e16c94d6249fbe0a4cc1be2",
+    "reportMetadataCorrectionTree": "c290b461153745e194c57e935eaba14792bbedd4"
+  },
+  "fixtureScope": {
+    "M": "grid-7, 112 walls, 112 openings, 49 rooms, one scene model entity, one retained source and one derivative",
+    "qualification": "meets the slice plan retained-model requirement; does not represent typical M with 60 objects and 15 distinct GLBs"
+  },
+  "acceptance": "F9 numeric verification passed; slice remains pending independent review and separate owner acceptance/closeout; PR remains draft",
+  "freshRunChecks": [
+    {
+      "command": "npm run build:api && npm run build",
+      "status": "passed",
+      "revision": "31c83a7cbfc126690272c5de14c132b518d31825",
+      "note": "Editor build emitted the known nonfatal Node built-in externalization warnings."
+    },
+    {
+      "command": "npx tsc --noEmit --target ESNext --module ESNext --moduleResolution bundler --strict --skipLibCheck --types node apps/editor/perf/flows/project-lifecycle.spec.ts apps/editor/perf/flows/save.spec.ts apps/editor/perf/lib/save-trace.ts",
+      "status": "passed",
+      "revision": "596e8b9cffa9e6ec4e16c94d6249fbe0a4cc1be2",
+      "scope": "F9 harness metadata correction"
+    },
+    {
+      "command": "npx vitest run --config vitest.arch.config.ts tests/docs",
+      "status": "passed",
+      "filesPassed": 2,
+      "testsPassed": 56,
+      "scope": "documentation-reference lane after evidence updates"
+    }
+  ]
+}

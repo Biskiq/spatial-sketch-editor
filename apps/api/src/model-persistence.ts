@@ -32,10 +32,17 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 
-import type { DatabasePool } from './database.js';
+import type { DatabaseClient, DatabasePool } from './database.js';
 import { checkModelStructure } from './model-structure.js';
 import type { ObjectStore } from './object-store.js';
-import { queryRows, withTransaction } from './project-persistence.js';
+import { queryRows, withTransaction, withTransactionOnClient } from './project-persistence.js';
+import {
+	DEFAULT_PROJECT_LIFECYCLE_POLICY,
+	withProjectAdvisoryLock,
+	withProjectWriteLease,
+	type ProjectLifecyclePolicy,
+	type ProjectWriteContext
+} from './project-write-lease.js';
 
 /** Unapproved staging is deleted after 24 hours, bytes included. */
 const MODEL_STAGING_TTL_MS = 24 * 60 * 60 * 1000;
@@ -487,7 +494,8 @@ export async function uploadModelFile(
 	contentLength: number,
 	body: Readable,
 	objectStore: ObjectStore | undefined,
-	objectNamespace: string
+	objectNamespace: string,
+	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy } = {}
 ): Promise<ModelStagedFile> {
 	if (!objectStore) throw new Error('Object storage is unavailable');
 	// An upload is an owner touch: an overdue import is deleted with its bytes
@@ -508,71 +516,128 @@ export async function uploadModelFile(
 	if (contentLength > limit) throw new ModelInputError('payload_too_large', 413, 'Payload Too Large');
 
 	const objectKey = modelFileKey(projectId, objectNamespace, importId, fileId);
-	const claimed = await queryRows<FileRow>(
+	return withProjectWriteLease(
 		pool,
-		`UPDATE model_import_files f
+		ownerId,
+		projectId,
+		async ({ signal, assertActive }) => {
+			const claimed = await queryRows<FileRow>(
+				pool,
+				`UPDATE model_import_files f
 SET object_key = $4, upload_state = 'uploading', uploaded_at = NULL
 FROM model_imports i
 WHERE f.import_id = $1::uuid AND f.file_id = $2::uuid AND i.id = f.import_id
 	AND i.project_id = $3 AND i.owner_id = $5 AND i.state = 'staging'
 	AND f.upload_state IN ('declared','failed')
 RETURNING ${FILE_COLUMNS}`,
-		[importId, fileId, projectId, objectKey, ownerId]
-	);
-	if (!claimed[0]) {
-		throw new ModelInputError('invalid_model_import', 409, 'This file is already uploaded or uploading');
-	}
+				[importId, fileId, projectId, objectKey, ownerId]
+			);
+			if (!claimed[0]) {
+				throw new ModelInputError('invalid_model_import', 409, 'This file is already uploaded or uploading');
+			}
 
-	let uploaded: { byteSize: number; sha256: string };
-	try {
-		uploaded = await streamModelFile(body, contentLength, objectStore, objectKey);
-	} catch (error) {
-		await pool.query(
-			`UPDATE model_import_files f
+			let uploaded: { byteSize: number; sha256: string };
+			try {
+				assertActive();
+				uploaded = await streamModelFile(body, contentLength, objectStore, objectKey, signal, assertActive);
+			} catch (error) {
+				try {
+					await pool.query(
+						`UPDATE model_import_files f
 SET upload_state = 'failed', object_key = NULL, uploaded_at = NULL
 WHERE f.import_id = $1::uuid AND f.file_id = $2::uuid`,
-			[importId, fileId]
-		);
-		await deleteObject(objectStore, objectKey);
-		throw error;
-	}
+						[importId, fileId]
+					);
+				} catch {
+					// The inventory can still find the key if the staging-state update fails.
+				}
+				await deleteObject(objectStore, objectKey);
+				throw error;
+			}
 
-	const declaredHash = readString(file.sha256);
-	if (uploaded.byteSize !== declaredSize || uploaded.sha256 !== declaredHash) {
-		await pool.query(
-			`UPDATE model_import_files f
+			const declaredHash = readString(file.sha256);
+			if (uploaded.byteSize !== declaredSize || uploaded.sha256 !== declaredHash) {
+				try {
+					await pool.query(
+						`UPDATE model_import_files f
 SET upload_state = 'failed', object_key = NULL, uploaded_at = NULL
 WHERE f.import_id = $1::uuid AND f.file_id = $2::uuid`,
-			[importId, fileId]
-		);
-		await deleteObject(objectStore, objectKey);
-		throw new ModelInputError(
-			'invalid_model_file',
-			400,
-			'The uploaded bytes disagree with the declared hash or size'
-		);
-	}
-	const marked = await queryRows<FileRow>(
-		pool,
-		`UPDATE model_import_files f
+						[importId, fileId]
+					);
+				} catch {
+					// Keep going with compensation; a failed row update is independently visible.
+				}
+				await deleteObject(objectStore, objectKey);
+				throw new ModelInputError(
+					'invalid_model_file',
+					400,
+					'The uploaded bytes disagree with the declared hash or size'
+				);
+			}
+
+			try {
+				assertActive();
+			} catch (error) {
+				await deleteObject(objectStore, objectKey);
+				throw error;
+			}
+			let marked: FileRow[];
+			try {
+				marked = await queryRows<FileRow>(
+					pool,
+					`UPDATE model_import_files f
 SET upload_state = 'uploaded', uploaded_at = now()
 WHERE f.import_id = $1::uuid AND f.file_id = $2::uuid
 	AND f.upload_state = 'uploading' AND f.object_key = $3
 RETURNING ${FILE_COLUMNS}`,
-		[importId, fileId, objectKey]
+					[importId, fileId, objectKey]
+				);
+				assertActive();
+			} catch (error) {
+				// A connection can fail after the UPDATE committed. Keep the bytes only
+				// when a read confirms that an uploaded row owns this exact key.
+				let referenced = false;
+				try {
+					const current = await queryRows<{ objectKey: unknown; uploadState: unknown }>(
+						pool,
+						`SELECT object_key AS "objectKey", upload_state AS "uploadState"
+FROM model_import_files WHERE import_id = $1::uuid AND file_id = $2::uuid`,
+						[importId, fileId]
+					);
+					const row = current[0];
+					referenced = row?.objectKey === objectKey && row.uploadState === 'uploaded';
+					if (row?.objectKey === objectKey && row.uploadState === 'uploading') {
+						try {
+							await pool.query(
+								`UPDATE model_import_files SET upload_state = 'failed', object_key = NULL, uploaded_at = NULL
+WHERE import_id = $1::uuid AND file_id = $2::uuid AND object_key = $3 AND upload_state = 'uploading'`,
+								[importId, fileId, objectKey]
+							);
+						} catch {
+							// The selected row was still uploading, so its bytes are not adopted.
+						}
+					}
+				} catch {
+					referenced = true;
+				}
+				if (!referenced) await deleteObject(objectStore, objectKey);
+				throw error;
+			}
+			if (!marked[0]) {
+				await deleteObject(objectStore, objectKey);
+				throw new ModelNotFoundError();
+			}
+			return {
+				fileId,
+				role: declaredRole as ModelFileRole,
+				path: readString(file.path),
+				size: declaredSize,
+				hash: declaredHash,
+				uploadState: 'uploaded'
+			};
+		},
+		{ parentSignal: options.parentSignal, policy: options.policy ?? DEFAULT_PROJECT_LIFECYCLE_POLICY }
 	);
-	if (!marked[0]) {
-		await deleteObject(objectStore, objectKey);
-		throw new ModelNotFoundError();
-	}
-	return {
-		fileId,
-		role: declaredRole as ModelFileRole,
-		path: readString(file.path),
-		size: declaredSize,
-		hash: declaredHash,
-		uploadState: 'uploaded'
-	};
 }
 
 /** Cancel one staging record and delete every staged byte. */
@@ -609,7 +674,8 @@ export async function approveModelImport(
 	importId: string,
 	body: unknown,
 	objectStore: ObjectStore | undefined,
-	objectNamespace: string
+	objectNamespace: string,
+	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy } = {}
 ): Promise<ModelRevision> {
 	if (!objectStore) throw new Error('Object storage is unavailable');
 	await expireStaleModelImports(pool, objectStore, projectId, ownerId);
@@ -665,66 +731,137 @@ export async function approveModelImport(
 	};
 	const contentHash = sha256(`model-revision:${canonicalUnitJson(revisionContent)}`);
 	const derivativeKey = modelRevisionKey(projectId, objectNamespace, contentHash, 'derivative.glb');
+	const sourcePaths = sourceFiles.map((file) => file.path);
+	const sourceKeys = revisionObjectKeys(projectId, objectNamespace, contentHash, sourcePaths);
 
-	// An identical revision is already approved: reuse it and write no bytes again.
-	let row = (
-		await queryRows<RevisionRow>(
-			pool,
-			`SELECT ${REVISION_COLUMNS} FROM model_revisions r WHERE r.project_id = $1 AND r.content_hash = $2`,
-			[projectId, contentHash]
-		)
-	)[0];
-	if (!row) {
-		await putBytes(objectStore, derivativeKey, derivativeBytes, MODEL_RESOURCE_MIME);
-		for (const file of files) {
-			if (readString(file.role) !== 'source') continue;
-			const target = modelRevisionKey(projectId, objectNamespace, contentHash, `source/${readString(file.path)}`);
-			await putBytes(objectStore, target, bytes.get(readString(file.objectKey))!, 'application/octet-stream');
-		}
+	return withProjectWriteLease(
+		pool,
+		ownerId,
+		projectId,
+		async (lease) =>
+			withProjectAdvisoryLock(pool, 'model-approval', `${projectId}:${contentHash}`, async (db) =>
+				lease.withDatabaseClient(db, async () => {
+				lease.assertActive();
+				// The per-content lock is held through writes, finalization and any
+				// compensation. A second identical approval therefore observes the
+				// committed winner before considering deletion of shared keys.
+				let row = (
+					await queryRows<RevisionRow>(
+						db,
+						`SELECT ${REVISION_COLUMNS} FROM model_revisions r WHERE r.project_id = $1 AND r.content_hash = $2`,
+						[projectId, contentHash]
+					)
+				)[0];
+				if (row) {
+					await markImportApproved(db, ownerId, projectId, importId, readString(row.id), lease);
+					lease.assertActive();
+					await deleteStagedObjects(db, objectStore, [importId]);
+					return revisionOf(row);
+				}
 
-		const revisionId = randomUUID();
-		const inserted = await queryRows<RevisionRow>(
-			pool,
-			`INSERT INTO model_revisions (
+				const writtenKeys = [derivativeKey, ...sourceKeys];
+				try {
+					lease.assertActive();
+					await putBytes(objectStore, derivativeKey, derivativeBytes, MODEL_RESOURCE_MIME, lease.signal, lease.assertActive);
+					for (let index = 0; index < sourceFiles.length; index += 1) {
+						lease.assertActive();
+						const file = sourceFiles[index]!;
+						await putBytes(
+							objectStore,
+							sourceKeys[index]!,
+							file.bytes,
+							'application/octet-stream',
+							lease.signal,
+							lease.assertActive
+						);
+					}
+					lease.assertActive();
+
+					row = await withTransactionOnClient(db, async (db) => {
+						lease.assertActive();
+						const revisionId = randomUUID();
+						const inserted = await queryRows<RevisionRow>(
+							db,
+							`INSERT INTO model_revisions (
 	id, project_id, content_hash, derivative_hash, derivative_mime, derivative_bytes, derivative_key,
-	source_manifest_hash, source_bytes, source_file_count, recipe_id, recipe_version, report_digest, placement
+	source_manifest_hash, source_bytes, source_file_count, recipe_id, recipe_version, report_digest, placement, source_keys
 )
-VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb)
 ON CONFLICT (project_id, content_hash) DO NOTHING
 RETURNING ${REVISION_RETURNING}`,
-			[
-				revisionId,
-				projectId,
-				contentHash,
-				derivativeHash,
-				MODEL_RESOURCE_MIME,
-				revisionContent.derivative.size,
-				derivativeKey,
-				sourceManifestHash,
-				revisionContent.source.size,
-				revisionContent.source.fileCount,
-				revisionContent.recipe.id,
-				revisionContent.recipe.version,
-				approval.reportDigest,
-				JSON.stringify(approval.placement)
-			]
-		);
-		row =
-			inserted[0] ??
-			(await queryRows<RevisionRow>(
-				pool,
-				`SELECT ${REVISION_COLUMNS} FROM model_revisions r WHERE r.project_id = $1 AND r.content_hash = $2`,
-				[projectId, contentHash]
-			))[0];
-	}
-	if (!row) throw new Error('Model revision approval returned no row');
+							[
+								revisionId,
+								projectId,
+								contentHash,
+								derivativeHash,
+								MODEL_RESOURCE_MIME,
+								revisionContent.derivative.size,
+								derivativeKey,
+								sourceManifestHash,
+								revisionContent.source.size,
+								revisionContent.source.fileCount,
+								revisionContent.recipe.id,
+								revisionContent.recipe.version,
+								approval.reportDigest,
+								JSON.stringify(approval.placement),
+								JSON.stringify(sourceKeys)
+							]
+						);
+						const persisted = inserted[0] ??
+							(await queryRows<RevisionRow>(
+								db,
+								`SELECT ${REVISION_COLUMNS} FROM model_revisions r WHERE r.project_id = $1 AND r.content_hash = $2 FOR UPDATE`,
+								[projectId, contentHash]
+							))[0];
+						if (!persisted) throw new Error('Model revision approval returned no row');
+						lease.assertActive();
+						const approved = await queryRows<{ id: unknown }>(
+							db,
+							`UPDATE model_imports
+SET state = 'approved', revision_id = $4::uuid
+WHERE id = $1::uuid AND project_id = $2 AND owner_id = $3
+				AND (state = 'staging' OR (state = 'approved' AND revision_id = $4::uuid))
+RETURNING id`,
+							[importId, projectId, ownerId, readString(persisted.id)]
+						);
+						if (!approved[0]) throw new ModelNotFoundError();
+						lease.assertActive();
+						return persisted;
+					});
+						lease.assertActive();
+				} catch (error) {
+					// A commit error can be ambiguous. Preserve deterministic keys if a
+					// revision row exists or the database cannot prove it does not.
+					let referenced = true;
+					try {
+						referenced =
+							(
+								await queryRows<{ id: unknown }>(
+									db,
+									`SELECT id FROM model_revisions WHERE project_id = $1 AND content_hash = $2`,
+									[projectId, contentHash]
+								)
+							).length > 0;
+					} catch {
+						referenced = true;
+					}
+					if (!referenced) {
+						for (const key of writtenKeys) await deleteObject(objectStore, key);
+					}
+					throw error;
+				}
 
-	await pool.query(
-		`UPDATE model_imports SET state = 'approved', revision_id = $2::uuid WHERE id = $1::uuid`,
-		[importId, readString(row.id)]
+				if (!row) throw new Error('Model revision approval returned no row');
+				await deleteStagedObjects(db, objectStore, [importId]);
+				return revisionOf(row);
+				})
+			),
+		{
+			parentSignal: options.parentSignal,
+			policy: options.policy ?? DEFAULT_PROJECT_LIFECYCLE_POLICY,
+			deferHeartbeat: true
+		}
 	);
-	await deleteStagedObjects(pool, objectStore, [importId]);
-	return revisionOf(row);
 }
 
 /** The immutable revision bytes a hash-keyed read serves; owner-scoped. */
@@ -859,6 +996,30 @@ WHERE f.import_id = ANY ($1::uuid[]) AND f.object_key IS NOT NULL`,
 	}
 }
 
+async function markImportApproved(
+	db: DatabaseClient,
+	ownerId: string,
+	projectId: string,
+	importId: string,
+	revisionId: string,
+	lease: ProjectWriteContext
+): Promise<void> {
+	await withTransactionOnClient(db, async (db) => {
+		lease.assertActive();
+		const rows = await queryRows<{ id: unknown }>(
+			db,
+			`UPDATE model_imports
+SET state = 'approved', revision_id = $4::uuid
+WHERE id = $1::uuid AND project_id = $2 AND owner_id = $3
+	AND (state = 'staging' OR (state = 'approved' AND revision_id = $4::uuid))
+RETURNING id`,
+			[importId, projectId, ownerId, revisionId]
+		);
+		if (!rows[0]) throw new ModelNotFoundError();
+		lease.assertActive();
+	});
+}
+
 async function deleteObject(objectStore: ObjectStore, key: string): Promise<void> {
 	try {
 		await objectStore.delete?.(key);
@@ -868,8 +1029,16 @@ async function deleteObject(objectStore: ObjectStore, key: string): Promise<void
 	}
 }
 
-async function putBytes(objectStore: ObjectStore, key: string, bytes: Buffer, contentType: string): Promise<void> {
-	await objectStore.put(key, Readable.from(bytes), { contentType, contentLength: bytes.length });
+async function putBytes(
+	objectStore: ObjectStore,
+	key: string,
+	bytes: Buffer,
+	contentType: string,
+	signal: AbortSignal,
+	assertActive: () => void
+): Promise<void> {
+	assertActive();
+	await objectStore.put(key, Readable.from(bytes), { contentType, contentLength: bytes.length, signal });
 }
 
 function bufferSha256(bytes: Buffer): string {
@@ -901,7 +1070,9 @@ async function streamModelFile(
 	source: Readable,
 	contentLength: number,
 	objectStore: ObjectStore,
-	key: string
+	key: string,
+	signal: AbortSignal,
+	assertActive: () => void
 ): Promise<{ byteSize: number; sha256: string }> {
 	const output = new PassThrough();
 	output.on('error', () => {});
@@ -909,8 +1080,15 @@ async function streamModelFile(
 	let byteSize = 0;
 	let putPromise: Promise<void> | undefined;
 	let storageError: unknown;
+	const onAbort = () => {
+		const error = signal.reason instanceof Error ? signal.reason : new Error('Model write aborted');
+		source.destroy(error);
+		output.destroy(error);
+	};
+	signal.addEventListener('abort', onAbort, { once: true });
+	if (signal.aborted) onAbort();
 	putPromise = objectStore
-		.put(key, output, { contentType: 'application/octet-stream', contentLength })
+		.put(key, output, { contentType: 'application/octet-stream', contentLength, signal })
 		.catch((error) => {
 			storageError = error;
 			output.destroy(error instanceof Error ? error : new Error('Model storage failed'));
@@ -918,6 +1096,7 @@ async function streamModelFile(
 		});
 	try {
 		for await (const value of source) {
+			assertActive();
 			const chunk = toBuffer(value);
 			byteSize += chunk.length;
 			if (byteSize > contentLength) {
@@ -929,17 +1108,27 @@ async function streamModelFile(
 		if (byteSize !== contentLength) {
 			throw new ModelInputError('invalid_upload', 400, 'Upload length does not match Content-Length');
 		}
+		assertActive();
 		output.end();
 		await putPromise;
+		signal.removeEventListener('abort', onAbort);
 		return { byteSize, sha256: `sha256-${hash.digest('hex')}` };
 	} catch (error) {
-		const reported = error instanceof ModelInputError || storageError ? error : new ModelInputError('invalid_upload', 400, 'Upload stream failed');
+		const reported = signal.aborted
+			? signal.reason instanceof Error
+				? signal.reason
+				: new Error('Model write aborted')
+			: error instanceof ModelInputError || storageError
+				? error
+				: new ModelInputError('invalid_upload', 400, 'Upload stream failed');
+		source.destroy(error instanceof Error ? error : new Error('Model upload failed'));
 		output.destroy(error instanceof Error ? error : new Error('Model upload failed'));
 		try {
 			await putPromise;
 		} catch {
 			// The route reports the original bounded upload/storage error.
 		}
+		signal.removeEventListener('abort', onAbort);
 		throw reported;
 	}
 }
@@ -972,6 +1161,20 @@ function toBuffer(value: unknown): Buffer {
 
 function modelFileKey(projectId: string, namespace: string, importId: string, fileId: string): string {
 	return `projects/${namespace}/${projectId}/models/imports/${importId}/${fileId}`;
+}
+
+export function revisionObjectKeys(
+	projectId: string,
+	namespace: string,
+	contentHash: string,
+	sourcePaths: readonly string[]
+): string[] {
+	return sourcePaths.map((path) => {
+		if (!FILE_PATH_PATTERN.test(path) || path.includes('..')) {
+			throw new Error('Approved source path is malformed');
+		}
+		return modelRevisionKey(projectId, namespace, contentHash, `source/${path}`);
+	});
 }
 
 function modelRevisionKey(projectId: string, namespace: string, contentHash: string, name: string): string {

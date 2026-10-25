@@ -69,15 +69,14 @@ on the integrated tree; it was accepted 2026-10-24
 items keep the owners named in each phase README
 ([closure decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
 
-[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) is **authorized and released** as its single
-child `T3.P04.S01`: project rename/delete, guarded replacement and project-owned model cleanup.
-T3 owns persistence/API/client; T1 owns its explicit reviewed shell patch. It consumes post-S01 T2
-storage interfaces, is strictly unrelated to the performance-first halt, and starts after its
-coordination PR merges on `main`. Its planning review, the **proposed** rulings on project-name
-authority and published-project deletion (awaiting ratification), and its twice-corrected cleanup
-mechanism are in the
-[resolution](./t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md);
-the release authorizes implementation and no other scope.
+[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) remains **active and CLOSABLE** after its sole
+child `T3.P04.S01` shipped and passed its final gate on 2026-10-25. The accepted capability is
+project rename/delete, guarded replacement and project-owned model cleanup, implemented on T3
+persistence/API/client and the reviewed T1 shell. The T1 and T2 review prerequisites are satisfied;
+the final independent review and exhaustive integrated evidence are recorded in the
+[acceptance artifact](./t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md).
+The owner phase-close decision remains pending. This phase remains strictly unrelated to the
+performance-first halt and introduces no gate/version or release authorization.
 
 New consuming UI follows Round 2's shared dock, Capture/Guide, contextual Guide Instrument
 and Card writer contract through current host APIs; a bounded integration patch is not a
@@ -150,8 +149,10 @@ the L/XL fixtures and M/L drag rows stay transferred to `T1.P02.S06`, and the tr
 disposition, reference hard rows and calibration stay open with the owner.
 
 **`T3.P04.S01` is authorized and released 2026-10-24** ([decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md))
-after the planning phase registered on 2026-10-22. The phase row becomes `approved` and the child
-`approved`; implementation starts once the coordination PR merges on `main`. The release is
+after the planning phase registered on 2026-10-22. The coordination PR #188 merged at
+`976323da9e18e96978649e595bc555021964631a`, and implementation started from that base on
+2026-10-25. The owner ratified R1/R2 on 2026-10-25 ([review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932));
+the child remains in progress. The release is
 strictly unrelated to the [performance-first halt](../README.md#production-implementation-hold), so
 its bounded T1 shell patch is serialized against `T1.P02.S06`'s claim under the existing rules.
 `T3.P04.S01` provides no gate.

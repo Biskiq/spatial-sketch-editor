@@ -29,6 +29,7 @@ import {
 	createUnitPlannerRegistry,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
+import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 
 import {
 	createAcceptanceCoordinator,
@@ -40,6 +41,7 @@ import { admitSource, type StageReadSnapshot } from './source-admission';
 import type { StageContentInstall, StageFacade } from './stage-facade';
 import { requalifySelectionEntry, requalifySelection } from './selection-requalification';
 import { sameReference, sameSubject } from './semantic-selection';
+import { attachUnitStageSource } from './unit-stage-source';
 
 /** The baseline one host lifetime starts from; the route already admitted it. */
 export type StageAcceptanceBaseline = {
@@ -89,7 +91,7 @@ export type StageHistoryCommandOutcome =
 	| {
 			readonly kind: 'unavailable';
 			readonly direction: StageHistoryDirection;
-			readonly reason: 'empty-stack' | 'live-proposal';
+			readonly reason: 'empty-stack' | 'live-proposal' | 'project-action';
 	  }
 	| {
 			readonly kind: 'refused';
@@ -134,6 +136,14 @@ export type StageAcceptanceHost = {
 	accept(intent: AuthoringIntent): Promise<StageAcceptOutcome>;
 	undo(): Promise<StageHistoryCommandOutcome>;
 	redo(): Promise<StageHistoryCommandOutcome>;
+	/** Freeze authored writes for one confirmed project lifecycle request. */
+	beginProjectAction(): { readonly kind: 'locked'; release(): void } | { readonly kind: 'refused'; readonly message: string };
+	/** Adopt a server-confirmed project name across the one source/history authority. */
+	adoptProjectName(input: { readonly name: string; readonly savedRevision: AcceptedRevision }): Promise<
+		| { readonly kind: 'adopted'; readonly snapshot: StageReadSnapshot }
+		| { readonly kind: 'unchanged'; readonly snapshot: StageReadSnapshot }
+		| { readonly kind: 'refused'; readonly message: string }
+	>;
 	/**
 	 * Project replacement: a new admitted baseline under a new epoch. The host that
 	 * performed the replacement installs nothing afterwards; the route mounts the
@@ -192,6 +202,7 @@ export function createStageAcceptanceHost(options: {
 	};
 	/** Accepts in flight: a live proposal is why Undo is temporarily unavailable. */
 	let inFlight = 0;
+	let writesBlocked = false;
 	const LIVE_PROPOSAL_REASON = 'A proposal is live; Undo is available once it is accepted or refused.';
 
 	/**
@@ -352,6 +363,7 @@ export function createStageAcceptanceHost(options: {
 	}
 
 	async function runHistory(direction: StageHistoryDirection): Promise<StageHistoryCommandOutcome> {
+		if (writesBlocked) return { kind: 'unavailable', direction, reason: 'project-action' };
 		if (inFlight > 0 || authoringProposalLive()) {
 			return { kind: 'unavailable', direction, reason: 'live-proposal' };
 		}
@@ -377,25 +389,30 @@ export function createStageAcceptanceHost(options: {
 			// The reported state must agree with what the command will do: while a
 			// proposal is live, neither direction can run, whatever the stack holds.
 			const live = inFlight > 0 || authoringProposalLive();
-			const canUndo = !live && coordinator.canUndo();
-			const canRedo = !live && coordinator.canRedo();
+			const canUndo = !writesBlocked && !live && coordinator.canUndo();
+			const canRedo = !writesBlocked && !live && coordinator.canRedo();
 			return {
 				canUndo,
 				canRedo,
 				depth: state.depth,
 				position: state.position,
-				undoUnavailableReason: canUndo
+				undoUnavailableReason: writesBlocked
+					? 'Project rename or deletion is in progress.'
+					: canUndo
 					? null
 					: live
 						? LIVE_PROPOSAL_REASON
 						: 'Nothing to undo yet — no change has been accepted.',
-				redoUnavailableReason: canRedo ? null : live ? LIVE_PROPOSAL_REASON : 'Nothing to redo.'
+				redoUnavailableReason: writesBlocked
+					? 'Project rename or deletion is in progress.'
+					: canRedo ? null : live ? LIVE_PROPOSAL_REASON : 'Nothing to redo.'
 			};
 		},
 		async accept(intent) {
 			if (disposed) {
 				return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };
 			}
+			if (writesBlocked) return { kind: 'refused', code: 'project-action', message: 'Project rename or deletion is in progress.' };
 			if (inFlight > 0) return { kind: 'refused', code: 'live-proposal', message: 'Another host command is live.' };
 			inFlight += 1;
 			const unregister = facade.session.writers().register('command', facade.session.token(), () => coordinator.cancelPending());
@@ -417,6 +434,67 @@ export function createStageAcceptanceHost(options: {
 		},
 		undo: () => runHistory('undo'),
 		redo: () => runHistory('redo'),
+		beginProjectAction() {
+			if (disposed) return { kind: 'refused', message: 'This project session has ended.' };
+			if (writesBlocked) return { kind: 'refused', message: 'Another project action is in progress.' };
+			if (inFlight > 0 || authoringProposalLive()) {
+				return { kind: 'refused', message: 'Finish or cancel the active edit before renaming or deleting this project.' };
+			}
+			writesBlocked = true;
+			changed();
+			let released = false;
+			return {
+				kind: 'locked',
+				release() {
+					if (released) return;
+					released = true;
+					if (disposed) return;
+					writesBlocked = false;
+					changed();
+				}
+			};
+		},
+		async adoptProjectName(input) {
+			if (disposed) return { kind: 'refused', message: 'This project session has ended.' };
+			if (inFlight > 0 || authoringProposalLive()) {
+				return { kind: 'refused', message: 'Finish or cancel the active edit before applying the Cloud project name.' };
+			}
+			const mounted = facade.snapshot();
+			const current = coordinator.current();
+			if (input.savedRevision.projectId !== current.revision.projectId || input.name.trim() === '') {
+				return { kind: 'refused', message: 'The Cloud project metadata does not match this session.' };
+			}
+			const rebased = await coordinator.adoptMetadata((source) => ({
+				...source,
+				name: input.name,
+				acceptedRevision: input.savedRevision
+			}));
+			if (disposed) return { kind: 'refused', message: 'This project session has ended.' };
+			if (rebased.kind === 'unchanged') return { kind: 'unchanged', snapshot: mounted };
+			if (rebased.kind === 'refused') return { kind: 'refused', message: rebased.message };
+			const source = rebased.current.source;
+			const snapshot: StageReadSnapshot = attachUnitStageSource({
+				...mounted,
+				acceptedRevision: rebased.current.revision,
+				sourceContentId: rebased.current.sourceContentId,
+				canonicalJson: rebased.current.canonicalJson,
+				domain: {
+					...mounted.domain,
+					name: source.name,
+					references: createUnitReadContext({
+						envelope: source,
+						acceptedRevision: rebased.current.revision,
+						sourceContentId: rebased.current.sourceContentId,
+						sessionEpoch,
+						generationId: mounted.compileGeneration
+					})
+				}
+			}, source);
+			const installed = facade.adoptMetadata(snapshot);
+			if (installed.kind !== 'adopted') return { kind: 'refused', message: installed.kind === 'refused' ? installed.message : 'The Cloud project name was already current.' };
+			changed();
+			return { kind: 'adopted', snapshot };
+		},
 		async replace(input) {
 			if (disposed) {
 				return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };

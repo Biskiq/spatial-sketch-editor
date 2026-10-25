@@ -152,6 +152,32 @@ describe('unit content revisions', () => {
 			);
 		}
 	});
+
+	it('preserves the content revision while exposing Save-owned sync and hash phases', async () => {
+		const syncPhases: string[] = [];
+		const asyncPhases: string[] = [];
+		const instrumentation = {
+			sync<T>(phase: string, work: () => T): T {
+				syncPhases.push(phase);
+				return work();
+			},
+			async async<T>(phase: string, work: () => Promise<T>): Promise<T> {
+				asyncPhases.push(phase);
+				return work();
+			}
+		};
+		const data = { id: 'view-1', fov: 54 };
+		expect(await computeUnitContentRevision(data, instrumentation, 'save.unit.camera')).toBe(
+			await computeUnitContentRevision(data)
+		);
+		expect(syncPhases).toEqual([
+			'save.unit.camera.canonical-encode',
+			'save.unit.camera.sha256.prepare-bytes',
+			'save.unit.camera.sha256.dispatch',
+			'save.unit.camera.sha256.format'
+		]);
+		expect(asyncPhases).toEqual(['save.unit.camera.sha256-wall']);
+	});
 });
 
 describe('the envelope source-content digest', () => {

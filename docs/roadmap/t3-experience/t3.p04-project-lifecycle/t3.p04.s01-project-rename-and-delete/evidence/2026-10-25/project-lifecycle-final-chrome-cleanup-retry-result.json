@@ -1,0 +1,119 @@
+{
+  "jobs": [
+    {
+      "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+      "attempts": [
+        {
+          "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+          "status": "pending",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        },
+        {
+          "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        }
+      ],
+      "idempotent": {
+        "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+        "status": "complete",
+        "sweepDependent": false,
+        "deletedKeys": [],
+        "repairedLateKeys": []
+      },
+      "tombstone": {
+        "status": "complete",
+        "keyInventory": [],
+        "sweepDependent": false,
+        "attemptCount": 4,
+        "completedAt": "2026-10-25T18:03:45.046Z"
+      },
+      "deletedOwnedKeys": [],
+      "survivingSiblingKeys": []
+    },
+    {
+      "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+      "attempts": [
+        {
+          "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+          "status": "pending",
+          "sweepDependent": false,
+          "deletedKeys": [
+            "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+          ],
+          "repairedLateKeys": []
+        },
+        {
+          "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [
+            "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+          ],
+          "repairedLateKeys": []
+        }
+      ],
+      "idempotent": {
+        "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+        "status": "complete",
+        "sweepDependent": false,
+        "deletedKeys": [],
+        "repairedLateKeys": []
+      },
+      "tombstone": {
+        "status": "complete",
+        "keyInventory": [
+          "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+        ],
+        "sweepDependent": false,
+        "attemptCount": 4,
+        "completedAt": "2026-10-25T18:03:50.812Z"
+      },
+      "deletedOwnedKeys": [
+        "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+      ],
+      "survivingSiblingKeys": [
+        "projects/t3p04s01qa/project:e678056e-cc05-49ff-b798-cf15997ec1bb/assets/1bfca054-3e7a-4078-af6a-960705b85144/9c3af204767375667ec543e0883b348d"
+      ]
+    },
+    {
+      "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+      "attempts": [
+        {
+          "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+          "status": "pending",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        },
+        {
+          "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        }
+      ],
+      "idempotent": {
+        "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+        "status": "complete",
+        "sweepDependent": false,
+        "deletedKeys": [],
+        "repairedLateKeys": []
+      },
+      "tombstone": {
+        "status": "complete",
+        "keyInventory": [],
+        "sweepDependent": false,
+        "attemptCount": 4,
+        "completedAt": "2026-10-25T18:03:56.576Z"
+      },
+      "deletedOwnedKeys": [],
+      "survivingSiblingKeys": []
+    }
+  ]
+}

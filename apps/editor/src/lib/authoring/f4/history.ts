@@ -73,6 +73,20 @@ export class AuthoringHistory<Source> {
 		return this.#states[this.#cursor]!;
 	}
 
+	/** A read-only copy used by the coordinator's non-history metadata adoption seam. */
+	states(): readonly HistoryState<Source>[] {
+		return this.#states.slice();
+	}
+
+	/** Replace equivalent metadata on every retained state without moving the cursor. */
+	rebaseStates(states: readonly HistoryState<Source>[]): void {
+		if (states.length < 1 || states.length > this.#limit) {
+			throw new RangeError(`History must retain between 1 and ${this.#limit} states`);
+		}
+		if (this.#cursor >= states.length) throw new RangeError('History cursor is outside the retained states');
+		this.#states = [...states];
+	}
+
 	canUndo(): boolean {
 		return this.#cursor > 0;
 	}

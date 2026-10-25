@@ -61,6 +61,8 @@ export type HeadSave = {
 	subscribe(listener: (snapshot: SaveSnapshot) => void): () => void;
 	/** Refresh after an accepted edit; cheap and idempotent. */
 	refresh(): SaveSnapshot;
+	/** Adopt a refreshed saved base after project metadata changes in Cloud. */
+	adoptSavedBase(baseline: Parameters<SaveState['adoptSavedBase']>[0]): boolean;
 	control(): HeadSaveControl;
 	/** The explicit unsaved-work fact the host uses at exit and replacement. */
 	unsavedWork(): HeadSaveExitSignal;
@@ -153,6 +155,7 @@ export function createHeadSave(
 		snapshot: () => state.getSnapshot(),
 		subscribe: (listener) => state.subscribe(listener),
 		refresh: () => state.refresh(),
+		adoptSavedBase: (baseline) => state.adoptSavedBase(baseline),
 		control() {
 			const snapshot = state.getSnapshot();
 			const unavailableReason = options.unavailableReason ?? null;
@@ -189,16 +192,15 @@ export function createHeadSave(
 		},
 		isDirty: () => state.getSnapshot().dirty,
 		async save() {
-			// T3.P03.S02: Save's local feedback, receipt and idle are measured from the
-			// command, the Save status the Head renders and the transport answer. The
-			// mark names the command instant so a click is never inferred from a frame.
-			perfMark('save:submit');
+			// This is the controller command boundary; the HTTP dispatch is marked in
+			// the platform adapter after JSON request construction.
+			perfMark('save:command');
 			return commandOf(await state.save());
 		},
 		async retry() {
 			// `retry()` reuses the retained capture. A sign-in interruption is the one
 			// state where the same command is the documented resume path.
-			perfMark('save:submit', { retry: true });
+			perfMark('save:command', { retry: true });
 			return commandOf(await state.retry());
 		},
 		reloadRemote: () => state.reloadRemote(),

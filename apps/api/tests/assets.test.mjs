@@ -177,7 +177,7 @@ test('asset upload validation and storage failure never produce ready metadata',
 	}
 });
 
-test('finalize failure leaves pending metadata and retains the uploaded object', async () => {
+test('finalize failure leaves pending metadata and compensates the uploaded object', async () => {
 	const poolOptions = { failFinalize: true };
 	const pool = assetMemoryPool(poolOptions);
 	const store = memoryObjectStore();
@@ -200,7 +200,7 @@ test('finalize failure leaves pending metadata and retains the uploaded object',
 		});
 		assert.equal(response.statusCode, 503);
 		assert.equal(pool.assets.get(assetId).importState, 'pending');
-		assert.equal(store.objects.size, 1);
+		assert.equal(store.objects.size, 0);
 		assert.equal(store.puts[0].bytes.equals(bytes), true);
 
 		poolOptions.failFinalize = false;
@@ -212,7 +212,7 @@ test('finalize failure leaves pending metadata and retains the uploaded object',
 		});
 		assert.equal(retried.statusCode, 200);
 		assert.equal(retried.json().id, assetId);
-		assert.equal(store.objects.size, 2);
+		assert.equal(store.objects.size, 1);
 	} finally {
 		await app.close();
 	}
@@ -387,7 +387,7 @@ test('concurrent uploads use distinct claims and only latest claim finalizes', a
 		assert.equal(firstResponse.statusCode, 409);
 		assert.equal(secondResponse.statusCode, 200);
 		assert.notEqual(store.puts[0].key, store.puts[1].key);
-		assert.equal(pool.calls.some(({ text }) => text === 'BEGIN'), false);
+		assert.equal(pool.calls.some(({ text }) => text === 'BEGIN'), true);
 	} finally {
 		await app.close();
 	}

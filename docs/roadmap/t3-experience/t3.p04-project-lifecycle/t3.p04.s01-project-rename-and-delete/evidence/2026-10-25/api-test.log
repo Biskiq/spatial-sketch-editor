@@ -1,0 +1,234 @@
+
+> personal-portfolios@0.1.0 test:api
+> npm run test -w @biskiq/api
+
+
+> @biskiq/api@0.1.0 test
+> npm run build && vite-node tests/health-config-shutdown.test.mjs && vite-node tests/auth-session-origin.test.mjs && vite-node tests/projects.test.mjs && vite-node tests/project-write-lease.test.mjs && vite-node tests/project-lifecycle.test.mjs && vite-node tests/save.test.mjs && vite-node tests/save-units.test.mjs && vite-node tests/model-resources.test.mjs && vite-node tests/assets.test.mjs && vite-node tests/migration.test.mjs && vite-node tests/migration-fence.test.mjs && vite-node tests/r2-purge.test.mjs && vite-node tests/publication.test.mjs && vite-node tests/test-auth.test.mjs
+
+
+> @biskiq/api@0.1.0 build
+> tsc -p tsconfig.json
+
+✔ liveness is independent of Postgres (111.174416ms)
+✔ readiness succeeds after SELECT 1 (4.878583ms)
+✔ configuration validates deployment auth values without exposing secrets (1.402666ms)
+✔ Fastify closes the pool once through the guarded signal path (2.38925ms)
+✔ database logs retain only safe error metadata (0.139208ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 124.5405
+✔ login creates fresh state, PKCE, nonce, callback URL, and secure cookie (69.310375ms)
+✔ callback validates the session-bound state and forwards PKCE plus nonce (5.052208ms)
+✔ tampered state, rejected PKCE/token, and invalid identity never create a session (17.44975ms)
+✔ save login intent survives the OIDC round trip and access denial is bounded (4.1615ms)
+✔ project routes require a valid secure session and do not query anonymously (2.884667ms)
+✔ CORS, credentials, origin checks, and logout are restricted to the editor origin (3.620208ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 105.990417
+✔ conditional save/load appends immutable versions and isolates owners (239.055666ms)
+✔ project body parsing keeps malformed, invalid, mismatched and oversized requests distinct (17.857167ms)
+✔ asset routes require an F.2 project version, not merely an owned row (15.927417ms)
+✔ project payload just under 2 MiB is accepted (259.20675ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 552.436
+✔ lease acquisition latency consumes the fixed lifetime and rejects before inserting after expiry (1.314666ms)
+✔ a delayed commit response cannot grant a fresh local deadline or start writer work (0.228166ms)
+✔ synchronous lease checks abort writes after an elapsed-time jump even if the timer has not fired (0.214958ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50.212917
+✔ rename writes through Save, no-op appends no version, and stale or foreign owners are refused (144.317583ms)
+✔ active publication refuses deletion before fencing; unpublish then deletes only the exact project prefix (62.312333ms)
+✔ model approval serializes identical revisions, migration replay backfills source keys, and delete inventories them (100.087792ms)
+✔ approval and deletion cleanup progress with concurrent advisory waiters on a restricted pool (109.527583ms)
+✔ a single-connection pool can complete one approval and one deletion cleanup (69.740875ms)
+✔ failed approval finalization compensates newly written revision keys (33.129625ms)
+✔ asset upload is aborted by a committed delete lease revocation (137.357208ms)
+✔ model staging upload is aborted by a committed delete lease revocation (150.914208ms)
+✔ model approval revision writes are aborted by a committed delete lease revocation (172.625708ms)
+✔ a live writer is stopped at its fixed lease deadline without delete traffic (1935.015083ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2938.6
+✔ the live Save path stores the envelope and its source_format fence value (396.966125ms)
+✔ same-base writers: exactly one winner, the loser gets a conflict and no version (31.191458ms)
+✔ concurrent identical retries both replay the winner receipt without a second version (27.308417ms)
+✔ concurrent create-only: exactly one winner and one collision (12.26275ms)
+✔ concurrent create-only under one operation ID with different bytes refuses the loser (11.1765ms)
+✔ create-only collision is owner-blind and another owner is not-found (19.151625ms)
+✔ retry replays the original receipt; a changed payload under the same ID refuses (18.808834ms)
+✔ no partial version/pointer update when the pointer write fails (30.2225ms)
+✔ a non-F2 envelope is refused as invalid_project and writes nothing (2.852875ms)
+✔ a format-5 Layout is refused as invalid_project and writes nothing (2.090125ms)
+✔ a format-6 Wall carrying a role key is refused as invalid_project and writes nothing (10.128834ms)
+✔ scheme, source version, digest and canonical-bytes mismatches refuse as themselves (12.29625ms)
+✔ a saved revision identity cannot be reused for different contents (11.716542ms)
+✔ an older saved revision identity also cannot be reused for different contents (19.23125ms)
+✔ a pre-epoch writer is refused structurally by the schema fence (7.235042ms)
+✔ the unconditioned old-client body refuses with no write (0.866917ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 670.932375
+✔ a unit envelope saves create-only and the stored version is its canonical bytes (37.160875ms)
+✔ the live Save entry admits the F.2 unit capture directly (12.860208ms)
+✔ same-base unit writers: exactly one wins, the loser gets a conflict and writes nothing (21.451708ms)
+✔ an identical unit retry replays its receipt without another version (10.680917ms)
+✔ a changed unit payload under the same operation id refuses (11.817458ms)
+✔ a tampered unit revision and an unresolvable lock entry refuse before any write (3.256167ms)
+✔ the live entry selects the unit handler and no current-source handler survives (4.982125ms)
+✔ a capture with no precondition is refused by the request reader (1.223875ms)
+✔ a resource lock whose pin disagrees with the registry refuses before any write (1.905625ms)
+✔ a resource carrying both a revision and a pin round-trips with both identities (11.599375ms)
+✔ a captured envelope whose accepted revision belongs to another project refuses (0.594958ms)
+✔ a foreign expected-saved-base Save is not-found and never locks the owner row (22.143708ms)
+✔ a failure after version staging but before the pointer update leaves the prior version and base intact (42.128792ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2137.665334
+✔ a staged import is owner-only and adopts only bytes that match its declaration (198.059917ms)
+✔ the declaration enforces the owner-accepted 50 MiB / 25 MiB bounds (18.086334ms)
+✔ streams a source at 50 MiB and a derivative at 25 MiB through the upload route (185.476666ms)
+✔ approval refuses a non-glTF derivative and a source set missing a referenced file (63.370375ms)
+✔ approval admits a required meshopt fallback buffer and refuses an optional one (54.579542ms)
+✔ approval refuses a meshopt structure that reads bytes the container does not hold (75.437834ms)
+✔ a glTF source set with its referenced buffer and a self-contained derivative is approved (30.661375ms)
+✔ cancelling a staging import deletes its bytes and the import (18.547667ms)
+✔ staging past its 24 hour expiry refuses further uploads and is deleted with its bytes (25.3805ms)
+✔ Save admits a model resource pinned to an approved revision and refuses every other pin (290.015ms)
+✔ a second upload to an already-uploaded file answers 409 and leaves the staged bytes unchanged (32.492375ms)
+✔ approving identical content under two imports writes no revision object the second time (70.089541ms)
+✔ Save refuses a model resource and its lock pin whose locator names a foreign project (58.637625ms)
+✔ an upload whose import is cancelled while its body streams answers 404 and leaves no staged bytes (40.216583ms)
+✔ the source manifest hash orders paths by code unit (0.163041ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1209.926541
+✔ asset routes authenticate before parsing or touching storage (55.540584ms)
+✔ owned asset registration, streaming upload, metadata, bytes, and isolation work (10.387333ms)
+✔ asset upload validation and storage failure never produce ready metadata (9.456958ms)
+✔ finalize failure leaves pending metadata and compensates the uploaded object (3.690625ms)
+✔ multi-chunk PNG, WebP, and JPEG uploads record exact metadata and hashes (6.874208ms)
+✔ storage-less asset metadata remains readable without an object key (2.70625ms)
+✔ asset byte reads fail closed for missing, mismatched, and broken objects (4.539291ms)
+✔ concurrent uploads use distinct claims and only latest claim finalizes (3.109125ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 99.376125
+✔ migration runner records a migration once and reapplying is a no-op (5.610583ms)
+✔ the lock is the runner's first query and is released on the same session (0.827542ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 49.829667
+✔ a pre-epoch writer is refused before the column is known to it (90.283125ms)
+✔ a writer that knows the column still cannot claim a non-F.2 source (4.04925ms)
+✔ a pre-epoch document is refused even under the F.2 fence value (7.0815ms)
+✔ a missing, null, or non-number formatVersion is refused (10.393583ms)
+✔ two concurrent migration runners serialize and both finish cleanly (137.155125ms)
+✔ a declared F.2 envelope is admitted (7.700792ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 281.017041
+✔ deletes only unreferenced namespaced keys and is idempotent (1.105958ms)
+✔ refuses before migration 005 is active and deletes nothing (0.248459ms)
+✔ refuses while a release still pins object bytes and deletes nothing (0.111875ms)
+✔ refuses a shared bucket holding another deployment namespace and deletes nothing (0.101709ms)
+✔ refuses pre-namespace legacy keys and deletes nothing (0.103333ms)
+✔ refuses a bucket holding any foreign object and deletes nothing (0.100625ms)
+✔ refuses a key outside the written shape even if the store lists it (0.092542ms)
+✔ refuses when a remaining asset row points outside the namespace (0.134167ms)
+✔ refuses an unset or malformed namespace (0.159583ms)
+✔ refuses a store that cannot list and delete (0.12625ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50.116375
+✔ Publish and Update answer prepared-reader-required and write nothing (88.290541ms)
+✔ Publish still requires an owner session (0.330958ms)
+✔ status is truthful for a never-published F.2 project and owner scoped (11.612791ms)
+✔ Unpublish stays truthful, OCC-checked and idempotent for a retained row (17.112ms)
+✔ Unpublish of a never-published project is an honest not-found (9.247583ms)
+✔ every public read is an honest not-found, including a prior /p/ ID (7.680042ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165.172166
+✔ enabled seam mints the canonical session and protected routes work (61.145958ms)
+✔ wrong, missing, or malformed bearer secrets create no session (7.675875ms)
+✔ unknown test identities and malformed bodies are rejected without a session (3.540959ms)
+✔ seam is structurally absent without the option, and fails closed without sessions (4.188666ms)
+✔ config fails closed and never leaks the secret (0.565208ms)
+✔ seam user B cannot reach seam user A projects (real Postgres) (38.525209ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 124.362084
