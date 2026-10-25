@@ -7,7 +7,8 @@ import {
 	isSavedBaseToken,
 	readSaveRequest,
 	type SaveAcknowledgement,
-	type SaveRequest
+	type SaveRequest,
+	type SavePrecondition
 } from '@portfolio/project-model/save';
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 
@@ -64,6 +65,18 @@ export type ProjectSummary = {
 };
 
 export type SavedProject = Omit<ProjectSummary, 'id'> & { projectId: string };
+export type ProjectLifecyclePrecondition = Extract<SavePrecondition, { kind: 'expected-saved-base' }>;
+export type RenameProjectRequest = {
+	name: string;
+	precondition: ProjectLifecyclePrecondition;
+};
+export type DeleteProjectRequest = {
+	precondition: ProjectLifecyclePrecondition;
+};
+export type DeleteProjectAcknowledgement = {
+	projectId: string;
+	cleanup: 'complete' | 'pending';
+};
 export type LoadedProject = SavedProject & {
 	document: unknown;
 	/** Additive saved-base metadata; absent on a pre-migration row. */
@@ -94,6 +107,18 @@ export type ProjectApi = {
 	listProjects(signal?: AbortSignal): Promise<ProjectSummary[]>;
 	/** The one write: conditional `SaveAcceptedSource@1`, never a bare document. */
 	saveAcceptedSource(request: SaveRequest, signal?: AbortSignal): Promise<SaveAcknowledgement>;
+	/** Rename through the expected-base lifecycle path; the server appends an immutable version. */
+	renameProject(
+		projectId: string,
+		request: RenameProjectRequest,
+		signal?: AbortSignal
+	): Promise<SaveAcknowledgement>;
+	/** Delete after caller confirmation; pending means owned-byte cleanup still needs retry. */
+	deleteProject(
+		projectId: string,
+		request: DeleteProjectRequest,
+		signal?: AbortSignal
+	): Promise<DeleteProjectAcknowledgement>;
 	loadProject(projectId: string, signal?: AbortSignal): Promise<LoadedProject>;
 	listAssets(projectId: string, signal?: AbortSignal): Promise<ProjectAssetMetadata[]>;
 	registerAsset(projectId: string, name: string, signal?: AbortSignal): Promise<ProjectAssetMetadata>;
@@ -117,7 +142,9 @@ export type ProjectPersistenceErrorCode =
 	/** The expected saved base moved; reload explicitly, never overwrite. */
 	| 'conflict'
 	/** `create-only` found an existing project; owner-blind. */
-	| 'collision';
+	| 'collision'
+	/** A project-owned object writer still holds a live lease; retry after it stops. */
+	| 'project-busy';
 
 export class ProjectPersistenceError extends Error {
 	constructor(
@@ -172,6 +199,32 @@ export function createProjectApi(
 				{ method: 'PUT', body: JSON.stringify(request) },
 				signal
 			).then(readSaveAcknowledgement),
+		renameProject: (projectId, request, signal) =>
+			requestJson(
+				requestFetch,
+				origin,
+				`/projects/${encodeURIComponent(projectId)}`,
+				{ method: 'PATCH', body: JSON.stringify(request) },
+				signal
+			)
+				.then(readSaveAcknowledgement)
+				.then((acknowledgement) => {
+					if (acknowledgement.projectId !== projectId) throw invalidResponse();
+					return acknowledgement;
+				}),
+		deleteProject: (projectId, request, signal) =>
+			requestJson(
+				requestFetch,
+				origin,
+				`/projects/${encodeURIComponent(projectId)}`,
+				{ method: 'DELETE', body: JSON.stringify(request) },
+				signal
+			)
+				.then(readDeleteAcknowledgement)
+				.then((acknowledgement) => {
+					if (acknowledgement.projectId !== projectId) throw invalidResponse();
+					return acknowledgement;
+				}),
 		loadProject: (projectId, signal) =>
 			requestJson(
 				requestFetch,
@@ -541,6 +594,14 @@ async function readBoundedAssetBody(response: Response, expectedLength: number):
 function responseError(status: number, body: unknown): ProjectPersistenceError {
 	const serverCode = readErrorCode(body);
 	const issues = readErrorIssues(body);
+	if (serverCode === 'project-busy' || serverCode === 'project_busy') {
+		return new ProjectPersistenceError(
+			'project-busy',
+			readErrorMessage(body) ?? 'Project cleanup is blocked by an active write; retry after it stops',
+			status,
+			serverCode
+		);
+	}
 	if (status === 401) return new ProjectPersistenceError('auth', 'Sign-in is required', status, serverCode);
 	if (status === 404) return new ProjectPersistenceError('not-found', 'Project not found', status, serverCode);
 	if (status === 413) return new ProjectPersistenceError('too-large', 'Project payload is too large', status, serverCode);
@@ -651,6 +712,14 @@ function readSaveAcknowledgement(value: unknown): SaveAcknowledgement {
 		savedBaseToken,
 		savedRevision: readRevision(value.savedRevision),
 		sourceContentId: readContentId(value.sourceContentId)
+	};
+}
+
+function readDeleteAcknowledgement(value: unknown): DeleteProjectAcknowledgement {
+	if (!isRecord(value)) throw invalidResponse();
+	return {
+		projectId: readString(value.projectId),
+		cleanup: readEnum(value.cleanup, ['complete', 'pending'])
 	};
 }
 

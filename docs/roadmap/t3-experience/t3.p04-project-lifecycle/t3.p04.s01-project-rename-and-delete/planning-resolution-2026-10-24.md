@@ -6,9 +6,11 @@ criteria) · **Phase:** [T3.P04](../README.md) · **Authorization:**
 
 This record resolves the plan's open implementation questions against the tree at `main`
 `2215af34`. It changes no format or verification tier, and it amends ownership only where §3 says
-so. It decides the routine mechanisms, proposes the two rulings that change a persistence contract
-or product scope, and names every amendment to the plan. Nothing here authorizes implementation, and
-no behaviour below is built.
+so. It decides the routine mechanisms and records the 2026-10-24 proposals that change a persistence
+contract or product scope. The owner ratified both proposals on 2026-10-25 in the
+[PR #188 review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932);
+the current contract is folded into the R1/R2 sections below and the implementation plan. This
+resolution itself authorizes no code; PR #188 separately released the slice.
 
 **Revised twice on 2026-10-24 after review.** The first review rejected the claim that a prefix
 sweep plus an empty second listing proved cleanup complete. That produced the write fence, the
@@ -17,7 +19,7 @@ hole (a lease that merely expires does not prove its writer stopped) and an inve
 model source copies are not recorded in any column). Section 1 now revokes leases and requires an
 acknowledged stop or an enforced write deadline before completion, section 2 persists the revision's
 full key set, and section 3 states the inventory's exact coverage rather than overstating it. R1 and
-R2 are recorded as **proposed** rulings and remain unfrozen until the owner ratifies them.
+R2 were proposals in this 2026-10-24 resolution and are now owner-ratified.
 
 ```text
 DECIDED HERE (routine mechanism, inside the plan's stated allowance)
@@ -29,7 +31,7 @@ DECIDED HERE (routine mechanism, inside the plan's stated allowance)
   4  T1 shell integration                     → list-row actions + Head commands, no new shell
   5  Save/Delete concurrency                  → one project row lock + expected base, ordered deletes
 
-PROPOSED OWNER RULINGS — NOT RATIFIED (R1/R2 below; nothing is frozen until they are)
+OWNER-RATIFIED RULINGS (2026-10-25; [PR #188 review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932))
   R1  the authored envelope owns the name     → rename appends one immutable version, F4-reconciled
   R2  delete of a project with a publication  → refuse only while a publication is ACTIVE
 ```
@@ -117,8 +119,9 @@ all of:
 3. `now() - fenced_at >= MAX_WRITE + RENEW + abort margin`, so no request that began before the
    fence can still be writing;
 4. the inventory keys deleted; and
-5. two consecutive scoped listings, both empty, the second taken **at or after** that bound (so a
-   key from a write that started before the fence has had its whole lifetime to appear).
+5. two consecutive scoped listings, both empty: take the first no earlier than the enforced bound
+   after `fenced_at`, then take the second at least that same bound after the first. A key from a
+   write that started before the fence has had its full lifetime to appear before either can complete.
 
 Only then does the record reach `state = 'complete'`. Otherwise the response is `cleanup: pending`,
 retried by (a) repeating the `DELETE` and (b) the owner-run CLI in the existing `purge-objects.ts`
@@ -137,10 +140,10 @@ the `PutObject` while the writer's heartbeat stops and its lease expires early (
 in the future):
 
 1. delete revokes and answers `project-busy`; nothing is removed;
-2. before `deadline_at`, cleanup lists twice, finds the prefix empty and must still report
-   `pending` — the bound, not the empty listing, is what licenses `complete`;
-3. past the bound the handler's `AbortController` fires, the store aborts the held write and nothing
-   commits, so the next run marks `complete`;
+2. before the enforced bound, cleanup may find the prefix empty, but it must report `pending`;
+3. after the bound the handler's `AbortController` fires, the store aborts the held write and nothing
+   commits; the first post-bound empty listing still leaves cleanup `pending` until a second empty
+   scoped listing arrives at least one full bound later;
 4. a write held past its deadline is aborted by the handler before it can commit, so conforming
    code cannot produce a post-bound key;
 5. the hostile variant lets the fake commit after `complete`; the CLI verify run must find the key,
@@ -316,7 +319,7 @@ matches the mounted session is dropped (the same rule the Save client already ne
 switch). Partial network failure keeps the operation state so the UI can refresh/retry, and the UI
 distinguishes "inaccessible project" from "pending byte cleanup".
 
-## R1 — Which field owns the project name? (proposed: the authored envelope)
+## R1 — Which field owns the project name? (ratified: the authored envelope)
 
 **The conflict.** The plan requires rename to preserve source units, source revision, history and
 stored versions. But Save stamps `projects.name` from the admitted source's `name` on every save, and
@@ -324,13 +327,12 @@ the list and title read the row. So a metadata-only rename is reverted by the ne
 that still carries the old name; leaving the two in place instead creates a silent divergence between
 the list, the title and the stored envelope.
 
-**Proposed ruling (2026-10-24, awaiting ratification): option A.** The authored envelope `name` is the
-only truth. Rename writes it as one new immutable version and retains every previous version, stable
-source identities and publication pins. The alternative — the row owning the display name while Save
-stops stamping it — would keep two writable names and changes what conditional Save writes; it is
-rejected. This is an **intentional amendment** to the plan's metadata-only rename and its "preserves
-source revision" sentence, recorded here and in the plan, not a routine detail, and it is **not
-frozen** until the owner ratifies it.
+**Owner-ratified ruling (2026-10-25): option A.** The authored envelope `name` is the only truth.
+Rename writes it as one new immutable version and retains every previous version, stable source
+identities and publication pins. The alternative — the row owning the display name while Save stops
+stamping it — would keep two writable names and change what conditional Save writes; it is rejected.
+This is an intentional amendment to the plan's former metadata-only rename and its "preserves source
+revision" sentence, accepted by the owner in the [PR #188 review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932).
 
 **How it works, without inventing a revision identity.** `project_versions.document` holds the whole
 document and `loadProject` already reads it, so the server can load the latest document, change only
@@ -355,10 +357,10 @@ active publication keeps serving the pre-rename version and its old name until t
 publication. That is correct for an immutable release and is recorded here so implementation does not
 "fix" it by rewriting a pinned version.
 
-**Cost.** Rename becomes a version-producing write (one extra document version and receipt per
-rename) rather than a row update. Proposed, not yet accepted.
+**Accepted tradeoff.** Rename is a version-producing write (one extra document version and receipt
+per changed name) rather than a row update. An unchanged name remains a no-op.
 
-## R2 — What does delete do with a published project? (proposed: active only)
+## R2 — What does delete do with a published project? (ratified: active only)
 
 **The gap.** The plan's cleanup list covers stored versions, staging and approved model resources, and
 its probes never mention `publications` or `releases`. Yet `publications.project_id` references the
@@ -372,8 +374,7 @@ API-level rows can exist.
 published project could never be deleted. The owner raised this in review, and it is why R2's
 precondition is stated as *active*, not *present*.
 
-**Proposed ruling (2026-10-24, awaiting ratification).** Refuse delete **only while a publication is
-active**
+**Owner-ratified ruling (2026-10-25).** Refuse delete **only while a publication is active**
 (`publications.active_version IS NOT NULL`), with an explicit "unpublish this project before deleting
 it" refusal and the project untouched. After unpublication the project is deletable: the deletion
 transaction removes the retained inactive `publications` row and its dependent `releases` rows before
@@ -401,8 +402,8 @@ Two review rounds on 2026-10-24. Every change below answers a finding; nothing w
 | **F1** — an in-flight writer can create a key after cleanup "completed" | §1 replaces the listing-only completion test with a write fence on all three object writers, a retryable `project-busy` refusal, and per-writer compensation on failed finalization. |
 | **F2** — the durable record dropped the plan's key inventory | §2 adds `key_inventory jsonb` to `project_deletions`; the inventory read inside the deletion transaction is the durable truth, and the scoped listing is only the completion check. |
 | **F3** — `ObjectStore.list()` returns the whole bucket | §1 requires a project-scoped listing. Sibling projects' keys are ignored, never treated as a cleanup error, and this stays distinct from `r2-purge`'s global epoch contract. |
-| **R1** — name authority | The authored envelope would own the name; rename appends one immutable version through the shared save path, with the three F4 obligations above and dirty-draft preservation. |
-| **R2** — publication precondition | Refuse only while the publication is **active**; remove the retained inactive row and its dependent releases after unpublication. The first draft's row-existence precondition was unsatisfiable. |
+| **R1** — name authority | Owner-ratified 2026-10-25: the authored envelope owns the name; rename appends one immutable version through the shared save path, with the three F4 obligations above and dirty-draft preservation. |
+| **R2** — publication precondition | Owner-ratified 2026-10-25: refuse only while the publication is **active**; remove the retained inactive row and its dependent releases after unpublication. The first draft's row-existence precondition was unsatisfiable. |
 
 ### Round 2 — the expiry hole and the source-copy gap
 
@@ -410,31 +411,33 @@ Two review rounds on 2026-10-24. Every change below answers a finding; nothing w
 | --- | --- |
 | **F1 (follow-up)** — lease expiry does not prove an in-flight write has terminated | §1 makes the lease **revocable**: the writer heartbeats every 2 s and an empty renewal result aborts the stream and the `PutObject`; delete revokes and answers `project-busy`, then proceeds only when every lease is released or past a non-extendable `deadline_at` enforced in the handler. Completion waits out that enforced bound, then requires two empty scoped listings. A regression scenario for a write that outlives its lease is specified. |
 | **F2 (follow-up)** — approved model source copies are absent from the persisted inventory | §2 adds `model_revisions.source_keys`, written in the same `INSERT` as the owning row through the shared `revisionObjectKeys` helper, backfilled from retained import paths, and marked `sweep-dependent` where backfill is impossible. A coverage statement limits the inventory's claim to keys an owning row records. |
-| **R1 / R2 status** | Recorded as **proposed** rulings awaiting ratification, not as owner decisions; no behaviour is frozen. |
+| **R1 / R2 status** | The 2026-10-24 proposal discussion is historical; both rulings were ratified by the owner on 2026-10-25 ([PR #188 review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932)). |
 
 ### What this amends in the approved plan (named, not silent)
 
-- rename changes from metadata-only to one immutable version (**proposed** R1);
+- rename changes from metadata-only to one immutable version (ratified R1);
 - cleanup gains a revocable fence, a persisted complete key set, and one migration carrying two
   tables plus one column (F1, F2);
-- delete gains a defined publication rule it previously lacked (**proposed** R2).
+- delete gains a defined publication rule it previously lacked (ratified R2).
 
 The plan's verification tier, file ownership and scope boundaries are unchanged; the amended text is
 in [the plan](./implementation-plan.md).
 
-## Owner briefing — what this changes and what it does not
+## Owner briefing — current implementation basis
 
 ```text
-authorization      T3.P04.S01 released; implementation may start after the coordination PR merges
+authorization      T3.P04.S01 released; coordination PR #188 merged at
+                   976323da9e18e96978649e595bc555021964631a
+ratified           R1 authored envelope / immutable rename · R2 active-only delete refusal
+                   ([owner review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932))
 decided            5 mechanisms; the revocable fence, the source-key column and the coverage
                    statement correct the plan's mechanism, not its product scope
-proposed rulings   R1 authored envelope, one new version · R2 active-only delete refusal
-                   — NEITHER IS FROZEN UNTIL THE OWNER RATIFIES IT
 merge condition    T2 reviews the source_keys column and applies the lease to uploadModelFile and
                    approveModelImport (+compensation); an unfenced writer or an unrecorded source
                    key set is a stop-and-report, not a sweep-only fallback
-not ratified       no format, gate, capability, performance budget, publication lifecycle or scope
-not built          no route, migration, client call, control or cleanup code in this PR
+scope unchanged    no format, gate, capability, performance budget, publication lifecycle or scope
+not built here     this planning-resolution record contains no route, migration, client call,
+                   control or cleanup code
 owners             T3 persistence/API/client · T2 import/admission + handoff review ·
                    T1 shell patch + review · S06 untouched, harness untouched
 ```

@@ -10,26 +10,26 @@ PHASE: T3.P01 Camera/Experience foundation → closed 2026-10-20
        T3.P03 Shared acceptance and measurement → closed 2026-10-24
        ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md
        (final gate T3.P03.S02 accepted 2026-10-23 as owner-override at eabd4b88)
-       T3.P04 Project lifecycle → approved
+       T3.P04 Project lifecycle → active
        ../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md
-ACTIVE: T3.P04.S01 Project rename and delete — authorized and released 2026-10-24, NOT started.
-        No implementation, migration, route or UI exists for it; this coordination PR is
-        documentation only.
-NEXT:   Start T3.P04.S01 after its coordination PR merges on main:
-        1. runbook start step — re-verify F2.unit-envelope@1:unit-envelope-v1 and
-           F4.intent-acceptance@1:conditional-save-units-v1 at the slice's trusted base, and its
-           now.md row;
-        2. read the planning resolution's five mechanisms and its two review corrections — the
-           name/publication contract rulings are PROPOSED and not ratified, so nothing about
-           rename/delete persistence is frozen; the cleanup design is a revocable write lease
-           with an enforced write bound, a persisted complete key set (including approved source
-           copies) and a bounded scoped sweep, not a listing-only sweep;
-        3. T2 review of the API handoff (owned-key inventory, the `model_revisions.source_keys`
-           column and its backfill, and the revocable lease at uploadModelFile and
-           approveModelImport with per-writer compensation) before touching shared API files —
-           no project-owned writer may bypass the lease;
-        4. the bounded T1 shell patch is serialized against T1.P02.S06's recorded claim and
-           T1-reviewed before implementation.
+ACTIVE: T3.P04.S01 Project rename and delete — implementation started 2026-10-25 from trusted
+        base `976323da9e18e96978649e595bc555021964631a` (PR #188 merged on main).
+        R1/R2 were ratified by the owner on 2026-10-25; the plan and phase references carry the
+        accepted rules. T3's additive client transport and unrun client probes are prepared;
+        acceptance remains pending.
+NEXT:   1. Obtain T2 review of the [API handoff material](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/t2-api-handoff.md)
+           before editing shared API files: owned-key inventory, `model_revisions.source_keys`
+           migration/backfill, and revocable leases plus compensation at `uploadModelFile` and
+           `approveModelImport`.
+        2. Keep the bounded T1 shell patch behind T1.P02.S06's recorded shell-file claim and T1
+           pre-implementation review ([handoff material](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/t1-shell-handoff.md));
+           do not touch claimed files.
+        3. Complete the T3-owned lifecycle API and remaining lifecycle/concurrency/cleanup probes
+           after the T2 handoff review; the T1-owned dirty-state integration remains with its shell
+           review. Verification is exhaustive, but the owner has deferred all tests, builds and
+           other heavy verification until S06 is explicitly finished.
+        4. Open a draft implementation PR while reviews and required verification remain pending;
+           do not accept/close the slice or phase or merge it.
 RELEASE: ../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md
          (closes T3.P02 and T3.P03, authorizes and releases T3.P04.S01; the live release row is
          docs/roadmap/now.md)
@@ -40,8 +40,9 @@ ROUTE:   ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project
          → ../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md
          (closed gate artifacts remain stubs at their own paths: T3.P02.S02 and T3.P03.S02
          acceptance.md, anchors 8cc30c94 and a65db2e0, tags closed/T3.P02 and closed/T3.P03)
-BLOCKER: none. S06 owns the T1 shell-file claim; P04 queues behind it and behind the reference-machine
-         perf lock. No T3 phase close or track event is pending.
+BLOCKER: T2 review gates shared API edits. S06's recorded claim and required T1 review gate only the
+         shell patch. The reference-machine benchmark prohibits tests/builds/heavy verification
+         until the owner confirms S06 is finished; do not infer completion or poll for it.
 CARRY:   T3.P02 Scope A (performance, deferred 2026-10-24, not claimed): traced Preview first frame;
          capture/bind completion; M-workload F10 rows; F13 re-measure; reference-machine run; Stage
          initial-load delta. Transferred as measurement to T1.P02.S06; a miss in T3-owned code is

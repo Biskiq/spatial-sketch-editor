@@ -1,10 +1,10 @@
 # T3.P04 — Project lifecycle
 
-**Phase:** T3.P04 · **Status:** **approved** — registered 2026-10-22 for documentation-only
-post-Batch-E coordination, and its single child `T3.P04.S01` authorized and released 2026-10-24
+**Phase:** T3.P04 · **Status:** **active** — registered 2026-10-22 for post-Batch-E coordination;
+its single child `T3.P04.S01` was authorized and released 2026-10-24, and implementation started
+from merged coordination base `976323da9e18e96978649e595bc555021964631a` on 2026-10-25
 ([decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
-Implementation starts once that coordination PR is merged on `main`; the authorization itself ships
-no implementation. **Track:** [T3](../README.md) ·
+**Track:** [T3](../README.md) ·
 **Runbook:** [T3 operations](../../../operations/t3-experience/README.md) · **Coordination:**
 [next parallel batch](../../cross-track-execution.md#next-parallel-batch)
 
@@ -27,7 +27,7 @@ publication, prepared delivery or schema migration is implied.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P04.S01 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](./t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [pending](./t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized and released 2026-10-24 ([decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md); release row in [now.md](../../now.md)); not started; its bounded T1 shell patch is serialized against `T1.P02.S06` and T1-reviewed; the name/publication contract rulings are **proposed, awaiting owner ratification**, and its cleanup mechanism was corrected twice in review ([planning resolution](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)) |
+| T3.P04.S01 | in-progress | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](./t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [pending](./t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized/released 2026-10-24; implementation started on merged base `976323da9e18e96978649e595bc555021964631a`; R1/R2 ratified 2026-10-25 ([owner review on PR #188](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932)); T2 API-handoff review is required before shared API edits; the bounded T1 shell patch remains serialized behind `T1.P02.S06` and requires T1 pre-implementation review; cleanup fence/inventory decisions remain in the [planning resolution](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md) |
 
 ```text
 FINAL PHASE GATE: T3.P04.S01 → ./t3.p04.s01-project-rename-and-delete/acceptance.md
@@ -40,13 +40,11 @@ The single child's exhaustive integrated acceptance is the phase gate. It provid
 capability gate/version. A passed final gate makes this phase closable; only an explicit owner
 phase-close request closes it. The F2 production epoch activation remains owner-operated.
 
-The [planning review against current `main`](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
-resolves the routine questions — durable cleanup, migration contingency, the T2 API handoff, the T1
-shell patch and Save/Delete concurrency — and proposes that the authored envelope owns the project
-name (rename appends one immutable version) and that delete refuses only while a publication is
-active. Both are **proposed rulings, not ratified**, so the rename/delete persistence behaviour is
-not frozen. Its
-[review corrections](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md#review-corrections)
-also replace the first draft's listing-only cleanup claim with a revocable write fence and an enforced
-write bound, persist the approved revision's full key set, and scope the listing to the project.
-Implementation may not merge while a project-owned object writer bypasses that fence.
+The [planning resolution](./t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
+records the cleanup and migration mechanisms, the T2 API handoff, the T1 shell patch, and Save/Delete
+concurrency. The owner ratified both product rules on 2026-10-25: the authored envelope owns the
+project name and rename appends one immutable version; delete refuses only while a publication is
+active. The [implementation plan](./t3.p04.s01-project-rename-and-delete/implementation-plan.md)
+is the current contract. Cleanup still requires a revocable write fence with an enforced write bound,
+a persisted complete key inventory, and two empty project-scoped listings spaced by that bound.
+Implementation may not merge while any project-owned object writer bypasses the fence.

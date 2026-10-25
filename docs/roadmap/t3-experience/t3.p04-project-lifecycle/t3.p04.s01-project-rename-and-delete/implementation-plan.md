@@ -1,7 +1,7 @@
 # T3.P04.S01 — Project rename and delete
 
-**Slice:** T3.P04.S01 · **Status:** **approved** — owner-authorized and released 2026-10-24, not
-started. The authorization ships no implementation.
+**Slice:** T3.P04.S01 · **Status:** **in progress** — owner-authorized/released 2026-10-24;
+implementation started 2026-10-25 from merged base `976323da9e18e96978649e595bc555021964631a`.
 **Phase:** [T3.P04](../README.md) · **Runbook:**
 [T3 operations](../../../../operations/t3-experience/README.md) · **Coordination:**
 [next parallel batch](../../../cross-track-execution.md#next-parallel-batch)
@@ -13,48 +13,36 @@ VERIFICATION: exhaustive
 ```
 
 This is T3.P04's sole child and **FINAL PHASE GATE**. It creates no gate/version, public
-release capability or milestone acceptance. The proposed scope fulfils C3/K4; it is separate from
+release capability or milestone acceptance. The released scope fulfils C3/K4; it is separate from
 Capture/Preview's bounded final gate.
 
-## Planning review, release and proposed rulings (2026-10-24)
+## Current plan basis
 
-Verified against current `main` before release: every path in this plan's file-ownership table
-still exists, and no `PATCH` or `DELETE` route for a project exists yet. The review found five
-unresolved issues and records them, with proposals and alternatives, in the
-[planning resolution](./planning-resolution-2026-10-24.md): the durable deletion/cleanup
-mechanism, the migration contingency, the T2 → T3 API handoff, the T1 shell integration, and
-Save/Delete concurrency. This plan's ownership and verification tier are unchanged.
+The [planning resolution](./planning-resolution-2026-10-24.md) records the cleanup mechanism,
+migration contingency, T2 API handoff, T1 shell integration, and Save/Delete concurrency. The owner
+ratified R1 and R2 on 2026-10-25 in the [PR #188 review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932):
+the authored envelope owns the name and rename appends one immutable version; delete refuses only
+while a publication is active and may remove the retained inactive publication and releases after
+unpublication. The behavior below is the current contract.
 
-**Two reviews, 2026-10-24 — corrections and proposed rulings.** The first review accepted the release
-and returned the deletion architecture; the second returned the fence's expiry hole and an inventory
-gap. The resolution's [review corrections](./planning-resolution-2026-10-24.md#review-corrections)
-name every change. Two **proposed** owner rulings, neither ratified, would amend this plan's text
-below, deliberately and visibly:
-
-- **which field owns the project name (R1, proposed)** — the authored envelope `name` would be the
-  only truth. Rename therefore writes one **new immutable version**, not metadata-only; the plan's
-  former "preserves source revision" sentence would be superseded.
-- **what delete does with a published project (R2, proposed)** — delete would refuse only while a
-  publication is **active**, and remove the retained inactive publication and its releases after
-  unpublication.
-
-Until the owner ratifies both, this plan's rename/delete persistence behaviour is **not frozen**: the
-sections below state the proposed behaviour, and implementation may not treat it as settled.
-
-The release ([decision](../../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md))
-covers this slice only; its start conditions are the next section, and the runbook still re-verifies
-every consumed gate and scope at the implementation's own trusted base.
+The slice was released by the [T3 phase authorization](../../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)
+and started at merged base `976323da9e18e96978649e595bc555021964631a`. The runbook start checks
+confirmed the consumed gate versions active at that base and found no T3.P04.S01 architecture-cycle
+exposure hook. The exhaustive verification declaration remains in force; execution is deferred by
+the owner until T1.P02.S06 is explicitly finished.
 
 ## Start and ownership dependencies
 
-T3.P02.S02 is accepted and this plan is owner-authorized and released on `now.md`; start once the
-coordination PR carrying that release merges, and after the runbook verifies every consumed
-gate/scope on the trusted base. Use
-post-S01 T2 model storage and retention interfaces on integrated `main`. Coordinate with
-then-current T2 import/placement work before changing shared API files; T3 takes the lifecycle
+T3.P02.S02 is accepted and this plan is owner-authorized and released on `now.md`. The coordination
+PR carrying that release merged as PR #188; the start check verified every consumed gate/scope on
+the trusted base. Use post-S01 T2 model storage and retention interfaces on integrated `main`.
+Coordinate with then-current T2 import/placement work before changing shared API files; T3 takes the lifecycle
 API patch, T2 retains import/admission and model-format ownership. T1 owns the shell patch and
 reviews it before implementation. This capacity ordering imposes no predecessor on the
 immediate T1/T2/T3 parallel batch.
+
+The outstanding review surfaces are prepared in the [T2 API handoff](./t2-api-handoff.md) and the
+[T1 shell handoff](./t1-shell-handoff.md). Neither substitutes for the required owner review.
 
 ## Concrete behavior
 
@@ -70,8 +58,8 @@ A successful rename appends **one new immutable version** whose only change is `
 same admission/conditional-save path a Save uses, and returns a refreshed summary and saved-base
 metadata needed by the next conditional Save. It preserves source units, Camera/Experience
 identities, every previous version, stable source identities and publication pins; the
-[proposed ruling](./planning-resolution-2026-10-24.md#r1--which-field-owns-the-project-name-proposed-the-authored-envelope)
-(**pending ratification**) owns the persistence contract. It must not manufacture a revision
+[owner-ratified ruling](./planning-resolution-2026-10-24.md#r1--which-field-owns-the-project-name-ratified-the-authored-envelope)
+owns the persistence contract. It must not manufacture a revision
 identity: a fresh id is minted and
 never reused for different contents (`revision-reuse` governs), the name-only document passes ordinary
 unit validation, and a refusal writes nothing. Unchanged names are a no-op.
@@ -98,7 +86,7 @@ stale request refuses without destroying local work. Retrying an already complet
 existing not-found/privacy policy applied consistently.
 
 A project with an **active** publication refuses with an explicit unpublish-first message and is left
-untouched (**proposed** R2, pending ratification). After unpublication the deletion removes the
+untouched (owner-ratified R2). After unpublication the deletion removes the
 retained inactive publication and its dependent releases; a public link never stops resolving as a
 silent side effect of a delete that had an active publication.
 
@@ -126,7 +114,8 @@ Acknowledge completion only when all of the following hold: the record committed
 every write lease is released or past its non-extendable deadline; the enforced write bound
 (`MAX_WRITE` + renewal + abort margin) has elapsed since `fenced_at`; the inventory keys are deleted;
 and **two consecutive project-scoped listings** (filtered to `projects/<ns>/<projectId>/`;
-`ObjectStore.list()` returns the whole bucket) spaced by that bound are empty. Sibling projects'
+`ObjectStore.list()` returns the whole bucket) are empty. Take the first no earlier than that bound
+after `fenced_at`, then take the second at least the same bound after the first. Sibling projects'
 keys are ignored, never an error. A lease's mere expiry is not enough: the handler deadline and the
 revocation check on each heartbeat are what make the bound enforceable.
 Exercise a retry through the owned lifecycle cleanup entry point; pending cleanup is an explicit
