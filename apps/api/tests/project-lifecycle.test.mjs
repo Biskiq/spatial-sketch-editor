@@ -707,6 +707,23 @@ test('a single-connection pool can complete one approval and one deletion cleanu
 	});
 	try {
 		await oneSlotApp.ready();
+		const cleanupProjectId = track();
+		const cleanupSaved = await save(cleanupProjectId, ownerCookie, 'Single-connection cleanup');
+		const deleted = await oneSlotApp.inject({
+			method: 'DELETE',
+			url: `/projects/${cleanupProjectId}`,
+			headers: { cookie: ownerCookie, 'content-type': 'application/json' },
+			payload: { precondition: currentPrecondition(cleanupSaved.json().savedBaseToken) }
+		});
+		assert.equal(deleted.statusCode, 202, JSON.stringify(deleted.json()));
+		assert.equal(deleted.json().cleanup, 'pending');
+		const record = await pool.query(
+			'SELECT attempt_count, first_empty_at FROM project_deletions WHERE project_id = $1',
+			[cleanupProjectId]
+		);
+		assert.equal(record.rows[0].attempt_count, 1);
+		assert.ok(record.rows[0].first_empty_at);
+
 		const projectId = track();
 		await save(projectId, ownerCookie, 'Single-connection approval');
 		const source = validGlb(5);
@@ -733,22 +750,6 @@ test('a single-connection pool can complete one approval and one deletion cleanu
 		assert.deepEqual(store.objects.get(revision.rows[0].derivative_key).bytes, derivative);
 		assert.deepEqual(store.objects.get(revision.rows[0].source_keys[0]).bytes, source);
 
-		const cleanupProjectId = track();
-		const saved = await save(cleanupProjectId, ownerCookie, 'Single-connection cleanup');
-		const deleted = await oneSlotApp.inject({
-			method: 'DELETE',
-			url: `/projects/${cleanupProjectId}`,
-			headers: { cookie: ownerCookie, 'content-type': 'application/json' },
-			payload: { precondition: currentPrecondition(saved.json().savedBaseToken) }
-		});
-		assert.equal(deleted.statusCode, 202, JSON.stringify(deleted.json()));
-		assert.equal(deleted.json().cleanup, 'pending');
-		const record = await pool.query(
-			'SELECT attempt_count, first_empty_at FROM project_deletions WHERE project_id = $1',
-			[cleanupProjectId]
-		);
-		assert.equal(record.rows[0].attempt_count, 1);
-		assert.ok(record.rows[0].first_empty_at);
 		await oneSlotPool.query('SELECT 1');
 		assert.equal(oneSlotPool.waitingCount, 0);
 		assert.equal(oneSlotPool.idleCount, oneSlotPool.totalCount);
