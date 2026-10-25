@@ -138,8 +138,13 @@ function timed(name: string, kind: Phase['kind'], work: () => number | null, ext
 	return phase;
 }
 
-function playwright(specs: string[], env: Record<string, string>): number | null {
-	const result = spawnSync('npx', ['playwright', 'test', '--config', 'perf/playwright.config.ts', `--project=${PROJECT}`, ...specs], {
+/**
+ * One Playwright invocation. Playwright empties its output directory at every
+ * start, so each phase writes its failure artifacts to its own directory.
+ */
+function playwright(phase: string, specs: string[], env: Record<string, string>): number | null {
+	const output = join(env.PERF_RESULTS_DIR ?? resultsDirectory(), 'artifacts', phase.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase());
+	const result = spawnSync('npx', ['playwright', 'test', '--config', 'perf/playwright.config.ts', `--project=${PROJECT}`, `--output=${output}`, ...specs], {
 		cwd: EDITOR,
 		stdio: 'inherit',
 		env: { ...process.env, ...env }
@@ -275,18 +280,18 @@ async function main(): Promise<void> {
 				}, { thermalBefore: before }));
 				await boundary();
 			}
-			phases.push(timed(`tier ${tier}`, 'flows', () => playwright(TIER_FLOWS, { ...flowEnv, PERF_TIERS: tier }), { thermalBefore: run('pmset', ['-g', 'therm']) }));
+			phases.push(timed(`tier ${tier}`, 'flows', () => playwright(`tier ${tier}`, TIER_FLOWS, { ...flowEnv, PERF_TIERS: tier }), { thermalBefore: run('pmset', ['-g', 'therm']) }));
 			await boundary();
 		}
-		phases.push(timed('E5 browser counts', 'flows', () => playwright(['flows/e5-sweep.spec.ts'], flowEnv), { thermalBefore: run('pmset', ['-g', 'therm']) }));
+		phases.push(timed('E5 browser counts', 'flows', () => playwright('e5', ['flows/e5-sweep.spec.ts'], flowEnv), { thermalBefore: run('pmset', ['-g', 'therm']) }));
 		await boundary();
 		if (SWEEP_LATENCY) {
 			// F3 (the fixed edits on the focus Wall) and F7 at sweep ×1 and ×10, variant H.
-			phases.push(timed('sweep latency rows (report-only)', 'flows', () => playwright(['flows/drag-correlation.spec.ts', 'flows/orbit.spec.ts'], { ...flowEnv, PERF_TIERS: 'museum,sweep-H10' }), { thermalBefore: run('pmset', ['-g', 'therm']) }));
+			phases.push(timed('sweep latency rows (report-only)', 'flows', () => playwright('sweep latency', ['flows/drag-correlation.spec.ts', 'flows/orbit.spec.ts'], { ...flowEnv, PERF_TIERS: 'museum,sweep-H10' }), { thermalBefore: run('pmset', ['-g', 'therm']) }));
 			await boundary();
 		}
 		const transferred = ['flows/startup.spec.ts', 'flows/preview-lifecycle.spec.ts', ...(process.env.PERF_API_ORIGIN !== undefined && process.env.E2E_TEST_AUTH_SECRET !== undefined ? ['flows/import.spec.ts'] : [])];
-		phases.push(timed(`transferred rows (${transferred.map((spec) => spec.replace(/^flows\/|\.spec\.ts$/g, '')).join(', ')})`, 'flows', () => playwright(transferred, flowEnv), { thermalBefore: run('pmset', ['-g', 'therm']) }));
+		phases.push(timed(`transferred rows (${transferred.map((spec) => spec.replace(/^flows\/|\.spec\.ts$/g, '')).join(', ')})`, 'flows', () => playwright('transferred', transferred, flowEnv), { thermalBefore: run('pmset', ['-g', 'therm']) }));
 	} catch (error) {
 		phases.push({ name: 'pass', kind: 'flows', startedAt: new Date().toISOString(), wallSeconds: 0, exitCode: null, cause: error instanceof Error ? error.message : String(error) });
 	} finally {

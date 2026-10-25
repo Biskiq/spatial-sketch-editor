@@ -46,7 +46,8 @@ import {
 	selectWallAndOpenDimensions,
 	undoRedoCycles,
 	uniqueProjectId,
-	waitForAcceptedResult
+	waitForAcceptedResult,
+	waitForStageSettled
 } from '../lib/flow';
 import { correlateInputs, firstFrameAtOrAfter, latestInputAge, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
@@ -156,6 +157,7 @@ async function runDrag(
 	const openWall = () => (focusWallId === undefined ? selectFirstWallAndOpenDimensions(page) : selectWallAndOpenDimensions(page, focusWallId));
 	await gotoCreateIntent(page, projectId);
 	await openSourceJson(page, project);
+	await waitForStageSettled(page);
 	await openWall();
 	const setupMs = performance.now() - started;
 

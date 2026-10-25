@@ -23,7 +23,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { newMeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT } from '../lib/config';
-import { acceptedResultCount, commitPrecisionLength, gotoCreateIntent, openSourceJson, uniqueProjectId, waitForAcceptedResult } from '../lib/flow';
+import { acceptedResultCount, commitPrecisionLength, gotoCreateIntent, openSourceJson, uniqueProjectId, waitForAcceptedResult, waitForStageSettled } from '../lib/flow';
 import { fileReport, startReport } from '../lib/report';
 import {
 	COUNT_LABEL,
@@ -59,21 +59,6 @@ const SWEEP: readonly { readonly id: WorkloadId; readonly factor: number; readon
 
 type View = { eye: number[]; target: number[]; fov: number };
 type Framebuffer = { width: number; height: number; hash: string; pixels: string };
-
-/** Wait until the Stage's triangle count is stable across two rest windows (models streamed in). */
-async function settle(page: Page): Promise<void> {
-	let previous = -1;
-	for (let attempt = 0; attempt < 30; attempt++) {
-		await page.waitForTimeout(500);
-		const triangles = await page.evaluate(() => {
-			const refs = (window as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, { renderer: { info: { render: { triangles: number } } } }> }).__BISKIQ_PERF_RENDER_REFS__;
-			return refs?.stage?.renderer.info.render.triangles ?? -1;
-		});
-		if (triangles >= 0 && triangles === previous) return;
-		previous = triangles;
-	}
-	throw new Error('the Stage did not settle within 15 s');
-}
 
 async function framebufferAt(page: Page, view: View): Promise<Framebuffer> {
 	return page.evaluate(async ({ eye, target, fov }) => {
@@ -160,7 +145,7 @@ test.describe('E5 browser counts and visual non-influence', () => {
 
 				await gotoCreateIntent(page, projectId);
 				await openSourceJson(page, project);
-				await settle(page);
+				await waitForStageSettled(page);
 
 				await page.waitForTimeout(1_100);
 				await resetRenderMaxima(page);
@@ -180,7 +165,7 @@ test.describe('E5 browser counts and visual non-influence', () => {
 				const accepted = await acceptedResultCount(page);
 				await commitPrecisionLength(page, fixedLength);
 				await waitForAcceptedResult(page, accepted);
-				await settle(page);
+				await waitForStageSettled(page);
 				const commitWork = workDelta(workBefore, await readWork(page));
 				const commitRender = renderCounterDelta(renderBefore, await readRenderCounters(page)).stage;
 				const after = await framebufferAt(page, view);

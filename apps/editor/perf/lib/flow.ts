@@ -127,6 +127,28 @@ export async function selectFirstWallAndOpenDimensions(page: Page): Promise<void
 }
 
 /**
+ * Setup only: wait until the Stage has finished building what the open
+ * admitted (its triangle count is stable across two samples), so a flow
+ * samples at the loaded peak (A.4). A large tier with streamed models can block
+ * the main thread for tens of seconds after admission; that is the product's
+ * behaviour to report, and this wait is never a measured bound.
+ */
+export async function waitForStageSettled(page: Page, timeoutMs = LARGE_TIER_WAIT_MS): Promise<void> {
+	const started = Date.now();
+	let previous = -1;
+	while (Date.now() - started < timeoutMs) {
+		await page.waitForTimeout(500);
+		const triangles = await page.evaluate(() => {
+			const refs = (window as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, { renderer: { info: { render: { triangles: number } } } }> }).__BISKIQ_PERF_RENDER_REFS__;
+			return refs?.stage?.renderer.info.render.triangles ?? -1;
+		});
+		if (triangles >= 0 && triangles === previous) return;
+		previous = triangles;
+	}
+	throw new Error(`the Stage did not settle within ${timeoutMs / 1000} s`);
+}
+
+/**
  * Select one Wall by id through the Index search (the Index labels a Wall
  * `wall · <id>`), then open its contributed Dimensions task.
  */
