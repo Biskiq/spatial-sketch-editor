@@ -492,23 +492,39 @@ fixed edits) and F7 (the fixed View) at sweep ×1 and ×10, variant H, with the 
 rows add no pass. Each handover states the time they add, and the owner may drop them for a pass.
 They show whether interaction latency, not only work, grows with irrelevant complexity.
 
-**All-visible overview records (optional, report-only).** The owner may attach up to two viewpoint
-records to existing L measurements: a full-footprint Plan overview and a high-oblique 3D overview,
-using the unchanged grid-14 or already-loaded realistic-L fixture, existing F3/F4/F7/F8 windows and
-C's existing counters. Enable them only where setup already supports the state and evidence without
-new fixture, harness or instrumentation work, or delay to Bench 1. They are off by default, owner
-opt-in per existing pass, with added wall time stated; unsupported states/counters stay unmeasured.
-Required measurement windows and cache/Undo state remain isolated from optional segments.
+### C.1 Proposed architecture-identification foundation — owner review required
 
-Record pose/scale, reading, Plan parameters and evidenced coverage alongside available frame,
-edit, draw/shadow and rebuild/upload data. In-frame footprints and Plan eligibility do not prove
-exposed surfaces; fog, ceilings and occlusion may leave the intended all-visible case unverified.
-Do not add cutaway rendering or labels to obtain the record. The
-[all-visible and town-overview study](../../../../../broad-research/all-visible-editing-and-town-overview.md#smallest-optional-s06-measurements)
-details interpretation and gaps. These records extend no required instrumentation, smoke coverage,
-workload tier, budget, gate, acceptance row or benchmark pass; E1–E5, H1–H9 and the three owner-run
-passes stay unchanged. Missing coverage never triggers a rerun. Town infrastructure stays a future
-owner proposal under F.
+**Pending proposal, not activated by S06's existing approval.** This subsection adds no required
+instrumentation or acceptance obligation until owner ratification. Before Bench 1, review the
+[world-scale computational architecture](../../../../../broad-research/all-visible-editing-and-town-overview.md)
+and [measurement-scope proposal](./scale-measurement-proposal.md). The objective is routine editing
+of 10,000+ Rooms, 100,000+ architectural entities and millions of repeated details, with exact
+local feedback and screen-contribution-bounded rendering. Two additional camera views alone do
+not identify that architecture.
+
+**Recommendation for owner authorization:** establish sufficient statistics and sparse matched
+contrasts before freezing Bench 1: semantic N versus affected/evaluated work, all-visible Plan
+representation, exposed 3D submission versus detail, repetition versus uniqueness, working-set
+turnover and the causal input-to-presented-result pipeline. Separately attribute global
+capture/digest work, copied/retained bytes, compatible draw bins and actual GPU/counter boundaries.
+Use physical product, physical lab and logical-model evidence labels; a descriptor count never
+stands in for measured large-world product performance.
+
+The proposal requests bounded supplemental scale preparation and a disposable execution-plan
+lab consuming canonical compiled inputs. Any exception to A.1's planner-based fixture construction,
+new harness/probe work or method/payload change needs the explicit owner ruling and shared T3
+review described there. It grants no permission to alter the active setup checkout or its baton.
+
+If approved, these report-only diagnostic experiments join the same three owner-run passes:
+Bench 1 identifies work and predicts alternatives, Bench 2 discriminates candidate mechanisms,
+Bench 3 confirms the frozen contrasts alongside the original final acceptance. Preserve E1–E5,
+H1–H9, I1–I6, every required row, accepted contracts, sample/cache rules, peak-first order, lock
+and pass accounting. There is no new workload tier, acceptance gate, budget or fourth pass.
+Feasibility limits and unmeasured coverage are recorded without silent reruns or exemptions.
+
+Until authorization, the released setup remains A–C above. Production rendering, entity-level
+history/storage, changed content identity, authored patterns, HLOD, town streaming and lighting
+infrastructure remain owner decisions under F; a laboratory result authorizes none of them.
 
 ### D. Algorithm work
 
