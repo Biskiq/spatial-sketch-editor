@@ -5,6 +5,7 @@ export * from './layout-geometry-objects';
 export * from './layout-geometry-openings';
 export * from './layout-geometry-queries';
 export * from './layout-geometry-types';
+export * from './layout-geometry-reuse';
 export * from './layout-geometry-validation';
 export * from './layout-junction-clearance';
 export * from './layout-junction-resolution';

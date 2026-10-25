@@ -63,11 +63,17 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 
 	for (const [index, box] of boxes.entries()) {
 		const { x0, x1, z0, z1 } = range(box);
-		const span = (x1 - x0 + 1) * (z1 - z0 + 1);
 		// `wide` is the safety net, never a filter: a non-finite or INVERTED box
-		// (min > max gives a span below 1) must still be a candidate for every
-		// query, or the index would stop being a superset.
-		if (!Number.isFinite(span) || span < 1 || span > MAX_CELLS_PER_ENTRY) {
+		// must still be a candidate for every query, or the index would stop being
+		// a superset. Inversion is tested PER AXIS, not through the cell span: a
+		// box inverted on both axes by one cell each gives
+		// `(-1) * (-1) = +1`, which a `span < 1` test reads as a healthy single
+		// cell — yet the insert loop below would then iterate zero cells and the
+		// entry would be in neither `cells` nor `wide`, so no query could ever
+		// return it. `!(x1 >= x0)` also catches a NaN bound.
+		const inverted = !(x1 >= x0) || !(z1 >= z0);
+		const span = (x1 - x0 + 1) * (z1 - z0 + 1);
+		if (inverted || !Number.isFinite(span) || span > MAX_CELLS_PER_ENTRY) {
 			wide.push(index);
 			continue;
 		}
@@ -101,8 +107,13 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 				if (box.maxZ < query.minZ || box.minZ > query.maxZ) return;
 				found.push(index);
 			};
+			// A query box inverted on either axis (or with a non-finite bound) has no
+			// well-defined cell range: scanning every celled entry — and every `wide`
+			// entry, below — keeps the answer a superset, and `consider` still applies
+			// the inclusive overlap test this index promises.
+			const queryInverted = !(x1 >= x0) || !(z1 >= z0);
 			const span = (x1 - x0 + 1) * (z1 - z0 + 1);
-			if (Number.isFinite(span) && span <= MAX_CELLS_PER_ENTRY * 4) {
+			if (!queryInverted && Number.isFinite(span) && span <= MAX_CELLS_PER_ENTRY * 4) {
 				for (let cellX = x0; cellX <= x1; cellX += 1) {
 					for (let cellZ = z0; cellZ <= z1; cellZ += 1) {
 						const list = cells.get(cellKey(cellX, cellZ));

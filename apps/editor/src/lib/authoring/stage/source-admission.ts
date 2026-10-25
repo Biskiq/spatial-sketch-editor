@@ -30,6 +30,7 @@ import {
 	measureWorkAsync,
 	p2311Measure,
 	type CompiledLayoutGeometry,
+	type LayoutCompileSession,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
 import {
@@ -184,15 +185,26 @@ function projectIssues(issues: readonly ShapeIssue[]): ProjectIssue[] {
  */
 export async function admitSource(
 	input: unknown,
-	context: AdmissionContext
+	context: AdmissionContext,
+	/**
+	 * The caller's incremental compile store, if it owns one.
+	 *
+	 * A Stage lifetime keeps one store and passes it on every admission, so the
+	 * compile after an accepted edit rebuilds only the Layout entities that edit
+	 * moved (T1.P02.S06 D.3 / H1). The result is the canonical compiler's own
+	 * output; nothing about admission's verdict changes. Boot, Preview and the
+	 * visitor runtime pass nothing and keep the cold compile.
+	 */
+	options: { readonly compileSession?: LayoutCompileSession } = {}
 ): Promise<AdmissionOutcome> {
 	// Harness-gated stage span (inert without the work observer).
-	return measureWorkAsync('admission', () => admitSourceOnce(input, context));
+	return measureWorkAsync('admission', () => admitSourceOnce(input, context, options.compileSession));
 }
 
 async function admitSourceOnce(
 	input: unknown,
-	context: AdmissionContext
+	context: AdmissionContext,
+	compileSession?: LayoutCompileSession
 ): Promise<AdmissionOutcome> {
 	// Read the envelope once so the host policy can see its model registry before
 	// Scene resolution, then prepare **that validated value**: preparation splits
@@ -200,7 +212,9 @@ async function admitSourceOnce(
 	// validation is not immediately repeated over the same bytes (D.1/H2).
 	const read = validateProjectEnvelope(input);
 	if (!read.success) return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(read.issues) };
-	const prepared = p2311Measure('admission:runtime', () => prepareValidatedUnitRuntime(read, sceneOptionsFor(read.envelope)));
+	const prepared = p2311Measure('admission:runtime', () =>
+		prepareValidatedUnitRuntime(read, sceneOptionsFor(read.envelope), compileSession)
+	);
 	if (prepared.kind === 'rejected') {
 		return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(prepared.issues) };
 	}

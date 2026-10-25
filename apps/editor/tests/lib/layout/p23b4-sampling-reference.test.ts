@@ -326,7 +326,7 @@ const REFERENCE: Record<string, { seamForward: string; seamReverse: string; topo
 		compileValidation: 'refs=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
 		openingSpans: 'walls=10 checksum=a24dce67ca3aa695ad7930d082b52f8fed9b501e86055a922c6223b9db32d512',
 		faces: 'faces=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 diagnostics=["boundary_dangle","boundary_dangle","boundary_dangle","boundary_dangle","boundary_dangle","boundary_dangle","boundary_dangle","boundary_dangle","boundary_dangle","boundary_dangle"] dangling=["w0","w1","w2","w3","w4","w5","w6","w7","w8","w9"] cut=[]',
-		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=1b7379419dccfd5092ac214fb8c99626220abac98d0b9857e33616d0f1711ca1',
+		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=162c20e4817af18d9ae04c0d25e48fa644d7f33d7a5c0dbc48d1da00dc990315',
 	},
 	'bend-3-room-openings': {
 		seamForward: 'walls=12 points=540 checksum=d0d90abd3d4f64c868525666eb8cfe7dac575cda4789f47bf4e5076a702b17e2',
@@ -338,7 +338,7 @@ const REFERENCE: Record<string, { seamForward: string; seamReverse: string; topo
 		compileValidation: 'refs=12 checksum=0382e49fb0436d4e4809cae15989a8ba28ccdd292be35593a0c3791a533fd9c9',
 		openingSpans: 'walls=12 checksum=8d89fb0015d82a4536d82a2144d586ce5eb275e36339134a9ed0682536e8f2ff',
 		faces: 'faces=3 checksum=c5f5f241ec57152d33933ad05020bb2d12b23706d98b456ae9bf1a056414623f diagnostics=[] dangling=[] cut=[]',
-		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=bf341ebd3ee11d8cdea100176c152112ce20ae67888a4ca23c09837f42df9510',
+		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=8f8ecfb151183567e729d6ea1f2a36e071a2c33e7faa6684e8f0a09fb6c796af',
 	},
 	'd12-exact-coincidence-v1': {
 		seamForward: 'walls=8 points=168 checksum=4a86dd594371b5b8f7bb0044ec2e5f298bb66d80b90dff285e4778de4f450c85',
@@ -350,7 +350,7 @@ const REFERENCE: Record<string, { seamForward: string; seamReverse: string; topo
 		compileValidation: 'refs=8 checksum=f85480407721adbfc7525c31f30f00e8c77ca679d55e91d8fa056b9e220965f7',
 		openingSpans: 'walls=8 checksum=eb42b3e59707927a0199cbd51ca22857ec84496d3aedba7ae686a4c2f391f0dd',
 		faces: 'faces=2 checksum=44c5a810ff23bf301db4239a0e45d6d0676a47b6144c0b43621d18d49e0f5741 diagnostics=[] dangling=[] cut=[]',
-		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=6d3b232bb09dfbfbc030f9d1d2240e72683b67d6087fff3d37fb14b5c3b47685',
+		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=4dafa618a2b7f593cf72c0e72fab0c9108901579047ba87fd29f42245430945d',
 	},
 	'd12-partial-overlap-v1': {
 		seamForward: 'walls=8 points=168 checksum=8aaf066e0b39713ac37c688516af3ed3f00a3d368bdb5a26526dabdf51988a28',
@@ -362,7 +362,7 @@ const REFERENCE: Record<string, { seamForward: string; seamReverse: string; topo
 		compileValidation: 'refs=8 checksum=735e6f79651bf9faad3a3e6a4d96b353528fdeda84132ce27b19a4049e289e56',
 		openingSpans: 'walls=8 checksum=eb42b3e59707927a0199cbd51ca22857ec84496d3aedba7ae686a4c2f391f0dd',
 		faces: 'faces=2 checksum=6b7e6c8247f16375c41bd1347340d462182edbd3e4eb62618d724740e50ea940 diagnostics=[] dangling=[] cut=[]',
-		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=bc647cedb3a63d431a8cfc7668f20b4081863f55fde6e7c4775bde20c517b416',
+		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=aa421b565251166cb046f604b7586d0a041ca3671f14c30bd947fc69419a7747',
 	},
 	'd12-full-containment-v1': {
 		seamForward: 'walls=8 points=136 checksum=277a6589b966f039a200d6c116fa3d4e554e0d087249b8aa94a3541f01370400',
@@ -374,7 +374,7 @@ const REFERENCE: Record<string, { seamForward: string; seamReverse: string; topo
 		compileValidation: 'refs=8 checksum=43065b75f43d8b586cbe7f4b85463e9f5935464f97586375ac7b991f3dc70961',
 		openingSpans: 'walls=8 checksum=bcb5e258435b9ba38b6f9218214f0f088d14133cf41b9b457f621a2a2dd7bd57',
 		faces: 'faces=2 checksum=1967b754c08a842db3b0bb0023cdfeebb9c6484d0d6734257549259a80b6ab62 diagnostics=["nested_boundary_loop"] dangling=[] cut=[]',
-		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=d82f307c828c8c2a16f5fc5e3ad9013aeb64b2622929ea7e620cb00e03d0d590',
+		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=efd57f7042b0773036633607470613f43a52e6fff338f73e211af7ad6e175885',
 	},
 	'N-2': {
 		seamForward: 'walls=2 points=144 checksum=7835b95da66b13979c486cde9e310c4bb2ca53c79cab8b53cee9fec97bfffe1d',

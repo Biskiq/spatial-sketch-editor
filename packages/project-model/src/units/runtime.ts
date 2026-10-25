@@ -15,6 +15,7 @@ import {
 	countWork,
 	p2311Measure,
 	type CompiledLayoutGeometry,
+	type LayoutCompileSession,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
 import { createEmptyLayoutRoomRegistry, type LayoutRoomRegistry } from '../project-layout-semantics';
@@ -139,11 +140,23 @@ export function prepareUnitRuntime(
  */
 export function prepareValidatedUnitRuntime(
 	validated: ValidatedProjectEnvelope,
-	sceneOptions: SceneValidationOptions = {}
+	sceneOptions: SceneValidationOptions = {},
+	/**
+	 * An optional incremental compile store owned by the caller's surface. A long-
+	 * lived host passes the same store for every preparation, so a compile after
+	 * one accepted edit reuses every Layout entity the edit did not touch
+	 * (T1.P02.S06 D.3). Absent, preparation is the cold canonical compile — the
+	 * visitor runtime's own path, which must not carry editor state between sources.
+	 */
+	compileSession?: LayoutCompileSession
 ): UnitRuntimeReady | UnitRuntimeRejection {
 	countWork('unit-runtime:prepare-validated');
 	const envelope = validated.envelope;
-	const compiled = compileWallFirstLayoutGeometry(envelope.units.layout.data);
+	// The session's `compile` IS `compileWallFirstLayoutGeometry` over a retained
+	// store: same builders, same assembly, same output shape.
+	const compiled = compileSession
+		? compileSession.compile(envelope.units.layout.data)
+		: compileWallFirstLayoutGeometry(envelope.units.layout.data);
 
 	let runtimeScene: RuntimeScene;
 	try {

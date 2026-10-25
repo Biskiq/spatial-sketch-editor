@@ -29,6 +29,7 @@ import {
 	createUnitPlannerRegistry,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
+import { createLayoutCompileSession } from '@portfolio/layout-core';
 
 import {
 	createAcceptanceCoordinator,
@@ -162,6 +163,13 @@ export function createStageAcceptanceHost(options: {
 }): StageAcceptanceHost {
 	const { facade, baseline } = options;
 	const sessionEpoch = options.sessionEpoch;
+	// T1.P02.S06 D.3 (H1) — one incremental compile store for this host lifetime.
+	// Every admission after the first reuses the Layout entities the accepted
+	// edit did not move, so an accepted Wall edit no longer pays a whole-document
+	// compile to prove the other thousand Rooms are unchanged. It is bounded by
+	// the document (units for removed entities are released each compile) and it
+	// never outlives the host it belongs to.
+	const compileSession = createLayoutCompileSession();
 	// T2.P02.S02's bounded host contribution: the coordinator that serves this
 	// Stage grants resource staging, so the one placement planner that declares it
 	// can install a creator model's resource, exact lock and entity together.
@@ -242,10 +250,11 @@ export function createStageAcceptanceHost(options: {
 		// One admission path: the accepted source is re-admitted through the same
 		// canonical validation, compile and Scene resolution the boot uses, so the
 		// Stage never shows a snapshot the visitor runtime could not prepare.
-		const admission = await admitSource(snapshot.domain.source, {
-			sessionEpoch,
-			acceptedRevision: snapshot.acceptedRevision
-		});
+		const admission = await admitSource(
+			snapshot.domain.source,
+			{ sessionEpoch, acceptedRevision: snapshot.acceptedRevision },
+			{ compileSession }
+		);
 		if (admission.kind === 'refused') {
 			return { kind: 'refused', code: admission.reason, message: 'the accepted source was refused by the admission path' };
 		}
@@ -423,10 +432,15 @@ export function createStageAcceptanceHost(options: {
 			}
 			let prepared: StageReadSnapshot | null = null;
 			const replaced = await coordinator.replace(input, async (source, nextEpoch) => {
-				const admission = await admitSource(source.source, {
-					sessionEpoch: nextEpoch,
-					acceptedRevision: source.revision
-				});
+				// A replacement is a different project's document: the store's units are
+				// pruned by id and none of them describe this source, so a cold compile is
+				// what runs here. It is passed anyway so the store ends up holding the new
+				// document rather than the old one.
+				const admission = await admitSource(
+					source.source,
+					{ sessionEpoch: nextEpoch, acceptedRevision: source.revision },
+					{ compileSession }
+				);
 				if (disposed) return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };
 				if (admission.kind !== 'admitted') return {
 					kind: 'refused', code: admission.kind === 'refused' ? admission.reason : 'diagnostics',

@@ -20,7 +20,7 @@
  */
 import type { LayoutDocumentIssue } from './layout-issue';
 import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
-import { compileWallFirstLayoutGeometry } from './layout-geometry';
+import { activeLayoutCompileSession, compileWallFirstLayoutGeometry } from './layout-geometry';
 import { countWork, p2311Measure } from './p2311-perf';
 import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from './layout-geometry-types';
@@ -1790,7 +1790,14 @@ function finalizeCandidate(
 				: 'topology_invalid';
 		return reject(topologyCode, topologyIssue.message, topologyIssue.targetId ? [topologyIssue.targetId] : undefined, [topologyIssue]);
 	}
-	const compiled = compileWallFirstLayoutGeometry(structural.document);
+	// T1.P02.S06 D.3 (H1) — a candidate compiled during a session reuses every
+	// entity its authored inputs did not move. The result is the canonical
+	// compiler's own output (same builders, same assembly), so this is a cheaper
+	// compile, not a different one.
+	const compileSession = activeLayoutCompileSession();
+	const compiled = compileSession
+		? compileSession.compile(structural.document)
+		: compileWallFirstLayoutGeometry(structural.document);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
 	}
@@ -1943,7 +1950,12 @@ function finalizeWallGeometryCandidate(options: {
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
 	}
-	const compiled = p2311Measure('acceptance-compile', () => compileWallFirstLayoutGeometry(structural.document, sampling));
+	// T1.P02.S06 D.3 (H1) — the same session, with the step's shared sampling
+	// derivation: one pointer sample re-compiles only the entities it moved.
+	const compileSession = activeLayoutCompileSession();
+	const compiled = p2311Measure('acceptance-compile', () =>
+		compileSession ? compileSession.compile(structural.document, sampling) : compileWallFirstLayoutGeometry(structural.document, sampling)
+	);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
 	}

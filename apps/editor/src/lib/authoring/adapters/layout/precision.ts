@@ -28,6 +28,7 @@
  */
 
 import {
+	createLayoutCompileSession,
 	deriveLayoutWallRole,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
@@ -43,6 +44,7 @@ import {
 	planRigidWallMove,
 	planUpdateWallFirstOpening,
 	planWallMetadataUpdate,
+	withLayoutCompileSession,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
@@ -179,6 +181,21 @@ function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope
 	return { kind: 'rejected', code, message, diagnostics: [] };
 }
 
+/**
+ * One process-local compile store for this adapter's planners.
+ *
+ * Every layout planner compiles the candidate it is about to accept. A precision
+ * drag runs one plan per pointer sample, and each sample moves one Junction, one
+ * Wall thickness or one Opening — so the session lets a sample reuse every entity
+ * the previous sample did not move (T1.P02.S06 D.3 / H1).
+ *
+ * Sharing it cannot change a plan: a reused entity is one whose authored inputs
+ * are unchanged, which is the retention proof the canonical compiler checks per
+ * entity. It is a cache, not decision state, and it is pruned to the document it
+ * last compiled.
+ */
+const plannerCompileSession = createLayoutCompileSession();
+
 function layoutPlanner(
 	kind: string,
 	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>
@@ -189,7 +206,7 @@ function layoutPlanner(
 		admission: Object.freeze({ domain: 'layout', compound: false, units: false, resources: false }),
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
-		prepare
+		prepare: (request) => withLayoutCompileSession(plannerCompileSession, () => prepare(request))
 	};
 }
 
