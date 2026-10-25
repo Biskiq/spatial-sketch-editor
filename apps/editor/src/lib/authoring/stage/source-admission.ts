@@ -41,13 +41,14 @@ import {
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 import {
 	computeEnvelopeSourceContentId,
-	prepareUnitRuntime,
-	serializeProjectEnvelope,
+	prepareValidatedUnitRuntime,
+	serializeValidatedProjectEnvelope,
 	validateProjectEnvelope,
 	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
 	type ProjectEnvelope,
-	type UnitDomain
+	type UnitDomain,
+	type UnitRuntimeReady
 } from '@portfolio/project-model/units';
 
 import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
@@ -98,7 +99,7 @@ function domainOf(
 	envelope: ProjectEnvelope,
 	sourceContentId: string,
 	context: AdmissionContext,
-	runtime: Extract<ReturnType<typeof prepareUnitRuntime>, { kind: 'ready' }>
+	runtime: UnitRuntimeReady
 ): StageDomainRead {
 	const unitRevisions = Object.fromEntries(
 		UNIT_DOMAINS.map((domain) => [domain, envelope.units[domain].header.contentRevision])
@@ -194,11 +195,12 @@ async function admitSourceOnce(
 	context: AdmissionContext
 ): Promise<AdmissionOutcome> {
 	// Read the envelope once so the host policy can see its model registry before
-	// Scene resolution. `prepareUnitRuntime` then performs the one canonical
-	// preparation over that same envelope.
+	// Scene resolution, then prepare **that validated value**: preparation splits
+	// into a validating entry point and this validated half, so admission's own
+	// validation is not immediately repeated over the same bytes (D.1/H2).
 	const read = validateProjectEnvelope(input);
 	if (!read.success) return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(read.issues) };
-	const prepared = p2311Measure('admission:runtime', () => prepareUnitRuntime(read.envelope, sceneOptionsFor(read.envelope)));
+	const prepared = p2311Measure('admission:runtime', () => prepareValidatedUnitRuntime(read, sceneOptionsFor(read.envelope)));
 	if (prepared.kind === 'rejected') {
 		return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(prepared.issues) };
 	}
@@ -224,9 +226,11 @@ async function admitSourceOnce(
 	}
 
 	// The canonical form is computed once here: its bytes are both what the content
-	// identity describes and what the host records as the accepted baseline.
+	// identity describes and what the host records as the accepted baseline. The
+	// value being serialized is the one `validateProjectEnvelope` returned, so the
+	// serializer does not validate it a third time to trust it.
 	const sourceContentId = await measureWorkAsync('admission:digest', () => computeEnvelopeSourceContentId(envelope));
-	const canonicalJson = p2311Measure('admission:serialize', () => serializeProjectEnvelope(envelope));
+	const canonicalJson = p2311Measure('admission:serialize', () => serializeValidatedProjectEnvelope(envelope));
 	const domain = domainOf(envelope, sourceContentId, context, prepared);
 	p2311Measure('admission:freeze', () => freezeF4Data(domain));
 	return { kind: 'admitted', snapshot: snapshotOf(envelope, sourceContentId, canonicalJson, context, domain) };

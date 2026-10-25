@@ -70,6 +70,14 @@ export type UnitRuntimeRejection = {
 
 export type UnitRuntimePreparation = UnitRuntimeReady | UnitRuntimeRejection;
 
+/** The successful half of `validateProjectEnvelope`, as preparation receives it. */
+export type ValidatedProjectEnvelope = {
+	readonly success: true;
+	readonly envelope: ProjectEnvelope;
+	readonly diagnostics: readonly EnvelopeDiagnostic[];
+	readonly closure: readonly EnvelopeClosureFinding[];
+};
+
 /**
  * Build the Scene 1 view of an envelope for the landed resolver.
  *
@@ -116,6 +124,24 @@ export function prepareUnitRuntime(
 	if (!validated.success) {
 		return { kind: 'rejected', reason: 'invalid-envelope', issues: validated.issues };
 	}
+	return prepareValidatedUnitRuntime(validated, sceneOptions);
+}
+
+/**
+ * The preparation half of `prepareUnitRuntime`, for a caller that has **already**
+ * run `validateProjectEnvelope` on this exact value.
+ *
+ * Admission is such a caller: it validates the envelope to answer its own
+ * question and would otherwise validate the same bytes a second time inside
+ * preparation. The two halves are separate functions rather than a "skip
+ * validation" flag so the one exported entry point keeps its single meaning, and
+ * the validated value — not a bare envelope — is what proves the check ran.
+ */
+export function prepareValidatedUnitRuntime(
+	validated: ValidatedProjectEnvelope,
+	sceneOptions: SceneValidationOptions = {}
+): UnitRuntimeReady | UnitRuntimeRejection {
+	countWork('unit-runtime:prepare-validated');
 	const envelope = validated.envelope;
 	const compiled = compileWallFirstLayoutGeometry(envelope.units.layout.data);
 
