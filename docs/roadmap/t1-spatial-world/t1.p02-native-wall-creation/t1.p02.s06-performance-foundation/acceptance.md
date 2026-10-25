@@ -1,8 +1,8 @@
 # T1.P02.S06 — acceptance record: Performance foundation
 
 **Slice:** T1.P02.S06 · **Status:** approved and released; setup step implemented (PR #190) with
-the owner-ratified C.2 amendment; Bench 1 launched by the agent on the owner's direction
-(2026-10-24); not accepted ·
+the owner-ratified C.2 amendment; Bench 1 recorded (owner-directed, counted by the owner's A.7
+ruling, 2026-10-25); optimize step released; not accepted ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -127,35 +127,92 @@ at grid-XL. That was the harness's own reference to the last rendered scene, fix
 ## Bench 1 launch
 
 **Frozen command:** `npm run perf:bench --workspace @portfolio/editor -- --label bench-1
---xl-drag-cache warm`, from the PR #190 head that carries this record. It runs on Node 26.7 with
-the pinned branded Chrome 155.0.8059.85 and the fresh workloads above. The pass covers:
+--xl-drag-cache warm`, from commit `1c5e530c` (PR #190), on Node 26.7 with the pinned branded
+Chrome 155.0.8059.85 and the fresh workloads above. On the owner's direction (2026-10-24) the agent
+launched it itself, detached, under `caffeinate -dims`, at 2026-10-25 00:17 local, at a 1-minute
+load of 3.22 on AC power. The plan's direction is battery with Low Power Mode off, and Low Power
+Mode was off; the manifest records the AC deviation. The machine was briefly on battery during the
+grid-L tier (the start and end snapshots both read AC).
 
-- every tier peak first, with grid-XL's F3/F4/F8 warm only (D5);
-- the A.6 old-method rows;
-- the traced windows;
-- E5 over all seven workloads;
-- the sweep latency rows at museum ×1 and sweep-H10 (D3);
-- the transferred rows.
+## Bench 1 scope change (owner direction, 2026-10-25)
 
-**Launch.** On the owner's direction (2026-10-24), the agent launched the pass itself instead of
-handing the command over, and its task ended at the launch. A detached launcher waits for a quiet
-machine (1-minute load under 4.0 and no Vitest, for up to 90 minutes). It then runs the command
-under `caffeinate -dims`, so the Mac neither sleeps nor dims. The pass manifest records the start,
-the commit, contamination, deviations and every phase. The launcher's own record (launch time,
-wait, load and power) is outside the repository.
+The re-smoke's per-result costs, re-fitted to grid-L's first measured row (1.5× the model), put
+the ruled pass at about 25–30 h, most of it sweep-H10's report-only F3/F4/F8. The variance is
+small and the counts are deterministic, so the owner directed the agent to stop the pass after
+grid-L and run the remaining hard tiers, E5 and the transferred rows as a continuation. grid-XL
+and the sweep latency rows are dropped from Bench 1.
 
-**Deviation.** The pass runs on AC power. The owner direction is on battery with Low Power Mode
-off, and Low Power Mode is off. The planned duration would exhaust the battery. The manifest
-records the deviation.
+**A.7 ruling (owner, 2026-10-25).** `bench-1` (interrupted at the grid-L boundary on the owner's
+direction) and `bench-1b` together count as Bench 1, the first of the three passes, with the AC
+deviation accepted. No rerun. The owner released the optimize step.
 
-**Duration (planning model from the re-smoke's per-result costs, not evidence).** The tiers and
-fixed phases take about 5–9 h. The sweep latency rows take about 15 h:
+| Invocation | Command | Ran | Result |
+| --- | --- | --- | --- |
+| `bench-1` (`2026-10-25T04-17-42-938Z-bench-1`) | as frozen above | 00:17–02:18; realistic-L reported unrun, grid-L 7,234 s | stopped by SIGINT at the grid-L boundary (exit 130); not contaminated |
+| `bench-1b` (`2026-10-25T06-18-45-011Z-bench-1b`) | `… -- --label bench-1b --tiers grid-M,grid-S --no-sweep-latency` | 02:18–03:53; grid-M 2,555 s, grid-S 1,737 s (after 180 s cool-downs), E5 858 s, transferred rows 148 s | clean (exit 0); not contaminated, not aborted |
 
-- sweep-H10 F3/F4/F8, about 13 h over its three cache states (F12);
-- the sweep-H10 orbit, about 1.9 h;
-- the museum, about 0.6 h.
+Both ran commit `1c5e530c`. Both manifests record a dirty tree: another session edited
+`prototypes/production-shell-wireframe/README.md` at 00:58, outside every workspace, the build and
+the served product. The pass directories are in the machine's results directory
+(`$TMPDIR/biskiq-perf-results/`), outside the repository.
 
-Total: about 20–24 h.
+## Bench 1 results (owner-directed; counted under A.7)
 
-**Next.** The owner rules on whether the pass counts (A.7). The agent then records it here as an
-owner-directed pass.
+Medians with p95 over 10 measured runs per cache state (cold / warm / repeat-use). Budgets are not
+judged here; the optimize step compares them against the performance contract.
+
+| Row | grid-S | grid-M | grid-L |
+| --- | --- | --- | --- |
+| F2 open, admission → first architectural frame (cold) | 143 ms (p95 144) | 522 ms (p95 524) | 5,186 ms (p95 5,216) |
+| F2 open (warm / repeat-use) | 28 / 28 ms | 441 / 442 ms | 5,124 / 5,123 ms |
+| F2 admission alone (cold) | 36 ms | 70 ms | 219 ms |
+| F3 input → matching preview | 14.5 ms (p95 15.7–16.3) | 31.3–31.6 ms (p95 48) | 164–166 ms (p95 216–233) |
+| F3 drag commit completion | 24–30 ms (p95 41–56) | 142–144 ms (p95 163–174) | 635–683 ms (p95 717–784) |
+| F4 typed length completion | 27–30 ms | 139–141 ms | 636–670 ms |
+| F8 Undo completion | 29.4 ms (p95 31) | 95–111 ms (p95 112) | 519–536 ms (p95 637–671) |
+| F7 frame interval (orbit) | 16.7 ms (p99 16.8) | 16.7 ms (p99 16.8) | 16.7 ms (p99 16.8) |
+| F7 CPU / GPU per frame | 1.0 / 2.0 ms | 2.2 / 2.1 ms | 7.0 / 3.4 ms |
+| F13 retained per accepted edit | 0.27 MiB | 1.3 MiB | 6.0–6.2 MiB |
+
+- **Drag at L.** 3,000 inputs per state, all presented, none superseded or refused. Each drag run
+  does 62 full compiles (7.3 s) and 61 acceptance compiles (7.2 s); topology pre/post checks
+  visit 10.7 M Wall×Wall and 3.1 M Junction×Junction pairs, and cache keys serialize 6.0 G
+  characters per run.
+- **Ownership.** Each accepted commit leaves +2,968 live geometries at L (3,753 → 30,465 over ten
+  commits); materials and meshes stay constant. Heap after the F3/F4/F8 sequence: 400 MiB at L,
+  against 147 MiB after the open.
+- **F7.** Orbit holds 60 frames/s through L, and the Stage renders every frame at rest (120 of
+  120 in the idle window). CPU submission exceeds GPU time from M upward.
+- **E5 (browser).** H3 and H10 match ×1 at the fixed View, 0 differing pixels before and after the
+  edit; D and C are also 0 (recorded). The edit itself changes 3,120 pixels.
+- **Transferred rows.** F1 starter: hub interactive 865 ms cold, 585 ms warm; Stage first frame
+  1,148 ms cold. F10 Preview: press to frame 84 ms cold at S, 69 ms at M. F13 Preview: 2.7 MiB
+  post-GC growth over 10 enter/exit cycles.
+- **Not in Bench 1.** grid-XL and the sweep latency rows (owner direction above); realistic-L
+  (unrun, prerequisites unchanged). Their smoke and census figures stay labelled as such above.
+
+## Hand-off: the optimize step (released 2026-10-25)
+
+The owner counted Bench 1 under A.7 and released the optimize step. A fresh agent resumes from
+this section.
+
+1. **Owner gate still open.** A ruling on the sweep-H10 drag row for Bench 2 and 3: full method,
+   warm only, or one run. It does not block the optimize step.
+2. **Characterize (plan C, step 3).** Refit each matrix row's cost model to Bench 1's per-stage
+   spans (`drag:stage:*`, `precision:stage:*`, `undoRedo:stage:*`) and work counts. Compare each
+   hard row against the performance contract's budgets.
+3. **Candidates the evidence names, in matrix order (D.1–D.6), each checked by hand calculation:**
+   - whole-document recompiles per move and commit (H1; E5's R of 2,000–36,000 at ×10);
+   - the topology gates' Junction×Junction and Wall×Wall loops and the Wall×Opening and
+     Room×Opening joins (H3; decision package F10);
+   - cache keys that serialize whole collections (`cache-key:chars`, 6.0 G per drag run at L);
+   - linear Junction lookups (`lookup:junctions`);
+   - live geometries never released after a commit (about 1.3 per mesh per commit);
+   - per-mesh submission: 7 merge bins against 2,269 draws at L, CPU above GPU;
+   - the Stage rendering every frame at rest (render-on-demand, next to H9);
+   - Stage mount: Threlte's Context DOM insertion, about 86 % of the XL open (decision package F9).
+4. **Keep.** The correctness lanes, differentials and count oracles. E5 on the optimized revision
+   before Bench 2. Bench 2 and Bench 3 at the same hard-tier method as Bench 1, so the passes stay
+   comparable.
+5. **Pending outside S06.** PR #189's merge as research (D7, its owner); the realistic-L
+   prerequisites (D9); the execution-plan lab plan, due before Bench 2 (D6).

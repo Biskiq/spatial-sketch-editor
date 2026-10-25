@@ -3,14 +3,12 @@
 PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01 and S05 are shipped.
-ACTIVE: T1.P02.S06 (performance foundation), Bench 1. Started 2026-10-24 through the runbook start
-        step at trusted base 2215af341a650ac3a99a0fbb36e48de7e901411e (merged `main`). The setup is
-        implemented in PR #190. The owner ruled D1–D9 of the decision package as recommended
-        (2026-10-24): ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/scale-reconciliation.md
-        The approved extensions are the plan's C.2 amendment; their smoke check passed. On the
-        owner's direction (2026-10-24) the agent launched Bench 1 itself from PR #190's head,
-        detached, and its task ended at the launch. The owner rules on whether the pass counts
-        (A.7); the agent records it as owner-directed. No H1–H9 change is made.
+ACTIVE: T1.P02.S06 (performance foundation), optimize step (agent), released 2026-10-25. Started
+        2026-10-24 at trusted base 2215af341a650ac3a99a0fbb36e48de7e901411e; setup and the C.2
+        amendment in PR #190 (D1–D9 ruled 2026-10-24). Bench 1 ran from `1c5e530c` as two
+        owner-directed invocations (grid-L, then grid-M, grid-S, E5 and the transferred rows;
+        grid-XL and the sweep latency rows dropped) and counts as Bench 1 by the owner's A.7
+        ruling (2026-10-25). Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
 NEXT:   T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
         It runs on an owner-run benchmark budget of at most three passes:
         set up (agent) → Bench 1 (owner) → optimize with hand calculation (agent) → Bench 2
