@@ -8,16 +8,23 @@
 	 * exist here, because the seam's whole guarantee is that the meshes, the
 	 * overlays and the pointer rays all come from the same evaluated matrices.
 	 */
-	import { T, useTask } from '@threlte/core';
+	import { T, useTask, useThrelte } from '@threlte/core';
 	import type { PerspectiveCamera } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 
 	let { evaluation }: { evaluation: ViewportEvaluation | null } = $props();
 
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
+	const { invalidate } = useThrelte();
 
 	// Runs before the render pass each frame, so the evaluated matrices are the
 	// ones the meshes are actually drawn with even if Threlte touched the camera.
+	//
+	// T1.P02.S06 D.6 (H9) — `autoInvalidate: false`: by default a task asks for a
+	// frame every time it runs, which made the Stage re-render continuously even
+	// at rest (Bench 1: 120 of 120 idle frames). Writing the evaluated matrices
+	// is not itself a reason to draw, so a new evaluation asks for exactly one
+	// frame below instead.
 	useTask(() => {
 		const camera = cameraRef;
 		if (camera === undefined || evaluation === null) return;
@@ -30,6 +37,14 @@
 		camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
 		camera.updateMatrixWorld(true);
 		camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+	}, { autoInvalidate: false });
+
+	$effect(() => {
+		// One frame per evaluation. Everything else that can change the image (a
+		// compile, a Scene resolution, a selection, a pointer overlay) invalidates
+		// through Threlte's own reactivity.
+		void evaluation;
+		invalidate();
 	});
 </script>
 
