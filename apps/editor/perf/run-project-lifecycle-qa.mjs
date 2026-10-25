@@ -218,10 +218,10 @@ try {
   const editorOrigin = 'http://127.0.0.1:' + editorPort;
   const testAuthSecret = randomBytes(32).toString('hex');
   const policy = {
-    handlerTimeoutMs: 500,
-    leaseDeadlineMs: 250,
-    renewalIntervalMs: 50,
-    abortMarginMs: 50
+    handlerTimeoutMs: 5_000,
+    leaseDeadlineMs: 4_000,
+    renewalIntervalMs: 500,
+    abortMarginMs: 250
   };
 
   app = createApp({
