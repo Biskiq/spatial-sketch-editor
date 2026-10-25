@@ -13,26 +13,19 @@
  * > a reused unit is the value the canonical builder would produce now, because
  * > every input the builder reads is compared before the reuse is taken.
  *
- * So the comparison below is deliberately structural and total rather than a
- * hash: it visits numbers and authored records, never a compiled array, and two
- * values compare equal only when they are indistinguishable to the builder.
- *
- * What this does **not** claim: the traversal itself is O(N) in the document's
- * entities (one comparison per entity). It is the *evaluation* — the section
- * splitting, opening compilation, polyline and bounds construction, junction
- * resolution, room validation and mesh-facing records — that becomes O(k) in the
- * entities an edit actually touched. `sameAuthored` is roughly four orders of
- * magnitude cheaper per entity than the compile it guards, which is the whole
- * point; `LayoutCompileStats` reports both sides so the difference stays
- * measured rather than asserted.
+ * When a candidate carries a certified copy-on-write delta (`CowDocumentDelta`)
+ * or shares collection references with the retained world, unchanged entities are
+ * proven identical by reference without an O(N) comparison pass; otherwise
+ * `sameAuthored` provides the total structural fallback.
  */
 
+import type { CacheKeyDependency } from './layout-geometry-keys';
 import type {
 	CompiledCurveSample,
+	CompiledFloor,
 	CompiledJunction,
 	CompiledJunctionLeg,
 	CompiledLayoutObject,
-	CompiledOpening,
 	CompiledPhysicalWall,
 	CompiledQueryAabb,
 	CompiledQueryPoint,
@@ -44,6 +37,8 @@ import type {
 	LayoutBounds3,
 	LayoutGeometryIssue
 } from './layout-geometry-types';
+import type { LayoutDocumentWallFirst } from './layout-wall-first-types';
+import { areEquivalentLayoutClones, getCowDocumentDelta } from './layout-world-index';
 
 /**
  * Whether two authored values are indistinguishable to a compiled builder.
@@ -56,15 +51,6 @@ import type {
  * `Object.is` is used instead of `===` on purpose: `NaN === NaN` is false, and
  * two authored `NaN`s describe the same compiled output (an issue), so treating
  * them as equal is both correct and cheap — while `+0`/`-0` stay distinct.
- *
- * The restriction to plain records is load-bearing: two `Map`, `Set` or `Date`
- * instances have no own enumerable keys, so they would compare equal. Authored
- * Layout holds none of those (the codec rejects them), and a session that was
- * handed one would reuse a stale unit rather than fail loudly.
- *
- * A throwing compile can leave units in the store from the pass that failed.
- * Each unit still re-checks its own inputs, so no stale value can be installed;
- * what is stale is `stats()`, which describes the last compile that returned.
  */
 export function sameAuthored(left: unknown, right: unknown): boolean {
 	if (Object.is(left, right)) return true;
@@ -161,18 +147,34 @@ export type RetainedObject = {
 	readonly issues: readonly LayoutGeometryIssue[];
 };
 
+/** Retained Floor aggregate and room-id key dependency, avoiding O(R) JSON re-serialization. */
+export type RetainedCompiledFloor = {
+	readonly floorId: string;
+	readonly elevation: number;
+	readonly roomIds: readonly string[];
+	readonly roomIdsDep: CacheKeyDependency;
+	readonly bounds3: LayoutBounds3 | null;
+	readonly compiled: CompiledFloor;
+	readonly aabb: CompiledQueryAabb | null;
+};
+
+/** Retained document-level query AABB when aggregate world bounds are unchanged. */
+export type RetainedDocumentAabb = {
+	readonly bounds3: LayoutBounds3 | null;
+	readonly aabb: CompiledQueryAabb | null;
+};
+
 /**
  * Work counters for one incremental compile.
  *
  * `evaluated` counts entities the canonical builders ran for; `reused` counts
- * entities whose retained value was installed by reference; `visited` counts the
- * structural comparisons that made that decision. The S06 locality oracle reads
- * `evaluated` (it must stay bounded by the affected set), and the signature cost
- * is reported so the O(N) comparison term is visible rather than implied.
+ * entities whose retained value was installed by reference; `signatureVisits`
+ * counts the structural comparisons that had to run.
  */
 export type LayoutCompileStats = {
 	readonly wallsEvaluated: number;
 	readonly wallsReused: number;
+	readonly openingsEvaluated: number;
 	readonly junctionsEvaluated: number;
 	readonly junctionsReused: number;
 	readonly roomsEvaluated: number;
@@ -193,6 +195,7 @@ export type LayoutCompileStats = {
 const EMPTY_STATS: LayoutCompileStats = {
 	wallsEvaluated: 0,
 	wallsReused: 0,
+	openingsEvaluated: 0,
 	junctionsEvaluated: 0,
 	junctionsReused: 0,
 	roomsEvaluated: 0,
@@ -202,6 +205,13 @@ const EMPTY_STATS: LayoutCompileStats = {
 	signatureVisits: 0,
 	cold: true,
 	entities: 0
+};
+
+export type PrunableLayoutCollections = {
+	readonly walls: readonly { readonly id: string }[];
+	readonly junctions: readonly { readonly id: string }[];
+	readonly rooms: readonly { readonly id: string }[];
+	readonly objects: readonly { readonly id: string }[];
 };
 
 /**
@@ -217,6 +227,11 @@ export type LayoutCompileReuse = {
 	/** Core-level Room compiles, keyed by the identity of a retained `source`. */
 	readonly roomCompiles: WeakMap<CompilerRoomSource, RetainedRoom>;
 	readonly objects: Map<string, RetainedObject>;
+	retainedFloor: RetainedCompiledFloor | null;
+	retainedDocAabb: RetainedDocumentAabb | null;
+	/** Retained chunked world for O(k) delta compilation, owned by `layout-geometry.ts`. */
+	world: unknown;
+	lastPrunedDocument: PrunableLayoutCollections | null;
 	/** Counters for the compile that just ran; replaced, never mutated in place. */
 	stats: LayoutCompileStats;
 	readonly counters: MutableStats;
@@ -226,6 +241,7 @@ export type LayoutCompileReuse = {
 export type MutableStats = {
 	wallsEvaluated: number;
 	wallsReused: number;
+	openingsEvaluated: number;
 	junctionsEvaluated: number;
 	junctionsReused: number;
 	roomsEvaluated: number;
@@ -240,6 +256,7 @@ function freshCounters(): MutableStats {
 	return {
 		wallsEvaluated: 0,
 		wallsReused: 0,
+		openingsEvaluated: 0,
 		junctionsEvaluated: 0,
 		junctionsReused: 0,
 		roomsEvaluated: 0,
@@ -259,6 +276,10 @@ export function createLayoutCompileReuse(): LayoutCompileReuse {
 		roomSources: new Map(),
 		roomCompiles: new WeakMap(),
 		objects: new Map(),
+		retainedFloor: null,
+		retainedDocAabb: null,
+		world: null,
+		lastPrunedDocument: null,
 		stats: EMPTY_STATS,
 		counters: freshCounters()
 	};
@@ -272,6 +293,7 @@ export function beginLayoutCompile(reuse: LayoutCompileReuse): void {
 	const counters = reuse.counters as MutableStats;
 	counters.wallsEvaluated = 0;
 	counters.wallsReused = 0;
+	counters.openingsEvaluated = 0;
 	counters.junctionsEvaluated = 0;
 	counters.junctionsReused = 0;
 	counters.roomsEvaluated = 0;
@@ -288,6 +310,7 @@ export function finishLayoutCompile(reuse: LayoutCompileReuse, cold: boolean): L
 	reuse.stats = {
 		wallsEvaluated: counters.wallsEvaluated,
 		wallsReused: counters.wallsReused,
+		openingsEvaluated: counters.openingsEvaluated,
 		junctionsEvaluated: counters.junctionsEvaluated,
 		junctionsReused: counters.junctionsReused,
 		roomsEvaluated: counters.roomsEvaluated,
@@ -302,6 +325,80 @@ export function finishLayoutCompile(reuse: LayoutCompileReuse, cold: boolean): L
 }
 
 /**
+ * Whether `prev` and `next` are COW relatives whose Wall/Junction/Room id sets
+ * are guaranteed identical (geometry moves, centerline edits, Wall scalars, and
+ * Object CRUD never add or remove Walls, Junctions or Rooms).
+ */
+function sameArchitectureIdMembership(
+	prev: PrunableLayoutCollections,
+	next: PrunableLayoutCollections
+): { arch: boolean; objects: boolean } {
+	const countsMatch =
+		prev.walls.length === next.walls.length &&
+		prev.junctions.length === next.junctions.length &&
+		prev.rooms.length === next.rooms.length;
+	if (!countsMatch) return { arch: false, objects: false };
+	const objCountsMatch = prev.objects.length === next.objects.length;
+	const prevDoc = prev as LayoutDocumentWallFirst;
+	const nextDoc = next as LayoutDocumentWallFirst;
+	if (areEquivalentLayoutClones(prevDoc, nextDoc)) {
+		return { arch: true, objects: objCountsMatch };
+	}
+	const prevDelta = getCowDocumentDelta(prevDoc);
+	const nextDelta = getCowDocumentDelta(nextDoc);
+	if (nextDelta && areEquivalentLayoutClones(nextDelta.baseline, prevDoc)) {
+		const arch = nextDelta.changedRoomIds.length === 0;
+		return { arch, objects: arch && objCountsMatch && nextDelta.changedObjectIds.length === 0 };
+	}
+	if (prevDelta && areEquivalentLayoutClones(prevDelta.baseline, nextDoc)) {
+		const arch = prevDelta.changedRoomIds.length === 0;
+		return { arch, objects: arch && objCountsMatch && prevDelta.changedObjectIds.length === 0 };
+	}
+	if (prevDelta && nextDelta && areEquivalentLayoutClones(prevDelta.baseline, nextDelta.baseline)) {
+		const arch = prevDelta.changedRoomIds.length === 0 && nextDelta.changedRoomIds.length === 0;
+		return {
+			arch,
+			objects:
+				arch &&
+				objCountsMatch &&
+				prevDelta.changedObjectIds.length === 0 &&
+				nextDelta.changedObjectIds.length === 0
+		};
+	}
+	const nextParentDelta = nextDelta ? getCowDocumentDelta(nextDelta.baseline) : undefined;
+	if (nextDelta && nextParentDelta) {
+		if (areEquivalentLayoutClones(nextParentDelta.baseline, prevDoc)) {
+			const arch =
+				nextParentDelta.changedRoomIds.length === 0 && nextDelta.changedRoomIds.length === 0;
+			return {
+				arch,
+				objects:
+					arch &&
+					objCountsMatch &&
+					nextParentDelta.changedObjectIds.length === 0 &&
+					nextDelta.changedObjectIds.length === 0
+			};
+		}
+		if (prevDelta && areEquivalentLayoutClones(prevDelta.baseline, nextParentDelta.baseline)) {
+			const arch =
+				prevDelta.changedRoomIds.length === 0 &&
+				nextParentDelta.changedRoomIds.length === 0 &&
+				nextDelta.changedRoomIds.length === 0;
+			return {
+				arch,
+				objects:
+					arch &&
+					objCountsMatch &&
+					prevDelta.changedObjectIds.length === 0 &&
+					nextParentDelta.changedObjectIds.length === 0 &&
+					nextDelta.changedObjectIds.length === 0
+			};
+		}
+	}
+	return { arch: false, objects: false };
+}
+
+/**
  * Drop retained entries for entities the current document no longer contains.
  * Without this a long editing session keeps every Wall it ever saw; with it the
  * store is bounded by the document, which is what F13's resource rows need.
@@ -310,38 +407,59 @@ export function finishLayoutCompile(reuse: LayoutCompileReuse, cold: boolean): L
  */
 export function pruneLayoutCompileReuse(
 	reuse: LayoutCompileReuse,
-	document: {
-		readonly walls: readonly { readonly id: string }[];
-		readonly junctions: readonly { readonly id: string }[];
-		readonly rooms: readonly { readonly id: string }[];
-		readonly objects: readonly { readonly id: string }[];
-	}
+	document: PrunableLayoutCollections
 ): number {
+	if (
+		reuse.walls.size === 0 &&
+		reuse.junctions.size === 0 &&
+		reuse.roomSources.size === 0 &&
+		reuse.objects.size === 0
+	) {
+		reuse.lastPrunedDocument = document;
+		return 0;
+	}
+	const prev = reuse.lastPrunedDocument;
+	if (prev === document) return 0;
+
+	const skip = prev !== null ? sameArchitectureIdMembership(prev, document) : { arch: false, objects: false };
+	const skipArchPrune = skip.arch;
 	let released = 0;
-	const wallIds = new Set(document.walls.map((wall) => wall.id));
-	for (const id of reuse.walls.keys()) {
-		if (wallIds.has(id)) continue;
-		reuse.walls.delete(id);
-		released += 1;
+
+	if (!skipArchPrune && (!prev || prev.walls !== document.walls)) {
+		const wallIds = new Set(document.walls.map((wall) => wall.id));
+		for (const id of reuse.walls.keys()) {
+			if (wallIds.has(id)) continue;
+			reuse.walls.delete(id);
+			released += 1;
+		}
 	}
-	const junctionIds = new Set(document.junctions.map((junction) => junction.id));
-	for (const id of reuse.junctions.keys()) {
-		if (junctionIds.has(id)) continue;
-		reuse.junctions.delete(id);
-		released += 1;
+	if (!skipArchPrune && (!prev || prev.junctions !== document.junctions)) {
+		const junctionIds = new Set(document.junctions.map((junction) => junction.id));
+		for (const id of reuse.junctions.keys()) {
+			if (junctionIds.has(id)) continue;
+			reuse.junctions.delete(id);
+			released += 1;
+		}
 	}
-	const roomIds = new Set(document.rooms.map((room) => room.id));
-	for (const id of reuse.roomSources.keys()) {
-		if (roomIds.has(id)) continue;
-		reuse.roomSources.delete(id);
-		released += 1;
+	if (!skipArchPrune && (!prev || prev.rooms !== document.rooms)) {
+		const roomIds = new Set(document.rooms.map((room) => room.id));
+		for (const id of reuse.roomSources.keys()) {
+			if (roomIds.has(id)) continue;
+			reuse.roomSources.delete(id);
+			released += 1;
+		}
 	}
-	const objectIds = new Set(document.objects.map((object) => object.id));
-	for (const id of reuse.objects.keys()) {
-		if (objectIds.has(id)) continue;
-		reuse.objects.delete(id);
-		released += 1;
+	if (!skip.objects && (!prev || prev.objects !== document.objects)) {
+		if (reuse.objects.size > 0) {
+			const objectIds = new Set(document.objects.map((object) => object.id));
+			for (const id of reuse.objects.keys()) {
+				if (objectIds.has(id)) continue;
+				reuse.objects.delete(id);
+				released += 1;
+			}
+		}
 	}
+	reuse.lastPrunedDocument = document;
 	return released;
 }
 

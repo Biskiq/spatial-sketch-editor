@@ -25,7 +25,25 @@ import { countWork, p2311Measure } from './p2311-perf';
 import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
-import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import {
+	serializeWallFirstLayoutDocument,
+	validateWallFirstLayoutDocument
+} from './layout-wall-first-codec';
+import {
+	cowCreateObject,
+	cowDeleteObject,
+	cowMoveJunctions,
+	cowMoveRigidWall,
+	cowSetWallCenterline,
+	cowSetWallScalar,
+	cowUpdateObject,
+	ensureLayoutWorldIndex,
+	getCowDocumentDelta,
+	hasAnySamplingTestObserver,
+	peekLayoutWorldIndex,
+	verifyScalarOrObjectDelta,
+	verifySweptBoundsGeometryDelta
+} from './layout-world-index';
 import { layoutWorkingLevelIssue } from './layout-id-capture';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
@@ -267,20 +285,29 @@ export function planExactJunctionMove(
 	junctionId: string,
 	point: LayoutVec2
 ): PrecisionPlan {
-	const junction = document.junctions.find((candidate) => candidate.id === junctionId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const junction = worldIndex
+		? worldIndex.junctionById.get(junctionId)
+		: document.junctions.find((candidate) => candidate.id === junctionId);
 	if (!junction) return reject('unknown_junction', `Unknown junction '${junctionId}'`, [junctionId]);
 	if (!finitePoint(point)) return reject('invalid_value', 'Junction X/Z must be finite', [junctionId]);
 	if (coincidesAsJunction(junction.point, point)) return reject('no_op', `Junction '${junctionId}' is already at that point`, [junctionId]);
 
-	const candidate = cloneDocument(document);
-	const moved = candidate.junctions.find((entry) => entry.id === junctionId)!;
-	moved.point = [point[0], point[1]];
+	const changedWallIds = worldIndex
+		? (worldIndex.incidentWallIdsByJunctionId.get(junctionId) ?? [])
+		: incidentWallIds(document, junctionId);
+	const candidate = cowMoveJunctions(
+		document,
+		new Map([[junctionId, [point[0], point[1]] as LayoutVec2]]),
+		changedWallIds,
+		worldIndex
+	);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
 		operation: 'junction-position',
 		changedJunctionIds: [junctionId],
-		changedWallIds: incidentWallIds(document, junctionId)
+		changedWallIds
 	});
 }
 
@@ -303,39 +330,41 @@ export function planRigidWallMove(
 	const intent: WallMoveIntent = typeof wallOrIntent === 'string'
 		? { wallId: wallOrIntent, delta: (deltaArgument ?? [0, 0]) as LayoutVec2 }
 		: { wallId: wallOrIntent.wallId, delta: wallOrIntent.delta };
-	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(intent.wallId)
+		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!finitePoint(intent.delta)) return reject('invalid_value', 'Wall move delta must be finite X/Z', [wall.id]);
 	if (intent.delta[0] === 0 && intent.delta[1] === 0) return reject('no_op', `Wall '${wall.id}' already has that position`, [wall.id]);
 
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) return reject('unsupported_geometry', `Wall '${wall.id}' has unresolved junction geometry`, [wall.id]);
 	if (!(endpoints.length > POINT_EPSILON)) return reject('unsupported_geometry', `Wall '${wall.id}' has zero effective length`, [wall.id]);
 
 	// Canonical endpoint order, de-duplicated: a degenerate self-loop Wall
 	// carries one Junction, not two.
 	const changedJunctionIds = [...new Set([wall.startJunctionId, wall.endJunctionId])];
-	const candidate = cloneDocument(document);
-	for (const junction of candidate.junctions) {
-		if (!changedJunctionIds.includes(junction.id)) continue;
-		junction.point = [junction.point[0] + intent.delta[0], junction.point[1] + intent.delta[1]];
-	}
-	// P23.11 — the moved Wall's own curve anchors are absolute document X/Z and
-	// must receive the identical rigid delta, or the Wall would change SHAPE.
-	// Anchors on neighbouring Walls stay put: those Walls reshape because their
-	// shared Junction moved, which is the documented endpoint-move semantics.
-	const moved = candidate.walls.find((entry) => entry.id === wall.id)!;
-	moved.centerline = translateWallCenterline(moved.centerline, intent.delta);
-	// Deterministic document-order union of every Wall incident to either moved
-	// endpoint: those neighbours reshape because their shared Junction ID moved.
-	const changedWallIds = document.walls
-		.filter((candidate) =>
-			changedJunctionIds.some(
-				(junctionId) =>
-					candidate.startJunctionId === junctionId || candidate.endJunctionId === junctionId
+	const changedWallIds = worldIndex
+		? [...new Set(changedJunctionIds.flatMap((jId) => worldIndex.incidentWallIdsByJunctionId.get(jId) ?? []))].sort(
+				(a, b) => (worldIndex.wallIndexById.get(a) ?? 0) - (worldIndex.wallIndexById.get(b) ?? 0)
 			)
-		)
-		.map((candidate) => candidate.id);
+		: document.walls
+				.filter((candidate) =>
+					changedJunctionIds.some(
+						(junctionId) =>
+							candidate.startJunctionId === junctionId || candidate.endJunctionId === junctionId
+					)
+				)
+				.map((candidate) => candidate.id);
+	const candidate = cowMoveRigidWall(
+		document,
+		wall.id,
+		intent.delta,
+		changedJunctionIds,
+		changedWallIds,
+		worldIndex
+	);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
@@ -359,7 +388,10 @@ export function planExactWallLength(
 				length: wallOrIntent.length,
 				fixed: wallOrIntent.fixedEndpoint ?? wallOrIntent.fixed ?? 'start'
 			};
-	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(intent.wallId)
+		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
 	// P23.11 — an exact *length* is a chord solve: the endpoint moves along the
@@ -368,7 +400,7 @@ export function planExactWallLength(
 	if (wall.centerline.kind !== 'line') return rejectCurvedWall('exact length', wall.id);
 	if (!finitePositive(intent.length)) return reject('invalid_value', 'Wall length must be finite and greater than zero', [wall.id]);
 
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) return reject('unsupported_geometry', `Wall '${wall.id}' has unresolved junction geometry`, [wall.id]);
 	if (!(endpoints.length > POINT_EPSILON)) return reject('unsupported_geometry', `Wall '${wall.id}' has zero effective length`, [wall.id]);
 	if (intent.length === endpoints.length) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
@@ -382,15 +414,24 @@ export function planExactWallLength(
 	const movedPoint: LayoutVec2 = intent.fixed === 'start'
 		? [fixedPoint[0] + direction[0] * intent.length, fixedPoint[1] + direction[1] * intent.length]
 		: [fixedPoint[0] - direction[0] * intent.length, fixedPoint[1] - direction[1] * intent.length];
-	if (coincidesAsJunction(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
+	const existingMovedPoint = worldIndex?.pointById.get(movedJunctionId) ?? currentJunctionPoint(document, movedJunctionId);
+	if (coincidesAsJunction(existingMovedPoint, movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
 
-	const candidate = moveJunction(document, movedJunctionId, movedPoint);
+	const changedWallIds = worldIndex
+		? (worldIndex.incidentWallIdsByJunctionId.get(movedJunctionId) ?? [])
+		: incidentWallIds(document, movedJunctionId);
+	const candidate = cowMoveJunctions(
+		document,
+		new Map([[movedJunctionId, movedPoint]]),
+		changedWallIds,
+		worldIndex
+	);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
 		operation: 'wall-length',
 		changedJunctionIds: [movedJunctionId],
-		changedWallIds: incidentWallIds(document, movedJunctionId)
+		changedWallIds
 	});
 }
 
@@ -408,7 +449,10 @@ export function planExactWallAngle(
 				angle: wallOrIntent.angle,
 				fixed: wallOrIntent.fixedEndpoint ?? wallOrIntent.fixed ?? 'start'
 			};
-	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(intent.wallId)
+		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
 	// P23.11 — an exact *angle* is the endpoint-chord direction of a straight
@@ -417,7 +461,7 @@ export function planExactWallAngle(
 	const angle = intent.angle;
 	if (typeof angle !== 'number' || !Number.isFinite(angle)) return reject('invalid_value', 'Wall angle must be finite radians', [wall.id]);
 
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) return reject('unsupported_geometry', `Wall '${wall.id}' has unresolved junction geometry`, [wall.id]);
 	if (!(endpoints.length > POINT_EPSILON)) return reject('unsupported_geometry', `Wall '${wall.id}' has zero effective length`, [wall.id]);
 	const direction: LayoutVec2 = [Math.cos(angle), Math.sin(angle)];
@@ -426,15 +470,24 @@ export function planExactWallAngle(
 	const movedPoint: LayoutVec2 = intent.fixed === 'start'
 		? [fixedPoint[0] + direction[0] * endpoints.length, fixedPoint[1] + direction[1] * endpoints.length]
 		: [fixedPoint[0] - direction[0] * endpoints.length, fixedPoint[1] - direction[1] * endpoints.length];
-	if (coincidesAsJunction(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that angle`, [wall.id]);
+	const existingMovedPoint = worldIndex?.pointById.get(movedJunctionId) ?? currentJunctionPoint(document, movedJunctionId);
+	if (coincidesAsJunction(existingMovedPoint, movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that angle`, [wall.id]);
 
-	const candidate = moveJunction(document, movedJunctionId, movedPoint);
+	const changedWallIds = worldIndex
+		? (worldIndex.incidentWallIdsByJunctionId.get(movedJunctionId) ?? [])
+		: incidentWallIds(document, movedJunctionId);
+	const candidate = cowMoveJunctions(
+		document,
+		new Map([[movedJunctionId, movedPoint]]),
+		changedWallIds,
+		worldIndex
+	);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
 		operation: 'wall-angle',
 		changedJunctionIds: [movedJunctionId],
-		changedWallIds: incidentWallIds(document, movedJunctionId)
+		changedWallIds
 	});
 }
 
@@ -444,13 +497,15 @@ export function planExactWallThickness(
 	wallId: string,
 	thickness: number
 ): PrecisionPlan {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (!finitePositive(thickness)) return reject('invalid_value', 'Wall thickness must be finite and greater than zero', [wallId]);
 	if (wall.thickness === thickness) return reject('no_op', `Wall '${wallId}' already has that thickness`, [wallId]);
 
-	const candidate = cloneDocument(document);
-	candidate.walls.find((entry) => entry.id === wallId)!.thickness = thickness;
+	const candidate = cowSetWallScalar(document, wallId, { thickness }, worldIndex);
 	return finalizeCandidate(candidate, 'wall-thickness', [], [wallId]);
 }
 
@@ -472,13 +527,15 @@ export function planExactWallHeight(
 	wallId: string,
 	height: number
 ): PrecisionPlan {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (!finitePositive(height)) return reject('invalid_value', 'Wall height must be finite and greater than zero', [wallId]);
 	if (wall.height === height) return reject('no_op', `Wall '${wallId}' already has that height`, [wallId]);
 
-	const candidate = cloneDocument(document);
-	candidate.walls.find((entry) => entry.id === wallId)!.height = height;
+	const candidate = cowSetWallScalar(document, wallId, { height }, worldIndex);
 	return finalizeCandidate(candidate, 'wall-height', [], [wallId]);
 }
 
@@ -557,9 +614,12 @@ function resolveCurveTarget(
 			end: LayoutVec2;
 			chain: WallCurveChain;
 	  } {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return { plan: reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]) };
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) {
 		return {
 			plan: reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId])
@@ -661,9 +721,8 @@ function withWallCenterline(
 	wallId: string,
 	centerline: LayoutWall['centerline']
 ): LayoutDocumentWallFirst {
-	const candidate = cloneDocument(document);
-	candidate.walls.find((entry) => entry.id === wallId)!.centerline = centerline;
-	return candidate;
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	return cowSetWallCenterline(document, wallId, centerline, worldIndex);
 }
 
 /**
@@ -678,12 +737,15 @@ export function planConvertWallToCurve(
 	document: LayoutDocumentWallFirst,
 	wallId: string
 ): PrecisionPlan {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (wall.centerline.kind === 'cubic-chain') {
 		return reject('no_op', `Wall '${wallId}' is already curved`, [wallId]);
 	}
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) {
 		return reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId]);
 	}
@@ -717,7 +779,10 @@ export function planConvertWallToLine(
 	document: LayoutDocumentWallFirst,
 	wallId: string
 ): PrecisionPlan {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (wall.centerline.kind === 'line') {
 		return reject('no_op', `Wall '${wallId}' is already straight`, [wallId]);
@@ -1599,17 +1664,15 @@ export function planExactRectangleDimensions(
 		return reject('no_op', `Room '${roomId}' already has those rectangle dimensions`, [roomId]);
 	}
 
-	const candidate = cloneDocument(document);
-	for (const junction of candidate.junctions) {
-		const point = targetPoints.get(junction.id);
-		if (point) junction.point = point;
-	}
+	const changedWallIds = [...new Set([...roomWallIds, widthWallId, depthWallId])];
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const candidate = cowMoveJunctions(document, targetPoints, changedWallIds, worldIndex);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
 		operation: 'rectangle-dimensions',
 		changedJunctionIds: [...targetPoints.keys()],
-		changedWallIds: [...new Set([...roomWallIds, widthWallId, depthWallId])]
+		changedWallIds
 	});
 }
 
@@ -1703,10 +1766,13 @@ export function planCommitLayoutObjectPreset(
 	if (typeof capturedObjectId !== 'string' || capturedObjectId.length === 0) {
 		return reject('invalid_value', 'Preset creation requires a captured object id', [presetId]);
 	}
-	if (document.objects.some((object) => object.id === capturedObjectId)) {
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const alreadyExists = worldIndex
+		? worldIndex.objectById.has(capturedObjectId)
+		: document.objects.some((object) => object.id === capturedObjectId);
+	if (alreadyExists) {
 		return reject('invalid_value', `Captured Layout object id '${capturedObjectId}' is already in use`, [capturedObjectId]);
 	}
-	const candidate = cloneDocument(document);
 	const objectId = capturedObjectId;
 	const object: LayoutObject = {
 		id: objectId,
@@ -1715,7 +1781,7 @@ export function planCommitLayoutObjectPreset(
 		rotation: [0, 0, 0],
 		dimensions: [...preset.dimensions] as Vec3
 	};
-	candidate.objects = [...candidate.objects, object];
+	const candidate = cowCreateObject(document, object);
 	const finalized = finalizeCandidate(candidate, 'layout-object-preset-create', [], [], [objectId]);
 	return finalized.kind === 'success' ? { ...finalized, createdObjectId: objectId } : finalized;
 }
@@ -1726,11 +1792,19 @@ export function planExactLayoutObjectTransform(
 	objectId: string,
 	patch: LayoutObjectTransformPatch
 ): PrecisionPlan {
-	const object = document.objects.find((candidate) => candidate.id === objectId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const object = worldIndex
+		? worldIndex.objectById.get(objectId)
+		: document.objects.find((candidate) => candidate.id === objectId);
 	if (!object) return reject('unknown_object', `Unknown layout object '${objectId}'`, [objectId]);
 	const vectorFields = (['position', 'rotation', 'dimensions'] as const).filter((field) => patch[field] !== undefined);
 	const roomChanged = 'roomId' in patch && patch.roomId !== object.roomId;
-	if (patch.roomId && !document.rooms.some((room) => room.id === patch.roomId)) {
+	const roomExists = patch.roomId
+		? worldIndex
+			? worldIndex.roomById.has(patch.roomId)
+			: document.rooms.some((room) => room.id === patch.roomId)
+		: true;
+	if (patch.roomId && !roomExists) {
 		return reject('invalid_reference', `Unknown roomId '${patch.roomId}'`, [objectId, patch.roomId]);
 	}
 	if (vectorFields.length === 0 && !roomChanged) return reject('no_op', `Layout object '${objectId}' has no transform changes`, [objectId]);
@@ -1742,15 +1816,30 @@ export function planExactLayoutObjectTransform(
 	const unchanged = vectorFields.every((field) => vectorEqual(object[field] as readonly number[], patch[field] as readonly number[]));
 	if (unchanged && !roomChanged) return reject('no_op', `Layout object '${objectId}' already has those values`, [objectId]);
 
-	const candidate = cloneDocument(document);
-	const target = candidate.objects.find((entry) => entry.id === objectId)!;
-	if (patch.position) target.position = [...patch.position] as typeof target.position;
-	if (patch.rotation) target.rotation = [...patch.rotation] as typeof target.rotation;
-	if (patch.dimensions) target.dimensions = [...patch.dimensions] as typeof target.dimensions;
-	if ('roomId' in patch) {
-		if (patch.roomId) target.roomId = patch.roomId;
-		else delete target.roomId;
-	}
+	const candidate = cowUpdateObject(
+		document,
+		objectId,
+		(existing) => {
+			const next: LayoutObject = {
+				...existing,
+				position: patch.position
+					? ([...patch.position] as typeof existing.position)
+					: existing.position,
+				rotation: patch.rotation
+					? ([...patch.rotation] as typeof existing.rotation)
+					: existing.rotation,
+				dimensions: patch.dimensions
+					? ([...patch.dimensions] as typeof existing.dimensions)
+					: existing.dimensions
+			};
+			if ('roomId' in patch) {
+				if (patch.roomId) next.roomId = patch.roomId;
+				else delete next.roomId;
+			}
+			return next;
+		},
+		worldIndex
+	);
 	return finalizeCandidate(candidate, 'layout-object-transform', [], [], [objectId]);
 }
 
@@ -1759,13 +1848,23 @@ export function planDeleteLayoutObject(
 	document: LayoutDocumentWallFirst,
 	objectId: string
 ): PrecisionPlan {
-	const object = document.objects.find((candidate) => candidate.id === objectId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const object = worldIndex
+		? worldIndex.objectById.get(objectId)
+		: document.objects.find((candidate) => candidate.id === objectId);
 	if (!object) return reject('unknown_object', `Unknown layout object '${objectId}'`, [objectId]);
 	if (object.kind === 'profile') return reject('invalid_reference', 'Profile objects are read-only', [objectId]);
 
-	const candidate = cloneDocument(document);
-	candidate.objects = candidate.objects.filter((entry) => entry.id !== objectId);
+	const candidate = cowDeleteObject(document, objectId);
 	return finalizeCandidate(candidate, 'layout-object-delete', [], [], [objectId]);
+}
+
+function hasAnyTestObserverInPrecision(): boolean {
+	return (
+		hasAnySamplingTestObserver() ||
+		topologyGateObserverForTest !== undefined ||
+		topologyEvaluationObserverForTest !== undefined
+	);
 }
 
 function finalizeCandidate(
@@ -1776,6 +1875,47 @@ function finalizeCandidate(
 	changedObjectIds?: readonly string[],
 	createdWallIds?: readonly string[]
 ): PrecisionPlan {
+	const cowDelta = !hasAnyTestObserverInPrecision() ? getCowDocumentDelta(candidate) : undefined;
+	if (
+		cowDelta &&
+		!createdWallIds?.length &&
+		(operation === 'wall-thickness' ||
+			operation === 'wall-height' ||
+			operation === 'layout-object-preset-create' ||
+			operation === 'layout-object-transform' ||
+			operation === 'layout-object-delete')
+	) {
+		const verdict = verifyScalarOrObjectDelta({
+			baseline: cowDelta.baseline,
+			candidate,
+			operation,
+			changedWallIds,
+			changedObjectIds: changedObjectIds ?? []
+		});
+		if (verdict === 'certified-valid') {
+			const compileSession = activeLayoutCompileSession();
+			const compiled = compileSession
+				? compileSession.compile(candidate)
+				: compileWallFirstLayoutGeometry(candidate);
+			if (hasBlockingLayoutIssues(compiled.issues)) {
+				return reject(
+					'geometry_invalid',
+					compiled.issues[0]?.message ?? 'Candidate geometry does not compile',
+					undefined,
+					compiled.issues
+				);
+			}
+			return {
+				kind: 'success',
+				document: candidate,
+				operation,
+				changedJunctionIds: [...changedJunctionIds],
+				changedWallIds: [...changedWallIds],
+				...(changedObjectIds ? { changedObjectIds: [...changedObjectIds] } : {})
+			};
+		}
+	}
+
 	const structural = validateWallFirstLayoutDocument(candidate);
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
@@ -1859,6 +1999,54 @@ function finalizeWallGeometryCandidate(options: {
 	createdWallIds?: readonly string[];
 }): PrecisionPlan {
 	const { baseline, candidate, operation, changedJunctionIds, changedWallIds } = options;
+
+	if (!hasAnyTestObserverInPrecision() && !options.createdWallIds?.length) {
+		const cowDelta = getCowDocumentDelta(candidate);
+		if (cowDelta && cowDelta.baseline === baseline) {
+			const fastSampling = createWallSamplingDerivation();
+			const verdict = verifySweptBoundsGeometryDelta({
+				baseline,
+				candidate,
+				changedJunctionIds,
+				changedWallIds,
+				sampling: fastSampling
+			});
+			if (verdict === 'certified-valid') {
+				const compileSession = activeLayoutCompileSession();
+				const compiled = p2311Measure('acceptance-compile', () =>
+					compileSession
+						? compileSession.compile(candidate, fastSampling)
+						: compileWallFirstLayoutGeometry(candidate, fastSampling)
+				);
+				if (hasBlockingLayoutIssues(compiled.issues)) {
+					return reject(
+						'geometry_invalid',
+						compiled.issues[0]?.message ?? 'Candidate geometry does not compile',
+						undefined,
+						compiled.issues
+					);
+				}
+				let memoizedDocJson: string | undefined;
+				return {
+					kind: 'success',
+					document: candidate,
+					operation,
+					changedJunctionIds: [...changedJunctionIds],
+					changedWallIds: [...changedWallIds],
+					acceptance: {
+						get documentJson(): string {
+							if (memoizedDocJson === undefined) {
+								memoizedDocJson = serializeWallFirstLayoutDocument(candidate);
+							}
+							return memoizedDocJson;
+						},
+						geometry: compiled.geometry,
+						issues: compiled.issues
+					}
+				};
+			}
+		}
+	}
 
 	// P23B.4 M-1: one chain-scoped derivation serves every consumer below that
 	// receives it (S2: face extraction; S3–S5 extend the threading). Consumers

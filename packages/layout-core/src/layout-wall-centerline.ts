@@ -392,6 +392,9 @@ export function setWallSamplingObserverForTest(
 export function clearWallSamplingObserverForTest(): void {
 	wallSamplingObserverForTest = undefined;
 }
+export function hasWallSamplingObserverForTest(): boolean {
+	return wallSamplingObserverForTest !== undefined;
+}
 
 /**
  * P23B.4 M-1 — one explicitly-threaded sampled-centerline derivation per acceptance chain.

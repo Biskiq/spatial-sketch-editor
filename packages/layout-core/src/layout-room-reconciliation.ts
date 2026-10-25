@@ -35,6 +35,8 @@
  */
 import type {
 	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutWall,
 	LayoutWallFirstRoom,
 	LayoutWallOpening,
 	OrientedWallRef
@@ -119,14 +121,29 @@ export const ROOM_CREATION_DEFAULTS = {
  * boundary is unresolvable — callers reject rather than guess. Curved Walls
  * contribute their oriented sampled centerline, matching candidate faces.
  */
+export type RoomBoundaryLookup = {
+	readonly roomById: ReadonlyMap<string, LayoutWallFirstRoom>;
+	readonly junctionById: ReadonlyMap<string, LayoutJunction>;
+	readonly wallById: ReadonlyMap<string, LayoutWall>;
+};
+
+export function createRoomBoundaryLookup(document: LayoutDocumentWallFirst): RoomBoundaryLookup {
+	return {
+		roomById: new Map(document.rooms.map((room) => [room.id, room])),
+		junctionById: new Map(document.junctions.map((junction) => [junction.id, junction])),
+		wallById: new Map(document.walls.map((wall) => [wall.id, wall]))
+	};
+}
+
 export function roomBoundaryPolygon(
 	document: LayoutDocumentWallFirst,
-	roomId: string
+	roomId: string,
+	lookup?: RoomBoundaryLookup
 ): readonly LayoutVec2[] | null {
-	const room = document.rooms.find((candidate) => candidate.id === roomId);
+	const room = lookup ? lookup.roomById.get(roomId) : document.rooms.find((candidate) => candidate.id === roomId);
 	if (!room || room.boundary.length < 3) return null;
-	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
-	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
+	const junctionById = lookup ? lookup.junctionById : new Map(document.junctions.map((junction) => [junction.id, junction]));
+	const wallById = lookup ? lookup.wallById : new Map(document.walls.map((wall) => [wall.id, wall]));
 	const polygon: LayoutVec2[] = [];
 	for (const ref of room.boundary) {
 		const wall = wallById.get(ref.wallId);

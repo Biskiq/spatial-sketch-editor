@@ -145,13 +145,41 @@ export function validateWallFirstOpeningSet(
 	document: LayoutDocumentWallFirst,
 	sampling?: WallSamplingDerivation
 ): OpeningSetIssue[] {
+	if (document.openings.length === 0) return [];
+	return validateIndexedOpeningRecords(
+		document,
+		document.openings.map((opening, index) => ({ opening, index })),
+		wallFirstWallIndex(document),
+		sampling
+	);
+}
+
+/**
+ * Validate only the Openings hosted on a bounded subset of Walls, preserving
+ * exact document-order paths (`$.openings[<index>]`) and same-Wall overlap
+ * checks. Shared with the canonical validator so no rule is implemented twice.
+ */
+export function validateWallFirstOpeningSubset(
+	document: LayoutDocumentWallFirst,
+	entries: ReadonlyArray<{ readonly opening: LayoutWallOpening; readonly index: number }>,
+	walls: WallFirstWallIndex,
+	sampling?: WallSamplingDerivation
+): OpeningSetIssue[] {
+	if (entries.length === 0) return [];
+	return validateIndexedOpeningRecords(document, entries, walls, sampling);
+}
+
+function validateIndexedOpeningRecords(
+	document: LayoutDocumentWallFirst,
+	entries: ReadonlyArray<{ readonly opening: LayoutWallOpening; readonly index: number }>,
+	walls: WallFirstWallIndex,
+	sampling?: WallSamplingDerivation
+): OpeningSetIssue[] {
 	const issues: OpeningSetIssue[] = [];
-	// One identity index serves every Opening's host-Wall span below.
-	const walls = wallFirstWallIndex(document);
 	const wallById = walls.wallById;
 	const openingsByWall = new Map<string, LayoutWallOpening[]>();
 
-	document.openings.forEach((opening, index) => {
+	for (const { opening, index } of entries) {
 		const path = `$.openings[${index}]`;
 		const wall = wallById.get(opening.wallId);
 		const span = wall ? wallFirstWallSpan(document, wall, sampling, walls) : undefined;
@@ -163,7 +191,7 @@ export function validateWallFirstOpeningSet(
 				code: 'opening_host_wall_unresolved',
 				message: `Opening '${opening.id}' must be hosted by a Wall with a resolved non-zero span`
 			});
-			return;
+			continue;
 		}
 		if (!Number.isFinite(opening.offset) || opening.offset < 0) {
 			issues.push({
@@ -231,7 +259,7 @@ export function validateWallFirstOpeningSet(
 		const group = openingsByWall.get(opening.wallId) ?? [];
 		group.push(opening);
 		openingsByWall.set(opening.wallId, group);
-	});
+	}
 
 	// Same-Wall interval overlap over the complete hosting-Wall set (never the
 	// edited record in isolation), stable sort by offset then ID.

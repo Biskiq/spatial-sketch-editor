@@ -6,6 +6,7 @@ export * from './layout-geometry-openings';
 export * from './layout-geometry-queries';
 export * from './layout-geometry-types';
 export * from './layout-geometry-reuse';
+export { recordPassiveCompiledGeometry } from './layout-geometry-delta';
 export * from './layout-geometry-validation';
 export * from './layout-junction-clearance';
 export * from './layout-junction-resolution';
@@ -46,4 +47,6 @@ export * from './layout-plan-representation';
 // so its superset contract (every pair the predicate can accept is returned) is
 // testable directly, including the inverted-box fallback.
 export * from './layout-plan-box-index';
+export * from './layout-bvh';
+export * from './layout-world-index';
 export * from './layout-preset-explicit';

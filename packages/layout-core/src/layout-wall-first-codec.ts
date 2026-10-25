@@ -172,10 +172,16 @@ export function validateWallFirstLayoutDocument(
 		return { success: false, issues };
 	}
 
+	let memoizedCanonicalJson: string | undefined;
 	return {
 		success: true,
 		document: parsed,
-		canonicalJson: JSON.stringify(parsed, null, 2) + '\n'
+		get canonicalJson(): string {
+			if (memoizedCanonicalJson === undefined) {
+				memoizedCanonicalJson = JSON.stringify(parsed, null, 2) + '\n';
+			}
+			return memoizedCanonicalJson;
+		}
 	};
 }
 
