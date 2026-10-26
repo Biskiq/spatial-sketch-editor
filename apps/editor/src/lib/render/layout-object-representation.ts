@@ -41,7 +41,7 @@ import {
 	type Material,
 	type Object3D
 } from 'three';
-import { sphereRenderScale, type CompiledLayoutGeometry, type CompiledLayoutObject } from '@portfolio/layout-core';
+import { countWork, sphereRenderScale, type CompiledLayoutGeometry, type CompiledLayoutObject } from '@portfolio/layout-core';
 
 /** One retained object: what it was built from, the object and its buffers. */
 type RetainedObject = {
@@ -108,17 +108,21 @@ export function createObjectRepresentation(): ObjectRepresentation {
 	// 0.78, metalness 0). One instance for the representation's lifetime.
 	const material: Material = new MeshStandardMaterial({ color: 0xe7e4dd, roughness: 0.78, metalness: 0 });
 	let disposed = false;
+	let previousObjects: CompiledLayoutGeometry['objects'] | undefined;
 
 	return {
 		object3d,
 
 		update(geometry) {
 			if (disposed) throw new Error('the layout object representation has been disposed');
+			if (previousObjects === geometry.objects) return { objects: retained.size, built: 0, retained: retained.size, released: 0 };
+			previousObjects = geometry.objects;
 			let built = 0;
 			let kept = 0;
 			const present = new Set<string>();
 
 			for (const object of geometry.objects) {
+				countWork('representation:object-entry-test');
 				present.add(object.objectId);
 				const previous = retained.get(object.objectId);
 				if (previous && previous.key === object.cacheKey) {
@@ -164,6 +168,7 @@ export function createObjectRepresentation(): ObjectRepresentation {
 		dispose() {
 			if (disposed) return;
 			disposed = true;
+			previousObjects = undefined;
 			for (const entry of retained.values()) {
 				entry.object.removeFromParent();
 				entry.geometry.dispose();

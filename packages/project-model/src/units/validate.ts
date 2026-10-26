@@ -1,3 +1,4 @@
+import { hasOwnedFrozenJsonProof, rememberOwnedFrozenJson } from '../json-immutability';
 /**
  * Strict validation for F.2 `unit-envelope-v1` (AM-2).
  *
@@ -968,7 +969,7 @@ const DEEPLY_FROZEN_PLAIN_JSON = new WeakSet<object>();
  */
 export function isDeeplyFrozenPlainJson(value: unknown): value is object {
 	if (typeof value !== 'object' || value === null) return false;
-	if (DEEPLY_FROZEN_PLAIN_JSON.has(value)) return true;
+	if (DEEPLY_FROZEN_PLAIN_JSON.has(value) || hasOwnedFrozenJsonProof(value)) return true;
 	if (!Object.isFrozen(value)) return false;
 
 	const proto = Object.getPrototypeOf(value);
@@ -978,6 +979,7 @@ export function isDeeplyFrozenPlainJson(value: unknown): value is object {
 
 	const descriptors = Object.getOwnPropertyDescriptors(value);
 	for (const key of Object.keys(descriptors)) {
+		countWork('validation:frozen-property-check');
 		const desc = descriptors[key]!;
 		if (desc.get !== undefined || desc.set !== undefined) return false;
 		const val = desc.value;
@@ -998,6 +1000,7 @@ export function freezePlainJsonSubgraph<T>(value: T): T {
 	if (DEEPLY_FROZEN_PLAIN_JSON.has(value as object)) return value;
 	const obj = value as Record<string, unknown>;
 	for (const key of Object.keys(obj)) {
+		countWork('validation:freeze-property');
 		const child = obj[key];
 		if (typeof child === 'object' && child !== null) {
 			freezePlainJsonSubgraph(child);
@@ -1007,6 +1010,7 @@ export function freezePlainJsonSubgraph<T>(value: T): T {
 		Object.freeze(obj);
 	}
 	DEEPLY_FROZEN_PLAIN_JSON.add(obj);
+	rememberOwnedFrozenJson(obj);
 	return value;
 }
 
@@ -1037,8 +1041,10 @@ export function validateUnitPayload(domain: UnitDomain, input: unknown): ShapeVa
 	if (typeof input === 'object' && input !== null && isDeeplyFrozenPlainJson(input)) {
 		const cached = VALIDATED_PAYLOAD_CACHE[domain].get(input);
 		if (cached !== undefined) {
+			countWork(`validation:payload-hit:${domain}`);
 			return cached;
 		}
+		countWork(`validation:payload-read:${domain}`);
 		const result = PAYLOAD_READERS[domain](input);
 		if (result.success) {
 			freezePlainJsonSubgraph(result.value);
@@ -1053,6 +1059,7 @@ export function validateUnitPayload(domain: UnitDomain, input: unknown): ShapeVa
 		}
 		return result;
 	}
+	countWork(`validation:payload-read:${domain}`);
 	return PAYLOAD_READERS[domain](input);
 }
 
@@ -1501,5 +1508,7 @@ export function serializeProjectEnvelope(envelope: ProjectEnvelope): string {
  */
 export function serializeValidatedProjectEnvelope(envelope: ProjectEnvelope): string {
 	countWork('envelope:serialize-validated');
-	return JSON.stringify(envelope, null, 2) + '\n';
+	const json = JSON.stringify(envelope, null, 2) + '\n';
+	countWork('envelope:serialized-utf16', json.length);
+	return json;
 }

@@ -1,3 +1,4 @@
+import { indexedCompiledWall } from '@portfolio/layout-core';
 import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
 import type { EntryRequalification } from './selection-requalification';
 import type { StageSelectionEntry } from './semantic-selection';
@@ -634,7 +635,7 @@ function pickSurfacesOf(
 		geometry: fragment.geometry
 	};
 	if (fragment.ref.sourceKind !== 'wall') return [flat];
-	const wall = geometry.walls.find((candidate) => candidate.wallId === fragment.ref.sourceId);
+	const wall = indexedCompiledWall(geometry, fragment.ref.sourceId);
 	if (wall === undefined) return [flat];
 	const faceAtWallHeight = (): readonly StagePickSurface[] =>
 		planSegments(fragment.geometry).map(([start, end]) => ({

@@ -29,6 +29,7 @@ import {
 	createUnitAcceptanceAdapter,
 	createUnitAcceptancePreparation,
 	createUnitPlannerRegistry,
+	canonicalUnitJson,
 	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
 	type ProjectEnvelope
@@ -513,6 +514,7 @@ export function createStageAcceptanceHost(options: {
 				return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };
 			}
 			if (inFlight > 0) return { kind: 'refused', code: 'live-proposal', message: 'Another host command is live.' };
+			const beforeLayout = coordinator.current().source.units.layout.data;
 			inFlight += 1;
 			const unregister = facade.session.writers().register('command', facade.session.token(), () => coordinator.cancelPending());
 			changed();
@@ -520,7 +522,7 @@ export function createStageAcceptanceHost(options: {
 				const result = await coordinator.accept(intent);
 				if (result.kind === 'no-op') return { kind: 'no-op', revision: result.revision };
 				if (result.kind === 'rejected') return { kind: 'refused', code: result.code, message: result.message };
-				const preparedCow = consumePreparedCowCandidate(intent.operationId);
+				const preparedCow = consumePreparedCowCandidate(intent.operationId, { baseline: beforeLayout, key: canonicalUnitJson(intent) });
 				if (preparedCow) {
 					linkClonedCowCandidate(preparedCow, result.snapshot.domain.source.units.layout.data);
 				}
@@ -541,6 +543,7 @@ export function createStageAcceptanceHost(options: {
 				}
 				return installed;
 			} finally {
+				while (consumePreparedCowCandidate(intent.operationId, { baseline: beforeLayout })) { /* release terminal artifacts */ }
 				unregister();
 				inFlight -= 1;
 				changed();

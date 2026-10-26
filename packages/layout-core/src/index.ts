@@ -6,7 +6,7 @@ export * from './layout-geometry-openings';
 export * from './layout-geometry-queries';
 export * from './layout-geometry-types';
 export * from './layout-geometry-reuse';
-export { recordPassiveCompiledGeometry } from './layout-geometry-delta';
+export { recordPassiveCompiledGeometry, indexedCompiledWall, indexedCompiledWallQueries, diffCompiledWalls, sealCompiledLayoutSnapshot } from './layout-geometry-delta';
 export * from './layout-geometry-validation';
 export * from './layout-junction-clearance';
 export * from './layout-junction-resolution';
@@ -50,3 +50,7 @@ export * from './layout-plan-box-index';
 export * from './layout-bvh';
 export * from './layout-world-index';
 export * from './layout-preset-explicit';
+
+export { materializeLayoutSourceForCapture } from './layout-source-collections';
+
+export { hasImmutableJsonProof, rememberImmutableJsonNode } from './immutable-json';

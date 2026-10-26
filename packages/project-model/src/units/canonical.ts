@@ -1,3 +1,5 @@
+import { hasOwnedFrozenJsonProof } from '../json-immutability';
+import { countWork } from '@portfolio/layout-core';
 /**
  * F.2 `unit-envelope-v1` canonical bytes and content identities (AM-2).
  *
@@ -44,9 +46,13 @@ const CANONICAL_JSON_BY_FROZEN_OBJECT = new WeakMap<object, string>();
 const UNIT_REVISION_BY_FROZEN_OBJECT = new WeakMap<object, string>();
 
 function isPlainJsonContainer(value: object): boolean {
-	if (Array.isArray(value)) return true;
+	if (hasOwnedFrozenJsonProof(value)) return true;
 	const proto = Object.getPrototypeOf(value);
-	return proto === Object.prototype || proto === null;
+	if (!Array.isArray(value) && proto !== Object.prototype && proto !== null) return false;
+	return Reflect.ownKeys(value).every((key) => {
+		countWork('canonical:frozen-property-check');
+		return 'value' in Object.getOwnPropertyDescriptor(value, key)!;
+	});
 }
 
 type CanonicalizedResult = {
@@ -70,6 +76,7 @@ export function canonicalUnitJson(value: unknown): string {
 }
 
 function canonicalizeTracked(value: unknown): CanonicalizedResult {
+	countWork('canonical:value-visit');
 	if (value === null) return { json: 'null', deeplyFrozen: true };
 	if (typeof value === 'string' || typeof value === 'boolean') {
 		return { json: JSON.stringify(value), deeplyFrozen: true };
@@ -80,8 +87,9 @@ function canonicalizeTracked(value: unknown): CanonicalizedResult {
 	}
 	if (Array.isArray(value)) {
 		const cached = CANONICAL_JSON_BY_FROZEN_OBJECT.get(value);
-		if (cached !== undefined) return { json: cached, deeplyFrozen: true };
-		let deeplyFrozen = Object.isFrozen(value);
+		if (cached !== undefined) { countWork('canonical:substring-hit'); return { json: cached, deeplyFrozen: true }; }
+		let deeplyFrozen = Object.isFrozen(value) && isPlainJsonContainer(value);
+		countWork('canonical:array-slots', value.length);
 		const parts = new Array<string>(value.length);
 		for (let i = 0; i < value.length; i += 1) {
 			const child = canonicalizeTracked(value[i]);
@@ -89,12 +97,13 @@ function canonicalizeTracked(value: unknown): CanonicalizedResult {
 			if (!child.deeplyFrozen) deeplyFrozen = false;
 		}
 		const json = `[${parts.join(',')}]`;
+		countWork('canonical:assembled-utf16', json.length);
 		if (deeplyFrozen) CANONICAL_JSON_BY_FROZEN_OBJECT.set(value, json);
 		return { json, deeplyFrozen };
 	}
 	if (typeof value === 'object') {
 		const cached = CANONICAL_JSON_BY_FROZEN_OBJECT.get(value);
-		if (cached !== undefined) return { json: cached, deeplyFrozen: true };
+		if (cached !== undefined) { countWork('canonical:substring-hit'); return { json: cached, deeplyFrozen: true }; }
 		let deeplyFrozen = Object.isFrozen(value) && isPlainJsonContainer(value);
 		const record = value as Record<string, unknown>;
 		const keys = Object.keys(record)
@@ -108,6 +117,7 @@ function canonicalizeTracked(value: unknown): CanonicalizedResult {
 			if (!child.deeplyFrozen) deeplyFrozen = false;
 		}
 		const json = `{${parts.join(',')}}`;
+		countWork('canonical:assembled-utf16', json.length);
 		if (deeplyFrozen) CANONICAL_JSON_BY_FROZEN_OBJECT.set(value, json);
 		return { json, deeplyFrozen };
 	}
@@ -116,16 +126,20 @@ function canonicalizeTracked(value: unknown): CanonicalizedResult {
 
 /** UTF-8 canonical bytes of one unit's domain data. */
 export function canonicalUnitBytes(data: unknown): Uint8Array {
-	return new TextEncoder().encode(canonicalUnitJson(data));
+	const bytes = new TextEncoder().encode(canonicalUnitJson(data));
+	countWork('canonical:utf8-bytes', bytes.byteLength);
+	return bytes;
 }
 
 /** One unit's content revision: `sha256Bytes` over its canonical domain data. */
 export async function computeUnitContentRevision(data: unknown): Promise<string> {
 	if (typeof data === 'object' && data !== null) {
 		const cachedRevision = UNIT_REVISION_BY_FROZEN_OBJECT.get(data);
-		if (cachedRevision !== undefined) return cachedRevision;
+		if (cachedRevision !== undefined) { countWork('canonical:unit-revision-hit'); return cachedRevision; }
 		const { json, deeplyFrozen } = canonicalizeTracked(data);
-		const revision = await sha256Bytes(new TextEncoder().encode(json));
+		const bytes = new TextEncoder().encode(json);
+		countWork('canonical:utf8-bytes', bytes.byteLength);
+		const revision = await sha256Bytes(bytes);
 		if (deeplyFrozen) UNIT_REVISION_BY_FROZEN_OBJECT.set(data, revision);
 		return revision;
 	}

@@ -1,3 +1,5 @@
+import { countWork } from './p2311-perf';
+import { hasImmutableJsonProof } from './immutable-json';
 /**
  * `layout-wall-first-codec.ts` — strict codec for the wall-first
  * `LayoutDocument` (`formatVersion: 6`), shared by P23.1 operations and the
@@ -167,6 +169,7 @@ export function validateWallFirstLayoutDocument(
 	input: unknown
 ): WallFirstLayoutValidationResult {
 	const issues: LayoutDocumentIssue[] = [];
+	countWork('validation:layout-document');
 	const parsed = parseDocument(input, '$', issues);
 	if (!parsed || issues.length > 0) {
 		return { success: false, issues };
@@ -948,6 +951,23 @@ function parseInteriorAnchor(
 	return { id, point };
 }
 
+// Only a value already deeply immutable WHEN validated may enter this cache.
+// A mutable parser output could be changed before a later freeze, so merely
+// remembering "the parser once produced this object" would be unsound.
+const NORMALIZED_FROZEN_ELEMENTS = new Map<unknown, WeakSet<object>>();
+function sameNormalizedValue(a: unknown, b: unknown): boolean {
+ if (Object.is(a, b)) return true;
+ if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object' || Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false;
+ const keys = Object.keys(a), other = Object.keys(b);
+ if (keys.length !== other.length) return false;
+ for (let i = 0; i < keys.length; i += 1) {
+  countWork('validation:frozen-element-compare-property');
+  const key = keys[i]!;
+  if (key !== other[i] || !sameNormalizedValue((a as JsonRecord)[key], (b as JsonRecord)[key])) return false;
+ }
+ return true;
+}
+
 function parseArray<T>(
 	input: unknown,
 	path: string,
@@ -958,7 +978,18 @@ function parseArray<T>(
 		addIssue(issues, path, 'invalid_type', 'Expected an array');
 		return undefined;
 	}
-	const values = input.map((value, index) => parser(value, `${path}[${index}]`, issues));
+	let proven = NORMALIZED_FROZEN_ELEMENTS.get(parser);
+	if (!proven) { proven = new WeakSet(); NORMALIZED_FROZEN_ELEMENTS.set(parser, proven); }
+	const values = input.map((value, index) => {
+		countWork('validation:layout-array-entry');
+		const immutable = value !== null && typeof value === 'object' && hasImmutableJsonProof(value);
+		if (immutable && proven.has(value)) { countWork('validation:frozen-element-hit'); return value as T; }
+		const before = issues.length, parsed = parser(value, `${path}[${index}]`, issues);
+		if (immutable && parsed !== undefined && issues.length === before && sameNormalizedValue(value, parsed)) {
+			proven.add(value); countWork('validation:frozen-element-shared'); return value as T;
+		}
+		return parsed;
+	});
 	return values.every((value): value is T => value !== undefined) ? values : undefined;
 }
 
@@ -986,6 +1017,7 @@ function assertAllowedKeys(
 ): void {
 	const allowed = new Set(allowedKeys);
 	for (const key of Object.keys(record)) {
+		countWork('validation:layout-field-key');
 		if (!allowed.has(key)) {
 			addIssue(issues, `${path}.${key}`, 'unknown_key', `Unknown key '${key}'`);
 		}
@@ -1147,6 +1179,7 @@ function validateUniqueIds<T>(
 ): void {
 	const seen = new Set<string>();
 	for (const [index, value] of values.entries()) {
+		countWork('validation:layout-unique-id-entry');
 		const id = getId(value);
 		if (seen.has(id)) {
 			addIssue(issues, `${path}[${index}].id`, 'duplicate_id', `Duplicate ID '${id}'`);

@@ -1,3 +1,4 @@
+import { layoutLength } from './layout-source-collections';
 /**
  * `layout-geometry-reuse.ts` — retained compile units for the incremental Layout
  * compile (T1.P02.S06 D.3 / H1).
@@ -229,7 +230,7 @@ export type LayoutCompileReuse = {
 	readonly objects: Map<string, RetainedObject>;
 	retainedFloor: RetainedCompiledFloor | null;
 	retainedDocAabb: RetainedDocumentAabb | null;
-	/** Retained chunked world for O(k) delta compilation, owned by `layout-geometry.ts`. */
+	/** Persistent compile roots; local updates copy O(k log N) nodes plus affected output. */
 	world: unknown;
 	lastPrunedDocument: PrunableLayoutCollections | null;
 	/** Counters for the compile that just ran; replaced, never mutated in place. */
@@ -334,11 +335,11 @@ function sameArchitectureIdMembership(
 	next: PrunableLayoutCollections
 ): { arch: boolean; objects: boolean } {
 	const countsMatch =
-		prev.walls.length === next.walls.length &&
-		prev.junctions.length === next.junctions.length &&
-		prev.rooms.length === next.rooms.length;
+		layoutLength(prev as LayoutDocumentWallFirst, 'walls') === layoutLength(next as LayoutDocumentWallFirst, 'walls') &&
+		layoutLength(prev as LayoutDocumentWallFirst, 'junctions') === layoutLength(next as LayoutDocumentWallFirst, 'junctions') &&
+		layoutLength(prev as LayoutDocumentWallFirst, 'rooms') === layoutLength(next as LayoutDocumentWallFirst, 'rooms');
 	if (!countsMatch) return { arch: false, objects: false };
-	const objCountsMatch = prev.objects.length === next.objects.length;
+	const objCountsMatch = layoutLength(prev as LayoutDocumentWallFirst, 'objects') === layoutLength(next as LayoutDocumentWallFirst, 'objects');
 	const prevDoc = prev as LayoutDocumentWallFirst;
 	const nextDoc = next as LayoutDocumentWallFirst;
 	if (areEquivalentLayoutClones(prevDoc, nextDoc)) {

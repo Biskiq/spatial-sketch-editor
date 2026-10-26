@@ -1,3 +1,4 @@
+import { layoutItem, layoutLength } from './layout-source-collections';
 /**
  * P23.1 precise semantic operations for the wall-first Layout document.
  *
@@ -2226,9 +2227,9 @@ function assertWallGeometryRoomIdentityPreserved(
 			};
 		}
 	}
-	if (reconciliation.document.rooms.length !== baseline.rooms.length) {
+	if (layoutLength(reconciliation.document, 'rooms') !== baseline.rooms.length) {
 		return {
-			message: `Room count changed during the geometry edit (${baseline.rooms.length} → ${reconciliation.document.rooms.length})`
+			message: `Room count changed during the geometry edit (${baseline.rooms.length} → ${layoutLength(reconciliation.document, 'rooms')})`
 		};
 	}
 	const finalByRoomId = new Map(reconciliation.document.rooms.map((room) => [room.id, room]));
@@ -2462,8 +2463,8 @@ function validateWallFirstTopologyPass(
 		// rule, and the same-component pairs that reach the predicate.
 		countWork('pairs:junction-junction', candidates.length);
 		for (const [first, second] of candidates) {
-			const firstId = document.junctions[first]!.id;
-			const secondId = document.junctions[second]!.id;
+			const firstId = layoutItem(document, 'junctions', first)!.id;
+			const secondId = layoutItem(document, 'junctions', second)!.id;
 			if (keyByJunctionId.get(firstId) !== keyByJunctionId.get(secondId)) continue;
 			countWork('pairs:junction-junction:same-component');
 			observeTopologyEvaluation('junction-coincidence', [firstId, secondId]);
@@ -2870,11 +2871,11 @@ export function detectWallCurveTopologyCrossings(
 	// overlap cannot newly cross. Test-only bypass (F2) recovers the genuine
 	// exhaustive loop with only this gate absent; never set in production.
 	if (disableExtentPruneForTest) {
-		for (let first = 0; first < document.walls.length; first += 1) {
-			countWork('pairs:wall-wall-curve', document.walls.length - first - 1);
-			for (let second = first + 1; second < document.walls.length; second += 1) {
-				const a = document.walls[first]!;
-				const b = document.walls[second]!;
+		for (let first = 0; first < layoutLength(document, 'walls'); first += 1) {
+			countWork('pairs:wall-wall-curve', layoutLength(document, 'walls') - first - 1);
+			for (let second = first + 1; second < layoutLength(document, 'walls'); second += 1) {
+				const a = layoutItem(document, 'walls', first)!;
+				const b = layoutItem(document, 'walls', second)!;
 				if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
 				// Two straight Walls are already fully decided by the chord gate.
 				if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
@@ -2958,7 +2959,7 @@ function wallEndpoints(
 		end = points.get(wall.endJunctionId);
 	} else {
 		// Two linear Junction lookups per Wall (an upper bound on the visits).
-		countWork('lookup:junctions', 2 * document.junctions.length);
+		countWork('lookup:junctions', 2 * layoutLength(document, 'junctions'));
 		start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
 		end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
 	}

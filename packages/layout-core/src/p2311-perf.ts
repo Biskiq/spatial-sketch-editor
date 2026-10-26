@@ -20,7 +20,10 @@
 export type WorkObserver = {
 	/** One completed span; nested spans each report their own inclusive time. */
 	span(name: string, durationMs: number): void;
-	/** A deterministic amount of named work (a pass, an entity set, pair visits). */
+	/** A deterministic amount in the name's stated unit. Each counter covers its
+	 * instrumented sites only: calls do not measure their payload, accepted index
+	 * nodes exclude rejected tests, and entity evaluations exclude storage/output.
+	 * Node/slot counts are logical work, never a JavaScript engine byte estimate. */
 	count(name: string, amount: number): void;
 };
 

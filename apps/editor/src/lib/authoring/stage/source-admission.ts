@@ -1,3 +1,4 @@
+import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core';
 /**
  * Source admission — **admission equals runtime preparation**.
  *
@@ -263,7 +264,10 @@ async function admitSourceOnce(
 		? knownIdentity.canonicalJson
 		: p2311Measure('admission:serialize', () => serializeValidatedProjectEnvelope(envelope));
 	const domain = domainOf(envelope, sourceContentId, context, prepared);
-	p2311Measure('admission:freeze', () => freezeF4Data(domain));
+	p2311Measure('admission:freeze', () => {
+		sealCompiledLayoutSnapshot(domain.geometry);
+		freezeF4Data(domain);
+	});
 	return { kind: 'admitted', snapshot: snapshotOf(envelope, sourceContentId, canonicalJson, context, domain) };
 }
 

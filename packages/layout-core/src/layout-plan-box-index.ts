@@ -1,3 +1,4 @@
+import { countWork } from './p2311-perf';
 /**
  * `layout-plan-box-index.ts` — a small plan-space (X/Z) uniform box index
  * (T1.P02.S06 D.1 / H3, invariant I2).
@@ -50,6 +51,7 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 	const cells = new Map<string, number[]>();
 	const wide: number[] = [];
 	// Query de-duplication without allocating a Set per query.
+	countWork('grid:stamp-buffer-bytes', 4 * size);
 	const stamp = new Int32Array(size);
 	let generation = 0;
 
@@ -62,6 +64,7 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 	});
 
 	for (const [index, box] of boxes.entries()) {
+		countWork('grid:build-box-visit');
 		const { x0, x1, z0, z1 } = range(box);
 		// `wide` is the safety net, never a filter: a non-finite or INVERTED box
 		// must still be a candidate for every query, or the index would stop being
@@ -79,6 +82,7 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 		}
 		for (let cellX = x0; cellX <= x1; cellX += 1) {
 			for (let cellZ = z0; cellZ <= z1; cellZ += 1) {
+				countWork('grid:build-cell-reference');
 				const key = cellKey(cellX, cellZ);
 				const list = cells.get(key);
 				if (list) list.push(index);
@@ -93,6 +97,7 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 			// The stamp is an `Int32`: restart it long before it can wrap and make an
 			// ancient query look current, which would drop a candidate.
 			if (generation >= 2_000_000_000) {
+				countWork('grid:stamp-clear', stamp.length);
 				stamp.fill(0);
 				generation = 0;
 			}
@@ -100,8 +105,10 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 			const found: number[] = [];
 			const { x0, x1, z0, z1 } = range(query);
 			const consider = (index: number): void => {
+				countWork('grid:entry-reference');
 				if (stamp[index] === generation) return;
 				stamp[index] = generation;
+				countWork('grid:entry-test');
 				const box = boxes[index]!;
 				if (box.maxX < query.minX || box.minX > query.maxX) return;
 				if (box.maxZ < query.minZ || box.minZ > query.maxZ) return;
@@ -116,6 +123,7 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 			if (!queryInverted && Number.isFinite(span) && span <= MAX_CELLS_PER_ENTRY * 4) {
 				for (let cellX = x0; cellX <= x1; cellX += 1) {
 					for (let cellZ = z0; cellZ <= z1; cellZ += 1) {
+						countWork('grid:cell-test');
 						const list = cells.get(cellKey(cellX, cellZ));
 						if (!list) continue;
 						for (const index of list) consider(index);
@@ -124,10 +132,11 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 			} else {
 				// A query box that spans more cells than the scan bound: check every
 				// celled entry. Only a very large query pays this, and it pays once.
-				for (const list of cells.values()) for (const index of list) consider(index);
+				for (const list of cells.values()) { countWork('grid:cell-test'); for (const index of list) consider(index); }
 			}
 			for (const index of wide) consider(index);
-			found.sort((a, b) => a - b);
+			found.sort((a, b) => { countWork('grid:sort-compare'); return a - b; });
+			countWork('grid:result-record', found.length);
 			return found;
 		}
 	};
@@ -136,6 +145,7 @@ export function createPlanBoxIndex(boxes: readonly PlanBox[], cellSize?: number)
 function medianExtent(boxes: readonly PlanBox[]): number {
 	const extents: number[] = [];
 	for (const box of boxes) {
+		countWork('grid:extent-visit');
 		const extent = Math.max(box.maxX - box.minX, box.maxZ - box.minZ);
 		if (Number.isFinite(extent) && extent > 0) extents.push(extent);
 	}

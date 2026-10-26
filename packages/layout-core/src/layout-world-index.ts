@@ -68,6 +68,8 @@ import {
 	type TopologySegment
 } from './layout-wall-topology';
 import { countWork } from './p2311-perf';
+import { PersistentMap, PersistentVector } from './persistent-store';
+import { layoutCollectionRef, layoutItem, layoutLength, layoutVector, seedLayoutVectors, withLayoutVectors, mappedReadonlyMap } from './layout-source-collections';
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 const POINT_EPSILON = LAYOUT_GEOMETRY_EPSILON;
@@ -108,19 +110,23 @@ type HalfEdgeDesc = {
 type WalkSummary = {
 	readonly twiceSignedArea: number;
 	readonly wasPositive: boolean;
+	readonly termCount: number;
+	readonly magnitude: number;
+	readonly accumulatedError: number;
 };
 
 type HalfEdgeWalkLink = {
 	readonly walkIndex: number;
 	readonly twiceEdgeContrib: number;
+	readonly termCount: number;
 };
 
 export type DocumentWorldIndex = {
-	readonly junctionsRef: readonly LayoutJunction[];
-	readonly wallsRef: readonly LayoutWall[];
-	readonly roomsRef: readonly LayoutWallFirstRoom[];
-	readonly openingsRef: readonly LayoutWallOpening[];
-	readonly objectsRef: readonly LayoutObject[];
+	readonly junctionsRef: readonly LayoutJunction[] | PersistentVector<LayoutJunction>;
+	readonly wallsRef: readonly LayoutWall[] | PersistentVector<LayoutWall>;
+	readonly roomsRef: readonly LayoutWallFirstRoom[] | PersistentVector<LayoutWallFirstRoom>;
+	readonly openingsRef: readonly LayoutWallOpening[] | PersistentVector<LayoutWallOpening>;
+	readonly objectsRef: readonly LayoutObject[] | PersistentVector<LayoutObject>;
 	readonly junctionById: ReadonlyMap<string, LayoutJunction>;
 	readonly junctionIndexById: ReadonlyMap<string, number>;
 	readonly wallById: ReadonlyMap<string, LayoutWall>;
@@ -134,6 +140,7 @@ export type DocumentWorldIndex = {
 	readonly incidentWallIdsByJunctionId: ReadonlyMap<string, readonly string[]>;
 	readonly roomsByWallId: ReadonlyMap<string, readonly string[]>;
 	readonly openingsByWallId: ReadonlyMap<string, readonly IndexedOpeningEntry[]>;
+	readonly openingIndicesByWallId: ReadonlyMap<string, readonly number[]>;
 	readonly componentKeyByJunctionId: ReadonlyMap<string, string | symbol>;
 	readonly componentKeyByWallId: ReadonlyMap<string, string>;
 	readonly unattachedJunctionIds: readonly string[];
@@ -141,11 +148,11 @@ export type DocumentWorldIndex = {
 	readonly sampledWallById: ReadonlyMap<string, SampledTopologyWall>;
 	readonly faceGraphWallIdSet: ReadonlySet<string>;
 	readonly starOrderByJunctionId: ReadonlyMap<string, readonly HalfEdgeDesc[]>;
-	readonly walks: readonly WalkSummary[];
+	readonly walks: PersistentVector<WalkSummary>;
 	readonly halfEdgeWalkByKey: ReadonlyMap<string, HalfEdgeWalkLink>;
 };
 
-type PendingWorldPatch = {
+type CertifiedWorldPatch = {
 	readonly parentDoc: LayoutDocumentWallFirst;
 	readonly changedJunctionIds: readonly string[];
 	readonly affectedWallIds: readonly string[];
@@ -153,19 +160,23 @@ type PendingWorldPatch = {
 	readonly changedOpeningWallIds?: readonly string[];
 	readonly nextSampledWalls?: ReadonlyMap<string, SampledTopologyWall>;
 	readonly nextWallBoxes?: ReadonlyMap<string, PlanBox>;
-	readonly nextWalkTwiceAreas?: ReadonlyMap<number, number>;
-	readonly nextHalfEdgeContribs?: ReadonlyMap<string, number>;
+	readonly nextWalkSummaries?: ReadonlyMap<number, WalkSummary>;
+	readonly nextHalfEdgeContribs?: ReadonlyMap<string, EdgeAreaContribution>;
 };
 
-const COW_DELTA_BY_DOC = new WeakMap<LayoutDocumentWallFirst, CowDocumentDelta>();
+type WeakCowDelta = Omit<CowDocumentDelta, 'baseline'> & { readonly parent: WeakRef<LayoutDocumentWallFirst> };
+const COW_DELTA_BY_DOC = new WeakMap<LayoutDocumentWallFirst, WeakCowDelta>();
 const WORLD_INDEX_BY_DOC = new WeakMap<LayoutDocumentWallFirst, DocumentWorldIndex | 'invalid'>();
-const PENDING_PATCH_BY_DOC = new WeakMap<LayoutDocumentWallFirst, PendingWorldPatch>();
-const EQUIVALENT_ROOT_BY_DOC = new WeakMap<LayoutDocumentWallFirst, LayoutDocumentWallFirst>();
-const PREPARED_COW_BY_OP_ID = new Map<string, LayoutDocumentWallFirst>();
+const EQUIVALENT_ROOT_BY_DOC = new WeakMap<LayoutDocumentWallFirst, object>();
+type PreparedCow = { operationId: string; candidate: LayoutDocumentWallFirst; baselineToken: object; proofKey?: string };
+const PREPARED_COW_CANDIDATES = new Map<number, PreparedCow>();
+let preparedCowSequence = 0;
 const MAX_PREPARED_COW_OPS = 16;
 
-function canonicalCloneRoot(document: LayoutDocumentWallFirst): LayoutDocumentWallFirst {
-	return EQUIVALENT_ROOT_BY_DOC.get(document) ?? document;
+function canonicalCloneRoot(document: LayoutDocumentWallFirst): object {
+	let token = EQUIVALENT_ROOT_BY_DOC.get(document);
+	if (!token) { token = {}; EQUIVALENT_ROOT_BY_DOC.set(document, token); }
+	return token;
 }
 
 export function areEquivalentLayoutClones(
@@ -178,18 +189,23 @@ export function areEquivalentLayoutClones(
 export function getCowDocumentDelta(
 	document: LayoutDocumentWallFirst
 ): CowDocumentDelta | undefined {
-	return COW_DELTA_BY_DOC.get(document);
+	const stored = COW_DELTA_BY_DOC.get(document);
+	const baseline = stored?.parent.deref();
+	if (!stored || !baseline) return undefined;
+	const { parent: _parent, ...ids } = stored;
+	return { ...ids, baseline };
 }
 
 export function registerCowDocumentDelta(
 	document: LayoutDocumentWallFirst,
 	delta: CowDocumentDelta
 ): void {
-	COW_DELTA_BY_DOC.set(document, delta);
+	const { baseline, ...ids } = delta;
+	COW_DELTA_BY_DOC.set(document, { ...ids, parent: new WeakRef(baseline) });
 }
 
 /**
- * Propagate verified COW lineage and pending world-index patch from a planner
+ * Propagate verified COW lineage and persistent world-index roots from a planner
  * candidate onto an immutable `structuredClone` or validated parse copy.
  */
 export function linkClonedCowCandidate(
@@ -202,17 +218,17 @@ export function linkClonedCowCandidate(
 	EQUIVALENT_ROOT_BY_DOC.set(clonedCandidate, root);
 	const delta = COW_DELTA_BY_DOC.get(originalCandidate);
 	if (delta) COW_DELTA_BY_DOC.set(clonedCandidate, delta);
-	const patch = PENDING_PATCH_BY_DOC.get(originalCandidate);
-	if (patch) PENDING_PATCH_BY_DOC.set(clonedCandidate, patch);
+	seedLayoutVectors(clonedCandidate);
 	const existingIndex = peekLayoutWorldIndex(originalCandidate);
 	if (existingIndex && !WORLD_INDEX_BY_DOC.has(clonedCandidate)) {
 		WORLD_INDEX_BY_DOC.set(clonedCandidate, {
 			...existingIndex,
-			junctionsRef: clonedCandidate.junctions,
-			wallsRef: clonedCandidate.walls,
-			roomsRef: clonedCandidate.rooms,
-			openingsRef: clonedCandidate.openings,
-			objectsRef: clonedCandidate.objects
+			...sourceRecordViews(clonedCandidate, existingIndex),
+			junctionsRef: layoutCollectionRef(clonedCandidate, 'junctions'),
+			wallsRef: layoutCollectionRef(clonedCandidate, 'walls'),
+			roomsRef: layoutCollectionRef(clonedCandidate, 'rooms'),
+			openingsRef: layoutCollectionRef(clonedCandidate, 'openings'),
+			objectsRef: layoutCollectionRef(clonedCandidate, 'objects')
 		});
 	}
 }
@@ -238,113 +254,122 @@ export function peekLayoutWorldIndex(
 
 /**
  * Record a prepared COW Layout candidate by `operationId` so the Stage host can
- * link F4's `structuredClone`d accepted copy back to its COW lineage in O(1).
+ * link F4's captured accepted copy back to its COW lineage. The token link is O(1); seeding a non-frozen flat copy may be O(N).
  */
 export function recordPreparedCowCandidate(
-	operationId: string,
-	document: LayoutDocumentWallFirst
+ operationId: string, document: LayoutDocumentWallFirst, proofKey?: string
 ): void {
-	if (!operationId || !COW_DELTA_BY_DOC.has(document)) return;
-	if (PREPARED_COW_BY_OP_ID.size >= MAX_PREPARED_COW_OPS) {
-		const oldestKey = PREPARED_COW_BY_OP_ID.keys().next().value;
-		if (oldestKey !== undefined) PREPARED_COW_BY_OP_ID.delete(oldestKey);
-	}
-	PREPARED_COW_BY_OP_ID.set(operationId, document);
+ const delta = getCowDocumentDelta(document);
+ if (!operationId || !delta) return;
+ const baselineToken = canonicalCloneRoot(delta.baseline);
+ for (const [key, entry] of PREPARED_COW_CANDIDATES) {
+  countWork('session:prepared-cache-test');
+  if (entry.operationId === operationId && entry.baselineToken === baselineToken && entry.proofKey === proofKey) PREPARED_COW_CANDIDATES.delete(key);
+ }
+ if (PREPARED_COW_CANDIDATES.size >= MAX_PREPARED_COW_OPS) {
+  const oldestKey = PREPARED_COW_CANDIDATES.keys().next().value;
+  if (oldestKey !== undefined) PREPARED_COW_CANDIDATES.delete(oldestKey);
+ }
+ PREPARED_COW_CANDIDATES.set(preparedCowSequence++, { operationId, candidate: document, baselineToken, proofKey });
 }
 
-/** Consume and clear a prepared COW candidate recorded for `operationId`. */
+/** A bounded artifact lookup. Production qualifies both the captured baseline
+ * and canonical intent data; equal operation IDs in other hosts cannot alias.
+ * Baseline-only consumption is for terminal cleanup, never a reuse proof. */
 export function consumePreparedCowCandidate(
-	operationId: string
+ operationId: string, proof?: { readonly baseline: LayoutDocumentWallFirst; readonly key?: string }
 ): LayoutDocumentWallFirst | undefined {
-	const found = PREPARED_COW_BY_OP_ID.get(operationId);
-	if (found !== undefined) PREPARED_COW_BY_OP_ID.delete(operationId);
-	return found;
+ const token = proof ? canonicalCloneRoot(proof.baseline) : undefined;
+ for (const [key, entry] of PREPARED_COW_CANDIDATES) {
+  countWork('session:prepared-cache-test');
+  if (entry.operationId !== operationId || (proof && entry.baselineToken !== token) || (proof?.key !== undefined && entry.proofKey !== proof.key)) continue;
+  PREPARED_COW_CANDIDATES.delete(key); return entry.candidate;
+ }
+ return undefined;
 }
 
 function peekOrParentWorldIndex(document: LayoutDocumentWallFirst): DocumentWorldIndex | undefined {
 	const direct = peekLayoutWorldIndex(document);
 	if (direct) return direct;
-	const cow = COW_DELTA_BY_DOC.get(document);
+	const cow = getCowDocumentDelta(document);
 	if (cow) {
 		const baseIdx = peekLayoutWorldIndex(cow.baseline);
 		if (baseIdx) return baseIdx;
 	}
-	const pending = PENDING_PATCH_BY_DOC.get(document);
-	if (pending) return peekLayoutWorldIndex(pending.parentDoc);
 	return undefined;
 }
 
-/** O(1) Wall lookup on indexed or COW-derived documents, with exact linear fallback. */
+/** Wall lookup through the ID directory and persistent source root: O(log N), with a linear unindexed fallback. */
 export function lookupIndexedWall(
 	document: LayoutDocumentWallFirst,
 	wallId: string
 ): LayoutWall | undefined {
 	const idx = peekOrParentWorldIndex(document);
-	if (idx && idx.wallsRef.length === document.walls.length) {
+	if (idx && idx.wallsRef.length === layoutLength(document, 'walls')) {
 		const wIdx = idx.wallIndexById.get(wallId);
 		if (wIdx === undefined) return undefined;
-		const cand = document.walls[wIdx];
+		const cand = layoutItem(document, 'walls', wIdx);
 		if (cand && cand.id === wallId) return cand;
 	}
 	return document.walls.find((entry) => entry.id === wallId);
 }
 
-/** O(1) Junction lookup on indexed or COW-derived documents, with exact linear fallback. */
+/** Junction lookup through the ID directory and persistent source root: O(log N), with a linear unindexed fallback. */
 export function lookupIndexedJunction(
 	document: LayoutDocumentWallFirst,
 	junctionId: string
 ): LayoutJunction | undefined {
 	const idx = peekOrParentWorldIndex(document);
-	if (idx && idx.junctionsRef.length === document.junctions.length) {
+	if (idx && idx.junctionsRef.length === layoutLength(document, 'junctions')) {
 		const jIdx = idx.junctionIndexById.get(junctionId);
 		if (jIdx === undefined) return undefined;
-		const cand = document.junctions[jIdx];
+		const cand = layoutItem(document, 'junctions', jIdx);
 		if (cand && cand.id === junctionId) return cand;
 	}
 	return document.junctions.find((entry) => entry.id === junctionId);
 }
 
-/** O(1) Opening lookup on indexed or COW-derived documents, with exact linear fallback. */
+/** Opening lookup through the ID directory and persistent source root: O(log N), with a linear unindexed fallback. */
 export function lookupIndexedOpening(
 	document: LayoutDocumentWallFirst,
 	openingId: string
 ): LayoutWallOpening | undefined {
 	const idx = peekOrParentWorldIndex(document);
-	if (idx && idx.openingsRef.length === document.openings.length) {
+	if (idx && idx.openingsRef.length === layoutLength(document, 'openings')) {
 		const oIdx = idx.openingIndexById.get(openingId);
 		if (oIdx === undefined) return undefined;
-		const cand = document.openings[oIdx];
+		const cand = layoutItem(document, 'openings', oIdx);
 		if (cand && cand.id === openingId) return cand;
 	}
 	return document.openings.find((entry) => entry.id === openingId);
 }
 
-/** O(1) Object lookup on indexed or COW-derived documents, with exact linear fallback. */
+/** Object lookup through the ID directory and persistent source root: O(log N), with a linear unindexed fallback. */
 export function lookupIndexedObject(
 	document: LayoutDocumentWallFirst,
 	objectId: string
 ): LayoutObject | undefined {
 	const idx = peekOrParentWorldIndex(document);
-	if (idx && idx.objectsRef.length === document.objects.length) {
+	if (idx && idx.objectsRef.length === layoutLength(document, 'objects')) {
 		const oIdx = idx.objectIndexById.get(objectId);
 		if (oIdx === undefined) return undefined;
-		const cand = document.objects[oIdx];
+		const cand = layoutItem(document, 'objects', oIdx);
 		if (cand && cand.id === objectId) return cand;
 	}
 	return document.objects.find((entry) => entry.id === objectId);
 }
 
 /**
- * O(deg) incident Wall lookup in exact `document.walls` array order when indexed
+ * Incident Wall lookup in authored order: O(d log N + d log d) for degree d
  * (or COW-derived with unchanged topology); returns `undefined` when unindexed so
- * callers can fall back to scanning `document.walls`.
+ * callers can fall back to scanning `layoutCollectionRef(document, 'walls')`.
  */
 export function lookupIncidentWallsOrdered(
 	document: LayoutDocumentWallFirst,
 	junctionIds: readonly string[]
 ): readonly LayoutWall[] | undefined {
 	const idx = peekOrParentWorldIndex(document);
-	if (!idx || idx.wallsRef.length !== document.walls.length) return undefined;
+	if (!idx || idx.wallsRef.length !== layoutLength(document, 'walls')) return undefined;
 	if (junctionIds.length === 0) return [];
 	const wallIndices = new Set<number>();
 	for (let i = 0; i < junctionIds.length; i += 1) {
@@ -353,12 +378,12 @@ export function lookupIncidentWallsOrdered(
 		for (let w = 0; w < incident.length; w += 1) {
 			const wId = incident[w]!;
 			const wIdx = idx.wallIndexById.get(wId);
-			if (wIdx === undefined || document.walls[wIdx]?.id !== wId) return undefined;
+			if (wIdx === undefined || layoutItem(document, 'walls', wIdx)?.id !== wId) return undefined;
 			wallIndices.add(wIdx);
 		}
 	}
 	const sortedIndices = [...wallIndices].sort((a, b) => a - b);
-	return sortedIndices.map((wIdx) => document.walls[wIdx]!);
+	return sortedIndices.map((wIdx) => layoutItem(document, 'walls', wIdx)!);
 }
 
 /**
@@ -372,17 +397,12 @@ export function deriveIndexedWallRole(
 ): LayoutDerivedWallRole | 'missing-wall' | undefined {
 	let idx = peekLayoutWorldIndex(document);
 	if (!idx) {
-		const cow = COW_DELTA_BY_DOC.get(document);
-		if (cow && cow.changedRoomIds.length === 0 && cow.baseline.rooms === document.rooms) {
+		const cow = getCowDocumentDelta(document);
+		if (cow && cow.changedRoomIds.length === 0 && layoutCollectionRef(cow.baseline, 'rooms') === layoutCollectionRef(document, 'rooms')) {
 			idx = peekLayoutWorldIndex(cow.baseline);
 		}
 	}
-	if (!idx) {
-		const pending = PENDING_PATCH_BY_DOC.get(document);
-		if (pending && pending.parentDoc.rooms === document.rooms) {
-			idx = peekLayoutWorldIndex(pending.parentDoc);
-		}
-	}
+
 	if (!idx) return undefined;
 	if (!idx.wallById.has(wallId)) return 'missing-wall';
 	const count = idx.roomsByWallId.get(wallId)?.length ?? 0;
@@ -403,18 +423,6 @@ export function ensureLayoutWorldIndex(
 		return cached;
 	}
 
-	const pending = PENDING_PATCH_BY_DOC.get(document);
-	if (pending) {
-		const parentIndex = ensureLayoutWorldIndex(pending.parentDoc);
-		if (parentIndex) {
-			const materialized = materializePatchedWorldIndex(parentIndex, document, pending);
-			if (materialized) {
-				WORLD_INDEX_BY_DOC.set(document, materialized);
-				PENDING_PATCH_BY_DOC.delete(document);
-				return materialized;
-			}
-		}
-	}
 
 	const built = buildCertifiedWorldIndex(document);
 	WORLD_INDEX_BY_DOC.set(document, built ?? 'invalid');
@@ -426,11 +434,11 @@ function matchesArrayRefs(
 	index: DocumentWorldIndex
 ): boolean {
 	return (
-		document.junctions === index.junctionsRef &&
-		document.walls === index.wallsRef &&
-		document.rooms === index.roomsRef &&
-		document.openings === index.openingsRef &&
-		document.objects === index.objectsRef
+		layoutCollectionRef(document, 'junctions') === index.junctionsRef &&
+		layoutCollectionRef(document, 'walls') === index.wallsRef &&
+		layoutCollectionRef(document, 'rooms') === index.roomsRef &&
+		layoutCollectionRef(document, 'openings') === index.openingsRef &&
+		layoutCollectionRef(document, 'objects') === index.objectsRef
 	);
 }
 
@@ -444,42 +452,42 @@ export function cowMoveJunctions(
 	changedWallIds: readonly string[],
 	worldIndex?: DocumentWorldIndex
 ): LayoutDocumentWallFirst {
-	const nextJunctions = baseline.junctions.slice();
+	let nextJunctions = layoutVector(baseline, 'junctions');
 	if (worldIndex) {
 		for (const [id, pt] of targetPoints) {
 			const idx = worldIndex.junctionIndexById.get(id);
 			if (idx !== undefined) {
-				nextJunctions[idx] = { id, point: [pt[0], pt[1]] };
+				nextJunctions = nextJunctions.set(idx, { id, point: [pt[0], pt[1]] });
 			}
 		}
 	} else {
 		for (let i = 0; i < nextJunctions.length; i += 1) {
-			const j = nextJunctions[i]!;
+			const j = nextJunctions.get(i)!;
 			const pt = targetPoints.get(j.id);
-			if (pt) nextJunctions[i] = { id: j.id, point: [pt[0], pt[1]] };
+			if (pt) nextJunctions = nextJunctions.set(i, { id: j.id, point: [pt[0], pt[1]] });
 		}
 	}
 	// Refresh changed walls' centerline objects so P1 / centerline identity
 	// contracts hold even when only endpoint coordinates moved.
-	const nextWalls = baseline.walls.slice();
+	let nextWalls = layoutVector(baseline, 'walls');
 	if (worldIndex) {
 		for (const wallId of changedWallIds) {
 			const idx = worldIndex.wallIndexById.get(wallId);
 			if (idx !== undefined) {
-				const w = nextWalls[idx]!;
-				nextWalls[idx] = cloneWallRecord(w, cloneWallCenterline(w.centerline));
+				const w = nextWalls.get(idx)!;
+				nextWalls = nextWalls.set(idx, cloneWallRecord(w, cloneWallCenterline(w.centerline)));
 			}
 		}
 	} else {
 		const wallSet = new Set(changedWallIds);
 		for (let i = 0; i < nextWalls.length; i += 1) {
-			const w = nextWalls[i]!;
+			const w = nextWalls.get(i)!;
 			if (wallSet.has(w.id)) {
-				nextWalls[i] = cloneWallRecord(w, cloneWallCenterline(w.centerline));
+				nextWalls = nextWalls.set(i, cloneWallRecord(w, cloneWallCenterline(w.centerline)));
 			}
 		}
 	}
-	const candidate = buildCowWrapper(baseline, {
+	const candidate = withLayoutVectors(baseline, {
 		junctions: nextJunctions,
 		walls: nextWalls
 	});
@@ -502,59 +510,59 @@ export function cowMoveRigidWall(
 	changedWallIds: readonly string[],
 	worldIndex?: DocumentWorldIndex
 ): LayoutDocumentWallFirst {
-	const nextJunctions = baseline.junctions.slice();
+	let nextJunctions = layoutVector(baseline, 'junctions');
 	if (worldIndex) {
 		for (const jId of changedJunctionIds) {
 			const idx = worldIndex.junctionIndexById.get(jId);
 			if (idx !== undefined) {
-				const j = nextJunctions[idx]!;
-				nextJunctions[idx] = {
+				const j = nextJunctions.get(idx)!;
+				nextJunctions = nextJunctions.set(idx, {
 					id: j.id,
 					point: [j.point[0] + delta[0], j.point[1] + delta[1]]
-				};
+				});
 			}
 		}
 	} else {
 		const jSet = new Set(changedJunctionIds);
 		for (let i = 0; i < nextJunctions.length; i += 1) {
-			const j = nextJunctions[i]!;
+			const j = nextJunctions.get(i)!;
 			if (jSet.has(j.id)) {
-				nextJunctions[i] = {
+				nextJunctions = nextJunctions.set(i, {
 					id: j.id,
 					point: [j.point[0] + delta[0], j.point[1] + delta[1]]
-				};
+				});
 			}
 		}
 	}
 
-	const nextWalls = baseline.walls.slice();
+	let nextWalls = layoutVector(baseline, 'walls');
 	if (worldIndex) {
 		for (const cWallId of changedWallIds) {
 			const idx = worldIndex.wallIndexById.get(cWallId);
 			if (idx !== undefined) {
-				const w = nextWalls[idx]!;
+				const w = nextWalls.get(idx)!;
 				const centerline =
 					cWallId === wallId
 						? translateWallCenterline(w.centerline, delta)
 						: cloneWallCenterline(w.centerline);
-				nextWalls[idx] = cloneWallRecord(w, centerline);
+				nextWalls = nextWalls.set(idx, cloneWallRecord(w, centerline));
 			}
 		}
 	} else {
 		const wSet = new Set(changedWallIds);
 		for (let i = 0; i < nextWalls.length; i += 1) {
-			const w = nextWalls[i]!;
+			const w = nextWalls.get(i)!;
 			if (wSet.has(w.id)) {
 				const centerline =
 					w.id === wallId
 						? translateWallCenterline(w.centerline, delta)
 						: cloneWallCenterline(w.centerline);
-				nextWalls[i] = cloneWallRecord(w, centerline);
+				nextWalls = nextWalls.set(i, cloneWallRecord(w, centerline));
 			}
 		}
 	}
 
-	const candidate = buildCowWrapper(baseline, {
+	const candidate = withLayoutVectors(baseline, {
 		junctions: nextJunctions,
 		walls: nextWalls
 	});
@@ -575,20 +583,20 @@ export function cowSetWallCenterline(
 	centerline: LayoutWallCenterline,
 	worldIndex?: DocumentWorldIndex
 ): LayoutDocumentWallFirst {
-	const nextWalls = baseline.walls.slice();
+	let nextWalls = layoutVector(baseline, 'walls');
 	const clonedCenterline = cloneWallCenterline(centerline);
 	if (worldIndex) {
 		const idx = worldIndex.wallIndexById.get(wallId);
 		if (idx !== undefined) {
-			nextWalls[idx] = cloneWallRecord(nextWalls[idx]!, clonedCenterline);
+			nextWalls = nextWalls.set(idx, cloneWallRecord(nextWalls.get(idx)!, clonedCenterline));
 		}
 	} else {
-		const idx = nextWalls.findIndex((w) => w.id === wallId);
+		const idx = nextWalls.toArray().findIndex((w) => w.id === wallId);
 		if (idx !== -1) {
-			nextWalls[idx] = cloneWallRecord(nextWalls[idx]!, clonedCenterline);
+			nextWalls = nextWalls.set(idx, cloneWallRecord(nextWalls.get(idx)!, clonedCenterline));
 		}
 	}
-	const candidate = buildCowWrapper(baseline, {
+	const candidate = withLayoutVectors(baseline, {
 		walls: nextWalls
 	});
 	registerCowDocumentDelta(candidate, {
@@ -608,10 +616,10 @@ export function cowSetWallScalar(
 	patch: { thickness?: number; height?: number },
 	worldIndex?: DocumentWorldIndex
 ): LayoutDocumentWallFirst {
-	const nextWalls = baseline.walls.slice();
+	let nextWalls = layoutVector(baseline, 'walls');
 	const updateAt = (idx: number): void => {
-		const w = nextWalls[idx]!;
-		nextWalls[idx] = {
+		const w = nextWalls.get(idx)!;
+		nextWalls = nextWalls.set(idx, {
 			id: w.id,
 			startJunctionId: w.startJunctionId,
 			endJunctionId: w.endJunctionId,
@@ -619,16 +627,16 @@ export function cowSetWallScalar(
 			height: patch.height ?? w.height,
 			centerline: cloneWallCenterline(w.centerline),
 			...(w.name !== undefined ? { name: w.name } : {})
-		};
+		});
 	};
 	if (worldIndex) {
 		const idx = worldIndex.wallIndexById.get(wallId);
 		if (idx !== undefined) updateAt(idx);
 	} else {
-		const idx = nextWalls.findIndex((w) => w.id === wallId);
+		const idx = nextWalls.toArray().findIndex((w) => w.id === wallId);
 		if (idx !== -1) updateAt(idx);
 	}
-	const candidate = buildCowWrapper(baseline, {
+	const candidate = withLayoutVectors(baseline, {
 		walls: nextWalls
 	});
 	registerCowDocumentDelta(candidate, {
@@ -667,19 +675,19 @@ export function cowUpdateObject(
 	updater: (existing: LayoutObject) => LayoutObject,
 	worldIndex?: DocumentWorldIndex
 ): LayoutDocumentWallFirst {
-	const nextObjects = baseline.objects.slice();
+	let nextObjects = layoutVector(baseline, 'objects');
 	if (worldIndex) {
 		const idx = worldIndex.objectIndexById.get(objectId);
 		if (idx !== undefined) {
-			nextObjects[idx] = cloneObjectRecord(updater(nextObjects[idx]!));
+			nextObjects = nextObjects.set(idx, cloneObjectRecord(updater(nextObjects.get(idx)!)));
 		}
 	} else {
-		const idx = nextObjects.findIndex((o) => o.id === objectId);
+		const idx = nextObjects.toArray().findIndex((o) => o.id === objectId);
 		if (idx !== -1) {
-			nextObjects[idx] = cloneObjectRecord(updater(nextObjects[idx]!));
+			nextObjects = nextObjects.set(idx, cloneObjectRecord(updater(nextObjects.get(idx)!)));
 		}
 	}
-	const candidate = buildCowWrapper(baseline, {
+	const candidate = withLayoutVectors(baseline, {
 		objects: nextObjects
 	});
 	registerCowDocumentDelta(candidate, {
@@ -717,7 +725,7 @@ export function cowUpdateOpening(
 	nextOpening: LayoutWallOpening,
 	worldIndex?: DocumentWorldIndex
 ): LayoutDocumentWallFirst {
-	const nextOpenings = baseline.openings.slice();
+	let nextOpenings = layoutVector(baseline, 'openings');
 	const freshOpening: LayoutWallOpening = {
 		id: nextOpening.id,
 		wallId: nextOpening.wallId,
@@ -734,17 +742,17 @@ export function cowUpdateOpening(
 	};
 	if (worldIndex) {
 		const idx = worldIndex.openingIndexById.get(openingId);
-		if (idx !== undefined && nextOpenings[idx]?.id === openingId) {
-			nextOpenings[idx] = freshOpening;
+		if (idx !== undefined && nextOpenings.get(idx)?.id === openingId) {
+			nextOpenings = nextOpenings.set(idx, freshOpening);
 		} else {
-			const fallbackIdx = nextOpenings.findIndex((o) => o.id === openingId);
-			if (fallbackIdx !== -1) nextOpenings[fallbackIdx] = freshOpening;
+			const fallbackIdx = nextOpenings.toArray().findIndex((o) => o.id === openingId);
+			if (fallbackIdx !== -1) nextOpenings = nextOpenings.set(fallbackIdx, freshOpening);
 		}
 	} else {
-		const idx = nextOpenings.findIndex((o) => o.id === openingId);
-		if (idx !== -1) nextOpenings[idx] = freshOpening;
+		const idx = nextOpenings.toArray().findIndex((o) => o.id === openingId);
+		if (idx !== -1) nextOpenings = nextOpenings.set(idx, freshOpening);
 	}
-	const candidate = buildCowWrapper(baseline, { openings: nextOpenings });
+	const candidate = withLayoutVectors(baseline, { openings: nextOpenings });
 	registerCowDocumentDelta(candidate, {
 		baseline,
 		changedJunctionIds: [],
@@ -850,7 +858,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 	// Guard against in-place mutation of non-frozen test baselines on touched entities.
 	for (const jId of changedJunctionIds) {
 		const jIdx = worldIndex.junctionIndexById.get(jId);
-		const baseJ = jIdx !== undefined ? baseline.junctions[jIdx] : undefined;
+		const baseJ = jIdx !== undefined ? layoutItem(baseline, 'junctions', jIdx) : undefined;
 		const storedPt = worldIndex.pointById.get(jId);
 		if (!baseJ || !storedPt || baseJ.point[0] !== storedPt[0] || baseJ.point[1] !== storedPt[1]) {
 			WORLD_INDEX_BY_DOC.delete(baseline);
@@ -863,7 +871,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 	for (const jId of changedJunctionIds) {
 		const idx = worldIndex.junctionIndexById.get(jId);
 		if (idx === undefined) return 'delegate-cold';
-		const j = candidate.junctions[idx];
+		const j = layoutItem(candidate, 'junctions', idx);
 		if (!j || j.id !== jId || !isValidVec2(j.point)) return 'delegate-cold';
 		nextJunctionById.set(jId, j);
 	}
@@ -884,7 +892,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 	for (const wId of affectedWallIds) {
 		const idx = worldIndex.wallIndexById.get(wId);
 		if (idx === undefined) return 'delegate-cold';
-		const w = candidate.walls[idx];
+		const w = layoutItem(candidate, 'walls', idx);
 		if (!w || w.id !== wId || !isValidWallRecord(w)) return 'delegate-cold';
 		nextWallById.set(wId, w);
 	}
@@ -963,7 +971,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 	if (changedJunctionIds.length > 0) {
 		const nearbyJunctionIds = new Set<string>(changedJunctionIds);
 		for (let i = 0; i < nearbyWallIndices.length; i += 1) {
-			const w = baseline.walls[nearbyWallIndices[i]!]!;
+			const w = layoutItem(baseline, 'walls', nearbyWallIndices[i]!)!;
 			nearbyJunctionIds.add(w.startJunctionId);
 			nearbyJunctionIds.add(w.endJunctionId);
 		}
@@ -1003,7 +1011,7 @@ export function verifySweptBoundsGeometryDelta(options: {
 	// 5. Component-scoped Wall chord & curve crossings in the swept neighborhood.
 	const candidateNeighborWallIds = new Set<string>(affectedWallIds);
 	for (let i = 0; i < nearbyWallIndices.length; i += 1) {
-		candidateNeighborWallIds.add(baseline.walls[nearbyWallIndices[i]!]!.id);
+		candidateNeighborWallIds.add(layoutItem(baseline, 'walls', nearbyWallIndices[i]!)!.id);
 	}
 	for (const wAId of affectedWallIds) {
 		const wA = wallOf(wAId)!;
@@ -1087,38 +1095,43 @@ export function verifySweptBoundsGeometryDelta(options: {
 		}
 	}
 
-	const walkDeltaByIndex = new Map<number, number>();
-	const nextHalfEdgeContribs = new Map<string, number>();
+	const walkDeltaByIndex = new Map<number, { delta: number; error: number; terms: number; magnitude: number }>();
+	const nextHalfEdgeContribs = new Map<string, EdgeAreaContribution>();
 	for (const wId of affectedWallIds) {
 		if (!worldIndex.faceGraphWallIdSet.has(wId)) continue;
 		const wall = wallOf(wId)!;
 		const start = pointOf(wall.startJunctionId)!;
 		const end = pointOf(wall.endJunctionId)!;
 		for (const direction of ['forward', 'reverse'] as const) {
-			const heKey = `${wId}:${direction}`;
-			const link = worldIndex.halfEdgeWalkByKey.get(heKey);
+			const heKey = `${wId}:${direction}`, link = worldIndex.halfEdgeWalkByKey.get(heKey);
 			if (!link) return 'delegate-cold';
-			const contrib = computeHalfEdgeTwiceAreaContrib(wall, start, end, direction, sampling);
-			if (contrib === null || !Number.isFinite(contrib)) return 'delegate-cold';
-			nextHalfEdgeContribs.set(heKey, contrib);
-			const diff = contrib - link.twiceEdgeContrib;
-			walkDeltaByIndex.set(link.walkIndex, (walkDeltaByIndex.get(link.walkIndex) ?? 0) + diff);
+			const walk = worldIndex.walks.get(link.walkIndex)!;
+			const contribution = computeHalfEdgeTwiceAreaContrib(wall, start, end, direction, sampling);
+			if (!contribution || !Number.isFinite(contribution.value)) return 'delegate-cold';
+			nextHalfEdgeContribs.set(heKey, contribution);
+			const update = walkDeltaByIndex.get(link.walkIndex) ?? { delta: 0, error: 0, terms: walk.termCount, magnitude: walk.magnitude };
+			const diff = contribution.value - link.twiceEdgeContrib;
+			update.error = upperErrorSum(update.error,
+				areaRoundingBound(link.termCount, walk.magnitude),
+				areaRoundingBound(contribution.termCount, contribution.magnitude),
+				roundingAllowance(contribution.value, link.twiceEdgeContrib), roundingAllowance(update.delta, diff));
+			update.delta += diff;
+			update.terms += contribution.termCount - link.termCount;
+			update.magnitude = Math.max(update.magnitude, contribution.magnitude);
+			walkDeltaByIndex.set(link.walkIndex, update);
+			countWork('certificate:area-edge-update');
 		}
 	}
-
-	const nextWalkTwiceAreas = new Map<number, number>();
-	for (const [walkIndex, deltaTwiceArea] of walkDeltaByIndex) {
-		const walk = worldIndex.walks[walkIndex];
-		if (!walk) return 'delegate-cold';
-		const nextTwiceArea = walk.twiceSignedArea + deltaTwiceArea;
-		if (
-			!Number.isFinite(nextTwiceArea) ||
-			Math.abs(nextTwiceArea) <= WALK_AREA_GUARD_EPSILON ||
-			nextTwiceArea > 0 !== walk.wasPositive
-		) {
-			return 'delegate-cold';
-		}
-		nextWalkTwiceAreas.set(walkIndex, nextTwiceArea);
+	const nextWalkSummaries = new Map<number, WalkSummary>();
+	for (const [index, update] of walkDeltaByIndex) {
+		const walk = worldIndex.walks.get(index)!;
+		const twiceSignedArea = walk.twiceSignedArea + update.delta;
+		const accumulatedError = upperErrorSum(walk.accumulatedError, update.error, roundingAllowance(walk.twiceSignedArea, update.delta));
+		// A fresh cold sum has its own rounding order. Certify its sign only
+		// when BOTH error intervals exclude zero; otherwise the cold gate decides.
+		const guard = upperErrorSum(WALK_AREA_GUARD_EPSILON, accumulatedError, areaRoundingBound(update.terms, update.magnitude));
+		if (!Number.isFinite(twiceSignedArea) || !Number.isFinite(guard) || Math.abs(twiceSignedArea) <= guard || (twiceSignedArea > 0) !== walk.wasPositive) return 'delegate-cold';
+		nextWalkSummaries.set(index, { twiceSignedArea, wasPositive: walk.wasPositive, termCount: update.terms, magnitude: update.magnitude, accumulatedError });
 	}
 
 	// 7. Opening-set fit/height/profile/overlap on affected Walls only.
@@ -1152,16 +1165,15 @@ export function verifySweptBoundsGeometryDelta(options: {
 		}
 	}
 
-	// Record O(k) lazy world-index patch for `candidate` in case it is committed
-	// and used as the baseline of a subsequent edit.
-	PENDING_PATCH_BY_DOC.set(candidate, {
+	// Install persistent roots now; no pending patch retains a parent document.
+	installCertifiedPatch(candidate, {
 		parentDoc: baseline,
 		changedJunctionIds,
 		affectedWallIds,
 		changedObjectIds: [],
 		nextSampledWalls,
 		nextWallBoxes,
-		nextWalkTwiceAreas,
+		nextWalkSummaries,
 		nextHalfEdgeContribs
 	});
 
@@ -1193,7 +1205,7 @@ export function verifyScalarOrObjectDelta(options: {
 		for (const wId of changedWallIds) {
 			const idx = worldIndex.wallIndexById.get(wId);
 			if (idx === undefined) return 'delegate-cold';
-			const w = candidate.walls[idx];
+			const w = layoutItem(candidate, 'walls', idx);
 			if (!w || !isValidWallRecord(w)) return 'delegate-cold';
 			if (operation === 'wall-height') {
 				const entries = worldIndex.openingsByWallId.get(wId);
@@ -1206,7 +1218,7 @@ export function verifyScalarOrObjectDelta(options: {
 				}
 			}
 		}
-		PENDING_PATCH_BY_DOC.set(candidate, {
+		installCertifiedPatch(candidate, {
 			parentDoc: baseline,
 			changedJunctionIds: [],
 			affectedWallIds: changedWallIds,
@@ -1221,7 +1233,7 @@ export function verifyScalarOrObjectDelta(options: {
 		if (!createdId || !ID_PATTERN.test(createdId) || worldIndex.objectById.has(createdId)) {
 			return 'delegate-cold';
 		}
-		const obj = candidate.objects[candidate.objects.length - 1];
+		const obj = layoutItem(candidate, 'objects', layoutLength(candidate, 'objects') - 1);
 		if (!obj || obj.id !== createdId || !isValidObjectRecord(obj, worldIndex.roomById)) {
 			return 'delegate-cold';
 		}
@@ -1229,13 +1241,13 @@ export function verifyScalarOrObjectDelta(options: {
 		const objId = changedObjectIds[0];
 		const idx = objId ? worldIndex.objectIndexById.get(objId) : undefined;
 		if (idx === undefined) return 'delegate-cold';
-		const obj = candidate.objects[idx];
+		const obj = layoutItem(candidate, 'objects', idx);
 		if (!obj || obj.id !== objId || !isValidObjectRecord(obj, worldIndex.roomById)) {
 			return 'delegate-cold';
 		}
 	}
 
-	PENDING_PATCH_BY_DOC.set(candidate, {
+	installCertifiedPatch(candidate, {
 		parentDoc: baseline,
 		changedJunctionIds: [],
 		affectedWallIds: [],
@@ -1259,7 +1271,7 @@ export function verifyOpeningUpdateDelta(options: {
 	if (!worldIndex) return 'delegate-cold';
 	const opIdx = worldIndex.openingIndexById.get(openingId);
 	if (opIdx === undefined) return 'delegate-cold';
-	const nextOp = candidate.openings[opIdx];
+	const nextOp = layoutItem(candidate, 'openings', opIdx);
 	if (
 		!nextOp ||
 		nextOp.id !== openingId ||
@@ -1294,7 +1306,7 @@ export function verifyOpeningUpdateDelta(options: {
 	});
 	if (subsetIssues.length > 0) return 'delegate-cold';
 
-	PENDING_PATCH_BY_DOC.set(candidate, {
+	installCertifiedPatch(candidate, {
 		parentDoc: baseline,
 		changedJunctionIds: [],
 		affectedWallIds: [],
@@ -1318,8 +1330,8 @@ function buildCertifiedWorldIndex(
 	const junctionById = new Map<string, LayoutJunction>();
 	const junctionIndexById = new Map<string, number>();
 	const pointById = new Map<string, LayoutVec2>();
-	for (let i = 0; i < document.junctions.length; i += 1) {
-		const j = document.junctions[i]!;
+	for (let i = 0; i < layoutLength(document, 'junctions'); i += 1) {
+		const j = layoutItem(document, 'junctions', i)!;
 		junctionById.set(j.id, j);
 		junctionIndexById.set(j.id, i);
 		pointById.set(j.id, j.point);
@@ -1328,8 +1340,8 @@ function buildCertifiedWorldIndex(
 	const wallById = new Map<string, LayoutWall>();
 	const wallIndexById = new Map<string, number>();
 	const incidentMutable = new Map<string, string[]>();
-	for (let i = 0; i < document.walls.length; i += 1) {
-		const w = document.walls[i]!;
+	for (let i = 0; i < layoutLength(document, 'walls'); i += 1) {
+		const w = layoutItem(document, 'walls', i)!;
 		wallById.set(w.id, w);
 		wallIndexById.set(w.id, i);
 		let sList = incidentMutable.get(w.startJunctionId);
@@ -1349,8 +1361,8 @@ function buildCertifiedWorldIndex(
 	}
 
 	const unattachedJunctionIds: string[] = [];
-	for (let i = 0; i < document.junctions.length; i += 1) {
-		const jId = document.junctions[i]!.id;
+	for (let i = 0; i < layoutLength(document, 'junctions'); i += 1) {
+		const jId = layoutItem(document, 'junctions', i)!.id;
 		if (!incidentMutable.has(jId)) {
 			unattachedJunctionIds.push(jId);
 		}
@@ -1359,8 +1371,8 @@ function buildCertifiedWorldIndex(
 	const roomById = new Map<string, LayoutWallFirstRoom>();
 	const roomIndexById = new Map<string, number>();
 	const roomsByWallMutable = new Map<string, string[]>();
-	for (let i = 0; i < document.rooms.length; i += 1) {
-		const r = document.rooms[i]!;
+	for (let i = 0; i < layoutLength(document, 'rooms'); i += 1) {
+		const r = layoutItem(document, 'rooms', i)!;
 		if (r.boundary.length < 3) return undefined;
 		roomById.set(r.id, r);
 		roomIndexById.set(r.id, i);
@@ -1388,8 +1400,8 @@ function buildCertifiedWorldIndex(
 
 	const openingsByWallMutable = new Map<string, IndexedOpeningEntry[]>();
 	const openingIndexById = new Map<string, number>();
-	for (let i = 0; i < document.openings.length; i += 1) {
-		const opening = document.openings[i]!;
+	for (let i = 0; i < layoutLength(document, 'openings'); i += 1) {
+		const opening = layoutItem(document, 'openings', i)!;
 		openingIndexById.set(opening.id, i);
 		const list = openingsByWallMutable.get(opening.wallId);
 		if (list) list.push({ opening, index: i });
@@ -1398,8 +1410,8 @@ function buildCertifiedWorldIndex(
 
 	const objectById = new Map<string, LayoutObject>();
 	const objectIndexById = new Map<string, number>();
-	for (let i = 0; i < document.objects.length; i += 1) {
-		const obj = document.objects[i]!;
+	for (let i = 0; i < layoutLength(document, 'objects'); i += 1) {
+		const obj = layoutItem(document, 'objects', i)!;
 		objectById.set(obj.id, obj);
 		objectIndexById.set(obj.id, i);
 	}
@@ -1411,8 +1423,8 @@ function buildCertifiedWorldIndex(
 	const candidateJuncPairs = coincidentJunctionPairs(document.junctions);
 	for (let i = 0; i < candidateJuncPairs.length; i += 1) {
 		const [aIdx, bIdx] = candidateJuncPairs[i]!;
-		const a = document.junctions[aIdx]!;
-		const b = document.junctions[bIdx]!;
+		const a = layoutItem(document, 'junctions', aIdx)!;
+		const b = layoutItem(document, 'junctions', bIdx)!;
 		if (componentKeyByJunctionId.get(a.id) !== componentKeyByJunctionId.get(b.id)) continue;
 		if (coincidesAsJunction(a.point, b.point)) return undefined;
 	}
@@ -1420,10 +1432,10 @@ function buildCertifiedWorldIndex(
 	// 3. Resolve all Wall segments, sampled centerlines & build BVH8.
 	const wallSegments = new Map<string, TopologySegment>();
 	const sampledWallById = new Map<string, SampledTopologyWall>();
-	const wallBoxes: PlanBox[] = new Array<PlanBox>(document.walls.length);
+	const wallBoxes: PlanBox[] = new Array<PlanBox>(layoutLength(document, 'walls'));
 
-	for (let i = 0; i < document.walls.length; i += 1) {
-		const w = document.walls[i]!;
+	for (let i = 0; i < layoutLength(document, 'walls'); i += 1) {
+		const w = layoutItem(document, 'walls', i)!;
 		const start = pointById.get(w.startJunctionId);
 		const end = pointById.get(w.endJunctionId);
 		if (!start || !end) return undefined;
@@ -1456,8 +1468,8 @@ function buildCertifiedWorldIndex(
 	const wallBvh = createDynamicBvh(wallBoxes);
 
 	// 4. Certify baseline Wall chord & curve crossings via `wallBvh` (`countVisits: false`).
-	for (let first = 0; first < document.walls.length; first += 1) {
-		const wA = document.walls[first]!;
+	for (let first = 0; first < layoutLength(document, 'walls'); first += 1) {
+		const wA = layoutItem(document, 'walls', first)!;
 		const segA = wallSegments.get(wA.id)!;
 		const sampA = sampledWallById.get(wA.id)!;
 		const compA = componentKeyByWallId.get(wA.id);
@@ -1465,7 +1477,7 @@ function buildCertifiedWorldIndex(
 		for (let c = 0; c < candidates.length; c += 1) {
 			const second = candidates[c]!;
 			if (second <= first) continue;
-			const wB = document.walls[second]!;
+			const wB = layoutItem(document, 'walls', second)!;
 			if (componentKeyByWallId.get(wB.id) !== compA) continue;
 			const segB = wallSegments.get(wB.id)!;
 			const shared = sharedJunctions(wA, wB);
@@ -1492,150 +1504,110 @@ function buildCertifiedWorldIndex(
 	if (!mapInfo) return undefined;
 
 	// 6. Certify Opening set and Portal relations on baseline.
-	if (document.openings.length > 0) {
+	if (layoutLength(document, 'openings') > 0) {
 		if (!certifyOpeningsQuietly(document, wallById, pointById)) return undefined;
 		if (validateWallFirstPortalRelations(document).length > 0) return undefined;
 	}
 
+	const openingIndicesByWallId = new Map<string, readonly number[]>();
+	for (const [id, entries] of openingsByWallMutable) openingIndicesByWallId.set(id, entries.map((entry) => entry.index));
+	seedLayoutVectors(document);
 	return {
-		junctionsRef: document.junctions,
-		wallsRef: document.walls,
-		roomsRef: document.rooms,
-		openingsRef: document.openings,
-		objectsRef: document.objects,
-		junctionById,
+		junctionsRef: layoutCollectionRef(document, 'junctions'),
+		wallsRef: layoutCollectionRef(document, 'walls'),
+		roomsRef: layoutCollectionRef(document, 'rooms'),
+		openingsRef: layoutCollectionRef(document, 'openings'),
+		objectsRef: layoutCollectionRef(document, 'objects'),
+		...sourceRecordViews(document, { junctionIndexById, wallIndexById, objectIndexById, openingIndicesByWallId }),
 		junctionIndexById,
-		wallById,
 		wallIndexById,
 		roomById,
 		roomIndexById,
-		objectById,
-		objectIndexById,
-		openingIndexById,
-		pointById,
+		objectIndexById: PersistentMap.from(objectIndexById),
+		openingIndexById: PersistentMap.from(openingIndexById),
 		incidentWallIdsByJunctionId: incidentMutable,
 		roomsByWallId: roomsByWallMutable,
-		openingsByWallId: openingsByWallMutable,
+		openingIndicesByWallId,
 		componentKeyByJunctionId,
 		componentKeyByWallId,
 		unattachedJunctionIds,
 		wallBvh,
-		sampledWallById,
+		sampledWallById: PersistentMap.from(sampledWallById),
 		faceGraphWallIdSet: mapInfo.faceGraphWallIdSet,
 		starOrderByJunctionId: mapInfo.starOrderByJunctionId,
-		walks: mapInfo.walks,
-		halfEdgeWalkByKey: mapInfo.halfEdgeWalkByKey
+		walks: PersistentVector.from(mapInfo.walks),
+		halfEdgeWalkByKey: PersistentMap.from(mapInfo.halfEdgeWalkByKey)
 	};
 }
 
+
+function forkPersistent<K extends string | number, V>(source: ReadonlyMap<K, V>): PersistentMap<K, V> {
+ return source instanceof PersistentMap ? source.fork() : PersistentMap.from(source);
+}
+function installCertifiedPatch(document: LayoutDocumentWallFirst, patch: CertifiedWorldPatch): void {
+ const parent = ensureLayoutWorldIndex(patch.parentDoc);
+ const index = parent ? materializePatchedWorldIndex(parent, document, patch) : undefined;
+ if (index) WORLD_INDEX_BY_DOC.set(document, index);
+}
+
+function sourceRecordViews(document: LayoutDocumentWallFirst, indexes: Pick<DocumentWorldIndex, 'junctionIndexById' | 'wallIndexById' | 'objectIndexById' | 'openingIndicesByWallId'>) {
+ const { junctionIndexById, wallIndexById, objectIndexById, openingIndicesByWallId } = indexes;
+ return {
+  junctionById: mappedReadonlyMap(junctionIndexById, (index) => layoutItem(document, 'junctions', index)!),
+  pointById: mappedReadonlyMap(junctionIndexById, (index) => layoutItem(document, 'junctions', index)!.point),
+  wallById: mappedReadonlyMap(wallIndexById, (index) => layoutItem(document, 'walls', index)!),
+  objectById: mappedReadonlyMap(objectIndexById, (index) => layoutItem(document, 'objects', index)!),
+  openingsByWallId: mappedReadonlyMap(openingIndicesByWallId, (indices) => indices.map((index) => ({ index, opening: layoutItem(document, 'openings', index)! })))
+ };
+}
 function materializePatchedWorldIndex(
 	prev: DocumentWorldIndex,
 	document: LayoutDocumentWallFirst,
-	patch: PendingWorldPatch
+	patch: CertifiedWorldPatch
 ): DocumentWorldIndex | undefined {
-	const junctionById = new Map(prev.junctionById);
-	const pointById = new Map(prev.pointById);
-	for (const jId of patch.changedJunctionIds) {
-		const idx = prev.junctionIndexById.get(jId);
-		if (idx === undefined) return undefined;
-		const j = document.junctions[idx]!;
-		junctionById.set(jId, j);
-		pointById.set(jId, j.point);
-	}
-
-	const wallById = new Map(prev.wallById);
-	const sampledWallById = new Map(prev.sampledWallById);
+	const sampledWallById = forkPersistent(prev.sampledWallById);
 	const wallBvh = patch.nextWallBoxes && patch.nextWallBoxes.size > 0 ? prev.wallBvh.clone() : prev.wallBvh;
 	for (const wId of patch.affectedWallIds) {
 		const idx = prev.wallIndexById.get(wId);
 		if (idx === undefined) return undefined;
-		const w = document.walls[idx]!;
-		wallById.set(wId, w);
+
 		const nextSamp = patch.nextSampledWalls?.get(wId);
 		if (nextSamp) sampledWallById.set(wId, nextSamp);
 		const nextBox = patch.nextWallBoxes?.get(wId);
 		if (nextBox) wallBvh.update(idx, nextBox);
 	}
 
-	let objectById = prev.objectById;
 	let objectIndexById = prev.objectIndexById;
-	if (patch.changedObjectIds.length > 0 || document.objects !== prev.objectsRef) {
-		const nextObjById = new Map<string, LayoutObject>();
-		const nextObjIdx = new Map<string, number>();
-		for (let i = 0; i < document.objects.length; i += 1) {
-			const obj = document.objects[i]!;
-			nextObjById.set(obj.id, obj);
-			nextObjIdx.set(obj.id, i);
-		}
-		objectById = nextObjById;
-		objectIndexById = nextObjIdx;
+	if (layoutLength(document, 'objects') !== prev.objectsRef.length) {
+		countWork('index:global-object-reindex', layoutLength(document, 'objects'));
+		const nextIndex = new Map<string, number>();
+		for (let i = 0; i < layoutLength(document, 'objects'); i += 1) nextIndex.set(layoutItem(document, 'objects', i)!.id, i);
+		objectIndexById = nextIndex;
 	}
 
 	let walks = prev.walks;
-	if (patch.nextWalkTwiceAreas && patch.nextWalkTwiceAreas.size > 0) {
-		const copy = prev.walks.slice();
-		for (const [walkIdx, twiceArea] of patch.nextWalkTwiceAreas) {
-			const old = copy[walkIdx]!;
-			copy[walkIdx] = { twiceSignedArea: twiceArea, wasPositive: old.wasPositive };
-		}
-		walks = copy;
-	}
+	if (patch.nextWalkSummaries) for (const [index, summary] of patch.nextWalkSummaries) walks = walks.set(index, summary);
 
 	let halfEdgeWalkByKey = prev.halfEdgeWalkByKey;
 	if (patch.nextHalfEdgeContribs && patch.nextHalfEdgeContribs.size > 0) {
-		const copy = new Map(prev.halfEdgeWalkByKey);
+		const copy = forkPersistent(prev.halfEdgeWalkByKey);
 		for (const [heKey, contrib] of patch.nextHalfEdgeContribs) {
 			const old = copy.get(heKey)!;
-			copy.set(heKey, { walkIndex: old.walkIndex, twiceEdgeContrib: contrib });
+			copy.set(heKey, { walkIndex: old.walkIndex, twiceEdgeContrib: contrib.value, termCount: contrib.termCount });
 		}
 		halfEdgeWalkByKey = copy;
 	}
 
-	let openingsByWallId = prev.openingsByWallId;
-	let openingIndexById = prev.openingIndexById;
-	if (patch.changedOpeningWallIds && patch.changedOpeningWallIds.length > 0) {
-		const copy = new Map(prev.openingsByWallId);
-		for (const wId of patch.changedOpeningWallIds) {
-			const entries = prev.openingsByWallId.get(wId);
-			if (entries) {
-				copy.set(
-					wId,
-					entries.map((entry) => ({
-						opening: document.openings[entry.index]!,
-						index: entry.index
-					}))
-				);
-			}
-		}
-		openingsByWallId = copy;
-	} else if (document.openings !== prev.openingsRef) {
-		const nextOpeningsByWall = new Map<string, IndexedOpeningEntry[]>();
-		const nextOpeningIdx = new Map<string, number>();
-		for (let i = 0; i < document.openings.length; i += 1) {
-			const opening = document.openings[i]!;
-			nextOpeningIdx.set(opening.id, i);
-			const list = nextOpeningsByWall.get(opening.wallId);
-			if (list) list.push({ opening, index: i });
-			else nextOpeningsByWall.set(opening.wallId, [{ opening, index: i }]);
-		}
-		openingsByWallId = nextOpeningsByWall;
-		openingIndexById = nextOpeningIdx;
-	}
 
 	return {
 		...prev,
-		junctionsRef: document.junctions,
-		wallsRef: document.walls,
-		roomsRef: document.rooms,
-		openingsRef: document.openings,
-		objectsRef: document.objects,
-		junctionById,
-		pointById,
-		wallById,
-		objectById,
+		...sourceRecordViews(document, { ...prev, objectIndexById }),
+		junctionsRef: layoutCollectionRef(document, 'junctions'),
+		wallsRef: layoutCollectionRef(document, 'walls'),
+		roomsRef: layoutCollectionRef(document, 'rooms'),
+		openingsRef: layoutCollectionRef(document, 'openings'),
+		objectsRef: layoutCollectionRef(document, 'objects'),
 		objectIndexById,
-		openingIndexById,
-		openingsByWallId,
 		wallBvh,
 		sampledWallById,
 		walks,
@@ -1724,24 +1696,25 @@ function buildPlanarCombinatorialMap(
 		if (!closed) return undefined;
 
 		const walkIndex = walks.length;
-		let twiceArea = 0;
+		let twiceArea = 0, termCount = 0, magnitude = 0;
 		for (const half of ring) {
 			const w = wallById.get(half.wallId)!;
 			const start = pointById.get(w.startJunctionId)!;
 			const end = pointById.get(w.endJunctionId)!;
 			const contrib = computeHalfEdgeTwiceAreaContrib(w, start, end, half.direction);
-			if (contrib === null || !Number.isFinite(contrib)) return undefined;
-			twiceArea += contrib;
+			if (contrib === null || !Number.isFinite(contrib.value)) return undefined;
+			twiceArea += contrib.value; termCount += contrib.termCount; magnitude = Math.max(magnitude, contrib.magnitude);
 			halfEdgeWalkByKey.set(`${half.wallId}:${half.direction}`, {
 				walkIndex,
-				twiceEdgeContrib: contrib
+				twiceEdgeContrib: contrib.value, termCount: contrib.termCount
 			});
 		}
-		if (!Number.isFinite(twiceArea) || Math.abs(twiceArea) <= WALK_AREA_GUARD_EPSILON) {
+		const accumulatedError = areaRoundingBound(termCount, magnitude);
+		if (!Number.isFinite(twiceArea) || !Number.isFinite(accumulatedError) || Math.abs(twiceArea) <= upperErrorSum(WALK_AREA_GUARD_EPSILON, 2 * accumulatedError)) {
 			return undefined;
 		}
 		const wasPositive = twiceArea > 0;
-		walks.push({ twiceSignedArea: twiceArea, wasPositive });
+		walks.push({ twiceSignedArea: twiceArea, wasPositive, termCount, magnitude, accumulatedError });
 		if (wasPositive) {
 			const boundary = ring.map((h) => ({ wallId: h.wallId, direction: h.direction }));
 			const faceKey = canonicalBoundaryCycleKey(boundary);
@@ -1750,11 +1723,11 @@ function buildPlanarCombinatorialMap(
 		}
 	}
 
-	// Every positive bounded face must map 1-to-1 to a Room in `document.rooms`,
+	// Every positive bounded face must map 1-to-1 to a Room in `layoutCollectionRef(document, 'rooms')`,
 	// and each Room's stored `boundary` must already match the canonical walk
 	// sequence element-for-element (so `reconcileRooms` produces the exact same
 	// `boundary` array without rotating elements).
-	if (positiveFaceBoundaryByKey.size !== document.rooms.length) {
+	if (positiveFaceBoundaryByKey.size !== layoutLength(document, 'rooms')) {
 		return undefined;
 	}
 	const claimedFaceKeys = new Set<string>();
@@ -1853,32 +1826,51 @@ function sameCyclicHalfEdgeOrder(
 	return true;
 }
 
+type EdgeAreaContribution = { value: number; termCount: number; magnitude: number };
+/** Conservative forward-error envelope for <=2n sequential/grouped additions
+ * of n shoelace terms and their products/subtractions. EPSILON is twice the
+ * unit roundoff; 64 n² EPS M² also covers grouping, with subnormal slack.
+ * This proves only a sign, never substitutes a canonical face/area value. */
+function areaRoundingBound(terms: number, magnitude: number): number {
+ if (!(terms > 0) || terms * Number.EPSILON > 1 / 1024) return Infinity;
+ return 64 * Number.EPSILON * terms * terms * magnitude * magnitude + 64 * Number.MIN_VALUE * terms * terms;
+}
+function roundingAllowance(a: number, b: number): number {
+ return 4 * Number.EPSILON * (Math.abs(a) + Math.abs(b)) + 4 * Number.MIN_VALUE;
+}
+function upperErrorSum(...values: number[]): number {
+ let total = 0;
+ for (const value of values) total = (total + value) * (1 + 8 * Number.EPSILON) + 4 * Number.MIN_VALUE;
+ return total;
+}
+
 function computeHalfEdgeTwiceAreaContrib(
 	wall: LayoutWall,
 	canonicalStart: LayoutVec2,
 	canonicalEnd: LayoutVec2,
 	direction: 'forward' | 'reverse',
 	sampling?: WallSamplingDerivation
-): number | null {
+): EdgeAreaContribution | null {
 	const fromPt = direction === 'forward' ? canonicalStart : canonicalEnd;
 	const toPt = direction === 'forward' ? canonicalEnd : canonicalStart;
 	if (wall.centerline.kind === 'line') {
-		return fromPt[0] * toPt[1] - toPt[0] * fromPt[1];
+		return { value: fromPt[0] * toPt[1] - toPt[0] * fromPt[1], termCount: 1, magnitude: Math.max(...fromPt.map(Math.abs), ...toPt.map(Math.abs)) };
 	}
 	const sampled = sampling
 		? sampling.samples(wall, canonicalStart, canonicalEnd, direction)
 		: sampleSegmentQuietly(wall, canonicalStart, canonicalEnd, direction);
 	if (!sampled) return null;
 	const samples = sampled.samples;
-	let sum = 0;
+	let sum = 0, magnitude = Math.max(...fromPt.map(Math.abs), ...toPt.map(Math.abs));
 	let prev = fromPt;
 	for (let i = 1; i < samples.length - 1; i += 1) {
 		const curr = samples[i]!.point;
+		magnitude = Math.max(magnitude, Math.abs(curr[0]), Math.abs(curr[1]));
 		sum += prev[0] * curr[1] - curr[0] * prev[1];
 		prev = curr;
 	}
 	sum += prev[0] * toPt[1] - toPt[0] * prev[1];
-	return sum;
+	return { value: sum, termCount: Math.max(1, samples.length - 1), magnitude };
 }
 
 function sampleSegmentQuietly(
@@ -1897,8 +1889,8 @@ function certifyOpeningsQuietly(
 ): boolean {
 	// Validate baseline openings without emitting per-edit lookup work counts.
 	const openingsByWall = new Map<string, LayoutWallOpening[]>();
-	for (let i = 0; i < document.openings.length; i += 1) {
-		const opening = document.openings[i]!;
+	for (let i = 0; i < layoutLength(document, 'openings'); i += 1) {
+		const opening = layoutItem(document, 'openings', i)!;
 		const wall = wallById.get(opening.wallId);
 		if (!wall) return false;
 		const start = pointById.get(wall.startJunctionId);

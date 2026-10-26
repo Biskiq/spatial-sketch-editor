@@ -3,11 +3,11 @@
  * metamorphic & scale-invariance test suite for T1.P02.S06.
  *
  * Verifies:
- * 1. Dynamic BVH8 edge cases, irregular boxes, O(log N) depth and parity with PlanBoxIndex.
+ * 1. Spatial index edge cases, irregular boxes and parity with PlanBoxIndex.
  * 2. Adversarial differential oracle equivalence across all planners & refusal classes.
  * 3. Metamorphic invariants (collection order permutation, multi-step transaction parity,
  *    and fallback cascade vs entity isolation).
- * 4. Deterministic scale-invariance bounds (work counts flat across small and medium fixtures).
+ * 4. Bounded work on two fixtures (these counts are not a total-complexity proof).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -70,7 +70,7 @@ function entitySetsMatch(docA: LayoutDocumentWallFirst, docB: LayoutDocumentWall
 	);
 }
 
-describe('T1.P02.S06 Dynamic BVH8 Index', () => {
+describe('T1.P02.S06 dynamic spatial index compatibility', () => {
 	it('handles empty and single-entry indices safely', () => {
 		const empty = createDynamicBvh([]);
 		expect(empty.size).toBe(0);
@@ -149,7 +149,7 @@ describe('T1.P02.S06 Dynamic BVH8 Index', () => {
 		expect(cloned.overlaps(box(99, 99, 102, 102))).toEqual([0]);
 	});
 
-	it('exhibits O(log N) directory node visits on scale queries', () => {
+	it('keeps legacy accepted-node counts bounded on the named diagonal fixtures', () => {
 		const smallFixture = buildScaleFixture(SCALE_FIXTURE_SEEDS['small']);
 		const mediumFixture = buildScaleFixture(SCALE_FIXTURE_SEEDS['medium']);
 

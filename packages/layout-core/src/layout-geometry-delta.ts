@@ -1,5 +1,6 @@
+import { hasImmutableJsonProof, rememberImmutableJsonNode } from './immutable-json';
 /**
- * `layout-geometry-delta.ts` — chunked retained compile world and O(k) delta
+ * `layout-geometry-delta.ts` — persistent retained compile roots and local delta
  * evaluation for `compileWallFirstLayoutGeometry` (T1.P02.S06).
  *
  * Architectural contract (AGENTS.md rules 3 & 6):
@@ -7,7 +8,7 @@
  *    Floor aggregate is evaluated by the exact canonical builders in
  *    `layout-geometry.ts`; this module never implements a second geometry or
  *    issue formula.
- * 2. **Soundness before speed** — O(k) delta evaluation runs only when the
+ * 2. **Soundness before speed** — local delta evaluation runs only when the
  *    candidate's changed entity set is certified by `CowDocumentDelta` (direct
  *    parent/child or common-baseline sibling) or identical document reference,
  *    and document-global datums (`floor.id`, `floor.elevation`, fallback
@@ -20,7 +21,7 @@
 
 import { cacheKeyDependency, type CacheKeyDependency } from './layout-geometry-keys';
 import type { LayoutVec2 } from './layout-coordinates';
-import type { WallSamplingDerivation } from './layout-wall-centerline';
+import { isCanonicalWallSampling, type WallSamplingDerivation } from './layout-wall-centerline';
 import type {
 	CompiledFloor,
 	CompiledJunction,
@@ -60,8 +61,10 @@ import {
 	hasAnySamplingTestObserver
 } from './layout-world-index';
 import type { Vec3 } from './types';
+import { PersistentMap, PersistentVector } from './persistent-store';
+import { layoutItem, layoutLength, mappedReadonlyMap } from './layout-source-collections';
+import { countWork } from './p2311-perf';
 
-const CHUNK_SIZE = 64;
 
 export type EvaluatedRoomUnit = {
 	readonly hasValidCeiling: boolean;
@@ -175,15 +178,6 @@ export type RoomSlot = {
 	readonly bounds3: LayoutBounds3 | null;
 };
 
-type RoomChunk = {
-	strippedRooms: CompiledRoom[];
-	validRoomIds: string[];
-	polygons: CompiledQueryPolygon[];
-	aabbs: CompiledQueryAabb[];
-	issues: LayoutGeometryIssue[];
-	bounds3: LayoutBounds3 | null;
-};
-
 export type WallSlot = {
 	readonly wallId: string;
 	readonly sortedIndex: number;
@@ -197,46 +191,32 @@ export type WallSlot = {
 	readonly issues: readonly LayoutGeometryIssue[];
 };
 
-type WallChunk = {
-	points: CompiledQueryPoint[];
-	spans: CompiledQuerySpan[];
-	aabbs: CompiledQueryAabb[];
-	issues: LayoutGeometryIssue[];
-	bounds3: LayoutBounds3 | null;
-};
-
-type JunctionChunk = {
-	bounds3: LayoutBounds3 | null;
-};
-
 export type RetainedCompileWorld = {
 	document: LayoutDocumentWallFirst;
 	readonly floorId: string;
 	readonly floorElevation: number;
 	readonly defaultWallThickness: number;
 	readonly hydratedWithoutSources: boolean;
-	readonly pointById: Map<string, LayoutVec2>;
+	pointById: ReadonlyMap<string, LayoutVec2>;
 	readonly junctionDocIndexById: Map<string, number>;
-	readonly wallById: Map<string, LayoutWall>;
+	wallById: ReadonlyMap<string, LayoutWall>;
 	readonly wallDocIndexById: Map<string, number>;
-	readonly openingById: Map<string, LayoutWallOpening>;
+	openingById: ReadonlyMap<string, LayoutWallOpening>;
 	readonly openingOrderById: Map<string, number>;
-	readonly openingsByHostWallId: Map<string, LayoutWallOpening[]>;
+	openingsByHostWallId: ReadonlyMap<string, LayoutWallOpening[]>;
+	readonly openingIndicesByHostWallId: ReadonlyMap<string, readonly number[]>;
 	readonly documentRoomIds: Set<string>;
 	readonly roomIndicesByWallId: Map<string, number[]>;
 	readonly wallIdsByJunctionId: Map<string, string[]>;
 	readonly derivedWallRoles: ReadonlyMap<string, LayoutDerivedWallRole>;
-	readonly roomSlots: RoomSlot[];
-	readonly roomChunks: RoomChunk[];
+	roomSlots: PersistentVector<RoomSlot, ChunkSummary>;
 	validCeilingRoomCount: number;
-	readonly wallSlots: WallSlot[];
-	readonly wallChunks: WallChunk[];
-	readonly sortedWalls: CompiledPhysicalWall[];
-	readonly sortedJunctions: CompiledJunction[];
+	wallSlots: PersistentVector<WallSlot, ChunkSummary>;
+	sortedWalls: PersistentVector<CompiledPhysicalWall>;
+	sortedJunctions: PersistentVector<CompiledJunction, ChunkSummary>;
 	readonly junctionSortedIndexById: Map<string, number>;
 	readonly junctionLegOrderById: Map<string, number>;
-	readonly junctionIssuesById: Map<string, readonly LayoutGeometryIssue[]>;
-	readonly junctionChunks: JunctionChunk[];
+	junctionIssuesByOrder: PersistentMap<number, readonly LayoutGeometryIssue[]>;
 	objectUnit: CompiledObjectsUnit;
 };
 
@@ -247,7 +227,8 @@ type PassiveCompileRecord = {
 
 const PASSIVE_COMPILE_BY_DOC = new WeakMap<LayoutDocumentWallFirst, PassiveCompileRecord>();
 
-/** Record a clean canonical compile result so a session can warm from it in O(1). */
+/** Record a clean result in O(1). Warming can restore a proven retained root in
+ * O(1), or build retained indexes in O(N) when this is only a passive result. */
 export function recordPassiveCompiledGeometry(
 	document: LayoutDocumentWallFirst,
 	geometry: CompiledLayoutGeometry,
@@ -277,59 +258,47 @@ function mergeBounds3Into(
 	return acc;
 }
 
-function rebuildRoomChunk(slots: readonly RoomSlot[], chunkIndex: number): RoomChunk {
-	const start = chunkIndex * CHUNK_SIZE;
-	const end = Math.min(slots.length, start + CHUNK_SIZE);
-	const strippedRooms: CompiledRoom[] = [];
-	const validRoomIds: string[] = [];
-	const polygons: CompiledQueryPolygon[] = [];
-	const aabbs: CompiledQueryAabb[] = [];
-	const issues: LayoutGeometryIssue[] = [];
-	let boundsAcc: { min: Vec3; max: Vec3 } | null = null;
-	for (let i = start; i < end; i += 1) {
-		const slot = slots[i]!;
-		for (let j = 0; j < slot.issues.length; j += 1) issues.push(slot.issues[j]!);
-		for (let j = 0; j < slot.polygons.length; j += 1) polygons.push(slot.polygons[j]!);
-		for (let j = 0; j < slot.aabbs.length; j += 1) aabbs.push(slot.aabbs[j]!);
-		if (slot.stripped) {
-			strippedRooms.push(slot.stripped);
-			validRoomIds.push(slot.roomId);
-			boundsAcc = mergeBounds3Into(boundsAcc, slot.bounds3);
-		}
-	}
-	return { strippedRooms, validRoomIds, polygons, aabbs, issues, bounds3: boundsAcc };
+function compileSourceViews(document: LayoutDocumentWallFirst, indexes: Pick<RetainedCompileWorld, 'junctionDocIndexById' | 'wallDocIndexById' | 'openingOrderById' | 'openingIndicesByHostWallId'>) {
+ const { junctionDocIndexById, wallDocIndexById, openingOrderById, openingIndicesByHostWallId } = indexes;
+ const hosted = new Map<string, LayoutWallOpening[]>();
+ return {
+  pointById: mappedReadonlyMap(junctionDocIndexById, (index) => layoutItem(document, 'junctions', index)!.point),
+  wallById: mappedReadonlyMap(wallDocIndexById, (index) => layoutItem(document, 'walls', index)!),
+  openingById: mappedReadonlyMap(openingOrderById, (index) => layoutItem(document, 'openings', index)!),
+  openingsByHostWallId: mappedReadonlyMap(openingIndicesByHostWallId, (indices, id) => {
+   let list = hosted.get(id);
+   if (!list) { list = indices.map((index) => layoutItem(document, 'openings', index)!); hosted.set(id, list); countWork('compile:hosted-opening-record', list.length); }
+   return list;
+  })
+ };
 }
 
-function rebuildWallChunk(slots: readonly WallSlot[], chunkIndex: number): WallChunk {
-	const start = chunkIndex * CHUNK_SIZE;
-	const end = Math.min(slots.length, start + CHUNK_SIZE);
-	const points: CompiledQueryPoint[] = [];
-	const spans: CompiledQuerySpan[] = [];
-	const aabbs: CompiledQueryAabb[] = [];
-	const issues: LayoutGeometryIssue[] = [];
-	let boundsAcc: { min: Vec3; max: Vec3 } | null = null;
-	for (let i = start; i < end; i += 1) {
-		const slot = slots[i]!;
-		if (!slot.compiled) continue;
-		const rec = slot.baseRecords;
-		for (let j = 0; j < rec.points.length; j += 1) points.push(rec.points[j]!);
-		for (let j = 0; j < rec.spans.length; j += 1) spans.push(rec.spans[j]!);
-		for (let j = 0; j < rec.aabbs.length; j += 1) aabbs.push(rec.aabbs[j]!);
-		if (slot.wallAabb) aabbs.push(slot.wallAabb);
-		for (let j = 0; j < slot.issues.length; j += 1) issues.push(slot.issues[j]!);
-		boundsAcc = mergeBounds3Into(boundsAcc, slot.compiled.bounds3);
-	}
-	return { points, spans, aabbs, issues, bounds3: boundsAcc };
+type ChunkSummary = { bounds3: LayoutBounds3 | null; issues: number; rooms: number };
+function summarizedVector<T>(items: readonly T[], summarize: (item: T) => ChunkSummary): PersistentVector<T, ChunkSummary> {
+ const merge = (a: ChunkSummary, b: ChunkSummary): ChunkSummary => {
+  countWork('compile:aggregate-merge');
+  return { bounds3: mergeBounds3Into(mergeBounds3Into(null, a.bounds3), b.bounds3), issues: a.issues + b.issues, rooms: a.rooms + b.rooms };
+ };
+ return PersistentVector.from(items, {
+  leaf(block) {
+   let total: ChunkSummary = { bounds3: null, issues: 0, rooms: 0 };
+   for (const item of block) { countWork('compile:aggregate-child-read'); total = merge(total, summarize(item)); }
+   return total;
+  }, branch: merge
+ });
 }
-
-function rebuildJunctionChunk(junctions: readonly CompiledJunction[], chunkIndex: number): JunctionChunk {
-	const start = chunkIndex * CHUNK_SIZE;
-	const end = Math.min(junctions.length, start + CHUNK_SIZE);
-	let boundsAcc: { min: Vec3; max: Vec3 } | null = null;
-	for (let i = start; i < end; i += 1) {
-		boundsAcc = mergeBounds3Into(boundsAcc, junctions[i]!.bounds3);
-	}
-	return { bounds3: boundsAcc };
+type LazySealState = { sealed: boolean; sealers: (() => void)[] };
+const LAZY_GEOMETRY_SEAL = new WeakMap<CompiledLayoutGeometry, () => void>();
+function lazyArray<T>(label: string, build: () => T[], state?: LazySealState): () => T[] {
+ let cached: T[] | undefined;
+ const seal = () => { if (cached && !Object.isFrozen(cached)) { countWork('snapshot:flat-array-freeze-slots', cached.length); Object.freeze(cached); } };
+ state?.sealers.push(seal);
+ return () => { if (!cached) { cached = build(); countWork(`materialize:${label}:slots`, cached.length); } if (state?.sealed) seal(); return cached; };
+}
+function collectChunks<T, C>(chunks: PersistentVector<C, ChunkSummary>, values: (chunk: C) => readonly T[]): T[] {
+ const out: T[] = [];
+ for (const chunk of chunks.values()) { countWork('materialize:chunk-read'); for (const item of values(chunk)) out.push(item); }
+ return out;
 }
 
 /** Build a `RetainedCompileWorld` at the end of a full canonical pass. */
@@ -340,15 +309,15 @@ export function buildRetainedCompileWorldFromPass(input: {
 	readonly sortedWalls: CompiledPhysicalWall[];
 	readonly sortedJunctions: CompiledJunction[];
 	readonly junctionLegOrderById: Map<string, number>;
-	readonly junctionIssuesById: Map<string, readonly LayoutGeometryIssue[]>;
+	junctionIssuesById: Map<string, readonly LayoutGeometryIssue[]>;
 	readonly objectUnit: CompiledObjectsUnit;
 	readonly derivedWallRoles: ReadonlyMap<string, LayoutDerivedWallRole>;
 }): RetainedCompileWorld {
 	const { document } = input;
 	const pointById = new Map<string, LayoutVec2>();
 	const junctionDocIndexById = new Map<string, number>();
-	for (let i = 0; i < document.junctions.length; i += 1) {
-		const j = document.junctions[i]!;
+	for (let i = 0; i < layoutLength(document, 'junctions'); i += 1) {
+		const j = layoutItem(document, 'junctions', i)!;
 		pointById.set(j.id, j.point);
 		junctionDocIndexById.set(j.id, i);
 	}
@@ -363,8 +332,8 @@ export function buildRetainedCompileWorldFromPass(input: {
 			wallIdsByJunctionId.set(jId, [wId]);
 		}
 	};
-	for (let i = 0; i < document.walls.length; i += 1) {
-		const w = document.walls[i]!;
+	for (let i = 0; i < layoutLength(document, 'walls'); i += 1) {
+		const w = layoutItem(document, 'walls', i)!;
 		wallById.set(w.id, w);
 		wallDocIndexById.set(w.id, i);
 		pushIncident(w.startJunctionId, w.id);
@@ -373,8 +342,8 @@ export function buildRetainedCompileWorldFromPass(input: {
 	const openingById = new Map<string, LayoutWallOpening>();
 	const openingOrderById = new Map<string, number>();
 	const openingsByHostWallId = new Map<string, LayoutWallOpening[]>();
-	for (let i = 0; i < document.openings.length; i += 1) {
-		const op = document.openings[i]!;
+	for (let i = 0; i < layoutLength(document, 'openings'); i += 1) {
+		const op = layoutItem(document, 'openings', i)!;
 		openingById.set(op.id, op);
 		openingOrderById.set(op.id, i);
 		const list = openingsByHostWallId.get(op.wallId);
@@ -383,8 +352,8 @@ export function buildRetainedCompileWorldFromPass(input: {
 	}
 	const documentRoomIds = new Set<string>();
 	const roomIndicesByWallId = new Map<string, number[]>();
-	for (let rIdx = 0; rIdx < document.rooms.length; rIdx += 1) {
-		const room = document.rooms[rIdx]!;
+	for (let rIdx = 0; rIdx < layoutLength(document, 'rooms'); rIdx += 1) {
+		const room = layoutItem(document, 'rooms', rIdx)!;
 		documentRoomIds.add(room.id);
 		for (let bIdx = 0; bIdx < room.boundary.length; bIdx += 1) {
 			const wId = room.boundary[bIdx]!.wallId;
@@ -397,60 +366,42 @@ export function buildRetainedCompileWorldFromPass(input: {
 		}
 	}
 
-	const roomChunkCount = Math.ceil(input.roomSlots.length / CHUNK_SIZE);
-	const roomChunks: RoomChunk[] = new Array(roomChunkCount);
-	for (let c = 0; c < roomChunkCount; c += 1) {
-		roomChunks[c] = rebuildRoomChunk(input.roomSlots, c);
-	}
 	let validCeilingRoomCount = 0;
 	for (let i = 0; i < input.roomSlots.length; i += 1) {
 		if (input.roomSlots[i]!.hasValidCeiling) validCeilingRoomCount += 1;
-	}
-
-	const wallChunkCount = Math.ceil(input.wallSlots.length / CHUNK_SIZE);
-	const wallChunks: WallChunk[] = new Array(wallChunkCount);
-	for (let c = 0; c < wallChunkCount; c += 1) {
-		wallChunks[c] = rebuildWallChunk(input.wallSlots, c);
 	}
 
 	const junctionSortedIndexById = new Map<string, number>();
 	for (let i = 0; i < input.sortedJunctions.length; i += 1) {
 		junctionSortedIndexById.set(input.sortedJunctions[i]!.junctionId, i);
 	}
-	const junctionChunkCount = Math.ceil(input.sortedJunctions.length / CHUNK_SIZE);
-	const junctionChunks: JunctionChunk[] = new Array(junctionChunkCount);
-	for (let c = 0; c < junctionChunkCount; c += 1) {
-		junctionChunks[c] = rebuildJunctionChunk(input.sortedJunctions, c);
-	}
+
+ const openingIndicesByHostWallId = new Map<string, readonly number[]>();
+ for (const [id, openings] of openingsByHostWallId) openingIndicesByHostWallId.set(id, openings.map((opening) => openingOrderById.get(opening.id)!));
 
 	return {
 		document,
+		...compileSourceViews(document, { junctionDocIndexById, wallDocIndexById, openingOrderById, openingIndicesByHostWallId }),
+		openingIndicesByHostWallId,
 		floorId: document.floor.id,
 		floorElevation: document.floor.elevation,
-		defaultWallThickness: document.walls[0]?.thickness ?? 0.1,
+		defaultWallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
 		hydratedWithoutSources: false,
-		pointById,
 		junctionDocIndexById,
-		wallById,
 		wallDocIndexById,
-		openingById,
 		openingOrderById,
-		openingsByHostWallId,
 		documentRoomIds,
 		roomIndicesByWallId,
 		wallIdsByJunctionId,
 		derivedWallRoles: input.derivedWallRoles,
-		roomSlots: input.roomSlots,
-		roomChunks,
+		roomSlots: summarizedVector(input.roomSlots, (slot) => ({ bounds3: slot.stripped ? slot.bounds3 : null, issues: slot.issues.length, rooms: slot.stripped ? 1 : 0 })),
 		validCeilingRoomCount,
-		wallSlots: input.wallSlots,
-		wallChunks,
-		sortedWalls: input.sortedWalls,
-		sortedJunctions: input.sortedJunctions,
+		wallSlots: summarizedVector(input.wallSlots, (slot) => ({ bounds3: slot.compiled?.bounds3 ?? null, issues: slot.compiled ? slot.issues.length : 0, rooms: 0 })),
+		sortedWalls: PersistentVector.from(input.sortedWalls),
+		sortedJunctions: summarizedVector(input.sortedJunctions, (junction) => ({ bounds3: junction.bounds3, issues: 0, rooms: 0 })),
 		junctionSortedIndexById,
 		junctionLegOrderById: input.junctionLegOrderById,
-		junctionIssuesById: input.junctionIssuesById,
-		junctionChunks,
+		junctionIssuesByOrder: PersistentMap.from([...input.junctionIssuesById].map(([id, issues]) => [input.junctionLegOrderById.get(id)!, issues] as const)),
 		objectUnit: input.objectUnit
 	};
 }
@@ -465,6 +416,7 @@ export function seedReuseFromPassiveCompile(
 	builders: CanonicalDeltaBuilders,
 	preserveExistingUnits = false
 ): boolean {
+	if (restoreImmutableCompileSnapshot(document, reuse)) return true;
 	const existingWorld = reuse.world as RetainedCompileWorld | null;
 	if (existingWorld && resolveCowDirtyIds(existingWorld.document, document) !== null) {
 		return true;
@@ -485,25 +437,25 @@ export function seedReuseFromPassiveCompile(
 	const junctions = geometry.junctions ?? [];
 
 	if (
-		geometry.rooms.length !== document.rooms.length ||
-		physicalWalls.length !== document.walls.length ||
-		geometry.objects.length !== document.objects.length
+		geometry.rooms.length !== layoutLength(document, 'rooms') ||
+		physicalWalls.length !== layoutLength(document, 'walls') ||
+		geometry.objects.length !== layoutLength(document, 'objects')
 	) {
 		return false;
 	}
 
 	// Verify unique IDs before partitioning query records.
 	const uniqueWallIds = new Set<string>();
-	for (let i = 0; i < document.walls.length; i += 1) uniqueWallIds.add(document.walls[i]!.id);
-	if (uniqueWallIds.size !== document.walls.length) return false;
+	for (let i = 0; i < layoutLength(document, 'walls'); i += 1) uniqueWallIds.add(layoutItem(document, 'walls', i)!.id);
+	if (uniqueWallIds.size !== layoutLength(document, 'walls')) return false;
 
-	const objCount = document.objects.length;
-	const roomCount = document.rooms.length;
+	const objCount = layoutLength(document, 'objects');
+	const roomCount = layoutLength(document, 'rooms');
 	if (geometry.queries.polygons.length < objCount + roomCount) return false;
-	if (geometry.queries.aabbs.length < objCount + roomCount + document.walls.length) return false;
+	if (geometry.queries.aabbs.length < objCount + roomCount + layoutLength(document, 'walls')) return false;
 
 	const documentRoomIds = new Set<string>();
-	for (let i = 0; i < roomCount; i += 1) documentRoomIds.add(document.rooms[i]!.id);
+	for (let i = 0; i < roomCount; i += 1) documentRoomIds.add(layoutItem(document, 'rooms', i)!.id);
 
 	// 1. Partition Object unit.
 	const objPolygons = geometry.queries.polygons.slice(0, objCount);
@@ -512,13 +464,13 @@ export function seedReuseFromPassiveCompile(
 	let objFloorBounds: { min: Vec3; max: Vec3 } | null = null;
 	for (let i = 0; i < objCount; i += 1) {
 		const desc = geometry.objects[i]!;
-		if (desc.objectId !== document.objects[i]!.id) return false;
+		if (desc.objectId !== layoutItem(document, 'objects', i)!.id) return false;
 		objBounds = mergeBounds3Into(objBounds, desc.worldAabb);
 		if (desc.roomId && documentRoomIds.has(desc.roomId)) {
 			objFloorBounds = mergeBounds3Into(objFloorBounds, desc.worldAabb);
 		}
 		reuse.objects.set(desc.objectId, {
-			authored: [document.objects[i]!, i],
+			authored: [layoutItem(document, 'objects', i)!, i],
 			descriptor: desc,
 			records: {
 				points: [],
@@ -530,7 +482,7 @@ export function seedReuseFromPassiveCompile(
 		});
 	}
 	const objectUnit: CompiledObjectsUnit = {
-		compiledObjects: [...geometry.objects],
+		compiledObjects: geometry.objects,
 		polygons: objPolygons,
 		aabbs: objAabbs,
 		issues: [],
@@ -542,7 +494,7 @@ export function seedReuseFromPassiveCompile(
 	const roomSlots: RoomSlot[] = new Array(roomCount);
 	for (let r = 0; r < roomCount; r += 1) {
 		const stripped = geometry.rooms[r]!;
-		if (stripped.roomId !== document.rooms[r]!.id) return false;
+		if (stripped.roomId !== layoutItem(document, 'rooms', r)!.id) return false;
 		roomSlots[r] = {
 			roomId: stripped.roomId,
 			hasValidCeiling: true,
@@ -562,8 +514,8 @@ export function seedReuseFromPassiveCompile(
 	const startLegByWallId = new Map<string, CompiledJunctionLeg>();
 	const endLegByWallId = new Map<string, CompiledJunctionLeg>();
 	const pointById = new Map<string, LayoutVec2>();
-	for (let i = 0; i < document.junctions.length; i += 1) {
-		pointById.set(document.junctions[i]!.id, document.junctions[i]!.point);
+	for (let i = 0; i < layoutLength(document, 'junctions'); i += 1) {
+		pointById.set(layoutItem(document, 'junctions', i)!.id, layoutItem(document, 'junctions', i)!.point);
 	}
 	for (let i = 0; i < junctions.length; i += 1) {
 		const cj = junctions[i]!;
@@ -589,16 +541,16 @@ export function seedReuseFromPassiveCompile(
 
 	const derivedWallRoles = deriveLayoutWallRoles(document);
 	const openingsByHostWallId = new Map<string, LayoutWallOpening[]>();
-	for (let i = 0; i < document.openings.length; i += 1) {
-		const op = document.openings[i]!;
+	for (let i = 0; i < layoutLength(document, 'openings'); i += 1) {
+		const op = layoutItem(document, 'openings', i)!;
 		const list = openingsByHostWallId.get(op.wallId);
 		if (list) list.push(op);
 		else openingsByHostWallId.set(op.wallId, [op]);
 	}
 
-	const wallSlots: WallSlot[] = new Array(document.walls.length);
-	for (let wIdx = 0; wIdx < document.walls.length; wIdx += 1) {
-		const wall = document.walls[wIdx]!;
+	const wallSlots: WallSlot[] = new Array(layoutLength(document, 'walls'));
+	for (let wIdx = 0; wIdx < layoutLength(document, 'walls'); wIdx += 1) {
+		const wall = layoutItem(document, 'walls', wIdx)!;
 		const sortedIdx = sortedWallIndexById.get(wall.id);
 		if (sortedIdx === undefined) return false;
 		const compiled = physicalWalls[sortedIdx]!;
@@ -725,6 +677,7 @@ export function seedReuseFromPassiveCompile(
 		derivedWallRoles
 	});
 	reuse.world = { ...built, hydratedWithoutSources: true };
+	registerCompileSnapshot(document, reuse.world as RetainedCompileWorld, { geometry, issues: [] }, reuse);
 	reuse.lastPrunedDocument = document;
 	return true;
 }
@@ -830,7 +783,7 @@ function collectJoinsForWall(
 	const scanJunction = (jId: string): void => {
 		const jIdx = world.junctionSortedIndexById.get(jId);
 		if (jIdx === undefined) return;
-		const joins = world.sortedJunctions[jIdx]!.resolution.joins;
+		const joins = world.sortedJunctions.get(jIdx)!.resolution.joins;
 		for (let i = 0; i < joins.length; i += 1) {
 			const join = joins[i]!;
 			if (join.wallId === wallId) {
@@ -845,7 +798,7 @@ function collectJoinsForWall(
 }
 
 /**
- * Attempt an O(k) delta compile against `reuse.world`. Returns `null` when the
+ * Attempt a persistent delta compile against `reuse.world`. Returns `null` when the
  * edit changes topology, global Floor datums, fallback thickness, or lacks
  * COW lineage, allowing the caller to fall back cleanly.
  */
@@ -855,11 +808,11 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 	reuse: LayoutCompileReuse,
 	builders: CanonicalDeltaBuilders
 ): CompiledLayoutGeometryResult | null {
-	if (hasAnySamplingTestObserver()) return null;
-	const world = reuse.world as RetainedCompileWorld | null;
+	if (hasAnySamplingTestObserver() || !isCanonicalWallSampling(sampling)) return null;
+	let world = reuse.world as RetainedCompileWorld | null;
 	if (!world) return null;
 
-	const defaultWallThickness = document.walls[0]?.thickness ?? 0.1;
+	const defaultWallThickness = layoutItem(document, 'walls', 0)?.thickness ?? 0.1;
 	if (
 		!Object.is(document.floor.id, world.floorId) ||
 		!Object.is(document.floor.elevation, world.floorElevation) ||
@@ -869,10 +822,10 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 	}
 
 	if (
-		document.walls.length !== world.document.walls.length ||
-		document.junctions.length !== world.document.junctions.length ||
-		document.rooms.length !== world.document.rooms.length ||
-		document.openings.length !== world.document.openings.length
+		layoutLength(document, 'walls') !== layoutLength(world.document, 'walls') ||
+		layoutLength(document, 'junctions') !== layoutLength(world.document, 'junctions') ||
+		layoutLength(document, 'rooms') !== layoutLength(world.document, 'rooms') ||
+		layoutLength(document, 'openings') !== layoutLength(world.document, 'openings')
 	) {
 		return null;
 	}
@@ -890,7 +843,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		const jId = dirty.changedJunctionIds[i]!;
 		const docIdx = world.junctionDocIndexById.get(jId);
 		if (docIdx === undefined) return null;
-		const nextJ = document.junctions[docIdx];
+		const nextJ = layoutItem(document, 'junctions', docIdx);
 		if (!nextJ || nextJ.id !== jId) return null;
 		const prevPt = world.pointById.get(jId)!;
 		reuse.counters.signatureVisits += 1;
@@ -904,7 +857,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		const wId = dirty.changedWallIds[i]!;
 		const docIdx = world.wallDocIndexById.get(wId);
 		if (docIdx === undefined) return null;
-		const nextW = document.walls[docIdx];
+		const nextW = layoutItem(document, 'walls', docIdx);
 		if (!nextW || nextW.id !== wId) return null;
 		const prevW = world.wallById.get(wId)!;
 		if (
@@ -925,7 +878,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		const opId = dirty.changedOpeningIds[i]!;
 		const opIdx = world.openingOrderById.get(opId);
 		if (opIdx === undefined) return null;
-		const nextOp = document.openings[opIdx];
+		const nextOp = layoutItem(document, 'openings', opIdx);
 		if (!nextOp || nextOp.id !== opId) return null;
 		const prevOp = world.openingById.get(opId)!;
 		if (nextOp.wallId !== prevOp.wallId) return null;
@@ -947,42 +900,16 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		}
 	}
 
-	// Stage updated point/wall/opening maps in small overlays first so a fallback
-	// leaves `world` 100% untouched!
-	if (changedJunctionIds.size > 0) {
-		for (const jId of changedJunctionIds) {
-			const idx = world.junctionDocIndexById.get(jId)!;
-			world.pointById.set(jId, document.junctions[idx]!.point);
-		}
-	}
-	if (authoredChangedWallIds.size > 0) {
-		for (const wId of authoredChangedWallIds) {
-			const idx = world.wallDocIndexById.get(wId)!;
-			world.wallById.set(wId, document.walls[idx]!);
-		}
-	}
-	if (nextOpeningsToApply.length > 0) {
-		for (let i = 0; i < nextOpeningsToApply.length; i += 1) {
-			const { opening } = nextOpeningsToApply[i]!;
-			world.openingById.set(opening.id, opening);
-		}
-		for (const hostWallId of changedOpeningHostWallIds) {
-			const updated = (world.openingsByHostWallId.get(hostWallId) ?? []).map(
-				(op) => world.openingById.get(op.id) ?? op
-			);
-			world.openingsByHostWallId.set(hostWallId, updated);
-		}
-	}
-
+	world = { ...world, ...compileSourceViews(document, world), junctionIssuesByOrder: world.junctionIssuesByOrder.fork() };
+	reuse.world = world;
 	// 1. Evaluate dirty Walls (base geometry + legs).
 	const evaluatedWallBaseById = new Map<string, EvaluatedWallBaseUnit>();
 	let validWallCount = 0;
-	for (let i = 0; i < world.sortedWalls.length; i += 1) void i;
 	validWallCount = world.sortedWalls.length;
 
 	for (const wId of dirtyWallIds) {
 		const docIdx = world.wallDocIndexById.get(wId)!;
-		const prevSlot = world.wallSlots[docIdx]!;
+		const prevSlot = world.wallSlots.get(docIdx)!;
 		const wall = world.wallById.get(wId)!;
 		const hosted = world.openingsByHostWallId.get(wId) ?? [];
 		const role = world.derivedWallRoles.get(wId) ?? 'free-standing';
@@ -1012,12 +939,11 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			for (let i = 0; i < roomIndices.length; i += 1) dirtyRoomIndexSet.add(roomIndices[i]!);
 		}
 	}
-	const dirtyRoomChunks = new Set<number>();
 	if (dirtyRoomIndexSet.size > 0) {
 		const sortedDirtyRooms = [...dirtyRoomIndexSet].sort((a, b) => a - b);
 		for (let i = 0; i < sortedDirtyRooms.length; i += 1) {
 			const rIdx = sortedDirtyRooms[i]!;
-			const prevSlot = world.roomSlots[rIdx]!;
+			const prevSlot = world.roomSlots.get(rIdx)!;
 			const unit = builders.evaluateRoom(
 				document,
 				rIdx,
@@ -1027,6 +953,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				world.openingOrderById,
 				defaultWallThickness
 			);
+			if ((prevSlot.stripped === null) !== (unit.stripped === null)) { reuse.world = null; return null; }
 			if (prevSlot.hasValidCeiling !== unit.hasValidCeiling) {
 				if (unit.hasValidCeiling) world.validCeilingRoomCount += 1;
 				else world.validCeilingRoomCount -= 1;
@@ -1035,7 +962,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				reuse.counters.roomsEvaluated += 1;
 			}
 			if (unit.source) {
-				const room = document.rooms[rIdx]!;
+				const room = layoutItem(document, 'rooms', rIdx)!;
 				const retentionKey = [
 					room,
 					unit.source.ceilingElevation ?? null,
@@ -1068,31 +995,27 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 					issues: unit.issues
 				});
 			}
-			world.roomSlots[rIdx] = {
-				roomId: document.rooms[rIdx]!.id,
+			world.roomSlots = world.roomSlots.set(rIdx, {
+				roomId: layoutItem(document, 'rooms', rIdx)!.id,
 				hasValidCeiling: unit.hasValidCeiling,
 				stripped: unit.stripped,
 				polygons: unit.polygons,
 				aabbs: unit.aabbs,
 				issues: unit.issues,
 				bounds3: unit.bounds3
-			};
-			dirtyRoomChunks.add(Math.floor(rIdx / CHUNK_SIZE));
+			});
 		}
 	}
 	reuse.counters.roomsReused += world.validCeilingRoomCount - reuse.counters.roomsEvaluated;
-	for (const cIdx of dirtyRoomChunks) {
-		world.roomChunks[cIdx] = rebuildRoomChunk(world.roomSlots, cIdx);
-	}
 
 	// 3. Evaluate Objects if any object changed or count changed.
 	if (
 		dirty.changedObjectIds.length > 0 ||
-		document.objects.length !== world.document.objects.length
+		layoutLength(document, 'objects') !== layoutLength(world.document, 'objects')
 	) {
 		world.objectUnit = builders.compileObjects(document.objects, world.documentRoomIds, reuse);
 	} else {
-		reuse.counters.objectsReused += document.objects.length;
+		reuse.counters.objectsReused += layoutLength(document, 'objects');
 	}
 
 	// 4. Resolve affected Junctions (moved junctions + endpoints of dirty walls).
@@ -1102,7 +1025,6 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		if (w.startJunctionId) affectedJunctionIds.add(w.startJunctionId);
 		if (w.endJunctionId) affectedJunctionIds.add(w.endJunctionId);
 	}
-	const dirtyJunctionChunks = new Set<number>();
 	let affectedValidJunctions = 0;
 	for (const jId of affectedJunctionIds) {
 		const jSortedIdx = world.junctionSortedIndexById.get(jId);
@@ -1118,7 +1040,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			const evaluatedBase = evaluatedWallBaseById.get(incWallId);
 			const legPair = evaluatedBase
 				? evaluatedBase.legs
-				: world.wallSlots[world.wallDocIndexById.get(incWallId)!]!.legs;
+				: world.wallSlots.get(world.wallDocIndexById.get(incWallId)!)!.legs;
 			if (incWall.startJunctionId === jId && legPair.start) legs.push(legPair.start);
 			if (incWall.endJunctionId === jId && legPair.end) legs.push(legPair.end);
 		}
@@ -1133,22 +1055,20 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0)
 		);
 		const resolved = builders.resolveJunction(document, jId, point, legs, reuse);
-		if (world.sortedJunctions[jSortedIdx] !== resolved.compiled) {
-			world.sortedJunctions[jSortedIdx] = resolved.compiled;
-			dirtyJunctionChunks.add(Math.floor(jSortedIdx / CHUNK_SIZE));
+		if (world.sortedJunctions.get(jSortedIdx) !== resolved.compiled) {
+			world.sortedJunctions = world.sortedJunctions.set(jSortedIdx, resolved.compiled);
 		}
+		const issueOrder = world.junctionLegOrderById.get(jId);
+		if (issueOrder === undefined) { reuse.world = null; return null; }
 		if (resolved.issues.length > 0) {
-			world.junctionIssuesById.set(jId, resolved.issues);
+			world.junctionIssuesByOrder.set(issueOrder, resolved.issues);
 		} else {
-			world.junctionIssuesById.delete(jId);
+			world.junctionIssuesByOrder.delete(issueOrder);
 		}
 	}
 	// `resolveJunction` incremented `junctionsEvaluated` / `junctionsReused` for
 	// `affectedValidJunctions`; add the untouched junctions to `junctionsReused`.
 	reuse.counters.junctionsReused += world.sortedJunctions.length - affectedValidJunctions;
-	for (const cIdx of dirtyJunctionChunks) {
-		world.junctionChunks[cIdx] = rebuildJunctionChunk(world.sortedJunctions, cIdx);
-	}
 
 	// 5. Expand dirty Walls AND miter-neighbor Walls incident to `affectedJunctionIds`.
 	const expansionWallIds = new Set<string>(dirtyWallIds);
@@ -1158,10 +1078,9 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			for (let i = 0; i < incident.length; i += 1) expansionWallIds.add(incident[i]!);
 		}
 	}
-	const dirtyWallChunks = new Set<number>();
 	for (const wId of expansionWallIds) {
 		const docIdx = world.wallDocIndexById.get(wId)!;
-		const prevSlot = world.wallSlots[docIdx]!;
+		const prevSlot = world.wallSlots.get(docIdx)!;
 		const wall = world.wallById.get(wId)!;
 		const evaluatedBase = evaluatedWallBaseById.get(wId);
 		const baseCompiled = evaluatedBase ? evaluatedBase.baseCompiled : prevSlot.baseCompiled;
@@ -1194,7 +1113,7 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			expanded.compiled !== prevSlot.compiled ||
 			expanded.wallAabb !== prevSlot.wallAabb
 		) {
-			world.wallSlots[docIdx] = {
+			world.wallSlots = world.wallSlots.set(docIdx, {
 				wallId: wId,
 				sortedIndex: prevSlot.sortedIndex,
 				baseCompiled,
@@ -1205,9 +1124,8 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 				baseRecords,
 				wallAabb: expanded.wallAabb,
 				issues
-			};
-			world.sortedWalls[prevSlot.sortedIndex] = expanded.compiled;
-			dirtyWallChunks.add(Math.floor(docIdx / CHUNK_SIZE));
+			});
+			world.sortedWalls = world.sortedWalls.set(prevSlot.sortedIndex, expanded.compiled);
 
 			const startPt = world.pointById.get(wall.startJunctionId)!;
 			const endPt = world.pointById.get(wall.endJunctionId)!;
@@ -1233,9 +1151,6 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 			});
 		}
 	}
-	for (const cIdx of dirtyWallChunks) {
-		world.wallChunks[cIdx] = rebuildWallChunk(world.wallSlots, cIdx);
-	}
 
 	world.document = document;
 	reuse.counters.entities =
@@ -1244,151 +1159,161 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		reuse.counters.junctionsEvaluated +
 		reuse.counters.objectsEvaluated;
 
-	// 6. Assemble output arrays & chunk-reduced 3D bounds.
-	let docBoundsAcc: { min: Vec3; max: Vec3 } | null = null;
-	let floorBoundsAcc: { min: Vec3; max: Vec3 } | null = null;
+	// Snapshot roots are immutable. Legacy array properties materialize only when
+	// actually consumed; bounds/counts come from cached tree summaries.
+	return compileSnapshot(document, world, reuse, builders);
+}
 
-	const rooms: CompiledRoom[] = [];
-	const floorRoomIds: string[] = [];
-	for (let c = 0; c < world.roomChunks.length; c += 1) {
-		const chunk = world.roomChunks[c]!;
-		for (let i = 0; i < chunk.strippedRooms.length; i += 1) {
-			rooms.push(chunk.strippedRooms[i]!);
-			floorRoomIds.push(chunk.validRoomIds[i]!);
-		}
-		docBoundsAcc = mergeBounds3Into(docBoundsAcc, chunk.bounds3);
-		floorBoundsAcc = mergeBounds3Into(floorBoundsAcc, chunk.bounds3);
-	}
+function compileSnapshot(document: LayoutDocumentWallFirst, world: RetainedCompileWorld, reuse: LayoutCompileReuse, builders: CanonicalDeltaBuilders): CompiledLayoutGeometryResult {
+ let floorBounds = mergeBounds3Into(null, world.roomSlots.summary.bounds3);
+ floorBounds = mergeBounds3Into(floorBounds, world.objectUnit.floorRoomBounds3);
+ floorBounds = mergeBounds3Into(floorBounds, world.wallSlots.summary.bounds3);
+ floorBounds = mergeBounds3Into(floorBounds, world.sortedJunctions.summary.bounds3);
+ let bounds = mergeBounds3Into(null, world.roomSlots.summary.bounds3);
+ bounds = mergeBounds3Into(bounds, world.objectUnit.bounds3);
+ bounds = mergeBounds3Into(bounds, world.wallSlots.summary.bounds3);
+ bounds = mergeBounds3Into(bounds, world.sortedJunctions.summary.bounds3);
+ const floorRoomIds = reuse.retainedFloor?.roomIds ?? collectChunks(world.roomSlots, (c) => c.stripped ? [c.roomId] : []);
+ const { floor, floorAabb, docAabb } = builders.buildFloorAndAabbs(document.floor, floorRoomIds, floorBounds, bounds, reuse);
+ const sealState: LazySealState = { sealed: false, sealers: [] };
+ const rooms = lazyArray('compiled-rooms', () => collectChunks(world.roomSlots, (c) => c.stripped ? [c.stripped] : []), sealState);
+ const walls = lazyArray('compiled-walls', () => world.sortedWalls.toArray(null), sealState);
+ const junctions = lazyArray('compiled-junctions', () => world.sortedJunctions.toArray(null), sealState);
+ const points = lazyArray('query-points', () => collectChunks(world.wallSlots, (c) => c.baseRecords.points), sealState);
+ const spans = lazyArray('query-spans', () => collectChunks(world.wallSlots, (c) => c.baseRecords.spans), sealState);
+ const polygons = lazyArray('query-polygons', () => [...world.objectUnit.polygons, ...collectChunks(world.roomSlots, (c) => c.polygons)], sealState);
+ const aabbs = lazyArray('query-aabbs', () => [...world.objectUnit.aabbs, ...collectChunks(world.roomSlots, (c) => c.aabbs), ...collectChunks(world.wallSlots, (c) => [...c.baseRecords.aabbs, ...(c.wallAabb ? [c.wallAabb] : [])]), ...(floorAabb ? [floorAabb] : []), ...(docAabb ? [docAabb] : [])], sealState);
+ const issues = lazyArray('issues', () => {
+  const out = [...world.objectUnit.issues, ...collectChunks(world.roomSlots, (c) => c.issues), ...collectChunks(world.wallSlots, (c) => c.issues)];
+  for (const list of world.junctionIssuesByOrder.values()) out.push(...list);
+  return out;
+ }, sealState);
+ const geometry: CompiledLayoutGeometry = {
+  floors: [floor], get rooms() { return rooms(); }, get walls() { return walls(); },
+  objects: world.objectUnit.compiledObjects,
+  queries: { get points() { return points(); }, get spans() { return spans(); }, get polygons() { return polygons(); }, get aabbs() { return aabbs(); } },
+  bounds, get junctions() { return junctions(); }
+ };
+ LAZY_GEOMETRY_SEAL.set(geometry, () => {
+  freezeGeneratedGraph(floor); freezeGeneratedGraph(floorAabb); freezeGeneratedGraph(docAabb);
+  freezeGeneratedGraph(geometry.floors); freezeGeneratedGraph(geometry.objects); freezeGeneratedGraph(bounds);
+  sealState.sealed = true; for (const seal of sealState.sealers) seal();
+  Object.freeze(geometry.queries); Object.freeze(geometry);
+ });
+ const issueCount = world.objectUnit.issues.length + world.roomSlots.summary.issues + world.wallSlots.summary.issues + world.junctionIssuesByOrder.size;
+ const result: CompiledLayoutGeometryResult = { geometry, get issues() { return issueCount === 0 ? [] : issues(); } };
+ if (issueCount === 0) recordPassiveCompiledGeometry(document, geometry, []);
+ registerCompileSnapshot(document, world, result, reuse);
+ return result;
+}
 
-	docBoundsAcc = mergeBounds3Into(docBoundsAcc, world.objectUnit.bounds3);
-	floorBoundsAcc = mergeBounds3Into(floorBoundsAcc, world.objectUnit.floorRoomBounds3);
+/** Runtime-safe indexed consumers. No authored state or renderer enters here. */
+const COMPILE_WORLD_BY_GEOMETRY = new WeakMap<CompiledLayoutGeometry, RetainedCompileWorld>();
+type CompileSnapshot = { immutable: boolean; world: RetainedCompileWorld; result: CompiledLayoutGeometryResult; floor: LayoutCompileReuse['retainedFloor']; docAabb: LayoutCompileReuse['retainedDocAabb'] };
+const COMPILE_SNAPSHOT_BY_DOC = new WeakMap<LayoutDocumentWallFirst, CompileSnapshot>();
+function verifiedFrozenSource(value: unknown): boolean {
+ if (value === null || typeof value !== 'object') return typeof value !== 'function' && typeof value !== 'symbol' && typeof value !== 'bigint';
+ if (hasImmutableJsonProof(value)) return true;
+ if (!Object.isFrozen(value)) return false;
+ const prototype = Object.getPrototypeOf(value);
+ if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) return false;
+ const descriptors = Object.values(Object.getOwnPropertyDescriptors(value));
+ if (descriptors.some((descriptor) => !('value' in descriptor))) return false;
+ const values = descriptors.map((descriptor) => descriptor.value);
+ countWork('snapshot:frozen-validation-properties', values.length);
+ for (const child of values) if (!verifiedFrozenSource(child)) return false;
+ return rememberImmutableJsonNode(value);
+}
+function registerCompileSnapshot(document: LayoutDocumentWallFirst, world: RetainedCompileWorld, result: CompiledLayoutGeometryResult, reuse: LayoutCompileReuse): void {
+ COMPILE_WORLD_BY_GEOMETRY.set(result.geometry, world);
+ COMPILE_SNAPSHOT_BY_DOC.set(document, { immutable: verifiedFrozenSource(document), world, result, floor: reuse.retainedFloor, docAabb: reuse.retainedDocAabb });
+}
+/** Only proven immutable sources may restore a cached root without inspection. */
+export function restoreImmutableCompileSnapshot(document: LayoutDocumentWallFirst, reuse: LayoutCompileReuse): CompiledLayoutGeometryResult | null {
+ if (!Object.isFrozen(document) || hasAnySamplingTestObserver()) return null;
+ const snapshot = COMPILE_SNAPSHOT_BY_DOC.get(document);
+ const current = reuse.world as RetainedCompileWorld | null;
+ if (!snapshot?.immutable || !current || current.wallDocIndexById !== snapshot.world.wallDocIndexById) return null;
+ reuse.world = snapshot.world; reuse.retainedFloor = snapshot.floor; reuse.retainedDocAabb = snapshot.docAabb;
+ reuse.lastPrunedDocument = document;
+ countWork('compile:historical-root-restore');
+ return snapshot.result;
+}
+export function restoreImmutableCompileBaseline(document: LayoutDocumentWallFirst, reuse: LayoutCompileReuse): void {
+ const delta = getCowDocumentDelta(document);
+ if (delta) restoreImmutableCompileSnapshot(delta.baseline, reuse);
+}
+export function indexedCompiledWall(geometry: CompiledLayoutGeometry, wallId: string): CompiledPhysicalWall | undefined {
+ const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
+ if (!world) return geometry.walls.find((wall) => wall.wallId === wallId);
+ const index = world.wallDocIndexById.get(wallId);
+ return index === undefined ? undefined : world.wallSlots.get(index)?.compiled ?? undefined;
+}
+export function indexedCompiledWallQueries(geometry: CompiledLayoutGeometry, wallId: string): RetainedQueryRecords | undefined {
+ const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
+ const index = world?.wallDocIndexById.get(wallId);
+ if (!world || index === undefined) return undefined;
+ const slot = world.wallSlots.get(index)!;
+ return { ...slot.baseRecords, aabbs: [...slot.baseRecords.aabbs, ...(slot.wallAabb ? [slot.wallAabb] : [])] };
+}
+export type CompiledWallPatch = { wall: CompiledPhysicalWall; index: number; endKey: string; joins: readonly CompiledLegJoin[]; elevation: number };
+/** Undefined means a cold/membership-changing transition: use the complete path. */
+export function diffCompiledWalls(before: CompiledLayoutGeometry, after: CompiledLayoutGeometry): readonly CompiledWallPatch[] | undefined {
+ const a = COMPILE_WORLD_BY_GEOMETRY.get(before), b = COMPILE_WORLD_BY_GEOMETRY.get(after);
+ if (!a || !b || a.wallDocIndexById !== b.wallDocIndexById) return undefined;
+ const dirty = new Set<string>();
+ b.sortedWalls.diff(a.sortedWalls, (_index, prev, next) => { dirty.add(prev.wallId); dirty.add(next.wallId); });
+ b.sortedJunctions.diff(a.sortedJunctions, (_index, prev, next) => { for (const junction of [prev, next]) for (const leg of junction.legs) dirty.add(leg.wallId); });
+ const patches: CompiledWallPatch[] = [];
+ for (const id of dirty) {
+  const slot = b.wallSlots.get(b.wallDocIndexById.get(id)!)!;
+  if (!slot.compiled) continue;
+  const source = b.wallById.get(id)!;
+  const junctionIds = source.startJunctionId === source.endJunctionId ? [source.startJunctionId] : [source.startJunctionId, source.endJunctionId].sort();
+  const keys: string[] = [];
+  for (const jId of junctionIds) {
+   const index = b.junctionSortedIndexById.get(jId);
+   if (index !== undefined) keys.push(b.sortedJunctions.get(index)!.cacheKey);
+  }
+  patches.push({ wall: slot.compiled, index: slot.sortedIndex, endKey: keys.join('|'), joins: collectJoinsForWall(id, source.startJunctionId, source.endJunctionId, b) ?? [], elevation: b.floorElevation });
+ }
+ countWork('representation:wall-patch-record', patches.length);
+ return patches;
+}
 
-	for (let c = 0; c < world.wallChunks.length; c += 1) {
-		const chunk = world.wallChunks[c]!;
-		docBoundsAcc = mergeBounds3Into(docBoundsAcc, chunk.bounds3);
-		floorBoundsAcc = mergeBounds3Into(floorBoundsAcc, chunk.bounds3);
-	}
-	for (let c = 0; c < world.junctionChunks.length; c += 1) {
-		const chunk = world.junctionChunks[c]!;
-		docBoundsAcc = mergeBounds3Into(docBoundsAcc, chunk.bounds3);
-		floorBoundsAcc = mergeBounds3Into(floorBoundsAcc, chunk.bounds3);
-	}
-
-	const documentBounds: LayoutBounds3 | null = docBoundsAcc
-		? { min: [...docBoundsAcc.min] as Vec3, max: [...docBoundsAcc.max] as Vec3 }
-		: null;
-	const floorBounds: LayoutBounds3 | null = floorBoundsAcc
-		? { min: [...floorBoundsAcc.min] as Vec3, max: [...floorBoundsAcc.max] as Vec3 }
-		: null;
-
-	const { floor: compiledFloor, floorAabb, docAabb } = builders.buildFloorAndAabbs(
-		document.floor,
-		floorRoomIds,
-		floorBounds,
-		documentBounds,
-		reuse
-	);
-
-	// Pre-size flat query arrays from chunk lengths for contiguous V8 copy.
-	let totalPoints = 0;
-	let totalSpans = 0;
-	let totalPolygons = world.objectUnit.polygons.length;
-	let totalAabbs =
-		world.objectUnit.aabbs.length + (floorAabb ? 1 : 0) + (docAabb ? 1 : 0);
-
-	for (let c = 0; c < world.roomChunks.length; c += 1) {
-		totalPolygons += world.roomChunks[c]!.polygons.length;
-		totalAabbs += world.roomChunks[c]!.aabbs.length;
-	}
-	for (let c = 0; c < world.wallChunks.length; c += 1) {
-		const chunk = world.wallChunks[c]!;
-		totalPoints += chunk.points.length;
-		totalSpans += chunk.spans.length;
-		totalAabbs += chunk.aabbs.length;
-	}
-
-	const points = new Array<CompiledQueryPoint>(totalPoints);
-	let pOut = 0;
-	for (let c = 0; c < world.wallChunks.length; c += 1) {
-		const arr = world.wallChunks[c]!.points;
-		for (let i = 0; i < arr.length; i += 1) points[pOut++] = arr[i]!;
-	}
-
-	const spans = new Array<CompiledQuerySpan>(totalSpans);
-	let sOut = 0;
-	for (let c = 0; c < world.wallChunks.length; c += 1) {
-		const arr = world.wallChunks[c]!.spans;
-		for (let i = 0; i < arr.length; i += 1) spans[sOut++] = arr[i]!;
-	}
-
-	const polygons = new Array<CompiledQueryPolygon>(totalPolygons);
-	let polyOut = 0;
-	for (let i = 0; i < world.objectUnit.polygons.length; i += 1) {
-		polygons[polyOut++] = world.objectUnit.polygons[i]!;
-	}
-	for (let c = 0; c < world.roomChunks.length; c += 1) {
-		const arr = world.roomChunks[c]!.polygons;
-		for (let i = 0; i < arr.length; i += 1) polygons[polyOut++] = arr[i]!;
-	}
-
-	const aabbs = new Array<CompiledQueryAabb>(totalAabbs);
-	let aabbOut = 0;
-	for (let i = 0; i < world.objectUnit.aabbs.length; i += 1) {
-		aabbs[aabbOut++] = world.objectUnit.aabbs[i]!;
-	}
-	for (let c = 0; c < world.roomChunks.length; c += 1) {
-		const arr = world.roomChunks[c]!.aabbs;
-		for (let i = 0; i < arr.length; i += 1) aabbs[aabbOut++] = arr[i]!;
-	}
-	for (let c = 0; c < world.wallChunks.length; c += 1) {
-		const arr = world.wallChunks[c]!.aabbs;
-		for (let i = 0; i < arr.length; i += 1) aabbs[aabbOut++] = arr[i]!;
-	}
-	if (floorAabb) aabbs[aabbOut++] = floorAabb;
-	if (docAabb) aabbs[aabbOut++] = docAabb;
-
-	// Assemble issues in exact canonical order: objects -> rooms -> walls -> junctions.
-	const issues: LayoutGeometryIssue[] = [];
-	for (let i = 0; i < world.objectUnit.issues.length; i += 1) {
-		issues.push(world.objectUnit.issues[i]!);
-	}
-	for (let c = 0; c < world.roomChunks.length; c += 1) {
-		const arr = world.roomChunks[c]!.issues;
-		for (let i = 0; i < arr.length; i += 1) issues.push(arr[i]!);
-	}
-	for (let c = 0; c < world.wallChunks.length; c += 1) {
-		const arr = world.wallChunks[c]!.issues;
-		for (let i = 0; i < arr.length; i += 1) issues.push(arr[i]!);
-	}
-	if (world.junctionIssuesById.size > 0) {
-		const entries = [...world.junctionIssuesById.entries()].sort(
-			(a, b) =>
-				(world.junctionLegOrderById.get(a[0]) ?? Number.MAX_SAFE_INTEGER) -
-				(world.junctionLegOrderById.get(b[0]) ?? Number.MAX_SAFE_INTEGER)
-		);
-		for (let i = 0; i < entries.length; i += 1) {
-			const list = entries[i]![1];
-			for (let j = 0; j < list.length; j += 1) issues.push(list[j]!);
-		}
-	}
-
-	const result: CompiledLayoutGeometryResult = {
-		geometry: {
-			floors: [compiledFloor],
-			rooms,
-			walls: world.sortedWalls.slice(),
-			objects: world.objectUnit.compiledObjects.slice(),
-			queries: { points, spans, polygons, aabbs },
-			bounds: documentBounds,
-			junctions: world.sortedJunctions.slice()
-		},
-		issues
-	};
-
-	if (issues.length === 0) {
-		recordPassiveCompiledGeometry(document, result.geometry, issues);
-	}
-
-	void noQueryRecords;
-	return result;
+// A generated snapshot is sealed at the same owning Stage boundary as before.
+// Persistent roots prove untouched generated records are already sealed. A full
+// array requested later is frozen on materialization; Stage never forces it.
+const SEALED_COMPILE_WORLDS = new WeakSet<RetainedCompileWorld>();
+const SEALED_GENERATED_VECTOR_NODES = new WeakSet<object>();
+const SEALED_GENERATED_OBJECTS = new WeakSet<object>();
+const DEFERRED_GENERATED_FIELDS = new WeakMap<object, ReadonlySet<string>>();
+/** Only canonical builders register immutable primitive-valued lazy fields. */
+export function registerDeferredGeneratedField(value: object, field: string): void {
+ DEFERRED_GENERATED_FIELDS.set(value, new Set([...(DEFERRED_GENERATED_FIELDS.get(value) ?? []), field]));
+}
+function freezeGeneratedGraph(value: unknown): void {
+ if (value === null || typeof value !== 'object' || SEALED_GENERATED_OBJECTS.has(value)) return;
+ const deferred = DEFERRED_GENERATED_FIELDS.get(value);
+ const children = deferred ? Object.keys(value).filter((key) => !deferred.has(key)).map((key) => (value as Record<string, unknown>)[key]) : Object.values(value);
+ countWork('snapshot:generated-property-read', children.length);
+ for (const child of children) freezeGeneratedGraph(child);
+ if (!Object.isFrozen(value)) { Object.freeze(value); countWork('snapshot:generated-object-freeze'); }
+ SEALED_GENERATED_OBJECTS.add(value);
+}
+/** Returns false for non-retained/hand-built geometry, which keeps generic
+ * full freezing. This creates no acceptance or source-validation certificate. */
+export function sealCompiledLayoutSnapshot(geometry: CompiledLayoutGeometry): boolean {
+ const world = COMPILE_WORLD_BY_GEOMETRY.get(geometry);
+ if (!world) return false;
+ if (Object.isFrozen(geometry) && SEALED_COMPILE_WORLDS.has(world)) return true;
+ world.roomSlots.visitUnseen(SEALED_GENERATED_VECTOR_NODES, freezeGeneratedGraph);
+ world.wallSlots.visitUnseen(SEALED_GENERATED_VECTOR_NODES, freezeGeneratedGraph);
+ world.sortedJunctions.visitUnseen(SEALED_GENERATED_VECTOR_NODES, freezeGeneratedGraph);
+ freezeGeneratedGraph(world.objectUnit);
+ const sealLazy = LAZY_GEOMETRY_SEAL.get(geometry);
+ if (sealLazy) sealLazy(); else freezeGeneratedGraph(geometry);
+ SEALED_COMPILE_WORLDS.add(world);
+ countWork('snapshot:generated-root-seal');
+ return true;
 }

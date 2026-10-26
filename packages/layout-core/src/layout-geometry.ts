@@ -1,3 +1,6 @@
+import { isCanonicalWallSampling } from './layout-wall-centerline';
+import { restoreImmutableCompileSnapshot, restoreImmutableCompileBaseline, registerDeferredGeneratedField } from './layout-geometry-delta';
+import { layoutItem, layoutLength } from './layout-source-collections';
 import type { Vec3 } from './types';
 import type { LayoutVec2 } from './layout-coordinates';
 import type {
@@ -123,14 +126,31 @@ export function compileWallFirstLayoutGeometry(
 	sampling?: WallSamplingDerivation,
 	reuse?: LayoutCompileReuse
 ): CompiledLayoutGeometryResult {
+	// Only the canonical derivation factory proves process-constant sampling.
+	// An injected wrapper stays on the cold authority and cannot seed caches
+	// which a later default derivation might accidentally inherit.
+	if (reuse && !isCanonicalWallSampling(sampling)) {
+		countWork('compile:custom-sampling-global-reset', reuse.walls.size + reuse.junctions.size + reuse.roomSources.size + reuse.objects.size);
+		reuse.walls.clear(); reuse.junctions.clear(); reuse.roomSources.clear(); reuse.objects.clear();
+		reuse.world = null; reuse.retainedFloor = null; reuse.retainedDocAabb = null;
+		beginLayoutCompile(reuse);
+		const result = compileWallFirstLayoutGeometry(document, sampling);
+		reuse.counters.wallsEvaluated = result.geometry.walls.length;
+		reuse.counters.junctionsEvaluated = result.geometry.junctions?.length ?? 0;
+		reuse.counters.roomsEvaluated = result.geometry.rooms.length;
+		reuse.counters.objectsEvaluated = result.geometry.objects.length;
+		reuse.counters.openingsEvaluated = layoutLength(document, 'openings');
+		finishLayoutCompile(reuse, true);
+		return result;
+	}
 	countWork('compile');
 	if (!reuse) {
-		countWork('compile:walls', document.walls.length);
-		countWork('compile:junctions', document.junctions.length);
-		countWork('compile:openings', document.openings.length);
-		countWork('compile:rooms', document.rooms.length);
+		countWork('compile:walls', layoutLength(document, 'walls'));
+		countWork('compile:junctions', layoutLength(document, 'junctions'));
+		countWork('compile:openings', layoutLength(document, 'openings'));
+		countWork('compile:rooms', layoutLength(document, 'rooms'));
 		const result = p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling));
-		if (!hasAnySamplingTestObserver() && result.issues.length === 0) {
+		if (!hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling) && result.issues.length === 0) {
 			recordPassiveCompiledGeometry(document, result.geometry, result.issues);
 		}
 		return result;
@@ -158,7 +178,7 @@ export function compileWallFirstLayoutGeometry(
 	} else {
 		if (!cold) beginLayoutCompile(reuse);
 		result = p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling, reuse));
-		if (!hasAnySamplingTestObserver() && result.issues.length === 0) {
+		if (!hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling) && result.issues.length === 0) {
 			recordPassiveCompiledGeometry(document, result.geometry, result.issues);
 			reuse.world = null;
 			seedReuseFromPassiveCompile(document, reuse, DELTA_BUILDERS, true);
@@ -168,10 +188,10 @@ export function compileWallFirstLayoutGeometry(
 	}
 	const stats = finishLayoutCompile(reuse, cold);
 	if (cold) {
-		countWork('compile:walls', document.walls.length);
-		countWork('compile:junctions', document.junctions.length);
-		countWork('compile:openings', document.openings.length);
-		countWork('compile:rooms', document.rooms.length);
+		countWork('compile:walls', layoutLength(document, 'walls'));
+		countWork('compile:junctions', layoutLength(document, 'junctions'));
+		countWork('compile:openings', layoutLength(document, 'openings'));
+		countWork('compile:rooms', layoutLength(document, 'rooms'));
 	} else {
 		countWork('compile:walls', stats.wallsEvaluated);
 		countWork('compile:junctions', stats.junctionsEvaluated);
@@ -272,11 +292,11 @@ function compileWallFirstLayoutGeometryOnce(
 					// must re-evaluate every Room.
 					document.floor.id,
 					// The Room source carries the document's first Wall thickness as its
-					// fallback (`wallThickness: document.walls[0]?.thickness ?? 0.1`),
+					// fallback (`wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1`),
 					// which lands in the compiled Room's own `wallThickness` and key.
 					// Editing that Wall therefore moves every Room's output, even when
 					// the edited Wall is not on this Room's boundary.
-					document.walls[0]?.thickness ?? 0.1,
+					layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
 					// A different sampling derivation is a different input: the retained
 					// source embeds `preSampled` only when one is supplied.
 					sampling !== undefined,
@@ -383,7 +403,7 @@ function compileWallFirstLayoutGeometryOnce(
 		const source: CompilerRoomSource = {
 			room: {
 				id: room.id,
-				wallThickness: document.walls[0]?.thickness ?? 0.1,
+				wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
 				floorThickness: room.floorThickness,
 				ceilingThickness: room.ceilingThickness
 			},
@@ -1323,6 +1343,17 @@ export function createLayoutCompileSession(): LayoutCompileSession {
 	let releasedUnits = 0;
 	return {
 		compile(document, sampling) {
+			const restored = isCanonicalWallSampling(sampling) ? restoreImmutableCompileSnapshot(document, store) : null;
+			if (restored) {
+				beginLayoutCompile(store);
+				const world = store.world as import('./layout-geometry-delta').RetainedCompileWorld;
+				store.counters.wallsReused = world.sortedWalls.length;
+				store.counters.junctionsReused = world.sortedJunctions.length;
+				store.counters.roomsReused = world.validCeilingRoomCount;
+				store.counters.objectsReused = world.objectUnit.compiledObjects.length;
+				finishLayoutCompile(store, false); releasedUnits = 0; return restored;
+			}
+			if (isCanonicalWallSampling(sampling)) restoreImmutableCompileBaseline(document, store);
 			releasedUnits = pruneLayoutCompileReuse(store, document);
 			return compileWallFirstLayoutGeometry(document, sampling, store);
 		},
@@ -2257,8 +2288,8 @@ function buildWallFirstFloorAndAggregateAabbs(
 	const retainedFloor = reuse?.retainedFloor ?? null;
 	const sameRoomIds =
 		retainedFloor !== null &&
-		retainedFloor.roomIds.length === floorRoomIds.length &&
-		retainedFloor.roomIds.every((id, index) => id === floorRoomIds[index]);
+		(retainedFloor.roomIds === floorRoomIds || (retainedFloor.roomIds.length === floorRoomIds.length &&
+		retainedFloor.roomIds.every((id, index) => id === floorRoomIds[index])));
 	const roomIdsDep: CacheKeyDependency =
 		sameRoomIds && retainedFloor !== null
 			? retainedFloor.roomIdsDep
@@ -2276,14 +2307,21 @@ function buildWallFirstFloorAndAggregateAabbs(
 		compiledFloor = retainedFloor.compiled;
 		floorAabb = retainedFloor.aabb;
 	} else {
+		const keyBounds = floorBounds ? { min: [...floorBounds.min], max: [...floorBounds.max] } : null;
+		const keyInputs = ['floor', floor.id, floor.elevation, roomIdsDep, keyBounds] as const;
+		let floorKey: string | undefined;
 		compiledFloor = {
 			id: geometryId(['floor', floor.id]),
-			cacheKey: cacheKeyOf(['floor', floor.id, floor.elevation, roomIdsDep, floorBounds]),
+			get cacheKey() {
+				if (floorKey === undefined) { countWork('cache-key:deferred-floor-built'); floorKey = cacheKeyOf(keyInputs); }
+				return floorKey;
+			},
 			floorId: floor.id,
 			elevation: floor.elevation,
-			roomIds: [...floorRoomIds],
+			roomIds: floorRoomIds,
 			bounds3: floorBounds
 		};
+		registerDeferredGeneratedField(compiledFloor, 'cacheKey');
 		floorAabb = floorBounds
 			? aabbRecord('floor', floor.id, ['floor', floor.id], floorBounds.min, floorBounds.max)
 			: null;
@@ -2326,7 +2364,7 @@ const DELTA_BUILDERS: CanonicalDeltaBuilders = {
 		openingOrderById,
 		defaultWallThickness
 	): EvaluatedRoomUnit {
-		const room = document.rooms[roomIndex]!;
+		const room = layoutItem(document, 'rooms', roomIndex)!;
 		const floor = document.floor;
 		const wallThicknessBySegmentId: Record<string, number> = {};
 		const openingHeightLimitBySegmentId: Record<string, number> = {};

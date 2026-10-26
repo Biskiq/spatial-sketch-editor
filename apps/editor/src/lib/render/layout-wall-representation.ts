@@ -43,6 +43,8 @@ import {
 } from 'three';
 import {
 	legJoinsByWall,
+	diffCompiledWalls,
+	countWork,
 	type CompiledLayoutGeometry,
 	type CompiledPhysicalWall,
 	type LayoutBounds3
@@ -94,6 +96,7 @@ const MAGENTA = 0xff2fd4;
  */
 function attachAt(parent: Group, object: Object3D, index: number): void {
 	parent.add(object);
+	countWork('representation:child-array-scan-bound', parent.children.length);
 	const end = parent.children.indexOf(object);
 	if (end === index) return;
 	parent.children.splice(end, 1);
@@ -145,6 +148,7 @@ function endKeysByWall(geometry: CompiledLayoutGeometry): Map<string, string> {
 	const keys = new Map<string, string>();
 	for (const junction of geometry.junctions ?? []) {
 		for (const leg of junction.legs) {
+			countWork('representation:junction-leg-test');
 			const existing = keys.get(leg.wallId);
 			keys.set(leg.wallId, existing === undefined ? junction.cacheKey : `${existing}|${junction.cacheKey}`);
 		}
@@ -160,6 +164,7 @@ export function createWallRepresentation(): WallRepresentation {
 	// is what makes "materials created per edit = 0" a fact rather than a hope.
 	const materialsSeen = new Set<Material>();
 	let disposed = false;
+	let previousGeometry: CompiledLayoutGeometry | undefined;
 
 	// A physical Wall belongs to no Room: the mesh builder resolves its surface
 	// with the Wall's own id as `roomId`, so the tint is always the neutral
@@ -211,6 +216,29 @@ export function createWallRepresentation(): WallRepresentation {
 
 		update(geometry) {
 			if (disposed) throw new Error('the layout wall representation has been disposed');
+			const patches = previousGeometry ? diffCompiledWalls(previousGeometry, geometry) : undefined;
+			if (patches !== undefined) {
+				let built = 0;
+				for (const patch of patches) {
+					countWork('representation:wall-entry-test');
+					const key = `${patch.wall.cacheKey}\u0000${patch.endKey}`;
+					const previous = retained.get(patch.wall.wallId);
+					if (previous?.key === key) continue;
+					const ends: NonNullable<Parameters<typeof buildStandaloneWallMesh>[2]> = {};
+					for (const join of patch.joins) ends[join.end] = join;
+					const next = buildWall(patch.wall, patch.elevation, ends);
+					if (!previous) throw new Error('compiled Wall membership proof did not match representation');
+					// Keep the attached mesh and its child-array slot. Mesh.copy(false)
+					// replaces buffers/material/transform without scanning or splicing N children.
+					previous.object.copy(next.object, false);
+					previous.release();
+					retained.set(patch.wall.wallId, { key, object: previous.object, release: next.release });
+					built += 1;
+				}
+				previousGeometry = geometry;
+				return { walls: retained.size, built, retained: retained.size - built, released: 0, materials: materialsSeen.size };
+			}
+			previousGeometry = geometry;
 			const endKeys = endKeysByWall(geometry);
 			const endsByWall = legJoinsByWall(geometry.junctions);
 			const elevationByFloor = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const));
@@ -220,6 +248,7 @@ export function createWallRepresentation(): WallRepresentation {
 			const present = new Set<string>();
 
 			for (const wall of geometry.walls ?? []) {
+				countWork('representation:wall-entry-test');
 				present.add(wall.wallId);
 				const key = wallKey(wall, endKeys);
 				const previous = retained.get(wall.wallId);
@@ -235,6 +264,7 @@ export function createWallRepresentation(): WallRepresentation {
 				const entry: RetainedWall = { key, object: next.object, release: next.release };
 				if (previous) {
 					// Swap in place so draw order follows the compiled Wall order.
+					countWork('representation:child-array-scan-bound', object3d.children.length);
 					const index = object3d.children.indexOf(previous.object);
 					previous.object.removeFromParent();
 					if (index >= 0) attachAt(object3d, next.object, index);
@@ -249,6 +279,7 @@ export function createWallRepresentation(): WallRepresentation {
 
 			let released = 0;
 			for (const [wallId, entry] of retained) {
+				countWork('representation:wall-removal-test');
 				if (present.has(wallId)) continue;
 				entry.object.removeFromParent();
 				entry.release();
@@ -268,6 +299,7 @@ export function createWallRepresentation(): WallRepresentation {
 		dispose() {
 			if (disposed) return;
 			disposed = true;
+			previousGeometry = undefined;
 			for (const entry of retained.values()) {
 				entry.object.removeFromParent();
 				entry.release();

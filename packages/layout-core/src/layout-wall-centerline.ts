@@ -500,6 +500,11 @@ type WallSamplingLastRequest = {
  * Construct one derivation. Every chain constructs its own; a bounded
  * gesture/operation owner constructs exactly one and `reset()`s it at scope end.
  */
+const CANONICAL_SAMPLING = new WeakMap<WallSamplingDerivation, WallSamplingDerivation['samples']>();
+/** An arbitrary injected sampler is not interchangeable with canonical sampling. */
+export function isCanonicalWallSampling(sampling: WallSamplingDerivation | undefined): boolean {
+ return sampling === undefined || CANONICAL_SAMPLING.get(sampling) === sampling.samples;
+}
 export function createWallSamplingDerivation(): WallSamplingDerivation {
 	const cache = new Map<LayoutWallCenterline, Map<string, SampledSegment | undefined>>();
 	/**
@@ -519,7 +524,7 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 		cachedUndefined: 0,
 		entries: 0
 	};
-	return {
+	const derivation: WallSamplingDerivation = {
 		samples(wall, startPoint, endPoint, traversal) {
 			let byKey = cache.get(wall.centerline);
 			if (!byKey) {
@@ -571,6 +576,8 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 			stats.entries = 0;
 		}
 	};
+	CANONICAL_SAMPLING.set(derivation, derivation.samples);
+	return derivation;
 }
 
 /**

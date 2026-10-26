@@ -220,3 +220,17 @@ it('hashes codec-normalized contents and remains self-consistent after a real re
 	expect(await verifyUnitContentRevisions(read.envelope)).toEqual([]);
 	expect(await computeEnvelopeSourceContentId(read.envelope)).toBe(await computeEnvelopeSourceContentId(built));
 });
+
+it('does not memoize a frozen accessor as immutable canonical data', () => {
+ let value = 1;
+ const record = Object.freeze({ get current() { return value; } });
+ expect(canonicalUnitJson(record)).toBe('{"current":1}');
+ value = 2;
+ expect(canonicalUnitJson(record)).toBe('{"current":2}');
+ const array = [0];
+ Object.defineProperty(array, '0', { enumerable: true, get: () => value });
+ Object.freeze(array);
+ expect(canonicalUnitJson(array)).toBe('[2]');
+ value = 3;
+ expect(canonicalUnitJson(array)).toBe('[3]');
+});

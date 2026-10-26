@@ -29,6 +29,7 @@
 
 import {
 	activeLayoutCompileSession,
+	materializeLayoutSourceForCapture,
 	createLayoutCompileSession,
 	deriveLayoutWallRole,
 	ensureLayoutWorldIndex,
@@ -69,6 +70,7 @@ import type {
 } from '@portfolio/project-model';
 import {
 	replaceUnitData,
+	canonicalUnitJson,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
 	type ProjectEnvelope
@@ -301,7 +303,8 @@ function prepared(
 		request.snapshot.domain.source.units.layout.header.contentRevision,
 		levelId
 	);
-	recordPreparedCowCandidate(request.intent.operationId, document);
+	recordPreparedCowCandidate(request.intent.operationId, document, canonicalUnitJson(request.intent));
+	materializeLayoutSourceForCapture(document);
 	const candidate: PreparedCandidate<ProjectEnvelope> = {
 		operationId: request.intent.operationId,
 		sourceKind: UNIT_SOURCE_KIND,
