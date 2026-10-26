@@ -90,7 +90,12 @@
 		type HeadSave,
 		type ReloadOffer
 	} from '$lib/authoring/save';
-	import { planFragmentOf, type PlanEvaluation, type PlanMembershipReason } from '@portfolio/layout-core';
+	import {
+		planFragmentOf,
+		planMembershipOf,
+		type PlanEvaluation,
+		type PlanMembershipReason
+	} from '@portfolio/layout-core';
 	import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
 	import {
 		createStagePressTracker,
@@ -1974,7 +1979,9 @@
 		const plan = planView;
 		const selected = selection;
 		if (plan === null || selected === null || selected.reference.domain !== 'layout') return null;
-		return plan.membership.find((row) => row.sourceId === selected.reference.subject.id)?.reason ?? null;
+		// Indexed against the membership array: this is read on every presented frame
+		// while something is selected, so it must not scan the project.
+		return planMembershipOf(plan, selected.reference.subject.id)?.reason ?? null;
 	});
 
 	/** The Card's identity: the canonical subject and, for Layout, its membership. */
@@ -2003,7 +2010,12 @@
 		const own = selected.reference.domain === 'layout'
 			? [
 				{ label: 'Stream', value: selected.representation?.stream ?? 'canonical' },
-				{ label: 'Eligible', value: String(planView?.membership.find((row) => row.sourceId === selected.reference.subject.id)?.eligible ?? false) },
+				{
+					label: 'Eligible',
+					value: String(
+						(planView === null ? null : planMembershipOf(planView, selected.reference.subject.id))?.eligible ?? false
+					)
+				},
 				{ label: 'Revealed', value: String(revealed.includes(selected.reference.subject.id)) },
 				{
 					label: 'Datum',

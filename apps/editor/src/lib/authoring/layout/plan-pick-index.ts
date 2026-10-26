@@ -26,16 +26,32 @@
  *
  * ## Complexity
  *
- * Build: `O(F log F)` once per retained Plan evaluation (the same order the Plan
- * evaluation itself already costs). Query, in the ordinary case: `O(log F + c)`
- * node visits and up to 8 projections per visited node, where `c` is the number
- * of fragments whose projected extent is near the pointer — real geometric
- * proximity, not project size. The honest limit is the adversarial one: when many
- * boxes overlap the pointer in screen space, `c` approaches `F`, and the query is
- * linear. That is overlap, not unrelated geometry, and it is counted.
+ * Build: `O(F log F)` once per retained Plan evaluation — every level unions every
+ * box it holds, so the build is linear per level of a median-split tree. (The Plan
+ * evaluation that owns the index no longer sorts: it hands over an already ordered
+ * fragment array.)
  *
- * Nothing here reads a camera: the caller supplies `project`, so the index stays
- * a pure geometry structure and the one evaluation stays the only projection.
+ * Query: `O(v + c log c)` where `v` is the number of nodes whose projected extent
+ * reaches the pointer, `c` the number of fragments that survive the leaf test, and
+ * every visited node costs up to 8 corner projections. The `c log c` term is real and
+ * was previously unstated: the tree addresses a **permutation** of the caller's
+ * indices, so the surviving candidates come out of the traversal in tree order and
+ * are sorted back into the hit path's rank order before they are returned. It is the
+ * price of returning a ranked candidate list, and it is small because `c` is a count
+ * of screen-space proximity.
+ *
+ * The ordinary case is `v = O(log F + c)`: a pointer over ordinary sparse geometry
+ * visits a root-to-leaf path plus the leaves whose boxes reach the tolerance. The
+ * honest limits are the adversarial ones, and they are counted:
+ *
+ * - many boxes overlapping the pointer in screen space push `c` toward `F`;
+ * - a box that crosses the camera plane cannot be bounded, so its node is kept;
+ * - a view where every box projects large enough to reach the pointer keeps every
+ *   node (`v → F`), because the broad phase is conservative and never guesses.
+ *
+ * In those cases the query is linear in *overlap*, which is geometry the pointer is
+ * genuinely near — never in unrelated project size. Nothing here reads a camera: the
+ * caller supplies `project`, so the one evaluation stays the only projection.
  */
 import { countWork } from '@portfolio/layout-core';
 

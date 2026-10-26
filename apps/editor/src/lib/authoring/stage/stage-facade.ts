@@ -50,7 +50,7 @@ import type { Vec3 } from '@portfolio/camera-core';
 import type { Component } from 'svelte';
 import type { StageAdapterServices } from './stage-adapter-host';
 import {
-	evaluateLayoutPlan,
+	createPlanRetainer,
 	eligiblePlanFragments,
 	planDependsOnTarget,
 	planTargetsLiveView,
@@ -99,13 +99,6 @@ export const HOST_STAGE_CAPABILITIES: readonly string[] = [
 
 /** Screen-space tolerance for a Plan hit, in CSS pixels. */
 export const PLAN_HIT_TOLERANCE_CSS_PX = 8;
-
-const PLAN_KIND_ORDER: Readonly<Record<PlanSourceKind, number>> = {
-	wall: 0,
-	opening: 1,
-	object: 2,
-	'room-floor': 3
-};
 
 export type StageHitCandidate = {
 	readonly evaluationId: string;
@@ -768,15 +761,6 @@ function cssDistanceToSurfaces(
 	return best;
 }
 
-function compareFragments(left: PlanFragment, right: PlanFragment): number {
-	const kindDelta = PLAN_KIND_ORDER[left.ref.sourceKind] - PLAN_KIND_ORDER[right.ref.sourceKind];
-	if (kindDelta !== 0) return kindDelta;
-	if (left.ref.sourceId !== right.ref.sourceId) return left.ref.sourceId < right.ref.sourceId ? -1 : 1;
-	const leftStart = left.ref.subRef?.kind === 'interval' ? left.ref.subRef.start : 0;
-	const rightStart = right.ref.subRef?.kind === 'interval' ? right.ref.subRef.start : 0;
-	return leftStart - rightStart;
-}
-
 /**
  * The world point a resolved hit reports, **on the surface that was picked**.
  *
@@ -968,6 +952,23 @@ export function createStageFacade(input: {
 	 */
 	let retainedPlan: { readonly key: string; readonly result: PlanEvaluationResult } | null = null;
 
+	/**
+	 * The Plan evaluator, kept across accepted edits.
+	 *
+	 * The key above answers "is this the same evaluation?". This answers the harder
+	 * question a new generation asks: "which sources did the edit actually change?".
+	 * An accepted Wall move changes the compile generation, and therefore every
+	 * fragment's `ref`, so the fragment array is necessarily rebuilt — but the
+	 * *derivation* behind each source (its placement, stream and membership row) is
+	 * unchanged for every source the edit did not touch. The retainer keeps those and
+	 * is handed only the work that is new, so a commit no longer re-sorts, re-measures
+	 * and re-groups the whole project to place one Wall.
+	 *
+	 * It is one retainer for the facade's lifetime, not one per evaluation: its value
+	 * is exactly what it remembers between them.
+	 */
+	const planRetainer = createPlanRetainer();
+
 	function liveTarget(): LayoutVec2 {
 		const target = camera.state().pose.target;
 		return [target[0], target[2]];
@@ -1014,7 +1015,7 @@ export function createStageFacade(input: {
 		if (finiteTarget) {
 			const key = planRetentionKey(parameters, target, targetMatters);
 			if (retainedPlan !== null && retainedPlan.key === key) return retainedPlan.result;
-			const result = evaluateLayoutPlan(currentSnapshot.domain.geometry, parameters, {
+			const result = planRetainer.evaluate(currentSnapshot.domain.geometry, parameters, {
 				generationId: currentSnapshot.compileGeneration,
 				target,
 				datumMeters: currentSnapshot.domain.datumMeters
@@ -1028,7 +1029,7 @@ export function createStageFacade(input: {
 		}
 		// A non-finite target is the parameter boundary's refusal to make, not a
 		// cache hit's; it is never retained.
-		return evaluateLayoutPlan(currentSnapshot.domain.geometry, parameters, {
+		return planRetainer.evaluate(currentSnapshot.domain.geometry, parameters, {
 			generationId: currentSnapshot.compileGeneration,
 			target,
 			datumMeters: currentSnapshot.domain.datumMeters
@@ -1058,7 +1059,13 @@ export function createStageFacade(input: {
 		const geometry = currentSnapshot.domain.geometry;
 		// The fragments are indexed in the **hit path's own priority order**, so a
 		// candidate index is also its rank: the caller never re-sorts to decide.
-		const fragments = [...eligiblePlanFragments(plan)].sort(compareFragments);
+		//
+		// That order is already `plan.fragments`': the evaluator emits Wall before
+		// Opening before object before floor, then source identity, then interval, and
+		// eligibility is a **per-source** fact, so a source's fragments are contiguous
+		// and filtering out ineligible sources is order-preserving. Sorting here again
+		// was an `O(F log F)` pass that could not change the array it sorted.
+		const fragments = eligiblePlanFragments(plan);
 		const boxes = fragments.map((fragment) => pickBoxOf(fragment, geometry, plan.datumMeters));
 		const retained: RetainedPickIndex = { index: createPlanPickIndex(boxes), fragments };
 		pickIndexes.set(plan, retained);
