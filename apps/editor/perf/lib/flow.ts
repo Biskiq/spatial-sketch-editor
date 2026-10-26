@@ -73,7 +73,7 @@ export async function startStarterGallery(page: Page): Promise<void> {
  * F2's explicit Open: the source-JSON entry, a real file chooser and the
  * canonical admission path. The returned ledger slice covers the open.
  */
-export async function openSourceJson(page: Page, project: FixtureProject): Promise<void> {
+export async function openSourceJson(page: Page, project: FixtureProject, timeoutMs = LARGE_TIER_WAIT_MS): Promise<void> {
 	const [chooser] = await Promise.all([
 		page.waitForEvent('filechooser'),
 		page.getByRole('button', { name: 'Open source JSON' }).click()
@@ -95,8 +95,9 @@ export async function openSourceJson(page: Page, project: FixtureProject): Promi
 	} finally {
 		await input.dispose();
 	}
-	// A wait bound, not a budget: an XL admission takes longer than the default.
-	await waitForMark(page, 'f2:open-admitted', LARGE_TIER_WAIT_MS);
+	// A wait bound, not a budget: XL and the opening-heavy C10 sweep can exceed
+	// the default. E5 passes C10 its own measured bound; F2 keeps this one.
+	await waitForMark(page, 'f2:open-admitted', timeoutMs);
 	await expect(page.locator('canvas').first()).toBeVisible();
 }
 

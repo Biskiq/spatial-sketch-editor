@@ -369,6 +369,9 @@ Changes in the tree:
   `acceptanceEvidence` for smoke, reduced or diagnostic reports.
 - The four tiered flows and `stage-trace` read the profile; the formal paths are unchanged.
 - `perf/lib/early-stop.ts` and the F2/F3/F4/F8 flows: opt-in decisive failure stop.
+- `perf/lib/flow.ts` and `perf/flows/e5-sweep.spec.ts`: E5's opening-heavy C10 sweep gets a
+  600,000 ms open bound (isolated reproduction: H10 2.1 s, C10 322.4 s), and non-crash E5 failures
+  name the workload in the abort cause. The C10 open time is setup, not a timing row.
 
 Independent review findings (all fixed unless marked accepted):
 
@@ -511,11 +514,85 @@ Then choose:
 - **Aborted/contaminated:** fix the cause and ask the owner whether the attempt consumes the second
   authorized pass. The bench never retries.
 
+### Diagnostic Bench 2 result (2026-10-26)
+
+The owner ran the command above as `diagnostic-2` at commit `e8cc2fc0`, from a tree dirty with this
+harness work, on AC power with the pinned Chrome, at a start 1-minute load of 4.51 (> 4.0). The pass
+built and served the production bundle, ran grid-L, grid-M and grid-S peak-first with the recorded
+180 s cool-downs, then aborted at E5 with `exit 1` when C10 missed the 300 s open bound. Totals:
+1,860.1 s wall, 13.6 s setup, 360 s cool-down; end load 5.31. The manifest is
+`contaminated: true`, `aborted: true`, `acceptanceEvidence: false`. Raw results:
+`$HOME/biskiq-perf-results/2026-10-26T09-25-26-100Z-diagnostic-2/`.
+
+**Tier rows against the bands.** Medians span the three cache states; maxima are the worst
+measured run. F3/F4/F8 had one cold and one repeat-use run plus three warm runs.
+
+| Row | Measured (diagnostic) | Band | Verdict |
+| --- | --- | --- | --- |
+| L F3 | input→preview median 15.5 ms, max 25.0 | ≤ 70 / ≤ 100 clear | **clear** (Bench 1: 164–166 ms) |
+| L F4 | commit median 94–116 ms, max 151 | ≤ 120 / ≤ 160 clear | **clear** (Bench 1: 636–670 ms) |
+| L F8 | undo/redo median 37–51 ms, max 88.5 | ≤ 120 / ≤ 160 clear | **clear** (Bench 1: 519–536 ms) |
+| M F3 / F4 / F8 | F3 15.4–15.6 (max 16.6); F4 24.6–37.5 (max 51.8); F8 7.4–10.8 (max 11.9) | F3 ≤ 35 / 50; F4/F8 ≤ 80 / 100 | **clear** |
+| S F3 / F4 / F8 | F3 max 16.5; F4 max 28.9; F8 max 14.4 | F3 ≤ 33; F4/F8 ≤ 100 | **clear** |
+| L F2 | cold median 5.16 s, warm 5.34 s | ≤ 2.0 s Target (~5 s = mount work unchanged) | **Target miss**, not a hard gate |
+| F7 | p95 16.7 ms, max 33.3 ms, 0 long tasks, 0 dropped frames, frames at rest 0, 603 frames | ≈ 16.7 p95, no long tasks | **clear**, one warm run |
+| F13 | warm heap 54.91 → 63.66 → 64.31 MiB; repeat 54.78 → 63.69; stage geometries 2,339 and meshes 1,850 constant every cycle; cold growth 53.4 MiB includes first load | no per-cycle climb, geometries back to baseline | **leak check passes directionally**; 1/2/1 cycles, one-time 8.8 MiB step (textures 3 → 6, programs 2 → 4) then +0.65 MiB, not a trend |
+
+**E5, completed after the C10 bound fix.** The abort left no E5 rows (the report is written only
+after all seven workloads). The owner then reran only `flows/e5-sweep.spec.ts` under
+`PERF_PROFILE=diagnostic`: `1 passed` in 12.3 min at load ≈ 2–3, with the new 600 s C10 open bound.
+That rerun is a bare Playwright invocation — no bench manifest, lock or contamination record — and
+its report is still `acceptanceEvidence: false`.
+`$HOME/biskiq-perf-results/e5-diagnostic-2/2026-10-26T14-52-44-946Z-e5-sweep-chrome.json`.
+
+| Check | Result |
+| --- | --- |
+| H3 / H10 vs ×1, before and after the fixed edit | **0 / 0 differing pixels** — the asserted gate |
+| D3, D10, C3, C10 (recorded, not asserted) | **0 differing pixels** before and after |
+| Museum control edit | **3,120 pixels changed** — identical to Bench 1; the check can see a change |
+| Fixed-view hashes | identical across all seven workloads (before `a822a5c8…`, after `dd9b2dc6…`) |
+
+| Workload | draws/frame | triangles/frame | live geometries | meshes |
+| --- | ---: | ---: | ---: | ---: |
+| museum (×1) | 1,447 | 1,116,418 | 926 | 1,372 |
+| H3 = D3 (×3) | 3,542 | 2,719,638 | 2,186 | 3,353 |
+| H10 = D10 (×10) | 10,526 | 8,067,110 | 6,386 | 9,953 |
+| C3 (×3) | 4,679 | 2,917,246 | 3,323 | 4,490 |
+| C10 (×10) | 15,443 | 8,921,038 | 11,303 | 14,870 |
+
+Shadow work is flat everywhere (1 map pass, 24 shadow draws/frame), and programs (14) and textures
+(34) are constant. Main-pass submission still scales with added Walls: H10 is 10,526 draws against
+Bench 1's 10,398 (+1.2 %; museum 1,447 vs 1,421, +1.8 %) — the known one-mesh-per-Wall path (H6),
+not a new regression and not a pixel failure.
+
+**E5 count finding — the fixed edit is still whole-envelope.** With `compile = 2` on every
+workload, the commit's validation, canonicalization, digest and snapshot work grows with the whole
+project rather than the changed Wall:
+
+| Commit counter | museum | H10 | C10 |
+| --- | ---: | ---: | ---: |
+| `validation:layout-array-entry` | 908 | 6,758 | 8,019 |
+| `canonical:utf8-bytes` / `digest:bytes` | 582,932 | 6,020,993 | 8,850,161 |
+| `snapshot:generated-property-read` | 604,623 | 6,150,293 | 6,057,175 |
+
+That is a locality finding for attribution under I1's named-global-operations class (I4/H7): the
+compile is local, the envelope validation/canonical/digest/snapshot path is not. It is never
+presented as local work, and it is a finding, not an E5 assert failure — E5's asserted gate is
+pixel equality, which passed.
+
 ### What this means for acceptance
 
-Bench 2 has not run. Step acceptance remains withheld. The implementation is ready for one
-owner-run diagnostic Bench 2; do not merge, close S06, treat a diagnostic median as a hard-row pass,
-or skip Bench 3's formal statistics.
+The tier rows classify **clear on every hard row** (L F3/F4/F8, M, S, F7, F13), with two recorded
+misses outside the hard gates: the L F2 cold Target (5.16 s vs 2.0 s) and C10's 322.4 s open
+(setup, never a timing row). E5's full seven-workload pixel and count matrix is now complete and
+clean, so E5 no longer blocks Bench 3. But the pass itself is **contaminated and aborted**, so no
+diagnostic row is acceptance evidence, and under A.7 the owner must rule whether the attempt
+consumes the second authorized pass. Per the bands above, the direction is **prepare Bench 3's
+formal method**, not another broad optimization pass: the C10 open cost, the L F2 mount and the
+whole-envelope commit path are recorded as named product/owner findings, and any fix landing before
+Bench 3 is a deliberate revision that this diagnostic does not judge. Step acceptance remains
+withheld until Bench 3; do not close S06, treat a diagnostic median as a hard-row pass, or skip the
+formal statistics.
 
 ## Historical review records
 

@@ -662,6 +662,32 @@ Bench 2 and the formal Bench 3.
   passes (4 flows, 34.3 s) and writes non-acceptance reports. A targeted tsc including bench/flows
   reaches only two pre-existing `registry.ts` Buffer overload errors. No Bench 2/3 pass was run.
 
+**E5 C10 open bound (2026-10-26).** The diagnostic Bench 2 aborted at E5 because C10 did not reach
+`f2:open-admitted` within 300 s. Isolated reproduction on the same warm/N0 session: H10 admitted at
+2.135 s, C10 at 322.414 s; neither crashed, and C10 stayed on “Loading project” with the main thread
+blocked before Stage activation. C10 completes just beyond the old bound, so E5 now passes it a
+600,000 ms wait bound and wraps every non-crash E5 failure with the workload id. This is a harness
+reliability change, not a measurement change: the C10 open time is setup, never a timing row, and E5
+remains mandatory. Bench 2's tier rows remain non-acceptance evidence.
+
+**Diagnostic Bench 2 result (2026-10-26).** The owner ran `diagnostic-2` at `e8cc2fc0` (dirty tree,
+AC power, start load 4.51 > 4.0): grid-L/M/S, the grid-L traces and the transferred rows completed,
+then the pass aborted at E5 on the C10 bound above — 1,860 s total, manifest `contaminated` and
+`aborted`, every row non-acceptance evidence. The tier rows classify **clear on every hard band**
+(L F3 15.5 ms median / 25 ms max; L F4 94–116 ms / 151 ms; L F8 37–51 ms / 88.5 ms; M and S clear;
+F7 16.7 ms p95 with 0 long tasks and 0 dropped frames; F13 stage geometries constant with no
+per-cycle climb across 1/2/1 cycles), with the L F2 cold 5.16 s Target recorded as a miss and
+Bench 1's F3/F4/F8 of 164–166 / 636–670 / 519–536 ms superseded directionally. After the C10 bound
+fix the owner reran E5 alone under `PERF_PROFILE=diagnostic`: `1 passed` in 12.3 min with all seven
+workloads, H3/H10 at 0 differing pixels before and after the fixed edit (D/C recorded at 0), the
+museum control at 3,120 changed pixels — identical to Bench 1 — and identical fixed-view hashes.
+E5 also records two findings, not gates: main-pass draws scale with added Walls (1,447 → 10,526 at
+H10, +1.2 % over Bench 1's 10,398; shadow passes/draws, programs and textures stay flat), and the
+fixed edit's commit still canonicalizes and digests the whole envelope (583 KB → 6.02 MB at H10,
+8.85 MB at C10, `snapshot` reads 604,623 → 6,150,293) while `compile = 2` — an I1/I4 named-global
+finding, never local work. No hard row misses; Bench 3's formal method is unchanged and has not run;
+the owner still rules under A.7 whether the aborted attempt consumes the second authorized pass.
+
 **Bench 2/3 strategy (2026-10-26).** The retained Bench 1 result files decompose the 3 h 36 min
 ceiling: F3/F4/F8 is 78 min of the L tier, F7 17.5 min and F13 11 min; setup is 4.8–8.7 % of the
 drag wall and all ~450 opens cost ~10–15 min. Valid consolidation is therefore capped at ~10–15 min
@@ -677,6 +703,7 @@ plan (F3/F4 3 samples, F8 5 cycles, F7 last-run windows, F13 10 edits) is **not 
 recommends rejecting the F8 and F13 cuts for formal acceptance unless a separate 20-deep
 Undo/Redo proof and a deep-cycle leak proof are added; without them, a lean Bench 3 is about
 2 h 50 min–3 h 05 min, with all six cuts about 2 h 25 min–2 h 45 min. The opt-in early stop is
-implemented and default-off (3 measured runs minimum, 25 % margin, never a pass). Bench 2/3 have not
-run.
+implemented and default-off (3 measured runs minimum, 25 % margin, never a pass). Bench 2 ran on
+2026-10-26, aborted at E5, and its seven-workload E5 matrix was completed by the standalone rerun
+recorded above; the pass remains contaminated and non-acceptance. Bench 3 has not run.
 Stop here before the owner benchmark and acceptance.

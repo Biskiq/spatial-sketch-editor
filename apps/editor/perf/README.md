@@ -180,6 +180,9 @@ Since the C.2 amendment, a pass also:
   tier's remaining cache states are reported unrun, and the phase continues. A
   crash at S, M or L still fails its phase. In E5 only the recorded variants
   (D, C) are bounded; the museum and H carry the proof, so a crash there fails.
+  E5 gives the opening-heavy C10 sweep a 600 s open bound (isolated: C10
+  `f2:open-admitted` at 322.4 s, H10 at 2.1 s); any non-crash E5 failure names
+  the workload in the abort cause.
 - **takes `--xl-drag-cache <cold|warm|repeat-use>` (D5).** It limits grid-XL's
   F3/F4/F8 to one cache state. The manifest records the states and every
   deviation from the plan's machine rules (for example, AC power).

@@ -56,6 +56,13 @@ import type { WorkloadId } from '../lib/workloads/registry';
 const FIXED_VIEW_LABEL = E5_FIXED_VIEW_LABEL;
 const FOCUS_WALL_NAME = E5_FOCUS_WALL_NAME;
 const REST_WINDOW_MS = 1_000;
+/**
+ * C10 is opening-heavy: an isolated reproduction reached `f2:open-admitted` at
+ * 322.4 s, just beyond the 300 s large-tier bound while H10 admitted in 2.1 s.
+ * E5 is count/visual correctness, not a timing row, so C10 gets a bound with
+ * margin instead of aborting the gate; the measured open time is not a metric.
+ */
+const C10_OPEN_WAIT_MS = 600_000;
 
 const SWEEP: readonly { readonly id: WorkloadId; readonly factor: number; readonly variant: 'base' | 'H' | 'D' | 'C' }[] = [
 	{ id: 'museum', factor: 1, variant: 'base' },
@@ -154,7 +161,7 @@ test.describe('E5 browser counts and visual non-influence', () => {
 				const fixedLength = Number((Math.hypot(ex - sx, ez - sz) * 0.98).toFixed(3));
 
 				await gotoCreateIntent(page, projectId);
-				await openSourceJson(page, project);
+				await openSourceJson(page, project, entry.id === 'sweep-C10' ? C10_OPEN_WAIT_MS : undefined);
 				await waitForStageSettled(page);
 
 				await page.waitForTimeout(1_100);
@@ -214,8 +221,15 @@ test.describe('E5 browser counts and visual non-influence', () => {
 				});
 			} catch (error) {
 				// Only the recorded variants are bounded; the museum and H carry the proof.
-				if ((entry.variant !== 'D' && entry.variant !== 'C') || !isRendererCrash(error)) throw error;
-				report.rows.push(crashRow(`E5-${entry.id}`, 'E5 browser counts', `${entry.id} (×${entry.factor}, variant ${entry.variant})`, testInfo.project.name, 'warm', error));
+				const bounded = (entry.variant === 'D' || entry.variant === 'C') && isRendererCrash(error);
+				if (bounded) {
+					report.rows.push(crashRow(`E5-${entry.id}`, 'E5 browser counts', `${entry.id} (×${entry.factor}, variant ${entry.variant})`, testInfo.project.name, 'warm', error));
+				} else {
+					// A timeout used to abort the pass without saying which workload it
+					// was. Name the entry so the manifest's abort cause is actionable.
+					const message = error instanceof Error ? error.message : String(error);
+					throw new Error(`E5 ${entry.id} (variant ${entry.variant}, ×${entry.factor}): ${message}`, { cause: error });
+				}
 			} finally {
 				await session.close();
 			}
