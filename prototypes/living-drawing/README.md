@@ -9,6 +9,7 @@ An interaction model for natural yet precise original 3D creation inside an exis
 | File | What it is |
 |---|---|
 | `index.html` | The proposal: the model, how it differs, revision without loss, an honest account of what building it taught us, risks and a research plan. |
+| `round-two.html` | Round two: how the same language becomes more expressive. Places (add, carve, go through), repetition by drawing along, exceptions kept as descriptions, the representation (no general boolean), alternatives weighed, findings, and where complexity stops paying. |
 | `studio.html` | The interactive prototype (Three.js r170, loaded from jsDelivr; all app code inline). |
 | `.claude/launch.json` | Local static server config used during development. |
 
@@ -29,6 +30,10 @@ Targets: desktop browsers (mouse or trackpad) and iPad (finger or pencil). Phone
 - `studio.html#pedestal`: a pedestal for a sculpture (fit, pull, draw over, swap, move)
 - `studio.html#bench`: a bench that follows the wall (seam trace, section, widen the room, tie the end)
 - `studio.html#niche`: a niche and its frame (recess, frame, pointed arch, remove → slack)
+- `studio.html#through`: a circle on a plinth's top, pushed into a hollow, then through (round two)
+- `studio.html#arm`: an arm at one end of a bench that follows its end and seat (round two)
+- `studio.html#front`: only the front of a pedestal, kept through later changes (round two)
+- `studio.html#panelling`: a panelled room; draw along, only this one, widen, tie under the niche (round two)
 - `studio.html#gallery`: the finished room
 
 Each journey step has **Show me**, which drives the real drawing pipeline with a synthetic pen, and a line saying how to do it yourself.

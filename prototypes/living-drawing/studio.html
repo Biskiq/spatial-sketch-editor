@@ -124,7 +124,9 @@ header.top > *{pointer-events:auto}
 .eyebrow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600}
 
 #guide{position:fixed;left:max(16px,env(safe-area-inset-left,0px));top:calc(64px + env(safe-area-inset-top,0px));width:304px;max-height:calc(100% - 150px);overflow:auto;padding:14px 14px 10px;z-index:4}
-#guide .tabs{display:flex;gap:4px;margin:10px 0 8px;flex-wrap:wrap}
+#guide .tabs{display:grid;gap:6px;margin:10px 0 8px}
+#guide .trow{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+#guide .tlab{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);width:74px}
 #guide .tabs button{appearance:none;border:1px solid var(--line);background:transparent;padding:5px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--ink-2)}
 #guide .tabs button[aria-selected="true"]{background:var(--forest-tint);border-color:var(--forest-2);color:var(--ink)}
 #guide .lede{color:var(--ink-2);font-size:13px;margin:0 0 8px}
@@ -152,6 +154,7 @@ header.top > *{pointer-events:auto}
 .w:hover{background:var(--forest-tint)}
 .w.off{text-decoration:line-through;color:var(--mute);font-weight:500}
 .w.gold{border-bottom-color:var(--gold)}
+.w.slack{border-bottom:1.5px dashed var(--gold)}
 #recipe .sect{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 #recipe .ties{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:6px}
 #recipe .ties li{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;font-size:13px}
@@ -174,6 +177,10 @@ header.top > *{pointer-events:auto}
 .pop .seg button{appearance:none;border:1px solid var(--line);background:transparent;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--ink)}
 .pop .seg button[aria-pressed="true"]{background:var(--forest);color:var(--forest-ink);border-color:var(--forest)}
 .pop p{margin:8px 0 0;color:var(--mute);font-size:12px}
+.pop .stack{display:grid;gap:4px;margin-top:8px}
+.pop .stack button{appearance:none;border:1px solid var(--line);background:transparent;border-radius:7px;padding:5px 8px;font-size:12px;cursor:pointer;color:var(--ink);text-align:left}
+.pop .stack button:hover{border-color:var(--forest-2)}
+.pop .stack button.primary{background:var(--forest);color:var(--forest-ink);border-color:var(--forest)}
 
 #lens{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:calc(max(16px,env(safe-area-inset-right,0px)) + 356px);width:356px;padding:14px;z-index:6}
 #lens .lens-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
@@ -249,7 +256,7 @@ header.top > *{pointer-events:auto}
 </header>
 
 <section id="guide" class="card" aria-label="Guided journeys">
-  <div class="eyebrow">Three journeys</div>
+  <div class="eyebrow" id="gEyebrow">Journeys</div>
   <h2 id="gTitle">Make it here, keep changing it</h2>
   <div class="tabs" role="tablist" id="gTabs"></div>
   <p class="lede" id="gLede"></p>
@@ -516,6 +523,7 @@ function oversketch(ctrl, closed, stroke) {
 /* ---------- Host frames: every sheet is borrowed from the space ---------- */
 const S = { space: { W: 5.2, D: 4.2, H: 3.0 }, asset: { variant: 'pebble', x: 1.9, z: 2.3 }, forms: [], profiles: {}, seq: 1 };
 function frameOf(host) {
+  if (host && typeof host === 'object') return host.cache ? frameFromCache(host.cache) : null;
   const { W, D, H } = S.space;
   switch (host) {
     case 'floor': return { o: v3(0, 0, 0), U: v3(1, 0, 0), V: v3(0, 0, 1), N: v3(0, 1, 0), b: [0, W, 0, D] };
@@ -528,6 +536,58 @@ function frameOf(host) {
 const HOST_NAME = { floor: 'the floor', back: 'the back wall', left: 'the left wall', right: 'the right wall', ceiling: 'the ceiling' };
 function to3(fr, u, v, n = 0) { return fr.o.clone().addScaledVector(fr.U, u).addScaledVector(fr.V, v).addScaledVector(fr.N, n); }
 function toHost(fr, P) { const d = P.clone().sub(fr.o); return [d.dot(fr.U), d.dot(fr.V)]; }
+
+/* ---------- Places: a flat face of something you made is a host too ----------
+   A hosted form's host is a description { form, face, anchor }: "Plinth's top, centred",
+   "Bench's seat, at its right end". It is re-resolved on every evaluation. When the
+   description stops being true the form goes slack and keeps its last frame (cache);
+   it never jumps to whatever happens to be nearest. */
+const isPlace = f => !!f && !!f.host && typeof f.host === 'object';
+const hostKey = h => (h && typeof h === 'object') ? `${h.form}:${h.face}` : h;
+function hostName(h) {
+  if (!h || typeof h !== 'object') return HOST_NAME[h];
+  if (h.face === 'frozen') return 'its own place';
+  const g = formById(h.form); const nm = g ? g.name : (h.cache?.name || 'a form that is gone');
+  return h.face === 'seat' ? `${nm}'s seat` : `${nm}'s top`;
+}
+const arr3 = v => [+v.x.toFixed(5), +v.y.toFixed(5), +v.z.toFixed(5)];
+function frameFromCache(c) { return { o: v3(...c.o), U: v3(...c.U), V: v3(...c.V), N: v3(...c.N), b: c.b.slice() }; }
+function cacheFrame(fr, extra = {}) { return { o: arr3(fr.o), U: arr3(fr.U), V: arr3(fr.V), N: arr3(fr.N), b: fr.b.map(x => +x.toFixed(4)), ...extra }; }
+// the top of a closed section polygon above lateral p, with its slope
+function secTopAt(sec, p) {
+  let best = null;
+  for (let i = 0; i < sec.length; i++) {
+    const a = sec[i], b = sec[(i + 1) % sec.length];
+    if (a[0] === b[0] || (a[0] - p) * (b[0] - p) > 0) continue;
+    const t = (p - a[0]) / (b[0] - a[0]); const q = a[1] + (b[1] - a[1]) * t;
+    if (!best || q > best.q) best = { q, slope: Math.abs((b[1] - a[1]) / (b[0] - a[0])) };
+  }
+  return best;
+}
+function resolveFace(desc) {
+  const g = formById(desc.form); const ev = g && EV.get(g.id);
+  if (!g) return { ok: false, why: 'gone' };
+  if (desc.face === 'top') {
+    if (!ev?.topRing) return { ok: false, why: 'gone' };
+    const c = centroid(ev.topRing); const o = to3(ev.fr, c[0], c[1], ev.h);
+    const rel = ev.topRing.map(p => [p[0] - c[0], p[1] - c[1]]); const bb = bbox2(rel);
+    return { ok: true, fr: { o, U: ev.fr.U.clone(), V: ev.fr.V.clone(), N: ev.fr.N.clone(), b: [bb.min[0], bb.max[0], bb.min[1], bb.max[1]] }, top: rel, hostH: ev.h };
+  }
+  if (desc.face === 'seat') {
+    if (!ev?.path || !ev.sec) return { ok: false, why: 'gone' };
+    const P = g.path; const sA = chainS(P.a), sB = chainS(P.b);
+    const atStart = (desc.anchor.end === 'a') === (sA <= sB);
+    const path = ev.path, n = path.length;
+    const p0 = atStart ? path[0] : path[n - 1], p1 = atStart ? path[1] : path[n - 2];
+    const segLen = d2(p0, p1); const T = [(p1[0] - p0[0]) / segLen, (p1[1] - p0[1]) / segLen];
+    const fwd = atStart ? T : [-T[0], -T[1]];                // the run's own direction there
+    const L = [-fwd[1] * ev.sign, fwd[0] * ev.sign];           // into the room
+    const top = secTopAt(ev.sec, desc.anchor.p); if (!top) return { ok: false, why: 'noseat' };
+    const depth = Math.max(...ev.sec.map(s => s[0]));
+    return { ok: true, fr: { o: v3(p0[0], top.q, p0[1]), U: v3(T[0], 0, T[1]), V: v3(L[0], 0, L[1]), N: v3(0, 1, 0), b: [0, segLen, 0, depth] }, q: top.q, slope: top.slope, segLen };
+  }
+  return { ok: false, why: 'frozen' };
+}
 
 /* ---------- One kernel: a profiled sweep along a planar path ----------
    path: [[u,v]] on the host; section: [[p,q]].
@@ -551,12 +611,13 @@ function laterals(path, closed) {
 }
 function offsetRing(path, closed, sign, d) { const lat = laterals(path, closed); return path.map((p, i) => [p[0] + lat[i][0] * sign * d, p[1] + lat[i][1] * sign * d]); }
 function pushTri(out, a, b, c) { out.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z); }
-function sweep(out, { path, closed, fr, section, secClosed, axes = 'LN', sign = 1, caps = true }) {
-  const n = path.length, m = section.length; if (n < 2 || m < 2) return [];
+function sweep(out, { path, closed, fr, section, sections, secClosed, axes = 'LN', sign = 1, caps = true }) {
+  // sections: one per path point (same length), for forms that differ on one side
+  const n = path.length, m = (sections ? sections[0] : section).length; if (n < 2 || m < 2) return [];
   const lat = laterals(path, closed);
   const R = [];
   for (let i = 0; i < n; i++) {
-    R.push(section.map(([p, q]) => {
+    R.push((sections ? sections[i] : section).map(([p, q]) => {
       const a = axes === 'LN' ? p : q, b = axes === 'LN' ? q : p;
       return to3(fr, path[i][0] + lat[i][0] * sign * a, path[i][1] + lat[i][1] * sign * a, b);
     }));
@@ -587,9 +648,20 @@ function flatCap(out, fr, contour, holes, n, faceSign = 1) {
     if (nrm.dot(want) < 0) pushTri(out, A, C, B); else pushTri(out, A, B, C);
   }
 }
+// creased normals are the costly part of evaluation; most forms don't change while the
+// room is dragged, so identical geometry reuses its normals
+const normalCache = new Map();
 function geoFrom(pos, crease = 0.6) {
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  return toCreasedNormals(g, crease);
+  let h = pos.length * 31 + Math.round(crease * 100); for (let i = 0; i < pos.length; i++) h = (Math.imul(h, 31) + Math.round(pos[i] * 1e5)) | 0;
+  const hit = normalCache.get(h);
+  if (hit && hit.n === pos.length) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(hit.p, 3)); g.setAttribute('normal', new THREE.BufferAttribute(hit.nrm, 3)); return g;
+  }
+  const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const g = toCreasedNormals(g0, crease);
+  normalCache.set(h, { n: pos.length, p: g.attributes.position.array, nrm: g.attributes.normal.array });
+  if (normalCache.size > 160) normalCache.delete(normalCache.keys().next().value);
+  return g;
 }
 
 /* ---------- Profiles: portable, shareable, contextual ----------
@@ -626,9 +698,9 @@ function profileUsers(pid) { return S.forms.filter(f => (f.kind === 'mass' && f.
 
 /* ---------- The imported asset (stand-in for a .glb or a generated model) ---------- */
 const ASSETS = {
-  pebble: { name: 'Pebble Stack', r: 0.22, h: 0.58 },
-  tall: { name: 'Tall Figure', r: 0.13, h: 0.95 },
-  vessel: { name: 'Wide Vessel', r: 0.34, h: 0.34 },
+  pebble: { name: 'Pebble Stack', r: 0.22, h: 0.58, base: 0.18 },
+  tall: { name: 'Tall Figure', r: 0.13, h: 0.95, base: 0.12 },
+  vessel: { name: 'Wide Vessel', r: 0.34, h: 0.34, base: 0.13 },
 };
 
 /* ---------- Renderer & scene ---------- */
@@ -754,19 +826,79 @@ function sectionPolygon(prof) {
   if (prof.kind === 'wall') { dense[0][0] = 0; dense[dense.length - 1][0] = 0; return dense; }
   return dense;
 }
+/* A mass is plan × elevation profile. Hollows and openings drawn on its top are inner
+   loops of the same sweep: carving only along the direction the mass was built, never a
+   boolean. A loop that would break out of the side stops where it still fits, and says so.
+   An exception ("only the front") rides on the shared profile as an offset, blended in. */
+const smooth01 = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+function densify(poly, step) { const out = []; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; const k = Math.max(1, Math.ceil(d2(a, b) / step)); for (let j = 0; j < k; j++) out.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]); } return out; }
+function deltaAt(strokes, t) {
+  let d = 0;
+  for (const s of strokes) { if (t < s.t0 || t > s.t1) continue; const p = s.d; for (let i = 0; i < p.length - 1; i++) if (t >= p[i][0] && t <= p[i + 1][0]) { const k = (t - p[i][0]) / ((p[i + 1][0] - p[i][0]) || 1); d += p[i][1] + (p[i + 1][1] - p[i][1]) * k; break; } }
+  return d;
+}
+function exceptField(fr, plan, ex) {
+  const dir = v3(ex.dir[0], 0, ex.dir[1]); const Wp = plan.map(p => to3(fr, p[0], p[1], 0));
+  const C = Wp.reduce((a, b) => a.add(b), v3(0, 0, 0)).multiplyScalar(1 / Wp.length);
+  const pr = Wp.map(P => P.clone().sub(C).dot(dir)); const ext = Math.max(...pr.map(Math.abs)) || 1; const k = ex.blend === 'crisp' ? 0.1 : 0.55;
+  return { C, dir, ext, k, w: pr.map(x => smooth01(-k, k, x / ext)), at: P => smooth01(-k, k, P.clone().sub(C).dot(dir) / ext) };
+}
+function containsPoly(ring, hole, clr) { for (const q of hole) if (!inPoly(q, ring) || polyDist(q, ring) < clr) return false; for (const q of ring) if (inPoly(q, hole)) return false; return true; }
 function evalMass(f, out, ev) {
-  const fr = frameOf(f.host); let plan = dedupe(planOf(f));
-  if (plan.length < 3) return;
+  const fr = isPlace(f) ? ev.fr : frameOf(f.host); if (!fr) return;
+  let plan = dedupe(planOf(f)); if (plan.length < 3) return;
   const sign = signedArea(plan) > 0 ? -1 : 1;
-  const h = Math.max(0.01, heightOf(f));
-  const prof = (f.profileOn && S.profiles[f.profile]) ? S.profiles[f.profile] : { ctrl: ctrlFrom(PRESETS.elev.Straight) };
+  const h = Math.max(0.005, heightOf(f));
+  const embed = isPlace(f) ? (f.host.face === 'seat' ? 0.03 : 0.001) : 0; // stands slightly into what it stands on
   const rin = inradius(plan);
-  const pd = evalCurve(prof.ctrl, false, 10).pts.map(([o, t]) => [Math.max(o, -0.9 * rin), clamp(t, 0, 1) * h]);
+  const baseCtrl = (f.profileOn && S.profiles[f.profile]) ? S.profiles[f.profile].ctrl : ctrlFrom(PRESETS.elev.Straight);
+  const ex = f.except && f.except.on !== false && f.except.strokes?.length ? f.except : null;
+  let B = evalCurve(baseCtrl, false, 10).pts;
+  if (ex) { const fine = []; for (let i = 0; i < B.length - 1; i++) { const k = Math.max(1, Math.ceil(Math.abs(B[i + 1][1] - B[i][1]) / 0.04)); for (let j = 0; j < k; j++) fine.push([B[i][0] + (B[i + 1][0] - B[i][0]) * j / k, B[i][1] + (B[i + 1][1] - B[i][1]) * j / k]); } fine.push(B[B.length - 1]); B = fine; }
+  const Y = t => -embed + clamp(t, 0, 1) * (h + embed);
+  const pd = B.map(([o, t]) => [Math.max(o, -0.9 * rin), Y(t)]);
+  let secs = null;
+  if (ex) {
+    plan = densify(plan, 0.05);
+    const E = B.map(([o, t]) => [o + deltaAt(ex.strokes, t), t]); const field = exceptField(fr, plan, ex);
+    secs = plan.map((_, i) => B.map(([o, t], k) => [Math.max(o + (E[k][0] - o) * field.w[i], -0.9 * rin), Y(t)]));
+    ev.exProfile = E.map(([o, t]) => [Math.max(o, -0.9 * rin), Y(t)]); ev.exField = field;
+  }
+  const lat = laterals(plan, true);
+  const ringAt = k => plan.map((p, i) => { const o = secs ? secs[i][k][0] : pd[k][0]; return [p[0] + lat[i][0] * sign * o, p[1] + lat[i][1] * sign * o]; });
+  const K = pd.length, top = ringAt(K - 1), bot = ringAt(0), hTop = pd[K - 1][1], hBot = pd[0][1];
+  // places carved into its top: how deep can each go before it would break out of the side?
+  const c = centroid(top); ev.holes = {}; const holes = [];
+  const byHeight = [...Array(K).keys()].sort((a, b) => pd[b][1] - pd[a][1]);
+  for (const r of S.forms) {
+    if (r.kind !== 'recess' || !isPlace(r) || r.host.form !== f.id || r.host.face !== 'top') continue;
+    const hp = dedupe(evalCurve(r.plan.ctrl, true, 10).pts.map(p => [p[0] + c[0], p[1] + c[1]])); if (hp.length < 3) continue;
+    let maxDepth = hTop - hBot, blocked = false;
+    for (const k of byHeight) if (!containsPoly(ringAt(k), hp, 0.006)) { if (hTop - pd[k][1] < 0.004) blocked = true; maxDepth = Math.max(0, hTop - pd[k][1] - 0.008); break; }
+    const canThrough = !blocked && maxDepth >= hTop - hBot - 1e-6;
+    let depth = r.through ? hTop - hBot : (r.depth || 0), through = !!r.through && canThrough, stopped = false;
+    if (depth > maxDepth + 1e-6) { stopped = true; depth = maxDepth; }
+    if (blocked) { depth = 0; stopped = false; }
+    ev.holes[r.id] = { depth, through, stopped, blocked, maxDepth, canThrough, hostH: hTop - hBot };
+    if (depth > 0.003) holes.push({ pts: hp, depth, through });
+  }
+  if (secs) sweep(out, { path: plan, closed: true, fr, sections: secs, secClosed: false, axes: 'LN', sign });
+  else sweep(out, { path: plan, closed: true, fr, section: pd, secClosed: false, axes: 'LN', sign });
+  flatCap(out, fr, top, holes.map(x => x.pts), hTop, 1);
+  flatCap(out, fr, bot, holes.filter(x => x.through).map(x => x.pts), hBot, -1);
+  for (const x of holes) {
+    sweep(out, { path: x.pts, closed: true, fr, section: [[0, hTop], [0, hTop - x.depth]], secClosed: false, axes: 'LN', sign: 1, caps: false });
+    if (!x.through) flatCap(out, fr, x.pts, [], hTop - x.depth, 1);
+  }
+  ev.plan = plan; ev.h = h; ev.fr = fr; ev.sign = sign; ev.profileDense = pd; ev.embed = embed; ev.topRing = top;
+  ev.planBox = bbox2(plan); ev.c = centroid(plan);
+}
+// a plain shell for repeated instances: plan × profile, open against the wall
+function massShell(out, fr, plan, h, profCtrl, rin = inradius(plan)) {
+  const sign = signedArea(plan) > 0 ? -1 : 1;
+  const pd = evalCurve(profCtrl, false, 10).pts.map(([o, t]) => [Math.max(o, -0.9 * rin), clamp(t, 0, 1) * h]);
   sweep(out, { path: plan, closed: true, fr, section: pd, secClosed: false, axes: 'LN', sign });
-  const top = offsetRing(plan, true, sign, pd[pd.length - 1][0]); const bot = offsetRing(plan, true, sign, pd[0][0]);
-  flatCap(out, fr, top, [], pd[pd.length - 1][1], 1); flatCap(out, fr, bot, [], pd[0][1], -1);
-  ev.plan = plan; ev.h = h; ev.fr = fr; ev.sign = sign; ev.profileDense = pd;
-  const bb = bbox2(plan); ev.planBox = bb; ev.c = centroid(plan);
+  flatCap(out, fr, offsetRing(plan, true, sign, pd[pd.length - 1][0]), [], pd[pd.length - 1][1], 1);
 }
 function evalRun(f, out, ev) {
   const prof = (f.sectionOn && S.profiles[f.section]) ? S.profiles[f.section] : { kind: f.ctxKind === 'wall' ? 'wall' : 'corner', ctrl: ctrlFrom(PRESETS[f.ctxKind === 'wall' ? 'wall' : 'corner'][f.ctxKind === 'wall' ? 'Ledge' : 'Band']) };
@@ -795,30 +927,261 @@ function evalRun(f, out, ev) {
   ev.path = path; ev.fr = fr; ev.closed = closed; ev.axes = axes; ev.sign = sign; ev.sec = sec;
   ev.len = closed ? pathLen([...path, path[0]]) : pathLen(path);
 }
-function evalRecess(f, out, ev) {
-  const fr = frameOf(f.host); let plan = dedupe(planOf(f)); if (plan.length < 3) return;
-  // a niche cannot leave its wall: keep it inside, and say so
-  const bb = bbox2(plan), [u0, u1, v0, v1] = fr.b, m = 0.04;
-  let du = 0, dv = 0;
-  if (bb.min[0] < u0 + m) du = u0 + m - bb.min[0]; if (bb.max[0] > u1 - m) du = u1 - m - bb.max[0];
-  if (bb.min[1] < v0 + m) dv = v0 + m - bb.min[1]; if (bb.max[1] > v1 - m) dv = v1 - m - bb.max[1];
-  ev.clamped = Math.abs(du) > 1e-4 || Math.abs(dv) > 1e-4;
-  if (ev.clamped) plan = plan.map(p => [p[0] + du, p[1] + dv]);
-  const d = clamp(f.depth, 0.03, 0.19);
+const WALL_T = 0.2;
+function recessGeometry(out, fr, plan, d, through) {
   sweep(out, { path: plan, closed: true, fr, section: [[0, 0], [0, -d]], secClosed: false, axes: 'LN', sign: 1, caps: false });
-  flatCap(out, fr, plan, [], -d, 1);
-  ev.plan = plan; ev.fr = fr; ev.depth = d; ev.planBox = bbox2(plan); ev.c = centroid(plan);
+  if (!through) flatCap(out, fr, plan, [], -d, 1);
+}
+function evalRecess(f, out, ev) {
+  if (isPlace(f)) return evalPlaceRecess(f, ev);
+  const fr = frameOf(f.host); let plan = dedupe(planOf(f)); if (plan.length < 3) return;
+  // a niche cannot leave its wall: keep it inside, and say so. Pushed through and
+  // reaching for the floor, an opening becomes a doorway.
+  const bb = bbox2(plan), [u0, u1, v0, v1] = fr.b, m = 0.04;
+  let du = 0, dv = 0; const door = !!f.through && bb.min[1] < v0 + 0.1;
+  if (bb.min[0] < u0 + m) du = u0 + m - bb.min[0]; if (bb.max[0] > u1 - m) du = u1 - m - bb.max[0];
+  if (door) dv = v0 - bb.min[1];
+  else { if (bb.min[1] < v0 + m) dv = v0 + m - bb.min[1]; if (bb.max[1] > v1 - m) dv = v1 - m - bb.max[1]; }
+  ev.clamped = Math.abs(du) > 1e-4 || (!door && Math.abs(dv) > 1e-4);
+  if (Math.abs(du) > 1e-4 || Math.abs(dv) > 1e-4) plan = plan.map(p => [p[0] + du, p[1] + dv]);
+  const d = f.through ? WALL_T : clamp(f.depth, 0.03, 0.19);
+  recessGeometry(out, fr, plan, d, !!f.through);
+  ev.plan = plan; ev.fr = fr; ev.depth = d; ev.through = !!f.through; ev.door = door; ev.planBox = bbox2(plan); ev.c = centroid(plan);
+}
+// a hollow or opening in a form's top: its host cuts it; here it only keeps its drawing and frame
+function evalPlaceRecess(f, ev) {
+  const fr = ev.fr; if (!fr) return;
+  const plan = dedupe(evalCurve(f.plan.ctrl, true, 10).pts); if (plan.length < 3) return;
+  const hv = (!ev.slack && EV.get(f.host.form)?.holes?.[f.id]) || { depth: 0, blocked: true, maxDepth: 0, canThrough: false, hostH: 0 };
+  Object.assign(ev, { plan, c: centroid(plan), planBox: bbox2(plan), depth: hv.depth, through: hv.through, stopped: hv.stopped, blocked: hv.blocked, maxDepth: hv.maxDepth, canThrough: hv.canThrough, hostH: hv.hostH });
+  const pts = []; for (const p of plan) pts.push(to3(fr, p[0], p[1], 0.002), to3(fr, p[0], p[1], -Math.max(hv.depth, 0.01)));
+  ev.box = new THREE.Box3().setFromPoints(pts);
+}
+function resolveHost(f, ev) {
+  const h = f.host;
+  if (h.face === 'frozen') { ev.fr = frameFromCache(h.cache); ev.frozen = true; return; }
+  const r = resolveFace(h); let slack = r.ok ? null : r.why;
+  if (r.ok && h.face === 'seat') {
+    const maxU = Math.max(...evalCurve(f.plan.ctrl, true, 10).pts.map(p => p[0]));
+    if (r.slope > 0.36) slack = 'tilted';                                       // the seat under it is no longer flat
+    else if (h.ref != null && Math.abs(r.q - h.ref) > 0.15) slack = 'moved';   // a jump that changes what "the seat" meant
+    else if (maxU > r.segLen + 0.005) slack = 'corner';                         // it would run around the bench's corner
+  }
+  if (slack) { ev.slack = slack; ev.fr = h.cache ? frameFromCache(h.cache) : null; return; }
+  ev.fr = r.fr; ev.face = r; h.cache = cacheFrame(r.fr, { name: formById(h.form).name });
+  if (!pre && r.q != null) h.ref = +r.q.toFixed(4); // settled outside a change: this is what it means now
+}
+
+/* ---------- Rhythm: a form drawn once, then drawn along ----------
+   Repetition is a property of the form, not a new kind of object. The architecture
+   divides it: whole instances per stretch; stretches break at corners and at openings
+   that cross the band; instances flex to share each stretch evenly (or keep their size).
+   Exceptions are descriptions ("the middle one on the back wall", "centred under Niche"),
+   re-resolved after every change. A description that stops being true goes slack. */
+const WALLS = ['left', 'back', 'right'];
+function wallSpan(w) { const { W, D } = S.space; return w === 'left' ? [0, D] : w === 'back' ? [D, D + W] : [D + W, 2 * D + W]; }
+function wallToS(w, u) { const { W, D } = S.space; return w === 'left' ? D - u : w === 'back' ? D + u : D + W + u; }
+function sToWallU(w, s) { const { W, D } = S.space; return w === 'left' ? D - s : w === 'back' ? s - D : s - D - W; }
+const ORD = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)]);
+function motifOf(f) {
+  // the motif in its own terms: centred, x to the viewer's right, y up
+  const ctrl = planCtrl(f); const bb = bbox2(evalCurve(ctrl, true, 10).pts);
+  const sgn = f.host === 'left' ? -1 : 1; const cu = (bb.min[0] + bb.max[0]) / 2, cv = (bb.min[1] + bb.max[1]) / 2;
+  // small motifs need fewer samples: dozens of beads stay cheap
+  const local = ctrl.map(c => ({ ...c, x: (c.x - cu) * sgn, y: c.y - cv })); const sres = clamp(Math.round(Math.max(bb.w, bb.h) / 0.015), 3, 10);
+  return { local, w0: bb.w, hgt: bb.h, cu, cv, sgn, v0: bb.min[1], v1: bb.max[1], sres, rin: inradius(evalCurve(local, true, sres).pts) };
+}
+function fitPart(p, w0, gap, mode) {
+  const L = p.b - p.a - p.mA - p.mB; if (L < w0 * 0.45) return [];
+  let n, w = w0, g = gap;
+  if (mode === 'keep') { n = Math.max(1, Math.floor((L + gap) / (w0 + gap))); if (w0 > L) return []; g = n > 1 ? (L - n * w0) / (n - 1) : 0; if (n === 1) return [{ s: p.a + p.mA + L / 2, w }]; }
+  else { n = Math.max(1, Math.round((L + gap) / (w0 + gap))); w = (L - (n - 1) * gap) / n; if (w < w0 * 0.55 && n > 1) { n--; w = (L - (n - 1) * gap) / n; } }
+  const out = []; for (let i = 0; i < n; i++) out.push({ s: p.a + p.mA + w / 2 + i * (w + g), w }); return out;
+}
+function rhythmLayout(f, R = f.repeat) {
+  const M = motifOf(f); const gap = R.gap;
+  if (R.along.type === 'edge') return edgeLayout(f, R, { ...M, gap, byWall: {}, instances: [], anchors: [], res: {}, madeWay: [] });
+  const exs = (R.exceptions || []).filter(E => E.on !== false);
+  let lay = divideWalls(f, R, M, exs, []);
+  // a description that no longer holds keeps its shape and its last place (pinned) rather
+  // than picking another instance; the creator decides
+  const pins = exs.filter(E => { const r = lay.res[E.id]; return r.state === 'slack' && !r.inst && E.cache && ['nomiddle', 'range'].includes(r.why); })
+    .map(E => ({ E, wall: E.cache.wall, s: E.cache.s, why: lay.res[E.id].why }));
+  if (pins.length) lay = divideWalls(f, R, M, exs, pins);
+  for (const it of lay.instances) {
+    const E = it.ex; if (E?.change.type === 'omit') it.omit = true;
+    let lc = M.local; if (E?.change.type === 'shape') for (const st of E.change.strokes) lc = oversketch(lc, true, st);
+    const sc = it.w / M.w0;
+    it.plan = dedupe(evalCurve(lc, true, M.sres).pts.map(([x, y]) => [sToWallU(it.wall, it.s + x * sc), M.cv + y]));
+    it.rin = E?.change.type === 'shape' ? undefined : M.rin * Math.min(1, sc);
+    it.fr = frameOf(it.wall);
+  }
+  return lay;
+}
+function divideWalls(f, R, M, exs, pins) {
+  const gap = R.gap; const lay = { ...M, gap, byWall: {}, instances: [], anchors: [], res: {}, madeWay: [] };
+  let sa = chainS(R.along.a), sb = chainS(R.along.b); if (sa > sb) [sa, sb] = [sb, sa];
+  for (const wall of WALLS) {
+    const [s0, s1] = wallSpan(wall); const a = Math.max(s0, sa), b = Math.min(s1, sb); if (b - a < 0.05) continue;
+    // a corner or the end of a wall keeps a margin; an open end of the rhythm doesn't
+    let parts = [{ a, b, mA: a - s0 < 1e-6 ? gap : 0, mB: s1 - b < 1e-6 ? gap : 0 }];
+    // openings and other places that cross the band make the rhythm divide around them
+    for (const g of S.forms) {
+      if (g === f || g.host !== wall || g.repeat?.on || g.pending) continue;
+      const gb = EV.get(g.id)?.planBox; if (!gb || gb.max[1] < M.v0 - gap / 2 || gb.min[1] > M.v1 + gap / 2) continue;
+      const x1 = wallToS(wall, gb.min[0]), x2 = wallToS(wall, gb.max[0]); const lo = Math.min(x1, x2) - gap, hi = Math.max(x1, x2) + gap;
+      if (!parts.some(p => !(hi <= p.a || lo >= p.b))) continue;
+      parts = parts.flatMap(p => (hi <= p.a || lo >= p.b) ? [p] : [lo > p.a ? { a: p.a, b: lo, mA: p.mA, mB: 0 } : null, hi < p.b ? { a: hi, b: p.b, mA: 0, mB: p.mB } : null].filter(Boolean));
+      lay.madeWay.push(g.id);
+    }
+    // an exception centred under something (or kept where it was) anchors the division
+    for (const E of exs) {
+      let x0 = null, pinned = false; const pin = pins.find(q => q.E === E);
+      if (pin) { if (pin.wall === wall) { x0 = pin.s; pinned = true; } }
+      else if (E.where.type === 'under') {
+        const Rf = formById(E.where.target); const rb = Rf && EV.get(Rf.id)?.planBox;
+        if (Rf && rb && Rf.host === wall) x0 = wallToS(wall, (rb.min[0] + rb.max[0]) / 2);
+        else if (!Rf && E.cache?.wall === wall) { x0 = E.cache.s; pinned = true; }
+      } else if (E.where.type === 'at' && E.where.wall === wall) x0 = E.where.s;
+      if (x0 == null) continue;
+      const half = M.w0 / 2; const pi = parts.findIndex(p => x0 - half >= p.a + p.mA - 1e-6 && x0 + half <= p.b - p.mB + 1e-6);
+      if (pi < 0) { lay.res[E.id] = { state: 'slack', why: 'noroom' }; continue; }
+      const p = parts[pi];
+      parts.splice(pi, 1, ...[{ a: p.a, b: x0 - half - gap, mA: p.mA, mB: 0 }, { a: x0 + half + gap, b: p.b, mA: 0, mB: p.mB }].filter(q => q.b - q.a > 0.02));
+      lay.anchors.push({ wall, s: x0, w: M.w0, E, pinned, why: pin?.why });
+    }
+    const list = [];
+    for (const p of parts) for (const it of fitPart(p, M.w0, gap, R.mode)) list.push({ wall, s: it.s, w: it.w });
+    for (const an of lay.anchors) if (an.wall === wall) list.push({ wall, s: an.s, w: an.w, anchor: an });
+    list.sort((x, y) => x.s - y.s); list.forEach((it, i) => { it.i = i; it.n = list.length; });
+    if (list.length) lay.byWall[wall] = list; lay.instances.push(...list);
+  }
+  // resolve each exception's description against this division
+  for (const E of exs) {
+    if (lay.res[E.id]) continue;
+    const list = lay.byWall[E.where.wall] || []; let inst = null, why = '';
+    const own = lay.instances.find(it => it.anchor?.E === E);
+    if (own) inst = own;
+    else if (E.where.type === 'middle') { if (list.length % 2) inst = list[(list.length - 1) / 2]; else why = 'nomiddle'; }
+    else if (E.where.type === 'nth') { const k = E.where.from === 'left' ? E.where.n - 1 : list.length - E.where.n; if (k >= 0 && k < list.length) inst = list[k]; else why = 'range'; }
+    else why = E.where.type === 'under' && !formById(E.where.target) ? 'gone' : 'noroom';
+    if (inst?.ex) { why = 'taken'; inst = null; }
+    const pinned = !!inst?.anchor?.pinned;
+    lay.res[E.id] = inst ? { state: pinned ? 'slack' : 'ok', why: pinned ? (inst.anchor.why || 'gone') : '', inst } : { state: 'slack', why };
+    if (inst) { inst.ex = E; if (!pinned) E.cache = { wall: inst.wall, s: +inst.s.toFixed(4) }; }
+  }
+  return lay;
+}
+// along an edge (the curve experiment): the motif keeps its size and its relation to the edge
+function alongPoly(pts, s) {
+  let acc = 0;
+  for (let i = 0; i < pts.length - 1; i++) { const L = d2(pts[i], pts[i + 1]); if (acc + L >= s || i === pts.length - 2) { const t = clamp((s - acc) / (L || 1), 0, 1); const T = [(pts[i + 1][0] - pts[i][0]) / (L || 1), (pts[i + 1][1] - pts[i][1]) / (L || 1)]; return { P: [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t], T }; } acc += L; }
+  return { P: pts[0], T: [1, 0] };
+}
+function stretchRole(pts, C) {
+  const a = pts[0], b = pts[pts.length - 1]; const m = centroid(pts); const dx = Math.abs(b[0] - a[0]), dy = Math.abs(b[1] - a[1]);
+  if (dx > dy * 2 && m[1] < C[1]) return 'sill';
+  if (dy > dx * 2) return m[0] < C[0] ? 'left side' : 'right side';
+  return 'head';
+}
+function edgeStretches(path) {
+  const n = path.length; const turn = i => { const a = path[(i - 1 + n) % n], b = path[i], c = path[(i + 1) % n]; const ang = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]); return Math.abs(Math.atan2(Math.sin(ang), Math.cos(ang))); };
+  const corners = []; for (let i = 0; i < n; i++) if (turn(i) > 0.6) corners.push(i);
+  if (!corners.length) corners.push(0);
+  const C = centroid(path); const out = [];
+  for (let k = 0; k < corners.length; k++) {
+    const i0 = corners[k], i1 = corners[(k + 1) % corners.length]; const pts = []; let i = i0;
+    do { pts.push(path[i]); i = (i + 1) % n; } while (i !== i1); pts.push(path[i1]);
+    out.push({ pts, role: stretchRole(pts, C), L: pathLen(pts) });
+  }
+  return out;
+}
+function edgeLayout(f, R, lay) {
+  const tgt = formById(R.along.target); const tev = tgt && EV.get(tgt.id);
+  if (!tev?.plan || tgt.host !== f.host) { lay.slack = true; return lay; }
+  const path = tev.plan; const ccw = signedArea(path) > 0;
+  const outN = T => ccw ? [T[1], -T[0]] : [-T[1], T[0]];
+  // the motif in the edge's terms, taken where it was drawn
+  const ctrl = planCtrl(f); const bb = bbox2(evalCurve(ctrl, true, 10).pts); const c0 = [(bb.min[0] + bb.max[0]) / 2, (bb.min[1] + bb.max[1]) / 2];
+  let best = { d: Infinity }; for (let i = 0; i < path.length; i++) { const a = path[i], b = path[(i + 1) % path.length]; const d = segDist(c0, a, b); if (d < best.d) { const L = d2(a, b) || 1; best = { d, T: [(b[0] - a[0]) / L, (b[1] - a[1]) / L], a }; } }
+  const N0 = outN(best.T); const off = (c0[0] - best.a[0]) * N0[0] + (c0[1] - best.a[1]) * N0[1];
+  const local = ctrl.map(c => { const x = c.x - c0[0], y = c.y - c0[1]; return { ...c, x: x * best.T[0] + y * best.T[1], y: x * N0[0] + y * N0[1] }; });
+  const w0 = Math.max(...local.map(c => c.x)) - Math.min(...local.map(c => c.x));
+  const shape = evalCurve(local, true, lay.sres).pts; const rin = inradius(shape);
+  lay.w0 = w0; lay.edge = true;
+  for (const st of edgeStretches(path)) {
+    if (R.along.roles && !R.along.roles.includes(st.role)) continue;
+    const N = Math.floor((st.L + lay.gap) / (w0 + lay.gap)); if (N < 1) continue;
+    const g = (st.L - N * w0) / N;
+    for (let j = 0; j < N; j++) {
+      const { P, T } = alongPoly(st.pts, g / 2 + w0 / 2 + j * (w0 + g)); const Nn = outN(T);
+      const plan = dedupe(shape.map(([x, y]) => [P[0] + T[0] * x + Nn[0] * (off + y), P[1] + T[1] * x + Nn[1] * (off + y)]));
+      lay.instances.push({ wall: f.host, role: st.role, plan, fr: frameOf(f.host), w: w0, edge: true, rin });
+    }
+  }
+  return lay;
+}
+function evalRhythm(f, out, ev) {
+  const lay = rhythmLayout(f); ev.layout = lay; ev.instances = lay.instances; ev.slack = lay.slack ? 'gone' : undefined;
+  const h = f.kind === 'mass' ? Math.max(0.005, heightOf(f)) : 0, d = f.kind === 'recess' ? clamp(f.depth, 0.03, 0.19) : 0;
+  const prof = (f.profileOn && S.profiles[f.profile]) ? S.profiles[f.profile].ctrl : ctrlFrom(PRESETS.elev.Straight);
+  for (const it of lay.instances) {
+    if (it.omit || it.plan.length < 3) continue;
+    if (f.kind === 'mass') massShell(out, it.fr, it.plan, h, prof, it.rin); else recessGeometry(out, it.fr, it.plan, d, false);
+  }
+  const first = lay.byWall[f.host]?.[0] || lay.instances[0];
+  if (first) { ev.fr = first.fr; ev.c = centroid(first.plan); ev.first = first; }
+  ev.h = h; ev.depth = d;
+}
+
+const placeMarks = new THREE.Group(); scene.add(placeMarks);
+const downRay = new THREE.Raycaster();
+function restingHeight() {
+  // the sculpture rests on whatever is under its footprint (gravity, not a tie)
+  const A = ASSETS[S.asset.variant]; const r = A.base + 0.02;
+  const meshes = formGroup.children.filter(m => { const b = m.geometry.boundingBox; return m.userData.kind === 'mass' && b && S.asset.x > b.min.x - r && S.asset.x < b.max.x + r && S.asset.z > b.min.z - r && S.asset.z < b.max.z + r; });
+  let y = 0;
+  for (let k = 0; k <= 8; k++) {
+    const a = k / 8 * Math.PI * 2, r = k ? A.base * 0.6 : 0;
+    downRay.set(v3(S.asset.x + Math.cos(a) * r, 20, S.asset.z + Math.sin(a) * r), v3(0, -1, 0));
+    const hit = downRay.intersectObjects(meshes, false)[0]; if (hit) y = Math.max(y, hit.point.y);
+  }
+  return y;
+}
+const goldColor = () => new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--gold').trim() || '#A8833F');
+function buildPlaceMarks() {
+  clearGroup(placeMarks);
+  for (const f of S.forms) {
+    if (!isPlace(f) || f.kind !== 'recess') continue; const ev = EV.get(f.id); if (!ev?.plan || !ev.fr) continue;
+    const bad = ev.blocked || ev.slack; if (!bad && (ev.depth || 0) > 0.003) continue;
+    placeMarks.add(fatLine(ev.plan.map(p => to3(ev.fr, p[0], p[1], 0.003)), { closed: true, width: 2, dashed: !!bad, color: bad ? goldColor() : 0xffffff, opacity: 0.95 }));
+  }
+  // an exception whose description no longer holds is marked where it kept its place
+  for (const f of S.forms) {
+    if (!f.repeat?.on) continue; const ev = EV.get(f.id);
+    for (const res of Object.values(ev?.layout?.res || {})) if (res.state === 'slack' && res.inst?.plan?.length > 2) placeMarks.add(fatLine(res.inst.plan.map(p => to3(res.inst.fr, p[0], p[1], (f.kind === 'mass' ? ev.h : 0) + 0.006)), { closed: true, width: 2.2, dashed: true, color: goldColor(), opacity: 1 }));
+  }
 }
 
 function evaluate() {
   EV.clear();
   clearGroup(formGroup);
-  // recesses first (frames follow them), then masses (assets sit on them), then runs
-  const order = [...S.forms.filter(f => f.kind === 'recess'), ...S.forms.filter(f => f.kind === 'mass'), ...S.forms.filter(f => f.kind === 'run')];
+  // the room's own forms first: recesses (frames follow them), masses, runs; then rhythms,
+  // which make way for them; then places, each after the form it stands on
+  const room = S.forms.filter(f => !isPlace(f)), plain = room.filter(f => !f.repeat?.on);
+  const order = [...plain.filter(f => f.kind === 'recess'), ...plain.filter(f => f.kind === 'mass'), ...plain.filter(f => f.kind === 'run'), ...room.filter(f => f.repeat?.on)];
+  const done = new Set(order.map(f => f.id)); let rest = S.forms.filter(isPlace);
+  while (rest.length) {
+    const ready = rest.filter(f => !f.host.form || done.has(f.host.form) || !formById(f.host.form));
+    if (!ready.length) { order.push(...rest); break; }
+    for (const f of ready) { order.push(f); done.add(f.id); } rest = rest.filter(f => !done.has(f.id));
+  }
   for (const f of order) {
     const ev = { id: f.id }; const pos = [];
     try {
-      if (f.kind === 'mass') evalMass(f, pos, ev); else if (f.kind === 'run') evalRun(f, pos, ev); else evalRecess(f, pos, ev);
+      if (isPlace(f)) resolveHost(f, ev);
+      if (f.repeat?.on) evalRhythm(f, pos, ev);
+      else if (f.kind === 'mass') evalMass(f, pos, ev); else if (f.kind === 'run') evalRun(f, pos, ev); else evalRecess(f, pos, ev);
     } catch (e) { console.warn('evaluate', f.id, e); }
     EV.set(f.id, ev);
     if (!pos.length) continue;
@@ -828,17 +1191,20 @@ function evaluate() {
     formGroup.add(mesh); ev.mesh = mesh;
     geo.computeBoundingBox(); ev.box = geo.boundingBox.clone();
   }
-  // the asset rests on whatever is under it (gravity, not a tie)
-  assetY = 0;
-  for (const f of S.forms) {
-    if (f.kind !== 'mass' || f.host !== 'floor') continue; const ev = EV.get(f.id); if (!ev || !ev.plan) continue;
-    if (inPoly([S.asset.x, S.asset.z], ev.plan)) assetY = Math.max(assetY, ev.h);
-  }
+  assetY = restingHeight();
   buildRoom(); buildAsset();
-  computeTies();
+  computeTies(); buildPlaceMarks();
 }
 
 /* ---------- The room (context) ---------- */
+function notchPath(hole, v0) {
+  // the doorway's outline without its sill: from the bottom-left, up and around, to the bottom-right
+  const n = hole.length; const sill = p => p[1] <= v0 + 1e-4; let iL = -1, iR = -1;
+  for (let i = 0; i < n; i++) if (sill(hole[i])) { if (iL < 0 || hole[i][0] < hole[iL][0]) iL = i; if (iR < 0 || hole[i][0] > hole[iR][0]) iR = i; }
+  const step = sill(hole[(iL + 1) % n]) ? -1 : 1; const out = []; let i = iL, guard = 0;
+  while (guard++ <= n) { out.push(hole[i]); if (i === iR) break; i = (i + step + n) % n; }
+  return out;
+}
 function buildRoom() {
   clearGroup(roomGroup);
   const { W, D, H } = S.space; const T = 0.2;
@@ -846,8 +1212,18 @@ function buildRoom() {
   floor.receiveShadow = true; floor.userData = { host: 'floor' }; roomGroup.add(floor); floorMesh = floor;
   for (const host of ['back', 'left', 'right']) {
     const fr = frameOf(host); const [u0, u1, v0, v1] = fr.b;
-    const holes = S.forms.filter(f => f.kind === 'recess' && f.host === host && EV.get(f.id)?.plan).map(f => EV.get(f.id).plan);
-    const pos = []; flatCap(pos, fr, [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], holes, 0, 1);
+    const plans = [];
+    for (const f of S.forms) {
+      const ev = EV.get(f.id); if (!ev || f.kind !== 'recess') continue;
+      if (f.repeat?.on) { for (const it of ev.instances || []) if (it.wall === host && !it.omit && it.plan?.length > 2) plans.push(it.plan); }
+      else if (f.host === host && ev.plan) plans.push(ev.plan);
+    }
+    // a doorway reaches the floor: it notches the wall's outline instead of being a hole in it
+    const minV = p => Math.min(...p.map(q => q[1])), minU = p => Math.min(...p.map(q => q[0]));
+    const doors = plans.filter(p => minV(p) <= v0 + 1e-4).sort((a, b) => minU(a) - minU(b));
+    const holes = plans.filter(p => !doors.includes(p));
+    const contour = [[u0, v0]]; for (const dp of doors) contour.push(...notchPath(dp, v0)); contour.push([u1, v0], [u1, v1], [u0, v1]);
+    const pos = []; flatCap(pos, fr, contour, holes, 0, 1);
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
     const m = new THREE.Mesh(g, wallMat); m.receiveShadow = true; m.castShadow = true; m.userData = { host }; roomGroup.add(m); wallMeshes[host] = m;
   }
@@ -893,7 +1269,9 @@ function computeTies() {
   const { W, H } = S.space;
   for (const f of S.forms) {
     const ev = EV.get(f.id); if (!ev) continue; const ties = []; ev.ties = ties;
-    if (f.kind === 'mass' && ev.plan) {
+    if (isPlace(f)) placeTies(f, ev, ties);
+    if (f.repeat?.on) rhythmTies(f, ev, ties);
+    if (f.kind === 'mass' && ev.plan && !isPlace(f)) {
       const fr = ev.fr; const front = ev.plan.reduce((a, b) => (b[1] > a[1] ? b : a));
       const top = to3(fr, front[0], front[1], ev.h);
       if (f.plan.type === 'fit') ties.push({ key: 'fit', state: 'tied', label: `Fits the sculpture, ${fmt(f.plan.margin)} margin`, why: 'You looped around it', at: top, to: v3(S.asset.x, assetY + ASSETS[S.asset.variant].h * 0.6, S.asset.z), target: 'asset' });
@@ -927,17 +1305,73 @@ function computeTies() {
     }
     for (const pr of (f.proposals || [])) {
       const at = proposalPoint(f, pr, ev); if (!at) continue;
-      ties.push({ key: 'prop-' + pr.key, proposal: pr, state: 'proposed', label: pr.label, why: 'It touched this when you drew it', at, to: pr.target === 'right' ? v3(W, at.y, at.z) : v3(at.x, H, at.z), target: pr.target });
+      const tg = formById(pr.target); const tev = tg && EV.get(tg.id);
+      const to = pr.target === 'right' ? v3(W, at.y, at.z) : pr.target === 'ceiling' ? v3(at.x, H, at.z) : tev?.planBox ? to3(tev.fr, (tev.planBox.min[0] + tev.planBox.max[0]) / 2, tev.planBox.min[1], 0) : at;
+      ties.push({ key: 'prop-' + pr.key + (pr.ex ? ':' + pr.ex : ''), proposal: pr, state: 'proposed', label: pr.label, why: pr.key === 'under' ? 'It sits there, but sitting there is not a tie' : 'It touched this when you drew it', at, to, target: pr.target });
     }
   }
 }
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const plural = (noun, n) => n === 1 ? noun : noun + 's';
+function endSide(g, key) { const P = g.path; return (key === 'a') === (chainS(P.a) > chainS(P.b)) ? 'right' : 'left'; }
+function anchorText(f, ev) {
+  const h = f.host;
+  if (h.face === 'seat') { const g = formById(h.form); const u0 = ev.plan ? Math.min(...ev.plan.map(p => p[0])) : 0; return `at its ${g ? endSide(g, h.anchor.end) : ''} end` + (u0 > 0.02 ? `, ${fmt(u0)} in` : ''); }
+  const off = ev.c ? Math.hypot(ev.c[0], ev.c[1]) : 0; return off < 0.012 ? 'centred' : `${fmt(off)} off centre`;
+}
+const PLACE_SLACK = {
+  gone: (f, g) => `${hostName(f.host)} is gone.`,
+  moved: (f, g) => `${g?.name}'s seat moved more than 15 cm at once, which changes what “the seat” meant.`,
+  tilted: (f, g) => `The seat under it is no longer flat.`,
+  corner: (f, g) => `It would now run around ${g?.name}'s corner.`,
+  noseat: (f, g) => `${g?.name} has no seat there any more.`,
+};
+function placeTies(f, ev, ties) {
+  if (!ev.fr || !ev.plan || f.host.face === 'frozen') return;
+  // the knot sits on the drawing's front edge, clear of the handle at its centre
+  const g = formById(f.host.form); const fp = ev.plan.reduce((a, b) => (b[1] > a[1] ? b : a)); const at = to3(ev.fr, fp[0], fp[1], f.kind === 'mass' ? (ev.h || 0) + 0.01 : 0.01);
+  const to = g && EV.get(g.id)?.box ? EV.get(g.id).box.getCenter(new THREE.Vector3()) : at;
+  ties.push({ key: 'host', fixed: f.kind === 'recess', state: ev.slack ? 'slack' : 'tied', label: ev.slack ? PLACE_SLACK[ev.slack](f, g) : `${f.kind === 'mass' ? 'Stands on' : 'Cut into'} ${hostName(f.host)}, ${anchorText(f, ev)}`, why: 'You drew it there', at, to, target: f.host.form });
+  if (f.kind === 'recess' && f.through && !ev.slack && !ev.blocked) ties.push({ key: 'through', state: 'tied', label: `Goes through ${g?.name}`, why: 'You pushed it through', at: to3(ev.fr, fp[0], fp[1], -Math.min(0.08, (ev.hostH || 0.1) / 2)), to: to3(ev.fr, fp[0], fp[1], -(ev.hostH || 0.1)), target: f.host.form });
+}
+function wallsText(lay) { const w = WALLS.filter(x => lay.byWall[x]); return w.length ? `the ${w.length > 1 ? w.slice(0, -1).join(', ') + ' and ' + w[w.length - 1] + ' walls' : w[0] + ' wall'}` : 'the walls'; }
+function instTop(f, ev, it) { const bb = bbox2(it.plan); return to3(it.fr, (bb.min[0] + bb.max[0]) / 2, bb.max[1], (f.kind === 'mass' ? ev.h : 0) + 0.012); }
+function whereText(f, E) {
+  const w = E.where; const ref = { back: 'the left corner', left: 'the back corner', right: 'the back corner' };
+  if (w.type === 'middle') return `the middle one on the ${w.wall} wall`;
+  if (w.type === 'nth') return `the ${ORD(w.n)} from the ${w.from} on the ${w.wall} wall`;
+  if (w.type === 'under') return `centred under ${formById(w.target)?.name || w.name || 'a niche that is gone'}`;
+  return `${fmtM(Math.abs(sToWallU(w.wall, w.s)))} from ${ref[w.wall]}`;
+}
+function exSlackText(f, E, why, n) {
+  const noun = f.repeat.noun || 'panel'; const w = E.where.wall;
+  return { nomiddle: `with ${n} ${plural(noun, n)} on the ${w} wall there is no middle one`, range: `there are only ${n} on the ${w} wall now`,
+    gone: `${E.where.name || 'what it was centred under'} is gone`, noroom: 'there is no room for it where it belongs', taken: 'another exception already holds that one' }[why] || 'its description no longer fits';
+}
+function rhythmTies(f, ev, ties) {
+  const lay = ev.layout; if (!lay || !ev.first) return; const R = f.repeat; const at = instTop(f, ev, ev.first);
+  if (R.along.type === 'edge') { ties.push({ key: 'repeat', state: lay.slack ? 'slack' : 'tied', label: lay.slack ? 'Was repeating along a niche that is gone' : `Repeats along the edge of ${formById(R.along.target)?.name}`, why: 'You drew along it', at, to: at, target: R.along.target }); return; }
+  const right = [R.along.a, R.along.b].some(e => e.seg === 'right' || e.tie === 'right');
+  ties.push({ key: 'repeat', state: 'tied', label: `Repeats along ${wallsText(lay)}`, why: 'You drew along from it', at, to: at, target: right ? 'right' : 'walls' });
+  for (const E of R.exceptions || []) {
+    if (E.on === false) continue; const res = lay.res[E.id]; if (!res) continue; const it = res.inst;
+    if (E.where.type === 'under' && res.state === 'ok' && it) { const Rf = formById(E.where.target); const rev = EV.get(Rf.id); ties.push({ key: 'ex:' + E.id, state: 'tied', label: `${cap(E.label)} stays centred under ${Rf.name}`, why: 'You tied it there', at: instTop(f, ev, it), to: to3(rev.fr, rev.c[0], rev.planBox.min[1], 0), target: Rf.id }); }
+    else if (res.state === 'slack') { const p = it ? instTop(f, ev, it) : at; ties.push({ key: 'ex:' + E.id, state: 'slack', label: `${cap(E.label)}: ${exSlackText(f, E, res.why, lay.byWall[E.where.wall]?.length || 0)}`, at: p, to: p, target: f.id }); }
+  }
+}
 function proposalPoint(f, pr, ev) {
+  if (pr.key === 'under') { if (!formById(pr.target)) return null; const it = ev.layout?.res[pr.ex]?.inst; return it ? instTop(f, ev, it) : null; }
   if (pr.key === 'endRight' && f.path?.type === 'seam') { const w = endWorld(f.path[pr.end], f.path.chain); w.y += 0.05; return w; }
   if ((pr.key === 'planRight' || pr.key === 'pathRight') && (ev.plan || ev.path)) { const pts = ev.plan || ev.path; const r = pts.reduce((a, b) => (b[0] > a[0] ? b : a)); return to3(ev.fr, r[0], r[1], f.kind === 'mass' ? ev.h * 0.5 : 0.03); }
   if (pr.key === 'planCeiling' && ev.plan) { const t = ev.plan.reduce((a, b) => (b[1] > a[1] ? b : a)); return to3(ev.fr, t[0], t[1], 0.01); }
   return null;
 }
 function acceptProposal(f, pr) {
+  if (pr.key === 'under') {
+    const E = f.repeat?.exceptions.find(x => x.id === pr.ex); const tg = formById(pr.target); if (!E || !tg) return;
+    setExWhere(f, E, { type: 'under', wall: E.where.wall, target: tg.id, name: tg.name }, `${cap(E.label)} tied under ${tg.name}`);
+    return whisper(`Tied. ${cap(E.label)} will stay centred under ${tg.name}; the ${nouns(f.repeat.noun || 'panel', 2)} on either side share what is left.`, 'Untie', () => undo());
+  }
   beginChange([f.id]);
   const fr = frameOf(f.host || f.path?.host || 'floor');
   if (pr.key === 'endRight') { const end = f.path[pr.end]; end.seg = 'back'; end.tie = 'right'; end.c = 0; }
@@ -949,8 +1383,17 @@ function acceptProposal(f, pr) {
   whisper(`Tied. ${f.name} will now ${pr.verb || 'follow the right wall'}.`, 'Untie', () => undo());
 }
 function untie(f, key) {
-  beginChange([f.id]);
   const ev = EV.get(f.id);
+  if (key === 'repeat') { setRhythm(f, { on: false }, `${f.name}: repetition off`); return whisper(`Switched off. The single ${f.repeat.noun || 'panel'} is back where you drew it; switch it on again from its card and nothing is lost.`, 'Undo', undo); }
+  if (key.startsWith('ex:')) {
+    const E = f.repeat.exceptions.find(x => x.id === key.slice(3)); const it = ev.layout?.res[E.id]?.inst; if (!it) return;
+    const nm = formById(E.where.target)?.name || 'the niche';
+    setExWhere(f, E, { type: 'at', wall: it.wall, s: +it.s.toFixed(4) }, `${cap(E.label)} untied`);
+    return whisper(`Untied. ${cap(E.label)} stays exactly where it is now; ${nm} can move without it.`, 'Undo', undo);
+  }
+  beginChange([f.id]);
+  if (key === 'host') f.host = { form: f.host.form, face: 'frozen', cache: f.host.cache };
+  if (key === 'through') { f.through = false; f.depth = +Math.max(0, (ev.hostH || 0.1) - 0.02).toFixed(3); autoName(f); }
   if (key === 'fit') { // bake the fitted plan where it is now
     const plan = ev.plan; const circle = f.plan.shape !== 'square';
     const ctrl = circle ? (() => { const c = centroid(plan), r = d2(plan[0], c), pts = []; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; pts.push({ x: c[0] + Math.cos(a) * r, y: c[1] + Math.sin(a) * r, s: false }); } return pts; })()
@@ -985,6 +1428,17 @@ function metricsAll() {
     const r = { kind: f.kind, name: f.name, slack: !!ev.slack };
     if (ev.planBox) { r.w = ev.planBox.w; r.d = ev.planBox.h; r.cx = ev.c[0]; r.cz = ev.c[1]; }
     if (ev.h != null) r.h = ev.h; if (ev.len != null) r.len = ev.len;
+    if (f.repeat?.on && ev.layout) {
+      const lay = ev.layout; r.rh = { walls: {}, ex: {}, made: [...new Set(lay.madeWay)], n: lay.instances.length };
+      for (const w of WALLS) {
+        const L = lay.byWall[w]; if (!L) continue; const fr = L.filter(i => !i.anchor);
+        // how the wall divides around anything anchored on it: "3 + 4"
+        const runs = [0]; for (const i of L) { if (i.anchor) runs.push(0); else runs[runs.length - 1]++; }
+        r.rh.walls[w] = { n: L.length, w: fr.length ? fr.reduce((a, i) => a + i.w, 0) / fr.length : lay.w0, runs };
+      }
+      for (const E of f.repeat.exceptions || []) { const res = lay.res[E.id]; if (!res) continue; const it = res.inst; r.rh.ex[E.id] = { state: res.state, why: res.why, wall: it?.wall, s: it?.s, under: it ? underCandidates(f, it.wall, sToWallU(it.wall, it.s))[0]?.id || null : null }; }
+    }
+    if (isPlace(f)) r.place = { slack: ev.slack || null, hostH: ev.hostH, through: !!ev.through, stopped: !!ev.stopped, depth: ev.depth };
     if (ev.box) { r.bx = (ev.box.min.x + ev.box.max.x) / 2; r.by = (ev.box.min.y + ev.box.max.y) / 2; r.bz = (ev.box.min.z + ev.box.max.z) / 2; r.bw = ev.box.max.x - ev.box.min.x; r.bh = ev.box.max.y - ev.box.min.y; }
     m[f.id] = r;
   }
@@ -1013,6 +1467,8 @@ function diffNotes(A, B, direct) {
     if (!a) continue; // new form: the creator just made it
     if (direct.has(f.id)) continue;
     const ev = EV.get(f.id);
+    if (f.repeat?.on && a.rh && b.rh) { rhythmNotes(f, a, b, out); continue; }
+    if (isPlace(f) && a.place && b.place) { placeNotes(f, a, b, out); continue; }
     if (b.slack && !a.slack) { out.push({ id: f.id, cls: 'slack', text: `${f.name} kept its shape. The thing it followed is gone, so its tie is slack. Decide in its card.` }); continue; }
     if (f.kind === 'run' && Math.abs((b.len || 0) - (a.len || 0)) > 0.009) {
       const dl = b.len - a.len; const why = f.path.type === 'seam' ? `to keep following ${CHAIN_NAME[f.path.chain]}` : f.path.type === 'edge' ? `to keep following ${formById(f.path.target)?.name || 'its niche'}` : 'to keep reaching the right wall';
@@ -1044,6 +1500,45 @@ function diffNotes(A, B, direct) {
   return out;
 }
 
+function rhythmNotes(f, a, b, out) {
+  const msgs = [];
+  for (const w of WALLS) {
+    const x = a.rh.walls[w], y = b.rh.walls[w]; if (!x && !y) continue;
+    if (x && y && x.n === y.n && Math.abs(x.w - y.w) < 0.004) continue;
+    msgs.push(!y ? `left the ${w} wall` : !x ? `now reaches the ${w} wall, ${y.n} of them` : x.n === y.n ? `kept ${y.n} on the ${w} wall, now ${fmt(y.w)} wide (were ${fmt(x.w)})` : `re-divided the ${w} wall: ${y.n} of ${fmt(y.w)} (was ${x.n} of ${fmt(x.w)})`);
+  }
+  const made = b.rh.made.filter(id => !a.rh.made.includes(id)).map(id => formById(id)?.name).filter(Boolean);
+  if (made.length) msgs.push(`made way for ${made.join(' and ')}`);
+  if (msgs.length) out.push({ id: f.id, text: `${f.name} ${msgs.join('; ')}.` });
+  for (const E of f.repeat.exceptions || []) {
+    const e0 = a.rh.ex[E.id], e1 = b.rh.ex[E.id]; if (!e0 || !e1 || E.on === false) continue;
+    if (e1.state === 'slack' && e0.state !== 'slack') { out.push({ id: f.id, cls: 'slack', text: `${cap(E.label)}: ${exSlackText(f, E, e1.why, b.rh.walls[E.where.wall]?.n || 0)}. It kept its shape and place instead of choosing another; decide in ${f.name}'s card.` }); continue; }
+    if (e1.state === 'ok' && e0.state === 'slack') {
+      const runs = b.rh.walls[E.where.wall]?.runs || []; const around = E.where.type === 'under' && runs.length === 2 ? `; the ${E.where.wall} wall divides around it, ${runs[0]} on the left and ${runs[1]} on the right` : '';
+      out.push({ id: f.id, text: `${cap(E.label)} is ${whereText(f, E)} now${around}.` }); continue;
+    }
+    if (e1.state !== 'ok' || e1.s == null || e0.s == null) continue;
+    const moved = Math.abs(e1.s - e0.s) > 0.01 || e1.wall !== e0.wall; const lost = e0.under && !e1.under && E.where.type !== 'under';
+    if (!moved && !lost) continue;
+    const text = `${cap(E.label)} is still ${whereText(f, E)}` + (moved ? `; it moved ${fmt(Math.abs(e1.s - e0.s))}` : '');
+    if (lost) {
+      const tg = formById(e0.under); const pr = (f.proposals || []).find(p => p.key === 'under' && p.ex === E.id && p.target === e0.under);
+      out.push({ id: f.id, cls: 'still', text: `${text}, so it no longer sits under ${tg?.name}. Sitting under it was never a tie.`, act: tg ? { label: 'Tie it there', fn: () => pr ? acceptProposal(f, pr) : setExWhere(f, E, { type: 'under', wall: E.where.wall, target: tg.id, name: tg.name }) } : null });
+    } else out.push({ id: f.id, text: `${text}.` });
+  }
+}
+function placeNotes(f, a, b, out) {
+  const g = formById(f.host.form); const ev = EV.get(f.id);
+  if (b.place.slack && !a.place.slack) return out.push({ id: f.id, cls: 'slack', text: `${f.name} kept its place. ${PLACE_SLACK[b.place.slack](f, g)} Decide in its card.` });
+  if (a.place.slack && !b.place.slack) return out.push({ id: f.id, text: `${f.name} is on ${hostName(f.host)} again.` });
+  if (f.kind === 'recess' && b.place.through && a.place.through && Math.abs((b.place.hostH || 0) - (a.place.hostH || 0)) > 0.005) return out.push({ id: f.id, text: `${f.name} still goes through ${g?.name}, now ${fmt(b.place.hostH)} deep. It is tied to going through, not to a depth.` });
+  if (f.kind === 'recess' && b.place.stopped && !a.place.stopped) return out.push({ id: f.id, cls: 'still', text: `${f.name} stops at ${fmt(b.place.depth)}: any deeper and it would break out of ${g?.name}'s side.` });
+  if (b.bx == null || a.bx == null) return;
+  const hz = Math.hypot(b.bx - a.bx, b.bz - a.bz), dy = b.by - a.by;
+  if (hz > 0.005) return out.push({ id: f.id, text: `${f.name} moved ${fmt(hz)} with ${hostName(f.host)}${f.host.face === 'seat' ? `, staying ${anchorText(f, ev)}` : ''}.` });
+  if (Math.abs(dy) > 0.005) return out.push({ id: f.id, text: `${f.name} ${dy < 0 ? 'came down' : 'went up'} ${fmt(Math.abs(dy))} with ${hostName(f.host)}.` });
+}
+
 /* ---------- Picking & projection ---------- */
 const raycaster = new THREE.Raycaster(); const ndc = new THREE.Vector2();
 const crect = () => renderer.domElement.getBoundingClientRect();
@@ -1055,7 +1550,15 @@ function pick(cx, cy) {
   const hit = raycaster.intersectObjects(objs, false)[0]; if (!hit) return null;
   const u = hit.object.userData; const n = hit.face ? hit.face.normal.clone() : v3(0, 1, 0);
   if (u.asset) return { kind: 'asset', point: hit.point, normal: n };
-  if (u.formId) return { kind: 'form', formId: u.formId, point: hit.point, normal: n };
+  if (u.formId) {
+    // a hollow or opening is carved into its host's mesh: find it by where the hit is
+    for (const r of S.forms) {
+      if (r.kind !== 'recess' || !isPlace(r) || r.host.form !== u.formId) continue; const rev = EV.get(r.id); if (!rev?.plan || !rev.fr) continue;
+      const q = hit.point.clone().sub(rev.fr.o).dot(rev.fr.N); if (q > 0.005 || q < -(rev.depth || 0) - 0.01) continue;
+      const uv = toHost(rev.fr, hit.point); if (inPoly(uv, rev.plan) || polyDist(uv, rev.plan) < 0.006) return { kind: 'form', formId: r.id, point: hit.point, normal: n };
+    }
+    return { kind: 'form', formId: u.formId, point: hit.point, normal: n };
+  }
   if (u.host === 'floor') return { kind: 'floor', host: 'floor', point: hit.point, normal: n };
   return { kind: 'wall', host: u.host, point: hit.point, normal: n };
 }
@@ -1108,7 +1611,7 @@ function seamCandidates() {
     pts.push(v3(cp[3][0], y, cp[3][1])); s.push(acc);
     out.push({ id: chain, kind: 'chain', pts, s });
   }
-  for (const f of S.forms) if (f.kind === 'recess' && EV.get(f.id)?.plan) { const ev = EV.get(f.id); const pts = ev.plan.map(p => to3(ev.fr, p[0], p[1], 0.005)); pts.push(pts[0].clone()); out.push({ id: f.id, kind: 'edge', pts, host: f.host }); }
+  for (const f of S.forms) if (f.kind === 'recess' && !isPlace(f) && EV.get(f.id)?.plan) { const ev = EV.get(f.id); const pts = ev.plan.map(p => to3(ev.fr, p[0], p[1], 0.005)); pts.push(pts[0].clone()); out.push({ id: f.id, kind: 'edge', pts, host: f.host }); }
   return out;
 }
 function seamMatch(scr) {
@@ -1132,6 +1635,28 @@ function endFromS(s) {
   return { seg: 'right', c: +(s - D - W).toFixed(4) };
 }
 
+const isMotif = f => !!f && !isPlace(f) && (f.kind === 'mass' || f.kind === 'recess') && WALLS.includes(f.host) && f.plan?.type === 'drawn' && !f.pending;
+// the flat top of a form, or a bench's seat: a place to draw on
+function faceAt(f, hit) {
+  if (!f || f.pending || f.repeat?.on) return null; const ev = EV.get(f.id); if (!ev) return null;
+  if (f.kind === 'mass' && (f.host === 'floor' || isPlace(f)) && Math.abs(hit.normal.y) > 0.9) {
+    const r = resolveFace({ form: f.id, face: 'top' }); if (!r.ok || Math.abs(hit.point.y - r.fr.o.y) > 0.02) return null;
+    return { desc: { form: f.id, face: 'top', anchor: { at: 'centre' } }, fr: r.fr };
+  }
+  if (f.kind === 'run' && f.path.type === 'seam' && f.path.chain === 'floor' && ev.path && Math.abs(hit.normal.y) > 0.85) {
+    const path = ev.path, n = path.length, P = [hit.point.x, hit.point.z];
+    let acc = 0, best = { d: Infinity, s: 0 };
+    for (let i = 0; i < n - 1; i++) { const L = d2(path[i], path[i + 1]); const d = segDist(P, path[i], path[i + 1]); if (d < best.d) { const t = clamp(((P[0] - path[i][0]) * (path[i + 1][0] - path[i][0]) + (P[1] - path[i][1]) * (path[i + 1][1] - path[i][1])) / (L * L || 1), 0, 1); best = { d, s: acc + t * L }; } acc += L; }
+    const atStart = best.s < acc / 2; const sA = chainS(f.path.a), sB = chainS(f.path.b);
+    const end = atStart === (sA <= sB) ? 'a' : 'b';
+    const p0 = atStart ? path[0] : path[n - 1], p1 = atStart ? path[1] : path[n - 2]; const L = d2(p0, p1) || 1;
+    const lat = Math.abs(((p1[0] - p0[0]) * (P[1] - p0[1]) - (p1[1] - p0[1]) * (P[0] - p0[0])) / L);
+    const desc = { form: f.id, face: 'seat', anchor: { end, p: +lat.toFixed(4) } };
+    const r = resolveFace(desc); if (!r.ok || Math.abs(hit.point.y - r.q) > 0.03 || r.slope > 0.36) return null;
+    return { desc, fr: r.fr };
+  }
+  return null;
+}
 function startStroke(e) {
   if (pendingId) commitPending();
   const x = e.clientX, y = e.clientY;
@@ -1140,11 +1665,17 @@ function startStroke(e) {
     stroke = { type: 'over', trace, plane: new THREE.Plane(trace.axisN.clone(), -trace.axisN.dot(trace.c3)), raw: [], screen: [] };
   } else {
     const hit = pick(x, y); if (!hit) return;
-    let host = 'floor';
+    let host = 'floor', fr = null, from = null;
     if (hit.kind === 'wall') host = hit.host;
-    else if (hit.kind === 'form') { const f = formById(hit.formId); host = f.kind === 'run' ? (f.path.host && f.path.host !== 'floor' ? f.path.host : (f.path.cacheHost || (f.path.chain === 'ceiling' ? nearestWall(hit.point) : 'floor'))) : f.host; if (host === 'ceiling') host = nearestWall(hit.point); }
-    const fr = frameOf(host);
-    stroke = { type: 'host', host, fr, plane: planeOf(fr), raw: [], screen: [], startHit: hit };
+    else if (hit.kind === 'form') {
+      const f = formById(hit.formId); const face = faceAt(f, hit);
+      if (face) { host = face.desc; fr = face.fr; }
+      else if (isMotif(f)) { host = f.host; from = f.id; }   // it may become a drawing along from it
+      else host = f.kind === 'run' ? (f.path.host && f.path.host !== 'floor' ? f.path.host : (f.path.cacheHost || (f.path.chain === 'ceiling' ? nearestWall(hit.point) : 'floor'))) : f.host;
+      if (host === 'ceiling') host = nearestWall(hit.point);
+    }
+    fr = fr || frameOf(host);
+    stroke = { type: 'host', host, fr, plane: planeOf(fr), raw: [], screen: [], startHit: hit, from, along: from ? [] : null };
   }
   inkPath = document.createElementNS('http://www.w3.org/2000/svg', 'path'); inkPath.setAttribute('class', 'ink'); inkLayer.appendChild(inkPath);
   addStrokePoint(x, y);
@@ -1156,25 +1687,89 @@ function addStrokePoint(x, y) {
   stroke.screen.push([x, y]);
   if (stroke.type === 'over') { const t = stroke.trace; stroke.raw.push([P.clone().sub(t.c3).dot(t.A), P.y - t.base]); }
   else stroke.raw.push(toHost(stroke.fr, P));
+  if (stroke.along) { // where along the walls the pen is, around corners too
+    rayAt(x, y); const wh = raycaster.intersectObjects(Object.values(wallMeshes), false)[0];
+    if (wh) { const w = wh.object.userData.host; stroke.along.push(wallToS(w, toHost(frameOf(w), wh.point)[0])); }
+  }
   inkPath.setAttribute('d', 'M' + stroke.screen.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L'));
   if (stroke.screen.length % 5 === 0) liveInterpretation(x, y);
 }
+/* ---------- Drawing along: a rhythm from one drawing ---------- */
+const alongGroup = new THREE.Group(); scene.add(alongGroup);
+const NOUN_NAME = { panel: 'Panelling', dentil: 'Dentils', bead: 'Beading', recess: 'Recesses' };
+const nouns = (noun, n) => n === 1 ? noun : noun.endsWith('s') ? noun + 'es' : noun + 's';
+const defaultGap = M => +clamp(0.2 * M.w0, 0.03, 0.2).toFixed(3);
+function alongEnd(s) {
+  const { W, D } = S.space; for (const k of [0, D, D + W, 2 * D + W]) if (Math.abs(s - k) < 0.35) s = k;
+  s = clamp(s, 0, 2 * D + W);
+  if (s <= D) return { seg: 'left', c: +(D - s).toFixed(4), tie: null };
+  if (Math.abs(s - D - W) < 1e-6) return { seg: 'back', c: 0, tie: 'right' };
+  if (s < D + W) return { seg: 'back', c: +(s - D).toFixed(4), tie: null };
+  return { seg: 'right', c: +(s - D - W).toFixed(4), tie: null };
+}
+function alongRange(st) {
+  const f = formById(st.from); if (!f || !st.along || st.along.length < 3) return null;
+  const M = motifOf(f); const m = [wallToS(f.host, M.cu - M.w0 / 2), wallToS(f.host, M.cu + M.w0 / 2)];
+  let lo = Math.min(...m, ...st.along), hi = Math.max(...m, ...st.along);
+  if (f.repeat?.along?.type === 'walls') { lo = Math.min(lo, chainS(f.repeat.along.a), chainS(f.repeat.along.b)); hi = Math.max(hi, chainS(f.repeat.along.a), chainS(f.repeat.along.b)); }
+  const reach = Math.max(...st.along) - Math.min(...st.along); if (reach < M.w0 * 2.2) return null;
+  return { a: alongEnd(lo), b: alongEnd(hi) };
+}
+function alongGhost(st) {
+  clearGroup(alongGroup); const f = formById(st.from); const r = alongRange(st); if (!f || !r) return null;
+  const M = motifOf(f); const R = { on: true, along: { type: 'walls', ...r }, gap: f.repeat?.gap ?? defaultGap(M), mode: f.repeat?.mode || 'flex', exceptions: f.repeat?.exceptions || [] };
+  const lay = rhythmLayout(f, R);
+  for (const it of lay.instances) if (it.plan.length > 2) alongGroup.add(fatLine(it.plan.map(p => to3(it.fr, p[0], p[1], 0.008)), { closed: true, dashed: true, width: 1.6, opacity: 0.95 }));
+  return { n: lay.instances.length, walls: Object.keys(lay.byWall).length, noun: f.repeat?.noun || nounFor(f, M) };
+}
+function nounFor(f, M, edge) { return edge ? 'bead' : M.w0 < 0.15 ? 'dentil' : f.kind === 'recess' ? 'recess' : 'panel'; }
+function makeAlong(f, r) {
+  const M = motifOf(f); beginChange([f.id]);
+  const noun = f.repeat?.noun || nounFor(f, M);
+  if (f.repeat) Object.assign(f.repeat, { on: true, along: { type: 'walls', ...r } });
+  else f.repeat = { on: true, along: { type: 'walls', ...r }, gap: defaultGap(M), mode: 'flex', exceptions: [], noun };
+  if (/^(Relief|Niche)( \d+)?$/.test(f.name)) f.name = uniqueName(NOUN_NAME[noun]);
+  endChange(`${f.name} drawn along`, { notes: false }); select(f.id);
+  const lay = EV.get(f.id).layout; const counts = WALLS.filter(w => lay.byWall[w]).map(w => lay.byWall[w].length);
+  whisper(`${cap(nouns(noun, 2))} along ${wallsText(lay)}: ${counts.join(' + ')}, sharing each stretch evenly. Draw over any one to change them all.`, 'Keep their size instead', () => setRhythm(f, { mode: 'keep' }, 'Keeping their size'));
+}
+function makeAlongEdge(f, m, st) {
+  const tg = formById(m.c.id); const tev = EV.get(tg.id);
+  // which stretches of the edge did the pen follow?
+  const str = edgeStretches(tev.plan); const hits = str.map(() => 0);
+  for (const q of st.raw) { let bi = 0, bd = Infinity; str.forEach((x, i) => { const d = polyDist(q, x.pts, false); if (d < bd) { bd = d; bi = i; } }); hits[bi]++; }
+  const roles = [...new Set(str.filter((x, i) => hits[i] > st.raw.length * 0.15).map(x => x.role))];
+  const all = [...new Set(str.map(x => x.role))];
+  beginChange([f.id]);
+  f.repeat = { on: true, along: { type: 'edge', target: tg.id, roles: roles.length < all.length ? roles : null }, gap: +clamp(0.3 * motifOf(f).w0, 0.008, 0.08).toFixed(3), mode: 'keep', exceptions: [], noun: 'bead' };
+  if (/^(Relief|Niche)( \d+)?$/.test(f.name)) f.name = uniqueName('Beading');
+  endChange(`${f.name} drawn along ${tg.name}`, { notes: false }); select(f.id);
+  const n = EV.get(f.id).layout.instances.length;
+  whisper(`${n} beads along the ${f.repeat.along.roles ? f.repeat.along.roles.join(' and ') : 'edge'} of ${tg.name}, each its own size. They divide at its corners, like a rhythm divides at a room's.`);
+}
+function setRhythm(f, patch, label) { beginChange([f.id]); Object.assign(f.repeat, patch); endChange(label || `${f.name} changed`, { notes: false }); }
 function liveInterpretation(x, y) {
   if (!stroke) return;
   if (stroke.type === 'over') { showTip(x, y, `Reshaping ${stroke.trace.f.name}`, 'its profile follows your line'); return; }
+  if (stroke.from) {
+    const m = seamMatch(stroke.screen);
+    if (m && m.c.kind === 'edge' && m.c.id !== stroke.from && m.frac > 0.6 && pathLen(stroke.screen) > 60) { clearGroup(alongGroup); setSeamHighlight(m.c.pts); return showTip(x, y, `Along the edge of ${formById(m.c.id).name}`, 'release to repeat it along the edge'); }
+    const g = alongGhost(stroke);
+    if (g) { setSeamHighlight(null); return showTip(x, y, `Drawing along: ${g.n} ${nouns(g.noun, g.n)}`, (g.walls > 1 ? 'around the corner too · ' : '') + 'release to repeat it'); }
+  }
   const m = seamMatch(stroke.screen);
-  if (m && m.frac > 0.65) {
+  if (m && m.frac > 0.65 && !isPlace({ host: stroke.host })) {
     showTip(x, y, m.c.kind === 'chain' ? `Following ${CHAIN_NAME[m.c.id]}` : `Following the edge of ${formById(m.c.id).name}`, 'release to make a run');
     setSeamHighlight(m.c.pts);
   } else {
     setSeamHighlight(null);
     const sc = stroke.screen; const closed = sc.length > 10 && Math.hypot(sc[0][0] - x, sc[0][1] - y) < 30;
     if (closed && stroke.host === 'floor' && inPoly([S.asset.x, S.asset.z], stroke.raw)) showTip(x, y, 'Around the sculpture', 'a plan that fits it');
-    else showTip(x, y, closed ? `A closed shape on ${HOST_NAME[stroke.host]}` : `Drawing on ${HOST_NAME[stroke.host]}`);
+    else showTip(x, y, closed ? `A closed shape on ${hostName(stroke.host)}` : `Drawing on ${hostName(stroke.host)}`);
   }
 }
 function endStroke() {
-  if (!stroke) return; const st = stroke; stroke = null; setSeamHighlight(null); hideTip();
+  if (!stroke) return; const st = stroke; stroke = null; setSeamHighlight(null); hideTip(); clearGroup(alongGroup);
   const ink = inkPath; inkPath = null;
   if (ink) { ink.style.transition = 'opacity .35s'; requestAnimationFrame(() => ink.style.opacity = '0'); setTimeout(() => ink.remove(), 400); }
   const scrLen = pathLen(st.screen);
@@ -1200,10 +1795,25 @@ function interpret(st) {
   if (st.type === 'over') {
     const t = st.trace, f = t.f; const sideR = st.raw.reduce((a, p) => a + p[0], 0) / st.raw.length > (t.aL + t.aR) / 2;
     const pts = st.raw.map(([a, y]) => [sideR ? a - t.aR : t.aL - a, y]);
-    beginChange([f.id]); applyElevStroke(f, pts); endChange(`${f.name} reshaped`); clearTrace();
-    select(f.id); whisper(`${f.name}'s profile follows your line. Draw over it again to keep refining.`, 'Undo', undo);
-    return;
+    const dW = sideR ? t.A.clone() : t.A.clone().negate(); const dir = [+dW.x.toFixed(4), +dW.z.toFixed(4)];
+    const ex = f.except && f.except.on !== false ? f.except : null;
+    if (ex && ex.dir[0] * dir[0] + ex.dir[1] * dir[1] > 0.7) {
+      beginChange([f.id]); addExceptStroke(f, pts); endChange(`${f.name}'s ${ex.label} reshaped`); clearTrace(); select(f.id);
+      return whisper(`Only its ${ex.label} changed. The rest still follows the shared profile.`, 'Undo', undo);
+    }
+    beginChange([f.id]); applyElevStroke(f, pts); endChange(`${f.name} reshaped`); clearTrace(); select(f.id);
+    if (ex) return whisper(`Changed ${f.name}'s shared profile. Its ${ex.label} keeps what you drew there, on top of it.`, 'Undo', undo);
+    return whisper(`Changed ${f.name} all around. Draw over it again to keep refining.`, `Only the ${sideName(dir)}`, () => onlyThisSide(f, pts, dir));
   }
+  // drawing along from a panel (or a bead) makes it a rhythm
+  if (st.from) {
+    const f = formById(st.from); const m = seamMatch(st.screen);
+    if (m && m.c.kind === 'edge' && m.c.id !== f.id && m.frac > 0.6 && pathLen(st.screen) > 60) return makeAlongEdge(f, m, st);
+    const r = alongRange(st); if (r) return makeAlong(f, r);
+  }
+  // over one instance of a rhythm: change the motif (then, if wanted, only this one)
+  const inst = findInstanceTarget(st); if (inst) return applyInstanceOversketch(inst, st);
+  if (isPlace({ host: st.host })) return interpretOnPlace(st);
   const host = st.host, fr = st.fr;
   // A. along a seam or a niche's edge
   const m = seamMatch(st.screen);
@@ -1286,7 +1896,7 @@ function findOversketchTarget(st) {
     if (f.pending) continue;
     let pts3 = null, closed = true, ctrlOwner = null;
     const ev = EV.get(f.id); if (!ev) continue;
-    if ((f.kind === 'recess' || (f.kind === 'mass' && f.plan.type === 'drawn')) && f.host === st.host && ev.plan) {
+    if ((f.kind === 'recess' || (f.kind === 'mass' && f.plan.type === 'drawn')) && hostKey(f.host) === hostKey(st.host) && ev.plan && ev.fr) {
       const n = f.kind === 'mass' ? 0.003 : 0.003; pts3 = ev.plan.map(p => to3(ev.fr, p[0], p[1], n)); ctrlOwner = 'plan';
     } else if (f.kind === 'run' && f.path.type === 'drawn' && f.path.host === st.host && ev.path) { pts3 = ev.path.map(p => to3(ev.fr, p[0], p[1], 0)); closed = false; ctrlOwner = 'path'; }
     else if (f.kind === 'mass' && f.plan.type === 'fit' && f.host === st.host && ev.plan) {
@@ -1314,6 +1924,115 @@ function applyPlanOversketch(o, st) {
   if (f.kind === 'mass') f.plan.ctrl = next;
   endChange(`${f.name} reshaped`);
   select(f.id); whisper(`${f.name} redrawn where you drew over it.`, 'Undo', undo);
+}
+/* ---------- Exceptions: "only this one", "only this side" ----------
+   Drawing over one of many changes them all: they are one drawing. The whisper then offers
+   the exception. It is stored as a description (the middle one; the 3rd from the left;
+   centred under Niche; the front) and as the strokes you drew, re-spliced onto the
+   current motif or profile after every change. */
+function findInstanceTarget(st) {
+  const a = st.screen[0], b = st.screen[st.screen.length - 1];
+  for (const f of S.forms) {
+    if (!f.repeat?.on || f.pending) continue; const ev = EV.get(f.id); if (!ev?.instances || ev.layout?.edge) continue;
+    for (const it of ev.instances) {
+      if (it.wall !== st.host || it.omit || it.plan.length < 3) continue;
+      const sp = it.plan.map(p => toScreen(to3(it.fr, p[0], p[1], 0))); sp.push(sp[0]);
+      if (screenPolyDist(a, sp).d < 20 && screenPolyDist(b, sp).d < 20) return { f, it };
+    }
+  }
+  return null;
+}
+function describeInstance(lay, it) {
+  const list = lay.byWall[it.wall] || []; const n = list.length; const i = list.findIndex(x => Math.abs(x.s - it.s) < 1e-6);
+  if (n % 2 === 1 && i === (n - 1) / 2) return { type: 'middle', wall: it.wall };
+  const fromL = i + 1, fromR = n - i;
+  return fromL <= fromR ? { type: 'nth', wall: it.wall, from: 'left', n: fromL } : { type: 'nth', wall: it.wall, from: 'right', n: fromR };
+}
+function resolveWhere(lay, w) {
+  const list = lay.byWall[w.wall] || [];
+  if (w.type === 'middle') return list.length % 2 ? list[(list.length - 1) / 2] : null;
+  if (w.type === 'nth') return list[w.from === 'left' ? w.n - 1 : list.length - w.n] || null;
+  return null;
+}
+// a recess on the same wall whose centre is over (or under) this instance, clear of the band
+function underCandidates(f, wall, uC) {
+  const M = motifOf(f);
+  return S.forms.filter(g => g.kind === 'recess' && g.host === wall && !g.repeat?.on && !g.pending && EV.get(g.id)?.planBox)
+    .filter(g => { const b = EV.get(g.id).planBox; return (b.min[1] > M.v1 || b.max[1] < M.v0) && (uC == null || Math.abs((b.min[0] + b.max[0]) / 2 - uC) < 0.08); });
+}
+function applyInstanceOversketch(o, st) {
+  const { f, it } = o; const ev = EV.get(f.id), lay = ev.layout; const noun = f.repeat.noun || 'panel';
+  const t = tidy(st.raw, { forceOpen: true, loose: !tidyOn }); if (!t) return;
+  const sc = it.w / lay.w0;
+  const lst = t.ctrl.map(c => ({ ...c, x: +((wallToS(it.wall, c.x) - it.s) / sc).toFixed(4), y: +(c.y - lay.cv).toFixed(4) }));
+  if (it.ex && it.ex.change.type === 'shape') {
+    const E = it.ex; beginChange([f.id]); E.change.strokes.push(lst); endChange(`${cap(E.label)} redrawn`, { notes: false }); select(f.id);
+    return whisper(`Only ${E.label} changed. The others are still one drawing.`, 'Undo', undo);
+  }
+  const where = describeInstance(lay, it);
+  beginChange([f.id]);
+  const P = f.plan; const fr = frameOf(f.host); const du = P.tieU === 'move' ? fr.b[1] - P.refU : 0, dv = P.tieV === 'move' ? fr.b[3] - P.refV : 0;
+  P.ctrl = oversketch(lay.local, true, lst).map(c => ({ ...c, x: +(lay.cu + c.x * lay.sgn - du).toFixed(4), y: +(lay.cv + c.y - dv).toFixed(4) }));
+  endChange(`${f.name} redrawn`, { notes: false }); select(f.id);
+  const n = EV.get(f.id).instances.filter(x => !x.omit).length;
+  whisper(`Changed all ${n} ${nouns(noun, n)}: they are one drawing.`, 'Only this one', () => onlyThisOne(f, where, lst));
+}
+function onlyThisOne(f, where, lst) {
+  undo(); f = formById(f.id); if (!f?.repeat) return;
+  const lay = EV.get(f.id).layout; const it = resolveWhere(lay, where); const M = motifOf(f); const noun = f.repeat.noun || 'panel';
+  const top = Math.max(...lst.map(c => c.y)); const curved = lst.filter(c => !c.s).length > lst.length / 2;
+  beginChange([f.id]);
+  const E = { id: 'x' + (S.seq++), where, change: { type: 'shape', strokes: [lst] }, label: `the ${curved && top > M.hgt / 2 - 0.02 ? 'arched' : 'redrawn'} ${noun}`, on: true };
+  (f.repeat.exceptions ||= []).push(E);
+  // it may happen to sit under a niche: that is offered as a tie, never assumed
+  const r = it && underCandidates(f, it.wall, sToWallU(it.wall, it.s))[0];
+  let pr = null; if (r) { pr = { key: 'under', ex: E.id, target: r.id, label: `Could stay centred under ${r.name}`, verb: `stay centred under ${r.name}` }; f.proposals.push(pr); }
+  endChange('Only this one', { notes: false }); select(f.id);
+  const pr2 = f.proposals.find(p => p.key === 'under' && p.ex === E.id);
+  whisper(`Only ${E.label}: ${whereText(f, E)}. It remembers that description, not a position.` + (r ? ` It also sits under ${r.name}, but that isn't a tie yet.` : ''),
+    r ? `Centre it under ${r.name}` : 'Undo', r ? () => acceptProposal(formById(f.id), pr2) : undo);
+}
+function sideName(dir) { return dir[1] > 0.7 ? 'front' : dir[1] < -0.7 ? 'back' : dir[0] > 0 ? 'right side' : 'left side'; }
+function profAt(B, t) {
+  for (let i = 0; i < B.length - 1; i++) { const a = B[i], b = B[i + 1]; if ((t - a[1]) * (t - b[1]) <= 0 && a[1] !== b[1]) return a[0] + (b[0] - a[0]) * (t - a[1]) / (b[1] - a[1]); }
+  return t <= B[0][1] ? B[0][0] : B[B.length - 1][0];
+}
+function addExceptStroke(f, pts) {
+  const ev = EV.get(f.id); const h = ev.h; const ex = f.except;
+  let s = pts.slice(); if (s[0][1] > s[s.length - 1][1]) s.reverse();
+  const t = tidy(s, { forceOpen: true, loose: !tidyOn });
+  const dense = (t ? evalCurve(t.ctrl, false, 10).pts : s).map(([o, y]) => [o, y / h]).sort((a, b) => a[1] - b[1]);
+  const t0 = clamp(dense[0][1], 0, 1), t1 = clamp(dense[dense.length - 1][1], 0, 1); if (t1 - t0 < 0.03) return;
+  const B = evalCurve((f.profileOn && S.profiles[f.profile]) ? S.profiles[f.profile].ctrl : ctrlFrom(PRESETS.elev.Straight), false, 10).pts;
+  const d = []; const N = 28;
+  for (let k = 0; k <= N; k++) {
+    const tt = t0 + (t1 - t0) * k / N; const taper = smooth01(0, 0.15, k / N) * smooth01(0, 0.15, 1 - k / N);
+    d.push([+tt.toFixed(4), +((profAt(dense, tt) - (profAt(B, tt) + deltaAt(ex.strokes, tt))) * taper).toFixed(4)]);
+  }
+  ex.strokes.push({ t0: +t0.toFixed(4), t1: +t1.toFixed(4), d });
+}
+function onlyThisSide(f, pts, dir) {
+  undo(); f = formById(f.id); if (!f) return;
+  beginChange([f.id]);
+  f.except = { dir, blend: 'soft', on: true, label: sideName(dir), strokes: [] };
+  addExceptStroke(f, pts);
+  endChange(`Only the ${f.except.label}`, { notes: false }); select(f.id);
+  whisper(`Only the ${f.except.label}. The sides blend between the two drawings. Draw over the ${f.except.label} again to refine it.`, 'Make the change crisp', () => setExcept(f, { blend: 'crisp' }));
+}
+function setExcept(f, patch, label) { beginChange([f.id]); if (patch === null) delete f.except; else Object.assign(f.except, patch); endChange(label || `${f.name} changed`, { notes: false }); }
+function interpretOnPlace(st) {
+  const over = findOversketchTarget(st); if (over) return applyPlanOversketch(over, st);
+  const t = tidy(st.raw, { loose: !tidyOn, closeTol: Math.max(0.04, 0.12 * pathLen(st.raw)) }); if (!t) return;
+  if (!t.closed) return whisper(`Close the loop to make something on ${hostName(st.host)}.`);
+  const desc = JSON.parse(JSON.stringify(st.host)); const g = formById(desc.form);
+  const c = centroid(evalCurve(t.ctrl, true, 10).pts); if (desc.face === 'seat') desc.anchor.p = +c[1].toFixed(4);
+  beginChange();
+  let f;
+  if (desc.face === 'top') f = newForm({ kind: 'recess', name: uniqueName('Hollow'), autoName: true, host: desc, plan: { type: 'drawn', ctrl: t.ctrl, closed: true }, depth: 0, material: g.material, pending: true });
+  else { f = newForm({ kind: 'mass', name: uniqueName('Arm'), autoName: true, host: desc, plan: { type: 'drawn', ctrl: t.ctrl, closed: true }, height: { mode: 'value', v: 0.01 }, profileOn: true, material: g.material, pending: true }); f.profile = newProfile('elev', 'Straight', `${f.name} profile`); }
+  pendingId = f.id; evaluate(); select(f.id);
+  if (desc.face === 'top') whisper(`A drawing on ${hostName(desc)}. Push it in for a hollow, all the way for an opening, or pull it up to stand on it.`);
+  else whisper(`A drawing on ${hostName(desc)}, ${anchorText(f, EV.get(f.id))}. Pull it up. A seat can carry things; it isn't carved.`);
 }
 function applyElevStroke(f, pts) {
   const ev = EV.get(f.id); const h = ev.h; const prof = S.profiles[f.profile];
@@ -1345,7 +2064,9 @@ function massTrace(f) {
   if (along.length < 2) return null;
   const aL = Math.min(...along), aR = Math.max(...along);
   const pd = ev.profileDense; const R = [], L = [];
-  for (const [o, y] of pd) { R.push(c3.clone().addScaledVector(A, aR + o).add(v3(0, y, 0))); L.push(c3.clone().addScaledVector(A, aL - o).add(v3(0, y, 0))); }
+  // with an exception, each side shows the profile it actually has there
+  const wR = ev.exField ? ev.exField.at(c3.clone().addScaledVector(A, aR)) : 0, wL = ev.exField ? ev.exField.at(c3.clone().addScaledVector(A, aL)) : 0;
+  pd.forEach(([o, y], k) => { const e = ev.exProfile ? ev.exProfile[k][0] : o; R.push(c3.clone().addScaledVector(A, aR + o + (e - o) * wR).add(v3(0, y, 0))); L.push(c3.clone().addScaledVector(A, aL - o - (e - o) * wL).add(v3(0, y, 0))); });
   return { f, A, axisN, c3, aL, aR, base: 0, h: ev.h, R, L };
 }
 function showTrace(t) {
@@ -1370,11 +2091,15 @@ function hoverDraw(x, y) {
   setSeamHighlight(null);
   if (hit.kind === 'form') {
     const f = formById(hit.formId);
-    if (f.kind === 'mass' && f.host === 'floor' && Math.abs(hit.normal.y) < 0.6 && !f.pending) { if (!trace || trace.f !== f) showTrace(massTrace(f)); showTip(x, y, `${f.name} · its side`, 'draw over it to reshape'); return; }
+    if (f.kind === 'mass' && f.host === 'floor' && Math.abs(hit.normal.y) < 0.6 && !f.pending) { if (!trace || trace.f !== f) showTrace(massTrace(f)); showTip(x, y, `${f.name} · its side`, f.except ? `its ${f.except.label} is its own; draw over a side to reshape` : 'draw over it to reshape'); return; }
     dropTrace();
-    if (f.kind === 'recess') return showTip(x, y, `${f.name}`, 'trace its edge to frame it, or draw over it to reshape');
+    const face = faceAt(f, hit);
+    if (face) return showTip(x, y, `${cap(hostName(face.desc))}`, face.desc.face === 'seat' ? 'draw on it to add to it, at this end' : 'draw on it: push in to carve, pull up to add');
+    if (f.repeat?.on) { const n = EV.get(f.id)?.instances?.filter(i => !i.omit).length || 0; return showTip(x, y, `${f.name} · one of ${n}`, f.repeat.along.type === 'edge' ? 'draw over one to change them all' : 'draw over one to change them all, or along to extend'); }
+    if (isMotif(f)) return showTip(x, y, `${f.name}`, f.kind === 'recess' ? 'trace its edge to frame it, draw along from it to repeat it' : 'draw along from it to repeat it, or over it to reshape');
+    if (f.kind === 'recess') return showTip(x, y, `${f.name}`, isPlace(f) ? 'draw over its edge to reshape' : 'trace its edge to frame it, or draw over it to reshape');
     if (f.kind === 'run') return showTip(x, y, `${f.name}`, 'tap to shape its section');
-    return showTip(x, y, `Top of ${f.name}`);
+    return showTip(x, y, `${f.name}`);
   }
   dropTrace();
   if (hit.kind === 'asset') return showTip(x, y, `${assetName()} · imported asset`, 'loop around it');
@@ -1391,20 +2116,37 @@ handle.setAttribute('aria-label', 'Pull to set height'); handle.hidden = true; m
 let pull = null, typed = '';
 const ticksEl = el('div'); marks.appendChild(ticksEl);
 function handleAnchor(f) {
-  const ev = EV.get(f.id); if (!ev || !ev.c) return null; const fr = ev.fr;
+  const ev = EV.get(f.id); if (!ev || !ev.c || !ev.fr) return null; const fr = ev.fr;
   if (f.kind === 'mass') return { P0: to3(fr, ev.c[0], ev.c[1], 0), dir: fr.N.clone(), val: ev.h };
-  if (f.kind === 'recess') return { P0: to3(fr, ev.c[0], ev.c[1], 0), dir: fr.N.clone(), val: -ev.depth };
+  if (f.kind === 'recess') return { P0: to3(fr, ev.c[0], ev.c[1], 0), dir: fr.N.clone(), val: -(ev.depth || 0) };
   return null;
 }
+const WALL_NAME = /^(Niche|Relief|Window|Doorway)( \d+)?$/;
+function nameFor(base, f) { const n = S.forms.filter(g => g !== f && g.name.startsWith(base)).length; return n ? `${base} ${n + 1}` : base; }
+function autoName(f) {
+  if (isPlace(f)) { if (!f.autoName) return; const top = f.host.face === 'top'; const base = f.kind === 'mass' ? (top ? 'Riser' : 'Arm') : f.through ? 'Opening' : 'Hollow'; if (!f.name.startsWith(base)) f.name = nameFor(base, f); return; }
+  if (!WALL_NAME.test(f.name) || f.repeat?.on) return;
+  const ev = EV.get(f.id); const door = f.through && (ev?.planBox?.min[1] ?? 1) < 0.1;
+  const base = f.kind === 'mass' ? 'Relief' : f.through ? (door ? 'Doorway' : 'Window') : 'Niche'; if (!f.name.startsWith(base)) f.name = nameFor(base, f);
+}
+function toMass(f) { f.kind = 'mass'; delete f.depth; delete f.through; f.height = { mode: 'value', v: 0.02 }; f.profile = f.profile || newProfile('elev', 'Straight', `${f.name} profile`); f.profileOn = true; }
+function toRecess(f) { f.kind = 'recess'; delete f.height; f.depth = f.depth || 0; }
 function pullSnaps(f) {
   const { H } = S.space; const out = [];
+  if (isPlace(f)) {
+    if (f.host.face !== 'top') return [];
+    const r = resolveFace(f.host); out.push({ v: 0, label: 'flush' }); if (r.ok) out.push({ v: -r.hostH, label: 'through', through: true });
+    return out;
+  }
   if (f.kind === 'mass' && f.host === 'floor') {
     out.push({ v: H, label: 'the ceiling', tie: 'ceiling' });
     if (f.plan.type === 'fit') out.push({ v: +(1.5 - ASSETS[S.asset.variant].h / 2).toFixed(3), label: 'sculpture at eye level' });
     out.push({ v: 0.45, label: 'seat height' }, { v: 0.9, label: 'counter height' });
     for (const g of S.forms) if (g !== f && g.kind === 'mass' && g.host === 'floor' && EV.get(g.id)) out.push({ v: EV.get(g.id).h, label: `level with ${g.name}` });
+    return out.filter(s => s.v > 0.05 && s.v <= H + 1e-6);
   }
-  return out.filter(s => s.v > 0.05 && s.v <= H + 1e-6);
+  if (WALLS.includes(f.host)) out.push({ v: -WALL_T, label: 'through the wall', through: true });
+  return out;
 }
 function onHandleDown(e) {
   const f = formById(pendingId || selectedId); if (!f) return; const a = handleAnchor(f); if (!a) return;
@@ -1417,39 +2159,56 @@ function onHandleDown(e) {
 function onHandleMove(e) {
   if (!pull) return; const f = pull.f; const ray = rayAt(e.clientX, e.clientY);
   let t = rayLineParam(ray, pull.P0, pull.dir); if (t == null) return;
-  if (f.kind === 'mass' && f.host === 'floor') {
-    t = clamp(t, 0.05, S.space.H); pull.hit = null;
+  pull.hit = null;
+  if (isPlace(f)) {
+    // one dial: out stands on the face, in carves it, past the far side goes through
+    const top = f.host.face === 'top'; const r = resolveFace(f.host); const hostH = r.ok && top ? r.hostH : 0;
+    if (top) t = Math.max(t, -hostH - 0.05);
+    for (const s of pull.snaps) if (Math.abs(t - s.v) < 0.02) { t = s.v; pull.hit = s; break; }
+    if (t > 0.008) { if (f.kind === 'recess') toMass(f); f.height = { mode: 'value', v: +clamp(t, 0.01, 1.5).toFixed(3) }; }
+    else if (!top) { if (f.kind === 'mass') f.height = { mode: 'value', v: 0.01 }; if (t < -0.03 && !pull.refused) { pull.refused = true; whisper(`A seat can carry things but can't be carved here. That would mean cutting across two forms, which this model leaves out.`); } }
+    else { if (f.kind === 'mass') toRecess(f); const d = clamp(-t, 0, hostH); f.through = !!pull.hit?.through || d >= hostH - 0.004; f.depth = +(t > -0.006 ? 0 : d).toFixed(3); }
+    autoName(f);
+  } else if (f.kind === 'mass' && f.host === 'floor') {
+    t = clamp(t, 0.05, S.space.H);
     for (const s of pull.snaps) if (Math.abs(t - s.v) < 0.035) { t = s.v; pull.hit = s; break; }
     f.height = pull.hit?.tie === 'ceiling' ? { mode: 'ceiling' } : { mode: 'value', v: +t.toFixed(3) };
   } else if (f.kind === 'recess' || (f.kind === 'mass' && f.host !== 'floor')) {
+    t = Math.max(t, -WALL_T - 0.06);
     if (t > 0.02) { // pulled out: a relief
-      if (f.kind === 'recess') { f.kind = 'mass'; f.name = f.name.replace('Niche', 'Relief'); f.height = { mode: 'value', v: 0.04 }; f.profile = f.profile || newProfile('elev', 'Straight', `${f.name} profile`); f.profileOn = true; delete f.depth; }
+      if (f.kind === 'recess') toMass(f);
       f.height = { mode: 'value', v: +clamp(t, 0.02, 0.6).toFixed(3) };
     } else {
-      if (f.kind === 'mass') { f.kind = 'recess'; f.name = f.name.replace('Relief', 'Niche'); delete f.height; }
-      f.depth = +clamp(-t, 0.03, 0.19).toFixed(3);
+      if (f.kind === 'mass') toRecess(f);
+      for (const s of pull.snaps) if (Math.abs(t - s.v) < 0.015) { t = s.v; pull.hit = s; break; }
+      f.through = -t >= WALL_T - 0.004; f.depth = +clamp(-t, 0.03, 0.19).toFixed(3);
     }
+    autoName(f);
     pull.dir = frameOf(f.host).N; pull.P0 = handleAnchor(f)?.P0 || pull.P0;
   }
   evaluate(); renderTicks(); refreshRecipe();
 }
 function onHandleUp() {
   if (!pull) return; const f = pull.f; const hit = pull.hit; pull = null; renderTicks();
-  if (f.pending) commitPending(); else endChange(`${f.name} ${f.kind === 'recess' ? 'deepened' : 'pulled'}`);
+  if (f.pending) commitPending(); else endChange(`${f.name} ${f.kind === 'recess' ? (f.through ? 'pushed through' : 'deepened') : 'pulled'}`);
   if (hit?.tie === 'ceiling') whisper(`${f.name} reaches the ceiling. That's a tie: raise the ceiling and it follows.`, 'Untie', () => untie(f, 'ceiling'));
+  else if (isPlace(f) && f.kind === 'recess' && f.through && formById(f.id)) { const g = formById(f.host.form)?.name; whisper(`${f.name} goes through ${g}. That's a tie, not a depth: make ${g} taller and it still goes through.`); }
+  else if (!isPlace(f) && f.kind === 'recess' && f.through && formById(f.id)) whisper(`${f.name} goes through the wall.${EV.get(f.id)?.door ? ' It reaches the floor, so it is a doorway.' : ''}`);
 }
 handle.addEventListener('pointerdown', onHandleDown);
 function commitPending() {
   const f = formById(pendingId); pendingId = null; if (!f) return;
-  delete f.pending; endChange(`${f.name} made`, { notes: false });
+  // a drawing on a place that was neither pushed nor pulled leaves nothing behind
+  if (isPlace(f) && ((f.kind === 'recess' && !f.through && (f.depth || 0) < 0.003) || (f.kind === 'mass' && heightOf(f) < 0.012))) { cancelChange(); select(null); whisper('Nothing was pushed or pulled, so the drawing was let go.'); return; }
+  delete f.pending; endChange(`${f.name} made`, { notes: isPlace(f) }); // a seat carved under the sculpture lets it settle: say so
 }
 function cancelPending() { if (!pendingId) return; pendingId = null; cancelChange(); select(null); whisper('Discarded.'); }
 function setExact(f, val) {
-  if (f.kind === 'mass') f.height = { mode: 'value', v: clamp(val, 0.02, S.space.H) };
-  if (f.kind === 'recess') f.depth = clamp(val, 0.03, 0.19);
+  if (f.kind === 'mass') f.height = { mode: 'value', v: clamp(val, isPlace(f) ? 0.01 : 0.02, S.space.H) };
+  if (f.kind === 'recess') { if (isPlace(f)) { const r = resolveFace(f.host); f.depth = clamp(val, 0, r.ok ? r.hostH : 1); f.through = r.ok && val >= r.hostH - 0.004; } else { f.through = val >= WALL_T - 0.004; f.depth = clamp(val, 0.03, 0.19); } autoName(f); }
 }
 function renderTicks() {
-  ticksEl.innerHTML = ''; if (!pull || pull.f.kind !== 'mass' || pull.f.host !== 'floor') return;
+  ticksEl.innerHTML = ''; if (!pull || !pull.snaps.length) return;
   for (const s of pull.snaps) { const p = toScreen(pull.P0.clone().addScaledVector(pull.dir, s.v)); const t = el('div', 'tick' + (pull.hit === s ? ' hit' : ''), s.label); t.style.left = p[0] + 'px'; t.style.top = p[1] + 'px'; ticksEl.appendChild(t); }
 }
 
@@ -1525,7 +2284,14 @@ function refreshUI() { refreshMarks(); refreshRecipe(); refreshKnots(); refreshC
 function refreshButtons() { $('#bUndo').disabled = !past.length; $('#bRedo').disabled = !future.length; }
 function refreshMarks() {
   if (bracket) { markGroup.remove(bracket); disposeTree(bracket); bracket = null; }
-  const ev = selectedId && EV.get(selectedId); if (!ev?.box) return;
+  const ev = selectedId && EV.get(selectedId); if (!ev?.box && !ev?.instances) return;
+  const sf = formById(selectedId);
+  if (sf?.repeat?.on && ev.instances) { // a rhythm is selected as all its instances
+    bracket = new THREE.Group();
+    for (const it of ev.instances) if (it.plan.length > 2) bracket.add(fatLine(it.plan.map(p => to3(it.fr, p[0], p[1], (sf.kind === 'mass' ? ev.h : 0) + 0.004)), { closed: true, width: 2, dashed: !!it.omit, color: goldColor(), opacity: it.omit ? 0.7 : 1 }));
+    markGroup.add(bracket); return;
+  }
+  if (!ev.box) return;
   const b = ev.box.clone().expandByScalar(0.03); const mn = b.min, mx = b.max; const arr = [];
   const L = Math.min(0.16, (mx.x - mn.x) * 0.3, (mx.y - mn.y) * 0.3 + 0.02, (mx.z - mn.z) * 0.3 + 0.02);
   for (const x of [mn.x, mx.x]) for (const y of [mn.y, mx.y]) for (const z of [mn.z, mx.z]) {
@@ -1558,7 +2324,7 @@ function knotMenu(f, t, anchor) {
   const r = anchor.getBoundingClientRect();
   const acts = t.state === 'proposed' ? [[`Tie it: ${t.proposal.verb}`, () => acceptProposal(f, t.proposal)], ['Leave it untied', () => { }]]
     : t.state === 'slack' ? [['Open its card', () => select(f.id)]]
-      : [['Untie', () => untie(f, t.key)], ['Keep', () => { }]];
+      : t.fixed ? [['Keep', () => { }]] : [[t.key === 'repeat' ? 'Switch repetition off' : 'Untie', () => untie(f, t.key)], ['Keep', () => { }]];
   openPop(r.left, r.bottom + 6, `<label>${t.label}</label><p style="margin-top:0">${t.why || (t.state === 'proposed' ? 'It touched this when you drew it. Ties are never assumed.' : '')}</p><div class="seg">${acts.map((a, i) => `<button data-i="${i}">${a[0]}</button>`).join('')}</div>`,
     pop => pop.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { closePop(); acts[+b.dataset.i][1](); })));
 }
@@ -1602,8 +2368,48 @@ function profileWord(f) {
   const nm = (p?.preset || 'your own drawing').toLowerCase(); const users = profileUsers(pid).filter(g => g !== f);
   return { html: W_('profile', nm, on ? '' : 'off'), on, users };
 }
+function rhythmStory(f, ev) {
+  const R = f.repeat, lay = ev.layout || { byWall: {}, instances: [], madeWay: [], res: {} }; const noun = R.noun || 'panel';
+  const what = f.kind === 'mass' ? `standing out ${W_('height', fmt(ev.h || 0))}` : `${W_('depth', fmt(ev.depth || 0))} deep`;
+  let s;
+  if (R.along.type === 'edge') {
+    const tg = formById(R.along.target); const n = lay.instances.length;
+    s = `A ${noun} drawn on ${HOST_NAME[f.host]}, ${what}, ${W_('tie:repeat', tg ? `repeated along the ${R.along.roles ? R.along.roles.join(' and ') : 'edge'} of ${tg.name}` : 'that was repeating along a niche that is gone', tg ? '' : 'slack')}: ${n} of them, each its own size, at least ${W_('gap', fmt(R.gap) + ' apart')}, dividing at its corners.`;
+  } else {
+    const walls = WALLS.filter(w => lay.byWall[w]); const free = lay.instances.filter(it => !it.anchor);
+    const avg = free.length ? free.reduce((a, it) => a + it.w, 0) / free.length : lay.w0;
+    s = `A ${noun} drawn on ${HOST_NAME[f.host]}, ${what}, ${W_('tie:repeat', `repeated along ${wallsText(lay)}`)}: ${walls.map(w => lay.byWall[w].length).join(' + ')}, ${R.mode === 'flex' ? `about ${fmt(avg)} wide, ${W_('gap', fmt(R.gap) + ' apart')}` : `${fmt(lay.w0)} wide, ${W_('gap', `at least ${fmt(R.gap)} apart`)}`}, ${W_('rmode', R.mode === 'flex' ? 'sharing each stretch evenly' : 'keeping their size')}.`;
+    const made = [...new Set(lay.madeWay)].map(id => formById(id)?.name).filter(Boolean);
+    if (made.length) s += ` It divides around ${made.join(' and ')}.`;
+  }
+  for (const E of R.exceptions || []) {
+    const res = lay.res[E.id]; const slack = E.on !== false && res?.state === 'slack';
+    s += ` ${cap(E.label)}${E.change.type === 'omit' ? ' (left out)' : ''} is ${W_('ex:' + E.id, whereText(f, E), E.on === false ? 'off' : slack ? 'slack' : '')}${slack ? ', which no longer holds' : ''}.`;
+  }
+  const pw = profileWord(f);
+  s += pw.on ? ` Its profile is ${pw.html}.` : ` Its profile ${pw.html} is switched off.`;
+  return s;
+}
+function placeStory(f, ev) {
+  const g = formById(f.host.form); const where = f.host.face === 'frozen' ? 'its own place' : `${hostName(f.host)}, ${ev.fr ? anchorText(f, ev) : ''}`;
+  const tied = f.host.face === 'frozen' ? where : W_('tie:host', where, ev.slack ? 'slack' : '');
+  if (f.kind === 'mass') {
+    const pw = profileWord(f);
+    return `A form standing on ${tied}, ${W_('height', fmt(ev.h || 0) + ' tall')}.` + (pw.on ? ` Its profile is ${pw.html}.` : ` Its profile ${pw.html} is switched off.`);
+  }
+  if (ev.blocked) return `A drawing on ${tied}. There is no room to carve it there without breaking out of ${g?.name || 'its host'}'s side.`;
+  if (ev.through) return `An opening in ${tied}, ${W_('tie:through', 'going all the way through')}, ${fmt(ev.hostH || 0)} deep.`;
+  return `A hollow in ${tied}, ${W_('depth', fmt(ev.depth || 0) + ' deep')}` + (ev.stopped ? `. It stops there: any deeper and it would break out of ${g?.name}'s side.` : '.');
+}
 function storyOf(f) {
+  const carried = S.forms.filter(g => isPlace(g) && g.host.form === f.id && g.host.face !== 'frozen' && !g.pending).map(g => g.name);
+  const s = storyOf1(f);
+  return carried.length ? `${s} ${carried.join(' and ')} ${carried.length > 1 ? 'are' : 'is'} drawn on it.` : s;
+}
+function storyOf1(f) {
   const ev = EV.get(f.id) || {};
+  if (f.repeat?.on) return rhythmStory(f, ev);
+  if (isPlace(f)) return placeStory(f, ev);
   if (f.kind === 'mass') {
     const pw = profileWord(f);
     const hgt = f.height.mode === 'ceiling' ? W_('height', 'reaching the ceiling', 'gold') : W_('height', fmtM(ev.h || 0) + ' tall');
@@ -1612,10 +2418,16 @@ function storyOf(f) {
     else if (f.host === 'floor') s = `A mass drawn on the floor, ${W_('plan', `${fmtM(ev.planBox?.w || 0)} × ${fmtM(ev.planBox?.h || 0)}`)}, ${hgt}.`;
     else s = `A relief drawn on ${HOST_NAME[f.host]}, standing out ${W_('height', fmt(ev.h || 0))}.`;
     s += pw.on ? ` Its profile is ${pw.html}${pw.users.length ? `, shared with ${pw.users.map(g => g.name).join(', ')}` : ''}.` : ` Its profile ${pw.html} is switched off.`;
+    if (f.except) s += ` Its ${W_('except', f.except.label, f.except.on === false ? 'off' : '')} is drawn on its own, ${f.except.blend === 'crisp' ? 'turning crisply at the corners' : 'blending softly into the sides'}.`;
     if (f.plan.type === 'fit' && assetY > 0.01 && inPoly([S.asset.x, S.asset.z], ev.plan || [])) s += ` ${assetName()} sits on it.`;
+    if (f.repeat && !f.repeat.on) s += ` Its repetition is ${W_('repeatOn', 'switched off', 'off')}.`;
     return s;
   }
-  if (f.kind === 'recess') return `A recess ${W_('depth', fmt(ev.depth || f.depth))} deep in ${HOST_NAME[f.host]}, ${W_('plan', `${fmtM(ev.planBox?.w || 0)} wide`)}, ${fmtM(ev.planBox?.min[0] || 0)} from the left wall.`;
+  if (f.kind === 'recess') {
+    const at = `${W_('plan', `${fmtM(ev.planBox?.w || 0)} wide`)}, ${fmtM(ev.planBox?.min[0] || 0)} from the ${f.host === 'back' ? 'left wall' : 'back corner'}`;
+    if (ev.through) return `${ev.door ? 'A doorway' : 'A window'} ${W_('depth', 'through')} ${HOST_NAME[f.host]}, ${at}.` + (ev.door ? ' It reaches the floor, so the wall is notched rather than pierced.' : '');
+    return `A recess ${W_('depth', fmt(ev.depth || f.depth))} deep in ${HOST_NAME[f.host]}, ${at}.` + (f.repeat && !f.repeat.on ? ` Its repetition is ${W_('repeatOn', 'switched off', 'off')}.` : '');
+  }
   const pw = profileWord(f); const P = f.path; let s;
   if (P.type === 'seam') {
     const end = e => e.tie === 'right' ? W_('tie:end-' + (e === P.a ? 'a' : 'b'), e.c < 0.02 ? 'the right corner' : `${fmt(e.c)} short of the right wall`, 'gold') : e.seg === 'left' ? `the left wall, ${fmt(e.c)} from the corner` : e.seg === 'right' ? 'the right wall' : `${fmtM(e.c)} along the back wall`;
@@ -1632,11 +2444,10 @@ function refreshRecipe() {
   if (!f) { card.hidden = true; return; }
   card.hidden = false; const ev = EV.get(f.id) || {};
   const ties = (ev.ties || []);
-  const tieRows = ties.map(t => `<li><i class="${t.state}"></i><span>${t.label}${t.why && t.state !== 'proposed' ? `<br><span class="why">${t.why}</span>` : t.state === 'proposed' ? '<br><span class="why">Touched, not tied</span>' : ''}</span>${t.state === 'tied' ? `<button class="link" data-untie="${t.key}">Untie</button>` : t.state === 'proposed' ? `<button class="link" data-tie="${t.key}">Tie</button>` : ''}</li>`).join('');
-  const slack = ev.slack ? `<div class="slackbox"><strong>Its niche is gone.</strong> ${f.name} kept its shape instead of jumping to something else. What should it do?
-    <div class="acts"><button class="btn" data-slack="keep">Keep it as it is</button><button class="btn ghost" data-slack="remove">Remove ${f.name}</button>${S.forms.filter(g => g.kind === 'recess').map(g => `<button class="btn ghost" data-retie="${g.id}">Follow ${g.name}</button>`).join('')}</div></div>` : '';
+  const tieRows = ties.map(t => `<li><i class="${t.state}"></i><span>${t.label}${t.why && t.state === 'tied' ? `<br><span class="why">${t.why}</span>` : t.state === 'proposed' ? '<br><span class="why">Touched, not tied</span>' : ''}</span>${t.state === 'tied' && !t.fixed ? `<button class="link" data-untie="${t.key}">${t.key === 'repeat' ? 'Switch off' : 'Untie'}</button>` : t.state === 'proposed' ? `<button class="link" data-tie="${t.key}">Tie</button>` : ''}</li>`).join('');
+  const sb = slackBox(f, ev); const slack = sb.html;
   const pw = (f.kind === 'mass' || f.kind === 'run') ? profileWord(f) : null;
-  card.innerHTML = `<div class="eyebrow">${f.pending ? 'Proposed · pull or press Enter' : ({ mass: 'Mass', run: 'Run', recess: 'Recess' })[f.kind]}</div>
+  card.innerHTML = `<div class="eyebrow">${f.pending ? 'Proposed · pull or press Enter' : f.repeat?.on ? `Rhythm · ${f.kind === 'mass' ? 'raised' : 'recessed'}` : isPlace(f) ? `Place · on ${f.host.face === 'frozen' ? 'its own' : hostName(f.host)}` : ({ mass: 'Mass', run: 'Run', recess: 'Recess' })[f.kind]}</div>
     <div class="name" contenteditable="true" spellcheck="false" id="rName">${f.name}</div>
     <p class="story">${storyOf(f)}</p>${slack}
     <div class="sect"><div class="eyebrow">Ties</div>${ties.length ? `<ul class="ties">${tieRows}</ul>` : '<p class="hint">Nothing ties this to the space. It stays exactly where you drew it.</p>'}</div>
@@ -1649,17 +2460,68 @@ function refreshRecipe() {
   card.querySelectorAll('[data-untie]').forEach(b => b.addEventListener('click', () => untie(f, b.dataset.untie)));
   card.querySelectorAll('[data-tie]').forEach(b => b.addEventListener('click', () => { const t = ties.find(x => x.key === b.dataset.tie); acceptProposal(f, t.proposal); }));
   card.querySelectorAll('[data-mat]').forEach(b => b.addEventListener('click', () => { beginChange([f.id]); f.material = b.dataset.mat; endChange('Material', { notes: false }); }));
-  card.querySelectorAll('[data-slack]').forEach(b => b.addEventListener('click', () => { if (b.dataset.slack === 'keep') untie(f, 'edge'); else removeForm(f); }));
-  card.querySelectorAll('[data-retie]').forEach(b => b.addEventListener('click', () => { beginChange([f.id]); f.path = { type: 'edge', target: b.dataset.retie }; endChange(`${f.name} re-tied`); whisper(`${f.name} now follows ${formById(b.dataset.retie).name}, because you chose it.`); }));
+  sb.wire(card);
+}
+function exceptionActs(f, E) {
+  const ev = EV.get(f.id); const lay = ev?.layout; if (!lay) return [];
+  const res = lay.res[E.id] || {}; const w = E.where.wall; const n = lay.byWall[w]?.length || 0; const acts = [];
+  if (res.state === 'slack' && res.why === 'nomiddle') acts.push({ label: 'The one left of the middle', where: { type: 'nth', wall: w, from: 'left', n: n / 2 } }, { label: 'The one right of the middle', where: { type: 'nth', wall: w, from: 'right', n: n / 2 } });
+  if (res.state === 'slack' && res.why === 'range') acts.push({ label: `The last one from the ${E.where.from}`, where: { ...E.where, n } });
+  for (const r of underCandidates(f, w)) if (!(E.where.type === 'under' && E.where.target === r.id)) acts.push({ label: `Centre it under ${r.name}`, where: { type: 'under', wall: w, target: r.id, name: r.name }, primary: res.state === 'slack' });
+  if (res.inst && (E.where.type !== 'at' || res.state === 'slack')) acts.push({ label: res.state === 'slack' ? 'Keep it where it is now' : 'Pin it exactly here', where: { type: 'at', wall: res.inst.wall, s: +res.inst.s.toFixed(4) } });
+  if (E.where.type !== 'middle' && n % 2 === 1 && res.state !== 'slack') acts.push({ label: 'The middle one', where: { type: 'middle', wall: w } });
+  return acts;
+}
+function setExWhere(f, E, where, label) {
+  beginChange([]); // the re-division that follows is narrated
+  const e = f.repeat.exceptions.find(x => x.id === E.id); e.where = where;
+  f.proposals = (f.proposals || []).filter(p => !(p.key === 'under' && p.ex === E.id && where.type === 'under'));
+  endChange(label || `${cap(e.label)}: ${whereText(f, e)}`);
+}
+function removeException(f, E) { beginChange([f.id]); f.repeat.exceptions = f.repeat.exceptions.filter(x => x.id !== E.id); f.proposals = (f.proposals || []).filter(p => p.ex !== E.id); endChange(`${cap(E.label)} is like the others again`, { notes: false }); }
+function slackBox(f, ev) {
+  const none = { html: '', wire() { } };
+  const box = (head, body, acts) => ({ html: `<div class="slackbox"><strong>${head}</strong> ${body}<div class="acts">${acts.map((a, i) => `<button class="btn ${a.primary || i === 0 ? '' : 'ghost'}" data-sb="${i}">${a.label}</button>`).join('')}</div></div>`,
+    wire: card => card.querySelectorAll('[data-sb]').forEach(b => b.addEventListener('click', () => acts[+b.dataset.sb].fn())) });
+  if (f.kind === 'run' && ev.slack) return box('Its niche is gone.', `${f.name} kept its shape instead of jumping to something else. What should it do?`,
+    [{ label: 'Keep it as it is', fn: () => untie(f, 'edge') }, { label: `Remove ${f.name}`, fn: () => removeForm(f) },
+      ...S.forms.filter(g => g.kind === 'recess' && !isPlace(g) && !g.repeat?.on).map(g => ({ label: `Follow ${g.name}`, fn: () => { beginChange([f.id]); f.path = { type: 'edge', target: g.id }; endChange(`${f.name} re-tied`); whisper(`${f.name} now follows ${g.name}, because you chose it.`); } }))]);
+  if (isPlace(f) && ev.slack) {
+    const g = formById(f.host.form); const acts = [];
+    if (ev.slack === 'moved') acts.push({ label: `Follow the seat`, fn: () => { beginChange([f.id]); f.host.ref = null; endChange(`${f.name} follows ${g.name}'s seat`); } });
+    if (f.kind === 'mass') acts.push({ label: 'Keep it where it is', fn: () => untie(f, 'host') });
+    acts.push({ label: `Remove ${f.name}`, fn: () => removeForm(f) });
+    return box(PLACE_SLACK[ev.slack](f, g), `${f.name} kept its place instead of moving to whatever is nearest. What should it do?`, acts);
+  }
+  if (f.repeat?.on && ev.layout?.slack) return box('Its niche is gone.', `${f.name} kept its last shape. What should it do?`, [{ label: `Remove ${f.name}`, fn: () => removeForm(f) }]);
+  if (f.repeat?.on && ev.layout) {
+    for (const E of f.repeat.exceptions || []) {
+      const res = ev.layout.res[E.id]; if (E.on === false || res?.state !== 'slack') continue;
+      const acts = exceptionActs(f, E).map(a => ({ ...a, fn: () => setExWhere(f, E, a.where) }));
+      acts.push({ label: 'Make it like the others', fn: () => removeException(f, E) });
+      return box(`${cap(E.label)}: ${exSlackText(f, E, res.why, ev.layout.byWall[E.where.wall]?.length || 0)}.`, `It kept its shape${res.inst ? ' and its place' : ''} instead of moving to another ${f.repeat.noun || 'panel'}. Which should it be?`, acts);
+    }
+  }
+  return none;
 }
 function wordAction(f, act, btn) {
   const r = btn.getBoundingClientRect(); const ev = EV.get(f.id) || {};
   if (act === 'profile') return openLens(f.id);
   if (act === 'toggleProfile') { beginChange([f.id]); if (f.kind === 'mass') f.profileOn = !f.profileOn; else f.sectionOn = !f.sectionOn; endChange('Profile switched'); return whisper((f.kind === 'mass' ? f.profileOn : f.sectionOn) ? 'Switched back on, exactly as it was.' : 'Switched off, not deleted. It is struck through in the story.'); }
   if (act === 'delete') return removeForm(f);
+  if (act.startsWith('ex:')) return exceptionMenu(f, f.repeat.exceptions.find(x => x.id === act.slice(3)), btn);
+  if (act === 'gap') return openPop(r.left, r.bottom + 6, `<label for="pG">Gap between ${nouns(f.repeat.noun || 'panel', 2)} (cm)</label><input id="pG" type="number" step="1" min="1" max="40" value="${Math.round(f.repeat.gap * 100)}"><p>${f.repeat.mode === 'flex' ? 'The gap stays exact; the panels flex to share each stretch. Corners and wall ends keep the same margin.' : 'The panels keep their size; the gaps grow from this to share each stretch.'}</p>`,
+    pop => { const inp = pop.querySelector('#pG'); inp.addEventListener('change', () => { beginChange([f.id]); f.repeat.gap = clamp(+inp.value / 100, 0.01, 0.4); endChange('Gap'); }); });
+  if (act === 'rmode') { const keep = f.repeat.mode !== 'keep'; setRhythm(f, { mode: keep ? 'keep' : 'flex' }, keep ? 'Keeping their size' : 'Sharing each stretch'); return whisper(keep ? `Each ${f.repeat.noun || 'panel'} keeps the size you drew; the gaps share what is left.` : 'They flex again to share each stretch evenly; the gap stays exact.'); }
+  if (act === 'repeatOn') { setRhythm(f, { on: true }, 'Repetition back on'); return whisper('Back on, exactly as it was, exceptions included.'); }
+  if (act === 'except') {
+    const ex = f.except; const acts = [['Soft', () => setExcept(f, { blend: 'soft' })], ['Crisp', () => setExcept(f, { blend: 'crisp' })], [ex.on === false ? 'Switch it back on' : 'Switch it off', () => setExcept(f, { on: ex.on === false })], ['Make it all around', () => setExcept(f, null, 'Exception removed')]];
+    return openPop(r.left, r.bottom + 6, `<label>Only the ${ex.label}</label><p style="margin-top:0">Drawn on its own, on top of the shared profile: change the profile and the ${ex.label} keeps its difference.</p><div class="seg">${acts.slice(0, 2).map((a, i) => `<button data-i="${i}" aria-pressed="${(ex.blend || 'soft') === a[0].toLowerCase()}">${a[0]}</button>`).join('')}</div><div class="stack">${acts.slice(2).map((a, i) => `<button data-i="${i + 2}">${a[0]}</button>`).join('')}</div>`,
+      pop => pop.querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => { closePop(); acts[+b.dataset.i][1](); })));
+  }
   if (act.startsWith('tie:')) { const key = act.slice(4); const t = (ev.ties || []).find(x => x.key === key); if (t) knotMenu(f, t, btn); return; }
   if (act === 'height') {
-    return openPop(r.left, r.bottom + 6, `<label for="pH">${f.host === 'floor' ? 'Height' : 'Stands out'} (m)</label><input id="pH" type="number" step="0.01" min="0.02" value="${(ev.h || 0).toFixed(2)}">
+    return openPop(r.left, r.bottom + 6, `<label for="pH">${f.host === 'floor' || isPlace(f) ? 'Height' : 'Stands out'} (m)</label><input id="pH" type="number" step="0.01" min="0.02" value="${(ev.h || 0).toFixed(2)}">
       ${f.host === 'floor' ? `<div class="seg"><button data-m="value" aria-pressed="${f.height.mode === 'value'}">Exactly this</button><button data-m="ceiling" aria-pressed="${f.height.mode === 'ceiling'}">Reach the ceiling</button><button data-m="ratio" aria-pressed="${f.height.mode === 'ratio'}">Share of the room</button></div>
       <p>Reaching the ceiling or a share of the room is a tie: it changes when the ceiling does.</p>` : ''}`, pop => {
       const inp = pop.querySelector('#pH');
@@ -1669,9 +2531,22 @@ function wordAction(f, act, btn) {
   }
   if (act === 'margin') return openPop(r.left, r.bottom + 6, `<label for="pM">Margin around the sculpture (cm)</label><input id="pM" type="number" step="1" min="2" max="40" value="${Math.round(f.plan.margin * 100)}"><p>The plan keeps this margin whatever sculpture sits here.</p>`,
     pop => { const inp = pop.querySelector('#pM'); inp.addEventListener('change', () => { beginChange([f.id]); f.plan.margin = clamp(+inp.value / 100, 0.02, 0.4); endChange('Margin'); }); });
-  if (act === 'depth') return openPop(r.left, r.bottom + 6, `<label for="pD">Depth into the wall (cm)</label><input id="pD" type="number" step="1" min="3" max="19" value="${Math.round((ev.depth || f.depth) * 100)}"><p>Walls are 20 cm thick here.</p>`,
-    pop => { const inp = pop.querySelector('#pD'); inp.addEventListener('change', () => { beginChange([f.id]); f.depth = clamp(+inp.value / 100, 0.03, 0.19); endChange('Depth'); }); });
+  if (act === 'depth') {
+    const pl = isPlace(f); const max = pl ? Math.round((ev.hostH || 0) * 100) : 20;
+    return openPop(r.left, r.bottom + 6, `<label for="pD">Depth into ${pl ? hostName(f.host) : 'the wall'} (cm)</label><input id="pD" type="number" step="1" min="${pl ? 0 : 3}" max="${max}" value="${Math.round((ev.through ? (pl ? ev.hostH : WALL_T) : (ev.depth || f.depth || 0)) * 100)}"><p>${pl ? `${max} cm is all the way through.` : 'Walls are 20 cm thick here; 20 is all the way through.'}</p>`,
+      pop => { const inp = pop.querySelector('#pD'); inp.addEventListener('change', () => { beginChange([f.id]); setExact(f, +inp.value / 100); endChange('Depth'); }); });
+  }
   if (act === 'plan') return whisper('Drag the white points on its plan, or draw over its outline in Draw mode.');
+}
+function exceptionMenu(f, E, btn) {
+  if (!E) return; const r = btn.getBoundingClientRect(); const ev = EV.get(f.id); const res = ev?.layout?.res[E.id] || {};
+  const acts = exceptionActs(f, E).map(a => [a.label, () => setExWhere(f, E, a.where)]);
+  const omit = E.change.type === 'omit';
+  acts.push([omit ? 'Put it back' : 'Leave it out', () => { beginChange([f.id]); const e = f.repeat.exceptions.find(x => x.id === E.id); e.change.type = omit ? 'shape' : 'omit'; e.change.strokes ||= []; if (!e.change.strokes.length && omit) f.repeat.exceptions = f.repeat.exceptions.filter(x => x !== e); endChange(omit ? 'Put back' : 'Left out', { notes: false }); }]);
+  acts.push([E.on === false ? 'Switch it back on' : 'Switch it off', () => { beginChange([f.id]); f.repeat.exceptions.find(x => x.id === E.id).on = E.on === false; endChange('Exception switched', { notes: false }); }]);
+  acts.push(['Make it like the others', () => removeException(f, E)]);
+  openPop(r.left, r.bottom + 6, `<label>${cap(E.label)}</label><p style="margin-top:0">It is ${whereText(f, E)}. ${res.state === 'slack' ? cap(exSlackText(f, E, res.why, ev.layout.byWall[E.where.wall]?.length || 0)) + '.' : 'That description is found again after every change; it is never a fixed position unless you pin it.'}</p><div class="stack">${acts.map((a, i) => `<button data-i="${i}">${a[0]}</button>`).join('')}</div>`,
+    pop => pop.querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => { closePop(); acts[+b.dataset.i][1](); })));
 }
 function removeForm(f) {
   beginChange([f.id]); S.forms = S.forms.filter(g => g !== f);
@@ -1765,7 +2640,7 @@ function onLensMove(e) {
   const ink = lensSvg.querySelector('#lensInk'); if (ink) ink.setAttribute('d', 'M' + lensStroke.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L'));
 }
 function onLensUp() {
-  if (lensDrag) { lensDrag = null; endChange('Profile point', { notes: false }); return; }
+  if (lensDrag) { lensDrag = null; endChange('Profile point'); return; }
   if (!lensStroke) return; const pts = lensStroke; lensStroke = null;
   if (pathLen(pts) < 8) { cancelChange(); renderLens(); return; }
   const { c, prof, f, ix, iy } = lensMap;
@@ -1784,7 +2659,7 @@ function onLensUp() {
     else prof.ctrl = oversketch(prof.ctrl, false, ctrl);
     prof.preset = null; if (f.kind === 'run') f.sectionOn = true;
   }
-  endChange('Profile drawn', { notes: false });
+  endChange('Profile drawn');
   if (users.length) whisper(`Also changed: ${users.map(u => u.name).join(', ')}, which ${users.length > 1 ? 'share' : 'shares'} this profile.`, 'Undo', undo);
 }
 lensSvg.addEventListener('pointerdown', onLensDown);
@@ -1834,10 +2709,12 @@ function updateOverlays(now) {
   const hf = formById(pendingId) || (mode !== 'space' && selectedId && formById(selectedId));
   const ha = hf && !lensFor ? handleAnchor(hf) : null;
   if (ha && (hf.kind === 'mass' || hf.kind === 'recess')) {
-    const val = hf.kind === 'mass' ? EV.get(hf.id).h : -EV.get(hf.id).depth;
+    const hev = EV.get(hf.id); const val = hf.kind === 'mass' ? hev.h : -(hev.depth || 0); const pl = isPlace(hf);
     const p = toScreen(ha.P0.clone().addScaledVector(ha.dir, val + (hf.kind === 'mass' ? 0.05 : 0.02)));
     handle.hidden = p[2] > 1; handle.style.left = p[0] + 'px'; handle.style.top = p[1] + 'px';
-    handle.querySelector('.val').textContent = typed ? `${typed} m ↵` : hf.kind === 'recess' ? `${Math.round(-val * 100)} cm deep` : hf.height.mode === 'ceiling' ? 'to the ceiling' : fmtM(val);
+    const deep = hf.kind !== 'recess' ? '' : hev.through ? (pl ? 'through' : hev.door ? 'a doorway' : 'through the wall')
+      : pl && hev.blocked ? 'no room to carve' : pl && hev.stopped ? `stops at ${Math.round(-val * 100)} cm` : pl && -val < 0.003 ? 'flush' : `${Math.round(-val * 100)} cm deep`;
+    handle.querySelector('.val').textContent = typed ? `${typed} m ↵` : hf.kind === 'recess' ? deep : hf.height.mode === 'ceiling' ? 'to the ceiling' : pl || val < 0.3 ? fmt(val) : fmtM(val);
   } else handle.hidden = true;
   if (pull) renderTicks();
   // grips
@@ -1900,6 +2777,11 @@ function view(name, ms) {
     pedestal: [v3(ax + 2.5, 2.5, az + 4.6), v3(ax, 0.62, az)],
     bench: [v3(W * 0.5, 4.6, D + 6.4), v3(W * 0.48, 0.3, 1.1)],
     niche: [v3(4.7, 2.2, 5.6), v3(3.7, 1.55, 0)],
+    through: [v3(4.6, 2.45, 4.35), v3(3.45, 0.38, 1.85)],
+    arm: [v3(W - 0.15, 1.75, 2.75), v3(W - 0.95, 0.45, 0.3)],
+    front: [v3(ax + 3.4, 1.05, az + 0.22), v3(ax, 0.5, az)],
+    frontTop: [v3(ax + 1.15, 2.35, az + 1.75), v3(ax, 0.82, az)],
+    panelling: [v3(-0.6, 2.5, D + 5.4), v3(W * 0.67, 0.85, 1.2)],
   }[name];
   return camTo(V[0], V[1], ms);
 }
@@ -1994,6 +2876,25 @@ function loadGallery() {
   frame.section = newProfile('corner', 'Ogee', 'Frame section');
   const cornice = newForm({ kind: 'run', name: 'Cornice', ctxKind: 'seam-ceiling', path: { type: 'seam', chain: 'ceiling', a: { seg: 'left', c: S.space.D, tie: null }, b: { seg: 'right', c: S.space.D, tie: null } }, sectionOn: true, material: 'plaster' });
   cornice.section = frame.section;
+  // round two: places, exceptions and rhythms in the same room
+  const { W, D, H } = S.space;
+  ped.except = { dir: [0, 1], blend: 'soft', on: true, label: 'front', strokes: [{ t0: 0.08, t1: 0.9, d: [...Array(29).keys()].map(k => { const t = 0.08 + 0.82 * k / 28; return [+t.toFixed(4), +(0.035 * Math.sin(Math.PI * k / 28) ** 1.4).toFixed(4)]; }) }] };
+  newForm({ kind: 'mass', name: 'Arm', host: { form: bench.id, face: 'seat', anchor: { end: 'b', p: 0.3 } }, plan: { type: 'drawn', ctrl: rectCtrl(0.006, 0.15, 0.085, 0.45), closed: true }, height: { mode: 'value', v: 0.22 }, profileOn: true, profile: newProfile('elev', 'Straight', 'Arm profile'), material: 'oak' });
+  const plinth = newForm({ kind: 'mass', name: 'Plinth', host: 'floor', plan: { type: 'drawn', ctrl: rectCtrl(3.45, 2.75, 4.25, 3.3), closed: true }, height: { mode: 'value', v: 0.45 }, profileOn: true, material: 'plaster' });
+  plinth.profile = newProfile('elev', 'Stepped', 'Plinth profile');
+  const ring = (r, n = 8) => ctrlFrom([...Array(n).keys()].map(i => [Math.cos(i / n * Math.PI * 2) * r, Math.sin(i / n * Math.PI * 2) * r, 0]));
+  newForm({ kind: 'recess', name: 'Opening', host: { form: plinth.id, face: 'top', anchor: { at: 'centre' } }, plan: { type: 'drawn', ctrl: ring(0.13), closed: true }, through: true, depth: 0, material: 'plaster' });
+  newForm({ kind: 'recess', name: 'Window', host: 'left', plan: { type: 'drawn', ctrl: rectCtrl(2.55, 1.15, 3.45, 2.25), closed: true }, through: true, depth: 0.2, material: 'plaster' });
+  newForm({ kind: 'recess', name: 'Doorway', host: 'right', plan: { type: 'drawn', ctrl: rectCtrl(2.35, 0, 3.25, 2.15), closed: true }, through: true, depth: 0.2, material: 'plaster' });
+  const panels = newForm({ kind: 'mass', name: 'Panelling', host: 'right', plan: { type: 'drawn', ctrl: rectCtrl(0.14, 0.22, 0.7, 1.0), closed: true }, height: { mode: 'value', v: 0.022 }, profileOn: true, material: 'plaster',
+    repeat: { on: true, along: { type: 'walls', a: { seg: 'right', c: 0, tie: null }, b: { seg: 'right', c: D, tie: null } }, gap: 0.12, mode: 'flex', exceptions: [], noun: 'panel' } });
+  panels.profile = newProfile('elev', 'Straight', 'Panel profile'); S.profiles[panels.profile].ctrl = ctrlFrom([[0, 0, 1], [0, 0.4, 1], [-0.012, 1, 1]]); S.profiles[panels.profile].preset = null;
+  const dent = newForm({ kind: 'mass', name: 'Dentils', host: 'back', plan: { type: 'drawn', ctrl: rectCtrl(0.2, H - 0.3, 0.26, H - 0.22), closed: true }, height: { mode: 'value', v: 0.03 }, profileOn: false, material: 'plaster',
+    repeat: { on: true, along: { type: 'walls', a: { seg: 'left', c: 0, tie: null }, b: { seg: 'back', c: 0, tie: 'right' } }, gap: 0.035, mode: 'flex', exceptions: [], noun: 'dentil' } });
+  dent.profile = newProfile('elev', 'Straight', 'Dentil profile');
+  const beads = newForm({ kind: 'mass', name: 'Beading', host: 'back', plan: { type: 'drawn', ctrl: (() => { const c = ring(0.022); c.forEach(q => { q.x += 3.7; q.y += 2.48; }); return c; })(), closed: true }, height: { mode: 'value', v: 0.02 }, profileOn: false, material: 'plaster',
+    repeat: { on: true, along: { type: 'edge', target: niche.id, roles: ['head'] }, gap: 0.012, mode: 'keep', exceptions: [], noun: 'bead' } });
+  beads.profile = newProfile('elev', 'Straight', 'Bead profile');
   loadState(JSON.parse(JSON.stringify(S)));
 }
 
@@ -2081,18 +2982,73 @@ const JOURNEYS = {
     lede: 'A recess pushed into the wall, a frame that follows its edge, and what happens when you change your mind about both.',
     steps: [
       { t: 'Draw an arch on the back wall.', y: 'Draw mode, a closed shape on the wall.', run: () => penStroke([[3.3, 1.0], [3.3, 1.85], [3.42, 2.13], [3.7, 2.26], [3.98, 2.13], [4.1, 1.85], [4.1, 1.0], [3.35, 1.0]].map(([x, y]) => v3(x, y, 0.002)), 1500) },
-      { t: 'Push the handle into the wall.', y: 'Push in for a niche; pull out for a relief.', run: () => pullTo(-0.2) },
+      { t: 'Push the handle into the wall.', y: 'Push in for a niche; pull out for a relief. All the way through makes a window.', run: () => pullTo(-0.18) },
       { t: 'Trace around its edge. A frame appears and follows the niche.', y: 'Draw close around the opening.', run: () => { const o = 0.035; return penStroke([[3.3 - o, 1.0 - o], [3.3 - o, 1.85], [3.42 - o * .7, 2.13 + o * .7], [3.7, 2.26 + o], [3.98 + o * .7, 2.13 + o * .7], [4.1 + o, 1.85], [4.1 + o, 1.0 - o], [3.3 - o, 1.0 - o], [3.3 - o, 1.3]].map(([x, y]) => v3(x, y, 0.002)), 1700); } },
       { t: 'Give the frame a moulding: draw over its section.', y: 'In the lens, draw from the wall face to the niche edge.', run: async () => { openLens(byName('Frame').id); await sleep(500); await lensDraw([[0, 0.15], [0.016, 0.15], [0.02, 0.12], [0.036, 0.095], [0.044, 0.055], [0.05, 0.02], [0.05, 0]], 1400); } },
       { t: 'Draw over the top of the niche to make it pointed. The frame follows.', y: 'In Draw mode, start and end on its outline.', run: async () => { closeLens(); await penStroke([[3.3, 1.62], [3.31, 1.95], [3.45, 2.3], [3.7, 2.58], [3.95, 2.3], [4.09, 1.95], [4.1, 1.62]].map(([x, y]) => v3(x, y, 0.002)), 1500); } },
       { t: 'Remove the niche. The frame keeps its shape and asks what to do.', y: 'Select the niche and press Delete.', run: async () => { setMode('look'); const n = byName('Niche'); select(n.id); await sleep(500); removeForm(n); await sleep(300); select(byName('Frame').id); } },
     ],
   },
+  // ---------- round two ----------
+  through: {
+    round: 2, tab: 'Through', view: 'through', title: 'Every surface is a place', setup: () => { buildScene(() => { const p = newForm({ kind: 'mass', name: 'Plinth', host: 'floor', plan: { type: 'drawn', ctrl: rectCtrl(3.0, 1.5, 3.9, 2.2), closed: true }, height: { mode: 'value', v: 0.45 }, profileOn: true, material: 'plaster' }); p.profile = newProfile('elev', 'Straight', 'Plinth profile'); }); return view('through'); },
+    lede: 'The top of something you made is a place to draw, like the floor. One dial: pull up to add, push in to carve, keep pushing to go through.',
+    steps: [
+      { t: 'Draw a circle on the plinth’s top.', y: 'Draw mode, then a loop on the top face. It reads “Plinth’s top”.', run: () => { const P = byName('Plinth'); return penStroke(circleOn(3.45, EV.get(P.id).h + 0.002, 1.85, 0.15), 1300); } },
+      { t: 'Push the handle in: a hollow.', y: 'Drag the white handle down into the plinth.', run: () => pullTo(-0.12) },
+      { t: 'Keep pushing: it goes through. An opening.', y: 'Push past the bottom; it snaps to “through”.', run: () => pullTo(-0.52, 1100) },
+      { t: 'Draw over its edge to stretch it into a slot.', y: 'Start and end on its outline.', run: () => { const y = EV.get(byName('Plinth').id).h + 0.002; return penStroke([[0, -0.15], [0.12, -0.15], [0.26, -0.14], [0.36, -0.06], [0.37, 0.02], [0.3, 0.12], [0.16, 0.15], [0, 0.15]].map(([u, v]) => v3(3.45 + u, y, 1.85 + v)), 1400); } },
+      { t: 'Make the plinth taller. The opening still goes through: that is a tie, not a depth.', y: 'Select the plinth and pull its handle up.', run: async () => { setMode('look'); select(byName('Plinth').id); await sleep(400); await pullTo(0.75, 1100); } },
+      { t: 'Drag the opening back up, through zero. The same drawing stands on the top instead.', y: 'Select the opening and pull its handle all the way up.', run: async () => { setMode('look'); select(S.forms.find(f => isPlace(f)).id); await sleep(400); await pullTo(0.2, 1500); } },
+    ],
+  },
+  arm: {
+    round: 2, tab: 'Arm', view: 'arm', title: 'An arm at one end', setup: () => { buildScene(() => { const b = newForm({ kind: 'run', name: 'Bench', ctxKind: 'seam-floor', path: { type: 'seam', chain: 'floor', a: { seg: 'left', c: 2.0, tie: null }, b: { seg: 'back', c: 0.6, tie: 'right' } }, sectionOn: true, material: 'oak' }); b.section = newProfile('corner', 'Seat & back', 'Bench section'); }); return view('arm'); },
+    lede: 'Asymmetry by composition: the arm is its own simple form, standing on the bench’s seat at its right end. It says where it is, and follows.',
+    steps: [
+      { t: 'Draw a rectangle on the seat, at the bench’s right end.', y: 'Draw mode; the seat reads “Bench’s seat”.', run: () => { const x0 = S.space.W - 0.6, y = v => seatY(byName('Bench'), v) + 0.002; return penStroke([[0.006, 0.15], [0.085, 0.15], [0.085, 0.45], [0.006, 0.45], [0.006, 0.17]].map(([u, v]) => v3(x0 - u, y(v), v)), 1400); } },
+      { t: 'Pull it up: an arm.', y: 'Drag the handle up. Pushing down is refused, and says why.', run: () => pullTo(0.22) },
+      { t: 'Widen the room. The bench’s end is tied to the right wall; the arm moves with it.', y: 'Edit the space (E), drag the right wall.', run: async () => { await view('bench', 600); await gripTo('right', S.space.W + 0.6, 1300); await sleep(500); await view('arm', 700); } },
+      { t: 'Lower the seat in the bench’s section. The arm comes down with it.', y: 'Tap the bench, then redraw its section a little lower.', run: async () => { setMode('look'); openLens(byName('Bench').id); await sleep(500); await lensDraw([[0, 0.84], [0.07, 0.83], [0.11, 0.44], [0.46, 0.41], [0.49, 0.37], [0.44, 0.1], [0.44, 0]], 1500); } },
+      { t: 'Now slope the seat. The arm can’t stand on a slope, so it keeps its place and asks.', y: 'Redraw the seat sloping down toward the room.', run: async () => { await lensDraw([[0, 0.84], [0.07, 0.83], [0.11, 0.46], [0.46, 0.24], [0.49, 0.2], [0.44, 0.1], [0.44, 0]], 1500); closeLens(); select(byName('Arm').id); } },
+    ],
+  },
+  front: {
+    round: 2, tab: 'Front', view: 'front', title: 'Only the front', setup: () => { buildScene(() => { S.asset = { variant: 'pebble', x: 1.9, z: 2.3 }; const p = newForm({ kind: 'mass', name: 'Pedestal', host: 'floor', plan: { type: 'fit', target: 'asset', shape: 'square', margin: 0.12 }, height: { mode: 'value', v: 0.9 }, profileOn: true, material: 'travertine' }); p.profile = newProfile('elev', 'Straight', 'Pedestal profile'); }); return view('front'); },
+    lede: 'Draw over one side and it changes all around. The whisper offers “only the front”, kept as a drawing on top of the shared profile.',
+    steps: [
+      { t: 'From the side, draw over the pedestal’s front: a bow.', y: 'Hover its side in Draw mode until the trace appears, then draw over the front.', run: async () => { const f = byName('Pedestal'); const tr = massTrace(f); if (!tr) return; await penStroke([[0, 0.03], [0.022, 0.2], [0.05, 0.45], [0.026, 0.72], [0, 0.88]].map(([o, y]) => tr.c3.clone().addScaledVector(tr.A, tr.aR + o).add(v3(0, y, 0))), 1400, { trace: tr }); } },
+      { t: 'It changed all around. Choose “Only the front”.', y: 'The whisper at the bottom offers it.', run: async () => { await sleep(300); $('#whisper button')?.click(); await sleep(900); } },
+      { t: 'Draw over the back: a taper. The front keeps its bow, on top of the taper.', y: 'Draw over the far side.', run: async () => { const f = byName('Pedestal'); const tr = massTrace(f); if (!tr) return; await penStroke([[0, 0.03], [-0.006, 0.3], [-0.03, 0.6], [-0.075, 0.88]].map(([o, y]) => tr.c3.clone().addScaledVector(tr.A, tr.aL - o).add(v3(0, y, 0))), 1300, { trace: tr }); } },
+      { t: 'Carve a 4 cm seat into its top. The sculpture settles into it.', y: 'Draw a loop on the top and push it in.', run: async () => { await view('frontTop', 700); const f = byName('Pedestal'); await penStroke(circleOn(S.asset.x, EV.get(f.id).h + 0.002, S.asset.z, 0.2, Math.PI / 2), 1300); await pullTo(-0.04, 900); } },
+      { t: 'Swap the sculpture for the Wide Vessel. The plan refits; the front and the seat come along.', y: 'Edit the space (E), choose another sculpture.', run: async () => { setMode('space'); await sleep(300); setSpace({ variant: 'vessel' }, 'Sculpture swapped for Wide Vessel'); await sleep(500); await view('front', 800); } },
+    ],
+  },
+  panelling: {
+    round: 2, tab: 'Panelling', view: 'panelling', title: 'A panelled room', setup: () => { buildScene(() => { newForm({ kind: 'recess', name: 'Niche', host: 'back', plan: { type: 'drawn', ctrl: ctrlFrom([[2.25, 1.45, 1], [2.25, 2.0, 0], [2.36, 2.3, 0], [2.6, 2.44, 0], [2.84, 2.3, 0], [2.95, 2.0, 0], [2.95, 1.45, 1]]), closed: true }, depth: 0.2, material: 'plaster' }); }); return view('panelling'); },
+    lede: 'Draw one panel, then draw along from it. The room divides the rhythm; one panel can differ, and it remembers why.',
+    steps: [
+      { t: 'Draw a panel low on the back wall and pull it out 2 cm.', y: 'A closed shape on the wall, then pull the handle toward you.', run: async () => { await penStroke([[0.16, 0.25], [0.75, 0.25], [0.75, 1.05], [0.16, 1.05], [0.16, 0.28]].map(([x, y]) => v3(x, y, 0.002)), 1300); await pullTo(0.022, 800); } },
+      { t: 'Give its edge a bevel in the lens.', y: 'Tap the panel, then draw over its profile.', run: async () => { setMode('look'); openLens(byName('Relief').id); await sleep(500); await lensDraw([[0, 0], [0, 0.4], [-0.012, 1]], 1100); closeLens(); } },
+      { t: 'Draw along from inside it, across the wall and around the corner.', y: 'Start inside the panel; ghosts show the division as you go.', run: () => { const { W, D } = S.space; return penStroke([v3(0.45, 0.62, 0.002), v3(W - 0.05, 0.62, 0.002), v3(W - 0.002, 0.62, 0.06), v3(W - 0.002, 0.62, D - 0.22)], 2200); } },
+      { t: 'Draw an arch over the panel under the niche. They all change: they are one drawing.', y: 'Start and end on one panel’s outline.', run: () => { const it = EV.get(byName('Panelling').id).layout.byWall.back[3]; const u = sToWallU('back', it.s), h = it.w / 2 - 0.004; return penStroke([[-h, 0.84], [-h, 1.0], [-h * 0.78, 1.18], [0, 1.31], [h * 0.78, 1.18], [h, 1.0], [h, 0.84]].map(([x, y]) => v3(u + x, y, 0.002)), 1300); } },
+      { t: 'Choose “Only this one”. It is remembered as “the middle one on the back wall”.', y: 'The whisper offers it, and notices the niche above.', run: async () => { await sleep(300); $('#whisper button')?.click(); await sleep(1100); } },
+      { t: 'Widen the room by 60 cm. Now there is no middle panel: it keeps its place and asks.', y: 'Edit the space (E), drag the right wall.', run: () => gripTo('right', S.space.W + 0.6, 1500) },
+      { t: 'Tie it under the niche. The wall divides around it, on either side.', y: 'In the card, “Centre it under Niche”.', run: async () => { setMode('look'); const f = byName('Panelling'); select(f.id); await sleep(500); const pr = f.proposals.find(p => p.key === 'under'); if (pr) acceptProposal(f, pr); await sleep(900); } },
+      { t: 'Remove the niche. The arched panel keeps its shape and place, and asks again.', y: 'Select the niche and press Delete.', run: async () => { const n = byName('Niche'); select(n.id); await sleep(500); removeForm(n); await sleep(400); select(byName('Panelling').id); } },
+    ],
+  },
 };
+function buildScene(fn) { const o = blank(); Object.assign(S, o); fn(); loadState(JSON.parse(JSON.stringify(S))); }
+const rectCtrl = (u0, v0, u1, v1) => ctrlFrom([[u0, v0, 1], [u1, v0, 1], [u1, v1, 1], [u0, v1, 1]]);
+function circleOn(x, y, z, r, a0 = -Math.PI / 2) { const pts = []; for (let i = 0; i <= 26; i++) { const a = a0 + i / 26 * Math.PI * 2.05; const rr = r + Math.sin(i * 1.7) * 0.006; pts.push(v3(x + Math.cos(a) * rr, y, z + Math.sin(a) * rr)); } return pts; }
+function seatY(g, p) { const t = secTopAt(EV.get(g.id).sec, p); return t ? t.q : 0.45; }
 let jKey = 'pedestal', jDone = -1;
 function renderGuide() {
   const J = JOURNEYS[jKey];
-  $('#gTabs').innerHTML = Object.entries(JOURNEYS).map(([k, j]) => `<button role="tab" aria-selected="${k === jKey}" data-k="${k}">${j.tab}</button>`).join('');
+  const row = r => Object.entries(JOURNEYS).filter(([, j]) => (j.round || 1) === r).map(([k, j]) => `<button role="tab" aria-selected="${k === jKey}" data-k="${k}">${j.tab}</button>`).join('');
+  $('#gTabs').innerHTML = `<span class="trow"><span class="tlab">Round one</span>${row(1)}</span><span class="trow"><span class="tlab">Round two</span>${row(2)}</span>`;
+  $('#gEyebrow').textContent = (J.round || 1) === 2 ? 'Round two · expressiveness' : 'Round one · the language';
   $('#gTabs').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { if (auto) return; jKey = b.dataset.k; jDone = -1; location.hash = jKey; renderGuide(); J2setup(); }));
   $('#gTitle').textContent = J.title; $('#gLede').textContent = J.lede;
   $('#gSteps').innerHTML = J.steps.map((s, i) => `<li class="${i <= jDone ? 'done' : ''} ${i === jDone + 1 ? 'now' : ''}"><div><p>${s.t}</p><div class="try">${s.y}</div>
@@ -2131,12 +3087,13 @@ function tick(now) {
 }
 
 /* ---------- Boot ---------- */
-window.__biskiq = { tidy, massTrace, applyElevStroke, evalCurve, oversketch, S, EV, evaluate, select, setSpace, metricsAll, undo, redo, loadEmpty, loadGallery, JOURNEYS, runTo: (k, i) => { jKey = k; jDone = -1; renderGuide(); return runTo(i); }, formById, byName, acceptProposal, untie, removeForm, view, snapshot };
+window.__biskiq = { tidy, massTrace, applyElevStroke, evalCurve, oversketch, S, EV, evaluate, select, setSpace, metricsAll, undo, redo, loadEmpty, loadGallery, JOURNEYS, runTo: (k, i) => { jKey = k; jDone = -1; renderGuide(); return runTo(i); }, formById, byName, acceptProposal, untie, removeForm, view, snapshot, camTo, v3, resolveFace, storyOf, setRhythm, setExWhere, exceptionActs, whereText };
 const hash = location.hash.replace('#', '');
 if (hash === 'gallery') { loadGallery(); renderGuide(); }
 else { if (JOURNEYS[hash]) jKey = hash; loadEmpty(); renderGuide(); }
 setMode('look'); refreshSpaceCard();
-view(hash && JOURNEYS[hash] ? JOURNEYS[hash].steps && (hash === 'pedestal' ? 'pedestal' : hash === 'bench' ? 'bench' : 'niche') : 'overview', 10);
+if (JOURNEYS[hash]?.round === 2) JOURNEYS[hash].setup();
+view(JOURNEYS[hash] ? (JOURNEYS[hash].view || hash) : 'overview', 10);
 requestAnimationFrame(frame);
 </script>
 </body>
