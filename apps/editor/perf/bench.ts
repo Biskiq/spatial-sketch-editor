@@ -4,6 +4,7 @@
  *   npm run perf:bench --workspace @portfolio/editor -- --label bench-1
  *   npm run perf:bench --workspace @portfolio/editor -- --smoke      # smoke, not evidence
  *   … -- --no-sweep-latency                                            # owner drops the sweep rows
+ *   … -- --early-stop                                                  # opt-in decisive hard-budget stop
  *   … -- --xl-drag-cache warm                                          # D5: grid-XL F3/F4/F8 warm only
  *
  * A pass is one invocation that produces every row it needs:
@@ -71,6 +72,12 @@ if (XL_DRAG_CACHE !== undefined && !XL_DRAG_CACHE.split(',').every((state) => ['
 }
 /** The report-only sweep latency rows run in every bench unless the owner drops them for a pass (C). */
 const SWEEP_LATENCY = !process.argv.includes('--no-sweep-latency') && process.env.PERF_SWEEP_LATENCY !== '0';
+/**
+ * Opt-in decisive-failure early stop (perf/lib/early-stop.ts). Off by default:
+ * activating it changes the sample count of the rows it stops, so an accepted
+ * pass needs the owner's ruling. The manifest records whether it was active.
+ */
+const EARLY_STOP = process.argv.includes('--early-stop') || process.env.PERF_EARLY_STOP === '1';
 const LOAD_THRESHOLD = Number(process.env.PERF_LOAD_THRESHOLD ?? DEFAULT_LOAD_THRESHOLD);
 const LOAD_THRESHOLD_REASON = process.env.PERF_LOAD_THRESHOLD_REASON;
 if (LOAD_THRESHOLD !== DEFAULT_LOAD_THRESHOLD && LOAD_THRESHOLD_REASON === undefined) {
@@ -258,6 +265,7 @@ async function main(): Promise<void> {
 		PERF_BASE_URL: BASE_URL,
 		PERF_RESULTS_DIR: passDir,
 		...(SMOKE ? { PERF_SMOKE: '1' } : {}),
+		...(EARLY_STOP ? { PERF_EARLY_STOP: '1' } : {}),
 		...(XL_DRAG_CACHE === undefined ? {} : { PERF_XL_DRAG_CACHE: XL_DRAG_CACHE })
 	};
 	const writeManifest = (end: Snapshot | null) => {
@@ -279,6 +287,10 @@ async function main(): Promise<void> {
 			deviations,
 			chrome,
 			xlDragCacheStates: XL_DRAG_CACHE ?? 'cold,warm,repeat-use',
+			method: {
+				earlyStop: EARLY_STOP,
+				note: 'earlyStop stops only a hard row whose every measured run already exceeds the budget by the recorded margin; a stopped row is a demonstrated failure with a partial sample count, never a pass'
+			},
 			aborted: aborted.length > 0,
 			abortCauses: aborted.map((phase) => `${phase.name}: ${phase.cause}`),
 			tiers: TIERS,

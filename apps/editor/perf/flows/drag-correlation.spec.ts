@@ -47,6 +47,7 @@ import {
 import {
 	acceptedResultCount,
 	closeToHub,
+	commandPresentation,
 	commitPrecisionLength,
 	dragWallHandle,
 	gotoCreateIntent,
@@ -58,6 +59,7 @@ import {
 	waitForAcceptedResult,
 	waitForStageSettled
 } from '../lib/flow';
+import { HARD_BUDGETS_MS, decisiveHardFailure, earlyStopEnabled } from '../lib/early-stop';
 import { correlateInputs, firstFrameAtOrAfter, latestInputAge, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
@@ -153,21 +155,6 @@ async function undoOnce(page: import('@playwright/test').Page): Promise<void> {
 	await waitForAcceptedResult(page, before);
 }
 
-function commandCompletion(
-	records: Awaited<ReturnType<typeof readLedger>>['records'],
-	ticks: readonly number[],
-	commandName: string
-): number | null {
-	const command = [...records].reverse().find((record) => record.name === commandName && record.kind === 'mark');
-	if (command === undefined) return null;
-	const result = records.find(
-		(record) => record.kind === 'result' && record.name === 'accepted-result' && record.time >= command.time
-	);
-	if (result === undefined) return null;
-	const presented = firstFrameAtOrAfter(ticks, result.time);
-	return presented === null ? null : presented - command.time;
-}
-
 async function runDrag(
 	session: MeasuredSession,
 	tier: WorkloadId,
@@ -220,8 +207,7 @@ async function runDrag(
 		const dragWindow = workDelta(workBefore, await readWork(page));
 		const sampleRender = renderCounterDelta(renderBefore, await readRenderCounters(page));
 		await recordOwnership();
-		let ledger = await readLedger(page);
-		const commit = commandCompletion(ledger.records, ledger.ticks, 'command:commit');
+		const commit = await commandPresentation(page, 'command:commit');
 		const served = (dragWindow.counts.compile ?? 0) === 0;
 		if (served) cacheServed += 1;
 		else {
@@ -240,8 +226,7 @@ async function runDrag(
 		await waitForAcceptedResult(page, beforePrecision);
 		const precisionWindow = workDelta(precisionBefore, await readWork(page));
 		await recordOwnership();
-		ledger = await readLedger(page);
-		const precision = commandCompletion(ledger.records, ledger.ticks, 'command:instrument');
+		const precision = await commandPresentation(page, 'command:instrument');
 		if ((precisionWindow.counts.compile ?? 0) === 0) cacheServed += 1;
 		else {
 			addWork(commitWork, precisionWindow);
@@ -328,6 +313,8 @@ test.describe('F3/F4/F8 methodology', () => {
 			}
 			const limitations = [...passLimitations(), ...tierLimitations(tier)];
 			const flowName = 'F3/F4/F8 on the shipped straight-Wall drag';
+			// Only the hard tiers carry contract rows; report-only tiers never stop.
+			const hardBudgets = HARD_BUDGETS_MS[tier];
 			const runStates = dragCacheStates(tier);
 			let crashed = false;
 			for (const cacheState of CACHE_STATES) {
@@ -347,7 +334,21 @@ test.describe('F3/F4/F8 methodology', () => {
 							cacheState,
 							warmup: smokeOr(WARMUP_RUNS, 0),
 							runs: smokeOr(RUNS),
-							afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+							afterRun: cacheState === 'repeat-use' ? closeToHub : undefined,
+							earlyStop:
+								earlyStopEnabled() && hardBudgets !== undefined
+									? (completed: readonly DragRun[]) => {
+											const commit = completed.flatMap((run) => run.commitCompletions);
+											const precision = completed.flatMap((run) => run.precisionCompletions);
+											const undo = completed.flatMap((run) => run.undoCompletion);
+											const latencies = completed.flatMap((run) => run.latencies);
+											return (
+												decisiveHardFailure(`F4-${tier}-${cacheState}`, [...commit, ...precision], hardBudgets.F4) ??
+												decisiveHardFailure(`F8-${tier}-${cacheState}`, undo, hardBudgets.F8) ??
+												decisiveHardFailure(`F3-${tier}-${cacheState}`, latencies, hardBudgets.F3)
+											);
+										}
+									: undefined
 						},
 						(session) => runDrag(session, tier)
 					);
@@ -357,7 +358,7 @@ test.describe('F3/F4/F8 methodology', () => {
 					crashed = true;
 					continue;
 				}
-				const { results: runs, facts } = collected;
+				const { results: runs, facts, earlyStop } = collected;
 				const latencies = runs.flatMap((run) => run.latencies);
 				const ages = runs.flatMap((run) => run.ages);
 				const undo = runs.flatMap((run) => run.undoCompletion);
@@ -408,7 +409,8 @@ test.describe('F3/F4/F8 methodology', () => {
 						})(),
 						...heapMetrics('open', last?.heapAfterOpen),
 						...heapMetrics('sequence', last?.heapAfterSequence),
-						...ownershipMetrics('commit', last?.ownership ?? [])
+						...ownershipMetrics('commit', last?.ownership ?? []),
+						...(earlyStop === null ? {} : { earlyStopSamples: earlyStop.samples, earlyStopMinimumMs: earlyStop.statisticMs })
 					},
 					stats: {
 						heapAfterOpenMiB: summarize(runs.map((run) => run.heapAfterOpen.heapMiB)),
@@ -425,7 +427,8 @@ test.describe('F3/F4/F8 methodology', () => {
 						'no drawing feature exists in this slice: F3 measures the methodology on the shipped Wall drag',
 						'cache-served samples (no compile in the window) are counted separately and excluded from the windows',
 						'drag:*/precision:* stage rows are per measured sample; undoRedo:* per command',
-						'open:postGc/sequence:postGc: JS heap after a forced GC and DOM counters, outside the timed windows (D1); commit:ownership: Stage live objects after each accepted commit, last run'
+						'open:postGc/sequence:postGc: JS heap after a forced GC and DOM counters, outside the timed windows (D1); commit:ownership: Stage live objects after each accepted commit, last run',
+						...(earlyStop === null ? [] : [earlyStop.rule])
 					]
 				};
 				report.rows.push(row);

@@ -38,8 +38,7 @@ import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
-import { closeToHub, fitStage, gotoCreateIntent, openSourceJson, scriptedPanZoom, setStageReading, uniqueProjectId, waitForStageSettled } from '../lib/flow';
-import { frameIntervals, readLedger } from '../lib/ledger';
+import { closeToHub, fitStage, frameWindow, gotoCreateIntent, openSourceJson, scriptedPanZoom, setStageReading, uniqueProjectId, waitForStageSettled } from '../lib/flow';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
 import {
@@ -132,7 +131,7 @@ async function viewWindow(page: import('@playwright/test').Page): Promise<ViewWi
 	const move = renderCounterDelta(moveBefore, await readRenderCounters(page));
 	const moveTime = await readRenderTime(page);
 	const work = workDelta(workBefore, await readWork(page));
-	const intervals = frameIntervals((await readLedger(page)).ticks, started, ended);
+	const intervals = (await frameWindow(page, started, ended)).intervals;
 	return { rest, restTime, move, moveTime, intervals, bins, resident, work };
 }
 
@@ -198,8 +197,10 @@ async function orbitOnce(session: MeasuredSession, tier: WorkloadId): Promise<Or
 	await page.waitForTimeout(IDLE_MS);
 	const idleRender = renderCounterDelta(idleBefore, await readRenderCounters(page));
 	const resident = await readResidentBytes(page);
-	const ledger = await readLedger(page);
-	const intervals = frameIntervals(ledger.ticks, started, ended);
+	// One in-page reduction: the orbit needs intervals and long tasks, not the
+	// frame clock and input records that a full ledger read would serialize.
+	const frameData = await frameWindow(page, started, ended);
+	const intervals = frameData.intervals;
 	// The all-visible windows (D1), after the required orbit and idle windows.
 	await fitStage(page);
 	const all3d = await viewWindow(page);
@@ -208,10 +209,8 @@ async function orbitOnce(session: MeasuredSession, tier: WorkloadId): Promise<Or
 	const plan = await viewWindow(page);
 	return {
 		intervals,
-		longTasks: ledger.longTasks.filter((entry) => entry.start >= started && entry.start <= ended).length,
-		longestTask: ledger.longTasks
-			.filter((entry) => entry.start >= started && entry.start <= ended)
-			.reduce((max, entry) => Math.max(max, entry.duration), 0),
+		longTasks: frameData.longTaskCount,
+		longestTask: frameData.longestLongTask,
 		durationMs: ended - started,
 		frames: intervals.length,
 		setupMs,

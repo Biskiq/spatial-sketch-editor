@@ -10,6 +10,7 @@
 
 import type { Browser, BrowserContext, CDPSession, Page } from '@playwright/test';
 
+import type { EarlyStopDecision } from './early-stop';
 import { perfInitScript, type HarnessOptions } from './ledger';
 
 /** The performance contract's gating and proposed network profiles. */
@@ -111,7 +112,7 @@ export async function heapUsedMiB(cdp: CDPSession): Promise<number> {
 	return used === undefined ? Number.NaN : used.value / (1024 * 1024);
 }
 
-export type MeasuredRunPlan = {
+export type MeasuredRunPlan<T = unknown> = {
 	readonly cacheState: CacheState;
 	readonly warmup: number;
 	readonly runs: number;
@@ -119,6 +120,21 @@ export type MeasuredRunPlan = {
 	readonly prepare?: (session: MeasuredSession) => Promise<void>;
 	/** Called after each warm/repeat-use run to close the cycle boundary. */
 	readonly afterRun?: (page: Page) => Promise<void>;
+	/**
+	 * Optional decisive-failure stop, evaluated after each measured run with the
+	 * results so far. A decision ends the series early; the caller must record it
+	 * as a demonstrated failure with a partial sample count, never as a pass.
+	 */
+	readonly earlyStop?: (results: readonly T[], completedRuns: number) => EarlyStopDecision | null;
+};
+
+export type CollectedRuns<T> = {
+	readonly results: T[];
+	readonly facts: Record<string, string>;
+	/** Set only when the series stopped on a decisive hard-budget failure. */
+	readonly earlyStop: EarlyStopDecision | null;
+	/** Measured runs actually completed (the full plan unless stopped). */
+	readonly measuredRuns: number;
 };
 
 /**
@@ -132,9 +148,9 @@ export type MeasuredRunPlan = {
 export async function collectMeasuredRuns<T>(
 	browser: Browser,
 	options: Omit<MeasuredSessionOptions, 'cacheState'>,
-	plan: MeasuredRunPlan,
+	plan: MeasuredRunPlan<T>,
 	run: (session: MeasuredSession) => Promise<T>
-): Promise<{ results: T[]; facts: Record<string, string> }> {
+): Promise<CollectedRuns<T>> {
 	const results: T[] = [];
 	if (plan.cacheState === 'cold') {
 		let facts: Record<string, string> = {};
@@ -143,11 +159,15 @@ export async function collectMeasuredRuns<T>(
 		}
 		for (let index = 0; index < plan.runs; index++) {
 			await withSession(browser, { ...options, cacheState: 'cold' }, plan.prepare, async (session) => {
-				facts = await browserFacts(browser, session.page);
+				// Browser facts are constant for the flow; reading them on every cold
+				// run repeated three evaluates per context for the same answer.
+				if (Object.keys(facts).length === 0) facts = await browserFacts(browser, session.page);
 				results.push(await run(session));
 			});
+			const stop = plan.earlyStop?.(results, index + 1) ?? null;
+			if (stop !== null) return { results, facts, earlyStop: stop, measuredRuns: results.length };
 		}
-		return { results, facts };
+		return { results, facts, earlyStop: null, measuredRuns: results.length };
 	}
 	const session = await newMeasuredSession(browser, { ...options, cacheState: plan.cacheState });
 	try {
@@ -159,9 +179,11 @@ export async function collectMeasuredRuns<T>(
 		}
 		for (let index = 0; index < plan.runs; index++) {
 			results.push(await run(session));
+			const stop = plan.earlyStop?.(results, index + 1) ?? null;
+			if (stop !== null) return { results, facts, earlyStop: stop, measuredRuns: results.length };
 			await plan.afterRun?.(session.page);
 		}
-		return { results, facts };
+		return { results, facts, earlyStop: null, measuredRuns: results.length };
 	} finally {
 		await session.close();
 	}

@@ -283,6 +283,7 @@ coarse and the report says so.
 | `PERF_COOLDOWN_SECONDS` | recorded cool-down before the M and S tiers (default 180; 0 in smoke) |
 | `PERF_LOAD_THRESHOLD` (+ `_REASON`) | contamination threshold on the 1-minute load average (default 4.0; a change needs a recorded reason) |
 | `PERF_SWEEP_LATENCY=0` / `--no-sweep-latency` | drop the report-only sweep latency rows (F3/F4/F8 on the focus Wall and F7, at museum ×1 and sweep-H10) for one pass; they run by default |
+| `PERF_EARLY_STOP=1` / `--early-stop` | opt-in decisive hard-budget stop: once at least 3 measured runs of a **hard** row all exceed the budget by more than 25 %, the remaining runs are skipped. The row is recorded as a demonstrated failure with a partial sample count and the rule, never as a pass. Target, report-only and smoke rows never stop |
 | `PERF_NETWORK` | `N0`, `N1` (default) or `N2` |
 | `PERF_RESULTS_DIR` | raw result directory (default `$TMPDIR/biskiq-perf-results`) |
 | `PERF_POWER_STATE` | declared power state, recorded with each result |
@@ -296,6 +297,14 @@ and 750 kbit/s up; N0 applies no throttling.
 
 A reduced pass (`PERF_RUNS<10` or `PERF_SAMPLES<60`) is labelled a pre-flight
 pass in every row and is never acceptance evidence.
+
+**Setup reads are bounded (harness only).** Counting accepted results, reading a
+mark or a result record and reducing the orbit's frame window happen in the page,
+so a setup step does not copy the frame clock and every input record over CDP. The
+settle checks sample immediately and then once after the same stability interval
+(a half-second for the Stage, a quarter-second for the camera). Neither change
+alters a measured window, the input path, a cache state or a sample floor: the
+same values are computed from the same observations.
 
 Every flow row runs **cold, warm and repeat-use**. Cold creates a fresh browser
 context for every measured run (the contract's definition); warm and repeat-use

@@ -10,7 +10,7 @@
 import { expect, type Dialog, type Page } from '@playwright/test';
 
 import type { FixtureProject } from './fixtures';
-import { readLedger, type LedgerRecord } from './ledger';
+import type { LedgerRecord } from './ledger';
 
 /** How long a harness step waits for a large tier's admission or result; never a measured bound. */
 export const LARGE_TIER_WAIT_MS = 300_000;
@@ -109,9 +109,18 @@ export async function waitForMark(page: Page, name: string, timeout = 20_000): P
 		name,
 		{ timeout, polling: 50 }
 	);
-	const ledger = await readLedger(page);
-	const record = [...ledger.records].reverse().find((entry) => entry.name === name);
-	if (record === undefined) throw new Error(`mark ${name} was not recorded`);
+	// One record, not the whole ledger: this runs on every setup open, and a
+	// ledger copies the frame clock and every record over CDP on each read.
+	const record = await page.evaluate((markName) => {
+		const records = (window as Window & { __BISKIQ_PERF_RECORDS__?: LedgerRecord[] }).__BISKIQ_PERF_RECORDS__;
+		if (records === undefined) return null;
+		for (let index = records.length - 1; index >= 0; index -= 1) {
+			const candidate = records[index]!;
+			if (candidate.name === markName) return candidate;
+		}
+		return null;
+	}, name);
+	if (record === null) throw new Error(`mark ${name} was not recorded`);
 	return record;
 }
 
@@ -135,15 +144,18 @@ export async function selectFirstWallAndOpenDimensions(page: Page): Promise<void
  */
 export async function waitForStageSettled(page: Page, timeoutMs = LARGE_TIER_WAIT_MS): Promise<void> {
 	const started = Date.now();
-	let previous = -1;
+	let previous: number | null = null;
 	while (Date.now() - started < timeoutMs) {
-		await page.waitForTimeout(500);
 		const triangles = await page.evaluate(() => {
 			const refs = (window as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, { renderer: { info: { render: { triangles: number } } } }> }).__BISKIQ_PERF_RENDER_REFS__;
 			return refs?.stage?.renderer.info.render.triangles ?? -1;
 		});
-		if (triangles >= 0 && triangles === previous) return;
+		// Two equal readings a full interval apart still define the loaded peak;
+		// sampling before the first wait removes a whole interval from setup. A
+		// Stage that has drawn nothing has not settled, so 0 never counts.
+		if (previous !== null && triangles > 0 && triangles === previous) return;
 		previous = triangles;
+		await page.waitForTimeout(500);
 	}
 	throw new Error(`the Stage did not settle within ${timeoutMs / 1000} s`);
 }
@@ -156,15 +168,19 @@ export async function waitForStageSettled(page: Page, timeoutMs = LARGE_TIER_WAI
 export async function waitForCameraSettled(page: Page, timeoutMs = 20_000): Promise<void> {
 	const started = Date.now();
 	let previous = '';
+	let sampled = false;
 	while (Date.now() - started < timeoutMs) {
-		await page.waitForTimeout(250);
 		const pose = await page.evaluate(() => {
 			type Camera = { matrixWorld: { elements: number[] }; projectionMatrix: { elements: number[] } };
 			const camera = (window as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, { camera: Camera }> }).__BISKIQ_PERF_RENDER_REFS__?.stage?.camera;
 			return camera === undefined ? '' : [...camera.matrixWorld.elements, ...camera.projectionMatrix.elements].map((value) => value.toFixed(6)).join(',');
 		});
-		if (pose !== '' && pose === previous) return;
+		// Same stability proof (an equal pose one interval later); the first sample
+		// no longer costs an interval of its own.
+		if (sampled && pose !== '' && pose === previous) return;
 		previous = pose;
+		sampled = true;
+		await page.waitForTimeout(250);
 	}
 	throw new Error(`the Stage camera did not settle within ${timeoutMs / 1000} s`);
 }
@@ -270,8 +286,16 @@ export async function dragWallHandle(
 
 /** How many accepted results have installed so far. */
 export async function acceptedResultCount(page: Page): Promise<number> {
-	const ledger = await readLedger(page);
-	return ledger.records.filter((record) => record.kind === 'result' && record.name === 'accepted-result').length;
+	// Counted in the page: a full ledger read copies the frame clock, every
+	// record and the event buffer for one integer, and the edit loops call this
+	// before and after every commit.
+	return page.evaluate(() => {
+		const records = (window as Window & { __BISKIQ_PERF_RECORDS__?: LedgerRecord[] }).__BISKIQ_PERF_RECORDS__;
+		if (records === undefined) return 0;
+		let count = 0;
+		for (const record of records) if (record.kind === 'result' && record.name === 'accepted-result') count += 1;
+		return count;
+	});
 }
 
 /** Wait until one more accepted result than `previous` has installed. */
@@ -285,11 +309,99 @@ export async function waitForAcceptedResult(page: Page, previous: number): Promi
 		previous,
 		{ timeout: LARGE_TIER_WAIT_MS, polling: 50 }
 	);
-	const ledger = await readLedger(page);
-	const results = ledger.records.filter((record) => record.kind === 'result' && record.name === 'accepted-result');
-	const record = results[results.length - 1];
-	if (record === undefined) throw new Error('no accepted result was installed');
+	const record = await page.evaluate(() => {
+		const records = (window as Window & { __BISKIQ_PERF_RECORDS__?: LedgerRecord[] }).__BISKIQ_PERF_RECORDS__;
+		if (records === undefined) return null;
+		for (let index = records.length - 1; index >= 0; index -= 1) {
+			const candidate = records[index]!;
+			if (candidate.kind === 'result' && candidate.name === 'accepted-result') return candidate;
+		}
+		return null;
+	});
+	if (record === null) throw new Error('no accepted result was installed');
 	return record;
+}
+
+/**
+ * `command → accepted result → first rendering opportunity after it`, computed
+ * in the page.
+ *
+ * This is the same value the flow used to compute from a full `readLedger` on
+ * every sample; it is now one evaluate that returns a single number, so the
+ * frame clock and every input record are not serialized per sample.
+ */
+export async function commandPresentation(page: Page, commandName: string): Promise<number | null> {
+	return page.evaluate((name) => {
+		type Entry = { kind: string; name: string; time: number };
+		const target = window as Window & { __BISKIQ_PERF_RECORDS__?: Entry[]; __BISKIQ_PERF_TICKS__?: number[] };
+		const records = target.__BISKIQ_PERF_RECORDS__ ?? [];
+		const ticks = target.__BISKIQ_PERF_TICKS__ ?? [];
+		let command: Entry | undefined;
+		for (let index = records.length - 1; index >= 0; index -= 1) {
+			const candidate = records[index]!;
+			if (candidate.kind === 'mark' && candidate.name === name) {
+				command = candidate;
+				break;
+			}
+		}
+		if (command === undefined) return null;
+		let completedAt: number | null = null;
+		for (const candidate of records) {
+			if (candidate.kind === 'result' && candidate.name === 'accepted-result' && candidate.time >= command.time) {
+				completedAt = candidate.time;
+				break;
+			}
+		}
+		if (completedAt === null) return null;
+		// rAF timestamps are monotonic, so the first tick at or after the result is
+		// the first bracketed rendering opportunity (binary search, same answer as
+		// `firstFrameAtOrAfter`).
+		let low = 0;
+		let high = ticks.length - 1;
+		let frame: number | null = null;
+		while (low <= high) {
+			const middle = (low + high) >> 1;
+			const tick = ticks[middle]!;
+			if (tick >= completedAt) {
+				frame = tick;
+				high = middle - 1;
+			} else low = middle + 1;
+		}
+		return frame === null ? null : frame - command.time;
+	}, commandName);
+}
+
+/**
+ * Frame intervals and long tasks inside `[from, to]`, computed in the page for
+ * the same reason as {@link commandPresentation}: the orbit windows read this
+ * several times per run and only need the two derived series.
+ */
+export async function frameWindow(
+	page: Page,
+	from: number,
+	to: number
+): Promise<{ intervals: number[]; longTaskCount: number; longestLongTask: number }> {
+	return page.evaluate(([start, end]) => {
+		const target = window as Window & {
+			__BISKIQ_PERF_TICKS__?: number[];
+			__BISKIQ_PERF_LONG_TASKS__?: { start: number; duration: number }[];
+		};
+		const intervals: number[] = [];
+		let previous: number | null = null;
+		for (const tick of target.__BISKIQ_PERF_TICKS__ ?? []) {
+			if (tick < start || tick > end) continue;
+			if (previous !== null) intervals.push(tick - previous);
+			previous = tick;
+		}
+		let longTaskCount = 0;
+		let longestLongTask = 0;
+		for (const task of target.__BISKIQ_PERF_LONG_TASKS__ ?? []) {
+			if (task.start < start || task.start > end) continue;
+			longTaskCount += 1;
+			longestLongTask = Math.max(longestLongTask, task.duration);
+		}
+		return { intervals, longTaskCount, longestLongTask };
+	}, [from, to] as const);
 }
 
 /** Type an exact Wall length through the Dimensions instrument and commit with Enter. */

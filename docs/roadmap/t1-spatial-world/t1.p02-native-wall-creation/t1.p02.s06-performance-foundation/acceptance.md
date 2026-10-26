@@ -632,4 +632,14 @@ Earlier independent reviews remain recorded in [review-handoff.md](./review-hand
 round 3 on the persistent algorithms: two substantiated findings fixed with falsifiers, the rest
 documented preconditions, no expensive performance work re-run. Its verdict is PASS for
 implementation correctness in the reviewed scope and WITHHOLD for step acceptance until Bench 2.
+
+**Bench 2/3 method efficiency (2026-10-26).** A harness-only change set bounds setup reads (accepted-result
+counts, mark/result reads and the orbit frame window are reduced in the page), removes the duplicated
+first settle interval, and adds an opt-in decisive hard-budget early stop (3 runs minimum, 25 % margin,
+recorded as a demonstrated failure, never a pass; off unless `--early-stop`). Measured windows, the
+input path, cache states, network profile and sample floors are unchanged. Estimated saving is
+**7–13 min per lean pass**, and 15–45 min more only when a hard row fails decisively. The
+[strategy, cost model and owner decisions](./review-handoff.md#bench-23-method-efficiency-2026-10-26)
+are in the review handoff; the proposed Bench 2 estimate is **2 h 45 min – 3 h 10 min** (reserve 3.5 h).
+Bench 2/3 have not run, and activating early stop in an accepted pass needs the owner's ruling.
 Stop here before the owner benchmark and acceptance.

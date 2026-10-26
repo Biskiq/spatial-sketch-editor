@@ -169,6 +169,127 @@ Unresolved conditions, precisely:
 The requested boundary is **ready for Bench 2**. Do not merge, close S06, close the phase, or treat
 this review — or any earlier one — as a performance acceptance of this implementation.
 
+## Bench 2/3 method efficiency (2026-10-26)
+
+**Status:** harness-only reductions implemented and smoke-verified; the measured contract is unchanged
+and Bench 2/3 have not run. This section is the proposed lean strategy, its cost model and the owner
+decisions it needs. No timing in it is new measurement: every phase figure is Bench 1's record and
+every saving is a count-based estimate with its assumption stated.
+
+### Where a lean pass spends its wall clock
+
+Bench 1's measured phases, which are also the ceiling for Bench 2 before any product speed-up:
+
+| Phase | Bench 1 wall time | Notes |
+| --- | ---: | --- |
+| grid-L tier | 7,234 s | 5 flows × 3 cache states |
+| grid-M tier | 2,555 s | same flows |
+| grid-S tier | 1,737 s | same flows, plus the delay proof |
+| cool-downs | 360 s | 180 s before M and before S, by design |
+| E5 browser counts | 858 s | 7 workloads, one warm session each |
+| transferred rows | 148 s | startup + preview lifecycle |
+| build, bundle report, serve | ≈ 60 s | inferred from the Bench 1b total |
+| **ceiling** | **≈ 12,950 s (3 h 36 min)** | with `--no-sweep-latency` |
+
+A lean pass opens the app about **450 times**: project-open 165 (3 new tiers + 2 old-method
+sources, × 3 cache states × 11 opens), F3 99, F7 99, F13 69, traces 3, the delay proof 13 and E5 7.
+Most of that is intrinsic: cold is a fresh context per measured run, every flow needs a real
+admission, and an edit sequence needs its own project. The harness overhead is everything else.
+
+### Implemented harness reductions (measurement unchanged)
+
+| Change | Where | Why it was cost | Verification |
+| --- | --- | --- | --- |
+| Accepted-result counting, result waits and mark reads happen in the page | `flow.ts` | Edit loops called these before and after every commit; each call copied the whole ledger (frame clock + every input record) over CDP. A drag run alone did ~136 full reads; now one per run (its correlation read) survives. | Smoke drag run filed the same rows and the delay proof still passed (180/180 rows, 9 presented, 171 superseded) |
+| `command → result → first frame` computed in the page | `flow.ts` (`commandPresentation`) | Replaced two full-ledger reads per drag sample with one number | Same smoke values; binary search uses monotonic rAF ticks |
+| Orbit frame intervals and long tasks reduced in the page | `flow.ts` (`frameWindow`), `orbit.spec.ts` | The orbit read the full ledger three times per run for two derived series | Orbit smoke passed; same interval/long-task definition |
+| Settle checks sample immediately, then once after the same interval | `flow.ts` | The first sample slept before looking, so every open paid two intervals instead of one | Smoke opens settled; stability window unchanged (500 ms Stage, 250 ms camera) |
+| Browser facts read once per collected series | `browser.ts` | Three evaluates per cold run, always the same answer | Cold smoke rows carry the same facts |
+| Opt-in decisive early stop | `early-stop.ts`, `browser.ts`, project-open and drag plans, `bench.ts` | — | Unit tests plus a forced integration run (below) |
+
+**Estimated saving: 7–13 min per lean pass** (~3–6 %). Assumptions: ~13,300 avoided ledger
+transfers at 15–40 ms each for 25–150 KB payloads (~3–9 min), and ~390 Stage settles × ~0.5 s of
+duplicated interval plus ~100 camera settles × 0.25 s (~4 min). That is small beside the tier times
+because a pass is dominated by real interactions, admissions and frame waits: the harness was never the
+main cost, but its remaining overhead scaled with the sample plan and is now bounded.
+
+**Unchanged, deliberately:** cold = a fresh context per measured run; N1; 60 pointer inputs per drag;
+10 measured runs; all three cache states; the real UI file-chooser admission; frame attribution; the
+trace windows; every budget row. Nothing here turns a measured interaction into a synthetic timestamp.
+
+### Decisive-result early termination (implemented, inert unless asked)
+
+Rule (`early-stop.ts`), applied per row:
+
+1. only a **hard** contract row is eligible (F2 S/M; F3, F4, F8 S/M/L — F2 at L is a Target row and
+   report-only tiers are absent, so they can never stop);
+2. at least **3** measured runs must exist — one slow first sample never stops anything;
+3. the **minimum** of those runs must exceed the budget by **25 %**, so no observed run is near the
+   budget and noise cannot flip the verdict;
+4. the row records the rule, its budget, the partial sample count and the observed minimum, and is
+   read as a **demonstrated failure**, never a pass. The manifest records whether the pass activated it.
+
+Activation is `--early-stop` (or `PERF_EARLY_STOP=1`); it is off by default because it changes the
+sample count of the rows it stops, which is a measurement-methodology change the owner must approve.
+
+Falsification and integration evidence:
+
+- Unit tests: `apps/editor/tests/lib/perf/early-stop.test.ts` (6 tests) — minimum-run, margin,
+  non-hard/absent budget, non-finite observations, and enablement (never in smoke).
+- Forced integration (temporary budget of 1 ms, reverted): project-open with **6 planned runs** stopped
+  each cache state at **n = 3**, recorded `earlyStopSamples=3`, the observed minimum and the rule, and
+  the rows are marked as failures. The same spec with the real budgets stopped nothing.
+- Default-off smoke runs are unaffected: identical rows, no `earlyStop*` metrics.
+
+Savings are failure-only: **0** when the hard rows pass; about **15–25 min** when one L drag row family
+(F3/F4/F8 share the run series) fails decisively, and up to **~45 min** if L and M both fail.
+
+### Proposed Bench 2 command and expected duration
+
+```sh
+npm run perf:bench --workspace @portfolio/editor -- --label bench-2 \
+  --tiers grid-S,grid-M,grid-L --no-sweep-latency --early-stop
+```
+
+`PERF_TIERS` selects workloads only; `selectedTiers()` keeps the fixed peak-first order (L, M, S) in
+every pass, so the order in the argument has no effect. Pre-flight is `npm run perf:workloads -- --verify`
+(≈ 1.5 min); a stale cache refuses the pass in under a minute instead of extending it.
+
+| Scenario | Estimate |
+| --- | ---: |
+| A. Hard rows pass, S06 gains delivered inside the flows | **2 h 45 min – 3 h 00 min** |
+| B. L/M hard rows fail decisively, early stop active | **2 h 50 min – 3 h 10 min** |
+| C. No product shrink and no early stop | **3 h 25 min** |
+
+Reserve 3 h 30 min. The product-side shrink is a prediction (0–25 % of tier time, from the F3/F4/F8
+budget targets); Bench 2 measures it. Splitting the pass after L (an M+S continuation, as Bench 1b did)
+costs one extra build/serve (~1.5 min) and is worth it if the machine risks contamination during L.
+
+### Deeper reductions that need an owner decision (not activated)
+
+| Option | Saving | Statistical / contract cost |
+| --- | ---: | --- |
+| Keep the ratified plan (recommended for Bench 2) | — | none |
+| Reduce measured runs from 10 to 6 on named non-hard rows | ≈ 35–40 % of those rows | p95 from 6 samples is nearly the maximum; the contract's sample floor is a ratified number |
+| Reduce in-session F3/F4 samples from 5 to 3 per run | ≈ 35–40 % of the drag phase | 3 commit observations per run instead of 5; pooled input latencies stay large |
+| Drop the A.6 old-method rows in Bench 3 | ≈ 2–4 min | loses the same-revision method check (already established in Bench 1/2) |
+| Skip E5 in Bench 3 | ≈ 14 min | E5 is count/pixel evidence, not timing; dropping it needs a recorded reason |
+| Run fewer cache states where the row is not a cache-state row | large | contradicts the contract's every-row cold/warm/repeat-use rule; not recommended |
+
+Recommendation: Bench 2 keeps the ratified sample plan plus `--early-stop`. Choose Bench 3's
+consolidation only after seeing which rows pass, because early termination already recovers most of the
+cost of a decisive failure and consolidation would cost statistical resolution on rows that do pass.
+
+### Verification actually run for this section
+
+| Check | Result |
+| --- | --- |
+| Harness typecheck (`tsc` over `perf/lib`, `perf/bench.ts`, the tier specs; the app tsconfig excludes `perf/`) | pass, apart from pre-existing `Buffer`/`ArrayBufferLike` noise in `import.spec.ts` and the workload registry |
+| `early-stop` unit tests | 6/6 pass |
+| Smoke, chrome 155.0.8059.85, built preview on loopback | drag 2/2 (31.5 s); orbit, project-open (new + old), cycles 4/4 (1.1 min) |
+| Forced early-stop integration (temporary 1 ms budget, reverted) | 6 planned runs → each row n = 3 with the rule recorded; default budgets stop nothing |
+| Bench 2/3 | **not run** |
+
 ## Historical review records
 
 The numbered sections below preserve earlier review rounds and their dispositions. Their timing

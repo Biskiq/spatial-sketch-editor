@@ -19,6 +19,7 @@ import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
+import { HARD_BUDGETS_MS, decisiveHardFailure, earlyStopEnabled } from '../lib/early-stop';
 import { fixtureProject, type FixtureProject, type FixtureSize } from '../lib/fixtures';
 import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
 import { firstFrameAtOrAfter, readLedger } from '../lib/ledger';
@@ -144,15 +145,22 @@ for (const entry of sources) {
 				}
 			}
 			const limitations = [...passLimitations(), ...entry.limitations];
+			// Only the new method has a contract row; the A.6 old-method rows are
+			// method validation and must run their full sample.
+			const hardBudget = entry.source.method === 'new' ? HARD_BUDGETS_MS[entry.source.tier]?.F2 : undefined;
 			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-				const { results: runs, facts } = await collectMeasuredRuns(
+				const { results: runs, facts, earlyStop } = await collectMeasuredRuns(
 					browser,
 					{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
 					{
 						cacheState,
 						warmup: smokeOr(WARMUP_RUNS, 0),
 						runs: smokeOr(RUNS),
-						afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+						afterRun: cacheState === 'repeat-use' ? closeToHub : undefined,
+						earlyStop:
+						earlyStopEnabled() && hardBudget !== undefined
+							? (completed: readonly OpenRun[]) => decisiveHardFailure(`F2-${entry.id}-${cacheState}`, completed.map((run) => run.total), hardBudget)
+							: undefined
 					},
 					(session) => openOnce(session, entry.source)
 				);
@@ -177,7 +185,8 @@ for (const entry of sources) {
 						setupShare: wallMs > 0 ? setupMs / wallMs : null,
 						...workMetrics(windows.work, runs.length),
 						...renderMetrics(windows.render),
-						...residentMetrics(runs[runs.length - 1]?.resident ?? null, 'open')
+						...residentMetrics(runs[runs.length - 1]?.resident ?? null, 'open'),
+						...(earlyStop === null ? {} : { earlyStopSamples: earlyStop.samples, earlyStopMinimumMs: earlyStop.statisticMs })
 					},
 					stats: {
 						admission: summarize(runs.map((run) => run.admission)),
@@ -187,7 +196,8 @@ for (const entry of sources) {
 						...limitations,
 						'F2 flow starts at the chosen file, not at the Open button (the dialog is not admission work)',
 						'first architectural frame is attributed to the rAF rendering opportunity',
-						'stage:* rows are per-run means of the work ledger inside the window; work:* are deterministic counts'
+						'stage:* rows are per-run means of the work ledger inside the window; work:* are deterministic counts',
+						...(earlyStop === null ? [] : [earlyStop.rule])
 					]
 				};
 				report.rows.push(row);
