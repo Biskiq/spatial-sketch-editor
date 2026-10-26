@@ -42,8 +42,13 @@ describe('persistent storage roots', () => {
   const { value: branch, counts } = counted(() => root.set(50_001, -1));
   expect(counts.get('storage:vector-slots-copied')).toBeLessThanOrEqual(32);
   expect(branch.get(50_001)).toBe(-1); expect(root.get(50_001)).toBe(50_001);
-  const diffs: number[] = []; branch.diff(root, (index) => diffs.push(index));
+  const diffs: number[] = [];
+  const diff = counted(() => branch.diff(root, (index) => diffs.push(index)));
   expect(diffs).toEqual([50_001]);
+  expect(diff.counts.get('storage:vector-diff-slot') ?? 0).toBeLessThanOrEqual(32);
+  const sealed = new WeakSet<object>(); root.visitUnseen(sealed, () => {});
+  const proof = counted(() => branch.visitUnseen(sealed, () => {}));
+  expect(proof.counts.get('storage:vector-proof-slot') ?? 0).toBeLessThanOrEqual(32);
  });
  it('reuses only F4-owned captured JSON and detaches a merely shallow-frozen input', () => {
   const input = Object.freeze({ child: { value: 1 } });

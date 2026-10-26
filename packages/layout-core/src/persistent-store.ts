@@ -117,6 +117,7 @@ type VectorNode<T, A> = {
 	readonly length: number; readonly summary: A;
 };
 type Reduce<T, A> = { leaf(items: readonly T[]): A; branch(left: A, right: A): A };
+const FULLY_VISITED_ARRAYS = new WeakMap<WeakSet<object>, WeakSet<object>>();
 
 export class PersistentVector<T, A = undefined> {
 	private constructor(private readonly root: VectorNode<T, A>, private readonly reduce: Reduce<T, A>) { countWork('storage:vector-handle-allocated'); }
@@ -185,11 +186,15 @@ export class PersistentVector<T, A = undefined> {
 	/** Certify immutable subtrees once. The caller owns the proof set and must
 	 * use the same value predicate on every invocation. No old root is retained. */
 	visitUnseen(seen: WeakSet<object>, visit: (value: T) => void): void {
+		let covered = FULLY_VISITED_ARRAYS.get(seen);
+		if (!covered) { covered = new WeakSet(); FULLY_VISITED_ARRAYS.set(seen, covered); }
 		const walk = (node: VectorNode<T, A>): void => {
 			countWork('storage:vector-proof-node');
 			if (seen.has(node)) return;
 			if (node.items) {
+				if (covered.has(node.items)) { seen.add(node); return; }
 				for (let i = 0; i < node.length; i += 1) { countWork('storage:vector-proof-slot'); visit(node.items[(node.offset ?? 0) + i]!); }
+				if ((node.offset ?? 0) === 0 && node.length === node.items.length) covered.add(node.items);
 			} else { walk(node.left!); walk(node.right!); }
 			seen.add(node);
 		};
@@ -201,6 +206,7 @@ export class PersistentVector<T, A = undefined> {
 		const visit = (before: VectorNode<T, A>, after: VectorNode<T, A>, offset: number): void => {
 			countWork('storage:vector-diff-node');
 			if (before === after) return;
+			if (before.items && before.items === after.items && (before.offset ?? 0) === (after.offset ?? 0) && before.length === after.length) return;
 			if (before.items && after.items) {
 				for (let i = 0; i < after.length; i += 1) {
 					countWork('storage:vector-diff-slot');
