@@ -1,91 +1,79 @@
-# T3.P04.S01 — Project rename and delete: accepted
+# T3.P04.S01 — acceptance record: Project rename and delete — CLOSED STUB
 
-**Status:** shipped; accepted 2026-10-25. This is T3.P04's declared **FINAL PHASE GATE**. The
-slice is accepted and the phase is **CLOSABLE, still active**; the owner phase-close decision is
-pending. No phase closure, track completion, cycle transition, deployment or F2 production epoch
-activation is recorded here.
-
-**Plan:** [implementation-plan.md](./implementation-plan.md) · **Phase:** [T3.P04](../README.md) ·
-**PR:** [#191](https://github.com/Biskiq/spatial-sketch-editor/pull/191) · **Accepted
-implementation review:** [final independent review](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5644765570),
-covering head `550f8a9ba15779e8181c437db2b9bd8fdeee793b`; it records no open correctness findings.
-The T1 shell prerequisite ([review 5643884439](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5643884439))
-and T2 shared API prerequisite ([review 5643653030](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5643653030))
-are satisfied. The closeout invocation is the owner's combined acceptance-and-closeout act.
-
-## Accepted outcome
-
-| Approved criterion | Outcome and evidence |
-| --- | --- |
-| Rename uses the owner-scoped saved-base precondition, appends exactly one immutable version, preserves older revisions, and leaves no-op renames unchanged | Accepted. Full API suite and integrated Hub/Stage journey pass; lifecycle API coverage includes immutable history and no-op behavior. |
-| Invalid, anonymous, cross-owner and stale rename requests refuse without minting a version; ambiguous/stale recovery preserves the draft and allows the next Save | Accepted. Full API/editor suites and integrated journey cover privacy, validation, stale/ambiguous recovery, dirty rename through Undo/Redo/Save/reopen and stale route responses. |
-| Rename/Save/delete races serialize; conflict recovery retains dirty work; project replacement rejects stale responses | Accepted. API lifecycle/lease contracts and editor route/session regression tests pass; integrated journey exercises dirty-draft preservation and stale response after project switch. |
-| Confirmed delete retires project versions, staging and approved resources; object-store/transaction failures compensate or remain durably pending and retryable | Accepted. Fresh DB API suite passes cleanup, failure-injection and retry coverage; integrated browser/API journey demonstrates pending cleanup, retry, idempotence and owned-key removal. |
-| All three object writers are fenced; lease revocation aborts in-flight writes; delete-first blocks new writes; failed upload/finalize/approval leaves no orphan | Accepted. API tests exercise asset upload, model staging and model approval through the lease, deadline, revocation and compensation paths. |
-| Late-write and hostile post-completion variants never make an unverifiable completion claim; a late visible key is repaired and spaced re-proof is required | Accepted. API lifecycle tests cover the enforced deadline, cleanup restart, late hostile commit detection and completed-record verification/repair. |
-| Multi-source inventory and retained-source backfill enumerate exact keys; `sweep-dependent` remains explicit; absent-key deletion is idempotent | Accepted. Fresh DB API suite covers multi-source approval, persisted inventory/backfill, scoped sibling survival and idempotent cleanup. |
-| Cleanup proof ignores sibling keys and keeps later-visible owned keys pending until the bound and two scoped empty listings have elapsed | Accepted. API cleanup tests cover project-prefix scoping, delayed visibility and spaced proof; integrated cleanup evidence confirms sibling survival. |
-| Active publication refuses deletion; after unpublication, the project and retained inactive publication/release are removed and the public link stops resolving | Accepted. API publication tests and integrated browser/API journey cover active refusal, unpublish-then-delete and inactive-link removal. No publication UI or activation was added. |
-| Other projects/owners survive, including identical-content model resources and historical-version resources | Accepted. API isolation/inventory tests and integrated process-local store manifest prove owned-key removal while same-content sibling bytes survive. |
-| Project list and current-Head actions, dirty cancellation, conflict recovery, source download, refresh, keyboard and narrow/coarse-pointer journeys | Accepted within the approved T1 patch. Integrated headed Chrome journey covers Hub/Stage actions, cancellation, source download/list refresh, keyboard focus and 320×800 coarse-touch behavior. No separate screen-reader audit was required or run. |
-| Conditional Save, import approval, visitor/public/Preview isolation and epoch fence remain green | Accepted. The refreshed complete editor, architecture and heavy suites pass; existing integration evidence covers Save, import, Preview and public/visitor boundaries. No publication or epoch activation was attempted. |
-| F9 rename/next-Save responsiveness with a retained model | Accepted under the recorded owner ruling. The fresh branded Chrome run uses grid-7 M (112 walls, 112 openings, 49 rooms) and one retained minimal GLB source/derivative. All 60 Save-owned work samples are below 50 ms; all six presented-feedback p95 values are below 100 ms; all receipt samples meet their payload-derived N1 targets. AC/battery and automated-operator differences are explicitly waived for this slice. The fixture is lifecycle retention proof, not a typical M catalog workload; browser compositor feedback is not physical panel scanout. |
-
-## Final integrated gate — 2026-10-25
-
-All rows below were run after the last production-code change, at `550f8a9ba15779e8181c437db2b9bd8fdeee793b`
-(tree `119d21264f215a20d9b10faa85307084780f0540`), with a clean worktree. The final gate refreshed
-the exhaustive plan tier after the optional save-attribution instrumentation change.
-
-| Gate | Result |
-| --- | --- |
-| Complete editor suite (`npm run test -w @portfolio/editor -- --maxWorkers=4`) | 191 files; 2,464 passed, 0 failed, 0 skipped |
-| Architecture (`npm run test:arch`) | 22 files; 178 passed, 0 failed, 0 skipped |
-| Heavy (`npm run test:heavy`) | 9 files; 125 passed, 0 failed, 0 skipped |
-| Root editor check (`npm run check`) | Passed; 0 errors, 0 warnings |
-| Root editor build (`npm run build`) | Passed; existing nonfatal Vite externalization/unused-import warnings only |
-| Affected package checks (`check:camera-core`, `check:layout-core`, `check:project-model`) | All passed |
-| API check (`npm run check:api`) | Passed |
-| DB-backed API suite (`npm run test:api`) | Passed; 114 passed, 0 failed, 0 skipped |
-
-The API run created `biskiq_t3p04s01_gate_20261025_1505` against the already-running local
-PostgreSQL service, using no new service, production database, R2 connection or shared S06 database.
-The shell exit trap dropped the fresh database; a post-run `dropdb --if-exists` confirmed it was
-absent. Exact gate metadata is in [final-integrated-gate.json](./evidence/2026-10-25/final-integrated-gate.json).
-
-The earlier integrated browser/API lifecycle journey and the corrected F9 evidence remain linked in
-the [verification record](./evidence/2026-10-25/verification.md) stub and its evidence directory.
-That journey used a private disposable database and a process-local object store. The fresh exhaustive
-gate above separately covers current code; no unchanged browser or benchmark run was repeated.
-
-## Residuals and scope
-
-No acceptance blocker remains. The accepted implementation retains an owner-run cleanup/recovery
-entry point for completed deletion tombstones; cleanup does not claim that an uncooperative remote
-store can never complete a delayed write, and verification repairs a late visible key. There is no
-background cleanup service. Real R2, production data, deployment, publication activation, public
-delivery, S06 completion and F2 epoch activation were outside this slice and were not exercised.
-The one-model M fixture and browser presentation proxy limitations above remain explicit evidence
-boundaries, not waived numeric F9 misses.
-
-## Closeout preservation
+**AUTHORITY: NONE.** This is the compacted record of the phase's closed final gate.
+`T3.P04.S01` was accepted and shipped 2026-10-25 in PR #191 (`aa1db37a`), and `T3.P04`
+closed 2026-10-25. This stub stays at the phase's declared `FINAL PHASE GATE` path; the
+phase's closed state is in [../README.md](../README.md). The full 91-line record —
+accepted outcome matrix, exhaustive integrated final gate table, residuals, and
+closeout preservation — is recoverable at the Git anchor below. Nothing here is
+planning authority or readiness.
 
 ```text
-CLOSEOUT PRESERVATION — T3.P04.S01 (2026-10-25)
-prose compacted:                 6   stubs at their own paths
-reference promotions:            1   current project lifecycle behavior → reference/components/persistence.md
-renderable evidence archived:    21 files / 1.9 MB
-evidence stubs / manifests:       1   CLOSED.md in the evidence archive bundle
-transient artifacts removed:     0
-historical anchor:                550f8a9ba15779e8181c437db2b9bd8fdeee793b · tag closed/T3.P04.S01 (pushed)
-new live → archive prose links:   0
-manual-owed verification rows:    0
-remaining deferred items:         0 slice blockers; phase-close decision remains owner-owned
-permanent stubs added:            6   the owner-ratified cost: one per closed prose artifact
+delivered      Owner-scoped project rename and delete with precondition enforcement (`PATCH /projects/:projectId`
+               and `DELETE /projects/:projectId`), immutable version history append for rename, no-op
+               rename preservation, stale/conflict draft retention, and delete confirmation with
+               dirty-replacement protection; project-scoped resource cleanup with revocable writer lease
+               fencing across all three object writers, multi-source approved key enumeration, two spaced
+               empty listings (187 s bound), tombstones, retry CLI (`npm run cleanup:project-deletions`
+               with `--verify-completed`), and active publication refusal; bounded reviewed T1 shell
+               integration (Hub project list, Head rename/delete actions, source download, modal dialogs,
+               narrow/coarse-touch).
+contract       `docs/reference/components/persistence.md` (Project lifecycle section, F2 clean epoch, conditional
+               Save); F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1;
+               no new capability gate or version introduced.
+provenance     Owner-authorized/released 2026-10-24 (docs/reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md);
+               accepted 2026-10-25 after final independent review (PR #191 review 5644765570 at head 550f8a9b);
+               T1 shell prerequisite (review 5643884439) and T2 shared API prerequisite (review 5643653030)
+               satisfied; merged via PR #191 (merge commit aa1db37a); closed by owner ruling 2026-10-25.
+evidence       Exhaustive integrated final gate at 550f8a9b: complete editor suite 191 files / 2,464 passed
+               (0 failed, 0 skipped), arch 22 files / 178 passed, heavy 9 files / 125 passed, root check 0 errors /
+               0 warnings, root build passed, package checks (camera-core, layout-core, project-model) passed,
+               check:api passed, DB-backed API suite 114 passed on fresh disposable DB; integrated headed
+               Chrome lifecycle UI/API journey; strict Chrome F9 Save-attribution measurement (60 samples across
+               S/M × cold/warm/repeat-use, all Save-owned work < 50 ms, feedback p95 < 100 ms).
+entry points   implementation  apps/api/src/routes/projects.ts
+                               apps/api/src/services/project-cleanup.ts
+                               apps/api/src/services/project-leases.ts
+                               apps/api/src/scripts/cleanup-project-deletions.ts
+                               apps/editor/src/lib/platform/projects.ts
+                               apps/editor/src/routes/projects/+page.svelte
+                               apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
+               validation      apps/api/tests/projects.test.ts
+                               apps/api/tests/project-cleanup.test.ts
+                               apps/editor/tests/lib/platform/projects.test.ts
+                               apps/editor/tests/routes/projects-lifecycle.test.ts
+               regressions     apps/editor/tests/routes/project-replace-draft.test.ts
+               journeys        apps/editor/perf/flows/project-lifecycle.spec.ts
+residuals      None for slice acceptance. Owner-operated cleanup/recovery CLI retained for completed tombstones;
+               delayed remote store delay handled via repair verification. S06 completion, real R2, deployment,
+               publication UI and F2 epoch activation remain separate future/owner procedures.
+recovery       git show 1105ebb7ad35ca417cc6d08084e7aa7c6aa0c11b:docs/roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md
+               tag closed/T3.P04 (local; its target is the anchor commit)
+               earlier slice-closeout tag closed/T3.P04.S01 → 550f8a9b
 ```
 
-Preserved entry points: project lifecycle API/client and session integration under `apps/api/src/`,
-`apps/editor/src/lib/platform/`, `apps/editor/src/routes/projects/` and
-`apps/editor/src/routes/project/[projectId]/spatial/`; validation and regressions under
-`apps/api/tests/` and `apps/editor/tests/`. The closeout preservation report and live gate evidence
-remain here because this artifact is the phase's final-gate record.
+## Closed-work preservation report
+
+```text
+CLOSEOUT PRESERVATION — T3.P04.S01 → phase close (2026-10-25)
+final-gate artifact compacted:   1   acceptance.md → this stub at its own path
+prose already stubs:             6   backend-concurrency-deadline-evidence-2026-10-25, implementation-plan, planning-resolution-2026-10-24, t1-shell-handoff, t2-api-handoff, verification
+reference promotions:            1   project lifecycle behavior → reference/components/persistence.md (slice closeout, unchanged)
+renderable evidence archived:    21 files / 1.9 MB (slice closeout, unchanged)
+evidence stubs / manifests:      1   CLOSED.md in the evidence archive bundle
+transient artifacts removed:     0
+historical anchor:               1105ebb7ad35ca417cc6d08084e7aa7c6aa0c11b · tag closed/T3.P04
+                                 (local only — not pushed) · tag closed/T3.P04.S01 already local
+anchor ancestry verified:        anchor is an ancestor of origin/main de2f8423 and of the tag target
+new live → archive prose links:  0
+manual-owed verification rows:   0
+deferred items preserved:        0 slice blockers; phase closed by owner ruling 2026-10-25
+permanent stubs added:           0   the stub replaces the live record; no new stub path
+drift report:                    phase README: PHASE CLOSE closed ✓ | track phase row: shipped ✓ | baton: reconciled snapshot ✓ | integration: recorded ✓
+post-merge verification:         PENDING — after this PR's merge commit:
+                                 git merge-base --is-ancestor 1105ebb7 main && echo "anchor reachable"
+                                 git show 1105ebb7:docs/roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md | head -3
+```
+
+The phase close ran the documentation gate only (links, written paths, anchors). It is not a product
+lane and does not replace the verification above, which remains the tested revision's record.

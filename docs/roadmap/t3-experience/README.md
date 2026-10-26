@@ -5,8 +5,8 @@ all six children shipped (`T3.P01.S01` 2026-10-16 (PR #131), `S02` 2026-10-16 (P
 through its split halves `S05` (PR #140) and `S06` (PR #141), and the final gate `S04` 2026-10-20
 (PR #158, `9a457f6b`)); `T3.P02` registered 2026-10-20 and **closed 2026-10-24** (final gate
 `T3.P02.S02`), `T3.P03` (H0) registered 2026-10-22 as batch E and **closed 2026-10-24** (final gate
-`T3.P03.S02`), and `T3.P04` registered as planning-only post-Batch-E coordination and
-**authorized and released as `T3.P04.S01` on 2026-10-24** ([phase register](#phase-register)) · **Runbook:**
+`T3.P03.S02`), and `T3.P04` registered 2026-10-22, authorized as `T3.P04.S01` on 2026-10-24, and
+**closed 2026-10-25** ([phase register](#phase-register)) · **Runbook:**
 [`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·
@@ -69,14 +69,14 @@ on the integrated tree; it was accepted 2026-10-24
 items keep the owners named in each phase README
 ([closure decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
 
-[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) remains **active and CLOSABLE** after its sole
-child `T3.P04.S01` shipped and passed its final gate on 2026-10-25. The accepted capability is
-project rename/delete, guarded replacement and project-owned model cleanup, implemented on T3
-persistence/API/client and the reviewed T1 shell. The T1 and T2 review prerequisites are satisfied;
+[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) is **closed 2026-10-25** after its sole child
+`T3.P04.S01` shipped and passed its final gate on 2026-10-25. The accepted capability is project
+rename/delete, guarded replacement and project-owned model cleanup, implemented on T3
+persistence/API/client and the reviewed T1 shell. The T1 and T2 review prerequisites were satisfied;
 the final independent review and exhaustive integrated evidence are recorded in the
 [acceptance artifact](./t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md).
-The owner phase-close decision remains pending. This phase remains strictly unrelated to the
-performance-first halt and introduces no gate/version or release authorization.
+This phase was strictly unrelated to the performance-first halt and introduced no gate/version or
+release authorization.
 
 New consuming UI follows Round 2's shared dock, Capture/Guide, contextual Guide Instrument
 and Card writer contract through current host APIs; a bounded integration patch is not a
@@ -104,7 +104,7 @@ register owns lifecycle only.
 | T3.P01 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
 | T3.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | [T3.P02 — First Capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md) |
 | T3.P03 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P03 — Shared acceptance, isolation and measurement](./t3.p03-shared-acceptance-and-measurement/README.md) |
-| T3.P04 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P04 — Project lifecycle](./t3.p04-project-lifecycle/README.md) |
+| T3.P04 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P04 — Project lifecycle](./t3.p04-project-lifecycle/README.md) |
 
 T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
@@ -148,13 +148,14 @@ workflow as its final gate (`T3.P03.S02`). Both are authorized, and T3.P03 is re
 the L/XL fixtures and M/L drag rows stay transferred to `T1.P02.S06`, and the trace-method
 disposition, reference hard rows and calibration stay open with the owner.
 
-**`T3.P04.S01` is authorized and released 2026-10-24** ([decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md))
+**`T3.P04.S01` was authorized and released 2026-10-24** ([decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md))
 after the planning phase registered on 2026-10-22. The coordination PR #188 merged at
 `976323da9e18e96978649e595bc555021964631a`, and implementation started from that base on
-2026-10-25. The owner ratified R1/R2 on 2026-10-25 ([review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932));
-the child remains in progress. The release is
-strictly unrelated to the [performance-first halt](../README.md#production-implementation-hold), so
-its bounded T1 shell patch is serialized against `T1.P02.S06`'s claim under the existing rules.
+2026-10-25. The owner ratified R1/R2 on 2026-10-25 ([review](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932)).
+`T3.P04.S01` shipped 2026-10-25 in PR #191 (`aa1db37a`) after its final independent review and
+exhaustive integrated gate, and the phase **closed 2026-10-25** (its `PHASE CLOSE` block). The release
+was strictly unrelated to the [performance-first halt](../README.md#production-implementation-hold), so
+its bounded T1 shell patch was serialized against `T1.P02.S06`'s claim under the existing rules.
 `T3.P04.S01` provides no gate.
 
 ## Starting foundation
