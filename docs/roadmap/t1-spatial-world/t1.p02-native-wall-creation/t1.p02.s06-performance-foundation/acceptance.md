@@ -1,17 +1,15 @@
 # T1.P02.S06 — acceptance record: Performance foundation
 
-**Slice:** T1.P02.S06 · **Status:** approved and released; setup step implemented (PR #190) with
-the owner-ratified C.2 amendment; Bench 1 recorded (owner-directed, counted by the owner's A.7
-ruling, 2026-10-25); optimize step released and implemented (D.1, D.2, D.3, D.4 and D.6 landed;
-D.5's entity-level sharing deferred; owner ruling on the amended measurement scope still open);
-Bench 2 not run; not accepted ·
+**Slice:** T1.P02.S06 · **Status:** approved/released; setup and owner-directed Bench 1 recorded;
+persistent representation takeover implemented on PR #190 and awaiting fresh independent review.
+Bench 2 has not run; S06 is not accepted or merged. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 `T1.P02.S06` is an owner-authorized, released child of T1.P02
 ([record](../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md)).
-This record claims no measurement, gate state, capability entry or acceptance. It is not the
+This record records evidence; it changes no gate state, capability entry or acceptance. It is not the
 phase's final gate: its deferred exhaustive proof routes to
 [`T1.P02.S04`](../t1.p02.s04-integrated-final-gate/acceptance.md). The criteria stay in the plan.
 
@@ -220,6 +218,11 @@ this section.
    prerequisites (D9); the execution-plan lab plan, due before Bench 2 (D6).
 
 ## Optimize step (D.1–D.6) — implementation state (2026-10-25)
+
+> Historical implementation record through the reconciliation table below. The current
+> [persistent takeover](#persistent-representation-takeover) supersedes its complexity claims and
+> budget predictions; prior review findings and evidence are preserved as history.
+
 
 **Owner direction (2026-10-25).** Move to optimization; do not reopen Bench 1, repeat broad
 profiling or re-quantify confirmed superlinear behaviour. Bench 1 and Bench 1b jointly count as the
@@ -477,80 +480,153 @@ The earlier record called `packages/layout-core/**` T2-owned. **It is T1-owned u
 
 **Outstanding → owner decision.** The amended measurement scope (above, still unruled); the sweep-H10 drag-row method; realistic-L's prerequisites; and whether the imperative Room-surface/portal subtree — the remaining mount cost — is S06's next batch or a follow-on slice.
 
-### Fundamental Computational Architecture Optimization (2026-10-25)
+## Persistent representation takeover
 
-Following the fundamental computer science investigation into asymptotic scalability on ordinary consumer hardware (documented in full in [`../../broad-research/spatial-computation-architecture.md`](../../broad-research/spatial-computation-architecture.md)), four bounded, correctness-preserving mechanisms were designed, implemented, and verified on branch `t1/p02-s06-bench-setup` (PR #190):
+**Current independent-review boundary.** This is the owner-directed continuation from pushed
+764175e0 on the same branch and PR #190. Runtime changes are d47c25e1, 5cdccb79 and 48126338;
+the bounded comparison and corrected counter definitions are bd443412 and its follow-up.
+No new source format, persistent content identity, F4 acceptance authority, PR, merge, Bench 2,
+slice acceptance or independent-review verdict is claimed.
 
-1. **Dynamic 8-ary Bounding-Volume Hierarchy (`packages/layout-core/src/layout-bvh.ts`):**
-   - Replaced spatial grid scans with an 8-ary Sort-Tile-Recursive BVH backed by contiguous typed arrays (`Float64Array`, `Int32Array`).
-   - Achieves $O(\log_8 N)$ leaf updates and ancestor AABB refits during interactive drags.
-   - Retains 100% query parity with `createPlanBoxIndex`, including safe handling of inverted `(-1) \times (-1)` boxes, wide entries, and non-finite coordinates. Directory visits scale strictly logarithmically (3 to 5 node visits on `grid-L`, 6.7 visits on `grid-10k`).
-2. **Certified World Index & Swept-Bounds Delta Certification (`packages/layout-core/src/layout-world-index.ts`):**
-   - Eliminates the historical 3.6 ms $O(N)$ candidate comparison by computing a certified swept bounding box $P_{\text{swept}} = \text{Box}(\text{old}) \cup \text{Box}(\text{new}) \oplus \epsilon$.
-   - When $P_{\text{swept}}$ intersects no non-incident entities, candidate planners prove topological invariance locally in $O(k)$ time ($k \le 8$), bypassing global planar face reconstruction.
-3. **Chunked Retained Compile World (`packages/layout-core/src/layout-geometry-delta.ts`):**
-   - Organizes compiler slots into $B=64$ chunked arrays. Delta compiles evaluate only dirty entities ($k \le 8$) and rebuild dirty chunk arrays in $O(N/B)$ time rather than re-allocating $O(N)$ records.
-4. **Plain JSON Frozen Subgraph Content Memoization (`packages/project-model/src/units/{validate.ts,canonical.ts,acceptance.ts}`):**
-   - Enforces deep plain-JSON freeze verification and caches parsed payloads in domain-specific WeakMaps.
-   - For unchanged F4-frozen domain units (`scene`, `camera`, `experience`, `resources`), validation and canonical revision lookups execute in $O(1)$ time.
-   - On `coordinator.undo()` and `redo()`, Stage domain rebind occurs in $O(1)$ with **0 compiles, 0 entity evaluations, 0 whole-document passes, 0 validations, and 0 SHA-256 digests**.
+The pre-takeover “Fundamental Computational Architecture Optimization” claims are withdrawn:
+native slices were linear, Map copies and BVH clones were linear, chunk directories and flattened
+outputs were linear, and accepted-node/evaluation slopes did not account for them. Whole-document
+copying was an implementation choice, not a mathematical requirement of immutable F4 snapshots.
+The earlier unsupported HAMT ratios, gesture percentages and OP benefit forecasts are not evidence.
 
-#### E5 Census Slopes Post-Optimization
+### Implemented changes and competing designs
 
-A full multi-workload census sweep (`npm run perf:census -- --only e5`) proves flat scaling slopes across all variants and phases:
+The [architecture dossier](../../broad-research/spatial-computation-architecture.md) owns the
+source-level audit, competing persistent/spatial/dataflow representations and complete cost model.
+The selected combination is deliberately small: blocked persistent vectors, augmented persistent
+AVL maps, shared static ID/incidence directories, current-source views, fat spatial partitions
+with reinsertion, retained materialized views, lazy flat adapters and session-owned historical roots.
 
-| Counter | Bound | move | commit | undo | redo | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| **compiles** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **entityEvaluations** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **wholeDocumentPasses** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **pairVisits** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **allPairVisits** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **cacheKeyChars** | changed-units | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **envelopeValidations** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **serializations** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **digests** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **f4Clones** | flat | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
-| **indexNodeVisits** | log | **0.00** | **0.00** | **0.00** | **0.00** | **✓ PASS** |
+This replaces the BVH8 and flat chunk-directory implementation rather than defending it. Fixed
+refit, adaptive centroid and adaptive four-extrema policies are compared. HAMT/CHAMP, RRB/B+ trees,
+page COW, modification boxes, overlays/MVCC, event journals, dynamic AABB/R* trees, priority search
+structures and four-dimensional dominance reporting were evaluated analytically. Their comparison
+status and space/update tradeoffs are explicit; no unmeasured library speed rankings remain.
 
-**Necessary-Work Ratio $R$:** At $\times 10$ scale on variants H and C, $R \approx 1.0$ (evaluating exactly $k=2$ or $k=3$ entities per compile, with 0 whole-document passes).
+In particular, exact rectangle overlap can be expressed as 4D dominance. Stronger reporting bounds
+exist. The selected index guarantees logarithmic maintenance paths, **not** logarithmic queries
+for arbitrary distributions. This remains a measured engineering choice rather than an optimality
+or impossibility claim.
 
-#### Remaining Scope Limits & Formal Owner Proposals
+### Source-level work and measured operations
 
-The remaining non-zero slopes (`digestBytes: 929.58 ✗`, `frozenObjects: 7.02 ✗`, `historyBytesPerStep: 663.98 ✗`) stem from flat SHA-256 byte streaming across the 1.8 MB Layout unit and full-unit history snapshot copying, which are mathematically enforced by current $F2/F4$ contracts. They are formally addressed by three non-breaking proposals in [`../../broad-research/spatial-computation-architecture.md`](../../broad-research/spatial-computation-architecture.md):
-- **OP-1:** Entity-Level F4 History Copy-on-Write & Transaction Journal (drops `frozenObjects` and `historyBytes` to $0.00$).
-- **OP-2:** `F2.unit-envelope@2` Chunked Merkle Content Identity & Delta Save (drops `digestBytes` to $O(1)$).
-- **OP-3:** Cross-Domain Batched & Instanced GPU Rendering (replaces per-surface Svelte mounting with uniform buffer updates).
+The [checked-in evidence](./evidence/persistent-2026-10-25/README.md) contains the exact before/after
+work tables, all timing samples, allocation estimates, full counter maps, retained heap observations,
+oracle digests and reproduction commands. It identifies the exact measured revision and machine.
+It is bounded Node evidence, not the owner-run benchmark or product budget acceptance.
 
-### Remaining global cost barriers, and their causes
+The principal 100,002-entity Room fixture has 7,143 Rooms, 28,572 Walls, 28,572 Junctions,
+14,286 Openings and 21,429 objects, using the existing seeded curve/profile/object mix. One operation
+includes candidate planning, certification, index installation, compilation and a one-Wall/query read.
+The second 100,000-entity fixture has 31,250 real Walls, 62,500 Junctions and 6,250 Windows, retaining
+seeded curves in some cells. Its target Wall hosts a Window. These are separate shapes and affected
+outputs, not interchangeable points on a single timing curve.
 
-1. **Per-entity input comparison is O(N).** 3.6 ms of an unchanged L recompile, ≈ 4.3 µs per entity, so ≈ 45 ms at 10 k Rooms and ≈ 450 ms at 100 k. Cause: candidate documents are deep clones, so equality must be walked. Fix: entity-level structural sharing (H5's follow-on) so untouched entities are identical by reference and the comparison becomes a pointer check.
-2. **Compiled-snapshot assembly is O(N).** Every compile pushes every entity's retained records into fresh arrays (≈ 0.2 ms at L). Cause: the compiled result is a plain snapshot with full arrays. Fix, if the plain-snapshot contract can be kept: retained arrays spliced per changed segment.
-3. **The Stage mount is still one Svelte component per Room surface and portal.** 196 Rooms × 2 + ≈ 420 portals at L; floors and ceilings need `MuseumMaterial`'s texture scope. This is the remaining lever on F2's 5.2 s open. Fix: an imperative Room-surface subtree with a persistent material, the pattern walls and objects already use.
-4. **Planner and admission still compile twice per accepted result.** Both are incremental now, so the duplicate is ≈ 6 ms rather than ≈ 95 ms; removing it entirely needs the F4 hand-over contract the owner has not ruled.
-5. **Per-mesh draw submission (H6).** 2,269 draws at L fall into 7 merge bins, and CPU submission exceeds GPU from M upward. Out of scope by the owner's direction; the evidence stands for the proposal.
+For the Room fixture, a local move at the base copied 57,144 source slots, 171,432 Map entries,
+14,286 walk slots, 1,386,774 spatial buffer bytes plus 18,724 scratch bytes, 2,287,343 query slots
+and 92,859 compiled/list slots. The retained path materializes none of those complete collections:
+it copies 512 bounded vector slots and allocates 215 map nodes and 161 vector nodes. Those
+allocations and path reads are reported; they are not disguised as zero work.
 
-### Rust/WASM — recommendation
+The semantic work for that edit is **three Walls, two Junctions, two Openings and one Room**:
+eight evaluations per compile, not “two or three entities in total.” The accepted flow still
+runs two incremental compiles in distinct planner/Stage stores. It does not install an unchecked
+planner result as authoritative source.
 
-No Rust toolchain was introduced, no second geometry kernel was compiled, and the optimization work did not wait on a language comparison. With H3 and H1 landed, the remaining irreducible numeric kernels are small shares of an edit: Junction offset/miter resolution (microseconds), curve sampling per Wall (≈ 10 µs for a curved Wall), Opening section cuts (≈ 5 µs per Opening), and robust orientation predicates. Their inputs are plain JS coordinate arrays and their outputs feed the same compiled objects, so a WASM boundary would copy coordinates per call and add marshalling to every retained unit. At the measured per-edit cost (≈ 6 ms at L, of which ≈ 0.4 ms is geometry maths and ≈ 3.6 ms is authored comparison), the best case for a WASM kernel is single-digit milliseconds at 10 k Rooms, with the interoperability cost paid per entity. **Recommendation: stay with TypeScript.** A bounded experiment should only be proposed if (a) entity-level structural sharing lands and the authored comparison disappears, and (b) a profile then attributes a majority of an edit to one numeric kernel.
+Small local rows include Wall/object mesh installation; the larger rows omit representation
+construction/installation. The accepted rows include real F4 preparation/capture, Layout admission,
+unit normalization/hashing, revision/history creation, Stage admission and imperative installation.
+Full Room Svelte templates, frame traversal, draw submission and GPU execution are not measured.
+The accepted fixtures have empty other domain payloads and an empty dependency lock: their times
+do not establish locality for Scene/Camera preparation, large reference closure or resource-heavy
+projects. The dossier models those remaining cross-domain terms explicitly.
 
-### Verification at this tree
+### What the counters prove
 
-`check:layout-core`, `check:project-model`, `check:camera-core`, `check` (svelte-check, 0 errors / 0 warnings) and `build` pass. `test:fast` passes 165 files / 2,191 tests; `test:arch` passes 22 files / 180 tests; `test:heavy` passes 9 files / 125 tests. The newly added adversarial differential, metamorphic & scale-invariance suite ([`t1s06-swept-bounds-differential.test.ts`](../../../../../apps/editor/tests/lib/layout/t1s06-swept-bounds-differential.test.ts)) passes 11/11 tests, proving dynamic BVH8 edge cases, refusal class fidelity, permutation invariance, and flat $O(1)$ evaluations between small and medium fixtures. Probes re-run: `probe-h1-incremental` (keyChars 72.7× fewer on `grid-L`, 65.9× fewer on `museum`), `probe-d1-differential` (100% exact facts parity), `probe-d2-accept` (admit digest down to 1.3 ms, 3× faster), `probe-h4-representation`, `probe-h5-capture` (0 clones, 0.1 ms share).
+- Array/Map/buffer copies are reported in their own units. Entity evaluations and legacy pass
+  counts exclude them. The old E5 whole-pass ratio was not total work and has been removed.
+- E5's index traversal column now uses every tested node bound, including rejected children.
+  Raw legacy node-visit counts remain available and cannot be compared as the same unit.
+- Entry, irregular scan, result, radix read/write and bucket-write counters cover query work.
+  Balanced height alone does not prove selectivity.
+- Native source materialization, Layout parse entries, cloned property slots, canonical UTF-16
+  assembly, UTF-8/digest bytes, explicit typed buffer copies and renderer buffer copies remain visible.
+- Logical node/slot counts do not specify V8 object size or every VM allocation. The 4 KiB V8
+  allocation sampler estimates the complete counted window, including observer/profiler overhead;
+  it is not an exact allocation-byte oracle. Unobserved whole-operation timings include uncounted
+  engine work. Inclusive spans are not summed as disjoint time.
+- Serialization-call counts do not measure bytes. The source strings retained by history are
+  not measured heap by Buffer.byteLength. Heap/external/array-buffer/RSS readings and GC probe
+  reachability are reported separately.
 
-**One lane-run caveat, recorded rather than smoothed over.** A pre-existing heavy test (`p23b11-correspondence-reference.test.ts`, 4.45 s against vitest's 5 s default) times out when the suite runs at full worker count on this machine under external load (load average 21–68 on 8 cores from unrelated system daemons). It passes alone, and the whole lane passes at `--maxWorkers=3` (164 files / 2,178 tests). This step does not touch that test and changed none of its assertions.
+### Correctness, history and lifecycle
 
-### Bench 2 readiness — lean proposed command (unchanged)
+Every successful replay compares exact ordered geometry, query records, cache keys and issues
+against a cold canonical compile in a separate process over the exact final authored JSON.
+Cross-revision digests must match too; accepted rows also compare the existing source-content ID
+and the SHA-256 of the serialized envelope. Moving the cold oracle to a separate process avoids
+a verification peak holding two full compiler graphs. The earlier instrumentation replacement
+bug and in-process oracle OOM attempts were discarded; they are not successful evidence rows.
 
-```
-npm run perf:bench --workspace @portfolio/editor -- --label bench-2 --tiers grid-S,grid-M,grid-L --no-sweep-latency
-```
+The focused falsifiers preserve and extend the prior tests:
 
-Same method, budgets and cache states as Bench 1b for the hard tiers, plus E5 over the seven workloads and the transferred rows; no grid-XL tier and no sweep latency rows, subject to the scope ruling above. Expected runtime ≈ 2.5–3.5 h: Bench 1b took 95 min for grid-M + grid-S + E5 + transferred rows, and grid-L alone was 7,234 s on a revision roughly 2.5× slower than this one. Run E5 alone first if the pass is split.
+- Persistent vector/map branches, non-power-of-two lengths, frozen 100,000-slot borrowed roots,
+  map deletion/rotations and bounded clone handoff. Borrowed-range diff and proof visits are
+  independently bounded to 32 slots after a one-slot edit.
+- 2,000 long moves, 2,000 insert/remove/irregular transitions, historical spatial isolation,
+  fixed-refit degradation, equal-centroid slabs and large sorted result populations.
+- Repeated real-geometry cold differentials; previously absent spatial dependencies and refusal
+  classes remain covered by the swept-bounds and canonical planner suites.
+- Known immutable compile roots restore without entity traversal, including membership-changing
+  histories and branches. The snapshot directory is session-local; reset is cold.
+- A shallow freeze, accessor, exotic object, modified sampler or mutable-then-frozen parser output
+  cannot mint the required reuse proof. Strict codec reference checks still reject a removed
+  Junction even when its referencing Walls are cached.
+- Stage sealing preserves deep generated immutability without forcing lazy arrays. Junction
+  incidence participates in Wall mesh diffs. Existing renderer tests check release/dispose,
+  deletion, replacement and stable material ownership.
+- The complete F2/F4, dependency-lock, resource-staging/lifecycle, stale/ABA/refusal, source byte
+  identity, historical restoration and visitor/public isolation suites remain green.
 
-### Owner decisions genuinely required
+The 110-edit bounded history replay retains the actual 100-entry coordinator policy and probes
+ten early source roots after GC. The evidence reports which roots remain, including a fixture-held
+initial baseline where applicable. This is reachability evidence, not a claim that all history,
+compiled geometry or canonical strings cost zero memory.
 
-1. **Amended measurement scope** — ratify omitting grid-XL timing and the sweep latency rows, with the XL functional clause and H9's framebuffer differential kept, or keep those rows in Bench 2/3.
-2. **T3 review** of the optional compile-session parameter through `prepareValidatedUnitRuntime` / `admitSource`.
-3. **The next mount batch** — whether the imperative Room-surface/portal representation is S06's next work or a follow-on slice.
-4. The already-open Bench 1 question about the sweep-H10 drag-row method still does not block.
+### Remaining costs and precise ownership boundaries
+
+| Concern | Current disposition |
+| --- | --- |
+| Local persistent storage / compiled aggregates | No global container copy on the demonstrated certified Wall path; O(k log N + affected geometry + spatial tests/results) |
+| Spatial reporting | Tests can still be Theta(N); overlap/irregular/output populations are counted. A stronger dynamic dominance index remains an internal alternative |
+| Accepted Layout source | Changed native arrays are captured/materialized; codec collection/reference checks remain global. Immutable normalized entities share safely. Replacing the admitted native-source/read boundary requires a precise T3 ownership decision |
+| Existing canonical identity | Changed Layout + envelope still stream flat canonical SHA-256 bytes and retain source JSON. Merkle identity is different and is not installed |
+| Historical restoration | Known compile roots restore in constant root work across membership changes; accepted identity/JSON proofs are reused. Membership-changing representation reconciliation still has a full fallback |
+| Cold or uncertain operations | Arbitrary input, absent/expired lineage, ambiguous numeric certificate, global datums and topology changes retain canonical fallback costs |
+| Stage / render | Ordinary Wall buffers update locally. Whole Room/portal/template consumers and full frame/draw costs remain unproven and sometimes linear |
+| Other runtime / closure | Camera projection, Scene resolution and lock/reference preparation still traverse their inputs. A T3 cache/read-set decision must include options and external dependency epochs; Layout-only timing does not discharge it |
+| Owner hypotheses | OP-1 inverse journal, OP-2 identity/Save migration and OP-3 batching are hypotheses, with corrected benefits and scope in the dossier, not ratified solutions |
+| Shared review | T3 must review immutable capture/codec interaction, qualified handoff and Stage admission; shared renderer compatibility needs T2/T3 review |
+| Product acceptance | Existing measurement-scope questions, grid-XL functional clause, browser semantic/framebuffer work and owner-run Bench 2/3 remain open |
+
+Source immutability, authoritative accepted source, canonical byte identity, full JSON output and
+rendering are different constraints. This implementation removes avoidable work without silently
+changing any of their contracts. No Rust/WASM, inverse journal, serialized ID or Merkle format was
+introduced.
+
+### Verification and review status
+
+The complete editor suite passes **202 files / 2,524 tests**. The architecture lane passes
+22 files / 180 tests; the heavy lane passes 11 files / 138 tests. Layout-core, project-model and
+camera-core checks, editor check (zero errors/warnings) and build pass. Exact commands, revisions
+and final documentation-gate rerun are in the evidence directory.
+
+Earlier independent reviews remain recorded in [review-handoff.md](./review-handoff.md).
+They reviewed earlier implementations, not these new persistent algorithms. The fresh
+[independent-review map](./review-handoff.md#current-independent-review-boundary) is ready;
+no new verdict is asserted. Stop here before independent review, owner benchmark and acceptance.

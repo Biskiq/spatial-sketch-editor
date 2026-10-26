@@ -1,261 +1,254 @@
-# Spatial Computation Architecture — Fundamental Computer Science Dossier & Owner Proposals
-
-**Track:** T1 · **Area:** Spatial Computation, Representation & Evaluation  
-**Branch:** `t1/p02-s06-bench-setup` (PR #190) · **Base Revision:** `c32d9fb6`  
-**Status:** Landed S06 Foundation & Formal Owner-Decision Package
-
----
-
-## Executive Summary & The Central Question
-
-> **Central Computer Science Question:**  
-> *Can Biskiq represent, validate, evaluate, accept, persist and present a local spatial edit with work proportional to its actual consequences ($O(k)$), rather than the total number of entities in the project ($O(N)$)?*
-
-This investigation was commissioned to address the asymptotic ceiling of editing large, mutable semantic spatial worlds on consumer hardware. Prior to this work, even highly optimized incremental passes visited $O(N)$ authored entities to verify document invariants, performed $O(N)$ object allocations during candidate generation, recomputed full canonical JSON serializations and flat SHA-256 byte digests across untouched domains, and rebuilt full-document compiler outputs.
-
-### Key Conclusions & Landed Achievements
-
-1. **Within Authorized S06 Contracts:** We eliminated all $O(N)$ and $O(N^2)$ candidate generation, topology validation, and compiler evaluation overhead for local edits, commits, and Undo/Redo cycles without mutating authored documents in place or altering cross-domain contracts:
-   - **Dynamic BVH8 (`layout-bvh.ts`):** Replaced $O(N)$ spatial scans with an 8-ary Sort-Tile-Recursive bounding-volume hierarchy backed by contiguous typed arrays, achieving $O(\log N)$ query visits and $O(\log N)$ ancestor refits.
-   - **Certified World Index & Swept-Bounds Delta Certification (`layout-world-index.ts`):** Introduced certified geometric region bounds ($P_{\text{swept}} = \text{Box}(\text{old}) \cup \text{Box}(\text{new}) \oplus \epsilon$), proving that candidate edits outside $P_{\text{swept}}$ cannot create new crossings, self-intersections, or room reconciliation errors. Candidate planners bypass global validation and execute in $O(k)$ time ($k \le 8$).
-   - **Chunked Retained Compile World (`layout-geometry-delta.ts`):** Segmented compiler slots into $B=64$ chunked immutable arrays, enabling $O(k)$ delta compiles that update only affected entities and stitch dirty chunks in $O(N/B)$ rather than re-allocating $O(N)$ records.
-   - **Plain JSON Frozen Subgraph Memoization (`validate.ts`, `canonical.ts`, `acceptance.ts`):** Enabled $O(1)$ validation, canonical revision lookup, and admission for unchanged F4-frozen domain payloads. On Undo/Redo, Stage domain rebind occurs in $O(1)$ time with **0 compiles, 0 entity evaluations, 0 validations, and 0 SHA-256 digests**.
-2. **Beyond S06 Scope (The Structural Ceiling):** Flat SHA-256 byte streaming across the entire 1.8 MB Layout unit (`digestBytes: 929.58 ✗`), full-unit history snapshot copying (`frozenObjects: 7.02 ✗`), and per-surface Svelte mounting are mathematically enforced by current $F2/F4$ contracts. They cannot be eliminated within S06 without violating repository rules. We formulate three concrete **Owner-Decision Proposals (OP-1, OP-2, OP-3)** with precise migration specifications to eliminate these remaining linear bottlenecks in subsequent roadmap slices.
-
----
-
-## I. Systematic Computer Science Search Space Evaluation
-
-### A. Persistent and Functional Data Structures
-
-| Data Structure Class | Asymptotic Read | Asymptotic Update | Snapshot Cost | JavaScript Engine Constant Factors | Suitability for Biskiq |
-| --- | --- | --- | --- | --- | --- |
-| **Deep-Cloned Arrays** (Pre-S06 Baseline) | $O(1)$ | $O(N)$ | $O(N)$ | Excellent cache locality; catastrophic GC pressure ($2N$ allocations/edit) | **Rejected:** Fundamental cause of $O(N)$ scaling. |
-| **HAMT / CHAMP** (Clojure, Immutable.js) | $O(\log_{32} N)$ | $O(\log_{32} N)$ | $O(1)$ | High constant factor; heavy pointer chasing; 8–10 wrapper objects per update; poor V8 hidden-class optimization | **Rejected:** 4.2× slower random reads and 3.8× higher memory footprint than chunked arrays in benchmarks. |
-| **Persistent B+ Trees / Chunked Pages** | $O(\log_B N)$ | $O(B \log_B N)$ | $O(1)$ | Contiguous element chunks ($B=64$); predictable V8 Array indexing; low GC overhead | **Adopted for Compile World:** Used in `RetainedCompileWorld` chunked arrays. |
-| **Copy-on-Write Arrays + Weak Invalidation** | $O(1)$ | $O(k)$ amortized | $O(1)$ | Zero abstraction overhead; native array optimization; COW lineage verified in $O(1)$ via WeakMap | **Adopted for Candidate Planning:** Implemented in `cowMoveJunctions`, `cowMoveRigidWall`, `cowSetWallScalar`. |
-
-*Algorithmic Verdict:* In JavaScript, HAMT/CHAMP structures suffer from severe cache indirection and object allocation penalties. Bounded Copy-on-Write arrays paired with chunked retained storage provide optimal $O(1)$ read throughput, $O(k)$ updates, and minimal GC footprint.
-
-### B. Incremental and Self-Adjusting Computation
-
-1. **Salsa's Red-Green Revision Tracking:** Salsa assigns monotonically increasing revision numbers to inputs and verifies whether dependencies changed before re-evaluating derived queries.
-   - *Application to Biskiq:* Adopted in our Stage domain rebind and compiler reuse stores. `UNIT_REVISION_BY_FROZEN_OBJECT` acts as an invariant red-green certificate: if an object reference is deeply frozen and unchanged, its revision and canonical JSON are certified valid in $O(1)$.
-2. **Dynamic Dependency Graphs (Adapton):** Fine-grained entity-level dependency graphs incur significant memory overhead ($O(E)$ edges where $E \approx 12N$ in planar architectural graphs). Maintaining reverse edges during interactive drag gestures introduces dynamic GC thrashing.
-   - *Algorithmic Verdict:* Pure entity-level dynamic graphs are too heavy for consumer JS runtimes. Biskiq adopts a **coarse-to-fine hybrid**: swept-bounds spatial certificates prune unchanged subgraphs at the spatial boundary ($O(1)$), followed by chunked delta compiler execution ($O(k)$) only for entities intersecting the swept footprint.
-
-### C. Database Query Processing & Incremental View Maintenance (IVM)
-
-1. **Relational Formulation:**
-   - Architecture modeled as relations: $\text{Walls}(id, j_{\text{start}}, j_{\text{end}}, t, h)$, $\text{Junctions}(id, x, z)$, $\text{Openings}(id, w_{\text{id}}, \text{offset}, w, h)$, $\text{RoomBoundaries}(r_{\text{id}}, w_{\text{id}}, \text{direction})$.
-   - Output geometry is an incremental join: $\text{PhysicalWall} = \text{Walls} \bowtie \text{Junctions}_{\text{start}} \bowtie \text{Junctions}_{\text{end}} \bowtie \text{Openings}$.
-2. **DBSP / Differential Dataflow:**
-   - Evaluates changes via typed $\mathbb{Z}$-relation deltas: $\Delta \text{Output} = \mathcal{D}(\Delta \text{Input})$.
-   - *Tradeoff:* For scalar and coordinate edits, DBSP provides clean $O(k)$ delta propagation. However, Room boundary cycle extraction requires connected planar face traversal ($O(m)$ where $m$ is boundary length), which is non-linear in standard relational algebra.
-   - *Algorithmic Verdict:* Standard relational database engines are unnecessary overhead. However, the *delta compiler* in `layout-geometry-delta.ts` implements the exact mathematical semantics of relational delta evaluation for Wall and Junction records.
-
-### D. Dynamic Geometry and Planar Graph Maintenance
-
-1. **Spatial Pruning (Dynamic BVH8 vs R*-tree vs Uniform Grid):**
-   - Uniform spatial hashing fails on non-uniform architectural scales (e.g., massive 500 m perimeter walls coexisting with 0.8 m door openings).
-   - R*-tree re-insertion is expensive during 60 FPS interactive dragging.
-   - **Dynamic BVH8 (`layout-bvh.ts`):** 8-ary Sort-Tile-Recursive hierarchy stored in contiguous `Float64Array` buffers. Evaluates 8 bounding boxes simultaneously per SIMD-friendly loop iteration. Bounded depth ($\le 4$ levels for 4,000 entities), $O(\log_8 N)$ leaf updates, and zero allocation during queries.
-2. **Planar Subdivisions and Connectivity:**
-   - Arbitrary edge insertion/deletion with dynamic DCEL/half-edge representations requires complex topological repair.
-   - *Biskiq's Topological Reality:* 99.8% of interactive gestures are coordinate translations, length edits, or scalar adjustments that **preserve planar topology**. By certifying that the swept bounding box $P_{\text{swept}}$ intersects no non-incident entities, we prove that topology is invariant, bypassing full topological planar face reconstruction entirely.
-
-### E. Set and Index Structures
-
-1. **Inverted Component Indexes:** Incident wall maps (`incidentWallIdsByJunctionId`) and room membership maps (`roomIndicesByWallId`) are built once in the certified world index and maintained in $O(1)$ across COW generations.
-2. **Dense/Sparse Sets:** Dirty entity sets are tracked via numeric array buffers and small `Set<string>` collections allocated once per compile session, preventing memory fragmentation.
-
-### F. Canonical Content, Hashing and Storage
-
-1. **Current F4 / F2 Contract:**
-   - `F2.unit-envelope@1` specifies that a unit's `contentRevision` is the flat SHA-256 digest of its canonical JSON byte string.
-   - When a single Wall coordinate moves, the entire `layout` JSON string (~1.8 MB for `grid-L`) must be streamed into the SHA-256 hasher.
-   - **Mathematical Fact:** No algorithm can compute the flat SHA-256 digest of a concatenated byte stream in less than $O(N)$ time if any byte changes.
-2. **Hierarchical Content Identity (Merkle Trees):**
-   - Dividing the document into entity chunks and computing a Merkle tree root yields $O(k \log N)$ digest updates.
-   - *Hard Boundary:* A Merkle root is **not** byte-for-byte identical to the flat SHA-256 digest. Migrating to hierarchical identity requires an explicit cross-domain owner decision (see OP-2).
-
-### G. Memory, Cache Behavior and Rendering
-
-1. **Memory Locality:** V8 hidden classes degrade when arbitrary dynamic properties are attached to objects. Contiguous typed arrays (`Float64Array`, `Int32Array`) in `layout-bvh.ts` eliminate garbage collection and guarantee cache-line prefetching during traversal.
-2. **Rendering Seam:** Current Stage mounts individual Three.js meshes through per-surface Svelte components. At 10,000+ entities, DOM and component instantiation costs dominate interaction latency. OP-3 proposes cross-domain batched and instanced rendering.
-
----
-
-## II. Comparative Architectural Evaluation
-
-We rigorously evaluate four competing architectural paradigms against the spatial world requirements:
-
-```
-+---------------------------------------------------------------------------------------------------+
-| Architecture 1: Incremental Document & Delta Compiler (Our Implemented S06 Design)                |
-| - Storage: Immutable Authored Document + COW Delta Planners + Certified World Index               |
-| - Evaluation: Swept-Bounds Spatial Delta Certification + Chunked Retained Compile World (B=64)    |
-| - Caching: Frozen Subgraph Content Memoization in WeakMaps                                        |
-+---------------------------------------------------------------------------------------------------+
-| Architecture 2: Fully Persistent Pure-Functional Store (Persistent B+ Tree / Merkle Store)        |
-| - Storage: Persistent Radix Vector / B+ Tree + Structural Path Copying                            |
-| - Evaluation: Content-Addressable Memoized Evaluator                                              |
-| - Caching: Merkle Root Hash Hierarchy                                                             |
-+---------------------------------------------------------------------------------------------------+
-| Architecture 3: Incremental Relational / Differential View Maintenance Engine (DBSP / IVM)         |
-| - Storage: Materialized Relational Tables with B-tree Primary/Foreign Indexes                     |
-| - Evaluation: Incremental Join and Delta Aggregation Graph                                        |
-| - Caching: Materialized Relation Deltas                                                           |
-+---------------------------------------------------------------------------------------------------+
-| Architecture 4: Reactive Query / Self-Adjusting Memoization Graph (Salsa / Adapton)               |
-| - Storage: Fine-Grained Reactive Cell Store                                                       |
-| - Evaluation: Demand-Driven Red-Green Dynamic Dependency Tree                                     |
-| - Caching: Memoized Function Cells with Version Stamps                                            |
-+---------------------------------------------------------------------------------------------------+
-```
-
-### Theoretical Complexity & Lower Bounds
-
-Parameters:
-- $N$: total entities in project
-- $m$: entities in edited Room ($m \ll N$)
-- $k$: directly affected entities ($k \le 8$ for local moves)
-- $q$: entities intersecting spatial query box
-- $u$: unit domains ($u = 5$)
-- $B$: chunk/fanout factor ($B = 8$ for BVH, $B = 64$ for world chunks)
-
-| Operation / Metric | Architecture 1 (Implemented S06) | Architecture 2 (Pure Persistent Store) | Architecture 3 (Relational DBSP Engine) | Architecture 4 (Salsa / Reactive Graph) |
-| --- | --- | --- | --- | --- |
-| **Local Move Planning** | **$O(k + \log_8 N)$** | $O(k \log_B N)$ | $O(k + \log N)$ | $O(k \log N)$ |
-| **Delta Validation** | **$O(k)$ (Certified)** | $O(k \log_B N)$ | $O(k)$ | $O(k \cdot d_{\text{rev}})$ |
-| **Geometry Compilation** | **$O(k + N/B)$** | $O(k \log_B N)$ | $O(k + m)$ | $O(k + m)$ |
-| **Commit Latency** | **$O(k + N_{\text{layout}})^*$** | $O(k \log_B N)$ | $O(k + N_{\text{layout}})^*$ | $O(k + N_{\text{layout}})^*$ |
-| **Undo / Redo Latency** | **$O(1)$** | $O(\log_B N)$ | $O(1)$ | $O(1)$ |
-| **Memory per Snapshot** | **$O(N_{\text{layout}})^*$** | $O(k \log_B N)$ | $O(N_{\text{layout}})^*$ | $O(k)$ |
-| **Runtime GC Overhead** | **Extremely Low** | Moderate (Path Copying) | High (Tuple Allocations) | High (Dynamic Graph Edges) |
-| **Serialization Throughput** | **$O(N_{\text{layout}})^*$** | $O(k \log_B N)$ | $O(N)$ | $O(N)$ |
-
-*\* Note: The linear $O(N_{\text{layout}})$ cost on Commit and Persistence is strictly due to current $F2/F4$ contracts (OP-1 & OP-2 address this).*
-
----
-
-## III. Empirical Benchmark & Experiment Results
-
-### 1. Data Structure Micro-Benchmarks (`arch-experiments-results.json`)
-
-Measured on Node.js v26.7.0 / Apple Silicon across scales:
-
-#### A. Entity Store Update & Snapshot Latency
-
-| Workload | Entities | DeepCloneArray (Baseline) | FlatCowArray (S06 Planners) | Chunked64Cow (S06 World) | CHAMP-32 Persistent Map |
-| --- | --- | --- | --- | --- | --- |
-| `grid-L` | 420 | 0.0205 ms (840 allocs) | **0.0004 ms (2 allocs)** | 0.0008 ms (4 allocs) | 0.0030 ms (8 allocs) |
-| `sweep-C10` | 3,065 | 0.2013 ms (6,130 allocs) | **0.0010 ms (2 allocs)** | 0.0002 ms (4 allocs) | 0.0017 ms (10 allocs) |
-| `grid-10k` | 20,200 | 0.9095 ms (40,400 allocs) | **0.0394 ms (2 allocs)** | **0.0007 ms (4 allocs)** | 0.0018 ms (11 allocs) |
-
-*Finding:* At 20,200 entities, Chunked64 COW pages update in **0.7 microseconds**, which is **1,299× faster** than deep-cloning and 2.5× faster than CHAMP-32 while retaining direct indexed iteration.
-
-#### B. Spatial Index Maintenance & Query Throughput
-
-| Workload | Entities | Rebuild Grid Each Edit | Dynamic BVH8 Refit + Query | Query Node Visits | Refit Node Visits | Parity |
-| --- | --- | --- | --- | --- | --- |
-| `grid-S` | 24 | 0.0311 ms | **0.0059 ms** | 23.0 | 5.2 | 100% |
-| `grid-M` | 112 | 0.0322 ms | **0.0029 ms** | 34.1 | 6.0 | 100% |
-| `grid-L` | 420 | 0.1160 ms | **0.0012 ms** | 42.3 | 6.5 | 100% |
-| `sweep-C10` | 3,065 | 0.6656 ms | **0.0012 ms** | 47.3 | 7.0 | 100% |
-| `grid-10k` | 20,200 | 4.4539 ms | **0.0014 ms** | 56.8 | 6.7 | 100% |
-
-*Finding:* At 20,200 walls, rebuilding a spatial grid requires 4.45 ms per frame. Dynamic BVH8 refits and queries in **0.0014 ms (3,181× faster)** with strictly logarithmic node visits ($6.7$ directory refits).
-
-#### C. Hashing Throughput: Current Flat SHA-256 vs Merkle Chunking
-
-| Workload | Authored Bytes | Cold Flat SHA-256 | Uncached Flat SHA-256 | S06 Frozen Subtree Memo | OP-2 Merkle Chunking |
-| --- | --- | --- | --- | --- | --- |
-| `grid-S` | 18.3 KB | 0.320 ms | 0.144 ms | 0.021 ms | **0.016 ms** |
-| `grid-M` | 105.7 KB | 0.342 ms | 0.187 ms | 0.034 ms | **0.019 ms** |
-| `grid-L` | 613.9 KB | 0.584 ms | 0.446 ms | 0.098 ms | **0.025 ms** |
-| `sweep-C10` | 4.88 MB | 3.659 ms | 3.012 ms | 0.814 ms | **0.031 ms** |
-| `grid-10k` | 32.2 MB | 26.24 ms | 21.43 ms | 5.92 ms | **0.038 ms** |
-
-*Finding:* At 32.2 MB, flat SHA-256 hashing takes 21.4 ms (exceeding a 16.6 ms frame budget). S06 frozen subtree memoization drops this to 5.9 ms. OP-2 Merkle chunking achieves **0.038 ms (563× faster)**, completely decoupling project size from interaction latency.
-
----
-
-### 2. Comprehensive Census Before vs After Verification (E5 Sweep)
-
-Full multi-workload census sweep executed via `npm run perf:census -- --only e5`:
-
-| Metric / Counter | Before S06 Optimization | After S06 Production Optimization | Scaling Slope | Status |
-| --- | --- | --- | --- | --- |
-| **`compiles` (all phases)** | 1 cold compile / edit | **1 delta compile** | **0.00** | **✓ FLAT** |
-| **`entityEvaluations` (move)** | 420 (`grid-L`) / 3,065 (`C10`) | **2 walls, 0 rooms ($k=2$)** | **0.00** | **✓ FLAT** |
-| **`wholeDocumentPasses`** | 6 passes / edit | **0 passes** | **0.00** | **✓ FLAT** |
-| **`pairVisits` (all variants)** | 0.64 ✗ on Variant C | **0.00 ✓ across all variants** | **0.00** | **✓ FLAT** |
-| **`cacheKeyChars`** | 14,243,770 (`grid-L`) | **195,862 (72.7× fewer)** | **0.00** | **✓ FLAT** |
-| **`envelopeValidations`** | 3 validations / commit | **0 validations on Undo/Redo** | **0.00** | **✓ FLAT** |
-| **`f4Clones`** | 1 full clone / edit | **0 clones (structural sharing)** | **0.00** | **✓ FLAT** |
-| **`indexNodeVisits`** | Linear scans ($N$) | **3 to 5 BVH node visits** | **0.00** | **✓ FLAT** |
-| **Stage Undo / Redo Cost** | Full recompilation | **0 compiles, 0 evals, 0 hashes** | **0.00** | **✓ FLAT** |
-| **Necessary Work Ratio $R$** | Unbounded | **$R \approx 1.0$ at $\times 10$ factor** | **1.00** | **✓ OPTIMAL** |
-
----
-
-## IV. Owner-Decision Package (Scope Extensions Beyond S06)
-
-To eliminate the remaining $O(N)$ operations that cross domain boundaries, the following concrete Owner Decisions are submitted:
-
-### Proposal OP-1: Entity-Level F4 History Copy-on-Write & Transaction Journal
-
-- **Problem:** When a user commits a 1-wall edit in `grid-L`, F4 duplicates the entire 420-wall `LayoutUnitPayload` into the undo stack (`frozenObjects: 7.02 ✗`, `historyBytesPerStep: 663.98 ✗`). At 50 undo steps on a large project, history consumes hundreds of megabytes.
-- **Contract Amendment:** Amend `packages/project-model/src/f4/immutable.ts` and `apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts`.
-- **Proposed Architecture:** Replace full unit snapshot storage with an **entity-level copy-on-write page store + inverse patch journal**.
-  - Consecutive history snapshots share identical entity arrays via structural sharing.
-  - Undo/Redo restores state by applying inverse patches in $O(k)$ time.
-- **Projected Impact:** Eliminates `frozenObjects` and `historyBytesPerStep` scaling slopes from `7.02 ✗` to `0.00 ✓`, reducing history memory usage by **98.4%**.
-
-### Proposal OP-2: `F2.unit-envelope@2` Chunked Merkle Content Identity & Delta Save
-
-- **Problem:** `F2.unit-envelope@1` requires that `contentRevision = sha256Bytes(canonicalJson(unit.data))`. Because SHA-256 is flat, changing 1 coordinate requires streaming all 1.8 MB of JSON through WebCrypto (`digestBytes: 929.58 ✗` on commit/undo).
-- **Contract Amendment:** Ratify `F2.unit-envelope@2` in `docs/reference/composition-execution.md` and `packages/project-model/src/units/canonical.ts`.
-- **Proposed Architecture:**
-  - Introduce hierarchical chunked content identity: each unit payload is organized into deterministic 64-entity chunks.
-  - Unit revision is the Merkle root of chunk digests: $R_{\text{unit}} = \text{SHA-256}(h_1 \parallel h_2 \parallel \dots \parallel h_m)$.
-  - A 1-wall edit updates exactly one leaf chunk $h_i$ and recomputes the root in $O(\log N)$ time.
-  - Save operation persists only dirty chunks to storage.
-- **Projected Impact:** Drops commit digest bytes from $1.8\text{ MB}$ to $4\text{ KB}$ ($O(1)$), reducing Save latency on large projects from 45 ms to **0.2 ms**.
-
-### Proposal OP-3: Cross-Domain Batched & Instanced GPU Rendering
-
-- **Problem:** Mounting Three.js meshes through individual Svelte components incurs $O(N)$ DOM and Svelte rune overhead, limiting interactive viewport performance beyond 1,000 entities.
-- **Contract Amendment:** Amend Stage rendering contracts between T1 (Layout) and T2 (Scene).
-- **Proposed Architecture:**
-  - Transition from individual mesh instances to batched/instanced geometry buffers (`InstancedMesh` / WebGL2 storage buffers).
-  - Dirty compiler chunks upload only contiguous sub-ranges to GPU vertex buffers via `glBufferSubData`.
-- **Projected Impact:** Eliminates Svelte component mounting overhead during spatial playback and interaction, maintaining 60 FPS up to 100,000 entities.
-
----
-
-## V. Independent-Review Falsification & Verification Checklist
-
-External reviewers can independently reproduce and verify all claims and counter bounds using the following commands:
-
-```bash
-# 1. Verify strict TypeScript compilation and Svelte check (0 errors, 0 warnings)
-npm run check:layout-core && npm run check:project-model && npm run check:camera-core && npm run check
-
-# 2. Run adversarial differential, metamorphic & scale-invariance suites
-(cd apps/editor && npx vitest run tests/lib/layout/t1s06-swept-bounds-differential.test.ts)
-(cd apps/editor && npx vitest run tests/lib/layout/t1s06-incremental-compile.test.ts)
-(cd apps/editor && npx vitest run tests/lib/layout/t1s06-plan-box-index.test.ts)
-
-# 3. Run full multi-workload census sweep (verifies 0.00 slopes across all variants)
-PERF_WORKLOAD_DIR=perf/.workloads npm run perf:census --workspace @portfolio/editor -- --only e5
-
-# 4. Verify cold-compiler differential oracle equivalence across all scale fixtures
-(cd apps/editor && npx tsx perf/census/probe-d1-differential.ts)
-
-# 5. Run full fast, architecture, and heavy test tiers
-npm run test:fast
-npm run test:arch
-npm run test:heavy
-```
+# Spatial computation architecture — falsification and persistent roots
+
+**Track:** T1 / S06 · **PR:** [#190](https://github.com/Biskiq/spatial-sketch-editor/pull/190)
+
+**Audited base:** 764175e0e8db12e09a580a3e818b9420dfe50ca5
+
+**Implementation:** d47c25e1 + 5cdccb79 + 48126338; comparison harness bd443412, counter/replay correction 0156eac1.
+
+**Status:** implemented for independent review; no acceptance, owner contract ratification, Bench 2 or merge.
+
+This replaces the earlier dossier's complexity claims. Two or three entity evaluations did not establish
+a sublinear edit: the base still copied complete authored arrays, Maps, spatial buffers and compiled
+outputs. Its two-size slopes and accepted-node counts were measurements of subsets, not proofs about
+complete operations. The former HAMT speed ratios, gesture percentages and OP-1/2/3 benefit percentages
+had no reproducible evidence and are withdrawn.
+
+The selected implementation removes those copies from the certified local Wall path. It does
+**not** establish a universal O(log N + k + results) editing bound: arbitrary spatial queries can
+still test N entries, accepted Layout edits still traverse native source collections and stream
+existing canonical bytes, and some Stage consumers still read whole collections. These are separate
+problems with separate dispositions below.
+
+## 1. What the base actually did
+
+Let J, W, R and O count Junctions, Walls, Rooms and objects; H count face half-edges; Q count
+compiled query records; B and C count BVH nodes and child links. Counts describe logical slots
+or explicit buffer bytes, not engine object sizes.
+
+| Path at 764175e0 | Hidden work for a local rigid Wall move | Replacement |
+| --- | --- | --- |
+| Candidate construction | J + W pointer slots copied by native slice | Borrow frozen array roots; copy edited blocks of at most 32 slots and their binary paths |
+| materializePatchedWorldIndex | 2J + 2W + H Map entries copied; all walk summaries sliced | Stable ID/index directories with current-source views; persistent sampled-wall/half-edge maps and walk vector |
+| BVH clone | 15 typed arrays: exactly 37W + 42B + 4C payload bytes; irregular-list copy; new 4 max(16,B)-byte stack | Three persistent map handles and a wrapper; no cloned N-sized buffers or stack |
+| BVH maintenance | Ancestor refit, but partitions never repaired after a move | Bounded fat partitions; remove/reinsert after escape; AVL balance |
+| Query instrumentation | Accepted internal nodes, excluding many rejected child and leaf tests | Every tested node bound, every tested entry, irregular scan, ordering work and output |
+| Delta compile | Q output slots; W + J + 2R + O compiled/list slots; chunk-directory and aggregate work | Persistent ordered vectors, augmented bounds/issue counts, ordered diagnostic map, lazy full-array adapters |
+| F4 capture | Repeated full detached graph captures destroyed unchanged identity | Share proven immutable JSON children; detach every new container; preserve native fallback for accessors/exotics |
+| Layout codec | New entity graphs for unchanged source records | Reuse only already immutable, strictly validated, identically normalized elements; global collection/reference checks remain |
+| Stage seal / representation | Deep freeze forced query getters; all Junction legs, Walls and objects scanned; child-array search/splice on replacement | Seal unseen persistent paths; Wall/Junction root diff; keep attached meshes; skip unchanged object collection |
+| Retention | COW parent, equivalence and pending-patch references could retain evicted ancestors | Weak parent hints, opaque equivalence tokens, immediate root installation and bounded qualified prepared artifacts |
+
+A native array slice and Map constructor remain linear even if they copy references instead of
+geometry. Chunking with a copied flat directory is O(N / block-size), which is still linear.
+A balanced spatial tree has logarithmic height; this alone says nothing logarithmic about the
+number of overlapping subtree bounds a range query must examine.
+
+## 2. Representations seriously evaluated
+
+The evaluations below distinguish implemented comparisons, analytical designs and unmeasured
+alternatives. There is no blanket claim that one JavaScript library or data-structure family wins.
+
+| Representation | Relevant benefit | Decision |
+| --- | --- | --- |
+| Persistent radix vector / RRB tree | Logarithmic path copying; RRB also supports split, concat and insertion | Implement a smaller blocked binary vector for replacement-only local edits. RRB remains credible for future membership editing; native accepted arrays still need an adapter |
+| Persistent B/B+ tree or immutable chunk DAG | Wide paths, ordered iteration, page locality | Credible next packing optimization. A persistent page directory is essential; copying N/pages pointers recreates the original defect. No fabricated JS speed comparison |
+| HAMT / CHAMP | Efficient persistent identity directory, compact bitmap nodes | Credible alternative. Current static native ID directories already share without edits; changed numeric/string maps need ordering/augmentation, so one deterministic AVL implementation serves more roles |
+| Persistent AVL | Worst-case logarithmic search/update paths, simple rotations, augmentation | Selected for sampled walls, half-edges, diagnostics and spatial directories. Nodes never point to prior roots |
+| Fat nodes / modification boxes | Can reduce persistence space under the relevant model | Examined, not implemented. Version ancestry, bounded node modifications, augmented bounds and full branching need their own proof; O(log N) path allocation is explicit here |
+| Mutable transients + immutable accepted roots | Fast working handles without copying accepted state | Selected: mutable map handles replace immutable roots. No accepted document or old generated record is edited in place |
+| Sparse overlays / MVCC / LSM runs | Cheap transaction append and snapshot tokens | Unbounded overlay chains make reads depend on history depth; flat-directory compaction can hide N work. Require a persistent directory and bounded compaction before replacing the selected trees |
+| Event log / inverse journal | Small event append | Does not itself give constant-time historical reads; replay/checkpointing and inverse correctness remain. Persistent historical roots directly solve the read requirement |
+| Generational IDs / stable slots | Cheap insert/remove without reindexing the suffix | Useful for future membership deltas; no new serialized IDs or source ownership installed in S06 |
+| Incremental materialized views | Reverse joins and query deltas, cached aggregates | Selected directly: Wall→Room, Junction→Wall and host→Opening indexes; retained per-owner query records; aggregate vector summaries |
+| General self-adjusting engine / differential database | General dependency maintenance | Not installed. The existing canonical compiler's typed builders and explicit reverse dependencies express this fixed graph without a second evaluator. No unsupported claim that these engines are intrinsically too slow |
+| Dynamic DCEL / connectivity structures | Efficient explicit topology changes | Not a replacement for existing Room correspondence semantics. S06 certifies unchanged topology; insertion/deletion/reconciliation still uses the canonical fallback |
+
+Primary foundations: [persistent structures](https://www.cs.cmu.edu/~sleator/papers/Persistence.htm),
+[RRB trees](https://hypirion.com/pdf/RMTrees.pdf),
+[CHAMP](https://ir.cwi.nl/pub/24029/24029B.pdf),
+[Clojure persistent collections/transients](https://clojure.org/reference/data_structures), and
+[augmented persistent maps](https://www.cs.cmu.edu/~yihans/papers/pam.pdf).
+
+### Spatial alternatives and the missing theorem
+
+Refitting, fat partitions, reinsertion and balanced path copying are implemented comparisons.
+The base BVH8, fixed-centroid AVL, adaptive-centroid AVL and adaptive four-extrema AVL use the same
+overlap predicate and ordered result contract in the bounded replay. The default now orders
+(minX, minZ, maxX, maxZ), rather than centroids alone, using fixed-width IEEE-754 Morton bits.
+It distinguishes horizontal and vertical enclosing slabs with equal centroids. Small movements
+retain a bounded fat partition; an escaped entry gets a new key. AVL rotations guarantee height
+and maintenance paths, not range-query selectivity.
+
+[Box2D's dynamic AABB tree](https://box2d.org/documentation/group__tree.html) supplies a useful
+reinsertion precedent and separately reports node/leaf visits.
+[R*-trees](https://brava.dbs.ifi.lmu.de/publications/585), surface-area rotations and localized
+rebuilds can improve spatial quality. They do not, merely by being balanced or periodically rebuilt,
+supply the requested worst-case exact reporting theorem. They remain credible linear-space
+alternatives; this task does not claim to have benchmarked every implementation.
+
+Exact rectangle overlap is a four-dimensional dominance query:
+p = (minX, minZ, -maxX, -maxZ), q = (query.maxX, query.maxZ, -query.minX, -query.minZ);
+report p whose four coordinates are at most q's. Thus there is **no inherent requirement to
+scan unrelated rectangles**.
+
+A classical dynamic 4D range tree offers polylogarithmic queries/updates with
+O(N log³ N) space; straightforward query cost is O(log⁴ N + results), with amortized
+weight-balanced augmentation work. See [MIT's range-tree treatment](https://classes.csail.mit.edu/6.851/spring12/lectures/L03.html).
+Combining two outer range layers with a 2D priority-search structure gives a plausible
+O(log³ N + results) query / O(N log² N) space design; this is a composition analysis,
+not an implemented fully persistent bound. [McCreight's priority search trees](https://epubs.siam.org/doi/10.1137/0214021)
+are the bottom-level basis. Arbitrary historical branching cannot inherit an ephemeral
+rebuilding amortization without a separate analysis.
+
+At N = 100,000 and height 17, a straightforward three-catalog-layer design has roughly
+N h³/6 = 82 million memberships (328 MB of four-byte IDs alone); the two-layer alternative
+has roughly 15–17 million occurrences (60–68 MB of IDs). These are transparent sizing models,
+not measured heap sizes or universal space lower bounds. Links, summaries, persistent versions
+and JavaScript objects add storage. A sophisticated packed implementation could do better.
+
+[Static 4D dominance research](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.SoCG.2020.59)
+even gives O(log N + results) reporting with almost-linear space. That theorem is static;
+it does not supply this editor's dynamic, persistent update implementation. Consequently the
+selected linear-space index is a measured engineering choice, **not an optimality claim**.
+A theorem-backed dynamic dominance structure is a concrete stronger alternative if worst-case
+reporting is made a requirement. No API or ownership change is intrinsically necessary for that
+internal replacement.
+
+## 3. Selected pipeline and its invariants
+
+- Source format 6 and authored order stay unchanged. Lazy enumerable array adapters preserve
+  existing full-document consumers; indexed reads use runtime-only persistent roots.
+  Complete capture/JSON readers explicitly materialize and count their output.
+- Static ID, incidence, component and host directories are shared. Current-source projections
+  capture the current document and those directories, not a previous world. Dynamic sampled
+  data, half-edge contributions, walk signs and spatial bounds path-copy.
+- A swept-region certificate must discover formerly absent neighbours. Cyclic star order,
+  exact canonical sampling and affected Opening constraints remain guarded. Area signs carry
+  conservative forward-error envelopes; ambiguous cancellation or accumulated error delegates
+  to the canonical gate. This is a sign proof, never a second area/topology evaluator.
+- Compiled ordering is retained independently of map iteration. Persistent slots hold the
+  canonical builders' outputs; bounds and issue counts are maintained on update paths.
+  One-Wall read APIs do not flatten unrelated geometry or query records.
+- Stage sealing visits unseen generated paths and values. Lazy flat arrays freeze when demanded.
+  A Floor key containing all Room IDs stays deferred until a consumer requests that string.
+- Wall representation diffs both Walls and Junction incidence: a changed join can affect a mesh
+  whose Wall key did not change. It replaces buffers on the existing attached mesh and releases
+  old buffers. An unchanged object array skips the object renderer.
+- Immutable historical compile snapshots belong to their session. Restoring a known root works
+  across membership changes; five transient memo-table roots are retired in constant root work.
+  Branch edits evaluate from the restored persistent world. Reset still makes the next compile cold.
+- Borrowed-array diffs compare backing ranges as well as node identity. A full-array visitation
+  proof also covers unchanged ranges after lazy splitting; neither helper walks the untouched
+  suffix merely because a temporary range-view node is new.
+- Only an immutable value that was actually validated can enter the codec element cache.
+  Equality includes normalization, prototype, property order and values. A mutable parser output
+  is never certified in anticipation of a later freeze.
+- Prepared artifacts are bounded to 16 entries and qualified by operation, baseline token and
+  canonical intent. Terminal paths consume them. Weak COW hints may expire and cause a cold
+  fallback; they never become acceptance authority.
+
+The source and generated roots contain no selection, renderer handles, history, authored endpoints
+or second compiler. No source format, revision mint, refusal, dependency-lock, Save or visitor
+isolation contract was changed.
+
+## 4. Complete-operation cost model
+
+Let k include the affected dependency closure, g its samples/boundary/record/key volume, t the
+spatial nodes actually tested, I irregular entries scanned, q reported spatial candidates, A
+explicitly materialized array slots, D changed canonical byte volume, S serialized source size,
+and v meshes whose rendered inputs changed. L counts dependency-lock entries, P other reference
+checks, and U Scene/Camera projection, resolution and cross-domain runtime preparation.
+Strings/IDs and entity payloads are not assumed free.
+
+| Operation / boundary | Defensible cost |
+| --- | --- |
+| Fork persistent map/spatial root | O(1) handles; no entity-node copy |
+| Replace one vector slot | O(log N + 32), including copied block and summaries |
+| Replace one persistent map/spatial entry | O(log N) path nodes and fixed-width key work; removes/reinserts after partition escape |
+| Certified local candidate, dependencies, compile | O(k log N + g + t + I + q + small dirty-set ordering); no global container reconstruction |
+| Spatial query | O(t + I + q); large output uses four fixed-word radix passes. t can be Theta(N) |
+| Read one retained Wall / its query records | O(log N + that Wall's requested records), with native ID-directory lookup |
+| Bounds/count access | O(1) root summary; updates charged to copied paths |
+| Public full source/geometry/query arrays | O(A), on demand; full issue output also charges its size |
+| Stage generated sealing + stable-membership Wall/object update | Changed paths/graphs plus O(v log N + changed mesh bytes); not an O(N) enumeration |
+| Known immutable compile-root restoration | O(1) root/directory operations, including membership changes; no entity traversal |
+| Full accepted Layout edit | Local work **plus** native changed-source array capture/codec/reference work, lock/reference work O(L + P), runtime preparation U, canonical byte assembly/hashing O(D), and pretty source serialization O(S) |
+| Accepted undo/redo to imperative installation | Existing admission/identity/JSON proofs reuse known source; compile root restores; rendering charges actual diff. Membership-changing rendering still uses the full fallback |
+| First admission / cold compile / uncertain certificate | Full canonical work; no sublinear claim |
+| Complete product Stage / frame | Room templates, presentation scans, scene graph traversal, draw submission and GPU work are outside the demonstrated local bound |
+
+For fixed local k, the retained subsystem approaches O(log N + g + t + I + q). It does
+not have the requested universal O(log N + k + affected results) guarantee. With h retained
+local revisions, derived path storage is O(N + h k log N + retained changed geometry), apart from
+explicit full materializations and cold membership rebuilds. Accepted native arrays, canonical
+strings and other domains are separate retention costs. No VM garbage-collection latency guarantee
+follows from these source-level bounds.
+
+Editing a high-degree Junction, a Wall with a long curve, a Room boundary containing many Walls,
+or a value that changes every Room's documented fallback thickness can have a large true dependency
+closure. The entity count k alone is an inadequate measure of that output.
+
+The accepted replay uses empty other domain payloads and an empty dependency lock. It does not
+prove locality for a complex Scene/Camera/resource project. Current runtime preparation still maps
+Camera Views into its read projection and resolves Scene; closure and lock code still traverses
+their inputs. A Layout unit revision can also restamp many unit-level lock pins. These costs are
+not mathematical requirements of immutability. A T3-owned runtime-preparation cache/read-set
+decision must name Scene/Camera/resource revisions, Scene options and external dependency epochs;
+blindly memoizing a callback-bearing options object would be unsafe. No such contract is installed.
+
+## 5. Identity, ownership and owner decisions
+
+Immutability requires stable values and no mutable aliases; it does not require whole-document
+copying. Proven frozen JSON and normalized codec elements are now shared under the existing
+ownership semantics. Accepted revisions, refusal ordering, dependency locks and full-source
+restoration retain their existing authority.
+
+The existing identity is flat SHA-256 over the existing canonical byte sequence. SHA's sequential
+compression means a changed early byte invalidates the remaining stream state in the standard
+algorithm. Prefix reuse can help late edits but gives no sublinear worst-case update. A Merkle
+root is a different digest, not an interchangeable acceleration of that identity.
+The primary hash definition is [FIPS 180-4](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
+
+The earlier OP labels remain hypotheses:
+
+| Hypothesis | Corrected disposition / smallest decision |
+| --- | --- |
+| OP-1: entity-level history / inverse journal | Entity sharing and known historical root restoration did not require an inverse journal or new F4 authority, and are implemented. Removing accepted native-array construction and whole Layout reference checks needs a T3-approved admitted persistent-source/read-adapter contract. It must retain strict arbitrary-source validation, capture-before-async, exact historical source, locks and fresh accepted revisions |
+| OP-2: Merkle identity / delta Save | Not installed. A persistent hierarchical hash could update O(k log_B N) nodes; at N=100,000, fanout 32 gives four levels, roughly 128 child digests per changed path plus changed payload. This is a sizing example, not a timing or wire-compatibility claim. A flat list of all leaf hashes is still linear. New identity/version, migration, lock/pin, Save/API and delivery meanings require the owning F2/F4 decision |
+| OP-3: batched rendering | No 100,000-entity FPS claim. A targeted Room-surface/portal adapter can avoid existing full scans; instancing/merging may reduce CPU submissions but must preserve materials, selection/provenance and visitor isolation. Shared renderer/Stage changes require T2/T3 review, with browser/GPU evidence in the owner-run process |
+
+Native source arrays and full admission remain avoidable representation work, not mathematical
+requirements of F4. Full requested JSON has an output-size lower bound. Full canonical SHA is a
+different, existing identity obligation. Full rendering/visibility costs are yet another concern.
+These must not be merged into a single claim that every remaining linear operation is necessary.
+
+More narrowly, current COW planners refresh changed centerline objects even on endpoint moves,
+and the codec constructs fresh collection arrays. These are freshness/normalizer conventions,
+not canonical-byte requirements. Removing them requires checking the existing P1 source-trace
+and mutable-normalizer consumers; it must not be justified merely by equal JSON. The admitted
+persistent-source proposal should explicitly decide their replacement rather than preserve
+unnecessary copying by accident.
+
+## 6. Reproduction and falsification
+
+The [S06 implementation record](../t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md#persistent-representation-takeover)
+owns the final measured tables and limitations. The
+[review handoff](../t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#current-independent-review-boundary)
+maps each invariant to source and focused falsifiers. The
+[evidence directory](../t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/evidence/persistent-2026-10-25/README.md)
+contains raw samples, complete named counters, allocation estimates, memory observations, oracle
+digests, baseline instrumentation and replay commands.
+
+Timing windows include the entire selected operation and exclude observers, setup and full-output
+oracles. The same fixture, edit, iterations and consumers run against both revisions. Cold oracles
+run in separate processes over exact final authored JSON, avoiding a peak heap containing two
+complete compiler graphs. Every successful local result must match both its cold oracle and the
+other revision; accepted runs also compare source identity and serialized bytes. Failures stay in
+the result, without extrapolated replacement numbers.
+
+The spatial replay includes 2,048 clone/move/query operations over 100,000 entries, 32 retained
+historical roots, equal-centroid slabs, all-overlap output and 1,000 irregular entries. Focused tests
+add 2,000 insert/remove transitions, curved real Walls, Opening profiles, large-coordinate area
+cancellation, formerly absent dependencies, immutable branching and renderer disposal. This is
+bounded Node evidence, not Bench 2, browser/GPU evidence or a new independent-review verdict.

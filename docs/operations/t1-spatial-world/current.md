@@ -5,17 +5,24 @@ PHASE: T1.P02 Native Wall creation →
        T1.P01 closed 2026-10-21. T1.P02 is active; S01 and S05 are shipped.
 ACTIVE: T1.P02.S06 (performance foundation), optimize step (agent), released 2026-10-25. Started
         2026-10-24 at trusted base 2215af341a650ac3a99a0fbb36e48de7e901411e; setup and C.2
-        amendment in PR #190. S06 fundamental CS optimization pass complete: Dynamic BVH8,
-        swept-bounds delta certification, chunked retained compile world (B=64), and plain JSON
-        frozen subgraph memoization landed and verified with 0.00 scaling slopes across all authorized
-        counters; research dossier and OP-1/OP-2/OP-3 owner decision package documented in
+        amendment in PR #190. Owner-directed takeover starts at 764175e0 on the existing branch.
+        The previous flat-counter claims do not establish total-operation locality: source arrays,
+        Maps, BVH buffers and compiled outputs still copied globally at that revision. Persistent
+        roots, lazy compiled views, session-owned historical restoration and bounded Node
+        comparisons are implemented (d47c25e1 / bd443412 / 5cdccb79 / 0156eac1 / 48126338).
+        Fresh independent review is pending; no acceptance is recorded. The Room-shaped
+        100,002-entity replay passes cold/cross-revision output parity; accepted native source,
+        flat canonical SHA and full Stage consumers remain explicit costs. Dossier:
         ../../roadmap/t1-spatial-world/broad-research/spatial-computation-architecture.md.
         Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
-NEXT:   T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
+NEXT:   Stop at the fresh independent-review boundary:
+        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#current-independent-review-boundary
+        T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
         It runs on an owner-run benchmark budget of at most three passes:
         set up (agent) → Bench 1 (owner) → optimize with hand calculation (agent) → Bench 2
         (owner) → fix (agent) → Bench 3 final acceptance (owner).
-        Agents never run a full benchmark pass; they run smoke checks only, labelled as such.
+        Agents never run a full benchmark pass. This takeover's owner-directed, bounded Node
+        comparisons are separately labelled; they are not Bench 2 or product-budget evidence.
         The one exception is owner-directed: the owner had the agent launch Bench 1 (2026-10-24).
         It covers:
         - the peak-first, setup-free harness method on the designated MacBook Air M2 (16 GB);
@@ -28,9 +35,10 @@ NEXT:   T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creatio
         review, the T3 review of the shared Head/F4 shell allocation and the T2/T3
         contribution-compatibility review. Then S03 (outline, held) and S04 (final gate).
         Order: S06 → S02 → S03 → S04.
-CLAIMS: S06 setup holds apps/editor/perf/**. Writer: the T1 S06 setup agent, branch
-        `t1/p02-s06-bench-setup`; expected patch base 2215af34; reviewer: T3 (shared harness,
-        fixtures, flows and the Camera/Experience fixture generator). No shared test helper under
+CLAIMS: S06 setup holds apps/editor/perf/**. Writer: the T1 S06 takeover agent, branch
+        `t1/p02-s06-bench-setup`; expected patch base 764175e0. T3 reviews immutable capture,
+        Stage admission and qualified handoff; T2/T3 review shared renderer compatibility.
+        The shared harness/fixture review remains required. No shared test helper under
         apps/editor/tests/helpers/** is edited. Every owner-run pass on the M2 holds the
         machine-wide perf lock.
 CARRY:  - Transferred to S06 (owner replanning 2026-10-24):
@@ -38,7 +46,7 @@ CARRY:  - Transferred to S06 (owner replanning 2026-10-24):
           - T3.P02.S02's deferred Scope A performance rows (measurement and dispositions);
           - T3.P03.S02's L/XL fixtures and M/L drag rows.
         - S01's F2 S/M open timings stay assigned to S04 on the designated M2. S04 cites and
-          rechecks S06's numbers. No performance evidence is claimed yet.
+          rechecks S06's owner-run numbers. Bounded Node evidence does not establish the product budgets.
         - Occupancy-derived curve-knot/interior-anchor allocators stay outside accepted intents. The
           first curve-authoring slice captures them before curved drawing ships.
         - Deferred-retirement rows in the T1 track README are still live: the Room-level wall mesh

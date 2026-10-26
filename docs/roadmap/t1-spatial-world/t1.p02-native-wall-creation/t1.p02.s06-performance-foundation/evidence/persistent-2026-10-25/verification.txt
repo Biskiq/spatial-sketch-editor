@@ -1,0 +1,50 @@
+S06 persistent representation takeover — verification
+Code: 481263385f1ed9eb101bed491118a59f533d4fb2
+Baseline: 764175e0e8db12e09a580a3e818b9420dfe50ca5
+Host: Apple M2 / 16 GiB, darwin arm64, Node v26.7.0
+
+npm run test -w @portfolio/editor -- --maxWorkers=3
+Test Files  202 passed (202)
+Tests  2524 passed (2524)
+Start at  22:05:35
+Duration  63.17s (transform 4.37s, setup 0ms, collect 24.56s, tests 134.47s, environment 2.98s, prepare 6.42s)
+
+npm run test:arch -w @portfolio/editor -- --maxWorkers=3
+Test Files  22 passed (22)
+Tests  180 passed (180)
+Start at  22:06:39
+Duration  3.26s (transform 840ms, setup 0ms, collect 2.35s, tests 4.62s, environment 2ms, prepare 684ms)
+
+npm run test:heavy -w @portfolio/editor -- --maxWorkers=3
+Test Files  11 passed (11)
+Tests  138 passed (138)
+Start at  22:06:43
+Duration  52.12s (transform 673ms, setup 0ms, collect 1.81s, tests 83.49s, environment 1ms, prepare 394ms)
+
+npm run check — PASS
+svelte-check found 0 errors and 0 warnings
+
+npm run check:layout-core — PASS
+
+npm run check:project-model — PASS
+
+npm run check:camera-core — PASS
+
+npm run build — PASS
+Vite/adapter-vercel completed. Existing draco/gltf fs/path externalization and chunk-size notices remain; no compiler errors.
+
+Final evidence: pipeline.json and spatial.json pin this code with no changed production/harness files.
+Both bounded Node replays completed; all cold and cross-revision checks passed.
+No browser, Bench 2, merge, acceptance or new independent review was performed.
+An intermediate full run encountered missing documentation links while files were being written. The complete suite was rerun green; final documentation arch verification is recorded below.
+The earlier baseline replacement-string failure, simultaneous cold/warm oracle OOMs and source-change replay were discarded and are not successful evidence.
+
+Final documentation architecture lane (complete):
+npm run test:arch -w @portfolio/editor -- --maxWorkers=3
+Test Files  22 passed (22)
+Tests  180 passed (180)
+Start at  22:32:22
+Duration  3.42s (transform 901ms, setup 0ms, collect 2.39s, tests 4.79s, environment 2ms, prepare 770ms)
+
+Additional shared-caller type check:
+npm run check:api — PASS

@@ -1,13 +1,91 @@
-# T1.P02.S06 — optimize step: review hand-off
+# T1.P02.S06 — optimize step: review handoff
 
-**Status:** implementation review / Bench 2 readiness (2026-10-25). Bench 2 has **not** run and
-nothing is merged or pushed. The scope, criteria and evidence rules stay in
-[implementation-plan.md](./implementation-plan.md); the accepted state, numbers and predictions are in
-[acceptance.md](./acceptance.md#optimize-step-d1d6--implementation-state-2026-10-25);
-the Bench 1 reading is [characterization.md](./characterization.md).
+**Status:** fresh independent review pending on the existing branch and
+[PR #190](https://github.com/Biskiq/spatial-sketch-editor/pull/190). The owner-directed takeover starts at
+pushed 764175e0; the five commits below implement the persistent representation changes.
+Bench 2 has not run. S06 is neither accepted nor merged.
 
-This page is the reviewer's map: what each commit is, what to look at, what the independent reviews
-found, and what still needs an owner decision.
+The [implementation plan](./implementation-plan.md) owns scope and criteria; the
+[current implementation record](./acceptance.md#persistent-representation-takeover) separates claims,
+measurements and remaining boundaries. The [architecture dossier](../../broad-research/spatial-computation-architecture.md)
+contains the falsified base claims, serious alternatives, complete cost models and owner hypotheses.
+
+## Current independent-review boundary
+
+No new independent review has run. Earlier review rounds are preserved below for their original
+scope; they are not approval of the new storage, snapshot or spatial algorithms. Two read-only
+harvests informed the audit/research; neither supplied a review verdict.
+
+### Current commit map
+
+| Commit | Read for |
+| --- | --- |
+| d47c25e1 — perf(layout): retain persistent edit roots | Persistent vectors/maps; lazy source/compiled adapters; spatial replacement; immutable proof/capture/codec sharing; generated seal; indexed render installation; focused falsifiers |
+| bd443412 — test(perf): count complete S06 edit work | Same-operation baseline replay, isolated cold oracle, exact output/source comparisons, full named counters, sampled allocation, reachability and corrected E5 definitions |
+| 5cdccb79 — perf(layout): restore historical topology roots | Session-owned snapshots across membership changes; constant root retirement of transient caches; cold reset; deferred clone vector seeding |
+| 0156eac1 — test(perf): count full spatial query work | Complete radix bucket writes and baseline output exits; varied query positions; explicit history probe reachability |
+| 48126338 — fix(layout): skip unchanged borrowed ranges | Backing-range equality and full-array visitation proofs keep lazy splits from hiding linear diff/seal walks; 100,000-slot count falsifier |
+
+The documentation/evidence commit records the exact measured code revision, not a fictitious
+post-review verdict. The unrelated production-shell-wireframe README edit is excluded.
+
+### Falsification map
+
+Paths below are relative to the repository root; the linked tests retain their whole contracts.
+
+| Claim / failure to seek | Source to inspect | Decisive falsifier / evidence |
+| --- | --- | --- |
+| A one-Wall edit does not shallow-copy N unrelated source slots | layout-source-collections.ts, cowMoveJunctions / cowMoveRigidWall in layout-world-index.ts | [storage roots / clone handoff](../../../../../apps/editor/tests/lib/layout/t1s06-persistent-storage.test.ts); [complete pipeline](../../../../../apps/editor/tests/lib/layout/t1s06-persistent-pipeline.test.ts); source-slot counters in the replay |
+| Path copying preserves old branches through rotations/deletion | persistent-store.ts | Storage test's oracle branches, AVL height and non-power-of-two vector diffs |
+| No old document/world closure keeps an unbounded ancestor chain | sourceRecordViews, compileSourceViews, weak COW metadata, prepared cache | 110-edit real coordinator reachability probe, bounded 16-entry cache test, raw heap/external/array-buffer fields |
+| Fixed refit degrades; adaptive partitions maintain measured locality | layout-bvh.ts | [spatial falsifiers](../../../../../apps/editor/tests/lib/layout/t1s06-persistent-spatial.test.ts); 100,000-entry / 2,048-edit varied-query replay |
+| No universal logarithmic range claim survives accidentally | Morton key, union augmentation, irregular and sorting paths | Equal-centroid empty-result adversary; all-overlap and irregular populations; inspect ALL node/entry tests and maintenance, not node-visit alone |
+| A formerly absent dependency is discovered | swept query, changed Junction incidence, reverse Room/Opening maps | [swept differential](../../../../../apps/editor/tests/lib/layout/t1s06-swept-bounds-differential.test.ts); [existing incremental contract](../../../../../apps/editor/tests/lib/layout/t1s06-incremental-compile.test.ts); cold full outputs |
+| Area sign certification cannot silently diverge through cancellation/drift | WalkSummary / areaRoundingBound / incremental contributions | [area certificate](../../../../../apps/editor/tests/lib/layout/t1s06-area-certificate.test.ts): repeated edits at 0, 100,000 and 100,000,000 offsets against forced cold success/refusal/output; review the error-envelope derivation independently |
+| Known immutable history restores without reconstructing entities | reuse.snapshots, restoreImmutableCompileSnapshot, transient root replacement | Pipeline tests cover membership changes, separate sessions, branching and reset; actual undo/redo raw counters |
+| Deep immutability is a fact, never a substitute for admission | immutable-json.ts, f4/immutable.ts, units validation/canonicalization | Shallow freeze, exotic, accessor, alias and mutable parser-output controls; [codec sharing](../../../../../apps/editor/tests/lib/layout/t1s06-codec-sharing.test.ts); [canonical form](../../../../../apps/editor/tests/lib/project-model/units-canonical-form.test.ts) |
+| A custom/modified sampler cannot poison canonical caches | isCanonicalWallSampling and compile entry guard | [snapshot seal / sampler](../../../../../apps/editor/tests/lib/layout/t1s06-compiled-snapshot-seal.test.ts); existing sampling observation contracts |
+| F4 still captures before async, refuses stale/ABA/locks and preserves source bytes | immutable capture, qualified prepared artifact, Stage host finally cleanup | [F4 acceptance](../../../../../apps/editor/tests/lib/authoring/f4-acceptance.test.ts), [structural sharing](../../../../../apps/editor/tests/lib/authoring/f4-structural-sharing.test.ts), [unit acceptance](../../../../../apps/editor/tests/lib/authoring/f4-unit-acceptance.test.ts), [Stage host](../../../../../apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts); accepted source/JSON digest equality |
+| Deep Stage freezing does not eagerly flatten queries or Floor IDs | sealCompiledLayoutSnapshot, deferred primitive fields | Snapshot seal tests; complete materialize counters must stay zero on the indexed local path |
+| Changed Junction joins reach neighbouring Wall meshes and old buffers release | diffCompiledWalls, layout-wall-representation.ts, geometry adapter | Pipeline cold/retained install plus [Wall representation](../../../../../apps/editor/tests/lib/render/layout-wall-representation.test.ts) and [object representation](../../../../../apps/editor/tests/lib/render/layout-object-representation.test.ts) |
+| No canonical source or visitor ownership moved | Source adapters, common immutable fact, Stage admission | [Stage admission](../../../../../apps/editor/tests/lib/authoring/stage-source-admission.test.ts), full F2/resource suites and the complete architecture lane |
+| Performance evidence did not time only evaluation or favour a query split | replay operation boundaries, forced index installation, separate observer/time windows, rotating gaps | [raw evidence and commands](./evidence/persistent-2026-10-25/README.md); exact revision/source manifest, all samples, cold and cross-revision digests |
+
+### Conclusions the review must not inherit
+
+- Eight entity evaluations in the Room fixture are a subset of total cost. A cloned container is
+  still work; native source arrays, parser visits, bytes and output remain separate columns.
+- Current snapshots are runtime persistence, not a new serialized persistence or content identity.
+  Existing SHA-256 and canonical bytes remain unchanged.
+- An immutable compiled root restores in constant root work. A full Stage reconciliation,
+  membership-changing renderer fallback, source import or frame is not thereby constant time.
+- A first-write copy of an unowned mutable standalone input is distinct from borrowing the
+  already immutable accepted source. A weak lineage miss must fall back safely.
+- A flat count between two sizes is not an asymptotic proof. Spatial tested nodes can still be N;
+  stronger 4D reporting structures exist and their space/persistence costs are evaluated in the dossier.
+- OP-1/2/3 are unratified hypotheses. No inverse journal, Merkle root, new unit-envelope version,
+  partial Save protocol or GPU batching contract has been installed.
+
+### Verification, review ownership and next step
+
+The code passes the full editor suite (202 files / 2,524 tests), package checks, editor check and
+build. The heavy lane passes 11 files / 138 tests; the architecture lane passes 22 files / 180 tests.
+The evidence records final reruns and any intermediate failure, including the temporary missing
+documentation links while this handoff was being written.
+
+T3 review is needed for immutable capture reuse, normalized source sharing, qualified handoff and
+Stage admission; T2/T3 should review shared renderer compatibility. No new authoritative source
+contract was introduced. A persistent admitted-source/read contract and any new identity/Save
+semantics stop at their owner decision; the current native-array/flat-SHA costs are explicit.
+
+The requested boundary is **ready for independent review**. Do not run Bench 2, merge, close S06,
+close the phase or treat a prior review as approval of this implementation.
+
+## Historical review records
+
+The numbered sections below preserve earlier review rounds and their dispositions. Their timing
+predictions and complexity statements are historical and are superseded by the current map,
+implementation record and evidence above.
 
 ## 1. Commit map (branch `t1/p02-s06-bench-setup`, PR #190)
 
@@ -19,7 +97,7 @@ Review bottom-up; each commit builds on the one below and stays inside one owned
 | `91df34e0` | perf(t1): prepare the validated envelope instead of validating it twice | `units/runtime.ts`, `units/validate.ts` (T3), `stage/source-admission.ts`, `probe-d2-accept.ts` | the two validating entry points keeping their meaning while gaining a validation-free half |
 | `8fc7bb31` | perf(t1): reuse the admitted value and share unchanged units at capture | `units/acceptance.ts`, `f4/types.ts` (T3), `f4/acceptance-coordinator.ts`, new `f4-structural-sharing.test.ts`, `probe-h5-capture.ts` | the sharing proof, its falsifiers, and the one place caller data is now frozen in place |
 | `438f3022` | docs(t1): record the S06 optimize step and its Bench 2 hand-off | `acceptance.md` | claims versus measurements versus predictions, and the open obligations |
-| `[HEAD]` | perf(t1): dynamic BVH8, swept-bounds delta certification & frozen plain-JSON memoization | `packages/layout-core/src/**`, `packages/project-model/src/units/**`, `apps/editor/tests/lib/layout/t1s06-swept-bounds-differential.test.ts` | Dynamic BVH8, swept-bounds local delta certification, chunked compile world (B=64), plain JSON frozen subgraph memoization, 0.00 E5 slopes, OP-1/OP-2/OP-3 owner decision package |
+| `764175e0` (superseded) | perf(t1): dynamic BVH8, swept-bounds delta certification & frozen plain-JSON memoization | `packages/layout-core/src/**`, `packages/project-model/src/units/**`, `apps/editor/tests/lib/layout/t1s06-swept-bounds-differential.test.ts` | Dynamic BVH8, swept-bounds local delta certification, chunked compile world (B=64), plain JSON frozen subgraph memoization, 0.00 E5 slopes, OP-1/OP-2/OP-3 owner decision package |
 
 ## 2. What a reviewer must be able to falsify
 
@@ -221,9 +299,9 @@ MAJOR** and confirmed each claim; its five MINOR/NIT observations were disposed 
    `admitSource`.
 3. **The next mount batch** — imperative Room-surface/portal representation as S06's next work, or a
    follow-on slice.
-4. **Formal Owner-Decision Proposals (OP-1, OP-2, OP-3)** — reviewed in [`../../broad-research/spatial-computation-architecture.md`](../../broad-research/spatial-computation-architecture.md):
-   - **OP-1:** Entity-Level F4 History Copy-on-Write & Transaction Journal (drops `frozenObjects` and `historyBytes` to 0.00).
-   - **OP-2:** `F2.unit-envelope@2` Chunked Merkle Content Identity & Delta Save (drops `digestBytes` from $O(N)$ to $O(1)$).
+4. **Earlier owner hypotheses (OP-1, OP-2, OP-3)** — superseded by the corrected analysis in [`../../broad-research/spatial-computation-architecture.md`](../../broad-research/spatial-computation-architecture.md):
+   - **OP-1:** History/source representation hypothesis; no zero-byte history guarantee or inverse-journal decision.
+   - **OP-2:** Separate identity/Save migration hypothesis; a hierarchical hash changes identity and gives logarithmic path work, not constant full Save.
    - **OP-3:** Cross-Domain Batched & Instanced GPU Rendering (replaces per-surface Svelte mounting with uniform buffer updates).
 5. The already-open Bench 1 sweep-H10 drag-row question still does not block.
 
