@@ -48,8 +48,11 @@ ACTIVE: T1.P02.S06 (performance foundation), optimize step (agent), released 202
         untouched sources per insertion — fixed by pairing on the whole derived placement, now a
         size-invariant constant. The Index panel no longer derives the whole located-subject list on
         every Plan evaluation, and the live-target view copies property descriptors rather than
-        spreading (a spread would now force the lazy fields on every pan). Derived, not measured; T3
-        review of the compiler-delta certificate is owed.
+        spreading (a spread would now force the lazy fields on every pan). Independent review (two
+        reviewers, correctness and integration) found one real defect — a lazily materialized plan
+        read after a later evaluation described the newer sources under its own generation — now
+        fixed by capturing each plan's own view and pinned by a regression case that fails without
+        it. Derived, not measured; T3 review of the compiler-delta certificate is still owed.
         Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
 NEXT:   Independent review of the Plan interaction locality pass and of the incremental Plan
         evaluator, then the same review boundary
