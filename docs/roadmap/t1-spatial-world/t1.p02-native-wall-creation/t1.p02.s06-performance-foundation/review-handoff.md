@@ -9,7 +9,10 @@ are documented preconditions, not code changes. No expensive performance work wa
 ran as the owner-approved **diagnostic** pass and remains contaminated/non-acceptance. The owner
 direction of 2026-10-26 replaced the formal Bench 3 **for S06** with the decision-driven milestone
 gate, implemented and independently reviewed below and executed on the designated machine; the
-results are adjudicated in the [acceptance record](./acceptance.md#s06-milestone-gate-owner-direction-2026-10-26).
+complete pass reports **15/15 decision rows and 27/27 verdicts pass**, and the results are adjudicated
+in the [acceptance record](./acceptance.md#s06-milestone-gate-owner-direction-2026-10-26). The
+frozen S06 candidate therefore satisfies the ratified milestone on the recorded AC reference
+condition; this is not production-scale or rare-tail certification.
 The formal 10-run method is unchanged for other consumers, and S06 step acceptance remains separate;
 nothing is merged.
 
@@ -75,9 +78,28 @@ into a 10.9 MiB false failure. The fix is covered by unit tests using the measur
 
 **Verification.** The focused milestone/profile suites pass (24 tests); the targeted perf typecheck
 reaches only the two pre-existing `registry.ts` Buffer overload errors; a milestone grid-S smoke
-passes with the new F3 frame evidence; a real grid-L F13 cold/repeat-use run passes at 2.55/2.54 MiB
-normalised growth after the baseline fix. The final measured pass and its adjudication are recorded
-in the [acceptance record](./acceptance.md#s06-milestone-gate-owner-direction-2026-10-26).
+passes with the new F3 frame evidence; a real grid-L F13 cold/repeat-use check passes at 2.55/2.54 MiB
+normalised growth after the baseline fix. The measured pass then ran complete at `25d61deb` in
+2,632.7 s and passed every decision row; its manifest, per-row values and adjudication are in the
+[acceptance record](./acceptance.md#s06-milestone-gate-owner-direction-2026-10-26).
+
+**Post-execution review.** The final pass was checked against the rule, not only against its own
+verdict strings. 15/15 promised row groups and 27/27 recorded verdicts pass; `aborted: false`,
+`contaminated: false` and `acceptanceEvidence: true`; every run count comes from `measuredRuns` or
+`milestone:runs`, so pointer events were not counted as experiments. Presentation attribution holds:
+360/360 inputs presented with 0 superseded at S and M; at L 360 dispatched, 279 presented and 81
+refused by the shipped sub-minimum-length rule, with 0 unresolved and 0 cache-served; every run
+records its expected completions (F4 4/4, F8 20/20 per run). E5 ran all seven workloads in-pass with 0 differing
+pixels on all six cells and the 3,120-pixel museum control. The two discarded attempts (F13 baseline,
+Chrome auto-update) are absent from the evidence, and the final Chrome matches the pin. Three
+non-blocking findings: the manifest's `milestoneOmissions` still said drag frame time was unmeasured
+(the pass did measure it; the string is corrected for future passes without touching a sample or
+verdict); F7 S/M spent their 5-run bound because a first run's 16.8/16.79 ms p95 exceeded the
+16.75 ms frame pass bound, and the bound's pooled 16.7 ms decided pass — the rule working as written,
+not a null-decision stop; and the drag rows retain each verdict's worst-run p95 and headroom but not
+the per-run array (the worst run is the rule's pass/fail input, so this pass is decidable; the
+distribution is not preserved). No defect was found in the decision criteria, sample counting,
+early termination, contamination handling or E5 coverage.
 
 The [implementation plan](./implementation-plan.md) owns scope and criteria; the
 [current implementation record](./acceptance.md#persistent-representation-takeover) separates claims,

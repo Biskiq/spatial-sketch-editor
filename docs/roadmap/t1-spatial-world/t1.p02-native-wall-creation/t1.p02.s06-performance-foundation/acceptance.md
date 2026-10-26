@@ -5,7 +5,8 @@ persistent representation takeover implemented on PR #190 and independently revi
 implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 ran as
 the owner-approved **diagnostic** pass and remains contaminated/non-acceptance. The owner direction
 of 2026-10-26 replaced the formal Bench 3 **for S06** with the decision-driven milestone gate,
-which is implemented, independently reviewed and executed; its results and adjudication are in
+which is implemented, independently reviewed and executed; **it passed (15/15 decision rows,
+27/27 verdicts, full E5)** and its results and adjudication are in
 [S06 milestone gate](#s06-milestone-gate-owner-direction-2026-10-26). Four owner-directed locality
 passes are recorded below — the interaction pass, the incremental Plan evaluator, the compiler-delta
 pass and its generation-capture fix — the last three independently reviewed. The branch integrates
@@ -274,8 +275,167 @@ Bench 2 remain 155, so every comparison to them is cross-build and labelled as s
 
 ### Execution and adjudication
 
-_Pending the measured pass; this subsection is replaced with the actual manifest, per-row verdicts,
-E5 findings, memory/lifecycle evidence and the acceptance decision._
+**Verdict: pass.** The milestone gate ran end to end on the designated machine and all **15 promised
+decision-row groups (27 recorded verdicts) passed**. The pass was complete (`aborted: false`), clean
+(`contaminated: false`, no contamination entries) and `acceptanceEvidence: true`; E5 ran inside the
+same pass over all seven workloads. The product bundle is the frozen candidate `d89554b1`; no
+product, Plan, Stage or rendering source changed between it and the measured tree (checked by
+`git diff --name-only d89554b1..25d61deb`).
+
+**Provenance.** Pass `2026-10-26T22-49-48-537Z-milestone-s06-156` in
+`$HOME/biskiq-perf-results/` (raw results stay outside Git), 22:49:48.557Z–23:33:41.276Z,
+**2,632.7 s (43.9 min)**: 13.1 s setup, 360 s cool-down, grid-L 740.9 s, grid-M 335.0 s, grid-S
+267.7 s, E5 851.2 s, transferred rows 64.6 s. Product candidate `d89554b1`; benchmark-harness and
+manifest commit `25d61deb` (`dirtyTree: false`). Node v26.7.0, macOS 24.6.0, Apple M2 8-core /
+16 GiB, 1920×1080 CSS at DPR 1, network N1, branded Chrome **156.0.8078.48** matching
+`perf/chrome-pin.json`. Start/end 1-minute load 2.33/4.38; no thermal or performance warning at any
+phase boundary; Low Power Mode off; **AC power** (the manifest's only deviation). Workloads were
+verified and their digests recorded. Two earlier attempts were discarded and never treated as
+evidence: the first exposed the F13 first-load baseline defect (false 10.9 MiB growth), the second
+ran across Chrome's auto-update from 155 to 156. A post-pass harness edit corrected only the
+manifest's omission wording (it still said drag frame time was unmeasured); no sample, row or
+verdict changed, and the measured manifest remains the `25d61deb` artifact.
+
+**Sampling and stopping.** One sample is one independent measured run, never a pointer event. The
+plan's minimum is three runs per decision row; a row was extended one independent run at a time
+only while its rule was undecided.
+
+| Row group | Independent runs | Stopping decision |
+| --- | --- | --- |
+| F2 cold and warm, grid-S and grid-M (4 rows) | 3 each | all runs inside 75 % of the budget at run 3; no extension |
+| F3 latency/age, F4, F8, F3 frame at grid-S (5 verdicts) | 3 | all pass at run 3 |
+| F3 latency/age, F4, F8, F3 frame, per-edit evaluation at grid-M (6 verdicts) | 3 | all pass at run 3 |
+| F3 latency/age, F4, F8 at grid-L (4 verdicts) | 3 | all pass at run 3 |
+| F7 warm, grid-S and grid-M (2 rows) | **5 each** | first run's p95 was 16.8 / 16.79 ms, above the 16.75 ms frame pass bound but within 0.1 ms of the display floor; extended to the 5-run bound, where the pooled p95 16.7 ms decided **pass** with the instability recorded |
+| F13 cold and repeat-use, grid-S/M/L (6 rows) | 1 each (10 measured cycles) | leak-rate check, not a statistical gate: 2.2–2.54 MiB per ten cycles against 10 MiB, geometries and textures back to baseline. One 10-cycle series is decisive at this margin; no extension |
+| E5 | 1 browser session | all seven workloads completed in-pass |
+| F1 and preview lifecycle | 3 | transferred informational rows |
+
+The 43.9 min total includes E5 and the ten-cycle F13; Bench 2 was 31 min **plus** a separate 12.3-min
+E5 rerun (43.3 min) while sampling less per row, so the decision-driven method cost about the same
+as the diagnostic and less than a formal 10-run pass.
+
+**Decision rows.** F3 is input→matching-preview, F4 accepted-commit completion and F8 Undo/Redo,
+all warm; each figure is the slowest of the three independent run p95s. `EVAL` is the per-edit
+Layout compile.
+
+| Tier | F3 (budget) | F4 (budget) | F8 (budget) | F3 frame p95 (budget) | EVAL (budget) |
+| --- | --- | --- | --- | --- | --- |
+| grid-S | **16.3** (33) | **17.49** (100) | **14.3** (100) | **16.7** (16.7) | — |
+| grid-M | **16.3** (50) | **25.51** (100) | **12.21** (100) | **16.8** (20) | **1.3** (8) |
+| grid-L | **16.34** (100) | **93.61** (200) | **21.63** (200) | Target row, recorded | — |
+
+Latest-input age p95 is 16.3 / 15.9 / 16.2 ms at S / M / L, inside the same budgets. The L frame
+row is not a decision row (Target); its recorded p99 is 33.3 ms and it had 3 long tasks over 50 ms,
+longest 91 ms — the one Target clause that misses.
+
+| Row | Observed (p95) | Budget | Headroom | Verdict |
+| --- | --- | --- | --- | --- |
+| F2 grid-S cold / warm | 172.0 / 91.9 ms | 300 | 43 % / 69 % | **pass** |
+| F2 grid-M cold / warm | 565.2 / 501.8 ms | 800 | 29 % / 37 % | **pass** (cold is the nearest decision margin) |
+| F7 grid-S / grid-M warm | 16.7 / 16.7 ms pooled; worst run 16.8 | 16.7 | at the display floor | **pass at the 5-run bound**, instability recorded |
+| F13 grid-S cold / repeat-use | 2.40 / 2.20 MiB per 10 cycles | 10 | 76 % / 78 % | **pass** |
+| F13 grid-M cold / repeat-use | 2.54 / 2.37 MiB per 10 cycles | 10 | 75 % / 76 % | **pass** |
+| F13 grid-L cold / repeat-use | 2.50 / 2.49 MiB per 10 cycles | 10 | 75 % / 75 % | **pass** |
+
+**Recorded Target and non-gate rows (not passes of a gate).** F2 grid-L cold 5,064.4 ms (p95
+5,132.8) and warm 4,971.7 ms (p95 5,093.2) against the 2.0 s Target — **Target miss**; the 6.0 s hard
+budget is met. Admission alone is 290.7 ms cold and 264.3 ms warm. F7 grid-L p95 16.75 ms (3 runs,
+0 long tasks) against Target 33 ms — met. F3 grid-L frame: p99 33.3 ms (Target ≤ 50) met, but 3 long
+tasks > 50 ms (Target ≤ 1) — **Target miss**. F3 grid-L refused 81 of 360 inputs (the shipped drag
+refuses sub-minimum lengths; none was superseded or unresolved). Cold/repeat-use F3/F4/F8 single
+runs are recorded checks, not gates; F3 tracks warm within about half a millisecond. F1
+`stageFirstFrame` p95 is 1,246 ms.
+
+**E5 correctness and locality.** The same pass ran the full matrix (`E5 browser counts`, exit 0):
+six semantic-independence cells, the museum control, and the fixed-view comparison. All six sweep
+cells show **0 differing pixels** before and after the fixed edit; the museum positive control
+changes **3,120 pixels**, identical to Bench 1, so the check can see a change. Programs (14) and
+textures (34) are constant, shadow work is flat (1 map, 24 draws/frame), and D3/D10 match H3/H10.
+
+| Workload | draws/frame | triangles/frame | live geometries | meshes |
+| --- | ---: | ---: | ---: | ---: |
+| museum (×1) | 1,447 | 1,116,418 | 926 | 1,372 |
+| H3 = D3 (×3) | 3,542 | 2,719,638 | 2,186 | 3,353 |
+| H10 = D10 (×10) | 10,526 | 8,067,110 | 6,386 | 9,953 |
+| C3 (×3) | 4,679 | 2,917,246 | 3,323 | 4,490 |
+| C10 (×10) | 15,443 | 8,921,038 | 11,303 | 14,870 |
+
+H10 is 10,526 draws against Bench 1's 10,398 (+1.2 %; museum +1.8 %): the known one-mesh-per-Wall
+path (H6), not a new regression and not a pixel failure. Draw calls remain above the 2,500 L Target
+at both ×10 variants.
+
+**Memory/lifecycle.** F13 at L: cold raw growth 64.63 MiB and repeat-use 11.00 MiB over ten cycles,
+but the steady rate after the one-time first-load step is **2.50 / 2.49 MiB per ten cycles** (2.40
+and 2.20 at S, 2.54 and 2.37 at M). The steady baseline is 55.2 MiB, reached by a 53.8 MiB one-time
+step from the 1.45 MiB entry, with textures 3→6 and programs 2→4; that step is excluded and the
+remaining intervals are normalised to ten cycles. Stage geometries return
+to the baseline every cycle (2,409 at L; 547 at M), textures 6, programs 4; DOM nodes 650, listeners
+61 and documents 2 are flat at L, and materials 1,850 / meshes 2,269 at peak are constant. Retained
+per accepted edit at L is **1.27 MiB** (cold 1.31, warm 1.46), against Bench 1's 6.0–6.2 MiB — a
+4.8× reduction. This is within-cycle post-edit retention, not the cross-cycle leak; the leak is the
+2.5 MiB / ten-cycle rate. F13 warm is one cycle (8.76 MiB baseline-to-final, 1.46 MiB within-cycle
+retention per edit) and is a check, not a rate estimate. The open itself still leaves 137.6 MiB heap at L and the F3/F4/F8 sequence 162.7 MiB
+(median), against 147 / 400 MiB in Bench 1.
+
+**Bench 1 → Bench 2 → milestone.** Bench 1 is 10 runs/state at `1c5e530c` on Chrome 155; Bench 2 is
+the 3-run diagnostic at `e8cc2fc0` on Chrome 155, a dirty tree, and an aborted E5 completed separately;
+the milestone is this pass on Chrome 156. All three ran on AC. Bench 2 medians/maxima and milestone
+per-run p95 are different statistics and are not interchangeable.
+
+| Row | Bench 1 | Bench 2 (diagnostic) | Milestone |
+| --- | --- | --- | --- |
+| F3 L | 164–166 ms (p95 216–233) | 15.5 ms median, max 25.0 | **16.34 p95** (16.2 pooled) |
+| F4 L | 636–670 ms | 94–116 median, max 151 | **93.61 p95** (101.06 pooled) |
+| F8 L | 519–536 ms | 37–51 median, max 88.5 | **21.63 p95** (21.22 pooled) |
+| F3 M | 31.3–31.6 ms (p95 48) | 15.4–15.6, max 16.6 | **16.3 p95** |
+| F4 M | 139–141 ms | 24.6–37.5, max 51.8 | **25.51 p95** |
+| F8 M | 95–111 ms | 7.4–10.8, max 11.9 | **12.21 p95** |
+| F3 S | 14.5 ms (p95 15.7–16.3) | max 16.5 | **16.3 p95** |
+| F4 / F8 S | 27–30 / 29.4 ms | max 28.9 / 14.4 | **17.49 / 14.3 p95** |
+| F2 L cold | 5,186 ms | 5.16 s | **5,064 ms** (3 runs) |
+| F7 L | 16.7 ms (p99 16.8) | 16.7 p95, max 33.3 | **16.75 p95** (3 runs) |
+| F13 L per edit | 6.0–6.2 MiB | not comparable (1/2/1 cycles) | **1.27 MiB** (20 edits/cycle, first load excluded) |
+| H10 draws | 10,398 | 10,526 | **10,526** |
+
+Methodology and provenance differences that bound the comparison: Chrome 156 vs 155; milestone F13
+uses 20 edits per cycle with the first-load cycle excluded, so its 1.27 MiB is a within-cycle rate,
+not Bench 1's ten-run p95 of the same rate; Bench 2's F13 was a 1/2/1-cycle leak check and its E5
+rerun was a bare Playwright invocation with no manifest; the milestone F2 L is 3 runs, not 10. The
+large falls are attributable to the frozen product candidate: its source did not change between
+`d89554b1` and the measured tree, and the interaction rows use the same shipped drag, workloads and
+budgets; the harness method changes (three-run decisions, frame evidence, F13 cycle definition) are
+named above.
+
+**What this does not certify.** This is **S06 milestone acceptance**, not production-scale, grid-XL,
+realistic-L or rare-tail certification; the small-sample p95s are not estimates of rare tails. A.6,
+the delayed-preview proof, F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and the sweep
+latency rows were not measured and are named in the manifest — no omitted row may be read as a
+pass. The battery condition of the contract remains untested (all three passes are AC, and the
+Bench 1 A.7 ruling accepted that deviation), and the milestone result is therefore certified for
+the recorded AC reference condition, not for battery. F13 warm is one cycle; live WebGL contexts
+and detached nodes are not captured; the per-edit Layout evaluation is adjudicated at M only; drag
+frame time covers the drag window, not idle or the whole session. The composite drag rows retain
+each clause's slowest-run p95, its run count and the pooled samples, not the full per-run array; for
+a pass the slowest run is the rule's input, but the run-to-run spread of those clauses is not in the
+record (F2, F7 and every F13 cycle are retained run by run).
+
+**Remaining performance targets and structural limits.** L cold open is still 5.06 s against the
+2.0 s Target with the 6.0 s hard budget met; the open is admission + mount, and the optimization
+step did not target it. L draw submission is 10,526–15,443 calls against the 2,500 Target (H6,
+one mesh per Wall, deferred). The commit envelope is still whole-document work: at C10 the accepted
+commit canonicalises 8.85 MB and reads 6.06 M generated snapshot properties, so F4 grows with
+document size (93.61 ms p95 at L against 25.51 at M). F3's L drag still has 3 long tasks (91 ms);
+L frame time is Target, and its p99 33.3 ms is inside Target while the long-task count is not. F2 M
+cold has only 4.3 % headroom to the 600 ms pass band (29 % to the 800 ms hard budget) and is the
+first row a different build or power state could move out of the milestone band without failing the
+contract. None of these is a hard-gate breach, and none was addressed by changing product code.
+
+**Decision.** The frozen S06 candidate **satisfies the ratified S06 milestone gate** on the recorded
+AC reference condition: every hard S/M/L decision row passes, E5 is correct, memory growth is 4×
+inside its budget with stable geometry counts, and the large interaction improvements survive
+independent sampling. The L cold-open and draw-call Targets remain open, as recorded before the
+pass. S06 step acceptance and T3 ownership sign-off remain separate; nothing is merged or closed.
 
 ## Optimize step (D.1–D.6) — implementation state (2026-10-25)
 

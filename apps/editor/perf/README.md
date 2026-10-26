@@ -61,7 +61,10 @@ T1.P02.S06 builds the method, the workloads and the counters
 Bench 1 and Bench 2 were owner-run. The owner direction of 2026-10-26
 authorized an agent to execute the third, decision-driven **milestone** pass end
 to end on the designated reference machine; every other agent run remains the
-smoke check or a census, and no fourth pass is implied.
+smoke check or a census, and no fourth pass is implied. That pass ran on
+2026-10-26 at `25d61deb` (2,632.7 s, Chrome 156, full E5): 15/15 decision rows
+passed. The manifest, sample counts and adjudication are in the
+[acceptance record](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md#s06-milestone-gate-owner-direction-2026-10-26).
 
 ```sh
 cd apps/editor

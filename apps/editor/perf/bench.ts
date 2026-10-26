@@ -454,7 +454,7 @@ async function main(): Promise<void> {
 							'delayed-preview correlation proof',
 							'grid-XL, realistic-L and sweep latency rows (report-only, deferred)',
 							'F1/preview lifecycle use the milestone RUNS (3)',
-							'F3/F4/F8 frame-time and long-task clauses are not measured by the drag flow; F7 supplies frame intervals for the orbit only',
+							'F3/F4/F8 frame-time clauses cover the drag window only; F7 supplies whole-orbit frame intervals',
 							'F13 live WebGL contexts and detached nodes are not captured; GPU object counts and post-GC heap are the evidence',
 							'F13 warm is one cycle and is not a decision row; only cold and repeat-use carry ten-cycle growth',
 							'the per-edit Layout evaluation is adjudicated at M only; S/L values are recorded, since the contract makes only M hard'

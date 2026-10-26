@@ -119,9 +119,14 @@ old-method rows, the delayed-preview proof, grid-XL, realistic-L and the sweep l
 may be read as passing. Bench 1's method proofs stand for the correlation and old-method evidence.
 
 **Evidence record.** The bench manifest is the only pass-scoped acceptance authority. It records
-the exact plan, the machine, power and contamination state, every decision row's per-run values,
-verdict and rule, the omitted rows, and the bound reached. A per-flow report is never acceptance
-evidence on its own. A contaminated, aborted, smoke or reduced pass is never reinterpreted as a
+the exact plan, the machine, power and contamination state, every decision row's deciding values,
+verdict and rule, the omitted rows, and the bound reached. Deciding values are each independent
+run's p95 where a row reports runs individually (F2, F7), and each clause's slowest-run p95 with its
+run count for the composite drag rows (F3/F4/F8 and the per-edit evaluation), whose full per-run
+array is not retained; the pooled samples are recorded in every case. For a pass, the slowest run
+is the rule's input (`worst ≤ 0.75 B`), so the verdict is decidable from the record; the run-to-run
+distribution of the composite drag clauses is a recorded limitation, not a hidden sample. A
+per-flow report is never acceptance evidence on its own. A contaminated, aborted, smoke or reduced pass is never reinterpreted as a
 pass, and a decision row that is `borderline` or `undecided` at the end of a pass prevents
 acceptance evidence rather than being omitted. Small-sample p95s are decision aids, not precise
 tail estimates.
