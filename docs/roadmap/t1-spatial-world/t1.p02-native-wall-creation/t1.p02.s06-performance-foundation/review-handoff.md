@@ -1,9 +1,12 @@
 # T1.P02.S06 — optimize step: review handoff
 
-**Status:** fresh independent review pending on the existing branch and
-[PR #190](https://github.com/Biskiq/spatial-sketch-editor/pull/190). The owner-directed takeover starts at
-pushed 764175e0; the five commits below implement the persistent representation changes.
-Bench 2 has not run. S06 is neither accepted nor merged.
+**Status:** independent review round 3 complete (2026-10-25) on the persistent-root takeover and its
+H1/H4/H9 integration, at 48126338 plus the documentation commit, working tree otherwise unchanged.
+Two findings were substantiated — one behavioural (`session.retained()` answered differently depending
+on which store shape served the last compile) and one dead allocation — and both are fixed with
+falsifiers. The rest of the review's observations are documented preconditions, not code changes. No
+expensive performance work was re-run. Bench 2 has not run, so step acceptance is withheld and nothing
+is merged.
 
 The [implementation plan](./implementation-plan.md) owns scope and criteria; the
 [current implementation record](./acceptance.md#persistent-representation-takeover) separates claims,
@@ -12,9 +15,46 @@ contains the falsified base claims, serious alternatives, complete cost models a
 
 ## Current independent-review boundary
 
-No new independent review has run. Earlier review rounds are preserved below for their original
-scope; they are not approval of the new storage, snapshot or spatial algorithms. Two read-only
-harvests informed the audit/research; neither supplied a review verdict.
+Review round 3 ran on the takeover alone — persistent vectors/maps and their lazy source/compiled
+views, snapshot sealing and restore, the delta compiler, the spatial replacement index, and the H4
+representation install — from source inspection plus temporary differential probes that were deleted
+afterwards. It deliberately did **not** re-derive the performance characterization: no Bench 1/2/3,
+E5 census, scale replay, allocation profile or browser frame was produced, and every figure quoted
+below is either a committed measurement from
+[the evidence record](./evidence/persistent-2026-10-25/README.md) or a hand-derived bound labelled as
+such. Earlier review rounds are preserved below for their original scope; none of their corrections
+was reverted, and none of them is an approval of the takeover.
+
+### Round 3 findings and disposition
+
+Findings are ordered by what they change, not by how they were noticed. "Documented" means the
+precondition or the cost is now stated where the reliance is; none of those observations was a
+defect in the shipped paths, and none was promoted into new machinery.
+
+| Finding | Severity | Disposition |
+| --- | --- | --- |
+| `session.retained()`'s world branch reported `objectUnit.compiledObjects.length`, while the map branch reports `store.objects.size`. A delta that retains an `object_invalid` descriptor has no compiled object for it, so the same document reported one fewer object *only because the last compile went through a delta*. The rooms field had the same shape mismatch (`roomSlots.summary.rooms` vs `roomSources.size`). F13 attribution reads this figure. | MINOR (provenance) | **Fixed.** The world branch now reports slot/authored counts — `wallSlots.length`, `roomSlots.length`, `layoutLength(document, 'objects')` — so both shapes answer "units the store can serve". Reproduced first at 30 vs 31, then pinned in [the storage suite](../../../../../apps/editor/tests/lib/layout/t1s06-persistent-storage.test.ts) with an invalid-object delta. |
+| `nextOpeningsToApply` accumulated `{ index, opening }` for every changed Opening on every delta compile and was never read: an O(k) allocation plus k pushes per edit, and a second place holding a candidate Opening that could later drift from what the source views read. | NIT | **Fixed.** Removed, with the reason the source views already see the candidate document. |
+| `PersistentMap.set`/`delete` mutate the handle's `root`, so two owners of one handle see each other's writes. Nothing in S06 shares a map handle (the COW path forks or owns), but the type invites it. | NIT | **Documented** on the class with the `fork()` rule. No code change. |
+| `PersistentVector.fromFrozen` leaves `summary` undefined, so a `set` split would produce summary-less children under a summarized vector. Sound today: every summarized vector comes from `from`, and no summarized consumer accepts a borrowed root. | NIT | **Documented** beside `fromFrozen` as the precondition that keeps the split honest. No code change. |
+| `layoutVector` caches a root keyed by array *identity*, so an in-place write to a cached but unfrozen array would leave a stale root behind it. | NIT | **Documented** with its two preconditions; only `withLayoutVectors` writes a collection and it writes through the property setter, which replaces the flat array and the root together. |
+| `ensureLayoutWorldIndex` invalidates by collection identity (`matchesArrayRefs`), so an in-place write to an already-indexed array is invisible and the cached index would answer from old values. | NIT | **Documented** with the soundness condition: authored documents are immutable once indexed, COW replaces roots, and a Svelte `$state` proxy is copied by `PersistentVector.from` (it is never frozen) rather than indexed. |
+| `ADMITTED_BY_FROZEN_ENVELOPE` caches admission by the envelope *object*, which would be unsound if a cached envelope could change. | NIT | **Documented**: only an envelope `isDeeplyFrozenPlainJson` accepts is cached (that predicate rejects accessors and exotic prototypes), and the answer's normalized source is frozen too. |
+| `MAX_ADMITTED_HISTORY_CACHE = 52` is a count, not a byte budget, and the retained shape was undescribed. | NIT | **Documented** at the constant: one `StageDomainRead` per content id whose entities are shared with its neighbours through the compile session, whose `canonicalJson` is the string the F4 history state already holds; deeper history recomputes (correct, slower). Not raised. |
+
+### Hypotheses examined and not sustained
+
+An adversarial review is also the record of what was attacked and held. Each item below was
+falsified-by-search or falsified-by-differential, using temporary probes that are not committed
+(the permanent coverage is named where it exists):
+
+- **Mutable lazy view vs persistent root.** No path mutates a materialized source array: `layoutCollectionRef` returns either the vector or the flat array, and every writer replaces the property through `withLayoutVectors`. The only in-place writes in the takeover are to fresh capture buffers. Held.
+- **Delta vs cold parity under mixed deltas.** A 3-seed × 40-edit differential (junction moves, rigid wall moves with signed deltas, thickness and scalar changes, opening offsets, object create/update/delete, plus restores of arbitrary history roots) compared full ordered geometry, keys and diagnostics against an independent cold compile after every step: byte-identical in all runs. The permanent test keeps one 24-step sweep over the same edit classes, including an Object membership change and a restore every seventh step.
+- **Diagnostics that depend on authored values.** Wall heights of 0.2 / 0.5 / 1.0 / 2.95 producing `opening_over_height` matched cold on both the full and the delta path. Held.
+- **Historical snapshot integrity.** Restoring a root captured before a membership change returned exact geometry and issues, left the newer roots intact, and left the restored root byte-identical to its own cold compile; branching from an old root after restoring a newer one also matched. Held (the pipeline suite keeps this contract).
+- **Frozen-capture path.** COW candidate → `immutableF4Data` → `linkClonedCowCandidate` → compile matched the from-scratch build, mesh fingerprint included, at every fifth step of a 30-edit run. Held.
+- **Index invalidation.** COW moves, deletions and creations that reuse anchors produced no stale indexed answer in the sweep above, including the swept-bounds contraction cases. Held.
+- **Restore cost.** Restore performs no entity evaluation, no source materialization and no digest: 1 root restored, 0 evaluations, 0 materialized slots, 0 digests in the committed history rows. Held.
 
 ### Current commit map
 
@@ -66,20 +106,68 @@ Paths below are relative to the repository root; the linked tests retain their w
 - OP-1/2/3 are unratified hypotheses. No inverse journal, Merkle root, new unit-envelope version,
   partial Save protocol or GPU batching contract has been installed.
 
-### Verification, review ownership and next step
+### Round 3 verification actually run (final tree)
 
-The code passes the full editor suite (202 files / 2,524 tests), package checks, editor check and
-build. The heavy lane passes 11 files / 138 tests; the architecture lane passes 22 files / 180 tests.
-The evidence records final reruns and any intermediate failure, including the temporary missing
-documentation links while this handoff was being written.
+Targeted by design: the takeover's own files and the lanes' members, not the whole suite.
 
-T3 review is needed for immutable capture reuse, normalized source sharing, qualified handoff and
-Stage admission; T2/T3 should review shared renderer compatibility. No new authoritative source
-contract was introduced. A persistent admitted-source/read contract and any new identity/Save
-semantics stop at their owner decision; the current native-array/flat-SHA costs are explicit.
+| Gate | Result |
+| --- | --- |
+| `check:layout-core`, `check:project-model` | pass (`tsc --noEmit`) |
+| `check` (svelte-check) | 0 errors, 0 warnings |
+| `test:arch` | 22 files / 180 tests pass |
+| S06 fast files (storage, incremental compile, codec sharing, area certificate, snapshot seal, plan-box index, swept differential) | 7 files / 40 tests pass |
+| `t1s06-persistent-pipeline` (heavy, run explicitly) | 6 tests pass in 61.9 s |
+| `t1s06-persistent-spatial` (heavy, run explicitly) | 7 tests pass in 339 ms |
+| Wall / object / shadow representation suites | 5 / 5 / 10 tests pass |
+| Temporary differential probes | 5 written, run, deleted; no probe file remains |
 
-The requested boundary is **ready for independent review**. Do not run Bench 2, merge, close S06,
-close the phase or treat a prior review as approval of this implementation.
+**Recorded omissions.** The full `test:fast` (≈ 2.5 k tests) and the full `test:heavy` lane were not
+rerun; only their S06 members and the two heavy S06 files above. Bench 1/2/3, the E5 census, the
+2,048-operation spatial replay with its adversaries, allocation profiling, the browser/H9 framebuffer
+differential and every new large-fixture sweep were **not** run. The takeover's prior full-suite
+result (202 files / 2 524 tests, build, both package checks) at 48126338 stands as recorded in the
+evidence README and was not re-established here.
+
+### Analytical complexity assessment of this round's corrections
+
+No correction adds O(N) work; the table is the whole cost argument, and the bounds below are
+source-derived, checked against the committed counts rather than re-measured.
+
+| Correction | Before | After | Retained space |
+| --- | --- | --- | --- |
+| `retained()` world branch | O(1): `summary.rooms`, `compiledObjects.length` | O(1): two vector lengths and `layoutLength` (O(1) on a flat authored array, O(log N) on a borrowed vector root) | none |
+| Dead `nextOpeningsToApply` | O(k) allocation + k pushes per delta with k changed Openings, live until compile end | only the `changedOpeningHostWallIds` set remains | −O(k) |
+| Precondition comments | — | — | none |
+
+For orientation, the takeover's bounds as inspected this round (the committed counts that fix the
+constants are in the evidence record):
+
+- **Per-edit compile:** O(k log N) storage path work + O(k) entity evaluation + O(m) output, k = changed + affected entities, m = rebuilt compiled records. Committed counts: 512 copied vector slots / 161 allocated nodes at 7 143 Rooms; 224 / 77 at 31 250 freestanding Walls; 8 evaluated entities per Room edit.
+- **Snapshot seal:** O(changed entities) through `visitUnseen`, not O(N). The 48126338 backing-range equality proof is what stops a split from hiding a linear walk; the 100 000-slot count falsifier is its evidence.
+- **Restore:** O(1) root swap plus up to five map allocations; 0 evaluations, 0 materialized slots, 0 digests.
+- **`diff`:** O(changed path + changed slots), skipping identical subtrees; it refuses a membership change instead of guessing.
+- **Spatial insert/update/remove:** O(log N) nodes plus one Morton key (128 bits at 2D, 256 at 4D); query O(tested nodes + entries + r) with a four-pass radix write for large r (4 × (512 + 2r) bucket writes). The all-overlap adversary remains O(N) and stays documented as such.
+- **Unchanged O(N) terms, named so they are not mistaken for the persistent path:** the authored comparison on the non-COW fallback, `compileObjects` over all objects when any object changed, prune's id set on a full compile, source materialization at the capture boundary, and chunk collection when a lazy output array is read.
+
+### Verdict, ownership and next step
+
+**Implementation acceptance verdict — PASS for implementation correctness (reviewed scope);
+WITHHOLD for step acceptance.** The reviewed surfaces carry no remaining known correctness defect.
+The behavioural defect is pinned by a falsifier that fails on the pre-fix code, and the dead-allocation
+removal cannot change output. Step acceptance stays withheld because Bench 2 has not run and the
+obligations below remain open.
+
+Unresolved conditions, precisely:
+
+1. **Bench 2 has not run.** F4/F8 at L, the F2 mount cost, F7's idle-frame row and H9's framebuffer differential remain predictions or unrun obligations.
+2. **The object representation has fixture-level evidence only** — no L-scale workload carries Layout objects.
+3. **`MAX_ADMITTED_HISTORY_CACHE` is an unmeasured count bound**; the retained memory of 52 admitted domains is not attributed.
+4. **Membership-changing renderer reconciliation still falls back to a full rebuild.**
+5. **T3 review** is still needed for immutable capture reuse, normalized source sharing, the qualified handoff and Stage admission; T2/T3 should review shared renderer compatibility. No new authoritative source contract was introduced. A persistent admitted-source/read contract and any new identity/Save semantics stop at their owner decision; the current native-array/flat-SHA costs are explicit.
+6. **Owner decisions** remain: the amended Bench 2 measurement scope and whether the next mount batch is S06's or a follow-on slice.
+
+The requested boundary is **ready for Bench 2**. Do not merge, close S06, close the phase, or treat
+this review — or any earlier one — as a performance acceptance of this implementation.
 
 ## Historical review records
 

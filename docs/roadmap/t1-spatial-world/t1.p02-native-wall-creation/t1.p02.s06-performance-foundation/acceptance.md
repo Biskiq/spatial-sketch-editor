@@ -1,8 +1,9 @@
 # T1.P02.S06 — acceptance record: Performance foundation
 
 **Slice:** T1.P02.S06 · **Status:** approved/released; setup and owner-directed Bench 1 recorded;
-persistent representation takeover implemented on PR #190 and awaiting fresh independent review.
-Bench 2 has not run; S06 is not accepted or merged. ·
+persistent representation takeover implemented on PR #190 and independently reviewed (round 3:
+implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 has not
+run; S06 is not accepted or merged. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -626,7 +627,9 @@ The complete editor suite passes **202 files / 2,524 tests**. The architecture l
 camera-core checks, editor check (zero errors/warnings) and build pass. Exact commands, revisions
 and final documentation-gate rerun are in the evidence directory.
 
-Earlier independent reviews remain recorded in [review-handoff.md](./review-handoff.md).
-They reviewed earlier implementations, not these new persistent algorithms. The fresh
-[independent-review map](./review-handoff.md#current-independent-review-boundary) is ready;
-no new verdict is asserted. Stop here before independent review, owner benchmark and acceptance.
+Earlier independent reviews remain recorded in [review-handoff.md](./review-handoff.md), and the
+[independent-review map](./review-handoff.md#current-independent-review-boundary) carries review
+round 3 on the persistent algorithms: two substantiated findings fixed with falsifiers, the rest
+documented preconditions, no expensive performance work re-run. Its verdict is PASS for
+implementation correctness in the reviewed scope and WITHHOLD for step acceptance until Bench 2.
+Stop here before the owner benchmark and acceptance.
