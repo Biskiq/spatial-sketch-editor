@@ -21,8 +21,23 @@ ACTIVE: T1.P02.S06 (performance foundation), optimize step (agent), released 202
         benchmark, profile or timing probe was run. T3 review of the Plan-key change and the
         retained-target protocol is owed; independent review of the pass has not happened. Dossier:
         ../../roadmap/t1-spatial-world/broad-research/spatial-computation-architecture.md.
+        Second continuity pass (2026-10-26, `3e7efdbe`): an accepted edit no longer re-derives the
+        whole Plan. `createPlanRetainer` keeps each compiled source's derivation (its membership row
+        and its placements) and maintains the declared order alongside it, so a new compile
+        generation relocates only the fragments and re-measures only the sources the edit touched:
+        O(N) cheap comparisons, O(k) derivation, O(F) fragments — no id sort, no fragment sort, no
+        candidate or membership churn. Anything it cannot prove it reproduces (a source id shared
+        by two kinds, or repeated within one) is handed to the normative evaluator, and the
+        differential suite holds the two identical across generations, moved spans, changed
+        openings, added and removed sources, parameter and target changes, refusals and a
+        randomized sequence. The hit path no longer re-sorts eligible fragments — they already
+        arrive in the declared order — and membership lookup is indexed by the assembly pass.
+        Derived, not measured. T3 review of the Plan evaluator's retention protocol is owed, and
+        the remaining O(F) per generation is a property of the ratified correspondence (every
+        fragment carries its generation), not of the implementation.
         Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
-NEXT:   Independent review of the Plan interaction locality pass, then the same review boundary
+NEXT:   Independent review of the Plan interaction locality pass and of the incremental Plan
+        evaluator, then the same review boundary
         (a diagnostic Bench 2 and the formal Bench 3 remain the owner's, and have not run):
         ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#current-independent-review-boundary
         T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md

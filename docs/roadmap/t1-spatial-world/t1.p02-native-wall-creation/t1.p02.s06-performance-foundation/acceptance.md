@@ -838,4 +838,148 @@ Undo/Redo proof and a deep-cycle leak proof are added; without them, a lean Benc
 implemented and default-off (3 measured runs minimum, 25 % margin, never a pass). Bench 2 ran on
 2026-10-26, aborted at E5, and its seven-workload E5 matrix was completed by the standalone rerun
 recorded above; the pass remains contaminated and non-acceptance. Bench 3 has not run.
+## Incremental Plan evaluation (2026-10-26, owner-directed continuation)
+
+**Scope and method.** Owner direction: keep pushing interaction locality, then independent correctness
+review. **No benchmark, profiling pass, timing probe, microbenchmark or browser measurement was run
+for this section.** Everything below is a derived operation count, an exact output differential or a
+complexity statement. The pass is `3e7efdbe` on PR #190, branch `t1/p02-s06-bench-setup`; no authored
+format, canonical geometry, source identity, acceptance authority, refusal code or budget changed.
+
+**What the audit found, and one assumption it corrected.** The previous section recorded the next
+slice as "an incremental Plan evaluator keyed per compiled source would need a merge-preserving order
+rather than a re-sort, which is a contract-visible change to a ratified evaluator". Half of that was
+wrong, and the audit is what established which half:
+
+1. **The order does not require a contract change, and it does not require a sort.** Fragment order is
+   a function of `(kind, sourceId, interval start, interval end)` only. A source's placements are
+   therefore contiguous, and inserting or removing a source is an insertion into a **maintained**
+   order, not a re-ordering of the population. This is now implemented inside the existing
+   `layout.plan@1` contract: the observable array is unchanged.
+2. **The per-generation fragment pass does.** Every `PlanFragment.ref` carries `generationId`, and a
+   selection's staleness check reads it (`semantic-selection.ts`), so an accepted edit — which
+   changes the generation, because the generation *is* `compile:<sourceContentId>` — must produce new
+   fragment objects for every fragment. `Ω(F)` per generation is a property of the ratified
+   correspondence, not of this implementation; the retainer charges it once and removes everything
+   else.
+3. **The whole re-derivation was three separate whole-project costs**, not one: four full-array id
+   sorts; a `Candidate` and an `Evaluated` per candidate plus a per-source array in a `Map`; and a
+   global fragment sort followed by four stream filters and a bounds fold (six passes over `F`).
+4. **The hit path carried a second, weaker comparator.** `stage-facade.ts` restated the fragment
+   comparator without the interval-`end` tiebreak and sorted the eligible fragments into
+   "priority order" on every first click after an evaluation. The array it sorted was already in the
+   canonical (stronger) order, and `Array.prototype.sort` is stable, so that `O(F log F)` pass could
+   not change its input. It is deleted, not replaced.
+5. **`plan.streams` has no runtime consumer in the editor.** The Stage draws compiled geometry through
+   `VisitorLayoutShell`; no product code reads the four streams or `plan.bounds`. They remain part of
+   the contract and are still produced — now in the single assembly pass rather than four extra
+   scans — but this is recorded so a later reader does not mistake them for a render source.
+
+**Implemented.**
+
+| Concern | Before | After |
+| --- | --- | --- |
+| Accepted edit (new generation) | Four id sorts, a candidate + measured candidate + membership row per source, a fragment sort, six `F` passes: `O(N log N)` with `O(N)` allocations on top of `O(F)` fragments | One walk of the compiled sources confirming each retained record (`O(N)` numeric comparisons, no allocation), derivation only for the sources that changed (`O(k)`), then one assembly pass: `O(F)` fragments, no sort of any kind. Sources that did not change keep their identical membership rows |
+| Same inputs repeated (per frame, per click) | `O(N log N)` when the retention key missed | `O(1)` — returned by identity |
+| Parameter change (cut, depth, span, filter, reveal) | `O(N log N)` | `O(N)` re-derivation + `O(F)` assembly; the maintained order still means no sort |
+| Source id added/removed | `O(N log N)` | `O(N)` walk + `O(k log S)` binary insertion for a few ids, one `O(S log S)` rebuild when many change |
+| Click: pick-index build | `O(F log F)` sort + build | Build only; the eligible projection preserves the declared order, so the sort is gone |
+| Membership lookup, per presented frame | `plan.membership.find(...)`, `O(S)` | Indexed against the membership array, `O(1)` |
+| Both per-source lookups on first use | Map built by scanning the finished array | Filled by the assembly pass that already walks every source |
+
+**Changed files.** `packages/layout-core/src/layout-plan-representation.ts` (`createPlanRetainer`,
+`PlanRetainer`, the shared `measureCandidate`/`sourceMembership`/`fragmentFor` extraction, the
+uncapped-estimate comparisons `wallUnchanged`/`openingUnchanged`/`objectUnchanged`/
+`roomFloorUnchanged`, `planMembershipOf` index, and `SOURCE_KIND_ORDER` derived from
+`PLAN_SOURCE_KINDS` so the comparator and the assembly order cannot drift);
+`apps/editor/src/lib/authoring/stage/stage-facade.ts` (one retainer for the facade's lifetime, the
+redundant comparator and sort removed); `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`
+(indexed membership reads); `apps/editor/src/lib/authoring/layout/plan-pick-index.ts` (complexity
+rectified, see below); `apps/editor/tests/lib/layout/layout-plan-retainer.test.ts` (new).
+
+**Why it is exact, not merely equal on the cases tested.** The retainer is not a second definition of
+the family. It calls the same `wallCandidatesOf`/`openingCandidate`/`objectCandidate`/
+`roomFloorCandidate`, the same `measureCandidate`, the same `sourceMembership` and the same
+`fragmentFor` as `evaluateLayoutPlan`; it differs only in *how it reaches the declared order* and
+*when it does the work*. The one thing it can get wrong is believing a retained record still
+describes its source, so that belief is checked against **the fields the derivation reads** — a
+reference-first, allocation-free comparison of extent, interval and plan geometry per entry, with the
+candidate count compared first so "a Wall gained a span" cannot hide behind "its first span is
+unchanged". Two cases it cannot model — a source id shared by two kinds (the reference merges them
+into one membership row) and a source id repeated within one kind — are detected during the walk,
+which clears the retained state and delegates to the reference evaluator.
+
+`tests/lib/layout/layout-plan-retainer.test.ts` is a **differential oracle**: every case asserts the
+retainer's entire `PlanEvaluationResult` deep-equals the reference's, over a first evaluation, a
+generation-only change, moved spans, a Wall losing its solids, a Wall gaining a span, widened and
+raised openings, a dropped floor, a widened footprint, added and moved objects, id insertion out of
+order, sources appearing and disappearing, every parameter and target change, a refusal followed by
+recovery, both fallback shapes, and 60 randomized steps. Two further assertions make the suite test
+*reuse* rather than agreement: after a generation-only change every membership row is the same
+object, and after one Wall changes exactly one row is re-derived. The oracle was falsified on purpose
+before it was trusted — forcing `wallUnchanged` to return `true` makes the sequence and randomized
+cases fail, so the assertions do bite.
+
+**The pick index's complexity claim was wrong as written.** The previous record said the query is
+`O(log F + c)`. It is `O(v + c log c)`: the tree addresses a **permutation** of the caller's indices,
+so surviving candidates leave the traversal in tree order and are sorted back into rank order before
+they are returned, and `v` — nodes whose projected extent reaches the pointer — is `O(log F + c)` only
+in the ordinary case. The adversarial cases are now named in the module: screen-space overlap pushes
+`c` toward `F`; a box straddling the camera plane cannot be bounded and is never pruned; a view where
+every box projects large enough to reach the pointer keeps every node. All three are overlap or
+projection degenerate, never unrelated project size — but the earlier claim was too clean, and this
+record corrects it rather than leaving it standing.
+
+**Hand-derived complexity and the remaining global terms.** `N` compiled sources, `F` fragments, `k`
+sources an edit changed, `S` sources.
+
+| Path | Before | After |
+| --- | --- | --- |
+| Accepted edit | `O(N log N) + O(F log F) + O(N)` allocations | `O(N·c) + O(k log S) + Ω(F)` |
+| Unchanged repeat | `O(N log N)` | `O(1)` |
+| Parameter change | `O(N log N)` | `O(N·c) + Ω(F)` |
+| Click after an evaluation | `O(F log F + F·S)` | `O(v + c log c)`, build `O(F log F)` once |
+| Selection / membership, per frame | `O(F)` / `O(S)` | `O(1)` / `O(1)` |
+
+What is **not** removed, named rather than hidden:
+
+- **`Ω(F)` fragment objects per generation.** Forced by `ref.generationId`. Removing it means moving
+  the generation off the fragment — a change to the ratified correspondence and to the staleness
+  check that reads it. Owner decision, not taken here.
+- **`O(N·c)` reconcile walk.** The input is the whole compiled geometry, so proving a source is
+  untouched costs reading it. A compiler-published changed set would make this `O(k log S)`; the
+  retainer needs no change to use one, and the walk allocates nothing meanwhile.
+- **Parameter changes** still re-derive every source, because every placement reads the cut, the depth
+  window and the reveal set. Only the sort is gone.
+- **Envelope canonicalization and the flat SHA-256 digest**, `Ω(bytes)`, unchanged (T3).
+- **Draw submission**, one per mesh, unchanged (H6 owner decision).
+- **Cold open**, unchanged.
+- **Retained memory**: the retainer holds at most one evaluation and one record per source. A record
+  keeps the plan geometry it was derived from, so unchanged sources may hold arrays from several
+  generations — at most one array per source, `O(N)` in total, never `O(N)` per edit. If the compiler
+  hands back the same arrays (structural sharing), nothing beyond the current geometry is retained.
+  `PlanRetainer.clear()` drops it all.
+
+**Techniques considered for this pass.**
+
+| Technique | Decision | Reason grounded in this code |
+| --- | --- | --- |
+| Persistent / merge-preserving ordered collections (the mission's "order-preserving merge") | **Adopted, in the simplest sufficient form** | The id set rarely changes and a source's placements are contiguous, so a maintained sorted id array plus binary insertion is `O(k log S)` with no tree, no node allocation and no iterator protocol. A persistent treap would have the same asymptotics and more machinery — it is not adopted on reputation |
+| tldraw's "return the previous value when unchanged" | **Adopted at three levels** | The whole evaluation, the per-source derivation, and the maintained id list each return the previous value when nothing relevant changed |
+| Lazy derived properties (getters for `streams`, `bounds`, `fragments`) | **Rejected** | `planTargetsLiveView` spreads the evaluation on the pan path, so getters would either force the work anyway or need `Object.defineProperties` clones to avoid it — and `fragments` cannot be lazy: `ref.generationId` makes `Ω(F)` unavoidable per generation. Complexity for no asymptotic gain |
+| Content hashing a compiled record to decide reuse | **Rejected** | A hash strong enough to be safe is still probabilistic in a canonical authority, and computing it allocates and reads the record — no cheaper than the field comparison that is exact |
+| A generic incremental-computation framework (Salsa/DBSP-shaped) | **Rejected** | The dependency graph here is one function of one compiled object with a fixed, known set of inputs. A framework would be a second authority beside the compiler's |
+| Moving `generationId` off the fragment onto the evaluation | **Escalated, not implemented** | It is the only way to break `Ω(F)`, and it changes a ratified correspondence field plus the staleness check that reads it |
+| RBush/Flatbush, `three-mesh-bvh`, GPU batching, WebGPU, Merkle/BLAKE3 identity, CGAL/Clipper2 | **Unchanged from the previous record's rejections** | Nothing in this pass altered the reason each was refused; no rendering, identity or geometry contract was touched |
+
+**Verification (correctness only).** `check:layout-core`, `check:project-model`, `check:camera-core`,
+the editor `check` (svelte-check: 0 errors, 0 warnings) and `build` pass. The full editor suite passes
+**206 files / 2,569 tests**; the fast lane **173 files / 2,251 tests**; the architecture lane **22 files
+/ 180 tests**, including the documentation gate. No performance number in this section is measured.
+
+**Review still owed.** Independent review of this pass has not happened. T3 review is required for the
+Plan evaluator's new retention protocol and for the previously flagged Plan-key/retained-target
+change; the route and the Stage host remain shared surfaces. The owner also owns the decision this
+pass deliberately did not take: whether the compile generation belongs on every fragment.
+
 Stop here before the owner benchmark and acceptance.
