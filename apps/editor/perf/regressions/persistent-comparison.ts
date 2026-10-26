@@ -71,6 +71,7 @@ let memoryBefore = 0, memoryAfter = 0;
 let memoryBeforeAll: ReturnType<typeof process.memoryUsage> | undefined, memoryAfterAll: ReturnType<typeof process.memoryUsage> | undefined;
 const restoration: Record<string, { milliseconds: number; counts: Record<string, number> }> = {};
 let oracleDigest: string | undefined, sourceContentId: string | undefined, canonicalJsonSha256: string | undefined;
+let historyRetention: { sampled: number; liveSampleIndices: number[]; fixtureBaselineMatchesSample0: boolean } | undefined;
 if (mode === 'local') {
  let document = immutableF4Data(raw);
  const session = core.createLayoutCompileSession();
@@ -152,6 +153,7 @@ if (mode === 'local') {
   core.setWorkObserver(null);
  }
  await gc(); memoryAfterAll = process.memoryUsage(); memoryAfter = memoryAfterAll.heapUsed;
+ historyRetention = { sampled: early.length, liveSampleIndices: early.flatMap((ref, index) => ref.deref() === undefined ? [] : [index]), fixtureBaselineMatchesSample0: early.length > 0 && early[0]!.deref() === baseline.source.units.layout.data };
  Object.assign(counts, { 'report:history-depth': coordinator.history().depth, 'report:early-sources-live': early.filter((ref) => ref.deref() !== undefined).length });
  sourceContentId = coordinator.current().sourceContentId;
  canonicalJsonSha256 = createHash('sha256').update(coordinator.current().canonicalJson).digest('hex');
@@ -163,6 +165,6 @@ if (mode === 'local') {
 walls.dispose(); objects.dispose();
 const result = { label: 'bounded Node comparison; not Bench 2 or product budget evidence', mode, render, fixtureShape, fixtureSeedRooms: roomCount, roomCount: census.rooms, iterations, census, entities: Object.values(census).reduce((a, b) => a + b, 0),
  timing: { medianMs: quantile(0.5), p95Ms: quantile(0.95), minMs: Math.min(...times), totalMs: times.reduce((a, b) => a + b, 0), samplesMs: times },
- counts, spans, restoration, allocation, oracleDigest, sourceContentId, canonicalJsonSha256, heap: { beforeBytes: memoryBefore, afterBytes: memoryAfter, retainedDeltaBytes: memoryAfter - memoryBefore, before: memoryBeforeAll, after: memoryAfterAll }, sink };
+ counts, spans, restoration, historyRetention, allocation, oracleDigest, sourceContentId, canonicalJsonSha256, heap: { beforeBytes: memoryBefore, afterBytes: memoryAfter, retainedDeltaBytes: memoryAfter - memoryBefore, before: memoryBeforeAll, after: memoryAfterAll }, sink };
 if (process.env.S06_RESULT) writeFileSync(process.env.S06_RESULT, JSON.stringify(result, null, 2) + '\n');
 else process.stdout.write(JSON.stringify(result) + '\n');

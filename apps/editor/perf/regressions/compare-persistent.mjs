@@ -38,7 +38,7 @@ patch('packages/layout-core/src/layout-bvh.ts', (s) => {
   .replace('let nodeVisits = 1;', "let nodeVisits = 1; countWork('index:node-test');")
   .replace('const child = state.childLinks[cStart + i]!;', "countWork('index:node-test'); const child = state.childLinks[cStart + i]!;")
   .replace('found.sort((a, b) => a - b);', "found.sort((a, b) => { countWork('index:sort-compare'); return a - b; });")
-  .replace('return found;', "countWork('index:result-record', found.length); return found;")
+  .replaceAll('return found;', "countWork('index:result-record', found.length); return found;")
   .replace('for (let i = 0; i < state.irregularList.length; i += 1) {', "countWork('index:irregular-test', state.irregularList.length); for (let i = 0; i < state.irregularList.length; i += 1) {");
  return prefix + query;
 });

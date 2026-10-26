@@ -102,7 +102,7 @@ function sortEntryIndices(found: number[], observed: boolean): void {
   for (const id of source) { const bucket = (id >>> shift) & 255; target[buckets[bucket]!] = id; buckets[bucket]! += 1; }
   [source, target] = [target, source];
  }
- if (observed) { countWork('index:sort-entry-read', 8 * found.length); countWork('index:sort-entry-write', 4 * found.length); countWork('index:sort-bucket-write', 4 * 512); }
+ if (observed) { countWork('index:sort-entry-read', 8 * found.length); countWork('index:sort-entry-write', 4 * found.length); countWork('index:sort-bucket-write', 4 * (512 + 2 * found.length)); }
 }
 export function createDynamicBvh(boxes: readonly PlanBox[], options: BvhMaintenanceOptions = {}): DynamicBvh {
  const margin = Number.isFinite(options.fatMargin) && options.fatMargin! >= 0 ? options.fatMargin! : 0.1;

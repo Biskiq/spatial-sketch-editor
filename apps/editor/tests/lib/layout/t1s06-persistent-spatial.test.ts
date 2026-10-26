@@ -100,6 +100,7 @@ describe('persistent spatial index under sustained edits', () => {
   const measured = counted(() => index.overlaps(box(0, 0)));
   expect(measured.result).toEqual([...new Set(ids)].sort((a, b) => a - b));
   expect(measured.counts.get('index:sort-entry-read')).toBe(8 * measured.result.length);
+  expect(measured.counts.get('index:sort-bucket-write')).toBe(4 * (512 + 2 * measured.result.length));
   expect(measured.counts.get('index:sort-compare') ?? 0).toBe(0);
  });
 

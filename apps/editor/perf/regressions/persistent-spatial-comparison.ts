@@ -33,7 +33,9 @@ for (const policy of policies) {
    const id = (step * 499) % n, next = box(((id * 401 + step) % n) * 4);
    if (step % 64 === 0) roots.push({ index, id, old: oracle[id]! });
    index = index.clone(); index.update(id, next); oracle[id] = next;
-   sink += index.overlaps(query).length;
+   // Rotate the empty-result gap across the whole domain. A single median
+   // gap can accidentally coincide with the root split and test just 3 nodes.
+   sink += index.overlaps(box(((step * 811) % n) * 4 + 1.5, 0.2, 0.1, 0.1)).length;
    if (observed) for (const [name, amount] of Object.entries(current)) peak[name] = Math.max(peak[name] ?? 0, amount);
   }
   const milliseconds = performance.now() - begin;
@@ -67,6 +69,6 @@ for (const policy of policies) {
  timed.roots.length = 0;
  await gc();
 }
-const result = { label: 'bounded spatial primitive comparison, not a geometry benchmark or universal query guarantee', mode: 'spatial', entries: n, steps, policies: results, sink };
+const result = { label: 'bounded spatial primitive comparison, not a geometry benchmark or universal query guarantee', mode: 'spatial', queryPattern: 'rotating empty gaps: ((step * 811) % N) * 4 + 1.5', entries: n, steps, policies: results, sink };
 if (process.env.S06_RESULT) writeFileSync(process.env.S06_RESULT, JSON.stringify(result, null, 2) + '\n');
 else process.stdout.write(JSON.stringify(result) + '\n');
