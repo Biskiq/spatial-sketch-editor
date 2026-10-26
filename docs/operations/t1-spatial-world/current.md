@@ -35,6 +35,21 @@ ACTIVE: T1.P02.S06 (performance foundation), optimize step (agent), released 202
         Derived, not measured. T3 review of the Plan evaluator's retention protocol is owed, and
         the remaining O(F) per generation is a property of the ratified correspondence (every
         fragment carries its generation), not of the implementation.
+        Third continuity pass (2026-10-26): the Plan is now maintained from the compiler's own
+        evidence. `diffCompiledSources` compares two compiled snapshots' persistent roots and names
+        the records whose identity changed, so an accepted edit re-derives exactly those sources —
+        one Wall's height change derives one source, with zero field comparisons and zero legacy-array
+        materialization (`compiled.walls`/`compiled.rooms` are lazy arrays; the retainer now iterates
+        the retained root instead). The complete output stays exactly as ratified but is
+        demand-driven: `fragments`, `membership`, `streams` and `bounds` materialize on first read and
+        cache, while `planFragmentOf`/`planMembershipOf` answer from the retained per-source records.
+        Two corrections to earlier claims in the record: `splice` insertion is O(k·S), not O(k log S),
+        and the old fallback's index-paired `wallUnchanged` re-derived 11 (10 Rooms) / 41 (40 Rooms)
+        untouched sources per insertion — fixed by pairing on the whole derived placement, now a
+        size-invariant constant. The Index panel no longer derives the whole located-subject list on
+        every Plan evaluation, and the live-target view copies property descriptors rather than
+        spreading (a spread would now force the lazy fields on every pan). Derived, not measured; T3
+        review of the compiler-delta certificate is owed.
         Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
 NEXT:   Independent review of the Plan interaction locality pass and of the incremental Plan
         evaluator, then the same review boundary

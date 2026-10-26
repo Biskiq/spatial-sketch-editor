@@ -27,6 +27,7 @@
 		groups,
 		contributions = [],
 		selectionId,
+		selectedLabel,
 		query,
 		onQuery,
 		onSelect,
@@ -49,6 +50,12 @@
 				membership: string;
 			}[];
 		}[];
+		/**
+			* The collapsed header's one-line "Selected: …", resolved by the host for the
+			* selected subject alone. Reading it from `groups` would make the whole
+			* located-subject list a dependency of a closed panel.
+			*/
+		selectedLabel?: string | null;
 		/**
 			* Contributed rail-family / capability-Find entries, from whatever adapters
 			* are registered. The Index renders them generically: a domain adapter never
@@ -100,17 +107,20 @@
 		row.focus();
 	}
 
-	/** Only non-empty groups are rendered, and a group with items is never hidden. */
+	/**
+	 * Only non-empty groups are rendered, and a group with items is never hidden.
+	 *
+	 * Gated on `open` deliberately: the body is `hidden`, not `{#if}`-ed, so every
+	 * expression inside it still evaluates. A closed Index that read `groups` here
+	 * would turn the complete located-subject list into a per-evaluation dependency
+	 * of a panel nobody is looking at.
+	 */
 	const visibleGroups = $derived(
-		groups.filter((group) => group.items.length > 0)
+		open ? groups.filter((group) => group.items.length > 0) : []
 	);
 
 	const items = $derived(visibleGroups.flatMap((group) => group.items));
 	const hasItems = $derived(items.length > 0);
-
-	const selectedLabel = $derived(
-		selectionId === null ? null : (items.find((item) => item.sourceId === selectionId)?.label ?? null)
-	);
 
 	const searchedNothing = $derived(query.trim() !== '' && !hasItems);
 

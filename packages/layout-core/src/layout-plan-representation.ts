@@ -49,7 +49,14 @@
  * geometry.
  */
 
+import {
+	diffCompiledSources,
+	forEachRetainedCompiledRoom,
+	forEachRetainedCompiledWall,
+	type CompiledSourceDelta
+} from './layout-geometry-delta';
 import { pointInPolygon } from './layout-geometry-objects';
+import { countWork } from './p2311-perf';
 import type {
 	CompiledLayoutGeometry,
 	CompiledLayoutObject,
@@ -552,6 +559,23 @@ function compareFragments(left: PlanFragment, right: PlanFragment): number {
 }
 
 /**
+ * Source-indexed access to one evaluation, for the evaluator that produced it.
+ *
+ * A retainer keeps each source's derivation, so "where is source X" and "what is X's
+ * membership" do not require the complete `fragments` or `membership` arrays to exist.
+ * This is what lets an interactive host ask the two questions it actually asks — the
+ * selected subject's fragment, the selected subject's row — without materializing the
+ * whole output on every accepted edit. The arrays still exist for any consumer that
+ * asks for them; they are built on first read and then cached.
+ */
+type PlanView = {
+	readonly fragmentOf: (sourceId: string) => PlanFragment | undefined;
+	readonly membershipOf: (sourceId: string) => PlanSourceMembership | null;
+};
+
+const PLAN_VIEWS = new WeakMap<PlanEvaluation, PlanView>();
+
+/**
  * Does this evaluation read `context.target` for anything but its own echo?
  *
  * The evaluator measures `planDistance(target, candidate.plan)` in exactly one
@@ -589,13 +613,24 @@ export function planTargetsLiveView(
 	readTarget: () => LayoutVec2
 ): PlanEvaluation {
 	const evaluatedTarget = plan.target;
-	return {
-		...plan,
-		get target(): LayoutVec2 {
-			const live = readTarget();
-			return isFiniteNumber(live[0]) && isFiniteNumber(live[1]) ? live : evaluatedTarget;
+	// The descriptors are copied, **not** the values: a spread would force every lazy
+	// field of the evaluation it wraps, which is exactly the work a pan must not cause.
+	const live = Object.create(
+		Object.getPrototypeOf(plan) as object,
+		Object.getOwnPropertyDescriptors(plan)
+	) as PlanEvaluation;
+	Object.defineProperty(live, 'target', {
+		configurable: true,
+		enumerable: true,
+		get(): LayoutVec2 {
+			const current = readTarget();
+			return isFiniteNumber(current[0]) && isFiniteNumber(current[1]) ? current : evaluatedTarget;
 		}
-	};
+	});
+	// The live view answers the same source questions as the evaluation it wraps.
+	const view = PLAN_VIEWS.get(plan);
+	if (view !== undefined) PLAN_VIEWS.set(live, view);
+	return live;
 }
 
 /**
@@ -604,6 +639,7 @@ export function planTargetsLiveView(
  * the stages a candidate passes through have exactly one definition.
  */
 type MeasurementContext = {
+	readonly datumMeters: number;
 	readonly cutElevation: number;
 	readonly depthMeters: number;
 	readonly lateralSpanHalfWidthMeters: number | null;
@@ -614,6 +650,7 @@ type MeasurementContext = {
 
 function measurementContext(parameters: PlanParameters, context: PlanSourceContext): MeasurementContext {
 	return {
+		datumMeters: context.datumMeters,
 		cutElevation: context.datumMeters + parameters.cutHeightMeters,
 		depthMeters: parameters.depthMeters,
 		lateralSpanHalfWidthMeters: parameters.lateralSpanHalfWidthMeters,
@@ -850,6 +887,8 @@ export function eligiblePlanFragments(plan: PlanEvaluation): readonly PlanFragme
 const membershipIndexes = new WeakMap<readonly PlanSourceMembership[], Map<string, PlanSourceMembership>>();
 
 export function planMembershipOf(plan: PlanEvaluation, sourceId: string): PlanSourceMembership | null {
+	const view = PLAN_VIEWS.get(plan);
+	if (view !== undefined) return view.membershipOf(sourceId);
 	let index = membershipIndexes.get(plan.membership);
 	if (index === undefined) {
 		index = new Map<string, PlanSourceMembership>();
@@ -872,6 +911,8 @@ export function planMembershipOf(plan: PlanEvaluation, sourceId: string): PlanSo
 const fragmentIndexes = new WeakMap<readonly PlanFragment[], Map<string, PlanFragment>>();
 
 export function planFragmentOf(plan: PlanEvaluation, sourceId: string): PlanFragment | undefined {
+	const view = PLAN_VIEWS.get(plan);
+	if (view !== undefined) return view.fragmentOf(sourceId);
 	let index = fragmentIndexes.get(plan.fragments);
 	if (index === undefined) {
 		index = new Map<string, PlanFragment>();
@@ -979,10 +1020,12 @@ function samePoints(left: readonly LayoutVec2[], right: readonly LayoutVec2[]): 
  * source costs a handful of numeric comparisons instead of a candidate object, a measured
  * candidate, a membership row and a sort insertion.
  *
- * Spans are compared in the order the compiler emitted them. A compiler that emitted
- * them out of distance order would make this return `false` and the source re-derive —
- * the placement order is sorted at derivation time — so the only cost of that case is the
- * derivation, never a wrong answer.
+ * Spans are compared **by interval**, not by array position. The derivation sorts its
+ * placements by interval (`compareEntries`), while `solidSpans` arrives in whatever order
+ * the compiler emitted, so pairing index to index is only valid when the two orders agree.
+ * When they do not, the positional pass fails and the interval-keyed pass decides — which
+ * is why an untouched Wall is proved unchanged rather than re-derived. The positional pass
+ * exists because it allocates nothing and is the common case.
  */
 function wallUnchanged(entries: readonly PlanEntry[], wall: CompiledPhysicalWall, datumMeters: number): boolean {
 	if (wall.solidSpans.length === 0) {
@@ -1000,15 +1043,45 @@ function wallUnchanged(entries: readonly PlanEntry[], wall: CompiledPhysicalWall
 		);
 	}
 	if (entries.length !== wall.solidSpans.length) return false;
+	let positional = true;
 	for (let index = 0; index < wall.solidSpans.length; index += 1) {
-		const entry = entries[index]!;
-		const span = wall.solidSpans[index]!;
-		if (entry.extent.minY !== datumMeters + span.bottomY || entry.extent.maxY !== datumMeters + span.topY) return false;
-		if (entry.subRef?.kind !== 'interval' || entry.subRef.start !== span.startDistance || entry.subRef.end !== span.endDistance) return false;
+		if (!spanMatchesEntry(entries[index]!, wall.solidSpans[index]!, datumMeters)) {
+			positional = false;
+			break;
+		}
+	}
+	if (positional) return true;
+	// Same set, different order — or two spans that share an interval at different
+	// elevations, which a Wall genuinely has where a lower and an upper solid start and end
+	// together. Pair by the **whole derived placement** instead: interval, elevation and
+	// plan points. Two spans agreeing on all three are interchangeable, so a bucket is not
+	// a guess.
+	const expected = new Map<string, number>();
+	for (const span of wall.solidSpans) {
+		const key = `${span.startDistance}|${span.endDistance}|${datumMeters + span.bottomY}|${datumMeters + span.topY}|${span.start[0]}|${span.start[1]}|${span.end[0]}|${span.end[1]}`;
+		expected.set(key, (expected.get(key) ?? 0) + 1);
+	}
+	for (const entry of entries) {
 		const plan = entry.plan;
-		if (plan.kind !== 'span' || !samePoint(plan.start, span.start) || !samePoint(plan.end, span.end)) return false;
+		if (entry.subRef?.kind !== 'interval' || plan.kind !== 'span') return false;
+		const key = `${entry.subRef.start}|${entry.subRef.end}|${entry.extent.minY}|${entry.extent.maxY}|${plan.start[0]}|${plan.start[1]}|${plan.end[0]}|${plan.end[1]}`;
+		const remaining = expected.get(key) ?? 0;
+		if (remaining === 0) return false;
+		expected.set(key, remaining - 1);
 	}
 	return true;
+}
+
+/** Does this retained placement still describe that compiled span, field for field? */
+function spanMatchesEntry(
+	entry: PlanEntry,
+	span: CompiledPhysicalWall['solidSpans'][number],
+	datumMeters: number
+): boolean {
+	if (entry.extent.minY !== datumMeters + span.bottomY || entry.extent.maxY !== datumMeters + span.topY) return false;
+	if (entry.subRef?.kind !== 'interval' || entry.subRef.start !== span.startDistance || entry.subRef.end !== span.endDistance) return false;
+	const plan = entry.plan;
+	return plan.kind === 'span' && samePoint(plan.start, span.start) && samePoint(plan.end, span.end);
 }
 
 function openingUnchanged(
@@ -1126,6 +1199,8 @@ export function createPlanRetainer(): PlanRetainer {
 	let retainedSource: WeakRef<CompiledLayoutGeometry> | null = null;
 	let result: PlanEvaluationResult | null = null;
 	let pass = 0;
+	/** False when two Walls host the same Opening id, whose record is derived by first host. */
+	let openingsAreUnique = true;
 	const indexes = new Map<PlanSourceKind, KindIndex>();
 	for (const kind of PLAN_SOURCE_KINDS) indexes.set(kind, { ids: [], byId: new Map() });
 
@@ -1135,6 +1210,7 @@ export function createPlanRetainer(): PlanRetainer {
 		retainedSource = null;
 		result = null;
 		pass = 0;
+		openingsAreUnique = true;
 		for (const kind of PLAN_SOURCE_KINDS) {
 			const index = indexes.get(kind)!;
 			index.ids = [];
@@ -1158,9 +1234,38 @@ export function createPlanRetainer(): PlanRetainer {
 	 * incrementally — a source id appears twice in the kind, which the reference evaluator
 	 * merges into one membership row and this retainer does not model.
 	 */
+	/** Derive one source's entries and membership row from its candidates, and retain it. */
+	function derive(kind: PlanSourceKind, id: string, candidates: readonly Candidate[], measurement: MeasurementContext): void {
+		const measured = candidates.map((candidate) => measureCandidate(candidate, measurement));
+		const entries: PlanEntry[] = measured.map((entry) => ({
+			reason: entry.reason,
+			subRef: entry.candidate.subRef,
+			plan: entry.candidate.plan,
+			extent: entry.candidate.extent,
+			placement: entry.placement
+		}));
+		// Within one source every placement sorts by the same interval the fragment
+		// comparator uses, so the maintained order is the declared order.
+		entries.sort(compareEntries);
+		indexes.get(kind)!.byId.set(id, { entries, membership: sourceMembership(id, measured), stamp: pass });
+		countWork('plan:source-derived');
+		countWork(`plan:source-derived:${kind}`);
+	}
+
+	function walkWalls(geometry: CompiledLayoutGeometry, visit: (wall: CompiledPhysicalWall) => void): void {
+		// The retained world iterates its persistent root in slot order — the same order as
+		// `geometry.walls` — without allocating the legacy array. Hand-built snapshots have
+		// no world, so they fall back to the array property.
+		if (!forEachRetainedCompiledWall(geometry, visit)) for (const wall of geometry.walls) visit(wall);
+	}
+
+	function walkRooms(geometry: CompiledLayoutGeometry, visit: (room: CompiledRoom) => void): void {
+		if (!forEachRetainedCompiledRoom(geometry, visit)) for (const room of geometry.rooms) visit(room);
+	}
+
 	function reconcileKind<T>(
 		kind: PlanSourceKind,
-		records: readonly T[],
+		walk: (visit: (record: T) => void) => void,
 		idOf: (record: T) => string,
 		candidatesOf: (record: T) => readonly Candidate[],
 		unchanged: (previous: readonly PlanEntry[], record: T) => boolean,
@@ -1170,31 +1275,30 @@ export function createPlanRetainer(): PlanRetainer {
 		const index = indexes.get(kind)!;
 		const walked: string[] = [];
 		const fresh: string[] = [];
-		for (const record of records) {
+		let duplicate = false;
+		walk((record) => {
+			if (duplicate) return;
 			const id = idOf(record);
 			const previous = index.byId.get(id);
 			// A second record with a source id this pass already confirmed: the reference
 			// merges both into one row, which is not a shape this retainer models.
-			if (previous !== undefined && previous.stamp === pass) return null;
+			if (previous !== undefined && previous.stamp === pass) {
+				duplicate = true;
+				return;
+			}
 			walked.push(id);
+			// The cold/fallback path's own work: one comparison per compiled source. A proven
+			// delta must report **zero** of these, which is what makes "the edit did not walk
+			// its neighbours" a falsifiable count rather than a claim.
+			countWork('plan:source-compared');
 			if (previous !== undefined && !rederive && unchanged(previous.entries, record)) {
 				previous.stamp = pass;
-				continue;
+				return;
 			}
-			const measured = candidatesOf(record).map((candidate) => measureCandidate(candidate, measurement));
-			const entries: PlanEntry[] = measured.map((entry) => ({
-				reason: entry.reason,
-				subRef: entry.candidate.subRef,
-				plan: entry.candidate.plan,
-				extent: entry.candidate.extent,
-				placement: entry.placement
-			}));
-			// Within one source every placement sorts by the same interval the fragment
-			// comparator uses, so the maintained order below is the declared order.
-			entries.sort(compareEntries);
-			index.byId.set(id, { entries, membership: sourceMembership(id, measured), stamp: pass });
+			derive(kind, id, candidatesOf(record), measurement);
 			if (previous === undefined) fresh.push(id);
-		}
+		});
+		if (duplicate) return null;
 
 		const removed = index.byId.size - walked.length;
 		if (fresh.length === 0 && removed === 0) return fresh;
@@ -1216,35 +1320,54 @@ export function createPlanRetainer(): PlanRetainer {
 		return false;
 	}
 
+	/**
+	 * Build the evaluation an interactive host receives: exact values, produced only when
+	 * they are asked for.
+	 *
+	 * **Why the output is demand-driven.** The ratified output is the complete fragment,
+	 * membership and bounds set, and a consumer that asks for it must get exactly that —
+	 * `Omega(F)` fragments, each carrying the generation it was compiled at. What the
+	 * editor's live path actually asks for on an accepted edit is much smaller: one
+	 * selected source's fragment, one source's membership row, and (on a click) the
+	 * eligible set. Producing the complete output eagerly charged every edit for what only
+	 * a click or a panel needed. The getters below keep the contract exactly as it is and
+	 * move the cost to whoever reads it, which is the difference between "the output is
+	 * `Omega(F)`" (true, and unavoidable) and "an edit must produce it" (false).
+	 */
 	function assemble(
 		parameters: PlanParameters,
 		context: PlanSourceContext,
 		measurement: MeasurementContext
 	): PlanEvaluation {
-		const fragments: PlanFragment[] = [];
-		const membership: PlanSourceMembership[] = [];
-		const streams: Record<PlanStream, PlanFragment[]> = { cut: [], projected: [], hidden: [], symbol: [] };
-		const bounds = emptyBounds();
-		// The two lookups a selected frame asks for (`planFragmentOf`, `planMembershipOf`)
-		// are filled by the pass that already walks every source, so neither has to build
-		// its index by scanning the finished array on first use.
+		let membershipRows: PlanSourceMembership[] | null = null;
+		let fragmentRows: PlanFragment[] | null = null;
+		let streamRows: PlanStreams | null = null;
+		let unmatched: string[] | null = null;
+		let bounds: LayoutBounds2 | null = null;
+		let boundsReady = false;
 		const firstFragment = new Map<string, PlanFragment>();
-		const membershipBySource = new Map<string, PlanSourceMembership>();
+
 		// Kinds in declared order, ids in ascending order, placements in interval order:
-		// the maintained order *is* the order a whole-population sort would produce, so the
-		// array is walked into existence instead of sorted into shape.
-		for (const kind of PLAN_SOURCE_KINDS) {
-			const index = indexes.get(kind)!;
-			for (const id of index.ids) {
-				const record = index.byId.get(id)!;
-				membership.push(record.membership);
-				membershipBySource.set(id, record.membership);
+		// the maintained order *is* the order a whole-population sort would produce.
+		const eachSource = (visit: (kind: PlanSourceKind, id: string, record: SourceRecord) => void): void => {
+			for (const kind of PLAN_SOURCE_KINDS) {
+				const index = indexes.get(kind)!;
+				for (const id of index.ids) visit(kind, id, index.byId.get(id)!);
+			}
+		};
+
+		const fragmentOf = (sourceId: string): PlanFragment | undefined => {
+			const cached = firstFragment.get(sourceId);
+			if (cached !== undefined) return cached;
+			for (const kind of PLAN_SOURCE_KINDS) {
+				const record = indexes.get(kind)!.byId.get(sourceId);
+				if (record === undefined) continue;
 				for (const entry of record.entries) {
 					const placement = entry.placement;
 					if (placement === null) continue;
 					const fragment = fragmentFor(
 						context.generationId,
-						id,
+						sourceId,
 						kind,
 						entry.subRef,
 						entry.plan,
@@ -1252,19 +1375,15 @@ export function createPlanRetainer(): PlanRetainer {
 						record.membership.reason,
 						placement.elevationMeters
 					);
-					fragments.push(fragment);
-					if (!firstFragment.has(id)) firstFragment.set(id, fragment);
-					streams[placement.stream].push(fragment);
-					accumulateBounds(bounds, entry.plan);
+					firstFragment.set(sourceId, fragment);
+					return fragment;
 				}
+				return undefined;
 			}
-		}
-		fragmentIndexes.set(fragments, firstFragment);
-		membershipIndexes.set(membership, membershipBySource);
-		const unmatchedRevealIds: string[] = [];
-		for (const id of measurement.reveal) if (!existsInAnyKind(id)) unmatchedRevealIds.push(id);
-		unmatchedRevealIds.sort();
-		return {
+			return undefined;
+		};
+
+		const plan: PlanEvaluation = {
 			generationId: context.generationId,
 			datumMeters: context.datumMeters,
 			cutHeightMeters: parameters.cutHeightMeters,
@@ -1274,12 +1393,195 @@ export function createPlanRetainer(): PlanRetainer {
 			target: context.target,
 			sourceKindFilter: parameters.sourceKindFilter === null ? null : [...parameters.sourceKindFilter],
 			reveal: [...parameters.reveal],
-			streams,
-			fragments,
-			membership,
-			unmatchedRevealIds,
-			bounds: finishedBounds(bounds)
+			get streams(): PlanStreams {
+				if (streamRows === null) {
+					const all = plan.fragments;
+					streamRows = {
+						cut: all.filter((fragment) => fragment.ref.stream === 'cut'),
+						projected: all.filter((fragment) => fragment.ref.stream === 'projected'),
+						hidden: all.filter((fragment) => fragment.ref.stream === 'hidden'),
+						symbol: all.filter((fragment) => fragment.ref.stream === 'symbol')
+					};
+				}
+				return streamRows;
+			},
+			get fragments(): readonly PlanFragment[] {
+				if (fragmentRows !== null) return fragmentRows;
+				const rows: PlanFragment[] = [];
+				// Which sources already contributed a row, so a source's **first** placement can
+				// adopt the object `planFragmentOf` may already have handed out, while its other
+				// placements still get their own fragment.
+				const emitted = new Set<string>();
+				eachSource((kind, id, record) => {
+					for (const entry of record.entries) {
+						const placement = entry.placement;
+						if (placement === null) continue;
+						const first = !emitted.has(id);
+						emitted.add(id);
+						const known = first ? firstFragment.get(id) : undefined;
+						const fragment =
+							known ??
+							fragmentFor(
+								context.generationId,
+								id,
+								kind,
+								entry.subRef,
+								entry.plan,
+								placement.stream,
+								record.membership.reason,
+								placement.elevationMeters
+							);
+						if (first) firstFragment.set(id, fragment);
+						rows.push(fragment);
+					}
+				});
+				fragmentRows = rows;
+				fragmentIndexes.set(rows, firstFragment);
+				countWork('plan:output-fragments', rows.length);
+				return rows;
+			},
+			get membership(): readonly PlanSourceMembership[] {
+				if (membershipRows !== null) return membershipRows;
+				const rows: PlanSourceMembership[] = [];
+				const bySource = new Map<string, PlanSourceMembership>();
+				eachSource((_kind, id, record) => {
+					rows.push(record.membership);
+					bySource.set(id, record.membership);
+				});
+				membershipRows = rows;
+				membershipIndexes.set(rows, bySource);
+				countWork('plan:output-membership', rows.length);
+				return rows;
+			},
+			get unmatchedRevealIds(): readonly string[] {
+				if (unmatched === null) {
+					unmatched = [];
+					for (const id of measurement.reveal) if (!existsInAnyKind(id)) unmatched.push(id);
+					unmatched.sort();
+				}
+				return unmatched;
+			},
+			get bounds(): LayoutBounds2 | null {
+				if (!boundsReady) {
+					const state = emptyBounds();
+					eachSource((_kind, _id, record) => {
+						for (const entry of record.entries) if (entry.placement !== null) accumulateBounds(state, entry.plan);
+					});
+					bounds = finishedBounds(state);
+					boundsReady = true;
+				}
+				return bounds;
+			}
 		};
+		PLAN_VIEWS.set(plan, {
+			fragmentOf,
+			membershipOf(sourceId) {
+				for (const kind of PLAN_SOURCE_KINDS) {
+					const record = indexes.get(kind)!.byId.get(sourceId);
+					if (record !== undefined) return record.membership;
+				}
+				return null;
+			}
+		});
+		return plan;
+	}
+
+	/** The compiler's own delta, when it can prove one; `null` means "walk everything". */
+	function deltaOf(compiled: CompiledLayoutGeometry): CompiledSourceDelta | null {
+		const previous = retainedSource === null ? undefined : retainedSource.deref();
+		if (previous === undefined || previous === compiled) return null;
+		return diffCompiledSources(previous, compiled) ?? null;
+	}
+
+	/**
+	 * Apply a proven delta: re-derive exactly the records it names, and nothing else.
+	 *
+	 * Returns `false` when the delta does not fit the retained source set — an id the
+	 * retainer does not host, or an Opening whose first host is not the Wall that changed.
+	 * The caller then takes the complete walk, which re-derives whatever the partial apply
+	 * left behind because `unchanged` compares against the records as they are now.
+	 */
+	function applyDelta(
+		delta: CompiledSourceDelta,
+		measurement: MeasurementContext,
+		datumMeters: number
+	): boolean {
+		if (!openingsAreUnique) return false;
+		const walls = indexes.get('wall')!.byId;
+		const openings = indexes.get('opening')!.byId;
+		const rooms = indexes.get('room-floor')!.byId;
+		const objects = indexes.get('object')!.byId;
+		for (const wall of delta.walls) {
+			if (!walls.has(wall.wallId)) return false;
+			derive('wall', wall.wallId, wallCandidatesOf(wall, datumMeters), measurement);
+			// A Wall record changing does not mean its Openings changed: they are their own
+			// compiled records, and the Plane's derivation reads their own fields. Deriving
+			// every Opening of a changed Wall would make a Wall's height charge its neighbours'
+			// windows for no reason, so the same per-source predicate the fallback uses decides.
+			for (const opening of wall.openings) {
+				const retained = openings.get(opening.openingId);
+				if (retained === undefined) return false;
+				if (!openingUnchanged(retained.entries, opening, datumMeters)) {
+					derive('opening', opening.openingId, [openingCandidate(opening, datumMeters)], measurement);
+				}
+			}
+		}
+		for (const room of delta.rooms) {
+			const retained = rooms.get(room.roomId);
+			if (retained === undefined) return false;
+			// A Room's compiled record embeds the bounds of the Walls around it, so a Wall edit
+			// replaces it without necessarily changing what the Plan reads from it.
+			if (!roomFloorUnchanged(retained.entries, room)) {
+				derive('room-floor', room.roomId, [roomFloorCandidate(room)], measurement);
+			}
+		}
+		if (delta.objects !== null) {
+			// The delta names exactly the object records whose reference the rebuild
+			// replaced, and the compiler proved the unit's ids are unchanged in order, so
+			// every other object's retained derivation still describes that same record.
+			for (const object of delta.objects) {
+				if (!objects.has(object.objectId)) return false;
+				derive('object', object.objectId, [objectCandidate(object)], measurement);
+			}
+		}
+		countWork('plan:source-delta-applied');
+		return true;
+	}
+
+	/** The complete walk: the cold path, and the fallback whenever a delta is not proven. */
+	function reconcileAll(
+		compiled: CompiledLayoutGeometry,
+		measurement: MeasurementContext,
+		rederive: boolean
+	): boolean {
+		const openingList: CompiledOpening[] = [];
+		const openingIds = new Set<string>();
+		openingsAreUnique = true;
+		walkWalls(compiled, (wall) => {
+			for (const opening of wall.openings) {
+				if (openingIds.has(opening.openingId)) {
+					openingsAreUnique = false;
+					continue;
+				}
+				openingIds.add(opening.openingId);
+				openingList.push(opening);
+			}
+		});
+		const walls = reconcileKind<CompiledPhysicalWall>('wall', (visit) => walkWalls(compiled, visit), (wall) => wall.wallId, (wall) => wallCandidatesOf(wall, measurement.datumMeters), (previous, wall) => wallUnchanged(previous, wall, measurement.datumMeters), measurement, rederive);
+		const openingsAdded = walls === null ? null : reconcileKind<CompiledOpening>('opening', (visit) => { for (const opening of openingList) visit(opening); }, (opening) => opening.openingId, (opening) => [openingCandidate(opening, measurement.datumMeters)], (previous, opening) => openingUnchanged(previous, opening, measurement.datumMeters), measurement, rederive);
+		const objectsAdded = openingsAdded === null ? null : reconcileKind<CompiledLayoutObject>('object', (visit) => { for (const object of compiled.objects) visit(object); }, (object) => object.objectId, (object) => [objectCandidate(object)], objectUnchanged, measurement, rederive);
+		const roomsAdded = objectsAdded === null ? null : reconcileKind<CompiledRoom>('room-floor', (visit) => walkRooms(compiled, visit), (room) => room.roomId, (room) => [roomFloorCandidate(room)], roomFloorUnchanged, measurement, rederive);
+		// A source id shared by two kinds is merged into one membership row by the
+		// reference and by nothing else; ask it rather than modelling that here.
+		const addedIds = [...(walls ?? []), ...(openingsAdded ?? []), ...(objectsAdded ?? []), ...(roomsAdded ?? [])];
+		return (
+			roomsAdded !== null &&
+			!addedIds.some((id) => {
+				let kinds = 0;
+				for (const kind of PLAN_SOURCE_KINDS) if (indexes.get(kind)!.byId.has(id)) kinds += 1;
+				return kinds > 1;
+			})
+		);
 	}
 
 	return {
@@ -1313,30 +1615,12 @@ export function createPlanRetainer(): PlanRetainer {
 			pass += 1;
 			const measurement = measurementContext(parameters, context);
 			const rederive = derivation !== nextDerivation;
-			const openings: CompiledOpening[] = [];
-			const openingIds = new Set<string>();
-			for (const wall of compiled.walls) {
-				for (const opening of wall.openings) {
-					if (openingIds.has(opening.openingId)) continue;
-					openingIds.add(opening.openingId);
-					openings.push(opening);
-				}
-			}
-			const walls = reconcileKind('wall', compiled.walls, (wall) => wall.wallId, (wall) => wallCandidatesOf(wall, context.datumMeters), (previous, wall) => wallUnchanged(previous, wall, context.datumMeters), measurement, rederive);
-			const openingsAdded = walls === null ? null : reconcileKind('opening', openings, (opening) => opening.openingId, (opening) => [openingCandidate(opening, context.datumMeters)], (previous, opening) => openingUnchanged(previous, opening, context.datumMeters), measurement, rederive);
-			const objectsAdded = openingsAdded === null ? null : reconcileKind('object', compiled.objects, (object) => object.objectId, (object) => [objectCandidate(object)], objectUnchanged, measurement, rederive);
-			const roomsAdded = objectsAdded === null ? null : reconcileKind('room-floor', compiled.rooms, (room) => room.roomId, (room) => [roomFloorCandidate(room)], roomFloorUnchanged, measurement, rederive);
-			// A source id shared by two kinds is merged into one membership row by the
-			// reference and by nothing else; ask it rather than modelling that here.
-			const addedIds = [...(walls ?? []), ...(openingsAdded ?? []), ...(objectsAdded ?? []), ...(roomsAdded ?? [])];
-			const shared =
-				roomsAdded === null ||
-				addedIds.some((id) => {
-					let kinds = 0;
-					for (const kind of PLAN_SOURCE_KINDS) if (indexes.get(kind)!.byId.has(id)) kinds += 1;
-					return kinds > 1;
-				});
-			if (shared) {
+			// Ask the compiler's persistent roots first. Their answer is a difference between
+			// two proven roots — not a caller's claim about which entities are dirty — and
+			// `null` means "cannot prove it", which is the complete walk below.
+			const delta = rederive ? null : deltaOf(compiled);
+			const applied = delta !== null && applyDelta(delta, measurement, measurement.datumMeters);
+			if (!applied && !reconcileAll(compiled, measurement, rederive)) {
 				clear();
 				return evaluateLayoutPlan(compiled, parameters, context);
 			}

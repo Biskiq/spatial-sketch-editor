@@ -1974,6 +1974,23 @@
 			.filter((group) => group.items.length > 0);
 	});
 
+	/**
+	 * The collapsed Index header's one-line "Selected: …".
+	 *
+	 * Resolved from the membership row rather than from the Index's own item list:
+	 * the panel is `hidden` when closed, so its body still evaluates, and letting it
+	 * search the complete located-subject list made the whole list a dependency of a
+	 * closed panel on every Plan evaluation. `planMembershipOf` is indexed, so this is
+	 * the same string for `O(1)`.
+	 */
+	const selectedSubjectLabel = $derived.by((): string | null => {
+		const plan = planView;
+		const selected = selection;
+		if (plan === null || selected === null) return null;
+		const row = planMembershipOf(plan, selected.reference.subject.id);
+		return row === null ? null : sourceLabel(row.sourceId, row.sourceKind);
+	});
+
 	/** Plan membership is a Layout fact; another domain's subject has none to report. */
 	const selectedMembership = $derived.by((): PlanMembershipReason | null => {
 		const plan = planView;
@@ -2176,6 +2193,7 @@
 			groups={indexGroups}
 			contributions={contributionGroups}
 			selectionId={selection?.reference.subject.id ?? null}
+			selectedLabel={selectedSubjectLabel}
 			{query}
 			onQuery={(next) => (query = next)}
 			onSelect={selectSource}
