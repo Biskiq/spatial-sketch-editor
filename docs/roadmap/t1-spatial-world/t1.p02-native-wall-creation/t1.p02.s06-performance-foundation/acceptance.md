@@ -430,7 +430,7 @@ one mesh per Wall, deferred). The commit envelope is still whole-document work: 
 commit canonicalises 8.85 MB and reads 6.06 M generated snapshot properties, so F4 grows with
 document size (93.61 ms p95 at L against 25.51 at M). F3's L drag logged 3 long tasks across three
 runs (91 ms longest), so the per-drag Target is not demonstrated; L frame time is Target, and its p99
-33.3 ms is inside it. F2 M cold has only 4.3 % headroom to the 600 ms pass band (29 % to the 800 ms
+33.3 ms is inside it. F2 M cold is only 34.8 ms below the 600 ms pass band (29 % below the 800 ms
 hard budget) and is the first row a different build or power state could move out of the milestone
 band without failing the contract. None of these is a hard-gate breach, and none was addressed by changing product code.
 
