@@ -37,12 +37,17 @@ import { expect, test } from '@playwright/test';
 import { collectMeasuredRuns, newMeasuredSession, type MeasuredSession } from '../lib/browser';
 import {
 	DEVICE_SCALE_FACTOR,
+	DIAGNOSTIC,
+	DRAG_SAMPLES,
 	INPUT_SAMPLES,
 	NETWORK,
 	RUNS,
+	UNDO_REDO_CYCLES,
 	VIEWPORT,
 	WARMUP_RUNS,
-	passLimitations
+	cacheStatesFor,
+	passLimitations,
+	runsFor
 } from '../lib/config';
 import {
 	acceptedResultCount,
@@ -97,9 +102,6 @@ import type { WorkloadId } from '../lib/workloads/registry';
 const DRAG_DISTANCE = 6;
 const DELAYED_FRAME_MS = 500;
 const DELAYED_RUNS = 3;
-const UNDO_REDO_CYCLES = smokeOr(20);
-/** In-session samples per run at the loaded peak state (A.4). */
-const DRAG_SAMPLES = smokeOr(Number(process.env.PERF_DRAG_SAMPLES ?? 5));
 const DRAG_INPUTS = smokeOr(INPUT_SAMPLES);
 const CACHE_STATES = ['cold', 'warm', 'repeat-use'] as const;
 /** D5: the grid-XL cache states this pass runs (every state unless the bench names some). */
@@ -127,6 +129,8 @@ type DragRun = {
 	/** Commit and precision completions per measured (not cache-served) sample. */
 	readonly commitCompletions: number[];
 	readonly precisionCompletions: number[];
+	/** Drag samples that ran a compile (the denominator for the per-frame compile rate). */
+	readonly dragCompiled: number;
 	readonly cacheServed: number;
 	readonly setupMs: number;
 	readonly wallMs: number;
@@ -162,7 +166,7 @@ async function runDrag(
 ): Promise<DragRun> {
 	const { page } = session;
 	const started = performance.now();
-	const samples = options.samples ?? DRAG_SAMPLES;
+	const samples = options.samples ?? smokeOr(DRAG_SAMPLES);
 	const inputs = options.inputs ?? DRAG_INPUTS;
 	const projectId = uniqueProjectId(`f3-${tier}`);
 	// Setup: the cached canonical JSON, admitted once; the session stays at peak.
@@ -190,6 +194,7 @@ async function runDrag(
 	const commitCompletions: number[] = [];
 	const precisionCompletions: number[] = [];
 	let cacheServed = 0;
+	let dragCompiled = 0;
 	let dragRender: Record<string, RenderCounters> = {};
 	for (let sample = 0; sample < samples; sample++) {
 		// F3: a distinct drag per sample, reset by Undo.
@@ -212,6 +217,7 @@ async function runDrag(
 		if (served) cacheServed += 1;
 		else {
 			// Render counts follow the timing windows: the last measured sample, never a cache-served one.
+			dragCompiled += 1;
 			dragRender = sampleRender;
 			addWork(dragWork, dragWindow);
 			if (commit !== null) commitCompletions.push(commit);
@@ -243,8 +249,9 @@ async function runDrag(
 	const f8Start = await page.evaluate(() => performance.now());
 	const undoBefore = await readWork(page);
 	const beforeUndoRedo = await acceptedResultCount(page);
-	await undoRedoCycles(page, UNDO_REDO_CYCLES);
-	expect(await acceptedResultCount(page)).toBeGreaterThanOrEqual(beforeUndoRedo + UNDO_REDO_CYCLES * 2 - 2);
+	const undoCycles = smokeOr(UNDO_REDO_CYCLES);
+	await undoRedoCycles(page, undoCycles);
+	expect(await acceptedResultCount(page)).toBeGreaterThanOrEqual(beforeUndoRedo + undoCycles * 2 - 2);
 	addWork(undoRedoWork, workDelta(undoBefore, await readWork(page)));
 	const heapAfterSequence = await readHeapAfterGc(session.cdp);
 
@@ -282,6 +289,7 @@ async function runDrag(
 		redoCompletion: redoCompletions,
 		commitCompletions,
 		precisionCompletions,
+		dragCompiled,
 		cacheServed,
 		setupMs,
 		wallMs: performance.now() - started,
@@ -317,7 +325,7 @@ test.describe('F3/F4/F8 methodology', () => {
 			const hardBudgets = HARD_BUDGETS_MS[tier];
 			const runStates = dragCacheStates(tier);
 			let crashed = false;
-			for (const cacheState of CACHE_STATES) {
+			for (const cacheState of cacheStatesFor('f3')) {
 				if (crashed || !runStates.includes(cacheState)) {
 					const reason = crashed
 						? 'not attempted: the renderer crashed earlier at this tier (owner D4 bound)'
@@ -333,17 +341,24 @@ test.describe('F3/F4/F8 methodology', () => {
 						{
 							cacheState,
 							warmup: smokeOr(WARMUP_RUNS, 0),
-							runs: smokeOr(RUNS),
+							runs: smokeOr(runsFor('f3', cacheState)),
 							afterRun: cacheState === 'repeat-use' ? closeToHub : undefined,
 							earlyStop:
 								earlyStopEnabled() && hardBudgets !== undefined
 									? (completed: readonly DragRun[]) => {
-											const commit = completed.flatMap((run) => run.commitCompletions);
-											const precision = completed.flatMap((run) => run.precisionCompletions);
-											const undo = completed.flatMap((run) => run.undoCompletion);
-											const latencies = completed.flatMap((run) => run.latencies);
+											// One value per measured run: the rule needs three runs, never
+											// several samples of one run. F4 uses the run's fastest commit or
+											// precision completion and F8 its fastest command, so a decision
+											// still means every observation is beyond the margin; F3 uses
+											// the run's p95 (every run's p95 above the margin implies the
+											// pooled p95 is too).
+											const runMinimum = (values: readonly number[]): number =>
+												values.length === 0 ? Number.NaN : Math.min(...values);
+											const commit = completed.map((run) => runMinimum([...run.commitCompletions, ...run.precisionCompletions]));
+											const undo = completed.map((run) => runMinimum(run.undoCompletion));
+											const latencies = completed.map((run) => summarize(run.latencies).p95);
 											return (
-												decisiveHardFailure(`F4-${tier}-${cacheState}`, [...commit, ...precision], hardBudgets.F4) ??
+												decisiveHardFailure(`F4-${tier}-${cacheState}`, commit, hardBudgets.F4) ??
 												decisiveHardFailure(`F8-${tier}-${cacheState}`, undo, hardBudgets.F8) ??
 												decisiveHardFailure(`F3-${tier}-${cacheState}`, latencies, hardBudgets.F3)
 											);
@@ -379,13 +394,14 @@ test.describe('F3/F4/F8 methodology', () => {
 				const row: ResultRow = {
 					id: `F3-${tier}-${cacheState}`,
 					flow: flowName,
-					workload: `${tierWorkloadLabel(tier)}; ${DRAG_SAMPLES} samples × ${DRAG_INPUTS} pointer inputs per run (handler-mark input clock), distinct exact lengths, ${UNDO_REDO_CYCLES} Undo/Redo cycles`,
+					workload: `${tierWorkloadLabel(tier)}; ${smokeOr(DRAG_SAMPLES)} samples × ${DRAG_INPUTS} pointer inputs per run (handler-mark input clock), distinct exact lengths, ${smokeOr(UNDO_REDO_CYCLES)} Undo/Redo cycles`,
 					cacheState,
 					network: NETWORK,
 					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
 					cpuRate: 1,
 					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
 					metrics: {
+						measuredRuns: runs.length,
 						dispatched: runs.reduce((total, run) => total + run.dispatched, 0),
 						rows: runs.reduce((total, run) => total + run.rows, 0),
 						presented: runs.reduce((total, run) => total + run.presented, 0),
@@ -405,12 +421,19 @@ test.describe('F3/F4/F8 methodology', () => {
 						// synchronously, so this checks frame-aligned input coalescing.
 						'drag:compilesPerPresentedFrame': (() => {
 							const frames = last?.dragRender.stage?.frames ?? 0;
-							return last === undefined || frames === 0 ? null : (last.dragWork.counts.compile ?? 0) / Math.max(1, DRAG_SAMPLES - last.cacheServed) / frames;
+							const lastSamples = Math.max(1, last?.dragCompiled ?? 1);
+							return last === undefined || frames === 0 ? null : (last.dragWork.counts.compile ?? 0) / lastSamples / frames;
 						})(),
 						...heapMetrics('open', last?.heapAfterOpen),
 						...heapMetrics('sequence', last?.heapAfterSequence),
 						...ownershipMetrics('commit', last?.ownership ?? []),
-						...(earlyStop === null ? {} : { earlyStopSamples: earlyStop.samples, earlyStopMinimumMs: earlyStop.statisticMs })
+						...(earlyStop === null
+							? {}
+							: {
+									earlyStop: 'demonstrated failure (not a pass)',
+									earlyStopSamples: earlyStop.samples,
+									earlyStopMinimumMs: earlyStop.statisticMs
+								})
 					},
 					stats: {
 						heapAfterOpenMiB: summarize(runs.map((run) => run.heapAfterOpen.heapMiB)),
@@ -443,6 +466,9 @@ test.describe('F3/F4/F8 methodology', () => {
 
 	test('a deliberately delayed preview shows latency, not a dropped sample', async ({ browser }, testInfo) => {
 		// One proof per pass, in the grid-S tier; it is a correctness proof, not a tier row.
+		// The diagnostic profile does not rerun it: Bench 1 proved the unchanged
+		// correlation path, and the pre-pass is deliberately short.
+		test.skip(DIAGNOSTIC, 'diagnostic profile: the delayed-preview proof is Bench 1 evidence and does not rerun');
 		test.skip(!selectedTiers().includes('grid-S'), 'the delay proof runs with the grid-S tier');
 		const report = startReport(`drag-delay-proof-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const limitations = passLimitations();

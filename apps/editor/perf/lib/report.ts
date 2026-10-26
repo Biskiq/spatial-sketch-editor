@@ -14,6 +14,9 @@ import { cpus, totalmem, platform, release } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { PROFILE, REDUCED_PASS } from './config';
+import { basePlan } from './profile';
+import type { PerfProfile, SamplePlan } from './profile';
 import type { Stats } from './stats';
 import { formatStats } from './stats';
 
@@ -35,6 +38,10 @@ export type RunReport = {
 	readonly name: string;
 	readonly startedAt: string;
 	readonly machine: Readonly<Record<string, unknown>>;
+	/** `diagnostic` reports are never acceptance evidence, whatever their rows say. */
+	readonly profile: PerfProfile;
+	readonly acceptanceEvidence: boolean;
+	readonly samplePlan: SamplePlan;
 	readonly rows: ResultRow[];
 };
 
@@ -69,7 +76,17 @@ export function machineFacts(): Record<string, unknown> {
 }
 
 export function startReport(name: string): RunReport {
-	return { name, startedAt: new Date().toISOString(), machine: machineFacts(), rows: [] };
+	return {
+		name,
+		startedAt: new Date().toISOString(),
+		machine: machineFacts(),
+		profile: PROFILE,
+		// A diagnostic row is never acceptance evidence, and neither is a smoke or
+		// an env-reduced acceptance-profile pass. The rows carry their own label.
+		acceptanceEvidence: PROFILE === 'acceptance' && !REDUCED_PASS && process.env.PERF_SMOKE !== '1',
+		samplePlan: basePlan(PROFILE),
+		rows: []
+	};
 }
 
 export function fileReport(report: RunReport): string {
@@ -85,7 +102,8 @@ export function fileReport(report: RunReport): string {
 }
 
 export function formatRow(row: ResultRow): string {
-	const parts = [`${row.id} [${row.flow}${row.workload === undefined ? '' : ` · ${row.workload}`}]`];
+	const prefix = PROFILE === 'diagnostic' ? '[diagnostic, not evidence] ' : '';
+	const parts = [`${prefix}${row.id} [${row.flow}${row.workload === undefined ? '' : ` · ${row.workload}`}]`];
 	if (row.cacheState !== undefined) parts.push(`cache=${row.cacheState}`);
 	if (row.network !== undefined) parts.push(`net=${row.network}`);
 	parts.push(`browser=${row.browser}`, `cpu=${row.cpuRate}x`);

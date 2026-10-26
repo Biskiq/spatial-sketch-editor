@@ -63,11 +63,20 @@ npm run perf:bench -- --smoke              # smoke check of every flow at every 
 npm run perf:bench -- --label bench-1 --xl-drag-cache warm   # Bench 1 on the M2 (D5: grid-XL F3/F4/F8 warm only)
 ```
 
-**Bench 2/3 strategy (2026-10-26).** The retained Bench 1 results show that setup and the ~450
-opens are only ~10–15 min of a 3 h 36 min pass; the cost is the within-run sample plan. A proposed
-lean plan (10 runs, 60 inputs and all three cache states preserved) and a 35–45 min diagnostic
-pass are in the [S06 review handoff](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#bench-23-strategy-consolidation-ceiling-and-a-diagnostic-pass-2026-10-26).
-Neither is active and no harness default changed.
+**Bench 2 is a diagnostic pass; implementation is valid (owner decision, 2026-10-26).** The retained Bench 1
+results show that setup and the ~450 opens are only ~10–15 min of a 3 h 36 min pass; the cost is the
+within-run sample plan. `PERF_PROFILE=diagnostic` (or `perf:bench --profile diagnostic`) runs a
+reduced **non-acceptance** pre-pass: 3 measured runs per row, one cold and one repeat-use F3/F4/F8
+run, 2 in-session drag/precision samples, 5 Undo/Redo cycles, F2 cold+warm, F7 warm only, F13 at
+1/2/1 cycles with 10 edits, traces at grid-L only and no A.6 or delayed-preview proof. It keeps the
+real chooser and interactions, 60 pointer inputs per drag, every hard tier and the complete E5
+correctness matrix. Every row and report is labelled `diagnostic, not acceptance evidence`; the
+sample plan, measured run counts and incomplete gates are recorded. Bench 2 counts as the second
+authorized pass but **cannot discharge a statistical acceptance gate**; the formal, ratified method
+remains Bench 3. The lean formal plan is **not ratified** and is not represented here. The
+[owner decision package and estimates](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#bench-23-strategy-implemented-diagnostic-bench-2-2026-10-26)
+record the omissions, the 40–50 min expectation and the pre-flight commands. No acceptance default
+changed.
 
 **Workloads (A.1, B).** `perf/generate-workloads.ts` builds every workload once
 through the public layout-core planners, the canonical compiler and, for the
@@ -276,6 +285,7 @@ coarse and the report says so.
 
 | Variable | Meaning |
 | --- | --- |
+| `PERF_PROFILE` | `acceptance` (default) or `diagnostic`; diagnostic rows are never acceptance evidence, and `--profile` on `perf:bench` wins over this variable |
 | `PERF_BASE_URL` | reuse an already-running preview instead of building one |
 | `PERF_PORT` | preview port (default `4173`) |
 | `PERF_RUNS` | measured runs per flow × workload × cache state (default 10) |
@@ -289,7 +299,7 @@ coarse and the report says so.
 | `PERF_COOLDOWN_SECONDS` | recorded cool-down before the M and S tiers (default 180; 0 in smoke) |
 | `PERF_LOAD_THRESHOLD` (+ `_REASON`) | contamination threshold on the 1-minute load average (default 4.0; a change needs a recorded reason) |
 | `PERF_SWEEP_LATENCY=0` / `--no-sweep-latency` | drop the report-only sweep latency rows (F3/F4/F8 on the focus Wall and F7, at museum ×1 and sweep-H10) for one pass; they run by default |
-| `PERF_EARLY_STOP=1` / `--early-stop` | opt-in decisive hard-budget stop: once at least 3 measured runs of a **hard** row all exceed the budget by more than 25 %, the remaining runs are skipped. The row is recorded as a demonstrated failure with a partial sample count and the rule, never as a pass. Target, report-only and smoke rows never stop |
+| `PERF_EARLY_STOP=1` / `--early-stop` | opt-in decisive hard-budget stop: once at least 3 measured runs of a **hard** row all exceed the budget by more than 25 %, the remaining runs are skipped. The row is recorded as a demonstrated failure with a partial run count and the rule, never as a pass. Target, report-only and smoke rows never stop |
 | `PERF_NETWORK` | `N0`, `N1` (default) or `N2` |
 | `PERF_RESULTS_DIR` | raw result directory (default `$TMPDIR/biskiq-perf-results`) |
 | `PERF_POWER_STATE` | declared power state, recorded with each result |
@@ -301,8 +311,10 @@ N1 configures 40 ms latency, 20 Mbit/s download and 5 Mbit/s upload. CDP through
 arguments use bytes/s (2,500,000 / 625,000). N2 configures 150 ms, 1.6 Mbit/s down
 and 750 kbit/s up; N0 applies no throttling.
 
-A reduced pass (`PERF_RUNS<10` or `PERF_SAMPLES<60`) is labelled a pre-flight
-pass in every row and is never acceptance evidence.
+A reduced pass (`PERF_RUNS<10`, `PERF_WARMUP<1`, `PERF_SAMPLES<60`, fewer drag/precision samples,
+fewer Undo/Redo cycles, fewer F13 edits or F13 cold/repeat-use cycles) is labelled a pre-flight pass
+in every row and is never acceptance evidence. The diagnostic profile is always non-acceptance
+regardless of these variables.
 
 **Setup reads are bounded (harness only).** Counting accepted results, reading a
 mark or a result record and reducing the orbit's frame window happen in the page,

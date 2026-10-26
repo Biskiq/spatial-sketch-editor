@@ -12,7 +12,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { newMeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT } from '../lib/config';
+import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT, passLimitations } from '../lib/config';
 import {
 	acceptedResultCount,
 	commitPrecisionLength,
@@ -111,7 +111,7 @@ test.describe('per-stage traces', () => {
 							),
 							...window.stages
 						},
-						limitations: ['tracing perturbs the workload: attribution only', ...(SMOKE ? [SMOKE_LABEL] : [])]
+						limitations: ['tracing perturbs the workload: attribution only', ...passLimitations(), ...(SMOKE ? [SMOKE_LABEL] : [])]
 					};
 					report.rows.push(row);
 					console.log(formatRow(row));

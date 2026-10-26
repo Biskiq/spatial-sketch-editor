@@ -37,7 +37,7 @@
 import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
+import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT, WARMUP_RUNS, cacheStatesFor, passLimitations, runsFor } from '../lib/config';
 import { closeToHub, fitStage, frameWindow, gotoCreateIntent, openSourceJson, scriptedPanZoom, setStageReading, uniqueProjectId, waitForStageSettled } from '../lib/flow';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
@@ -246,7 +246,7 @@ function viewMetrics(name: string, window: ViewWindow): Record<string, number | 
 test.describe('F7 orbit', () => {
 	test.setTimeout(3_000_000);
 	for (const tier of selectedTiers()) {
-		test(`scripted orbit and dolly at ${tier}, cold, warm and repeat-use`, async ({ browser }, testInfo) => {
+		test(`scripted orbit and dolly at ${tier}, ${cacheStatesFor('f7').join(', ')}`, async ({ browser }, testInfo) => {
 			const report = startReport(`f7-orbit-${tier}-${testInfo.project.name.replace(/\s+/g, '-')}`);
 			const availability = tierAvailability(tier);
 			if (!availability.available) {
@@ -254,9 +254,14 @@ test.describe('F7 orbit', () => {
 				fileReport(report);
 				return;
 			}
-			const runCount = smokeOr(RUNS);
+			const runCount = smokeOr(runsFor('f7'));
+			const states = cacheStatesFor('f7');
 			let crashed = false;
 			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
+				if (!states.includes(cacheState)) {
+					report.rows.push(unrunRow(`F7-orbit-${tier}-${cacheState}`, 'F7 orbit/navigation', tierWorkloadLabel(tier), testInfo.project.name, 'not run in the diagnostic profile: F7 keeps one warm run; the frame row needs no cold/repeat-use distribution'));
+					continue;
+				}
 				if (crashed) {
 					report.rows.push(unrunRow(`F7-orbit-${tier}-${cacheState}`, 'F7 orbit/navigation', tierWorkloadLabel(tier), testInfo.project.name, 'not attempted: the renderer crashed earlier at this tier (owner D4 bound)'));
 					continue;
@@ -304,6 +309,7 @@ test.describe('F7 orbit', () => {
 					cpuRate: 1,
 					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
 					metrics: {
+						measuredRuns: runs.length,
 						frames: intervals.length,
 						framesPerRunMin: Math.min(...runs.map((run) => run.frames)),
 						durationMsMedian: summarize(runs.map((run) => run.durationMs)).median,

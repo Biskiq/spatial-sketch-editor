@@ -69,14 +69,16 @@ Its visibility, residency, sharing, detail and scheduling moves are owner propos
   [performance contract](../../../../reference/components/performance.md#reference-baseline).
 - **Method:** load the full project JSON and measure from the peak. Setup time is not
   measurement time.
-- **Benchmark budget: at most three full passes, all run by the owner.** The full browser benchmark
-  is the costly step, so agents never run it as an iteration loop. The sequence is fixed:
+- **Benchmark budget: at most three owner-run passes (Bench 1 formal, Bench 2 diagnostic, Bench 3
+  formal), all run by the owner.** The browser benchmark is the costly step, so agents never run it
+  as an iteration loop. The sequence is fixed:
   1. The agent builds the method and workloads and hands them over.
   2. **Bench 1** (owner): the initial baseline.
   3. The agent optimizes, checking by hand calculation, then hands over.
-  4. **Bench 2** (owner): rerun.
-  5. The agent fixes what Bench 2 shows, again checking by hand calculation.
-  6. **Bench 3** (owner): the final acceptance bench.
+  4. **Bench 2** (owner): diagnostic, not acceptance evidence; it guides the fix and cannot pass a
+     hard row.
+  5. The agent fixes what the diagnostic Bench 2 shows, again checking by hand calculation.
+  6. **Bench 3** (owner): the formal final acceptance bench.
 
   A fourth pass needs an explicit owner ruling. See the
   [benchmark sequence](#benchmark-sequence-owner-run-at-most-three-passes).
@@ -643,15 +645,15 @@ For every candidate actually probed, record:
 - whether it is synchronous, pure and Node/Vitest-runnable;
 - its determinism;
 - its expected win on the S/M/L workloads against the current kernel, by hand calculation (see
-  the [benchmark sequence](#benchmark-sequence-owner-run-at-most-three-passes)), confirmed only by
-  Bench 2 and rechecked by Bench 3;
+  the [benchmark sequence](#benchmark-sequence-owner-run-at-most-three-passes)), indicated by the
+  diagnostic Bench 2 and formally confirmed by Bench 3;
 - its correctness differential against an exact oracle.
 
 Adopt a package only with:
 
-- a win confirmed by Bench 2. Only a candidate confirmed by Bench 2 may enter the Bench 3 revision.
-  A candidate that loses in Bench 3 goes to the owner, never silently out of the accepted
-  revision;
+- a win the diagnostic Bench 2 does not refute. Only such a candidate may enter the Bench 3
+  revision; formal confirmation is Bench 3's. A candidate that loses in Bench 3 goes to the owner,
+  never silently out of the accepted revision;
 - a passing differential;
 - a qualifying license;
 - placement inside the one compiler or its runtime-safe consumers.
@@ -705,23 +707,34 @@ run a full benchmark pass; between passes they work from Bench 1's data.
    oracles run as usual, since they are not benchmarks. Rerun E5 on the optimized revision, and
    classify every landed change under I6. Hand over with a predicted result per row and per
    hypothesis, including each counter's predicted E5 slope.
-4. **Bench 2: rerun (owner).** The same pass and workloads, on the optimized revision. The agent
-   records it next to the predictions and explains every prediction miss beyond noise.
+4. **Bench 2: diagnostic (owner).** A reduced, real-interaction pass on the optimized revision. It
+   is **not acceptance evidence** and cannot discharge a hard-row gate; its medians/maxima guide the
+   next step. It runs all hard tiers, the full E5 correctness matrix and the real chooser/drag/commit/
+   lifecycle paths, with 3 measured runs per row and the profile's reduced within-run samples. The
+   agent records it next to the predictions and explains every prediction miss beyond noise.
    **Falsification rule:** a hypothesis is refuted for this slice when the target stage's measured
-   time does not fall within the stated margin of its prediction. This applies even when its count
-   oracle dropped as predicted, because the cost model is then wrong; the agent re-attributes from
-   the traces. Before any bench, an E5 slope above its I1 class bound triggers attribution. A
-   hypothesis that claims locality is refuted only when the attributed excess lies in its own work
-   class, for example evaluations of entities outside the affected set.
-5. **Fix (agent).** Resolve what Bench 2 shows: regressions, mispredictions and remaining hard
-   misses. Keep or remove the H1 experiment on its Bench 2 evidence (D.3). Algorithm fixes may continue, but no new library candidate
-   enters after Bench 2 (E). Check by hand calculation again and hand over. If a hard miss
-   cannot be resolved without changing “preview equals planner output” or a budget, report it to the
-   owner instead of fixing it.
-6. **Bench 3: final acceptance (owner).** The same pass on the final revision. Its rows are the
-   slice's acceptance measurements. The agent records them, writes the tier proposal (F) and
-   completes the acceptance record. A hard miss in Bench 3 goes to the owner: a fourth pass, a fix
-   or a ruling. It is never re-run silently.
+   time does not fall within the stated margin of its prediction, or when the diagnostic
+   demonstrates a hard-budget failure. This applies even when its count oracle dropped as predicted,
+   because the cost model is then wrong; the agent re-attributes from the traces. A diagnostic does
+   not confirm a pass; only Bench 3's formal rows do. Before any bench, an E5 slope above its I1
+   class bound triggers attribution. A hypothesis that claims locality is refuted only when the
+   attributed excess lies in its own work class, for example evaluations of entities outside the
+   affected set.
+5. **Fix (agent).** Resolve what the diagnostic Bench 2 shows: regressions, mispredictions and
+   remaining hard misses. Keep or remove the H1 experiment on that evidence (D.3). Algorithm fixes
+   may continue, but no new library candidate enters after Bench 2 (E). Check by hand calculation
+   again and hand over. If a hard miss cannot be resolved without changing “preview equals planner
+   output” or a budget, report it to the owner instead of fixing it.
+6. **Bench 3: final acceptance (owner).** The formal pass on the final revision, at the ratified
+   method. Its rows are the slice's acceptance measurements. The agent records them, writes the tier
+   proposal (F) and completes the acceptance record. A hard miss in Bench 3 goes to the owner: a
+   fourth pass, a fix or a ruling. It is never re-run silently.
+
+**2026-10-26 amendment (owner).** Bench 2 is the second authorized pass but is diagnostic-only. It
+may guide optimization and demonstrate a failure; it cannot pass a hard row, supply a formal p95 or
+replace Bench 3. The Bench 3 lean sample plan is **not ratified**: in particular, reducing F8 to 5
+Undo/Redo cycles or F13 to 10 edits per cycle weakens deep-stack and cumulative leak coverage and
+needs a separate proof before it can be a formal method.
 
 **Hand calculation.** For each flow and stage, the predicted time is Bench 1's measured stage time
 scaled by the change in deterministic operation counts. The counts come from the D.5 oracles (for
@@ -729,7 +742,8 @@ example compiles, admissions, Walls rebuilt, draw calls or pairwise tests), or f
 change with the workload sizes put in. The stages are then summed per flow and compared with the
 budget, with the margin and every assumption stated. A library candidate may add one bounded Node
 kernel probe of seconds, never the browser harness. It is disposable and labelled “estimate, not
-evidence”. A prediction is never acceptance evidence; only Bench 2 and Bench 3 confirm a win.
+evidence”. A prediction is never acceptance evidence; the diagnostic Bench 2 can refute or guide,
+and only the formal Bench 3 confirms a win.
 
 Use the work-checkpoint skill at each handover, since the owner's runs separate the agent sessions.
 
@@ -743,7 +757,7 @@ Use the work-checkpoint skill at each handover, since the owner's runs separate 
 | Characterization | From Bench 1: per-stage attribution and scaling at S/M/L for F2/F3/F4/F7/F8/F13; superlinear stages named; XL and realistic-L load reported; render counters recorded in every bench |
 | Censuses | E1–E5 recorded with fixture digests and labelled “census, not timing” or “count, not timing”; E1's per-class verdict on H1's premise recorded before Bench 1; E2–E4 attached as evidence to their owner proposals (F) |
 | Irrelevance and accounting | E5 slopes for every counter on the trusted base and the Bench 3 revision; sweep latency rows from each bench (unless the owner dropped them); each stage's R at variant H ×10 with its share of the flow; every landed change classified under I6, with moved and deferred work reported at its total; variant H's visual non-influence proven by framebuffer equality; no stage R presented as an application-level speedup |
-| Algorithm | Each optimization has an equal-output heavy differential and a count oracle; a recorded hand-calculated prediction; Bench 1 versus Bench 2/3 on the same workload and environment; no format change; boundary and visitor-isolation tests green |
+| Algorithm | Each optimization has an equal-output heavy differential and a count oracle; a recorded hand-calculated prediction; Bench 1 versus the diagnostic Bench 2 and the formal Bench 3 on the same workload and environment; diagnostic evidence guides but never passes a gate; no format change; boundary and visitor-isolation tests green |
 | Scaling invariants | For every hypothesis S06 lands, its I1–I3 count oracles are green at S, M, L and XL, each I1 work class against its own bound, and its I5 differential is green. H5's guarantee is limited to unchanged-unit reuse. H2 keeps its D.1 inventory, with exact revisions and verdicts. H9 keeps its full trigger contract and framebuffer differentials. For every hypothesis it does not land, the measured violation and its 10× / 100× hand calculation are recorded. H6–H8 and entity-level H5 are proposed to the owner (F), never implemented silently |
 | Budgets | From Bench 3: hard S/M rows for F2, F3, F4, F7, F8, F13 and per-edit evaluation; L hard rows (F3, F4, F8, F13); a hard miss is resolved before Bench 3 or escalated to the owner per D.3; target rows dispositioned |
 | Libraries | Candidate matrix with license evidence; adopted packages recorded by package, version and license |

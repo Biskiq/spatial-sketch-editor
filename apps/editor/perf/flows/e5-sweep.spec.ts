@@ -28,7 +28,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { newMeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT } from '../lib/config';
+import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT, passLimitations } from '../lib/config';
 import { acceptedResultCount, commitPrecisionLength, gotoCreateIntent, openSourceJson, uniqueProjectId, waitForAcceptedResult, waitForStageSettled } from '../lib/flow';
 import { fileReport, startReport } from '../lib/report';
 import {
@@ -210,7 +210,7 @@ test.describe('E5 browser counts and visual non-influence', () => {
 						fixedViewHashBefore: before.hash,
 						fixedViewHashAfter: after.hash
 					},
-					limitations: [COUNT_LABEL, ...(SMOKE ? [SMOKE_LABEL] : []), 'framebuffer read back from a clone of the Stage camera posed at the fixed View; stage time is never cited']
+					limitations: [COUNT_LABEL, ...passLimitations(), ...(SMOKE ? [SMOKE_LABEL] : []), 'framebuffer read back from a clone of the Stage camera posed at the fixed View; stage time is never cited']
 				});
 			} catch (error) {
 				// Only the recorded variants are bounded; the museum and H carry the proof.
@@ -229,7 +229,7 @@ test.describe('E5 browser counts and visual non-influence', () => {
 			verdicts[`${entry.id}:afterEditDifferingPixels`] = differingPixels(base.after, at.after);
 		}
 		if (base !== undefined) verdicts['museum:editChangedPixels'] = differingPixels(base.before, base.after);
-		report.rows.push({ id: 'E5-visual-non-influence', flow: 'E5 framebuffer equality', browser: testInfo.project.name, cpuRate: 1, viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`, metrics: verdicts, limitations: [COUNT_LABEL, 'variant H must be pixel-identical to ×1 at the fixed View; variants D and C are recorded, not asserted'] });
+		report.rows.push({ id: 'E5-visual-non-influence', flow: 'E5 framebuffer equality', browser: testInfo.project.name, cpuRate: 1, viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`, metrics: verdicts, limitations: [COUNT_LABEL, ...passLimitations(), 'variant H must be pixel-identical to ×1 at the fixed View; variants D and C are recorded, not asserted'] });
 		console.log(`E5 visual non-influence: ${JSON.stringify(verdicts)}`);
 		console.log(`raw results: ${fileReport(report)}`);
 		// The proof: the edit is visible at the fixed View (the check can see a

@@ -11,7 +11,7 @@
  * - the row must be a **hard** budget (Target and report-only rows never stop);
  * - at least {@link EARLY_STOP_MIN_RUNS} measured runs must exist — a single
  *   slow first sample never stops anything;
- * - the **minimum** of those runs must exceed the budget by
+ * - the **minimum** of those per-run statistics must exceed the budget by
  *   {@link EARLY_STOP_MARGIN} (25 %) — so no observed run is near the budget
  *   and run-to-run noise cannot flip the verdict;
  * - the row records the rule, the budget, the sample count and the observed
@@ -62,8 +62,10 @@ export const HARD_BUDGETS_MS: Readonly<Record<string, { readonly F2?: number; re
 
 /**
  * Decide whether the observed values already demonstrate a hard-budget failure.
- * `values` are per-run measurements of the same statistic; non-finite entries
- * (a refusal, a missing mark) never contribute to a decision.
+ * `values` are **one per measured run** of the same statistic (F3 passes each
+ * run's p95, F4/F8 each run's minimum completion); non-finite entries (a
+ * refusal, a missing mark) never contribute to a decision. Passing pooled
+ * observations would let two samples of one run stand in for three runs.
  */
 export function decisiveHardFailure(
 	row: string,
@@ -84,9 +86,9 @@ export function decisiveHardFailure(
 		samples: usable.length,
 		statisticMs: minimum,
 		rule:
-			`early stop: all ${usable.length} measured runs exceed the ${budgetMs} ms hard budget ` +
+			`early stop: all ${usable.length} measured runs' statistic exceeds the ${budgetMs} ms hard budget ` +
 			`(minimum ${round(minimum)} ms > ${Math.round((margin - 1) * 100)} % margin); ` +
-			'the row is a demonstrated failure with a partial sample count, never a pass'
+			'the row is a demonstrated failure with a partial run count, never a pass'
 	};
 }
 

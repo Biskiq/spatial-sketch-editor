@@ -1,21 +1,21 @@
 /**
  * F13 — repeated open/close (leaks) (T3.P03.S02 harness).
  *
- * One context per row: open the S fixture, accept 20 exact-length edits, close
- * to the hub, then force GC and read the JS heap. The repeat-use row measures
- * ten cycles in the same context after a discarded warm-up; the cold row starts
- * in one fresh context and clears
- * cache and cookies before every open (it cannot reset the renderer's V8 code
- * cache inside the ten-cycle run, and already-loaded modules stay resident); warm
- * and repeat-use discard one cycle before measuring, so first Stage/module load
- * is reported separately from measured growth. T1.P02.S06 tiers the flow (the
+ * One context per row: open the S fixture, accept the profile's exact-length
+ * edits, close to the hub, then force GC and read the JS heap. The repeat-use
+ * row measures its cycles in the same context after a discarded warm-up; the
+ * cold row starts in one fresh context and clears cache and cookies before
+ * every open (it cannot reset the renderer's V8 code cache inside the measured
+ * run, and already-loaded modules stay resident); warm and repeat-use discard
+ * one cycle before measuring, so first Stage/module load is reported separately
+ * from measured growth. T1.P02.S06 tiers the flow (the
  * workload's JSON under New Project's minted id, admitted through the real
  * chooser) and records the Stage renderer's live geometries, textures and
  * programs at the end of each cycle. Live WebGL contexts and detached nodes are
  * not captured.
  *
  * The owner's D1 ruling adds two post-GC readings inside each measured cycle,
- * with the project open: after the open and after its twenty accepted edits.
+ * with the project open: after the open and after its accepted edits.
  * Their difference over the edits is the heap each accepted edit retains while
  * its history grows ("retained per edit").
  */
@@ -23,7 +23,7 @@
 import { expect, test } from '@playwright/test';
 
 import { browserFacts, clearBrowserState, heapUsedMiB, newMeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT, passLimitations } from '../lib/config';
+import { DEVICE_SCALE_FACTOR, F13_EDITS, NETWORK, VIEWPORT, f13CyclesFor, passLimitations } from '../lib/config';
 import {
 	acceptedResultCount,
 	commitPrecisionLength,
@@ -38,12 +38,11 @@ import { fileReport, formatRow, startReport, type ResultRow } from '../lib/repor
 import { summarize } from '../lib/stats';
 import { readHeapAfterGc, readOwnership, readRenderCounters, selectedTiers, smokeOr, tierAvailability, tierLimitations, tierProject, tierWorkloadLabel, unrunRow, type HeapSample, type Ownership } from '../lib/tiers';
 
-const CYCLES = smokeOr(10);
-const EDITS_PER_CYCLE = smokeOr(20);
+const EDITS_PER_CYCLE = smokeOr(F13_EDITS);
 
 test.describe('F13 repeated open/close', () => {
 	test.setTimeout(7_200_000);
-	for (const tier of selectedTiers()) test(`cold/warm/repeat-use cycles with twenty accepted edits at ${tier}`, async ({ browser }, testInfo) => {
+	for (const tier of selectedTiers()) test(`cold/warm/repeat-use cycles with ${EDITS_PER_CYCLE} accepted edits at ${tier}`, async ({ browser }, testInfo) => {
 		const report = startReport(`f13-cycles-${tier}-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const availability = tierAvailability(tier);
 		if (!availability.available) {
@@ -52,7 +51,7 @@ test.describe('F13 repeated open/close', () => {
 			return;
 		}
 		for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
-			const measuredCycles = cacheState === 'warm' ? 1 : CYCLES;
+			const measuredCycles = smokeOr(f13CyclesFor(cacheState));
 			const warmupCycles = cacheState === 'cold' ? 0 : 1;
 			const session = await newMeasuredSession(browser, {
 				viewport: VIEWPORT,
@@ -172,11 +171,11 @@ test.describe('F13 repeated open/close', () => {
 					},
 					limitations: [
 						...passLimitations(),
-						`${cacheState === 'cold' ? 'cold starts in a fresh context and clears cache/cookies before each measured open; the V8 code cache is not reset within the ten-cycle run; ' : ''}${cacheState !== 'cold' ? 'entry heap is recorded before one discarded warm-up cycle; baseline and growth start after warm-up; ' : ''}${cacheState === 'warm' ? 'warm measures one cycle after its discarded warm-up; ' : ''}${cacheState === 'repeat-use' ? 'repeat-use measures ten cycles after its discarded warm-up; ' : ''}live WebGL contexts and detached nodes are not captured; Stage geometries/textures/programs are the renderer's live counts at each cycle's end (count, not timing)`,
+						`${cacheState === 'cold' ? `cold starts in a fresh context and clears cache/cookies before each measured open; the V8 code cache is not reset within the ${measuredCycles}-cycle run; ` : ''}${cacheState !== 'cold' ? 'entry heap is recorded before one discarded warm-up cycle; baseline and growth start after warm-up; ' : ''}${cacheState === 'warm' ? `warm measures ${measuredCycles} cycle${measuredCycles === 1 ? '' : 's'} after its discarded warm-up; ` : ''}${cacheState === 'repeat-use' ? `repeat-use measures ${measuredCycles} cycle${measuredCycles === 1 ? '' : 's'} after its discarded warm-up; ` : ''}live WebGL contexts and detached nodes are not captured; Stage geometries/textures/programs are the renderer's live counts at each cycle's end (count, not timing)`,
 						...tierLimitations(tier),
 						'all cycles preserve one application realm via New Project and browser Back; harness observation buffers are cleared before GC; other harness overhead remains',
 						'viewer and Preview enter/exit cycles are not available in this slice',
-						'heapOpen/heapPeak (D1): post-GC heap with the project open, after the open and after the twenty edits; retainedPerEditMiB is their median difference per edit'
+						`heapOpen/heapPeak (D1): post-GC heap with the project open, after the open and after the ${EDITS_PER_CYCLE} edits; retainedPerEditMiB is their median difference per edit`
 					]
 				};
 				report.rows.push(row);

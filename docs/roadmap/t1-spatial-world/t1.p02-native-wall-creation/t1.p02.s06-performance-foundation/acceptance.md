@@ -2,8 +2,9 @@
 
 **Slice:** T1.P02.S06 · **Status:** approved/released; setup and owner-directed Bench 1 recorded;
 persistent representation takeover implemented on PR #190 and independently reviewed (round 3:
-implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 has not
-run; S06 is not accepted or merged. ·
+implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 is now
+the owner-approved **diagnostic** pass (not acceptance evidence); it has not run. Formal statistics
+remain Bench 3. S06 is not accepted or merged. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -213,7 +214,8 @@ this section.
    - the Stage rendering every frame at rest (render-on-demand, next to H9);
    - Stage mount: Threlte's Context DOM insertion, about 86 % of the XL open (decision package F9).
 4. **Keep.** The correctness lanes, differentials and count oracles. E5 on the optimized revision
-   before Bench 2. Bench 2 and Bench 3 at the same hard-tier method as Bench 1, so the passes stay
+   before the diagnostic Bench 2. The diagnostic keeps the hard tiers and real interactions but
+   reduces observations; Bench 3 returns to Bench 1's formal hard-tier method, so its passes stay
    comparable.
 5. **Pending outside S06.** PR #189's merge as research (D7, its owner); the realistic-L
    prerequisites (D9); the execution-plan lab plan, due before Bench 2 (D6).
@@ -238,24 +240,25 @@ or a disposable diagnostic, and each is labelled as such.
 
 ### Amended measurement scope — request recorded, not yet ruled
 
-Bench 1 and Bench 1b jointly count as the first of three passes (A.7). The remaining passes are
-proposed as follows. **The omissions stay open obligations until the owner rules**; nothing here
-waives them.
+Bench 1 and Bench 1b jointly count as the first of three passes (A.7). On 2026-10-26 the owner
+approved **Option A**: Bench 2 is a diagnostic pass (not acceptance evidence), and Bench 3 carries
+the formal statistics. The diagnostic cannot discharge a hard-row gate. The formal Bench 3
+dispositions below are unchanged; the omissions stay open obligations until the owner rules on the
+lean plan.
 
-| Obligation | Proposed Bench 2/3 disposition | Why |
+| Obligation | Formal Bench 3 disposition (diagnostic Bench 2 in brackets) | Why |
 | --- | --- | --- |
-| Hard S/M/L rows: F2 admission and open, F3, F4, F8, F7, F13, D4, and the per-edit evaluation budget | **Kept unchanged** — same method, same budgets, same cache states | These are the hard budgets; nothing here dilutes them |
+| Hard S/M/L rows: F2 admission and open, F3, F4, F8, F7, F13, D4, and the per-edit evaluation budget | **Kept unchanged** in Bench 3 — same method, budgets and cache states. **Bench 2 diagnostic:** 3 runs per row, 2 drag/precision samples, 5 Undo/Redo cycles, F2 cold+warm, F7 warm only, F13 1/2/1 cycles × 10 edits; not acceptance evidence | These are the hard budgets; the diagnostic guides the next step but cannot pass or fail a gate |
 | `grid-XL` browser timing | **Omitted** from Bench 2/3; the existing grid-XL smoke and census rows stay labelled *probe* | 4–8 h per pass for a Target row that the L row already bounds. Its **hard** clause — no crash, no context loss, no single main-thread block over 1 s, an honest progress/refusal state — stays open and is rechecked by the grid-XL smoke and the T1.P02.S04 gate |
 | Sweep latency rows (H3/H10/D3/D10 latency, incl. F3/F4/F8 at sweep-H10) | **Omitted** from Bench 2/3 | 20+ h per pass, mostly the report-only F3/F4/F8 leg; E5 already carries the semantic-independence and pixel evidence at ×3/×10 |
-| E5 (browser, all seven workloads) | **Kept** — E5 on the optimized revision before Bench 2, as the plan requires | The correctness differential the optimize step must not lose |
+| E5 (browser, all seven workloads) | **Kept in full** — E5 on the optimized revision, including the diagnostic Bench 2 | The correctness differential the optimize step must not lose |
 | realistic-L | Stays unrun (prerequisites unchanged, D9) | Unchanged |
 
-Proposed ruling for the record: *"Bench 2 and Bench 3 run the hard S/M/L tiers at Bench 1's method,
-with E5; grid-XL timing and the sweep latency rows are deferred to the T1.P02.S04 exhaustive gate,
-not waived."* Until that ruling exists this record disposes of none of those rows. The 2026-10-26
-[strategy section](./review-handoff.md#bench-23-strategy-consolidation-ceiling-and-a-diagnostic-pass-2026-10-26)
-now proposes a within-run sample plan and a diagnostic Bench 2 in place of that method sentence;
-neither is active.
+**Approved structure (2026-10-26).** Bench 2 is the diagnostic pass, counts as the second authorized
+pass and **cannot discharge a statistical acceptance gate**. Bench 3 runs the hard S/M/L tiers at
+Bench 1's method with E5; grid-XL timing and the sweep latency rows remain deferred to the
+T1.P02.S04 exhaustive gate, not waived. The [strategy section](./review-handoff.md#bench-23-strategy-implemented-diagnostic-bench-2-2026-10-26)
+records the implemented diagnostic profile, its omissions and the still-unratified lean Bench 3 plan.
 
 ### D.1 / H3 — repeated work inside the compile
 
@@ -311,7 +314,8 @@ above are comparable.
 **Hand calculation against Bench 1.** Bench 1's L compile was 118 ms of a 164 ms move
 (characterization §2); halving it puts the compile at ~59 ms and the indexed topology checks (27 ms
 at L, exponent ≈ 1.9) at a few ms. Predicted F3 at L ≈ 70–90 ms against the 100 ms hard row (was
-216–233 ms p95). Confirmed only by Bench 2.
+216–233 ms p95). Confirmed only by the formal Bench 3 (the diagnostic Bench 2 can guide but cannot
+confirm).
 
 ### D.2 / H2 — one check per fact on the accept path
 
@@ -450,11 +454,11 @@ The earlier record called `packages/layout-core/**` T2-owned. **It is T1-owned u
 
 | Obligation | State at this tree | Where it closes |
 | --- | --- | --- |
-| Per-edit Layout evaluation ≤ 8 ms M / ≤ 16 ms L (hard) | **predicted met**: per-edit compile 4.9 ms at M and 5.7–6.5 ms at L (Node diagnostic) against 23 / 100 ms cold | Bench 2 F3/F4 |
-| F13 "geometries back to baseline" (hard) | **structurally met and counted**: 547 built = 547 disposed, one live geometry per Wall | Bench 2 F13 |
-| F13 ≤ 5 MiB retained per accepted edit (hard) | **predicted met**: the representation no longer rebuilds or accumulates the document; heap attribution is browser-only | Bench 2 F13 |
-| F2 open at L (Target ≤ 2.0 s) | **predicted ≈ 1.8–2.6 s**, not the 500 ms engineering objective: the mount population is still one component per Room surface and portal | next mount batch + Bench 2 F2 |
-| F3 ≤ 100 ms p95 L, F4 ≤ 200 ms, F8 ≤ 200 ms (hard) | **predicted met** (≈ 40–60 / 80–120 / 80–120 ms) — predictions, not evidence | Bench 2 |
+| Per-edit Layout evaluation ≤ 8 ms M / ≤ 16 ms L (hard) | **predicted met**: per-edit compile 4.9 ms at M and 5.7–6.5 ms at L (Node diagnostic) against 23 / 100 ms cold | Bench 3 F3/F4; diagnostic Bench 2 guides |
+| F13 "geometries back to baseline" (hard) | **structurally met and counted**: 547 built = 547 disposed, one live geometry per Wall | Bench 3 F13; diagnostic Bench 2 checks |
+| F13 ≤ 5 MiB retained per accepted edit (hard) | **predicted met**: the representation no longer rebuilds or accumulates the document; heap attribution is browser-only | Bench 3 F13; diagnostic Bench 2 checks |
+| F2 open at L (Target ≤ 2.0 s) | **predicted ≈ 1.8–2.6 s**, not the 500 ms engineering objective: the mount population is still one component per Room surface and portal | next mount batch + Bench 3 F2 |
+| F3 ≤ 100 ms p95 L, F4 ≤ 200 ms, F8 ≤ 200 ms (hard) | **predicted met** (≈ 40–60 / 80–120 / 80–120 ms) — predictions, not evidence | Bench 3; diagnostic Bench 2 guides |
 | grid-XL hard clause: no crash, no > 1 s main-thread block, honest progress/refusal | **open, unchanged**; the *timing* omission is the proposed scope ruling, the functional clause is not omitted | grid-XL smoke + `T1.P02.S04` gate |
 | H9 framebuffer differential | **open**: the count oracle is landed, the image comparison is not run | Bench 2 E5 |
 | E5 semantic independence, browser, 7 workloads | **open for this revision** | Bench 2 |
@@ -634,18 +638,45 @@ Earlier independent reviews remain recorded in [review-handoff.md](./review-hand
 [independent-review map](./review-handoff.md#current-independent-review-boundary) carries review
 round 3 on the persistent algorithms: two substantiated findings fixed with falsifiers, the rest
 documented preconditions, no expensive performance work re-run. Its verdict is PASS for
-implementation correctness in the reviewed scope and WITHHOLD for step acceptance until Bench 2.
+implementation correctness in the reviewed scope and WITHHOLD for step acceptance until the diagnostic
+Bench 2 and the formal Bench 3.
+
+### Diagnostic Bench 2 profile (owner-approved, 2026-10-26)
+
+- **Decision.** Bench 2 is a diagnostic pass, not acceptance evidence, and counts as the second
+  authorized pass. It cannot discharge a statistical gate; Bench 3 carries the formal method.
+- **Profile.** `PERF_PROFILE=diagnostic` (or `perf:bench --profile diagnostic`): 3 measured runs per
+  row, 2 drag/precision samples, 5 Undo/Redo cycles, F2 cold+warm, F3/F4/F8 cold 1/warm 3/repeat-use
+  1, F7 warm only, F13 cold 1/warm 2/repeat-use 1 cycles at 10 edits, traces at grid-L only, no A.6
+  or delayed-preview proof, full E5. Real chooser, inputs, preview marks, cache states, lifecycle,
+  frame sampling and trace provenance are unchanged. Expected duration is 40–50 min on the Bench 1
+  machine.
+- **Marking.** Rows print `[diagnostic, not evidence]`; reports record `profile: diagnostic`,
+  `acceptanceEvidence: false`, the exact sample plan and the incomplete gates. Smoke, env-reduced
+  and partial-hard-tier acceptance-profile runs also record `acceptanceEvidence: false`.
+- **Early stop.** Implemented default-off for hard rows only: at least 3 measured runs, every
+  per-run statistic beyond the budget by 25 %, recorded as a demonstrated failure, never a pass. F3
+  uses each run's p95; F4/F8 each run's minimum completion.
+- **Verification.** Profile/early-stop unit suites pass (10 tests); project typecheck passes;
+  targeted perf-library typecheck passes; the docs gate passes 56/56; a diagnostic grid-S smoke
+  passes (4 flows, 34.3 s) and writes non-acceptance reports. A targeted tsc including bench/flows
+  reaches only two pre-existing `registry.ts` Buffer overload errors. No Bench 2/3 pass was run.
 
 **Bench 2/3 strategy (2026-10-26).** The retained Bench 1 result files decompose the 3 h 36 min
 ceiling: F3/F4/F8 is 78 min of the L tier, F7 17.5 min and F13 11 min; setup is 4.8–8.7 % of the
 drag wall and all ~450 opens cost ~10–15 min. Valid consolidation is therefore capped at ~10–15 min
-per pass. The [strategy and decision package](./review-handoff.md#bench-23-strategy-consolidation-ceiling-and-a-diagnostic-pass-2026-10-26)
-proposes (1) a lean formal sample plan that keeps 10 runs, 60 inputs and all three cache states but
-cuts within-run samples/cycles, estimated **2 h 25 min – 2 h 45 min** per pass (from 3 h 36 min),
-and (2) a **35–45 min diagnostic Bench 2** that is not acceptance evidence, reserving formal
-statistics for Bench 3. The harness-only reductions already in the tree save **7–13 min per pass**;
-the opt-in early stop remains available (3 runs minimum, 25 % margin, never a pass). Owner decisions
-required: the lean sample plan, the pass structure (the diagnostic is not one of the three passes
-unless ruled otherwise), the one-time A.6/delay-proof evidence, and early-stop activation. Bench 2/3
-have not run; no measured contract or default changed.
+per pass. The owner approved **Option A**: Bench 2 is a **diagnostic** pass and Bench 3 carries the
+formal statistics. The [implemented strategy](./review-handoff.md#bench-23-strategy-implemented-diagnostic-bench-2-2026-10-26)
+records a diagnostic profile of 3 runs per row, 2 drag/precision samples, 5 Undo/Redo cycles, F2
+cold+warm, F7 warm only, F13 1/2/1 cycles × 10 edits, traces at L only, no A.6 or delay proof, and
+the full E5 matrix. It keeps the real interactions, 60 pointer inputs per drag, every hard tier and
+the source/build/browser identity. Its honest estimate is **40–50 min**, not 35–45; medians are
+diagnostic only and no p95 or hard-row verdict is formal. Bench 2 counts as the second authorized
+pass but **cannot discharge an acceptance gate**; no acceptance default changed. The lean Bench 3
+plan (F3/F4 3 samples, F8 5 cycles, F7 last-run windows, F13 10 edits) is **not ratified**. Review
+recommends rejecting the F8 and F13 cuts for formal acceptance unless a separate 20-deep
+Undo/Redo proof and a deep-cycle leak proof are added; without them, a lean Bench 3 is about
+2 h 50 min–3 h 05 min, with all six cuts about 2 h 25 min–2 h 45 min. The opt-in early stop is
+implemented and default-off (3 measured runs minimum, 25 % margin, never a pass). Bench 2/3 have not
+run.
 Stop here before the owner benchmark and acceptance.

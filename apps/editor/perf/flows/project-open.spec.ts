@@ -18,7 +18,7 @@
 import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
+import { DEVICE_SCALE_FACTOR, DIAGNOSTIC, NETWORK, VIEWPORT, WARMUP_RUNS, cacheStatesFor, passLimitations, runsFor } from '../lib/config';
 import { HARD_BUDGETS_MS, decisiveHardFailure, earlyStopEnabled } from '../lib/early-stop';
 import { fixtureProject, type FixtureProject, type FixtureSize } from '../lib/fixtures';
 import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
@@ -119,22 +119,23 @@ const sources: { readonly id: string; readonly source: Source; readonly workload
 		workload: tierWorkloadLabel(tier),
 		limitations: tierLimitations(tier)
 	})),
-	// A.6: the old method, F2 S/M only, on the same revision.
-	...(['S', 'M'] as const)
+	// A.6: the old method, F2 S/M only, on the same revision. The diagnostic
+	// profile does not rerun it; Bench 1 already validated the methods.
+	...(DIAGNOSTIC ? [] : (['S', 'M'] as const)
 		.filter((size) => selectedTiers().includes(`grid-${size}`))
 		.map((size) => ({
 			id: `old-${size}`,
 			source: { method: 'old', size } as const,
 			workload: `old method: grid-${size === 'S' ? 3 : 7} rebuilt through the planners in the run (A.6)`,
 			limitations: tierLimitations(`grid-${size}`)
-		}))
+		})))
 ];
 
 for (const entry of sources) {
 	test.describe(`F2 project open — ${entry.id}`, () => {
 		// Ten runs per cache state of a large tier's open: measured work, not a hang.
 		test.setTimeout(7_200_000);
-		test(`cold, warm and repeat-use ${entry.id}`, async ({ browser }, testInfo) => {
+		test(`${cacheStatesFor('f2').join(', ')} ${entry.id}`, async ({ browser }, testInfo) => {
 			const report = startReport(`f2-open-${entry.id}-${testInfo.project.name.replace(/\s+/g, '-')}`);
 			if (entry.source.method === 'new') {
 				const availability = tierAvailability(entry.source.tier);
@@ -148,14 +149,19 @@ for (const entry of sources) {
 			// Only the new method has a contract row; the A.6 old-method rows are
 			// method validation and must run their full sample.
 			const hardBudget = entry.source.method === 'new' ? HARD_BUDGETS_MS[entry.source.tier]?.F2 : undefined;
+			const states = cacheStatesFor('f2');
 			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
+				if (!states.includes(cacheState)) {
+					report.rows.push(unrunRow(`F2-${entry.id}-${cacheState}`, 'F2 project open', entry.workload, testInfo.project.name, 'not run in the diagnostic profile: F2 keeps cold and warm; F13 covers the repeat-use lifecycle'));
+					continue;
+				}
 				const { results: runs, facts, earlyStop } = await collectMeasuredRuns(
 					browser,
 					{ viewport: VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR, network: NETWORK },
 					{
 						cacheState,
 						warmup: smokeOr(WARMUP_RUNS, 0),
-						runs: smokeOr(RUNS),
+						runs: smokeOr(runsFor('f2', cacheState)),
 						afterRun: cacheState === 'repeat-use' ? closeToHub : undefined,
 						earlyStop:
 						earlyStopEnabled() && hardBudget !== undefined
@@ -177,6 +183,7 @@ for (const entry of sources) {
 					cpuRate: 1,
 					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
 					metrics: {
+						measuredRuns: runs.length,
 						admissionMedian: summarize(runs.map((run) => run.admission)).median,
 						admittedToFrameMedian: summarize(runs.map((run) => run.admittedToFrame)).median,
 						totalMedian: summarize(runs.map((run) => run.total)).median,
@@ -186,7 +193,13 @@ for (const entry of sources) {
 						...workMetrics(windows.work, runs.length),
 						...renderMetrics(windows.render),
 						...residentMetrics(runs[runs.length - 1]?.resident ?? null, 'open'),
-						...(earlyStop === null ? {} : { earlyStopSamples: earlyStop.samples, earlyStopMinimumMs: earlyStop.statisticMs })
+						...(earlyStop === null
+							? {}
+							: {
+									earlyStop: 'demonstrated failure (not a pass)',
+									earlyStopSamples: earlyStop.samples,
+									earlyStopMinimumMs: earlyStop.statisticMs
+								})
 					},
 					stats: {
 						admission: summarize(runs.map((run) => run.admission)),

@@ -43,6 +43,8 @@ import { loadavg } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { REDUCED_PASS } from './lib/config';
+import { basePlan, parseProfile, type PerfProfile } from './lib/profile';
 import { commitSha, machineFacts, resultsDirectory } from './lib/report';
 import { BENCH_TIERS, REGENERATE_COMMAND, workloadStatus, type WorkloadId } from './lib/workloads/registry';
 
@@ -57,12 +59,50 @@ function argument(name: string): string | undefined {
 	return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+/** `--profile` wins over `PERF_PROFILE`; an invalid or valueless flag refuses the pass. */
+function resolveProfile(): PerfProfile {
+	const index = process.argv.indexOf('--profile');
+	if (index >= 0) {
+		const value = process.argv[index + 1];
+		if (value === undefined || value.startsWith('--')) {
+			console.error('--profile takes acceptance or diagnostic');
+			process.exit(2);
+		}
+		try {
+			return parseProfile(value);
+		} catch (error) {
+			console.error(error instanceof Error ? error.message : String(error));
+			process.exit(2);
+		}
+	}
+	try {
+		return parseProfile(process.env.PERF_PROFILE);
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exit(2);
+	}
+}
+
 const SMOKE = process.argv.includes('--smoke');
+const PROFILE = resolveProfile();
+const DIAGNOSTIC = PROFILE === 'diagnostic';
+const PLAN = basePlan(PROFILE);
 const LABEL = argument('--label') ?? (SMOKE ? 'smoke' : 'bench');
+if (DIAGNOSTIC && !SMOKE && !/diagnostic/i.test(LABEL)) {
+	console.error(`the diagnostic profile is not acceptance evidence: name the pass with a label containing "diagnostic" (got "${LABEL}").`);
+	process.exit(2);
+}
 const PROJECT = argument('--project') ?? process.env.PERF_PROJECT ?? 'chrome';
 const PORT = process.env.PERF_PORT ?? '4173';
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const TIERS = (argument('--tiers')?.split(',') as WorkloadId[] | undefined) ?? [...BENCH_TIERS];
+if (DIAGNOSTIC && TIERS.some((tier) => tier === 'grid-XL' || tier === 'realistic-L')) {
+	console.error('the diagnostic profile runs the hard tiers only: grid-XL and realistic-L are formal/report-only rows.');
+	process.exit(2);
+}
+const HARD_TIERS: readonly WorkloadId[] = ['grid-L', 'grid-M', 'grid-S'];
+/** A formal pass must contain every hard tier; a `--tiers` continuation is not acceptance evidence. */
+const FULL_HARD_TIERS = HARD_TIERS.every((tier) => TIERS.includes(tier));
 const COOLDOWN_SECONDS = SMOKE ? 0 : Number(process.env.PERF_COOLDOWN_SECONDS ?? 180);
 /** grid-XL's report-only F3/F4/F8 cache states (D5): every state unless the owner names some. */
 const XL_DRAG_CACHE = argument('--xl-drag-cache');
@@ -70,8 +110,8 @@ if (XL_DRAG_CACHE !== undefined && !XL_DRAG_CACHE.split(',').every((state) => ['
 	console.error(`--xl-drag-cache takes cold, warm and/or repeat-use, not ${XL_DRAG_CACHE}`);
 	process.exit(2);
 }
-/** The report-only sweep latency rows run in every bench unless the owner drops them for a pass (C). */
-const SWEEP_LATENCY = !process.argv.includes('--no-sweep-latency') && process.env.PERF_SWEEP_LATENCY !== '0';
+/** The report-only sweep latency rows run in every formal bench unless dropped; the diagnostic never runs them. */
+const SWEEP_LATENCY = !DIAGNOSTIC && !process.argv.includes('--no-sweep-latency') && process.env.PERF_SWEEP_LATENCY !== '0';
 /**
  * Opt-in decisive-failure early stop (perf/lib/early-stop.ts). Off by default:
  * activating it changes the sample count of the rows it stops, so an accepted
@@ -93,6 +133,10 @@ if (LOAD_THRESHOLD !== DEFAULT_LOAD_THRESHOLD && LOAD_THRESHOLD_REASON === undef
 const CHILD_ENV: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => name !== 'NODE_ENV'));
 
 const TIER_FLOWS = ['flows/project-open.spec.ts', 'flows/drag-correlation.spec.ts', 'flows/orbit.spec.ts', 'flows/cycles.spec.ts', 'flows/stage-trace.spec.ts'];
+/** The diagnostic traces only grid-L; M and S phases skip the trace spec. */
+function tierFlows(tier: WorkloadId): string[] {
+	return DIAGNOSTIC && tier !== 'grid-L' ? TIER_FLOWS.filter((spec) => !spec.includes('stage-trace')) : TIER_FLOWS;
+}
 
 type Snapshot = { at: string; loadAverage1m: number; topProcesses: string; thermal: string; power: string; vitestRunning: boolean };
 type Phase = { name: string; kind: 'setup' | 'cooldown' | 'flows'; startedAt: string; wallSeconds: number; exitCode: number | null; cause?: string; thermalBefore?: string };
@@ -248,6 +292,7 @@ async function main(): Promise<void> {
 	}
 
 	takeLock();
+	console.log(`[bench] profile: ${PROFILE}${DIAGNOSTIC ? ' — diagnostic, NOT acceptance evidence' : ' — acceptance method'}`);
 	const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 	const passDir = join(resultsDirectory(), `${stamp}-${LABEL}`);
 	mkdirSync(passDir, { recursive: true });
@@ -264,6 +309,7 @@ async function main(): Promise<void> {
 	const flowEnv = {
 		PERF_BASE_URL: BASE_URL,
 		PERF_RESULTS_DIR: passDir,
+		PERF_PROFILE: PROFILE,
 		...(SMOKE ? { PERF_SMOKE: '1' } : {}),
 		...(EARLY_STOP ? { PERF_EARLY_STOP: '1' } : {}),
 		...(XL_DRAG_CACHE === undefined ? {} : { PERF_XL_DRAG_CACHE: XL_DRAG_CACHE })
@@ -276,6 +322,24 @@ async function main(): Promise<void> {
 		const manifest = {
 			label: SMOKE ? `${LABEL} — smoke, not evidence` : LABEL,
 			smoke: SMOKE,
+			profile: PROFILE,
+			// A smoke pass and a diagnostic pass are not acceptance evidence, even
+			// when the profile is the formal one.
+			acceptanceEvidence: PROFILE === 'acceptance' && !SMOKE && !REDUCED_PASS && FULL_HARD_TIERS,
+			samplePlan: PLAN,
+			...(DIAGNOSTIC
+				? {
+						diagnosticOmissions: [
+							'F2 repeat-use cache state',
+							'F7 cold and repeat-use cache states',
+							'F13 reduced to 1/2/1 measured cycles at 10 edits',
+							'stage traces at grid-L only',
+							'A.6 old-method rows',
+							'delayed-preview correlation proof',
+							'F1/preview lifecycle use the diagnostic RUNS (3), not the formal 10'
+						]
+					}
+				: {}),
 			commit: commitSha(),
 			dirtyTree: run('git', ['status', '--porcelain']).length > 0,
 			project: PROJECT,
@@ -288,9 +352,14 @@ async function main(): Promise<void> {
 			chrome,
 			xlDragCacheStates: XL_DRAG_CACHE ?? 'cold,warm,repeat-use',
 			method: {
+				profile: PROFILE,
+				acceptanceEvidence: PROFILE === 'acceptance' && !SMOKE && !REDUCED_PASS && FULL_HARD_TIERS,
 				earlyStop: EARLY_STOP,
-				note: 'earlyStop stops only a hard row whose every measured run already exceeds the budget by the recorded margin; a stopped row is a demonstrated failure with a partial sample count, never a pass'
+				note: DIAGNOSTIC
+					? `${PLAN.note}. earlyStop stops only a hard row whose every measured run already exceeds the budget by the recorded margin; a stopped row is a demonstrated failure, never a pass`
+					: 'earlyStop stops only a hard row whose every measured run already exceeds the budget by the recorded margin; a stopped row is a demonstrated failure with a partial sample count, never a pass'
 			},
+			sweepLatency: SWEEP_LATENCY,
 			aborted: aborted.length > 0,
 			abortCauses: aborted.map((phase) => `${phase.name}: ${phase.cause}`),
 			tiers: TIERS,
@@ -355,7 +424,7 @@ async function main(): Promise<void> {
 				}, { thermalBefore: before }));
 				await boundary();
 			}
-			phases.push(timed(`tier ${tier}`, 'flows', () => playwright(`tier ${tier}`, TIER_FLOWS, { ...flowEnv, PERF_TIERS: tier }), { thermalBefore: run('pmset', ['-g', 'therm']) }));
+			phases.push(timed(`tier ${tier}`, 'flows', () => playwright(`tier ${tier}`, tierFlows(tier), { ...flowEnv, PERF_TIERS: tier }), { thermalBefore: run('pmset', ['-g', 'therm']) }));
 			await boundary();
 		}
 		phases.push(timed('E5 browser counts', 'flows', () => playwright('e5', ['flows/e5-sweep.spec.ts'], flowEnv), { thermalBefore: run('pmset', ['-g', 'therm']) }));
