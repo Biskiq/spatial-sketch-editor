@@ -1,0 +1,12 @@
+{
+  "name": "p3-depth",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "P3 architectural depth design study: one field, one walk, one band.",
+  "scripts": {
+    "dev": "node tools/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "evidence": "node tools/evidence.mjs"
+  }
+}
