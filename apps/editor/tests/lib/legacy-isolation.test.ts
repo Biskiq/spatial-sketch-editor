@@ -72,7 +72,10 @@ function legacyReference(file: string): string | null {
 }
 
 describe('legacy/ isolation', () => {
-	it('is referenced by no product file', () => {
+	// A whole-tree scan: its cost is the size of the repository and the number of files
+	// this lane is transforming at the same time, not the behaviour of any product path,
+	// so it states its own budget instead of inheriting the default that fits a unit test.
+	it('is referenced by no product file', { timeout: 120_000 }, () => {
 		const offenders: string[] = [];
 		for (const file of PRODUCT_ROOTS.flatMap((root) => walk(root))) {
 			const reason = legacyReference(file);

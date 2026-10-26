@@ -146,7 +146,12 @@ export async function computeUnitContentRevision(
 	if (typeof data === 'object' && data !== null) {
 		// The revision is a pure function of the canonical bytes, so a deeply frozen value
 		// answers from the memo — the memo hit is what makes a repeated digest over an
-		// unchanged F4-frozen unit O(1). Attribution still sees the digest it replaces.
+		// unchanged F4-frozen unit O(1). A memo hit therefore emits **no** instrumentation
+		// phases: the encode and digest it would have measured did not run, and reporting
+		// them would attribute work that never happened. A Save that re-normalizes an
+		// already-admitted envelope is the case where F9 traces this: it is reuse, not a
+		// loss of work, and an owner comparing such a trace against an earlier one must
+		// compare like cache state.
 		const cachedRevision = UNIT_REVISION_BY_FROZEN_OBJECT.get(data);
 		if (cachedRevision !== undefined) {
 			countWork('canonical:unit-revision-hit');

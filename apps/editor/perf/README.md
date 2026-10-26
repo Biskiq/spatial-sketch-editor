@@ -48,6 +48,12 @@ series, never a user profile.
 | `flows/e5-sweep.spec.ts` | E5 browser counts (S06 C) | museum ×1 and the H/D/C sweeps: render counters at rest, the fixed edit's work, and framebuffer equality at the fixed View before and after the edit (H must match ×1; D and C are recorded); count, not timing |
 | `flows/calibration.spec.ts` | CPU calibration | grid-7 compile + Stage admission, 20 runs, CDP throttling search when a reference median is supplied |
 
+**Attributed work is not a constant across rows.** A unit whose domain data is deeply frozen
+(F4-accepted) answers a repeated digest from the frozen-object revision memo, so its
+`save.unit.*` phases do not appear in that row and must not: the encode and digest did not run.
+The same holds for a re-normalized accepted envelope. Compare F9 rows, and F9 across benches, at
+like cache state — a smaller attributed Save is reuse, not a lost stage.
+
 ## Bench setup (T1.P02.S06)
 
 T1.P02.S06 builds the method, the workloads and the counters before its three

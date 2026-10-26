@@ -144,7 +144,7 @@ export async function captureUnitSave(input: {
 	const canonicalJson = instrumentation
 		? instrumentation.sync('save.capture-serialize-envelope', () => serializeProjectEnvelope(normalized))
 		: serializeProjectEnvelope(normalized);
-	const lockIssues = await verifyUnitDependencyLocks(normalized, instrumentation);
+	const lockIssues = await verifyUnitDependencyLocks(normalized, { instrumentation });
 	if (lockIssues.length > 0) {
 		return { kind: 'refused', code: 'invalid-project', message: 'The dependency lock does not resolve', issues: lockIssues };
 	}

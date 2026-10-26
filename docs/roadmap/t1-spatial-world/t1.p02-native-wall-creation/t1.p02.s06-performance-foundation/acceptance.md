@@ -2,10 +2,12 @@
 
 **Slice:** T1.P02.S06 · **Status:** approved/released; setup and owner-directed Bench 1 recorded;
 persistent representation takeover implemented on PR #190 and independently reviewed (round 3:
-implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 is now
-the owner-approved **diagnostic** pass (not acceptance evidence); it has not run. Formal statistics
-remain Bench 3. A third, owner-directed **Plan interaction locality** pass is implemented below and
-has not been independently reviewed. S06 is not accepted or merged. ·
+implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 ran as
+the owner-approved **diagnostic** pass and remains contaminated/non-acceptance; formal statistics
+remain Bench 3, which has not run. Four owner-directed locality passes are recorded below — the
+interaction pass, the incremental Plan evaluator, the compiler-delta pass and its generation-capture
+fix — the last three independently reviewed. The branch now integrates `main` and is a **Bench 3
+candidate awaiting owner approval**. S06 is not accepted or merged. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -992,10 +994,12 @@ the editor `check` (svelte-check: 0 errors, 0 warnings) and `build` pass. The fu
 **206 files / 2,570 tests**; the fast lane **173 files / 2,252 tests**; the architecture lane **22 files
 / 180 tests**, including the documentation gate. No performance number in this section is measured.
 
-**Review still owed.** Independent review of this pass has not happened. T3 review is required for the
-Plan evaluator's new retention protocol and for the previously flagged Plan-key/retained-target
-change; the route and the Stage host remain shared surfaces. The owner also owns the decision this
-pass deliberately did not take: whether the compile generation belongs on every fragment.
+**Review.** Independent review of this pass had not happened when it was pushed; it was reviewed in
+the following pass's round (below), which found and fixed a divergence in the reuse predicate. T3
+review is still required for the Plan evaluator's retention protocol and for the previously flagged
+Plan-key/retained-target change; the route and the Stage host remain shared surfaces. The owner also
+owns the decision this pass deliberately did not take: whether the compile generation belongs on
+every fragment.
 
 ## Plan maintenance from the compiler's own delta (2026-10-26, owner-directed third pass)
 
@@ -1205,5 +1209,118 @@ set the derivation reads).
 compiler-delta certificate and the previously flagged Plan-key/retained-target change; the route, the
 Stage host and the Index panel remain shared surfaces. The owner still owns whether the compile
 generation belongs on every fragment.
+
+## Final integration review and Bench 3 candidate (2026-10-26)
+
+**Scope and method.** Owner direction: stabilise the candidate, integrate it with `main`, review it
+independently and hand it to Bench 3 — not another optimisation round. **No benchmark, profiling
+pass, timing probe, microbenchmark, deployment or merge to `main` was performed for this section.**
+Everything below is a command result, an exact-output differential, a work-count assertion or a
+hand-derived bound.
+
+**The reviewed implementation.** The candidate is the branch head on PR #190, `t1/p02-s06-bench-setup`:
+merge commit `d7600576` (main `51dcb764` integrated into the reviewed S06 head `86fb631e`), with the
+final review corrections on top. The S06-relevant commits are `c8ac273a` (interaction locality),
+`3e7efdbe` + `09f18a56` (incremental Plan evaluator and its solid-less-Wall repair), `6b53ae95`
+(compiler-delta maintenance, retained-root iteration, demand-driven output) and `f9502a5a`
+(generation capture, validate-before-mutate).
+
+**Integration with `main`.** The branch was 41 commits behind and reported non-mergeable; it is now a
+merge commit, not a rebase, so every S06 commit and all benchmark provenance keep their original
+SHAs. Seven files conflicted, and each was resolved **additively** — no side's behaviour was dropped:
+
+| File | Resolution |
+| --- | --- |
+| `units/canonical.ts` | S06's frozen-object revision memo and work counters stay; main's `SaveWorkInstrumentation` is threaded through the encode and digest phases |
+| `package-sha.ts` | S06's digest counters stay; main's optional `measureSync` wraps the same bytes |
+| `units/acceptance.ts` | `verifyUnitDependencyLocks(envelope, { knownSourceContentId?, instrumentation? })` — one options object carrying both sides' optional inputs; both call sites updated (`units/acceptance.ts` admission, `units/save.ts`) |
+| `stage/host-acceptance.ts` | Union of both import sets and helpers (S06's persistent compile session wiring and main's unit read context / lifecycle paths) |
+| `platform/perf-marks.ts` | Both helpers kept (`perfRenderer` for S06's render counters, `perfMeasureSync`/`perfMeasureAsync` for main's Save attribution) |
+| `spatial/+page.svelte` | Union of imports; main's lifecycle work and S06's Plan retention do not share a statement |
+| `perf/README.md` | S06's fuller flow descriptions plus main's project-lifecycle row; the F9 row now uses main's finer span chain, which is what `flows/save.spec.ts` actually reads |
+
+Nothing in the merge redefines Bench 3's comparison conditions. `perf/bench.ts`'s `TIER_FLOWS` is
+unchanged and does not include the newly documented lifecycle flow, which runs through its own
+supervisor, so the measured pass composition is identical to Bench 1/2. The one *interpretive* change
+is recorded rather than fixed: because a deeply frozen unit answers a repeated digest from the
+frozen-object memo, its `save.unit.*` phases do not appear in that row — the work did not run, so
+attributing it would be false. `perf/README.md` now states that F9 rows and Benches must be compared
+at like cache state.
+
+**Independent review of the merged candidate.** Two reviewers with different mandates read the merged
+tree and edited nothing: correctness (merge resolutions plus the S06 claims) and ownership/provenance
+(the T3-shaped mandate). Findings and dispositions:
+
+1. **Attributed Save work now depends on memo state** (medium, provenance): on a Save that
+   re-normalises an already-admitted envelope, `save.unit.*` phases are served from the memo and do
+   not appear, while earlier pinned F9 artifacts contain them. Not an identity or acceptance
+   divergence — the revision value is unchanged and `verifyUnitContentRevisions` still recomputes
+   independently — but an owner must compare like cache state. Documented in `perf/README.md` and in
+   the memo's own comment rather than "fixed" by re-emitting phases for work that did not run.
+2. **A contract comment had drifted** above the new options type instead of the function it documents;
+   restored, and a one-line contract sentence added for the options object.
+3. **The memo comment over-promised** ("attribution still sees the digest it replaces"); corrected to
+   say a memo hit emits no phases and why.
+4. **A subtle invariant was undocumented**: `reconcileKind`'s `removed = size - walked.length` is
+   correct only because `size` is read after the walk (fresh insertions cancel against `walked`).
+   A comment now says so, because the "obvious" simplification would leak stale ids.
+5. Confirmed intact, independently: the delta certificate's bail-outs are complete for the compiler's
+   producers (including an Opening changing host and a Room that stopped compiling); `applyDelta`
+   mutates nothing when it refuses; lazy output is snapshot-isolated (`fork()` + copy-on-write ids) so
+a plan read after a later evaluation is exact; `planTargetsLiveView`'s descriptor copy resolves
+every getter against the same closures; `wallUnchanged`'s pairing is a bijection over the derivation's
+field set, so it cannot prove a changed Wall unchanged; the route keeps exactly one Plan retention
+point and every subject read goes through the indexed probes; lifecycle leases and the deletion fence
+still refuse before any snapshot installs; visitor rendering imports nothing from the authoring Plan
+or compile session.
+6. **Record staleness corrected**: the header status and one earlier paragraph still described the
+   review and Bench 2 state from before those rounds ran.
+
+**Test-policy changes made during integration, and why they are not weakening.** Three whole-tree or
+whole-sweep correctness tests crossed the default 5 s budget only when ~200 files transform in
+parallel (`legacy-isolation`'s tree scan runs in 1.5 s alone and 7 s under full parallel load; the two
+layout sweeps run in ~2 s alone and ~9 s under load). Each now states its own budget — an option
+object only — and no assertion changed. The lifecycle deletion case replaced a single flushed
+macrotask with a wait on the observable condition (`vi.waitFor(() => publicationReads === 1)`); it
+still proves the refusal it names (no dialog, the unpublish-first notice, no delete call) and then the
+inactive-publication dialog and post-cleanup navigation. That test was flaky 1-in-3 before the change
+and passed five consecutive runs after it.
+
+**Correctness verification actually run on the merged tree.** `check:project-model`,
+`check:layout-core`, `check:camera-core`, `check:api`, the editor `check` (svelte-check: 0 errors,
+0 warnings) and the editor `build` pass. The API suite passes; the editor's fast lane passes
+**176 files / 2,282 tests**, the architecture lane **22 files / 180 tests**, the heavy lane **11 files /
+138 tests**, and the durable default `npm test` — all 209 files, **2,600 tests** — passes after the
+budget correction. The all-in-one contention is now characterised rather than guessed: it is
+machine saturation from transforming ~200 files concurrently, not product work (the same tests run in
+1.5–2.3 s alone and pass in their own lanes).
+
+**Locality the owner can test in Bench 3, and what it still costs.** `N` compiled sources, `F`
+fragments, `S` sources, `k` changed sources, `c` placements per source, `Δ` records whose identity
+changed:
+
+| Interaction | Guarantee | Remaining cost |
+| --- | --- | --- |
+| Accepted edit (delta proved) | only the changed records re-derive; zero field comparisons; no legacy-array materialisation; output built on first read | `O(Δ log N)` root visits + `O(k·(c + log S))` |
+| Accepted edit (no provable delta) | complete allocation-free walk, still no sort | `O(N·c)` comparisons + `O(k'·c)` derivations |
+| Parameter change | re-derives every source once | `O(N·c)`; no sort |
+| Pan / orbit | one retained evaluation; live target through the wrapper; lazy fields are not forced | `O(1)` in the Plan |
+| Selection echo, membership, card facts | indexed probes | `O(log S)` per probe |
+| Click | screen-space broad phase, same exact test and priority order | build `O(F log F)` once per generation, then `O(v + c log c)` |
+
+Global terms that remain, named rather than hidden: the object unit has no persistent root, so a
+rebuilt object unit is compared by reference over all objects; a membership change cannot be proved
+positionally and takes the complete walk; array insertion for ids is `O(k·S)`; a retained record map
+probe is `O(log S)`; envelope canonicalisation and the flat SHA-256 are `Ω(bytes)` (T3); draw
+submission is one per mesh (H6); cold open is unchanged; and a deeply frozen unit's repeat digest is
+served from the memo (documented above).
+
+**Bench 3 candidate readiness.** The candidate is exact on every correctness check this record can
+run, integrates `main` with no rebase and no method change, and its interaction layer no longer
+contains a whole-project term an edit must pay. **Owner decisions still open:** Bench 3 itself
+(owner-run, and the only place these gains become measured claims); T3 review of the Plan evaluator's
+retention protocol, the compiler-delta certificate and the Plan-key/retained-target change; whether
+the compile generation belongs on every fragment; and the already-open H6/H9 questions. Nothing was
+merged or deployed, and no acceptance state changed.
 
 Stop here before the owner benchmark and acceptance.

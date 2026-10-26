@@ -1321,6 +1321,10 @@ export function createPlanRetainer(): PlanRetainer {
 		});
 		if (duplicate) return null;
 
+		// Records the walk did not confirm. `size` is read **after** the walk on purpose:
+		// a fresh source's `derive` inserted into the same map, and it also appears in
+		// `walked`, so the two cancel. Hoisting this above the walk would silently leak
+		// stale ids and emit sources that no longer compile.
 		const removed = index.byId.size - walked.length;
 		if (fresh.length === 0 && removed === 0) return fresh;
 		if (removed > 0) {

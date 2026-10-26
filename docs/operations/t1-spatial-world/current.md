@@ -53,11 +53,33 @@ ACTIVE: T1.P02.S06 (performance foundation), optimize step (agent), released 202
         read after a later evaluation described the newer sources under its own generation — now
         fixed by capturing each plan's own view and pinned by a regression case that fails without
         it. Derived, not measured; T3 review of the compiler-delta certificate is still owed.
+        Integration and candidate freeze (2026-10-26, `d7600576`): `main` (`51dcb764`) is merged, not
+        rebased, so every S06 commit and all bench provenance keep their SHAs. Seven conflicts were
+        resolved additively — the frozen-revision memo and work counters now coexist with Save's
+        `SaveWorkInstrumentation`, `verifyUnitDependencyLocks` takes one options object carrying both
+        sides' optional inputs, and the Stage host / perf helpers are unions. No flow definition,
+        counter, budget or threshold changed and `perf/bench.ts`'s pass composition is untouched, so
+        Bench 3 compares the same conditions as Bench 1/2. One interpretive caveat is recorded in
+        `perf/README.md`: a deeply frozen unit's repeat digest is served from the memo, so its
+        `save.unit.*` phases do not appear — compare F9 rows and benches at like cache state, it is
+        reuse, not a lost stage. Two final reviewers (correctness and the T3-shaped ownership mandate)
+        found no correctness defect in the merged tree: one provenance caveat, three comment and
+        documented-invariant corrections. Verification on the merged tree: every package check, the
+        editor build, API suite, fast lane 176 files / 2,282 tests, architecture 22 / 180, heavy
+        11 / 138, and the durable `npm test` 209 files / 2,600 tests. The all-in-one contention was
+        characterised rather than guessed — three whole-tree sweeps crossed the 5 s default only
+        under ~200-file parallel transform (1.5–2.3 s alone); they now state their own budget with no
+        assertion changed, and one flaky lifecycle case waits on its observable condition instead.
+        This is the Bench 3 candidate; it is not accepted, merged or deployed, and T3 review of the
+        retention protocol, the compiler-delta certificate and the Plan-key/retained-target change is
+        still owed.
         Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
-NEXT:   Independent review of the Plan interaction locality pass and of the incremental Plan
-        evaluator, then the same review boundary
-        (a diagnostic Bench 2 and the formal Bench 3 remain the owner's, and have not run):
+NEXT:   Owner-run Bench 3 on the frozen candidate, then the same review boundary — plus T3 sign-off
+        on the Plan retention protocol, the compiler-delta certificate and the Plan-key/
+        retained-target change. The candidate freeze and its review disposition are recorded in
         ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#current-independent-review-boundary
+        (a diagnostic Bench 2 has run and remains non-acceptance and contaminated; the formal Bench 3
+        remains the owner's and has not run):
         T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
         It runs on an owner-run benchmark budget of at most three passes:
         set up (agent) → Bench 1 (owner) → optimize with hand calculation (agent) → Bench 2

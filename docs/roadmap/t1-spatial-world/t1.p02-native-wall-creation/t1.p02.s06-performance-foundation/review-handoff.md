@@ -178,6 +178,38 @@ verdict still needs the owner's ruling on the sample plan and pass structure. Do
 S06, close the phase, or treat this review — or any earlier one — as a performance acceptance of
 this implementation.
 
+### Final candidate round (2026-10-26): the merged tree
+
+**What was reviewed.** The branch head after integrating `main` (merge commit `d7600576`, main
+`51dcb764` into the reviewed S06 head `86fb631e`), plus the corrections that round produced. Two
+reviewers read it and edited nothing: one on correctness (the seven merge resolutions, the delta
+certificate, `applyDelta`, lazy output/snapshot isolation, the live-target wrapper, `wallUnchanged`'s
+pairing) and one on ownership/provenance (Bench provenance, acceptance authority, lifecycle and
+visitor fences, and the test-policy changes made during integration).
+
+**What a reviewer must still be able to falsify.** Unchanged from the maps above, with three new
+obligations the merge created:
+
+| Claim | Falsifier |
+| --- | --- |
+| A memoised unit revision is byte-identical to the recomputed one | `units-canonical-form.test.ts` (revision equality and phase list) and `verifyUnitContentRevisions`, which never reads the memo |
+| A caller passing neither new option behaves exactly as before | the two `verifyUnitDependencyLocks` call sites (admission passes only the known id, Save passes only instrumentation) |
+| A plan read after a later evaluation still describes its own generation | `layout-plan-locality.test.ts` “keeps a returned plan describing its own generation after a newer evaluation”, which fails without the per-evaluation `fork()` |
+
+**Disposition.** One provenance finding and three comment/documented-invariant corrections; no
+correctness defect was found in the merged tree, and nothing was weakened to make a lane pass. One
+F9 interpretation caveat is now recorded in `perf/README.md`: attributed Save work depends on whether
+the frozen revision memo serves the digest, so rows and benches must be compared at like cache state.
+The detail, the complexity table and the verification commands are in
+[the acceptance record](./acceptance.md#final-integration-review-and-bench-3-candidate-2026-10-26).
+
+**Ownership boundary, precisely.** This round reviews implementation correctness and integration, not
+performance acceptance, and it is not a T3 sign-off. T3 review is still owed for the Plan evaluator's
+retention protocol, the compiler-delta certificate and the Plan-key/retained-target change; the
+acceptance-authority files keep one digest authority and the same refusal codes, so no new contract
+was introduced. **Bench 3 remains the owner's** — it is the only place any of these locality gains
+become a measured claim.
+
 ## Bench 2/3 strategy: implemented diagnostic Bench 2 (2026-10-26)
 
 **Status:** owner-approved and implemented. Bench 2 is a diagnostic pass; it counts as the second
