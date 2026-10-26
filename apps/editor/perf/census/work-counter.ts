@@ -44,8 +44,9 @@ export async function countWorkAsync<T>(work: () => Promise<T>): Promise<Counted
 }
 
 /**
- * The whole-document passes one wall-geometry candidate runs today
- * (`finalizeWallGeometryCandidate`): each is O(N) over the document.
+ * Legacy named global passes. This list excludes capture, validation helpers,
+ * storage copies, output assembly and byte streaming; zero is NOT proof that
+ * an entire operation is sublinear. A compile call can also be incremental.
  */
 export const WHOLE_DOCUMENT_PASSES = [
 	'span:structural-pre',
@@ -90,7 +91,8 @@ export function allPairVisits(counts: WorkCounts): number {
 		.reduce((sum, [, value]) => sum + value, 0);
 }
 
-/** Linear lookups' collection sizes (an upper bound on their visits): what an identity index removes. */
+/** Logical lookup units at their call sites; indexed endpoint reads also emit
+ * lookup:junctions. This sum no longer measures exclusively linear scans. */
 export function lookupVisits(counts: WorkCounts): number {
 	return Object.entries(counts)
 		.filter(([name]) => name.startsWith('lookup:'))

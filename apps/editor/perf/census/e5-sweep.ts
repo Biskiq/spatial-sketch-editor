@@ -79,6 +79,11 @@ export type E5Row = {
 		readonly frozenObjects: number;
 		readonly historyBytesPerStep: number | null;
 		readonly indexNodeVisits: number;
+		readonly indexEntryTests: number;
+		readonly materializedSlots: number;
+		readonly persistentSlotsCopied: number;
+		readonly layoutValidationEntries: number;
+		readonly clonedPropertySlots: number;
 	};
 	/** Move rows only: the fixed edit's changed set and its independence check. */
 	readonly changedSet?: { readonly k: number; readonly addedInChangedSet: number };
@@ -104,9 +109,14 @@ function derive(counts: WorkCounts, historyBytesPerStep: number | null): E5Row['
 		f4Clones: counts['f4:clone'] ?? 0,
 		frozenObjects: counts['f4:freeze-object'] ?? 0,
 		historyBytesPerStep,
-		// No spatial or identity index exists on this tree: every lookup is a scan,
-		// counted in the classes above. The counter exists so a landed index reports here.
-		indexNodeVisits: counts['index:node-visit'] ?? 0
+		// Corrected unit: ALL tested spatial bounds, including rejected children.
+		// Earlier E5 reports used accepted nodes and are not comparable here.
+		indexNodeVisits: counts['index:node-test'] ?? 0,
+		indexEntryTests: counts['index:entry-test'] ?? 0,
+		materializedSlots: Object.entries(counts).filter(([name]) => name.startsWith('materialize:') && name.endsWith(':slots')).reduce((sum, [, n]) => sum + n, 0),
+		persistentSlotsCopied: counts['storage:vector-slots-copied'] ?? 0,
+		layoutValidationEntries: counts['validation:layout-array-entry'] ?? 0,
+		clonedPropertySlots: counts['f4:clone-property-slots'] ?? 0
 	};
 }
 
@@ -204,23 +214,29 @@ export async function runE5Workload(input: {
 	return rows;
 }
 
-/** I1 work class of each derived counter, and the bound its slope is held to. */
+/** Empirical slope targets, not asymptotic theorems. Raw counts retain all
+ * individual storage, query, parser and byte work; no sum here is total cost. */
 export const COUNTER_CLASSES: Readonly<Record<keyof E5Row['derived'], { readonly workClass: string; readonly bound: 'flat' | 'log' | 'changed-units' }>> = {
 	compiles: { workClass: 'named global operation (whole-document compile)', bound: 'flat' },
 	entityEvaluations: { workClass: 'affected-entity work', bound: 'flat' },
 	wholeDocumentPasses: { workClass: 'affected-entity work (each pass evaluates every entity)', bound: 'flat' },
 	pairVisits: { workClass: 'affected-entity work (pair joins, I2)', bound: 'flat' },
 	allPairVisits: { workClass: 'affected-entity work (every counted pair loop, I2)', bound: 'flat' },
-	lookupVisits: { workClass: 'affected-entity work (linear identity lookups)', bound: 'flat' },
+	lookupVisits: { workClass: 'logical lookup units at named sites', bound: 'flat' },
 	cacheKeyChars: { workClass: 'named global operation (cache-key serialization)', bound: 'changed-units' },
 	envelopeValidations: { workClass: 'named global operation (envelope validation)', bound: 'flat' },
 	serializations: { workClass: 'named global operation (canonical serialization)', bound: 'flat' },
 	digests: { workClass: 'named global operation (content digest)', bound: 'flat' },
 	digestBytes: { workClass: 'named global operation (digest bytes, I4/H7)', bound: 'changed-units' },
-	f4Clones: { workClass: 'cloned objects (calls)', bound: 'flat' },
+	f4Clones: { workClass: 'capture calls, regardless of payload size', bound: 'flat' },
 	frozenObjects: { workClass: 'cloned objects (H5)', bound: 'changed-units' },
-	historyBytesPerStep: { workClass: 'history memory (H5)', bound: 'changed-units' },
-	indexNodeVisits: { workClass: 'index traversal', bound: 'log' }
+	historyBytesPerStep: { workClass: 'serialized history string bytes; excludes heap graphs', bound: 'changed-units' },
+	indexNodeVisits: { workClass: 'all tested spatial node bounds; log is a fixture target', bound: 'log' },
+	indexEntryTests: { workClass: 'all tested spatial entries, including irregular entries', bound: 'log' },
+	materializedSlots: { workClass: 'explicit complete source/compiled array output slots', bound: 'flat' },
+	persistentSlotsCopied: { workClass: 'blocked-vector slots copied', bound: 'log' },
+	layoutValidationEntries: { workClass: 'Layout codec collection entries parsed', bound: 'flat' },
+	clonedPropertySlots: { workClass: 'property slots in newly captured containers', bound: 'log' }
 };
 
 /**
@@ -240,9 +256,14 @@ export const ATTRIBUTION: Readonly<Record<keyof E5Row['derived'], string>> = {
 	digests: 'H2 unchanged units reuse their revisions',
 	digestBytes: 'H2 hash only the changed units (still O(N_layout) for a Layout edit: H7 owner proposal)',
 	f4Clones: 'H5 unit-level structural sharing',
-	frozenObjects: 'H5 unit-level sharing (entity-level copy-on-write is an owner proposal)',
-	historyBytesPerStep: 'H5 unit-level sharing (Layout unit still copied: owner proposal)',
-	indexNodeVisits: 'n/a (no index on this tree)'
+	frozenObjects: 'proven immutable subgraphs are shared; changed Layout admission still builds a complete source',
+	historyBytesPerStep: 'existing canonical JSON is retained per revision; this is not a heap-size measurement',
+	indexNodeVisits: 'persistent adaptive index; arbitrary overlap can still test Theta(N) nodes',
+	indexEntryTests: 'output and irregular populations can require linear entry tests',
+	materializedSlots: 'indexed consumers defer flat arrays; accepted native Layout source still materializes',
+	persistentSlotsCopied: 'bounded vector blocks and logarithmic update paths',
+	layoutValidationEntries: 'complete changed Layout admission; persistent admitted-source ownership needs T3 decision',
+	clonedPropertySlots: 'reuse proven immutable subgraphs; new native source arrays still copy their slots'
 };
 
 export type E5Slope = {
@@ -302,9 +323,8 @@ export function e5Slopes(rows: readonly E5Row[]): E5Slope[] {
 }
 
 /**
- * R at ×10 (variant H, and the connected variant C) for the per-move stages
- * that evaluate entities: today's units of work over the units the result
- * depends on (the changed set k).
+ * Evaluation-only ratio at ×10. It deliberately says nothing about container
+ * copies, allocation, spatial tests, hashing, admission or installation.
  */
 export function necessaryWorkRatios(rows: readonly E5Row[]): { variant: 'H' | 'C'; editClass: EditClass; stage: string; work: number; k: number; R: number }[] {
 	const result: { variant: 'H' | 'C'; editClass: EditClass; stage: string; work: number; k: number; R: number }[] = [];
@@ -313,15 +333,7 @@ export function necessaryWorkRatios(rows: readonly E5Row[]): { variant: 'H' | 'C
 		const variant = row.variant;
 		const k = Math.max(1, row.changedSet.k);
 		const perPass = row.derived.entityEvaluations / Math.max(1, row.derived.compiles);
-		result.push({ variant, editClass: row.editClass, stage: 'compile (entity evaluations per compile)', work: perPass, k, R: perPass / k });
-		result.push({
-			variant,
-			editClass: row.editClass,
-			stage: 'whole-document passes (each evaluates every entity)',
-			work: row.derived.wholeDocumentPasses * perPass,
-			k,
-			R: (row.derived.wholeDocumentPasses * perPass) / k
-		});
+		result.push({ variant, editClass: row.editClass, stage: 'compile evaluations only (excludes storage/bytes/install)', work: perPass, k, R: perPass / k });
 	}
 	return result;
 }
