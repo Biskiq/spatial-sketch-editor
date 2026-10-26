@@ -286,7 +286,7 @@ The **specialist position holds** if:
 
 The shares are decision points for the owner, not sourced numbers.
 
-**I** Showing a case can be native does not make it worth scheduling. P12 decides placement on the capability map. D1, P3 and P4 still decide whether any recipe is built.
+**I** Showing a case can be native does not make it worth scheduling. P12 supplies evidence for a proposed placement on the capability map; owner decision D12 sets the native boundary. D1, the recipe-admission policy (D11), and P3/P4 evidence still govern whether a recipe is worth proposing.
 
 ## 7. Ownership and architecture seams
 
