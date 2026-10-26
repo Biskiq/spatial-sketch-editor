@@ -1,12 +1,14 @@
 # T1.P02.S06 — optimize step: review handoff
 
 **Status:** independent review round 3 complete (2026-10-25) on the persistent-root takeover and its
-H1/H4/H9 integration, at 48126338 plus the documentation commit, working tree otherwise unchanged.
-Two findings were substantiated — one behavioural (`session.retained()` answered differently depending
-on which store shape served the last compile) and one dead allocation — and both are fixed with
-falsifiers. The rest of the review's observations are documented preconditions, not code changes. No
+H1/H4/H9 integration, through `6c077295` (both findings fixed) and `606edcc5` (the round-3 record),
+with the harness-only `4890b23b`. This strategy section is uncommitted. Two findings were
+substantiated — one behavioural (`session.retained()` answered differently depending on which store
+shape served the last compile) and one dead allocation — and both are fixed with falsifiers. The rest of the review's observations are documented preconditions, not code changes. No
 expensive performance work was re-run. Bench 2 has not run, so step acceptance is withheld and nothing
-is merged.
+is merged. A separate strategy package (2026-10-26) now quantifies the consolidation ceiling from the
+retained Bench 1 results and proposes a diagnostic Bench 2 plus a lean sample plan; it is documented
+below, changes no default and awaits the owner's ruling.
 
 The [implementation plan](./implementation-plan.md) owns scope and criteria; the
 [current implementation record](./acceptance.md#persistent-representation-takeover) separates claims,
@@ -65,9 +67,13 @@ falsified-by-search or falsified-by-differential, using temporary probes that ar
 | 5cdccb79 — perf(layout): restore historical topology roots | Session-owned snapshots across membership changes; constant root retirement of transient caches; cold reset; deferred clone vector seeding |
 | 0156eac1 — test(perf): count full spatial query work | Complete radix bucket writes and baseline output exits; varied query positions; explicit history probe reachability |
 | 48126338 — fix(layout): skip unchanged borrowed ranges | Backing-range equality and full-array visitation proofs keep lazy splits from hiding linear diff/seal walks; 100,000-slot count falsifier |
+| 6c077295 — fix(layout): count retained units the same way in both store shapes | `session.retained()` parity; invalid-object storage falsifier |
+| 606edcc5 — docs(t1): record independent S06 review round 3 | Review handoff and acceptance record |
+| 4890b23b — perf(perf): bound harness reads and add decisive early stop | In-page ledger reads, settle sampling, browser facts; opt-in early stop; the first strategy draft |
 
 The documentation/evidence commit records the exact measured code revision, not a fictitious
-post-review verdict. The unrelated production-shell-wireframe README edit is excluded.
+post-review verdict. `4890b23b` also carries an unrelated `prototypes/production-shell-wireframe/README.md`
+edit; it is outside every measured surface and is not part of the S06 claims.
 
 ### Falsification map
 
@@ -166,129 +172,184 @@ Unresolved conditions, precisely:
 5. **T3 review** is still needed for immutable capture reuse, normalized source sharing, the qualified handoff and Stage admission; T2/T3 should review shared renderer compatibility. No new authoritative source contract was introduced. A persistent admitted-source/read contract and any new identity/Save semantics stop at their owner decision; the current native-array/flat-SHA costs are explicit.
 6. **Owner decisions** remain: the amended Bench 2 measurement scope and whether the next mount batch is S06's or a follow-on slice.
 
-The requested boundary is **ready for Bench 2**. Do not merge, close S06, close the phase, or treat
-this review — or any earlier one — as a performance acceptance of this implementation.
+The requested boundary is **ready for the diagnostic pass described below**; a formal Bench 2
+verdict still needs the owner's ruling on the sample plan and pass structure. Do not merge, close
+S06, close the phase, or treat this review — or any earlier one — as a performance acceptance of
+this implementation.
 
-## Bench 2/3 method efficiency (2026-10-26)
+## Bench 2/3 strategy: consolidation ceiling and a diagnostic pass (2026-10-26)
 
-**Status:** harness-only reductions implemented and smoke-verified; the measured contract is unchanged
-and Bench 2/3 have not run. This section is the proposed lean strategy, its cost model and the owner
-decisions it needs. No timing in it is new measurement: every phase figure is Bench 1's record and
-every saving is a count-based estimate with its assumption stated.
+**Status:** strategy and owner-decision package only. The harness-only reductions recorded earlier in
+this record remain implemented and smoke-verified. This section adds no measurement, changes no
+ratified sample floor and runs no pass. Every wall time below is read from the retained Bench 1/1b
+result files in the machine's results directory (`$TMPDIR/biskiq-perf-results/`), not re-run. The
+proposed diagnostic profile is not implemented and is inert until the owner rules.
 
-### Where a lean pass spends its wall clock
+### The measured cost is the sample plan, not setup
 
-Bench 1's measured phases, which are also the ceiling for Bench 2 before any product speed-up:
+Bench 1's per-flow wall times (measured rows, three cache states):
 
-| Phase | Bench 1 wall time | Notes |
+| Flow | grid-L | grid-M | grid-S | What dominates |
+| --- | ---: | ---: | ---: | --- |
+| F3/F4/F8 | 4,678 s (78 min) | 1,159 s (19 min) | 564 s (9 min) | 5 drags + 5 precision commits + 20 Undo/Redo cycles per run, 10 runs/state |
+| F7 orbit | 1,051 s (17.5 min) | 887 s (15 min) | ~800 s (13 min, inferred) | ~30 s/run: 10 s orbit, 4 s idle, 8 s D1 all-visible windows, setup |
+| F13 lifecycle | 675 s (11 min) | 180 s (3 min) | ~60 s (inferred) | 10 cold + 10 repeat-use cycles at 20 edits, plus warm |
+| F2 open | 168 s | 23 s | 13 s | 10 opens/state at L's 5.1 s open |
+| F2 old (A.6) | not run | 138 s | 15 s | planner rebuild inside every setup |
+| stage traces | — | 160 s | ~50 s (inferred) | 5 traced windows, one open |
+| E5 counts/pixels | 858 s (all workloads) | | | 7 workloads, one warm session each |
+
+The whole-pass ceiling is 3 h 36 min. **Setup is 4.8–8.7 % of the L drag wall** (71–142 s per
+cache state) and 76–79 s per F7 state; across the pass all setup is about **15–16 min**. The
+often-cited ~450 opens therefore cost roughly **10–15 min**, not three hours. The rest is the
+ratified interaction plan hitting L's measured per-edit cost (F4 636–670 ms, F8 519–536 ms,
+F3 164–166 ms): 3,000 pointer inputs and 50 drag / 50 precision / 200 undo observations per state.
+
+That is also why the previous harness pass saved only 7–13 min. The remaining overhead inside a
+drag state is real but is **per-sample UI**, not per-open setup: its 1,500 s is roughly half measured
+input/completion waits and half Index selections, Undo/Redo clicks, forced-GC reads and Playwright
+polling. Cutting runs, samples or cycles is the only lever of the required size, and it is a
+sample-plan decision, not an orchestration fix.
+
+### Consolidation candidates, with verdicts
+
+| Candidate | Saving | Verdict |
 | --- | ---: | --- |
-| grid-L tier | 7,234 s | 5 flows × 3 cache states |
-| grid-M tier | 2,555 s | same flows |
-| grid-S tier | 1,737 s | same flows, plus the delay proof |
-| cool-downs | 360 s | 180 s before M and before S, by design |
-| E5 browser counts | 858 s | 7 workloads, one warm session each |
-| transferred rows | 148 s | startup + preview lifecycle |
-| build, bundle report, serve | ≈ 60 s | inferred from the Bench 1b total |
-| **ceiling** | **≈ 12,950 s (3 h 36 min)** | with `--no-sweep-latency` |
+| F3, F4 and F8 share one open and interaction sequence | already done | No further share: each run is exactly that consolidation, and its 5/5/20 samples are the cost |
+| Keep F2's cold context and run F3's cold setup in it | ~1 min/pass (11 opens/tier) | **Reject.** Couples two measured flows for a rounding error; F2's measured context becomes F3's carrier |
+| Run F7 before the edits in F3's session | ~4 min at L (30 opens) | **Reject.** F7 would still start from the opened peak, but F3/F4/F8 would then start after a 10 s orbit and two camera fits; the reverse order is worse because the drag path leaks +2,968 live geometries per accepted commit at L |
+| Merge F13 into another flow | large on paper | **Reject.** F13 measures open/close cycles and heap growth; sharing removes the lifecycle it measures |
+| Merge the stage traces into F3 | small | **Reject.** The trace session also traces F2's open and F7's orbit; five windows in one session is already the consolidation |
+| Merge E5 with a tier flow | ~14 min | **Reject.** E5 uses museum/sweep workloads and count/pixel semantics; no compatible session |
+| Drop cold/repeat-use where the row is not a cache-state row | large | **Reject.** Contradicts the contract's every-row cache-state rule |
+| A.6 old-method rows only in Bench 1 | 2.5–3 min/pass | **Owner decision.** A.6 says "inside Bench 1"; repeating it in 2/3 is not required |
+| Delay proof once per harness revision, not per pass | ~3 min/pass | **Owner decision.** Bench 1 proved it; the correlation code is unchanged |
+| F7's D1 all-visible windows on the last run per cache state | ~9–13 min/pass | **Owner decision.** D1 says "inside each run"; the orbit timing still has 10 runs |
+| F8 20→5 cycles/run, F3/F4 5→3 samples/run | ~26 min/pass | **Owner decision.** Keeps 10 runs, 60 inputs and every cache state; reduces within-run observations |
+| F13 20→10 edits/cycle | ~5 min/pass | **Owner decision.** Keeps 10 cycles and the per-edit retention reading |
 
-A lean pass opens the app about **450 times**: project-open 165 (3 new tiers + 2 old-method
-sources, × 3 cache states × 11 opens), F3 99, F7 99, F13 69, traces 3, the delay proof 13 and E5 7.
-Most of that is intrinsic: cold is a fresh context per measured run, every flow needs a real
-admission, and an edit sequence needs its own project. The harness overhead is everything else.
+**Consolidation ceiling: about 10–15 min/pass** from the sharing that is actually valid. Reaching
+2 h 30 min requires changing the within-run sample plan, which is a measurement-methodology
+decision, not an orchestration fix.
 
-### Implemented harness reductions (measurement unchanged)
+### Proposed lean formal plan (Bench 2 and 3)
 
-| Change | Where | Why it was cost | Verification |
+Still the full contract: 10 measured runs per flow × cache state, 60 pointer inputs per drag run,
+cold/warm/repeat-use, N1, every hard tier, E5, traces and the real chooser.
+
+Changed, only with owner ratification:
+
+| Change | From → to | Observations kept | Saving/pass |
+| --- | --- | --- | ---: |
+| F3/F4 in-session samples | 5 → 3 per run | 30 drag + 30 precision per state (1,800 inputs) | ~15 min at L, ~6 min M+S |
+| F8 Undo/Redo cycles | 20 → 5 per run | 50 undo + 50 redo per state | ~11 min at L, ~6 min M+S |
+| F7 D1 all-visible windows | every run → last run per state | the two windows on 3 runs instead of 30 per tier | ~12 min |
+| F13 edits per cycle | 20 → 10 | 10 cycles, heap per cycle + per edit | ~5 min |
+| A.6 old-method rows | Bench 2/3 → Bench 1 only | — | ~3 min |
+| Delay proof | every pass → once per harness revision | — | ~3 min |
+| **Total** | | | **~48–61 min** |
+
+The existing harness reductions (7–13 min) plus this plan put a formal pass at **~2 h 25 min –
+2 h 45 min** (from 3 h 36 min), before any product gain. If S06's L per-edit completion drops as
+targeted, the drag phase shrinks and the pass may land near **1 h 45 min – 2 h**.
+
+What it does not preserve: p95 resolution of drag/precision completion from 50 to 30 observations
+per state, and Undo/Redo from 200 to 50. Both remain well above the 10-run floor, but they are a
+sample-plan amendment, not the ratified method. The F7 orbit timing and F13 cycle counts are
+untouched.
+
+### Proposed diagnostic Bench 2 (not acceptance evidence)
+
+Purpose: reveal within ~40 min whether the S06 gains are present and whether anything regressed,
+before committing to the formal pass. It is **not** one of the three contract passes unless the
+owner rules otherwise; its rows are labelled `diagnostic, not acceptance evidence`, its decisions
+use medians/maxima, and any p95 in the raw stats is labelled non-gating.
+
+| Flow | L | M | S |
 | --- | --- | --- | --- |
-| Accepted-result counting, result waits and mark reads happen in the page | `flow.ts` | Edit loops called these before and after every commit; each call copied the whole ledger (frame clock + every input record) over CDP. A drag run alone did ~136 full reads; now one per run (its correlation read) survives. | Smoke drag run filed the same rows and the delay proof still passed (180/180 rows, 9 presented, 171 superseded) |
-| `command → result → first frame` computed in the page | `flow.ts` (`commandPresentation`) | Replaced two full-ledger reads per drag sample with one number | Same smoke values; binary search uses monotonic rAF ticks |
-| Orbit frame intervals and long tasks reduced in the page | `flow.ts` (`frameWindow`), `orbit.spec.ts` | The orbit read the full ledger three times per run for two derived series | Orbit smoke passed; same interval/long-task definition |
-| Settle checks sample immediately, then once after the same interval | `flow.ts` | The first sample slept before looking, so every open paid two intervals instead of one | Smoke opens settled; stability window unchanged (500 ms Stage, 250 ms camera) |
-| Browser facts read once per collected series | `browser.ts` | Three evaluates per cold run, always the same answer | Cold smoke rows carry the same facts |
-| Opt-in decisive early stop | `early-stop.ts`, `browser.ts`, project-open and drag plans, `bench.ts` | — | Unit tests plus a forced integration run (below) |
+| F2 | cold 3 + warm 3 | warm 3 | cold 3 + warm 3 |
+| F3/F4/F8 | warm 3 runs × 2 samples; cold 1; repeat-use 1 | warm 3 × 2 | warm 2 × 2 |
+| F7 | warm 1 run (10 s orbit + D1 windows) | warm 1 | warm 1 |
+| F13 | cold 1 cycle + warm 2 × 5 edits | warm 1 × 5 | warm 1 × 5 |
+| traces | 1 session, 5 windows | — | — |
+| A.6 / delay proof | not run (Bench 1 evidence) | — | — |
+| E5 | full, as the correctness prerequisite | | |
 
-**Estimated saving: 7–13 min per lean pass** (~3–6 %). Assumptions: ~13,300 avoided ledger
-transfers at 15–40 ms each for 25–150 KB payloads (~3–9 min), and ~390 Stage settles × ~0.5 s of
-duplicated interval plus ~100 camera settles × 0.25 s (~4 min). That is small beside the tier times
-because a pass is dominated by real interactions, admissions and frame waits: the harness was never the
-main cost, but its remaining overhead scaled with the sample plan and is now bounded.
+Estimated **35–45 min** including E5 (14 min), 180 s cool-downs before M and S, build and
+pre-flight; **20–25 min** for the performance matrix alone if E5 runs separately. It answers: did
+L F4/F8 completion fall toward 200 ms, did L F3 fall toward 100 ms, did the open stay within its
+Target, did F7/F13 regress, did E5 still show 0 differing pixels. It cannot answer: p95,
+run-to-run spread, cold/repeat-use interaction distributions, or formal hard-row verdicts.
 
-**Unchanged, deliberately:** cold = a fresh context per measured run; N1; 60 pointer inputs per drag;
-10 measured runs; all three cache states; the real UI file-chooser admission; frame attribution; the
-trace windows; every budget row. Nothing here turns a measured interaction into a synthetic timestamp.
+### Owner decision package
 
-### Decisive-result early termination (implemented, inert unless asked)
+1. **Lean sample plan (recommended).** Ratify the six changes above for Bench 2/3. Saves ~50–60 min
+   per pass; keeps every ratified run count, input floor and cache state; weakens only within-run
+   observation counts. Alternative: keep the full plan and accept 3 h 25 min–3 h 36 min per pass.
+2. **Pass structure.** Choose one:
+   - **A (recommended for early signal):** diagnostic Bench 2 (~40 min, not acceptance) → lean
+     formal Bench 3 (~2 h 30 min). If the three-pass contract is enforced, a third formal pass
+     remains (~2 h 30 min, total ~5 h 40 min); if the owner rules the diagnostic plus two formal
+     passes sufficient, the total is ~3 h 10 min. The diagnostic is an early-warning gate, never a
+     substitute for the formal statistics.
+   - **B (contract-preserving):** lean formal Bench 2 and Bench 3 (~5 h total). No diagnostic, no
+     pass-count ambiguity.
+   - **C:** diagnostic only, then decide whether the formal pass is needed now.
+   - **D:** full method for both passes (~6 h 30 min–7 h 10 min). No methodology risk.
+3. **One-time evidence.** Ratify A.6 and the delay proof as Bench 1 evidence, re-run only if the
+   admission/correlation code changes. Saves ~6 min/pass.
+4. **Early stop.** Activate `--early-stop` for diagnostic runs and optionally for formal passes; it
+   stops only a demonstrated hard failure at n ≥ 3 with a 25 % margin and never records a pass.
 
-Rule (`early-stop.ts`), applied per row:
+### Implementation plan if approved
 
-1. only a **hard** contract row is eligible (F2 S/M; F3, F4, F8 S/M/L — F2 at L is a Target row and
-   report-only tiers are absent, so they can never stop);
-2. at least **3** measured runs must exist — one slow first sample never stops anything;
-3. the **minimum** of those runs must exceed the budget by **25 %**, so no observed run is near the
-   budget and noise cannot flip the verdict;
-4. the row records the rule, its budget, the partial sample count and the observed minimum, and is
-   read as a **demonstrated failure**, never a pass. The manifest records whether the pass activated it.
+No code is changed before the ruling. The smallest implementation:
 
-Activation is `--early-stop` (or `PERF_EARLY_STOP=1`); it is off by default because it changes the
-sample count of the rows it stops, which is a measurement-methodology change the owner must approve.
+1. `perf/lib/config.ts`: add `PROFILE` (`acceptance` | `diagnostic`) and derive the diagnostic
+   counts (3 runs, 1 warmup, 2 samples, 5 cycles, 5 F13 edits, F7 warm only, trace L only, A.6 and
+   delay off). Acceptance defaults stay byte-identical when `PERF_PROFILE` is unset.
+2. `flows/drag-correlation.spec.ts`: read Undo/Redo cycles and F3/F4 sample counts from config; gate
+   the delay proof behind `PERF_DELAY_PROOF` (default on for acceptance, off for diagnostic).
+3. `flows/orbit.spec.ts`: run the D1 all-visible windows on the last measured run per cache state
+   when `PERF_VIEW_WINDOWS=last` (diagnostic) and on every run in acceptance.
+4. `flows/cycles.spec.ts`: read edits per cycle from config.
+5. `flows/project-open.spec.ts`: omit the A.6 sources when `PERF_OLD_METHOD=0`.
+6. `flows/stage-trace.spec.ts`: use the profile's tier list.
+7. `bench.ts` / `report.ts`: `--profile diagnostic` writes `profile`, `acceptanceEvidence: false`,
+   the exact sample plan and a banner; it refuses a `bench-*` label without `--allow-reduced`.
+8. Tests: a config unit test (defaults unchanged; diagnostic derivations; refusal of diagnostic
+   evidence), the existing early-stop suite, and one `--smoke` run of the diagnostic profile
+   (~2 min) before any owner pass. No Bench 2/3 run here.
 
-Falsification and integration evidence:
-
-- Unit tests: `apps/editor/tests/lib/perf/early-stop.test.ts` (6 tests) — minimum-run, margin,
-  non-hard/absent budget, non-finite observations, and enablement (never in smoke).
-- Forced integration (temporary budget of 1 ms, reverted): project-open with **6 planned runs** stopped
-  each cache state at **n = 3**, recorded `earlyStopSamples=3`, the observed minimum and the rule, and
-  the rows are marked as failures. The same spec with the real budgets stopped nothing.
-- Default-off smoke runs are unaffected: identical rows, no `earlyStop*` metrics.
-
-Savings are failure-only: **0** when the hard rows pass; about **15–25 min** when one L drag row family
-(F3/F4/F8 share the run series) fails decisively, and up to **~45 min** if L and M both fail.
-
-### Proposed Bench 2 command and expected duration
+Once implemented, the two invocations would be:
 
 ```sh
-npm run perf:bench --workspace @portfolio/editor -- --label bench-2 \
-  --tiers grid-S,grid-M,grid-L --no-sweep-latency --early-stop
+# diagnostic, not acceptance evidence
+npm run perf:bench --workspace @portfolio/editor -- --label diagnostic-2 \
+  --profile diagnostic --no-sweep-latency --early-stop
+
+# formal lean pass (Bench 3, or Bench 2 if the diagnostic is skipped)
+npm run perf:bench --workspace @portfolio/editor -- --label bench-3 \
+  --tiers grid-L,grid-M,grid-S --no-sweep-latency
 ```
 
-`PERF_TIERS` selects workloads only; `selectedTiers()` keeps the fixed peak-first order (L, M, S) in
-every pass, so the order in the argument has no effect. Pre-flight is `npm run perf:workloads -- --verify`
-(≈ 1.5 min); a stale cache refuses the pass in under a minute instead of extending it.
-
-| Scenario | Estimate |
-| --- | ---: |
-| A. Hard rows pass, S06 gains delivered inside the flows | **2 h 45 min – 3 h 00 min** |
-| B. L/M hard rows fail decisively, early stop active | **2 h 50 min – 3 h 10 min** |
-| C. No product shrink and no early stop | **3 h 25 min** |
-
-Reserve 3 h 30 min. The product-side shrink is a prediction (0–25 % of tier time, from the F3/F4/F8
-budget targets); Bench 2 measures it. Splitting the pass after L (an M+S continuation, as Bench 1b did)
-costs one extra build/serve (~1.5 min) and is worth it if the machine risks contamination during L.
-
-### Deeper reductions that need an owner decision (not activated)
-
-| Option | Saving | Statistical / contract cost |
-| --- | ---: | --- |
-| Keep the ratified plan (recommended for Bench 2) | — | none |
-| Reduce measured runs from 10 to 6 on named non-hard rows | ≈ 35–40 % of those rows | p95 from 6 samples is nearly the maximum; the contract's sample floor is a ratified number |
-| Reduce in-session F3/F4 samples from 5 to 3 per run | ≈ 35–40 % of the drag phase | 3 commit observations per run instead of 5; pooled input latencies stay large |
-| Drop the A.6 old-method rows in Bench 3 | ≈ 2–4 min | loses the same-revision method check (already established in Bench 1/2) |
-| Skip E5 in Bench 3 | ≈ 14 min | E5 is count/pixel evidence, not timing; dropping it needs a recorded reason |
-| Run fewer cache states where the row is not a cache-state row | large | contradicts the contract's every-row cold/warm/repeat-use rule; not recommended |
-
-Recommendation: Bench 2 keeps the ratified sample plan plus `--early-stop`. Choose Bench 3's
-consolidation only after seeing which rows pass, because early termination already recovers most of the
-cost of a decisive failure and consolidation would cost statistical resolution on rows that do pass.
+The pre-flight `npm run perf:workloads -- --verify` (≈ 1.5 min) and the 180 s cool-downs stay in
+both invocations; `selectedTiers()` keeps the fixed peak-first order regardless of the argument
+order.
 
 ### Verification actually run for this section
 
 | Check | Result |
 | --- | --- |
-| Harness typecheck (`tsc` over `perf/lib`, `perf/bench.ts`, the tier specs; the app tsconfig excludes `perf/`) | pass, apart from pre-existing `Buffer`/`ArrayBufferLike` noise in `import.spec.ts` and the workload registry |
-| `early-stop` unit tests | 6/6 pass |
-| Smoke, chrome 155.0.8059.85, built preview on loopback | drag 2/2 (31.5 s); orbit, project-open (new + old), cycles 4/4 (1.1 min) |
-| Forced early-stop integration (temporary 1 ms budget, reverted) | 6 planned runs → each row n = 3 with the rule recorded; default budgets stop nothing |
-| Bench 2/3 | **not run** |
+| Bench 1/1b retained result files read for per-flow wall times and setup shares | read-only; no browser or bench run |
+| Harness code and default config | unchanged by this section |
+| Bench 2/3 and the diagnostic profile | **not run** |
+| Docs gate (`documentation-references` + `parallel-track-gates`, arch config) | 56/56 pass (2 files, 2.3 s), 2026-10-26 |
+
+### What this means for acceptance
+
+Step acceptance remains withheld. The implementation is ready for a diagnostic pass, not for a
+formal Bench 2 verdict. Do not merge, close S06 or claim a performance pass from any figure above.
 
 ## Historical review records
 

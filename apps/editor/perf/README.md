@@ -63,6 +63,12 @@ npm run perf:bench -- --smoke              # smoke check of every flow at every 
 npm run perf:bench -- --label bench-1 --xl-drag-cache warm   # Bench 1 on the M2 (D5: grid-XL F3/F4/F8 warm only)
 ```
 
+**Bench 2/3 strategy (2026-10-26).** The retained Bench 1 results show that setup and the ~450
+opens are only ~10–15 min of a 3 h 36 min pass; the cost is the within-run sample plan. A proposed
+lean plan (10 runs, 60 inputs and all three cache states preserved) and a 35–45 min diagnostic
+pass are in the [S06 review handoff](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#bench-23-strategy-consolidation-ceiling-and-a-diagnostic-pass-2026-10-26).
+Neither is active and no harness default changed.
+
 **Workloads (A.1, B).** `perf/generate-workloads.ts` builds every workload once
 through the public layout-core planners, the canonical compiler and, for the
 museum family, T3's public Experience operations, admits it through

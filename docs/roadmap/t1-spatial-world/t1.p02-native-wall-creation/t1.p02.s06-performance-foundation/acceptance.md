@@ -252,7 +252,10 @@ waives them.
 
 Proposed ruling for the record: *"Bench 2 and Bench 3 run the hard S/M/L tiers at Bench 1's method,
 with E5; grid-XL timing and the sweep latency rows are deferred to the T1.P02.S04 exhaustive gate,
-not waived."* Until that ruling exists this record disposes of none of those rows.
+not waived."* Until that ruling exists this record disposes of none of those rows. The 2026-10-26
+[strategy section](./review-handoff.md#bench-23-strategy-consolidation-ceiling-and-a-diagnostic-pass-2026-10-26)
+now proposes a within-run sample plan and a diagnostic Bench 2 in place of that method sentence;
+neither is active.
 
 ### D.1 / H3 — repeated work inside the compile
 
@@ -633,13 +636,16 @@ round 3 on the persistent algorithms: two substantiated findings fixed with fals
 documented preconditions, no expensive performance work re-run. Its verdict is PASS for
 implementation correctness in the reviewed scope and WITHHOLD for step acceptance until Bench 2.
 
-**Bench 2/3 method efficiency (2026-10-26).** A harness-only change set bounds setup reads (accepted-result
-counts, mark/result reads and the orbit frame window are reduced in the page), removes the duplicated
-first settle interval, and adds an opt-in decisive hard-budget early stop (3 runs minimum, 25 % margin,
-recorded as a demonstrated failure, never a pass; off unless `--early-stop`). Measured windows, the
-input path, cache states, network profile and sample floors are unchanged. Estimated saving is
-**7–13 min per lean pass**, and 15–45 min more only when a hard row fails decisively. The
-[strategy, cost model and owner decisions](./review-handoff.md#bench-23-method-efficiency-2026-10-26)
-are in the review handoff; the proposed Bench 2 estimate is **2 h 45 min – 3 h 10 min** (reserve 3.5 h).
-Bench 2/3 have not run, and activating early stop in an accepted pass needs the owner's ruling.
+**Bench 2/3 strategy (2026-10-26).** The retained Bench 1 result files decompose the 3 h 36 min
+ceiling: F3/F4/F8 is 78 min of the L tier, F7 17.5 min and F13 11 min; setup is 4.8–8.7 % of the
+drag wall and all ~450 opens cost ~10–15 min. Valid consolidation is therefore capped at ~10–15 min
+per pass. The [strategy and decision package](./review-handoff.md#bench-23-strategy-consolidation-ceiling-and-a-diagnostic-pass-2026-10-26)
+proposes (1) a lean formal sample plan that keeps 10 runs, 60 inputs and all three cache states but
+cuts within-run samples/cycles, estimated **2 h 25 min – 2 h 45 min** per pass (from 3 h 36 min),
+and (2) a **35–45 min diagnostic Bench 2** that is not acceptance evidence, reserving formal
+statistics for Bench 3. The harness-only reductions already in the tree save **7–13 min per pass**;
+the opt-in early stop remains available (3 runs minimum, 25 % margin, never a pass). Owner decisions
+required: the lean sample plan, the pass structure (the diagnostic is not one of the three passes
+unless ruled otherwise), the one-time A.6/delay-proof evidence, and early-stop activation. Bench 2/3
+have not run; no measured contract or default changed.
 Stop here before the owner benchmark and acceptance.
