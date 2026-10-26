@@ -1074,11 +1074,11 @@ edit changed, `c` placements per source, `Δ` compiled records whose identity ch
 
 | Path | Before this pass | After |
 | --- | --- | --- |
-| Accepted edit, delta proved | `O(N·c)` comparisons + `O(k·c)` derivation + `O(F)` fragments eagerly | `O(Δ log N)` root visits + `O(k·c)` derivation + **no comparison**, no materialization; `Ω(F)` only if a consumer reads the array |
+| Accepted edit, delta proved | `O(N·c)` comparisons + `O(k·c)` derivation + `O(F)` fragments eagerly | `O(Δ log N)` root visits + `O(k·(c + log S))` derivation and record-map writes + **no comparison**, no materialization; `Ω(F)` only if a consumer reads the array |
 | Accepted edit, delta unprovable (insert/remove/membership) | `O(N·c)` comparisons, but over-conservative `unchanged` ⇒ `O(N·c)` derivations | `O(N·c)` comparisons + `O(k'·c)` derivations, where `k'` is what actually moved |
 | Cold evaluation | `O(N·c)` + materialized legacy arrays | `O(N·c)`, no legacy array |
 | Parameter change | `O(N·c)` re-derivation + `O(F)` fragments | `O(N·c)` re-derivation; output lazy |
-| `planFragmentOf` / `planMembershipOf` | `O(F)` / `O(S)` on first use, then `O(1)` | `O(1)` from the retained records; the indexes are still filled if the arrays exist |
+| `planFragmentOf` / `planMembershipOf` | `O(F)` / `O(S)` on first use, then `O(1)` | `O(log S)` from the retained records (one persistent-map probe per kind); the arrays are still indexed if a consumer materializes them |
 | Pan frame | `O(1)` | `O(1)` — unchanged, and now genuinely so: the live view does not force the lazy fields |
 | Click | Build the pick index `O(F log F)` once per evaluation, then `O(v + c log c)` | Unchanged |
 
@@ -1094,10 +1094,15 @@ edit changed, `c` placements per source, `Δ` compiled records whose identity ch
 - **A membership change cannot be proved positionally.** An insertion or removal shifts every later
   slot, so the delta is `undefined` and the complete walk runs: `O(N·c)` comparisons, `O(k'·c)`
   derivations, still no sort and still no legacy array.
-- **Id-order maintenance is `O(k·S)` in the worst case, not `O(k log S)`.** `splice` shifts the tail.
-  For a handful of ids that is what it says; a balanced tree would be `O(k log S)` with node
-  allocation and an iterator protocol for a set that barely changes. This pass keeps the array and
-  corrects the claim.
+- **Id-order maintenance is `O(k·S)` in the worst case, not `O(k log S)`.** Inserting an id copies
+  the array's tail (the previous pass used `splice`, which shifts it; this pass replaces the array
+  instead, at the same copy cost, so a captured reference stays valid). For a handful of ids that is
+  what it says; a balanced tree would be `O(k log S)` with node allocation and an iterator protocol
+  for a set that barely changes. This pass keeps the array and corrects the claim.
+- **Retained records live in a persistent map, so a probe is `O(log S)`, not `O(1)`.** That is the
+  price of letting an assembled evaluation capture its own view with `fork()` instead of copying the
+  map; the alternative — a plain `Map` — makes a returned plan read records a later evaluation wrote,
+  which is a correctness defect, not a trade. `k` writes per edit at `O(log S)` each.
 - **Envelope canonicalization and the flat SHA-256 digest**, `Ω(bytes)`, unchanged (T3).
 - **Draw submission**, one per mesh, unchanged (H6 owner decision). **Cold open**, unchanged.
 - **The pick index still rebuilds per generation** (`O(F log F)`, on the first click after an
@@ -1107,7 +1112,7 @@ edit changed, `c` placements per source, `Δ` compiled records whose identity ch
   defensible interaction return.
 
 **Corrections to earlier claims in this record.** (a) "`O(k log S)` binary insertion" was wrong;
-`splice` shifts, so it is `O(k·S)` worst case (above). (b) "`O(N·c)` **allocation-free** comparisons"
+insertion shifts the array's tail, so it is `O(k·S)` worst case (above). (b) "`O(N·c)` **allocation-free** comparisons"
 was true of allocation and false in effect: the predicate often failed to prove an untouched Wall, so
 the walk cost derivations too. (c) "`Ω(F)` fragments per accepted edit" stands for the *complete
 output*, but not for an edit: the output is now demand-driven, and the obligation belongs to whoever
@@ -1131,7 +1136,8 @@ label, from one indexed membership probe); `apps/editor/tests/lib/layout/layout-
 
 **Why it is exact.** The delta's authority is record identity: a compiled record that is the *same
 object* as the one a derivation was computed from cannot derive differently, and a record the root
-difference names is re-derived. Everything the delta cannot prove falls back to the complete walk,
+difference names is re-derived. A returned plan's lazily materialized output is exact for the same
+reason: it reads the sources it captured at assembly, never the retainer's later state. Everything the delta cannot prove falls back to the complete walk,
 which is the previous pass's path with a stronger predicate; and anything the walk cannot model (a
 source id shared by two kinds, or repeated within one) is handed to `evaluateLayoutPlan` itself. The
 `layout-plan-retainer.test.ts` differential oracle still holds every case against the reference, and
@@ -1164,10 +1170,40 @@ section is measured.
 | Delta-updated picking index | **Rejected for now** | See the remaining-terms list: a static tree would need rebalancing for a cost that is already off the evaluation path |
 | RBush/Flatbush, `three-mesh-bvh`, GPU batching, WebGPU, Merkle/BLAKE3 identity, CGAL/Clipper2 | **Unchanged refusals** | Nothing in this pass altered the reason each was refused; no rendering, identity or geometry contract was touched |
 
-**Review still owed.** Independent review of this pass is in flight in the same session (two reviewers,
-correctness and integration mandates, no edits). T3 review remains required for the Plan evaluator's
-retention protocol, the compiler-delta certificate and the previously flagged Plan-key/retained-target
-change; the route, the Stage host and the Index panel remain shared surfaces. The owner still owns
-whether the compile generation belongs on every fragment.
+**What the independent review found, and what was fixed.** Two reviewers with different mandates
+(correctness, and integration/regression) read the pushed commit and edited nothing. The substantive
+finding was mine and it was a real defect, not a documentation gap:
+
+1. **A lazily materialized plan could describe a later generation's sources.** The getters closed
+   over the retainer's live index, so holding a `PlanEvaluation` across a later `evaluate` and then
+   reading `fragments`/`membership`/`bounds`/`streams`/`unmatchedRevealIds` — or asking
+   `planFragmentOf`/`planMembershipOf` — produced the *newer* records under the *older*
+   `generationId`. The differential suite missed it because it compares each result immediately.
+   Fixed by having `assemble` capture its own view: each kind's id array (now copy-on-write, never
+   `splice`d) and a `fork()` of its record map (a persistent map, `O(1)`, so no `O(S)` copy returns).
+   A regression case evaluates a second generation with a different cut height and then asserts the
+   first plan still materializes its own sources, its own streams, its own bounds and its own
+   per-source row; it fails (`expected […(1560)] to deeply equal […(1560)]`) when the `fork()` is
+   replaced by the live handle.
+2. **A refused delta could leave a partial apply.** `applyDelta` derived as it validated, so a late
+   refusal left records stamped with the current pass — which the fallback walk reads as a duplicate
+   id and answers by dropping all retention (output stayed exact; the retainer went cold). It now
+   validates every named source before deriving anything, so a refusal mutates nothing.
+3. **A doc block overstated the fallback's repair** (it said a partial apply was repaired by
+   `unchanged` comparison; the stamp check fires first) and an optional `EditorIndex` prop was
+   guarded as if required. Both corrected — the prop is required, which is what its one caller passes.
+
+The reviewers also confirmed, independently: the delta's bail-outs are complete for the compiler's
+current producers (insertion/removal, id reordering, an Opening changing host, a Room that stopped
+compiling, an unretained or hand-built snapshot); no product code spreads or clones a `PlanEvaluation`
+(so no hot path forces the lazy fields); the retained walk's order equals `geometry.walls`/
+`geometry.rooms` on every path that produces a compiled snapshot; and `wallUnchanged`'s pairing cannot
+report a changed Wall as unchanged (equal counts plus an injective match is a bijection over the field
+set the derivation reads).
+
+**Review still owed.** T3 review remains required for the Plan evaluator's retention protocol, the
+compiler-delta certificate and the previously flagged Plan-key/retained-target change; the route, the
+Stage host and the Index panel remain shared surfaces. The owner still owns whether the compile
+generation belongs on every fragment.
 
 Stop here before the owner benchmark and acceptance.

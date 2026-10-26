@@ -55,7 +55,7 @@
 			* selected subject alone. Reading it from `groups` would make the whole
 			* located-subject list a dependency of a closed panel.
 			*/
-		selectedLabel?: string | null;
+		selectedLabel: string | null;
 		/**
 			* Contributed rail-family / capability-Find entries, from whatever adapters
 			* are registered. The Index renders them generically: a domain adapter never

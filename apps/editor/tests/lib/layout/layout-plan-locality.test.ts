@@ -215,6 +215,50 @@ describe('Plan locality against the compiler roots', () => {
 		expect(count(again.counts, 'plan:output-fragments')).toBe(0);
 	});
 
+	it('keeps a returned plan describing its own generation after a newer evaluation', () => {
+		// The output is materialized lazily, so a plan can be read after the retainer has
+		// evaluated a newer generation. It must still describe the sources it was assembled
+		// from — not the newer ones under the older generation — which means the assembled
+		// evaluation captures its own view instead of reading the retainer's live index.
+		const document = buildScaleFixture({ ...SCALE_FIXTURE_SEEDS.small, roomCount: 10 });
+		const session = createLayoutCompileSession();
+		const first = session.compile(document).geometry;
+		const retainer = createPlanRetainer();
+		const older = evaluated(
+			retainer.evaluate(first, PARAMETERS, { generationId: 'gen-1', target: [0, 0], datumMeters: 0 })
+		);
+		// A **parameter** change is the loudest case: every source is re-derived, so a plan that
+		// read the retainer's live index would report the newer cut's placements under its own
+		// generation.
+		const newer = evaluated(
+			retainer.evaluate(
+				first,
+				{ ...PARAMETERS, cutHeightMeters: 2.6 },
+				{ generationId: 'gen-2', target: [0, 0], datumMeters: 0 }
+			)
+		);
+		const reference = evaluateLayoutPlan(first, PARAMETERS, {
+			generationId: 'gen-1',
+			target: [0, 0],
+			datumMeters: 0
+		});
+		if (reference.kind !== 'evaluated') throw new Error('expected an evaluated reference');
+
+		// The newer plan really differs, so this is not comparing two equal plans.
+		expect(newer.cutHeightMeters).toBe(2.6);
+		expect(newer.fragments).not.toEqual(reference.plan.fragments);
+		expect(older.fragments).toEqual(reference.plan.fragments);
+		expect(older.membership).toEqual(reference.plan.membership);
+		expect(older.bounds).toEqual(reference.plan.bounds);
+		expect(older.streams).toEqual(reference.plan.streams);
+		expect(older.fragments.every((fragment) => fragment.ref.generationId === 'gen-1')).toBe(true);
+
+		// …including the two per-frame questions asked from the source index.
+		const sourceId = document.walls[4]!.id;
+		expect(planFragmentOf(older, sourceId)).toEqual(planFragmentOf(reference.plan, sourceId));
+		expect(planMembershipOf(older, sourceId)).toEqual(planMembershipOf(reference.plan, sourceId));
+	});
+
 	it('stays exact when the compiler cannot prove a delta', () => {
 		// Hand-built geometry has no retained world, so both the walk and the delta must
 		// fall back — and the result must still be the reference result.

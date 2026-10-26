@@ -56,6 +56,7 @@ import {
 	type CompiledSourceDelta
 } from './layout-geometry-delta';
 import { pointInPolygon } from './layout-geometry-objects';
+import { PersistentMap } from './persistent-store';
 import { countWork } from './p2311-perf';
 import type {
 	CompiledLayoutGeometry,
@@ -959,9 +960,21 @@ type SourceRecord = {
 };
 
 type KindIndex = {
-	/** Source ids in declared order — ascending by code unit. */
-	ids: string[];
-	readonly byId: Map<string, SourceRecord>;
+	/**
+	 * Source ids in declared order — ascending by code unit.
+	 *
+	 * **Replaced, never mutated.** An assembled evaluation captures this array so its lazy
+	 * getters can be read later; a `splice` in place would change what an already-returned
+	 * plan sees. Copy-on-write shifts the same `O(S)` tail a `splice` would, so the cost is
+	 * the same and the captured reference stays honest.
+	 */
+	ids: readonly string[];
+	/**
+	 * Derived records, in a persistent map so an assembled evaluation can capture the map
+	 * with `fork()` — `O(1)` — instead of copying one entry per source. The retainer keeps
+	 * writing through its own handle; every fork keeps the root it was taken from.
+	 */
+	byId: PersistentMap<string, SourceRecord>;
 };
 
 /**
@@ -1160,12 +1173,11 @@ export type PlanRetainer = {
  * **What it does per evaluation.**
  *
  * - *Nothing changed* — same derivation inputs, same generation, same compiled object —
- *   returns the retained result: `O(1)`.
- * - *New generation, same derivation inputs* (every accepted edit): walks the compiled
- *   sources once to confirm each retained record still describes its source, then
- *   assembles. `O(N)` cheap comparisons with `O(k)` derivation and `O(F)` fragments, and
- *   **no sort of any kind**: the declared order is maintained with the records, so the
- *   fragment array is produced by walking it, not by sorting into it.
+ *   returns the retained result: `O(1)`.	 * - *New generation, same derivation inputs* (every accepted edit): asks the compiler's
+	 *   root difference which records changed and re-derives exactly those; with no provable
+	 *   difference it walks every source once instead. **No sort of any kind**: the declared
+	 *   order is maintained with the records, so the fragment array is produced by walking
+	 *   it, not by sorting into it — and it is produced only if someone reads it.
  * - *Parameters changed* (cut height, depth, lateral span, filter, reveal): re-derives
  *   every source — the order is still maintained, so nothing is sorted.
  * - *Source ids added or removed*: the id list is updated by binary-search insertion when
@@ -1175,11 +1187,16 @@ export type PlanRetainer = {
  * parameter sets would re-derive on every call, so a host with genuinely interleaved
  * consumers should hold one retainer per set; the editor reads one set per evaluation.
  *
- * **What it cannot remove.** The walk over the compiled sources is `Omega(N)` because the
- * input is the whole compiled geometry: proving that an untouched source really is
- * untouched means reading it. A compiler-provided changed set would turn that walk into
- * `O(k log S)`; until one exists, `O(N)` cheap comparisons is the floor, and it is a
- * cheaper `O(N)` than before (no allocation per source, no sorted insertion).
+ * **What it cannot remove.** Without evidence, the walk over the compiled sources is
+ * `Omega(N)`: proving that an untouched source really is untouched means reading it. It
+ * does not ask that question when the compiler can answer it: `diffCompiledSources`
+ * compares the two compiled snapshots' persistent roots, so an ordinary accepted edit
+ * re-derives only the records whose identity changed and compares nothing. Everything
+ * that difference cannot prove — a cold snapshot, an insertion or removal, an Opening
+ * that changed host, a Room that stopped compiling, a hand-built geometry — falls back to
+ * the complete walk, which is still allocation-free per source and still sorts nothing.
+ * The output itself is produced on demand (see `assemble`), so an edit that is never
+ * rendered costs neither the comparison walk nor the fragment pass.
  *
  * **Exactness.** This is not a second definition of the family. It uses the same
  * candidate builders, the same `measureCandidate`, the same `sourceMembership` and the
@@ -1202,7 +1219,9 @@ export function createPlanRetainer(): PlanRetainer {
 	/** False when two Walls host the same Opening id, whose record is derived by first host. */
 	let openingsAreUnique = true;
 	const indexes = new Map<PlanSourceKind, KindIndex>();
-	for (const kind of PLAN_SOURCE_KINDS) indexes.set(kind, { ids: [], byId: new Map() });
+	for (const kind of PLAN_SOURCE_KINDS) {
+		indexes.set(kind, { ids: [], byId: PersistentMap.from<string, SourceRecord>([]) });
+	}
 
 	function clear(): void {
 		derivation = null;
@@ -1214,7 +1233,9 @@ export function createPlanRetainer(): PlanRetainer {
 		for (const kind of PLAN_SOURCE_KINDS) {
 			const index = indexes.get(kind)!;
 			index.ids = [];
-			index.byId.clear();
+			// A fresh map, not a cleared one: evaluations already assembled keep the root
+			// their own fork captured.
+			index.byId = PersistentMap.from<string, SourceRecord>([]);
 		}
 	}
 
@@ -1303,21 +1324,24 @@ export function createPlanRetainer(): PlanRetainer {
 		const removed = index.byId.size - walked.length;
 		if (fresh.length === 0 && removed === 0) return fresh;
 		if (removed > 0) {
-			for (const [id, record] of index.byId) if (record.stamp !== pass) index.byId.delete(id);
+			const stale: string[] = [];
+			for (const [id, record] of index.byId) if (record.stamp !== pass) stale.push(id);
+			for (const id of stale) index.byId.delete(id);
 		}
-		// A few new ids are merged into the maintained order by binary search; a structural
-		// change rebuilds it with the one sort this retainer ever performs.
+		// A few new ids are merged into the maintained order by binary-search insertion; a
+		// structural change rebuilds it with the one sort this retainer ever performs. The
+		// array is replaced rather than spliced: see `KindIndex.ids`.
 		if (removed === 0 && fresh.length <= 8) {
-			for (const id of fresh) index.ids.splice(insertionPoint(index.ids, id), 0, id);
+			let ids = index.ids;
+			for (const id of fresh) {
+				const at = insertionPoint(ids, id);
+				ids = [...ids.slice(0, at), id, ...ids.slice(at)];
+			}
+			index.ids = ids;
 			return fresh;
 		}
 		index.ids = [...walked].sort(compareCodeUnits);
 		return fresh;
-	}
-
-	function existsInAnyKind(id: string): boolean {
-		for (const kind of PLAN_SOURCE_KINDS) if (indexes.get(kind)!.byId.has(id)) return true;
-		return false;
 	}
 
 	/**
@@ -1333,6 +1357,14 @@ export function createPlanRetainer(): PlanRetainer {
 	 * a click or a panel needed. The getters below keep the contract exactly as it is and
 	 * move the cost to whoever reads it, which is the difference between "the output is
 	 * `Omega(F)`" (true, and unavoidable) and "an edit must produce it" (false).
+	 *
+	 * **Why the sources are captured.** The getters run later than this function, possibly
+	 * after the retainer has evaluated a newer generation. They therefore read a snapshot —
+	 * each kind's id array (already replaced, never mutated) and a fork of its persistent
+	 * record map (`O(1)`, sharing the root) — and never the retainer's live index. Without
+	 * that, holding one plan across a later evaluation would materialize the *newer*
+	 * sources under the *older* generation, which is exactly the kind of quiet divergence
+	 * this file exists to avoid.
 	 */
 	function assemble(
 		parameters: PlanParameters,
@@ -1347,20 +1379,28 @@ export function createPlanRetainer(): PlanRetainer {
 		let boundsReady = false;
 		const firstFragment = new Map<string, PlanFragment>();
 
+		// This evaluation's sources, captured now: see the doc block above.
+		const sources = PLAN_SOURCE_KINDS.map((kind) => {
+			const index = indexes.get(kind)!;
+			return { kind, ids: index.ids, byId: index.byId.fork() };
+		});
+
 		// Kinds in declared order, ids in ascending order, placements in interval order:
 		// the maintained order *is* the order a whole-population sort would produce.
 		const eachSource = (visit: (kind: PlanSourceKind, id: string, record: SourceRecord) => void): void => {
-			for (const kind of PLAN_SOURCE_KINDS) {
-				const index = indexes.get(kind)!;
-				for (const id of index.ids) visit(kind, id, index.byId.get(id)!);
+			for (const source of sources) {
+				for (const id of source.ids) {
+					const record = source.byId.get(id);
+					if (record !== undefined) visit(source.kind, id, record);
+				}
 			}
 		};
 
 		const fragmentOf = (sourceId: string): PlanFragment | undefined => {
 			const cached = firstFragment.get(sourceId);
 			if (cached !== undefined) return cached;
-			for (const kind of PLAN_SOURCE_KINDS) {
-				const record = indexes.get(kind)!.byId.get(sourceId);
+			for (const source of sources) {
+				const record = source.byId.get(sourceId);
 				if (record === undefined) continue;
 				for (const entry of record.entries) {
 					const placement = entry.placement;
@@ -1368,7 +1408,7 @@ export function createPlanRetainer(): PlanRetainer {
 					const fragment = fragmentFor(
 						context.generationId,
 						sourceId,
-						kind,
+						source.kind,
 						entry.subRef,
 						entry.plan,
 						placement.stream,
@@ -1456,7 +1496,10 @@ export function createPlanRetainer(): PlanRetainer {
 			get unmatchedRevealIds(): readonly string[] {
 				if (unmatched === null) {
 					unmatched = [];
-					for (const id of measurement.reveal) if (!existsInAnyKind(id)) unmatched.push(id);
+					for (const id of measurement.reveal) {
+						const hosted = sources.some((source) => source.byId.has(id));
+						if (!hosted) unmatched.push(id);
+					}
 					unmatched.sort();
 				}
 				return unmatched;
@@ -1476,8 +1519,8 @@ export function createPlanRetainer(): PlanRetainer {
 		PLAN_VIEWS.set(plan, {
 			fragmentOf,
 			membershipOf(sourceId) {
-				for (const kind of PLAN_SOURCE_KINDS) {
-					const record = indexes.get(kind)!.byId.get(sourceId);
+				for (const source of sources) {
+					const record = source.byId.get(sourceId);
 					if (record !== undefined) return record.membership;
 				}
 				return null;
@@ -1498,8 +1541,11 @@ export function createPlanRetainer(): PlanRetainer {
 	 *
 	 * Returns `false` when the delta does not fit the retained source set — an id the
 	 * retainer does not host, or an Opening whose first host is not the Wall that changed.
-	 * The caller then takes the complete walk, which re-derives whatever the partial apply
-	 * left behind because `unchanged` compares against the records as they are now.
+	 * **It validates before it mutates**: a delta that will be refused derives nothing, so
+	 * the caller's complete walk starts from the records the delta would have left behind
+	 * untouched. (A partial apply would be harmless for output — the walk compares against
+	 * whatever it finds — but its own `stamp` bookkeeping would read as a duplicate id and
+	 * throw the retention away.)
 	 */
 	function applyDelta(
 		delta: CompiledSourceDelta,
@@ -1511,27 +1557,34 @@ export function createPlanRetainer(): PlanRetainer {
 		const openings = indexes.get('opening')!.byId;
 		const rooms = indexes.get('room-floor')!.byId;
 		const objects = indexes.get('object')!.byId;
+
+		// 1. Validate. Nothing is derived until every source the delta names is proved to be
+		// one this retainer hosts — a refusal must leave the retained state as it was.
 		for (const wall of delta.walls) {
 			if (!walls.has(wall.wallId)) return false;
+			for (const opening of wall.openings) if (!openings.has(opening.openingId)) return false;
+		}
+		for (const room of delta.rooms) if (!rooms.has(room.roomId)) return false;
+		if (delta.objects !== null) for (const object of delta.objects) if (!objects.has(object.objectId)) return false;
+
+		// 2. Derive exactly what the records say changed.
+		for (const wall of delta.walls) {
 			derive('wall', wall.wallId, wallCandidatesOf(wall, datumMeters), measurement);
 			// A Wall record changing does not mean its Openings changed: they are their own
-			// compiled records, and the Plane's derivation reads their own fields. Deriving
+			// compiled records, and the Plan's derivation reads their own fields. Deriving
 			// every Opening of a changed Wall would make a Wall's height charge its neighbours'
 			// windows for no reason, so the same per-source predicate the fallback uses decides.
 			for (const opening of wall.openings) {
-				const retained = openings.get(opening.openingId);
-				if (retained === undefined) return false;
+				const retained = openings.get(opening.openingId)!;
 				if (!openingUnchanged(retained.entries, opening, datumMeters)) {
 					derive('opening', opening.openingId, [openingCandidate(opening, datumMeters)], measurement);
 				}
 			}
 		}
 		for (const room of delta.rooms) {
-			const retained = rooms.get(room.roomId);
-			if (retained === undefined) return false;
 			// A Room's compiled record embeds the bounds of the Walls around it, so a Wall edit
 			// replaces it without necessarily changing what the Plan reads from it.
-			if (!roomFloorUnchanged(retained.entries, room)) {
+			if (!roomFloorUnchanged(rooms.get(room.roomId)!.entries, room)) {
 				derive('room-floor', room.roomId, [roomFloorCandidate(room)], measurement);
 			}
 		}
@@ -1540,7 +1593,6 @@ export function createPlanRetainer(): PlanRetainer {
 			// replaced, and the compiler proved the unit's ids are unchanged in order, so
 			// every other object's retained derivation still describes that same record.
 			for (const object of delta.objects) {
-				if (!objects.has(object.objectId)) return false;
 				derive('object', object.objectId, [objectCandidate(object)], measurement);
 			}
 		}
