@@ -1,5 +1,5 @@
 {
-  "version": "155.0.8059.85",
-  "pinnedAt": "2026-10-24",
-  "ruling": "D8 (owner, 2026-10-24): one branded Chrome build for all three S06 passes; the owner re-pins with a recorded reason"
+  "version": "156.0.8078.48",
+  "pinnedAt": "2026-10-26",
+  "ruling": "D8 (owner, 2026-10-24; re-pinned 2026-10-26): one branded Chrome build for an S06 pass. Chrome auto-updated from 155.0.8059.85 to 156.0.8078.48 during the milestone attempt; that mixed-build attempt was discarded and the milestone ran again on 156. The owner re-pins with a recorded reason; Bench 1 and Bench 2 remain labelled 155."
 }

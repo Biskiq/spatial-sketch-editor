@@ -266,6 +266,12 @@ only the two pre-existing `registry.ts` Buffer overload errors; a milestone grid
 with F3 frame evidence; real grid-L F13 rows pass at 2.55/2.54 MiB normalised growth after the
 baseline fix.
 
+**Environment.** Designated M2, AC power (a recorded deviation from the contract's battery
+condition), Low Power Mode off, 1920×1080 CSS at DPR 1, N1, branded Chrome 156.0.8078.48. Chrome
+auto-updated from 155.0.8059.85 during the first milestone attempt; that mixed-build attempt was
+discarded and the build was re-pinned to 156 with the reason in `perf/chrome-pin.json`. Bench 1 and
+Bench 2 remain 155, so every comparison to them is cross-build and labelled as such.
+
 ### Execution and adjudication
 
 _Pending the measured pass; this subsection is replaced with the actual manifest, per-row verdicts,
