@@ -39,7 +39,7 @@ The tranches below are ordered by dependency and evidence, not by track. Each li
 | **C. Following and repeating** | Profile on carrier (trim, edge bands); distributions with anchors; role-address identity | The ten-hour revision value; depends on B and on the identity policy | B5, B6, B11 |
 | **D. Found objects and handoff** | Light edit kit; non-destructive re-import; imports in family slots; glTF out | Content-in is most of a real scene. Can proceed in parallel with B and C after A | B9 |
 | **E. Material-level detail** | Cut-out materials with correct shadows; decals; text and SVG profiles; standees | Cheap depth, if P7 confirms it works in motion | B8 |
-| **F. Few deep recipes** | Railing and stair with transitions; shelving and display bays; exhibition families; bounded compound roofs and helical stairs if P12 places them natively | Only after B and C prove the language; P4 and P12 decide | B7 |
+| **F. Few deep recipes** | Railing and stair with transitions; shelving and display bays; exhibition families; bounded compound roofs and helical stairs if P12 supports them and D12 admits their native scope | Only after B and C prove the language; P4 supplies recipe evidence, P12 boundary evidence, and D12 requires an owner ruling | B7 |
 | **G. Gated depth** | Loft, Coons spans, membranes, cushions, terrain heightfields, booleans on found objects, signed-distance forms, free workplanes and unrestricted 3D chains | Each needs its own demand evidence: P6 for kernels, P2 for drafting rungs 4 and 5 | none until a proof passes |
 
 **R** **Difference from the original study's [adoption order](../spatial-modeling-depth-research-2026-10-25.md#12-suggested-adoption-order):**
@@ -105,7 +105,7 @@ flowchart TD
 
 **Reading the graph.**
 
-- No arrow means "schedule after". An arrow means "needs the evidence or decision from".
+- An arrow means "requires evidence or a decision from". No arrow means no dependency is declared; the graph neither schedules nor authorizes a scope.
 - Proofs can start before any production work. Prototypes need only a commission.
 - Tranche A's Wall drawing remains behind the released S06 performance foundation, under the existing [performance-first halt](../../docs/roadmap/README.md#production-implementation-hold).
 
@@ -354,7 +354,7 @@ Each brief is written so that a later planning agent can turn it into a plan onc
   This package's anchor workflow, a window in a curved wall, therefore has no planned delivery. It is recorded for reconciliation, not proposed as a scope.
 - **Observation: dense-host evaluation belongs to S06.** The production wall path measured 3–9 ms per 40-opening wall in Node ([probe methods §4](./probe-methods.md#4-results-the-matched-40-opening-wall)). S06 owns the compile and representation path and its harness. This package adds no measurement obligation to S06.
 - **Ratified authorities preserved.**
-  - The PLATE shell's dock, readings, precision ladder and Card rule are used as they stand. D5 is the only proposed amendment.
+  - The PLATE shell's dock, readings, precision ladder and Card rule are used as they stand. D5 proposes a circle-on-wall alternative; D6/B12 may require an additional PLATE amendment for drawing on further host faces. Neither amendment is ratified here.
   - The convergence ratification's family-by-family growth, typed refusals and correspondence transport are assumed.
   - The Scene destination's definitions, attachment and opaque part identity are assumed.
   - The North Star's agent surface and non-goals are respected. D1 proposes clarifying wording, not a reversal.
