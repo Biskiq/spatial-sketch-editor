@@ -847,3 +847,198 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 		expect(excluded).toEqual({ kind: 'none', reason: 'no-fragment' });
 	});
 });
+
+/**
+ * The Plan is **retained across a camera move**, because a pan is not a Plan
+ * change.
+ *
+ * `evaluateLayoutPlan` reads the inspection target in one place only, the
+ * `lateral-span` stage, whose provider default is explicit unbounded coverage. So
+ * a pan cannot change a fragment, a membership row, a stream or a bound — yet the
+ * host used to re-evaluate the whole Plan on every pan frame and hand every
+ * consumer a new object to re-derive from. These tests pin the retention *and* its
+ * two boundaries: an input that does matter still re-evaluates, and a bounded
+ * lateral span goes back to depending on the target.
+ */
+describe('Stage facade — the Plan is retained across a camera move that cannot change it', () => {
+	it('answers a pan with the same evaluation, still reporting the live target', async () => {
+		const { facade } = await mount();
+		evaluate(facade);
+		const first = facade.plan();
+		expect(first.kind).toBe('evaluated');
+		if (first.kind !== 'evaluated') return;
+
+		const acquired = facade.acquireInspection('exclusive');
+		expect(acquired.kind).toBe('acquired');
+		const targetBefore = facade.camera.state().pose.target;
+		for (let step = 0; step < 6; step += 1) {
+			const panned = facade.requestViewingIntent(
+				{ kind: 'pan', deltaCss: [24, -16], rect: RECT },
+				facade.inspectionTicket(),
+				1 + step
+			);
+			expect(panned.kind).toBe('accepted');
+		}
+		expect(facade.camera.state().pose.target).not.toEqual(targetBefore);
+
+		const again = facade.plan();
+		expect(again).toBe(first);
+		if (again.kind !== 'evaluated') return;
+		// The retained object is not a frozen snapshot of a stale view: the echo follows
+		// the camera without rebuilding the fragments.
+		expect(again.plan.target).toEqual([
+			facade.camera.state().pose.target[0],
+			facade.camera.state().pose.target[2]
+		]);
+		expect(again.plan.fragments).toBe(first.plan.fragments);
+	});
+
+	it('re-evaluates when a parameter that does matter changes', async () => {
+		const { facade } = await mount();
+		evaluate(facade);
+		const first = facade.plan();
+		if (first.kind !== 'evaluated') throw new Error('the fixture Plan did not evaluate');
+
+		// `reveal` widens eligibility, so it must produce a new evaluation.
+		const revealedId = first.plan.membership[0]!.sourceId;
+		facade.setPlanParameters({ reveal: [revealedId] });
+		const revealed = facade.plan();
+		expect(revealed).not.toBe(first);
+		if (revealed.kind !== 'evaluated') throw new Error('the revealed Plan did not evaluate');
+		expect(revealed.plan.reveal).toEqual([revealedId]);
+
+		// And the target-independent retention resumes from the new evaluation.
+		const before = facade.camera.state().pose.target;
+		facade.acquireInspection('exclusive');
+		facade.requestViewingIntent(
+			{ kind: 'pan', deltaCss: [30, 0], rect: RECT },
+			facade.inspectionTicket(),
+			1
+		);
+		expect(facade.camera.state().pose.target).not.toEqual(before);
+		expect(facade.plan()).toBe(revealed);
+	});
+
+	it('names its own dependencies, so a presenter cannot guess them wrong', async () => {
+		const { facade } = await mount();
+		evaluate(facade);
+		const before = facade.planDependencyKey();
+
+		// Unbounded span: a pan names the same evaluation.
+		facade.acquireInspection('exclusive');
+		facade.requestViewingIntent(
+			{ kind: 'pan', deltaCss: [26, 0], rect: RECT },
+			facade.inspectionTicket(),
+			1
+		);
+		expect(facade.planDependencyKey()).toBe(before);
+
+		// A parameter that changes the result names a different one.
+		facade.setPlanParameters({ cutHeightMeters: 2.4 });
+		const afterParameter = facade.planDependencyKey();
+		expect(afterParameter).not.toBe(before);
+		expect(facade.plan()).toBe(facade.plan());
+
+		// A bounded span makes the target an input again, so the target re-enters the
+		// key — the case a presenter keyed on "target never matters" would get wrong.
+		facade.setPlanParameters({ lateralSpanHalfWidthMeters: 4 });
+		const bounded = facade.planDependencyKey();
+		facade.requestViewingIntent(
+			{ kind: 'pan', deltaCss: [26, 0], rect: RECT },
+			facade.inspectionTicket(),
+			2
+		);
+		expect(facade.planDependencyKey()).not.toBe(bounded);
+	});
+
+	it('depends on the target again when the lateral span is bounded', async () => {
+		const { facade } = await mount();
+		evaluate(facade);
+		facade.setPlanParameters({ lateralSpanHalfWidthMeters: 3 });
+		const first = facade.plan();
+		if (first.kind !== 'evaluated') throw new Error('the bounded Plan did not evaluate');
+		facade.acquireInspection('exclusive');
+		// Pan far enough that the bounded span must exclude what it included before.
+		for (let step = 0; step < 8; step += 1) {
+			facade.requestViewingIntent(
+				{ kind: 'pan', deltaCss: [40, 0], rect: RECT },
+				facade.inspectionTicket(),
+				1 + step
+			);
+		}
+		const moved = facade.plan();
+		expect(moved).not.toBe(first);
+		if (moved.kind !== 'evaluated') return;
+		expect(moved.plan.target).toEqual([
+			facade.camera.state().pose.target[0],
+			facade.camera.state().pose.target[2]
+		]);
+	});
+});
+
+/**
+ * The indexed hit path is a **broad phase**, so it can only ever remove work —
+ * never a candidate.
+ *
+ * Each eligible fragment's own drawn vertices project to a point at distance `0`
+ * from itself, which is inside the tolerance by definition. If the index pruned
+ * any fragment that can be hit, one of these points would answer `no-fragment`.
+ */
+describe('Stage facade — the indexed hit path never prunes a real hit', () => {
+	it('resolves at every eligible fragment’s own projected vertices', async () => {
+		const { facade } = await mount(await enclosureWithDoor());
+		const id = evaluate(facade);
+		const eligible = facade.eligibleFragments();
+		expect(eligible.length).toBeGreaterThan(0);
+		let resolved = 0;
+		for (const fragment of eligible) {
+			const geometry = fragment.geometry;
+			const points: readonly LayoutVec2[] =
+				geometry.kind === 'span'
+					? [geometry.start, geometry.end]
+					: geometry.kind === 'polyline'
+						? geometry.polyline
+						: geometry.polygon;
+			for (const point of points) {
+				const projected = facade.projectWorld(
+					[point[0], fragment.elevationMeters, point[1]],
+					id
+				);
+				if (projected.kind !== 'projected') continue;
+				const hit = facade.resolveSourceHit({ evaluationId: id, css: projected.css });
+				expect(
+					hit.kind,
+					`the index pruned ${fragment.ref.sourceId} at one of its own vertices`
+				).toBe('resolved');
+				if (hit.kind === 'resolved') resolved += 1;
+			}
+		}
+		expect(resolved).toBeGreaterThan(0);
+	});
+
+	it('is deterministic at the same pointer and identical after a pan', async () => {
+		const { facade } = await mount(await enclosureWithDoor());
+		const id = evaluate(facade);
+		const fragment = facade.eligibleFragments()[0]!;
+		const centre = fragmentCentre(fragment);
+		if (centre === null) throw new Error('the fixture fragment has no centre');
+		const projected = facade.projectWorld(centre, id);
+		if (projected.kind !== 'projected') throw new Error('the fixture centre did not project');
+		const first = facade.resolveSourceHit({ evaluationId: id, css: projected.css });
+		expect(facade.resolveSourceHit({ evaluationId: id, css: projected.css })).toEqual(first);
+
+		// A pan keeps the retained Plan, so the same subject is still reachable through
+		// the same retained index: re-projected, not re-derived.
+		facade.acquireInspection('exclusive');
+		facade.requestViewingIntent(
+			{ kind: 'pan', deltaCss: [18, 12], rect: RECT },
+			facade.inspectionTicket(),
+			1
+		);
+		const movedId = evaluate(facade);
+		const reprojected = facade.projectWorld(centre, movedId);
+		if (reprojected.kind !== 'projected') return;
+		const after = facade.resolveSourceHit({ evaluationId: movedId, css: reprojected.css });
+		expect(after.kind).toBe('resolved');
+	});
+});

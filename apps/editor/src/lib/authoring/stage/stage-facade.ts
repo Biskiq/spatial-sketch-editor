@@ -52,17 +52,22 @@ import type { StageAdapterServices } from './stage-adapter-host';
 import {
 	evaluateLayoutPlan,
 	eligiblePlanFragments,
+	planDependsOnTarget,
+	planTargetsLiveView,
 	pointInPolygon,
 	type CompiledLayoutGeometry,
 	type LayoutVec2,
+	type PlanEvaluation,
 	type PlanEvaluationResult,
 	type PlanFragment,
 	type PlanFragmentGeometry,
+	type PlanParameters,
 	type PlanSourceKind,
 	type PlanSourceRef,
 	type PlanSubRef,
 	type PlanStream
 } from '@portfolio/layout-core';
+import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from '$lib/authoring/layout/plan-pick-index';
 import { requestCameraOutput } from '@portfolio/project-model';
 import type {
 	CameraOutputClaim,
@@ -466,6 +471,19 @@ export type StageFacade = {
 		}
 	): StageContentInstall;
 	plan(overrides?: PlanParameterOverrides): PlanEvaluationResult;
+	/**
+	 * A string that changes exactly when `plan()` would produce a different
+	 * evaluation.
+	 *
+	 * A presenter caches on **this**, not on its own guess. The Plan's inputs are the
+	 * compile generation, the level datum, the parameters and — only when the
+	 * lateral span is bounded, or the target is not finite — the inspection target.
+	 * A caller that keyed on the target unconditionally re-evaluated the whole Plan
+	 * on every pan frame for a result that could not change; a caller that assumed
+	 * the target never matters would keep a stale Plan the moment an adapter bounded
+	 * the span. Neither caller has to know which case it is in.
+	 */
+	planDependencyKey(): string;
 	/**
 	 * The host's current Plan parameters. Reveal is creator intent that must widen
 	 * **hit** eligibility as well as display, so it is host state the hit path reads
@@ -929,12 +947,199 @@ export function createStageFacade(input: {
 	/** The host's live Plan parameters: calibration defaults plus what the host set. */
 	let planOverrides: PlanParameterOverrides = {};
 
+	/**
+	 * The retained Plan evaluation, with the exact inputs it was produced from.
+	 *
+	 * **Why retention is exact.** An evaluation's only target-dependent output is
+	 * its echoed `target` unless the lateral span is bounded
+	 * (`planDependsOnTarget`), and the shipped provider default is explicit
+	 * unbounded coverage. So a moving inspection target — every pan frame — names
+	 * the same fragments, the same membership, the same streams and the same
+	 * bounds. Re-deriving them is work proportional to the project for a change
+	 * that is provably worth none of it.
+	 *
+	 * The retained evaluation reports the **live** target through
+	 * `planTargetsLiveView`, so the field is never stale while the object identity
+	 * stays fixed: nothing downstream re-derives on a pan either.
+	 *
+	 * A non-finite target is never served from here. The parameter boundary refuses
+	 * it, and a cache that answered "evaluated" for a target no evaluation could
+	 * accept would be a correctness bug dressed as an optimisation.
+	 */
+	let retainedPlan: { readonly key: string; readonly result: PlanEvaluationResult } | null = null;
+
+	function liveTarget(): LayoutVec2 {
+		const target = camera.state().pose.target;
+		return [target[0], target[2]];
+	}
+
+	/**
+	 * Everything an evaluation reads, in one string. `target` appears only when the
+	 * parameters or the target itself make it an input.
+	 *
+	 * Lists are JSON-encoded only when non-empty, so the ordinary frame (no filter,
+	 * no reveal) does no serialization at all — and a non-empty list cannot be made
+	 * ambiguous by a source id containing the separator.
+	 */
+	function planRetentionKey(parameters: PlanParameters, target: LayoutVec2, targetMatters: boolean): string {
+		const span =
+			parameters.lateralSpanHalfWidthMeters === null ? 'u' : `b${parameters.lateralSpanHalfWidthMeters}`;
+		const filter =
+			parameters.sourceKindFilter === null ? '' : `f${JSON.stringify(parameters.sourceKindFilter)}`;
+		const reveal = parameters.reveal.length === 0 ? '' : `r${JSON.stringify(parameters.reveal)}`;
+		return [
+			currentSnapshot.compileGeneration,
+			currentSnapshot.domain.datumMeters,
+			parameters.cutHeightMeters,
+			parameters.depthMeters,
+			span,
+			filter,
+			reveal,
+			targetMatters ? `t${target[0]}:${target[1]}` : ''
+		].join('|');
+	}
+
+	/** The effective Plan parameters, as the retention key sees them. */
+	function effectivePlanContext(): { parameters: PlanParameters; target: LayoutVec2; finiteTarget: boolean } {
+		const parameters = planParameters(planOverrides);
+		const target = liveTarget();
+		return { parameters, target, finiteTarget: Number.isFinite(target[0]) && Number.isFinite(target[1]) };
+	}
+
 	function planFor(overrides?: PlanParameterOverrides): PlanEvaluationResult {
-		return evaluateLayoutPlan(currentSnapshot.domain.geometry, planParameters(overrides ?? planOverrides), {
+		const parameters = planParameters(overrides ?? planOverrides);
+		const target = liveTarget();
+		const finiteTarget = Number.isFinite(target[0]) && Number.isFinite(target[1]);
+		const targetMatters = planDependsOnTarget(parameters) || !finiteTarget;
+		if (finiteTarget) {
+			const key = planRetentionKey(parameters, target, targetMatters);
+			if (retainedPlan !== null && retainedPlan.key === key) return retainedPlan.result;
+			const result = evaluateLayoutPlan(currentSnapshot.domain.geometry, parameters, {
+				generationId: currentSnapshot.compileGeneration,
+				target,
+				datumMeters: currentSnapshot.domain.datumMeters
+			});
+			const retained: PlanEvaluationResult =
+				result.kind === 'evaluated' && !targetMatters
+					? { kind: 'evaluated', plan: planTargetsLiveView(result.plan, liveTarget) }
+					: result;
+			retainedPlan = { key, result: retained };
+			return retained;
+		}
+		// A non-finite target is the parameter boundary's refusal to make, not a
+		// cache hit's; it is never retained.
+		return evaluateLayoutPlan(currentSnapshot.domain.geometry, parameters, {
 			generationId: currentSnapshot.compileGeneration,
-			target: [camera.state().pose.target[0], camera.state().pose.target[2]],
+			target,
 			datumMeters: currentSnapshot.domain.datumMeters
 		});
+	}
+
+	/**
+	 * The retained pick index for one Plan evaluation.
+	 *
+	 * Built lazily on the first hit that needs it and kept with the evaluation, so a
+	 * second click in the same view — or the same evaluation after a pan, which no
+	 * longer produces a new one — costs no build. The Plan is the only key: its
+	 * `fragments` array identity already names the compiled geometry and datum it
+	 * was evaluated from, so a recompile or a parameter change retires the index
+	 * with the evaluation.
+	 */
+	type RetainedPickIndex = {
+		readonly index: PlanPickIndex;
+		/** The fragments the index's entries address, in the hit path's priority order. */
+		readonly fragments: readonly PlanFragment[];
+	};
+	const pickIndexes = new WeakMap<PlanEvaluation, RetainedPickIndex>();
+
+	function pickIndexFor(plan: PlanEvaluation): RetainedPickIndex {
+		const existing = pickIndexes.get(plan);
+		if (existing !== undefined) return existing;
+		const geometry = currentSnapshot.domain.geometry;
+		// The fragments are indexed in the **hit path's own priority order**, so a
+		// candidate index is also its rank: the caller never re-sorts to decide.
+		const fragments = [...eligiblePlanFragments(plan)].sort(compareFragments);
+		const boxes = fragments.map((fragment) => pickBoxOf(fragment, geometry, plan.datumMeters));
+		const retained: RetainedPickIndex = { index: createPlanPickIndex(boxes), fragments };
+		pickIndexes.set(plan, retained);
+		return retained;
+	}
+
+	/**
+	 * The world box that contains everything one fragment's exact test projects.
+	 *
+	 * **Conservative on purpose, and never the Plan cut.** A Wall fragment is drawn
+	 * as faces at the compiled Wall's own extent (a lintel starts where the Opening
+	 * ends), so the compiled Wall's bounds are the box. A flat fragment is tested at
+	 * its own elevation only, so its plan extent at that elevation is exact. Deriving
+	 * the box from the cut elevation would prune precisely the Walls above it — the
+	 * defect the face surfaces were introduced to fix, moved into a broad phase.
+	 */
+	function pickBoxOf(
+		fragment: PlanFragment,
+		geometry: CompiledLayoutGeometry,
+		datumMeters: number
+	): PlanPickBox {
+		const planBounds = planExtentOf(fragment.geometry);
+		const elevation = Number.isFinite(fragment.elevationMeters)
+			? fragment.elevationMeters
+			: datumMeters;
+		if (fragment.ref.sourceKind === 'wall') {
+			const wall = indexedCompiledWall(geometry, fragment.ref.sourceId);
+			if (wall !== undefined) {
+				// The compiled Wall's own bounds plus its declared vertical extent. The
+				// union is deliberate: `pickSurfacesOf` may fall back to the fragment's
+				// whole line at full Wall height, and a box narrowed to the solid spans
+				// would prune a hit the exact test would have made.
+				return {
+					minX: Math.min(wall.bounds3.min[0], planBounds.minX),
+					minY: Math.min(wall.bounds3.min[1], datumMeters),
+					minZ: Math.min(wall.bounds3.min[2], planBounds.minZ),
+					maxX: Math.max(wall.bounds3.max[0], planBounds.maxX),
+					maxY: Math.max(wall.bounds3.max[1], datumMeters + wall.height, elevation),
+					maxZ: Math.max(wall.bounds3.max[2], planBounds.maxZ)
+				};
+			}
+		}
+		// A flat fragment is tested at its own elevation, and only there.
+		return {
+			minX: planBounds.minX,
+			minY: elevation,
+			minZ: planBounds.minZ,
+			maxX: planBounds.maxX,
+			maxY: elevation,
+			maxZ: planBounds.maxZ
+		};
+	}
+
+	function planExtentOf(geometry: PlanFragmentGeometry): {
+		readonly minX: number;
+		readonly minZ: number;
+		readonly maxX: number;
+		readonly maxZ: number;
+	} {
+		const points =
+			geometry.kind === 'span'
+				? [geometry.start, geometry.end]
+				: geometry.kind === 'polyline'
+					? geometry.polyline
+					: geometry.polygon;
+		let minX = Infinity;
+		let minZ = Infinity;
+		let maxX = -Infinity;
+		let maxZ = -Infinity;
+		for (const point of points) {
+			if (point[0] < minX) minX = point[0];
+			if (point[1] < minZ) minZ = point[1];
+			if (point[0] > maxX) maxX = point[0];
+			if (point[1] > maxZ) maxZ = point[1];
+		}
+		// An empty or non-finite plan gives a box the box test cannot prune, rather
+		// than an empty one it would prune every time.
+		if (!(minX <= maxX && minZ <= maxZ)) {
+			return { minX: -Infinity, minZ: -Infinity, maxX: Infinity, maxZ: Infinity };
+		}
+		return { minX, minZ, maxX, maxZ };
 	}
 
 	/**
@@ -1338,6 +1543,13 @@ export function createStageFacade(input: {
 			};
 		},
 		plan: (overrides) => planFor(overrides),
+		planDependencyKey() {
+			const { parameters, target, finiteTarget } = effectivePlanContext();
+			// A non-finite target is never retained, so its key must differ from every
+			// retained one; the boundary refuses it on the next `plan()` call either way.
+			if (!finiteTarget) return `${planRetentionKey(parameters, target, false)}|non-finite`;
+			return planRetentionKey(parameters, target, planDependsOnTarget(parameters));
+		},
 		setPlanParameters(overrides) {
 			planOverrides = { ...planOverrides, ...overrides };
 		},
@@ -1386,19 +1598,32 @@ export function createStageFacade(input: {
 			const planResult = planFor();
 			if (planResult.kind !== 'evaluated') return { kind: 'none', reason: 'no-fragment' };
 			const plan = planResult.plan;
-			const project = (point: Vec3): readonly [number, number] | null => {
-				const result = projectWorld(point, evaluation, token);
+			// `readonly` in the parameter so the same function is the pick index's
+			// projection and the exact test's: neither writes the point, and the index
+			// must not be handed a narrower signature than the surface test has.
+			const project = (point: readonly [number, number, number]): readonly [number, number] | null => {
+				const result = projectWorld(point as Vec3, evaluation, token);
 				// A point behind the camera projects to a mirrored CSS position; it is not
 				// something the pointer can be over, so it must not become a candidate.
 				return result.kind === 'projected' && result.visibility !== 'behind' ? result.css : null;
 			};
 			// Only eligible placements become fragments, so the first fragment within the
 			// screen tolerance *is* the eligible hit; there is no second pass that could
-			// surface an excluded target. The sort keeps the retained Layout priority
+			// surface an excluded target. The retained index keeps the Layout priority
 			// deterministic (Wall before Opening before object before floor, then source
-			// identity), never Map iteration or a changing label.
-			const eligible = [...eligiblePlanFragments(plan)].sort(compareFragments);
-			for (const fragment of eligible) {
+			// identity), never Map iteration or a changing label, and returns its
+			// candidates in exactly that order.
+			//
+			// **Broad phase, then the same exact test.** The index is a conservative
+			// superset of the fragments that can lie within tolerance, so the answer below
+			// is the whole-scan answer — the work before the first candidate is what
+			// changes. Before: sort every eligible fragment and project every surface.
+			// Now: visit `O(log F + c)` boxes and project no fragment that cannot be hit.
+			const retained = pickIndexFor(plan);
+			const candidates = retained.index.candidates(candidateCss, PLAN_HIT_TOLERANCE_CSS_PX, project);
+			for (const candidateIndex of candidates) {
+				const fragment = retained.fragments[candidateIndex];
+				if (fragment === undefined) continue;
 				const surfaces = pickSurfacesOf(fragment, currentSnapshot.domain.geometry, currentSnapshot.domain.datumMeters);
 				const pick = cssDistanceToSurfaces(candidateCss, surfaces, project);
 				if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;

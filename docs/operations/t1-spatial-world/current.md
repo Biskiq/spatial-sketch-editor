@@ -12,10 +12,18 @@ ACTIVE: T1.P02.S06 (performance foundation), optimize step (agent), released 202
         comparisons are implemented (d47c25e1 / bd443412 / 5cdccb79 / 0156eac1 / 48126338).
         Fresh independent review is pending; no acceptance is recorded. The Room-shaped
         100,002-entity replay passes cold/cross-revision output parity; accepted native source,
-        flat canonical SHA and full Stage consumers remain explicit costs. Dossier:
+        flat canonical SHA and full Stage consumers remain explicit costs.
+        Owner-directed continuation (2026-10-26): the Plan interaction layer is now local too —
+        panning retains one Plan evaluation instead of re-deriving it per frame, a click's hit
+        path is a retained screen-space AABB broad phase (O(log F + c) instead of
+        O(F log F + F·S) projections) with the same exact test and priority order, and the
+        per-frame selection echo is indexed. Source analysis and correctness tests only; no
+        benchmark, profile or timing probe was run. T3 review of the Plan-key change and the
+        retained-target protocol is owed; independent review of the pass has not happened. Dossier:
         ../../roadmap/t1-spatial-world/broad-research/spatial-computation-architecture.md.
         Results and hand-off: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
-NEXT:   Stop at the fresh independent-review boundary:
+NEXT:   Independent review of the Plan interaction locality pass, then the same review boundary
+        (a diagnostic Bench 2 and the formal Bench 3 remain the owner's, and have not run):
         ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#current-independent-review-boundary
         T1.P02.S06 → ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
         It runs on an owner-run benchmark budget of at most three passes:

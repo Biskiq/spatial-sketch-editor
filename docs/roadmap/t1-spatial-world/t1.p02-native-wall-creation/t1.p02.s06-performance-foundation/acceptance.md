@@ -4,7 +4,8 @@
 persistent representation takeover implemented on PR #190 and independently reviewed (round 3:
 implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 is now
 the owner-approved **diagnostic** pass (not acceptance evidence); it has not run. Formal statistics
-remain Bench 3. S06 is not accepted or merged. ·
+remain Bench 3. A third, owner-directed **Plan interaction locality** pass is implemented below and
+has not been independently reviewed. S06 is not accepted or merged. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -687,6 +688,135 @@ fixed edit's commit still canonicalizes and digests the whole envelope (583 KB �
 8.85 MB at C10, `snapshot` reads 604,623 → 6,150,293) while `compile = 2` — an I1/I4 named-global
 finding, never local work. No hard row misses; Bench 3's formal method is unchanged and has not run;
 the owner still rules under A.7 whether the aborted attempt consumes the second authorized pass.
+
+## Plan interaction locality (2026-10-26, owner-directed continuation)
+
+**Scope and method.** Owner direction: raise the architectural ambition, and use source analysis,
+mathematics and correctness testing only. **No benchmark, profiling pass, timing probe or browser
+measurement was run for this section.** Every quantity below is a derived operation count, an exact
+output differential or a complexity statement; none is a measurement, and none is presented as one.
+
+**What the audit found.** The previous takeover made a *certified local edit* local. It did not make
+the two most frequent interactions local, because both live outside the compiler:
+
+1. **Panning re-evaluated the whole Plan representation, every frame.** `pose.target` moves when the
+   camera pans (`camera-core/src/viewport.ts`, the `pan` intent), the spatial route keyed its Plan
+   cache on that target
+   (`apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`, `refresh()`), and
+   `StageFacade.planFor` called `evaluateLayoutPlan` afresh on each miss. The evaluator copies and
+   id-sorts every Wall, Opening, object and Room, measures every candidate, then builds, sorts and
+   filters the fragment array. But it reads the inspection target in **exactly one** place — the
+   `lateral-span` membership stage — and the provider default is explicit unbounded coverage
+   (`plan-parameters.ts`). So the work was `O(N log N)` per pan frame for a result that could not
+   change.
+2. **A click scanned the whole project.** `StageFacade.resolveSourceHit` sorted every eligible
+   fragment and then projected every surface of every fragment until one fell inside the 8 px
+   tolerance: `O(F log F + F·S)` projections for one pointer position.
+3. **A selected subject scanned the whole project once per frame.** The route's selection echo did
+   `plan.fragments.find(...)`, which runs on every presented frame while something is selected.
+
+The audit also recorded two paths that are **not** live and were therefore not changed:
+`lib/authoring/layout/plan-hit.ts` (the older pure Plan resolver) has no product caller — only
+suites — and `layout-core`'s `resolveLayoutSnap` has no caller in `apps/editor/src`, so snapping is
+not on the live drag path at all. Both are findings for their owners, not work S06 silently retired.
+
+**Implemented.**
+
+| Concern | Before | After |
+| --- | --- | --- |
+| Pan frame | Full `evaluateLayoutPlan` (`O(N log N)`: four id-sorts, a candidate record per source, a fragment sort, four stream filters) plus a fresh `planView` that re-grouped every membership row in the Index | One retained evaluation. The route's key names the target only when `planDependsOnTarget` is true; the facade retains the evaluation and reports the **live** target through it |
+| Click | Sort every eligible fragment, then project every surface of every fragment (`O(F log F + F·S)`) | Static AABB hierarchy queried in screen space: `O(log F + c)` node visits, ≤ 8 projections each, then the **same** exact test in the **same** priority order |
+| Selected subject, per frame | `plan.fragments.find(...)`, `O(F)` | Map probe against an index retained per fragment array, `O(1)` |
+
+**Changed files.** `packages/layout-core/src/layout-plan-representation.ts` (`planDependsOnTarget`,
+`planTargetsLiveView`, `planFragmentOf`, and the target-independence documentation on
+`PlanSourceContext`/`PlanEvaluation`); `apps/editor/src/lib/authoring/layout/plan-pick-index.ts`
+(new); `apps/editor/src/lib/authoring/stage/stage-facade.ts` (retained Plan, the additive
+`planDependencyKey()` a presenter caches on, retained pick index, indexed hit path);
+`apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` (keys on the facade's dependency
+key and indexes its fragment lookups). No authored format, canonical geometry, selection/preview
+semantics, acceptance authority, refusal code, budget or benchmark method changed.
+
+**Why the indexed hit path is exact, not approximate.** The broad phase can only *narrow*: a node is
+pruned only when no point of its world box can project within the tolerance, and the box is a
+superset of everything the fragment's exact test projects (a compiled Wall's own bounds plus its
+declared vertical extent, not the Plan cut). The candidate set is therefore a superset of the
+fragments that can hit, returned in the hit path's own priority order, and the existing exact test
+still decides. Two tests make that falsifiable rather than asserted:
+
+- `tests/lib/authoring/plan-pick-index.test.ts` proves the pruning invariant directly — for 180
+  boxes, every 40 px pointer on a 1280 × 720 frame and tolerances 0/8/40 px, *no box whose projected
+  extent can reach the pointer is ever pruned* — plus the adversarial cases: coincident boxes
+  (termination), a box straddling the camera plane (never pruned), an empty population, and a
+  non-increasing population where the count oracle shows the query does not scale with it;
+- `tests/lib/authoring/stage-facade.test.ts` proves the behavioural half: every eligible fragment's
+  own projected vertices still resolve, and a pan keeps one evaluation (same object, same
+  `fragments` array) while `plan.target` still tracks the camera.
+
+A real pruning bug was found and fixed while writing the invariant test: node boxes were unioned
+over array positions rather than through the build's permutation, so a node's box did not contain
+its children and could prune a real hit. The test above is the falsifier that caught it.
+
+**One deliberate design choice worth review.** The retained plan is the same object across a pan, so
+nothing downstream re-derives; `PlanEvaluation.target` is therefore a **live getter** over the
+camera's current target rather than a value captured at evaluation time. It is exact because the
+evaluated fields are target-independent, and it falls back to the evaluated target if the live
+reading is non-finite (which the parameter boundary refuses, so no evaluated plan can honestly carry
+one). The alternative — a retained plan with a stale `target` field — was rejected as a dormant
+correctness hazard.
+
+**Counters added** (inert without a work observer, per I6): `plan-pick:node-built`,
+`plan-pick:build-compare`, `plan-pick:node-test`, `plan-pick:node-prune`, `plan-pick:leaf-box`,
+`plan-pick:projection`, `plan-pick:candidate`.
+
+**Hand-derived complexity, before and after.** `N` is the project's entity count, `F` eligible
+fragments, `S` surfaces per fragment, `c` the fragments whose projected extent is near the pointer.
+
+| Path | Before | After | Remaining global term |
+| --- | --- | --- | --- |
+| Pan frame | `O(N log N)` + `O(N)` membership regrouping | `O(1)` | none |
+| Click | `O(F log F + F·S)` | `O(log F + c)`, ≤ 8 projections per visited node | `c → F` when boxes really overlap in screen space — real overlap, counted |
+| Selection echo, per frame | `O(F)` | `O(1)` | none |
+| Build (first click per evaluation) | — | `O(F log F)` once, retained with the evaluation | rebuilds only when the Plan is re-evaluated |
+
+**What remains global, named rather than hidden.** (a) An accepted edit still re-evaluates the Plan
+once for the new compile generation: `O(N log N)` with four id-sorts and a fragment sort. It is now
+the largest whole-project term left in the interaction layer, and it is the natural next slice — an
+incremental Plan evaluator keyed per compiled source would need a merge-preserving order rather than
+a re-sort, which is a contract-visible change to a ratified evaluator, so it was **not** attempted
+here. (b) The fixed edit's commit still canonicalizes and digests the whole envelope, `Ω(bytes)`,
+which the flat SHA-256 content identity requires. (c) Draw submission is still one draw per mesh,
+`O(V)` per frame; batching remains the owner decision H6 records. (d) Cold open is unchanged.
+
+**Verification (correctness only).** `check:layout-core`, `check:project-model`,
+`check:camera-core`, the editor `check` (svelte-check, zero errors and zero warnings) and `build`
+pass. The full editor suite passes **205 files / 2,557 tests**; the fast lane passes 172 files /
+2,239 tests; the architecture lane passes 22 files / 180 tests, including the documentation gate.
+No performance number in this section is measured.
+
+**Review still owed.** The spatial route and the Stage host are shared surfaces; T3 review of the
+Plan-key change and the retained-target protocol is required, as the record already requires for
+`stage/**` and `visitor/**`. Independent review of this pass has not happened.
+
+### Techniques considered for this pass
+
+The research package this pass started from names production mechanisms by name. What was adopted,
+adapted or refused, and why — no candidate was adopted on reputation:
+
+| Technique | Decision | Reason grounded in this code |
+| --- | --- | --- |
+| Figma's *compute only what is needed* (separate the ordered list from per-element presentation) | **Adopted in shape** | The Plan already separates membership from fragments; the defect was that a *pan* re-derived both. Retention by real dependency is the same idea applied to the cache key rather than to a new type |
+| Figma's lazy derived properties, rope-like sequences, 99 % memory result | **Not applied** | Those solve quadratic descendant-list retention in deeply nested trees. This path's collections are flat compiled arrays behind the persistent roots the previous takeover landed, so no quadratic retention is derivable here for this pass to fix |
+| tldraw's revision-diff derived views (return the previous value when unchanged) | **Adopted, smaller** | Implemented as one retained evaluation plus a live-target view, not as a general derived-value engine: the Plan has exactly one host, so a framework would be new machinery for one consumer |
+| RBush / Flatbush | **Rejected** | Both are 2D plan indexes; the pick is a **screen-space** query under a live projection, which neither answers. The pruning has to happen in CSS, so a world-space R-tree would still project every candidate it returned |
+| A screen-space grid rebuilt per evaluation | **Rejected** | Exact and simple, but `O(F)` per evaluation; during a camera move that is the whole project per frame, which is the defect being removed |
+| `three-mesh-bvh` | **Rejected for this path** | It accelerates triangle raycasts. The hit semantics here are *screen distance to drawn surfaces* at a cut/face elevation, not a mesh raycast, and the picking path deliberately reads compiled Layout rather than the renderer |
+| Salsa red-green / DBSP incremental views | **Studied, not adopted** | The useful half — reuse what provably did not change — is what the compile session (D.3) and this retention already do. Adopting the engines would create a second dependency graph beside the compiler's own, duplicating the authority rule 6 protects |
+| Batched / instanced rendering (MapLibre buckets, deck.gl attribute invalidation, `BatchedMesh`) | **Deferred, unchanged** | The plan's Exclusions make a new rendering architecture an owner decision (H6). The measured draw counts stay recorded as the evidence for that decision; this pass did not touch submission |
+| WebGPU | **Deferred** | No measurement in this pass could justify an API migration, and none may be produced here |
+| Merkle / BLAKE3 content identity | **Refused** | It changes the ratified source identity contract. The flat SHA-256 stays; the remaining cost is named above |
+| CGAL arrangements, Clipper2, `polygon-clipping`, Earcut | **Not applied** | They address topology-changing geometry and polygon booleans, not the interaction path this pass covers; no boolean, offset or retriangulation runs on a pan, a pick or a commit |
+| A new abstraction layer for locality | **Refused** | The two wins are a cache key and a broad phase. Adding a "world" or "derived view" service for two consumers would be machinery with no measured return |
 
 **Bench 2/3 strategy (2026-10-26).** The retained Bench 1 result files decompose the 3 h 36 min
 ceiling: F3/F4/F8 is 78 min of the L tier, F7 17.5 min and F13 11 min; setup is 4.8–8.7 % of the

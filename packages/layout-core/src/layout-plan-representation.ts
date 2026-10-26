@@ -125,7 +125,15 @@ export type PlanParameters = {
 export type PlanSourceContext = {
 	/** Opaque compile/representation generation the fragments belong to. */
 	readonly generationId: string;
-	/** Project-world XZ the lateral span is measured around (the inspection target). */
+	/**
+	 * Project-world XZ the lateral span is measured around (the inspection target).
+	 *
+	 * **Only `lateralSpanHalfWidthMeters !== null` reads it** (see
+	 * `planDependsOnTarget`). With the shipped default of explicit unbounded
+	 * lateral coverage it is validated and echoed, and it changes no fragment, no
+	 * membership reason, no stream and no bound. A host may therefore retain one
+	 * evaluation while an inspection target moves — a pan — without re-evaluating.
+	 */
 	readonly target: LayoutVec2;
 	/** The evaluated level's datum in project-world meters. */
 	readonly datumMeters: number;
@@ -178,6 +186,11 @@ export type PlanEvaluation = {
 	readonly cutElevationMeters: number;
 	readonly depthMeters: number;
 	readonly lateralSpanHalfWidthMeters: number | null;
+	/**
+	 * The inspection target this evaluation was asked for. It is a **record**, not
+	 * an input to the result unless `lateralSpanHalfWidthMeters` is non-null; see
+	 * `planDependsOnTarget` and `planTargetsLiveView`.
+	 */
 	readonly target: LayoutVec2;
 	readonly sourceKindFilter: readonly PlanSourceKind[] | null;
 	readonly reveal: readonly string[];
@@ -493,6 +506,53 @@ function compareFragments(left: PlanFragment, right: PlanFragment): number {
 }
 
 /**
+ * Does this evaluation read `context.target` for anything but its own echo?
+ *
+ * The evaluator measures `planDistance(target, candidate.plan)` in exactly one
+ * place: the `lateral-span` membership stage. With explicit unbounded lateral
+ * coverage (`lateralSpanHalfWidthMeters === null`, the provider default) the only
+ * target-dependent field of the result is `PlanEvaluation.target` itself.
+ *
+ * This is the predicate a host caches on, not an optimisation knob: a caller that
+ * retains one evaluation while the inspection target moves is exact **iff** this
+ * returns `false`. It says nothing about a non-finite target, which the parameter
+ * boundary refuses before any candidate is measured; a host that may see one must
+ * not serve it from a retained evaluation.
+ */
+export function planDependsOnTarget(parameters: PlanParameters): boolean {
+	return parameters.lateralSpanHalfWidthMeters !== null;
+}
+
+/**
+ * The same Plan evaluation with a live inspection target.
+ *
+ * The fragments, membership, streams, bounds and every measurement are the ones
+ * already computed — this adds no geometry and re-derives nothing — so it is only
+ * exact for an evaluation whose `planDependsOnTarget` is `false`. It exists so a
+ * host can keep one evaluation object's **identity** stable across a pan (nothing
+ * downstream re-derives) while `plan.target` still reports where the inspection
+ * actually is, rather than the target it was first evaluated at.
+ *
+ * `readTarget` is consulted on every property read and must return the live
+ * project-world XZ. A non-finite reading falls back to the evaluated target: the
+ * parameter boundary refuses a non-finite target, so an evaluated plan can never
+ * honestly report one.
+ */
+export function planTargetsLiveView(
+	plan: PlanEvaluation,
+	readTarget: () => LayoutVec2
+): PlanEvaluation {
+	const evaluatedTarget = plan.target;
+	return {
+		...plan,
+		get target(): LayoutVec2 {
+			const live = readTarget();
+			return isFiniteNumber(live[0]) && isFiniteNumber(live[1]) ? live : evaluatedTarget;
+		}
+	};
+}
+
+/**
  * Evaluate the ordinary horizontal Plan for one compiled Layout.
  *
  * Pure and deterministic: the same compiled geometry, parameters and context give
@@ -685,4 +745,30 @@ export function eligiblePlanFragments(plan: PlanEvaluation): readonly PlanFragme
 /** The declared membership of one source id, or `null` when it is not a compiled source. */
 export function planMembershipOf(plan: PlanEvaluation, sourceId: string): PlanSourceMembership | null {
 	return plan.membership.find((row) => row.sourceId === sourceId) ?? null;
+}
+
+/**
+ * One source's first fragment, or `undefined`.
+ *
+ * A fragment lookup is a **local** question — "where is the thing I selected" —
+ * asked on every presented frame while something is selected, not only when the
+ * Plan changes. Scanning `plan.fragments` for it makes a selection cost the whole
+ * project once per frame, so the index is retained against the fragment array
+ * itself: two evaluations never share one, and an abandoned evaluation's index is
+ * collectable with it.
+ */
+const fragmentIndexes = new WeakMap<readonly PlanFragment[], Map<string, PlanFragment>>();
+
+export function planFragmentOf(plan: PlanEvaluation, sourceId: string): PlanFragment | undefined {
+	let index = fragmentIndexes.get(plan.fragments);
+	if (index === undefined) {
+		index = new Map<string, PlanFragment>();
+		// First wins, exactly as `fragments.find` does: the array is already in the
+		// declared order, so the index reproduces its answer without rescanning.
+		for (const fragment of plan.fragments) {
+			if (!index.has(fragment.ref.sourceId)) index.set(fragment.ref.sourceId, fragment);
+		}
+		fragmentIndexes.set(plan.fragments, index);
+	}
+	return index.get(sourceId);
 }

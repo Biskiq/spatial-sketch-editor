@@ -90,7 +90,7 @@
 		type HeadSave,
 		type ReloadOffer
 	} from '$lib/authoring/save';
-	import type { PlanEvaluation, PlanMembershipReason } from '@portfolio/layout-core';
+	import { planFragmentOf, type PlanEvaluation, type PlanMembershipReason } from '@portfolio/layout-core';
 	import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
 	import {
 		createStagePressTracker,
@@ -510,6 +510,7 @@
 		// The key must be dropped with the view it described, or the recompute that
 		// follows a swap would be skipped as unchanged.
 		planKey = '';
+		planParametersKey = '';
 		markers = [];
 		selectionMarker = null;
 	}
@@ -650,6 +651,7 @@
 			selection = facade ? primaryEntry(facade.selectionState()) : null;
 			syncContributedTask();
 			planKey = '';
+		planParametersKey = '';
 			refresh();
 		});
 		for (const factory of stageAdapterFactories) mountStageAdapter(facade, mounted, factory);
@@ -1083,6 +1085,14 @@
 
 	let planKey = '';
 	/**
+	 * The last reveal union this route handed the facade.
+	 *
+	 * Separate from `planKey` because the two answer different questions: this one
+	 * says whether host parameters need sending, and `planKey` says whether the
+	 * evaluation they name needs recomputing. Both are reset with the mount.
+	 */
+	let planParametersKey = '';
+	/**
 	 * The last overlay marker set the route painted, as a cheap identity key.
 	 * T3.P03.S02 marks a change only: the harness pairs the newest dragged input with
 	 * the frame that carried its preview, so a presentation is never inferred from an
@@ -1103,19 +1113,33 @@
 		evaluation = result.kind === 'evaluated' ? result.evaluation : null;
 		if (evaluation === null) return;
 
-		// The Plan evaluation is recomputed only when its inputs move: pose target,
-		// reveal union or generation. It is pure, but a per-frame compile sweep is
-		// waste, not evidence.
-		const target = stage.camera.state().pose.target;
-		// One value is both what the facade is told and what the cache key names, so a
-		// parameter change can never leave a stale Plan behind the live hit path.
+		// The Plan evaluation is recomputed only when it would actually differ, and
+		// **the facade is the authority on that**, not this presenter.
+		//
+		// `evaluateLayoutPlan` reads the inspection target in exactly one place, the
+		// `lateral-span` membership stage, whose provider default is explicit
+		// unbounded coverage — so a pan cannot change a fragment, a membership row, a
+		// stream or a bound. Keying on the target here unconditionally made every pan
+		// frame re-evaluate the whole Plan (four full-array sorts and a fresh
+		// candidate object per source) and then hand a new `planView` to the Index,
+		// which re-grouped every membership row on the same frame. `planDependencyKey`
+		// names the inputs the evaluation really reads, including the target when a
+		// producer has bounded the lateral span, so this needs no knowledge of which
+		// case it is in.
+		// Reveal is host state the facade holds, so the Plan the Stage draws and the
+		// Plan its hit path resolves agree about which sources are eligible.
 		const parameters = { reveal: [...revealed].sort() };
-		const key = `${stage.snapshot().compileGeneration}|${target[0]}:${target[2]}|${JSON.stringify(parameters)}`;
+		// Encoded only when non-empty: a reveal set is usually empty, and a source id
+		// must never be able to make two different sets compare equal.
+		const parametersKey =
+			parameters.reveal.length === 0 ? '' : JSON.stringify(parameters.reveal);
+		if (parametersKey !== planParametersKey) {
+			planParametersKey = parametersKey;
+			stage.setPlanParameters(parameters);
+		}
+		const key = stage.planDependencyKey();
 		if (key !== planKey) {
 			planKey = key;
-			// Reveal is host state the facade holds, so the Plan the Stage draws and
-			// the Plan its hit path resolves agree about which sources are eligible.
-			stage.setPlanParameters(parameters);
 			const planResult = stage.plan();
 			planView = planResult.kind === 'evaluated' ? planResult.plan : null;
 		}
@@ -1154,7 +1178,10 @@
 		const stage = facade;
 		if (stage === null) return null;
 		const plan = planView;
-		const fragment = plan?.fragments.find((candidate) => candidate.ref.sourceId === selected.reference.subject.id);
+		// `planFragmentOf` is indexed against the fragment array, so this lookup —
+		// which runs on every presented frame while something is selected — costs a
+		// map probe rather than a scan of the project.
+		const fragment = plan === null ? undefined : planFragmentOf(plan, selected.reference.subject.id);
 		if (fragment === undefined) return null;
 		const points =
 			fragment.geometry.kind === 'span'
@@ -1442,6 +1469,7 @@
 				notice = 'The selected subject no longer exists in the restored source.';
 			}
 			planKey = '';
+		planParametersKey = '';
 		} else if (outcome.kind === 'unavailable') {
 			notice = outcome.reason === 'live-proposal' ? 'A proposal is live; Undo runs once it settles.' : 'Nothing to undo.';
 		} else if (outcome.kind === 'refused') {
@@ -1466,6 +1494,7 @@
 				notice = 'The selected subject no longer exists in the restored source.';
 			}
 			planKey = '';
+		planParametersKey = '';
 		} else if (outcome.kind === 'unavailable') {
 			notice = outcome.reason === 'live-proposal' ? 'A proposal is live; Redo runs once it settles.' : 'Nothing to redo.';
 		} else if (outcome.kind === 'refused') {
@@ -1522,7 +1551,7 @@
 		const plan = planView;
 		if (stage === null || plan === null) return;
 		cardOpen = true;
-		const fragment = plan.fragments.find((candidate) => candidate.ref.sourceId === sourceId);
+		const fragment = planFragmentOf(plan, sourceId);
 		if (fragment === undefined) return;
 		stage.select({
 			sourceId,
@@ -2036,7 +2065,7 @@
 		const plan = planView;
 		const selected = selection;
 		if (plan === null || selected === null) return null;
-		const fragment = plan.fragments.find((candidate) => candidate.ref.sourceId === selected.reference.subject.id);
+		const fragment = planFragmentOf(plan, selected.reference.subject.id);
 		if (fragment === undefined) return null;
 		const points =
 			fragment.geometry.kind === 'span'
@@ -2141,7 +2170,7 @@
 			onInvokeContribution={invokeContribution}
 			onBringIntoView={(sourceId) => {
 				const plan = planView;
-				const fragment = plan?.fragments.find((candidate) => candidate.ref.sourceId === sourceId);
+				const fragment = plan === null ? undefined : planFragmentOf(plan, sourceId);
 				if (fragment === undefined) return;
 				const points =
 					fragment.geometry.kind === 'span'
