@@ -463,6 +463,8 @@ export type StageFacade = {
 			readonly [SKIP_REBIND_CONTROL]?: true;
 		}
 	): StageContentInstall;
+	/** Update project-level metadata without rebinding domain semantics or clearing selection. */
+	adoptMetadata(next: StageReadSnapshot): ReturnType<StageSession['adoptMetadata']>;
 	plan(overrides?: PlanParameterOverrides): PlanEvaluationResult;
 	/**
 	 * A string that changes exactly when `plan()` would produce a different
@@ -1548,6 +1550,20 @@ export function createStageFacade(input: {
 				requalification: installed.requalification,
 				selectionRemovals: installed.selectionRemovals
 			};
+		},
+		adoptMetadata(next) {
+			if (!isLive()) return { kind: 'refused', code: 'disposed', message: 'The Stage session has ended.' };
+			const adopted = session.adoptMetadata(next);
+			if (adopted.kind !== 'adopted') return adopted;
+			// Metadata-only source bytes still get a fresh identity. Rebase the one
+			// camera output at its existing pose, then rebuild bound adapters against
+			// the new authored envelope while retaining the session's selection/task.
+			camera.rebaseSource(next.sourceContentId);
+			currentSnapshot = next;
+			rebindAdapters();
+			camera.acquireInspection('exclusive', nextInspectionRun());
+			notifyAdaptersChanged();
+			return adopted;
 		},
 		plan: (overrides) => planFor(overrides),
 		planDependencyKey() {

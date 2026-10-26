@@ -1,0 +1,188 @@
+{
+  "browserFacts": {
+    "browserVersion": "155.0.8059.85",
+    "browserName": "chrome",
+    "buildRevision": "41800d27231db4d007314f6a8c437a90c75d5e94",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "deviceScaleFactor": 1,
+    "reducedMotion": "reduce",
+    "input": "mouse/keyboard at desktop; separate coarse touch context",
+    "baseURL": "http://127.0.0.1:55707",
+    "apiOrigin": "http://127.0.0.1:55706",
+    "probeResults": [
+      "UI New Project → source JSON admission → conditional Save created version 1",
+      "rename dialog keyboard focus/escape, invalid blank refusal, and no-op version preservation",
+      "rename appends one immutable authored-envelope version; previous version remains readable",
+      "foreign-owner and unauthenticated API requests refuse without disclosing project data",
+      "stale base exposes remote name and requires explicit refresh/retry without losing entered name",
+      "ambiguous committed rename is safely retried through conflict refresh with no duplicate version",
+      "current-project rename preserved dirty domain edit and history; next Save and Hub reopen retained the new name",
+      "Experience Preview uses the authored source and mounts no Save, Undo, or lifecycle authoring controls",
+      "dirty current delete cancellation preserved the live session, API project, and downloaded source recovery",
+      "active publication preflight refused; actual Unpublish allowed reviewed deletion with inactive-link warning",
+      "project-busy remained a confirmed retryable refusal; retry after lease release deleted the project",
+      "current-project dirty delete cancelled once with recovery, then confirmed pending cleanup with durable owned-key inventory",
+      "after actual Unpublish the inactive link warning was honored, deletion removed its publication row, and public reader returned not found",
+      "committed stale rename response released only after a new project was open; newer session remained intact",
+      "320×800 CSS, DPR 2, coarse-touch Hub dialog fit, tap targets and cancellation"
+    ],
+    "ownerId": "google:e2e-agent-admin",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "matchMediaReducedMotion": true,
+    "apiChecks": {
+      "unauthenticatedFinalRead": 401,
+      "foreignOwnerRead": 404
+    }
+  },
+  "machineFacts": {
+    "start": {
+      "capturedAt": "2026-10-25T18:00:55.255Z",
+      "machineModel": "Mac14,2",
+      "macOSVersion": "15.7.2",
+      "powerSource": "AC Power",
+      "batteryPowerDetails": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=7077987)\t100%; charged; 0:00 remaining present: true",
+      "lowPowerMode": false,
+      "lowPowerModeDetails": "System-wide power settings:\n SleepDisabled\t\t0\nCurrently in use:\n standby              1\n Sleep On Power Button 1\n hibernatefile        /var/vm/sleepimage\n powernap             1\n networkoversleep     0\n disksleep            10\n sleep                0 (sleep prevented by ChatGPT, powerd, Claude, coreaudiod, coreaudiod)\n hibernatemode        3\n ttyskeepawake        1\n displaysleep         0\n tcpkeepalive         1\n lowpowermode         0\n womp                 1",
+      "chromeExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "chromeCliVersion": "Google Chrome 155.0.8059.85"
+    },
+    "end": {
+      "capturedAt": "2026-10-25T18:03:56.617Z",
+      "machineModel": "Mac14,2",
+      "macOSVersion": "15.7.2",
+      "powerSource": "AC Power",
+      "batteryPowerDetails": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=7077987)\t100%; charged; 0:00 remaining present: true",
+      "lowPowerMode": false,
+      "lowPowerModeDetails": "System-wide power settings:\n SleepDisabled\t\t0\nCurrently in use:\n standby              1\n Sleep On Power Button 1\n hibernatefile        /var/vm/sleepimage\n powernap             1\n networkoversleep     0\n disksleep            10\n sleep                0 (sleep prevented by Claude, powerd, coreaudiod, coreaudiod, ChatGPT)\n hibernatemode        3\n ttyskeepawake        1\n displaysleep         0\n tcpkeepalive         1\n lowpowermode         0\n womp                 1",
+      "chromeExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "chromeCliVersion": "Google Chrome 155.0.8059.85"
+    }
+  },
+  "cleanupResult": {
+    "jobs": [
+      {
+        "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+        "attempts": [
+          {
+            "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+            "status": "pending",
+            "sweepDependent": false,
+            "deletedKeys": [],
+            "repairedLateKeys": []
+          },
+          {
+            "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+            "status": "complete",
+            "sweepDependent": false,
+            "deletedKeys": [],
+            "repairedLateKeys": []
+          }
+        ],
+        "idempotent": {
+          "projectId": "project:7ad537f6-3bf9-4b3c-b015-16903919f412",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        },
+        "tombstone": {
+          "status": "complete",
+          "keyInventory": [],
+          "sweepDependent": false,
+          "attemptCount": 4,
+          "completedAt": "2026-10-25T18:03:45.046Z"
+        },
+        "deletedOwnedKeys": [],
+        "survivingSiblingKeys": []
+      },
+      {
+        "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+        "attempts": [
+          {
+            "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+            "status": "pending",
+            "sweepDependent": false,
+            "deletedKeys": [
+              "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+            ],
+            "repairedLateKeys": []
+          },
+          {
+            "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+            "status": "complete",
+            "sweepDependent": false,
+            "deletedKeys": [
+              "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+            ],
+            "repairedLateKeys": []
+          }
+        ],
+        "idempotent": {
+          "projectId": "project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        },
+        "tombstone": {
+          "status": "complete",
+          "keyInventory": [
+            "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+          ],
+          "sweepDependent": false,
+          "attemptCount": 4,
+          "completedAt": "2026-10-25T18:03:50.812Z"
+        },
+        "deletedOwnedKeys": [
+          "projects/t3p04s01qa/project:b8ccdae4-1d55-4a9f-b2ae-96fe40a8b30f/assets/f0c52fbb-5ea1-4cfa-bef9-f86b43641402/619f3ca9cacb3510a5b561c1d214c759"
+        ],
+        "survivingSiblingKeys": [
+          "projects/t3p04s01qa/project:e678056e-cc05-49ff-b798-cf15997ec1bb/assets/1bfca054-3e7a-4078-af6a-960705b85144/9c3af204767375667ec543e0883b348d"
+        ]
+      },
+      {
+        "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+        "attempts": [
+          {
+            "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+            "status": "pending",
+            "sweepDependent": false,
+            "deletedKeys": [],
+            "repairedLateKeys": []
+          },
+          {
+            "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+            "status": "complete",
+            "sweepDependent": false,
+            "deletedKeys": [],
+            "repairedLateKeys": []
+          }
+        ],
+        "idempotent": {
+          "projectId": "project:6956cd47-cbb5-48ae-876b-9b267424a1bb",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        },
+        "tombstone": {
+          "status": "complete",
+          "keyInventory": [],
+          "sweepDependent": false,
+          "attemptCount": 4,
+          "completedAt": "2026-10-25T18:03:56.576Z"
+        },
+        "deletedOwnedKeys": [],
+        "survivingSiblingKeys": []
+      }
+    ]
+  },
+  "apiTimingCount": 155,
+  "objectCountAtShutdown": 3,
+  "processesClosed": true,
+  "networkStore": "private in-memory ObjectStore; no R2 connection"
+}

@@ -1,0 +1,8 @@
+{
+  "kind": "process-local memory object store",
+  "keyCount": 2,
+  "keys": [
+    "projects/t3p04s01qa/project:99b4fd41-25c5-4d56-9415-f6f882fba045/models/revisions/sha256-df3e3394c915dca132a115c86c2015152ae3122a2cc9b6d13e6a541beaf38a95/derivative.glb",
+    "projects/t3p04s01qa/project:99b4fd41-25c5-4d56-9415-f6f882fba045/models/revisions/sha256-df3e3394c915dca132a115c86c2015152ae3122a2cc9b6d13e6a541beaf38a95/source/model.glb"
+  ]
+}

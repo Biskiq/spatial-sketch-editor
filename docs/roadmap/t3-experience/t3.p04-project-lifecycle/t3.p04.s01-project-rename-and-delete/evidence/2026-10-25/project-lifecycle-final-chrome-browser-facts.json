@@ -1,0 +1,39 @@
+{
+  "browserVersion": "155.0.8059.85",
+  "browserName": "chrome",
+  "buildRevision": "41800d27231db4d007314f6a8c437a90c75d5e94",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "reducedMotion": "reduce",
+  "input": "mouse/keyboard at desktop; separate coarse touch context",
+  "baseURL": "http://127.0.0.1:55707",
+  "apiOrigin": "http://127.0.0.1:55706",
+  "probeResults": [
+    "UI New Project → source JSON admission → conditional Save created version 1",
+    "rename dialog keyboard focus/escape, invalid blank refusal, and no-op version preservation",
+    "rename appends one immutable authored-envelope version; previous version remains readable",
+    "foreign-owner and unauthenticated API requests refuse without disclosing project data",
+    "stale base exposes remote name and requires explicit refresh/retry without losing entered name",
+    "ambiguous committed rename is safely retried through conflict refresh with no duplicate version",
+    "current-project rename preserved dirty domain edit and history; next Save and Hub reopen retained the new name",
+    "Experience Preview uses the authored source and mounts no Save, Undo, or lifecycle authoring controls",
+    "dirty current delete cancellation preserved the live session, API project, and downloaded source recovery",
+    "active publication preflight refused; actual Unpublish allowed reviewed deletion with inactive-link warning",
+    "project-busy remained a confirmed retryable refusal; retry after lease release deleted the project",
+    "current-project dirty delete cancelled once with recovery, then confirmed pending cleanup with durable owned-key inventory",
+    "after actual Unpublish the inactive link warning was honored, deletion removed its publication row, and public reader returned not found",
+    "committed stale rename response released only after a new project was open; newer session remained intact",
+    "320×800 CSS, DPR 2, coarse-touch Hub dialog fit, tap targets and cancellation"
+  ],
+  "ownerId": "google:e2e-agent-admin",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "platform": "MacIntel",
+  "matchMediaReducedMotion": true,
+  "apiChecks": {
+    "unauthenticatedFinalRead": 401,
+    "foreignOwnerRead": 404
+  }
+}

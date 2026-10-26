@@ -50,7 +50,6 @@ export default defineConfig({
 			// `chrome://version`. Playwright fails this project clearly when absent.
 			name: 'chrome',
 			use: {
-				...devices['Desktop Chrome'],
 				channel: 'chrome',
 				viewport: { width: 1920, height: 1080 },
 				deviceScaleFactor: 1

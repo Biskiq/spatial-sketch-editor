@@ -41,15 +41,16 @@ const apiOrigin = process.env.PERF_API_ORIGIN;
 const secret = process.env.E2E_TEST_AUTH_SECRET;
 
 type SaveRun = {
-	readonly submitToSavingLabelDomUpdate: number | null;
-	readonly submitToReceipt: number;
-	readonly submitToSavedLabelDomUpdate: number | null;
+	readonly commandToSavingLabelDomUpdate: number | null;
+	readonly commandToRequest: number;
+	readonly requestToReceipt: number;
+	readonly commandToSavedLabelDomUpdate: number | null;
 	readonly wireBytes: number;
 };
 
 type SaveDelayOptions = {
-	/** Delay before the Save command, which must not enter submit-to-receipt. */
-	readonly beforeSubmitMs?: number;
+	/** Delay before the Save command, which must not enter request-to-receipt. */
+	readonly beforeCommandMs?: number;
 	/** Delay delivery of a successful local API response to the browser. */
 	readonly successfulReceiptMs?: number;
 };
@@ -116,7 +117,7 @@ async function saveOnce(session: MeasuredSession, origin: string, delays: SaveDe
 			await route.fulfill({ response: upstream });
 		});
 	}
-	if ((delays.beforeSubmitMs ?? 0) > 0) await page.waitForTimeout(delays.beforeSubmitMs!);
+	if ((delays.beforeCommandMs ?? 0) > 0) await page.waitForTimeout(delays.beforeCommandMs!);
 	const receipt = page.waitForResponse(
 		(response) => response.url() === requestUrl && response.request().method() === 'PUT',
 		{ timeout: 60_000 }
@@ -139,7 +140,8 @@ async function saveOnce(session: MeasuredSession, origin: string, delays: SaveDe
 	const savedDomUpdate = transitions.find((entry) => entry.status === 'saved');
 	const ledger = await readLedger(page);
 	const saveRecords = ledger.records.slice(recordStart);
-	const submit = saveRecords.find((record) => record.kind === 'mark' && record.name === 'save:submit');
+	const command = saveRecords.find((record) => record.kind === 'mark' && record.name === 'save:command');
+	const request = saveRecords.find((record) => record.kind === 'mark' && record.name === 'save:request');
 	// Both times come from product marks on this page's monotonic clock. The
 	// Playwright response verifies HTTP success/request identity and supplies bytes.
 	const requestBody = response.request().postData();
@@ -153,13 +155,14 @@ async function saveOnce(session: MeasuredSession, origin: string, delays: SaveDe
 			record.detail?.projectId === projectId &&
 			record.detail?.operationId === operationId
 	);
-	if (submit === undefined || saveReceipt === undefined) {
-		throw new Error('The Save submit mark or its matching successful receipt mark is missing');
+	if (command === undefined || request === undefined || saveReceipt === undefined) {
+		throw new Error('The Save command, HTTP request, or matching successful receipt mark is missing');
 	}
 	return {
-		submitToSavingLabelDomUpdate: savingDomUpdate === undefined ? null : savingDomUpdate.time - submit.time,
-		submitToReceipt: saveReceipt.time - submit.time,
-		submitToSavedLabelDomUpdate: savedDomUpdate === undefined ? null : savedDomUpdate.time - submit.time,
+		commandToSavingLabelDomUpdate: savingDomUpdate === undefined ? null : savingDomUpdate.time - command.time,
+		commandToRequest: request.time - command.time,
+		requestToReceipt: saveReceipt.time - request.time,
+		commandToSavedLabelDomUpdate: savedDomUpdate === undefined ? null : savedDomUpdate.time - command.time,
 		wireBytes: Number(response.request().postDataBuffer()?.byteLength ?? 0)
 	};
 }
@@ -214,17 +217,17 @@ test.describe('F9 Save', () => {
 			expect(runs, `${cacheState} measured run count`).toHaveLength(RUNS);
 			const savingLabelDomUpdate = requireCompleteSamples(
 				'saving-label DOM update',
-				runs.map((run) => run.submitToSavingLabelDomUpdate),
+				runs.map((run) => run.commandToSavingLabelDomUpdate),
 				runs.length
 			);
 			const durableReceipt = requireCompleteSamples(
 				'durable receipt',
-				runs.map((run) => run.submitToReceipt),
+				runs.map((run) => run.requestToReceipt),
 				runs.length
 			);
 			const savedLabelDomUpdate = requireCompleteSamples(
 				'saved-label DOM update',
-				runs.map((run) => run.submitToSavedLabelDomUpdate),
+				runs.map((run) => run.commandToSavedLabelDomUpdate),
 				runs.length
 			);
 			const row: ResultRow = {
@@ -298,15 +301,15 @@ test.describe('F9 Save', () => {
 			await closeToHub(session.page);
 
 			const preSaveDelayMs = 2_000;
-			const withPreSaveDelay = await saveOnce(session, origin, { beforeSubmitMs: preSaveDelayMs });
+			const withPreSaveDelay = await saveOnce(session, origin, { beforeCommandMs: preSaveDelayMs });
 			await closeToHub(session.page);
 
 			const receiptDelayMs = 600;
 			const withDelayedReceipt = await saveOnce(session, origin, { successfulReceiptMs: receiptDelayMs });
-			expect(Math.abs(withPreSaveDelay.submitToReceipt - baseline.submitToReceipt)).toBeLessThan(
+			expect(Math.abs(withPreSaveDelay.requestToReceipt - baseline.requestToReceipt)).toBeLessThan(
 				preSaveDelayMs / 2
 			);
-			expect(withDelayedReceipt.submitToReceipt - baseline.submitToReceipt).toBeGreaterThan(receiptDelayMs / 2);
+			expect(withDelayedReceipt.requestToReceipt - baseline.requestToReceipt).toBeGreaterThan(receiptDelayMs / 2);
 		} finally {
 			await session.close();
 		}

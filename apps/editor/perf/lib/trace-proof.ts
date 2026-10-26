@@ -40,7 +40,10 @@ export function normalizeTraceClock(events: readonly TraceEvent[], anchors: read
 	return { offsetMs, spreadMs, anchors, toPageMs: (traceTimeUs: number) => traceTimeUs / 1000 - offsetMs };
 }
 
-export async function startChromeTrace(cdp: CDPSession): Promise<() => Promise<TraceEvent[]>> {
+export async function startChromeTrace(
+	cdp: CDPSession,
+	options: { screenshotMaxSize?: number; screenshotMaxCount?: number } = {}
+): Promise<() => Promise<TraceEvent[]>> {
 	const events: TraceEvent[] = [];
 	const onData = (event: { value: object[] }) => {
 		for (const entry of event.value) {
@@ -52,7 +55,9 @@ export async function startChromeTrace(cdp: CDPSession): Promise<() => Promise<T
 	cdp.on('Tracing.dataCollected', onData);
 	try { await cdp.send('Tracing.start', {
 		categories: 'blink.user_timing,devtools.timeline,disabled-by-default-devtools.timeline,disabled-by-default-devtools.screenshot,cc,viz,benchmark',
-		transferMode: 'ReportEvents', options: 'record-as-much-as-possible', screenshotMaxSize: 500, screenshotMaxCount: 450
+		transferMode: 'ReportEvents', options: 'record-as-much-as-possible',
+		screenshotMaxSize: options.screenshotMaxSize ?? 500,
+		screenshotMaxCount: options.screenshotMaxCount ?? 450
 	}); } catch (error) { cdp.off('Tracing.dataCollected', onData); throw error; }
 	return async () => {
 		try {

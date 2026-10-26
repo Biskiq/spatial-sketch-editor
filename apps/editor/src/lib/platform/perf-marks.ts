@@ -151,6 +151,34 @@ export function perfRenderer<T extends object>(renderer: T, surface: 'stage' | '
 	return renderer;
 }
 
+/**
+ * Time one synchronous operation on the page's main thread. Save uses this
+ * only around named work it directly invokes; the enclosing async operation
+ * and unrelated renderer frames are deliberately not included.
+ */
+export function perfMeasureSync<T>(phase: string, work: () => T): T {
+	if (!perfMarksEnabled()) return work();
+	const start = performance.now();
+	try {
+		return work();
+	} finally {
+		const end = performance.now();
+		perfMark('save:work', { phase, startMs: start, endMs: end, elapsedMs: end - start });
+	}
+}
+
+/** Measure a Save-owned async step's elapsed time, separately from main-thread work. */
+export async function perfMeasureAsync<T>(phase: string, work: () => Promise<T>): Promise<T> {
+	if (!perfMarksEnabled()) return work();
+	const start = performance.now();
+	try {
+		return await work();
+	} finally {
+		const end = performance.now();
+		perfMark('save:async-wall', { phase, startMs: start, endMs: end, elapsedMs: end - start });
+	}
+}
+
 /** Diagnostic only: never enabled in untraced timing runs or ordinary UI. */
 export type PerfTracePreview = {
 	readonly sequence: number;

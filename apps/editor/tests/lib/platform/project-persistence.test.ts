@@ -186,6 +186,203 @@ describe('client Save transport', () => {
 	});
 });
 
+describe('project lifecycle transport', () => {
+	const precondition = { kind: 'expected-saved-base' as const, token: TOKEN };
+
+	it('pre-reads the owner-scoped publication state before a delete confirmation', async () => {
+		const calls: { url: string; init: RequestInit }[] = [];
+		const status = {
+			publicationId: 'publication-1',
+			activeVersion: null,
+			revision: 4,
+			currentVersion: 3,
+			createdAt: '2026-10-20T00:00:00.000Z',
+			updatedAt: '2026-10-21T00:00:00.000Z'
+		};
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async (url, init) => {
+				calls.push({ url, init: init ?? {} });
+				return new Response(JSON.stringify(status), { status: 200, headers: { 'content-type': 'application/json' } });
+			}
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(api.getPublicationStatus(PROJECT_ID)).resolves.toEqual(status);
+		expect(calls).toHaveLength(1);
+		expect(calls[0]!.url).toBe(`https://api.example/projects/${encodeURIComponent(PROJECT_ID)}/publication`);
+		expect(calls[0]!.init.method).toBe('GET');
+	});
+
+	it('sends a conditional PATCH and returns the refreshed rename acknowledgement', async () => {
+		const { sourceContentId } = await fixture();
+		const calls: { url: string; init: RequestInit }[] = [];
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async (url, init) => {
+				calls.push({ url, init: init ?? {} });
+				return new Response(
+					JSON.stringify({ ...acknowledgement(sourceContentId), name: 'Renamed project', version: 4 }),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				);
+			}
+		});
+		if (!api) throw new Error('api was not created');
+
+		const renamed = await api.renameProject(PROJECT_ID, { name: 'Renamed project', precondition });
+		expect(calls).toHaveLength(1);
+		expect(calls[0].url).toBe(`https://api.example/projects/${encodeURIComponent(PROJECT_ID)}`);
+		expect(calls[0].init.method).toBe('PATCH');
+		expect(calls[0].init.credentials).toBe('include');
+		expect(JSON.parse(String(calls[0].init.body))).toEqual({ name: 'Renamed project', precondition });
+		expect(renamed).toMatchObject({
+			projectId: PROJECT_ID,
+			name: 'Renamed project',
+			version: 4,
+			savedBaseToken: TOKEN,
+			sourceContentId
+		});
+	});
+
+	it('refuses a rename acknowledgement whose saved revision belongs to another project', async () => {
+		const { sourceContentId } = await fixture();
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async () =>
+				new Response(
+					JSON.stringify({
+						...acknowledgement(sourceContentId),
+						savedRevision: { projectId: 'project:other', revisionId: 'revision-other' },
+						name: 'Renamed project',
+						version: 4
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(
+			api.renameProject(PROJECT_ID, { name: 'Renamed project', precondition })
+		).rejects.toMatchObject({
+			name: 'ProjectPersistenceError',
+			code: 'server'
+		});
+	});
+
+	it('refuses a rename acknowledgement whose outer project ID differs', async () => {
+		const { sourceContentId } = await fixture();
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async () =>
+				new Response(
+					JSON.stringify({
+						...acknowledgement(sourceContentId),
+						projectId: 'project:other',
+						name: 'Renamed project',
+						version: 4
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(
+			api.renameProject(PROJECT_ID, { name: 'Renamed project', precondition })
+		).rejects.toMatchObject({
+			name: 'ProjectPersistenceError',
+			code: 'server'
+		});
+	});
+
+	it('sends the expected base on DELETE and preserves pending cleanup as a successful result', async () => {
+		const calls: { url: string; init: RequestInit }[] = [];
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async (url, init) => {
+				calls.push({ url, init: init ?? {} });
+				return new Response(JSON.stringify({ projectId: PROJECT_ID, cleanup: 'pending' }), {
+					status: 202,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(api.deleteProject(PROJECT_ID, { precondition })).resolves.toEqual({
+			projectId: PROJECT_ID,
+			cleanup: 'pending'
+		});
+		expect(calls).toHaveLength(1);
+		expect(calls[0].init.method).toBe('DELETE');
+		expect(JSON.parse(String(calls[0].init.body))).toEqual({ precondition });
+	});
+
+	it('keeps stale lifecycle writes as conflicts and types a project-busy refusal for retry', async () => {
+		const failures = [
+			{
+				status: 409,
+				body: { error: { code: 'conflict', message: 'The saved base changed' } },
+				code: 'conflict'
+			},
+			{
+				status: 409,
+				body: { error: { code: 'project_busy', message: 'An upload is still active' } },
+				code: 'project-busy'
+			}
+		] as const;
+
+		for (const failure of failures) {
+			const api = createProjectApi({
+				apiOrigin: 'https://api.example',
+				fetch: async () =>
+					new Response(JSON.stringify(failure.body), {
+						status: failure.status,
+						headers: { 'content-type': 'application/json' }
+					})
+			});
+			if (!api) throw new Error('api was not created');
+			await expect(api.deleteProject(PROJECT_ID, { precondition })).rejects.toMatchObject({
+				name: 'ProjectPersistenceError',
+				code: failure.code,
+				status: failure.status
+			});
+		}
+	});
+
+	it('types the active-publication delete refusal for the confirmation path', async () => {
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async () => new Response(JSON.stringify({ error: { code: 'unpublish-first', message: 'Unpublish first' } }), {
+				status: 409,
+				headers: { 'content-type': 'application/json' }
+			})
+		});
+		if (!api) throw new Error('api was not created');
+
+		await expect(api.deleteProject(PROJECT_ID, { precondition })).rejects.toMatchObject({
+			name: 'ProjectPersistenceError',
+			code: 'unpublish-first',
+			message: 'Unpublish first'
+		});
+	});
+
+	it('refuses a lifecycle acknowledgement for a different project', async () => {
+		const api = createProjectApi({
+			apiOrigin: 'https://api.example',
+			fetch: async () =>
+				new Response(JSON.stringify({ projectId: 'project:other', cleanup: 'complete' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
+		});
+		if (!api) throw new Error('api was not created');
+		await expect(api.deleteProject(PROJECT_ID, { precondition })).rejects.toMatchObject({
+			name: 'ProjectPersistenceError',
+			code: 'server'
+		});
+	});
+});
+
 describe('pending cloud Save draft', () => {
 	it('carries the whole capture and keeps the ready reader shape', async () => {
 		const { request, project } = await fixture();

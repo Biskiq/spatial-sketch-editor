@@ -115,6 +115,21 @@ export async function withTransaction<T>(
 	if (!pool.connect) throw new Error('Database transactions are unavailable');
 	const db = await pool.connect();
 	try {
+		return await withTransactionOnClient(db, work);
+	} finally {
+		db.release();
+	}
+}
+
+/**
+ * Run a transaction on a connection already owned by a higher-level scope
+ * such as an advisory lock. This helper never releases the caller's client.
+ */
+export async function withTransactionOnClient<T>(
+	db: DatabaseClient,
+	work: (db: DatabaseClient) => Promise<T>
+): Promise<T> {
+	try {
 		await db.query('BEGIN');
 		const result = await work(db);
 		await db.query('COMMIT');
@@ -126,8 +141,6 @@ export async function withTransaction<T>(
 			// Preserve the original failure; the route returns one bounded error.
 		}
 		throw error;
-	} finally {
-		db.release();
 	}
 }
 

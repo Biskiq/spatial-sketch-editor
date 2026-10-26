@@ -6,6 +6,11 @@ import { UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 import type { DatabasePool } from './database.js';
 import type { ObjectStore } from './object-store.js';
 import { queryRows } from './project-persistence.js';
+import {
+	DEFAULT_PROJECT_LIFECYCLE_POLICY,
+	withProjectWriteLease,
+	type ProjectLifecyclePolicy
+} from './project-write-lease.js';
 
 export const MAX_ASSET_BYTES = 25 * 1024 * 1024;
 
@@ -218,17 +223,22 @@ export async function uploadAsset(
 	contentLength: number,
 	body: Readable,
 	objectStore: ObjectStore | undefined,
-	objectNamespace: string
+	objectNamespace: string,
+	options: { parentSignal?: AbortSignal; policy?: ProjectLifecyclePolicy } = {}
 ): Promise<AssetMetadata> {
-	const asset = await readAsset(pool, ownerId, projectId, assetId);
-	if (asset.importState === 'ready') throw new AssetNotReadyError();
 	if (!objectStore) throw new Error('Object storage is unavailable');
-
-	// ponytail: object key doubles as upload claim; superseded bytes stay orphaned until GC ships.
-	const objectKey = createObjectKey(projectId, assetId, objectNamespace);
-	const claimed = await queryRows<AssetRow>(
+	return withProjectWriteLease(
 		pool,
-		`UPDATE assets a
+		ownerId,
+		projectId,
+		async ({ signal, assertActive }) => {
+			const asset = await readAsset(pool, ownerId, projectId, assetId);
+			if (asset.importState === 'ready') throw new AssetNotReadyError();
+
+			const objectKey = createObjectKey(projectId, assetId, objectNamespace);
+			const claimed = await queryRows<AssetRow>(
+				pool,
+				`UPDATE assets a
 SET object_key = $4, import_state = 'pending', updated_at = now()
 FROM projects p
 WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
@@ -238,16 +248,17 @@ WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 		WHERE v.project_id = p.id AND v.source_format = $5
 	)
 RETURNING ${returningColumns('a.')}`,
-		[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
-	);
-	if (!claimed[0]) throw new AssetNotReadyError();
+				[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
+			);
+			if (!claimed[0]) throw new AssetNotReadyError();
 
-	let uploaded: UploadedAsset;
-	try {
-		uploaded = await streamAsset(body, contentLength, objectStore, objectKey);
-	} catch (error) {
-		await pool.query(
-			`UPDATE assets a
+			let uploaded: UploadedAsset;
+			try {
+				uploaded = await streamAsset(body, contentLength, objectStore, objectKey, signal, assertActive);
+			} catch (error) {
+				try {
+					await pool.query(
+						`UPDATE assets a
 SET import_state = 'failed', updated_at = now()
 FROM projects p
 WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
@@ -256,14 +267,26 @@ WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 		SELECT 1 FROM project_versions v
 		WHERE v.project_id = p.id AND v.source_format = $5
 	)`,
-			[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
-		);
-		throw error;
-	}
+						[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
+					);
+				} catch {
+					// The claimed key remains available to deletion inventory.
+				}
+				await deleteObject(objectStore, objectKey);
+				throw error;
+			}
 
-	const finalized = await queryRows<AssetRow>(
-		pool,
-		`UPDATE assets a
+			try {
+				assertActive();
+			} catch (error) {
+				await deleteObject(objectStore, objectKey);
+				throw error;
+			}
+			let finalized: AssetRow[];
+			try {
+				finalized = await queryRows<AssetRow>(
+					pool,
+					`UPDATE assets a
 SET mime = $4, byte_size = $5, sha256 = $6, import_state = 'ready', updated_at = now()
 FROM projects p
 WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
@@ -273,11 +296,32 @@ WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 		WHERE v.project_id = p.id AND v.source_format = $8
 	)
 RETURNING ${returningColumns('a.')}`,
-		[assetId, projectId, ownerId, uploaded.mime, uploaded.byteSize, uploaded.sha256, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
+					[assetId, projectId, ownerId, uploaded.mime, uploaded.byteSize, uploaded.sha256, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
+				);
+				assertActive();
+			} catch (error) {
+				// A failed database response can follow a committed UPDATE. Preserve
+				// the object only when a read proves the ready row owns this exact key;
+				// if the database is unavailable, leave the key for durable cleanup.
+				let ready = false;
+				try {
+					const current = await readAsset(pool, ownerId, projectId, assetId);
+					ready = current.importState === 'ready' && current.objectKey === objectKey;
+				} catch {
+					ready = true;
+				}
+				if (!ready) await deleteObject(objectStore, objectKey);
+				throw error;
+			}
+			const finalizedRow = finalized[0];
+			if (!finalizedRow) {
+				await deleteObject(objectStore, objectKey);
+				throw new AssetNotReadyError();
+			}
+			return readAssetMetadata(finalizedRow);
+		},
+		{ parentSignal: options.parentSignal, policy: options.policy ?? DEFAULT_PROJECT_LIFECYCLE_POLICY }
 	);
-	const finalizedRow = finalized[0];
-	if (!finalizedRow) throw new AssetNotReadyError();
-	return readAssetMetadata(finalizedRow);
 }
 
 type UploadedAsset = {
@@ -290,7 +334,9 @@ async function streamAsset(
 	source: Readable,
 	contentLength: number,
 	objectStore: ObjectStore,
-	key: string
+	key: string,
+	signal: AbortSignal,
+	assertActive: () => void
 ): Promise<UploadedAsset> {
 	const output = new PassThrough();
 	output.on('error', () => {});
@@ -301,12 +347,21 @@ async function streamAsset(
 	let mime: AssetMime | null = null;
 	let putPromise: Promise<void> | undefined;
 	let storageError: unknown;
+	const onAbort = () => {
+		const error = signal.reason instanceof Error ? signal.reason : new Error('Asset write aborted');
+		source.destroy(error);
+		output.destroy(error);
+	};
+	signal.addEventListener('abort', onAbort, { once: true });
+	if (signal.aborted) onAbort();
 
 	const begin = async (detectedMime: AssetMime) => {
+		assertActive();
 		mime = detectedMime;
 		putPromise = objectStore.put(key, output, {
 			contentType: detectedMime,
-			contentLength
+			contentLength,
+			signal
 		}).catch((error) => {
 			storageError = error;
 			output.destroy(error instanceof Error ? error : new Error('Asset storage failed'));
@@ -318,6 +373,7 @@ async function streamAsset(
 
 	try {
 		for await (const value of source) {
+			assertActive();
 			const chunk = toBuffer(value);
 			byteSize += chunk.length;
 			if (byteSize > MAX_ASSET_BYTES) {
@@ -351,18 +407,24 @@ async function streamAsset(
 			if (!detected) throw new AssetInputError('unsupported_media_type', 415, 'Unsupported image bytes');
 			await begin(detected);
 		}
+		assertActive();
 		if (byteSize !== contentLength) {
 			throw new AssetInputError('invalid_upload', 400, 'Upload length does not match Content-Length');
 		}
 		output.end();
 		await putPromise;
+		signal.removeEventListener('abort', onAbort);
 		return { mime: mime!, byteSize, sha256: `sha256-${hash.digest('hex')}` };
 	} catch (error) {
-		const reportedError =
-			error instanceof AssetInputError || storageError
-				? error
-				: new AssetInputError('invalid_upload', 400, 'Upload stream failed');
+			const reportedError = signal.aborted
+				? signal.reason instanceof Error
+					? signal.reason
+					: new Error('Asset write aborted')
+				: error instanceof AssetInputError || storageError
+					? error
+					: new AssetInputError('invalid_upload', 400, 'Upload stream failed');
 		const streamError = error instanceof Error ? error : new Error('Asset upload failed');
+			source.destroy(streamError);
 		output.destroy(streamError);
 		if (putPromise) {
 			try {
@@ -371,7 +433,16 @@ async function streamAsset(
 				// The route reports the original bounded upload/storage error.
 			}
 		}
+		signal.removeEventListener('abort', onAbort);
 		throw reportedError;
+	}
+}
+
+async function deleteObject(objectStore: ObjectStore, key: string): Promise<void> {
+	try {
+		await objectStore.delete?.(key);
+	} catch {
+		// The claimed key remains on the asset row for durable deletion retry.
 	}
 }
 

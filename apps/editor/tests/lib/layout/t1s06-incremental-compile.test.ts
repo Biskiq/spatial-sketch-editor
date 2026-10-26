@@ -312,7 +312,10 @@ describe('T1.P02.S06 H1 — incremental canonical compile', () => {
 		expect(JSON.stringify(second.geometry)).toBe(JSON.stringify(first.geometry));
 	});
 
-	it('equals a cold compile across mixed COW deltas, membership changes and historical restores', () => {
+	// A differential sweep, not a latency check: its duration depends on how many other
+	// files the lane is transforming at the same time, so it states its own budget rather
+	// than inheriting the default that fits a single small unit test.
+	it('equals a cold compile across mixed COW deltas, membership changes and historical restores', { timeout: 120000 }, () => {
 		// The sweep above proves the canonical compiler's retention; this proves the
 		// *persistent-root* path the planners actually take. Each candidate is a
 		// copy-on-write delta, captured (frozen) exactly as F4 hands it to the Stage,

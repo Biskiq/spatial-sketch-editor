@@ -10,6 +10,16 @@ export function beforeNavigate(_guard: (event: { cancel: () => void }) => void):
 	// The route registers its unsaved-work guard; the harness never navigates.
 }
 
+export const navigations: string[] = [];
+
+export async function goto(url: string): Promise<void> {
+	navigations.push(url);
+}
+
+export function resetNavigations(): void {
+	navigations.length = 0;
+}
+
 /**
  * The route consumes `resume-save` with `replaceState` after considering a
  * draft. The mounted harness owns the URL it is testing, so this is a no-op

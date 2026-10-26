@@ -10,7 +10,7 @@
  *    replacement cannot half-happen: nothing is cancelled or cleared for a source
  *    that then fails admission.
  * 2. **Cancel writers atomically.** Every registered load, gesture, camera run,
- *    task or command is cancelled exactly once and its token becomes stale.
+ *    task, command or project action is cancelled exactly once and its token becomes stale.
  * 3. **Clear the old context.** Selection, task and gesture leases are cleared;
  *    no project-specific singleton survives.
  * 4. **Swap.** The epoch advances and the new snapshot becomes current.
@@ -30,7 +30,7 @@ import { EMPTY_SELECTION, admitSelection, primaryEntry, layoutSelectionReference
 export type SessionEpoch = string;
 
 /** The families of writer the session can cancel, for diagnostics and policy. */
-export type WriterKind = 'load' | 'gesture' | 'camera' | 'task' | 'command';
+export type WriterKind = 'load' | 'gesture' | 'camera' | 'task' | 'command' | 'project-action';
 
 /** A registration is bounded by the epoch it was started under. */
 export type WriterRegistration = {
@@ -165,6 +165,11 @@ export type ReplacementResult = {
 	readonly releasedGestures: number;
 };
 
+export type StageMetadataAdoption =
+	| { readonly kind: 'adopted'; readonly previousSourceContentId: string; readonly sourceContentId: string }
+	| { readonly kind: 'unchanged'; readonly sourceContentId: string }
+	| { readonly kind: 'refused'; readonly code: 'disposed' | 'no-current-source' | 'different-project' | 'stale-session' | 'domain-changed'; readonly message: string };
+
 export type StageSession = {
 	readonly sessionEpoch: SessionEpoch;
 	token(): ReplacementEpochToken;
@@ -215,6 +220,8 @@ export type StageSession = {
 	 * mapping, or cleared with a reason when it does not survive.
 	 */
 	installAccepted(next: StageReadSnapshot, options?: { readonly requalify?: SelectionRequalification; readonly requalifyEntry?: (entry: StageSelectionEntry) => EntryRequalification }): AcceptedSlotInstall;
+	/** Adopt project-level metadata while domain units and their representation stay identical. */
+	adoptMetadata(next: StageReadSnapshot): StageMetadataAdoption;
 	/** Register a disposer run exactly once at session teardown. */
 	addDisposable(dispose: () => void): () => void;
 	/** Session teardown: cancel writers, release leases, run disposables exactly once. */
@@ -646,6 +653,34 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 				closedTask,
 				releasedGestures
 			};
+		},
+		adoptMetadata(next) {
+			if (disposed) return { kind: 'refused', code: 'disposed', message: 'The session is disposed.' };
+			const active = current;
+			if (active === null) return { kind: 'refused', code: 'no-current-source', message: 'No accepted source is installed.' };
+			if (active.acceptedRevision.projectId !== next.acceptedRevision.projectId) {
+				return { kind: 'refused', code: 'different-project', message: 'Metadata adoption cannot change project identity.' };
+			}
+			if (next.sessionEpoch !== sessionEpoch) {
+				return { kind: 'refused', code: 'stale-session', message: 'Metadata belongs to another session.' };
+			}
+			const sameUnits = (Object.keys(active.domain.unitRevisions) as (keyof typeof active.domain.unitRevisions)[])
+				.every((domain) => active.domain.unitRevisions[domain] === next.domain.unitRevisions[domain]);
+			if (!sameUnits || active.compileGeneration !== next.compileGeneration) {
+				return { kind: 'refused', code: 'domain-changed', message: 'Project metadata adoption cannot change authored domain content.' };
+			}
+			if (active.sourceContentId === next.sourceContentId && active.canonicalJson === next.canonicalJson) {
+				return { kind: 'unchanged', sourceContentId: active.sourceContentId };
+			}
+			// An in-progress gesture is revision-bound. End it without clearing the
+			// canonical selection or task; the metadata change leaves their domain
+			// identities and compiled representation intact.
+			registry.cancelKinds(['gesture']);
+			activeGesture?.lease.release();
+			activeGesture = null;
+			const previousSourceContentId = active.sourceContentId;
+			current = next;
+			return { kind: 'adopted', previousSourceContentId, sourceContentId: next.sourceContentId };
 		},
 		addDisposable(dispose) {
 			disposables.add(dispose);

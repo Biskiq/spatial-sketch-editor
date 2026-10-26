@@ -7,9 +7,11 @@ import {
 	isSavedBaseToken,
 	readSaveRequest,
 	type SaveAcknowledgement,
-	type SaveRequest
+	type SaveRequest,
+	type SavePrecondition
 } from '@portfolio/project-model/save';
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
+import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
 
 export type ProjectLoginIntent = 'projects' | 'save';
 
@@ -63,7 +65,62 @@ export type ProjectSummary = {
 	updatedAt: string;
 };
 
+export const PROJECT_NAME_MAX_LENGTH = 128;
+
+export type ProjectPublicationStatus = {
+	publicationId: string | null;
+	activeVersion: number | null;
+	revision: number;
+	currentVersion: number;
+	createdAt: string | null;
+	updatedAt: string | null;
+};
+
+/** Metadata read immediately before a project lifecycle form is opened. */
+export type PreparedProjectLifecycle = {
+	projectId: string;
+	name: string;
+	version: number;
+	precondition: ProjectLifecyclePrecondition;
+	publication?: ProjectPublicationStatus;
+	/** Set only for a conflict offer that requires an explicit refresh and retry. */
+	requiresExplicitRefresh?: boolean;
+};
+
+export type ProjectLifecyclePrepareResult =
+	| { kind: 'ready'; prepared: PreparedProjectLifecycle }
+	| { kind: 'stale' }
+	| { kind: 'blocked'; message: string }
+	| { kind: 'error'; message: string };
+
+export type ProjectLifecycleActionResult =
+	| { kind: 'renamed'; name: string; version: number }
+	| { kind: 'deleted'; cleanup: DeleteProjectAcknowledgement['cleanup'] }
+	| { kind: 'unchanged' }
+	| { kind: 'stale' }
+	| {
+			kind: 'conflict';
+			message: string;
+			remoteName: string | null;
+			/** Fresh metadata only when the remote change is safe to retry against. */
+			retryPrepared: PreparedProjectLifecycle | null;
+	  }
+	| { kind: 'refused'; message: string; retryable?: boolean }
+	| { kind: 'error'; message: string; retryable: boolean };
+
 export type SavedProject = Omit<ProjectSummary, 'id'> & { projectId: string };
+export type ProjectLifecyclePrecondition = Extract<SavePrecondition, { kind: 'expected-saved-base' }>;
+export type RenameProjectRequest = {
+	name: string;
+	precondition: ProjectLifecyclePrecondition;
+};
+export type DeleteProjectRequest = {
+	precondition: ProjectLifecyclePrecondition;
+};
+export type DeleteProjectAcknowledgement = {
+	projectId: string;
+	cleanup: 'complete' | 'pending';
+};
 export type LoadedProject = SavedProject & {
 	document: unknown;
 	/** Additive saved-base metadata; absent on a pre-migration row. */
@@ -94,6 +151,20 @@ export type ProjectApi = {
 	listProjects(signal?: AbortSignal): Promise<ProjectSummary[]>;
 	/** The one write: conditional `SaveAcceptedSource@1`, never a bare document. */
 	saveAcceptedSource(request: SaveRequest, signal?: AbortSignal): Promise<SaveAcknowledgement>;
+	/** Rename through the expected-base lifecycle path; the server appends an immutable version. */
+	renameProject(
+		projectId: string,
+		request: RenameProjectRequest,
+		signal?: AbortSignal
+	): Promise<SaveAcknowledgement>;
+	/** Delete after caller confirmation; pending means owned-byte cleanup still needs retry. */
+	deleteProject(
+		projectId: string,
+		request: DeleteProjectRequest,
+		signal?: AbortSignal
+	): Promise<DeleteProjectAcknowledgement>;
+	/** Owner-scoped publication read used to prevent a doomed delete confirmation. */
+	getPublicationStatus(projectId: string, signal?: AbortSignal): Promise<ProjectPublicationStatus>;
 	loadProject(projectId: string, signal?: AbortSignal): Promise<LoadedProject>;
 	listAssets(projectId: string, signal?: AbortSignal): Promise<ProjectAssetMetadata[]>;
 	registerAsset(projectId: string, name: string, signal?: AbortSignal): Promise<ProjectAssetMetadata>;
@@ -117,7 +188,10 @@ export type ProjectPersistenceErrorCode =
 	/** The expected saved base moved; reload explicitly, never overwrite. */
 	| 'conflict'
 	/** `create-only` found an existing project; owner-blind. */
-	| 'collision';
+	| 'collision'
+	/** A project-owned object writer still holds a live lease; retry after it stops. */
+	| 'project-busy'
+	| 'unpublish-first';
 
 export class ProjectPersistenceError extends Error {
 	constructor(
@@ -164,14 +238,59 @@ export function createProjectApi(
 	return {
 		listProjects: (signal) =>
 			requestJson(requestFetch, origin, '/projects', { method: 'GET' }, signal).then(readProjectList),
-		saveAcceptedSource: (request, signal) =>
-			requestJson(
+		saveAcceptedSource: (request, signal) => {
+			const body = perfMeasureSync('save.request-json', () => JSON.stringify(request));
+			return requestJson(
 				requestFetch,
 				origin,
 				`/projects/${encodeURIComponent(request.capture.projectId)}`,
-				{ method: 'PUT', body: JSON.stringify(request) },
+				{ method: 'PUT', body },
+				signal,
+				() => perfMark('save:request', {
+					projectId: request.capture.projectId,
+					operationId: request.capture.operationId
+				})
+			).then((value) => perfMeasureSync('save.acknowledgement-decode', () => readSaveAcknowledgement(value)));
+		},
+		renameProject: (projectId, request, signal) =>
+			requestJson(
+				requestFetch,
+				origin,
+				`/projects/${encodeURIComponent(projectId)}`,
+				{ method: 'PATCH', body: JSON.stringify(request) },
 				signal
-			).then(readSaveAcknowledgement),
+			)
+				.then(readSaveAcknowledgement)
+				.then((acknowledgement) => {
+					if (
+						acknowledgement.projectId !== projectId ||
+						(acknowledgement.savedRevision && acknowledgement.savedRevision.projectId !== projectId)
+					) {
+						throw invalidResponse();
+					}
+					return acknowledgement;
+				}),
+		deleteProject: (projectId, request, signal) =>
+			requestJson(
+				requestFetch,
+				origin,
+				`/projects/${encodeURIComponent(projectId)}`,
+				{ method: 'DELETE', body: JSON.stringify(request) },
+				signal
+			)
+				.then(readDeleteAcknowledgement)
+				.then((acknowledgement) => {
+					if (acknowledgement.projectId !== projectId) throw invalidResponse();
+					return acknowledgement;
+				}),
+		getPublicationStatus: (projectId, signal) =>
+			requestJson(
+				requestFetch,
+				origin,
+				`/projects/${encodeURIComponent(projectId)}/publication`,
+				{ method: 'GET' },
+				signal
+			).then(readPublicationStatus),
 		loadProject: (projectId, signal) =>
 			requestJson(
 				requestFetch,
@@ -383,20 +502,28 @@ async function requestJson(
 	origin: string,
 	path: string,
 	init: RequestInit,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	onBeforeFetch?: () => void
 ): Promise<unknown> {
 	let response: Response;
 	try {
-		response = await fetchImpl(`${origin}${path}`, {
-			...init,
-			credentials: 'include',
-			signal,
-			headers: {
-				Accept: 'application/json',
-				...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-				...(init.headers ?? {})
-			}
-		});
+		const dispatch = () => {
+			const url = `${origin}${path}`;
+			const request: RequestInit = {
+				...init,
+				credentials: 'include',
+				signal,
+				headers: {
+					Accept: 'application/json',
+					...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+					...(init.headers ?? {})
+				}
+			};
+			onBeforeFetch?.();
+			return fetchImpl(url, request);
+		};
+		const pendingResponse = onBeforeFetch ? perfMeasureSync('save.request-dispatch', dispatch) : dispatch();
+		response = await pendingResponse;
 	} catch (error) {
 		if (isAbort(error, signal)) throw error;
 		throw new ProjectPersistenceError('network', 'Cloud request failed');
@@ -541,6 +668,22 @@ async function readBoundedAssetBody(response: Response, expectedLength: number):
 function responseError(status: number, body: unknown): ProjectPersistenceError {
 	const serverCode = readErrorCode(body);
 	const issues = readErrorIssues(body);
+	if (serverCode === 'project-busy' || serverCode === 'project_busy') {
+		return new ProjectPersistenceError(
+			'project-busy',
+			readErrorMessage(body) ?? 'Project cleanup is blocked by an active write; retry after it stops',
+			status,
+			serverCode
+		);
+	}
+	if (serverCode === 'unpublish-first') {
+		return new ProjectPersistenceError(
+			'unpublish-first',
+			readErrorMessage(body) ?? 'Unpublish this project before deleting it',
+			status,
+			serverCode
+		);
+	}
 	if (status === 401) return new ProjectPersistenceError('auth', 'Sign-in is required', status, serverCode);
 	if (status === 404) return new ProjectPersistenceError('not-found', 'Project not found', status, serverCode);
 	if (status === 413) return new ProjectPersistenceError('too-large', 'Project payload is too large', status, serverCode);
@@ -654,6 +797,14 @@ function readSaveAcknowledgement(value: unknown): SaveAcknowledgement {
 	};
 }
 
+function readDeleteAcknowledgement(value: unknown): DeleteProjectAcknowledgement {
+	if (!isRecord(value)) throw invalidResponse();
+	return {
+		projectId: readString(value.projectId),
+		cleanup: readEnum(value.cleanup, ['complete', 'pending'])
+	};
+}
+
 function readLoadedProject(value: unknown): LoadedProject {
 	if (!isRecord(value) || !Object.prototype.hasOwnProperty.call(value, 'document')) {
 		throw invalidResponse();
@@ -664,6 +815,21 @@ function readLoadedProject(value: unknown): LoadedProject {
 		savedBaseToken: readNullableSavedBaseToken(value.savedBaseToken),
 		savedRevision: readNullableRevision(value.savedRevision),
 		savedSourceContentId: readNullableContentId(value.savedSourceContentId)
+	};
+}
+
+function readPublicationStatus(value: unknown): ProjectPublicationStatus {
+	const keys = ['publicationId', 'activeVersion', 'revision', 'currentVersion', 'createdAt', 'updatedAt'] as const;
+	if (!isRecord(value) || Object.keys(value).length !== keys.length || keys.some((key) => !(key in value))) {
+		throw invalidResponse();
+	}
+	return {
+		publicationId: readNullableString(value.publicationId),
+		activeVersion: readNullableVersion(value.activeVersion),
+		revision: readVersion(value.revision),
+		currentVersion: readVersion(value.currentVersion),
+		createdAt: readNullableString(value.createdAt),
+		updatedAt: readNullableString(value.updatedAt)
 	};
 }
 
@@ -706,6 +872,11 @@ function readSummary(value: unknown): ProjectSummary {
 function readVersion(value: unknown): number {
 	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw invalidResponse();
 	return value;
+}
+
+function readNullableVersion(value: unknown): number | null {
+	if (value === null || value === undefined) return null;
+	return readVersion(value);
 }
 
 function readAssetId(value: unknown): string {
