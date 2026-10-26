@@ -25,7 +25,7 @@ The roadmap allows research, documentation and bounded disposable probes within 
 | 11 | [P9](#p9-reference-granularity-log) Reference granularity log | Whether boolean-split tracking is ever needed | — | S |
 | 12 | [P10](#p10-agents-operate-families) Agents operate families | Whether family operations serve agents | North Star agent proof | S–M |
 
-**I** P1, P3 and P5 together answer the central question. Can a creator make a convincing place quickly, and revise it for hours without losing work? P2 and P4 decide the shape of the interaction and the recipe layer. P12 decides where native depth stops. The rest reduce specific risks.
+**I** P1, P3 and P5 together answer the central question. Can a creator make a convincing place quickly, and revise it for hours without losing work? P2 and P4 decide the shape of the interaction and the recipe layer. P12 tests where native depth might stop and informs owner decision D12. The rest reduce specific risks.
 
 ## 2. Shared method
 
@@ -308,7 +308,7 @@ The roadmap allows research, documentation and bounded disposable probes within 
   - dormers or rail transitions do not survive the revisions;
   - evaluation misses the budget after the algorithmic levers in P6.
 - **The specialist position is falsified if** bounded operations cover the ordinary cases above the threshold and the control cases are refused cleanly.
-- **Response.** Place each case on the [capability map](./synthesis-and-direction.md#6-capability-map-native-asset-extension-specialist). No recipe is scheduled from this proof alone; D1, D11, P3 and P4 still apply.
+- **Response.** Propose each case's placement on the [capability map](./synthesis-and-direction.md#6-capability-map-native-asset-extension-specialist) for owner decision D12. No recipe is scheduled from this proof alone; D1, D11, P3 and P4 still apply.
 - **Needs.** The P3 families or the Vellum prototype, and a straight-skeleton implementation for the probe. A production one would need a permissive licence; CGAL's is GPL.
 
 ## 4. Shared geometry fixtures
