@@ -1220,8 +1220,10 @@ hand-derived bound.
 
 **The reviewed implementation.** The candidate is the branch head on PR #190, `t1/p02-s06-bench-setup`:
 merge commit `d7600576` (main `51dcb764` integrated into the reviewed S06 head `86fb631e`), with the
-final review corrections committed as `d89554b1`. That is the exact SHA this section describes and
-the one Bench 3 should check out. The S06-relevant commits are `c8ac273a` (interaction locality),
+final review corrections committed as `d89554b1`; `f3564867` on top of it is this record only, no
+code. `d89554b1` is therefore the exact code SHA this section describes and the one Bench 3 should
+check out (a later docs-only head changes no behaviour). The S06-relevant commits are `c8ac273a`
+(interaction locality),
 `3e7efdbe` + `09f18a56` (incremental Plan evaluator and its solid-less-Wall repair), `6b53ae95`
 (compiler-delta maintenance, retained-root iteration, demand-driven output) and `f9502a5a`
 (generation capture, validate-before-mutate).

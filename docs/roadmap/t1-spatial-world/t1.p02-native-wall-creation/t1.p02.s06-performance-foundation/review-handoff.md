@@ -181,8 +181,8 @@ this implementation.
 ### Final candidate round (2026-10-26): the merged tree
 
 **What was reviewed.** The branch head after integrating `main` (merge commit `d7600576`, main
-`51dcb764` into the reviewed S06 head `86fb631e`, corrections committed as `d89554b1` — that SHA is
-the candidate), plus the corrections that round produced. Two
+`51dcb764` into the reviewed S06 head `86fb631e`, corrections committed as `d89554b1` — that code SHA
+is the candidate; everything after it is this record), plus the corrections that round produced. Two
 reviewers read it and edited nothing: one on correctness (the seven merge resolutions, the delta
 certificate, `applyDelta`, lazy output/snapshot isolation, the live-target wrapper, `wallUnchanged`'s
 pairing) and one on ownership/provenance (Bench provenance, acceptance authority, lifecycle and
@@ -209,6 +209,15 @@ F9 interpretation caveat is now recorded in `perf/README.md`: attributed Save wo
 the frozen revision memo serves the digest, so rows and benches must be compared at like cache state.
 The detail, the complexity table and the verification commands are in
 [the acceptance record](./acceptance.md#final-integration-review-and-bench-3-candidate-2026-10-26).
+
+### Branch integration status
+
+`main` (`51dcb764`) is an ancestor of the branch, so PR #190 is mergeable with no rebase and no
+rebase-shaped loss of benchmark provenance: every S06 commit keeps its SHA and Bench 1/2 pass
+composition is unchanged (`perf/bench.ts`'s `TIER_FLOWS` did not move). Resolving the merge
+autonomously was correct for the seven routine conflicts; nothing there changed a budget, threshold,
+flow definition or another team's contract. **No change to Bench 3's comparison conditions was made**,
+and the only interpretive shift is the frozen-memo F9 caveat named above and in `perf/README.md`.
 
 **Ownership boundary, precisely.** This round reviews implementation correctness and integration, not
 performance acceptance, and it is not a T3 sign-off. T3 review is still owed for the Plan evaluator's
