@@ -75,6 +75,57 @@ per request, cache disabled for cold):
    separately from per-operation completion timing. Record SHA, build hash, workload id, browser,
    CPU rate, power state and display Hz.
 
+### S06 milestone decision method (owner amendment, 2026-10-26)
+
+T1.P02.S06 may discharge its hard rows with a **decision-driven milestone gate** instead of the
+formal 10-run method above. This amendment is scoped to the S06 milestone: the formal sample plan,
+the budgets, the workload definitions and every historical Bench 1/Bench 2 meaning remain unchanged,
+and a later slice that needs formal statistics still uses the 10-run method. The milestone is S06
+acceptance evidence only. It is **not** production-scale, grid-XL, rare-tail or ultimate
+geometry/rendering certification.
+
+**What one sample is.** A run is one independent measured repetition: a fresh cold context, or one
+more run in the warm/repeat-use context. Pointer events inside one run are not independent
+experiments. A row's decision values are one statistic per run (that run's p95), never pooled
+pointer samples.
+
+**Decision rule.** With the contract budget `B` and each independent run's p95 `r`:
+
+- **Clear pass:** at least three independent runs exist and every `r` is at most `0.75 B`
+  (25 % headroom). The row is decided; no further runs are spent.
+- **Clear failure:** at least three independent runs exist and every `r` exceeds `B`. A demonstrated
+  violation; no further runs are spent. A row that cannot produce three usable runs by its bound is
+  a failure of evidence, never a pass.
+- **Borderline or unstable:** anything else. Exactly one more independent run is requested at a
+  time, to a bound of 10 runs (F7: 5). At the bound the contract's own pooled p95 decides
+  (`pooled ≤ B`): a pass is accepted with the run-to-run instability recorded, never presented as a
+  stable result.
+
+Frame-interval rows use the display floor as their budget (16.7 ms at 60 Hz) and therefore pass at
+`B` ± 0.05 ms of display-clock tolerance rather than at 25 % below it; a 25 % band below a refresh
+interval is a band no observed frame can enter. The F7 row also checks the contract's p99 and
+zero-long-task clauses. F3's frame-time row is measured from the drag's own presentation
+interval(s), not inferred from F7. The F13 row keeps the contract's ten measured cycles and compares growth normalised to the
+ten-cycle basis. The first measured cycle is a one-time first-load sample for both cold (the Stage
+first load) and repeat-use (the first open after the discarded warm-up); steady growth starts at
+the second measured cycle. Live WebGL contexts remain uncaptured and are recorded as such.
+
+**Coverage.** The milestone uses Bench 2's representative interactions and lean cache-state
+coverage: F2 cold+warm at S/M; F3/F4/F8 warm at S/M/L (cold and repeat-use are one-run checks); F7
+warm at S/M; F13 cold+repeat-use ten-cycle growth at S/M/L; the per-edit Layout evaluation at M;
+the full E5 correctness matrix. Cold/repeat-use F3/F4/F8, F2 repeat-use, F7 cold/repeat-use, A.6
+old-method rows, the delayed-preview proof, grid-XL, realistic-L and the sweep latency rows are
+**not** milestone measurements; the manifest and each row name them as omitted, and no omitted row
+may be read as passing. Bench 1's method proofs stand for the correlation and old-method evidence.
+
+**Evidence record.** The bench manifest is the only pass-scoped acceptance authority. It records
+the exact plan, the machine, power and contamination state, every decision row's per-run values,
+verdict and rule, the omitted rows, and the bound reached. A per-flow report is never acceptance
+evidence on its own. A contaminated, aborted, smoke or reduced pass is never reinterpreted as a
+pass, and a decision row that is `borderline` or `undecided` at the end of a pass prevents
+acceptance evidence rather than being omitted. Small-sample p95s are decision aids, not precise
+tail estimates.
+
 ## Representative workloads
 
 Derived from the museum/pavilion use case and the first-wave slices. The measured grid fixtures

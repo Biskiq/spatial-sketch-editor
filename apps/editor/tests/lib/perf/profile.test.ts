@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ACCEPTANCE_PLAN, DIAGNOSTIC_PLAN, basePlan, parseProfile } from '../../../perf/lib/profile';
+import { ACCEPTANCE_PLAN, DIAGNOSTIC_PLAN, MILESTONE_PLAN, basePlan, parseProfile } from '../../../perf/lib/profile';
 
 describe('bench profiles', () => {
 	it('keeps every ratified acceptance default', () => {
@@ -41,13 +41,32 @@ describe('bench profiles', () => {
 		expect(DIAGNOSTIC_PLAN.delayProof).toBe(false);
 	});
 
+	it('keeps the milestone method at Bench 2 interaction cost with ten-cycle leak evidence', () => {
+		expect(MILESTONE_PLAN.acceptanceEvidence).toBe(true);
+		expect(MILESTONE_PLAN.inputSamples).toBe(60);
+		expect(MILESTONE_PLAN.runs).toBe(3);
+		expect(MILESTONE_PLAN.dragSamples).toBe(2);
+		expect(MILESTONE_PLAN.undoRedoCycles).toBe(10);
+		expect(MILESTONE_PLAN.f13Edits).toBe(20);
+		expect(MILESTONE_PLAN.f13Cycles).toEqual({ cold: 10, warm: 1, 'repeat-use': 10 });
+		expect(MILESTONE_PLAN.runCounts.f3).toEqual({ cold: 1, warm: 3, 'repeat-use': 1 });
+		expect(MILESTONE_PLAN.cacheStates.f2).toEqual(['cold', 'warm']);
+		expect(MILESTONE_PLAN.cacheStates.f7).toEqual(['warm']);
+		expect(MILESTONE_PLAN.oldMethod).toBe(false);
+		expect(MILESTONE_PLAN.delayProof).toBe(false);
+		expect(MILESTONE_PLAN.stageTraceTiers).toEqual(['grid-L']);
+		expect(MILESTONE_PLAN.note).toContain('extended one run at a time');
+	});
+
 	it('parses only the named profiles and defaults to acceptance', () => {
 		expect(parseProfile(undefined)).toBe('acceptance');
 		expect(parseProfile('')).toBe('acceptance');
 		expect(parseProfile('acceptance')).toBe('acceptance');
 		expect(parseProfile('diagnostic')).toBe('diagnostic');
-		expect(() => parseProfile('smoke')).toThrow('acceptance or diagnostic');
+		expect(parseProfile('milestone')).toBe('milestone');
+		expect(() => parseProfile('smoke')).toThrow('profile takes acceptance');
 		expect(basePlan('acceptance')).toBe(ACCEPTANCE_PLAN);
 		expect(basePlan('diagnostic')).toBe(DIAGNOSTIC_PLAN);
+		expect(basePlan('milestone')).toBe(MILESTONE_PLAN);
 	});
 });

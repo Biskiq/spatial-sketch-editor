@@ -56,9 +56,12 @@ like cache state — a smaller attributed Save is reuse, not a lost stage.
 
 ## Bench setup (T1.P02.S06)
 
-T1.P02.S06 builds the method, the workloads and the counters before its three
-owner-run benches ([plan](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)).
-Agents never run a pass; they run only the smoke check and the censuses.
+T1.P02.S06 builds the method, the workloads and the counters
+([plan](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)).
+Bench 1 and Bench 2 were owner-run. The owner direction of 2026-10-26
+authorized an agent to execute the third, decision-driven **milestone** pass end
+to end on the designated reference machine; every other agent run remains the
+smoke check or a census, and no fourth pass is implied.
 
 ```sh
 cd apps/editor
@@ -68,6 +71,7 @@ npm run perf:census                        # E1–E5 Node censuses: census, not 
 npm run perf:scale -- --point 1k           # D2 scale feasibility census, Node only (1k, 3k, 10k; ≤10 min each)
 npm run perf:bench -- --smoke              # smoke check of every flow at every tier: smoke, not evidence
 npm run perf:bench -- --label bench-1 --xl-drag-cache warm   # Bench 1 on the M2 (D5: grid-XL F3/F4/F8 warm only)
+npm run perf:bench -- --label milestone-1 --profile milestone --tiers grid-L,grid-M,grid-S   # S06 milestone gate
 ```
 
 **Bench 2 is a diagnostic pass; implementation is valid (owner decision, 2026-10-26).** The retained Bench 1
@@ -84,6 +88,40 @@ remains Bench 3. The lean formal plan is **not ratified** and is not represented
 [owner decision package and estimates](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#bench-23-strategy-implemented-diagnostic-bench-2-2026-10-26)
 record the omissions, the 40–50 min expectation and the pre-flight commands. No acceptance default
 changed.
+
+**The milestone profile is the S06 decision gate (owner direction, 2026-10-26).**
+`PERF_PROFILE=milestone` (or `perf:bench --profile milestone`) starts from Bench 2's
+representative interactions: 60 pointer inputs per drag, 2 in-session drag/precision samples,
+10 Undo/Redo cycles, real chooser and Undo/Redo paths, F2 cold+warm, F7 warm, F13 at the
+contract's ten measured cycles with 20 edits, traces at grid-L only, no A.6 or delayed-preview
+proof (Bench 1 evidence). It keeps the S/M/L workloads and the complete E5 correctness matrix.
+
+The difference from a shrunken sample plan is that the **decision** is explicit and adaptive
+(`perf/lib/milestone.ts`): a decision row starts at 3 independent measured runs and extends by one
+run at a time to 10 (F7 to 5) only while it is undecided. One value per independent run feeds the
+rule — never several pointer events from one run:
+
+- **pass**: every run's p95 is at or below 75 % of the hard budget (25 % headroom), so no further
+  runs are spent. Frame-interval rows pass at the display floor ±0.05 ms instead, because a 25 %
+  band below a 60 Hz refresh interval is a band no observed frame can enter;
+- **fail**: every run's p95 exceeds the hard budget, so the violation is reported and no further
+  runs are spent; a row that cannot produce three usable runs by its bound is a failure of
+  evidence, never a pass;
+- **borderline**: anything else. Escalate one independent run at a time. At the bound the row is
+  decided on the contract's pooled p95, and a run-to-run instability is recorded rather than
+  hidden.
+
+Decision rows are warm F3 input latency, latest-input age, frame-time p95/p99, F4 completion and
+F8 Undo/Redo at S/M/L; the per-edit Layout compile at M; F2 cold+warm at S/M; F7 warm p95/p99 with
+zero long tasks at S/M; and F13 cold/repeat-use ten-cycle growth at S/M/L. F13's first measured
+cycle is a one-time first-load sample for both cold and repeat-use; steady growth starts at the
+second measured cycle and is normalised to ten cycles. Single-run cold/repeat-use interaction rows,
+F2 L and F7 L (Target rows) and F13 warm (one cycle) are recorded checks, not statistical gates. A
+contaminated or aborted pass is never evidence — the manifest and every row say so, and the bench
+manifest requires every promised decision row to report a non-`borderline`, non-`undecided` `pass`
+before it sets `acceptanceEvidence: true`. Per-flow reports are never pass-scoped. The method
+produces **S06 milestone acceptance**, not rare-tail, grid-XL, realistic-L, sweep, production-scale
+or ultimate geometry/rendering certification; budgets are unchanged.
 
 **Workloads (A.1, B).** `perf/generate-workloads.ts` builds every workload once
 through the public layout-core planners, the canonical compiler and, for the
@@ -295,7 +333,7 @@ coarse and the report says so.
 
 | Variable | Meaning |
 | --- | --- |
-| `PERF_PROFILE` | `acceptance` (default) or `diagnostic`; diagnostic rows are never acceptance evidence, and `--profile` on `perf:bench` wins over this variable |
+| `PERF_PROFILE` | `acceptance` (default), `diagnostic` or `milestone`; diagnostic rows are never acceptance evidence, milestone rows are S06 milestone acceptance only, and `--profile` on `perf:bench` wins over this variable |
 | `PERF_BASE_URL` | reuse an already-running preview instead of building one |
 | `PERF_PORT` | preview port (default `4173`) |
 | `PERF_RUNS` | measured runs per flow × workload × cache state (default 10) |
@@ -309,7 +347,7 @@ coarse and the report says so.
 | `PERF_COOLDOWN_SECONDS` | recorded cool-down before the M and S tiers (default 180; 0 in smoke) |
 | `PERF_LOAD_THRESHOLD` (+ `_REASON`) | contamination threshold on the 1-minute load average (default 4.0; a change needs a recorded reason) |
 | `PERF_SWEEP_LATENCY=0` / `--no-sweep-latency` | drop the report-only sweep latency rows (F3/F4/F8 on the focus Wall and F7, at museum ×1 and sweep-H10) for one pass; they run by default |
-| `PERF_EARLY_STOP=1` / `--early-stop` | opt-in decisive hard-budget stop: once at least 3 measured runs of a **hard** row all exceed the budget by more than 25 %, the remaining runs are skipped. The row is recorded as a demonstrated failure with a partial run count and the rule, never as a pass. Target, report-only and smoke rows never stop |
+| `PERF_EARLY_STOP=1` / `--early-stop` | opt-in decisive hard-budget stop: once at least 3 measured runs of a **hard** row all exceed the budget by more than 25 %, the remaining runs are skipped. The row is recorded as a demonstrated failure with a partial run count and the rule, never as a pass. Target, report-only and smoke rows never stop. The milestone profile owns its own adaptive stop and never combines this series-wide rule with it |
 | `PERF_NETWORK` | `N0`, `N1` (default) or `N2` |
 | `PERF_RESULTS_DIR` | raw result directory (default `$TMPDIR/biskiq-perf-results`) |
 | `PERF_POWER_STATE` | declared power state, recorded with each result |

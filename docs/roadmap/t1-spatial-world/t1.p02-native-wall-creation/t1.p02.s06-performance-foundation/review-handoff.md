@@ -5,11 +5,79 @@ H1/H4/H9 integration, through `6c077295` (both findings fixed) and `606edcc5` (t
 with the harness-only `4890b23b`. Two findings were substantiated — one behavioural
 (`session.retained()` answered differently depending on which store shape served the last compile)
 and one dead allocation — and both are fixed with falsifiers. The rest of the review's observations
-are documented preconditions, not code changes. No expensive performance work was re-run. The
-2026-10-26 strategy is now owner-approved and implemented below: Bench 2 is a diagnostic pass that
-cannot discharge acceptance gates, and the formal method remains Bench 3. Bench 2 and Bench 3 have
-not run, so step acceptance is withheld and nothing is merged. The lean Bench 3 sample plan is not
-ratified.
+are documented preconditions, not code changes. No expensive performance work was re-run. Bench 2
+ran as the owner-approved **diagnostic** pass and remains contaminated/non-acceptance. The owner
+direction of 2026-10-26 replaced the formal Bench 3 **for S06** with the decision-driven milestone
+gate, implemented and independently reviewed below and executed on the designated machine; the
+results are adjudicated in the [acceptance record](./acceptance.md#s06-milestone-gate-owner-direction-2026-10-26).
+The formal 10-run method is unchanged for other consumers, and S06 step acceptance remains separate;
+nothing is merged.
+
+## S06 milestone gate (owner direction, 2026-10-26)
+
+**Owner direction.** Bench 1 was more expensive than the engineering decision required. The S06
+gate is now **decision-driven**: measure until the engineering decision is clear, verify
+correctness independently, and spend additional samples only while uncertainty could change the
+decision. The milestone supersedes the formal Bench 3 **for S06 only**. The formal 10-run method,
+every budget, the workload definitions and the original Bench 1/Bench 2 meanings stay unchanged;
+a later consumer that needs formal statistics still uses the 10-run method. The
+[owning contract](../../../../reference/components/performance.md#s06-milestone-decision-method-owner-amendment-2026-10-26)
+is amended to authorize the method, and the acceptance record carries the execution and adjudication.
+
+**What one sample is.** A run is one independent repetition (a fresh cold context, or one more run
+in the warm/repeat-use context). Pointer events inside a run are not independent experiments; each
+decision row uses one p95 per independent run.
+
+**Decision rule.** With budget `B`: a **pass** requires at least three independent runs and every
+run's p95 at or below `0.75 B` (25 % headroom); a **fail** requires at least three runs and every
+run above `B`; anything else is **borderline**, which spends exactly one more independent run at a
+time to a bound of 10 (F7: 5). At the bound the contract's pooled p95 decides, with the instability
+recorded. Frame rows pass at the display floor ±0.05 ms rather than 25 % below it, because a 25 %
+band below a 60 Hz refresh interval cannot be entered by an observed frame. A row that cannot
+produce three usable runs by its bound is a failure of evidence, never a pass.
+
+**Coverage.** F2 cold+warm at S/M; F3 input latency, latest-input age, frame-time p95/p99 and long
+tasks, F4 completion and F8 Undo/Redo warm at S/M/L; the per-edit Layout compile at M; F7 warm
+p95/p99 with zero long tasks at S/M; F13 cold and repeat-use ten-cycle growth at S/M/L; the full
+E5 matrix. F13's first measured cycle is a one-time first-load sample for both cold and repeat-use;
+steady growth starts at the second measured cycle and is normalised to ten cycles. Cold/repeat-use
+F3/F4/F8 are one-run checks, F2 L and F7 L are Target rows and F13 warm is one cycle: recorded,
+never statistical gates. A.6, the delayed-preview proof, F2 repeat-use, F7 cold/repeat-use, grid-XL,
+realistic-L and the sweep latency rows are **not measured**; the manifest and every row name them,
+and no omitted row may be read as passing.
+
+**Implementation.** `perf/lib/milestone.ts` owns the pure rule; `perf/lib/profile.ts` owns the
+milestone plan; `perf/lib/browser.ts` enforces the bounded one-run-at-a-time extension; the four
+flow specs attach one verdict per decision row; `perf/bench.ts` aggregates every promised decision
+row (15 rows for the S/M/L milestone) and is the only pass-scoped acceptance authority. Per-flow
+reports record `passScoped: false` and are never evidence on their own. The bench refuses a
+milestone label that does not name the method and never combines its own early stop with the
+milestone extension. Machine provenance, the pinned Chrome build, the lock, load/thermal/power
+snapshots and contamination handling are Bench 2's unchanged.
+
+**Independent review before execution.** Two read-only reviewers checked the rule and the
+provenance/claims. Their substantiated findings and fixes:
+
+| Finding | Fix |
+| --- | --- |
+| F7's escalation would have failed its own `toHaveLength(3)` assertion on any borderline row | assert `>= plan` and `<= 5` |
+| F7's verdict omitted the contract's hard p99 clause | pooled p99 checked; breach keeps the row open below the bound and fails at it |
+| F3's budget was adjudicated without its frame-time p95/p99 or long-task clauses | the drag's own rAF intervals and long tasks are measured per run; F3-frame is a decision row |
+| F3/F4/F8 could silently drop an undecided row from `milestone:verdicts` | one entry per row, including `undecided`, with its rule |
+| a missing completion mark silently shrank a per-run sample | completion counts per run are recorded; a run with none is unusable |
+| F13 compared 9 cold intervals with a 10-cycle budget | growth is normalised to ten cycles; the first measured cycle is excluded for both cold and repeat-use as a one-time first-load step |
+| `acceptanceEvidence` was true for a bare flow report and was row-unaware | per-flow reports are `passScoped: false`; the manifest requires all 15 promised rows to report `pass` |
+| F2/F7 did not pass their completed-run count into the bound | `completedRuns` is threaded through, so a bound with too little evidence fails |
+
+The first execution then caught a further real defect the review could not see: the cold F13
+baseline was index 1 (the first-load cycle) instead of index 2, turning 2.1 MiB of steady growth
+into a 10.9 MiB false failure. The fix is covered by unit tests using the measured series shape.
+
+**Verification.** The focused milestone/profile suites pass (24 tests); the targeted perf typecheck
+reaches only the two pre-existing `registry.ts` Buffer overload errors; a milestone grid-S smoke
+passes with the new F3 frame evidence; a real grid-L F13 cold/repeat-use run passes at 2.55/2.54 MiB
+normalised growth after the baseline fix. The final measured pass and its adjudication are recorded
+in the [acceptance record](./acceptance.md#s06-milestone-gate-owner-direction-2026-10-26).
 
 The [implementation plan](./implementation-plan.md) owns scope and criteria; the
 [current implementation record](./acceptance.md#persistent-representation-takeover) separates claims,

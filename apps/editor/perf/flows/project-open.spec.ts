@@ -18,8 +18,9 @@
 import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, DIAGNOSTIC, NETWORK, VIEWPORT, WARMUP_RUNS, cacheStatesFor, passLimitations, runsFor } from '../lib/config';
+import { DEVICE_SCALE_FACTOR, LEAN, MILESTONE, NETWORK, VIEWPORT, WARMUP_RUNS, cacheStatesFor, passLimitations, runsFor } from '../lib/config';
 import { HARD_BUDGETS_MS, decisiveHardFailure, earlyStopEnabled } from '../lib/early-stop';
+import { decideMilestoneRow, MILESTONE_MAX_RUNS, milestoneMetrics } from '../lib/milestone';
 import { fixtureProject, type FixtureProject, type FixtureSize } from '../lib/fixtures';
 import { closeToHub, gotoCreateIntent, openSourceJson, uniqueProjectId } from '../lib/flow';
 import { firstFrameAtOrAfter, readLedger } from '../lib/ledger';
@@ -33,6 +34,7 @@ import {
 	renderMetrics,
 	residentMetrics,
 	selectedTiers,
+	SMOKE,
 	smokeOr,
 	tierAvailability,
 	tierLimitations,
@@ -119,9 +121,9 @@ const sources: { readonly id: string; readonly source: Source; readonly workload
 		workload: tierWorkloadLabel(tier),
 		limitations: tierLimitations(tier)
 	})),
-	// A.6: the old method, F2 S/M only, on the same revision. The diagnostic
-	// profile does not rerun it; Bench 1 already validated the methods.
-	...(DIAGNOSTIC ? [] : (['S', 'M'] as const)
+	// A.6: the old method, F2 S/M only, on the same revision. The lean methods
+	// do not rerun it; Bench 1 already validated the methods.
+	...(LEAN ? [] : (['S', 'M'] as const)
 		.filter((size) => selectedTiers().includes(`grid-${size}`))
 		.map((size) => ({
 			id: `old-${size}`,
@@ -149,10 +151,13 @@ for (const entry of sources) {
 			// Only the new method has a contract row; the A.6 old-method rows are
 			// method validation and must run their full sample.
 			const hardBudget = entry.source.method === 'new' ? HARD_BUDGETS_MS[entry.source.tier]?.F2 : undefined;
+			// F2 L is a Target row: its opens are recorded, never adjudicated as a
+			// milestone gate. The hard S/M rows decide on each cache state's runs.
+			const milestoneEligible = MILESTONE && !SMOKE && hardBudget !== undefined;
 			const states = cacheStatesFor('f2');
 			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
 				if (!states.includes(cacheState)) {
-					report.rows.push(unrunRow(`F2-${entry.id}-${cacheState}`, 'F2 project open', entry.workload, testInfo.project.name, 'not run in the diagnostic profile: F2 keeps cold and warm; F13 covers the repeat-use lifecycle'));
+					report.rows.push(unrunRow(`F2-${entry.id}-${cacheState}`, 'F2 project open', entry.workload, testInfo.project.name, 'not run in this lean profile: F2 keeps cold and warm; F13 covers the repeat-use lifecycle'));
 					continue;
 				}
 				const { results: runs, facts, earlyStop } = await collectMeasuredRuns(
@@ -166,11 +171,41 @@ for (const entry of sources) {
 						earlyStop:
 						earlyStopEnabled() && hardBudget !== undefined
 							? (completed: readonly OpenRun[]) => decisiveHardFailure(`F2-${entry.id}-${cacheState}`, completed.map((run) => run.total), hardBudget)
-							: undefined
+							: undefined,
+						...(MILESTONE && !SMOKE
+							? {
+									extendRuns:
+										milestoneEligible
+											? (completed: readonly OpenRun[]) => {
+													const decision = decideMilestoneRow({
+														row: `F2-${entry.id}-${cacheState}`,
+														budgetMs: hardBudget!,
+														perRunP95Ms: completed.map((run) => run.total),
+														pooledP95Ms: summarize(completed.map((run) => run.total)).p95,
+														maxRuns: MILESTONE_MAX_RUNS.f2,
+														completedRuns: completed.length
+													});
+													const open = decision === null || decision.verdict === 'borderline';
+													return open && completed.length < MILESTONE_MAX_RUNS.f2 ? completed.length + 1 : null;
+												}
+											: undefined,
+									maxRuns: MILESTONE_MAX_RUNS.f2
+								}
+							: {})
 					},
 					(session) => openOnce(session, entry.source)
 				);
 				const windows = mergeWindows(runs);
+				const milestone = milestoneEligible
+					? decideMilestoneRow({
+							row: `F2-${entry.id}-${cacheState}`,
+							budgetMs: hardBudget!,
+							perRunP95Ms: runs.map((run) => run.total),
+							pooledP95Ms: summarize(runs.map((run) => run.total)).p95,
+							maxRuns: MILESTONE_MAX_RUNS.f2,
+							completedRuns: runs.length
+						})
+					: null;
 				const setupMs = runs.reduce((sum, run) => sum + run.setupMs, 0);
 				const wallMs = runs.reduce((sum, run) => sum + run.wallMs, 0);
 				const row: ResultRow = {
@@ -199,7 +234,8 @@ for (const entry of sources) {
 									earlyStop: 'demonstrated failure (not a pass)',
 									earlyStopSamples: earlyStop.samples,
 									earlyStopMinimumMs: earlyStop.statisticMs
-								})
+								}),
+						...(milestone === null ? (milestoneEligible ? { 'milestone:verdict': 'undecided (fewer than 3 usable runs)' } : {}) : milestoneMetrics(milestone))
 					},
 					stats: {
 						admission: summarize(runs.map((run) => run.admission)),
@@ -210,7 +246,12 @@ for (const entry of sources) {
 						'F2 flow starts at the chosen file, not at the Open button (the dialog is not admission work)',
 						'first architectural frame is attributed to the rAF rendering opportunity',
 						'stage:* rows are per-run means of the work ledger inside the window; work:* are deterministic counts',
-						...(earlyStop === null ? [] : [earlyStop.rule])
+						...(earlyStop === null ? [] : [earlyStop.rule]),
+						...(milestone === null
+							? milestoneEligible
+								? ['milestone: undecided — the row did not produce three usable independent runs, so it is not a pass']
+								: []
+							: [milestone.rule])
 					]
 				};
 				report.rows.push(row);

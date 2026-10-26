@@ -37,9 +37,10 @@ import { expect, test } from '@playwright/test';
 import { collectMeasuredRuns, newMeasuredSession, type MeasuredSession } from '../lib/browser';
 import {
 	DEVICE_SCALE_FACTOR,
-	DIAGNOSTIC,
 	DRAG_SAMPLES,
 	INPUT_SAMPLES,
+	LEAN,
+	MILESTONE,
 	NETWORK,
 	RUNS,
 	UNDO_REDO_CYCLES,
@@ -65,6 +66,15 @@ import {
 	waitForStageSettled
 } from '../lib/flow';
 import { HARD_BUDGETS_MS, decisiveHardFailure, earlyStopEnabled } from '../lib/early-stop';
+import {
+	decideMilestoneRow,
+	DRAG_FRAME_BUDGETS_MS,
+	FRAME_INTERVAL_TOLERANCE_MS,
+	MILESTONE_MAX_RUNS,
+	milestoneOutcomeRules,
+	milestoneOutcomesMetrics,
+	type MilestoneRowOutcome
+} from '../lib/milestone';
 import { correlateInputs, firstFrameAtOrAfter, latestInputAge, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
@@ -83,6 +93,7 @@ import {
 	renderMetrics,
 	resetRenderMaxima,
 	selectedTiers,
+	SMOKE,
 	smokeOr,
 	tierAvailability,
 	tierLimitations,
@@ -122,6 +133,10 @@ type DragRun = {
 	readonly refused: number;
 	readonly latencies: number[];
 	readonly ages: number[];
+	/** rAF intervals inside the measured drag windows (F3's frame-time row). */
+	readonly frameIntervals: number[];
+	readonly longTasks: number;
+	readonly longestTask: number;
 	readonly commitCompletion: number | null;
 	readonly precisionCompletion: number | null;
 	readonly undoCompletion: number[];
@@ -143,6 +158,112 @@ type DragRun = {
 	/** After each accepted commit (drag and typed), outside the timed windows. */
 	readonly ownership: Ownership[];
 };
+
+/**
+ * The compile span a pointer move runs. The accepted commit's representation
+ * work is measured in F4; this row is the per-move Layout evaluation.
+ */
+function perEditCompileMs(run: DragRun): number {
+	const compile = run.dragWork.spans['compile-delta']?.totalMs;
+	return compile === undefined || run.dragCompiled === 0 ? Number.NaN : compile / run.dragCompiled / DRAG_INPUTS;
+}
+
+/**
+ * The milestone decision set for one cache state's runs: F3's input latency and
+ * latest-input age, F4's accepted completions, F8's Undo/Redo completions and,
+ * at M, the per-edit Layout evaluation. Each row contributes **one entry**,
+ * including `undecided`, so a missing row can never disappear from the verdict
+ * list. Only the warm row is a decision row; cold and repeat-use are one-run
+ * checks (the plan says so) and never produce a verdict.
+ */
+function dragMilestoneOutcomes(
+	runs: readonly DragRun[],
+	tier: WorkloadId,
+	cacheState: string
+): MilestoneRowOutcome[] | null {
+	const budgets = HARD_BUDGETS_MS[tier];
+	if (!MILESTONE || SMOKE || cacheState !== 'warm' || budgets === undefined) return null;
+	const decide = (name: string, budget: number | undefined, values: (run: DragRun) => readonly number[]) => ({
+		name,
+		runs: runs.length,
+		decision:
+			budget === undefined
+				? null
+				: decideMilestoneRow({
+						row: `${name}-${tier}-${cacheState}`,
+						budgetMs: budget,
+						perRunP95Ms: runs.map((run) => summarize(values(run)).p95),
+						pooledP95Ms: summarize(runs.flatMap((run) => [...values(run)])).p95,
+						maxRuns: MILESTONE_MAX_RUNS.f3,
+						completedRuns: runs.length
+					})
+	});
+	const outcomes: MilestoneRowOutcome[] = [
+		decide('F3', budgets.F3, (run) => run.latencies),
+		decide('F3-age', budgets.F3, (run) => run.ages),
+		decide('F4', budgets.F4, (run) => [...run.commitCompletions, ...run.precisionCompletions]),
+		decide('F8', budgets.F8, (run) => [...run.undoCompletion, ...run.redoCompletion])
+	];
+	// The contract's F3 row is also hard on frame time p95/p99 and long tasks.
+	// The drag's rAF intervals give that row its own evidence; it is not inferred
+	// from F7's orbit.
+	const frameBudget = DRAG_FRAME_BUDGETS_MS[tier];
+	if (frameBudget !== undefined) {
+		const base = decideMilestoneRow({
+			row: `F3-frame-${tier}-${cacheState}`,
+			budgetMs: frameBudget.p95,
+			perRunP95Ms: runs.map((run) => summarize(run.frameIntervals).p95),
+			pooledP95Ms: summarize(runs.flatMap((run) => run.frameIntervals)).p95,
+			maxRuns: MILESTONE_MAX_RUNS.f3,
+			completedRuns: runs.length,
+			headroom: 1
+		});
+		if (base !== null) {
+			const atBound = runs.length >= MILESTONE_MAX_RUNS.f3;
+			const p99 = summarize(runs.flatMap((run) => run.frameIntervals)).p99;
+			const longest = Math.max(...runs.map((run) => run.longestTask));
+			const reasons = [
+				...(Number.isFinite(p99) && p99 > frameBudget.p99 + FRAME_INTERVAL_TOLERANCE_MS
+					? [`p99 ${p99.toFixed(1)} ms exceeds the ${frameBudget.p99} ms hard budget`]
+					: []),
+				...(longest > frameBudget.longTask
+					? [`a ${longest.toFixed(1)} ms long task breaches the 0 > ${frameBudget.longTask} ms hard clause`]
+					: [])
+			];
+			const fail = base.verdict === 'fail' || (reasons.length > 0 && atBound);
+			outcomes.push({
+				name: 'F3-frame',
+				runs: runs.length,
+				decision:
+					reasons.length === 0
+						? base
+						: {
+								...base,
+								verdict: fail ? 'fail' : 'borderline',
+								rule: `${base.rule}; ${reasons.join('; ')}${fail ? '' : '; one more independent run is requested before the row is adjudicated'}`
+							}
+			});
+		}
+	}
+	// The contract's per-edit Layout evaluation row is hard at M (≤ 8 ms). Its
+	// representation half lands on the accepted commit and is measured in F4; the
+	// per-move half is the compile span this sample's pointer moves ran.
+	if (tier === 'grid-M') {
+		outcomes.push({
+			name: 'EVAL',
+			runs: runs.length,
+			decision: decideMilestoneRow({
+				row: `EVAL-${tier}-${cacheState}`,
+				budgetMs: 8,
+				perRunP95Ms: runs.map(perEditCompileMs),
+				pooledP95Ms: summarize(runs.map(perEditCompileMs)).p95,
+				maxRuns: MILESTONE_MAX_RUNS.f3,
+				completedRuns: runs.length
+			})
+		});
+	}
+	return outcomes;
+}
 
 function addWork(into: WorkSnapshot, window: WorkSnapshot): void {
 	for (const [name, span] of Object.entries(window.spans)) {
@@ -188,6 +309,7 @@ async function runDrag(
 		if (counts !== null) ownership.push(counts);
 	};
 
+	const frameWindows: { start: number; end: number }[] = [];
 	const dragWork: WorkSnapshot = { spans: {}, counts: {} };
 	const commitWork: WorkSnapshot = { spans: {}, counts: {} };
 	const undoRedoWork: WorkSnapshot = { spans: {}, counts: {} };
@@ -203,11 +325,14 @@ async function runDrag(
 		const renderBefore = await readRenderCounters(page);
 		const workBefore = await readWork(page);
 		const beforeDrag = await acceptedResultCount(page);
+		const frameStarted = await page.evaluate(() => performance.now());
 		await dragWallHandle(page, {
 			samples: inputs,
 			distance: DRAG_DISTANCE + sample * 0.5,
 			settleMs: options.settleMs ?? 0
 		});
+		const frameEnded = await page.evaluate(() => performance.now());
+		frameWindows.push({ start: frameStarted, end: frameEnded });
 		await waitForAcceptedResult(page, beforeDrag);
 		const dragWindow = workDelta(workBefore, await readWork(page));
 		const sampleRender = renderCounterDelta(renderBefore, await readRenderCounters(page));
@@ -256,6 +381,18 @@ async function runDrag(
 	const heapAfterSequence = await readHeapAfterGc(session.cdp);
 
 	const ledger = await readLedger(page);
+	const frameIntervals: number[] = [];
+	let longTasks = 0;
+	let longestTask = 0;
+	for (const window of frameWindows) {
+		const ticks = ledger.ticks.filter((tick) => tick >= window.start && tick <= window.end);
+		for (let index = 1; index < ticks.length; index++) frameIntervals.push(ticks[index]! - ticks[index - 1]!);
+		for (const task of ledger.longTasks) {
+			if (task.start < window.start || task.start > window.end) continue;
+			longTasks += 1;
+			longestTask = Math.max(longestTask, task.duration);
+		}
+	}
 	const correlated = correlateInputs(ledger.records, ledger.ticks);
 	const presented = correlated.filter((entry) => entry.status === 'presented');
 	const latencies = presented.map((entry) => entry.latency).filter((value): value is number => value !== null);
@@ -283,6 +420,9 @@ async function runDrag(
 		refused: correlated.filter((entry) => entry.status === 'refused').length,
 		latencies,
 		ages: latestInputAge(correlated),
+		frameIntervals,
+		longTasks,
+		longestTask,
 		commitCompletion: commitCompletions[0] ?? null,
 		precisionCompletion: precisionCompletions[0] ?? null,
 		undoCompletion: undoCompletions,
@@ -363,7 +503,25 @@ test.describe('F3/F4/F8 methodology', () => {
 												decisiveHardFailure(`F3-${tier}-${cacheState}`, latencies, hardBudgets.F3)
 											);
 										}
-									: undefined
+									: undefined,
+							// The milestone method spends one more independent run only while
+							// at least one of F3/F4/F8 is undecided. A decided row never costs
+							// another run, and the series stops when all three are decided.
+							...(MILESTONE && !SMOKE
+								? {
+										extendRuns:
+											cacheState === 'warm' && hardBudgets !== undefined
+												? (completed: readonly DragRun[]) => {
+														const outcomes = dragMilestoneOutcomes(completed, tier, cacheState);
+														const open =
+															outcomes === null ||
+															outcomes.some((outcome) => outcome.decision === null || outcome.decision.verdict === 'borderline');
+														return open && completed.length < MILESTONE_MAX_RUNS.f3 ? completed.length + 1 : null;
+													}
+												: undefined,
+										maxRuns: MILESTONE_MAX_RUNS.f3
+									}
+								: {})
 						},
 						(session) => runDrag(session, tier)
 					);
@@ -374,6 +532,7 @@ test.describe('F3/F4/F8 methodology', () => {
 					continue;
 				}
 				const { results: runs, facts, earlyStop } = collected;
+				const milestone = dragMilestoneOutcomes(runs, tier, cacheState);
 				const latencies = runs.flatMap((run) => run.latencies);
 				const ages = runs.flatMap((run) => run.ages);
 				const undo = runs.flatMap((run) => run.undoCompletion);
@@ -410,6 +569,13 @@ test.describe('F3/F4/F8 methodology', () => {
 						refused: runs.reduce((total, run) => total + run.refused, 0),
 						cacheServedSamples: runs.reduce((total, run) => total + run.cacheServed, 0),
 						latestInputAgeMedian: summarize(ages).median,
+						latestInputAgeP95: summarize(ages).p95,
+						frameLongTasks: runs.reduce((total, run) => total + run.longTasks, 0),
+						frameLongestTask: Math.max(0, ...runs.map((run) => run.longestTask)),
+						frameIntervals: summarize(runs.flatMap((run) => run.frameIntervals)).p95,
+						// One number per independent run so a shrunk completion sample is visible.
+						completionsPerRun: `F4=${runs.map((run) => run.commitCompletions.length + run.precisionCompletions.length).join('/')}; F8=${runs.map((run) => run.undoCompletion.length + run.redoCompletion.length).join('/')}`,
+						perEditCompileMs: tier === 'grid-M' ? summarize(runs.map(perEditCompileMs)).p95 : null,
 						setupMs,
 						wallMs,
 						setupShare: wallMs > 0 ? setupMs / wallMs : null,
@@ -433,12 +599,19 @@ test.describe('F3/F4/F8 methodology', () => {
 									earlyStop: 'demonstrated failure (not a pass)',
 									earlyStopSamples: earlyStop.samples,
 									earlyStopMinimumMs: earlyStop.statisticMs
-								})
+								}),
+						...(milestone === null
+							? MILESTONE && !SMOKE && cacheState === 'warm' && hardBudgets !== undefined
+								? { 'milestone:verdict': 'undecided (fewer than 3 usable independent runs)' }
+								: {}
+							: milestoneOutcomesMetrics(milestone))
 					},
 					stats: {
 						heapAfterOpenMiB: summarize(runs.map((run) => run.heapAfterOpen.heapMiB)),
 						heapAfterSequenceMiB: summarize(runs.map((run) => run.heapAfterSequence.heapMiB)),
 						inputToMatchingPreview: summarize(latencies),
+						latestInputAge: summarize(ages),
+						dragFrameInterval: summarize(runs.flatMap((run) => run.frameIntervals)),
 						commitCompletion: summarize(commit),
 						precisionCompletion: summarize(precision),
 						undoCompletion: summarize(undo),
@@ -451,7 +624,12 @@ test.describe('F3/F4/F8 methodology', () => {
 						'cache-served samples (no compile in the window) are counted separately and excluded from the windows',
 						'drag:*/precision:* stage rows are per measured sample; undoRedo:* per command',
 						'open:postGc/sequence:postGc: JS heap after a forced GC and DOM counters, outside the timed windows (D1); commit:ownership: Stage live objects after each accepted commit, last run',
-						...(earlyStop === null ? [] : [earlyStop.rule])
+						...(earlyStop === null ? [] : [earlyStop.rule]),
+						...(milestone === null
+							? MILESTONE && !SMOKE && cacheState === 'warm' && hardBudgets !== undefined
+								? ['milestone: undecided — the row did not produce three usable independent runs, so it is not a pass']
+								: []
+							: milestoneOutcomeRules(milestone))
 					]
 				};
 				report.rows.push(row);
@@ -468,7 +646,7 @@ test.describe('F3/F4/F8 methodology', () => {
 		// One proof per pass, in the grid-S tier; it is a correctness proof, not a tier row.
 		// The diagnostic profile does not rerun it: Bench 1 proved the unchanged
 		// correlation path, and the pre-pass is deliberately short.
-		test.skip(DIAGNOSTIC, 'diagnostic profile: the delayed-preview proof is Bench 1 evidence and does not rerun');
+		test.skip(LEAN, 'lean profiles: the delayed-preview proof is Bench 1 evidence and does not rerun');
 		test.skip(!selectedTiers().includes('grid-S'), 'the delay proof runs with the grid-S tier');
 		const report = startReport(`drag-delay-proof-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const limitations = passLimitations();

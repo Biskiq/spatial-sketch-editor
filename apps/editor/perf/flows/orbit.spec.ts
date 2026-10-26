@@ -37,8 +37,16 @@
 import { expect, test } from '@playwright/test';
 
 import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT, WARMUP_RUNS, cacheStatesFor, passLimitations, runsFor } from '../lib/config';
+import { DEVICE_SCALE_FACTOR, MILESTONE, NETWORK, VIEWPORT, WARMUP_RUNS, cacheStatesFor, passLimitations, runsFor } from '../lib/config';
 import { closeToHub, fitStage, frameWindow, gotoCreateIntent, openSourceJson, scriptedPanZoom, setStageReading, uniqueProjectId, waitForStageSettled } from '../lib/flow';
+import {
+	decideMilestoneRow,
+	FRAME_BUDGETS_MS,
+	FRAME_INTERVAL_TOLERANCE_MS,
+	MILESTONE_MAX_RUNS,
+	milestoneMetrics,
+	type MilestoneRowDecision
+} from '../lib/milestone';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
 import {
@@ -112,6 +120,53 @@ type OrbitRun = {
 };
 
 type TickWindow = Window & { __BISKIQ_PERF_TICKS__?: number[] };
+
+/**
+ * F7 is a milestone decision row only at the hard frame tiers (S/M), warm, and
+ * only the contract's frame-interval p95 **and p99** plus the zero-long-task
+ * clause. L is a Target row: recorded, never adjudicated as a milestone gate.
+ */
+function orbitMilestoneDecision(
+	runs: readonly OrbitRun[],
+	tier: WorkloadId,
+	cacheState: string
+): MilestoneRowDecision | null {
+	const budget = FRAME_BUDGETS_MS[tier];
+	if (!MILESTONE || SMOKE || cacheState !== 'warm' || budget === undefined || !(tier === 'grid-S' || tier === 'grid-M')) return null;
+	const decision = decideMilestoneRow({
+		row: `F7-${tier}-${cacheState}`,
+		budgetMs: budget.p95,
+		perRunP95Ms: runs.map((run) => summarize(run.intervals).p95),
+		pooledP95Ms: summarize(runs.flatMap((run) => run.intervals)).p95,
+		maxRuns: MILESTONE_MAX_RUNS.f7,
+		completedRuns: runs.length,
+		// 16.7 ms is one 60 Hz refresh interval: the budget is the display floor,
+		// not a work bound that could hold 25 % headroom.
+		headroom: 1
+	});
+	if (decision === null) return null;
+	const atBound = runs.length >= MILESTONE_MAX_RUNS.f7;
+	const longest = Math.max(...runs.map((run) => run.longestTask));
+	const longTaskBreach = longest > budget.longTask;
+	// The contract's F7 row is hard on p95 **and** p99. A p99 breach can be a
+	// genuine tail or a small-sample artefact, so while the row is below its
+	// bound it stays open; at the bound it is a failure, never a pass.
+	const p99 = summarize(runs.flatMap((run) => run.intervals)).p99;
+	const p99Breach = Number.isFinite(p99) && p99 > budget.p99 + FRAME_INTERVAL_TOLERANCE_MS;
+	const reasons = [
+		...(longTaskBreach ? [`a ${longest.toFixed(1)} ms long task breaches the 0 > ${budget.longTask} ms hard clause`] : []),
+		...(p99Breach ? [`p99 ${p99.toFixed(1)} ms exceeds the ${budget.p99} ms hard budget`] : [])
+	];
+	if (reasons.length === 0) return decision;
+	const fail = decision.verdict === 'fail' || atBound;
+	return {
+		...decision,
+		verdict: fail ? 'fail' : 'borderline',
+		rule:
+			`${decision.rule}; ${reasons.join('; ')}` +
+			(fail ? '' : '; one more independent run is requested before the row is adjudicated')
+	};
+}
 
 /** One all-visible window at the settled current framing: rest, census, pan and zoom. */
 async function viewWindow(page: import('@playwright/test').Page): Promise<ViewWindow> {
@@ -259,7 +314,7 @@ test.describe('F7 orbit', () => {
 			let crashed = false;
 			for (const cacheState of ['cold', 'warm', 'repeat-use'] as const) {
 				if (!states.includes(cacheState)) {
-					report.rows.push(unrunRow(`F7-orbit-${tier}-${cacheState}`, 'F7 orbit/navigation', tierWorkloadLabel(tier), testInfo.project.name, 'not run in the diagnostic profile: F7 keeps one warm run; the frame row needs no cold/repeat-use distribution'));
+					report.rows.push(unrunRow(`F7-orbit-${tier}-${cacheState}`, 'F7 orbit/navigation', tierWorkloadLabel(tier), testInfo.project.name, 'not run in this lean profile: F7 keeps one warm decision row; the frame row needs no cold/repeat-use distribution'));
 					continue;
 				}
 				if (crashed) {
@@ -275,7 +330,20 @@ test.describe('F7 orbit', () => {
 							cacheState,
 							warmup: smokeOr(WARMUP_RUNS, 0),
 							runs: runCount,
-							afterRun: cacheState === 'repeat-use' ? closeToHub : undefined
+							afterRun: cacheState === 'repeat-use' ? closeToHub : undefined,
+							...(MILESTONE && !SMOKE
+								? {
+										extendRuns:
+											cacheState === 'warm' && (tier === 'grid-S' || tier === 'grid-M')
+												? (completed: readonly OrbitRun[]) => {
+														const decision = orbitMilestoneDecision(completed, tier, cacheState);
+														const open = decision === null || decision.verdict === 'borderline';
+														return open && completed.length < MILESTONE_MAX_RUNS.f7 ? completed.length + 1 : null;
+													}
+												: undefined,
+									maxRuns: MILESTONE_MAX_RUNS.f7
+								}
+								: {})
 						},
 						(session) => orbitOnce(session, tier)
 					);
@@ -286,6 +354,7 @@ test.describe('F7 orbit', () => {
 					continue;
 				}
 				const { results: runs, facts } = collected;
+				const milestone = orbitMilestoneDecision(runs, tier, cacheState);
 				const intervals = runs.flatMap((run) => run.intervals);
 				const dropped = runs.reduce(
 					(sum, run) => sum + run.intervals.filter((interval) => interval > 33.4).length,
@@ -327,6 +396,11 @@ test.describe('F7 orbit', () => {
 						idleWindowMs: IDLE_MS,
 						...residentMetrics(last.resident, 'orbit'),
 						...renderTimeMetrics('orbit', last.render.stage, last.orbitTime),
+						...(milestone === null
+							? MILESTONE && !SMOKE && cacheState === 'warm' && (tier === 'grid-S' || tier === 'grid-M')
+								? { 'milestone:verdict': 'undecided (fewer than 3 usable runs)' }
+								: {}
+							: milestoneMetrics(milestone)),
 						allVisibleRestMs: VIEW_REST_MS,
 						allVisibleMoveMs: VIEW_MOVE_MS,
 						...viewMetrics('all3d', last.views.all3d),
@@ -352,12 +426,20 @@ test.describe('F7 orbit', () => {
 						'all-visible windows (D1): 3D and Plan after the shipped Fit, each a 1 s rest, a one-frame compatible-bin census (count, not timing: a logical model of the physical frame) and a 3 s scripted pan/zoom',
 						'the orbit starts from the shipped Fit (D1); earlier F7 rows started from the default view',
 						'frame intervals are rAF-to-rAF on a 60 Hz panel and do not substitute for presented-result latency',
-						`runs extend past ${ORBIT_MS} ms only when the display cannot deliver ${FRAME_FLOOR} frames in that time`
+						`runs extend past ${ORBIT_MS} ms only when the display cannot deliver ${FRAME_FLOOR} frames in that time`,
+						...(milestone === null
+							? MILESTONE && !SMOKE && cacheState === 'warm' && (tier === 'grid-S' || tier === 'grid-M')
+								? ['milestone: undecided — the row did not produce three usable independent runs, so it is not a pass']
+								: []
+							: [milestone.rule])
 					]
 				};
 				report.rows.push(row);
 				console.log(formatRow(row));
-				expect(runs).toHaveLength(runCount);
+				// The milestone may spend one run at a time, so the series can exceed
+				// the plan minimum; it never exceeds its bound.
+				expect(runs.length).toBeGreaterThanOrEqual(runCount);
+				if (MILESTONE && !SMOKE) expect(runs.length).toBeLessThanOrEqual(MILESTONE_MAX_RUNS.f7);
 				for (const run of runs) expect(run.frames).toBeGreaterThanOrEqual(FRAME_FLOOR);
 			}
 			const path = fileReport(report);

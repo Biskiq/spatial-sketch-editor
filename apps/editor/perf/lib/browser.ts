@@ -115,6 +115,7 @@ export async function heapUsedMiB(cdp: CDPSession): Promise<number> {
 export type MeasuredRunPlan<T = unknown> = {
 	readonly cacheState: CacheState;
 	readonly warmup: number;
+	/** The planned minimum measured runs; an extension may raise it below. */
 	readonly runs: number;
 	/** Called once per session before any measured navigation (e.g. F9's cookie). */
 	readonly prepare?: (session: MeasuredSession) => Promise<void>;
@@ -126,6 +127,19 @@ export type MeasuredRunPlan<T = unknown> = {
 	 * as a demonstrated failure with a partial sample count, never as a pass.
 	 */
 	readonly earlyStop?: (results: readonly T[], completedRuns: number) => EarlyStopDecision | null;
+	/**
+	 * Optional bounded adaptive escalation (the S06 milestone method): after the
+	 * planned minimum, return the larger number of measured runs to collect, or
+	 * `null` to stop. Called after every measured run that meets or exceeds the
+	 * planned minimum, so the caller may stop as soon as its rows are decided.
+	 * The returned target must be greater than the completed count and no larger
+	 * than {@link maxRuns}; anything else is a harness error, never a silent stop.
+	 * Escalation is additional **independent runs**, never extra pointer samples
+	 * inside one run, and it is evaluated on the rows' per-run statistics.
+	 */
+	readonly extendRuns?: (results: readonly T[], completedRuns: number) => number | null;
+	/** The hard ceiling for {@link extendRuns}; required to use it. */
+	readonly maxRuns?: number;
 };
 
 export type CollectedRuns<T> = {
@@ -136,6 +150,24 @@ export type CollectedRuns<T> = {
 	/** Measured runs actually completed (the full plan unless stopped). */
 	readonly measuredRuns: number;
 };
+
+/**
+ * The next target after a measured run: the planned count, a validated
+ * extension, or the count reached when the row is decided (null from the hook).
+ * A hook cannot shrink the series or exceed its declared ceiling.
+ */
+function nextTarget<T>(plan: MeasuredRunPlan<T>, results: readonly T[], target: number): number {
+	if (plan.extendRuns === undefined || results.length < plan.runs) return target;
+	const requested = plan.extendRuns(results, results.length);
+	if (requested === null) return results.length;
+	if (!Number.isInteger(requested) || requested <= results.length) {
+		throw new Error(`extendRuns must return a target above ${results.length} runs, not ${requested}`);
+	}
+	if (plan.maxRuns === undefined || requested > plan.maxRuns) {
+		throw new Error(`extendRuns returned ${requested} runs, outside the declared maximum ${plan.maxRuns ?? 'none'}`);
+	}
+	return requested;
+}
 
 /**
  * Run a flow's warm-up and measured runs under the contract's cache states.
@@ -157,7 +189,8 @@ export async function collectMeasuredRuns<T>(
 		for (let index = 0; index < plan.warmup; index++) {
 			await withSession(browser, { ...options, cacheState: 'cold' }, plan.prepare, run);
 		}
-		for (let index = 0; index < plan.runs; index++) {
+		let target = plan.runs;
+		for (let index = 0; index < target; index++) {
 			await withSession(browser, { ...options, cacheState: 'cold' }, plan.prepare, async (session) => {
 				// Browser facts are constant for the flow; reading them on every cold
 				// run repeated three evaluates per context for the same answer.
@@ -166,6 +199,7 @@ export async function collectMeasuredRuns<T>(
 			});
 			const stop = plan.earlyStop?.(results, index + 1) ?? null;
 			if (stop !== null) return { results, facts, earlyStop: stop, measuredRuns: results.length };
+			target = nextTarget(plan, results, target);
 		}
 		return { results, facts, earlyStop: null, measuredRuns: results.length };
 	}
@@ -177,11 +211,13 @@ export async function collectMeasuredRuns<T>(
 			await run(session);
 			await plan.afterRun?.(session.page);
 		}
-		for (let index = 0; index < plan.runs; index++) {
+		let target = plan.runs;
+		for (let index = 0; index < target; index++) {
 			results.push(await run(session));
 			const stop = plan.earlyStop?.(results, index + 1) ?? null;
 			if (stop !== null) return { results, facts, earlyStop: stop, measuredRuns: results.length };
-			await plan.afterRun?.(session.page);
+			target = nextTarget(plan, results, target);
+			if (results.length < target) await plan.afterRun?.(session.page);
 		}
 		return { results, facts, earlyStop: null, measuredRuns: results.length };
 	} finally {

@@ -23,7 +23,8 @@
 import { expect, test } from '@playwright/test';
 
 import { browserFacts, clearBrowserState, heapUsedMiB, newMeasuredSession } from '../lib/browser';
-import { DEVICE_SCALE_FACTOR, F13_EDITS, NETWORK, VIEWPORT, f13CyclesFor, passLimitations } from '../lib/config';
+import { DEVICE_SCALE_FACTOR, F13_EDITS, MILESTONE, NETWORK, VIEWPORT, f13CyclesFor, passLimitations } from '../lib/config';
+import { decideLeakRow, LEAK_BUDGETS_MIB, leakMetrics } from '../lib/milestone';
 import {
 	acceptedResultCount,
 	commitPrecisionLength,
@@ -36,7 +37,7 @@ import {
 import { clearObservations } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
 import { summarize } from '../lib/stats';
-import { readHeapAfterGc, readOwnership, readRenderCounters, selectedTiers, smokeOr, tierAvailability, tierLimitations, tierProject, tierWorkloadLabel, unrunRow, type HeapSample, type Ownership } from '../lib/tiers';
+import { readHeapAfterGc, readOwnership, readRenderCounters, selectedTiers, SMOKE, smokeOr, tierAvailability, tierLimitations, tierProject, tierWorkloadLabel, unrunRow, type HeapSample, type Ownership } from '../lib/tiers';
 
 const EDITS_PER_CYCLE = smokeOr(F13_EDITS);
 
@@ -132,6 +133,24 @@ test.describe('F13 repeated open/close', () => {
 					resources.push(sample.counts);
 				}
 				const growth = heaps[heaps.length - 1]! - heaps[0]!;
+				// F13's hard row is the ten-cycle growth and GPU return-to-baseline.
+				// The warm row is one cycle and cannot decide a ten-cycle budget, and
+				// the cold row's first cycle is Stage first load, so its steady growth
+				// starts at the second cycle. This is count/heap evidence, separate
+				// from every timing statistic.
+				const measuredGpu = gpuObjects.slice(warmupCycles);
+				const leakBudget = LEAK_BUDGETS_MIB[tier];
+				const milestone =
+					MILESTONE && !SMOKE && leakBudget !== undefined && (cacheState === 'cold' || cacheState === 'repeat-use')
+						? decideLeakRow({
+								row: `F13-${tier}-${cacheState}`,
+								budgetMiB: leakBudget,
+								heapMiB: heaps,
+								skipFirst: cacheState === 'cold',
+								geometries: measuredGpu.map((value) => value.geometries),
+								textures: measuredGpu.map((value) => value.textures)
+							})
+						: null;
 				const warmupDescription = warmupCycles === 0 ? '' : `${warmupCycles} discarded warm-up + `;
 				const row: ResultRow = {
 					id: `F13-cycles-${tier}-${cacheState}`,
@@ -162,7 +181,12 @@ test.describe('F13 repeated open/close', () => {
 						retainedPerEditMiB: summarize(peakHeaps.map((peak, index) => (peak.heapMiB - (openHeaps[index]?.heapMiB ?? Number.NaN)) / EDITS_PER_CYCLE)).median,
 						domNodesAtPeakPerCycle: peakHeaps.map((value) => value.nodes).join(','),
 						stageMaterialsAtPeakPerCycle: peakOwnership.map((value) => value.materials).join(','),
-						stageMeshesAtPeakPerCycle: peakOwnership.map((value) => value.meshes).join(',')
+						stageMeshesAtPeakPerCycle: peakOwnership.map((value) => value.meshes).join(','),
+						...(milestone === null
+							? MILESTONE && !SMOKE && leakBudget !== undefined && (cacheState === 'cold' || cacheState === 'repeat-use')
+								? { 'milestone:verdict': 'undecided (missing a finite heap sample)' }
+								: {}
+							: leakMetrics(milestone))
 					},
 					stats: {
 						heapAfterGCDistribution: summarize(heaps),
@@ -175,7 +199,12 @@ test.describe('F13 repeated open/close', () => {
 						...tierLimitations(tier),
 						'all cycles preserve one application realm via New Project and browser Back; harness observation buffers are cleared before GC; other harness overhead remains',
 						'viewer and Preview enter/exit cycles are not available in this slice',
-						`heapOpen/heapPeak (D1): post-GC heap with the project open, after the open and after the ${EDITS_PER_CYCLE} edits; retainedPerEditMiB is their median difference per edit`
+						`heapOpen/heapPeak (D1): post-GC heap with the project open, after the open and after the ${EDITS_PER_CYCLE} edits; retainedPerEditMiB is their median difference per edit`,
+						...(milestone === null
+							? MILESTONE && !SMOKE && leakBudget !== undefined && (cacheState === 'cold' || cacheState === 'repeat-use')
+								? ['milestone: undecided — the cycle series is missing a finite measurement, so it is not a pass']
+								: []
+							: [milestone.rule])
 					]
 				};
 				report.rows.push(row);

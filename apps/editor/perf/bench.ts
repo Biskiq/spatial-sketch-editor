@@ -38,12 +38,13 @@
  * 5 contaminated (and not aborted).
  */
 import { execFileSync, spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { REDUCED_PASS } from './lib/config';
+import { MILESTONE_MIN_RUNS, MILESTONE_MAX_RUNS, MILESTONE_HEADROOM } from './lib/milestone';
 import { basePlan, parseProfile, type PerfProfile } from './lib/profile';
 import { commitSha, machineFacts, resultsDirectory } from './lib/report';
 import { BENCH_TIERS, REGENERATE_COMMAND, workloadStatus, type WorkloadId } from './lib/workloads/registry';
@@ -65,7 +66,7 @@ function resolveProfile(): PerfProfile {
 	if (index >= 0) {
 		const value = process.argv[index + 1];
 		if (value === undefined || value.startsWith('--')) {
-			console.error('--profile takes acceptance or diagnostic');
+			console.error('--profile takes acceptance, diagnostic or milestone');
 			process.exit(2);
 		}
 		try {
@@ -86,18 +87,25 @@ function resolveProfile(): PerfProfile {
 const SMOKE = process.argv.includes('--smoke');
 const PROFILE = resolveProfile();
 const DIAGNOSTIC = PROFILE === 'diagnostic';
+const MILESTONE = PROFILE === 'milestone';
+/** The lean methods share Bench 2's interaction and cache-state coverage. */
+const LEAN = DIAGNOSTIC || MILESTONE;
 const PLAN = basePlan(PROFILE);
 const LABEL = argument('--label') ?? (SMOKE ? 'smoke' : 'bench');
 if (DIAGNOSTIC && !SMOKE && !/diagnostic/i.test(LABEL)) {
 	console.error(`the diagnostic profile is not acceptance evidence: name the pass with a label containing "diagnostic" (got "${LABEL}").`);
 	process.exit(2);
 }
+if (MILESTONE && !SMOKE && !/milestone/i.test(LABEL)) {
+	console.error(`the milestone profile is S06 milestone acceptance only: name the pass with a label containing "milestone" (got "${LABEL}").`);
+	process.exit(2);
+}
 const PROJECT = argument('--project') ?? process.env.PERF_PROJECT ?? 'chrome';
 const PORT = process.env.PERF_PORT ?? '4173';
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const TIERS = (argument('--tiers')?.split(',') as WorkloadId[] | undefined) ?? [...BENCH_TIERS];
-if (DIAGNOSTIC && TIERS.some((tier) => tier === 'grid-XL' || tier === 'realistic-L')) {
-	console.error('the diagnostic profile runs the hard tiers only: grid-XL and realistic-L are formal/report-only rows.');
+if (LEAN && TIERS.some((tier) => tier === 'grid-XL' || tier === 'realistic-L')) {
+	console.error('the lean profiles run the hard tiers only: grid-XL and realistic-L are formal/report-only rows.');
 	process.exit(2);
 }
 const HARD_TIERS: readonly WorkloadId[] = ['grid-L', 'grid-M', 'grid-S'];
@@ -110,14 +118,18 @@ if (XL_DRAG_CACHE !== undefined && !XL_DRAG_CACHE.split(',').every((state) => ['
 	console.error(`--xl-drag-cache takes cold, warm and/or repeat-use, not ${XL_DRAG_CACHE}`);
 	process.exit(2);
 }
-/** The report-only sweep latency rows run in every formal bench unless dropped; the diagnostic never runs them. */
-const SWEEP_LATENCY = !DIAGNOSTIC && !process.argv.includes('--no-sweep-latency') && process.env.PERF_SWEEP_LATENCY !== '0';
+/** The report-only sweep latency rows run in every formal bench unless dropped; the lean methods never run them. */
+const SWEEP_LATENCY = !LEAN && !process.argv.includes('--no-sweep-latency') && process.env.PERF_SWEEP_LATENCY !== '0';
 /**
  * Opt-in decisive-failure early stop (perf/lib/early-stop.ts). Off by default:
  * activating it changes the sample count of the rows it stops, so an accepted
  * pass needs the owner's ruling. The manifest records whether it was active.
+ *
+ * The milestone method owns its own stopping rule (the adaptive decision on
+ * independent runs), so this series-wide stop is never combined with it: a
+ * failure in one row must not cut short another row's authorized extension.
  */
-const EARLY_STOP = process.argv.includes('--early-stop') || process.env.PERF_EARLY_STOP === '1';
+const EARLY_STOP = !MILESTONE && (process.argv.includes('--early-stop') || process.env.PERF_EARLY_STOP === '1');
 const LOAD_THRESHOLD = Number(process.env.PERF_LOAD_THRESHOLD ?? DEFAULT_LOAD_THRESHOLD);
 const LOAD_THRESHOLD_REASON = process.env.PERF_LOAD_THRESHOLD_REASON;
 if (LOAD_THRESHOLD !== DEFAULT_LOAD_THRESHOLD && LOAD_THRESHOLD_REASON === undefined) {
@@ -133,9 +145,9 @@ if (LOAD_THRESHOLD !== DEFAULT_LOAD_THRESHOLD && LOAD_THRESHOLD_REASON === undef
 const CHILD_ENV: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => name !== 'NODE_ENV'));
 
 const TIER_FLOWS = ['flows/project-open.spec.ts', 'flows/drag-correlation.spec.ts', 'flows/orbit.spec.ts', 'flows/cycles.spec.ts', 'flows/stage-trace.spec.ts'];
-/** The diagnostic traces only grid-L; M and S phases skip the trace spec. */
+/** The lean methods trace only grid-L; M and S phases skip the trace spec. */
 function tierFlows(tier: WorkloadId): string[] {
-	return DIAGNOSTIC && tier !== 'grid-L' ? TIER_FLOWS.filter((spec) => !spec.includes('stage-trace')) : TIER_FLOWS;
+	return LEAN && tier !== 'grid-L' ? TIER_FLOWS.filter((spec) => !spec.includes('stage-trace')) : TIER_FLOWS;
 }
 
 type Snapshot = { at: string; loadAverage1m: number; topProcesses: string; thermal: string; power: string; vitestRunning: boolean };
@@ -255,6 +267,80 @@ function devModeChunks(): string[] {
 	return chunks.filter((path) => marker.test(readFileSync(path, 'utf8')));
 }
 
+/**
+ * The decision rows this profile's plan promises: F2 cold+warm at S/M, F3 warm
+ * at S/M/L, F7 warm at S/M and F13 cold+repeat-use at S/M/L. The manifest uses
+ * it to notice a row that never reported, so an omitted measurement cannot be
+ * read as a pass.
+ */
+function expectedMilestoneDecisionRows(): number {
+	const hard = TIERS.filter((tier) => tier === 'grid-L' || tier === 'grid-M' || tier === 'grid-S');
+	const open = hard.filter((tier) => tier !== 'grid-L');
+	const f2 = open.length * PLAN.cacheStates.f2.filter((state) => state === 'cold' || state === 'warm').length;
+	const f3 = PLAN.cacheStates.f3.includes('warm') ? hard.length : 0;
+	const f7 = PLAN.cacheStates.f7.includes('warm') ? open.length : 0;
+	const f13 =
+		hard.length * PLAN.cacheStates.f13.filter((state) => state === 'cold' || state === 'repeat-use').length;
+	return f2 + f3 + f7 + f13;
+}
+
+/** Every verdict a row recorded: one `milestone:verdict`, or several `name=verdict` entries. */
+function rowVerdicts(metrics: Record<string, unknown>): string[] {
+	const many = metrics['milestone:verdicts'];
+	if (typeof many === 'string') return many.split(',').map((entry) => entry.slice(entry.lastIndexOf('=') + 1));
+	const one = metrics['milestone:verdict'];
+	return typeof one === 'string' ? [one] : [];
+}
+
+/**
+ * The pass-scoped milestone gate: every promised decision row reported, and
+ * every verdict it recorded is `pass`. A row written before the pass aborted is
+ * still read; the abort itself already removes acceptance evidence.
+ */
+function milestoneGate(directory: string): {
+	expectedDecisionRows: number;
+	observedDecisionRows: number;
+	notPass: string[];
+	missing: string[];
+	complete: boolean;
+} {
+	const rows = (() => {
+		try {
+			return readdirSync(directory)
+				.filter((name) => name.endsWith('.json') && name !== 'manifest.json')
+				.flatMap((name) => {
+					try {
+						const parsed = JSON.parse(readFileSync(join(directory, name), 'utf8')) as {
+							rows?: { id?: string; metrics?: Record<string, unknown> }[];
+						};
+						return parsed.rows ?? [];
+					} catch {
+						return [];
+					}
+				});
+		} catch {
+			return [];
+		}
+	})();
+	const decisionRows = rows
+		.map((row) => ({ id: row.id ?? 'unnamed', verdicts: rowVerdicts(row.metrics ?? {}) }))
+		.filter((row) => row.verdicts.length > 0);
+	const notPass = decisionRows
+		.filter((row) => row.verdicts.some((verdict) => verdict !== 'pass'))
+		.map((row) => `${row.id}: ${row.verdicts.join(',')}`);
+	const expected = expectedMilestoneDecisionRows();
+	return {
+		expectedDecisionRows: expected,
+		observedDecisionRows: decisionRows.length,
+		notPass,
+		missing:
+			decisionRows.length >= expected
+				? []
+				: [`${expected - decisionRows.length} of ${expected} promised decision rows did not report`],
+		complete: decisionRows.length >= expected && notPass.length === 0
+	};
+}
+
 async function waitForServer(): Promise<void> {
 	for (let attempt = 0; attempt < 120; attempt++) {
 		try {
@@ -292,7 +378,12 @@ async function main(): Promise<void> {
 	}
 
 	takeLock();
-	console.log(`[bench] profile: ${PROFILE}${DIAGNOSTIC ? ' — diagnostic, NOT acceptance evidence' : ' — acceptance method'}`);
+	const methodLabel = DIAGNOSTIC
+		? 'diagnostic, NOT acceptance evidence'
+		: MILESTONE
+			? 'S06 milestone gate (adaptive decision method; not rare-tail certification)'
+			: 'acceptance method';
+	console.log(`[bench] profile: ${PROFILE} — ${methodLabel}`);
 	const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 	const passDir = join(resultsDirectory(), `${stamp}-${LABEL}`);
 	mkdirSync(passDir, { recursive: true });
@@ -319,14 +410,25 @@ async function main(): Promise<void> {
 		const setupSeconds = phases.filter((phase) => phase.kind === 'setup').reduce((sum, phase) => sum + phase.wallSeconds, 0);
 		const cooldownSeconds = phases.filter((phase) => phase.kind === 'cooldown').reduce((sum, phase) => sum + phase.wallSeconds, 0);
 		const aborted = phases.filter((phase) => phase.cause !== undefined);
+		const gate = MILESTONE ? milestoneGate(passDir) : null;
+		const evidence =
+			PLAN.acceptanceEvidence &&
+			!SMOKE &&
+			!REDUCED_PASS &&
+			FULL_HARD_TIERS &&
+			contamination.length === 0 &&
+			aborted.length === 0 &&
+			(gate === null || gate.complete);
 		const manifest = {
 			label: SMOKE ? `${LABEL} — smoke, not evidence` : LABEL,
 			smoke: SMOKE,
 			profile: PROFILE,
-			// A smoke pass and a diagnostic pass are not acceptance evidence, even
-			// when the profile is the formal one.
-			acceptanceEvidence: PROFILE === 'acceptance' && !SMOKE && !REDUCED_PASS && FULL_HARD_TIERS,
+			// Only a plan that certifies something, run at full coverage, clean and
+			// unbroken, is acceptance evidence. A contaminated or aborted pass never
+			// is, whatever its profile — and the diagnostic plan never is.
+			acceptanceEvidence: evidence,
 			samplePlan: PLAN,
+			...(gate === null ? {} : { milestoneGate: gate }),
 			...(DIAGNOSTIC
 				? {
 						diagnosticOmissions: [
@@ -337,6 +439,25 @@ async function main(): Promise<void> {
 							'A.6 old-method rows',
 							'delayed-preview correlation proof',
 							'F1/preview lifecycle use the diagnostic RUNS (3), not the formal 10'
+						]
+					}
+				: {}),
+			...(MILESTONE
+				? {
+						milestoneOmissions: [
+							'F2 repeat-use cache state',
+							'F7 cold and repeat-use cache states',
+							'cold/repeat-use F3/F4/F8 are single-run checks, not statistical gates',
+							'F2 L and F7 L are Target rows, not hard gates',
+							'stage traces at grid-L only',
+							'A.6 old-method rows',
+							'delayed-preview correlation proof',
+							'grid-XL, realistic-L and sweep latency rows (report-only, deferred)',
+							'F1/preview lifecycle use the milestone RUNS (3)',
+							'F3/F4/F8 frame-time and long-task clauses are not measured by the drag flow; F7 supplies frame intervals for the orbit only',
+							'F13 live WebGL contexts and detached nodes are not captured; GPU object counts and post-GC heap are the evidence',
+							'F13 warm is one cycle and is not a decision row; only cold and repeat-use carry ten-cycle growth',
+							'the per-edit Layout evaluation is adjudicated at M only; S/L values are recorded, since the contract makes only M hard'
 						]
 					}
 				: {}),
@@ -353,11 +474,35 @@ async function main(): Promise<void> {
 			xlDragCacheStates: XL_DRAG_CACHE ?? 'cold,warm,repeat-use',
 			method: {
 				profile: PROFILE,
-				acceptanceEvidence: PROFILE === 'acceptance' && !SMOKE && !REDUCED_PASS && FULL_HARD_TIERS,
+				acceptanceEvidence: evidence,
 				earlyStop: EARLY_STOP,
+				...(MILESTONE
+					? {
+							decisionPolicy: {
+								minRuns: MILESTONE_MIN_RUNS,
+								maxRuns: { f2: MILESTONE_MAX_RUNS.f2, f3: MILESTONE_MAX_RUNS.f3, f7: MILESTONE_MAX_RUNS.f7 },
+								passHeadroom: MILESTONE_HEADROOM,
+								decisionRows: [
+									'F3 input latency, latest-input age, F4 completion and F8 Undo/Redo warm at S/M/L',
+									'per-edit Layout compile at M (≤ 8 ms)',
+									'F2 cold+warm at S/M',
+									'F7 warm p95, p99 and zero long tasks at S/M',
+									'F13 cold and repeat-use ten-cycle growth at S/M/L'
+								],
+								nonGates: [
+									'cold/repeat-use F3/F4/F8 single-run checks',
+									'F2 L and F7 L Target rows',
+									'F13 warm (one cycle)'
+								],
+								note: 'a row stops as soon as every decision row is decided; a borderline row extends one independent run at a time to its bound; at the bound the contract pooled p95 decides and any instability is recorded; contaminated or aborted passes are never evidence'
+							}
+						}
+					: {}),
 				note: DIAGNOSTIC
 					? `${PLAN.note}. earlyStop stops only a hard row whose every measured run already exceeds the budget by the recorded margin; a stopped row is a demonstrated failure, never a pass`
-					: 'earlyStop stops only a hard row whose every measured run already exceeds the budget by the recorded margin; a stopped row is a demonstrated failure with a partial sample count, never a pass'
+					: MILESTONE
+						? `${PLAN.note}. A row that is undecided after its minimum extends by one independent run; the run count and the rule are recorded on the row`
+						: 'earlyStop stops only a hard row whose every measured run already exceeds the budget by the recorded margin; a stopped row is a demonstrated failure with a partial sample count, never a pass'
 			},
 			sweepLatency: SWEEP_LATENCY,
 			aborted: aborted.length > 0,

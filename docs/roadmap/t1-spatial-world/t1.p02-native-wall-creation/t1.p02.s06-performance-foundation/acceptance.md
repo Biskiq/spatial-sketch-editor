@@ -3,11 +3,13 @@
 **Slice:** T1.P02.S06 · **Status:** approved/released; setup and owner-directed Bench 1 recorded;
 persistent representation takeover implemented on PR #190 and independently reviewed (round 3:
 implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 ran as
-the owner-approved **diagnostic** pass and remains contaminated/non-acceptance; formal statistics
-remain Bench 3, which has not run. Four owner-directed locality passes are recorded below — the
-interaction pass, the incremental Plan evaluator, the compiler-delta pass and its generation-capture
-fix — the last three independently reviewed. The branch now integrates `main` and is a **Bench 3
-candidate awaiting owner approval**. S06 is not accepted or merged. ·
+the owner-approved **diagnostic** pass and remains contaminated/non-acceptance. The owner direction
+of 2026-10-26 replaced the formal Bench 3 **for S06** with the decision-driven milestone gate,
+which is implemented, independently reviewed and executed; its results and adjudication are in
+[S06 milestone gate](#s06-milestone-gate-owner-direction-2026-10-26). Four owner-directed locality
+passes are recorded below — the interaction pass, the incremental Plan evaluator, the compiler-delta
+pass and its generation-capture fix — the last three independently reviewed. The branch integrates
+`main`. S06 is not merged; T3 ownership sign-off remains separate. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -222,6 +224,52 @@ this section.
    comparable.
 5. **Pending outside S06.** PR #189's merge as research (D7, its owner); the realistic-L
    prerequisites (D9); the execution-plan lab plan, due before Bench 2 (D6).
+
+## S06 milestone gate (owner direction, 2026-10-26)
+
+**Status: the owner replaced the formal Bench 3 for S06 with a decision-driven milestone.** The
+[owning contract](../../../../reference/components/performance.md#s06-milestone-decision-method-owner-amendment-2026-10-26)
+is amended to authorize it; every budget, workload, cache-state definition and the original Bench 1
+and Bench 2 meanings are unchanged. The milestone is S06 acceptance evidence only and is not
+production-scale, rare-tail, grid-XL or ultimate geometry/rendering certification. A later consumer
+that needs formal statistics still uses the 10-run method.
+
+**Method.** Each decision row starts at three independent runs and spends one more run at a time
+(to 10; F7 to 5) only while it is borderline. A pass requires every run's p95 at or below 75 % of
+the budget; a fail requires every run above the budget; at the bound the contract's pooled p95
+decides and the instability is recorded. Frame rows pass at the display floor ±0.05 ms. A row that
+cannot produce three usable runs by its bound is a failure of evidence, never a pass. The full
+method, including why no confidence level or sequential test is invented, is in
+`apps/editor/perf/lib/milestone.ts` and the contract amendment.
+
+**Coverage.** F2 cold+warm at S/M; F3 input latency, latest-input age, frame-time p95/p99 and long
+tasks, F4 completion and F8 Undo/Redo warm at S/M/L; the per-edit Layout compile at M; F7 warm
+p95/p99 and zero long tasks at S/M; F13 cold and repeat-use ten-cycle growth at S/M/L; the full E5
+matrix. F13's first measured cycle is a one-time first-load sample for both cold and repeat-use;
+steady growth starts at the second measured cycle and is normalised to ten cycles. Cold/repeat-use
+F3/F4/F8 are one-run checks; F2 L and F7 L are Target rows; F13 warm is one cycle. These are
+recorded, never statistical gates. A.6, the delayed-preview proof, F2 repeat-use, F7 cold/repeat-use,
+grid-XL, realistic-L and the sweep latency rows are not measured, are named in the manifest and
+rows, and may not be read as passing.
+
+**Implementation and review.** `perf/lib/milestone.ts` owns the pure rule, `perf/lib/profile.ts` the
+milestone plan, `perf/lib/browser.ts` the bounded extension, the four flow specs the per-row
+verdicts and `perf/bench.ts` the pass-scoped 15-row gate. Two independent read-only reviews and the
+first execution found and fixed: the F7 extension assertion, the missing F7 p99 clause, the
+unmeasured F3 frame-time clauses, dropped undecided rows, silently short completion samples, the
+F13 interval normalisation and first-load baseline, pass-unaware per-flow reports, and missing
+completed-run counts. Details and tests are in the
+[review handoff](./review-handoff.md#s06-milestone-gate-owner-direction-2026-10-26).
+
+**Verification.** Focused milestone/profile suites pass (24 tests); targeted perf typecheck reaches
+only the two pre-existing `registry.ts` Buffer overload errors; a milestone grid-S smoke passes
+with F3 frame evidence; real grid-L F13 rows pass at 2.55/2.54 MiB normalised growth after the
+baseline fix.
+
+### Execution and adjudication
+
+_Pending the measured pass; this subsection is replaced with the actual manifest, per-row verdicts,
+E5 findings, memory/lifecycle evidence and the acceptance decision._
 
 ## Optimize step (D.1–D.6) — implementation state (2026-10-25)
 
