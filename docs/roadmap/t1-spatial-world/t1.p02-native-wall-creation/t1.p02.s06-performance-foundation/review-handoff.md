@@ -98,8 +98,9 @@ verdict); F7 S/M spent their 5-run bound because a first run's 16.8/16.79 ms p95
 16.75 ms frame pass bound, and the bound's pooled 16.7 ms decided pass — the rule working as written,
 not a null-decision stop; and the drag rows retain each verdict's worst-run p95 and headroom but not
 the per-run array (the worst run is the rule's pass/fail input, so this pass is decidable; the
-distribution is not preserved). No defect was found in the decision criteria, sample counting,
-early termination, contamination handling or E5 coverage.
+distribution is not preserved). The contract's evidence-record paragraph now names that retained
+grain explicitly; the decision rule and every budget are unchanged. No defect was found in the
+decision criteria, sample counting, early termination, contamination handling or E5 coverage.
 
 The [implementation plan](./implementation-plan.md) owns scope and criteria; the
 [current implementation record](./acceptance.md#persistent-representation-takeover) separates claims,

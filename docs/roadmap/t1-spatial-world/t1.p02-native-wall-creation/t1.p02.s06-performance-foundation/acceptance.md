@@ -326,8 +326,10 @@ Layout compile.
 | grid-L | **16.34** (100) | **93.61** (200) | **21.63** (200) | Target row, recorded | — |
 
 Latest-input age p95 is 16.3 / 15.9 / 16.2 ms at S / M / L, inside the same budgets. The L frame
-row is not a decision row (Target); its recorded p99 is 33.3 ms and it had 3 long tasks over 50 ms,
-longest 91 ms — the one Target clause that misses.
+row is not a decision row (Target); its recorded p99 is 33.3 ms (inside Target ≤ 50). It logged 3
+long tasks over 50 ms across the three runs, longest 91 ms; because the row aggregates runs and
+retains no per-drag split, the Target's ≤ 1 per drag is **not demonstrated** — neither shown to pass
+nor shown to fail.
 
 | Row | Observed (p95) | Budget | Headroom | Verdict |
 | --- | --- | --- | --- | --- |
@@ -341,8 +343,9 @@ longest 91 ms — the one Target clause that misses.
 **Recorded Target and non-gate rows (not passes of a gate).** F2 grid-L cold 5,064.4 ms (p95
 5,132.8) and warm 4,971.7 ms (p95 5,093.2) against the 2.0 s Target — **Target miss**; the 6.0 s hard
 budget is met. Admission alone is 290.7 ms cold and 264.3 ms warm. F7 grid-L p95 16.75 ms (3 runs,
-0 long tasks) against Target 33 ms — met. F3 grid-L frame: p99 33.3 ms (Target ≤ 50) met, but 3 long
-tasks > 50 ms (Target ≤ 1) — **Target miss**. F3 grid-L refused 81 of 360 inputs (the shipped drag
+0 long tasks) against Target 33 ms — met. F3 grid-L frame: p99 33.3 ms (Target ≤ 50) met; the
+≤ 1-long-task-per-drag Target is **not demonstrated** (3 tasks across three runs, no per-run split).
+F3 grid-L refused 81 of 360 inputs (the shipped drag
 refuses sub-minimum lengths; none was superseded or unresolved). Cold/repeat-use F3/F4/F8 single
 runs are recorded checks, not gates; F3 tracks warm within about half a millisecond. F1
 `stageFirstFrame` p95 is 1,246 ms.
@@ -425,17 +428,18 @@ record (F2, F7 and every F13 cycle are retained run by run).
 step did not target it. L draw submission is 10,526–15,443 calls against the 2,500 Target (H6,
 one mesh per Wall, deferred). The commit envelope is still whole-document work: at C10 the accepted
 commit canonicalises 8.85 MB and reads 6.06 M generated snapshot properties, so F4 grows with
-document size (93.61 ms p95 at L against 25.51 at M). F3's L drag still has 3 long tasks (91 ms);
-L frame time is Target, and its p99 33.3 ms is inside Target while the long-task count is not. F2 M
-cold has only 4.3 % headroom to the 600 ms pass band (29 % to the 800 ms hard budget) and is the
-first row a different build or power state could move out of the milestone band without failing the
-contract. None of these is a hard-gate breach, and none was addressed by changing product code.
+document size (93.61 ms p95 at L against 25.51 at M). F3's L drag logged 3 long tasks across three
+runs (91 ms longest), so the per-drag Target is not demonstrated; L frame time is Target, and its p99
+33.3 ms is inside it. F2 M cold has only 4.3 % headroom to the 600 ms pass band (29 % to the 800 ms
+hard budget) and is the first row a different build or power state could move out of the milestone
+band without failing the contract. None of these is a hard-gate breach, and none was addressed by changing product code.
 
 **Decision.** The frozen S06 candidate **satisfies the ratified S06 milestone gate** on the recorded
 AC reference condition: every hard S/M/L decision row passes, E5 is correct, memory growth is 4×
 inside its budget with stable geometry counts, and the large interaction improvements survive
-independent sampling. The L cold-open and draw-call Targets remain open, as recorded before the
-pass. S06 step acceptance and T3 ownership sign-off remain separate; nothing is merged or closed.
+independent sampling. The L cold-open and draw-call Targets remain open (both missed), and the F3 L
+long-task Target is not demonstrated; all three were open before the pass. S06 step acceptance and
+T3 ownership sign-off remain separate; nothing is merged or closed.
 
 ## Optimize step (D.1–D.6) — implementation state (2026-10-25)
 
