@@ -695,6 +695,8 @@ the owner still rules under A.7 whether the aborted attempt consumes the second 
 mathematics and correctness testing only. **No benchmark, profiling pass, timing probe or browser
 measurement was run for this section.** Every quantity below is a derived operation count, an exact
 output differential or a complexity statement; none is a measurement, and none is presented as one.
+The pass is `c8ac273a` on PR #190, pushed to `t1/p02-s06-bench-setup`; it contains no source-format,
+identity or acceptance-authority change.
 
 **What the audit found.** The previous takeover made a *certified local edit* local. It did not make
 the two most frequent interactions local, because both live outside the compiler:
