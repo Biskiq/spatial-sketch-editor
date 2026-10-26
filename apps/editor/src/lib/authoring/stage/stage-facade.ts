@@ -1625,7 +1625,9 @@ export function createStageFacade(input: {
 			// superset of the fragments that can lie within tolerance, so the answer below
 			// is the whole-scan answer — the work before the first candidate is what
 			// changes. Before: sort every eligible fragment and project every surface.
-			// Now: visit `O(log F + c)` boxes and project no fragment that cannot be hit.
+			// Now: visit the boxes whose projected extent can reach the pointer (`O(log F + c)`
+			// over ordinary geometry; `O(F)` when the projected boxes really overlap) and
+			// project no fragment that cannot be hit. See the index for the full statement.
 			const retained = pickIndexFor(plan);
 			const candidates = retained.index.candidates(candidateCss, PLAN_HIT_TOLERANCE_CSS_PX, project);
 			for (const candidateIndex of candidates) {

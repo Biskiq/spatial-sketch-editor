@@ -530,6 +530,38 @@ describe('incremental Plan retainer', () => {
 		expectSame(retainer, duplicated);
 	});
 
+	it('re-derives a solid-less Wall whose declared height changed', () => {
+		// Regression: the reuse predicate for a Wall with no compiled solids must compare
+		// the **declared height**, because the derivation reads it through the candidate
+		// extent even though the Wall places no geometry.
+		const retainer = createPlanRetainer();
+		const base = compiledOf(document({ room: false }));
+		const solidLess: CompiledLayoutGeometry = {
+			...base,
+			walls: base.walls.map((wall, index) =>
+				index === 0 ? { ...wall, height: 3, solidSpans: [] } : wall
+			)
+		};
+		const before = expectSame(retainer, solidLess, { depthMeters: 0.5 });
+		const grown: CompiledLayoutGeometry = {
+			...solidLess,
+			walls: solidLess.walls.map((wall, index) =>
+				index === 0 ? { ...wall, height: 0.2 } : wall
+			)
+		};
+		const after = expectSame(retainer, grown, { depthMeters: 0.5 }, { generationId: 'gen-solidless' });
+		const row = after.membership.find((entry) => entry.sourceId === solidLess.walls[0]!.wallId)!;
+		const previous = before.membership.find((entry) => entry.sourceId === row.sourceId)!;
+		// 3 m tall: it reaches the cut plane, so the depth window says nothing and the only
+		// declared reason is that it places no geometry. 0.2 m tall: its whole extent is
+		// below the cut, further below it than the 0.5 m window allows.
+		expect(previous.reason).toBe('no-meaningful-projection');
+		expect(previous.depthBelowCutMeters).toBeNull();
+		expect(row.reason).toBe('outside-depth');
+		expect(row.depthBelowCutMeters).toBeCloseTo(1, 12);
+		expect(row).not.toBe(previous);
+	});
+
 	it('matches the reference across a randomized sequence of edits', () => {
 		const retainer = createPlanRetainer();
 		const steps = mutations(compiledOf(document({ room: false })));

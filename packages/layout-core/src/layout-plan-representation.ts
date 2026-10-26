@@ -869,7 +869,9 @@ export function planMembershipOf(plan: PlanEvaluation, sourceId: string): PlanSo
  * itself: two evaluations never share one, and an abandoned evaluation's index is
  * collectable with it.
  */
-const fragmentIndexes = new WeakMap<readonly PlanFragment[], Map<string, PlanFragment>>();export function planFragmentOf(plan: PlanEvaluation, sourceId: string): PlanFragment | undefined {
+const fragmentIndexes = new WeakMap<readonly PlanFragment[], Map<string, PlanFragment>>();
+
+export function planFragmentOf(plan: PlanEvaluation, sourceId: string): PlanFragment | undefined {
 	let index = fragmentIndexes.get(plan.fragments);
 	if (index === undefined) {
 		index = new Map<string, PlanFragment>();
@@ -983,7 +985,20 @@ function samePoints(left: readonly LayoutVec2[], right: readonly LayoutVec2[]): 
  * derivation, never a wrong answer.
  */
 function wallUnchanged(entries: readonly PlanEntry[], wall: CompiledPhysicalWall, datumMeters: number): boolean {
-	if (wall.solidSpans.length === 0) return entries.length === 1 && entries[0]!.plan.kind === 'polyline';
+	if (wall.solidSpans.length === 0) {
+		// A solid-less Wall still has a **declared height**, and the derivation reads it
+		// for the candidate's extent — which is what the depth window measures. Checking
+		// only the (empty) plan geometry here would let a height change keep a stale
+		// `reason` and `depthBelowCutMeters` on the membership row.
+		const entry = entries[0];
+		return (
+			entries.length === 1 &&
+			entry !== undefined &&
+			entry.plan.kind === 'polyline' &&
+			entry.extent.minY === datumMeters &&
+			entry.extent.maxY === datumMeters + wall.height
+		);
+	}
 	if (entries.length !== wall.solidSpans.length) return false;
 	for (let index = 0; index < wall.solidSpans.length; index += 1) {
 		const entry = entries[index]!;
@@ -1083,6 +1098,10 @@ export type PlanRetainer = {
  * - *Source ids added or removed*: the id list is updated by binary-search insertion when
  *   a few ids change, and rebuilt (one sort) when many do.
  *
+ * It remembers **one** derivation signature. A caller that alternates between two
+ * parameter sets would re-derive on every call, so a host with genuinely interleaved
+ * consumers should hold one retainer per set; the editor reads one set per evaluation.
+ *
  * **What it cannot remove.** The walk over the compiled sources is `Omega(N)` because the
  * input is the whole compiled geometry: proving that an untouched source really is
  * untouched means reading it. A compiler-provided changed set would turn that walk into
@@ -1135,8 +1154,9 @@ export function createPlanRetainer(): PlanRetainer {
 	/**
 	 * Reconcile one kind against its compiled records, in one walk.
 	 *
-	 * Returns `true` when this kind cannot be reproduced incrementally (a source id appears
-	 * twice in the kind, which the reference evaluator merges into one membership row).
+	 * Returns the ids this pass added, or `null` when this kind cannot be reproduced
+	 * incrementally — a source id appears twice in the kind, which the reference evaluator
+	 * merges into one membership row and this retainer does not model.
 	 */
 	function reconcileKind<T>(
 		kind: PlanSourceKind,

@@ -920,6 +920,21 @@ object, and after one Wall changes exactly one row is re-derived. The oracle was
 before it was trusted — forcing `wallUnchanged` to return `true` makes the sequence and randomized
 cases fail, so the assertions do bite.
 
+**What the independent review found.** Two reviewers with different mandates (correctness versus
+integration) read the change after it was pushed. Both found the same real divergence, and it was
+mine: a Wall with **no compiled solid spans** places no geometry, so its reuse predicate checked only
+that its plan extent was the empty polyline — but the derivation still reads the Wall's declared
+`height` for the candidate extent, which is what the depth window measures. A height change on such
+a Wall therefore kept a stale `reason` and `depthBelowCutMeters` on its membership row (fragments,
+streams and bounds were unaffected, which is exactly why the differential corpus did not catch it:
+it mutates a Wall's spans or drops its solids, but never its height while solid-less). Fixed by
+comparing the retained extent, pinned by a dedicated regression case that flips
+`no-meaningful-projection` to `outside-depth`, and confirmed to fail without the fix. The same review
+found two stale comments (a doc block claiming the reconcile helper returns `true`, and the hit path
+restating the superseded `O(log F + c)`), both corrected; its other reported concerns — retained plan
+arrays being equal-valued but distinct instances, and a repeated identical evaluation returning the
+same object — are the documented consequences of reuse, not divergences.
+
 **The pick index's complexity claim was wrong as written.** The previous record said the query is
 `O(log F + c)`. It is `O(v + c log c)`: the tree addresses a **permutation** of the caller's indices,
 so surviving candidates leave the traversal in tree order and are sorted back into rank order before
@@ -974,7 +989,7 @@ What is **not** removed, named rather than hidden:
 
 **Verification (correctness only).** `check:layout-core`, `check:project-model`, `check:camera-core`,
 the editor `check` (svelte-check: 0 errors, 0 warnings) and `build` pass. The full editor suite passes
-**206 files / 2,569 tests**; the fast lane **173 files / 2,251 tests**; the architecture lane **22 files
+**206 files / 2,570 tests**; the fast lane **173 files / 2,252 tests**; the architecture lane **22 files
 / 180 tests**, including the documentation gate. No performance number in this section is measured.
 
 **Review still owed.** Independent review of this pass has not happened. T3 review is required for the
