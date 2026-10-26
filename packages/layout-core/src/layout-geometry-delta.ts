@@ -1210,7 +1210,6 @@ function compileSnapshot(document: LayoutDocumentWallFirst, world: RetainedCompi
 /** Runtime-safe indexed consumers. No authored state or renderer enters here. */
 const COMPILE_WORLD_BY_GEOMETRY = new WeakMap<CompiledLayoutGeometry, RetainedCompileWorld>();
 type CompileSnapshot = { immutable: boolean; world: RetainedCompileWorld; result: CompiledLayoutGeometryResult; floor: LayoutCompileReuse['retainedFloor']; docAabb: LayoutCompileReuse['retainedDocAabb'] };
-const COMPILE_SNAPSHOT_BY_DOC = new WeakMap<LayoutDocumentWallFirst, CompileSnapshot>();
 function verifiedFrozenSource(value: unknown): boolean {
  if (value === null || typeof value !== 'object') return typeof value !== 'function' && typeof value !== 'symbol' && typeof value !== 'bigint';
  if (hasImmutableJsonProof(value)) return true;
@@ -1226,14 +1225,22 @@ function verifiedFrozenSource(value: unknown): boolean {
 }
 function registerCompileSnapshot(document: LayoutDocumentWallFirst, world: RetainedCompileWorld, result: CompiledLayoutGeometryResult, reuse: LayoutCompileReuse): void {
  COMPILE_WORLD_BY_GEOMETRY.set(result.geometry, world);
- COMPILE_SNAPSHOT_BY_DOC.set(document, { immutable: verifiedFrozenSource(document), world, result, floor: reuse.retainedFloor, docAabb: reuse.retainedDocAabb });
+ reuse.snapshots.set(document, { immutable: verifiedFrozenSource(document), world, result, floor: reuse.retainedFloor, docAabb: reuse.retainedDocAabb });
 }
 /** Only proven immutable sources may restore a cached root without inspection. */
 export function restoreImmutableCompileSnapshot(document: LayoutDocumentWallFirst, reuse: LayoutCompileReuse): CompiledLayoutGeometryResult | null {
  if (!Object.isFrozen(document) || hasAnySamplingTestObserver()) return null;
- const snapshot = COMPILE_SNAPSHOT_BY_DOC.get(document);
+ const snapshot = reuse.snapshots.get(document) as CompileSnapshot | undefined;
  const current = reuse.world as RetainedCompileWorld | null;
- if (!snapshot?.immutable || !current || current.wallDocIndexById !== snapshot.world.wallDocIndexById) return null;
+ if (!snapshot?.immutable || !current) return null;
+ if (current !== snapshot.world) {
+  // Working memo tables are disposable accelerators, not snapshot state.
+  // Retire their roots without walking old membership; the persistent world
+  // already contains every unchanged compiled unit and all dependency indexes.
+  reuse.walls = new Map(); reuse.junctions = new Map(); reuse.roomSources = new Map();
+  reuse.roomCompiles = new WeakMap(); reuse.objects = new Map();
+  countWork('compile:working-cache-root-reset', 5);
+ }
  reuse.world = snapshot.world; reuse.retainedFloor = snapshot.floor; reuse.retainedDocAabb = snapshot.docAabb;
  reuse.lastPrunedDocument = document;
  countWork('compile:historical-root-restore');

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PersistentMap, PersistentVector } from '../../../../../packages/layout-core/src/persistent-store';
-import { immutableF4Data } from '@portfolio/project-model';
+import { freezeF4Data, immutableF4Data } from '@portfolio/project-model';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
-import { setWorkObserver, cowSetWallScalar, recordPreparedCowCandidate, consumePreparedCowCandidate, rememberImmutableJsonNode } from '@portfolio/layout-core';
+import { setWorkObserver, cowSetWallScalar, recordPreparedCowCandidate, consumePreparedCowCandidate, rememberImmutableJsonNode, createLayoutCompileSession, withLayoutCompileSession, planRigidWallMove, linkClonedCowCandidate } from '@portfolio/layout-core';
 
 function counted<T>(run: () => T) {
  const counts = new Map<string, number>();
@@ -84,6 +84,21 @@ describe('persistent storage roots', () => {
   for (let i = 0; i < 17; i += 1) recordPreparedCowCandidate(`bounded-${i}`, a, 'intent');
   expect(consumePreparedCowCandidate('bounded-0', { baseline: first, key: 'intent' })).toBeUndefined();
   for (let i = 1; i < 17; i += 1) expect(consumePreparedCowCandidate(`bounded-${i}`, { baseline: first, key: 'intent' })).toBe(a);
+ });
+
+ it('does not seed full mutable arrays while handing a clone to its owning capture boundary', () => {
+  const baseline = immutableF4Data(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+  const session = createLayoutCompileSession(); session.compile(baseline);
+  const plan = withLayoutCompileSession(session, () => planRigidWallMove(baseline, { wallId: baseline.walls[4]!.id, delta: [0, 0.01] }));
+  if (plan.kind !== 'success') throw new Error(plan.rejection.message);
+  const clone = structuredClone(plan.document);
+  const linked = counted(() => linkClonedCowCandidate(plan.document, clone));
+  expect(linked.counts.get('storage:vector-seed-slots') ?? 0).toBe(0);
+  expect(linked.counts.get('storage:vector-slots-copied') ?? 0).toBe(0);
+  freezeF4Data(clone);
+  const next = counted(() => withLayoutCompileSession(session, () => planRigidWallMove(clone, { wallId: baseline.walls[4]!.id, delta: [0, -0.01] })));
+  expect(next.value.kind).toBe('success');
+  expect(next.counts.get('storage:vector-seed-slots') ?? 0).toBe(0);
  });
 
 });

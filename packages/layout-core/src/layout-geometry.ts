@@ -1308,12 +1308,11 @@ function spanRecordPhysical(
  * and a cold-compile result of the same document are equal by construction;
  * the heavy differential proves it over an exhaustive edit sweep.
  *
- * Work: the traversal and comparison are O(N) per compile and cheap (authored
- * scalars); the *evaluation* — sampling, section splitting, Opening compilation,
- * Room validation, Junction resolution, query records — is O(k) in the entities
- * the edit touched. `stats()` reports both sides, and `prune` keeps the store
- * bounded by the current document so a long session cannot accumulate units for
- * entities that no longer exist.
+ * Work: certified local edits update persistent paths and affected output.
+ * Missing lineage, changed membership and global datums use the canonical full
+ * fallback. Known immutable historical roots restore in constant root work,
+ * including across membership changes; their transient memo tables are retired
+ * by root replacement. Stats count evaluations separately from storage/output.
  *
  * Callers that cannot hold state (`admitSource`, a one-shot script) keep calling
  * `compileWallFirstLayoutGeometry` without a store and get exactly today's
@@ -1366,12 +1365,13 @@ export function createLayoutCompileSession(): LayoutCompileSession {
 			store = createLayoutCompileReuse();
 			releasedUnits = 0;
 		},
-		retained: () => ({
-			walls: store.walls.size,
-			junctions: store.junctions.size,
-			rooms: store.roomSources.size,
-			objects: store.objects.size
-		})
+		retained: () => {
+			const world = store.world as import('./layout-geometry-delta').RetainedCompileWorld | null;
+			return world ? {
+				walls: world.sortedWalls.length, junctions: world.sortedJunctions.length,
+				rooms: world.roomSlots.summary.rooms, objects: world.objectUnit.compiledObjects.length
+			} : { walls: store.walls.size, junctions: store.junctions.size, rooms: store.roomSources.size, objects: store.objects.size };
+		}
 	};
 }
 

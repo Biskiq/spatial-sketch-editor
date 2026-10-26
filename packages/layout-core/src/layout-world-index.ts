@@ -218,7 +218,9 @@ export function linkClonedCowCandidate(
 	EQUIVALENT_ROOT_BY_DOC.set(clonedCandidate, root);
 	const delta = COW_DELTA_BY_DOC.get(originalCandidate);
 	if (delta) COW_DELTA_BY_DOC.set(clonedCandidate, delta);
-	seedLayoutVectors(clonedCandidate);
+	// A clone's native arrays are already indexable. Do not eagerly copy them
+	// into vectors while an owning boundary has yet to freeze the clone. The
+	// next write can borrow its then-immutable array root in constant work.
 	const existingIndex = peekLayoutWorldIndex(originalCandidate);
 	if (existingIndex && !WORLD_INDEX_BY_DOC.has(clonedCandidate)) {
 		WORLD_INDEX_BY_DOC.set(clonedCandidate, {
@@ -254,7 +256,8 @@ export function peekLayoutWorldIndex(
 
 /**
  * Record a prepared COW Layout candidate by `operationId` so the Stage host can
- * link F4's captured accepted copy back to its COW lineage. The token link is O(1); seeding a non-frozen flat copy may be O(N).
+ * link F4's captured accepted copy back to its COW lineage. Token/index rebinding
+ * is constant root work; a first write to an unowned mutable source may copy N slots.
  */
 export function recordPreparedCowCandidate(
  operationId: string, document: LayoutDocumentWallFirst, proofKey?: string

@@ -50,6 +50,7 @@ describe('persistent candidate → certification → compile → indexed consume
    // assembly and both imperative renderers. No missing global-copy allowance.
    expect(flatSlots(measured.counts)).toBe(0);
    expect(measured.counts.get('storage:seed-entries') ?? 0).toBe(0);
+   expect(measured.counts.get('storage:vector-seed-slots') ?? 0).toBe(0);
    expect(measured.counts.get('storage:vector-slots-copied') ?? 0).toBeLessThan(1200);
    expect(measured.counts.get('representation:wall-entry-test') ?? 0).toBeLessThanOrEqual(4);
    expect(measured.counts.get('representation:object-entry-test') ?? 0).toBe(0);
@@ -100,5 +101,27 @@ describe('persistent candidate → certification → compile → indexed consume
   const { result, counts } = observe(() => session.compile(document));
   expect(counts.get('compile:historical-root-restore') ?? 0).toBe(0);
   expect(exact(result.geometry) === exact(compileWallFirstLayoutGeometry(document).geometry)).toBe(true);
+ });
+ it('restores membership-changing snapshots in constant root work and keeps sessions isolated', () => {
+  const session = createLayoutCompileSession(), other = createLayoutCompileSession();
+  const documents = [10, 12, 3].map((roomCount) => immutableF4Data(buildScaleFixture({ ...SCALE_FIXTURE_SEEDS.small, roomCount })));
+  const roots = documents.map((document) => session.compile(document).geometry);
+  const foreign = other.compile(documents[0]!).geometry;
+  expect(foreign).not.toBe(roots[0]);
+  for (const i of [0, 2, 1, 0]) {
+   const restored = observe(() => session.compile(documents[i]!));
+   expect(restored.result.geometry).toBe(roots[i]);
+   expect(restored.counts.get('compile:historical-root-restore')).toBe(1);
+   expect(restored.counts.get('storage:vector-node-read') ?? 0).toBe(0);
+   expect(flatSlots(restored.counts)).toBe(0);
+   expect(session.retained().walls).toBe(documents[i]!.walls.length);
+  }
+  const baseline = documents[0]!; ensureLayoutWorldIndex(baseline);
+  const branch = withLayoutCompileSession(session, () => planRigidWallMove(baseline, { wallId: baseline.walls[4]!.id, delta: [0, 0.01] }));
+  if (branch.kind !== 'success') throw new Error(branch.rejection.message);
+  expect(exact(branch.acceptance!.geometry)).toBe(exact(compileWallFirstLayoutGeometry(branch.document).geometry));
+  session.reset();
+  expect(session.compile(baseline).geometry).not.toBe(roots[0]);
+  expect(session.stats().cold).toBe(true);
  });
 });

@@ -121,6 +121,7 @@ type Reduce<T, A> = { leaf(items: readonly T[]): A; branch(left: A, right: A): A
 export class PersistentVector<T, A = undefined> {
 	private constructor(private readonly root: VectorNode<T, A>, private readonly reduce: Reduce<T, A>) { countWork('storage:vector-handle-allocated'); }
 	static from<T, A = undefined>(items: readonly T[], reduce: Reduce<T, A> = { leaf: () => undefined as A, branch: () => undefined as A }): PersistentVector<T, A> {
+		countWork('storage:vector-seed-slots', items.length);
 		const build = (lo: number, hi: number): VectorNode<T, A> => {
 			countWork('storage:vector-node-allocated');
 			if (hi - lo <= 32) {

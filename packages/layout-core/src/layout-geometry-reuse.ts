@@ -221,13 +221,15 @@ export type PrunableLayoutCollections = {
  * and consults it, and never writes to a value it handed out.
  */
 export type LayoutCompileReuse = {
-	readonly walls: Map<string, RetainedWall>;
-	readonly junctions: Map<string, RetainedJunction>;
+	walls: Map<string, RetainedWall>;
+	junctions: Map<string, RetainedJunction>;
 	/** Adapter-level Room inputs, keyed by Room id. */
-	readonly roomSources: Map<string, RetainedRoomSource>;
+	roomSources: Map<string, RetainedRoomSource>;
 	/** Core-level Room compiles, keyed by the identity of a retained `source`. */
-	readonly roomCompiles: WeakMap<CompilerRoomSource, RetainedRoom>;
-	readonly objects: Map<string, RetainedObject>;
+	roomCompiles: WeakMap<CompilerRoomSource, RetainedRoom>;
+	objects: Map<string, RetainedObject>;
+	/** Per-session historical roots; reset discards the entire weak directory. */
+	readonly snapshots: WeakMap<LayoutDocumentWallFirst, unknown>;
 	retainedFloor: RetainedCompiledFloor | null;
 	retainedDocAabb: RetainedDocumentAabb | null;
 	/** Persistent compile roots; local updates copy O(k log N) nodes plus affected output. */
@@ -277,6 +279,7 @@ export function createLayoutCompileReuse(): LayoutCompileReuse {
 		roomSources: new Map(),
 		roomCompiles: new WeakMap(),
 		objects: new Map(),
+		snapshots: new WeakMap(),
 		retainedFloor: null,
 		retainedDocAabb: null,
 		world: null,
