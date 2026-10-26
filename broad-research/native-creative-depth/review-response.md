@@ -157,7 +157,7 @@ Read as dormers, bays and lean-tos, the **localized protrusions are unresolved**
 
 The coverage thresholds are decision points for the owner, not sourced numbers.
 
-**Pushback.** Showing a case can be native does not make it worth scheduling. P12 decides placement. D1, P3 and P4 still decide whether any recipe is built.
+**Pushback.** Showing a case can be native does not make it worth scheduling. P12 informs placement; owner decision D12 sets the boundary. D1, D11 and P3/P4 evidence still govern whether a recipe should be proposed.
 
 **Changed:**
 
