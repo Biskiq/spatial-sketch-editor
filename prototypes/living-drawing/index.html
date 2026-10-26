@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Living Drawings</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout: one reading column (~66ch) with figures that widen to the page; every figure is drawn the way the product draws: white marks on a forest instrument. */
+:root{
+  --bg:#F2EDE4; --paper:#FAF7F1; --line:#DCD3C3; --ink:#1D2A22; --ink-2:#4F5A4F; --mute:#7E7869;
+  --forest:#1F3A2C; --forest-2:#2E5541; --forest-ink:#F3EEE5; --gold:#9C7A3C; --gold-soft:#EFE3C8;
+  --f-display:"Instrument Serif","Iowan Old Style",Georgia,serif;
+  --f-ui:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141A16;--paper:#1C231E;--line:#33403A;--ink:#ECE6DA;--ink-2:#C2BCAE;--mute:#958F81;
+  --forest:#244636;--forest-2:#3F6E57;--forest-ink:#F3EEE5;--gold:#D3AF6D;--gold-soft:#3F3522;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141A16;--paper:#1C231E;--line:#33403A;--ink:#ECE6DA;--ink-2:#C2BCAE;--mute:#958F81;
+  --forest:#244636;--forest-2:#3F6E57;--forest-ink:#F3EEE5;--gold:#D3AF6D;--gold-soft:#3F3522;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 var(--f-ui);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+a{color:inherit;text-decoration-color:var(--gold);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.wrap{max-width:1080px;margin:0 auto}
+.col{max-width:680px}
+header.site{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-block:22px}
+.mark{font:400 28px/1 var(--f-display)}
+.open{display:inline-flex;align-items:center;gap:8px;background:var(--forest);color:var(--forest-ink);text-decoration:none;font-weight:500;font-size:15px;padding:10px 16px;border-radius:11px}
+.open:hover{background:var(--forest-2)}
+.open.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.banner{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;padding:14px 18px;margin-bottom:8px;text-decoration:none}
+.banner:hover{border-color:var(--forest-2);border-left-color:var(--gold)}
+.banner b{font:400 22px/1.15 var(--f-display);display:block}
+.banner span{font-size:15px;color:var(--ink-2)}
+.banner i{font-style:normal;font-size:14px;font-weight:500;white-space:nowrap}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600}
+h1{font:400 clamp(52px,8vw,104px)/.95 var(--f-display);letter-spacing:-.01em;margin:18px 0 18px;text-wrap:balance}
+h1 em{font-style:italic;color:var(--forest-2)}
+:root[data-theme="dark"] h1 em{color:#9CC2A9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) h1 em{color:#9CC2A9}}
+.thesis{font:400 clamp(22px,2.6vw,29px)/1.32 var(--f-display);max-width:760px;margin:0 0 26px;text-wrap:balance}
+.lede{font-size:18.5px;color:var(--ink-2);max-width:640px}
+section{padding-block:56px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+h2{font:400 clamp(34px,4.4vw,50px)/1.05 var(--f-display);margin:10px 0 18px;text-wrap:balance}
+h3{font:600 17px/1.35 var(--f-ui);margin:26px 0 6px}
+p{margin:0 0 14px}
+.muted{color:var(--ink-2)}
+figure{margin:28px 0}
+figcaption{font-size:14px;color:var(--mute);margin-top:10px;max-width:680px}
+.panel{background:var(--forest);border-radius:14px;color:var(--forest-ink);overflow:hidden}
+.panel svg{display:block;width:100%;height:auto}
+.panel text{font-family:var(--f-ui);fill:rgba(243,238,229,.82);font-size:12px}
+.panel .t{font-size:13px;fill:#F3EEE5;font-weight:500}
+.ink{fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ink.thin{stroke-width:1.3}
+.ctx{fill:none;stroke:rgba(243,238,229,.45);stroke-width:1.2;stroke-dasharray:5 4}
+.solid{fill:rgba(243,238,229,.13);stroke:rgba(243,238,229,.75);stroke-width:1.3}
+.goldline{fill:none;stroke:#D6B676;stroke-width:1.8}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.five{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.cell{background:var(--forest);border-radius:12px;padding:12px 12px 14px;color:var(--forest-ink)}
+.cell svg{display:block;width:100%;height:auto;max-height:240px}
+.cell b{display:block;font:400 22px/1.1 var(--f-display);margin-top:6px}
+.cell span{font-size:13.5px;color:rgba(243,238,229,.78);display:block;margin-top:4px;line-height:1.45}
+@media (max-width:900px){.five{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.trio,.five{grid-template-columns:1fr}}
+
+.gestures{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:22px}
+.gestures div{border-top:2px solid var(--forest);padding-top:12px}
+.gestures b{font:400 30px/1.05 var(--f-display);display:block}
+.gestures p{font-size:15.5px;color:var(--ink-2);margin-top:6px}
+@media (max-width:760px){.gestures{grid-template-columns:1fr}}
+
+.table{overflow-x:auto;margin-top:18px}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:15.5px}
+th,td{text-align:left;vertical-align:top;padding:12px 14px 12px 0;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600}
+td:first-child{font-weight:600;width:20%}
+td:nth-child(2){color:var(--ink-2);width:36%}
+
+.sentence{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:22px 24px;font-size:19px;line-height:1.75;max-width:720px}
+.sentence .nm{font:400 30px/1 var(--f-display);display:block;margin-bottom:10px}
+.w{font-weight:600;border-bottom:1.5px dotted var(--forest-2)}
+.w.gold{border-bottom-color:var(--gold)}
+.w.off{text-decoration:line-through;color:var(--mute);font-weight:500}
+.anno{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px;max-width:720px;font-size:14.5px;color:var(--ink-2)}
+.anno b{color:var(--ink);display:block;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+@media (max-width:760px){.anno{grid-template-columns:1fr}}
+
+.note{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;max-width:560px;font-size:15px}
+.note strong{display:block;font-size:14.5px;margin-bottom:6px}
+.note ul{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.note li{display:grid;grid-template-columns:12px 1fr;gap:8px;align-items:baseline}
+.note li i{width:7px;height:7px;border-radius:50%;background:var(--forest-2);display:block}
+.note li.still i{background:var(--line)} .note li.slack i{background:var(--gold)}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:820px){.pair{grid-template-columns:1fr}}
+
+.knots{display:grid;gap:10px;margin-top:14px}
+.knots div{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:center;font-size:15.5px}
+.k{width:15px;height:15px;border-radius:50%;background:var(--forest-2);box-shadow:0 0 0 3px var(--paper),0 0 0 4px var(--forest-2)}
+.k.p{background:transparent;box-shadow:0 0 0 2px var(--forest-2)}
+.k.s{background:transparent;box-shadow:none;border:2px dashed var(--gold)}
+
+.depth{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;margin-top:22px;border-top:2px solid var(--forest)}
+.depth div{padding:14px 14px 0 0}
+.depth b{font:400 26px/1 var(--f-display);display:block;margin-bottom:6px}
+.depth p{font-size:14.5px;color:var(--ink-2)}
+@media (max-width:860px){.depth{grid-template-columns:1fr 1fr}}
+
+.finding{display:grid;grid-template-columns:120px 1fr;gap:18px;padding-block:16px;border-bottom:1px solid var(--line)}
+.finding .tag{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;padding-top:3px}
+.finding .tag.held{color:var(--forest-2)} .finding .tag.broke{color:var(--gold)} .finding .tag.changed{color:var(--ink-2)}
+:root[data-theme="dark"] .finding .tag.held{color:#9CC2A9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .finding .tag.held{color:#9CC2A9}}
+.finding p{margin:0;font-size:16px}
+.finding h4{margin:0 0 4px;font-size:17px}
+@media (max-width:640px){.finding{grid-template-columns:1fr;gap:4px}}
+
+.swatches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.sw{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
+.sw i{display:block;height:58px}
+.sw div{padding:10px 12px;font-size:14px}
+.sw b{display:block}
+@media (max-width:760px){.swatches{grid-template-columns:1fr 1fr}}
+.try{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
+.try a{display:block;text-decoration:none;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}
+.try a:hover{border-color:var(--forest-2)}
+.try b{font:400 26px/1.1 var(--f-display);display:block;margin-bottom:6px}
+.try span{font-size:14.5px;color:var(--ink-2)}
+@media (max-width:760px){.try{grid-template-columns:1fr}}
+ul.plain{padding-left:18px} ul.plain li{margin-bottom:6px}
+footer{padding-block:40px 60px;color:var(--mute);font-size:14px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="site">
+  <span class="mark">biskiq</span>
+  <a class="open" href="studio.html">Open the studio <span aria-hidden="true">→</span></a>
+</header>
+<a class="banner" href="round-two.html"><div><div class="eyebrow">Round two</div><b>Every surface is a place</b><span>Adding and carving on your own work, repetition by drawing along, and exceptions that remember why.</span></div><i>Read round two <span aria-hidden="true">→</span></i></a>
+
+<section>
+  <div class="eyebrow">An interaction model for original form · Independent commission</div>
+  <h1>Living <em>Drawings</em></h1>
+  <p class="thesis">Draw where it goes. Pull it into being. Draw over it to change your mind. The room is the drawing board, and every form stays a drawing you can keep changing.</p>
+  <p class="lede">In Biskiq you never edit geometry. A form is a plan drawn on the space and a profile drawn against it. Whatever it touches on purpose becomes a visible relationship. The form is re-made from those drawings every time anything changes. So it adapts when the room changes, explains how it was made, and has nothing fragile to break.</p>
+  <figure>
+    <div class="trio">
+      <div class="cell"><svg viewBox="0 0 300 190" aria-label="A loop drawn on the floor around a sculpture">
+        <path class="ctx" d="M20 160 L190 160 L280 110 L110 110 Z"/>
+        <ellipse cx="150" cy="128" rx="23" ry="7" class="solid"/><ellipse cx="150" cy="113" rx="17" ry="9" class="solid"/><ellipse cx="150" cy="99" rx="11" ry="8" class="solid"/>
+        <path class="ink" d="M96 133 C 92 117, 132 110, 160 111 C 196 112, 212 123, 205 135 C 198 148, 152 152, 122 148 C 100 145, 92 139, 101 130"/>
+        <text x="18" y="182">Read as “around the sculpture”</text></svg>
+        <b>Draw on</b><span>A loop around an imported sculpture becomes a plan that fits it, with the margin you drew.</span></div>
+      <div class="cell"><svg viewBox="0 0 300 190" aria-label="The plan pulled up into a pedestal; the sculpture rides on top">
+        <path class="ctx" d="M20 160 L190 160 L280 110 L110 110 Z"/>
+        <path class="solid" d="M95 134 L95 76 A55 14 0 0 0 205 76 L205 134 A55 14 0 0 1 95 134 Z"/>
+        <ellipse cx="150" cy="76" rx="55" ry="14" class="solid"/>
+        <ellipse cx="150" cy="70" rx="23" ry="7" class="solid"/><ellipse cx="150" cy="55" rx="17" ry="9" class="solid"/><ellipse cx="150" cy="41" rx="11" ry="8" class="solid"/>
+        <circle cx="225" cy="80" r="10" fill="#fff"/><path d="M225 74v12M221 78l4-4 4 4M221 82l4 4 4-4" stroke="#1F3A2C" stroke-width="1.5" fill="none"/>
+        <path class="ink thin" d="M225 136 V 92" stroke-dasharray="3 4"/>
+        <text x="240" y="84" class="t">0.90 m</text>
+        <text x="18" y="182">Snaps: seat · counter · eye · ceiling</text></svg>
+        <b>Pull</b><span>Drag the handle; type a number for an exact height. The sculpture rides up because it rests on what is under it.</span></div>
+      <div class="cell"><svg viewBox="0 0 300 190" aria-label="Drawing over the pedestal's side gives it a waist">
+        <path class="ctx" d="M20 160 L190 160 L280 110 L110 110 Z"/>
+        <path class="solid" d="M97 134 L97 128 C 108 112, 112 92, 99 80 L 99 76 A51 13 0 0 0 201 76 L201 80 C 188 92, 192 112, 203 128 L203 134 A53 14 0 0 1 97 134 Z"/>
+        <ellipse cx="150" cy="76" rx="51" ry="13" class="solid"/>
+        <ellipse cx="150" cy="70" rx="23" ry="7" class="solid"/><ellipse cx="150" cy="55" rx="17" ry="9" class="solid"/><ellipse cx="150" cy="41" rx="11" ry="8" class="solid"/>
+        <path class="ink" d="M205 136 L204 128 C 191 112, 187 94, 201 80 L203 74"/>
+        <path class="ctx" d="M95 136 L95 74" />
+        <text x="18" y="182">Both sides follow</text></svg>
+        <b>Draw over</b><span>Redraw any visible edge to reshape it. The same gesture refines it at hour ten.</span></div>
+    </div>
+    <figcaption>The first journey in the studio, as it happens there. The sculpture is an imported asset. The pedestal is native: drawn here, fitted to the sculpture, and still fitting it after you swap the sculpture or move it.</figcaption>
+  </figure>
+  <p style="display:flex;gap:10px;flex-wrap:wrap"><a class="open" href="studio.html#pedestal">Try the pedestal journey</a><a class="open ghost" href="#try">All three journeys</a></p>
+</section>
+
+<section id="challenge">
+  <div class="eyebrow">The challenge, reframed</div>
+  <h2>Making inside a place, then changing your mind</h2>
+  <div class="col">
+    <p>Most of what people invent in Biskiq belongs somewhere. A pedestal belongs to its sculpture. A bench belongs to the wall it runs along, and a frame to the opening it surrounds. A cornice belongs to the line where the wall meets the ceiling. Their shape depends on what is around them.</p>
+    <p>Conventional modelling starts from an empty workplane and treats that surrounding context as something to measure and copy in. A snap lands a point on a wall and then forgets the wall. When the room changes, the object doesn't. History trees try to remember intent, but they remember the order of operations, not what the object is for, and they break when an early face disappears.</p>
+    <p>So the question for Biskiq is not which modelling operations to offer. It is how a creator can say <em>what a form is for, in this place</em>, using a gesture as quick as a sketch, and keep saying it as the place and their ideas change.</p>
+  </div>
+</section>
+
+<section id="different">
+  <div class="eyebrow">What is different</div>
+  <h2>Not a lighter modeller. A different substance.</h2>
+  <div class="table"><table>
+    <thead><tr><th></th><th>Conventional modelling</th><th>Living Drawings</th></tr></thead>
+    <tbody>
+      <tr><td>Where you start</td><td>An empty workplane, or a primitive</td><td>The place itself: a floor, a wall, the foot of a wall, the edge of a niche, an object</td></tr>
+      <tr><td>What you edit</td><td>Vertices, edges, faces; a mesh or solid that remembers nothing</td><td>Drawings: a plan and a profile. The geometry is always re-made from them</td></tr>
+      <tr><td>How you say it</td><td>Choose an operation, then pick inputs: extrude, sweep, fillet, boolean</td><td>Three gestures. The context decides what a stroke means and says so at the pen tip</td></tr>
+      <tr><td>The third dimension</td><td>Workplanes and numeric input</td><td>A profile drawn against the context, which completes the shape for you</td></tr>
+      <tr><td>Context</td><td>Copied by hand; snaps are forgotten</td><td>Deliberate contact becomes a named, visible tie. Incidental contact is only offered</td></tr>
+      <tr><td>History</td><td>An ordered feature tree that breaks when early steps change</td><td>An order-free recipe, written as a sentence whose words are controls</td></tr>
+      <tr><td>When things change</td><td>Rebuilds fail, or silently re-attach to the wrong face</td><td>Every indirect change is narrated. Lost targets go slack and ask, never re-target</td></tr>
+      <tr><td>Precision</td><td>A separate, numeric mode</td><td>The same gestures, finer; numbers when you ask for them</td></tr>
+      <tr><td>Reuse</td><td>Copy geometry</td><td>Profiles are shared and live: change the moulding once, every form using it follows</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="language">
+  <div class="eyebrow">The language</div>
+  <h2>Three gestures, the same at minute one and hour ten</h2>
+  <div class="gestures">
+    <div><b>Draw on</b><p>Put a plan on a surface, along a seam, or around an object. Closed strokes become masses or recesses. Open strokes become runs.</p></div>
+    <div><b>Pull</b><p>Grow a plan out of its host, or push it in. Pushing into a wall makes a niche: a subtraction allowed only into a host, never a free boolean.</p></div>
+    <div><b>Draw over</b><p>Redraw any edge you can see: the side of a pedestal, the outline of a niche, the section of a bench. Only the stretch you drew over changes.</p></div>
+  </div>
+  <h3 style="margin-top:40px">The context reads your stroke</h3>
+  <div class="col"><p class="muted">The creator never picks a tool for each case. A label at the pen tip says what the stroke is about to mean before they let go, for example “Following the floor seam” or “Around the sculpture”. The seam lights up while they trace it.</p></div>
+  <figure>
+    <div class="five">
+      <div class="cell"><svg viewBox="0 0 160 120"><path class="ctx" d="M10 100 L110 100 L150 70 L50 70 Z"/><path class="ink" d="M48 92 C 40 80, 70 74, 96 76 C 120 78, 122 92, 100 95 C 80 98, 52 98, 48 92"/></svg><b>On</b><span>A closed shape on the floor is a mass. On a wall it is a niche or a relief.</span></div>
+      <div class="cell"><svg viewBox="0 0 160 120"><path class="ctx" d="M20 20 V 96 L 140 96 V 20"/><path class="ink" d="M26 40 V 90 H 132"/><circle cx="26" cy="40" r="3" fill="#fff"/></svg><b>Along</b><span>Near a seam, the stroke follows it, around the corner, and stays tied to it.</span></div>
+      <div class="cell"><svg viewBox="0 0 160 120"><path class="ctx" d="M20 15 V 105 M140 15 V 105"/><path class="ink" d="M20 60 C 60 57, 100 63, 140 60"/><circle cx="140" cy="60" r="5" fill="none" stroke="#fff" stroke-width="2"/></svg><b>Between</b><span>Wall to wall. Touching the far wall is offered as a tie, never assumed.</span></div>
+      <div class="cell"><svg viewBox="0 0 160 120"><ellipse cx="80" cy="62" rx="16" ry="20" class="solid"/><path class="ink" d="M48 64 C 46 34, 112 30, 114 60 C 116 92, 52 96, 50 70"/></svg><b>Around</b><span>A loop around an object fits it, with the margin you drew.</span></div>
+      <div class="cell"><svg viewBox="0 0 160 120"><path class="ctx" d="M20 105 V 15 H 140 V 105"/><path class="solid" d="M60 100 V 55 A20 20 0 0 1 100 55 V 100 Z"/><path class="ink thin" d="M80 75 v -22 M74 59 l6 -6 6 6"/></svg><b>Into</b><span>Push a wall plan past zero: a niche. Pull it out: a relief.</span></div>
+    </div>
+  </figure>
+</section>
+
+<section id="plan-profile">
+  <div class="eyebrow">The representation</div>
+  <h2>Every form is a plan and a profile</h2>
+  <div class="col">
+    <p>This is how architects and joiners already think: a plan says <em>where</em>, a section or elevation says <em>how it rises</em>. Biskiq keeps exactly those two drawings and makes the form from them.</p>
+    <ul class="plain">
+      <li><b>Mass</b>: a closed plan × an elevation profile, which says how far the plan's edge moves in or out as it rises. A straight profile gives a plinth, a waisted one a pedestal, a circular plan a vessel.</li>
+      <li><b>Run</b>: a path × a section. The bench along the wall, the cornice, the frame around a niche, a shelf.</li>
+      <li><b>Recess</b>: a plan on a wall, pushed in.</li>
+    </ul>
+    <p><b>Context closes the shape.</b> You only draw the line you would see. For a bench you draw from the wall down to the floor, and the wall and floor complete the section. For a frame you draw from the wall face to the niche edge. Profiles are defined against those context lines rather than in absolute space. That is why one moulding can serve as a frame around a niche and as a cornice under the ceiling.</p>
+  </div>
+  <figure>
+    <div class="panel"><svg viewBox="0 0 1000 300" aria-label="Three forms decomposed into plan and profile">
+      <!-- pedestal -->
+      <text x="30" y="30" class="t">Pedestal</text>
+      <text x="30" y="270">plan: fits the sculpture</text>
+      <rect x="40" y="110" width="110" height="110" rx="6" class="solid"/><circle cx="95" cy="165" r="26" class="ctx"/>
+      <text x="175" y="170">×</text>
+      <path class="ctx" d="M200 240 H 300 M 220 240 V 60"/><text x="226" y="58">plan edge</text>
+      <path class="ink" d="M224 240 V 228 C 210 200, 206 150, 218 120 C 224 100, 222 90, 224 70 V 62"/>
+      <text x="200" y="270">elevation profile</text>
+      <!-- bench -->
+      <text x="370" y="30" class="t">Bench</text>
+      <path class="ctx" d="M380 100 V 230 H 600"/><path class="ink" d="M388 100 V 222 H 600"/>
+      <text x="380" y="270">path: follows the floor seam</text>
+      <text x="612" y="170">×</text>
+      <path class="ctx" d="M650 60 V 240 H 760"/><text x="655" y="56">wall</text><text x="768" y="244">floor</text>
+      <path class="ink" d="M650 80 L 664 82 L 670 150 L 740 156 L 744 166 L 734 230 V 240"/>
+      <path d="M650 80 L 664 82 L 670 150 L 740 156 L 744 166 L 734 230 V 240 H 650 Z" fill="rgba(243,238,229,.12)"/>
+      <text x="650" y="270">section,</text><text x="650" y="287">closed by wall + floor</text>
+      <!-- frame -->
+      <text x="810" y="30" class="t">Frame</text>
+      <path class="solid" d="M830 230 V 130 A 40 40 0 0 1 910 130 V 230 Z"/>
+      <path class="ink" d="M822 236 V 130 A 48 48 0 0 1 918 130 V 236 Z"/>
+      <text x="812" y="270">path: the niche’s</text><text x="812" y="287">edge</text>
+      <path class="ctx" d="M940 70 V 200 M 940 200 H 990"/><path class="ink" d="M940 90 H 950 C 955 120, 965 150, 972 200"/>
+      <text x="944" y="226">section</text>
+    </svg></div>
+    <figcaption>One geometry kernel does all of this: a profiled sweep along a path that lies on a host surface. It cannot fail the way booleans and fillets fail. That is a deliberate trade, and the findings below are honest about what it costs.</figcaption>
+  </figure>
+</section>
+
+<section id="ties">
+  <div class="eyebrow">Relationships</div>
+  <h2>Snaps are free. Ties are visible, and yours.</h2>
+  <div class="pair">
+    <div>
+      <p>A <b>snap</b> is help in the moment. The stroke straightens, closes, or lands exactly on the wall. It leaves nothing behind.</p>
+      <p>A <b>tie</b> is a dependency: this form will change when that thing changes. Biskiq only makes a tie from a gesture that clearly says so, such as tracing a seam, looping around an object, or pulling a height onto the ceiling. Contact that might be incidental, like a stroke ending on the far wall, becomes a <b>proposed tie</b>. It shows as a hollow knot, and one tap ties it.</p>
+      <p>Every tie has a name in plain words, a knot on the form, a line in the form's card, and an Untie. The <b>Relations</b> view (R, or hold Alt) dims the room and draws a labelled thread from each form to whatever it depends on. Grab a wall to move it, and the threads to everything tied to that wall light up before you move anything.</p>
+      <div class="knots">
+        <div><i class="k"></i><span><b>Tied.</b> Follows the floor seam. Fits the sculpture, 12 cm margin.</span></div>
+        <div><i class="k p"></i><span><b>Proposed.</b> Touched the right wall, not tied. Tap to tie.</span></div>
+        <div><i class="k s"></i><span><b>Slack.</b> Its target is gone. It keeps its shape and asks.</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel"><svg viewBox="0 0 460 330" aria-label="Before and after widening the room: an untied bench stays, a tied bench grows">
+        <text x="24" y="34" class="t">Widen the room by 80 cm</text>
+        <text x="24" y="76">Only touched the right wall</text>
+        <path class="ctx" d="M24 90 H 330 M330 90 V 140"/><path class="ctx" d="M410 90 V 140" stroke="#D6B676"/>
+        <rect x="24" y="96" width="306" height="22" class="solid"/>
+        <circle cx="330" cy="107" r="6" fill="none" stroke="#fff" stroke-width="2"/>
+        <text x="24" y="146">“Bench stayed as it was. It touched the right wall but isn’t tied to it.”</text>
+        <text x="24" y="206">Tied to the right corner</text>
+        <path class="ctx" d="M24 220 H 410 M410 220 V 270"/>
+        <rect x="24" y="226" width="386" height="22" class="solid"/>
+        <circle cx="410" cy="237" r="6" fill="#fff"/>
+        <path class="ink thin" d="M330 258 H 404 M398 253 l6 5 -6 5"/>
+        <text x="24" y="292">“Bench grew 80 cm to keep following the floor seam.”</text>
+      </svg></div>
+      <p class="muted" style="font-size:14.5px;margin-top:10px">From the bench journey. The notes are the studio’s own words.</p>
+    </div>
+  </div>
+</section>
+
+<section id="story">
+  <div class="eyebrow">Understanding a form later</div>
+  <h2>The form tells its own story</h2>
+  <div class="col"><p>Select a form and its recipe reads as a sentence. Every bold word is a control. Something switched off stays in the sentence, struck through, so you can bring it back. There is no history tree, because the order you did things in doesn't matter. What matters is what the form is and what it depends on.</p></div>
+  <div class="sentence"><span class="nm">Pedestal</span>
+    A mass that <span class="w">fits the sculpture</span> with a <span class="w">12 cm</span> margin, <span class="w">0.95 m tall</span>, standing on the floor. Its profile is <span class="w">waisted</span>. Tall Figure sits on it.</div>
+  <div class="anno">
+    <div><b>Ties are words</b>“fits the sculpture” opens the tie: why it exists, and Untie. Untying bakes the plan where it is.</div>
+    <div><b>Numbers on request</b>“12 cm” and “0.95 m” open a number field. Height can also be a tie: “reaching the ceiling”.</div>
+    <div><b>Profiles are named</b>“waisted” opens the profile lens, where you see whether the profile is shared and can draw over it.</div>
+  </div>
+  <div class="sentence" style="margin-top:22px;font-size:17px"><span class="nm" style="font-size:24px">Bench</span>
+    A run that <span class="w">follows the floor seam</span> for 7.06 m, from the left wall, 1.86 m from the corner, to <span class="w gold">the right corner</span>. Its section <span class="w off">seat &amp; back</span> is switched off.</div>
+</section>
+
+<section id="revision">
+  <div class="eyebrow">Revision without loss</div>
+  <h2>Nothing changes silently</h2>
+  <div class="pair">
+    <div>
+      <h3 style="margin-top:0">Indirect change is always narrated</h3>
+      <p>When you change the room, or change a form that others depend on, every form that responded says how and why. Forms that <em>didn’t</em> respond say why too, if they touched what moved. While you drag a wall or the ceiling, white outlines show where things were.</p>
+      <h3>Slack, never redirect</h3>
+      <p>If a tie’s target disappears, the form keeps its last shape. Its knot turns to dashed gold and its card asks what to do: keep it as it is, remove it, or follow something you choose. It never jumps to the nearest similar thing.</p>
+      <h3>Switched off, not deleted</h3>
+      <p>A shaped profile can be switched off and on. Undo covers everything. The drawings are always still there to edit.</p>
+    </div>
+    <div style="display:grid;gap:12px">
+      <div class="note"><strong>Niche reshaped · 1 form responded</strong><ul><li><i></i><span>Frame grew 47 cm to keep following Niche.</span></li></ul></div>
+      <div class="note"><strong>Sculpture swapped for Wide Vessel · 1 form responded</strong><ul><li><i></i><span>Pedestal refit to Wide Vessel: 42 cm wider, same 12 cm margin.</span></li></ul></div>
+      <div class="note"><strong>Ceiling at 3.60 m · 1 form responded</strong><ul><li><i></i><span>Cornice moved up 60 cm to stay on the ceiling seam.</span></li></ul></div>
+      <div class="note"><strong>Niche removed · 1 form responded</strong><ul><li class="slack"><i></i><span>Frame kept its shape. The thing it followed is gone, so its tie is slack. Decide in its card.</span></li></ul></div>
+      <p class="muted" style="font-size:14px;margin:0">All four notes were produced by the prototype during testing.</p>
+    </div>
+  </div>
+</section>
+
+<section id="depth">
+  <div class="eyebrow">Spontaneous to sustained</div>
+  <h2>Fifteen minutes, then ten hours</h2>
+  <div class="col"><p>There is no beginner mode and no expert mode. The gestures you learn in the first minute are the ones you use at hour ten, just more precisely. Depth comes from more relationships and more refined drawings, never from a second interface.</p></div>
+  <div class="depth">
+    <div><b>Minute 1</b><p>Loop, pull. A pedestal that fits the sculpture, at eye level.</p></div>
+    <div><b>Minute 15</b><p>A bench along the wall and around the corner, a niche with a frame, a cornice. Tidy turns strokes into clean lines and curves.</p></div>
+    <div><b>Hour 1</b><p>Draw over sides and sections. Swap the sculpture, widen the room, read the notes. Tie what should follow; leave the rest alone.</p></div>
+    <div><b>Hour 3</b><p>Drag control points, type exact values, toggle corners and curves. Share one moulding across frame and cornice.</p></div>
+    <div><b>Hour 10</b><p>A small library of the room’s own profiles. Decide which forms follow the architecture and which hold still, and edit each profile once for every form that uses it.</p></div>
+  </div>
+  <h3 style="margin-top:34px">The precision ladder</h3>
+  <div class="col"><p class="muted"><b>Loose</b> keeps the character of the hand. <b>Tidy</b>, the default, finds corners, straightens near-horizontal and near-vertical lines, recognises circles and closes loops, and every result stays editable. <b>Exact</b> is a number typed into the sentence or while pulling, and the unit appears with it: a real 10 cm scale bar in the profile lens, metres in the room.</p></div>
+</section>
+
+<section id="native">
+  <div class="eyebrow">Native depth, assets welcome</div>
+  <h2>Native for what belongs to the place</h2>
+  <div class="pair">
+    <div>
+      <p>Native forms in Biskiq are the ones that only make sense in their place: pedestals, plinths, niches and openings, mouldings and frames, built-in benches, shelves, rails and reliefs. That is where context-aware drawing pays off.</p>
+      <p>Sculpture, complex furniture and organic objects should arrive as assets, imported or generated. In this model they become <em>context</em>. You can fit to them, frame them and rest them on things, and the native forms keep answering to them when they are swapped or moved. In the prototype the sculpture is a stand-in asset with three variants of different sizes.</p>
+      <p>AI fits as a proposer: it can suggest a drawing, a profile or an asset. It never makes opaque edits to native forms, because anything it proposes arrives as drawings and ties the creator can read and change.</p>
+    </div>
+    <div class="panel"><svg viewBox="0 0 420 260" aria-label="Boundary between native forms and assets">
+      <text x="24" y="36" class="t">Native: belongs to the place</text>
+      <text x="24" y="62">pedestal · plinth · niche · frame · cornice</text>
+      <text x="24" y="82">bench · shelf · rail · relief · opening</text>
+      <path class="ctx" d="M24 110 H 396"/>
+      <text x="24" y="146" class="t">Assets: arrive whole</text>
+      <text x="24" y="172">sculpture · chair · lamp · plant · organic forms</text>
+      <path class="ink thin" d="M70 196 C 120 230, 300 230, 350 196"/>
+      <text x="24" y="244">They meet through ties: fits · frames · rests on</text>
+    </svg></div>
+  </div>
+</section>
+
+<section id="interface">
+  <div class="eyebrow">Interface</div>
+  <h2>The canvas leads; colour carries meaning</h2>
+  <div class="col"><p>The room fills the window. A forest-green bar holds the instruments: Look, Draw, Edit the space, and Tidy or Loose. Cards appear only when there is something to read: the recipe of the selected form, the profile lens, the notes after a change. Editing the space is a separate mode on purpose, so changing the room never feels like editing your work.</p></div>
+  <div class="swatches">
+    <div class="sw"><i style="background:#FFFFFF;border-bottom:1px solid var(--line)"></i><div><b>White</b>Marks you made: ink, traces, handles, knots, threads.</div></div>
+    <div class="sw"><i style="background:#1F3A2C"></i><div><b>Forest</b>Instruments the tool offers: the bar, the pen-tip label, the lens.</div></div>
+    <div class="sw"><i style="background:#B0894A"></i><div><b>Gold</b>What you are holding: selection, ties to the ceiling or corner, slack.</div></div>
+    <div class="sw"><i style="background:#EEE7DA"></i><div><b>Ivory and neutrals</b>The world: the room, materials, assets.</div></div>
+  </div>
+</section>
+
+<section id="findings">
+  <div class="eyebrow">Honest account</div>
+  <h2>What building it taught us</h2>
+  <div class="col"><p>Contextual ties and the plan × profile representation went in as hypotheses. These findings come from building the prototype and deliberately pushing awkward cases through it.</p></div>
+  <div style="margin-top:14px">
+    <div class="finding"><div class="tag held">Held</div><div><h4>The context can read a stroke</h4><p>Four contexts cover the three journeys without a tool palette: along a seam, around an object, closed on a wall, and open on a wall. The label at the pen tip turned out to be essential. Without it the interpretation feels like magic, and magic is hard to trust.</p></div></div>
+    <div class="finding"><div class="tag changed">Changed</div><div><h4>Touching the far wall no longer ties</h4><p>The first version tied a bench to the right wall whenever the stroke ended there. Following the research guidance, that contact is now only proposed. The result is more instructive: when the room widens, the bench stays put and says why, and the creator decides. Narrating non-responses was something we hadn't planned. It turned out to matter as much as narrating responses.</p></div></div>
+    <div class="finding"><div class="tag held">Held</div><div><h4>One kernel, many forms</h4><p>The pedestal, bench, frame, cornice and shelf all come from one profiled sweep. A moulding drawn for the frame works unchanged as the cornice, because sections are defined against context lines rather than world axes.</p></div></div>
+    <div class="finding"><div class="tag broke">Broke</div><div><h4>Things plan × profile can’t say</h4><p>A bench with an armrest at only one end. A pedestal whose front differs from its side. A deep inset on an L-shaped plan, where the offset folds over itself; the prototype clamps it. Each needs a small, specific extension: end treatments for runs, per-side profiles for masses, and a safe polygon offset. None of them needs a general modeller, and the proposal is to add them one at a time, only when real creators ask.</p></div></div>
+    <div class="finding"><div class="tag changed">Changed</div><div><h4>Drawing sections in 3D is unreliable; the lens fixed it</h4><p>Drawing over a pedestal’s side in perspective works, because the side faces you. Drawing over the section of a frame doesn't: from most views that plane is edge-on. So sections open in a profile lens, a 2D card that shows the real context lines (wall, floor, niche edge) and a 10 cm scale bar. It became the main place for precision and for sharing profiles.</p></div></div>
+    <div class="finding"><div class="tag changed">Changed</div><div><h4>Tidy has to respect the object’s scale</h4><p>A 6 cm waist on a 90 cm pedestal side was being straightened away, because the straight-line test compared lengths. It now measures absolute deviation, so gentle intent survives. Tidy needs tuning with real hands on real objects.</p></div></div>
+    <div class="finding"><div class="tag broke">Broke</div><div><h4>Ties don’t know about collisions</h4><p>A pedestal that fits the sculpture follows it anywhere, including into a wall. The prototype says so in a note instead of quietly clamping. A niche cannot leave its wall; it stops at the edge, and the note says that too. Deciding how ties should negotiate space is open work.</p></div></div>
+    <div class="finding"><div class="tag changed">Changed</div><div><h4>A tablet has no hover</h4><p>The side trace you draw over first appeared on hover. With iPad as the smallest target, the selected form now keeps its trace visible in Draw mode. One finger draws; two fingers look around.</p></div></div>
+    <div class="finding"><div class="tag held">Held</div><div><h4>Gravity is not a tie</h4><p>Assets rest on whatever is under them. Keeping that physical behaviour out of the tie list keeps the list short and meaningful. It now holds only the dependencies a creator chose.</p></div></div>
+  </div>
+  <h3 style="margin-top:34px">Not built, deliberately</h3>
+  <div class="col"><p class="muted">Locks and explicit conflict choices, such as a shelf locked at 1.80 m in a widening room. Variations kept side by side. Lofting between two profiles. Folded sheet forms. All of them fit the model, but none of them was needed to test the core claim.</p></div>
+</section>
+
+<section id="out">
+  <div class="eyebrow">Scope</div>
+  <h2>What we left out, and why</h2>
+  <div class="col">
+    <ul class="plain">
+      <li><b>Free-space drawing and arbitrary workplanes.</b> Every surface you draw on comes from the place. The only other plane is the elevation through a form, and it appears only while you draw over that form.</li>
+      <li><b>Unrestricted booleans.</b> The only subtraction is pushing a plan into its host.</li>
+      <li><b>Vertex, edge and face editing; B-rep; sculpting.</b> You edit drawings, never geometry.</li>
+      <li><b>Feature-history trees and node graphs.</b> The recipe sentence and the Relations view show the same dependencies in place, in words.</li>
+      <li><b>Signed-distance or organic surface modelling.</b> An earlier draft carved forms from two views. It went once the research marked organic forms as asset territory.</li>
+      <li><b>Fabrication-grade accuracy.</b> Dimensions are true and editable, but nothing here is meant for manufacture.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="engineering">
+  <div class="eyebrow">For engineering</div>
+  <h2>Why it doesn’t break</h2>
+  <div class="col">
+    <ul class="plain">
+      <li><b>Semantic references.</b> Recipes refer to “the floor seam”, “the right wall” or “Niche’s edge”, never to face indices, so they avoid the topological naming problem that breaks history-based CAD.</li>
+      <li><b>Declarative recipes, re-made every time.</b> Evaluation runs in a fixed order: the space, then recesses, then masses, then where assets rest, then runs. Meshes are disposable. Undo is a snapshot of the recipe JSON.</li>
+      <li><b>One kernel.</b> A profiled sweep along a planar path with mitred corners, plus flat caps. Creases are kept from the drawings’ sharp points.</li>
+      <li><b>Change diffing.</b> Metrics per form (length, height, centre, fitted size) are captured before a change and compared after. The notes are written from those differences and the ties that explain them.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="research">
+  <div class="eyebrow">Next</div>
+  <h2>Risks and how to test them</h2>
+  <div class="table"><table>
+    <thead><tr><th>Risk</th><th>What could go wrong</th><th>How to find out</th></tr></thead>
+    <tbody>
+      <tr><td>Seam false positives</td><td>A stroke drawn near a wall is read as “follow the seam” when it wasn’t meant to be</td><td>Free-drawing sessions on iPad; count corrections and undos per interpretation</td></tr>
+      <tr><td>Discovering draw-over</td><td>People don’t realise they can redraw an edge</td><td>First-use test with no guide: time until the first reshape</td></tr>
+      <tr><td>Tie inference</td><td>Proposed ties ignored, or tied ones surprising</td><td>After a room change, ask people to predict which forms will move before they look</td></tr>
+      <tr><td>Notes as noise</td><td>In a busy room, narration becomes something to dismiss</td><td>Long sessions: are notes read, and is Show used?</td></tr>
+      <tr><td>Representation limits</td><td>Creators hit what plan × profile can’t say</td><td>Collect requests and rank the small extensions (end treatments, per-side profiles) by demand</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="try">
+  <div class="eyebrow">Try it</div>
+  <h2>Three journeys in the studio</h2>
+  <div class="col"><p class="muted">Each step has <b>Show me</b>, which drives the real drawing pipeline with a synthetic pen, and a line on how to do it yourself. Use a desktop browser or an iPad. Right-drag or two fingers to look around.</p></div>
+  <div class="try">
+    <a href="studio.html#pedestal"><b>A pedestal for a sculpture</b><span>Fit, pull, draw over the side, swap the sculpture, move it.</span></a>
+    <a href="studio.html#bench"><b>A bench that follows the wall</b><span>Trace the seam around a corner, shape the section, widen the room, then tie the end.</span></a>
+    <a href="studio.html#niche"><b>A niche and its frame</b><span>Push in an arch, frame its edge, make it pointed, remove it and see the slack.</span></a>
+  </div>
+  <p style="margin-top:18px"><a class="open ghost" href="studio.html#gallery">Open the finished gallery</a></p>
+</section>
+
+<footer>Living Drawings · an independent interaction proposal for Biskiq. Written from the brief and the research notes shared during the commission. The prototype is a single HTML file using Three.js.</footer>
+</div>
+</body>
+</html>
