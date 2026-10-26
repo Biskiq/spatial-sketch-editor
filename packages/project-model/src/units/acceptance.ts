@@ -211,6 +211,16 @@ function lockChanged(before: ProjectEnvelope, after: ProjectEnvelope): boolean {
  * installs the returned source in one step. A rejection leaves the previously
  * accepted envelope, history and resource bytes untouched.
  */
+/**
+ * Admission answers keyed by the admitted *envelope object*.
+ *
+ * Only an envelope that `isDeeplyFrozenPlainJson` accepts can be cached, so the
+ * key cannot change after the answer is stored (that predicate rejects accessors
+ * and exotic prototypes, so a frozen view over mutable state cannot enter). The
+ * answer's `source` is the normalized envelope, which is frozen here too; a
+ * cache hit therefore returns the same value a second admission would compute —
+ * including the canonical JSON and content id Undo/Redo compare against.
+ */
 const ADMITTED_BY_FROZEN_ENVELOPE = new WeakMap<object, SourceAdmission<ProjectEnvelope>>();
 
 export function createUnitAcceptanceAdapter(

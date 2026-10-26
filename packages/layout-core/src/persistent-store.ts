@@ -13,6 +13,12 @@ export type MapNode<K, V, A> = {
 type Augment<K, V, A> = (key: K, value: V, left: A | undefined, right: A | undefined) => A;
 const height = (node: { height: number } | null): number => node?.height ?? 0;
 
+/**
+ * Immutable nodes behind a **mutable handle**: `set`/`delete` replace `root` on
+ * `this`. A handle that two owners can see must be `fork`ed first (a fork shares
+ * the current root), or one owner's write becomes visible to the other. Vectors
+ * need no fork — `PersistentVector.set` returns a new handle when the root moves.
+ */
 export class PersistentMap<K extends string | number, V, A = undefined> implements ReadonlyMap<K, V> {
 	private constructor(public root: MapNode<K, V, A> | null, private readonly augment: Augment<K, V, A>) { countWork('storage:map-handle-allocated'); }
 	static from<K extends string | number, V, A = undefined>(
@@ -136,7 +142,13 @@ export class PersistentVector<T, A = undefined> {
 		return new PersistentVector(build(0, items.length), reduce);
 	}
 	/** A proven immutable flat array is already a stable root. Split its ranges
-	 * lazily on updates; never build or shallow-copy an N/page-size directory. */
+	 * lazily on updates; never build or shallow-copy an N/page-size directory.
+	 *
+	 * A borrowed root leaves `summary` undefined, so the only leaves a `set` can
+	 * split are summary-less ones, and the split children inherit that. This is
+	 * what keeps a split from inventing `undefined as A` under a real augment:
+	 * do not hand a frozen array to a summarized vector without teaching `set`
+	 * to derive the children's summaries. */
 	static fromFrozen<T>(items: readonly T[]): PersistentVector<T> {
 		if (!Object.isFrozen(items)) return PersistentVector.from(items);
 		countWork('storage:borrowed-array-root');

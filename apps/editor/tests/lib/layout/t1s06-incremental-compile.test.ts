@@ -21,9 +21,19 @@ import { describe, expect, it } from 'vitest';
 import {
 	compileWallFirstLayoutGeometry,
 	createLayoutCompileSession,
+	cowCreateObject,
+	cowDeleteObject,
+	cowMoveJunctions,
+	cowMoveRigidWall,
+	cowSetWallScalar,
+	cowUpdateObject,
+	cowUpdateOpening,
+	ensureLayoutWorldIndex,
+	linkClonedCowCandidate,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
+import { immutableF4Data } from '@portfolio/project-model';
 
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
@@ -300,6 +310,77 @@ describe('T1.P02.S06 H1 — incremental canonical compile', () => {
 		expect(session.stats().cold).toBe(false);
 		expect(session.stats().objectsReused).toBe(document.objects.length);
 		expect(JSON.stringify(second.geometry)).toBe(JSON.stringify(first.geometry));
+	});
+
+	it('equals a cold compile across mixed COW deltas, membership changes and historical restores', () => {
+		// The sweep above proves the canonical compiler's retention; this proves the
+		// *persistent-root* path the planners actually take. Each candidate is a
+		// copy-on-write delta, captured (frozen) exactly as F4 hands it to the Stage,
+		// so the session alternates between delta compiles and snapshot restores —
+		// including across an Object membership change and a branch from an old root.
+		let state = 97 >>> 0;
+		const random = (): number => {
+			state = (state + 0x6d2b79f5) >>> 0;
+			let t = state;
+			t = Math.imul(t ^ (t >>> 15), t | 1);
+			t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+			return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+		};
+		const pick = <T>(items: readonly T[]): T => items[Math.floor(random() * items.length)]!;
+
+		const base = immutableF4Data(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+		ensureLayoutWorldIndex(base);
+		const session = createLayoutCompileSession();
+		let document: LayoutDocumentWallFirst = base;
+		session.compile(document);
+		const history: LayoutDocumentWallFirst[] = [document];
+
+		for (let step = 0; step < 24; step += 1) {
+			const world = ensureLayoutWorldIndex(document);
+			const roll = random();
+			let candidate: LayoutDocumentWallFirst;
+			if (roll < 0.3) {
+				const junction = pick(document.junctions);
+				const incident = document.walls.filter((wall) => wall.startJunctionId === junction.id || wall.endJunctionId === junction.id);
+				candidate = cowMoveJunctions(
+					document,
+					new Map([[junction.id, [junction.point[0] + (random() - 0.5) * 0.05, junction.point[1] + (random() - 0.5) * 0.05] as LayoutVec2]]),
+					incident.map((wall) => wall.id),
+					world
+				);
+			} else if (roll < 0.5) {
+				const wall = pick(document.walls);
+				candidate = cowSetWallScalar(document, wall.id, { thickness: wall.thickness + (random() - 0.5) * 0.02 }, world);
+			} else if (roll < 0.62) {
+				const wall = pick(document.walls);
+				candidate = cowMoveRigidWall(document, wall.id, [(random() - 0.5) * 0.03, (random() - 0.5) * 0.03], [wall.startJunctionId!, wall.endJunctionId!], [wall.id], world);
+			} else if (roll < 0.74 && document.openings.length > 0) {
+				const opening = pick(document.openings);
+				candidate = cowUpdateOpening(document, opening.id, { ...opening, offset: Math.max(0.01, opening.offset + (random() - 0.5) * 0.05) }, world);
+			} else if (roll < 0.86) {
+				candidate = cowCreateObject(document, {
+					id: `object-delta-${step}`, kind: 'box', position: [random() * 3, 0.25, random() * 3], rotation: [0, random(), 0], dimensions: [0.3, 0.4, 0.5]
+				});
+			} else if (document.objects.length > 8) {
+				candidate = cowDeleteObject(document, pick(document.objects).id);
+			} else {
+				const object = pick(document.objects);
+				candidate = cowUpdateObject(document, object.id, (current) => ({ ...current, rotation: [0, random() * 3, 0] }), world);
+			}
+			const captured = immutableF4Data(candidate);
+			linkClonedCowCandidate(candidate, captured);
+			const compiled = session.compile(captured);
+			expect(JSON.stringify(compiled.geometry), `step ${step} geometry`).toBe(exactCompiled(captured));
+			expect(JSON.stringify(compiled.issues), `step ${step} issues`).toBe(issuesOf(captured));
+			document = captured;
+			history.push(document);
+			if (step % 7 === 6) {
+				const root = history[Math.floor(random() * history.length)]!;
+				const restored = session.compile(root);
+				expect(JSON.stringify(restored.geometry), `step ${step} restore`).toBe(exactCompiled(root));
+				document = root;
+			}
+		}
 	});
 
 	it('a reset session is cold again and still equal', () => {

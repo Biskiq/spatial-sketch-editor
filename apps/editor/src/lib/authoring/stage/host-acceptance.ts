@@ -207,6 +207,20 @@ export function createStageAcceptanceHost(options: {
 		string,
 		{ readonly domain: StageDomainRead; readonly canonicalJson: string }
 	>();
+	/**
+	 * What this cache retains, precisely: one `StageDomainRead` per remembered
+	 * content id — the compiled Layout graph, the resolved runtime Scene, the Room
+	 * registry and the reference context — which is what lets Undo/Redo reinstall a
+	 * historical state without a compile or a digest. `canonicalJson` is the same
+	 * immutable string the F4 history state for that revision already holds, so the
+	 * marginal cost is the domain, not the bytes.
+	 *
+	 * The bound is a *count*, not a byte budget: 52 is a history-cache window, and
+	 * a history deeper than that recomputes the older restores (correct, slower).
+	 * A domain's geometry shares its entities with its neighbours through the
+	 * compile session, so entries are not 52 independent documents — but this is
+	 * unmeasured, and it is the reason the count is not raised casually.
+	 */
 	const MAX_ADMITTED_HISTORY_CACHE = 52;
 	const rememberAdmittedSnapshot = (snap: StageReadSnapshot): void => {
 		const key = `${snap.acceptedRevision.projectId}\0${snap.sourceContentId}`;

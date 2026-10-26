@@ -873,7 +873,6 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 	}
 
 	const changedOpeningHostWallIds = new Set<string>();
-	const nextOpeningsToApply: Array<{ index: number; opening: LayoutWallOpening }> = [];
 	for (let i = 0; i < dirty.changedOpeningIds.length; i += 1) {
 		const opId = dirty.changedOpeningIds[i]!;
 		const opIdx = world.openingOrderById.get(opId);
@@ -884,8 +883,9 @@ export function tryCompileWallFirstLayoutGeometryDelta(
 		if (nextOp.wallId !== prevOp.wallId) return null;
 		reuse.counters.signatureVisits += 1;
 		if (!sameAuthored(prevOp, nextOp)) {
+			// The source views below read the *candidate* document, so the updated
+			// Opening is picked up there; only its host Wall needs scheduling.
 			changedOpeningHostWallIds.add(nextOp.wallId);
-			nextOpeningsToApply.push({ index: opIdx, opening: nextOp });
 		}
 	}
 

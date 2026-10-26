@@ -416,6 +416,13 @@ export function deriveIndexedWallRole(
  * Ensure `document` has a certified-clean `DocumentWorldIndex`, returning
  * `undefined` if `document` fails any canonical baseline invariant (so callers
  * fall back to the exact cold gate).
+ *
+ * Invalidation is by **collection identity** (`matchesArrayRefs`), not by
+ * content: an in-place write to an already-indexed array is invisible here, and
+ * a cached index would then answer from the old values. That is sound only
+ * because authored documents are immutable once indexed — COW candidates
+ * replace a collection root through `withLayoutVectors`, and a Svelte `$state`
+ * proxy is copied by `PersistentVector.from` (it is never frozen), not indexed.
  */
 export function ensureLayoutWorldIndex(
 	document: LayoutDocumentWallFirst

@@ -26,6 +26,17 @@ export function layoutItem<K extends LayoutCollectionKey>(document: LayoutDocume
 	const ref = layoutCollectionRef(document, key);
 	return ref instanceof PersistentVector ? ref.get(index) : ref[index];
 }
+/**
+ * Persistent root for one authored collection.
+ *
+ * Preconditions, because the root is cached by array identity:
+ * - The array must not be mutated in place after its root is cached. A frozen
+ *   array is borrowed (`fromFrozen`) and cannot be; an unfrozen one is copied
+ *   once, and later in-place writes to it would not reach the cached copy.
+ * - Only `withLayoutVectors` writes a collection, and it writes through the
+ *   property setter (which replaces both the flat array and the root), so no
+ *   current writer mutates a cached array.
+ */
 export function layoutVector<K extends LayoutCollectionKey>(document: LayoutDocumentWallFirst, key: K): PersistentVector<Item<K>> {
 	const ref = layoutCollectionRef(document, key);
 	if (ref instanceof PersistentVector) return ref;

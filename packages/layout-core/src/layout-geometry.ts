@@ -1366,10 +1366,17 @@ export function createLayoutCompileSession(): LayoutCompileSession {
 			releasedUnits = 0;
 		},
 		retained: () => {
+			// "Retained" means units the store can serve, not values that compiled
+			// cleanly. A delta may retain a unit whose value is invalid — an
+			// `object_invalid` descriptor has no compiled object, and the map branch
+			// below still counts its unit — so the world branch reports slot and
+			// authored counts. Counting `objectUnit.compiledObjects` here would make
+			// the same document report one fewer object only because the last compile
+			// went through a delta.
 			const world = store.world as import('./layout-geometry-delta').RetainedCompileWorld | null;
 			return world ? {
-				walls: world.sortedWalls.length, junctions: world.sortedJunctions.length,
-				rooms: world.roomSlots.summary.rooms, objects: world.objectUnit.compiledObjects.length
+				walls: world.wallSlots.length, junctions: world.sortedJunctions.length,
+				rooms: world.roomSlots.length, objects: layoutLength(world.document, 'objects')
 			} : { walls: store.walls.size, junctions: store.junctions.size, rooms: store.roomSources.size, objects: store.objects.size };
 		}
 	};

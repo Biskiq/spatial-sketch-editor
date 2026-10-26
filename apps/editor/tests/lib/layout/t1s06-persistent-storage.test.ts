@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PersistentMap, PersistentVector } from '../../../../../packages/layout-core/src/persistent-store';
 import { freezeF4Data, immutableF4Data } from '@portfolio/project-model';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
-import { setWorkObserver, cowSetWallScalar, recordPreparedCowCandidate, consumePreparedCowCandidate, rememberImmutableJsonNode, createLayoutCompileSession, withLayoutCompileSession, planRigidWallMove, linkClonedCowCandidate } from '@portfolio/layout-core';
+import { setWorkObserver, cowCreateObject, cowSetWallScalar, recordPreparedCowCandidate, consumePreparedCowCandidate, rememberImmutableJsonNode, createLayoutCompileSession, withLayoutCompileSession, planRigidWallMove, linkClonedCowCandidate } from '@portfolio/layout-core';
 
 function counted<T>(run: () => T) {
  const counts = new Map<string, number>();
@@ -91,6 +91,24 @@ describe('persistent storage roots', () => {
   for (let i = 1; i < 17; i += 1) expect(consumePreparedCowCandidate(`bounded-${i}`, { baseline: first, key: 'intent' })).toBe(a);
  });
 
+ it('counts a retained unit whose value did not compile, in both store shapes', () => {
+  // `retained()` answers "units the store can serve", not "values that compiled".
+  // The world branch used to count `objectUnit.compiledObjects`, so a delta that
+  // introduced an `object_invalid` descriptor made the same document report one
+  // fewer object than the map branch — an F13 attribution that depended on which
+  // path served the last compile.
+  const baseline = immutableF4Data(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
+  const session = createLayoutCompileSession();
+  session.compile(baseline);
+  expect(session.retained().objects).toBe(baseline.objects.length);
+  const invalid = cowCreateObject(baseline, {
+   id: 'object-invalid', kind: 'box', position: [0, 0, 0], rotation: [0, 0, 0], dimensions: [0, 0.5, 0.5]
+  });
+  const compiled = session.compile(invalid);
+  expect(compiled.issues.map((issue) => issue.code)).toContain('object_invalid');
+  expect(compiled.geometry.objects).toHaveLength(baseline.objects.length);
+  expect(session.retained().objects).toBe(baseline.objects.length + 1);
+ });
  it('does not seed full mutable arrays while handing a clone to its owning capture boundary', () => {
   const baseline = immutableF4Data(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
   const session = createLayoutCompileSession(); session.compile(baseline);
