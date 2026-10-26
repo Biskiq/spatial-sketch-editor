@@ -138,7 +138,7 @@ The original study's sections stay authoritative as research input for what they
 | §8 architecture direction | Confirmed. Identity gets a concrete policy in [geometry §5](./geometry-identity-and-performance.md#5-identity-and-correspondence) |
 | §9 technology | Extended with matched, reproducible probes, a measurement of the production wall path, and a licence-checked operation matrix |
 | §10 conflicts | A resolution path for circle-on-wall (D5) |
-| §11 experiments | Refined by proofs P1–P11 |
+| §11 experiments | Refined by twelve proposed proofs, P1–P12 |
 | §12 adoption order | Re-weighted into capability tranches A–G |
 | §13 drift; §14 open questions | Four drift risks added; several open questions narrowed |
 
