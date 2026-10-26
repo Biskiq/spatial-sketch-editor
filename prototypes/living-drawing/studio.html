@@ -1,0 +1,2143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Living Drawings Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout: the room fills the window; quiet cards float at the edges and step aside for the work. */
+:root{
+  --bg:#ECE6DB;          /* the studio around the room */
+  --paper:#FAF7F1;       /* cards */
+  --paper-2:#F2EDE4;
+  --line:#DCD3C3;
+  --ink:#1D2A22;         /* text */
+  --ink-2:#4F5A4F;
+  --mute:#857F70;
+  --forest:#1F3A2C;      /* instruments */
+  --forest-2:#2E5541;
+  --forest-ink:#F3EEE5;
+  --forest-tint:rgba(31,58,44,.08);
+  --gold:#A8833F;        /* what you are holding */
+  --gold-soft:#EFE3C8;
+  --mark:#FFFFFF;        /* marks you made */
+  --veil:rgba(236,230,219,.55);
+  --shadow:0 1px 2px rgba(31,58,44,.07),0 10px 28px rgba(31,58,44,.09);
+  --f-ui:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-display:"Instrument Serif","Iowan Old Style",Georgia,serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#151B17;--paper:#1D241F;--paper-2:#232B25;--line:#34413A;--ink:#ECE6DA;--ink-2:#C2BCAE;--mute:#8F8A7D;
+  --forest:#284B3A;--forest-2:#3F6E57;--forest-ink:#F3EEE5;--forest-tint:rgba(156,194,169,.10);
+  --gold:#D3AF6D;--gold-soft:#4A3E27;--veil:rgba(21,27,23,.55);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#151B17;--paper:#1D241F;--paper-2:#232B25;--line:#34413A;--ink:#ECE6DA;--ink-2:#C2BCAE;--mute:#8F8A7D;
+  --forest:#284B3A;--forest-2:#3F6E57;--forest-ink:#F3EEE5;--forest-tint:rgba(156,194,169,.10);
+  --gold:#D3AF6D;--gold-soft:#4A3E27;--veil:rgba(21,27,23,.55);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-ui);overflow:hidden;-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit}
+body{-webkit-user-select:none;user-select:none}
+input,[contenteditable]{-webkit-user-select:text;user-select:text}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+body.draw #stage canvas{cursor:crosshair}
+body.space #stage canvas{cursor:default}
+#veil{position:fixed;inset:0;background:var(--veil);pointer-events:none;opacity:0;transition:opacity .25s}
+body.lens #veil{opacity:1}
+svg#overlay{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#marks{position:fixed;inset:0;pointer-events:none}
+
+/* ---- marks: white = what you made ---- */
+.ink{fill:none;stroke:var(--mark);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 1.5px rgba(31,58,44,.55))}
+.thread{fill:none;stroke:var(--mark);stroke-width:1.4;filter:drop-shadow(0 0 1.2px rgba(31,58,44,.7))}
+.thread.proposed{stroke-dasharray:4 4}
+.thread.slack{stroke:var(--gold);stroke-dasharray:5 4}
+.thread.hot{stroke-width:2.2}
+.thread-label{position:absolute;transform:translate(-50%,-50%);font-size:11.5px;font-weight:500;background:var(--forest);color:var(--forest-ink);padding:2px 8px;border-radius:999px;white-space:nowrap;pointer-events:none}
+.thread-label.proposed{background:var(--paper);color:var(--forest);box-shadow:inset 0 0 0 1px var(--forest-2)}
+.thread-label.slack{background:var(--gold-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--gold)}
+.knot{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--mark);border:0;padding:0;
+  box-shadow:0 0 0 2px var(--forest-2),0 1px 4px rgba(0,0,0,.25);pointer-events:auto;cursor:pointer}
+.knot.proposed{background:transparent;box-shadow:0 0 0 2px var(--mark),0 0 0 3.5px rgba(31,58,44,.55)}
+.knot.slack{background:transparent;box-shadow:none;border:2px dashed var(--gold)}
+.knot:hover{transform:scale(1.2)}
+.tip{position:absolute;background:var(--forest);color:var(--forest-ink);font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;white-space:nowrap;transform:translate(16px,14px);pointer-events:none;box-shadow:var(--shadow)}
+.tip small{opacity:.7;font-weight:400;margin-left:6px}
+.pen{position:absolute;width:18px;height:18px;margin:-2px 0 0 -2px;pointer-events:none;opacity:0;transition:opacity .2s}
+.pen.on{opacity:1}
+.handle{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--mark);border:1.5px solid var(--forest);
+  pointer-events:auto;cursor:ns-resize;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.18);touch-action:none;padding:0}
+.handle svg{width:14px;height:14px;color:var(--forest)}
+.handle .val{position:absolute;left:38px;top:50%;transform:translateY(-50%);background:var(--paper);color:var(--ink);border:1px solid var(--line);
+  font-size:12px;font-variant-numeric:tabular-nums;padding:2px 7px;border-radius:6px;white-space:nowrap}
+.tick{position:absolute;transform:translate(10px,-50%);font-size:11px;color:var(--forest);background:var(--paper);border:1px solid var(--line);padding:0 6px;border-radius:5px;white-space:nowrap;pointer-events:none}
+.tick::before{content:"";position:absolute;left:-12px;top:50%;width:9px;border-top:1.5px solid var(--mark);filter:drop-shadow(0 0 1px rgba(31,58,44,.7))}
+.tick.hit{background:var(--forest);color:var(--forest-ink);border-color:var(--forest)}
+.grip{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:7px;background:var(--paper);border:1.5px solid var(--ink-2);pointer-events:auto;
+  display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.18);touch-action:none;padding:0}
+.grip svg{width:14px;height:14px;color:var(--ink-2)}
+.grip.x{cursor:ew-resize}.grip.y{cursor:ns-resize}.grip.xy{cursor:move}
+.grip-label{position:absolute;transform:translate(18px,-50%);font-size:11.5px;color:var(--ink);background:var(--paper);border:1px solid var(--line);padding:1px 7px;border-radius:6px;white-space:nowrap;pointer-events:none}
+.ctrlpt{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;background:var(--mark);border:1.5px solid var(--forest);border-radius:50%;pointer-events:auto;cursor:grab;padding:0;touch-action:none}
+.ctrlpt.sharp{border-radius:2px}
+.flag{position:absolute;transform:translate(-50%,-130%);font-size:11.5px;background:var(--paper);border:1px solid var(--line);color:var(--ink);padding:2px 8px;border-radius:6px;white-space:nowrap;pointer-events:none}
+.flag.asset{font-size:11px;color:var(--ink-2)}
+
+/* ---- chrome ---- */
+header.top{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none;z-index:5}
+header.top > *{pointer-events:auto}
+.brand{display:flex;align-items:baseline;gap:10px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:5px 12px 6px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.brand b{font:400 27px/1 var(--f-display);letter-spacing:.01em}
+.brand span{font-size:12px;color:var(--ink-2);letter-spacing:.04em}
+.tools{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.chip{appearance:none;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:9px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;text-decoration:none;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.chip:hover{border-color:var(--forest-2)}
+.chip[aria-pressed="true"]{background:var(--forest);color:var(--forest-ink);border-color:var(--forest)}
+.chip:disabled{opacity:.45;cursor:default}
+.chip kbd{font:500 10.5px var(--f-ui);opacity:.6}
+.bar{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--forest);color:var(--forest-ink);
+  border-radius:14px;padding:5px;display:flex;gap:2px;box-shadow:var(--shadow);z-index:6;max-width:calc(100% - 32px);overflow-x:auto}
+.bar button{appearance:none;border:0;background:transparent;font-weight:500;font-size:13px;padding:8px 13px;border-radius:10px;display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap}
+.bar button svg{width:16px;height:16px}
+.bar button[aria-pressed="true"]{background:rgba(243,238,229,.16)}
+.bar button:hover{background:rgba(243,238,229,.09)}
+.bar kbd{font:500 10.5px var(--f-ui);opacity:.55}
+.bar .sep{width:1px;background:rgba(243,238,229,.18);margin:6px 4px}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);color:var(--ink)}
+.card h2{font:400 21px/1.15 var(--f-display);margin:0}
+.eyebrow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600}
+
+#guide{position:fixed;left:max(16px,env(safe-area-inset-left,0px));top:calc(64px + env(safe-area-inset-top,0px));width:304px;max-height:calc(100% - 150px);overflow:auto;padding:14px 14px 10px;z-index:4}
+#guide .tabs{display:flex;gap:4px;margin:10px 0 8px;flex-wrap:wrap}
+#guide .tabs button{appearance:none;border:1px solid var(--line);background:transparent;padding:5px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--ink-2)}
+#guide .tabs button[aria-selected="true"]{background:var(--forest-tint);border-color:var(--forest-2);color:var(--ink)}
+#guide .lede{color:var(--ink-2);font-size:13px;margin:0 0 8px}
+#guide ol{list-style:none;margin:0;padding:0;display:grid;gap:6px;counter-reset:s}
+#guide li{counter-increment:s;display:grid;grid-template-columns:22px 1fr;gap:8px;padding:8px;border-radius:9px;border:1px solid transparent}
+#guide li::before{content:counter(s);width:20px;height:20px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+#guide li.done::before{background:var(--forest);color:var(--forest-ink);border-color:var(--forest)}
+#guide li.now{border-color:var(--forest-2);background:var(--forest-tint)}
+#guide li p{margin:0;font-size:13px}
+#guide li .try{color:var(--mute);font-size:12px;margin-top:2px}
+#guide li .acts{display:flex;gap:6px;margin-top:6px}
+#guide .foot{display:flex;justify-content:space-between;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.link{appearance:none;border:0;background:none;padding:0;color:var(--forest-2);font-size:12.5px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+:root[data-theme="dark"] .link{color:#9CC2A9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .link{color:#9CC2A9}}
+.btn{appearance:none;border:1px solid var(--forest);background:var(--forest);color:var(--forest-ink);font-size:12.5px;font-weight:500;padding:5px 11px;border-radius:8px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+
+#recipe{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:calc(64px + env(safe-area-inset-top,0px));width:344px;max-height:calc(100% - 150px);overflow:auto;padding:16px;z-index:4}
+#recipe .name{font:400 24px/1.1 var(--f-display);margin:2px 0 8px;outline:none;border-radius:4px}
+#recipe .name:focus{box-shadow:0 0 0 2px var(--gold-soft)}
+#recipe .story{font-size:14.5px;line-height:1.6;margin:0 0 12px;color:var(--ink)}
+.w{appearance:none;border:0;background:none;padding:0 1px;font:inherit;font-weight:600;color:var(--ink);cursor:pointer;border-bottom:1.5px dotted var(--forest-2);border-radius:0}
+.w:hover{background:var(--forest-tint)}
+.w.off{text-decoration:line-through;color:var(--mute);font-weight:500}
+.w.gold{border-bottom-color:var(--gold)}
+#recipe .sect{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+#recipe .ties{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:6px}
+#recipe .ties li{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;font-size:13px}
+#recipe .ties i{width:12px;height:12px;border-radius:50%;background:var(--mark);box-shadow:0 0 0 2px var(--forest-2);display:block}
+#recipe .ties i.proposed{background:transparent;box-shadow:0 0 0 1.5px var(--forest-2)}
+#recipe .ties i.slack{background:transparent;box-shadow:none;border:2px dashed var(--gold)}
+#recipe .ties i.fixed{background:var(--line);box-shadow:none}
+#recipe .ties .why{color:var(--mute);font-size:12px}
+#recipe .slackbox{background:var(--gold-soft);border-radius:9px;padding:10px;margin-top:10px;font-size:13px}
+#recipe .slackbox .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.swatches{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.swatches button{width:24px;height:24px;border-radius:50%;border:1px solid rgba(0,0,0,.15);cursor:pointer;padding:0}
+.swatches button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--paper),0 0 0 3.5px var(--gold)}
+#recipe .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+#recipe .hint{color:var(--mute);font-size:12.5px}
+.pop{position:fixed;z-index:20;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:10px;width:232px;font-size:13px}
+.pop label{display:block;color:var(--ink-2);font-size:12px;margin-bottom:4px}
+.pop input[type=number]{width:100%;font:500 14px var(--f-ui);font-variant-numeric:tabular-nums;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--paper-2);color:var(--ink)}
+.pop .seg{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.pop .seg button{appearance:none;border:1px solid var(--line);background:transparent;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--ink)}
+.pop .seg button[aria-pressed="true"]{background:var(--forest);color:var(--forest-ink);border-color:var(--forest)}
+.pop p{margin:8px 0 0;color:var(--mute);font-size:12px}
+
+#lens{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:calc(max(16px,env(safe-area-inset-right,0px)) + 356px);width:356px;padding:14px;z-index:6}
+#lens .lens-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#lens svg{display:block;width:100%;height:auto;margin-top:10px;border-radius:9px;background:var(--forest);touch-action:none;cursor:crosshair}
+#lens .lib{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+#lens .lib button{appearance:none;border:1px solid var(--line);background:var(--paper-2);border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--ink)}
+#lens .lib button[aria-pressed="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+#lens .lib .lib-label{width:100%;font-size:11px;color:var(--mute);margin-top:2px}
+#lens .share{font-size:12.5px;color:var(--ink-2);margin-top:8px}
+#lens .lens-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+
+#space{position:fixed;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(76px + env(safe-area-inset-bottom,0px));width:304px;padding:14px;z-index:4}
+#space .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+#space label{font-size:12px;color:var(--ink-2);display:grid;gap:3px}
+#space input{width:100%;font:500 14px var(--f-ui);font-variant-numeric:tabular-nums;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--paper-2);color:var(--ink)}
+#space .seg{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+#space .seg button{appearance:none;border:1px solid var(--line);background:transparent;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--ink)}
+#space .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+#space p{font-size:12.5px;color:var(--mute);margin:8px 0 0}
+
+#notes{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(470px,calc(100% - 32px));padding:12px 14px;z-index:7}
+#notes .nhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#notes strong{font-weight:600;font-size:13.5px}
+#notes ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:5px}
+#notes li{font-size:13px;display:grid;grid-template-columns:10px 1fr auto;gap:8px;align-items:baseline;padding:3px 4px;border-radius:6px;cursor:default}
+#notes li:hover{background:var(--forest-tint)}
+#notes li i{width:7px;height:7px;border-radius:50%;background:var(--forest-2);display:block;transform:translateY(-1px)}
+#notes li.still i{background:var(--line)}
+#notes li.slack i{background:var(--gold)}
+#whisper{position:fixed;left:50%;bottom:calc(70px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);font-size:13px;color:var(--ink);background:var(--paper);border:1px solid var(--line);
+  padding:6px 8px 6px 12px;border-radius:999px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center;white-space:nowrap;z-index:7;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+#whisper .btn{padding:3px 9px;font-size:12px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+@media (max-width:1100px){
+  #lens{right:max(16px,env(safe-area-inset-right,0px));top:auto;bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+}
+.short{display:none}
+#guide.min ol,#guide.min .lede{display:none}
+@media (max-width:760px){
+  .brand span,.long{display:none}.short{display:inline}
+  .chip{padding:5px 8px;font-size:12px}
+  #guide{width:auto;right:max(16px,env(safe-area-inset-right,0px));top:calc(56px + env(safe-area-inset-top,0px));max-height:34vh;padding:10px 12px}
+  #guide h2{font-size:18px}
+  #guide .foot{margin-top:6px;padding-top:6px}
+  #recipe,#space,#lens,#notes{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));width:auto;top:auto;transform:none;
+    bottom:calc(70px + env(safe-area-inset-bottom,0px));max-height:40vh;overflow:auto}
+  body.space #recipe,body.space #lens{display:none}
+  #lens{max-height:62vh;z-index:8}
+  #notes{z-index:9}
+  .bar button span.lbl{display:none}
+  .tools .chip kbd{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body class="look">
+<div id="stage" aria-label="3D room. Use Draw mode to draw on the floor, walls and objects."></div>
+<div id="veil"></div>
+<svg id="overlay" aria-hidden="true"><g id="threads"></g><g id="inkLayer"></g></svg>
+<div id="marks" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="brand"><b>biskiq</b><span>Living Drawings · prototype</span></div>
+  <div class="tools">
+    <button class="chip" id="bRelations" aria-pressed="false" title="Show what depends on what (R)">Relations <kbd>R</kbd></button>
+    <button class="chip" id="bUndo" title="Undo (⌘Z)">Undo</button>
+    <button class="chip" id="bRedo" title="Redo (⇧⌘Z)">Redo</button>
+    <button class="chip" id="bEmpty"><span class="long">Empty room</span><span class="short">Empty</span></button>
+    <button class="chip" id="bGallery"><span class="long">Finished gallery</span><span class="short">Gallery</span></button>
+    <a class="chip" href="index.html"><span class="long">About the model</span><span class="short">About</span></a>
+  </div>
+</header>
+
+<section id="guide" class="card" aria-label="Guided journeys">
+  <div class="eyebrow">Three journeys</div>
+  <h2 id="gTitle">Make it here, keep changing it</h2>
+  <div class="tabs" role="tablist" id="gTabs"></div>
+  <p class="lede" id="gLede"></p>
+  <ol id="gSteps"></ol>
+  <div class="foot"><button class="link" id="gReset">Start this journey again</button><button class="link" id="gMin">Hide steps</button></div>
+</section>
+
+<section id="recipe" class="card" aria-live="polite" hidden></section>
+
+<section id="lens" class="card" hidden aria-label="Profile lens">
+  <div class="lens-head">
+    <div><div class="eyebrow" id="lensKind">Section</div><h2 id="lensTitle">Profile</h2></div>
+    <button class="btn ghost" id="lensDone">Done</button>
+  </div>
+  <svg id="lensSvg" viewBox="0 0 320 250" aria-label="Draw over the profile to reshape it"></svg>
+  <div class="share" id="lensShare"></div>
+  <div class="lib" id="lensLib"></div>
+  <div class="lens-foot"><span class="hint" id="lensHint" style="font-size:12px;color:var(--mute)">Draw over the white line. Drag a point to refine.</span></div>
+</section>
+
+<section id="space" class="card" hidden aria-label="The space">
+  <div class="eyebrow">Editing the space, not your work</div>
+  <h2>The room</h2>
+  <div class="grid">
+    <label for="inW">Width (m)<input id="inW" type="number" step="0.05" min="3.6" max="7.5"></label>
+    <label for="inH">Ceiling (m)<input id="inH" type="number" step="0.05" min="2.4" max="4.2"></label>
+  </div>
+  <label style="margin-top:10px;font-size:12px;color:var(--ink-2)">Imported sculpture (stand-in asset)</label>
+  <div class="seg" id="assetSeg"></div>
+  <p>Drag the grips on the right wall, the ceiling and the sculpture. Whatever depends on them lights up before you move.</p>
+</section>
+
+<section id="notes" class="card" hidden aria-live="polite"></section>
+<div id="whisper" hidden role="status"></div>
+
+<nav class="bar" aria-label="Instruments">
+  <button id="mLook" aria-pressed="true" title="Look and select (V)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2.5l9 5-4 1-1.5 4z"/></svg><span class="lbl">Look</span> <kbd>V</kbd></button>
+  <button id="mDraw" aria-pressed="false" title="Draw on the space (D)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 13.5l1-3.5 7.5-7.5 2.5 2.5-7.5 7.5z"/><path d="M9.5 4l2.5 2.5"/></svg><span class="lbl">Draw</span> <kbd>D</kbd></button>
+  <button id="mSpace" aria-pressed="false" title="Edit the space (E)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 13.5V4l6-2.5L14 4v9.5"/><path d="M2 13.5h12"/></svg><span class="lbl">Edit the space</span> <kbd>E</kbd></button>
+  <span class="sep"></span>
+  <button id="mTidy" aria-pressed="true" title="Tidy strokes into clean lines and curves (T)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 12c2-6 4-6 6-3s4 3 6-3"/></svg><span class="lbl" id="tidyLbl">Tidy</span></button>
+</nav>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+
+/* =====================================================================
+   Living Drawings — prototype
+   A form is a plan drawn on the space and a profile drawn against it.
+   The form is always re-made from those drawings and its ties, so the
+   data below is the only truth; meshes are disposable.
+   ===================================================================== */
+
+const $ = s => document.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const v3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const fmt = m => (Math.abs(m) < 1 ? `${Math.round(m * 100)} cm` : `${m.toFixed(2)} m`);
+const fmtM = m => `${m.toFixed(2)} m`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const ease = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+
+/* ---------- 2D geometry ---------- */
+const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+function pathLen(p) { let L = 0; for (let i = 1; i < p.length; i++) L += d2(p[i], p[i - 1]); return L; }
+function resample(p, step) {
+  if (p.length < 2) return p.map(q => q.slice());
+  const out = [p[0].slice()]; let acc = 0;
+  for (let i = 1; i < p.length; i++) {
+    let a = p[i - 1]; const b = p[i]; let d = d2(a, b);
+    while (acc + d >= step && d > 0) {
+      const t = (step - acc) / d; const q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      out.push(q); a = q; d = d2(a, b); acc = 0;
+    }
+    acc += d;
+  }
+  const last = p[p.length - 1];
+  if (d2(last, out[out.length - 1]) > step * 0.3) out.push(last.slice());
+  return out;
+}
+function segDist(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1]; const L2 = dx * dx + dy * dy;
+  let t = L2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2 : 0; t = clamp(t, 0, 1);
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+}
+function rdp(p, eps) {
+  if (p.length < 3) return p.slice();
+  let dmax = 0, idx = 0; const a = p[0], b = p[p.length - 1];
+  for (let i = 1; i < p.length - 1; i++) { const d = segDist(p[i], a, b); if (d > dmax) { dmax = d; idx = i; } }
+  if (dmax > eps) { const l = rdp(p.slice(0, idx + 1), eps), r = rdp(p.slice(idx), eps); return l.slice(0, -1).concat(r); }
+  return [a, b];
+}
+function centroid(p) { let x = 0, y = 0; for (const q of p) { x += q[0]; y += q[1]; } return [x / p.length, y / p.length]; }
+function signedArea(p) { let A = 0; for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length]; A += a[0] * b[1] - b[0] * a[1]; } return A / 2; }
+function inPoly(pt, poly) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if (((a[1] > pt[1]) !== (b[1] > pt[1])) && (pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0])) c = !c;
+  }
+  return c;
+}
+function polyDist(pt, poly, closed = true) {
+  let m = Infinity; const n = poly.length;
+  for (let i = 0; i < (closed ? n : n - 1); i++) m = Math.min(m, segDist(pt, poly[i], poly[(i + 1) % n]));
+  return m;
+}
+function bbox2(p) { let a = [Infinity, Infinity], b = [-Infinity, -Infinity]; for (const q of p) { a[0] = Math.min(a[0], q[0]); a[1] = Math.min(a[1], q[1]); b[0] = Math.max(b[0], q[0]); b[1] = Math.max(b[1], q[1]); } return { min: a, max: b, w: b[0] - a[0], h: b[1] - a[1] }; }
+function inradius(poly) {
+  const bb = bbox2(poly); let best = 0; const N = 22;
+  for (let i = 1; i < N; i++) for (let j = 1; j < N; j++) {
+    const pt = [bb.min[0] + bb.w * i / N, bb.min[1] + bb.h * j / N];
+    if (inPoly(pt, poly)) best = Math.max(best, polyDist(pt, poly));
+  }
+  return best || Math.min(bb.w, bb.h) / 2;
+}
+function dedupe(p, eps = 1e-5) { const out = []; for (const q of p) if (!out.length || d2(q, out[out.length - 1]) > eps) out.push(q); return out; }
+
+/* ---------- Tidy: freehand ink becomes clean, editable control points ----------
+   Control point = {x, y, s}  (s = sharp corner). Lines are runs between sharp points;
+   curves pass smoothly through non-sharp points. Loose mode keeps the hand. */
+function tidy(raw, opts = {}) {
+  raw = dedupe(raw);
+  const L = pathLen(raw); if (L < 0.015 || raw.length < 3) return null;
+  const step = Math.max(L / 90, 0.003);
+  let p = resample(raw, step);
+  const closeTol = opts.closeTol ?? Math.max(0.12 * L, step * 4);
+  let closed = !opts.forceOpen && (opts.forceClosed || (d2(p[0], p[p.length - 1]) < closeTol && L > step * 14));
+  if (closed && d2(p[0], p[p.length - 1]) < step * 2.5) p.pop();
+  const n = p.length;
+  // circle?
+  if (closed && !opts.loose && !opts.noCircle) {
+    const c = centroid(p); const rs = p.map(q => d2(q, c)); const m = rs.reduce((a, b) => a + b, 0) / n;
+    const sd = Math.sqrt(rs.reduce((a, b) => a + (b - m) * (b - m), 0) / n);
+    if (sd / m < 0.085) {
+      const pts = []; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; pts.push({ x: c[0] + Math.cos(a) * m, y: c[1] + Math.sin(a) * m, s: false }); }
+      return { closed: true, circle: { cx: c[0], cy: c[1], r: m }, ctrl: pts };
+    }
+  }
+  // corners (ShortStraw) + turning-angle check
+  const W = 3; const straw = new Array(n).fill(Infinity);
+  const P = i => closed ? p[(i + n) % n] : p[clamp(i, 0, n - 1)];
+  for (let i = closed ? 0 : W; i < (closed ? n : n - W); i++) straw[i] = d2(P(i - W), P(i + W));
+  const sorted = straw.filter(isFinite).sort((a, b) => a - b); const med = sorted[Math.floor(sorted.length / 2)] || step * 2 * W;
+  const thr = med * 0.9;
+  const corners = [];
+  for (let i = closed ? 0 : W; i < (closed ? n : n - W); i++) {
+    if (straw[i] < thr) {
+      let j = i, best = i;
+      while (j < (closed ? n : n - W) && straw[j] < thr) { if (straw[j] < straw[best]) best = j; j++; }
+      const a = P(best - W * 2), b = P(best), c = P(best + W * 2);
+      const ang = Math.acos(clamp(((b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1])) / (d2(a, b) * d2(b, c) + 1e-12), -1, 1));
+      if (ang > (opts.loose ? 1.0 : 0.5)) corners.push(best);
+      i = j;
+    }
+  }
+  if (!closed) { corners.unshift(0); corners.push(n - 1); }
+  const ctrl = [];
+  const segPts = (a, b) => { const out = []; if (closed) { let i = a; out.push(p[i]); while (i !== b) { i = (i + 1) % n; out.push(p[i]); } } else for (let i = a; i <= b; i++) out.push(p[i]); return out; };
+  const eps = opts.loose ? step * 0.5 : Math.max(L * 0.011, step * 0.8);
+  const pushSeg = (pts) => {
+    const chord = d2(pts[0], pts[pts.length - 1]);
+    let dev = 0; for (const q of pts) dev = Math.max(dev, segDist(q, pts[0], pts[pts.length - 1]));
+    if (!opts.loose && chord > 0 && dev < Math.max(0.004, chord * 0.022)) return; // straight: only the corners
+    const s = rdp(pts, eps); for (let k = 1; k < s.length - 1; k++) ctrl.push({ x: s[k][0], y: s[k][1], s: false });
+  };
+  if (closed && corners.length === 0) {
+    const s = rdp(p.concat([p[0]]), eps); s.pop();
+    for (const q of s) ctrl.push({ x: q[0], y: q[1], s: false });
+  } else if (closed) {
+    for (let k = 0; k < corners.length; k++) {
+      const a = corners[k], b = corners[(k + 1) % corners.length];
+      ctrl.push({ x: p[a][0], y: p[a][1], s: true });
+      pushSeg(segPts(a, b === a ? (a - 1 + n) % n : b));
+    }
+  } else {
+    for (let k = 0; k < corners.length - 1; k++) {
+      const a = corners[k], b = corners[k + 1];
+      ctrl.push({ x: p[a][0], y: p[a][1], s: true });
+      pushSeg(segPts(a, b));
+    }
+    ctrl.push({ x: p[n - 1][0], y: p[n - 1][1], s: true });
+  }
+  // straighten near-horizontal / near-vertical lines (between consecutive sharp points)
+  if (!opts.loose) {
+    const m = ctrl.length;
+    for (let i = 0; i < (closed ? m : m - 1); i++) {
+      const a = ctrl[i], b = ctrl[(i + 1) % m]; if (!a.s || !b.s) continue;
+      const ang = Math.atan2(b.y - a.y, b.x - a.x); const deg = Math.abs(((ang * 180 / Math.PI) + 360) % 180);
+      if (deg < 7 || deg > 173) { const y = (a.y + b.y) / 2; a.y = y; b.y = y; }
+      else if (Math.abs(deg - 90) < 7) { const x = (a.x + b.x) / 2; a.x = x; b.x = x; }
+    }
+  }
+  return { closed, ctrl };
+}
+
+/* Evaluate control points into a dense polyline (centripetal Catmull–Rom through smooth points). */
+function crPoint(p0, p1, p2, p3, t) {
+  const d = (a, b) => Math.pow(Math.max(1e-6, d2(a, b)), 0.5);
+  const t0 = 0, t1 = t0 + d(p0, p1), t2 = t1 + d(p1, p2), t3 = t2 + d(p2, p3); const tt = t1 + (t2 - t1) * t;
+  const L = (a, b, ta, tb) => [(tb - tt) / (tb - ta) * a[0] + (tt - ta) / (tb - ta) * b[0], (tb - tt) / (tb - ta) * a[1] + (tt - ta) / (tb - ta) * b[1]];
+  const A1 = L(p0, p1, t0, t1), A2 = L(p1, p2, t1, t2), A3 = L(p2, p3, t2, t3);
+  const B1 = L(A1, A2, t0, t2), B2 = L(A2, A3, t1, t3); return L(B1, B2, t1, t2);
+}
+function evalCurve(ctrl, closed, res = 10) {
+  const n = ctrl.length; const pts = [], span = [];
+  if (n < 2) return { pts: ctrl.map(c => [c.x, c.y]), span: ctrl.map((_, i) => i) };
+  const C = i => ctrl[closed ? (i + n) % n : i];
+  const has = i => closed || (i >= 0 && i < n);
+  const xy = c => [c.x, c.y];
+  const spans = closed ? n : n - 1;
+  for (let i = 0; i < spans; i++) {
+    const a = C(i), b = C(i + 1);
+    const aSharp = a.s || (!closed && i === 0), bSharp = b.s || (!closed && i + 1 === n - 1);
+    if (aSharp && bSharp) { pts.push(xy(a)); span.push(i); continue; }
+    const p1 = xy(a), p2 = xy(b);
+    const p0 = (!aSharp && has(i - 1)) ? xy(C(i - 1)) : [2 * p1[0] - p2[0], 2 * p1[1] - p2[1]];
+    const p3 = (!bSharp && has(i + 2)) ? xy(C(i + 2)) : [2 * p2[0] - p1[0], 2 * p2[1] - p1[1]];
+    for (let k = 0; k < res; k++) { pts.push(crPoint(p0, p1, p2, p3, k / res)); span.push(i); }
+  }
+  if (!closed) { pts.push(xy(C(n - 1))); span.push(n - 1); }
+  return { pts: dedupe(pts), span };
+}
+
+/* Splice a new stroke into an existing curve (oversketch). Returns new control list. */
+function oversketch(ctrl, closed, stroke) {
+  const ev = evalCurve(ctrl, closed, 12); const dense = ev.pts;
+  const near = q => { let bi = 0, bd = Infinity; dense.forEach((p, i) => { const d = d2(p, q); if (d < bd) { bd = d; bi = i; } }); return bi; };
+  let s = stroke.map(c => ({ ...c }));
+  let ia = near([s[0].x, s[0].y]), ib = near([s[s.length - 1].x, s[s.length - 1].y]);
+  const n = ctrl.length;
+  s[0].s = false; s[s.length - 1].s = false;
+  if (!closed) {
+    if (ia > ib) { [ia, ib] = [ib, ia]; s.reverse(); }
+    const sa = ev.span[ia], sb = ev.span[ib];
+    return [...ctrl.slice(0, sa + 1), ...s, ...ctrl.slice(sb + 1)];
+  }
+  // closed: choose the arc the stroke runs alongside
+  const mid = [s[Math.floor(s.length / 2)].x, s[Math.floor(s.length / 2)].y];
+  const avgDist = (from, to) => { let i = from, sum = 0, c = 0; while (i !== to) { sum += d2(dense[i], mid); c++; i = (i + 1) % dense.length; } return c ? sum / c : Infinity; };
+  const fwd = avgDist(ia, ib), bwd = avgDist(ib, ia);
+  if (bwd < fwd) { [ia, ib] = [ib, ia]; s.reverse(); }
+  const sa = ev.span[ia], sb = ev.span[ib];
+  // keep ctrl from sb+1 around to sa, then the stroke
+  const kept = []; let i = (sb + 1) % n; let guard = 0;
+  while (guard++ < n) { kept.push(ctrl[i]); if (i === sa) break; i = (i + 1) % n; }
+  return [...kept, ...s];
+}
+
+/* ---------- Host frames: every sheet is borrowed from the space ---------- */
+const S = { space: { W: 5.2, D: 4.2, H: 3.0 }, asset: { variant: 'pebble', x: 1.9, z: 2.3 }, forms: [], profiles: {}, seq: 1 };
+function frameOf(host) {
+  const { W, D, H } = S.space;
+  switch (host) {
+    case 'floor': return { o: v3(0, 0, 0), U: v3(1, 0, 0), V: v3(0, 0, 1), N: v3(0, 1, 0), b: [0, W, 0, D] };
+    case 'ceiling': return { o: v3(0, H, 0), U: v3(1, 0, 0), V: v3(0, 0, 1), N: v3(0, -1, 0), b: [0, W, 0, D] };
+    case 'back': return { o: v3(0, 0, 0), U: v3(1, 0, 0), V: v3(0, 1, 0), N: v3(0, 0, 1), b: [0, W, 0, H] };
+    case 'left': return { o: v3(0, 0, 0), U: v3(0, 0, 1), V: v3(0, 1, 0), N: v3(1, 0, 0), b: [0, D, 0, H] };
+    case 'right': return { o: v3(W, 0, 0), U: v3(0, 0, 1), V: v3(0, 1, 0), N: v3(-1, 0, 0), b: [0, D, 0, H] };
+  }
+}
+const HOST_NAME = { floor: 'the floor', back: 'the back wall', left: 'the left wall', right: 'the right wall', ceiling: 'the ceiling' };
+function to3(fr, u, v, n = 0) { return fr.o.clone().addScaledVector(fr.U, u).addScaledVector(fr.V, v).addScaledVector(fr.N, n); }
+function toHost(fr, P) { const d = P.clone().sub(fr.o); return [d.dot(fr.U), d.dot(fr.V)]; }
+
+/* ---------- One kernel: a profiled sweep along a planar path ----------
+   path: [[u,v]] on the host; section: [[p,q]].
+   axes 'LN': p → in-plane lateral (mitred), q → host normal.  'NL': the reverse. */
+function laterals(path, closed) {
+  const n = path.length, lat = [];
+  for (let i = 0; i < n; i++) {
+    const prev = closed ? path[(i - 1 + n) % n] : path[i - 1];
+    const next = closed ? path[(i + 1) % n] : path[i + 1];
+    let n1 = null, n2 = null;
+    if (prev) { const dx = path[i][0] - prev[0], dy = path[i][1] - prev[1], l = Math.hypot(dx, dy) || 1; n1 = [-dy / l, dx / l]; }
+    if (next) { const dx = next[0] - path[i][0], dy = next[1] - path[i][1], l = Math.hypot(dx, dy) || 1; n2 = [-dy / l, dx / l]; }
+    let l;
+    if (n1 && n2) {
+      const dd = 1 + n1[0] * n2[0] + n1[1] * n2[1];
+      if (dd < 0.08) l = n2; else { l = [(n1[0] + n2[0]) / dd, (n1[1] + n2[1]) / dd]; const len = Math.hypot(l[0], l[1]); if (len > 3.5) l = [l[0] / len * 3.5, l[1] / len * 3.5]; }
+    } else l = n1 || n2;
+    lat.push(l);
+  }
+  return lat;
+}
+function offsetRing(path, closed, sign, d) { const lat = laterals(path, closed); return path.map((p, i) => [p[0] + lat[i][0] * sign * d, p[1] + lat[i][1] * sign * d]); }
+function pushTri(out, a, b, c) { out.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z); }
+function sweep(out, { path, closed, fr, section, secClosed, axes = 'LN', sign = 1, caps = true }) {
+  const n = path.length, m = section.length; if (n < 2 || m < 2) return [];
+  const lat = laterals(path, closed);
+  const R = [];
+  for (let i = 0; i < n; i++) {
+    R.push(section.map(([p, q]) => {
+      const a = axes === 'LN' ? p : q, b = axes === 'LN' ? q : p;
+      return to3(fr, path[i][0] + lat[i][0] * sign * a, path[i][1] + lat[i][1] * sign * a, b);
+    }));
+  }
+  const spans = closed ? n : n - 1, ss = secClosed ? m : m - 1;
+  for (let i = 0; i < spans; i++) {
+    const i2 = (i + 1) % n;
+    for (let j = 0; j < ss; j++) {
+      const j2 = (j + 1) % m;
+      pushTri(out, R[i][j], R[i2][j], R[i2][j2]); pushTri(out, R[i][j], R[i2][j2], R[i][j2]);
+    }
+  }
+  if (caps && !closed && secClosed) {
+    const tris = THREE.ShapeUtils.triangulateShape(section.map(([p, q]) => new THREE.Vector2(p, q)), []);
+    for (const [a, b, c] of tris) { pushTri(out, R[0][a], R[0][c], R[0][b]); pushTri(out, R[n - 1][a], R[n - 1][b], R[n - 1][c]); }
+  }
+  return R;
+}
+function flatCap(out, fr, contour, holes, n, faceSign = 1) {
+  const c2 = contour.map(p => new THREE.Vector2(p[0], p[1]));
+  const h2 = holes.map(h => h.map(p => new THREE.Vector2(p[0], p[1])));
+  let tris; try { tris = THREE.ShapeUtils.triangulateShape(c2, h2); } catch (e) { return; }
+  const all = [...c2, ...h2.flat()];
+  const want = fr.N.clone().multiplyScalar(faceSign);
+  for (const [a, b, c] of tris) {
+    const A = to3(fr, all[a].x, all[a].y, n), B = to3(fr, all[b].x, all[b].y, n), C = to3(fr, all[c].x, all[c].y, n);
+    const nrm = B.clone().sub(A).cross(C.clone().sub(A));
+    if (nrm.dot(want) < 0) pushTri(out, A, C, B); else pushTri(out, A, B, C);
+  }
+}
+function geoFrom(pos, crease = 0.6) {
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  return toCreasedNormals(g, crease);
+}
+
+/* ---------- Profiles: portable, shareable, contextual ----------
+   kind 'elev'   : mass elevation. x = offset of the plan edge (m), y = 0..1 of the height.
+   kind 'corner' : run section that the context closes with a corner at (0,0).
+                   p = out from the host face, q = along the other context line.
+   kind 'wall'   : run section closed along the wall line p = 0. */
+const PRESETS = {
+  elev: {
+    Straight: [[0, 0, 1], [0, 1, 1]],
+    Waisted: [[0.015, 0, 1], [0.015, 0.07, 1], [-0.045, 0.32, 0], [-0.065, 0.58, 0], [-0.03, 0.86, 0], [0.015, 0.93, 1], [0.015, 1, 1]],
+    Tapered: [[0.03, 0, 1], [-0.07, 1, 1]],
+    Stepped: [[0.04, 0, 1], [0.04, 0.08, 1], [0, 0.08, 1], [0, 0.92, 1], [0.03, 0.92, 1], [0.03, 1, 1]],
+  },
+  corner: {
+    Block: [[0, 0.45, 1], [0.45, 0.45, 1], [0.45, 0, 1]],
+    'Seat & back': [[0, 0.84, 1], [0.07, 0.83, 0], [0.11, 0.49, 1], [0.46, 0.46, 0], [0.49, 0.42, 1], [0.44, 0.1, 1], [0.44, 0, 1]],
+    Band: [[0, 0.11, 1], [0.025, 0.11, 1], [0.025, 0, 1]],
+    Ogee: [[0, 0.17, 1], [0.014, 0.17, 1], [0.018, 0.135, 0], [0.036, 0.105, 0], [0.044, 0.06, 0], [0.05, 0.022, 1], [0.05, 0, 1]],
+    Cove: [[0, 0.2, 1], [0.035, 0.085, 0], [0.085, 0.035, 0], [0.2, 0, 1]],
+  },
+  wall: {
+    Ledge: [[0, 0.02, 1], [0.26, 0.02, 1], [0.26, -0.02, 1], [0, -0.02, 1]],
+    Bracket: [[0, 0.025, 1], [0.24, 0.025, 1], [0.24, -0.005, 1], [0.05, -0.12, 1], [0, -0.12, 1]],
+  },
+};
+const ctrlFrom = arr => arr.map(([x, y, s]) => ({ x, y, s: !!s }));
+function newProfile(kind, presetName, name) {
+  const id = 'p' + (S.seq++);
+  S.profiles[id] = { id, kind, name: name || presetName, preset: presetName, ctrl: ctrlFrom(PRESETS[kind][presetName]), closed: false };
+  return id;
+}
+function profileUsers(pid) { return S.forms.filter(f => (f.kind === 'mass' && f.profile === pid) || (f.kind === 'run' && f.section === pid)); }
+
+/* ---------- The imported asset (stand-in for a .glb or a generated model) ---------- */
+const ASSETS = {
+  pebble: { name: 'Pebble Stack', r: 0.22, h: 0.58 },
+  tall: { name: 'Tall Figure', r: 0.13, h: 0.95 },
+  vessel: { name: 'Wide Vessel', r: 0.34, h: 0.34 },
+};
+
+/* ---------- Renderer & scene ---------- */
+const stage = $('#stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = 1.0;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 120);
+camera.position.set(3.4, 4.3, 10.4);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.09; controls.maxPolarAngle = Math.PI * 0.47; controls.minDistance = 1.2; controls.maxDistance = 20;
+controls.target.set(2.5, 0.8, 1.9);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.32;
+scene.add(new THREE.HemisphereLight(0xfff7ec, 0xd6cab6, 1.15));
+const sun = new THREE.DirectionalLight(0xfff0dc, 2.3);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.025; sun.shadow.radius = 4;
+Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 0.5, far: 30 });
+scene.add(sun, sun.target);
+function syncBackground() { scene.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#ECE6DB'); }
+syncBackground(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncBackground);
+new MutationObserver(syncBackground).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+const MATERIALS = {
+  plaster: { name: 'Ivory plaster', color: '#EEE7DA', rough: 0.9, metal: 0 },
+  travertine: { name: 'Travertine', color: '#D7C8AC', rough: 0.82, metal: 0 },
+  oak: { name: 'Oak', color: '#BE9262', rough: 0.68, metal: 0 },
+  forest: { name: 'Forest lacquer', color: '#2C4B3A', rough: 0.45, metal: 0 },
+  brass: { name: 'Brass', color: '#B38C4C', rough: 0.36, metal: 0.8 },
+  charcoal: { name: 'Charcoal', color: '#3B3C38', rough: 0.78, metal: 0 },
+};
+const matCache = {};
+function mat(key, ghost = false) {
+  const k = key + (ghost ? ':g' : ''); if (matCache[k]) return matCache[k];
+  const m = MATERIALS[key];
+  return matCache[k] = new THREE.MeshStandardMaterial({ color: m.color, roughness: m.rough, metalness: m.metal, side: THREE.DoubleSide,
+    transparent: ghost, opacity: ghost ? 0.5 : 1, depthWrite: !ghost });
+}
+const wallMat = new THREE.MeshStandardMaterial({ color: '#F1ECE3', roughness: 0.95, side: THREE.FrontSide });
+const wallInMat = new THREE.MeshStandardMaterial({ color: '#E9E2D5', roughness: 0.95, side: THREE.DoubleSide });
+const capMat = new THREE.MeshStandardMaterial({ color: '#DCD2C1', roughness: 0.95, side: THREE.DoubleSide });
+const floorMat = new THREE.MeshStandardMaterial({ color: '#E3D9C8', roughness: 0.93 });
+const assetMat = new THREE.MeshStandardMaterial({ color: '#5A4C3D', roughness: 0.42, metalness: 0.55 });
+
+const lineMats = new Set();
+function fatLine(pts, { color = 0xffffff, width = 2, dashed = false, opacity = 1, depthTest = false, closed = false } = {}) {
+  const arr = pts.flatMap(p => [p.x, p.y, p.z]); if (closed && pts.length) arr.push(pts[0].x, pts[0].y, pts[0].z);
+  const g = new LineGeometry(); g.setPositions(arr);
+  const m = new LineMaterial({ color, linewidth: width, dashed, dashSize: 0.05, gapSize: 0.035, transparent: true, opacity, depthTest });
+  m.resolution.set(innerWidth, innerHeight); lineMats.add(m);
+  const l = new Line2(g, m); if (dashed) l.computeLineDistances(); l.renderOrder = 20; return l;
+}
+function fatSegments(arr, { color = 0xffffff, width = 2, opacity = 1, depthTest = false } = {}) {
+  const g = new LineSegmentsGeometry(); g.setPositions(arr);
+  const m = new LineMaterial({ color, linewidth: width, transparent: true, opacity, depthTest });
+  m.resolution.set(innerWidth, innerHeight); lineMats.add(m);
+  const l = new LineSegments2(g, m); l.renderOrder = 21; return l;
+}
+function disposeTree(o) {
+  o.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material && c.material.isLineMaterial) { lineMats.delete(c.material); c.material.dispose(); } });
+}
+function clearGroup(g) { for (const c of [...g.children]) { disposeTree(c); g.remove(c); } }
+
+const roomGroup = new THREE.Group(), formGroup = new THREE.Group(), assetGroup = new THREE.Group(), markGroup = new THREE.Group(), ghostGroup = new THREE.Group();
+scene.add(roomGroup, formGroup, assetGroup, markGroup, ghostGroup);
+let floorMesh = null; const wallMeshes = {};
+
+/* ---------- Evaluation: re-make every form from its drawings and ties ---------- */
+const EV = new Map();  // id -> evaluated data (never stored in history)
+let assetY = 0;
+
+function heightOf(f) {
+  const { H } = S.space; const h = f.height;
+  if (h.mode === 'ceiling') return H;
+  if (h.mode === 'ratio') return h.r * H;
+  return h.v;
+}
+function planOf(f) {
+  // returns dense plan polygon in host coords
+  const p = f.plan;
+  if (p.type === 'fit') {
+    const A = ASSETS[S.asset.variant]; const R = A.r + p.margin; const cx = S.asset.x, cz = S.asset.z;
+    if (p.shape === 'square') return [[cx - R, cz - R], [cx + R, cz - R], [cx + R, cz + R], [cx - R, cz + R]];
+    const out = []; for (let i = 0; i < 64; i++) { const a = i / 64 * Math.PI * 2; out.push([cx + Math.cos(a) * R, cz + Math.sin(a) * R]); } return out;
+  }
+  return evalCurve(planCtrl(f), true, 10).pts;
+}
+function planCtrl(f) {
+  const p = f.plan; const fr = frameOf(f.host);
+  const du = p.tieU ? fr.b[1] - p.refU : 0, dv = p.tieV ? fr.b[3] - p.refV : 0;
+  return p.ctrl.map(c => ({ ...c,
+    x: c.x + ((p.tieU === 'move' || (p.tieU === 'stretch' && c.gx === 'max')) ? du : 0),
+    y: c.y + ((p.tieV === 'move' || (p.tieV === 'stretch' && c.gy === 'max')) ? dv : 0) }));
+}
+function pathCtrl(f) { return planCtrl({ host: f.path.host, plan: f.path }); }
+
+const CHAIN_NAME = { floor: 'the floor seam', ceiling: 'the ceiling seam' };
+function chainPts(chain) { const { W, D } = S.space; return [[0, D], [0, 0], [W, 0], [W, D]]; }
+function chainS(end) { const { W, D } = S.space; if (end.seg === 'left') return D - end.c; if (end.seg === 'back') return D + (end.tie === 'right' ? W - end.c : end.c); return D + W + end.c; }
+function chainAt(s) {
+  const pts = chainPts(); let acc = 0;
+  for (let i = 0; i < pts.length - 1; i++) { const L = d2(pts[i], pts[i + 1]); if (s <= acc + L || i === pts.length - 2) { const t = clamp((s - acc) / L, 0, 1); return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t]; } acc += L; }
+}
+function chainPath(a, b) {
+  let sa = chainS(a), sb = chainS(b); if (sa > sb) [sa, sb] = [sb, sa];
+  const pts = chainPts(); const out = [chainAt(sa)]; let acc = 0;
+  for (let i = 1; i < pts.length - 1; i++) { acc += d2(pts[i - 1], pts[i]); if (acc > sa + 1e-4 && acc < sb - 1e-4) out.push(pts[i].slice()); }
+  out.push(chainAt(sb)); return dedupe(out, 1e-4);
+}
+function endWorld(end, chain) { const p = chainAt(chainS(end)); return v3(p[0], chain === 'ceiling' ? S.space.H : 0, p[1]); }
+
+function sectionPolygon(prof) {
+  const dense = evalCurve(prof.ctrl, prof.closed, 8).pts.map(p => p.slice());
+  if (prof.closed) return dense;
+  if (prof.kind === 'corner') {
+    dense[0][0] = 0; dense[dense.length - 1][1] = 0;
+    return dedupe([...dense, [0, 0]]);
+  }
+  if (prof.kind === 'wall') { dense[0][0] = 0; dense[dense.length - 1][0] = 0; return dense; }
+  return dense;
+}
+function evalMass(f, out, ev) {
+  const fr = frameOf(f.host); let plan = dedupe(planOf(f));
+  if (plan.length < 3) return;
+  const sign = signedArea(plan) > 0 ? -1 : 1;
+  const h = Math.max(0.01, heightOf(f));
+  const prof = (f.profileOn && S.profiles[f.profile]) ? S.profiles[f.profile] : { ctrl: ctrlFrom(PRESETS.elev.Straight) };
+  const rin = inradius(plan);
+  const pd = evalCurve(prof.ctrl, false, 10).pts.map(([o, t]) => [Math.max(o, -0.9 * rin), clamp(t, 0, 1) * h]);
+  sweep(out, { path: plan, closed: true, fr, section: pd, secClosed: false, axes: 'LN', sign });
+  const top = offsetRing(plan, true, sign, pd[pd.length - 1][0]); const bot = offsetRing(plan, true, sign, pd[0][0]);
+  flatCap(out, fr, top, [], pd[pd.length - 1][1], 1); flatCap(out, fr, bot, [], pd[0][1], -1);
+  ev.plan = plan; ev.h = h; ev.fr = fr; ev.sign = sign; ev.profileDense = pd;
+  const bb = bbox2(plan); ev.planBox = bb; ev.c = centroid(plan);
+}
+function evalRun(f, out, ev) {
+  const prof = (f.sectionOn && S.profiles[f.section]) ? S.profiles[f.section] : { kind: f.ctxKind === 'wall' ? 'wall' : 'corner', ctrl: ctrlFrom(PRESETS[f.ctxKind === 'wall' ? 'wall' : 'corner'][f.ctxKind === 'wall' ? 'Ledge' : 'Band']) };
+  const sec = sectionPolygon(prof);
+  const P = f.path; let path, fr, closed = false, axes = 'LN', sign = 1;
+  if (P.type === 'seam') {
+    fr = frameOf(P.chain === 'ceiling' ? 'ceiling' : 'floor'); path = chainPath(P.a, P.b);
+    const { W, D } = S.space; const mid = [W / 2, D / 2];
+    const t = [path[1][0] - path[0][0], path[1][1] - path[0][1]]; const lat = [-t[1], t[0]];
+    sign = (lat[0] * (mid[0] - path[0][0]) + lat[1] * (mid[1] - path[0][1])) > 0 ? 1 : -1;
+  } else if (P.type === 'edge') {
+    const tgt = S.forms.find(g => g.id === P.target && g.kind === 'recess');
+    if (tgt && EV.get(tgt.id) && EV.get(tgt.id).plan) { path = EV.get(tgt.id).plan.map(p => p.slice()); P.cache = path.map(p => [+p[0].toFixed(4), +p[1].toFixed(4)]); P.cacheHost = tgt.host; ev.slack = false; }
+    else { path = (P.cache || []).map(p => p.slice()); ev.slack = true; }
+    fr = frameOf(P.cacheHost || 'back'); closed = true; axes = 'NL';
+    if (path.length < 3) return;
+    sign = signedArea(path) > 0 ? -1 : 1;
+  } else if (P.type === 'frozen') {
+    fr = frameOf(P.host); path = P.pts.map(p => p.slice()); closed = !!P.closed; axes = P.axes || 'NL'; sign = P.sign || 1;
+  } else { // drawn on a wall or floor
+    fr = frameOf(P.host); path = evalCurve(pathCtrl(f), false, 10).pts;
+    if (P.host === 'floor') { axes = 'LN'; } else { axes = 'NL'; if (path[path.length - 1][0] < path[0][0]) path.reverse(); }
+  }
+  path = dedupe(path, 1e-4); if (path.length < 2) return;
+  sweep(out, { path, closed, fr, section: sec, secClosed: true, axes, sign });
+  ev.path = path; ev.fr = fr; ev.closed = closed; ev.axes = axes; ev.sign = sign; ev.sec = sec;
+  ev.len = closed ? pathLen([...path, path[0]]) : pathLen(path);
+}
+function evalRecess(f, out, ev) {
+  const fr = frameOf(f.host); let plan = dedupe(planOf(f)); if (plan.length < 3) return;
+  // a niche cannot leave its wall: keep it inside, and say so
+  const bb = bbox2(plan), [u0, u1, v0, v1] = fr.b, m = 0.04;
+  let du = 0, dv = 0;
+  if (bb.min[0] < u0 + m) du = u0 + m - bb.min[0]; if (bb.max[0] > u1 - m) du = u1 - m - bb.max[0];
+  if (bb.min[1] < v0 + m) dv = v0 + m - bb.min[1]; if (bb.max[1] > v1 - m) dv = v1 - m - bb.max[1];
+  ev.clamped = Math.abs(du) > 1e-4 || Math.abs(dv) > 1e-4;
+  if (ev.clamped) plan = plan.map(p => [p[0] + du, p[1] + dv]);
+  const d = clamp(f.depth, 0.03, 0.19);
+  sweep(out, { path: plan, closed: true, fr, section: [[0, 0], [0, -d]], secClosed: false, axes: 'LN', sign: 1, caps: false });
+  flatCap(out, fr, plan, [], -d, 1);
+  ev.plan = plan; ev.fr = fr; ev.depth = d; ev.planBox = bbox2(plan); ev.c = centroid(plan);
+}
+
+function evaluate() {
+  EV.clear();
+  clearGroup(formGroup);
+  // recesses first (frames follow them), then masses (assets sit on them), then runs
+  const order = [...S.forms.filter(f => f.kind === 'recess'), ...S.forms.filter(f => f.kind === 'mass'), ...S.forms.filter(f => f.kind === 'run')];
+  for (const f of order) {
+    const ev = { id: f.id }; const pos = [];
+    try {
+      if (f.kind === 'mass') evalMass(f, pos, ev); else if (f.kind === 'run') evalRun(f, pos, ev); else evalRecess(f, pos, ev);
+    } catch (e) { console.warn('evaluate', f.id, e); }
+    EV.set(f.id, ev);
+    if (!pos.length) continue;
+    const geo = geoFrom(pos, f.kind === 'recess' ? 0.3 : 0.62);
+    const mesh = new THREE.Mesh(geo, f.kind === 'recess' ? wallInMat : mat(f.material || 'plaster', !!f.pending));
+    mesh.castShadow = f.kind !== 'recess'; mesh.receiveShadow = true; mesh.userData = { formId: f.id, kind: f.kind };
+    formGroup.add(mesh); ev.mesh = mesh;
+    geo.computeBoundingBox(); ev.box = geo.boundingBox.clone();
+  }
+  // the asset rests on whatever is under it (gravity, not a tie)
+  assetY = 0;
+  for (const f of S.forms) {
+    if (f.kind !== 'mass' || f.host !== 'floor') continue; const ev = EV.get(f.id); if (!ev || !ev.plan) continue;
+    if (inPoly([S.asset.x, S.asset.z], ev.plan)) assetY = Math.max(assetY, ev.h);
+  }
+  buildRoom(); buildAsset();
+  computeTies();
+}
+
+/* ---------- The room (context) ---------- */
+function buildRoom() {
+  clearGroup(roomGroup);
+  const { W, D, H } = S.space; const T = 0.2;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), floorMat); floor.rotation.x = -Math.PI / 2; floor.position.set(W / 2, 0, D / 2);
+  floor.receiveShadow = true; floor.userData = { host: 'floor' }; roomGroup.add(floor); floorMesh = floor;
+  for (const host of ['back', 'left', 'right']) {
+    const fr = frameOf(host); const [u0, u1, v0, v1] = fr.b;
+    const holes = S.forms.filter(f => f.kind === 'recess' && f.host === host && EV.get(f.id)?.plan).map(f => EV.get(f.id).plan);
+    const pos = []; flatCap(pos, fr, [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], holes, 0, 1);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, wallMat); m.receiveShadow = true; m.castShadow = true; m.userData = { host }; roomGroup.add(m); wallMeshes[host] = m;
+  }
+  // wall caps and ends: an architectural model, cut at the top
+  const caps = [];
+  const quad = (a, b, c, d) => { pushTri(caps, a, b, c); pushTri(caps, a, c, d); };
+  quad(v3(-T, H, -T), v3(W + T, H, -T), v3(W + T, H, 0), v3(-T, H, 0));
+  quad(v3(-T, H, 0), v3(0, H, 0), v3(0, H, D), v3(-T, H, D));
+  quad(v3(W, H, 0), v3(W + T, H, 0), v3(W + T, H, D), v3(W, H, D));
+  quad(v3(-T, 0, D), v3(0, 0, D), v3(0, H, D), v3(-T, H, D));
+  quad(v3(W, 0, D), v3(W + T, 0, D), v3(W + T, H, D), v3(W, H, D));
+  const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(caps, 3)); cg.computeVertexNormals();
+  roomGroup.add(new THREE.Mesh(cg, capMat));
+  const e = [0, H, 0, W, H, 0, 0, H, 0, 0, H, D, W, H, 0, W, H, D, -T, H, -T, W + T, H, -T, -T, H, -T, -T, H, D, W + T, H, -T, W + T, H, D,
+    0, 0, 0, 0, H, 0, W, 0, 0, W, H, 0];
+  roomGroup.add(fatSegments(e, { color: 0xb3a892, width: 1.1, opacity: 0.9, depthTest: true }));
+  sun.position.set(W * 0.3, 6.8, D + 3.6); sun.target.position.set(W / 2, 0, D / 2);
+}
+function buildAsset() {
+  clearGroup(assetGroup);
+  const v = S.asset.variant; const g = new THREE.Group();
+  const add = (geo, y, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, assetMat); m.position.y = y; m.scale.set(sx, sy, sz); m.castShadow = m.receiveShadow = true; m.userData = { asset: true }; g.add(m); };
+  if (v === 'pebble') {
+    add(new THREE.SphereGeometry(0.22, 40, 24), 0.11, 1, 0.5, 0.92);
+    add(new THREE.SphereGeometry(0.16, 40, 24), 0.3, 1.05, 0.62, 0.9);
+    add(new THREE.SphereGeometry(0.11, 32, 20), 0.48, 0.9, 0.85, 1.1);
+  } else if (v === 'tall') {
+    const pr = [[0.001, 0], [0.13, 0], [0.13, 0.03], [0.07, 0.06], [0.085, 0.32], [0.05, 0.55], [0.095, 0.74], [0.06, 0.9], [0.001, 0.95]].map(([x, y]) => new THREE.Vector2(x, y));
+    add(new THREE.LatheGeometry(pr, 48), 0);
+  } else {
+    const pr = [[0.001, 0], [0.14, 0], [0.16, 0.03], [0.3, 0.14], [0.34, 0.3], [0.33, 0.34], [0.3, 0.3], [0.27, 0.17], [0.13, 0.06], [0.001, 0.055]].map(([x, y]) => new THREE.Vector2(x, y));
+    add(new THREE.LatheGeometry(pr, 56), 0);
+  }
+  g.position.set(S.asset.x, assetY, S.asset.z); assetGroup.add(g);
+}
+
+/* ---------- Ties: persistent, visible relationships ----------
+   A snap only helps in the moment. A tie is a dependency the creator can see,
+   name and undo. Proposed ties are offered, never assumed. */
+const formById = id => S.forms.find(f => f.id === id);
+const assetName = () => ASSETS[S.asset.variant].name;
+function computeTies() {
+  const { W, H } = S.space;
+  for (const f of S.forms) {
+    const ev = EV.get(f.id); if (!ev) continue; const ties = []; ev.ties = ties;
+    if (f.kind === 'mass' && ev.plan) {
+      const fr = ev.fr; const front = ev.plan.reduce((a, b) => (b[1] > a[1] ? b : a));
+      const top = to3(fr, front[0], front[1], ev.h);
+      if (f.plan.type === 'fit') ties.push({ key: 'fit', state: 'tied', label: `Fits the sculpture, ${fmt(f.plan.margin)} margin`, why: 'You looped around it', at: top, to: v3(S.asset.x, assetY + ASSETS[S.asset.variant].h * 0.6, S.asset.z), target: 'asset' });
+      if (f.height.mode === 'ceiling') { const c = to3(fr, ev.c[0], ev.c[1], ev.h); ties.push({ key: 'ceiling', state: 'tied', label: 'Reaches the ceiling', why: 'You pulled it to the ceiling', at: c, to: c.clone().add(v3(0, 0.001, 0)), target: 'ceiling' }); }
+      if (f.plan.tieU) { const r = ev.plan.reduce((a, b) => (b[0] > a[0] ? b : a)); const at = to3(fr, r[0], r[1], ev.h * 0.5); ties.push({ key: 'tieU', state: 'tied', label: f.plan.tieU === 'stretch' ? 'Reaches the right wall' : 'Keeps its distance to the right wall', at, to: v3(W, at.y, at.z), target: 'right' }); }
+    }
+    if (f.kind === 'recess' && ev.plan) {
+      const fr = ev.fr; const r = ev.plan.reduce((a, b) => (b[0] > a[0] ? b : a)); const at = to3(fr, r[0], r[1], 0.01);
+      if (f.plan.tieU) ties.push({ key: 'tieU', state: 'tied', label: 'Keeps its distance to the right wall', at, to: v3(W, at.y, at.z + 0.01), target: 'right' });
+      if (f.plan.tieV) { const t = ev.plan.reduce((a, b) => (b[1] > a[1] ? b : a)); const at2 = to3(fr, t[0], t[1], 0.01); ties.push({ key: 'tieV', state: 'tied', label: 'Keeps its distance to the ceiling', at: at2, to: v3(at2.x, H, at2.z), target: 'ceiling' }); }
+    }
+    if (f.kind === 'run' && ev.path) {
+      const P = f.path; const fr = ev.fr; const mid = ev.path[Math.floor(ev.path.length / 2)];
+      if (P.type === 'seam') {
+        const at = to3(fr, mid[0], mid[1], 0.02);
+        ties.push({ key: 'follows', state: 'tied', label: `Follows ${CHAIN_NAME[P.chain]}`, why: 'You traced along it', at, to: at, target: 'seam' });
+        for (const k of ['a', 'b']) {
+          const end = P[k]; if (end.tie !== 'right') continue;
+          const w = endWorld(end, P.chain); w.y += P.chain === 'ceiling' ? -0.05 : 0.05;
+          ties.push({ key: 'end-' + k, end: k, state: 'tied', label: end.c < 0.02 ? 'Runs into the right corner' : `Ends ${fmt(end.c)} from the right wall`, at: w, to: v3(W, w.y, w.z + 0.05), target: 'right' });
+        }
+      } else if (P.type === 'edge') {
+        const tgt = formById(P.target); const at = to3(fr, mid[0], mid[1], 0.04);
+        const tev = tgt && EV.get(tgt.id);
+        ties.push({ key: 'edge', state: ev.slack ? 'slack' : 'tied', label: ev.slack ? 'Was following a niche that is gone' : `Follows the edge of ${tgt.name}`, why: 'You traced around it', at,
+          to: tev && tev.c ? to3(tev.fr, tev.c[0], tev.c[1], -0.05) : at, target: P.target });
+      } else if (P.type === 'drawn' && P.tieU) {
+        const e = ev.path.reduce((a, b) => (b[0] > a[0] ? b : a)); const at = to3(fr, e[0], e[1], 0.03);
+        ties.push({ key: 'tieU', state: 'tied', label: 'Reaches the right wall', at, to: v3(W, at.y, at.z), target: 'right' });
+      }
+    }
+    for (const pr of (f.proposals || [])) {
+      const at = proposalPoint(f, pr, ev); if (!at) continue;
+      ties.push({ key: 'prop-' + pr.key, proposal: pr, state: 'proposed', label: pr.label, why: 'It touched this when you drew it', at, to: pr.target === 'right' ? v3(W, at.y, at.z) : v3(at.x, H, at.z), target: pr.target });
+    }
+  }
+}
+function proposalPoint(f, pr, ev) {
+  if (pr.key === 'endRight' && f.path?.type === 'seam') { const w = endWorld(f.path[pr.end], f.path.chain); w.y += 0.05; return w; }
+  if ((pr.key === 'planRight' || pr.key === 'pathRight') && (ev.plan || ev.path)) { const pts = ev.plan || ev.path; const r = pts.reduce((a, b) => (b[0] > a[0] ? b : a)); return to3(ev.fr, r[0], r[1], f.kind === 'mass' ? ev.h * 0.5 : 0.03); }
+  if (pr.key === 'planCeiling' && ev.plan) { const t = ev.plan.reduce((a, b) => (b[1] > a[1] ? b : a)); return to3(ev.fr, t[0], t[1], 0.01); }
+  return null;
+}
+function acceptProposal(f, pr) {
+  beginChange([f.id]);
+  const fr = frameOf(f.host || f.path?.host || 'floor');
+  if (pr.key === 'endRight') { const end = f.path[pr.end]; end.seg = 'back'; end.tie = 'right'; end.c = 0; }
+  if (pr.key === 'planRight') { f.plan.tieU = pr.mode || 'move'; f.plan.refU = frameOf(f.host).b[1]; }
+  if (pr.key === 'pathRight') { f.path.tieU = 'stretch'; f.path.refU = frameOf(f.path.host).b[1]; }
+  if (pr.key === 'planCeiling') { f.plan.tieV = 'move'; f.plan.refV = frameOf(f.host).b[3]; }
+  f.proposals = (f.proposals || []).filter(p => p !== pr);
+  endChange(`${f.name}: tied`);
+  whisper(`Tied. ${f.name} will now ${pr.verb || 'follow the right wall'}.`, 'Untie', () => undo());
+}
+function untie(f, key) {
+  beginChange([f.id]);
+  const ev = EV.get(f.id);
+  if (key === 'fit') { // bake the fitted plan where it is now
+    const plan = ev.plan; const circle = f.plan.shape !== 'square';
+    const ctrl = circle ? (() => { const c = centroid(plan), r = d2(plan[0], c), pts = []; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; pts.push({ x: c[0] + Math.cos(a) * r, y: c[1] + Math.sin(a) * r, s: false }); } return pts; })()
+      : plan.map(p => ({ x: p[0], y: p[1], s: true }));
+    f.plan = { type: 'drawn', ctrl, closed: true };
+  }
+  if (key === 'ceiling') f.height = { mode: 'value', v: +ev.h.toFixed(3) };
+  if (key === 'tieU' || key === 'tieV') {
+    if (f.kind === 'run') { f.path.ctrl = pathCtrl(f); f.path.tieU = null; }
+    else { f.plan.ctrl = planCtrl(f); f.plan[key] = null; }
+  }
+  if (key === 'end-a' || key === 'end-b') { const end = f.path[key.slice(-1)]; const x = S.space.W - end.c; end.tie = null; end.c = +x.toFixed(4); (f.proposals ||= []).push({ key: 'endRight', end: key.slice(-1), target: 'right', label: 'Could run into the right corner', verb: 'run into the right corner' }); }
+  if (key === 'follows' || key === 'edge') {
+    f.path = { type: 'frozen', host: ev.fr === undefined ? 'floor' : hostOfFrame(f), pts: ev.path.map(p => [+p[0].toFixed(4), +p[1].toFixed(4)]), closed: ev.closed, axes: ev.axes, sign: ev.sign };
+  }
+  endChange(`${f.name}: untied`);
+  whisper(`Untied. ${f.name} keeps its shape and stays where it is.`, 'Undo', () => undo());
+}
+function hostOfFrame(f) { const P = f.path; if (P.type === 'seam') return P.chain === 'ceiling' ? 'ceiling' : 'floor'; if (P.type === 'edge') return P.cacheHost || 'back'; return P.host; }
+
+/* ---------- Change: snapshots, undo, and narrated consequences ---------- */
+let past = [], future = [], pre = null;
+const snapshot = () => JSON.stringify(S);
+function restore(json) {
+  const o = JSON.parse(json); S.space = o.space; S.asset = o.asset; S.forms = o.forms; S.profiles = o.profiles; S.seq = o.seq;
+  evaluate(); refreshUI();
+}
+function metricsAll() {
+  const m = {};
+  for (const f of S.forms) {
+    const ev = EV.get(f.id); if (!ev) continue;
+    const r = { kind: f.kind, name: f.name, slack: !!ev.slack };
+    if (ev.planBox) { r.w = ev.planBox.w; r.d = ev.planBox.h; r.cx = ev.c[0]; r.cz = ev.c[1]; }
+    if (ev.h != null) r.h = ev.h; if (ev.len != null) r.len = ev.len;
+    if (ev.box) { r.bx = (ev.box.min.x + ev.box.max.x) / 2; r.by = (ev.box.min.y + ev.box.max.y) / 2; r.bz = (ev.box.min.z + ev.box.max.z) / 2; r.bw = ev.box.max.x - ev.box.min.x; r.bh = ev.box.max.y - ev.box.min.y; }
+    m[f.id] = r;
+  }
+  m.__asset = { y: assetY, x: S.asset.x, z: S.asset.z, variant: S.asset.variant };
+  m.__space = { ...S.space };
+  return m;
+}
+function beginChange(direct = []) { if (pre) { direct.forEach(d => pre.direct.add(d)); return; } pre = { snap: snapshot(), metrics: metricsAll(), direct: new Set(direct) }; }
+function endChange(label, { notes = true } = {}) {
+  if (!pre) return; const before = pre; pre = null;
+  evaluate();
+  const now = snapshot();
+  if (now !== before.snap) { past.push(before.snap); if (past.length > 120) past.shift(); future = []; }
+  if (notes) showNotes(diffNotes(before.metrics, metricsAll(), before.direct), label);
+  refreshUI();
+}
+function cancelChange() { if (!pre) return; const s = pre.snap; pre = null; restore(s); }
+function undo() { if (!past.length) return; future.push(snapshot()); const s = past.pop(); const m0 = metricsAll(); restore(s); hideNotes(); whisper('Undone.'); }
+function redo() { if (!future.length) return; past.push(snapshot()); restore(future.pop()); whisper('Redone.'); }
+
+function diffNotes(A, B, direct) {
+  const out = [];
+  const sp0 = A.__space, sp1 = B.__space; const dW = sp1.W - sp0.W, dH = sp1.H - sp0.H;
+  for (const f of S.forms) {
+    const a = A[f.id], b = B[f.id]; if (!b) continue;
+    if (!a) continue; // new form: the creator just made it
+    if (direct.has(f.id)) continue;
+    const ev = EV.get(f.id);
+    if (b.slack && !a.slack) { out.push({ id: f.id, cls: 'slack', text: `${f.name} kept its shape. The thing it followed is gone, so its tie is slack. Decide in its card.` }); continue; }
+    if (f.kind === 'run' && Math.abs((b.len || 0) - (a.len || 0)) > 0.009) {
+      const dl = b.len - a.len; const why = f.path.type === 'seam' ? `to keep following ${CHAIN_NAME[f.path.chain]}` : f.path.type === 'edge' ? `to keep following ${formById(f.path.target)?.name || 'its niche'}` : 'to keep reaching the right wall';
+      out.push({ id: f.id, text: `${f.name} ${dl > 0 ? 'grew' : 'shortened'} ${fmt(Math.abs(dl))} ${why}.` }); continue;
+    }
+    if (f.kind === 'run' && f.path.type === 'seam' && Math.abs(b.by - a.by) > 0.005) { out.push({ id: f.id, text: `${f.name} moved ${b.by > a.by ? 'up' : 'down'} ${fmt(Math.abs(b.by - a.by))} to stay on ${CHAIN_NAME[f.path.chain]}.` }); continue; }
+    if (f.kind === 'run' && f.path.type === 'edge' && (Math.abs(b.bx - a.bx) > 0.005 || Math.abs(b.by - a.by) > 0.005 || Math.abs(b.bh - a.bh) > 0.005)) { out.push({ id: f.id, text: `${f.name} followed ${formById(f.path.target)?.name || 'its niche'}.` }); continue; }
+    if (f.kind === 'mass' && f.host === 'floor' && ev?.planBox) {
+      const bb = ev.planBox, { W, D } = S.space; const wall = bb.min[0] < -0.001 ? 'left wall' : bb.max[0] > W + 0.001 ? 'right wall' : bb.min[1] < -0.001 ? 'back wall' : null;
+      if (wall) { out.push({ id: f.id, cls: 'slack', text: `${f.name} now runs into the ${wall}. Its ties pull it there; move the ${f.plan.type === 'fit' ? 'sculpture' : 'wall'} back or untie it.` }); continue; }
+    }
+    if (f.kind === 'mass') {
+      if (f.plan.type === 'fit' && Math.abs(b.w - a.w) > 0.005) { const dw = b.w - a.w; out.push({ id: f.id, text: `${f.name} refit to ${assetName()}: ${fmt(Math.abs(dw))} ${dw > 0 ? 'wider' : 'narrower'}, same ${fmt(f.plan.margin)} margin.` }); continue; }
+      const moved = Math.hypot((b.cx - a.cx) || 0, (b.cz - a.cz) || 0);
+      if (moved > 0.005) { out.push({ id: f.id, text: `${f.name} moved ${fmt(moved)} ${f.plan.type === 'fit' ? 'with the sculpture' : 'with the right wall'}.` }); continue; }
+      if (Math.abs(b.h - a.h) > 0.005) { out.push({ id: f.id, text: `${f.name} is now ${fmtM(b.h)} tall ${f.height.mode === 'ceiling' ? 'to keep reaching the ceiling' : 'to keep its share of the room'}.` }); continue; }
+    }
+    if (f.kind === 'recess' && (Math.abs(b.cx - a.cx) > 0.005 || Math.abs(b.cz - a.cz) > 0.005)) { out.push({ id: f.id, text: `${f.name} moved with the ${f.plan.tieU ? 'right wall' : 'ceiling'}.` }); continue; }
+    // honest non-responses: it touched the moving thing but was never tied to it
+    const props = (f.proposals || []).filter(p => (p.target === 'right' && Math.abs(dW) > 0.005) || (p.target === 'ceiling' && Math.abs(dH) > 0.005));
+    if (props.length) out.push({ id: f.id, cls: 'still', text: `${f.name} stayed as it was. It touched the ${props[0].target === 'right' ? 'right wall' : 'ceiling'} but isn't tied to it.`, act: { label: 'Tie it', fn: () => acceptProposal(f, props[0]) } });
+    if (ev?.clamped && !(a && A[f.id]?.clamped)) out.push({ id: f.id, cls: 'still', text: `${f.name} stopped at the edge of its wall. A niche can't leave its wall.` });
+  }
+  const a0 = A.__asset, a1 = B.__asset;
+  if (Math.abs(a1.y - a0.y) > 0.005 && !direct.has('asset')) {
+    const on = S.forms.find(f => f.kind === 'mass' && EV.get(f.id)?.plan && inPoly([S.asset.x, S.asset.z], EV.get(f.id).plan));
+    out.push({ id: on?.id, text: a1.y > a0.y ? `The sculpture now sits ${fmtM(a1.y)} up, on ${on ? on.name : 'a form'}.` : `The sculpture came down to ${a1.y > 0 ? fmtM(a1.y) : 'the floor'}.` });
+  }
+  return out;
+}
+
+/* ---------- Picking & projection ---------- */
+const raycaster = new THREE.Raycaster(); const ndc = new THREE.Vector2();
+const crect = () => renderer.domElement.getBoundingClientRect();
+function rayAt(cx, cy) { const r = crect(); ndc.set((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(ndc, camera); return raycaster.ray.clone(); }
+function toScreen(P) { const v = P.clone().project(camera); const r = crect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height, v.z]; }
+function pick(cx, cy) {
+  rayAt(cx, cy);
+  const objs = [floorMesh, ...Object.values(wallMeshes), ...formGroup.children, ...(assetGroup.children[0]?.children || [])].filter(Boolean);
+  const hit = raycaster.intersectObjects(objs, false)[0]; if (!hit) return null;
+  const u = hit.object.userData; const n = hit.face ? hit.face.normal.clone() : v3(0, 1, 0);
+  if (u.asset) return { kind: 'asset', point: hit.point, normal: n };
+  if (u.formId) return { kind: 'form', formId: u.formId, point: hit.point, normal: n };
+  if (u.host === 'floor') return { kind: 'floor', host: 'floor', point: hit.point, normal: n };
+  return { kind: 'wall', host: u.host, point: hit.point, normal: n };
+}
+function planeOf(fr, n = 0) { const N = fr.N.clone(); const P = to3(fr, 0, 0, n); return new THREE.Plane(N, -N.dot(P)); }
+function hitPlane(cx, cy, plane) { const r = rayAt(cx, cy); const p = new THREE.Vector3(); return r.intersectPlane(plane, p) ? p : null; }
+function rayLineParam(ray, P0, dir) {
+  const w0 = P0.clone().sub(ray.origin); const a = dir.dot(dir), b = dir.dot(ray.direction), c = ray.direction.dot(ray.direction), d = dir.dot(w0), e = ray.direction.dot(w0);
+  const den = a * c - b * b; if (Math.abs(den) < 1e-8) return null; return (b * e - c * d) / den;
+}
+function screenPolyDist(pt, poly) { // poly: [[x,y]] screen; returns {d, i, t}
+  let best = { d: Infinity, i: 0, t: 0 };
+  for (let i = 0; i < poly.length - 1; i++) {
+    const a = poly[i], b = poly[i + 1]; const dx = b[0] - a[0], dy = b[1] - a[1]; const L2 = dx * dx + dy * dy;
+    let t = L2 ? ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / L2 : 0; t = clamp(t, 0, 1);
+    const d = Math.hypot(pt[0] - a[0] - t * dx, pt[1] - a[1] - t * dy); if (d < best.d) best = { d, i, t };
+  }
+  return best;
+}
+
+/* ---------- Modes ---------- */
+let mode = 'look', tidyOn = true, selectedId = null, lensOn = false, pendingId = null;
+function setMode(m) {
+  if (pendingId && m !== mode) commitPending();
+  mode = m; document.body.classList.remove('look', 'draw', 'space'); document.body.classList.add(m);
+  $('#mLook').setAttribute('aria-pressed', m === 'look'); $('#mDraw').setAttribute('aria-pressed', m === 'draw'); $('#mSpace').setAttribute('aria-pressed', m === 'space');
+  controls.mouseButtons = m === 'look' ? { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN } : { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+  // on a tablet: one finger draws, two fingers look around
+  controls.touches = m === 'look' ? { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN } : { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  $('#space').hidden = m !== 'space'; hideTip(); clearTrace(); hot = null;
+  if (m === 'space') refreshSpaceCard();
+  if (m === 'draw' && !S.forms.length) whisper('Draw on the floor, a wall, or along the foot of a wall. Right-drag or use two fingers to look around.');
+}
+
+/* ---------- Drawing ---------- */
+const inkLayer = $('#inkLayer'); let inkPath = null;
+let stroke = null, trace = null, traceLine = null, seamLine = null;
+const marks = $('#marks');
+const tip = el('div', 'tip'); tip.hidden = true; marks.appendChild(tip);
+const pen = el('div', 'pen', '<svg viewBox="0 0 18 18" width="18" height="18"><path d="M2 16l1.6-5L13 1.6 16.4 5 7 14.4z" fill="#fff" stroke="#1F3A2C" stroke-width="1.2"/></svg>'); marks.appendChild(pen);
+function showTip(x, y, text, small) { tip.hidden = false; tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.innerHTML = text + (small ? `<small>${small}</small>` : ''); }
+function hideTip() { tip.hidden = true; }
+function clearTrace() { if (traceLine) { markGroup.remove(traceLine); disposeTree(traceLine); traceLine = null; } trace = null; }
+function setSeamHighlight(pts3) { if (seamLine) { markGroup.remove(seamLine); disposeTree(seamLine); seamLine = null; } if (pts3) { seamLine = fatLine(pts3, { width: 2, dashed: true, opacity: 0.95 }); markGroup.add(seamLine); } }
+
+function seamCandidates() {
+  const { W, D, H } = S.space; const out = [];
+  for (const chain of ['floor', 'ceiling']) {
+    const y = chain === 'floor' ? 0.004 : H - 0.004; const cp = chainPts(); const pts = [], s = []; let acc = 0;
+    for (let i = 0; i < cp.length - 1; i++) { const L = d2(cp[i], cp[i + 1]); const n = Math.max(2, Math.ceil(L / 0.08)); for (let k = 0; k < n; k++) { const t = k / n; pts.push(v3(cp[i][0] + (cp[i + 1][0] - cp[i][0]) * t, y, cp[i][1] + (cp[i + 1][1] - cp[i][1]) * t)); s.push(acc + L * t); } acc += L; }
+    pts.push(v3(cp[3][0], y, cp[3][1])); s.push(acc);
+    out.push({ id: chain, kind: 'chain', pts, s });
+  }
+  for (const f of S.forms) if (f.kind === 'recess' && EV.get(f.id)?.plan) { const ev = EV.get(f.id); const pts = ev.plan.map(p => to3(ev.fr, p[0], p[1], 0.005)); pts.push(pts[0].clone()); out.push({ id: f.id, kind: 'edge', pts, host: f.host }); }
+  return out;
+}
+function seamMatch(scr) {
+  let best = null;
+  for (const c of seamCandidates()) {
+    const sp = c.pts.map(p => toScreen(p)); if (sp.some(p => p[2] > 1)) continue;
+    const res = scr.map(p => screenPolyDist(p, sp)); const near = res.filter(r => r.d < 22);
+    const frac = near.length / res.length;
+    // coverage: how much of the seam the stroke runs along (matters for edges)
+    let cover = 0; if (c.kind === 'edge') { const hitIdx = new Set(near.map(r => r.i)); cover = hitIdx.size / (sp.length - 1); }
+    if (!best || frac > best.frac) best = { c, frac, cover, res, sp };
+  }
+  return best;
+}
+function sAt(c, r) { const s0 = c.s[r.i], s1 = c.s[r.i + 1] ?? c.s[r.i]; return s0 + (s1 - s0) * r.t; }
+function endFromS(s) {
+  const { W, D } = S.space; const snap = 0.16; const corner = [0, D, D + W, 2 * D + W];
+  for (const k of corner) if (Math.abs(s - k) < snap) s = k;
+  if (s <= D) return { seg: 'left', c: +(D - s).toFixed(4), atCorner: s === D };
+  if (s <= D + W) return { seg: 'back', c: +(s - D).toFixed(4), touchesRight: s === D + W };
+  return { seg: 'right', c: +(s - D - W).toFixed(4) };
+}
+
+function startStroke(e) {
+  if (pendingId) commitPending();
+  const x = e.clientX, y = e.clientY;
+  // 1. drawing over a form's side (its elevation trace)
+  if (trace && trace.screen && screenPolyDist([x, y], trace.screen).d < 26) {
+    stroke = { type: 'over', trace, plane: new THREE.Plane(trace.axisN.clone(), -trace.axisN.dot(trace.c3)), raw: [], screen: [] };
+  } else {
+    const hit = pick(x, y); if (!hit) return;
+    let host = 'floor';
+    if (hit.kind === 'wall') host = hit.host;
+    else if (hit.kind === 'form') { const f = formById(hit.formId); host = f.kind === 'run' ? (f.path.host && f.path.host !== 'floor' ? f.path.host : (f.path.cacheHost || (f.path.chain === 'ceiling' ? nearestWall(hit.point) : 'floor'))) : f.host; if (host === 'ceiling') host = nearestWall(hit.point); }
+    const fr = frameOf(host);
+    stroke = { type: 'host', host, fr, plane: planeOf(fr), raw: [], screen: [], startHit: hit };
+  }
+  inkPath = document.createElementNS('http://www.w3.org/2000/svg', 'path'); inkPath.setAttribute('class', 'ink'); inkLayer.appendChild(inkPath);
+  addStrokePoint(x, y);
+}
+function nearestWall(P) { const { W } = S.space; const d = { back: P.z, left: P.x, right: W - P.x }; return Object.entries(d).sort((a, b) => a[1] - b[1])[0][0]; }
+function addStrokePoint(x, y) {
+  if (!stroke) return; const P = hitPlane(x, y, stroke.plane); if (!P) return;
+  const last = stroke.screen[stroke.screen.length - 1]; if (last && Math.hypot(x - last[0], y - last[1]) < 2) return;
+  stroke.screen.push([x, y]);
+  if (stroke.type === 'over') { const t = stroke.trace; stroke.raw.push([P.clone().sub(t.c3).dot(t.A), P.y - t.base]); }
+  else stroke.raw.push(toHost(stroke.fr, P));
+  inkPath.setAttribute('d', 'M' + stroke.screen.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L'));
+  if (stroke.screen.length % 5 === 0) liveInterpretation(x, y);
+}
+function liveInterpretation(x, y) {
+  if (!stroke) return;
+  if (stroke.type === 'over') { showTip(x, y, `Reshaping ${stroke.trace.f.name}`, 'its profile follows your line'); return; }
+  const m = seamMatch(stroke.screen);
+  if (m && m.frac > 0.65) {
+    showTip(x, y, m.c.kind === 'chain' ? `Following ${CHAIN_NAME[m.c.id]}` : `Following the edge of ${formById(m.c.id).name}`, 'release to make a run');
+    setSeamHighlight(m.c.pts);
+  } else {
+    setSeamHighlight(null);
+    const sc = stroke.screen; const closed = sc.length > 10 && Math.hypot(sc[0][0] - x, sc[0][1] - y) < 30;
+    if (closed && stroke.host === 'floor' && inPoly([S.asset.x, S.asset.z], stroke.raw)) showTip(x, y, 'Around the sculpture', 'a plan that fits it');
+    else showTip(x, y, closed ? `A closed shape on ${HOST_NAME[stroke.host]}` : `Drawing on ${HOST_NAME[stroke.host]}`);
+  }
+}
+function endStroke() {
+  if (!stroke) return; const st = stroke; stroke = null; setSeamHighlight(null); hideTip();
+  const ink = inkPath; inkPath = null;
+  if (ink) { ink.style.transition = 'opacity .35s'; requestAnimationFrame(() => ink.style.opacity = '0'); setTimeout(() => ink.remove(), 400); }
+  const scrLen = pathLen(st.screen);
+  if (scrLen < 10) return tapAt(st.screen[0]);
+  try { interpret(st); } catch (e) { console.error(e); whisper('That stroke could not be read. Try again a little slower.'); }
+}
+function tapAt(pt) {
+  if (!pt) return; const hit = pick(pt[0], pt[1]);
+  if (hit?.kind === 'form') { select(hit.formId); const f = formById(hit.formId); if (f.kind !== 'recess') openLens(f.id); }
+  else select(null);
+}
+function glueCtrl(ctrl, fr, tolM) {
+  const [u0, u1, v0, v1] = fr.b;
+  for (const c of ctrl) {
+    if (Math.abs(c.x - u0) < tolM) { c.x = u0; c.gx = 'min'; } else if (Math.abs(c.x - u1) < tolM) { c.x = u1; c.gx = 'max'; }
+    if (Math.abs(c.y - v0) < tolM) { c.y = v0; c.gy = 'min'; } else if (Math.abs(c.y - v1) < tolM) { c.y = v1; c.gy = 'max'; }
+  }
+}
+function newForm(o) { const f = { id: 'f' + (S.seq++), proposals: [], ...o }; S.forms.push(f); return f; }
+function uniqueName(base) { const n = S.forms.filter(f => f.name.startsWith(base)).length; return n ? `${base} ${n + 1}` : base; }
+
+function interpret(st) {
+  if (st.type === 'over') {
+    const t = st.trace, f = t.f; const sideR = st.raw.reduce((a, p) => a + p[0], 0) / st.raw.length > (t.aL + t.aR) / 2;
+    const pts = st.raw.map(([a, y]) => [sideR ? a - t.aR : t.aL - a, y]);
+    beginChange([f.id]); applyElevStroke(f, pts); endChange(`${f.name} reshaped`); clearTrace();
+    select(f.id); whisper(`${f.name}'s profile follows your line. Draw over it again to keep refining.`, 'Undo', undo);
+    return;
+  }
+  const host = st.host, fr = st.fr;
+  // A. along a seam or a niche's edge
+  const m = seamMatch(st.screen);
+  if (m && m.c.kind === 'edge' && m.frac > 0.72 && m.cover > 0.45) return makeFrame(m.c.id);
+  // B. over an existing drawn plan on the same host: oversketch it
+  const over = findOversketchTarget(st);
+  if (over) return applyPlanOversketch(over, st);
+  if (m && m.c.kind === 'chain' && m.frac > 0.65 && pathLen(st.screen) > 50) return makeSeamRun(m);
+  const tol = 0.045;
+  const t = tidy(st.raw, { loose: !tidyOn, closeTol: Math.max(0.06, 0.12 * pathLen(st.raw)) });
+  if (!t) return;
+  // C. a loop around the sculpture: a plan that fits it
+  if (t.closed && host === 'floor' && inPoly([S.asset.x, S.asset.z], st.raw)) {
+    const A = ASSETS[S.asset.variant]; const meanR = st.raw.reduce((a, p) => a + d2(p, [S.asset.x, S.asset.z]), 0) / st.raw.length;
+    const margin = +clamp(meanR - A.r, 0.03, 0.3).toFixed(2);
+    beginChange();
+    const f = newForm({ kind: 'mass', name: uniqueName('Pedestal'), host: 'floor', plan: { type: 'fit', target: 'asset', shape: t.circle ? 'circle' : 'square', margin },
+      height: { mode: 'value', v: 0.45 }, profile: null, profileOn: true, material: 'travertine', pending: true });
+    f.profile = newProfile('elev', 'Straight', `${f.name} profile`);
+    pendingId = f.id; evaluate(); select(f.id);
+    whisper(`Fits the sculpture with a ${fmt(margin)} margin. That's a tie. Pull the handle up.`);
+    return;
+  }
+  if (t.closed) {
+    glueCtrl(t.ctrl, fr, tol);
+    beginChange();
+    if (host === 'floor') {
+      const f = newForm({ kind: 'mass', name: uniqueName('Plinth'), host, plan: { type: 'drawn', ctrl: t.ctrl, closed: true }, height: { mode: 'value', v: 0.45 }, profileOn: true, material: 'plaster', pending: true });
+      f.profile = newProfile('elev', 'Straight', `${f.name} profile`); addPlanProposals(f); pendingId = f.id; evaluate(); select(f.id);
+      whisper('A plan on the floor. Pull it up, or press Enter for 45 cm.');
+    } else {
+      const f = newForm({ kind: 'recess', name: uniqueName('Niche'), host, plan: { type: 'drawn', ctrl: t.ctrl, closed: true }, depth: 0.2, material: 'plaster', pending: true });
+      addPlanProposals(f); pendingId = f.id; evaluate(); select(f.id);
+      whisper('A plan on the wall. Push the handle in for a niche, or pull it out for a relief.');
+    }
+    return;
+  }
+  // D. an open line on a wall: a run along it
+  if (host !== 'floor') {
+    glueCtrl(t.ctrl, fr, tol);
+    beginChange();
+    const f = newForm({ kind: 'run', name: uniqueName('Shelf'), ctxKind: 'wall', path: { type: 'drawn', host, ctrl: t.ctrl, closed: false }, sectionOn: true, material: 'oak' });
+    f.section = newProfile('wall', 'Ledge', `${f.name} section`);
+    const gl = t.ctrl.filter(c => c.gx === 'max').length; if (gl && host !== 'right') f.proposals.push({ key: 'pathRight', target: 'right', label: 'Could keep reaching the right wall', verb: 'stretch to keep reaching the right wall' });
+    endChange(`${f.name} drawn`, { notes: false }); select(f.id);
+    whisper(gl ? `${f.name} touches the right wall. It isn't tied yet; tap the hollow knot to tie it.` : `${f.name} drawn. Tap it to shape its section.`);
+    return;
+  }
+  whisper('Open lines on the floor need a wall to follow. Close the loop for a mass, or trace along the foot of a wall.');
+}
+function addPlanProposals(f) {
+  const fr = frameOf(f.host); const pts = f.plan.ctrl; const maxU = Math.max(...pts.map(c => c.x)), maxV = Math.max(...pts.map(c => c.y));
+  if (f.host !== 'right' && fr.b[1] - maxU < 0.35) f.proposals.push({ key: 'planRight', target: 'right', mode: pts.some(c => c.gx === 'max') ? 'stretch' : 'move', label: 'Could keep its distance to the right wall', verb: 'move with the right wall' });
+  if (f.host !== 'floor' && fr.b[3] - maxV < 0.3) f.proposals.push({ key: 'planCeiling', target: 'ceiling', label: 'Could keep its distance to the ceiling', verb: 'move with the ceiling' });
+}
+function makeSeamRun(m) {
+  const c = m.c; const near = m.res.map((r, i) => ({ r, i })).filter(o => o.r.d < 22);
+  let sa = sAt(c, near[0].r), sb = sAt(c, near[near.length - 1].r); if (sa > sb) [sa, sb] = [sb, sa];
+  if (sb - sa < 0.25) return whisper('That was too short to follow. Trace a little further along the wall.');
+  const a = endFromS(sa), b = endFromS(sb); const floor = c.id === 'floor';
+  beginChange();
+  const f = newForm({ kind: 'run', name: uniqueName(floor ? 'Bench' : 'Cornice'), ctxKind: floor ? 'seam-floor' : 'seam-ceiling',
+    path: { type: 'seam', chain: c.id, a: { seg: a.seg, c: a.c, tie: null }, b: { seg: b.seg, c: b.c, tie: null } }, sectionOn: true, material: floor ? 'oak' : 'plaster' });
+  f.section = newProfile('corner', floor ? 'Block' : 'Cove', `${f.name} section`);
+  for (const [k, e] of [['a', a], ['b', b]]) if (e.touchesRight) f.proposals.push({ key: 'endRight', end: k, target: 'right', label: 'Could keep running into the right corner', verb: 'grow and shrink with the right wall' });
+  endChange(`${f.name} drawn`, { notes: false }); select(f.id);
+  const turned = (a.seg !== b.seg) ? ', around the corner' : '';
+  whisper(`${f.name} follows ${CHAIN_NAME[c.id]}${turned}. That's a tie.` + (f.proposals.length ? ' Its end touches the right wall but isn’t tied.' : ''), 'Shape its section', () => openLens(f.id));
+}
+function makeFrame(recessId) {
+  const r = formById(recessId); beginChange();
+  const f = newForm({ kind: 'run', name: uniqueName('Frame'), ctxKind: 'edge', path: { type: 'edge', target: recessId }, sectionOn: true, material: 'plaster' });
+  f.section = newProfile('corner', 'Band', `${f.name} section`);
+  endChange(`${f.name} drawn`, { notes: false }); select(f.id);
+  whisper(`${f.name} follows the edge of ${r.name}. Reshape the niche and it follows.`, 'Shape its section', () => openLens(f.id));
+}
+function findOversketchTarget(st) {
+  const a = st.screen[0], b = st.screen[st.screen.length - 1];
+  for (const f of S.forms) {
+    if (f.pending) continue;
+    let pts3 = null, closed = true, ctrlOwner = null;
+    const ev = EV.get(f.id); if (!ev) continue;
+    if ((f.kind === 'recess' || (f.kind === 'mass' && f.plan.type === 'drawn')) && f.host === st.host && ev.plan) {
+      const n = f.kind === 'mass' ? 0.003 : 0.003; pts3 = ev.plan.map(p => to3(ev.fr, p[0], p[1], n)); ctrlOwner = 'plan';
+    } else if (f.kind === 'run' && f.path.type === 'drawn' && f.path.host === st.host && ev.path) { pts3 = ev.path.map(p => to3(ev.fr, p[0], p[1], 0)); closed = false; ctrlOwner = 'path'; }
+    else if (f.kind === 'mass' && f.plan.type === 'fit' && f.host === st.host && ev.plan) {
+      const sp = ev.plan.map(p => toScreen(to3(ev.fr, p[0], p[1], 0))); sp.push(sp[0]);
+      if (screenPolyDist(a, sp).d < 18 && screenPolyDist(b, sp).d < 18) return { f, fit: true };
+      continue;
+    }
+    if (!pts3) continue;
+    const sp = pts3.map(p => toScreen(p)); if (closed) sp.push(sp[0]);
+    if (screenPolyDist(a, sp).d < 20 && screenPolyDist(b, sp).d < 20) return { f, owner: ctrlOwner, closed };
+  }
+  return null;
+}
+function applyPlanOversketch(o, st) {
+  const f = o.f;
+  if (o.fit) { whisper(`${f.name}'s plan fits the sculpture. Untie that to redraw it by hand.`, 'Untie', () => untie(f, 'fit')); return; }
+  const t = tidy(st.raw, { forceOpen: true, loose: !tidyOn }); if (!t) return;
+  beginChange([f.id]);
+  const P = o.owner === 'plan' ? f.plan : f.path; const host = o.owner === 'plan' ? f.host : f.path.host; const fr = frameOf(host);
+  const du = P.tieU === 'move' ? fr.b[1] - P.refU : 0, dv = P.tieV === 'move' ? fr.b[3] - P.refV : 0;
+  const cur = (o.owner === 'plan' ? planCtrl(f) : pathCtrl(f));
+  let next = oversketch(cur, o.closed, t.ctrl);
+  next = next.map(c => ({ ...c, x: c.x - du, y: c.y - dv }));
+  P.ctrl = next;
+  if (f.kind === 'mass') f.plan.ctrl = next;
+  endChange(`${f.name} reshaped`);
+  select(f.id); whisper(`${f.name} redrawn where you drew over it.`, 'Undo', undo);
+}
+function applyElevStroke(f, pts) {
+  const ev = EV.get(f.id); const h = ev.h; const prof = S.profiles[f.profile];
+  let s = pts.slice(); if (s[0][1] > s[s.length - 1][1]) s.reverse();
+  const ymin = Math.max(0, s[0][1]), ymax = s[s.length - 1][1];
+  let newH = h; if (ymax > h * 1.04 && f.height.mode !== 'ceiling') newH = +ymax.toFixed(3);
+  const t = tidy(s, { forceOpen: true, loose: !tidyOn }); if (!t) return;
+  const stroke = t.ctrl.map(c => ({ x: c.x, y: clamp(c.y / newH, 0, 1), s: c.s }));
+  stroke[0].s = false; stroke[stroke.length - 1].s = false;
+  const old = (f.profileOn ? prof.ctrl : ctrlFrom(PRESETS.elev.Straight)).map(c => ({ ...c, y: c.y * h / newH }));
+  const below = old.filter(c => c.y * newH < ymin - 0.012), above = old.filter(c => c.y * newH > ymax + 0.012);
+  let next = [...below, ...stroke, ...above];
+  if (next[0].y > 0.002) next.unshift({ x: next[0].x, y: 0, s: true }); else next[0].y = 0;
+  if (next[next.length - 1].y < 0.998) next.push({ x: next[next.length - 1].x, y: 1, s: true }); else next[next.length - 1].y = 1;
+  prof.ctrl = next; prof.preset = null; f.profileOn = true;
+  if (newH !== h) f.height = { mode: 'value', v: newH };
+}
+function massTrace(f) {
+  const ev = EV.get(f.id); if (!ev?.plan || f.host !== 'floor') return null;
+  const d = controls.target.clone().sub(camera.position); d.y = 0; d.normalize();
+  const axisN = Math.abs(d.x) > Math.abs(d.z) ? v3(1, 0, 0) : v3(0, 0, 1); const A = axisN.x ? v3(0, 0, 1) : v3(1, 0, 0);
+  const c3 = v3(ev.c[0], 0, ev.c[1]);
+  // where the line through the centroid along A crosses the plan
+  const along = [], ai = A.x ? 0 : 1, ni = A.x ? 1 : 0; const cc = ev.c;
+  for (let i = 0; i < ev.plan.length; i++) {
+    const p = ev.plan[i], q = ev.plan[(i + 1) % ev.plan.length];
+    if ((p[ni] - cc[ni]) * (q[ni] - cc[ni]) <= 0 && p[ni] !== q[ni]) { const t = (cc[ni] - p[ni]) / (q[ni] - p[ni]); along.push(p[ai] + (q[ai] - p[ai]) * t - cc[ai]); }
+  }
+  if (along.length < 2) return null;
+  const aL = Math.min(...along), aR = Math.max(...along);
+  const pd = ev.profileDense; const R = [], L = [];
+  for (const [o, y] of pd) { R.push(c3.clone().addScaledVector(A, aR + o).add(v3(0, y, 0))); L.push(c3.clone().addScaledVector(A, aL - o).add(v3(0, y, 0))); }
+  return { f, A, axisN, c3, aL, aR, base: 0, h: ev.h, R, L };
+}
+function showTrace(t) {
+  clearTrace(); trace = t; if (!t) return;
+  const g = new THREE.Group(); g.add(fatLine(t.R, { width: 2.2, dashed: false, opacity: 0.95 })); g.add(fatLine(t.L, { width: 1.4, dashed: true, opacity: 0.7 }));
+  traceLine = g; markGroup.add(g);
+  t.screen = t.R.map(p => toScreen(p)).map(p => [p[0], p[1]]);
+  t.screenL = t.L.map(p => toScreen(p)).map(p => [p[0], p[1]]);
+  // the left trace counts too
+  t.screen = t.screen.concat([[NaN, NaN]]).concat(t.screenL).filter(p => !isNaN(p[0]));
+}
+function dropTrace() { if (trace && trace.f.id !== selectedId) clearTrace(); }
+function hoverDraw(x, y) {
+  if (trace && trace.screen && screenPolyDist([x, y], trace.screen).d < 30) { showTip(x, y, `${trace.f.name} · its side`, 'draw over it to reshape'); return; }
+  const hit = pick(x, y);
+  if (!hit) { if (trace?.f.id !== selectedId) dropTrace(); hideTip(); setSeamHighlight(null); return; }
+  // seams near the cursor
+  for (const c of seamCandidates()) {
+    if (c.kind !== 'chain') continue; const sp = c.pts.map(p => toScreen(p)); const r = screenPolyDist([x, y], sp);
+    if (r.d < 16) { dropTrace(); setSeamHighlight(c.pts); showTip(x, y, c.id === 'floor' ? 'Seam · foot of the wall' : 'Seam · wall meets ceiling', 'trace along it'); return; }
+  }
+  setSeamHighlight(null);
+  if (hit.kind === 'form') {
+    const f = formById(hit.formId);
+    if (f.kind === 'mass' && f.host === 'floor' && Math.abs(hit.normal.y) < 0.6 && !f.pending) { if (!trace || trace.f !== f) showTrace(massTrace(f)); showTip(x, y, `${f.name} · its side`, 'draw over it to reshape'); return; }
+    dropTrace();
+    if (f.kind === 'recess') return showTip(x, y, `${f.name}`, 'trace its edge to frame it, or draw over it to reshape');
+    if (f.kind === 'run') return showTip(x, y, `${f.name}`, 'tap to shape its section');
+    return showTip(x, y, `Top of ${f.name}`);
+  }
+  dropTrace();
+  if (hit.kind === 'asset') return showTip(x, y, `${assetName()} · imported asset`, 'loop around it');
+  if (hit.kind === 'floor') {
+    const A = ASSETS[S.asset.variant]; const dd = Math.hypot(hit.point.x - S.asset.x, hit.point.z - S.asset.z);
+    return showTip(x, y, 'Floor', dd < A.r + 0.5 ? 'loop around the sculpture to fit it' : 'close a loop for a mass');
+  }
+  showTip(x, y, HOST_NAME[hit.host].replace('the ', '').replace(/^./, c => c.toUpperCase()), 'close a loop for a niche, or draw a line');
+}
+
+/* ---------- Pull: grow it out of its host, or push it in ---------- */
+const handle = el('button', 'handle', '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 1.5v11M3.5 5L7 1.5 10.5 5M3.5 9L7 12.5 10.5 9"/></svg><span class="val"></span>');
+handle.setAttribute('aria-label', 'Pull to set height'); handle.hidden = true; marks.appendChild(handle);
+let pull = null, typed = '';
+const ticksEl = el('div'); marks.appendChild(ticksEl);
+function handleAnchor(f) {
+  const ev = EV.get(f.id); if (!ev || !ev.c) return null; const fr = ev.fr;
+  if (f.kind === 'mass') return { P0: to3(fr, ev.c[0], ev.c[1], 0), dir: fr.N.clone(), val: ev.h };
+  if (f.kind === 'recess') return { P0: to3(fr, ev.c[0], ev.c[1], 0), dir: fr.N.clone(), val: -ev.depth };
+  return null;
+}
+function pullSnaps(f) {
+  const { H } = S.space; const out = [];
+  if (f.kind === 'mass' && f.host === 'floor') {
+    out.push({ v: H, label: 'the ceiling', tie: 'ceiling' });
+    if (f.plan.type === 'fit') out.push({ v: +(1.5 - ASSETS[S.asset.variant].h / 2).toFixed(3), label: 'sculpture at eye level' });
+    out.push({ v: 0.45, label: 'seat height' }, { v: 0.9, label: 'counter height' });
+    for (const g of S.forms) if (g !== f && g.kind === 'mass' && g.host === 'floor' && EV.get(g.id)) out.push({ v: EV.get(g.id).h, label: `level with ${g.name}` });
+  }
+  return out.filter(s => s.v > 0.05 && s.v <= H + 1e-6);
+}
+function onHandleDown(e) {
+  const f = formById(pendingId || selectedId); if (!f) return; const a = handleAnchor(f); if (!a) return;
+  e.preventDefault?.(); e.stopPropagation?.();
+  if (!f.pending) beginChange([f.id]);
+  pull = { f, ...a, snaps: pullSnaps(f), hit: null }; typed = '';
+  if (!e.synthetic) try { handle.setPointerCapture(e.pointerId); } catch (_) { }
+  renderTicks();
+}
+function onHandleMove(e) {
+  if (!pull) return; const f = pull.f; const ray = rayAt(e.clientX, e.clientY);
+  let t = rayLineParam(ray, pull.P0, pull.dir); if (t == null) return;
+  if (f.kind === 'mass' && f.host === 'floor') {
+    t = clamp(t, 0.05, S.space.H); pull.hit = null;
+    for (const s of pull.snaps) if (Math.abs(t - s.v) < 0.035) { t = s.v; pull.hit = s; break; }
+    f.height = pull.hit?.tie === 'ceiling' ? { mode: 'ceiling' } : { mode: 'value', v: +t.toFixed(3) };
+  } else if (f.kind === 'recess' || (f.kind === 'mass' && f.host !== 'floor')) {
+    if (t > 0.02) { // pulled out: a relief
+      if (f.kind === 'recess') { f.kind = 'mass'; f.name = f.name.replace('Niche', 'Relief'); f.height = { mode: 'value', v: 0.04 }; f.profile = f.profile || newProfile('elev', 'Straight', `${f.name} profile`); f.profileOn = true; delete f.depth; }
+      f.height = { mode: 'value', v: +clamp(t, 0.02, 0.6).toFixed(3) };
+    } else {
+      if (f.kind === 'mass') { f.kind = 'recess'; f.name = f.name.replace('Relief', 'Niche'); delete f.height; }
+      f.depth = +clamp(-t, 0.03, 0.19).toFixed(3);
+    }
+    pull.dir = frameOf(f.host).N; pull.P0 = handleAnchor(f)?.P0 || pull.P0;
+  }
+  evaluate(); renderTicks(); refreshRecipe();
+}
+function onHandleUp() {
+  if (!pull) return; const f = pull.f; const hit = pull.hit; pull = null; renderTicks();
+  if (f.pending) commitPending(); else endChange(`${f.name} ${f.kind === 'recess' ? 'deepened' : 'pulled'}`);
+  if (hit?.tie === 'ceiling') whisper(`${f.name} reaches the ceiling. That's a tie: raise the ceiling and it follows.`, 'Untie', () => untie(f, 'ceiling'));
+}
+handle.addEventListener('pointerdown', onHandleDown);
+function commitPending() {
+  const f = formById(pendingId); pendingId = null; if (!f) return;
+  delete f.pending; endChange(`${f.name} made`, { notes: false });
+}
+function cancelPending() { if (!pendingId) return; pendingId = null; cancelChange(); select(null); whisper('Discarded.'); }
+function setExact(f, val) {
+  if (f.kind === 'mass') f.height = { mode: 'value', v: clamp(val, 0.02, S.space.H) };
+  if (f.kind === 'recess') f.depth = clamp(val, 0.03, 0.19);
+}
+function renderTicks() {
+  ticksEl.innerHTML = ''; if (!pull || pull.f.kind !== 'mass' || pull.f.host !== 'floor') return;
+  for (const s of pull.snaps) { const p = toScreen(pull.P0.clone().addScaledVector(pull.dir, s.v)); const t = el('div', 'tick' + (pull.hit === s ? ' hit' : ''), s.label); t.style.left = p[0] + 'px'; t.style.top = p[1] + 'px'; ticksEl.appendChild(t); }
+}
+
+/* ---------- Edit the space: the context changes, and your work answers ---------- */
+const grips = {};
+for (const [k, cls, label] of [['right', 'x', 'Right wall'], ['ceiling', 'y', 'Ceiling'], ['asset', 'xy', 'Sculpture']]) {
+  const g = el('button', 'grip ' + cls, cls === 'x' ? '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1.5 7h11M5 3.5L1.5 7 5 10.5M9 3.5L12.5 7 9 10.5"/></svg>'
+    : cls === 'y' ? '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 1.5v11M3.5 5L7 1.5 10.5 5M3.5 9L7 12.5 10.5 9"/></svg>'
+      : '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 1v12M1 7h12"/></svg>');
+  g.setAttribute('aria-label', `Move the ${label.toLowerCase()}`); g.hidden = true; marks.appendChild(g);
+  const lab = el('div', 'grip-label', label); lab.hidden = true; marks.appendChild(lab);
+  grips[k] = { g, lab, label };
+  g.addEventListener('pointerdown', e => onGripDown(k, e));
+}
+let spaceDrag = null, hot = null;
+function gripWorld(k) { const { W, D, H } = S.space; if (k === 'right') return v3(W, H, D * 0.62); if (k === 'ceiling') return v3(W * 0.5, H, 0); return v3(S.asset.x, assetY + ASSETS[S.asset.variant].h + 0.12, S.asset.z); }
+function dependentsOf(k) {
+  const out = [];
+  for (const f of S.forms) {
+    const ev = EV.get(f.id); if (!ev?.ties) continue;
+    for (const t of ev.ties) if (t.state !== 'proposed' && t.target === (k === 'asset' ? 'asset' : k)) out.push({ f, t });
+    if (k === 'ceiling' && f.kind === 'run' && f.path.type === 'seam' && f.path.chain === 'ceiling') out.push({ f, t: ev.ties[0] });
+  }
+  return out;
+}
+function onGripDown(k, e) {
+  e.preventDefault?.(); e.stopPropagation?.();
+  if (!e.synthetic) try { grips[k].g.setPointerCapture(e.pointerId); } catch (_) { }
+  beginChange(k === 'asset' ? ['asset'] : []);
+  spaceDrag = { k, start: { ...S.space }, asset: { ...S.asset } };
+  hot = k; makeGhostsBefore();
+  const n = new Set(dependentsOf(k).map(d => d.f.id)).size;
+  const props = S.forms.filter(f => (f.proposals || []).some(p => p.target === k)).length;
+  whisper(n ? `${n} ${n === 1 ? 'form depends' : 'forms depend'} on the ${grips[k].label.toLowerCase()}.` + (props ? ` ${props} more ${props === 1 ? 'touches' : 'touch'} it without a tie.` : '') :`Nothing is tied to the ${grips[k].label.toLowerCase()}.` + (props ? ` ${props} ${props === 1 ? 'form touches' : 'forms touch'} it without a tie.` : ''));
+}
+function onGripMove(e) {
+  if (!spaceDrag) return; const k = spaceDrag.k;
+  if (k === 'right') { const P = hitPlane(e.clientX, e.clientY, new THREE.Plane(v3(0, 1, 0), -S.space.H)); if (!P) return; S.space.W = +clamp(Math.round(P.x / 0.05) * 0.05, 3.6, 7.5).toFixed(2); }
+  if (k === 'ceiling') { const P = hitPlane(e.clientX, e.clientY, new THREE.Plane(v3(0, 0, 1), 0)); if (!P) return; S.space.H = +clamp(Math.round(P.y / 0.05) * 0.05, 2.4, 4.2).toFixed(2); }
+  if (k === 'asset') { const P = hitPlane(e.clientX, e.clientY, new THREE.Plane(v3(0, 1, 0), 0)); if (!P) return; S.asset.x = +clamp(P.x, 0.35, S.space.W - 0.35).toFixed(3); S.asset.z = +clamp(P.z, 0.35, S.space.D - 0.35).toFixed(3); }
+  evaluate(); refreshSpaceCard(); refreshRecipe();
+}
+function onGripUp() {
+  if (!spaceDrag) return; const k = spaceDrag.k; spaceDrag = null; hot = null;
+  const label = k === 'right' ? `Room width ${fmtM(S.space.W)}` : k === 'ceiling' ? `Ceiling at ${fmtM(S.space.H)}` : 'Sculpture moved';
+  endChange(label); fadeGhosts();
+}
+function makeGhostsBefore() {
+  clearGroup(ghostGroup);
+  for (const m of formGroup.children) {
+    const eg = new THREE.EdgesGeometry(m.geometry, 28);
+    const l = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthTest: false }));
+    l.renderOrder = 15; ghostGroup.add(l);
+  }
+}
+function fadeGhosts() {
+  const t0 = performance.now();
+  const step = () => { const k = (performance.now() - t0) / 1400; for (const l of ghostGroup.children) l.material.opacity = 0.75 * (1 - k); if (k < 1) requestAnimationFrame(step); else { for (const l of ghostGroup.children) l.material.dispose(); clearGroup(ghostGroup); } };
+  setTimeout(() => requestAnimationFrame(step), 900);
+}
+function setSpace(patch, label) { beginChange(patch.variant ? ['asset'] : []); Object.assign(S.space, patch.space || {}); if (patch.variant) S.asset.variant = patch.variant; if (patch.asset) Object.assign(S.asset, patch.asset); endChange(label || 'Space changed'); refreshSpaceCard(); }
+
+/* ---------- Selection, knots, threads, control points ---------- */
+let bracket = null, knotEls = [], ctrlEls = [], ctrlDrag = null;
+const threadsG = $('#threads');
+const assetFlag = el('div', 'flag asset'); assetFlag.hidden = true; marks.appendChild(assetFlag);
+function select(id) {
+  selectedId = id && formById(id) ? id : null;
+  if (lensFor && lensFor !== selectedId) closeLens();
+  refreshUI();
+}
+function refreshUI() { refreshMarks(); refreshRecipe(); refreshKnots(); refreshCtrlPts(); refreshButtons(); if (lensFor) renderLens(); }
+function refreshButtons() { $('#bUndo').disabled = !past.length; $('#bRedo').disabled = !future.length; }
+function refreshMarks() {
+  if (bracket) { markGroup.remove(bracket); disposeTree(bracket); bracket = null; }
+  const ev = selectedId && EV.get(selectedId); if (!ev?.box) return;
+  const b = ev.box.clone().expandByScalar(0.03); const mn = b.min, mx = b.max; const arr = [];
+  const L = Math.min(0.16, (mx.x - mn.x) * 0.3, (mx.y - mn.y) * 0.3 + 0.02, (mx.z - mn.z) * 0.3 + 0.02);
+  for (const x of [mn.x, mx.x]) for (const y of [mn.y, mx.y]) for (const z of [mn.z, mx.z]) {
+    const sx = x === mn.x ? 1 : -1, sy = y === mn.y ? 1 : -1, sz = z === mn.z ? 1 : -1;
+    arr.push(x, y, z, x + sx * L, y, z, x, y, z, x, y + sy * L, z, x, y, z, x, y, z + sz * L);
+  }
+  bracket = fatSegments(arr, { color: new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--gold').trim() || '#A8833F'), width: 2.2 }); markGroup.add(bracket);
+}
+function visibleTies() {
+  const out = [];
+  for (const f of S.forms) {
+    const ev = EV.get(f.id); if (!ev?.ties) continue;
+    for (const t of ev.ties) {
+      const show = lensOn || f.id === selectedId || (hot && (t.target === hot || (hot === 'ceiling' && f.path?.chain === 'ceiling' && t.key === 'follows')));
+      if (show) out.push({ f, t });
+    }
+  }
+  return out;
+}
+function refreshKnots() {
+  for (const k of knotEls) k.el.remove(); knotEls = [];
+  for (const { f, t } of visibleTies()) {
+    const b = el('button', 'knot ' + (t.state === 'proposed' ? 'proposed' : t.state === 'slack' ? 'slack' : ''));
+    b.title = t.label + (t.state === 'proposed' ? ' (tap to tie)' : ''); b.setAttribute('aria-label', b.title);
+    b.addEventListener('click', ev => { ev.stopPropagation(); knotMenu(f, t, b); });
+    marks.appendChild(b); knotEls.push({ el: b, f, t });
+  }
+}
+function knotMenu(f, t, anchor) {
+  const r = anchor.getBoundingClientRect();
+  const acts = t.state === 'proposed' ? [[`Tie it: ${t.proposal.verb}`, () => acceptProposal(f, t.proposal)], ['Leave it untied', () => { }]]
+    : t.state === 'slack' ? [['Open its card', () => select(f.id)]]
+      : [['Untie', () => untie(f, t.key)], ['Keep', () => { }]];
+  openPop(r.left, r.bottom + 6, `<label>${t.label}</label><p style="margin-top:0">${t.why || (t.state === 'proposed' ? 'It touched this when you drew it. Ties are never assumed.' : '')}</p><div class="seg">${acts.map((a, i) => `<button data-i="${i}">${a[0]}</button>`).join('')}</div>`,
+    pop => pop.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { closePop(); acts[+b.dataset.i][1](); })));
+}
+function refreshCtrlPts() {
+  for (const c of ctrlEls) c.el.remove(); ctrlEls = [];
+  const f = selectedId && formById(selectedId); if (!f || mode === 'space' || f.pending) return;
+  let P = null, host = null;
+  if ((f.kind === 'recess' || f.kind === 'mass') && f.plan.type === 'drawn') { P = f.plan; host = f.host; }
+  if (f.kind === 'run' && f.path.type === 'drawn') { P = f.path; host = f.path.host; }
+  if (!P) return;
+  const cur = f.kind === 'run' ? pathCtrl(f) : planCtrl(f); const fr = frameOf(host);
+  cur.forEach((c, i) => {
+    const b = el('button', 'ctrlpt' + (c.s ? ' sharp' : '')); b.title = c.s ? 'Corner (double-click to smooth)' : 'Smooth point (double-click for a corner)';
+    b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) { } beginChange([f.id]); ctrlDrag = { f, P, i, host, fr }; });
+    b.addEventListener('dblclick', e => { e.stopPropagation(); beginChange([f.id]); P.ctrl[i].s = !P.ctrl[i].s; endChange(`${f.name} point`); });
+    marks.appendChild(b); ctrlEls.push({ el: b, at: () => { const cc = (f.kind === 'run' ? pathCtrl(f) : planCtrl(f))[i]; return cc ? to3(frameOf(host), cc.x, cc.y, f.kind === 'mass' ? 0.002 : 0.004) : null; } });
+  });
+}
+function onCtrlMove(e) {
+  const d = ctrlDrag; const P3 = hitPlane(e.clientX, e.clientY, planeOf(d.fr)); if (!P3) return;
+  const [u, v] = toHost(d.fr, P3); const P = d.P;
+  const du = P.tieU === 'move' ? d.fr.b[1] - P.refU : 0, dv = P.tieV === 'move' ? d.fr.b[3] - P.refV : 0;
+  P.ctrl[d.i].x = +(u - du).toFixed(4); P.ctrl[d.i].y = +(v - dv).toFixed(4);
+  evaluate(); refreshMarks(); refreshRecipe();
+}
+
+/* ---------- Popovers ---------- */
+let popEl = null;
+function openPop(x, y, html, wire) {
+  closePop(); popEl = el('div', 'pop', html); document.body.appendChild(popEl);
+  const w = 232; popEl.style.left = clamp(x, 12, innerWidth - w - 12) + 'px'; popEl.style.top = clamp(y, 12, innerHeight - 220) + 'px';
+  wire && wire(popEl); setTimeout(() => popEl?.querySelector('input,button')?.focus(), 0);
+}
+function closePop() { if (popEl) { popEl.remove(); popEl = null; } }
+addEventListener('pointerdown', e => { if (popEl && !popEl.contains(e.target) && !e.target.closest?.('.w,.knot')) closePop(); }, true);
+
+/* ---------- The recipe card: the form tells its own story ---------- */
+const W_ = (act, text, cls = '') => `<button class="w ${cls}" data-act="${act}">${text}</button>`;
+function profileWord(f) {
+  const pid = f.kind === 'mass' ? f.profile : f.section; const p = S.profiles[pid]; const on = f.kind === 'mass' ? f.profileOn : f.sectionOn;
+  const nm = (p?.preset || 'your own drawing').toLowerCase(); const users = profileUsers(pid).filter(g => g !== f);
+  return { html: W_('profile', nm, on ? '' : 'off'), on, users };
+}
+function storyOf(f) {
+  const ev = EV.get(f.id) || {};
+  if (f.kind === 'mass') {
+    const pw = profileWord(f);
+    const hgt = f.height.mode === 'ceiling' ? W_('height', 'reaching the ceiling', 'gold') : W_('height', fmtM(ev.h || 0) + ' tall');
+    let s;
+    if (f.plan.type === 'fit') s = `A mass that ${W_('tie:fit', 'fits the sculpture')} with a ${W_('margin', fmt(f.plan.margin))} margin, ${hgt}, standing on the floor.`;
+    else if (f.host === 'floor') s = `A mass drawn on the floor, ${W_('plan', `${fmtM(ev.planBox?.w || 0)} × ${fmtM(ev.planBox?.h || 0)}`)}, ${hgt}.`;
+    else s = `A relief drawn on ${HOST_NAME[f.host]}, standing out ${W_('height', fmt(ev.h || 0))}.`;
+    s += pw.on ? ` Its profile is ${pw.html}${pw.users.length ? `, shared with ${pw.users.map(g => g.name).join(', ')}` : ''}.` : ` Its profile ${pw.html} is switched off.`;
+    if (f.plan.type === 'fit' && assetY > 0.01 && inPoly([S.asset.x, S.asset.z], ev.plan || [])) s += ` ${assetName()} sits on it.`;
+    return s;
+  }
+  if (f.kind === 'recess') return `A recess ${W_('depth', fmt(ev.depth || f.depth))} deep in ${HOST_NAME[f.host]}, ${W_('plan', `${fmtM(ev.planBox?.w || 0)} wide`)}, ${fmtM(ev.planBox?.min[0] || 0)} from the left wall.`;
+  const pw = profileWord(f); const P = f.path; let s;
+  if (P.type === 'seam') {
+    const end = e => e.tie === 'right' ? W_('tie:end-' + (e === P.a ? 'a' : 'b'), e.c < 0.02 ? 'the right corner' : `${fmt(e.c)} short of the right wall`, 'gold') : e.seg === 'left' ? `the left wall, ${fmt(e.c)} from the corner` : e.seg === 'right' ? 'the right wall' : `${fmtM(e.c)} along the back wall`;
+    const [a, b] = chainS(P.a) <= chainS(P.b) ? [P.a, P.b] : [P.b, P.a];
+    s = `A run that ${W_('tie:follows', `follows ${CHAIN_NAME[P.chain]}`)} for ${fmtM(ev.len || 0)}, from ${end(a)} to ${end(b)}.`;
+  } else if (P.type === 'edge') s = ev.slack ? `A run that was following a niche that is gone. It keeps its last shape, ${fmtM(ev.len || 0)} around.` : `A run that ${W_('tie:edge', `follows the edge of ${formById(P.target).name}`)}, ${fmtM(ev.len || 0)} around.`;
+  else if (P.type === 'frozen') s = `A run that keeps its own path, ${fmtM(ev.len || 0)} long. Nothing moves it but you.`;
+  else s = `A run drawn along ${HOST_NAME[P.host]}, ${fmtM(ev.len || 0)} long.`;
+  s += pw.on ? ` Its section is ${pw.html}${pw.users.length ? `, shared with ${pw.users.map(g => g.name).join(', ')}` : ''}.` : ` Its section ${pw.html} is switched off.`;
+  return s;
+}
+function refreshRecipe() {
+  const card = $('#recipe'); const f = selectedId && formById(selectedId);
+  if (!f) { card.hidden = true; return; }
+  card.hidden = false; const ev = EV.get(f.id) || {};
+  const ties = (ev.ties || []);
+  const tieRows = ties.map(t => `<li><i class="${t.state}"></i><span>${t.label}${t.why && t.state !== 'proposed' ? `<br><span class="why">${t.why}</span>` : t.state === 'proposed' ? '<br><span class="why">Touched, not tied</span>' : ''}</span>${t.state === 'tied' ? `<button class="link" data-untie="${t.key}">Untie</button>` : t.state === 'proposed' ? `<button class="link" data-tie="${t.key}">Tie</button>` : ''}</li>`).join('');
+  const slack = ev.slack ? `<div class="slackbox"><strong>Its niche is gone.</strong> ${f.name} kept its shape instead of jumping to something else. What should it do?
+    <div class="acts"><button class="btn" data-slack="keep">Keep it as it is</button><button class="btn ghost" data-slack="remove">Remove ${f.name}</button>${S.forms.filter(g => g.kind === 'recess').map(g => `<button class="btn ghost" data-retie="${g.id}">Follow ${g.name}</button>`).join('')}</div></div>` : '';
+  const pw = (f.kind === 'mass' || f.kind === 'run') ? profileWord(f) : null;
+  card.innerHTML = `<div class="eyebrow">${f.pending ? 'Proposed · pull or press Enter' : ({ mass: 'Mass', run: 'Run', recess: 'Recess' })[f.kind]}</div>
+    <div class="name" contenteditable="true" spellcheck="false" id="rName">${f.name}</div>
+    <p class="story">${storyOf(f)}</p>${slack}
+    <div class="sect"><div class="eyebrow">Ties</div>${ties.length ? `<ul class="ties">${tieRows}</ul>` : '<p class="hint">Nothing ties this to the space. It stays exactly where you drew it.</p>'}</div>
+    ${f.kind !== 'recess' ? `<div class="sect"><div class="eyebrow">Material</div><div class="swatches">${Object.entries(MATERIALS).map(([k, m]) => `<button data-mat="${k}" title="${m.name}" aria-label="${m.name}" aria-pressed="${f.material === k}" style="background:${m.color}"></button>`).join('')}</div></div>` : ''}
+    <div class="row">${pw ? `<button class="btn" data-act="profile">${f.kind === 'mass' ? 'Shape its profile' : 'Shape its section'}</button><button class="btn ghost" data-act="toggleProfile">${pw.on ? 'Switch profile off' : 'Switch profile on'}</button>` : ''}<button class="btn ghost" data-act="delete">Remove</button></div>`;
+  const nm = card.querySelector('#rName');
+  nm.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nm.blur(); } });
+  nm.addEventListener('blur', () => { const v = nm.textContent.trim(); if (v && v !== f.name) { beginChange([f.id]); f.name = v.slice(0, 40); endChange('Renamed', { notes: false }); } });
+  card.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', e => wordAction(f, b.dataset.act, b)));
+  card.querySelectorAll('[data-untie]').forEach(b => b.addEventListener('click', () => untie(f, b.dataset.untie)));
+  card.querySelectorAll('[data-tie]').forEach(b => b.addEventListener('click', () => { const t = ties.find(x => x.key === b.dataset.tie); acceptProposal(f, t.proposal); }));
+  card.querySelectorAll('[data-mat]').forEach(b => b.addEventListener('click', () => { beginChange([f.id]); f.material = b.dataset.mat; endChange('Material', { notes: false }); }));
+  card.querySelectorAll('[data-slack]').forEach(b => b.addEventListener('click', () => { if (b.dataset.slack === 'keep') untie(f, 'edge'); else removeForm(f); }));
+  card.querySelectorAll('[data-retie]').forEach(b => b.addEventListener('click', () => { beginChange([f.id]); f.path = { type: 'edge', target: b.dataset.retie }; endChange(`${f.name} re-tied`); whisper(`${f.name} now follows ${formById(b.dataset.retie).name}, because you chose it.`); }));
+}
+function wordAction(f, act, btn) {
+  const r = btn.getBoundingClientRect(); const ev = EV.get(f.id) || {};
+  if (act === 'profile') return openLens(f.id);
+  if (act === 'toggleProfile') { beginChange([f.id]); if (f.kind === 'mass') f.profileOn = !f.profileOn; else f.sectionOn = !f.sectionOn; endChange('Profile switched'); return whisper((f.kind === 'mass' ? f.profileOn : f.sectionOn) ? 'Switched back on, exactly as it was.' : 'Switched off, not deleted. It is struck through in the story.'); }
+  if (act === 'delete') return removeForm(f);
+  if (act.startsWith('tie:')) { const key = act.slice(4); const t = (ev.ties || []).find(x => x.key === key); if (t) knotMenu(f, t, btn); return; }
+  if (act === 'height') {
+    return openPop(r.left, r.bottom + 6, `<label for="pH">${f.host === 'floor' ? 'Height' : 'Stands out'} (m)</label><input id="pH" type="number" step="0.01" min="0.02" value="${(ev.h || 0).toFixed(2)}">
+      ${f.host === 'floor' ? `<div class="seg"><button data-m="value" aria-pressed="${f.height.mode === 'value'}">Exactly this</button><button data-m="ceiling" aria-pressed="${f.height.mode === 'ceiling'}">Reach the ceiling</button><button data-m="ratio" aria-pressed="${f.height.mode === 'ratio'}">Share of the room</button></div>
+      <p>Reaching the ceiling or a share of the room is a tie: it changes when the ceiling does.</p>` : ''}`, pop => {
+      const inp = pop.querySelector('#pH');
+      inp.addEventListener('change', () => { beginChange([f.id]); setExact(f, +inp.value); endChange('Height'); });
+      pop.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { beginChange([f.id]); const h = ev.h; if (b.dataset.m === 'value') f.height = { mode: 'value', v: +inp.value || h }; else if (b.dataset.m === 'ceiling') f.height = { mode: 'ceiling' }; else f.height = { mode: 'ratio', r: +(h / S.space.H).toFixed(4) }; endChange('Height'); closePop(); }));
+    });
+  }
+  if (act === 'margin') return openPop(r.left, r.bottom + 6, `<label for="pM">Margin around the sculpture (cm)</label><input id="pM" type="number" step="1" min="2" max="40" value="${Math.round(f.plan.margin * 100)}"><p>The plan keeps this margin whatever sculpture sits here.</p>`,
+    pop => { const inp = pop.querySelector('#pM'); inp.addEventListener('change', () => { beginChange([f.id]); f.plan.margin = clamp(+inp.value / 100, 0.02, 0.4); endChange('Margin'); }); });
+  if (act === 'depth') return openPop(r.left, r.bottom + 6, `<label for="pD">Depth into the wall (cm)</label><input id="pD" type="number" step="1" min="3" max="19" value="${Math.round((ev.depth || f.depth) * 100)}"><p>Walls are 20 cm thick here.</p>`,
+    pop => { const inp = pop.querySelector('#pD'); inp.addEventListener('change', () => { beginChange([f.id]); f.depth = clamp(+inp.value / 100, 0.03, 0.19); endChange('Depth'); }); });
+  if (act === 'plan') return whisper('Drag the white points on its plan, or draw over its outline in Draw mode.');
+}
+function removeForm(f) {
+  beginChange([f.id]); S.forms = S.forms.filter(g => g !== f);
+  if (pendingId === f.id) pendingId = null; selectedId = null; closeLens();
+  endChange(`${f.name} removed`);
+}
+
+/* ---------- The profile lens: the section, lifted out of the wall ---------- */
+let lensFor = null, lensStroke = null, lensMap = null, lensDrag = null;
+const lensSvg = $('#lensSvg');
+function lensCtx(f) {
+  const ev = EV.get(f.id) || {};
+  if (f.kind === 'mass') return { pid: f.profile, kind: 'elev', title: `${f.name} · elevation`, eyebrow: 'Profile · how its edge rises',
+    fwd: ([o, t]) => [o, t * (ev.h || 1)], inv: ([x, y]) => [x, y / (ev.h || 1)], lines: [{ v: 0, label: 'plan edge' }, { h: 0, label: 'floor' }], h: ev.h || 1 };
+  const ctx = f.ctxKind || 'edge';
+  const flip = ctx === 'seam-ceiling';
+  const lines = ctx === 'wall' ? [{ v: 0, label: 'wall' }] : ctx === 'edge' ? [{ v: 0, label: 'wall face' }, { h: 0, label: 'niche edge' }] : [{ v: 0, label: 'wall' }, { h: 0, label: flip ? 'ceiling' : 'floor' }];
+  return { pid: f.section, kind: S.profiles[f.section]?.kind || 'corner', title: `${f.name} · section`, eyebrow: ctx === 'edge' ? 'Section · cut through the frame' : 'Section · cut across the run',
+    fwd: ([p, q]) => [p, flip ? -q : q], inv: ([x, y]) => [x, flip ? -y : y], lines };
+}
+function openLens(id) {
+  const f = formById(id); if (!f || f.kind === 'recess') return;
+  lensFor = id; if (selectedId !== id) { selectedId = id; refreshUI(); }
+  $('#lens').hidden = false; renderLens();
+}
+function closeLens() { lensFor = null; $('#lens').hidden = true; }
+function renderLens() {
+  const f = formById(lensFor); if (!f) return closeLens();
+  const c = lensCtx(f); const prof = S.profiles[c.pid]; if (!prof) return closeLens();
+  $('#lensKind').textContent = c.eyebrow; $('#lensTitle').textContent = c.title;
+  const on = f.kind === 'mass' ? f.profileOn : f.sectionOn;
+  const pts = evalCurve(prof.ctrl, prof.closed, 10).pts.map(c.fwd);
+  const poly = c.kind === 'elev' ? [[0, 0], ...pts, [0, pts[pts.length - 1][1]]] : (f.kind === 'run' ? sectionPolygon(prof).map(c.fwd) : pts);
+  const all = [...poly, [0, 0]]; const bb = bbox2(all);
+  const pad = Math.max(0.04, Math.max(bb.w, bb.h) * 0.18); const w = Math.max(bb.w + pad * 2, 0.22), h = Math.max(bb.h + pad * 2, 0.22);
+  const s = Math.min(300 / w, 230 / h); const ox = bb.min[0] - (300 / s - bb.w) / 2, oy = bb.min[1] - (230 / s - bb.h) / 2;
+  const X = x => 10 + (x - ox) * s, Y = y => 240 - (y - oy) * s;
+  lensMap = { X, Y, ix: px => (px - 10) / s + ox, iy: py => (240 - py) / s + oy, s, c, f, prof };
+  const grid = []; const step = 0.05;
+  for (let gx = Math.ceil(ox / step) * step; gx < ox + 300 / s; gx += step) grid.push(`<line x1="${X(gx)}" y1="0" x2="${X(gx)}" y2="250"/>`);
+  for (let gy = Math.ceil(oy / step) * step; gy < oy + 230 / s; gy += step) grid.push(`<line x1="0" y1="${Y(gy)}" x2="320" y2="${Y(gy)}"/>`);
+  const ctxLines = c.lines.map(L => L.v != null ? `<line x1="${X(L.v)}" y1="0" x2="${X(L.v)}" y2="250"/><text x="${X(L.v) + 5}" y="16">${L.label}</text>` : `<line x1="0" y1="${Y(L.h)}" x2="320" y2="${Y(L.h)}"/><text x="${314}" y="${Y(L.h) - 6}" text-anchor="end">${L.label}</text>`).join('');
+  const d = poly.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(' ') + 'Z';
+  const curve = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(' ');
+  const handles = prof.ctrl.map((cc, i) => { const p = c.fwd([cc.x, cc.y]); return cc.s ? `<rect data-i="${i}" x="${X(p[0]) - 4.5}" y="${Y(p[1]) - 4.5}" width="9" height="9" rx="1.5"/>` : `<circle data-i="${i}" cx="${X(p[0])}" cy="${Y(p[1])}" r="4.8"/>`; }).join('');
+  // a scale bar: real units
+  const sb = 0.1; const sbx = 14, sby = 236;
+  lensSvg.innerHTML = `<g stroke="rgba(255,255,255,.08)" stroke-width="1">${grid.join('')}</g>
+    <g stroke="rgba(255,255,255,.5)" stroke-width="1.2" stroke-dasharray="5 4" fill="rgba(255,255,255,.62)" font-size="11" font-family="Instrument Sans, system-ui, sans-serif">${ctxLines}</g>
+    <path d="${d}" fill="rgba(255,255,255,${on ? .14 : .05})" stroke="none"/>
+    <path d="${curve}" fill="none" stroke="#fff" stroke-width="${on ? 2.4 : 1.4}" stroke-dasharray="${on ? '' : '4 4'}" stroke-linejoin="round" stroke-linecap="round"/>
+    <g fill="#fff" stroke="#1F3A2C" stroke-width="1.4" style="cursor:grab">${handles}</g>
+    <g><line x1="${sbx}" y1="${sby}" x2="${sbx + sb * s}" y2="${sby}" stroke="#fff" stroke-width="1.5"/><text x="${sbx + sb * s + 6}" y="${sby + 4}" font-size="10.5" fill="rgba(255,255,255,.75)" font-family="Instrument Sans, system-ui, sans-serif">10 cm</text></g>
+    <path id="lensInk" class="ink" d=""/>`;
+  // library
+  const users = profileUsers(c.pid).filter(g => g !== f);
+  $('#lensShare').innerHTML = users.length ? `Shared with ${users.map(g => `<b>${g.name}</b>`).join(', ')}. Editing here changes them too. <button class="link" id="lensUnlink">Make it ${f.name}'s own</button>` : (on ? '' : 'Switched off. The drawing is kept; switch it on from the card.');
+  $('#lensUnlink')?.addEventListener('click', () => { beginChange([f.id]); const id = 'p' + (S.seq++); S.profiles[id] = JSON.parse(JSON.stringify({ ...prof, id, name: `${f.name} section` })); if (f.kind === 'mass') f.profile = id; else f.section = id; endChange('Unlinked', { notes: false }); });
+  const presets = Object.keys(PRESETS[c.kind] || {});
+  const others = Object.values(S.profiles).filter(p => p.kind === c.kind && p.id !== c.pid && profileUsers(p.id).length);
+  $('#lensLib').innerHTML = `<span class="lib-label">Start from</span>${presets.map(n => `<button data-preset="${n}" aria-pressed="${prof.preset === n}">${n}</button>`).join('')}
+    ${others.length ? `<span class="lib-label">Use a profile from this room (shared, stays linked)</span>${others.map(p => `<button data-use="${p.id}">${profileUsers(p.id)[0].name}'s</button>`).join('')}` : ''}`;
+  $('#lensLib').querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    beginChange([f.id, ...users.map(u => u.id)]);
+    if (users.length) { const id = newProfile(c.kind, b.dataset.preset, `${f.name} section`); if (f.kind === 'mass') f.profile = id; else f.section = id; }
+    else { prof.ctrl = ctrlFrom(PRESETS[c.kind][b.dataset.preset]); prof.preset = b.dataset.preset; }
+    if (f.kind === 'mass') f.profileOn = true; else f.sectionOn = true;
+    endChange('Profile', { notes: false });
+  }));
+  $('#lensLib').querySelectorAll('[data-use]').forEach(b => b.addEventListener('click', () => {
+    beginChange([f.id]); if (f.kind === 'mass') f.profile = b.dataset.use; else f.section = b.dataset.use; endChange('Profile shared', { notes: false });
+    whisper(`${f.name} now shares this profile. Change it once and every form using it follows.`);
+  }));
+}
+function lensPoint(e) { const r = lensSvg.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * 320, (e.clientY - r.top) / r.height * 250]; }
+function onLensDown(e) {
+  if (!lensMap) return; e.preventDefault?.();
+  const i = e.target?.dataset?.i;
+  const f = lensMap.f; const users = profileUsers(lensMap.c.pid).map(u => u.id);
+  beginChange(users.concat(f.id));
+  if (i != null && !e.synthetic) { lensDrag = { i: +i }; try { lensSvg.setPointerCapture(e.pointerId); } catch (_) { } return; }
+  lensStroke = [lensPoint(e)]; if (!e.synthetic) try { lensSvg.setPointerCapture(e.pointerId); } catch (_) { }
+}
+function onLensMove(e) {
+  if (lensDrag) {
+    const [px, py] = lensPoint(e); const { c, prof, ix, iy } = lensMap; const [x, y] = c.inv([ix(px), iy(py)]);
+    const cc = prof.ctrl[lensDrag.i]; cc.x = +x.toFixed(4); cc.y = +(c.kind === 'elev' ? clamp(y, 0, 1) : y).toFixed(4); prof.preset = null;
+    evaluate(); refreshMarks(); renderLens(); refreshRecipe(); return;
+  }
+  if (!lensStroke) return; lensStroke.push(lensPoint(e));
+  const ink = lensSvg.querySelector('#lensInk'); if (ink) ink.setAttribute('d', 'M' + lensStroke.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L'));
+}
+function onLensUp() {
+  if (lensDrag) { lensDrag = null; endChange('Profile point', { notes: false }); return; }
+  if (!lensStroke) return; const pts = lensStroke; lensStroke = null;
+  if (pathLen(pts) < 8) { cancelChange(); renderLens(); return; }
+  const { c, prof, f, ix, iy } = lensMap;
+  const data = pts.map(([px, py]) => c.inv([ix(px), iy(py)]));
+  const users = profileUsers(c.pid).filter(g => g !== f);
+  if (c.kind === 'elev') { const h = EV.get(f.id).h; applyElevStroke(f, data.map(([o, t]) => [o, t * h])); }
+  else {
+    const t = tidy(data, { forceOpen: true, loose: !tidyOn, noCircle: true }); if (!t) { cancelChange(); return; }
+    let ctrl = t.ctrl; const tol = Math.max(0.012, 12 / lensMap.s);
+    const onWall = q => Math.abs(q.x) < tol, onEdge = q => Math.abs(q.y) < tol;
+    const A = ctrl[0], B = ctrl[ctrl.length - 1];
+    if (c.kind === 'corner' && ((onWall(A) && onEdge(B)) || (onEdge(A) && onWall(B)))) {
+      if (onEdge(A) && onWall(B) && !(onWall(A) && onEdge(B))) ctrl.reverse();
+      ctrl[0].x = 0; ctrl[0].s = true; ctrl[ctrl.length - 1].y = 0; ctrl[ctrl.length - 1].s = true; prof.ctrl = ctrl;
+    } else if (c.kind === 'wall' && onWall(A) && onWall(B)) { ctrl[0].x = 0; ctrl[ctrl.length - 1].x = 0; prof.ctrl = ctrl; }
+    else prof.ctrl = oversketch(prof.ctrl, false, ctrl);
+    prof.preset = null; if (f.kind === 'run') f.sectionOn = true;
+  }
+  endChange('Profile drawn', { notes: false });
+  if (users.length) whisper(`Also changed: ${users.map(u => u.name).join(', ')}, which ${users.length > 1 ? 'share' : 'shares'} this profile.`, 'Undo', undo);
+}
+lensSvg.addEventListener('pointerdown', onLensDown);
+lensSvg.addEventListener('pointermove', onLensMove);
+lensSvg.addEventListener('pointerup', onLensUp);
+lensSvg.addEventListener('dblclick', e => { const i = e.target?.dataset?.i; if (i == null || !lensMap) return; beginChange([lensMap.f.id]); lensMap.prof.ctrl[+i].s = !lensMap.prof.ctrl[+i].s; endChange('Profile point', { notes: false }); });
+$('#lensDone').addEventListener('click', () => closeLens());
+
+/* ---------- Notes & whisper: indirect change is always narrated ---------- */
+let notesTimer = null, whisperTimer = null;
+function showNotes(list, label) {
+  const box = $('#notes');
+  if (!list.length) { if (/Room|Ceiling|Sculpture/.test(label || '')) whisper(`${label}. Nothing else needed to change.`); return; }
+  const n = list.filter(x => x.cls !== 'still').length;
+  box.innerHTML = `<div class="nhead"><strong>${label}${n ? ` · ${n} ${n === 1 ? 'form' : 'forms'} responded` : ''}</strong><span><button class="btn ghost" id="nUndo">Undo</button> <button class="link" id="nClose" aria-label="Close">Close</button></span></div>
+    <ul>${list.map((x, i) => `<li class="${x.cls || ''}" data-i="${i}"><i></i><span>${x.text}</span>${x.act ? `<button class="link" data-a="${i}">${x.act.label}</button>` : x.id ? `<button class="link" data-s="${i}">Show</button>` : '<span></span>'}</li>`).join('')}</ul>`;
+  box.hidden = false; $('#whisper').hidden = true;
+  box.querySelector('#nUndo').addEventListener('click', () => { undo(); hideNotes(); });
+  box.querySelector('#nClose').addEventListener('click', hideNotes);
+  box.querySelectorAll('[data-s]').forEach(b => b.addEventListener('click', () => select(list[+b.dataset.s].id)));
+  box.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => { hideNotes(); list[+b.dataset.a].act.fn(); }));
+  box.querySelectorAll('li').forEach(li => li.addEventListener('mouseenter', () => { const id = list[+li.dataset.i].id; if (id) flash(id); }));
+  clearTimeout(notesTimer); notesTimer = setTimeout(() => { if (!box.matches(':hover')) hideNotes(); }, 14000);
+  for (const x of list) if (x.id && x.cls !== 'still') flash(x.id);
+}
+function hideNotes() { $('#notes').hidden = true; }
+function whisper(text, actLabel, fn) {
+  const w = $('#whisper'); w.innerHTML = `<span>${text}</span>` + (actLabel ? `<button class="btn ghost">${actLabel}</button>` : '');
+  if (actLabel) w.querySelector('button').addEventListener('click', () => { w.hidden = true; fn(); });
+  w.hidden = false;
+  clearTimeout(whisperTimer); whisperTimer = setTimeout(() => { w.hidden = true; }, actLabel ? 9000 : 6000);
+}
+const flashes = new Map();
+function flash(id) { flashes.set(id, performance.now()); }
+
+/* ---------- Relations lens & overlays ---------- */
+function toggleRelations(on = !lensOn) { lensOn = on; document.body.classList.toggle('lens', on); $('#bRelations').setAttribute('aria-pressed', on); refreshKnots(); }
+const threadLabels = [];
+function updateOverlays(now) {
+  // with no hover on a tablet, the selected mass keeps its side trace visible in Draw mode
+  if (mode === 'draw' && !stroke && !auto && selectedId && !trace) { const f = formById(selectedId); if (f?.kind === 'mass' && f.host === 'floor' && !f.pending) showTrace(massTrace(f)); }
+  if (trace && !stroke) { trace.screen = [...trace.R, ...trace.L].map(p => toScreen(p)).map(p => [p[0], p[1]]); }
+  // the whisper sits above whatever card holds the bottom of the screen
+  const nb = $('#notes'); const wsp = $('#whisper');
+  if (!wsp.hidden) { let b = 70; if (!nb.hidden) b = innerHeight - nb.getBoundingClientRect().top + 8; wsp.style.bottom = `calc(${b}px + env(safe-area-inset-bottom,0px))`; }
+  // handle
+  const hf = formById(pendingId) || (mode !== 'space' && selectedId && formById(selectedId));
+  const ha = hf && !lensFor ? handleAnchor(hf) : null;
+  if (ha && (hf.kind === 'mass' || hf.kind === 'recess')) {
+    const val = hf.kind === 'mass' ? EV.get(hf.id).h : -EV.get(hf.id).depth;
+    const p = toScreen(ha.P0.clone().addScaledVector(ha.dir, val + (hf.kind === 'mass' ? 0.05 : 0.02)));
+    handle.hidden = p[2] > 1; handle.style.left = p[0] + 'px'; handle.style.top = p[1] + 'px';
+    handle.querySelector('.val').textContent = typed ? `${typed} m ↵` : hf.kind === 'recess' ? `${Math.round(-val * 100)} cm deep` : hf.height.mode === 'ceiling' ? 'to the ceiling' : fmtM(val);
+  } else handle.hidden = true;
+  if (pull) renderTicks();
+  // grips
+  for (const [k, g] of Object.entries(grips)) {
+    const show = mode === 'space'; g.g.hidden = !show; g.lab.hidden = !show; if (!show) continue;
+    const p = toScreen(gripWorld(k)); g.g.style.left = p[0] + 'px'; g.g.style.top = p[1] + 'px'; g.lab.style.left = p[0] + 'px'; g.lab.style.top = p[1] + 'px';
+    g.lab.textContent = k === 'right' ? `Right wall · ${fmtM(S.space.W)} wide` : k === 'ceiling' ? `Ceiling · ${fmtM(S.space.H)}` : `${assetName()} · imported`;
+  }
+  // asset flag
+  const showFlag = lensOn || (selectedId && formById(selectedId)?.plan?.type === 'fit');
+  assetFlag.hidden = !showFlag || mode === 'space';
+  if (showFlag) { const p = toScreen(v3(S.asset.x, assetY + ASSETS[S.asset.variant].h + 0.05, S.asset.z)); assetFlag.style.left = p[0] + 'px'; assetFlag.style.top = p[1] + 'px'; assetFlag.textContent = `Imported asset · ${assetName()}`; }
+  // knots & threads
+  const vis = []; let li = 0;
+  for (const k of knotEls) {
+    const p = toScreen(k.t.at); k.el.style.left = p[0] + 'px'; k.el.style.top = p[1] + 'px'; k.el.hidden = p[2] > 1;
+    if ((lensOn || hot) && k.t.key !== 'follows') vis.push({ a: p, b: toScreen(k.t.to), t: k.t });
+    else if (lensOn && k.t.key === 'follows') vis.push({ a: p, b: null, t: k.t });
+  }
+  let svg = '';
+  for (const v of vis) {
+    let lx = v.a[0] + 12, ly = v.a[1] - 14;
+    if (v.b) { const mx = (v.a[0] + v.b[0]) / 2, my = (v.a[1] + v.b[1]) / 2 - 40; svg += `<path class="thread ${v.t.state}${hot ? ' hot' : ''}" d="M${v.a[0]} ${v.a[1]} Q${mx} ${my} ${v.b[0]} ${v.b[1]}"/><circle cx="${v.b[0]}" cy="${v.b[1]}" r="3" fill="#fff"/>`; lx = (v.a[0] + 2 * mx + v.b[0]) / 4; ly = (v.a[1] + 2 * my + v.b[1]) / 4; }
+    let lab = threadLabels[li]; if (!lab) { lab = el('div', 'thread-label'); marks.appendChild(lab); threadLabels[li] = lab; }
+    lab.className = 'thread-label ' + (v.t.state === 'proposed' ? 'proposed' : v.t.state === 'slack' ? 'slack' : ''); lab.textContent = v.t.label; lab.style.left = lx + 'px'; lab.style.top = ly + 'px'; lab.hidden = false; li++;
+  }
+  for (; li < threadLabels.length; li++) threadLabels[li].hidden = true;
+  threadsG.innerHTML = svg;
+  // control points
+  for (const c of ctrlEls) { const P = c.at(); if (!P) continue; const p = toScreen(P); c.el.style.left = p[0] + 'px'; c.el.style.top = p[1] + 'px'; }
+  // flashes (forms that responded glow briefly)
+  for (const [id, t0] of flashes) {
+    const ev = EV.get(id); const k = (now - t0) / 1600; if (k > 1 || !ev?.mesh) { flashes.delete(id); if (ev?.mesh) ev.mesh.material = mat(formById(id)?.material || 'plaster'); continue; }
+    if (!ev.mesh.userData.flashMat) { ev.mesh.userData.flashMat = ev.mesh.material.clone(); ev.mesh.material = ev.mesh.userData.flashMat; }
+    ev.mesh.material.emissive = new THREE.Color(0xffffff); ev.mesh.material.emissiveIntensity = 0.35 * Math.sin(Math.PI * k);
+  }
+}
+
+/* ---------- Space card ---------- */
+function refreshSpaceCard() {
+  $('#inW').value = S.space.W.toFixed(2); $('#inH').value = S.space.H.toFixed(2);
+  $('#assetSeg').innerHTML = Object.entries(ASSETS).map(([k, a]) => `<button data-v="${k}" aria-pressed="${S.asset.variant === k}">${a.name}</button>`).join('');
+  $('#assetSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { if (b.dataset.v !== S.asset.variant) setSpace({ variant: b.dataset.v }, `Sculpture swapped for ${ASSETS[b.dataset.v].name}`); }));
+}
+$('#inW').addEventListener('change', e => setSpace({ space: { W: clamp(+e.target.value, 3.6, 7.5) } }, `Room width ${fmtM(clamp(+e.target.value, 3.6, 7.5))}`));
+$('#inH').addEventListener('change', e => setSpace({ space: { H: clamp(+e.target.value, 2.4, 4.2) } }, `Ceiling at ${fmtM(clamp(+e.target.value, 2.4, 4.2))}`));
+
+/* ---------- Camera ---------- */
+const tweens = [];
+function camTo(pos, target, ms = 850) {
+  return new Promise(res => {
+    const p0 = camera.position.clone(), t0 = controls.target.clone(), start = performance.now();
+    tweens.push(now => { const k = Math.min(1, (now - start) / ms), e = ease(k); camera.position.lerpVectors(p0, pos, e); controls.target.lerpVectors(t0, target, e); if (k >= 1) { res(); return false; } return true; });
+  });
+}
+function view(name, ms) {
+  const { W, D } = S.space; const ax = S.asset.x, az = S.asset.z;
+  const V = {
+    overview: [v3(W * 0.62, 5.6, D + 8.6), v3(W * 0.5, 0.95, D * 0.4)],
+    pedestal: [v3(ax + 2.5, 2.5, az + 4.6), v3(ax, 0.62, az)],
+    bench: [v3(W * 0.5, 4.6, D + 6.4), v3(W * 0.48, 0.3, 1.1)],
+    niche: [v3(4.7, 2.2, 5.6), v3(3.7, 1.55, 0)],
+  }[name];
+  return camTo(V[0], V[1], ms);
+}
+
+/* ---------- Input wiring ---------- */
+const canvas = renderer.domElement; let down = null, hoverQueued = null; const touches = new Set();
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'touch') {
+    touches.add(e.pointerId);
+    if (touches.size > 1 && stroke) { // a second finger: this is a gesture to look, not a stroke
+      stroke = null; inkPath?.remove(); inkPath = null; hideTip(); setSeamHighlight(null); return;
+    }
+    if (touches.size > 1) return;
+  }
+  if (e.button !== 0 || auto) return; closePop();
+  down ={ x: e.clientX, y: e.clientY };
+  if (mode === 'draw') { e.preventDefault(); startStroke(e); try { canvas.setPointerCapture(e.pointerId); } catch (_) { } }
+  else if (mode === 'space') { const h = pick(e.clientX, e.clientY); if (h?.kind === 'asset') onGripDown('asset', e); }
+});
+addEventListener('pointermove', e => {
+  if (auto) return; // a demonstration is drawing; the real pointer waits
+  if (stroke) return addStrokePoint(e.clientX, e.clientY);
+  if (spaceDrag) return onGripMove(e);
+  if (pull) return onHandleMove(e);
+  if (ctrlDrag) return onCtrlMove(e);
+  if (e.target === canvas && !e.buttons) { hoverQueued = [e.clientX, e.clientY]; }
+});
+addEventListener('pointercancel', e => touches.delete(e.pointerId));
+addEventListener('pointerup', e => {
+  touches.delete(e.pointerId);
+  if (auto) return;
+  if (stroke) { endStroke(); down = null; return; }
+  if (spaceDrag) { onGripUp(); down = null; return; }
+  if (pull) { onHandleUp(); down = null; return; }
+  if (ctrlDrag) { const d = ctrlDrag; ctrlDrag = null; endChange(`${d.f.name} plan`); return; }
+  if (mode === 'look' && down && e.target === canvas && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) {
+    const h = pick(e.clientX, e.clientY); select(h?.kind === 'form' ? h.formId : null);
+    if (h?.kind === 'asset') whisper(`${assetName()} is an imported asset. Native forms can fit, carry or frame it; it is not modelled here.`);
+  }
+  down = null;
+});
+canvas.addEventListener('dblclick', e => { if (mode !== 'look') return; const h = pick(e.clientX, e.clientY); if (h?.kind === 'form') { const f = formById(h.formId); select(f.id); if (f.kind !== 'recess') openLens(f.id); } });
+canvas.addEventListener('pointerleave', () => { if (!stroke) { hideTip(); setSeamHighlight(null); } });
+function processHover() {
+  if (!hoverQueued) return; const [x, y] = hoverQueued; hoverQueued = null;
+  if (mode === 'draw') hoverDraw(x, y);
+  else if (mode === 'look') { const h = pick(x, y); canvas.style.cursor = h?.kind === 'form' ? 'pointer' : 'grab'; }
+  else if (mode === 'space') { const h = pick(x, y); canvas.style.cursor = h?.kind === 'asset' ? 'move' : 'default'; }
+}
+$('#mLook').addEventListener('click', () => setMode('look'));
+$('#mDraw').addEventListener('click', () => setMode('draw'));
+$('#mSpace').addEventListener('click', () => setMode('space'));
+$('#mTidy').addEventListener('click', () => { tidyOn = !tidyOn; $('#mTidy').setAttribute('aria-pressed', tidyOn); $('#tidyLbl').textContent = tidyOn ? 'Tidy' : 'Loose'; whisper(tidyOn ? 'Tidy: strokes become clean lines, corners and curves.' : 'Loose: strokes keep the character of your hand.'); });
+$('#bRelations').addEventListener('click', () => toggleRelations());
+$('#bUndo').addEventListener('click', undo); $('#bRedo').addEventListener('click', redo);
+$('#bEmpty').addEventListener('click', () => { loadEmpty(); view('overview'); });
+$('#bGallery').addEventListener('click', () => { loadGallery(); view('overview'); });
+addEventListener('keydown', e => {
+  const typing = e.target.closest?.('input,[contenteditable="true"]'); if (typing) return;
+  const meta = e.metaKey || e.ctrlKey;
+  if (meta && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if ((pull || pendingId) && /^[0-9.]$/.test(e.key)) { typed += e.key; e.preventDefault(); return; }
+  if ((pull || pendingId) && e.key === 'Backspace' && typed) { typed = typed.slice(0, -1); e.preventDefault(); return; }
+  if (e.key === 'Enter') {
+    const f = formById(pendingId) || (typed && formById(selectedId));
+    if (f && typed) { if (!f.pending) beginChange([f.id]); setExact(f, parseFloat(typed) / (f.kind === 'recess' && parseFloat(typed) > 1 ? 100 : 1)); typed = ''; if (f.pending) commitPending(); else endChange('Exact value'); return; }
+    if (pendingId) return commitPending();
+  }
+  if (e.key === 'Escape') { if (typed) { typed = ''; return; } if (pendingId) return cancelPending(); if (popEl) return closePop(); if (lensFor) return closeLens(); if (lensOn) return toggleRelations(false); return select(null); }
+  if (meta) return;
+  const k = e.key.toLowerCase();
+  if (k === 'v') setMode('look'); else if (k === 'd') setMode('draw'); else if (k === 'e') setMode('space'); else if (k === 'r') toggleRelations(); else if (k === 't') $('#mTidy').click();
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) removeForm(formById(selectedId));
+});
+addEventListener('keydown', e => { if (e.key === 'Alt' && !lensOn) { toggleRelations(true); altLens = true; } });
+addEventListener('keyup', e => { if (e.key === 'Alt' && altLens) { toggleRelations(false); altLens = false; } });
+let altLens = false;
+
+/* ---------- Scenes ---------- */
+function blank() { return { space: { W: 5.2, D: 4.2, H: 3.0 }, asset: { variant: 'pebble', x: 1.9, z: 2.3 }, forms: [], profiles: {}, seq: 1 }; }
+function loadState(o) { pendingId = null; selectedId = null; closeLens(); hideNotes(); Object.assign(S, JSON.parse(JSON.stringify(o))); past = []; future = []; evaluate(); refreshUI(); refreshSpaceCard(); }
+function loadEmpty() { loadState(blank()); }
+function loadGallery() {
+  const o = blank(); Object.assign(S, o); S.asset = { variant: 'tall', x: 1.75, z: 2.15 };
+  const ped = newForm({ kind: 'mass', name: 'Pedestal', host: 'floor', plan: { type: 'fit', target: 'asset', shape: 'square', margin: 0.12 }, height: { mode: 'value', v: 0.95 }, profileOn: true, material: 'travertine' });
+  ped.profile = newProfile('elev', 'Waisted', 'Pedestal profile');
+  const bench = newForm({ kind: 'run', name: 'Bench', ctxKind: 'seam-floor', path: { type: 'seam', chain: 'floor', a: { seg: 'left', c: 2.1, tie: null }, b: { seg: 'back', c: 1.25, tie: 'right' } }, sectionOn: true, material: 'oak' });
+  bench.section = newProfile('corner', 'Seat & back', 'Bench section');
+  const arch = [[3.3, 1.0, 1], [3.3, 1.6, 0], [3.3, 1.85, 0], [3.38, 2.08, 0], [3.7, 2.27, 0], [4.02, 2.08, 0], [4.1, 1.85, 0], [4.1, 1.6, 0], [4.1, 1.0, 1]];
+  const niche = newForm({ kind: 'recess', name: 'Niche', host: 'back', plan: { type: 'drawn', ctrl: ctrlFrom(arch), closed: true }, depth: 0.2, material: 'plaster' });
+  const frame = newForm({ kind: 'run', name: 'Frame', ctxKind: 'edge', path: { type: 'edge', target: niche.id }, sectionOn: true, material: 'plaster' });
+  frame.section = newProfile('corner', 'Ogee', 'Frame section');
+  const cornice = newForm({ kind: 'run', name: 'Cornice', ctxKind: 'seam-ceiling', path: { type: 'seam', chain: 'ceiling', a: { seg: 'left', c: S.space.D, tie: null }, b: { seg: 'right', c: S.space.D, tie: null } }, sectionOn: true, material: 'plaster' });
+  cornice.section = frame.section;
+  loadState(JSON.parse(JSON.stringify(S)));
+}
+
+/* ---------- Journeys (each "Show me" drives the real pipeline with a synthetic pen) ---------- */
+const nextFrame = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; r(); } }; requestAnimationFrame(go); setTimeout(go, 40); });
+let auto = false;
+function penAt(x, y, on = true) { pen.style.left = x + 'px'; pen.style.top = (y - 16) + 'px'; pen.classList.toggle('on', on); }
+function interp(pts, n) { const out = []; for (let i = 0; i < pts.length - 1; i++) for (let k = 0; k < n; k++) { const t = k / n; out.push(pts[i].clone().lerp(pts[i + 1], t)); } out.push(pts[pts.length - 1].clone()); return out; }
+async function penStroke(world, dur = 1200, opts = {}) {
+  if (mode !== 'draw') setMode('draw');
+  await nextFrame(); await nextFrame();
+  const dense = interp(world, 6); const scr = dense.map(p => toScreen(p));
+  if (opts.trace) showTrace(opts.trace);
+  const ev = (p) => ({ clientX: p[0], clientY: p[1], button: 0, synthetic: true });
+  penAt(scr[0][0], scr[0][1]); await sleep(220);
+  startStroke(ev(scr[0]));
+  const t0 = performance.now();
+  for (let i = 1; i < scr.length; i++) {
+    const due = t0 + dur * i / scr.length; while (performance.now() < due) await nextFrame();
+    addStrokePoint(scr[i][0], scr[i][1]); penAt(scr[i][0], scr[i][1]);
+  }
+  await sleep(120); endStroke(); penAt(0, 0, false); await sleep(450);
+}
+async function penDrag(fromScr, toScr, onDown, onMove, onUp, dur = 900) {
+  penAt(fromScr[0], fromScr[1]); await sleep(200);
+  onDown({ clientX: fromScr[0], clientY: fromScr[1], synthetic: true, preventDefault() { }, stopPropagation() { } });
+  const t0 = performance.now(); let k = 0;
+  while (k < 1) { await nextFrame(); k = Math.min(1, (performance.now() - t0) / dur); const e = ease(k); const x = fromScr[0] + (toScr[0] - fromScr[0]) * e, y = fromScr[1] + (toScr[1] - fromScr[1]) * e; penAt(x, y); onMove({ clientX: x, clientY: y }); }
+  await sleep(150); onUp(); penAt(0, 0, false); await sleep(400);
+}
+async function pullTo(val, dur) {
+  const f = formById(pendingId || selectedId); const a = handleAnchor(f);
+  const cur = f.kind === 'mass' ? EV.get(f.id).h : -EV.get(f.id).depth;
+  await penDrag(toScreen(a.P0.clone().addScaledVector(a.dir, cur)), toScreen(a.P0.clone().addScaledVector(a.dir, val)), onHandleDown, onHandleMove, onHandleUp, dur);
+}
+async function gripTo(k, value, dur = 1200) {
+  if (mode !== 'space') setMode('space'); await nextFrame();
+  const { W, D, H } = S.space;
+  const target = k === 'right' ? v3(value, H, D * 0.62) : k === 'ceiling' ? v3(W * 0.5, value, 0) : v3(value[0], 0, value[1]);
+  const from = k === 'asset' ? toScreen(v3(S.asset.x, 0, S.asset.z)) : toScreen(gripWorld(k));
+  await penDrag(from, toScreen(target), e => onGripDown(k, e), onGripMove, onGripUp, dur);
+}
+async function lensDraw(data, dur = 1100) {
+  await nextFrame(); const { c, X, Y } = lensMap; const r = lensSvg.getBoundingClientRect();
+  const toClient = d => { const [x, y] = c.fwd(d); return [r.left + X(x) / 320 * r.width, r.top + Y(y) / 250 * r.height]; };
+  const pts = []; for (let i = 0; i < data.length - 1; i++) for (let k = 0; k < 8; k++) { const t = k / 8; pts.push([data[i][0] + (data[i + 1][0] - data[i][0]) * t, data[i][1] + (data[i + 1][1] - data[i][1]) * t]); } pts.push(data[data.length - 1]);
+  const scr = pts.map(toClient); penAt(scr[0][0], scr[0][1]); await sleep(250);
+  onLensDown({ clientX: scr[0][0], clientY: scr[0][1], synthetic: true, target: lensSvg });
+  const t0 = performance.now();
+  for (let i = 1; i < scr.length; i++) { const due = t0 + dur * i / scr.length; while (performance.now() < due) await nextFrame(); onLensMove({ clientX: scr[i][0], clientY: scr[i][1] }); penAt(scr[i][0], scr[i][1]); }
+  await sleep(120); onLensUp(); penAt(0, 0, false); await sleep(400);
+}
+const byName = n => S.forms.find(f => f.name === n);
+function circleAround(x, z, r, wob = 0.02) { const pts = []; for (let i = 0; i <= 26; i++) { const a = -Math.PI / 2 + i / 26 * Math.PI * 2.05; const rr = r + Math.sin(i * 1.7) * wob; pts.push(v3(x + Math.cos(a) * rr, 0.002, z + Math.sin(a) * rr)); } return pts; }
+const JOURNEYS = {
+  pedestal: {
+    tab: 'Pedestal', title: 'A pedestal for a sculpture', setup: () => { loadEmpty(); return view('pedestal'); },
+    lede: 'The sculpture is an imported asset. The pedestal is drawn here, fitted to it, and keeps fitting it.',
+    steps: [
+      { t: 'Loop around the sculpture on the floor.', y: 'Draw mode (D), then circle it without touching it.', run: () => penStroke(circleAround(S.asset.x, S.asset.z, ASSETS[S.asset.variant].r + 0.15), 1300) },
+      { t: 'Pull the handle up. The sculpture rides on top.', y: 'Drag the white handle; it snaps to eye level and seat height. Type a number for an exact height.', run: () => pullTo(0.92) },
+      { t: 'Draw over its side to give it a waist.', y: 'Hover its side in Draw mode until the white trace appears, then draw over it.', run: async () => {
+        const f = byName('Pedestal'); const tr = massTrace(f); if (!tr) return;
+        const prof = [[0.015, 0.03], [0.015, 0.07], [-0.04, 0.3], [-0.066, 0.58], [-0.03, 0.85], [0.015, 0.93], [0.015, 0.98]];
+        const world = prof.map(([o, t]) => tr.c3.clone().addScaledVector(tr.A, tr.aR + o).add(v3(0, t * tr.h, 0)));
+        await penStroke(world, 1400, { trace: tr });
+      } },
+      { t: 'Swap the sculpture for a taller one. The pedestal refits and tells you what changed.', y: 'In Edit the space (E), choose another sculpture.', run: async () => { setMode('space'); await sleep(300); setSpace({ variant: 'tall' }, 'Sculpture swapped for Tall Figure'); await sleep(600); } },
+      { t: 'Move the sculpture. The pedestal follows, because it fits it.', y: 'In Edit the space, drag the sculpture.', run: () => gripTo('asset', [2.7, 1.9], 1400) },
+    ],
+  },
+  bench: {
+    tab: 'Bench', title: 'A bench that follows the wall', setup: () => { loadEmpty(); return view('bench'); },
+    lede: 'Trace along the foot of the wall and the bench follows it, around the corner. What it only touches, it doesn’t assume.',
+    steps: [
+      { t: 'Trace along the foot of the wall, around the corner.', y: 'Draw close to where the wall meets the floor; the seam lights up.', run: () => { const { W } = S.space; return penStroke([v3(0.05, 0, 1.9), v3(0.05, 0, 0.05), v3(W - 0.03, 0, 0.05)], 1700); } },
+      { t: 'Shape its section: draw the seat and the back.', y: 'Tap the bench (or its card’s “Shape its section”), then draw from the wall down to the floor.', run: async () => { openLens(byName('Bench').id); await sleep(500); await lensDraw([[0, 0.85], [0.07, 0.84], [0.1, 0.5], [0.46, 0.47], [0.48, 0.42], [0.44, 0.1], [0.44, 0]], 1500); } },
+      { t: 'Widen the room. The bench only touched the right wall, so it stays put and says so.', y: 'Edit the space (E), drag the right wall’s grip.', run: async () => { closeLens(); await gripTo('right', S.space.W + 0.8, 1300); } },
+      { t: 'Tie its end to the right corner. Now it reaches, and keeps reaching.', y: 'Tap the hollow knot at its end, or “Tie” in its card.', run: async () => { const f = byName('Bench'); setMode('look'); select(f.id); await sleep(500); const p = f.proposals.find(p => p.key === 'endRight'); if (p) acceptProposal(f, p); await sleep(900); } },
+      { t: 'Narrow the room again. The bench shortens with it.', y: 'Drag the right wall back.', run: () => gripTo('right', 5.2, 1300) },
+    ],
+  },
+  niche: {
+    tab: 'Niche', title: 'A niche and its frame', setup: () => { loadEmpty(); return view('niche'); },
+    lede: 'A recess pushed into the wall, a frame that follows its edge, and what happens when you change your mind about both.',
+    steps: [
+      { t: 'Draw an arch on the back wall.', y: 'Draw mode, a closed shape on the wall.', run: () => penStroke([[3.3, 1.0], [3.3, 1.85], [3.42, 2.13], [3.7, 2.26], [3.98, 2.13], [4.1, 1.85], [4.1, 1.0], [3.35, 1.0]].map(([x, y]) => v3(x, y, 0.002)), 1500) },
+      { t: 'Push the handle into the wall.', y: 'Push in for a niche; pull out for a relief.', run: () => pullTo(-0.2) },
+      { t: 'Trace around its edge. A frame appears and follows the niche.', y: 'Draw close around the opening.', run: () => { const o = 0.035; return penStroke([[3.3 - o, 1.0 - o], [3.3 - o, 1.85], [3.42 - o * .7, 2.13 + o * .7], [3.7, 2.26 + o], [3.98 + o * .7, 2.13 + o * .7], [4.1 + o, 1.85], [4.1 + o, 1.0 - o], [3.3 - o, 1.0 - o], [3.3 - o, 1.3]].map(([x, y]) => v3(x, y, 0.002)), 1700); } },
+      { t: 'Give the frame a moulding: draw over its section.', y: 'In the lens, draw from the wall face to the niche edge.', run: async () => { openLens(byName('Frame').id); await sleep(500); await lensDraw([[0, 0.15], [0.016, 0.15], [0.02, 0.12], [0.036, 0.095], [0.044, 0.055], [0.05, 0.02], [0.05, 0]], 1400); } },
+      { t: 'Draw over the top of the niche to make it pointed. The frame follows.', y: 'In Draw mode, start and end on its outline.', run: async () => { closeLens(); await penStroke([[3.3, 1.62], [3.31, 1.95], [3.45, 2.3], [3.7, 2.58], [3.95, 2.3], [4.09, 1.95], [4.1, 1.62]].map(([x, y]) => v3(x, y, 0.002)), 1500); } },
+      { t: 'Remove the niche. The frame keeps its shape and asks what to do.', y: 'Select the niche and press Delete.', run: async () => { setMode('look'); const n = byName('Niche'); select(n.id); await sleep(500); removeForm(n); await sleep(300); select(byName('Frame').id); } },
+    ],
+  },
+};
+let jKey = 'pedestal', jDone = -1;
+function renderGuide() {
+  const J = JOURNEYS[jKey];
+  $('#gTabs').innerHTML = Object.entries(JOURNEYS).map(([k, j]) => `<button role="tab" aria-selected="${k === jKey}" data-k="${k}">${j.tab}</button>`).join('');
+  $('#gTabs').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { if (auto) return; jKey = b.dataset.k; jDone = -1; location.hash = jKey; renderGuide(); J2setup(); }));
+  $('#gTitle').textContent = J.title; $('#gLede').textContent = J.lede;
+  $('#gSteps').innerHTML = J.steps.map((s, i) => `<li class="${i <= jDone ? 'done' : ''} ${i === jDone + 1 ? 'now' : ''}"><div><p>${s.t}</p><div class="try">${s.y}</div>
+    ${i === jDone + 1 ? `<div class="acts"><button class="btn" data-i="${i}">Show me</button></div>` : i > jDone + 1 ? `<div class="acts"><button class="btn ghost" data-i="${i}">Show me</button></div>` : ''}</div></li>`).join('');
+  $('#gSteps').querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => runTo(+b.dataset.i)));
+}
+async function J2setup() { await JOURNEYS[jKey].setup(); }
+async function runTo(i) {
+  if (auto) return; auto = true; controls.enabled = false; document.querySelectorAll('#gSteps button').forEach(b => b.disabled = true);
+  try {
+    const J = JOURNEYS[jKey];
+    if (jDone === -1) await J.setup();
+    for (let k = jDone + 1; k <= i; k++) { await J.steps[k].run(); jDone = k; renderGuide(); document.querySelectorAll('#gSteps button').forEach(b => b.disabled = true); }
+  } catch (e) { console.error(e); whisper('That demonstration stumbled. Start the journey again.'); }
+  auto = false; controls.enabled = true; renderGuide();
+}
+$('#gReset').addEventListener('click', async () => { if (auto) return; jDone = -1; renderGuide(); await J2setup(); });
+function setGuideMin(on) { $('#guide').classList.toggle('min', on); $('#gMin').textContent = on ? 'Show steps' : 'Hide steps'; }
+$('#gMin').addEventListener('click', () => setGuideMin(!$('#guide').classList.contains('min')));
+if (innerWidth <= 760) setGuideMin(true);
+
+/* ---------- Loop ---------- */
+function resize() {
+  renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  for (const m of lineMats) m.resolution.set(innerWidth, innerHeight);
+}
+addEventListener('resize', resize); resize();
+let lastFrame = 0;
+setInterval(() => { if (performance.now() - lastFrame > 120) tick(performance.now()); }, 60); // keeps demos running in a background pane
+function frame(now) { requestAnimationFrame(frame); tick(now); }
+function tick(now) {
+  lastFrame = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--) if (!tweens[i](now)) tweens.splice(i, 1);
+  controls.update(); processHover(); updateOverlays(now);
+  renderer.render(scene, camera);
+}
+
+/* ---------- Boot ---------- */
+window.__biskiq = { tidy, massTrace, applyElevStroke, evalCurve, oversketch, S, EV, evaluate, select, setSpace, metricsAll, undo, redo, loadEmpty, loadGallery, JOURNEYS, runTo: (k, i) => { jKey = k; jDone = -1; renderGuide(); return runTo(i); }, formById, byName, acceptProposal, untie, removeForm, view, snapshot };
+const hash = location.hash.replace('#', '');
+if (hash === 'gallery') { loadGallery(); renderGuide(); }
+else { if (JOURNEYS[hash]) jKey = hash; loadEmpty(); renderGuide(); }
+setMode('look'); refreshSpaceCard();
+view(hash && JOURNEYS[hash] ? JOURNEYS[hash].steps && (hash === 'pedestal' ? 'pedestal' : hash === 'bench' ? 'bench' : 'niche') : 'overview', 10);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
