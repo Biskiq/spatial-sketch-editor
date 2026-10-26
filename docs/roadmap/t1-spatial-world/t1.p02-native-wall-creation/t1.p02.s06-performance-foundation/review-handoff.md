@@ -204,8 +204,8 @@ signature, so the already-measured `save.lock-source-id` digest ran unmeasured â
 `{ instrumentation }`. Identity, refusals and every resolved digest were unaffected. No semantic or
 identity defect was found in the merged tree. One reviewer's order-dependence finding was dismissed
 on inspection (the revision memo is written only for deeply frozen values, and that test's literal is
-never frozen). One
-F9 interpretation caveat is now recorded in `perf/README.md`: attributed Save work depends on whether
+never frozen). One F9 interpretation caveat is now recorded in `perf/README.md`: attributed Save work
+depends on whether
 the frozen revision memo serves the digest, so rows and benches must be compared at like cache state.
 The detail, the complexity table and the verification commands are in
 [the acceptance record](./acceptance.md#final-integration-review-and-bench-3-candidate-2026-10-26).
