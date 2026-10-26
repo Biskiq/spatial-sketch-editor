@@ -1220,7 +1220,8 @@ hand-derived bound.
 
 **The reviewed implementation.** The candidate is the branch head on PR #190, `t1/p02-s06-bench-setup`:
 merge commit `d7600576` (main `51dcb764` integrated into the reviewed S06 head `86fb631e`), with the
-final review corrections on top. The S06-relevant commits are `c8ac273a` (interaction locality),
+final review corrections committed as `d89554b1`. That is the exact SHA this section describes and
+the one Bench 3 should check out. The S06-relevant commits are `c8ac273a` (interaction locality),
 `3e7efdbe` + `09f18a56` (incremental Plan evaluator and its solid-less-Wall repair), `6b53ae95`
 (compiler-delta maintenance, retained-root iteration, demand-driven output) and `f9502a5a`
 (generation capture, validate-before-mutate).
@@ -1273,8 +1274,22 @@ field set, so it cannot prove a changed Wall unchanged; the route keeps exactly 
 point and every subject read goes through the indexed probes; lifecycle leases and the deletion fence
 still refuse before any snapshot installs; visitor rendering imports nothing from the authoring Plan
 or compile session.
-6. **Record staleness corrected**: the header status and one earlier paragraph still described the
+6. **A merge-induced attribution defect, found and fixed** (`d89554b1`): `main` passed
+   `SaveWorkInstrumentation` to `verifyUnitDependencyLocks` *positionally*, and the S06 signature
+   takes an options object, so the merged `save.ts` call passed the instrumentation in as options and
+   `options.instrumentation` was `undefined`. The lock's `save.lock-source-id` digest still ran, but
+   unmeasured, so an F9 trace would have shown a silently missing phase with no failing test to say
+   so. The call site now passes `{ instrumentation }`. This is attribution, not identity: the
+   resolved source id and every refusal are unchanged, and admission's `knownSourceContentId` path
+   was already correct.
+7. **Record staleness corrected**: the header status and one earlier paragraph still described the
    review and Bench 2 state from before those rounds ran.
+
+One reviewer's low-severity finding did **not** hold on inspection, and is recorded as dismissed
+rather than "fixed": the phase-list assertion in `units-canonical-form.test.ts` cannot be
+order-dependent, because the memo is written only for a deeply frozen value (`canonical.ts:148`) and
+the test's plain object literal is never frozen — so calling the plain digest first cannot warm a hit
+the instrumented call would then miss.
 
 **Test-policy changes made during integration, and why they are not weakening.** Three whole-tree or
 whole-sweep correctness tests crossed the default 5 s budget only when ~200 files transform in

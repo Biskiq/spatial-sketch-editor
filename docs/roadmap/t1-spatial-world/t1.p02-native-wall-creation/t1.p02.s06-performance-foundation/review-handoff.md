@@ -181,7 +181,8 @@ this implementation.
 ### Final candidate round (2026-10-26): the merged tree
 
 **What was reviewed.** The branch head after integrating `main` (merge commit `d7600576`, main
-`51dcb764` into the reviewed S06 head `86fb631e`), plus the corrections that round produced. Two
+`51dcb764` into the reviewed S06 head `86fb631e`, corrections committed as `d89554b1` — that SHA is
+the candidate), plus the corrections that round produced. Two
 reviewers read it and edited nothing: one on correctness (the seven merge resolutions, the delta
 certificate, `applyDelta`, lazy output/snapshot isolation, the live-target wrapper, `wallUnchanged`'s
 pairing) and one on ownership/provenance (Bench provenance, acceptance authority, lifecycle and
@@ -196,8 +197,14 @@ obligations the merge created:
 | A caller passing neither new option behaves exactly as before | the two `verifyUnitDependencyLocks` call sites (admission passes only the known id, Save passes only instrumentation) |
 | A plan read after a later evaluation still describes its own generation | `layout-plan-locality.test.ts` “keeps a returned plan describing its own generation after a newer evaluation”, which fails without the per-evaluation `fork()` |
 
-**Disposition.** One provenance finding and three comment/documented-invariant corrections; no
-correctness defect was found in the merged tree, and nothing was weakened to make a lane pass. One
+**Disposition.** One merge-induced attribution defect, one provenance finding and three
+comment/documented-invariant corrections; nothing was weakened to make a lane pass. The defect: the
+merge left Save's `verifyUnitDependencyLocks` call positional against the S06 options-object
+signature, so the already-measured `save.lock-source-id` digest ran unmeasured — fixed to
+`{ instrumentation }`. Identity, refusals and every resolved digest were unaffected. No semantic or
+identity defect was found in the merged tree. One reviewer's order-dependence finding was dismissed
+on inspection (the revision memo is written only for deeply frozen values, and that test's literal is
+never frozen). One
 F9 interpretation caveat is now recorded in `perf/README.md`: attributed Save work depends on whether
 the frozen revision memo serves the digest, so rows and benches must be compared at like cache state.
 The detail, the complexity table and the verification commands are in
