@@ -12,29 +12,37 @@ SLICES: T2.P02.S01 is shipped with owner-override acceptance 2026-10-23 →
         T2.P02.S02 is shipped (PR #185), accepted 2026-10-24 for implementation
         tree `082e384c` →
         ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/acceptance.md
+        T2.P02.S03 integrated final gate **ran 2026-10-27 and is NOT accepted** — two required rows
+        blocked, one hard delivery row misses →
+        ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md
 BATON: S02 delivers the own-GLB import procedure (review, scale/pivot/footprint/contact, approve),
        placement through the resource-granting planner, and approved-model rendering in the editor and
        Preview. Durable current behavior is in the owning assets, Scene content and persistence references.
-       No slice is in progress on this track.
+       S03's PR carries the gate record, the on-demand acceptance harness and its evidence; it is open
+       for independent review and is never merged by the slice that wrote it. No slice is in progress
+       on this track.
 OWNER DECISIONS (2026-10-23/24): T1 host patch accepted 2026-10-24; editable Card facts stay read-only
        (option b); the placed-creator-model selection gap is kept unfixed as a T1/T2 follow-up.
-OWNER-RUN (unrun, not claimed): S02 shell observations, Preview pixels, reference-machine F5/F6/F13
-       and GPU-memory rows, Draco/KTX2 sources, the >25 MiB derivative cap, real R2 and worker-boundary
-       timing. Each is listed in the S02 acceptance stub. These stay with the final gate. T1.P02.S06
-       supplies their method and a baseline, not their acceptance. S06 may seed its realistic workload
-       through the import recipe and resources format. It changes neither, and a Scene/import/render
-       patch in S06 needs T2 review.
+OWNER-RUN: S03 dispositioned S02's rows in its record — Preview pixels, F5, F13 and F9 measured on the
+       designated M2 (owner attribution outstanding); F6 undecided at 34.4 ms p95 (S cold) against
+       33 ms; GPU memory blocked by the browser API. Shell observations (offline retry, narrow desktop,
+       reduced motion on, lens park/Resume, keyboard-only transforms, accessible name/focus return),
+       Draco/KTX2, the real >50 MiB decode, real R2 and worker-boundary timing remain **unrun**. Never
+       presented as passed.
 FOLLOW-UPS: in-flight fetch dedupe across overlapping model resolutions; a model-failure notice can
        overwrite an unrelated route notice; the placed-model selection gap (T1/T2).
-NEXT:  S03 integrated final gate — **approved and released 2026-10-27**
-       (../../reference/decisions/next-wave-authorization-2026-10-27.md); it starts after the
-       coordination PR #198 merges, rechecking gates, scopes and its trusted base. It measures on
-       S06's method
-       (../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
-       and carries S02's unrun owner rows. Phase close is owner-invoked and not claimed.
+NEXT:  owner decisions from the gate record: (1) authorize a placed-creator-model selection path (or
+       amend the phase outcome) so Resize/Duplicate/Delete are reachable, then re-run those lines;
+       (2) dispose of the Stage first-load 447.0 KiB br miss against the ≤400 KiB hard budget;
+       (3) authorize F6's ten-run extension with the sequenced drag; (4) complete the remaining
+       owner-run rows. S03 measured on S06's method and carried S02's rows as the record states.
+       S01/S02 remain accepted and untouched; phase close stays owner-invoked and unclaimed.
+BLOCKER: S03 is blocked on (1) and the Stage first-load hard miss. The Compose surface is unreachable
+       for a placed creator model — placement leaves the room selected, so Resize/Duplicate/Delete
+       are disabled — which is the gap the owner recorded 2026-10-24 and kept unfixed. Do not absorb
+       it into a verification slice; do not claim acceptance or a closable phase.
 ROUTE: ./README.md → ../../roadmap/t2-composition/README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
-BLOCKER: none. Omitted scopes stay held.
 CARRY: T3.P04.S01 shipped project-deletion and model-revision cleanup (PR #191, `aa1db37a`);
        S03 verifies retention/pin integrity without adding deletion or re-accepting C3. Further planning pairs T1 face
        frames with solve-once placement; component provider work precedes Stage part-selection/admission
