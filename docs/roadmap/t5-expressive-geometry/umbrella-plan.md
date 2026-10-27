@@ -16,7 +16,8 @@ T5 delivers **native forms**: Scene objects whose shape is authored source — a
 depth, then refined through an ordered set of object-space operations. Creators make them by
 drawing in World and refine them in **Object Focus**, a scope on the same Stage. A small
 runtime-safe kernel evaluates every form deterministically for the Stage, Preview and, later,
-delivery. Creators never manage mesh topology, construction order or a feature tree. The source
+delivery. Creators save a form to **My Objects** and insert editable copies of it into their other
+projects. Creators never manage mesh topology, construction order or a feature tree. The source
 keeps what their edits mean, so revision, Undo, Save and reopen stay dependable.
 
 | # | Commitment | Consequence |
@@ -27,6 +28,7 @@ keeps what their edits mean, so revision, Undo, Save and reopen stay dependable.
 | A4 | **One form pipeline with admitted representation routes**, not a universal kernel | P01–P02 use analytic generators, explicit meshes and closed-form spatial maps in TypeScript; solids, implicit masses and B-rep enter only for a named capability with its own route and evidence |
 | A5 | Canonical evaluation is **deterministic by construction** and validated at acceptance | Exactly rounded IEEE arithmetic in a fixed order gives bit-identical geometry in every engine; changed canonical output moves the format version |
 | A6 | **Integrate in place, prove at gates** | Accepted slices merge into the product behind Scene admission; creator entry points appear at named slices; each phase ends at an exhaustive final gate; no parallel studio or prototype to port |
+| A7 | **Native objects are reusable across projects** ([owner amendment](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)) | Save to My Objects keeps the authored source as a library-scope typed resource; inserting creates an editable copy with a new identity, refined independently; shared instances and updates wait |
 
 **Rejected now:** a separate studio route or shell; polygon modeling (vertex, edge and face
 editing, retopology, UV unwrapping) as the creator model; a universal implicit or B-rep substrate;
@@ -73,7 +75,8 @@ canopies, sculptural pieces — composed into World with the rest of the project
 | Revise the outline; inspect true sections; reshape a contour stretch with visible reach; keep a part; exact section dimensions | Refinement needs an external tool or a redraw | R1 | P02 |
 | Cut and add bodies: holes, slots, recesses, joined parts | Topology fixed by the first outline | R2 | Conditional |
 | Revolve a profile, sweep a section along a drawn spine, inflate an outline; bend, twist, taper | Turned, tubular and organic forms | R1 | Conditional |
-| Anchors on a form; attached objects follow shaping; shared forms with local or shared edits | Composition does not survive refinement; repeated objects are edited one by one | R1 with T2 | Conditional |
+| Save a form to My Objects; insert editable copies into other projects | Objects must be redrawn in every project | R1 with T2's resource system | P01 |
+| Anchors on a form; attached objects follow shaping; shared forms and library instances with offered updates | Composition does not survive refinement; repeated objects are edited one by one | R1 with T2 | Conditional |
 | Smooth blending and carving of masses | Soft joins and carved masses | R3 | Conditional |
 | Reshape imported geometry with the same reach-bounded operations, with declared lost guarantees | Imported content is take-it-or-leave-it | R1 | Conditional |
 | Prepared native-form derivatives for publication | — | with T4 | T4 |
@@ -88,6 +91,7 @@ evidence-led admission.
 | Concern | Owner | T5's role |
 | --- | --- | --- |
 | Native-form semantics: Scene unit entity, codec, planners and validation | Scene (T2 authority) | T5 writes the native-form parts under T2 review; T2 keeps Scene meaning, other entity kinds and definitions/instances |
+| Typed resources, project and library scopes | T2 | T5 lands the library scope for the `form` kind (My Objects) under T2 review, decision D8 |
 | Reusable geometric numerics, `@portfolio/geometry-core` | T5 | Owns it; it carries no domain meaning, renderer or DOM |
 | Stage host, selection, Ink, readings and the Focus scope capability | T1 | T5 lands bounded seams as T1-reviewed patches, or consumes T1-provided ones |
 | F4 acceptance, history, Save and Head | F4 owners / T3 | T5 consumes them; any F4 change is a T3-reviewed amendment |
@@ -101,8 +105,12 @@ is entered from a selected form and returns to World. The World | Experience fra
 
 **T2.** Native forms are Scene object content. P01 stores each form's source inline on its entity;
 shared forms wait for T2's definition/instance cutover, which a later T5 phase consumes rather than
-invents. T5 does not edit model, import or resource code paths and serializes Scene-unit edits with
-T2's writers under the [shared-file protocol](../cross-track-execution.md#shared-files-and-merge-protocol).
+invents. My Objects is the first bounded consumer of the typed resource system's ratified library
+scope: a library item is an owner-scoped, immutable, content-addressed revision of a form's source,
+following T2's identity and persistence rules, and inserting it creates a detached copy with a new
+authored identity. T5 does not edit model or import code paths. It serializes Scene-unit, resource
+and API edits with T2's writers under the
+[shared-file protocol](../cross-track-execution.md#shared-files-and-merge-protocol).
 
 **F4.** Every form edit is a typed, serializable Scene intent planned by a pure planner from
 captured inputs and accepted through unit F4: one history entry per accepted edit, conditional Save,
@@ -180,11 +188,28 @@ re-evaluate the form.
 | --- | --- | --- | --- |
 | **R1** | Analytic generators, explicit triangle meshes and closed-form spatial maps with deviation-driven refinement; exact predicates for decisions | P01–P02; synchronous TypeScript in `@portfolio/geometry-core`; runtime-safe | `robust-predicates` and `earcut` (both already in the tree, Unlicense and ISC); an editor-side BVH for picks and self-intersection (`three-mesh-bvh`, MIT) when P02 needs it |
 | **R2** | Closed-solid combination (cut, add) with provenance mapped back to regions | Conditional phase; worker; lazy chunk; F4 asynchronous review | Manifold (Apache-2.0) first candidate, release and closure pinned |
-| **R3** | Local implicit composition (smooth union and subtraction) contoured into R1 meshes | Conditional on R2 evidence and a named barrier | A small permissive in-house field evaluator or Manifold's level-set contouring; MPL candidates (Fidget, libfive) need an owner licensing ruling |
-| **R4** | A B-rep island for exact trims, fillets and exchange | A named precision consumer only | OCCT is LGPL and blocked by the [permissive-only ruling](../../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction) |
+| **R3** | Local implicit composition (smooth union and subtraction) contoured into R1 meshes | Conditional on R2 evidence and a named barrier | A small in-house field evaluator, Manifold's level-set contouring, or an MPL candidate (Fidget, libfive) after the [weak-copyleft review](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing) |
+| **R4** | A B-rep island for exact trims, fillets, offsets and exchange | A named precision consumer only | OCCT (LGPL-2.1 with exception) as the leading candidate and Truck (Apache-2.0) as the permissive comparison, judged as below; nothing selected |
 
 A route is admitted with its accuracy policy, cost envelope and conversion statement. Each form keeps
 one authored source; conversions between routes are explicit, one-directional and never silent.
+
+**Library licensing.** Under the [T5 licensing amendment](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing), permissive libraries are admitted
+as before and weak-copyleft libraries (LGPL, MPL) are eligible after a documented compatibility,
+distribution and compliance review in the admitting slice plan. Licence category alone neither
+admits nor excludes a candidate.
+
+**Evaluating an R4 kernel (OCCT or an alternative).** When a named precision capability needs a
+B-rep route, its plan compares candidates on:
+
+| Criterion | Evidence required |
+| --- | --- |
+| Capability | The named operations (for example trims, fillets, offsets, shelling, STEP exchange and healing) on a corpus from that capability, with failure modes and how they surface as refusals |
+| Browser performance | On the designated reference machine: download size (brotli), compile and instantiate time, peak memory, and worker latency for the named operations; lazy loading outside the Stage first-load and visitor load sets unless a declared capability needs it |
+| Integration cost | Worker and asynchronous F4 preparation, conversion to R1 meshes with provenance to regions, determinism of a pinned WASM build (a build change is a format-version event), build and upgrade burden |
+| Compliance | The weak-copyleft review: a separately loaded, replaceable module, notices, the exact source and build instructions, and compatibility with every plausible product licence |
+
+No kernel is installed or selected before such a plan is approved.
 Layout keeps its landed geometry; adopting geometry-core inside the canonical compiler would be a
 deliberate T1 decision.
 
@@ -234,6 +259,8 @@ and its on-demand workflow, on the designated reference machine with Laptop A re
 flowchart LR
   S1["P01.S01 form source, evaluation, Scene admission"] --> S2["P01.S02 Shape reading and sizing"]
   S2 --> G1["P01.S03 final gate"]
+  S1 --> S4["P01.S04 My Objects: save and insert copies"]
+  S4 --> G1
   S1 --> F3["P02.S03 shaping truth"]
   G1 --> F1["P02.S01 Focus scope and sections"]
   F1 --> F2["P02.S02 outline revision"]
@@ -251,18 +278,21 @@ accepted creation journey.
 
 **Outcome.** A creator draws a closed outline with Ink in World, reads it as a Shape, pulls its depth
 and creates a native object. They place, turn and size it, see it identically in Plan, 3D and
-Preview, and keep it exactly through Undo, Redo, Save and cold reopen.
+Preview, and keep it exactly through Undo, Redo, Save and cold reopen. They save it to My Objects,
+insert an editable copy in another project and refine it independently.
 
 | Slice | Delivers | Exposes to creators | Depends on |
 | --- | --- | --- | --- |
 | S01 | Native form source, evaluation and Scene admission: geometry-core, Scene unit 4 `form`, codec, `create-form` and `set-form-size` planners, existing Scene operations on forms, shared renderer, Plan footprint, selection | Nothing new (opened documents and tests) | `T2.P02.S03` merged or a T2 Scene-unit handoff |
 | S02 | One Ink with readings from several domains; the Shape reading on the floor and an upright sheet (and a Wall face, if T1's face-frame query has landed); depth ray and Create; per-axis size rays and Card writers | Creation and sizing | S01; a T1-reviewed Ink reading seam |
-| S03 | Integrated final gate | — | S01, S02 |
+| S04 | My Objects: the `form` library payload and owner-scoped library storage; Save to My Objects; insert an editable copy (`place-form-copy`); remove | Cross-project reuse | S01; T2 agreement on the library scope (D8); may run beside S02 |
+| S03 | Integrated final gate (keeps its id; S04 was added by owner amendment) | — | S01, S02, S04 |
 
 **Phase acceptance.** §7 at P01 scope: closed oriented meshes for the whole outline corpus;
 refusals in words with no partial source; bit-identical evaluation in V8 and a second engine;
-Undo/Save/reopen identity; S and M budgets on the reference machine; visitor isolation; and an
-owner walkthrough creating three different objects from an empty project.
+Undo/Save/reopen identity; the cross-project reuse journey with Save and cold reopen of both
+projects; S and M budgets on the reference machine; visitor isolation; and an owner walkthrough
+creating three different objects from an empty project, one reused in a second project.
 
 ### 6.3 T5.P02 — Object Focus: refine and shape (planned)
 
@@ -270,7 +300,9 @@ owner walkthrough creating three different objects from an empty project.
 Side and Top, revises the outline, reshapes a contour stretch with visible reach, keeps a part, types
 exact section dimensions, Applies or Discards each change as one undo step, and returns to World.
 Successive edits in different orientations compose; resizing scales refinements; an outline edit
-after shaping re-evaluates spatially or refuses; everything survives Save and reopen.
+after shaping re-evaluates spatially or refuses; everything survives Save and reopen. A shaped form
+saves to My Objects with its operations and inserts as an editable copy; P02's Scene format change
+moves the library payload format with it.
 
 | Slice | Delivers | Notes |
 | --- | --- | --- |
@@ -294,8 +326,8 @@ None is registered or promised; each starts from an owner decision citing its en
 | --- | --- | --- | --- |
 | Composite forms (R2) | P01 and P02 walkthroughs record holes, slots or joined parts as blocked intentions | Cut and add bodies; provenance to regions; upstream revision through combination | WASM size, asynchronous F4, provenance stability, delivery derivatives |
 | Generators and deformers (R1) | Turned, tubular or organic intentions blocked with P02's tools | Revolve, sweep along a drawn spine, inflate; bend, twist and taper as operations | Frame stability along spines; refinement cost |
-| Related and reused forms (with T2) | T2's definition/instance and attachment cutovers accepted; repeated or attached objects in real work | Anchors; attached objects follow shaping; shared forms with local or shared edits | Cross-domain F4 and F.1 lifetime amendments |
-| Smooth masses (R3) | Composite forms accepted and soft joins still blocked | Smooth union and subtraction contoured into meshes | Licensing, contouring fidelity, cost |
+| Related and reused forms (with T2) | T2's definition/instance and attachment cutovers accepted; repeated or attached objects in real work | Anchors; attached objects follow shaping; shared forms with local or shared edits; My Objects items used as shared library instances with offered updates | Cross-domain F4 and F.1 lifetime amendments |
+| Smooth masses (R3) | Composite forms accepted and soft joins still blocked | Smooth union and subtraction contoured into meshes | Weak-copyleft compliance if an MPL kernel is chosen, contouring fidelity, cost |
 | Imported-geometry shaping (R1) | Creators adapt imports rather than redraw them | P02's operations over imported meshes, with declared lost guarantees | Import mesh quality; T2 resource lifecycle |
 
 Publication of native forms follows T4's prepared-delivery plan; Preview uses the runtime-safe
@@ -310,7 +342,8 @@ slice, behind Scene admission, at three levels:
 
 1. **Code integration.** A slice merges only after its own acceptance and the complete merge gate,
    so `main` never carries an unaccepted capability.
-2. **Creator exposure.** Entry points appear at named slices: P01 S02 (creation and sizing), P02 S01
+2. **Creator exposure.** Entry points appear at named slices: P01 S02 (creation and sizing), P01 S04
+   (My Objects), P02 S01
    (Focus inspection), P02 S02 and S04 (Focus writers). Before them, forms are reachable only through
    opened documents and tests.
 3. **Phase proof.** Each phase's exhaustive final gate proves the integrated capability on the
@@ -321,10 +354,10 @@ slice, behind Scene admission, at three levels:
 | Family | Required before a capability is integrated | Proven at |
 | --- | --- | --- |
 | Functional geometry | Every accepted form evaluates to a closed, consistently outward-oriented 2-manifold with positive volume. A corpus of valid and invalid sources — concave, near-degenerate, collinear runs, minimum features, limits — passes or refuses with typed reasons. Footprint, contact and bounds agree with the mesh; Plan, 3D and Preview draw the same result | Each slice; the corpus grows with each capability |
-| Dependable revision | One accepted edit is one history entry; preview equals commit; Undo and Redo restore exact source and keys; refused, cancelled, stale or no-op edits add no history; Save and cold reopen reproduce identical evaluation; a session longer than the 100-entry history keeps every control editable | Each writer slice; phase-gate journeys |
+| Dependable revision | One accepted edit is one history entry; preview equals commit; Undo and Redo restore exact source and keys; refused, cancelled, stale or no-op edits add no history; Save and cold reopen reproduce identical evaluation; a session longer than the 100-entry history keeps every control editable; a My Objects copy is identical to its saved source, and edits to the copy, the original or the saved item never reach each other, across projects and through Save and reopen | Each writer slice; phase-gate journeys |
 | Performance | §5.7's rows on the designated machine with the peak-first method; no regression of existing hard rows; bundle growth recorded | Slice evidence; phase-gate recheck |
-| Source compatibility | Strict codec with format bump and regenerated fixtures; golden evaluation digests pinned per format version; bit-identical canonical evaluation in V8 and at least one other engine; no derived data persisted; a semantic change requires a format bump | Each format-changing slice; phase gate |
-| Ownership | T2 review of Scene unit, codec and planner changes; T1 review of Stage seams; T3 review of any F4, Head or Save change; the unconditional architecture lane (visitor isolation, package direction, F4 public isolation); geometry-core free of domain meaning, renderer and DOM | Each slice |
+| Source compatibility | Strict codec with format bump and regenerated fixtures; golden evaluation digests pinned per format version; bit-identical canonical evaluation in V8 and at least one other engine; no derived data persisted; a semantic change requires a format bump; the My Objects payload format moves with the Scene form encoding and older items refuse under the pre-baseline rule | Each format-changing slice; phase gate |
+| Ownership | T2 review of Scene unit, codec, planner, library-scope and API changes; owner-only access to My Objects; T1 review of Stage seams; T3 review of any F4, Head or Save change; the unconditional architecture lane (visitor isolation, package direction, F4 public isolation); geometry-core free of domain meaning, renderer and DOM | Each slice |
 | User experience | PLATE conformance (one writer per fact, state pill and Put back, refusal grammar, keyboard and numeric paths, narrow and short shells, reduced motion); the feature design loop in a real browser; owner walkthroughs — three different objects from an empty project (P01), then one object refined to an intended form and deliberately revised in a later session (P02) — with blocked intentions recorded | Exposure slices; phase gate |
 
 ### 7.3 What blocks integration
@@ -339,8 +372,10 @@ waived by the slice itself.
 
 The [decision record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-decisions)
 lists the decisions this plan needs, the defaults that apply on merge and the release step for the
-first slice. Manifold admission, asynchronous F4 preparation, any licensing ruling for implicit
-kernels and T2 definition/attachment consumption belong to the conditional phase that needs them.
+first slice. It also records the owner's two amendments: T5 dependency licensing and reusable
+native objects. Manifold admission, asynchronous F4 preparation, the weak-copyleft review of any
+OCCT, Fidget or libfive candidate, and T2 definition/attachment consumption belong to the phase that
+needs them.
 
 ## 9. Evidence and reuse
 

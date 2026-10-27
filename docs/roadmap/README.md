@@ -97,7 +97,8 @@ creative-depth principles into the owning references. The owner then withdrew th
 guide/arrangement experiment, and the [T5 planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)
 adopts the [T5 umbrella plan](./t5-expressive-geometry/umbrella-plan.md) as T5's direction on merge:
 native forms as Scene truth, created by drawing in World and refined in Object Focus, a scope on the
-one Stage. T5 is `approved` with one registered phase,
+one Stage, reusable across a creator's projects through My Objects. T5 is `approved` with one
+registered phase,
 [T5.P01 Drawn native objects](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md). No F
 interface gate is added and nothing is released: the first slice starts only from an owner
 [release-list](./now.md) row. Later phases are planned in the umbrella plan and registered on their
@@ -205,7 +206,7 @@ writers and merge order. Update this index only in the coordination change that 
 | T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01, S02 | T2.P02.S03 final gate (released 2026-10-27; starts after PR #198 merges) | — | S03 on the coordination PR #198 merge; its plan review is recorded |
 | T3 | [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
-| T5 | — | — | [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) S01 (plan approved), S02 and S03 (proposed) | S01 on an owner release-list row and on T2.P02.S03 merging (or a T2 Scene-unit writer handoff); E0 withdrawn ([planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
+| T5 | — | — | [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) S01 (plan approved); S02, S03 and S04 My Objects (proposed) | S01 on an owner release-list row and on T2.P02.S03 merging (or a T2 Scene-unit writer handoff); S04 on S01 and T2 agreement on the library scope; E0 withdrawn ([planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
 
 Release provenance is the [performance foundation decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md);
 the shipped post-Batch-E lanes keep the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md);

@@ -154,7 +154,8 @@ baton before editing one of these files. DB-backed `test:api` runs and S06's res
 an isolated per-lane database or Compose stack ([local development](../local-development.md#backend-in-docker-recommended), "Parallel worktrees"),
 never a shared one another lane may reset. New dependencies follow the owner's
 [permissive-only admission ruling](../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction),
-narrowed for S06 to [full permissive licensing](../reference/decisions/performance-foundation-authorization-2026-10-24.md#full-permissive-licensing).
+narrowed for S06 to [full permissive licensing](../reference/decisions/performance-foundation-authorization-2026-10-24.md#full-permissive-licensing)
+and widened for T5 to weak-copyleft libraries after a documented review ([T5 licensing amendment](../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing)).
 The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/roadmap/cross-track-execution.md`.
 
 ## Shared files and merge protocol
@@ -168,6 +169,7 @@ The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/
 | Measurement harness (H0 workflow) | T3 | A future lane edits the shared harness and fixtures through T3 review; S06's harness edits are merged history |
 | C3 project lifecycle persistence/API | T3 (T3.P04.S01 shipped after the T2 handoff) | PR #191 shipped the owner-scoped API/persistence cleanup; its handoff and shared-file reviews are recorded acceptance history, not new next-wave work |
 | `@portfolio/geometry-core` and the native-form parts of the Scene unit, codec, validation and planners | T5 (T5.P01, when released) | T2 reviews every Scene unit, codec, planner and Scene-adapter change and keeps other entity kinds; T5 starts its Scene edits after `T2.P02.S03` merges or a T2 handoff; T1 reviews the Ink reading seam |
+| The `form` library scope (My Objects): its payload codec, `apps/api` owner-scoped routes and migration | T5 (T5.P01.S04, when released) | T2 reviews the library scope, codec, API and migration; the migration slot is serialized with other `apps/api` writers |
 | Test contract, runtime-safe shared packages and boundary checks | Existing concern owner | Touch only required call sites with owner review; no duplicate protocol, silent boundary weakening or private test substitute |
 
 Parallel work means independent domain edits. Serialize editing shared files; name the writer
@@ -200,7 +202,8 @@ closeout updates only the owning baton; cross-track status stays in its owning r
   withdrawn and the [umbrella plan](./t5-expressive-geometry/umbrella-plan.md) owns direction.
   T5.P01's first slice changes the Scene unit format and planners, so it starts after
   `T2.P02.S03` merges (or T2 hands over those files) and lands under T2 review; its Ink reading
-  seam is a T1-reviewed patch. No T5 scope is on the release list; no F gate is registered.
+  seam is a T1-reviewed patch. Its My Objects slice lands the `form` library scope and an API
+  migration under T2 review. No T5 scope is on the release list; no F gate is registered.
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.

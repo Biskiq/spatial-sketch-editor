@@ -8,5 +8,5 @@ This artifact is the phase's declared final-gate artifact, but it records no evi
 not been approved, released, implemented, reviewed or accepted, so it claims no result, tested
 revision, capability entry, gate state or commit, and the phase stays in its registered state.
 
-It is the destination of the integration routes declared by `T5.P01.S01` and `S02`: the exhaustive
+It is the destination of the integration routes declared by `T5.P01.S01`, `S02` and `S04`: the exhaustive
 integrated acceptance of drawn native objects lives here, not in their records.

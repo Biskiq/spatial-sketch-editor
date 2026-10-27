@@ -24,7 +24,8 @@ integration strategy.
 ## Bounded objectives
 
 1. **Drawn native objects** ([T5.P01](./t5.p01-drawn-native-objects/README.md)). Native form source,
-   deterministic evaluation and Scene admission; creation from an Ink outline; per-axis sizing.
+   deterministic evaluation and Scene admission; creation from an Ink outline; per-axis sizing; and
+   reuse across projects through My Objects, which inserts editable copies.
 2. **Object Focus** (planned as T5.P02 in the umbrella plan). Sections, outline revision and
    reach-bounded shaping inside a Focus scope, with dependable revision. Registered when the first
    P01 slice is accepted.
@@ -40,6 +41,7 @@ this table routes track responsibilities without moving them.
 | --- | --- |
 | Architectural semantics, Layout topology and canonical architectural compiler | T1 |
 | Scene object form, definitions, instances and composition | T2; T5 writes native-form parts under T2 review |
+| Typed resources, project and library scopes | T2; T5 lands the `form` library scope (My Objects) under T2 review |
 | Stage host, selection and Ink | T1; T5 lands bounded seams under T1 review |
 | Experience/Camera and shared acceptance/history/Save | T3 / existing F owners |
 | Reusable geometric numerics (`@portfolio/geometry-core`) and the native-form capability | T5 |
@@ -47,7 +49,9 @@ this table routes track responsibilities without moving them.
 | Visitor-safe delivery and publication | T4; native editing gains no publication prerequisite |
 
 T5 creates no competing persisted document, writer, history, acceptance authority, renderer or
-Layout compiler. Dependency admission keeps the existing licensing rule.
+Layout compiler. Dependency admission follows the
+[T5 licensing amendment](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing): permissive licences as before, and
+weak-copyleft libraries after a documented compatibility, distribution and compliance review.
 
 <a id="e0-next-experimental-decision-gate"></a>
 

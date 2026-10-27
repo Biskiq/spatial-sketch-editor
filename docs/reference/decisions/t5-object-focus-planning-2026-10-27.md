@@ -2,8 +2,10 @@
 
 **Status:** the owner's E0 withdrawal is recorded as a ruling. The planning direction, the
 registration of `T5.P01` and the approval of its first slice plan are proposed by the T5 planning
-PR and take effect only when the owner merges it. Merging releases nothing: the
-[release list](../../roadmap/now.md) is unchanged and owner-written.
+PR and take effect only when the owner merges it. Two owner amendments made in that PR's review —
+[T5 dependency licensing](#owner-amendment-t5-dependency-licensing) and
+[reusable native objects](#owner-amendment-reusable-native-objects) — take effect with it. Merging
+releases nothing: the [release list](../../roadmap/now.md) is unchanged and owner-written.
 
 This record owns what was decided and what merging does. The
 [T5 umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) owns the architecture and
@@ -47,6 +49,73 @@ because PLATE and the architecture require one Stage, selection, history and Cam
 separate studio would be built twice. The studio qualities — isolation, framing, sections on paper,
 a bounded tool set and a faithful return — are kept inside that scope.
 
+## Owner amendment: T5 dependency licensing
+
+Biskiq's product licence remains undecided, and this amendment selects none. For dependencies
+admitted through T5 plans, it supersedes the
+[2026-10-23 permissive-only admission rule](./post-batch-e-authorization-2026-10-23.md#licensing-direction):
+
+- **Permissive licences** stay admissible as before, recorded in the admitting slice's acceptance.
+- **Weak-copyleft licences** (LGPL-2.1, LGPL-3.0 and MPL-2.0, including LGPL with an exception such
+  as OCCT's) are eligible for consideration and adoption after the documented review below. The
+  review is part of the admitting slice plan, which the owner approves before the library is
+  installed.
+- **Strong copyleft** (GPL, AGPL), source-available or field-of-use terms, and missing or unclear
+  licences still stop and are reported to the owner.
+
+Other tracks keep the 2026-10-23 rule. The 2026-10-23 record and the
+[S06 narrowing](./performance-foundation-authorization-2026-10-24.md#full-permissive-licensing) are
+preserved as written; S06 is shipped and its narrower list stays its own.
+
+**Weak-copyleft admission review.** The admitting slice plan documents, and its acceptance records:
+
+1. **Identification:** the SPDX expression and any exception, the exact pinned version, and the
+   licence of every shipped component, including vendored and WASM-compiled sources.
+2. **Distribution:** how the code reaches users — browser bundle, separately loaded WASM module,
+   worker or server only. Delivery to a browser is distribution.
+3. **Obligations and how each is met:** licence text and notices shipped with the product; the
+   corresponding source of the exact version and of any modification offered. For LGPL, the
+   library ships as a separately loaded, replaceable module with build instructions, so a user can
+   substitute a modified build. For MPL, modified covered files stay separate and their source is
+   offered.
+4. **Compatibility:** the dependency forecloses no plausible product licence (proprietary,
+   permissive or copyleft), any MPL "Incompatible With Secondary Licenses" designation is checked,
+   and no strong-copyleft component is shipped.
+5. **Modification policy:** unmodified upstream is preferred; any patch is published with its
+   source.
+6. **Change:** a version, licence or distribution change repeats the review.
+
+A candidate whose obligations cannot be met in the shipped build stops. Where the review leaves real
+doubt, it stops for the owner, who may seek legal review. The review identifies obligations; it does
+not by itself select a library.
+
+**OCCT.** OCCT (LGPL-2.1 with the Open CASCADE exception) is a legitimate future candidate for the
+B-rep route, not blocked by its licence category. It is judged against capability, browser
+performance, integration cost and compliance obligations when a named precision capability needs
+it ([umbrella plan §5.4](../../roadmap/t5-expressive-geometry/umbrella-plan.md#54-computation-strategy-admitted-routes)).
+The same applies to MPL implicit-field candidates such as Fidget and libfive. Nothing is installed or
+selected.
+
+## Owner amendment: reusable native objects
+
+The owner commits this creator workflow: **Save to My Objects → open another project → insert an
+editable copy → refine independently.**
+
+- My Objects saves a form's authored source — generator controls, keys, scale and its catalogue
+  material — never a generated mesh.
+- It is the first bounded consumer of the ratified **library scope** of the one typed resource
+  system ([assets destination](../components/assets.md#ratified-destination-not-shipped)), following
+  T2's landed identity and persistence rules: a logical identity, an immutable content-addressed
+  revision, owner-only access, strict server-side validation through the shared codec, and storage
+  outside authoring history.
+- Inserting a copy creates a new authored identity, as the destination requires for detaching to
+  edit independently. The copy carries no reference to the library item, so later edits on either
+  side never reach the other.
+- Shared instances, offered updates, item revisions, rename, folders, search and sharing wait.
+
+The [umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) places this as
+`T5.P01.S04` (proposed), proven with cross-project reuse and Save/reopen at the phase's final gate.
+
 ## Effect of merging the planning PR
 
 Merging is the owner's approval of:
@@ -55,13 +124,16 @@ Merging is the owner's approval of:
 2. the [umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) as T5's planning
    direction. It is roadmap authority, not a reference contract: the North Star, architecture,
    Scene, persistence and assets contracts, F, PLATE and the performance contract are not amended,
-   apart from repairing the North Star's routing sentence that named E0;
+   apart from repairing the North Star's routing sentence that named E0 and pointing the North Star's
+   and assets contract's dependency-licensing sentences at the T5 licensing amendment;
 3. registration of `T5.P01` — Drawn native objects — with its slice register, its final gate and the
    T5 runbook and baton, and the approval of the
    [first slice plan](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md);
+   the My Objects slice `T5.P01.S04` is registered as proposed;
 4. the execution-structure gate's admission of T5 batons, runbooks and release-list rows
    (`apps/editor/tests/docs/parallel-track-gates.test.ts`), so a T5 release row can be written
-   without a further test change.
+   without a further test change;
+5. the two owner amendments above.
 
 It does not release any scope, install a dependency, amend an F contract or gate, change PLATE,
 admit a Scene format, or authorize the later phases the umbrella plan describes. The first slice
@@ -83,10 +155,11 @@ before merge.
 | D5 | Ink becomes one Pen with readings from more than one domain; the Scene **Shape** reading lands in `T5.P01` slice S02 through a bounded seam T1 reviews (alternative: T1 delivers the seam first) | Bounded T1-reviewed seam in S02 |
 | D6 | Revision promise for P02: shaping is bound to object space, so a later outline or size edit re-evaluates it where it is in the object, or refuses | Object-space binding |
 | D7 | Section presentation in Focus — PLATE's default reading takeover versus the Shape focus specification's split pane (PLATE's retained inset) — is a named P02 design-loop decision | Decided in P02 |
+| D8 | The library scope for My Objects lands in `T5.P01.S04`, limited to the `form` kind, implemented by T5 under T2 review so later kinds extend the same scope (alternative: T2 lands a general library scope first and S04 consumes it) | T5 lands it under T2 review |
 
 Decisions owned by a later phase stay there: Manifold admission and any asynchronous F4 preparation
-for composite forms, any licensing ruling for implicit-field kernels, and T2 definition/attachment
-consumption.
+for composite forms, the weak-copyleft admission review of any OCCT, Fidget or libfive candidate,
+and T2 definition/attachment consumption.
 
 ## Release step for the first slice
 

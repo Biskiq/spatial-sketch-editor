@@ -7,8 +7,11 @@ PHASE: T5.P01 Drawn native objects (registered by the T5 planning PR) →
        ../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md
 DIRECTION: ../../roadmap/t5-expressive-geometry/umbrella-plan.md
        (E0 withdrawn 2026-10-27; ../../reference/decisions/t5-object-focus-planning-2026-10-27.md)
-SLICES: the first slice (S01, native form source and evaluation) has an approved plan; S02 and S03
-       are proposed. No slice is released, started or in progress on this track.
+SLICES: the first slice (S01, native form source and evaluation) has an approved plan; S02, S03
+       (final gate) and S04 (My Objects) are proposed. No slice is released, started or in
+       progress on this track.
+POLICY: T5 dependencies follow the T5 licensing amendment
+       (../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing).
 NEXT:  the owner adds S01's row to ../../roadmap/now.md when choosing to start it; S01 then starts
        through ./README.md's start step after T2's integrated final gate merges on `main` (or T2
        records a Scene-unit writer handoff), rechecking gates, scopes and its trusted base.

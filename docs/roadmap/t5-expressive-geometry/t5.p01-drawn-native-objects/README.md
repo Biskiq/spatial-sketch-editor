@@ -12,13 +12,15 @@ omits · **Track:** [T5](../README.md) · **Direction:** [umbrella plan](../umbr
 A creator draws a closed outline with Ink in World — on the floor or on an upright sheet, and on a
 Wall face once T1's face-frame query exists — reads it as a **Shape**, pulls its depth and creates a
 native object. They place, turn and size it per axis, see it identically in Plan, 3D and Preview,
-and keep it exactly through Undo, Redo, Save and cold reopen. A native object is a Scene entity whose shape is authored source, evaluated
-deterministically by a runtime-safe kernel; nothing generated is saved.
+and keep it exactly through Undo, Redo, Save and cold reopen. They save it to **My Objects**, open
+another project, insert an editable copy and refine it independently. A native object is a Scene
+entity whose shape is authored source, evaluated deterministically by a runtime-safe kernel; nothing
+generated is saved.
 
 This phase builds the source, kernel and creation path that Object Focus
 ([umbrella plan §6.3](../umbrella-plan.md#63-t5p02--object-focus-refine-and-shape-planned)) refines.
-It does not add Focus, sections, shaping, cutting, combination, anchors, shared definitions or
-publication.
+It does not add Focus, sections, shaping, cutting, combination, anchors, shared definitions, shared
+library instances or publication.
 
 ## Starting evidence
 
@@ -68,11 +70,13 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T5.P01.S01 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Native form source and evaluation](./t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md) | [record](./t5.p01.s01-native-form-source-and-evaluation/acceptance.md) | plan approved by the owner's merge of the T5 planning PR ([record](../../../reference/decisions/t5-object-focus-planning-2026-10-27.md)); not on the release list; starts after `T2.P02.S03` merges on `main` or T2 records a Scene-unit writer handoff |
 | T5.P01.S02 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Shape reading and sizing](./t5.p01.s02-shape-reading-and-sizing/implementation-plan.md) | [record](./t5.p01.s02-shape-reading-and-sizing/acceptance.md) | outline plan; approved after S01 is accepted and T1 agrees the Ink reading seam |
-| T5.P01.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t5.p01.s03-integrated-final-gate/implementation-plan.md) | [record](./t5.p01.s03-integrated-final-gate/acceptance.md) | approved with S02 or after it |
+| T5.P01.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t5.p01.s03-integrated-final-gate/implementation-plan.md) | [record](./t5.p01.s03-integrated-final-gate/acceptance.md) | approved with S02 and S04 or after them |
+| T5.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [My Objects: save and insert editable copies](./t5.p01.s04-my-objects-editable-copies/implementation-plan.md) | [record](./t5.p01.s04-my-objects-editable-copies/acceptance.md) | owner amendment in the planning PR ([record](../../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)); plan approved after S01 is accepted and T2 agrees the library-scope design (D8); may run beside S02 |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` at this
 registration; each slice rechecks them at its own trusted base through the runbook start step. No
-slice here provides a gate. S01 and S02 send their exhaustive proof to S03.
+slice here provides a gate. S01, S02 and S04 send their exhaustive proof to S03. S04 was added by
+owner amendment after the final gate was numbered, so the gate keeps id S03.
 
 ```text
 FINAL PHASE GATE: T5.P01.S03 → ./t5.p01.s03-integrated-final-gate/acceptance.md
@@ -90,15 +94,20 @@ The phase configures no architecture-cycle window.
   `T2.P02.S03` may touch. S01 starts after `T2.P02.S03` merges on `main`, or after T2 records a
   writer handoff for those files. Later T2 Scene work rebases on S01's format 4 under the
   [shared-file protocol](../../cross-track-execution.md#shared-files-and-merge-protocol).
-- **Reviews.** T2 reviews every Scene unit, codec, planner and Scene-adapter change (decision D2);
+- **Library scope.** S04 lands the library scope of the typed resource system for the `form` kind
+  only, under T2 review (D8), with an `apps/api` migration serialized with other API writers.
+- **Reviews.** T2 reviews every Scene unit, codec, planner, Scene-adapter, library-scope and API
+  change (decisions D2 and D8);
   T1 reviews the Ink reading seam and any Stage host change (D5); T3 reviews any F4, Head or Save
   change, and this phase plans none.
 - **T5 writes:** `packages/geometry-core/**` (new, decision D3), the native-form parts of
   `packages/project-model/src/scene*.ts`, `scene-codec/**`, `units/**` and `scene-planning/**`, the
-  native-form renderer and Plan footprint entries, the Shape reading and its Card, and fixtures and
-  tests for them.
+  native-form renderer and Plan footprint entries, the Shape reading and its Card, the `form`
+  library payload codec, the owner-scoped library routes and migration in `apps/api`, the Save to My
+  Objects action and My Objects section, and fixtures and tests for them.
 - **Excluded:** Object Focus, sections, outline revision after creation, shaping operations, cut and
-  add, revolve, sweep, anchors and attachments, definitions and instances, material editing beyond
+  add, revolve, sweep, anchors and attachments, definitions and instances, shared library instances,
+  offered updates, item revisions, library rename, folders, search and sharing, material editing beyond
   the existing material choice, any dependency beyond the resident `robust-predicates` and `earcut`,
   visitor publication of forms, and any F, PLATE or performance-contract amendment.
 - **Reference hardware.** Performance rows are measured on the designated reference machine, with

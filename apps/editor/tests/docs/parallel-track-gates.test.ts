@@ -2040,7 +2040,7 @@ describe('the capability-readiness rule', () => {
 			// T5 planning registration (2026-10-27): T5.P01 consumes the same unit, acceptance, Save and
 			// viewport scopes as the Scene import phase. No slice provides a gate.
 			...Object.fromEntries(
-				['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T1.P02.S06', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03', 'T5.P01.S01', 'T5.P01.S02', 'T5.P01.S03'].map(
+				['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T1.P02.S06', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03', 'T5.P01.S01', 'T5.P01.S02', 'T5.P01.S03', 'T5.P01.S04'].map(
 					(id) => [
 						id,
 						[

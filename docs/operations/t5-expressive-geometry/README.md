@@ -28,8 +28,10 @@ DIRECTION: ../../roadmap/t5-expressive-geometry/umbrella-plan.md
 - **Canonical geometry is deterministic.** `@portfolio/geometry-core` uses exactly rounded arithmetic
   only, carries no domain meaning, renderer or DOM, and a change to canonical output for an accepted
   source moves the Scene format version with new goldens.
-- **Dependencies.** A library enters only through its slice plan or an owner decision, under the
-  permissive-only licensing rule; a copyleft candidate stops and is reported.
+- **Dependencies.** A library enters only through its slice plan or an owner decision. Permissive
+  licences are admissible; a weak-copyleft library (LGPL, MPL) needs the documented review in the
+  [T5 licensing amendment](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing) inside its slice plan; strong copyleft,
+  source-available and unclear licences stop and are reported.
 
 ## Start implementation
 

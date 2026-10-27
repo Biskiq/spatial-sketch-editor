@@ -1172,7 +1172,9 @@ expressiveness. Product licensing is undecided: the owner rescinded the copyleft
 ([2026-10-23 ruling](./decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)). Established
 libraries remain candidates when justified by correctness, capability and performance; dependency
 licence compatibility must be established for the eventual product licence and shipped build;
-until then new dependencies follow the owner's permissive-only admission ruling (same record). Shared shell rules remain PLATE-owned.
+until then new dependencies follow the owner's permissive-only admission ruling (same record), except that T5
+may adopt weak-copyleft libraries after a documented compatibility, distribution and compliance review
+([T5 licensing amendment](./decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing)). Shared shell rules remain PLATE-owned.
 Precise integration of new prototype capabilities develops in each consuming slice through a
 reviewable draft, build, browser observation and revision; unfinished feature layout does not
 block unrelated capability planning.
