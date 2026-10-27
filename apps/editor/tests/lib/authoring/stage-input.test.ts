@@ -6,8 +6,9 @@
  * symptom:
  *
  * 1. the keyboard map — a key that moves the camera when the creator is typing in
- *    the Index's search field, or that closes the task and the selection in the
- *    wrong order, cannot be seen in a lane report;
+ *    the Index's search field, that closes the task and the selection in the wrong
+ *    order, or that silently drops the drawing commands (`Enter`, `Backspace`) and
+ *    the platform's delete key, cannot be seen in a lane report;
  * 2. the drag rule — a pan or orbit ends with a `click` too, so a missing
  *    tolerance selects whatever sits under the release point (or scolds the
  *    creator for a click that was a drag);
@@ -47,6 +48,11 @@ describe('Stage input policy', () => {
 		expect(stageKeyAction('f')).toEqual({ kind: 'fit' });
 		expect(stageKeyAction('F')).toEqual({ kind: 'fit' });
 		expect(stageKeyAction('Escape')).toEqual({ kind: 'dismiss' });
+		// The command keys: the two the palette names on its own controls, and the
+		// platform key for a subject's destructive action.
+		expect(stageKeyAction('Enter')).toEqual({ kind: 'finish' });
+		expect(stageKeyAction('Backspace')).toEqual({ kind: 'backtrack' });
+		expect(stageKeyAction('Delete')).toEqual({ kind: 'delete' });
 
 		// The arrows are two mirrored pairs: the same sign on both members of a pair
 		// would pan one axis twice and leave the other still.
@@ -69,7 +75,7 @@ describe('Stage input policy', () => {
 		// Total: nothing outside the map moves the camera, and a modified key is not
 		// recognised by its bare character (`'p'` with Control held is `Paste`, and
 		// the route consults the modifier state — the map itself claims no chords).
-		for (const key of ['a', 'Escapee', ' ', 'Enter', 'Delete', 'ArrowLeft ', '0', '2']) {
+		for (const key of ['a', 'Escapee', ' ', 'enter', 'delete', 'Backspac', 'ArrowLeft ', '0', '2']) {
 			expect(stageKeyAction(key), key).toEqual({ kind: 'none' });
 		}
 	});
@@ -187,6 +193,29 @@ describe('Stage input policy', () => {
 		press.begin({ x: 100, y: 100 }, 1);
 		press.end(1);
 		expect(press.decide({ x: 100, y: 100 }, 1)).toBe(true);
+	});
+
+	it('hands an adapter press to its tool, so an armed tool\u2019s tap never selects', () => {
+		// S02's Ink and Wall-handle presses are the tool's own gesture: the adapter
+		// claimed the press, already placed its point or moved its handle, and a
+		// selection underneath it would silently move what the tool is editing. This is
+		// not an interruption — the creator finished the press — so it is its own
+		// transition rather than `abort`, and it still consumes exactly one click.
+		const press = createStagePressTracker();
+		press.begin({ x: 40, y: 60 }, 1);
+		expect(press.claim(1)).toBe(true);
+		expect(press.decide({ x: 40, y: 60 }, 1)).toBe(false);
+		// Spent, not sticky: the next press on the Stage selects as usual.
+		press.begin({ x: 40, y: 60 }, 1);
+		press.end(1);
+		expect(press.decide({ x: 41, y: 61 }, 1)).toBe(true);
+
+		// A press the pointer never owned cannot be handed away, and a refused second
+		// pointer cannot claim the owner's press.
+		press.begin({ x: 10, y: 10 }, 3);
+		expect(press.claim(4)).toBe(false);
+		expect(press.claim(3)).toBe(true);
+		expect(press.decide({ x: 10, y: 10 }, 3)).toBe(false);
 	});
 
 	it('keeps one pointer\u2019s press when a second pointer is refused', () => {
