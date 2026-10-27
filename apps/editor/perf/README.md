@@ -66,6 +66,15 @@ smoke check or a census, and no fourth pass is implied. That pass ran on
 passed. The manifest, sample counts and adjudication are in the
 [acceptance record](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md#s06-milestone-gate-owner-direction-2026-10-26).
 
+**Post-Bench-2 attribution (2026-10-27).** `perf/attribution` is a separate, non-bench check, not
+collected by `npm run perf`. It compares two already-built revisions through the same spec: 94
+continuous pan moves, ordinary/repeat/late-order canvas picks, one typed local commit and the first
+pick after it, recording CDP main-thread/script time and the work ledger. It found the pan gain is
+large and genuine, the pick index is a worst-case/repeat optimisation whose build returns after
+every commit, and the local edit is unchanged because whole-project compile/membership work
+dominates. Method, raw rows and limits: [evidence
+record](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/evidence/attribution-2026-10-27/README.md).
+
 ```sh
 cd apps/editor
 npm run perf:workloads                     # generate missing/stale workloads (setup, ~25 min for all)

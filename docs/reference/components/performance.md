@@ -131,6 +131,18 @@ pass, and a decision row that is `borderline` or `undecided` at the end of a pas
 acceptance evidence rather than being omitted. Small-sample p95s are decision aids, not precise
 tail estimates.
 
+**Post-milestone attribution limit (2026-10-27).** The milestone gate does not certify canvas pick or
+continuous pan CPU; those are attribution, not acceptance rows. A targeted two-revision check found
+that continuous pan is the large genuine win (about half the main-thread work per move at L, a
+quarter at S), that the spatial pick index trades a slower first click for faster repeats and a 3.3×
+faster late-order target, and that the local edit's Plan locality is hidden by unchanged
+whole-project compile materialisation, membership assembly and commit work. The same check showed an
+accepted edit discards the index and complete Plan output, and the next pick rebuilds them. The
+milestone PASS is
+unchanged. Future performance slices that claim interaction-locality gains must include a continuous
+pan CPU row and a pick-after-commit row (counting index builds and fragment materialisations), not
+only the existing drag/orbit rows.
+
 ## Representative workloads
 
 Derived from the museum/pavilion use case and the first-wave slices. The measured grid fixtures

@@ -102,6 +102,21 @@ distribution is not preserved). The contract's evidence-record paragraph now nam
 grain explicitly; the decision rule and every budget are unchanged. No defect was found in the
 decision criteria, sample counting, early termination, contamination handling or E5 coverage.
 
+**Post-Bench-2 attribution (2026-10-27).** A targeted two-revision check, not a bench pass, ran the
+same spec against Bench 2's product (`e8cc2fc0`) and the frozen candidate (`d89554b1`): three paired
+rounds at grid-S/L, 94 continuous pan moves with camera-pose verification, ordinary/repeat/late-order
+canvas picks, one typed local edit and the first pick after it. Continuous pan is the genuine win:
+main-thread task per move falls 37.1 → 18.1 ms at L (−51 %) and 4.09 → 3.12 ms at S (−24 %). The
+pick index is a worst-case/repeat optimisation: the first ordinary click rises 23 → 54 ms at L
+because it pays the build, repeats fall 24.0 → 17.3 ms, and a late-order Wall falls 52.7 → 16.1 ms;
+the build and 11,403 fragments return after every accepted edit. The local edit is unchanged (L task
+170.2 → 173.3 ms, first frame 102.1 → 100.1 ms) and is ~7 ms slower at S, because the Plan derivation
+is local but whole-project compile materialisation, membership assembly and commit work are not. No
+product change is warranted before merge; incremental pick-box reuse, reducing those global terms
+and characterising the small-project fixed cost are owned follow-ons. The S06 milestone PASS is
+unchanged. Method, raw rows and limits are in the
+[evidence record](./evidence/attribution-2026-10-27/README.md).
+
 The [implementation plan](./implementation-plan.md) owns scope and criteria; the
 [current implementation record](./acceptance.md#persistent-representation-takeover) separates claims,
 measurements and remaining boundaries. The [architecture dossier](../../broad-research/spatial-computation-architecture.md)

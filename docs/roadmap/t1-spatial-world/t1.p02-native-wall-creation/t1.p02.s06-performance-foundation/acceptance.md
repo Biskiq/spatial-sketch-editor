@@ -9,7 +9,9 @@ which is implemented, independently reviewed and executed; **it passed (15/15 de
 27/27 verdicts, full E5)** and its results and adjudication are in
 [S06 milestone gate](#s06-milestone-gate-owner-direction-2026-10-26). Four owner-directed locality
 passes are recorded below — the interaction pass, the incremental Plan evaluator, the compiler-delta
-pass and its generation-capture fix — the last three independently reviewed. The branch integrates
+pass and its generation-capture fix — the last three independently reviewed. A post-Bench-2
+attribution check (2026-10-27) then measured those passes against Bench 2's revision; see
+[Post-Bench-2 attribution](#post-bench-2-attribution-2026-10-27). The branch integrates
 `main`. S06 is not merged; T3 ownership sign-off remains separate. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
@@ -440,6 +442,87 @@ inside its budget with stable geometry counts, and the large interaction improve
 independent sampling. The L cold-open and draw-call Targets remain open (both missed), and the F3 L
 long-task Target is not demonstrated; all three were open before the pass. S06 step acceptance and
 T3 ownership sign-off remain separate; nothing is merged or closed.
+
+## Post-Bench-2 attribution (2026-10-27)
+
+**Scope.** Owner direction: explain what the work between Bench 2 and the frozen candidate actually
+changed, and distinguish a genuine elimination of work from deferral, caching or movement of cost.
+This is a targeted attribution check, **not** a bench pass and not another acceptance method; the
+S06 milestone PASS is not reopened. The full method, commands, raw rows and limits are in the
+[evidence record](./evidence/attribution-2026-10-27/README.md) and [raw.json](./evidence/attribution-2026-10-27/raw.json).
+
+**Isolation and method.** Bench 2's product revision `e8cc2fc0` was built in a detached worktree with
+its own workspace links; the frozen candidate `d89554b1` was built from the current checkout. Both
+ran through the **same** attribution spec and Playwright config at harness `c5e499d3`, on the
+reference M2 / 16 GiB / macOS 24.6.0, pinned Chrome 156.0.8078.48, N1, 1920×1080 at DPR 1, AC. Three
+paired rounds at grid-S and grid-L measured: 94 continuous background pan moves (camera moved on both
+revisions), an ordinary first pick, three repeat picks on the same Plan, a late-order pick at L, one
+typed local commit, and (one paired session) the first pick after that commit. Windows record CDP
+`TaskDuration` / `ScriptDuration`, net heap and nodes, rAF intervals, and the existing work ledger.
+
+**Results.** Medians of the three paired rounds; ms. `task` is CDP main-thread task time, not
+function self-time. A repeat/late-order figure is a per-click window; the pan is the 94-move window.
+
+| Tier | Window | e8cc2fc0 | d89554b1 | Change |
+| --- | --- | ---: | ---: | --- |
+| L | Pan, task per move | 37.05 | 18.10 | **−51 %** |
+| L | First ordinary pick, wall | 23.0 | 54.0 | **+31.0 ms (2.35× slower)** |
+| L | Repeat pick, wall | 24.0 | 17.3 | −28 % |
+| L | Late-order pick, wall | 52.7 | 16.1 | **−69 % (3.27× faster)** |
+| L | Local edit, task | 170.2 | 173.3 | +1.8 % (no change) |
+| L | Local edit, first frame | 102.1 | 100.1 | −2.0 (no change) |
+| S | Pan, task per move | 4.09 | 3.12 | −24 % |
+| S | First ordinary pick, wall | 4.2 | 6.5 | +2.3 |
+| S | Local edit, task | 27.5 | 35.0 | **+27 %** |
+| S | Local edit, first frame | 17.2 | 17.1 | no change (n=2) |
+
+L first-pick task is 44.1 → 79.3 ms; repeat task 40.0 → 30.3; late-order task 62.2 → 26.9. The
+post-edit L pick (n=1) is 31.5 → 23.4 ms wall and 40.7 → 42.7 ms task, and rebuilds 3,919 nodes,
+151,230 build comparisons and 11,403 fragments. L and S pan frame p95 is 16.7 ms with zero long
+tasks on both revisions: the rAF proxy saturates at the display floor, so the CPU reduction is
+headroom, not a demonstrated frame-rate gain.
+
+**What the counters prove.** The candidate's pan records **zero** `plan:*` and `plan-pick:*` work; the
+old route builds its Plan key from the camera target (`+page.svelte:1113` at `e8cc2fc0`) and calls
+`stage.plan()` when it changes (line 1119), while the candidate keys on `planDependencyKey()`
+(`+page.svelte:1542`; [stage-facade.ts:1569](../../../../../apps/editor/src/lib/authoring/stage/stage-facade.ts#L1569)), which excludes a target
+the parameters do not use. The pan gain is the elimination of the per-move Plan evaluation.
+
+The local edit derives **8** sources (3 Walls, 3 Openings, 2 room floors), applies **1** compiler
+root delta and compares **0** unrelated sources, but still materialises 420 compiled Wall slots, 196
+Room slots and 225 Junction slots, reads 1,289 aggregate children and merges 1,357, and produces
+1,036 membership rows for the Index. The Plan derivation is local; the edit is not, because those
+whole-project terms remain and dominate it. The first pick pays 3,917 nodes, 147,126 comparisons and
+11,396 fragments; a repeat pays no build, 35–37 node tests and 640–680 projections; the late-order
+pick pays 75 tests and 1,048 projections. The post-edit click rebuilds the index and fragments, so
+the saving is per generation, not per edit.
+
+**Findings.** (1) Continuous pan is the large, genuine win: about half the main-thread work per move
+at L and a quarter at S, from removing a per-move Plan evaluation. (2) The spatial pick index is a
+worst-case and repeated-click optimisation, not an all-case win: the first click on a cold Plan is
+31 ms slower at L because it pays the BVH build, repeats are 28 % faster, and a late-order Wall is
+3.3× faster. (3) The local edit did not improve end-to-end: the Plan work is local, but compile
+materialisation/membership/commit work is unchanged; at S the candidate is consistently ~7 ms slower,
+recorded rather than dismissed. (4) Deferral is not elimination: the index and complete Plan output
+are built on first read, cached per Plan, and thrown away by the next accepted edit; the post-edit
+click pays 151k comparisons and 11,403 fragments again. (5) The milestone suite has a real blind spot:
+F3 is continuous and passed, but there is no canvas-pick row and no post-commit first-click row, and
+F7's pan/zoom is a scripted key/wheel loop, not a continuous pointer drag. A future performance slice
+should add a continuous pan CPU row, a pick-after-commit row that counts index builds and fragment
+materialisations, and explicit whole-project compile/membership counters. (6) No finding warrants a
+product change before merge: the S06 gate remains a pass, the S +7 ms is inside every budget, and the
+L edit and first click remain within every hard budget. Reusing or incrementally
+maintaining pick boxes across a generation, reducing compile materialisation/membership, and
+characterising the small-project fixed cost are owned follow-ons, not merge blockers. T3 ownership
+review remains separate.
+
+**Limits.** Single machine and Chrome build; AC; n=3 paired medians for the main windows and n=1 for
+the post-edit click; `TaskDuration`/`ScriptDuration` are main-thread/JS totals, not per-function
+self-time; net heap is not total allocation and was noisy; the rAF proxy cannot resolve the headroom;
+the pick window excludes the Index/card DOM update, so selected-object panel time is not separately
+attributed; the old app has no `plan:*` counters, so structural counts are candidate-only; the ordinary pick is
+the scan's best case and the late-order target is one Wall at 90 % of the declared order, not a
+proven miss; no XL or realistic-L workload ran.
 
 ## Optimize step (D.1–D.6) — implementation state (2026-10-25)
 
@@ -1559,3 +1642,7 @@ the compile generation belongs on every fragment; and the already-open H6/H9 que
 merged or deployed, and no acceptance state changed.
 
 Stop here before the owner benchmark and acceptance.
+
+**Later:** the owner benchmark was replaced by the milestone gate (2026-10-26), which passed, and
+the post-Bench-2 attribution above followed on 2026-10-27. This section is preserved as the
+pre-benchmark record.
