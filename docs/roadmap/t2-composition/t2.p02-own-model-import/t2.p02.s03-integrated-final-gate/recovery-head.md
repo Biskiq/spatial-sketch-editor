@@ -1,5 +1,10 @@
 # T2.P02.S03 — recovery at `b9ba493b`
 
+> **Historical — superseded by the owner acceptance.** The owner accepted `T2.P02.S03` at
+> `b9ba493b` on 2026-10-27, amended the Stage hard budget to ≤425 KiB br and deferred the formal
+> performance rows to named owners. The status box below records the pre-acceptance state at this
+> revision; the [acceptance record](./acceptance.md) owns the current verdict.
+
 ```text
 AUTHORITY: NONE — the acceptance record still owns the gate verdict. This artifact records repairs
 and a revision-specific re-run, not acceptance, not a phase close and not merge authorization.

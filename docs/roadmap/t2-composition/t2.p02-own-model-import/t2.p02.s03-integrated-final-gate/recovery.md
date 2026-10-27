@@ -1,8 +1,10 @@
 # T2.P02.S03 — first recovery attempt at `7d1212b6`
 
-> **Current recovery:** [recovery-head.md](./recovery-head.md) records the later repair and re-run at
-> `b9ba493b`, including the empty-project acceptance row and the 422.3 KiB bundle. This file is the
-> historical first attempt and is unchanged except for the machine-fact correction below.
+> **Historical — superseded by the owner acceptance.** The owner accepted `T2.P02.S03` at
+> `b9ba493b` on 2026-10-27, amended the Stage hard budget to ≤425 KiB br and deferred the formal
+> performance rows to named owners. This file is the historical first attempt; the
+> [acceptance record](./acceptance.md) owns the current verdict and
+> [recovery-head.md](./recovery-head.md) records the later revision.
 
 ```text
 AUTHORITY: NONE — the acceptance record still owns the gate verdict. This artifact records a repair

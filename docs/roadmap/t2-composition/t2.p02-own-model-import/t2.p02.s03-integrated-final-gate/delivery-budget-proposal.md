@@ -1,11 +1,15 @@
 # T2.P02.S03 — Stage delivery-budget amendment proposal
 
 ```text
-AUTHORITY: NONE — the owner owns the hard budget. This artifact proposes an amendment and the
-evidence for it; it waives nothing, accepts nothing and changes no status by itself.
+AUTHORITY: NONE — this proposal was ruled by the owner on 2026-10-27. performance.md and the
+decision record own the amended budget; this artifact keeps the evidence and the request.
+STATUS:    RULED 2026-10-27 — the Stage hard row was raised from ≤400 to ≤425 KiB br JS.
+           422.3 KiB passes with 2.7 KiB headroom; the 25 KiB per-slice growth rule is unchanged
+           and the amendment is not retroactive.
 ROW:       performance.md §Budgets — Delivery: Stage route first-load JS (br, cold) ≤ 400 KiB (Hard)
 REVISION:  b9ba493b, on integrated main through the T1 #201 merge
-REQUEST:   raise the Stage hard budget from 400 to 425 KiB br JS, or record a different ruling
+REQUEST:   (historical) raise the Stage hard budget from 400 to 425 KiB br JS, or record a different
+           ruling
 ```
 
 ## Measured result
@@ -76,3 +80,8 @@ budget; the measured floor does not require it today.
 
 Either ruling must be explicit and recorded in [performance.md](../../../../reference/components/performance.md);
 this proposal does not amend the contract.
+
+**Ruled 2026-10-27: the owner adopted the ≤425 KiB br option.** The amended row is live in
+[performance.md](../../../../reference/components/performance.md); the ruling, its non-retroactive
+scope and the named deferrals are recorded in the
+[decision record](../../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md).

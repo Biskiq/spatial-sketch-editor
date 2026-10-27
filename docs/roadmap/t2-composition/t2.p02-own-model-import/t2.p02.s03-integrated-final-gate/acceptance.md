@@ -1,8 +1,9 @@
 # T2.P02.S03 — acceptance record: Integrated final gate
 
-**Slice:** T2.P02.S03 · **Status:** gate re-run at `b9ba493b` on 2026-10-27 — **NOT ACCEPTED: the
-Stage first-load hard budget misses by 22.3 KiB, and the formal pass-scoped performance rows are not
-discharged** · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) ·
+**Slice:** T2.P02.S03 · **Status:** **accepted by owner ruling 2026-10-27 at `b9ba493b`**; the Stage
+first-load hard budget is amended to **≤425 KiB br JS** (422.3 measured, 2.7 KiB headroom), and the
+unverified formal performance rows are **deferred to named owners, never recorded as passes** ·
+**Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) ·
 **Phase:** [T2.P02](../README.md) · **Declared** `FINAL PHASE GATE` artifact of T2.P02
 
 **History:** the failed gate at `a025e2dd` is preserved in [disposition.md](./disposition.md); the
@@ -10,11 +11,12 @@ first and intermediate recoveries are in [recovery.md](./recovery.md) and
 [recovery-head.md](./recovery-head.md). This record now carries **one** verdict at one revision. No
 earlier finding below is reused as a current result.
 
-**Verdict:** every product behaviour line passes at `b9ba493b`, including the integrated empty-project
-journey. The gate still cannot accept: delivery is a deterministic hard miss against the ratified
-≤400 KiB budget, and the hard performance rows require pass-scoped evidence the current per-flow
-reports cannot supply. Both are owner rulings, not defects this slice may absorb. The phase stays
-`active`; `slice-closeout` is not authorized.
+**Verdict (owner ruling, 2026-10-27):** every product behaviour line passes at `b9ba493b`, including
+the integrated empty-project journey. The owner **accepted the gate**, amended the Stage first-load
+hard budget from ≤400 to ≤425 KiB br (422.3 measured, 2.7 KiB headroom), and deferred the formal
+pass-scoped performance rows to named follow-up owners. Deferral is not a pass: no performance row
+is recorded or waived as a pass. The same owner direction closes `T2.P02`; the phase README carries
+the `PHASE CLOSE` block.
 
 ## Verdict summary
 
@@ -30,8 +32,8 @@ reports cannot supply. Both are owner rulings, not defects this slice may absorb
 | Preview shows the placed mapped derivative | **passed** (pixel differential; mapped texture arrives in 256 ms) |
 | Owner-accepted bounds install nothing; retained revision survives | **passed** |
 | Strict refusal of old-number formats and part fields; `/p` catalogue-only | **passed by the suite** |
-| Integrated performance recheck | **not discharged** — F5 long tasks clean; F6/F9/F13 not measured as defined; GPU blocked; no pass-scoped manifest |
-| Delivery: Stage route first-load JS | **hard miss** — 422.3 KiB br against ≤400 KiB |
+| Integrated performance recheck | **deferred, not discharged** — F5 long tasks clean; F6/F9/F13 not measured as defined; GPU blocked; no pass-scoped manifest; owner deferred the rows to named follow-up owners |
+| Delivery: Stage route first-load JS | **passed under the owner-amended ≤425 KiB budget** — 422.3 KiB br, 2.7 KiB headroom (the former ≤400 row missed by 22.3 KiB and remains history) |
 
 ## Tested revision and environment
 
@@ -48,7 +50,8 @@ browser           Google Chrome 156.0.8078.48 through Playwright's channel:'chro
                   1920x1080 CSS at DPR 1, reduced motion no-preference
 backend           in-process API, dedicated Postgres database biskiq_s03_final_head,
                   in-memory object store — no R2 credentials or production service touched
-operator          the agent; owner attribution is outstanding
+operator          the agent; the owner accepted the product and dispositioned the performance rows
+                  on 2026-10-27 (not a pass-scoped owner-run bench)
 ```
 
 The supervisor serves the ordinary production build and runs migrations; it never builds. The
@@ -133,7 +136,9 @@ model and primitive wording. The project-scoped approval survives the drawing ta
 
 ## Performance recheck (designated M2, branded Chrome)
 
-**No row below is pass-scoped acceptance evidence, and none is recorded as a pass.**
+**The Stage byte count is a deterministic build measurement and passes only under the owner-amended
+≤425 KiB row. No formal performance row below is pass-scoped acceptance evidence, and none is
+recorded as a pass.**
 
 The owner authorized the formal M2 evaluation under the prescribed methodology. The F5/F6 import and
 F9 Save flows ran with the **acceptance** sample plan (10 measured runs per row, every cache state);
@@ -152,72 +157,84 @@ these flows, and the operator was the agent.
 | F9 durable receipt p95 (loopback N1) | 124.1 ms, 44,367 B wire | target formula | observed; no service baseline |
 | F13 heap growth, ten place/undo cycles | 2.66 MiB | ≤ 5 MiB | partial: one repeat-use context, Undo not Delete, no cold/repeat-use pair, no GPU/geometry clauses |
 | GPU memory at M | not measurable — Chromium exposes no per-page GPU allocation | ≤ 384 MiB hard | **blocked** |
-| Stage route first-load JS | **422.3 KiB br** (1758.7 raw, 501.2 gzip); all 428.4 | ≤ 400 KiB hard | **hard miss, 22.3 KiB** |
+| Stage route first-load JS | **422.3 KiB br** (1758.7 raw, 501.2 gzip); all 428.4 | ≤ 425 KiB hard (owner-amended 2026-10-27; was 400) | **passes, 2.7 KiB headroom** |
+
+**Owner disposition (2026-10-27).** The formal rows above — F5 formal pass-scoped admission long
+tasks, F5 chosen → placed on the budget workloads, F6 as defined, F9 presented feedback and durable
+receipt, F13 cold/repeat-use cycles, GPU memory at M — and the unrun F2/F3/F4/F7/F8, worker-thread
+split and real-workload rows are **deferred, not passed**, to the **T2 performance follow-up (T2
+track)**. Shell observations, Draco/KTX2 sources, a real R2 bucket, a real >50 MiB decode and
+worker-boundary timing are **deferred to the repository owner (owner-run), tracked by T2**. The
+product follow-ups below are **deferred to the T2 track**. No row is recorded or waived as a pass;
+the durable provenance is the
+[decision record](../../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md).
 
 F2/F3/F4/F7/F8, F13's cold/repeat-use ten-cycle rows, the worker-thread split, Draco/KTX2, a real
->50 MiB decode, real R2 and worker-boundary timing remain unrun under the formal method.
+>50 MiB decode, real R2 and worker-boundary timing remain unrun under the formal method; deferral
+does not make them evidence.
 
 ## Delivery
 
 ```text
 Stage route /project/[projectId]/spatial, cold first load, production build
-  JS  422.3 KiB br   budget ≤400 KiB br (hard)   MISS 22.3 KiB
+  JS  422.3 KiB br   budget ≤425 KiB br (hard, owner-amended 2026-10-27)   PASS, 2.7 KiB headroom
 ```
 
-The miss is deterministic build bytes, not a statistical claim. The owner ruling of 2026-10-27
-retained the 400 KiB requirement and asked for meaningful optimisation plus an evidence-backed
-amendment if the threshold proves unjustified. Two lazy splits removed 34.4 KiB from `7d1212b6`;
+The former ≤400 KiB row missed by 22.3 KiB and remains recorded as history at that revision. The
+owner amended the hard row to ≤425 KiB br after two lazy splits removed 34.4 KiB from `7d1212b6`;
 the remaining route is attributed in [recovery-head.md](./recovery-head.md#4-delivery-budget). The
-[amendment proposal](./delivery-budget-proposal.md) is the open ruling.
+[amendment proposal](./delivery-budget-proposal.md) is ruled, and the amendment is live in
+[performance.md](../../../../reference/components/performance.md). It is not retroactive:
+`T1.P02.S02`'s 456.0 KiB br at `64b9435d` remains a recorded miss at that revision and is carried to
+`T1.P02.S04`.
 
 ## Carried S02 owner-run rows — disposition
 
 | S02 row | S03 disposition |
 | --- | --- |
-| 1. Shell observations (offline retry, narrow desktop, reduced motion, keyboard-only transforms, accessible name/focus return, lens park/Resume) | **unrun** (owner-run); cancel, refusal text, Preview enter/exit and focus return on the exercised paths were run |
-| 2. Preview pixels of an approved mapped derivative | **run** — 157,270 model pixels against a 0-pixel control; owner confirmation outstanding |
-| 3. Reference-machine F5/F6/F13 budgets, worker split, GPU at M | **measured, not discharged** — see the performance table; GPU blocked |
-| 4. Draco-compressed and KTX2 sources | **unrun** |
-| 5. Derivative above 25 MiB; a real 50 MiB+ source | **partially run** — 51 MiB declared set refuses locally; 50/25 MiB API bounds pass; no real >50 MiB decode |
-| 6. Real R2 or a deployed object store | **unrun** — in-memory store |
-| 7. Worker-message timing and cancellation | **unrun** as timing; cancellation-before-derivative is covered by `scene-import-ingest.test.ts` |
+| 1. Shell observations (offline retry, narrow desktop, reduced motion, keyboard-only transforms, accessible name/focus return, lens park/Resume) | **deferred to the owner-run follow-up** (repository owner, tracked by T2); cancel, refusal text, Preview enter/exit and focus return on the exercised paths were run |
+| 2. Preview pixels of an approved mapped derivative | **run and accepted with this gate** — 157,270 model pixels against a 0-pixel control |
+| 3. Reference-machine F5/F6/F13 budgets, worker split, GPU at M | **measured, not discharged; deferred** to the T2 performance follow-up (T2 track) — see the performance table; GPU blocked |
+| 4. Draco-compressed and KTX2 sources | **deferred to the owner-run follow-up** (repository owner, tracked by T2) |
+| 5. Derivative above 25 MiB; a real 50 MiB+ source | **partially run** — 51 MiB declared set refuses locally; 50/25 MiB API bounds pass; the real >50 MiB decode is **deferred to the owner-run follow-up** |
+| 6. Real R2 or a deployed object store | **deferred to the owner-run follow-up** — in-memory store used |
+| 7. Worker-message timing and cancellation | **timing deferred to the owner-run follow-up**; cancellation-before-derivative is covered by `scene-import-ingest.test.ts` |
 
-Rows 1, 4, 6 and 7 stay with the owner and are named as unrun, never waived.
+The owner deferred the unrun rows to the named owners above; none is recorded as a pass or waived as
+one. The acceptance prerequisite is dispositioned, not the measurement.
 
-## Product follow-up (recorded, not a gate claim)
+## Product follow-up (deferred to the T2 track, not a gate claim)
 
 A placed model has no named row in the Index subject region (`subjectRowsNamingTheModel: 0`), so after
 deselection it is reachable through Arrange's chooser and the card, not by its own subject row. The
 pointer path selects it immediately after placement; the diagnostic spec records both facts.
 
 Pointer move/turn of a model is still typed-only: the gate asserts the typed writer, not a pointer
-drag. If the phase outcome intends a pointer gesture for this subject, that is an unmet line rather
-than a note, and the owner should dispose of it explicitly with the Index-reselection follow-up.
+drag. The owner accepted the gate with both follow-ups **deferred to the T2 track**; neither is a
+pass claim.
 
 ## What this record does not claim
 
-No acceptance, no phase close, no readiness, no gate state, no publication or T4 work, and no
-production deployment. The harness adds an on-demand acceptance flow only: no `npm test` lane, no CI
-job, no timing gate. Historical failed-gate evidence remains in the disposition and recovery records.
+This record claims the owner's acceptance of T2.P02.S03 and the phase close recorded in the phase
+README. It does not claim that any deferred performance row passed, T2 track completion, readiness, a
+gate version, publication or T4 work, or production deployment. The harness adds an on-demand
+acceptance flow only: no `npm test` lane, no CI job, no timing gate. Historical failed-gate evidence
+remains in the disposition and recovery records.
 
-## Required owner decisions
+## Owner rulings and follow-up ownership (2026-10-27)
 
-1. **Stage first-load budget.** Rule on the [amendment proposal](./delivery-budget-proposal.md):
-   accept a 425 KiB bound (22.3 KiB measured, 2.7 KiB headroom), adopt 450 KiB for planning, or keep
-   400 KiB and authorize another reduction pass. Until then the hard row misses and the gate cannot
-   accept.
-2. **Formal performance discharge.** Decide how S03's hard performance rows are discharged: authorize
-   a pass-scoped bench/operator with a manifest; authorize F6's sequenced-drag flow and F9's
-   presented-feedback measurement as method repairs; extend F13 to its cold/repeat-use ten-cycle
-   rows; and record a disposition for GPU memory, which the browser exposes no per-page figure for.
-3. **Owner-run rows.** Complete or dispose of the shell observations, Draco/KTX2 sources, a real R2
-   bucket and a real >50 MiB source (carried S02 rows 1, 4, 6, 7).
-4. **Product follow-up.** Decide whether a placed model needs its own Index subject row for
-   reselection after deselection, and whether pointer move/turn is required for this subject; neither
-   is asserted by this gate and both are recorded here.
+| Decision | Ruling |
+| --- | --- |
+| Stage first-load budget | Amend the hard row from ≤400 to **≤425 KiB br JS**; 422.3 passes with 2.7 KiB headroom; the 25 KiB per-slice growth rule is unchanged and the amendment is not retroactive |
+| Formal performance rows | **Deferred, not passed** — F5/F6/F9/F13/GPU formal pass-scoped rows, F2/F3/F4/F7/F8, the worker-thread split and real-workload rows → **T2 performance follow-up (T2 track)** |
+| Owner-run rows | **Deferred** — shell observations, Draco/KTX2, real R2, the real >50 MiB decode and worker-boundary timing → **repository owner (owner-run), tracked by T2** |
+| Product follow-ups | **Deferred** — the placed model's own Index subject row and the pointer move/turn decision → **T2 track** |
+| Empty-project line | **Ruled** — draw-then-place with the guidance the acceptance row asserts |
+| Manipulation finding | **Repaired and demonstrated**; accepted with this gate |
+| Phase close | The owner directed `T2.P02` to close; the final gate is accepted 2026-10-27 and the phase README carries `PHASE CLOSE — Stage: closed` |
 
-The empty-project line is **ruled** (draw-then-place with guidance), and the manipulation finding is
-**repaired and demonstrated**; neither remains a product decision.
+No row above is recorded or waived as a pass. The durable provenance is the
+[decision record](../../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md).
 
 ## Evidence files
 

@@ -1,5 +1,10 @@
 # T2.P02.S03 — failed final-gate disposition and preservation
 
+> **Historical — superseded by the owner acceptance.** The owner accepted `T2.P02.S03` at
+> `b9ba493b` on 2026-10-27, amended the Stage hard budget to ≤425 KiB br and deferred the formal
+> performance rows to named owners. This artifact preserves the failed-gate disposition at its
+> revision; the [acceptance record](./acceptance.md) owns the current verdict.
+
 ```text
 AUTHORITY: NONE — the phase README owns slice status; the acceptance record owns the gate verdict;
            the release list and owner decisions own any re-run or scope change. This artifact
@@ -84,11 +89,12 @@ does not re-accept the empty-project line, and does not turn the 2/2 smoke into 
 
 > **Current status:** decision 5 is ruled (draw-then-place, with guidance); decision 1 is repaired
 > and demonstrated (`b9ba493b`) and needs re-acceptance; the F6/formal-method evaluation is
-> authorized but remains unresolved and pass-scoped; decision 2 is the open
-> [budget amendment](./delivery-budget-proposal.md). The list below is the historical disposition.
+> authorized but remains unresolved and pass-scoped; decision 2 was ruled on 2026-10-27
+> ([budget amendment](./delivery-budget-proposal.md)). The list below is the historical disposition.
 
-The five decisions in the [acceptance record](./acceptance.md#required-owner-decisions) remain
-open. Restated for the next action, they are:
+The five decisions were ruled on 2026-10-27 in the
+[acceptance record](./acceptance.md#owner-rulings-and-follow-up-ownership-2026-10-27). The list below
+is retained as the historical disposition:
 
 1. **Creator-model manipulation.** Decide whether S03’s manipulation row is re-run after #201 (the
    selection blocker is removed, but Resize/Duplicate are still refused for lack of verified

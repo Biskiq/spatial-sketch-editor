@@ -19,13 +19,13 @@ artifact. It was registered in batch E (E1) and is now approved and released by 
 2026-10-27 owner decision, with a start condition of PR #198 merging on `main`. The integrated
 final gate has not run: no acceptance verdict, readiness evidence or implementation result is claimed.
 
-> **Status update, 2026-10-27:** the gate ran and the record exists —
-> [acceptance.md](./acceptance.md). The **original** run at `a025e2dd` was not accepted (two required
-> rows blocked, the empty-project line unreachable on that base, one hard delivery row missed); the
-> current recovery at `b9ba493b` passes every product row and still misses the Stage delivery budget
-> and the formal pass-scoped performance rows. The paragraphs above record the plan as approved,
-> before the run. The failed gate is preserved and its owner decisions are routed in
-> [disposition.md](./disposition.md); S03 remains `in-progress` and T2.P02 remains active.
+> **Outcome, 2026-10-27:** the gate ran, was repaired at `b9ba493b`, and the owner **accepted** it.
+> The Stage hard budget was amended from ≤400 to ≤425 KiB br (measured 422.3 KiB, 2.7 KiB headroom),
+> and the unverified formal performance rows were deferred to named owners, never recorded as passes.
+> See [acceptance.md](./acceptance.md) and the
+> [decision record](../../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md).
+> `T2.P02` closed by the same owner direction. The paragraphs above record the plan as approved,
+> before the run; the failed-gate history stays in [disposition.md](./disposition.md).
 
 ## Prerequisite
 
