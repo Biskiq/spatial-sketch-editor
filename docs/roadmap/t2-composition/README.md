@@ -120,11 +120,13 @@ ahead of it. **`T2.P02` is registered 2026-10-22** as that K1 bounded editor-sid
 [record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E4/E7), superseding the closed phase's deferred-table sentence that tied it to
 T4 delivery; the closed record is left as written. `T2.P02.S01` is shipped with owner-override acceptance and recorded complete merge-gate evidence;
 S02 was owner-authorized and released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)),
-starting per the release list (`docs/roadmap/now.md`); S03 is `approved` and released 2026-10-27, starting after the coordination PR #198 merges
-([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)); its gate **ran 2026-10-27 and is
-not accepted** — two manipulation rows are blocked by the pointer-placement selection gap, the
-empty-project line is unreachable and the Stage first-load hard budget misses — with PR #199 open for
-independent review ([record](./t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md)).
+starting per the release list (`docs/roadmap/now.md`); S03 is `in-progress` (released 2026-10-27, starting after the coordination PR #198 merges,
+[record](../../reference/decisions/next-wave-authorization-2026-10-27.md)); its gate **ran 2026-10-27 and is
+not accepted** — on its tested base two required rows were blocked, the empty-project line was
+unreachable and the Stage first-load hard budget misses — with PR #199 open and the failed-gate
+disposition preserving the verdict and owner decisions
+([record](./t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md);
+[disposition](./t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/disposition.md)).
 `Depends on`
 lists the external gates its slices consume. No slice provides a gate.
 

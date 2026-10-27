@@ -5,6 +5,9 @@ blocked, one required scope line is unreachable, one hard delivery row misses** 
 [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [T2.P02](../README.md) ·
 **Declared** `FINAL PHASE GATE` artifact of T2.P02
 
+**Disposition:** [disposition.md](./disposition.md) preserves this verdict, the evidence provenance
+and the open owner decisions. It is not acceptance and does not change any status below.
+
 This record exists so the gate's result is reviewable. It claims **no acceptance verdict**, no phase
 close, no track completion and no gate state. The phase stays `active` and cannot become `closable`
 from this result: the creator journey the phase promises ("places, moves, turns, resizes, duplicates
