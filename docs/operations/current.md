@@ -20,12 +20,14 @@ T1 → ./t1-spatial-world/current.md
 T2 → ./t2-composition/current.md
 T3 → ./t3-experience/current.md
 T4 → ./t4-release/current.md
+T5 → ./t5-expressive-geometry/current.md
 ```
 
 ```text
 STATUS:    ../roadmap/README.md#gate-register · the owning phase README
 RUNBOOKS:  ./t1-spatial-world/README.md · ./t2-composition/README.md ·
-           ./t3-experience/README.md · ./t4-release/README.md
+           ./t3-experience/README.md · ./t4-release/README.md ·
+           ./t5-expressive-geometry/README.md
 ESCALATE:  ./README.md                     (track completion · integration · milestone · replanning)
 CYCLE:     ./architecture-cycle.md         (loaded only by its three hooks)
 INTERRUPT: ./checkpoints/README.md         (work-checkpoint skill)
