@@ -127,8 +127,12 @@ export function layoutNameTarget(
 	};
 }
 
-/** The instrument input for a selected Wall or Opening; `null` when there is none. */
-export function layoutDimensionsInput(services: StageAdapterServices): LayoutInstrumentOptions | null {
+/**
+ * The Card's field-writer input for a selected Wall or Opening; `null` when there
+ * is none. T1.P02.S02 moved these ordinary Layout fields out of the retired
+ * Dimensions task and into the Card, with the same controller.
+ */
+export function layoutCardFieldsInput(services: StageAdapterServices): LayoutInstrumentOptions | null {
 	const snapshot = services.stage.snapshot();
 	const subject = layoutSubjectOf(services.stage.selection());
 	if (subject === null || subject.kind === 'object') return null;
@@ -162,8 +166,8 @@ export function layoutPlacementInput(services: StageAdapterServices): LayoutInst
 	};
 }
 
-export function createDimensionsInstrument(services: StageAdapterServices): LayoutInstrument | null {
-	const input = layoutDimensionsInput(services);
+export function createCardFieldsInstrument(services: StageAdapterServices): LayoutInstrument | null {
+	const input = layoutCardFieldsInput(services);
 	return input === null ? null : createLayoutInstrument(input);
 }
 
