@@ -200,6 +200,90 @@ describe('T1.P02.S02 — drawn chains', () => {
 	});
 });
 
+/**
+ * The drag half of the same contract: a drag names one Wall — the point the press
+ * landed on **and** the point it was released on — in one acceptance, with the
+ * press's own deliberate target (a Junction, a Wall's interior or a free point)
+ * preserved across every later move of the hand.
+ */
+describe('T1.P02.S02 — the drag gesture', () => {
+	/** The projection of a world point on the level datum, in Stage-local CSS. */
+	function stageCss(facade: StageFacade, point: readonly [number, number]): readonly [number, number] {
+		const evaluationId = facade.evaluationId();
+		if (evaluationId === null) throw new Error('the mounted fixture has no evaluation');
+		const projected = facade.projectWorld([point[0], ELEVATION, point[1]], evaluationId);
+		if (projected.kind !== 'projected') throw new Error('the fixture point did not project');
+		return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
+	}
+
+	it('draws one Wall from a single drag, between the pressed and released points', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		armInk(mounted.facade);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, [1, 1]);
+		const to = stageCss(mounted.facade, [3, 1]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		// The hand moves before it lets go; the Wall still starts where it pressed.
+		mounted.facade.pointerIntent({ phase: 'move', css: [from[0] + 6, from[1] + 6], evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+
+		const layout = acceptedLayout(mounted.facade);
+		const created = layout.walls.filter(
+			(wall) => !mounted.document.walls.some((known) => known.id === wall.id)
+		);
+		// One drag, one Wall: the press point was recorded, so the chain carried the
+		// two points the planner needs and the release finished it in one step.
+		expect(created).toHaveLength(1);
+		const pointOf = (junctionId: string) =>
+			layout.junctions.find((junction) => junction.id === junctionId)!.point;
+		const ends = [pointOf(created[0]!.startJunctionId), pointOf(created[0]!.endJunctionId)].sort(
+			(a, b) => a[0] - b[0]
+		);
+		expect(ends[0]![0]).toBeCloseTo(1, 3);
+		expect(ends[0]![1]).toBeCloseTo(1, 3);
+		expect(ends[1]![0]).toBeCloseTo(3, 3);
+		expect(ends[1]![1]).toBeCloseTo(1, 3);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+
+		// The whole gesture is one Undo, exactly like a tapped chain.
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade).walls.map((wall) => wall.id).sort()).toEqual(
+			mounted.document.walls.map((wall) => wall.id).sort()
+		);
+	});
+
+	it('keeps the Junction a drag starts from across every move of the hand', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		armInk(mounted.facade);
+		const evaluationId = mounted.facade.evaluationId()!;
+		// Pressed on the enclosure's `(0, 4)` Junction, released inside the Room.
+		const from = stageCss(mounted.facade, [0, 4]);
+		const through = stageCss(mounted.facade, [1, 3]);
+		const to = stageCss(mounted.facade, [2, 2]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: through, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+
+		const layout = acceptedLayout(mounted.facade);
+		const created = layout.walls.find(
+			(wall) => !mounted.document.walls.some((known) => known.id === wall.id)
+		)!;
+		// The press named the Junction, so the drag extends that authored group: no
+		// parallel Junction was minted at the corner it started from.
+		expect([created.startJunctionId, created.endJunctionId]).toContain(mounted.cornerJunctionId);
+		const corners = layout.junctions.filter(
+			(junction) => junction.point[0] === 0 && junction.point[1] === 4
+		);
+		expect(corners.map((junction) => junction.id)).toEqual([mounted.cornerJunctionId]);
+	});
+});
+
 describe('T1.P02.S02 — drawing refusals and deletion', () => {
 	it('refuses a crossing without a Junction, writes nothing and holds Undo until the chain settles', async () => {
 		const mounted = await mount();

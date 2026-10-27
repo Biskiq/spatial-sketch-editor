@@ -271,10 +271,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			let chainCommitInFlight = false;
 			let inkPress: {
+				/** Where the press landed, in Stage-local CSS: the drag's own first point. */
 				readonly origin: readonly [number, number];
 				readonly evaluationId: string;
 				readonly lease: GestureAcquisition | null;
-				target: InkPointerTarget | null;
+				/**
+				 * The deliberate target the **press** named. A drag authors its Wall from
+				 * here, so a later move must never overwrite it — otherwise the Wall would
+				 * start wherever the hand happened to hover last.
+				 */
+				readonly pressTarget: InkPointerTarget;
+				/** The latest deliberate target under the pointer; the release falls back to it. */
+			hover: InkPointerTarget;
 			} | null = null;
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
@@ -563,6 +571,49 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			/**
+			 * A drag names one Wall: the point the press landed on **and** the point it was
+			 * released on, accepted in one step.
+			 *
+			 * Recording only the release left a fresh chain a single point long, which the
+			 * planner correctly refuses as an insufficient chain — so the primary gesture
+			 * could not draw a Wall at all. The **press's own** target is the one kept: a
+			 * move may have hovered elsewhere since, and a drag that starts on a Junction
+			 * or on a Wall's interior declares that connection exactly as a tap does.
+			 */
+			function dragInkWall(press: InkPointerTarget, release: InkPointerTarget): void {
+				const start: ChainDraftPoint = { point: press.point, target: press.target };
+				const tip = draft.points[draft.points.length - 1];
+				const continuesFromTip =
+					tip !== undefined && tip.point[0] === start.point[0] && tip.point[1] === start.point[1];
+				if (!continuesFromTip) {
+					if (draft.points.length === 0) {
+						// The chain's first point: one capture and one live proposal, exactly as
+						// the first tap of a chain begins it.
+						beginChain(start);
+					} else if (isDraftStart(draft, start.point, 1e-9) && draft.points.length >= 2) {
+						// The press landed on the chain's own first vertex: that is the enclosure
+						// gesture, and the release is its finish.
+						void commitChain({ points: draft.points, closed: true });
+						return;
+					} else {
+						const begun = appendChainPoint(draft, start);
+						if (!('points' in begun)) {
+							inkNotice = begun.message;
+							return;
+						}
+						draft = begun;
+					}
+				}
+				const appended = appendChainPoint(draft, { point: release.point, target: release.target });
+				if (!('points' in appended)) {
+					inkNotice = appended.message;
+					return;
+				}
+				draft = appended;
+				void commitChain(appended);
+			}
+
+			/**
 			 * Accept the whole chain once.
 			 *
 			 * Preview and acceptance run the **same** captured input: the draft's own
@@ -686,7 +737,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						publishInk();
 						return false;
 					}
-					inkPress = { origin: intent.css, evaluationId: intent.evaluationId, lease: acquisition, target };
+					inkPress = {
+						origin: intent.css,
+						evaluationId: intent.evaluationId,
+						lease: acquisition,
+						pressTarget: target,
+						hover: target
+					};
 					inkHover = target;
 					refreshInkPreview();
 					services.stage.notifySurfaceChange();
@@ -716,7 +773,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (intent.phase === 'move') {
 					const target = inkTargetAt(adapterContext, intent.css);
 					if (target !== null) {
-						current.target = target;
+						current.hover = target;
 						inkHover = target;
 						refreshInkPreview();
 					}
@@ -724,25 +781,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					publishInk();
 					return true;
 				}
-				// Release: a tap names one point, a drag names a Wall and finishes.
-				const release = inkTargetAt(adapterContext, intent.css) ?? current.target;
+				// Release: a tap names one point; a drag names a Wall — the point the press
+				// landed on and the point it was released on — and finishes it.
+				const release = inkTargetAt(adapterContext, intent.css) ?? current.hover;
 				const travel = Math.hypot(
 					intent.css[0] - current.origin[0],
 					intent.css[1] - current.origin[1]
 				);
+				const pressTarget = current.pressTarget;
 				endInkPress();
 				inkHover = null;
-				if (travel <= 4) {
-					if (release !== null) appendInkPoint({ point: release.point, target: release.target });
-				} else if (release !== null) {
-					const appended = appendChainPoint(draft, { point: release.point, target: release.target });
-					if (!('points' in appended)) {
-						inkNotice = appended.message;
-					} else {
-						draft = appended;
-						void commitChain(appended);
-					}
-				}
+				if (travel <= 4) appendInkPoint({ point: release.point, target: release.target });
+				else dragInkWall(pressTarget, release);
 				refreshInkPreview();
 				services.stage.notifySurfaceChange();
 				publishInk();
