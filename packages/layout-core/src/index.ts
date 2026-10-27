@@ -38,6 +38,7 @@ export * from './layout-wall-centerline';
 export * from './layout-wall-curve-algebra';
 export * from './layout-wall-offset-clearance';
 export * from './layout-wall-chain';
+export * from './layout-wall-chain-policy';
 export * from './layout-wall-topology';
 export * from './layout-wall-topology-ops';
 export * from './layout-wall-dissolve';
