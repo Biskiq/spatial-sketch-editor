@@ -1245,17 +1245,25 @@ export function createSceneSession(input: {
 			return { kind: 'committed' };
 		},
 		async place(primitive, x, z) {
-			// The typed form places the primitive it names. An armed creator model is
-			// pointer-placed, so it is released here rather than silently ignored.
-			armedModelPlacement = null;
-			candidateModel = null;
+			// An approved model armed for this project is what these coordinates place.
+			// Choosing a primitive is the one explicit replacement (`setPlacePrimitive`),
+			// so the typed form can no longer install a box behind a model approval.
+			const model = armedModelPlacement;
 			lastPlacedEntityId = null;
 			if (!Number.isFinite(x) || !Number.isFinite(z)) {
 				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
 			}
-			const outcome = await acceptPlacement(primitive, [snapped(x), snapped(z)]);
+			const outcome = model === null
+				? await acceptPlacement(primitive, [snapped(x), snapped(z)])
+				: await acceptModelPlacement(model, [snapped(x), snapped(z)]);
 			if (outcome.kind === 'committed') {
 				candidate = null;
+				// The model is consumed by its placement; a failed attempt keeps the arm
+				// so the creator can retry the same approved model.
+				if (model !== null) {
+					candidateModel = null;
+					armedModelPlacement = null;
+				}
 				notifyPlacementCommitted();
 			}
 			return outcome;

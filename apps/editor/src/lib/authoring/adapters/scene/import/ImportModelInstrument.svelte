@@ -24,7 +24,14 @@
 	import { clearArmedModel, rememberArmedModel, rememberCreatorDefinition } from './definitions';
 	import type { CreatorImportPivot } from './types';
 
-	let { services }: { services: StageAdapterServices } = $props();
+	let {
+		services,
+		invokingFocus: providedInvokingFocus = null
+	}: {
+		services: StageAdapterServices;
+		/** The control that invoked Import, captured before the lazy chunk loaded. */
+		invokingFocus?: HTMLElement | null;
+	} = $props();
 
 	// The session is bound to the project and host epoch this instrument opened
 	// under; a later reading or project does not retarget it.
@@ -50,7 +57,9 @@
 	});
 
 	onMount(() => {
-		invokingFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		invokingFocus =
+			providedInvokingFocus ??
+			(document.activeElement instanceof HTMLElement ? document.activeElement : null);
 		refreshApproved();
 	});
 

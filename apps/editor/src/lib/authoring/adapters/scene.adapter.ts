@@ -316,9 +316,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * the creator ended.
 			 */
 			function attachPlaceCompletion(session: ScenePlacementSession): void {
-				const epoch = taskEpoch;
-				session.setPlacementCommittedListener((placedId) => {
-					if (placedId !== null) {
+				const epoch = taskEpoch;					session.setPlacementCommittedListener((placedId) => {
+						if (placedId !== null) {
 							// The model is a project resource now; no later Place task may
 							// silently install a second instance from the same approval.
 							clearArmedModel(services.stage.snapshot().acceptedRevision.projectId);
@@ -538,7 +537,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						gestureSurface = null;
 						const proposed = session.candidate();
 						if (openTaskKind === 'place-object') {
-						if (proposed !== null && proposed.kind === 'place') void commitPointerPlace(session);
+							if (proposed !== null && proposed.kind === 'place') void commitPointerPlace(session);
 							else if (session.armed() === 'place') session.abortGesture();
 							else session.cancel();
 							return true;

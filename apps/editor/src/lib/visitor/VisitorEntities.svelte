@@ -36,24 +36,38 @@
 	} = $props();
 
 	/**
-	 * The model renderer is a separate chunk, loaded only when a Scene has a model.
+	 * The model renderer is a separate chunk, fetched once the Stage is interactive.
 	 *
 	 * It is the one route dependency that pulls a glTF loader and skeletal cloning;
 	 * an enclosure-only Stage has no model to draw, so its first load never pays
-	 * for those bytes. The fallback footprint is inside AssetModel and arrives with
-	 * the chunk; while it loads, the rest of the Stage stays interactive.
+	 * for those bytes. The fetch starts at idle rather than at the first model, so
+	 * a cold placement does not have to wait for it, and a failed fetch retries
+	 * instead of leaving an approved model permanently invisible.
 	 */
 	type AssetModelComponent = typeof import('$lib/museum/assets/AssetModel.svelte')['default'];
 	let ModelComponent = $state<AssetModelComponent | null>(null);
-	const hasModels = $derived(scene.entities.some(isSceneModelEntity));
 	$effect(() => {
-		if (!hasModels || ModelComponent !== null) return;
+		if (ModelComponent !== null) return;
 		let cancelled = false;
-		void import('$lib/museum/assets/AssetModel.svelte').then((module) => {
-			if (!cancelled) ModelComponent = module.default;
-		});
+		let attempt = 0;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const load = (): void => {
+			void import('$lib/museum/assets/AssetModel.svelte')
+				.then((module) => {
+					if (!cancelled) ModelComponent = module.default;
+				})
+				.catch(() => {
+					// A transient chunk failure must not leave every model invisible; retry
+					// a bounded number of times while this Stage stays mounted.
+					attempt += 1;
+					if (!cancelled && attempt < 3) timer = setTimeout(load, 2_000);
+				});
+		};
+		const idle = setTimeout(load, 200);
 		return () => {
 			cancelled = true;
+			clearTimeout(idle);
+			if (timer !== null) clearTimeout(timer);
 		};
 	});
 

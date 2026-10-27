@@ -73,7 +73,8 @@ export type CreatorImportDeps = {
 	readonly apiOrigin: string;
 	readonly client?: ModelImportClient | null;
 	readonly worker?: CreatorImportWorkerClient;
-	/** Test seam: the worker-less recipe. */		readonly ingest?: (input: {
+	/** Test seam: the worker-less recipe. */
+	readonly ingest?: (input: {
 		files: readonly CreatorImportFile[];
 		parameters: CreatorImportParameters;
 		onProgress?: (progress: CreatorImportProgress) => void;

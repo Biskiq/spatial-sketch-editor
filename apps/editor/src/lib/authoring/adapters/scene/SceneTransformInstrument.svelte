@@ -517,6 +517,7 @@
 			return;
 		}
 		const appliedSnap = current.snapStep();
+		const modelArmed = current.armedModel() !== null;
 		const outcome = await current.place(primitive, Number(x), Number(z));
 		if (outcome.kind === 'committed') {
 			candidate = null;
@@ -525,7 +526,12 @@
 			// does not select through its task-scoped services, which the accepted
 			// install has already retired.
 			const snapNote = appliedSnap === null ? '' : ` · snap ${appliedSnap} m applied`;
-			message = `Placed one ${primitive}${snapNote}.`;
+			if (modelArmed) {
+				armedModelPresent = false;
+				message = `Placed the approved model${snapNote}.`;
+			} else {
+				message = `Placed one ${primitive}${snapNote}.`;
+			}
 			return;
 		}
 		applyOutcome(outcome);
@@ -744,13 +750,18 @@
 			</label>
 			<button type="button" onclick={place}>Place</button>
 		</div>
-		{#if placeTask && !hasRoomFloor && armedModelPresent}
+		{#if placeTask && !hasRoomFloor}
 			<p class="hint refusal" role="status">
-				No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place
-				object.
+				{armedModelPresent
+					? 'No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place object.'
+					: 'No Room floor yet. Draw an enclosure with Ink before placing an object.'}
 			</p>
 		{/if}
-		<p class="hint">An imported model is placed by clicking its floor position; these typed fields place a native primitive.</p>
+		<p class="hint">
+			{armedModelPresent
+				? 'The approved model is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.'
+				: 'An imported model is placed by clicking its floor position; these typed fields place a native primitive.'}
+		</p>
 		{@render snapRow()}
 	{/if}
 
