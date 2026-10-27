@@ -469,4 +469,17 @@
 		cursor: pointer;
 		font-size: 0.76rem;
 	}
+
+	/*
+	 * PLATE arbitration at constrained width: the Card is an overlay on the lower
+	 * edge, and the lower column (dock plus any invoked palette) owns the same
+	 * edge. Clearing the column's measured height keeps the two from overlapping
+	 * without reflowing the Stage or moving the Camera.
+	 */
+	@media (max-width: 72rem) {
+		.card {
+			bottom: calc(1rem + var(--lower-column-height, 0px) + 0.4rem);
+			max-height: calc(100% - var(--lower-column-height, 0px) - 2rem);
+		}
+	}
 </style>

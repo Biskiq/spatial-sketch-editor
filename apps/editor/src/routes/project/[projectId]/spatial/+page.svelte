@@ -496,6 +496,9 @@
 	/** Set by the route's teardown: no late completion may mount a stage after it. */
 	let tornDown = false;
 	let stageEl: HTMLDivElement | undefined = $state(undefined);
+	/** The one lower column's measured height; the Card clears it at narrow widths. */
+	let lowerColumnEl: HTMLDivElement | undefined = $state(undefined);
+	let lowerColumnHeight = $state(0);
 	/**
 	 * Whether the contextual Card is shown. Closing the Card never clears the
 	 * selection: the Index keeps echoing it, and selecting the subject again (or
@@ -561,6 +564,18 @@
 	 */
 	let narrowShell = $state(false);
 	let cardExpanded = $state<boolean | null>(null);
+
+	$effect(() => {
+		const element = lowerColumnEl;
+		if (element === undefined) return;
+		const measure = () => (lowerColumnHeight = element.getBoundingClientRect().height);
+		measure();
+		// jsdom (the route contract lane) has no layout and no ResizeObserver.
+		if (typeof ResizeObserver === 'undefined') return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(element);
+		return () => observer.disconnect();
+	});
 
 	let epochCounter = 0;
 	let revisionCounter = 0;
@@ -2959,7 +2974,7 @@
 		/>
 		{/if}
 
-		<div class="stage-frame">
+		<div class="stage-frame" style={`--lower-column-height: ${lowerColumnHeight}px`}>
 			{#if preview === null}
 			<!--
 				The Stage surface is a pointer-driven viewport, not a widget: it handles
@@ -3132,7 +3147,7 @@
 				Instrument) and nothing else. A contributed tool appears here because its
 				entry declares `home: 'dock'`; the shell owns no domain slot of its own.
 			-->
-			<div class="lower-column" data-lower-column>
+			<div class="lower-column" data-lower-column bind:this={lowerColumnEl}>
 				<StageDock
 					{armedTaskKind}
 					tools={dockTools}
