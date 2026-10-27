@@ -75,46 +75,50 @@
 	let nameError = $state<string | null>(null);
 	let nameBusy = $state(false);
 	/**
-	 * What an open confirmation was disclosed **for**: the exact subject and the
-	 * owning adapter's own words. A different subject — or the same one with
-	 * different consequences — therefore invalidates it, so `Confirm` can only run
-	 * an action whose disclosure the creator actually read. Both the destructive
-	 * action and the destructive action's own detail are part of the key; the Card
-	 * holds no second opinion about either.
+	 * What an open confirmation was disclosed **for**: one exact action of one
+	 * subject — the subject, the owning adapter, the action and that adapter's own
+	 * words. A different subject, a different action (including the same id
+	 * contributed by another adapter) or the same action disclosed differently all
+	 * invalidate it, so `Confirm` can only run the action whose disclosure the
+	 * creator actually read. The Card holds no second opinion about any of it.
 	 */
-	const confirmationKey = $derived(
-		`${identity?.sourceId ?? ''}\u0000${actions
-			.map((action) => `${action.id}\u0000${action.detail ?? ''}`)
-			.join('\u0001')}`
-	);
+	function confirmationKeyOf(action: StageCardActionRecord): string {
+		return `${identity?.sourceId ?? ''}\u0000${action.adapterId}\u0000${action.id}\u0000${action.detail ?? ''}`;
+	}
+	/** Every key a live confirmation may name; a key outside this set is stale. */
+	const liveConfirmationKeys = $derived(actions.map(confirmationKeyOf));
 	/** The key whose consequence is currently disclosed and awaiting confirmation. */
 	let confirming = $state<string | null>(null);
 	let actionMessage = $state<string | null>(null);
 	let actionBusy = $state(false);
 
 	$effect(() => {
-		// The disclosure belongs to one subject: switching subject (or changing what
-		// that subject's adapter discloses) drops the pending confirmation and its
-		// words, so the next press discloses the live consequences rather than
-		// offering to run the ones the creator read a moment ago. Only the key is
-		// tracked — a press must not re-trigger this and clear what it just opened.
-		const key = confirmationKey;
+		// The disclosure belongs to one action of one subject: switching subject,
+		// losing that action (a rebuilt adapter registry) or changing what its adapter
+		// discloses drops the pending confirmation and its words, so the next press
+		// discloses the live consequences rather than offering to run the ones the
+		// creator read a moment ago. Only the key set is tracked — a press must not
+		// re-trigger this and clear what it just opened.
+		const keys = liveConfirmationKeys;
 		untrack(() => {
-			if (confirming === null || confirming === key) return;
+			if (confirming === null || keys.includes(confirming)) return;
 			confirming = null;
 			actionMessage = null;
 		});
 	});
 
 	/**
-	 * A destructive action runs only after its disclosure has been read: the first
-	 * press opens the consequence, the second confirms it. A non-destructive action
-	 * runs directly.
+	 * A destructive action runs only after **its own** disclosure has been read: the
+	 * first press opens that action's consequence, the second confirms it. A second
+	 * destructive action beside it is a different subject of confirmation, so it
+	 * discloses rather than inheriting the confirmation its neighbour opened. A
+	 * non-destructive action runs directly.
 	 */
 	async function runAction(action: (typeof actions)[number]): Promise<void> {
 		if (actionBusy) return;
-		if (action.destructive === true && confirming !== confirmationKey) {
-			confirming = confirmationKey;
+		const key = confirmationKeyOf(action);
+		if (action.destructive === true && confirming !== key) {
+			confirming = key;
 			actionMessage = action.detail ?? null;
 			return;
 		}
@@ -222,7 +226,8 @@
 		{#if !collapsed}
 			{#if actions.length > 0}
 				<div class="card-actions" data-card-actions>
-					{#each actions as action (action.id)}
+					<!-- The action id is unique per adapter, not across them. -->
+					{#each actions as action (`${action.adapterId}:${action.id}`)}
 						<button
 							type="button"
 							class="action destructive"
@@ -230,7 +235,7 @@
 							disabled={actionBusy}
 							onclick={() => void runAction(action)}
 						>
-							{confirming === confirmationKey ? `Confirm ${action.label}` : action.label}
+							{confirming === confirmationKeyOf(action) ? `Confirm ${action.label}` : action.label}
 						</button>
 					{/each}
 					{#if actionMessage !== null}
