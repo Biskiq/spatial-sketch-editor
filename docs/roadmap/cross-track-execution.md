@@ -104,8 +104,9 @@ flowchart TD
 **Performance-first halt — satisfied 2026-10-27.** The [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
 behind it. S06 is accepted and merged, so the halt no longer blocks any of them; that is a cleared
-dependency, not a release. S02 and `T2.P02.S03` were released on 2026-10-27 (see below); every other
-inheritor still needs its own owner release, reviews and a release-list
+dependency, not a release. S02 and `T2.P02.S03` were released on 2026-10-27 (see below); S02 was
+accepted as `owner-override` and shipped on PR #201, while `T2.P02.S03` remains NOT ACCEPTED. Every
+other inheritor still needs its own owner release, reviews and a release-list
 entry, inherits S06's merged tree and measures on its method. Strictly unrelated work continues only
 through its own owner release.
 
@@ -128,7 +129,8 @@ routes shipped, held and blocked scopes. No lane may implement a sibling's held 
 satisfy its own acceptance.
 
 **Shared files and S06's released claim.** No lane was released at S06's merge; S02 and `T2.P02.S03`
-were released separately on 2026-10-27 (above). The table below
+were released separately on 2026-10-27 (above), and S02 shipped on PR #201 with its formal
+performance family deferred to S04. The table below
 records the claims S06 held; each was released with `6af62eb4`, so a future lane edits these surfaces
 through its own recorded claim and the owner review the [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 requires — it does not inherit S06's claim by citing it:
@@ -155,7 +157,7 @@ The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/
 
 | Surface | Writable owner | Consumer/review boundary |
 | --- | --- | --- |
-| Layout compiler, kernels, representation and Stage admission | T1 (S02 released; starts after PR #198 merges) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
+| Layout compiler, kernels, representation and Stage admission | T1 (S02 shipped 2026-10-27 on PR #201; formal performance family deferred to S04) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
 | Stage host, session, input, contributions and shared shell | T1 | T2/T3 own bounded reviewed patches for their registered consumers; schedule shared-file edits with T1 and retain one host/selection/Camera authority |
 | Scene transform/resource admission, GLB import and relevant API/resource routes | T2 (S03 integrated final gate released; no new product feature) | S06's import seeding is merged history; S03 verifies existing import/placement on the integrated tree, with T3 review for any shared F4/Save changes and no foreign-domain rewrite or publication closure |
 | Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime; S06 measures these flows and reports T3-owned misses |
