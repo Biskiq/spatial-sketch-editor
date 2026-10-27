@@ -568,11 +568,14 @@
 	$effect(() => {
 		const element = lowerColumnEl;
 		if (element === undefined) return;
-		const measure = () => (lowerColumnHeight = element.getBoundingClientRect().height);
-		measure();
 		// jsdom (the route contract lane) has no layout and no ResizeObserver.
 		if (typeof ResizeObserver === 'undefined') return;
-		const observer = new ResizeObserver(measure);
+		// The observed box is the measurement: reading the element again here would
+		// be a second layout read beside the one viewport function above.
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			lowerColumnHeight = entry?.borderBoxSize?.[0]?.blockSize ?? entry?.contentRect.height ?? 0;
+		});
 		observer.observe(element);
 		return () => observer.disconnect();
 	});
