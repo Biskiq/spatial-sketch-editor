@@ -9,16 +9,16 @@
  * 1. the canonical selection a pointer placement leaves behind, and whether the
  *    Index names the placed entity at all;
  * 2. the same comparison on a native primitive, so the pointer completion can be
- *    told apart from the Compose surface (the typed leg is the positive control
- *    and the only thing asserted);
+ *    told apart from the Compose surface (the typed leg is the positive control);
  * 3. the plan's "from an empty project" leg, whose placement outcome depends on
  *    whether a Room floor exists.
  *
  * Nothing here asserts that a defect is present. A fix that makes a creator
  * model selectable, or an empty project placeable, changes the recorded values and
  * keeps these flows green — the acceptance record, not the harness, owns the
- * verdict. Only storage consistency with the outcome actually observed is
- * asserted, so evidence can never disagree with itself.
+ * verdict. What is asserted is limited to positive controls (a typed placement
+ * selects its entity; Compose can resize it) and storage consistency with the
+ * outcome actually observed, so evidence can never disagree with itself.
  *
  * Run through the S03 supervisor:
  *   S03_QA_SPEC=perf/flows/s03-diagnostics.spec.ts \
@@ -81,10 +81,12 @@ async function signedInSession(browser: Parameters<typeof newMeasuredSession>[0]
 
 async function saveProject(page: Page): Promise<void> {
 	const save = page.locator('[data-head-save] button').first();
-	if (
-		(await page.locator('[data-head-save]').getAttribute('data-save-status')) === 'saved' &&
-		(await save.isDisabled())
-	) {
+	const status = await page.locator('[data-head-save]').getAttribute('data-save-status');
+	if (status === 'saved' && (await save.isDisabled())) return;
+	if (status === 'saving') {
+		await expect
+			.poll(() => page.locator('[data-head-save]').getAttribute('data-save-status'), { timeout: 60_000 })
+			.toBe('saved');
 		return;
 	}
 	await expect(save).toBeEnabled();
@@ -104,7 +106,13 @@ async function compose(page: Page): Promise<Record<string, unknown>> {
 	const row = page.locator('.contributed-item button.item-row', { hasText: 'Resize' });
 	if ((await row.count()) === 0) return { opened: false, reason: 'no Resize row in the Index' };
 	await row.first().click();
-	await page.waitForTimeout(1_500);
+	// Wait for the instrument itself rather than for a fixed delay, so a slow
+	// mount is not recorded as an absent instrument.
+	await page
+		.locator(INSTRUMENT)
+		.first()
+		.waitFor({ state: 'visible', timeout: 20_000 })
+		.catch(() => undefined);
 	if ((await page.locator(INSTRUMENT).count()) === 0) return { opened: false, reason: 'no instrument after Resize' };
 	return {
 		opened: true,
@@ -197,12 +205,26 @@ test.describe('T2.P02.S03 diagnostics (recorded, never acceptance rows)', () => 
 
 		await fitStage(page);
 		await setStageReading(page, '3D');
-		evidence.indexRegions = await page.locator('.contributed-item h3').allInnerTexts();
-		evidence.indexRows = (await page.locator('.contributed-item button.item-row').allInnerTexts()).map((text) =>
+		// Two different regions: contributed task groups (`.contributed-group`) and
+		// the Layout subject groups, which are plain `.index-group`. Only the second
+		// can say whether the Index names the placed entity as a subject, so both are
+		// recorded — the shared class alone would make the subject answer empty by
+		// construction.
+		const taskGroups = page.locator('section.index-group.contributed-group');
+		const subjectGroups = page.locator('section.index-group:not(.contributed-group)');
+		evidence.taskRegionHeadings = await taskGroups.locator('h3.group-heading').allInnerTexts();
+		evidence.taskRegionRows = (await taskGroups.locator('button.item-row').allInnerTexts()).map((text) =>
 			text.replace(/\s+/g, ' ').trim()
 		);
-		evidence.entityRowsNamingTheModel = await page
-			.locator('.contributed-item button.item-row', { hasText: 'Diagnostic model' })
+		evidence.subjectRegionHeadings = await subjectGroups.locator('h3.group-heading').allInnerTexts();
+		evidence.subjectRegionRows = (await subjectGroups.locator('button.item-row').allInnerTexts()).map((text) =>
+			text.replace(/\s+/g, ' ').trim()
+		);
+		evidence.subjectRowsNamingTheModel = await subjectGroups
+			.locator('button.item-row', { hasText: 'Diagnostic model' })
+			.count();
+		evidence.taskRowsNamingTheModel = await taskGroups
+			.locator('button.item-row', { hasText: 'Diagnostic model' })
 			.count();
 		evidence.compose = await compose(page);
 
@@ -286,8 +308,25 @@ test.describe('T2.P02.S03 diagnostics (recorded, never acceptance rows)', () => 
 		if (box === null) throw new Error('the Stage has no canvas box');
 		const before = await acceptedResultCount(page);
 		await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.52);
-		await page.waitForTimeout(3_000);
-		const accepted = (await acceptedResultCount(page)) > before;
+		// Poll for an accepted result instead of classifying by a fixed wait: a commit
+		// slower than the wait would otherwise be recorded as a refusal, and could
+		// then land after the save and contradict the 0/0 storage assertions.
+		const commitDeadline = Date.now() + 15_000;
+		let accepted = false;
+		while (Date.now() < commitDeadline) {
+			if ((await acceptedResultCount(page)) > before) {
+				accepted = true;
+				break;
+			}
+			await page.waitForTimeout(250);
+		}
+		if (!accepted) {
+			// One bounded grace period before calling it refused, so a late commit is
+			// still seen rather than being frozen into the evidence.
+			await page.waitForTimeout(1_000);
+			accepted = (await acceptedResultCount(page)) > before;
+		}
+		evidence.commitPollMs = Date.now() - (commitDeadline - 15_000);
 		evidence.placementAccepted = accepted;
 		evidence.subject = await subject(page);
 		evidence.feedback = (await page.locator(`${INSTRUMENT} p.feedback`).innerText().catch(() => '(none)')).replace(

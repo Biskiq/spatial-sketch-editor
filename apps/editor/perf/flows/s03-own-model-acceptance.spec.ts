@@ -65,6 +65,14 @@ async function saveProject(page: Page): Promise<void> {
 	// A freshly created empty project is saved already; Save is then disabled with
 	// "All accepted changes are saved." rather than waiting for a first click.
 	if ((await page.locator('[data-head-save]').getAttribute('data-save-status')) === 'saved' && (await save.isDisabled())) return;
+	// A save already in flight disables the control; wait for it rather than
+	// demanding an enabled button that the in-flight state removes.
+	if ((await page.locator('[data-head-save]').getAttribute('data-save-status')) === 'saving') {
+		await expect
+			.poll(() => page.locator('[data-head-save]').getAttribute('data-save-status'), { timeout: 60_000 })
+			.toBe('saved');
+		return;
+	}
 	await expect(save).toBeEnabled();
 	await save.click();
 	await expect
@@ -237,8 +245,11 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 
 		await fitStage(page);
 		await setStageReading(page, '3D');
-		const stagePlaced = await canvasShot(page, 'canvas', 's03-stage-placed.png');
+		// Same late-derivative race as Preview: shoot once the model colours are
+		// painted, not on the first frame after the reading switch.
+		const stagePlaced = await canvasShotMapped(page, 'canvas', 's03-stage-placed.png', 1_000);
 		evidence.stagePlacedPixels = stagePlaced.pixels;
+		evidence.stagePlacedWaitedMs = stagePlaced.waitedMs;
 		expect(stagePlaced.pixels, 'the placed model renders in the editor 3D reading').toBeGreaterThan(1_000);
 
 		// Record what the placement completion left selected, without asserting it:
@@ -354,8 +365,9 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 			.toBeGreaterThan(0);
 		await setStageReading(reopenPage, '3D');
 		await fitStage(reopenPage);
-		const reopenedStage = await canvasShot(reopenPage, 'canvas', 's03-stage-reopened.png');
+		const reopenedStage = await canvasShotMapped(reopenPage, 'canvas', 's03-stage-reopened.png', 500);
 		evidence.reopenedPixels = reopenedStage.pixels;
+		evidence.reopenWaitedMs = reopenedStage.waitedMs;
 		evidence.reopenErrors = reopenErrors;
 		expect(reopenedStage.pixels, 'the stored revisions render on a fresh load').toBeGreaterThan(500);
 
@@ -400,6 +412,9 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 
 		await writeFile(resolve(resultsDir, 's03-journey-evidence.json'), JSON.stringify(evidence, null, 2));
 		expect(errors).toEqual([]);
+		// The fresh session is the half of "Save and reopen" that no other assertion
+		// covers: a page error there is a failed reopen even when the pixels render.
+		expect(reopenErrors, 'the reopened session raises no page error').toEqual([]);
 		await reopened.context.close();
 		await session.context.close();
 	});

@@ -21,6 +21,7 @@ npm run perf:bundle          # delivery report over the current production build
 # build first; `PUBLIC_API_ORIGIN` is runtime ($env/dynamic/public) and does not
 # need to be set here.
 createdb biskiq_s03_gate            # a dedicated empty database; never the dev/Compose DB
+npm run build:api                   # the supervisor imports apps/api/dist (gitignored)
 npm run build                       # from the repository root, immediately before the pass
 cd apps/editor
 DATABASE_URL=postgresql://localhost:5432/biskiq_s03_gate \

@@ -55,6 +55,12 @@ if (!existsSync(resolve(scriptDir, '../.svelte-kit/output/client'))) {
       '(the supervisor previews .svelte-kit/output and never builds).'
   );
 }
+if (!existsSync(resolve(repoRoot, 'apps/api/dist/app.js'))) {
+  throw new Error(
+    'No built API to import: run `npm run build:api` at the repository root first ' +
+      '(the supervisor imports apps/api/dist and never builds).'
+  );
+}
 await mkdir(resultsDir, { recursive: true });
 
 const apiPort = Number(process.env.S03_API_PORT ?? 8791);

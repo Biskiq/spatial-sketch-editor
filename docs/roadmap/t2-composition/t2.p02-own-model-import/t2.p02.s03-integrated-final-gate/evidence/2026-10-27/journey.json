@@ -1,9 +1,10 @@
 {
-  "projectId": "perf-s03-mvqtrrcr",
+  "projectId": "perf-s03-mvqufdl4",
   "browser": "chrome",
   "errors": [],
   "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
   "stagePlacedPixels": 34377,
+  "stagePlacedWaitedMs": 143,
   "selectionAfterPlacement": "room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-template-F.starter-template",
   "arrangeEntityOptions": [
     "Choose…",
@@ -26,24 +27,24 @@
   },
   "twoInstances": {
     "entityIds": [
-      "entity-679886aa-cead-46d9-a025-5589a8a00439",
-      "entity-f43c6453-fd7c-4462-8d33-8b9ca344b4be"
+      "entity-aa455f65-8a04-4870-a1fd-7ac574f5062b",
+      "entity-371ccadd-e7aa-4a6f-a414-2d13fc71e9ec"
     ],
     "assetIds": [
-      "model-1f24dc3f-a30c-4725-a5b9-ef9728c40c5e",
-      "model-1f24dc3f-a30c-4725-a5b9-ef9728c40c5e"
+      "model-f2809ff7-202e-4640-b006-4130eeea6ef2",
+      "model-f2809ff7-202e-4640-b006-4130eeea6ef2"
     ],
     "resourceIds": [
-      "model-1f24dc3f-a30c-4725-a5b9-ef9728c40c5e"
+      "model-f2809ff7-202e-4640-b006-4130eeea6ef2"
     ]
   },
   "resource": {
-    "id": "model-1f24dc3f-a30c-4725-a5b9-ef9728c40c5e",
+    "id": "model-f2809ff7-202e-4640-b006-4130eeea6ef2",
     "pin": {
       "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78",
       "mime": "model/gltf-binary",
       "size": 1201064,
-      "locator": "/projects/perf-s03-mvqtrrcr/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+      "locator": "/projects/perf-s03-mvqufdl4/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
     },
     "source": {
       "manifestHash": "sha256-8ab968947ae796732bd527a388236c44d7945a069bc6b2669c4510efceff5357",
@@ -76,8 +77,9 @@
     "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
   },
   "reopenedPixels": 80910,
+  "reopenWaitedMs": 163,
   "reopenErrors": [],
   "previewPixelsWithModel": 74328,
-  "previewTextureWaitedMs": 151,
+  "previewTextureWaitedMs": 174,
   "previewPixelsControl": 0
 }
