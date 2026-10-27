@@ -239,10 +239,17 @@ curved hosts, which this straight-Wall workload does not contain, so no latency 
 **Still owed, by an owner-run pass.** The plan's performance acceptance — F3 input-to-matching-preview
 / latest-input age / final-preview completion / frames and long tasks, per-move evaluation, F4 commit
 and F8 Undo/Redo at **S and M**, plus F2 open, F13 leak cycles and the Stage first-load delta — stays
-with the designated M2 under S06's method, on the ratified harness and budgets
-(`npm run perf:bench -- --profile milestone --tiers grid-L,grid-M,grid-S`). No agent run is presented
-as that evidence: the harness itself records agent runs as smoke checks or censuses, and a Bench pass
-needs owner direction. No row is waived here, and this handoff claims no latency acceptance.
+with the designated M2 under the **formal acceptance method**, not S06's milestone amendment:
+
+```text
+npm run perf:bench -- --label t1-s02-acceptance --profile acceptance --tiers grid-L,grid-M,grid-S
+```
+
+The harness refuses a partial-tier formal pass, so L is included even though S02's required rows are
+S and M. The milestone profile is S06 acceptance only and must not be used here. No agent run is
+presented as that evidence: the harness itself records agent runs as smoke checks or censuses, and a
+Bench pass needs owner direction. No row is waived here, and this handoff claims no latency
+acceptance.
 
 ## Review obligations
 

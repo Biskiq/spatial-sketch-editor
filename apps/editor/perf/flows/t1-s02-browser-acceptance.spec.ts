@@ -542,6 +542,73 @@ test('empty: draw and close an enclosure, read it in 3D, edit Card precision and
 		await waitForPoints(page, 0);
 		expect(layoutCounts(await downloadSource(page))).toEqual(afterKeyboard);
 		rows.push(row('empty.keyboard', 'keyboard-only finish/backtrack/cancel', 'passed', 'Enter finished a two-point chain; Backspace removed one point; Escape cleared the live chain with no install', page, '1440x900', true));
+
+		// One Undo/Redo for the accepted chain itself, not only for the later delete.
+		const keyboardIds = layoutIds(await downloadSource(page));
+		const chainUndoBefore = await acceptedResultCount(page);
+		await page.locator('[data-editor-history]').getByRole('button', { name: 'Undo', exact: true }).click();
+		await waitForAcceptedResult(page, chainUndoBefore);
+		expect(layoutCounts(await downloadSource(page))).toEqual(afterClose);
+		const chainRedoBefore = await acceptedResultCount(page);
+		await page.locator('[data-editor-history]').getByRole('button', { name: 'Redo', exact: true }).click();
+		await waitForAcceptedResult(page, chainRedoBefore);
+		expect(layoutIds(await downloadSource(page))).toEqual(keyboardIds);
+		rows.push(row('empty.undo-redo-chain', 'one Undo/Redo per accepted chain', 'passed', 'the keyboard chain undid to the enclosure and redid to the same Wall/Junction identities', page, '1440x900', true));
+
+		// Divide the enclosure, read the result in 3D, then delete the divider and
+		// reconcile the two Rooms back into one.
+		const closeCard = page.getByRole('button', { name: 'Close selection card' });
+		if (await closeCard.isVisible().catch(() => false)) await closeCard.click();
+		const preDivideIds = layoutIds(await downloadSource(page));
+		await armInk(page);
+		// Split the left and right host Walls at their midpoints; the bottom edge is
+		// under the open palette at this viewport, while both mid-height points are
+		// reachable.
+		await clickWorldAndWait(page, [2, 0, 0], 1);
+		await clickWorldAndWait(page, [6, 0, 0], 2);
+		const divideBefore = await acceptedResultCount(page);
+		await finishWithEnter(page);
+		await waitForAcceptedResult(page, divideBefore);
+		const dividedSource = await downloadSource(page);
+		const afterDivide = layoutCounts(dividedSource);
+		expect(afterDivide.walls).toBeGreaterThan(afterClose.walls);
+		expect(afterDivide.rooms).toBe(afterClose.rooms + 1);
+		rows.push(row('empty.divide', 'divide the empty enclosure', 'passed', `${JSON.stringify(afterClose)} → ${JSON.stringify(afterDivide)}`, page, '1440x900', true, await capture(page, 't1-s02-empty-divided.png')));
+
+		await setReading(page, '3D');
+		expect(layoutCounts(await downloadSource(page))).toEqual(afterDivide);
+		rows.push(row('empty.plan-3d-divide', 'divided enclosure in 3D', 'passed', 'reading switch preserved the divided counts', page, '1440x900', true));
+		await setReading(page, 'Plan');
+
+		const enclosureJunctions = new Set(layoutIds(await downloadSource(page)).junctions);
+		const preDivideJunctions = new Set(preDivideIds.junctions);
+		const newJunctions = new Set([...enclosureJunctions].filter((id) => !preDivideJunctions.has(id)));
+		const divider = (dividedSource.units.layout.data.walls as {
+			id: string;
+			startJunctionId: string;
+			endJunctionId: string;
+		}[]).find(
+			(wall) => !preDivideIds.walls.includes(wall.id) && newJunctions.has(wall.startJunctionId) && newJunctions.has(wall.endJunctionId)
+		);
+		if (divider === undefined) throw new Error('the empty division added no divider between two new split Junctions');
+		await selectSubject(page, divider.id);
+		const deleteAction = page.locator(DELETE);
+		await expect(deleteAction).toBeVisible();
+		await deleteAction.click();
+		await expect(deleteAction).toContainText('Confirm');
+		await expect(page.locator('[data-card-actions]')).toContainText(/deletes|Room|Opening/i);
+		const deleteBefore = await acceptedResultCount(page);
+		await deleteAction.click();
+		await waitForAcceptedResult(page, deleteBefore);
+		const afterDelete = layoutCounts(await downloadSource(page));
+		expect(afterDelete.walls).toBe(afterDivide.walls - 1);
+		expect(afterDelete.rooms).toBe(afterClose.rooms);
+		rows.push(row('empty.delete', 'delete the empty divider and reconcile Rooms', 'passed', `${JSON.stringify(afterDivide)} → ${JSON.stringify(afterDelete)}; disclosure read before the second press`, page, '1440x900', true, await capture(page, 't1-s02-empty-deleted.png')));
+
+		await setReading(page, '3D');
+		expect(layoutCounts(await downloadSource(page))).toEqual(afterDelete);
+		rows.push(row('empty.plan-3d-delete', 'reconciled enclosure in 3D', 'passed', 'reading switch preserved the reconciled counts', page, '1440x900', true));
+		await setReading(page, 'Plan');
 		expect(errors).toEqual([]);
 	} catch (error) {
 		rows.push(row('empty.test', 'empty journey', 'failed', error instanceof Error ? error.message : String(error), started.page, '1440x900', true));
@@ -670,6 +737,27 @@ test('shell: narrow reduced-motion layout, Find, contributed-task arbitration an
 		await page.getByRole('button', { name: 'Close Place plinth' }).click();
 		await expect(page.locator('[data-dock-tool="layout-ink"]')).toHaveAttribute('aria-pressed', 'false');
 		rows.push(row('shell.task-arbitration', 'contributed task and Card arbitration', 'passed', 'selection survived the invoked task; closing it did not re-arm Ink', page, '900x700', true));
+
+		// The Library's own Scene contribution, not only the Layout dock's task:
+		// opening it must not clear the selected subject or leave Ink armed.
+		const libraryTask = page.locator('.contributed-item button.item-row', { hasText: 'Place object' }).first();
+		await expect(libraryTask).toBeVisible();
+		await libraryTask.click();
+		await expect(page.locator('[data-stage-instrument]')).toBeVisible();
+		await selectSubject(page, wallId);
+		await expect(page.locator(CARD)).toBeVisible();
+		await page.getByRole('button', { name: 'Close Place object' }).click();
+		await expect(page.locator('[data-dock-tool="layout-ink"]')).toHaveAttribute('aria-pressed', 'false');
+		rows.push(row('shell.library-task', 'active Library contribution and Card arbitration', 'passed', 'Scene Place object opened while the Wall stayed selected; closing it did not re-arm Ink', page, '900x700', true));
+
+		// The Guide lives in the Experience lens; mounting it must not turn Ink back on.
+		await page.locator(LENS).getByRole('button', { name: 'Experience', exact: true }).click();
+		await expect(page.getByRole('region', { name: 'Experience lens' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Guide', exact: true })).toHaveAttribute('aria-pressed', 'true');
+		await page.locator(LENS).getByRole('button', { name: 'World', exact: true }).click();
+		await expect(page.locator('[data-dock-tool="layout-ink"]')).toHaveAttribute('aria-pressed', 'false');
+		await selectSubject(page, wallId);
+		rows.push(row('shell.guide-lens', 'active Guide lens and Card arbitration', 'passed', 'Experience lens mounted with the Guide open; returning to World left Ink disarmed and the Wall selectable', page, '900x700', true));
 
 		// An unsaved edit opens the replacement guard; cancelling changes nothing.
 		await armInk(page);

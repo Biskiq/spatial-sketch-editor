@@ -19,10 +19,16 @@ cannot pass.
 
 ### Owner-run performance acceptance (required proof, not recorded)
 
-The plan requires, on the designated MacBook Air M2 under S06's measurement method:
+The plan requires, on the designated MacBook Air M2 under the formal acceptance method:
 F3 input-to-matching-preview, latest-input age, final-preview completion, frames and long tasks;
 per-move evaluation; F4 commit and F8 Undo/Redo at **S and M**; F2 open; F13 leak cycles; and the
-Stage first-load delta.
+Stage first-load delta. The owner pass must use the formal profile, not S06's milestone amendment:
+
+```text
+npm run perf:bench -- --label t1-s02-acceptance --profile acceptance --tiers grid-L,grid-M,grid-S
+```
+
+The harness refuses a partial-tier formal pass, so L runs as well as the required S and M rows.
 
 The handoff records only a **harness smoke, not acceptance evidence** (grid-S, n=1 rows) and says the
 plan's performance acceptance "stays with the designated M2 under S06's method… No agent run is
