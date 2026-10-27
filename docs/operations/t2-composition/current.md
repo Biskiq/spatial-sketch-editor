@@ -3,7 +3,8 @@
 Track-scoped handoff. **Replace only this file for T2 work.**
 
 ```text
-PHASE: T2.P02 Own model import (registered 2026-10-22, batch E; in progress, S03 released) →
+PHASE: T2.P02 Own model import (registered 2026-10-22, batch E; in progress — S03 ran
+       2026-10-27 and is NOT accepted, open PR #199) →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
        T2.P01 Supported object composition is CLOSED 2026-10-20, all four children shipped →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md

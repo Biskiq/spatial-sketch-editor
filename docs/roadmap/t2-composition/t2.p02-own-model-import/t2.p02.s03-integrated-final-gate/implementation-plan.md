@@ -19,6 +19,11 @@ artifact. It was registered in batch E (E1) and is now approved and released by 
 2026-10-27 owner decision, with a start condition of PR #198 merging on `main`. The integrated
 final gate has not run: no acceptance verdict, readiness evidence or implementation result is claimed.
 
+> **Status update, 2026-10-27:** the gate ran and the record exists —
+> [acceptance.md](./acceptance.md). It is **not accepted** (two required rows blocked, the
+> empty-project line unreachable, one hard delivery row missed); the paragraphs above record the plan
+> as approved, before that run.
+
 ## Prerequisite
 
 `T2.P02.S01` and `S02` accepted with routine closeout, and every consumed gate `accepted` with every
