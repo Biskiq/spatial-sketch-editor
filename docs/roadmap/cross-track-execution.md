@@ -85,10 +85,10 @@ and `T2.P02.S03` import final gate — on 2026-10-27
 flowchart TD
   B["Post-Batch-E lanes shipped (696af6ea)"]
   B --> P["T1.P02.S06 performance foundation — shipped, merged 6af62eb4"]
-  P -->  D["T1.P02.S02 drawing — released 2026-10-27; starts after this PR merges"]
+  P -->  D["T1.P02.S02 drawing — shipped PR #201 (owner-override)"]
   D --> O["T1.P02.S03 Opening — held"]
   O --> F["T1.P02.S04 final gate — held"]
-  P -->  IF["T2.P02.S03 integrated final gate — released 2026-10-27; starts after this PR merges"]
+  P -->  IF["T2.P02.S03 integrated final gate — accepted 2026-10-27; T2.P02 closed"]
   B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
   B --> T5["T5 Expressive Geometry — planning; direction ratified, E0 commission needs authorization"]
   F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
@@ -106,8 +106,9 @@ flowchart TD
 defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
 behind it. S06 is accepted and merged, so the halt no longer blocks any of them; that is a cleared
 dependency, not a release. S02 and `T2.P02.S03` were released on 2026-10-27 (see below); S02 was
-accepted as `owner-override` and shipped on PR #201, while `T2.P02.S03` remains NOT ACCEPTED. Every
-other inheritor still needs its own owner release, reviews and a release-list
+accepted as `owner-override` and shipped on PR #201, and `T2.P02.S03` was accepted by owner ruling
+2026-10-27, closing `T2.P02` ([decision](../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)).
+Every other inheritor still needs its own owner release, reviews and a release-list
 entry, inherits S06's merged tree and measures on its method. Strictly unrelated work continues only
 through its own owner release.
 
@@ -122,7 +123,10 @@ S03 with its final-gate review
 Each starts after this PR merges on its own trusted base; the standing implementation reviews
 (T3 for S02's Head/F4 diff, the owning track for any T2/T3 adapter edit) and every acceptance,
 performance and independent-review requirement are unchanged. The [release list](./now.md) carries
-the rows.
+the rows. Both have since shipped: S02 as `owner-override` on PR #201 and S03 accepted by owner
+ruling 2026-10-27, closing `T2.P02`
+([decision](../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)). S03's
+formal performance rows are deferred to the named T2 follow-ups; no row is a pass.
 
 T1's execution order is owned by the [T1.P02 register](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register);
 the roadmap's [where-things-stand index](./README.md#current-coordination-and-proposal-provenance)
@@ -130,8 +134,9 @@ routes shipped, held and blocked scopes. No lane may implement a sibling's held 
 satisfy its own acceptance.
 
 **Shared files and S06's released claim.** No lane was released at S06's merge; S02 and `T2.P02.S03`
-were released separately on 2026-10-27 (above), and S02 shipped on PR #201 with its formal
-performance family deferred to S04. The table below
+were released separately on 2026-10-27 (above), and both shipped: S02 on PR #201 with its formal
+performance family deferred to S04, and S03 with the Stage budget amended and its formal rows
+deferred to the named T2 follow-ups. The table below
 records the claims S06 held; each was released with `6af62eb4`, so a future lane edits these surfaces
 through its own recorded claim and the owner review the [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 requires — it does not inherit S06's claim by citing it:

@@ -1,10 +1,14 @@
 # T2.P02 — Own model import
 
-**Phase:** T2.P02 · **Status:** registered 2026-10-22. Released scopes and their conditions are
-the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
-covers every scope that list omits. S02 is shipped (accepted 2026-10-24); S03 is `in-progress` (released 2026-10-27, [record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)), its gate ran and is **not accepted** ([record](./t2.p02.s03-integrated-final-gate/acceptance.md); [disposition](./t2.p02.s03-integrated-final-gate/disposition.md); [current recovery](./t2.p02.s03-integrated-final-gate/recovery-head.md)) · **Track:**
-[T2](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
-[T2 operations](../../../operations/t2-composition/README.md) · **Design:**
+**Phase:** T2.P02 · **Status:** registered 2026-10-22 and **closed 2026-10-27** by owner ruling.
+S01, S02 and S03 are shipped; S03's final gate was accepted at `b9ba493b` with the Stage hard budget
+amended to ≤425 KiB br JS and the formal performance rows deferred to named owners
+([acceptance](./t2.p02.s03-integrated-final-gate/acceptance.md);
+[decision](../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)).
+Released scopes and their conditions are the [release list](../../now.md); the
+[production hold](../../README.md#production-implementation-hold) covers every scope that list
+omits · **Track:** [T2](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) ·
+**Runbook:** [T2 operations](../../../operations/t2-composition/README.md) · **Design:**
 [shell draft](./shell-draft.md)
 
 This phase is C2 of the convergence first wave. The
@@ -75,17 +79,37 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T2.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md) | [acceptance and preservation stub](./t2.p02.s01-model-resource-storage-and-admission/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7); accepted by **owner-override** 2026-10-23 for current implementation revision `623a7f73a61496d5df09c9dc0fc69ab5c6737b36`; current-verdict and current-revision evidence prerequisites waived as recorded in the acceptance stub; starts only after `T3.P03.S01` is merged on `main` |
 | T2.P02.S02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t2.p02.s02-import-review-approve-place/implementation-plan.md) | [acceptance and preservation stub](./t2.p02.s02-import-review-approve-place/acceptance.md) | owner-authorized 2026-10-23 in the post-Batch-E release ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); shipped through PR #185 and accepted 2026-10-24 for implementation tree `082e384c` on the owner's review of the post-review fixes ([acceptance stub](./t2.p02.s02-import-review-approve-place/acceptance.md)); owner-run rows stay unrun |
-| T2.P02.S03 | in-progress | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t2.p02.s03-integrated-final-gate/implementation-plan.md) | [record](./t2.p02.s03-integrated-final-gate/acceptance.md); [failed-gate disposition](./t2.p02.s03-integrated-final-gate/disposition.md) | owner-authorized and released 2026-10-27 ([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)); starts after the coordination PR #198 merges, with S01 and S02 already accepted, and on its own trusted base; plan review complete ([review](./t2.p02.s03-integrated-final-gate/plan-review.md)); scope unchanged. The gate **ran 2026-10-27 on the integrated tree and is not accepted**: two required rows are blocked, the plan's empty-project line was unreachable on that base, and the Stage first-load hard budget misses. The failed-gate **disposition** preserves the verdict and routes the owner decisions; PR #199 is open and nothing here reads as a verdict. T1's #201 Stage change is now merged (`ce159a1e`) and the current recovery at `b9ba493b` re-ran on that main: selecting, resizing, duplicating and deleting a placed creator model all commit, the empty-project journey is an asserted acceptance row over draw-then-place, and the Stage route measures **422.3 KiB br** with an evidence-backed [amendment proposal](./t2.p02.s03-integrated-final-gate/delivery-budget-proposal.md); formal pass-scoped performance rows remain unresolved, so the gate is still **not accepted** ([current recovery](./t2.p02.s03-integrated-final-gate/recovery-head.md); [first attempt](./t2.p02.s03-integrated-final-gate/recovery.md)) |
+| T2.P02.S03 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate (closed stub)](./t2.p02.s03-integrated-final-gate/implementation-plan.md) | [acceptance and preservation stub](./t2.p02.s03-integrated-final-gate/acceptance.md) | owner-authorized and released 2026-10-27 ([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)); **accepted by owner ruling 2026-10-27 at `b9ba493b`** ([decision](../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)): exhaustive contract (215 files / 2,663 tests; arch 22/180; heavy 11/138; check 0/0; build; API 14/114 with zero skips) and 3/3 branded-Chrome acceptance in 45.8 s; Stage first-load JS **422.3 KiB br** passes the owner-amended **≤425 KiB br** hard row (2.7 KiB headroom); formal performance rows are **deferred, not passed**, to the T2 performance follow-up (T2 track) and the owner-run follow-up (repository owner, tracked by T2); the Index subject-row and pointer move/turn product follow-ups defer to T2; shipped through PR #199 under the P1 merge rule; **`T2.P02` closed 2026-10-27** (PHASE CLOSE below) |
 
-Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
-slice rechecks them at its own trusted base through the runbook start step. No slice here provides a
-gate. S02 is shipped; the bounded T1 host review was accepted 2026-10-24. See the [next parallel batch](../../cross-track-execution.md#next-parallel-batch).
+Every consumed gate is `accepted` and every required scope is `active` at each slice's trusted base;
+each slice rechecks them through the runbook start step. No slice here provides a gate. S01, S02 and
+S03 are shipped; the bounded T1 host review was accepted 2026-10-24. `T2.P02` is **closed 2026-10-27**
+and the next T2 work is a planning/authorization decision, not an active slice. See the
+[next parallel batch](../../cross-track-execution.md#next-parallel-batch).
 
 ```text
 FINAL PHASE GATE: T2.P02.S03 → ./t2.p02.s03-integrated-final-gate/acceptance.md
 
 PHASE CLOSE
-Stage:        active
+Stage:        closed
+Closed:       2026-10-27 — owner ratification recorded in `221facc4` (direct owner acceptance and
+              phase-close direction, 2026-10-27; decision record
+              `../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md`;
+              PR #199)
+Owner ratification: closed by owner ruling 2026-10-27 (`221facc4`)
+Final gate:   T2.P02.S03 → ./t2.p02.s03-integrated-final-gate/acceptance.md — accepted by owner
+              2026-10-27 at `b9ba493b`
+Integration:  exhaustive repository contract at `b9ba493b` — 215 files / 2,663 tests, arch 22/180,
+              heavy 11/138, check 0/0, build clean, API 14/114 with zero skips — plus 3/3 branded-
+              Chrome acceptance in 45.8 s, including the empty-project draw-then-place journey and the
+              full creator-model manipulation loop; Stage first-load JS 422.3 KiB br under the owner-
+              amended ≤425 KiB hard row. Formal performance rows are deferred to named owners, not
+              passed.
+Preservation: the declared gate artifact is a closed-work stub at its own path; its full body and the
+              five compacted prose bodies are recoverable at `221facc4`; five final PNGs are archived
+              under `docs/archive/roadmap/t2-composition/t2.p02-own-model-import/`
+              `t2.p02.s03-integrated-final-gate/evidence/2026-10-27-head/`. The preservation report is
+              in the stub.
 ```
 
 **S02 import pipeline** (see the [S02 implementation plan](./t2.p02.s02-import-review-approve-place/implementation-plan.md)). Ingest runs in a worker loaded only when Import opens:
@@ -102,14 +126,30 @@ cancelled, stale or project-replaced upload or approval never installs.
 memory delta, chosen → placed), F6 placement at S and M, the GPU-memory hard row at M, F13 leak
 cycles with repeated import/place/delete, and the Stage first-load delta (Import code stays lazy).
 
+**S03 final-gate acceptance and deferrals (owner ruling, 2026-10-27).** The integrated final gate was
+accepted at `b9ba493b`: the exhaustive contract (215 files / 2,663 tests; arch 22/180; heavy 11/138;
+`check` 0/0; build clean; API 14/114 with zero skips) and 3/3 branded-Chrome acceptance in 45.8 s,
+including draw-then-place from an empty project and the full creator-model manipulation loop. Stage
+first-load JS is 422.3 KiB br, passing the owner-amended **≤425 KiB br** hard row with 2.7 KiB
+headroom; the former ≤400 miss remains history. The formal performance rows are **deferred, not
+passed**: F5/F6/F9/F13/GPU and the unrun F2/F3/F4/F7/F8 and worker-split rows go to the **T2
+performance follow-up (T2 track)**; shell observations, Draco/KTX2, a real R2 bucket, a real >50 MiB
+decode and worker-boundary timing go to the **repository owner (owner-run), tracked by T2**; the
+placed model's Index subject row and pointer move/turn go to the **T2 track**. No row is waived as a
+pass. The ruling is [recorded](../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md);
+the full gate evidence and preservation report are in the
+[acceptance stub](./t2.p02.s03-integrated-final-gate/acceptance.md).
+
 ## Dependencies and boundaries
 
-- **Before implementation:** H0's `T3.P03.S01` merged (the resource-granting placement planner relies
-  on per-planner scope). The bounds above are owner-accepted. Nothing waits on C1. Preview evidence
-  needs T3.P02.S01; if it has not merged when S02 is accepted, the check moves to S03.
-- **Reference hardware:** S02's import, placement, GPU-memory and leak rows are run and accepted on
-  the designated reference machine, the owner's MacBook Air M2 with 16 GB
-  ([batch E, E6 amendment](../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)). S01 binds no performance row.
+- **Before implementation (historical):** H0's `T3.P03.S01` merged (the resource-granting placement
+  planner relies on per-planner scope). The bounds above are owner-accepted. Nothing waits on C1.
+  S02's Preview evidence was rechecked by S03; no dependency remains.
+- **Reference hardware:** hard performance rows run on the designated reference machine, the owner's
+  MacBook Air M2 with 16 GB
+  ([batch E, E6 amendment](../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)).
+  S01 binds no performance row. S02's formal family and S03's pass-scoped rows remain deferred to the
+  named follow-ups above, not passed.
 - **T2 writes:** `apps/api/**` and its migrations for this batch, the Scene format and planners, the
   resources format, Scene adapters and the Import procedure. Shared `units/**` edits follow the
   batch's serialized merge rule; a Stage host change is a stop-and-report to T1.
