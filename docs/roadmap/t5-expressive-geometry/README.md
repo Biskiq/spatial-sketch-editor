@@ -1,7 +1,8 @@
 # T5 — Expressive Geometry
 
-**Track:** T5 · **Status:** planning — registered 2026-10-27; **no phase, gate, release or
-implementation is authorized** ([track register](../README.md#track-register)) ·
+**Track:** T5 · **Status:** planning — registered 2026-10-27; **G0 approved 2026-10-27**, executable
+once PR #198 merges ([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)); **no phase,
+gate, release or implementation is authorized** ([track register](../README.md#track-register)) ·
 **Gates owned:** none · **Phase register:** none · **Operations:** none yet (see
 [Operations](#operations-and-authorization-route))
 
@@ -17,19 +18,27 @@ modification, geometric relationships, correspondence and durable revision. That
 engineering problem from drawing a Wall well, and it must not be solved by duplicating the Layout
 compiler or by promoting a prototype.
 
+**Product direction (owner, 2026-10-27).** Biskiq supports effortless semantic and geometric editing
+in **World**, alongside a dedicated **Object Focus workspace** for deeper, more precise and
+expressive 3D modeling. Both share the same authored source, identity, relationships and history,
+and the drawing-first philosophy with its progressive learning curve is preserved — without limiting
+the eventual geometric capability to what today's prototypes demonstrate. The final Object Focus UX
+and technical architecture stay open for G0
+([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)).
+
 ## Bounded objectives
 
 A T5 phase is authorized only against a registered, bounded objective. The track's near-term work is
 planning:
 
-1. **G0 — foundation architecture (proposed, not authorized).** Commission the
-   [G0 foundation-architecture brief](./g0-foundation-architecture-commission.md): one recommended
-   geometric architecture with alternatives, library/kernel strategy, integration boundaries, an
-   editable operation/correspondence model, incremental-evaluation requirements and an
-   implementation-ready sequence with a real first consumer.
-2. **First capability phase (future).** Registered only after the owner decides G0, and only with a
-   plan, review path and release. It must deliver production-owned capability to a real consumer —
-   not a laboratory result.
+1. **G0 — foundation architecture (approved 2026-10-27; executable once PR #198 merges).** The
+   [G0 foundation-architecture brief](./g0-foundation-architecture-commission.md) delivers one
+   recommended geometric architecture with alternatives, library/kernel strategy, integration
+   boundaries, an editable operation/correspondence model, incremental-evaluation requirements and
+   an implementation-ready sequence with a real first consumer. G0 authorizes no implementation.
+2. **First capability phase (future).** Registered only after the owner rules on G0's architecture,
+   and only with a plan, review path and release. It must deliver production-owned capability to a
+   real consumer — not a laboratory result.
 
 Completion evidence for any T5 phase is a recorded acceptance against that phase's declared final
 gate, with the domain boundaries below intact and the accepted contracts unbroken.
@@ -61,12 +70,16 @@ recommend — not prerequisites this registration pre-ratifies.
 
 ## Evidence roles
 
-- [G0 commission](./g0-foundation-architecture-commission.md) — the actionable planning brief. A
-  proposal for owner decision; it authorizes no implementation.
+- [G0 commission](./g0-foundation-architecture-commission.md) — the actionable planning brief,
+  approved by the owner 2026-10-27
+  ([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)); it authorizes no
+  implementation.
 - [Native Form Lab (PR #194)](https://github.com/Biskiq/spatial-sketch-editor/pull/194) and
-  [native object shaping (PR #196)](https://github.com/Biskiq/spatial-sketch-editor/pull/196) —
+  [native object shaping (PR #196, merged `4a1ff08d`)](https://github.com/Biskiq/spatial-sketch-editor/pull/196) —
   **creative and technical evidence**: what native creation wants to feel like and which operations
-  matter. Prototype code, not production authority.
+  matter, durable in
+  [`prototypes/native-object-shaping/UX-SPEC.md`](../../../prototypes/native-object-shaping/UX-SPEC.md).
+  Prototype code, not production authority.
 - [Depth prototypes (PR #195)](https://github.com/Biskiq/spatial-sketch-editor/pull/195) and the
   [spatial modeling depth study (PR #192)](https://github.com/Biskiq/spatial-sketch-editor/pull/192) —
   design evidence for depth, shape and creative operation sets.
@@ -76,11 +89,13 @@ recommend — not prerequisites this registration pre-ratifies.
 - [World-scale architecture study](../../../broad-research/all-visible-editing-and-town-overview.md) —
   historical research (PR #189), useful for alternatives and long-term scaling, not a plan.
 - [PLATE destination shell and visual system](../../reference/design-system/editor-shell-and-visual-system.md)
-  — the ratified shell authority. **Vellum** (Make/Tell/Visit, its pen and sheet) and the
-  **Shape Focus** study ([`origin/docs/shape-focus-ux`](https://github.com/Biskiq/spatial-sketch-editor/tree/docs/shape-focus-ux))
-  are interaction evidence for feel and operation vocabulary. T5 defines creative-operation
-  **semantics** for engineering; it does not commission another UX prototype or impose a tool/panel
-  design.
+  — the ratified shell authority. **Vellum**
+  ([`prototypes/p3-vellum/DESIGN.md`](../../../prototypes/p3-vellum/DESIGN.md), Make/Tell/Visit, its
+  pen and sheet) and **Shape Focus**
+  ([`prototypes/native-object-shaping/UX-SPEC.md`](../../../prototypes/native-object-shaping/UX-SPEC.md))
+  are interaction evidence for feel and operation vocabulary; both are design evidence, not ratified
+  production implementation. T5 defines creative-operation **semantics** for engineering; it does
+  not commission another UX prototype or impose a tool/panel design.
 - [`reference/architecture.md`](../../reference/architecture.md) and
   [`reference/composition-execution.md`](../../reference/composition-execution.md) — the ownership and
   interface contracts any T5 phase must satisfy.
@@ -102,7 +117,8 @@ and baton (`operations/t5-expressive-geometry/current.md`) are added by the chan
 first phase, which also routes them from [`operations/current.md`](../../operations/current.md).
 
 ```text
-1 OWNER DECISION   decide the G0 commission (approve, revise or decline) — the only gate on planning
+1 OWNER DECISION   **approved 2026-10-27** — G0 is T5's next planning activity, executable once
+                   this PR merges; it authorizes no production implementation
 2 ARCHITECTURE     the commissioned architect writes one recommended architecture + alternatives,
                    ownership boundaries, operation/correspondence model, incremental requirements and
                    an implementation-ready sequence, as its own artifact

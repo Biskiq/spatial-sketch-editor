@@ -72,7 +72,9 @@ records and rechecks its own trusted base through its owning runbook before impl
 
 **After S06 (2026-10-27).** `T1.P02.S06` is accepted and merged (`6af62eb4`); the researched
 world-scale study is [historical research](../../broad-research/all-visible-editing-and-town-overview.md)
-and the [T5 track](./t5-expressive-geometry/README.md) is registered as planning only. The current
+and the [T5 track](./t5-expressive-geometry/README.md) is registered as planning only, its [G0
+commission](./t5-expressive-geometry/g0-foundation-architecture-commission.md) approved 2026-10-27 to
+start once this coordination PR merges. The current
 `main` contains S06's compile, Plan and representation work, and every statement below about
 "held" means *not released*, never *blocked by S06*.
 
@@ -85,7 +87,7 @@ flowchart TD
   O --> F["T1.P02.S04 final gate — held"]
   P --> IF["T2.P02.S03 integrated final gate — held; needs owner release + review"]
   B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
-  B --> T5["T5 Expressive Geometry — planning; G0 commission proposed, nothing authorized"]
+  B --> T5["T5 Expressive Geometry — planning; G0 approved, starts after this PR merges"]
   F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
   IF --> CES
   C --> CES
@@ -177,9 +179,10 @@ closeout updates only the owning baton; cross-track status stays in its owning r
   T2.P02.S03 on S06's method. Unclaimed flow traces, hard rows and calibration remain consumer
   evidence, not implied by a correctness pass. No new waiver is granted by this coordination.
 - **T5:** [Expressive Geometry](./t5-expressive-geometry/README.md) is registered as a **planning**
-  track. Its G0 foundation-architecture commission is a proposal for owner decision, not a phase, a
-  gate or an implementation authorization; it consumes S06's accepted compiler/Plan work as its
-  starting point and owns no T1/T2 surface. No T5 scope is on the release list.
+  track. Its G0 foundation-architecture commission is **approved 2026-10-27** and starts once this PR
+  merges ([decision](../reference/decisions/t5-g0-approval-2026-10-27.md)); it is still not a phase, a
+  gate or an implementation authorization, it consumes S06's accepted compiler/Plan work as its
+  starting point, and it owns no T1/T2 surface. No T5 scope is on the release list.
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.

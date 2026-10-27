@@ -1,6 +1,7 @@
 # G0 — Expressive Geometry foundation architecture: commission
 
-**Status: proposed for owner decision (2026-10-27). Not authorized.** This brief commissions
+**Status: approved by the owner 2026-10-27; executable once PR #198 merges**
+([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)). This brief commissions
 architecture work, not implementation. It registers no phase, gate, package or budget, and it
 authorizes no prototype, dependency or production change.
 
@@ -16,6 +17,12 @@ retained Plan and representation, measured limits — and native-creation protot
 and depth studies (PR #192, #195) show the interaction the product wants next. What does not exist is
 a defensible engineering answer for geometry that is **created, deformed, related and repeatedly
 revised** without forking the document, the compiler, the acceptance path or the renderer.
+
+The owner's product direction is that Biskiq supports effortless semantic and geometric editing in
+World beside a dedicated Object Focus workspace for deeper, more precise and expressive modeling,
+sharing one authored source, identity, relationships and history, with the drawing-first philosophy
+preserved and the eventual capability not limited to today's prototypes
+([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)).
 
 The commission's job is that answer: one architecture the owner can ratify, with the alternatives and
 costs that justify it.
@@ -51,12 +58,12 @@ costs that justify it.
 | --- | --- | --- |
 | S06 acceptance + contract | accepted compiler/Plan/representation baseline, measured limits, follow-ons | PR #190, `6af62eb4`; product candidate `d89554b1` |
 | Native Form Lab | the creative interaction the product wants: contextual creation and retained revision | PR #194, `db738064` |
-| Native object shaping | shape manipulation evidence | PR #196, `4a1ff08d` |
+| Native object shaping | shape manipulation and Object Focus interaction evidence; durable in [`prototypes/native-object-shaping/UX-SPEC.md`](../../../prototypes/native-object-shaping/UX-SPEC.md) | PR #196, `4a1ff08d` |
 | Depth prototypes | depth/shape design evidence | PR #195, `51dcb764` |
 | Spatial modeling depth study | design and terminology package | PR #192, `de2f8423` |
 | World-scale architecture study | alternatives, falsification ideas, long-term scaling | PR #189, `4dcd53e9` — **historical research**, ratios are hypotheses |
 | `reference/architecture.md`, `reference/composition-execution.md` | ownership, F contracts, F2/F4 laws any design must satisfy | live contracts |
-| [PLATE shell contract](../../reference/design-system/editor-shell-and-visual-system.md), Vellum and Shape Focus | ratified shell authority and interaction evidence for feel/operation vocabulary | product design authority |
+| [PLATE shell contract](../../reference/design-system/editor-shell-and-visual-system.md), Vellum ([`prototypes/p3-vellum/DESIGN.md`](../../../prototypes/p3-vellum/DESIGN.md)) and Shape Focus | ratified shell authority and interaction evidence for feel/operation vocabulary; design evidence, not production implementation | product design authority |
 
 Prototype code is **evidence about intent and feasibility**, never production authority: it must be
 re-read against current `main`, and no prototype module is promoted by citation.
@@ -91,6 +98,15 @@ The architect returns these as one architecture package (§7). Each is required.
    experiment or differential that would show it, and what would be re-scoped rather than patched.
 
 ## 5. Creativity constraints (deliberately open UX)
+
+**Product direction (owner, 2026-10-27).** Effortless semantic and geometric editing in World beside
+a dedicated **Object Focus** workspace for deeper, more precise and expressive 3D modeling; both
+share one authored source, identity, relationships and history; the drawing-first philosophy and its
+progressive learning curve are preserved, and the eventual capability is not limited to what today's
+prototypes demonstrate. The architecture must serve that direction while the final Object Focus UX
+and technical architecture stay open — this commission prescribes no kernel, language, operation set,
+representation or feature sequence
+([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)).
 
 The architecture must be able to express the creative intent already evidenced — immediate
 contextual creation, progressive mastery, deep repeatable revision, and manipulation that feels
@@ -128,7 +144,7 @@ contracts require it.
 ## 8. Authorization route after G0
 
 ```text
-OWNER DECISION      approve / revise / decline this commission
+OWNER DECISION      approved 2026-10-27; G0 starts once PR #198 merges (no implementation)
 ARCHITECTURE        the package above, independently reviewed
 OWNER RULING        accept, revise or reject; F amendment + licensing decisions if the design needs them
 REGISTRATION        first T5 phase + slice plan with a real consumer and measurable acceptance
