@@ -66,9 +66,11 @@ import/placement/memory evidence. It is registered as
 [T2.P02 — Own model import](./t2.p02-own-model-import/README.md) (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md)): the
 owner accepted its upload, retention and derivative bounds, authorized `T2.P02.S01` and released it
 from the hold, starting only after `T3.P03.S01` merges. The owner authorized and released `T2.P02.S02` on
-2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/roadmap/now.md`); S03 stays `proposed`, unauthorized and held. `T1.P02.S06` is accepted and merged (`6af62eb4`), so the
+2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/roadmap/now.md`); S03 was released 2026-10-27
+([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)) after its plan review
+and starts after the coordination PR #198 merges. `T1.P02.S06` is accepted and merged (`6af62eb4`), so the
 owner's [performance-first halt](../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
-is satisfied and no longer blocks it; S03 still needs its own owner release and review.
+is satisfied and no longer blocks it.
 
 The next planning wave pairs T1's face-frame query with T2 solve-once wall placement, and T1 Stage
 part selection with T2 component resolver/admission and revision correspondence; T3 annotations
@@ -118,7 +120,8 @@ ahead of it. **`T2.P02` is registered 2026-10-22** as that K1 bounded editor-sid
 [record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E4/E7), superseding the closed phase's deferred-table sentence that tied it to
 T4 delivery; the closed record is left as written. `T2.P02.S01` is shipped with owner-override acceptance and recorded complete merge-gate evidence;
 S02 was owner-authorized and released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)),
-starting per the release list (`docs/roadmap/now.md`); S03 is registered `proposed`, unauthorized and held. `Depends on`
+starting per the release list (`docs/roadmap/now.md`); S03 is `approved` and released 2026-10-27, starting after the coordination PR #198 merges
+([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)). `Depends on`
 lists the external gates its slices consume. No slice provides a gate.
 
 ## Starting foundation

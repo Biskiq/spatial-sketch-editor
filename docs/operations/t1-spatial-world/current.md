@@ -2,12 +2,14 @@
 
 PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
-       T1.P01 closed 2026-10-21. T1.P02 is active; S01, S05 and S06 are shipped. No slice is active.
-SLICE: S02 draw, close, divide and delete — **proposed, held, not authorized**. Its plan is
-       complete but unreviewed. The performance-first halt is lifted now that S06 is accepted and
-       merged, so the boundary is no longer the halt but S02's own requirements: an owner release,
-       plan review, the T3 review of the shared Head/F4 shell allocation and the T2/T3
-       contribution-compatibility review. S03 (outline) follows S02; S04 is the final gate.
+       T1.P01 closed 2026-10-21. T1.P02 is active; S01, S05 and S06 are shipped and S02 is released.
+SLICE: S02 draw, close, divide and delete — **approved and released 2026-10-27**
+       (../../reference/decisions/next-wave-authorization-2026-10-27.md); it starts after the
+       coordination PR #198 merges. Its plan review is complete, including the T3 Head/F4
+       shell-allocation review and the T2/T3 contribution-compatibility review
+       (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/plan-review.md).
+       T3's implementation review of the shared Head/F4 diff and the owning-track review of any
+       T2/T3 adapter edit stay before merge. S03 (outline) follows S02; S04 is the final gate.
 ACC:   T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27, merged as
        `6af62eb4`** (P1 merge commit of PR #190, `t1/p02-s06-bench-setup`); recovery anchor
        `e676a363` is reachable from `main` and tag `closed/T1.P02.S06` is pushed. Milestone gate
@@ -16,10 +18,12 @@ ACC:   T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27,
        post-Bench-2 attribution and the T3/T2 shared-boundary review are recorded; the closeout stub
        carries the ratified disposition, budgets and follow-ons. Battery qualification, grid-XL
        timing and the sweep latency rows are assigned to S04.
-NEXT:  No slice is released. The next authorization boundary is an owner release for S02; until it
-       lands, the production hold and the [release list](../../roadmap/now.md) keep every inheritor
-       stopped. No benchmark, attribution, E5 or review rerun is owed for S06.
-BLOCKERS: none technical. S02–S04, the T2 final gate and T4 stay held pending their own releases.
+NEXT:  S02 starts after PR #198 merges on then-current `main`, rechecking consumed gates, active
+       scopes and its own trusted base through the runbook. No other T1 slice is released: S03–S04
+       stay held pending their own releases, and the [release list](../../roadmap/now.md) is the
+       only permission list. No benchmark, attribution, E5 or review rerun is owed for S06.
+BLOCKERS: none technical. S02 waits only on the coordination PR #198 merge; S03–S04 and T4 stay held
+       pending their own releases.
        T3 **ownership** acknowledgement of the recorded shared-boundary review was not recorded
        before merge; the owner authorized the merge directly and the independent T3/T2 review itself
        passed. That acknowledgement is now a records-only item owned by T3, not a gate on T1 work.
@@ -45,4 +49,5 @@ ROUTE:  ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#sli
         → next slice: ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/implementation-plan.md
 
 BOUNDARIES: No phase closure, T1 TRACK COMPLETE event or owner architecture verdict is recorded.
-RELEASE: ../../reference/decisions/performance-foundation-authorization-2026-10-24.md
+RELEASE: ../../reference/decisions/next-wave-authorization-2026-10-27.md
+PAST:    ../../reference/decisions/performance-foundation-authorization-2026-10-24.md

@@ -188,15 +188,16 @@ writers and merge order. Update this index only in the coordination change that 
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05, S06 | — | T1.P02.S02 drawing, S03 Opening, S04 final gate | S02 on its own owner release, plan review and T3/T2 reviews (S06 merged `6af62eb4`; halt satisfied); S03 on S02; S04 on S01/S05/S06/S02/S03 |
-| T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01, S02 | — | T2.P02.S03 final gate | S03 on its own owner release and review (S06 merged; halt satisfied) |
+| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05, S06 | T1.P02.S02 drawing (released 2026-10-27; starts after PR #198 merges) | T1.P02.S03 Opening, S04 final gate | S02 on the coordination PR #198 merge, its plan and T3/T2 reviews complete; S03 on S02; S04 on S01/S05/S06/S02/S03 |
+| T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01, S02 | T2.P02.S03 final gate (released 2026-10-27; starts after PR #198 merges) | — | S03 on the coordination PR #198 merge; its plan review is recorded |
 | T3 | [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
 | T5 | — | — | All T5 planning and implementation | [G0](./t5-expressive-geometry/g0-foundation-architecture-commission.md) approved 2026-10-27 ([decision](../reference/decisions/t5-g0-approval-2026-10-27.md)), executable once PR #198 merges; no capability phase, release or implementation is registered |
 
 Release provenance is the [performance foundation decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md);
 the shipped post-Batch-E lanes keep the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md);
-T5's G0 approval is the [expressive geometry decision](../reference/decisions/t5-g0-approval-2026-10-27.md).
+T5's G0 approval is the [expressive geometry decision](../reference/decisions/t5-g0-approval-2026-10-27.md);
+the next-wave release is the [next-wave authorization](../reference/decisions/next-wave-authorization-2026-10-27.md).
 Everything omitted from [now.md](./now.md) stays under the production hold. No gate, track or
 phase lifecycle changes here.
 

@@ -3,7 +3,7 @@
 Track-scoped handoff. **Replace only this file for T2 work.**
 
 ```text
-PHASE: T2.P02 Own model import (registered 2026-10-22, batch E; in progress, S03 proposed) →
+PHASE: T2.P02 Own model import (registered 2026-10-22, batch E; in progress, S03 released) →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
        T2.P01 Supported object composition is CLOSED 2026-10-20, all four children shipped →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
@@ -26,11 +26,12 @@ OWNER-RUN (unrun, not claimed): S02 shell observations, Preview pixels, referenc
        patch in S06 needs T2 review.
 FOLLOW-UPS: in-flight fetch dedupe across overlapping model resolutions; a model-failure notice can
        overwrite an unrelated route notice; the placed-model selection gap (T1/T2).
-NEXT:  Owner decision only. The phase's integrated final-gate slice is not authorized. It is halted
-       until T1.P02.S06 (performance foundation) is accepted and merged, and then starts only from its
-       own owner authorization. It measures on S06's method
-       (../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary).
-       Phase close is owner-invoked and not claimed.
+NEXT:  S03 integrated final gate — **approved and released 2026-10-27**
+       (../../reference/decisions/next-wave-authorization-2026-10-27.md); it starts after the
+       coordination PR #198 merges, rechecking gates, scopes and its trusted base. It measures on
+       S06's method
+       (../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+       and carries S02's unrun owner rows. Phase close is owner-invoked and not claimed.
 ROUTE: ./README.md → ../../roadmap/t2-composition/README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
 BLOCKER: none. Omitted scopes stay held.

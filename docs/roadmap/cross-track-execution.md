@@ -74,7 +74,9 @@ records and rechecks its own trusted base through its owning runbook before impl
 world-scale study is [historical research](../../broad-research/all-visible-editing-and-town-overview.md)
 and the [T5 track](./t5-expressive-geometry/README.md) is registered as planning only, its [G0
 commission](./t5-expressive-geometry/g0-foundation-architecture-commission.md) approved 2026-10-27 to
-start once this coordination PR merges. The current
+start once this coordination PR merges. The owner also released the next wave — `T1.P02.S02` drawing
+and `T2.P02.S03` import final gate — on 2026-10-27
+([record](../reference/decisions/next-wave-authorization-2026-10-27.md)). The current
 `main` contains S06's compile, Plan and representation work, and every statement below about
 "held" means *not released*, never *blocked by S06*.
 
@@ -82,10 +84,10 @@ start once this coordination PR merges. The current
 flowchart TD
   B["Post-Batch-E lanes shipped (696af6ea)"]
   B --> P["T1.P02.S06 performance foundation — shipped, merged 6af62eb4"]
-  P --> D["T1.P02.S02 drawing — held; needs owner release + reviews"]
+  P -->  D["T1.P02.S02 drawing — released 2026-10-27; starts after this PR merges"]
   D --> O["T1.P02.S03 Opening — held"]
   O --> F["T1.P02.S04 final gate — held"]
-  P --> IF["T2.P02.S03 integrated final gate — held; needs owner release + review"]
+  P -->  IF["T2.P02.S03 integrated final gate — released 2026-10-27; starts after this PR merges"]
   B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
   B --> T5["T5 Expressive Geometry — planning; G0 approved, starts after this PR merges"]
   F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
@@ -102,23 +104,31 @@ flowchart TD
 **Performance-first halt — satisfied 2026-10-27.** The [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
 behind it. S06 is accepted and merged, so the halt no longer blocks any of them; that is a cleared
-dependency, not a release. Each inheritor still needs its own owner release, reviews and a release-list
+dependency, not a release. S02 and `T2.P02.S03` were released on 2026-10-27 (see below); every other
+inheritor still needs its own owner release, reviews and a release-list
 entry, inherits S06's merged tree and measures on its method. Strictly unrelated work continues only
 through its own owner release.
 
-**Prepared release proposal — owner decision, not granted here.** The two immediate candidates are
-`T1.P02.S02` (drawing) and `T2.P02.S03` (import final gate). Both plans are complete and both still
-owe their own plan reviews — S02 also owes the T3 review of the shared Head/F4 shell allocation and
-the T2/T3 contribution-compatibility review. This coordination change neither releases them nor edits
-the [release list](./now.md); an owner release writes that file and avoids starting either slice on a
-plan-review assumption.
+**Next wave released — 2026-10-27.** The owner authorized and released `T1.P02.S02` (drawing) and
+`T2.P02.S03` (import final gate) in this coordination round
+([record](../reference/decisions/next-wave-authorization-2026-10-27.md)). Both plans are complete and
+both plan reviews are recorded — S02 with the T3 Head/F4 shell-allocation review and the T2/T3
+contribution-compatibility review
+([review](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/plan-review.md)),
+S03 with its final-gate review
+([review](./t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/plan-review.md)).
+Each starts after this PR merges on its own trusted base; the standing implementation reviews
+(T3 for S02's Head/F4 diff, the owning track for any T2/T3 adapter edit) and every acceptance,
+performance and independent-review requirement are unchanged. The [release list](./now.md) carries
+the rows.
 
 T1's execution order is owned by the [T1.P02 register](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register);
 the roadmap's [where-things-stand index](./README.md#current-coordination-and-proposal-provenance)
 routes shipped, held and blocked scopes. No lane may implement a sibling's held scope to
 satisfy its own acceptance.
 
-**Shared files and S06's released claim.** No lane is released after S06's merge. The table below
+**Shared files and S06's released claim.** No lane was released at S06's merge; S02 and `T2.P02.S03`
+were released separately on 2026-10-27 (above). The table below
 records the claims S06 held; each was released with `6af62eb4`, so a future lane edits these surfaces
 through its own recorded claim and the owner review the [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 requires — it does not inherit S06's claim by citing it:

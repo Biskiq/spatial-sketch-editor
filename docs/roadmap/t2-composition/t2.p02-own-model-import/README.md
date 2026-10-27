@@ -2,7 +2,7 @@
 
 **Phase:** T2.P02 · **Status:** registered 2026-10-22. Released scopes and their conditions are
 the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
-covers every scope that list omits. S02 is shipped (accepted 2026-10-24); S03 stays `proposed`, held behind T1.P02.S06 · **Track:**
+covers every scope that list omits. S02 is shipped (accepted 2026-10-24); S03 is `approved` and released 2026-10-27 ([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)) · **Track:**
 [T2](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
 [T2 operations](../../../operations/t2-composition/README.md) · **Design:**
 [shell draft](./shell-draft.md)
@@ -75,7 +75,7 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T2.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md) | [acceptance and preservation stub](./t2.p02.s01-model-resource-storage-and-admission/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7); accepted by **owner-override** 2026-10-23 for current implementation revision `623a7f73a61496d5df09c9dc0fc69ab5c6737b36`; current-verdict and current-revision evidence prerequisites waived as recorded in the acceptance stub; starts only after `T3.P03.S01` is merged on `main` |
 | T2.P02.S02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t2.p02.s02-import-review-approve-place/implementation-plan.md) | [acceptance and preservation stub](./t2.p02.s02-import-review-approve-place/acceptance.md) | owner-authorized 2026-10-23 in the post-Batch-E release ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); shipped through PR #185 and accepted 2026-10-24 for implementation tree `082e384c` on the owner's review of the post-review fixes ([acceptance stub](./t2.p02.s02-import-review-approve-place/acceptance.md)); owner-run rows stay unrun |
-| T2.P02.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t2.p02.s03-integrated-final-gate/implementation-plan.md) | [record](./t2.p02.s03-integrated-final-gate/acceptance.md) | not authorized — starts only from its own owner release and review after S01 and S02 are accepted (T1.P02.S06 is merged, so the [performance-first halt](../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary) is satisfied and blocks nothing) |
+| T2.P02.S03 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t2.p02.s03-integrated-final-gate/implementation-plan.md) | [record](./t2.p02.s03-integrated-final-gate/acceptance.md) | owner-authorized and released 2026-10-27 ([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)); starts after the coordination PR #198 merges, with S01 and S02 already accepted, and on its own trusted base; plan review complete ([review](./t2.p02.s03-integrated-final-gate/plan-review.md)); scope unchanged |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
 slice rechecks them at its own trusted base through the runbook start step. No slice here provides a
@@ -116,9 +116,9 @@ cycles with repeated import/place/delete, and the Stage first-load delta (Import
 - **Excluded:** component admission or addressing, clips, variants, re-import correspondence, more
   than one model per import, formats beyond glTF/GLB, catalogue model contact, attachment, provider
   search, library scope and any T4 release closure.
-- Project deletion implementation belongs to T3's proposed C3 lifecycle work (T3.P04.S01), which
-  must delete the project's model revisions. S03 verifies retained revision/pin integrity without
-  adding deletion capability. No C3 authorization or acceptance is implied.
+- Project deletion implementation shipped with T3.P04.S01 (PR #191, `aa1db37a`; phase closed
+  2026-10-25) and deletes the project's model revisions with the project. S03 verifies retained
+  revision/pin integrity without adding deletion capability and does not re-accept C3.
 
 ## Follow-on triggers
 

@@ -1,11 +1,12 @@
 # T1.P02.S02 — acceptance record: Draw, close, divide and delete
 
-**Slice:** T1.P02.S02 · **Status:** proposed, not authorized — no acceptance
+**Slice:** T1.P02.S02 · **Status:** approved — released 2026-10-27
+([record](../../../../reference/decisions/next-wave-authorization-2026-10-27.md)); no acceptance
 recorded · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
-No evidence is recorded against this slice. `T1.P02.S02` is a registered, unauthorized child of
-T1.P02 with a complete proposed plan, so this record claims no result, no tested revision, no gate state, no
+No evidence is recorded against this slice. `T1.P02.S02` is a registered, released child of
+T1.P02 whose plan review is complete ([review](./plan-review.md)); this record claims no result, no tested revision, no gate state, no
 capability entry and no commit. It is not the phase's final gate: its
 deferred exhaustive proof routes to [`T1.P02.S04`](../t1.p02.s04-integrated-final-gate/acceptance.md).
 
