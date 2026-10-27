@@ -196,6 +196,12 @@ function sceneEntities(document: Record<string, unknown>): Record<string, any>[]
 	return (scene.entities ?? []) as Record<string, any>[];
 }
 
+function layoutRooms(document: Record<string, unknown>): Record<string, any>[] {
+	const units = (document.units ?? {}) as Record<string, any>;
+	const layout = (units.layout?.data ?? units.layout ?? {}) as Record<string, any>;
+	return (layout.rooms ?? []) as Record<string, any>[];
+}
+
 function modelResources(document: Record<string, unknown>): Record<string, any>[] {
 	const units = (document.units ?? {}) as Record<string, any>;
 	const resources = (units.resources?.data?.resources ?? units.resources?.data ?? []) as unknown;
@@ -409,6 +415,7 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await reopenPage.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 		const previewWithModel = await canvasShotMapped(reopenPage, VISITOR_CANVAS, 's03-preview-with-model.png');
 		evidence.previewPixelsWithModel = previewWithModel.pixels;
+		evidence.previewPaintedWithModel = previewWithModel.painted;
 		evidence.previewTextureWaitedMs = previewWithModel.waitedMs;
 		expect(previewWithModel.pixels, 'Preview shows the placed mapped model').toBeGreaterThan(500);
 		await reopenPage.getByRole('button', { name: /Exit Preview/ }).click();
@@ -423,6 +430,20 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await controlPage.getByRole('button', { name: 'Enclosed room' }).click();
 		await expect(controlPage.locator('canvas').first()).toBeVisible({ timeout: 120_000 });
 		await saveProject(controlPage);
+		// The click that draws the enclosure is a precondition the pixel differential
+		// rests on: without a stored room, a blank-ish visitor canvas would read 0
+		// model colour and look like a valid control. Hold the stored state instead.
+		const controlStored = await projectApi(session.context.request).read(controlId);
+		evidence.controlStored = {
+			rooms: layoutRooms(controlStored.document).length,
+			resources: modelResources(controlStored.document).length,
+			entities: sceneEntities(controlStored.document).length
+		};
+		expect(evidence.controlStored, 'the control project stores its enclosure').toEqual({
+			rooms: 1,
+			resources: 0,
+			entities: 0
+		});
 		await controlPage.getByRole('button', { name: 'Experience', exact: true }).click();
 		await controlPage.getByRole('button', { name: 'Create Experience' }).click();
 		await expect(controlPage.locator('[aria-label="Experience authoring"]')).toBeVisible();
@@ -443,7 +464,8 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		}
 		evidence.previewPixelsControl = previewControl.pixels;
 		evidence.previewControlPaintedPixels = previewControl.painted;
-		expect(previewControl.painted, 'the control Preview paints its room').toBeGreaterThan(100);
+		evidence.controlErrors = controlErrors;
+		expect(previewControl.painted, 'the control Preview is not a blank canvas').toBeGreaterThan(100);
 		expect(previewControl.pixels, 'the control Preview carries no model colour').toBeLessThan(previewWithModel.pixels / 10);
 		expect(controlErrors, 'the control session raises no page error').toEqual([]);
 

@@ -43,14 +43,14 @@ harness           perf/run-s03-own-model-qa.mjs (foreground supervisor: in-proce
                   perf/flows/s03-own-model-acceptance.spec.ts (two tests, acceptance) and
                   perf/flows/s03-diagnostics.spec.ts (three tests, diagnostics: they assert only
                   positive controls and storage consistency, never the gap); outside every Vitest
-                  lane. After the last harness edit: 2/2 acceptance tests passed in 36.2 s and 3/3
-                  diagnostics in 39.3 s, `npx tsc --noEmit` in `apps/editor` and root
+                  lane. After the last harness edit: 2/2 acceptance tests passed in 38.4 s and 3/3
+                  diagnostics in 39.4 s, `npx tsc --noEmit` in `apps/editor` and root
                   `npm run check` clean
 machine           MacBook Air M2 (Mac14,2), Apple M2, 16 GiB, macOS 15.8.2, Low Power Mode off —
                   the designated reference machine (batch E, E6). Power is not a fixed condition of
                   this pass: `machine-facts.json` records **battery** for the journey run
-                  (15:42:03–15:42:41Z), `machine-facts-diagnostics.json` records **battery** for the
-                  diagnostics (15:42:54–15:43:35Z), and `machine-facts-ac.json` records **AC** at
+                  (15:49:15–15:49:54Z), `machine-facts-diagnostics.json` records **battery** for the
+                  diagnostics (15:50:09–15:50:49Z), and `machine-facts-ac.json` records **AC** at
                   14:26Z for an earlier journey run, so the same machine changed state within the
                   day. The performance reports carry no power state at all (`PERF_POWER_STATE`
                   unset). Operator: the agent, not the owner — owner attribution is outstanding.
@@ -79,14 +79,16 @@ Raw artifacts: [evidence/2026-10-27](./evidence/2026-10-27) (`journey.json`, `re
 `diagnostic-selection.json`, `diagnostic-placement-paths.json`, `diagnostic-empty-project.json`,
 `machine-facts.json`, `machine-facts-diagnostics.json`, `machine-facts-ac.json`,
 `f5f6-import-chrome.json`, `f13-import-chrome.json`, `f9-save-chrome.json`, five screenshots and the
-bundle excerpt). `journey.json` records `errors: []` and `reopenErrors: []` for the two browser
-lifetimes it drove; the reopen array is asserted by the flow, not merely recorded.
+bundle excerpt). `journey.json` records `errors: []`, `reopenErrors: []` and `controlErrors: []` for
+the three pages the journey test drives; all three arrays are asserted by the flow, not merely
+recorded.
 
 ## Repository contract (exhaustive)
 
 Run from the repository root, each command with its own exit status. The product code under test is
-that of `9e0fcb50`; the tree became `3c641c3e` only by adding the perf harness, the evidence and the
-documentation, none of which a Vitest lane collects.
+that of `9e0fcb50`; the tree at `3c641c3e` held that product code plus this harness, evidence and
+documentation, and later commits to this branch only edit the harness, the evidence and the docs —
+none of which a Vitest lane collects.
 
 | Command | Result |
 | --- | --- |
@@ -106,10 +108,10 @@ not a skipped check — the same suites ran with zero skips.
 ## Integrated creator journey (branded Chrome, one application lifetime per leg)
 
 The accepted-path legs are on-demand Playwright flows (`perf/flows/s03-own-model-acceptance.spec.ts`:
-the starter journey and the refusal leg; two tests, 2 passed, 36.2 s) driven by
+the starter journey and the refusal leg; two tests, 2 passed, 38.4 s) driven by
 `perf/run-s03-own-model-qa.mjs`; evidence in `journey.json` and `refusals.json`. The two finding rows
 below, and the empty-project leg, are **diagnostics** (`perf/flows/s03-diagnostics.spec.ts`; three
-tests, 3 passed, 39.3 s): they record what the product does and assert nothing about the gap, so a fix
+tests, 3 passed, 39.4 s): they record what the product does and assert nothing about the gap, so a fix
 changes the recorded values instead of failing a gate test.
 
 | Step | Observed | Result |
@@ -120,10 +122,10 @@ changes the recorded values instead of failing a gate test.
 | Move and turn | Arrange's own entity chooser lists `Gate model · model`; typed X 1.25, Z −0.5 and yaw 0.5 commit as accepted results; stored entity shows exactly those values | passed (typed path) |
 | Move/turn by pointer drag | Arrange claims no press: its pointer intent requires a canonical Scene-entity selection, which placement never established | **blocked** |
 | Resize / Duplicate / Delete | Compose opens with `no entity`; `Resize…`, `Duplicate` and `Delete` are all `disabled` (`diagnostic-selection.json` → `compose`) | **blocked** (the commands themselves are proven on a typed native placement — see the finding below) |
-| Second instance of the same approved model | Import → "Place another" → floor click; stored Scene holds two entities (`entity-a789d96e…`, `entity-6d6e3a1d…`) with one `assetId` (`model-f3a9a823…`) and one `resources` entry | passed |
+| Second instance of the same approved model | Import → "Place another" → floor click; stored Scene holds two entities (`entity-9e8d540d…`, `entity-36587f4d…`) with one `assetId` (`model-a001cfac…`) and one `resources` entry | passed |
 | Save and reopen in a fresh session | fresh context + cold cache; two models render (80,910 model-colour pixels); no page errors | passed |
-| Preview of the mapped derivative | two green checkered instances visible in the visitor canvas (74,328 model-colour pixels); the empty-room control Preview in the same build paints its room (180,321 of its pixels differ from its own blank corner) and reports **0** model-colour pixels, with no page errors in either session | passed |
-| Preview texture arrival | the mapped derivative lands **209 ms** after the first painted frame (`previewTextureWaitedMs`); the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
+| Preview of the mapped derivative | two green checkered instances visible in the visitor canvas (74,328 model-colour pixels; 936,827 of that canvas's pixels are non-blank); the empty-room control Preview in the same build stores its enclosure (one room, no resources, no entities), is not a blank canvas (180,321 of its pixels differ from the canvas's own first pixel) and reports **0** model-colour pixels, with no page errors in either session | passed |
+| Preview texture arrival | the mapped derivative lands **245 ms** after the first painted frame (`previewTextureWaitedMs`); the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
 | Retention and pins | resource `contentRevision` = `pin.hash` = `sha256-66ced4f5…`; dependency-lock entry names the same subject and hash; the derivative fetched by hash after Save hashes to that pin and matches `pin.size` (1,201,064 B); recipe `creator-import@1` version 1, source manifest hash, ingest report digest and floor placement retained; no `componentId`, `partId`, `parts`, `clips` or `variants` on the entity or resource | passed (the stored revision is still served after Save; no retention or GC test was run) |
 
 The two Preview images are the pixel evidence:
@@ -192,7 +194,7 @@ checkable in the artifacts:
 3. **Conditions.** The reports record `powerState: "not recorded (PERF_POWER_STATE unset)"`, and the
    contract's designated-machine row requires battery with Low Power Mode off, operated by the owner.
    The three reports were written 13:46–13:48Z, earlier than **both** committed power captures (AC
-   14:26Z, battery 15:42Z), so no artifact records the power state of the perf pass itself — only
+   14:26Z, battery 15:49Z), so no artifact records the power state of the perf pass itself — only
    that the same machine was seen on AC and, later, on battery within the day. The operator was the
    agent. Owner attribution is outstanding.
 

@@ -1,5 +1,5 @@
 {
-  "projectId": "perf-s03diagsel-mvquu3tn",
+  "projectId": "perf-s03diagsel-mvqv3erq",
   "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
   "subjectSamples": [
     "0ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…",

@@ -20,7 +20,7 @@ BATON: S02 delivers the own-GLB import procedure (review, scale/pivot/footprint/
        placement through the resource-granting planner, and approved-model rendering in the editor and
        Preview. Durable current behavior is in the owning assets, Scene content and persistence references.
        S03's PR carries the gate record, the on-demand acceptance harness and its evidence; it is open
-       for independent review and is never merged by the slice that wrote it. No slice is in progress
+       for independent review and is never merged by the slice that wrote it. No other slice is in progress
        on this track.
 OWNER DECISIONS (2026-10-23/24): T1 host patch accepted 2026-10-24; editable Card facts stay read-only
        (option b); the placed-creator-model selection gap is kept unfixed as a T1/T2 follow-up.
