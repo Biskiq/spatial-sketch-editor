@@ -1,8 +1,9 @@
 # T1.P02.S06 — acceptance record: Performance foundation
 
-**Slice:** T1.P02.S06 · **Status:** approved/released; setup and owner-directed Bench 1 recorded;
-persistent representation takeover implemented on PR #190 and independently reviewed (round 3:
-implementation correctness passes in the reviewed scope; step acceptance withheld). Bench 2 ran as
+**Slice:** T1.P02.S06 · **Status:** **accepted AC-qualified 2026-10-27** (owner disposition below;
+battery qualification deferred to S04) and ready for routine closeout; not merged. Setup and
+owner-directed Bench 1 are recorded; the persistent representation takeover was implemented on PR
+#190 and independently reviewed (round 3). Bench 2 ran as
 the owner-approved **diagnostic** pass and remains contaminated/non-acceptance. The owner direction
 of 2026-10-26 replaced the formal Bench 3 **for S06** with the decision-driven milestone gate,
 which is implemented, independently reviewed and executed; **it passed (15/15 decision rows,
@@ -12,11 +13,11 @@ passes are recorded below — the interaction pass, the incremental Plan evaluat
 pass and its generation-capture fix — the last three independently reviewed. A post-Bench-2
 attribution check (2026-10-27) then measured those passes against Bench 2's revision; see
 [Post-Bench-2 attribution](#post-bench-2-attribution-2026-10-27). The independently reviewed
-T3/T2 shared boundary and the proposed AC-qualified owner disposition (battery qualification
-deferred) are recorded in
+T3/T2 shared boundary and the AC-qualified owner disposition (battery qualification deferred) are
+recorded in
 [Reconciliation, follow-ons and closeout readiness](#reconciliation-follow-ons-and-closeout-readiness-2026-10-27).
-The branch integrates `main`. S06 is **not accepted and not merged**: the disposition awaits owner
-ratification and T3 ownership sign-off remains separate. ·
+The branch integrates `main`. S06 is **accepted AC-qualified on 2026-10-27**; it is **not merged**,
+and T3 ownership acknowledgement remains a separate merge-time sign-off. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -1717,13 +1718,13 @@ lateral span being `O(N)` per pan, the pick build charged to the first click, th
 fast tests, 13 heavy tests, 53 arch tests, and no visitor → authoring import. The omissions are
 listed there: no benchmark, browser, E5, framebuffer or full-lane rerun.
 
-### Owner disposition required (PROPOSED — not ratified)
+### Owner disposition — ratified (2026-10-27)
 
 Only an owner ruling can accept the slice. The text below is the proposed disposition; it is
 recorded here, dated, with the exact scope it would cover and the claims it would **not** make.
 
 ```text
-PROPOSED OWNER DISPOSITION — T1.P02.S06 (2026-10-27)
+OWNER DISPOSITION — T1.P02.S06 (2026-10-27)
 RULING      Accept T1.P02.S06 as AC-qualified.
 SCOPE       The 2026-10-26 milestone gate on the designated MacBook Air M2 (16 GB), Chrome
             156.0.8078.48, N1 1920×1080 at DPR 1, AC power, Low Power Mode off, candidate
@@ -1740,12 +1741,16 @@ NOT CLAIMED battery certification · grid-XL timing · production-scale or rare-
 EFFECT      On ratification: S06 may be accepted and closed by routine slice-closeout; the
             performance-first halt lifts only when S06 is both accepted and merged. No other
             scope is released, no gate changes, no budget changes, and no phase closes.
-RATIFICATION  ______________________  date ____________  (owner)
+RATIFICATION  owner, 2026-10-27 — acceptance of this disposition and routine slice-closeout authorized
+              in the same instruction.
 ```
 
-Until the ratification line is filled, S06 is **not accepted** and PR #190 is **not merge-ready**.
-That is the only acceptance decision outstanding; the evidence and the independent review it needs
-are complete.
+**Ratified 2026-10-27.** The owner authorized acceptance of this AC-qualified disposition and routine
+`slice-closeout` in one instruction, so the invocation is the acceptance act and S06 is **accepted
+AC-qualified**, not certified on battery. What this does **not** change: battery qualification stays
+deferred to S04, no budget, workload or gate changes, and no phase closes. The T3 **ownership**
+acknowledgement of the recorded shared-boundary review is carried as a merge-time sign-off — it is
+not converted into a T3 review verdict and is not claimed here.
 
 ### Owned follow-ons
 
@@ -1765,11 +1770,10 @@ an S06 acceptance obligation, none releases a scope, and none creates or changes
 ```text
 satisfied     milestone gate 15/15 · full E5 · attribution executed and recorded ·
               independent T3/T2 shared-boundary review recorded · implementation correctness reviewed
-open          owner ratification of the AC-qualified disposition (battery deferred)
-open          T3 owner acknowledgement of the shared-boundary review (a sign-off, not more work)
-not done      routine slice-closeout: phase-register status, acceptance stub + anchor, baton rewrite,
-              preservation report; these are mechanical and run after ratification
-not done      merge (PR #190 stays open and unmerged; T3 ownership sign-off is separate)
+ruled         owner acceptance of the AC-qualified disposition (2026-10-27); battery qualification
+              deferred to S04; T3 ownership acknowledgement carried as a merge-time sign-off
+next          routine slice-closeout (phase status, stubs + anchors, baton, preservation report)
+not done      merge (PR #190 stays open and unmerged)
 ```
 
 **One documentation defect surfaced and fixed.** Marking S06 `in-progress` exposed that
@@ -1781,8 +1785,7 @@ gate version changed and no product file was touched. This is why a T1.P01 recor
 #190.
 
 **Closeout authorization.** Routine closeout is authorized by implementation acceptance plus the
-owner's closeout invocation. Here the implementation boundary is accepted on evidence, but the
-acceptance act itself is the disposition above, so closeout is **prepared, not executed**: on
-ratification it is one documentation pass (this record's stub with a Git anchor, the phase register
-`shipped`, the T1 baton rewrite, the documentation gate) with no new measurement or review. No
-product code, budget, workload or gate changes at closeout.
+owner's closeout invocation, and both are recorded: the disposition above is ratified and the same
+instruction invoked closeout. The closeout is one documentation pass (this record's stub with a Git
+anchor, the phase register `shipped`, the T1 baton rewrite, the documentation gate) with no new
+measurement or review. No product code, budget, workload or gate changes at closeout.
