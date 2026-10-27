@@ -37,10 +37,6 @@ import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import { preview } from 'vite';
 
-import { createApp } from '../../api/dist/app.js';
-import { runMigrations } from '../../api/dist/migrate.js';
-import { SESSION_KEY, memoryObjectStore } from '../../api/tests/test-support.mjs';
-
 const scriptDir = fileURLToPath(new URL('.', import.meta.url));
 const editorRoot = resolve(scriptDir, '..');
 const repoRoot = resolve(editorRoot, '../..');
@@ -55,12 +51,22 @@ if (!existsSync(resolve(scriptDir, '../.svelte-kit/output/client'))) {
       '(the supervisor previews .svelte-kit/output and never builds).'
   );
 }
-if (!existsSync(resolve(repoRoot, 'apps/api/dist/app.js'))) {
+if (
+  !existsSync(resolve(repoRoot, 'apps/api/dist/app.js')) ||
+  !existsSync(resolve(repoRoot, 'apps/api/dist/migrate.js'))
+) {
   throw new Error(
     'No built API to import: run `npm run build:api` at the repository root first ' +
       '(the supervisor imports apps/api/dist and never builds).'
   );
 }
+
+// The API build is gitignored, so import it only after the preflight above:
+// a static import would fail with ERR_MODULE_NOT_FOUND before this guard runs.
+const { createApp } = await import('../../api/dist/app.js');
+const { runMigrations } = await import('../../api/dist/migrate.js');
+const { SESSION_KEY, memoryObjectStore } = await import('../../api/tests/test-support.mjs');
+
 await mkdir(resultsDir, { recursive: true });
 
 const apiPort = Number(process.env.S03_API_PORT ?? 8791);
