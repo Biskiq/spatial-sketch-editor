@@ -4,6 +4,8 @@
  * Uses the Web Crypto API exposed by Node 20+ and modern browsers so the
  * package has one cross-runtime implementation and no editor dependency.
  */
+import { countWork } from '@portfolio/layout-core';
+
 export type SynchronousWorkMeasure = <T>(phase: string, work: () => T) => T;
 
 export async function sha256Bytes(
@@ -11,6 +13,11 @@ export async function sha256Bytes(
 	measureSync?: SynchronousWorkMeasure,
 	phase = 'sha256'
 ): Promise<string> {
+	// Inert without a work observer (I6): the counters describe the digest's own work,
+	// the optional measure is the owner's Save attribution. Neither replaces the other.
+	countWork('digest');
+	countWork('digest:bytes', bytes.byteLength);
+	countWork('digest:buffer-bytes-copied', 2 * bytes.byteLength);
 	if (!measureSync) {
 		const sub = new Uint8Array(bytes);
 		const buf = sub.buffer.slice(sub.byteOffset, sub.byteOffset + sub.byteLength) as ArrayBuffer;

@@ -112,6 +112,9 @@ export const ARCH_FILES: string[] = [
  * Membership requires a whole file whose tests are uniformly expensive.
  */
 export const HEAVY_FILES: string[] = [
+	// S06 sustained spatial edits and complete retained-pipeline differentials.
+	'tests/lib/layout/t1s06-persistent-pipeline.test.ts',
+	'tests/lib/layout/t1s06-persistent-spatial.test.ts',
 	// Subprocess harness: shells out to sh/shasum/gltf-transform once per test,
 	// so the file's cost is external process startup rather than in-process work.
 	// All six tests spawn the job.

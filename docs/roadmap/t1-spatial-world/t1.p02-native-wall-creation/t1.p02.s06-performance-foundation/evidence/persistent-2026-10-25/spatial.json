@@ -1,0 +1,413 @@
+{
+  "baselineSha": "764175e0e8db12e09a580a3e818b9420dfe50ca5",
+  "manifest": {
+    "changedFiles": [],
+    "changedFilesSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "head": "481263385f1ed9eb101bed491118a59f533d4fb2",
+    "codeDiff": "",
+    "note": "working-tree label includes local production edits; count and allocation sampling windows excluded from timing"
+  },
+  "platform": "darwin",
+  "architecture": "arm64",
+  "node": "v26.7.0",
+  "cpu": "Apple M2",
+  "totalMemoryBytes": 17179869184,
+  "loadAverageAtWrite": [
+    5.13232421875,
+    4.38037109375,
+    4.16064453125
+  ],
+  "baselineInstrumentation": "copy/test/output counts only; source algorithms unchanged",
+  "results": [
+    {
+      "revision": "764175e0",
+      "label": "bounded spatial primitive comparison, not a geometry benchmark or universal query guarantee",
+      "mode": "spatial",
+      "queryPattern": "rotating empty gaps: ((step * 811) % N) * 4 + 1.5",
+      "entries": 100000,
+      "steps": 2048,
+      "policies": [
+        {
+          "policy": "BVH8-refit",
+          "entries": 100000,
+          "steps": 2048,
+          "counts": {
+            "audit:bvh-buffer-bytes-copied": 11924787200,
+            "audit:bvh-irregular-slots-copied": 0,
+            "audit:bvh-scratch-bytes": 306782208,
+            "audit:index-maintenance-child-test": 88202,
+            "index:node-test": 8140504,
+            "index:entry-test": 1779474,
+            "index:node-visit": 1598134,
+            "index:irregular-test": 0,
+            "index:result-record": 0
+          },
+          "perOperationMax": {
+            "audit:bvh-buffer-bytes-copied": 5822650,
+            "audit:bvh-irregular-slots-copied": 0,
+            "audit:bvh-scratch-bytes": 149796,
+            "audit:index-maintenance-child-test": 44,
+            "index:node-test": 8401,
+            "index:entry-test": 2457,
+            "index:node-visit": 1850,
+            "index:irregular-test": 0,
+            "index:result-record": 0
+          },
+          "retainedHistoricalRoots": 32,
+          "unobservedReplayMilliseconds": 1406.2056669999997,
+          "retainedMemory": {
+            "rss": 1122615296,
+            "heapTotal": 113786880,
+            "heapUsed": 41140944,
+            "external": 209659531,
+            "arrayBuffers": 203947203
+          },
+          "adversaries": [
+            {
+              "name": "equal-centroid-slabs",
+              "entries": 4095,
+              "results": 0,
+              "counts": {
+                "index:node-test": 585,
+                "index:entry-test": 4095,
+                "index:node-visit": 585,
+                "index:irregular-test": 0,
+                "index:result-record": 0
+              }
+            },
+            {
+              "name": "fully-overlapping",
+              "entries": 8192,
+              "results": 8192,
+              "counts": {
+                "index:node-test": 4681,
+                "index:entry-test": 8192,
+                "index:node-visit": 4681,
+                "index:irregular-test": 0,
+                "index:sort-compare": 38364,
+                "index:result-record": 8192
+              }
+            },
+            {
+              "name": "irregular-population",
+              "entries": 1000,
+              "results": 1000,
+              "counts": {
+                "index:node-test": 1,
+                "index:node-visit": 1,
+                "index:irregular-test": 1000,
+                "index:entry-test": 1000,
+                "index:sort-compare": 999,
+                "index:result-record": 1000
+              }
+            }
+          ]
+        }
+      ],
+      "sink": 0
+    },
+    {
+      "revision": "working-tree",
+      "label": "bounded spatial primitive comparison, not a geometry benchmark or universal query guarantee",
+      "mode": "spatial",
+      "queryPattern": "rotating empty gaps: ((step * 811) % N) * 4 + 1.5",
+      "entries": 100000,
+      "steps": 2048,
+      "policies": [
+        {
+          "policy": "fixed-centroid",
+          "entries": 100000,
+          "steps": 2048,
+          "counts": {
+            "index:root-clone": 2048,
+            "storage:root-fork": 6144,
+            "storage:map-handle-allocated": 6144,
+            "storage:map-node-read": 96434,
+            "index:node-visit": 3822038,
+            "index:node-test": 7246818,
+            "index:entry-test": 3822038,
+            "index:irregular-test": 0,
+            "index:result-record": 0,
+            "index:retained-partition-update": 2047,
+            "storage:map-node-allocated": 64278,
+            "storage:map-node-field-writes": 449946,
+            "index:bounds-union": 61600
+          },
+          "perOperationMax": {
+            "index:root-clone": 1,
+            "storage:root-fork": 3,
+            "storage:map-handle-allocated": 3,
+            "storage:map-node-read": 51,
+            "index:node-visit": 4184,
+            "index:node-test": 7765,
+            "index:entry-test": 4184,
+            "index:irregular-test": 0,
+            "index:result-record": 0,
+            "index:retained-partition-update": 1,
+            "storage:map-node-allocated": 34,
+            "storage:map-node-field-writes": 238,
+            "index:bounds-union": 32
+          },
+          "retainedHistoricalRoots": 32,
+          "height": 17,
+          "unobservedReplayMilliseconds": 178.4429580000001,
+          "retainedMemory": {
+            "rss": 368246784,
+            "heapTotal": 253591552,
+            "heapUsed": 173680912,
+            "external": 6601644,
+            "arrayBuffers": 884047
+          },
+          "adversaries": [
+            {
+              "name": "equal-centroid-slabs",
+              "entries": 4095,
+              "results": 0,
+              "counts": {
+                "index:node-visit": 2041,
+                "index:node-test": 4083,
+                "index:entry-test": 2041,
+                "index:irregular-test": 0,
+                "index:result-record": 0
+              }
+            },
+            {
+              "name": "fully-overlapping",
+              "entries": 8192,
+              "results": 8192,
+              "counts": {
+                "index:node-visit": 8192,
+                "index:node-test": 8192,
+                "index:entry-test": 8192,
+                "index:irregular-test": 0,
+                "index:result-record": 8192,
+                "index:sort-scratch-slots": 8192,
+                "index:sort-buffer-bytes": 1024,
+                "index:sort-entry-read": 65536,
+                "index:sort-entry-write": 32768,
+                "index:sort-bucket-write": 67584
+              }
+            },
+            {
+              "name": "irregular-population",
+              "entries": 1000,
+              "results": 1000,
+              "counts": {
+                "index:node-visit": 0,
+                "index:node-test": 0,
+                "index:entry-test": 1000,
+                "index:irregular-test": 1000,
+                "index:result-record": 1000,
+                "index:sort-scratch-slots": 1000,
+                "index:sort-buffer-bytes": 1024,
+                "index:sort-entry-read": 8000,
+                "index:sort-entry-write": 4000,
+                "index:sort-bucket-write": 10048
+              }
+            }
+          ]
+        },
+        {
+          "policy": "adaptive-centroid",
+          "entries": 100000,
+          "steps": 2048,
+          "counts": {
+            "index:root-clone": 2048,
+            "storage:root-fork": 6144,
+            "storage:map-handle-allocated": 6144,
+            "storage:map-node-read": 133685,
+            "index:node-visit": 30078,
+            "index:node-test": 61586,
+            "index:entry-test": 30078,
+            "index:irregular-test": 0,
+            "index:result-record": 0,
+            "index:morton-bits": 262016,
+            "storage:map-node-allocated": 104344,
+            "storage:map-node-field-writes": 730408,
+            "index:bounds-union": 131426,
+            "index:reinsert": 2047
+          },
+          "perOperationMax": {
+            "index:root-clone": 1,
+            "storage:root-fork": 3,
+            "storage:map-handle-allocated": 3,
+            "storage:map-node-read": 69,
+            "index:node-visit": 17,
+            "index:node-test": 34,
+            "index:entry-test": 17,
+            "index:irregular-test": 0,
+            "index:result-record": 0,
+            "index:morton-bits": 128,
+            "storage:map-node-allocated": 62,
+            "storage:map-node-field-writes": 434,
+            "index:bounds-union": 78,
+            "index:reinsert": 1
+          },
+          "retainedHistoricalRoots": 32,
+          "height": 18,
+          "unobservedReplayMilliseconds": 52.65095799999972,
+          "retainedMemory": {
+            "rss": 454377472,
+            "heapTotal": 331448320,
+            "heapUsed": 177393208,
+            "external": 6601684,
+            "arrayBuffers": 884047
+          },
+          "adversaries": [
+            {
+              "name": "equal-centroid-slabs",
+              "entries": 4095,
+              "results": 0,
+              "counts": {
+                "index:node-visit": 2041,
+                "index:node-test": 4083,
+                "index:entry-test": 2041,
+                "index:irregular-test": 0,
+                "index:result-record": 0
+              }
+            },
+            {
+              "name": "fully-overlapping",
+              "entries": 8192,
+              "results": 8192,
+              "counts": {
+                "index:node-visit": 8192,
+                "index:node-test": 8192,
+                "index:entry-test": 8192,
+                "index:irregular-test": 0,
+                "index:result-record": 8192,
+                "index:sort-scratch-slots": 8192,
+                "index:sort-buffer-bytes": 1024,
+                "index:sort-entry-read": 65536,
+                "index:sort-entry-write": 32768,
+                "index:sort-bucket-write": 67584
+              }
+            },
+            {
+              "name": "irregular-population",
+              "entries": 1000,
+              "results": 1000,
+              "counts": {
+                "index:node-visit": 0,
+                "index:node-test": 0,
+                "index:entry-test": 1000,
+                "index:irregular-test": 1000,
+                "index:result-record": 1000,
+                "index:sort-scratch-slots": 1000,
+                "index:sort-buffer-bytes": 1024,
+                "index:sort-entry-read": 8000,
+                "index:sort-entry-write": 4000,
+                "index:sort-bucket-write": 10048
+              }
+            }
+          ]
+        },
+        {
+          "policy": "adaptive-extents",
+          "entries": 100000,
+          "steps": 2048,
+          "counts": {
+            "index:root-clone": 2048,
+            "storage:root-fork": 6144,
+            "storage:map-handle-allocated": 6144,
+            "storage:map-node-read": 133685,
+            "index:node-visit": 30078,
+            "index:node-test": 61586,
+            "index:entry-test": 30078,
+            "index:irregular-test": 0,
+            "index:result-record": 0,
+            "index:morton-bits": 524032,
+            "storage:map-node-allocated": 104344,
+            "storage:map-node-field-writes": 730408,
+            "index:bounds-union": 131426,
+            "index:reinsert": 2047
+          },
+          "perOperationMax": {
+            "index:root-clone": 1,
+            "storage:root-fork": 3,
+            "storage:map-handle-allocated": 3,
+            "storage:map-node-read": 69,
+            "index:node-visit": 17,
+            "index:node-test": 34,
+            "index:entry-test": 17,
+            "index:irregular-test": 0,
+            "index:result-record": 0,
+            "index:morton-bits": 256,
+            "storage:map-node-allocated": 62,
+            "storage:map-node-field-writes": 434,
+            "index:bounds-union": 78,
+            "index:reinsert": 1
+          },
+          "retainedHistoricalRoots": 32,
+          "height": 18,
+          "unobservedReplayMilliseconds": 65.33133300000009,
+          "retainedMemory": {
+            "rss": 464961536,
+            "heapTotal": 356614144,
+            "heapUsed": 183967368,
+            "external": 6602752,
+            "arrayBuffers": 884047
+          },
+          "adversaries": [
+            {
+              "name": "equal-centroid-slabs",
+              "entries": 4095,
+              "results": 0,
+              "counts": {
+                "index:node-visit": 1,
+                "index:node-test": 3,
+                "index:entry-test": 1,
+                "index:irregular-test": 0,
+                "index:result-record": 0
+              }
+            },
+            {
+              "name": "fully-overlapping",
+              "entries": 8192,
+              "results": 8192,
+              "counts": {
+                "index:node-visit": 8192,
+                "index:node-test": 8192,
+                "index:entry-test": 8192,
+                "index:irregular-test": 0,
+                "index:result-record": 8192,
+                "index:sort-scratch-slots": 8192,
+                "index:sort-buffer-bytes": 1024,
+                "index:sort-entry-read": 65536,
+                "index:sort-entry-write": 32768,
+                "index:sort-bucket-write": 67584
+              }
+            },
+            {
+              "name": "irregular-population",
+              "entries": 1000,
+              "results": 1000,
+              "counts": {
+                "index:node-visit": 0,
+                "index:node-test": 0,
+                "index:entry-test": 1000,
+                "index:irregular-test": 1000,
+                "index:result-record": 1000,
+                "index:sort-scratch-slots": 1000,
+                "index:sort-buffer-bytes": 1024,
+                "index:sort-entry-read": 8000,
+                "index:sort-entry-write": 4000,
+                "index:sort-bucket-write": 10048
+              }
+            }
+          ]
+        }
+      ],
+      "sink": 0
+    }
+  ],
+  "crossRevisionComparisons": [
+    {
+      "mode": "spatial",
+      "fixtureSeedRooms": 100000,
+      "state": "unavailable",
+      "fields": [],
+      "mismatches": []
+    }
+  ]
+}

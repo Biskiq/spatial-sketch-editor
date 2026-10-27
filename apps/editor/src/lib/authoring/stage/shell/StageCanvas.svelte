@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
+	import { perfRenderer } from '$lib/platform/perf-marks';
 	/**
 	 * The **one persistent Stage Canvas**.
 	 *
@@ -27,6 +28,7 @@
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import StageCamera from './StageCamera.svelte';
+	import StageShadowTriggers from './StageShadowTriggers.svelte';
 
 	let {
 		geometry,
@@ -53,13 +55,20 @@
 	});
 </script>
 
-<Canvas createRenderer={createManagedWebGLRenderer} dpr={[1, 1.5]} shadows={PCFShadowMap}>
+<Canvas createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas), 'stage')} dpr={[1, 1.5]} shadows={PCFShadowMap}>
 	<T.Color attach="background" args={[0x111117]} />
 	<T.Fog attach="fog" args={[0x111117, 40, 120]} />
 	<T.AmbientLight intensity={0.35} />
 	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} castShadow />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 	<StageCamera {evaluation} />
+	<!--
+		T1.P02.S06 D.6 (H9) — the Stage's shadow maps are rendered when their own
+		dependencies change, not on every frame. Mounted inside this one Canvas
+		because it owns this renderer's shadow map; see the component for the full
+		trigger contract.
+	-->
+	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} />
 	<VisitorLayoutShell {geometry} {presentation} />
 	<VisitorEntities {scene} {rooms} {modelUrls} />
 	<!--

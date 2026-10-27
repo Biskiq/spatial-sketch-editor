@@ -12,7 +12,10 @@
 
 import {
 	compileWallFirstLayoutGeometry,
+	countWork,
+	p2311Measure,
 	type CompiledLayoutGeometry,
+	type LayoutCompileSession,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
 import { createEmptyLayoutRoomRegistry, type LayoutRoomRegistry } from '../project-layout-semantics';
@@ -68,6 +71,14 @@ export type UnitRuntimeRejection = {
 
 export type UnitRuntimePreparation = UnitRuntimeReady | UnitRuntimeRejection;
 
+/** The successful half of `validateProjectEnvelope`, as preparation receives it. */
+export type ValidatedProjectEnvelope = {
+	readonly success: true;
+	readonly envelope: ProjectEnvelope;
+	readonly diagnostics: readonly EnvelopeDiagnostic[];
+	readonly closure: readonly EnvelopeClosureFinding[];
+};
+
 /**
  * Build the Scene 1 view of an envelope for the landed resolver.
  *
@@ -109,18 +120,51 @@ export function prepareUnitRuntime(
 	input: unknown,
 	sceneOptions: SceneValidationOptions = {}
 ): UnitRuntimePreparation {
+	countWork('unit-runtime:prepare');
 	const validated = validateProjectEnvelope(input);
 	if (!validated.success) {
 		return { kind: 'rejected', reason: 'invalid-envelope', issues: validated.issues };
 	}
+	return prepareValidatedUnitRuntime(validated, sceneOptions);
+}
+
+/**
+ * The preparation half of `prepareUnitRuntime`, for a caller that has **already**
+ * run `validateProjectEnvelope` on this exact value.
+ *
+ * Admission is such a caller: it validates the envelope to answer its own
+ * question and would otherwise validate the same bytes a second time inside
+ * preparation. The two halves are separate functions rather than a "skip
+ * validation" flag so the one exported entry point keeps its single meaning, and
+ * the validated value — not a bare envelope — is what proves the check ran.
+ */
+export function prepareValidatedUnitRuntime(
+	validated: ValidatedProjectEnvelope,
+	sceneOptions: SceneValidationOptions = {},
+	/**
+	 * An optional incremental compile store owned by the caller's surface. A long-
+	 * lived host passes the same store for every preparation, so a compile after
+	 * one accepted edit reuses every Layout entity the edit did not touch
+	 * (T1.P02.S06 D.3). Absent, preparation is the cold canonical compile — the
+	 * visitor runtime's own path, which must not carry editor state between sources.
+	 */
+	compileSession?: LayoutCompileSession
+): UnitRuntimeReady | UnitRuntimeRejection {
+	countWork('unit-runtime:prepare-validated');
 	const envelope = validated.envelope;
-	const compiled = compileWallFirstLayoutGeometry(envelope.units.layout.data);
+	// The session's `compile` IS `compileWallFirstLayoutGeometry` over a retained
+	// store: same builders, same assembly, same output shape.
+	const compiled = compileSession
+		? compileSession.compile(envelope.units.layout.data)
+		: compileWallFirstLayoutGeometry(envelope.units.layout.data);
 
 	let runtimeScene: RuntimeScene;
 	try {
-		runtimeScene = resolveSceneDocument(
-			sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
-			sceneOptions
+		runtimeScene = p2311Measure('scene-resolve', () =>
+			resolveSceneDocument(
+				sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
+				sceneOptions
+			)
 		);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Scene preparation failed';

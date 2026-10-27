@@ -577,8 +577,10 @@ describe('spatial route source replacement', () => {
 			updatedAt: '2026-10-19T00:00:00.000Z'
 		};
 		button('Delete').click();
-		await settled();
-		expect(harness.publicationReads).toBe(1);
+		// Wait for the observable read rather than a fixed number of flushed turns: the
+		// prepare path awaits the project load and then the publication status, and a
+		// one-macrotask `settled()` is not a guarantee that both have resolved.
+		await vi.waitFor(() => expect(harness.publicationReads).toBe(1));
 		expect(target.querySelector('dialog')?.hasAttribute('open')).toBe(false);
 		expect(target.textContent).toContain('Unpublish this project before deleting it.');
 		expect(harness.deleteCalls).toHaveLength(0);

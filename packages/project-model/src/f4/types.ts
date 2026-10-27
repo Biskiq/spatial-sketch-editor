@@ -273,6 +273,27 @@ export type AcceptanceSourceAdapter<Source> = {
 	 * declared write set instead of to what the host grants.
 	 */
 	validateChange?(before: Source, after: Source, admission: PlannerAdmission): readonly ShapeIssue[];
+	/**
+	 * Adapter-owned structural sharing for capture and history (D.4/H5).
+	 *
+	 * Returns a value **equal to `captured`** in which every part that is provably
+	 * the same value as in `baseline` is `baseline`'s own (already immutable)
+	 * object instead of a fresh copy. The coordinator captures an accepted result
+	 * by freezing what it is handed, so the only way to avoid re-cloning and
+	 * re-freezing a whole document per accepted result is for the adapter — the one
+	 * layer that knows which parts are content-identified — to say which parts did
+	 * not change.
+	 *
+	 * The proof is the adapter's, and it must be content identity (the same
+	 * revision digest), never a guess: a wrong share would silently install one
+	 * unit's bytes under another's revision. An adapter that omits this hook keeps
+	 * today's behaviour, where capture copies the whole source.
+	 *
+	 * Precondition: both arguments are admissions of the **same** source, so their
+	 * data is the adapter's canonical form — which is what lets content identity
+	 * stand for value identity.
+	 */
+	shareUnchanged?(captured: Source, baseline: Source): Source;
 };
 
 /**

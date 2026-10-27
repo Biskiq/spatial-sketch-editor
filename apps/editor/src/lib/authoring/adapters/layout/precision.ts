@@ -28,13 +28,23 @@
  */
 
 import {
+	activeLayoutCompileSession,
+	materializeLayoutSourceForCapture,
+	createLayoutCompileSession,
 	deriveLayoutWallRole,
+	ensureLayoutWorldIndex,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
+	lookupIncidentWallsOrdered,
+	lookupIndexedJunction,
+	lookupIndexedObject,
+	lookupIndexedOpening,
+	lookupIndexedWall,
 	nextLayoutPresetObjectId,
 	planCommitLayoutObjectPresetWithId,
 	readLayoutIdCapture,
 	readLayoutWorkingLevel,
+	recordPreparedCowCandidate,
 	planExactWallAngle,
 	planExactWallHeight,
 	planExactWallLength,
@@ -43,6 +53,7 @@ import {
 	planRigidWallMove,
 	planUpdateWallFirstOpening,
 	planWallMetadataUpdate,
+	withLayoutCompileSession,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
@@ -59,6 +70,7 @@ import type {
 } from '@portfolio/project-model';
 import {
 	replaceUnitData,
+	canonicalUnitJson,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
 	type ProjectEnvelope
@@ -179,6 +191,38 @@ function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope
 	return { kind: 'rejected', code, message, diagnostics: [] };
 }
 
+/**
+ * One process-local compile store for this adapter's planners.
+ *
+ * Every layout planner compiles the candidate it is about to accept. A precision
+ * drag runs one plan per pointer sample, and each sample moves one Junction, one
+ * Wall thickness or one Opening — so the session lets a sample reuse every entity
+ * the previous sample did not move (T1.P02.S06 D.3 / H1).
+ *
+ * Sharing it cannot change a plan: a reused entity is one whose authored inputs
+ * are unchanged, which is the retention proof the canonical compiler checks per
+ * entity. It is a cache, not decision state, and it is pruned to the document it
+ * last compiled.
+ *
+ * Lifetime, stated rather than implied: this store lives as long as the module,
+ * so after a document is closed it still holds that document's units (samples,
+ * sections, query records — bounded by one document, never accumulating across
+ * documents, because each compile prunes what the new document does not
+ * contain). It is not part of any undo history or authored state, and no
+ * consumer can observe it. The Stage host does not use this store at all; it
+ * owns one for its own lifetime, released with the host's closure.
+ */
+const plannerCompileSession = createLayoutCompileSession();
+
+/**
+ * Warm the shared planner index and incremental compile session on `document`
+ * (used at gesture press so even the first drag frame avoids cold index setup).
+ */
+export function warmLayoutPlannerBaseline(document: LayoutDocumentWallFirst): void {
+	ensureLayoutWorldIndex(document);
+	plannerCompileSession.seedFromCompiled(document);
+}
+
 function layoutPlanner(
 	kind: string,
 	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>
@@ -189,7 +233,11 @@ function layoutPlanner(
 		admission: Object.freeze({ domain: 'layout', compound: false, units: false, resources: false }),
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
-		prepare
+		prepare: (request) =>
+			withLayoutCompileSession(plannerCompileSession, () => {
+				plannerCompileSession.seedFromCompiled(request.snapshot.domain.source.units.layout.data);
+				return prepare(request);
+			})
 	};
 }
 
@@ -255,6 +303,8 @@ function prepared(
 		request.snapshot.domain.source.units.layout.header.contentRevision,
 		levelId
 	);
+	recordPreparedCowCandidate(request.intent.operationId, document, canonicalUnitJson(request.intent));
+	materializeLayoutSourceForCapture(document);
 	const candidate: PreparedCandidate<ProjectEnvelope> = {
 		operationId: request.intent.operationId,
 		sourceKind: UNIT_SOURCE_KIND,
@@ -603,10 +653,10 @@ export type WallFrame = {
 };
 
 export function wallFrame(document: LayoutDocumentWallFirst, wallId: string): WallFrame | null {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const wall = lookupIndexedWall(document, wallId);
 	if (wall === undefined || wall.centerline.kind !== 'line') return null;
-	const start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
-	const end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
 	if (start === undefined || end === undefined) return null;
 	const dx = end[0] - start[0];
 	const dz = end[1] - start[1];
@@ -684,7 +734,7 @@ export type WallManipulationPlan =
 
 /** The authored point of one Junction, or `null` when the document has none. */
 function junctionPoint(document: LayoutDocumentWallFirst, junctionId: string): LayoutVec2 | null {
-	const junction = document.junctions.find((entry) => entry.id === junctionId);
+	const junction = lookupIndexedJunction(document, junctionId);
 	return junction === undefined ? null : [junction.point[0], junction.point[1]];
 }
 
@@ -701,7 +751,7 @@ function movedJunctionIds(
 	request: WallManipulationRequest,
 	fixed: FixedWallEndpoint
 ): readonly string[] {
-	const wall = baseline.walls.find((entry) => entry.id === wallId);
+	const wall = lookupIndexedWall(baseline, wallId);
 	if (wall === undefined) return [];
 	if (request.kind === 'move') return [wall.startJunctionId, wall.endJunctionId];
 	return [fixed === 'start' ? wall.endJunctionId : wall.startJunctionId];
@@ -723,8 +773,9 @@ function wallNeighbourPreviews(
 	wallId: string,
 	moved: readonly string[]
 ): readonly WallNeighbourPreview[] {
+	const candidateWalls = lookupIncidentWallsOrdered(candidate, moved) ?? candidate.walls;
 	const previews: WallNeighbourPreview[] = [];
-	for (const neighbour of candidate.walls) {
+	for (const neighbour of candidateWalls) {
 		if (neighbour.id === wallId) continue;
 		for (const junctionId of moved) {
 			if (neighbour.startJunctionId !== junctionId && neighbour.endJunctionId !== junctionId) continue;
@@ -752,35 +803,42 @@ export function planWallManipulation(
 	request: WallManipulationRequest,
 	fixed: FixedWallEndpoint
 ): WallManipulationPlan {
-	let plan: PrecisionPlan;
-	if (request.kind === 'length') {
-		plan = planExactWallLength(baseline, { wallId, length: request.length, fixedEndpoint: fixed });
-	} else if (request.kind === 'angle') {
-		plan = planExactWallAngle(baseline, { wallId, angle: request.angleRadians, fixedEndpoint: fixed });
-	} else {
-		plan = planRigidWallMove(baseline, wallId, request.delta);
-	}
-	if (plan.kind === 'rejected') {
-		return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
-	}
-	const wall = wallFrame(plan.document, wallId);
-	if (wall === null) {
+	const run = (): WallManipulationPlan => {
+		let plan: PrecisionPlan;
+		if (request.kind === 'length') {
+			plan = planExactWallLength(baseline, { wallId, length: request.length, fixedEndpoint: fixed });
+		} else if (request.kind === 'angle') {
+			plan = planExactWallAngle(baseline, { wallId, angle: request.angleRadians, fixedEndpoint: fixed });
+		} else {
+			plan = planRigidWallMove(baseline, wallId, request.delta);
+		}
+		if (plan.kind === 'rejected') {
+			return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
+		}
+		const wall = wallFrame(plan.document, wallId);
+		if (wall === null) {
+			return {
+				kind: 'refused',
+				code: 'unsupported-geometry',
+				message: 'The candidate Wall has no straight frame to preview.'
+			};
+		}
 		return {
-			kind: 'refused',
-			code: 'unsupported-geometry',
-			message: 'The candidate Wall has no straight frame to preview.'
+			kind: 'planned',
+			wall,
+			neighbours: wallNeighbourPreviews(
+				baseline,
+				plan.document,
+				wallId,
+				movedJunctionIds(baseline, wallId, request, fixed)
+			)
 		};
-	}
-	return {
-		kind: 'planned',
-		wall,
-		neighbours: wallNeighbourPreviews(
-			baseline,
-			plan.document,
-			wallId,
-			movedJunctionIds(baseline, wallId, request, fixed)
-		)
 	};
+	if (activeLayoutCompileSession()) return run();
+	return withLayoutCompileSession(plannerCompileSession, () => {
+		plannerCompileSession.seedFromCompiled(baseline);
+		return run();
+	});
 }
 
 /**
@@ -858,7 +916,7 @@ export function layoutFacts(
 	subject: LayoutSubject
 ): readonly LayoutFact[] {
 	if (subject.kind === 'wall') {
-		const wall = document.walls.find((candidate) => candidate.id === subject.id);
+		const wall = lookupIndexedWall(document, subject.id);
 		if (wall === undefined) return [];
 		return [
 			{ label: 'Kind', value: 'Wall' },
@@ -871,7 +929,7 @@ export function layoutFacts(
 		];
 	}
 	if (subject.kind === 'opening') {
-		const opening = document.openings.find((candidate) => candidate.id === subject.id);
+		const opening = lookupIndexedOpening(document, subject.id);
 		if (opening === undefined) return [];
 		return [
 			{ label: 'Kind', value: opening.kind === 'door' ? 'Door' : 'Window' },
@@ -882,7 +940,7 @@ export function layoutFacts(
 			{ label: 'Sill', value: formatMeters(opening.sillHeight) }
 		];
 	}
-	const object = document.objects.find((candidate) => candidate.id === subject.id);
+	const object = lookupIndexedObject(document, subject.id);
 	if (object === undefined) return [];
 	return [
 		{ label: 'Kind', value: object.kind },
@@ -907,7 +965,7 @@ export function layoutWritableFacts(
 	subject: LayoutSubject
 ): readonly LayoutWritableFact[] {
 	if (subject.kind === 'wall') {
-		const wall = document.walls.find((candidate) => candidate.id === subject.id);
+		const wall = lookupIndexedWall(document, subject.id);
 		if (wall === undefined) return [];
 		const frame = wallFrame(document, subject.id);
 		// A curved Wall keeps every S04 scalar edit and gains no length/angle/rigid
@@ -931,7 +989,7 @@ export function layoutWritableFacts(
 		];
 	}
 	if (subject.kind === 'opening') {
-		const opening = document.openings.find((candidate) => candidate.id === subject.id);
+		const opening = lookupIndexedOpening(document, subject.id);
 		if (opening === undefined) return [];
 		return [
 			{ id: 'name', label: 'Name', value: opening.name ?? '', unit: 'text' },

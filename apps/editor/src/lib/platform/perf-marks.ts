@@ -42,6 +42,8 @@ export type PerfRecord = {
 type PerfGlobal = typeof globalThis & {
 	__BISKIQ_PERF__?: { readonly enabled?: unknown; readonly traceProof?: unknown };
 	__BISKIQ_PERF_RECORDS__?: PerfRecord[];
+	/** Installed by the harness's init script; receives each surface's renderer. */
+	__BISKIQ_PERF_ON_RENDERER__?: (renderer: object, surface: string) => void;
 };
 
 /**
@@ -134,6 +136,19 @@ export function perfResult(name: string, detail?: Readonly<Record<string, unknow
 /** Record a general milestone (command start, admission, refusal, release). */
 export function perfMark(name: string, detail?: Readonly<Record<string, unknown>>): void {
 	record('mark', name, detail);
+}
+
+/**
+ * Hand one surface's renderer to the harness and return it unchanged.
+ *
+ * The harness reads `renderer.info` and counts shadow passes itself (T1.P02.S06
+ * render counters); this helper only passes the object over. Without the
+ * harness flag, or without the harness's hook, it does nothing.
+ */
+export function perfRenderer<T extends object>(renderer: T, surface: 'stage' | 'preview'): T {
+	if (!perfMarksEnabled()) return renderer;
+	perfGlobal().__BISKIQ_PERF_ON_RENDERER__?.(renderer, surface);
+	return renderer;
 }
 
 /**

@@ -24,7 +24,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { collectMeasuredRuns, heapUsedMiB, newMeasuredSession, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
-import { fixtureProject, type FixtureSize } from '../lib/fixtures';
+import type { FixtureSize } from '../lib/fixtures';
+import { tierProject } from '../lib/tiers';
 import { uniqueProjectId, closeToHub, gotoCreateIntent, openSourceJson, waitForMark } from '../lib/flow';
 import { clearObservations, readLedger } from '../lib/ledger';
 import { fileReport, formatRow, startReport, type ResultRow } from '../lib/report';
@@ -36,13 +37,14 @@ const HEAD_PREVIEW = '[data-head-preview] button';
 const VISITOR_CANVAS = '[aria-label="Visitor preview canvas"]';
 
 /**
- * The `size` workload is seeded from its fixture (`fixtureProject`), opened through
+ * The `size` workload is seeded from its precomputed grid workload (T1.P02.S06
+ * A.2: `grid-S` / `grid-M`, never rebuilt in the run), opened through
  * the shipped source-JSON path, then the Experience lens. A `size` never selects a
  * starter scene: the starter enclosure is a different workload.
  */
 async function startExperienceProject(page: Page, size: FixtureSize): Promise<void> {
 	const projectId = uniqueProjectId(`f10-${size}`);
-	const project = await fixtureProject(size, projectId);
+	const project = tierProject(`grid-${size}`, projectId);
 	await gotoCreateIntent(page, projectId);
 	await openSourceJson(page, project);
 	await page.getByRole('button', EXPERIENCE_LENS).click();
@@ -204,7 +206,8 @@ test('F13 repeated Preview enter/exit in one application lifetime', async ({ bro
 			workload: `${cycles} enter/exit cycles in one application lifetime, one captured Presentation, S fixture`,
 			cacheState: 'repeat-use',
 			network: NETWORK,
-			browser: `${testInfo.project.name} ${await page.evaluate(() => navigator.userAgent.match(/Chrome\/([\d.]+)/)?.[1] ?? 'unknown')}`,
+			// The launched binary's version; the device descriptor's UA names Playwright's Chromium.
+			browser: `${testInfo.project.name} ${browser.version()}`,
 			cpuRate: 1,
 			viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
 			metrics: {

@@ -249,7 +249,7 @@ export type CompiledRoom = CompiledIdentity & {
 export type CompiledFloor = CompiledIdentity & {
 	floorId: string;
 	elevation: number;
-	roomIds: string[];
+	roomIds: readonly string[];
 	bounds3: LayoutBounds3 | null;
 };
 

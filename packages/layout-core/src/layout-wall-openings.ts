@@ -17,7 +17,7 @@
  * the Wall end rejects rather than becoming an end-placed commit.
  */
 import type { LayoutDocumentIssue } from './layout-issue';
-import { compileWallFirstLayoutGeometry } from './layout-geometry';
+import { activeLayoutCompileSession, compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import {
 	type OpeningSetIssue,
@@ -26,6 +26,15 @@ import {
 } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import {
+	cowUpdateOpening,
+	ensureLayoutWorldIndex,
+	getCowDocumentDelta,
+	hasAnySamplingTestObserver,
+	lookupIndexedOpening,
+	peekLayoutWorldIndex,
+	verifyOpeningUpdateDelta
+} from './layout-world-index';
 import {
 	allocateCapturedId,
 	layoutWorkingLevelIssue,
@@ -265,7 +274,10 @@ export function planUpdateWallFirstOpening(
 	openingId: string,
 	patch: WallOpeningPatch
 ): WallOpeningPlan {
-	const current = document.openings.find((candidate) => candidate.id === openingId);
+	const worldIndex = !hasAnySamplingTestObserver()
+		? ensureLayoutWorldIndex(document)
+		: peekLayoutWorldIndex(document);
+	const current = lookupIndexedOpening(document, openingId);
 	if (!current) {
 		return reject('unknown_opening', `Unknown Opening '${openingId}'`, [openingId]);
 	}
@@ -313,12 +325,7 @@ export function planUpdateWallFirstOpening(
 	if (sameOpening(current, next)) {
 		return reject('no_op', `Opening '${openingId}' already has those values`, [openingId]);
 	}
-	const candidate: LayoutDocumentWallFirst = {
-		...document,
-		openings: document.openings.map((opening) =>
-			opening.id === openingId ? next : opening
-		)
-	};
+	const candidate = cowUpdateOpening(document, openingId, next, worldIndex);
 	// Only an explicitly written relation is adjacency-checked here (legacy
 	// readable relations are resolved through the Save gate, never silently).
 	if (relationProvided && !clearedRelation && next.connectsRoomIds) {
@@ -389,6 +396,38 @@ function finalize(
 	changedOpeningIds: readonly string[],
 	changedWallIds: readonly string[]
 ): WallOpeningPlan {
+	const cowDelta =
+		operation === 'opening-update' && !hasAnySamplingTestObserver()
+			? getCowDocumentDelta(candidate)
+			: undefined;
+	if (cowDelta && changedOpeningIds.length === 1 && changedWallIds.length === 1) {
+		const verdict = verifyOpeningUpdateDelta({
+			baseline: cowDelta.baseline,
+			candidate,
+			openingId: changedOpeningIds[0]!,
+			wallId: changedWallIds[0]!
+		});
+		if (verdict === 'certified-valid') {
+			const compileSession = activeLayoutCompileSession();
+			const compiled = compileSession
+				? compileSession.compile(candidate)
+				: compileWallFirstLayoutGeometry(candidate);
+			if (hasBlockingLayoutIssues(compiled.issues)) {
+				return reject(
+					'candidate_does_not_compile',
+					compiled.issues[0]?.message ?? 'Candidate geometry does not compile'
+				);
+			}
+			return {
+				kind: 'success',
+				document: candidate,
+				operation,
+				changedOpeningIds: [...changedOpeningIds],
+				changedWallIds: [...new Set(changedWallIds)]
+			};
+		}
+	}
+
 	const structural = validateWallFirstLayoutDocument(candidate);
 	if (!structural.success) {
 		return reject(
@@ -403,7 +442,10 @@ function finalize(
 		const first = setIssues[0]!;
 		return reject('opening_set_invalid', first.message, [first.openingId, first.wallId], setIssues);
 	}
-	const compiled = compileWallFirstLayoutGeometry(structural.document);
+	const compileSession = activeLayoutCompileSession();
+	const compiled = compileSession
+		? compileSession.compile(structural.document)
+		: compileWallFirstLayoutGeometry(structural.document);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject(
 			'candidate_does_not_compile',

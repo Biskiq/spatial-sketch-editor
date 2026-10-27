@@ -15,21 +15,32 @@
  * It owns no history of its own: the coordinator's bounded authoring history is the
  * single stack, and this module never interprets an accepted source.
  */
-import type {
-	AcceptedRevision,
-	AcceptedSnapshot,
-	AuthoringIntent,
-	CorrespondenceEntry,
-	DomainPlanner,
-	RegistrationOutcome
+import {
+	freezeF4Data,
+	type AcceptedRevision,
+	type AcceptedSnapshot,
+	type AuthoringIntent,
+	type CorrespondenceEntry,
+	type DomainPlanner,
+	type RegistrationOutcome
 } from '@portfolio/project-model';
+import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 import {
 	createUnitAcceptanceAdapter,
 	createUnitAcceptancePreparation,
 	createUnitPlannerRegistry,
+	canonicalUnitJson,
+	UNIT_ENVELOPE_SOURCE_KIND,
+	UNIT_ENVELOPE_SOURCE_VERSION,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
+import {
+	consumePreparedCowCandidate,
+	createLayoutCompileSession,
+	ensureLayoutWorldIndex,
+	linkClonedCowCandidate,
+	recordPassiveCompiledGeometry
+} from '@portfolio/layout-core';
 
 import {
 	createAcceptanceCoordinator,
@@ -37,11 +48,11 @@ import {
 	type HistoryOutcome
 } from '$lib/authoring/f4';
 import { perfResult } from '$lib/platform/perf-marks';
-import { admitSource, type StageReadSnapshot } from './source-admission';
+import { admitSource, type StageDomainRead, type StageReadSnapshot } from './source-admission';
 import type { StageContentInstall, StageFacade } from './stage-facade';
 import { requalifySelectionEntry, requalifySelection } from './selection-requalification';
 import { sameReference, sameSubject } from './semantic-selection';
-import { attachUnitStageSource } from './unit-stage-source';
+import { attachUnitStageSource, stageLayout } from './unit-stage-source';
 
 /** The baseline one host lifetime starts from; the route already admitted it. */
 export type StageAcceptanceBaseline = {
@@ -172,6 +183,13 @@ export function createStageAcceptanceHost(options: {
 }): StageAcceptanceHost {
 	const { facade, baseline } = options;
 	const sessionEpoch = options.sessionEpoch;
+	// T1.P02.S06 D.3 (H1) — one incremental compile store for this host lifetime.
+	// Every admission after the first reuses the Layout entities the accepted
+	// edit did not move, so an accepted Wall edit no longer pays a whole-document
+	// compile to prove the other thousand Rooms are unchanged. It is bounded by
+	// the document (units for removed entities are released each compile) and it
+	// never outlives the host it belongs to.
+	const compileSession = createLayoutCompileSession();
 	// T2.P02.S02's bounded host contribution: the coordinator that serves this
 	// Stage grants resource staging, so the one placement planner that declares it
 	// can install a creator model's resource, exact lock and entity together.
@@ -192,6 +210,52 @@ export function createStageAcceptanceHost(options: {
 		},
 		planners: options.planners ?? []
 	});
+
+	const admittedByContentId = new Map<
+		string,
+		{ readonly domain: StageDomainRead; readonly canonicalJson: string }
+	>();
+	/**
+	 * What this cache retains, precisely: one `StageDomainRead` per remembered
+	 * content id — the compiled Layout graph, the resolved runtime Scene, the Room
+	 * registry and the reference context — which is what lets Undo/Redo reinstall a
+	 * historical state without a compile or a digest. `canonicalJson` is the same
+	 * immutable string the F4 history state for that revision already holds, so the
+	 * marginal cost is the domain, not the bytes.
+	 *
+	 * The bound is a *count*, not a byte budget: 52 is a history-cache window, and
+	 * a history deeper than that recomputes the older restores (correct, slower).
+	 * A domain's geometry shares its entities with its neighbours through the
+	 * compile session, so entries are not 52 independent documents — but this is
+	 * unmeasured, and it is the reason the count is not raised casually.
+	 */
+	const MAX_ADMITTED_HISTORY_CACHE = 52;
+	const rememberAdmittedSnapshot = (snap: StageReadSnapshot): void => {
+		const key = `${snap.acceptedRevision.projectId}\0${snap.sourceContentId}`;
+		if (!admittedByContentId.has(key) && admittedByContentId.size >= MAX_ADMITTED_HISTORY_CACHE) {
+			const oldest = admittedByContentId.keys().next().value;
+			if (oldest !== undefined) admittedByContentId.delete(oldest);
+		}
+		admittedByContentId.set(key, {
+			domain: snap.domain,
+			canonicalJson: snap.canonicalJson
+		});
+	};
+
+	const bootSnap = facade.snapshot();
+	if (
+		bootSnap.sourceKind === UNIT_ENVELOPE_SOURCE_KIND &&
+		bootSnap.sourceContentId === baseline.sourceContentId
+	) {
+		rememberAdmittedSnapshot(bootSnap);
+		const facadeLayout = stageLayout(bootSnap);
+		const coordLayout = coordinator.acceptedSnapshot().domain.source.units.layout.data;
+		ensureLayoutWorldIndex(facadeLayout);
+		linkClonedCowCandidate(facadeLayout, coordLayout);
+		recordPassiveCompiledGeometry(facadeLayout, bootSnap.domain.geometry, bootSnap.domain.warnings);
+		recordPassiveCompiledGeometry(coordLayout, bootSnap.domain.geometry, bootSnap.domain.warnings);
+		compileSession.seedFromCompiled(coordLayout);
+	}
 
 	let disposed = false;
 	const listeners = new Set<() => void>();
@@ -238,7 +302,14 @@ export function createStageAcceptanceHost(options: {
 
 	async function install(
 		snapshot: AcceptedSnapshot<ProjectEnvelope>,
-		correspondence: readonly CorrespondenceEntry[]
+		correspondence: readonly CorrespondenceEntry[],
+		installOptions: {
+			readonly fromHistory?: boolean;
+			readonly knownIdentity?: {
+				readonly sourceContentId: string;
+				readonly canonicalJson: string;
+			};
+		} = {}
 	): Promise<StageAcceptOutcome> {
 		if (disposed) {
 			return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };
@@ -250,38 +321,93 @@ export function createStageAcceptanceHost(options: {
 				message: 'an accepted source for another project is a replacement, not a content change'
 			};
 		}
-		// One admission path: the accepted source is re-admitted through the same
-		// canonical validation, compile and Scene resolution the boot uses, so the
-		// Stage never shows a snapshot the visitor runtime could not prepare.
-		const admission = await admitSource(snapshot.domain.source, {
-			sessionEpoch,
-			acceptedRevision: snapshot.acceptedRevision
-		});
-		if (admission.kind === 'refused') {
-			return { kind: 'refused', code: admission.reason, message: 'the accepted source was refused by the admission path' };
-		}
-		if (admission.kind === 'diagnostics') {
-			return { kind: 'refused', code: 'diagnostics', message: 'the accepted source has blocking canonical-compile issues' };
-		}
-		if (disposed) {
-			return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime ended during admission' };
-		}
-		if (admission.snapshot.sessionEpoch !== sessionEpoch) {
-			return { kind: 'refused', code: 'stale-session', message: 'the snapshot belongs to another host lifetime' };
+		let admittedSnapshot: StageReadSnapshot;
+		const cachedHistory = installOptions.fromHistory
+			? admittedByContentId.get(
+					`${snapshot.acceptedRevision.projectId}\0${snapshot.sourceContentId}`
+				)
+			: undefined;
+		if (cachedHistory) {
+			const generationId = `compile:${snapshot.sourceContentId}`;
+			const reboundDomain: StageDomainRead = {
+				...cachedHistory.domain,
+				references: createUnitReadContext({
+					envelope: snapshot.domain.source,
+					acceptedRevision: snapshot.acceptedRevision,
+					sourceContentId: snapshot.sourceContentId,
+					sessionEpoch,
+					generationId
+				})
+			};
+			freezeF4Data(reboundDomain);
+			admittedSnapshot = attachUnitStageSource(
+				{
+					acceptedRevision: snapshot.acceptedRevision,
+					sourceContentId: snapshot.sourceContentId,
+					canonicalJson: cachedHistory.canonicalJson,
+					sessionEpoch,
+					sourceKind: UNIT_ENVELOPE_SOURCE_KIND,
+					sourceVersion: UNIT_ENVELOPE_SOURCE_VERSION,
+					compileGeneration: generationId,
+					domain: reboundDomain
+				},
+				snapshot.domain.source
+			);
+			linkClonedCowCandidate(
+				stageLayout(admittedSnapshot),
+				snapshot.domain.source.units.layout.data
+			);
+			recordPassiveCompiledGeometry(
+				snapshot.domain.source.units.layout.data,
+				reboundDomain.geometry,
+				reboundDomain.warnings
+			);
+		} else {
+			// One admission path: the accepted source is re-admitted through the same
+			// canonical validation, compile and Scene resolution the boot uses, so the
+			// Stage never shows a snapshot the visitor runtime could not prepare.
+			const admission = await admitSource(
+				snapshot.domain.source,
+				{ sessionEpoch, acceptedRevision: snapshot.acceptedRevision },
+				{ compileSession, knownIdentity: installOptions.knownIdentity }
+			);
+			if (admission.kind === 'refused') {
+				return { kind: 'refused', code: admission.reason, message: 'the accepted source was refused by the admission path' };
+			}
+			if (admission.kind === 'diagnostics') {
+				return { kind: 'refused', code: 'diagnostics', message: 'the accepted source has blocking canonical-compile issues' };
+			}
+			if (disposed) {
+				return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime ended during admission' };
+			}
+			if (admission.snapshot.sessionEpoch !== sessionEpoch) {
+				return { kind: 'refused', code: 'stale-session', message: 'the snapshot belongs to another host lifetime' };
+			}
+			admittedSnapshot = admission.snapshot;
+			linkClonedCowCandidate(
+				stageLayout(admittedSnapshot),
+				snapshot.domain.source.units.layout.data
+			);
+			recordPassiveCompiledGeometry(
+				snapshot.domain.source.units.layout.data,
+				admittedSnapshot.domain.geometry,
+				admittedSnapshot.domain.warnings
+			);
 		}
 		// The reason is about the *primary* the creator was working on, not about
 		// whether anything survived: losing the primary is what the notice describes.
 		const beforePrimary = facade.selectionState().primary;
-		const installed = facade.installAccepted(admission.snapshot, {
-			requalifyEntry: (entry) => requalifySelectionEntry(entry, correspondence, admission.snapshot),
+		const installed = facade.installAccepted(admittedSnapshot, {
+			requalifyEntry: (entry) => requalifySelectionEntry(entry, correspondence, admittedSnapshot),
 			requalify: (selection) => {
 				const outcome = requalifySelection(selection, correspondence, {
-					generationId: admission.snapshot.compileGeneration
+					generationId: admittedSnapshot.compileGeneration
 				});
 				return outcome.kind === 'requalified' ? outcome.selection : outcome;
 			}
 		});
 		if (installed.kind === 'unchanged') {
+			rememberAdmittedSnapshot(admittedSnapshot);
 			// Identical content: no install, no rebind, and the selection stays exactly
 			// where it is. It is reported as its own outcome so a caller never mistakes
 			// it for a transition that happened.
@@ -292,6 +418,7 @@ export function createStageAcceptanceHost(options: {
 			// and only the caller knows which committed step must be reversed.
 			return { kind: 'refused', code: installed.code, message: installed.message };
 		}
+		rememberAdmittedSnapshot(admittedSnapshot);
 		// T3.P03.S02: the accepted revision is installed into the Stage here. The
 		// performance harness pairs this with the frame that presents it; the input
 		// sequence is the drag sample that produced the commit.
@@ -330,7 +457,9 @@ export function createStageAcceptanceHost(options: {
 		if (outcome.kind === 'refused') {
 			return { kind: 'refused', direction, code: outcome.code, message: outcome.message };
 		}
-		const installed = await install(outcome.snapshot, outcome.correspondence);
+		const installed = await install(outcome.snapshot, outcome.correspondence, {
+			fromHistory: true
+		});
 		if (installed.kind === 'unchanged') {
 			return { kind: 'unchanged', direction, sourceContentId: installed.sourceContentId };
 		}
@@ -414,6 +543,7 @@ export function createStageAcceptanceHost(options: {
 			}
 			if (writesBlocked) return { kind: 'refused', code: 'project-action', message: 'Project rename or deletion is in progress.' };
 			if (inFlight > 0) return { kind: 'refused', code: 'live-proposal', message: 'Another host command is live.' };
+			const beforeLayout = coordinator.current().source.units.layout.data;
 			inFlight += 1;
 			const unregister = facade.session.writers().register('command', facade.session.token(), () => coordinator.cancelPending());
 			changed();
@@ -421,12 +551,28 @@ export function createStageAcceptanceHost(options: {
 				const result = await coordinator.accept(intent);
 				if (result.kind === 'no-op') return { kind: 'no-op', revision: result.revision };
 				if (result.kind === 'rejected') return { kind: 'refused', code: result.code, message: result.message };
-				const installed = await install(result.snapshot, result.correspondence);
+				const preparedCow = consumePreparedCowCandidate(intent.operationId, { baseline: beforeLayout, key: canonicalUnitJson(intent) });
+				if (preparedCow) {
+					linkClonedCowCandidate(preparedCow, result.snapshot.domain.source.units.layout.data);
+				}
+				const currentAdmitted = coordinator.current();
+				const knownIdentity =
+					currentAdmitted.source === result.snapshot.domain.source &&
+					currentAdmitted.sourceContentId === result.snapshot.sourceContentId
+						? {
+								sourceContentId: currentAdmitted.sourceContentId,
+								canonicalJson: currentAdmitted.canonicalJson
+							}
+						: undefined;
+				const installed = await install(result.snapshot, result.correspondence, {
+					knownIdentity
+				});
 				if (installed.kind === 'refused' && needsCompensation(installed.code)) {
 					return { ...installed, compensation: await compensate('accept') };
 				}
 				return installed;
 			} finally {
+				while (consumePreparedCowCandidate(intent.operationId, { baseline: beforeLayout })) { /* release terminal artifacts */ }
 				unregister();
 				inFlight -= 1;
 				changed();
@@ -501,10 +647,15 @@ export function createStageAcceptanceHost(options: {
 			}
 			let prepared: StageReadSnapshot | null = null;
 			const replaced = await coordinator.replace(input, async (source, nextEpoch) => {
-				const admission = await admitSource(source.source, {
-					sessionEpoch: nextEpoch,
-					acceptedRevision: source.revision
-				});
+				// A replacement is a different project's document: the store's units are
+				// pruned by id and none of them describe this source, so a cold compile is
+				// what runs here. It is passed anyway so the store ends up holding the new
+				// document rather than the old one.
+				const admission = await admitSource(
+					source.source,
+					{ sessionEpoch: nextEpoch, acceptedRevision: source.revision },
+					{ compileSession }
+				);
 				if (disposed) return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };
 				if (admission.kind !== 'admitted') return {
 					kind: 'refused', code: admission.kind === 'refused' ? admission.reason : 'diagnostics',
@@ -525,6 +676,7 @@ export function createStageAcceptanceHost(options: {
 			// replaced lifetime keeps contributing; the route mounts a fresh facade for
 			// `snapshot` (disposing twice is idempotent).
 			disposed = true;
+			admittedByContentId.clear();
 			listeners.clear();
 			facade.dispose();
 			return { kind: 'replaced', snapshot: prepared };
@@ -532,6 +684,7 @@ export function createStageAcceptanceHost(options: {
 		coordinator: () => coordinator,
 		dispose() {
 			disposed = true;
+			admittedByContentId.clear();
 			listeners.clear();
 		}
 	};

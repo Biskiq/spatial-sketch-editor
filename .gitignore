@@ -54,3 +54,6 @@ prototypes/spatial-authoring/qa/out/
 # on-demand performance harness artifacts (raw results stay outside Git)
 apps/editor/.perf-results/
 apps/editor/perf/.perf-results/
+
+# T1.P02.S06 — regenerated perf workload cache (derived; never authored, never committed)
+apps/editor/perf/.workloads/

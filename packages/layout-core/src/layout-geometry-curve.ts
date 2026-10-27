@@ -450,6 +450,9 @@ export function setSampleSegmentObserverForTest(
 export function clearSampleSegmentObserverForTest(): void {
 	sampleSegmentObserverForTest = undefined;
 }
+export function hasSampleSegmentObserverForTest(): boolean {
+	return sampleSegmentObserverForTest !== undefined;
+}
 
 function sampleSegmentUnmeasured(
 	segment: SampleableSegment,

@@ -2,13 +2,15 @@
 	import { T } from '@threlte/core';
 	import { Shape, type BufferGeometry, type Material } from 'three';
 	import type { LayoutVec2 } from '@portfolio/layout-core';
-	import { legJoinsByWall, type CompiledLayoutGeometry, type LayoutBounds3 } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry, CompiledRoom, LayoutBounds3 } from '@portfolio/layout-core';
 	import type { VisitorRoomPresentation } from './room-presentation';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
-	import { buildRoomWallMesh, buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
-	import { sphereRenderScale } from '@portfolio/layout-core';
+	import { buildRoomWallMesh } from '$lib/layout/wall-mesh-builder';
+	import { p2311Measure } from '@portfolio/layout-core';
 	import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
 	import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
+	import { createWallRepresentation } from '$lib/render/layout-wall-representation';
+	import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import MuseumMaterial from '$lib/museum/materials/MuseumMaterial.svelte';
 	import RoomPortal from '$lib/museum/layout/RoomPortal.svelte';
@@ -39,6 +41,40 @@
 		return presentation[roomId] ?? neutralVisitorRoomPresentation;
 	}
 
+	const floorElevationById = $derived(
+		new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const))
+	);
+
+	/** A Floor datum only: a Wall's vertical extent is its own compiled `height`. */
+	function roomElevation(floorId: string): number {
+		return floorElevationById.get(floorId) ?? 0;
+	}
+
+	/**
+	 * T1.P02.S06 D.3 (H4) — a Room's floor and ceiling `Shape` is retained by the
+	 * Room's compiled `cacheKey`.
+	 *
+	 * The template used to call `polygonShape(...)` inline, so every render built a
+	 * new `Shape`, Threlte saw a changed `args` value and allocated a new
+	 * `ShapeGeometry`, and the previous geometry was never released. Retaining the
+	 * shape means an unchanged Room keeps its geometry across compiles; a changed
+	 * Room (new `cacheKey`) gets one new shape and geometry.
+	 */
+	const roomShapes = new Map<string, { key: string; floor: Shape; ceiling: Shape }>();
+
+	function shapesFor(room: CompiledRoom) {
+		const key = room.cacheKey;
+		const existing = roomShapes.get(room.roomId);
+		if (existing && existing.key === key) return existing;
+		const next = {
+			key,
+			floor: polygonShape(room.floorPolygon),
+			ceiling: polygonShape(room.ceilingPolygon, false)
+		};
+		roomShapes.set(room.roomId, next);
+		return next;
+	}
+
 	type AdaptedRoom =
 		| {
 				roomId: string;
@@ -49,25 +85,59 @@
 		  }
 		| { roomId: string; ok: false; bounds: LayoutBounds3 };
 
-	type AdaptedWall =
-		| {
-				wallId: string;
-				floorElevation: number;
-				ok: true;
-				geometry: BufferGeometry;
-				materials: Material[];
-				dispose: () => void;
-		  }
-		| { wallId: string; floorElevation: number; ok: false; bounds: LayoutBounds3 };
-
 	let adaptedRooms = $state<AdaptedRoom[]>([]);
-	let adaptedWalls = $state<AdaptedWall[]>([]);
+
+	/**
+	 * The retained Wall representation: one imperative subtree for every compiled
+	 * physical Wall, reconciled in place. It rebuilds only the Walls whose own
+	 * `cacheKey` or whose Junction end geometry moved, keeps one material per tint
+	 * for its whole lifetime, and releases a superseded buffer in the same update.
+	 */
+	const walls = createWallRepresentation();
+
+	// Update and teardown are separate effects on purpose: Svelte runs a
+	// returned cleanup before each re-run of the same effect, and `geometry`
+	// changes identity on every compile, so a combined effect would dispose the
+	// representation immediately before every update.
+	$effect(() => {
+		walls.update(geometry);
+	});
+	$effect(() => () => walls.dispose());
+
+	/**
+	 * The retained Layout object representation (T1.P02.S06 D.3 / H4): one mesh per
+	 * compiled object, reconciled in place, with one material for its lifetime. The
+	 * compiled object's own `cacheKey` is the retention proof.
+	 */
+	const objects = createObjectRepresentation();
 
 	$effect(() => {
+		objects.update(geometry);
+	});
+	$effect(() => () => objects.dispose());
+
+	$effect(() => {
+		// Bound the shape cache by the rooms this geometry actually has.
+		const present = new Set(geometry.rooms.map((room) => room.roomId));
+		for (const roomId of roomShapes.keys()) if (!present.has(roomId)) roomShapes.delete(roomId);
+	});
+
+	// The room-derived mesh path is retained for the legacy room-owned shape; a
+	// format-6 Room carries no Room-owned wall detail (its Walls render through
+	// the canonical physical-Wall representation above), so this builds nothing.
+	// The representation build is one harness-gated span (T1.P02.S06 stage
+	// attribution); `p2311Measure` is inert without the work observer.
+	$effect(() => p2311Measure('layout-representation', () => {
+		// A wall-first Room carries no Room-owned wall detail (its Walls render
+		// through the canonical physical-Wall representation), so this path builds
+		// nothing — and must not create a material factory per compile just to
+		// dispose it again. The legacy path keeps its own factory when a Room does
+		// carry wall detail.
+		if (!geometry.rooms.some((room) => room.walls.length > 0)) {
+			adaptedRooms = [];
+			return;
+		}
 		const materials = createVisitorWallMaterialFactory((roomId) => roomPresentation(roomId).color);
-		// Format-6 wall-first Rooms compile with no wall detail, so this branch
-		// is not reached by any format-6 output (retained; see the T1
-		// deferred-retirement rows). Their Walls render below.
 		const built: AdaptedRoom[] = geometry.rooms.flatMap((room) => {
 			if (room.walls.length === 0) return [];
 			const result = buildRoomWallMesh(room, { classifySurface: () => 'wall' });
@@ -77,38 +147,12 @@
 			const adapted = toWallBufferGeometry(result.mesh, materials.factory);
 			return [{ roomId: room.roomId, ok: true, ...adapted } as AdaptedRoom];
 		});
-		// P23.9 canonical physical Walls: standalone meshes with no Room
-		// ownership. Every Wall renders once through this loop, and the
-		// Room-level branch above adds nothing for format-6 output.
-		// P23.6I — a Floor datum only. There is no storey vertical extent to fall
-		// back to, and no `{ height: 3 }` compatibility literal may survive here.
-		const floorElevationById = new Map(
-			geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const)
-		);
-		const walls: AdaptedWall[] = [];
-		// P23.15 — the compiled Junction ends, never a renderer-side topology solve.
-		const endsByWall = legJoinsByWall(geometry.junctions);
-		for (const wall of geometry.walls ?? []) {
-			const frame = { elevation: floorElevationById.get(wall.floorId) ?? 0 };
-			// P23.6H — the compiled Wall's own height decides its vertical extent.
-			const result = buildStandaloneWallMesh(wall, frame.elevation, endsByWall.get(wall.wallId) ?? null, {
-				classifySurface: () => 'wall'
-			});
-			if (!result.mesh) {
-				walls.push({ wallId: wall.wallId, floorElevation: frame.elevation, ok: false, bounds: wall.bounds3 });
-				continue;
-			}
-			const adapted = toWallBufferGeometry(result.mesh, materials.factory);
-			walls.push({ wallId: wall.wallId, floorElevation: frame.elevation, ok: true, ...adapted });
-		}
 		adaptedRooms = built;
-		adaptedWalls = walls;
 		return () => {
 			for (const room of built) if (room.ok) room.dispose();
-			for (const wall of walls) if (wall.ok) wall.dispose();
 			materials.dispose();
 		};
-	});
+	}));
 
 	function adaptedFor(roomId: string): AdaptedRoom | undefined {
 		return adaptedRooms.find((room) => room.roomId === roomId);
@@ -135,6 +179,7 @@
 	{#each geometry.rooms as room (room.roomId)}
 		{@const colors = roomPresentation(room.roomId)}
 		{@const adapted = adaptedFor(room.roomId)}
+		{@const shapes = shapesFor(room)}
 		<T.Group name={`VisitorRoom:${room.roomId}`}>
 			<T.Mesh
 				name={`VisitorFloor:${room.roomId}`}
@@ -142,7 +187,7 @@
 				rotation={[-Math.PI / 2, 0, 0]}
 				receiveShadow
 			>
-				<T.ShapeGeometry args={[polygonShape(room.floorPolygon)]} />
+				<T.ShapeGeometry args={[shapes.floor]} />
 				<MuseumMaterial materialId="wood-walnut" surfaceSize={[8, 8]} tint={colors.color} scope={textureScope} />
 			</T.Mesh>
 			<T.Mesh
@@ -150,7 +195,7 @@
 				position={[0, room.ceilingElevation, 0]}
 				rotation={[Math.PI / 2, 0, 0]}
 			>
-				<T.ShapeGeometry args={[polygonShape(room.ceilingPolygon, false)]} />
+				<T.ShapeGeometry args={[shapes.ceiling]} />
 				<MuseumMaterial materialId="plaster-warm" surfaceSize={[8, 8]} tint="#111018" textures="off" scope={textureScope} />
 			</T.Mesh>
 
@@ -185,28 +230,16 @@
 			{/each}
 		</T.Group>
 	{/each}
+	<!--
+		The retained physical-Wall subtree. It is one object for the shell's whole
+		lifetime; `update` patches meshes inside it rather than the shell re-creating
+		a component per Wall.
+	-->
+	<T is={walls.object3d} />
 	{#each geometry.walls ?? [] as wall (wall.wallId)}
-		{@const adaptedWall = adaptedWalls.find((candidate) => candidate.wallId === wall.wallId)}
-		{#if adaptedWall?.ok}
-			<T.Mesh
-				name={`VisitorPhysicalWall:${wall.wallId}`}
-				geometry={adaptedWall.geometry}
-				material={adaptedWall.materials}
-				castShadow
-				receiveShadow
-			/>
-		{:else if adaptedWall && !adaptedWall.ok}
-			<T.Mesh
-				name={`VisitorPhysicalWallFailure:${wall.wallId}`}
-				position={failureBox(adaptedWall.bounds).position}
-			>
-				<T.BoxGeometry args={failureBox(adaptedWall.bounds).size} />
-				<T.MeshBasicMaterial color="#ff2fd4" wireframe />
-			</T.Mesh>
-		{/if}
 		{#each wall.openings.filter((opening) => opening.kind === 'door') as opening (opening.openingId)}
 			<RoomPortal
-				position={[opening.center.point[0], adaptedWall?.floorElevation ?? 0, opening.center.point[1]]}
+				position={[opening.center.point[0], roomElevation(wall.floorId), opening.center.point[1]]}
 				rotation={[0, opening.center.yaw, 0]}
 				width={opening.width}
 				height={opening.height}
@@ -214,35 +247,11 @@
 			/>
 		{/each}
 	{/each}
-	{#each geometry.objects as object (object.objectId)}
-		<T.Group
-			name={`VisitorLayoutObject:${object.objectId}`}
-			position={object.position}
-			rotation={object.rotation}
-		>
-			<T.Mesh
-				castShadow
-				receiveShadow
-				scale={object.kind === 'sphere'
-					? sphereRenderScale(object.dimensions)
-					: object.kind === 'cylinder'
-						? [1, 1, object.dimensions[2] / object.dimensions[0]]
-						: [1, 1, 1]}
-			>
-				{#if object.kind === 'box' || object.kind === 'plane' || object.kind === 'profile'}
-					<T.BoxGeometry args={object.dimensions} />
-				{:else if object.kind === 'cylinder'}
-					<T.CylinderGeometry
-						args={[object.dimensions[0] / 2, object.dimensions[0] / 2, object.dimensions[1], 24]}
-					/>
-				{:else}
-					<T.SphereGeometry args={[0.5, 24, 16]} />
-				{/if}
-				<!-- Visitor-neutral object surface (matches the editor layoutBox
-				     tone `#e7e4dd` by value; the editor palette module stays
-				     outside the visitor closure). No selection states. -->
-				<T.MeshStandardMaterial color="#e7e4dd" roughness={0.78} metalness={0} />
-			</T.Mesh>
-		</T.Group>
-	{/each}
+	<!--
+		The retained Layout object subtree (T1.P02.S06 D.3 / H4). It is one object
+		for the shell's lifetime; `update` patches meshes inside it. The neutral
+		object surface it uses matches the editor layoutBox tone `#e7e4dd` by value;
+		the editor palette module stays outside the visitor closure.
+	-->
+	<T is={objects.object3d} />
 </T.Group>

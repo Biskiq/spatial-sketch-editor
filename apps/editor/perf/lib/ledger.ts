@@ -82,6 +82,229 @@ export function perfInitScript(options: HarnessOptions): void {
 	};
 	nativeRaf(tick);
 
+	// T1.P02.S06 render counters. The product hands each surface's renderer to
+	// this hook (`perfRenderer`); the harness wraps that instance's `render` and
+	// its shadow map's `render`, so the counts are Three's own `info` per frame.
+	// Three resets `info` before the shadow pass, so its calls include shadow
+	// draws: `drawCalls` is the main pass only (total minus the calls issued
+	// inside the shadow pass) and `shadowDrawCalls` the rest. A frame is "at
+	// rest" when no pointer, wheel or key input arrived in the preceding second.
+	// A harness readback sets `__BISKIQ_PERF_RENDER_PAUSED__` so its own render is
+	// neither counted nor recorded as the surface's last scene and camera.
+	//
+	// The owner's D1 extensions read the same frames:
+	// - `renderCpuMs`: main-thread time inside each `render()` call (CPU
+	//   submission; WebGL work the driver defers is not in it), with per-frame
+	//   samples for the window's distribution;
+	// - GPU time from `EXT_disjoint_timer_query_webgl2` where the browser exposes
+	//   it, one TIME_ELAPSED query per frame resolved frames later; where it is
+	//   not exposed the surface records why, and no GPU time is claimed;
+	// - a one-frame compatible-bin census on request: the drawn (program, material
+	//   state, geometry) tuples of the main pass, reduced to counts at once so no
+	//   scene object is retained.
+	type RenderInfo = { render: { calls: number; triangles: number }; memory: { geometries: number; textures: number }; programs?: unknown[] | null };
+	type DrawMaterial = Record<string, unknown> & { type?: string; defines?: Record<string, unknown> };
+	type DrawGeometry = { uuid: string; index?: unknown; attributes?: Record<string, { itemSize?: number; normalized?: boolean; array?: { constructor: { name: string } } }> };
+	type HookedRenderer = {
+		render(scene: unknown, camera: unknown): void;
+		renderBufferDirect(camera: unknown, scene: unknown, geometry: DrawGeometry, material: DrawMaterial, object: unknown, group: unknown): void;
+		info: RenderInfo;
+		shadowMap: { render(...args: unknown[]): void };
+		properties: { get(material: object): { currentProgram?: { cacheKey?: string } } };
+		getContext(): WebGL2RenderingContext;
+	};
+	type TimerExtension = { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number };
+	type SurfaceState = {
+		counters: Record<string, number>;
+		cpuSamples: number[];
+		gpu: { available: boolean; reason?: string };
+		binCensusRequested?: boolean;
+		binCensus?: Record<string, number>;
+	};
+	/** Per-frame CPU samples kept per window; a window longer than this keeps its first frames. */
+	const CPU_SAMPLE_LIMIT = 20_000;
+	const renderSurfaces: Record<string, SurfaceState> = {};
+	const renderRefs: Record<string, { renderer: HookedRenderer; scene: unknown; camera: unknown }> = {};
+	(target as unknown as Record<string, unknown>).__BISKIQ_PERF_RENDER__ = renderSurfaces;
+	(target as unknown as Record<string, unknown>).__BISKIQ_PERF_RENDER_REFS__ = renderRefs;
+	let lastInputAt = -Infinity;
+	for (const type of ['pointerdown', 'pointermove', 'wheel', 'keydown']) {
+		window.addEventListener(type, () => (lastInputAt = performance.now()), { capture: true, passive: true });
+	}
+	const materialState = (material: DrawMaterial): string => {
+		const parts: string[] = [String(material.type)];
+		for (const key of Object.keys(material).sort()) {
+			if (key === 'uuid' || key === 'id' || key === 'name' || key === 'userData' || key === 'version' || key.startsWith('_')) continue;
+			const value = material[key] as { isColor?: boolean; isTexture?: boolean; isVector2?: boolean; uuid?: string; getHexString?: () => string; x?: number; y?: number } | null;
+			if (value === null || ['number', 'string', 'boolean'].includes(typeof value)) parts.push(`${key}=${String(value)}`);
+			else if (value?.isColor === true) parts.push(`${key}=#${value.getHexString?.()}`);
+			else if (value?.isTexture === true) parts.push(`${key}=tex:${value.uuid}`);
+			else if (value?.isVector2 === true) parts.push(`${key}=${value.x},${value.y}`);
+		}
+		if (material.defines !== undefined) parts.push(`defines=${JSON.stringify(material.defines)}`);
+		return parts.join(';');
+	};
+	const geometryLayout = (geometry: DrawGeometry): string => {
+		const attributes = Object.entries(geometry.attributes ?? {})
+			.map(([name, attribute]) => `${name}:${attribute.itemSize}:${attribute.normalized === true ? 1 : 0}:${attribute.array?.constructor.name}`)
+			.sort();
+		return `${attributes.join(',')}|${geometry.index ? 'indexed' : 'array'}`;
+	};
+	(target as unknown as Record<string, unknown>).__BISKIQ_PERF_ON_RENDERER__ = (candidate: object, surface: string) => {
+		const renderer = candidate as HookedRenderer;
+		const state = (renderSurfaces[surface] ??= {
+			counters: { frames: 0, framesAtRest: 0, drawCalls: 0, triangles: 0, shadowMapRenders: 0, shadowDrawCalls: 0, programs: 0, geometries: 0, textures: 0, maxDrawCallsPerFrame: 0, maxTrianglesPerFrame: 0, renderCpuMs: 0, maxRenderCpuMs: 0, gpuMs: 0, gpuFrames: 0, gpuDisjointFrames: 0 },
+			cpuSamples: [],
+			gpu: { available: false, reason: 'not probed' }
+		});
+		const counters = state.counters;
+		let gl: WebGL2RenderingContext | null = null;
+		let timer: TimerExtension | null = null;
+		try {
+			gl = renderer.getContext();
+			timer = gl.getExtension('EXT_disjoint_timer_query_webgl2') as TimerExtension | null;
+			state.gpu = timer === null ? { available: false, reason: 'EXT_disjoint_timer_query_webgl2 is not exposed by this browser and GPU' } : { available: true };
+		} catch (error) {
+			state.gpu = { available: false, reason: `the timer probe failed: ${String(error)}` };
+		}
+		// Unresolved queries kept at most; an older one is dropped unread (never
+		// counted), so a stalled or invalid query cannot grow the queue for a pass.
+		const PENDING_QUERY_LIMIT = 32;
+		const pendingQueries: WebGLQuery[] = [];
+		let queryOpen = false;
+		const resolveQueries = () => {
+			if (gl === null || timer === null) return;
+			const disjoint = gl.getParameter(timer.GPU_DISJOINT_EXT) as boolean;
+			while (pendingQueries.length > 0) {
+				const available = gl.getQueryParameter(pendingQueries[0]!, gl.QUERY_RESULT_AVAILABLE) as boolean | null;
+				if (available === false && pendingQueries.length <= PENDING_QUERY_LIMIT) break;
+				const query = pendingQueries.shift()!;
+				if (available === true) {
+					if (disjoint) counters.gpuDisjointFrames! += 1;
+					else {
+						counters.gpuMs! += (gl.getQueryParameter(query, gl.QUERY_RESULT) as number) / 1e6;
+						counters.gpuFrames! += 1;
+					}
+				}
+				gl.deleteQuery(query);
+			}
+		};
+		const shadowMap = renderer.shadowMap;
+		const shadowRender = shadowMap.render.bind(shadowMap);
+		let shadowCallsThisFrame = 0;
+		let inShadowPass = false;
+		shadowMap.render = (...args: unknown[]) => {
+			const before = renderer.info.render.calls;
+			inShadowPass = true;
+			try {
+				shadowRender(...args);
+			} finally {
+				inShadowPass = false;
+			}
+			shadowCallsThisFrame += renderer.info.render.calls - before;
+		};
+		// One census frame: wrap the per-draw entry for exactly that frame.
+		const censusFrame = (draw: () => void) => {
+			const tuples: { geometry: DrawGeometry; material: DrawMaterial }[] = [];
+			const direct = renderer.renderBufferDirect;
+			renderer.renderBufferDirect = function (camera, scene, geometry, material, object, group) {
+				if (!inShadowPass) tuples.push({ geometry, material });
+				return direct.call(renderer, camera, scene, geometry, material, object, group);
+			};
+			try {
+				draw();
+			} finally {
+				renderer.renderBufferDirect = direct;
+			}
+			const programIds = new Map<string, number>();
+			const materialIds = new Map<string, number>();
+			const merge = new Set<string>();
+			const instance = new Set<string>();
+			const states = new Set<string>();
+			for (const { geometry, material } of tuples) {
+				const programKey = renderer.properties.get(material).currentProgram?.cacheKey ?? 'unknown';
+				const program = programIds.get(programKey) ?? programIds.set(programKey, programIds.size).size - 1;
+				const stateKey = materialState(material);
+				const materialId = materialIds.get(stateKey) ?? materialIds.set(stateKey, materialIds.size).size - 1;
+				states.add(`${program}/${materialId}`);
+				merge.add(`${program}/${materialId}/${geometryLayout(geometry)}`);
+				instance.add(`${program}/${materialId}/${geometry.uuid}`);
+			}
+			state.binCensus = {
+				draws: tuples.length,
+				triangles: renderer.info.render.triangles,
+				programs: programIds.size,
+				materialStates: states.size,
+				mergeBins: merge.size,
+				instanceBins: instance.size
+			};
+		};
+		// The managed renderer reassigns `render` after its lookup discovery and at
+		// dispose; an accessor keeps this wrapper outermost across reassignment.
+		let inner = renderer.render;
+		const counted = (scene: unknown, camera: unknown) => {
+			const paused = (target as unknown as Record<string, unknown>).__BISKIQ_PERF_RENDER_PAUSED__ === true;
+			shadowCallsThisFrame = 0;
+			if (paused) {
+				inner.call(renderer, scene, camera);
+				return;
+			}
+			// One TIME_ELAPSED query at a time: a render nested in another is inside
+			// the outer query, and a throwing render still ends its query.
+			let query: WebGLQuery | null = null;
+			if (gl !== null && timer !== null && !queryOpen) {
+				query = gl.createQuery();
+				if (query !== null) {
+					gl.beginQuery(timer.TIME_ELAPSED_EXT, query);
+					queryOpen = true;
+				}
+			}
+			const begin = performance.now();
+			try {
+				if (state.binCensusRequested === true) {
+					state.binCensusRequested = false;
+					censusFrame(() => inner.call(renderer, scene, camera));
+				} else {
+					inner.call(renderer, scene, camera);
+				}
+			} finally {
+				if (query !== null && gl !== null && timer !== null) {
+					gl.endQuery(timer.TIME_ELAPSED_EXT);
+					queryOpen = false;
+					pendingQueries.push(query);
+				}
+			}
+			const cpuMs = performance.now() - begin;
+			resolveQueries();
+			renderRefs[surface] = { renderer, scene, camera };
+			const info = renderer.info;
+			const mainPassCalls = info.render.calls - shadowCallsThisFrame;
+			counters.frames! += 1;
+			if (performance.now() - lastInputAt > 1000) counters.framesAtRest! += 1;
+			if (shadowCallsThisFrame > 0) {
+				counters.shadowMapRenders! += 1;
+				counters.shadowDrawCalls! += shadowCallsThisFrame;
+			}
+			counters.drawCalls! += mainPassCalls;
+			counters.triangles! += info.render.triangles;
+			counters.renderCpuMs! += cpuMs;
+			counters.maxRenderCpuMs = Math.max(counters.maxRenderCpuMs!, cpuMs);
+			if (state.cpuSamples.length < CPU_SAMPLE_LIMIT) state.cpuSamples.push(cpuMs);
+			counters.maxDrawCallsPerFrame = Math.max(counters.maxDrawCallsPerFrame!, mainPassCalls);
+			counters.maxTrianglesPerFrame = Math.max(counters.maxTrianglesPerFrame!, info.render.triangles);
+			counters.programs = info.programs?.length ?? 0;
+			counters.geometries = info.memory.geometries;
+			counters.textures = info.memory.textures;
+		};
+		Object.defineProperty(renderer, 'render', {
+			configurable: true,
+			get: () => counted,
+			set: (next: HookedRenderer['render']) => {
+				inner = next;
+			}
+		});
+	};
+
 	try {
 		new PerformanceObserver((list) => {
 			for (const entry of list.getEntries()) {
@@ -125,6 +348,10 @@ export async function clearObservations(page: import('@playwright/test').Page): 
 			target.__BISKIQ_PERF_LONG_TASKS__, target.__BISKIQ_PERF_EVENTS__]) {
 			if (entries) entries.length = 0;
 		}
+		// The last rendered scene per surface: a closed project's scene graph must
+		// not survive a forced GC because the harness still points at it.
+		const refs = (target as unknown as { __BISKIQ_PERF_RENDER_REFS__?: Record<string, unknown> }).__BISKIQ_PERF_RENDER_REFS__;
+		if (refs) for (const surface of Object.keys(refs)) delete refs[surface];
 		performance.clearMarks();
 	});
 }
