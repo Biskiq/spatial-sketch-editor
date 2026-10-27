@@ -35,8 +35,8 @@ NEXT:  S03 integrated final gate — **approved and released 2026-10-27**
 ROUTE: ./README.md → ../../roadmap/t2-composition/README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
 BLOCKER: none. Omitted scopes stay held.
-CARRY: Project-deletion implementation and model-revision cleanup belong to T3's proposed C3 lifecycle
-       work; S03 verifies retention/pin integrity without adding deletion. Further planning pairs T1 face
+CARRY: T3.P04.S01 shipped project-deletion and model-revision cleanup (PR #191, `aa1db37a`);
+       S03 verifies retention/pin integrity without adding deletion or re-accepting C3. Further planning pairs T1 face
        frames with solve-once placement; component provider work precedes Stage part-selection/admission
        UI and annotations. No follow-on authorization is implied.
 ```

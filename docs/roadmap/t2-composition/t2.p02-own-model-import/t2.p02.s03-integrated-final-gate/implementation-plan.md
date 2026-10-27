@@ -15,8 +15,9 @@ VERIFICATION: exhaustive
 
 This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01 and S02
 send their deferred exhaustive proof to; its acceptance record is the phase's declared final-gate
-artifact. It is registered (batch E, E1) and unauthorized: nothing here is implemented, accepted,
-ready or evidenced.
+artifact. It was registered in batch E (E1) and is now approved and released by the
+2026-10-27 owner decision, with a start condition of PR #198 merging on `main`. The integrated
+final gate has not run: no acceptance verdict, readiness evidence or implementation result is claimed.
 
 ## Prerequisite
 

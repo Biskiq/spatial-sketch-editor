@@ -3,7 +3,8 @@
 AUTHORITY: NONE — the phase README owns slice status; the [release list](../../../now.md) entry and
 the [next-wave authorization record](../../../../reference/decisions/next-wave-authorization-2026-10-27.md)
 own the release. This artifact records a **pre-build plan review** completed in the 2026-10-27 owner
-coordination round.
+coordination round. This plan-level assessment is not a GitHub review submission or an integrated
+acceptance verdict; the slice still owes its independent implementation/acceptance review.
 
 STATUS: complete 2026-10-27. The final-gate plan passes; one stale prerequisite sentence was corrected
 in this round (F3 below). Implementation acceptance and the owner-run rows remain owed.

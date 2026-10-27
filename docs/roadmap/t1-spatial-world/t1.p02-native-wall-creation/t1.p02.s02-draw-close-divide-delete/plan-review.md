@@ -3,7 +3,9 @@
 AUTHORITY: NONE — the phase README owns slice status; the [release list](../../../now.md) entry and
 the [next-wave authorization record](../../../../reference/decisions/next-wave-authorization-2026-10-27.md)
 own the release. This artifact records a **pre-build plan review** completed in the 2026-10-27 owner
-coordination round against the contracts and code named below.
+coordination round against the contracts and code named below. This is a recorded plan-level
+compatibility assessment, not a separately submitted GitHub review or independent T2/T3 owner
+sign-off on an implementation diff; those implementation reviews remain required.
 
 STATUS: complete 2026-10-27. The reviewed allocation passes with the conditions in §5. The standing
 **implementation** reviews — T3 for the shared Head/F4 diff, the owning track for any T2/T3 adapter

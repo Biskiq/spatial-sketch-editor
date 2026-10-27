@@ -126,10 +126,10 @@ persistent versus recomputed state, an F amendment shape, and a phased delivery 
 architect **may not**: ratify a contract, admit a dependency, register a phase, release a slice,
 create a persisted format, or change S06's accepted behavior. Those stay owner or owning-track acts.
 
-Every recommendation must satisfy: one canonical geometry source (no second compiler), the accepted
-F2/F4 semantics and refusal behavior, the visitor isolation boundary, the full-permissive licensing
-rule, and the requirement that an accepted revision is reproducible byte-for-byte where today's
-contracts require it.
+Every recommendation must respect Layout and Scene as distinct authored authorities, introduce no
+competing authored source or duplicate Layout compiler, and preserve the accepted F2/F4 semantics and
+refusal behavior, the visitor isolation boundary, the full-permissive licensing rule, and the
+requirement that an accepted revision is reproducible byte-for-byte where today's contracts require it.
 
 ## 7. Form of the deliverable and review
 

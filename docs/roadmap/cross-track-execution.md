@@ -140,7 +140,7 @@ requires — it does not inherit S06's claim by citing it:
 | Scene, import and render code (`authoring/adapters/scene/**`, `museum/assets/**`), Camera/Experience/Preview and `visitor/**` | T2 / T3 owners | S06 touches these only through a bounded patch reviewed by that owner; otherwise it records a named finding |
 | Dependency manifests and lockfile | S06, admitted packages only | [Full permissive licensing](../reference/decisions/performance-foundation-authorization-2026-10-24.md#full-permissive-licensing); each package, version and license recorded |
 | `apps/editor/tests/helpers/**` and shared fixtures | S06 as needed | Serialize; each edit triggers every lane plus the full suite |
-| `apps/api/**` | none in this batch | T3.P04 takes API ownership only after its own release and the explicit handoff from T2 |
+| `apps/api/**` | none in S06 | T3.P04.S01 later shipped the API lifecycle work after the T2 handoff; the S06 row is historical, not a new claim |
 | Reference-machine measurement time (M2) | S06 | Machine-wide perf lock; no concurrent heavy lane during a measurement pass |
 
 Each lane records its shared-file claim (writer, expected patch base, reviewer) in its own
@@ -155,12 +155,12 @@ The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/
 
 | Surface | Writable owner | Consumer/review boundary |
 | --- | --- | --- |
-| Layout compiler, kernels, representation and Stage admission | T1 (S06 merged; no active lane) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
+| Layout compiler, kernels, representation and Stage admission | T1 (S02 released; starts after PR #198 merges) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
 | Stage host, session, input, contributions and shared shell | T1 | T2/T3 own bounded reviewed patches for their registered consumers; schedule shared-file edits with T1 and retain one host/selection/Camera authority |
-| Scene transform/resource admission, GLB import and relevant API/resource routes | T2 (no released lane) | S06 reads the import recipe and resources format only to seed its workloads; shared F4/Save changes reviewed by T3; no foreign-domain rewrite or publication/resource-release closure |
+| Scene transform/resource admission, GLB import and relevant API/resource routes | T2 (S03 integrated final gate released; no new product feature) | S06's import seeding is merged history; S03 verifies existing import/placement on the integrated tree, with T3 review for any shared F4/Save changes and no foreign-domain rewrite or publication closure |
 | Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime; S06 measures these flows and reports T3-owned misses |
 | Measurement harness (H0 workflow) | T3 | A future lane edits the shared harness and fixtures through T3 review; S06's harness edits are merged history |
-| C3 project lifecycle persistence/API | T3 after explicit handoff from T2 | Released as `T3.P04.S01` on 2026-10-24; shared API editing transfers after the handoff, and the slice does not edit the harness, Stage or S06's shell claim |
+| C3 project lifecycle persistence/API | T3 (T3.P04.S01 shipped after the T2 handoff) | PR #191 shipped the owner-scoped API/persistence cleanup; its handoff and shared-file reviews are recorded acceptance history, not new next-wave work |
 | Test contract, runtime-safe shared packages and boundary checks | Existing concern owner | Touch only required call sites with owner review; no duplicate protocol, silent boundary weakening or private test substitute |
 
 Parallel work means independent domain edits. Serialize editing shared files; name the writer
@@ -196,15 +196,13 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.
-- **C3:** [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) is **authorized and released**
-  as `T3.P04.S01` for rename/delete and guarded lifecycle, with T3 persistence/API and T1 shell
-  integration. It is strictly unrelated to the halt, and implementation started after coordination
-  PR #188 merged. R1/R2 were owner-ratified 2026-10-25 ([review on PR #188](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932)),
-  superseding the 2026-10-24 proposal history in the [planning resolution](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md).
-  T2's API handoff — including the write-lease fence on its two model writers — must be reviewed
-  before shared API edits. The bounded T1 shell patch still requires T1 pre-implementation review
-  and serialization behind `T1.P02.S06`'s recorded shell-file claim. The planning resolution also
-  records the cleanup corrections.
+- **C3 (shipped):** [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) closed 2026-10-25
+  after `T3.P04.S01` rename/delete shipped in PR #191 (`aa1db37a`). Its T2 API handoff,
+  write-lease fence, T1 shell review and earlier serialization against S06 are closed-work evidence,
+  not outstanding start conditions for this batch. R1/R2 were owner-ratified 2026-10-25
+  ([review on PR #188](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932));
+  the [planning resolution](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
+  retains the prior proposal and cleanup corrections. C3 contributes no new released scope here.
 - **T1/T2 continuation:** face-frame provider/solve-once wall placement, part admission and
   annotation, vertical/coordinate qualification and overhead families are planning triggers
   in the owning tracks. They are not accepted providers or newly released scopes.
