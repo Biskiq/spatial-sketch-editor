@@ -3,13 +3,14 @@
 PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01, S05 and S06 are shipped and S02 is released.
-SLICE: S02 draw, close, divide and delete — **approved and released 2026-10-27**
-       (../../reference/decisions/next-wave-authorization-2026-10-27.md); it starts after the
-       coordination PR #198 merges. Its plan review is complete, including the T3 Head/F4
-       shell-allocation review and the T2/T3 contribution-compatibility review
-       (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/plan-review.md).
-       T3's implementation review of the shared Head/F4 diff and the owning-track review of any
-       T2/T3 adapter edit stay before merge. S03 (outline) follows S02; S04 is the final gate.
+SLICE: S02 draw, close, divide and delete — implementation complete on PR #201
+       (`t1-p02-s02-draw-close-divide-delete`, head `8ea82633`; implementation `bf9007ff`).
+       T3 accepted the shared Head/F4 diff at `bf9007ff`
+       (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/t3-implementation-review.md).
+       **Slice closeout is BLOCKED, not accepted or shipped:** the plan's browser journey and
+       owner-run M2 performance acceptance are not recorded
+       (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/closeout-blockers.md).
+       S03 (outline) remains held; S04 is the final gate.
 ACC:   T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27, merged as
        `6af62eb4`** (P1 merge commit of PR #190, `t1/p02-s06-bench-setup`); recovery anchor
        `e676a363` is reachable from `main` and tag `closed/T1.P02.S06` is pushed. Milestone gate
@@ -18,15 +19,14 @@ ACC:   T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27,
        post-Bench-2 attribution and the T3/T2 shared-boundary review are recorded; the closeout stub
        carries the ratified disposition, budgets and follow-ons. Battery qualification, grid-XL
        timing and the sweep latency rows are assigned to S04.
-NEXT:  S02 starts after PR #198 merges on then-current `main`, rechecking consumed gates, active
-       scopes and its own trusted base through the runbook. No other T1 slice is released: S03–S04
-       stay held pending their own releases, and the [release list](../../roadmap/now.md) is the
-       only permission list. No benchmark, attribution, E5 or review rerun is owed for S06.
-BLOCKERS: none technical. S02 waits only on the coordination PR #198 merge; S03–S04 and T4 stay held
-       pending their own releases.
-       T3 **ownership** acknowledgement of the recorded shared-boundary review was not recorded
-       before merge; the owner authorized the merge directly and the independent T3/T2 review itself
-       passed. That acknowledgement is now a records-only item owned by T3, not a gate on T1 work.
+NEXT:  Complete S02's browser evidence and the owner-run M2 performance pass, then rerun
+       `slice-closeout` on the same branch. No other T1 slice is released: S03–S04 stay held pending
+       their own releases, and the [release list](../../roadmap/now.md) is the only permission list.
+       No benchmark, attribution, E5 or review rerun is owed for S06.
+BLOCKERS: S02 acceptance evidence is incomplete — browser journey and owner-run performance rows are
+       not recorded; closeout stopped before acceptance. S03–S04 and T4 stay held pending their own
+       releases. T3's ownership acknowledgement for S06 remains a records-only item owned by T3,
+       not a gate on T1 work.
 CLAIMS: PR #190 released its `apps/editor/perf/**` claim on merge. Writer: the T1 S06 agent; the
        branch `t1/p02-s06-bench-setup` is merged and retired. No shared test helper under
        `apps/editor/tests/helpers/**` is edited.
