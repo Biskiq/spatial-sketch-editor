@@ -332,6 +332,11 @@ acceptance-authority files keep one digest authority and the same refusal codes,
 was introduced. **Bench 3 remains the owner's** — it is the only place any of these locality gains
 become a measured claim.
 
+**Superseded, 2026-10-26/27.** The owner replaced Bench 3 for S06 with the decision-driven milestone
+gate, which ran and passed; the Plan-locality gains became measured claims there and in the
+post-Bench-2 attribution. The T3 review request above is answered in
+[T3 shared-boundary review](#t3-shared-boundary-review-2026-10-27-independent-agent) below.
+
 ## Bench 2/3 strategy: implemented diagnostic Bench 2 (2026-10-26)
 
 **Status:** owner-approved and implemented. Bench 2 is a diagnostic pass; it counts as the second
@@ -979,3 +984,80 @@ MAJOR** and confirmed each claim; its five MINOR/NIT observations were disposed 
 ```
 npm run perf:bench --workspace @portfolio/editor -- --label bench-2 --tiers grid-S,grid-M,grid-L --no-sweep-latency
 ```
+
+## T3 shared-boundary review (2026-10-27, independent agent)
+
+**Status:** recorded. The shared seams pass implementation review; no blocking defect was found.
+This is an independent review of the T3/T2-owned boundaries, **not** a T3 owner sign-off, not a
+performance acceptance and not a re-run of the milestone. Performance acceptance rests on the
+milestone gate; this section answers only whether the S06 work preserves the contracts those
+boundaries own.
+
+**Revision.** Candidate `d89554b1` — the exact product SHA the milestone measured. Later commits on
+PR #190 are evidence, harness and documentation only. The Plan-locality wave is `c8ac273a`,
+`3e7efdbe`, `09f18a56`, `6b53ae95`, `f9502a5a`; the persistent-store, capture-sharing and retained
+representation work measured by Bench 2 is `d47c25e1`–`6c077295`.
+
+**Why this review was owed.** Earlier rounds reviewed implementation correctness and integration.
+Three T3-owned seams were explicitly left open: the Plan evaluator's retention protocol, the
+compiler-delta certificate, and the Plan-key/retained-target change. The takeover additionally owed
+T3 review of immutable capture reuse, normalized source sharing, the qualified handoff and Stage
+admission, and T2/T3 review of shared renderer compatibility (retained Wall representation, shadow
+invalidation). This section closes those review requests at the seam level.
+
+### Seams, questions and verdicts
+
+| Seam (owner) | Question asked | Evidence inspected | Verdict |
+| --- | --- | --- | --- |
+| Plan retention and live target (T3 shared Stage read) | Can a retained evaluation be served for inputs it did not read? Does the echoed target stay honest? Can a returned plan describe a newer generation? | `stage-facade.ts` `planFor`/`planRetentionKey`/`planDependencyKey`; `layout-plan-representation.ts` `planDependsOnTarget`, `planTargetsLiveView`, `createPlanRetainer`; locality and retainer suites | **Pass.** The key carries compile generation, datum, cut, depth, lateral span, filter, reveal and the target only when the parameters read it. A non-finite target is never retained. Retention is a single entry, retired by the generation in its own key. The live view is a descriptor copy, so no lazy field is forced by a pan, and it falls back to the evaluated target on a non-finite reading. A plan read after a newer evaluation keeps its own per-evaluation fork (regression case). |
+| Compiler-delta certificate (T1 compiler, T3 admission consumes) | Can a delta compile be certified over a change it does not describe? | `layout-geometry-delta.ts` guards; area certificate; swept-bounds differential; mixed-delta differential; persistent pipeline | **Pass.** Delta runs only on COW lineage or an identical document reference, and only while topology counts, Floor id/elevation, fallback thickness, canonical sampling and the per-kind id-at-index invariants hold. Any Room authored change, nullability transition, host change or unprovable lineage returns `null` to the full canonical pass. The area certificate is a rounding-bound proof with forced cold success/refusal comparisons, not a tolerance. No second compiler or geometry formula is introduced. |
+| Stage admission and qualified handoff (T3) | Does admission still validate and normalize the one envelope before install, with unchanged refusals? | `units/acceptance.ts` admit + implementation preparation; `stage/host-acceptance.ts` wiring, compensation and history cache; Stage admission and host-acceptance suites | **Pass.** Admission still validates the envelope, normalizes unit headers, computes the source id, resolves the dependency lock and closure, and only then returns the install payload; a refusal leaves the accepted source, history and bytes untouched. The boot seeding is keyed by the boot snapshot's own content id and passive compile result, not by a caller claim. History-cache retention is bounded and documented. |
+| Capture and codec sharing (T3/F4) | Can capture reuse cross a project, a revision or a mutable envelope? | `acceptance.ts` `ADMITTED_BY_FROZEN_ENVELOPE` and `shareUnchanged`; F4 structural-sharing, unit-acceptance and codec-sharing suites | **Pass.** The admission cache is keyed by the frozen envelope object and accepts only deeply frozen plain JSON, so a key cannot change under the entry. Unit and lock sharing require the same project, matching headers (revision, domain, unit id, format version) and matching lock identity/pins; revision minting stays with the coordinator. No cross-project share is possible. |
+| Visitor isolation and shared renderer (T2/T3) | Did S06 move editor machinery into the visitor, or change shared rendering semantics? | `VisitorLayoutShell` consumption, retained Wall/object representation, `StageCanvas`/`StageShadowTriggers`/`shadow-invalidation.ts`, visitor boundary and legacy-isolation suites, import search | **Pass.** No visitor module imports `$lib/authoring` or Stage machinery; the shell consumes compiled geometry and the shared mesh builders, so editor/visitor geometry cannot drift. One Canvas, one renderer, `PCFShadowMap` unchanged. Shadow suppression is identity-triggered (geometry, Scene, rooms, model URLs) with an explicit always-update escape for asynchronous model casters and a re-render on restored context; the camera and ghosts are correctly not triggers. |
+
+### Findings
+
+No blocking or correctness finding. Five observations, all preconditions or owned limits rather than
+defects:
+
+1. **Plan retention depends on one documented invariant.** The key has no geometry identity; it
+   assumes a compile generation names its content (every host already relies on that). The facade
+   always evaluates from the current snapshot, so no path violates it today. A future host that
+   reuses a generation id across different geometry would serve a stale Plan.
+2. **Bounded lateral span is exact but not local.** With `lateralSpanHalfWidthMeters !== null` the
+   target genuinely matters, retention is correctly bypassed and every source is re-derived per
+   target change — an `O(N)` pan configuration. No shipped consumer sets it; if an instrument ever
+   does, that configuration needs its own pan row rather than inheriting the unbounded result.
+3. **The pick index's build is charged to the first click of a generation** (measured: about 31 ms
+   slower at L, 2.3 ms at S). Correctness is unaffected — the broad phase is a conservative superset
+   and returns the hit path's own order — but the interaction cost is the follow-on recorded in the
+   attribution, not a defect.
+4. **`MAX_ADMITTED_HISTORY_CACHE` remains a count bound**, not a byte budget (already documented at
+   the constant). It is a T3-owned memory question and is unmeasured; it is not changed here.
+5. **Shadow invalidation is identity-based by contract.** No reviewed path mutates a caster's
+   geometry, material or flags in place (Stage room presentation is neutral and selection is drawn
+   outside the caster materials), so the trigger set is complete for the landed tree. A future
+   in-place caster mutation would need its own trigger.
+
+### Verification actually run
+
+Targeted by design; no browser, no benchmark, no new probe file, no product edit.
+
+| Command | Result |
+| --- | --- |
+| `npx vitest run --config vitest.fast.config.ts` over the Plan-locality, retainer, pick-index, area-certificate, codec-sharing, snapshot-seal, swept-differential, persistent-storage, incremental-compile, plan-box, F4, Stage admission/host/facade, Plan representation, Wall/object representation and shadow suites (20 files) | 239 tests pass |
+| `npx vitest run --config vitest.heavy.config.ts tests/lib/layout/t1s06-persistent-pipeline.test.ts tests/lib/layout/t1s06-persistent-spatial.test.ts` | 13 tests pass (57.9 s) |
+| `npx vitest run --config vitest.arch.config.ts` over the layout-geometry, wall-mesh-shell, project-model and legacy boundaries plus visitor cold-runtime, identity-isolation and preview-surface suites | 53 tests pass |
+| `grep -rn "from '.*authoring" apps/editor/src/lib/visitor` | no match |
+
+**Recorded omissions.** No Bench 1/2/milestone rerun, no E5 census, no browser or framebuffer
+observation, no L-scale allocation profile, no full fast/heavy lane. The full-suite result at the
+candidate is recorded in the acceptance record and was not re-established here. These omissions do
+not affect the seam verdicts above; they are why this is not a performance acceptance.
+
+### Boundary statement
+
+This review confirms that the S06 changes keep the T3-owned admission/capture contracts and the
+T2/T3 shared rendering contract intact at the inspected seams, and it supplies the independent
+review the earlier handoffs requested. **T3 ownership acknowledgement remains a separate act by the
+T3 owner**; nothing here is a T3 sign-off, a merge, a phase close or a new contract.

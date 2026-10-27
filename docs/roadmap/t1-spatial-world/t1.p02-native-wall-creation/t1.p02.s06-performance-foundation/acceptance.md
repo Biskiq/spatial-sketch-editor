@@ -11,8 +11,12 @@ which is implemented, independently reviewed and executed; **it passed (15/15 de
 passes are recorded below — the interaction pass, the incremental Plan evaluator, the compiler-delta
 pass and its generation-capture fix — the last three independently reviewed. A post-Bench-2
 attribution check (2026-10-27) then measured those passes against Bench 2's revision; see
-[Post-Bench-2 attribution](#post-bench-2-attribution-2026-10-27). The branch integrates
-`main`. S06 is not merged; T3 ownership sign-off remains separate. ·
+[Post-Bench-2 attribution](#post-bench-2-attribution-2026-10-27). The independently reviewed
+T3/T2 shared boundary and the proposed AC-qualified owner disposition (battery qualification
+deferred) are recorded in
+[Reconciliation, follow-ons and closeout readiness](#reconciliation-follow-ons-and-closeout-readiness-2026-10-27).
+The branch integrates `main`. S06 is **not accepted and not merged**: the disposition awaits owner
+ratification and T3 ownership sign-off remains separate. ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Decision package:** [scale-reconciliation.md](./scale-reconciliation.md) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
@@ -1647,3 +1651,138 @@ Stop here before the owner benchmark and acceptance.
 **Later:** the owner benchmark was replaced by the milestone gate (2026-10-26), which passed, and
 the post-Bench-2 attribution above followed on 2026-10-27. This section is preserved as the
 pre-benchmark record.
+
+## Reconciliation, follow-ons and closeout readiness (2026-10-27)
+
+**Status.** Evidence is complete and the **milestone PASS stands unchanged**. This section adds no
+measurement, reopens no row and changes no product file. It reconciles the post-Bench-2 attribution
+into the acceptance disposition, records the T3/T2 shared-boundary review (the earlier handoffs'
+owed review), registers the bounded follow-ons with named owners, and states the one owner decision
+that remains before acceptance and closeout.
+
+### Reconciled findings
+
+Medians of three paired rounds (post-edit pick: one paired session), same spec, machine and pinned
+Chrome. Classification uses I6: only eliminated or reused work is a reduction; deferred work is
+counted where it went.
+
+| Finding | Bench 2 `e8cc2fc0` → candidate `d89554b1` | What the counter proves | I6 class |
+| --- | --- | --- | --- |
+| Continuous pan (L) | 37.05 → 18.10 ms main-thread task per move; 3.48 → 1.70 s per 94 moves | Candidate records zero `plan:*`/`plan-pick:*` work during the pan; the old route rebuilt the Plan key from the camera target and called `stage.plan()` on every change | **Eliminated** |
+| Continuous pan (S) | 4.09 → 3.12 ms per move | Same elimination at small scale; it is a smaller absolute saving, not a different mechanism | **Eliminated** |
+| Repeat pick (L) | 24.0 → 17.3 ms wall; 40.0 → 30.3 ms task | No index build; 35–37 node tests and 640–680 projections per click on the same generation | **Eliminated** (per generation) |
+| Late-order pick (L) | 52.7 → 16.1 ms wall; 62.2 → 26.9 ms task | 75 node tests and 1,048 projections instead of the old full-order scan | **Eliminated** |
+| First ordinary pick (L) | 23.0 → 54.0 ms wall; 44.1 → 79.3 ms task | Builds 3,917 nodes, 147,126 union comparisons and 11,396 fragments inside the click | **Moved** into the first read |
+| First ordinary pick (S) | 4.2 → 6.5 ms wall | The same build at small scale; about 2.3 ms of it is the index | **Moved** |
+| Local edit (L) | 170.2 → 173.3 ms task; first presentation 102.1 → 100.1 ms | Plan derivation is local (8 sources, 1 delta, 0 unrelated comparisons) but 420 Wall / 196 Room / 225 Junction slots, 1,289 aggregate reads, 1,357 merges and 1,036 membership rows remain | **Unchanged** |
+| Local edit (S) | 27.5 → 35.0 ms task | About 7.5 ms slower in all three paired runs; small in absolute terms and inside every budget, recorded rather than explained away | **Regressed** (small sample) |
+| First pick after a commit (L, n=1) | 31.5 → 23.4 ms wall; 40.7 → 42.7 ms task | Rebuilds 3,919 nodes, 151,230 comparisons and 11,403 fragments: the deferred cost returns after every accepted edit | **Deferred** |
+
+**What improved structurally but stays invisible to the current user-facing latency rows.**
+
+- Plan derivation is now proportional to the compiler's certified source delta, with the declared
+  order maintained instead of sorted. The evidence is the work ledger and equal-output
+  differentials, not a wall time: an edit still pays compile materialisation, membership assembly
+  and the commit envelope, so the derivation win is absorbed before presentation.
+- Pan CPU more than halves, yet L and S pan frame p95 is 16.7 ms with zero long tasks on **both**
+  revisions. The rAF proxy sits on the display floor, so the saving is headroom and predictability,
+  not a measured frame-rate gain. It would turn into visible headroom only on a slower machine, a
+  larger project or additional per-frame work.
+
+**What did not improve.** End-to-end edit, Undo/Redo and Open remain whole-project; the object unit
+still has no persistent root; envelope canonicalisation and the flat SHA-256 are `Ω(bytes)`; draw
+submission is unchanged (L 10,526–15,443 calls against the 2,500 Target); and L cold open remains
+the named Target miss. None of these is changed by this reconciliation.
+
+### Milestone coverage limit carried forward
+
+The milestone suite has no canvas-pick row and no pick-after-commit row, and its F7 pan/zoom row is
+a scripted key/wheel loop rather than a continuous pointer drag. That is why the attribution, not
+the gate, found the pick trade-off and the deferred rebuild. The
+[owning contract](../../../../reference/components/performance.md#s06-milestone-decision-method-owner-amendment-2026-10-26)
+now records the limit and the two rows future performance slices must carry: a **continuous
+pointer-pan CPU row** and a **pick-after-commit row** that counts index builds and fragment
+materialisations. Neither is a new S06 obligation or a new hard budget.
+
+### T3/T2 shared-boundary review
+
+The independent seam review requested by the earlier handoffs is recorded in the
+[review handoff](./review-handoff.md#t3-shared-boundary-review-2026-10-27-independent-agent): Plan
+retention and the live-target protocol, the compiler-delta certificate, Stage admission and the
+qualified handoff, immutable capture and codec sharing, and visitor isolation plus shared-renderer
+compatibility. **Verdict: the seams pass implementation review; no blocking defect.** Five
+preconditions/limits are recorded there (generation-describes-content retention invariant, bounded
+lateral span being `O(N)` per pan, the pick build charged to the first click, the unmeasured
+52-entry history-cache count, and the identity-based shadow triggers). Targeted verification: 239
+fast tests, 13 heavy tests, 53 arch tests, and no visitor → authoring import. The omissions are
+listed there: no benchmark, browser, E5, framebuffer or full-lane rerun.
+
+### Owner disposition required (PROPOSED — not ratified)
+
+Only an owner ruling can accept the slice. The text below is the proposed disposition; it is
+recorded here, dated, with the exact scope it would cover and the claims it would **not** make.
+
+```text
+PROPOSED OWNER DISPOSITION — T1.P02.S06 (2026-10-27)
+RULING      Accept T1.P02.S06 as AC-qualified.
+SCOPE       The 2026-10-26 milestone gate on the designated MacBook Air M2 (16 GB), Chrome
+            156.0.8078.48, N1 1920×1080 at DPR 1, AC power, Low Power Mode off, candidate
+            d89554b1: 15/15 decision rows (27 verdicts) pass, full E5, 2,632.7 s.
+DEVIATION   The contract's designated-machine condition is "on battery with Low Power Mode
+            off" (reference baseline); the milestone ran on AC power. This disposition
+            qualifies the result as AC-only and does NOT certify the battery condition.
+DEFERRED    Battery qualification of these rows. The natural route is S04's integrated gate,
+            which already rechecks integrated flows on the same machine; this ruling assigns
+            no new S06 obligation and changes no S06 budget.
+NOT CLAIMED battery certification · grid-XL timing · production-scale or rare-tail statistics ·
+            L cold-open Target · draw-call Target · ultimate geometry/rendering ceiling ·
+            future formal 10-run statistics · T3 owner sign-off
+EFFECT      On ratification: S06 may be accepted and closed by routine slice-closeout; the
+            performance-first halt lifts only when S06 is both accepted and merged. No other
+            scope is released, no gate changes, no budget changes, and no phase closes.
+RATIFICATION  ______________________  date ____________  (owner)
+```
+
+Until the ratification line is filled, S06 is **not accepted** and PR #190 is **not merge-ready**.
+That is the only acceptance decision outstanding; the evidence and the independent review it needs
+are complete.
+
+### Owned follow-ons
+
+Registered here so the attribution's limits are owned work rather than open-ended claims. None is
+an S06 acceptance obligation, none releases a scope, and none creates or changes a budget.
+
+| ID | Follow-on | Owner | Trigger | Verification boundary |
+| --- | --- | --- | --- | --- |
+| FO-1 | Maintain the pick index across a compile generation instead of rebuilding it, and make the first pick after an edit responsive | T1 (the performance scope that owns Plan picking; S02/S03 only if owner-released) | The first-click cost in S02/S03 drawing traces, or a planned pick row | Pick-after-commit row plus `plan-pick:*` build counters; equal-hit differential against the whole scan. Any hard budget needs an owner amendment |
+| FO-2 | Reduce whole-project compile materialisation, membership assembly and the commit envelope on an accepted edit | T1 compiler/representation; T3 review if capture, admission or F4 semantics move | F4/F8 local-edit rows in S02, or the next compile-path slice | Existing `compile:aggregate-*`, `materialize:*`, `plan:output-membership` counters and the F4 row; no budget change without owner ratification |
+| FO-3 | Characterise the small-project fixed overhead behind the S edit regression (27.5 → 35.0 ms task) | T1 | S edit rows in the next performance-bearing slice | Paired S/L run of the same attribution spec; a recorded cause, not a new gate |
+| FO-4 | Give the admitted-history cache a byte budget or a measured retention bound | T3 (owner of the admitted-source lifetime) | Before history depth is raised or a memory claim is made | Measured retention at the shipped bound; replaces the current count-only note |
+| FO-5 | Carry continuous pointer-pan CPU and pick-after-commit evidence into future performance slices | Owner of the next performance slice | Any slice claiming interaction-locality gains | The two rows named in the contract's post-milestone limit; report-only until an owner sets a budget |
+
+### Acceptance and closeout status
+
+```text
+satisfied     milestone gate 15/15 · full E5 · attribution executed and recorded ·
+              independent T3/T2 shared-boundary review recorded · implementation correctness reviewed
+open          owner ratification of the AC-qualified disposition (battery deferred)
+open          T3 owner acknowledgement of the shared-boundary review (a sign-off, not more work)
+not done      routine slice-closeout: phase-register status, acceptance stub + anchor, baton rewrite,
+              preservation report; these are mechanical and run after ratification
+not done      merge (PR #190 stays open and unmerged; T3 ownership sign-off is separate)
+```
+
+**One documentation defect surfaced and fixed.** Marking S06 `in-progress` exposed that
+`T1.viewport-projection@1:viewport-projection-v1` still named the retired
+`F4.intent-acceptance@1:local-single-domain-v1` as a prerequisite, which made every current consumer
+ineligible. The record now names the enduring `acceptance-invariants-v1` under the F.4 retirement
+rule, with the substitution recorded in that record; no accepted behaviour, evidence, commit or
+gate version changed and no product file was touched. This is why a T1.P01 record appears in PR
+#190.
+
+**Closeout authorization.** Routine closeout is authorized by implementation acceptance plus the
+owner's closeout invocation. Here the implementation boundary is accepted on evidence, but the
+acceptance act itself is the disposition above, so closeout is **prepared, not executed**: on
+ratification it is one documentation pass (this record's stub with a Git anchor, the phase register
+`shipped`, the T1 baton rewrite, the documentation gate) with no new measurement or review. No
+product code, budget, workload or gate changes at closeout.
