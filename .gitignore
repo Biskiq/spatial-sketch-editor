@@ -57,3 +57,6 @@ apps/editor/perf/.perf-results/
 
 # T1.P02.S06 — regenerated perf workload cache (derived; never authored, never committed)
 apps/editor/perf/.workloads/
+
+# T2.P02.S03 acceptance generates this 50 MiB refusal fixture; never commit it
+**/evidence/**/oversize-source.glb
