@@ -4,14 +4,15 @@ PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01, S02, S05 and S06 are shipped.
 SLICE: S02 draw, close, divide and delete — **accepted as `owner-override` and shipped 2026-10-27
-       on PR #201** (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md).
+       on PR #201, merged as `ce159a1e`** (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md).
        T3 accepted the shared Head/F4 diff at `bf9007ff` and the narrow-shell repair plus the
        28-row, two-browser journey at `2ad80bbd`; product/harness revision `64b9435d`. The owner
        deferred S02's formal performance family to S04 and recorded the Stage route's 456.0 KiB br
        against the ≤400 KiB hard budget as an explicit known miss. M4 is re-armed. S03 remains
        held; S04 is the final gate.
 ACC:   T1.P02.S02 draw/close/divide/delete — **accepted (`owner-override`) and shipped 2026-10-27**
-       (PR #201; P1 merge required for recovery). Browser 28/28 in Chromium and 28/28 in branded Chrome; automated
+       (PR #201; P1 merge `ce159a1e`; anchor `36c18db9` and tag `closed/T1.P02.S02` verified
+       reachable from `main`). Browser 28/28 in Chromium and 28/28 in branded Chrome; automated
        gate `check`, `arch` 22/180, `full` 214/2,653, `build` and the four package checks passed at
        `64b9435d`. No performance row is a pass.
        T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27, merged as

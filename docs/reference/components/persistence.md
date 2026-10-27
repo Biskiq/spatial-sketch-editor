@@ -2,7 +2,7 @@
 
 **Read when:** scene/layout/project codecs, cloud Save/Load, asset durability, publication,
 release delivery, fidelity.
-**Last reviewed:** 2026-10-20 (T3.P01.S04 implementation; PR #158 review pending).
+**Last reviewed:** 2026-10-27 (T5 destination promotion; live unit versions reconciled).
 The code contract below describes the F2 cutover tree. Deployment and migration 005 remain
 owner-controlled after merge; it does not claim production activation.
 
@@ -53,14 +53,39 @@ lock. Boot, starter, empty, Open, Download and Save use that envelope exclusivel
 versioned F amendments. Camera and Experience already have distinct codec-bounded units
 ([`../composition-execution.md`](../composition-execution.md)).
 
+## Editable source and revision (destination)
+
+**Ratified obligations, 2026-10-27** ([record](../decisions/t5-g0-ratification-2026-10-27.md)).
+Future expressive capabilities must retain the domain-owned source needed for their admitted edits
+and declared relationships. Deliberately authored geometric controls may be source; generated
+tessellation, renderer handles, session caches and chronological history remain outside authored
+truth. This distinction does not admit a new source kind into any current codec.
+
+No two coequal writable representations may silently compete for the same form. A conversion must
+declare supported edits/relationships retained or lost, approximation and recovery; no implicit bake
+may discard accepted meaning. The source encoding, conversion routes, identity-lifetime records and
+recovery mechanism remain TBD for a real consumer. Neither a universal operation log nor a persisted
+general-purpose form language is selected.
+
+Accepted controls, semantic identities and relationship decisions must reproduce the accepted result
+to the exactness required by the existing contracts. Approximation cannot weaken exact F obligations.
+Undo/new edit, Save and cold reopen must preserve supported meaning without transient caches; the
+bounded session-history cap is not permission to lose source editability. Upgrades and changed
+support require explicit validation/repair, not geometry-based retargeting. No new long-term history,
+branching or collaboration system is authorized.
+
+These are future consumer obligations within F.1/F.2/F.4, not amendments to their formats or accepted
+scopes. Current payload versions, strict refusals, history and Save behavior below remain the landed
+contract until an explicitly reviewed cutover.
+
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 5, Scene 3, Camera 1, Experience 1 and resources 2.
+`units`. Unit payload versions are Layout 6, Scene 3, Camera 1, Experience 2 and resources 2.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
-Scene 2 carries `textures`, `materials`, `entities` and optional `clusters`; it carries no Camera
+Scene 3 carries `textures`, `materials`, `entities` and optional `clusters`; it carries no Camera
 or editorial fields. Camera carries Views and connections. Connection endpoints are generated,
 only interior anchors are authored, and directional framing envelopes retain their kernel rules.
 `validateProjectEnvelope` separates structural issues, repairable authored diagnostics and

@@ -1,13 +1,14 @@
 # Scene content
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
-**Last reviewed:** 2026-10-20 (T3.P01.S04 cutover implementation; PR #158 review pending, production activation owner-controlled)
+**Last reviewed:** 2026-10-27 (T5 destination promotion and bounded Scene 3 baseline;
+production activation remains owner-controlled)
 
 ---
 
 ## Current implementation
 
-The live Scene is the world-local Scene 2 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 3 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
@@ -37,7 +38,9 @@ null. T2.P02.S02 adds the import procedure and the placement journey; its owner-
 Preview pixels, stay unrun in its acceptance stub. The visitor reader remains catalogue-only. The shared Stage/visitor renderers remain under
 `apps/editor/src/lib/museum/`, with catalogue policy in
 `apps/editor/src/lib/content/scene-validation.ts`. The directory name is not a separate product.
-Open and Download use F2 source JSON. Publication UI and Camera authoring controls remain absent.
+Open and Download use F2 source JSON. Publication UI remains absent; the
+[bounded capture/Guide/Preview loop](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome)
+does not admit general Camera path authoring.
 
 ## Validation and transform contract (current)
 
@@ -136,11 +139,39 @@ they do not prove continuity across re-export.
 rule): the definition/instance schema, component-identity mechanics, resource storage/container
 encoding, and the correspondence algorithm for ingest derivatives.
 
+## Expressive editing (destination)
+
+**Ratified obligations, 2026-10-27** ([record](../decisions/t5-g0-ratification-2026-10-27.md));
+the [architecture](../architecture.md#expressive-creation-and-revision-destination) owns shared
+subjects and integration. Scene's current primitive/model operations above are unchanged; no native
+form source, general following, sculpting or component capability is admitted by this section.
+
+For each future admitted object edit, the domain declares the supported target/context, affected
+subjects, editable controls, meaningful dependencies and the resulting validity envelope. A fact,
+qualified context or current-result target may be appropriate; no universal gesture or inference
+engine is prescribed. Ordinary interaction should not require construction-order knowledge.
+
+One-time context use and persistent following are distinct. Continuing relations, member exceptions,
+shared-definition changes and detachment have explicit meaning before acceptance. Their defaults,
+identity rules and deletion/repair policy require the first consumer's product decision; the
+proposed guide/form/arrangement workflow does not settle them. Existing solve-once placement and
+the conditional attachment contract below keep their scope.
+
+Precision and preservation promises state the quantity, frame, region, lifetime and affected
+operations, and are validated on the resulting work. A typed dimension is not automatically a
+constraint; a mask, unchanged ID or best geometric match is not proof of preservation. Lost or
+ambiguous support reports failure/repair rather than silently retargeting. Any correspondence
+mechanism must satisfy the existing qualified-reference and component-validity rules.
+
+Concrete source/operation formats, order models, correspondence algorithms and UI remain TBD.
+Capability expansion needs demonstrated creative value alongside predictable revision and cost;
+this contract creates no new operation list or implementation obligation for T2.
+
 ## Product convergence destination
 
 **Owner-ratified destination, 2026-10-22, PR #173.** See the
 [ratification record](../decisions/product-convergence-ratification-2026-10-22.md). This is destination
-wording for new consumers; Scene unit format 2 still refuses attachments and components.
+wording for new consumers; current Scene unit format 3 still refuses attachments and components.
 [Review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 **Placement and attachment.** Solve-once surface placement writes an ordinary world pose and

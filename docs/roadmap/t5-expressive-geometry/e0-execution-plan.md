@@ -1,348 +1,290 @@
 # E0 — Owner-evaluated spatial creation playground
 
-**Status:** implementation-ready prototype plan for review. This PR changes documentation only;
-E0 has not been implemented or evaluated. Implement it only on a subsequent instruction.
+**Status:** proposed implementation-ready experiment plan; documentation only. E0 has not been
+implemented or evaluated. Merging this PR does not authorize execution; the owner must separately
+commission the prototype. The owner is the sole E0 product decision-maker.
 
-**Decision-maker:** the product owner is the sole E0 product decision-maker. Deliver working software
-that the owner can explore, compare and reject. Recruitment, cohorts, statistical thresholds,
-staff-hour budgets and calendar delays are not prerequisites or acceptance gates.
+**Question:** does carrying a spatial idea across form, arrangement and revision help the creator
+achieve an intended result, or do competent explicit controls serve that intention just as well?
 
-**Question:** can a creator carry one spatial idea across making a form, arranging objects and
-revising both, with less reconstruction of intent and understandable exceptions? Or do competent
-explicit object/source controls already provide the better workflow?
+## 1. Authority and experimental boundary
 
-## 1. Reconcile the research brief with the owner commission
+Reconciled against `main` at `ec9bc07a`. The [G0 ratification][ratification], live
+[architecture obligations][architecture] and [T5 E0 boundary][e0-boundary] govern this plan.
+They ratify disciplined creative freedom, contextual creation and dependable revision, **not** a
+particular guide/band prototype, representation, UX or R1 sequence. [Historical G0 §10][g0-e0]
+supplies the experimental questions; its concrete fixture and research protocol are recommendations.
 
-This plan operationalizes [G0 §10 at its reviewed revision][g0-e0]. The owner's current commission
-**supersedes §10.1's provisional study protocol for E0**: eight participants, matched onboarding,
-counterbalancing, six-of-eight thresholds, percentage improvements and delayed-return scheduling
-are removed. It also replaces the former plan's hour caps and formal evidence collection. These
-were research assumptions, not durable architectural decisions. No amendment to production contracts
-or R1 registration is made here.
+The owner's current commission replaces §10.1's provisional recruitment, cohorts, statistical
+thresholds and scheduled return with direct owner evaluation. No staff-hour budget, mandatory
+external study or calendar delay gates E0. Its cost envelope is the capability boundary below:
+one local application, one analytic geometry route, one creative job and no production integration.
 
-| G0 question / existing evidence | How this E0 answers it |
+Retain §10's questions about intended creation, transfer, variation, following, exceptions and
+reopen. **Core E0 tests shared revision and one deliberate exception.** It does not settle the
+historical fixture's host removal/repair, copy lifetime or cross-platform claims. Those are explicitly
+deferred, not recorded as passed. No successful owner walkthrough releases R1 or selects its scope.
+
+The [native creative-depth proof agenda][proofs] and [Native Form Lab][lab] provide useful revision,
+geometry and history evidence. Reuse small proven pieces, not the Lab's full modeler. Its
+handles-versus-operation drawer is precedent, not evidence of a distinct creative workflow.
+Owner judgment can select a next investment; broader learnability or competitive claims need
+separate evidence. External testing may be recommended later, never required for E0 closeout.
+
+## 2. The creative challenge: a welcoming display that must change
+
+### 2.1 Outcome brief shown before the controls
+
+> Arrange a small exhibition of three pieces. Make the main piece the clear focus from the entrance,
+> with two supporting pieces and a low continuous display edge that makes the collection feel
+> intentional. Keep the display within the marked floor and the shaded arrival area clear. Choose
+> an asymmetric layout you would actually want to show; the supporting pieces need not stay evenly
+> spaced or identically oriented.
+>
+> After you are happy with it, the entrance moves to the adjacent side. Keep the main piece at its
+> chosen position and orientation. Revise the rest so the collection still reads as one display
+> from the new entrance and the new arrival area is clear. Preserve one other quality you value
+> in your first design—such as openness, rhythm or a particular bend—and explain any compromise.
+
+This brief specifies a result, a changed external condition and something worth preserving. It
+never asks the owner to draw a guide, use Arrange, detach an object or execute a prescribed sequence.
+The solution may begin with the display edge, with placed exhibits or with an imagined empty space.
+Finishing by manual placement is legitimate. If the shared guide is unnecessary or obstructive,
+that is evidence against the contextual hypothesis rather than failure to follow the exercise.
+
+**Supplied fixture:** a 6 m square floor, three distinct box-based exhibits (one visually identifiable
+main piece), a shaded arrival patch and a marked entrance direction. No prebuilt edge or guide.
+Use floor X/Z coordinates: initial patch `x = -0.6…0.6, z = -3…-1.8`; revised patch
+`x = 1.8…3, z = -0.6…0.6`. Switching Entrance changes only this context and its view cue; nothing
+is automatically rearranged. The main piece's initial pose is the owner's choice, then preserved
+in the revision. Default exhibit footprints of 0.45 m square and heights of 1.0/0.6/0.4 m suffice.
+Start the free pieces at (−1,0), (0,0) and (1,0) with zero yaw, the first being the main piece.
+These are editable-layout props, not a catalogue or import system.
+
+The band is a low display edge: default width 0.20 m and height 0.30 m, freely adjustable within
+valid geometry. The patch is a brief-specific visual requirement, not a building-code, accessibility
+or collision-clearance guarantee. Check it in Plan; inspect focus/grouping from the entrance in 3D.
+A simple entrance-view preset shares the existing prototype camera controls, not a new Camera system.
+
+### 2.2 What counts as a useful result
+
+Before acting, the owner names the intended visual character and which piece should be the focus.
+Keep the first and revised designs as separate JSON files. Assess:
+
+- **Outcome:** all pieces and the display edge exist; the shaded patch stays clear; the owner can
+  see and identify the intended focus from each entrance and considers the grouping coherent.
+- **Revision:** the main piece's chosen pose is unchanged; the new layout satisfies the revised
+  brief. Compare the extra quality the owner wanted to preserve with what survived or was abandoned.
+- **Creative control:** a personally chosen asymmetry/spacing/turn is possible, not merely a pleasing
+  default. Record a blocked intention even if a workaround finishes the brief.
+- **Process:** where did the creator have to reconstruct the design in terms of sources, operations
+  or relationships? Where did shared context remove that translation, and where did it cause surprise?
+
+Clearance and retained pose are checkable facts; focus, coherence and retained character are owner
+judgments with concrete before/after examples. There is no aesthetic scoring, completion-time target
+or automatic winner. Correct geometry alone cannot pass the product question; preference alone
+cannot excuse lost work or a result that misses the brief.
+
+## 3. A fair comparison of creative workflows
+
+Use one application with two entry paths, shared rendering, geometry and editing capabilities:
+
+| Spatial idea first | Competent explicit controls |
 | --- | --- |
-| §10.1: context reused across form and arrangement | A continuous guide-based creation path and a competent object-first path in the same playground; compare complete creative sequences, not control locations |
-| §10.1: transfer, irregularity and creative ownership | Start from a blank floor or an existing arrangement; create a different result of the owner's choosing using the same interactions |
-| §10.1: following, exceptions and return | Edit a shared guide, detach a member, reopen saved work and deliberately repair a missing source; the owner explains expected consequences before trying them |
-| §10.2: shared source lifecycle | Small real evaluator, stable keys, snapshot Undo, source-only JSON, copy isolation and visible refusal; focused checks rather than engine/platform certification |
-| §10.2: contour, precision ordering and source comparisons | Deferred. No second representation, deformation engine or boolean kernel is needed to answer the shared-context question |
-| §10.3: finish with a decision | Owner verdict: keep, simplify, reject or request one specifically named follow-up; observed failure and useful behavior are recorded without prescribing R1 |
+| Draw a guide or capture the ordered positions of already placed pieces; keep that spatial context active while making the edge and arranging pieces | Begin with Create edge or Arrange; draw, borrow or pick the same reusable guide as the source |
+| Select a visible edge or following piece and Edit shared guide; highlight all affected results before revising | Select the result, inspect its source and Edit guide, with the same affected-result highlights and handles |
+| Maintain the chosen context while changing selection; clear or replace it explicitly | Offer preselection, viewport source picking and unambiguous source prefill; do not force rediscovery or redraw |
+| Make one result independent when the brief calls for it | The same following, manual placement and independence controls remain available |
 
-The [native creative-depth proof agenda][proofs] supplies useful revision/identity questions.
-[Native Form Lab][lab] already supplies working prototype patterns for drawing, evaluator-backed
-preview, snapshot history and JSON; its handles-versus-operations Review drawer is precedent, not
-proof of a different workflow. [Shape focus][shape] is design evidence, not a shaping implementation
-that E0 must finish. Reuse small useful pieces; do not import either prototype's full capability set.
+A continuous spatial context and the ability to start from existing placement are hypotheses about
+how creators pursue a design. Merely relocating controls is not enough. **Do not build a weaker
+explicit path to manufacture a distinction.** Both paths can converge once the source is chosen;
+if they do, retain the simpler interaction or useful shortcut without claiming a new creative language.
 
-Owner evaluation can select a product direction and reveal defects. It cannot establish general
-learnability, market demand or superiority over current editors. External creator testing and a
-current-editor comparison may be recommended for a specific unresolved claim later; neither blocks
-E0 completion. A later revisit is useful if the owner wants it, with no required waiting period.
+Try the same outcome brief from a fresh fixture in each path, in whichever order the owner chooses.
+Do not require identical geometry, operations or number of clicks. Compare each design with its
+stated intention and revised brief; a different but successful design is not a fidelity failure.
+Switch paths on a saved design as a diagnostic if useful, but do not substitute that for trying to
+create a result. Note familiarity/order effects without turning this into a study protocol.
 
-## 2. The experiment: spatial idea first versus object first
+To test transfer, the owner then changes one meaningful design intention—for example a close,
+intimate grouping instead of an open display, or placing the pieces first and shaping the edge
+around them. Use existing primitives and a fresh/reset file; no second themed prototype is needed.
+Record whether the same vocabulary carries, including when explicit placement is the better answer.
 
-**Moving Band and Arrange controls into the viewport is insufficient.** Both paths will use the same
-viewport, numeric controls and geometry. The proposed difference is the unit of attention and its
-continuity: an active spatial guide can remain the subject while several kinds of result are made
-and revised. Object-first creation instead starts with a result and explicitly selects its source.
-There is no claim that this distinction is inherently new or necessarily better.
+## 4. Minimum core and capabilities that must earn inclusion
 
-Build one playground with two freely switchable entry paths:
+### 4.1 Required to answer this challenge
 
-| Sequence | Spatial idea first | Object first |
+| Core capability | Why it earns its place |
+| --- | --- |
+| One editable open planar guide, one real band and three supplied movable pieces | Two different consumers of one spatial source are the minimum test of composition; a solitary extrusion would only test modeling controls |
+| Draw/edit guide and snapshot ordered piece positions into a guide | Allows edge-first and placement-first solutions. Borrowing is cheap coordinate capture, not inference or a live reverse dependency |
+| Optional guide-following arrangement, free positioning/yaw, and one-member break-following | The changed brief requires preserving a chosen piece while revising the group. Without a local exception, coupling could win only on a contrived all-move-together task |
+| Shared-guide edit from either result, local band dimensions and visible scope | Tests revision of the intended result without reconstructing a construction history |
+| Plan/3D, numeric inputs, real preview/refusal, Undo/Redo and JSON reopen | Lets the owner judge spatial results, try alternatives and trust that accepted work survives; these are experimental integrity, not a production foundation |
+
+The core admits one guide/edge composition per document. Extra guide points, arbitrary valid shape,
+width/height and free object poses remain available; the output is not a fixed preset. Revisit this
+boundary only if an actual intended result needs more than one edge. Saving and reopening alternatives
+is sufficient for this experiment; no in-app variant manager or connected-group copy is needed.
+
+### 4.2 Optional relationship depth — not core acceptance
+
+None of the following is an automatic next increment or a hidden prerequisite. After the core
+walkthrough, the owner may commission **one named extension only when its decision value is clear**:
+
+| Capability omitted from core | Evidence that could justify it | Cheaper question to answer first |
 | --- | --- | --- |
-| Begin with empty space | Click a guide on the floor; it becomes active spatial context, without choosing a form family | Choose Create band or Arrange objects; draw or pick the source guide as part of that action |
-| Make more than one kind of result | With the guide still active, add a band, then select objects and arrange them along it; changing selection does not require reconstructing the guide choice | Create a band and an arrangement through explicit actions, each with a source field and viewport picking. Existing guides are reusable and may be prefilled when unambiguous |
-| Begin with existing work | Pick objects in an explicit order and Use their positions as a guide; use that guide for a band or another arrangement | Create a guide from the same ordered positions, then select it as the source of each desired result |
-| Revise the spatial idea | Select either result and choose Edit shared guide; the guide and all its following consumers become the visible edit scope | Select the result, open its Source, then Edit guide. The same affected consumers and handles appear; no graph navigation required |
-| Depart locally | Move a member independently or alter only a band's width/height, with the scope visible | The same local changes and explicit break-following choices are available |
+| Support→guide→result following | The owner repeatedly wants the display to follow a moving host, rather than intentionally recompose it | Move the guide directly when the entrance changes; does that already serve the job? |
+| Missing-source freeze, repair/rebind and lifetime recovery | A promising admitted dependency actually needs source replacement during the intended workflow | Refuse deletion of an in-use guide and reject invalid imports, preserving accepted work |
+| Independent connected-group copy/remapping | Comparing simultaneous variations is essential to judging the design | Save the alternatives as separate files |
+| Multiple guides/bands, added/deleted members or richer spacing rules | A recorded creative intention cannot be expressed with the edge and supplied pieces, even using local exceptions | Free placement and a changed guide; preserve the blocked example if these are insufficient |
 
-The contextual path must support **draw → form → arrangement → result-led revision** and
-**arrangement → borrowed guide → form**. The latter tests whether context can be discovered from
-existing work instead of merely exposing a predetermined procedural recipe. Borrowing is an explicit
-snapshot of ordered positions, not inferred design intent or a new live dependency back to those
-objects. This avoids cycles when the objects are later arranged on that guide.
+An extension must name the blocked intention, expected benefit and extra state/interaction it needs,
+and be available fairly in both entry paths. It is not included just because source data could
+support it. If the core already answers the question negatively, stop rather than adding relationship
+machinery. Deferring these tests does not waive identity/repair obligations for a later real consumer.
 
-Keep the object-first path competent: preselection, source reuse, viewport picking, numeric edits,
-Undo and persistent relationships remain available. No intentional extra clicks or hidden shortcuts.
-Both paths may converge on the same interaction after a source is chosen; preserve that convergence.
-If the advantage reduces to a convenient shortcut or control placement, report that and keep the
-shortcut. Do not rename it a new creative language.
+Closed loops, freehand recognition, booleans, arbitrary mesh edits, contour sculpting and automatic
+fitting are outside this E0. No geometry-engine campaign, general object editor, library, import
+system, color/material editor or production integration is required.
 
-The owner should ask: did the guide remain a useful subject, or become another mode to remember?
-Could I start from either space or existing work? Did I revise what I meant without reconstructing
-how it was built? Did the object-first controls express the same intention just as naturally?
+## 5. Core implementation contract
 
-## 3. What the owner can actually do
+### 5.1 Location and small design
 
-### 3.1 Common playground and interaction rules
+Create `e0-spatial-playground` under the existing [prototypes directory][prototypes] only when execution
+is commissioned. Use an isolated manifest/lockfile and the Native Form Lab's Vite/Svelte 5/Threlte
+setup as a small donor. Keep it outside root workspaces, production imports and public routes. Its
+README must supply `npm install`, `npm run dev`, `npm run typecheck`, `npm test` and `npm run build`,
+with the actual local URL. No account, service or new geometry dependency is needed.
 
-Use a floor grid, a central table/sculpture and a few simple objects, with Plan and oblique 3D views.
-Plan is convenient for drawing; 3D verifies volume and placement. Pointer operations project onto the
-floor plane; orbit/pan/zoom never edits geometry. Fit view and Reset example are always available.
-Provide Blank floor (table/support context only, no authored guides or results) and Display example
-starts, not separate bespoke scenes for each comparison.
+A few local files suffice: experiment model; pure band/arrangement evaluator; draft/history/file
+helpers; shared viewport and the two entry paths. Re-evaluate the small document synchronously.
+Dispose replaced meshes correctly. No workers, solver, general graph, incremental framework or
+production F/Camera/Stage adapter. These choices are disposable, not a selected product architecture.
 
-- **Draw a guide:** click two or more floor points; Enter finishes, Escape cancels. Click an existing
-  segment to insert a point; drag a point or enter X/Z to revise it; Delete removes the selected point
-  while at least two remain. Show the draft line and point order. Freehand recognition is unnecessary.
-- **Borrow a guide:** select placed objects in order, show numbered centers and a connecting preview,
-  then Use positions. The guide captures those centers once. Moving a sampled object later does not
-  change it. Reordering is explicit through reselection; no inferred sorting or curve fitting.
-- **Use a guide as context:** highlight it and show its name plus Clear context. Keep it active while
-  changing object selection. Selecting another guide replaces it deliberately. Escape first cancels
-  a draft; otherwise it clears active context. Active context is session UI, not saved authored truth.
-- **Make a band:** preview a rectangular-section ribbon along the guide; adjust width and height by
-  handles or numeric fields, then Create. Initial values are 0.20 m wide and 0.60 m high. The preview
-  names the guide and offers Follow guide or Make independent. Following is an explicit choice,
-  never a consequence of a snap. Independent creates a private guide copy, still editable.
-- **Arrange existing objects:** select the objects, choose/use a guide and adjust start/end margins.
-  Preview evenly spaced centers and tangent orientations; Apply accepts one change. Follow guide is
-  an explicit choice. Without it, accept poses only and keep the objects free. The same controls are
-  available from the object-first command list.
-- **Revise a visible result:** select a band or following member. Distinguish Band dimensions,
-  Edit shared guide and Move this object. Guide editing highlights every following consumer before
-  dragging. A following object's move offers Break following and move; cancel leaves it unchanged.
-  Do not silently turn a local move into a shared-guide edit or maintain an invisible override.
-- **Make an exception:** break following for one object while preserving its world pose, then freely
-  move/rotate it. The remaining members retain their slots rather than closing the gap. To include
-  it again, select the desired set and explicitly reapply Arrange; preview any redistribution.
-- **Relate to a support:** optionally pick an endpoint and a movable support marker, then Follow
-  support. Store its current offset so attaching does not jump. Moving that support changes the
-  endpoint, and the band/arrangement follow. Merely drawing near it creates no relation.
-- **Explore:** place/duplicate simple box objects, change their size/color/yaw, create another guide
-  and band, and duplicate an entire connected group as an independent variation. A group copy remaps
-  its internal keys; an external support binding is broken at its last position and disclosed.
-  Duplicate guide group previews the chosen guide, its bands and arrangement members (including
-  detached exceptions); optionally include its support. No reusable-definition library is needed.
-- **Recover:** Undo/Redo, Save JSON, Open JSON, remove a support/guide and repair or detach its
-  dependents. Show the affected objects and reason for an unresolved link; never silently attach
-  to a replacement with a similar name or position.
+Store an experiment version, entrance state, optional keyed guide points, optional band dimensions,
+and three stable object records with dimensions and free poses. For a following arrangement store
+its guide ID, start/end margins, signed side offset and each object's fixed slot index plus following
+flag. No support records, retired-member registry, recovery caches or group-copy subsystem are needed
+in core.
 
-Every continuous drag is one Undo step. Numeric edits commit on Enter or field confirmation; Escape
-restores the prior value. Creating a band/arrangement uses an explicit preview acceptance; ordinary
-valid point, dimension and object drags commit on release without a confirmation ritual. Invalid
-changes keep the last accepted result, retain an editable draft and explain the specific problem.
-Switching entry paths, resetting or opening a file cancels a draft before changing context. Use
-keyboard/numeric equivalents for precision, but do not commission a full accessible-shell rebuild.
+Band geometry is an extruded offset polygon. Reject zero-length/reversing segments, self-intersection,
+overlapping offsets, nonfinite/nonpositive dimensions and miter joins beyond four half-widths. Explain
+whether to widen a corner angle, narrow the band or separate segments. Validate each band; intentional
+overlap between separate pieces is not a global scene error. Units are metres; no fixed point quota.
 
-### 3.2 Useful freedom and honest limits
+For three arrangement slots on guide length L with nonnegative margins a/b, use distances
+`a`, `(a + L - b) / 2`, `L - b`; require `L > a + b`. Offset centers sideways from the sampled guide
+by `d * (-tangentZ, tangentX)`, initially d = 0.50 m, so pieces can stand beside the display edge.
+The same signed offset control serves both entry paths; it is placement, not a clearance solver.
+Use the outgoing tangent at an exact corner.
+Detaching captures that object's evaluated pose and disables its follow flag, leaving the other
+slots unchanged. Re-Arrange previews replacement of all three slots; canceled changes preserve
+exceptions. Object IDs never depend on mesh indices or proximity.
 
-The starter example has one guide, one band and three objects; those are **not quotas**. Allow extra
-points, multiple guides/bands and explicitly selected member sets with the same small primitives.
-That is cheap variation through existing operations, not another modeling subsystem. Allow asymmetry,
-independent exceptions and different starting orders. A table is visual context; collision avoidance
-is manual, not falsely presented as a clearance solver.
+### 5.2 Concrete interactions and correctness
 
-Keep the geometry envelope clear: open planar polylines; rectangular band sections; positive finite
-width/height; nondegenerate segments; no self-intersecting or overlapping band footprint. Use mitered
-joins with a finite limit (four half-widths); refuse tighter corners with a request to widen the
-corner angle. For overlapping offsets, suggest narrowing the band or separating its segments.
-Zero-length segments, reversals and invalid spacing are refused. Validate each band individually;
-different objects may intentionally overlap. Units are metres. No arbitrary 10 m square or
-3–6-point ceiling is necessary.
+- **Guide:** click floor points; Enter finishes, Escape cancels. Drag/numerically edit X/Z, insert
+  on a segment or remove a point while two remain. Borrow by selecting the three pieces in order,
+  previewing numbered centers and accepting Use positions. This samples positions once; later
+  piece motion does not move the guide. Borrowing is offered before creating the edge/arrangement;
+  replacing an in-use guide is outside core, so use Reset or reopen a saved alternative instead.
+- **Create edge:** use active context or choose the guide explicitly. Preview width/height; Create
+  accepts the band with the visible promise that guide edits reshape it. Numeric fields and handles
+  edit dimensions locally. There is no hidden attachment caused by snapping.
+- **Arrange:** choose the guide, preview margins, side offset and all three poses, then Apply.
+  Follow guide must be selected deliberately; otherwise accept free poses only. Both paths offer
+  the same choice.
+- **Revise:** selecting the edge or a following object exposes Edit shared guide and highlights both
+  consumers. Moving/rotating a following piece offers Break following and move; preview/cancel keeps
+  the consequence clear. Other pieces do not redistribute. Free movement/yaw is always available.
+- **Context:** show the active guide's name/highlight and Clear context. Changing object selection
+  keeps it; Escape cancels a draft first, otherwise clears context. Session context is never saved.
+- **Environment:** Entrance switches between the two brief patches/views without moving the design.
+  Fit view and Plan/3D share the same document. A reset starts the supplied fixture afresh; it does
+  not secretly run the creative task. Save first if keeping an alternative.
 
-Closed loops, curved/freehand paths, variable sections, booleans, arbitrary mesh editing, contour
-sculpting, surface hosts and automatic fitting remain outside this E0. If one repeatedly prevents
-the owner from expressing the intended spatial idea, record the actual blocked example and decide
-whether it merits a focused follow-up. Do not preemptively build the capability or conceal the limit
-with a prepared animation. Do not keep polishing the safe demo while ignoring that failure.
+Every accepted drag is one snapshot Undo step; numeric edits commit on Enter/confirmation. Cancel
+and rejected geometry leave accepted state/history unchanged, with an editable draft and a useful
+reason. Preview and acceptance use the same evaluator. Undo/new edit clears Redo. Undo, Open, Reset
+and path switching cancel active gestures so a later pointer-up cannot commit an obsolete draft.
+Reset and Open start fresh history; they are explicit document replacement, not claimed Undo steps.
 
-## 4. Minimal technical design and location
+Refuse deleting a guide still used by the edge or arrangement; explain why, without dropping work.
+The core does not offer object deletion or rebind. Parse/validate JSON before replacing current state;
+invalid geometry, missing IDs, unknown versions or malformed input leave current work intact. Save
+accepted authored values, IDs and follow flags only, never generated meshes, selection or history.
+A real browser reload/Open regenerates the same result and permits further edits. General unresolved
+reference repair is deliberately not implemented; refusal supplies an honest core boundary.
 
-**Proposed location:** a new `e0-spatial-playground` directory under the existing
-[prototypes directory][prototypes]. It does not exist yet. Keep it independently runnable with its
-own package manifest/lockfile and outside root npm workspaces, production imports and public guides.
-Use the existing Native Form Lab's Vite + Svelte 5 + Threlte/Three setup as a donor. Copy only the
-small viewport/input and useful numeric/history pieces, with provenance notes; do not depend on its
-app state or build a shared framework. Use its compatible dependency versions as the starting point.
-No new geometry library, server, AI, worker or production adapter is required.
+## 6. Build increments and outcome-led owner walkthrough
 
-The future prototype README must give executable setup/run commands from its directory:
+These are disposable prototype work chunks, not registered production slices:
 
-```sh
-npm install
-npm run dev
-npm run typecheck
-npm test
-npm run build
-```
-
-Provide those scripts and print the actual local URL. A fresh checkout must reach the playground
-without accounts or other services. Add a link in the prototype index when implementation exists.
-Do not add a broken executable route or empty prototype scaffold in this documentation PR.
-
-### 4.1 Small modules, one evaluation path
-
-| Module responsibility | Minimum contents |
-| --- | --- |
-| Model | Experiment format version; maps of supports, guides, bands, objects and arrangements keyed by non-reused IDs; only authored values and references |
-| Geometry | Polyline length/sampling, offset footprint, validity checks, band extrusion and member poses; pure inputs → geometry/diagnostics |
-| Editing | Draft versus accepted state, typed local edit functions, synchronous validation, snapshot Undo/Redo; context/selection held separately |
-| View and controls | Shared renderer/picking/handles; spatial-context entry path and explicit action list over the same edit functions |
-| Files and examples | JSON validation/load/save; Blank floor and Display example factories; connected-group copy/remap |
-
-This is a suggested separation for a small prototype, not five packages or a plugin API. Use a
-single application and the simplest local file organization. Re-evaluate the whole small example
-on an edit; rebuild/dispose changed meshes correctly. Add incremental machinery only if an observed
-stall prevents owner exploration and a local fix is insufficient. No production architecture decision
-is inferred from this choice.
-
-### 4.2 Authored values and deterministic behavior
-
-- A **guide** stores keyed X/Z points and, optionally, an endpoint's support ID plus offset. A
-  **support** stores its floor position. Moving it resolves the endpoint as support position + offset;
-  all other guide points stay authored independently. No relation solving or dependency cycles.
-- A **band** stores guide ID, width, height and color. An independent band owns a separate guide copy.
-  Geometry is the extruded offset polygon. Generated triangles, render handles and current selection
-  are never saved.
-- An **object** stores ID, box dimensions, color and free pose. An **arrangement** stores guide ID,
-  ordered slot records naming objects, active-follow flags and start/end margins. An object follows
-  at most one arrangement; moving it to another requires an explicit preview and retires/clears
-  its previous slot reference.
-- For N slots, guide length L and margins a/b, slot i lies at
-  `a + i * (L - a - b) / (N - 1)`; a single slot uses the interval midpoint. Margins must be nonnegative
-  and leave a positive interval. Use the outgoing segment tangent at an interior corner. Detaching
-  or deleting a member retires its slot without renumbering survivors; deletion clears the retired
-  slot's object reference. Explicit re-Arrange rebuilds the selected slot set and previews the new
-  spacing; no automatic count-regeneration semantics.
-- For a missing source, retain the last resolved guide coordinates/member poses as explicit recovery
-  values at deletion. Render that frozen state with an unresolved label. Block changes requiring
-  the missing source, allow unrelated work, and offer Pick replacement or Keep independent. Repair
-  previews any jump and names the affected dependents before acceptance. Reusing a name never
-  resolves an old ID. Undo restores the deleted source/keys.
-- Copying a connected group remints all copied IDs and internal references, including retired slots;
-  copying does not accidentally follow the original. This is a one-off independent variant, not
-  schema migration, provenance infrastructure or a definition/instance system.
-
-Apply an edit to a draft copy, evaluate and validate it, then accept it atomically into one snapshot
-history entry. Rejected drafts and canceled gestures never enter history. Undo followed by a new
-edit clears Redo. Reset, load, Undo and entry-path switch cancel the current gesture, so a later
-pointer-up cannot commit the old draft. Everything is synchronous; do not invent background jobs
-or stale-worker protocols merely to test their cancellation.
-
-Save only accepted experiment data, including deliberate recovery values. Open parses and validates
-into a temporary value before replacing the current document; a bad file leaves current work intact.
-Opening starts a fresh history and clears session context. Unknown format versions are refused with
-an explanation; E0 needs no migration system. Regenerate all meshes after a real browser reload.
-Missing references are loadable only as explicit unresolved records, never silently repaired.
-
-## 5. Coherent build increments
-
-These are implementation work chunks for the disposable prototype, **not production slices**. Do
-not register them in the phase/gate/release lists. Each leaves something runnable; carry correctness
-along with the interaction rather than adding a hardening phase after a polished mockup.
-
-| Increment | Build | Completion check |
+| Increment | Runnable delivery | Exit check |
 | --- | --- | --- |
-| A — Make and revise real form | Standalone scaffold, floor/Plan/3D views, draw/edit polyline, band evaluator, explicit source controls, preview/refusal and snapshot Undo/Redo | Draw a guide from blank, create a band, change width and a point, cancel an invalid edit and Undo the last accepted change; geometry really responds |
-| B — Carry one guide across results | Primitive placement/selection, arrangement sampling, spatial-context continuity, direct result→guide editing, visible affected scope, member detachment and support endpoint binding | Make band + arrangement on one guide, revise from either result, move support and keep one exception still. Repeat via object-first controls without losing capabilities |
-| C — Start elsewhere and return | Ordered-position borrowing, multiple guides/results, independent group copy, missing-source repair and JSON Save/Open | Begin from placed objects, make a band using their sampled guide; create an independent variation; reload a saved following/exception state and repair a removed source |
-| D — Deliver the owner playground | Complete the walkthrough below through UI, focused correctness checks, clear controls/limits/run instructions and concise findings with useful saved examples | Owner can run both entry paths, depart from the example and judge the tradeoffs; no scripted result or developer-only state manipulation is required |
+| A — Express a layout | Shared fixture/views; supplied piece positioning/yaw; draw or borrow a guide; real band; explicit source controls; preview/refusal and snapshot Undo | From an empty composition the owner can make a personally intended edge and grouping, not just load a finished display |
+| B — Compare creation and revision | Active-context path; same competent explicit path; arrangement/following; shared edit scope and local exception | Both can attempt the entrance-change brief while preserving the focal piece; no baseline capability is withheld |
+| C — Return and decide | JSON Save/Open, focused correctness checks, instructions and saved original/revised examples | Reopened work remains editable; the owner can complete the challenge, try a different intention and record a verdict |
 
-If B only changes where controls sit, revise the contextual sequence before adding polish. If C
-requires a general graph, kernel or complex reference platform, simplify the mechanism or expose the
-unsupported case. Stop for an owner scope decision only when the creative question cannot be answered
-within these primitives; do not use an artificial hour limit as the decision. Do not expand to a
-second engine to rescue an interaction that has not demonstrated value.
+Optional relationship-depth work does not block C. If the contextual path only relocates controls,
+report that finding rather than automatically rebuilding it until it looks novel. Stop for an owner
+scope decision if the intended job cannot be answered with the core primitives, or if completing it
+would require general geometry/relationship machinery. Otherwise finish the core and let evidence,
+not elapsed hours or a feature-completeness checklist, determine the next investment.
 
-## 6. Runnable owner walkthrough
+**Owner run:** install/start using the future prototype README; read the outcome brief in §2 before
+using the controls. Make and save the first display, naming the quality to preserve. Switch Entrance,
+revise to the changed brief, then save separately. Judge the two outcomes from Plan and the entrance
+view. Try the other entry path from the same initial fixture, and then a personally chosen transfer
+intention. Use whichever available operations serve the design; there is no mandatory modeling recipe.
 
-The eventual README should reproduce this sequence with the final control labels. No facilitator,
-recruitment, timed session or postponed return is required. Keep the walkthrough available beside
-free exploration; it is a way to expose behavior, not the only permitted path.
+Finally reload/Open an accepted result and continue revising. Try Undo/Redo, cancel a change, create
+an invalid tight corner and try a bad file. These are a short engineering check after creative work,
+not the definition of success for the creative challenge. There is no facilitator, mandatory waiting
+period, participant recruitment or formal evidence dataset.
 
-1. **Start and make.** Run the prototype; choose Blank floor and Spatial idea first. Draw an open
-   guide around the table, finish it, create a 0.20 m × 0.60 m band with Follow guide explicitly
-   selected. Change height with a handle and width numerically. Inspect it in 3D.
-2. **Carry the idea.** Place/select three boxes and arrange them on the still-active guide, with
-   start/end margins of 0.30 m and Follow guide selected. The guide should not need to be redrawn or
-   rediscovered. Pick the band, Edit shared guide and drag a point. Predict and inspect both results.
-3. **Keep a deliberate exception.** Break the middle object's following, move/rotate it, then edit
-   the guide again. It stays put; the remaining members retain their slots. Alter band height alone
-   and verify that this changes neither the guide nor the objects.
-4. **Move context.** Attach the first endpoint to the support marker with Follow support. Move the
-   marker; the endpoint, band and following objects respond, while the exception and free table do
-   not. Undo, Redo and cancel a drag. Explain the scope from the visible cues.
-5. **Try the explicit path.** Reset to Display example, which supplies a table, support, an unbound
-   guide and three free boxes. Use Object first to create the band and arrangement with that guide.
-   Revise and detach as above. Switch entry paths on the same document. Is there a real difference
-   in carrying intent, or just different access to the same sensible actions?
-6. **Reverse the starting point.** Start blank, place three or more boxes in an irregular arrangement
-   of your own, select them in order and Use positions. Make a band from that guide. Move an original
-   box: the sampled guide correctly stays still. Explicitly arrange a chosen set along it if desired.
-   Compare the equivalent source-building sequence through Object first.
-7. **Depart from the demo.** Add a point, another band with different dimensions, or a second guide.
-   Duplicate a connected group independently and edit it; the original stays unchanged. Create a
-   deliberately irregular result rather than reproducing a target. Note any useful intention blocked.
-8. **Return and recover.** Save JSON, reload the browser and open it. Verify dimensions, source
-   links and the detached object's pose; keep editing. Delete a support or guide. Inspect the frozen
-   unresolved result, try explicit repair or Keep independent, then Undo. Try opening malformed JSON;
-   current work must survive. Make an invalid tight corner and recover without losing accepted work.
+## 7. Review readiness and decision
 
-The Display example uses floor coordinates (−2,−1) → (−2,1) → (2,1), a support marker at the first
-point and a central 2 m × 1 m table. Objects start free beside it. The example is generated from the
-same editable model as blank creation; it must not contain bespoke behaviors or baked final results.
-The owner may save alternate examples and switch order freely; this is not a controlled study.
+Engineering delivery requires working geometry, both fair entry paths and the complete core loop.
+Use a few deterministic checks: hand-calculated straight/right-angle band dimensions and member
+positions; preview/commit agreement; shared revision with a detached piece unchanged; Undo/new edit
+and canceled gestures; JSON roundtrip retaining source/IDs/following and rejecting a bad file without
+mutation. Document a numerical tolerance appropriate to the metre-scale fixture. Run the browser
+walkthrough and the prototype's build/typecheck/tests, plus repository-required docs/architecture
+checks for its implementation PR. No platform matrix, production benchmarks or synthetic failure
+infrastructure. Investigate actual visible stalls or leaks if encountered.
 
-## 7. Completion checks and decision
+Lost accepted work, silent retargeting, invalid accepted geometry or unequal comparison capability
+blocks readiness. A visible refusal of an unsupported action is honest; it is still recorded if it
+blocks the intended result. E0 establishes neither production correctness nor long-session scale.
 
-### 7.1 Engineering ready for owner review
+Deliver run instructions, original/revised JSON examples and a short decision note:
 
-Verify the following at the prototype's own scale. Use a small set of deterministic model/geometry
-checks and a real browser walkthrough, not production conformance machinery.
+1. Intended result and preserved quality; whether each path achieved the brief after revision.
+2. Concrete moments where context helped, merely saved a click, demanded reconstruction or caused
+   surprise; any intention abandoned and why. Record order/familiarity limits without scoring people.
+3. Owner verdict: keep specific behavior, simplify to explicit controls, revise the job, defer or
+   reject. The owner may stop on a negative result; useful prototypes do not require positive claims.
+4. Relationship-depth questions deferred; any **one** proposed extension with its observed need,
+   cost in added mechanisms and separate authorization still required.
 
-| Check | Sufficient evidence |
-| --- | --- |
-| Geometry is real and correct | Straight and right-angle bands have expected width/height and finite valid mesh data; known line lengths give expected member positions. Independent hand-calculated examples, not the evaluator checking itself. Use a documented numeric tolerance appropriate to metre-scale inputs |
-| Both paths have equal capability | Create matching authored inputs through both paths and obtain matching geometry, relationships and exceptions; switches change session UI only |
-| Revision and recovery are trustworthy | Shared edit affects intended consumers; detached/deleted slots do not retarget; support removal/replacement diagnoses; independent copies do not change the original |
-| Undo and cancellation work | One drag/creation is one Undo entry; canceled/invalid drafts change nothing; Undo/new edit clears Redo; Reset/Open during a draft prevents its later commit |
-| Persistence is genuine | Export accepted source, reload, import and regenerate the same values/IDs/relationships; malformed/version-incompatible files leave current work intact; unresolved state remains explicit |
-| The playground can be explored | Full UI walkthrough and an owner-chosen variation run in the owner's normal browser, including repeated revisions. Fix visible stalls or accumulating discarded meshes if encountered; report the device/browser and actual limitations |
+The owner records product acceptance separately from engineering readiness. Core E0 may close with
+optional depth explicitly deferred. Preference or a scripted demonstration alone cannot establish
+creative value; the outcome and revision supply the evidence. Broader creator/competitive testing
+remains optional follow-up to a named claim.
 
-Build/typecheck and the focused prototype tests must pass; run the repository's required documentation
-and architecture checks when opening the implementation PR. Do not add cross-engine/CPU matrices,
-percentile latency budgets, memory-plateau certification, 100-edit benchmark campaigns, performance
-telemetry pipelines or synthetic worker-crash tests. A specific observed failure may justify a
-focused measurement. No performance claim is made beyond the exercised example and browser.
+No production source model, API, kernel, UX grammar, integration, R1 scope, slice count or release is
+selected. Preserve the runnable evidence if useful; do not promote snapshot history, whole-document
+recomputation or experiment JSON into production because they were convenient here.
 
-Lost accepted work, silent retargeting, acceptance of invalid geometry or a nonfunctional comparison
-blocks delivery as ready. Correct visible refusal is acceptable within the declared envelope.
-A known unsupported shape is a product finding, not permission to fake the result.
-
-### 7.2 Owner decision and sufficient record
-
-Deliver the runnable link/commands, this walkthrough, a couple of saved examples and a short findings
-note: what works, what is prepared, what is unsupported, bugs/limitations and the actual comparisons
-worth trying. Capture a short screen sequence only if it clarifies a finding. No event-logging schema,
-time coding, research dataset, preference score or evidence dossier is required.
-
-The owner evaluates whether context continuity is useful, consequences are legible, local exceptions
-are comfortable, reverse-start creation transfers, and enough freedom exists to make something
-personally intended. Record the concrete moments supporting the verdict, not numerical pass scores.
-
-| Owner verdict | Closeout |
-| --- | --- |
-| Spatial idea first earns its continuity | Keep the specific demonstrated behaviors and name remaining questions; do not infer a general intent language |
-| Explicit controls work as well or better | Prefer them; retain any useful contextual shortcut without claiming workflow differentiation |
-| Relationships help but active context is confusing | Keep explicit following/source reuse; simplify or remove sticky context |
-| The playground exposes a meaningful creative gap | Name the attempted result, why the current primitives cannot answer it and the smallest follow-up the owner wants; no automatic engine expansion |
-| Evidence is unconvincing or the direction is unwanted | Record rejection or uncertainty and stop; a polished prototype is not an obligation to proceed |
-
-E0 closes when the playground is technically reviewable and the owner records a direction or an
-explicit decision to stop/defer. Engineering completion and product acceptance remain distinct.
-External testing may follow at the owner's choice; it does not hold this closeout open. Implementers
-must not substitute their preference for the owner's decision.
-
-Production representation, APIs, domain integration, kernels, final UX, supported scale and R1 scope,
-slice count and release remain open. Snapshot history, small-scene recomputation and experiment JSON
-are disposable choices. No code is promoted because it exists. Preserve runnable evidence if useful;
-record what should be discarded before any separately authorized production work.
-
-[g0-e0]: https://github.com/Biskiq/spatial-sketch-editor/blob/f1a3cf553a5bba26c5bbdbe3761cf234ece1f938/docs/roadmap/t5-expressive-geometry/g0-reconciled-proposal/README.md#10-earliest-evidence-earn-the-workflow-and-the-architecture-together
+[ratification]: ../../reference/decisions/t5-g0-ratification-2026-10-27.md
+[architecture]: ../../reference/architecture.md#expressive-creation-and-revision-destination
+[e0-boundary]: ./README.md#e0-next-experimental-decision-gate
+[g0-e0]: ./g0-reconciled-proposal/README.md#10-earliest-evidence-earn-the-workflow-and-the-architecture-together
 [proofs]: ../../../broad-research/native-creative-depth/proof-agenda.md
 [lab]: ../../../prototypes/native-form-lab/README.md
-[shape]: ../../../prototypes/native-object-shaping/README.md
 [prototypes]: ../../../prototypes/README.md

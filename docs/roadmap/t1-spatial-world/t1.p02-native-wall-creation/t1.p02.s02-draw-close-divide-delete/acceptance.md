@@ -2,8 +2,8 @@
 
 ```text
 AUTHORITY: NONE — the phase README owns slice status; this stub records acceptance and recovery.
-STATUS:    ACCEPTED (`owner-override`, 2026-10-27) and SHIPPED on PR #201. The P1 merge commit is
-           still owed; the recovery anchor is reachable only through it.
+STATUS:    ACCEPTED (`owner-override`, 2026-10-27) and SHIPPED on PR #201; P1 merge commit
+           ce159a1e. The anchor and tag were verified reachable from main after the merge.
 SOURCE:    PR #201 implementation and harness revision 64b9435d; documentation head 36c18db9.
 TIER:      architecture-integration; integrated exhaustive proof remains T1.P02.S04.
 INTEGRATION ROUTE: ../t1.p02.s04-integrated-final-gate/acceptance.md
@@ -108,11 +108,11 @@ regressions     apps/editor/tests/lib/layout/layout-drawing-adapter.test.ts
 ```text
 git show 36c18db9:docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md
 anchor  36c18db9 (the full acceptance, plan and review-handoff bodies are all present here)
- tag    closed/T1.P02.S02 → 36c18db9
+ tag    closed/T1.P02.S02 → 36c18db9 (pushed)
+ merge  ce159a1e (P1 merge commit of PR #201; anchor and tag target verified ancestors on main)
 ```
 
-P1 recovery requires a **merge commit** (no squash, no rebase). The merge owner verifies the anchor is
-an ancestor of `main` and that the tag is pushed after the merge.
+P1 recovery requires a **merge commit** (no squash, no rebase); `ce159a1e` preserves the anchor.
 
 ## Preservation report
 
@@ -124,7 +124,7 @@ reference promotions:            0   no new reference/* truth; M4 status updated
 renderable evidence archived:    28 files / 3.8 MiB   final 64b9435d PNGs, byte-identical copies
 evidence stubs / manifests:      1   archive manifest at the copied bundle
 transient artifacts removed:     1   closeout-blockers.md (superseded by this record)
-historical anchor:               36c18db9 · tag closed/T1.P02.S02 (pushed after merge)
+historical anchor:               36c18db9 · tag closed/T1.P02.S02 (pushed) · merge ce159a1e
 new live → archive prose links:  0
 manual-owed verification rows:   1   S02 formal performance family (deferred above to S04)
 remaining deferred items:        4   performance family, bundle hard miss, narrow-shell stale height,
