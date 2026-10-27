@@ -1,14 +1,15 @@
 # T1.P02.S02 — closeout blockers
 
-**Slice:** T1.P02.S02 · **Branch:** `t1-p02-s02-draw-close-divide-delete` · **Tested head:** `f26b227c`
+**Slice:** T1.P02.S02 · **Branch:** `t1-p02-s02-draw-close-divide-delete` · **Tested head:** `64b9435d`
 **Decision:** **closeout BLOCKED — do not record acceptance, do not mark shipped.**
 
 T3 accepted the shared Head/F4 diff at `bf9007ff`
-([review](./t3-implementation-review.md)). After that verdict the branch carries three in-scope
+([review](./t3-implementation-review.md)). After that verdict the branch carries five in-scope
 commits: `8db7baf2` (Card clears the measured lower column at constrained width), `132a7aac` (the
-browser journey) and `f26b227c` (the lower-column height comes from the observed box, keeping one
-viewport measurement). The gate and browser pass below are recorded at `f26b227c`; they do not claim
-that the later shell repair was separately accepted by T3.
+browser journey), `f26b227c` (the lower-column height comes from the observed box, keeping one
+viewport measurement), `dc877396` (the completed browser matrix) and `64b9435d` (palette-bearing
+clearance). The gate and browser pass below are recorded at `64b9435d`; the targeted T3 review of
+the shell repair is recorded separately in [its review](./t3-shell-repair-review.md).
 
 The [slice plan](./implementation-plan.md#acceptance-and-verification) declares the slice's
 acceptance criteria. The browser journey is now recorded, but the owner-run performance family is
@@ -33,11 +34,11 @@ The harness refuses a partial-tier formal pass, so L runs as well as the require
 The handoff records only a **harness smoke, not acceptance evidence** (grid-S, n=1 rows) and says the
 plan's performance acceptance "stays with the designated M2 under S06's method… No agent run is
 presented as that evidence." A Bench pass needs owner direction. No S/M row, power state or
-owner-operated pass is recorded at `f26b227c`.
+owner-operated pass is recorded at `64b9435d`.
 
 ## Recorded evidence
 
-### Browser journey — `f26b227c`
+### Browser journey — `64b9435d`
 
 `apps/editor/perf/run-t1-s02-browser-qa.mjs` served the ordinary production build through
 `vite preview`, ran the local API against a fresh private Postgres database created for this pass, and
@@ -46,29 +47,32 @@ with one worker, no retries:
 
 | Project | Result | Evidence |
 | --- | --- | --- |
-| `chromium` (Playwright build) | 4/4 tests, 20/20 rows passed | [JSON](./evidence/2026-10-27/f26b227c/t1-s02-browser-evidence.json) · [machine facts](./evidence/2026-10-27/f26b227c/t1-s02-machine-facts.json) |
-| `chrome` (branded `Google Chrome 156.0.8078.48`) | 4/4 tests, 20/20 rows passed | [JSON](./evidence/2026-10-27/f26b227c-chrome/t1-s02-browser-evidence.json) · [machine facts](./evidence/2026-10-27/f26b227c-chrome/t1-s02-machine-facts.json) |
+| `chromium` (Playwright build) | 4/4 tests, 28/28 rows passed | [JSON](./evidence/2026-10-27/64b9435d/t1-s02-browser-evidence.json) · [machine facts](./evidence/2026-10-27/64b9435d/t1-s02-machine-facts.json) |
+| `chrome` (branded `Google Chrome 156.0.8078.48`) | 4/4 tests, 28/28 rows passed | [JSON](./evidence/2026-10-27/64b9435d-chrome/t1-s02-browser-evidence.json) · [machine facts](./evidence/2026-10-27/64b9435d-chrome/t1-s02-machine-facts.json) |
 
-Every row names revision `f26b227ca987bf1a5c66f7e3f9139831f79ef01d`, its viewport and its
-reduced-motion state. The recorded rows cover:
+Every row names revision `64b9435d`, its viewport and its reduced-motion state. The recorded rows
+cover:
 
 - **starter** — baseline enclosure, a free Wall joined deliberately to an existing Junction, Plan/3D
   agreement, Room division, Wall deletion with its disclosure, one Undo/Redo for the accepted delete,
   and Save/reload preserving identities;
 - **empty** — typed enclosure, Plan/3D agreement, rejected numeric entry, exact Card precision,
-  keyboard finish/backtrack/Escape;
+  keyboard finish/backtrack/Escape, one Undo/Redo for the accepted chain, Room division, division
+  read in 3D, divider deletion with its Room reconciliation, and the reconciled result read in 3D;
 - **policy** — crossing without a Junction, collinear overlap, disconnected nested ring and invalid
   palette options all refusing with zero partial source;
 - **shell** — 900×700 (below the 72 rem rule) with reduced motion: the Card and the measured lower
-  column do not intersect and the page has no horizontal overflow, Head Find arms the dock tool,
-  selection survives a contributed task and closing it does not re-arm Ink, and the unsaved
-  replacement guard preserves the edited source on Cancel.
+  column do not intersect, the palette-bearing column does not intersect the Card, and the page has
+  no horizontal overflow; Head Find arms the dock tool, selection survives a Layout task and a Scene
+  Library task, closing either does not re-arm Ink, the Experience Guide mounts and returning to
+  World leaves Ink disarmed, and the unsaved replacement guard preserves the edited source on
+  Cancel.
 
 Screenshots for the captured rows are beside each JSON (`t1-s02-*.png`). These are browser journeys
 only: they do not measure latency, frame timing or memory, and they do not substitute for the
 owner-run performance pass above.
 
-### Automated gate — `f26b227c`
+### Automated gate — `64b9435d`
 
 Run on the committed tree, all from the repository root:
 
@@ -84,18 +88,21 @@ npm run check:api           tsc clean
 ```
 
 `test:fast` and `test:heavy` are subsets of `test:full`, which passed at this revision. The DB-backed
-API suite was last recorded at the round-2 revision (`78705c0d`); this shell/page repair changes no API
-contract, and it was not re-run for this pass. The earlier T3 review's gate at `bf9007ff` remains
-recorded in [t3-implementation-review.md](./t3-implementation-review.md).
+API suite was last recorded at the round-2 revision (`78705c0d`); the later repairs change the shell,
+the browser spec and documentation only, no API contract, so it was not re-run. The earlier T3
+review's gate at `bf9007ff` remains recorded in
+[t3-implementation-review.md](./t3-implementation-review.md); the targeted shell-repair review is in
+[t3-shell-repair-review.md](./t3-shell-repair-review.md).
 
 ## Owner decisions required
 
-1. Direct the owner-run M2 performance pass on S06's method and record it (or record an explicit
-   owner ruling for the performance rows, including the Stage first-load delta). The integration
-   measurement is 456.0 KiB JS br on the merged tree, +9.0 KiB over the #199 base; both exceed the
-   ≤400 KiB hard budget.
-2. Confirm the later shell repair (`8db7baf2`, `f26b227c`) as part of the reviewed implementation, or
-   return it for T3 review. Its gate and browser pass are recorded above.
+1. Direct the owner-run M2 formal acceptance pass and record it (or record an explicit owner ruling
+   for the performance rows, including the Stage first-load delta). The integration measurement is
+   456.0 KiB JS br on the merged tree, +9.0 KiB over the #199 base; both exceed the ≤400 KiB hard
+   budget.
+2. Confirm the later shell repair (`8db7baf2`, `f26b227c`) and the completed browser matrix
+   (`dc877396`, `64b9435d`) as part of the reviewed implementation. The targeted T3 review accepts
+   the repair with one non-blocking residual, and this pass's gate/browser evidence is recorded above.
 3. Only then rerun `slice-closeout`; acceptance, the phase register's shipped row, M4 re-arm and the
    baton are untouched until that decision.
 

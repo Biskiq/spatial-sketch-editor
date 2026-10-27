@@ -6,8 +6,8 @@ PHASE: T1.P02 Native Wall creation →
 SLICE: S02 draw, close, divide and delete — implementation complete on PR #201
        (`t1-p02-s02-draw-close-divide-delete`). T3 accepted the shared Head/F4 diff at `bf9007ff`
        (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/t3-implementation-review.md);
-       the later constrained-width Card repair and the browser journey are at `f26b227c`, where the
-       four-test journey passed all 20 rows in Chromium and branded Chrome.
+       the later constrained-width Card repair and the completed browser journey are at `64b9435d`,
+       where the four-test journey passed all 28 rows in Chromium and branded Chrome.
        **Slice closeout is BLOCKED, not accepted or shipped:** the browser journey is recorded, but
        the plan's owner-run M2 performance acceptance is not
        (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/closeout-blockers.md).
@@ -20,9 +20,9 @@ ACC:   T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27,
        post-Bench-2 attribution and the T3/T2 shared-boundary review are recorded; the closeout stub
        carries the ratified disposition, budgets and follow-ons. Battery qualification, grid-XL
        timing and the sweep latency rows are assigned to S04.
-NEXT:  Direct and record the owner-run M2 performance pass, confirm the later shell repair as part of
-       the reviewed implementation (or return it for T3 review), then rerun `slice-closeout` on the
-       same branch. No other T1 slice is released: S03–S04 stay held pending their own releases, and
+NEXT:  Direct and record the owner-run M2 formal performance pass, confirm the later shell repair and
+       completed browser matrix as part of the reviewed implementation, then rerun `slice-closeout`
+       on the same branch. No other T1 slice is released: S03–S04 stay held pending their own releases, and
        the [release list](../../roadmap/now.md) is the only permission list. No benchmark,
        attribution, E5 or review rerun is owed for S06.
 BLOCKERS: S02 acceptance evidence is incomplete — the owner-run M2 performance rows are not recorded
