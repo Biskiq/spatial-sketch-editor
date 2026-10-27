@@ -18,9 +18,13 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+	classifyWallIntersection,
 	createEmptyWallFirstLayoutDocument,
 	detectUnsupportedChainConnections,
+	planInsertWallCurveKnot,
+	planMoveWallCurveKnot,
 	planWallChain,
+	wallCenterlineSamples,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
 	type WallEndpointJunctionSnap
@@ -206,5 +210,117 @@ describe('T1.P02.S02 — drawing policy refusals', () => {
 		expect(
 			detectUnsupportedChainConnections({ baseline, points: [p(2, 2), p(2, 2)], close: false })
 		).toBeNull();
+	});
+});
+
+/**
+ * A curved host Wall: the chain `(0, 0) → (6, 0)` bent at its own midpoint up to
+ * `(3, 2.5)` through the canonical curve planners, so the Wall's endpoint chord
+ * and its real centerline disagree in exactly the two ways a drawing policy has
+ * to answer — a leg the arc crosses and the chord does not, and a leg the chord
+ * crosses and the arc does not.
+ */
+function curvedBaseline(): { baseline: LayoutDocumentWallFirst; wallId: string } {
+	const straight = chain(baseDocument(), [p(0, 0), p(6, 0)]);
+	const wallId = wallBetween(straight, p(0, 0), p(6, 0));
+	const inserted = planInsertWallCurveKnot(straight, wallId, 3, { knotId: 'bend-1' });
+	if (inserted.kind !== 'success') throw new Error(`curve fixture: ${JSON.stringify(inserted)}`);
+	const bent = planMoveWallCurveKnot(inserted.document, wallId, 'bend-1', p(3, 2.5));
+	if (bent.kind !== 'success') throw new Error(`curve fixture: ${JSON.stringify(bent)}`);
+	return { baseline: bent.document, wallId };
+}
+
+/** The host Wall's canonical sampled centerline, as the kernel reads it. */
+function hostSamples(baseline: LayoutDocumentWallFirst, wallId: string) {
+	const wall = baseline.walls.find((candidate) => candidate.id === wallId)!;
+	const start = baseline.junctions.find((junction) => junction.id === wall.startJunctionId)!.point;
+	const end = baseline.junctions.find((junction) => junction.id === wall.endJunctionId)!.point;
+	const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+	if (!sampled) throw new Error('the curve fixture does not sample');
+	return sampled.samples;
+}
+
+describe('T1.P02.S02 — drawing policy reads the Wall geometry the document stores', () => {
+	it('refuses a leg the curved centerline crosses while the endpoint chord is clear', () => {
+		const { baseline, wallId } = curvedBaseline();
+		const host = baseline.walls.find((candidate) => candidate.id === wallId)!;
+		const start = baseline.junctions.find((junction) => junction.id === host.startJunctionId)!.point;
+		const end = baseline.junctions.find((junction) => junction.id === host.endJunctionId)!.point;
+		// A point ON the bow's own left branch (one the document really has), reached
+		// by a horizontal leg from outside the Wall.
+		const onArc = hostSamples(baseline, wallId).find(
+			(sample) => sample.point[0] > 0.5 && sample.point[0] < 3 && sample.point[1] > 0.8
+		)!.point;
+		const leg: [LayoutVec2, LayoutVec2] = [p(-1, onArc[1]), p(onArc[0] + 1, onArc[1])];
+		// The chord the old reading used is clear: this refusal can only come from the
+		// arc the creator actually drew into.
+		expect(classifyWallIntersection({ id: 'leg', start: leg[0], end: leg[1] }, { id: wallId, start, end })).toMatchObject({
+			kind: 'none'
+		});
+
+		expect(detectUnsupportedChainConnections({ baseline, points: leg, close: false })).toMatchObject({
+			code: 'unconnected_crossing',
+			wallIds: [wallId]
+		});
+
+		// The deliberate repair the words name: declaring the host allows the same
+		// draft, because the planner owns the split it implies.
+		expect(
+			detectUnsupportedChainConnections({
+				baseline,
+				points: leg,
+				close: false,
+				endpointHostSnaps: [{ pointIndex: 1, wallId }]
+			})
+		).toBeNull();
+	});
+
+	it('allows a leg that only crosses the chord where the curved Wall has no geometry', () => {
+		const { baseline, wallId } = curvedBaseline();
+		const host = baseline.walls.find((candidate) => candidate.id === wallId)!;
+		const start = baseline.junctions.find((junction) => junction.id === host.startJunctionId)!.point;
+		const end = baseline.junctions.find((junction) => junction.id === host.endJunctionId)!.point;
+		// Straight up through the chord's midpoint: under the bow, clear of the arc.
+		const points = [p(3, -1), p(3, 1)];
+		expect(
+			classifyWallIntersection({ id: 'leg', start: points[0]!, end: points[1]! }, { id: wallId, start, end })
+		).toMatchObject({ kind: 'proper-crossing' });
+
+		expect(detectUnsupportedChainConnections({ baseline, points, close: false })).toBeNull();
+		// The permission is real work, not a refusal one layer down: the canonical
+		// planner accepts the same draft against the same baseline.
+		const plan = planWallChain({
+			baseline,
+			points,
+			close: false,
+			capture: freshCapture(),
+			levelId: baseline.floor.id
+		});
+		expect(plan.kind).toBe('success');
+	});
+
+	it('leaves an undeclared coincidence at the curved Wall\u2019s own station alone, but not a crossing', () => {
+		const { baseline } = curvedBaseline();
+		const samples = hostSamples(baseline, baseline.walls[0]!.id);
+		const station = samples[0]!.point;
+		// A leg that leaves the station below the bow touches the Wall at that one
+		// point: an undeclared coincidence between independent groups is permitted
+		// geometry, exactly as it is for a straight host.
+		expect(
+			detectUnsupportedChainConnections({ baseline, points: [station, p(1.5, 0.2)], close: false })
+		).toBeNull();
+
+		// The same start, aimed THROUGH the bow: the station coincidence is ignored
+		// and the crossing it really makes is what refuses.
+		const through = samples.find(
+			(sample) => sample.point[0] > 0.5 && sample.point[0] < 3 && sample.point[1] > 0.8
+		)!.point;
+		expect(
+			detectUnsupportedChainConnections({
+				baseline,
+				points: [station, p(through[0] + 1, through[1])],
+				close: false
+			})
+		).toMatchObject({ code: 'unconnected_crossing' });
 	});
 });

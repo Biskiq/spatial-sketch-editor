@@ -19,19 +19,38 @@
  * caller passes in `endpointJunctionSnaps` / `endpointHostSnaps`.
  *
  * This module is one bounded predicate over the SAME primitives the planner
- * uses — `classifyWallIntersection`, the general Wall/Junction connectivity
- * test and the Room boundary polygon — never a second compiler and never a
- * geometry reconstruction. It answers only "would this draft draw into
- * geometry it is not connected to?"; the planner still owns every identity,
- * allocation and gate.
+ * uses — `classifyWallIntersection`, the sampled curve-level companion, the
+ * general Wall/Junction connectivity test and the Room boundary polygon — never
+ * a second compiler and never a geometry reconstruction. It answers only "would
+ * this draft draw into geometry it is not connected to?"; the planner still owns
+ * every identity, allocation and gate.
+ *
+ * Geometry is read as the document actually stores it: `classifyWallIntersection`
+ * is exact between straight Walls, and a curved host is decided on its canonical
+ * sampled centerline (`wallCenterlineSamples` + `sampledWallsCross`), because a
+ * bow can cross a leg its endpoint chord never reaches and a chord can cross a
+ * leg the drawn Wall never touches.
  */
 import type { LayoutVec2 } from './layout-coordinates';
-import type { LayoutDocumentWallFirst } from './layout-wall-first-types';
+import type { LayoutDocumentWallFirst, LayoutWall } from './layout-wall-first-types';
 import type {
 	WallEndpointHostSnap,
 	WallEndpointJunctionSnap
 } from './layout-wall-chain';
-import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
+import {
+	CURVE_SELF_INTERSECTION_TOLERANCE,
+	sampledPolylineIntersects,
+	type CurveSample
+} from './layout-geometry-curve';
+import { coincidesAsJunction } from './layout-junction-identity';
+import { wallCenterlineSamples } from './layout-wall-centerline';
+import {
+	classifyWallIntersection,
+	sampledWallExtentsOverlap,
+	sampledWallsCross,
+	type SampledTopologyWall,
+	type TopologySegment
+} from './layout-wall-topology';
 import {
 	topologyComponentKeyByJunctionId,
 	topologyComponentKeyByWallId,
@@ -136,6 +155,145 @@ function pointOnSegment(a: LayoutVec2, b: LayoutVec2, point: LayoutVec2): boolea
 }
 
 /**
+ * One drawn leg as the canonical sampled polyline: a straight leg is two
+ * stations, sampled through the same curve evaluator every centerline uses.
+ * `null` only when the kernel cannot derive it, which leaves the exact chord
+ * classifier as the only available reading for that pair.
+ */
+function legPolyline(leg: TopologySegment): readonly CurveSample[] | null {
+	const sampled = wallCenterlineSamples(
+		{ id: leg.id, centerline: { kind: 'line' } },
+		[leg.start[0], leg.start[1]],
+		[leg.end[0], leg.end[1]],
+		'forward'
+	);
+	return sampled?.samples ?? null;
+}
+
+/**
+ * Whether one drawn leg meets a **curved** host Wall's real centerline.
+ *
+ * The chord classifier is exact between straight Walls and blind to curvature:
+ * a bow can cross a leg its endpoint chord never reaches, and a chord can cross
+ * a leg the drawn Wall never touches. This answers the geometry the document
+ * actually stores, through the SAME sampled authority the topology gate runs
+ * (`wallCenterlineSamples` + `sampledWallsCross`) — never a second intersection
+ * recipe.
+ *
+ * A leg endpoint coincident with one of the host's own endpoint **stations** is
+ * the non-contact the chord classifier also leaves alone: an undeclared
+ * coincidence between independent groups is permitted geometry, never
+ * connectivity. `sampledWallsCross` ignores exactly that station — it is the
+ * kernel's own shared-connectivity seam — and still reports every other
+ * crossing along either curve.
+ */
+function curvedHostContact(input: {
+	readonly wall: LayoutWall;
+	readonly start: LayoutVec2;
+	readonly end: LayoutVec2;
+	readonly samples: readonly CurveSample[];
+	readonly leg: TopologySegment;
+	readonly legSamples: readonly CurveSample[];
+}): boolean {
+	const stationJunctionId =
+		coincidesAsJunction(input.leg.start, input.start) || coincidesAsJunction(input.leg.end, input.start)
+			? input.wall.startJunctionId
+			: coincidesAsJunction(input.leg.start, input.end) || coincidesAsJunction(input.leg.end, input.end)
+				? input.wall.endJunctionId
+				: null;
+	if (stationJunctionId === null) {
+		return sampledPolylineIntersects(
+			input.samples,
+			input.legSamples,
+			CURVE_SELF_INTERSECTION_TOLERANCE
+		);
+	}
+	const station = stationJunctionId === input.wall.startJunctionId ? input.start : input.end;
+	// The kernel ignores the one consecutive pair that meets at the shared station:
+	// the host is oriented to end there and the leg to start there, so the leg's
+	// samples are reversed when its own **end** is the coincident endpoint. The
+	// leg's `endJunctionId` is a placeholder the kernel never reads.
+	const leg: SampledTopologyWall = {
+		id: input.leg.id,
+		startJunctionId: stationJunctionId,
+		endJunctionId: `${input.leg.id}:open`,
+		samples: coincidesAsJunction(input.leg.end, station) ? [...input.legSamples].reverse() : input.legSamples
+	};
+	return sampledWallsCross(
+		{ id: input.wall.id, startJunctionId: input.wall.startJunctionId, endJunctionId: input.wall.endJunctionId, samples: input.samples },
+		leg,
+		stationJunctionId
+	);
+}
+
+/**
+ * The refusal this leg earns against one host Wall, or `null` when the leg may
+ * reach the planner.
+ */
+function legAgainstHost(input: {
+	readonly wall: LayoutWall;
+	readonly start: LayoutVec2;
+	readonly end: LayoutVec2;
+	/** The host's canonical sampled centerline; `null` for a straight (`line`) host. */
+	readonly samples: readonly CurveSample[] | null;
+	readonly leg: TopologySegment;
+	readonly legSamples: readonly CurveSample[] | null;
+}): WallChainPolicyRejection | null {
+	const { wall } = input;
+	if (input.samples !== null && input.legSamples !== null) {
+		// Curved host: the canonical sampled authority, after the same conservative
+		// extent prune the topology gate runs (a pair whose swept boxes cannot overlap
+		// is one the predicate would reject anyway).
+		if (!sampledWallExtentsOverlap({ samples: input.samples }, { samples: input.legSamples })) return null;
+		if (
+			curvedHostContact({
+				wall,
+				start: input.start,
+				end: input.end,
+				samples: input.samples,
+				leg: input.leg,
+				legSamples: input.legSamples
+			})
+		) {
+			return {
+				code: 'unconnected_crossing',
+				message: `The chain crosses Wall "${wall.id}" without a Junction. End the chain on that Wall to split it, or draw into the existing Junction.`,
+				wallIds: [wall.id]
+			};
+		}
+		return null;
+	}
+	const host: TopologySegment = {
+		id: wall.id,
+		start: [input.start[0], input.start[1]],
+		end: [input.end[0], input.end[1]]
+	};
+	const classified = classifyWallIntersection(input.leg, host, []);
+	if (classified.kind === 'proper-crossing' || classified.kind === 'collinear-overlap') {
+		return {
+			code: 'unconnected_crossing',
+			message: `The chain crosses Wall "${wall.id}" without a Junction. End the chain on that Wall to split it, or draw into the existing Junction.`,
+			wallIds: [wall.id]
+		};
+	}
+	if (
+		classified.kind === 'endpoint-on-interior' ||
+		classified.kind === 'collinear-endpoint-touch'
+	) {
+		// The contact is real but undeclared — a declared host's whole component was
+		// already skipped above. The repair is the deliberate one: the creator
+		// targets the Wall (the drawing path declares the host and the planner splits
+		// it) or the Junction, never nearness.
+		return {
+			code: 'unconnected_interior_contact',
+			message: `A chain point lands on Wall "${wall.id}" without connecting to it. Target that Wall deliberately to split it there, or land on an existing Junction.`,
+			wallIds: [wall.id]
+		};
+	}
+	return null;
+}
+
+/**
  * The first policy refusal this draft would earn, or `null` when the draft is
  * allowed to reach the planner.
  *
@@ -162,41 +320,40 @@ export function detectUnsupportedChainConnections(
 		if (key !== undefined) declaredComponentKeys.add(key);
 	}
 	const junctionById = new Map(input.baseline.junctions.map((junction) => [junction.id, junction]));
+	// The drafted legs as canonical polylines: computed once for the whole draft,
+	// the same way a Wall's centerline is read.
+	const draftedLegs = legs.map(([legStart, legEnd]) => {
+		const leg: TopologySegment = {
+			id: `draft:${legStart.join(',')}->${legEnd.join(',')}`,
+			start: legStart,
+			end: legEnd
+		};
+		return { leg, samples: legPolyline(leg) };
+	});
 	for (const wall of input.baseline.walls) {
 		// A declared host group may be crossed and noded: the planner owns that.
 		if (declaredComponentKeys.has(componentKeyByWallId.get(wall.id) ?? '')) continue;
 		const start = junctionById.get(wall.startJunctionId)?.point;
 		const end = junctionById.get(wall.endJunctionId)?.point;
 		if (start === undefined || end === undefined) continue;
-		const host: TopologySegment = { id: wall.id, start: [start[0], start[1]], end: [end[0], end[1]] };
-		for (const [legStart, legEnd] of legs) {
-			const leg: TopologySegment = {
-				id: `draft:${legStart.join(',')}->${legEnd.join(',')}`,
-				start: legStart,
-				end: legEnd
-			};
-			const classified = classifyWallIntersection(leg, host, []);
-			if (classified.kind === 'proper-crossing' || classified.kind === 'collinear-overlap') {
-				return {
-					code: 'unconnected_crossing',
-					message: `The chain crosses Wall "${wall.id}" without a Junction. End the chain on that Wall to split it, or draw into the existing Junction.`,
-					wallIds: [wall.id]
-				};
-			}
-			if (
-				classified.kind === 'endpoint-on-interior' ||
-				classified.kind === 'collinear-endpoint-touch'
-			) {
-				// The contact is real but undeclared — a declared host's whole component was
-				// already skipped above. The repair is the deliberate one: the creator
-				// targets the Wall (the drawing path declares the host and the planner splits
-				// it) or the Junction, never nearness.
-				return {
-					code: 'unconnected_interior_contact',
-					message: `A chain point lands on Wall "${wall.id}" without connecting to it. Target that Wall deliberately to split it there, or land on an existing Junction.`,
-					wallIds: [wall.id]
-				};
-			}
+		const hostStart: LayoutVec2 = [start[0], start[1]];
+		const hostEnd: LayoutVec2 = [end[0], end[1]];
+		// A curved host is read once, by the canonical sampler; a straight host has
+		// no arc to sample and keeps the exact chord classifier.
+		const samples =
+			wall.centerline.kind === 'line'
+				? null
+				: wallCenterlineSamples(wall, hostStart, hostEnd, 'forward')?.samples ?? null;
+		for (const drafted of draftedLegs) {
+			const rejection = legAgainstHost({
+				wall,
+				start: hostStart,
+				end: hostEnd,
+				samples,
+				leg: drafted.leg,
+				legSamples: drafted.samples
+			});
+			if (rejection !== null) return rejection;
 		}
 	}
 
