@@ -37,7 +37,8 @@ lives in this stub.
 ```text
 git show 36c18db9:docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/review-handoff.md
 anchor  36c18db9
-tag     closed/T1.P02.S02 → 36c18db9
+tag     closed/T1.P02.S02 → 36c18db9 (pushed)
+merge   ce159a1e (verified ancestor; P1 merge commit)
 ```
 
-P1 recovery requires a merge commit; the merge owner verifies the anchor after merge.
+P1 recovery requires a merge commit; `ce159a1e` preserves the anchor.

@@ -2,7 +2,7 @@
 
 ```text
 AUTHORITY: NONE — the phase README owns slice status; this stub records scope and recovery.
-STATUS:    ACCEPTED (`owner-override`, 2026-10-27) and SHIPPED on PR #201; the P1 merge commit is owed.
+STATUS:    ACCEPTED (`owner-override`, 2026-10-27) and SHIPPED on PR #201; P1 merge `ce159a1e`.
 SOURCE:    PR #201 product and harness revision 64b9435d; documentation head 36c18db9.
 CONSUMES:  F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
 REQUIRES:  F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1,
@@ -60,7 +60,8 @@ ruling remain owner-only.
 ```text
 git show 36c18db9:docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/implementation-plan.md
 anchor  36c18db9
-tag     closed/T1.P02.S02 → 36c18db9
+tag     closed/T1.P02.S02 → 36c18db9 (pushed)
+merge   ce159a1e (verified ancestor; P1 merge commit)
 ```
 
-P1 recovery requires a merge commit; the merge owner verifies the anchor after merge.
+P1 recovery requires a merge commit; `ce159a1e` preserves the anchor.
