@@ -35,6 +35,7 @@ import {
 	isStageDrag,
 	readingIntentClockSeconds,
 	stageKeyAction,
+	stageKeyFromControl,
 	stageKeyFromTextEntry
 } from '$lib/authoring/stage/stage-input';
 
@@ -250,5 +251,46 @@ describe('Stage input policy', () => {
 		expect(press.end(3)).toBe(true);
 		expect(press.decide({ x: 10, y: 10 }, 4)).toBe(false);
 		expect(press.decide({ x: 10, y: 10 }, 3)).toBe(true);
+	});
+});
+
+/**
+ * The other half of keyboard ownership: a focused control activates on its own
+ * key, so the host's command map must not take `Enter`, `Backspace` or `Delete`
+ * from it. The recording is the palette's own Backtrack/Cancel button, the Head's
+ * Find result and Save, and any control a future adapter contributes.
+ */
+describe('Stage command keys defer to a focused control', () => {
+	it('recognises the elements that own an activation key', () => {
+		expect(stageKeyFromControl({ tagName: 'BUTTON' })).toBe(true);
+		expect(stageKeyFromControl({ tagName: 'button' })).toBe(true);
+		expect(stageKeyFromControl({ tagName: 'A' })).toBe(true);
+		expect(stageKeyFromControl({ tagName: 'SUMMARY' })).toBe(true);
+	});
+
+	it('recognises a child of a control through its closest ancestor', () => {
+		const button = {};
+		const span = {
+			tagName: 'SPAN',
+			closest: (selector: string) => (selector.includes('button') ? button : null)
+		};
+		expect(stageKeyFromControl(span)).toBe(true);
+	});
+
+	it('leaves the Stage, the document and unreadable targets to the host map', () => {
+		expect(stageKeyFromControl({ tagName: 'CANVAS' })).toBe(false);
+		expect(stageKeyFromControl({ tagName: 'DIV' })).toBe(false);
+		expect(stageKeyFromControl(null)).toBe(false);
+		expect(stageKeyFromControl('Enter')).toBe(false);
+		// A control-shaped object whose closest lookup throws is not treated as a
+		// control: the host map stays the total fallback.
+		expect(
+			stageKeyFromControl({
+				tagName: 'SPAN',
+				closest: () => {
+					throw new Error('detached');
+				}
+			})
+		).toBe(false);
 	});
 });

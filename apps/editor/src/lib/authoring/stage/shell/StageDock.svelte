@@ -44,7 +44,7 @@
 	>
 		Select
 	</button>
-	{#each tools as tool (tool.id)}
+	{#each tools as tool (`${tool.adapterId}:${tool.id}`)}
 		<button
 			type="button"
 			class="key"

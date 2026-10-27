@@ -86,6 +86,37 @@ export function stageKeyFromTextEntry(target: unknown): boolean {
 }
 
 /**
+ * Whether the focused element owns an activation key of its own.
+ *
+ * `Enter` on a button, link or summary is the control's activation, never the
+ * live tool's Finish; `Backspace`/`Delete` on a focused control likewise belong to
+ * that control. The text-entry guard already covers typing; this is the other
+ * half, so a palette's Backtrack/Cancel button, a Find result or the Head's Save
+ * still do what their label says while a drafting tool is armed.
+ */
+export function stageKeyFromControl(target: unknown): boolean {
+	if (typeof target !== 'object' || target === null) return false;
+	const record = target as {
+		readonly tagName?: unknown;
+		readonly closest?: unknown;
+	};
+	const tag = typeof record.tagName === 'string' ? record.tagName.toUpperCase() : '';
+	if (tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY') return true;
+	const closest = record.closest;
+	if (typeof closest !== 'function') return false;
+	try {
+		return (
+			(closest as (this: unknown, selector: string) => unknown).call(
+				target,
+				'button, a[href], summary, [role="button"], [role="menuitem"]'
+			) != null
+		);
+	} catch {
+		return false;
+	}
+}
+
+/**
  * The clock a reading request is **dated at**.
  *
  * Under reduced motion the request is dated **before** its own declared transition,

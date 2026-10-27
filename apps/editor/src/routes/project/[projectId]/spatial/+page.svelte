@@ -116,6 +116,7 @@
 		createStagePressTracker,
 		readingIntentClockSeconds,
 		stageKeyAction,
+		stageKeyFromControl,
 		stageKeyFromTextEntry
 	} from '$lib/authoring/stage/stage-input';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
@@ -597,6 +598,9 @@
 		// A replacement is not a disclosure the creator read: no offer survives into
 		// a source its words were never derived from.
 		pendingDelete = null;
+		// A replaced project is not the run the tool was armed for: drop it with
+		// the task it belonged to, so a later notification cannot re-arm it.
+		armedTool = null;
 		cardOpen = true;
 		drag = null;
 		// A replacement is not a press the creator finished: no click from the old
@@ -2108,6 +2112,12 @@
 	function invokeContribution(adapterId: string, id: string): void {
 		const stage = facade;
 		if (stage === null) return;
+		// Opening any other contributed operation takes the lower column: put the
+		// dock tool down first, or a completion that closes this task would re-arm a
+		// tool the creator had already left (the only re-arm is the armed tool's own).
+		const keepsArmedTool =
+			armedTool !== null && armedTool.id === id && armedTool.adapterId === adapterId;
+		if (!keepsArmedTool) armedTool = null;
 		const opened = stage.openFindEntry(adapterId, id);
 		if (opened.kind !== 'opened') {
 			notice = opened.message;
@@ -2369,10 +2379,12 @@
 		// also select (or report that nothing was selectable). The decision is consumed
 		// here, after the pointer sequence has ended, and only by the pointer it belongs to.
 		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
-		// An armed tool owns the Stage surface: its tap already placed a point, split a
-		// Wall or was refused, and re-selecting underneath it would silently move what
-		// the tool is editing. Selection changes come from Select, the Index or the tool.
-		if (task !== null) return;
+		// An **armed dock tool** owns the Stage surface: its tap already placed a
+		// point, split a Wall or was refused, and re-selecting underneath it would
+		// silently move what the tool is editing. Another adapter's task (Compose,
+		// Arrange, Import) does not: clicking the Stage stays the host's own Select,
+		// which those tasks already depend on to reach their subject.
+		if (task !== null && armedTool !== null) return;
 		const stage = facade;
 		const id = stage?.evaluationId() ?? null;
 		if (stage === null || id === null || rect === null) return;
@@ -2410,6 +2422,16 @@
 		// Typing in the Index's subject search must never move the camera.
 		if (stageKeyFromTextEntry(event.target)) return;
 		const action = stageKeyAction(event.key);
+		// An activation key belongs to the focused control first: Enter on the palette's
+		// Backtrack/Cancel button, a Find result or a Head control must run that
+		// control, never the armed tool's command. The guard is limited to the three
+		// command keys so the existing viewing map is unchanged.
+		if (
+			(action.kind === 'finish' || action.kind === 'backtrack' || action.kind === 'delete') &&
+			stageKeyFromControl(event.target)
+		) {
+			return;
+		}
 		switch (action.kind) {
 			case 'reading':
 				setReading(action.reading);

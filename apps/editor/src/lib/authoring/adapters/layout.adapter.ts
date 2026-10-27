@@ -1111,6 +1111,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				overlay(adapterContext) {
 					if (openTaskKind === LAYOUT_INK_TASK) return inkOverlay(adapterContext);
 					if (openTaskKind !== null) return [];
+					// Direct manipulation is offered only while the creator is in Select.
+					// Another adapter's open task owns the pointer, so the same handles here
+					// would be marks the creator cannot press.
+					if (services.stage.session.task() !== null) return [];
 					const selected = selectedWall(adapterContext);
 					if (selected === null) return [];
 					const points = projectWallHandles(adapterContext, selected.frame);

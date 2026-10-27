@@ -286,6 +286,36 @@ describe('mounted Stage drawing and deletion', () => {
 		await frame();
 	}
 
+	/** Invoke a contributed task from the Index by its visible row label. */
+	async function invokeIndexTask(label: string): Promise<void> {
+		const row = [...target.querySelectorAll<HTMLButtonElement>('.contributed-item button.item-row')].find(
+			(item) => item.textContent?.includes(label)
+		);
+		if (row === undefined) throw new Error(`Missing contributed row ${label}`);
+		row.click();
+		await settled();
+	}
+
+	/** The projected center of one Wall, for a press that resolves to it. */
+	function wallCenterCss(sourceId: string): readonly [number, number] {
+		const plan = facade().plan();
+		if (plan.kind !== 'evaluated') throw new Error('no Plan');
+		const fragment = plan.plan.fragments.find((candidate) => candidate.ref.sourceId === sourceId);
+		if (fragment === undefined) throw new Error(`Missing Plan fragment ${sourceId}`);
+		const geometry = fragment.geometry;
+		const points =
+			geometry.kind === 'span'
+				? [geometry.start, geometry.end]
+				: geometry.kind === 'polyline'
+					? geometry.polyline
+					: geometry.polygon;
+		const center = points.reduce(
+			(sum, point) => [sum[0]! + point[0] / points.length, sum[1]! + point[1] / points.length],
+			[0, 0]
+		);
+		return projected([center[0]!, fragment.elevationMeters, center[1]!]);
+	}
+
 	/** The Card's own scoped action for the selected Wall. */
 	function deleteAction(): HTMLButtonElement {
 		const action = target.querySelector<HTMLButtonElement>('[data-card-action="layout-wall-delete"]');
@@ -330,6 +360,57 @@ describe('mounted Stage drawing and deletion', () => {
 		// The Head is a probe in this suite, so Undo runs through the host it drives.
 		expect(await (harness.host as StageAcceptanceHost).undo()).toMatchObject({ kind: 'installed' });
 		expect(facade().snapshot().canonicalJson).toBe(canonical);
+	});
+
+	it('leaves Enter to a focused palette control instead of finishing the chain', async () => {
+		dockKey('layout-ink').click();
+		await settled();
+		await drawPoint([2, 0, -1]);
+		await drawPoint([5, 0, -1]);
+		const canonical = facade().snapshot().canonicalJson;
+		const accept = vi.spyOn(harness.host as StageAcceptanceHost, 'accept');
+
+		// Backtrack is enabled by the two live points. Enter on it is the button's
+		// activation (backtrack in a browser), never the tool's Finish.
+		const backtrack = target.querySelector<HTMLButtonElement>('[data-ink-backtrack]')!;
+		expect(backtrack.disabled).toBe(false);
+		backtrack.focus();
+		backtrack.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		await tick();
+
+		expect(accept).not.toHaveBeenCalled();
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+		expect(inkSurface()?.snapshot().points).toHaveLength(2);
+	});
+
+	it('keeps Stage selection while a non-dock contributed task is open', async () => {
+		const otherWall = wallCenterCss(STARTER_WALL_2);
+		await invokeIndexTask('Place plinth');
+		expect(facade().session.task()?.kind).toBe('layout-plinth-place');
+
+		// The task owns the press, but a click that no adapter claimed is still the
+		// host's own Select: T2's Compose/Arrange/Import tasks rely on that to reach
+		// a subject after their instrument opens.
+		pointer('pointerdown', otherWall);
+		pointer('pointerup', otherWall);
+		pointer('click', otherWall);
+		await frame();
+		expect(facade().selection()?.sourceId).toBe(STARTER_WALL_2);
+	});
+
+	it('does not re-arm the dock tool after another operation closes', async () => {
+		dockKey('layout-ink').click();
+		await settled();
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+
+		// Invoking another operation takes the lower column. When that task closes
+		// (an install, a replacement or an explicit close), the tool the creator
+		// left must not come back.
+		await invokeIndexTask('Place plinth');
+		expect(facade().session.task()?.kind).toBe('layout-plinth-place');
+		facade().closeTask();
+		await settled();
+		expect(facade().session.task()).toBeNull();
 	});
 
 	it('cancels the live chain before it disarms the tool, then unwinds on the next Escape', async () => {
