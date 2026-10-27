@@ -4,11 +4,12 @@ PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01, S05 and S06 are shipped and S02 is released.
 SLICE: S02 draw, close, divide and delete — implementation complete on PR #201
-       (`t1-p02-s02-draw-close-divide-delete`; reviewed implementation `bf9007ff`, every later commit docs-only).
-       T3 accepted the shared Head/F4 diff at `bf9007ff`
-       (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/t3-implementation-review.md).
-       **Slice closeout is BLOCKED, not accepted or shipped:** the plan's browser journey and
-       owner-run M2 performance acceptance are not recorded
+       (`t1-p02-s02-draw-close-divide-delete`). T3 accepted the shared Head/F4 diff at `bf9007ff`
+       (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/t3-implementation-review.md);
+       the later constrained-width Card repair and the browser journey are at `f26b227c`, where the
+       four-test journey passed all 20 rows in Chromium and branded Chrome.
+       **Slice closeout is BLOCKED, not accepted or shipped:** the browser journey is recorded, but
+       the plan's owner-run M2 performance acceptance is not
        (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/closeout-blockers.md).
        S03 (outline) remains held; S04 is the final gate.
 ACC:   T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27, merged as
@@ -19,12 +20,13 @@ ACC:   T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27,
        post-Bench-2 attribution and the T3/T2 shared-boundary review are recorded; the closeout stub
        carries the ratified disposition, budgets and follow-ons. Battery qualification, grid-XL
        timing and the sweep latency rows are assigned to S04.
-NEXT:  Complete S02's browser evidence and the owner-run M2 performance pass, then rerun
-       `slice-closeout` on the same branch. No other T1 slice is released: S03–S04 stay held pending
-       their own releases, and the [release list](../../roadmap/now.md) is the only permission list.
-       No benchmark, attribution, E5 or review rerun is owed for S06.
-BLOCKERS: S02 acceptance evidence is incomplete — browser journey and owner-run performance rows are
-       not recorded; closeout stopped before acceptance. S03–S04 and T4 stay held pending their own
+NEXT:  Direct and record the owner-run M2 performance pass, confirm the later shell repair as part of
+       the reviewed implementation (or return it for T3 review), then rerun `slice-closeout` on the
+       same branch. No other T1 slice is released: S03–S04 stay held pending their own releases, and
+       the [release list](../../roadmap/now.md) is the only permission list. No benchmark,
+       attribution, E5 or review rerun is owed for S06.
+BLOCKERS: S02 acceptance evidence is incomplete — the owner-run M2 performance rows are not recorded
+       and closeout stopped before acceptance. S03–S04 and T4 stay held pending their own
        releases. T3's ownership acknowledgement for S06 remains a records-only item owned by T3,
        not a gate on T1 work.
 CLAIMS: PR #190 released its `apps/editor/perf/**` claim on merge. Writer: the T1 S06 agent; the
