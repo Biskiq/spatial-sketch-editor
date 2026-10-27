@@ -43,11 +43,12 @@ harness           perf/run-s03-own-model-qa.mjs (foreground supervisor: in-proce
                   perf/flows/s03-own-model-acceptance.spec.ts (two tests, acceptance) and
                   perf/flows/s03-diagnostics.spec.ts (three tests, diagnostics: they assert only
                   positive controls and storage consistency, never the gap); outside every Vitest
-                  lane. After the final harness edit (the API imports moved behind the missing-build
-                  preflight): 2/2 acceptance tests passed in 38.1 s and 3/3 diagnostics in 39.6 s;
-                  `npx tsc --noEmit` in `apps/editor` and root `npm run check` clean. With
-                  `apps/api/dist` absent the supervisor exits 1 with "No built API to import: run
-                  `npm run build:api` …" before importing it (verified 2026-10-27)
+                  lane. The gate pass after its last harness edit: 2/2 acceptance tests in 38.4 s and
+                  3/3 diagnostics in 39.4 s. The final P2 fix (API imports moved behind the
+                  missing-build preflight) was re-run separately: 2/2 in 38.1 s and 3/3 in 39.6 s;
+                  with `apps/api/dist` absent the supervisor exits 1 with "No built API to import:
+                  run `npm run build:api` …" before importing it (verified 2026-10-27). `npx tsc
+                  --noEmit` in `apps/editor` and root `npm run check` clean
 machine           MacBook Air M2 (Mac14,2), Apple M2, 16 GiB, macOS 15.8.2, Low Power Mode off —
                   the designated reference machine (batch E, E6). Power is not a fixed condition of
                   this pass: `machine-facts.json` records **battery** for the journey run
