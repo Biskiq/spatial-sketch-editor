@@ -105,7 +105,7 @@ The API run targets a task-private local database, not the Compose stack (`npm r
 the Docker daemon was not running on this machine. That is a recorded deviation from S02's DB target,
 not a skipped check — the same suites ran with zero skips.
 
-## Integrated creator journey (branded Chrome, one application lifetime per leg)
+## Integrated creator journey (branded Chrome, one page per leg)
 
 The accepted-path legs are on-demand Playwright flows (`perf/flows/s03-own-model-acceptance.spec.ts`:
 the starter journey and the refusal leg; two tests, 2 passed, 38.4 s) driven by
@@ -124,8 +124,8 @@ changes the recorded values instead of failing a gate test.
 | Resize / Duplicate / Delete | Compose opens with `no entity`; `Resize…`, `Duplicate` and `Delete` are all `disabled` (`diagnostic-selection.json` → `compose`) | **blocked** (the commands themselves are proven on a typed native placement — see the finding below) |
 | Second instance of the same approved model | Import → "Place another" → floor click; stored Scene holds two entities (`entity-9e8d540d…`, `entity-36587f4d…`) with one `assetId` (`model-a001cfac…`) and one `resources` entry | passed |
 | Save and reopen in a fresh session | fresh context + cold cache; two models render (80,910 model-colour pixels); no page errors | passed |
-| Preview of the mapped derivative | two green checkered instances visible in the visitor canvas (74,328 model-colour pixels; 936,827 of that canvas's pixels are non-blank); the empty-room control Preview in the same build stores its enclosure (one room, no resources, no entities), is not a blank canvas (180,321 of its pixels differ from the canvas's own first pixel) and reports **0** model-colour pixels, with no page errors in either session | passed |
-| Preview texture arrival | the mapped derivative lands **245 ms** after the first painted frame (`previewTextureWaitedMs`); the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
+| Preview of the mapped derivative | two green checkered instances visible in the visitor canvas (74,328 model-colour pixels; 936,827 of that canvas's pixels are non-blank); the empty-room control Preview in the same build stores its enclosure (one room, no resources, no entities), is not a blank canvas (180,321 of its pixels differ from the canvas's own first pixel) and reports **0** model-colour pixels, with no page errors in any of the three pages | passed |
+| Preview texture arrival | the mapped derivative lands **245 ms** after the flow's first canvas shot (`previewTextureWaitedMs` — the wait starts at that attempt, not at a marked frame); the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
 | Retention and pins | resource `contentRevision` = `pin.hash` = `sha256-66ced4f5…`; dependency-lock entry names the same subject and hash; the derivative fetched by hash after Save hashes to that pin and matches `pin.size` (1,201,064 B); recipe `creator-import@1` version 1, source manifest hash, ingest report digest and floor placement retained; no `componentId`, `partId`, `parts`, `clips` or `variants` on the entity or resource | passed (the stored revision is still served after Save; no retention or GC test was run) |
 
 The two Preview images are the pixel evidence:
@@ -193,7 +193,7 @@ checkable in the artifacts:
    nothing here is pass-scoped.
 3. **Conditions.** The reports record `powerState: "not recorded (PERF_POWER_STATE unset)"`, and the
    contract's designated-machine row requires battery with Low Power Mode off, operated by the owner.
-   The three reports were written 13:46–13:48Z, earlier than **both** committed power captures (AC
+   The three reports started 13:46–13:48Z, earlier than **both** committed power captures (AC
    14:26Z, battery 15:49Z), so no artifact records the power state of the perf pass itself — only
    that the same machine was seen on AC and, later, on battery within the day. The operator was the
    agent. Owner attribution is outstanding.
