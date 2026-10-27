@@ -22,7 +22,7 @@
 	 * a click selects through the eligible Plan fragments so a hidden or excluded
 	 * target can never intercept input.
 	 */
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { beforeNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
@@ -521,10 +521,38 @@
 	let findQuery = $state('');
 	/**
 	 * A destructive Card action whose consequences have been disclosed and which
-	 * awaits a second `Delete`. Cleared by Escape, by a different selection, or by
-	 * the action settling — never left to fire against a later subject.
+	 * awaits a second `Delete`.
+	 *
+	 * The offer is a **fingerprint**, not the record it was read from: the exact
+	 * subject and the words that subject's adapter disclosed. The second press
+	 * compares it with the **live** Card action, so a different Wall — or the same
+	 * Wall whose consequences changed — is disclosed again, and a stale record can
+	 * never run against a later subject.
 	 */
-	let pendingDelete = $state<{ readonly key: string; readonly record: StageCardActionRecord } | null>(null);
+	let pendingDelete = $state<{
+		readonly subjectKey: string;
+		readonly actionId: string;
+		readonly detail: string | null;
+	} | null>(null);
+	/** The selected subject's confirmation key, or `null` when nothing is selected. */
+	const deleteSubjectKey = $derived.by(() => {
+		const selected = selection;
+		return selected === null
+			? null
+			: `${selected.reference.subject.kind}:${selected.reference.subject.id}`;
+	});
+	$effect(() => {
+		// A selection change spends the offer: the disclosure was read for one
+		// subject, and the notice beside it named that subject's consequences. Only
+		// the selection is tracked — the press that opens an offer must not retrigger
+		// this and clear it.
+		const key = deleteSubjectKey;
+		untrack(() => {
+			if (pendingDelete === null || pendingDelete.subjectKey === key) return;
+			pendingDelete = null;
+			notice = '';
+		});
+	});
 	/**
 	 * PLATE arbitration at constrained width: the Card folds to identity so the
 	 * dock/palette's one lower column stays readable. The creator's own toggle wins
@@ -566,6 +594,9 @@
 		task = null;
 		revealed = [];
 		notice = '';
+		// A replacement is not a disclosure the creator read: no offer survives into
+		// a source its words were never derived from.
+		pendingDelete = null;
 		cardOpen = true;
 		drag = null;
 		// A replacement is not a press the creator finished: no click from the old
@@ -2705,7 +2736,10 @@
 	 * The first press **names the consequences the owning adapter disclosed** — the
 	 * same planner-derived words the Card shows, hosted Openings and Room merge/open
 	 * included — and the second confirms. The first press writes nothing, and a
-	 * domain that contributes no destructive action is never offered one.
+	 * domain that contributes no destructive action is never offered one. The
+	 * confirmation is bound to that exact disclosure: a different subject, or the
+	 * same subject disclosed differently, reserves a fresh offer instead of
+	 * spending the one that was read.
 	 */
 	function requestDelete(): void {
 		const selected = selection;
@@ -2716,20 +2750,27 @@
 			return;
 		}
 		const record = destructive[0]!;
-		const key = `${selected.reference.subject.kind}:${selected.reference.subject.id}`;
-		if (pendingDelete !== null && pendingDelete.key === key && pendingDelete.record.id === record.id) {
+		const subjectKey = `${selected.reference.subject.kind}:${selected.reference.subject.id}`;
+		const detail = record.detail ?? null;
+		if (
+			pendingDelete !== null &&
+			pendingDelete.subjectKey === subjectKey &&
+			pendingDelete.actionId === record.id &&
+			pendingDelete.detail === detail
+		) {
 			pendingDelete = null;
-			void runCardAction(record, key);
+			void runCardAction(record, subjectKey);
 			return;
 		}
-		pendingDelete = { key, record };
-		notice = `${record.label} — ${record.detail ?? 'the owning domain disclosed no consequences'}. Press Delete again to confirm, or Escape to keep it.`;
+		pendingDelete = { subjectKey, actionId: record.id, detail };
+		const disclosed = record.detail ?? 'the owning domain disclosed no consequences';
+		notice = `${record.label} — ${disclosed.endsWith('.') ? disclosed : `${disclosed}.`} Press Delete again to confirm, or Escape to keep it.`;
 	}
 
 	/** Run one contributed Card action and report exactly what it said. */
-	async function runCardAction(record: StageCardActionRecord, key: string): Promise<void> {
+	async function runCardAction(record: StageCardActionRecord, subjectKey: string): Promise<void> {
 		const outcome = await record.run();
-		if (pendingDelete?.key === key) pendingDelete = null;
+		if (pendingDelete?.subjectKey === subjectKey) pendingDelete = null;
 		notice = outcome.kind === 'accepted' ? '' : outcome.message ?? `${record.label} was not applied.`;
 	}
 

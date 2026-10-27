@@ -276,6 +276,28 @@ describe('mounted Stage drawing and deletion', () => {
 		await frame();
 	}
 
+	/** Select a subject through the Index, as a creator does. */
+	async function selectIndexRow(sourceId: string) {
+		const row = [...target.querySelectorAll<HTMLButtonElement>('.item-row')].find((item) =>
+			item.textContent?.includes(sourceId)
+		);
+		if (row === undefined) throw new Error(`Missing Index row ${sourceId}`);
+		row.click();
+		await frame();
+	}
+
+	/** The Card's own scoped action for the selected Wall. */
+	function deleteAction(): HTMLButtonElement {
+		const action = target.querySelector<HTMLButtonElement>('[data-card-action="layout-wall-delete"]');
+		if (action === null) throw new Error('the Card offers no Wall deletion');
+		return action;
+	}
+
+	/** Every notice the Stage is showing, as one string. */
+	function notices(): string {
+		return [...target.querySelectorAll('.stage-note')].map((node) => node.textContent ?? '').join(' ');
+	}
+
 	it('arms Ink from the dock, taps points without re-selecting, and finishes with Enter', async () => {
 		const before = facade().selection()?.sourceId;
 		const pose = facade().camera.state().pose;
@@ -331,6 +353,47 @@ describe('mounted Stage drawing and deletion', () => {
 		await frame();
 		expect(facade().session.task()).toBeNull();
 		expect(target.querySelector('[data-layout-ink-palette]')).toBeNull();
+	});
+
+	it('binds a Card confirmation to the subject whose consequences it disclosed', async () => {
+		const canonical = facade().snapshot().canonicalJson;
+		deleteAction().click();
+		await frame();
+		expect(deleteAction().textContent?.trim()).toBe('Confirm Delete Wall');
+
+		// Another Wall: the words the creator read belonged to the first one, so the
+		// new subject offers its own disclosure instead of a confirmation.
+		await selectIndexRow(STARTER_WALL_2);
+		expect(deleteAction().textContent?.trim()).toBe('Delete Wall');
+		deleteAction().click();
+		await frame();
+		expect(deleteAction().textContent?.trim()).toBe('Confirm Delete Wall');
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+	});
+
+	it('spends a disclosed deletion when the selection moves away, even if it returns', async () => {
+		const canonical = facade().snapshot().canonicalJson;
+		key('Delete');
+		await frame();
+		expect(notices()).toContain('Delete Wall');
+
+		// Away and back: the offer was read for one subject in one selection, and
+		// returning to it must not turn the next press into a silent confirmation.
+		await selectIndexRow(STARTER_WALL_2);
+		await selectIndexRow(wallId);
+		key('Delete');
+		// Long enough for any acceptance that press started to land: "nothing was
+		// deleted" has to mean it, not that the write had not arrived yet.
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		await frame();
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+		expect(notices()).toContain('Delete Wall');
+
+		// The press after the fresh disclosure is the one that confirms it.
+		key('Delete');
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(canonical));
+		await frame();
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
 	it('names the Wall deletion and its Room consequence from the keyboard before running it', async () => {

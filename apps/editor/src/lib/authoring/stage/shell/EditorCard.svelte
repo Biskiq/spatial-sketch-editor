@@ -17,6 +17,7 @@
 	 * renders published records: the adapter owns the controller and the intent, the
 	 * Card owns placement, confirmation and the words the creator reads.
 	 */
+	import { untrack } from 'svelte';
 	import type { StageCardActionRecord, StageCardWriterRecord } from '../stage-facade';
 
 	let {
@@ -73,10 +74,37 @@
 	let nameDraft = $state('');
 	let nameError = $state<string | null>(null);
 	let nameBusy = $state(false);
-	/** The action whose consequence is currently disclosed and awaiting confirmation. */
+	/**
+	 * What an open confirmation was disclosed **for**: the exact subject and the
+	 * owning adapter's own words. A different subject — or the same one with
+	 * different consequences — therefore invalidates it, so `Confirm` can only run
+	 * an action whose disclosure the creator actually read. Both the destructive
+	 * action and the destructive action's own detail are part of the key; the Card
+	 * holds no second opinion about either.
+	 */
+	const confirmationKey = $derived(
+		`${identity?.sourceId ?? ''}\u0000${actions
+			.map((action) => `${action.id}\u0000${action.detail ?? ''}`)
+			.join('\u0001')}`
+	);
+	/** The key whose consequence is currently disclosed and awaiting confirmation. */
 	let confirming = $state<string | null>(null);
 	let actionMessage = $state<string | null>(null);
 	let actionBusy = $state(false);
+
+	$effect(() => {
+		// The disclosure belongs to one subject: switching subject (or changing what
+		// that subject's adapter discloses) drops the pending confirmation and its
+		// words, so the next press discloses the live consequences rather than
+		// offering to run the ones the creator read a moment ago. Only the key is
+		// tracked — a press must not re-trigger this and clear what it just opened.
+		const key = confirmationKey;
+		untrack(() => {
+			if (confirming === null || confirming === key) return;
+			confirming = null;
+			actionMessage = null;
+		});
+	});
 
 	/**
 	 * A destructive action runs only after its disclosure has been read: the first
@@ -85,8 +113,8 @@
 	 */
 	async function runAction(action: (typeof actions)[number]): Promise<void> {
 		if (actionBusy) return;
-		if (action.destructive === true && confirming !== action.id) {
-			confirming = action.id;
+		if (action.destructive === true && confirming !== confirmationKey) {
+			confirming = confirmationKey;
 			actionMessage = action.detail ?? null;
 			return;
 		}
@@ -202,7 +230,7 @@
 							disabled={actionBusy}
 							onclick={() => void runAction(action)}
 						>
-							{confirming === action.id ? `Confirm ${action.label}` : action.label}
+							{confirming === confirmationKey ? `Confirm ${action.label}` : action.label}
 						</button>
 					{/each}
 					{#if actionMessage !== null}
