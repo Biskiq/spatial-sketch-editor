@@ -1,16 +1,24 @@
-<script lang="ts">
+﻿<script lang="ts">
 	/**
-	 * T1.P01.S04 — the settle-measure surface for one Layout subject.
+	 * T1.P02.S02 — the **Card's** Layout field writer (formerly Dimensions).
 	 *
-	 * It renders only what the framework-free controller owns: the accepted
-	 * value, the edit buffer, and the refusal reason. Enter commits, Esc and blur
-	 * discard, and the DOM never turns an empty field into zero.
+	 * PLATE (Round 2, D9) makes the Card the one writer for ordinary dimensions, so
+	 * the migrated fields render **here**: Wall height, thickness, exact length,
+	 * angle and rigid move with one explicit fixed endpoint, and Opening offset,
+	 * width, height and sill. The controller is the same one S05 shipped — same
+	 * parsers, same refusals, same gesture lease, same one-history-entry-per-field
+	 * commit — only its home moved. The name is not rendered here: the Card owns one
+	 * name writer and this component must not become a second one.
+	 *
+	 * It renders what the framework-free controller owns: the accepted value, the
+	 * edit buffer and the refusal reason. Enter commits, Esc and blur discard, and
+	 * the DOM never turns an empty field into zero.
 	 */
 	import { onDestroy } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';
-	import { createDimensionsInstrument } from './adapter-support';
+	import { createCardFieldsInstrument } from './adapter-support';
 
 	let { services }: { services: StageAdapterServices } = $props();
 	// Check this before reading any derived state in an async continuation: a
@@ -27,7 +35,7 @@
 	/** The explicit endpoint an exact length/angle edit keeps fixed. */
 	let fixedEndpoint = $state<'start' | 'end'>('start');
 
-	// The instrument follows the one canonical selection: a new subject rebuilds the
+	// The writer follows the one canonical selection: a new subject rebuilds the
 	// controller from the accepted source, so a stale selection can never keep
 	// editing the subject it was opened on.
 	const selectionKey = $derived.by(() => {
@@ -36,8 +44,11 @@
 	});
 	const instrument = $derived.by(() => {
 		void selectionKey;
-		return createDimensionsInstrument(services);
+		return createCardFieldsInstrument(services);
 	});
+	const editable = $derived(
+		fields.filter((field) => field.id !== 'name')
+	);
 	const unavailableNote = $derived(
 		instrument === null
 			? ''
@@ -145,14 +156,12 @@
 </script>
 
 {#if instrument === null}
-	<p class="empty">Select a Wall, Opening or Layout object to inspect its measures.</p>
+	<p class="empty">Select a Wall, Opening or Layout object to edit its measures.</p>
 {:else}
-	<div class="dimensions" data-layout-dimensions>
-		<dl class="facts">
-			{#each instrument.facts() as fact (fact.label)}
-				<div><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
-			{/each}
-		</dl>
+	<div class="card-fields" data-layout-card-fields>
+		{#if editable.length > 0}
+			<p class="eyebrow">Fields</p>
+		{/if}
 		{#if paused !== null}
 			<div class="paused" data-layout-paused>
 				<p>Paused after a reading change — {paused.label}</p>
@@ -162,7 +171,7 @@
 				</div>
 			</div>
 		{/if}
-		{#if instrument.subject.kind === 'wall' && fields.some((field) => field.id === 'length')}
+		{#if instrument.subject.kind === 'wall' && editable.some((field) => field.id === 'length')}
 			<fieldset class="fixed-endpoint" data-layout-fixed-endpoint>
 				<legend>Fixed endpoint</legend>
 				<label>
@@ -183,7 +192,7 @@
 				</label>
 			</fieldset>
 		{/if}
-		{#each fields as field (field.id)}
+		{#each editable as field (field.id)}
 			<label class="field">
 				<span>{field.label}</span>
 				<input
@@ -225,28 +234,19 @@
 {/if}
 
 <style>
-	.dimensions {
+	.card-fields {
 		display: grid;
 		gap: 0.35rem;
+		margin-top: 0.6rem;
 		font-size: 0.8rem;
 	}
-	.facts {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-		gap: 0.2rem 0.6rem;
+	.eyebrow {
 		margin: 0;
-	}
-	.facts div {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-	dt {
-		color: var(--head-ink-quiet, #98a89c);
-	}
-	dd {
-		margin: 0;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		color: var(--plate-ink-quiet, #5c665e);
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
 	}
 	.field {
 		display: grid;
@@ -255,31 +255,31 @@
 		gap: 0.4rem;
 	}
 	input {
-		min-height: 1.8rem;
+		min-height: 2.75rem;
 		padding: 0.1rem 0.35rem;
-		border: 1px solid var(--chassis-hairline, #2f4a3d);
-		border-radius: 0.25rem;
-		background: transparent;
+		border: 1px solid var(--plate-control-edge, #cfd5cb);
+		border-radius: 0.45rem;
+		background: var(--plate-control-surface, #f5f6f4);
 		color: inherit;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	}
 	input[aria-invalid='true'] {
-		border-color: #c2694f;
+		border-color: #a33b24;
 	}
 	.unit {
 		font-size: 0.7rem;
-		color: var(--head-ink-quiet, #98a89c);
+		color: var(--plate-ink-quiet, #5c665e);
 	}
 	.error,
 	.empty {
 		margin: 0;
-		font-size: 0.7rem;
-		color: #c2694f;
+		font-size: 0.72rem;
+		color: #a33b24;
 	}
 	.unavailable {
 		margin: 0;
 		font-size: 0.68rem;
-		color: var(--head-ink-quiet, #98a89c);
+		color: var(--plate-ink-quiet, #5c665e);
 	}
 	.fixed-endpoint {
 		display: flex;
@@ -287,13 +287,13 @@
 		gap: 0.6rem;
 		margin: 0;
 		padding: 0.15rem 0.35rem;
-		border: 1px solid var(--chassis-hairline, #2f4a3d);
-		border-radius: 0.25rem;
+		border: 1px solid var(--plate-control-edge, #cfd5cb);
+		border-radius: 0.35rem;
 		font-size: 0.72rem;
 	}
 	.fixed-endpoint legend {
 		padding: 0 0.25rem;
-		color: var(--head-ink-quiet, #98a89c);
+		color: var(--plate-ink-quiet, #5c665e);
 	}
 	.fixed-endpoint label {
 		display: flex;
@@ -307,8 +307,8 @@
 		display: grid;
 		gap: 0.25rem;
 		padding: 0.3rem 0.4rem;
-		border: 1px dashed var(--chassis-hairline, #2f4a3d);
-		border-radius: 0.25rem;
+		border: 1px dashed var(--plate-control-edge, #cfd5cb);
+		border-radius: 0.35rem;
 		font-size: 0.72rem;
 	}
 	.paused p {
@@ -320,13 +320,18 @@
 		gap: 0.4rem;
 	}
 	.paused button {
-		min-height: 1.7rem;
+		min-height: 2.25rem;
 		padding: 0.1rem 0.5rem;
-		border: 1px solid var(--chassis-hairline, #2f4a3d);
-		border-radius: 0.25rem;
+		border: 1px solid var(--plate-control-edge, #cfd5cb);
+		border-radius: 0.35rem;
 		background: transparent;
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
+	}
+	.field:focus-within span:first-child,
+	button:focus-visible {
+		outline: 2px solid var(--plate-focus, #2f6f52);
+		outline-offset: 1px;
 	}
 </style>

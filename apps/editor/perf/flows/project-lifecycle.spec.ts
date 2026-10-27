@@ -22,7 +22,7 @@ import {
 	commitPrecisionLength,
 	openProjectFromHub,
 	openSourceJson,
-	selectFirstWallAndOpenDimensions,
+	selectFirstWall,
 	waitForAcceptedResult
 } from '../lib/flow';
 import { perfInitScript, readLedger } from '../lib/ledger';
@@ -552,7 +552,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		await openFromHub(page, projectId, 'S01 ambiguous commit');
 		const savedBeforeEdit = await currentProjectState(pool, projectId);
 		if (!savedBeforeEdit) throw new Error('Project baseline is missing before Stage edit');
-		await selectFirstWallAndOpenDimensions(page);
+		await selectFirstWall(page);
 		const acceptedBefore = await acceptedResultCount(page);
 		await commitPrecisionLength(page, 4.5);
 		await waitForAcceptedResult(page, acceptedBefore);
@@ -711,7 +711,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		expect(hashes.rows[0].sha256).toBe(hashes.rows[1].sha256);
 		await openFromHub(page, pendingId, pendingFixture.envelope.name);
 		const dirtyPending = await acceptedResultCount(page);
-		await selectFirstWallAndOpenDimensions(page);
+		await selectFirstWall(page);
 		await commitPrecisionLength(page, 4.75);
 		await waitForAcceptedResult(page, dirtyPending);
 		const pendingDownload = page.waitForEvent('download');
@@ -973,7 +973,7 @@ test('F9 S/M Save workload records presented feedback, renderer work, and durabl
 				await expect(renameDialog).toBeHidden({ timeout: 60_000 });
 				currentName = nextName;
 
-				await selectFirstWallAndOpenDimensions(page);
+				await selectFirstWall(page);
 				const beforeEdit = await acceptedResultCount(page);
 				await commitPrecisionLength(page, 4.5 + cycleNumber / 100);
 				await waitForAcceptedResult(page, beforeEdit);

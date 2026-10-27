@@ -223,7 +223,14 @@ export function warmLayoutPlannerBaseline(document: LayoutDocumentWallFirst): vo
 	plannerCompileSession.seedFromCompiled(document);
 }
 
-function layoutPlanner(
+/**
+ * One Layout planner over the adapter's shared compile session.
+ *
+ * Exported for the S02 drawing planners (chain commit, Wall delete), which are
+ * registered by the same adapter and must run their candidates through the same
+ * session, source kind and admission shape as every other Layout operation.
+ */
+export function layoutPlanner(
 	kind: string,
 	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>
 ): DomainPlanner<ProjectEnvelope> {
@@ -286,7 +293,12 @@ function capturedWorkingLevel(
 	return { levelId };
 }
 
-function prepared(
+/**
+ * The shared result construction: one prepared candidate, one change record, one
+ * preserve/create correspondence and the prepared-Cow registration the host uses
+ * to link the cloned candidate after acceptance.
+ */
+export function preparedLayoutCandidate(
 	request: PlannerRequest<ProjectEnvelope>,
 	operationKind: string,
 	subject: LayoutSubject,
@@ -335,7 +347,7 @@ function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}
-		return prepared(request, 'layout-wall-height', { kind: 'wall', id: wallId }, plan.document, [
+		return preparedLayoutCandidate(request, 'layout-wall-height', { kind: 'wall', id: wallId }, plan.document, [
 			'height'
 		]);
 	});
@@ -359,7 +371,7 @@ function wallThicknessPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}
-		return prepared(
+		return preparedLayoutCandidate(
 			request,
 			'layout-wall-thickness',
 			{ kind: 'wall', id: wallId },
@@ -396,7 +408,7 @@ function wallLengthPlanner(): DomainPlanner<ProjectEnvelope> {
 			fixedEndpoint: fixed
 		});
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return prepared(request, 'layout-wall-length', { kind: 'wall', id: wallId }, plan.document, [
+		return preparedLayoutCandidate(request, 'layout-wall-length', { kind: 'wall', id: wallId }, plan.document, [
 			'length'
 		]);
 	});
@@ -422,7 +434,7 @@ function wallAnglePlanner(): DomainPlanner<ProjectEnvelope> {
 			fixedEndpoint: fixed
 		});
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return prepared(request, 'layout-wall-angle', { kind: 'wall', id: wallId }, plan.document, [
+		return preparedLayoutCandidate(request, 'layout-wall-angle', { kind: 'wall', id: wallId }, plan.document, [
 			'angle'
 		]);
 	});
@@ -444,7 +456,7 @@ function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planRigidWallMove(request.snapshot.domain.source.units.layout.data, wallId, [deltaX, deltaZ]);
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
-		return prepared(request, 'layout-wall-move', { kind: 'wall', id: wallId }, plan.document, [
+		return preparedLayoutCandidate(request, 'layout-wall-move', { kind: 'wall', id: wallId }, plan.document, [
 			'position'
 		]);
 	});
@@ -480,7 +492,7 @@ function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}
-		return prepared(
+		return preparedLayoutCandidate(
 			request,
 			'layout-opening-measure',
 			{ kind: 'opening', id: openingId },
@@ -515,7 +527,7 @@ function entityNamePlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}
-		return prepared(
+		return preparedLayoutCandidate(
 			request,
 			'layout-entity-name',
 			{ kind: subjectKind, id: subjectId },
@@ -598,7 +610,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}
-		return prepared(
+		return preparedLayoutCandidate(
 			request,
 			'layout-plinth-place',
 			{ kind: 'object', id: objectId },

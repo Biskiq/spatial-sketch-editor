@@ -267,6 +267,7 @@ export function createStageAcceptanceHost(options: {
 	/** Accepts in flight: a live proposal is why Undo is temporarily unavailable. */
 	let inFlight = 0;
 	let writesBlocked = false;
+	/** Used only when a live command (not a proposal) owns the window. */
 	const LIVE_PROPOSAL_REASON = 'A proposal is live; Undo is available once it is accepted or refused.';
 
 	/**
@@ -483,12 +484,16 @@ export function createStageAcceptanceHost(options: {
 	}
 
 	/**
-	 * Whether an authoring instrument currently owns a pre-commit proposal. A
-	 * camera drag is a gesture too and deliberately does not block history.
+	 * Whether authoring work currently owns a pre-commit proposal.
+	 *
+	 * The **active proposal/lease contract** answers this, never a list of gesture
+	 * owner names: a moving pointer drag and a live Wall chain are both proposals,
+	 * and a lease that declares itself navigation (the host's own press) is not.
+	 * The live reason survives until the proposal is accepted, refused or
+	 * cancelled, so Undo names what must settle first.
 	 */
 	function authoringProposalLive(): boolean {
-		const gesture = facade.session.gesture();
-		return gesture !== null && (gesture.owner === 'layout-precision' || gesture.owner === 'scene-transform');
+		return facade.session.liveProposal() !== null;
 	}
 
 	async function runHistory(direction: StageHistoryDirection): Promise<StageHistoryCommandOutcome> {
@@ -517,7 +522,11 @@ export function createStageAcceptanceHost(options: {
 			const state = coordinator.history();
 			// The reported state must agree with what the command will do: while a
 			// proposal is live, neither direction can run, whatever the stack holds.
-			const live = inFlight > 0 || authoringProposalLive();
+			const proposal = facade.session.liveProposal();
+			const live = inFlight > 0 || proposal !== null;
+			// The lease's own reason is the message: it knows whether the creator must
+			// finish a chain, cancel a drag or let an in-flight command settle.
+			const liveReason = proposal?.reason ?? LIVE_PROPOSAL_REASON;
 			const canUndo = !writesBlocked && !live && coordinator.canUndo();
 			const canRedo = !writesBlocked && !live && coordinator.canRedo();
 			return {
@@ -530,11 +539,11 @@ export function createStageAcceptanceHost(options: {
 					: canUndo
 					? null
 					: live
-						? LIVE_PROPOSAL_REASON
+						? liveReason
 						: 'Nothing to undo yet — no change has been accepted.',
 				redoUnavailableReason: writesBlocked
 					? 'Project rename or deletion is in progress.'
-					: canRedo ? null : live ? LIVE_PROPOSAL_REASON : 'Nothing to redo.'
+					: canRedo ? null : live ? liveReason : 'Nothing to redo.'
 			};
 		},
 		async accept(intent) {

@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { newMeasuredSession } from '../lib/browser';
 import { fixtureProject } from '../lib/fixtures';
-import { gotoCreateIntent, openSourceJson, selectFirstWallAndOpenDimensions, dragWallHandle, handlePoint, uniqueProjectId } from '../lib/flow';
+import { gotoCreateIntent, openSourceJson, selectFirstWall, dragWallHandle, handlePoint, uniqueProjectId } from '../lib/flow';
 import { readLedger } from '../lib/ledger';
 import { resultsDirectory, startReport } from '../lib/report';
 import { controlledDelayVerdict, installTraceFrameGate, type GateSnapshot, type TraceFrameGate } from '../lib/trace-frame-gate';
@@ -33,7 +33,7 @@ test('sequenced preview identity in Chrome trace images, mismatch and delayed co
 			const id = uniqueProjectId(`trace-${mode}`);
 			await gotoCreateIntent(page, id);
 			await openSourceJson(page, await fixtureProject('S', id));
-			await selectFirstWallAndOpenDimensions(page);
+			await selectFirstWall(page);
 			const runtimeBefore = await readRuntimeHealth(page);
 			const box = await page.locator('svg.overlay').boundingBox();
 			if (!box) throw new Error('No Stage overlay bounds');

@@ -31,7 +31,7 @@ import {
 	closeProjectToHub,
 	openProjectFromHub,
 	openSourceJson,
-	selectFirstWallAndOpenDimensions,
+	selectFirstWall,
 	waitForAcceptedResult
 } from '../lib/flow';
 import { clearObservations } from '../lib/ledger';
@@ -95,7 +95,7 @@ test.describe('F13 repeated open/close', () => {
 					if (cacheState === 'cold') await clearBrowserState(session.cdp);
 					const projectId = await openProjectFromHub(page);
 					await openSourceJson(page, tierProject(tier, projectId));
-					await selectFirstWallAndOpenDimensions(page);
+					await selectFirstWall(page);
 					if (measured) openHeaps.push(await readHeapAfterGc(session.cdp));
 					for (let edit = 0; edit < EDITS_PER_CYCLE; edit++) {
 						const before = await acceptedResultCount(page);

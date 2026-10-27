@@ -9,10 +9,10 @@
 	 * stays selected while its host Wall is unrolled) — and hosts that task's own
 	 * content through the `children` snippet.
 	 *
-	 * It is deliberately bounded and pinned to the Stage's lower edge, so opening,
-	 * closing or resizing it never reflows or implicitly reframes the Stage. It is a
-	 * home for one task, not a second shell owner: it renders no control layout of
-	 * its own beyond naming, hosting and closing.
+ * It is deliberately bounded: the shell's one lower column anchors it above the
+ * dock, so opening, closing or resizing it never reflows or implicitly reframes
+ * the Stage. It is a home for one task, not a second shell owner: it renders no
+ * control layout of its own beyond naming, hosting and closing.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageInstrumentContent } from '../stage-facade';
@@ -74,19 +74,19 @@
 {/if}
 
 <style>
+	/*
+		The lower column owns the anchoring (it is the one place the dock and this
+		instrument meet), so the instrument is an ordinary flex child: it grows upward
+		from the dock without a second absolute position of its own.
+	*/
 	.instrument {
-		position: absolute;
-		left: 50%;
-		bottom: 0.75rem;
-		transform: translateX(-50%);
-		z-index: 6;
 		display: flex;
 		flex-direction: column;
 		width: max-content;
-		max-width: calc(100% - 1.5rem);
-		max-height: min(16rem, 45%);
+		max-width: 100%;
+		max-height: min(16rem, 45vh);
 		border: 1px solid #4d4655;
-		border-radius: 0.5rem 0.5rem 0 0;
+		border-radius: 0.5rem;
 		background: rgb(25 24 31 / 96%);
 		box-shadow: 0 -0.5rem 1.5rem rgb(0 0 0 / 35%);
 		color: #f4f0e9;

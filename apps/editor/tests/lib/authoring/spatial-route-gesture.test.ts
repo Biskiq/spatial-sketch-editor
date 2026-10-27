@@ -40,6 +40,7 @@ import {
 /** The starter keeps its fixed captured identity across every boot. */
 const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
+import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 const RECT = { left: 352, top: 73, width: 928, height: 720, right: 1280, bottom: 793, x: 352, y: 73, toJSON() { } };
 let component: ReturnType<typeof mount>;
@@ -129,7 +130,9 @@ beforeEach(async () => {
 	pointer('click', center);
 	await frame();
 	expect(facade().selection()?.sourceId).toBe(wallId);
-	button('TASK Dimensions').click();
+	// T1.P02.S02: the Wall's own Card carries its fields and a handle press is direct
+	// manipulation, so this contract runs with **no** contributed task open — an
+	// adapter's gesture is offered the press first either way.
 	await settled();
 });
 afterEach(() => {
@@ -144,8 +147,6 @@ afterEach(() => {
 });
 describe('mounted Stage pointer lifecycle', () => {
 	it('selects a located Index row without passing a reactive proxy to immutable selection', async () => {
-		button('Close Dimensions').click();
-		await frame();
 		const row = [...target.querySelectorAll<HTMLButtonElement>('.item-row')].find(b => b.textContent?.includes(STARTER_WALL_2))!;
 		row.click();
 		await frame();
@@ -246,5 +247,259 @@ describe('mounted Stage pointer lifecycle', () => {
 		expect(facade().snapshot().canonicalJson).toBe(baseline);
 		expect(history().canUndo).toBe('false');
 		expect(pausedWallProposal(facade().snapshot().domain.unitRevisions.layout, wallId)).toBeNull();
+	});
+});
+
+/**
+ * The shell's dock/Ink/Delete wiring, driven through the **mounted route**.
+ *
+ * These are the caller-level facts the adapter suite cannot prove: that a tool is
+ * armed from the dock with nothing selected, that its taps reach the adapter and
+ * never re-select underneath it, that `Enter` finishes and the tool survives the
+ * install it caused, that `Escape` unwinds palette-first, and that `Delete`
+ * discloses a Wall's consequences before the second press runs it.
+ */
+describe('mounted Stage drawing and deletion', () => {
+	/** One dock key, by its contributed entry id — the dock shows adapter labels. */
+	function dockKey(id: string): HTMLButtonElement {
+		const key = target.querySelector<HTMLButtonElement>(`[data-dock-tool="${id}"]`);
+		if (key === null)
+			throw new Error(`Missing dock key ${id}`);
+		return key;
+	}
+
+	async function drawPoint(point: readonly [number, number, number]) {
+		const css = projected(point);
+		pointer('pointerdown', css);
+		pointer('pointerup', css);
+		pointer('click', css);
+		await frame();
+	}
+
+	/** Select a subject through the Index, as a creator does. */
+	async function selectIndexRow(sourceId: string) {
+		const row = [...target.querySelectorAll<HTMLButtonElement>('.item-row')].find((item) =>
+			item.textContent?.includes(sourceId)
+		);
+		if (row === undefined) throw new Error(`Missing Index row ${sourceId}`);
+		row.click();
+		await frame();
+	}
+
+	/** Invoke a contributed task from the Index by its visible row label. */
+	async function invokeIndexTask(label: string): Promise<void> {
+		const row = [...target.querySelectorAll<HTMLButtonElement>('.contributed-item button.item-row')].find(
+			(item) => item.textContent?.includes(label)
+		);
+		if (row === undefined) throw new Error(`Missing contributed row ${label}`);
+		row.click();
+		await settled();
+	}
+
+	/** The projected center of one Wall, for a press that resolves to it. */
+	function wallCenterCss(sourceId: string): readonly [number, number] {
+		const plan = facade().plan();
+		if (plan.kind !== 'evaluated') throw new Error('no Plan');
+		const fragment = plan.plan.fragments.find((candidate) => candidate.ref.sourceId === sourceId);
+		if (fragment === undefined) throw new Error(`Missing Plan fragment ${sourceId}`);
+		const geometry = fragment.geometry;
+		const points =
+			geometry.kind === 'span'
+				? [geometry.start, geometry.end]
+				: geometry.kind === 'polyline'
+					? geometry.polyline
+					: geometry.polygon;
+		const center = points.reduce(
+			(sum, point) => [sum[0]! + point[0] / points.length, sum[1]! + point[1] / points.length],
+			[0, 0]
+		);
+		return projected([center[0]!, fragment.elevationMeters, center[1]!]);
+	}
+
+	/** The Card's own scoped action for the selected Wall. */
+	function deleteAction(): HTMLButtonElement {
+		const action = target.querySelector<HTMLButtonElement>('[data-card-action="layout-wall-delete"]');
+		if (action === null) throw new Error('the Card offers no Wall deletion');
+		return action;
+	}
+
+	/** Every notice the Stage is showing, as one string. */
+	function notices(): string {
+		return [...target.querySelectorAll('.stage-note')].map((node) => node.textContent ?? '').join(' ');
+	}
+
+	it('arms Ink from the dock, taps points without re-selecting, and finishes with Enter', async () => {
+		const before = facade().selection()?.sourceId;
+		const pose = facade().camera.state().pose;
+		// Nothing is selected-and-invoked first: the dock is how a tool is armed.
+		dockKey('layout-ink').click();
+		await settled();
+		expect(dockKey('layout-ink').getAttribute('aria-pressed')).toBe('true');
+		expect(target.querySelector('[data-layout-ink-palette]')).not.toBeNull();
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+
+		await drawPoint([2, 0, -1]);
+		await drawPoint([5, 0, -1]);
+		// An armed tool's taps are its own gesture: they place points and never move
+		// the selection or the view underneath it.
+		expect(facade().selection()?.sourceId).toBe(before);
+		expect(facade().camera.state().pose).toEqual(pose);
+		expect(inkSurface()?.snapshot().points).toHaveLength(2);
+
+		const canonical = facade().snapshot().canonicalJson;
+		key('Enter');
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(canonical));
+		await frame();
+		await settled();
+		// One chain, one undo entry, and the same tool is armed against the installed
+		// source — the install closed its task and the host re-armed the dock's key.
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+		expect(target.querySelector('[data-layout-ink-palette]')).not.toBeNull();
+
+		// The Head is a probe in this suite, so Undo runs through the host it drives.
+		expect(await (harness.host as StageAcceptanceHost).undo()).toMatchObject({ kind: 'installed' });
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+	});
+
+	it('leaves Enter to a focused palette control instead of finishing the chain', async () => {
+		dockKey('layout-ink').click();
+		await settled();
+		await drawPoint([2, 0, -1]);
+		await drawPoint([5, 0, -1]);
+		const canonical = facade().snapshot().canonicalJson;
+		const accept = vi.spyOn(harness.host as StageAcceptanceHost, 'accept');
+
+		// Backtrack is enabled by the two live points. Enter on it is the button's
+		// activation (backtrack in a browser), never the tool's Finish.
+		const backtrack = target.querySelector<HTMLButtonElement>('[data-ink-backtrack]')!;
+		expect(backtrack.disabled).toBe(false);
+		backtrack.focus();
+		backtrack.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		await tick();
+
+		expect(accept).not.toHaveBeenCalled();
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+		expect(inkSurface()?.snapshot().points).toHaveLength(2);
+	});
+
+	it('keeps Stage selection while a non-dock contributed task is open', async () => {
+		const otherWall = wallCenterCss(STARTER_WALL_2);
+		await invokeIndexTask('Place plinth');
+		expect(facade().session.task()?.kind).toBe('layout-plinth-place');
+
+		// The task owns the press, but a click that no adapter claimed is still the
+		// host's own Select: T2's Compose/Arrange/Import tasks rely on that to reach
+		// a subject after their instrument opens.
+		pointer('pointerdown', otherWall);
+		pointer('pointerup', otherWall);
+		pointer('click', otherWall);
+		await frame();
+		expect(facade().selection()?.sourceId).toBe(STARTER_WALL_2);
+	});
+
+	it('does not re-arm the dock tool after another operation closes', async () => {
+		dockKey('layout-ink').click();
+		await settled();
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+
+		// Invoking another operation takes the lower column. When that task closes
+		// (an install, a replacement or an explicit close), the tool the creator
+		// left must not come back.
+		await invokeIndexTask('Place plinth');
+		expect(facade().session.task()?.kind).toBe('layout-plinth-place');
+		facade().closeTask();
+		await settled();
+		expect(facade().session.task()).toBeNull();
+	});
+
+	it('cancels the live chain before it disarms the tool, then unwinds on the next Escape', async () => {
+		dockKey('layout-ink').click();
+		await settled();
+		const canonical = facade().snapshot().canonicalJson;
+		await drawPoint([2, 0, -1]);
+		expect(inkSurface()?.snapshot().points).toHaveLength(1);
+
+		// Palette-first: the chain ends here and the tool stays armed, so no proposal
+		// survives as an invisible block on history.
+		key('Escape');
+		await frame();
+		expect(inkSurface()?.snapshot().points).toHaveLength(0);
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+		expect(history().canUndo).toBe('false');
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+
+		// The next unwind is the tool's: it disarms and leaves Select.
+		key('Escape');
+		await frame();
+		expect(facade().session.task()).toBeNull();
+		expect(target.querySelector('[data-layout-ink-palette]')).toBeNull();
+	});
+
+	it('binds a Card confirmation to the subject whose consequences it disclosed', async () => {
+		const canonical = facade().snapshot().canonicalJson;
+		deleteAction().click();
+		await frame();
+		expect(deleteAction().textContent?.trim()).toBe('Confirm Delete Wall');
+
+		// Another Wall: the words the creator read belonged to the first one, so the
+		// new subject offers its own disclosure instead of a confirmation.
+		await selectIndexRow(STARTER_WALL_2);
+		expect(deleteAction().textContent?.trim()).toBe('Delete Wall');
+		deleteAction().click();
+		await frame();
+		expect(deleteAction().textContent?.trim()).toBe('Confirm Delete Wall');
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+	});
+
+	it('spends a disclosed deletion when the selection moves away, even if it returns', async () => {
+		const canonical = facade().snapshot().canonicalJson;
+		key('Delete');
+		await frame();
+		expect(notices()).toContain('Delete Wall');
+
+		// Away and back: the offer was read for one subject in one selection, and
+		// returning to it must not turn the next press into a silent confirmation.
+		await selectIndexRow(STARTER_WALL_2);
+		await selectIndexRow(wallId);
+		key('Delete');
+		// Long enough for any acceptance that press started to land: "nothing was
+		// deleted" has to mean it, not that the write had not arrived yet.
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		await frame();
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+		expect(notices()).toContain('Delete Wall');
+
+		// The press after the fresh disclosure is the one that confirms it.
+		key('Delete');
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(canonical));
+		await frame();
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('names the Wall deletion and its Room consequence from the keyboard before running it', async () => {
+		const canonical = facade().snapshot().canonicalJson;
+		key('Delete');
+		await frame();
+		const notice = [...target.querySelectorAll('.stage-note')]
+			.map((node) => node.textContent ?? '')
+			.join(' ');
+		expect(notice).toContain('Delete Wall');
+		// The disclosure is the planner's own words: this Wall closes the enclosure.
+		expect(notice).toContain('retires 1 Room');
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+
+		// Escape keeps the Wall and spends the offer.
+		key('Escape');
+		await frame();
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+
+		// The Wall is still selected, and the second Delete press runs it.
+		key('Delete');
+		await frame();
+		key('Delete');
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(canonical));
+		await frame();
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
 	});
 });

@@ -13,8 +13,9 @@
  * 3. blank input never becomes zero and blur/Esс never commit;
  * 4. Place → Layout plinth captures the object id before evaluation, creates one
  *    ordinary Layout box and Undo removes it;
- * 5. the contributions are the AM-5 surface only: a Find entry, a Dimensions
- *    task while a Wall/Opening is selected, and Card facts from accepted source.
+ * 5. the contributions are the AM-5 surface only: a dock-armable Ink entry, the
+ *    plinth In place entry, and Card facts and fields from accepted source — the
+ *    retired Dimensions task contributes nothing and opens nothing.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -34,13 +35,23 @@ import { createStageSession, type StageSession } from '$lib/authoring/stage/stag
 import { createStageFacade, datumWorkingPlane, type StageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { stageCardFacts, stageContributionGroups } from '$lib/authoring/stage/stage-contributions';
+import {
+	stageCardFacts,
+	stageCardWriter,
+	stageContributionGroups,
+	stageDockTools
+} from '$lib/authoring/stage/stage-contributions';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
 import { createLayoutPlanners, layoutSubjectOf } from '$lib/authoring/adapters/layout/precision';
-import { createDimensionsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
+import {
+	createDrawingPlanners,
+	LAYOUT_WALL_CHAIN_COMMIT_KIND,
+	LAYOUT_WALL_DELETE_KIND
+} from '$lib/authoring/adapters/layout/drawing-planners';
+import { createCardFieldsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -132,7 +143,11 @@ async function mount(): Promise<Mounted> {
 describe('T1.P01.S04 — Layout precision', () => {
 	it('registers one planner per writable fact and contributes only through the AM-5 surface', async () => {
 		const { facade, host, services, wallId } = await mount();
-		expect(host.coordinator().planners()).toHaveLength(createLayoutPlanners().length);
+		// The precision set S05 shipped plus S02's two drawing operations, on the one
+		// registry, admission and coordinator: drawing is not a second acceptance path.
+		expect(host.coordinator().planners()).toHaveLength(
+			createLayoutPlanners().length + createDrawingPlanners().length
+		);
 		expect(createLayoutPlanners().map((planner) => planner.kind).sort()).toEqual([
 			'layout-entity-name',
 			'layout-opening-measure',
@@ -143,15 +158,26 @@ describe('T1.P01.S04 — Layout precision', () => {
 			'layout-wall-move',
 			'layout-wall-thickness'
 		]);
+		expect(createDrawingPlanners().map((planner) => planner.kind).sort()).toEqual([
+			LAYOUT_WALL_CHAIN_COMMIT_KIND,
+			LAYOUT_WALL_DELETE_KIND
+		]);
 		const groups = stageContributionGroups(facade);
 		expect(groups.some((group) => group.entries.some((entry) => entry.taskKind === 'layout-plinth-place'))).toBe(true);
 		expect(facade.openContributedTask('layout-place-plinth')).toMatchObject({ kind: 'opened', instrument: { summary: 'Place plinth' } });
 
-		// Capability Find lists operations, not subjects: Dimensions is always offered,
-		// and without an inspectable subject it contributes no instrument.
-		expect(facade.openContributedTask('layout-dimensions')).toMatchObject({ kind: 'opened', instrument: null });
+		// Ink is a **dock** tool, so it arms from the dock rather than listing itself a
+		// second time among the Index entries.
+		expect(stageDockTools(facade).map((tool) => tool.taskKind)).toEqual(['layout-ink']);
+		expect(stageContributionGroups(facade).some((group) => group.entries.some((entry) => entry.taskKind === 'layout-ink'))).toBe(false);
+
+		// The Dimensions task is retired with the writer it hosted: the Card owns those
+		// fields now, so the old kind opens nothing at all.
+		expect(facade.openContributedTask('layout-dimensions')).toMatchObject({ kind: 'refused' });
 		selectWall(facade, wallId);
-		expect(facade.openContributedTask('layout-dimensions')).toMatchObject({ kind: 'opened', instrument: { summary: 'Dimensions' } });
+		const writer = stageCardWriter(facade, { sourceId: wallId, sourceKind: 'wall', ref: null });
+		expect(writer).toMatchObject({ summary: 'Wall fields', adapterId: 'layout' });
+		expect(writer?.view).toBeDefined();
 
 		const facts = stageCardFacts(facade, { sourceId: wallId, sourceKind: 'wall', ref: null });
 		expect(facts.some((fact) => fact.label === 'Height')).toBe(true);
@@ -477,7 +503,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 	it('releases the proposal lease when a commit is refused or invalid', async () => {
 		const { facade, host, services, wallId } = await mount();
 		selectWall(facade, wallId);
-		const instrument = createDimensionsInstrument(services)!;
+		const instrument = createCardFieldsInstrument(services)!;
 
 		instrument.edit('height', '0');
 		expect(instrument.proposalLive()).toBe(true);
@@ -539,7 +565,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 	it('holds the host gesture lease for a live proposal and refuses Undo with live-proposal', async () => {
 		const { facade, host, services, wallId } = await mount();
 		selectWall(facade, wallId);
-		const instrument = createDimensionsInstrument(services)!;
+		const instrument = createCardFieldsInstrument(services)!;
 		expect(instrument.proposalLive()).toBe(false);
 
 		instrument.edit('height', '2.4');

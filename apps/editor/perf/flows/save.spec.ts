@@ -29,7 +29,7 @@ import {
 	commitPrecisionLength,
 	gotoCreateIntent,
 	openSourceJson,
-	selectFirstWallAndOpenDimensions,
+	selectFirstWall,
 	uniqueProjectId,
 	waitForAcceptedResult
 } from '../lib/flow';
@@ -83,7 +83,7 @@ async function saveOnce(session: MeasuredSession, origin: string, delays: SaveDe
 	const project = await fixtureProject('S', projectId);
 	await gotoCreateIntent(page, projectId);
 	await openSourceJson(page, project);
-	await selectFirstWallAndOpenDimensions(page);
+	await selectFirstWall(page);
 	const beforeEdit = await acceptedResultCount(page);
 	await commitPrecisionLength(page, 4.5);
 	await waitForAcceptedResult(page, beforeEdit);

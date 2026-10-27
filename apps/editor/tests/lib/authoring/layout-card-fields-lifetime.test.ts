@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
-/** Async results belong to the Dimensions controller and mount that submitted them. */
+/**
+ * Async results belong to the Card field controller and the mount that submitted
+ * them.
+ *
+ * The panel is the same controller S05 shipped, moved from the retired Dimensions
+ * task into the Card (Round 2 D9). These properties are about **lifetime**, not
+ * about where the panel lives: a settled promise, a refusal and a focus event all
+ * arrive in the browser after the panel they belong to may be gone.
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
-import LayoutDimensionsInstrument from '$lib/authoring/adapters/layout/LayoutDimensionsInstrument.svelte';
-import DimensionsLifetimeProbe from './fixtures/DimensionsLifetimeProbe.svelte';
-import { createDimensionsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
+import LayoutCardFields from '$lib/authoring/adapters/layout/LayoutCardFields.svelte';
+import CardFieldsLifetimeProbe from './fixtures/CardFieldsLifetimeProbe.svelte';
+import { createCardFieldsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import type { LayoutInstrument, LayoutInstrumentOutcome } from '$lib/authoring/adapters/layout/instrument';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { reactiveCell } from './__fixtures__/reactive-cell.svelte';
-vi.mock('$lib/authoring/adapters/layout/adapter-support', () => ({ createDimensionsInstrument: vi.fn() }));
+vi.mock('$lib/authoring/adapters/layout/adapter-support', () => ({ createCardFieldsInstrument: vi.fn() }));
 let cleanup: (() => void) | undefined;
 afterEach(() => { cleanup?.(); cleanup = undefined; vi.restoreAllMocks(); document.body.replaceChildren(); });
 function controller(id: string) {
@@ -29,13 +37,13 @@ async function panel(probe = false) {
 		return { stage: { selection: () => ({ sourceKind: 'wall', sourceId: id }) } } as unknown as StageAdapterServices;
 	}
 	const firstServices = services('wall-a'), secondServices = services('wall-b');
-	vi.mocked(createDimensionsInstrument).mockImplementation((value) => value.stage.selection()?.sourceId === 'wall-a' ? first : second);
+	vi.mocked(createCardFieldsInstrument).mockImplementation((value) => value.stage.selection()?.sourceId === 'wall-a' ? first : second);
 	const cell = reactiveCell(firstServices);
 	const visible = reactiveCell(true);
 	const target = document.createElement('div'); document.body.append(target);
 	const component = probe
-		? mount(DimensionsLifetimeProbe, { target, props: { get services() { return cell.value; }, get visible() { return visible.value; } } })
-		: mount(LayoutDimensionsInstrument, { target, props: { get services() { return cell.value; } } });
+		? mount(CardFieldsLifetimeProbe, { target, props: { get services() { return cell.value; }, get visible() { return visible.value; } } })
+		: mount(LayoutCardFields, { target, props: { get services() { return cell.value; } } });
 	cleanup = () => { void unmount(component); };
 	await tick();
 	return { first, second, target, hide: async () => { cell.value = secondServices; visible.value = false; await tick(); }, replace: async () => { cell.value = secondServices; await tick(); }, destroy: async () => { cleanup = undefined; await unmount(component); } };
@@ -45,7 +53,7 @@ function submit(target: HTMLElement, command: 'commit' | 'resumePaused') {
 	else target.querySelector('input[data-field="length"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 }
 for (const command of ['commit', 'resumePaused'] as const) {
-	describe(`Dimensions ${command} lifetime`, () => {
+	describe(`Card field writer ${command} lifetime`, () => {
 		it('never reads a destroyed derived or refreshes its retired controller', async () => {
 			const { first, target, destroy } = await panel();
 			let resolve!: (outcome: LayoutInstrumentOutcome) => void;

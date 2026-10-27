@@ -85,6 +85,19 @@ export type GestureTransitionPolicy =
 	| 'cancel-on-reading-change';
 
 export type GestureLease = {
+	/**
+	 * Whether this lease is **navigation** rather than authoring work.
+	 *
+	 * The declaration is what keeps `liveProposal()` free of a list of owner
+	 * names: a navigation press explicitly says it is one and never blocks
+	 * history; every other live lease is authored work whose candidate is not in
+	 * the document yet, which is exactly what Undo must explain before it runs.
+	 *
+	 * Additive with a default: a lease that does not declare it is authored work,
+	 * which is the conservative reading — an unknown holder may be previewing a
+	 * candidate that is not in the document yet.
+	 */
+	readonly navigation?: boolean;
 	readonly owner: string;
 	readonly evaluationId: string;
 	readonly acceptedRevision: AcceptedRevision;
@@ -99,7 +112,31 @@ export type GestureAcquisition =
 	| { readonly kind: 'granted'; readonly lease: GestureLease }
 	| { readonly kind: 'refused'; readonly code: 'gesture-held' | 'stale-epoch'; readonly owner: string };
 
-/** What the host's reading-change policy run did, so the caller can drop its samples. */
+/**
+ * One live **proposal**: work the creator has named but not yet accepted.
+ *
+ * A proposal is the session-wide statement "Undo/Redo must explain finish or
+ * cancel first", and it is deliberately *not* a list of gesture owners. A drag
+ * that previews a candidate and a live Wall chain are both proposals, but a
+ * chain outlives the press that started it, so the lease is its own object:
+ * the writer acquires it when the proposal becomes visible and releases it when
+ * the proposal is accepted, refused or cancelled — never earlier.
+ *
+ * The reason is carried **until release**, so a blocked Undo can name what must
+ * settle first instead of guessing from whichever gesture happens to be live.
+ */
+export type ProposalLease = {
+	readonly owner: string;
+	readonly reason: string;
+	/** `true` until released, superseded by a replacement or ended by the host. */
+	readonly active: boolean;
+	release(): void;
+};
+
+/** The oldest live proposal: the one an Undo/Redo refusal names. */
+export type LiveProposal = { readonly owner: string; readonly reason: string };
+
+/** One reading of the settled projection, before and after a reading change. */
 export type GestureReadingChange = {
 	readonly cancelled: boolean;
 	readonly suspended: boolean;
@@ -191,12 +228,28 @@ export type StageSession = {
 	openTask(task: StageTask): boolean;
 	closeTask(): boolean;
 	gesture(): GestureLease | null;
+	/**
+	 * Register one live proposal. Undo/Redo is unavailable while any lease is
+	 * live, and a released lease (or one ended by an install, replacement or
+	 * teardown) can never block history again.
+	 */
+	registerProposal(input: { readonly owner: string; readonly reason: string }): ProposalLease;
+	/**
+	 * The oldest live proposal, or `null` when nothing is proposed.
+	 *
+	 * A **gesture lease that is not navigation** is a proposal too (its candidate
+	 * is not in the document yet), and this answers for it as well, so a caller
+	 * never has to know which mechanism holds the live value.
+	 */
+	liveProposal(): LiveProposal | null;
 	/** One lease at a time; a second request is refused and navigation cannot steal it. */
 	acquireGesture(request: {
 		owner: string;
 		evaluationId: string;
 		acceptedRevision: AcceptedRevision;
 		policy: GestureTransitionPolicy;
+		/** `true` for the host's own navigation press; default `false`. */
+		navigation?: boolean;
 	}): GestureAcquisition;
 	/**
 	 * Run the live lease's transition policy once, immediately before the host
@@ -309,6 +362,14 @@ function freshSessionEpoch(): SessionEpoch {
  * the epoch orders replacements within a session, and the session epoch is what a
  * leftover ticket from a closed session fails against.
  */
+/**
+ * The standing words for a live authored gesture: the creator finishes or
+ * cancels the edit, and Undo runs afterwards. A registered proposal may carry
+ * its own more specific reason.
+ */
+export const PROPOSAL_REASON =
+	'A proposal is live; finish or cancel it — Undo is available once it is accepted or refused.';
+
 export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch?: number } = {}): StageSession {
 	let sessionEpoch = options.sessionEpoch ?? freshSessionEpoch();
 	let epoch = options.epoch ?? 0;
@@ -319,9 +380,23 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 	let writerGeneration = 0;
 	let task: StageTask | null = null;
 	let activeGesture: { lease: InternalGesture } | null = null;
+	/**
+	 * Live proposals, in registration order. A `Set` of mutable lease records: the
+	 * session holds them so an install, replacement or teardown ends every one of
+	 * them, which is what makes "no hidden proposal" true even if a writer forgets.
+	 */
+	const liveProposals = new Set<InternalProposal>();
 	let disposed = false;
 	const registry = createCancellationRegistry();
 	const disposables = new Set<() => void>();
+
+	/** The mutable proposal record; `ProposalLease` is its readonly view. */
+	type InternalProposal = {
+		owner: string;
+		reason: string;
+		active: boolean;
+		release(): void;
+	};
 
 	/** The mutable lease record the session holds; `GestureLease` is its readonly view. */
 	type InternalGesture = {
@@ -329,6 +404,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		evaluationId: string;
 		acceptedRevision: AcceptedRevision;
 		policy: GestureTransitionPolicy;
+		navigation: boolean;
 		token: ReplacementEpochToken;
 		active: boolean;
 		released: boolean;
@@ -488,6 +564,30 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		gesture() {
 			return activeGesture?.lease ?? null;
 		},
+		registerProposal(request) {
+			const internal: InternalProposal = {
+				owner: request.owner,
+				reason: request.reason,
+				active: true,
+				release() {
+					if (!internal.active) return;
+					internal.active = false;
+					liveProposals.delete(internal);
+				}
+			};
+			liveProposals.add(internal);
+			return internal;
+		},
+		liveProposal() {
+			for (const proposal of liveProposals) {
+				if (proposal.active) return { owner: proposal.owner, reason: proposal.reason };
+			}
+			const gesture = activeGesture?.lease;
+			if (gesture !== undefined && gesture.active && !gesture.navigation) {
+				return { owner: gesture.owner, reason: PROPOSAL_REASON };
+			}
+			return null;
+		},
 		acquireGesture(request) {
 			if (disposed) return { kind: 'refused', code: 'stale-epoch', owner: request.owner };
 			if (activeGesture !== null && activeGesture.lease.active) {
@@ -498,6 +598,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 				evaluationId: request.evaluationId,
 				acceptedRevision: request.acceptedRevision,
 				policy: request.policy,
+				navigation: request.navigation === true,
 				token: token(),
 				active: true,
 				released: false,
@@ -572,6 +673,11 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 				const releasedGestures = lease !== undefined && lease.active ? 1 : 0;
 				if (lease !== undefined) lease.release();
 				activeGesture = null;
+				// Accepted content settles every proposal that was made against the
+				// previous source: the values they named are now either this document or
+				// nothing, and a lease that outlived its baseline could block history
+				// forever.
+				for (const proposal of [...liveProposals]) proposal.release();
 				// Selection is not cleared wholesale: the host asks the accepted
 				// correspondence whether the subject survived. A requalification that
 				// throws is a refusal to carry the selection, never a half-kept one.
@@ -642,6 +748,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			const releasedGestures = lease !== undefined && lease.active ? 1 : 0;
 			if (lease !== undefined) lease.release();
 			activeGesture = null;
+			for (const proposal of [...liveProposals]) proposal.release();
 			selectionValue = EMPTY_SELECTION;
 			task = null;
 			current = admitted;
@@ -678,6 +785,8 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			registry.cancelKinds(['gesture']);
 			activeGesture?.lease.release();
 			activeGesture = null;
+			// Metadata adoption keeps the domain content identical, so a proposal is
+			// still valid: its leases are left alone deliberately.
 			const previousSourceContentId = active.sourceContentId;
 			current = next;
 			return { kind: 'adopted', previousSourceContentId, sourceContentId: next.sourceContentId };
@@ -692,6 +801,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			registry.cancelAll('teardown');
 			activeGesture?.lease.release();
 			activeGesture = null;
+			for (const proposal of [...liveProposals]) proposal.release();
 			selectionValue = EMPTY_SELECTION;
 			task = null;
 			const pending = [...disposables];
