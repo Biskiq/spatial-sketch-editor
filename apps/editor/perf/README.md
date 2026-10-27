@@ -15,6 +15,12 @@ the workflow rule lives in
 npm run perf                 # from the repository root: production build + all flows
 npm run perf:bundle          # delivery report over the current production build
 
+# T2.P02.S03 integrated acceptance: supervisor boots API + database + preview,
+# then runs perf/flows/s03-own-model-acceptance.spec.ts against them
+cd apps/editor
+DATABASE_URL=<task-private database> PERF_RESULTS_DIR=<evidence dir> \
+  npx vite-node --script perf/run-s03-own-model-qa.mjs
+
 # one flow / one browser, reusing an existing preview server
 cd apps/editor
 npx playwright test --config perf/playwright.config.ts flows/drag-correlation.spec.ts --project=chromium
@@ -47,6 +53,7 @@ series, never a user profile.
 | `flows/stage-trace.spec.ts` | Per-stage traces (S06 C) | one traced window per flow and tier (F2, F3, F4, F8, F7): main-thread busy/idle, GC, script, style/layout, paint and GPU-process time beside the window's stage spans; attribution, never a timing row |
 | `flows/e5-sweep.spec.ts` | E5 browser counts (S06 C) | museum ×1 and the H/D/C sweeps: render counters at rest, the fixed edit's work, and framebuffer equality at the fixed View before and after the edit (H must match ×1; D and C are recorded); count, not timing |
 | `flows/calibration.spec.ts` | CPU calibration | grid-7 compile + Stage admission, 20 runs, CDP throttling search when a reference median is supplied |
+| `flows/s03-own-model-acceptance.spec.ts` | T2.P02.S03 integrated acceptance (on demand) | starter → Library Import with maps → review → approve → place → Arrange move/turn → second instance → Save → fresh-session reopen → Head Preview pixels, plus oversize/malformed/cancelled/project-replaced refusals that install nothing. Needs `run-s03-own-model-qa.mjs` (in-process API, private database, memory object store) and is never part of a measurement row |
 
 **Attributed work is not a constant across rows.** A unit whose domain data is deeply frozen
 (F4-accepted) answers a repeated digest from the frozen-object revision memo, so its

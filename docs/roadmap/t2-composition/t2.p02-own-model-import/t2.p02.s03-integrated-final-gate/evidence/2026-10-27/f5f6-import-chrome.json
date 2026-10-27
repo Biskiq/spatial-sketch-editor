@@ -1,0 +1,1156 @@
+{
+  "name": "f5f6-import-chrome",
+  "startedAt": "2026-10-27T13:46:36.807Z",
+  "machine": {
+    "platform": "darwin",
+    "release": "24.6.0",
+    "cpuModel": "Apple M2",
+    "cores": 8,
+    "memoryGiB": 16,
+    "node": "v26.7.0",
+    "powerState": "not recorded (PERF_POWER_STATE unset)"
+  },
+  "profile": "milestone",
+  "acceptanceEvidence": false,
+  "passScoped": false,
+  "samplePlan": {
+    "profile": "milestone",
+    "acceptanceEvidence": true,
+    "runs": 3,
+    "warmup": 1,
+    "inputSamples": 60,
+    "dragSamples": 2,
+    "undoRedoCycles": 10,
+    "f13Edits": 20,
+    "f13Cycles": {
+      "cold": 10,
+      "warm": 1,
+      "repeat-use": 10
+    },
+    "cacheStates": {
+      "f2": [
+        "cold",
+        "warm"
+      ],
+      "f3": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f7": [
+        "warm"
+      ],
+      "f13": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ]
+    },
+    "runCounts": {
+      "f2": 3,
+      "f3": {
+        "cold": 1,
+        "warm": 3,
+        "repeat-use": 1
+      },
+      "f7": 3,
+      "f13": 1
+    },
+    "oldMethod": false,
+    "delayProof": false,
+    "stageTraceTiers": [
+      "grid-L"
+    ],
+    "note": "milestone method: 3 independent runs per decision row, extended one run at a time to 10 (F7 to 5) only while a hard row is undecided; 60 pointer inputs; 10 Undo/Redo cycles; 20 F13 edits over ten measured cycles; F2 cold+warm; F7 warm; full E5 matrix; no A.6 or delayed-preview proof (Bench 1 evidence)"
+  },
+  "rows": [
+    {
+      "id": "F5F6-import-S-cold",
+      "flow": "F5/F6 import, admission and floor placement",
+      "workload": "S generated model (12 triangles, 512 px map), one Save, one approved placement",
+      "cacheState": "cold",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "runs": 3
+      },
+      "stats": {
+        "admission": {
+          "count": 3,
+          "min": 306,
+          "median": 306.10000000009313,
+          "p75": 307.10000000009313,
+          "p95": 307.90000000009314,
+          "p99": 308.0600000000931,
+          "max": 308.10000000009313,
+          "values": [
+            306,
+            306.10000000009313,
+            308.10000000009313
+          ]
+        },
+        "approve": {
+          "count": 3,
+          "min": 340.89999999990687,
+          "median": 345.39999999990687,
+          "p75": 352.39999999990687,
+          "p95": 357.9999999999069,
+          "p99": 359.1199999999069,
+          "max": 359.39999999990687,
+          "values": [
+            340.89999999990687,
+            345.39999999990687,
+            359.39999999990687
+          ]
+        },
+        "floorToAccepted": {
+          "count": 3,
+          "min": 33.10000000009313,
+          "median": 34.39999999990687,
+          "p75": 34.39999999990687,
+          "p95": 34.39999999990687,
+          "p99": 34.39999999990687,
+          "max": 34.39999999990687,
+          "values": [
+            33.10000000009313,
+            34.39999999990687,
+            34.39999999990687
+          ]
+        },
+        "chosenToPlaced": {
+          "count": 3,
+          "min": 681.3999999999069,
+          "median": 687.8999999999069,
+          "p75": 693.1999999999534,
+          "p95": 697.4399999999907,
+          "p99": 698.2879999999982,
+          "max": 698.5,
+          "values": [
+            681.3999999999069,
+            687.8999999999069,
+            698.5
+          ]
+        },
+        "longTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "longestTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "frames": {
+          "count": 3,
+          "min": 18,
+          "median": 18,
+          "p75": 18,
+          "p95": 18,
+          "p99": 18,
+          "max": 18,
+          "values": [
+            18,
+            18,
+            18
+          ]
+        },
+        "heapBeforeMiB": {
+          "count": 3,
+          "min": 8.324348449707031,
+          "median": 8.325210571289062,
+          "p75": 8.325315475463867,
+          "p95": 8.325399398803711,
+          "p99": 8.32541618347168,
+          "max": 8.325420379638672,
+          "values": [
+            8.324348449707031,
+            8.325210571289062,
+            8.325420379638672
+          ]
+        },
+        "heapPeakMiB": {
+          "count": 3,
+          "min": 9.063716888427734,
+          "median": 9.77408218383789,
+          "p75": 9.972640991210938,
+          "p95": 10.131488037109374,
+          "p99": 10.163257446289062,
+          "max": 10.171199798583984,
+          "values": [
+            9.063716888427734,
+            9.77408218383789,
+            10.171199798583984
+          ]
+        },
+        "heapAfterMiB": {
+          "count": 3,
+          "min": 8.498237609863281,
+          "median": 8.504203796386719,
+          "p75": 8.50429916381836,
+          "p95": 8.504375457763672,
+          "p99": 8.504390716552734,
+          "max": 8.50439453125,
+          "values": [
+            8.498237609863281,
+            8.504203796386719,
+            8.50439453125
+          ]
+        },
+        "heapDeltaMiB": {
+          "count": 3,
+          "min": 0.17302703857421875,
+          "median": 0.17897415161132812,
+          "p75": 0.1794147491455078,
+          "p95": 0.17976722717285157,
+          "p99": 0.1798377227783203,
+          "max": 0.1798553466796875,
+          "values": [
+            0.17302703857421875,
+            0.17897415161132812,
+            0.1798553466796875
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "admission is one wall-clock window across the lazy worker, upload, approval and arming; the worker thread time is not split out",
+        "peak heap is sampled every 100 ms without GC; before/after are post-GC and are the comparable numbers",
+        "GPU memory is not exposed by Chromium; no GPU row is claimed",
+        "local loopback API and object store; no production transfer baseline"
+      ]
+    },
+    {
+      "id": "F5F6-import-S-warm",
+      "flow": "F5/F6 import, admission and floor placement",
+      "workload": "S generated model (12 triangles, 512 px map), one Save, one approved placement",
+      "cacheState": "warm",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "runs": 3
+      },
+      "stats": {
+        "admission": {
+          "count": 3,
+          "min": 203.89999999990687,
+          "median": 204.60000000009313,
+          "p75": 205,
+          "p95": 205.3199999999255,
+          "p99": 205.3839999999106,
+          "max": 205.39999999990687,
+          "values": [
+            203.89999999990687,
+            204.60000000009313,
+            205.39999999990687
+          ]
+        },
+        "approve": {
+          "count": 3,
+          "min": 347.5,
+          "median": 354.39999999990687,
+          "p75": 359.55000000004657,
+          "p95": 363.6700000001583,
+          "p99": 364.4940000001807,
+          "max": 364.70000000018626,
+          "values": [
+            347.5,
+            354.39999999990687,
+            364.70000000018626
+          ]
+        },
+        "floorToAccepted": {
+          "count": 3,
+          "min": 41,
+          "median": 42.5,
+          "p75": 42.800000000046566,
+          "p95": 43.04000000008382,
+          "p99": 43.08800000009127,
+          "max": 43.10000000009313,
+          "values": [
+            41,
+            42.5,
+            43.10000000009313
+          ]
+        },
+        "chosenToPlaced": {
+          "count": 3,
+          "min": 593.8999999999069,
+          "median": 602.1000000000931,
+          "p75": 606.6000000000931,
+          "p95": 610.2000000000932,
+          "p99": 610.9200000000932,
+          "max": 611.1000000000931,
+          "values": [
+            593.8999999999069,
+            602.1000000000931,
+            611.1000000000931
+          ]
+        },
+        "longTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "longestTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "frames": {
+          "count": 3,
+          "min": 12,
+          "median": 12,
+          "p75": 12,
+          "p95": 12,
+          "p99": 12,
+          "max": 12,
+          "values": [
+            12,
+            12,
+            12
+          ]
+        },
+        "heapBeforeMiB": {
+          "count": 3,
+          "min": 8.328758239746094,
+          "median": 8.344245910644531,
+          "p75": 8.344343185424805,
+          "p95": 8.344421005249023,
+          "p99": 8.344436569213867,
+          "max": 8.344440460205078,
+          "values": [
+            8.328758239746094,
+            8.344245910644531,
+            8.344440460205078
+          ]
+        },
+        "heapPeakMiB": {
+          "count": 3,
+          "min": 8.908790588378906,
+          "median": 8.915225982666016,
+          "p75": 9.11159896850586,
+          "p95": 9.268697357177734,
+          "p99": 9.300117034912109,
+          "max": 9.307971954345703,
+          "values": [
+            8.908790588378906,
+            8.915225982666016,
+            9.307971954345703
+          ]
+        },
+        "heapAfterMiB": {
+          "count": 3,
+          "min": 8.382869720458984,
+          "median": 8.475589752197266,
+          "p75": 8.47616195678711,
+          "p95": 8.476619720458984,
+          "p99": 8.47671127319336,
+          "max": 8.476734161376953,
+          "values": [
+            8.382869720458984,
+            8.475589752197266,
+            8.476734161376953
+          ]
+        },
+        "heapDeltaMiB": {
+          "count": 3,
+          "min": 0.054111480712890625,
+          "median": 0.13134384155273438,
+          "p75": 0.1318187713623047,
+          "p95": 0.13219871520996093,
+          "p99": 0.13227470397949218,
+          "max": 0.132293701171875,
+          "values": [
+            0.054111480712890625,
+            0.13134384155273438,
+            0.132293701171875
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "admission is one wall-clock window across the lazy worker, upload, approval and arming; the worker thread time is not split out",
+        "peak heap is sampled every 100 ms without GC; before/after are post-GC and are the comparable numbers",
+        "GPU memory is not exposed by Chromium; no GPU row is claimed",
+        "local loopback API and object store; no production transfer baseline"
+      ]
+    },
+    {
+      "id": "F5F6-import-S-repeat-use",
+      "flow": "F5/F6 import, admission and floor placement",
+      "workload": "S generated model (12 triangles, 512 px map), one Save, one approved placement",
+      "cacheState": "repeat-use",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "runs": 3
+      },
+      "stats": {
+        "admission": {
+          "count": 3,
+          "min": 203.5,
+          "median": 204,
+          "p75": 204.6500000001397,
+          "p95": 205.17000000025146,
+          "p99": 205.27400000027382,
+          "max": 205.3000000002794,
+          "values": [
+            203.5,
+            204,
+            205.3000000002794
+          ]
+        },
+        "approve": {
+          "count": 3,
+          "min": 353.89999999990687,
+          "median": 354.09999999962747,
+          "p75": 354.4499999997206,
+          "p95": 354.7299999997951,
+          "p99": 354.78599999981003,
+          "max": 354.79999999981374,
+          "values": [
+            353.89999999990687,
+            354.09999999962747,
+            354.79999999981374
+          ]
+        },
+        "floorToAccepted": {
+          "count": 3,
+          "min": 43.10000000009313,
+          "median": 47.89999999990687,
+          "p75": 48.449999999953434,
+          "p95": 48.889999999990685,
+          "p99": 48.97799999999814,
+          "max": 49,
+          "values": [
+            43.10000000009313,
+            47.89999999990687,
+            49
+          ]
+        },
+        "chosenToPlaced": {
+          "count": 3,
+          "min": 600.5,
+          "median": 606.6999999997206,
+          "p75": 607.5499999998137,
+          "p95": 608.2299999998883,
+          "p99": 608.3659999999031,
+          "max": 608.3999999999069,
+          "values": [
+            600.5,
+            606.6999999997206,
+            608.3999999999069
+          ]
+        },
+        "longTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "longestTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "frames": {
+          "count": 3,
+          "min": 12,
+          "median": 12,
+          "p75": 12.5,
+          "p95": 12.9,
+          "p99": 12.98,
+          "max": 13,
+          "values": [
+            12,
+            12,
+            13
+          ]
+        },
+        "heapBeforeMiB": {
+          "count": 3,
+          "min": 8.214778900146484,
+          "median": 8.321819305419922,
+          "p75": 8.331781387329102,
+          "p95": 8.339751052856446,
+          "p99": 8.341344985961914,
+          "max": 8.341743469238281,
+          "values": [
+            8.214778900146484,
+            8.321819305419922,
+            8.341743469238281
+          ]
+        },
+        "heapPeakMiB": {
+          "count": 3,
+          "min": 8.919559478759766,
+          "median": 8.925163269042969,
+          "p75": 8.973825454711914,
+          "p95": 9.012755203247071,
+          "p99": 9.020541152954102,
+          "max": 9.02248764038086,
+          "values": [
+            8.919559478759766,
+            8.925163269042969,
+            9.02248764038086
+          ]
+        },
+        "heapAfterMiB": {
+          "count": 3,
+          "min": 8.373462677001953,
+          "median": 8.394508361816406,
+          "p75": 8.395009994506836,
+          "p95": 8.39541130065918,
+          "p99": 8.39549156188965,
+          "max": 8.395511627197266,
+          "values": [
+            8.373462677001953,
+            8.394508361816406,
+            8.395511627197266
+          ]
+        },
+        "heapDeltaMiB": {
+          "count": 3,
+          "min": 0.05164337158203125,
+          "median": 0.053768157958984375,
+          "p75": 0.11674880981445312,
+          "p95": 0.16713333129882812,
+          "p99": 0.17721023559570312,
+          "max": 0.17972946166992188,
+          "values": [
+            0.05164337158203125,
+            0.053768157958984375,
+            0.17972946166992188
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "admission is one wall-clock window across the lazy worker, upload, approval and arming; the worker thread time is not split out",
+        "peak heap is sampled every 100 ms without GC; before/after are post-GC and are the comparable numbers",
+        "GPU memory is not exposed by Chromium; no GPU row is claimed",
+        "local loopback API and object store; no production transfer baseline"
+      ]
+    },
+    {
+      "id": "F5F6-import-M-cold",
+      "flow": "F5/F6 import, admission and floor placement",
+      "workload": "M generated model (~9k triangles, 512 px map), one Save, one approved placement",
+      "cacheState": "cold",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "runs": 3
+      },
+      "stats": {
+        "admission": {
+          "count": 3,
+          "min": 405.89999999990687,
+          "median": 407,
+          "p75": 407.5,
+          "p95": 407.9,
+          "p99": 407.98,
+          "max": 408,
+          "values": [
+            405.89999999990687,
+            407,
+            408
+          ]
+        },
+        "approve": {
+          "count": 3,
+          "min": 891.1000000000931,
+          "median": 895.3999999999069,
+          "p75": 898.25,
+          "p95": 900.5300000000746,
+          "p99": 900.9860000000895,
+          "max": 901.1000000000931,
+          "values": [
+            891.1000000000931,
+            895.3999999999069,
+            901.1000000000931
+          ]
+        },
+        "floorToAccepted": {
+          "count": 3,
+          "min": 36.39999999990687,
+          "median": 37.799999999813735,
+          "p75": 42.5,
+          "p95": 46.26000000014901,
+          "p99": 47.012000000178816,
+          "max": 47.200000000186265,
+          "values": [
+            36.39999999990687,
+            37.799999999813735,
+            47.200000000186265
+          ]
+        },
+        "chosenToPlaced": {
+          "count": 3,
+          "min": 1333.3999999999069,
+          "median": 1345.8999999999069,
+          "p75": 1348.25,
+          "p95": 1350.1300000000745,
+          "p99": 1350.5060000000894,
+          "max": 1350.6000000000931,
+          "values": [
+            1333.3999999999069,
+            1345.8999999999069,
+            1350.6000000000931
+          ]
+        },
+        "longTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "longestTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "frames": {
+          "count": 3,
+          "min": 24,
+          "median": 24,
+          "p75": 24,
+          "p95": 24,
+          "p99": 24,
+          "max": 24,
+          "values": [
+            24,
+            24,
+            24
+          ]
+        },
+        "heapBeforeMiB": {
+          "count": 3,
+          "min": 8.315231323242188,
+          "median": 8.315505981445312,
+          "p75": 8.319902420043945,
+          "p95": 8.323419570922852,
+          "p99": 8.324123001098632,
+          "max": 8.324298858642578,
+          "values": [
+            8.315231323242188,
+            8.315505981445312,
+            8.324298858642578
+          ]
+        },
+        "heapPeakMiB": {
+          "count": 3,
+          "min": 11.364128112792969,
+          "median": 11.36678695678711,
+          "p75": 11.37044906616211,
+          "p95": 11.37337875366211,
+          "p99": 11.37396469116211,
+          "max": 11.37411117553711,
+          "values": [
+            11.364128112792969,
+            11.36678695678711,
+            11.37411117553711
+          ]
+        },
+        "heapAfterMiB": {
+          "count": 3,
+          "min": 8.4930419921875,
+          "median": 8.493183135986328,
+          "p75": 8.49759292602539,
+          "p95": 8.50112075805664,
+          "p99": 8.50182632446289,
+          "max": 8.502002716064453,
+          "values": [
+            8.4930419921875,
+            8.493183135986328,
+            8.502002716064453
+          ]
+        },
+        "heapDeltaMiB": {
+          "count": 3,
+          "min": 0.1775360107421875,
+          "median": 0.177703857421875,
+          "p75": 0.1778278350830078,
+          "p95": 0.17792701721191406,
+          "p99": 0.1779468536376953,
+          "max": 0.17795181274414062,
+          "values": [
+            0.1775360107421875,
+            0.177703857421875,
+            0.17795181274414062
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "admission is one wall-clock window across the lazy worker, upload, approval and arming; the worker thread time is not split out",
+        "peak heap is sampled every 100 ms without GC; before/after are post-GC and are the comparable numbers",
+        "GPU memory is not exposed by Chromium; no GPU row is claimed",
+        "local loopback API and object store; no production transfer baseline"
+      ]
+    },
+    {
+      "id": "F5F6-import-M-warm",
+      "flow": "F5/F6 import, admission and floor placement",
+      "workload": "M generated model (~9k triangles, 512 px map), one Save, one approved placement",
+      "cacheState": "warm",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "runs": 3
+      },
+      "stats": {
+        "admission": {
+          "count": 3,
+          "min": 205.5,
+          "median": 205.89999999990687,
+          "p75": 206.0999999998603,
+          "p95": 206.25999999982304,
+          "p99": 206.2919999998156,
+          "max": 206.29999999981374,
+          "values": [
+            205.5,
+            205.89999999990687,
+            206.29999999981374
+          ]
+        },
+        "approve": {
+          "count": 3,
+          "min": 858,
+          "median": 883.3000000002794,
+          "p75": 886.5000000002328,
+          "p95": 889.0600000001956,
+          "p99": 889.5720000001882,
+          "max": 889.7000000001863,
+          "values": [
+            858,
+            883.3000000002794,
+            889.7000000001863
+          ]
+        },
+        "floorToAccepted": {
+          "count": 3,
+          "min": 43.8000000002794,
+          "median": 44,
+          "p75": 44.5,
+          "p95": 44.9,
+          "p99": 44.98,
+          "max": 45,
+          "values": [
+            43.8000000002794,
+            44,
+            45
+          ]
+        },
+        "chosenToPlaced": {
+          "count": 3,
+          "min": 1108.1000000000931,
+          "median": 1134.2000000001863,
+          "p75": 1136.7000000001863,
+          "p95": 1138.7000000001863,
+          "p99": 1139.1000000001864,
+          "max": 1139.2000000001863,
+          "values": [
+            1108.1000000000931,
+            1134.2000000001863,
+            1139.2000000001863
+          ]
+        },
+        "longTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "longestTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "frames": {
+          "count": 3,
+          "min": 12,
+          "median": 13,
+          "p75": 13,
+          "p95": 13,
+          "p99": 13,
+          "max": 13,
+          "values": [
+            12,
+            13,
+            13
+          ]
+        },
+        "heapBeforeMiB": {
+          "count": 3,
+          "min": 8.326091766357422,
+          "median": 8.342033386230469,
+          "p75": 8.343086242675781,
+          "p95": 8.34392852783203,
+          "p99": 8.344096984863281,
+          "max": 8.344139099121094,
+          "values": [
+            8.326091766357422,
+            8.342033386230469,
+            8.344139099121094
+          ]
+        },
+        "heapPeakMiB": {
+          "count": 3,
+          "min": 10.623397827148438,
+          "median": 10.631217956542969,
+          "p75": 11.107841491699219,
+          "p95": 11.48914031982422,
+          "p99": 11.56540008544922,
+          "max": 11.584465026855469,
+          "values": [
+            10.623397827148438,
+            10.631217956542969,
+            11.584465026855469
+          ]
+        },
+        "heapAfterMiB": {
+          "count": 3,
+          "min": 8.375640869140625,
+          "median": 8.391094207763672,
+          "p75": 8.394180297851562,
+          "p95": 8.396649169921876,
+          "p99": 8.397142944335938,
+          "max": 8.397266387939453,
+          "values": [
+            8.375640869140625,
+            8.391094207763672,
+            8.397266387939453
+          ]
+        },
+        "heapDeltaMiB": {
+          "count": 3,
+          "min": 0.049060821533203125,
+          "median": 0.049549102783203125,
+          "p75": 0.05133819580078125,
+          "p95": 0.05276947021484375,
+          "p99": 0.05305572509765625,
+          "max": 0.053127288818359375,
+          "values": [
+            0.049060821533203125,
+            0.049549102783203125,
+            0.053127288818359375
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "admission is one wall-clock window across the lazy worker, upload, approval and arming; the worker thread time is not split out",
+        "peak heap is sampled every 100 ms without GC; before/after are post-GC and are the comparable numbers",
+        "GPU memory is not exposed by Chromium; no GPU row is claimed",
+        "local loopback API and object store; no production transfer baseline"
+      ]
+    },
+    {
+      "id": "F5F6-import-M-repeat-use",
+      "flow": "F5/F6 import, admission and floor placement",
+      "workload": "M generated model (~9k triangles, 512 px map), one Save, one approved placement",
+      "cacheState": "repeat-use",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "runs": 3
+      },
+      "stats": {
+        "admission": {
+          "count": 3,
+          "min": 203.60000000009313,
+          "median": 205.5,
+          "p75": 205.69999999995343,
+          "p95": 205.85999999991617,
+          "p99": 205.89199999990873,
+          "max": 205.89999999990687,
+          "values": [
+            203.60000000009313,
+            205.5,
+            205.89999999990687
+          ]
+        },
+        "approve": {
+          "count": 3,
+          "min": 852.3999999999069,
+          "median": 856.2999999998137,
+          "p75": 872.8000000000466,
+          "p95": 886.0000000002328,
+          "p99": 888.6400000002701,
+          "max": 889.3000000002794,
+          "values": [
+            852.3999999999069,
+            856.2999999998137,
+            889.3000000002794
+          ]
+        },
+        "floorToAccepted": {
+          "count": 3,
+          "min": 32.299999999813735,
+          "median": 43.799999999813735,
+          "p75": 43.799999999813735,
+          "p95": 43.799999999813735,
+          "p99": 43.799999999813735,
+          "max": 43.799999999813735,
+          "values": [
+            32.299999999813735,
+            43.799999999813735,
+            43.799999999813735
+          ]
+        },
+        "chosenToPlaced": {
+          "count": 3,
+          "min": 1088.2999999998137,
+          "median": 1105.5999999996275,
+          "p75": 1122.2999999998137,
+          "p95": 1135.6599999999628,
+          "p99": 1138.3319999999926,
+          "max": 1139,
+          "values": [
+            1088.2999999998137,
+            1105.5999999996275,
+            1139
+          ]
+        },
+        "longTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "longestTaskMs": {
+          "count": 3,
+          "min": 0,
+          "median": 0,
+          "p75": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "frames": {
+          "count": 3,
+          "min": 12,
+          "median": 12,
+          "p75": 12,
+          "p95": 12,
+          "p99": 12,
+          "max": 12,
+          "values": [
+            12,
+            12,
+            12
+          ]
+        },
+        "heapBeforeMiB": {
+          "count": 3,
+          "min": 8.324726104736328,
+          "median": 8.3438720703125,
+          "p75": 8.397899627685547,
+          "p95": 8.441121673583984,
+          "p99": 8.449766082763672,
+          "max": 8.451927185058594,
+          "values": [
+            8.324726104736328,
+            8.3438720703125,
+            8.451927185058594
+          ]
+        },
+        "heapPeakMiB": {
+          "count": 3,
+          "min": 10.629749298095703,
+          "median": 11.559623718261719,
+          "p75": 11.572771072387695,
+          "p95": 11.583288955688477,
+          "p99": 11.585392532348633,
+          "max": 11.585918426513672,
+          "values": [
+            10.629749298095703,
+            11.559623718261719,
+            11.585918426513672
+          ]
+        },
+        "heapAfterMiB": {
+          "count": 3,
+          "min": 8.384811401367188,
+          "median": 8.421520233154297,
+          "p75": 8.438766479492188,
+          "p95": 8.4525634765625,
+          "p99": 8.455322875976563,
+          "max": 8.456012725830078,
+          "values": [
+            8.384811401367188,
+            8.421520233154297,
+            8.456012725830078
+          ]
+        },
+        "heapDeltaMiB": {
+          "count": 3,
+          "min": 0.004085540771484375,
+          "median": 0.060085296630859375,
+          "p75": 0.06886672973632812,
+          "p95": 0.07589187622070312,
+          "p99": 0.07729690551757812,
+          "max": 0.07764816284179688,
+          "values": [
+            0.004085540771484375,
+            0.060085296630859375,
+            0.07764816284179688
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "admission is one wall-clock window across the lazy worker, upload, approval and arming; the worker thread time is not split out",
+        "peak heap is sampled every 100 ms without GC; before/after are post-GC and are the comparable numbers",
+        "GPU memory is not exposed by Chromium; no GPU row is claimed",
+        "local loopback API and object store; no production transfer baseline"
+      ]
+    }
+  ],
+  "commit": "9e0fcb50d08666a0bd2eb1248be2a972f5d19426",
+  "writtenAt": "2026-10-27T13:47:24.317Z"
+}
