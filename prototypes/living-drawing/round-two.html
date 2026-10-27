@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Living Drawings Round Two</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Same system as the round-one proposal: one reading column, figures drawn the way the product draws (white marks on a forest instrument, gold for what needs a decision). */
+:root{
+  --bg:#F2EDE4; --paper:#FAF7F1; --line:#DCD3C3; --ink:#1D2A22; --ink-2:#4F5A4F; --mute:#7E7869;
+  --forest:#1F3A2C; --forest-2:#2E5541; --forest-ink:#F3EEE5; --gold:#9C7A3C; --gold-soft:#EFE3C8;
+  --f-display:"Instrument Serif","Iowan Old Style",Georgia,serif;
+  --f-ui:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141A16;--paper:#1C231E;--line:#33403A;--ink:#ECE6DA;--ink-2:#C2BCAE;--mute:#958F81;
+  --forest:#244636;--forest-2:#3F6E57;--forest-ink:#F3EEE5;--gold:#D3AF6D;--gold-soft:#3F3522;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141A16;--paper:#1C231E;--line:#33403A;--ink:#ECE6DA;--ink-2:#C2BCAE;--mute:#958F81;
+  --forest:#244636;--forest-2:#3F6E57;--forest-ink:#F3EEE5;--gold:#D3AF6D;--gold-soft:#3F3522;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 var(--f-ui);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+a{color:inherit;text-decoration-color:var(--gold);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.wrap{max-width:1080px;margin:0 auto}
+.col{max-width:680px}
+header.site{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-block:22px;flex-wrap:wrap}
+header.site nav{display:flex;gap:8px;flex-wrap:wrap}
+.mark{font:400 28px/1 var(--f-display);text-decoration:none}
+.open{display:inline-flex;align-items:center;gap:8px;background:var(--forest);color:var(--forest-ink);text-decoration:none;font-weight:500;font-size:15px;padding:10px 16px;border-radius:11px}
+.open:hover{background:var(--forest-2)}
+.open.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600}
+h1{font:400 clamp(48px,7.4vw,96px)/.95 var(--f-display);letter-spacing:-.01em;margin:18px 0 18px;text-wrap:balance}
+h1 em{font-style:italic;color:var(--forest-2)}
+:root[data-theme="dark"] h1 em{color:#9CC2A9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) h1 em{color:#9CC2A9}}
+.thesis{font:400 clamp(22px,2.6vw,29px)/1.32 var(--f-display);max-width:780px;margin:0 0 26px;text-wrap:balance}
+.lede{font-size:18.5px;color:var(--ink-2);max-width:660px}
+section{padding-block:56px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:0}
+h2{font:400 clamp(34px,4.4vw,50px)/1.05 var(--f-display);margin:10px 0 18px;text-wrap:balance}
+h3{font:600 17px/1.35 var(--f-ui);margin:26px 0 6px}
+p{margin:0 0 14px}
+.muted{color:var(--ink-2)}
+figure{margin:28px 0}
+figcaption{font-size:14px;color:var(--mute);margin-top:10px;max-width:680px}
+.panel{background:var(--forest);border-radius:14px;color:var(--forest-ink);overflow:hidden;padding:8px 10px}
+.panel svg,.cell svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--f-ui);fill:rgba(243,238,229,.82);font-size:12px}
+svg .t{font-size:13px;fill:#F3EEE5;font-weight:500}
+svg .g{fill:#D6B676}
+.ink{fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ink.thin{stroke-width:1.3}
+.ctx{fill:none;stroke:rgba(243,238,229,.45);stroke-width:1.2;stroke-dasharray:5 4}
+.solid{fill:rgba(243,238,229,.13);stroke:rgba(243,238,229,.75);stroke-width:1.3}
+.void{fill:#14281E;stroke:rgba(243,238,229,.55);stroke-width:1.1}
+.ghost{fill:none;stroke:rgba(255,255,255,.75);stroke-width:1.3;stroke-dasharray:4 3}
+.goldline{fill:none;stroke:#D6B676;stroke-width:1.8}
+.goldfill{fill:rgba(214,182,118,.22);stroke:#D6B676;stroke-width:1.8}
+.golddash{fill:rgba(214,182,118,.12);stroke:#D6B676;stroke-width:1.8;stroke-dasharray:4 3}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.cell{background:var(--forest);border-radius:12px;padding:12px 12px 14px;color:var(--forest-ink)}
+.cell svg{max-height:230px}
+.cell b{display:block;font:400 22px/1.1 var(--f-display);margin-top:6px}
+.cell span{font-size:13.5px;color:rgba(243,238,229,.78);display:block;margin-top:4px;line-height:1.45}
+@media (max-width:760px){.trio{grid-template-columns:1fr}}
+
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:22px}
+.three div{border-top:2px solid var(--forest);padding-top:12px}
+.three b{font:400 28px/1.08 var(--f-display);display:block}
+.three p{font-size:15.5px;color:var(--ink-2);margin-top:6px}
+@media (max-width:760px){.three{grid-template-columns:1fr}}
+
+.table{overflow-x:auto;margin-top:18px}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:15.5px}
+th,td{text-align:left;vertical-align:top;padding:12px 14px 12px 0;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600}
+td:first-child{font-weight:600;width:22%}
+td:nth-child(2){color:var(--ink-2)}
+.verdict{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;white-space:nowrap}
+.verdict.yes{color:var(--forest-2)} .verdict.no{color:var(--gold)} .verdict.later{color:var(--ink-2)}
+:root[data-theme="dark"] .verdict.yes{color:#9CC2A9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .verdict.yes{color:#9CC2A9}}
+
+.sentence{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px 22px;font-size:18px;line-height:1.75;max-width:720px;margin:18px 0}
+.sentence .nm{font:400 28px/1 var(--f-display);display:block;margin-bottom:8px}
+.sentence .ey{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600;display:block;margin-bottom:4px}
+.w{font-weight:600;border-bottom:1.5px dotted var(--forest-2)}
+.w.gold{border-bottom-color:var(--gold)}
+.w.slack{border-bottom:1.5px dashed var(--gold)}
+
+.note{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:15px}
+.note strong{display:block;font-size:14.5px;margin-bottom:6px}
+.note ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.note li{display:grid;grid-template-columns:12px 1fr;gap:8px;align-items:baseline}
+.note li i{width:7px;height:7px;border-radius:50%;background:var(--forest-2);display:block}
+.note li.still i{background:var(--line)} .note li.slack i{background:var(--gold)}
+.notes{display:grid;gap:12px;max-width:720px;margin-top:18px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:820px){.pair{grid-template-columns:1fr}}
+
+.steps{counter-reset:s;list-style:none;margin:18px 0 0;padding:0;display:grid;gap:0;max-width:820px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);width:26px;height:26px;border-radius:50%;border:1px solid var(--forest-2);display:grid;place-items:center;font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.steps b{display:block;font-weight:600}
+.steps span{color:var(--ink-2);font-size:15.5px}
+
+.finding{display:grid;grid-template-columns:120px 1fr;gap:18px;padding-block:16px;border-bottom:1px solid var(--line)}
+.finding .tag{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;padding-top:3px}
+.finding .tag.held{color:var(--forest-2)} .finding .tag.broke{color:var(--gold)} .finding .tag.changed{color:var(--ink-2)}
+:root[data-theme="dark"] .finding .tag.held{color:#9CC2A9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .finding .tag.held{color:#9CC2A9}}
+.finding p{margin:0;font-size:16px}
+.finding h4{margin:0 0 4px;font-size:17px}
+@media (max-width:640px){.finding{grid-template-columns:1fr;gap:4px}}
+
+.try{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}
+.try a{display:block;text-decoration:none;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}
+.try a:hover{border-color:var(--forest-2)}
+.try b{font:400 24px/1.1 var(--f-display);display:block;margin-bottom:6px}
+.try span{font-size:14.5px;color:var(--ink-2)}
+@media (max-width:980px){.try{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.try{grid-template-columns:1fr}}
+ul.plain{padding-left:18px} ul.plain li{margin-bottom:8px}
+.callout{border-left:3px solid var(--gold);padding:4px 0 4px 16px;max-width:680px;margin:20px 0;font:400 23px/1.35 var(--f-display)}
+footer{padding-block:40px 60px;color:var(--mute);font-size:14px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="site">
+  <a class="mark" href="index.html">biskiq</a>
+  <nav><a class="open ghost" href="index.html">Round one</a><a class="open" href="studio.html#panelling">Open the studio <span aria-hidden="true">→</span></a></nav>
+</header>
+
+<section>
+  <div class="eyebrow">Living Drawings · Round two · Expressiveness without complexity</div>
+  <h1>Every surface is a <em>place</em></h1>
+  <p class="thesis">No new tools. The same three gestures now land on more things: the top of something you made, the space along a wall, and one of many. What you meant is kept as a description, so it keeps holding while the room changes.</p>
+  <p class="lede">Round one let you draw on the room. Round two lets you draw on your own work and along it. A circle on a plinth’s top can be pushed into a hollow, then all the way through. A panel drawn once can be drawn along, around a corner, and the room divides it. One panel can differ from the rest, and it remembers <em>why</em>: “the middle one”, “centred under the niche”. When that stops being true, it doesn’t quietly jump to another panel. It stays where it was and asks.</p>
+  <figure>
+    <div class="trio">
+      <div class="cell"><svg viewBox="0 0 300 190" role="img" aria-label="A loop drawn on the top of a plinth and pushed through it">
+        <path class="ctx" d="M14 168 L196 168 L286 120 L104 120 Z"/>
+        <path class="solid" d="M70 96 L190 96 L190 156 L70 156 Z"/>
+        <path class="solid" d="M70 96 L112 70 L232 70 L190 96 Z"/>
+        <path class="solid" d="M190 96 L232 70 L232 130 L190 156 Z"/>
+        <ellipse cx="151" cy="83" rx="27" ry="7" class="void"/>
+        <path class="ctx" d="M124 84 L124 140 M178 84 L178 140"/>
+        <ellipse cx="151" cy="83" rx="27" ry="7" class="ink"/>
+        <circle cx="151" cy="52" r="9" fill="#fff"/><path d="M151 47v10M147 51l4-4 4 4M147 53l4 4 4-4" stroke="#1F3A2C" stroke-width="1.4" fill="none"/>
+        <text x="166" y="48" class="t">through</text>
+        <text x="14" y="184">A loop on the top, pushed through</text></svg>
+        <b>Every surface is a place</b><span>Draw on what you made. One dial: pull up to add, push in to carve, past the far side to go through.</span></div>
+      <div class="cell"><svg viewBox="0 0 300 190" role="img" aria-label="A panel drawn once on a wall, then drawn along across the wall and around a corner">
+        <path class="ctx" d="M20 30 L200 30 L200 160 L20 160 Z M200 30 L280 6 L280 186 L200 160"/>
+        <rect x="30" y="98" width="22" height="40" class="solid"/>
+        <rect x="30" y="98" width="22" height="40" class="ink thin"/>
+        <rect x="60" y="98" width="22" height="40" class="ghost"/><rect x="90" y="98" width="22" height="40" class="ghost"/><rect x="120" y="98" width="22" height="40" class="ghost"/><rect x="150" y="98" width="22" height="40" class="ghost"/>
+        <path class="ghost" d="M212 92 L230 87 L230 132 L212 136 Z M240 84 L258 79 L258 125 L240 130 Z"/>
+        <path class="ink" d="M41 118 C 90 116, 150 120, 192 117 C 210 116, 236 110, 266 104"/>
+        <text x="14" y="184">Drawn once, then along</text></svg>
+        <b>Repetition is drawing along</b><span>The room divides it: whole panels per stretch, breaking at corners and openings.</span></div>
+      <div class="cell"><svg viewBox="0 0 300 190" role="img" aria-label="A row of panels where the middle one is arched, under a niche">
+        <path class="ctx" d="M14 24 L286 24 L286 160 L14 160 Z"/>
+        <path class="ink thin" d="M136 76 V 52 Q 136 34 150 34 Q 164 34 164 52 V 76 Z"/>
+        <rect x="24" y="100" width="30" height="46" class="solid"/><rect x="62" y="100" width="30" height="46" class="solid"/><rect x="100" y="100" width="30" height="46" class="solid"/>
+        <path class="goldfill" d="M138 146 V 104 Q 138 88 153 86 Q 168 88 168 104 V 146 Z"/>
+        <rect x="176" y="100" width="30" height="46" class="solid"/><rect x="214" y="100" width="30" height="46" class="solid"/><rect x="252" y="100" width="24" height="46" class="solid"/>
+        <text x="122" y="176" class="g">the middle one</text></svg>
+        <b>Exceptions remember why</b><span>“Only this one” is kept as a description, found again after every change.</span></div>
+    </div>
+    <figcaption>The three discoveries, drawn the way the studio draws them. Each one reuses a round-one gesture: draw on, pull, draw over.</figcaption>
+  </figure>
+  <p style="display:flex;gap:10px;flex-wrap:wrap"><a class="open" href="studio.html#panelling">Try “A panelled room”</a><a class="open ghost" href="#try">All four new journeys</a></p>
+</section>
+
+<section id="question">
+  <div class="eyebrow">The question</div>
+  <h2>More you can say, nothing new to learn</h2>
+  <div class="col">
+    <p>The follow-up asked how Living Drawings could become significantly more expressive without becoming significantly harder to use. Specifically: drawing to add or remove form (a circle pushed into a through-hole), forms that aren’t symmetrical (an arm at one end of a bench, a pedestal whose front differs from its back), and repetition that understands its context (panels around a room, ornament along a curve).</p>
+    <p>The research added four things. Creators lose relationships. Duplicated details are hard to revise. Boolean libraries fail on ordinary cases, such as coplanar cuts. And attaching things by proximity can silently redirect them after a revision.</p>
+  </div>
+  <p class="callout">The question is not how many new shapes the language can produce. It is how much more freedom the same simple language can unlock.</p>
+  <div class="col">
+    <p>Our answer has three parts, and none of them is a new command. Each lets an existing gesture land somewhere new, and each stores intent as a <em>description</em> rather than a position or a nearest neighbour. That one decision is what lets everything keep working while the room changes.</p>
+  </div>
+  <div class="three">
+    <div><b>Every surface is a place</b><p>The top of a form and the seat of a bench are hosts, like the floor and the walls. One dial adds, carves, or goes through.</p></div>
+    <div><b>Repetition is drawing along</b><p>Draw a panel once, then draw along from it. The repetition is a property of the panel, and the architecture divides it.</p></div>
+    <div><b>Exceptions remember why</b><p>Draw over one of many and it changes them all. Then <em>Only this one</em> keeps the difference, described as “the middle one” or “under the niche”.</p></div>
+  </div>
+</section>
+
+<section id="places">
+  <div class="eyebrow">Discovery one</div>
+  <h2>Every surface is a place</h2>
+  <div class="col">
+    <p>In round one you could draw on the floor and on the walls. Now any flat face of something you made is a place to draw too: the top of a plinth, the top of a pedestal, the seat of a bench. The pen tip says which: “Plinth’s top”, “Bench’s seat”. The gestures are exactly the same.</p>
+    <p>A loop drawn on a place gets the usual handle, which now works as a <b>dial</b>. Pull it up and the drawing becomes a form standing there (a riser, an arm). Push it in and it becomes a hollow. Keep pushing past the far side and it snaps to <b>through</b>: an opening. On a wall, through makes a window, or a doorway if it reaches the floor. It is one signed value, so there is no union-or-subtract choice to make first, and the drawing survives every state. Drag an opening back up through zero and the same loop stands on the top instead.</p>
+  </div>
+  <figure>
+    <div class="panel"><svg viewBox="0 0 620 230" role="img" aria-label="One drawing on a plinth's top in four states: riser, flush, hollow, opening">
+      <g transform="translate(14 0)">
+        <rect x="20" y="120" width="110" height="70" class="solid"/><rect x="50" y="78" width="50" height="42" class="solid"/><path class="ink" d="M50 120 H100"/>
+        <text x="20" y="214" class="t">Riser</text><text x="64" y="214">pulled up</text></g>
+      <g transform="translate(164 0)">
+        <rect x="20" y="120" width="110" height="70" class="solid"/><path class="ink" d="M50 120 H100"/>
+        <circle cx="75" cy="102" r="8" fill="#fff"/><path d="M75 97v10M71 101l4-4 4 4M71 103l4 4 4-4" stroke="#1F3A2C" stroke-width="1.3" fill="none"/>
+        <text x="20" y="214" class="t">Flush</text><text x="62" y="214">just drawn</text></g>
+      <g transform="translate(314 0)">
+        <rect x="20" y="120" width="110" height="70" class="solid"/><rect x="50" y="120" width="50" height="30" class="void"/><path class="ink" d="M50 120 H100"/>
+        <text x="20" y="214" class="t">Hollow</text><text x="72" y="214">pushed in</text></g>
+      <g transform="translate(464 0)">
+        <rect x="20" y="120" width="110" height="70" class="solid"/><rect x="50" y="120" width="50" height="70" class="void"/><path class="ink" d="M50 120 H100"/>
+        <path class="goldline" d="M42 190 H108"/>
+        <text x="20" y="214" class="t">Opening</text><text x="80" y="214">through</text></g>
+      <path class="ctx" d="M14 40 H606"/><path d="M600 34 l6 6 -6 6" class="ctx"/>
+      <text x="14" y="28">one dial, one drawing: out adds · in carves · past the bottom goes through (a tie, not a depth)</text>
+    </svg></div>
+    <figcaption>The name follows the state (Riser, Hollow, Opening), but the drawing is the same throughout. An opening is tied to going through, so making the plinth taller keeps it through. The note says: “Opening still goes through Plinth, now 75 cm deep.”</figcaption>
+  </figure>
+  <h3>Asymmetry by composition</h3>
+  <div class="col">
+    <p>An arm at one end of a bench is not a special feature of benches. It is its own simple form, standing on the bench’s seat, and its sentence says exactly where:</p>
+  </div>
+  <div class="sentence"><span class="ey">Place · on Bench’s seat</span><span class="nm">Arm</span>A form standing on <span class="w">Bench’s seat, at its right end</span>, <span class="w">22 cm tall</span>. Its profile is <span class="w">straight</span>.</div>
+  <div class="col">
+    <p>“At its right end” is a description, re-found after every change. Widen the room and the bench’s end, tied to the right wall, moves 60 cm; the arm moves with it. Lower the seat in the bench’s section and the arm comes down 5 cm. Both are narrated. But some changes alter what “the seat” means: a seat that moved more than 15 cm at once, a seat redrawn as a slope, an arm that would now run around the bench’s corner, or a bench that is gone. Then the arm goes <b>slack</b>. It keeps its place, turns gold, and asks: follow the seat, keep it here, or remove it. It never jumps to whatever happens to be nearest.</p>
+    <p>A pedestal whose front differs from its back is the other kind of asymmetry. That is discovery three.</p>
+  </div>
+</section>
+
+<section id="rhythm">
+  <div class="eyebrow">Discovery two</div>
+  <h2>Repetition is drawing along</h2>
+  <div class="col">
+    <p>Draw a panel on the wall and pull it out 2 cm. Then start inside it and draw along: across the wall, around the corner. Ghost outlines show the division while the pen moves, and on release the panel becomes a rhythm. That is the whole gesture. There is no count to type and no spacing to compute, because the room already knows both.</p>
+  </div>
+  <figure>
+    <div class="panel"><svg viewBox="0 0 600 300" role="img" aria-label="Unfolded back and right walls. Top: seven panels on the back wall and six on the right. Bottom: the room is wider and the arched panel is tied under the niche; the back wall divides around it, three and four.">
+      <text x="30" y="20" class="t">Drawn once, then along: 7 + 6</text>
+      <path class="ctx" d="M30 30 H547 V122 H30 Z M316 30 V122"/>
+      <text x="252" y="136">back wall</text><text x="320" y="136">right wall</text>
+      <path class="ink thin" d="M153.8 64 V 46 Q 153.8 36 173 36 Q 192.2 36 192.2 46 V 64 Z"/>
+      <g class="solid">
+        <rect x="36.6" y="76" width="33.3" height="38"/><rect x="76.5" y="76" width="33.3" height="38"/><rect x="116.4" y="76" width="33.3" height="38"/><rect x="156.3" y="76" width="33.3" height="38"/><rect x="196.2" y="76" width="33.3" height="38"/><rect x="236.1" y="76" width="33.3" height="38"/><rect x="276" y="76" width="33.3" height="38"/>
+        <rect x="322.6" y="76" width="30.8" height="38"/><rect x="360" y="76" width="30.8" height="38"/><rect x="397.4" y="76" width="30.8" height="38"/><rect x="434.8" y="76" width="30.8" height="38"/><rect x="472.2" y="76" width="30.8" height="38"/><rect x="509.6" y="76" width="30.8" height="38"/>
+      </g>
+      <rect x="36.6" y="76" width="33.3" height="38" class="ink thin"/>
+
+      <text x="30" y="170" class="t">Room 60 cm wider; the arched panel tied under Niche: 3 + 1 + 4, then 6</text>
+      <path class="ctx" d="M30 180 H580 V272 H30 Z M349 180 V272"/>
+      <path class="ink thin" d="M153.8 214 V 196 Q 153.8 186 173 186 Q 192.2 186 192.2 196 V 214 Z"/>
+      <g class="solid">
+        <rect x="36.6" y="226" width="33.4" height="38"/><rect x="76.6" y="226" width="33.4" height="38"/><rect x="116.6" y="226" width="33.4" height="38"/>
+        <rect x="196.1" y="226" width="31.6" height="38"/><rect x="234.3" y="226" width="31.6" height="38"/><rect x="272.6" y="226" width="31.6" height="38"/><rect x="310.8" y="226" width="31.6" height="38"/>
+        <rect x="355.6" y="226" width="30.8" height="38"/><rect x="393" y="226" width="30.8" height="38"/><rect x="430.4" y="226" width="30.8" height="38"/><rect x="467.8" y="226" width="30.8" height="38"/><rect x="505.2" y="226" width="30.8" height="38"/><rect x="542.6" y="226" width="30.8" height="38"/>
+      </g>
+      <path class="goldfill" d="M156.5 264 V 234 Q 156.5 222 173 220 Q 189.5 222 189.5 234 V 264 Z"/>
+      <path class="goldline" d="M173 214 V 219" stroke-dasharray="2 2"/>
+      <text x="30" y="292">Margins equal the gap. Each stretch is shared evenly: panels flex, gaps stay exact.</text>
+    </svg></div>
+    <figcaption>The two walls unfolded. Corners, wall ends and openings that cross the band all break the rhythm into stretches. An exception tied under the niche anchors the division too, and each side shares what is left. The panels on the right wall didn’t change, so the notes don’t mention them.</figcaption>
+  </figure>
+  <div class="col">
+    <p>The rhythm divides itself by the architecture. Each stretch holds whole panels. By default they flex to share the stretch evenly and the gap stays exact; tap <span class="w">sharing each stretch evenly</span> to make them keep their drawn size instead and let the gaps grow. Stretches break at corners, at wall ends, and at any opening that crosses the band, so a window cut through the panelling makes the panels divide around it. When the room changes, the division is redone and narrated: “Panelling re-divided the back wall: 8 of 59 cm (was 7 of 61 cm).”</p>
+    <p>Repetition is a <b>property of the form</b>, not a new kind of object. It is a phrase in the panel’s sentence:</p>
+  </div>
+  <div class="sentence"><span class="ey">Rhythm · raised</span><span class="nm">Panelling</span>A panel drawn on the back wall, standing out <span class="w">2 cm</span>, <span class="w">repeated along the back and right walls</span>: 7 + 6, about 61 cm wide, <span class="w">12 cm apart</span>, <span class="w">sharing each stretch evenly</span>. Its profile is <span class="w">your own drawing</span>.</div>
+  <div class="col">
+    <p>Switch the repetition off and the single panel is back where you drew it; switch it on and every exception returns too. Draw over any one panel and they all change, because they are one drawing. That is the answer to “duplicated details are hard to revise”: there are no duplicates to revise. The bevel drawn once in the profile lens is on every panel.</p>
+    <h3>Why not an Array tool</h3>
+    <p>An array stores a count and a spacing. Those are exactly the numbers the architecture should decide, so an array goes wrong as soon as the wall changes. It also turns one detail into many objects that then have to be edited one by one or regrouped. Drawing along stores only the intent (this panel, along these walls, about this far apart) and lets the room supply the rest.</p>
+  </div>
+</section>
+
+<section id="exceptions">
+  <div class="eyebrow">Discovery three</div>
+  <h2>Exceptions remember what they are about</h2>
+  <div class="col">
+    <p>Drawing over one of many changes all of them. The whisper then offers the exception: <b>Only this one</b> for a panel, <b>Only the front</b> for a pedestal. It is the proposed-tie pattern from round one: offered, never assumed.</p>
+    <p>An exception is stored as a <b>description</b>, never as an index or a position: “the middle one on the back wall”, “the 3rd from the left”, “centred under Niche”, “the front”. After every change, each description is found again. If it still holds, the exception follows and the note says how. If it no longer holds, the exception goes <b>slack</b>. It keeps its shape and its last place, is marked in gold, and asks what it should be. It never moves on to a different panel by itself.</p>
+  </div>
+  <figure>
+    <div class="trio">
+      <div class="cell"><svg viewBox="0 0 300 170" role="img" aria-label="Seven panels; the middle one, under the niche, is arched">
+        <path class="ctx" d="M10 26 H262 V140 H10 Z"/>
+        <path class="ink thin" d="M119 72 V 52 Q 119 40 136 40 Q 153 40 153 52 V 72 Z"/>
+        <g class="solid"><rect x="16" y="92" width="29.1" height="40"/><rect x="51.1" y="92" width="29.1" height="40"/><rect x="86.2" y="92" width="29.1" height="40"/><rect x="156.4" y="92" width="29.1" height="40"/><rect x="191.5" y="92" width="29.1" height="40"/><rect x="226.6" y="92" width="29.1" height="40"/></g>
+        <path class="goldfill" d="M121.3 132 V 100 Q 121.3 88 135.9 86 Q 150.4 88 150.4 100 V 132 Z"/>
+        <text x="10" y="160">7 panels · “the middle one”</text></svg>
+        <b>Described</b><span>Only this one: remembered as the middle one on the back wall. It also sits under the niche, so that is offered as a tie.</span></div>
+      <div class="cell"><svg viewBox="0 0 300 170" role="img" aria-label="The room is wider; eight panels have no middle; the arched panel stays where it was, dashed in gold">
+        <path class="ctx" d="M10 26 H290 V140 H10 Z"/>
+        <path class="ink thin" d="M119 72 V 52 Q 119 40 136 40 Q 153 40 153 52 V 72 Z"/>
+        <g class="solid"><rect x="15.8" y="92" width="30.2" height="40"/><rect x="51.8" y="92" width="30.2" height="40"/><rect x="87.8" y="92" width="30.2" height="40"/><rect x="158.8" y="92" width="27.3" height="40"/><rect x="191.9" y="92" width="27.3" height="40"/><rect x="225" y="92" width="27.3" height="40"/><rect x="258" y="92" width="27.3" height="40"/></g>
+        <path class="golddash" d="M123.9 132 V 100 Q 123.9 88 138.4 86 Q 152.9 88 152.9 100 V 132 Z"/>
+        <text x="10" y="160">8 panels · no middle: it stays, and asks</text></svg>
+        <b>Slack</b><span>Widen the room and there are eight. “The middle one” no longer holds, so it keeps its place and asks which it should be.</span></div>
+      <div class="cell"><svg viewBox="0 0 300 170" role="img" aria-label="Tied under the niche; three panels on the left and four on the right divide around it">
+        <path class="ctx" d="M10 26 H290 V140 H10 Z"/>
+        <path class="ink thin" d="M119 72 V 52 Q 119 40 136 40 Q 153 40 153 52 V 72 Z"/>
+        <g class="solid"><rect x="15.8" y="92" width="29.4" height="40"/><rect x="51" y="92" width="29.4" height="40"/><rect x="86.2" y="92" width="29.4" height="40"/><rect x="156.3" y="92" width="27.9" height="40"/><rect x="190" y="92" width="27.9" height="40"/><rect x="223.7" y="92" width="27.9" height="40"/><rect x="257.4" y="92" width="27.9" height="40"/></g>
+        <path class="goldfill" d="M121.5 132 V 100 Q 121.5 88 136 86 Q 150.5 88 150.5 100 V 132 Z"/>
+        <path class="goldline" d="M136 72 V 84" stroke-dasharray="2 2"/>
+        <text x="10" y="160">Tied under Niche · 3 + 4 around it</text></svg>
+        <b>Tied</b><span>Choose “Centre it under Niche”. Now the exception anchors the division, and each side shares what is left.</span></div>
+    </div>
+    <figcaption>The same exception through three changes in the panelling journey. Remove the niche afterwards and it goes slack again (“Niche is gone”), keeping its shape and place.</figcaption>
+  </figure>
+  <div class="notes">
+    <div class="note"><strong>Room width 5.80 m · 2 forms responded</strong><ul>
+      <li><i></i><span>Panelling re-divided the back wall: 8 of 59 cm (was 7 of 61 cm).</span></li>
+      <li class="slack"><i></i><span>The arched panel: with 8 panels on the back wall there is no middle one. It kept its shape and place instead of choosing another; decide in Panelling’s card.</span></li></ul></div>
+    <div class="note"><strong>The arched panel tied under Niche · 1 form responded</strong><ul>
+      <li><i></i><span>The arched panel is centred under Niche now; the back wall divides around it, 3 on the left and 4 on the right.</span></li></ul></div>
+  </div>
+  <div class="col" style="margin-top:22px">
+    <p>A description can also hold while its effect changes. If the arched panel had been described as “the 3rd from the left” and the room widened, it would still be the 3rd from the left, and the note would say it no longer sits under the niche, with a <b>Tie it there</b> action. Sitting under something is never treated as a tie.</p>
+    <h3>Only the front</h3>
+    <p>For a mass, drawing over its side changes the shared profile all around. <b>Only the front</b> keeps that drawing as an offset on top of the shared profile, for the front only, blended into the sides (soft or crisp). Because it is stored as the strokes you drew rather than as a separate shape, later changes still flow through. Draw a taper over the back and the front keeps its bow, on top of the taper. Swap the sculpture for a wider one and the plan refits; the front, and a seat carved into the top, come along.</p>
+  </div>
+  <div class="sentence"><span class="ey">Mass</span><span class="nm">Pedestal</span>A mass that <span class="w gold">fits the sculpture</span> with a <span class="w">12 cm</span> margin, <span class="w">0.90 m tall</span>, standing on the floor. Its profile is <span class="w">your own drawing</span>. Its <span class="w">front</span> is drawn on its own, blending softly into the sides. Wide Vessel sits on it. Hollow is drawn on it.</div>
+</section>
+
+<section id="panelling">
+  <div class="eyebrow">The ambitious scenario</div>
+  <h2>A panelled room, changed eight ways</h2>
+  <div class="col"><p>The repetition experiment, as one journey in the studio. It changes the source drawing and the surrounding architecture, and covers the cases where repetition tools usually break.</p></div>
+  <ol class="steps">
+    <li><div><b>Draw a panel low on the back wall and pull it out 2 cm.</b><span>A closed shape on a wall, pulled out instead of pushed in: a relief.</span></div></li>
+    <li><div><b>Give its edge a bevel in the profile lens.</b><span>The round-one profile gesture. The bevel will be on every panel, because there will be only one drawing.</span></div></li>
+    <li><div><b>Draw along from inside it, across the wall and around the corner.</b><span>Ghosts show the division live. On release: 7 on the back wall and 6 on the right. The end of the stroke snaps to the end of the right wall.</span></div></li>
+    <li><div><b>Draw an arch over the panel under the niche.</b><span>All thirteen change: “Changed all 13 panels: they are one drawing.” The whisper offers <i>Only this one</i>.</span></div></li>
+    <li><div><b>Only this one.</b><span>Remembered as “the middle one on the back wall”. Because it happens to sit under the niche, a hollow knot offers to tie it there.</span></div></li>
+    <li><div><b>Widen the room by 60 cm.</b><span>The back wall re-divides to 8. With an even count there is no middle panel, so the arched panel goes slack. It stays where it last was and asks.</span></div></li>
+    <li><div><b>Tie it under the niche.</b><span>The description becomes “centred under Niche”. The wall divides around it: 3 on the left and 4 on the right.</span></div></li>
+    <li><div><b>Remove the niche.</b><span>“Niche is gone.” It keeps its shape and its place; the card offers to keep it exactly here, choose another panel, or make it like the others.</span></div></li>
+  </ol>
+  <h3 style="margin-top:30px">Pushed further, outside the journey</h3>
+  <div class="col">
+    <ul class="plain">
+      <li><b>A window cutting through the band.</b> The rhythm makes way: the stretch splits around it and each side re-divides. A doorway on the right wall in the gallery does the same.</li>
+      <li><b>A stretch too short for a panel.</b> If a stretch fits less than about half a panel, it stays empty. One panel in a slightly short stretch flexes, and on a slightly long one it stretches, by up to about a third in the cases we tried. The flex mode is honest about this; <i>keeping their size</i> leaves gaps instead.</li>
+      <li><b>Dentils under the cornice.</b> A 6 cm block drawn near the ceiling and drawn along: 54 dentils that follow the room. Narrow the room and they re-divide like the panels.</li>
+      <li><b>Beads along the niche’s arch (the curve experiment).</b> A small bead drawn beside the niche, then drawn along its edge. The rhythm follows the edge instead of the walls, and divides at the edge’s corners as it does at a room’s. The beads keep their size and their distance from the edge, turned to the tangent. See the boundary below.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="representation">
+  <div class="eyebrow">For engineering</div>
+  <h2>The simplest representation that holds</h2>
+  <div class="col">
+    <h3>No general boolean</h3>
+    <p>The research was right to be wary of mesh CSG. Coplanar faces, shared edges and near-degenerate slivers are exactly what drawn architecture produces: a hole whose top is flush with the plinth top, an opening whose side is the wall’s plane. Repairing those results after the fact doesn’t make them correct. So carving here is <b>host-local</b>. It happens only along the direction the host was built in, as part of building the host:</p>
+    <ul class="plain">
+      <li><b>A hollow or opening in a mass’s top</b> is an inner loop of the mass’s own sweep: a top cap with a hole, an inner wall, and a floor cap or none. Before building, the hole is checked against every ring of the profile. If it would break out of the side (a 40 cm hole in a waisted pedestal), it stops where it still fits. The note says so, and the dial reads “stops at 19 cm”.</li>
+      <li><b>Wall openings</b> are holes in the wall’s own outline, with reveals 20 cm deep. A doorway touches the floor, so the outline is notched instead of pierced.</li>
+      <li><b>Runs carry, but don’t carve.</b> An arm stands on a bench’s seat, but pushing a seat drawing down is refused, with the reason. Carving a run would mean cutting across a swept section; that is where a general boolean would start.</li>
+    </ul>
+    <p>Invalid results aren’t repaired here. These cases simply can’t produce them, and the cost is a narrower boundary, which we name below.</p>
+    <h3>References, not proximity</h3>
+    <p>A hosted form’s host is a description: <code>{form, face: top | seat, anchor}</code>, such as “Plinth’s top, centred” or “Bench’s seat, at its right end”. It is re-resolved on every evaluation, in dependency order, and its last frame is cached. When the description stops being true, the form goes slack and uses the cache. The same rule covers exceptions (re-resolved descriptions plus the strokes you drew) and the rhythm itself (<code>repeat: {along, gap, mode, exceptions}</code> on an ordinary relief or recess).</p>
+    <h3>One kernel, still</h3>
+    <p>Everything is still the profiled sweep from round one. It now accepts one section per path station, which is how “only the front” blends into the sides. Rhythm instances are swept from the shared motif and merged into one mesh per form.</p>
+    <h3>Performance</h3>
+    <p>The finished gallery has about 120 instances. In the first build, evaluating it took 73 ms, because each bead re-measured its own shape. With per-motif measurement and a cache of creased normals (unchanged geometry reuses its normals), it takes about 7 ms. That includes dragging the room wider, when every rhythm re-divides.</p>
+  </div>
+</section>
+
+<section id="alternatives">
+  <div class="eyebrow">Alternatives weighed</div>
+  <h2>Where else the effort could have gone</h2>
+  <div class="table"><table>
+    <thead><tr><th>Direction</th><th>What it would give</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td>Repetition with variation</td><td>Goes straight at “duplicated details are hard to revise”, and puts the room in charge of count and spacing</td><td><span class="verdict yes">Built</span> · discoveries two and three</td></tr>
+      <tr><td>Reusable details</td><td>A motif or profile used in many places, edited once</td><td><span class="verdict yes">Partly</span> · shared profiles (round one) and one motif per rhythm. A cross-room library of motifs is the natural next step.</td></tr>
+      <tr><td>Surface treatments</td><td>Materials with direction and scale: grain following a bench, stone coursing on a wall</td><td><span class="verdict later">Not built</span> · high value, but a rendering-and-defaults track rather than a question about the interaction model. The next leverage point.</td></tr>
+      <tr><td>Presentation depth</td><td>Lighting, framing and annotation for sharing work</td><td><span class="verdict later">Not built</span> · same reason. Worth pairing with surface treatments.</td></tr>
+      <tr><td>Broader geometric freedom</td><td>Free booleans, face editing, carving curved faces</td><td><span class="verdict no">Rejected</span> as the main direction. It costs robustness and learnability, and the hard cases show composition covers most of what was asked.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="try">
+  <div class="eyebrow">Try it</div>
+  <h2>Four new journeys in the studio</h2>
+  <div class="col"><p class="muted">Each step has <b>Show me</b>, which drives the real drawing pipeline with a synthetic pen, and a line on how to do it yourself. The guide now has two rows: Round one and Round two. Desktop browser or iPad.</p></div>
+  <div class="try">
+    <a href="studio.html#through"><b>Through</b><span>A circle on a plinth’s top: hollow, opening, slot. A taller plinth keeps it through, then the same drawing stands up as a riser.</span></a>
+    <a href="studio.html#arm"><b>Arm</b><span>An arm at one end of a bench. It follows the end when the room widens and the seat when it’s lowered, and asks when the seat slopes.</span></a>
+    <a href="studio.html#front"><b>Front</b><span>Only the front of a pedestal. A taper on the back flows into it; a carved seat and a new sculpture come along.</span></a>
+    <a href="studio.html#panelling"><b>Panelling</b><span>Draw once, draw along, only this one, widen the room, tie it under the niche, remove the niche.</span></a>
+  </div>
+  <p style="margin-top:18px"><a class="open ghost" href="studio.html#gallery">Open the finished gallery</a> <span class="muted" style="font-size:14.5px;margin-left:8px">Now with panelling around a doorway, a window, an arm, a front, an opening, dentils and beads.</span></p>
+</section>
+
+<section id="findings">
+  <div class="eyebrow">Honest account</div>
+  <h2>What building it taught us</h2>
+  <div style="margin-top:14px">
+    <div class="finding"><div class="tag held">Held</div><div><h4>Descriptions beat positions</h4><p>Every case that would have failed silently with nearest-neighbour attachment instead produced a sentence: the arm on a sloped seat, the middle of an even row, the panel under a niche that is gone. The slack state, built for round one’s frame, turned out to be the general answer.</p></div></div>
+    <div class="finding"><div class="tag changed">Changed</div><div><h4>A slack exception has to stay visible</h4><p>At first, an exception whose description failed simply disappeared: with no middle panel, nothing was arched. Technically nothing was lost, but it looked lost. It now keeps its shape at its last place, the rest of the wall divides around it, and it is dashed in gold until the creator decides. One caveat: “its last place” depends on where the description last held during a drag, not just on the final room.</p></div></div>
+    <div class="finding"><div class="tag held">Held</div><div><h4>Composition covers most asymmetry</h4><p>The arm and the riser are ordinary forms, so they get profiles, materials, oversketch and ties for free. Neither benches nor masses needed a special feature.</p></div></div>
+    <div class="finding"><div class="tag changed">Changed</div><div><h4>The dial needed a refusal</h4><p>Pulling and pushing one handle through zero reads well on a top. On a bench’s seat, pushing down has no valid result. Silently clamping felt broken, so it now whispers why: a seat can carry things but can’t be carved.</p></div></div>
+    <div class="finding"><div class="tag broke">Broke</div><div><h4>Curves bend motifs</h4><p>Beads keep their size and turn with the edge. Around the arch of a niche that works for small motifs, but a panel-sized motif on the same curve would overlap on the inside of the curve and gap on the outside. Fixing that means bending the motif: deformation, which drawing doesn’t express. The prototype keeps motifs rigid and leaves this boundary visible.</p></div></div>
+    <div class="finding"><div class="tag broke">Broke</div><div><h4>Exceptions are stored around the motif’s centre</h4><p>Exception strokes are kept relative to the motif’s centre. Reshape the motif so that its centre moves a lot, and an exception can drift with it. It is a representation detail with a visible effect; anchoring exception strokes to the motif’s outline instead would fix it.</p></div></div>
+    <div class="finding"><div class="tag changed">Changed</div><div><h4>Tidy can erase a deliberate difference</h4><p>A 4 cm taper over 85 cm was straightened into a vertical line by Tidy’s axis snapping, which removed exactly the difference between front and back. The journey now draws a curved taper. Snapping should probably stay off when drawing over an existing silhouette; that needs testing with real hands.</p></div></div>
+    <div class="finding"><div class="tag changed">Changed</div><div><h4>Many instances need cheap evaluation</h4><p>Round one rebuilt everything on every change, and that was fine at twelve forms. At a hundred and twenty instances it wasn’t (73 ms). Measuring each motif once and caching normals for unchanged geometry fixed it without making anything incremental or stateful.</p></div></div>
+  </div>
+</section>
+
+<section id="boundary">
+  <div class="eyebrow">The boundary</div>
+  <h2>Where complexity stops paying</h2>
+  <div class="col"><p>Each row is something we could have built. The verdict weighs what it would add against what a creator would have to understand, and against how reliably it could work.</p></div>
+  <div class="table"><table>
+    <thead><tr><th>Capability</th><th>What it would take</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td>Places on sloped or curved faces</td><td>Frames that vary across a face; anchors that become surface coordinates and can slide</td><td><span class="verdict later">Not yet</span> · a slope makes a place slack instead. Worth it for sloped seats, not for freeform surfaces.</td></tr>
+      <tr><td>Bending motifs along tight curves</td><td>Deforming drawn motifs along a path, then explaining that in a sentence</td><td><span class="verdict no">No</span> · keep motifs rigid; small motifs follow curves well.</td></tr>
+      <tr><td>Two-way fields (coffers, tiled ceilings)</td><td>A second division direction; descriptions like “the middle coffer of the second row”</td><td><span class="verdict later">Maybe</span> · the same rules in two directions. Test whether the descriptions stay readable.</td></tr>
+      <tr><td>Cuts across forms</td><td>An opening through a bench and the wall behind it: a general boolean</td><td><span class="verdict no">No</span> · the robustness cost is real. Compose, or cut each host separately.</td></tr>
+      <tr><td>Fillets between composed forms</td><td>Blending the arm into the seat as one surface</td><td><span class="verdict no">No</span> · composition reads as composition. Leave seamless blends to imported assets.</td></tr>
+      <tr><td>More than one side exception</td><td>Front and left both drawn on their own, with blending fields that overlap</td><td><span class="verdict yes">Small extension</span> · the representation allows it; the prototype allows one.</td></tr>
+      <tr><td>Rhythms along floor and ceiling seams</td><td>Using the seam chain from round one as the “along”</td><td><span class="verdict yes">Small extension</span> · same layout code. Dentils currently live on the wall just below the cornice.</td></tr>
+      <tr><td>Exceptions to exceptions, nested rhythms</td><td>Descriptions of descriptions</td><td><span class="verdict no">No</span> · past the point where a sentence can explain it.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="limits">
+  <div class="eyebrow">Remaining limits</div>
+  <h2>What the prototype doesn’t do yet</h2>
+  <div class="col">
+    <ul class="plain">
+      <li>Places exist on the flat tops of masses and on the seats of floor runs. The faces of reliefs, the sides of masses and runs on walls are not places yet.</li>
+      <li>A mass can have one side exception, and it is offered only for masses standing on the floor.</li>
+      <li>Rhythms run along the walls or along a niche’s edge. Ceiling and floor rhythms, and rhythms of masses on the floor (a row of plinths), are not built.</li>
+      <li>Draw-along has to start inside the motif. On an iPad the motif must be on screen when the stroke starts.</li>
+      <li>Exception strokes are stored relative to the motif’s centre (see the findings).</li>
+      <li>A doorway’s threshold is just the floor; door leaves and frames would be a frame (round one) following its edge.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="research">
+  <div class="eyebrow">Next</div>
+  <h2>Risks and how to test them</h2>
+  <div class="table"><table>
+    <thead><tr><th>Risk</th><th>What could go wrong</th><th>How to find out</th></tr></thead>
+    <tbody>
+      <tr><td>Discovering draw-along</td><td>People duplicate panels by drawing each one, and never find the gesture</td><td>First-use task: “panel this wall”. Time until the first draw-along, with and without the hover tip.</td></tr>
+      <tr><td>Which description</td><td>The automatic description (“the middle one”) isn’t what the creator meant (“under the niche”)</td><td>Predict-then-change: before widening the room, ask where they expect the special panel to go; compare with the description chosen.</td></tr>
+      <tr><td>Slack fatigue</td><td>In a busy room, gold slack marks pile up and get ignored</td><td>Long sessions: count unresolved slack items over time, and whether people use “keep it here”.</td></tr>
+      <tr><td>The dial’s far end</td><td>“Through” is reached by accident, or not found</td><td>Tasks with a hollow and an opening; count overshoots and returns through zero.</td></tr>
+      <tr><td>Composition vs one object</td><td>Creators expect the arm to be part of the bench, and are surprised it is selected separately</td><td>Ask people to describe what they made; listen for “the bench” versus “the bench and its arm”.</td></tr>
+      <tr><td>The next leverage point</td><td>Surface treatments or presentation may matter more to creators than more geometry</td><td>Show finished rooms with and without material direction and lighting; ask which they would rather spend an hour on.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>Living Drawings · round two of an independent interaction proposal for Biskiq. Written from the follow-up brief and research notes. Everything described here runs in the studio prototype, a single HTML file using Three.js. <a href="index.html">Read round one</a>.</footer>
+</div>
+</body>
+</html>

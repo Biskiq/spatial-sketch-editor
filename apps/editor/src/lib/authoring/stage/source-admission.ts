@@ -1,3 +1,4 @@
+import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core';
 /**
  * Source admission — **admission equals runtime preparation**.
  *
@@ -27,7 +28,10 @@
  */
 import {
 	hasBlockingLayoutIssues,
+	measureWorkAsync,
+	p2311Measure,
 	type CompiledLayoutGeometry,
+	type LayoutCompileSession,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
 import {
@@ -39,13 +43,14 @@ import {
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 import {
 	computeEnvelopeSourceContentId,
-	prepareUnitRuntime,
-	serializeProjectEnvelope,
+	prepareValidatedUnitRuntime,
+	serializeValidatedProjectEnvelope,
 	validateProjectEnvelope,
 	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
 	type ProjectEnvelope,
-	type UnitDomain
+	type UnitDomain,
+	type UnitRuntimeReady
 } from '@portfolio/project-model/units';
 
 import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
@@ -96,7 +101,7 @@ function domainOf(
 	envelope: ProjectEnvelope,
 	sourceContentId: string,
 	context: AdmissionContext,
-	runtime: Extract<ReturnType<typeof prepareUnitRuntime>, { kind: 'ready' }>
+	runtime: UnitRuntimeReady
 ): StageDomainRead {
 	const unitRevisions = Object.fromEntries(
 		UNIT_DOMAINS.map((domain) => [domain, envelope.units[domain].header.contentRevision])
@@ -181,14 +186,48 @@ function projectIssues(issues: readonly ShapeIssue[]): ProjectIssue[] {
  */
 export async function admitSource(
 	input: unknown,
-	context: AdmissionContext
+	context: AdmissionContext,
+	/**
+	 * The caller's incremental compile store, if it owns one.
+	 *
+	 * A Stage lifetime keeps one store and passes it on every admission, so the
+	 * compile after an accepted edit rebuilds only the Layout entities that edit
+	 * moved (T1.P02.S06 D.3 / H1). The result is the canonical compiler's own
+	 * output; nothing about admission's verdict changes. Boot, Preview and the
+	 * visitor runtime pass nothing and keep the cold compile.
+	 */
+	options: {
+		readonly compileSession?: LayoutCompileSession;
+		readonly knownIdentity?: {
+			readonly sourceContentId: string;
+			readonly canonicalJson: string;
+		};
+	} = {}
+): Promise<AdmissionOutcome> {
+	// Harness-gated stage span (inert without the work observer).
+	return measureWorkAsync('admission', () =>
+		admitSourceOnce(input, context, options.compileSession, options.knownIdentity)
+	);
+}
+
+async function admitSourceOnce(
+	input: unknown,
+	context: AdmissionContext,
+	compileSession?: LayoutCompileSession,
+	knownIdentity?: {
+		readonly sourceContentId: string;
+		readonly canonicalJson: string;
+	}
 ): Promise<AdmissionOutcome> {
 	// Read the envelope once so the host policy can see its model registry before
-	// Scene resolution. `prepareUnitRuntime` then performs the one canonical
-	// preparation over that same envelope.
+	// Scene resolution, then prepare **that validated value**: preparation splits
+	// into a validating entry point and this validated half, so admission's own
+	// validation is not immediately repeated over the same bytes (D.1/H2).
 	const read = validateProjectEnvelope(input);
 	if (!read.success) return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(read.issues) };
-	const prepared = prepareUnitRuntime(read.envelope, sceneOptionsFor(read.envelope));
+	const prepared = p2311Measure('admission:runtime', () =>
+		prepareValidatedUnitRuntime(read, sceneOptionsFor(read.envelope), compileSession)
+	);
 	if (prepared.kind === 'rejected') {
 		return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(prepared.issues) };
 	}
@@ -214,11 +253,21 @@ export async function admitSource(
 	}
 
 	// The canonical form is computed once here: its bytes are both what the content
-	// identity describes and what the host records as the accepted baseline.
-	const sourceContentId = await computeEnvelopeSourceContentId(envelope);
-	const canonicalJson = serializeProjectEnvelope(envelope);
+	// identity describes and what the host records as the accepted baseline. When the
+	// Stage acceptance host re-admits a snapshot whose exact `ProjectEnvelope` was
+	// just canonicalized and digested by `coordinator.accept`, `knownIdentity` avoids
+	// hashing and serializing the identical frozen bytes a second time.
+	const sourceContentId = knownIdentity
+		? knownIdentity.sourceContentId
+		: await measureWorkAsync('admission:digest', () => computeEnvelopeSourceContentId(envelope));
+	const canonicalJson = knownIdentity
+		? knownIdentity.canonicalJson
+		: p2311Measure('admission:serialize', () => serializeValidatedProjectEnvelope(envelope));
 	const domain = domainOf(envelope, sourceContentId, context, prepared);
-	freezeF4Data(domain);
+	p2311Measure('admission:freeze', () => {
+		sealCompiledLayoutSnapshot(domain.geometry);
+		freezeF4Data(domain);
+	});
 	return { kind: 'admitted', snapshot: snapshotOf(envelope, sourceContentId, canonicalJson, context, domain) };
 }
 
@@ -235,7 +284,7 @@ export async function admitSourceJson(
 ): Promise<AdmissionOutcome> {
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(json) as unknown;
+		parsed = p2311Measure('admission:parse', () => JSON.parse(json) as unknown);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Invalid JSON';
 		return {

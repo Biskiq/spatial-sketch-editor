@@ -14,6 +14,7 @@ import type {
 	LayoutDerivedWallRole,
 	LayoutDocumentWallFirst
 } from './layout-wall-first-types';
+import { deriveIndexedWallRole } from './layout-world-index';
 
 /**
  * How many Room boundaries reference each Wall. A Wall referenced twice by the
@@ -45,6 +46,10 @@ export function deriveLayoutWallRole(
 	document: LayoutDocumentWallFirst,
 	wallId: string
 ): LayoutDerivedWallRole | undefined {
+	const indexed = deriveIndexedWallRole(document, wallId);
+	if (indexed !== undefined) {
+		return indexed === 'missing-wall' ? undefined : indexed;
+	}
 	if (!document.walls.some((wall) => wall.id === wallId)) return undefined;
 	const memberships = layoutWallRoomMemberships(document).get(wallId)?.length ?? 0;
 	if (memberships === 0) return 'free-standing';

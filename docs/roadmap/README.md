@@ -173,16 +173,16 @@ PR #115 replaced that sequence with the tracks above.
 
 ## Current coordination and proposal provenance
 
-**Where things stand (2026-10-24).** A routing index, not a status authority: each phase
+**Where things stand (2026-10-25).** A routing index, not a status authority: each phase
 README's slice register owns child status, [now.md](./now.md) owns launch conditions, and the
 [current coordination](./cross-track-execution.md#next-parallel-batch) owns the DAG, shared-file
 writers and merge order. Update this index only in the coordination change that moves a row.
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05 | T1.P02.S06 performance foundation | T1.P02.S02 drawing, S03 Opening, S04 final gate (performance-first halt) | S02 on S06 accepted and merged, then its own owner authorization, plan review and T3/T2 reviews; S03 on S02; S04 on S01/S05/S06/S02/S03 |
+| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05, S06 | — | T1.P02.S02 drawing, S03 Opening, S04 final gate (performance-first halt) | S02 on S06 merged (accepted 2026-10-27), then its own owner authorization, plan review and T3/T2 reviews; S03 on S02; S04 on S01/S05/S06/S02/S03 |
 | T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01, S02 | — | T2.P02.S03 final gate (performance-first halt) | S03 on T1.P02.S06 accepted and merged, then its own owner authorization |
-| T3 | T3.P01 (closed); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md#slice-register) S01–S02 (closable, not closed); [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md#slice-register) S01–S02 (closable, not closed) | — | [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) project lifecycle (planning; strictly unrelated to the halt) | T3.P04.S01 owner authorization (T3.P02.S02 accepted and T2.P02.S02 merged, 2026-10-24), the explicit API handoff from T2, and its own release |
+| T3 | [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
 
 Release provenance is the [performance foundation decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md);

@@ -5,6 +5,8 @@ import {
 	perfInput,
 	perfInstall,
 	perfMark,
+	perfMeasureAsync,
+	perfMeasureSync,
 	perfMarksEnabled,
 	perfResult,
 	perfSequence,
@@ -43,7 +45,7 @@ describe('perf marks are inert unless the harness enables them', () => {
 		perfInput('pointermove');
 		perfInstall('wall-preview');
 		perfResult('accepted-result');
-		perfMark('save:submit');
+		perfMark('save:command');
 		expect(perfSequence()).toBe(0);
 		expect(perfGlobal.__BISKIQ_PERF_RECORDS__).toBeUndefined();
 	});
@@ -51,7 +53,7 @@ describe('perf marks are inert unless the harness enables them', () => {
 	it('treats a non-boolean flag as disabled', () => {
 		perfGlobal.__BISKIQ_PERF__ = { enabled: 'yes' };
 		expect(perfMarksEnabled()).toBe(false);
-		perfMark('save:submit');
+		perfMark('save:command');
 		expect(perfGlobal.__BISKIQ_PERF_RECORDS__).toBeUndefined();
 	});
 
@@ -81,6 +83,27 @@ describe('perf marks are inert unless the harness enables them', () => {
 });
 
 describe('enabled correlation records', () => {
+	it('records direct synchronous Save work with a phase and elapsed duration', () => {
+		enable();
+		expect(perfMeasureSync('save.request-json', () => 42)).toBe(42);
+		expect(records().at(-1)).toMatchObject({
+			kind: 'mark',
+			name: 'save:work',
+			detail: { phase: 'save.request-json' }
+		});
+		expect(records().at(-1)?.detail?.elapsedMs).toEqual(expect.any(Number));
+	});
+
+	it('records asynchronous hash wall time separately from synchronous Save work', async () => {
+		enable();
+		await expect(perfMeasureAsync('save.hash-wall', async () => 'digest')).resolves.toBe('digest');
+		expect(records().at(-1)).toMatchObject({
+			kind: 'mark',
+			name: 'save:async-wall',
+			detail: { phase: 'save.hash-wall' }
+		});
+	});
+
 	it('carries the monotonic input sequence into installation and result records', () => {
 		enable();
 		expect(perfInput('pointermove', { wallMode: true })).toBe(1);

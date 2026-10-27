@@ -302,7 +302,10 @@ function nonceInvariantFingerprint(row: P23B11FrozenCase) {
 }
 
 describe('P23B.11 S2 — nonce locality of the frozen row', () => {
-	it('another capture moves identity only: never a count, a relation or a verdict', () => {
+	// The second full pass over the case table is a correctness sweep, not a latency check:
+	// its duration depends on how many other files the lane is transforming at the same
+	// time, so it carries the same explicit budget the frozen-row cases above do.
+	it('another capture moves identity only: never a count, a relation or a verdict', { timeout: 120000 }, () => {
 		// The §1 finding above claims the re-freeze moved ids, not behaviour. That
 		// claim is checked here instead of asserted in prose: the same case table,
 		// analysed under a DIFFERENT capture, must produce the same nonce-invariant

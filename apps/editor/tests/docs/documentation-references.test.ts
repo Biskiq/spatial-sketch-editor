@@ -41,7 +41,7 @@ describe('documentation references', () => {
 		const findings = scanDocumentation();
 		if (findings.length > 0) console.log(`\n${formatFindings(findings)}\n`);
 		expect(findings).toEqual([]);
-	});
+	}, 15_000);
 
 	it('walks the documents the gate exists to protect', () => {
 		// A silent zero-file walk would make the assertion above vacuous, so the

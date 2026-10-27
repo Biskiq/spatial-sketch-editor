@@ -15,7 +15,11 @@
     "test:heavy": "vitest run --config vitest.heavy.config.ts",
     "test:full": "vitest run --config vitest.config.ts",
     "perf": "playwright test --config perf/playwright.config.ts",
-    "perf:bundle": "node perf/bundle-report.mjs"
+    "perf:bundle": "node perf/bundle-report.mjs",
+    "perf:workloads": "vite-node perf/generate-workloads.ts",
+    "perf:census": "vite-node perf/census/run.ts",
+    "perf:bench": "vite-node perf/bench.ts",
+    "perf:scale": "vite-node perf/census/scale.ts"
   },
   "dependencies": {
     "@gltf-transform/core": "^4.4.1",

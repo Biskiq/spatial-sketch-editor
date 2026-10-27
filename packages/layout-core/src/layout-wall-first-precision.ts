@@ -1,3 +1,4 @@
+import { layoutItem, layoutLength } from './layout-source-collections';
 /**
  * P23.1 precise semantic operations for the wall-first Layout document.
  *
@@ -20,12 +21,30 @@
  */
 import type { LayoutDocumentIssue } from './layout-issue';
 import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
-import { compileWallFirstLayoutGeometry } from './layout-geometry';
-import { p2311Measure } from './p2311-perf';
+import { activeLayoutCompileSession, compileWallFirstLayoutGeometry } from './layout-geometry';
+import { countWork, p2311Measure } from './p2311-perf';
 import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
-import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import {
+	serializeWallFirstLayoutDocument,
+	validateWallFirstLayoutDocument
+} from './layout-wall-first-codec';
+import {
+	cowCreateObject,
+	cowDeleteObject,
+	cowMoveJunctions,
+	cowMoveRigidWall,
+	cowSetWallCenterline,
+	cowSetWallScalar,
+	cowUpdateObject,
+	ensureLayoutWorldIndex,
+	getCowDocumentDelta,
+	hasAnySamplingTestObserver,
+	peekLayoutWorldIndex,
+	verifyScalarOrObjectDelta,
+	verifySweptBoundsGeometryDelta
+} from './layout-world-index';
 import { layoutWorkingLevelIssue } from './layout-id-capture';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
@@ -66,7 +85,9 @@ import {
 	type NodingIdAllocator,
 	type NodingPlan
 } from './layout-wall-noding';
-import { coincidesAsJunction } from './layout-junction-identity';
+import { coincidesAsJunction, coincidentJunctionPairs } from './layout-junction-identity';
+import { createPlanBoxIndex, type PlanBox } from './layout-plan-box-index';
+import { CURVE_SELF_INTERSECTION_TOLERANCE } from './layout-geometry-curve';
 import {
 	topologyComponentKeyByJunctionId,
 	topologyComponentKeyByWallId
@@ -265,20 +286,29 @@ export function planExactJunctionMove(
 	junctionId: string,
 	point: LayoutVec2
 ): PrecisionPlan {
-	const junction = document.junctions.find((candidate) => candidate.id === junctionId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const junction = worldIndex
+		? worldIndex.junctionById.get(junctionId)
+		: document.junctions.find((candidate) => candidate.id === junctionId);
 	if (!junction) return reject('unknown_junction', `Unknown junction '${junctionId}'`, [junctionId]);
 	if (!finitePoint(point)) return reject('invalid_value', 'Junction X/Z must be finite', [junctionId]);
 	if (coincidesAsJunction(junction.point, point)) return reject('no_op', `Junction '${junctionId}' is already at that point`, [junctionId]);
 
-	const candidate = cloneDocument(document);
-	const moved = candidate.junctions.find((entry) => entry.id === junctionId)!;
-	moved.point = [point[0], point[1]];
+	const changedWallIds = worldIndex
+		? (worldIndex.incidentWallIdsByJunctionId.get(junctionId) ?? [])
+		: incidentWallIds(document, junctionId);
+	const candidate = cowMoveJunctions(
+		document,
+		new Map([[junctionId, [point[0], point[1]] as LayoutVec2]]),
+		changedWallIds,
+		worldIndex
+	);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
 		operation: 'junction-position',
 		changedJunctionIds: [junctionId],
-		changedWallIds: incidentWallIds(document, junctionId)
+		changedWallIds
 	});
 }
 
@@ -301,39 +331,41 @@ export function planRigidWallMove(
 	const intent: WallMoveIntent = typeof wallOrIntent === 'string'
 		? { wallId: wallOrIntent, delta: (deltaArgument ?? [0, 0]) as LayoutVec2 }
 		: { wallId: wallOrIntent.wallId, delta: wallOrIntent.delta };
-	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(intent.wallId)
+		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!finitePoint(intent.delta)) return reject('invalid_value', 'Wall move delta must be finite X/Z', [wall.id]);
 	if (intent.delta[0] === 0 && intent.delta[1] === 0) return reject('no_op', `Wall '${wall.id}' already has that position`, [wall.id]);
 
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) return reject('unsupported_geometry', `Wall '${wall.id}' has unresolved junction geometry`, [wall.id]);
 	if (!(endpoints.length > POINT_EPSILON)) return reject('unsupported_geometry', `Wall '${wall.id}' has zero effective length`, [wall.id]);
 
 	// Canonical endpoint order, de-duplicated: a degenerate self-loop Wall
 	// carries one Junction, not two.
 	const changedJunctionIds = [...new Set([wall.startJunctionId, wall.endJunctionId])];
-	const candidate = cloneDocument(document);
-	for (const junction of candidate.junctions) {
-		if (!changedJunctionIds.includes(junction.id)) continue;
-		junction.point = [junction.point[0] + intent.delta[0], junction.point[1] + intent.delta[1]];
-	}
-	// P23.11 — the moved Wall's own curve anchors are absolute document X/Z and
-	// must receive the identical rigid delta, or the Wall would change SHAPE.
-	// Anchors on neighbouring Walls stay put: those Walls reshape because their
-	// shared Junction moved, which is the documented endpoint-move semantics.
-	const moved = candidate.walls.find((entry) => entry.id === wall.id)!;
-	moved.centerline = translateWallCenterline(moved.centerline, intent.delta);
-	// Deterministic document-order union of every Wall incident to either moved
-	// endpoint: those neighbours reshape because their shared Junction ID moved.
-	const changedWallIds = document.walls
-		.filter((candidate) =>
-			changedJunctionIds.some(
-				(junctionId) =>
-					candidate.startJunctionId === junctionId || candidate.endJunctionId === junctionId
+	const changedWallIds = worldIndex
+		? [...new Set(changedJunctionIds.flatMap((jId) => worldIndex.incidentWallIdsByJunctionId.get(jId) ?? []))].sort(
+				(a, b) => (worldIndex.wallIndexById.get(a) ?? 0) - (worldIndex.wallIndexById.get(b) ?? 0)
 			)
-		)
-		.map((candidate) => candidate.id);
+		: document.walls
+				.filter((candidate) =>
+					changedJunctionIds.some(
+						(junctionId) =>
+							candidate.startJunctionId === junctionId || candidate.endJunctionId === junctionId
+					)
+				)
+				.map((candidate) => candidate.id);
+	const candidate = cowMoveRigidWall(
+		document,
+		wall.id,
+		intent.delta,
+		changedJunctionIds,
+		changedWallIds,
+		worldIndex
+	);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
@@ -357,7 +389,10 @@ export function planExactWallLength(
 				length: wallOrIntent.length,
 				fixed: wallOrIntent.fixedEndpoint ?? wallOrIntent.fixed ?? 'start'
 			};
-	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(intent.wallId)
+		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
 	// P23.11 — an exact *length* is a chord solve: the endpoint moves along the
@@ -366,7 +401,7 @@ export function planExactWallLength(
 	if (wall.centerline.kind !== 'line') return rejectCurvedWall('exact length', wall.id);
 	if (!finitePositive(intent.length)) return reject('invalid_value', 'Wall length must be finite and greater than zero', [wall.id]);
 
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) return reject('unsupported_geometry', `Wall '${wall.id}' has unresolved junction geometry`, [wall.id]);
 	if (!(endpoints.length > POINT_EPSILON)) return reject('unsupported_geometry', `Wall '${wall.id}' has zero effective length`, [wall.id]);
 	if (intent.length === endpoints.length) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
@@ -380,15 +415,24 @@ export function planExactWallLength(
 	const movedPoint: LayoutVec2 = intent.fixed === 'start'
 		? [fixedPoint[0] + direction[0] * intent.length, fixedPoint[1] + direction[1] * intent.length]
 		: [fixedPoint[0] - direction[0] * intent.length, fixedPoint[1] - direction[1] * intent.length];
-	if (coincidesAsJunction(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
+	const existingMovedPoint = worldIndex?.pointById.get(movedJunctionId) ?? currentJunctionPoint(document, movedJunctionId);
+	if (coincidesAsJunction(existingMovedPoint, movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
 
-	const candidate = moveJunction(document, movedJunctionId, movedPoint);
+	const changedWallIds = worldIndex
+		? (worldIndex.incidentWallIdsByJunctionId.get(movedJunctionId) ?? [])
+		: incidentWallIds(document, movedJunctionId);
+	const candidate = cowMoveJunctions(
+		document,
+		new Map([[movedJunctionId, movedPoint]]),
+		changedWallIds,
+		worldIndex
+	);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
 		operation: 'wall-length',
 		changedJunctionIds: [movedJunctionId],
-		changedWallIds: incidentWallIds(document, movedJunctionId)
+		changedWallIds
 	});
 }
 
@@ -406,7 +450,10 @@ export function planExactWallAngle(
 				angle: wallOrIntent.angle,
 				fixed: wallOrIntent.fixedEndpoint ?? wallOrIntent.fixed ?? 'start'
 			};
-	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(intent.wallId)
+		: document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
 	// P23.11 — an exact *angle* is the endpoint-chord direction of a straight
@@ -415,7 +462,7 @@ export function planExactWallAngle(
 	const angle = intent.angle;
 	if (typeof angle !== 'number' || !Number.isFinite(angle)) return reject('invalid_value', 'Wall angle must be finite radians', [wall.id]);
 
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) return reject('unsupported_geometry', `Wall '${wall.id}' has unresolved junction geometry`, [wall.id]);
 	if (!(endpoints.length > POINT_EPSILON)) return reject('unsupported_geometry', `Wall '${wall.id}' has zero effective length`, [wall.id]);
 	const direction: LayoutVec2 = [Math.cos(angle), Math.sin(angle)];
@@ -424,15 +471,24 @@ export function planExactWallAngle(
 	const movedPoint: LayoutVec2 = intent.fixed === 'start'
 		? [fixedPoint[0] + direction[0] * endpoints.length, fixedPoint[1] + direction[1] * endpoints.length]
 		: [fixedPoint[0] - direction[0] * endpoints.length, fixedPoint[1] - direction[1] * endpoints.length];
-	if (coincidesAsJunction(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that angle`, [wall.id]);
+	const existingMovedPoint = worldIndex?.pointById.get(movedJunctionId) ?? currentJunctionPoint(document, movedJunctionId);
+	if (coincidesAsJunction(existingMovedPoint, movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that angle`, [wall.id]);
 
-	const candidate = moveJunction(document, movedJunctionId, movedPoint);
+	const changedWallIds = worldIndex
+		? (worldIndex.incidentWallIdsByJunctionId.get(movedJunctionId) ?? [])
+		: incidentWallIds(document, movedJunctionId);
+	const candidate = cowMoveJunctions(
+		document,
+		new Map([[movedJunctionId, movedPoint]]),
+		changedWallIds,
+		worldIndex
+	);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
 		operation: 'wall-angle',
 		changedJunctionIds: [movedJunctionId],
-		changedWallIds: incidentWallIds(document, movedJunctionId)
+		changedWallIds
 	});
 }
 
@@ -442,13 +498,15 @@ export function planExactWallThickness(
 	wallId: string,
 	thickness: number
 ): PrecisionPlan {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (!finitePositive(thickness)) return reject('invalid_value', 'Wall thickness must be finite and greater than zero', [wallId]);
 	if (wall.thickness === thickness) return reject('no_op', `Wall '${wallId}' already has that thickness`, [wallId]);
 
-	const candidate = cloneDocument(document);
-	candidate.walls.find((entry) => entry.id === wallId)!.thickness = thickness;
+	const candidate = cowSetWallScalar(document, wallId, { thickness }, worldIndex);
 	return finalizeCandidate(candidate, 'wall-thickness', [], [wallId]);
 }
 
@@ -470,13 +528,15 @@ export function planExactWallHeight(
 	wallId: string,
 	height: number
 ): PrecisionPlan {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (!finitePositive(height)) return reject('invalid_value', 'Wall height must be finite and greater than zero', [wallId]);
 	if (wall.height === height) return reject('no_op', `Wall '${wallId}' already has that height`, [wallId]);
 
-	const candidate = cloneDocument(document);
-	candidate.walls.find((entry) => entry.id === wallId)!.height = height;
+	const candidate = cowSetWallScalar(document, wallId, { height }, worldIndex);
 	return finalizeCandidate(candidate, 'wall-height', [], [wallId]);
 }
 
@@ -555,9 +615,12 @@ function resolveCurveTarget(
 			end: LayoutVec2;
 			chain: WallCurveChain;
 	  } {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return { plan: reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]) };
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) {
 		return {
 			plan: reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId])
@@ -659,9 +722,8 @@ function withWallCenterline(
 	wallId: string,
 	centerline: LayoutWall['centerline']
 ): LayoutDocumentWallFirst {
-	const candidate = cloneDocument(document);
-	candidate.walls.find((entry) => entry.id === wallId)!.centerline = centerline;
-	return candidate;
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	return cowSetWallCenterline(document, wallId, centerline, worldIndex);
 }
 
 /**
@@ -676,12 +738,15 @@ export function planConvertWallToCurve(
 	document: LayoutDocumentWallFirst,
 	wallId: string
 ): PrecisionPlan {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (wall.centerline.kind === 'cubic-chain') {
 		return reject('no_op', `Wall '${wallId}' is already curved`, [wallId]);
 	}
-	const endpoints = wallEndpoints(document, wall);
+	const endpoints = wallEndpoints(document, wall, worldIndex?.pointById);
 	if (!endpoints) {
 		return reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId]);
 	}
@@ -715,7 +780,10 @@ export function planConvertWallToLine(
 	document: LayoutDocumentWallFirst,
 	wallId: string
 ): PrecisionPlan {
-	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	const worldIndex = peekLayoutWorldIndex(document);
+	const wall = worldIndex
+		? worldIndex.wallById.get(wallId)
+		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (wall.centerline.kind === 'line') {
 		return reject('no_op', `Wall '${wallId}' is already straight`, [wallId]);
@@ -1597,17 +1665,15 @@ export function planExactRectangleDimensions(
 		return reject('no_op', `Room '${roomId}' already has those rectangle dimensions`, [roomId]);
 	}
 
-	const candidate = cloneDocument(document);
-	for (const junction of candidate.junctions) {
-		const point = targetPoints.get(junction.id);
-		if (point) junction.point = point;
-	}
+	const changedWallIds = [...new Set([...roomWallIds, widthWallId, depthWallId])];
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const candidate = cowMoveJunctions(document, targetPoints, changedWallIds, worldIndex);
 	return finalizeWallGeometryCandidate({
 		baseline: document,
 		candidate,
 		operation: 'rectangle-dimensions',
 		changedJunctionIds: [...targetPoints.keys()],
-		changedWallIds: [...new Set([...roomWallIds, widthWallId, depthWallId])]
+		changedWallIds
 	});
 }
 
@@ -1701,10 +1767,13 @@ export function planCommitLayoutObjectPreset(
 	if (typeof capturedObjectId !== 'string' || capturedObjectId.length === 0) {
 		return reject('invalid_value', 'Preset creation requires a captured object id', [presetId]);
 	}
-	if (document.objects.some((object) => object.id === capturedObjectId)) {
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const alreadyExists = worldIndex
+		? worldIndex.objectById.has(capturedObjectId)
+		: document.objects.some((object) => object.id === capturedObjectId);
+	if (alreadyExists) {
 		return reject('invalid_value', `Captured Layout object id '${capturedObjectId}' is already in use`, [capturedObjectId]);
 	}
-	const candidate = cloneDocument(document);
 	const objectId = capturedObjectId;
 	const object: LayoutObject = {
 		id: objectId,
@@ -1713,7 +1782,7 @@ export function planCommitLayoutObjectPreset(
 		rotation: [0, 0, 0],
 		dimensions: [...preset.dimensions] as Vec3
 	};
-	candidate.objects = [...candidate.objects, object];
+	const candidate = cowCreateObject(document, object);
 	const finalized = finalizeCandidate(candidate, 'layout-object-preset-create', [], [], [objectId]);
 	return finalized.kind === 'success' ? { ...finalized, createdObjectId: objectId } : finalized;
 }
@@ -1724,11 +1793,19 @@ export function planExactLayoutObjectTransform(
 	objectId: string,
 	patch: LayoutObjectTransformPatch
 ): PrecisionPlan {
-	const object = document.objects.find((candidate) => candidate.id === objectId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const object = worldIndex
+		? worldIndex.objectById.get(objectId)
+		: document.objects.find((candidate) => candidate.id === objectId);
 	if (!object) return reject('unknown_object', `Unknown layout object '${objectId}'`, [objectId]);
 	const vectorFields = (['position', 'rotation', 'dimensions'] as const).filter((field) => patch[field] !== undefined);
 	const roomChanged = 'roomId' in patch && patch.roomId !== object.roomId;
-	if (patch.roomId && !document.rooms.some((room) => room.id === patch.roomId)) {
+	const roomExists = patch.roomId
+		? worldIndex
+			? worldIndex.roomById.has(patch.roomId)
+			: document.rooms.some((room) => room.id === patch.roomId)
+		: true;
+	if (patch.roomId && !roomExists) {
 		return reject('invalid_reference', `Unknown roomId '${patch.roomId}'`, [objectId, patch.roomId]);
 	}
 	if (vectorFields.length === 0 && !roomChanged) return reject('no_op', `Layout object '${objectId}' has no transform changes`, [objectId]);
@@ -1740,15 +1817,30 @@ export function planExactLayoutObjectTransform(
 	const unchanged = vectorFields.every((field) => vectorEqual(object[field] as readonly number[], patch[field] as readonly number[]));
 	if (unchanged && !roomChanged) return reject('no_op', `Layout object '${objectId}' already has those values`, [objectId]);
 
-	const candidate = cloneDocument(document);
-	const target = candidate.objects.find((entry) => entry.id === objectId)!;
-	if (patch.position) target.position = [...patch.position] as typeof target.position;
-	if (patch.rotation) target.rotation = [...patch.rotation] as typeof target.rotation;
-	if (patch.dimensions) target.dimensions = [...patch.dimensions] as typeof target.dimensions;
-	if ('roomId' in patch) {
-		if (patch.roomId) target.roomId = patch.roomId;
-		else delete target.roomId;
-	}
+	const candidate = cowUpdateObject(
+		document,
+		objectId,
+		(existing) => {
+			const next: LayoutObject = {
+				...existing,
+				position: patch.position
+					? ([...patch.position] as typeof existing.position)
+					: existing.position,
+				rotation: patch.rotation
+					? ([...patch.rotation] as typeof existing.rotation)
+					: existing.rotation,
+				dimensions: patch.dimensions
+					? ([...patch.dimensions] as typeof existing.dimensions)
+					: existing.dimensions
+			};
+			if ('roomId' in patch) {
+				if (patch.roomId) next.roomId = patch.roomId;
+				else delete next.roomId;
+			}
+			return next;
+		},
+		worldIndex
+	);
 	return finalizeCandidate(candidate, 'layout-object-transform', [], [], [objectId]);
 }
 
@@ -1757,13 +1849,23 @@ export function planDeleteLayoutObject(
 	document: LayoutDocumentWallFirst,
 	objectId: string
 ): PrecisionPlan {
-	const object = document.objects.find((candidate) => candidate.id === objectId);
+	const worldIndex = !hasAnyTestObserverInPrecision() ? ensureLayoutWorldIndex(document) : peekLayoutWorldIndex(document);
+	const object = worldIndex
+		? worldIndex.objectById.get(objectId)
+		: document.objects.find((candidate) => candidate.id === objectId);
 	if (!object) return reject('unknown_object', `Unknown layout object '${objectId}'`, [objectId]);
 	if (object.kind === 'profile') return reject('invalid_reference', 'Profile objects are read-only', [objectId]);
 
-	const candidate = cloneDocument(document);
-	candidate.objects = candidate.objects.filter((entry) => entry.id !== objectId);
+	const candidate = cowDeleteObject(document, objectId);
 	return finalizeCandidate(candidate, 'layout-object-delete', [], [], [objectId]);
+}
+
+function hasAnyTestObserverInPrecision(): boolean {
+	return (
+		hasAnySamplingTestObserver() ||
+		topologyGateObserverForTest !== undefined ||
+		topologyEvaluationObserverForTest !== undefined
+	);
 }
 
 function finalizeCandidate(
@@ -1774,6 +1876,47 @@ function finalizeCandidate(
 	changedObjectIds?: readonly string[],
 	createdWallIds?: readonly string[]
 ): PrecisionPlan {
+	const cowDelta = !hasAnyTestObserverInPrecision() ? getCowDocumentDelta(candidate) : undefined;
+	if (
+		cowDelta &&
+		!createdWallIds?.length &&
+		(operation === 'wall-thickness' ||
+			operation === 'wall-height' ||
+			operation === 'layout-object-preset-create' ||
+			operation === 'layout-object-transform' ||
+			operation === 'layout-object-delete')
+	) {
+		const verdict = verifyScalarOrObjectDelta({
+			baseline: cowDelta.baseline,
+			candidate,
+			operation,
+			changedWallIds,
+			changedObjectIds: changedObjectIds ?? []
+		});
+		if (verdict === 'certified-valid') {
+			const compileSession = activeLayoutCompileSession();
+			const compiled = compileSession
+				? compileSession.compile(candidate)
+				: compileWallFirstLayoutGeometry(candidate);
+			if (hasBlockingLayoutIssues(compiled.issues)) {
+				return reject(
+					'geometry_invalid',
+					compiled.issues[0]?.message ?? 'Candidate geometry does not compile',
+					undefined,
+					compiled.issues
+				);
+			}
+			return {
+				kind: 'success',
+				document: candidate,
+				operation,
+				changedJunctionIds: [...changedJunctionIds],
+				changedWallIds: [...changedWallIds],
+				...(changedObjectIds ? { changedObjectIds: [...changedObjectIds] } : {})
+			};
+		}
+	}
+
 	const structural = validateWallFirstLayoutDocument(candidate);
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
@@ -1788,7 +1931,14 @@ function finalizeCandidate(
 				: 'topology_invalid';
 		return reject(topologyCode, topologyIssue.message, topologyIssue.targetId ? [topologyIssue.targetId] : undefined, [topologyIssue]);
 	}
-	const compiled = compileWallFirstLayoutGeometry(structural.document);
+	// T1.P02.S06 D.3 (H1) — a candidate compiled during a session reuses every
+	// entity its authored inputs did not move. The result is the canonical
+	// compiler's own output (same builders, same assembly), so this is a cheaper
+	// compile, not a different one.
+	const compileSession = activeLayoutCompileSession();
+	const compiled = compileSession
+		? compileSession.compile(structural.document)
+		: compileWallFirstLayoutGeometry(structural.document);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
 	}
@@ -1850,6 +2000,54 @@ function finalizeWallGeometryCandidate(options: {
 	createdWallIds?: readonly string[];
 }): PrecisionPlan {
 	const { baseline, candidate, operation, changedJunctionIds, changedWallIds } = options;
+
+	if (!hasAnyTestObserverInPrecision() && !options.createdWallIds?.length) {
+		const cowDelta = getCowDocumentDelta(candidate);
+		if (cowDelta && cowDelta.baseline === baseline) {
+			const fastSampling = createWallSamplingDerivation();
+			const verdict = verifySweptBoundsGeometryDelta({
+				baseline,
+				candidate,
+				changedJunctionIds,
+				changedWallIds,
+				sampling: fastSampling
+			});
+			if (verdict === 'certified-valid') {
+				const compileSession = activeLayoutCompileSession();
+				const compiled = p2311Measure('acceptance-compile', () =>
+					compileSession
+						? compileSession.compile(candidate, fastSampling)
+						: compileWallFirstLayoutGeometry(candidate, fastSampling)
+				);
+				if (hasBlockingLayoutIssues(compiled.issues)) {
+					return reject(
+						'geometry_invalid',
+						compiled.issues[0]?.message ?? 'Candidate geometry does not compile',
+						undefined,
+						compiled.issues
+					);
+				}
+				let memoizedDocJson: string | undefined;
+				return {
+					kind: 'success',
+					document: candidate,
+					operation,
+					changedJunctionIds: [...changedJunctionIds],
+					changedWallIds: [...changedWallIds],
+					acceptance: {
+						get documentJson(): string {
+							if (memoizedDocJson === undefined) {
+								memoizedDocJson = serializeWallFirstLayoutDocument(candidate);
+							}
+							return memoizedDocJson;
+						},
+						geometry: compiled.geometry,
+						issues: compiled.issues
+					}
+				};
+			}
+		}
+	}
 
 	// P23B.4 M-1: one chain-scoped derivation serves every consumer below that
 	// receives it (S2: face extraction; S3–S5 extend the threading). Consumers
@@ -1941,7 +2139,12 @@ function finalizeWallGeometryCandidate(options: {
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
 	}
-	const compiled = p2311Measure('acceptance-compile', () => compileWallFirstLayoutGeometry(structural.document, sampling));
+	// T1.P02.S06 D.3 (H1) — the same session, with the step's shared sampling
+	// derivation: one pointer sample re-compiles only the entities it moved.
+	const compileSession = activeLayoutCompileSession();
+	const compiled = p2311Measure('acceptance-compile', () =>
+		compileSession ? compileSession.compile(structural.document, sampling) : compileWallFirstLayoutGeometry(structural.document, sampling)
+	);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
 	}
@@ -2024,9 +2227,9 @@ function assertWallGeometryRoomIdentityPreserved(
 			};
 		}
 	}
-	if (reconciliation.document.rooms.length !== baseline.rooms.length) {
+	if (layoutLength(reconciliation.document, 'rooms') !== baseline.rooms.length) {
 		return {
-			message: `Room count changed during the geometry edit (${baseline.rooms.length} → ${reconciliation.document.rooms.length})`
+			message: `Room count changed during the geometry edit (${baseline.rooms.length} → ${layoutLength(reconciliation.document, 'rooms')})`
 		};
 	}
 	const finalByRoomId = new Map(reconciliation.document.rooms.map((room) => [room.id, room]));
@@ -2227,6 +2430,9 @@ function validateWallFirstTopologyPass(
 	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
 	const junctionIndexById = new Map(document.junctions.map((junction, index) => [junction.id, index] as const));
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction] as const));
+	// T1.P02.S06 D.1 (H3) — one id→point index for every Wall this pass resolves,
+	// instead of two linear Junction scans per Wall.
+	const junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point] as const));
 	// The predicate itself, so a scoped pass evaluates the SAME rule with the same path, code,
 	// message and target as the canonical loop (INV-3).
 	const coincidenceFailure = (firstId: string, secondId: string): LayoutGeometryIssue | undefined => {
@@ -2248,21 +2454,22 @@ function validateWallFirstTopologyPass(
 			if (failure) return failure;
 		}
 	} else {
-		for (let first = 0; first < document.junctions.length; first += 1) {
-			for (let second = first + 1; second < document.junctions.length; second += 1) {
-				if (
-					keyByJunctionId.get(document.junctions[first]!.id) !==
-					keyByJunctionId.get(document.junctions[second]!.id)
-				) {
-					continue;
-				}
-				observeTopologyEvaluation('junction-coincidence', [
-					document.junctions[first]!.id,
-					document.junctions[second]!.id
-				]);
-				const failure = coincidenceFailure(document.junctions[first]!.id, document.junctions[second]!.id);
-				if (failure) return failure;
-			}
+		// T1.P02.S06 D.1 (H3) — the coincidence rule is an index query, not an
+		// O(J²) sweep: `coincidentJunctionPairs` hands back the pairs that CAN
+		// coincide (a superset), in this loop's own order. The predicate, its
+		// component scope and the first-wins rule are the shipped ones below.
+		const candidates = coincidentJunctionPairs(document.junctions);
+		// Work counts (inert without an observer): pairs the index leaves to the
+		// rule, and the same-component pairs that reach the predicate.
+		countWork('pairs:junction-junction', candidates.length);
+		for (const [first, second] of candidates) {
+			const firstId = layoutItem(document, 'junctions', first)!.id;
+			const secondId = layoutItem(document, 'junctions', second)!.id;
+			if (keyByJunctionId.get(firstId) !== keyByJunctionId.get(secondId)) continue;
+			countWork('pairs:junction-junction:same-component');
+			observeTopologyEvaluation('junction-coincidence', [firstId, secondId]);
+			const failure = coincidenceFailure(firstId, secondId);
+			if (failure) return failure;
 		}
 	}
 
@@ -2270,7 +2477,7 @@ function validateWallFirstTopologyPass(
 	// CHECKED for zero length is what a subject scopes.
 	const wallSegments = new Map<string, TopologySegment>();
 	for (const wall of document.walls) {
-		const endpoints = wallEndpoints(document, wall);
+		const endpoints = wallEndpoints(document, wall, junctionPointById);
 		if (!endpoints || !(endpoints.length > POINT_EPSILON)) continue;
 		wallSegments.set(wall.id, { id: wall.id, start: endpoints.start, end: endpoints.end });
 	}
@@ -2331,11 +2538,25 @@ function validateWallFirstTopologyPass(
 			if (failure) return failure;
 		}
 	} else {
-		for (let first = 0; first < walls.length; first += 1) {
-			for (let second = first + 1; second < walls.length; second += 1) {
-				const a = walls[first]!;
-				const b = walls[second]!;
+		// T1.P02.S06 D.1 (H3) — Wall × Wall through a plan-space box index (I2).
+		// Two Wall segments whose boxes are disjoint cannot share an endpoint,
+		// cross or overlap, so the chord classifier would answer `none`; the index
+		// visits only the pairs whose boxes overlap, in this loop's own order.
+		const indexedWalls = walls.filter((wall) => wallSegments.has(wall.id));
+		const wallBoxes = indexedWalls.map((wall) => segmentPlanBox(wallSegments.get(wall.id)!));
+		const wallBoxIndex = createPlanBoxIndex(wallBoxes);
+		for (let first = 0; first < indexedWalls.length; first += 1) {
+			const a = indexedWalls[first]!;
+			const candidates = wallBoxIndex.overlaps(wallBoxes[first]!);
+			for (const second of candidates) {
+				if (second <= first) continue;
+				// Counted per UNIQUE pair, exactly as the nested loop did, so the
+				// number stays comparable with Bench 1's 10.7 M Wall × Wall visits
+				// (the query returns each pair from both sides plus a self hit).
+				countWork('pairs:wall-wall');
+				const b = indexedWalls[second]!;
 				if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
+				countWork('pairs:wall-wall:same-component');
 				observeTopologyEvaluation('wall-chord', [a.id, b.id]);
 				const failure = chordFailure(a.id, b.id);
 				if (failure) return failure;
@@ -2350,7 +2571,8 @@ function validateWallFirstTopologyPass(
 		wallSegments,
 		options.sampling,
 		options.disableExtentPruneForTest,
-		subject ? { wallIds: subject.wallIds, pairs: subject.wallPairs } : undefined
+		subject ? { wallIds: subject.wallIds, pairs: subject.wallPairs } : undefined,
+		junctionPointById
 	);
 	if (curveCrossing) {
 		if (curveCrossing.kind === 'self') {
@@ -2563,7 +2785,8 @@ export function detectWallCurveTopologyCrossings(
 	wallSegments: ReadonlyMap<string, TopologySegment>,
 	sampling?: WallSamplingDerivation,
 	disableExtentPruneForTest?: boolean,
-	subject?: WallCurveTopologyCrossingSubject
+	subject?: WallCurveTopologyCrossingSubject,
+	points?: ReadonlyMap<string, LayoutVec2>
 ): WallCurveTopologyCrossing | undefined {
 	const sampledWalls = new Map<string, SampledTopologyWall>();
 	for (const wall of document.walls) {
@@ -2573,7 +2796,7 @@ export function detectWallCurveTopologyCrossings(
 		if (wall.centerline.kind === 'line') {
 			samples = chordPolyline(segment);
 		} else {
-			const endpoints = wallEndpoints(document, wall);
+			const endpoints = wallEndpoints(document, wall, points);
 			const sampled = endpoints
 				? sampling
 					? sampling.samples(wall, endpoints.start, endpoints.end, 'forward')
@@ -2644,22 +2867,59 @@ export function detectWallCurveTopologyCrossings(
 		}
 		return undefined;
 	}
-	for (let first = 0; first < document.walls.length; first += 1) {
-		for (let second = first + 1; second < document.walls.length; second += 1) {
-			const a = document.walls[first]!;
-			const b = document.walls[second]!;
+	// P23B.4 M-2a: conservative extent prune — a pair whose swept extents cannot
+	// overlap cannot newly cross. Test-only bypass (F2) recovers the genuine
+	// exhaustive loop with only this gate absent; never set in production.
+	if (disableExtentPruneForTest) {
+		for (let first = 0; first < layoutLength(document, 'walls'); first += 1) {
+			countWork('pairs:wall-wall-curve', layoutLength(document, 'walls') - first - 1);
+			for (let second = first + 1; second < layoutLength(document, 'walls'); second += 1) {
+				const a = layoutItem(document, 'walls', first)!;
+				const b = layoutItem(document, 'walls', second)!;
+				if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
+				// Two straight Walls are already fully decided by the chord gate.
+				if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
+				const sampledA = sampledWalls.get(a.id);
+				const sampledB = sampledWalls.get(b.id);
+				if (!sampledA || !sampledB) continue;
+				const shared = sharedJunctionIds(a, b)[0];
+				observeTopologyEvaluation('wall-pair-crossing', [a.id, b.id]);
+				if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
+				return shared
+					? { kind: 'pair', wallIds: [a.id, b.id], sharedJunctionId: shared }
+					: { kind: 'pair', wallIds: [a.id, b.id] };
+			}
+		}
+		return undefined;
+	}
+	// T1.P02.S06 D.1 (H3) — the same prune, made an index query. Every pair whose
+	// tolerance-expanded sample boxes overlap is a candidate, in the shipped order;
+	// a pair the index omits is one `sampledWallExtentsOverlap` would have
+	// rejected anyway (OR-9), so the verdict, the reporting and the first-wins rule
+	// are unchanged. Boxes are computed once per Wall, not once per pair.
+	const indexedWalls: LayoutWall[] = [];
+	const sampledBoxes: PlanBox[] = [];
+	for (const wall of document.walls) {
+		const sampled = sampledWalls.get(wall.id);
+		if (!sampled) continue;
+		indexedWalls.push(wall);
+		sampledBoxes.push(sampledPlanBox(sampled.samples, CURVE_SELF_INTERSECTION_TOLERANCE));
+	}
+	const sampledBoxIndex = createPlanBoxIndex(sampledBoxes);
+	for (let first = 0; first < indexedWalls.length; first += 1) {
+		const a = indexedWalls[first]!;
+		const candidates = sampledBoxIndex.overlaps(sampledBoxes[first]!);
+		for (const second of candidates) {
+			if (second <= first) continue;
+			// Per unique pair, as the nested loop counted it (the query returns a
+			// pair from both sides plus a self hit).
+			countWork('pairs:wall-wall-curve');
+			const b = indexedWalls[second]!;
 			if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
 			// Two straight Walls are already fully decided by the chord gate.
 			if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
-			const sampledA = sampledWalls.get(a.id);
-			const sampledB = sampledWalls.get(b.id);
-			if (!sampledA || !sampledB) continue;
-			// P23B.4 M-2a: conservative extent prune — a pair whose swept extents
-			// cannot overlap cannot newly cross. Same predicate, same reporting,
-			// same first-wins order; only rejected-anyway pairs are skipped (OR-9).
-			// Test-only bypass (F2): `disableExtentPruneForTest` recovers the genuine
-			// exhaustive behavior with only this gate absent. Never set in production.
-			if (!disableExtentPruneForTest && !sampledWallExtentsOverlap(sampledA, sampledB)) continue;
+			const sampledA = sampledWalls.get(a.id)!;
+			const sampledB = sampledWalls.get(b.id)!;
 			const shared = sharedJunctionIds(a, b)[0];
 			observeTopologyEvaluation('wall-pair-crossing', [a.id, b.id]);
 			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
@@ -2680,14 +2940,58 @@ function topologyFailure(firstId: string, secondId: string | undefined, message:
 	};
 }
 
+/**
+ * One Wall's resolved endpoints. `points` is an optional id→point index for
+ * callers that resolve many Walls (T1.P02.S06 D.1: the topology gates); without
+ * it the historical linear Junction scan runs, so a one-off caller is unchanged.
+ */
 function wallEndpoints(
 	document: LayoutDocumentWallFirst,
-	wall: LayoutWall
+	wall: LayoutWall,
+	points?: ReadonlyMap<string, LayoutVec2>
 ): { start: LayoutVec2; end: LayoutVec2; length: number } | undefined {
-	const start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
-	const end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
+	let start: LayoutVec2 | undefined;
+	let end: LayoutVec2 | undefined;
+	if (points) {
+		// Two identity lookups; the index removes the linear scan entirely.
+		countWork('lookup:junctions', 2);
+		start = points.get(wall.startJunctionId);
+		end = points.get(wall.endJunctionId);
+	} else {
+		// Two linear Junction lookups per Wall (an upper bound on the visits).
+		countWork('lookup:junctions', 2 * layoutLength(document, 'junctions'));
+		start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
+		end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
+	}
 	if (!start || !end) return undefined;
 	return { start, end, length: distance(start, end) };
+}
+
+/** Inclusive plan-space box of one resolved Wall segment. */
+function segmentPlanBox(segment: TopologySegment): PlanBox {
+	return {
+		minX: Math.min(segment.start[0], segment.end[0]),
+		minZ: Math.min(segment.start[1], segment.end[1]),
+		maxX: Math.max(segment.start[0], segment.end[0]),
+		maxZ: Math.max(segment.start[1], segment.end[1])
+	};
+}
+
+/** Inclusive plan-space box of a sampled polyline, expanded by `pad` on each side. */
+function sampledPlanBox(samples: readonly CurveSample[], pad: number): PlanBox {
+	let minX = Infinity;
+	let minZ = Infinity;
+	let maxX = -Infinity;
+	let maxZ = -Infinity;
+	for (const sample of samples) {
+		const x = sample.point[0];
+		const z = sample.point[1];
+		if (x < minX) minX = x;
+		if (z < minZ) minZ = z;
+		if (x > maxX) maxX = x;
+		if (z > maxZ) maxZ = z;
+	}
+	return { minX: minX - pad, minZ: minZ - pad, maxX: maxX + pad, maxZ: maxZ + pad };
 }
 
 function currentJunctionPoint(document: LayoutDocumentWallFirst, junctionId: string): LayoutVec2 {

@@ -28,7 +28,11 @@ import { fullSourceHash, type SaveAcceptedSource, type SavePrecondition } from '
 import type { PreparedSaveSource, SaveSourceHandler, SaveSourcePreparation } from '../save/admission';
 import type { ShapeIssue } from '../strict-shape';
 import type { AcceptedSnapshot } from '../f4/types';
-import { computeEnvelopeSourceContentId, verifyUnitContentRevisions } from './canonical';
+import {
+	computeEnvelopeSourceContentId,
+	verifyUnitContentRevisions,
+	type SaveWorkInstrumentation
+} from './canonical';
 import { verifyUnitDependencyLocks } from './acceptance';
 import { serializeProjectEnvelope, validateProjectEnvelope } from './validate';
 import { normalizeUnitEnvelope, UNIT_ENVELOPE_SOURCE_KIND, UNIT_ENVELOPE_SOURCE_VERSION } from './acceptance';
@@ -113,10 +117,12 @@ export async function captureUnitSave(input: {
 	readonly snapshot: AcceptedSnapshot<ProjectEnvelope>;
 	readonly operationId: string;
 	readonly precondition: SavePrecondition;
-}): Promise<UnitSaveCapture> {
+}, instrumentation?: SaveWorkInstrumentation): Promise<UnitSaveCapture> {
 	const source = input.snapshot.domain.source;
 	const stamped: ProjectEnvelope = { ...source, acceptedRevision: input.snapshot.acceptedRevision };
-	const validated = validateProjectEnvelope(stamped);
+	const validated = instrumentation
+		? instrumentation.sync('save.capture-validate', () => validateProjectEnvelope(stamped))
+		: validateProjectEnvelope(stamped);
 	if (!validated.success) {
 		return { kind: 'refused', code: 'invalid-project', message: 'The accepted envelope does not validate', issues: validated.issues };
 	}
@@ -134,13 +140,15 @@ export async function captureUnitSave(input: {
 	// The accepted source installed by the unit adapter is already normalized; this
 	// re-derives the same headers defensively, so a host that hands a raw envelope
 	// cannot capture a revision that disagrees with its data.
-	const normalized = await normalizeUnitEnvelope(validated.envelope);
-	const canonicalJson = serializeProjectEnvelope(normalized);
-	const lockIssues = await verifyUnitDependencyLocks(normalized);
+	const normalized = await normalizeUnitEnvelope(validated.envelope, instrumentation);
+	const canonicalJson = instrumentation
+		? instrumentation.sync('save.capture-serialize-envelope', () => serializeProjectEnvelope(normalized))
+		: serializeProjectEnvelope(normalized);
+	const lockIssues = await verifyUnitDependencyLocks(normalized, { instrumentation });
 	if (lockIssues.length > 0) {
 		return { kind: 'refused', code: 'invalid-project', message: 'The dependency lock does not resolve', issues: lockIssues };
 	}
-	const sourceContentId = await computeEnvelopeSourceContentId(normalized);
+	const sourceContentId = await computeEnvelopeSourceContentId(normalized, instrumentation, 'save.capture-source-id');
 	return {
 		kind: 'captured',
 		capture: {

@@ -37,6 +37,7 @@ import {
 } from './layout-face-extraction';
 import {
 	buildCorrespondenceComponents,
+	createRoomBoundaryLookup,
 	interiorWitness,
 	reconcileRooms,
 	roomBoundaryPolygon,
@@ -367,8 +368,9 @@ function planWallRemovalSet(
 	if (extraction.faces.length > 0 || document.rooms.length > 0) {
 		const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
 		const predecessorWitnesses = new Map<string, LayoutVec2>();
+		const boundaryLookup = createRoomBoundaryLookup(document);
 		for (const room of document.rooms) {
-			const polygon = roomBoundaryPolygon(document, room.id);
+			const polygon = roomBoundaryPolygon(document, room.id, boundaryLookup);
 			if (!polygon) {
 				return reject({
 					code: 'room_reconciliation_rejected',

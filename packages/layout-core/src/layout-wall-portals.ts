@@ -54,13 +54,25 @@ export function validateWallFirstPortalRelations(
   document: LayoutDocumentWallFirst
 ): WallFirstPortalIssue[] {
   const issues: WallFirstPortalIssue[] = [];
+  if (document.openings.length === 0) return issues;
   const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
+  const adjacentRoomsByWallId = new Map<string, string[]>();
+  for (const room of document.rooms) {
+    const seenOnRoom = new Set<string>();
+    for (const ref of room.boundary) {
+      if (seenOnRoom.has(ref.wallId)) continue;
+      seenOnRoom.add(ref.wallId);
+      const list = adjacentRoomsByWallId.get(ref.wallId);
+      if (list) list.push(room.id);
+      else adjacentRoomsByWallId.set(ref.wallId, [room.id]);
+    }
+  }
   document.openings.forEach((opening: LayoutWallOpening, index: number) => {
     const relation = opening.connectsRoomIds;
     if (!relation || opening.kind !== 'door') return;
     const path = `$.openings[${index}].connectsRoomIds`;
     const wall = wallById.get(opening.wallId);
-    const adjacent = wall ? wallFirstAdjacentRooms(document, wall.id) : [];
+    const adjacent = wall ? (adjacentRoomsByWallId.get(wall.id) ?? []) : [];
     const pair = [...relation].sort();
     const neighbors = [...adjacent].sort();
     // Format 6 — adjacency is boundary membership on both sides, never an

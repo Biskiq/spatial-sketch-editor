@@ -14,6 +14,9 @@ import { cpus, totalmem, platform, release } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { PROFILE } from './config';
+import { basePlan } from './profile';
+import type { PerfProfile, SamplePlan } from './profile';
 import type { Stats } from './stats';
 import { formatStats } from './stats';
 
@@ -35,6 +38,17 @@ export type RunReport = {
 	readonly name: string;
 	readonly startedAt: string;
 	readonly machine: Readonly<Record<string, unknown>>;
+	/** `diagnostic` reports are never acceptance evidence, whatever their rows say. */
+	readonly profile: PerfProfile;
+	/**
+	 * A per-flow report is never pass-scoped acceptance evidence: it is written
+	 * before the pass ends and cannot see the other rows. Only the bench manifest,
+	 * which aggregates every decision row and the pass conditions, may say
+	 * `acceptanceEvidence: true`.
+	 */
+	readonly acceptanceEvidence: boolean;
+	readonly passScoped: boolean;
+	readonly samplePlan: SamplePlan;
 	readonly rows: ResultRow[];
 };
 
@@ -69,7 +83,21 @@ export function machineFacts(): Record<string, unknown> {
 }
 
 export function startReport(name: string): RunReport {
-	return { name, startedAt: new Date().toISOString(), machine: machineFacts(), rows: [] };
+	const plan = basePlan(PROFILE);
+	return {
+		name,
+		startedAt: new Date().toISOString(),
+		machine: machineFacts(),
+		profile: PROFILE,
+		// A flow report is not pass-scoped: a later phase can abort, and a bare
+		// Playwright run has no manifest. The manifest is the only acceptance
+		// authority; this flag stays false so a single report cannot be quoted as
+		// a pass (Bench 2's emergency-rerun precedent).
+		acceptanceEvidence: false,
+		passScoped: false,
+		samplePlan: plan,
+		rows: []
+	};
 }
 
 export function fileReport(report: RunReport): string {
@@ -85,7 +113,8 @@ export function fileReport(report: RunReport): string {
 }
 
 export function formatRow(row: ResultRow): string {
-	const parts = [`${row.id} [${row.flow}${row.workload === undefined ? '' : ` · ${row.workload}`}]`];
+	const prefix = PROFILE === 'diagnostic' ? '[diagnostic, not evidence] ' : PROFILE === 'milestone' ? '[milestone] ' : '';
+	const parts = [`${prefix}${row.id} [${row.flow}${row.workload === undefined ? '' : ` · ${row.workload}`}]`];
 	if (row.cacheState !== undefined) parts.push(`cache=${row.cacheState}`);
 	if (row.network !== undefined) parts.push(`net=${row.network}`);
 	parts.push(`browser=${row.browser}`, `cpu=${row.cpuRate}x`);

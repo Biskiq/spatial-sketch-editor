@@ -77,7 +77,7 @@ flowchart TD
   D --> O["T1.P02.S03 Opening — held"]
   O --> F["T1.P02.S04 final gate — held"]
   P --> IF["T2.P02.S03 integrated final gate — held behind S06"]
-  B --> C["T3.P04 project lifecycle — planning, held; unrelated to the halt"]
+  B --> C["T3.P04.S01 rename/delete — released 2026-10-24; unrelated to the halt"]
   F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
   IF --> CES
   C --> CES
@@ -87,6 +87,7 @@ flowchart TD
 | Released lane | Owning plan | Bounded responsibility / dependency |
 | --- | --- | --- |
 | T1.P02.S06 | [Performance foundation](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) | Peak-first, setup-free measurement on the M2; L/XL and realistic-load workloads; per-stage scaling evidence; algorithm work inside the one compiler and its consumers with equal-output proof; full-permissive library exploration; transferred S02 and T3 performance obligations; no product feature or format change |
+| T3.P04.S01 | [Project rename and delete](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) | Owner-scoped rename/delete, project-scoped resource cleanup and a bounded T1-reviewed shell patch; implementation started after [the release](../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md) merged. R1/R2 were owner-ratified 2026-10-25 (see C3 below); T2's API handoff gates shared API edits, while T1 review and `T1.P02.S06`'s recorded claim gate the shell patch. The 2026-10-24 planning resolution retains proposal and cleanup history; no gate or format change |
 
 **Performance-first halt.** The [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
@@ -131,7 +132,7 @@ The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/
 | Scene transform/resource admission, GLB import and relevant API/resource routes | T2 (no released lane) | S06 reads the import recipe and resources format only to seed its workloads; shared F4/Save changes reviewed by T3; no foreign-domain rewrite or publication/resource-release closure |
 | Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime; S06 measures these flows and reports T3-owned misses |
 | Measurement harness (H0 workflow) | T3 | S06 edits the shared harness and fixtures through T3 review |
-| Future C3 project lifecycle persistence/API | T3 after explicit handoff from T2 | Transfer shared API editing ownership when import changes merge; C3 remains held and needs its own release |
+| C3 project lifecycle persistence/API | T3 after explicit handoff from T2 | Released as `T3.P04.S01` on 2026-10-24; shared API editing transfers after the handoff, and the slice does not edit the harness, Stage or S06's shell claim |
 | Test contract, runtime-safe shared packages and boundary checks | Existing concern owner | Touch only required call sites with owner review; no duplicate protocol, silent boundary weakening or private test substitute |
 
 Parallel work means independent domain edits. Serialize editing shared files; name the writer
@@ -162,9 +163,15 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.
-- **C3:** [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) is a planning-only follow-on
-  for rename/delete and guarded lifecycle, T3 persistence/API plus T1 shell integration.
-  Complete scope/plan and transfer shared API ownership after import; do not launch it early.
+- **C3:** [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) is **authorized and released**
+  as `T3.P04.S01` for rename/delete and guarded lifecycle, with T3 persistence/API and T1 shell
+  integration. It is strictly unrelated to the halt, and implementation started after coordination
+  PR #188 merged. R1/R2 were owner-ratified 2026-10-25 ([review on PR #188](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932)),
+  superseding the 2026-10-24 proposal history in the [planning resolution](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md).
+  T2's API handoff — including the write-lease fence on its two model writers — must be reviewed
+  before shared API edits. The bounded T1 shell patch still requires T1 pre-implementation review
+  and serialization behind `T1.P02.S06`'s recorded shell-file claim. The planning resolution also
+  records the cleanup corrections.
 - **T1/T2 continuation:** face-frame provider/solve-once wall placement, part admission and
   annotation, vertical/coordinate qualification and overhead families are planning triggers
   in the owning tracks. They are not accepted providers or newly released scopes.

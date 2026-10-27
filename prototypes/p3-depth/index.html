@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Biskiq · P3 architectural depth</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="stage">
+      <canvas id="paper"></canvas>
+      <aside id="sheet">
+        <div class="brand">BISKIQ <span>· P3 architectural depth</span></div>
+        <div class="scroll">
+          <p class="kicker" id="kicker"></p>
+          <h1 id="title"></h1>
+          <p class="lede" id="lede"></p>
+          <p class="note" id="note"></p>
+          <div id="chips"></div>
+          <dl id="facts"></dl>
+          <div id="issues"></div>
+          <div id="actions"></div>
+          <div id="table"></div>
+          <p class="hint" id="hint"></p>
+        </div>
+        <div class="foot">
+          <span>design study · not production</span>
+          <button id="reset" title="Reset the camera">Reset view</button>
+        </div>
+      </aside>
+      <nav id="tabs" aria-label="demonstrations"></nav>
+      <div id="tip" hidden></div>
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+    </main>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

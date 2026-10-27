@@ -42,6 +42,8 @@ export type PerfRecord = {
 type PerfGlobal = typeof globalThis & {
 	__BISKIQ_PERF__?: { readonly enabled?: unknown; readonly traceProof?: unknown };
 	__BISKIQ_PERF_RECORDS__?: PerfRecord[];
+	/** Installed by the harness's init script; receives each surface's renderer. */
+	__BISKIQ_PERF_ON_RENDERER__?: (renderer: object, surface: string) => void;
 };
 
 /**
@@ -134,6 +136,47 @@ export function perfResult(name: string, detail?: Readonly<Record<string, unknow
 /** Record a general milestone (command start, admission, refusal, release). */
 export function perfMark(name: string, detail?: Readonly<Record<string, unknown>>): void {
 	record('mark', name, detail);
+}
+
+/**
+ * Hand one surface's renderer to the harness and return it unchanged.
+ *
+ * The harness reads `renderer.info` and counts shadow passes itself (T1.P02.S06
+ * render counters); this helper only passes the object over. Without the
+ * harness flag, or without the harness's hook, it does nothing.
+ */
+export function perfRenderer<T extends object>(renderer: T, surface: 'stage' | 'preview'): T {
+	if (!perfMarksEnabled()) return renderer;
+	perfGlobal().__BISKIQ_PERF_ON_RENDERER__?.(renderer, surface);
+	return renderer;
+}
+
+/**
+ * Time one synchronous operation on the page's main thread. Save uses this
+ * only around named work it directly invokes; the enclosing async operation
+ * and unrelated renderer frames are deliberately not included.
+ */
+export function perfMeasureSync<T>(phase: string, work: () => T): T {
+	if (!perfMarksEnabled()) return work();
+	const start = performance.now();
+	try {
+		return work();
+	} finally {
+		const end = performance.now();
+		perfMark('save:work', { phase, startMs: start, endMs: end, elapsedMs: end - start });
+	}
+}
+
+/** Measure a Save-owned async step's elapsed time, separately from main-thread work. */
+export async function perfMeasureAsync<T>(phase: string, work: () => Promise<T>): Promise<T> {
+	if (!perfMarksEnabled()) return work();
+	const start = performance.now();
+	try {
+		return await work();
+	} finally {
+		const end = performance.now();
+		perfMark('save:async-wall', { phase, startMs: start, endMs: end, elapsedMs: end - start });
+	}
 }
 
 /** Diagnostic only: never enabled in untraced timing runs or ordinary UI. */

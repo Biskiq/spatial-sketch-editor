@@ -13,7 +13,17 @@ owned by [`composition-execution.md`](../../../../reference/composition-executio
 
 | Capability | Anchor | Source kinds | Prerequisites | Extension slice | Exports | Conformance | Acceptance | Commit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `T1.viewport-projection@1:viewport-projection-v1` | [AM-5 shared Stage and starter gallery](../../../../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | `current-source@5` (wall-first Layout / world-local Scene) | `F1.reference@1:references-v1`, `F3.channels@1:inspection-v1`, `F4.intent-acceptance@1:local-single-domain-v1` | `T1.P01.S07` | `apps/editor/src/lib/authoring/stage/`, `packages/camera-core/src/viewport.ts`, `packages/layout-core/src/layout-plan-representation.ts` | `apps/editor/tests/lib/authoring/stage-consumer-probes.test.ts`, `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts`, `apps/editor/tests/lib/authoring/stage-facade.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md` | `ab8504aa` |
+| `T1.viewport-projection@1:viewport-projection-v1` | [AM-5 shared Stage and starter gallery](../../../../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | `current-source@5` (wall-first Layout / world-local Scene) | `F1.reference@1:references-v1`, `F3.channels@1:inspection-v1`, `F4.intent-acceptance@1:acceptance-invariants-v1` | `T1.P01.S07` | `apps/editor/src/lib/authoring/stage/`, `packages/camera-core/src/viewport.ts`, `packages/layout-core/src/layout-plan-representation.ts` | `apps/editor/tests/lib/authoring/stage-consumer-probes.test.ts`, `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts`, `apps/editor/tests/lib/authoring/stage-facade.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md` | `ab8504aa` |
+
+**Prerequisite reconciliation (2026-10-27).** This record named
+`F4.intent-acceptance@1:local-single-domain-v1` as a prerequisite until 2026-10-27. That scope was
+retired on 2026-10-19 by `T3.P01.S04`; the F.4 retirement rule
+([capability readiness](../../../f-foundation-contracts/README.md#capability-readiness)) keeps the
+enduring acceptance invariants on the same gate as `acceptance-invariants-v1` and lets consumers
+name that scope instead of the retiring adapter. The prerequisite now names the enduring scope, so
+the capability is eligible to current consumers again (`T1.P02.S06` is the first). No accepted
+behaviour, source kind, evidence, commit or gate version changes; the acceptance and its evidence
+remain those of `ab8504aa`.
 
 ## Scope of this acceptance
 

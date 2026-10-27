@@ -56,6 +56,7 @@ import {
 	planWallManipulation,
 	wallFrame,
 	wallManipulationIntent,
+	warmLayoutPlannerBaseline,
 	type LayoutSubject,
 	type WallFrame,
 	type WallManipulationRequest,
@@ -354,6 +355,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							preview: null,
 							neighbours: []
 						};
+						warmLayoutPlannerBaseline(gesture.baseline);
 						services.stage.notifySurfaceChange();
 						return true;
 					}

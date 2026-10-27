@@ -12,22 +12,48 @@
 	import { untrack } from 'svelte';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
+	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
+	import type {
+		PreparedProjectLifecycle,
+		ProjectLifecycleActionResult,
+		ProjectLifecyclePrepareResult
+	} from '$lib/platform/project-persistence';
 	import { reloadOffer } from './reload-offer';
 
 	let {
 		projectName,
+		projectId = 'project-1',
 		canDownloadSource,
 		canUndo = false,
 		canRedo = false,
 		save = null,
-		onReloadRemote = () => {}
+		onReloadRemote = () => {},
+		projectActionsUnavailableReason = null,
+		projectActionBusy = false,
+		onPrepareRename = async () => ({ kind: 'blocked' as const, message: 'Unavailable' }),
+		onRenameProject = async () => ({ kind: 'refused' as const, message: 'Unavailable' }),
+		onPrepareDelete = async () => ({ kind: 'blocked' as const, message: 'Unavailable' }),
+		onDeleteProject = async () => ({ kind: 'refused' as const, message: 'Unavailable' }),
+		onProjectActionComplete = async () => {},
+		onProjectActionBusyChange = () => {},
+		onRefreshRemoteProject = null
 	}: {
 		projectName: string;
+		projectId?: string;
 		canDownloadSource: boolean;
 		canUndo?: boolean;
 		canRedo?: boolean;
 		save?: HeadSave | null;
 		onReloadRemote?: (offer: ReloadOffer) => void;
+		projectActionsUnavailableReason?: string | null;
+		projectActionBusy?: boolean;
+		onPrepareRename?: () => Promise<ProjectLifecyclePrepareResult>;
+		onRenameProject?: (prepared: PreparedProjectLifecycle, name: string) => Promise<ProjectLifecycleActionResult>;
+		onPrepareDelete?: () => Promise<ProjectLifecyclePrepareResult>;
+		onDeleteProject?: (prepared: PreparedProjectLifecycle) => Promise<ProjectLifecycleActionResult>;
+		onProjectActionComplete?: (result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>) => void | Promise<void>;
+		onProjectActionBusyChange?: (busy: boolean) => void;
+		onRefreshRemoteProject?: (() => void | Promise<void>) | null;
 	} = $props();
 
 	let version = $state(0);
@@ -75,7 +101,22 @@
 	data-save-disabled={String(control?.disabled ?? true)}
 	data-can-undo={String(canUndo)}
 	data-can-redo={String(canRedo)}
+	data-project-actions-reason={projectActionsUnavailableReason ?? 'available'}
+	data-project-action-busy={String(projectActionBusy)}
 >
+	<ProjectLifecycleActions
+		{projectId}
+		{projectName}
+		variant="head"
+		disabledReason={projectActionsUnavailableReason}
+		onPrepareRename={onPrepareRename}
+		onRename={onRenameProject}
+		onPrepareDelete={onPrepareDelete}
+		onDelete={onDeleteProject}
+		onComplete={onProjectActionComplete}
+		onBusyChange={onProjectActionBusyChange}
+		onRefreshRemote={onRefreshRemoteProject}
+	/>
 	{#if save !== null}
 		<button type="button" data-testid="head-save" disabled={control?.disabled ?? true} onclick={() => void runSave()}>
 			{control?.label ?? 'Save'}

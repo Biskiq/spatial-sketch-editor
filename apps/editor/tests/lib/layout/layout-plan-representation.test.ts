@@ -26,7 +26,10 @@ import {
 	eligiblePlanFragments,
 	evaluateLayoutPlan,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+	planDependsOnTarget,
+	planFragmentOf,
 	planMembershipOf,
+	planTargetsLiveView,
 	WALL_AUTHORING_DEFAULT_HEIGHT,
 	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst,
@@ -385,5 +388,90 @@ describe('Plan parameter boundary', () => {
 		expect(plan.cutElevationMeters).toBeCloseTo(3.2, 12);
 		// The walls reach the raised datum too, so the cut plane still passes through them.
 		expect(plan.streams.cut.length).toBeGreaterThan(0);
+	});
+});
+
+/**
+ * The inspection target is a **view** fact, not a Layout fact, unless the caller
+ * asks for a bounded lateral span. These tests exist because a host that retains
+ * one Plan evaluation while the target moves (a pan) is exact only when that is
+ * true — so it is proved here rather than assumed at the call site.
+ */
+describe('Plan inspection target — what it can and cannot change', () => {
+	const compiled = compileWallFirstLayoutGeometry(withDoor(rectangleDocument())).geometry;
+
+	it('leaves every fragment, membership row, stream and bound identical when the span is unbounded', () => {
+		const near = evaluation(compiled, {}, { target: [0.2, 0.2] });
+		const far = evaluation(compiled, {}, { target: [400, -250] });
+		expect(far.fragments).toEqual(near.fragments);
+		expect(far.membership).toEqual(near.membership);
+		expect(far.streams).toEqual(near.streams);
+		expect(far.bounds).toEqual(near.bounds);
+		expect(far.unmatchedRevealIds).toEqual(near.unmatchedRevealIds);
+		// The echo is the only difference — and it is the field a host keeps live.
+		expect(far.target).toEqual([400, -250]);
+		expect(near.target).toEqual([0.2, 0.2]);
+	});
+
+	it('reports exactly when the target is an input', () => {
+		expect(planDependsOnTarget(parameters())).toBe(false);
+		expect(planDependsOnTarget(parameters({ lateralSpanHalfWidthMeters: 6 }))).toBe(true);
+	});
+
+	it('does change membership when the lateral span is bounded, so the predicate is not vacuous', () => {
+		// The rectangle is 4 × 3 m; a 2 m half-width around one corner cannot reach the
+		// opposite one, while a target in the middle reaches everything.
+		const corner = evaluation(compiled, { lateralSpanHalfWidthMeters: 2 }, { target: [-40, -40] });
+		const middle = evaluation(compiled, { lateralSpanHalfWidthMeters: 2 }, { target: [2, 1.5] });
+		expect(corner.fragments.length).toBe(0);
+		expect(corner.membership.every((row) => row.reason === 'outside-span' || row.reason === 'no-meaningful-projection')).toBe(true);
+		expect(middle.fragments.length).toBeGreaterThan(0);
+	});
+
+	it('keeps one evaluation object and reports the live target through it', () => {
+		const retained = evaluation(compiled, {}, { target: [0, 0] });
+		let live: LayoutVec2 = [0, 0];
+		const patched = planTargetsLiveView(retained, () => live);
+		// The geometry is the retained one: no rebuild, no copy of the project.
+		expect(patched.fragments).toBe(retained.fragments);
+		expect(patched.membership).toBe(retained.membership);
+		expect(patched.streams).toBe(retained.streams);
+		live = [12, -3.5];
+		expect(patched.target).toEqual([12, -3.5]);
+		// Everything except the echo is still identical to the evaluation.
+		expect({ ...patched, target: [0, 0] }).toEqual(retained);
+	});
+
+	it('never reports a non-finite live target on an evaluated plan', () => {
+		// The parameter boundary refuses a non-finite target, so no evaluated plan can
+		// honestly carry one; the retained echo stays at the evaluated target instead.
+		const retained = evaluation(compiled, {}, { target: [1, 2] });
+		const patched = planTargetsLiveView(retained, () => [Number.NaN, 0] as LayoutVec2);
+		expect(patched.target).toEqual([1, 2]);
+	});
+});
+
+describe('Plan fragment lookup', () => {
+	const compiled = compileWallFirstLayoutGeometry(withDoor(rectangleDocument())).geometry;
+
+	it('answers the first fragment of a source, exactly as a scan would', () => {
+		const plan = evaluation(compiled);
+		for (const sourceId of new Set(plan.fragments.map((fragment) => fragment.ref.sourceId))) {
+			expect(planFragmentOf(plan, sourceId)).toBe(
+				plan.fragments.find((fragment) => fragment.ref.sourceId === sourceId)
+			);
+		}
+		expect(planFragmentOf(plan, 'not-a-source')).toBeUndefined();
+	});
+
+	it('is indexed against the fragment array itself', () => {
+		const plan = evaluation(compiled);
+		const sourceId = plan.fragments[0]!.ref.sourceId;
+		const first = planFragmentOf(plan, sourceId);
+		// Repeated lookups are the same answer, and a *different* evaluation cannot be
+		// served from another one's index.
+		expect(planFragmentOf(plan, sourceId)).toBe(first);
+		const other = evaluation(compiled, { reveal: [sourceId] });
+		expect(planFragmentOf(other, sourceId)?.ref.sourceId).toBe(sourceId);
 	});
 });

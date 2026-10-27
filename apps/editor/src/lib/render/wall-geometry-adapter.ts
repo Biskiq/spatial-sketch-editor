@@ -1,3 +1,4 @@
+import { countWork } from '@portfolio/layout-core';
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, type Material } from 'three';
 import type { IndexedWallMesh, WallMeshSurfaceKey } from '$lib/layout/wall-mesh-builder';
 
@@ -37,6 +38,8 @@ export type WallBufferGeometry = {
  * never create geometry groups.
  */
 export function toWallBufferGeometry(mesh: IndexedWallMesh, resolve: WallMeshMaterialFactory): WallBufferGeometry {
+	countWork('render:mesh-buffer-input-bytes', mesh.positions.byteLength + mesh.normals.byteLength + mesh.uvs.byteLength + mesh.indices.byteLength);
+	countWork('render:adapter-buffer-bytes-copied', mesh.positions.byteLength + mesh.normals.byteLength + mesh.uvs.byteLength);
 	const geometry = new BufferGeometry();
 	geometry.setAttribute('position', new Float32BufferAttribute(mesh.positions, 3));
 	geometry.setAttribute('normal', new Float32BufferAttribute(mesh.normals, 3));

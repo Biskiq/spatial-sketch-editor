@@ -111,6 +111,12 @@ describe('Stage shell composition', () => {
 		expect((camera.match(/fov=\{/g) ?? []).length).toBe(1);
 		expect(camera).toContain('camera.near = evaluation.near');
 		expect(camera).toContain('camera.far = evaluation.far');
+		// T1.P02.S06 D.6 (H9) — the realizer must not ask for a frame just because
+		// it ran: a task's default invalidates, which is what kept the Stage
+		// rendering at rest (Bench 1: 120 of 120 idle frames). A new evaluation asks
+		// for exactly one frame instead.
+		expect(camera).toContain('autoInvalidate: false');
+		expect(camera).toContain('invalidate();');
 	});
 
 	it('drives pose only through the host’s own inspection claim', () => {
@@ -157,7 +163,10 @@ describe('Stage shell composition', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		expect(route).toContain('runBoundLoad(session,');
 		expect(route).toContain('session.isCurrent(token)');
-		expect(route).not.toMatch(/new AbortController\(/);
+		// Project actions have their own request cancellation and register it with
+		// the session writer registry. The project read itself must continue to use
+		// `runBoundLoad`, not a private controller the session cannot cancel.
+		expect(route).toContain("session.writers().register('project-action', token, () => controller.abort())");
 		expect(route).not.toMatch(/loadProject\([^)]*controller\.signal/);
 	});
 

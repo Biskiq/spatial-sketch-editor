@@ -1,0 +1,121 @@
+{
+  "jobs": [
+    {
+      "projectId": "project:f27f99df-dbe7-4949-89e6-ce43fcba7b55",
+      "attempts": [
+        {
+          "projectId": "project:f27f99df-dbe7-4949-89e6-ce43fcba7b55",
+          "status": "pending",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        },
+        {
+          "projectId": "project:f27f99df-dbe7-4949-89e6-ce43fcba7b55",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        }
+      ],
+      "idempotent": {
+        "projectId": "project:f27f99df-dbe7-4949-89e6-ce43fcba7b55",
+        "status": "complete",
+        "sweepDependent": false,
+        "deletedKeys": [],
+        "repairedLateKeys": []
+      },
+      "tombstone": {
+        "status": "complete",
+        "keyInventory": [],
+        "sweepDependent": false,
+        "attemptCount": 4,
+        "completedAt": "2026-10-25T17:18:32.307Z"
+      },
+      "deletedOwnedKeys": [],
+      "survivingSiblingKeys": []
+    },
+    {
+      "projectId": "project:aebbede5-dfa6-4227-8b43-a9cf416178e3",
+      "attempts": [
+        {
+          "projectId": "project:aebbede5-dfa6-4227-8b43-a9cf416178e3",
+          "status": "pending",
+          "sweepDependent": false,
+          "deletedKeys": [
+            "projects/t3p04s01qa/project:aebbede5-dfa6-4227-8b43-a9cf416178e3/assets/62696619-b234-4f2f-8f71-feaa82eb629c/efd28417c3cfab98c2ae67a6dce78516"
+          ],
+          "repairedLateKeys": []
+        },
+        {
+          "projectId": "project:aebbede5-dfa6-4227-8b43-a9cf416178e3",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [
+            "projects/t3p04s01qa/project:aebbede5-dfa6-4227-8b43-a9cf416178e3/assets/62696619-b234-4f2f-8f71-feaa82eb629c/efd28417c3cfab98c2ae67a6dce78516"
+          ],
+          "repairedLateKeys": []
+        }
+      ],
+      "idempotent": {
+        "projectId": "project:aebbede5-dfa6-4227-8b43-a9cf416178e3",
+        "status": "complete",
+        "sweepDependent": false,
+        "deletedKeys": [
+          "projects/t3p04s01qa/project:aebbede5-dfa6-4227-8b43-a9cf416178e3/assets/62696619-b234-4f2f-8f71-feaa82eb629c/efd28417c3cfab98c2ae67a6dce78516"
+        ],
+        "repairedLateKeys": []
+      },
+      "tombstone": {
+        "status": "complete",
+        "keyInventory": [
+          "projects/t3p04s01qa/project:aebbede5-dfa6-4227-8b43-a9cf416178e3/assets/62696619-b234-4f2f-8f71-feaa82eb629c/efd28417c3cfab98c2ae67a6dce78516"
+        ],
+        "sweepDependent": false,
+        "attemptCount": 4,
+        "completedAt": "2026-10-25T17:18:38.076Z"
+      },
+      "deletedOwnedKeys": [
+        "projects/t3p04s01qa/project:aebbede5-dfa6-4227-8b43-a9cf416178e3/assets/62696619-b234-4f2f-8f71-feaa82eb629c/efd28417c3cfab98c2ae67a6dce78516"
+      ],
+      "survivingSiblingKeys": [
+        "projects/t3p04s01qa/project:2720c539-c410-4657-9fe8-943f77f73426/assets/aa6f5de8-99e0-49e6-9bb8-0fddd2828b55/5f7116a08f1ebd8ab5a15bf7f3b03092"
+      ]
+    },
+    {
+      "projectId": "project:4123e3e0-02a3-4082-a541-ad0946a15898",
+      "attempts": [
+        {
+          "projectId": "project:4123e3e0-02a3-4082-a541-ad0946a15898",
+          "status": "pending",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        },
+        {
+          "projectId": "project:4123e3e0-02a3-4082-a541-ad0946a15898",
+          "status": "complete",
+          "sweepDependent": false,
+          "deletedKeys": [],
+          "repairedLateKeys": []
+        }
+      ],
+      "idempotent": {
+        "projectId": "project:4123e3e0-02a3-4082-a541-ad0946a15898",
+        "status": "complete",
+        "sweepDependent": false,
+        "deletedKeys": [],
+        "repairedLateKeys": []
+      },
+      "tombstone": {
+        "status": "complete",
+        "keyInventory": [],
+        "sweepDependent": false,
+        "attemptCount": 4,
+        "completedAt": "2026-10-25T17:18:43.842Z"
+      },
+      "deletedOwnedKeys": [],
+      "survivingSiblingKeys": []
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 **Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; `T1.P02` (native Wall
 creation) registered 2026-10-22 as batch E; S01 shipped by scoped owner-override,
-S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)); S02 drawing has a complete held plan and S02–S04 stay held behind S06; `T1.P01.S01` shipped (shared F1/F3
+S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted AC-qualified 2026-10-27 and shipped on PR #190 (battery qualification deferred to S04); S02 drawing has a complete held plan and S02–S04 stay held behind S06's merge; `T1.P01.S01` shipped (shared F1/F3
 providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
 shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
 not complete ([track register](../README.md#track-register)) · **Runbook:**
@@ -70,9 +70,9 @@ the hold, starting only after `T3.P03.S01` merges. On 2026-10-23 the owner relea
 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); it shipped by PR #183. On 2026-10-24 the owner
 registered and released S06 performance foundation ahead of drawing
 ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)) under a temporary
-performance-first halt; it takes C1's compile/admission deduplication and optimization experiment and must be
-accepted and merged before S02. S02–S04 stay `proposed` and held; S02's complete plan still needs its own
-review and release.
+performance-first halt; it took C1's compile/admission deduplication and optimization experiment, was
+accepted AC-qualified on 2026-10-27 and shipped on PR #190, and must also be merged before S02. S02–S04
+stay `proposed` and held; S02's complete plan still needs its own review and release.
 
 After that first wave, T1 supplies C3's rename/delete shell integration, the face-frame query for
 T2's solve-once wall placement, and Stage part-selection/admission UI consuming T2's component
@@ -109,6 +109,12 @@ the [owner hold](../README.md#production-implementation-hold).
 - [`planning-evidence.md`](./planning-evidence.md) — obligations and open decisions carried
   forward from the retired P26 material. It is evidence for planning, not a plan or an
   authorization.
+- [`broad-research/README.md`](./broad-research/README.md) — router for track-level
+  computational architecture investigations.
+- [`broad-research/spatial-computation-architecture.md`](./broad-research/spatial-computation-architecture.md) —
+  Fundamental Computational Architecture Challenge: comprehensive computer science analysis across
+  persistent data structures, incremental and self-adjusting computation, database IVM, planar
+  subdivisions, dynamic BVH, canonical content hashing, and owner decision proposals (OP-1, OP-2, OP-3).
 - [`prototypes/spatial-authoring/`](../../../prototypes/spatial-authoring/) (World) and the
   Paper family — runnable interaction references and QA; their geometry and parameterizations
   are not requirements.

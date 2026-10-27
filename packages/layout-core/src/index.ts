@@ -5,6 +5,8 @@ export * from './layout-geometry-objects';
 export * from './layout-geometry-openings';
 export * from './layout-geometry-queries';
 export * from './layout-geometry-types';
+export * from './layout-geometry-reuse';
+export { recordPassiveCompiledGeometry, indexedCompiledWall, indexedCompiledWallQueries, diffCompiledWalls, sealCompiledLayoutSnapshot } from './layout-geometry-delta';
 export * from './layout-geometry-validation';
 export * from './layout-junction-clearance';
 export * from './layout-junction-resolution';
@@ -41,4 +43,14 @@ export * from './layout-wall-topology-ops';
 export * from './layout-wall-dissolve';
 export * from './layout-floor-support';
 export * from './layout-plan-representation';
+// T1.P02.S06 D.1 (H3) — the plan-space box index behind the pair gates. Exported
+// so its superset contract (every pair the predicate can accept is returned) is
+// testable directly, including the inverted-box fallback.
+export * from './layout-plan-box-index';
+export * from './layout-bvh';
+export * from './layout-world-index';
 export * from './layout-preset-explicit';
+
+export { materializeLayoutSourceForCapture } from './layout-source-collections';
+
+export { hasImmutableJsonProof, rememberImmutableJsonNode } from './immutable-json';

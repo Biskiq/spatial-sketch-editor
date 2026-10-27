@@ -102,6 +102,17 @@ an idempotent operation receipt. Reusing a revision for changed contents or an o
 bytes refuses. One concurrent saved-base contender wins; the loser preserves local work and gets a
 conflict. A network-ambiguous retry replays the exact capture. Reload is explicit replacement.
 
+Project lifecycle (T3.P04.S01): an owner rename is conditional on the saved-base precondition and
+uses the Save/version path, so historical versions remain readable and a no-op rename appends no
+version. A stale or ambiguous response is recovered against the acknowledged base without replacing
+the local draft. Confirmed owner deletion refuses while an active publication requires unpublishing;
+it fences project writers, records the exact owned object-key inventory, retires project rows, and
+deletes bytes through durable retryable cleanup. Cleanup is project-prefix scoped and completion is
+proved with spaced empty listings after the enforced writer bound. A late visible key remains
+repairable through completed-record verification. This is an owner-operated retry mechanism; it adds
+no background cleanup service and does not change T2 model admission or the separate F2 epoch
+activation procedure.
+
 **Sign-in recovery (TD-9).** Before redirect the Save-owned pending-capture seam stores the exact
 F2 request in session storage. The auth return page routes to `resume-save`; the spatial route
 offers it even after a cloud 404 for a create-only request. Only explicit Resume installs and

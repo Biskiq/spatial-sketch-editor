@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-25",
+  "revision": "550f8a9ba15779e8181c437db2b9bd8fdeee793b",
+  "tree": "119d21264f215a20d9b10faa85307084780f0540",
+  "workingTree": "clean",
+  "verificationTier": "exhaustive",
+  "commands": [
+    {
+      "name": "editor full suite",
+      "command": "npm run test -w @portfolio/editor -- --maxWorkers=4",
+      "status": "passed",
+      "files": 191,
+      "passed": 2464,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "architecture",
+      "command": "npm run test:arch",
+      "status": "passed",
+      "files": 22,
+      "passed": 178,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "heavy",
+      "command": "npm run test:heavy",
+      "status": "passed",
+      "files": 9,
+      "passed": 125,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "editor check",
+      "command": "npm run check",
+      "status": "passed",
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "name": "editor build",
+      "command": "npm run build",
+      "status": "passed",
+      "notes": "Nonfatal Vite externalization and unused-import warnings."
+    },
+    {
+      "name": "affected package checks",
+      "commands": [
+        "npm run check:camera-core",
+        "npm run check:layout-core",
+        "npm run check:project-model"
+      ],
+      "status": "all passed"
+    },
+    {
+      "name": "API check",
+      "command": "npm run check:api",
+      "status": "passed"
+    },
+    {
+      "name": "DB-backed API suite",
+      "command": "DATABASE_URL=postgresql://localhost:5432/biskiq_t3p04s01_gate_20261025_1505 npm run test:api",
+      "status": "passed",
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0,
+      "database": "biskiq_t3p04s01_gate_20261025_1505",
+      "databaseCreatedForRun": true,
+      "databaseDroppedAfterRun": true,
+      "postgresService": "existing local PostgreSQL"
+    }
+  ],
+  "limits": [
+    "No production database, R2, deployment, or shared S06 database was used.",
+    "No new background service was started."
+  ]
+}

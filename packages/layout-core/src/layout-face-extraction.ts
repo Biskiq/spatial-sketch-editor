@@ -32,6 +32,8 @@ import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layo
 import { orientXZ } from './layout-robust-orientation';
 import { wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';
 import type { SampledSegment } from './layout-geometry-curve';
+import { createDynamicBvh } from './layout-bvh';
+import type { PlanBox } from './layout-plan-box-index';
 
 /**
  * P23B.4 correction (F1) — test-only observation of the actual sample arrays the
@@ -57,6 +59,9 @@ export function setFaceSamplingObserverForTest(
 }
 export function clearFaceSamplingObserverForTest(): void {
 	faceSamplingObserverForTest = undefined;
+}
+export function hasFaceSamplingObserverForTest(): boolean {
+	return faceSamplingObserverForTest !== undefined;
 }
 
 export type TopologyDiagnostic = {
@@ -454,13 +459,41 @@ function polygonSignedArea(polygon: readonly LayoutVec2[]): number {
  * touching the outer face's boundary is reported as a touching nested loop.
  * No hole/Room semantics are synthesized in the P23 minimum.
  */
+function polygonPlanBox(polygon: readonly LayoutVec2[]): PlanBox {
+	let minX = Infinity;
+	let minZ = Infinity;
+	let maxX = -Infinity;
+	let maxZ = -Infinity;
+	for (let i = 0; i < polygon.length; i += 1) {
+		const pt = polygon[i]!;
+		if (pt[0] < minX) minX = pt[0];
+		if (pt[1] < minZ) minZ = pt[1];
+		if (pt[0] > maxX) maxX = pt[0];
+		if (pt[1] > maxZ) maxZ = pt[1];
+	}
+	return { minX, minZ, maxX, maxZ };
+}
+
 function reportNestedLoops(
 	faces: readonly DerivedCandidateFace[],
 	diagnostics: TopologyDiagnostic[]
 ): void {
-	for (const outer of faces) {
-		for (const inner of faces) {
-			if (outer === inner || outer.signedArea <= inner.signedArea) continue;
+	if (faces.length <= 1) return;
+	const witnessBoxes: PlanBox[] = faces.map((face) => {
+		const witness = face.polygon[0];
+		if (!witness) return { minX: Infinity, minZ: Infinity, maxX: -Infinity, maxZ: -Infinity };
+		return { minX: witness[0], minZ: witness[1], maxX: witness[0], maxZ: witness[1] };
+	});
+	const witnessBvh = createDynamicBvh(witnessBoxes);
+	for (let outerIndex = 0; outerIndex < faces.length; outerIndex += 1) {
+		const outer = faces[outerIndex]!;
+		const outerBox = polygonPlanBox(outer.polygon);
+		const candidates = witnessBvh.overlaps(outerBox, { countVisits: false });
+		for (let i = 0; i < candidates.length; i += 1) {
+			const innerIndex = candidates[i]!;
+			if (outerIndex === innerIndex) continue;
+			const inner = faces[innerIndex]!;
+			if (outer.signedArea <= inner.signedArea) continue;
 			const witness = inner.polygon[0];
 			if (!witness) continue;
 			if (pointStrictlyInsidePolygon(outer.polygon, witness)) {

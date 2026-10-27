@@ -1,6 +1,15 @@
+import { isCanonicalWallSampling } from './layout-wall-centerline';
+import { restoreImmutableCompileSnapshot, restoreImmutableCompileBaseline, registerDeferredGeneratedField } from './layout-geometry-delta';
+import { layoutItem, layoutLength } from './layout-source-collections';
 import type { Vec3 } from './types';
 import type { LayoutVec2 } from './layout-coordinates';
-import type { LayoutDocumentWallFirst, LayoutObject } from './layout-wall-first-types';
+import type {
+	LayoutDerivedWallRole,
+	LayoutDocumentWallFirst,
+	LayoutObject,
+	LayoutWall,
+	LayoutWallOpening
+} from './layout-wall-first-types';
 import type {
 	CompilerFloorEntry,
 	CompilerFloorSource,
@@ -35,7 +44,23 @@ import {
 	JUNCTION_BAND_EPSILON,
 	resolveJunctionGeometry
 } from './layout-junction-resolution';
-import { p2311Measure } from './p2311-perf';
+import { countWork, p2311Measure } from './p2311-perf';
+import { cacheKeyDependency, cacheKeyOf, type CacheKeyDependency } from './layout-geometry-keys';
+import {
+	beginLayoutCompile,
+	createLayoutCompileReuse,
+	finishLayoutCompile,
+	noQueryRecords,
+	pruneLayoutCompileReuse,
+	sameAuthored,
+	type LayoutCompileReuse,
+	type LayoutCompileStats,
+	type RetainedJunction,
+	type RetainedObject,
+	type RetainedQueryRecords,
+	type RetainedRoom,
+	type RetainedWall
+} from './layout-geometry-reuse';
 import {
 	pointAlongSamples,
 	sampleSegment,
@@ -65,6 +90,21 @@ import {
 	validatePreparedLayoutRoomGeometry
 } from './layout-geometry-validation';
 import { bounds2, createQueryGeometryBuilder, polygonBounds2, type QueryGeometryBuilder } from './layout-geometry-queries';
+import {
+	recordPassiveCompiledGeometry,
+	seedReuseFromPassiveCompile,
+	tryCompileWallFirstLayoutGeometryDelta,
+	type CanonicalDeltaBuilders,
+	type CompiledObjectsUnit,
+	type EvaluatedRoomUnit,
+	type EvaluatedWallBaseUnit,
+	type ExpandedWallUnit,
+	type FloorAndAabbsUnit,
+	type ResolvedJunctionUnit
+} from './layout-geometry-delta';
+import { hasAnySamplingTestObserver } from './layout-world-index';
+
+export { recordPassiveCompiledGeometry };
 
 const OPENING_CENTER_EPSILON = 0.01;
 
@@ -83,7 +123,97 @@ const OPENING_CENTER_EPSILON = 0.01;
  */
 export function compileWallFirstLayoutGeometry(
 	document: LayoutDocumentWallFirst,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
+	reuse?: LayoutCompileReuse
+): CompiledLayoutGeometryResult {
+	// Only the canonical derivation factory proves process-constant sampling.
+	// An injected wrapper stays on the cold authority and cannot seed caches
+	// which a later default derivation might accidentally inherit.
+	if (reuse && !isCanonicalWallSampling(sampling)) {
+		countWork('compile:custom-sampling-global-reset', reuse.walls.size + reuse.junctions.size + reuse.roomSources.size + reuse.objects.size);
+		reuse.walls.clear(); reuse.junctions.clear(); reuse.roomSources.clear(); reuse.objects.clear();
+		reuse.world = null; reuse.retainedFloor = null; reuse.retainedDocAabb = null;
+		beginLayoutCompile(reuse);
+		const result = compileWallFirstLayoutGeometry(document, sampling);
+		reuse.counters.wallsEvaluated = result.geometry.walls.length;
+		reuse.counters.junctionsEvaluated = result.geometry.junctions?.length ?? 0;
+		reuse.counters.roomsEvaluated = result.geometry.rooms.length;
+		reuse.counters.objectsEvaluated = result.geometry.objects.length;
+		reuse.counters.openingsEvaluated = layoutLength(document, 'openings');
+		finishLayoutCompile(reuse, true);
+		return result;
+	}
+	countWork('compile');
+	if (!reuse) {
+		countWork('compile:walls', layoutLength(document, 'walls'));
+		countWork('compile:junctions', layoutLength(document, 'junctions'));
+		countWork('compile:openings', layoutLength(document, 'openings'));
+		countWork('compile:rooms', layoutLength(document, 'rooms'));
+		const result = p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling));
+		if (!hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling) && result.issues.length === 0) {
+			recordPassiveCompiledGeometry(document, result.geometry, result.issues);
+		}
+		return result;
+	}
+	// T1.P02.S06 D.3 (H1) — an incremental compile reports its own work: how many
+	// entities the canonical builders ran for, how many retained values were
+	// installed by reference, and how many structural comparisons that took.
+	// "Cold" means the store held no unit of any class when this compile began, so
+	// nothing could have been reused.
+	const cold =
+		reuse.walls.size === 0 &&
+		reuse.junctions.size === 0 &&
+		reuse.roomSources.size === 0 &&
+		reuse.objects.size === 0 &&
+		reuse.world === null;
+	beginLayoutCompile(reuse);
+	const deltaResult = !cold
+		? p2311Measure('compile-delta', () =>
+				tryCompileWallFirstLayoutGeometryDelta(document, sampling, reuse, DELTA_BUILDERS)
+			)
+		: null;
+	let result: CompiledLayoutGeometryResult;
+	if (deltaResult !== null) {
+		result = deltaResult;
+	} else {
+		if (!cold) beginLayoutCompile(reuse);
+		result = p2311Measure('compile', () => compileWallFirstLayoutGeometryOnce(document, sampling, reuse));
+		if (!hasAnySamplingTestObserver() && isCanonicalWallSampling(sampling) && result.issues.length === 0) {
+			recordPassiveCompiledGeometry(document, result.geometry, result.issues);
+			reuse.world = null;
+			seedReuseFromPassiveCompile(document, reuse, DELTA_BUILDERS, true);
+		} else {
+			reuse.world = null;
+		}
+	}
+	const stats = finishLayoutCompile(reuse, cold);
+	if (cold) {
+		countWork('compile:walls', layoutLength(document, 'walls'));
+		countWork('compile:junctions', layoutLength(document, 'junctions'));
+		countWork('compile:openings', layoutLength(document, 'openings'));
+		countWork('compile:rooms', layoutLength(document, 'rooms'));
+	} else {
+		countWork('compile:walls', stats.wallsEvaluated);
+		countWork('compile:junctions', stats.junctionsEvaluated);
+		countWork('compile:openings', stats.openingsEvaluated);
+		countWork('compile:rooms', stats.roomsEvaluated);
+	}
+	countWork('reuse:walls-evaluated', stats.wallsEvaluated);
+	countWork('reuse:walls-reused', stats.wallsReused);
+	countWork('reuse:junctions-evaluated', stats.junctionsEvaluated);
+	countWork('reuse:junctions-reused', stats.junctionsReused);
+	countWork('reuse:rooms-evaluated', stats.roomsEvaluated);
+	countWork('reuse:rooms-reused', stats.roomsReused);
+	countWork('reuse:objects-evaluated', stats.objectsEvaluated);
+	countWork('reuse:objects-reused', stats.objectsReused);
+	countWork('reuse:signature-visits', stats.signatureVisits);
+	return result;
+}
+
+function compileWallFirstLayoutGeometryOnce(
+	document: LayoutDocumentWallFirst,
+	sampling?: WallSamplingDerivation,
+	reuse?: LayoutCompileReuse
 ): CompiledLayoutGeometryResult {
 	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
@@ -128,13 +258,80 @@ export function compileWallFirstLayoutGeometry(
 	// from the chain derivation. One map for all rooms is sound: segment objects
 	// are created fresh per room above, so identity lookup can never alias rooms.
 	const preSampled = new Map<SampleableSegment, SampledSegment>();
-	const rooms: CompilerRoomSource[] = document.rooms.map((room) => {
+	// T1.P02.S06 D.1 (H3) — the Room × Opening join is an id index, not a scan:
+	// `document.openings` is grouped once and each Room reads only its own
+	// boundary Walls' openings. That read is boundary-ordered, so the compiled
+	// Room's Opening list is restored to document order below; together the two
+	// keep every compiled Opening list unchanged.
+	const openingsByHostWallId = openingsGroupedByWallId(document.openings);
+	// T1.P02.S06 D.1 (H3) — position of each Opening in `document.openings`. The
+	// join below reads the boundary (so it only visits this Room's own Openings),
+	// which is boundary order, not document order; the compiled Room's Opening
+	// list is document-ordered, so it is restored by this index rather than by a
+	// second scan of every Opening for every Room.
+	const openingOrderById = new Map(document.openings.map((opening, index) => [opening.id, index]));
+	// T1.P02.S06 D.3 (H1) — the Room-input pass is its own span, because in an
+	// incremental compile it is the O(R) comparison term rather than the O(k)
+	// evaluation term, and the two must stay separable in an attribution.
+	const rooms: CompilerRoomSource[] = p2311Measure('incremental:room-inputs', () => document.rooms.map((room) => {
+		// T1.P02.S06 D.3 (H1) — the retained Room **input** is compared before it
+		// is rebuilt. Everything below derives from the Room's own authored
+		// fields, its boundary Walls' authored centerlines and endpoint
+		// coordinates, those Walls' thickness/height (they reach the source as
+		// per-segment overrides) and the Openings those Walls host. When none of
+		// that moved, the previous source is still exactly what this loop would
+		// produce, so the segment construction, sampling and miroring are skipped.
+		const retentionKey = reuse
+			? [
+					room,
+					ceilingElevationByRoomId.get(room.id) ?? null,
+					floorElevationOf(document),
+					// The Floor datum is part of the Room's *compiled identity*
+					// (`geometryId(['room', floor.id, room.id])`), and the shared core
+					// derives the Floor's room list from these rooms, so a renamed Floor
+					// must re-evaluate every Room.
+					document.floor.id,
+					// The Room source carries the document's first Wall thickness as its
+					// fallback (`wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1`),
+					// which lands in the compiled Room's own `wallThickness` and key.
+					// Editing that Wall therefore moves every Room's output, even when
+					// the edited Wall is not on this Room's boundary.
+					layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
+					// A different sampling derivation is a different input: the retained
+					// source embeds `preSampled` only when one is supplied.
+					sampling !== undefined,
+					...room.boundary.map((ref) => {
+						const wall = wallById.get(ref.wallId);
+						return [
+							ref,
+							wall ?? null,
+							wall ? pointById.get(wall.startJunctionId) ?? null : null,
+							wall ? pointById.get(wall.endJunctionId) ?? null : null,
+							openingsByHostWallId.get(ref.wallId) ?? null
+						];
+					})
+				]
+			: undefined;
+		if (reuse && retentionKey) {
+			reuse.counters.signatureVisits += 1;
+			reuse.counters.entities += 1;
+			const retained = reuse.roomSources.get(room.id);
+			if (retained && sameAuthored(retained.authored, retentionKey)) {
+				// No counter here: the shared core reports the Room's compile, which
+				// is the work this reuse removes. Counting the source build as well
+				// would report every Room twice.
+				return retained.source;
+			}
+		}
 		const segments: SampleableSegment[] = [];
 		const roomOpenings: CompilerOpening[] = [];
 		// P23.11 — reverse-ref Opening offsets mirror by the **sampled arc
 		// length** of the host Wall's canonical centerline, never the Euclidean
 		// chord (straight Walls keep the identical chord value).
 		const arcLengthByWallId = new Map<string, number>();
+		// First reference per Wall, which is the reference the Opening join used
+		// when it scanned the boundary per Opening.
+		const traversalByWallId = new Map<string, 'forward' | 'reverse'>();
 		for (const ref of room.boundary) {
 			const wall = wallById.get(ref.wallId);
 			if (!wall) continue; // reference integrity is the codec's job
@@ -172,28 +369,41 @@ export function compileWallFirstLayoutGeometry(
 					? sampling.samples(wall, start, end, 'forward')
 					: wallCenterlineSamples(wall, start, end, 'forward');
 				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
+				traversalByWallId.set(wall.id, reversed ? 'reverse' : 'forward');
 			}
 		}
-		for (const opening of document.openings) {
-			const ref = room.boundary.find((candidate) => candidate.wallId === opening.wallId);
-			if (!ref) continue;
-			if (ref.direction === 'reverse') {
-				const length = arcLengthByWallId.get(opening.wallId);
-				if (length === undefined) continue;
+		// The join visits exactly the pairs it reads: this Room's own Openings.
+		for (const ref of room.boundary) {
+			const hosted = openingsByHostWallId.get(ref.wallId);
+			const traversal = traversalByWallId.get(ref.wallId);
+			if (!hosted || traversal === undefined) continue;
+			countWork('pairs:room-opening', hosted.length);
+			if (traversal === 'forward') {
+				for (const opening of hosted) roomOpenings.push({ ...opening, segmentId: opening.wallId });
+				continue;
+			}
+			const length = arcLengthByWallId.get(ref.wallId);
+			if (length === undefined) continue;
+			for (const opening of hosted) {
 				roomOpenings.push({
 					...opening,
 					segmentId: opening.wallId,
 					offset: length - (opening.offset + opening.width)
 				});
-				continue;
 			}
-			roomOpenings.push({ ...opening, segmentId: opening.wallId });
 		}
+		// Document order, with a repeated boundary Wall keeping both appearances
+		// exactly as the per-Opening scan did. `sort` is stable, so openings the
+		// index does not know (it cannot happen for a validated document) keep
+		// their relative order instead of moving to the front.
+		roomOpenings.sort(
+			(left, right) => (openingOrderById.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (openingOrderById.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+		);
 		const derivedCeiling = ceilingElevationByRoomId.get(room.id);
-		return {
+		const source: CompilerRoomSource = {
 			room: {
 				id: room.id,
-				wallThickness: document.walls[0]?.thickness ?? 0.1,
+				wallThickness: layoutItem(document, 'walls', 0)?.thickness ?? 0.1,
 				floorThickness: room.floorThickness,
 				ceilingThickness: room.ceilingThickness
 			},
@@ -204,7 +414,9 @@ export function compileWallFirstLayoutGeometry(
 			openingHeightLimitBySegmentId,
 			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {})
 		};
-	});
+		if (reuse && retentionKey) reuse.roomSources.set(room.id, { authored: retentionKey, source });
+		return source;
+	}));
 
 	// D7 is enforced inside the shared core: a Room with no derived ceiling is
 	// skipped there with a blocking `room_ceiling_undefined` issue, so no
@@ -212,7 +424,12 @@ export function compileWallFirstLayoutGeometry(
 	return compileWallFirstWithPhysicalWalls(document, {
 		floors: [{ floor: document.floor, rooms }],
 		objects: document.objects
-	}, sampling);
+	}, sampling, reuse);
+}
+
+/** The Floor datum of a wall-first document (one Floor by format contract). */
+function floorElevationOf(document: LayoutDocumentWallFirst): number {
+	return document.floor.elevation;
 }
 
 /**
@@ -234,9 +451,17 @@ export function compileWallFirstLayoutGeometry(
 function compileWallFirstWithPhysicalWalls(
 	document: LayoutDocumentWallFirst,
 	source: CompilerSource,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
+	reuse?: LayoutCompileReuse
 ): CompiledLayoutGeometryResult {
-	const result = p2311Measure('room-geometry-compile', () => compileLayoutGeometrySource(source));
+	// T1.P02.S06 D.1 (H3) — the room-derived point, span and Wall/Opening AABB
+	// records are dropped below in favour of the canonical physical-Wall set, so
+	// this adapter asks the shared core not to build them. Bench 1 counted them
+	// as 76 M of a grid-L compile's 97 M cache-key characters plus their whole
+	// geometry: work whose output never reached a consumer.
+	const result = p2311Measure('room-geometry-compile', () =>
+		compileLayoutGeometrySource(source, { queryRecords: 'physical-wall' }, reuse)
+	);
 	const geometry = result.geometry;
 	const floor = document.floor;
 	const floorElevation = floor.elevation;
@@ -260,6 +485,22 @@ function compileWallFirstWithPhysicalWalls(
 	// `free-standing` (none). Nothing here reads an authored field.
 	const derivedWallRoles = deriveLayoutWallRoles(document);
 	const physicalWalls: CompiledPhysicalWall[] = [];
+	// T1.P02.S06 D.1 (H3) — one grouping serves every Wall's Opening join below.
+	const openingsByHostWallId = openingsGroupedByWallId(document.openings);
+	// Where each Wall's query AABB landed, so the Junction-resolution pass below
+	// replaces it in place instead of scanning the AABB list per Wall.
+	const wallAabbIndexByWallId = new Map<string, number>();
+	// T1.P02.S06 D.3 (H1) — per-Wall retention. A Wall unit keeps the authored
+	// inputs it was compiled from, its own *unresolved* extent (a re-resolved
+	// miter can shrink as well as grow, so the base is what re-expansion starts
+	// from), the query records it contributed and its endpoint legs. The legs are
+	// what let the Junction pass run from retained facts instead of re-deriving a
+	// leg per Wall on every compile.
+	const baseBoundsByWallId = new Map<string, { bounds2: LayoutBounds2; bounds3: LayoutBounds3 }>();
+	const legsByWallId = new Map<string, { start?: CompiledJunctionLeg; end?: CompiledJunctionLeg }>();
+	const authoredByWallId = new Map<string, readonly unknown[]>();
+	const recordsByWallId = new Map<string, RetainedQueryRecords>();
+	const issuesByWallId = new Map<string, readonly LayoutGeometryIssue[]>();
 	// Render-safe acceptance issues (see the per-Wall clearance gate below),
 	// appended to the shared compile result so every caller's existing
 	// blocking-issue check rejects without a second acceptance path.
@@ -275,10 +516,47 @@ function compileWallFirstWithPhysicalWalls(
 		includeBounds3(documentMin, documentMax, min, max);
 	};
 
+	p2311Measure('incremental:wall-pass', () => {
 	for (const wall of document.walls) {
 		const start = pointById.get(wall.startJunctionId);
 		const end = pointById.get(wall.endJunctionId);
 		if (!start || !end) continue;
+		// T1.P02.S06 D.3 (H1) — the retained Wall is compared on exactly the
+		// inputs its compiled output is a function of: the authored Wall, its two
+		// endpoint coordinates, the Floor datum, the Openings it hosts, the derived
+		// role (a Room boundary change re-roles a Wall) and whether this compile
+		// runs on a shared sampling derivation. When all are unchanged the body
+		// below — centerline construction, sampling, section splitting, Opening
+		// compilation, polylines, bounds and the clearance gate — is skipped.
+		const hostedOpenings = openingsByHostWallId.get(wall.id) ?? [];
+		const derivedRole = derivedWallRoles.get(wall.id) ?? 'free-standing';
+		// The comparison array is built only for a session compile: a cold
+		// `compileWallFirstLayoutGeometry` (admission, scripts, tests without a
+		// session) must pay nothing for retention it is not using.
+		let retentionKey: readonly unknown[] | undefined;
+		const retained = reuse?.walls.get(wall.id);
+		if (reuse) {
+			retentionKey = [wall, start, end, floor.id, floorElevation, hostedOpenings, derivedRole, sampling !== undefined];
+			reuse.counters.signatureVisits += 1;
+			reuse.counters.entities += 1;
+		}
+		if (reuse && retained && retentionKey && sameAuthored(retained.authored, retentionKey)) {
+			reuse.counters.wallsReused += 1;
+			physicalWalls.push(retained.compiled);
+			pushRetainedRecords(queryBuilder, retained.records);
+			wallAabbIndexByWallId.set(wall.id, queryBuilder.aabbs.length - 1);
+			baseBoundsByWallId.set(wall.id, { bounds2: retained.baseBounds2, bounds3: retained.baseBounds3 });
+			legsByWallId.set(wall.id, retained.legs);
+			authoredByWallId.set(wall.id, retained.authored);
+			recordsByWallId.set(wall.id, retained.records);
+			issuesByWallId.set(wall.id, retained.issues);
+			for (const issue of retained.issues) wallIssues.push(issue);
+			continue;
+		}
+		if (reuse) {
+			reuse.counters.wallsEvaluated += 1;
+			reuse.counters.openingsEvaluated += hostedOpenings.length;
+		}
 		// P23.11 — the canonical centerline adapter maps every Wall (line or
 		// auto-bezier) onto the existing curve kernel; no second sampling path.
 		const segment = wallCenterlineSegment(wall, start, end, 'forward');
@@ -296,16 +574,39 @@ function compileWallFirstWithPhysicalWalls(
 				continue;
 			}
 		}
-		const wallOpenings: CompilerOpening[] = document.openings
-			.filter((opening) => opening.wallId === wall.id)
-			.map((opening) => ({ ...opening, segmentId: opening.wallId }));
+		// T1.P02.S06 D.1 (H3) — Wall × Opening through the same id index the Room
+		// join uses, instead of a full `document.openings` scan per Wall. The
+		// index preserves document order, so each Wall's Opening list is unchanged.
+		countWork('pairs:wall-opening', hostedOpenings.length);
+		const wallOpenings: CompilerOpening[] = hostedOpenings.map((opening) => ({ ...opening, segmentId: opening.wallId }));
+		// The host Wall's **geometry** dependency: built once and embedded by
+		// reference in every Opening key rather than re-encoded per Opening.
+		//
+		// T1.P02.S06 (H4 prerequisite) — this used to name the Wall's *identity*
+		// (`['physical-wall-geometry', floorId, wallId]`), so an Opening's key did
+		// not change when the Wall it sits on moved, even though `compileOpening`
+		// reads the sampled centerline to derive the Opening's point, tangent,
+		// yaw and center polyline. A `cacheKey` is a retention proof, so it must
+		// name every input the Opening's compiled output depends on: the segment
+		// (authored centerline plus endpoint coordinates), the Floor datum and
+		// the Wall's thickness/height. It costs one key per Wall, not one per
+		// Opening, because the result is embedded by reference below.
+		const wallGeometryDependency = cacheKeyDependency(cacheKeyOf([
+			'physical-wall-geometry',
+			floor.id,
+			wall.id,
+			segment,
+			wall.thickness,
+			wall.height,
+			floor.elevation
+		]));
 		// P23.6H — the Wall's own authoritative height decides its physical
 		// vertical extent (`topY = floor.elevation + wall.height`). Room/Floor
 		// envelopes stay Floor-derived; a partial-height Wall never lowers them.
 		const wallTop = floorElevation + wall.height;
 		const sections = splitSampledWallAroundOpenings(sampled, segment, wallOpenings, wall.height);
 		const compiledOpenings = wallOpenings.map((opening) =>
-			compileOpening(opening, sampled, floor.id, wall.id, cacheKeyOf(['physical-wall-geometry', floor.id, wall.id]))
+			compileOpening(opening, sampled, floor.id, wall.id, wallGeometryDependency)
 		);
 		const solidSpans = buildSolidSpans(sampled.samples, sections);
 		const solidCenterlinePolylines = wallPolylinesAroundOpenings(sampled.samples, wallOpenings);
@@ -315,7 +616,7 @@ function compileWallFirstWithPhysicalWalls(
 			id: geometryId(['physical-wall', floor.id, wall.id]),
 			cacheKey: cacheKeyOf(['physical-wall', floor.id, wall.id, segment, wallOpenings, wall.thickness, floor.elevation, wall.height]),
 			wallId: wall.id,
-			role: derivedWallRoles.get(wall.id) ?? 'free-standing',
+			role: derivedRole,
 			floorId: floor.id,
 			thickness: wall.thickness,
 			height: wall.height,
@@ -337,10 +638,13 @@ function compileWallFirstWithPhysicalWalls(
 		// as a blocking issue before any document or history commit. Straight
 		// Walls are skipped: their offsets are two parallel polylines with
 		// identical tangents, so neither branch of the predicate can fire.
+		// The gate's results are collected per Wall so they can be retained with it
+		// and replayed in document order by a reused Wall (H1).
+		const wallClearanceIssues: LayoutGeometryIssue[] = [];
 		if (wall.centerline.kind !== 'line') {
 			const clearance = p2311Measure('finite-thickness', () => wallOffsetClearanceFailure(compiled.samples, wall.thickness));
 			if (clearance) {
-				wallIssues.push({
+				wallClearanceIssues.push({
 					path: `walls.${wall.id}`,
 					code: clearance === 'fold' ? WALL_OFFSET_FOLD_CODE : WALL_OFFSET_OVERLAP_CODE,
 					message: clearance === 'fold' ? WALL_OFFSET_FOLD_MESSAGE : WALL_OFFSET_OVERLAP_MESSAGE,
@@ -349,17 +653,45 @@ function compileWallFirstWithPhysicalWalls(
 			}
 		}
 		physicalWalls.push(compiled);
-		emitPhysicalWallQueryRecords(queryBuilder, floor, wall, sampled, compiledOpenings, solidSpans);
-		queryBuilder.aabbs.push(aabbRecord('wall', wall.id, ['wall', floor.id, wall.id], wallBounds3Value.min, wallBounds3Value.max));
-		includePhysicalBounds(wallBounds3Value.min, wallBounds3Value.max);
+		const wallRecords = emitPhysicalWallQueryRecords(
+			queryBuilder,
+			floor,
+			wall,
+			sampled,
+			compiledOpenings,
+			solidSpans,
+			reuse !== undefined
+		);
+		const baseBounds2: LayoutBounds2 = { min: [...wallBounds2Value.min] as LayoutVec2, max: [...wallBounds2Value.max] as LayoutVec2 };
+		const baseBounds3: LayoutBounds3 = { min: [...wallBounds3Value.min] as Vec3, max: [...wallBounds3Value.max] as Vec3 };
+		const wallAabb = aabbRecord('wall', wall.id, ['wall', floor.id, wall.id], baseBounds3.min, baseBounds3.max);
+		queryBuilder.aabbs.push(wallAabb);
+		wallAabbIndexByWallId.set(wall.id, queryBuilder.aabbs.length - 1);
+		baseBoundsByWallId.set(wall.id, { bounds2: baseBounds2, bounds3: baseBounds3 });
+		if (retentionKey) authoredByWallId.set(wall.id, retentionKey);
+		if (wallRecords) recordsByWallId.set(wall.id, { ...wallRecords, aabbs: [...wallRecords.aabbs, wallAabb] });
+		for (const issue of wallClearanceIssues) wallIssues.push(issue);
+		issuesByWallId.set(wall.id, wallClearanceIssues);
+		// Endpoint legs are the Junction pass's input; deriving them here means a
+		// reused Wall hands over retained facts instead of being re-derived.
+		legsByWallId.set(
+			wall.id,
+			compiled.samples.length < 2
+				? {}
+				: {
+						...(wall.startJunctionId && pointById.has(wall.startJunctionId) ? { start: junctionLeg(compiled, 'start') } : {}),
+						...(wall.endJunctionId && pointById.has(wall.endJunctionId) ? { end: junctionLeg(compiled, 'end') } : {})
+					}
+		);
 	}
+	});
 
 	physicalWalls.sort((a, b) => (a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0));
 	// P23.15 — compile canonical Junction topology: canonical incidence + the
 	// Junction-local resolution. Renderers/visitors consume these facts and never
 	// receive the document or solve topology themselves.
 	const junctions = p2311Measure('junction-resolution', () =>
-		compileWallFirstJunctions(document, physicalWalls, floorElevation, wallIssues)
+		compileWallFirstJunctions(document, physicalWalls, floorElevation, wallIssues, reuse, legsByWallId)
 	);
 	const joinsByWall = junctionJoinsByWall(junctions);
 	// Decision 12 — resolved Junction geometry (miters/bevels, difference steps,
@@ -367,34 +699,86 @@ function compileWallFirstWithPhysicalWalls(
 	// *and* `bounds3`. The planar expansion used to land without its vertical
 	// counterpart, which left `bounds3` — and therefore the Floor aggregate and
 	// the wall query AABB — covering less than the emitted mesh.
-	for (const wall of physicalWalls) {
+	//
+	// T1.P02.S06 D.3 (H1) — the final extent is computed **from the retained
+	// base** rather than by including into the value already held, so reusing a
+	// Wall never accumulates an earlier expansion and a miter that shrinks is
+	// reflected. When nothing moved the computed extent equals the held one and
+	// no object is rebuilt.
+	for (const [wallIndex, wall] of physicalWalls.entries()) {
+		const base = baseBoundsByWallId.get(wall.wallId);
+		if (!base) continue;
 		const expansion = wallEndExpansion(joinsByWall.get(wall.wallId));
-		if (!expansion) continue;
-		includeBounds2(wall.bounds2, expansion.min, expansion.max);
-		includeBounds3(
-			wall.bounds3.min,
-			wall.bounds3.max,
-			[expansion.min[0], floorElevation, expansion.min[1]],
-			[expansion.max[0], floorElevation + wall.height, expansion.max[1]]
-		);
-		includePhysicalBounds([expansion.min[0], floorElevation, expansion.min[1]], [expansion.max[0], floorElevation + wall.height, expansion.max[1]]);
-		// The Wall query AABB was created before the Junction resolve, so it is
-		// stale by construction once resolved geometry extends the Wall. Reconcile
-		// it from the final bounds instead of leaving a pre-resolution record.
-		const index = queryBuilder.aabbs.findIndex((record) => record.kind === 'wall' && record.sourceId === wall.wallId);
-		if (index !== -1) {
-			queryBuilder.aabbs[index] = aabbRecord('wall', wall.wallId, ['wall', floor.id, wall.wallId], wall.bounds3.min, wall.bounds3.max);
+		const bounds2 = expansion ? expandBounds2(base.bounds2, expansion) : base.bounds2;
+		const bounds3 = expansion
+			? expandBounds3(base.bounds3, expansion, floorElevation, wall.height)
+			: base.bounds3;
+		if (!sameAuthored(wall.bounds2, bounds2) || !sameAuthored(wall.bounds3, bounds3)) {
+			physicalWalls[wallIndex] = { ...wall, bounds2, bounds3 };
+			// The Wall query AABB was created before the Junction resolve, so it is
+			// stale by construction once resolved geometry extends the Wall.
+			// Reconcile it from the final bounds instead of leaving a pre-resolution
+			// record; T1.P02.S06 D.1 (H3) recorded its position, so this is one
+			// lookup instead of an AABB-list scan per Wall.
+			const index = wallAabbIndexByWallId.get(wall.wallId);
+			countWork('pairs:wall-aabb', index === undefined ? 0 : 1);
+			if (index !== undefined) {
+				const wallAabb = aabbRecord('wall', wall.wallId, ['wall', floor.id, wall.wallId], bounds3.min, bounds3.max);
+				// Patch the emitted record in place. This is not a session-only
+				// path: a cold compile's Wall AABB is created before Junction
+				// resolution, so it is stale by construction whenever a miter/bevel
+				// extends the Wall, and this is what corrects it.
+				queryBuilder.aabbs[index] = wallAabb;
+				const records = recordsByWallId.get(wall.wallId);
+				if (records) {
+					// A retained Wall's own AABB is the last record it contributed.
+					recordsByWallId.set(wall.wallId, { ...records, aabbs: [...records.aabbs.slice(0, -1), wallAabb] });
+				}
+			}
 		}
+		includePhysicalBounds(bounds3.min, bounds3.max);
 	}
 	for (const junction of junctions) {
 		includePhysicalBounds(junction.bounds3.min, junction.bounds3.max);
+	}
+	// Retain every Wall this compile resolved: evaluated Walls store their fresh
+	// unit; a reused Wall stores only when its final extent moved (its records
+	// above were rebuilt, so the retained value must follow).
+	if (reuse) {
+		for (const wall of physicalWalls) {
+			const authored = authoredByWallId.get(wall.wallId);
+			const records = recordsByWallId.get(wall.wallId);
+			const base = baseBoundsByWallId.get(wall.wallId);
+			if (!authored || !records || !base) continue;
+			const previous = reuse.walls.get(wall.wallId);
+			if (previous && previous.compiled === wall && previous.records === records) continue;
+			reuse.walls.set(wall.wallId, {
+				authored,
+				compiled: wall,
+				baseBounds2: base.bounds2,
+				baseBounds3: base.bounds3,
+				legs: legsByWallId.get(wall.wallId) ?? {},
+				records,
+				issues: issuesByWallId.get(wall.wallId) ?? []
+			});
+		}
 	}
 	const bounds = documentMin && documentMax ? finiteBounds3(documentMin, documentMax) : null;
 	// Strip room-path wall detail for wall-first documents: rooms keep
 	// identity, floor/ceiling semantics, floor polygons and bounds, but their
 	// `walls`/`openings` are views the canonical collection now owns. Every
 	// physical Wall therefore has exactly one compiled + query representation.
-	const rooms = geometry.rooms.map((room) => ({ ...room, walls: [], openings: [] }));
+	// T1.P02.S06 D.3 (H1) — an unchanged Room's stripped view is retained too, so
+	// the whole output graph keeps its identity across compiles (the rendering
+	// layer's retention proof then compares references rather than rebuilding).
+	const strippedByRoomId = new Map<string, CompiledRoom>();
+	if (reuse) {
+		for (const [roomId, retainedSource] of reuse.roomSources) {
+			const retained = reuse.roomCompiles.get(retainedSource.source);
+			if (retained?.stripped) strippedByRoomId.set(roomId, retained.stripped);
+		}
+	}
+	const rooms = geometry.rooms.map((room) => strippedByRoomId.get(room.roomId) ?? { ...room, walls: [], openings: [] });
 	// Aggregate bounds must include canonical physical Walls too: the shared
 	// core derives `floors[].bounds3` and the `floor`/`document` query AABBs
 	// from Rooms + objects only, so a roomless open Wall would otherwise
@@ -420,8 +804,24 @@ function compileWallFirstWithPhysicalWalls(
 	for (const wall of physicalWalls) includeFloorBounds(wall.bounds3.min, wall.bounds3.max);
 	for (const junction of junctions) includeFloorBounds(junction.bounds3.min, junction.bounds3.max);
 	const floorBounds = floorMin && floorMax ? finiteBounds3(floorMin, floorMax) : null;
-	const floors =
-		geometry.floors.some((candidate) => candidate.floorId === floor.id)
+	const aabbs = queryBuilder.aabbs.filter((aabb) => aabb.kind !== 'floor' && aabb.kind !== 'document');
+	let floors: CompiledFloor[];
+	if (geometry.floors.length <= 1 && (!existingFloor || existingFloor.floorId === floor.id)) {
+		const built = buildWallFirstFloorAndAggregateAabbs(
+			floor,
+			existingFloor?.roomIds ?? [],
+			floorBounds,
+			bounds,
+			reuse
+		);
+		floors = [built.floor];
+		if (built.floorAabb) aabbs.push(built.floorAabb);
+		if (built.docAabb) aabbs.push(built.docAabb);
+	} else {
+		const roomIdsDep = cacheKeyDependency(
+			cacheKeyOf(['floor-room-ids', existingFloor?.roomIds ?? []])
+		);
+		floors = geometry.floors.some((candidate) => candidate.floorId === floor.id)
 			? geometry.floors.map((candidate) =>
 					candidate.floorId !== floor.id
 						? candidate
@@ -432,7 +832,7 @@ function compileWallFirstWithPhysicalWalls(
 									'floor',
 									floor.id,
 									candidate.elevation,
-									candidate.roomIds,
+									roomIdsDep,
 									floorBounds
 								])
 							}
@@ -441,19 +841,19 @@ function compileWallFirstWithPhysicalWalls(
 					...geometry.floors,
 					{
 						id: geometryId(['floor', floor.id]),
-						cacheKey: cacheKeyOf(['floor', floor.id, floorElevation, [], floorBounds]),
+						cacheKey: cacheKeyOf(['floor', floor.id, floorElevation, roomIdsDep, floorBounds]),
 						floorId: floor.id,
 						elevation: floorElevation,
 						roomIds: [],
 						bounds3: floorBounds
 					}
 				];
-	const aabbs = queryBuilder.aabbs.filter((aabb) => aabb.kind !== 'floor' && aabb.kind !== 'document');
-	if (floorBounds) {
-		aabbs.push(aabbRecord('floor', floor.id, ['floor', floor.id], floorBounds.min, floorBounds.max));
-	}
-	if (bounds) {
-		aabbs.push(aabbRecord('document', 'document', ['document'], bounds.min, bounds.max));
+		if (floorBounds) {
+			aabbs.push(aabbRecord('floor', floor.id, ['floor', floor.id], floorBounds.min, floorBounds.max));
+		}
+		if (bounds) {
+			aabbs.push(aabbRecord('document', 'document', ['document'], bounds.min, bounds.max));
+		}
 	}
 	return {
 		geometry: {
@@ -484,7 +884,9 @@ function compileWallFirstJunctions(
 	document: LayoutDocumentWallFirst,
 	walls: readonly CompiledPhysicalWall[],
 	floorElevation: number,
-	issues: LayoutGeometryIssue[]
+	issues: LayoutGeometryIssue[],
+	reuse?: LayoutCompileReuse,
+	legsByWallId?: ReadonlyMap<string, { start?: CompiledJunctionLeg; end?: CompiledJunctionLeg }>
 ): CompiledJunction[] {
 	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
 	const legsByJunction = new Map<string, CompiledJunctionLeg[]>();
@@ -495,6 +897,17 @@ function compileWallFirstJunctions(
 	};
 	for (const wall of walls) {
 		if (wall.samples.length < 2) continue;
+		// T1.P02.S06 D.3 (H1) — a retained Wall already carries its endpoint legs,
+		// derived when the Wall was compiled, so the Junction pass never re-derives
+		// one per Wall per compile.
+		const retainedLegs = legsByWallId?.get(wall.wallId);
+		if (retainedLegs) {
+			const startId = wall.startJunctionId;
+			const endId = wall.endJunctionId;
+			if (retainedLegs.start && startId && pointById.has(startId)) pushLeg(startId, retainedLegs.start);
+			if (retainedLegs.end && endId && pointById.has(endId)) pushLeg(endId, retainedLegs.end);
+			continue;
+		}
 		if (wall.startJunctionId && pointById.has(wall.startJunctionId)) {
 			pushLeg(wall.startJunctionId, junctionLeg(wall, 'start'));
 		}
@@ -513,8 +926,25 @@ function compileWallFirstJunctions(
 				(a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0) ||
 				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0)
 		);
+		// T1.P02.S06 D.3 (H1) — a Junction's resolved geometry is a function of its
+		// point, the endpoint facts of every incident Wall leg, the Floor id (its
+		// compiled id is `compiledJunctionId(floor.id, junctionId)`) and the Floor
+		// elevation (its `bounds3` vertical extent). All four are in hand here, so
+		// an unchanged set reuses the retained resolution (and its issues,
+		// replayed in the same order).
+		const junctionAuthored = [point, legs, document.floor.id, floorElevationOf(document)];
+		if (reuse) reuse.counters.signatureVisits += 1;
+		const retainedJunction = reuse?.junctions.get(junctionId);
+		if (reuse && retainedJunction && sameAuthored(retainedJunction.authored, junctionAuthored)) {
+			reuse.counters.junctionsReused += 1;
+			junctions.push(retainedJunction.compiled);
+			for (const issue of retainedJunction.issues) issues.push(issue);
+			continue;
+		}
+		if (reuse) reuse.counters.junctionsEvaluated += 1;
+		const junctionIssues: LayoutGeometryIssue[] = [];
 		const resolved = resolveJunctionGeometry(junctionId, point, legs);
-		issues.push(...resolved.issues);
+		junctionIssues.push(...resolved.issues);
 		// P23.15 — canonical seam acceptance. Validity is decided HERE, from the
 		// resolved geometry the renderers consume, so a mesh builder is never the
 		// first place a seam failure is discovered. The resolution already reports
@@ -522,11 +952,12 @@ function compileWallFirstJunctions(
 		// so one Junction never produces the same issue twice.
 		const seam = junctionSeamFailureOf({ junctionId, point, legs, resolution: resolved.resolution });
 		if (seam && !resolved.issues.some((issue) => issue.code === seam.code)) {
-			issues.push({ path: `junctions.${junctionId}`, code: seam.code, message: seam.message, targetId: junctionId });
+			junctionIssues.push({ path: `junctions.${junctionId}`, code: seam.code, message: seam.message, targetId: junctionId });
 		}
+		for (const issue of junctionIssues) issues.push(issue);
 		const minBand = Math.min(...legs.map((leg) => leg.bottomY));
 		const maxBand = Math.max(...legs.map((leg) => leg.topY));
-		junctions.push({
+		const resolvedJunction: CompiledJunction = {
 			id: compiledJunctionId(document.floor.id, junctionId),
 			cacheKey: cacheKeyOf([
 				'compiled-junction',
@@ -557,10 +988,11 @@ function compileWallFirstJunctions(
 			legs,
 			resolution: resolved.resolution,
 			bounds3: {
-				min: [resolved.resolution.bounds2.min[0], floorElevation + minBand, resolved.resolution.bounds2.min[1]],
-				max: [resolved.resolution.bounds2.max[0], floorElevation + maxBand, resolved.resolution.bounds2.max[1]]
-			}
-		});
+				min: [resolved.resolution.bounds2.min[0], floorElevation + minBand, resolved.resolution.bounds2.min[1]],				max: [resolved.resolution.bounds2.max[0], floorElevation + maxBand, resolved.resolution.bounds2.max[1]]
+				}
+			};
+		junctions.push(resolvedJunction);
+		if (reuse) reuse.junctions.set(junctionId, { authored: junctionAuthored, compiled: resolvedJunction, issues: junctionIssues });
 	}
 	junctions.sort((a, b) => (a.junctionId < b.junctionId ? -1 : a.junctionId > b.junctionId ? 1 : 0));
 	return junctions;
@@ -652,15 +1084,27 @@ function includeBounds2(bounds: LayoutBounds2, min: LayoutVec2, max: LayoutVec2)
 	bounds.max[1] = Math.max(bounds.max[1], max[1]);
 }
 
-/** Query records for one canonical physical Wall — no fake `roomId`. */
+/**
+ * Query records for one canonical physical Wall — no fake `roomId`.
+ *
+ * Returns the records instead of pushing them into the shared builder so the
+ * incremental compile (H1) can retain them with the Wall and splice them back in
+ * document order without rebuilding; the shared builder receives exactly those
+ * records in the same order.
+ */
 function emitPhysicalWallQueryRecords(
 	queryBuilder: QueryGeometryBuilder,
 	floor: CompilerFloorSource,
 	wall: LayoutDocumentWallFirst['walls'][number],
 	sampled: SampledSegment,
 	openings: readonly CompiledOpening[],
-	solidSpans: readonly CompiledSolidSpan[]
-): void {
+	solidSpans: readonly CompiledSolidSpan[],
+	/** Also return the records this Wall contributed (only a session needs them). */
+	collect: boolean
+): RetainedQueryRecords | null {
+	const pointsStart = queryBuilder.points.length;
+	const spansStart = queryBuilder.spans.length;
+	const aabbsStart = queryBuilder.aabbs.length;
 	const wallKey = wall.id;
 	queryBuilder.points.push(
 		pointRecordPhysical(floor.id, wall.id, 'vertex', wall.id, 0, [...sampled.samples[0]!.point] as LayoutVec2, wallKey),
@@ -733,6 +1177,52 @@ function emitPhysicalWallQueryRecords(
 			)
 		);
 	}
+	if (!collect) return null;
+	// Only a session retains records; a cold compile pushes into the shared builder
+	// and pays no per-Wall allocation at all.
+	return {
+		points: queryBuilder.points.slice(pointsStart),
+		spans: queryBuilder.spans.slice(spansStart),
+		polygons: [],
+		aabbs: queryBuilder.aabbs.slice(aabbsStart)
+	};
+}
+
+/** Append one entity's retained query records, preserving their order. */
+function pushRetainedRecords(builder: QueryGeometryBuilder, records: RetainedQueryRecords): void {
+	for (const record of records.points) builder.points.push(record);
+	for (const record of records.spans) builder.spans.push(record);
+	for (const record of records.polygons) builder.polygons.push(record);
+	for (const record of records.aabbs) builder.aabbs.push(record);
+}
+
+/** A Wall's own extent expanded by its resolved end geometry (plan). */
+function expandBounds2(base: LayoutBounds2, expansion: { min: LayoutVec2; max: LayoutVec2 }): LayoutBounds2 {
+	return {
+		min: [Math.min(base.min[0], expansion.min[0]), Math.min(base.min[1], expansion.min[1])],
+		max: [Math.max(base.max[0], expansion.max[0]), Math.max(base.max[1], expansion.max[1])]
+	};
+}
+
+/** A Wall's own extent expanded by its resolved end geometry (world). */
+function expandBounds3(
+	base: LayoutBounds3,
+	expansion: { min: LayoutVec2; max: LayoutVec2 },
+	floorElevation: number,
+	height: number
+): LayoutBounds3 {
+	return {
+		min: [
+			Math.min(base.min[0], expansion.min[0]),
+			Math.min(base.min[1], floorElevation),
+			Math.min(base.min[2], expansion.min[1])
+		],
+		max: [
+			Math.max(base.max[0], expansion.max[0]),
+			Math.max(base.max[1], floorElevation + height),
+			Math.max(base.max[2], expansion.max[1])
+		]
+	};
 }
 
 function pointRecordPhysical(
@@ -807,19 +1297,166 @@ function spanRecordPhysical(
 }
 
 /**
+ * An incremental compile session (T1.P02.S06 D.3 / H1).
+ *
+ * The session owns one retained store and feeds it the documents it compiles.
+ * Each `compile` is the **canonical compiler** — same builders, same assembly,
+ * same ordering — consulting retained per-entity units at each entity boundary:
+ * an entity whose authored inputs are unchanged returns its previous value by
+ * reference, and one whose inputs moved is rebuilt by the same code as always.
+ * There is no second algorithm and no second output shape, so a session result
+ * and a cold-compile result of the same document are equal by construction;
+ * the heavy differential proves it over an exhaustive edit sweep.
+ *
+ * Work: certified local edits update persistent paths and affected output.
+ * Missing lineage, changed membership and global datums use the canonical full
+ * fallback. Known immutable historical roots restore in constant root work,
+ * including across membership changes; their transient memo tables are retired
+ * by root replacement. Stats count evaluations separately from storage/output.
+ *
+ * Callers that cannot hold state (`admitSource`, a one-shot script) keep calling
+ * `compileWallFirstLayoutGeometry` without a store and get exactly today's
+ * cold compile.
+ */
+export type LayoutCompileSession = {
+	/** Compile `document`, reusing every entity whose authored inputs are unchanged. */
+	compile(document: LayoutDocumentWallFirst, sampling?: WallSamplingDerivation): CompiledLayoutGeometryResult;
+	/**
+	 * Prime this session from a clean passive compile result already recorded for
+	 * `document` (zero geometry sampling or cache-key construction).
+	 */
+	seedFromCompiled(document: LayoutDocumentWallFirst): boolean;
+	/** Work counts from the most recent compile. */
+	stats(): LayoutCompileStats;
+	/** Units released because their entity left the document, on the last compile. */
+	released(): number;
+	/** Drop every retained unit: the next compile is a cold compile. */
+	reset(): void;
+	/** How many retained units the store currently holds, per entity class. */
+	retained(): { walls: number; junctions: number; rooms: number; objects: number };
+};
+
+/** Create one incremental session; it compiles once per call and never throws on reuse. */
+export function createLayoutCompileSession(): LayoutCompileSession {
+	let store = createLayoutCompileReuse();
+	let releasedUnits = 0;
+	return {
+		compile(document, sampling) {
+			const restored = isCanonicalWallSampling(sampling) ? restoreImmutableCompileSnapshot(document, store) : null;
+			if (restored) {
+				beginLayoutCompile(store);
+				const world = store.world as import('./layout-geometry-delta').RetainedCompileWorld;
+				store.counters.wallsReused = world.sortedWalls.length;
+				store.counters.junctionsReused = world.sortedJunctions.length;
+				store.counters.roomsReused = world.validCeilingRoomCount;
+				store.counters.objectsReused = world.objectUnit.compiledObjects.length;
+				finishLayoutCompile(store, false); releasedUnits = 0; return restored;
+			}
+			if (isCanonicalWallSampling(sampling)) restoreImmutableCompileBaseline(document, store);
+			releasedUnits = pruneLayoutCompileReuse(store, document);
+			return compileWallFirstLayoutGeometry(document, sampling, store);
+		},
+		seedFromCompiled(document) {
+			return seedReuseFromPassiveCompile(document, store, DELTA_BUILDERS);
+		},
+		stats: () => store.stats,
+		released: () => releasedUnits,
+		reset() {
+			store = createLayoutCompileReuse();
+			releasedUnits = 0;
+		},
+		retained: () => {
+			// "Retained" means units the store can serve, not values that compiled
+			// cleanly. A delta may retain a unit whose value is invalid — an
+			// `object_invalid` descriptor has no compiled object, and the map branch
+			// below still counts its unit — so the world branch reports slot and
+			// authored counts. Counting `objectUnit.compiledObjects` here would make
+			// the same document report one fewer object only because the last compile
+			// went through a delta.
+			const world = store.world as import('./layout-geometry-delta').RetainedCompileWorld | null;
+			return world ? {
+				walls: world.wallSlots.length, junctions: world.sortedJunctions.length,
+				rooms: world.roomSlots.length, objects: layoutLength(world.document, 'objects')
+			} : { walls: store.walls.size, junctions: store.junctions.size, rooms: store.roomSources.size, objects: store.objects.size };
+		}
+	};
+}
+
+/**
+ * The session bound for the current synchronous authoring step, if any.
+ *
+ * The precision planners are the compiler's other hot caller: one plan per
+ * pointer sample, each of which compiles its candidate. They are a library of
+ * individually exported, synchronous functions with positional signatures, so
+ * the session reaches them through this one documented binding rather than an
+ * extra parameter on seventeen entry points and every test that calls one.
+ *
+ * It is deliberately **not** ambient across events: {@link withLayoutCompileSession}
+ * binds it, runs a synchronous body and clears it in `finally`. A nested bind is
+ * refused instead of shadowing, so a plan can never inherit another surface's
+ * store. Planners return values, never promises, so nothing can observe the
+ * binding across an `await`.
+ */
+let boundCompileSession: LayoutCompileSession | null = null;
+
+/** The session bound to this synchronous step, or `undefined` outside one. */
+export function activeLayoutCompileSession(): LayoutCompileSession | undefined {
+	return boundCompileSession ?? undefined;
+}
+
+/**
+ * Run one synchronous authoring step with `session` bound to the canonical
+ * compiler. Without a session the body simply runs (today's cold compile).
+ */
+export function withLayoutCompileSession<T>(session: LayoutCompileSession | undefined, body: () => T): T {
+	if (!session) return body();
+	if (boundCompileSession) {
+		throw new Error('a layout compile session is already bound to this synchronous step');
+	}
+	boundCompileSession = session;
+	try {
+		return body();
+	} finally {
+		boundCompileSession = null;
+	}
+}
+
+/**
  * Shared compile core (P23.0 compiler cutover): one geometry compiler/output
  * model. `compileWallFirstLayoutGeometry` is its only adapter since T1.P02.S05;
  * a direct caller may still supply any `CompilerSource` shape, whose optional
  * fields keep their historical defaults. Diagnostics paths remain room-indexed
  * (`rooms[i]`) so existing issue expectations are unchanged.
  */
-export function compileLayoutGeometrySource(source: CompilerSource): CompiledLayoutGeometryResult {
+/**
+ * Which query-record set the shared core emits for Room boundary walls.
+ *
+ * - `room` (default) is the historical room-indexed set: points, spans and
+ *   Wall/Opening AABBs carrying `roomId`.
+ * - `physical-wall` emits only what the wall-first adapter keeps — Room floor
+ *   polygons and Room AABBs — because that adapter replaces every room-derived
+ *   point, span and Wall/Opening AABB with the canonical physical-Wall set.
+ *
+ * T1.P02.S06 D.1 (H3): the wall-first adapter used to build the discarded set
+ * and then drop it, which Bench 1 counted as most of a grid-L compile's
+ * cache-key characters and geometry work.
+ */
+export type LayoutGeometryCompileOptions = {
+	readonly queryRecords?: 'room' | 'physical-wall';
+};
+
+export function compileLayoutGeometrySource(
+	source: CompilerSource,
+	options: LayoutGeometryCompileOptions = {},
+	reuse?: LayoutCompileReuse
+): CompiledLayoutGeometryResult {
+	const recordMode = options.queryRecords ?? 'room';
 	const issues: LayoutGeometryIssue[] = [];
 	const floors: CompiledFloor[] = [];
 	const rooms: CompiledRoom[] = [];
 	const queryBuilder = createQueryGeometryBuilder();
 
-	const objects = compileObjects(source.objects, issues, queryBuilder);
+	const objects = compileObjects(source.objects, issues, queryBuilder, reuse);
 
 	// Per-floor loop (P23 review round 1 / B1): every floor is compiled, not
 	// only the first. Each floor compiles its own rooms with its own elevation
@@ -851,6 +1488,27 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 				});
 				continue;
 			}
+			// T1.P02.S06 D.3 (H1) — the core's Room compile is keyed by the identity
+			// of the `CompilerRoomSource` it was handed. That value IS the complete
+			// input of `prepareLayoutRoomSegments` + validation + `compileRoom`, so
+			// an identical source object proves an identical result without
+			// re-deriving a second signature: the caller's own retention (the
+			// wall-first adapter's room-source store) decides whether the source
+			// object is the one this compile built last time.
+			const retainedRoom = reuse?.roomCompiles.get(roomSource);
+			if (reuse && retainedRoom) {
+				reuse.counters.roomsReused += 1;
+				pushRetainedRecords(queryBuilder, retainedRoom.records);
+				for (const issue of retainedRoom.issues) issues.push(issue);
+				const compiled = retainedRoom.compiled;
+				if (!compiled) continue;
+				rooms.push(compiled);
+				floorRoomIds.push(roomSource.room.id);
+				floorCeilingDependencies.push(compiled.ceilingElevation);
+				includeBounds3(floorMin, floorMax, compiled.bounds3.min, compiled.bounds3.max);
+				continue;
+			}
+			if (reuse) reuse.counters.roomsEvaluated += 1;
 			const prepared = prepareLayoutRoomSegments(
 				{ id: roomSource.room.id, boundary: roomSource.boundary },
 				path,
@@ -871,42 +1529,79 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 				)
 			];
 			issues.push(...roomIssues);
-			if (hasBlockingLayoutIssues(roomIssues)) continue;
+			if (hasBlockingLayoutIssues(roomIssues)) {
+				if (reuse) {
+					reuse.roomCompiles.set(roomSource, {
+						source: roomSource,
+						compiled: null,
+						stripped: null,
+						records: noQueryRecords(),
+						issues: roomIssues
+					});
+				}
+				continue;
+			}
 
+			// The Room's records go to their own builder so they can be retained and
+			// spliced back into `queryBuilder` in the same position next time.
+			const roomQueryBuilder = createQueryGeometryBuilder();
 			const compiledRoom = compileRoom(
 				roomSource,
 				floor,
 				prepared.segments as SampledSegment[],
-				queryBuilder
+				roomQueryBuilder,
+				recordMode
 			);
+			pushRetainedRecords(queryBuilder, roomQueryBuilder);
+			if (reuse) {
+				reuse.roomCompiles.set(roomSource, {
+					source: roomSource,
+					compiled: compiledRoom,
+					stripped: { ...compiledRoom, walls: [], openings: [] },
+					records: roomQueryBuilder,
+					issues: roomIssues
+				});
+			}
 			rooms.push(compiledRoom);
 			floorRoomIds.push(roomSource.room.id);
 			floorCeilingDependencies.push(compiledRoom.ceilingElevation);
 			includeBounds3(floorMin, floorMax, compiledRoom.bounds3.min, compiledRoom.bounds3.max);
 		}
 
+		// T1.P02.S06 D.1 (H3) — the object × Room join is an id-set membership test,
+		// not a scan over the floor's Rooms per object.
+		const floorRoomIdSet = new Set(floorEntry.rooms.map((roomSource) => roomSource.room.id));
 		for (const object of objects) {
 			if (!object.roomId) continue;
-			const owned = floorEntry.rooms.some((roomSource) => roomSource.room.id === object.roomId);
-			if (owned) includeBounds3(floorMin, floorMax, object.worldAabb.min, object.worldAabb.max);
+			countWork('pairs:object-room', 1);
+			if (floorRoomIdSet.has(object.roomId)) includeBounds3(floorMin, floorMax, object.worldAabb.min, object.worldAabb.max);
 		}
 
+		const compiledFloorBounds = finiteBounds3(floorMin, floorMax);
 		floors.push({
 			id: geometryId(['floor', floor.id]),
-			cacheKey: cacheKeyOf([
-				'floor',
-				floor.id,
-				floor.elevation,
-				floor.height ?? floorCeilingDependencies,
-				floorRoomIds,
-				finiteBounds3(floorMin, floorMax)
-			]),
+			// `physical-wall` callers replace this floor record after expanding
+			// bounds with physical Walls and Junctions; skipping the intermediate
+			// key and AABB avoids serializing `floorRoomIds` twice per compile.
+			cacheKey:
+				recordMode === 'physical-wall'
+					? ''
+					: cacheKeyOf([
+							'floor',
+							floor.id,
+							floor.elevation,
+							floor.height ?? floorCeilingDependencies,
+							floorRoomIds,
+							compiledFloorBounds
+						]),
 			floorId: floor.id,
 			elevation: floor.elevation,
 			roomIds: floorRoomIds,
-			bounds3: finiteBounds3(floorMin, floorMax)
+			bounds3: compiledFloorBounds
 		});
-		emitBoundsAabb(queryBuilder, 'floor', floor.id, ['floor', floor.id], floorMin, floorMax);
+		if (recordMode !== 'physical-wall') {
+			emitBoundsAabb(queryBuilder, 'floor', floor.id, ['floor', floor.id], floorMin, floorMax);
+		}
 	}
 
 	let documentMin: Vec3 = [Infinity, Infinity, Infinity];
@@ -914,7 +1609,7 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 	for (const room of rooms) includeBounds3(documentMin, documentMax, room.bounds3.min, room.bounds3.max);
 	for (const object of objects) includeBounds3(documentMin, documentMax, object.worldAabb.min, object.worldAabb.max);
 	const documentBounds = finiteBounds3(documentMin, documentMax);
-	if (documentBounds) {
+	if (documentBounds && recordMode !== 'physical-wall') {
 		queryBuilder.aabbs.push(aabbRecord('document', 'document', ['document'], documentBounds.min, documentBounds.max));
 	}
 
@@ -935,11 +1630,29 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 	return { geometry, issues };
 }
 
+/**
+ * Group authored Openings by hosting Wall id, preserving document order inside
+ * each group. T1.P02.S06 D.1 (H3): one grouping replaces the Room × Opening and
+ * Wall × Opening scans (`find` / `filter` per Room and per Wall).
+ */
+function openingsGroupedByWallId<TOpening extends { readonly wallId: string }>(
+	openings: readonly TOpening[]
+): Map<string, TOpening[]> {
+	const byWallId = new Map<string, TOpening[]>();
+	for (const opening of openings) {
+		const list = byWallId.get(opening.wallId);
+		if (list) list.push(opening);
+		else byWallId.set(opening.wallId, [opening]);
+	}
+	return byWallId;
+}
+
 function compileRoom(
 	roomSource: CompilerRoomSource,
 	floor: CompilerFloorSource,
 	sampledSegments: SampledSegment[],
-	queryBuilder: QueryGeometryBuilder
+	queryBuilder: QueryGeometryBuilder,
+	recordMode: 'room' | 'physical-wall'
 ): CompiledRoom {
 	const room = roomSource.room;
 	const floorElevation = floor.elevation;
@@ -959,61 +1672,84 @@ function compileRoom(
 	});
 	const ceilingPolygon = floorPolygon.map(([x, z]) => [x, z] as LayoutVec2);
 
-	const openingsBySegment = new Map<string, CompilerOpening[]>();
-	for (const opening of roomSource.openings) {
-		const openings = openingsBySegment.get(opening.segmentId) ?? [];
-		openings.push(opening);
-		openingsBySegment.set(opening.segmentId, openings);
+	let walls: CompiledWall[] = [];
+	let roomOpenings: CompiledOpening[] = [];
+	let wallBoundsOnly: Array<{ bounds2: LayoutBounds2; bounds3: LayoutBounds3 }>;
+
+	if (recordMode === 'physical-wall') {
+		// `physical-wall` strips room-derived `walls` and `openings` in favor of
+		// the canonical physical-Wall collection; only segment bounds feed the
+		// Room's `bounds2` and `bounds3`.
+		wallBoundsOnly = roomSource.boundary.segments.map((segment, index) => {
+			const sampled = sampledSegments[index]!;
+			const wallThickness = roomSource.wallThicknessBySegmentId?.[segment.id] ?? room.wallThickness;
+			return {
+				bounds2: wallBounds2(sampled.samples, wallThickness),
+				bounds3: wallBounds3(sampled.samples, wallThickness, floorElevation, ceilingElevation)
+			};
+		});
+	} else {
+		const openingsBySegment = new Map<string, CompilerOpening[]>();
+		for (const opening of roomSource.openings) {
+			const openings = openingsBySegment.get(opening.segmentId) ?? [];
+			openings.push(opening);
+			openingsBySegment.set(opening.segmentId, openings);
+		}
+
+		walls = roomSource.boundary.segments.map((segment, index) => {
+			const sampled = sampledSegments[index]!;
+			const openings = openingsBySegment.get(segment.id) ?? [];
+			// P23.0b: wall thickness is Wall-owned in the wall-first schema. The
+			// per-wall override keeps every downstream record identical in shape;
+			// only the thickness value may differ per wall. Cache keys remain
+			// structural (`thickness` participates where it always did).
+			const wallThickness = roomSource.wallThicknessBySegmentId?.[segment.id] ?? room.wallThickness;
+			// T1.P02.S06 D.1 (H3) — the segment's dependency key is built once and
+			// embedded by reference in this Wall's key and in every hosted Opening's
+			// key, instead of being re-serialized and re-escaped at each level.
+			const segmentDependency = cacheKeyDependency(cacheKeyOf([
+				'segment-geometry',
+				floor.id,
+				room.id,
+				segment
+			]));
+			const sections = splitSampledWallAroundOpenings(sampled, segment, openings, roomVerticalExtent);
+			const compiledOpenings = openings.map((opening) =>
+				compileOpening(opening, sampled, floor.id, room.id, segmentDependency)
+			);
+			const solidSpans = buildSolidSpans(sampled.samples, sections);
+			const solidCenterlinePolylines = wallPolylinesAroundOpenings(sampled.samples, openings);
+			const wallBounds2Value = wallBounds2(sampled.samples, wallThickness);
+			const wallBounds3Value = wallBounds3(sampled.samples, wallThickness, floorElevation, ceilingElevation);
+			return {
+				id: geometryId(['wall', floor.id, room.id, segment.id]),
+				cacheKey: cacheKeyOf([
+					'wall',
+					segmentDependency,
+					openings,
+					wallThickness,
+					floor.elevation,
+					floor.height ?? roomSource.ceilingElevation
+				]),
+				segmentId: segment.id,
+				thickness: wallThickness,
+				length: sampled.length,
+				samples: sampled.samples,
+				sections,
+				solidSpans,
+				openings: compiledOpenings,
+				solidCenterlinePolylines,
+				bounds2: wallBounds2Value,
+				bounds3: wallBounds3Value
+			};
+		});
+
+		roomOpenings = walls.flatMap((wall) => wall.openings);
+		wallBoundsOnly = walls;
 	}
 
-	const walls: CompiledWall[] = roomSource.boundary.segments.map((segment, index) => {
-		const sampled = sampledSegments[index]!;
-		const openings = openingsBySegment.get(segment.id) ?? [];
-		// P23.0b: wall thickness is Wall-owned in the wall-first schema. The
-		// per-wall override keeps every downstream record identical in shape;
-		// only the thickness value may differ per wall. Cache keys remain
-		// structural (`thickness` participates where it always did).
-		const wallThickness = roomSource.wallThicknessBySegmentId?.[segment.id] ?? room.wallThickness;
-		const segmentDependencyKey = cacheKeyOf([
-			'segment-geometry',
-			floor.id,
-			room.id,
-			segment
-		]);
-		const sections = splitSampledWallAroundOpenings(sampled, segment, openings, roomVerticalExtent);
-		const compiledOpenings = openings.map((opening) =>
-			compileOpening(opening, sampled, floor.id, room.id, segmentDependencyKey)
-		);
-		const solidSpans = buildSolidSpans(sampled.samples, sections);
-		const solidCenterlinePolylines = wallPolylinesAroundOpenings(sampled.samples, openings);
-		const wallBounds2Value = wallBounds2(sampled.samples, wallThickness);
-		const wallBounds3Value = wallBounds3(sampled.samples, wallThickness, floorElevation, ceilingElevation);
-		return {
-			id: geometryId(['wall', floor.id, room.id, segment.id]),
-			cacheKey: cacheKeyOf([
-				'wall',
-				segmentDependencyKey,
-				openings,
-				wallThickness,
-				floor.elevation,
-				floor.height ?? roomSource.ceilingElevation
-			]),
-			segmentId: segment.id,
-			thickness: wallThickness,
-			length: sampled.length,
-			samples: sampled.samples,
-			sections,
-			solidSpans,
-			openings: compiledOpenings,
-			solidCenterlinePolylines,
-			bounds2: wallBounds2Value,
-			bounds3: wallBounds3Value
-		};
-	});
-
-	const roomOpenings = walls.flatMap((wall) => wall.openings);
-	const roomBounds2 = roomBounds2FromWalls(walls, floorPolygon);
-	const roomBounds3 = roomBounds3FromParts(floorPolygon, walls, floorElevation, ceilingElevation, room.floorThickness, room.ceilingThickness);
+	const roomBounds2 = roomBounds2FromWalls(wallBoundsOnly, floorPolygon);
+	const roomBounds3 = roomBounds3FromParts(floorPolygon, wallBoundsOnly, floorElevation, ceilingElevation, room.floorThickness, room.ceilingThickness);
 
 	emitRoomQueryRecords(
 		queryBuilder,
@@ -1021,7 +1757,8 @@ function compileRoom(
 		{ id: room.id, boundary: roomSource.boundary },
 		walls,
 		floorPolygon,
-		roomBounds3
+		roomBounds3,
+		recordMode
 	);
 
 	return {
@@ -1037,10 +1774,15 @@ function compileRoom(
 			room.floorThickness,
 			room.ceilingThickness,
 			roomSource.openings,
-			// Direct callers that omit per-wall thickness leave the optional
-			// field absent, so their Room cache keys keep the historical shape.
+			// T1.P02.S06 D.1 (H3) — only the thicknesses this Room's own segments
+			// read. The whole-document per-Wall thickness map used to be embedded
+			// in every Room key, which made one key O(document walls) and a compile
+			// O(rooms × walls) characters: at grid-L, 12.8 M of the compile's 97 M
+			// key characters came from 196 Room keys. The pairs are ordered by
+			// boundary, so the key stays a deterministic function of the Room's own
+			// inputs (equal iff equal).
 			...(roomSource.wallThicknessBySegmentId
-				? [roomSource.wallThicknessBySegmentId]
+				? [roomSource.boundary.segments.map((segment) => [segment.id, roomSource.wallThicknessBySegmentId?.[segment.id] ?? null] as const)]
 				: [])
 		]),
 		roomId: room.id,
@@ -1063,7 +1805,7 @@ function compileOpening(
 	sampled: SampledSegment,
 	floorId: string,
 	roomId: string,
-	segmentDependencyKey: string
+	segmentDependency: CacheKeyDependency
 ): CompiledOpening {
 	const centerDistance = opening.offset + opening.width / 2;
 	const point = pointAlongSamples(sampled.samples, centerDistance);
@@ -1079,7 +1821,7 @@ function compileOpening(
 	const centerPolyline = openingCenterPolyline(sampled, opening.offset, opening.offset + opening.width);
 	return {
 		id: geometryId(['opening', floorId, roomId, opening.id]),
-		cacheKey: cacheKeyOf(['opening', segmentDependencyKey, opening]),
+		cacheKey: cacheKeyOf(['opening', segmentDependency, opening]),
 		openingId: opening.id,
 		segmentId: opening.segmentId,
 		kind: opening.kind,
@@ -1142,31 +1884,51 @@ function archBottom(section: CompiledWallSection, distance: number): number {
 function compileObjects(
 	objects: readonly LayoutObject[],
 	issues: LayoutGeometryIssue[],
-	queryBuilder: QueryGeometryBuilder
+	queryBuilder: QueryGeometryBuilder,
+	reuse?: LayoutCompileReuse
 ): CompiledLayoutObject[] {
 	const compiled: CompiledLayoutObject[] = [];
 	for (const [index, object] of objects.entries()) {
+		// The authored object plus its position in the array (the issue path names
+		// the index) are the whole input of `describeLayoutObject`.
+		const authored = [object, index];
+		const retained = reuse?.objects.get(object.id);
+		if (reuse) reuse.counters.signatureVisits += 1;
+		if (reuse && retained && sameAuthored(retained.authored, authored)) {
+			reuse.counters.objectsReused += 1;
+			for (const issue of retained.issues) issues.push(issue);
+			pushRetainedRecords(queryBuilder, retained.records);
+			if (retained.descriptor) compiled.push(retained.descriptor);
+			continue;
+		}
+		if (reuse) reuse.counters.objectsEvaluated += 1;
+		const objectIssues: LayoutGeometryIssue[] = [];
+		const records = createQueryGeometryBuilder();
+		let descriptor: CompiledLayoutObject | null = null;
 		if (!isValidObject(object)) {
-			issues.push({
+			objectIssues.push({
 				path: `objects[${index}]`,
 				code: 'object_invalid',
 				message: 'Layout object position and rotation must be finite and dimensions must be finite and greater than zero.',
 				targetId: object.id
 			});
-			continue;
+		} else {
+			descriptor = describeLayoutObject(object);
+			records.polygons.push(
+				polygonRecord(
+					'object-footprint',
+					['object-footprint', object.id],
+					descriptor.planFootprint,
+					object.id,
+					{ objectId: object.id }
+				)
+			);
+			records.aabbs.push(aabbRecord('object', object.id, ['object', object.id], descriptor.worldAabb.min, descriptor.worldAabb.max));
 		}
-		const descriptor = describeLayoutObject(object);
-		compiled.push(descriptor);
-		queryBuilder.polygons.push(
-			polygonRecord(
-				'object-footprint',
-				['object-footprint', object.id],
-				descriptor.planFootprint,
-				object.id,
-				{ objectId: object.id }
-			)
-		);
-		queryBuilder.aabbs.push(aabbRecord('object', object.id, ['object', object.id], descriptor.worldAabb.min, descriptor.worldAabb.max));
+		for (const issue of objectIssues) issues.push(issue);
+		pushRetainedRecords(queryBuilder, records);
+		if (descriptor) compiled.push(descriptor);
+		if (reuse) reuse.objects.set(object.id, { authored, descriptor, records, issues: objectIssues });
 	}
 	return compiled;
 }
@@ -1183,9 +1945,28 @@ function emitRoomQueryRecords(
 	room: { id: string; boundary: CompilerBoundarySource },
 	walls: readonly CompiledWall[],
 	floorPolygon: readonly LayoutVec2[],
-	roomBounds3: LayoutBounds3
+	roomBounds3: LayoutBounds3,
+	recordMode: 'room' | 'physical-wall'
 ): void {
 	const roomIdParts = ['room', floor.id, room.id];
+
+	// `physical-wall` callers keep only the Room floor polygon and Room AABB
+	// below; their Wall, Opening, solid and vertex records come from the
+	// canonical physical-Wall set. Building the room-derived ones would be work
+	// with no consumer, so it is not done.
+	if (recordMode === 'physical-wall') {
+		queryBuilder.polygons.push(
+			polygonRecord(
+				'room-floor',
+				['room-floor', floor.id, room.id],
+				[...floorPolygon],
+				room.id,
+				{ floorId: floor.id, roomId: room.id }
+			)
+		);
+		queryBuilder.aabbs.push(aabbRecord('room', room.id, roomIdParts, roomBounds3.min, roomBounds3.max));
+		return;
+	}
 
 	for (const [segmentIndex, segment] of room.boundary.segments.entries()) {
 		queryBuilder.points.push(
@@ -1317,7 +2098,10 @@ function wallBounds3(samples: readonly CompiledCurveSample[], thickness: number,
 	return { min: [bounds2.min[0], floorElevation, bounds2.min[1]], max: [bounds2.max[0], ceilingElevation, bounds2.max[1]] };
 }
 
-function roomBounds2FromWalls(walls: readonly CompiledWall[], floorPolygon: readonly LayoutVec2[]): LayoutBounds2 {
+function roomBounds2FromWalls(
+	walls: readonly { readonly bounds2: LayoutBounds2 }[],
+	floorPolygon: readonly LayoutVec2[]
+): LayoutBounds2 {
 	const floorBounds = polygonBounds2(floorPolygon);
 	if (!floorBounds) {
 		let minX = Infinity;
@@ -1347,7 +2131,7 @@ function roomBounds2FromWalls(walls: readonly CompiledWall[], floorPolygon: read
 
 function roomBounds3FromParts(
 	floorPolygon: readonly LayoutVec2[],
-	walls: readonly CompiledWall[],
+	walls: readonly { readonly bounds3: LayoutBounds3 }[],
 	floorElevation: number,
 	ceilingElevation: number,
 	floorThickness: number,
@@ -1375,10 +2159,6 @@ function includeBounds3(min: Vec3, max: Vec3, ...points: readonly Vec3[]): void 
 function finiteBounds3(min: Vec3, max: Vec3): LayoutBounds3 | null {
 	if (![...min, ...max].every(Number.isFinite)) return null;
 	return { min: [...min] as Vec3, max: [...max] as Vec3 };
-}
-
-function cacheKeyOf(parts: readonly unknown[]): string {
-	return JSON.stringify(parts);
 }
 
 function pointRecord(
@@ -1504,3 +2284,524 @@ function emitBoundsAabb(
 	if (![...min, ...max].every(Number.isFinite)) return;
 	queryBuilder.aabbs.push(aabbRecord(kind, sourceId, parts, min, max));
 }
+
+function buildWallFirstFloorAndAggregateAabbs(
+	floor: LayoutDocumentWallFirst['floor'],
+	floorRoomIds: readonly string[],
+	floorBounds: LayoutBounds3 | null,
+	documentBounds: LayoutBounds3 | null,
+	reuse?: LayoutCompileReuse
+): FloorAndAabbsUnit {
+	const retainedFloor = reuse?.retainedFloor ?? null;
+	const sameRoomIds =
+		retainedFloor !== null &&
+		(retainedFloor.roomIds === floorRoomIds || (retainedFloor.roomIds.length === floorRoomIds.length &&
+		retainedFloor.roomIds.every((id, index) => id === floorRoomIds[index])));
+	const roomIdsDep: CacheKeyDependency =
+		sameRoomIds && retainedFloor !== null
+			? retainedFloor.roomIdsDep
+			: cacheKeyDependency(cacheKeyOf(['floor-room-ids', floorRoomIds]));
+
+	let compiledFloor: CompiledFloor;
+	let floorAabb: CompiledQueryAabb | null;
+	if (
+		retainedFloor !== null &&
+		sameRoomIds &&
+		retainedFloor.floorId === floor.id &&
+		retainedFloor.elevation === floor.elevation &&
+		sameAuthored(retainedFloor.bounds3, floorBounds)
+	) {
+		compiledFloor = retainedFloor.compiled;
+		floorAabb = retainedFloor.aabb;
+	} else {
+		const keyBounds = floorBounds ? { min: [...floorBounds.min], max: [...floorBounds.max] } : null;
+		const keyInputs = ['floor', floor.id, floor.elevation, roomIdsDep, keyBounds] as const;
+		let floorKey: string | undefined;
+		compiledFloor = {
+			id: geometryId(['floor', floor.id]),
+			get cacheKey() {
+				if (floorKey === undefined) { countWork('cache-key:deferred-floor-built'); floorKey = cacheKeyOf(keyInputs); }
+				return floorKey;
+			},
+			floorId: floor.id,
+			elevation: floor.elevation,
+			roomIds: floorRoomIds,
+			bounds3: floorBounds
+		};
+		registerDeferredGeneratedField(compiledFloor, 'cacheKey');
+		floorAabb = floorBounds
+			? aabbRecord('floor', floor.id, ['floor', floor.id], floorBounds.min, floorBounds.max)
+			: null;
+		if (reuse) {
+			reuse.retainedFloor = {
+				floorId: floor.id,
+				elevation: floor.elevation,
+				roomIds: compiledFloor.roomIds,
+				roomIdsDep,
+				bounds3: floorBounds,
+				compiled: compiledFloor,
+				aabb: floorAabb
+			};
+		}
+	}
+
+	let docAabb: CompiledQueryAabb | null;
+	const retainedDoc = reuse?.retainedDocAabb ?? null;
+	if (retainedDoc !== null && sameAuthored(retainedDoc.bounds3, documentBounds)) {
+		docAabb = retainedDoc.aabb;
+	} else {
+		docAabb = documentBounds
+			? aabbRecord('document', 'document', ['document'], documentBounds.min, documentBounds.max)
+			: null;
+		if (reuse) {
+			reuse.retainedDocAabb = { bounds3: documentBounds, aabb: docAabb };
+		}
+	}
+
+	return { floor: compiledFloor, floorAabb, docAabb };
+}
+
+const DELTA_BUILDERS: CanonicalDeltaBuilders = {
+	evaluateRoom(
+		document,
+		roomIndex,
+		pointById,
+		wallById,
+		openingsByHostWallId,
+		openingOrderById,
+		defaultWallThickness
+	): EvaluatedRoomUnit {
+		const room = layoutItem(document, 'rooms', roomIndex)!;
+		const floor = document.floor;
+		const wallThicknessBySegmentId: Record<string, number> = {};
+		const openingHeightLimitBySegmentId: Record<string, number> = {};
+		const heights: number[] = [];
+		let resolved = room.boundary.length > 0;
+		for (const ref of room.boundary) {
+			const wall = wallById.get(ref.wallId);
+			if (wall) {
+				wallThicknessBySegmentId[wall.id] = wall.thickness;
+				openingHeightLimitBySegmentId[wall.id] = wall.height;
+			}
+			if (!wall || !Number.isFinite(wall.height)) {
+				resolved = false;
+			} else if (resolved) {
+				heights.push(wall.height);
+			}
+		}
+		const derivedCeiling =
+			resolved && heights.length > 0 ? floor.elevation + Math.max(...heights) : undefined;
+
+		const segments: SampleableSegment[] = [];
+		const roomOpenings: CompilerOpening[] = [];
+		const arcLengthByWallId = new Map<string, number>();
+		const traversalByWallId = new Map<string, 'forward' | 'reverse'>();
+		for (const ref of room.boundary) {
+			const wall = wallById.get(ref.wallId);
+			if (!wall) continue;
+			const start = pointById.get(wall.startJunctionId);
+			const end = pointById.get(wall.endJunctionId);
+			if (!start || !end) continue;
+			const reversed = ref.direction === 'reverse';
+			const segment = wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward');
+			segments.push(segment);
+			if (!arcLengthByWallId.has(wall.id)) {
+				const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
+				traversalByWallId.set(wall.id, reversed ? 'reverse' : 'forward');
+			}
+		}
+		for (const ref of room.boundary) {
+			const hosted = openingsByHostWallId.get(ref.wallId);
+			const traversal = traversalByWallId.get(ref.wallId);
+			if (!hosted || traversal === undefined) continue;
+			countWork('pairs:room-opening', hosted.length);
+			if (traversal === 'forward') {
+				for (const opening of hosted) roomOpenings.push({ ...opening, segmentId: opening.wallId });
+				continue;
+			}
+			const length = arcLengthByWallId.get(ref.wallId);
+			if (length === undefined) continue;
+			for (const opening of hosted) {
+				roomOpenings.push({
+					...opening,
+					segmentId: opening.wallId,
+					offset: length - (opening.offset + opening.width)
+				});
+			}
+		}
+		roomOpenings.sort(
+			(left, right) =>
+				(openingOrderById.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+				(openingOrderById.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+		);
+
+		const source: CompilerRoomSource = {
+			room: {
+				id: room.id,
+				wallThickness: defaultWallThickness,
+				floorThickness: room.floorThickness,
+				ceilingThickness: room.ceilingThickness
+			},
+			boundary: { closed: true, segments },
+			openings: roomOpenings,
+			wallThicknessBySegmentId,
+			openingHeightLimitBySegmentId,
+			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {})
+		};
+
+		const path = `floors[0].rooms[${roomIndex}]`;
+		if (source.ceilingElevation === undefined) {
+			return {
+				hasValidCeiling: false,
+				source,
+				compiled: null,
+				stripped: null,
+				polygons: [],
+				aabbs: [],
+				issues: [
+					{
+						path: `${path}.boundary`,
+						code: 'room_ceiling_undefined',
+						message: `Room '${room.id}' has no resolvable boundary Wall to derive a ceiling from`,
+						targetId: room.id
+					}
+				],
+				bounds3: null
+			};
+		}
+
+		const prepared = prepareLayoutRoomSegments({ id: room.id, boundary: source.boundary }, path);
+		const roomIssues = [
+			...prepared.issues,
+			...validatePreparedLayoutRoomGeometry(
+				{ id: room.id, boundary: source.boundary, openings: source.openings },
+				floor,
+				prepared.segments,
+				path,
+				source.openingHeightLimitBySegmentId
+			)
+		];
+		if (hasBlockingLayoutIssues(roomIssues)) {
+			return {
+				hasValidCeiling: true,
+				source,
+				compiled: null,
+				stripped: null,
+				polygons: [],
+				aabbs: [],
+				issues: roomIssues,
+				bounds3: null
+			};
+		}
+
+		const roomQueryBuilder = createQueryGeometryBuilder();
+		const compiledRoom = compileRoom(
+			source,
+			floor,
+			prepared.segments as SampledSegment[],
+			roomQueryBuilder,
+			'physical-wall'
+		);
+		const stripped =
+			compiledRoom.walls.length === 0 && compiledRoom.openings.length === 0
+				? compiledRoom
+				: { ...compiledRoom, walls: [], openings: [] };
+		return {
+			hasValidCeiling: true,
+			source,
+			compiled: compiledRoom,
+			stripped,
+			polygons: roomQueryBuilder.polygons,
+			aabbs: roomQueryBuilder.aabbs,
+			issues: roomIssues,
+			bounds3: compiledRoom.bounds3
+		};
+	},
+
+	evaluateWallBase(document, wall, pointById, hostedOpenings, derivedRole): EvaluatedWallBaseUnit | null {
+		const start = pointById.get(wall.startJunctionId);
+		const end = pointById.get(wall.endJunctionId);
+		if (!start || !end) return null;
+		const floor = document.floor;
+		const floorElevation = floor.elevation;
+		const segment = wallCenterlineSegment(wall, start, end, 'forward');
+		let sampled: SampledSegment;
+		try {
+			sampled = sampleSegment(segment);
+		} catch {
+			return null;
+		}
+		countWork('pairs:wall-opening', hostedOpenings.length);
+		const wallOpenings: CompilerOpening[] = hostedOpenings.map((opening) => ({
+			...opening,
+			segmentId: opening.wallId
+		}));
+		const wallGeometryDependency = cacheKeyDependency(
+			cacheKeyOf([
+				'physical-wall-geometry',
+				floor.id,
+				wall.id,
+				segment,
+				wall.thickness,
+				wall.height,
+				floor.elevation
+			])
+		);
+		const wallTop = floorElevation + wall.height;
+		const sections = splitSampledWallAroundOpenings(sampled, segment, wallOpenings, wall.height);
+		const compiledOpenings = wallOpenings.map((opening) =>
+			compileOpening(opening, sampled, floor.id, wall.id, wallGeometryDependency)
+		);
+		const solidSpans = buildSolidSpans(sampled.samples, sections);
+		const solidCenterlinePolylines = wallPolylinesAroundOpenings(sampled.samples, wallOpenings);
+		const wallBounds2Value = wallBounds2(sampled.samples, wall.thickness);
+		const wallBounds3Value = wallBounds3(sampled.samples, wall.thickness, floorElevation, wallTop);
+		const baseCompiled: CompiledPhysicalWall = {
+			id: geometryId(['physical-wall', floor.id, wall.id]),
+			cacheKey: cacheKeyOf([
+				'physical-wall',
+				floor.id,
+				wall.id,
+				segment,
+				wallOpenings,
+				wall.thickness,
+				floor.elevation,
+				wall.height
+			]),
+			wallId: wall.id,
+			role: derivedRole,
+			floorId: floor.id,
+			thickness: wall.thickness,
+			height: wall.height,
+			length: sampled.length,
+			samples: sampled.samples,
+			sections,
+			solidSpans,
+			openings: compiledOpenings,
+			solidCenterlinePolylines,
+			bounds2: wallBounds2Value,
+			bounds3: wallBounds3Value,
+			startJunctionId: wall.startJunctionId,
+			endJunctionId: wall.endJunctionId
+		};
+		const wallClearanceIssues: LayoutGeometryIssue[] = [];
+		if (wall.centerline.kind !== 'line') {
+			const clearance = p2311Measure('finite-thickness', () =>
+				wallOffsetClearanceFailure(baseCompiled.samples, wall.thickness)
+			);
+			if (clearance) {
+				wallClearanceIssues.push({
+					path: `walls.${wall.id}`,
+					code: clearance === 'fold' ? WALL_OFFSET_FOLD_CODE : WALL_OFFSET_OVERLAP_CODE,
+					message: clearance === 'fold' ? WALL_OFFSET_FOLD_MESSAGE : WALL_OFFSET_OVERLAP_MESSAGE,
+					targetId: wall.id
+				});
+			}
+		}
+		const wallQueryBuilder = createQueryGeometryBuilder();
+		const baseRecords =
+			emitPhysicalWallQueryRecords(
+				wallQueryBuilder,
+				floor,
+				wall,
+				sampled,
+				compiledOpenings,
+				solidSpans,
+				true
+			) ?? noQueryRecords();
+		const baseBounds2: LayoutBounds2 = {
+			min: [...wallBounds2Value.min] as LayoutVec2,
+			max: [...wallBounds2Value.max] as LayoutVec2
+		};
+		const baseBounds3: LayoutBounds3 = {
+			min: [...wallBounds3Value.min] as Vec3,
+			max: [...wallBounds3Value.max] as Vec3
+		};
+		const baseWallAabb = aabbRecord(
+			'wall',
+			wall.id,
+			['wall', floor.id, wall.id],
+			baseBounds3.min,
+			baseBounds3.max
+		);
+		const legs =
+			baseCompiled.samples.length < 2
+				? {}
+				: {
+						...(wall.startJunctionId && pointById.has(wall.startJunctionId)
+							? { start: junctionLeg(baseCompiled, 'start') }
+							: {}),
+						...(wall.endJunctionId && pointById.has(wall.endJunctionId)
+							? { end: junctionLeg(baseCompiled, 'end') }
+							: {})
+					};
+		return {
+			baseCompiled,
+			baseBounds2,
+			baseBounds3,
+			baseRecords,
+			baseWallAabb,
+			issues: wallClearanceIssues,
+			legs,
+			openingsCount: hostedOpenings.length
+		};
+	},
+
+	resolveJunction(document, junctionId, point, sortedLegs, reuse): ResolvedJunctionUnit {
+		const floorElevation = floorElevationOf(document);
+		const junctionAuthored = [point, sortedLegs, document.floor.id, floorElevation];
+		reuse.counters.signatureVisits += 1;
+		const retainedJunction = reuse.junctions.get(junctionId);
+		if (retainedJunction && sameAuthored(retainedJunction.authored, junctionAuthored)) {
+			reuse.counters.junctionsReused += 1;
+			return {
+				compiled: retainedJunction.compiled,
+				issues: retainedJunction.issues,
+				evaluated: false
+			};
+		}
+		reuse.counters.junctionsEvaluated += 1;
+		const junctionIssues: LayoutGeometryIssue[] = [];
+		const resolved = resolveJunctionGeometry(junctionId, point, sortedLegs);
+		junctionIssues.push(...resolved.issues);
+		const seam = junctionSeamFailureOf({
+			junctionId,
+			point,
+			legs: sortedLegs,
+			resolution: resolved.resolution
+		});
+		if (seam && !resolved.issues.some((issue) => issue.code === seam.code)) {
+			junctionIssues.push({
+				path: `junctions.${junctionId}`,
+				code: seam.code,
+				message: seam.message,
+				targetId: junctionId
+			});
+		}
+		const minBand = Math.min(...sortedLegs.map((leg) => leg.bottomY));
+		const maxBand = Math.max(...sortedLegs.map((leg) => leg.topY));
+		const resolvedJunction: CompiledJunction = {
+			id: compiledJunctionId(document.floor.id, junctionId),
+			cacheKey: cacheKeyOf([
+				'compiled-junction',
+				document.floor.id,
+				junctionId,
+				point,
+				sortedLegs.map((leg) => ({
+					wallId: leg.wallId,
+					end: leg.end,
+					tangentOut: leg.tangentOut,
+					normalOut: leg.normalOut,
+					thickness: leg.thickness,
+					bottomY: leg.bottomY,
+					topY: leg.topY,
+					role: leg.role,
+					endpointOpen: leg.endpointOpen,
+					endpointSolidBands: leg.endpointSolidBands.map((band) => [
+						band.bottomY,
+						band.topY,
+						band.solid,
+						band.openingId ?? null
+					])
+				}))
+			]),
+			junctionId,
+			point,
+			legs: sortedLegs,
+			resolution: resolved.resolution,
+			bounds3: {
+				min: [
+					resolved.resolution.bounds2.min[0],
+					floorElevation + minBand,
+					resolved.resolution.bounds2.min[1]
+				],
+				max: [
+					resolved.resolution.bounds2.max[0],
+					floorElevation + maxBand,
+					resolved.resolution.bounds2.max[1]
+				]
+			}
+		};
+		reuse.junctions.set(junctionId, {
+			authored: junctionAuthored,
+			compiled: resolvedJunction,
+			issues: junctionIssues
+		});
+		return { compiled: resolvedJunction, issues: junctionIssues, evaluated: true };
+	},
+
+	expandWall(
+		floorId,
+		floorElevation,
+		wallHeight,
+		wallId,
+		baseCompiled,
+		baseBounds2,
+		baseBounds3,
+		currentCompiled,
+		currentWallAabb,
+		joins
+	): ExpandedWallUnit {
+		const expansion = wallEndExpansion(joins);
+		const bounds2Val = expansion ? expandBounds2(baseBounds2, expansion) : baseBounds2;
+		const bounds3Val = expansion
+			? expandBounds3(baseBounds3, expansion, floorElevation, wallHeight)
+			: baseBounds3;
+		if (!sameAuthored(currentCompiled.bounds2, bounds2Val) || !sameAuthored(currentCompiled.bounds3, bounds3Val)) {
+			countWork('pairs:wall-aabb', 1);
+			const compiled: CompiledPhysicalWall = { ...baseCompiled, bounds2: bounds2Val, bounds3: bounds3Val };
+			const wallAabb = aabbRecord('wall', wallId, ['wall', floorId, wallId], bounds3Val.min, bounds3Val.max);
+			return { compiled, wallAabb };
+		}
+		return { compiled: currentCompiled, wallAabb: currentWallAabb };
+	},
+
+	compileObjects(objects, documentRoomIds, reuse): CompiledObjectsUnit {
+		const issues: LayoutGeometryIssue[] = [];
+		const queryBuilder = createQueryGeometryBuilder();
+		const compiledObjects = compileObjects(objects, issues, queryBuilder, reuse);
+		let docMin: Vec3 = [Infinity, Infinity, Infinity];
+		let docMax: Vec3 = [-Infinity, -Infinity, -Infinity];
+		let floorMin: Vec3 = [Infinity, Infinity, Infinity];
+		let floorMax: Vec3 = [-Infinity, -Infinity, -Infinity];
+		for (const object of compiledObjects) {
+			includeBounds3(docMin, docMax, object.worldAabb.min, object.worldAabb.max);
+			if (!object.roomId) continue;
+			countWork('pairs:object-room', 1);
+			if (documentRoomIds.has(object.roomId)) {
+				includeBounds3(floorMin, floorMax, object.worldAabb.min, object.worldAabb.max);
+			}
+		}
+		return {
+			compiledObjects,
+			polygons: queryBuilder.polygons,
+			aabbs: queryBuilder.aabbs,
+			issues,
+			bounds3: finiteBounds3(docMin, docMax),
+			floorRoomBounds3: finiteBounds3(floorMin, floorMax)
+		};
+	},
+
+	buildFloorAndAabbs(floor, floorRoomIds, floorBounds, documentBounds, reuse): FloorAndAabbsUnit {
+		return buildWallFirstFloorAndAggregateAabbs(
+			floor,
+			floorRoomIds,
+			floorBounds,
+			documentBounds,
+			reuse
+		);
+	},
+
+	computeWallBaseBounds(wall, floorElevation) {
+		return {
+			bounds2: wallBounds2(wall.samples, wall.thickness),
+			bounds3: wallBounds3(
+				wall.samples,
+				wall.thickness,
+				floorElevation,
+				floorElevation + wall.height
+			)
+		};
+	}
+};

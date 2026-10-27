@@ -35,15 +35,235 @@ series, never a user profile.
 | Spec | Flow | What it records |
 | --- | --- | --- |
 | `flows/startup.spec.ts` | F1 startup | hub interactive, Stage first **architectural** frame (rAF proxy, not the contract's first interactive frame), FCP, LCP, long tasks, script bytes/requests, cold, warm and repeat-use |
-| `flows/project-open.spec.ts` | F2 open | S (grid-3) and M (grid-7) admission → first **architectural** frame (rAF proxy), cold, warm and repeat-use |
-| `flows/orbit.spec.ts` | F7 orbit | 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, cold, warm and repeat-use |
-| `flows/save.spec.ts` | F9 Save | save:submit → Saving-label DOM update → parsed durable receipt → Saved-label DOM update, through the API test-auth seam on a local stack, cold, warm and repeat-use; label mutations do not prove presentation |
-| `flows/cycles.spec.ts` | F13 repeated open/close | cold (10 measured cycles), warm (1 discarded + 1 measured) and repeat-use (1 discarded + 10 measured); 20 edits per cycle and JS heap after forced GC, with entry heap reported separately from the measured baseline |
+| `flows/project-open.spec.ts` | F2 open | each tier's cached workload: admission → first **architectural** frame (rAF proxy), cold, warm and repeat-use, with per-stage spans, work counts, render counters and setup share; plus the A.6 old-method rows `F2-old-S/M` |
+| `flows/orbit.spec.ts` | F7 orbit | per tier: 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, render counters per frame (draws, triangles, shadow passes/draws), CPU time in `render()`, compiles per frame, frames rendered at rest, cold, warm and repeat-use; the orbit starts from the shipped Fit, then (C.2) an all-visible 3D window and an all-visible Plan window after Fit, each a 1 s rest, a compatible-bin census and a 3 s scripted pan/zoom |
+| `flows/save.spec.ts` | F9 Save | save:command → request-body construction → save:request at fetch dispatch → parsed durable receipt → Saved-label DOM update, through the API test-auth seam on a local stack, cold, warm and repeat-use; label mutations do not prove presentation |
+| `flows/project-lifecycle.spec.ts` | T3.P04.S01 lifecycle + F9 | real Hub/Stage/API lifecycle journey; F9 S/M Save traces require a visible Saving label, one render opportunity, exact screenshot source/frame identity and one nonforked `STATE_PRESENTED_ALL` report before the durable receipt |
+| `flows/cycles.spec.ts` | F13 repeated open/close | per tier: cold (10 measured cycles), warm (1 discarded + 1 measured) and repeat-use (1 discarded + 10 measured); 20 edits per cycle and JS heap after forced GC, with entry heap reported separately from the measured baseline; post-GC heap after each open and after its 20 edits (retained bytes per edit), DOM nodes and the Stage's live geometries/textures/programs/materials/meshes per cycle |
 | `flows/head-lifetime.spec.ts` | Route head ownership regression | cold SSR/hydration, dynamic publication title/noindex and exact connected head-node counts over repeated client navigation; isolated metadata correctness, not a flow baseline |
 | `flows/renderer-lifetime.spec.ts` | Concurrent renderer ownership regression | actual WebGL secondary-Canvas collection while a survivor keeps identical rendered pixels and render-target state; isolated correctness fixture, not a flow baseline |
-| `flows/drag-correlation.spec.ts` | F3/F4/F8 methodology | input sequence → matching preview presentation, latest-input age, final-result completion, precision commit, 20 Undo/Redo cycles, cold, warm and repeat-use, plus the deliberately delayed-preview proof |
+| `flows/drag-correlation.spec.ts` | F3/F4/F8 methodology | per tier, in-session at the loaded peak: distinct drags and typed lengths each reset by Undo (cache-served samples counted apart), input sequence → matching preview presentation, latest-input age, final-result completion, 20 Undo/Redo cycles, per-stage spans and work counts, post-GC heap after the open and after the sequence, the Stage's ownership counts after each accepted commit, cold, warm and repeat-use, plus the deliberately delayed-preview proof (grid-S) |
 | `flows/trace-proof.spec.ts` | Separate trace-image diagnostic | exact preview sequence/geometry identity and marker pixel in Chrome trace images, exact compositor presentation-feedback span, clock anchors, mismatch and delayed-preview controls; no hard budget claim |
+| `flows/stage-trace.spec.ts` | Per-stage traces (S06 C) | one traced window per flow and tier (F2, F3, F4, F8, F7): main-thread busy/idle, GC, script, style/layout, paint and GPU-process time beside the window's stage spans; attribution, never a timing row |
+| `flows/e5-sweep.spec.ts` | E5 browser counts (S06 C) | museum ×1 and the H/D/C sweeps: render counters at rest, the fixed edit's work, and framebuffer equality at the fixed View before and after the edit (H must match ×1; D and C are recorded); count, not timing |
 | `flows/calibration.spec.ts` | CPU calibration | grid-7 compile + Stage admission, 20 runs, CDP throttling search when a reference median is supplied |
+
+**Attributed work is not a constant across rows.** A unit whose domain data is deeply frozen
+(F4-accepted) answers a repeated digest from the frozen-object revision memo, so its
+`save.unit.*` phases do not appear in that row and must not: the encode and digest did not run.
+The same holds for a re-normalized accepted envelope. Compare F9 rows, and F9 across benches, at
+like cache state — a smaller attributed Save is reuse, not a lost stage.
+
+## Bench setup (T1.P02.S06)
+
+T1.P02.S06 builds the method, the workloads and the counters
+([plan](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)).
+Bench 1 and Bench 2 were owner-run. The owner direction of 2026-10-26
+authorized an agent to execute the third, decision-driven **milestone** pass end
+to end on the designated reference machine; every other agent run remains the
+smoke check or a census, and no fourth pass is implied. That pass ran on
+2026-10-26 at `25d61deb` (2,632.7 s, Chrome 156, full E5): 15/15 decision rows
+passed. The manifest, sample counts and adjudication are in the
+[acceptance record](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md#s06-milestone-gate-owner-direction-2026-10-26).
+
+**Post-Bench-2 attribution (2026-10-27).** `perf/attribution` is a separate, non-bench check, not
+collected by `npm run perf`. It compares two already-built revisions through the same spec: 94
+continuous pan moves, ordinary/repeat/late-order canvas picks, one typed local commit and the first
+pick after it, recording CDP main-thread/script time and the work ledger. It found the pan gain is
+large and genuine, the pick index is a worst-case/repeat optimisation whose build returns after
+every commit, and the local edit is unchanged because whole-project compile/membership work
+dominates. Method, raw rows and limits: [evidence
+record](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/evidence/attribution-2026-10-27/README.md).
+
+```sh
+cd apps/editor
+npm run perf:workloads                     # generate missing/stale workloads (setup, ~25 min for all)
+npm run perf:workloads -- --verify         # reproducibility: rebuild S, M and museum, compare digests (~1.5 min)
+npm run perf:census                        # E1–E5 Node censuses: census, not timing (~15 min)
+npm run perf:scale -- --point 1k           # D2 scale feasibility census, Node only (1k, 3k, 10k; ≤10 min each)
+npm run perf:bench -- --smoke              # smoke check of every flow at every tier: smoke, not evidence
+npm run perf:bench -- --label bench-1 --xl-drag-cache warm   # Bench 1 on the M2 (D5: grid-XL F3/F4/F8 warm only)
+npm run perf:bench -- --label milestone-1 --profile milestone --tiers grid-L,grid-M,grid-S   # S06 milestone gate
+```
+
+**Bench 2 is a diagnostic pass; implementation is valid (owner decision, 2026-10-26).** The retained Bench 1
+results show that setup and the ~450 opens are only ~10–15 min of a 3 h 36 min pass; the cost is the
+within-run sample plan. `PERF_PROFILE=diagnostic` (or `perf:bench --profile diagnostic`) runs a
+reduced **non-acceptance** pre-pass: 3 measured runs per row, one cold and one repeat-use F3/F4/F8
+run, 2 in-session drag/precision samples, 5 Undo/Redo cycles, F2 cold+warm, F7 warm only, F13 at
+1/2/1 cycles with 10 edits, traces at grid-L only and no A.6 or delayed-preview proof. It keeps the
+real chooser and interactions, 60 pointer inputs per drag, every hard tier and the complete E5
+correctness matrix. Every row and report is labelled `diagnostic, not acceptance evidence`; the
+sample plan, measured run counts and incomplete gates are recorded. Bench 2 counts as the second
+authorized pass but **cannot discharge a statistical acceptance gate**; the formal, ratified method
+remains Bench 3. The lean formal plan is **not ratified** and is not represented here. The
+[owner decision package and estimates](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#bench-23-strategy-implemented-diagnostic-bench-2-2026-10-26)
+record the omissions, the 40–50 min expectation and the pre-flight commands. No acceptance default
+changed.
+
+**The milestone profile is the S06 decision gate (owner direction, 2026-10-26).**
+`PERF_PROFILE=milestone` (or `perf:bench --profile milestone`) starts from Bench 2's
+representative interactions: 60 pointer inputs per drag, 2 in-session drag/precision samples,
+10 Undo/Redo cycles, real chooser and Undo/Redo paths, F2 cold+warm, F7 warm, F13 at the
+contract's ten measured cycles with 20 edits, traces at grid-L only, no A.6 or delayed-preview
+proof (Bench 1 evidence). It keeps the S/M/L workloads and the complete E5 correctness matrix.
+
+The difference from a shrunken sample plan is that the **decision** is explicit and adaptive
+(`perf/lib/milestone.ts`): a decision row starts at 3 independent measured runs and extends by one
+run at a time to 10 (F7 to 5) only while it is undecided. One value per independent run feeds the
+rule — never several pointer events from one run:
+
+- **pass**: every run's p95 is at or below 75 % of the hard budget (25 % headroom), so no further
+  runs are spent. Frame-interval rows pass at the display floor ±0.05 ms instead, because a 25 %
+  band below a 60 Hz refresh interval is a band no observed frame can enter;
+- **fail**: every run's p95 exceeds the hard budget, so the violation is reported and no further
+  runs are spent; a row that cannot produce three usable runs by its bound is a failure of
+  evidence, never a pass;
+- **borderline**: anything else. Escalate one independent run at a time. At the bound the row is
+  decided on the contract's pooled p95, and a run-to-run instability is recorded rather than
+  hidden.
+
+Decision rows are warm F3 input latency, latest-input age, frame-time p95/p99, F4 completion and
+F8 Undo/Redo at S/M/L; the per-edit Layout compile at M; F2 cold+warm at S/M; F7 warm p95/p99 with
+zero long tasks at S/M; and F13 cold/repeat-use ten-cycle growth at S/M/L. F13's first measured
+cycle is a one-time first-load sample for both cold and repeat-use; steady growth starts at the
+second measured cycle and is normalised to ten cycles. Single-run cold/repeat-use interaction rows,
+F2 L and F7 L (Target rows) and F13 warm (one cycle) are recorded checks, not statistical gates. A
+contaminated or aborted pass is never evidence — the manifest and every row say so, and the bench
+manifest requires every promised decision row to report a non-`borderline`, non-`undecided` `pass`
+before it sets `acceptanceEvidence: true`. Per-flow reports are never pass-scoped. The method
+produces **S06 milestone acceptance**, not rare-tail, grid-XL, realistic-L, sweep, production-scale
+or ultimate geometry/rendering certification; budgets are unchanged.
+
+**Workloads (A.1, B).** `perf/generate-workloads.ts` builds every workload once
+through the public layout-core planners, the canonical compiler and, for the
+museum family, T3's public Experience operations, admits it through
+`admitSourceJson` with no blocking issue, closure or diagnostic, and writes the
+canonical envelope plus a meta file into the git-ignored cache. Captured ids come
+from fixed sequences, so identical inputs give byte-identical JSON; the meta's
+input key covers the workload parameters, every unit's format number and the
+generator sources, and a stale, missing or corrupt workload refuses every measured
+run (`loadWorkload`). Flows load the JSON under their own project id
+(`workloadJsonFor` rewrites only the id token; setup, outside every window).
+
+| Workload | What | Role |
+| --- | --- | --- |
+| `grid-S`, `grid-M`, `grid-L`, `grid-XL` | grid-3/7/14/20 with doors and windows | bench tiers (XL report-only) |
+| `realistic-L` | grid-14 + approved GLB derivatives | bench tier, **blocked** (below) |
+| `museum` | 328 Walls, 56 Rooms, 137 Openings (115 doors with `connectsRoomIds`), enfilade, corridor ring, central hall, 92 catalogue placements, 18 Views with Camera connections, an 18-Stop Experience route | censuses, E5 base, optional latency rows |
+| `sweep-H3/H10`, `sweep-D3/D10` | the museum plus independent 7×7 blocks (H: hidden, behind Walls, outside the focus wing's shadow camera, no lights; D: on the enfilade axis beyond the wing) | E5 irrelevance sweep |
+| `sweep-C3/C10` | the museum plus **connected** blocks (C, D3 ruling): the first block snaps to the museum's north-east corner Junction, each later one to the previous block's east corners, with about 63 doors and windows per block | E5 irrelevance sweep, recorded, not asserted |
+
+The museum and sweep placements use the shipped catalogue GLBs (product assets
+with recorded licenses) until the realistic-L derivatives are approved. ×30 is not
+built: generation grows about quadratically (≈ 2 h extrapolated), beyond the bound,
+so E5 slopes above ×10 are arithmetic only.
+
+**Realistic-L.** Blocked on two owner prerequisites: per-source approval of each
+CC0/permissive GLB source (download outside the repository, source and license
+recorded), and `creator-import@1` seeding as resource revisions on an isolated
+per-lane API/Compose stack, never a shared database. Until then every flow
+reports a `…-unrun` row with that reason, and the pass manifest records it.
+
+**Counters (C).** Product code exposes two inert seams that do nothing without the
+harness flag: `perfRenderer` hands each surface's WebGL renderer to the harness,
+which counts Three's own `renderer.info` per frame (main-pass draws, triangles,
+shadow-map passes and shadow draws, programs, geometries, textures, frames at
+rest; `drawCalls` excludes the shadow pass, which `shadowDrawCalls` counts), and
+`installPerfWorkObserver` aggregates layout-core's work observer into
+`__BISKIQ_PERF_WORK__`: spans for compile, admission (parse, runtime, digest,
+serialize, freeze), envelope validation, Scene resolve and Layout representation,
+and deterministic counts (compiles, entity sets, pair visits, digests and bytes,
+serializations, F4 clones and frozen objects). Flows diff both around each
+measured window; `stage-trace.spec.ts` adds one traced window per flow for
+GC/idle attribution. `readResidentBytes` traverses a surface's last rendered
+scene once at a fixed point (after F2's open, after F7's orbit, at E5's fixed
+View): unique textures with stored and RGBA8+mips bytes, geometry-buffer bytes,
+shadow-map and drawing-buffer bytes, materials and meshes. Shader-compile time
+at the first frame is not captured (the traced windows show the main-thread cost
+of the first render).
+
+**Scale-identification counters (C.2, owner-ratified 2026-10-24).** Each
+renderer also records the CPU time inside every `render()` call (sum, maximum
+and up to 20,000 samples per window) and GPU time through
+`EXT_disjoint_timer_query_webgl2` where the browser exposes it; otherwise the
+row records why (`gpuUnavailableReason`), and GPU time is never inferred. On
+request, one frame's main-pass draws are binned into compatible groups:
+distinct (program, material state, geometry layout) and (program, material
+state, geometry), a logical model labelled "count, not timing". Outside the
+timed windows, `readHeapAfterGc` takes the post-GC heap with CDP's DOM counters
+and `readOwnership` the Stage's live geometries, textures, programs, materials
+and meshes. The work observer adds every pair loop the compiler, the topology
+gates and admission run (`pairs:junction-junction`, `pairs:wall-wall`,
+`pairs:wall-wall-curve`, `pairs:wall-aabb`, `pairs:object-room`; the
+`:same-component` share is counted apart), linear identity lookups
+(`lookup:junctions`) and cache-key characters (`cache-key:chars`). The census
+derives `allPairVisits` and `lookupVisits` from them.
+
+**Scale census (D2).** `perf/census/scale.ts` assembles the planner-built grid-L
+block into one connected layout of about 1k, 3k and 10k Rooms (A.1's assembly
+exception: shared boundary Junctions and Walls deduplicated, ids remapped), then
+admits it and plans one move through the canonical path only. Each point runs in
+its own child under a 10-minute bound with a 12 GiB heap; a point that runs out
+of time or memory is recorded with the phase it reached, never retried. It runs
+in Node only, never in a browser or inside a pass: "census, not timing".
+
+**A pass (`perf:bench`).** One invocation: the machine-wide lock
+(`/tmp/biskiq-perf.lock`), load average, top processes, `pmset -g therm` and power
+source at the start and end (a start above 4.0 or a running Vitest process marks
+it contaminated), one production build, then the tiers peak first — realistic-L,
+L, XL, M, S — each running F2 (+ A.6 at S/M), F3/F4/F8, F7, F13 and the traced
+windows, with the thermal state at every boundary and a recorded cool-down before
+M and S; then the E5 browser counts and the transferred rows (F1, F10, and F5/F6
+when `PERF_API_ORIGIN` and `E2E_TEST_AUTH_SECRET` name a local stack). The
+manifest in the pass directory records commit, dirty tree, fixture digests,
+contamination, every phase's wall time and exit, and the setup share. A failed
+phase marks the pass aborted with its cause; nothing is retried. Ctrl-C stops the
+pass at the next phase boundary, records the interrupt, writes the manifest and
+releases the lock. Exit codes: 0 clean, 1 aborted, 5 contaminated, 6 Chrome
+build differs from the pin, 130/143 interrupted.
+
+Since the C.2 amendment, a pass also:
+
+- **pins Chrome (D8).** It refuses to start unless branded Chrome matches
+  `perf/chrome-pin.json` (smoke runs only record a mismatch). The owner re-pins
+  with a recorded reason.
+- **builds for production.** vite-node sets `NODE_ENV=development`, which a
+  child `vite build` would inherit and compile Svelte in dev mode, so every child
+  runs without `NODE_ENV`. The pass aborts if any client chunk carries Svelte's
+  dev-mode file metadata.
+- **bounds report-only crashes (D4).** A renderer crash on a report-only row
+  (grid-XL, the sweep latency rows) becomes one failure row with the error, the
+  tier's remaining cache states are reported unrun, and the phase continues. A
+  crash at S, M or L still fails its phase. In E5 only the recorded variants
+  (D, C) are bounded; the museum and H carry the proof, so a crash there fails.
+  E5 gives the opening-heavy C10 sweep a 600 s open bound (isolated: C10
+  `f2:open-admitted` at 322.4 s, H10 at 2.1 s); any non-crash E5 failure names
+  the workload in the abort cause.
+- **takes `--xl-drag-cache <cold|warm|repeat-use>` (D5).** It limits grid-XL's
+  F3/F4/F8 to one cache state. The manifest records the states and every
+  deviation from the plan's machine rules (for example, AC power).
+
+The report-only
+sweep latency rows (F3/F4/F8 on the focus Wall and F7, museum ×1 and sweep-H10)
+run in every pass unless the owner drops them, and the bundle report written
+after the build supplies the Stage initial-load delta.
+
+**Chrome crash-handler watchdog.** After a heavy session (observed at grid-XL),
+branded Chrome's `chrome_crashpad_handler` can outlive the browser while holding
+its stderr, a socket to the Playwright worker, which then never exits after its
+last test. During a pass, a watchdog stops only such orphans (re-parented to
+launchd, absent at the pass start, stderr a socket, no Playwright-launched Chrome
+running); the owner's own Chrome keeps its handler. Its actions are listed in the
+manifest. Running a tiered spec directly, outside `perf:bench`, has no watchdog;
+start one beside it with `node perf/lib/crash-handler-watchdog.mjs <log> $(pgrep -f chrome_crashpad_handler)`.
+The watchdog is a file, not an inline `node -e` script, so that its own command
+line can never match the Playwright-Chrome check (an inline version always did).
+
+**Node.** The S06 setup ran on Node 26.7. Node 22.11 fails the editor's jsdom
+suites (`ERR_REQUIRE_ESM` from jsdom's encoding dependency) and Node 23.7 fails
+them in undici's zlib decompressor; use a current Node release for the gates and
+the passes.
 
 ## Correlation (why the ledger exists)
 
@@ -125,11 +345,21 @@ coarse and the report says so.
 
 | Variable | Meaning |
 | --- | --- |
+| `PERF_PROFILE` | `acceptance` (default), `diagnostic` or `milestone`; diagnostic rows are never acceptance evidence, milestone rows are S06 milestone acceptance only, and `--profile` on `perf:bench` wins over this variable |
 | `PERF_BASE_URL` | reuse an already-running preview instead of building one |
 | `PERF_PORT` | preview port (default `4173`) |
 | `PERF_RUNS` | measured runs per flow × workload × cache state (default 10) |
 | `PERF_WARMUP` | discarded warm-up runs (default 1) |
 | `PERF_SAMPLES` | pointer samples per continuous drag (default 60) |
+| `PERF_TIERS` | comma list of workloads for the tiered flows (default: the bench tiers, peak first; the order never changes) |
+| `PERF_SMOKE` | `1` = smoke check: one run, no warm-up, one sample, rows labelled “smoke, not evidence” |
+| `PERF_DRAG_SAMPLES` | in-session F3/F4 samples per run at the loaded peak (default 5) |
+| `PERF_WORKLOAD_DIR` | workload cache (default `perf/.workloads`, git-ignored) |
+| `PERF_PROJECT` / `--project` | Playwright project for `perf:bench` (default `chrome`, the gating browser) |
+| `PERF_COOLDOWN_SECONDS` | recorded cool-down before the M and S tiers (default 180; 0 in smoke) |
+| `PERF_LOAD_THRESHOLD` (+ `_REASON`) | contamination threshold on the 1-minute load average (default 4.0; a change needs a recorded reason) |
+| `PERF_SWEEP_LATENCY=0` / `--no-sweep-latency` | drop the report-only sweep latency rows (F3/F4/F8 on the focus Wall and F7, at museum ×1 and sweep-H10) for one pass; they run by default |
+| `PERF_EARLY_STOP=1` / `--early-stop` | opt-in decisive hard-budget stop: once at least 3 measured runs of a **hard** row all exceed the budget by more than 25 %, the remaining runs are skipped. The row is recorded as a demonstrated failure with a partial run count and the rule, never as a pass. Target, report-only and smoke rows never stop. The milestone profile owns its own adaptive stop and never combines this series-wide rule with it |
 | `PERF_NETWORK` | `N0`, `N1` (default) or `N2` |
 | `PERF_RESULTS_DIR` | raw result directory (default `$TMPDIR/biskiq-perf-results`) |
 | `PERF_POWER_STATE` | declared power state, recorded with each result |
@@ -141,8 +371,18 @@ N1 configures 40 ms latency, 20 Mbit/s download and 5 Mbit/s upload. CDP through
 arguments use bytes/s (2,500,000 / 625,000). N2 configures 150 ms, 1.6 Mbit/s down
 and 750 kbit/s up; N0 applies no throttling.
 
-A reduced pass (`PERF_RUNS<10` or `PERF_SAMPLES<60`) is labelled a pre-flight
-pass in every row and is never acceptance evidence.
+A reduced pass (`PERF_RUNS<10`, `PERF_WARMUP<1`, `PERF_SAMPLES<60`, fewer drag/precision samples,
+fewer Undo/Redo cycles, fewer F13 edits or F13 cold/repeat-use cycles) is labelled a pre-flight pass
+in every row and is never acceptance evidence. The diagnostic profile is always non-acceptance
+regardless of these variables.
+
+**Setup reads are bounded (harness only).** Counting accepted results, reading a
+mark or a result record and reducing the orbit's frame window happen in the page,
+so a setup step does not copy the frame clock and every input record over CDP. The
+settle checks sample immediately and then once after the same stability interval
+(a half-second for the Stage, a quarter-second for the camera). Neither change
+alters a measured window, the input path, a cache state or a sample floor: the
+same values are computed from the same observations.
 
 Every flow row runs **cold, warm and repeat-use**. Cold creates a fresh browser
 context for every measured run (the contract's definition); warm and repeat-use

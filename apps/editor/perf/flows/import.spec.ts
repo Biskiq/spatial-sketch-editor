@@ -430,7 +430,8 @@ test.describe('F13 repeated import place/undo', () => {
 				heaps.push(await heapUsedMiB(cdp));
 			}
 			const growth = heaps[heaps.length - 1]! - heaps[0]!;
-			const facts = { chromeVersion: (await page.evaluate(() => navigator.userAgent)).split('Chrome/')[1]?.split(' ')[0] ?? 'unknown' };
+			// The launched binary's version; the device descriptor's UA names Playwright's Chromium.
+			const facts = { chromeVersion: browser.version() };
 			const row: ResultRow = {
 				id: 'F13-import-place-undo-repeat-use',
 				flow: 'F13 repeated import place/undo',

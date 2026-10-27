@@ -1,0 +1,32 @@
+{
+  "browserFacts": null,
+  "machineFacts": {
+    "start": {
+      "capturedAt": "2026-10-25T18:52:35.642Z",
+      "machineModel": "Mac14,2",
+      "macOSVersion": "15.7.2",
+      "powerSource": "Battery Power",
+      "batteryPowerDetails": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=7077987)\t100%; discharging; (no estimate) present: true",
+      "lowPowerMode": false,
+      "lowPowerModeDetails": "System-wide power settings:\n SleepDisabled\t\t0\nCurrently in use:\n standby              1\n Sleep On Power Button 1\n hibernatefile        /var/vm/sleepimage\n powernap             1\n networkoversleep     0\n disksleep            10\n sleep                1 (sleep prevented by Claude, powerd, coreaudiod, coreaudiod, ChatGPT)\n hibernatemode        3\n ttyskeepawake        1\n displaysleep         0\n tcpkeepalive         1\n lowpowermode         0\n womp                 0",
+      "chromeExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "chromeCliVersion": "Google Chrome 155.0.8059.85"
+    },
+    "end": {
+      "capturedAt": "2026-10-25T18:55:15.258Z",
+      "machineModel": "Mac14,2",
+      "macOSVersion": "15.7.2",
+      "powerSource": "Battery Power",
+      "batteryPowerDetails": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=7077987)\t100%; discharging; 3:02 remaining present: true",
+      "lowPowerMode": false,
+      "lowPowerModeDetails": "System-wide power settings:\n SleepDisabled\t\t0\nCurrently in use:\n standby              1\n Sleep On Power Button 1\n hibernatefile        /var/vm/sleepimage\n powernap             1\n networkoversleep     0\n disksleep            10\n sleep                1 (sleep prevented by Claude, powerd, coreaudiod, coreaudiod, ChatGPT)\n hibernatemode        3\n ttyskeepawake        1\n displaysleep         0\n tcpkeepalive         1\n lowpowermode         0\n womp                 0",
+      "chromeExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "chromeCliVersion": "Google Chrome 155.0.8059.85"
+    }
+  },
+  "cleanupResult": null,
+  "apiTimingCount": 135,
+  "objectCountAtShutdown": 2,
+  "processesClosed": true,
+  "networkStore": "private in-memory ObjectStore; no R2 connection"
+}
