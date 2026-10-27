@@ -39,8 +39,8 @@ import {
 	type LayoutInstrument
 } from '$lib/authoring/adapters/layout/instrument';
 import {
-	createDimensionsInstrument,
-	layoutDimensionsInput
+	createCardFieldsInstrument,
+	layoutCardFieldsInput
 } from '$lib/authoring/adapters/layout/adapter-support';
 import {
 	LAYOUT_WALL_ANGLE_KIND,
@@ -406,8 +406,9 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 
 		settle(mounted.facade, 3);
 		selectWall(mounted.facade, mounted.wallId);
-		const opened = mounted.facade.openContributedTask('layout-dimensions');
-		expect(opened).toMatchObject({ kind: 'opened' });
+		// Wall handles are **direct manipulation**: the owning adapter claims the press
+		// with no contributed task open, so nothing has to be invoked first.
+		expect(mounted.facade.session.task()).toBeNull();
 		const evaluationId = mounted.facade.evaluationId()!;
 		const endCss = stageCss(mounted.facade, [6, 0]);
 		const lengthCss = stageCss(mounted.facade, [5, 0]);
@@ -459,7 +460,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const OFFSET_RECT = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };
 		expect(mounted.facade.camera.evaluate(OFFSET_RECT, 1).kind).toBe('evaluated');
 		selectWall(mounted.facade, mounted.wallId);
-		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		expect(mounted.facade.session.task()).toBeNull();
 		const evaluationId = mounted.facade.evaluationId()!;
 		const projected = mounted.facade.projectWorld([6, ELEVATION, 0], evaluationId);
 		expect(projected.kind).toBe('projected');
@@ -476,7 +477,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
-		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		expect(mounted.facade.session.task()).toBeNull();
 		const before = wallPoints(mounted.document, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
 		// A shift-drag on the end handle keeps the start fixed and names the angle
@@ -517,7 +518,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
-		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		expect(mounted.facade.session.task()).toBeNull();
 		const evaluationId = mounted.facade.evaluationId()!;
 		const endCss = stageCss(mounted.facade, [6, 0]);
 		// Beyond the fixed start: a magnitude would preview/commit a 1 m Wall on the
@@ -542,7 +543,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
-		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		expect(mounted.facade.session.task()).toBeNull();
 		const evaluationId = mounted.facade.evaluationId()!;
 		// Dragging the start fixes the **end**; the pointer beyond the end is the
 		// same crossing in the opposite fixed-endpoint case.
@@ -566,7 +567,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
-		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		expect(mounted.facade.session.task()).toBeNull();
 		const before = wallPoints(mounted.document, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
 		const middle = stageCss(mounted.facade, [3, 0]);
@@ -609,7 +610,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
-		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		expect(mounted.facade.session.task()).toBeNull();
 		const evaluationId = mounted.facade.evaluationId()!;
 		const endCss = stageCss(mounted.facade, [6, 0]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
@@ -626,7 +627,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
-		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		expect(mounted.facade.session.task()).toBeNull();
 		const firstId = mounted.facade.evaluationId()!;
 		const endCss = stageCss(mounted.facade, [6, 0]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId: firstId }).claimed).toBe(true);
@@ -652,7 +653,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
-		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		expect(mounted.facade.session.task()).toBeNull();
 		const firstId = mounted.facade.evaluationId()!;
 		// A value the overlay's display rounding would lose; Resume must use the
 		// captured request, not re-parse the label.
@@ -678,7 +679,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Paused after a reading change'))).toBe(true);
 
-		const instrument = createDimensionsInstrument(mounted.services)!;
+		const instrument = createCardFieldsInstrument(mounted.services)!;
 		const paused = instrument.pausedProposal();
 		if (paused === null) throw new Error('the reading flip preserved no proposal');
 		// The captured request is what Resume submits: an exact float, not the
@@ -706,14 +707,22 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(instrument.pausedProposal()).toBeNull();
 	});
 
-	it('cannot pick through an inactive helper', async () => {
+	it('picks from the selection alone, and never through another task', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
 		const endCss = stageCss(mounted.facade, [6, 0]);
-		// No contributed task is open: the Layout adapter's handles must not claim.
+
+		// A selected Wall's handles **are** the direct manipulation, so the Layout
+		// adapter claims the press with no contributed task open (`pressWhenNoTask`).
 		expect(mounted.facade.session.task()).toBeNull();
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.pointerIntent({ phase: 'cancel', css: endCss, evaluationId }).claimed).toBe(true);
+
+		// With another contributed task open the same press belongs to that task: a
+		// helper cannot pick through work it is not part of.
+		expect(mounted.facade.openContributedTask('layout-place-plinth')).toMatchObject({ kind: 'opened' });
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(false);
 	});
 });
@@ -808,11 +817,11 @@ describe('T1.P01.S05 — handle hit-testing and inverse mapping', () => {
 		});
 	});
 
-	it('offers the Dimensions instrument with the Wall manipulation fields only for a straight Wall', async () => {
+	it('offers the Card field writer with the Wall manipulation fields only for a straight Wall', async () => {
 		const mounted = await mount();
 		selectWall(mounted.facade, mounted.wallId);
-		expect(layoutDimensionsInput(mounted.services)).not.toBeNull();
-		const instrument = createDimensionsInstrument(mounted.services)!;
+		expect(layoutCardFieldsInput(mounted.services)).not.toBeNull();
+		const instrument = createCardFieldsInstrument(mounted.services)!;
 		expect(instrument.fields().map((field) => field.id)).toEqual([
 			'name',
 			'height',

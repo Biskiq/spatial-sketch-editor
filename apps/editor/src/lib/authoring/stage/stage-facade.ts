@@ -184,6 +184,19 @@ export type StagePointerIntent = {
 };
 
 /**
+ * One **command key** the host offers to the binding that owns the open task.
+ *
+ * `finish` and `backtrack` are the live proposal's own commands (`Enter` and
+ * `Backspace`); `cancel` is the palette-first `Escape`, and it means the same
+ * thing the palette's Cancel control does. The host never interprets them for the
+ * adapter: a task that answers `false` simply leaves the key to the host's
+ * unwinding.
+ */
+export type StageKeyboardIntent = {
+	readonly kind: 'finish' | 'backtrack' | 'cancel';
+};
+
+/**
  * The symbol key of the install-time mutation control.
  *
  * A conformance test uses it to run the real install with adapter re-binding
@@ -229,6 +242,15 @@ export type StageTaskEntry = StageTaskContribution & {
 	readonly order: number;
 };
 
+/**
+ * Where a contributed operation lives: the bottom **dock** (an armable tool), or
+ * the Index/Find list (the default).
+ *
+ * Additive with a default: a contribution that names no home is an Index entry,
+ * exactly as before this field existed, so no existing adapter has to change.
+ */
+export type StageEntryHome = 'dock' | 'index';
+
 /** One PLATE rail-family / capability-Find entry that invokes this adapter's task. */
 export type StageFindEntry = {
 	readonly id: string;
@@ -239,6 +261,8 @@ export type StageFindEntry = {
 	readonly label: string;
 	/** The contributed task this entry invokes. */
 	readonly taskKind: string;
+	/** `dock` arms the tool from the bottom dock; `index` (default) lists it. */
+	readonly home?: StageEntryHome;
 	readonly order?: number;
 };
 
@@ -283,6 +307,42 @@ export type StageCardNameTarget = {
 export type StageCardNameWriterRecord = StageCardNameTarget & { readonly adapterId: string };
 
 /**
+ * One action the Card offers for the selected subject.
+ *
+ * The adapter owns the writer: the Card renders the label and its disclosed
+ * consequence, calls `run()`, and shows the returned words. The host never builds
+ * the intent, and the action never reaches the source directly.
+ */
+export type StageCardActionOutcome = {
+	readonly kind: 'accepted' | 'no-op' | 'refused';
+	readonly message?: string;
+};
+
+export type StageCardAction = {
+	readonly id: string;
+	readonly label: string;
+	/**
+	 * Words the creator reads **before** the action is taken: the planner-derived
+	 * consequences (hosted Openings, Room merge/open). Required for a destructive
+	 * action, and never a second opinion — the adapter derives it from the same
+	 * planner call acceptance runs.
+	 */
+	readonly detail?: string;
+	/** A destructive action states so, and the Card confirms before running it. */
+	readonly destructive?: boolean;
+	run(): Promise<StageCardActionOutcome>;
+};
+
+/** A Card action as the host publishes it, stamped with its owning adapter. */
+export type StageCardActionRecord = StageCardAction & { readonly adapterId: string };
+
+/**
+ * The Card's contributed **writer** for one subject: the fields that used to be
+ * the Dimensions instrument's, now rendered where PLATE puts them.
+ */
+export type StageCardWriterRecord = StageInstrumentContent & { readonly adapterId: string };
+
+/**
  * What an adapter's instrument contribution shows for one invoked task.
  *
  * The host mounts it in the one `StageInstrumentHost`; the adapter supplies the
@@ -318,14 +378,41 @@ export type StageAdapterBinding = {
 	 * `move`, `up` and `cancel`. A binding that returns `false` never sees the rest.
 	 */
 	readonly pointerIntent?: (intent: StagePointerIntent, context: StageAdapterContext) => boolean;
+	/**
+	 * Answer a Stage **command key** while this binding's task is open.
+	 *
+	 * The mirror of `pointerIntent` for the keyboard: the shell owns the map and
+	 * the adapter owns what a command means for its own live work. A binding that
+	 * returns `false` (or does not declare it) leaves the key to the host's own
+	 * unwinding, so an unhandled Escape still closes the task.
+	 */
+	readonly keyIntent?: (intent: StageKeyboardIntent, context: StageAdapterContext) => boolean;
 	/** The host closed the contributed task (Esc, task replacement, or install). */
 	readonly taskClosed?: () => void;
 	readonly selectionChanged?: (selection: StageSelectionState) => void;
 	readonly selectionEcho?: (selection: StageSelection | null) => void;
 	readonly tasks?: readonly StageTaskContribution[];
 	readonly cardFacts?: (subject: StageCardSubject) => readonly StageCardFact[];
+	/**
+	 * The subject's ordinary-field writer for the Card, or `null` when this adapter
+	 * contributes none. Additive with a default: a binding that does not declare it
+	 * contributes no Card fields, exactly as before.
+	 */
+	readonly cardWriter?: (subject: StageCardSubject) => StageInstrumentContent | null;
+	/** The subject's scoped Card actions (a delete and its disclosure). */
+	readonly cardActions?: (subject: StageCardSubject) => readonly StageCardAction[];
 	/** The subject's name writer, or `null` when this adapter does not own one. */
 	readonly cardName?: (subject: StageCardSubject) => StageCardNameTarget | null;
+	/**
+	 * Whether this binding offers a pointer press **while no contributed task is
+	 * open** (direct manipulation of the current selection).
+	 *
+	 * Additive and off by default: an adapter that does not declare it is only
+	 * asked for a press through its own open task, exactly as before. When no task
+	 * is open the host asks the declaring bindings in deterministic (registration)
+	 * order and the first claim wins.
+	 */
+	readonly pressWhenNoTask?: boolean;
 	readonly findEntries?: readonly StageFindEntry[];
 	/** The instrument this adapter's invoked task shows, or `null` for none. */
 	readonly instrument?: (task: {
@@ -531,6 +618,10 @@ export type StageFacade = {
 	cardFacts(subject: StageCardSubject): readonly StageCardFactRecord[];
 	/** The one name writer contributed for a subject, or `null` when none claims it. */
 	cardNameWriter(subject: StageCardSubject): StageCardNameWriterRecord | null;
+	/** The one Card field writer contributed for a subject, or `null`. */
+	cardWriter(subject: StageCardSubject): StageCardWriterRecord | null;
+	/** Every scoped Card action contributed for a subject, in deterministic order. */
+	cardActions(subject: StageCardSubject): readonly StageCardActionRecord[];
 	overlays(): readonly StageOverlayContribution[];
 	graphics(): readonly StageWorldGraphic[];
 	/** Every adapter's proposed-pose mesh for the live evaluation. */
@@ -541,6 +632,11 @@ export type StageFacade = {
 	 */
 	pointerIntent(intent: StagePointerIntent): { readonly claimed: boolean; readonly adapterId: string | null };
 	/**
+	 * Offer a command key to the binding that owns the open task. Returns the
+	 * adapter that answered it, or `null` when the host's own unwinding keeps it.
+	 */
+	keyboardIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	/**
 	 * Ask the shell to re-read contributions now. An adapter that changes preview
 	 * state (a candidate pose) calls this so the overlay reflects it without a
 	 * document change.
@@ -550,6 +646,8 @@ export type StageFacade = {
 		owner: string;
 		evaluationId: string;
 		policy: 'continue-after-revalidation' | 'suspend-proposal' | 'cancel-on-reading-change';
+		/** `true` for the host's own navigation press; default `false` (authored work). */
+		navigation?: boolean;
 	}): GestureAcquisition;
 	dispose(): void;
 };
@@ -1913,7 +2011,7 @@ export function createStageFacade(input: {
 			});
 		},
 		pointerIntent(intent) {
-			if (!isLive() || session.task() === null) return { claimed: false, adapterId: null };
+			if (!isLive()) return { claimed: false, adapterId: null };
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return { claimed: false, adapterId: null };
@@ -1921,17 +2019,36 @@ export function createStageFacade(input: {
 				// Only the binding whose task owns the surface may claim the press: a
 				// different adapter's pointer hook cannot take another task's gesture.
 				const taskOwner = contributedTaskOwner;
-				if (taskOwner === null) return { claimed: false, adapterId: null };
-				const entry = adapters.get(taskOwner.adapterId);
-				const claim = entry?.contributions.pointerIntent;
-				if (claim === undefined) return { claimed: false, adapterId: null };
-				try {
-					if (claim(intent, handle.context)) {
-						pointerOwner = taskOwner.adapterId;
-						return { claimed: true, adapterId: taskOwner.adapterId };
+				if (taskOwner !== null) {
+					const entry = adapters.get(taskOwner.adapterId);
+					const claim = entry?.contributions.pointerIntent;
+					if (claim === undefined) return { claimed: false, adapterId: null };
+					try {
+						if (claim(intent, handle.context)) {
+							pointerOwner = taskOwner.adapterId;
+							return { claimed: true, adapterId: taskOwner.adapterId };
+						}
+					} catch {
+						// A throwing claim is a refusal, not a stolen press.
 					}
-				} catch {
-					// A throwing claim is a refusal, not a stolen press.
+					return { claimed: false, adapterId: null };
+				}
+				// No contributed task owns the surface. A binding that declares it offers a
+				// press without a task — direct manipulation of the current selection — is
+				// asked in **registration order**, so the claimant is deterministic and a
+				// binding that does not declare the capability is never asked at all.
+				for (const [adapterId, entry] of adapters.entries()) {
+					if (entry.contributions.pressWhenNoTask !== true) continue;
+					const claim = entry.contributions.pointerIntent;
+					if (claim === undefined) continue;
+					try {
+						if (claim(intent, handle.context)) {
+							pointerOwner = adapterId;
+							return { claimed: true, adapterId };
+						}
+					} catch {
+						// A throwing claim is a refusal, not a stolen press.
+					}
 				}
 				return { claimed: false, adapterId: null };
 			}
@@ -1946,8 +2063,58 @@ export function createStageFacade(input: {
 			if (intent.phase !== 'move') pointerOwner = null;
 			return { claimed: true, adapterId: owner };
 		},
+		keyboardIntent(intent) {
+			if (!isLive()) return { claimed: false, adapterId: null };
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return { claimed: false, adapterId: null };
+			// Only the binding that owns the open task answers a command key: another
+			// adapter's hook must not command work it does not own.
+			const taskOwner = contributedTaskOwner;
+			if (taskOwner === null) return { claimed: false, adapterId: null };
+			const entry = adapters.get(taskOwner.adapterId);
+			const claim = entry?.contributions.keyIntent;
+			if (claim === undefined) return { claimed: false, adapterId: null };
+			try {
+				if (claim(intent, handle.context)) {
+					return { claimed: true, adapterId: taskOwner.adapterId };
+				}
+			} catch {
+				// A throwing claim is a refusal, never a stolen key.
+			}
+			return { claimed: false, adapterId: null };
+		},
 		notifySurfaceChange() {
 			if (isLive()) notifyAdaptersChanged();
+		},
+		cardWriter(subject) {
+			if (!isLive()) return null;
+			ensureBindings();
+			// Deterministic owner, exactly like the name writer: adapter ID order, so
+			// two adapters cannot disagree about which fields the Card shows.
+			const ids = [...adapters.keys()].sort();
+			for (const adapterId of ids) {
+				const entry = adapters.get(adapterId);
+				if (entry?.contributions.cardWriter === undefined) continue;
+				let content: StageInstrumentContent | null = null;
+				try { content = entry.contributions.cardWriter(subject); } catch { content = null; }
+				if (content !== null) return { ...content, adapterId };
+			}
+			return null;
+		},
+		cardActions(subject) {
+			if (!isLive()) return [];
+			ensureBindings();
+			const actions: StageCardActionRecord[] = [];
+			for (const [adapterId, entry] of adapters.entries()) {
+				let contributed: readonly StageCardAction[] = [];
+				try { contributed = entry.contributions.cardActions?.(subject) ?? []; } catch { contributed = []; }
+				for (const action of contributed) actions.push({ ...action, adapterId });
+			}
+			return actions.sort((a, b) => {
+				if (a.adapterId !== b.adapterId) return a.adapterId < b.adapterId ? -1 : 1;
+				return a.id === b.id ? 0 : a.id < b.id ? -1 : 1;
+			});
 		},
 		cardNameWriter(subject) {
 			if (!isLive()) return null;
@@ -1970,7 +2137,8 @@ export function createStageFacade(input: {
 				owner: request.owner,
 				evaluationId: request.evaluationId,
 				acceptedRevision: currentSnapshot.acceptedRevision,
-				policy: request.policy
+				policy: request.policy,
+				...(request.navigation === true ? { navigation: true } : {})
 			});
 			// **Never notify adapter listeners here.** A lease is not a registration or
 			// a binding change: a granted proposal changes what Undo reports, but the

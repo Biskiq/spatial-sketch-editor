@@ -2,8 +2,8 @@
  * Shared product flows for the measurement harness (T3.P03.S02).
  *
  * The flows drive the shipped product through its real UI: the starter gallery,
- * the source-JSON entry, the Index selection, the contributed Dimensions task
- * and the Head's Undo/Redo/Save controls. No test-only route, adapter or build
+ * the source-JSON entry, the Index selection with the Card's field writer, and
+ * the Head's Undo/Redo/Save controls. No test-only route, adapter or build
  * injection is reached — the harness observes the same UI a creator does.
  */
 
@@ -125,14 +125,17 @@ export async function waitForMark(page: Page, name: string, timeout = 20_000): P
 	return record;
 }
 
-/** Select the first Wall through the Index, then open its contributed Dimensions task. */
-export async function selectFirstWallAndOpenDimensions(page: Page): Promise<void> {
+/**
+ * Select the first Wall through the Index and wait for its manipulation handles.
+ *
+ * T1.P02.S02 retired the Dimensions task: a selected Wall's handles are offered
+ * with **no task armed** (the Layout adapter's `pressWhenNoTask`), and the
+ * ordinary fields render in the selection Card.
+ */
+export async function selectFirstWall(page: Page): Promise<void> {
 	const wallRow = page.locator('button.item-row', { hasText: 'Wall' }).first();
 	await expect(wallRow).toBeVisible();
 	await wallRow.click();
-	const dimensions = page.locator('.contributed-item button.item-row', { hasText: 'Dimensions' }).first();
-	await expect(dimensions).toBeVisible();
-	await dimensions.click();
 	await expect(handleLocator(page, 'Wall end')).toBeVisible();
 }
 
@@ -221,16 +224,13 @@ export async function scriptedPanZoom(page: Page, durationMs: number): Promise<v
 
 /**
  * Select one Wall by id through the Index search (the Index labels a Wall
- * `wall · <id>`), then open its contributed Dimensions task.
+ * `wall · <id>`) and wait for its manipulation handles.
  */
-export async function selectWallAndOpenDimensions(page: Page, wallId: string): Promise<void> {
+export async function selectWallById(page: Page, wallId: string): Promise<void> {
 	await page.locator('#plate-index-search').fill(wallId);
 	const wallRow = page.locator('button.item-row', { hasText: wallId }).first();
 	await expect(wallRow).toBeVisible();
 	await wallRow.click();
-	const dimensions = page.locator('.contributed-item button.item-row', { hasText: 'Dimensions' }).first();
-	await expect(dimensions).toBeVisible();
-	await dimensions.click();
 	await expect(handleLocator(page, 'Wall end')).toBeVisible();
 }
 
@@ -405,12 +405,12 @@ export async function frameWindow(
 	}, [from, to] as const);
 }
 
-/** Type an exact Wall length through the Dimensions instrument and commit with Enter. */
+/** Type an exact Wall length through the Card's Layout field writer and commit with Enter. */
 export async function commitPrecisionLength(page: Page, lengthMeters: number): Promise<void> {
 	const lengthField = page.locator('label.field', { hasText: 'Length' }).locator('input').first();
-	// An accepted install rebinds the adapter's task, so the instrument may have
-	// closed since the previous command. Reopen it through the shipped Index entry.
-	if (!(await lengthField.isVisible().catch(() => false))) await selectFirstWallAndOpenDimensions(page);
+	// An accepted install rebinds the adapter, so the Card may have closed since the
+	// previous command. Re-select the Wall through the shipped Index entry.
+	if (!(await lengthField.isVisible().catch(() => false))) await selectFirstWall(page);
 	await expect(lengthField).toBeVisible();
 	await lengthField.fill(String(lengthMeters));
 	await lengthField.press('Enter');
