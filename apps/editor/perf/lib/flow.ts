@@ -70,6 +70,45 @@ export async function startStarterGallery(page: Page): Promise<void> {
 }
 
 /**
+ * Draw and close a four-point enclosure through the shipped Ink palette.
+ *
+ * Typed points are the same exact parser a creator uses; no test-only route or
+ * direct document write is involved. An empty project has a datum but no Room
+ * floor, so this is the product path that makes floor placement reachable.
+ */
+export async function drawInkEnclosure(page: Page): Promise<void> {
+	const dock = page.locator('[data-dock-tool="layout-ink"]');
+	if ((await dock.getAttribute('aria-pressed')) !== 'true') await dock.click();
+	await expect(page.locator('[data-layout-ink-palette]')).toBeVisible();
+	const points = [
+		[2, -2],
+		[6, -2],
+		[6, 2],
+		[2, 2]
+	] as const;
+	for (let index = 0; index < points.length; index += 1) {
+		const [x, z] = points[index]!;
+		await page.locator('[data-ink-x]').fill(String(x));
+		await page.locator('[data-ink-z]').fill(String(z));
+		await page.locator('[data-ink-add-point]').click();
+		await expect
+			.poll(
+				() =>
+					page.evaluate(() => {
+						const text = document.querySelector('[data-layout-ink-palette] .live')?.textContent ?? '';
+						const match = /Points\s*(\d+)/.exec(text);
+						return match ? Number(match[1]) : -1;
+					}),
+				{ timeout: 10_000 }
+			)
+			.toBe(index + 1);
+	}
+	const before = await acceptedResultCount(page);
+	await page.locator('[data-ink-close]').click();
+	await waitForAcceptedResult(page, before);
+}
+
+/**
  * F2's explicit Open: the source-JSON entry, a real file chooser and the
  * canonical admission path. The returned ledger slice covers the open.
  */

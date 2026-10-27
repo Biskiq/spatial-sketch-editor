@@ -25,7 +25,7 @@ import {
 	type ModelImportClient
 } from '$lib/platform/model-import-client';
 
-import { sha256Hex } from './ingest';
+import { sha256Hex } from './digest';
 import {
 	CREATOR_IMPORT_RECIPE,
 	type CreatorImportFile,

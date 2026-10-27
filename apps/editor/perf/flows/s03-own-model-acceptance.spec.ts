@@ -322,11 +322,56 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		expect(entities[0]!.position[2]).toBeCloseTo(-0.5, 3);
 		expect(entities[0]!.rotation[1]).toBeCloseTo(0.5, 3);
 
-		// Compose's reachability for a placed creator model is a diagnostic, not an
-		// acceptance row: it is measured and recorded by
-		// `s03-diagnostics.spec.ts`, which asserts nothing about the gap so a product
-		// fix does not have to break a gate test. The gate does not claim resize,
-		// duplicate or delete.
+		// --- resize, duplicate and delete the placed creator model ----------
+		// The pointer placement leaves the model canonically selected; Compose reads
+		// that subject and the approved resource's recorded contact. Each command is
+		// one accepted result and one history entry.
+		await invokeIndexTask(page, 'Resize');
+		await expect(page.locator(INSTRUMENT)).toContainText('Compose');
+		const resizeEntry = page.locator(INSTRUMENT).getByRole('button', { name: 'Resize…', exact: true });
+		await expect(resizeEntry, 'a model with approved contact offers Resize').toBeEnabled();
+		await resizeEntry.click();
+		await page.locator(INSTRUMENT).getByRole('textbox').first().fill('1.5');
+		const beforeResize = await acceptedResultCount(page);
+		await page.locator(INSTRUMENT).getByRole('button', { name: 'Resize', exact: true }).click();
+		await waitAccepted(page, beforeResize);
+		await saveProject(page);
+		stored = await api.read(projectId);
+		entities = sceneEntities(stored.document);
+		expect(entities).toHaveLength(1);
+		expect(entities[0]!.scale).toBeCloseTo(1.5, 3);
+		expect(entities[0]!.position[0]).toBeCloseTo(1.25, 3);
+		expect(entities[0]!.position[2]).toBeCloseTo(-0.5, 3);
+		evidence.afterResize = { scale: entities[0]!.scale, position: entities[0]!.position };
+
+		await invokeIndexTask(page, 'Duplicate');
+		const duplicate = page.locator(INSTRUMENT).getByRole('button', { name: 'Duplicate', exact: true });
+		await expect(duplicate, 'a model with approved contact offers Duplicate').toBeEnabled();
+		const beforeDuplicate = await acceptedResultCount(page);
+		await duplicate.click();
+		await waitAccepted(page, beforeDuplicate);
+		await saveProject(page);
+		stored = await api.read(projectId);
+		entities = sceneEntities(stored.document);
+		expect(entities).toHaveLength(2);
+		expect(new Set(entities.map((entity) => entity.assetId)).size).toBe(1);
+		expect(entities.every((entity) => entity.scale === 1.5)).toBe(true);
+		evidence.afterDuplicate = {
+			entityIds: entities.map((entity) => entity.id),
+			scales: entities.map((entity) => entity.scale)
+		};
+
+		await invokeIndexTask(page, 'Delete');
+		const remove = page.locator(INSTRUMENT).getByRole('button', { name: 'Delete', exact: true });
+		await expect(remove, 'a selected model offers Delete').toBeEnabled();
+		const beforeDeleteModel = await acceptedResultCount(page);
+		await remove.click();
+		await waitAccepted(page, beforeDeleteModel);
+		await saveProject(page);
+		stored = await api.read(projectId);
+		entities = sceneEntities(stored.document);
+		expect(entities).toHaveLength(1);
+		evidence.afterDeleteModel = { entityIds: entities.map((entity) => entity.id) };
 
 		// --- a second instance shares the one immutable revision ------------
 		// Close the open task first; Import is its own procedure.

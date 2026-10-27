@@ -13,7 +13,10 @@
  */
 
 import type { ViewportEvaluation } from '@portfolio/camera-core';
-import type { StageAdapterFactory } from '$lib/authoring/stage/stage-adapter-host';
+import type {
+	StageAdapterFactory,
+	StageAdapterServices
+} from '$lib/authoring/stage/stage-adapter-host';
 import { evaluationIdOf } from '$lib/authoring/stage/camera-session';
 import type {
 	StageAdapter,
@@ -59,6 +62,7 @@ import {
 	sceneSessionFromServices,
 	sceneSurfaceFor,
 	sceneComposeSupport,
+	sceneModelContactMinY,
 	type SceneCandidate,
 	type ScenePlacementSession,
 	type SceneSessionOutcome,
@@ -83,11 +87,16 @@ const SCENE_IMPORT_TASK = 'scene-import';
 const SCENE_IMPORT_KIND = 'import-model';
 
 function entityFacts(
+	services: StageAdapterServices,
 	source: ReturnType<typeof stageScene>,
 	entityId: string
 ): readonly StageCardFact[] {
 	const entity = source.entities.find((candidate) => candidate.id === entityId);
 	if (entity === undefined) return [];
+	const contact =
+		entity.kind === 'model'
+			? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), entity)
+			: null;
 	return [
 		{ label: 'Kind', value: entity.kind },
 		{ label: 'Name', value: entity.name },
@@ -102,7 +111,7 @@ function entityFacts(
 		// Only a subject Compose can actually resize advertises a Scale fact: a light
 		// or model has no verified contact, so a Scale row would name a writer that
 		// never exists.
-		...(sceneComposeSupport(entity).resize
+		...(sceneComposeSupport(entity, contact).resize
 			? [
 					{
 						label: 'Scale',
@@ -608,7 +617,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// Only a Scene entity subject claims Scene facts; a Layout subject keeps
 					// the Layout adapter's facts.
 					if (cardSubject.sourceKind !== 'entity') return [];
-					return entityFacts(source, cardSubject.sourceId);
+					return entityFacts(services, source, cardSubject.sourceId);
 				},
 				instrument(task) {
 					openTaskKind = task.kind;

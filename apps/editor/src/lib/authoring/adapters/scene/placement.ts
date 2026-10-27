@@ -39,7 +39,11 @@ import {
 	type SceneOperationResult
 } from '@portfolio/project-model/scene-planning';
 import type { AuthoringIntent, SceneEntity, Vec3 } from '@portfolio/project-model';
-import type { CameraFreeSceneDocument, LayoutUnitPayload } from '@portfolio/project-model/units';
+import type {
+	CameraFreeSceneDocument,
+	LayoutUnitPayload,
+	ProjectEnvelope
+} from '@portfolio/project-model/units';
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
@@ -400,6 +404,28 @@ export type SceneComposeSupport = {
  * lease and then refuse (and the adapter would advertise a `Scale` fact that
  * cannot be written). Delete needs no contact.
  */
+/**
+ * The approved floor contact of one model entity, read from the accepted
+ * envelope's `model` resource.
+ *
+ * This is the same metadata the placement session reads through
+ * `contactMinYFor`; the Compose panel and the Card's Scale fact need it without
+ * a session, so they read the resource here rather than guessing from a mesh or
+ * treating every model as contact-less.
+ */
+export function sceneModelContactMinY(
+	envelope: ProjectEnvelope,
+	entity: SceneEntity
+): number | null {
+	if (entity.kind !== 'model') return null;
+	for (const resource of envelope.units.resources.data.resources) {
+		if (resource.kind === 'model' && resource.id === entity.assetId && resource.model !== undefined) {
+			return resource.model.placement.contactMinY;
+		}
+	}
+	return null;
+}
+
 export function sceneComposeSupport(
 	entity: SceneEntity,
 	modelContactMinY?: number | null
