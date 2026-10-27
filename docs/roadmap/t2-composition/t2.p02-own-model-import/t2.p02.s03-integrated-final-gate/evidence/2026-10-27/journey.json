@@ -1,5 +1,5 @@
 {
-  "projectId": "perf-s03-mvqqlabb",
+  "projectId": "perf-s03-mvqr8xed",
   "browser": "chrome",
   "errors": [],
   "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
@@ -32,24 +32,24 @@
   },
   "twoInstances": {
     "entityIds": [
-      "entity-d8db2769-b1d1-4f06-b2ab-fd09d2687e6a",
-      "entity-46c48de1-fcb9-4f4e-a013-5c3ab1949179"
+      "entity-eb7e5095-88b2-4fb2-a5c1-5a20b42706c6",
+      "entity-f342c5e3-4cdb-4128-9d83-efeb895cab40"
     ],
     "assetIds": [
-      "model-510cf2e9-5b7a-40f5-8b86-b80d19e28c26",
-      "model-510cf2e9-5b7a-40f5-8b86-b80d19e28c26"
+      "model-7439a48f-0c27-4c99-b32f-52429653dd53",
+      "model-7439a48f-0c27-4c99-b32f-52429653dd53"
     ],
     "resourceIds": [
-      "model-510cf2e9-5b7a-40f5-8b86-b80d19e28c26"
+      "model-7439a48f-0c27-4c99-b32f-52429653dd53"
     ]
   },
   "resource": {
-    "id": "model-510cf2e9-5b7a-40f5-8b86-b80d19e28c26",
+    "id": "model-7439a48f-0c27-4c99-b32f-52429653dd53",
     "pin": {
       "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78",
       "mime": "model/gltf-binary",
       "size": 1201064,
-      "locator": "/projects/perf-s03-mvqqlabb/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+      "locator": "/projects/perf-s03-mvqr8xed/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
     },
     "source": {
       "manifestHash": "sha256-8ab968947ae796732bd527a388236c44d7945a069bc6b2669c4510efceff5357",
@@ -84,5 +84,6 @@
   "reopenedPixels": 80910,
   "reopenErrors": [],
   "previewPixelsWithModel": 74328,
+  "previewTextureWaitedMs": 153,
   "previewPixelsControl": 0
 }

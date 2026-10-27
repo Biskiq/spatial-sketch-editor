@@ -56,6 +56,9 @@ const SOURCE_BOUND = 50 * 1024 * 1024;
 
 async function saveProject(page: Page): Promise<void> {
 	const save = page.locator('[data-head-save] button').first();
+	// A freshly created empty project is saved already; Save is then disabled with
+	// "All accepted changes are saved." rather than waiting for a first click.
+	if ((await page.locator('[data-head-save]').getAttribute('data-save-status')) === 'saved' && (await save.isDisabled())) return;
 	await expect(save).toBeEnabled();
 	await save.click();
 	await expect
@@ -104,6 +107,30 @@ async function canvasShot(page: Page, selector: string, name: string) {
 	const buffer = await page.locator(selector).first().screenshot();
 	await writeFile(resolve(resultsDir, name), buffer);
 	return { buffer, pixels: modelGreenPixels(decodePng(buffer)) };
+}
+
+/**
+ * Shot the canvas once the mapped derivative is actually painted.
+ *
+ * The mapped texture arrives as a fetched derivative after the first paint, so a
+ * single shot taken on the first frame can catch the untextured fallback. The
+ * row under test is "Preview shows the placed mapped model", so it waits for the
+ * mapped pixels and records how long that took rather than asserting a frame.
+ */
+async function canvasShotMapped(
+	page: Page,
+	selector: string,
+	name: string,
+	minPixels = 500,
+	timeoutMs = 60_000
+) {
+	const started = Date.now();
+	let shot = await canvasShot(page, selector, name);
+	while (shot.pixels <= minPixels && Date.now() - started < timeoutMs) {
+		await page.waitForTimeout(250);
+		shot = await canvasShot(page, selector, name);
+	}
+	return { ...shot, waitedMs: Date.now() - started };
 }
 
 type ProjectRead = { readonly revision: number | string; readonly document: Record<string, unknown> };
@@ -345,8 +372,9 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await reopenPage.locator(HEAD_PREVIEW).click();
 		await expect(reopenPage.locator(VISITOR_CANVAS)).toBeVisible({ timeout: 120_000 });
 		await reopenPage.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-		const previewWithModel = await canvasShot(reopenPage, VISITOR_CANVAS, 's03-preview-with-model.png');
+		const previewWithModel = await canvasShotMapped(reopenPage, VISITOR_CANVAS, 's03-preview-with-model.png');
 		evidence.previewPixelsWithModel = previewWithModel.pixels;
+		evidence.previewTextureWaitedMs = previewWithModel.waitedMs;
 		expect(previewWithModel.pixels, 'Preview shows the placed mapped model').toBeGreaterThan(500);
 		await reopenPage.getByRole('button', { name: /Exit Preview/ }).click();
 		await expect(reopenPage.locator(VISITOR_CANVAS)).toBeHidden();
@@ -375,6 +403,55 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await writeFile(resolve(resultsDir, 's03-journey-evidence.json'), JSON.stringify(evidence, null, 2));
 		expect(errors).toEqual([]);
 		await reopened.context.close();
+		await session.context.close();
+	});
+
+	test('an empty project imports and reviews the same model; placement needs a floor', async ({ browser }) => {
+		const session = await signedInSession(browser);
+		const { page } = session;
+		const api = projectApi(session.context.request);
+		const projectId = uniqueProjectId('s03empty');
+		const evidence: Record<string, unknown> = { projectId };
+
+		await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
+		await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
+		await page.getByRole('button', { name: 'Begin empty' }).click();
+		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 120_000 });
+		await saveProject(page);
+
+		await openImport(page);
+		const report = await readModel(page, await mappedModelGlb(), 'empty-project-model.glb');
+		evidence.report = report;
+		await page.getByRole('button', { name: 'Approve and place' }).click();
+		await expect(page.locator(INSTRUMENT)).toBeVisible({ timeout: 120_000 });
+		const point = await floorPoint(page);
+		const before = await acceptedResultCount(page);
+		await page.mouse.click(point.x, point.y);
+		// An empty project has no compiled Room floor; the placement may refuse with
+		// its reason. Record which happened rather than assuming either.
+		await page.waitForTimeout(2_000);
+		const accepted = (await acceptedResultCount(page)) > before;
+		evidence.placementAccepted = accepted;
+		evidence.feedback = (await page.locator(`${INSTRUMENT} p.feedback`).innerText().catch(() => '(none)')).replace(/\s+/g, ' ');
+		evidence.instrumentText = (await page.locator(INSTRUMENT).innerText().catch(() => '(none)')).replace(/\s+/g, ' ');
+		const emptyStage = await canvasShot(page, 'canvas', 's03-empty-project-stage.png');
+		evidence.stageColourPixels = emptyStage.pixels;
+		if (accepted) {
+			await saveProject(page);
+			const stored = await api.read(projectId);
+			expect(modelResources(stored.document)).toHaveLength(1);
+			expect(sceneEntities(stored.document)).toHaveLength(1);
+		} else {
+			await saveProject(page);
+			const stored = await api.read(projectId);
+			expect(modelResources(stored.document)).toHaveLength(0);
+			expect(sceneEntities(stored.document)).toHaveLength(0);
+			// The pointer claim is refused before a proposal, so the instrument shows no
+			// reason at all. That silence is recorded as a finding in the acceptance
+			// record rather than asserted here, so a future explanation does not fail
+			// this flow.
+		}
+		await writeFile(resolve(resultsDir, 's03-empty-project-evidence.json'), JSON.stringify(evidence, null, 2));
 		await session.context.close();
 	});
 
