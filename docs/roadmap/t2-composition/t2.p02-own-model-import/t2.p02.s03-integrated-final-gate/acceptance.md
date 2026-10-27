@@ -169,7 +169,8 @@ checkable in the artifacts:
    is scoped to T1.P02.S06 ("a later slice that needs formal statistics still uses the 10-run
    method"), so S03 may reuse the harness but cannot borrow the exception. The formal contract asks
    for one discarded warm-up plus **≥ 10 measured runs** per flow × workload × cache state at
-   ≥ 600 frames / ≥ 60 inputs per run; these rows are three independent runs.
+   ≥ 600 frames / ≥ 60 inputs per run. Here most rows are three independent runs, and F13 is a
+   single warm context of ten cycles.
 2. **Pass scope.** Every committed artifact is a per-flow report, and `perf/lib/report.ts` writes
    `acceptanceEvidence: false` and `passScoped: false` for them by design: only the bench manifest,
    which aggregates every decision row and the pass conditions, may say otherwise. No manifest was
