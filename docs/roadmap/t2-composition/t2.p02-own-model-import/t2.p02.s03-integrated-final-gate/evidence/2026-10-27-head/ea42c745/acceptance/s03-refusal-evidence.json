@@ -1,0 +1,22 @@
+{
+  "projectId": "perf-s03refuse-mvr92tld",
+  "cases": [
+    {
+      "case": "oversize",
+      "text": "The source set is 52428801 bytes; a creator import is limited to 52428800 bytes."
+    },
+    {
+      "case": "malformed",
+      "text": "The source could not be read: Invalid glTF 2.0 binary."
+    },
+    {
+      "case": "cancelled-report",
+      "text": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.00"
+    },
+    {
+      "case": "installed-resources",
+      "first": 0,
+      "second": 0
+    }
+  ]
+}

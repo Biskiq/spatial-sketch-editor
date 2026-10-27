@@ -20,11 +20,12 @@ artifact. It was registered in batch E (E1) and is now approved and released by 
 final gate has not run: no acceptance verdict, readiness evidence or implementation result is claimed.
 
 > **Status update, 2026-10-27:** the gate ran and the record exists —
-> [acceptance.md](./acceptance.md). It is **not accepted** (two required rows blocked, the
-> empty-project line unreachable on that base, one hard delivery row missed); the paragraphs above
-> record the plan as approved, before that run. The failed gate is preserved and its owner decisions
-> are routed in [disposition.md](./disposition.md); S03 remains `in-progress` and T2.P02 remains
-> active.
+> [acceptance.md](./acceptance.md). The **original** run at `a025e2dd` was not accepted (two required
+> rows blocked, the empty-project line unreachable on that base, one hard delivery row missed); the
+> current recovery at `8cb97fe8` passes every product row and still misses the Stage delivery budget
+> and the formal pass-scoped performance rows. The paragraphs above record the plan as approved,
+> before the run. The failed gate is preserved and its owner decisions are routed in
+> [disposition.md](./disposition.md); S03 remains `in-progress` and T2.P02 remains active.
 
 ## Prerequisite
 

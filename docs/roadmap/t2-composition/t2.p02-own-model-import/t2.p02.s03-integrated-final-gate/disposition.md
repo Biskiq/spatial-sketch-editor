@@ -8,10 +8,12 @@ AUTHORITY: NONE — the phase README owns slice status; the acceptance record ow
 STATUS:    FAILED FINAL GATE, dispositioned 2026-10-27. T2.P02.S03 stays **in-progress** and
            **NOT ACCEPTED**; T2.P02 stays **active** and is not closable. Evidence is preserved at
            its tested revision and is historical once a different product base is proposed.
-RECOVERY:  [recovery.md](./recovery.md) records a later repair and re-run at `7d1212b6` on the
-           integrated main. The manipulation row and the empty-project journey are now reachable;
-           the Stage first-load budget still hard-misses at 456.7 KiB br and the formal owner-run
-           rows are still unrun. The verdict below is unchanged.
+RECOVERY:  [recovery.md](./recovery.md) records the first repair and re-run at `7d1212b6`;
+           [recovery-head.md](./recovery-head.md) records the current repair and re-run at
+           `8cb97fe8`. The manipulation row is demonstrated end to end, the empty-project row is an
+           asserted acceptance row, and the Stage first-load budget measures 422.4 KiB br with an
+           evidence-backed [amendment proposal](./delivery-budget-proposal.md). Formal pass-scoped
+           performance rows remain unresolved. The verdict below is unchanged.
 ```
 
 ## 1. Verdict preserved
@@ -57,6 +59,11 @@ measurements describe `9e0fcb50`, not the eventual `main`.
 
 ## 3. Cross-track observations (integration only — not acceptance)
 
+> **Historical at `83c79c40`; superseded by [recovery-head.md](./recovery-head.md).** In particular,
+> Resize and Duplicate are now enabled for an approved model with recorded contact, the empty
+> project's Place instrument explains the missing floor and keeps the armed model, and the route
+> measures 422.4 KiB br at `8cb97fe8`. The table is retained as the integration snapshot it was.
+
 These observations come from a scratch integration branch at `origin/main` (`83c79c40`) that merged
 #201 and this branch with no conflicts and passed `npm run check`, `test:arch` (22/180) and
 `test:full` (214/2,653). They are **integration observations**, not S03 acceptance evidence and not
@@ -74,6 +81,11 @@ The #201 merge order is a coordinator decision. The observation above does not a
 does not re-accept the empty-project line, and does not turn the 2/2 smoke into a gate pass.
 
 ## 4. Remaining owner decisions
+
+> **Current status:** decision 5 is ruled (draw-then-place, with guidance); decision 1 is repaired
+> and demonstrated (`8cb97fe8`) and needs re-acceptance; the F6/formal-method evaluation is
+> authorized but remains unresolved and pass-scoped; decision 2 is the open
+> [budget amendment](./delivery-budget-proposal.md). The list below is the historical disposition.
 
 The five decisions in the [acceptance record](./acceptance.md#required-owner-decisions) remain
 open. Restated for the next action, they are:

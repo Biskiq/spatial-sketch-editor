@@ -1,4 +1,8 @@
-# T2.P02.S03 — recovery attempt at `7d1212b6`
+# T2.P02.S03 — first recovery attempt at `7d1212b6`
+
+> **Current recovery:** [recovery-head.md](./recovery-head.md) records the later repair and re-run at
+> `8cb97fe8`, including the empty-project acceptance row and the 422.4 KiB bundle. This file is the
+> historical first attempt and is unchanged except for the machine-fact correction below.
 
 ```text
 AUTHORITY: NONE — the acceptance record still owns the gate verdict. This artifact records a repair
@@ -34,7 +38,7 @@ journey remains an owner decision.
 All runs used branded Google Chrome 156.0.8078.48 through the S03 supervisor, the ordinary
 production build, the in-process API, a dedicated Postgres database (`biskiq_s03_recovery`) and
 the in-memory object store. The machine is the designated MacBook Air M2 (Mac14,2), 16 GiB,
-macOS 15.8.2, on AC power, Low Power Mode off.
+macOS 15.8.2, on **battery** (`s03-machine-facts.json` records Battery Power), Low Power Mode off.
 
 ```text
 acceptance  2/2 tests, 38.3 s — perf/flows/s03-own-model-acceptance.spec.ts

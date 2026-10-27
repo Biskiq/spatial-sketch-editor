@@ -1,0 +1,15 @@
+{
+  "typed": {
+    "subject": "ENTITY · SCENE entity-540232cc-b8c4-4c6e-a3ed-589217fbfa3c Collapse ✕ Domain scene Kind primitive Name Block Position 1.5 m · 0.5 m · -1 m Scale 1 (uniform) Yaw…",
+    "composeText": "Compose entity-540232cc-b8c4-4c6e-a3ed-589217fbfa3c Resize… Duplicate Delete Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.",
+    "resizeDisabled": false
+  },
+  "pointer": {
+    "subjectSamples": [
+      "0ms: ENTITY · SCENE entity-affe1cef-dfad-45fa-b956-5d418a084f39 Collapse ✕ Domain scene Kind primitive Name Block Position 6.152097977753508 m · 0.5 m · -2.015817303…",
+      "200ms: ENTITY · SCENE entity-affe1cef-dfad-45fa-b956-5d418a084f39 Collapse ✕ Domain scene Kind primitive Name Block Position 6.152097977753508 m · 0.5 m · -2.015817303…",
+      "1000ms: ENTITY · SCENE entity-affe1cef-dfad-45fa-b956-5d418a084f39 Collapse ✕ Domain scene Kind primitive Name Block Position 6.152097977753508 m · 0.5 m · -2.015817303…",
+      "3000ms: ENTITY · SCENE entity-affe1cef-dfad-45fa-b956-5d418a084f39 Collapse ✕ Domain scene Kind primitive Name Block Position 6.152097977753508 m · 0.5 m · -2.015817303…"
+    ]
+  }
+}
