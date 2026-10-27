@@ -8,14 +8,16 @@ pitches. **Current implementation priorities and sequencing live in the tracker:
 2026-09-27 direction as refined by the
 [`2026-09-29 World | Experience amendment`](./decisions/world-experience-reconciliation-2026-09-29.md);
 the [September 27 decision record](./decisions/northstar-ratification-2026-09-27.md)
-is historical decision provenance and the normative baseline. Where this document
+is historical decision provenance and the normative baseline. The
+[T5 G0 ratification](./decisions/t5-g0-ratification-2026-10-27.md) refines creative depth
+and its evidence boundary. Where this document
 and pre-ratification reference/roadmap text conflict, the ratified direction wins.
 Landed contracts keep describing current behavior until their explicit cutover; no
 target capability below is presented as shipped. Open mechanism decisions (encodings,
 kernel implementation, level mechanism, channel operators) are named as open, not
 invented here.
 
-**Current shell (after T1.P01, T2.P01 and T3.P01):** PR #115 removed the earlier editable
+**Current shell (2026-10-27):** PR #115 removed the earlier editable
 `Spatial` workspace (`Scene | Camera` × `Plan | 3D`). The rebuilt Stage at
 `/project/:id/spatial` offers an explicit starter gallery or a genuinely empty start, Plan/3D
 inspection and selection, a native Layout plinth, dimension edits of existing Walls and
@@ -27,13 +29,16 @@ moves, yaws, resizes, duplicates and deletes them
 One local accepted history with Undo/Redo, unit F4 acceptance and conditional cloud Save runs
 over the Camera/Experience source cutover and its shared execution interpreter
 ([T3.P01](../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md#bounded-outcome)).
-The product still has no Wall drawing or topology editing, no model import, no Camera or
-Experience authoring UI, no Preview takeover and no publish surface. Publication reads stay
-unavailable under AM-9 until T4's prepared reader. Sign-in, the project hub and the API remain.
+The later bounded loops add [straight-Wall drawing, closure, division and deletion](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
+[single-model GLB import](../roadmap/t2-composition/t2.p02-own-model-import/README.md#outcome)
+and [Camera capture, Presentation/Guide authoring and isolated Cut Preview](../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
+Their acceptance records retain owner overrides, unrun rows and deferred evidence; this is no
+claim of general modeling or complete destination coverage. Publication reads stay unavailable
+under AM-9 until T4's prepared reader. Sign-in, the project hub and the API remain.
 `Experience`, `Assets`
 and `Publish` are the project-level concerns from the 2026-08-31 shell ratification —
-**Experience authoring is destination, not shipped**, and Assets/Publish retain only
-partial backend implementations (P20/P22) with no product authoring UI. Composition,
+**Experience depth beyond the bounded loop remains destination**, and Publish has no product
+authoring surface; asset import does not provide a general resource library UI. Composition,
 material, typography and control metrics are owned by
 [`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md);
 shell changes still require focused capability/design planning. Current labels do not
@@ -45,8 +50,7 @@ inspection. Experience exposes visitor-facing composition and may delegate
 View/framing/movement edits to the canonical Camera authority. The replacement
 shell's accepted destination composition is recorded in the shell contract
 ([`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md)
-§0.8); no landed shell exists today — the contract is the destination a later track
-rebuilds against.
+§0.8); the bounded landed shell does not implement the full destination.
 
 ## Ratified north star
 
@@ -90,6 +94,43 @@ Human direct manipulation, structured authoring, and AI/agent authoring operate
 on the same semantic project model, as clients of one canonical state. AI is not
 a separate generation mode, and the product is not primarily a prompt-to-3D
 generator.
+
+### Creative freedom and depth
+
+**Ratified destination, 2026-10-27** ([decision provenance](./decisions/t5-g0-ratification-2026-10-27.md)).
+These principles guide new design; they neither describe shipped T5 functionality nor select its
+implementation.
+
+- **Disciplined creative freedom.** Creators draw, shape, arrange and refine spatial work with
+  room for individual expression. Complexity earns its place through creative value, predictable
+  revision and reuse, rather than feature parity with another modeling application.
+- **Contextual spatial creation.** Visible work and deliberately chosen spatial context can inform
+  supported creation and editing. Direct interaction remains understandable, with non-sketch
+  equivalents; recognition and modeling knowledge must not become admission requirements.
+- **Composable relationships.** Spatial intent can be deliberately reused across form and
+  arrangement. Continuing following, constraints and exceptions are explicit; proximity, a gesture
+  or a one-time placement does not silently create a persistent dependency.
+- **Progressive depth.** World editing and a dedicated Object Focus scope share authored subjects,
+  identity, relationships and revision. Depth is available when needed without requiring an ordinary
+  creator to manage mesh topology, construction order or a full CAD/DCC workflow. Exact Focus UX
+  remains open within the ratified shell authority.
+- **Dependable revision.** Supported edits retain their meaning across accepted changes, Undo,
+  Save and reopen. Consequences, lost support and repair are legible; ambiguity never silently
+  retargets or discards work. Precision and preservation promises have explicit scope.
+- **Semantic ownership.** Layout, Scene, Camera, Experience and typed resources retain their own
+  meaning and validation through one project acceptance path. Creative depth adds no competing
+  document, compiler, history or renderer authority.
+- **Evidence-led capability expansion.** Admit depth for a demonstrated creative barrier, with
+  transfer, revision, correctness, browser cost and failure/recovery evidence. Simpler controls,
+  imported content and existing capabilities remain valid solutions; an experiment may narrow or
+  reject the proposed workflow.
+
+Interaction design, source/geometry representations, kernels, milestone definitions, slice counts,
+sequencing and specific implementation direction remain TBD where evidence is insufficient. The
+workflow advantage is a hypothesis; [E0](../roadmap/t5-expressive-geometry/README.md#e0-next-experimental-decision-gate)
+is the next experimental decision gate, subject to separate authorization. Sculpting, surface
+refinement or deliberately authored geometric controls are neither promised nor excluded solely
+by technique. They must earn admission through this boundary.
 
 ### Current state labels
 
@@ -214,10 +255,11 @@ reported explicitly, never silently redirected by name or position.
 
 ### Project truth (current and destination)
 
-**Current:** one `ProjectDocument` holds separately owned `LayoutDocumentWallFirst` and
-`SceneDocument` domains; Layout is wall-first (`formatVersion: 6`, one floor
-datum), Scene is world-local (`formatVersion: 1`, no `roomId`) with Camera data
-stored inside Scene. There is no legacy reader, detector or migration path:
+**Current:** one F2 `ProjectEnvelope` holds distinct codec-bounded Layout, Scene, Camera,
+Experience and resources units with accepted revision and dependency lock. Layout is wall-first
+over one floor datum; Scene placement is world-local with no `roomId`. Exact live versions belong
+to [persistence](./components/persistence.md#one-source-format-f2-clean-epoch).
+There is no legacy reader, detector or migration path:
 versionless room-frame payloads are no longer decoded, and a malformed or
 historical payload fails ordinary current-format validation. Generated geometry,
 Three objects, renderer handles, decoded runtime objects, gizmo proxies,
@@ -227,9 +269,8 @@ authored project truth.
 **Destination:** one explicit codec-bounded unit per semantic domain inside a
 project envelope holding the accepted revision and dependency lock (F.2;
 [`composition-execution.md`](./composition-execution.md)). Typed resources keep
-their identities whether inline, library-hosted or vendored. Camera is settled
-as its own codec-bounded unit in F; the split lands in the same cutover as the
-Experience order migration. Codec boundaries do not prescribe database tables,
+their identities whether inline, library-hosted or vendored. Camera and Experience already have
+separate codec-bounded units in the current envelope. Codec boundaries do not prescribe database tables,
 files, or format numbers. The
 Experience unit supports a collection.
 
@@ -298,9 +339,9 @@ visitor can share them.
 
 Broader depth (stairs, railings, richer parametric components, arbitrary curve
 intersection and noding, NURBS/CAD curve operations, roof helpers, general
-constraint sophistication) is demand/evidence-gated, not a prerequisite for the
-first Experience proof. Deep mesh topology editing, sculpting, UV authoring,
-rigging and character animation remain external-tool territory.
+constraint sophistication) is demand/evidence-gated. Architectural extensions remain Layout-owned;
+native object depth follows the [creative-depth admission boundary](#creative-freedom-and-depth).
+UV/rigging and general character-animation authoring remain external workflows.
 
 ## Stage — World composition and shared assets
 
@@ -638,12 +679,11 @@ Local-first project editing remains valid; the complete product also supports
 authenticated accounts and persistent cloud projects. Cloud persistence wraps the
 canonical project document rather than replacing it.
 
-**Current:** `projects` + `project_versions` versioned JSONB; Save validates the
-full document, locks the project row, appends a version and bumps the latest
-version; Load revalidates. Save has no expected-base-revision precondition today,
-so a stale full-document writer can overwrite newer intent; a stale-write/
-revision-precondition contract is required before simultaneous human/agent
-writers. External identity proves who the user is; Fastify + Postgres own
+**Current:** `projects` + `project_versions` versioned JSONB; conditional Save validates the
+F2 capture and its `create-only` or `expected-saved-base` precondition under a project-row lock.
+The [persistence contract](./components/persistence.md) owns saved-base conflict and recovery
+semantics, distinct from local expected-revision acceptance. External identity proves who the user
+is; Fastify + Postgres own
 product authorization and project permissions.
 
 **Destination:** one accepted project revision and dependency lock; deterministic
@@ -731,21 +771,20 @@ to component or kit work.
 No complete generic command framework is claimed to exist today, and none is
 created by this direction. Extract domain operations incrementally as real
 capabilities require them, against the surviving kernel semantics and the
-destination authority model. The editor's chronological undo stack — separate
-Layout/Scene domain entries with a 100-entry cap — was removed by #115 with the
-editor shell, so the product has no history today; compound project acceptance
-(F.4) is the destination, and several independent commits are never presented as
-one transaction.
+destination authority model. The current F4 host has one chronological history shared by
+Layout/Scene and the bounded Camera/Experience loop; its
+[persistence contract](./components/persistence.md) owns the cap and Save behavior. Several
+independent commits are never presented as one transaction. T5 extends no acceptance scope here.
 
 ## Sacred contracts
 
-1. **Semantic spatial authoring, not a general mesh editor.** Richer CAD-like
-   and parametric construction extends the architectural domain and the single
-   canonical compiler; no parallel general-purpose mesh-modeling subsystem.
+1. **Semantic spatial authoring with evidence-led depth.** Architectural construction extends
+   Layout and its single canonical compiler; object form and composition retain Scene ownership.
+   The [creative-depth principles](#creative-freedom-and-depth) govern specialized capability
+   admission without creating a separate general-purpose modeling application.
 2. **One project, World | Experience lenses.** The landed `Spatial` shell
-   (`Scene | Camera` × `Plan | 3D`) was removed by #115; the product has no
-   authoring surface today, and the surviving surfaces are sign-in, the project
-   hub, cloud Save/Load, the API and the visitor runtime. The destination
+   (`Scene | Camera` × `Plan | 3D`) was removed by #115; the bounded shared Stage
+   authoring loops above have since landed. The destination
    creator-facing framing is World | Experience over one project, not a
    `WorldDocument` or a merger of semantic authorities. Shell composition,
    navigation and Camera control placement are left to focused design;
@@ -754,11 +793,10 @@ one transaction.
    Layout, Scene, Camera, Experience and typed resources are separate
    authorities and are never merged or hidden inside one another. Scene/Camera
    physical placement is project/world-local with explicit internal component
-   frames and no mandatory Room frame. The current two-document encoding, fixed
-   format numbers and Camera storage inside Scene are the landed encoding until
-   their explicit cutover, not the destination. There is no legacy Room-local
-   compatibility read path: the product supports one document format
-   (wall-first Layout with a world-local Scene), and versionless room-frame
+   frames and no mandatory Room frame. The current F2 units are codec-bounded;
+   future source kinds require their owning contracts and explicit cutover, not a second
+   format inferred from a prototype. There is no legacy Room-local
+   compatibility read path: versionless room-frame
    payloads are not decoded.
 4. **One canonical architectural compiler.** Architectural geometry and queries
    come from the single canonical compiler (or its evolved successor), never
@@ -780,8 +818,8 @@ one transaction.
 7. **Deterministic selection/history.** Selection identity is canonical across
    representations; one completed user/agent command or gesture produces one
    logical transaction/history result where history applies. Compound
-   cross-domain acceptance (F.4) extends this contract at the Experience
-   cutover.
+   cross-domain acceptance (F.4) implements this boundary for the shared project;
+   future geometry consumers keep the same obligation.
 8. **Portable, versioned project truth; separate release formats.** The native
    editable project export is versioned and atomic; publishing compiles accepted
    source into separately versioned visitor packages instead of treating the
@@ -978,15 +1016,11 @@ Current production choices remain deliberate rather than ideological:
   a newer schema
 - migrating legacy/Chopin editor session state into the greenfield product
 
-Use this test before expanding authoring depth: does this capability describe,
-compose, direct, or validate a spatial web experience at a reusable semantic
-level? Good candidates include walls, openings, doors, stairs, platforms,
-dimensions, alignment, asset placement, lighting, camera shots and interactions.
-Likely upstream/external-tool territory includes mesh topology editing,
-sculpting, retopology, UV editing, rig authoring, general character animation,
-arbitrary shader/node DCC work, and general-purpose geometry modeling. Imported
-or generated results from those systems are welcome; the product does not own
-their authoring workflows.
+Use the [creative-depth admission test](#creative-freedom-and-depth) before expanding authoring
+depth. A local shaping or surface capability is not permanently external merely because it uses
+mesh controls or sculpting techniques; neither is it committed scope. General-purpose DCC/CAD,
+retopology, UV/rig authoring, character animation and arbitrary shader/node authoring remain external
+workflows. Imported or generated results remain welcome with truthful supported capabilities.
 
 ## Deferred scope is not a non-goal
 

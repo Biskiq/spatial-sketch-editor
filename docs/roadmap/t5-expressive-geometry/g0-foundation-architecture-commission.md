@@ -1,9 +1,12 @@
 # G0 — Expressive Geometry foundation architecture: commission
 
-**Status: approved by the owner 2026-10-27; executable once PR #198 merges**
-([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)). This brief commissions
-architecture work, not implementation. It registers no phase, gate, package or budget, and it
-authorizes no prototype, dependency or production change.
+**Status: original approved commission retained as historical evidence; bounded G0 direction
+ratified 2026-10-27** ([later ruling](../../reference/decisions/t5-g0-ratification-2026-10-27.md),
+[original approval](../../reference/decisions/t5-g0-approval-2026-10-27.md)). The original brief below
+is preserved. Its three-to-five-increment deliverable and post-G0 route do not prescribe current
+milestones, slice counts or sequencing. [T5 tracking](./README.md) owns the current E0 decision and
+authorization route; no E0 experiment, prototype, dependency or production implementation is authorized.
+No complete architecture acceptance or independent review is claimed.
 
 **Track:** [T5](../t5-expressive-geometry/README.md) · **Predecessor evidence:** S06 (PR #190, merged
 `6af62eb4`) · **Decision owner:** the repository owner · **Executing role:** a commissioned

@@ -15,6 +15,9 @@ status are in
 The owner-directed World | Experience reconciliation of 2026-09-29 refines
 product lenses and Experience composition without rewriting the historical
 ratification record.
+The [T5 G0 ratification](./decisions/t5-g0-ratification-2026-10-27.md) adds the bounded
+[expressive-creation obligations](#expressive-creation-and-revision-destination), not a selected
+geometry architecture or a source-format cutover.
 
 ## Product and frozen lanes (current)
 
@@ -30,9 +33,12 @@ apps/editor (product)            frozen Chopin project (separate)
   including starter, empty and Open source JSON. T1 Layout and T2 Scene planners accept unit
   candidates through one F4 host and chronological history. The Head owns conditional Save,
   conflict/Reload and explicit sign-in Save recovery. One Canvas and one viewport evaluation
-  serve both readings. Camera authoring controls, general GLB ingest, Wall creation and
-  publication UI remain outside this cutover. PR #158 carries the implementation; independent
-  review and owner-run production activation remain separate.
+  serve both readings. Later bounded work adds
+  [Wall creation](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
+  [single-model GLB import](../roadmap/t2-composition/t2.p02-own-model-import/README.md#outcome)
+  and [Camera capture/Experience authoring/Cut Preview](../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
+  Those records retain their evidence limits; publication still requires T4.
+  Owner-run production activation remains separate from landed code.
 - **Frozen, separate projects are outside product scope.** No product file
   imports, aliases or references them; no Chopin project/editor state or history
   migrates into the product, and no product export is promoted into the frozen
@@ -65,7 +71,7 @@ The `/editor` compatibility route and hub's New Project enter the starter galler
 for a minted identity; choosing an empty project is explicit. No Chopin/legacy
 state is loaded or migrated. Guest/local work lives in the browser session. Authenticated cloud work
 adds owned Save/Load with a project list and versioned saves. Save/Load, assets
-admit only declared F2 envelopes (Layout 5, Scene 2, Camera/Experience/resources 1).
+admit only declared F2 envelopes ([live versions](./components/persistence.md#one-source-format-f2-clean-epoch)).
 Old files, drafts, mixed roots and unknown versions refuse without conversion. Publication
 writes return `prepared-reader-required`; see [persistence](./components/persistence.md).
 
@@ -106,12 +112,12 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 | Authority | Owns | Current encoding (until cutover) |
 |---|---|---|
 | **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 6`: Junctions, Walls, persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path |
-| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 2 (`@portfolio/project-model`), world-local, no `roomId` |
+| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 3 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources, no admitted general components or attachments |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
-| **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 1, collection-capable); later authoring amendments remain future work |
+| **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 2, collection-capable); bounded capture/Presentation/Cut Guide authoring, with richer capabilities still future work |
 | **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | `units.resources.data` and the exact dependency lock; bytes stay in the P20 registry/private storage; general ingest remains future work |
 | **Project coordination** | Accepted revision, dependency lock, cross-domain validation, coherent history, release preparation, deterministic typed intents (F.4) | `ProjectEnvelope`, unit F4 acceptance, one chronological history, local expected revision and durable saved-base CAS; source and cloud revision identities are distinct |
-| **Execution session** | Active runs, clocks, channel control, visitor choices, media position — isolated per preview/visitor/session | The editor-local playback/preview state was removed by #115 with the editor shell; the surviving execution surface is the visitor cold runtime's session state, never written back to authored definitions |
+| **Execution session** | Active runs, clocks, channel control, visitor choices, media position — isolated per preview/visitor/session | The bounded Cut Preview uses an isolated session through the shared Experience interpreter; session state is never written back to authored definitions; public prepared delivery remains gated by T4 |
 | **Audience/collaboration** | Comments, approvals, saved visitor configurations, shared-session snapshots, outcome analytics — outside authored source, anchored by public semantic address + release context | None; P22 release/publication rows are delivery state, not audience records |
 
 Residual ownership: world presentation defaults to Scene; visitor-facing meaning,
@@ -149,6 +155,42 @@ is migration input, not Experience authority. Preview never writes source;
 visitor chunks exclude editor selection, history, gizmos and authoring stores.
 Repairable unresolved authored bindings remain explicit under F.1/F.4;
 selected executable/publication programs require closure under F.5.
+
+### Expressive creation and revision (destination)
+
+**Ratified obligations, 2026-10-27** ([provenance](./decisions/t5-g0-ratification-2026-10-27.md));
+the [North Star](./north-star.md#creative-freedom-and-depth) owns the product principles.
+
+World creation, composition and Object Focus refinement operate on the same domain-owned subjects
+through the shared Stage, selection, F4 acceptance/history and Save path. Focus is an editing scope,
+not another Scene, persisted domain or renderer. It neither merges World with Experience nor changes
+PLATE's shell authority. Its entry/return, interactions and instruments remain TBD.
+
+Layout retains architectural semantics and the canonical architectural compiler; Scene retains
+object form and composition semantics; typed resources retain independently versioned source/reuse.
+Camera and Experience retain their viewing and editorial authority. T5 supplies reusable numerical
+capabilities through those owners, without a competing writer, whole-scene solver or compiler.
+Domain computation may share libraries without transferring semantic authority to a kernel.
+
+Admitted form edits retain sufficient authored controls, meaningful dependencies, binding policies
+and source resources to support the promised revision. Evaluated presentation geometry stays derived.
+Meaningful order must not be silently changed, but neither an operation graph nor fixed strata are
+required. Recipes, control surfaces and other source strategies remain hypotheses. There is no
+requirement to preserve every incidental construction action or invent history for imported work.
+
+Domain-owned capability semantics declare accepted context, affected scope, following/preservation,
+validity and refusal. Continuing relationships are deliberate; qualified references carry revision,
+lifetime and repair meaning under F.1. No unchanged label or geometric proximity proves continuing
+support. [Scene](./components/scene-content.md#expressive-editing-destination) owns object edit promises;
+[persistence](./components/persistence.md#editable-source-and-revision-destination) owns recoverable
+source/acceptance. No concrete edit-contract API, reference kind or F extension is ratified here.
+
+Acceptance remains reproducible to the exactness required by existing contracts; approximations and
+conversions must be explicit and reopen must not depend on transient caches. The first real consumer
+must establish its minimum source and integration needs, obtain owning-track/F review where needed
+and supply correctness, revision and browser-cost evidence. Representation mix, kernels, package
+boundaries, evaluator/caching strategy, implementation direction and delivery sequence remain TBD;
+the proposed directed hybrid has no privileged status. Visitor isolation and T4 delivery remain intact.
 
 ### Shared composition and execution contract (F — destination)
 

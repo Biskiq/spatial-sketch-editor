@@ -2,10 +2,9 @@
 
 **Read when:** catalogue, licences, model preparation and validation, project texture registry,
 published release delivery.
-**Last reviewed:** 2026-10-13 (#115 WP4 — real paths instead of the removed `apps/museum`; the
-retired Paris asset workflow's preparation and validation checklist is absorbed below; the editor
-ingest UI is removed). The ratified direction below is unchanged; a landed contract keeps
-describing current behavior until its explicit cutover.
+**Last reviewed:** 2026-10-27 (T5 destination promotion; current single-model import remains bounded
+by T2.P02 and its acceptance evidence). Landed contracts keep describing current behavior until
+their explicit cutover; T5 admits no resource or dependency here.
 
 ---
 
@@ -33,6 +32,19 @@ creator/audience loop under the re-derived T2 track
 ([`../../roadmap/t2-composition/planning-evidence.md`](../../roadmap/t2-composition/planning-evidence.md))
 — it is not contingent on a complete asset pipeline, and static-only catalogue supply is no longer
 the scope ceiling.
+
+## Expressive capability admission (destination)
+
+The [T5 G0 ruling](../decisions/t5-g0-ratification-2026-10-27.md) extends no current import or
+resource capability. Native and imported content expose honest supported edit sets through their
+owning domains. Imported work need not acquire invented construction history or be converted into
+a preferred native representation to remain useful.
+
+Any future conversion to editable form must disclose retained source, correspondence, approximation,
+lost capabilities and recovery under the [editable-source contract](./persistence.md#editable-source-and-revision-destination).
+Native detail, surface or precision capabilities compete with simpler controls, materials and
+external-tool exchange on demonstrated creative value and revision cost. No kernel, library,
+resource format or conversion workflow is selected; current licensing/admission rules below remain.
 
 ## Current asset system (P20 shipped 2026-09-04 — S0–S4)
 
