@@ -16,12 +16,32 @@ import type { ViewingIntent } from '@portfolio/camera-core';
 export type StageKeyAction =
 	| { readonly kind: 'reading'; readonly reading: '3d' | 'plan' }
 	| { readonly kind: 'fit' }
-	/** Close the deepest open context: the task first, then the selection. */
+	/**
+	 * Finish the live proposal (a drawing chain) — the same command its palette's
+	 * Finish control runs. The armed tool's own controller answers it.
+	 */
+	| { readonly kind: 'finish' }
+	/** Drop the live proposal's last point. */
+	| { readonly kind: 'backtrack' }
+	/** Offer the selected subject's own destructive action, wrapped in its disclosure. */
+	| { readonly kind: 'delete' }
+	/**
+	 * Close the deepest open context, **palette first**: a live proposal is deeper
+	 * than the task that produced it, so the chain cancels before the tool disarms.
+	 */
 	| { readonly kind: 'dismiss' }
 	| { readonly kind: 'pan'; readonly deltaCss: readonly [number, number] }
 	| { readonly kind: 'none' };
 
-/** The keyboard map, as a total function of `KeyboardEvent.key`. */
+/**
+ * The keyboard map, as a total function of `KeyboardEvent.key`.
+ *
+ * `Enter`/`Backspace`/`Delete` are the drawing and deletion commands. They are
+ * **not** copied from the prototype: each one is either the command's own key
+ * (the palette names Finish as Enter and Backtrack as Backspace) or the platform's
+ * delete key, and none of them collides with the viewing map (3/p/f/arrows/Escape)
+ * or with typing, which the text-entry guard already excludes.
+ */
 export function stageKeyAction(key: string): StageKeyAction {
 	switch (key) {
 		case '3':
@@ -32,6 +52,12 @@ export function stageKeyAction(key: string): StageKeyAction {
 		case 'f':
 		case 'F':
 			return { kind: 'fit' };
+		case 'Enter':
+			return { kind: 'finish' };
+		case 'Backspace':
+			return { kind: 'backtrack' };
+		case 'Delete':
+			return { kind: 'delete' };
 		case 'Escape':
 			return { kind: 'dismiss' };
 		case 'ArrowLeft':
@@ -131,6 +157,15 @@ export type StagePressTracker = {
 	readonly refuse: (pointerId: number) => void;
 	/** A normal pointer ending; `false` when this pointer owned no press. */
 	readonly end: (pointerId: number) => boolean;
+	/**
+	 * Hand the press to an adapter: the gesture is over and the click that follows
+	 * selects nothing.
+	 *
+	 * An armed tool's tap is the tool's own gesture — it places a point, splits a
+	 * Wall, or is refused — so it must never *also* move the selection. This is not
+	 * `abort`: the creator did finish the press, the tool simply consumed it.
+	 */
+	readonly claim: (pointerId: number) => boolean;
 	/** An interruption; with an id, only that pointer's press is interrupted. */
 	readonly abort: (pointerId?: number) => boolean;
 	/** Whether the click at this point may select. Always consumes the decision. */
@@ -172,6 +207,14 @@ export function createStagePressTracker(): StagePressTracker {
 			// never owned changes nothing.
 			if (owner !== pointerId || phase !== 'pressed') return false;
 			phase = 'ended';
+			return true;
+		},
+		claim(pointerId) {
+			// The owner is kept until the click consumes the decision, exactly as `end`
+			// leaves it: the pointer sequence and its click still have to match up.
+			if (owner !== pointerId) return false;
+			if (phase !== 'pressed' && phase !== 'ended') return false;
+			phase = 'suppressed';
 			return true;
 		},
 		abort(pointerId) {
