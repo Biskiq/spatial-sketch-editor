@@ -11,11 +11,22 @@
 	 * opening and closing it never reflows or implicitly reframes the Stage. At
 	 * rest — no canonical selection — it renders nothing at all; there is no empty
 	 * Card.
+	 *
+	 * Round 2 D9 makes it the one writer for the selected subject's **ordinary
+	 * fields**, and the one home for the actions its owning adapter scopes to it. It
+	 * renders published records: the adapter owns the controller and the intent, the
+	 * Card owns placement, confirmation and the words the creator reads.
 	 */
+	import type { StageCardActionRecord, StageCardWriterRecord } from '../stage-facade';
+
 	let {
 		identity,
 		facts,
 		nameWriter = null,
+		writer = null,
+		actions = [],
+		collapsed = false,
+		onToggleCollapsed = () => {},
 		onClose,
 		onFocusTask,
 		onOpenTask,
@@ -33,6 +44,21 @@
 			readonly value: string;
 			commit(name: string): Promise<{ readonly kind: string; readonly message?: string }>;
 		} | null;
+		/**
+		 * The subject's contributed **ordinary-field writer** (T1.P02.S02). The Card is
+		 * the one writer for these facts — the Dimensions task and its route are
+		 * retired — so the fields render here through the owning domain's own
+		 * controller, never through a shell-built intent.
+		 */
+		writer?: StageCardWriterRecord | null;
+		/** The subject's scoped contributed actions (a delete and its disclosure). */
+		actions?: readonly StageCardActionRecord[];
+		/**
+		 * PLATE arbitration: at constrained width the Card collapses to identity with
+		 * explicit expansion, so it never covers the task's lower column.
+		 */
+		collapsed?: boolean;
+		onToggleCollapsed?: () => void;
 		onClose: () => void;
 		onFocusTask: () => void;
 		onOpenTask: () => void;
@@ -47,6 +73,33 @@
 	let nameDraft = $state('');
 	let nameError = $state<string | null>(null);
 	let nameBusy = $state(false);
+	/** The action whose consequence is currently disclosed and awaiting confirmation. */
+	let confirming = $state<string | null>(null);
+	let actionMessage = $state<string | null>(null);
+	let actionBusy = $state(false);
+
+	/**
+	 * A destructive action runs only after its disclosure has been read: the first
+	 * press opens the consequence, the second confirms it. A non-destructive action
+	 * runs directly.
+	 */
+	async function runAction(action: (typeof actions)[number]): Promise<void> {
+		if (actionBusy) return;
+		if (action.destructive === true && confirming !== action.id) {
+			confirming = action.id;
+			actionMessage = action.detail ?? null;
+			return;
+		}
+		actionBusy = true;
+		confirming = null;
+		actionMessage = null;
+		try {
+			const outcome = await action.run();
+			if (outcome.message !== undefined && outcome.kind !== 'accepted') actionMessage = outcome.message;
+		} finally {
+			actionBusy = false;
+		}
+	}
 
 	$effect(() => {
 		nameDraft = nameWriter?.value ?? '';
@@ -121,35 +174,73 @@
 					{/if}
 				{/if}
 			</div>
-			<button type="button" class="icon" onclick={onClose} aria-label="Close selection card">✕</button>
+			<div class="head-actions">
+				<button
+					type="button"
+					class="icon"
+					aria-expanded={!collapsed}
+					onclick={onToggleCollapsed}
+				>{collapsed ? 'Expand' : 'Collapse'}</button>
+				<button type="button" class="icon" onclick={onClose} aria-label="Close selection card">✕</button>
+			</div>
 		</header>
 
-		{#if facts.length > 0}
-			<dl class="facts">
-					{#each facts as fact (fact.label)}
-						<dt>{fact.label}</dt>
-						<dd>{fact.value}</dd>
-					{/each}
-				</dl>
-		{:else}
-			<p class="quiet">No further facts.</p>
+		{#if !collapsed && writer?.view}
+			<div class="writer" data-card-writer={writer.summary}>
+				<writer.view.component services={writer.view.services} />
+			</div>
 		{/if}
 
-		<div class="actions">
-			<!-- Three separate operations: Focus deepens task context, Open task invokes
-			     specialist work, Bring into view is a Camera/navigation request. -->
-			<button type="button" class="action" onclick={onFocusTask}>Focus</button>
-			<button type="button" class="action" onclick={onOpenTask}>Open task</button>
-			<button type="button" class="action navigate" onclick={onBringIntoView}>Bring into view</button>
-		</div>
+		{#if !collapsed}
+			{#if actions.length > 0}
+				<div class="card-actions" data-card-actions>
+					{#each actions as action (action.id)}
+						<button
+							type="button"
+							class="action destructive"
+							data-card-action={action.id}
+							disabled={actionBusy}
+							onclick={() => void runAction(action)}
+						>
+							{confirming === action.id ? `Confirm ${action.label}` : action.label}
+						</button>
+					{/each}
+					{#if actionMessage !== null}
+						<p class="error" role="alert">{actionMessage}</p>
+					{/if}
+					{#if confirming !== null}
+						<button type="button" class="action" onclick={() => (confirming = null)}>Cancel</button>
+					{/if}
+				</div>
+			{/if}
 
-		<details class="technical">
-			<summary>Technical details</summary>
-			<dl class="facts mono">
-				<dt>Canonical ID</dt>
-				<dd>{identity.sourceId}</dd>
-			</dl>
-		</details>
+			{#if facts.length > 0}
+				<dl class="facts">
+						{#each facts as fact (fact.label)}
+							<dt>{fact.label}</dt>
+							<dd>{fact.value}</dd>
+						{/each}
+					</dl>
+			{:else}
+				<p class="quiet">No further facts.</p>
+			{/if}
+
+			<div class="actions">
+				<!-- Three separate operations: Focus deepens task context, Open task invokes
+				     specialist work, Bring into view is a Camera/navigation request. -->
+				<button type="button" class="action" onclick={onFocusTask}>Focus</button>
+				<button type="button" class="action" onclick={onOpenTask}>Open task</button>
+				<button type="button" class="action navigate" onclick={onBringIntoView}>Bring into view</button>
+			</div>
+
+			<details class="technical">
+				<summary>Technical details</summary>
+				<dl class="facts mono">
+					<dt>Canonical ID</dt>
+					<dd>{identity.sourceId}</dd>
+				</dl>
+			</details>
+		{/if}
 	</aside>
 {/if}
 
@@ -246,6 +337,32 @@
 	.icon:hover {
 		border-color: var(--plate-card-edge, #d9dcd4);
 		color: var(--plate-ink, #1b201c);
+	}
+
+	.head-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.2rem;
+	}
+
+	.writer {
+		margin-top: 0.2rem;
+	}
+
+	.card-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 0.7rem;
+	}
+
+	.action.destructive {
+		border-color: #d8b7ab;
+		color: #8f3a22;
+	}
+
+	.action.destructive[data-card-action] + .action {
+		margin-left: 0;
 	}
 
 	.icon:focus-visible,

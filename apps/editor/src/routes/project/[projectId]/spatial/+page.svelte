@@ -72,6 +72,7 @@
 	} from '$lib/authoring/stage/stage-session';
 	import {
 		createStageFacade,
+		type StageCardActionRecord,
 		type StageFacade,
 		type StageIntentResult,
 		type StageInstrumentContent,
@@ -85,7 +86,13 @@
 		mountStageAdapter,
 		type StageAdapterServices
 	} from '$lib/authoring/stage/stage-adapter-host';
-	import { stageCardFacts, stageContributionGroups } from '$lib/authoring/stage/stage-contributions';
+	import {
+		stageCardActions,
+		stageCardFacts,
+		stageCardWriter,
+		stageContributionGroups,
+		stageDockTools
+	} from '$lib/authoring/stage/stage-contributions';
 	import {
 		createStageAcceptanceHost,
 		type StageAcceptanceHost,
@@ -114,6 +121,7 @@
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
+	import StageDock from '$lib/authoring/stage/shell/StageDock.svelte';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
 	import {
@@ -493,6 +501,37 @@
 	 * another one) brings the Card back, so identity is never lost to a dismissal.
 	 */
 	let cardOpen = $state(true);
+	/**
+	 * Whether the armed tool's palette is open above the dock. Folding it hides the
+	 * instrument without disarming the tool: the creator collapses the palette to see
+	 * the Stage, not to drop what they were drawing.
+	 */
+	let paletteOpen = $state(true);
+	/**
+	 * The dock's armed contributed tool.
+	 *
+	 * Host state, not session state: an accepted install closes the active task — its
+	 * subject belonged to the source that was replaced — and the creator's armed tool
+	 * must not vanish with it. Every explicit close (Select, the palette's close, Esc
+	 * once the chain has settled) disarms, so this never resurrects a tool the
+	 * creator put down.
+	 */
+	let armedTool = $state<{ readonly id: string; readonly adapterId: string } | null>(null);
+	/** The Head's bounded Find query. */
+	let findQuery = $state('');
+	/**
+	 * A destructive Card action whose consequences have been disclosed and which
+	 * awaits a second `Delete`. Cleared by Escape, by a different selection, or by
+	 * the action settling — never left to fire against a later subject.
+	 */
+	let pendingDelete = $state<{ readonly key: string; readonly record: StageCardActionRecord } | null>(null);
+	/**
+	 * PLATE arbitration at constrained width: the Card folds to identity so the
+	 * dock/palette's one lower column stays readable. The creator's own toggle wins
+	 * over the width rule until the task closes.
+	 */
+	let narrowShell = $state(false);
+	let cardExpanded = $state<boolean | null>(null);
 
 	let epochCounter = 0;
 	let revisionCounter = 0;
@@ -1650,6 +1689,15 @@
 		};
 		media.addEventListener('change', onMedia);
 
+		// The shell's width rule: at a constrained width the Card folds to identity
+		// rather than covering the dock/palette's one lower column.
+		const narrow = window.matchMedia('(max-width: 72rem)');
+		narrowShell = narrow.matches;
+		const onNarrow = (event: MediaQueryListEvent) => {
+			narrowShell = event.matches;
+		};
+		narrow.addEventListener('change', onNarrow);
+
 		const onKey = (event: KeyboardEvent) => {
 			if (event.defaultPrevented) return;
 			handleKey(event);
@@ -1666,6 +1714,7 @@
 			tornDown = true;
 			cancelAnimationFrame(frame);
 			media.removeEventListener('change', onMedia);
+			narrow.removeEventListener('change', onNarrow);
 			window.removeEventListener('keydown', onKey);
 			// Session teardown cancels every registered writer (including an in-flight
 			// project GET) and runs every registered disposer exactly once; no
@@ -2005,6 +2054,7 @@
 		const lifecycle = stage.session.taskLifecycle();
 		if (lifecycle === null) {
 			contributedTaskId = null;
+			rearmDockTool();
 			return;
 		}
 		if (lifecycle.status !== 'active') return;
@@ -2037,9 +2087,16 @@
 	}
 
 	function closeTask(): void {
+		// Disarm **before** closing: the close notifies the contribution surface, and a
+		// notification re-arms an armed dock tool. An explicit close puts the tool down
+		// first, so the notification it causes cannot pick it back up.
+		armedTool = null;
 		facade?.closeTask();
 		task = null;
 		contributedTaskId = null;
+		// The Card's fold is reconsidered for the next task: a hand expansion belongs
+		// to the work it was made for, not to the shell forever.
+		cardExpanded = null;
 	}
 
 	function toggleReveal(sourceId: string): void {
@@ -2087,10 +2144,12 @@
 	function onPointerDown(event: PointerEvent): void {
 		const stage = facade;
 		if (stage === null || evaluation === null) return;
-		// A contributed task gets the press first: its adapter may claim a drag
-		// (a Scene transform), and only a refusal falls through to navigation.
+		// The adapters get the press first: the binding that owns an open task (a Scene
+		// transform, an armed Ink chain) may claim it, and so may a binding that offers
+		// direct manipulation with no task at all (a selected Wall's handles). Only a
+		// refusal falls through to navigation.
 		const pointerEvaluationId = stage.evaluationId();
-		if (task !== null && pointerEvaluationId !== null) {
+		if (pointerEvaluationId !== null) {
 			const css = stageCss(event);
 			if (stage.pointerIntent({ phase: 'down', css, evaluationId: pointerEvaluationId, shift: event.shiftKey }).claimed) {
 				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
@@ -2110,7 +2169,10 @@
 		const acquisition = stage.acquireGesture({
 			owner: 'stage-pointer',
 			evaluationId: stage.evaluationId() ?? '',
-			policy: 'continue-after-revalidation'
+			policy: 'continue-after-revalidation',
+			// The host's own press is navigation, not authored work: it explicitly
+			// declares so, which is why a pan never blocks Undo.
+			navigation: true
 		});
 		if (acquisition.kind !== 'granted') {
 			// This pointer is not ours: record it so its click cannot select, and leave the
@@ -2200,6 +2262,10 @@
 		// pointer's release must not release the first pointer's lease.
 		if (!press.end(event.pointerId)) return;
 		if (drag?.mode === 'adapter') {
+			// The press belonged to an adapter: its tap is the tool's own command
+			// (place a point, split a Wall, or a refusal) and never a selection, so the
+			// click that follows selects nothing at all.
+			press.claim(event.pointerId);
 			const stage = facade;
 			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			drag = null;
@@ -2272,6 +2338,10 @@
 		// also select (or report that nothing was selectable). The decision is consumed
 		// here, after the pointer sequence has ended, and only by the pointer it belongs to.
 		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
+		// An armed tool owns the Stage surface: its tap already placed a point, split a
+		// Wall or was refused, and re-selecting underneath it would silently move what
+		// the tool is editing. Selection changes come from Select, the Index or the tool.
+		if (task !== null) return;
 		const stage = facade;
 		const id = stage?.evaluationId() ?? null;
 		if (stage === null || id === null || rect === null) return;
@@ -2319,12 +2389,37 @@
 			case 'pan':
 				pan(action.deltaCss[0], action.deltaCss[1]);
 				break;
-			case 'dismiss':
-				// The deepest open context closes first: the task, then the selection.
+			case 'finish':
+			case 'backtrack': {
+				// The armed tool's own command, answered by the task that owns it. A tool
+				// with nothing to finish refuses and the key does nothing at all.
+				const stage = facade;
+				if (stage === null || !stage.keyboardIntent({ kind: action.kind }).claimed) break;
+				// One key, one activation: the palette's own control must not also be
+				// activated by the same keystroke.
+				event.preventDefault();
+				break;
+			}
+			case 'delete':
+				requestDelete();
+				break;
+			case 'dismiss': {
+				// The deepest open context closes first. A disclosed-but-unconfirmed
+				// destructive action is deeper than the task; a **live proposal** is deeper
+				// than the tool that produced it, so the armed tool cancels its own chain
+				// before the unwind disarms it (palette-first Esc, no hidden proposal).
+				if (pendingDelete !== null) {
+					pendingDelete = null;
+					notice = '';
+					break;
+				}
+				const stage = facade;
+				if (stage !== null && stage.keyboardIntent({ kind: 'cancel' }).claimed) break;
 				abortGesture();
 				if (task !== null) closeTask();
 				else if (selection !== null) closeSelection();
 				break;
+			}
 			case 'none':
 				break;
 		}
@@ -2463,12 +2558,180 @@
 		});
 	});
 
+	/**
+	 * The Card's contributed **field writer** for the selected subject.
+	 *
+	 * Round 2 D9 makes the Card the one writer for ordinary dimensions, so the
+	 * migrated Layout fields render there through the same controller the retired
+	 * Dimensions task used. The route knows nothing about the fields themselves.
+	 */
+	const cardWriter = $derived.by(() => {
+		void contributionsVersion;
+		const selected = selection;
+		if (selected === null || facade === null) return null;
+		return stageCardWriter(facade, {
+			sourceId: selected.reference.subject.id,
+			sourceKind: selected.reference.subject.kind,
+			reference: selected.reference,
+			ref: selected.representation ?? null
+		});
+	});
+
+	/**
+	 * The selected subject's scoped actions, each carrying the consequences its own
+	 * adapter disclosed. A destructive one is what both the Card and `Delete` run.
+	 */
+	const cardActions = $derived.by((): readonly StageCardActionRecord[] => {
+		void contributionsVersion;
+		const selected = selection;
+		if (selected === null || facade === null) return [];
+		return stageCardActions(facade, {
+			sourceId: selected.reference.subject.id,
+			sourceKind: selected.reference.subject.kind,
+			reference: selected.reference,
+			ref: selected.representation ?? null
+		});
+	});
+
+	/**
+	 * Whether the Card is folded to identity.
+	 *
+	 * PLATE's arbitration: the Card keeps its facts readable *beside* the one lower
+	 * column, so at constrained width it folds instead of covering the task. The
+	 * creator's explicit expansion wins, and the fold is reconsidered once the task
+	 * closes.
+	 */
+	const cardCollapsed = $derived(cardExpanded === null ? narrowShell && task !== null : !cardExpanded);
+
 	/** Every contributed Find/rail entry from the adapters currently mounted. */
 	const contributionGroups = $derived.by(() => {
 		// Same signal: a newly registered adapter's Find entries appear at once.
 		void contributionsVersion;
 		return stageContributionGroups(facade);
 	});
+
+	/** The bottom dock's armable tools: the contributed entries whose home is the dock. */
+	const dockTools = $derived.by(() => {
+		void contributionsVersion;
+		return stageDockTools(facade);
+	});
+
+	/** The armed contributed task's kind, or `null` when the host's Select is armed. */
+	const armedTaskKind = $derived(task?.kind ?? null);
+
+	/**
+	 * The bounded **Find in Head** list: every contributed entry by label, with the
+	 * verb that reaches it — `Arm` for a dock tool, `Invoke` for an Index task.
+	 *
+	 * It is a discovery route to what the mounted adapters contributed, not a subject
+	 * search and not the scope-model Index.
+	 */
+	const headFindEntries = $derived.by(() => {
+		const needle = findQuery.trim().toLowerCase();
+		const entries = [
+			...dockTools.map((tool) => ({
+				id: tool.id,
+				adapterId: tool.adapterId,
+				label: tool.label,
+				verb: 'Arm'
+			})),
+			...contributionGroups.flatMap((group) =>
+				group.entries.map((entry) => ({
+					id: entry.id,
+					adapterId: entry.adapterId,
+					label: entry.label,
+					verb: 'Invoke'
+				}))
+			)
+		];
+		return needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle));
+	});
+
+	/**
+	 * Arm a dock tool: the very same contributed task the Index invokes, so a tool
+	 * has one operation behind it, never a second dock-only path into the domain.
+	 */
+	function armDockTool(tool: { readonly id: string; readonly adapterId: string }): void {
+		invokeContribution(tool.adapterId, tool.id);
+		armedTool = { id: tool.id, adapterId: tool.adapterId };
+		paletteOpen = true;
+		pendingDelete = null;
+	}
+
+	/** Select — the host's own tool: it closes the contributed task and keeps what is selected. */
+	function selectTool(): void {
+		closeTask();
+	}
+
+	/**
+	 * Re-arm the dock's tool after an accepted install.
+	 *
+	 * The install closed the task; this re-opens the **same** contributed entry once
+	 * its rebound adapter publishes it again, so the next Wall of a run does not need
+	 * a second trip to the dock. It is a no-op for a tool the creator disarmed, and
+	 * for an entry whose adapter no longer contributes it.
+	 */
+	function rearmDockTool(): void {
+		const armed = armedTool;
+		const stage = facade;
+		if (armed === null || stage === null) return;
+		const stillContributed = stage
+			.findEntries()
+			.some((entry) => entry.id === armed.id && entry.adapterId === armed.adapterId);
+		if (!stillContributed) return;
+		invokeContribution(armed.adapterId, armed.id);
+	}
+
+	/** Pressing the armed key again folds or re-opens its palette without disarming the tool. */
+	function togglePalette(): void {
+		paletteOpen = !paletteOpen;
+	}
+
+	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
+	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string }): void {
+		const tool = dockTools.find(
+			(candidate) => candidate.id === entry.id && candidate.adapterId === entry.adapterId
+		);
+		if (tool !== undefined) {
+			armDockTool(tool);
+			return;
+		}
+		invokeContribution(entry.adapterId, entry.id);
+	}
+
+	/**
+	 * The keyboard route to a subject's own destructive action.
+	 *
+	 * The first press **names the consequences the owning adapter disclosed** — the
+	 * same planner-derived words the Card shows, hosted Openings and Room merge/open
+	 * included — and the second confirms. The first press writes nothing, and a
+	 * domain that contributes no destructive action is never offered one.
+	 */
+	function requestDelete(): void {
+		const selected = selection;
+		const destructive = cardActions.filter((action) => action.destructive === true);
+		if (selected === null || destructive.length !== 1) {
+			pendingDelete = null;
+			notice = selected === null ? 'Select a subject to delete it.' : 'Nothing here can be deleted.';
+			return;
+		}
+		const record = destructive[0]!;
+		const key = `${selected.reference.subject.kind}:${selected.reference.subject.id}`;
+		if (pendingDelete !== null && pendingDelete.key === key && pendingDelete.record.id === record.id) {
+			pendingDelete = null;
+			void runCardAction(record, key);
+			return;
+		}
+		pendingDelete = { key, record };
+		notice = `${record.label} — ${record.detail ?? 'the owning domain disclosed no consequences'}. Press Delete again to confirm, or Escape to keep it.`;
+	}
+
+	/** Run one contributed Card action and report exactly what it said. */
+	async function runCardAction(record: StageCardActionRecord, key: string): Promise<void> {
+		const outcome = await record.run();
+		if (pendingDelete?.key === key) pendingDelete = null;
+		notice = outcome.kind === 'accepted' ? '' : outcome.message ?? `${record.label} was not applied.`;
+	}
 
 	/**
 	 * The instrument host's task view. The target is named explicitly and may differ
@@ -2550,6 +2813,12 @@
 		onProjectActionComplete={finishCurrentProjectAction}
 		onProjectActionBusyChange={(busy) => (projectActionBusy = busy)}
 		onRefreshRemoteProject={reloadLifecycleRemote}
+		find={{
+			query: findQuery,
+			entries: headFindEntries,
+			onQuery: (value) => (findQuery = value),
+			onRun: runHeadFindEntry
+		}}
 	/>
 	{/if}
 
@@ -2766,6 +3035,10 @@
 				identity={cardOpen ? cardIdentity : null}
 				facts={cardFacts}
 				nameWriter={cardNameWriter}
+				writer={cardWriter}
+				actions={cardActions}
+				collapsed={cardCollapsed}
+				onToggleCollapsed={() => (cardExpanded = cardCollapsed)}
 				onClose={closeCard}
 				onFocusTask={() => {
 					notice = 'Focus deepens the current task; task depth arrives with T1.P01.S04.';
@@ -2791,17 +3064,36 @@
 					<button type="button" onclick={closeTask}>Close inactive task</button>
 				</div>
 			{/if}
-			<StageInstrumentHost task={taskHost} onClose={closeTask} instrument={contributedInstrument}>
-				{#if selection !== null}
-					{@const selectedId = selection.reference.subject.id}
-					<div class="instrument-body">
-						<p>Declared membership: <strong>{selectedMembership ?? 'unknown'}</strong></p>
-						<button type="button" onclick={() => toggleReveal(selectedId)}>
-							{revealed.includes(selectedId) ? 'Hide' : 'Reveal'}
-						</button>
-					</div>
-				{/if}
-			</StageInstrumentHost>
+			<!--
+				PLATE's one lower column: the dock, the armed tool's palette (the invoked
+				Instrument) and nothing else. A contributed tool appears here because its
+				entry declares `home: 'dock'`; the shell owns no domain slot of its own.
+			-->
+			<div class="lower-column" data-lower-column>
+				<StageDock
+					{armedTaskKind}
+					tools={dockTools}
+					{paletteOpen}
+					onSelect={selectTool}
+					onArm={armDockTool}
+					onTogglePalette={togglePalette}
+				/>
+				<StageInstrumentHost
+					task={paletteOpen ? taskHost : null}
+					onClose={closeTask}
+					instrument={contributedInstrument}
+				>
+					{#if selection !== null}
+						{@const selectedId = selection.reference.subject.id}
+						<div class="instrument-body">
+							<p>Declared membership: <strong>{selectedMembership ?? 'unknown'}</strong></p>
+							<button type="button" onclick={() => toggleReveal(selectedId)}>
+								{revealed.includes(selectedId) ? 'Hide' : 'Reveal'}
+							</button>
+						</div>
+					{/if}
+				</StageInstrumentHost>
+			</div>
 		</div>
 	</div>
 
@@ -2905,6 +3197,26 @@
 		position: absolute;
 		inset: 0;
 		pointer-events: none;
+	}
+	/*
+		PLATE's one lower working edge: the dock, the armed tool's palette and nothing
+		else, centred on the Stage. The column itself is a layout, not a surface — the
+		Stage stays pointer-driven around it, and only the dock and the instrument take
+		input — so it never turns the lower strip into a control bar.
+	*/
+	.lower-column {
+		position: absolute;
+		inset-inline: 0.75rem;
+		bottom: 0.75rem;
+		z-index: 6;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.4rem;
+		pointer-events: none;
+	}
+	.lower-column > :global(*) {
+		pointer-events: auto;
 	}
 	.stage-actions {
 		position: absolute;

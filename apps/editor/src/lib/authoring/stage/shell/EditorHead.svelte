@@ -22,6 +22,20 @@
 		ProjectLifecyclePrepareResult
 	} from '$lib/platform/project-persistence';
 
+	/**
+	 * One contributed tool or operation the Head's Find can reach.
+	 *
+	 * The host supplies the entry; the Head renders it and hands the **same**
+	 * object back when it is run, so neither side has to reconstruct the other's
+	 * vocabulary.
+	 */
+	export type HeadFindEntry = {
+		readonly id: string;
+		readonly adapterId: string;
+		readonly label: string;
+		readonly verb: string;
+	};
+
 	let {
 		projectId,
 		projectName,
@@ -56,7 +70,8 @@
 		onDeleteProject = async () => ({ kind: 'refused' as const, message: 'Project actions are unavailable.' }),
 		onProjectActionComplete = async () => {},
 		onProjectActionBusyChange = () => {},
-		onRefreshRemoteProject = null
+		onRefreshRemoteProject = null,
+		find = null
 	}: {
 		projectId: string;
 		projectName: string;
@@ -91,6 +106,21 @@
 		onProjectActionComplete?: (result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>) => void | Promise<void>;
 		onProjectActionBusyChange?: (busy: boolean) => void;
 		onRefreshRemoteProject?: (() => void | boolean | Promise<void | boolean>) | null;
+		/**
+		 * The bounded **Find** access (Round 2 D10): the contributed tools and
+		 * operations by name, each behind the explicit verb that reaches it. The host
+		 * supplies the list — the Head renders no domain tool and hard-codes no T1
+		 * family. Absent keeps the previous Head exactly as it was.
+		 *
+		 * It is deliberately not the scope-model Index, a global subject search or
+		 * every future Find command: it knows only what the mounted adapters declared.
+		 */
+		find?: {
+			readonly query: string;
+			readonly entries: readonly HeadFindEntry[];
+			readonly onQuery: (value: string) => void;
+			readonly onRun: (entry: HeadFindEntry) => void;
+		} | null;
 	} = $props();
 
 	const LENSES = [
@@ -189,6 +219,35 @@
 	</div>
 
 	<div class="actions">
+		{#if find !== null}
+			<details class="find" data-head-find>
+				<summary>Find</summary>
+				<div class="find-body">
+					<label class="find-field">
+						<span>Find a tool or operation</span>
+						<input
+							type="search"
+							value={find.query}
+							oninput={(event) => find?.onQuery(event.currentTarget.value)}
+						/>
+					</label>
+					{#if find.entries.length === 0}
+						<p class="find-empty">Nothing contributed matches that name.</p>
+					{:else}
+						<ul class="find-results">
+							{#each find.entries as entry (`${entry.adapterId}:${entry.id}`)}
+								<li>
+									<button type="button" onclick={() => find?.onRun(entry)}>
+										<span class="find-verb">{entry.verb}</span>
+										{entry.label}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+			</details>
+		{/if}
 		<ProjectLifecycleActions
 			{projectId}
 			{projectName}
@@ -406,6 +465,121 @@
 		flex-direction: column;
 		gap: 0.1rem;
 		max-width: 11rem;
+	}
+
+	/*
+		Find is a disclosure rather than a permanent panel: the Head stays one row,
+		and the list it opens is the bounded set of contributed entries.
+	*/
+	.find {
+		position: relative;
+	}
+
+	.find summary {
+		min-height: var(--control-height);
+		padding: 0 0.55rem;
+		border: 1px solid var(--chassis-hairline);
+		border-radius: var(--radius);
+		background: var(--chassis-forest-raised);
+		color: var(--head-ink);
+		font-size: 0.78rem;
+		line-height: calc(var(--control-height) - 2px);
+		cursor: pointer;
+		list-style: none;
+	}
+
+	.find summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.find summary:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 1px;
+	}
+
+	.find-body {
+		position: absolute;
+		right: 0;
+		top: calc(100% + 0.3rem);
+		z-index: 12;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		width: min(20rem, 80vw);
+		padding: 0.5rem;
+		border: 1px solid var(--chassis-hairline);
+		border-radius: var(--radius);
+		background: var(--chassis-forest);
+		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 45%);
+	}
+
+	.find-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		font-size: 0.68rem;
+		color: var(--head-ink-quiet);
+	}
+
+	.find-field input {
+		min-height: var(--control-height);
+		padding: 0 0.4rem;
+		border: 1px solid var(--chassis-hairline);
+		border-radius: var(--radius);
+		background: #0e211900;
+		color: var(--head-ink);
+		font: inherit;
+	}
+
+	.find-results {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		max-height: 12rem;
+		overflow: auto;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.find-results button {
+		display: flex;
+		width: 100%;
+		align-items: baseline;
+		gap: 0.4rem;
+		padding: 0.25rem 0.3rem;
+		border: 1px solid transparent;
+		border-radius: var(--radius);
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: 0.78rem;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.find-results button:hover {
+		border-color: var(--chassis-hairline);
+		background: var(--chassis-forest-raised);
+	}
+
+	.find-results button:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 1px;
+	}
+
+	.find-verb {
+		color: var(--focus-ring);
+		font-size: 0.62rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.find-empty {
+		margin: 0;
+		font-size: 0.72rem;
+		color: var(--head-ink-quiet);
 	}
 
 	.history-actions {
