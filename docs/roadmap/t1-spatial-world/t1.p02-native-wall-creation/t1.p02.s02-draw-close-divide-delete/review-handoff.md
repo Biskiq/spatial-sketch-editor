@@ -3,13 +3,14 @@
 ```text
 AUTHORITY: NONE — the phase README owns slice status; the release list entry and the next-wave
            authorization record own the release. This artifact requests review; it accepts nothing.
-STATUS:    implementation complete and repaired through one peer-review round on branch
+STATUS:    implementation complete and repaired through two peer-review rounds on branch
            `t1-p02-s02-draw-close-divide-delete`, pushed for re-review. No acceptance, no closeout,
            no merge claim.
 TIER:      architecture-integration. Integration route remains T1.P02.S04.
 OWED:      T3's implementation review of the shared Head/F4 diff, and the owning track's review of
            each T2/T3 adapter edit this diff touches (see “Review obligations”). Round 2 repaired
-           four peer-review findings; the re-review owns whether the repairs close them.
+           four peer-review findings and round 3 repaired the one the re-review raised against
+           them; the re-review owns whether the repairs close them.
 ```
 
 ## What is implemented
@@ -48,6 +49,20 @@ Stage contribution field shapes or their defaults, admission/install, or the she
 records. The policy edit is a pure function in `layout-core`; the wording edit changes only words; the
 confirmation edit changes shell state that never reaches the source.
 
+### Peer-review round 3
+
+The re-review read the round-2 repairs as sound and carried the three P1s and the P3 as resolved. It
+raised one further finding against the round-2 confirmation repair, which is confirmed here.
+
+| Finding | Verdict | Repair | Regression evidence |
+| --- | --- | --- | --- |
+| **P2 — the Card's confirmation was not action-specific** | **Confirmed.** Round 2 keyed the confirmation by the subject plus the **entire** contributed action list, so one subject with two destructive actions marked both as confirmed: each action's first press ran it, and the creator never read the second action's consequences. The contract permits it — every mounted adapter contributes actions for one subject and only `detail` is required of a destructive one, so nothing caps how many are destructive. The Card's action list was keyed by `action.id` alone, and the record type stamps `adapterId` precisely because an id is unique per adapter rather than across them, so two adapters' same-named actions were already a duplicate-key hazard. | `EditorCard.svelte`: the confirmation now names **one action** — subject, owning adapter, action id and that adapter's own disclosed words — and the live key set decides what is stale, so a neighbour discloses its own consequences instead of inheriting the confirmation the first action opened. The action list is keyed by adapter **and** id. The route's own `Delete` route needed no change: `requestDelete` already refuses unless the subject has exactly one destructive action, so the hole was local to the Card. | New `editor-card-confirmation.test.ts` mounts the Card: two destructive actions each disclose their own words and only the confirmed one runs; two adapters' same-named actions stay apart; a subject change and reworded consequences both drop the disclosure. The first two fail against the round-2 Card (verified by reverting only that file) — the neighbour reads “Confirm wall-dissolve” with no disclosure of its own, and the duplicate-key case raises `each_key_duplicate`. |
+
+Diff review for round 3: the repair is Card-local confirmation state plus one `{#each}` key, and both are
+render-time only. It changes no operation, capture, correspondence, lease, contribution field shape or
+adapter contract; `data-card-action` keeps its existing value, so the route's mounted regression and the
+Card's own selectors are unaffected.
+
 ## Verification at the implementation revision (round 1)
 
 Frozen candidate `35693802eebb1233512758283f404ccd79dfc5ed` (branch head when the gate ran), all
@@ -75,6 +90,24 @@ and a Wall interior are declared to the planner while nearness is not a snap; ba
 a refused finish writes no source; one Undo per accepted chain; ids are not reused across
 delete/recreate and Undo/Redo), the Wall-delete consequences, the new Stage seams, the migrated Card
 field writer's lifetime, and the Head's bounded Find.
+
+## Verification at the repair revision (round 3)
+
+Branch head `fda568bc` (`fix(shell): bind a Card confirmation to the action it disclosed`), all
+commands from the repository root and run on the committed tree:
+
+```text
+npm run check               editor svelte-check: 0 errors, 0 warnings
+npm run test:fast           181 files / 2,329 tests passed  (+4 round-3 regressions)
+npm run test:arch           22 files / 180 tests passed
+```
+
+`test:fast` was run three times at this revision and passed each time (2,329 tests, 181 files). One
+earlier run of the same command exited non-zero before its output was captured, and its failing test
+name was lost to a `tail` pipe; it has not reproduced across those three runs, so it is recorded here as
+an unreproduced transient rather than as a pass. The round-2 revision's heavy lane, full suite, both
+package checks, the build and the API stack run are unchanged by a Card-local repair and are kept above;
+they were not re-run for round 3, and this handoff does not present them as round-3 evidence.
 
 ## Verification at the repair revision (round 2)
 
@@ -188,4 +221,7 @@ round 2 (peer-review repairs)
 5296f678  fix(layout-core): admit a drawing against a curved Wall's real centerline
 b7b0f9d4  fix(shell): bind a delete confirmation to its exact subject and words
 78705c0d  fix(layout): word a Wall deletion's disclosure as two sentences
+
+round 3 (re-review repair)
+fda568bc  fix(shell): bind a Card confirmation to the action it disclosed
 ```
