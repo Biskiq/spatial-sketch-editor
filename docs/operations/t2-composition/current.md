@@ -22,11 +22,13 @@ BATON: S02 delivers the own-GLB import procedure (review, scale/pivot/footprint/
        placement through the resource-granting planner, and approved-model rendering in the editor and
        Preview. Durable current behavior is in the owning assets, Scene content and persistence references.
        S03's PR carries the gate record, the on-demand acceptance harness, its evidence and the
-       failed-gate disposition; it is open and is never merged by the slice that wrote it. T1's #201 is
-       T3-accepted at `bf9007ff` (later commits docs-only) but **not merged**; on a scratch integration its
-       press-claim removes the pointer-selection overwrite, while Resize/Duplicate still refuse a
-       creator model for verified contact. Any S03 re-run must use the resulting `main` and re-record
-       the affected rows. No other slice is in progress on this track.
+       failed-gate disposition; it is open and is never merged by the slice that wrote it. T1's #201
+       shared Head/F4 diff is T3-accepted at `bf9007ff`; its later narrow-shell repair and 28-row
+       browser matrix are T3-accepted at `2ad80bbd`, where the owner-run formal performance pass is
+       still owed. #201 is **not merged**; on a scratch integration its press-claim removes the
+       pointer-selection overwrite, while Resize/Duplicate still refuse a creator model for verified
+       contact. Any S03 re-run must use the resulting `main` and re-record the affected rows. No other
+       slice is in progress on this track.
 OWNER DECISIONS (2026-10-23/24): T1 host patch accepted 2026-10-24; editable Card facts stay read-only
        (option b); the placed-creator-model selection gap was kept unfixed as a T1/T2 follow-up and is
        removed by #201's press-claim on the integrated tree (not merged or re-accepted); Resize/Duplicate
