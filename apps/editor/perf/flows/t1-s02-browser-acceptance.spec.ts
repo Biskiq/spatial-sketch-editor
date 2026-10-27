@@ -766,6 +766,19 @@ test('shell: narrow reduced-motion layout, Find, contributed-task arbitration an
 		const replaceBefore = await acceptedResultCount(page);
 		await finishWithEnter(page);
 		await waitForAcceptedResult(page, replaceBefore);
+		// The lower column is now at its palette height, not only the dock's. The
+		// measured lift must clear the invoked palette too.
+		await selectSubject(page, wallId);
+		const cardWithPalette = await page.locator(CARD).boundingBox();
+		const lowerWithPalette = await page.locator('[data-lower-column]').boundingBox();
+		if (cardWithPalette === null || lowerWithPalette === null) throw new Error('the Card or palette-bearing column has no box');
+		const paletteIntersects =
+			cardWithPalette.x < lowerWithPalette.x + lowerWithPalette.width &&
+			lowerWithPalette.x < cardWithPalette.x + cardWithPalette.width &&
+			cardWithPalette.y < lowerWithPalette.y + lowerWithPalette.height &&
+			lowerWithPalette.y < cardWithPalette.y + cardWithPalette.height;
+		expect(paletteIntersects, `Card ${JSON.stringify(cardWithPalette)} overlaps the palette column ${JSON.stringify(lowerWithPalette)}`).toBe(false);
+		rows.push(row('shell.palette-clearance', 'Card clears the invoked palette', 'passed', 'with Ink armed and its palette open, the Card and the full lower column do not intersect', page, '900x700', true));
 		const edited = layoutCounts(await downloadSource(page));
 		let nativeConfirm = '';
 		page.once('dialog', async (dialog) => {
