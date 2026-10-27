@@ -97,6 +97,16 @@ describe('pending approved model', () => {
 		expect(peekArmedModel(PROJECT)).toBeNull();
 	});
 
+	it('consumes the arm even when the Place session is briefly absent', () => {
+		rememberArmedModel(PROJECT, armed(definition('model:one')));
+
+		choosePrimitive(PROJECT, null, 'cylinder');
+
+		// The next Place open must not re-arm a model the creator replaced while the
+		// panel's session was being replaced.
+		expect(peekArmedModel(PROJECT)).toBeNull();
+	});
+
 	it('clears only the project whose placement committed', () => {
 		rememberArmedModel(PROJECT, armed(definition('model:one')));
 		rememberArmedModel(OTHER, armed(definition('model:two')));

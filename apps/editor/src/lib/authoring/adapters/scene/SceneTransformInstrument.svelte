@@ -732,13 +732,11 @@
 					value={primitive}
 					onchange={(event) => {
 						primitive = event.currentTarget.value as NativePlacementPrimitive;
-						if (session !== null) {
-							choosePrimitive(
-								services.stage.snapshot().acceptedRevision.projectId,
-								session,
-								primitive
-							);
-						}
+						choosePrimitive(
+							services.stage.snapshot().acceptedRevision.projectId,
+							session,
+							primitive
+						);
 					}}
 				>
 					{#each NATIVE_PLACEMENT_PRIMITIVES as option (option)}

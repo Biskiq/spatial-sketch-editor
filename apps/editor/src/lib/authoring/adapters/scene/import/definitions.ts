@@ -97,9 +97,11 @@ export function clearArmedModel(projectId: string): void {
  */
 export function choosePrimitive(
 	projectId: string,
-	session: { setPlacePrimitive(primitive: NativePlacementPrimitive): void },
+	session: { setPlacePrimitive(primitive: NativePlacementPrimitive): void } | null,
 	primitive: NativePlacementPrimitive
 ): void {
+	// The explicit choice consumes the arm even if the task's session is briefly
+	// absent; the next Place open must not resurrect the replaced model.
 	clearArmedModel(projectId);
-	session.setPlacePrimitive(primitive);
+	session?.setPlacePrimitive(primitive);
 }

@@ -318,10 +318,9 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		evidence.stagePlacedWaitedMs = stagePlaced.waitedMs;
 		expect(stagePlaced.pixels, 'the placed model renders in the editor 3D reading').toBeGreaterThan(1_000);
 
-		// Record what the placement completion left selected, without asserting it:
-		// the selection gap is an owner-deferred finding measured by the diagnostic
-		// spec, and this record must not claim a manipulation path the shipped UI
-		// does not offer.
+		// Record what the placement completion left selected **and assert it**: the
+		// repaired completion is a gate row now. The diagnostic spec keeps its own
+		// observation-only copy so a regression shows in both places.
 		const selectedCard = (await page.locator('[aria-label="Selected subject"]').innerText().catch(() => ''))
 			.replace(/\s+/g, ' ')
 			.trim();
@@ -669,8 +668,8 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await session.context.close();
 	});
 
-	// The canonical selection and Compose observations remain diagnostics:
-	// `s03-diagnostics.spec.ts` records them without asserting a broken outcome.
+	// Selection and Compose are asserted by the journeys above; the diagnostic
+	// spec keeps an observation-only record that cannot fail the gate.
 
 	test('oversize, malformed, cancelled and project-replaced imports install nothing', async ({ browser }) => {
 		const session = await signedInSession(browser);
