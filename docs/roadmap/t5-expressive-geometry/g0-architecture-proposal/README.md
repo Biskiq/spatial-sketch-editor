@@ -1,8 +1,10 @@
 # T5 G0 — A revisable language of form
 
-**Source proposal retained for comparison.** The current owner-review recommendation is the
-[reconciled proposal](../g0-reconciled-proposal/README.md), including its workflow challenge and
-revised evidence-first roadmap. Neither document is ratified.
+**Historical source proposal.** The [reconciled proposal](../g0-reconciled-proposal/README.md)
+was the recommended foundation for the [bounded G0 ratification](../../../reference/decisions/t5-g0-ratification-2026-10-27.md).
+This source proposal is not a live recommendation or contract. The original proposal text below
+is preserved as evidence, including its then-current review/status language; the ratification
+record and linked owning contracts control current direction. No kernel or sequence is approved.
 
 **Stage 1 architecture and capability-roadmap proposal · 27 October 2026 · awaiting owner review.**
 This is the deliverable of the [approved G0 commission](../g0-foundation-architecture-commission.md),

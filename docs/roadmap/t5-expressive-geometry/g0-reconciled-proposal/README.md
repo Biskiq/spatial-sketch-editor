@@ -1,12 +1,19 @@
 # T5 G0 — Disciplined creative freedom
 
-**Reconciled architectural proposal · 27 October 2026 · for owner ratification.**
+**Historical reconciled recommendation · 27 October 2026 · bounded direction promoted.**
 
-This is one recommended direction, replacing the need to choose between the two proposals in
-[PR #202](https://github.com/Biskiq/spatial-sketch-editor/pull/202). It does not ratify itself.
-It proposes no production implementation, dependency admission, registered phase or release, and
-does not change the North Star, reference architecture, commission or current roadmap registers.
-Independent review of this reconciliation and an owner ruling remain due.
+This was the recommended foundation for the owner-directed
+[G0 ratification](../../../reference/decisions/t5-g0-ratification-2026-10-27.md) in
+[PR #202](https://github.com/Biskiq/spatial-sketch-editor/pull/202). The ruling selects durable
+principles and obligations, **not this proposal wholesale**. The linked owning references now
+carry the live direction; [T5 tracking](../README.md) owns the next E0 decision. Interaction design,
+source/geometry representations, kernels, specific implementation direction, E0 prototype/thresholds,
+R1–R5 milestones, slice counts and sequencing remain provisional. E0 execution needs a separate
+owner-authorized commission. No independent review or experiment is claimed by the promotion.
+
+**Original proposal text below is retained as historical evidence.** Its recommendations, review
+language, instructions to promote and present-tense assessments describe the proposal at
+`f1a3cf55`; they do not override the bounded ruling or authorize implementation.
 
 The inputs are [A: A revisable language of form][proposal-a], [A's kernel assessment][kernels],
 and [B: Stratified form][proposal-b], all inspected at PR head `9961f92b90f9a50b15725f70037d5bc48f315fec`.

@@ -1,5 +1,10 @@
 # G0 — Kernel, mathematics and evidence assessment
 
+**Historical assessment, not dependency or architecture authority.** The
+[G0 ruling](../../../reference/decisions/t5-g0-ratification-2026-10-27.md) selects no kernel or
+representation strategy. Recommendations and source/license observations below remain evidence
+from the original investigation; admission requires fresh consumer evidence and existing review.
+
 **Companion to the [Stage 1 proposal](./README.md) · 27 October 2026 · recommendations only.**
 No package was installed or admitted. Primary upstream documentation and license texts were
 checked during this investigation; moving upstream URLs describe that inspection, not a frozen
