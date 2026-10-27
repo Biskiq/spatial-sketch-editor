@@ -20,11 +20,12 @@ ACC:   T1.P02.S06 performance foundation — **accepted AC-qualified 2026-10-27,
        post-Bench-2 attribution and the T3/T2 shared-boundary review are recorded; the closeout stub
        carries the ratified disposition, budgets and follow-ons. Battery qualification, grid-XL
        timing and the sweep latency rows are assigned to S04.
-NEXT:  Direct and record the owner-run M2 formal performance pass, confirm the later shell repair and
-       completed browser matrix as part of the reviewed implementation, then rerun `slice-closeout`
-       on the same branch. No other T1 slice is released: S03–S04 stay held pending their own releases, and
-       the [release list](../../roadmap/now.md) is the only permission list. No benchmark,
-       attribution, E5 or review rerun is owed for S06.
+NEXT:  S02 performance is deferred by owner direction (2026-10-27) while T2.P02.S03 recovery starts;
+       #201 stays NOT ACCEPTED and unmerged. When resumed, direct and record the owner-run M2 formal
+       performance pass, then rerun `slice-closeout`. The owner ruled the 456.0 KiB Stage bundle
+       hard miss an explicit known miss to record, not a silent waiver. No other T1 slice is released:
+       S03–S04 stay held pending their own releases, and the [release list](../../roadmap/now.md) is
+       the only permission list. No benchmark, attribution, E5 or review rerun is owed for S06.
 BLOCKERS: S02 acceptance evidence is incomplete — the owner-run M2 performance rows are not recorded
        and closeout stopped before acceptance. S03–S04 and T4 stay held pending their own
        releases. T3's ownership acknowledgement for S06 remains a records-only item owned by T3,

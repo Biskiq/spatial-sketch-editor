@@ -94,16 +94,18 @@ review's gate at `bf9007ff` remains recorded in
 [t3-implementation-review.md](./t3-implementation-review.md); the targeted shell-repair review is in
 [t3-shell-repair-review.md](./t3-shell-repair-review.md).
 
-## Owner decisions required
+## Owner decisions
 
-1. Direct the owner-run M2 formal acceptance pass and record it (or record an explicit owner ruling
-   for the performance rows, including the Stage first-load delta). The integration measurement is
-   456.0 KiB JS br on the merged tree, +9.0 KiB over the #199 base; both exceed the ≤400 KiB hard
-   budget.
-2. Confirm the later shell repair (`8db7baf2`, `f26b227c`) and the completed browser matrix
-   (`dc877396`, `64b9435d`) as part of the reviewed implementation. The targeted T3 review accepts
-   the repair with one non-blocking residual, and this pass's gate/browser evidence is recorded above.
-3. Only then rerun `slice-closeout`; acceptance, the phase register's shipped row, M4 re-arm and the
-   baton are untouched until that decision.
+1. **Deferred (2026-10-27):** the owner directed T2.P02.S03 recovery to start before the S02 formal
+   performance pass. S02 therefore remains **NOT ACCEPTED** and #201 stays unmerged; no performance
+   row is recorded or waived.
+2. **Known miss ruled (2026-10-27):** record the Stage route's **456.0 KiB JS br** against the ≤400
+   KiB hard budget as an explicit known miss and proceed with S02 once the performance gate exists.
+   #201 adds +9.0 KiB over the #199 base; the miss predates #201 and is not a waiver of any other row.
+3. **T3 confirmed:** the targeted review accepts the later shell repair (`8db7baf2`, `f26b227c`)
+   and the completed browser matrix (`dc877396`, `64b9435d`) with one non-blocking residual; the gate
+   and browser evidence are recorded above.
+4. The formal performance pass and `slice-closeout` remain outstanding; acceptance, the phase
+   register's shipped row, M4 re-arm and the baton are untouched.
 
 No phase closure, track completion, merge claim or acceptance is recorded here.
