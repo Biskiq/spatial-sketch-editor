@@ -1,0 +1,20 @@
+revision b9ba493b837877c6c4b59d7e9c372e2db991645d
+captured 2026-10-27T23:10:12Z
+database biskiq_s03_final_head
+
+### check
+0 errors, 0 warnings; exit 0
+### test
+215 files / 2,663 tests passed; exit 0
+### test:arch
+22 files / 180 tests passed; exit 0
+### test:heavy
+11 files / 138 tests passed; exit 0
+### check:api, check:project-model, check:layout-core, check:camera-core
+0 errors each; exit 0
+### build
+editor 6.86 s, API 3.73 s; exit 0
+### test:api
+14 suites / 114 tests, 114 pass, 0 skipped, 0 failed; exit 0
+### perf:bundle
+exit 0 (see bundle-command.log)

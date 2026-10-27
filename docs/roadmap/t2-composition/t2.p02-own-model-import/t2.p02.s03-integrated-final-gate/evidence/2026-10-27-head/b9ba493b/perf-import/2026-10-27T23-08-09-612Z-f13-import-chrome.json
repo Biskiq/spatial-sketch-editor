@@ -1,0 +1,116 @@
+{
+  "name": "f13-import-chrome",
+  "startedAt": "2026-10-27T23:08:09.611Z",
+  "machine": {
+    "platform": "darwin",
+    "release": "24.6.0",
+    "cpuModel": "Apple M2",
+    "cores": 8,
+    "memoryGiB": 16,
+    "node": "v26.7.0",
+    "powerState": "Battery Power, Low Power Mode off"
+  },
+  "profile": "acceptance",
+  "acceptanceEvidence": false,
+  "passScoped": false,
+  "samplePlan": {
+    "profile": "acceptance",
+    "acceptanceEvidence": true,
+    "runs": 10,
+    "warmup": 1,
+    "inputSamples": 60,
+    "dragSamples": 5,
+    "undoRedoCycles": 20,
+    "f13Edits": 20,
+    "f13Cycles": {
+      "cold": 10,
+      "warm": 1,
+      "repeat-use": 10
+    },
+    "cacheStates": {
+      "f2": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f3": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f7": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f13": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ]
+    },
+    "runCounts": {
+      "f2": 10,
+      "f3": 10,
+      "f7": 10,
+      "f13": 10
+    },
+    "oldMethod": true,
+    "delayProof": true,
+    "stageTraceTiers": "all",
+    "note": "ratified acceptance method: 10 measured runs, 60 pointer inputs per drag, every cache state, A.6 and the delayed-preview proof"
+  },
+  "rows": [
+    {
+      "id": "F13-import-place-undo-repeat-use",
+      "flow": "F13 repeated import place/undo",
+      "workload": "S generated model, one import then 10 × (place another + Undo), post-GC heap each cycle",
+      "cacheState": "repeat-use",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "cycles": 10,
+        "heapBaselineMiB": 9.5357666015625,
+        "heapFinalMiB": 12.195140838623047,
+        "heapGrowthMiB": 2.659374237060547,
+        "heapPerCycle": "9.54,10.17,10.62,10.78,11.1,11.24,11.38,11.56,12,12.1,12.2"
+      },
+      "stats": {
+        "heapAfterGCDistribution": {
+          "count": 11,
+          "min": 9.5357666015625,
+          "median": 11.240039825439453,
+          "p75": 11.783733367919922,
+          "p95": 12.147966384887695,
+          "p99": 12.185705947875977,
+          "max": 12.195140838623047,
+          "values": [
+            9.5357666015625,
+            10.17343521118164,
+            10.616413116455078,
+            10.776695251464844,
+            11.100833892822266,
+            11.240039825439453,
+            11.383758544921875,
+            11.563800811767578,
+            12.003665924072266,
+            12.100791931152344,
+            12.195140838623047
+          ]
+        }
+      },
+      "limitations": [
+        "pre-flight on a developer machine: hard budgets are accepted only from the reference machine",
+        "presentation is attributed to the rendering-opportunity frame, not a traced image",
+        "one warm context; the first import and its approved model stay resident by design, so growth is instance churn, not first-load",
+        "removal is the Head Undo of the accepted placement, not the Compose Delete task: a placed creator model is not canonically selectable through the shipped UI yet",
+        "identical pixels are not asserted; the accepted-result count proves each cycle installed and reversed one result",
+        "GPU memory is not exposed by Chromium"
+      ]
+    }
+  ],
+  "commit": "b9ba493b837877c6c4b59d7e9c372e2db991645d",
+  "writtenAt": "2026-10-27T23:08:09.627Z"
+}

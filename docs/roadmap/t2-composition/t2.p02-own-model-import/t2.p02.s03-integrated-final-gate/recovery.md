@@ -1,7 +1,7 @@
 # T2.P02.S03 — first recovery attempt at `7d1212b6`
 
 > **Current recovery:** [recovery-head.md](./recovery-head.md) records the later repair and re-run at
-> `8cb97fe8`, including the empty-project acceptance row and the 422.4 KiB bundle. This file is the
+> `b9ba493b`, including the empty-project acceptance row and the 422.3 KiB bundle. This file is the
 > historical first attempt and is unchanged except for the machine-fact correction below.
 
 ```text
