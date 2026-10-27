@@ -1,0 +1,221 @@
+{
+  "flow": "T1.P02.S02 browser acceptance",
+  "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+  "apiOrigin": "http://127.0.0.1:8792",
+  "browser": "chrome",
+  "generatedAt": "2026-10-27T18:14:46.745Z",
+  "rows": [
+    {
+      "id": "starter.baseline",
+      "concern": "starter enclosure",
+      "status": "passed",
+      "detail": "{\"walls\":4,\"junctions\":4,\"rooms\":1,\"openings\":0}",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08q6l/spatial?create=1"
+    },
+    {
+      "id": "starter.close",
+      "concern": "free Wall → deliberate join → enclosure",
+      "status": "passed",
+      "detail": "pointer on start Junction; {\"walls\":4,\"junctions\":4,\"rooms\":1,\"openings\":0} → {\"walls\":8,\"junctions\":7,\"rooms\":2,\"openings\":0}; one accepted result installed",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08q6l/spatial?create=1",
+      "screenshot": "t1-s02-starter-closed.png"
+    },
+    {
+      "id": "starter.plan-3d",
+      "concern": "Plan/3D read one candidate",
+      "status": "passed",
+      "detail": "reading switch preserved the accepted counts",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08q6l/spatial?create=1",
+      "screenshot": "t1-s02-starter-3d.png"
+    },
+    {
+      "id": "starter.divide",
+      "concern": "divide a Room",
+      "status": "passed",
+      "detail": "{\"walls\":8,\"junctions\":7,\"rooms\":2,\"openings\":0} → {\"walls\":11,\"junctions\":9,\"rooms\":3,\"openings\":0}",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08q6l/spatial?create=1",
+      "screenshot": "t1-s02-starter-divided.png"
+    },
+    {
+      "id": "starter.delete",
+      "concern": "delete a Wall and reconcile its Room",
+      "status": "passed",
+      "detail": "{\"walls\":11,\"junctions\":9,\"rooms\":3,\"openings\":0} → {\"walls\":10,\"junctions\":9,\"rooms\":2,\"openings\":0}; disclosure read before the second press",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08q6l/spatial?create=1",
+      "screenshot": "t1-s02-starter-deleted.png"
+    },
+    {
+      "id": "starter.undo-redo",
+      "concern": "one Undo/Redo per accepted delete",
+      "status": "passed",
+      "detail": "{\"walls\":11,\"junctions\":9,\"rooms\":3,\"openings\":0} then {\"walls\":10,\"junctions\":9,\"rooms\":2,\"openings\":0}",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08q6l/spatial?create=1"
+    },
+    {
+      "id": "starter.save-reload",
+      "concern": "Save/reload preserve identities",
+      "status": "passed",
+      "detail": "10 Walls, 9 Junctions, 2 Rooms retained",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08q6l/spatial?create=1",
+      "screenshot": "t1-s02-starter-reloaded.png"
+    },
+    {
+      "id": "empty.close",
+      "concern": "empty project → enclosure",
+      "status": "passed",
+      "detail": "typed points; {\"walls\":0,\"junctions\":0,\"rooms\":0,\"openings\":0} → {\"walls\":4,\"junctions\":4,\"rooms\":1,\"openings\":0}",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08zn5/spatial?create=1",
+      "screenshot": "t1-s02-empty-closed.png"
+    },
+    {
+      "id": "empty.plan-3d",
+      "concern": "empty enclosure in 3D",
+      "status": "passed",
+      "detail": "reading switch preserved the accepted counts",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08zn5/spatial?create=1",
+      "screenshot": "t1-s02-empty-3d.png"
+    },
+    {
+      "id": "empty.invalid-length",
+      "concern": "invalid numeric entry",
+      "status": "passed",
+      "detail": "Card refused the text with an alert and installed nothing",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08zn5/spatial?create=1",
+      "screenshot": "t1-s02-empty-invalid-length.png"
+    },
+    {
+      "id": "empty.card-precision",
+      "concern": "Card precision",
+      "status": "passed",
+      "detail": "a valid exact length installed one accepted change; the invalid text did not",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08zn5/spatial?create=1"
+    },
+    {
+      "id": "empty.keyboard",
+      "concern": "keyboard-only finish/backtrack/cancel",
+      "status": "passed",
+      "detail": "Enter finished a two-point chain; Backspace removed one point; Escape cleared the live chain with no install",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr08zn5/spatial?create=1"
+    },
+    {
+      "id": "policy.crossing",
+      "concern": "crossing without a Junction",
+      "status": "passed",
+      "detail": "refused: The chain crosses Wall \"wall-chain-2.starter-template\" without a Junction. End the chain on that Wall to split it, or draw into the existing Junction.",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr095gh/spatial?create=1",
+      "screenshot": "t1-s02-policy-crossing.png"
+    },
+    {
+      "id": "policy.overlap",
+      "concern": "collinear overlap",
+      "status": "passed",
+      "detail": "refused: Walls 'wall-chain-2.starter-template' and 'wall-chain-1.3c41bc8d-4d54-4dc5-8130-54357775b01d' overlap beyond their explicit shared junction",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr095gh/spatial?create=1"
+    },
+    {
+      "id": "policy.nested",
+      "concern": "disconnected nested ring",
+      "status": "passed",
+      "detail": "refused: The ring lies inside Room \"room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-template-F.starter-template\" without sharing a Junction with it. Connect the ring to that Room's boundary, or draw it outside the Room.",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr095gh/spatial?create=1"
+    },
+    {
+      "id": "policy.invalid-options",
+      "concern": "invalid numeric entry in the palette",
+      "status": "passed",
+      "detail": "thickness and typed coordinate refusals installed nothing",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr095gh/spatial?create=1",
+      "screenshot": "t1-s02-policy-invalid.png"
+    },
+    {
+      "id": "shell.narrow",
+      "concern": "narrow, reduced-motion shell",
+      "status": "passed",
+      "detail": "900×700; Card and lower column do not intersect; no horizontal page overflow",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "900x700",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr09bb4/spatial?create=1",
+      "screenshot": "t1-s02-shell-narrow.png"
+    },
+    {
+      "id": "shell.find",
+      "concern": "Head Find reaches the dock tool",
+      "status": "passed",
+      "detail": "the contributed Ink entry armed the dock tool",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "900x700",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr09bb4/spatial?create=1"
+    },
+    {
+      "id": "shell.task-arbitration",
+      "concern": "contributed task and Card arbitration",
+      "status": "passed",
+      "detail": "selection survived the invoked task; closing it did not re-arm Ink",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "900x700",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr09bb4/spatial?create=1"
+    },
+    {
+      "id": "shell.unsaved-replacement",
+      "concern": "unsaved project replacement guard",
+      "status": "passed",
+      "detail": "native confirm (This project has unsaved changes. Save, download the source, or leave and lose them.) then the in-page Replace prompt; Cancel preserved the edited source",
+      "revision": "f26b227ca987bf1a5c66f7e3f9139831f79ef01d",
+      "viewport": "900x700",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s02-mvr09bb4/spatial?create=1",
+      "screenshot": "t1-s02-shell-replacement.png"
+    }
+  ]
+}

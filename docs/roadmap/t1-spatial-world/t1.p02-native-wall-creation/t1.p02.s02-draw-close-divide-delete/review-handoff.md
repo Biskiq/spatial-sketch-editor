@@ -5,16 +5,18 @@ AUTHORITY: NONE — the phase README owns slice status; the release list entry a
            authorization record own the release. This artifact requests review; it accepts nothing.
 STATUS:    implementation complete and repaired through three peer-review rounds, then reviewed by
            T3 on branch `t1-p02-s02-draw-close-divide-delete`. T3 accepted the shared Head/F4 diff
-           at `bf9007ff` ([review](./t3-implementation-review.md)). No acceptance, no closeout, no
-           merge claim.
+           at `bf9007ff` ([review](./t3-implementation-review.md)). Three later in-scope commits add
+           the constrained-width Card repair (`8db7baf2`, `f26b227c`) and the browser journey
+           (`132a7aac`); the gate and the 20-row, two-browser pass are recorded at `f26b227c`. No
+           acceptance, no closeout, no merge claim.
 TIER:      architecture-integration. Integration route remains T1.P02.S04.
 OWED:      no adapter edit outside T1 was found, so no owning-track adapter review is outstanding;
            the T3 shared Head/F4 review is discharged by
-           [t3-implementation-review.md](./t3-implementation-review.md). The slice's browser and
-           owner-run performance rows remain owed by the owning track (see “Review obligations” and
-           “Known limits”). Round 2 repaired four peer-review findings, round 3 repaired the one the
-           re-review raised against them, and round 4 repaired the five findings T3's review
-           confirmed.
+           [t3-implementation-review.md](./t3-implementation-review.md). The browser journey is
+           recorded below; the owner-run performance rows remain owed by the owning track (see
+           “Review obligations” and “Known limits”). Round 2 repaired four peer-review findings,
+           round 3 repaired the one the re-review raised against them, and round 4 repaired the five
+           findings T3's review confirmed.
 ```
 
 ## What is implemented
@@ -174,6 +176,30 @@ mounted-route confirmation cases listed above. Each was run against the pre-repa
 only the file it covers) to confirm it fails there; the drag pair and the route confirmation case
 were verified that way in-session.
 
+## Browser acceptance evidence
+
+Run at branch head `f26b227c` on 2026-10-27 through `apps/editor/perf/run-t1-s02-browser-qa.mjs`:
+the ordinary production build previewed by Vite, the local API against a fresh private Postgres
+database, and `perf/flows/t1-s02-browser-acceptance.spec.ts` with one worker and no retries. Both
+Playwright projects passed all four tests and all 20 rows:
+
+| Project | Result | Evidence |
+| --- | --- | --- |
+| `chromium` | 4/4 tests, 20/20 rows | [JSON](./evidence/2026-10-27/f26b227c/t1-s02-browser-evidence.json) |
+| `chrome` (branded Google Chrome 156.0.8078.48) | 4/4 tests, 20/20 rows | [JSON](./evidence/2026-10-27/f26b227c-chrome/t1-s02-browser-evidence.json) |
+
+Every row records `f26b227ca987bf1a5c66f7e3f9139831f79ef01d`, its viewport (1440×900 for the
+starter/empty/policy rows, 900×700 for the shell rows) and its reduced-motion state. Covered: the
+starter free-Wall → deliberate join → enclosure, division, deletion disclosure, one Undo/Redo and
+Save/reload; the empty project's typed enclosure, Plan/3D agreement, invalid numeric entry, Card
+precision and keyboard finish/backtrack/Escape; all four policy refusals with no partial source; and
+the narrow, reduced-motion shell with Card/lower-column clearance, Head Find, contributed-task
+arbitration and the unsaved replacement guard. Screenshots sit beside each JSON. Machine facts,
+including the M2 model, OS, power source and Chrome version, are recorded per run.
+
+These are browser journeys, not latency, frame or memory measurements, and they do not discharge the
+owner-run performance obligation below.
+
 ## Performance state
 
 **Harness smoke, not acceptance evidence.** With the retired task removed from the harness,
@@ -220,23 +246,26 @@ needs owner direction. No row is waived here, and this handoff claims no latency
 
 ## Review obligations
 
-1. **T3 — the shared Head/F4 diff: DISCHARGED.** T3 reviewed the seams named in the plan and
-   accepted the implementation at `bf9007ff` ([review](./t3-implementation-review.md)), after
-   repairing the five findings that review confirmed. Save, Preview, Undo/Redo semantics, lens
+1. **T3 — the shared Head/F4 diff: DISCHARGED at `bf9007ff`.** T3 reviewed the seams named in the
+   plan and accepted the implementation at `bf9007ff` ([review](./t3-implementation-review.md)),
+   after repairing the five findings that review confirmed. Save, Preview, Undo/Redo semantics, lens
    switching and the F4 capture/admission wiring were checked and are unchanged beyond the reviewed
-   seam.
+   seam. The later constrained-width Card repair (`8db7baf2`, `f26b227c`) is shell-local; its gate and
+   browser rows are recorded here, and it is not claimed as separately T3-accepted.
 2. **The owning track — adapter edits: none outstanding.** `layout.adapter.ts` and `layout/` are
    T1-owned; the diff changes no T2/T3 adapter, and `perf/` is T1-owned. T3's verdict covers the
    shared Stage seam as one item.
-3. **Acceptance and closeout are not claimed.** The slice's acceptance record still records no
-   evidence, `M4` is not recorded as re-armed, and the phase register and baton are untouched. The
-   browser and owner-run performance rows below remain owed.
+3. **Acceptance and closeout are not claimed.** The slice's acceptance record cites the browser
+   journey but records no acceptance, `M4` is not recorded as re-armed, and the phase register and
+   baton are untouched. The owner-run performance rows below remain owed.
 
 ## Known limits
 
-- No browser journey was run: the empty/starter draw/close/divide/delete pass in 2D and 3D, keyboard
-  only, invalid numeric entry, narrow/short shells, reduced motion, Card precision, Library/Guide
-  arbitration and unsaved project replacement remain the plan's acceptance evidence.
+- The browser journey at `f26b227c` covers the empty/starter draw/close/divide/delete pass in 2D and
+  3D, keyboard-only entry, invalid numeric entry, a 900×700 reduced-motion shell (narrow width and
+  constrained height in one viewport), Card precision, contributed-task arbitration and unsaved
+  project replacement. A separate wide-but-short viewport was not run, and the journey is not a
+  latency or memory measurement.
 - The jsdom suites cover the route's gesture, keyboard and Card wiring through the real facade and
   session; they do not drive a GPU or a real pointer.
 - The harness edits (`perf/lib/flow.ts`, the flow specs, the attribution spec) were exercised by the
@@ -266,4 +295,9 @@ fda568bc  fix(shell): bind a Card confirmation to the action it disclosed
 
 round 4 (T3 implementation-review repairs)
 bf9007ff  fix(stage): bind Stage commands to the live tool and the focused control
+
+browser acceptance repair and evidence
+8db7baf2  fix(shell): clear the Card from the lower column at narrow widths
+132a7aac  test(perf): add the T1 S02 browser acceptance journey
+f26b227c  fix(shell): take the lower column height from its observed box
 ```
