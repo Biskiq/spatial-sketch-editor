@@ -2,7 +2,7 @@
  * F3 / F4 / F8 methodology + the correlation proof (T3.P03.S02).
  *
  * F3 has no shipped drawing feature yet: the phase measures the methodology on
- * the shipped straight-Wall drag (the Layout adapter's Dimensions handles), then
+ * the shipped straight-Wall drag (the Layout adapter's selected-Wall handles), then
  * F4's typed precision commit and F8's Undo/Redo on the same accepted revision.
  * Later consumers add their own flow marks; this slice does not pre-build them.
  *
@@ -58,8 +58,8 @@ import {
 	dragWallHandle,
 	gotoCreateIntent,
 	openSourceJson,
-	selectFirstWallAndOpenDimensions,
-	selectWallAndOpenDimensions,
+	selectFirstWall,
+	selectWallById,
 	undoRedoCycles,
 	uniqueProjectId,
 	waitForAcceptedResult,
@@ -295,7 +295,7 @@ async function runDrag(
 	// The museum family drags its focus Wall: the sweep latency rows hold E5's
 	// fixed edits constant (C). Grids drag the Index's first Wall.
 	const focusWallId = project.envelope.units.layout.data.walls.find((wall) => wall.name === E5_FOCUS_WALL_NAME)?.id;
-	const openWall = () => (focusWallId === undefined ? selectFirstWallAndOpenDimensions(page) : selectWallAndOpenDimensions(page, focusWallId));
+	const openWall = () => (focusWallId === undefined ? selectFirstWall(page) : selectWallById(page, focusWallId));
 	await gotoCreateIntent(page, projectId);
 	await openSourceJson(page, project);
 	await waitForStageSettled(page);

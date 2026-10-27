@@ -23,7 +23,7 @@ import {
 	gotoCreateIntent,
 	handlePoint,
 	openSourceJson,
-	selectWallAndOpenDimensions,
+	selectWallById,
 	setStageReading,
 	uniqueProjectId,
 	waitForAcceptedResult,
@@ -231,9 +231,9 @@ test.describe('post-Bench-2 attribution', () => {
 					const end = await handlePoint(page, 'Wall end');
 					return { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
 				};
-				await selectWallAndOpenDimensions(page, wallA);
+				await selectWallById(page, wallA);
 				const midpointA = await midpointOf();
-				await selectWallAndOpenDimensions(page, wallB);
+				await selectWallById(page, wallB);
 				const midpointB = await midpointOf();
 				// The Index still filters on B; A's row must exist for the hit's
 				// presentation check.
@@ -265,9 +265,9 @@ test.describe('post-Bench-2 attribution', () => {
 					// the fragments before it. The index is already built, so this is a query.
 					const worstId = walls[Math.floor(walls.length * 0.9)]!.id;
 					try {
-						await selectWallAndOpenDimensions(page, worstId);
+						await selectWallById(page, worstId);
 						const worstMidpoint = await midpointOf();
-						await selectWallAndOpenDimensions(page, wallA);
+						await selectWallById(page, wallA);
 						await page.locator('#plate-index-search').fill('');
 						await closeSelectionCard(page);
 						worst = await measure(page, cdp, async () => clickWall(page, worstMidpoint));
@@ -278,9 +278,9 @@ test.describe('post-Bench-2 attribution', () => {
 					}
 				}
 
-				// Local accepted edit of A: a typed length change through the shipped
-				// Dimensions instrument. The presentation is the command's first frame.
-				await selectWallAndOpenDimensions(page, wallA);
+				// Local accepted edit of A: a typed length change through the shipped Card
+				// field writer. The presentation is the command's first frame.
+				await selectWallById(page, wallA);
 				let presentation: number | null = null;
 				const edit = await measure(page, cdp, async () => {
 					const before = await acceptedResultCount(page);
@@ -292,11 +292,11 @@ test.describe('post-Bench-2 attribution', () => {
 				// A new generation is a new Plan; the first click after it answers
 				// whether the broad phase's build is paid again.
 				let postEdit: WindowResult | null = null;
-				if (tier === 'grid-L') {
-					try {
-						const closeTask = page.getByRole('button', { name: 'Close Dimensions task' });
-						if (await closeTask.isVisible().catch(() => false)) await closeTask.click();
-						await closeSelectionCard(page);
+				if (tier === 'grid-L') {						try {
+							// T1.P02.S02: the typed edit opens no task, so there is nothing to close
+							// before the next pick — only the Card, so the lower-left surface does not
+							// sit over the Wall midpoint the pick aims at.
+							await closeSelectionCard(page);
 						await page.locator('#plate-index-search').fill('');
 						postEdit = await measure(page, cdp, async () => clickWall(page, midpointB));
 						await waitForWallSelection(page, wallB);
