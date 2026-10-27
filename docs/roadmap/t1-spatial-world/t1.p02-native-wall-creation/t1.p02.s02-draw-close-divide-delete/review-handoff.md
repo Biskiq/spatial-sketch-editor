@@ -3,14 +3,18 @@
 ```text
 AUTHORITY: NONE — the phase README owns slice status; the release list entry and the next-wave
            authorization record own the release. This artifact requests review; it accepts nothing.
-STATUS:    implementation complete and repaired through two peer-review rounds on branch
-           `t1-p02-s02-draw-close-divide-delete`, pushed for re-review. No acceptance, no closeout,
-           no merge claim.
+STATUS:    implementation complete and repaired through three peer-review rounds, then reviewed by
+           T3 on branch `t1-p02-s02-draw-close-divide-delete`. T3 accepted the shared Head/F4 diff
+           at `bf9007ff` ([review](./t3-implementation-review.md)). No acceptance, no closeout, no
+           merge claim.
 TIER:      architecture-integration. Integration route remains T1.P02.S04.
-OWED:      T3's implementation review of the shared Head/F4 diff, and the owning track's review of
-           each T2/T3 adapter edit this diff touches (see “Review obligations”). Round 2 repaired
-           four peer-review findings and round 3 repaired the one the re-review raised against
-           them; the re-review owns whether the repairs close them.
+OWED:      no adapter edit outside T1 was found, so no owning-track adapter review is outstanding;
+           the T3 shared Head/F4 review is discharged by
+           [t3-implementation-review.md](./t3-implementation-review.md). The slice's browser and
+           owner-run performance rows remain owed by the owning track (see “Review obligations” and
+           “Known limits”). Round 2 repaired four peer-review findings, round 3 repaired the one the
+           re-review raised against them, and round 4 repaired the five findings T3's review
+           confirmed.
 ```
 
 ## What is implemented
@@ -62,6 +66,42 @@ Diff review for round 3: the repair is Card-local confirmation state plus one `{
 render-time only. It changes no operation, capture, correspondence, lease, contribution field shape or
 adapter contract; `data-card-action` keeps its existing value, so the route's mounted regression and the
 Card's own selectors are unaffected.
+
+### T3 implementation review — round 4 repairs
+
+T3 reviewed the shared Head/F4 diff at `161a0570` and confirmed five defects, recorded in full in
+[t3-implementation-review.md](./t3-implementation-review.md): a global `Enter`/`Backspace`/`Delete`
+map stole a focused control's activation; a click stopped selecting whenever any contributed task
+was open; invoking another operation left the dock tool stale, so a later completion re-armed it;
+Wall handles painted under a foreign task; and the dock keyed tools by an id that is unique only per
+adapter. The repairs are shell-local state plus one render guard; no capture, admission,
+correspondence, Save or history semantic changed.
+
+```text
+bf9007ff  fix(stage): bind Stage commands to the live tool and the focused control
+```
+
+Verification at `bf9007ff`, all commands from the repository root and run on the committed tree:
+
+```text
+npm run check               editor svelte-check: 0 errors, 0 warnings
+npm run test:fast           181 files / 2,335 tests passed  (+6 round-4 regressions)
+npm run test:arch           22 files / 180 tests passed
+npm run test:heavy          11 files / 138 tests passed
+npm run test:full           214 files / 2,653 tests passed
+npm run build               production build succeeded
+npm run check:layout-core   tsc clean
+npm run check:project-model tsc clean
+npm run check:camera-core   tsc clean
+npm run check:api           tsc clean
+```
+
+The new regressions are the focused-control key guard (`stage-input.test.ts`) and three mounted-route
+cases: Enter on the palette's Backtrack button does not accept the chain, a click still selects while
+Place plinth is open, and another operation's task closing does not re-arm Ink
+(`spatial-route-gesture.test.ts`). A scratch integration branch at `origin/main` merged this branch
+and T2's #199 with no conflicts; its full suite, check and arch lane passed, and the cross-track
+smoke results are recorded in the review artifact. None of that is slice acceptance evidence.
 
 ## Verification at the implementation revision (round 1)
 
@@ -178,20 +218,19 @@ with the designated M2 under S06's method, on the ratified harness and budgets
 as that evidence: the harness itself records agent runs as smoke checks or censuses, and a Bench pass
 needs owner direction. No row is waived here, and this handoff claims no latency acceptance.
 
-## Review obligations (not discharged by this handoff)
+## Review obligations
 
-1. **T3 — the shared Head/F4 diff.** The plan's condition before merge. Specific seams to review:
-   `stage-facade.ts`'s four additive contribution fields and their defaults; the `proposal` lease
-   contract and the `navigation` declaration in `stage-session.ts`, including release on
-   install/replacement/teardown; `host-acceptance.ts` reading the live proposal; the Head's Find
-   additions; the Card's writer/action contract; and the two new F4 operations' capture, scope and
-   correspondence. Save, Preview, Undo/Redo semantics, lens switching and the F4 capture/admission
-   wiring are not changed beyond the seam above.
-2. **The owning track — adapter edits.** `layout.adapter.ts` and `layout/` are T1-owned; the diff
-   changes no T2/T3 adapter, and `perf/` is T1-owned. If review reads the Stage seam as a T3-owned
-   edit, T3's verdict covers it as one item rather than a separate adapter review.
+1. **T3 — the shared Head/F4 diff: DISCHARGED.** T3 reviewed the seams named in the plan and
+   accepted the implementation at `bf9007ff` ([review](./t3-implementation-review.md)), after
+   repairing the five findings that review confirmed. Save, Preview, Undo/Redo semantics, lens
+   switching and the F4 capture/admission wiring were checked and are unchanged beyond the reviewed
+   seam.
+2. **The owning track — adapter edits: none outstanding.** `layout.adapter.ts` and `layout/` are
+   T1-owned; the diff changes no T2/T3 adapter, and `perf/` is T1-owned. T3's verdict covers the
+   shared Stage seam as one item.
 3. **Acceptance and closeout are not claimed.** The slice's acceptance record still records no
-   evidence, `M4` is not recorded as re-armed, and the phase register and baton are untouched.
+   evidence, `M4` is not recorded as re-armed, and the phase register and baton are untouched. The
+   browser and owner-run performance rows below remain owed.
 
 ## Known limits
 
@@ -224,4 +263,7 @@ b7b0f9d4  fix(shell): bind a delete confirmation to its exact subject and words
 
 round 3 (re-review repair)
 fda568bc  fix(shell): bind a Card confirmation to the action it disclosed
+
+round 4 (T3 implementation-review repairs)
+bf9007ff  fix(stage): bind Stage commands to the live tool and the focused control
 ```
