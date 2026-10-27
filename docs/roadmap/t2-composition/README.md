@@ -121,7 +121,11 @@ ahead of it. **`T2.P02` is registered 2026-10-22** as that K1 bounded editor-sid
 T4 delivery; the closed record is left as written. `T2.P02.S01` is shipped with owner-override acceptance and recorded complete merge-gate evidence;
 S02 was owner-authorized and released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)),
 starting per the release list (`docs/roadmap/now.md`); S03 is `approved` and released 2026-10-27, starting after the coordination PR #198 merges
-([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)). `Depends on`
+([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)); its gate **ran 2026-10-27 and is
+not accepted** — two manipulation rows are blocked by the pointer-placement selection gap, the
+empty-project line is unreachable and the Stage first-load hard budget misses — with PR #199 open for
+independent review ([record](./t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md)).
+`Depends on`
 lists the external gates its slices consume. No slice provides a gate.
 
 ## Starting foundation
