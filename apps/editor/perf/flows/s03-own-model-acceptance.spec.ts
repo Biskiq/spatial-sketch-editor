@@ -625,6 +625,11 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await floorRow.getByRole('button', { name: 'Bring into view' }).click();
 		await waitForCameraSettled(page);
 		await floorRow.locator('button.item-row').click();
+		// The marker already shows the previously selected wall, so wait for the
+		// canonical subject to become the room floor before reading its projection.
+		await expect(page.locator('[aria-label="Selected subject"]')).toContainText(/room · included/i, {
+			timeout: 20_000
+		});
 		const floorPoint = await selectedSubjectPoint(page);
 		await saveProject(page);
 		await invokeIndexTask(page, 'Place object');
