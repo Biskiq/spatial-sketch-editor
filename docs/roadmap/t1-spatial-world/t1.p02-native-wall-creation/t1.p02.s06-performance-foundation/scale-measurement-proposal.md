@@ -1,10 +1,40 @@
 # S06 proposal — identify the world-scale execution architecture
 
-**Status: proposed; owner review required before activation.** This is research and a requested
-measurement-scope amendment, not released implementation. It accompanies the
-[world-scale computational architecture][synthesis]. The [approved S06 plan][plan] and accepted
-[performance contract][performance] remain in force unless the owner explicitly approves a change.
-This PR contains documentation only; it has run no benchmark, smoke test or prototype.
+**Status: HISTORICAL — spent and never ratified as written (2026-10-27).** This is the 2026-10-24
+research and measurement-scope request, kept as research. S06 has run, been accepted AC-qualified
+and merged; the [S06 plan][plan] is a closed stub and the [performance contract][performance] owns
+the method, budgets and the rows later slices carry. Read the analysis below as the pre-Bench-1
+proposal, not as live instruction.
+
+This document was also inserted into the S06 plan as a pending `C.1` subsection while the slice was
+active. That insertion is **dropped**: the plan is closed, `C.1` was never ratified, and the
+substance stays here instead of reopening an active measurement proposal.
+
+## What happened instead (2026-10-27)
+
+- **A bounded subset was adopted, not the proposal as written.** On 2026-10-24 the owner ruled on the
+  reconciliation of this request ([D1–D9](./scale-reconciliation.md), now a closed stub): the
+  all-visible Plan and 3D windows after Fit, CPU render time with the GPU
+  timer probe, the compatible-bin census, post-GC ownership counts, the remaining pair-loop and
+  global-pass counters and connected sweep variant C in E5, plus a Node-only 10,000-Room census.
+  Those became the plan's `C.2` amendment and shaped Bench 1.
+- **The rest stayed research.** The physical 10,000-Room browser point, the disposable execution-plan
+  laboratory (deferred as D6, never authorized), six frozen contrasts and the pass-payload amendment
+  were not ratified; no budget or release attaches to them.
+- **The third pass changed.** Bench 2 ran as the owner-approved diagnostic and, on 2026-10-26, the
+  owner replaced S06's formal third pass with the decision-driven milestone gate. That gate passed
+  (15/15 decision rows, full E5) and S06 closed on 2026-10-27 (PR #190, merged `6af62eb4`).
+- **What the measurements actually found.** The measured bottlenecks were whole-document compile
+  work, Plan re-evaluation and representation churn — indexed compile, incremental evaluation,
+  retained Plan/representation and a compiler-certified delta — not the execution-plan questions
+  this proposal wanted a laboratory for. Pan CPU halved, picking improved within a generation, and
+  deferred index/fragment work moved into the first pick after a commit. Acceptance figures,
+  omissions and the two rows future slices must carry (continuous pointer-pan CPU and
+  pick-after-commit) are in the [S06 acceptance record](./acceptance.md) and the
+  [performance contract][performance].
+- **Still unresolved and unratified:** 10,000+ Room browser admission, the execution-plan laboratory,
+  WebGPU or virtual-geometry candidates, editable HLOD, town streaming and lighting infrastructure.
+  They remain research with no owner, no pass and no budget.
 
 ## Decision recommended before Bench 1
 

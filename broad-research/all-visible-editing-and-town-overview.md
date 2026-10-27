@@ -6,6 +6,17 @@ repeated visual details**, with continuous exact local feedback and 60 FPS or be
 laptop. Design around that objective now. The implementation and measurement authorizations are
 separate decisions, set out in the [revised S06 experiment proposal][experiment-proposal].
 
+**Status (2026-10-27): historical research, not a live plan.** This synthesis was written before
+Bench 1 and is kept for its technical investigation, alternatives and falsification ideas. The owner
+adopted only a bounded subset of its measurement request on 2026-10-24, and later replaced S06's
+formal third pass with the decision-driven milestone gate; S06 is accepted AC-qualified and merged
+(PR #190, `6af62eb4`). Every reduction ratio below — 3,125×, 500×, 1,000× and the rest — is a
+hypothesis or arithmetic estimate under its stated assumptions, **not** a measured S06 result. The
+measurements, the qualified limits and the two rows later slices must carry (continuous pointer-pan
+CPU and pick-after-commit) are in the [S06 acceptance record][s06-acceptance] and the
+[performance contract][perf]; the world-scale architecture questions this document raises remain
+open research with no owner, pass or budget.
+
 **Recommendation:** represent the world as an indexed, versioned semantic store; maintain the
 canonical compiler's results incrementally; expose typed deltas to retained representations;
 submit shared geometry through a screen-error hierarchy; bound decoded and GPU residency by
@@ -565,6 +576,7 @@ OCCT and PostGIS are design references, not candidates under S06's full-permissi
 | Shipped Three.js | [BatchedMesh][three-batch-source], [renderer fallback][three-renderer], [InstancedMesh raycast][three-instance-source], [WebGLInfo][three-info], [directional shadow defaults][three-directional-shadow] | Object/mesh counts differ from driver calls, GPU time, bytes and actual exposure; r186 mechanisms checked against installed 0.186.1 in the earlier inspection |
 
 [s06]: ../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
+[s06-acceptance]: ../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
 [perf]: ../docs/reference/components/performance.md
 [strategy]: ./cinematic-scale-computational-strategy.md
 [h0]: ../docs/roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md#measured-pre-flight-rows-no-budget-accepted
