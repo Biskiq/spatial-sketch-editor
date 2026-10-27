@@ -72,9 +72,10 @@ records and rechecks its own trusted base through its owning runbook before impl
 
 **After S06 (2026-10-27).** `T1.P02.S06` is accepted and merged (`6af62eb4`); the researched
 world-scale study is [historical research](../../broad-research/all-visible-editing-and-town-overview.md)
-and the [T5 track](./t5-expressive-geometry/README.md) is registered as planning only, its [G0
-commission](./t5-expressive-geometry/g0-foundation-architecture-commission.md) approved 2026-10-27 to
-start once this coordination PR merges. The owner also released the next wave — `T1.P02.S02` drawing
+and the [T5 track](./t5-expressive-geometry/README.md) remains planning only. Its
+[G0 direction is ratified](../reference/decisions/t5-g0-ratification-2026-10-27.md);
+[E0](./t5-expressive-geometry/README.md#e0-next-experimental-decision-gate) is the next experimental
+decision gate, awaiting separate commission authorization. The owner also released the next wave — `T1.P02.S02` drawing
 and `T2.P02.S03` import final gate — on 2026-10-27
 ([record](../reference/decisions/next-wave-authorization-2026-10-27.md)). The current
 `main` contains S06's compile, Plan and representation work, and every statement below about
@@ -89,7 +90,7 @@ flowchart TD
   O --> F["T1.P02.S04 final gate — held"]
   P -->  IF["T2.P02.S03 integrated final gate — released 2026-10-27; starts after this PR merges"]
   B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
-  B --> T5["T5 Expressive Geometry — planning; G0 approved, starts after this PR merges"]
+  B --> T5["T5 Expressive Geometry — planning; direction ratified, E0 commission needs authorization"]
   F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
   IF --> CES
   C --> CES
@@ -191,10 +192,10 @@ closeout updates only the owning baton; cross-track status stays in its owning r
   T2.P02.S03 on S06's method. Unclaimed flow traces, hard rows and calibration remain consumer
   evidence, not implied by a correctness pass. No new waiver is granted by this coordination.
 - **T5:** [Expressive Geometry](./t5-expressive-geometry/README.md) is registered as a **planning**
-  track. Its G0 foundation-architecture commission is **approved 2026-10-27** and starts once this PR
-  merges ([decision](../reference/decisions/t5-g0-approval-2026-10-27.md)); it is still not a phase, a
-  gate or an implementation authorization, it consumes S06's accepted compiler/Plan work as its
-  starting point, and it owns no T1/T2 surface. No T5 scope is on the release list.
+  track. The [G0 ratification](../reference/decisions/t5-g0-ratification-2026-10-27.md) promotes direction,
+  not a specific architecture or prototype. The track README owns the next E0 decision and its
+  authorization requirements. T5 consumes S06's accepted compiler/Plan foundation and owns no
+  T1/T2 surface. No T5 scope is on the release list; no new phase or F gate is registered.
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.

@@ -1,109 +1,125 @@
 # T5 — Expressive Geometry
 
-**Track:** T5 · **Status:** planning — registered 2026-10-27; **G0 approved 2026-10-27**, executable
-once PR #198 merges ([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)); **no phase,
-gate, release or implementation is authorized** ([track register](../README.md#track-register)) ·
-**Gates owned:** none · **Phase register:** none · **Operations:** none yet (see
-[Operations](#operations-and-authorization-route))
+**Track:** T5 · **Status:** planning — registered 2026-10-27; G0 direction ratified
+([record](../../reference/decisions/t5-g0-ratification-2026-10-27.md)); no capability phase,
+F gate, slice, release or implementation is authorized ([track register](../README.md#track-register)) ·
+**Gates owned:** none · **Phase register:** none · **Operations:** none yet
 
 ## Mission
 
-Build a sophisticated, production-grade geometric capability foundation that enables **immediate
-creation, progressive mastery and unbounded expression** — without becoming a separate modeling
-application or another disposable prototype.
+Develop the reusable geometric capabilities needed for Biskiq's
+[creative-freedom and depth principles](../../reference/north-star.md#creative-freedom-and-depth).
+The North Star owns those principles; the
+[reference architecture](../../reference/architecture.md#expressive-creation-and-revision-destination)
+owns integration and semantic boundaries. T5 is neither a separate modeling application nor a
+mandate to implement every technique studied by G0.
 
-T5 exists because the product now needs geometry that is authored, revised and reused rather than
-only compiled: constructive solids, robust curves and surfaces, freeform deformation, shape
-modification, geometric relationships, correspondence and durable revision. That is a different
-engineering problem from drawing a Wall well, and it must not be solved by duplicating the Layout
-compiler or by promoting a prototype.
-
-**Product direction (owner, 2026-10-27).** Biskiq supports effortless semantic and geometric editing
-in **World**, alongside a dedicated **Object Focus workspace** for deeper, more precise and
-expressive 3D modeling. Both share the same authored source, identity, relationships and history,
-and the drawing-first philosophy with its progressive learning curve is preserved — without limiting
-the eventual geometric capability to what today's prototypes demonstrate. The final Object Focus UX
-and technical architecture stay open for G0
-([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)).
+World creation, composition and progressive Object Focus depth are one continuing project.
+The owner-approved drawing-first direction remains, without requiring drawing skill or limiting
+capability to the prototypes. Concrete interactions, Focus UX and specific implementation direction
+remain TBD. A successful experiment must establish useful creative work and dependable revision,
+not merely demonstrate a larger operation set.
 
 ## Bounded objectives
 
-A T5 phase is authorized only against a registered, bounded objective. The track's near-term work is
-planning:
+1. **G0 direction and documentation reconciliation.** The owner has ratified the bounded durable
+   direction from the latest reconciliation in PR #202. The
+   [ratification record](../../reference/decisions/t5-g0-ratification-2026-10-27.md) identifies exactly
+   what was promoted and what remains hypothetical. This is not acceptance of an implementation-ready
+   architecture, formal independent review, experimental evidence or a phase closeout.
+2. **E0 — next experimental decision gate.** Prepare for a separately owner-authorized bounded
+   commission as described below. No experimental execution is released by this direction ruling.
+3. **Future capability planning.** Only after the evidence and owner decision support it, register
+   a bounded phase and slice plan for the smallest useful real consumer. No first consumer,
+   milestone definition, number of slices or delivery sequence is selected here.
 
-1. **G0 — foundation architecture (approved 2026-10-27; executable once PR #198 merges).** The
-   [G0 foundation-architecture brief](./g0-foundation-architecture-commission.md) delivers one
-   recommended geometric architecture with alternatives, library/kernel strategy, integration
-   boundaries, an editable operation/correspondence model, incremental-evaluation requirements and
-   an implementation-ready sequence with a real first consumer. G0 authorizes no implementation.
-2. **First capability phase (future).** Registered only after the owner rules on G0's architecture,
-   and only with a plan, review path and release. It must deliver production-owned capability to a
-   real consumer — not a laboratory result.
+## E0: next experimental decision gate
 
-Completion evidence for any T5 phase is a recorded acceptance against that phase's declared final
-gate, with the domain boundaries below intact and the accepted contracts unbroken.
+**E0 is an experimental decision gate, not an F interface gate, registered phase, implementation
+plan or authorization to build.** Its next authorization is an owner-approved bounded experimental
+commission. No E0 prototype, study, benchmark, dependency or production work is authorized today.
+The proposed guide, band and arrangement prototype is one candidate; it is not the accepted design.
+
+The commission must state the creative job, alternatives and fair baseline, minimum workflow and
+semantic/numerical evidence, decision criteria, cost envelope, stop condition and review path.
+Concrete tasks, geometry, prototype form, participant counts, thresholds, sequence and slice count
+remain TBD. Existing evidence may simplify or redirect the experiment before execution.
+
+The decision must resolve or explicitly defer:
+
+- **Product value:** which first creator/job benefits from contextual creation and revision; whether
+  transfer, creative variation and preparation/rework improve over competent explicit controls,
+  existing capabilities or external-tool workflows.
+- **Relationship burden:** whether continuing context is valuable and understandable; what following,
+  exceptions, detachment and preservation should promise, and which ordinary actions stay solve-once.
+- **Minimum architecture:** which editable source and admitted relationships suffice; what correctness,
+  identity/repair, reproducibility, Undo/Save/reopen and browser-cost evidence supports them.
+- **Next investment:** accept, revise, simplify, defer or reject the tested direction, with reasons
+  and the smallest justified next consumer. Preference, a scripted demo or numerical feasibility
+  alone cannot establish a useful creative workflow.
+
+These are genuine product/architecture decisions for evidence and owner review, not defaults
+silently inherited from a proposal. E0 must produce a decision record, including rejected
+alternatives and failure/repair costs, rather than automatically release the proposed prototype
+or R1. Further experiments need bounded justification and authorization; weak results cannot become
+permission to build a larger solver.
 
 ## Concern ownership and boundaries
 
-This allocation is the **proposal this track starts from**, to be validated by G0 against existing
-contracts. A more precise allocation may be recommended, but no ratified authority changes without the
-owning decision.
+Existing authorities remain controlling. The reference architecture owns the durable allocation;
+this table routes track responsibilities without moving them.
 
 | Concern | Owner |
 | --- | --- |
-| Architectural semantics, Layout topology and the **canonical architectural compiler** | T1 (unchanged; [`layout-core`](../../reference/architecture.md)) |
-| Scene objects, definitions, instances and composition | T2 (unchanged) |
-| Experience/Camera runtime, acceptance/history and Save | T3 / F4 (unchanged) |
-| Reusable geometric algorithms, mathematical kernels and appropriate shared representations | **T5**, consumed through established domain boundaries |
-| F contracts (F.1–F.5) and their accepted capability scopes | existing owners; T5 creates none |
+| Architectural semantics, Layout topology and canonical architectural compiler | T1 |
+| Scene object form, definitions, instances and composition | T2 |
+| Experience/Camera and shared acceptance/history/Save | T3 / existing F owners |
+| Reusable geometric algorithms and numerical capabilities through domain boundaries | T5 |
+| F.1–F.5 and accepted capability scopes | Existing owners; no amendment in this change |
+| Visitor-safe delivery and publication | T4; native editing gains no publication prerequisite |
 
-**What T5 does not get.** No competing persisted document, source format, history store, acceptance
-authority or second compiler. T5 geometry is an input to the existing boundaries: authored content
-enters through the owning document/unit, acceptance through F4, rendering through the shared Stage and
-renderer, and publication through T4. A cross-domain geometric interface T5 needs becomes an **F
-amendment** (or an owned capability scope) through the ratified path — never a track-local protocol.
-
-**What is deliberately open.** The kernel, representation and library strategy (including permissive
-third-party mathematics, geometry or WASM/native kernels where justified), the division between
-persistent T5 structures and existing ones, and the exact package boundaries are G0's decisions to
-recommend — not prerequisites this registration pre-ratifies.
+T5 creates no competing persisted document, source format, writer, history, acceptance authority,
+renderer or Layout compiler. Exact source/geometry representations, kernel/library choices,
+package boundaries, evaluation/caching and specific implementation direction remain TBD.
+A recipe, control surface, directed hybrid, fixed strata or a general graph has no automatic priority.
+Any demonstrated cross-domain need goes through the existing F review/amendment path; no speculative
+amendment is written ahead of that consumer. Dependency admission retains the existing licensing rule.
 
 ## Evidence roles
 
-- [G0 commission](./g0-foundation-architecture-commission.md) — the actionable planning brief,
-  approved by the owner 2026-10-27
-  ([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)); it authorizes no
-  implementation.
-- [Native Form Lab (PR #194)](https://github.com/Biskiq/spatial-sketch-editor/pull/194) and
-  [native object shaping (PR #196, merged `4a1ff08d`)](https://github.com/Biskiq/spatial-sketch-editor/pull/196) —
-  **creative and technical evidence**: what native creation wants to feel like and which operations
-  matter, durable in
-  [`prototypes/native-object-shaping/UX-SPEC.md`](../../../prototypes/native-object-shaping/UX-SPEC.md).
-  Prototype code, not production authority.
-- [Depth prototypes (PR #195)](https://github.com/Biskiq/spatial-sketch-editor/pull/195) and the
-  [spatial modeling depth study (PR #192)](https://github.com/Biskiq/spatial-sketch-editor/pull/192) —
-  design evidence for depth, shape and creative operation sets.
-- [S06 performance foundation](../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
-  (PR #190, merged `6af62eb4`) — the **accepted computational starting point**: one canonical
-  compiler, incremental evaluation, retained Plan/representation and the measured limits.
-- [World-scale architecture study](../../../broad-research/all-visible-editing-and-town-overview.md) —
-  historical research (PR #189), useful for alternatives and long-term scaling, not a plan.
-- [PLATE destination shell and visual system](../../reference/design-system/editor-shell-and-visual-system.md)
-  — the ratified shell authority. **Vellum**
-  ([`prototypes/p3-vellum/DESIGN.md`](../../../prototypes/p3-vellum/DESIGN.md), Make/Tell/Visit, its
-  pen and sheet) and **Shape Focus**
-  ([`prototypes/native-object-shaping/UX-SPEC.md`](../../../prototypes/native-object-shaping/UX-SPEC.md))
-  are interaction evidence for feel and operation vocabulary; both are design evidence, not ratified
-  production implementation. T5 defines creative-operation **semantics** for engineering; it does
-  not commission another UX prototype or impose a tool/panel design.
-- [`reference/architecture.md`](../../reference/architecture.md) and
-  [`reference/composition-execution.md`](../../reference/composition-execution.md) — the ownership and
-  interface contracts any T5 phase must satisfy.
+- [E0 execution plan](./e0-execution-plan.md) — proposed owner-evaluated display challenge and
+  minimum disposable playground, with relationship-depth extensions conditional on observed need.
+  Documentation only; the separate experimental commission is still required before execution.
+- [G0 ratification](../../reference/decisions/t5-g0-ratification-2026-10-27.md) — provenance and limits;
+  live rules belong to the owning references it routes.
+- [Original G0 commission](./g0-foundation-architecture-commission.md) and
+  [original approval](../../reference/decisions/t5-g0-approval-2026-10-27.md) — historical planning
+  mandate. Its requested implementation-ready sequence is not a commitment after this ruling.
+- [Latest reconciled proposal](./g0-reconciled-proposal/README.md) — recommended foundation used
+  for ratification, retained as historical analysis. Its specific architecture, E0 design and
+  R1–R5 outcomes/dependencies remain candidates, not approved milestones or a sequence.
+- [First architecture proposal](./g0-architecture-proposal/README.md),
+  [independent stratified-form proposal](./g0-independent-proposal/README.md) and
+  [kernel assessment](./g0-architecture-proposal/kernel-evidence.md) — historical alternatives and
+  rationale. Neither source proposal is an additional live recommendation or contract.
+- [Native Form Lab](../../../prototypes/native-form-lab/README.md),
+  [native object shaping](../../../prototypes/native-object-shaping/UX-SPEC.md),
+  [depth research](../../../broad-research/spatial-modeling-depth-research-2026-10-25.md) and
+  [Vellum](../../../prototypes/p3-vellum/DESIGN.md) — creative/technical evidence, not production
+  authority or validated proof of the proposed workflow advantage.
+- [S06 acceptance](../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
+  — accepted canonical compiler, incremental evaluation, Plan/representation and measured limits;
+  not evidence that future geometry capability meets browser budgets.
+- [PLATE](../../reference/design-system/editor-shell-and-visual-system.md) — ratified shell authority;
+  T5's progressive-depth principle ratifies no proposed Focus layout or gesture.
+
+No new creator study, geometry benchmark or prototype has been performed by G0 reconciliation or
+this ratification. Current product capability remains described by the landed reference contracts.
 
 ## Phase register
 
-No T5 phase is registered. A phase is added here only by an authorized plan, with its own README and
-its own slice register; G0 is a planning commission, not a phase row.
+No T5 phase is registered. A phase is added only by an authorized plan, with its own README and
+slice register. G0 and E0 have no phase row; E0 is not added to the F gate register.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
@@ -111,23 +127,21 @@ its own slice register; G0 is a planning commission, not a phase row.
 
 ## Operations and authorization route
 
-T5 deliberately has **no runbook and no baton** yet: a planning track with no registered phase has no
-start step to route, and creating them now would be empty scaffolding. The runbook (`operations/t5-expressive-geometry/README.md`)
-and baton (`operations/t5-expressive-geometry/current.md`) are added by the change that registers T5's
-first phase, which also routes them from [`operations/current.md`](../../operations/current.md).
+T5 has no runbook or baton until its first phase is registered. That registration adds them and
+routes them from [operations navigation](../../operations/current.md); documentation ratification
+creates no empty operational scaffolding and changes no other track's baton.
 
 ```text
-1 OWNER DECISION   **approved 2026-10-27** — G0 is T5's next planning activity, executable once
-                   this PR merges; it authorizes no production implementation
-2 ARCHITECTURE     the commissioned architect writes one recommended architecture + alternatives,
-                   ownership boundaries, operation/correspondence model, incremental requirements and
-                   an implementation-ready sequence, as its own artifact
-3 OWNER RULING     accept, revise or reject that architecture; any cross-domain interface goes through
-                   the F amendment path and any new package through the licensing ruling
-4 REGISTRATION     register the first T5 phase + slice plan with a real consumer and measurable
-                   acceptance; add the runbook and baton in that change
-5 RELEASE          the owner lists the slice in the release list; only then does implementation start
+DIRECTION          ratified durable principles; implementation remains open
+NEXT AUTHORIZATION owner-approved bounded E0 experimental commission, with review path
+EVIDENCE / RULING  execute only commissioned work; record decision and owner ruling
+CONSUMER REVIEW    minimum justified capability; owning-track/F and licensing review as needed
+REGISTRATION       authorized first phase and slice plan; add operational routes
+RELEASE            explicit owner release-list entry before production implementation
 ```
 
-No step above is authorized by this README. Registration and a complete plan grant no release, and
-nothing here edits the [release list](../now.md).
+The [production hold](../README.md#production-implementation-hold) and
+[release list](../now.md) retain their authority. Ratification, experiment acceptance, registration
+or merging PR #202 releases no production scope. Milestones, number of slices and sequencing remain
+TBD until evidence supports their definition; reliability is an admission obligation from the first
+consumer, not a capability deferred to the proposal's last milestone.
