@@ -1,5 +1,9 @@
 # T5 G0 — A revisable language of form
 
+**Source proposal retained for comparison.** The current owner-review recommendation is the
+[reconciled proposal](../g0-reconciled-proposal/README.md), including its workflow challenge and
+revised evidence-first roadmap. Neither document is ratified.
+
 **Stage 1 architecture and capability-roadmap proposal · 27 October 2026 · awaiting owner review.**
 This is the deliverable of the [approved G0 commission](../g0-foundation-architecture-commission.md),
 not a ratified contract, registered phase, implementation plan or dependency approval. It leaves

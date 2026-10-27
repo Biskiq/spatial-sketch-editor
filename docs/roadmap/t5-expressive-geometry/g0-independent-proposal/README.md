@@ -1,5 +1,9 @@
 # T5 G0 — Independent proposal: stratified form
 
+**Source proposal retained for comparison.** The current owner-review recommendation is the
+[reconciled proposal](../g0-reconciled-proposal/README.md), including its workflow challenge and
+revised evidence-first roadmap. Neither document is ratified.
+
 **Independent Stage 1 architecture proposal for peer reconciliation with G0 · 27 October 2026 ·
 awaiting review.** Written against the [approved G0 commission](../g0-foundation-architecture-commission.md)
 by a second architect, independently of the [G0 proposal (PR #202)](https://github.com/Biskiq/spatial-sketch-editor/pull/202),
