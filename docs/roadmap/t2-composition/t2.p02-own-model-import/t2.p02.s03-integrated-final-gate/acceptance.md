@@ -8,6 +8,12 @@ blocked, one required scope line is unreachable, one hard delivery row misses** 
 **Disposition:** [disposition.md](./disposition.md) preserves this verdict, the evidence provenance
 and the open owner decisions. It is not acceptance and does not change any status below.
 
+**Recovery:** [recovery.md](./recovery.md) records the repair and re-run at `7d1212b6` on the
+integrated `main` after the T1 #201 merge. At that revision Resize, Duplicate and Delete commit on
+a placed creator model, and an empty project reaches placement after Ink draws a floor. The Stage
+route is still **456.7 KiB br** against the ≤400 KiB hard budget, and the formal owner-run
+performance rows are still unrun, so this record's verdict remains **NOT ACCEPTED**.
+
 This record exists so the gate's result is reviewable. It claims **no acceptance verdict**, no phase
 close, no track completion and no gate state. The phase stays `active` and cannot become `closable`
 from this result: the creator journey the phase promises ("places, moves, turns, resizes, duplicates

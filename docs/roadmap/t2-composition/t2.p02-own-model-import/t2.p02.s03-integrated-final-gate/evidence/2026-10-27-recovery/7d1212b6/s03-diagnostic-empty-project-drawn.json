@@ -1,0 +1,11 @@
+{
+  "projectId": "perf-s03diagdraw-mvr4wz7q",
+  "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
+  "guidance": "ENTITY Choose… Use selection Begin PLACE box cylinder sphere X (M) Z (M) Place An imported model is placed by clicking its floor position; these typed fields place a native primitive. SNAP (M, OPTIONAL) Snap is explicit and off by default.",
+  "subject": "ENTITY · SCENE entity-fa9532c0-9a7f-46e8-83c5-c07d0e9d8175 Collapse ✕ Domain scene Kind model Name empty-drawn-model Position 5.057712773000702 m · 0 m · -1.306…",
+  "stored": {
+    "rooms": 1,
+    "resources": 1,
+    "entities": 1
+  }
+}

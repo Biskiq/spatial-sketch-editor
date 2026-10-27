@@ -1,0 +1,13 @@
+js { raw: 1940291, gzip: 553591, br: 467585 }
+three(core) 155922
+@portfolio/layout-core 70302
+@portfolio/project-model 48454
+editor:lib/authoring/adapters 29910
+editor:lib/authoring/stage 21889
+svelte 20262
+three/examples(addons) 18452
+editor:routes 13614
+@portfolio/camera-core 10737
+@sveltejs/kit 10241
+(unmapped) 7700
+editor:lib/platform 7485

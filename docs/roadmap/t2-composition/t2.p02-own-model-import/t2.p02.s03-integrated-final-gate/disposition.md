@@ -8,6 +8,10 @@ AUTHORITY: NONE — the phase README owns slice status; the acceptance record ow
 STATUS:    FAILED FINAL GATE, dispositioned 2026-10-27. T2.P02.S03 stays **in-progress** and
            **NOT ACCEPTED**; T2.P02 stays **active** and is not closable. Evidence is preserved at
            its tested revision and is historical once a different product base is proposed.
+RECOVERY:  [recovery.md](./recovery.md) records a later repair and re-run at `7d1212b6` on the
+           integrated main. The manipulation row and the empty-project journey are now reachable;
+           the Stage first-load budget still hard-misses at 456.7 KiB br and the formal owner-run
+           rows are still unrun. The verdict below is unchanged.
 ```
 
 ## 1. Verdict preserved
