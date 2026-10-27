@@ -18,6 +18,7 @@
  */
 import type { NormalizedPlacementDefinition } from '@portfolio/project-model/scene-planning';
 
+import type { NativePlacementPrimitive } from '../../../scene/object-definition-policy';
 import type { ArmedModelPlacement } from '../placement';
 
 const provisional = new Map<string, NormalizedPlacementDefinition>();
@@ -84,4 +85,21 @@ export function armedModelDefinition(projectId: string): NormalizedPlacementDefi
 /** Placement committed, or the procedure refused: this project has no arm. */
 export function clearArmedModel(projectId: string): void {
 	if (pendingArmedModel?.projectId === projectId) pendingArmedModel = null;
+}
+
+/**
+ * An explicit native primitive replaces the project's approved model.
+ *
+ * The session clears its own arm when the primitive changes, but the project arm
+ * outlives the session so a creator can draw a missing floor between approval and
+ * placement. Choosing a primitive must consume that arm too; otherwise reopening
+ * Place re-applies a model the creator already replaced.
+ */
+export function choosePrimitive(
+	projectId: string,
+	session: { setPlacePrimitive(primitive: NativePlacementPrimitive): void },
+	primitive: NativePlacementPrimitive
+): void {
+	clearArmedModel(projectId);
+	session.setPlacePrimitive(primitive);
 }

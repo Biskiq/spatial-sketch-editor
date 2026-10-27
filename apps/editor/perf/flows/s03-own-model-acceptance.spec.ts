@@ -18,10 +18,12 @@
  * entity behind.
  *
  * Only behaviour the product is expected to deliver is asserted here. The gaps
- * this gate found — the canonical subject a placement leaves behind, Compose as
- * reached from a placed model, and the empty-project leg — are measured by
- * `s03-diagnostics.spec.ts`, which records them without asserting them, so a
- * product fix cannot fail a gate test merely by improving the product.
+ * the failed gate found — the canonical subject a placement leaves behind,
+ * Compose reached from a placed model, and the empty-project leg — are now
+ * asserted rows: the journey checks the model is the selected subject after
+ * placement, Resize/Duplicate/Delete commit from it, and an empty project draws
+ * its floor through Ink and then places the still-armed model. The diagnostic
+ * spec remains observation-only and is never a gate row.
  *
  * Requires the supervisor (`perf/run-s03-own-model-qa.mjs`), which supplies
  * PERF_API_ORIGIN, E2E_TEST_AUTH_SECRET and PERF_BASE_URL. Without them the spec

@@ -13,12 +13,14 @@ import type { NormalizedPlacementDefinition } from '@portfolio/project-model/sce
 
 import {
 	armedModelDefinition,
+	choosePrimitive,
 	clearArmedModel,
 	clearCreatorDefinitions,
 	creatorDefinitions,
 	peekArmedModel,
 	rememberArmedModel
 } from '$lib/authoring/adapters/scene/import/definitions';
+import type { NativePlacementPrimitive } from '$lib/authoring/scene/object-definition-policy';
 import type { ArmedModelPlacement } from '$lib/authoring/adapters/scene/placement';
 
 const PROJECT = 'project-arm';
@@ -77,6 +79,22 @@ describe('pending approved model', () => {
 
 		expect(creatorDefinitions()).toEqual([]);
 		expect(armedModelDefinition(PROJECT)?.definitionKey).toBe('model:one');
+	});
+
+	it('consumes the arm when the creator explicitly chooses a primitive', () => {
+		rememberArmedModel(PROJECT, armed(definition('model:one')));
+		const chosen: NativePlacementPrimitive[] = [];
+
+		choosePrimitive(
+			PROJECT,
+			{ setPlacePrimitive: (primitive) => chosen.push(primitive) },
+			'box'
+		);
+
+		// The session learns the primitive and the project no longer re-arms the
+		// model on the next Place open.
+		expect(chosen).toEqual(['box']);
+		expect(peekArmedModel(PROJECT)).toBeNull();
 	});
 
 	it('clears only the project whose placement committed', () => {

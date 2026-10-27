@@ -17,7 +17,7 @@
 
 	import type { StageAdapterServices } from '../../stage/stage-adapter-host';
 	import { stageEnvelope } from '../../stage/unit-stage-source';
-	import { peekArmedModel } from './import/definitions';
+	import { choosePrimitive, peekArmedModel } from './import/definitions';
 	import {
 		NATIVE_PLACEMENT_PRIMITIVES,
 		type NativePlacementPrimitive
@@ -732,7 +732,13 @@
 					value={primitive}
 					onchange={(event) => {
 						primitive = event.currentTarget.value as NativePlacementPrimitive;
-						session?.setPlacePrimitive(primitive);
+						if (session !== null) {
+							choosePrimitive(
+								services.stage.snapshot().acceptedRevision.projectId,
+								session,
+								primitive
+							);
+						}
 					}}
 				>
 					{#each NATIVE_PLACEMENT_PRIMITIVES as option (option)}
