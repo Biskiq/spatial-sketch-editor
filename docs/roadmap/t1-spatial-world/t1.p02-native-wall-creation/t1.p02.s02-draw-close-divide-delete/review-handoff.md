@@ -3,11 +3,13 @@
 ```text
 AUTHORITY: NONE — the phase README owns slice status; the release list entry and the next-wave
            authorization record own the release. This artifact requests review; it accepts nothing.
-STATUS:    implementation complete on branch `t1-p02-s02-draw-close-divide-delete`, pushed for
-           independent review. No acceptance, no closeout, no merge claim.
+STATUS:    implementation complete and repaired through one peer-review round on branch
+           `t1-p02-s02-draw-close-divide-delete`, pushed for re-review. No acceptance, no closeout,
+           no merge claim.
 TIER:      architecture-integration. Integration route remains T1.P02.S04.
 OWED:      T3's implementation review of the shared Head/F4 diff, and the owning track's review of
-           each T2/T3 adapter edit this diff touches (see “Review obligations”).
+           each T2/T3 adapter edit this diff touches (see “Review obligations”). Round 2 repaired
+           four peer-review findings; the re-review owns whether the repairs close them.
 ```
 
 ## What is implemented
@@ -28,7 +30,25 @@ and F4 acceptance, with plan and 3D reading the same candidate.
 | `apps/editor/src/lib/authoring/stage/shell/`, `routes/project/[projectId]/spatial/+page.svelte` | the bottom dock over declarations, the one lower column (dock + armed palette), the Card as the sole writer for ordinary Layout fields and the home of scoped actions, the Head's bounded Find, palette-first Escape and the Delete key routed through the selected subject's own disclosed action. |
 | `apps/editor/perf/` | the measurement harness drives the migrated UI: a Wall is reached by selection (handles are offered with no task armed) and its exact length is typed into the Card's field writer. |
 
-## Verification at the implementation revision
+## Peer-review round — findings and dispositions
+
+The four findings were each checked against the code before repair; none was withdrawn, and the
+scope of two was narrowed by what the code actually does.
+
+| Finding | Verdict | Repair | Regression evidence |
+| --- | --- | --- | --- |
+| **P1 — a fresh drag-to-draw authored nothing** | **Confirmed.** The release path appended only the released point, so a chain begun by dragging held one point and `commitChain` refused it as `insufficient_chain`: the primary gesture could not draw a Wall. The press target was also overwritten by `pointermove`, so even the release-only reading started wherever the hand last hovered. | `layout.adapter.ts`: `inkPress` now keeps the press's own deliberate target apart from the hover, and `dragInkWall` authors the pressed point and the released point in one acceptance (`beginChain` for a fresh chain, so capture and proposal lease are unchanged). A drag from the live tip still adds one leg. | `layout-drawing-adapter.test.ts` drives the real facade, session and F4 host: one drag ⇒ one Wall between the pressed and released points, one history entry, entried restored by one Undo; and a drag pressed on the enclosure's `(0, 4)` Junction keeps that authored Junction (no parallel Junction minted). Both fail on the pre-repair adapter (verified by reverting it). |
+| **P1 — curved Walls read as their endpoint chords** | **Confirmed, both directions.** Straight hosts are exact under `classifyWallIntersection`; a **curved** host was classified by the chord its two Junctions span, so a leg the real centerline crossed was admitted (the policy's whole purpose), and a leg crossing empty space under a bow was refused for geometry the document does not contain. | `layout-wall-chain-policy.ts`: a curved host is read through the canonical sampled authority the topology gate itself runs — `wallCenterlineSamples` plus the sampled crossing predicate, behind the same extent prune — while straight hosts keep the exact chord classifier. An undeclared coincidence at a host endpoint station stays permitted through the kernel's own shared-station seam, and a sampled leg that cannot be derived falls back to the chord reading. No second intersection recipe and no new tolerance; the planner still owns identity, allocation and every gate. | `layout-wall-chain-policy.test.ts` builds the host by bending a chain through the canonical curve planners and pins: the arc-crossing leg (chord provably clear) refuses, the chord-only leg is permitted **and** `planWallChain` accepts it, a leg leaving the host's own station is permitted, and the same start aimed through the bow still refuses. |
+| **P1 — a confirmation outlived its subject** | **Confirmed.** The Card compared `confirming` against `action.id`, which every Wall-deletion action shares, so switching subjects kept “Confirm Delete Wall” standing over consequences the creator had never read; the route's offer compared subject and action id only, so a Wall left and re-selected spent an offer read for an earlier selection, and a content change that altered the consequences (a hosted Opening) ran the deletion without re-disclosing it. | `EditorCard.svelte` keys the confirmation by the subject **and** the adapter's own disclosed words and drops it when either changes; the route stores a fingerprint (subject, action, disclosed detail) that the second `Delete` compares against the **live** Card action before running it, spends the offer on a selection change, and clears it on replacement. The notice also stops doubling the full stop the adapter's sentence ends with. | `spatial-route-gesture.test.ts` on the mounted route: switching subjects returns the Card to its own disclosure and deletes nothing; a Wall left and re-selected demands a fresh press before it can be deleted (both fail against the pre-repair Card/route — the route case deletes immediately). |
+| **P3 — “This deletes deletes …”** | **Confirmed, and wider than the example.** The clause list produced “This deletes deletes 1 hosted Opening in the same undo step”, chained a second “and” onto an enclosure clause that already carried one, and read “This deletes changes no Room” for a Wall with no Room consequence. | `drawing-planners.ts`: the disclosure is two sentences from the same planner counts — what goes (the Wall, then the hosted Openings sharing its undo step) and what happens to the Rooms (merge / enclosure / create / no change), with the plural rule in one helper. The substrings the earlier suite already asserted are preserved. | `layout-drawing-adapter.test.ts` asserts the full sentence for the Opening+enclosure case, and the existing `contains` assertions still hold. |
+
+Diff review for unintended effects: none of the four repairs touches F4 capture minting (one capture per
+operation, still `beginChain`/`commitChainOnce`), correspondence, the proposal-lease contract, the
+Stage contribution field shapes or their defaults, admission/install, or the shell's writer/action
+records. The policy edit is a pure function in `layout-core`; the wording edit changes only words; the
+confirmation edit changes shell state that never reaches the source.
+
+## Verification at the implementation revision (round 1)
 
 Frozen candidate `35693802eebb1233512758283f404ccd79dfc5ed` (branch head when the gate ran), all
 commands from the repository root:
@@ -56,6 +76,31 @@ a refused finish writes no source; one Undo per accepted chain; ids are not reus
 delete/recreate and Undo/Redo), the Wall-delete consequences, the new Stage seams, the migrated Card
 field writer's lifetime, and the Head's bounded Find.
 
+## Verification at the repair revision (round 2)
+
+Branch head `78705c0d1c4162129223e2b0da2d450db25c1bec` (`fix(layout): word a Wall deletion's
+disclosure as two sentences`; the round-2 commits are listed under “Revision map”), all commands from
+the repository root and run on the committed tree:
+
+```text
+npm run check               editor svelte-check: 0 errors, 0 warnings
+npm run test:fast           180 files / 2,325 tests passed  (+7 round-2 regressions)
+npm run test:heavy          11 files / 138 tests passed
+npm run test:arch           22 files / 180 tests passed
+npm run test:full           213 files / 2,643 tests passed  (+7)
+npm run build               production build succeeded
+npm run check:layout-core   tsc clean   (also run standalone over the policy module)
+npm run check:project-model tsc clean
+npm run check:camera-core   tsc clean
+npm run check:api           tsc clean
+npm run test:api:stack      14 test files, no failures, 0 skipped (local Postgres, test-auth seam)
+```
+
+The round-2 regressions are the three drag cases, the three policy geometry cases, and the two
+mounted-route confirmation cases listed above. Each was run against the pre-repair code (reverting
+only the file it covers) to confirm it fails there; the drag pair and the route confirmation case
+were verified that way in-session.
+
 ## Performance state
 
 **Harness smoke, not acceptance evidence.** With the retired task removed from the harness,
@@ -75,6 +120,22 @@ Dispatched inputs all produced a ledger row (1/1 presented, 0 superseded, 0 unre
 `compilesPerPresentedFrame` 0.138). The deliberately delayed-preview proof still separates latency
 from loss: 180/180 delayed inputs recorded, 0 missed samples, 11 presented and 169 superseded, p95
 497 ms against a 33.5 ms baseline p95. Every row above is labelled **smoke, not evidence**.
+
+Re-run on the round-2 repair revision `78705c0d` (same command, 4 tests passed in 2.3 min, Chromium
+153.0.8010.12):
+
+| Row (grid-S, F3/F4/F8) | cold | warm | repeat-use |
+| --- | --- | --- | --- |
+| input → matching preview (ms, n=1) | 38.2 | 28.9 | 30.3 |
+| F4 commit completion (ms) | 63.0 | 59.4 | 60.4 |
+| F4 precision completion (ms) | 48.4 | 54.4 | 51.9 |
+| F8 Undo / Redo completion (ms) | 33.1 / 25.3 | 39.5 / 35.3 | 22.0 / 32.3 |
+
+Dispatched inputs still all produced a ledger row (1/1 presented, 0 superseded, 0 unresolved,
+0 refused in every row). The delayed-preview proof still separates latency from loss: 180/180 delayed
+inputs recorded, 0 missed samples, 10 presented and 170 superseded, p95 470 ms against a 33.3 ms
+baseline p95. These remain **smoke, not evidence**: the repairs add sampled-centerline work only for
+curved hosts, which this straight-Wall workload does not contain, so no latency claim is made from it.
 
 **Still owed, by an owner-run pass.** The plan's performance acceptance — F3 input-to-matching-preview
 / latest-input age / final-preview completion / frames and long tasks, per-move evaluation, F4 commit
@@ -121,4 +182,10 @@ f885f6ad  feat(stage): generalize the proposal and contribution contracts
 f09b63f4  feat(shell): add the dock, the Card's writers and the Head's bounded Find
 64287bfb  test: cover the drawing path, the retired Dimensions route and the new shell seams
 35693802  test(perf): drive the harness through the migrated Card and selected-Wall handles
+
+round 2 (peer-review repairs)
+8528decc  fix(layout): draw the Wall a fresh drag names
+5296f678  fix(layout-core): admit a drawing against a curved Wall's real centerline
+b7b0f9d4  fix(shell): bind a delete confirmation to its exact subject and words
+78705c0d  fix(layout): word a Wall deletion's disclosure as two sentences
 ```
