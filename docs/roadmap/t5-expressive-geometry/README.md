@@ -87,6 +87,9 @@ amendment is written ahead of that consumer. Dependency admission retains the ex
 
 ## Evidence roles
 
+- [E0 execution plan](./e0-execution-plan.md) — proposed owner-evaluated display challenge and
+  minimum disposable playground, with relationship-depth extensions conditional on observed need.
+  Documentation only; the separate experimental commission is still required before execution.
 - [G0 ratification](../../reference/decisions/t5-g0-ratification-2026-10-27.md) — provenance and limits;
   live rules belong to the owning references it routes.
 - [Original G0 commission](./g0-foundation-architecture-commission.md) and
