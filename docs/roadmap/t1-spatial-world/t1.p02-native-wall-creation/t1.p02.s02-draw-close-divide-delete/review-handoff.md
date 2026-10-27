@@ -47,6 +47,9 @@ npm run check:api           tsc clean
 npm run test:api:stack      14 files, 114 checks, 0 failed, 0 skipped (local Postgres, test-auth seam)
 ```
 
+The documentation-only commit that added this record was re-verified through the arch lane, which
+owns the documentation tests: 22 files / 180 tests passed at `95860013`.
+
 The added regressions are the drawing adapter contract (pointer and typed points agree; a Junction
 and a Wall interior are declared to the planner while nearness is not a snap; backtrack/close/cancel;
 a refused finish writes no source; one Undo per accepted chain; ids are not reused across
