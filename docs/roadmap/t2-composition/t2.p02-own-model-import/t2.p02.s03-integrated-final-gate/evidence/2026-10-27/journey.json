@@ -1,5 +1,5 @@
 {
-  "projectId": "perf-s03-mvqs3m1m",
+  "projectId": "perf-s03-mvqtrrcr",
   "browser": "chrome",
   "errors": [],
   "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
@@ -24,46 +24,26 @@
       0
     ]
   },
-  "compose": {
-    "text": "Compose no entity Resize… Duplicate Delete Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.",
-    "resizeDisabled": true,
-    "duplicateDisabled": true,
-    "deleteDisabled": true
-  },
-  "indexAfterPlacement": {
-    "regions": [],
-    "rows": [
-      "TASK Dimensions",
-      "TASK Experience authoring",
-      "TASK Resize",
-      "TASK Duplicate",
-      "TASK Delete",
-      "TASK Arrange",
-      "TASK Place plinth",
-      "TASK Place object",
-      "TASK Import model…"
-    ]
-  },
   "twoInstances": {
     "entityIds": [
-      "entity-55aeca7f-dd0f-49a5-a2b2-d05e70b284c2",
-      "entity-ff154e67-7717-439d-8bb3-3892be70f613"
+      "entity-679886aa-cead-46d9-a025-5589a8a00439",
+      "entity-f43c6453-fd7c-4462-8d33-8b9ca344b4be"
     ],
     "assetIds": [
-      "model-9b50197b-8a5c-4f6b-85df-d8c658b675a5",
-      "model-9b50197b-8a5c-4f6b-85df-d8c658b675a5"
+      "model-1f24dc3f-a30c-4725-a5b9-ef9728c40c5e",
+      "model-1f24dc3f-a30c-4725-a5b9-ef9728c40c5e"
     ],
     "resourceIds": [
-      "model-9b50197b-8a5c-4f6b-85df-d8c658b675a5"
+      "model-1f24dc3f-a30c-4725-a5b9-ef9728c40c5e"
     ]
   },
   "resource": {
-    "id": "model-9b50197b-8a5c-4f6b-85df-d8c658b675a5",
+    "id": "model-1f24dc3f-a30c-4725-a5b9-ef9728c40c5e",
     "pin": {
       "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78",
       "mime": "model/gltf-binary",
       "size": 1201064,
-      "locator": "/projects/perf-s03-mvqs3m1m/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+      "locator": "/projects/perf-s03-mvqtrrcr/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
     },
     "source": {
       "manifestHash": "sha256-8ab968947ae796732bd527a388236c44d7945a069bc6b2669c4510efceff5357",
@@ -98,6 +78,6 @@
   "reopenedPixels": 80910,
   "reopenErrors": [],
   "previewPixelsWithModel": 74328,
-  "previewTextureWaitedMs": 155,
+  "previewTextureWaitedMs": 151,
   "previewPixelsControl": 0
 }

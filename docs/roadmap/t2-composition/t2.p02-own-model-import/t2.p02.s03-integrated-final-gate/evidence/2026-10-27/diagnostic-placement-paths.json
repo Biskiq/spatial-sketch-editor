@@ -1,18 +1,15 @@
 {
   "typed": {
-    "subject": "ENTITY · SCENE entity-0daa7437-ae36-4f15-84b4-0f262df37af7 ✕ Domain scene Kind primitive Name Block Position 1.5 m · 0.5 m · -1 m Scale 1 (uniform) Yaw 0 rad Fo…",
-    "accepted": true,
-    "composeText": "Compose entity-0daa7437-ae36-4f15-84b4-0f262df37af7 Resize… Duplicate Delete Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.",
+    "subject": "ENTITY · SCENE entity-dc59a1db-7ff2-47d0-8e98-9c85964c72cf ✕ Domain scene Kind primitive Name Block Position 1.5 m · 0.5 m · -1 m Scale 1 (uniform) Yaw 0 rad Fo…",
+    "composeText": "Compose entity-dc59a1db-7ff2-47d0-8e98-9c85964c72cf Resize… Duplicate Delete Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.",
     "resizeDisabled": false
   },
   "pointer": {
-    "accepted": true,
     "subjectSamples": [
       "0ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…",
       "200ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…",
       "1000ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…",
       "3000ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…"
-    ],
-    "instrumentText": "ENTITY Choose… Block · primitive Use selection Begin PLACE box cylinder sphere X (M) Z (M) Place An imported model is placed by clicking its floor position; these typed fields place a native primitive. SNAP (M, OPTIONAL) Snap is explicit and off by default."
+    ]
   }
 }

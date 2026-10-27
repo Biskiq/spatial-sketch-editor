@@ -23,23 +23,28 @@ BATON: S02 delivers the own-GLB import procedure (review, scale/pivot/footprint/
        on this track.
 OWNER DECISIONS (2026-10-23/24): T1 host patch accepted 2026-10-24; editable Card facts stay read-only
        (option b); the placed-creator-model selection gap is kept unfixed as a T1/T2 follow-up.
-OWNER-RUN: S03 dispositioned S02's rows in its record — Preview pixels, F5, F13 and F9 measured on the
-       designated M2 (owner attribution outstanding); F6 undecided at 34.4 ms p95 (S cold) against
-       33 ms; GPU memory blocked by the browser API. Shell observations (offline retry, narrow desktop,
-       reduced motion on, lens park/Resume, keyboard-only transforms, accessible name/focus return),
-       Draco/KTX2, the real >50 MiB decode, real R2 and worker-boundary timing remain **unrun**. Never
-       presented as passed.
+OWNER-RUN: S03 dispositioned S02's rows in its record. F5/F6/F9/F13 were **measured, not discharged**
+       on the designated M2: the pass used the S06-scoped milestone profile, produced no pass-scoped
+       bench manifest, recorded no power state and was agent-operated, so no row is acceptance
+       evidence; F9's DOM-update timings cannot establish presented feedback and F13 measured Undo,
+       not Compose Delete. F6's proxy sits at 34.4 ms p95 (S cold) against 33 ms; GPU memory blocked by
+       the browser API. Shell observations (offline retry, narrow desktop, reduced motion on, lens
+       park/Resume, keyboard-only transforms, accessible name/focus return), Draco/KTX2, the real
+       >50 MiB decode, real R2 and worker-boundary timing remain **unrun**. Never presented as passed.
 FOLLOW-UPS: in-flight fetch dedupe across overlapping model resolutions; a model-failure notice can
        overwrite an unrelated route notice; the pointer-placement selection gap (T1/T2) — narrowed by
-       S03's probe to the pointer completion, since a typed placement selects its entity and Compose
-       acts on it; the empty project's silent placement refusal.
+       S03's diagnostic to the pointer completion, since a typed placement selects its entity and
+       Compose acts on it; the empty project's silent placement refusal.
 NEXT:  owner decisions from the gate record: (1) authorize the pointer-placement selection fix — or a
        reachable selection path — so Resize/Duplicate/Delete are reachable, then re-run those lines;
        (2) dispose of the Stage first-load 447.0 KiB br miss against the ≤400 KiB hard budget;
        (3) authorize F6's ten-run extension with the sequenced drag; (4) complete the remaining
-       owner-run rows; (5) decide what "from an empty project" means for this gate and whether the
-       Place instrument should say why a floor click installs nothing. S03 measured on S06's method and carried S02's rows as the record states.
-       S01/S02 remain accepted and untouched; phase close stays owner-invoked and unclaimed.
+       owner-run rows and decide how the hard rows are discharged formally (10 runs, declared power,
+       owner operator, pass-scoped manifest); (5) decide what "from an empty project" means for this
+       gate and whether the Place instrument should say why a floor click installs nothing. S03 reused
+       the S06 milestone harness, which the contract scopes to S06 only, so its rows are measurements
+       and not acceptance evidence; S02's rows were carried as the record states. S01/S02 remain
+       accepted and untouched; phase close stays owner-invoked and unclaimed.
 BLOCKER: S03 is blocked on (1), the empty-project line and the Stage first-load hard miss. A pointer
        placement does not leave its new entity canonically selected — the room stays selected, so
        Compose's Resize/Duplicate/Delete are disabled for the only path an imported model has — which

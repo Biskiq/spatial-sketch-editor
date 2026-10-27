@@ -1,22 +1,22 @@
 {
   "start": {
-    "capturedAt": "2026-10-27T14:26:19.020Z",
+    "capturedAt": "2026-10-27T15:13:04.982Z",
     "machineModel": "Mac14,2",
     "cpu": "Apple M2",
     "memoryBytes": "17179869184",
     "macOSVersion": "15.8.2",
-    "powerSource": "AC Power",
+    "powerSource": "Battery Power",
     "lowPowerMode": "off",
     "chromeCliVersion": "Google Chrome 156.0.8078.48",
     "nodeVersion": "v26.7.0"
   },
   "end": {
-    "capturedAt": "2026-10-27T14:26:43.429Z",
+    "capturedAt": "2026-10-27T15:13:42.065Z",
     "machineModel": "Mac14,2",
     "cpu": "Apple M2",
     "memoryBytes": "17179869184",
     "macOSVersion": "15.8.2",
-    "powerSource": "AC Power",
+    "powerSource": "Battery Power",
     "lowPowerMode": "off",
     "chromeCliVersion": "Google Chrome 156.0.8078.48",
     "nodeVersion": "v26.7.0"
