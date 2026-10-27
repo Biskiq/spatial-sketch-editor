@@ -60,7 +60,7 @@ T1 acceptance evidence:
 
 | Observation | What it changes for this gate |
 | --- | --- |
-| PR #201’s T3 implementation review is accepted at `bf9007ff` (docs-only follow-up `8ea82633`); its product change is not merged. | A future S03 verdict must re-run on the resulting `main`, not on `a025e2dd`/`9e0fcb50`. |
+| PR #201’s T3 implementation review is accepted at `bf9007ff` (branch head `ff82d68e`, docs-only after); its product change is not merged. | A future S03 verdict must re-run on the resulting `main`, not on `a025e2dd`/`9e0fcb50`. |
 | On the merged tree, T2’s repaired S03 acceptance flow passed 2/2 in Chrome against a dedicated local Postgres database (agent-operated, 16.5 s). | The accepted-path journey still runs after #201; this is a smoke, never a pass-scoped row. |
 | The S03 diagnostics on the merged tree now show a pointer placement leaving the new **model entity** selected. Compose opens on that entity. Resize and Duplicate remain **disabled** (“A model needs a verified contact…”); Delete is enabled. | The old “no canonical selection” blocker is removed by #201, but the required resize/duplicate/delete row is still not passable for a creator model. A re-run must record the new refusal, not the old one. |
 | An empty project still has no Room floor. With Ink, a creator can draw an enclosure first; a typed-Ink smoke then imported, approved and placed a model and stored one Room and one entity. The Place instrument still refuses a floor click silently when no floor exists. | The structural cause is removable, but whether “from an empty project” means “draw first, then import” is an **owner decision**; the silent refusal remains a product observation. |

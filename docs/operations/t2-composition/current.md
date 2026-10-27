@@ -23,7 +23,7 @@ BATON: S02 delivers the own-GLB import procedure (review, scale/pivot/footprint/
        Preview. Durable current behavior is in the owning assets, Scene content and persistence references.
        S03's PR carries the gate record, the on-demand acceptance harness, its evidence and the
        failed-gate disposition; it is open and is never merged by the slice that wrote it. T1's #201 is
-       T3-accepted at `bf9007ff` (docs-only `8ea82633`) but **not merged**; on a scratch integration its
+       T3-accepted at `bf9007ff` (branch head `ff82d68e`, docs-only after) but **not merged**; on a scratch integration its
        press-claim removes the pointer-selection overwrite, while Resize/Duplicate still refuse a
        creator model for verified contact. Any S03 re-run must use the resulting `main` and re-record
        the affected rows. No other slice is in progress on this track.
