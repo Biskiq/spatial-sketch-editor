@@ -1,6 +1,6 @@
 # T1.P02.S02 — closeout blockers
 
-**Slice:** T1.P02.S02 · **Branch head:** `ff82d68e` (implementation `bf9007ff`, docs-only after)
+**Slice:** T1.P02.S02 · **Branch:** `t1-p02-s02-draw-close-divide-delete` · **Reviewed implementation:** `bf9007ff` (every later commit is docs-only)
 **Decision:** **closeout BLOCKED — do not record acceptance, do not mark shipped.**
 
 Implementation review is accepted: T3 accepted the shared Head/F4 diff at `bf9007ff`

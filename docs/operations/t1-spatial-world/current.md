@@ -4,7 +4,7 @@ PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01, S05 and S06 are shipped and S02 is released.
 SLICE: S02 draw, close, divide and delete — implementation complete on PR #201
-       (`t1-p02-s02-draw-close-divide-delete`, head `ff82d68e`; implementation `bf9007ff`).
+       (`t1-p02-s02-draw-close-divide-delete`; reviewed implementation `bf9007ff`, every later commit docs-only).
        T3 accepted the shared Head/F4 diff at `bf9007ff`
        (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/t3-implementation-review.md).
        **Slice closeout is BLOCKED, not accepted or shipped:** the plan's browser journey and
