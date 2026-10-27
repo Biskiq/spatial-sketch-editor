@@ -70,6 +70,9 @@ recommend — not prerequisites this registration pre-ratifies.
 
 ## Evidence roles
 
+- [E0 execution plan](./e0-execution-plan.md) — bounded disposable comparison of contextual
+  creation with competent explicit controls, derived from the G0 reconciliation's §10. Planning
+  only: no prototype implementation, production slice registration or R1 scope decision.
 - [G0 commission](./g0-foundation-architecture-commission.md) — the actionable planning brief,
   approved by the owner 2026-10-27
   ([decision](../../reference/decisions/t5-g0-approval-2026-10-27.md)); it authorizes no
