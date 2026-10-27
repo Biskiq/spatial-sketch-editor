@@ -19,7 +19,7 @@ import {
 	dragWallHandle,
 	gotoCreateIntent,
 	openSourceJson,
-	selectFirstWallAndOpenDimensions,
+	selectFirstWall,
 	uniqueProjectId,
 	waitForAcceptedResult
 } from '../lib/flow';
@@ -57,13 +57,13 @@ test.describe('per-stage traces', () => {
 					await openSourceJson(page, project);
 					await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 				});
-				await selectFirstWallAndOpenDimensions(page);
+				await selectFirstWall(page);
 				windows.F3 = await traced(page, cdp, async () => {
 					const before = await acceptedResultCount(page);
 					await dragWallHandle(page, { samples: SMOKE ? 1 : 60, distance: 6 });
 					await waitForAcceptedResult(page, before);
 				});
-				await selectFirstWallAndOpenDimensions(page);
+				await selectFirstWall(page);
 				windows.F4 = await traced(page, cdp, async () => {
 					const before = await acceptedResultCount(page);
 					await commitPrecisionLength(page, 4.45);

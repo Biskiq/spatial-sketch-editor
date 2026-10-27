@@ -8,7 +8,7 @@
  * - render counters per frame at rest (draws, triangles, shadow-map passes and
  *   shadow draws) and the renderer's live programs, geometries and textures;
  * - the work and render counts of the fixed edit's commit (the focus Wall's
- *   exact length, typed through the shipped Dimensions instrument);
+ *   exact length, typed through the shipped Card field writer);
  * - **visual non-influence**: the Stage scene rendered at the authored fixed
  *   View ("Focus wing — enfilade") and read back from the drawing buffer, before
  *   and after the fixed edit. Variant H must be pixel-identical to ×1; variant D
@@ -172,11 +172,12 @@ test.describe('E5 browser counts and visual non-influence', () => {
 				const residentAtRest = await readResidentBytes(page);
 				const before = await framebufferAt(page, view);
 
-				// The fixed edit: the focus Wall's exact length through the shipped instrument.
+				// The fixed edit: the focus Wall's exact length through the shipped Card field writer.
 				// The Index labels a Wall by its id (`wall · <id>`); search narrows a large list.
+				// T1.P02.S02: selection alone is enough — the Wall's ordinary fields render
+				// in the Card, whose writer owns the exact length.
 				await page.locator('#plate-index-search').fill(focus.id);
 				await page.locator('button.item-row', { hasText: focus.id }).first().click();
-				await page.locator('.contributed-item button.item-row', { hasText: 'Dimensions' }).first().click();
 				const workBefore = await readWork(page);
 				const renderBefore = await readRenderCounters(page);
 				const accepted = await acceptedResultCount(page);

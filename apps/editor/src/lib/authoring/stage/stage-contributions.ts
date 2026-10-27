@@ -11,7 +11,13 @@
  * sorts by explicit order, then adapter ID, then entry ID), and grouping preserves
  * the first appearance of each rail family / capability pair.
  */
-import type { StageCardFact, StageCardSubject, StageFacade } from './stage-facade';
+import type {
+	StageCardActionRecord,
+	StageCardFact,
+	StageCardSubject,
+	StageCardWriterRecord,
+	StageFacade
+} from './stage-facade';
 
 /** One contributed operation row, ready to render. */
 export type StageContributionRow = {
@@ -30,16 +36,49 @@ export type StageContributionGroup = {
 	readonly entries: readonly StageContributionRow[];
 };
 
+/** One armable **dock** tool contributed by an adapter. */
+export type StageDockTool = {
+	readonly id: string;
+	readonly label: string;
+	readonly adapterId: string;
+	readonly taskKind: string;
+	readonly order: number;
+};
+
 function humanize(value: string): string {
 	const spaced = value.replace(/[-_]+/g, ' ').trim();
 	return spaced.length === 0 ? value : spaced[0]!.toUpperCase() + spaced.slice(1);
 }
 
 /**
- * Everything a mounted adapter contributes to the Find/rail surface.
+ * The armable tools the **bottom dock** shows: every contributed Find entry whose
+ * declared home is `dock`, in the facade's deterministic order.
+ *
+ * The dock is chrome over declarations, not a second task registry: arming a tool
+ * opens the very same contributed task the Index would have invoked, and the host
+ * adds no domain-specific slot of its own.
+ */
+export function stageDockTools(facade: StageFacade | null): readonly StageDockTool[] {
+	if (facade === null) return [];
+	return facade
+		.findEntries()
+		.filter((entry) => entry.home === 'dock')
+		.map((entry) => ({
+			id: entry.id,
+			label: entry.label,
+			adapterId: entry.adapterId,
+			taskKind: entry.taskKind,
+			order: entry.order
+		}));
+}
+
+/**
+ * Everything a mounted adapter contributes to the Index/Find surface.
  *
  * A group with no entries is never returned, and a disposed adapter's entries are
- * gone on the next read because the facade publishes only live registrations.
+ * gone on the next read because the facade publishes only live registrations. An
+ * entry whose home is the dock is **not** listed here: it is armed from the dock,
+ * and listing it twice would offer two routes to one task.
  */
 export function stageContributionGroups(
 	facade: StageFacade | null
@@ -47,6 +86,7 @@ export function stageContributionGroups(
 	if (facade === null) return [];
 	const groups = new Map<string, { family: string; capability: string; entries: StageContributionRow[] }>();
 	for (const entry of facade.findEntries()) {
+		if (entry.home === 'dock') continue;
 		const key = `${entry.railFamily}\u0000${entry.capability}`;
 		const group = groups.get(key) ?? { family: entry.railFamily, capability: entry.capability, entries: [] };
 		group.entries.push({
@@ -94,4 +134,28 @@ export function stageCardFacts(
 		facts.push({ label, value: contributed.value });
 	}
 	return facts;
+}
+
+/**
+ * The Card's contributed **writer** for one subject, or `null`.
+ *
+ * One adapter owns it (deterministic adapter-ID order in the facade), exactly like
+ * the name writer: two writers for one field set would be two authorities over the
+ * same fact.
+ */
+export function stageCardWriter(
+	facade: StageFacade | null,
+	subject: StageCardSubject | null
+): StageCardWriterRecord | null {
+	if (facade === null || subject === null) return null;
+	return facade.cardWriter(subject);
+}
+
+/** The Card's scoped contributed actions for one subject, in deterministic order. */
+export function stageCardActions(
+	facade: StageFacade | null,
+	subject: StageCardSubject | null
+): readonly StageCardActionRecord[] {
+	if (facade === null || subject === null) return [];
+	return facade.cardActions(subject);
 }

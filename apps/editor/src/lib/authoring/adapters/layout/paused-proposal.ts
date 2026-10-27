@@ -4,7 +4,7 @@
  * A reading flip ends the pointer writer, because the CSS the drag was measured
  * in no longer describes what is drawn. The work is not wrong, though: the
  * parameter the creator named is exact and belongs to the accepted source, so
- * it is kept as a proposal the Dimensions instrument can apply deliberately.
+ * it is kept as a proposal the Card's field writer can apply deliberately.
  *
  * The store is keyed by the accepted source and the Wall. It is not a document
  * and not a second authority: resuming rebuilds the same F.4 intent and the
