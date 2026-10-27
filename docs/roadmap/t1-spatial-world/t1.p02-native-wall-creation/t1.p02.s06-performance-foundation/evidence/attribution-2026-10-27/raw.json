@@ -37,7 +37,9 @@
       "cd apps/editor && npm run build && PERF_SKIP_BUILD=1 PERF_PORT=4173 node perf/serve.mjs",
       "PERF_TIERS=grid-S,grid-L PERF_PROFILE=diagnostic PERF_APP_REVISION=d89554b1 PERF_BASE_URL=http://127.0.0.1:4173 PERF_RESULTS_DIR=/tmp/biskiq-attribution-final-current npx playwright test --config perf/attribution/playwright.config.ts",
       "PERF_TIERS=grid-S,grid-L PERF_PROFILE=diagnostic PERF_APP_REVISION=e8cc2fc0 PERF_BASE_URL=http://127.0.0.1:4174 PERF_RESULTS_DIR=/tmp/biskiq-attribution-final-old npx playwright test --config perf/attribution/playwright.config.ts"
-    ]
+    ],
+    "harnessCheckout": "c5e499d3",
+    "harnessNote": "The per-row harnessCommit is the clean checkout base. The attribution spec and Playwright config were working-tree files during the runs and are committed with this evidence; rerun them from that commit."
   },
   "runs": [
     {

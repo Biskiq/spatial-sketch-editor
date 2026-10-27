@@ -15,7 +15,7 @@ workloads, the same browser and the same interaction values.
 | --- | --- | --- |
 | Bench 2 product | `e8cc2fc0` | detached worktree `/private/tmp/s06-attribution-e8cc`; `npm ci --ignore-scripts`, `npm run build` |
 | Frozen candidate | `d89554b1` | current checkout; `npm run build` |
-| Harness | PR #190 at `c5e499d3` | `apps/editor/perf/attribution/*`; the only tracked change for this check |
+| Harness | PR #190 at `c5e499d3` plus the attribution spec in the working tree | `apps/editor/perf/attribution/*`; the spec and this evidence are one commit |
 
 The candidate build is the same product source as the milestone pass (`25d61deb` and later commits
 change no product file). The old worktree has its own workspace links and its own `layout-core`; no
@@ -60,11 +60,15 @@ function self-time.
 | L | Repeat pick, wall | 24.0 | 17.3 | −28 % |
 | L | Late-order pick, wall | 52.7 | 16.1 | **−69 % (3.27× faster)** |
 | L | Local edit, task | 170.2 | 173.3 | +1.8 % (no change) |
-| L | Local edit, first frame | 102.1 | 100.1 | −2.0 (no change) |
+| L | Local edit, first presentation | 102.1 | 100.1 | −2.0 (no change) |
 | S | Pan, task per move | 4.09 | 3.12 | −24 % |
 | S | First ordinary pick, wall | 4.2 | 6.5 | +2.3 |
 | S | Local edit, task | 27.5 | 35.0 | **+27 %** |
-| S | Local edit, first frame | 17.2 | 17.1 | no change (n=2) |
+| S | Local edit, first presentation | 15.5 | 16.3 | no change (n=2 each; one run recorded none) |
+
+`first presentation` is the first animation frame after the typed `command:instrument` resolves — the
+window beside the accepted-revision one, not inside it. L has three values per revision; S has two,
+because one S run per revision recorded no frame after the commit.
 
 L first-pick task is 44.1 → 79.3 ms; repeat task 40.0 → 30.3; late-order task 62.2 → 26.9. The
 post-edit L pick (n=1) is 31.5 → 23.4 ms wall, 40.7 → 42.7 ms task, and rebuilds the index
@@ -80,7 +84,7 @@ change is headroom, not a demonstrated frame-rate gain.
 ## What the counters prove
 
 - **Pan.** The candidate records no `plan:*` or `plan-pick:*` work during the pan. The old route keys
-  its Plan on the camera target (`+page.svelte` at `e8cc2fc0`, key at line 1114) and calls
+  its Plan on the camera target (`+page.svelte` at `e8cc2fc0`, key built at line 1113) and calls
   `stage.plan()` when it changes (line 1119); the candidate keys on `stage.planDependencyKey()`
   (`+page.svelte:1542`), which excludes a target the parameters do not use
   (`stage-facade.ts:1569`). The measured pan is the genuine elimination of the per-move Plan
@@ -115,7 +119,7 @@ they are recorded but not used as allocation evidence.
    edits, the index has not improved the interaction.
 3. **The local edit did not improve end-to-end.** Plan derivation is genuinely local (8 sources, no
    unrelated comparisons), but compile aggregate/materialisation, complete membership assembly and
-   whole-document commit work remain. L task and first frame are unchanged within noise. At S the
+   whole-document commit work remain. L task and first presentation are unchanged within noise. At S the
    candidate is consistently ~7 ms slower (27.5 → 35.0 task), which is small in absolute terms but
    outside the old range in these three runs; it is recorded, not explained away.
 4. **Deferral is not elimination.** The pick index and the complete Plan output are built on first

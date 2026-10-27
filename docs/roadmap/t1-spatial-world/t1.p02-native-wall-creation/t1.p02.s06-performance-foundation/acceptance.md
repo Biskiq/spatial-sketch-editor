@@ -453,7 +453,8 @@ S06 milestone PASS is not reopened. The full method, commands, raw rows and limi
 
 **Isolation and method.** Bench 2's product revision `e8cc2fc0` was built in a detached worktree with
 its own workspace links; the frozen candidate `d89554b1` was built from the current checkout. Both
-ran through the **same** attribution spec and Playwright config at harness `c5e499d3`, on the
+ran through the **same** attribution spec and Playwright config on the `c5e499d3` checkout (the
+spec was still a working-tree file during the runs; it and this record are one PR commit), on the
 reference M2 / 16 GiB / macOS 24.6.0, pinned Chrome 156.0.8078.48, N1, 1920×1080 at DPR 1, AC. Three
 paired rounds at grid-S and grid-L measured: 94 continuous background pan moves (camera moved on both
 revisions), an ordinary first pick, three repeat picks on the same Plan, a late-order pick at L, one
@@ -470,11 +471,11 @@ function self-time. A repeat/late-order figure is a per-click window; the pan is
 | L | Repeat pick, wall | 24.0 | 17.3 | −28 % |
 | L | Late-order pick, wall | 52.7 | 16.1 | **−69 % (3.27× faster)** |
 | L | Local edit, task | 170.2 | 173.3 | +1.8 % (no change) |
-| L | Local edit, first frame | 102.1 | 100.1 | −2.0 (no change) |
+| L | Local edit, first presentation | 102.1 | 100.1 | −2.0 (no change) |
 | S | Pan, task per move | 4.09 | 3.12 | −24 % |
 | S | First ordinary pick, wall | 4.2 | 6.5 | +2.3 |
 | S | Local edit, task | 27.5 | 35.0 | **+27 %** |
-| S | Local edit, first frame | 17.2 | 17.1 | no change (n=2) |
+| S | Local edit, first presentation | 15.5 | 16.3 | no change (n=2 each) |
 
 L first-pick task is 44.1 → 79.3 ms; repeat task 40.0 → 30.3; late-order task 62.2 → 26.9. The
 post-edit L pick (n=1) is 31.5 → 23.4 ms wall and 40.7 → 42.7 ms task, and rebuilds 3,919 nodes,

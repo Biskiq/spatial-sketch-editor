@@ -179,8 +179,10 @@ function metricsFor(prefix: string, window: WindowResult): Record<string, number
 
 test.describe('post-Bench-2 attribution', () => {
 	test.setTimeout(180_000);
+	// This check is S/L by default; an accidental bare run must not start XL.
+	const tiers = selectedTiers(process.env.PERF_TIERS === undefined ? ['grid-S', 'grid-L'] : undefined);
 
-	for (const tier of selectedTiers()) {
+	for (const tier of tiers) {
 		test(`pan, pick and a local commit at ${tier}`, async ({ browser }, testInfo) => {
 			const report = startReport(`attribution-${tier}`);
 			const appRevision = process.env.PERF_APP_REVISION ?? 'unrecorded';
