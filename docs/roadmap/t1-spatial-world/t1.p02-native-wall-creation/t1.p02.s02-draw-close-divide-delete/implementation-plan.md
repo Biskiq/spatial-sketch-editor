@@ -1,6 +1,8 @@
 # T1.P02.S02 — Draw, close, divide and delete: implementation plan
 
-**Slice:** T1.P02.S02 · **Status:** proposed — not authorized or released ·
+**Slice:** T1.P02.S02 · **Status:** approved — released 2026-10-27; starts after the coordination PR
+#198 merges ([record](../../../../reference/decisions/next-wave-authorization-2026-10-27.md);
+[plan review](./plan-review.md)) ·
 **Phase:** [T1.P02](../README.md#slice-register) · **Track:** [T1](../../README.md) ·
 **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md) ·
 **Design:** [shell draft](../shell-draft.md#draw-s02) · **Acceptance:** [record](./acceptance.md)
@@ -20,11 +22,14 @@ Plan and 3D read the same candidate; numeric and keyboard paths have the same se
 The phase's [owner-accepted drawing policy](../README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)
 owns enclosure, connection and refusal rules; this plan does not reopen them.
 
-S01 and S05 are shipped. **S06 performance foundation must be accepted and merged before S02
-starts** ([performance-first halt](../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)).
-Recheck that merged tree, H0 `T3.P03.S01`, consumed gates and active scopes through the runbook.
-This complete proposed plan still needs review, its own owner authorization and release-list
-entry; neither registration nor Round 2 ratification releases production implementation.
+S01, S05 and S06 are shipped; **S06 is accepted (2026-10-27) and merged as `6af62eb4`**, which
+satisfied the [performance-first halt](../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+without releasing S02. The owner released S02 on 2026-10-27
+([record](../../../../reference/decisions/next-wave-authorization-2026-10-27.md)); its plan review,
+including the T3 Head/F4 shell-allocation review and the T2/T3 contribution-compatibility review, is
+complete ([plan review](./plan-review.md)). Recheck the merged tree, H0 `T3.P03.S01`, consumed gates
+and active scopes through the runbook; registration or Round 2 ratification still releases nothing
+by itself.
 
 The bounded shell allocation proposed here is S02's original shared-shell scope: dock
 Select/Ink, their contribution seam, Card/lower-column arbitration and moving ordinary Layout
@@ -169,6 +174,9 @@ the straight-Wall reading the domain supports, with no unsupported Shape/roof/ro
 The existing one-datum working-level check is not levels support.
 
 Before build, review the bounded shared-shell allocation, exact Ink naming/palette and
-key bindings, the Card migration fields and contributor home mapping. These feature choices
+key bindings, the Card migration fields and contributor home mapping. The plan-level reviews are
+complete ([plan review](./plan-review.md)); the naming/palette, key-binding confirmation, Card field
+and contributor-home mapping are settled in this slice's design and acceptance work, with T3's
+implementation review of the Head diff before merge. These feature choices
 must conform to Round 2 and the accepted phase policy; departures or scope expansion return
 to the owner. Authorization/release and any later performance-semantics ruling stay owner-only.

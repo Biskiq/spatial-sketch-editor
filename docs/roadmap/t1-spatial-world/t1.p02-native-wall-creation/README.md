@@ -4,7 +4,7 @@
 the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
 covers every scope that list omits. S01, S05 and S06 are shipped; S06 was accepted 2026-10-27 as
 AC-qualified (its milestone gate passed 2026-10-26 and the T3/T2 shared-boundary review is
-recorded), and S02–S04 stay `proposed` — S02 is held until S06 is merged · **Track:** [T1](../README.md) ·
+recorded). S02 is `approved` and released 2026-10-27 ([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)); S03–S04 stay `proposed` · **Track:** [T1](../README.md) ·
 **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Design:**
 [shell draft](./shell-draft.md)
@@ -16,8 +16,11 @@ sequencing and shared-file allocation; the
 owns historical authorization. Execution order is
 **S01 → S05 retirement → S06 performance foundation → S02 → S03 → S04**. The owner registered S06
 ahead of drawing on 2026-10-24 under a temporary
-[performance-first halt](../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary).
-Registration and complete plans grant no new release.
+[performance-first halt](../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary);
+S06 is now accepted (2026-10-27) and merged (`6af62eb4`), so that halt is satisfied and blocks
+nothing. The owner then released S02 on 2026-10-27
+([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)); S03–S04 still need
+their own releases, and registration or a complete plan grants no release.
 
 ## Outcome
 
@@ -86,15 +89,15 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T1.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Layout identity and format cutover (closed stub)](./t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md) | [record (closed stub)](./t1.p02.s01-layout-identity-and-format-cutover/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7); accepted and shipped 2026-10-23 as `owner-override` for PR #179 source revision `7e159370` and rebased integration `401b612f`; waived independent-review verdict and S01 F2 S/M timing prerequisites only; S/M measurements remain unrun and assigned to S04; P1 merge commit required for recovery |
 | T1.P02.S05 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Legacy Layout retirement](./t1.p02.s05-legacy-layout-retirement/implementation-plan.md) | [record](./t1.p02.s05-legacy-layout-retirement/acceptance.md) | owner-authorized 2026-10-23 in the post-Batch-E release ([record](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); accepted 2026-10-23 as `owner-override` (full-suite clean-run waiver only, on revision `588cc70f`; [acceptance stub](./t1.p02.s05-legacy-layout-retirement/acceptance.md)); shipped by PR #183 |
-| T1.P02.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Performance foundation](./t1.p02.s06-performance-foundation/implementation-plan.md) | [record](./t1.p02.s06-performance-foundation/acceptance.md) | owner-authorized and released 2026-10-24 ([record](../../../reference/decisions/performance-foundation-authorization-2026-10-24.md)); starts per the release list (`docs/roadmap/now.md`) after the coordination PR merges; runs before every direct inheritor under the performance-first halt; its own gates, review and evidence remained required; milestone gate passed 2026-10-26 (15/15 decision rows, full E5), T3/T2 shared-boundary review recorded 2026-10-27, and the AC-qualified disposition ratified 2026-10-27 with battery qualification deferred to S04 — all in the [acceptance record](./t1.p02.s06-performance-foundation/acceptance.md#reconciliation-follow-ons-and-closeout-readiness-2026-10-27); shipped on PR #190; the performance-first halt lifts only when the PR merges |
-| T1.P02.S02 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Draw, close, divide and delete](./t1.p02.s02-draw-close-divide-delete/implementation-plan.md) | [record](./t1.p02.s02-draw-close-divide-delete/acceptance.md) | held; not authorized — S05 shipped (PR #183); halted until S06 is accepted and merged (performance-first halt); still needs its plan review, the T3 review of the shared Head/F4 shell allocation, T2/T3 contribution-compatibility review and its own owner authorization |
+| T1.P02.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Performance foundation](./t1.p02.s06-performance-foundation/implementation-plan.md) | [record](./t1.p02.s06-performance-foundation/acceptance.md) | owner-authorized 2026-10-24 ([record](../../../reference/decisions/performance-foundation-authorization-2026-10-24.md)); its shipped row was pruned from the release list by the [next-wave release](../../../reference/decisions/next-wave-authorization-2026-10-27.md); ran before every direct inheritor under the performance-first halt, which is satisfied; its own gates, review and evidence remained required; milestone gate passed 2026-10-26 (15/15 decision rows, full E5), T3/T2 shared-boundary review recorded 2026-10-27, and the AC-qualified disposition ratified 2026-10-27 with battery qualification deferred to S04 — all in the [acceptance record](./t1.p02.s06-performance-foundation/acceptance.md#reconciliation-follow-ons-and-closeout-readiness-2026-10-27); shipped on PR #190 (`6af62eb4`) |
+| T1.P02.S02 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Draw, close, divide and delete](./t1.p02.s02-draw-close-divide-delete/implementation-plan.md) | [record](./t1.p02.s02-draw-close-divide-delete/acceptance.md) | owner-authorized and released 2026-10-27 ([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)); starts after the coordination PR #198 merges; plan review complete including the T3 Head/F4 shell-allocation review and the T2/T3 contribution-compatibility review ([review](./t1.p02.s02-draw-close-divide-delete/plan-review.md)); scope unchanged; the standing T3 implementation review of the shared Head/F4 diff and the owning-track review of any T2/T3 adapter edit remain before merge |
 | T1.P02.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Opening family](./t1.p02.s03-opening-family/implementation-plan.md) (outline) | [record](./t1.p02.s03-opening-family/acceptance.md) | not authorized — starts only from its own owner authorization after S02 is accepted |
 | T1.P02.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p02.s04-integrated-final-gate/implementation-plan.md) | [record](./t1.p02.s04-integrated-final-gate/acceptance.md) | not authorized — starts only from its own owner authorization after S01, S05, S06, S02 and S03 are accepted |
 
 The consumed gates and scopes were accepted/active at the batch E base; each slice rechecks
 them at its own trusted base through the runbook. No slice provides a gate. S05, S06 and S02 carry
-complete plans; S05 and S06 are shipped (PR #183, PR #190) and S02 remains held until S06 merges;
-S03 is an outline
+complete plans; S05 and S06 are shipped (PR #183, PR #190), S02 is released and starts after the
+coordination PR #198 merges; S03 is an outline
 to complete after its predecessor's acceptance. S05 retires S01's residual legacy surface; S06
 installs the peak-first measurement method, the L/XL and realistic workloads, and the measured
 algorithm work on the compile/admission/representation path; S02 adds drawing and the bounded
@@ -132,9 +135,10 @@ the duplicated work S06 removed; a miss is resolved inside S02.
 ## Dependencies and boundaries
 
 - **Before implementation:** H0's `T3.P03.S01` merged (S01 changes F4 intent capture; S02 adds
-  Layout planners under enforced scope). S05 is shipped (PR #183). S06 starts per the release
-  list; S02 may start only after S06 is accepted and merged and after its own authorization and
-  reviews; every proposed slice needs its own release. The policy above is accepted. Nothing waits on C2 or
+  Layout planners under enforced scope). S05 and S06 are shipped (PR #183, PR #190; S06 merged
+  `6af62eb4`). S02 is released 2026-10-27 and starts after the coordination PR #198 merges
+  ([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)); S03–S04 still need
+  their own releases and authorizations. The policy above is accepted. Nothing waits on C2 or
   T3.P02.
 - **Reference hardware:** hard performance rows are run and accepted on the designated reference
   machine, the owner's MacBook Air M2 with 16 GB ([batch E, E6 amendment](../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)). Laptop A

@@ -1,7 +1,9 @@
 # T2.P02.S03 — Integrated final gate: implementation plan
 
-**Slice:** T2.P02.S03 · **Status:** proposed — **not authorized**; it starts only from its own owner
-authorization after `T2.P02.S01` and `S02` are accepted · **Phase:** [T2.P02](../README.md) ·
+**Slice:** T2.P02.S03 · **Status:** approved — released 2026-10-27; starts after the coordination PR
+#198 merges, with `T2.P02.S01` and `S02` accepted
+([record](../../../../reference/decisions/next-wave-authorization-2026-10-27.md);
+[plan review](./plan-review.md)) · **Phase:** [T2.P02](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T2](../../README.md) · **Runbook:**
 [T2 operations](../../../../operations/t2-composition/README.md)
 
@@ -13,17 +15,18 @@ VERIFICATION: exhaustive
 
 This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01 and S02
 send their deferred exhaustive proof to; its acceptance record is the phase's declared final-gate
-artifact. It is registered (batch E, E1) and unauthorized: nothing here is implemented, accepted,
-ready or evidenced.
+artifact. It was registered in batch E (E1) and is now approved and released by the
+2026-10-27 owner decision, with a start condition of PR #198 merging on `main`. The integrated
+final gate has not run: no acceptance verdict, readiness evidence or implementation result is claimed.
 
 ## Prerequisite
 
 `T2.P02.S01` and `S02` accepted with routine closeout, and every consumed gate `accepted` with every
 `Requires` scope `active` at this slice's own trusted base. S03 adds no product feature: it is the
-independent, integrated acceptance of own model import. Project-deletion implementation is owned
-by T3's proposed C3 lifecycle work (T3.P04.S01), not this final gate. Its cleanup must include model
-revisions; S03 verifies retention and pin integrity while stored versions reference them and records
-that C3 carry without implementing deletion or claiming C3 accepted.
+independent, integrated acceptance of own model import. Project-deletion implementation shipped with
+T3.P04.S01 (PR #191, `aa1db37a`; phase closed 2026-10-25) and deletes the project's model revisions
+with the project; S03 verifies retention and pin integrity while stored versions reference them and
+does not re-accept C3 or add deletion capability.
 
 ## Scope
 
@@ -61,7 +64,9 @@ hard-budget miss.
 
 ## Readiness declaration
 
-This slice is `proposed` and holds no implementation permission. It consumes the same accepted gates
+This slice is `approved` and released 2026-10-27
+([record](../../../../reference/decisions/next-wave-authorization-2026-10-27.md)) after its
+[plan review](./plan-review.md). It consumes the same accepted gates
 as its siblings and no new or retired scope; it cannot supply its own prerequisite by editing a
 register, and it claims no gate state, capability, evidence or commit. A passed final gate makes the
 phase closable, not closed.
