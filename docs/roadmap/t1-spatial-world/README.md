@@ -2,7 +2,7 @@
 
 **Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; `T1.P02` (native Wall
 creation) registered 2026-10-22 as batch E; S01 shipped by scoped owner-override,
-S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted AC-qualified 2026-10-27 and shipped on PR #190 (battery qualification deferred to S04); S02 drawing has a complete held plan and S02–S04 stay held behind S06's merge; `T1.P01.S01` shipped (shared F1/F3
+S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted AC-qualified 2026-10-27 and merged as `6af62eb4` (PR #190; battery qualification deferred to S04); S02 drawing has a complete held plan and S02–S04 stay held pending their own releases; `T1.P01.S01` shipped (shared F1/F3
 providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
 shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
 not complete ([track register](../README.md#track-register)) · **Runbook:**
@@ -71,8 +71,9 @@ the hold, starting only after `T3.P03.S01` merges. On 2026-10-23 the owner relea
 registered and released S06 performance foundation ahead of drawing
 ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)) under a temporary
 performance-first halt; it took C1's compile/admission deduplication and optimization experiment, was
-accepted AC-qualified on 2026-10-27 and shipped on PR #190, and must also be merged before S02. S02–S04
-stay `proposed` and held; S02's complete plan still needs its own review and release.
+accepted AC-qualified on 2026-10-27 and merged as `6af62eb4` (PR #190), which satisfies that halt and
+blocks no inheritor. S02–S04 stay `proposed` and held pending their own releases; S02's complete plan
+still needs its own review and release.
 
 After that first wave, T1 supplies C3's rename/delete shell integration, the face-frame query for
 T2's solve-once wall placement, and Stage part-selection/admission UI consuming T2's component

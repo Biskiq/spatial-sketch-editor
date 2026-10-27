@@ -5,12 +5,13 @@ shared-file ownership and merge order. Track/phase registers own lifecycle and e
 the [release list](./now.md) owns launch conditions; the [gate register](./README.md#gate-register)
 owns accepted interfaces/evidence. This file creates no gate or acceptance record.
 
-The owner authorized and released `T1.P02.S06` on 2026-10-24 under a temporary performance-first
-halt ([decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md)); the
-three post-Batch-E lanes released on 2026-10-23
-([decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md)) are shipped. Every
-omitted production scope remains under the [hold](./README.md#production-implementation-hold).
-Round 2 shell ratification is destination design, not blanket implementation permission.
+`T1.P02.S06` was authorized and released on 2026-10-24 under a temporary performance-first halt
+([decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted
+AC-qualified on 2026-10-27 and **merged as `6af62eb4`**. That satisfies the halt. It released no
+inheritor: the three post-Batch-E lanes are shipped
+([decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md)), and every omitted
+production scope remains under the [hold](./README.md#production-implementation-hold). Round 2 shell
+ratification is destination design, not blanket implementation permission.
 
 ## Provider and acceptance matrix
 
@@ -69,41 +70,56 @@ scoped owner-overrides, deferred rows and residuals live in their acceptance rec
 evidence of those scopes, not proof of every creator journey or of hardware performance. Each lane
 records and rechecks its own trusted base through its owning runbook before implementation.
 
+**After S06 (2026-10-27).** `T1.P02.S06` is accepted and merged (`6af62eb4`); the researched
+world-scale study is [historical research](../../broad-research/all-visible-editing-and-town-overview.md)
+and the [T5 track](./t5-expressive-geometry/README.md) is registered as planning only. The current
+`main` contains S06's compile, Plan and representation work, and every statement below about
+"held" means *not released*, never *blocked by S06*.
+
 ```mermaid
 flowchart TD
   B["Post-Batch-E lanes shipped (696af6ea)"]
-  B --> P["T1.P02.S06 performance foundation — released"]
-  P --> D["T1.P02.S02 drawing — held behind S06"]
+  B --> P["T1.P02.S06 performance foundation — shipped, merged 6af62eb4"]
+  P --> D["T1.P02.S02 drawing — held; needs owner release + reviews"]
   D --> O["T1.P02.S03 Opening — held"]
   O --> F["T1.P02.S04 final gate — held"]
-  P --> IF["T2.P02.S03 integrated final gate — held behind S06"]
-  B --> C["T3.P04.S01 rename/delete — released 2026-10-24; unrelated to the halt"]
+  P --> IF["T2.P02.S03 integrated final gate — held; needs owner release + review"]
+  B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
+  B --> T5["T5 Expressive Geometry — planning; G0 commission proposed, nothing authorized"]
   F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
   IF --> CES
   C --> CES
   CES --> T4["Only accepted milestone permits requesting renewed T4 planning"]
 ```
 
-| Released lane | Owning plan | Bounded responsibility / dependency |
+| Lane (released, now shipped) | Owning plan | Bounded responsibility / outcome |
 | --- | --- | --- |
 | T1.P02.S06 | [Performance foundation](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) | Peak-first, setup-free measurement on the M2; L/XL and realistic-load workloads; per-stage scaling evidence; algorithm work inside the one compiler and its consumers with equal-output proof; full-permissive library exploration; transferred S02 and T3 performance obligations; no product feature or format change |
 | T3.P04.S01 | [Project rename and delete](./t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) | Owner-scoped rename/delete, project-scoped resource cleanup and a bounded T1-reviewed shell patch; implementation started after [the release](../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md) merged. R1/R2 were owner-ratified 2026-10-25 (see C3 below); T2's API handoff gates shared API edits, while T1 review and `T1.P02.S06`'s recorded claim gate the shell patch. The 2026-10-24 planning resolution retains proposal and cleanup history; no gate or format change |
 
-**Performance-first halt.** The [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+**Performance-first halt — satisfied 2026-10-27.** The [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
-behind it. None is released or started until S06 is accepted and merged. Strictly unrelated work,
-such as T3.P04 or owner phase closeouts, continues only through its own owner release. Inheritors
-rebase on S06's merged tree and measure on its method.
+behind it. S06 is accepted and merged, so the halt no longer blocks any of them; that is a cleared
+dependency, not a release. Each inheritor still needs its own owner release, reviews and a release-list
+entry, inherits S06's merged tree and measures on its method. Strictly unrelated work continues only
+through its own owner release.
+
+**Prepared release proposal — owner decision, not granted here.** The two immediate candidates are
+`T1.P02.S02` (drawing) and `T2.P02.S03` (import final gate). Both plans are complete and both still
+owe their own plan reviews — S02 also owes the T3 review of the shared Head/F4 shell allocation and
+the T2/T3 contribution-compatibility review. This coordination change neither releases them nor edits
+the [release list](./now.md); an owner release writes that file and avoids starting either slice on a
+plan-review assumption.
 
 T1's execution order is owned by the [T1.P02 register](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register);
 the roadmap's [where-things-stand index](./README.md#current-coordination-and-proposal-provenance)
 routes shipped, held and blocked scopes. No lane may implement a sibling's held scope to
 satisfy its own acceptance.
 
-**Shared files S06 touches.** S06 is the only released lane. A later release of strictly unrelated
-work edits any of these files only as a serialized patch against S06's recorded claim. The file's
-owner reviews it, as the [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
-requires:
+**Shared files and S06's released claim.** No lane is released after S06's merge. The table below
+records the claims S06 held; each was released with `6af62eb4`, so a future lane edits these surfaces
+through its own recorded claim and the owner review the [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+requires — it does not inherit S06's claim by citing it:
 
 | File or resource | Writer | Rule |
 | --- | --- | --- |
@@ -125,13 +141,13 @@ The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/
 
 ## Shared files and merge protocol
 
-| Surface | Writable owner for this batch | Consumer/review boundary |
+| Surface | Writable owner | Consumer/review boundary |
 | --- | --- | --- |
-| Layout compiler, kernels, representation and Stage admission | T1 (S06 in this batch) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
+| Layout compiler, kernels, representation and Stage admission | T1 (S06 merged; no active lane) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
 | Stage host, session, input, contributions and shared shell | T1 | T2/T3 own bounded reviewed patches for their registered consumers; schedule shared-file edits with T1 and retain one host/selection/Camera authority |
 | Scene transform/resource admission, GLB import and relevant API/resource routes | T2 (no released lane) | S06 reads the import recipe and resources format only to seed its workloads; shared F4/Save changes reviewed by T3; no foreign-domain rewrite or publication/resource-release closure |
 | Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime; S06 measures these flows and reports T3-owned misses |
-| Measurement harness (H0 workflow) | T3 | S06 edits the shared harness and fixtures through T3 review |
+| Measurement harness (H0 workflow) | T3 | A future lane edits the shared harness and fixtures through T3 review; S06's harness edits are merged history |
 | C3 project lifecycle persistence/API | T3 after explicit handoff from T2 | Released as `T3.P04.S01` on 2026-10-24; shared API editing transfers after the handoff, and the slice does not edit the harness, Stage or S06's shell claim |
 | Test contract, runtime-safe shared packages and boundary checks | Existing concern owner | Touch only required call sites with owner review; no duplicate protocol, silent boundary weakening or private test substitute |
 
@@ -150,16 +166,20 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 
 ## Residuals and planning follow-ons
 
-- **Performance:** keep each acceptance's explicit unmeasured rows. T1.P02.S06 takes, as
-  measurement on the owner's MacBook Air M2 (16 GB):
-  - S02's deduplication and experiment;
-  - T3.P02.S02's deferred Scope A rows;
-  - T3.P03.S02's L/XL and M/L drag gap.
-
-  S01's F2 S/M open timings remain assigned to T1.P02.S04, which cites and rechecks S06's numbers.
-  T2.P02.S02's owner-run rows remain with T2.P02.S03 on S06's method. Unclaimed flow traces, hard
-  rows and calibration remain consumer evidence, not implied by a correctness pass. No new waiver is
-  granted by this coordination.
+- **Performance:** keep each acceptance's explicit unmeasured rows. S06 shipped with its method,
+  measured rows and omissions recorded in its [acceptance stub](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md):
+  S02's deduplication and experiment, T3.P02.S02's deferred Scope A rows and T3.P03.S02's L/XL and
+  M/L drag gap were measured there, while **battery qualification, grid-XL timing, the sweep latency
+  rows and S01's F2 S/M open timings are assigned to T1.P02.S04**. S06's own follow-ons (FO-1
+  pick-index maintenance, FO-2 whole-project compile/materialisation, FO-3 small-project overhead,
+  FO-4 history-cache memory bound, FO-5 continuous-pan and pick-after-commit rows) are owned there
+  and create no obligation in this coordination. T2.P02.S02's owner-run rows remain with
+  T2.P02.S03 on S06's method. Unclaimed flow traces, hard rows and calibration remain consumer
+  evidence, not implied by a correctness pass. No new waiver is granted by this coordination.
+- **T5:** [Expressive Geometry](./t5-expressive-geometry/README.md) is registered as a **planning**
+  track. Its G0 foundation-architecture commission is a proposal for owner decision, not a phase, a
+  gate or an implementation authorization; it consumes S06's accepted compiler/Plan work as its
+  starting point and owns no T1/T2 surface. No T5 scope is on the release list.
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.

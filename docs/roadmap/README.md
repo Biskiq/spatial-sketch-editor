@@ -55,6 +55,13 @@ Strictly unrelated work continues only through its own owner release. The
 [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 owns the definition; this adds no lifecycle status.
 
+**Halt satisfied (2026-10-27).** `T1.P02.S06` is accepted AC-qualified (2026-10-27) and merged as
+`6af62eb4` ([acceptance stub](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)),
+so the halt has spent its condition and no longer blocks those inheritors. **Satisfying the halt
+released nothing.** `T1.P02.S02`, `T2.P02.S03` and the Core Editor Stability acceptance plan still
+need their own owner release and their own reviews before any implementation starts; a cleared
+dependency is not an authorization, and the [release list](./now.md) remains owner-written.
+
 ## Track register
 
 Every track and every repository phase is registered here exactly once. The track or phase
@@ -67,6 +74,7 @@ owns lifecycle only and never copies their content.
 | T2 | approved | [T2 — Composition](./t2-composition/README.md) |
 | T3 | approved | [T3 — Experience](./t3-experience/README.md) |
 | T4 | planning | [T4 — Release and delivery](./t4-release/README.md) |
+| T5 | planning | [T5 — Expressive Geometry](./t5-expressive-geometry/README.md) |
 | R115 | shipped | [R115 — PR #115 architecture reset](./parallel-track-cutover/README.md) |
 
 - **R115 is a repository phase, not a fifth track.** It is registered here directly because it
@@ -173,17 +181,18 @@ PR #115 replaced that sequence with the tracks above.
 
 ## Current coordination and proposal provenance
 
-**Where things stand (2026-10-25).** A routing index, not a status authority: each phase
+**Where things stand (2026-10-27).** A routing index, not a status authority: each phase
 README's slice register owns child status, [now.md](./now.md) owns launch conditions, and the
 [current coordination](./cross-track-execution.md#next-parallel-batch) owns the DAG, shared-file
 writers and merge order. Update this index only in the coordination change that moves a row.
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05, S06 | — | T1.P02.S02 drawing, S03 Opening, S04 final gate (performance-first halt) | S02 on S06 merged (accepted 2026-10-27), then its own owner authorization, plan review and T3/T2 reviews; S03 on S02; S04 on S01/S05/S06/S02/S03 |
-| T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01, S02 | — | T2.P02.S03 final gate (performance-first halt) | S03 on T1.P02.S06 accepted and merged, then its own owner authorization |
+| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S05, S06 | — | T1.P02.S02 drawing, S03 Opening, S04 final gate | S02 on its own owner release, plan review and T3/T2 reviews (S06 merged `6af62eb4`; halt satisfied); S03 on S02; S04 on S01/S05/S06/S02/S03 |
+| T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01, S02 | — | T2.P02.S03 final gate | S03 on its own owner release and review (S06 merged; halt satisfied) |
 | T3 | [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
+| T5 | — | — | All T5 planning and implementation | Owner decision on the [G0 foundation-architecture commission](./t5-expressive-geometry/g0-foundation-architecture-commission.md); no capability phase, release or implementation is registered |
 
 Release provenance is the [performance foundation decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md);
 the shipped post-Batch-E lanes keep the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md).

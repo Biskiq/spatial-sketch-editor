@@ -20,11 +20,12 @@ Plan and 3D read the same candidate; numeric and keyboard paths have the same se
 The phase's [owner-accepted drawing policy](../README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)
 owns enclosure, connection and refusal rules; this plan does not reopen them.
 
-S01 and S05 are shipped. **S06 performance foundation must be accepted and merged before S02
-starts** ([performance-first halt](../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)).
-Recheck that merged tree, H0 `T3.P03.S01`, consumed gates and active scopes through the runbook.
-This complete proposed plan still needs review, its own owner authorization and release-list
-entry; neither registration nor Round 2 ratification releases production implementation.
+S01, S05 and S06 are shipped; **S06 is accepted (2026-10-27) and merged as `6af62eb4`**, which
+satisfied the [performance-first halt](../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+without releasing S02. Recheck that merged tree, H0 `T3.P03.S01`, consumed gates and active scopes
+through the runbook. This complete proposed plan still needs review, its own owner release and a
+release-list entry; neither registration nor Round 2 ratification releases production
+implementation.
 
 The bounded shell allocation proposed here is S02's original shared-shell scope: dock
 Select/Ink, their contribution seam, Card/lower-column arbitration and moving ordinary Layout
