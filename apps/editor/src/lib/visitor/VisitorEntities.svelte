@@ -16,7 +16,6 @@
 	import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import type { LayoutRoomRegistry } from '@portfolio/project-model';
-	import AssetModel from '$lib/museum/assets/AssetModel.svelte';
 	import EntityLight from '$lib/museum/entities/EntityLight.svelte';
 	import EntityPrimitive from '$lib/museum/entities/EntityPrimitive.svelte';
 
@@ -35,6 +34,28 @@
 		 */
 		modelUrls?: ReadonlyMap<string, string> | null;
 	} = $props();
+
+	/**
+	 * The model renderer is a separate chunk, loaded only when a Scene has a model.
+	 *
+	 * It is the one route dependency that pulls a glTF loader and skeletal cloning;
+	 * an enclosure-only Stage has no model to draw, so its first load never pays
+	 * for those bytes. The fallback footprint is inside AssetModel and arrives with
+	 * the chunk; while it loads, the rest of the Stage stays interactive.
+	 */
+	type AssetModelComponent = typeof import('$lib/museum/assets/AssetModel.svelte')['default'];
+	let ModelComponent = $state<AssetModelComponent | null>(null);
+	const hasModels = $derived(scene.entities.some(isSceneModelEntity));
+	$effect(() => {
+		if (!hasModels || ModelComponent !== null) return;
+		let cancelled = false;
+		void import('$lib/museum/assets/AssetModel.svelte').then((module) => {
+			if (!cancelled) ModelComponent = module.default;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	const roomGroups = $derived.by(() => {
 		const entitiesByRoom = new Map<string | undefined, SceneEntity[]>();
@@ -80,17 +101,19 @@
 	<T.Group position={group.room?.position ?? [0, 0, 0]} rotation={group.room?.rotation ?? [0, 0, 0]}>
 		{#each group.entities as entity (entity.id)}
 			{#if isSceneModelEntity(entity)}
-				<AssetModel
-					assetId={entity.assetId}
-					position={entity.position}
-					rotation={entity.rotation}
-					scale={entity.scale ?? 1}
-					fallback={entity.fallback}
-					fallbackFootprint={scene.modelFootprints?.get(entity.assetId)}
-					resolvedUrl={modelUrls?.get(entity.assetId) ?? null}
-					effective={entity.materialInstanceId ? entityEffective(entity) : null}
-					scope={textureScope}
-				/>
+				{#if ModelComponent}
+					<ModelComponent
+						assetId={entity.assetId}
+						position={entity.position}
+						rotation={entity.rotation}
+						scale={entity.scale ?? 1}
+						fallback={entity.fallback}
+						fallbackFootprint={scene.modelFootprints?.get(entity.assetId)}
+						resolvedUrl={modelUrls?.get(entity.assetId) ?? null}
+						effective={entity.materialInstanceId ? entityEffective(entity) : null}
+						scope={textureScope}
+					/>
+				{/if}
 			{:else if isScenePrimitiveEntity(entity)}
 				<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 					<EntityPrimitive {entity} effective={entityEffective(entity)} scope={textureScope} />

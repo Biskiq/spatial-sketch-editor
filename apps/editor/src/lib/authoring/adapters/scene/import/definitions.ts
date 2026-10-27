@@ -47,22 +47,41 @@ export function clearCreatorDefinitions(): void {
  *
  * The Import instrument is a procedure, not a placement tool: it cannot arm a
  * Scene session directly without owning one. It leaves the approved model here,
- * and the Scene adapter applies it to the session it opens for the placement
- * task — one owner per fact, and a canceled procedure leaves nothing armed.
+ * and every Place task for that project applies it to its session. The arm is
+ * **not** consumed by opening Place: approval precedes the resource install, so
+ * a creator may approve, draw the missing floor, and then place. It is cleared
+ * by the placement's own commit, by a failed task open, or by replacing the arm
+ * with a newer approval.
+ *
+ * The project id is part of the value: a Stage that switches projects must never
+ * resume another project's approved model.
  */
-let pendingArmedModel: ArmedModelPlacement | null = null;
+type PendingArmedModel = { readonly projectId: string; readonly model: ArmedModelPlacement };
 
-export function rememberArmedModel(model: ArmedModelPlacement): void {
-	pendingArmedModel = model;
+let pendingArmedModel: PendingArmedModel | null = null;
+
+export function rememberArmedModel(projectId: string, model: ArmedModelPlacement): void {
+	pendingArmedModel = { projectId, model };
 }
 
-/** Take the pending model exactly once: the next placement consumes it. */
-export function takeArmedModel(): ArmedModelPlacement | null {
-	const model = pendingArmedModel;
-	pendingArmedModel = null;
-	return model;
+/** The arm that belongs to this project, without consuming it. */
+export function peekArmedModel(projectId: string): ArmedModelPlacement | null {
+	return pendingArmedModel?.projectId === projectId ? pendingArmedModel.model : null;
 }
 
-export function clearArmedModel(): void {
-	pendingArmedModel = null;
+/**
+ * The armed model's definition, as an admitted definition for this project.
+ *
+ * The approval's definition is remembered while the procedure is mounted, but a
+ * rebind clears the provisional registry. The arm outlives that rebind — the
+ * creator may draw the missing floor before placing — so it is also a source of
+ * the one definition its placement intent names.
+ */
+export function armedModelDefinition(projectId: string): NormalizedPlacementDefinition | null {
+	return pendingArmedModel?.projectId === projectId ? pendingArmedModel.model.definition : null;
+}
+
+/** Placement committed, or the procedure refused: this project has no arm. */
+export function clearArmedModel(projectId: string): void {
+	if (pendingArmedModel?.projectId === projectId) pendingArmedModel = null;
 }

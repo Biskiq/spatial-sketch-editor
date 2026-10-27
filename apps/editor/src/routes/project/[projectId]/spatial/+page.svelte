@@ -3014,7 +3014,7 @@
 					<StageOverlay {markers} {selectionMarker} {tracePreview} />
 				</div>
 
-				{#if boot.status === 'empty'}
+				{#if boot.status === 'empty' && (currentEnvelope?.units.layout.data.rooms.length ?? 0) === 0}
 					<p class="stage-note" role="status">Empty baseline — draw an enclosure with Ink to create a Room floor, or start from the gallery for a compilable room.</p>
 				{/if}
 

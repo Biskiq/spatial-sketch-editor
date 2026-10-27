@@ -396,15 +396,6 @@ export type SceneComposeSupport = {
 };
 
 /**
- * What Compose can truthfully do with one entity.
- *
- * Resize and Duplicate need a floor contact the retained planner can re-seat.
- * Only the admitted analytic primitives have one today: a light or a model has
- * no verified contact here, so offering the command would only take the gesture
- * lease and then refuse (and the adapter would advertise a `Scale` fact that
- * cannot be written). Delete needs no contact.
- */
-/**
  * The approved floor contact of one model entity, read from the accepted
  * envelope's `model` resource.
  *
@@ -426,6 +417,15 @@ export function sceneModelContactMinY(
 	return null;
 }
 
+/**
+ * What Compose can truthfully do with one entity.
+ *
+ * Resize and Duplicate need a floor contact the retained planner can re-seat.
+ * The admitted analytic primitives and approved creator models have one; a light
+ * or an unapproved catalogue model does not, so offering the command would only
+ * take the gesture lease and then refuse (and the adapter would advertise a
+ * `Scale` fact that cannot be written). Delete needs no contact.
+ */
 export function sceneComposeSupport(
 	entity: SceneEntity,
 	modelContactMinY?: number | null

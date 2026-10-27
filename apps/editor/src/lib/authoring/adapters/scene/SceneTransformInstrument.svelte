@@ -13,9 +13,11 @@
 	 */
 	import { onDestroy, tick, untrack } from 'svelte';
 
+	import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
+
 	import type { StageAdapterServices } from '../../stage/stage-adapter-host';
-import { stageEnvelope } from '../../stage/unit-stage-source';
-import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
+	import { stageEnvelope } from '../../stage/unit-stage-source';
+	import { peekArmedModel } from './import/definitions';
 	import {
 		NATIVE_PLACEMENT_PRIMITIVES,
 		type NativePlacementPrimitive
@@ -79,6 +81,19 @@ import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
 		void services;
 		return services.stage.session?.task?.()?.kind === 'scene-compose';
 	});
+	/** The Place task is the only task an approved model can be armed for. */
+	const placeTask = $derived.by(() => {
+		void services;
+		return services.stage.session?.task?.()?.kind === 'place-object';
+	});
+	/**
+	 * Whether this Place session carries an approved creator model.
+	 *
+	 * A native primitive needs no floor, so the no-floor guidance must not appear
+	 * for it. The arm is read from the live session, which is the session the
+	 * project's pending approval is applied to whenever Place opens.
+	 */
+	let armedModelPresent = $state(false);
 
 	function selectionEntityId(): string | null {
 		const primary = services.stage.selectionState().primary;
@@ -137,6 +152,8 @@ import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
 		// nothing names and nothing releases.
 		const replaced = session !== null && registered !== null && registered.session !== session;
 		if (session === null || sessionReading !== reading || replaced) {
+			// The hint below is capability-specific: read the arm from the session
+			// that will commit, not from Import's already-consumed pending slot.
 			const previous = session;
 			const proposalWasOpen = editing;
 			// A reading change replaces the session without rebuilding the adapter
@@ -164,6 +181,19 @@ import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
 				session.setPlacementCommittedListener(persistentPlace);
 			}
 			session?.setPointerOutcomeListener?.(applyPointerOutcome);
+			// The panel can be remounted while the Place task stays open (a drawing
+			// install replaces the accepted source). The approved model belongs to
+			// the project's pending arm, not to the session that first carried it, so
+			// apply it here as well as at task open.
+			if (session !== null && services.stage.session?.task?.()?.kind === 'place-object') {
+				if (session.armedModel() === null) {
+					const pending = peekArmedModel(snapshot.acceptedRevision.projectId);
+					if (pending !== null) session.setArmedModel(pending);
+				}
+				armedModelPresent = session.armedModel() !== null;
+			} else {
+				armedModelPresent = false;
+			}
 			sessionReading = reading;
 			surfaceSnapshot = snapshot;
 			// The proposal belonged to the reading that just ended; the session it named
@@ -714,9 +744,10 @@ import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
 			</label>
 			<button type="button" onclick={place}>Place</button>
 		</div>
-		{#if !hasRoomFloor}
+		{#if placeTask && !hasRoomFloor && armedModelPresent}
 			<p class="hint refusal" role="status">
-				No Room floor yet — draw an enclosure with Ink, then click the floor to place this model.
+				No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place
+				object.
 			</p>
 		{/if}
 		<p class="hint">An imported model is placed by clicking its floor position; these typed fields place a native primitive.</p>

@@ -16,7 +16,7 @@
 	import { env } from '$env/dynamic/public';
 
 	import type { StageAdapterServices } from '../../../stage/stage-adapter-host';
-	import type { TypedResource } from '@portfolio/project-model/units';
+	import { UNIT_SOURCE_KIND, type TypedResource } from '@portfolio/project-model/units';
 	import { creatorModelDefinition, approvedModelResources } from '@portfolio/project-model/scene-planning';
 	import { stageEnvelope } from '../../../stage/unit-stage-source';
 
@@ -83,6 +83,12 @@
 	});
 
 	const report = $derived(view.report);
+	/** A model is approved without a floor, but placement needs one. */
+	const hasRoomFloor = $derived.by(() => {
+		const snapshot = services.stage.snapshot();
+		if (snapshot.sourceKind !== UNIT_SOURCE_KIND) return true;
+		return stageEnvelope(snapshot).units.layout.data.rooms.length > 0;
+	});
 	const canPrepare = $derived(view.files.length > 0 && !busy && view.step !== 'uploading');
 	const canApprove = $derived(
 		report !== null && !busy && view.step !== 'uploading' && view.step !== 'approved'
@@ -143,12 +149,12 @@
 	 */
 	function arm(armed: ArmedCreatorModel): void {
 		rememberCreatorDefinition(armed.definition);
-		rememberArmedModel({ definition: armed.definition, resource: armed.resource });
+		rememberArmedModel(projectId, { definition: armed.definition, resource: armed.resource });
 		const opened = services.stage.openContributedTask('scene-place', 'scene');
 		if (opened.kind !== 'opened') {
 			// Nothing will consume the pending arm, so it must not survive to arm a
 			// later, unrelated Place task.
-			clearArmedModel();
+			clearArmedModel(projectId);
 			message = `The placement task could not be opened: ${opened.message}`;
 		}
 	}
@@ -263,6 +269,13 @@
 				{/each}
 			</ul>
 		</section>
+	{/if}
+
+	{#if !hasRoomFloor}
+		<p class="hint" role="status">
+			This project has no Room floor yet. Approval can proceed, but placement waits: draw an
+			enclosure with Ink, then reopen Place object.
+		</p>
 	{/if}
 
 	<div class="actions">

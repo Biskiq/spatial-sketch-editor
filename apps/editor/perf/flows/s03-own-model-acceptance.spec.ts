@@ -37,11 +37,13 @@ import { newMeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT } from '../lib/config';
 import {
 	acceptedResultCount,
+	drawInkEnclosure,
 	fitStage,
 	gotoCreateIntent,
 	setStageReading,
 	startStarterGallery,
-	uniqueProjectId
+	uniqueProjectId,
+	waitForCameraSettled
 } from '../lib/flow';
 import { decodePng, mappedModelGlb, modelGreenPixels } from '../lib/own-model-fixture';
 
@@ -103,11 +105,42 @@ async function floorPoint(page: Page, dx = 0, dy = 0) {
 	return { x: box.x + box.width * 0.6 + dx, y: box.y + box.height * 0.52 + dy };
 }
 
+/**
+ * The page point of the selected subject's own projection.
+ *
+ * The Stage paints the selection marker at the CSS point its `projectWorld`
+ * produced, so this is the product's projection of the subject, not a guessed
+ * canvas fraction. Used where the camera frames a drawn floor obliquely.
+ */
+async function selectedSubjectPoint(page: Page): Promise<{ x: number; y: number }> {
+	const stage = await page.locator('.stage').first().boundingBox();
+	const marker = page.locator('.overlay .selection');
+	await expect(marker).toBeVisible({ timeout: 20_000 });
+	const transform = (await marker.getAttribute('transform')) ?? '';
+	const match = /translate\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*\)/.exec(transform);
+	if (stage === null || match === null) throw new Error(`no projected selection marker: ${transform}`);
+	return { x: stage.x + Number(match[1]), y: stage.y + Number(match[2]) };
+}
+
 async function placeAt(page: Page, dx = 0, dy = 0): Promise<void> {
 	await expect(page.locator(INSTRUMENT)).toBeVisible({ timeout: 120_000 });
 	const point = await floorPoint(page, dx, dy);
 	const before = await acceptedResultCount(page);
 	await page.mouse.click(point.x, point.y);
+	try {
+		await waitAccepted(page, before, 30_000);
+	} catch (error) {
+		// A refused click is silent in the product, so the failure names what the
+		// instrument was showing rather than leaving only a timeout.
+		const shown = (await page.locator(INSTRUMENT).innerText().catch(() => '')).replace(/\s+/g, ' ');
+		throw new Error(`no accepted result after the floor click; instrument: ${shown.slice(0, 400)}`, { cause: error });
+	}
+}
+
+/** One Head history command; it is itself one accepted result. */
+async function history(page: Page, name: 'Undo' | 'Redo'): Promise<void> {
+	const before = await acceptedResultCount(page);
+	await page.getByRole('button', { name, exact: true }).click();
 	await waitAccepted(page, before);
 }
 
@@ -287,7 +320,16 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		// the selection gap is an owner-deferred finding measured by the diagnostic
 		// spec, and this record must not claim a manipulation path the shipped UI
 		// does not offer.
-		evidence.selectionAfterPlacement = (await page.locator(CARD).first().innerText().catch(() => '(none)')).replace(/\s+/g, ' ');
+		const selectedCard = (await page.locator('[aria-label="Selected subject"]').innerText().catch(() => ''))
+			.replace(/\s+/g, ' ')
+			.trim();
+		evidence.selectionAfterPlacement = selectedCard;
+		expect(selectedCard, 'the approved model is the canonical selection after placement').toContain(
+			'Kind model'
+		);
+		expect(selectedCard, 'the selected subject is the model that was just placed').toContain(
+			'Gate model'
+		);
 
 		// --- move and turn through Arrange's own entity chooser -------------
 		await invokeIndexTask(page, 'Arrange');
@@ -317,6 +359,8 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		let stored = await api.read(projectId);
 		let entities = sceneEntities(stored.document);
 		expect(entities).toHaveLength(1);
+		const placedId = entities[0]!.id;
+		evidence.placedEntityId = placedId;
 		evidence.afterMoveTurn = { position: entities[0]!.position, rotation: entities[0]!.rotation };
 		expect(entities[0]!.position[0]).toBeCloseTo(1.25, 3);
 		expect(entities[0]!.position[2]).toBeCloseTo(-0.5, 3);
@@ -344,6 +388,19 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		expect(entities[0]!.position[2]).toBeCloseTo(-0.5, 3);
 		evidence.afterResize = { scale: entities[0]!.scale, position: entities[0]!.position };
 
+		// One accepted Resize is one history entry: Undo restores the previous
+		// scale, Redo installs the same accepted result again.
+		await history(page, 'Undo');
+		await saveProject(page);
+		stored = await api.read(projectId);
+		entities = sceneEntities(stored.document);
+		expect(entities[0]!.scale).toBeCloseTo(1, 3);
+		await history(page, 'Redo');
+		await saveProject(page);
+		stored = await api.read(projectId);
+		entities = sceneEntities(stored.document);
+		expect(entities[0]!.scale).toBeCloseTo(1.5, 3);
+
 		await invokeIndexTask(page, 'Duplicate');
 		const duplicate = page.locator(INSTRUMENT).getByRole('button', { name: 'Duplicate', exact: true });
 		await expect(duplicate, 'a model with approved contact offers Duplicate').toBeEnabled();
@@ -356,6 +413,8 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		expect(entities).toHaveLength(2);
 		expect(new Set(entities.map((entity) => entity.assetId)).size).toBe(1);
 		expect(entities.every((entity) => entity.scale === 1.5)).toBe(true);
+		const copyId = entities.find((entity) => entity.id !== placedId)?.id;
+		expect(copyId, 'Duplicate creates a second identity').toBeTruthy();
 		evidence.afterDuplicate = {
 			entityIds: entities.map((entity) => entity.id),
 			scales: entities.map((entity) => entity.scale)
@@ -371,6 +430,8 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		stored = await api.read(projectId);
 		entities = sceneEntities(stored.document);
 		expect(entities).toHaveLength(1);
+		expect(entities[0]!.id, 'Delete removes the selected copy, not the original').toBe(placedId);
+		expect(entities[0]!.id).not.toBe(copyId);
 		evidence.afterDeleteModel = { entityIds: entities.map((entity) => entity.id) };
 
 		// --- a second instance shares the one immutable revision ------------
@@ -523,9 +584,86 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await session.context.close();
 	});
 
-	// The plan's "from an empty project" leg and the selection/Compose observations
-	// are diagnostics: `s03-diagnostics.spec.ts` records them without asserting a
-	// broken outcome, so this gate never counts them as passed rows.
+	test('from an empty project: approve, follow the no-floor guidance, draw, then place', async ({ browser }, testInfo) => {
+		test.skip(apiOrigin === undefined || secret === undefined || editorOrigin === undefined, 'requires the S03 supervisor');
+		const session = await signedInSession(browser);
+		const { page } = session;
+		const errors: string[] = [];
+		page.on('pageerror', (error) => errors.push(error.message));
+		const api = projectApi(session.context.request);
+		const projectId = uniqueProjectId('s03empty');
+		const evidence: Record<string, unknown> = { projectId, browser: testInfo.project.name, errors };
+
+		await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
+		await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
+		await page.getByRole('button', { name: 'Begin empty' }).click();
+		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 120_000 });
+		await saveProject(page);
+
+		// Approve before any floor exists. The model is retained, and the product
+		// must say what to do rather than leave an unplaceable armed subject.
+		await openImport(page);
+		evidence.report = await readModel(page, await mappedModelGlb(), 'empty-project.glb');
+		await page.getByRole('button', { name: 'Approve and place' }).click();
+		await expect(page.locator(INSTRUMENT)).toBeVisible({ timeout: 120_000 });
+		const guidance = (await page.locator(INSTRUMENT).innerText()).replace(/\s+/g, ' ');
+		evidence.guidance = guidance;
+		expect(guidance, 'the Place instrument names the missing floor').toContain('No Room floor yet');
+		expect(guidance, 'the guidance names the recovery entry point').toContain('Place object');
+		await saveProject(page);
+
+		// Follow the guidance: open Ink (closing Place), draw, then reopen Place and
+		// resume the same armed model. The camera sits inside the new enclosure, so
+		// the flow frames the drawn floor through the product's own locator before
+		// clicking it — the same control a creator has.
+		await drawInkEnclosure(page);
+		// Closing the enclosure leaves Ink armed; the creator returns to Select before
+		// opening Place, exactly as the dock offers.
+		await page.locator('[data-dock-select]').click();
+		await setStageReading(page, '3D');
+		const floorRow = page.locator('.index-group li', { hasText: 'floor ·' }).first();
+		await floorRow.getByRole('button', { name: 'Bring into view' }).click();
+		await waitForCameraSettled(page);
+		await floorRow.locator('button.item-row').click();
+		const floorPoint = await selectedSubjectPoint(page);
+		await saveProject(page);
+		await invokeIndexTask(page, 'Place object');
+		await expect(page.locator(INSTRUMENT)).toContainText('Use selection');
+		// Click the floor's own projection: the framed floor sits above the canvas
+		// centre once the bottom instrument is accounted for.
+		const before = await acceptedResultCount(page);
+		await page.mouse.click(floorPoint.x, floorPoint.y);
+		await waitAccepted(page, before, 30_000);
+		const selectedCard = (await page.locator('[aria-label="Selected subject"]').innerText())
+			.replace(/\s+/g, ' ')
+			.trim();
+		evidence.selectionAfterPlacement = selectedCard;
+		expect(selectedCard).toContain('Kind model');
+
+		await saveProject(page);
+		const stored = await api.read(projectId);
+		const units = (stored.document.units ?? {}) as Record<string, any>;
+		evidence.stored = {
+			rooms: (units.layout?.data?.rooms ?? []).length,
+			resources: modelResources(stored.document).length,
+			entities: sceneEntities(stored.document).length
+		};
+		expect(evidence.stored, 'the drawn floor and the approved model both persist').toEqual({
+			rooms: 1,
+			resources: 1,
+			entities: 1
+		});
+		expect(errors).toEqual([]);
+
+		await writeFile(
+			resolve(resultsDir, 's03-empty-project-evidence.json'),
+			JSON.stringify(evidence, null, 2)
+		);
+		await session.context.close();
+	});
+
+	// The canonical selection and Compose observations remain diagnostics:
+	// `s03-diagnostics.spec.ts` records them without asserting a broken outcome.
 
 	test('oversize, malformed, cancelled and project-replaced imports install nothing', async ({ browser }) => {
 		const session = await signedInSession(browser);

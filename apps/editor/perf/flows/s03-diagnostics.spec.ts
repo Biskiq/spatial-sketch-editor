@@ -2,7 +2,7 @@
  * T2.P02.S03 — diagnostics, not acceptance rows.
  *
  * The gate's required journey lives in `s03-own-model-acceptance.spec.ts` and
- * asserts only behaviour the product is expected to deliver. These three flows
+ * asserts only behaviour the product is expected to deliver. These flows
  * exist because the gate found behaviour the product does **not** deliver, and a
  * gate must record that without turning the defect into a passing assertion:
  *
@@ -33,7 +33,6 @@ import { newMeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT } from '../lib/config';
 import {
 	acceptedResultCount,
-	drawInkEnclosure,
 	fitStage,
 	gotoCreateIntent,
 	setStageReading,
@@ -362,57 +361,4 @@ test.describe('T2.P02.S03 diagnostics (recorded, never acceptance rows)', () => 
 		await session.context.close();
 	});
 
-	test('from an empty project: a drawn floor makes the approved placement reachable', async ({ browser }) => {
-		const session = await signedInSession(browser);
-		const { page } = session;
-		const projectId = uniqueProjectId('s03diagdraw');
-		const evidence: Record<string, unknown> = { projectId };
-
-		await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-		await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-		await page.getByRole('button', { name: 'Begin empty' }).click();
-		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 120_000 });
-
-		// The product guidance the Place instrument now shows: draw a floor first.
-		await drawInkEnclosure(page);
-		await fitStage(page);
-		await saveProject(page);
-
-		await openImport(page);
-		evidence.report = await readModel(page, 'empty-drawn-model.glb');
-		await page.getByRole('button', { name: 'Approve and place' }).click();
-		await expect(page.locator(INSTRUMENT)).toBeVisible({ timeout: 120_000 });
-		evidence.guidance = (await page.locator(INSTRUMENT).innerText().catch(() => ''))
-			.replace(/\s+/g, ' ')
-			.slice(0, 300);
-		expect(evidence.guidance, 'a drawn floor removes the no-floor guidance').not.toContain('No Room floor yet');
-
-		const box = await page.locator('canvas').first().boundingBox();
-		if (box === null) throw new Error('the Stage has no canvas box');
-		const before = await acceptedResultCount(page);
-		await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.52);
-		await expect
-			.poll(() => acceptedResultCount(page), { timeout: 20_000 })
-			.toBeGreaterThan(before);
-		evidence.subject = await subject(page);
-
-		await saveProject(page);
-		const stored = (await (await session.context.request.get(
-			`${apiOrigin}/projects/${encodeURIComponent(projectId)}`
-		)).json()) as { document: Record<string, unknown> };
-		const units = (stored.document.units ?? {}) as Record<string, any>;
-		evidence.stored = {
-			rooms: (units.layout?.data?.rooms ?? []).length,
-			resources: modelResources(stored.document).length,
-			entities: sceneEntities(stored.document).length
-		};
-		expect(evidence.stored, 'the drawn floor and the placed model both persist').toEqual({
-			rooms: 1,
-			resources: 1,
-			entities: 1
-		});
-
-		await writeEvidence('s03-diagnostic-empty-project-drawn.json', evidence);
-		await session.context.close();
-	});
 });
