@@ -120,7 +120,32 @@ async function invokeIndexTask(page: Page, label: string): Promise<void> {
 async function canvasShot(page: Page, selector: string, name: string) {
 	const buffer = await page.locator(selector).first().screenshot();
 	await writeFile(resolve(resultsDir, name), buffer);
-	return { buffer, pixels: modelGreenPixels(decodePng(buffer)) };
+	return { buffer, pixels: modelGreenPixels(decodePng(buffer)), painted: paintedPixels(decodePng(buffer)) };
+}
+
+/**
+ * Pixels that differ from the canvas's own top-left corner.
+ *
+ * `modelGreenPixels` counts derivative colours only, so a blank canvas and a
+ * correctly rendered empty room both read 0. This is the separate question the
+ * control leg needs answered: did anything paint at all?
+ */
+function paintedPixels(png: ReturnType<typeof decodePng>): number {
+	const { data, channels } = png;
+	const red = data[0] ?? 0;
+	const green = data[1] ?? 0;
+	const blue = data[2] ?? 0;
+	let count = 0;
+	for (let index = 0; index < data.length; index += channels) {
+		if (
+			Math.abs(data[index]! - red) > 12 ||
+			Math.abs(data[index + 1]! - green) > 12 ||
+			Math.abs(data[index + 2]! - blue) > 12
+		) {
+			count += 1;
+		}
+	}
+	return count;
 }
 
 /**
@@ -392,6 +417,8 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		// --- control: the same Preview surface with no creator model --------
 		const controlId = uniqueProjectId('s03control');
 		const controlPage = await reopened.context.newPage();
+		const controlErrors: string[] = [];
+		controlPage.on('pageerror', (error) => controlErrors.push(error.message));
 		await controlPage.goto(`/project/${encodeURIComponent(controlId)}/spatial?create=1`);
 		await controlPage.getByRole('button', { name: 'Enclosed room' }).click();
 		await expect(controlPage.locator('canvas').first()).toBeVisible({ timeout: 120_000 });
@@ -406,9 +433,19 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await controlPage.locator(HEAD_PREVIEW).click();
 		await expect(controlPage.locator(VISITOR_CANVAS)).toBeVisible({ timeout: 120_000 });
 		await controlPage.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-		const previewControl = await canvasShot(controlPage, VISITOR_CANVAS, 's03-preview-control.png');
+		// Wait for the room itself to paint before reading model colour, or 0 would
+		// mean "nothing rendered yet" as easily as "no model here".
+		let previewControl = await canvasShot(controlPage, VISITOR_CANVAS, 's03-preview-control.png');
+		const controlStarted = Date.now();
+		while (previewControl.painted < 100 && Date.now() - controlStarted < 30_000) {
+			await controlPage.waitForTimeout(250);
+			previewControl = await canvasShot(controlPage, VISITOR_CANVAS, 's03-preview-control.png');
+		}
 		evidence.previewPixelsControl = previewControl.pixels;
+		evidence.previewControlPaintedPixels = previewControl.painted;
+		expect(previewControl.painted, 'the control Preview paints its room').toBeGreaterThan(100);
 		expect(previewControl.pixels, 'the control Preview carries no model colour').toBeLessThan(previewWithModel.pixels / 10);
+		expect(controlErrors, 'the control session raises no page error').toEqual([]);
 
 		await writeFile(resolve(resultsDir, 's03-journey-evidence.json'), JSON.stringify(evidence, null, 2));
 		expect(errors).toEqual([]);

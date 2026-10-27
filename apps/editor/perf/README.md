@@ -19,7 +19,11 @@ npm run perf:bundle          # delivery report over the current production build
 # then runs perf/flows/s03-own-model-acceptance.spec.ts against them.
 # The supervisor previews the ordinary production build and never builds, so
 # build first; `PUBLIC_API_ORIGIN` is runtime ($env/dynamic/public) and does not
-# need to be set here.
+# need to be set here. `S03_QA_PROJECT=chrome` selects the branded
+# `channel: 'chrome'` project the contract gates on (default: `chromium`).
+# Give each run its own results directory: the supervisor writes machine facts
+# and the spec writes evidence, so a second run into the same directory
+# overwrites them.
 createdb biskiq_s03_gate            # a dedicated empty database; never the dev/Compose DB
 npm run build:api                   # the supervisor imports apps/api/dist (gitignored)
 npm run build                       # from the repository root, immediately before the pass
@@ -27,10 +31,13 @@ cd apps/editor
 DATABASE_URL=postgresql://localhost:5432/biskiq_s03_gate \
   PERF_RESULTS_DIR=<evidence dir> S03_QA_PROJECT=chrome \
   npx vite-node --script perf/run-s03-own-model-qa.mjs
+# S03_API_PORT / S03_EDITOR_PORT (default 8791 / 4179) move the two ports when
+# another run holds them; the API origin stays runtime, so no rebuild is needed.
 
-# diagnostics (never gate rows): same supervisor, diagnostic spec
+# diagnostics (never gate rows): same supervisor, diagnostic spec, second
+# results directory so the acceptance run's machine facts and evidence survive
 DATABASE_URL=postgresql://localhost:5432/biskiq_s03_gate \
-  PERF_RESULTS_DIR=<evidence dir> S03_QA_PROJECT=chrome \
+  PERF_RESULTS_DIR=<diagnostics dir> S03_QA_PROJECT=chrome \
   S03_QA_SPEC=perf/flows/s03-diagnostics.spec.ts \
   npx vite-node --script perf/run-s03-own-model-qa.mjs
 

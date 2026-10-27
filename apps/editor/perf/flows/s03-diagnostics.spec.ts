@@ -311,7 +311,8 @@ test.describe('T2.P02.S03 diagnostics (recorded, never acceptance rows)', () => 
 		// Poll for an accepted result instead of classifying by a fixed wait: a commit
 		// slower than the wait would otherwise be recorded as a refusal, and could
 		// then land after the save and contradict the 0/0 storage assertions.
-		const commitDeadline = Date.now() + 15_000;
+		const classifyStarted = Date.now();
+		const commitDeadline = classifyStarted + 15_000;
 		let accepted = false;
 		while (Date.now() < commitDeadline) {
 			if ((await acceptedResultCount(page)) > before) {
@@ -326,7 +327,7 @@ test.describe('T2.P02.S03 diagnostics (recorded, never acceptance rows)', () => 
 			await page.waitForTimeout(1_000);
 			accepted = (await acceptedResultCount(page)) > before;
 		}
-		evidence.commitPollMs = Date.now() - (commitDeadline - 15_000);
+		evidence.classificationWaitMs = Date.now() - classifyStarted;
 		evidence.placementAccepted = accepted;
 		evidence.subject = await subject(page);
 		evidence.feedback = (await page.locator(`${INSTRUMENT} p.feedback`).innerText().catch(() => '(none)')).replace(

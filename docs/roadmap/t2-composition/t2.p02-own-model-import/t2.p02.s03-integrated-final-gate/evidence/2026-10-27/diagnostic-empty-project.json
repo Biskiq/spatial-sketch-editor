@@ -1,7 +1,7 @@
 {
-  "projectId": "perf-s03diagempty-mvqugrb9",
+  "projectId": "perf-s03diagempty-mvquugwp",
   "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
-  "commitPollMs": 16050,
+  "classificationWaitMs": 16073,
   "placementAccepted": false,
   "subject": "(no card)",
   "feedback": "",

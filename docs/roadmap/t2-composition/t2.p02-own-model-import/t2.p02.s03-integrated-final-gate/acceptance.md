@@ -41,14 +41,16 @@ prerequisites     T2.P02.S01 accepted (owner-override 2026-10-23), T2.P02.S02 ac
 harness           perf/run-s03-own-model-qa.mjs (foreground supervisor: in-process API, migrations,
                   `vite preview` of the production build, Playwright child) +
                   perf/flows/s03-own-model-acceptance.spec.ts (two tests, acceptance) and
-                  perf/flows/s03-diagnostics.spec.ts (three tests, recorded only); outside every
-                  Vitest lane. After the last harness edit: 2/2 acceptance tests passed in 36.0 s
-                  and 3/3 diagnostics in 39.8 s, `npx tsc --noEmit` and `npm run check` clean
+                  perf/flows/s03-diagnostics.spec.ts (three tests, diagnostics: they assert only
+                  positive controls and storage consistency, never the gap); outside every Vitest
+                  lane. After the last harness edit: 2/2 acceptance tests passed in 36.2 s and 3/3
+                  diagnostics in 39.3 s, `npx tsc --noEmit` in `apps/editor` and root
+                  `npm run check` clean
 machine           MacBook Air M2 (Mac14,2), Apple M2, 16 GiB, macOS 15.8.2, Low Power Mode off —
                   the designated reference machine (batch E, E6). Power is not a fixed condition of
                   this pass: `machine-facts.json` records **battery** for the journey run
-                  (15:31:27–15:32:04Z), `machine-facts-diagnostics.json` records **battery** for the
-                  diagnostics (15:32:14–15:32:55Z), and `machine-facts-ac.json` records **AC** at
+                  (15:42:03–15:42:41Z), `machine-facts-diagnostics.json` records **battery** for the
+                  diagnostics (15:42:54–15:43:35Z), and `machine-facts-ac.json` records **AC** at
                   14:26Z for an earlier journey run, so the same machine changed state within the
                   day. The performance reports carry no power state at all (`PERF_POWER_STATE`
                   unset). Operator: the agent, not the owner — owner attribution is outstanding.
@@ -62,13 +64,15 @@ backend           in-process API (`createApp`), **dedicated** Postgres database 
                   and never the Compose stack), in-memory object store
                   (`apps/api/tests/test-support.mjs`) — no R2 credentials, bucket or production
                   service is touched
-reproduce         npm run build:api && npm run build (root; the supervisor imports `apps/api/dist`
-                  and serves `.svelte-kit/output`, and builds neither) → in apps/editor, DATABASE_URL=<dedicated db>
-                  PERF_RESULTS_DIR=<dir> S03_QA_PROJECT=chrome npx vite-node --script
-                  perf/run-s03-own-model-qa.mjs; the diagnostics add
-                  S03_QA_SPEC=perf/flows/s03-diagnostics.spec.ts. The supervisor serves the ordinary
-                  production build and never builds, and the API origin is runtime
-                  (`$env/dynamic/public`), so it needs no rebuild when the port differs
+reproduce         npm run build:api && npm run build (root; the supervisor imports
+                  `apps/api/dist` and serves `.svelte-kit/output`, and builds neither) → in
+                  apps/editor, DATABASE_URL=<dedicated db> PERF_RESULTS_DIR=<journey dir>
+                  S03_QA_PROJECT=chrome npx vite-node --script perf/run-s03-own-model-qa.mjs;
+                  the diagnostics run the same command with
+                  S03_QA_SPEC=perf/flows/s03-diagnostics.spec.ts into a **second** results
+                  directory, because each supervisor run writes its own machine facts. The
+                  supervisor serves the ordinary production build, and the API origin is
+                  runtime (`$env/dynamic/public`), so it needs no rebuild when the port differs
 ```
 
 Raw artifacts: [evidence/2026-10-27](./evidence/2026-10-27) (`journey.json`, `refusals.json`,
@@ -102,10 +106,10 @@ not a skipped check — the same suites ran with zero skips.
 ## Integrated creator journey (branded Chrome, one application lifetime per leg)
 
 The accepted-path legs are on-demand Playwright flows (`perf/flows/s03-own-model-acceptance.spec.ts`:
-the starter journey and the refusal leg; two tests, 2 passed, 36.0 s) driven by
+the starter journey and the refusal leg; two tests, 2 passed, 36.2 s) driven by
 `perf/run-s03-own-model-qa.mjs`; evidence in `journey.json` and `refusals.json`. The two finding rows
 below, and the empty-project leg, are **diagnostics** (`perf/flows/s03-diagnostics.spec.ts`; three
-tests, 3 passed, 39.8 s): they record what the product does and assert nothing about the gap, so a fix
+tests, 3 passed, 39.3 s): they record what the product does and assert nothing about the gap, so a fix
 changes the recorded values instead of failing a gate test.
 
 | Step | Observed | Result |
@@ -116,10 +120,10 @@ changes the recorded values instead of failing a gate test.
 | Move and turn | Arrange's own entity chooser lists `Gate model · model`; typed X 1.25, Z −0.5 and yaw 0.5 commit as accepted results; stored entity shows exactly those values | passed (typed path) |
 | Move/turn by pointer drag | Arrange claims no press: its pointer intent requires a canonical Scene-entity selection, which placement never established | **blocked** |
 | Resize / Duplicate / Delete | Compose opens with `no entity`; `Resize…`, `Duplicate` and `Delete` are all `disabled` (`diagnostic-selection.json` → `compose`) | **blocked** (the commands themselves are proven on a typed native placement — see the finding below) |
-| Second instance of the same approved model | Import → "Place another" → floor click; stored Scene holds two entities (`entity-aa455f65…`, `entity-371ccadd…`) with one `assetId` (`model-f2809ff7…`) and one `resources` entry | passed |
+| Second instance of the same approved model | Import → "Place another" → floor click; stored Scene holds two entities (`entity-a789d96e…`, `entity-6d6e3a1d…`) with one `assetId` (`model-f3a9a823…`) and one `resources` entry | passed |
 | Save and reopen in a fresh session | fresh context + cold cache; two models render (80,910 model-colour pixels); no page errors | passed |
-| Preview of the mapped derivative | two green checkered instances visible in the visitor canvas (74,328 model-colour pixels); empty-room control Preview in the same build reports **0** | passed |
-| Preview texture arrival | the mapped derivative lands **174 ms** after the first painted frame (`previewTextureWaitedMs`); the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
+| Preview of the mapped derivative | two green checkered instances visible in the visitor canvas (74,328 model-colour pixels); the empty-room control Preview in the same build paints its room (180,321 of its pixels differ from its own blank corner) and reports **0** model-colour pixels, with no page errors in either session | passed |
+| Preview texture arrival | the mapped derivative lands **209 ms** after the first painted frame (`previewTextureWaitedMs`); the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
 | Retention and pins | resource `contentRevision` = `pin.hash` = `sha256-66ced4f5…`; dependency-lock entry names the same subject and hash; the derivative fetched by hash after Save hashes to that pin and matches `pin.size` (1,201,064 B); recipe `creator-import@1` version 1, source manifest hash, ingest report digest and floor placement retained; no `componentId`, `partId`, `parts`, `clips` or `variants` on the entity or resource | passed (the stored revision is still served after Save; no retention or GC test was run) |
 
 The two Preview images are the pixel evidence:
@@ -187,8 +191,10 @@ checkable in the artifacts:
    nothing here is pass-scoped.
 3. **Conditions.** The reports record `powerState: "not recorded (PERF_POWER_STATE unset)"`, and the
    contract's designated-machine row requires battery with Low Power Mode off, operated by the owner.
-   The machine was observed on AC earlier the same day and on battery later; no artifact pins the
-   perf pass to a power state, and the operator was the agent. Owner attribution is outstanding.
+   The three reports were written 13:46–13:48Z, earlier than **both** committed power captures (AC
+   14:26Z, battery 15:42Z), so no artifact records the power state of the perf pass itself — only
+   that the same machine was seen on AC and, later, on battery within the day. The operator was the
+   agent. Owner attribution is outstanding.
 
 What the numbers therefore are: reproducible observations of the integrated flows, recorded with
 enough detail to say which clauses they do and do not touch.
@@ -201,11 +207,11 @@ record now says what such a report is and is not.
 
 | Row | Measured | Budget | What it supports |
 | --- | --- | --- | --- |
-| F5 admission long tasks, S and M, cold/warm/repeat-use | summed long-task time 0 ms and longest 0 ms in the admission window, all 18 runs | 0 > 50 ms, none > 100 ms | no long-task entry appeared in any sampled admission window; the clause's verdict needs the formal method |
-| F5 chosen → placed, S cold / M cold | 697 ms / 1,350 ms (warm 610 / 1,139 ms) | Target ≤ 2 s for 5 MiB, ≤ 5 s for 25 MiB | observed only: the workloads are generated S (12 triangles) and M (≈9k triangles), not the budget's 5/25 MiB files, and both marks are the admitted result rather than its presentation |
+| F5 admission long tasks, S and M, cold/warm/repeat-use | summed long-task time 0 ms and longest 0 ms in the admission window, all 18 runs | none > 50 ms, none > 100 ms | no long-task entry appeared in any sampled admission window; the clause's verdict needs the formal method |
+| F5 chosen → placed, p95, S cold / M cold | 697 ms / 1,350 ms (warm p95 610 / 1,139 ms) | Target ≤ 2 s for 5 MiB, ≤ 5 s for 25 MiB (p95) | observed only: the workloads are generated S (12 triangles) and M (≈9k triangles), not the budget's 5/25 MiB files, and the end mark is the accepted ledger entry, not the placed result's presentation |
 | F5 heap delta after GC | median +0.05 to +0.18 MiB across the six row medians (run range +0.004 to +0.180 MiB, 18 runs) | — | observed |
-| F6 floor click → accepted, p95 S cold / M cold | 34.4 ms / 46.3 ms | completion p95 ≤ 33 / ≤ 50 ms | **not the contract's flow**: armed→accepted, not the sequenced drag's input-to-matching-preview; both ends are install-time (`performance.now()` at the accepted ledger entry), so the presentation the contract ends on is not what was timed; the S value is ≈1.04 × the bound and the row stays unmeasured as defined |
-| F9 Save status update p95, all cache states | 0.29–0.5 ms | local feedback presented ≤ 100 ms | **not established**: these are DOM-update timestamps, and the report itself states they "cannot establish the contract's presented-local-feedback gate"; main-thread work is not split out |
+| F6 floor click → accepted, p95 S cold / M cold | 34.4 ms / 46.3 ms | completion p95 ≤ 33 / ≤ 50 ms | **not the contract's flow**: armed→accepted, not the sequenced drag's input-to-matching-preview; both marks are `performance.now()` at the instrument's reveal and at the accepted ledger entry — neither an install nor a presentation timestamp — so the presentation the contract ends on is not what was timed; the S value is ≈1.04 × the bound and the row stays unmeasured as defined |
+| F9 Save status update p95, all cache states | 0.29–0.5 ms | main-thread work ≤ 50 ms; local feedback presented p95 ≤ 100 ms | **not established**: these are DOM-update timestamps, and the report itself states they "cannot establish the contract's presented-local-feedback gate"; main-thread work is not split out, so neither clause is answered |
 | F9 durable receipt p95 (loopback N1) | 119–125 ms, 44,367 B wire | target formula | observed; loopback only, no service baseline |
 | F13 heap growth over ten place/undo cycles | 2.64 MiB (9.51 → 12.16 MiB) | ≤ 5 MiB | **partial**: the heap stayed inside the ≤ 5 MiB bound across ten Undo-based cycles in one warm context — so the clause's verdict needs the formal method rather than a sample; the row's geometry/texture-baseline and single-live-context clauses are unmeasured, removal is Undo rather than Compose Delete, and the report labels the context `repeat-use` though the flow opens one warm context |
 | GPU memory at M | not measurable — Chromium exposes no per-page GPU allocation | ≤ 384 MiB hard | **blocked** (unchanged from S02) |
@@ -271,9 +277,10 @@ list are four walls and the room floor (`subjectRowsNamingTheModel: 0`), and its
 `Place object` and `Import model…` (`taskRowsNamingTheModel: 0`) — nothing that names the entity, so
 there is no row to click. The earlier revision of this record read the contributed task class as if
 it were the subject region; that selector could not have seen a subject heading at all, and is now
-split into the two regions the Index actually renders. The only surface that names it is Arrange's own dropdown, which sets the instrument's
-local field rather than the canonical selection. That is also why the subject never becomes the entity rather than
-flickering to it, and why the Compose commands stay disabled.
+split into the two regions the Index actually renders. The only surface that names it is Arrange's
+own dropdown, which sets the instrument's local field rather than the canonical selection. That is
+also why the subject never becomes the entity rather than flickering to it, and why the Compose
+commands stay disabled.
 
 Consequence for the plan's required lines: resize, duplicate and delete cannot be accepted for a
 creator model from this gate; pointer move/turn cannot be accepted either. The planner behaviour
