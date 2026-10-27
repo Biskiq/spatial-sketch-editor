@@ -4,7 +4,7 @@
 **Decision:** **closeout BLOCKED — do not record acceptance, do not mark shipped.**
 
 T3 accepted the shared Head/F4 diff at `bf9007ff`
-([review](./t3-implementation-review.md)). After that verdict the branch carries five in-scope
+([review](./t3-implementation-review.md)). After that verdict the branch carries five in-scope code/harness
 commits: `8db7baf2` (Card clears the measured lower column at constrained width), `132a7aac` (the
 browser journey), `f26b227c` (the lower-column height comes from the observed box, keeping one
 viewport measurement), `dc877396` (the completed browser matrix) and `64b9435d` (palette-bearing

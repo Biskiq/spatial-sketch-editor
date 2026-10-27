@@ -5,7 +5,7 @@ AUTHORITY: NONE — the phase README owns slice status; the release list entry a
            authorization record own the release. This artifact requests review; it accepts nothing.
 STATUS:    implementation complete and repaired through three peer-review rounds, then reviewed by
            T3 on branch `t1-p02-s02-draw-close-divide-delete`. T3 accepted the shared Head/F4 diff
-           at `bf9007ff` ([review](./t3-implementation-review.md)). Five later in-scope commits add
+           at `bf9007ff` ([review](./t3-implementation-review.md)). Five later in-scope code/harness commits add
            the constrained-width Card repair (`8db7baf2`, `f26b227c`), the browser journey
            (`132a7aac`) and its completed matrix (`dc877396`, `64b9435d`); the targeted T3 review is
            in [t3-shell-repair-review.md](./t3-shell-repair-review.md), and the gate and 28-row,
