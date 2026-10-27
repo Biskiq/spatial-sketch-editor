@@ -287,6 +287,15 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 			duplicateDisabled: true,
 			deleteDisabled: true
 		});
+		// Whether any Index affordance names the placed entity: a subject region or
+		// row a creator could pick would be a reachable selection path, and the only
+		// place the model is named today is Arrange's own dropdown.
+		evidence.indexAfterPlacement = {
+			regions: await page.locator('.contributed-item h3').allInnerTexts(),
+			rows: (await page.locator('.contributed-item button.item-row').allInnerTexts()).map((text) =>
+				text.replace(/\s+/g, ' ').trim()
+			)
+		};
 
 		// --- a second instance shares the one immutable revision ------------
 		// Close the Compose task first; Import is its own procedure.

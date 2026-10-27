@@ -40,7 +40,7 @@ consumed gates    F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1
 prerequisites     T2.P02.S01 accepted (owner-override 2026-10-23), T2.P02.S02 accepted 2026-10-24
 harness           perf/run-s03-own-model-qa.mjs + perf/flows/s03-own-model-acceptance.spec.ts
                   (three tests) and perf/flows/s03-selection-probe.spec.ts; outside every Vitest
-                  lane. After the last harness edit: 3/3 acceptance tests passed in 23.2 s and
+                  lane. After the last harness edit: 3/3 acceptance tests passed in 23.7 s and
                   `npm run check` reported 0 errors, 0 warnings
 machine           MacBook Air M2 (Mac14,2), Apple M2, 16 GiB, macOS 15.8.2, battery, Low Power Mode off
                   — the designated reference machine (batch E, E6)
@@ -52,9 +52,9 @@ backend           in-process API (`createApp`), private Postgres database `biski
 ```
 
 Raw artifacts: [evidence/2026-10-27](./evidence/2026-10-27) (`journey.json`, `refusals.json`,
-`machine-facts.json`, `f5f6-import-chrome.json`, `f13-import-chrome.json`, `f9-save-chrome.json`,
-four screenshots and the bundle excerpt). `journey.json` records `errors: []` and
-`reopenErrors: []` for the two browser lifetimes it drove.
+`empty-project.json`, `selection-probe.json`, `machine-facts.json`, `f5f6-import-chrome.json`,
+`f13-import-chrome.json`, `f9-save-chrome.json`, five screenshots and the bundle excerpt).
+`journey.json` records `errors: []` and `reopenErrors: []` for the two browser lifetimes it drove.
 
 ## Repository contract (exhaustive)
 
@@ -78,7 +78,7 @@ not a skipped check — the same suites ran with zero skips.
 ## Integrated creator journey (branded Chrome, one application lifetime per leg)
 
 These legs are on-demand Playwright flows (`perf/flows/s03-own-model-acceptance.spec.ts`: the starter
-journey, the empty-project leg and the refusal leg; three tests, 3 passed, 23.2 s) driven by
+journey, the empty-project leg and the refusal leg; three tests, 3 passed, 23.7 s) driven by
 `perf/run-s03-own-model-qa.mjs`; the full evidence is in `journey.json`, `empty-project.json` and
 `refusals.json`.
 
@@ -90,10 +90,10 @@ journey, the empty-project leg and the refusal leg; three tests, 3 passed, 23.2 
 | Move and turn | Arrange's own entity chooser lists `Gate model · model`; typed X 1.25, Z −0.5 and yaw 0.5 commit as accepted results; stored entity shows exactly those values | passed (typed path) |
 | Move/turn by pointer drag | Arrange claims no press: its pointer intent requires a canonical Scene-entity selection, which placement never established | **blocked** |
 | Resize / Duplicate / Delete | Compose opens with `no entity`; `Resize…`, `Duplicate` and `Delete` are all `disabled` (`journey.json` → `compose`) | **blocked** (the commands themselves are proven on a typed native placement — see the finding below) |
-| Second instance of the same approved model | Import → "Place another" → floor click; stored Scene holds two entities (`entity-d8db2769…`, `entity-46c48de1…`) with one `assetId` (`model-510cf2e9…`) and one `resources` entry | passed |
+| Second instance of the same approved model | Import → "Place another" → floor click; stored Scene holds two entities (`entity-55aeca7f…`, `entity-ff154e67…`) with one `assetId` (`model-9b50197b…`) and one `resources` entry | passed |
 | Save and reopen in a fresh session | fresh context + cold cache; two models render (80,910 model-colour pixels); no page errors | passed |
 | Preview of the mapped derivative | two green checkered instances visible in the visitor canvas (74,328 model-colour pixels); empty-room control Preview in the same build reports **0** | passed |
-| Preview texture arrival | the mapped derivative lands **153 ms** after the first painted frame; the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
+| Preview texture arrival | the mapped derivative lands **155 ms** after the first painted frame (`previewTextureWaitedMs`); the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
 | Retention and pins | resource `contentRevision` = `pin.hash` = `sha256-66ced4f5…`; dependency-lock entry names the same subject and hash; the derivative fetched by hash hashes to that pin and matches `pin.size` (1,201,064 B); recipe `creator-import@1@1`, source manifest hash, ingest report digest and floor placement retained; no `componentId`, `partId`, `parts`, `clips` or `variants` on the entity or resource | passed |
 
 The two Preview images are the pixel evidence:
@@ -111,7 +111,7 @@ journey above. The empty leg was driven as its own browser lifetime (`empty-proj
 | --- | --- | --- |
 | Begin empty, Save | the Stage opens on the product's own empty baseline, with the rail text "Empty baseline — no enclosure drawn yet. Start from the … Nothing selectable there." | passed |
 | Library Import, review report | identical report to the starter leg: 1 node, 1 mesh, 12 triangles, 2 textures, 2.000 × 2.000 m footprint, contact 0.000 m, height 2.000 m | passed |
-| Approve and place | the Place instrument opens (`Place object`); the floor click installs nothing and the instrument's `p.feedback` stays **empty** | **blocked** |
+| Approve and place | the Place instrument opens with its Place row; the floor click installs nothing and the instrument's `p.feedback` stays **empty** | **blocked** |
 | Save after the refused placement | 0 model resources, 0 Scene entities stored | passed (nothing installed) |
 
 The cause is structural, not a regression: `bootEmpty` builds `createEmptyWallFirstLayoutDocument()`, so
@@ -202,10 +202,13 @@ product change, outside a verification gate's scope — the owner already record
 ("a placed creator model is not canonically selected by any reachable UI path … kept unfixed as a
 T1/T2 follow-up"). S03 must not absorb it, and did not.
 
-No other reachable path selects it either: after the placement, the Index offers no row or region
-naming the entity (`indexRows` in `journey.json` are the nine task rows only), and Arrange's entity
-dropdown sets its own local field rather than the canonical selection. That is why the subject sample
-never becomes the entity rather than flickering to it.
+No other reachable path selects it either. `journey.json` → `indexAfterPlacement` records what the
+Index offers once the model is placed: no subject region at all, and nine task rows
+(`Dimensions`, `Experience authoring`, `Resize`, `Duplicate`, `Delete`, `Arrange`, `Place plinth`,
+`Place object`, `Import model…`) — nothing that names the entity, so there is no row to click. The
+only surface that names it is Arrange's own dropdown, which sets the instrument's local field rather
+than the canonical selection. That is also why the subject never becomes the entity rather than
+flickering to it, and why the Compose commands stay disabled.
 
 Consequence for the plan's required lines: resize, duplicate and delete cannot be accepted for a
 creator model from this gate; pointer move/turn cannot be accepted either. The planner behaviour
