@@ -13,7 +13,7 @@ SLICES: T2.P02.S01 is shipped with owner-override acceptance 2026-10-23 →
         tree `082e384c` →
         ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/acceptance.md
         T2.P02.S03 integrated final gate **ran 2026-10-27 and is NOT accepted** — two required rows
-        blocked, one hard delivery row misses →
+        blocked, the empty-project line unreachable, one hard delivery row misses →
         ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md
 BATON: S02 delivers the own-GLB import procedure (review, scale/pivot/footprint/contact, approve),
        placement through the resource-granting planner, and approved-model rendering in the editor and
@@ -30,17 +30,22 @@ OWNER-RUN: S03 dispositioned S02's rows in its record — Preview pixels, F5, F1
        Draco/KTX2, the real >50 MiB decode, real R2 and worker-boundary timing remain **unrun**. Never
        presented as passed.
 FOLLOW-UPS: in-flight fetch dedupe across overlapping model resolutions; a model-failure notice can
-       overwrite an unrelated route notice; the placed-model selection gap (T1/T2).
-NEXT:  owner decisions from the gate record: (1) authorize a placed-creator-model selection path (or
-       amend the phase outcome) so Resize/Duplicate/Delete are reachable, then re-run those lines;
+       overwrite an unrelated route notice; the pointer-placement selection gap (T1/T2) — narrowed by
+       S03's probe to the pointer completion, since a typed placement selects its entity and Compose
+       acts on it; the empty project's silent placement refusal.
+NEXT:  owner decisions from the gate record: (1) authorize the pointer-placement selection fix — or a
+       reachable selection path — so Resize/Duplicate/Delete are reachable, then re-run those lines;
        (2) dispose of the Stage first-load 447.0 KiB br miss against the ≤400 KiB hard budget;
        (3) authorize F6's ten-run extension with the sequenced drag; (4) complete the remaining
-       owner-run rows. S03 measured on S06's method and carried S02's rows as the record states.
+       owner-run rows; (5) decide what "from an empty project" means for this gate and whether the
+       Place instrument should say why a floor click installs nothing. S03 measured on S06's method and carried S02's rows as the record states.
        S01/S02 remain accepted and untouched; phase close stays owner-invoked and unclaimed.
-BLOCKER: S03 is blocked on (1) and the Stage first-load hard miss. The Compose surface is unreachable
-       for a placed creator model — placement leaves the room selected, so Resize/Duplicate/Delete
-       are disabled — which is the gap the owner recorded 2026-10-24 and kept unfixed. Do not absorb
-       it into a verification slice; do not claim acceptance or a closable phase.
+BLOCKER: S03 is blocked on (1), the empty-project line and the Stage first-load hard miss. A pointer
+       placement does not leave its new entity canonically selected — the room stays selected, so
+       Compose's Resize/Duplicate/Delete are disabled for the only path an imported model has — which
+       is the gap the owner recorded 2026-10-24 and kept unfixed. An empty project has no Room floor,
+       so a model cannot be placed there at all. Do not absorb either into a verification slice; do not
+       claim acceptance or a closable phase.
 ROUTE: ./README.md → ../../roadmap/t2-composition/README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
 CARRY: T3.P04.S01 shipped project-deletion and model-revision cleanup (PR #191, `aa1db37a`);

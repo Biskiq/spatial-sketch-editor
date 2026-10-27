@@ -1,15 +1,16 @@
 # T2.P02.S03 — acceptance record: Integrated final gate
 
 **Slice:** T2.P02.S03 · **Status:** gate executed 2026-10-27 — **NOT ACCEPTED: two required rows are
-blocked, one hard delivery row misses** · **Plan:**
+blocked, one required scope line is unreachable, one hard delivery row misses** · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [T2.P02](../README.md) ·
 **Declared** `FINAL PHASE GATE` artifact of T2.P02
 
 This record exists so the gate's result is reviewable. It claims **no acceptance verdict**, no phase
 close, no track completion and no gate state. The phase stays `active` and cannot become `closable`
 from this result: the creator journey the phase promises ("places, moves, turns, resizes, duplicates
-and deletes it") is not reachable end to end in the shipped product, and the delivery budget misses.
-Both findings are owner decisions, not defects this slice may absorb.
+and deletes it") is not reachable end to end in the shipped product, the plan's "from an empty
+project" line cannot be completed at all, and the delivery budget misses. All three are owner
+decisions, not defects this slice may absorb.
 
 ## Verdict summary
 
@@ -18,22 +19,29 @@ Both findings are owner decisions, not defects this slice may absorb.
 | Complete repository verification contract | **passed** (see table) |
 | Import one own GLB with its maps, review, confirm scale/pivot/footprint, approve, place | **passed** |
 | Move and turn the placed model | **passed through Arrange's typed writer; blocked as a pointer gesture** |
-| Resize, duplicate and delete the placed model | **blocked** — Compose has no subject to act on |
+| Resize, duplicate and delete the placed model | **blocked** — Compose has no subject to act on (the three commands themselves are proven reachable on the typed placement of a native primitive) |
+| The same journey from an empty project | **import, review and approve passed; placement is impossible** — an empty project has no Room floor, and the refusal is silent |
 | Two instances share one immutable revision with independent identity | **passed** (through "Place another") |
 | Save and reopen in a fresh session; stored revision verified against its pins | **passed** |
 | Preview shows the placed mapped derivative | **passed** (pixel differential) |
 | Owner-accepted bounds install nothing; retained revision survives | **passed** |
-| Strict refusal of old-number formats and part fields; `/p` catalogue-only | **passed by the suite** (cited below) |
+| Strict refusal of old-number formats and part fields; `/p` catalogue-only | **passed by the suite**: `model-resource-admission.test.ts` "refuses the old resources and Scene format numbers without migrating them" and "refuses an unknown model key and a part field on the model detail"; visitor isolation suites for `/p` |
 | Integrated performance recheck | **partial**: F5, F13, F9 hard rows pass; F6 undecided; GPU row blocked; Stage first-load JS **hard miss** |
 
 ## Tested revision and environment
 
 ```text
 branch            t2/p02-s03-integrated-final-gate, from origin/main 9e0fcb50 (PR #198 merge)
-verification tree 3c641c3e  (harness + evidence commit; product code identical to 9e0fcb50)
+verification tree the product code of 9e0fcb50, unchanged: the contract ran on the working tree
+                  that became 3c641c3e, whose only additions are the perf harness (outside every
+                  Vitest lane), the evidence and later documentation
 consumed gates    F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
                   all `accepted`; every Requires scope `active` at this trusted base
 prerequisites     T2.P02.S01 accepted (owner-override 2026-10-23), T2.P02.S02 accepted 2026-10-24
+harness           perf/run-s03-own-model-qa.mjs + perf/flows/s03-own-model-acceptance.spec.ts
+                  (three tests) and perf/flows/s03-selection-probe.spec.ts; outside every Vitest
+                  lane. After the last harness edit: 3/3 acceptance tests passed in 23.2 s and
+                  `npm run check` reported 0 errors, 0 warnings
 machine           MacBook Air M2 (Mac14,2), Apple M2, 16 GiB, macOS 15.8.2, battery, Low Power Mode off
                   — the designated reference machine (batch E, E6)
 browser           Google Chrome 156.0.8078.48 (branded `chrome` project), 1920×1080 CSS at DPR 1,
@@ -69,8 +77,10 @@ not a skipped check — the same suites ran with zero skips.
 
 ## Integrated creator journey (branded Chrome, one application lifetime per leg)
 
-Both legs are on-demand Playwright flows (`perf/flows/s03-own-model-acceptance.spec.ts`) driven by
-`perf/run-s03-own-model-qa.mjs`; the full evidence is in `journey.json` and `refusals.json`.
+These legs are on-demand Playwright flows (`perf/flows/s03-own-model-acceptance.spec.ts`: the starter
+journey, the empty-project leg and the refusal leg; three tests, 3 passed, 23.2 s) driven by
+`perf/run-s03-own-model-qa.mjs`; the full evidence is in `journey.json`, `empty-project.json` and
+`refusals.json`.
 
 | Step | Observed | Result |
 | --- | --- | --- |
@@ -79,15 +89,41 @@ Both legs are on-demand Playwright flows (`perf/flows/s03-own-model-acceptance.s
 | Canonical selection after placement | `Selected subject` names the **room floor**, not the new model — recorded in `journey.json` as `selectionAfterPlacement` | **finding** |
 | Move and turn | Arrange's own entity chooser lists `Gate model · model`; typed X 1.25, Z −0.5 and yaw 0.5 commit as accepted results; stored entity shows exactly those values | passed (typed path) |
 | Move/turn by pointer drag | Arrange claims no press: its pointer intent requires a canonical Scene-entity selection, which placement never established | **blocked** |
-| Resize / Duplicate / Delete | Compose opens with `no entity`; `Resize…`, `Duplicate` and `Delete` are all `disabled` (`journey.json` → `compose`) | **blocked** |
+| Resize / Duplicate / Delete | Compose opens with `no entity`; `Resize…`, `Duplicate` and `Delete` are all `disabled` (`journey.json` → `compose`) | **blocked** (the commands themselves are proven on a typed native placement — see the finding below) |
 | Second instance of the same approved model | Import → "Place another" → floor click; stored Scene holds two entities (`entity-d8db2769…`, `entity-46c48de1…`) with one `assetId` (`model-510cf2e9…`) and one `resources` entry | passed |
 | Save and reopen in a fresh session | fresh context + cold cache; two models render (80,910 model-colour pixels); no page errors | passed |
 | Preview of the mapped derivative | two green checkered instances visible in the visitor canvas (74,328 model-colour pixels); empty-room control Preview in the same build reports **0** | passed |
+| Preview texture arrival | the mapped derivative lands **153 ms** after the first painted frame; the row waits for mapped pixels rather than asserting a single frame (an earlier run shot the untextured fallback and read 0) | observed |
 | Retention and pins | resource `contentRevision` = `pin.hash` = `sha256-66ced4f5…`; dependency-lock entry names the same subject and hash; the derivative fetched by hash hashes to that pin and matches `pin.size` (1,201,064 B); recipe `creator-import@1@1`, source manifest hash, ingest report digest and floor placement retained; no `componentId`, `partId`, `parts`, `clips` or `variants` on the entity or resource | passed |
 
 The two Preview images are the pixel evidence:
 [with model](./evidence/2026-10-27/preview-with-model.png) and
-[control](./evidence/2026-10-27/preview-control.png).
+[control](./evidence/2026-10-27/preview-control.png). The Stage before and after the fresh-session
+reopen are [stage-placed.png](./evidence/2026-10-27/stage-placed.png) and
+[stage-reopened.png](./evidence/2026-10-27/stage-reopened.png).
+
+## The journey from an empty project — placement is unreachable
+
+The plan records acceptance "from an empty project and from the starter". The starter leg is the
+journey above. The empty leg was driven as its own browser lifetime (`empty-project.json`):
+
+| Step | Observed | Result |
+| --- | --- | --- |
+| Begin empty, Save | the Stage opens on the product's own empty baseline, with the rail text "Empty baseline — no enclosure drawn yet. Start from the … Nothing selectable there." | passed |
+| Library Import, review report | identical report to the starter leg: 1 node, 1 mesh, 12 triangles, 2 textures, 2.000 × 2.000 m footprint, contact 0.000 m, height 2.000 m | passed |
+| Approve and place | the Place instrument opens (`Place object`); the floor click installs nothing and the instrument's `p.feedback` stays **empty** | **blocked** |
+| Save after the refused placement | 0 model resources, 0 Scene entities stored | passed (nothing installed) |
+
+The cause is structural, not a regression: `bootEmpty` builds `createEmptyWallFirstLayoutDocument()`, so
+the project has no enclosure and therefore no compiled Room floor, and `pointerPlaceSupport` requires
+exactly one eligible floor before it will show or commit a candidate. An imported model is placeable
+only by a floor click, so in an empty project it cannot be placed at all until a room is drawn — the
+T1 drawing journey, which this slice does not own and did not drive.
+
+[empty-project-stage.png](./evidence/2026-10-27/empty-project-stage.png) is that state. The rail does
+warn that no enclosure is drawn, but the Place instrument itself offers a Place row and a click target
+and says nothing when the click is refused — a creator reading only the instrument is told nothing.
+This is recorded as an unreachable scope line and an owner decision, not repaired here.
 
 ## Bounds, refusals and retention
 
@@ -127,29 +163,54 @@ against `9e0fcb50` is zero and the hard budget was already exceeded at the trust
 recorded rather than absorbed because a final gate "cannot defer an earlier hard miss"; resolving it
 means bundle attribution/reduction work in the owning code, outside S03's verification scope.
 
-## Blocking finding — the Compose surface is unreachable for a placed creator model
+## Blocking finding — a pointer placement does not leave its new entity selected
 
 ```text
 reproduce   starter → Library Import (any GLB) → Approve and place → floor click
 observe     Selected subject card = the room floor; Index → Resize opens Compose
             showing `Compose no entity`, with Resize…, Duplicate and Delete disabled
 also        Arrange's pointer drag never starts for the model (its press requires a
-            canonical Scene-entity selection); Esc closes the task and clears selection
+            canonical Scene-entity selection); Esc closes the open task first, and a
+            second Esc clears the selection
 evidence    evidence/2026-10-27/journey.json → selectionAfterPlacement, compose
+            evidence/2026-10-27/selection-probe.json
 ```
 
-The shipped `scene.adapter.ts` intends the placement completion to select the new entity, and
-`SceneTransformInstrument` disables the three Compose commands when the canonical subject is not a
-Scene entity, so the capability exists and is gated behind a selection the product never establishes
-for a creator model. This is the gap the owner already recorded on 2026-10-24 ("a placed creator model
-is not canonically selected by any reachable UI path … kept unfixed as a T1/T2 follow-up"), so closing
-it is a scope decision for the owner — a host selection path is a T1 Stage change and an adapter
-affordance is a T2 edit. S03 must not absorb it, and did not.
+The shipped `scene.adapter.ts` states the intent plainly: "the newly created entity becomes the
+selection canonically, at the post-accept revision", set through `sceneEntityReference` on the
+placement-committed listener. `SceneTransformInstrument` gates the three Compose commands on exactly
+that selection (`primary.domain === 'scene' && primary.subject.kind === 'entity'`).
 
-Consequence for the plan's required lines: resize, duplicate and delete cannot be accepted from this
-gate; pointer move/turn cannot be accepted either. The planner behaviour behind them remains covered
-by `scene-operation-planners.test.ts` and `scene-operation-acceptance.test.ts` in the passed suite —
-unit evidence, not an accepted creator path.
+`perf/flows/s03-selection-probe.spec.ts` isolates the gap. Both legs place a native `box`, so the
+import path is out of the comparison:
+
+| Leg | Placement | Selected subject after the accepted install | Compose |
+| --- | --- | --- | --- |
+| typed X/Z + `Place` | accepted | `ENTITY · SCENE entity-0daa7437…` | opens on that entity, `Resize…` enabled |
+| floor click | accepted | `ROOM · INCLUDED room.5:4:face31:…` at 0, 200, 1 000 and 3 000 ms | not reached |
+
+The typed leg is asserted in the probe as the positive control, so the Compose surface and the
+completion writer are both proven working. Only the pointer leg loses the selection. A creator model
+has **no typed path at all** — the instrument's own text says "an imported model is placed by clicking
+its floor position; these typed fields place a native primitive" — so for models the pointer path is
+the only path, and it is the one that does not deliver the completion.
+
+Two candidate causes, neither confirmed here: the same click's Layout pick runs after the asynchronous
+install and overwrites the Scene selection; or the completion's reference is refused by admission
+against a Scene revision the install has already replaced. Deciding between them and fixing it is a
+product change, outside a verification gate's scope — the owner already recorded the gap on 2026-10-24
+("a placed creator model is not canonically selected by any reachable UI path … kept unfixed as a
+T1/T2 follow-up"). S03 must not absorb it, and did not.
+
+No other reachable path selects it either: after the placement, the Index offers no row or region
+naming the entity (`indexRows` in `journey.json` are the nine task rows only), and Arrange's entity
+dropdown sets its own local field rather than the canonical selection. That is why the subject sample
+never becomes the entity rather than flickering to it.
+
+Consequence for the plan's required lines: resize, duplicate and delete cannot be accepted for a
+creator model from this gate; pointer move/turn cannot be accepted either. The planner behaviour
+behind them remains covered by `scene-operation-planners.test.ts` and
+`scene-operation-acceptance.test.ts` in the passed suite — unit evidence, not an accepted creator path.
 
 ## Carried S02 owner-run rows — disposition
 
@@ -169,14 +230,16 @@ Rows 1, 4, 6 and 7 stay with the owner and are named as unrun, never waived.
 
 No acceptance, no phase close, no readiness, no gate state, no C3 re-acceptance (project deletion
 stays with T3.P04.S01), no publication or T4 work, and no production deployment. The harness adds an
-on-demand acceptance flow only: no `npm test` lane, no CI job, no timing gate.
+on-demand acceptance flow only: no `npm test` lane, no CI job, no timing gate. The selection probe is
+a scoping tool, not a row: it asserts only its positive control and records the pointer leg.
 
 ## Required owner decisions
 
-1. **Selection path.** Authorize the T1/T2 change that makes a placed creator model canonically
-   selectable (or otherwise reach the Compose commands), then re-run this gate's manipulation lines;
-   or amend T2.P02's outcome so resize/duplicate/delete are not part of it. Either way this is a
-   scope decision, not an in-slice repair.
+1. **Pointer placement selection.** Authorize the product change that makes a pointer placement leave
+   its new entity canonically selected (the typed path already does), then re-run this gate's
+   manipulation lines; or amend T2.P02's outcome so resize/duplicate/delete are not part of it. The
+   probe above narrows the defect to the pointer completion; fixing it is an adapter or host change,
+   not an in-slice repair.
 2. **Stage first-load budget.** Decide how the 447.0 KiB br Stage route is resolved against the
    ≤ 400 KiB hard budget (attribution and reduction work in the owning code), or record an owner
    disposition for the row.
@@ -184,12 +247,17 @@ on-demand acceptance flow only: no `npm test` lane, no CI job, no timing gate.
    completion row, with the sequenced drag F6 defines rather than a single floor click.
 4. **Owner-run rows.** Complete rows 1, 4, 6, 7 and the GPU-memory measurement, or record a
    disposition for each.
+5. **The empty-project line.** Decide whether "from an empty project" means *draw an enclosure, then
+   import and place* (a T1 drawing journey this gate did not drive) or a starter-only journey, and
+   whether the Place instrument should say why a click installs nothing when no floor supports it.
 
 ## Evidence files
 
 ```text
 evidence/2026-10-27/journey.json                 browser journey, pixels, pins, compose finding
 evidence/2026-10-27/refusals.json                oversize, malformed, cancelled, project-replaced
+evidence/2026-10-27/empty-project.json           the empty-project leg: report, refusal, storage
+evidence/2026-10-27/selection-probe.json         typed vs pointer placement, selected subject
 evidence/2026-10-27/machine-facts.json           M2, macOS, power, Chrome version, start and end
 evidence/2026-10-27/f5f6-import-chrome.json      F5/F6 milestone rows
 evidence/2026-10-27/f13-import-chrome.json       F13 place/undo cycles
@@ -199,4 +267,5 @@ evidence/2026-10-27/stage-placed.png             editor 3D after placement
 evidence/2026-10-27/stage-reopened.png           fresh-session reopen
 evidence/2026-10-27/preview-with-model.png       Preview with two instances
 evidence/2026-10-27/preview-control.png          empty-room control Preview
+evidence/2026-10-27/empty-project-stage.png      the empty baseline with the Place instrument
 ```
