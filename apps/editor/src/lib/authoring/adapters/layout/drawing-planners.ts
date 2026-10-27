@@ -342,30 +342,37 @@ export function planWallDeletion(options: {
 	};
 }
 
-/** The creator-facing words for one deletion, from the planner's own counts. */
+/** `1 Room` / `2 Rooms`, so no sentence has to spell the plural rule twice. */
+function counted(count: number, noun: string): string {
+	return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * The creator-facing words for one deletion, from the planner's own counts.
+ *
+ * Two sentences, because these are two facts: what goes (the Wall, and the
+ * hosted Openings removed in its undo step) and what happens to the Rooms. One
+ * clause list read "This deletes deletes 1 hosted Opening…", and its
+ * enclosure clause — itself carrying an "and" — chained onto a second one.
+ */
 export function wallDeletionSummary(input: {
 	readonly hostedOpeningIds: readonly string[];
 	readonly createdRoomIds: readonly string[];
 	readonly retiredRoomIds: readonly string[];
 }): string {
-	const parts: string[] = [];
+	const removals = ['the Wall'];
 	if (input.hostedOpeningIds.length > 0) {
-		parts.push(
-			`deletes ${input.hostedOpeningIds.length} hosted Opening${input.hostedOpeningIds.length === 1 ? '' : 's'} in the same undo step`
-		);
+		removals.push(`${counted(input.hostedOpeningIds.length, 'hosted Opening')} in the same undo step`);
 	}
-	if (input.retiredRoomIds.length > 0 && input.createdRoomIds.length > 0) {
-		parts.push(`merges ${input.retiredRoomIds.length} Room${input.retiredRoomIds.length === 1 ? '' : 's'}`);
-	} else if (input.retiredRoomIds.length > 0) {
-		parts.push(
-			`opens the enclosure and retires ${input.retiredRoomIds.length} Room${input.retiredRoomIds.length === 1 ? '' : 's'}`
-		);
-	} else if (input.createdRoomIds.length > 0) {
-		parts.push(`creates ${input.createdRoomIds.length} Room${input.createdRoomIds.length === 1 ? '' : 's'}`);
-	} else {
-		parts.push('changes no Room');
-	}
-	return `This deletes ${parts.join(' and ')}.`;
+	const rooms =
+		input.retiredRoomIds.length > 0 && input.createdRoomIds.length > 0
+			? `It merges ${counted(input.retiredRoomIds.length, 'Room')}.`
+			: input.retiredRoomIds.length > 0
+				? `It opens the enclosure and retires ${counted(input.retiredRoomIds.length, 'Room')}.`
+				: input.createdRoomIds.length > 0
+					? `It creates ${counted(input.createdRoomIds.length, 'Room')}.`
+					: 'It changes no Room.';
+	return `This deletes ${removals.join(' and ')}. ${rooms}`;
 }
 
 /**

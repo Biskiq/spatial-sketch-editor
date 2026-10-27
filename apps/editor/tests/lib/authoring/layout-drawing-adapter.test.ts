@@ -324,6 +324,11 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		// the hosted Opening, in the same undo step, and what happens to the Room.
 		expect(action.detail).toContain('1 hosted Opening in the same undo step');
 		expect(action.detail).toContain('retires 1 Room');
+		// Two sentences, no repeated verb and no second "and" clause: the disclosure
+		// reads as prose because the creator has to read it before confirming.
+		expect(action.detail).toBe(
+			'This deletes the Wall and 1 hosted Opening in the same undo step. It opens the enclosure and retires 1 Room.'
+		);
 
 		const outcome = await action.run();
 		expect(outcome).toMatchObject({ kind: 'accepted' });
