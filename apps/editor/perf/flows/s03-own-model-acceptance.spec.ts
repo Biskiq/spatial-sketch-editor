@@ -17,6 +17,12 @@
  * malformed, cancelled and project-replaced imports leave no resource and no
  * entity behind.
  *
+ * Only behaviour the product is expected to deliver is asserted here. The gaps
+ * this gate found — the canonical subject a placement leaves behind, Compose as
+ * reached from a placed model, and the empty-project leg — are measured by
+ * `s03-diagnostics.spec.ts`, which records them without asserting them, so a
+ * product fix cannot fail a gate test merely by improving the product.
+ *
  * Requires the supervisor (`perf/run-s03-own-model-qa.mjs`), which supplies
  * PERF_API_ORIGIN, E2E_TEST_AUTH_SECRET and PERF_BASE_URL. Without them the spec
  * skips with its reason.
@@ -235,10 +241,10 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		evidence.stagePlacedPixels = stagePlaced.pixels;
 		expect(stagePlaced.pixels, 'the placed model renders in the editor 3D reading').toBeGreaterThan(1_000);
 
-		// Record what the placement completion left selected. This is the
-		// owner-deferred selection gap, and the recorded failure of the Compose
-		// surface below follows from it: the acceptance report must not claim a
-		// manipulation path the shipped UI does not offer.
+		// Record what the placement completion left selected, without asserting it:
+		// the selection gap is an owner-deferred finding measured by the diagnostic
+		// spec, and this record must not claim a manipulation path the shipped UI
+		// does not offer.
 		evidence.selectionAfterPlacement = (await page.locator(CARD).first().innerText().catch(() => '(none)')).replace(/\s+/g, ' ');
 
 		// --- move and turn through Arrange's own entity chooser -------------
@@ -274,31 +280,14 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		expect(entities[0]!.position[2]).toBeCloseTo(-0.5, 3);
 		expect(entities[0]!.rotation[1]).toBeCloseTo(0.5, 3);
 
-		// --- the Compose surface is unreachable for a placed creator model ---
-		await invokeIndexTask(page, 'Resize');
-		evidence.compose = {
-			text: (await page.locator(INSTRUMENT).innerText()).replace(/\s+/g, ' ').slice(0, 240),
-			resizeDisabled: await page.getByRole('button', { name: 'Resize…' }).isDisabled(),
-			duplicateDisabled: await page.getByRole('button', { name: 'Duplicate', exact: true }).isDisabled(),
-			deleteDisabled: await page.getByRole('button', { name: 'Delete', exact: true }).isDisabled()
-		};
-		expect(evidence.compose).toMatchObject({
-			resizeDisabled: true,
-			duplicateDisabled: true,
-			deleteDisabled: true
-		});
-		// Whether any Index affordance names the placed entity: a subject region or
-		// row a creator could pick would be a reachable selection path, and the only
-		// place the model is named today is Arrange's own dropdown.
-		evidence.indexAfterPlacement = {
-			regions: await page.locator('.contributed-item h3').allInnerTexts(),
-			rows: (await page.locator('.contributed-item button.item-row').allInnerTexts()).map((text) =>
-				text.replace(/\s+/g, ' ').trim()
-			)
-		};
+		// Compose's reachability for a placed creator model is a diagnostic, not an
+		// acceptance row: it is measured and recorded by
+		// `s03-diagnostics.spec.ts`, which asserts nothing about the gap so a product
+		// fix does not have to break a gate test. The gate does not claim resize,
+		// duplicate or delete.
 
 		// --- a second instance shares the one immutable revision ------------
-		// Close the Compose task first; Import is its own procedure.
+		// Close the open task first; Import is its own procedure.
 		await page.getByRole('button', { name: /^Close / }).first().click().catch(() => undefined);
 		await openImport(page);
 		await expect(page.locator('section[aria-label="Approved models in this project"]')).toBeVisible();
@@ -415,54 +404,9 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await session.context.close();
 	});
 
-	test('an empty project imports and reviews the same model; placement needs a floor', async ({ browser }) => {
-		const session = await signedInSession(browser);
-		const { page } = session;
-		const api = projectApi(session.context.request);
-		const projectId = uniqueProjectId('s03empty');
-		const evidence: Record<string, unknown> = { projectId };
-
-		await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-		await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-		await page.getByRole('button', { name: 'Begin empty' }).click();
-		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 120_000 });
-		await saveProject(page);
-
-		await openImport(page);
-		const report = await readModel(page, await mappedModelGlb(), 'empty-project-model.glb');
-		evidence.report = report;
-		await page.getByRole('button', { name: 'Approve and place' }).click();
-		await expect(page.locator(INSTRUMENT)).toBeVisible({ timeout: 120_000 });
-		const point = await floorPoint(page);
-		const before = await acceptedResultCount(page);
-		await page.mouse.click(point.x, point.y);
-		// An empty project has no compiled Room floor; the placement may refuse with
-		// its reason. Record which happened rather than assuming either.
-		await page.waitForTimeout(2_000);
-		const accepted = (await acceptedResultCount(page)) > before;
-		evidence.placementAccepted = accepted;
-		evidence.feedback = (await page.locator(`${INSTRUMENT} p.feedback`).innerText().catch(() => '(none)')).replace(/\s+/g, ' ');
-		evidence.instrumentText = (await page.locator(INSTRUMENT).innerText().catch(() => '(none)')).replace(/\s+/g, ' ');
-		const emptyStage = await canvasShot(page, 'canvas', 's03-empty-project-stage.png');
-		evidence.stageColourPixels = emptyStage.pixels;
-		if (accepted) {
-			await saveProject(page);
-			const stored = await api.read(projectId);
-			expect(modelResources(stored.document)).toHaveLength(1);
-			expect(sceneEntities(stored.document)).toHaveLength(1);
-		} else {
-			await saveProject(page);
-			const stored = await api.read(projectId);
-			expect(modelResources(stored.document)).toHaveLength(0);
-			expect(sceneEntities(stored.document)).toHaveLength(0);
-			// The pointer claim is refused before a proposal, so the instrument shows no
-			// reason at all. That silence is recorded as a finding in the acceptance
-			// record rather than asserted here, so a future explanation does not fail
-			// this flow.
-		}
-		await writeFile(resolve(resultsDir, 's03-empty-project-evidence.json'), JSON.stringify(evidence, null, 2));
-		await session.context.close();
-	});
+	// The plan's "from an empty project" leg and the selection/Compose observations
+	// are diagnostics: `s03-diagnostics.spec.ts` records them without asserting a
+	// broken outcome, so this gate never counts them as passed rows.
 
 	test('oversize, malformed, cancelled and project-replaced imports install nothing', async ({ browser }) => {
 		const session = await signedInSession(browser);

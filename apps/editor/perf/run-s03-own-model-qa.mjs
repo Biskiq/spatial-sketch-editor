@@ -9,15 +9,25 @@
  * (`apps/api/tests/test-support.mjs`), so no R2 credentials or bucket are touched.
  *
  * Run it from apps/editor with `vite-node --script perf/run-s03-own-model-qa.mjs`
- * so workspace TypeScript package exports resolve as they do in the API lane:
+ * so workspace TypeScript package exports resolve as they do in the API lane.
+ * It serves the ordinary production build (`.svelte-kit/output`) through
+ * `vite preview` and never builds: run `npm run build` at the repository root
+ * immediately before a pass, so the measured bundle is the code under review.
  *
- *   DATABASE_URL   a task-private Postgres database (migrations run here)
+ *   DATABASE_URL      a task-private Postgres database (this supervisor runs the
+ *                     migrations); create an empty database for the pass and never
+ *                     point it at the development database or the Compose stack
  *   PERF_RESULTS_DIR  where the evidence JSON and screenshots are written
+ *   S03_QA_PROJECT    `chrome` for the branded browser the contract gates on
+ *                     (default `chromium` is Playwright's build, not that row)
+ *   S03_QA_SPEC       the spec to run (acceptance by default; diagnostics on demand)
  *
- * Ports are fixed so the production build's `PUBLIC_API_ORIGIN` matches the API
- * this supervisor starts; build with the same value before running.
+ * The API origin is not baked into the build: the SPA reads
+ * `$env/dynamic/public`, so `PUBLIC_API_ORIGIN` is set here at preview start and
+ * the ports below only have to be free.
  */
 import { randomBytes } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
@@ -39,6 +49,12 @@ const databaseUrl = process.env.DATABASE_URL;
 
 if (!resultsDir) throw new Error('PERF_RESULTS_DIR is required');
 if (!databaseUrl) throw new Error('DATABASE_URL must name the private acceptance database');
+if (!existsSync(resolve(scriptDir, '../.svelte-kit/output/client'))) {
+  throw new Error(
+    'No production build to serve: run `npm run build` at the repository root first ' +
+      '(the supervisor previews .svelte-kit/output and never builds).'
+  );
+}
 await mkdir(resultsDir, { recursive: true });
 
 const apiPort = Number(process.env.S03_API_PORT ?? 8791);

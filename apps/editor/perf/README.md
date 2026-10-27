@@ -16,14 +16,21 @@ npm run perf                 # from the repository root: production build + all 
 npm run perf:bundle          # delivery report over the current production build
 
 # T2.P02.S03 integrated acceptance: supervisor boots API + database + preview,
-# then runs perf/flows/s03-own-model-acceptance.spec.ts against them
+# then runs perf/flows/s03-own-model-acceptance.spec.ts against them.
+# The supervisor previews the ordinary production build and never builds, so
+# build first; `PUBLIC_API_ORIGIN` is runtime ($env/dynamic/public) and does not
+# need to be set here.
+createdb biskiq_s03_gate            # a dedicated empty database; never the dev/Compose DB
+npm run build                       # from the repository root, immediately before the pass
 cd apps/editor
-DATABASE_URL=<task-private database> PERF_RESULTS_DIR=<evidence dir> \
+DATABASE_URL=postgresql://localhost:5432/biskiq_s03_gate \
+  PERF_RESULTS_DIR=<evidence dir> S03_QA_PROJECT=chrome \
   npx vite-node --script perf/run-s03-own-model-qa.mjs
 
-# the selection probe (not a gate row): same supervisor, one spec
-DATABASE_URL=<task-private database> PERF_RESULTS_DIR=<evidence dir> \
-  S03_QA_SPEC=perf/flows/s03-selection-probe.spec.ts \
+# diagnostics (never gate rows): same supervisor, diagnostic spec
+DATABASE_URL=postgresql://localhost:5432/biskiq_s03_gate \
+  PERF_RESULTS_DIR=<evidence dir> S03_QA_PROJECT=chrome \
+  S03_QA_SPEC=perf/flows/s03-diagnostics.spec.ts \
   npx vite-node --script perf/run-s03-own-model-qa.mjs
 
 # one flow / one browser, reusing an existing preview server
@@ -58,8 +65,8 @@ series, never a user profile.
 | `flows/stage-trace.spec.ts` | Per-stage traces (S06 C) | one traced window per flow and tier (F2, F3, F4, F8, F7): main-thread busy/idle, GC, script, style/layout, paint and GPU-process time beside the window's stage spans; attribution, never a timing row |
 | `flows/e5-sweep.spec.ts` | E5 browser counts (S06 C) | museum ×1 and the H/D/C sweeps: render counters at rest, the fixed edit's work, and framebuffer equality at the fixed View before and after the edit (H must match ×1; D and C are recorded); count, not timing |
 | `flows/calibration.spec.ts` | CPU calibration | grid-7 compile + Stage admission, 20 runs, CDP throttling search when a reference median is supplied |
-| `flows/s03-own-model-acceptance.spec.ts` | T2.P02.S03 integrated acceptance (on demand) | starter → Library Import with maps → review → approve → place → Arrange move/turn → second instance → Save → fresh-session reopen → Head Preview pixels; the same import from an empty project; and oversize/malformed/cancelled/project-replaced refusals that install nothing. Needs `run-s03-own-model-qa.mjs` (in-process API, private database, memory object store) and is never part of a measurement row |
-| `flows/s03-selection-probe.spec.ts` | T2.P02.S03 selection scoping probe (on demand) | typed `Place` selects its new entity and Compose resizes it (asserted); a floor click leaves the room selected (recorded). Not a gate row: it exists so the acceptance record's blocker has a reproducible comparison |
+| `flows/s03-own-model-acceptance.spec.ts` | T2.P02.S03 integrated acceptance (on demand) | starter → Library Import with maps → review → approve → place → Arrange move/turn → second instance → Save → fresh-session reopen → Head Preview pixels, plus oversize/malformed/cancelled/project-replaced refusals that install nothing. Asserts only behaviour the product is expected to deliver. Needs `run-s03-own-model-qa.mjs` (in-process API, private database, memory object store) and is never part of a measurement row |
+| `flows/s03-diagnostics.spec.ts` | T2.P02.S03 diagnostics (on demand, never gate rows) | the subject a pointer placement leaves selected, the Index as placed, Compose as reached from it; the typed-vs-pointer placement comparison on one primitive (typed leg asserted as the positive control); the empty-project import and whether a placement commits. Records the known gaps without asserting them, so a product fix changes the values and keeps the spec green |
 
 **Attributed work is not a constant across rows.** A unit whose domain data is deeply frozen
 (F4-accepted) answers a repeated digest from the frozen-object revision memo, so its
