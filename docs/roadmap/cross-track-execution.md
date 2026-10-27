@@ -86,7 +86,7 @@ flowchart TD
   B["Post-Batch-E lanes shipped (696af6ea)"]
   B --> P["T1.P02.S06 performance foundation — shipped, merged 6af62eb4"]
   P -->  D["T1.P02.S02 drawing — shipped PR #201 (owner-override)"]
-  D --> O["T1.P02.S03 Opening — held"]
+  D --> O["T1.P02.S03 Opening — released 2026-10-27; plan completion and review first"]
   O --> F["T1.P02.S04 final gate — held"]
   P -->  IF["T2.P02.S03 integrated final gate — accepted 2026-10-27; T2.P02 closed"]
   B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
@@ -127,6 +127,13 @@ the rows. Both have since shipped: S02 as `owner-override` on PR #201 and S03 ac
 ruling 2026-10-27, closing `T2.P02`
 ([decision](../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)). S03's
 formal performance rows are deferred to the named T2 follow-ups; no row is a pass.
+
+**Next T1 slice released — 2026-10-27.** With `T1.P02.S02` shipped and the `T2.P02.S03` acceptance
+and closeout prepared, the owner released `T1.P02.S03` (Opening family)
+([record](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md)). The registered plan is an
+outline: the complete plan and its plan review are recorded before implementation starts. It starts
+after the batch PR #199 merges, on its own trusted base, rechecking every consumed gate and active
+scope; `T1.P02.S04` stays held for its own release.
 
 T1's execution order is owned by the [T1.P02 register](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register);
 the roadmap's [where-things-stand index](./README.md#current-coordination-and-proposal-provenance)

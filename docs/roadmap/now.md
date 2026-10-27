@@ -6,13 +6,15 @@ A scope absent from this table is held. A row states the condition under which t
 
 | Scope | Condition | Plan |
 | --- | --- | --- |
-| `T1.P02.S02` | released; starts after the [next-wave authorization](../reference/decisions/next-wave-authorization-2026-10-27.md) coordination PR (#198) merges on `main`; plan review complete with the T3 Head/F4 shell-allocation review and the T2/T3 contribution-compatibility review ([review](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/plan-review.md)); recheck consumed gates and active scopes at its own trusted base; the standing T3 implementation review of the shared Head/F4 diff stays before merge | [Draw, close, divide and delete](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/implementation-plan.md) |
+| `T1.P02.S03` | released; starts after the [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md) batch PR (#199) merges on `main`; the registered plan is an outline, so the complete implementation plan and its plan review are recorded before implementation starts; recheck consumed gates and active scopes at its own trusted base | [Opening family](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/implementation-plan.md) |
 | `T2.P02.S03` | released; starts after PR #198 merges on `main`; `T2.P02.S01` and `S02` accepted; plan review complete ([review](./t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/plan-review.md)); recheck consumed gates and active scopes at its own trusted base | [Integrated final gate](./t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/implementation-plan.md) |
 
-Provenance: the [next-wave owner release](../reference/decisions/next-wave-authorization-2026-10-27.md)
-authorizes these two scopes, records the completed plan reviews, and prunes two **verified shipped**
-rows — `T1.P02.S06` (accepted 2026-10-27, PR #190 `6af62eb4`) and `T3.P04.S01` (accepted 2026-10-25,
-PR #191 `aa1db37a`, phase closed). The
+Provenance: the
+[T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md) releases
+the Opening family and prunes one **verified shipped** row — `T1.P02.S02` (accepted `owner-override`
+and shipped 2026-10-27 on PR #201, merge commit `ce159a1e`, anchor `36c18db9` and tag
+`closed/T1.P02.S02` verified reachable). `T2.P02.S03`'s row stays until its own PR #199 merge is
+verified. The [next-wave owner release](../reference/decisions/next-wave-authorization-2026-10-27.md),
 [performance foundation](../reference/decisions/performance-foundation-authorization-2026-10-24.md)
 and [post-Batch-E](../reference/decisions/post-batch-e-authorization-2026-10-23.md) records keep the
 earlier permission history, and each pruned row's own acceptance record keeps its evidence.
