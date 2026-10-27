@@ -1,0 +1,102 @@
+{
+  "version": "e0-playground/1",
+  "entrance": "south",
+  "notes": "Example (engineering walkthrough, not an owner verdict). Open, bending display; main piece stands proud of the edge facing Entrance A. Quality to preserve: the long bend behind the main piece.",
+  "guide": {
+    "id": "guide-1",
+    "name": "Display guide",
+    "points": [
+      {
+        "id": "gp-1",
+        "x": -2.2,
+        "z": 1.4
+      },
+      {
+        "id": "gp-2",
+        "x": -0.4,
+        "z": 2
+      },
+      {
+        "id": "gp-3",
+        "x": 1.5,
+        "z": 1
+      },
+      {
+        "id": "gp-4",
+        "x": 2.1,
+        "z": -0.6
+      }
+    ]
+  },
+  "band": {
+    "id": "band-1",
+    "guideId": "guide-1",
+    "width": 0.2,
+    "height": 0.3
+  },
+  "arrangement": {
+    "id": "arrangement-1",
+    "guideId": "guide-1",
+    "startMargin": 0.3,
+    "endMargin": 0.3,
+    "sideOffset": 0.5,
+    "members": [
+      {
+        "pieceId": "piece-b",
+        "slot": 0,
+        "following": true
+      },
+      {
+        "pieceId": "piece-main",
+        "slot": 1,
+        "following": false
+      },
+      {
+        "pieceId": "piece-c",
+        "slot": 2,
+        "following": true
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "piece-main",
+      "name": "Main piece",
+      "main": true,
+      "width": 0.45,
+      "depth": 0.45,
+      "height": 1,
+      "pose": {
+        "x": 0.25,
+        "z": 1.22,
+        "yaw": 0.4886921905584123
+      }
+    },
+    {
+      "id": "piece-b",
+      "name": "Support B",
+      "main": false,
+      "width": 0.45,
+      "depth": 0.45,
+      "height": 0.6,
+      "pose": {
+        "x": 0,
+        "z": 0,
+        "yaw": 0
+      }
+    },
+    {
+      "id": "piece-c",
+      "name": "Support C",
+      "main": false,
+      "width": 0.45,
+      "depth": 0.45,
+      "height": 0.4,
+      "pose": {
+        "x": 1,
+        "z": 0,
+        "yaw": 0
+      }
+    }
+  ]
+}
