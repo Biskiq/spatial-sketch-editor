@@ -2,7 +2,8 @@
 
 ```text
 AUTHORITY: NONE — the phase README owns slice status; this stub records scope and recovery.
-STATUS:    ACCEPTED 2026-10-27 (AC-qualified) and SHIPPED on PR #190 (merge commit in Git).
+STATUS:    ACCEPTED 2026-10-27 (AC-qualified) and SHIPPED on PR #190; the P1 merge commit is still
+           owed, and the recovery anchor is reachable only through it.
 SOURCE:    PR #190; product candidate d89554b1, milestone pass harness 25d61deb.
 CONSUMES:  F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
 REQUIRES:  F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1,
