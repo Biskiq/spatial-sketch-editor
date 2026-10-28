@@ -1,132 +1,50 @@
-# T1.P02.S03 — acceptance record: Opening family
+# T1.P02.S03 — Opening family acceptance — CLOSED STUB
+
+**AUTHORITY: NONE.** The phase README owns status. Accepted 2026-10-28 as `owner-override`
+for the current-head browser rerun; PR #209 uses a P1 merge. The owner accepted the known
+Stage bundle miss. T1.P02 remains active and S04 is its final gate.
+
+Ink places straight doors and windows on eligible straight Walls through the canonical F4 planner;
+typed offsets use the selected Wall or selected Opening's host. One accepted placement or deletion
+is one undo step. Ink re-arm respects newer task choices, including during acceptance.
+
+Evidence at implementation revision `b0d4e252`: full suite 216 files / 2,680 tests; architecture
+22 / 180; editor check 0 errors and warnings; all four package checks and production build passed.
+Independent focused verification passed 92/92 and the owner confirmed review complete with no
+unresolved blockers. Browser evidence is at `985cd214`, not the reviewed head: S03 15/15 and S02
+preservation 28/28. The owner approved proceeding without a current-head rerun. Stage first-load JS
+was 426.7 KiB br against 425 KiB; the owner accepted this exception. Formal F4/F8 Opening create and
+delete S/M measurements remain unrun and assigned to S04; none is a pass.
+
+[Browser evidence](./evidence/2026-10-27/985cd214/t1-s03-opening-evidence.json) ·
+[S02 preservation](./evidence/2026-10-27/985cd214/preservation/t1-s02-browser-evidence.json) ·
+[Archived screenshot copies](../../../../archive/roadmap/t1-spatial-world/t1.p02.s03-opening-family/evidence/2026-10-27/985cd214/CLOSED.md)
 
 ```text
-AUTHORITY: NONE — the phase README owns slice status; this record reports implementation evidence.
-STATUS:    OWNER ACCEPTED 2026-10-28 — owner-override for browser rerun at the reviewed head.
-SOURCE:    PR #209 implementation b0d4e252, based on main 98449a44.
-TIER:      architecture-integration; integrated exhaustive proof remains T1.P02.S04.
-INTEGRATION ROUTE: ../t1.p02.s04-integrated-final-gate/acceptance.md
-PHASE:     T1.P02 remains active; S04 is its declared final gate.
-NOT:       a phase closure, a track completion or a performance pass.
-```
-
-## Owner acceptance and current-head review — 2026-10-28
-
-The owner approved closeout at implementation revision `b0d4e252` after the independent review
-reported all blockers resolved, including typed host consistency and both deferred Ink re-arm
-orderings. The independent focused verification passed 92/92 tests. The implementation record at
-this revision reports `test:full` 216 files / 2,680 tests, `test:arch` 22 files / 180 tests,
-editor check 0 errors / 0 warnings, the four package checks and production build passing.
-The independent architecture run previously stalled without a summary; the implementation's
-completed architecture run is the recorded gate.
-
-The owner explicitly approved proceeding after being told that browser evidence was not rerun at
-`b0d4e252`: this is an **owner-override of the current-head browser rerun prerequisite only**.
-The 15/15 S03 and 28/28 S02 browser rows below remain evidence at `985cd214`, not at the reviewed
-head. Formal F4/F8 Opening S/M measurements remain unrun and assigned to S04; no performance pass
-is claimed. The owner also accepts the Stage bundle exception, measured 426.7 KiB br at the fix.
-
-## Delivered
-
-Ink gains a second reading, **Opening**, without a new dock key. A creator places a straight door or
-window on a projected Wall face in Plan or 3D, sees the host-relative ghost and live offset/fit
-facts before release, and commits one `layout-opening-create` F4 intent. The canonical planner owns
-fit, overlap, height and identity; an out-of-fit candidate refuses in words with a repair and writes
-zero partial source. A typed offset can place on the selected Wall (or the host of a selected
-Opening) for the keyboard path.
-
-The selected Opening's Card contributes one destructive `layout-opening-delete` action, one undo
-step, with the deleted identity retained in correspondence. Deleting its host Wall still retires
-the Opening in the Wall's own undo step. After an accepted placement the shell re-arms Ink on the
-Opening reading; Escape, task close, replacement or install leaves no hidden proposal.
-
-## Evidence
-
-- **Independent implementation review — three rounds, no unresolved finding.** Codex CLI `0.160.0`
-  with its configured defaults: model `gpt-6.1-sol`, reasoning effort `high`, service tier
-  `default`; `codex exec review --base main --ephemeral`. No per-invocation model or effort override
-  was passed. Round 1 reproduced five defects: palette remount did not read remembered options,
-  invalid fields still allowed pointer placement with stale values, pointer offsets were clamped,
-  Window did not apply its canonical defaults, and no preview existed before the press. Round 2
-  reproduced three: 3D wall faces were hit-tested only at datum height, the remounted palette could
-  leave adapter validity false, and unpressed moves never reached the adapter. Round 3 reproduced
-  three: Stage-local coordinates were used as viewport ray coordinates, 3D face ties bypassed
-  selected-host preference, and a deferred rearm could resurrect Ink after an explicit close. All
-  eleven were repaired; the focused suite, browser journey and full gate were rerun after the final
-  round.
-- **Automated gate at `985cd214`** — `check` 0 errors / 0 warnings; `test:arch` 22 files / 180 tests;
-  `test:full` 216 files / 2,674 tests; `build` succeeded; `check:camera-core`,
-  `check:layout-core`, `check:project-model` clean. The slice does not touch `apps/api`, so the
-  DB-backed API suite was not run.
-- **Browser journey at `985cd214`** — three tests and **15/15 rows** in branded Chrome:
-  [evidence](./evidence/2026-10-27/985cd214/t1-s03-opening-evidence.json). Rows cover the starter
-  host and hover, placement, overflow refusal and typed repair, invalid-measure blocking,
-  close/reopen validity, Card removal, Undo/Redo identity, Window defaults, palette remount, Save
-  and a fresh-session reload, placement on a raised 3D face, and an empty-project Wall followed by a
-  keyboard-metric window. Every row names revision `985cd214`, viewport `1440x900` and
-  reduced-motion state. Screenshots sit beside the JSON:
-  [placed](./evidence/2026-10-27/985cd214/t1-s03-starter-placed.png),
-  [reloaded](./evidence/2026-10-27/985cd214/t1-s03-starter-reloaded.png),
-  [3D face](./evidence/2026-10-27/985cd214/t1-s03-3d-face.png) and
-  [empty window](./evidence/2026-10-27/985cd214/t1-s03-empty-window.png).
-- **S02 preservation at `985cd214`** — the shipped draw/close/divide/delete journey passed four
-  tests and **28/28 rows** in branded Chrome:
-  [preservation evidence](./evidence/2026-10-27/985cd214/preservation/t1-s02-browser-evidence.json).
-  Its rows retain the S02 revision field `985cd214` and the same viewport/reduced-motion reporting;
-  the S02 screenshots were not duplicated into this slice's bundle.
-- **PR #199 preservation tags** — `closed/T2.P02.S03` and `closed/T2.P02` both dereference to
-  `221facc4`, are present on `origin`, and the dereferenced commit is reachable from `main`
-  (`98449a44`). No tag was moved or rewritten.
-- **Deferred performance family — not evidence.** F4 accept-to-presented and F8 Undo/Redo
-  completion for Opening create and delete at S and M were **not** measured on the designated M2
-  under the formal peak-first method. No row is recorded as a pass; the family is owed to S04.
-
-## Delivery budget — owner-accepted exception
-
-The Stage route first-load JS measured **426.6 KiB br** (1,778.0 KiB raw; 506.6 KiB gzip) against
-the owner-amended **≤425 KiB br hard row**: **1.6 KiB over**. The trusted base is `422.3 KiB br`, so
-this slice adds 4.3 KiB br — inside the ≤25 KiB per-slice growth comparison, but the absolute hard
-row is missed. The owner accepts this approximately 1.6 KiB overage for PR #209; this is an
-exception for this slice, not a change to the budget or a claim that the hard row is met. The
-first review-fix working tree remeasured 426.5 KiB br; the pending-accept race fix measured
-426.7 KiB br after a production build on 2026-10-27.
-
-## Residuals and ownership
-
-- **Bundle hard miss → owner-accepted exception.** 426.6 KiB br is recorded above. The per-slice
-  growth comparison does not substitute for the hard row; the owner accepts this slice’s overage.
-- **Formal Opening performance family → S04.** F4/F8 S and M rows remain unrun and must never be
-  reported as passes.
-- **S04 remains held.** It needs its own release and carries S01, S02 and S06 deferred rows plus the
-  recorded Stage budget history; this slice cannot close the phase.
-- **Merge and closeout are not done.** No acceptance, preservation tag or closeout report exists
-  until the owner reviews the PR and the P1 merge preserves this record.
-
-## Entry points
-
-```text
-implementation  apps/editor/src/lib/authoring/adapters/layout/opening-planners.ts
-                apps/editor/src/lib/authoring/adapters/layout.adapter.ts
+implementation  apps/editor/src/lib/authoring/adapters/layout.adapter.ts
+                apps/editor/src/lib/authoring/adapters/layout/opening-planners.ts
                 apps/editor/src/lib/authoring/adapters/layout/ink.ts
                 apps/editor/src/lib/authoring/adapters/layout/LayoutOpeningPalette.svelte
-                apps/editor/src/lib/authoring/adapters/layout/LayoutInkPalette.svelte
-                apps/editor/src/lib/authoring/stage/stage-facade.ts
-                apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
+                apps/editor/src/lib/authoring/stage/stage-session.ts
 validation      apps/editor/perf/flows/t1-s03-opening-acceptance.spec.ts
 regressions     apps/editor/tests/lib/authoring/layout-opening-adapter.test.ts
                 apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts
 ```
 
-## Recovery
+## Closeout preservation — 2026-10-28
 
 ```text
-branch   t1/p02-s03-opening-family
-review   PR #209
-head     985cd214 (implementation evidence revision)
-base     98449a44 (origin/main; PR #199 merge a674eedb is an ancestor)
-bundle   426.6 KiB br Stage first-load JS — owner-accepted exception above
-merge    not performed
+prose compacted:              3 stubs at original paths
+reference promotions:         1 current shell outcome
+renderable evidence archived: 4 files / 595723 bytes, byte-identical copies
+manifests:                    1
+transient artifacts removed:  0
+historical anchor:            cbdb4785612229c34dd02595882982beaad86bcb · tag closed/T1.P02.S03 (local only)
+new live → archive prose:     0
+manual-owed verification:     F4/F8 Opening create/delete at S/M → S04
+remaining deferred items:     2 (formal performance family, Stage bundle miss)
+permanent stubs added:        3
 ```
 
-The branch is pushed for review as PR #209; no merge commit, acceptance tag or closeout
-preservation report exists yet. A future P1 merge must preserve this record rather than squash it.
+Recovery: `git show cbdb4785612229c34dd02595882982beaad86bcb:docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/acceptance.md`
+The anchor is preserved by the P1 merge commit; the tag is local only.
