@@ -70,10 +70,17 @@ BUNDLE:     Stage route first-load JS is 456.0 KiB br against the ≤400 KiB har
 STATE:      The phase register reads `shipped` with this authorization as `owner-override`.
 ```
 
+**Policy amendment — 2026-10-28.** The owner suspended the mandatory performance-benchmarking
+strategy indefinitely ([decision](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)).
+The formal S02 family above remains **unmeasured**, not a pass, and is no longer owed to S04 or any
+other gate. No benchmark is authorized. The browser, automated, review and bundle evidence above
+is unchanged; the Stage 456.0 KiB br miss remains recorded history.
+
 ## Residuals and ownership
 
-- **S02 performance family → S04.** The formal owner-run pass remains owed on the designated M2
-  under `docs/reference/components/performance.md`; the S06 milestone amendment does not apply.
+- **S02 performance family — unmeasured historical.** No formal pass is owed on the designated M2
+  under `docs/reference/components/performance.md`; the 2026-10-28 suspension removed the S04
+  assignment. Every listed row remains unmeasured, never a pass.
 - **Stage bundle hard miss → S04/owning delivery work.** 456.0 KiB br is recorded above; it is not
   repaired by this closeout.
 - **Narrow-shell observation → T1 maintenance.** `lowerColumnHeight` may hold the pre-unmount height
@@ -126,8 +133,9 @@ evidence stubs / manifests:      1   archive manifest at the copied bundle
 transient artifacts removed:     1   closeout-blockers.md (superseded by this record)
 historical anchor:               36c18db9 · tag closed/T1.P02.S02 (pushed) · merge ce159a1e
 new live → archive prose links:  0
-manual-owed verification rows:   1   S02 formal performance family (deferred above to S04)
-remaining deferred items:        4   performance family, bundle hard miss, narrow-shell stale height,
-                                     S03/S04 releases and final gate
+manual-owed verification rows:   0   S02 formal performance family is unmeasured historical evidence;
+                                     the 2026-10-28 suspension removed the S04 assignment
+remaining deferred items:        3   bundle hard miss, narrow-shell stale height, S03/S04 releases and
+                                     final gate (performance no longer owed)
 permanent stubs added:           3   (the owner-ratified cost: one per closed prose artifact)
 ```

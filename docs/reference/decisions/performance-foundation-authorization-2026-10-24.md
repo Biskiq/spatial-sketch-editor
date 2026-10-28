@@ -109,9 +109,12 @@ machine while S06 is measuring. The slice plan's machine lock enforces this.
   evidence for it.
 - **From T3.P03.S02 to S06.** The unbuilt L and XL fixtures, plus the M/L drag rows that were
   recorded as not run.
-- **Unchanged.** S01's F2 S/M timings stay assigned to T1.P02.S04, which cites S06's measurements
-  and rechecks them on the integrated tree. T2.P02.S02's owner-run rows stay with T2.P02.S03. S06
-  supplies their method and a baseline, not their acceptance.
+- **Unchanged at the time; superseded 2026-10-28.** S01's F2 S/M timings were assigned to
+  T1.P02.S04, which cites S06's measurements and rechecks them on the integrated tree; T2.P02.S02's
+  owner-run rows were assigned to T2.P02.S03. The [performance-mandate
+  suspension](./performance-mandate-suspension-2026-10-28.md) ends both assignments: every unmeasured
+  row is historical evidence, not an acceptance prerequisite, and no benchmark is authorized. S06
+  supplies method and baseline, not acceptance.
 
 ## Full permissive licensing
 

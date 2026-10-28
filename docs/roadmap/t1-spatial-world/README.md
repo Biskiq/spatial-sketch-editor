@@ -2,7 +2,7 @@
 
 **Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; `T1.P02` (native Wall
 creation) registered 2026-10-22 as batch E; S01 shipped by scoped owner-override,
-S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted AC-qualified 2026-10-27 and merged as `6af62eb4` (PR #190; battery qualification deferred to S04); S02 drawing was released 2026-10-27 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)), accepted as `owner-override` and shipped on PR #201 with its formal performance family deferred to S04; S03 Opening is released 2026-10-27 ([record](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md)) with its complete plan and review owed, and S04 stays held pending its own release; `T1.P01.S01` shipped (shared F1/F3
+S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted AC-qualified 2026-10-27 and merged as `6af62eb4` (PR #190); S02 drawing was released 2026-10-27 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)), accepted as `owner-override` and shipped on PR #201; S03 Opening was released 2026-10-27 ([record](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md)) and shipped on PR #209; under the [2026-10-28 performance-mandate suspension](../../reference/decisions/performance-mandate-suspension-2026-10-28.md), their unmeasured performance rows are historical evidence, not passes or S04 prerequisites; S04 integrated final gate was released 2026-10-28 ([record](../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)) and accepted/shipped by the owner at `46a31c81`; T1.P02 is closable, with the phase-close decision pending; `T1.P01.S01` shipped (shared F1/F3
 providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
 shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
 not complete ([track register](../README.md#track-register)) · **Runbook:**
@@ -75,10 +75,13 @@ accepted AC-qualified on 2026-10-27 and merged as `6af62eb4` (PR #190), which sa
 blocks no inheritor. S02 was released on 2026-10-27
 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)) after its plan review,
 including the T3 Head/F4 and T2/T3 contribution reviews, then accepted as `owner-override` and
-shipped on PR #201 with its formal performance family deferred to S04; S03 was released on
-2026-10-27 ([record](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md)) after that
-acceptance, with its complete plan and review owed before implementation, and S04 stays `proposed`
-and held pending its own release.
+shipped on PR #201; its formal performance family is unmeasured historical evidence, not an S04
+prerequisite after the [2026-10-28 suspension](../../reference/decisions/performance-mandate-suspension-2026-10-28.md).
+S03 was released on 2026-10-27 ([record](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md))
+after that acceptance and shipped on PR #209. S04 was released on 2026-10-28
+([record](../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)) as the phase's
+integrated final gate and accepted/shipped by the owner at `46a31c81`; T1.P02 is closable without
+being closed.
 
 After that first wave, T1 supplies C3's rename/delete shell integration, the face-frame query for
 T2's solve-once wall placement, and Stage part-selection/admission UI consuming T2's component

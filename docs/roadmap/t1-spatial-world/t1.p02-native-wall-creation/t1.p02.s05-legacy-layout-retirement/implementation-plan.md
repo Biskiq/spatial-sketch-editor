@@ -54,7 +54,8 @@ regressions     apps/editor/tests/lib/layout/layout-geometry.test.ts
 
 ```text
 - T1 track README deferred-retirement rows: Room-level wall mesh path; Camera room-ownership branches
-- S01 F2 S/M open timings: assigned to T1.P02.S04 on the designated MacBook Air M2
+- S01 F2 S/M open timings: unmeasured historical rows; not assigned to S04 under the
+  [2026-10-28 suspension](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)
 - Curve-authoring allocator tripwire: occupancy-derived curve-knot/interior-anchor allocators stay
   outside accepted intents until the first curve-authoring slice
 ```

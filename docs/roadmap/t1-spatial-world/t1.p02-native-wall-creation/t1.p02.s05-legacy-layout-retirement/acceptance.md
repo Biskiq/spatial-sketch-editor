@@ -137,7 +137,8 @@ isWorldPointInsideRoomXZ        editor-camera-path.ts keeps the function as cons
 ## Verification still owed
 
 ```text
-T1.P02.S04   integrated exhaustive proof, and S01's still-unrun F2 S/M open timings on the designated M2
+T1.P02.S04   integrated exhaustive correctness/functional proof; no performance benchmark is owed
+             (2026-10-28 suspension). S01's F2 S/M open timings stay unmeasured historical evidence.
 S02          owner authorization, plan review, the T3 review of the shared Head/F4 shell allocation,
              T2/T3 contribution-compatibility review, and its own acceptance and merge
 ```
@@ -187,6 +188,7 @@ historical anchor:               588cc70f (acceptance) · 6d87e25b (plan) · tag
 new live → archive prose links:  0
 manual-owed verification rows:   0 (none recorded as manual)
 remaining deferred items:        2   T1 track README deferred-retirement rows (Room-level mesh path,
-                                     Camera room-ownership branches); S01 F2 S/M timings → S04
+                                     Camera room-ownership branches); S01 F2 S/M timings are
+                                     unmeasured historical rows and no longer route to S04
 permanent stubs added:           2   (the owner-ratified cost: one per closed prose artifact)
 ```

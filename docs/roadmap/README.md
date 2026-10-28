@@ -198,14 +198,14 @@ PR #115 replaced that sequence with the tracks above.
 
 ## Current coordination and proposal provenance
 
-**Where things stand (2026-10-27).** A routing index, not a status authority: each phase
+**Where things stand (2026-10-28).** A routing index, not a status authority: each phase
 README's slice register owns child status, [now.md](./now.md) owns launch conditions, and the
 [current coordination](./cross-track-execution.md#next-parallel-batch) owns the DAG, shared-file
 writers and merge order. Update this index only in the coordination change that moves a row.
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S02, S05, S06 | T1.P02.S03 Opening (released 2026-10-27; complete plan and plan review before implementation; starts after the batch PR #199 merges) | S04 final gate | S02 accepted `owner-override` on PR #201, with its formal performance family and the Stage bundle known miss carried to S04; S04 on S01/S02/S03/S05/S06 and the deferred performance evidence |
+| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S02, S03, S04, S05, S06 | — | Phase-close decision after S04 (owner-invoked) | S04 accepted by owner 2026-10-28 at `46a31c81` and shipped on PR #210; P1 merge required. S02 accepted `owner-override` on PR #201 and S03 shipped on PR #209. The [2026-10-28 suspension](../reference/decisions/performance-mandate-suspension-2026-10-28.md) removes the deferred performance family from acceptance; unmeasured rows stay unmeasured, and the recorded Stage miss is historical |
 | T2 | T2.P01 (closed 2026-10-20); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) (closed 2026-10-27; S01–S03 shipped) | — | Next T2 phase planning/authorization (component identity/resolution/admission and revision correspondence) | No active T2 phase; the closed phase's formal performance rows are deferred to named T2 follow-ups, not passed |
 | T3 | [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
@@ -217,7 +217,8 @@ T5's G0 approval is the [expressive geometry decision](../reference/decisions/t5
 its bounded direction promotion is the [G0 ratification](../reference/decisions/t5-g0-ratification-2026-10-27.md);
 its E0 withdrawal and first-phase planning is the [T5 planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md);
 the next-wave release is the [next-wave authorization](../reference/decisions/next-wave-authorization-2026-10-27.md);
-the T1 continuation is the [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md).
+the T1 continuation is the [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md);
+the T1 final-gate release is the [T1.P02.S04 authorization](../reference/decisions/t1-p02-s04-authorization-2026-10-28.md).
 Everything omitted from [now.md](./now.md) stays under the production hold. No gate, track or
 phase lifecycle changes here.
 

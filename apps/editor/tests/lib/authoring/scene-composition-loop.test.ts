@@ -33,7 +33,8 @@ import {
 	type SceneWritePort
 } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
-import { mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
+import { formCardController } from '$lib/authoring/adapters/scene/form-card';
+import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
@@ -471,17 +472,23 @@ describe('Scene composition journey — one host, one history stack', () => {
 		expect(sceneComposeSupport(planeEntity()).resize).toBe(false);
 	});
 
-	it('shows a native form’s evaluated metre bounds as read-only Card facts', async () => {
-		const { facade } = await mounted([formEntity()]);
-		const facts = facade.cardFacts({ sourceId: FORM_ID, sourceKind: 'entity', ref: null });
+	it('keeps a native form’s evaluated metre bounds in its Card writer', async () => {
+		const { facade, host } = await mounted([formEntity()]);
+		const reference = sceneEntityReference(FORM_ID, facade.snapshot().domain.unitRevisions.scene);
+		const subject = { sourceId: FORM_ID, sourceKind: 'entity' as const, reference, ref: null };
+		const facts = facade.cardFacts(subject);
 		const labels = facts.map((fact) => fact.label);
-		expect(labels).toEqual(expect.arrayContaining(['Material', 'Width', 'Depth', 'Height']));
+		expect(labels).toContain('Material');
 		// No uniform scale is offered for a form, so no Scale fact may be shown.
 		expect(labels).not.toContain('Scale');
-		const valueOf = (label: string) => facts.find((fact) => fact.label === label)?.value;
-		expect(valueOf('Width')).toBe('1 m');
-		expect(valueOf('Depth')).toBe('1 m');
-		expect(valueOf('Height')).toBe('0.6 m');
+		// The lazy Card's Size fields own the writable metre values; the facts stay
+		// read-only identity, not a second dimension writer.
+		expect(facade.cardWriter(subject)?.summary).toBe('Form fields');
+		const dimensions = formCardController(createStageAdapterServices(facade, host), FORM_ID)?.dimensions;
+		expect(dimensions).toHaveLength(3);
+		expect(dimensions![0]).toBeCloseTo(1, 9);
+		expect(dimensions![1]).toBeCloseTo(0.6, 9);
+		expect(dimensions![2]).toBeCloseTo(1, 9);
 	});
 
 	it('resizes, undoes, redoes, duplicates and deletes through the accepted host', async () => {

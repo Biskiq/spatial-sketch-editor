@@ -31,11 +31,18 @@ INTEGRATED: The rebased S01 implementation is 401b612f562e3a57d305ae3f831b24beba
 WAIVED:     The independent-review verdict prerequisite for this S01 source revision.
             The S01 F2 open-timing acceptance prerequisites at S and M on the designated M2.
 NOT WAIVED: The plan's recorded architecture-integration evidence and all other acceptance
-            criteria, or T1.P02.S04's integrated final gate. No S/M measurements were run. Those
-            timings remain assigned to S04's performance recheck under the earlier owner ruling.
+            criteria, or T1.P02.S04's integrated final gate. No S/M measurements were run. Under the
+            2026-10-28 policy amendment below they remain unmeasured historical rows and are not
+            owed to S04 or any other acceptance gate.
 STATE:      The phase slice register reads `shipped` with this authorization as `owner-override`;
             the T1 baton routes the separately authorized successor work.
 ```
+
+**Policy amendment — 2026-10-28.** The owner suspended the mandatory performance-benchmarking
+strategy indefinitely ([decision](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)).
+The S01 F2 S/M open timings remain **unmeasured** historical rows, not passes, and are no longer
+assigned to S04 or any other acceptance gate. No benchmark is authorized. Correctness evidence and
+the recorded Stage bundle miss are unchanged.
 
 The §3 legacy Layout type/codec/room-frame/compiler-adapter retirement remains a real residual, not a waiver: the T1.P02 phase owner must separately scope, register and authorize its successor slice, which must land before S02. The five-blocker rationale and successor scope are in the recovered acceptance body and the T1 planning-evidence retirement row. S02 then requires its own owner authorization and a complete plan drafted from its current outline before implementation. S01 creates no capability outcome and does not close its phase.
 
@@ -51,7 +58,7 @@ regressions     apps/editor/tests/lib/layout/layout-identity-capture.test.ts
                 apps/editor/tests/lib/layout/t1s01-format6-differential.test.ts
                 apps/api/tests/save.test.mjs
 residuals       T1.P02 phase owner: separately scope/register/authorize the §3 retirement before S02
-                T1.P02.S04: record the still-unrun F2 open timings at S and M on the designated M2
+                F2 S/M open timings: unmeasured historical rows; no benchmark is authorized or owed
 ```
 
 ## Recovery
@@ -74,8 +81,10 @@ historical anchors:              401b612f562e3a57d305ae3f831b24beba2dc6ae (plan)
                                  302f966d48faf1f63d2b089cec31bca43582f178 (acceptance);
                                  closed/T1.P02.S01 → acceptance anchor (pushed)
 new live → archive prose links:  0
-manual-owed verification rows:   1   F2 S/M measurements remain unrun and assigned to S04
-remaining deferred items:        2   §3 retirement before S02; F2 S/M measurements at S04
+manual-owed verification rows:   0   F2 S/M measurements remain unmeasured historical evidence;
+                                     the 2026-10-28 suspension removed the S04 assignment
+remaining deferred items:        1   §3 retirement before S02; F2 S/M measurements are historical,
+                                     unmeasured and no longer an acceptance prerequisite
 permanent stubs added:           2   plan and acceptance, per the owner-ratified preservation policy
 required merge method:           P1 merge commit; merge owner verifies both anchor paths after merge
 ```

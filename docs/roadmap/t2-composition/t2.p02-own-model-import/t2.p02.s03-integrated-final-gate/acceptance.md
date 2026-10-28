@@ -92,7 +92,9 @@ regressions     apps/editor/tests/lib/authoring/scene-import-ingest.test.ts
 ## Residuals and ownership
 
 - **Ten deferred verification/product families** are owned as the table above. None is a pass.
-- **T1.P02.S02's performance family and 456.0 KiB br Stage miss** remain `T1.P02.S04`'s; this close
+- **T1.P02.S02's performance family and 456.0 KiB br Stage miss** are historical. The 2026-10-28
+  [performance-mandate suspension](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)
+  leaves the rows unmeasured, not passed, and removes any S04 performance prerequisite; this close
   neither adopts nor erases them.
 - **No T2 successor is authorized.** The next T2 step is an owner planning/authorization decision for
   component identity/resolution/admission and revision correspondence, then attachment and

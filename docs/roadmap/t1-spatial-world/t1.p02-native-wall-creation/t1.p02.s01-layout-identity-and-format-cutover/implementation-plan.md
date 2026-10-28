@@ -21,7 +21,7 @@ Layout operations capture non-reusable identities for redo-safe edits, and Layou
 
 ## Verification evidence
 
-The recorded architecture-integration tier passed on the original S01 source revision `7e159370a94a1a5e3cbb6d48abe42a66f7c3bd48`: `npm run check` (0 errors, 0 warnings), package/API checks, fast (143 files / 1,996 tests), heavy (9 / 125), arch (22 / 173), full editor suite (174 / 2,294), and DB-backed API suite (11 / 82, 0 skipped). The recorded evidence is reused; no product checks were rerun for this documentation-only closeout. F2 open timings at S and M were not run; their remaining route is S04.
+The recorded architecture-integration tier passed on the original S01 source revision `7e159370a94a1a5e3cbb6d48abe42a66f7c3bd48`: `npm run check` (0 errors, 0 warnings), package/API checks, fast (143 files / 1,996 tests), heavy (9 / 125), arch (22 / 173), full editor suite (174 / 2,294), and DB-backed API suite (11 / 82, 0 skipped). The recorded evidence is reused; no product checks were rerun for this documentation-only closeout. F2 open timings at S and M were not run; under the [2026-10-28 suspension](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md) they remain **unmeasured historical rows**, not an S04 prerequisite, and no benchmark is authorized.
 
 ## Owner-override scope
 

@@ -305,15 +305,19 @@ operation-count assertion is a correctness oracle, not a timing measurement, and
 slow-but-exact coverage is not a reason to weaken it (rules 12–14).
 
 Actual latency, frame-time, memory, allocation and throughput benchmarks are a
-different thing, and they are **on demand**: run them when performance-sensitive
-behavior changes, when a slowdown is investigated, or when an approved plan
-requires measurement — against comparable workloads, revisions and environments.
-A passing correctness suite is not evidence that runtime performance is
-unchanged. #115 deliberately retired the P23B PERF harness, the browser baseline
-recorder, the reuse ratchet and every wall-clock threshold (rule 11), and its WP5
-installed the execution structure rather than a benchmark: **no** permanent
-benchmark workflow, registry, scheduled job or CI gate exists, and adding one
-needs separate owner authorization — so a test change introduces none.
+different thing, and since the **2026-10-28 owner policy amendment** they are
+exclusively **owner-initiated**, triggered by an observed slowdown. No slice,
+phase, final gate, plan or closeout may run the formal performance matrix as an
+acceptance prerequisite. Existing measurements are historical evidence, not
+mandatory prerequisites; an unmeasured row stays unmeasured, never a pass. A
+passing correctness suite is not evidence that runtime performance is unchanged.
+#115 deliberately retired the P23B PERF harness, the browser baseline recorder,
+the reuse ratchet and every wall-clock threshold (rule 11), and its WP5 installed
+the execution structure rather than a benchmark: **no** permanent benchmark
+workflow, registry, scheduled job or CI gate exists, and adding one needs
+separate owner authorization. Harnesses and historical evidence are preserved
+for a future owner-commissioned investigation.
+[Decision record](../../../docs/reference/decisions/performance-mandate-suspension-2026-10-28.md).
 
 ## Focused verification
 
@@ -372,21 +376,20 @@ ids). Ownership and permission checks apply unchanged.
 
 ## Product convergence performance workflow
 
-**Owner-ratified 2026-10-22 in PR #173.** The
-[decision record](../../../docs/reference/decisions/product-convergence-ratification-2026-10-22.md)
-explicitly authorizes this bounded permanent on-demand workflow. The no-CI/no-scheduled-job
-policy above remains current; unrelated workflow additions still need owner authorization.
+**The mandatory workflow is suspended indefinitely.** The
+[2026-10-28 decision](../../../docs/reference/decisions/performance-mandate-suspension-2026-10-28.md)
+supersedes the 2026-10-22 on-demand acceptance requirement. No formal F2/F3/F4/F8/F13 matrix,
+battery-mode certification or full `npm run perf` workflow is authorized as an acceptance step.
+Performance investigations are exclusively owner-initiated after an observed slowdown.
 
-Each consuming slice records performance evidence against
+Historical method, retained for such an investigation: a consuming slice recorded performance
+evidence against
 [the owning browser-performance contract](../../../docs/reference/components/performance.md)
-before its acceptance; hard misses are resolved inside the slice, targets receive a disposition.
-The phase final gate separately rechecks integrated flows. Record reference profile, workload,
-browser/build/commit, power/cache/network state, results and limitations. Continuous gestures
-correlate input with the matching presented result; discrete INP and asynchronous final-result
-completion are separate measurements. No Vitest timing gate replaces a correctness oracle.
+before acceptance; hard misses were resolved inside the slice and targets received a disposition;
+the phase final gate rechecked integrated flows. Those obligations are no longer current.
 
-The permanent on-demand Playwright/CDP harness and bundle report have the owner's explicit
-workflow authorization. They have their own config outside the default lanes and add no CI job,
-schedule or benchmark registry. Equivalent manual DevTools measurements can supply evidence until
-the authorized workflow is installed, with limitations stated. Ratifying targets or installing a harness releases no production
-scope from the owner hold.
+The Playwright/CDP harness and bundle report remain in the tree, outside the default lanes and with
+no CI job, schedule or registry. Harnesses, workloads and historical evidence are preserved; no
+benchmark was authorized by the suspension. The no-CI/no-scheduled-job policy remains current, and
+unrelated workflow additions still need owner authorization. Ratifying targets or retaining a
+harness releases no production scope from the owner hold.
