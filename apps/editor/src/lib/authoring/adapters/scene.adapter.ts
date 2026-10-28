@@ -28,6 +28,7 @@ import type {
 	StageGhostMesh,
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
+import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import type { SceneFormEntity } from '$lib/content/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
@@ -64,6 +65,17 @@ import {
 	rememberCreatorDefinition
 } from './scene/import/definitions';
 import { candidateGhost } from './scene/candidate-ghost';
+import {
+	axisTravelFromRay,
+	formSizeMeasurement,
+	formSizeScaleFromTravel,
+	formWorldAxis,
+	formWorldPoint,
+	previewFormSize,
+	type FormSizeAxis,
+	type FormSizeHandle,
+	type FormSizeMeasurement
+} from './scene/shape/form-size';
 import { acceptFormCommand } from './scene/form-card-command';
 import {
 	publishSceneSurface,
@@ -318,6 +330,22 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** The surface this binding armed when it opened the current task. */
 			let taskSurface: SceneSurface | null = null;
 
+			/** One direct-manipulation size ray; never a task and never a second writer. */
+			type SizeGesture = {
+				readonly evaluationId: string;
+				readonly lease: GestureAcquisition;
+				readonly entity: SceneFormEntity;
+				readonly handle: FormSizeHandle;
+				readonly measurement: FormSizeMeasurement;
+				scale: readonly [number, number, number] | null;
+				candidate: SceneFormEntity | null;
+				refusal: string | null;
+			};
+			let sizeGesture: SizeGesture | null = null;
+			/** The last refusal a completed or abandoned size ray leaves on the Stage. */
+			let sizeRefusal: string | null = null;
+			const SIZE_HANDLE_HIT_CSS_PX = 12;
+
 			/**
 			 * Publish/read the surface for the **live** accepted snapshot and reading.
 			 * A binding can outlive a reading change, so the bind-time snapshot is not
@@ -349,6 +377,244 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** The surface this press claimed, or the one this binding published. */
 			function liveSurface(): SceneSurface | null {
 				return gestureSurface ?? ownedSurface?.surface ?? null;
+			}
+
+			/* --- Per-axis size rays on a selected form -------------------------- */
+
+			function selectedFormEntity(adapterContext: StageAdapterContext): SceneFormEntity | null {
+				const primary = adapterContext.selectionState().primary;
+				if (primary === null || primary.domain !== 'scene' || primary.subject.kind !== 'entity') {
+					return null;
+				}
+				const entity = stageScene(adapterContext.snapshot).entities.find(
+					(entry) => entry.id === primary.subject.id
+				);
+				return entity?.kind === 'form' ? entity : null;
+			}
+
+			/** Stage-local CSS for one world point, the space pointer intents use. */
+			function stageCss(
+				adapterContext: StageAdapterContext,
+				world: readonly [number, number, number]
+			): readonly [number, number] | null {
+				const css = adapterContext.project(world as [number, number, number]);
+				return css === null
+					? null
+					: [css[0] - adapterContext.evaluation.rect.left, css[1] - adapterContext.evaluation.rect.top];
+			}
+
+			/** Viewport CSS for one world point: the space overlay contributions publish. */
+			function viewportCss(
+				adapterContext: StageAdapterContext,
+				world: readonly [number, number, number]
+			): readonly [number, number] | null {
+				return adapterContext.project(world as [number, number, number]);
+			}
+
+			function sizeHandleAt(
+				adapterContext: StageAdapterContext,
+				css: readonly [number, number]
+			): { readonly entity: SceneFormEntity; readonly handle: FormSizeHandle; readonly measurement: FormSizeMeasurement } | null {
+				const entity = selectedFormEntity(adapterContext);
+				if (entity === null) return null;
+				const measurement = formSizeMeasurement(entity);
+				let best: { handle: FormSizeHandle; distance: number } | null = null;
+				for (const handle of measurement.handles) {
+					const projected = stageCss(adapterContext, handle.world);
+					if (projected === null) continue;
+					const distance = Math.hypot(css[0] - projected[0], css[1] - projected[1]);
+					if (distance > SIZE_HANDLE_HIT_CSS_PX) continue;
+					if (best === null || distance < best.distance) best = { handle, distance };
+				}
+				return best === null ? null : { entity, handle: best.handle, measurement };
+			}
+
+			function endSizeGesture(): void {
+				const current = sizeGesture;
+				sizeGesture = null;
+				if (current?.lease.kind === 'granted' && current.lease.lease.active) {
+					current.lease.lease.release();
+				}
+			}
+
+			/** The accepted Scene payload the size planner reads, never the runtime projection. */
+			function sizePlannerContext(adapterContext: StageAdapterContext) {
+				const snapshot = adapterContext.snapshot;
+				const envelope = stageEnvelope(snapshot);
+				return {
+					layout: envelope.units.layout.data,
+					scene: envelope.units.scene.data,
+					sourceContentId: snapshot.sourceContentId
+				};
+			}
+
+			/** The pointer half of sizing: one press, one preview, one commit. */
+			function sizePointer(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+				if (services.stage.session.task() !== null) return false;
+				if (intent.phase === 'down') {
+					const hit = sizeHandleAt(adapterContext, intent.css);
+					if (hit === null) return false;
+					if (sizeGesture !== null) endSizeGesture();
+					sizeRefusal = null;
+					const acquisition = services.stage.acquireGesture({
+						owner: 'scene-form-size',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') {
+						sizeRefusal = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+						services.stage.notifySurfaceChange();
+						return false;
+					}
+					sizeGesture = {
+						evaluationId: intent.evaluationId,
+						lease: acquisition,
+						entity: hit.entity,
+						handle: hit.handle,
+						measurement: hit.measurement,
+						scale: null,
+						candidate: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				const current = sizeGesture;
+				if (current === null) return false;
+				if (current.lease.kind === 'granted' && !current.lease.lease.active) {
+					// A content install (or another reading change) released the lease.
+					// The captured entity belongs to a source that is no longer mounted.
+					endSizeGesture();
+					sizeRefusal = 'The content changed; start the size ray again.';
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'cancel') {
+					endSizeGesture();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.evaluationId !== current.evaluationId) {
+					// A reading flip measured this drag in a projection that no longer exists.
+					endSizeGesture();
+					sizeRefusal = 'The reading changed; start the size ray again.';
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const ray = adapterContext.ray([
+						intent.css[0] + adapterContext.evaluation.rect.left,
+						intent.css[1] + adapterContext.evaluation.rect.top
+					]);
+					const travel =
+						ray === null
+							? null
+							: axisTravelFromRay({
+									origin: formWorldPoint(current.entity, [0, 0, 0]),
+									direction: formWorldAxis(current.entity, current.handle.axis),
+									rayOrigin: ray.origin,
+									rayDirection: ray.direction
+								});
+					const scale =
+						travel === null
+							? null
+							: formSizeScaleFromTravel({
+									entity: current.entity,
+									handle: current.handle,
+									travelMeters: travel
+								});
+					if (scale === null) {
+						current.scale = null;
+						current.candidate = null;
+						current.refusal = 'Drag outward to name a new size.';
+					} else {
+						const preview = previewFormSize({
+							context: sizePlannerContext(adapterContext),
+							entityId: current.entity.id,
+							scale
+						});
+						if ('candidate' in preview) {
+							const next = preview.candidate.scene.entities.find(
+								(entry) => entry.id === current.entity.id
+							);
+							current.scale = scale;
+							current.candidate = next?.kind === 'form' ? next : null;
+							current.refusal = current.candidate === null ? 'The form body could not be evaluated.' : null;
+						} else {
+							current.scale = null;
+							current.candidate = null;
+							current.refusal = preview.refusal;
+						}
+					}
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				// Release commits one full per-axis size through the existing planner.
+				const preview = current;
+				endSizeGesture();
+				if (preview.scale !== null && preview.candidate !== null) {
+					void acceptFormCommand(
+						services,
+						services.stage.snapshot(),
+						preview.entity.id,
+						'set-form-size',
+						{ entityId: preview.entity.id, scale: preview.scale }
+					).then((outcome) => {
+						sizeRefusal = outcome.kind === 'refused' ? outcome.message : null;
+						services.stage.notifySurfaceChange();
+					});
+				} else {
+					sizeRefusal = preview.refusal ?? 'That drag named no size.';
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
+			/** The three knobs, one per axis, while no task owns the pointer. */
+			function sizeOverlay(adapterContext: StageAdapterContext) {
+				if (services.stage.session.task() !== null) return null;
+				const entity = selectedFormEntity(adapterContext);
+				if (entity === null) return null;
+				const active = sizeGesture;
+				const measurement =
+					active === null
+						? formSizeMeasurement(entity)
+						: active.candidate === null
+							? active.measurement
+							: formSizeMeasurement(active.candidate);
+				if (measurement.handles.length === 0) return null;
+				const markers = measurement.handles.flatMap((handle) => {
+					const projected = viewportCss(adapterContext, handle.world);
+					if (projected === null) return [];
+					const dimension =
+						active !== null && active.handle.axis === handle.axis && active.candidate !== null
+							? handle.baseDimension * active.candidate.form.scale[handle.axis]
+							: handle.dimension;
+					return [{
+						id: `scene-form-size-${handle.axis}`,
+						css: projected,
+						label: `${handle.label} ${dimension.toFixed(3)} m — drag for size; exact value in the Card`
+					}];
+				});
+				const refusal = active?.refusal ?? sizeRefusal;
+				if (refusal !== null) {
+					const anchor = markers[0];
+					if (anchor !== undefined) {
+						markers.push({ id: 'scene-form-size-refusal', css: anchor.css, label: refusal });
+					}
+				}
+				return markers;
+			}
+
+			function sizeGhost(): StageGhostMesh | null {
+				const active = sizeGesture;
+				if (active?.candidate === null || active?.candidate === undefined) return null;
+				return {
+					id: 'scene-form-size-preview',
+					center: active.candidate.position,
+					yaw: active.candidate.rotation[1],
+					shape: { kind: 'form', form: active.candidate.form }
+				};
 			}
 
 			/**
@@ -584,14 +850,26 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						order: 30
 					}
 				],
+				/**
+				 * Size rays are direct manipulation of the current selection, not a task.
+				 * The Scene binding joins Layout's handles in the host's no-task press
+				 * offer; a press that is not on a knob falls through to navigation rather
+				 * than silently starting an arrange drag.
+				 */
+				pressWhenNoTask: true,
 				// The pointer claim is offered before the host's navigation gesture and
-				// only while this adapter's task owns the press. A refused clamp or a
-				// missing selection refuses the claim rather than starting a drag.
+				// only while this adapter's task owns the press (or a size ray is live).
+				// A refused clamp or a missing selection refuses the claim rather than
+				// starting a drag.
 				pointerIntent(intent: StagePointerIntent, adapterContext) {
 					// Compose is a typed command surface. It claims no pointer: a press over
 					// the Stage during Compose is ordinary navigation, never an accidental
 					// move/yaw of the selected entity.
 					if (openTaskKind === SCENE_COMPOSE_TASK) return false;
+					// With no contributed task open this binding is the selection's direct
+					// manipulation surface: only a size knob (and the rest of its drag) is
+					// claimed here. The arrange read below belongs to its own task.
+					if (openTaskKind === null) return sizePointer(intent, adapterContext);
 					// Claim the surface once, on the press. Every later phase of this
 					// gesture reads the same session even if the viewport is re-evaluated.
 					if (intent.phase === 'down') gestureSurface = surfaceFor(adapterContext.evaluation);
@@ -707,7 +985,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				},
 				// Closing the task (Esc at the shell, replacement) uses the one cancel path.
+				selectionChanged() {
+					// A knob belongs to the subject it was drawn for; a new subject's
+					// handles replace it, and a stale refusal would name the old one.
+					if (sizeGesture !== null) endSizeGesture();
+					sizeRefusal = null;
+				},
 				taskClosed() {
+					if (sizeGesture !== null) {
+						endSizeGesture();
+						sizeRefusal = null;
+					}
 					dragOrigin = null;
 					// Cancel the session this task armed (Place) or this press claimed
 					// (Arrange), not whichever session another binding may have published.
@@ -726,14 +1014,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// The captured candidate is shown through the existing overlay surface,
 				// so Plan and 3D present the same pose the planner would commit.
 				overlay(adapterContext) {
+					const sizeMarkers = sizeOverlay(adapterContext) ?? [];
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate = surface?.session.candidate() ?? null;
-					if (candidate === null) return [];
+					if (candidate === null) return sizeMarkers;
 					const css = adapterContext.project(candidate.position);
-					if (css === null) return [];
+					if (css === null) return sizeMarkers;
 					const snap = candidate.snappedStep === null ? '' : ` · snap ${candidate.snappedStep} m`;
 					const scale = candidate.kind === 'resize' ? ` · scale ${candidate.scale}` : '';
 					return [
+						...sizeMarkers,
 						{
 							id: 'scene-candidate',
 							css,
@@ -744,16 +1034,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// The candidate is drawn as the object's own body at the captured pose,
 				// in the one Canvas, so Plan and 3D show what Commit will install.
 				ghosts(adapterContext): readonly StageGhostMesh[] {
+					const size = sizeGhost();
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate: SceneCandidate | null = surface?.session.candidate() ?? null;
-					if (candidate === null) return [];
+					if (candidate === null) return size === null ? [] : [size];
 					const entity =
 							candidate.entityId === null
 								? null
 								: adapterContext.snapshot.domain.scene.entities.find((entry) => entry.id === candidate.entityId) ??
 									null;
 					const ghost = candidateGhost(entity, candidate);
-					return ghost === null ? [] : [ghost];
+					return size === null ? (ghost === null ? [] : [ghost]) : ghost === null ? [size] : [size, ghost];
 				},
 				cardWriter(subject) {
 					if (subject.reference?.domain !== 'scene' || !source.entities.some((entity) => entity.id === subject.sourceId && entity.kind === 'form')) return null;
@@ -828,6 +1119,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					};
 				},
 				dispose() {
+					if (sizeGesture !== null) endSizeGesture();
+					sizeRefusal = null;
 					gestureSurface = null;
 					openTaskKind = null;
 					taskSurface = null;
