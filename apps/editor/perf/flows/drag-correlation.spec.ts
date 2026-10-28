@@ -129,6 +129,8 @@ const HANDLER_INPUT_CLOCK_LIMITATION =
  * that S03 deferred.
  */
 const OPENING_ROWS = process.env.PERF_OPENING_ROWS === '1';
+/** The two typed Door starts that fit clear of the focus Wall's existing Window. */
+const OPENING_OFFSETS = [1, 0.2] as const;
 
 type DragRun = {
 	readonly dispatched: number;
@@ -291,6 +293,12 @@ async function undoOnce(page: import('@playwright/test').Page): Promise<void> {
 	await waitForAcceptedResult(page, before);
 }
 
+/** Leave Ink so a Wall selection offers its manipulation handles again. */
+async function disarmInk(page: import('@playwright/test').Page): Promise<void> {
+	const close = page.getByRole('button', { name: 'Close Ink' });
+	if (await close.isVisible().catch(() => false)) await close.click();
+}
+
 /** Setup only: the shipped Opening palette, on the Wall selected through the Index. */
 async function armOpeningPalette(page: import('@playwright/test').Page): Promise<void> {
 	const closeCard = page.getByRole('button', { name: 'Close selection card' });
@@ -324,6 +332,41 @@ async function measureOpeningCreate(page: import('@playwright/test').Page, offse
 	if ((await refusal.count()) > 0) throw new Error(`Opening placement refused: ${(await refusal.innerText()).trim()}`);
 	await waitForAcceptedResult(page, before);
 	return commandPresentation(page, 'command:instrument');
+}
+
+/** The Wall selected through the Index, whose hosted Opening we place on. */
+async function selectedWallId(page: import('@playwright/test').Page): Promise<string> {
+	const current = page.locator('button.item-row[aria-current="true"]').first();
+	const label = (await current.getAttribute('title')) ?? (await current.innerText());
+	const match = /wall · (\S+)/.exec(label);
+	if (match === null) throw new Error(`the selected Index row is not a Wall: ${label}`);
+	return match[1]!;
+}
+
+/**
+ * Select the Opening the placement just installed through the Index.
+ *
+ * The shipped adapter re-arms Ink after an accepted placement, and the Card is
+ * not the active surface while Ink holds the task. A workload Opening's id ends
+ * in its captured sequence (`grid3x…`); the newly placed one carries the
+ * product's minted UUID, which is what identifies it on the host Wall.
+ */
+async function selectNewOpening(page: import('@playwright/test').Page, hostWallId: string): Promise<void> {
+	const closeCard = page.getByRole('button', { name: 'Close selection card' });
+	if (await closeCard.isVisible().catch(() => false)) await closeCard.click();
+	await page.locator('#plate-index-search').fill(hostWallId);
+	const rows = page.locator('button.item-row', {
+		has: page.locator('.item-kind', { hasText: 'Opening' })
+	});
+	const uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+	for (let index = 0; index < (await rows.count()); index += 1) {
+		const row = rows.nth(index);
+		const label = (await row.getAttribute('title')) ?? (await row.innerText());
+		if (!uuid.test(label)) continue;
+		await row.click();
+		return;
+	}
+	throw new Error(`the placed Opening is not listed on ${hostWallId}`);
 }
 
 /** Remove the selected Opening through the Card's two-press disclosure. */
@@ -445,13 +488,19 @@ async function runDrag(
 	const openingUndo: number[] = [];
 	const openingRedo: number[] = [];
 	if (OPENING_ROWS) {
-		for (const offset of [1, 4]) {
+		await disarmInk(page);
+		await openWall();
+		const openingHostId = await selectedWallId(page);
+		for (const offset of OPENING_OFFSETS) {
+			await disarmInk(page);
 			await openWall();
 			const create = await measureOpeningCreate(page, offset);
 			if (create !== null) openingCreate.push(create);
+			await selectNewOpening(page, openingHostId);
 			const deletion = await measureOpeningDelete(page);
 			if (deletion !== null) openingDelete.push(deletion);
 		}
+		await disarmInk(page);
 		await openWall();
 		const openingEditBefore = await acceptedResultCount(page);
 		const openingBeforeF8 = await measureOpeningCreate(page, 1);
@@ -474,6 +523,7 @@ async function runDrag(
 		// Restore the pre-measurement source so the retained-heap sample keeps its
 		// S06 meaning.
 		await undoOnce(page);
+		await disarmInk(page);
 	}
 	const heapAfterSequence = await readHeapAfterGc(session.cdp);
 
@@ -749,26 +799,36 @@ test.describe('F3/F4/F8 methodology', () => {
 					const openingDelete = runs.flatMap((run) => run.openingDeleteCompletions);
 					const openingUndo = runs.flatMap((run) => run.openingUndoCompletion);
 					const openingRedo = runs.flatMap((run) => run.openingRedoCompletion);
-					const createDecision = decideMilestoneRow({
-						row: `F4-opening-${tier}-${cacheState}`,
-						budgetMs: hardBudgets.F4,
-						perRunP95Ms: runs.map((run) => summarize(run.openingCreateCompletions).p95),
-						pooledP95Ms: summarize(openingCreate).p95,
-						maxRuns: MILESTONE_MAX_RUNS.f3,
-						completedRuns: runs.length
-					});
-					const deleteDecision = decideMilestoneRow({
-						row: `F8-opening-delete-${tier}-${cacheState}`,
-						budgetMs: hardBudgets.F8,
-						perRunP95Ms: runs.map((run) => summarize(run.openingDeleteCompletions).p95),
-						pooledP95Ms: summarize(openingDelete).p95,
-						maxRuns: MILESTONE_MAX_RUNS.f3,
-						completedRuns: runs.length
-					});
+					const createDecision = MILESTONE
+						? decideMilestoneRow({
+								row: `F4-opening-${tier}-${cacheState}`,
+								budgetMs: hardBudgets.F4,
+								perRunP95Ms: runs.map((run) => summarize(run.openingCreateCompletions).p95),
+								pooledP95Ms: summarize(openingCreate).p95,
+								maxRuns: MILESTONE_MAX_RUNS.f3,
+								completedRuns: runs.length
+							})
+						: null;
+					const deleteDecision = MILESTONE
+						? decideMilestoneRow({
+								row: `F8-opening-delete-${tier}-${cacheState}`,
+								budgetMs: hardBudgets.F8,
+								perRunP95Ms: runs.map((run) => summarize(run.openingDeleteCompletions).p95),
+								pooledP95Ms: summarize(openingDelete).p95,
+								maxRuns: MILESTONE_MAX_RUNS.f3,
+								completedRuns: runs.length
+							})
+						: null;
+					const formalCreate = summarize(openingCreate).p95;
+					const formalDelete = summarize(openingDelete).p95;
+					const formalUndo = summarize(openingUndo).p95;
+					const formalRedo = summarize(openingRedo).p95;
+					const formalRule = (p95: number, budget: number, samples: number) =>
+						`formal acceptance: pooled p95 ${p95.toFixed(1)} ms against the ${budget} ms hard budget over ${samples} completions`;
 					report.rows.push({
 						id: `F4-opening-${tier}-${cacheState}`,
 						flow: 'F4 Opening create on the shipped palette (S04 supplemental)',
-						workload: `${tierWorkloadLabel(tier)}; two typed Door placements per run at 1.0 and 4.0 m, then one Undo/Redo series over an accepted create`,
+						workload: `${tierWorkloadLabel(tier)}; two typed Door placements per run at ${OPENING_OFFSETS.join(' and ')} m, then one Undo/Redo series over an accepted create`,
 						cacheState,
 						network: NETWORK,
 						browser: `${testInfo.project.name} ${facts.chromeVersion}`,
@@ -778,10 +838,10 @@ test.describe('F3/F4/F8 methodology', () => {
 							measuredRuns: runs.length,
 							perRunCreateP95: runs.map((run) => summarize(run.openingCreateCompletions).p95).join('/'),
 							perRunDeleteP95: runs.map((run) => summarize(run.openingDeleteCompletions).p95).join('/'),
-							createVerdict: createDecision?.verdict ?? 'undecided',
-							deleteVerdict: deleteDecision?.verdict ?? 'undecided',
-							createRule: createDecision?.rule ?? 'no usable create samples',
-							deleteRule: deleteDecision?.rule ?? 'no usable delete samples'
+							createVerdict: createDecision?.verdict ?? (openingCreate.length > 0 ? (formalCreate <= hardBudgets.F4 ? 'pass' : 'fail') : 'undecided'),
+							deleteVerdict: deleteDecision?.verdict ?? (openingDelete.length > 0 ? (formalDelete <= hardBudgets.F8 ? 'pass' : 'fail') : 'undecided'),
+							createRule: createDecision?.rule ?? (openingCreate.length > 0 ? formalRule(formalCreate, hardBudgets.F4, openingCreate.length) : 'no usable create samples'),
+							deleteRule: deleteDecision?.rule ?? (openingDelete.length > 0 ? formalRule(formalDelete, hardBudgets.F8, openingDelete.length) : 'no usable delete samples')
 						},
 						stats: {
 							openingCreate: summarize(openingCreate),
