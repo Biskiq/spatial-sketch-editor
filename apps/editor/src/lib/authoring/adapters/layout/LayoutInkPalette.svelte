@@ -32,7 +32,17 @@
 	let pointZ = $state('');
 	let pointError = $state<string | null>(null);
 
+	/** The next Opening's defaults; committed through the adapter's own surface. */
+	let openingKind = $state<'door' | 'window'>('door');
+	let openingWidth = $state('0.9');
+	let openingHeight = $state('2.1');
+	let openingSill = $state('0');
+	let openingOffset = $state('');
+	let openingError = $state<string | null>(null);
+
 	const emptySnapshot: InkPaletteSnapshot = {
+		reading: 'wall',
+		opening: null,
 		points: [],
 		closed: false,
 		canFinish: false,
@@ -99,6 +109,38 @@
 		inkSurface()?.controller.typePoint(pointX, pointZ);
 	}
 
+	/** Validate and remember the next Opening's kind and exact metrics. */
+	function commitOpeningOptions(): boolean {
+		const width = parseMeasureInput(openingWidth);
+		if (!width.ok || !(width.value > 0)) {
+			openingError = `Width: ${width.ok ? 'must be greater than zero.' : width.reason}`;
+			return false;
+		}
+		const height = parseMeasureInput(openingHeight);
+		if (!height.ok || !(height.value > 0)) {
+			openingError = `Height: ${height.ok ? 'must be greater than zero.' : height.reason}`;
+			return false;
+		}
+		const sill = parseMeasureInput(openingSill);
+		if (!sill.ok || sill.value < 0) {
+			openingError = `Sill: ${sill.ok ? 'must be zero or greater.' : sill.reason}`;
+			return false;
+		}
+		openingError = null;
+		inkSurface()?.controller.setOpeningOptions({
+			kind: openingKind,
+			width: width.value,
+			height: height.value,
+			sillHeight: sill.value
+		});
+		return true;
+	}
+
+	function placeOpeningByOffset(): void {
+		if (!commitOpeningOptions()) return;
+		inkSurface()?.controller.placeOpening(openingOffset);
+	}
+
 	const pendingText = $derived(
 		snapshot.pending === null
 			? null
@@ -110,76 +152,165 @@
 	<fieldset class="reading">
 		<legend>Reading</legend>
 		<label class="reading-option">
-			<input type="radio" name="layout-ink-reading" checked readonly />Wall
+			<input
+				type="radio"
+				name="layout-ink-reading"
+				checked={snapshot.reading === 'wall'}
+				onchange={() => inkSurface()?.controller.setReading('wall')}
+			/>Wall
 		</label>
-		<span class="quiet">Straight Wall chain. Slice, Eraser, Brush, Measure and Shape readings are not supported here.</span>
+		<label class="reading-option">
+			<input
+				type="radio"
+				name="layout-ink-reading"
+				data-ink-reading-opening
+				checked={snapshot.reading === 'opening'}
+				onchange={() => inkSurface()?.controller.setReading('opening')}
+			/>Opening
+		</label>
+		<span class="quiet">
+			{snapshot.reading === 'wall'
+				? 'Straight Wall chain. Slice, Eraser, Brush, Measure and Shape readings are not supported here.'
+				: 'A straight door or window on one Wall face. Curved hosts and other profiles are not supported here.'}
+		</span>
 	</fieldset>
 
-	<div class="options">
-		<label>
-			<span>Thickness</span>
-			<input
-				type="text"
-				inputmode="decimal"
-				data-ink-thickness
-				bind:value={thicknessText}
-				onchange={commitOptions}
-			/>
-			<span class="unit">m</span>
-		</label>
-		<label>
-			<span>Height</span>
-			<input type="text" inputmode="decimal" data-ink-height bind:value={heightText} onchange={commitOptions} />
-			<span class="unit">m</span>
-		</label>
-	</div>
-	{#if optionError !== null}<p class="error" role="alert">{optionError}</p>{/if}
-
-	<dl class="live">
-		<div><dt>Points</dt><dd>{snapshot.points.length}{snapshot.closed ? ' · closed' : ''}</dd></div>
-		<div><dt>Pending</dt><dd>{pendingText ?? '—'}</dd></div>
-		<div class="consequence">
-			<dt>On finish</dt>
-			<dd>{snapshot.consequence ?? 'Name at least two points to see the planner’s consequence.'}</dd>
+	{#if snapshot.reading === 'wall'}
+		<div class="options">
+			<label>
+				<span>Thickness</span>
+				<input
+					type="text"
+					inputmode="decimal"
+					data-ink-thickness
+					bind:value={thicknessText}
+					onchange={commitOptions}
+				/>
+				<span class="unit">m</span>
+			</label>
+			<label>
+				<span>Height</span>
+				<input type="text" inputmode="decimal" data-ink-height bind:value={heightText} onchange={commitOptions} />
+				<span class="unit">m</span>
+			</label>
 		</div>
-	</dl>
+		{#if optionError !== null}<p class="error" role="alert">{optionError}</p>{/if}
 
-	{#if snapshot.refusal !== null}
-		<p class="refusal" role="alert" data-ink-refusal>{snapshot.refusal}</p>
+		<dl class="live">
+			<div><dt>Points</dt><dd>{snapshot.points.length}{snapshot.closed ? ' · closed' : ''}</dd></div>
+			<div><dt>Pending</dt><dd>{pendingText ?? '—'}</dd></div>
+			<div class="consequence">
+				<dt>On finish</dt>
+				<dd>{snapshot.consequence ?? 'Name at least two points to see the planner’s consequence.'}</dd>
+			</div>
+		</dl>
+
+		{#if snapshot.refusal !== null}
+			<p class="refusal" role="alert" data-ink-refusal>{snapshot.refusal}</p>
+		{/if}
+
+		<div class="actions">
+			<button type="button" data-ink-finish disabled={!snapshot.canFinish} onclick={() => inkSurface()?.controller.finish()}>
+				Finish (Enter)
+			</button>
+			<button type="button" data-ink-close disabled={!snapshot.canClose} onclick={() => inkSurface()?.controller.close()}>
+				Close ring
+			</button>
+			<button type="button" data-ink-backtrack disabled={!snapshot.canBacktrack} onclick={() => inkSurface()?.controller.backtrack()}>
+				Backtrack (Backspace)
+			</button>
+			<button type="button" data-ink-cancel onclick={() => inkSurface()?.controller.cancel()}>Cancel (Esc)</button>
+		</div>
+
+		<form
+			class="typed-point"
+			onsubmit={(event) => {
+				event.preventDefault();
+				addTypedPoint();
+			}}
+		>
+			<label>
+				<span>X</span>
+				<input type="text" inputmode="decimal" data-ink-x bind:value={pointX} aria-label="Next point X" />
+			</label>
+			<label>
+				<span>Z</span>
+				<input type="text" inputmode="decimal" data-ink-z bind:value={pointZ} aria-label="Next point Z" />
+			</label>
+			<button type="submit" data-ink-add-point>Add point</button>
+		</form>
+		{#if pointError !== null}<p class="error" role="alert">{pointError}</p>{/if}
+		<p class="quiet">Click the Stage to place points; click the start point to close the ring. Drag to draw one Wall and finish.</p>
+	{:else}
+		<div class="options">
+			<label>
+				<span>Kind</span>
+				<select data-opening-kind bind:value={openingKind} onchange={commitOpeningOptions}>
+					<option value="door">Door</option>
+					<option value="window">Window</option>
+				</select>
+			</label>
+			<label>
+				<span>Width</span>
+				<input type="text" inputmode="decimal" data-opening-width bind:value={openingWidth} onchange={commitOpeningOptions} />
+				<span class="unit">m</span>
+			</label>
+			<label>
+				<span>Height</span>
+				<input type="text" inputmode="decimal" data-opening-height bind:value={openingHeight} onchange={commitOpeningOptions} />
+				<span class="unit">m</span>
+			</label>
+			<label>
+				<span>Sill</span>
+				<input type="text" inputmode="decimal" data-opening-sill bind:value={openingSill} onchange={commitOpeningOptions} />
+				<span class="unit">m</span>
+			</label>
+		</div>
+		{#if openingError !== null}<p class="error" role="alert">{openingError}</p>{/if}
+
+		<dl class="live">
+			<div><dt>Host</dt><dd>{snapshot.opening?.hostId ?? 'Aim at a Wall face'}</dd></div>
+			<div>
+				<dt>Offset</dt>
+				<dd>{snapshot.opening?.offset === null || snapshot.opening?.offset === undefined ? '—' : `${snapshot.opening.offset.toFixed(3)} m`}</dd>
+			</div>
+			<div><dt>Width</dt><dd>{snapshot.opening?.width.toFixed(3) ?? '—'} m</dd></div>
+			<div class="consequence">
+				<dt>Fit</dt>
+				<dd>{snapshot.opening?.canPlace ? 'Planner accepts this candidate.' : 'Adjust the aim or the Opening measures.'}</dd>
+			</div>
+		</dl>
+
+		{#if snapshot.opening?.refusal !== null && snapshot.opening?.refusal !== undefined}
+			<p class="refusal" role="alert" data-opening-refusal>{snapshot.opening.refusal}</p>
+		{/if}
+
+		<form
+			class="typed-point"
+			onsubmit={(event) => {
+				event.preventDefault();
+				placeOpeningByOffset();
+			}}
+		>
+			<label>
+				<span>Offset</span>
+				<input
+					type="text"
+					inputmode="decimal"
+					data-opening-offset
+					placeholder="center"
+					bind:value={openingOffset}
+					aria-label="Opening offset from the host Wall start"
+				/>
+			</label>
+			<button type="submit" data-opening-place disabled={snapshot.opening?.hostId === null || snapshot.opening?.hostId === undefined}>
+				Place by offset
+			</button>
+		</form>
+		<p class="quiet">
+			Click a Wall face to place at the pointer; a selected Wall (or an Opening’s host) wins a tie. Select a host to place by exact offset; leave Offset empty to center.
+		</p>
 	{/if}
-
-	<div class="actions">
-		<button type="button" data-ink-finish disabled={!snapshot.canFinish} onclick={() => inkSurface()?.controller.finish()}>
-			Finish (Enter)
-		</button>
-		<button type="button" data-ink-close disabled={!snapshot.canClose} onclick={() => inkSurface()?.controller.close()}>
-			Close ring
-		</button>
-		<button type="button" data-ink-backtrack disabled={!snapshot.canBacktrack} onclick={() => inkSurface()?.controller.backtrack()}>
-			Backtrack (Backspace)
-		</button>
-		<button type="button" data-ink-cancel onclick={() => inkSurface()?.controller.cancel()}>Cancel (Esc)</button>
-	</div>
-
-	<form
-		class="typed-point"
-		onsubmit={(event) => {
-			event.preventDefault();
-			addTypedPoint();
-		}}
-	>
-		<label>
-			<span>X</span>
-			<input type="text" inputmode="decimal" data-ink-x bind:value={pointX} aria-label="Next point X" />
-		</label>
-		<label>
-			<span>Z</span>
-			<input type="text" inputmode="decimal" data-ink-z bind:value={pointZ} aria-label="Next point Z" />
-		</label>
-		<button type="submit" data-ink-add-point>Add point</button>
-	</form>
-	{#if pointError !== null}<p class="error" role="alert">{pointError}</p>{/if}
-	<p class="quiet">Click the Stage to place points; click the start point to close the ring. Drag to draw one Wall and finish.</p>
 </div>
 
 <style>
@@ -221,7 +352,8 @@
 		align-items: center;
 		gap: 0.35rem;
 	}
-	input {
+	input,
+	select {
 		min-height: 1.9rem;
 		padding: 0.1rem 0.35rem;
 		border: 1px solid #635a6f;

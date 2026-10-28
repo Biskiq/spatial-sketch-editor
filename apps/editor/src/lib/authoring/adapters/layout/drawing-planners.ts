@@ -161,8 +161,13 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 	};
 }
 
-/** An exact F.1 reference to one Layout subject of the operation's own level. */
-function layoutSubjectReference(input: {
+/**
+ * An exact F.1 reference to one Layout subject of the operation's own level.
+ *
+ * Shared with the Opening operations (S03): they address a host Wall or an
+ * Opening through the same reference shape, never a second encoding.
+ */
+export function layoutSubjectReference(input: {
 	readonly kind: string;
 	readonly id: string;
 	readonly contentRevision: string;
@@ -184,8 +189,11 @@ function layoutSubjectReference(input: {
  * The operation's captured nonce and working level, through the canonical
  * readers. A missing capture is a caller defect, never something to infer from
  * the document.
+ *
+ * Shared with the Opening operations (S03), which use the same captured
+ * identity and level contract as every other Layout F.4 planner.
  */
-function readCapturedOperation(
+export function readCapturedOperation(
 	request: PlannerRequest<ProjectEnvelope>
 ): { readonly capture: LayoutIdCapture; readonly levelId: string } | PlannerOutcome<ProjectEnvelope> {
 	const capture = readLayoutIdCapture(request.capturedInputs);

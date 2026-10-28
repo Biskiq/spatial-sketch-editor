@@ -43,6 +43,8 @@
 
 import {
 	mintLayoutIdCapture,
+	planCreateWallFirstOpening,
+	planDeleteWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
@@ -83,6 +85,13 @@ import {
 	type ChainPlanPreview
 } from './layout/chain';
 import {
+	createOpeningPlanners,
+	openingCreateIntent,
+	openingDeleteIntent,
+	openingRefusalWords,
+	type OpeningCreatePayload
+} from './layout/opening-planners';
+import {
 	createDrawingPlanners,
 	planWallDeletion,
 	wallChainCommitIntent,
@@ -91,11 +100,15 @@ import {
 } from './layout/drawing-planners';
 import {
 	classifyInkPointerTarget,
+	classifyOpeningHost,
+	offsetAlongWall,
 	pointOnWallCenterline,
 	publishInkSurface,
 	type InkController,
+	type InkOpeningOptions,
 	type InkPaletteSnapshot,
 	type InkPointerTarget,
+	type InkReading,
 	type ProjectedJunction,
 	type ProjectedWall
 } from './layout/ink';
@@ -104,6 +117,7 @@ import {
 	createLayoutPlanners,
 	layoutFacts,
 	layoutSubjectOf,
+	parseMeasureInput,
 	parsePlacementXZ,
 	planWallManipulation,
 	wallFrame,
@@ -197,6 +211,23 @@ function pointerDatumPoint(
 	return hit.kind === 'intersected' ? [hit.worldPoint[0], hit.worldPoint[2]] : null;
 }
 
+/**
+ * One host-relative Opening candidate.
+ *
+ * `offset` is the exact near-edge distance from the canonical Wall start; the
+ * ghost edges are world points for the overlay. A candidate that does not fit is
+ * still shown (with planner words), never moved to make it fit.
+ */
+type OpeningCandidate = {
+	readonly wallId: string;
+	readonly offset: number;
+	readonly ghost: readonly [LayoutVec2, LayoutVec2] | null;
+};
+
+type OpeningPreview =
+	| { readonly kind: 'planned'; readonly openingId: string }
+	| { readonly kind: 'refused'; readonly message: string };
+
 /** One claimed Wall gesture, from its immutable baseline to its one commit. */
 type WallGesture = {
 	/** The evaluation the press was measured in; a change pauses the writer. */
@@ -218,7 +249,11 @@ type WallGesture = {
 };
 
 export const createAdapter: StageAdapterFactory = (services) => {
-	for (const planner of [...createLayoutPlanners(), ...createDrawingPlanners()]) {
+	for (const planner of [
+		...createLayoutPlanners(),
+		...createDrawingPlanners(),
+		...createOpeningPlanners()
+	]) {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
@@ -234,6 +269,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	 */
 	let inkThickness: number | null = null;
 	let inkHeight: number | null = null;
+	/**
+	 * The one Ink tool's current reading. It is adapter memory so a content
+	 * install's binding rebuild re-arms the tool on the reading the creator was
+	 * using, not on a shell default.
+	 */
+	let inkReading: InkReading = 'wall';
+	/** The next Opening's kind and exact defaults; UI state only, never serialized. */
+	let openingOptions: InkOpeningOptions = {
+		kind: 'door',
+		width: 0.9,
+		height: 2.1,
+		sillHeight: 0
+	};
 	/**
 	 * The deleted-Wall disclosure is derived from the canonical planner, which is
 	 * a full planning pass; the Card asks for it on render, so the answer for one
@@ -270,6 +318,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * authored operations that were meant to be one.
 			 */
 			let chainCommitInFlight = false;
+			/**
+			 * The Opening reading's own one-operation state: one capture for preview
+			 * and commit, one in-flight acceptance, and a press lease that is released
+			 * on every exit path (up, cancel, reading switch, task close, dispose).
+			 */
+			let openingCapture: ReturnType<typeof mintLayoutIdCapture> | null = null;
+			let openingCandidate: OpeningCandidate | null = null;
+			let openingPreview: OpeningPreview | null = null;
+			let openingNotice: string | null = null;
+			let openingCommitInFlight = false;
+			let openingPress: {
+				readonly evaluationId: string;
+				readonly lease: GestureAcquisition | null;
+				readonly css: readonly [number, number];
+			} | null = null;
 			let inkPress: {
 				/** Where the press landed, in Stage-local CSS: the drag's own first point. */
 				readonly origin: readonly [number, number];
@@ -401,6 +464,334 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return { junctions, walls };
 			}
 
+			/* --- Opening: host preference and one host-relative candidate ----- */
+
+			/** The Wall a selected subject should prefer as host, or `null`. */
+			function preferredHostOf(sourceKind: string, sourceId: string): string | null {
+				if (sourceKind === 'wall') return sourceId;
+				if (sourceKind !== 'opening') return null;
+				return document.openings.find((opening) => opening.id === sourceId)?.wallId ?? null;
+			}
+
+			/** Host preference from the canonical selection. */
+			function preferredHostId(adapterContext: StageAdapterContext): string | null {
+				const primary = adapterContext.selectionState().primary;
+				return primary === null
+					? null
+					: preferredHostOf(primary.subject.kind, primary.subject.id);
+			}
+
+			/** Host preference for the palette's typed placement (no pointer context). */
+			function preferredHostIdForPalette(): string | null {
+				const selection = services.stage.selection();
+				return selection === null
+					? null
+					: preferredHostOf(selection.sourceKind, selection.sourceId);
+			}
+
+			/**
+			 * The two ghost edge points in world space for one host-relative offset.
+			 * They are drawn even when the candidate overruns the Wall, so the refusal
+			 * points at the same geometry the planner rejected instead of hiding it.
+			 */
+			function openingGhost(
+				wallId: string,
+				offset: number
+			): readonly [LayoutVec2, LayoutVec2] | null {
+				const frame = wallFrame(document, wallId);
+				if (frame === null) return null;
+				const length = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
+				if (!(length > 0)) return null;
+				const dx = (frame.end[0] - frame.start[0]) / length;
+				const dz = (frame.end[1] - frame.start[1]) / length;
+				const at = (distance: number): LayoutVec2 => [
+					frame.start[0] + dx * distance,
+					frame.start[1] + dz * distance
+				];
+				return [at(offset), at(offset + openingOptions.width)];
+			}
+
+			/**
+			 * Plan the exact candidate with the canonical create planner. Preview and
+			 * acceptance share the minted capture, so the id the ghost implies is the id
+			 * acceptance writes.
+			 */
+			function planOpeningCandidate(candidate: OpeningCandidate): OpeningPreview {
+				const capture = openingCapture ?? mintLayoutIdCapture();
+				openingCapture = capture;
+				const payload: OpeningCreatePayload = {
+					wallId: candidate.wallId,
+					kind: openingOptions.kind,
+					offset: candidate.offset,
+					width: openingOptions.width,
+					height: openingOptions.height,
+					sillHeight: openingOptions.sillHeight
+				};
+				const plan = planCreateWallFirstOpening(document, payload, capture, levelId);
+				return plan.kind === 'rejected'
+					? { kind: 'refused', message: openingRefusalWords(document, plan.rejection, payload) }
+					: { kind: 'planned', openingId: plan.changedOpeningIds[0]! };
+			}
+
+			/** Re-plan the current candidate (pointer or typed) after any change. */
+			function refreshOpeningPreview(): void {
+				openingPreview = openingCandidate === null ? null : planOpeningCandidate(openingCandidate);
+			}
+
+			/** Set the candidate and publish its planner answer. */
+			function setOpeningCandidate(next: OpeningCandidate | null): void {
+				openingCandidate = next;
+				if (next === null) {
+					openingPreview = null;
+					return;
+				}
+				openingNotice = null;
+				refreshOpeningPreview();
+			}
+
+			/** Drop every Opening-reading transient; no document write. */
+			function clearOpeningState(): void {
+				openingCandidate = null;
+				openingPreview = null;
+				openingNotice = null;
+				openingCapture = null;
+				endOpeningPress();
+			}
+
+			function endOpeningPress(): void {
+				const current = openingPress;
+				openingPress = null;
+				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+			}
+
+			/** The candidate one Stage-local pointer position names, or `null`. */
+			function openingCandidateAt(
+				adapterContext: StageAdapterContext,
+				css: readonly [number, number]
+			): OpeningCandidate | null {
+				const projected = projectedScene(adapterContext);
+				const hit = classifyOpeningHost({
+					css,
+					walls: projected.walls,
+					preferredWallId: preferredHostId(adapterContext)
+				});
+				if (hit === null) return null;
+				const wall = projected.walls.find((candidate) => candidate.id === hit.wallId);
+				if (wall === undefined) return null;
+				const point = pointerDatumPoint(adapterContext, css);
+				if (point === null) return null;
+				const offset = offsetAlongWall(wall, pointOnWallCenterline(wall, [point[0], point[1]]));
+				return { wallId: wall.id, offset, ghost: openingGhost(wall.id, offset) };
+			}
+
+			/**
+			 * A typed placement on the preferred host: empty offset centers exactly;
+			 * a typed offset is used verbatim, never clamped. The planner still owns fit.
+			 */
+			function openingCandidateForHost(wallId: string, offsetText: string): OpeningCandidate | null {
+				const frame = wallFrame(document, wallId);
+				if (frame === null) {
+					openingNotice = 'That Wall is no longer in the project. Select another Wall.';
+					return null;
+				}
+				const length = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
+				if (!(length > 0)) {
+					openingNotice = 'That Wall has no resolvable span. Repair it or select another Wall.';
+					return null;
+				}
+				let offset: number;
+				if (offsetText.trim() === '') {
+					if (openingOptions.width > length) {
+						openingNotice = `A ${openingOptions.width.toFixed(2)} m ${openingOptions.kind} is wider than the ${length.toFixed(2)} m Wall. Narrow the Opening or choose another host.`;
+						return null;
+					}
+					offset = (length - openingOptions.width) / 2;
+				} else {
+					const parsed = parseMeasureInput(offsetText);
+					if (!parsed.ok) {
+						openingNotice = `Offset: ${parsed.reason}`;
+						return null;
+					}
+					if (parsed.value < 0) {
+						openingNotice = 'Offset must be zero or greater.';
+						return null;
+					}
+					offset = parsed.value;
+				}
+				return { wallId, offset, ghost: openingGhost(wallId, offset) };
+			}
+
+			/**
+			 * Re-arm Ink after an install, on the next live evaluation.
+			 *
+			 * An install disposes the binding synchronously; its replacement is built on
+			 * the next evaluation, so opening the task in the acceptance continuation
+			 * would find no contributed task. One frame later the rebuilt task exists.
+			 * This is a UI-only deferred re-arm (no document delay); a Stage that is gone
+			 * simply refuses and is left alone.
+			 */
+			function rearmInkAfterInstall(): void {
+				if (typeof window === 'undefined') return;
+				let attempts = 0;
+				const open = () => {
+					const result = services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
+					if (result.kind === 'refused' && result.code === 'unknown-task' && attempts < 3) {
+						attempts += 1;
+						window.requestAnimationFrame(open);
+						return;
+					}
+					services.stage.notifySurfaceChange();
+				};
+				window.requestAnimationFrame(open);
+			}
+
+			/** Install one created Opening as the selection, by id, on the fresh source. */
+			function selectLayoutSubject(sourceKind: 'wall' | 'opening', sourceId: string): void {
+				const fresh = services.stage.snapshot();
+				services.stage.select({
+					sourceId,
+					sourceKind,
+					generationId: fresh.compileGeneration,
+					ref: {
+						sourceId,
+						sourceKind,
+						generationId: fresh.compileGeneration,
+						stream: 'projected',
+						subRef: null
+					}
+				});
+			}
+
+			/**
+			 * Accept one Opening placement exactly once.
+			 *
+			 * The preview's capture is the accepted intent's capture; a refusal leaves
+			 * the candidate editable and writes no source.
+			 */
+			async function commitOpening(target: OpeningCandidate | null = openingCandidate): Promise<void> {
+				if (openingCommitInFlight || target === null || inkReading !== 'opening') return;
+				const preview = planOpeningCandidate(target);
+				openingPreview = preview;
+				if (preview.kind === 'refused') {
+					openingNotice = preview.message;
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return;
+				}
+				openingCommitInFlight = true;
+				try {
+					const capture = openingCapture ?? mintLayoutIdCapture();
+					openingCapture = capture;
+					const snapshot = services.stage.snapshot();
+					const payload: OpeningCreatePayload = {
+						wallId: target.wallId,
+						kind: openingOptions.kind,
+						offset: target.offset,
+						width: openingOptions.width,
+						height: openingOptions.height,
+						sillHeight: openingOptions.sillHeight
+					};
+					const outcome = await services.authoring.accept(
+						openingCreateIntent({
+							payload,
+							capture,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision: stageUnitRevision(snapshot, 'layout'),
+							levelId: snapshot.domain.layoutLevelId
+						})
+					);
+					if (outcome.kind === 'refused') {
+						openingNotice = outcome.message;
+						services.stage.notifySurfaceChange();
+						publishInk();
+						return;
+					}
+					const openingId = preview.openingId;
+					clearOpeningState();
+					selectLayoutSubject('opening', openingId);
+					// The install replaced the binding; re-arm Ink on the next evaluation
+					// against the installed source, on the remembered Opening reading.
+					rearmInkAfterInstall();
+					services.stage.notifySurfaceChange();
+				} finally {
+					openingCommitInFlight = false;
+				}
+			}
+
+			/** The Opening half of the pointer contract. */
+			function openingPointer(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				if (intent.phase === 'down') {
+					const candidate = openingCandidateAt(adapterContext, intent.css);
+					if (candidate === null) {
+						openingNotice = 'Aim at a Wall face to place an Opening; the Stage is not a free host.';
+						setOpeningCandidate(null);
+						services.stage.notifySurfaceChange();
+						publishInk();
+						return true;
+					}
+					const acquisition = services.stage.acquireGesture({
+						owner: LAYOUT_INK_TASK,
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') {
+						openingNotice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+						publishInk();
+						return false;
+					}
+					openingPress = {
+						evaluationId: intent.evaluationId,
+						lease: acquisition,
+						css: intent.css
+					};
+					setOpeningCandidate(candidate);
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return true;
+				}
+				const current = openingPress;
+				if (current === null) return false;
+				if (intent.phase === 'cancel' || intent.evaluationId !== current.evaluationId) {
+					endOpeningPress();
+					setOpeningCandidate(null);
+					openingNotice =
+						intent.phase === 'cancel' ? null : 'The reading changed; aim again on the Wall.';
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const candidate = openingCandidateAt(adapterContext, intent.css);
+					if (candidate === null) {
+						openingNotice = 'Aim at a Wall face to place an Opening.';
+						setOpeningCandidate(null);
+					} else {
+						setOpeningCandidate(candidate);
+					}
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return true;
+				}
+				// Release: one click commits the candidate under the pointer, once.
+				const release = openingCandidateAt(adapterContext, intent.css) ?? openingCandidate;
+				endOpeningPress();
+				if (release === null) {
+					openingNotice = 'Aim at a Wall face to place an Opening.';
+					setOpeningCandidate(null);
+				} else {
+					setOpeningCandidate(release);
+					void commitOpening(release);
+				}
+				services.stage.notifySurfaceChange();
+				publishInk();
+				return true;
+			}
+
 			/**
 			 * The deliberate target one Stage-local pointer position names, in world
 			 * coordinates. `null` when the working plane cannot be resolved there.
@@ -455,7 +846,31 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const effective = 'points' in withHover ? withHover : draft;
 				const pending =
 					inkHover === null ? null : pendingLegFacts(draft, inkHover.point);
+				const hostId = openingCandidate?.wallId ?? preferredHostIdForPalette();
+				const frame = hostId === null ? null : wallFrame(document, hostId);
+				const hostLength =
+					frame === null
+						? null
+						: Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
 				return {
+					reading: inkReading,
+					opening:
+						inkReading !== 'opening'
+							? null
+							: {
+									hostId,
+									hostLength,
+									offset: openingCandidate?.offset ?? null,
+									width: openingOptions.width,
+									height: openingOptions.height,
+									sillHeight: openingOptions.sillHeight,
+									kind: openingOptions.kind,
+									canPlace: openingPreview?.kind === 'planned',
+									refusal:
+										openingNotice ??
+										(openingPreview?.kind === 'refused' ? openingPreview.message : null)
+								}
+					,
 					points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
 					closed: effective.closed,
 					canFinish: draft.points.length >= 2,
@@ -516,6 +931,54 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				const controller: InkController = {
+					setReading: (next) => {
+						if (next === inkReading) return;
+						if (next === 'opening' && draft.points.length > 0) {
+							inkNotice = 'Finish or cancel the Wall chain before switching readings.';
+							publishInk();
+							return;
+						}
+						inkReading = next;
+						inkNotice = null;
+						openingCandidate = null;
+						openingPreview = null;
+						openingNotice = null;
+						openingCapture = null;
+						endOpeningPress();
+						if (next === 'wall') {
+							inkHover = null;
+							refreshInkPreview();
+						}
+						services.stage.notifySurfaceChange();
+						publishInk();
+					},
+					setOpeningOptions: (options) => {
+						openingOptions = options;
+						if (openingCandidate !== null) {
+							openingCandidate = {
+								...openingCandidate,
+								ghost: openingGhost(openingCandidate.wallId, openingCandidate.offset)
+							};
+							refreshOpeningPreview();
+						}
+						services.stage.notifySurfaceChange();
+						publishInk();
+					},
+					placeOpening: (offsetText) => {
+						const hostId = preferredHostIdForPalette();
+						if (hostId === null) {
+							openingNotice = 'Select a Wall — or one of its Openings — before placing by offset.';
+							publishInk();
+							return;
+						}
+						const candidate = openingCandidateForHost(hostId, offsetText);
+						if (candidate === null) {
+							publishInk();
+							return;
+						}
+						setOpeningCandidate(candidate);
+						void commitOpening(candidate);
+					},
 					finish: () => void commitChain(),
 					close: () => {
 						const closed = closeChainDraft(draft);
@@ -894,8 +1357,76 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						view: { component: LayoutCardFields, services }
 					};
 				},
-				/** The Wall's scoped delete, disclosing its consequences first. */
+				/**
+				 * Scoped deletes. The Wall action discloses hosted Openings and Room
+				 * consequences (S02); the Opening action removes exactly that Opening and
+				 * returns the host Wall to the selection.
+				 */
 				cardActions(cardSubject: StageCardSubject): readonly StageCardAction[] {
+					if (cardSubject.sourceKind === 'opening') {
+						const opening = document.openings.find((entry) => entry.id === cardSubject.sourceId);
+						if (opening === undefined) {
+							return [
+								{
+									id: 'layout-opening-delete',
+									label: 'Delete Opening',
+									detail: 'That Opening is no longer in the project. Select its Wall and try again.',
+									destructive: true,
+									run: async () => ({
+										kind: 'refused',
+										message: 'That Opening is no longer in the project.'
+									})
+								}
+							];
+						}
+						const disclosure = planDeleteWallFirstOpening(document, opening.id);
+						if (disclosure.kind === 'rejected') {
+							return [
+								{
+									id: 'layout-opening-delete',
+									label: 'Delete Opening',
+									detail: openingRefusalWords(document, disclosure.rejection, {
+										openingId: opening.id
+									}),
+									destructive: true,
+									run: async () => ({ kind: 'refused', message: 'The Opening could not be deleted.' })
+								}
+							];
+						}
+						const hostWallId = opening.wallId;
+						return [
+							{
+								id: 'layout-opening-delete',
+								label: 'Delete Opening',
+								detail: 'Removes this Opening from its Wall in one undo step.',
+								destructive: true,
+								run: async () => {
+									const capture = mintLayoutIdCapture();
+									const snapshot = services.stage.snapshot();
+									const outcome = await services.authoring.accept(
+										openingDeleteIntent({
+											openingId: opening.id,
+											capture,
+											operationId: globalThis.crypto.randomUUID(),
+											projectId: snapshot.acceptedRevision.projectId,
+											revisionId: services.authoring.acceptedRevision().revisionId,
+											contentRevision: stageUnitRevision(snapshot, 'layout'),
+											levelId: snapshot.domain.layoutLevelId
+										})
+									);
+									if (outcome.kind === 'refused') {
+										services.stage.notifySurfaceChange();
+										return { kind: 'refused', message: outcome.message };
+									}
+									selectLayoutSubject('wall', hostWallId);
+									services.stage.notifySurfaceChange();
+									return outcome.kind === 'no-op'
+										? { kind: 'no-op', message: 'The Opening was already gone.' }
+										: { kind: 'accepted' };
+								}
+							}
+						];
+					}
 					if (cardSubject.sourceKind !== 'wall') return [];
 					const wallId = cardSubject.sourceId;
 					const preview = deletionPreview(wallId);
@@ -977,6 +1508,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 */
 				pressWhenNoTask: true,
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (openTaskKind === LAYOUT_INK_TASK && inkReading === 'opening') {
+						return openingPointer(intent, adapterContext);
+					}
 					if (openTaskKind === LAYOUT_INK_TASK) return inkPointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
 
@@ -1109,6 +1643,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				},
 				overlay(adapterContext) {
+					if (openTaskKind === LAYOUT_INK_TASK && inkReading === 'opening') {
+						return openingOverlay(adapterContext);
+					}
 					if (openTaskKind === LAYOUT_INK_TASK) return inkOverlay(adapterContext);
 					if (openTaskKind !== null) return [];
 					// Direct manipulation is offered only while the creator is in Select.
@@ -1190,14 +1727,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (task.kind === LAYOUT_INK_TASK) {
 						publishInk();
 						return {
-							summary: 'Ink',
-							facts: [
-								{ label: 'Reading', value: 'Straight Wall' },
-								{
-									label: 'Finish',
-									value: 'Enter · Close ring from the start point · Esc cancels the chain'
-								}
-							],
+							summary: inkReading === 'opening' ? 'Ink · Opening' : 'Ink',
+							facts:
+								inkReading === 'opening'
+									? [
+											{ label: 'Reading', value: 'Opening on a Wall face' },
+											{
+												label: 'Host',
+												value: 'Aim at a Wall; a selected host wins a tie'
+											}
+										]
+									: [
+											{ label: 'Reading', value: 'Straight Wall' },
+											{
+												label: 'Finish',
+												value: 'Enter · Close ring from the start point · Esc cancels the chain'
+											}
+										],
 							view: { component: LayoutInkPalette, services }
 						};
 					}
@@ -1213,33 +1759,78 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					return null;
 				},
-				/** Esc, task replacement and install all end the writer with no commit. */
-				taskClosed() {
-					openTaskKind = null;
-					if (pausedProposal !== null) {
-						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
+				/** Esc, task replacement and install all end the writer with no commit. */					taskClosed() {
+						openTaskKind = null;
+						if (pausedProposal !== null) {
+							clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
+						}
+						pausedProposal = null;
+						refusal = null;
+						endGesture();
+						// Disarming the tool cancels the live chain and the Opening candidate:
+						// nothing is left hidden.
+						endInkPress();
+						clearChain();
+						clearOpeningState();
+						publishInkSurface(null);
+					},					dispose() {
+						openTaskKind = null;
+						if (pausedProposal !== null) {
+							clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
+						}
+						pausedProposal = null;
+						refusal = null;
+						endGesture();
+						endInkPress();
+						clearChain();
+						clearOpeningState();
+						publishInkSurface(null);
 					}
-					pausedProposal = null;
-					refusal = null;
-					endGesture();
-					// Disarming the tool cancels the live chain: nothing is left hidden.
-					endInkPress();
-					clearChain();
-					publishInkSurface(null);
-				},
-				dispose() {
-					openTaskKind = null;
-					if (pausedProposal !== null) {
-						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
-					}
-					pausedProposal = null;
-					refusal = null;
-					endGesture();
-					endInkPress();
-					clearChain();
-					publishInkSurface(null);
-				}
 			};
+
+			/**
+			 * The host-relative Opening ghost: two edges, the live offset/width and the
+			 * planner's refusal words. The edges are drawn even when the candidate
+			 * overruns the Wall, so refusal points at what the planner rejected.
+			 */
+			function openingOverlay(
+				adapterContext: StageAdapterContext
+			): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
+				const markers: { id: string; css: readonly [number, number]; label: string }[] = [];
+				const y = adapterContext.snapshot.domain.datumMeters;
+				const project = (point: readonly [number, number]) => {
+					const css = adapterContext.project([point[0], y, point[1]]);
+					return css === null
+						? null
+						: ([css[0] - adapterContext.evaluation.rect.left, css[1] - adapterContext.evaluation.rect.top] as const);
+				};
+				const candidate = openingCandidate;
+				const start = candidate?.ghost === null || candidate?.ghost === undefined ? null : project(candidate.ghost[0]);
+				const end = candidate?.ghost === null || candidate?.ghost === undefined ? null : project(candidate.ghost[1]);
+				if (candidate !== null && start !== null) {
+					markers.push({
+						id: 'layout-opening-start',
+						css: start,
+						label: `Opening start — offset ${candidate.offset.toFixed(3)} m on Wall ${candidate.wallId}`
+					});
+				}
+				if (candidate !== null && end !== null) {
+					markers.push({
+						id: 'layout-opening-end',
+						css: end,
+						label: `Opening end — ${openingOptions.width.toFixed(3)} m wide`
+					});
+				}
+				const refusal =
+					openingNotice ?? (openingPreview?.kind === 'refused' ? openingPreview.message : null);
+				if (refusal !== null) {
+					const anchor = start ?? (openingPress === null ? null : openingPress.css);
+					if (anchor !== null) {
+						markers.push({ id: 'layout-opening-refusal', css: anchor, label: refusal });
+					}
+				}
+				return markers;
+			}
 
 			/**
 			 * The ghost chain, its live marks and the refusal/repair words.

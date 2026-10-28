@@ -117,8 +117,95 @@ export function pointOnWallCenterline(wall: ProjectedWall, point: LayoutVec2): L
 	return [wall.start[0] + dx * amount, wall.start[1] + dz * amount];
 }
 
+/** A Wall's physical straight length in meters (projected Walls are straight). */
+export function projectedWallLength(wall: Pick<ProjectedWall, 'start' | 'end'>): number {
+	return Math.hypot(wall.end[0] - wall.start[0], wall.end[1] - wall.start[1]);
+}
+
+/**
+ * The meter offset from a Wall's canonical start that a world point names.
+ *
+ * This is the same convention as the Card's Offset field: distance along the
+ * centerline to the Opening's near edge. The value is the pointer's exact
+ * projection onto the segment, never a value slid inward to make a candidate fit.
+ */
+export function offsetAlongWall(wall: ProjectedWall, point: LayoutVec2): number {
+	const projected = pointOnWallCenterline(wall, point);
+	return Math.hypot(projected[0] - wall.start[0], projected[1] - wall.start[1]);
+}
+
+/** A point at one meter distance from the Wall start, for the opening ghost. */
+export function pointAlongWall(wall: ProjectedWall, distance: number): LayoutVec2 {
+	const length = projectedWallLength(wall);
+	if (!(length > 0)) return [wall.start[0], wall.start[1]];
+	const amount = distance / length;
+	return [
+		wall.start[0] + (wall.end[0] - wall.start[0]) * amount,
+		wall.start[1] + (wall.end[1] - wall.start[1]) * amount
+	];
+}
+
+/**
+ * The deliberate host one pointer position names for an Opening.
+ *
+ * Only a Wall face inside the existing Ink tolerance is a host; the Stage is
+ * never a free placement. When a host (or one of its Openings) is selected and
+ * is among the candidates, that host wins — task focus, not a new selection.
+ * Otherwise the nearest candidate wins. Nothing here picks a coordinate.
+ */
+export function classifyOpeningHost(input: {
+	readonly css: readonly [number, number];
+	readonly walls: readonly ProjectedWall[];
+	readonly preferredWallId: string | null;
+}): { readonly wallId: string; readonly distance: number } | null {
+	const candidates: { id: string; distance: number }[] = [];
+	for (const wall of input.walls) {
+		const [distance] = closestOnCssSegment(input.css, wall.startCss, wall.endCss);
+		if (distance > INK_WALL_HIT_CSS_PX) continue;
+		candidates.push({ id: wall.id, distance });
+	}
+	if (candidates.length === 0) return null;
+	const preferred = candidates.find((candidate) => candidate.id === input.preferredWallId);
+	if (preferred !== undefined) return { wallId: preferred.id, distance: preferred.distance };
+	const nearest = candidates.reduce((best, candidate) =>
+		candidate.distance < best.distance ? candidate : best
+	);
+	return { wallId: nearest.id, distance: nearest.distance };
+}
+
+/** The two Ink readings: the straight Wall chain and the Wall-hosted Opening. */
+export type InkReading = 'wall' | 'opening';
+
+export type InkOpeningKind = 'door' | 'window';
+
+/** The next Opening's palette defaults; a session remembers them. */
+export type InkOpeningOptions = {
+	readonly kind: InkOpeningKind;
+	readonly width: number;
+	readonly height: number;
+	readonly sillHeight: number;
+};
+
+/** The host-relative candidate and its planner answer, as the palette reads it. */
+export type InkOpeningSnapshot = {
+	readonly hostId: string | null;
+	readonly hostLength: number | null;
+	readonly offset: number | null;
+	readonly width: number;
+	readonly height: number;
+	readonly sillHeight: number;
+	readonly kind: InkOpeningKind;
+	/** The planner accepted the exact candidate under the pointer. */
+	readonly canPlace: boolean;
+	/** Planner-derived refusal/repair words while the candidate does not fit. */
+	readonly refusal: string | null;
+};
+
 /** What the Ink palette renders. Everything here is read from the live draft. */
 export type InkPaletteSnapshot = {
+	readonly reading: InkReading;
+	/** The Opening candidate while that reading is armed; `null` for the Wall reading. */
+	readonly opening: InkOpeningSnapshot | null;
 	readonly points: readonly LayoutVec2[];
 	readonly closed: boolean;
 	readonly canFinish: boolean;
@@ -138,6 +225,15 @@ export type InkPaletteSnapshot = {
  * writer of the draft.
  */
 export type InkController = {
+	/** Switch the one Ink tool between its supported readings. */
+	readonly setReading: (reading: InkReading) => void;
+	/** Remember the next Opening's kind and exact metrics. */
+	readonly setOpeningOptions: (options: InkOpeningOptions) => void;
+	/**
+	 * Place on the preferred/tie-winning host. An empty offset uses the host's
+	 * exact center; a typed offset is used exactly (never clamped).
+	 */
+	readonly placeOpening: (offsetText: string) => void;
 	/** Finish the chain as it stands (open chain or explicit ring). */
 	readonly finish: () => void;
 	/** Close the ring and finish it in one accepted step. */
