@@ -646,6 +646,12 @@ describe('Scene adapter registration', () => {
 			if (css.kind !== 'projected') throw new Error('fixture projection failed');
 			const hit = facade.resolveSourceHit({ evaluationId: facade.evaluationId()!, css: css.css });
 			expect(hit.kind === 'resolved' ? hit.hit.reference?.subject.id : null).toBe('model-front');
+			// Live bounds follow a model/transform update, never a retained guessed box.
+			mesh.scale.setScalar(3);
+			expect(rendered.pick({ origin: [3.25, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).toBe('model-front');
+			mesh.position.x = 20;
+			expect(rendered.pick({ origin: [3.25, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
+			mesh.position.x = 2;
 			mesh.visible = false;
 			expect(rendered.pick({ origin: [2.75, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
 			off();

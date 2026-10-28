@@ -72,7 +72,7 @@ function starterSource(context: AdmissionContext = CONTEXT) {
 
 describe('source admission', () => {
 
-	it('drops a form-heavy cold admission superseded at its real task boundary', async () => {
+	it.each([1, 2])('drops a form-heavy cold admission superseded at task boundary %s', async (boundary) => {
 		const baseline = await admitSource(await starterSource(), CONTEXT);
 		if (baseline.kind !== 'admitted') throw new Error('baseline refused');
 		const forms = await createUnitProject({ id: PROJECT_ID, name: 'Yielding forms', scene: {
@@ -87,16 +87,17 @@ describe('source admission', () => {
 		const session = createStageSession({ sessionEpoch: CONTEXT.sessionEpoch });
 		session.replace(baseline.snapshot);
 		let resume: (() => void) | null = null;
+		let boundaries = 0;
 		const realTimeout = globalThis.setTimeout;
 		const timer = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((callback: () => void, delay?: number) => {
-			if (delay === 0) { resume = callback; return 0; }
+			if (delay === 0 && ++boundaries === boundary) { resume = callback; return 0; }
 			return realTimeout(callback, delay);
 		}) as typeof setTimeout);
 		try {
 			const pending = runBoundLoad(session, () => admitSource(forms, CONTEXT));
-			expect(resume).not.toBeNull();
+			await vi.waitFor(() => expect(resume).not.toBeNull());
 			// A newer replacement ends the production load lease while admission is
-			// paused after strict validation. Its completion must remain uninstalled.
+			// paused after strict validation or runtime preparation. Its completion must remain uninstalled.
 			session.replace(baseline.snapshot);
 			timer.mockRestore();
 			(resume as unknown as () => void)();

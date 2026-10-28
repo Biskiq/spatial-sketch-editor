@@ -61,6 +61,7 @@
 	let formRenderRevision = $state(0);
 	function formRendererReady(): void {
 		formRenderRevision += 1;
+		scenePick.refresh();
 	}
 </script>
 

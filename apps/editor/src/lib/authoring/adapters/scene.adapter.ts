@@ -51,7 +51,6 @@ import {
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { planSceneHaloProbe, resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
 import FormCardFields from './scene/FormCardFieldsLazy.svelte';
-import { formCardController } from './scene/form-card';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import {
@@ -134,7 +133,7 @@ function entityFacts(
 			: []),
 		// A form has no scalar scale to show; its size is the evaluated bounds of
 		// the authored source, so the Card reports metres it can never write from
-		// here (S02 owns the size writers).
+		// here; the Card writer supplies explicit per-axis Size commands.
 		...(entity.kind === 'form' ? formSizeFacts(entity) : [])
 	];
 }
@@ -144,9 +143,9 @@ function formSizeFacts(entity: SceneFormEntity): readonly StageCardFact[] {
 	if (mesh === null) return [];
 	return [
 		{ label: 'Material', value: entity.materialId },
-		{ label: 'Width', value: formatFormMeters(mesh.bounds.max[0] - mesh.bounds.min[0]) },
-		{ label: 'Depth', value: formatFormMeters(mesh.bounds.max[2] - mesh.bounds.min[2]) },
-		{ label: 'Height', value: formatFormMeters(mesh.bounds.max[1] - mesh.bounds.min[1]) }
+		...['Width', 'Height', 'Depth'].map((label, axis) => ({
+			label, value: formatFormMeters(mesh.bounds.max[axis]! - mesh.bounds.min[axis]!)
+		}))
 	];
 }
 
@@ -472,6 +471,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
 				})),
 				hitProvider(candidate, live) {
+					if (!source.entities.some((entity) => entity.kind !== 'light')) return null;
 					const css: [number, number] = [candidate.css[0] + live.evaluation.rect.left, candidate.css[1] + live.evaluation.rect.top];
 					const ray = live.ray(css);
 					if (ray === null) return null;
@@ -764,14 +764,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				cardActions(subject) {
 					if (subject.reference?.domain !== 'scene') return [];
-					const controller = formCardController(services, subject.sourceId);
-					if (controller === null) return [];
+					const entity = source.entities.find((entity) => entity.id === subject.sourceId && entity.kind === 'form');
+					if (entity === undefined) return [];
+					const snapshot = services.stage.snapshot();
 					return [{ id: 'scene-form-delete', label: 'Delete form', destructive: true,
-						detail: `Remove ${controller.entity.name}. Undo restores it.`,
+						detail: `Remove ${entity.name}. Undo restores it.`,
 						async run() {
-							const result = await controller.delete();
-							return result.kind === 'refused' ? { kind: 'refused' as const, message: result.message }
-								: { kind: result.kind === 'no-op' ? 'no-op' as const : 'accepted' as const };
+							const { deleteForm } = await import('./scene/form-card-command');
+							return deleteForm(services, snapshot, entity.id);
 						} }];
 				},
 				cardFacts(cardSubject: StageCardSubject) {

@@ -1,5 +1,5 @@
 /** Card commands capture one accepted source and use the existing Scene planners/F4 host. */
-import { perfMark } from '$lib/platform/perf-marks';
+import { acceptFormCommand } from './form-card-command';
 import type { AuthoringIntent } from '@portfolio/project-model';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageScene } from '$lib/authoring/stage/unit-stage-source';
@@ -12,15 +12,9 @@ export function formCardController(services: StageAdapterServices, entityId: str
 	if (entity?.kind !== 'form') return null;
 	const mesh = evaluateFormMesh(entity.form);
 	if (mesh === null) return null;
-	const reference = sceneEntityReference(entityId, snapshot.domain.unitRevisions.scene);
 	const dimensions = mesh.bounds.max.map((value, axis) => value - mesh.bounds.min[axis]!);
 	async function run(kind: string, payload: AuthoringIntent['payload'], newId?: string) {
-		perfMark('command:scene-form', { operation: kind, entityId });
-		const outcome = await services.authoring.accept({
-			version: 1, kind, operationId: crypto.randomUUID(),
-			expectedRevision: snapshot.acceptedRevision, targets: [reference], payload,
-			capturedInputs: [], allocatedIds: newId === undefined ? [] : [{ kind: 'scene-entity', id: newId }]
-		});
+		const outcome = await acceptFormCommand(services, snapshot, entityId, kind, payload, newId);
 		if (outcome.kind === 'installed' && newId !== undefined) {
 			const next = sceneEntityReference(newId, services.stage.snapshot().domain.unitRevisions.scene);
 			services.stage.setSelection({ ordered: [{ reference: next }], primary: next });
