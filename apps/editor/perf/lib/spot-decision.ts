@@ -66,9 +66,12 @@ export function presentedLimitMs(tier: SpotTier, refreshMs: number): number {
 	return tier === 'M' ? refreshMs + PRESENTATION_TOLERANCE_MS : 2 * refreshMs + PRESENTATION_TOLERANCE_MS;
 }
 
+/** M requires a near-immediate response; L permits a slower complete commit.
+ * The two-frame L budget applies to continuous input, not one-shot commit completion.
+ */
 export function commitPresentedLimitMs(tier: SpotTier, editorMs: number, refreshMs: number): number {
-	const slack = tier === 'M' ? refreshMs + PRESENTATION_TOLERANCE_MS : 2 * refreshMs + PRESENTATION_TOLERANCE_MS;
-	return Math.min(COMMIT_EDITOR_MS[tier], editorMs + slack);
+	if (tier === 'L') return COMMIT_EDITOR_MS.L;
+	return Math.min(COMMIT_EDITOR_MS.M, editorMs + refreshMs + PRESENTATION_TOLERANCE_MS);
 }
 
 export type FrameStop = {
