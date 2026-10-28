@@ -2456,6 +2456,9 @@ describe('routing and skill preflights', () => {
 		}));
 		const nowSource = readFile('docs/roadmap/now.md');
 		const live = { nowSource, slices, batons, runbooks, router };
+		// A synthetic released slice outside the release list keeps these probes true even when the
+		// real release list advances to include T5.P01.S01.
+		const unlisted = { id: 'T2.P09.S09', status: 'approved', authorization: 'released from the hold' };
 		expect(releaseListProblems(live)).toEqual([]);
 
 		const withoutRow = nowSource.replace(/^\| `T1\.P02\.S04`.*\n/m, '');
@@ -2486,19 +2489,18 @@ describe('routing and skill preflights', () => {
 		expect(
 			releaseListProblems({
 				...live,
-				slices: slices.map((slice) =>
-					slice.id === 'T5.P01.S01' ? { ...slice, authorization: 'released from the hold' } : slice
-				)
+				slices: [...slices, unlisted]
 			}).join('\n')
-		).toContain('T5.P01.S01 says released and has no row');
+		).toContain('T2.P09.S09 says released and has no row');
 		expect(
 			releaseListProblems({
 				...live,
+				slices: [...slices, unlisted],
 				batons: batons.map((baton) =>
-					baton.track === 't4-release' ? { ...baton, source: `${baton.source}\nT5.P01.S01` } : baton
+					baton.track === 't4-release' ? { ...baton, source: `${baton.source}\nT2.P09.S09` } : baton
 				)
 			}).join('\n')
-		).toContain('t4-release baton names T5.P01.S01');
+		).toContain('t4-release baton names T2.P09.S09');
 		expect(
 			releaseListProblems({
 				...live,
