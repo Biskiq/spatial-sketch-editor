@@ -8,6 +8,7 @@
 	 * unmounts. Editor Stage and Preview both reach this file through
 	 * `VisitorEntityGroups`, so they cannot draw different shapes.
 	 */
+	import { onMount } from 'svelte';
 	import { T } from '@threlte/core';
 	import type { BufferGeometry } from 'three';
 	import type { SceneFormEntity } from '$lib/content/scene';
@@ -21,12 +22,16 @@
 	let {
 		entity,
 		effective,
-		scope = null
+		scope = null,
+		onMounted
 	}: {
 		entity: SceneFormEntity;
 		effective: EffectiveSceneMaterial;
 		scope?: TextureLoadScope | null;
+		onMounted?: () => void;
 	} = $props();
+
+	onMount(() => onMounted?.());
 
 	// UVs are metres, so one surface unit is one metre and the material's own
 	// `defaultTileSizeMeters` becomes the only tiling scale.

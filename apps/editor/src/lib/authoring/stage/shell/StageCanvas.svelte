@@ -53,6 +53,11 @@
 		for (const room of geometry.rooms) record[room.roomId] = neutralVisitorRoomPresentation;
 		return record;
 	});
+
+	let formRenderRevision = $state(0);
+	function formRendererReady(): void {
+		formRenderRevision += 1;
+	}
 </script>
 
 <Canvas createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas), 'stage')} dpr={[1, 1.5]} shadows={PCFShadowMap}>
@@ -68,9 +73,9 @@
 		because it owns this renderer's shadow map; see the component for the full
 		trigger contract.
 	-->
-	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} />
+	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
 	<VisitorLayoutShell {geometry} {presentation} />
-	<StageEntities {scene} {rooms} {modelUrls} />
+	<StageEntities {scene} {rooms} {modelUrls} onFormRendererReady={formRendererReady} />
 	<!--
 		Proposed-pose ghosts: the object's own shape at the captured pose, translucent
 		and depth-write-free so the accepted body stays readable underneath. They are

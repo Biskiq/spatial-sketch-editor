@@ -63,6 +63,39 @@ function box(id: string, position: Vec3): SceneEntity {
 	};
 }
 
+function form(
+	id: string,
+	position: Vec3,
+	outline: readonly (readonly [number, number])[] = [
+		[0, 0],
+		[1, 0],
+		[1, 1],
+		[0, 1]
+	],
+	rotation: Vec3 = [0, 0, 0]
+): SceneEntity {
+	return {
+		kind: 'form',
+		id,
+		name: 'Drawn form',
+		position,
+		rotation,
+		form: {
+			generator: {
+				kind: 'extrude',
+				plane: 'plan',
+				outline: outline.map(([u, v], index) => ({ key: index + 1, u, v, smooth: false })),
+				extent: 1
+			},
+			scale: [1, 1, 1],
+			nextKey: outline.length + 1
+		},
+		materialId: 'plaster-warm',
+		castShadow: true,
+		receiveShadow: true
+	};
+}
+
 /** A unit-length ray; the code only relies on `origin + t * direction`. */
 function ray(origin: Vec3, towards: Vec3) {
 	const delta: Vec3 = [towards[0] - origin[0], towards[1] - origin[1], towards[2] - origin[2]];
@@ -130,6 +163,78 @@ describe('floor support against drawn geometry', () => {
 			supportOccluders(domain.geometry, domain.scene, 'entity-box')
 		);
 		expect(ownSubject.kind).toBe('floor');
+	});
+
+	it('uses a form body for occlusion and excludes the live subject by entity id', async () => {
+		const domain = await domainFor([form('entity-form', [0, 0, 0])]);
+		const rayAtForm = ray([0.5, 2, 0.5], [0.5, 0, 0.5]);
+		const occluders = supportOccluders(domain.geometry, domain.scene);
+		const blocked = floorSupport(rayAtForm, domain.datumMeters, occluders);
+		expect(blocked.kind).toBe('occluded');
+		if (blocked.kind !== 'occluded') return;
+		expect(blocked.occluderId).toBe('scene:entity-form');
+		expect(blocked.distanceMeters).toBeCloseTo(1, 9);
+
+		const ownSubject = floorSupport(
+			rayAtForm,
+			domain.datumMeters,
+			supportOccluders(domain.geometry, domain.scene, 'entity-form')
+		);
+		expect(ownSubject.kind).toBe('floor');
+	});
+
+	it('applies the full Euler rotation when testing form occlusion', async () => {
+		const rolledForm = form('entity-rolled-form', [0, 0, 0], undefined, [0, 0, Math.PI / 2]);
+		const domain = await domainFor([rolledForm]);
+		const occluders = supportOccluders(domain.geometry, domain.scene);
+
+		// The quarter-turn around Z moves the unit form's top from +Y to -X.
+		const onRenderedForm = floorSupport(
+			ray([-0.5, 2, 0.5], [-0.5, 0, 0.5]),
+			domain.datumMeters,
+			occluders
+		);
+		expect(onRenderedForm.kind).toBe('occluded');
+		if (onRenderedForm.kind === 'occluded') {
+			expect(onRenderedForm.occluderId).toBe('scene:entity-rolled-form');
+		}
+
+		// X=0.5 lies in the old, yaw-only phantom footprint, not the rendered mesh.
+		const outsideRenderedForm = floorSupport(
+			ray([0.5, 2, 0.5], [0.5, 0, 0.5]),
+			domain.datumMeters,
+			occluders
+		);
+		expect(outsideRenderedForm.kind).toBe('floor');
+	});
+
+	it('does not let a concave form bounding box hide its empty interior corner', async () => {
+		const concaveOutline: readonly (readonly [number, number])[] = [
+			[0, 0],
+			[2, 0],
+			[2, 1],
+			[1, 1],
+			[1, 2],
+			[0, 2]
+		];
+		const domain = await domainFor([form('entity-concave-form', [0, 0, 0], concaveOutline)]);
+		const occluders = supportOccluders(domain.geometry, domain.scene);
+
+		const solidArm = floorSupport(
+			ray([0.5, 2, 0.5], [0.5, 0, 0.5]),
+			domain.datumMeters,
+			occluders
+		);
+		expect(solidArm.kind).toBe('occluded');
+		if (solidArm.kind === 'occluded') expect(solidArm.occluderId).toBe('scene:entity-concave-form');
+
+		// This point is inside the 2 × 2 bounds but outside both arms of the L.
+		const emptyCorner = floorSupport(
+			ray([1.5, 2, 1.5], [1.5, 0, 1.5]),
+			domain.datumMeters,
+			occluders
+		);
+		expect(emptyCorner.kind).toBe('floor');
 	});
 
 	it('reports no support for a parallel or backward ray', async () => {

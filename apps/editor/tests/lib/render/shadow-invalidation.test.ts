@@ -78,6 +78,26 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		controller.dispose();
 	});
 
+	it('renders again when the lazy form renderer reports its mesh mounted', () => {
+		const { frame, state } = fakeShadowMap();
+		const controller = createShadowInvalidation({ shadowMap: state.shadowMap });
+		frame(); // Initial Stage scene, before a form exists.
+
+		controller.invalidate(); // The Scene now contains a form; the lazy chunk is still pending.
+		frame();
+		expect(controller.stats().passes).toBe(2);
+
+		// VisitorEntityGroups reports this only after the renderer component's
+		// Threlte mesh has mounted. That later installation needs its own shadow pass.
+		controller.invalidate();
+		frame();
+		expect(controller.stats().passes).toBe(3);
+		frame();
+		expect(controller.stats().passes).toBe(3);
+
+		controller.dispose();
+	});
+
 	it('asks its scheduler for a frame when a dependency changes', () => {
 		const { state } = fakeShadowMap();
 		const requestFrame = vi.fn();

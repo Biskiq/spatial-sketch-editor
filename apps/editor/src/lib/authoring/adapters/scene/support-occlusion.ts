@@ -6,12 +6,12 @@
  * it and report a pose the creator cannot see. This module builds occluders from
  * the **compiled** Layout (the same solid spans the shared wall-mesh builder
  * consumes, and the compiled Layout objects) plus the resolved Scene's primitive
- * entities, and intersects the pointer ray with them before accepting the datum
+ * entities and evaluated forms, and intersects the pointer ray with them before accepting the datum
  * hit.
  *
  * It is deliberately framework-free and renderer-free: the ray is the one the
  * viewport evaluation produced, the geometry is the one the renderer draws, and
- * the arithmetic is plain boxes/cylinders/spheres, so the behaviour is provable
+ * the arithmetic is boxes/cylinders/spheres plus exact form triangles, so the behaviour is provable
  * in the fast lane instead of only in a WebGL session.
  *
  * Conservative by construction: a hit on any occluder nearer than the floor is
@@ -25,7 +25,9 @@
 
 import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 import type { PointerRay } from '@portfolio/camera-core';
+import type { FormMesh } from '@portfolio/geometry-core';
 import type { RuntimeScene, SceneEntity, Vec3 } from '@portfolio/project-model';
+import { evaluateFormMesh } from '$lib/content/form-evaluation';
 
 const EPSILON = 1e-6;
 
@@ -45,7 +47,14 @@ export type SupportOccluder =
 			readonly radius: number;
 			readonly height: number;
 	  }
-	| { readonly id: string; readonly kind: 'sphere'; readonly center: Vec3; readonly radius: number };
+	| { readonly id: string; readonly kind: 'sphere'; readonly center: Vec3; readonly radius: number }
+	| {
+			readonly id: string;
+			readonly kind: 'form-mesh';
+			readonly center: Vec3;
+			readonly rotation: Vec3;
+			readonly mesh: FormMesh;
+	  };
 
 export type FloorSupport =
 	| { readonly kind: 'floor'; readonly worldPoint: Vec3; readonly distanceMeters: number }
@@ -123,6 +132,18 @@ function primitiveOccluder(entity: SceneEntity): SupportOccluder | null {
 	}
 }
 
+function formOccluder(entity: Extract<SceneEntity, { kind: 'form' }>): SupportOccluder | null {
+	const mesh = evaluateFormMesh(entity.form);
+	if (mesh === null || mesh.indices.length === 0) return null;
+	return {
+		id: `scene:${entity.id}`,
+		kind: 'form-mesh',
+		center: [...entity.position] as Vec3,
+		rotation: [...entity.rotation] as Vec3,
+		mesh
+	};
+}
+
 /**
  * Every occluder the Stage draws for one admitted snapshot.
  *
@@ -161,7 +182,7 @@ export function supportOccluders(
 	}
 	for (const entity of scene.entities) {
 		if (entity.id === exceptEntityId) continue;
-		const occluder = primitiveOccluder(entity);
+		const occluder = entity.kind === 'form' ? formOccluder(entity) : primitiveOccluder(entity);
 		if (occluder !== null) occluders.push(occluder);
 	}
 	return occluders;
@@ -179,6 +200,47 @@ function localRay(ray: PointerRay, center: Vec3, yaw: number) {
 	return {
 		origin: toLocal(ray.origin[0], ray.origin[1], ray.origin[2]),
 		direction: toLocal(ray.direction[0] + center[0], ray.direction[1] + center[1], ray.direction[2] + center[2])
+	};
+}
+
+/** Undo a Three.js group's default XYZ Euler rotation (Rz * Ry * Rx). */
+function inverseRotateXYZ(point: Vec3, rotation: Vec3): Vec3 {
+	const [x, y, z] = rotation;
+	const cosX = Math.cos(x);
+	const sinX = Math.sin(x);
+	const cosY = Math.cos(y);
+	const sinY = Math.sin(y);
+	const cosZ = Math.cos(z);
+	const sinZ = Math.sin(z);
+
+	// Apply the inverse in reverse order: Rz(-z), then Ry(-y), then Rx(-x).
+	const afterZ: Vec3 = [
+		cosZ * point[0] + sinZ * point[1],
+		-sinZ * point[0] + cosZ * point[1],
+		point[2]
+	];
+	const afterY: Vec3 = [
+		cosY * afterZ[0] - sinY * afterZ[2],
+		afterZ[1],
+		sinY * afterZ[0] + cosY * afterZ[2]
+	];
+	return [
+		afterY[0],
+		cosX * afterY[1] + sinX * afterY[2],
+		-sinX * afterY[1] + cosX * afterY[2]
+	];
+}
+
+/** Local-space ray for a form mesh: translate to its origin, then undo all Euler axes. */
+function localFormRay(ray: PointerRay, center: Vec3, rotation: Vec3) {
+	const translatedOrigin: Vec3 = [
+		ray.origin[0] - center[0],
+		ray.origin[1] - center[1],
+		ray.origin[2] - center[2]
+	];
+	return {
+		origin: inverseRotateXYZ(translatedOrigin, rotation),
+		direction: inverseRotateXYZ(ray.direction, rotation)
 	};
 }
 
@@ -254,6 +316,56 @@ function hitCylinder(ray: PointerRay, occluder: Extract<SupportOccluder, { kind:
 	return null;
 }
 
+/** Nearest hit against the canonical triangles the Stage's form renderer draws. */
+function hitFormMesh(
+	ray: PointerRay,
+	occluder: Extract<SupportOccluder, { kind: 'form-mesh' }>
+): number | null {
+	const local = localFormRay(ray, occluder.center, occluder.rotation);
+	const { positions, indices } = occluder.mesh;
+	let nearest: number | null = null;
+	for (let index = 0; index < indices.length; index += 3) {
+		const a = indices[index]! * 3;
+		const b = indices[index + 1]! * 3;
+		const c = indices[index + 2]! * 3;
+		const edge1: Vec3 = [
+			positions[b]! - positions[a]!,
+			positions[b + 1]! - positions[a + 1]!,
+			positions[b + 2]! - positions[a + 2]!
+		];
+		const edge2: Vec3 = [
+			positions[c]! - positions[a]!,
+			positions[c + 1]! - positions[a + 1]!,
+			positions[c + 2]! - positions[a + 2]!
+		];
+		const p: Vec3 = [
+			local.direction[1] * edge2[2] - local.direction[2] * edge2[1],
+			local.direction[2] * edge2[0] - local.direction[0] * edge2[2],
+			local.direction[0] * edge2[1] - local.direction[1] * edge2[0]
+		];
+		const determinant = edge1[0] * p[0] + edge1[1] * p[1] + edge1[2] * p[2];
+		if (Math.abs(determinant) <= 1e-12) continue;
+		const inverseDeterminant = 1 / determinant;
+		const fromA: Vec3 = [
+			local.origin[0] - positions[a]!,
+			local.origin[1] - positions[a + 1]!,
+			local.origin[2] - positions[a + 2]!
+		];
+		const u = (fromA[0] * p[0] + fromA[1] * p[1] + fromA[2] * p[2]) * inverseDeterminant;
+		if (u < -EPSILON || u > 1 + EPSILON) continue;
+		const q: Vec3 = [
+			fromA[1] * edge1[2] - fromA[2] * edge1[1],
+			fromA[2] * edge1[0] - fromA[0] * edge1[2],
+			fromA[0] * edge1[1] - fromA[1] * edge1[0]
+		];
+		const v = (local.direction[0] * q[0] + local.direction[1] * q[1] + local.direction[2] * q[2]) * inverseDeterminant;
+		if (v < -EPSILON || u + v > 1 + EPSILON) continue;
+		const distance = (edge2[0] * q[0] + edge2[1] * q[1] + edge2[2] * q[2]) * inverseDeterminant;
+		if (distance >= 0 && (nearest === null || distance < nearest)) nearest = distance;
+	}
+	return nearest;
+}
+
 function hitOccluder(ray: PointerRay, occluder: SupportOccluder): number | null {
 	switch (occluder.kind) {
 		case 'box':
@@ -262,6 +374,8 @@ function hitOccluder(ray: PointerRay, occluder: SupportOccluder): number | null 
 			return hitSphere(ray, occluder);
 		case 'cylinder':
 			return hitCylinder(ray, occluder);
+		case 'form-mesh':
+			return hitFormMesh(ray, occluder);
 	}
 }
 

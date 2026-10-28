@@ -22,6 +22,11 @@
 	 * exact invalidation cannot be established. Grid documents carry no
 	 * placements, so the ordinary Stage keeps the saving.
 	 *
+	 * Native forms use a narrower trigger: their renderer is lazy, but the shared
+	 * EntityForm reports from `onMount`. The Stage increments `formRenderRevision`
+	 * for that attached mesh; Scene identity still invalidates later additions,
+	 * removals and geometry edits.
+	 *
 	 * Not triggers, deliberately: the camera (a shadow map renders from the
 	 * light's shadow camera) and the ghost meshes (they draw with
 	 * `depthWrite={false}` and never set `castShadow`).
@@ -37,12 +42,15 @@
 		geometry,
 		scene,
 		rooms,
-		modelUrls = null
+		modelUrls = null,
+		formRenderRevision
 	}: {
 		geometry: CompiledLayoutGeometry;
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
 		modelUrls?: ReadonlyMap<string, string> | null;
+		/** Changes when a lazy form renderer has attached its mesh to the scene. */
+		formRenderRevision: number;
 	} = $props();
 
 	const { renderer, invalidate } = useThrelte();
@@ -55,7 +63,7 @@
 		canvas: renderer.domElement
 	});
 
-	const sources = $derived([geometry, scene, rooms, modelUrls] as const);
+	const sources = $derived([geometry, scene, rooms, modelUrls, formRenderRevision] as const);
 	/** A model entity's meshes arrive asynchronously; keep per-frame updates for it. */
 	const asynchronousCaster = $derived(scene.entities.some(isSceneModelEntity));
 

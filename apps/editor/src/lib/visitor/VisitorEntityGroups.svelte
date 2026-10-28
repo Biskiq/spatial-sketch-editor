@@ -36,6 +36,7 @@
 		rooms,
 		textureScope = null,
 		modelUrls = null,
+		onFormRendererReady,
 		Model
 	}: {
 		scene: RuntimeScene;
@@ -43,6 +44,8 @@
 		textureScope?: TextureLoadScope | null;
 		/** Runtime-safe approved model bytes: model resource id → derivative URL. */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		/** Optional Stage-only notification after a lazy form mesh has mounted. */
+		onFormRendererReady?: () => void;
 		/** The model renderer; `null` until a lazy host has fetched it. */
 		Model: AssetModelComponent | null;
 	} = $props();
@@ -142,7 +145,12 @@
 			{:else if isSceneFormEntity(entity)}
 				{#if FormComponent}
 					<T.Group position={entity.position} rotation={entity.rotation}>
-						<FormComponent {entity} effective={entityEffective(entity)} scope={textureScope} />
+						<FormComponent
+							{entity}
+							effective={entityEffective(entity)}
+							scope={textureScope}
+							onMounted={onFormRendererReady}
+						/>
 					</T.Group>
 				{/if}
 			{:else if isSceneLightEntity(entity)}

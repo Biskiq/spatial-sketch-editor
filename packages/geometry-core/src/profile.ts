@@ -326,10 +326,8 @@ function buildCurve(
   const endV = (anchor.v + next.v) / 2;
   const deviationU = startU - 2 * anchor.u + endU;
   const deviationV = startV - 2 * anchor.v + endV;
-  const deviation = Math.sqrt(
-    (deviationU * deviationU + deviationV * deviationV) /
-      (4 * SMOOTH_CHORDAL_TOLERANCE_METERS)
-  );
+  const deviationLength = Math.sqrt(deviationU * deviationU + deviationV * deviationV);
+  const deviation = Math.sqrt(deviationLength / (4 * SMOOTH_CHORDAL_TOLERANCE_METERS));
   const requested = Number.isFinite(deviation) ? Math.ceil(deviation) : PROFILE_LIMITS.maxSmoothSegments;
   let steps = 2 * Math.ceil(requested / 2);
   if (!(steps >= PROFILE_LIMITS.minSmoothSegments)) {

@@ -21,12 +21,15 @@
 	let {
 		scene,
 		rooms,
-		modelUrls = null
+		modelUrls = null,
+		onFormRendererReady
 	}: {
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
 		/** Resolved approved creator-model bytes, owned by the route's session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		/** Notify the Stage shadow owner after the lazy form mesh has mounted. */
+		onFormRendererReady: () => void;
 	} = $props();
 
 	let ModelComponent = $state<AssetModelComponent | null>(null);
@@ -56,4 +59,4 @@
 	});
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {modelUrls} Model={ModelComponent} />
+<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} />

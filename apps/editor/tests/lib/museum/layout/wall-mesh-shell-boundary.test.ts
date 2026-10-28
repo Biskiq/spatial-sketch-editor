@@ -28,6 +28,9 @@ const objectRepresentationPath = resolve(srcRoot, 'lib/render/layout-object-repr
 const shadowTriggersPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageShadowTriggers.svelte');
 const shadowInvalidationPath = resolve(srcRoot, 'lib/render/shadow-invalidation.ts');
 const stageCanvasPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageCanvas.svelte');
+const stageEntitiesPath = resolve(srcRoot, 'lib/authoring/stage/shell/StageEntities.svelte');
+const entityGroupsPath = resolve(srcRoot, 'lib/visitor/VisitorEntityGroups.svelte');
+const entityFormPath = resolve(srcRoot, 'lib/museum/entities/EntityForm.svelte');
 const factoryPath = resolve(srcRoot, 'lib/museum/layout/wall-material-factory.ts');
 
 const shell = () => readFileSync(shellPath, 'utf8');
@@ -36,6 +39,9 @@ const objectRepresentation = () => readFileSync(objectRepresentationPath, 'utf8'
 const shadowTriggers = () => readFileSync(shadowTriggersPath, 'utf8');
 const shadowInvalidation = () => readFileSync(shadowInvalidationPath, 'utf8');
 const stageCanvas = () => readFileSync(stageCanvasPath, 'utf8');
+const stageEntities = () => readFileSync(stageEntitiesPath, 'utf8');
+const entityGroups = () => readFileSync(entityGroupsPath, 'utf8');
+const entityForm = () => readFileSync(entityFormPath, 'utf8');
 
 describe('G4 visitor shell boundary', () => {
 	it('removes the per-span chord-box wall path in favor of the builder + adapter', () => {
@@ -113,12 +119,19 @@ describe('G4 visitor shell boundary', () => {
 		// because it needs that renderer; the trigger set is the plan's D.6
 		// contract, and the camera is deliberately not one of them.
 		expect(stageCanvas()).toContain('StageShadowTriggers');
-		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} />');
+		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />');
+		expect(stageCanvas()).toContain('onFormRendererReady={formRendererReady}');
+		expect(stageEntities()).toContain('{onFormRendererReady} Model={ModelComponent}');
+		const groups = entityGroups();
+		expect(groups).toContain('onMounted={onFormRendererReady}');
+		expect(entityForm()).toContain("import { onMount } from 'svelte'");
+		expect(entityForm()).toContain('onMount(() => onMounted?.())');
 		const triggers = shadowTriggers();
 		expect(triggers).toContain('createShadowInvalidation');
 		expect(triggers).toContain('renderer.shadowMap');
 		expect(triggers).toContain('requestFrame: invalidate');
 		expect(triggers).toContain('shadows.dispose()');
+		expect(triggers).toContain('formRenderRevision] as const');
 		// A caster whose arrival cannot be observed (a parsed model) keeps today's
 		// per-frame updates instead of a trigger that might miss it.
 		expect(triggers).toContain('setAlwaysUpdate');
