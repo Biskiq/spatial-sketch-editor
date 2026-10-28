@@ -130,7 +130,6 @@
 					data-ink-reading={option.id}
 					data-ink-reading-wall={option.id === 'wall' ? '' : undefined}
 					data-ink-reading-opening={option.id === 'opening' ? '' : undefined}
-					data-ink-reading-shape={option.id === 'shape' ? '' : undefined}
 					checked={snapshot.reading === option.id}
 					onchange={() => inkSurface()?.controller.setReading(option.id)}
 				/>{option.label}

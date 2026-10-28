@@ -205,6 +205,12 @@ export function createShapeReadingSession(
 		},
 		setPlane(next) {
 			if (next === plane) return;
+			if (points.length > 0 || phase === 'depth') {
+				refusal = 'Clear the live Shape before changing its sheet.';
+				publish();
+				services.stage.notifySurfaceChange();
+				return;
+			}
 			plane = next;
 			// Points are local to the plane they were drawn on; switching re-reads nothing.
 			resetAll();
@@ -216,6 +222,12 @@ export function createShapeReadingSession(
 			const z = patch.z !== undefined && Number.isFinite(patch.z) ? patch.z : sheet.z;
 			const yaw = patch.yaw !== undefined && Number.isFinite(patch.yaw) ? patch.yaw : sheet.yaw;
 			if (x === sheet.x && z === sheet.z && yaw === sheet.yaw) return;
+			if (points.length > 0 || phase === 'depth') {
+				refusal = 'Clear the live Shape before changing its sheet.';
+				publish();
+				services.stage.notifySurfaceChange();
+				return;
+			}
 			sheet = { x, z, yaw };
 			// A moved sheet no longer matches the drawn points' world positions.
 			resetAll();
@@ -324,10 +336,6 @@ export function createShapeReadingSession(
 		published = { surface, revision: (published?.revision ?? 0) + 1 };
 	}
 
-	function notify(): void {
-		if (!disposed) services.stage.notifySurfaceChange();
-	}
-
 	/** Recompute everything that only changes when an input changes, then publish. */
 	function refresh(): void {
 		derived = derive();
@@ -380,6 +388,9 @@ export function createShapeReadingSession(
 		phase = 'outline';
 		outline = null;
 		hoverPoint = null;
+		// The abandoned depth field may hold invalid text; restore the value that
+		// is actually in effect so a later Finish cannot show a lie.
+		depthText = String(depth);
 		depthValid = true;
 		releaseLeases();
 	}
@@ -544,12 +555,17 @@ export function createShapeReadingSession(
 			return { base, normal, handle: [base[0], base[1] + depth, base[2]] };
 		}
 		const right = shapeSheetRight(sheet);
+		// The planner rests the form's lowest point on the floor, so the handle's
+		// height is the body's midpoint, not the drawn V centre.
 		const base: Vec3 = [
 			sheet.x + right[0] * bounds.centreU,
-			datum + bounds.centreV,
+			datum + bounds.height / 2,
 			sheet.z + right[2] * bounds.centreU
 		];
-		const normal: Vec3 = [Math.sin(sheet.yaw), 0, Math.cos(sheet.yaw)];
+		// Flip side turns the extrusion to the other side of the sheet, so the
+		// handle and its ray must sit on the side the body will occupy.
+		const sign = flipSide ? -1 : 1;
+		const normal: Vec3 = [Math.sin(sheet.yaw) * sign, 0, Math.cos(sheet.yaw) * sign];
 		return {
 			base,
 			normal,

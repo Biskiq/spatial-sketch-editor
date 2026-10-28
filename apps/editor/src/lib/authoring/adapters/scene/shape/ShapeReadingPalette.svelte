@@ -39,7 +39,6 @@
 	let sheetYaw = $state('0');
 	let depthText = $state(String(DEFAULT_SHAPE_DEPTH_METERS));
 	let sheetError = $state<string | null>(null);
-	let depthError = $state<string | null>(null);
 
 	$effect(() => {
 		let frame = 0;
@@ -99,13 +98,16 @@
 		surface()?.controller.setSheet({ x, z, yaw: (yawDegrees * Math.PI) / 180 });
 	}
 
+	/** The session owns depth validity: forward the raw text so Create is gated. */
 	function commitDepth(): void {
-		if (parseField(depthText) === null) {
-			depthError = 'Enter a depth; a blank is not zero.';
-			return;
-		}
-		depthError = null;
 		surface()?.controller.setDepth(depthText);
+	}
+
+	function create(): void {
+		// Commit the field first: a valid new depth is what gets created, and an
+		// invalid one disables Create before the session can install anything.
+		commitDepth();
+		surface()?.controller.create();
 	}
 
 	function setKind(kind: ShapeKind): void {
@@ -229,14 +231,13 @@
 				Back to outline
 			</button>
 		</div>
-		{#if depthError !== null}<p class="error" role="alert">{depthError}</p>{/if}
 		<div class="actions">
 			<button
 				type="button"
 				class="create"
 				data-shape-create
 				disabled={!snapshot.canCreate}
-				onclick={() => surface()?.controller.create()}
+				onclick={create}
 			>
 				Create (Enter)
 			</button>
