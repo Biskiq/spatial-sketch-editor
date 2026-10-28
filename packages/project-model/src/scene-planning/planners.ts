@@ -37,11 +37,13 @@ import {
 	type SceneOperationPayload
 } from './intent-payload';
 import {
+	planCreateForm,
 	planDeleteOne,
 	planDuplicateOne,
 	planMoveHorizontal,
 	planPlaceOnFloor,
 	planResizeOnFloor,
+	planSetFormSize,
 	planSetYaw,
 	finalizePlacedEntity,
 	SCENE_OPERATION_KINDS,
@@ -59,7 +61,7 @@ import {
 } from './model-resource';
 
 /**
- * The four existing-object planners change Scene only.
+ * Every Scene planner except `place-object` changes Scene only.
  *
  * `place-object` is the **single** planner granted typed-resource staging: a
  * creator model's first placement installs its `model` resource, exact lock and
@@ -97,7 +99,7 @@ export type ScenePlannerOptions = {
 };
 
 /**
- * The seven Scene planners, ready to register with the accepted F.4
+ * The nine Scene planners, ready to register with the accepted F.4
  * coordinator. One operation kind has exactly one planner.
  */
 export function createScenePlanners(
@@ -112,12 +114,70 @@ export function createScenePlanners(
 			])
 		);
 	return SCENE_OPERATION_KINDS.map((kind) =>
-		scenePlanner(kind, (request) =>
-			kind === 'place-object'
-				? planPlaceObject(request, definitionsOf())
-				: planExistingObject(request, kind)
-		)
+		scenePlanner(kind, (request) => {
+			if (kind === 'place-object') return planPlaceObject(request, definitionsOf());
+			if (kind === 'create-form') return planCreateFormIntent(request);
+			return planExistingObject(request, kind);
+		})
 	);
+}
+
+function planCreateFormIntent(
+	request: PlannerRequest<ProjectEnvelope>
+): PlannerOutcome<ProjectEnvelope> {
+	const reader = new ShapeReader();
+	const payload = readSceneOperationPayload(reader, 'create-form', request.intent.payload);
+	if (payload === null || payload.kind !== 'create-form') return invalidPayload(reader.issues);
+	const subject = readSceneOperationSubject({
+		reader,
+		kind: 'create-form',
+		targets: request.intent.targets,
+		payload,
+		sourceContentId: request.snapshot.domain.source.units.scene.header.contentRevision
+	});
+	const allocation = readSceneOperationAllocation({
+		reader,
+		kind: 'create-form',
+		allocations: request.intent.allocatedIds,
+		scene: request.snapshot.domain.source.units.scene.data
+	});
+	if (subject === null || allocation === null) return invalidPayload(reader.issues);
+	if (reader.issues.length > 0) return invalidPayload(reader.issues);
+	if (subject.kind !== 'none' || allocation.kind !== 'created') {
+		return rejected(
+			'invalid-value',
+			'A form creation addresses no existing subject and captures one new entity id.',
+			[]
+		);
+	}
+	let result: SceneOperationResult;
+	try {
+		result = planCreateForm({
+			context: {
+				layout: request.snapshot.domain.source.units.layout.data,
+				scene: request.snapshot.domain.source.units.scene.data,
+				sourceContentId: request.snapshot.sourceContentId
+			},
+			entityId: allocation.entityId,
+			plane: payload.plane,
+			outline: payload.outline,
+			extent: payload.extent,
+			position: payload.position,
+			yaw: payload.yaw,
+			materialId: payload.materialId,
+			name: payload.name,
+			...(payload.choice === undefined ? {} : { choice: payload.choice })
+		});
+	} catch (error) {
+		// Parity with every existing-object planner: an unexpected kernel failure is
+		// a typed refusal, never an error escaping the coordinator.
+		return rejected(
+			'invalid-value',
+			`The create-form planner failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+			[]
+		);
+	}
+	return toOutcome(request, 'create-form', result);
 }
 
 function scenePlanner(
@@ -301,11 +361,17 @@ function sameMeter(left: number, right: number): boolean {
 
 function planExistingObject(
 	request: PlannerRequest<ProjectEnvelope>,
-	kind: Exclude<SceneOperationKind, 'place-object'>
+	kind: Exclude<SceneOperationKind, 'place-object' | 'create-form'>
 ): PlannerOutcome<ProjectEnvelope> {
 	const reader = new ShapeReader();
 	const payload = readSceneOperationPayload(reader, kind, request.intent.payload);
-	if (payload === null || payload.kind === 'place-object') return invalidPayload(reader.issues);
+	if (
+		payload === null ||
+		payload.kind === 'place-object' ||
+		payload.kind === 'create-form'
+	) {
+		return invalidPayload(reader.issues);
+	}
 	const subject = readSceneOperationSubject({
 		reader,
 		kind,
@@ -353,8 +419,11 @@ function planExistingObject(
 }
 
 function planOperation(
-	kind: Exclude<SceneOperationKind, 'place-object'>,
-	payload: Exclude<SceneOperationPayload, { kind: 'place-object' }>,
+	kind: Exclude<SceneOperationKind, 'place-object' | 'create-form'>,
+	payload: Exclude<
+		SceneOperationPayload,
+		{ kind: 'place-object' } | { kind: 'create-form' }
+	>,
 	entityId: string,
 	allocation: { readonly kind: 'none' } | { readonly kind: 'created'; readonly entityId: string },
 	context: SceneOperationContext
@@ -382,6 +451,14 @@ function planOperation(
 				frame: payload.frame,
 				contactMinY: payload.contactMinY,
 				...(payload.yaw === undefined ? {} : { yaw: payload.yaw }),
+				...(payload.choice === undefined ? {} : { choice: payload.choice })
+			});
+		case 'set-form-size':
+			if (payload.kind !== 'set-form-size') return payloadMismatch(kind);
+			return planSetFormSize({
+				context,
+				entityId,
+				scale: payload.scale,
 				...(payload.choice === undefined ? {} : { choice: payload.choice })
 			});
 		case 'resize-on-floor':

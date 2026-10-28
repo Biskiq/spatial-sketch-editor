@@ -1,5 +1,7 @@
+import { Euler, Vector3 } from 'three';
 import { getAssetById, normalizeAssetFootprintOutline, validateAssetFootprint } from '$lib/content/assets';
-import type { SceneDocument, SceneEntity, ScenePrimitiveEntity } from '$lib/content/scene';
+import type { SceneDocument, SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '$lib/content/scene';
+import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { Asset } from '$lib/types/assets';
 import type { Vec3 } from '$lib/types/scene';
 import type { LayoutVec2 } from '@portfolio/layout-core';
@@ -10,9 +12,11 @@ const CIRCLE_STEPS = 32;
 export type PlanSceneFootprint = {
 	key: string;
 	entityId: string;
-	kind: 'model' | 'primitive';
+	kind: 'model' | 'primitive' | 'form';
 	primitive?: ScenePrimitiveEntity['primitive'];
 	points: LayoutVec2[];
+	/** Projected triangle union for a tilted form; upright forms keep their concave ring. */
+	polygons?: readonly LayoutVec2[][];
 	presentation?: PlanSceneFootprintPresentation;
 };
 
@@ -63,6 +67,23 @@ export function buildPlanSceneFootprintProjection(
 
 	for (const entity of document.entities) {
 		if (entity.kind === 'light') continue;
+		if (entity.kind === 'form') {
+			// A form's ring is already the evaluated, source-scaled footprint, so it
+			// is transformed by yaw and translation only: applying the entity scale
+			// again would draw a double-sized form.
+			const formPoints = projectFormFootprint(entity);
+			if (formPoints === null) continue;
+			const formPresentation = options.presentationForEntity?.(entity.id);
+			footprints.push({
+				key: geometryId(['plan', 'scene-footprint', entity.id]),
+				entityId: entity.id,
+				kind: 'form',
+				points: formPoints,
+				...(entity.rotation[0] !== 0 || entity.rotation[2] !== 0 ? { polygons: tiltedFormPolygons(entity) } : {}),
+				...(formPresentation ? { presentation: formPresentation } : {})
+			});
+			continue;
+		}
 		const localOutline = footprintForEntity(entity, assetById, options.modelFootprintById);
 		if (!localOutline) continue;
 		const scale = resolveScale(entity, options.getEffectiveScale?.(entity));
@@ -81,6 +102,23 @@ export function buildPlanSceneFootprintProjection(
 	}
 
 	return { footprints };
+}
+
+/** Full XYZ placement matches the rendered body, including admitted non-upright forms. */
+function tiltedFormPolygons(entity: SceneFormEntity): LayoutVec2[][] {
+	const mesh = evaluateFormMesh(entity.form);
+	if (mesh === null) return [];
+	const rotation = new Euler(...entity.rotation);
+	const positions: LayoutVec2[] = [];
+	for (let i = 0; i < mesh.positions.length; i += 3) {
+		const point = new Vector3(mesh.positions[i], mesh.positions[i + 1], mesh.positions[i + 2]).applyEuler(rotation);
+		positions.push([point.x + entity.position[0], point.z + entity.position[2]]);
+	}
+	const polygons: LayoutVec2[][] = [];
+	for (let i = 0; i < mesh.indices.length; i += 3) polygons.push([
+		positions[mesh.indices[i]!]!, positions[mesh.indices[i + 1]!]!, positions[mesh.indices[i + 2]!]!
+	]);
+	return polygons;
 }
 
 function footprintForEntity(
@@ -121,6 +159,23 @@ function footprintForEntity(
 				? ellipse(entity.dimensions.radius, entity.dimensions.radius)
 				: null;
 	}
+}
+
+/** The evaluated XZ ring of one form, in Plan world coordinates. */
+function projectFormFootprint(entity: SceneFormEntity): LayoutVec2[] | null {
+	const mesh = evaluateFormMesh(entity.form);
+	if (mesh === null || mesh.footprint.length < 3) return null;
+	if (
+		entity.position.some((value) => !Number.isFinite(value)) ||
+		entity.rotation.some((value) => !Number.isFinite(value))
+	) {
+		return null;
+	}
+	const cos = Math.cos(entity.rotation[1]);
+	const sin = Math.sin(entity.rotation[1]);
+	return mesh.footprint.map(
+		([x, z]) => [entity.position[0] + x * cos + z * sin, entity.position[2] - x * sin + z * cos] as LayoutVec2
+	);
 }
 
 function positiveDimensions(first: number, second: number): boolean {

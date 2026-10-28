@@ -19,7 +19,7 @@ import type { ShapeIssue } from '../strict-shape';
 import { ShapeReader } from '../strict-shape';
 import { validateFrameReference } from '../references/validate';
 import type { FrameReference, SemanticReference } from '../references/types';
-import type { Vec3 } from '../scene';
+import type { MaterialId, SceneFormPlane, Vec3 } from '../scene';
 import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
 import type { LocalInputFrame } from './types';
 import type { SceneSupportChoice } from './support';
@@ -28,6 +28,27 @@ import type { SceneOperationKind } from './operations';
 import type { CreatorModelResourcePayload } from './model-resource';
 
 export type SceneOperationPayload =
+	| {
+			readonly kind: 'create-form';
+			readonly plane: SceneFormPlane;
+			readonly outline: readonly {
+				readonly u: number;
+				readonly v: number;
+				readonly smooth: boolean;
+			}[];
+			readonly extent: number;
+			readonly position: Vec3;
+			readonly yaw: number;
+			readonly materialId: MaterialId;
+			readonly name: string;
+			readonly choice?: SceneSupportChoice;
+	  }
+	| {
+			readonly kind: 'set-form-size';
+			readonly entityId: string;
+			readonly scale: readonly [number, number, number];
+			readonly choice?: SceneSupportChoice;
+	  }
 	| {
 			readonly kind: 'place-object';
 			readonly definitionKey: string;
@@ -92,6 +113,10 @@ export function readSceneOperationPayload(
 	raw: unknown
 ): SceneOperationPayload | null {
 	switch (kind) {
+		case 'create-form':
+			return readCreateFormPayload(reader, raw);
+		case 'set-form-size':
+			return readSetFormSizePayload(reader, raw);
 		case 'place-object':
 			return readPlaceObjectPayload(reader, raw);
 		case 'move-horizontal':
@@ -114,6 +139,98 @@ export function readSceneOperationPayload(
 			reader.problem('$.kind', 'unsupported-operation', `No Scene operation kind "${kind}" is registered`);
 			return null;
 	}
+}
+
+function readCreateFormPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+	const path = '$.payload';
+	const record = reader.object(raw, path, [
+		'plane',
+		'outline',
+		'extent',
+		'position',
+		'yaw',
+		'materialId',
+		'name',
+		'supportChoice'
+	]);
+	if (record === null) return null;
+	const plane = reader.tag(record.plane, `${path}.plane`, ['plan', 'elevation']);
+	const extent = reader.number(record.extent, `${path}.extent`);
+	const position = reader.vector3(record.position, `${path}.position`);
+	const yaw = reader.number(record.yaw, `${path}.yaw`);
+	const materialId = reader.string(record.materialId, `${path}.materialId`);
+	const name = reader.string(record.name, `${path}.name`);
+	const choice = readSupportChoice(reader, record.supportChoice, `${path}.supportChoice`);
+	let outline: { u: number; v: number; smooth: boolean }[] | null = null;
+	if (!Array.isArray(record.outline)) {
+		reader.problem(`${path}.outline`, 'not-an-array', `${path}.outline must be an array`);
+	} else {
+		const parsed: { u: number; v: number; smooth: boolean }[] = [];
+		let valid = true;
+		for (const [index, entry] of record.outline.entries()) {
+			const anchorPath = `${path}.outline[${index}]`;
+			const anchor = reader.object(entry, anchorPath, ['u', 'v', 'smooth']);
+			if (anchor === null) {
+				valid = false;
+				break;
+			}
+			const u = reader.number(anchor.u, `${anchorPath}.u`);
+			const v = reader.number(anchor.v, `${anchorPath}.v`);
+			const smooth = reader.boolean(anchor.smooth, `${anchorPath}.smooth`);
+			if (u === null || v === null || smooth === null) {
+				valid = false;
+				break;
+			}
+			parsed.push({ u, v, smooth });
+		}
+		if (valid) outline = parsed;
+	}
+	if (
+		plane === null ||
+		extent === null ||
+		position === null ||
+		yaw === null ||
+		materialId === null ||
+		name === null ||
+		choice === undefined ||
+		outline === null
+	) {
+		return null;
+	}
+	return {
+		kind: 'create-form',
+		plane: plane as SceneFormPlane,
+		outline,
+		extent,
+		position,
+		yaw,
+		materialId: materialId as MaterialId,
+		name,
+		...(choice.choice === undefined ? {} : { choice: choice.choice })
+	};
+}
+
+function readSetFormSizePayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+	const path = '$.payload';
+	const record = reader.object(raw, path, ['entityId', 'scale', 'supportChoice']);
+	if (record === null) return null;
+	const entityId = reader.opaqueId(record.entityId, `${path}.entityId`);
+	const scale = reader.vector3(record.scale, `${path}.scale`);
+	const choice = readSupportChoice(reader, record.supportChoice, `${path}.supportChoice`);
+	if (scale !== null) {
+		for (const [index, value] of scale.entries()) {
+			if (value <= 0) {
+				reader.problem(`${path}.scale[${index}]`, 'out-of-range', `${path}.scale[${index}] must be greater than zero`);
+			}
+		}
+	}
+	if (entityId === null || scale === null || choice === undefined) return null;
+	return {
+		kind: 'set-form-size',
+		entityId,
+		scale,
+		...(choice.choice === undefined ? {} : { choice: choice.choice })
+	};
 }
 
 function readPlaceObjectPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
@@ -396,12 +513,12 @@ export function readSceneOperationSubject(input: {
 	readonly sourceContentId: string;
 }): SceneOperationSubject | null {
 	const { reader, kind, targets, payload, sourceContentId } = input;
-	if (kind === 'place-object') {
+	if (kind === 'place-object' || kind === 'create-form') {
 		if (targets.length !== 0) {
 			reader.problem(
 				'$.targets',
 				'invalid-target',
-				'a placement addresses no existing subject; its entity id is a captured allocation'
+				`${kind} addresses no existing subject; its entity id is a captured allocation`
 			);
 			return null;
 		}
@@ -415,7 +532,7 @@ export function readSceneOperationSubject(input: {
 		);
 		return null;
 	}
-	if (payload.kind === 'place-object') return null;
+	if (payload.kind === 'place-object' || payload.kind === 'create-form') return null;
 	const target = targets[0]!;
 	const entityId = payload.entityId;
 	const problem = sceneEntityTargetProblem(target, entityId, sourceContentId);
@@ -434,7 +551,7 @@ export function readSceneOperationAllocation(input: {
 	readonly scene: SceneDocument;
 }): { readonly kind: 'none' } | { readonly kind: 'created'; readonly entityId: string } | null {
 	const { reader, kind, allocations, scene } = input;
-	if (kind !== 'place-object' && kind !== 'duplicate-one') {
+	if (kind !== 'place-object' && kind !== 'create-form' && kind !== 'duplicate-one') {
 		if (allocations.length !== 0) {
 			reader.problem(
 				'$.allocatedIds',

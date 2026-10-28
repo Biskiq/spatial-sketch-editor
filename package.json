@@ -25,6 +25,7 @@
     "check:api": "npm run check -w @biskiq/api",
     "check:camera-core": "npm run check -w @portfolio/camera-core",
     "check:layout-core": "npm run check -w @portfolio/layout-core",
+    "check:geometry-core": "npm run check -w @portfolio/geometry-core",
     "check:project-model": "npm run check -w @portfolio/project-model",
     "test": "npm run test -w @portfolio/editor",
     "test:fast": "npm run test:fast -w @portfolio/editor",

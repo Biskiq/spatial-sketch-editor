@@ -144,6 +144,15 @@ export function validateColdReleaseReferences(input: {
 
 	const materialById = new Map(input.scene.materials.map((material) => [material.id, material]));
 	for (const [index, entity] of input.scene.entities.entries()) {
+		// Publication admits no native form yet: T4 owns any admission, so a form
+		// must be a blocking issue rather than something a release ships by omission.
+		if (entity.kind === 'form') {
+			issues.push({
+				path: `$.scene.entities[${index}]`,
+				message: 'Native forms are not admitted for publication'
+			});
+			continue;
+		}
 		if (entity.kind !== 'model' && entity.kind !== 'primitive') continue;
 		const path = `$.scene.entities[${index}]`;
 		if (entity.kind === 'model' && entity.assetId !== undefined && getShippedModelByAssetId(entity.assetId) === undefined) {

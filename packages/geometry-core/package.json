@@ -1,0 +1,26 @@
+{
+  "name": "@portfolio/geometry-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@portfolio/tsconfig": "*",
+    "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "earcut": "^2.2.4",
+    "robust-predicates": "^3.0.3"
+  }
+}

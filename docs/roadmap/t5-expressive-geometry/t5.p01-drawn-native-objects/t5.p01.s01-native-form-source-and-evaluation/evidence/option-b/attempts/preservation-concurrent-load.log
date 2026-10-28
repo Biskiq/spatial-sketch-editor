@@ -1,0 +1,53 @@
+
+Running 7 tests using 1 worker
+
+(node:8138) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1;31m[404] GET /favicon.ico[0m
+  ✓  1 [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:328:1 › starter: draw a deliberate join, close an enclosure, divide a Room, delete, undo/redo and reload (10.3s)
+  ✓  2 [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:471:1 › empty: draw and close an enclosure, read it in 3D, edit Card precision and use the keyboard (8.1s)
+  ✘  3 [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:622:1 › policy: crossing, collinear overlap, nested ring and invalid input refuse with no partial source (27.0s)
+  -  4 [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:695:1 › shell: narrow reduced-motion layout, Find, contributed-task arbitration and unsaved replacement
+(node:10064) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1;31m[404] GET /favicon.ico[0m
+  ✓  5 [chrome] › perf/flows/t1-s03-opening-acceptance.spec.ts:371:1 › starter: place, refuse/repair, remove, undo/redo, save and reload one Opening (8.6s)
+  ✓  6 [chrome] › perf/flows/t1-s03-opening-acceptance.spec.ts:561:1 › 3D: place on a visible Wall face, not only at datum height (7.2s)
+  ✓  7 [chrome] › perf/flows/t1-s03-opening-acceptance.spec.ts:599:1 › empty: draw a Wall, then place a window with keyboard metrics (5.2s)
+
+
+  1) [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:622:1 › policy: crossing, collinear overlap, nested ring and invalid input refuse with no partial source 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('[data-ink-refusal]')
+    Expected pattern: /overlap|collinear|coincident/i
+    Timeout: 20000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" locator('[data-ink-refusal]') with timeout 20000ms
+      - waiting for locator('[data-ink-refusal]')
+
+
+      647 | 		const overlapBefore = await acceptedResultCount(page);
+      648 | 		await finishWithEnter(page);
+    > 649 | 		await expect(page.locator('[data-ink-refusal]')).toContainText(/overlap|collinear|coincident/i);
+          | 		                                                 ^
+      650 | 		expect(await acceptedResultCount(page)).toBe(overlapBefore);
+      651 | 		expect(layoutCounts(await downloadSource(page))).toEqual(baseline);
+      652 | 		rows.push(row('policy.overlap', 'collinear overlap', 'passed', `refused: ${(await page.locator('[data-ink-refusal]').textContent())?.trim()}`, page, '1440x900', false));
+        at /Users/tony/Documents/Biskiq/worktrees/t5-p01-s01/apps/editor/perf/flows/t1-s02-browser-acceptance.spec.ts:649:52
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/t5-option-b-preservation/artifacts/t1-s02-browser-acceptance--fccee-fuse-with-no-partial-source-chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/t5-option-b-preservation/artifacts/t1-s02-browser-acceptance--fccee-fuse-with-no-partial-source-chrome/error-context.md
+
+  1 failed
+    [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:622:1 › policy: crossing, collinear overlap, nested ring and invalid input refuse with no partial source 
+  1 did not run
+  5 passed (1.2m)

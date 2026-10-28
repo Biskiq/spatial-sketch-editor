@@ -27,16 +27,36 @@
  * model contact.
  */
 import type { LayoutVec2 } from '@portfolio/layout-core';
+import {
+	canonicalizeWinding,
+	evaluateProfile,
+	extrudeProfile,
+	GeometryCoreError,
+	PROFILE_LIMITS,
+	validateProfile,
+	type ProfileAnchor
+} from '@portfolio/geometry-core';
 import type { ShapeIssue } from '../strict-shape';
 import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
-import type { SceneEntity, ScenePrimitiveEntity, Vec3 } from '../scene';
+import {
+	cloneFormSource,
+	type MaterialId,
+	type SceneEntity,
+	type SceneFormEntity,
+	type SceneFormPlane,
+	type ScenePrimitiveEntity,
+	type Vec3
+} from '../scene';
 import { framePointToWorld, frameYawToWorld, isFinitePlacementFrame } from './frame';
+import { sceneFormContactMinY } from './form';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import { resolveSceneSupport, type SceneSupportChoice } from './support';
 import type { LocalInputFrame } from './types';
 
 export const SCENE_OPERATION_KINDS = [
 	'place-object',
+	'create-form',
+	'set-form-size',
 	'move-horizontal',
 	'set-yaw',
 	'place-on-floor',
@@ -133,6 +153,12 @@ export const DUPLICATE_OFFSET_METERS = 0.5;
  * not own is refused rather than admitted as "rotation changed".
  */
 export const YAW_SCOPE_FIELD = 'rotation[1]';
+
+/**
+ * A per-axis form size is form source, never the entity-level uniform scale.
+ * The size planner owns exactly this nested field and the resting Y.
+ */
+export const FORM_SCALE_SCOPE_FIELD = 'form.scale';
 
 export function planMoveHorizontal(input: {
 	readonly context: SceneOperationContext;
@@ -269,6 +295,272 @@ export function planPlaceOnFloor(input: {
 	});
 }
 
+/**
+ * `create-form` — one native form from a drawn outline.
+ *
+ * The outline is validated and canonicalized before keys are assigned in ring
+ * order, then recentred so its evaluated profile bounds sit at the local origin
+ * (and an elevation form's lowest point rests at local Y = 0). The world base
+ * origin moves by the same horizontal offset, so the body stays where it was
+ * drawn while the source gains a stable local frame. Floor support is resolved
+ * exactly as `place-on-floor` resolves it; no renderer hit or guessed elevation
+ * enters the pose.
+ */
+export function planCreateForm(input: {
+	readonly context: SceneOperationContext;
+	readonly entityId: string;
+	readonly plane: SceneFormPlane;
+	readonly outline: readonly { readonly u: number; readonly v: number; readonly smooth: boolean }[];
+	readonly extent: number;
+	readonly position: Vec3;
+	readonly yaw: number;
+	readonly materialId: MaterialId;
+	readonly name: string;
+	readonly choice?: SceneSupportChoice | undefined;
+}): SceneOperationResult {
+	const scene = input.context.scene;
+	if (input.outline.length < PROFILE_LIMITS.minAnchors || input.outline.length > PROFILE_LIMITS.maxAnchors) {
+		return invalid(
+			`A form outline needs ${PROFILE_LIMITS.minAnchors}–${PROFILE_LIMITS.maxAnchors} anchors.`,
+			['outline']
+		);
+	}
+	if (
+		input.position.length !== 3 ||
+		input.position.some((value) => !Number.isFinite(value)) ||
+		!Number.isFinite(input.yaw)
+	) {
+		return invalid('A form needs a finite world position and yaw.', ['position', 'yaw']);
+	}
+	if (!Number.isFinite(input.extent)) {
+		return invalid('A form needs a finite extent.', ['extent']);
+	}
+	if (scene.entities.some((entity) => entity.id === input.entityId)) {
+		return invalid(
+			`Captured form id "${input.entityId}" is already used by the accepted source; it is never renamed.`,
+			['entityId', 'duplicate-entity-id']
+		);
+	}
+
+	// Provisional ids let the one profile validator report its typed reason.
+	// Winding is canonicalized first: a drawn clockwise outline is a valid
+	// drawing, not a refusal, and keys are then assigned in canonical ring order.
+	const provisional: ProfileAnchor[] = input.outline.map((anchor, index) => ({
+		key: index + 1,
+		u: anchor.u,
+		v: anchor.v,
+		smooth: anchor.smooth
+	}));
+	const canonical = canonicalizeWinding(provisional).map((anchor, index) => ({
+		...anchor,
+		key: index + 1
+	}));
+	const profileIssues = validateProfile(canonical);
+	if (profileIssues.length > 0) {
+		const first = profileIssues[0]!;
+		return invalid(`The form outline refuses: ${first.code}.`, [
+			first.code,
+			...first.anchorKeys.map((key) => String(key))
+		]);
+	}
+	let evaluated;
+	try {
+		evaluated = evaluateProfile(canonical);
+	} catch (error) {
+		return invalid(
+			error instanceof GeometryCoreError
+				? `The form outline refuses: ${error.issues[0]?.code ?? 'invalid-profile'}.`
+				: 'The form outline could not be evaluated.',
+			['outline']
+		);
+	}
+
+	const centreU = (evaluated.bounds.minU + evaluated.bounds.maxU) / 2;
+	const centreV =
+		input.plane === 'plan'
+			? (evaluated.bounds.minV + evaluated.bounds.maxV) / 2
+			: evaluated.bounds.minV;
+	const outline = canonical.map((anchor) => ({
+		...anchor,
+		u: anchor.u - centreU,
+		v: anchor.v - centreV
+	}));
+	let shifted;
+	try {
+		shifted = evaluateProfile(outline);
+		// The same limits the renderer and every resize enforce; a form that could
+		// never render must not become accepted source.
+		extrudeProfile({
+			profile: shifted,
+			extent: input.extent,
+			scale: [1, 1, 1],
+			plane: input.plane
+		});
+	} catch (error) {
+		return invalid(
+			error instanceof GeometryCoreError ? error.message : 'The form body is outside the admitted limits.',
+			['outline', 'extent']
+		);
+	}
+
+	const cos = Math.cos(input.yaw);
+	const sin = Math.sin(input.yaw);
+	const offsetV = input.plane === 'plan' ? centreV : 0;
+	const point: LayoutVec2 = [
+		input.position[0] + centreU * cos + offsetV * sin,
+		input.position[2] - centreU * sin + offsetV * cos
+	];
+	if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) {
+		return invalid('The form base origin is not finite.', ['position']);
+	}
+	const support = resolveSupport(input.context, point, null, input.choice);
+	if (support.kind !== 'resolved') return support;
+
+	const contact = input.plane === 'plan' ? 0 : shifted.bounds.minV;
+	const entity: SceneFormEntity = {
+		kind: 'form',
+		id: input.entityId,
+		name: input.name,
+		position: [point[0], support.support.elevation - contact, point[1]],
+		rotation: [0, input.yaw, 0],
+		form: {
+			generator: {
+				kind: 'extrude',
+				plane: input.plane,
+				outline,
+				extent: input.extent
+			},
+			scale: [1, 1, 1],
+			nextKey: outline.length + 1
+		},
+		materialId: input.materialId,
+		castShadow: true,
+		receiveShadow: true
+	};
+	const after: SceneDocument = { ...scene, entities: [...scene.entities, entity] };
+	const finalized = finalizeSceneCandidate({
+		before: scene,
+		after,
+		scope: {
+			operationKind: 'create-form',
+			changedEntityIds: [],
+			changedEntityFields: [],
+			createdEntityIds: [input.entityId],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		}
+	});
+	if (finalized.kind === 'rejected') return fromFinalization(finalized);
+	return {
+		kind: 'candidate',
+		operationKind: 'create-form',
+		entityId: input.entityId,
+		scene: finalized.scene,
+		fields: ['entities'],
+		correspondence: [{ relation: 'created', entityId: input.entityId }],
+		support: support.support,
+		worldPose: {
+			position: [...entity.position] as Vec3,
+			rotation: [...entity.rotation] as Vec3,
+			scale: 1
+		},
+		diagnostics: []
+	};
+}
+
+/**
+ * `set-form-size` — one full per-axis scale, resting on the same support.
+ *
+ * It owns `form.scale` and the compensating Y only. The authored outline is
+ * never rewritten, so repeated resizes cannot drift the drawn controls; the
+ * captured contact and scaled dimensions are re-derived from the canonical
+ * evaluation before anything is installed.
+ */
+export function planSetFormSize(input: {
+	readonly context: SceneOperationContext;
+	readonly entityId: string;
+	readonly scale: readonly [number, number, number];
+	readonly choice?: SceneSupportChoice | undefined;
+}): SceneOperationResult {
+	const target = readObject(input.context.scene, input.entityId);
+	if (target.kind !== 'object') return target;
+	if (target.entity.kind !== 'form') {
+		return refusal(
+			'unsupported-transform',
+			`Entity "${input.entityId}" is not a native form; only forms are sized per axis.`,
+			[input.entityId]
+		);
+	}
+	const entity = target.entity;
+	const scale = input.scale;
+	if (
+		scale.length !== 3 ||
+		scale.some(
+			(value) =>
+				!Number.isFinite(value) ||
+				value < PROFILE_LIMITS.minScale ||
+				value > PROFILE_LIMITS.maxScale
+		)
+	) {
+		return invalid(
+			`A form size needs three finite per-axis factors within [${PROFILE_LIMITS.minScale}, ${PROFILE_LIMITS.maxScale}].`,
+			['scale']
+		);
+	}
+	if (entity.form.scale.every((value, index) => value === scale[index])) {
+		return refusal('no_op', `Entity "${input.entityId}" already has scale ${scale.join(', ')}.`, [
+			'scale'
+		]);
+	}
+	let profile;
+	try {
+		profile = evaluateProfile(entity.form.generator.outline);
+		extrudeProfile({
+			profile,
+			extent: entity.form.generator.extent,
+			scale,
+			plane: entity.form.generator.plane
+		});
+	} catch (error) {
+		return invalid(
+			error instanceof GeometryCoreError ? error.message : 'The form body is outside the admitted limits.',
+			['scale']
+		);
+	}
+	const contact = entity.form.generator.plane === 'plan' ? 0 : profile.bounds.minV;
+	const currentContact = contact * entity.form.scale[1];
+	const nextContact = contact * scale[1];
+	const resting = entity.position[1] + currentContact;
+	const support = resolveSupport(
+		input.context,
+		[entity.position[0], entity.position[2]],
+		resting,
+		input.choice
+	);
+	if (support.kind !== 'resolved') return support;
+
+	const next: SceneEntity = {
+		...entity,
+		position: [entity.position[0], support.support.elevation - nextContact, entity.position[2]],
+		form: { ...entity.form, scale: [scale[0], scale[1], scale[2]] }
+	};
+	return finalize({
+		context: input.context,
+		operationKind: 'set-form-size',
+		next,
+		fields: ['form', 'position'],
+		scope: {
+			changedEntityIds: [entity.id],
+			changedEntityFields: [FORM_SCALE_SCOPE_FIELD, 'position[1]'],
+			createdEntityIds: [],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		},
+		correspondence: [{ relation: 'preserved', entityId: entity.id }],
+		support: support.support
+	});
+}
+
 export function planResizeOnFloor(input: {
 	readonly context: SceneOperationContext;
 	readonly entityId: string;
@@ -278,6 +570,13 @@ export function planResizeOnFloor(input: {
 }): SceneOperationResult {
 	const target = readObject(input.context.scene, input.entityId);
 	if (target.kind !== 'object') return target;
+	if (target.entity.kind === 'form') {
+		return refusal(
+			'unsupported-transform',
+			`Entity "${input.entityId}" is a native form; forms are sized per axis with set-form-size, never by a uniform entity scale.`,
+			[input.entityId]
+		);
+	}
 	const contact = readContactMinY(target.entity, input.contactMinY);
 	if (contact.kind !== 'value') return contact;
 	if (!upright(target.entity)) return unsupportedTransform(input.entityId, 'resize-on-floor');
@@ -600,6 +899,16 @@ export function floorTransformSupport(entity: SceneEntity): FloorTransformSuppor
 			message: `Entity "${entity.id}" is not a truthful upright floor object, so this operation cannot own its transform.`
 		};
 	}
+	if (entity.kind === 'form') {
+		if (sceneFormContactMinY(entity.form) === null) {
+			return {
+				supported: false,
+				code: 'unsupported-transform',
+				message: `Entity "${entity.id}" has no honest floor contact, so this operation cannot own its transform.`
+			};
+		}
+		return { supported: true };
+	}
 	if (entity.kind === 'primitive' && analyticalContactMinY(entity) === null) {
 		return {
 			supported: false,
@@ -644,6 +953,17 @@ function readContactMinY(
 				'missing-contact-metadata',
 				`Entity "${entity.id}" declares contact ${captured} m but its ${entity.primitive} dimensions give ${analytical} m.`,
 				['contactMinY', 'dimensions']
+			);
+		}
+	}
+	if (entity.kind === 'form') {
+		const analytical = sceneFormContactMinY(entity.form);
+		if (analytical === null) return unsupportedTransform(entity.id, 'support');
+		if (Math.abs(captured - analytical) > CONTACT_TOLERANCE_METERS) {
+			return refusal(
+				'missing-contact-metadata',
+				`Entity "${entity.id}" declares contact ${captured} m but its form source gives ${analytical} m.`,
+				['contactMinY', 'form']
 			);
 		}
 	}
@@ -708,6 +1028,15 @@ function worldPoint(
 }
 
 function cloneEntityWithId(entity: SceneEntity, id: string): SceneEntity {
+	if (entity.kind === 'form') {
+		return {
+			...entity,
+			id,
+			position: [...entity.position] as Vec3,
+			rotation: [...entity.rotation] as Vec3,
+			form: cloneFormSource(entity.form)
+		};
+	}
 	if (entity.kind === 'primitive') {
 		// The spread preserves the discriminated primitive; TypeScript cannot carry
 		// that correlation through a union spread, so the clone states its type.

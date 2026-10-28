@@ -46,6 +46,7 @@ import type {
 } from '@portfolio/project-model/units';
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
+import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
@@ -373,6 +374,10 @@ export function localContactMinY(entity: SceneEntity, modelContactMinY?: number 
 			? modelContactMinY
 			: null;
 	}
+	// A form's contact is derived from its authored source through the one editor
+	// evaluation cache, so the Card/Compose contact and the installed one agree
+	// and no second kernel evaluation runs per recompute.
+	if (entity.kind === 'form') return evaluateFormMesh(entity.form)?.contactMinY ?? null;
 	if (entity.kind !== 'primitive') return null;
 	switch (entity.primitive) {
 		case 'box':
@@ -425,6 +430,11 @@ export function sceneModelContactMinY(
  * or an unapproved catalogue model does not, so offering the command would only
  * take the gesture lease and then refuse (and the adapter would advertise a
  * `Scale` fact that cannot be written). Delete needs no contact.
+ *
+ * A native form has a real contact but no uniform Resize: its size is per-axis
+ * form source (`set-form-size`), and `resize-on-floor` refuses forms. So the
+ * uniform affordance is not offered and no `Scale` fact is advertised, while
+ * Duplicate — which copies the source verbatim — stays available.
  */
 export function sceneComposeSupport(
 	entity: SceneEntity,
@@ -445,7 +455,17 @@ export function sceneComposeSupport(
 			reason:
 				entity.kind === 'light'
 					? 'A light has no verified floor contact; Resize and Duplicate are unavailable.'
-					: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
+					: entity.kind === 'form'
+						? 'A form needs an evaluable source before it can be duplicated on the floor.'
+						: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
+		};
+	}
+	if (entity.kind === 'form') {
+		return {
+			resize: false,
+			duplicate: true,
+			code: 'unsupported-transform',
+			reason: 'A native form is sized per axis through its own source; uniform Resize is unavailable.'
 		};
 	}
 	return { resize: true, duplicate: true, code: null, reason: null };

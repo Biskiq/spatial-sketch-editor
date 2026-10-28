@@ -61,7 +61,12 @@ async function unitEnvelope(projectId, label = 'S05 unit', options = {}) {
 		layout: { unitId: 'unit-layout', data: createEmptyWallFirstLayoutDocument() },
 		scene: {
 			unitId: 'unit-scene',
-			data: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [] }
+			data: {
+				formatVersion: SCENE_UNIT_FORMAT_VERSION,
+				textures: [],
+				materials: [],
+				entities: options.sceneEntities ?? []
+			}
 		},
 		camera: {
 			unitId: 'unit-camera',
@@ -154,6 +159,56 @@ test('the live Save entry admits the F.2 unit capture directly', async () => {
 		[projectId]
 	);
 	assert.equal(stored.rows[0].sourceFormat, 'unit-envelope-v1');
+});
+
+/** One native form, in the T5.P01.S01 Scene format 4 source shape. */
+const NATIVE_FORM = {
+	kind: 'form',
+	id: 'entity-form',
+	name: 'Drawn plinth',
+	position: [1, 0, 2],
+	rotation: [0, 0.5, 0],
+	form: {
+		generator: {
+			kind: 'extrude',
+			plane: 'plan',
+			outline: [
+				{ key: 1, u: 0, v: 0, smooth: false },
+				{ key: 2, u: 1, v: 0, smooth: false },
+				{ key: 3, u: 1, v: 1, smooth: false },
+				{ key: 4, u: 0, v: 1, smooth: false }
+			],
+			extent: 0.6
+		},
+		scale: [1, 1, 1],
+		nextKey: 5
+	},
+	materialId: 'plaster-warm',
+	castShadow: true,
+	receiveShadow: true
+};
+
+test('a Scene unit carrying a native form saves canonically and reloads identically', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const request = await requestFor(
+		await unitEnvelope(projectId, 'Native forms', { sceneEntities: [NATIVE_FORM] })
+	);
+	const acknowledgement = await save(pool, owner, request);
+	assert.equal(acknowledgement.version, 1);
+	const stored = await pool.query(
+		'SELECT document FROM project_versions WHERE project_id = $1 AND version = 1',
+		[projectId]
+	);
+	// Format 4 is the only admitted Scene format now, and Save stores exactly
+	// the captured canonical bytes — the form source is never re-derived.
+	assert.equal(SCENE_UNIT_FORMAT_VERSION, 4);
+	const storedScene = stored.rows[0].document.units.scene;
+	const canonicalScene = JSON.parse(request.capture.canonicalJson).units.scene;
+	assert.equal(storedScene.header.formatVersion, 4);
+	assert.deepEqual(storedScene.data.entities, canonicalScene.data.entities);
+	assert.deepEqual(storedScene.data.entities, [NATIVE_FORM]);
 });
 
 test('same-base unit writers: exactly one wins, the loser gets a conflict and writes nothing', async () => {

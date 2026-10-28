@@ -39,6 +39,11 @@ export const ARCH_FILES: string[] = [
 	'tests/lib/museum/camera-core-boundary.test.ts',
 	'tests/lib/museum/layout/wall-mesh-shell-boundary.test.ts',
 	'tests/lib/project-model-boundary.test.ts',
+	// T5.P01.S01: the native-form kernel's dependency direction and canonical
+	// arithmetic. `@portfolio/geometry-core` is runtime-safe and deterministic by
+	// construction; nothing imports it from a forbidden surface and no build can
+	// see a trigonometric call entering a canonical path.
+	'tests/lib/geometry-core/geometry-core-boundary.test.ts',
 	// Visitor/editor isolation (cold release, public closure, identity).
 	'tests/lib/visitor/visitor-cold-runtime.test.ts',
 	'tests/lib/visitor/visitor-public-route.test.ts',

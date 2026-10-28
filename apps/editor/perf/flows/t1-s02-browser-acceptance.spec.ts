@@ -218,6 +218,11 @@ async function cssPoint(page: Page, point: readonly [number, number, number]): P
 }
 
 async function clickWorld(page: Page, point: readonly [number, number, number]): Promise<void> {
+	// A prior refusal/hover can still be presenting a camera update. Aim only
+	// after the rendered camera settles, and retain read-only evidence of the
+	// requested point, each press and the Stage's draft-marker projection.
+	await waitForCameraSettled(page);
+	const beforePose = await cameraPose(page);
 	const { x, y } = await cssPoint(page, point);
 	const hit = await page.evaluate(([clientX, clientY]) => {
 		const element = document.elementFromPoint(clientX, clientY);
@@ -227,9 +232,19 @@ async function clickWorld(page: Page, point: readonly [number, number, number]):
 		throw new Error(`world point ${point.join(',')} projects to ${x.toFixed(1)},${y.toFixed(1)} over ${hit}, not the Stage`);
 	}
 	await page.mouse.move(x, y);
+	const pressPose = await cameraPose(page);
 	await page.mouse.down();
 	await page.mouse.up();
 	await page.waitForTimeout(150);
+	const markers = await page.locator('.overlay .marker').evaluateAll((nodes) => nodes
+		.filter((node) => node.querySelector('title')?.textContent?.startsWith('Chain point'))
+		.map((node) => ({ label: node.querySelector('title')?.textContent, css: node.getAttribute('transform') })));
+	const traceFile = resolve(resultsDir!, 't1-s02-pointer-trace.json');
+	let traces: unknown[] = [];
+	try { traces = JSON.parse(await readFile(traceFile, 'utf8')); } catch { /* first pointer */ }
+	traces.push({ url: page.url(), requestedWorld: point, clientCss: [x, y], beforePose, pressPose,
+		afterPose: await cameraPose(page), draftMarkerProjection: markers });
+	await writeFile(traceFile, JSON.stringify(traces, null, 2));
 }
 
 async function clickWorldAndWait(page: Page, point: readonly [number, number, number], count: number): Promise<void> {

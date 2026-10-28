@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import {
+	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
 	type ProjectEnvelope
@@ -109,8 +110,8 @@ const MODEL_SNAPSHOT = attachUnitStageSource(
 				data: { rooms: [] }
 			},
 			scene: {
-				header: { formatVersion: 3, contentRevision: 'sha256-scene' },
-				data: { formatVersion: 3, textures: [], materials: [], entities: [MODEL] }
+				header: { formatVersion: SCENE_UNIT_FORMAT_VERSION, contentRevision: 'sha256-scene' },
+				data: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [MODEL] }
 			},
 			resources: {
 				header: { formatVersion: 2, contentRevision: 'sha256-resources' },

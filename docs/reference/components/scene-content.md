@@ -1,25 +1,26 @@
 # Scene content
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
-**Last reviewed:** 2026-10-27 (T5 destination promotion and bounded Scene 3 baseline;
+**Last reviewed:** 2026-10-28 (T5.P01.S01 Option B selection and native forms and the Scene 4 baseline;
 production activation remains owner-controlled)
 
 ---
 
 ## Current implementation
 
-The live Scene is the world-local Scene 3 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 4 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
-Editable entity kinds: **model** / **primitive** (`box|plane|cylinder|sphere`) / **light**
-(`point|spot|directional`) · textures · material instances · clusters.
+Editable entity kinds: **model** / **primitive** (`box|plane|cylinder|sphere`) / **form** /
+**light** (`point|spot|directional`) · textures · material instances · clusters.
 **Architecture rooms are not scene entities** — see [`../architecture.md`](../architecture.md).
 
 | Assets | Today |
 |------------|--------|
 | Models | Catalogue assets or same-envelope approved model resources; world-local placement, no Room ownership |
 | Shapes | Box / plane / cylinder / sphere |
+| Forms | Native drawn outlines extruded by `@portfolio/geometry-core`; authored source only, generated geometry never stored |
 | Lights | Point / spot / directional — aim by rotation |
 | Textures | URI/file → bind via materials (not scene objects); project assets use logical `/project-assets/{assetId}` refs resolved by authenticated context |
 
@@ -27,6 +28,17 @@ Clusters = named member-id groups; the visitor renders them flat; **no** prefab 
 Current clusters are **not** a durable assembly/instance model: they carry member IDs and
 editor-only hierarchy metadata, and cloning a Three hierarchy supplies no authored component
 identity or revision policy. GLB provenance: [`assets.md`](./assets.md).
+
+**Native forms (current).** T5.P01.S01 lands the authored form source. A creator still reaches a
+form only through an opened document, fixture or test — S02 adds the drawing entry point — but once
+present a form is ordinary Scene truth: `create-form` creates one, `set-form-size` writes a full
+per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and
+Delete work through the existing planners. `resize-on-floor` refuses a form (uniform scale would
+contradict `form.scale`). Evaluation is deterministic and cached in the editor; Stage and Preview draw the same mesh (metre UVs, computed normals). Production Plan footprints and 3D mounted-mesh hits feed the existing Stage selection authority. Forms appear in Index and Head Find; their Card exposes Move, Turn, Place on floor, per-axis Size, Duplicate and confirmed Delete through existing Scene planners/F4. Preview preserves visitor isolation and return to Stage preserves selection. Publication
+still refuses a form in the cold release check; T4 owns any admission. Limits and the codec rules
+are above; implementation evidence routes through the
+[T5.P01.S01 acceptance and evidence stub](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
+and [reference decision](../decisions/t5-object-focus-planning-2026-10-27.md).
 
 **Current authoring.** The T2 Scene adapter places, edits, resizes, duplicates and deletes through
 unit F4 planners, sharing the Stage's single history with Layout. Definitions must already be pinned
@@ -53,6 +65,12 @@ These are the codec's own rules, not a destination: `packages/project-model/src/
   and must be **finite and greater than zero** (`invalid_scale`). Scale is a single scalar — there
   is no per-axis scale field in the schema.
 - **Primitive dimensions** must be finite and greater than zero (`invalid_dimension`).
+- **Form source**: `form` holds `generator` (`kind: 'extrude'`, `plane: 'plan' | 'elevation'`,
+  keyed `outline` of 3–256 anchors, `extent` in `[0.001, 100]` m), a per-axis `scale` in
+  `[0.01, 100]` and `nextKey` greater than every outline key. Anchors are unique positive integer
+  keys with coordinates inside ±50 m; the profile is validated exactly (edge length, collinearity,
+  simplicity, winding) and a rejected outline refuses with its issue code and anchor keys. A form
+  refuses an entity-level `scale` and `roomId`: its size is `form.scale`, so size has one writer.
 - **World-local identity**: `roomId` is explicitly rejected on entities and clusters, so a
   Room-owned placement cannot be expressed or re-introduced. Placement-local bounds and footprint
   derivation are project/world space; the legacy room-frame projection branch is gone.
@@ -143,8 +161,8 @@ encoding, and the correspondence algorithm for ingest derivatives.
 
 **Ratified obligations, 2026-10-27** ([record](../decisions/t5-g0-ratification-2026-10-27.md));
 the [architecture](../architecture.md#expressive-creation-and-revision-destination) owns shared
-subjects and integration. Scene's current primitive/model operations above are unchanged; no native
-form source, general following, sculpting or component capability is admitted by this section.
+subjects and integration. Scene's current primitive/model and native-form operations above are
+unchanged; no general following, sculpting or component capability is admitted by this section.
 
 For each future admitted object edit, the domain declares the supported target/context, affected
 subjects, editable controls, meaningful dependencies and the resulting validity envelope. A fact,
@@ -171,7 +189,7 @@ this contract creates no new operation list or implementation obligation for T2.
 
 **Owner-ratified destination, 2026-10-22, PR #173.** See the
 [ratification record](../decisions/product-convergence-ratification-2026-10-22.md). This is destination
-wording for new consumers; current Scene unit format 3 still refuses attachments and components.
+wording for new consumers; current Scene unit format 4 still refuses attachments and components.
 [Review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 **Placement and attachment.** Solve-once surface placement writes an ordinary world pose and

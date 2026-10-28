@@ -183,7 +183,7 @@
 				id="plate-index-search"
 				type="search"
 				class="search-input"
-				placeholder="Search walls, openings, objects…"
+				placeholder="Search subjects by name or identity…"
 				value={query}
 				oninput={(event) => onQuery((event.currentTarget as HTMLInputElement).value)}
 			/>

@@ -7,15 +7,18 @@
 	 * supplies a lazily loaded one. Geometry, material resolution and grouping have
 	 * exactly one implementation, so editor and visitor cannot drift.
 	 */
+	import type { Object3D } from 'three';
 	import { T } from '@threlte/core';
 	import type {
 		SceneDocument,
 		RuntimeScene,
 		SceneEntity,
+		SceneFormEntity,
 		SceneModelEntity,
 		ScenePrimitiveEntity
 	} from '$lib/content/scene';
 	import {
+		isSceneFormEntity,
 		isSceneLightEntity,
 		isSceneModelEntity,
 		isScenePrimitiveEntity
@@ -27,12 +30,15 @@
 	import EntityPrimitive from '$lib/museum/entities/EntityPrimitive.svelte';
 
 	type AssetModelComponent = typeof import('$lib/museum/assets/AssetModel.svelte')['default'];
+	type EntityFormComponent = typeof import('$lib/museum/entities/EntityForm.svelte')['default'];
 
 	let {
 		scene,
 		rooms,
 		textureScope = null,
 		modelUrls = null,
+		onFormRendererReady,
+		onEntityRoot,
 		Model
 	}: {
 		scene: RuntimeScene;
@@ -40,6 +46,10 @@
 		textureScope?: TextureLoadScope | null;
 		/** Runtime-safe approved model bytes: model resource id → derivative URL. */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		/** Optional Stage-only notification after a lazy form mesh has mounted. */
+		onFormRendererReady?: () => void;
+		/** Optional renderer lifecycle observer; no authoring behavior lives here. */
+		onEntityRoot?: (id: string, root: Object3D) => (() => void);
 		/** The model renderer; `null` until a lazy host has fetched it. */
 		Model: AssetModelComponent | null;
 	} = $props();
@@ -69,7 +79,7 @@
 	});
 
 	function entityEffective(
-		entity: ScenePrimitiveEntity | SceneModelEntity
+		entity: ScenePrimitiveEntity | SceneModelEntity | SceneFormEntity
 	): ReturnType<typeof resolveSceneMaterial> {
 		return resolveSceneMaterial(
 			{ materials: scene.materials, textures: scene.textures } as Pick<
@@ -78,15 +88,47 @@
 			>,
 			{
 				materialInstanceId: entity.materialInstanceId ?? null,
-				fallbackCatalogueId: entity.kind === 'primitive' ? entity.materialId : 'paper-aged'
+				fallbackCatalogueId:
+					entity.kind === 'primitive' || entity.kind === 'form' ? entity.materialId : 'paper-aged'
 			}
 		);
 	}
+
+	/**
+	 * The form renderer is fetched only once a document actually carries a form,
+	 * so a project without forms never downloads the kernel or its adapter. A
+	 * failed fetch retries a bounded number of times instead of leaving an
+	 * admitted form permanently invisible.
+	 */
+	let FormComponent = $state<EntityFormComponent | null>(null);
+	const hasForms = $derived(scene.entities.some(isSceneFormEntity));
+	$effect(() => {
+		if (FormComponent !== null || !hasForms) return;
+		let cancelled = false;
+		let attempt = 0;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const load = (): void => {
+			void import('$lib/museum/entities/EntityForm.svelte')
+				.then((module) => {
+					if (!cancelled) FormComponent = module.default;
+				})
+				.catch(() => {
+					attempt += 1;
+					if (!cancelled && attempt < 3) timer = setTimeout(load, 2_000);
+				});
+		};
+		load();
+		return () => {
+			cancelled = true;
+			if (timer !== null) clearTimeout(timer);
+		};
+	});
 </script>
 
 {#each roomGroups as group (group.room?.id ?? '__world__')}
 	<T.Group position={group.room?.position ?? [0, 0, 0]} rotation={group.room?.rotation ?? [0, 0, 0]}>
 		{#each group.entities as entity (entity.id)}
+			<T.Group name={`SceneEntity:${entity.id}`} oncreate={(root) => onEntityRoot?.(entity.id, root)}>
 			{#if isSceneModelEntity(entity)}
 				{#if Model}
 					<Model
@@ -105,11 +147,23 @@
 				<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 					<EntityPrimitive {entity} effective={entityEffective(entity)} scope={textureScope} />
 				</T.Group>
+			{:else if isSceneFormEntity(entity)}
+				{#if FormComponent}
+					<T.Group position={entity.position} rotation={entity.rotation}>
+						<FormComponent
+							{entity}
+							effective={entityEffective(entity)}
+							scope={textureScope}
+							onMounted={onFormRendererReady}
+						/>
+					</T.Group>
+				{/if}
 			{:else if isSceneLightEntity(entity)}
 				<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 					<EntityLight {entity} />
 				</T.Group>
 			{/if}
+			</T.Group>
 		{/each}
 	</T.Group>
 {/each}

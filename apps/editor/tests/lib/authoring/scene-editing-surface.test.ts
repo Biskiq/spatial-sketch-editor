@@ -7,12 +7,16 @@
  *    commit run the same planner with the same captured inputs, snap is explicit,
  *    one cancel path restores the accepted baseline, and typed entry is never
  *    coerced (blank is not zero).
- * 2. **Adapter** (`createAdapter`): the seven Scene planners register with the one
+ * 2. **Adapter** (`createAdapter`): the nine Scene planners register with the one
  *    F.4 host, and the Place/Arrange Find entries, tasks, Card facts and instrument
  *    reach the Stage through AM-5 without any shell edit.
  *
  * No test here writes Layout: every accepted intent is a Scene operation.
  */
+import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PlaneGeometry } from 'three';
+import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
+import { evaluateFormMesh } from '$lib/content/form-evaluation';
+import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
 import { describe, expect, it } from 'vitest';
 import {
 	type AuthoringIntent,
@@ -38,7 +42,9 @@ import {
 } from '$lib/authoring/adapters/scene/placement';
 import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
-import { mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
+import { formCardController } from '$lib/authoring/adapters/scene/form-card';
+import { captureUnitSave } from '@portfolio/project-model/units';
+import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
@@ -521,7 +527,18 @@ describe('Scene adapter registration', () => {
 		if (admitted.kind !== 'admitted') throw new Error('the adapter fixture was not admitted');
 		const stageSession = createStageSession({ sessionEpoch: admitted.snapshot.sessionEpoch });
 		stageSession.replace(admitted.snapshot);
-		const facade = createStageFacade({ snapshot: admitted.snapshot, session: stageSession });
+		const rendered = createScenePickSource();
+		rendered.setSource(admitted.snapshot.domain.scene);
+		const meshes: Mesh[] = [];
+		for (const entity of admitted.snapshot.domain.scene.entities) {
+			if (entity.kind !== 'form') continue;
+			const mesh = new Mesh(buildFormGeometry(evaluateFormMesh(entity.form)!, entity.form.generator.plane), new MeshBasicMaterial());
+			mesh.position.fromArray(entity.position);
+			mesh.rotation.set(...entity.rotation);
+			rendered.register(entity.id, mesh);
+			meshes.push(mesh);
+		}
+		const facade = createStageFacade({ snapshot: admitted.snapshot, session: stageSession, scenePick: rendered.pick });
 		// A factory-bound adapter only binds against a live evaluation.
 		const evaluated = facade.camera.evaluate(rect, 1);
 		if (evaluated.kind !== 'evaluated') throw new Error('the adapter fixture did not evaluate');
@@ -537,8 +554,153 @@ describe('Scene adapter registration', () => {
 			},
 			planners: []
 		});
-		return { facade, host };
+		return { facade, host, rendered };
 	}
+
+
+	function nativeForm(plane: 'plan' | 'elevation', x: number): SceneEntity {
+		return { kind: 'form', id: `form-${plane}`, name: `${plane} form`, position: [x, 0, 3], rotation: [0, 0, 0],
+			materialId: 'plaster-warm', castShadow: true, receiveShadow: true,
+			form: { generator: { kind: 'extrude', plane, extent: 1, outline: [
+				{ key: 1, u: -0.5, v: 0, smooth: false }, { key: 2, u: 0.5, v: 0, smooth: false },
+				{ key: 3, u: 0.5, v: 1, smooth: false }, { key: 4, u: -0.5, v: 1, smooth: false }
+			] }, scale: [1, 1, 1], nextKey: 5 } };
+	}
+
+	it('picks both form planes through the mounted adapter in Plan and 3D at a surface offset', async () => {
+		const rect = { ...RECT, left: 230, top: 91 };
+		const { facade, host } = await mounted(await supportedProject([nativeForm('plan', 2), nativeForm('elevation', 4)]), rect);
+		mountStageAdapter(facade, host, createAdapter);
+		try {
+			for (const reading of ['3d', 'plan'] as const) {
+				facade.camera.applyIntent({ kind: 'set-reading', reading }, 2);
+				facade.camera.evaluate(rect, 4);
+				for (const [x, id] of [[2, 'form-plan'], [4, 'form-elevation']] as const) {
+					const projected = facade.projectWorld([x, 0.5, 3.5], facade.evaluationId()!);
+					if (projected.kind !== 'projected') throw new Error('fixture did not project');
+					const css = projected.css;
+					const hit = facade.resolveSourceHit({ evaluationId: facade.evaluationId()!, css: [css[0] - rect.left, css[1] - rect.top] });
+					expect(hit.kind).toBe('resolved');
+					if (hit.kind !== 'resolved') throw new Error('no form hit');
+					expect(hit.hit.reference?.subject.id).toBe(id);
+					const reference = hit.hit.reference!;
+					expect(facade.setSelection({ ordered: [{ reference }], primary: reference }).kind).toBe('selected');
+					expect(facade.selectionState().ordered[0]?.representation).toBeUndefined();
+					expect(facade.subjects().find((row) => row.reference.subject.id === id)?.label).toContain('form');
+					const subject = { sourceId: id, sourceKind: 'entity', reference, ref: null };
+					expect(facade.cardWriter(subject)?.summary).toBe('Form fields');
+					expect(facade.cardActions(subject).map((action) => action.label)).toContain('Delete form');
+				}
+			}
+			expect(facade.resolveSourceHit({ evaluationId: 'stale', css: [500, 350] })).toEqual({ kind: 'failed', code: 'stale-evaluation' });
+		} finally { facade.dispose(); }
+	});
+
+
+	it('cannot select forms through a rendered floor or Wall, and handles admitted roll in Plan', async () => {
+		const below = nativeForm('plan', 2);
+		below.position[1] = -2;
+		const rolled = nativeForm('elevation', 4);
+		rolled.rotation[2] = Math.PI / 2;
+		rolled.position[1] = 1;
+		const { facade, host, rendered } = await mounted(await supportedProject([below, rolled]));
+		mountStageAdapter(facade, host, createAdapter);
+		const floor = new Mesh(new PlaneGeometry(7, 6), new MeshBasicMaterial());
+		floor.name = 'VisitorFloor:test'; floor.position.set(3.5, 0, 3); floor.rotation.x = -Math.PI / 2;
+		const root = new Group(); root.add(floor);
+		const wall = new Mesh(new BoxGeometry(1, 2, 1), new MeshBasicMaterial());
+		wall.position.set(4, 2, 3.5); root.add(wall);
+		rendered.registerLayout(root);
+		function at(point: Vec3) {
+			const css = facade.projectWorld(point, facade.evaluationId()!);
+			if (css.kind !== 'projected') throw new Error('fixture projection failed');
+			return facade.resolveSourceHit({ evaluationId: facade.evaluationId()!, css: css.css });
+		}
+		try {
+			for (const reading of ['3d', 'plan'] as const) {
+				facade.camera.applyIntent({ kind: 'set-reading', reading }, 2);
+				facade.camera.evaluate(RECT, 4);
+				const hidden = at([2, -1.5, 3.5]);
+				expect(hidden.kind === 'resolved' ? hidden.hit.reference : null).toBeFalsy();
+			}
+			const blocked = at([3.5, 0, 3.5]);
+			expect(blocked.kind === 'resolved' ? blocked.hit.reference : null).toBeFalsy();
+			root.remove(wall);
+			const visible = at([3.5, 0, 3.5]);
+			expect(visible.kind === 'resolved' ? visible.hit.reference?.subject.id : null).toBe('form-elevation');
+		} finally { facade.dispose(); floor.geometry.dispose(); wall.geometry.dispose(); }
+	});
+
+	it('uses rendered model occlusion and primitive scale instead of guessed picking bounds', async () => {
+		const model: SceneEntity = { kind: 'model', id: 'model-front', name: 'Front model', assetId: 'paris-grand-piano', fallback: 'piano', position: [2, 1, 3.5], rotation: [0, 0, 0], scale: 2 };
+		// Catalogue identity is immaterial to raycasting: the registered child is the
+		// mounted model's drawn mesh, with its actual transform and geometry.
+		const source = await supportedProject([nativeForm('plan', 2), model]);
+		const { facade, host, rendered } = await mounted(source);
+		mountStageAdapter(facade, host, createAdapter);
+		const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+		mesh.position.fromArray(model.position); mesh.scale.setScalar(2);
+		const off = rendered.register(model.id, mesh);
+		try {
+			const css = facade.projectWorld([2.75, 1, 3.5], facade.evaluationId()!);
+			if (css.kind !== 'projected') throw new Error('fixture projection failed');
+			const hit = facade.resolveSourceHit({ evaluationId: facade.evaluationId()!, css: css.css });
+			expect(hit.kind === 'resolved' ? hit.hit.reference?.subject.id : null).toBe('model-front');
+			// Live bounds follow a model/transform update, never a retained guessed box.
+			mesh.scale.setScalar(3);
+			expect(rendered.pick({ origin: [3.25, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).toBe('model-front');
+			mesh.position.x = 20;
+			expect(rendered.pick({ origin: [3.25, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
+			mesh.position.x = 2;
+			// A versioned vertex update must invalidate Three's existing box/sphere,
+			// not only the registry's world bounds.
+			const positions = mesh.geometry.getAttribute('position');
+			for (let i = 0; i < positions.count; i++) positions.setX(i, positions.getX(i) + 10);
+			positions.needsUpdate = true;
+			expect(rendered.pick({ origin: [32, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).toBe('model-front');
+			mesh.visible = false;
+			expect(rendered.pick({ origin: [32, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
+			off();
+			expect(rendered.pick({ origin: [32, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
+		} finally { facade.dispose(); mesh.geometry.dispose(); }
+	});
+
+	it('operates a selected form through its Card, shared history and a saved cold reopen', async () => {
+		const { facade, host } = await mounted(await supportedProject([nativeForm('plan', 2), nativeForm('elevation', 4)]));
+		mountStageAdapter(facade, host, createAdapter);
+		const services = createStageAdapterServices(facade, host);
+		try {
+			const row = facade.subjects().find((item) => item.reference.subject.id === 'form-plan')!;
+			facade.setSelection({ ordered: [{ reference: row.reference }], primary: row.reference });
+			const card = () => formCardController(services, 'form-plan')!;
+			const before = JSON.stringify(stageScene(facade.snapshot()).entities);
+			expect((await card().move(3, 3)).kind).toBe('installed');
+			expect(facade.selectionState().primary?.subject.id).toBe('form-plan');
+			expect((await card().turn(0.4)).kind).toBe('installed');
+			expect((await card().place(3, 4)).kind).toBe('installed');
+			expect((await card().size([2, 1.5, 1])).kind).toBe('installed');
+			const sized = stageScene(facade.snapshot()).entities.find((entity) => entity.id === 'form-plan');
+			expect(sized?.kind === 'form' && sized.form.scale).toEqual([2, 1.5, 1]);
+			const depth = host.history().depth;
+			expect((await card().size([0, 1, 1])).kind).toBe('refused');
+			expect(host.history().depth).toBe(depth);
+			expect((await card().duplicate()).kind).toBe('installed');
+			const copyId = facade.selectionState().primary!.subject.id;
+			expect(copyId).not.toBe('form-plan');
+			expect((await formCardController(services, copyId)!.delete()).kind).toBe('installed');
+			expect(facade.selectionState().primary).toBeNull();
+			expect(host.history().depth).toBe(7);
+			for (let index = 0; index < 6; index++) expect((await host.undo()).kind).toBe('installed');
+			expect(JSON.stringify(stageScene(facade.snapshot()).entities)).toBe(before);
+			for (let index = 0; index < 6; index++) expect((await host.redo()).kind).toBe('installed');
+			const saved = await captureUnitSave({ snapshot: host.coordinator().acceptedSnapshot(), operationId: 'save-form', precondition: { kind: 'create-only' } });
+			expect(saved.kind).toBe('captured');
+			if (saved.kind !== 'captured') throw new Error('save capture failed');
+			const reopened = await admitSource(JSON.parse(saved.capture.canonicalJson), { sessionEpoch: 'reopen', acceptedRevision: host.acceptedRevision() });
+			expect(reopened.kind).toBe('admitted');
+			if (reopened.kind === 'admitted') expect(stageScene(reopened.snapshot).entities).toEqual(stageScene(facade.snapshot()).entities);
+		} finally { facade.dispose(); }
+	});
 
 	it('selects a Scene entity canonically without fabricating a Plan fragment', async () => {
 		const { facade } = await mounted();

@@ -124,6 +124,8 @@
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 	import StageDock from '$lib/authoring/stage/shell/StageDock.svelte';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
+	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
+	const scenePick = createScenePickSource();
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
 	import {
 		approvedModelPins,
@@ -714,7 +716,7 @@
 		unsubscribeContributions = null;
 		facade?.dispose();
 		acceptance?.dispose();
-		facade = createStageFacade({ snapshot, session });
+		facade = createStageFacade({ snapshot, session, scenePick: scenePick.pick });
 		unsubscribeContributions = facade.onAdaptersChanged(() => {
 			contributionsVersion += 1;
 			task = facade?.session.task() ?? null;
@@ -1671,6 +1673,15 @@
 	function selectionEcho(selected: StageSelectionEntry): { css: readonly [number, number]; label: string } | null {
 		const stage = facade;
 		if (stage === null) return null;
+		if (selected.reference.domain !== 'layout') {
+			const subject = locatedSubjectMap.get(`${selected.reference.domain}:${selected.reference.subject.kind}:${selected.reference.subject.id}`);
+			if (subject === undefined) return null;
+			const projected = stage.projectWorld(subject.worldPoint, stage.evaluationId() ?? '');
+			const viewport = stage.evaluation()?.rect;
+			return projected.kind !== 'projected' || projected.visibility === 'behind' || viewport === undefined ? null : {
+				css: [projected.css[0] - viewport.left, projected.css[1] - viewport.top], label: subject.label
+			};
+		}
 		const plan = planView;
 		// `planFragmentOf` is indexed against the fragment array, so this lookup —
 		// which runs on every presented frame while something is selected — costs a
@@ -2023,6 +2034,12 @@
 	function selectHit(hit: StageSourceHit): void {
 		const stage = facade;
 		if (stage === null) return;
+		if (hit.reference !== undefined) {
+			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
+			selection = primaryEntry(stage.selectionState());
+			cardOpen = true;
+			return;
+		}
 		const selected: StageSelection = {
 			sourceId: hit.sourceId,
 			sourceKind: hit.sourceKind,
@@ -2057,10 +2074,17 @@
 		const plan = planView;
 		if (stage === null || plan === null) return;
 		cardOpen = true;
-		const fragment = planFragmentOf(plan, sourceId);
+		const subject = stage.subjects().find((item) => item.id === sourceId);
+		if (subject !== undefined) {
+			stage.setSelection({ ordered: [{ reference: subject.reference }], primary: subject.reference });
+			selection = primaryEntry(stage.selectionState());
+			return;
+		}
+		const layoutId = sourceId.startsWith('layout:') ? sourceId.slice(sourceId.indexOf(':', 7) + 1) : sourceId;
+		const fragment = planFragmentOf(plan, layoutId);
 		if (fragment === undefined) return;
 		stage.select({
-			sourceId,
+			sourceId: layoutId,
 			sourceKind: fragment.ref.sourceKind,
 			generationId: fragment.ref.generationId,
 			ref: fragment.ref
@@ -2519,6 +2543,16 @@
 		URL.revokeObjectURL(url);
 	}
 
+	const locatedSubjects = $derived.by(() => {
+		void contributionsVersion;
+		return facade?.subjects() ?? [];
+	});
+	const locatedSubjectMap = $derived(new Map(locatedSubjects.map((subject) => [subject.id, subject])));
+	const selectedLocatorId = $derived.by(() => {
+		const selected = selection;
+		if (selected === null) return null;
+		return `${selected.reference.domain}:${selected.reference.subject.kind === 'room' ? 'room-floor' : selected.reference.subject.kind}:${selected.reference.subject.id}`;
+	});
 	const indexGroups = $derived.by(() => {
 		const plan = planView;
 		if (plan === null) return [];
@@ -2529,7 +2563,7 @@
 		for (const membership of plan.membership) {
 			const items = byKind.get(membership.sourceKind) ?? [];
 			items.push({
-				sourceId: membership.sourceId,
+				sourceId: `layout:${membership.sourceKind}:${membership.sourceId}`,
 				label: sourceLabel(membership.sourceId, membership.sourceKind),
 				kind: membership.sourceKind,
 				eligible: membership.eligible,
@@ -2537,6 +2571,13 @@
 				membership: membership.reason
 			});
 			byKind.set(membership.sourceKind, items);
+		}
+		for (const subject of locatedSubjects) {
+			const kind = subject.reference.domain;
+			const items = byKind.get(kind) ?? [];
+			items.push({ sourceId: subject.id, label: subject.label, kind: subject.reference.subject.kind,
+				eligible: true, revealed: false, membership: 'included' });
+			byKind.set(kind, items);
 		}
 		const filtered = [...byKind.entries()]
 			.filter(([, items]) => items.length > 0)
@@ -2561,6 +2602,8 @@
 		const plan = planView;
 		const selected = selection;
 		if (plan === null || selected === null) return null;
+		if (selected.reference.domain !== 'layout') return locatedSubjects.find((item) =>
+			item.reference.domain === selected.reference.domain && item.reference.subject.id === selected.reference.subject.id)?.label ?? null;
 		const row = planMembershipOf(plan, selected.reference.subject.id);
 		return row === null ? null : sourceLabel(row.sourceId, row.sourceKind);
 	});
@@ -2709,6 +2752,7 @@
 	const headFindEntries = $derived.by(() => {
 		const needle = findQuery.trim().toLowerCase();
 		const entries = [
+			...locatedSubjects.map((subject) => ({ id: subject.id, adapterId: 'subject', label: subject.label, verb: 'Select' })),
 			...dockTools.map((tool) => ({
 				id: tool.id,
 				adapterId: tool.adapterId,
@@ -2769,6 +2813,7 @@
 
 	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
 	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string }): void {
+		if (entry.adapterId === 'subject') { selectSource(entry.id); return; }
 		const tool = dockTools.find(
 			(candidate) => candidate.id === entry.id && candidate.adapterId === entry.adapterId
 		);
@@ -2846,6 +2891,10 @@
 		const plan = planView;
 		const selected = selection;
 		if (plan === null || selected === null) return null;
+		if (selected.reference.domain !== 'layout') {
+			const subject = locatedSubjects.find((item) => item.reference.domain === selected.reference.domain && item.reference.subject.id === selected.reference.subject.id);
+			return subject === undefined ? null : [...subject.worldPoint];
+		}
 		const fragment = planFragmentOf(plan, selected.reference.subject.id);
 		if (fragment === undefined) return null;
 		const points =
@@ -2959,15 +3008,18 @@
 			onToggle={() => (indexOpen = !indexOpen)}
 			groups={indexGroups}
 			contributions={contributionGroups}
-			selectionId={selection?.reference.subject.id ?? null}
+			selectionId={selectedLocatorId}
 			selectedLabel={selectedSubjectLabel}
 			{query}
 			onQuery={(next) => (query = next)}
 			onSelect={selectSource}
 			onInvokeContribution={invokeContribution}
 			onBringIntoView={(sourceId) => {
+				const subject = locatedSubjects.find((item) => item.id === sourceId);
+				if (subject !== undefined) { bringIntoView(subject.worldPoint); return; }
 				const plan = planView;
-				const fragment = plan === null ? undefined : planFragmentOf(plan, sourceId);
+				const layoutId = sourceId.startsWith('layout:') ? sourceId.slice(sourceId.indexOf(':', 7) + 1) : sourceId;
+				const fragment = plan === null ? undefined : planFragmentOf(plan, layoutId);
 				if (fragment === undefined) return;
 				const points =
 					fragment.geometry.kind === 'span'
@@ -2982,7 +3034,7 @@
 				);
 				bringIntoView([center[0], fragment.elevationMeters, center[1]]);
 			}}
-			onReveal={toggleReveal}
+			onReveal={(id) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); }}
 		/>
 		{/if}
 
@@ -3011,6 +3063,7 @@
 			>
 				{#if boot.status === 'ready' || boot.status === 'empty'}
 					<StageCanvas
+						{scenePick}
 						geometry={boot.snapshot.domain.geometry}
 						scene={boot.snapshot.domain.scene}
 						rooms={boot.snapshot.domain.rooms}
@@ -3122,7 +3175,7 @@
 			{/if}
 
 			<EditorCard
-				identity={cardOpen ? cardIdentity : null}
+				identity={preview === null && cardOpen ? cardIdentity : null}
 				facts={cardFacts}
 				nameWriter={cardNameWriter}
 				writer={cardWriter}
@@ -3140,7 +3193,7 @@
 				}}
 			/>
 
-			{#if inactiveTask}
+			{#if preview === null && inactiveTask}
 				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 				<div
 					class="inactive-task"
@@ -3159,7 +3212,7 @@
 				Instrument) and nothing else. A contributed tool appears here because its
 				entry declares `home: 'dock'`; the shell owns no domain slot of its own.
 			-->
-			<div class="lower-column" data-lower-column bind:this={lowerColumnEl}>
+			<div class="lower-column" hidden={preview !== null} inert={preview !== null} data-lower-column bind:this={lowerColumnEl}>
 				<StageDock
 					{armedTaskKind}
 					tools={dockTools}

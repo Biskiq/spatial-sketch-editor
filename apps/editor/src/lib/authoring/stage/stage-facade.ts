@@ -1,3 +1,5 @@
+import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
+import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { indexedCompiledWall } from '@portfolio/layout-core';
 import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
 import type { EntryRequalification } from './selection-requalification';
@@ -100,12 +102,26 @@ export const HOST_STAGE_CAPABILITIES: readonly string[] = [
 /** Screen-space tolerance for a Plan hit, in CSS pixels. */
 export const PLAN_HIT_TOLERANCE_CSS_PX = 8;
 
+/** Domain-owned locator row, shared by Index and Head Find. */
+export type StageSubject = {
+	readonly id: string;
+	readonly label: string;
+	readonly reference: SemanticReference;
+	readonly worldPoint: Vec3;
+};
+
 export type StageHitCandidate = {
 	readonly evaluationId: string;
 	readonly css: readonly [number, number];
 };
 
 export type StageSourceHit = {
+	readonly reference: SemanticReference;
+	readonly sourceId: string;
+	readonly sourceKind: 'entity';
+	readonly worldPoint: Vec3;
+} | {
+	readonly reference?: undefined;
 	readonly sourceId: string;
 	readonly sourceKind: PlanSourceKind;
 	readonly generationId: string;
@@ -212,6 +228,7 @@ export type StageAdapterContext = {
 	readonly evaluationId: string;
 	project(point: Vec3): readonly [number, number] | null;
 	ray(css: readonly [number, number]): PointerRay | null;
+	pickScene(ray: PointerRay): SceneRenderedHit | null;
 	intersect(ray: PointerRay, plane: WorkingPlane): WorkingPlaneHit;
 	selection(): StageSelection | null;
 	selectionState(): StageSelectionState;
@@ -398,6 +415,7 @@ export type StageAdapterBinding = {
 	readonly selectionChanged?: (selection: StageSelectionState) => void;
 	readonly selectionEcho?: (selection: StageSelection | null) => void;
 	readonly tasks?: readonly StageTaskContribution[];
+	readonly subjects?: readonly StageSubject[];
 	readonly cardFacts?: (subject: StageCardSubject) => readonly StageCardFact[];
 	/**
 	 * The subject's ordinary-field writer for the Card, or `null` when this adapter
@@ -620,6 +638,7 @@ export type StageFacade = {
 		| { readonly kind: 'refused'; readonly code: 'unknown-task' | 'task-closed' | 'wrong-lens'; readonly message: string };
 	/** Every contributed Find entry, ordered deterministically and stamped with its adapter. */
 	findEntries(): readonly StageFindEntryRecord[];
+	subjects(): readonly StageSubject[];
 	/** Card facts contributed for one subject, ordered by adapter ID then label. */
 	cardFacts(subject: StageCardSubject): readonly StageCardFactRecord[];
 	/** The one name writer contributed for a subject, or `null` when none claims it. */
@@ -961,6 +980,7 @@ export function createStageFacade(input: {
 	readonly session: StageSession;
 	readonly viewportId?: string;
 	readonly outputId?: string;
+	readonly scenePick?: (ray: PointerRay, scene: StageReadSnapshot['domain']['scene']) => SceneRenderedHit | null;
 }): StageFacade {
 	const { session } = input;
 	let currentSnapshot = input.snapshot;
@@ -1295,6 +1315,7 @@ export function createStageFacade(input: {
 				if (!hasLiveEvaluation()) return { kind: 'failed', code: 'stale-evaluation', message: 'the adapter evaluation has ended' };
 				return intersectWorkingPlane(ray, plane, evaluation, token);
 			},
+			pickScene: (ray) => hasLiveEvaluation() ? input.scenePick?.(ray, currentSnapshot.domain.scene) ?? null : null,
 			selection: () => contextIsLive() ? session.selection() : null,
 			selectionState: () => contextIsLive() ? session.selectionState() : EMPTY_SELECTION,
 			setSelection: (value) => contextIsLive() ? setSelection(value) : { kind: 'refused', code: 'stale-binding', message: 'Reacquire the active adapter binding.' },
@@ -1685,6 +1706,8 @@ export function createStageFacade(input: {
 			return result.kind === 'evaluated' ? eligiblePlanFragments(result.plan) : [];
 		},
 		resolveSourceHit(candidate) {
+			const started = perfMarksEnabled() ? performance.now() : null;
+			try {
 			const evaluation = camera.evaluation();
 			if (evaluation === null || evaluationIdOf(evaluation) !== candidate.evaluationId) {
 				return { kind: 'failed', code: 'stale-evaluation' };
@@ -1769,6 +1792,7 @@ export function createStageFacade(input: {
 				};
 			}
 			return { kind: 'none', reason: 'no-fragment' };
+			} finally { if (started !== null) perfMark('stage:pick', { elapsedMs: performance.now() - started }); }
 		},
 		selection: () => session.selection(),
 		selectionState: () => session.selectionState(),
@@ -1998,6 +2022,10 @@ export function createStageFacade(input: {
 			notifyAdaptersChanged();
 			const instrument = facade.instrumentForTask(id, entry.adapterId);
 			return { kind: 'opened', taskId: entry.id, task, adapterId: entry.adapterId, instrument };
+		},
+		subjects() {
+			ensureBindings();
+			return [...adapters.values()].flatMap((entry) => entry.contributions.subjects ?? []);
 		},
 		findEntries() {
 			ensureBindings();

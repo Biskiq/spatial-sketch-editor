@@ -9,10 +9,12 @@
  *
  * Tagged `@internal` — never imported outside `scene-codec/`.
  */
+import { cloneFormSource } from '../scene';
 import type {
 	CameraFramingEnvelope,
 	SceneCameraViewKeyframe,
 	SceneEntity,
+	SceneFormEntity,
 	SceneModelEntity,
 	ScenePrimitiveEntity,
 	SceneWaypoint
@@ -84,6 +86,23 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 				? {}
 				: { materialInstanceId: entity.materialInstanceId })
 		} as ScenePrimitiveEntity;
+	}
+	if (entity.kind === 'form') {
+		return {
+			kind: 'form',
+			id: entity.id,
+			name: entity.name,
+			...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
+			position: [...entity.position],
+			rotation: [...entity.rotation],
+			form: cloneFormSource(entity.form),
+			materialId: entity.materialId,
+			castShadow: entity.castShadow,
+			receiveShadow: entity.receiveShadow,
+			...(entity.materialInstanceId === undefined
+				? {}
+				: { materialInstanceId: entity.materialInstanceId })
+		} as SceneFormEntity;
 	}
 	if (entity.light === 'spot') {
 		return {

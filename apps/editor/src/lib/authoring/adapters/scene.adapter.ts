@@ -1,7 +1,7 @@
 /**
  * T2.P01.S03 — the Scene adapter: the first coherent Scene editing surface.
  *
- * It registers `T2.P01.S02`'s seven Scene planners with the one F.4 coordinator
+ * It registers the Scene planners with the one F.4 coordinator
  * and contributes Place/Arrange Find entries, Card facts and one instrument
  * through T1.P01.S07's AM-5 points. It edits no host core, route or shell
  * module, and it never writes Layout: support is consulted by the retained
@@ -12,6 +12,7 @@
  * public Stage services.
  */
 
+import { Euler, Vector3 } from 'three';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import type {
 	StageAdapterFactory,
@@ -28,6 +29,8 @@ import type {
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
+import type { SceneFormEntity } from '$lib/content/scene';
+import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import {
 	NATIVE_PLACEMENT_PRIMITIVES,
 	nativePlacementDefinition
@@ -45,6 +48,9 @@ import {
 	type NormalizedPlacementDefinition
 } from '@portfolio/project-model/scene-planning';
 
+import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
+import { planSceneHaloProbe, resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
+import FormCardFields from './scene/FormCardFieldsLazy.svelte';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import {
@@ -70,7 +76,11 @@ import {
 	type SceneSessionOutcome,
 	type SceneSurface
 } from './scene/placement';
-import { floorSupport, supportOccluders } from './scene/support-occlusion';
+import {
+	floorSupport,
+	supportOccluders,
+	type SupportOccluder
+} from './scene/support-occlusion';
 
 const SCENE_ARRANGE_TASK = 'scene-arrange';
 const SCENE_PLACE_TASK = 'scene-place';
@@ -120,8 +130,50 @@ function entityFacts(
 						value: `${typeof entity.scale === 'number' ? entity.scale : 1} (uniform)`
 					}
 				]
-			: [])
+			: []),
+		// Dimensions are exposed by the lazy Card's per-axis Size fields.
+		...(entity.kind === 'form' ? [{ label: 'Material', value: entity.materialId }] : [])
 	];
+}
+
+/** Canonical body centre for the shared selection echo and Bring into view. */
+function formCenter(entity: SceneFormEntity): [number, number, number] {
+	const mesh = evaluateFormMesh(entity.form);
+	if (mesh === null) return entity.position;
+	const center = mesh.bounds.min.map((value, axis) => (value + mesh.bounds.max[axis]!) / 2);
+	return new Vector3(center[0], center[1], center[2]).applyEuler(new Euler(...entity.rotation)).add(new Vector3(...entity.position)).toArray();
+}
+
+/**
+ * Occluders already built for one accepted snapshot, keyed by excluded subject.
+ *
+ * A snapshot is immutable: its compiled geometry and resolved Scene are the
+ * accepted revision's, not a working copy. Building the list evaluates every
+ * form's canonical key and allocates one occluder per drawn body, which pointer
+ * movement would otherwise repeat for an unchanged Stage. The WeakMap retires
+ * the lists with the snapshot, and the excluded id is part of the key because a
+ * live drag changes it while the snapshot stays current.
+ */
+const occludersBySnapshot = new WeakMap<
+	StageAdapterContext['snapshot'],
+	Map<string | null, readonly SupportOccluder[]>
+>();
+
+function snapshotOccluders(
+	context: StageAdapterContext,
+	exceptEntityId: string | null
+): readonly SupportOccluder[] {
+	let bySubject = occludersBySnapshot.get(context.snapshot);
+	if (bySubject === undefined) {
+		bySubject = new Map();
+		occludersBySnapshot.set(context.snapshot, bySubject);
+	}
+	const cached = bySubject.get(exceptEntityId);
+	if (cached !== undefined) return cached;
+	const domain = context.snapshot.domain;
+	const built = supportOccluders(domain.geometry, domain.scene, exceptEntityId);
+	bySubject.set(exceptEntityId, built);
+	return built;
 }
 
 /** The floor support one pointer position resolves against the drawn geometry. */
@@ -134,11 +186,10 @@ function pointerFloorSupport(
 	// viewport's CSS coordinate space, whose origin includes the surface offset.
 	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
 	if (ray === null) return { kind: 'none' as const, reason: 'degenerate' as const };
-	const domain = context.snapshot.domain;
 	return floorSupport(
 		ray,
-		domain.datumMeters,
-		supportOccluders(domain.geometry, domain.scene, exceptEntityId)
+		context.snapshot.domain.datumMeters,
+		snapshotOccluders(context, exceptEntityId)
 	);
 }
 
@@ -393,7 +444,49 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				services.stage.notifySurfaceChange();
 			}
 
+			const footprints = buildPlanSceneFootprintProjection(source, { modelFootprintById: (id) => context.snapshot.domain.scene.modelFootprints?.get(id) }).footprints;
 			return {
+				subjects: source.entities.map((entity) => ({
+					id: `scene:entity:${entity.id}`,
+					label: `${entity.name} · ${entity.kind} · ${entity.id}`,
+					reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
+					worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
+				})),
+				hitProvider(candidate, live) {
+					if (!source.entities.some((entity) => entity.kind !== 'light')) return null;
+					const css: [number, number] = [candidate.css[0] + live.evaluation.rect.left, candidate.css[1] + live.evaluation.rect.top];
+					const ray = live.ray(css);
+					if (ray === null) return null;
+					const drawn = live.pickScene(ray);
+					if (drawn?.kind === 'layout' || drawn?.kind === 'floor' && live.evaluation.renderedReading !== 'plan') return null;
+					let entityId: string | null = drawn?.entityId ?? null;
+					let distance = drawn?.distanceMeters ?? Infinity;
+					if (live.evaluation.renderedReading === 'plan') {
+						const t = (live.snapshot.domain.datumMeters - ray.origin[1]) / ray.direction[1];
+						if (!(t >= 0 && Number.isFinite(t))) return null;
+						const point: [number, number] = [ray.origin[0] + ray.direction[0] * t, ray.origin[2] + ray.direction[2] * t];
+						const eligible = drawn?.kind !== 'entity' ? footprints : footprints.filter((footprint) => footprint.entityId === drawn.entityId);
+						const hit = resolvePlanSceneHit(eligible, point, 6 * live.evaluation.targetPlaneMetersPerCssPixel);
+						if (hit === null) return null;
+						if (drawn?.kind !== 'entity') {
+							// A footprint cannot select an unmounted or hidden body through a
+							// floor. Only an edge halo may probe its own visible silhouette.
+							if (hit.reason !== 'edge-halo') return null;
+							const probe = planSceneHaloProbe(hit.footprint, point);
+							const projected = probe === null ? null : live.project([probe[0], live.snapshot.domain.datumMeters, probe[1]]);
+							const probeRay = projected === null ? null : live.ray(projected);
+							if (probeRay === null || live.pickScene(probeRay)?.entityId !== hit.entityId) return null;
+						}
+						entityId = hit.entityId;
+						distance = drawn?.distanceMeters ?? t;
+					}
+					if (entityId === null) return null;
+					return {
+						sourceId: entityId, sourceKind: 'entity',
+						reference: sceneEntityReference(entityId, live.snapshot.domain.unitRevisions.scene),
+						worldPoint: ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number]
+					};
+				},
 				tasks: [
 					{
 						id: SCENE_PLACE_TASK,
@@ -646,6 +739,22 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									null;
 					const ghost = candidateGhost(entity, candidate);
 					return ghost === null ? [] : [ghost];
+				},
+				cardWriter(subject) {
+					if (subject.reference?.domain !== 'scene' || !source.entities.some((entity) => entity.id === subject.sourceId && entity.kind === 'form')) return null;
+					return { summary: 'Form fields', view: { component: FormCardFields, services } };
+				},
+				cardActions(subject) {
+					if (subject.reference?.domain !== 'scene') return [];
+					const entity = source.entities.find((entity) => entity.id === subject.sourceId && entity.kind === 'form');
+					if (entity === undefined) return [];
+					const snapshot = services.stage.snapshot();
+					return [{ id: 'scene-form-delete', label: 'Delete form', destructive: true,
+						detail: `Remove ${entity.name}. Undo restores it.`,
+						async run() {
+							const { deleteForm } = await import('./scene/form-card-command');
+							return deleteForm(services, snapshot, entity.id);
+						} }];
 				},
 				cardFacts(cardSubject: StageCardSubject) {
 					// Only a Scene entity subject claims Scene facts; a Layout subject keeps

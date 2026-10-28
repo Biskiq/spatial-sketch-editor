@@ -1,0 +1,28 @@
+name: Native form Linux x64 goldens
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/native-form-goldens.yml'
+      - 'packages/geometry-core/**'
+      - 'apps/editor/tests/lib/geometry-core/**'
+      - 'package-lock.json'
+permissions:
+  contents: read
+jobs:
+  linux-x64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify native runner
+        run: node -e "if(process.platform!=='linux'||process.arch!=='x64')process.exit(1);console.log(process.platform,process.arch,process.version)"
+      - run: npm ci
+      - run: npm run check:geometry-core
+      - run: npm exec -w @portfolio/editor -- svelte-kit sync
+      - name: Check pinned corpus and determinism boundary
+        working-directory: apps/editor
+        run: npx vitest run tests/lib/geometry-core
