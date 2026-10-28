@@ -720,7 +720,7 @@
 		unsubscribeContributions = facade.onAdaptersChanged(() => {
 			contributionsVersion += 1;
 			task = facade?.session.task() ?? null;
-			selection = facade ? primaryEntry(facade.selectionState()) : null;
+			syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
 			syncContributedTask();
 		});
 		task = null;
@@ -770,7 +770,7 @@
 				void resolveModels(facade.snapshot());
 			}
 			task = facade?.session.task() ?? null;
-			selection = facade ? primaryEntry(facade.selectionState()) : null;
+			syncPrimarySelection(facade ? primaryEntry(facade.selectionState()) : null);
 			syncContributedTask();
 			planKey = '';
 		planParametersKey = '';
@@ -2029,6 +2029,25 @@
 	/** A compact, complete reference: the source kind plus its canonical identity. */
 	function sourceLabel(sourceId: string, kind: string): string {
 		return `${kind === 'room-floor' ? 'floor' : kind} · ${sourceId}`;
+	}
+
+	/**
+	 * Mirror a selection the host or an adapter made canonically.
+	 *
+	 * A contributed task may select a new subject after its own accepted install
+	 * (Create, Place, Duplicate). The Card was dismissed for the previous subject,
+	 * so a new primary selection must reveal it; a revision-only requalification of
+	 * the same subject must leave the creator's dismissal alone.
+	 */
+	function syncPrimarySelection(next: StageSelectionEntry | null): void {
+		const keyOf = (entry: StageSelectionEntry | null) =>
+			entry === null
+				? ''
+				: `${entry.reference.domain}\u0000${entry.reference.subject.kind}\u0000${entry.reference.subject.id}`;
+		const previous = keyOf(selection);
+		const key = keyOf(next);
+		selection = next;
+		if (key !== '' && key !== previous) cardOpen = true;
 	}
 
 	function selectHit(hit: StageSourceHit): void {
