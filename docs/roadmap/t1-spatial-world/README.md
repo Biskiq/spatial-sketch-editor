@@ -2,7 +2,7 @@
 
 **Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; `T1.P02` (native Wall
 creation) registered 2026-10-22 as batch E; S01 shipped by scoped owner-override,
-S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted AC-qualified 2026-10-27 and merged as `6af62eb4` (PR #190); S02 drawing was released 2026-10-27 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)), accepted as `owner-override` and shipped on PR #201; S03 Opening was released 2026-10-27 ([record](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md)) and shipped on PR #209; under the [2026-10-28 performance-mandate suspension](../../reference/decisions/performance-mandate-suspension-2026-10-28.md), their unmeasured performance rows are historical evidence, not passes or S04 prerequisites; S04 integrated final gate was released 2026-10-28 ([record](../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)) and accepted/shipped by the owner at `46a31c81`; T1.P02 is closable, with the phase-close decision pending; `T1.P01.S01` shipped (shared F1/F3
+S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted AC-qualified 2026-10-27 and merged as `6af62eb4` (PR #190); S02 drawing was released 2026-10-27 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)), accepted as `owner-override` and shipped on PR #201; S03 Opening was released 2026-10-27 ([record](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md)) and shipped on PR #209; under the [2026-10-28 performance-mandate suspension](../../reference/decisions/performance-mandate-suspension-2026-10-28.md), their unmeasured performance rows are historical evidence, not passes or S04 prerequisites; S04 integrated final gate was released 2026-10-28 ([record](../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)), accepted/shipped by the owner at `46a31c81`, and P1-merged in `eb0931d6`; T1.P02 closed 2026-10-28 by owner ruling; `T1.P01.S01` shipped (shared F1/F3
 providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
 shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
 not complete ([track register](../README.md#track-register)) · **Runbook:**
@@ -80,8 +80,8 @@ prerequisite after the [2026-10-28 suspension](../../reference/decisions/perform
 S03 was released on 2026-10-27 ([record](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md))
 after that acceptance and shipped on PR #209. S04 was released on 2026-10-28
 ([record](../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)) as the phase's
-integrated final gate and accepted/shipped by the owner at `46a31c81`; T1.P02 is closable without
-being closed.
+integrated final gate, accepted/shipped by the owner at `46a31c81`, and P1-merged in `eb0931d6`.
+T1.P02 closed 2026-10-28 by owner ruling; T1 is not complete.
 
 After that first wave, T1 supplies C3's rename/delete shell integration, the face-frame query for
 T2's solve-once wall placement, and Stage part-selection/admission UI consuming T2's component
@@ -140,7 +140,7 @@ register owns lifecycle only.
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
 | T1.P01 | shipped | — | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
-| T1.P02 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md) |
+| T1.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md) |
 
 The `Depends on` column stays empty for T1.P01: the phase's first slice, `T1.P01.S01`, is itself
 the sole provider of `F1.reference@1` and `F3.channels@1`, so listing either as a phase dependency
