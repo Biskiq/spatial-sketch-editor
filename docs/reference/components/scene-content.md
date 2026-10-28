@@ -35,8 +35,9 @@ present a form is ordinary Scene truth: `create-form` creates one, `set-form-siz
 per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and
 Delete work through the existing planners. `resize-on-floor` refuses a form (uniform scale would
 contradict `form.scale`). Evaluation is deterministic and cached in the editor; Stage and Preview draw the same mesh (metre UVs, computed normals). Production Plan footprints and 3D mounted-mesh hits feed the existing Stage selection authority. Forms appear in Index and Head Find; their Card exposes Move, Turn, Place on floor, per-axis Size, Duplicate and confirmed Delete through existing Scene planners/F4. Preview preserves visitor isolation and return to Stage preserves selection. Publication
-still refuses a form in the cold release check; T4 owns any admission. Limits and operations:
-[T5.P01.S01 acceptance](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
+still refuses a form in the cold release check; T4 owns any admission. Limits and the codec rules
+are above; implementation evidence routes through the
+[T5.P01.S01 acceptance and evidence stub](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
 and [reference decision](../decisions/t5-object-focus-planning-2026-10-27.md).
 
 **Current authoring.** The T2 Scene adapter places, edits, resizes, duplicates and deletes through

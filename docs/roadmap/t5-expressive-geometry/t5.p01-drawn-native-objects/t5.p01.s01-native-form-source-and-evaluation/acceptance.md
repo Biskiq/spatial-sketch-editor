@@ -1,58 +1,184 @@
-# T5.P01.S01 — acceptance record: Native form source and evaluation
+# T5.P01.S01 — closed acceptance record and preservation stub
 
-**Status:** Option B implemented on PR #208; independent technical review and final verification recorded below. Owner acceptance remains pending. The slice is not closed, merged or deployed. [Plan](./implementation-plan.md) · [Phase](../README.md).
+**AUTHORITY: NONE.** This stub routes to the closed record preserved in Git. Current contract lives
+in [Scene content](../../../../reference/components/scene-content.md#validation-and-transform-contract-current),
+[persistence](../../../../reference/components/persistence.md) and the
+[T5.P01 phase register](../README.md#slice-register); the phase README owns slice status, and the
+[closed plan stub](./implementation-plan.md) keeps its approved scope at its own path.
 
-## Owner decisions and scope
+## Acceptance and source identity
 
-On 2026-10-28 the owner approved **Option B**: satisfy criterion 6 fully in S01, including production Plan and 3D selection, Index/Find and supported Card operations. Selection is not deferred and the criterion is not weakened. Preview follows its existing visitor interaction contract: it renders the identical result without editor selection or authoring UI; return to Stage preserves canonical selection.
+**Owner-override accepted 2026-10-28** for the implementation carried by PR #208 at product head
+`7c3445e1` (the last commit touching `apps/`, `packages/` or `.github/`), documentation head before
+compaction `a57588db` (the recovery anchor below), on trusted base `db7e5cd9` (main, the PR #209
+merge; integrated at `c3743d44`). The status is `owner-override`, never `reviewed`.
 
-The original 2026-10-27 Stage first-load exception was **431.3 KiB Brotli** against the **425 KiB** hard budget. On 2026-10-28 the owner explicitly extended it to **439.0 KiB**. The final build measures **439.0 KiB JS Brotli**; CSS-inclusive delivery is a different row. This exception covers only Stage bundle size. The owner also directed: **“Continue on AC and record battery verification as pending.”** This authorizes diagnostic measurement on AC and does not waive battery performance acceptance.
+The owner ruling, recorded verbatim on 2026-10-28:
 
-The [dated baseline](./acceptance-a1ded6a3.md) preserves the original determinism investigation, unchanged 48 goldens, numerical and occlusion benchmarks, shadow comparisons and earlier failed verification attempts. Its absent-selection and pending-review statements describe the earlier tree, not this implementation.
+> I approve an owner-override disposition for T5.P01.S01 / PR #208.
+>
+> The existing implementation, independently verified correctness checks, native Linux x64 CI results
+> and reported browser acceptance are sufficient for this slice's acceptance.
+>
+> I accept the absence of some raw browser artifacts caused by the interrupted agent session. This
+> does not constitute a claim that those artifacts were preserved or independently audited.
+>
+> Battery-mode performance verification is explicitly deferred to the next appropriate T5 integration
+> slice. AC measurements remain diagnostic.
+>
+> Existing bundle-size exceptions remain in effect. No correctness requirement, including criterion 6,
+> is waived.
+>
+> Update the acceptance record and PR description accordingly. No additional benchmarking is required
+> for S01 closeout.
 
-## Implementation and criterion 6
+```text
+STATUS      accepted by owner-override 2026-10-28; shipped through PR #208 under the P1 merge rule
+TIER        architecture-integration (plan §CONSUMES / VERIFICATION)
+ROUTE       ../t5.p01.s03-integrated-final-gate/acceptance.md
+            the plan's declared integration route; it owes the integrated result and the battery rows
+WAIVED      raw browser-artifact preservation and independent audit; review receipts at the final
+            product head; a full-contract rerun at 7c3445e1
+CARRIED     battery-mode performance → T5.P01.S03; AC diagnostics are not acceptance;
+            Stage 439.0 KiB br exception (size only)
+NOT WAIVED  every correctness criterion, including 6; no other gate
+```
 
-Scene contributes a production hit provider to the existing Stage facade and semantic selection path. Plan uses canonical footprints (triangle-union projection for tilted forms), containment and a six-pixel halo, checked against actual visible geometry. 3D uses registered mounted renderer roots and nearest visible mesh intersections. Layout, floor, models and primitives participate in occlusion. Conservative bounds are prepared on renderer/source arrival and checked against live hierarchy, transform and position-version stamps; a stale RuntimeScene cannot pick. This registry supplies geometry to Stage; it creates no second picking or selection authority.
+No review receipt and no test run at `7c3445e1` is claimed. The recorded lanes below belong to the
+revisions named with them. The owner-override accepts that gap and the missing artifacts; it does not
+turn an unrecorded row into a measured one.
 
-Index and Head Find share adapter subjects with domain-qualified locator IDs and canonical F1 references. Selecting a form opens its Card with Move, Turn, Place on floor, independent Width/Height/Depth Size, Duplicate and confirmed Delete. All writes use existing Scene planners through F4, capture accepted revisions and preserve identity/history semantics. Duplicate selects its allocated identity. Save/reopen serializes authored truth only.
+## Delivered
 
-The full browser journey uses real Stage canvas clicks in both readings, both generator planes, Index and Find, all supported operations, Undo/Redo, API-backed Save and a fresh browser-context reopen. It compares actual Stage Float32 mesh buffers to canonical evaluation and Preview buffers/world matrices to Stage. Preview exposes no editor Card, Find or form fields, and returning restores the same selection. In-session size, deletion and shadow rendering are exercised. Screenshots and raw ledgers are under [Option B evidence](./evidence/option-b/README.md).
+Native forms as Scene truth. `@portfolio/geometry-core` evaluates an authored `extrude` source
+exactly and deterministically into a closed, regioned mesh with bounds, XZ footprint and contact.
+Scene unit format 4 carries the `form` entity through a strict reader, canonical writer and
+validation; format 3 and malformed forms refuse. `create-form` and `set-form-size` plan through F4,
+and Move, Turn, Place on floor, Duplicate and Delete work on forms while `resize-on-floor` refuses
+them. Stage and Preview draw one cached result; production Plan footprints and 3D mounted-mesh hits
+feed the existing Stage selection authority; Index and Head Find reach the same subjects; the Card
+exposes the supported operations. Visitor isolation and the cold-release refusal are unchanged.
+Full behaviour is owned by the references linked above, not by this record.
 
-Integration regressions exercise the mounted Scene adapter and actual mesh registry, not only isolated hit functions: nonzero viewport offsets, semantic reference/Card/actions, source identity, floor/Wall occlusion, rolled forms, model/primitive scale and visibility, live transforms, unregistration, six history operations, no-history refusals and exact saved reopen. A 32-form admission supersession test proves a project replacement during the new task boundary cannot install stale truth.
+## Recorded evidence and its revisions
 
-## Determinism and cold boundaries
-
-Native **Ubuntu 24.04 Linux x64**, Node 22.23.4, GitHub Actions [run 40646896735](https://github.com/Biskiq/spatial-sketch-editor/actions/runs/40646896735), passed all **142 geometry/boundary tests**, including all **48 unchanged goldens**. The workflow explicitly asserts Linux/x64; emulation is not counted. Earlier native run [40644483606](https://github.com/Biskiq/spatial-sketch-editor/actions/runs/40644483606) also passed.
-
-The bounded 32-entry numerical profile memo stores independent copies of typed arrays and bounds, distinguishes signed zero and structural types, and leaves canonical arithmetic/digests unchanged. It supplements the existing 256-entry editor form-mesh LRU. Strict validation precedes the cold admission task boundary. Full body validation, typed refusal issues and epoch checks remain intact. Visitor/public imports stay isolated; cold publication continues to refuse forms pending T4 admission.
-
-## Reviews
-
-T1 and the independent T2/T3/T4 reviewer reviewed concrete diffs and verification evidence in the existing review chats. Review receipts record scope, findings, corrections and final disposition in [Option B evidence](./evidence/option-b/README.md). These are independent technical reviews, not fabricated track-owner signatures or owner acceptance. Earlier findings about floor/Wall/model occlusion, tilted projection and scale have integration regressions.
-
-## Verification
-
-Final command results and browser/performance measurements are recorded in [Option B evidence](./evidence/option-b/README.md). Required lanes include editor check/build, fast/architecture/heavy/full tests, all package checks, API build and DB-backed API tests with zero skips. The complete Agent E2E and all seven branded Chrome T1 S02/S03 preservation scenarios run against the production build. An earlier preservation attempt under concurrent test load failed one collinear-pointer assertion; the isolated run passed with camera settling and projection traces, with no refusal policy or no-write assertion weakened. The failed attempt is retained as evidence.
-
-## Performance and remaining acceptance gate
-
-Measurements use the designated MacBook Air M2 (Mac14,2), 16 GB, macOS 15.8.2, branded Chrome 156.0.8078.48, Low Power Mode off, **AC power**. One warm-up plus ten cold browser contexts measure 60 forms ×128 smooth anchors (pinned shared outline, distinct extents), full Stage pick cost, Size and Undo/Redo through accepted result to the repository's first-rendering-opportunity metric. Raw samples and form-open long-task windows are retained. This workload does not claim all possible distinct-profile or adversarial overlap scenes. CPU-only create/size evaluation is separately labelled and does not claim renderer presentation.
-
-**Battery-mode performance verification remains pending.** AC diagnostics are not formal battery acceptance. No other hard gate is waived. Reference Laptop A is not available in this task. S01 has no product drawing/create entry point; S02 owns it, so create-form host timings are CPU measurements rather than an invented UI journey. The closing side-quad texture seam remains the documented low-priority renderer limitation from the baseline.
+- **Native Linux x64.** GitHub Actions [run 40646896735](https://github.com/Biskiq/spatial-sketch-editor/actions/runs/40646896735)
+  passed at `5e54ffb1` on Ubuntu 24.04, Node 22.23.4: 4 files / **142 tests** (7 smoke, 6 boundary,
+  4 extrusion limits, 125 corpus incl. the 48 pinned goldens). Earlier run
+  [40644483606](https://github.com/Biskiq/spatial-sketch-editor/actions/runs/40644483606) passed at
+  `2caca9a6`. `packages/geometry-core`, `apps/editor/tests/lib/geometry-core` and the workflow are
+  unchanged from `5e54ffb1` to `7c3445e1` (empty `git diff`); no later golden was regenerated.
+- **API contract.** [api-tests.log](./evidence/option-b/api-tests.log): 14 suites / 115 tests,
+  0 failed, **0 skipped**, against real Postgres.
+- **Full merge-gate contract at `a1ded6a3`** (the revision the recorded table belongs to): `npm test`
+  223 files / 2,850 tests; arch 23 files / 188 tests; heavy 11 files / 138 tests; `npm run check`
+  0 errors / 0 warnings; production build clean; `check:geometry-core`, `check:project-model`,
+  `check:layout-core`, `check:camera-core` and `check:api` clean. No rerun of that contract at
+  `7c3445e1` is recorded or claimed.
+- **Branded Chrome preservation.** [preservation.log](./evidence/option-b/preservation.log): 7/7
+  T1 S02/S03 scenarios passed in 56.8 s. The earlier concurrent-load attempt
+  ([attempts/preservation-concurrent-load.log](./evidence/option-b/attempts/preservation-concurrent-load.log))
+  failed one collinear-pointer assertion and skipped the next row; the isolated rerun passed with
+  camera settling and a projection trace, and no refusal or no-write assertion was weakened. Both
+  attempts are retained.
+- **Option B browser journey.** A full journey — Stage pointer selection in both readings, both
+  generator planes, Index and Find, every supported Card operation, Undo/Redo, API-backed Save and a
+  fresh-context reopen — was reported as exercised during the implementation session. Its raw
+  screenshots, video and ledgers are **not preserved**; the interrupted session lost them. The owner
+  accepts their absence and does not claim they were independently audited.
+- **Diagnostic CPU timings.** [native-form-evaluation.json](./evidence/option-b/native-form-evaluation.json)
+  (darwin arm64, Node 26.7.0; 30 warm-up + 200 samples): 32-anchor cold-source p95 **0.171 ms**,
+  256-anchor p95 **0.626 ms**; at 32 anchors host `create-form` p95 **3.23 ms** and `set-form-size`
+  p95 **2.82 ms**. These are CPU measurements inside the ≤ 4 ms S row; they do not claim renderer
+  presentation, and the file records no power state. The long-task windows are in
+  [attempts/](./evidence/option-b/attempts/).
+- **Stage bundle.** 439.0 KiB JS Brotli was reported in-session against the 425 KiB hard row. No
+  bundle report is preserved. The owner's explicit Stage-only exception to **439.0 KiB** remains in
+  effect; CSS-inclusive delivery and the visitor `/p` target are different rows.
 
 ## Criteria
 
 | # | Criterion | Disposition |
 | --- | --- | --- |
-| 1 | Corpus closure and typed refusals | verified |
-| 2 | Pinned goldens, deterministic arithmetic, import boundary | verified on native Linux x64 and macOS arm64; no golden regenerated |
+| 1 | Corpus closure and typed refusals | verified at the recorded revisions |
+| 2 | Pinned goldens, deterministic arithmetic, import boundary | verified on native Linux x64 and macOS arm64; 48 goldens unchanged, none regenerated |
 | 3 | Scene 4 canonical read/write and strict refusal | verified |
 | 4 | Planners, supported operations and record scope | verified through host and running Card |
-| 5 | Undo/Redo, Save and reopen exact | verified including fresh browser context |
-| 6 | Stage, Plan and Preview draw and select the same result | verified according to each surface contract; Preview visitor isolation preserved |
+| 5 | Undo/Redo, Save and reopen exact | verified including a fresh browser context (reported journey) |
+| 6 | Stage, Plan and Preview draw and select the same result | **not waived**; verified per each surface contract from the reported browser acceptance; Preview keeps visitor isolation and return preserves Stage selection |
 | 7 | Visitor isolation, package direction, cold refusal | verified |
-| 8 | Performance evidence | AC diagnostics recorded; Stage exception439.0 KiB approved; battery acceptance pending |
-| 9 | Complete repository verification | results in linked evidence; no skipped API DB tests |
-| 10 | Reference updates | Scene contract, plan and T5 operational baton updated in this PR |
+| 8 | Performance evidence | AC diagnostics only; battery verification deferred to `T5.P01.S03`; Stage exception in effect |
+| 9 | Complete repository verification | full contract recorded at `a1ded6a3`; native x64 and API rows above at theirs; no rerun at `7c3445e1` is claimed; owner-override accepts |
+| 10 | Reference updates | Scene content, persistence, architecture and assets describe the landed behaviour in this PR |
 
-This record requests owner acceptance only after remaining gates are resolved. It grants no merge, deployment or slice closeout authority.
+## Deferred, residuals and ownership
+
+- **Battery-mode performance** → `T5.P01.S03`, the plan's declared integration route. AC values stay
+  diagnostic and are not a pass. Reference Laptop A was unavailable; the measurements are from the
+  designated MacBook Air M2 (Mac14,2), 16 GB, macOS 15.8.2, Chrome 156.0.8078.48, Low Power Mode off.
+- **Stage 439.0 KiB br exception** remains an explicit, Stage-only size exception. It waives no
+  correctness row and amends no other budget.
+- **Visitor `/p` first-load** remains under its T4 hard row; its current miss is recorded, not
+  accepted here.
+- **Closing side-quad texture seam** remains the documented low-priority renderer limitation.
+- **No drawing entry point in S01**; the Ink Shape reading and per-axis size handles are S02's.
+- **S01 supplies no phase gate**; S03 owns the integrated proof for S01, S02 and S04.
+
+## Entry points
+
+```text
+kernel          packages/geometry-core/src/{profile,extrude,predicates,digest}.ts
+Scene truth     packages/project-model/src/scene.ts
+                packages/project-model/src/scene-codec/{parse-entities,canonical}.ts
+                packages/project-model/src/units/{types,validate,envelope}.ts
+planners        packages/project-model/src/scene-planning/{form,planners,operations,record-scope}.ts
+evaluation      apps/editor/src/lib/content/form-evaluation.ts
+renderer        apps/editor/src/lib/museum/entities/{EntityForm.svelte,form-geometry.ts}
+Plan / 3D hit   apps/editor/src/lib/authoring/scene/{plan-scene-footprint,plan-scene-hit,scene-pick-source}.ts
+Stage seam      apps/editor/src/lib/authoring/adapters/scene.adapter.ts
+                apps/editor/src/lib/authoring/stage/{stage-facade.ts,source-admission.ts}
+Card            apps/editor/src/lib/authoring/adapters/scene/{form-card.ts,form-card-command.ts,FormCardFields.svelte}
+visitor         apps/editor/src/lib/visitor/{VisitorEntityGroups.svelte,visitor-cold-runtime.ts}
+validation      .github/workflows/native-form-goldens.yml
+                apps/editor/perf/flows/native-form-acceptance.spec.ts
+regressions     apps/editor/tests/lib/geometry-core/{profile-corpus,geometry-core-boundary,extrude-limits,geometry-core-smoke}.test.ts
+                apps/editor/tests/lib/content/{form-evaluation,scene-form-codec}.test.ts
+                apps/editor/tests/lib/authoring/{scene-editing-surface,stage-facade,scene-operation-acceptance}.test.ts
+                apps/editor/tests/lib/authoring/scene/plan-scene-form-footprint.test.ts
+                apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts
+                apps/api/tests/save-units.test.mjs
+```
+
+## Recovery
+
+```text
+git show a57588db80def9671ea92e80beac0b7ebc68df1e:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md
+git show a57588db80def9671ea92e80beac0b7ebc68df1e:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance-a1ded6a3.md
+git show a57588db80def9671ea92e80beac0b7ebc68df1e:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md
+anchor  a57588db · tag closed/T5.P01.S01 (local only — not pushed)
+archive docs/archive/roadmap/t5-expressive-geometry/t5.p01.s01-native-form-source-and-evaluation/evidence/shadow-form/CLOSED.md
+MERGE   PR #208 must land as a merge commit (no squash, no rebase) so the anchor stays reachable.
+        After merge: git merge-base --is-ancestor a57588db main
+                     git show a57588db:<the acceptance path above> | head -3
+        Not run before the owner's merge.
+```
+
+## Preservation report
+
+```text
+CLOSEOUT PRESERVATION — T5.P01.S01 (2026-10-28)
+prose compacted:                 3   acceptance, dated baseline and implementation plan → stubs at their own paths
+reference promotions:            0   the slice's four reference updates landed with implementation
+renderable evidence archived:    3 files / 147,792 bytes (144.3 KiB)   the shadow-form PNGs, byte-identical copies
+evidence stubs / manifests:      1   CLOSED.md at the archived bundle
+transient artifacts removed:     0   the failed preservation attempt and long-task windows are retained evidence
+historical anchor:               a57588db · tag closed/T5.P01.S01 (local only — not pushed)
+new live → archive prose links:  0
+manual-owed verification rows:   1   battery-mode performance — deferred to T5.P01.S03, distinct from every automated row
+remaining deferred items:        4   battery rows (S03); Stage 439.0 KiB br exception; visitor /p T4 target;
+                                     closing side-quad texture seam
+permanent stubs added:           3   one per closed prose artifact
+```
+
+P1 preservation also requires the post-merge ancestry and full-body recovery checks above. They were
+not run before the merge and are owed to the owner's merge.
