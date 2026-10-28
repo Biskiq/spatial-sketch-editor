@@ -6,7 +6,7 @@ acceptance, merge, capability entry or gate state · **Plan:**
 [T5.P01](../README.md)
 
 ```text
-STATUS      implemented on t5/p01-s02-shape-reading at 48a56f30; not accepted
+STATUS      implemented on t5/p01-s02-shape-reading at b28a0998; not accepted
 TIER        architecture-integration
 ROUTE       ../t5.p01.s03-integrated-final-gate/acceptance.md
             the phase's final gate owns the integrated proof, browser journeys and battery rows
@@ -50,7 +50,7 @@ session rather than `closeTask()`, so the facade's contributed-task owner is now
 task. Without that, every later no-task press and key was still offered to the retired Ink binding
 and never reached the selection's direct manipulation.
 
-## Verification at `48a56f30`
+## Verification at `b28a0998`
 
 All commands ran on the feature branch. Results:
 

@@ -9,7 +9,7 @@ DIRECTION: ../../roadmap/t5-expressive-geometry/umbrella-plan.md
        (E0 withdrawn 2026-10-27; ../../reference/decisions/t5-object-focus-planning-2026-10-27.md)
 SLICES: S01 (native form source and evaluation) shipped and accepted by **owner-override** 2026-10-28
        at product head 7c3445e1, PR #208 → [acceptance stub](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
-       S02 (Shape reading and sizing) is implemented on t5/p01-s02-shape-reading at 48a56f30;
+       S02 (Shape reading and sizing) is implemented on t5/p01-s02-shape-reading at b28a0998;
        checks are recorded in its [acceptance record](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s02-shape-reading-and-sizing/acceptance.md),
        and acceptance is **not** claimed. S03 (integrated final gate) and S04 (My Objects) remain proposed.
 POLICY: T5 dependencies follow the T5 licensing amendment
