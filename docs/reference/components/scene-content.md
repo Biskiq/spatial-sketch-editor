@@ -1,8 +1,8 @@
 # Scene content
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
-**Last reviewed:** 2026-10-28 (T5.P01.S01 Option B selection and native forms and the Scene 4 baseline;
-production activation remains owner-controlled)
+**Last reviewed:** 2026-10-28 (T5.P01.S02 Shape reading and per-axis sizing, on the S01 native-form
+and Scene 4 baseline; production activation remains owner-controlled)
 
 ---
 
@@ -29,16 +29,32 @@ Current clusters are **not** a durable assembly/instance model: they carry membe
 editor-only hierarchy metadata, and cloning a Three hierarchy supplies no authored component
 identity or revision policy. GLB provenance: [`assets.md`](./assets.md).
 
-**Native forms (current).** T5.P01.S01 lands the authored form source. A creator still reaches a
-form only through an opened document, fixture or test — S02 adds the drawing entry point — but once
-present a form is ordinary Scene truth: `create-form` creates one, `set-form-size` writes a full
-per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and
+**Native forms (current).** T5.P01.S01 lands the authored form source and T5.P01.S02 lands the
+creator entry point. Ink stays one Pen: a declared host capability (`ink-readings-v1`) lets the Scene
+binding contribute the **Shape** reading to the same Ink palette that carries Layout's Wall and
+Opening readings. A creator draws a closed outline on the floor or a hand-aligned upright sheet,
+and the Shape kinds Line, Box, Round and Sketch convert that one stroke into outline anchors. Live
+validity is `validateProfile`; an invalid outline names its issue and offers no Create. A depth ray
+or an exact metre field sets the extrusion, Flip side mirrors an upright profile without moving its
+world position, and Create issues exactly one `create-form` intent. The preview body comes from the
+same planner candidate the commit installs, so it cannot differ from the result. Wall-face drawing
+is not landed: the upright sheet is aligned by X/Z/yaw until T1's face-frame query arrives.
+
+Once present a form is ordinary Scene truth: `create-form` creates one, `set-form-size` writes a
+full per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and
 Delete work through the existing planners. `resize-on-floor` refuses a form (uniform scale would
-contradict `form.scale`). Evaluation is deterministic and cached in the editor; Stage and Preview draw the same mesh (metre UVs, computed normals). Production Plan footprints and 3D mounted-mesh hits feed the existing Stage selection authority. Forms appear in Index and Head Find; their Card exposes Move, Turn, Place on floor, per-axis Size, Duplicate and confirmed Delete through existing Scene planners/F4. Preview preserves visitor isolation and return to Stage preserves selection. Publication
-still refuses a form in the cold release check; T4 owns any admission. Limits and the codec rules
-are above; implementation evidence routes through the
+contradict `form.scale`). A selected form offers three per-axis size rays (Width, Height, Depth); a
+ray previews through `set-form-size` and release commits one intent, while the Card's per-axis Size
+fields remain the one writer for exact values. Evaluation is deterministic and cached in the editor;
+Stage and Preview draw the same mesh (metre UVs, computed normals). Production Plan footprints and
+3D mounted-mesh hits feed the existing Stage selection authority. Forms appear in Index and Head
+Find; their Card exposes Move, Turn, Place on floor, per-axis Size, Duplicate and confirmed Delete
+through existing Scene planners/F4. Preview preserves visitor isolation and return to Stage
+preserves selection. Publication still refuses a form in the cold release check; T4 owns any
+admission. Limits and the codec rules are above; implementation evidence routes through the
 [T5.P01.S01 acceptance and evidence stub](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
-and [reference decision](../decisions/t5-object-focus-planning-2026-10-27.md).
+and [T5.P01.S02 acceptance record](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s02-shape-reading-and-sizing/acceptance.md),
+with the [reference decision](../decisions/t5-object-focus-planning-2026-10-27.md) owning the plan.
 
 **Current authoring.** The T2 Scene adapter places, edits, resizes, duplicates and deletes through
 unit F4 planners, sharing the Stage's single history with Layout. Definitions must already be pinned
