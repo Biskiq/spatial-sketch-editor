@@ -32,6 +32,7 @@ import {
 	sceneEntityReference,
 	sceneReadingKey,
 	sceneSurfaceFor,
+	type ArmedModelPlacement,
 	type ScenePlacementSession,
 	type SceneWritePort
 } from '$lib/authoring/adapters/scene/placement';
@@ -427,6 +428,61 @@ describe('Scene placement session', () => {
 			kind: 'refused',
 			code: 'support-unresolved'
 		});
+	});
+
+	it('places the armed approved model at typed coordinates instead of a primitive', async () => {
+		const { session, port } = await sessionFor([boxEntity()]);
+		const model: ArmedModelPlacement = {
+			definition: {
+				definitionKey: 'model:typed-placement',
+				metadataContentId: `sha256-${'c'.repeat(64)}`,
+				footprintMeters: [
+					[0, 0],
+					[1, 0],
+					[1, 1],
+					[0, 1]
+				],
+				contactMinY: 0,
+				creationDefaults: { kind: 'model' }
+			},
+			resource: null
+		} as unknown as ArmedModelPlacement;
+		session.setArmedModel(model);
+
+		expect(await session.place('box', 2, 3)).toEqual({ kind: 'committed' });
+		expect(port.intents).toHaveLength(1);
+		expect(port.intents[0]!.payload).toMatchObject({
+			definitionKey: 'model:typed-placement',
+			worldXZ: [2, 3]
+		});
+		// The approval is consumed by its commit, never by an attempt.
+		expect(session.armedModel()).toBeNull();
+	});
+
+	it('keeps the armed model when a typed placement is refused', async () => {
+		const refused = await sessionFor(
+			[boxEntity()],
+			writePort({ accept: async () => ({ kind: 'refused', code: 'support-unresolved', message: 'No floor.' }) })
+		);
+		const model = {
+			definition: {
+				definitionKey: 'model:retry',
+				metadataContentId: `sha256-${'d'.repeat(64)}`,
+				footprintMeters: [
+					[0, 0],
+					[1, 0],
+					[1, 1],
+					[0, 1]
+				],
+				contactMinY: 0,
+				creationDefaults: { kind: 'model' }
+			},
+			resource: null
+		} as unknown as ArmedModelPlacement;
+		refused.session.setArmedModel(model);
+
+		expect(await refused.session.place('box', 1, 1)).toMatchObject({ kind: 'refused' });
+		expect(refused.session.armedModel()).toBe(model);
 	});
 
 	it('names the committing session to a completion listener carried across a replacement', async () => {

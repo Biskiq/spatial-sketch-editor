@@ -157,7 +157,7 @@ before merge.
 | D1 | Object Focus is a scope on the one Stage, with a state pill and Put back, rather than a separate workspace, route or shell | Scope on the one Stage |
 | D2 | T5 implements native-form semantics inside the Scene unit, codec and planners under T2 review; T2 keeps Scene authority, other entity kinds and definitions/instances | T5 implements under T2 review |
 | D3 | A new T5-owned runtime-safe workspace package, `@portfolio/geometry-core`, holds reusable numerics with no domain meaning; its only libraries are the resident `robust-predicates` and `earcut` | Admitted with `T5.P01.S01` |
-| D4 | Scene unit format 3 → 4 adds the `form` entity; strict readers refuse 3; fixtures regenerate; the slice starts after `T2.P02.S03` merges or T2 hands over the Scene-unit files | As stated |
+| D4 | Scene unit format 3 → 4 adds the `form` entity; strict readers refuse 3; fixtures regenerate; `T2.P02.S03`, which the slice waited for, merged with PR #199 | As stated |
 | D5 | Ink becomes one Pen with readings from more than one domain; the Scene **Shape** reading lands in `T5.P01` slice S02 through a bounded seam T1 reviews (alternative: T1 delivers the seam first) | Bounded T1-reviewed seam in S02 |
 | D6 | Revision promise for P02: shaping is bound to object space, so a later outline or size edit re-evaluates it where it is in the object, or refuses | Object-space binding |
 | D7 | Section presentation in Focus — PLATE's default reading takeover versus the Shape focus specification's split pane (PLATE's retained inset) — is a named P02 design-loop decision | Decided in P02 |
@@ -170,7 +170,6 @@ and T2 definition/attachment consumption.
 ## Release step for the first slice
 
 When the owner chooses to start `T5.P01.S01`, the release is one owner edit: add its row to the
-[release list](../../roadmap/now.md) — condition "starts after `T2.P02.S03` merges on `main` (or T2
-records a Scene-unit writer handoff to this slice); recheck consumed gates and active scopes at its
-own trusted base" — linking its plan. The coding agent then starts through the
+[release list](../../roadmap/now.md) — condition "no concurrent T2 Scene-unit writer (its `T2.P02.S03` prerequisite merged with
+PR #199); recheck consumed gates and active scopes at its own trusted base" — linking its plan. The coding agent then starts through the
 [T5 runbook](../../operations/t5-expressive-geometry/README.md) start step.

@@ -1,0 +1,40 @@
+
+> personal-portfolios@0.1.0 perf:bundle
+> npm run perf:bundle -w @portfolio/editor
+
+
+> @portfolio/editor@0.1.0 perf:bundle
+> node perf/bundle-report.mjs
+
+client output: /Users/tony/Documents/Biskiq/sse-t2p02s03/apps/editor/.svelte-kit/output/client
+module identity evidence: source-map
+
+## / (leaf node 2) — 24 files
+  total  raw 1065.4 KiB | gzip 295.8 KiB | br 248.6 KiB
+  js     raw 1064.2 KiB | gzip 295.2 KiB | br 248.1 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /editor (leaf node 5) — 23 files
+  total  raw 1061.9 KiB | gzip 294.4 KiB | br 247.4 KiB
+  js     raw 1061.7 KiB | gzip 294.2 KiB | br 247.3 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /projects (leaf node 8) — 29 files
+  total  raw 1089.9 KiB | gzip 305.5 KiB | br 257.1 KiB
+  js     raw 1084.8 KiB | gzip 303.9 KiB | br 255.8 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /project/[projectId]/spatial (leaf node 7) — 36 files
+  total  raw 1880.9 KiB | gzip 535.0 KiB | br 452.7 KiB
+  js     raw 1851.2 KiB | gzip 528.4 KiB | br 447.0 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /p/[publicationId] (leaf node 6) — 33 files
+  total  raw 1397.4 KiB | gzip 398.1 KiB | br 338.7 KiB
+  js     raw 1393.9 KiB | gzip 396.7 KiB | br 337.6 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /dev/assets (leaf node 3) — 30 files
+  total  raw 1018.3 KiB | gzip 284.7 KiB | br 240.5 KiB
+  js     raw 1016.1 KiB | gzip 283.8 KiB | br 239.8 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)

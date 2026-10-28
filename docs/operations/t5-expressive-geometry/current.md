@@ -13,8 +13,8 @@ SLICES: the first slice (S01, native form source and evaluation) has an approved
 POLICY: T5 dependencies follow the T5 licensing amendment
        (../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing).
 NEXT:  the owner adds S01's row to ../../roadmap/now.md when choosing to start it; S01 then starts
-       through ./README.md's start step after T2's integrated final gate merges on `main` (or T2
-       records a Scene-unit writer handoff), rechecking gates, scopes and its trusted base.
+       through ./README.md's start step, rechecking gates, scopes and its trusted base. Its T2
+       prerequisite (T2's integrated import final gate) merged with PR #199.
 ROUTE: ./README.md → ../../roadmap/t5-expressive-geometry/README.md →
        ../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md
 BLOCKER: none recorded. Omitted scopes stay held.

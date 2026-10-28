@@ -1,0 +1,10 @@
+T2.P02.S03 recovery — Stage route first-load JS
+revision 7d1212b6
+command  npm run perf:bundle (after clean npm run build)
+
+## /project/[projectId]/spatial (leaf node 7) — 36 files
+  total  raw 1930.0 KiB | gzip 548.0 KiB | br 463.1 KiB
+  js     raw 1894.8 KiB | gzip 540.7 KiB | br 456.7 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /p/[publicationId] (leaf node 6) — 33 files

@@ -33,8 +33,8 @@ Start through the [T5 runbook](../../../../operations/t5-expressive-geometry/REA
 and only when all of these hold at this slice's own trusted base:
 
 1. The owner has added this slice's row to the [release list](../../../now.md).
-2. `T2.P02.S03` has merged on `main`, or T2 has recorded a writer handoff for the Scene unit types,
-   codec, validation and planner files listed in §3.
+2. No other T2 writer holds the Scene unit types, codec, validation and planner files listed in §3.
+   (`T2.P02.S03`, which this slice waited for, merged with PR #199, and T2.P02 closed on 2026-10-27.)
 3. Every consumed gate is `accepted` and every required scope is `active`.
 
 ## 3. Scope
@@ -342,7 +342,8 @@ workflow on the designated reference machine, with Laptop A reported:
 - cold open of the M fixture with 60 forms of up to 128 anchors: no main-thread task over 50 ms
   attributable to form evaluation;
 - Stage and visitor first-load JS deltas (expected near zero, since form code is lazy), within
-  ≤ 25 KiB br for the Stage.
+  ≤ 25 KiB br for the Stage and inside its ≤ 425 KiB br hard row, which had 2.7 KiB headroom at
+  `T2.P02.S03`.
 
 ## 10. Reviews
 
@@ -356,8 +357,7 @@ workflow on the designated reference machine, with Laptop A reported:
 
 Stop and report rather than widening scope if:
 
-- `T2.P02.S03` has not merged and no T2 handoff exists, or a concurrent T2 change edits the same
-  Scene files;
+- a concurrent T2 change edits the same Scene files;
 - an F4, Head, Save, Stage host, Camera or PLATE change appears necessary;
 - a dependency beyond `robust-predicates` and `earcut` appears necessary;
 - the triangulation or simplicity strategy cannot meet the 256-anchor commit row;

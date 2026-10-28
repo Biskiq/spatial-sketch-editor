@@ -3,40 +3,36 @@
 Track-scoped handoff. **Replace only this file for T2 work.**
 
 ```text
-PHASE: T2.P02 Own model import (registered 2026-10-22, batch E; in progress, S03 released) →
+PHASE: T2.P02 Own model import — CLOSED 2026-10-27 by owner ruling after S03's final gate was
+       accepted. T2.P01 closed 2026-10-20. No T2 phase is active →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
-       T2.P01 Supported object composition is CLOSED 2026-10-20, all four children shipped →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P02.S01 is shipped with owner-override acceptance 2026-10-23 →
+SLICES: S01 shipped 2026-10-23 with owner-override acceptance →
         ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md
-        T2.P02.S02 is shipped (PR #185), accepted 2026-10-24 for implementation
-        tree `082e384c` →
+        S02 shipped 2026-10-24 (PR #185) →
         ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/acceptance.md
-BATON: S02 delivers the own-GLB import procedure (review, scale/pivot/footprint/contact, approve),
-       placement through the resource-granting planner, and approved-model rendering in the editor and
-       Preview. Durable current behavior is in the owning assets, Scene content and persistence references.
-       No slice is in progress on this track.
-OWNER DECISIONS (2026-10-23/24): T1 host patch accepted 2026-10-24; editable Card facts stay read-only
-       (option b); the placed-creator-model selection gap is kept unfixed as a T1/T2 follow-up.
-OWNER-RUN (unrun, not claimed): S02 shell observations, Preview pixels, reference-machine F5/F6/F13
-       and GPU-memory rows, Draco/KTX2 sources, the >25 MiB derivative cap, real R2 and worker-boundary
-       timing. Each is listed in the S02 acceptance stub. These stay with the final gate. T1.P02.S06
-       supplies their method and a baseline, not their acceptance. S06 may seed its realistic workload
-       through the import recipe and resources format. It changes neither, and a Scene/import/render
-       patch in S06 needs T2 review.
-FOLLOW-UPS: in-flight fetch dedupe across overlapping model resolutions; a model-failure notice can
-       overwrite an unrelated route notice; the placed-model selection gap (T1/T2).
-NEXT:  S03 integrated final gate — **approved and released 2026-10-27**
-       (../../reference/decisions/next-wave-authorization-2026-10-27.md); it starts after the
-       coordination PR #198 merges, rechecking gates, scopes and its trusted base. It measures on
-       S06's method
-       (../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
-       and carries S02's unrun owner rows. Phase close is owner-invoked and not claimed.
-ROUTE: ./README.md → ../../roadmap/t2-composition/README.md →
-       ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
-BLOCKER: none. Omitted scopes stay held.
-CARRY: T3.P04.S01 shipped project-deletion and model-revision cleanup (PR #191, `aa1db37a`);
-       S03 verifies retention/pin integrity without adding deletion or re-accepting C3. Further planning pairs T1 face
-       frames with solve-once placement; component provider work precedes Stage part-selection/admission
-       UI and annotations. No follow-on authorization is implied.
+        S03 shipped and accepted by owner ruling 2026-10-27 at b9ba493b (PR #199) →
+        ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md
+ACCEPTANCE: S03 ran the exhaustive contract at b9ba493b — 215 files / 2,663 tests, arch 22/180,
+        heavy 11/138, check 0/0, build clean, API 14/114 with zero skips — plus 3/3 branded-Chrome
+        acceptance in 45.8 s. Stage first-load JS is 422.3 KiB br under the owner-amended ≤425 KiB
+        hard row (2.7 KiB headroom). The old ≤400 row remains history, not a retroactive pass.
+NEXT:  No T2 implementation is authorized. The next step is an owner planning/authorization decision
+        for the track's remaining objectives: component identity/resolution/admission and revision
+        correspondence, then attachment and materials/light depth. Do not start a successor slice
+        from this baton.
+BLOCKERS: None for the closed phase. Deferred verification is owned, not a blocker on unrelated T2
+        planning: F5/F6/F9/F13/GPU and the unrun F2/F3/F4/F7/F8/worker-split rows → T2 performance
+        follow-up (T2 track); shell observations, Draco/KTX2, real R2, the real >50 MiB decode and
+        worker-boundary timing → repository owner (owner-run), tracked by T2; the placed model's
+        Index subject row and pointer move/turn → T2 track. No row is a pass.
+CARRY:  T1's face-frame query and solve-once wall placement; T3 annotations consume T2 component
+        resolution; T4 release work stays frozen. T1.P02.S02's 456.0 KiB br Stage miss and its
+        performance family remain with T1's own final gate (S04), not T2's.
+ROUTE:  ./README.md → ../../roadmap/t2-composition/README.md →
+        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
+        → ../../reference/components/performance.md
+RELEASE: ../../roadmap/now.md remains the only permission list; the shipped T2.P02.S03 row stays
+        until an owner release prunes it.
 ```
+
+No T2 track completion or `TRACK COMPLETE` block is recorded. This close is one phase, not the track.

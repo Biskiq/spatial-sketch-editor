@@ -11,9 +11,13 @@
 	 * show the planner's captured candidate and refusal reason, and never commit on
 	 * blur. Esc/Close and unmount both run the session's one `cancel()`.
 	 */
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
+
+	import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
 
 	import type { StageAdapterServices } from '../../stage/stage-adapter-host';
+	import { stageEnvelope } from '../../stage/unit-stage-source';
+	import { choosePrimitive, peekArmedModel } from './import/definitions';
 	import {
 		NATIVE_PLACEMENT_PRIMITIVES,
 		type NativePlacementPrimitive
@@ -23,6 +27,7 @@
 		retireSceneSurface,
 		sceneReadingKey,
 		sceneComposeSupport,
+		sceneModelContactMinY,
 		sceneSessionFromServices,
 		sceneSurfaceFor,
 		type SceneCandidate,
@@ -55,8 +60,18 @@
 	let sessionReading: string | null = null;
 	let surface: SceneSurface | null = null;
 	let surfaceSnapshot: object | null = null;
+	/** The scale field a freshly opened Resize proposal hands focus to. */
+	let scaleInput: HTMLInputElement | null = $state(null);
+	/** True between opening a proposal and its field taking focus. */
+	let openingProposal = false;
 
 	const entities = $derived(services.stage.snapshot().domain.scene.entities);
+	/** An empty baseline has a datum but no Room floor to seat a placement on. */
+	const hasRoomFloor = $derived.by(() => {
+		const snapshot = services.stage.snapshot();
+		if (snapshot.sourceKind !== UNIT_SOURCE_KIND) return true;
+		return stageEnvelope(snapshot).units.layout.data.rooms.length > 0;
+	});
 	/**
 	 * Whether this mount is S04's bounded Compose surface. The adapter contributes
 	 * the same instrument for all three tasks, and a new task re-provides services,
@@ -66,6 +81,19 @@
 		void services;
 		return services.stage.session?.task?.()?.kind === 'scene-compose';
 	});
+	/** The Place task is the only task an approved model can be armed for. */
+	const placeTask = $derived.by(() => {
+		void services;
+		return services.stage.session?.task?.()?.kind === 'place-object';
+	});
+	/**
+	 * Whether this Place session carries an approved creator model.
+	 *
+	 * A native primitive needs no floor, so the no-floor guidance must not appear
+	 * for it. The arm is read from the live session, which is the session the
+	 * project's pending approval is applied to whenever Place opens.
+	 */
+	let armedModelPresent = $state(false);
 
 	function selectionEntityId(): string | null {
 		const primary = services.stage.selectionState().primary;
@@ -85,9 +113,18 @@
 	 * and refusing after the fact.
 	 */
 	const composeSubject = $derived(composeEntity());
-	const composeSupport = $derived(
-		composeSubject === null ? null : sceneComposeSupport(composeSubject)
-	);
+	const composeSupport = $derived.by(() => {
+		if (composeSubject === null) return null;
+		// A model's contact is approved resource metadata, not a mesh bound. Read
+		// it from the accepted envelope so Resize/Duplicate reflect the same
+		// capability the session enforces instead of disabling both for every
+		// creator model.
+		const contact =
+			composeSubject.kind === 'model'
+				? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), composeSubject)
+				: null;
+		return sceneComposeSupport(composeSubject, contact);
+	});
 
 	/**
 	 * The session for the live reading, created or replaced only when the **reading**
@@ -115,6 +152,8 @@
 		// nothing names and nothing releases.
 		const replaced = session !== null && registered !== null && registered.session !== session;
 		if (session === null || sessionReading !== reading || replaced) {
+			// The hint below is capability-specific: read the arm from the session
+			// that will commit, not from Import's already-consumed pending slot.
 			const previous = session;
 			const proposalWasOpen = editing;
 			// A reading change replaces the session without rebuilding the adapter
@@ -142,6 +181,19 @@
 				session.setPlacementCommittedListener(persistentPlace);
 			}
 			session?.setPointerOutcomeListener?.(applyPointerOutcome);
+			// The panel can be remounted while the Place task stays open (a drawing
+			// install replaces the accepted source). The approved model belongs to
+			// the project's pending arm, not to the session that first carried it, so
+			// apply it here as well as at task open.
+			if (session !== null && services.stage.session?.task?.()?.kind === 'place-object') {
+				if (session.armedModel() === null) {
+					const pending = peekArmedModel(snapshot.acceptedRevision.projectId);
+					if (pending !== null) session.setArmedModel(pending);
+				}
+				armedModelPresent = session.armedModel() !== null;
+			} else {
+				armedModelPresent = false;
+			}
 			sessionReading = reading;
 			surfaceSnapshot = snapshot;
 			// The proposal belonged to the reading that just ended; the session it named
@@ -330,6 +382,14 @@
 		proposalRefused = false;
 		composeScaleText = String(typeof entity.scale === 'number' ? entity.scale : 1);
 		message = `Editing scale of ${entity.id}; no document change until Resize.`;
+		// Opening removes the focused Resize… control. Hand focus to the field in
+		// the same update so the removal's focusout cannot read as leaving the
+		// instrument and cancel the proposal it just opened.
+		openingProposal = true;
+		void tick().then(() => {
+			scaleInput?.focus();
+			openingProposal = false;
+		});
 	}
 
 	function updateScale(value: string): void {
@@ -439,8 +499,13 @@
 	 */
 	function onFocusOut(event: FocusEvent): void {
 		if (!editing && !composeActive) return;
+		// A control that opens a proposal is removed by that same update. Its
+		// focusout names no related target, but the replacement field is focused
+		// a tick later; it is a transition, not the creator leaving the form.
+		if (openingProposal) return;
+		const subtree = event.currentTarget;
 		const next = event.relatedTarget;
-		if (next instanceof Node && event.currentTarget instanceof Node && event.currentTarget.contains(next)) return;
+		if (next instanceof Node && subtree instanceof Node && subtree.contains(next)) return;
 		cancel();
 	}
 
@@ -452,6 +517,7 @@
 			return;
 		}
 		const appliedSnap = current.snapStep();
+		const modelArmed = current.armedModel() !== null;
 		const outcome = await current.place(primitive, Number(x), Number(z));
 		if (outcome.kind === 'committed') {
 			candidate = null;
@@ -460,7 +526,12 @@
 			// does not select through its task-scoped services, which the accepted
 			// install has already retired.
 			const snapNote = appliedSnap === null ? '' : ` · snap ${appliedSnap} m applied`;
-			message = `Placed one ${primitive}${snapNote}.`;
+			if (modelArmed) {
+				armedModelPresent = false;
+				message = `Placed the approved model${snapNote}.`;
+			} else {
+				message = `Placed one ${primitive}${snapNote}.`;
+			}
 			return;
 		}
 		applyOutcome(outcome);
@@ -565,6 +636,7 @@
 					<label>
 						<span>Scale (uniform)</span>
 						<input
+							bind:this={scaleInput}
 							type="text"
 							inputmode="decimal"
 							value={composeScaleText}
@@ -576,7 +648,14 @@
 				</div>
 			{:else}
 				<div class="row">
-					<button type="button" onclick={beginResize} disabled={composeSupport === null || !composeSupport.resize}>Resize…</button>
+					<button
+						type="button"
+						onmousedown={(event) => event.preventDefault()}
+						onclick={beginResize}
+						disabled={composeSupport === null || !composeSupport.resize}
+					>
+						Resize…
+					</button>
 				</div>
 			{/if}
 			<div class="row">
@@ -653,7 +732,11 @@
 					value={primitive}
 					onchange={(event) => {
 						primitive = event.currentTarget.value as NativePlacementPrimitive;
-						session?.setPlacePrimitive(primitive);
+						choosePrimitive(
+							services.stage.snapshot().acceptedRevision.projectId,
+							session,
+							primitive
+						);
 					}}
 				>
 					{#each NATIVE_PLACEMENT_PRIMITIVES as option (option)}
@@ -671,7 +754,18 @@
 			</label>
 			<button type="button" onclick={place}>Place</button>
 		</div>
-		<p class="hint">An imported model is placed by clicking its floor position; these typed fields place a native primitive.</p>
+		{#if placeTask && !hasRoomFloor}
+			<p class="hint refusal" role="status">
+				{armedModelPresent
+					? 'No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place object.'
+					: 'No Room floor yet. Draw an enclosure with Ink before placing an object.'}
+			</p>
+		{/if}
+		<p class="hint">
+			{armedModelPresent
+				? 'The approved model is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.'
+				: 'An imported model is placed by clicking its floor position; these typed fields place a native primitive.'}
+		</p>
 		{@render snapRow()}
 	{/if}
 

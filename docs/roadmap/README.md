@@ -58,9 +58,12 @@ owns the definition; this adds no lifecycle status.
 **Halt satisfied (2026-10-27).** `T1.P02.S06` is accepted AC-qualified (2026-10-27) and merged as
 `6af62eb4` ([acceptance stub](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)),
 so the halt has spent its condition and no longer blocks those inheritors. **Satisfying the halt
-released nothing.** `T1.P02.S02`, `T2.P02.S03` and the Core Editor Stability acceptance plan still
-need their own owner release and their own reviews before any implementation starts; a cleared
-dependency is not an authorization, and the [release list](./now.md) remains owner-written.
+released nothing by itself.** `T1.P02.S02` and `T2.P02.S03` were then released on 2026-10-27
+([record](../reference/decisions/next-wave-authorization-2026-10-27.md)) and have since run: S02
+shipped as `owner-override` on PR #201, and S03 was accepted 2026-10-27, closing `T2.P02`. The Core
+Editor Stability acceptance plan still needs its own owner release and its own reviews before any
+implementation starts; a cleared dependency is not an authorization, and the
+[release list](./now.md) remains owner-written.
 
 ## Track register
 
@@ -202,18 +205,19 @@ writers and merge order. Update this index only in the coordination change that 
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S02, S05, S06 | — | T1.P02.S03 Opening, S04 final gate | S02 accepted `owner-override` on PR #201, with its formal performance family and the Stage bundle known miss carried to S04; S03 on its own release; S04 on S01/S02/S03/S05/S06 and the deferred performance evidence |
-| T2 | T2.P01 (closed); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) S01, S02 | T2.P02.S03 final gate (released 2026-10-27; starts after PR #198 merges) | — | S03 on the coordination PR #198 merge; its plan review is recorded |
+| T1 | T1.P01 (closed); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) S01, S02, S05, S06 | T1.P02.S03 Opening (released 2026-10-27; complete plan and plan review before implementation; starts after the batch PR #199 merges) | S04 final gate | S02 accepted `owner-override` on PR #201, with its formal performance family and the Stage bundle known miss carried to S04; S04 on S01/S02/S03/S05/S06 and the deferred performance evidence |
+| T2 | T2.P01 (closed 2026-10-20); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) (closed 2026-10-27; S01–S03 shipped) | — | Next T2 phase planning/authorization (component identity/resolution/admission and revision correspondence) | No active T2 phase; the closed phase's formal performance rows are deferred to named T2 follow-ups, not passed |
 | T3 | [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
-| T5 | — | — | [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) S01 (plan approved); S02, S03 and S04 My Objects (proposed) | S01 on an owner release-list row and on T2.P02.S03 merging (or a T2 Scene-unit writer handoff); S04 on S01 and T2 agreement on the library scope; E0 withdrawn ([planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
+| T5 | — | — | [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) S01 (plan approved); S02, S03 and S04 My Objects (proposed) | S01 on an owner release-list row (its T2.P02.S03 prerequisite merged with PR #199); S04 on S01 and T2 agreement on the library scope; E0 withdrawn ([planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
 
 Release provenance is the [performance foundation decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md);
 the shipped post-Batch-E lanes keep the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md);
 T5's G0 approval is the [expressive geometry decision](../reference/decisions/t5-g0-approval-2026-10-27.md);
 its bounded direction promotion is the [G0 ratification](../reference/decisions/t5-g0-ratification-2026-10-27.md);
 its E0 withdrawal and first-phase planning is the [T5 planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md);
-the next-wave release is the [next-wave authorization](../reference/decisions/next-wave-authorization-2026-10-27.md).
+the next-wave release is the [next-wave authorization](../reference/decisions/next-wave-authorization-2026-10-27.md);
+the T1 continuation is the [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md).
 Everything omitted from [now.md](./now.md) stays under the production hold. No gate, track or
 phase lifecycle changes here.
 

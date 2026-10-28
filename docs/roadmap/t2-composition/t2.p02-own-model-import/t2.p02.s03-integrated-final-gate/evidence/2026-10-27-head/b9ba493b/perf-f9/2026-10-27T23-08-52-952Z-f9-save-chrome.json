@@ -1,0 +1,325 @@
+{
+  "name": "f9-save-chrome",
+  "startedAt": "2026-10-27T23:08:13.325Z",
+  "machine": {
+    "platform": "darwin",
+    "release": "24.6.0",
+    "cpuModel": "Apple M2",
+    "cores": 8,
+    "memoryGiB": 16,
+    "node": "v26.7.0",
+    "powerState": "Battery Power, Low Power Mode off"
+  },
+  "profile": "acceptance",
+  "acceptanceEvidence": false,
+  "passScoped": false,
+  "samplePlan": {
+    "profile": "acceptance",
+    "acceptanceEvidence": true,
+    "runs": 10,
+    "warmup": 1,
+    "inputSamples": 60,
+    "dragSamples": 5,
+    "undoRedoCycles": 20,
+    "f13Edits": 20,
+    "f13Cycles": {
+      "cold": 10,
+      "warm": 1,
+      "repeat-use": 10
+    },
+    "cacheStates": {
+      "f2": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f3": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f7": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f13": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ]
+    },
+    "runCounts": {
+      "f2": 10,
+      "f3": 10,
+      "f7": 10,
+      "f13": 10
+    },
+    "oldMethod": true,
+    "delayProof": true,
+    "stageTraceTiers": "all",
+    "note": "ratified acceptance method: 10 measured runs, 60 pointer inputs per drag, every cache state, A.6 and the delayed-preview proof"
+  },
+  "rows": [
+    {
+      "id": "F9-save-local-cold",
+      "flow": "F9 Save",
+      "workload": "S fixture, one typed edit, Save to the local test-auth stack",
+      "cacheState": "cold",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "wireBytesMedian": 44367,
+        "runs": 10
+      },
+      "stats": {
+        "savingLabelDomUpdate": {
+          "count": 10,
+          "min": 0.3999999985098839,
+          "median": 0.3999999985098839,
+          "p75": 0.4750000014901161,
+          "p95": 0.6099999975413082,
+          "p99": 0.681999995931983,
+          "max": 0.6999999955296516,
+          "values": [
+            0.3999999985098839,
+            0.3999999985098839,
+            0.3999999985098839,
+            0.3999999985098839,
+            0.3999999985098839,
+            0.3999999985098839,
+            0.4000000059604645,
+            0.5,
+            0.5,
+            0.6999999955296516
+          ]
+        },
+        "durableReceipt": {
+          "count": 10,
+          "min": 119,
+          "median": 121.5,
+          "p75": 122.34999999962747,
+          "p95": 123.19500000216067,
+          "p99": 123.51900000162422,
+          "max": 123.60000000149012,
+          "values": [
+            119,
+            120.69999999552965,
+            121.29999999701977,
+            121.39999999850988,
+            121.5,
+            121.5,
+            121.89999999850988,
+            122.5,
+            122.70000000298023,
+            123.60000000149012
+          ]
+        },
+        "savedLabelDomUpdate": {
+          "count": 10,
+          "min": 120.30000000447035,
+          "median": 123.10000000149012,
+          "p75": 123.77500000409782,
+          "p95": 124.60499999672174,
+          "p99": 125.00099999457598,
+          "max": 125.09999999403954,
+          "values": [
+            120.30000000447035,
+            122.5,
+            122.59999999403954,
+            122.79999999701977,
+            123,
+            123.20000000298023,
+            123.39999999850988,
+            123.90000000596046,
+            124,
+            125.09999999403954
+          ]
+        }
+      },
+      "limitations": [
+        "pre-flight on a developer machine: hard budgets are accepted only from the reference machine",
+        "presentation is attributed to the rendering-opportunity frame, not a traced image",
+        "save-status DOM updates are not paint/presentation timestamps and cannot establish the contract's presented-local-feedback gate",
+        "local loopback test API under the configured CDP network profile; no production-service baseline and the durable-receipt target formula is not accepted here",
+        "main-thread work during Save is not split out by this pass"
+      ]
+    },
+    {
+      "id": "F9-save-local-warm",
+      "flow": "F9 Save",
+      "workload": "S fixture, one typed edit, Save to the local test-auth stack",
+      "cacheState": "warm",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "wireBytesMedian": 44367,
+        "runs": 10
+      },
+      "stats": {
+        "savingLabelDomUpdate": {
+          "count": 10,
+          "min": 0.09999999403953552,
+          "median": 0.20000000298023224,
+          "p75": 0.29999999701976776,
+          "p95": 0.29999999701976776,
+          "p99": 0.29999999701976776,
+          "max": 0.29999999701976776,
+          "values": [
+            0.09999999403953552,
+            0.19999999552965164,
+            0.19999999552965164,
+            0.19999999552965164,
+            0.20000000298023224,
+            0.20000000298023224,
+            0.29999999701976776,
+            0.29999999701976776,
+            0.29999999701976776,
+            0.29999999701976776
+          ]
+        },
+        "durableReceipt": {
+          "count": 10,
+          "min": 118.20000000298023,
+          "median": 120.55000000074506,
+          "p75": 121.05000000074506,
+          "p95": 123.76499999687076,
+          "p99": 125.31299999579787,
+          "max": 125.69999999552965,
+          "values": [
+            118.20000000298023,
+            118.89999999850988,
+            120,
+            120.10000000149012,
+            120.5,
+            120.60000000149012,
+            120.89999999850988,
+            121.10000000149012,
+            121.39999999850988,
+            125.69999999552965
+          ]
+        },
+        "savedLabelDomUpdate": {
+          "count": 10,
+          "min": 119,
+          "median": 121.59999999776483,
+          "p75": 122.07499999552965,
+          "p95": 124.81000000163912,
+          "p99": 126.32200000271202,
+          "max": 126.70000000298023,
+          "values": [
+            119,
+            119.89999999850988,
+            121.09999999403954,
+            121.39999999850988,
+            121.5,
+            121.69999999552965,
+            122,
+            122.09999999403954,
+            122.5,
+            126.70000000298023
+          ]
+        }
+      },
+      "limitations": [
+        "pre-flight on a developer machine: hard budgets are accepted only from the reference machine",
+        "presentation is attributed to the rendering-opportunity frame, not a traced image",
+        "save-status DOM updates are not paint/presentation timestamps and cannot establish the contract's presented-local-feedback gate",
+        "local loopback test API under the configured CDP network profile; no production-service baseline and the durable-receipt target formula is not accepted here",
+        "main-thread work during Save is not split out by this pass"
+      ]
+    },
+    {
+      "id": "F9-save-local-repeat-use",
+      "flow": "F9 Save",
+      "workload": "S fixture, one typed edit, Save to the local test-auth stack",
+      "cacheState": "repeat-use",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "wireBytesMedian": 44367,
+        "runs": 10
+      },
+      "stats": {
+        "savingLabelDomUpdate": {
+          "count": 10,
+          "min": 0.10000000149011612,
+          "median": 0.20000000298023224,
+          "p75": 0.20000000298023224,
+          "p95": 0.30000000111758707,
+          "p99": 0.3000000037997961,
+          "max": 0.30000000447034836,
+          "values": [
+            0.10000000149011612,
+            0.19999999552965164,
+            0.19999999552965164,
+            0.20000000298023224,
+            0.20000000298023224,
+            0.20000000298023224,
+            0.20000000298023224,
+            0.20000000298023224,
+            0.29999999701976776,
+            0.30000000447034836
+          ]
+        },
+        "durableReceipt": {
+          "count": 10,
+          "min": 117.19999999552965,
+          "median": 122.75,
+          "p75": 123.40000000409782,
+          "p95": 124.34999999701976,
+          "p99": 124.70999999701976,
+          "max": 124.79999999701977,
+          "values": [
+            117.19999999552965,
+            117.60000000149012,
+            120.20000000298023,
+            122.20000000298023,
+            122.5,
+            123,
+            123.39999999850988,
+            123.40000000596046,
+            123.79999999701977,
+            124.79999999701977
+          ]
+        },
+        "savedLabelDomUpdate": {
+          "count": 10,
+          "min": 118.20000000298023,
+          "median": 123.75000000372529,
+          "p75": 124.40000000409782,
+          "p95": 125.61500000096858,
+          "p99": 126.0830000025779,
+          "max": 126.20000000298023,
+          "values": [
+            118.20000000298023,
+            118.39999999850988,
+            121.19999999552965,
+            123.29999999701977,
+            123.60000000149012,
+            123.90000000596046,
+            124.39999999850988,
+            124.40000000596046,
+            124.89999999850988,
+            126.20000000298023
+          ]
+        }
+      },
+      "limitations": [
+        "pre-flight on a developer machine: hard budgets are accepted only from the reference machine",
+        "presentation is attributed to the rendering-opportunity frame, not a traced image",
+        "save-status DOM updates are not paint/presentation timestamps and cannot establish the contract's presented-local-feedback gate",
+        "local loopback test API under the configured CDP network profile; no production-service baseline and the durable-receipt target formula is not accepted here",
+        "main-thread work during Save is not split out by this pass"
+      ]
+    }
+  ],
+  "commit": "b9ba493b837877c6c4b59d7e9c372e2db991645d",
+  "writtenAt": "2026-10-27T23:08:52.983Z"
+}

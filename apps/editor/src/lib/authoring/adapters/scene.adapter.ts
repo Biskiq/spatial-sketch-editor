@@ -13,7 +13,10 @@
  */
 
 import type { ViewportEvaluation } from '@portfolio/camera-core';
-import type { StageAdapterFactory } from '$lib/authoring/stage/stage-adapter-host';
+import type {
+	StageAdapterFactory,
+	StageAdapterServices
+} from '$lib/authoring/stage/stage-adapter-host';
 import { evaluationIdOf } from '$lib/authoring/stage/camera-session';
 import type {
 	StageAdapter,
@@ -43,12 +46,14 @@ import {
 } from '@portfolio/project-model/scene-planning';
 
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
-import ImportModelInstrument from './scene/import/ImportModelInstrument.svelte';
+import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import {
+	armedModelDefinition,
+	clearArmedModel,
 	clearCreatorDefinitions,
 	creatorDefinitions,
-	rememberCreatorDefinition,
-	takeArmedModel
+	peekArmedModel,
+	rememberCreatorDefinition
 } from './scene/import/definitions';
 import { candidateGhost } from './scene/candidate-ghost';
 import {
@@ -59,6 +64,7 @@ import {
 	sceneSessionFromServices,
 	sceneSurfaceFor,
 	sceneComposeSupport,
+	sceneModelContactMinY,
 	type SceneCandidate,
 	type ScenePlacementSession,
 	type SceneSessionOutcome,
@@ -83,11 +89,16 @@ const SCENE_IMPORT_TASK = 'scene-import';
 const SCENE_IMPORT_KIND = 'import-model';
 
 function entityFacts(
+	services: StageAdapterServices,
 	source: ReturnType<typeof stageScene>,
 	entityId: string
 ): readonly StageCardFact[] {
 	const entity = source.entities.find((candidate) => candidate.id === entityId);
 	if (entity === undefined) return [];
+	const contact =
+		entity.kind === 'model'
+			? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), entity)
+			: null;
 	return [
 		{ label: 'Kind', value: entity.kind },
 		{ label: 'Name', value: entity.name },
@@ -100,9 +111,9 @@ function entityFacts(
 			value: `${entity.rotation[1]} rad`
 		},
 		// Only a subject Compose can actually resize advertises a Scale fact: a light
-		// or model has no verified contact, so a Scale row would name a writer that
-		// never exists.
-		...(sceneComposeSupport(entity).resize
+		// or an unapproved catalogue model has no verified contact, so a Scale row
+		// would name a writer that never exists.
+		...(sceneComposeSupport(entity, contact).resize
 			? [
 					{
 						label: 'Scale',
@@ -191,7 +202,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	// else. Catalogue models stay excluded until their r186 contact verification
 	// is recorded; only admitted natives and approved creator models are here.
 	const admitted: NormalizedPlacementDefinition[] = [];
-	const planners = createScenePlanners({ definitions: () => [...admitted, ...creatorDefinitions()] });
+	const planners = createScenePlanners({
+		definitions: () => {
+			// The approved model a creator has armed is an admitted definition even
+			// before its first placement installs the resource. A rebind (a drawing
+			// install replaces the accepted source) clears the captured procedure
+			// definitions, so the arm itself must keep the model placeable.
+			const projectId = services.stage.snapshot().acceptedRevision.projectId;
+			const armed = armedModelDefinition(projectId);
+			return [...admitted, ...creatorDefinitions(), ...(armed === null ? [] : [armed])];
+		}
+	});
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
@@ -250,12 +271,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function surfaceFor(evaluation: ViewportEvaluation, snapshot = services.stage.snapshot()): SceneSurface {
 				const existing = sceneSurfaceFor(snapshot, evaluation);
 				if (existing !== null) {
-					if (openTaskKind === 'place-object') attachPlaceCompletion(existing.session);
+					if (openTaskKind === 'place-object') {
+						applyPendingArm(existing.session);
+						attachPlaceCompletion(existing.session);
+					}
 					return existing;
 				}
 				const session = sceneSessionFromServices({ services, evaluationId: evaluationIdOf(evaluation) });
 				const next: SceneSurface = { reading: sceneReadingKey(evaluation), session };
-				if (openTaskKind === 'place-object') attachPlaceCompletion(session);
+				if (openTaskKind === 'place-object') {
+					applyPendingArm(session);
+					attachPlaceCompletion(session);
+				}
 				// Publishing a different reading cancels the old proposal. The old
 				// release is identity-checked, so it cannot remove this replacement.
 				publishSceneSurface(snapshot, next);
@@ -289,9 +316,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * the creator ended.
 			 */
 			function attachPlaceCompletion(session: ScenePlacementSession): void {
-				const epoch = taskEpoch;
-				session.setPlacementCommittedListener((placedId) => {
-					if (placedId !== null) {
+				const epoch = taskEpoch;					session.setPlacementCommittedListener((placedId) => {
+						if (placedId !== null) {
+							// The model is a project resource now; no later Place task may
+							// silently install a second instance from the same approval.
+							clearArmedModel(services.stage.snapshot().acceptedRevision.projectId);
 						// Canonical selection of the new entity at the post-accept
 						// revision; no Plan fragment is fabricated for a Scene-only
 						// subject.
@@ -304,6 +333,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (epoch !== taskEpoch) return;
 					reopenPlace();
 				});
+			}
+
+			/**
+			 * Apply the project's pending approved model to a live Place session.
+			 *
+			 * A drawing install or reading change can replace the session while the
+			 * Place task stays open; the arm belongs to the approval, not to the
+			 * session that first carried it.
+			 */
+			function applyPendingArm(session: ScenePlacementSession): void {
+				if (session.armedModel() !== null) return;
+				const pending = peekArmedModel(services.stage.snapshot().acceptedRevision.projectId);
+				if (pending !== null) session.setArmedModel(pending);
 			}
 
 			/** Reopen this binding's Place task once the rebuild makes it invocable. */
@@ -493,8 +535,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (intent.phase === 'up') {
 						dragOrigin = null;
 						gestureSurface = null;
-						const proposed = session.candidate();					if (openTaskKind === 'place-object') {
-						if (proposed !== null && proposed.kind === 'place') void commitPointerPlace(session);
+						const proposed = session.candidate();
+						if (openTaskKind === 'place-object') {
+							if (proposed !== null && proposed.kind === 'place') void commitPointerPlace(session);
 							else if (session.armed() === 'place') session.abortGesture();
 							else session.cancel();
 							return true;
@@ -608,7 +651,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// Only a Scene entity subject claims Scene facts; a Layout subject keeps
 					// the Layout adapter's facts.
 					if (cardSubject.sourceKind !== 'entity') return [];
-					return entityFacts(source, cardSubject.sourceId);
+					return entityFacts(services, source, cardSubject.sourceId);
 				},
 				instrument(task) {
 					openTaskKind = task.kind;
@@ -617,7 +660,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// placement but installs nothing until that placement commits.
 						return {
 							summary: 'Import a model',
-							view: { component: ImportModelInstrument, services }
+							view: { component: ImportModelInstrumentLazy, services }
 						};
 					}
 					// Arm the surface for the reading the instrument will actually read,
@@ -628,8 +671,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						taskSurface.session.arm('place');
 						// Import leaves the approved model it has not placed yet; the
 						// session this task owns is the one that receives it.
-						const pending = takeArmedModel();
-						if (pending !== null) taskSurface.session.setArmedModel(pending);
+						applyPendingArm(taskSurface.session);
 						// Typed and pointer Place commit through this session; completing here
 						// is what keeps the tool persistent and selects the new entity for a
 						// typed commit too.

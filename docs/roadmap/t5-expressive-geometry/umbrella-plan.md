@@ -244,8 +244,9 @@ and its on-demand workflow, on the designated reference machine with Laptop A re
   applied to the edited form;
 - drag preview p95 ≤ 33 ms (S) and ≤ 50 ms (M); commit and Undo/Redo completion ≤ 100 ms; no
   main-thread task over 50 ms in ordinary interaction;
-- Stage first-load JS growth ≤ 25 KiB br per slice, without worsening the recorded 456 KiB known
-  miss unless the owner records it; R2 and R3 modules lazy, and outside the visitor load set unless a
+- Stage first-load JS within the ≤ 425 KiB br hard row (owner-amended 2026-10-27; 422.3 KiB br,
+  2.7 KiB headroom, at `T2.P02.S03`) and ≤ 25 KiB br growth per slice, so form and library code
+  stays lazy; R2 and R3 modules lazy, and outside the visitor load set unless a
   declared visitor capability requires them;
 - P01 workloads: S = 10 forms of up to 32 anchors, M = 60 forms of up to 128 anchors in the M
   fixture, plus a 256-anchor worst-case outline. P02 adds shaped forms (up to 32 operations and
@@ -283,7 +284,7 @@ insert an editable copy in another project and refine it independently.
 
 | Slice | Delivers | Exposes to creators | Depends on |
 | --- | --- | --- | --- |
-| S01 | Native form source, evaluation and Scene admission: geometry-core, Scene unit 4 `form`, codec, `create-form` and `set-form-size` planners, existing Scene operations on forms, shared renderer, Plan footprint, selection | Nothing new (opened documents and tests) | `T2.P02.S03` merged or a T2 Scene-unit handoff |
+| S01 | Native form source, evaluation and Scene admission: geometry-core, Scene unit 4 `form`, codec, `create-form` and `set-form-size` planners, existing Scene operations on forms, shared renderer, Plan footprint, selection | Nothing new (opened documents and tests) | `T2.P02.S03` merged (PR #199; T2.P02 closed 2026-10-27) |
 | S02 | One Ink with readings from several domains; the Shape reading on the floor and an upright sheet (and a Wall face, if T1's face-frame query has landed); depth ray and Create; per-axis size rays and Card writers | Creation and sizing | S01; a T1-reviewed Ink reading seam |
 | S04 | My Objects: the `form` library payload and owner-scoped library storage; Save to My Objects; insert an editable copy (`place-form-copy`); remove | Cross-project reuse | S01; T2 agreement on the library scope (D8); may run beside S02 |
 | S03 | Integrated final gate (keeps its id; S04 was added by owner amendment) | — | S01, S02, S04 |

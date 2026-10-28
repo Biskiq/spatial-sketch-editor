@@ -1,0 +1,13 @@
+{
+  "projectId": "perf-s03diagempty-mvrancfx",
+  "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
+  "classificationWaitMs": 16121,
+  "placementAccepted": false,
+  "subject": "(no card)",
+  "feedback": "",
+  "instrumentText": "ENTITY Choose… Use selection Begin PLACE box cylinder sphere X (M) Z (M) Place No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place object. The approved model is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.",
+  "stored": {
+    "resources": 0,
+    "entities": 0
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "name": "f13-import-chrome",
+  "startedAt": "2026-10-27T13:47:27.597Z",
+  "machine": {
+    "platform": "darwin",
+    "release": "24.6.0",
+    "cpuModel": "Apple M2",
+    "cores": 8,
+    "memoryGiB": 16,
+    "node": "v26.7.0",
+    "powerState": "not recorded (PERF_POWER_STATE unset)"
+  },
+  "profile": "milestone",
+  "acceptanceEvidence": false,
+  "passScoped": false,
+  "samplePlan": {
+    "profile": "milestone",
+    "acceptanceEvidence": true,
+    "runs": 3,
+    "warmup": 1,
+    "inputSamples": 60,
+    "dragSamples": 2,
+    "undoRedoCycles": 10,
+    "f13Edits": 20,
+    "f13Cycles": {
+      "cold": 10,
+      "warm": 1,
+      "repeat-use": 10
+    },
+    "cacheStates": {
+      "f2": [
+        "cold",
+        "warm"
+      ],
+      "f3": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f7": [
+        "warm"
+      ],
+      "f13": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ]
+    },
+    "runCounts": {
+      "f2": 3,
+      "f3": {
+        "cold": 1,
+        "warm": 3,
+        "repeat-use": 1
+      },
+      "f7": 3,
+      "f13": 1
+    },
+    "oldMethod": false,
+    "delayProof": false,
+    "stageTraceTiers": [
+      "grid-L"
+    ],
+    "note": "milestone method: 3 independent runs per decision row, extended one run at a time to 10 (F7 to 5) only while a hard row is undecided; 60 pointer inputs; 10 Undo/Redo cycles; 20 F13 edits over ten measured cycles; F2 cold+warm; F7 warm; full E5 matrix; no A.6 or delayed-preview proof (Bench 1 evidence)"
+  },
+  "rows": [
+    {
+      "id": "F13-import-place-undo-repeat-use",
+      "flow": "F13 repeated import place/undo",
+      "workload": "S generated model, one import then 10 × (place another + Undo), post-GC heap each cycle",
+      "cacheState": "repeat-use",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "cycles": 10,
+        "heapBaselineMiB": 9.513763427734375,
+        "heapFinalMiB": 12.157512664794922,
+        "heapGrowthMiB": 2.643749237060547,
+        "heapPerCycle": "9.51,10.14,10.52,10.7,11.06,11.2,11.38,11.54,11.97,12.07,12.16"
+      },
+      "stats": {
+        "heapAfterGCDistribution": {
+          "count": 11,
+          "min": 9.513763427734375,
+          "median": 11.196128845214844,
+          "p75": 11.759227752685547,
+          "p95": 12.116029739379883,
+          "p99": 12.149216079711914,
+          "max": 12.157512664794922,
+          "values": [
+            9.513763427734375,
+            10.137310028076172,
+            10.516212463378906,
+            10.697952270507812,
+            11.059551239013672,
+            11.196128845214844,
+            11.377120971679688,
+            11.544658660888672,
+            11.973796844482422,
+            12.074546813964844,
+            12.157512664794922
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "one warm context; the first import and its approved model stay resident by design, so growth is instance churn, not first-load",
+        "removal is the Head Undo of the accepted placement, not the Compose Delete task: a placed creator model is not canonically selectable through the shipped UI yet",
+        "identical pixels are not asserted; the accepted-result count proves each cycle installed and reversed one result",
+        "GPU memory is not exposed by Chromium"
+      ]
+    }
+  ],
+  "commit": "9e0fcb50d08666a0bd2eb1248be2a972f5d19426",
+  "writtenAt": "2026-10-27T13:47:27.613Z"
+}

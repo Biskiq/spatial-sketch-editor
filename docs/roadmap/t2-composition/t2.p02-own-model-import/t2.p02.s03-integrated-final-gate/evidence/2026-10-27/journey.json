@@ -1,0 +1,93 @@
+{
+  "projectId": "perf-s03-mvqv29nq",
+  "browser": "chrome",
+  "errors": [],
+  "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
+  "stagePlacedPixels": 34377,
+  "stagePlacedWaitedMs": 187,
+  "selectionAfterPlacement": "room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-template-F.starter-template",
+  "arrangeEntityOptions": [
+    "Choose…",
+    "Gate model · model",
+    "box",
+    "cylinder",
+    "sphere"
+  ],
+  "afterMoveTurn": {
+    "position": [
+      1.25,
+      0,
+      -0.5
+    ],
+    "rotation": [
+      0,
+      0.5,
+      0
+    ]
+  },
+  "twoInstances": {
+    "entityIds": [
+      "entity-9e8d540d-d8fc-406c-b478-d2cf396285fe",
+      "entity-36587f4d-643c-406d-92fc-753ddc0837e2"
+    ],
+    "assetIds": [
+      "model-a001cfac-6a59-4b7f-8066-84f08bd2b031",
+      "model-a001cfac-6a59-4b7f-8066-84f08bd2b031"
+    ],
+    "resourceIds": [
+      "model-a001cfac-6a59-4b7f-8066-84f08bd2b031"
+    ]
+  },
+  "resource": {
+    "id": "model-a001cfac-6a59-4b7f-8066-84f08bd2b031",
+    "pin": {
+      "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78",
+      "mime": "model/gltf-binary",
+      "size": 1201064,
+      "locator": "/projects/perf-s03-mvqv29nq/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+    },
+    "source": {
+      "manifestHash": "sha256-8ab968947ae796732bd527a388236c44d7945a069bc6b2669c4510efceff5357",
+      "size": 100872,
+      "fileCount": 1
+    },
+    "recipe": {
+      "id": "creator-import@1",
+      "version": 1
+    },
+    "reportDigest": "sha256-44969f5934367c63bf0757e121e78950013fcacc09d8e900852088273c0e06b6",
+    "placement": {
+      "metresPerSourceUnit": 1,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "footprint": {
+        "width": 2,
+        "depth": 2
+      },
+      "contactMinY": 0,
+      "placement": "floor"
+    },
+    "contentRevision": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+  },
+  "derivativeBytes": {
+    "size": 1201064,
+    "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+  },
+  "reopenedPixels": 80910,
+  "reopenWaitedMs": 201,
+  "reopenErrors": [],
+  "previewPixelsWithModel": 74328,
+  "previewPaintedWithModel": 936827,
+  "previewTextureWaitedMs": 245,
+  "controlStored": {
+    "rooms": 1,
+    "resources": 0,
+    "entities": 0
+  },
+  "previewPixelsControl": 0,
+  "previewControlPaintedPixels": 180321,
+  "controlErrors": []
+}

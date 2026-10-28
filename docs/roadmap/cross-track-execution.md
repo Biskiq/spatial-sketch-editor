@@ -87,10 +87,10 @@ and `T2.P02.S03` import final gate — on 2026-10-27
 flowchart TD
   B["Post-Batch-E lanes shipped (696af6ea)"]
   B --> P["T1.P02.S06 performance foundation — shipped, merged 6af62eb4"]
-  P -->  D["T1.P02.S02 drawing — released 2026-10-27; starts after this PR merges"]
-  D --> O["T1.P02.S03 Opening — held"]
+  P -->  D["T1.P02.S02 drawing — shipped PR #201 (owner-override)"]
+  D --> O["T1.P02.S03 Opening — released 2026-10-27; plan completion and review first"]
   O --> F["T1.P02.S04 final gate — held"]
-  P -->  IF["T2.P02.S03 integrated final gate — released 2026-10-27; starts after this PR merges"]
+  P -->  IF["T2.P02.S03 integrated final gate — accepted 2026-10-27; T2.P02 closed"]
   B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
   B --> T5["T5.P01 drawn native objects — registered; S01 plan approved, held until released"]
   IF --> T5
@@ -109,8 +109,9 @@ flowchart TD
 defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
 behind it. S06 is accepted and merged, so the halt no longer blocks any of them; that is a cleared
 dependency, not a release. S02 and `T2.P02.S03` were released on 2026-10-27 (see below); S02 was
-accepted as `owner-override` and shipped on PR #201, while `T2.P02.S03` remains NOT ACCEPTED. Every
-other inheritor still needs its own owner release, reviews and a release-list
+accepted as `owner-override` and shipped on PR #201, and `T2.P02.S03` was accepted by owner ruling
+2026-10-27, closing `T2.P02` ([decision](../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)).
+Every other inheritor still needs its own owner release, reviews and a release-list
 entry, inherits S06's merged tree and measures on its method. Strictly unrelated work continues only
 through its own owner release.
 
@@ -125,7 +126,17 @@ S03 with its final-gate review
 Each starts after this PR merges on its own trusted base; the standing implementation reviews
 (T3 for S02's Head/F4 diff, the owning track for any T2/T3 adapter edit) and every acceptance,
 performance and independent-review requirement are unchanged. The [release list](./now.md) carries
-the rows.
+the rows. Both have since shipped: S02 as `owner-override` on PR #201 and S03 accepted by owner
+ruling 2026-10-27, closing `T2.P02`
+([decision](../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)). S03's
+formal performance rows are deferred to the named T2 follow-ups; no row is a pass.
+
+**Next T1 slice released — 2026-10-27.** With `T1.P02.S02` shipped and the `T2.P02.S03` acceptance
+and closeout prepared, the owner released `T1.P02.S03` (Opening family)
+([record](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md)). The registered plan is an
+outline: the complete plan and its plan review are recorded before implementation starts. It starts
+after the batch PR #199 merges, on its own trusted base, rechecking every consumed gate and active
+scope; `T1.P02.S04` stays held for its own release.
 
 T1's execution order is owned by the [T1.P02 register](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register);
 the roadmap's [where-things-stand index](./README.md#current-coordination-and-proposal-provenance)
@@ -133,8 +144,9 @@ routes shipped, held and blocked scopes. No lane may implement a sibling's held 
 satisfy its own acceptance.
 
 **Shared files and S06's released claim.** No lane was released at S06's merge; S02 and `T2.P02.S03`
-were released separately on 2026-10-27 (above), and S02 shipped on PR #201 with its formal
-performance family deferred to S04. The table below
+were released separately on 2026-10-27 (above), and both shipped: S02 on PR #201 with its formal
+performance family deferred to S04, and S03 with the Stage budget amended and its formal rows
+deferred to the named T2 follow-ups. The table below
 records the claims S06 held; each was released with `6af62eb4`, so a future lane edits these surfaces
 through its own recorded claim and the owner review the [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 requires — it does not inherit S06's claim by citing it:
@@ -168,7 +180,7 @@ The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/
 | Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime; S06 measures these flows and reports T3-owned misses |
 | Measurement harness (H0 workflow) | T3 | A future lane edits the shared harness and fixtures through T3 review; S06's harness edits are merged history |
 | C3 project lifecycle persistence/API | T3 (T3.P04.S01 shipped after the T2 handoff) | PR #191 shipped the owner-scoped API/persistence cleanup; its handoff and shared-file reviews are recorded acceptance history, not new next-wave work |
-| `@portfolio/geometry-core` and the native-form parts of the Scene unit, codec, validation and planners | T5 (T5.P01, when released) | T2 reviews every Scene unit, codec, planner and Scene-adapter change and keeps other entity kinds; T5 starts its Scene edits after `T2.P02.S03` merges or a T2 handoff; T1 reviews the Ink reading seam |
+| `@portfolio/geometry-core` and the native-form parts of the Scene unit, codec, validation and planners | T5 (T5.P01, when released) | T2 reviews every Scene unit, codec, planner and Scene-adapter change and keeps other entity kinds; `T2.P02.S03` has merged (PR #199), so T5 serializes only with any new T2 Scene writer; T1 reviews the Ink reading seam |
 | The `form` library scope (My Objects): its payload codec, `apps/api` owner-scoped routes and migration | T5 (T5.P01.S04, when released) | T2 reviews the library scope, codec, API and migration; the migration slot is serialized with other `apps/api` writers |
 | Test contract, runtime-safe shared packages and boundary checks | Existing concern owner | Touch only required call sites with owner review; no duplicate protocol, silent boundary weakening or private test substitute |
 
@@ -200,8 +212,8 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 - **T5:** [Expressive Geometry](./t5-expressive-geometry/README.md) is `approved` with one
   registered phase, [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md); E0 is
   withdrawn and the [umbrella plan](./t5-expressive-geometry/umbrella-plan.md) owns direction.
-  T5.P01's first slice changes the Scene unit format and planners, so it starts after
-  `T2.P02.S03` merges (or T2 hands over those files) and lands under T2 review; its Ink reading
+  T5.P01's first slice changes the Scene unit format and planners; its `T2.P02.S03`
+  prerequisite merged with PR #199, and it lands under T2 review; its Ink reading
   seam is a T1-reviewed patch. Its My Objects slice lands the `form` library scope and an API
   migration under T2 review. No T5 scope is on the release list; no F gate is registered.
 - **Activation:** accepted source/runtime code is available to consumers independently of a

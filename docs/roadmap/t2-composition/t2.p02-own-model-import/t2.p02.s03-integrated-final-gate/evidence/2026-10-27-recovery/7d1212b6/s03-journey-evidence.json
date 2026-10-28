@@ -1,0 +1,116 @@
+{
+  "projectId": "perf-s03-mvr4v5tc",
+  "browser": "chrome",
+  "errors": [],
+  "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
+  "stagePlacedPixels": 34377,
+  "stagePlacedWaitedMs": 184,
+  "selectionAfterPlacement": "entity-cb0126e1-47b3-49f5-9d17-86549e2429b6",
+  "arrangeEntityOptions": [
+    "Choose…",
+    "Gate model · model",
+    "box",
+    "cylinder",
+    "sphere"
+  ],
+  "afterMoveTurn": {
+    "position": [
+      1.25,
+      0,
+      -0.5
+    ],
+    "rotation": [
+      0,
+      0.5,
+      0
+    ]
+  },
+  "afterResize": {
+    "scale": 1.5,
+    "position": [
+      1.25,
+      0,
+      -0.5
+    ]
+  },
+  "afterDuplicate": {
+    "entityIds": [
+      "entity-cb0126e1-47b3-49f5-9d17-86549e2429b6",
+      "entity-830c188a-c91e-446c-9ed0-958da7087f4b"
+    ],
+    "scales": [
+      1.5,
+      1.5
+    ]
+  },
+  "afterDeleteModel": {
+    "entityIds": [
+      "entity-cb0126e1-47b3-49f5-9d17-86549e2429b6"
+    ]
+  },
+  "twoInstances": {
+    "entityIds": [
+      "entity-cb0126e1-47b3-49f5-9d17-86549e2429b6",
+      "entity-500af9c2-3ab5-41a6-8959-d302a672d24e"
+    ],
+    "assetIds": [
+      "model-0545ba89-df43-4962-bfac-7145e8dfe311",
+      "model-0545ba89-df43-4962-bfac-7145e8dfe311"
+    ],
+    "resourceIds": [
+      "model-0545ba89-df43-4962-bfac-7145e8dfe311"
+    ]
+  },
+  "resource": {
+    "id": "model-0545ba89-df43-4962-bfac-7145e8dfe311",
+    "pin": {
+      "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78",
+      "mime": "model/gltf-binary",
+      "size": 1201064,
+      "locator": "/projects/perf-s03-mvr4v5tc/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+    },
+    "source": {
+      "manifestHash": "sha256-8ab968947ae796732bd527a388236c44d7945a069bc6b2669c4510efceff5357",
+      "size": 100872,
+      "fileCount": 1
+    },
+    "recipe": {
+      "id": "creator-import@1",
+      "version": 1
+    },
+    "reportDigest": "sha256-44969f5934367c63bf0757e121e78950013fcacc09d8e900852088273c0e06b6",
+    "placement": {
+      "metresPerSourceUnit": 1,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "footprint": {
+        "width": 2,
+        "depth": 2
+      },
+      "contactMinY": 0,
+      "placement": "floor"
+    },
+    "contentRevision": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+  },
+  "derivativeBytes": {
+    "size": 1201064,
+    "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+  },
+  "reopenedPixels": 153450,
+  "reopenWaitedMs": 191,
+  "reopenErrors": [],
+  "previewPixelsWithModel": 157270,
+  "previewPaintedWithModel": 1070505,
+  "previewTextureWaitedMs": 228,
+  "controlStored": {
+    "rooms": 1,
+    "resources": 0,
+    "entities": 0
+  },
+  "previewPixelsControl": 0,
+  "previewControlPaintedPixels": 180321,
+  "controlErrors": []
+}

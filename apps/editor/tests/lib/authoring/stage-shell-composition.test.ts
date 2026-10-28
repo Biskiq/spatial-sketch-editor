@@ -74,7 +74,12 @@ describe('Stage shell composition', () => {
 		// renderer beside them would be a second authority.
 		const canvas = codeOf(CANVAS_FILE);
 		expect(canvas).toContain("from '$lib/visitor/VisitorLayoutShell.svelte'");
-		expect(canvas).toContain("from '$lib/visitor/VisitorEntities.svelte'");
+		// Entities keep the visitor's one grouping/material renderer; only the model
+		// chunk is deferred, and only here.
+		expect(canvas).toContain("from './StageEntities.svelte'");
+		const stageEntities = codeOf('apps/editor/src/lib/authoring/stage/shell/StageEntities.svelte');
+		expect(stageEntities).toContain("from '$lib/visitor/VisitorEntityGroups.svelte'");
+		expect(stageEntities).toContain("import('$lib/museum/assets/AssetModel.svelte')");
 		// Explicit shadow-map type; never the boolean that resolves to the removed
 		// PCFSoft filtering path.
 		expect(canvas).toContain('shadows={PCFShadowMap}');

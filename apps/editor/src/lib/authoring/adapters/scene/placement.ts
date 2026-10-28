@@ -39,7 +39,11 @@ import {
 	type SceneOperationResult
 } from '@portfolio/project-model/scene-planning';
 import type { AuthoringIntent, SceneEntity, Vec3 } from '@portfolio/project-model';
-import type { CameraFreeSceneDocument, LayoutUnitPayload } from '@portfolio/project-model/units';
+import type {
+	CameraFreeSceneDocument,
+	LayoutUnitPayload,
+	ProjectEnvelope
+} from '@portfolio/project-model/units';
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
@@ -392,13 +396,35 @@ export type SceneComposeSupport = {
 };
 
 /**
+ * The approved floor contact of one model entity, read from the accepted
+ * envelope's `model` resource.
+ *
+ * This is the same metadata the placement session reads through
+ * `contactMinYFor`; the Compose panel and the Card's Scale fact need it without
+ * a session, so they read the resource here rather than guessing from a mesh or
+ * treating every model as contact-less.
+ */
+export function sceneModelContactMinY(
+	envelope: ProjectEnvelope,
+	entity: SceneEntity
+): number | null {
+	if (entity.kind !== 'model') return null;
+	for (const resource of envelope.units.resources.data.resources) {
+		if (resource.kind === 'model' && resource.id === entity.assetId && resource.model !== undefined) {
+			return resource.model.placement.contactMinY;
+		}
+	}
+	return null;
+}
+
+/**
  * What Compose can truthfully do with one entity.
  *
  * Resize and Duplicate need a floor contact the retained planner can re-seat.
- * Only the admitted analytic primitives have one today: a light or a model has
- * no verified contact here, so offering the command would only take the gesture
- * lease and then refuse (and the adapter would advertise a `Scale` fact that
- * cannot be written). Delete needs no contact.
+ * The admitted analytic primitives and approved creator models have one; a light
+ * or an unapproved catalogue model does not, so offering the command would only
+ * take the gesture lease and then refuse (and the adapter would advertise a
+ * `Scale` fact that cannot be written). Delete needs no contact.
  */
 export function sceneComposeSupport(
 	entity: SceneEntity,
@@ -1219,17 +1245,25 @@ export function createSceneSession(input: {
 			return { kind: 'committed' };
 		},
 		async place(primitive, x, z) {
-			// The typed form places the primitive it names. An armed creator model is
-			// pointer-placed, so it is released here rather than silently ignored.
-			armedModelPlacement = null;
-			candidateModel = null;
+			// An approved model armed for this project is what these coordinates place.
+			// Choosing a primitive is the one explicit replacement (`setPlacePrimitive`),
+			// so the typed form can no longer install a box behind a model approval.
+			const model = armedModelPlacement;
 			lastPlacedEntityId = null;
 			if (!Number.isFinite(x) || !Number.isFinite(z)) {
 				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
 			}
-			const outcome = await acceptPlacement(primitive, [snapped(x), snapped(z)]);
+			const outcome = model === null
+				? await acceptPlacement(primitive, [snapped(x), snapped(z)])
+				: await acceptModelPlacement(model, [snapped(x), snapped(z)]);
 			if (outcome.kind === 'committed') {
 				candidate = null;
+				// The model is consumed by its placement; a failed attempt keeps the arm
+				// so the creator can retry the same approved model.
+				if (model !== null) {
+					candidateModel = null;
+					armedModelPlacement = null;
+				}
 				notifyPlacementCommitted();
 			}
 			return outcome;

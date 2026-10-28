@@ -15,6 +15,32 @@ the workflow rule lives in
 npm run perf                 # from the repository root: production build + all flows
 npm run perf:bundle          # delivery report over the current production build
 
+# T2.P02.S03 integrated acceptance: supervisor boots API + database + preview,
+# then runs perf/flows/s03-own-model-acceptance.spec.ts against them.
+# The supervisor previews the ordinary production build and never builds, so
+# build first; `PUBLIC_API_ORIGIN` is runtime ($env/dynamic/public) and does not
+# need to be set here. `S03_QA_PROJECT=chrome` selects the branded
+# `channel: 'chrome'` project the contract gates on (default: `chromium`).
+# Give each run its own results directory: the supervisor writes machine facts
+# and the spec writes evidence, so a second run into the same directory
+# overwrites them.
+createdb biskiq_s03_gate            # a dedicated empty database; never the dev/Compose DB
+npm run build:api                   # the supervisor imports apps/api/dist (gitignored)
+npm run build                       # from the repository root, immediately before the pass
+cd apps/editor
+DATABASE_URL=postgresql://localhost:5432/biskiq_s03_gate \
+  PERF_RESULTS_DIR=<evidence dir> S03_QA_PROJECT=chrome \
+  npx vite-node --script perf/run-s03-own-model-qa.mjs
+# S03_API_PORT / S03_EDITOR_PORT (default 8791 / 4179) move the two ports when
+# another run holds them; the API origin stays runtime, so no rebuild is needed.
+
+# diagnostics (never gate rows): same supervisor, diagnostic spec, second
+# results directory so the acceptance run's machine facts and evidence survive
+DATABASE_URL=postgresql://localhost:5432/biskiq_s03_gate \
+  PERF_RESULTS_DIR=<diagnostics dir> S03_QA_PROJECT=chrome \
+  S03_QA_SPEC=perf/flows/s03-diagnostics.spec.ts \
+  npx vite-node --script perf/run-s03-own-model-qa.mjs
+
 # one flow / one browser, reusing an existing preview server
 cd apps/editor
 npx playwright test --config perf/playwright.config.ts flows/drag-correlation.spec.ts --project=chromium
@@ -47,6 +73,8 @@ series, never a user profile.
 | `flows/stage-trace.spec.ts` | Per-stage traces (S06 C) | one traced window per flow and tier (F2, F3, F4, F8, F7): main-thread busy/idle, GC, script, style/layout, paint and GPU-process time beside the window's stage spans; attribution, never a timing row |
 | `flows/e5-sweep.spec.ts` | E5 browser counts (S06 C) | museum ×1 and the H/D/C sweeps: render counters at rest, the fixed edit's work, and framebuffer equality at the fixed View before and after the edit (H must match ×1; D and C are recorded); count, not timing |
 | `flows/calibration.spec.ts` | CPU calibration | grid-7 compile + Stage admission, 20 runs, CDP throttling search when a reference median is supplied |
+| `flows/s03-own-model-acceptance.spec.ts` | T2.P02.S03 integrated acceptance (on demand) | starter → Library Import with maps → review → approve → place → Arrange move/turn → second instance → Save → fresh-session reopen → Head Preview pixels, plus oversize/malformed/cancelled/project-replaced refusals that install nothing. Asserts only behaviour the product is expected to deliver. Needs `run-s03-own-model-qa.mjs` (in-process API, private database, memory object store) and is never part of a measurement row |
+| `flows/s03-diagnostics.spec.ts` | T2.P02.S03 diagnostics (on demand, never gate rows) | the subject a pointer placement leaves selected, the Index as placed, Compose as reached from it; the typed-vs-pointer placement comparison on one primitive (typed leg asserted as the positive control); the empty-project import and whether a placement commits. Records the known gaps without asserting them, so a product fix changes the values and keeps the spec green |
 
 **Attributed work is not a constant across rows.** A unit whose domain data is deeply frozen
 (F4-accepted) answers a repeated digest from the frozen-object revision memo, so its

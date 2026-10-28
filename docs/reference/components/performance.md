@@ -223,7 +223,7 @@ the measured Node/build evidence and its limitations.
 
 | Flow / metric | S | M | L | Kind |
 |---|---|---|---|---|
-| Delivery: Stage route first-load JS (br, cold) | ≤ 400 KiB | same | same | **Hard** (no growth > 25 KiB br per slice without a recorded reason) |
+| Delivery: Stage route first-load JS (br, cold) | ≤ 425 KiB | same | same | **Hard** (owner-amended 2026-10-27 from ≤400; no growth > 25 KiB br per slice without a recorded reason) |
 | Delivery: visitor `/p` first-load JS (br) before first architectural frame | ≤ 250 KiB | same | same | Target now, **Hard** at T4 cutover |
 | Delivery: landing `/` and hub `/projects` JS (br) | ≤ 80 KiB | — | — | Target |
 | Delivery: Preview chunk (T3.P02.S01) | lazy; not in Stage first-load set | — | — | **Hard** |
@@ -252,6 +252,14 @@ the measured Node/build evidence and its limitations.
 | JS heap — viewer | ≤ 100 MiB | ≤ 150 MiB | ≤ 300 MiB | Target |
 | GPU memory estimate (textures + buffers) | ≤ 128 MiB | ≤ 384 MiB | ≤ 768 MiB | **Hard** M on A 8 GB (shared memory) |
 | Leaks F13: heap growth over 10 cycles (after GC); GPU resources | ≤ 5 MiB; geometries/textures back to baseline; 1 live context | same | ≤ 10 MiB | **Hard** |
+
+**Stage first-load amendment (owner ruling, 2026-10-27).** The Stage route first-load JS row was
+raised from ≤400 to ≤425 KiB br when `T2.P02.S03` was accepted: the integrated production route
+measured 422.3 KiB br at `b9ba493b` after the Import procedure and model renderer were removed from
+first load. The 25 KiB per-slice growth rule is unchanged, the visitor `/p` row is unchanged, and the
+amendment is not retroactive — `T1.P02.S02`'s 456.0 KiB br at `64b9435d` remains a recorded miss at
+that revision and is carried to `T1.P02.S04`. Provenance:
+[decision record](../decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md).
 
 **Save receipt target.** `B_wire` is the actual request-body byte count; `R_up` is the declared
 upload bit rate in bits/ms and RTT is in ms. The formula explicitly allows upload time, two RTTs

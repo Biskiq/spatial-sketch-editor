@@ -2458,47 +2458,47 @@ describe('routing and skill preflights', () => {
 		const live = { nowSource, slices, batons, runbooks, router };
 		expect(releaseListProblems(live)).toEqual([]);
 
-		const withoutRow = nowSource.replace(/^\| `T1\.P02\.S02`.*\n/m, '');
+		const withoutRow = nowSource.replace(/^\| `T1\.P02\.S03`.*\n/m, '');
 		expect(releaseListProblems({ ...live, nowSource: withoutRow }).join('\n')).toContain(
-			'T1.P02.S02 says released and has no row'
+			'T1.P02.S03 says released and has no row'
 		);
 		expect(
 			releaseListProblems({
 				...live,
-				nowSource: nowSource.replace(/^\| `T1\.P02\.S02` \| released;[^|]*\|/m, '| `T1.P02.S02` | Now |')
+				nowSource: nowSource.replace(/^\| `T1\.P02\.S03` \| released;[^|]*\|/m, '| `T1.P02.S03` | Now |')
 			}).join('\n')
 		).toContain('evaluates the condition as Now');
-		expect(releaseListProblems({ ...live, nowSource: nowSource.replaceAll('T1.P02.S02', 'T9.P09.S09') }).join('\n')).toContain(
+		expect(releaseListProblems({ ...live, nowSource: nowSource.replaceAll('T1.P02.S03', 'T9.P09.S09') }).join('\n')).toContain(
 			'is not a slice in any phase README'
 		);
 		expect(
 			releaseListProblems({
 				...live,
-				slices: slices.map((slice) => (slice.id === 'T1.P02.S02' ? { ...slice, status: 'proposed' } : slice))
+				slices: slices.map((slice) => (slice.id === 'T1.P02.S03' ? { ...slice, status: 'proposed' } : slice))
 			}).join('\n')
 		).toContain('is proposed');
 		expect(
 			releaseListProblems({
 				...live,
-				slices: slices.map((slice) => (slice.id === 'T1.P02.S02' ? { ...slice, status: 'shipped' } : slice))
+				slices: slices.map((slice) => (slice.id === 'T1.P02.S03' ? { ...slice, status: 'shipped' } : slice))
 			})
 		).toEqual([]);
 		expect(
 			releaseListProblems({
 				...live,
 				slices: slices.map((slice) =>
-					slice.id === 'T1.P02.S03' ? { ...slice, authorization: 'released from the hold' } : slice
+					slice.id === 'T1.P02.S04' ? { ...slice, authorization: 'released from the hold' } : slice
 				)
 			}).join('\n')
-		).toContain('T1.P02.S03 says released and has no row');
+		).toContain('T1.P02.S04 says released and has no row');
 		expect(
 			releaseListProblems({
 				...live,
 				batons: batons.map((baton) =>
-					baton.track === 't4-release' ? { ...baton, source: `${baton.source}\nT1.P02.S03` } : baton
+					baton.track === 't4-release' ? { ...baton, source: `${baton.source}\nT1.P02.S04` } : baton
 				)
 			}).join('\n')
-		).toContain('t4-release baton names T1.P02.S03');
+		).toContain('t4-release baton names T1.P02.S04');
 		expect(
 			releaseListProblems({
 				...live,
