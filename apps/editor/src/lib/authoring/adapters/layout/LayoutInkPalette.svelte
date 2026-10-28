@@ -13,6 +13,7 @@
 	 * second writer of the chain. Keyboard parity: Enter finishes, Backspace
 	 * backtracks, Escape cancels (the host owns those keys on the Stage).
 	 */
+	import type { Component } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { parseMeasureInput, parsePlacementXZ } from './precision';
 	import { inkSurface, inkSurfaceRevision, type InkPaletteSnapshot } from './ink';
@@ -34,6 +35,10 @@
 
 	const emptySnapshot: InkPaletteSnapshot = {
 		reading: 'wall',
+		readings: [
+			{ id: 'wall', label: 'Wall', summary: 'Straight Wall chain.' },
+			{ id: 'opening', label: 'Opening', summary: 'A straight door or window on one Wall face.' }
+		],
 		opening: null,
 		points: [],
 		closed: false,
@@ -45,6 +50,11 @@
 		refusal: null
 	};
 	let snapshot = $state<InkPaletteSnapshot>(emptySnapshot);
+	/** The contributed reading's own palette controls, when one is active. */
+	let readingView = $state<Component | null>(null);
+	const activeReading = $derived(
+		snapshot.readings.find((reading) => reading.id === snapshot.reading) ?? null
+	);
 
 	// The adapter owns the draft, and a pointer move does not re-render this panel.
 	// One frame loop reads the published surface and writes state only on change.
@@ -62,6 +72,7 @@
 				seenRevision = revision;
 				seenKey = key;
 				snapshot = next;
+				readingView = _services.stage.inkReadings().find((reading) => reading.id === next.reading)?.view ?? null;
 			}
 		};
 		frame = requestAnimationFrame(watch);
@@ -111,32 +122,27 @@
 <div class="ink-palette" data-layout-ink-palette>
 	<fieldset class="reading">
 		<legend>Reading</legend>
-		<label class="reading-option">
-			<input
-				type="radio"
-				name="layout-ink-reading"
-				data-ink-reading-wall
-				checked={snapshot.reading === 'wall'}
-				onchange={() => inkSurface()?.controller.setReading('wall')}
-			/>Wall
-		</label>
-		<label class="reading-option">
-			<input
-				type="radio"
-				name="layout-ink-reading"
-				data-ink-reading-opening
-				checked={snapshot.reading === 'opening'}
-				onchange={() => inkSurface()?.controller.setReading('opening')}
-			/>Opening
-		</label>
-		<span class="quiet">
-			{snapshot.reading === 'wall'
-				? 'Straight Wall chain. Slice, Eraser, Brush, Measure and Shape readings are not supported here.'
-				: 'A straight door or window on one Wall face. Curved hosts and other profiles are not supported here.'}
-		</span>
+		{#each snapshot.readings as option (option.id)}
+			<label class="reading-option">
+				<input
+					type="radio"
+					name="layout-ink-reading"
+					data-ink-reading={option.id}
+					data-ink-reading-wall={option.id === 'wall' ? '' : undefined}
+					data-ink-reading-opening={option.id === 'opening' ? '' : undefined}
+					data-ink-reading-shape={option.id === 'shape' ? '' : undefined}
+					checked={snapshot.reading === option.id}
+					onchange={() => inkSurface()?.controller.setReading(option.id)}
+				/>{option.label}
+			</label>
+		{/each}
+		<span class="quiet">{activeReading?.summary ?? ''}</span>
 	</fieldset>
 
-	{#if snapshot.reading === 'wall'}
+	{#if readingView !== null}
+		{@const ReadingView = readingView}
+		<ReadingView />
+	{:else if snapshot.reading === 'wall'}
 		<div class="options">
 			<label>
 				<span>Thickness</span>
