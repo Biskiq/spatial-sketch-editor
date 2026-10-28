@@ -6,7 +6,7 @@ acceptance, merge, capability entry or gate state · **Plan:**
 [T5.P01](../README.md)
 
 ```text
-STATUS      implemented on t5/p01-s02-shape-reading at b28a0998; not accepted
+STATUS      implemented on t5/p01-s02-shape-reading at 5428e66b; not accepted
 TIER        architecture-integration
 ROUTE       ../t5.p01.s03-integrated-final-gate/acceptance.md
             the phase's final gate owns the integrated proof, browser journeys and battery rows
@@ -48,9 +48,10 @@ Cancel, refusal and stale content add no history.
 **Host correction required by the slice.** An accepted install closes a contributed task through the
 session rather than `closeTask()`, so the facade's contributed-task owner is now cleared with the
 task. Without that, every later no-task press and key was still offered to the retired Ink binding
-and never reached the selection's direct manipulation.
+and never reached the selection's direct manipulation. Opening any task also ends a no-task direct
+manipulation gesture — a live size ray releases its lease instead of stranding it.
 
-## Verification at `b28a0998`
+## Verification at `5428e66b`
 
 All commands ran on the feature branch. Results:
 
@@ -58,15 +59,16 @@ All commands ran on the feature branch. Results:
 | --- | --- |
 | `npm run check` | 0 errors, 0 warnings |
 | `npm run build` | built, `@sveltejs/adapter-vercel` completed |
-| `npm run test:fast` | 193 files / **2,570 tests** passed |
+| `npm run test:fast` | 193 files / **2,571 tests** passed |
 | `npm run test:arch` | 23 files / **188 tests** passed |
-| `npx vitest run` on the 13 affected Stage/Layout/Scene/Shape suites | 13 files / **214 tests** passed |
-| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **22 tests** passed |
+| `npx vitest run` on the 13 affected Stage/Layout/Scene/Shape suites | 13 files / **215 tests** passed |
+| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **23 tests** passed |
 
 The three focused files are [shape-outline.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-outline.test.ts)
 (conversion and validation), [shape-reading-adapter.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts)
-(seam, floor creation, live refusal, upright Flip and raised-V depth drags, resize baselines,
-reading-switch protection, keyboard, size ray and Card writer through the real F.4 host), and
+(seam, floor creation, live refusal, upright Flip and raised-V depth drags, invalid-depth recovery,
+resize baselines, reading-switch protection, keyboard, size ray/task takeover and Card writer through
+the real F.4 host), and
 [shape-palette.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-palette.test.ts)
 (raw depth forwarding and hover-preserved fields). The affected run covered both Shape suites and
 the palette suite plus `stage-facade`, `stage-host-acceptance`, `stage-session`, `layout-opening`,
@@ -117,6 +119,14 @@ A second round found four more, also fixed here:
   reading is cleared, and backing out of the depth phase restores the effective value.
 - The Layout palette carried a hard-coded `shape` data hook; contributed readings now need no
   Layout edit to appear.
+
+PR review then found two lifecycle gaps, fixed with regressions:
+
+- A successful depth-handle drag left an earlier invalid typed depth's validity flag set, so Create
+  stayed disabled; the drag now restores validity.
+- A live no-task size ray kept its gesture lease when another task opened; the host now runs the
+  existing `taskClosed` path as a task takes the pointer, so the lease is released and no scale
+  commits.
 
 ## Deviations and decisions
 
