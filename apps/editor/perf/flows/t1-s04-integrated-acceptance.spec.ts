@@ -377,6 +377,24 @@ async function saveToCloud(page: Page): Promise<void> {
 	await expect(page.locator('[data-head-save]')).toHaveAttribute('data-save-status', 'saved', { timeout: 90_000 });
 }
 
+async function placeOpeningThroughPalette(page: Page, before: number): Promise<void> {
+	const refusal = page.locator('[data-opening-refusal]');
+	await page.locator('[data-opening-place]').click();
+	// A typed placement either accepts or refuses in words; never wait the full
+	// five-minute tier bound for a refusal that already happened.
+	await expect
+		.poll(
+			async () => {
+				if ((await refusal.count()) > 0) return 'refused';
+				return (await acceptedResultCount(page)) > before ? 'accepted' : 'pending';
+			},
+			{ timeout: 30_000, intervals: [100, 250, 500] }
+		)
+		.not.toBe('pending');
+	if ((await refusal.count()) > 0) throw new Error(`the Opening was refused: ${(await refusal.innerText()).trim()}`);
+	await waitForAcceptedResult(page, before);
+}
+
 async function deleteWallThroughCard(page: Page, wallId: string): Promise<number> {
 	await selectSubject(page, wallId);
 	const action = page.locator(DELETE_WALL);
@@ -537,10 +555,11 @@ test('starter: draw, close, divide, host an Opening, delete, identities, Undo/Re
 		await expect(page.locator('[data-opening-width]')).toHaveValue('1.2');
 		await expect(page.locator('[data-opening-height]')).toHaveValue('1.2');
 		await expect(page.locator('[data-opening-sill]')).toHaveValue('1');
-		await page.locator('[data-opening-offset]').fill('1');
+		// `offset` is the start edge, not the centre: 0.4 + 1.2 = 1.6 fits the 2 m
+		// divider with 0.4 m clearance at each end.
+		await page.locator('[data-opening-offset]').fill('0.4');
 		const openingBefore = await acceptedResultCount(page);
-		await page.locator('[data-opening-place]').click();
-		await waitForAcceptedResult(page, openingBefore);
+		await placeOpeningThroughPalette(page, openingBefore);
 		const openingSource = await downloadSource(page);
 		const opening = (layoutOf(openingSource).openings ?? []).find((entry) => entry.wallId === divider.id);
 		if (opening === undefined) throw new Error('the Window did not install on the selected divider');
@@ -854,8 +873,7 @@ test('empty: draw, close, divide, place an Opening, delete and reload', async ({
 		await expect(page.locator('[data-opening-sill]')).toHaveValue('0');
 		await page.locator('[data-opening-offset]').fill('2');
 		const openingBefore = await acceptedResultCount(page);
-		await page.locator('[data-opening-place]').click();
-		await waitForAcceptedResult(page, openingBefore);
+		await placeOpeningThroughPalette(page, openingBefore);
 		const openingSource = await downloadSource(page);
 		const door = (layoutOf(openingSource).openings ?? []).find(
 			(entry) => entry.wallId === divider.id && entry.kind === 'door'
