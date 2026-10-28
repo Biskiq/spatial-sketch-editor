@@ -113,35 +113,14 @@ editable copy → refine independently.**
   side never reach the other.
 - Shared instances, offered updates, item revisions, rename, folders, search and sharing wait.
 
-**Saved items survive format changes: a named pre-baseline exception.** My Objects exists to keep
-creator work across projects and over time, so a planned format change must not strand saved items.
-This is the bounded, scripted migration the North Star allows before the
-[Source Baseline](../north-star.md#release-and-source-baselines), with the elements it requires:
-
-- **Covered data:** every stored My Objects item, for every owner, at any library payload format T5
-  has shipped. Projects, the copies inside them, fixtures and other resource kinds stay under the
-  general [pre-baseline rule](../north-star.md#development-stage-schema-compatibility-pre-baseline).
-- **Mechanism:** a change to the Scene form encoding that moves the library payload format from N
-  to N+1 ships, in the same slice, a pure deterministic upgrader from N to N+1 and a scripted
-  migration that upgrades every stored item. Each item keeps its logical id, owner, name and creation
-  time; its canonical bytes and content id are recomputed. Live readers stay strict and accept only
-  N+1. The upgrader is the only code that reads N, and it runs only in the migration.
-- **Validation:** every upgraded item passes the strict N+1 codec and evaluates to the same golden
-  digest as before. If a format change cannot preserve an item's evaluated meaning, the change stops
-  for the owner before merge; it never refuses or drops stored items.
-- **Recovery:** the migration is all-or-nothing in one transaction, so a failure leaves the store at
-  N and blocks the deployment. Each item's prior bytes and content id are kept until the next format
-  change, so a faulty upgrade can be reversed.
-- **Retirement:** each upgrader is removed once its migration has run everywhere library items are
-  stored. The exception ends when the Source Baseline's resource migration obligations replace it,
-  or if the owner retires My Objects.
-
-No tolerant or multi-version reader, dual writer or capability negotiation is added. P02 is the first
-slice expected to exercise this, and its acceptance covers it
-([umbrella plan §6.3](../../roadmap/t5-expressive-geometry/umbrella-plan.md#63-t5p02--object-focus-refine-and-shape-planned)).
-
-The [umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) places this as
-`T5.P01.S04` (proposed), proven with cross-project reuse and Save/reopen at the phase's final gate.
+**No versioning until beta (owner ruling, 2026-10-27).** Library items follow the general
+[pre-baseline rule](../north-star.md#development-stage-schema-compatibility-pre-baseline): each item
+records its format number, readers are strict, and no upgrader, migration or tolerant reader is
+built. When a format change leaves stored items on an older number, My Objects still lists them,
+marked as made with an earlier development version; they cannot be inserted, and Remove stays
+available. Versioning and migration obligations for projects and library items start at **beta
+release**, which the owner declares as the baseline; that is when format changes begin shipping
+migrations.
 
 ## Effect of merging the planning PR
 

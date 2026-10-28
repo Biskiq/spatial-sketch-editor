@@ -61,15 +61,13 @@ the saved item never affect each other, and both survive Save, reopen and new se
   codec and geometry-core validation, used by both the editor and the API. The payload refuses
   unknown keys and other format numbers. When the Scene form encoding changes (for example when P02
   adds operations), this format moves with it.
-- **Format changes.** Stored items are a named pre-baseline exception
-  ([obligation](../../../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)): the slice that moves this format ships an upgrader and a scripted migration
-  that carries every stored item forward with its meaning unchanged, while live readers stay strict.
-  S04 ships format 1, so it has no upgrader; it records each item's format number and commits the
-  corpus the first upgrade must carry.
+- **Format changes.** Until beta, no versioning ([ruling](../../../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)):
+  each item records its format number and the strict reader refuses any other. An item on an older
+  number stays listed, marked as made with an earlier development version, cannot be inserted, and
+  can be removed.
 - **Identity:** a server-allocated logical id and one immutable revision whose content identity is
   `sha256Bytes` of the canonical bytes, as for T2's resource pins. Each Save creates a new item;
-  creators never edit items in place. The only rewrite is a scripted format migration, which keeps
-  the logical id and recomputes the content id.
+  items are never edited in place.
 - **Ownership:** an item belongs to the signed-in owner. Only that owner lists, reads, inserts from
   or removes it. Items are not project data: deleting a project leaves them, and no project, release
   or visitor route can read them.
@@ -79,11 +77,10 @@ the saved item never affect each other, and both survive Save, reopen and new se
 ### 4.2 API
 
 - A migration adds owner-scoped library storage: the logical id, owner, kind, name, format
-  number, content id, canonical bytes and creation time, plus empty prior-bytes and prior-content-id
-  fields for a future format migration's recovery. Small payloads live in the database, not the
+  number, content id, canonical bytes and creation time. Small payloads live in the database, not the
   object store.
 - Owner-only routes: create (validates through the shared codec, recomputes the content id and
-  refuses a mismatch), list (id, name, kind, content id and created time), read (canonical bytes,
+  refuses a mismatch), list (id, name, kind, format number, content id and created time), read (canonical bytes,
   cacheable by content id) and remove.
 - A request for another owner's item answers as not found. No route is reachable without the
   existing authentication.
@@ -160,9 +157,9 @@ apply. This slice must prove cross-project reuse and Save/reopen:
     landed library scope for the `form` kind, [persistence](../../../../reference/components/persistence.md)
     records the library storage, and [Scene content](../../../../reference/components/scene-content.md)
     records `place-form-copy`, in the same PR.
-11. **Format record.** Every stored item records its format number, and the slice commits a
-    format-1 item corpus — both planes, smooth anchors, limit values and non-default scale — as the
-    covered-data fixture that the first format migration must carry forward.
+11. **Older formats.** Every stored item records its format number. An item stored with another
+    format number is listed as unusable with Remove available, refuses insertion with its reason,
+    and adds no history.
 
 ## 6. Reviews and stop conditions
 
@@ -177,5 +174,5 @@ apply. This slice must prove cross-project reuse and Save/reopen:
 
 The final gate runs the full creator journey after S02: draw a form in project A, save it to My
 Objects, open project B, insert it, refine it, and Save and reopen both. P02 inherits the library
-payload, whose format follows the Scene form encoding, together with the obligation to migrate stored
-items when that format moves, starting from this slice's format-1 corpus.
+payload, whose format follows the Scene form encoding; until beta, older items are refused, not
+migrated.
