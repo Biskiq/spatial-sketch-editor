@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	COMMIT_EDITOR_MS,
+	commitPresentedLimitMs,
 	FRAME_CAP,
 	frameStop,
 	interactionDecision,
@@ -113,6 +114,21 @@ describe('interaction labels', () => {
 			undoEditorMs: 22
 		}));
 		expect(decision.label).toBe('usable');
+	});
+
+	it('uses the 200 ms end-to-end completion allowance for L without weakening M', () => {
+		// A fast L acceptance may need several frames to render. This is still
+		// a completed, usable commit below the L 200 ms allowance.
+		expect(commitPresentedLimitMs('L', 15.6, REFRESH_60)).toBe(200);
+		expect(commitPresentedLimitMs('M', 6.3, REFRESH_60)).toBeCloseTo(6.3 + REFRESH_60 + 2);
+		expect(interactionDecision(input({
+			tier: 'L', commitEditorMs: 15.6, commitPresentedMs: 120,
+			undoRequired: true, undoEditorMs: 6.5
+		})).label).toBe('usable');
+		expect(interactionDecision(input({
+			tier: 'L', commitEditorMs: 15.6, commitPresentedMs: 230,
+			undoRequired: true, undoEditorMs: 6.5
+		})).label).toBe('not-usable');
 	});
 
 	it('classifies a missed pick, a missing mark and an unsplit window as incomplete rather than smooth', () => {
