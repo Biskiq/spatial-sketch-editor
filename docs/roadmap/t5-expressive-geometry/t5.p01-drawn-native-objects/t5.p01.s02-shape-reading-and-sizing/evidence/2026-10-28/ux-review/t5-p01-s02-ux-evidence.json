@@ -1,29 +1,29 @@
 {
   "flow": "T5.P01.S02 integrated creator-workflow UX review",
-  "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+  "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
   "apiOrigin": "http://127.0.0.1:8794",
   "browser": "chromium",
-  "generatedAt": "2026-10-28T18:06:40.849Z",
+  "generatedAt": "2026-10-28T18:23:01.370Z",
   "rows": [
     {
       "id": "draw.close",
       "scenario": "Draw and close a Room",
       "status": "passed",
       "detail": "4 Walls / 4 Junctions / 1 Room",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1"
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1"
     },
     {
       "id": "divide.rooms",
       "scenario": "Divide the Room through both Walls",
       "status": "passed",
-      "detail": "2 Rooms; divider wall-chain-1.e678a965-f070-471e-88c7-cf96ecf4031d",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "detail": "2 Rooms; divider wall-chain-1.25c5a3f6-fe15-458c-803f-4a2db032287f",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-01-drawn-divided.png"
     },
     {
@@ -31,10 +31,10 @@
       "scenario": "Place a Window through the Opening reading",
       "status": "passed",
       "detail": "one Wall-hosted Window",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-02-opening.png"
     },
     {
@@ -42,20 +42,20 @@
       "scenario": "Switch Wall → Opening → Shape",
       "status": "passed",
       "detail": "one Pen, three readings; no source written",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1"
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1"
     },
     {
       "id": "shape.invalid-outline",
       "scenario": "Invalid outline refuses live",
       "status": "passed",
       "detail": "The outline crosses itself; redraw it without crossing.; Finish disabled",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-03-invalid-outline.png"
     },
     {
@@ -63,10 +63,10 @@
       "scenario": "Cancel the depth phase",
       "status": "passed",
       "detail": "outline restored; no form written",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-04a-depth-cancel.png"
     },
     {
@@ -74,10 +74,10 @@
       "scenario": "Invalid typed depth refuses Create",
       "status": "passed",
       "detail": "0 m names the admitted range; Create disabled",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-04-invalid-depth.png"
     },
     {
@@ -85,10 +85,10 @@
       "scenario": "Depth handle in Plan",
       "status": "passed",
       "detail": "0 → 1.7039327759942806 m; Create enabled",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-04b-depth-drag-plan.png"
     },
     {
@@ -96,10 +96,10 @@
       "scenario": "Depth drag recovers an invalid typed value",
       "status": "passed",
       "detail": "handle dragged to 2.274742184592315 m; Create enabled",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-04c-depth-recovered.png"
     },
     {
@@ -107,10 +107,10 @@
       "scenario": "Create a floor native form",
       "status": "passed",
       "detail": "one plan extrude at 1.2 m; Card selected",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-05-floor-created.png"
     },
     {
@@ -118,10 +118,10 @@
       "scenario": "Size per axis through the Card",
       "status": "passed",
       "detail": "dimensions 3 × 1.2 × 2; scale 1.500 × 1.000 × 2.000",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-06-sized-card.png"
     },
     {
@@ -129,20 +129,20 @@
       "scenario": "Size is one history entry",
       "status": "passed",
       "detail": "Undo restores the prior scale; Redo returns it",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1"
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1"
     },
     {
       "id": "size.ray",
       "scenario": "Drag the Width ray",
       "status": "passed",
       "detail": "scale 1.500 → 1.939; one accepted result",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-07-size-ray.png"
     },
     {
@@ -150,21 +150,21 @@
       "scenario": "Create an upright native form on a 3D sheet",
       "status": "passed",
       "detail": "elevation extrude at 0.5 m; rotation y=0.000",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-08-upright-created.png"
     },
     {
       "id": "save.reload",
       "scenario": "Save/reload preserves Layout and both forms",
       "status": "passed",
-      "detail": "2 Rooms; forms 65f4c132-52a7-4a01-a493-3b70306b913a, 7b592ddd-a692-4ccd-8565-5fbac46d7b29",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "detail": "2 Rooms; forms 801c7d02-c423-4148-92b5-38b17044510d, a5db319f-954c-4623-ae33-d85a3a5d52a5",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1",
       "screenshot": "t5-s02-09-reloaded.png"
     },
     {
@@ -172,30 +172,30 @@
       "scenario": "Plan and 3D agree after reload",
       "status": "passed",
       "detail": "same form identities in both readings",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1"
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1"
     },
     {
       "id": "preview.unavailable",
       "scenario": "Preview availability",
       "status": "not-run",
       "detail": "not exercisable from this source: Preview\nCreate an Experience in the Experience lens to Preview it.",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial?create=1"
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial?create=1"
     },
     {
       "id": "preview.enter-exit",
       "scenario": "Enter and leave Preview",
       "status": "passed",
       "detail": "created an Experience/Presentation, captured the 3D view, entered Preview and returned to the Stage",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1440x900",
       "reducedMotion": false,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial",
       "screenshot": "t5-s02-10-preview.png"
     },
     {
@@ -203,10 +203,10 @@
       "scenario": "narrow shell with reduced motion",
       "status": "passed",
       "detail": "Shape instrument fits (526×258); body scrolls to Finish; no horizontal overflow",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "900x700",
       "reducedMotion": true,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial",
       "screenshot": "t5-s02-11-narrow.png"
     },
     {
@@ -214,10 +214,10 @@
       "scenario": "short shell with reduced motion",
       "status": "passed",
       "detail": "Shape instrument fits (644×258); body scrolls to Finish; no horizontal overflow",
-      "revision": "6a925f5d8083522294d5d6700e87229ddf9bce91",
+      "revision": "86595afeb6d02bd95452beffe4ce1922df3cd2df",
       "viewport": "1024x600",
       "reducedMotion": true,
-      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfdin4/spatial",
+      "url": "http://127.0.0.1:4182/project/perf-t5-s02-ux-mvsfyn7z/spatial",
       "screenshot": "t5-s02-11-short.png"
     }
   ]

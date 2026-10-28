@@ -6,7 +6,7 @@ acceptance, merge, capability entry or gate state · **Plan:**
 [T5.P01](../README.md)
 
 ```text
-STATUS      implemented on t5/p01-s02-shape-reading at 6a925f5d; not accepted
+STATUS      implemented on t5/p01-s02-shape-reading at 86595afe; not accepted
 TIER        architecture-integration
 ROUTE       ../t5.p01.s03-integrated-final-gate/acceptance.md
             the phase's final gate owns exhaustive integrated acceptance and battery rows; the
@@ -53,7 +53,7 @@ task. Without that, every later no-task press and key was still offered to the r
 and never reached the selection's direct manipulation. Opening any task also ends a no-task direct
 manipulation gesture — a live size ray releases its lease instead of stranding it.
 
-## Verification at `6a925f5d`
+## Verification at `86595afe`
 
 All commands ran on the feature branch. Results:
 
@@ -61,11 +61,11 @@ All commands ran on the feature branch. Results:
 | --- | --- |
 | `npm run check` | 0 errors, 0 warnings |
 | `npm run build` | built, `@sveltejs/adapter-vercel` completed |
-| `npm run test:fast` | 193 files / **2,572 tests** passed |
+| `npm run test:fast` | 193 files / **2,573 tests** passed |
 | `npm run test:arch` | 23 files / **188 tests** passed |
-| `npx vitest run` on the 11 affected Stage/Layout/Scene/Shape suites | 11 files / **195 tests** passed |
-| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **24 tests** passed |
-| S02 UX journey, Playwright Chromium | 3 specs passed; **18 scenario rows** passed, 1 recorded not-run |
+| `npx vitest run` on the 11 affected Stage/Layout/Scene/Shape suites | 11 files / **196 tests** passed |
+| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **25 tests** passed |
+| S02 UX journey, Playwright Chromium | 3 specs passed; **19 scenario rows** passed, 1 recorded not-run |
 
 The three focused files are [shape-outline.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-outline.test.ts)
 (conversion and validation), [shape-reading-adapter.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts)
@@ -82,11 +82,11 @@ The **heavy** lane was not run: no geometry-core, kernel or heavy correctness su
 `npm test` (the complete suite) was not rerun as one command; `test:fast` and `test:arch` together
 cover every non-heavy file at the same revision.
 
-## Browser UX review at `6a925f5d`
+## Browser UX review at `86595afe`
 
 A real Chromium session drove the production Stage through a local API, a private PostgreSQL database
-and an authenticated creator project. The clean run produced 19 revision-stamped scenarios
-(18 passed, 1 intentional not-run observation) and screenshots:
+and an authenticated creator project. The clean run produced 20 revision-stamped scenarios
+(19 passed, 1 intentional not-run observation) and screenshots:
 
 - [evidence JSON](./evidence/2026-10-28/ux-review/t5-p01-s02-ux-evidence.json)
 - [Room drawn and divided](./evidence/2026-10-28/ux-review/t5-s02-01-drawn-divided.png)
@@ -194,6 +194,14 @@ The real-browser review then found two creator-facing gaps, both fixed:
   without reopening a dismissed Card, so a newly created form had no visible size controls. The
   route now reopens the Card only when the primary subject identity changes, not when the same
   dismissed subject is requalified by a revision.
+
+A final code-review pass found one more path in that Plan fix: the screen-space fallback also ran
+for an upright Shape, even though an upright extrusion is horizontal and still projects real screen
+travel. The fallback is now gated on the Shape working plane as well as the camera. A regression
+draws an oblique upright sheet, switches the camera to Plan, checks the handle stays on the
+projected world axis, and drags it to a new depth. The browser Plan-depth scenario now asserts the
+value change and Create state instead of only recording them. The committed evidence has 20 rows:
+19 passed and one deliberate Preview-availability not-run.
 
 ## Deviations and decisions
 
