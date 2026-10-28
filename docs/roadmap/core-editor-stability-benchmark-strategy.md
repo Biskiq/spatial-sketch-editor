@@ -9,6 +9,12 @@ EFFECT      None until an owner adopts this method. No harness change, no
             benchmark run, no budget edit, no acceptance gate.
 SUSPENSION  The 2026-10-28 mandate suspension stands. An investigation still
             starts only when the owner has seen a slowdown.
+REVIEW      Peer review of PR #213, conditionally approved. Early stop is a
+            decision test: four samples when the label is clear, a short
+            extension only while it is ambiguous, outliers kept. A second
+            session is for an unresolved label or a transient contaminant.
+            Smoothness compares frames and handler-to-presentation delay with
+            the measured display period.
 LEAVES      The performance contract remains the historical method and budget
             record. The harness, workloads and Bench 1 / Bench 2 / milestone
             evidence stay in the tree. Core Editor Stability gains no acceptance
@@ -134,7 +140,7 @@ strategy.
 | Keep | What an engineer does with it |
 | --- | --- |
 | One fresh-context open of `grid-M` and one of `grid-L` | M open is about half a second; L open is about 5.1 s. That gap is a real scale finding. Per-stage admission and compile spans name which stage owns it. |
-| A short wall drag at M and at L | Confirms the preview path. The label uses main-thread time per move, so a result glued to 16.7 ms is reported as a saturated frame clock. |
+| A short wall drag at M and at L | Confirms the preview path. The label uses editor time and handler-to-presentation delay, each compared with the display period. Low editor time on its own does not make the gesture smooth. |
 | One typed commit at M and at L | The row that scales: 17 ms (S), 26 ms (M), 94 ms (L) at the milestone. |
 | A short pointer pan at M and at L | Per-move task time. This is the signal the orbit hid (L: 37 → 18 ms/move in the attribution check). |
 | One pick, the commit, and one pick after the commit | The milestone gate had no pick-after-commit row. The attribution check showed the index and fragment set rebuild on the first click after an edit. One click sees the rebuild count. |
@@ -156,11 +162,12 @@ Every retained window records three clocks and keeps them in separate columns.
 | Clock | Starts | Ends | Enters the feel label |
 | --- | --- | --- | --- |
 | **Editor** | Product handler mark, or the admission mark on open | Product completion mark (preview installed, revision accepted, or first architectural frame). Main-thread task time over that same window is the label input when CDP provides it. The product spans are the breakdown. | Yes |
-| **Presented** | Handler mark | The rendering-opportunity frame (the existing rAF proxy) | Only the frame-saturation check |
+| **Presented** | Handler mark | The rendering-opportunity frame (the existing rAF proxy) | Yes. Compared with the measured display period, together with the frame intervals. |
 | **Automation** | Harness dispatch, context creation, navigation, settle waits, pointer-injection gap above the intended pace | The handler mark, plus those setup waits summed for the session | No |
 
-When task time and the product span disagree by more than the early-stop band, the report shows
-both and the label uses the larger editor figure. Automation is never folded into that figure.
+When task time and the product span disagree by more than the margin of the relevant threshold,
+the report shows both and the label uses the larger editor figure. Automation stays in its own
+column.
 
 Historical pick and commit wall times include Playwright dispatch. A new editor figure will read
 lower than those wall times by the dispatch gap. Compare a regression against the milestone on
@@ -178,20 +185,29 @@ These words are how the report talks about a result. They are proposed figures f
 They are not budgets, they do not edit the performance contract, and a miss is a finding for the
 owner who asked for the investigation.
 
+`R` is the display refresh period from the machine line (`1000 / Hz`). A 60 Hz panel has
+`R = 16.7 ms`. The page's own intervals are compared with that `R`.
+
 | Label | Applies | Holds when |
 | --- | --- | --- |
-| **Smooth** | M interaction | Max per-move editor time ≤ 8 ms, the first 8 frame intervals cluster within 1 ms, and the commit's editor time ≤ 50 ms. Historical milestone: eval 1.3 ms, frames 16.7–16.8 ms, commit 25.5 ms. |
-| **Usable, modest lag** | L interaction | Max per-move editor time ≤ 33 ms, commit ≤ 200 ms, and at most one input in four is superseded. Frames may leave the display period. Historical: pan CPU 18.1 ms/move, commit 93.6 ms, undo 21.6 ms. |
-| **Not usable** | Whichever workload missed | A move above 33 ms, a commit above 200 ms, or a gesture that supersedes more than one input in four. |
+| **Smooth** | M interaction | All of: max per-move editor time ≤ 8 ms; max handler-to-presentation delay ≤ `R + 2 ms`; every frame interval within 1 ms of `R`; commit editor time ≤ 50 ms and commit presented delay ≤ `min(50 ms, editor + R + 2 ms)`. Historical milestone on a 60 Hz-class panel: eval 1.3 ms, input→preview 16.3 ms, frames 16.7–16.8 ms, commit 25.5 ms. |
+| **Usable, modest lag** | L interaction | All of: max per-move editor time ≤ 33 ms; max handler-to-presentation delay ≤ `2R + 2 ms`; every frame interval ≤ `2R + 1 ms` (on `R`, or a stable half-rate at `2R`); commit editor time ≤ 200 ms and commit presented delay ≤ `min(200 ms, editor + 2R + 2 ms)`; at most one input in four superseded. Historical: pan CPU 18.1 ms/move, commit 93.6 ms, undo 21.6 ms. |
+| **Not smooth** | M missed the smooth line and still met the usable line | The typical project lags. Editor time under 8 ms does not repair a late presentation or a half-rate frame. |
+| **Not usable** | Whichever workload missed the usable line | A move above 33 ms, a presentation later than `2R + 2 ms`, a frame interval above `2R + 1 ms`, a commit above 200 ms, or a gesture that supersedes more than one input in four. |
 | **Open** | Reported in seconds, M and L | No feel line. Historical fresh opens: M about 0.5–0.6 s, L about 5.1 s. The stage spans say whether the seconds are compile, admission or DOM. |
 
-8 ms is half of a 60 Hz frame: the main thread has returned and the interval can stay on the
-display period. 50 ms sits between the post-fix M commit (26 ms) and the historical M budget
-(100 ms). A result under 50 ms has the same practical reading as that 26 ms; a result near 100 ms
-is a different reading. The second-session rule spends another sample when a result lands on the
-line. 33 ms and 200 ms are the L lines: about two frames of main-thread work, and a short hitch. The
-post-fix L numbers (18 ms per move, 94 ms commit) already sit in that band. M's label asks frame
-intervals to stay on the display period. L's label allows them to leave it.
+8 ms is half of a 60 Hz frame: the main thread has returned in time for the next refresh. It is one
+clause of smooth, beside presentation delay and the frame period. A series of intervals that agree
+with each other to 1 ms is a stable rate. It is the display rate only when that rate is `R`. The
+same 1 ms cluster at `2R` is a stable 30 Hz picture on a 60 Hz panel: not smooth at M, and the
+modest lag L is allowed to show. On a display whose own `R` is 33.3 ms, intervals at 33.3 ms are on
+that display's refresh and can be smooth.
+
+50 ms sits between the post-fix M commit (26 ms) and the historical M budget (100 ms). The presented
+clause asks the commit to reach the rAF proxy within one refresh after the editor work, and inside
+50 ms. 33 ms and 200 ms remain the L editor lines: about two 60 Hz frames of main-thread work, and
+a short hitch. The post-fix L numbers (18 ms per move, 94 ms commit) already sit in that band.
+Presentation at L may take two refreshes. Presentation at M stays inside one.
 
 Smooth at M and usable at L are independent. A smooth M with a not-usable L is a scale finding. A
 rough M is a finding at the typical project even when L scrapes through.
@@ -239,46 +255,83 @@ early-stop cap.
 
 ## Early stop
 
-A further sample exists to protect a label. When the label is already stable, collection stops.
+A further sample exists to resolve a label. When the label is clear, collection stops. The report
+lists min, median and max. Those three numbers describe the series. They do not decide whether to
+continue: a whole-series range never shrinks as samples arrive, so it cannot be the stop test, and
+a spread between 10% and 25% of the median is not a third verdict.
 
-**Repeated series** (drag moves, pan moves). Take 4 editor samples. Stop when
-`(max − min) ≤ max(1 ms, 10% of the median)`. Otherwise take one more at a time, up to 12. At 12,
-if the range still exceeds 25% of the median, record `unstable` and stop anyway. The 10% test
-matches the historical within-regime bands (most were 1–5%; the worst cited band, F8 at M, was
-about 16% and would continue, then either tighten or be marked unstable). Those bands are across
-independent runs, which is the repetition that costs minutes. Samples inside one gesture share a
-session, so a fifth move tells less than a fifth run. The 1 ms floor is smaller than a smoothness
-step. The cap of 12 is one gesture.
+Every sample is kept. An outlier is the preserved max (or the long frame). It is listed, and a
+single sample clearly past a threshold decides the worse label at the fourth sample.
 
-**Frames.** After 8 intervals, stop when they cluster within 1 ms. That cluster is "frame clock
-saturated"; the feel of M then depends on the editor clock, which is the point of keeping both.
-Otherwise take one interval at a time up to 30 (half a second at 60 Hz). A dropped frame makes the
-range wide, so it is counted and the series stops at the cap. It does not continue to 600.
+The margin around a threshold `B` is `m = max(1 ms, 10% of B)`. Move and commit lines: 1 ms at 8,
+3.3 ms at 33, 5 ms at 50, 20 ms at 200. Presentation lines use the same margin around `R + 2 ms`
+(M) and `2R + 2 ms` (L).
+
+**Repeated editor series** (drag moves, pan moves, handler-to-presentation delays). Take 4 samples,
+then classify on the preserved max:
+
+- `max ≤ B − m`: clearly under. Stop.
+- `max ≥ B + m`: clearly over. The samples that stayed under are context. The max is kept and
+  decides the worse label. Stop.
+- Otherwise the max sits on the line and nothing is clearly over. Take one more sample and classify
+  again. Stop when the max leaves the margin. The cap is 8. Still in the margin at 8: record
+  `on the line`, keep every sample, and apply the worse label. Smoothness or usability was not shown.
+
+Every series ends in one of those three states. The middle band has a verdict.
+
+Four fast samples with a wide relative spread are a clear pass. Moves at 2, 3, 2 and 4 ms have a
+range that is half the median and a max well under 7 ms, so M stops at four and is smooth on the
+editor clause. Moves at 2, 2, 2 and 40 ms keep the 40 ms sample, label M not smooth, and do not
+continue in the hope the outlier will be diluted. Moves at 7.2, 7.4, 7.6 and 7.8 ms are on the
+8 ms line, so the series extends, and if it is still there at 8 the label is not smooth,
+`on the line`.
+
+**Frames.** `R` is known before the gesture. Take 8 intervals, one short beat of the display
+(about 130 ms at 60 Hz).
+
+- Every interval within 1 ms of `R`: `on refresh`. Clear.
+- Any interval above `2R + 1 ms`: a stall. That interval is kept. Clear. M is not smooth and L
+  is not usable.
+- Every remaining interval within 1 ms of `R` or of `2R`, with at least one at `2R`: `half-rate`.
+  The long interval is kept. Clear. M is not smooth. L reads it as modest lag.
+- Any interval more than 1 ms away from both `R` and `2R`: ambiguous. Take one more, up to 16,
+  then stop. A stall or a `2R` interval that appears is kept and classifies as above. At 16, a
+  series that never landed on `R` leaves M not smooth. L treats it as modest lag when no interval
+  exceeded `2R + 1 ms`.
+
+A 1 ms cluster at 33.3 ms with `R = 16.7 ms` is `half-rate` at the eighth interval. Collection
+stops. The same cluster with `R = 33.3 ms` is `on refresh`.
 
 **Superseded inputs.** If more than one of the first four inputs is superseded, the editor is
-falling behind the pointer. Apply `not usable` and stop. Keeping the fraction replaces the
-requirement that all 60 inputs exist as presented rows.
+falling behind the pointer. Apply `not usable` and stop. The fraction is the whole test. The series
+does not continue until sixty inputs have a presented row.
 
-**One-shot actions** (open, commit, undo, each pick). One sample in the session. A second session
-happens only when:
+**One-shot actions** (commit, undo, each pick). One sample, classified the same way:
+`≤ B − m` is clearly under, `≥ B + m` is clearly over, and the open interval between them is
+`on the line`. The project open is one sample too, reported in seconds, and it has no feel line
+to sit on.
 
-- the sample lies within `max(1 ms, 10% of the threshold)` of a label threshold (8 or 50 ms at M;
-  33 or 200 ms at L), or
-- the series max is over the threshold while the median is under it (a first-move hitch, confirmed
-  once), or
-- a series is `unstable`, or
-- the automation duration exceeds the editor duration (harness-heavy; confirm the editor figure once).
+**Another session.** The next session is spent only when its result could change the label.
 
-A third session happens only when the two sessions disagree on the label. The cap is 3. There is no
-path to 10 runs, and there is no discarded warm-up: the first sample is a real sample.
+- A one-shot sample, or a repeated series that ended `on the line`, is unresolved. One more session
+  can fall clearly on one side.
+- A transient contaminant can. If the ledger names a non-editor long task inside the window (a GC,
+  or a load-average spike) and removing that time would move the preserved max across the threshold
+  or into the margin, repeat the session once. The contaminated sample stays in the report.
 
-Worked against the historical magnitudes, the expected investigation is one session per workload
-and the minimum sample count. M's 1.3 ms eval and 26 ms commit sit far from 8 and 50. L's 18 ms
-move and 94 ms commit sit far from 33 and 200. A second session is the exception, for a result that
-lands on the line.
+Harness time larger than editor time does not open a session. On millisecond-scale editor work that
+inequality is the usual case, and another Playwright run repeats it. The two durations stay in
+their columns. When the handler mark is missing, the only number mixes dispatch into the editor
+span: the row is `unsplit`. A clearly-under unsplit number still supports the good label, because
+the editor portion is smaller than that number. An unsplit number on the line or over it supports
+no feel label, and a second session is not spent on the same missing split.
 
-The label for a repeated series uses the max as well as the median, because the series is the whole
-gesture. Median is the consistency number. Max is what the person hit.
+A third session happens only when the two sessions disagree on the label. The cap is 3. Every
+outlier from every session stays in the report. There is no discarded warm-up and no path to 10 runs.
+
+The historical magnitudes are clear at four samples and one session. M's 1.3 ms eval and 26 ms
+commit sit outside the margins of 8 and 50. L's 18 ms move and 94 ms commit sit outside the margins
+of 33 and 200. A second session is the line-sitting case.
 
 ## Expected time
 
@@ -296,10 +349,13 @@ That leaves the recorded M phase (335 s), L phase (741 s) and setup (13 s): **18
 phases still contain the 600-input drags, undo cycles, orbits and leak edits this strategy drops.
 
 What remains, at the historical per-operation costs: one L open at about 5 s, one M open under a
-second, a commit under 100 ms, and a handful of moves at tens of milliseconds. Even at the cap of
-12 samples, editor work per workload is a few seconds. Browser launch, one navigation and the
-single settle between actions dominate. A conservative allowance is **1–2 minutes per workload, 3–5
-minutes for M and L together**, after the preview is up.
+second, a commit under 100 ms, and a handful of moves at tens of milliseconds. The clear path stops
+at 4 editor samples and 8 frame intervals. The ambiguous path adds at most 4 editor samples and 8
+intervals, still well under a second of input, then at most two further sessions of the same
+shape. Browser launch, one navigation and the single settle between actions dominate. The expected
+investigation, one clear session per workload, is **1–2 minutes per workload, 3–5 minutes for M and
+L together**, after the preview is up. Three sessions on both workloads is the capped ambiguous
+path and lands near 10 minutes, because each session is one open and a short gesture.
 
 | Comparison | Saving |
 | --- | --- |
@@ -317,8 +373,8 @@ both workflows pay it once, and it is not the waste removed here.
 - The suspension is unchanged. This page authorizes no run. Unmeasured rows stay unmeasured.
 - `grid-M` and `grid-L` carry no GLB payload, no texture set and no catalogue placement. Imported-model cost is invisible here. The historical sweep draw counts (about 10k–15k) were measured on other fixtures and will not reappear as the grid-L rest count.
 - One machine, the browser that actually ran, the power source that was plugged in. No battery claim, no reference-laptop-A claim, no Safari or Firefox claim.
-- Four to twelve samples have no p95 or p99 reading. A rare hitch can pass a short series. The 600-frame runs reported a floor rather than a tail, so the capability being given up is one the old plan claimed and, on these rows, did not deliver.
-- The presented column stays an rAF proxy. Exact scanout still requires the existing trace diagnostic, and only as the follow-up above.
+- Four samples, or eight when the four sit on a label line, have no p95 or p99 reading. A hitch rarer than one sample in four can pass a clear series. A hitch that does land in the four is kept and decides the worse label. The 600-frame runs reported a floor rather than a tail, so the capability being given up is one the old plan claimed and, on these rows, did not deliver.
+- The presented column is the rAF proxy, compared with the display period. It accounts for handler-to-presentation delay and for a stable half-rate. It is still not scanout. Exact scanout remains the existing trace diagnostic, used only as the follow-up above.
 - New editor spans exclude harness dispatch, so they are not drop-in replacements for historical wall times.
 - New opens exclude N1's 40 ms RTT. Compare admission spans to the historical N1 opens.
 - Nothing here measures leaks, Save receipts, viewer load, or startup bytes. A slowdown in one of those is a separate short investigation, with the same rule: the smallest series that can change the decision.
