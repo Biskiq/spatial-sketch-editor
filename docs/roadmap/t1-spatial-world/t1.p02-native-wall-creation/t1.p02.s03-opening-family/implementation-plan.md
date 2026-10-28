@@ -69,8 +69,9 @@ the released scope, not a new contract.
 - `apps/editor/src/lib/authoring/adapters/layout/ink.ts` owns the Opening host hit test, the
   host-relative candidate/ghost model and the published palette snapshot/controller additions.
 - `apps/editor/src/lib/authoring/adapters/layout.adapter.ts` owns reading state, host preference,
-  pointer lifecycle, one-in-flight acceptance, selection re-arm and the Opening Card action. It
-  edits no Stage host, Head, route or shell module.
+  pointer lifecycle, one-in-flight acceptance, selection re-arm and the Opening Card action.
+- The Stage facade and spatial route forward unpressed pointer moves for preview; the Stage session
+  invalidates deferred task writers when a new task opens. Head and shell architecture remain unchanged.
 - The Layout Ink palette component renders the reading control,
   Opening defaults, typed-offset placement, live facts and refusal. It is a reader/caller of the
   published surface, never a second writer.

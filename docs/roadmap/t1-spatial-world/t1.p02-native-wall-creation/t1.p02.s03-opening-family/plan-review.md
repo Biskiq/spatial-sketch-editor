@@ -52,6 +52,10 @@ values, not recomputed geometry; the ghost is the planner's own candidate.
 action need no Stage, Head or route edit. The plan adds no dock key, no Index family and no shell
 module change. T2/T3 adapter contracts are untouched.
 
+**Post-build correction:** Hover preview required additive Stage facade and spatial route edits; the
+review fix also updates the Stage session task generation. The pre-build assessment above is retained
+as review history, not a description of the actual diff.
+
 **C4 — identity and consequences are preserved.** The create capture mints the Opening id before
 evaluation; delete correspondence retires the identity; Wall deletion keeps S02's one-step hosted
 retirement. Nothing retargets Camera/Experience references.

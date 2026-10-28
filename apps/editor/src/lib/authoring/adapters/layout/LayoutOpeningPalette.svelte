@@ -120,7 +120,7 @@
 	{#if error !== null}<p class="error" role="alert">{error}</p>{/if}
 
 	<dl class="live">
-		<div><dt>Host</dt><dd>{opening?.hostId ?? 'Aim at a Wall face'}</dd></div>
+		<div><dt>Preview host</dt><dd>{opening?.hostId ?? 'Aim at a Wall face'}</dd></div>
 		<div>
 			<dt>Offset</dt>
 			<dd>{opening?.offset === null || opening?.offset === undefined ? '—' : `${opening.offset.toFixed(3)} m`}</dd>
@@ -136,6 +136,7 @@
 		<p class="refusal" role="alert" data-opening-refusal>{opening.refusal}</p>
 	{/if}
 
+	<p class="quiet">Offset host: {opening?.selectedHostId ?? 'Select a Wall or Opening'}</p>
 	<form
 		class="typed-offset"
 		onsubmit={(event) => {
@@ -154,7 +155,7 @@
 				aria-label="Opening offset from the host Wall start"
 			/>
 		</label>
-		<button type="submit" data-opening-place disabled={opening?.hostId === null || opening?.hostId === undefined}>
+		<button type="submit" data-opening-place disabled={opening?.selectedHostId === null || opening?.selectedHostId === undefined}>
 			Place by offset
 		</button>
 	</form>

@@ -551,6 +551,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		openTask(next) {
 			if (disposed || (next.lens ?? 'world') !== lens) return false;
 			if (task !== null) cancelTaskWriters();
+			else writerGeneration += 1;
 			task = immutableF4Data({ ...next, target: next.target ?? (next.targetRef && current ? layoutSelectionReference(next.targetRef, current) : null) });
 			taskStatus = 'active';
 			return true;

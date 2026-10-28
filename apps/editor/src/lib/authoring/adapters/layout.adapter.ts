@@ -683,15 +683,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * An install disposes the binding synchronously; its replacement is built on
 			 * the next evaluation, so opening the task in the acceptance continuation
 			 * would find no contributed task. One frame later the rebuilt task exists.
-			 * The epoch is invalidated by any later task close/dispose: a creator who
-			 * selects another tool or closes Ink before the frame must not see it reopen.
+			 * The session writer generation also guards choices made on the replacement
+			 * binding, including a task opened and closed before the frame runs.
 			 */
 			function rearmInkAfterInstall(): void {
 				if (typeof window === 'undefined') return;
 				const epoch = ++rearmEpoch;
+				const generation = services.stage.session.writerGeneration();
 				let attempts = 0;
 				const open = () => {
-					if (epoch !== rearmEpoch) return;
+					if (epoch !== rearmEpoch || services.stage.session.writerGeneration() !== generation ||
+						services.stage.session.task() !== null) return;
 					const result = services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
 					if (result.kind === 'refused' && result.code === 'unknown-task' && attempts < 3) {
 						attempts += 1;
@@ -773,12 +775,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						publishInk();
 						return;
 					}
+					const shouldRearm = services.stage.session.task() === null;
 					const openingId = preview.openingId;
 					clearOpeningState();
 					selectLayoutSubject('opening', openingId);
 					// The install replaced the binding; re-arm Ink on the next evaluation
 					// against the installed source, on the remembered Opening reading.
-					rearmInkAfterInstall();
+					if (shouldRearm) rearmInkAfterInstall();
 					services.stage.notifySurfaceChange();
 				} finally {
 					openingCommitInFlight = false;
@@ -937,9 +940,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const pending =
 					inkHover === null ? null : pendingLegFacts(draft, inkHover.point);
 				const selection = services.stage.selection();
-				const hostId =
-					openingCandidate?.wallId ??
-					(selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId));
+				const selectedHostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
 					reading: inkReading,
 					opening:
@@ -947,6 +949,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							? null
 							: {
 									hostId,
+									selectedHostId,
 									offset: openingCandidate?.offset ?? null,
 									width: openingOptions.width,
 									height: openingOptions.height,

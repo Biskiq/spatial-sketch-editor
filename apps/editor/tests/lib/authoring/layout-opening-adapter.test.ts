@@ -15,7 +15,7 @@
  *    restores/removes the same identity;
  * 5. a reading switch cannot hide a live Wall chain.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
 	planWallChain,
@@ -314,6 +314,60 @@ describe('T1.P02.S03 — Opening placement', () => {
 			sillHeight: 1
 		});
 		expect(created.offset).toBeCloseTo(1.5, 6);
+	});
+
+	it('shows pointer and selected offset hosts separately and writes to the selected host', async () => {
+		const mounted = await mount();
+		selectSubject(mounted.facade, 'wall', mounted.wallId);
+		const controller = armInk(mounted.facade);
+		controller.setReading('opening');
+		const at = stageCss(mounted.facade, [3, 4]);
+		mounted.facade.pointerIntent({ phase: 'move', css: at, evaluationId: mounted.facade.evaluationId()! });
+		const displayed = inkSurface()!.snapshot().opening!;
+		expect(displayed.hostId).not.toBe(mounted.wallId);
+		expect(displayed.hostId).not.toBeNull();
+		expect(displayed.selectedHostId).toBe(mounted.wallId);
+		controller.placeOpening('1.5');
+		await eventually(() => acceptedLayout(mounted.facade).openings.length === 1);
+		expect(acceptedLayout(mounted.facade).openings[0]).toMatchObject({ wallId: displayed.selectedHostId, offset: 1.5 });
+	});
+
+	it.each(['leave open', 'close again'])('does not re-arm Ink after a newer tool choice (%s)', async (choice) => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal('window', { requestAnimationFrame: (callback: FrameRequestCallback) => { frames.push(callback); return frames.length; } });
+		try {
+			const mounted = await mount();
+			selectSubject(mounted.facade, 'wall', mounted.wallId);
+			const controller = armInk(mounted.facade);
+			controller.setReading('opening');
+			controller.placeOpening('1.5');
+			await eventually(() => frames.length > 0);
+			mounted.facade.camera.evaluate(RECT, 2);
+			expect(mounted.facade.openContributedTask('layout-place-plinth').kind).toBe('opened');
+			if (choice === 'close again') mounted.facade.closeTask();
+			for (const frame of frames.splice(0)) frame(0);
+			expect(mounted.session.task()?.kind ?? null).toBe(choice === 'leave open' ? 'layout-plinth-place' : null);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it('re-arms Ink after placement when no newer task is chosen', async () => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal('window', { requestAnimationFrame: (callback: FrameRequestCallback) => { frames.push(callback); return frames.length; } });
+		try {
+			const mounted = await mount();
+			selectSubject(mounted.facade, 'wall', mounted.wallId);
+			const controller = armInk(mounted.facade);
+			controller.setReading('opening');
+			controller.placeOpening('1.5');
+			await eventually(() => frames.length > 0);
+			mounted.facade.camera.evaluate(RECT, 2);
+			for (const frame of frames.splice(0)) frame(0);
+			expect(inkSurface()?.snapshot().reading).toBe('opening');
+		} finally {
+			vi.unstubAllGlobals();
+		}
 	});
 
 	it('deletes one Opening from its Card action, then Undo/Redo keeps the identity', async () => {

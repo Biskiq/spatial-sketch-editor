@@ -193,6 +193,8 @@ export type InkOpeningOptions = {
 /** The host-relative candidate and its planner answer, as the palette reads it. */
 export type InkOpeningSnapshot = {
 	readonly hostId: string | null;
+	/** Selected Wall (or selected Opening’s host), used for typed placement. */
+	readonly selectedHostId: string | null;
 	readonly offset: number | null;
 	readonly width: number;
 	readonly height: number;

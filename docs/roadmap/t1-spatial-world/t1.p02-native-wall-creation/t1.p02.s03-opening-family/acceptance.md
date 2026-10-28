@@ -65,20 +65,19 @@ Opening reading; Escape, task close, replacement or install leaves no hidden pro
   completion for Opening create and delete at S and M were **not** measured on the designated M2
   under the formal peak-first method. No row is recorded as a pass; the family is owed to S04.
 
-## Delivery budget — hard-row miss, owner decision
+## Delivery budget — owner-accepted exception
 
 The Stage route first-load JS measured **426.6 KiB br** (1,778.0 KiB raw; 506.6 KiB gzip) against
 the owner-amended **≤425 KiB br hard row**: **1.6 KiB over**. The trusted base is `422.3 KiB br`, so
 this slice adds 4.3 KiB br — inside the ≤25 KiB per-slice growth comparison, but the absolute hard
-row is missed. This record does **not** claim the budget is met and does not waive the row. The
-overage is a genuine owner-level acceptance decision: either authorize the known miss with its
-reported reason, or return the branch for a reduction pass. The rest of the slice's evidence is
-otherwise complete.
+row is missed. The owner accepts this approximately 1.6 KiB overage for PR #209; this is an
+exception for this slice, not a change to the budget or a claim that the hard row is met. The
+review-fix working tree remeasured 426.5 KiB br after a production build on 2026-10-27.
 
 ## Residuals and ownership
 
-- **Bundle hard miss → owner acceptance ruling.** 426.6 KiB br is recorded above. The per-slice
-  growth comparison does not substitute for the hard row.
+- **Bundle hard miss → owner-accepted exception.** 426.6 KiB br is recorded above. The per-slice
+  growth comparison does not substitute for the hard row; the owner accepts this slice’s overage.
 - **Formal Opening performance family → S04.** F4/F8 S and M rows remain unrun and must never be
   reported as passes.
 - **S04 remains held.** It needs its own release and carries S01, S02 and S06 deferred rows plus the
@@ -108,7 +107,7 @@ branch   t1/p02-s03-opening-family
 review   PR #209
 head     985cd214 (implementation evidence revision)
 base     98449a44 (origin/main; PR #199 merge a674eedb is an ancestor)
-bundle   426.6 KiB br Stage first-load JS — known miss above; owner ruling required
+bundle   426.6 KiB br Stage first-load JS — owner-accepted exception above
 merge    not performed
 ```
 

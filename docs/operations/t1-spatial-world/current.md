@@ -34,29 +34,28 @@ ACC:   T1.P02.S03 Opening family — **implementation evidence recorded at `985c
        passed 2026-10-26 (15/15 decision rows, 27 verdicts, full E5, 2,632.7 s on the designated M2,
        Chrome 156.0.8078.48, AC power); battery qualification, grid-XL timing and the sweep latency
        rows are assigned to S04.
-NEXT:  Owner review of the S03 implementation PR, its acceptance ruling on the 426.6 KiB br Stage
-       route, and the P1 merge that preserves the `985cd214` record. Formal F4/F8 Opening create/delete
+NEXT:  Owner review of the S03 implementation PR and the P1 merge that preserves the `985cd214` record. Formal F4/F8 Opening create/delete
        S/M rows remain unrun and are owed to S04, never recorded as passes. S04 is the final gate and
        carries: S02's deferred formal performance family, the S02 456.0 KiB br miss and this slice's
        426.6 KiB br miss, S01's F2 S/M timings, S06's battery qualification and grid-XL/sweep rows,
        and integrated S03 proof once it ships. No other T1 slice is released: S04 needs its own
        release, and the [release list](../../roadmap/now.md) is the only permission list.
-BLOCKERS: None technical. S03 waits on the batch PR #199 merge and its own plan review; S04 remains
-       held pending its own release, and S04 cannot accept while the deferred performance family or
+BLOCKERS: None technical for S03 review. S04 remains held pending its own release, and S04 cannot
+       accept while the deferred performance family or
        the Stage hard-budget miss is unaddressed. T3's S06 ownership acknowledgement remains a
        records-only item owned by T3, not a gate on T1 work.
 CLAIMS: S03 shared-file claim (2026-10-27): writer `t1/p02-s03-opening-family` owns
        `apps/editor/src/lib/authoring/adapters/layout/**` (the new Opening planners, Ink surface,
        palette and adapter) and its Layout tests, on patch base `98449a44`; review was the independent
        Codex CLI pass recorded in the acceptance evidence. The build also needed a bounded additive
-       hover dispatch in `stage-facade.ts`, its route caller, and the new browser spec; those edits are
+       hover dispatch in `stage-facade.ts`, its route caller, a task-generation guard in `stage-session.ts`, and the new browser spec; those edits are
        recorded in the PR rather than hidden behind the original claim. PR #201 released its
        `apps/editor/perf/**` and shared Stage/shell claim on acceptance; the T1 S02 writer owned those
        paths, and S02's feature branch is retired after its P1 merge.
 CARRY: - S03 formal performance family (F4/F8 Opening create/delete at S/M) → S04, unrun and never
          a pass.
        - S03 Stage bundle hard miss: 426.6 KiB br against ≤425 KiB, recorded as a known condition
-         awaiting the owner's acceptance ruling; the per-slice +4.3 KiB growth does not waive the row.
+         accepted by the owner as an exception for this slice; the per-slice +4.3 KiB growth does not meet the row.
        - S02 formal performance family (F3/F4/F8 at S/M, per-move evaluation, F2 open, F13 leak
          cycles, Stage first-load delta) → S04, unrun and never a pass.
        - S02 Stage bundle hard miss: 456.0 KiB br against ≤400 KiB, recorded as a known condition;
