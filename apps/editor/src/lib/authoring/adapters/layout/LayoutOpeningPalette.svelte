@@ -8,7 +8,7 @@
 	 * come from the canonical planner, and every command goes through the one
 	 * controller. It never owns document state.
 	 */
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { WALL_OPENING_DEFAULTS } from '@portfolio/layout-core';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { parseMeasureInput } from './precision';
@@ -83,6 +83,13 @@
 		if (!commitOptions()) return;
 		inkSurface()?.controller.placeOpening(offsetText);
 	}
+
+	// A remount can follow an invalid draft being discarded; the displayed
+	// (remembered) values are valid, so the adapter must agree before a pointer
+	// press is refused against a stale invalid flag.
+	onMount(() => {
+		commitOptions();
+	});
 </script>
 
 <div class="opening-palette" data-layout-opening-palette>

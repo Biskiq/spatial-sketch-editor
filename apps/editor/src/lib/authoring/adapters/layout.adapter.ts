@@ -562,12 +562,56 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
 			}
 
+			/**
+			 * The visible Wall face under the pointer, not just its datum line.
+			 * A 3D face is a vertical quad; intersecting its span plane and keeping the
+			 * hit only inside the authored height makes a click anywhere on the face
+			 * name the same host and signed offset as a click at the base.
+			 */
+			function openingFaceAt(
+				adapterContext: StageAdapterContext,
+				css: readonly [number, number],
+				walls: readonly ProjectedWall[]
+			): OpeningCandidate | null {
+				const ray = adapterContext.ray(css);
+				if (ray === null) return null;
+				const datum = adapterContext.snapshot.domain.datumMeters;
+				let best: { readonly candidate: OpeningCandidate; readonly distance: number } | null = null;
+				for (const wall of walls) {
+					const data = document.walls.find((candidate) => candidate.id === wall.id);
+					if (data === undefined) continue;
+					const dx = wall.end[0] - wall.start[0];
+					const dz = wall.end[1] - wall.start[1];
+					const length = Math.hypot(dx, dz);
+					if (!(length > 0)) continue;
+					const hit = adapterContext.intersect(ray, {
+						originMeters: [wall.start[0], datum, wall.start[1]],
+						normal: [-dz / length, 0, dx / length],
+						yawRadians: Math.atan2(dx, dz),
+						datumMeters: datum,
+						supportedLocalExtent: null
+					});
+					if (hit.kind !== 'intersected') continue;
+					const offset =
+						((hit.worldPoint[0] - wall.start[0]) * dx +
+							(hit.worldPoint[2] - wall.start[1]) * dz) /
+						length;
+					const y = hit.worldPoint[1];
+					if (offset < 0 || offset > length || y < datum || y > datum + data.height) continue;
+					if (best !== null && hit.distanceMeters >= best.distance) continue;
+					best = { candidate: { wallId: wall.id, offset }, distance: hit.distanceMeters };
+				}
+				return best?.candidate ?? null;
+			}
+
 			/** The candidate one Stage-local pointer position names, or `null`. */
 			function openingCandidateAt(
 				adapterContext: StageAdapterContext,
 				css: readonly [number, number]
 			): OpeningCandidate | null {
 				const projected = projectedScene(adapterContext);
+				const face = openingFaceAt(adapterContext, css, projected.walls);
+				if (face !== null) return face;
 				const primary = adapterContext.selectionState().primary;
 				const hit = classifyOpeningHost({
 					css,
@@ -796,6 +840,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					setOpeningCandidate(release);
 					void commitOpening(release);
 				}
+				services.stage.notifySurfaceChange();
+				publishInk();
+				return true;
+			}
+
+			/** Preview the candidate under an unpressed hover; never claims the move. */
+			function openingHover(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				if (openTaskKind !== LAYOUT_INK_TASK || inkReading !== 'opening' || intent.phase !== 'move') {
+					return false;
+				}
+				const candidate = openingCandidateAt(adapterContext, intent.css);
+				if (candidate?.wallId === openingCandidate?.wallId && candidate?.offset === openingCandidate?.offset) {
+					return true;
+				}
+				setOpeningCandidate(candidate);
 				services.stage.notifySurfaceChange();
 				publishInk();
 				return true;
@@ -1508,6 +1570,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * is not on a handle is refused and falls through to navigation.
 				 */
 				pressWhenNoTask: true,
+				hoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					return openingHover(intent, adapterContext);
+				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
 					if (openTaskKind === LAYOUT_INK_TASK && inkReading === 'opening') {
 						return openingPointer(intent, adapterContext);

@@ -379,6 +379,12 @@ export type StageAdapterBinding = {
 	 */
 	readonly pointerIntent?: (intent: StagePointerIntent, context: StageAdapterContext) => boolean;
 	/**
+	 * An unpressed move while this adapter's task is open. It is a preview only:
+	 * the move is never claimed, so Stage navigation and the next press stay with
+	 * the host. Adapters that do not declare it never see unpressed moves.
+	 */
+	readonly hoverIntent?: (intent: StagePointerIntent, context: StageAdapterContext) => boolean;
+	/**
 	 * Answer a Stage **command key** while this binding's task is open.
 	 *
 	 * The mirror of `pointerIntent` for the keyboard: the shell owns the map and
@@ -2053,7 +2059,15 @@ export function createStageFacade(input: {
 				return { claimed: false, adapterId: null };
 			}
 			const owner = pointerOwner;
-			if (owner === null) return { claimed: false, adapterId: null };
+			if (owner === null) {
+				// Hover is preview-only: the open task may update a ghost, but the move is
+				// never claimed, so navigation and the next press remain the host's.
+				if (intent.phase === 'move' && contributedTaskOwner !== null) {
+					const entry = adapters.get(contributedTaskOwner.adapterId);
+					try { entry?.contributions.hoverIntent?.(intent, handle.context); } catch { /* Subscriber isolation. */ }
+				}
+				return { claimed: false, adapterId: null };
+			}
 			const entry = adapters.get(owner);
 			if (entry === undefined) {
 				pointerOwner = null;
