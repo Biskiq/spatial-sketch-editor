@@ -188,6 +188,7 @@ historical anchor:               588cc70f (acceptance) · 6d87e25b (plan) · tag
 new live → archive prose links:  0
 manual-owed verification rows:   0 (none recorded as manual)
 remaining deferred items:        2   T1 track README deferred-retirement rows (Room-level mesh path,
-                                     Camera room-ownership branches); S01 F2 S/M timings → S04
+                                     Camera room-ownership branches); S01 F2 S/M timings are
+                                     unmeasured historical rows and no longer route to S04
 permanent stubs added:           2   (the owner-ratified cost: one per closed prose artifact)
 ```
