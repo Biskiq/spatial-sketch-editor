@@ -14,7 +14,9 @@ Independent focused verification passed 92/92 and the owner confirmed review com
 unresolved blockers. Browser evidence is at `985cd214`, not the reviewed head: S03 15/15 and S02
 preservation 28/28. The owner approved proceeding without a current-head rerun. Stage first-load JS
 was 426.7 KiB br against 425 KiB; the owner accepted this exception. Formal F4/F8 Opening create and
-delete S/M measurements remain unrun and assigned to S04; none is a pass.
+delete S/M measurements remain **unmeasured**, not passes. The 2026-10-28
+[performance-mandate suspension](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)
+removed their S04 assignment; no benchmark is authorized.
 
 [Browser evidence](./evidence/2026-10-27/985cd214/t1-s03-opening-evidence.json) ·
 [S02 preservation](./evidence/2026-10-27/985cd214/preservation/t1-s02-browser-evidence.json) ·
@@ -41,8 +43,9 @@ manifests:                    1
 transient artifacts removed:  0
 historical anchor:            cbdb4785612229c34dd02595882982beaad86bcb · tag closed/T1.P02.S03 (local only)
 new live → archive prose:     0
-manual-owed verification:     F4/F8 Opening create/delete at S/M → S04
-remaining deferred items:     2 (formal performance family, Stage bundle miss)
+manual-owed verification:     0 (F4/F8 Opening rows are unmeasured historical evidence; the
+                              2026-10-28 suspension removed the S04 assignment)
+remaining deferred items:     1 (Stage bundle miss recorded; performance no longer owed)
 permanent stubs added:        3
 ```
 

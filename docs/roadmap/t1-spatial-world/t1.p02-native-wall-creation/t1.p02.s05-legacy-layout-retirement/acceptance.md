@@ -137,7 +137,8 @@ isWorldPointInsideRoomXZ        editor-camera-path.ts keeps the function as cons
 ## Verification still owed
 
 ```text
-T1.P02.S04   integrated exhaustive proof, and S01's still-unrun F2 S/M open timings on the designated M2
+T1.P02.S04   integrated exhaustive correctness/functional proof; no performance benchmark is owed
+             (2026-10-28 suspension). S01's F2 S/M open timings stay unmeasured historical evidence.
 S02          owner authorization, plan review, the T3 review of the shared Head/F4 shell allocation,
              T2/T3 contribution-compatibility review, and its own acceptance and merge
 ```

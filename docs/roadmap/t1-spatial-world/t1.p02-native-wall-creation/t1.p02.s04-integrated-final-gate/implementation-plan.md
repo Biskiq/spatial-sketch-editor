@@ -1,7 +1,7 @@
 # T1.P02.S04 — Integrated final gate: implementation plan
 
-**Slice:** T1.P02.S04 · **Status:** proposed — **not authorized**; it starts only from its own owner
-authorization after S01, S05, S06, S02 and S03 are accepted · **Phase:** [T1.P02](../README.md) ·
+**Slice:** T1.P02.S04 · **Status:** authorized 2026-10-28 and implemented; acceptance evidence is
+recorded in the [gate artifact](./acceptance.md) and independent review remains required · **Phase:** [T1.P02](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:**
 [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -13,8 +13,9 @@ VERIFICATION: exhaustive
 
 This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01, S05, S06, S02
 and S03 send their deferred exhaustive proof to; its acceptance record is the phase's declared final-gate
-artifact. It is registered (batch E, E1) and unauthorized: nothing here is implemented, accepted,
-ready or evidenced.
+artifact. It is registered (batch E, E1) and owner-authorized 2026-10-28. The implementation and
+correctness/browser evidence are recorded; the slice is not accepted until independent review and the
+P1 merge complete.
 
 ## Prerequisite
 
@@ -39,8 +40,8 @@ Record independent acceptance on the integrated tree, from an empty project and 
   diagnostics;
 - S05 legacy surface/export absence, defect-equivalent fixture coverage and preserved
   registry/Scene-frame behavior on the integrated tree;
-- S06's deduplication differentials and scale oracles still green, and its accepted S/M/L
-  measurements rechecked on the integrated tree with its peak-first method;
+- S06's deduplication differentials and scale oracles still green; its historical measurements are
+  not re-run under the 2026-10-28 performance-mandate suspension;
 - the bounded dock/Ink, Card fact migration, lower-column arbitration and keyboard path as built and browser-revised, at narrow and
   short shells and with reduced motion.
 
@@ -52,24 +53,31 @@ checks, and `check:api` plus a DB-backed `test:api` with **zero skips** — toge
 journeys recorded with their revision, viewport and reduced-motion state. Use
 [tests/README](../../../../../apps/editor/tests/README.md) for lane and command policy and
 [browser hygiene](../../../../../.agents/skills/browser-hygiene/SKILL.md) when launching a browser.
+No performance benchmark is required: the owner suspended that mandate on 2026-10-28, and an
+unmeasured performance row stays unmeasured rather than passing.
 
 Passing makes T1.P02 **closable**; only an explicit owner phase-close request closes it, and no phase,
 track or cycle closure is fabricated here.
 
-## Performance recheck
+## Performance recheck — suspended 2026-10-28
 
-Recheck the integrated F2 open, F3 drawing, F4 commit, F8 Undo/Redo and F13 leak flows and the Stage
-first-load delta against the [performance contract](../../../../reference/components/performance.md),
-on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment). Each earlier slice
-supplies its own evidence before its acceptance; S04 verifies integration and cannot defer or erase an
-earlier hard-budget miss. One owner-ruled exception (2026-10-22): `T1.P02.S01`'s F2 open timings at S
-and M are accepted here. Since the 2026-10-24 replanning, S06's owner-run benches record F2 S/M first;
-S04 cites those numbers and rechecks them on the integrated tree with S06's method.
+The owner suspended the mandatory performance-benchmarking strategy indefinitely
+([decision](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)). S04 runs
+**no** formal F2/F3/F4/F8/F13 matrix, no battery-mode certification and no full `npm run perf`
+workflow; none is an acceptance prerequisite. Performance investigations are owner-initiated only,
+when an observed slowdown is named.
+
+The deferred rows keep their historical status and are **unmeasured**, not passes: S01's F2 S/M
+timings; S02's formal F3/F4/F8/F2/F13 family, per-move evaluation and Stage first-load delta; S03's
+F4/F8 Opening create/delete rows; and S06's battery qualification, grid-XL and sweep rows. Their
+recorded hard misses (S02's 456.0 KiB br Stage result and S03's 426.7 KiB br exception) remain
+recorded and are neither repaired nor erased. Existing measurements, harnesses and raw evidence
+stay available for a future owner-commissioned investigation.
 
 ## Readiness declaration
 
-This slice is `proposed` and holds no implementation permission. It consumes the same accepted gates
-as its siblings and no new or retired scope; it cannot supply its own prerequisite by editing a
-register, and it claims no gate state, capability, evidence or commit. A passed final gate makes the
-phase closable, not closed. The architecture cycle is unchanged by this slice: S02's closeout records
-M4 as re-armed, and the owner's verdicts stay the owner's.
+This slice is owner-authorized and implemented; it claims no gate state, capability or commit beyond
+its acceptance record, and no performance row. It consumes the same accepted gates as its siblings
+and no new or retired scope; it cannot supply its own prerequisite by editing a register. A passed
+final gate makes the phase closable, not closed. The architecture cycle is unchanged by this slice:
+S02's closeout records M4 as re-armed, and the owner's verdicts stay the owner's.

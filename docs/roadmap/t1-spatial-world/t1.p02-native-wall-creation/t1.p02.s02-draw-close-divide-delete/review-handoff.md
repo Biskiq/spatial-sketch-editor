@@ -27,10 +27,11 @@ ROLE:      review chronology and per-round detail are Git history. The acceptanc
 
 ## Owed at closeout
 
-The owner-run formal performance family was deferred on 2026-10-27 and is assigned to S04; the
-acceptance record carries the scoped owner-override, the known Stage bundle miss and the residual.
-The browser journey and automated gate are recorded there. No acceptance, phase close or merge claim
-lives in this stub.
+The owner-run formal performance family was deferred on 2026-10-27; the
+[2026-10-28 suspension](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)
+removed its S04 assignment and leaves it unmeasured historical evidence. The acceptance record
+carries the scoped owner-override, the known Stage bundle miss and the residual. The browser journey
+and automated gate are recorded there. No acceptance, phase close or merge claim lives in this stub.
 
 ## Recovery
 

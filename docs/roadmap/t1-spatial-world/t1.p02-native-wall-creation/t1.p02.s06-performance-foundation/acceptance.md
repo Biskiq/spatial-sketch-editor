@@ -17,6 +17,12 @@ NOT:       battery certification · production-scale or rare-tail statistics · 
 [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register) ·
 **Contract:** [performance budgets and the milestone method](../../../../reference/components/performance.md)
 
+**Policy amendment — 2026-10-28.** The owner suspended the mandatory performance-benchmarking
+strategy indefinitely ([decision](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)).
+The S06 measurements remain historical evidence. Battery qualification is **not** routed to S04 or
+any other gate, grid-XL/sweep rows are not owed, and no benchmark is authorized. Those rows remain
+unmeasured/uncertified, never passes.
+
 `T1.P02.S06` was an owner-authorized, released child of T1.P02
 ([record](../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md)). Its
 measurement method, optimizations and evidence are landed; this slice provides no gate for another
@@ -228,8 +234,9 @@ SCOPE       The 2026-10-26 milestone gate on the designated MacBook Air M2 (16 G
 DEVIATION   The contract's designated-machine condition is "on battery with Low Power Mode off";
             the milestone ran on AC. This disposition qualifies the result as AC-only and does
             NOT certify the battery condition.
-DEFERRED    Battery qualification of these rows, routed to S04's integrated gate on the same
-            machine; no new S06 obligation and no budget change.
+DEFERRED    Battery qualification of these rows was routed to S04's integrated gate on the same
+            machine; the 2026-10-28 policy suspension ends that route. It remains unmeasured,
+            not a pass, and no new S06 obligation or budget change exists.
 NOT CLAIMED battery certification · grid-XL timing · production-scale or rare-tail statistics ·
             L cold-open Target · draw-call Target · ultimate geometry/rendering ceiling · T3
             ownership sign-off
@@ -249,14 +256,15 @@ or changes a budget.
 | FO-4 | Give the admitted-history cache a byte budget or a measured retention bound | T3 (owner of the admitted-source lifetime) | Before history depth is raised or a memory claim is made | Measured retention at the shipped bound |
 | FO-5 | Carry continuous pointer-pan CPU and pick-after-commit evidence into future performance slices | Owner of the next performance slice | Any slice claiming interaction-locality gains | The two rows named in the contract's post-milestone limit; report-only until an owner sets a budget |
 
-## Verification still owed
+## Historical verification not run
 
 ```text
-T1.P02.S04   integrated exhaustive proof; battery qualification of the S06 rows; grid-XL timing and
-             functional clause; the sweep latency rows; S01's still-unrun F2 S/M open timings
+SUSPENDED    2026-10-28: no performance row below is an acceptance prerequisite or authorized run
+UNMEASURED   battery qualification of the S06 rows; grid-XL timing and functional clause; the sweep
+             latency rows; S01's F2 S/M open timings — all remain unmeasured, not passes
 Targets      L cold open (2.0 s Target, 5.06 s measured), L draw submission (2,500 Target, 10,526-
-             15,443 measured), F3 L long-task Target (not demonstrated) — all owner-visible misses,
-             none a hard-gate breach
+             15,443 measured), F3 L long-task Target (not demonstrated) — historical owner-visible
+             misses, none a current gate
 Follow-ons   FO-1 … FO-5 above, none owed by S06
 ```
 
@@ -314,7 +322,8 @@ evidence stubs / manifests:      0   evidence/attribution-2026-10-27 and evidenc
 transient artifacts removed:     0
 historical anchor:               e676a363 · tag closed/T1.P02.S06 (local only — not pushed)
 new live → archive prose links:  0
-manual-owed verification rows:   1   battery qualification (owner disposition above; routed to S04)
+manual-owed verification rows:   0   battery qualification remains unmeasured historical evidence;
+                                     the 2026-10-28 suspension removed its S04 route
 remaining deferred items:        5   FO-1 … FO-5, owned above
 permanent stubs added:           5   (the owner-ratified cost: one per closed prose artifact)
 ```

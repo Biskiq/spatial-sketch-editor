@@ -144,9 +144,10 @@ routes shipped, held and blocked scopes. No lane may implement a sibling's held 
 satisfy its own acceptance.
 
 **Shared files and S06's released claim.** No lane was released at S06's merge; S02 and `T2.P02.S03`
-were released separately on 2026-10-27 (above), and both shipped: S02 on PR #201 with its formal
-performance family deferred to S04, and S03 with the Stage budget amended and its formal rows
-deferred to the named T2 follow-ups. The table below
+were released separately on 2026-10-27 (above), and both shipped: S02 on PR #201 and S03 on PR #209.
+Their unmeasured performance rows became historical evidence under the [2026-10-28
+suspension](../reference/decisions/performance-mandate-suspension-2026-10-28.md); they are not an
+acceptance prerequisite for S04 or T2. The table below
 records the claims S06 held; each was released with `6af62eb4`, so a future lane edits these surfaces
 through its own recorded claim and the owner review the [decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 requires — it does not inherit S06's claim by citing it:
@@ -174,7 +175,7 @@ The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/
 
 | Surface | Writable owner | Consumer/review boundary |
 | --- | --- | --- |
-| Layout compiler, kernels, representation and Stage admission | T1 (S02 shipped 2026-10-27 on PR #201; formal performance family deferred to S04) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
+| Layout compiler, kernels, representation and Stage admission | T1 (S02 shipped 2026-10-27 on PR #201; its unmeasured performance rows are historical evidence) | T2/T3 review any bounded patch that changes their callers; one compiler, equal-output proof, no format change |
 | Stage host, session, input, contributions and shared shell | T1 | T2/T3 own bounded reviewed patches for their registered consumers; schedule shared-file edits with T1 and retain one host/selection/Camera authority |
 | Scene transform/resource admission, GLB import and relevant API/resource routes | T2 (S03 integrated final gate released; no new product feature) | S06's import seeding is merged history; S03 verifies existing import/placement on the integrated tree, with T3 review for any shared F4/Save changes and no foreign-domain rewrite or publication closure |
 | Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime; S06 measures these flows and reports T3-owned misses |
@@ -199,16 +200,16 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 
 ## Residuals and planning follow-ons
 
-- **Performance:** keep each acceptance's explicit unmeasured rows. S06 shipped with its method,
-  measured rows and omissions recorded in its [acceptance stub](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md):
-  S02's deduplication and experiment, T3.P02.S02's deferred Scope A rows and T3.P03.S02's L/XL and
-  M/L drag gap were measured there, while **battery qualification, grid-XL timing, the sweep latency
-  rows and S01's F2 S/M open timings are assigned to T1.P02.S04**. S06's own follow-ons (FO-1
-  pick-index maintenance, FO-2 whole-project compile/materialisation, FO-3 small-project overhead,
-  FO-4 history-cache memory bound, FO-5 continuous-pan and pick-after-commit rows) are owned there
-  and create no obligation in this coordination. T2.P02.S02's owner-run rows remain with
-  T2.P02.S03 on S06's method. Unclaimed flow traces, hard rows and calibration remain consumer
-  evidence, not implied by a correctness pass. No new waiver is granted by this coordination.
+- **Performance — mandate suspended 2026-10-28.** The owner ended the mandatory benchmarking
+  strategy ([decision](../reference/decisions/performance-mandate-suspension-2026-10-28.md)):
+  performance investigations are owner-initiated only after an observed slowdown. Keep each
+  acceptance's explicit unmeasured rows; none is an acceptance prerequisite. S06's measured rows and
+  omissions remain historical evidence in its [acceptance
+  stub](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md).
+  Battery qualification, grid-XL timing, the sweep latency rows and S01's F2 S/M open timings stay
+  **unmeasured, not passes**, and are no longer assigned to S04. S06's own follow-ons (FO-1 … FO-5)
+  remain historical and create no obligation here. No benchmark is authorized by this coordination;
+  correctness, architecture and functional evidence are unaffected.
 - **T5:** [Expressive Geometry](./t5-expressive-geometry/README.md) is `approved` with one
   registered phase, [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md); E0 is
   withdrawn and the [umbrella plan](./t5-expressive-geometry/umbrella-plan.md) owns direction.

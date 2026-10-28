@@ -44,8 +44,10 @@ the status in the architecture-cycle mechanism register.
 
 The browser journey and automated gate are recorded in the
 [acceptance record](./acceptance.md). The owner-run formal performance family was deferred on
-2026-10-27 and is assigned to S04; the Stage route's 456.0 KiB br against the ≤400 KiB hard budget is
-recorded there as an explicit known miss. No performance row is a pass.
+2026-10-27; the [2026-10-28 suspension](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)
+removes its S04 assignment. It remains unmeasured historical evidence. The Stage route's 456.0 KiB br
+against the ≤400 KiB hard budget is recorded there as an explicit known miss. No performance row is a
+pass.
 
 ## Boundaries
 

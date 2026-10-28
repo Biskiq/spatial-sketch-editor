@@ -1,11 +1,28 @@
 # Browser performance and delivery
 
-**Status: owner-ratified destination, 2026-10-22, PR #173.**
-[Decision record](../decisions/product-convergence-ratification-2026-10-22.md).
+**Status: owner-ratified destination, 2026-10-22, PR #173; mandatory acceptance strategy
+suspended 2026-10-28.** [Ratification decision](../decisions/product-convergence-ratification-2026-10-22.md) ·
+[suspension decision](../decisions/performance-mandate-suspension-2026-10-28.md).
 This is the single owner of performance profiles, workloads, metric definitions and
-budget tables. No harness is installed and no browser/GPU/reference-laptop result is claimed.
-The [review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md) separates
+budget tables. The harness exists; this document still claims no new browser/GPU/reference-laptop
+result. The [review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md) separates
 ratification, permanent workflow authorization and production hold release.
+
+## Owner policy amendment — 2026-10-28
+
+**The mandatory performance-benchmarking strategy is suspended indefinitely.** No formal
+F2/F3/F4/F8/F13 matrix, battery-mode certification or full `npm run perf` workflow may be run as an
+acceptance prerequisite on an ordinary slice, phase or final gate. Performance investigations are
+**owner-initiated only**, triggered by an observed slowdown. Existing measurements remain
+historical evidence; they are not mandatory acceptance prerequisites, and an unmeasured row stays
+**unmeasured**, never a pass. The harnesses, workloads and this document's method definitions stay
+in the tree for a future owner-initiated investigation. No benchmark is authorized by this
+amendment.
+
+Where the sections below say a row must pass before acceptance, that obligation is suspended by
+this amendment; the text is retained as the historical method and budget definition. Correctness,
+architecture, build, package, DB-backed API and functional browser verification are unchanged.
+Provenance: [suspension decision](../decisions/performance-mandate-suspension-2026-10-28.md).
 
 Editor and viewer must remain useful on a regular laptop. Resolve demonstrated material costs
 inside their consuming slices while preserving expressive architecture, correctness and one
@@ -76,6 +93,9 @@ per request, cache disabled for cold):
    CPU rate, power state and display Hz.
 
 ### S06 milestone decision method (owner amendment, 2026-10-26)
+
+**Retained as method history, not a current acceptance gate.** The 2026-10-28 suspension removes
+the mandatory strategy this section served; no new milestone pass is authorized.
 
 T1.P02.S06 may discharge its hard rows with a **decision-driven milestone gate** instead of the
 formal 10-run method above. This amendment is scoped to the S06 milestone: the formal sample plan,
@@ -210,12 +230,14 @@ which a pointer event is handled within 50 ms; a lone rAF callback is not proof 
 
 ## Budgets
 
-**Hard** = must pass before the consuming slice's acceptance on the designated reference machine (Chrome), else the slice
-resolves it (see [acceptance](#acceptance-and-workflow)). **Target** = reported, and a miss
-needs a written disposition in the acceptance record. Continuous latency ends at the matching
-preview's presentation; operation completion ends at the accepted result's presentation, as
-defined above. Discrete Event Timing/INP is reported separately. Frame budgets use rAF-to-rAF
-intervals on a 60 Hz display and do not substitute for matching-result presentation latency.
+**Hard** = the historical definition of a row that had to pass before the consuming slice's
+acceptance on the designated reference machine (Chrome), else the slice resolved it. **Target** =
+the historical report-only row whose miss needed a written disposition. **Both are suspended as
+acceptance prerequisites by the 2026-10-28 amendment** and are retained as reference criteria for a
+future owner-initiated investigation. Continuous latency ends at the matching preview's
+presentation; operation completion ends at the accepted result's presentation, as defined above.
+Discrete Event Timing/INP is reported separately. Frame budgets use rAF-to-rAF intervals on a
+60 Hz display and do not substitute for matching-result presentation latency.
 
 **Budget basis.** These are owner-ratified Biskiq acceptance targets, not claims that browser
 performance has already been measured on the reference hardware. The research packet retains
@@ -271,11 +293,19 @@ local feedback that saving started, never a claim that durable storage has ackno
 
 ## Acceptance and workflow
 
-Each consuming slice records hardware/profile, workload, browser/build/commit, cache and power
-state, measured result, budget and disposition before its acceptance. Hard misses are resolved
-inside that slice; targets require an explicit disposition. The phase final gate separately
-rechecks integrated flows and cannot defer an earlier hard miss. T4-only rows bind the T4 cutover;
-future vertical/part rows bind only their consumers, not the first batch.
+**Suspended as an acceptance requirement on 2026-10-28.** No consuming slice records performance
+evidence before acceptance, no final gate rechecks integrated flows, and no hard miss or target
+blocks acceptance. If the owner initiates an investigation after an observed slowdown, that
+investigation records its own hardware/profile, workload, browser/build/commit, cache and power
+state, measured result and limitations; it is evidence for the slowdown it studies, not a revived
+mandatory gate. T4-only rows and future vertical/part rows likewise bind nothing until an
+owner-initiated investigation names them.
+
+The historical workflow below is retained for that future use: each consuming slice recorded
+hardware/profile, workload, browser/build/commit, cache and power state, measured result, budget
+and disposition before acceptance; hard misses were resolved inside the slice and targets required
+a disposition; the phase final gate rechecked integrated flows and could not defer an earlier hard
+miss. Those obligations are no longer current.
 
 Profile first. Remove duplicated work, qualify incremental invalidation, use bounded revision-keyed
 caches, workers for whole pure stages, compiled derivatives and delivery splitting where measured.
