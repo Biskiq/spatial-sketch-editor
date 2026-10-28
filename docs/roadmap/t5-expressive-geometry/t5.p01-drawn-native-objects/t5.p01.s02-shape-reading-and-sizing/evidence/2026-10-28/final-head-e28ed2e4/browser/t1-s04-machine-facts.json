@@ -1,0 +1,24 @@
+{
+  "start": {
+    "capturedAt": "2026-10-28T19:00:21.918Z",
+    "machineModel": "Mac14,2",
+    "cpu": "Apple M2",
+    "memoryBytes": "17179869184",
+    "macOSVersion": "15.8.2",
+    "powerSource": "AC Power",
+    "lowPowerMode": "off",
+    "chromeCliVersion": "Google Chrome 156.0.8078.48",
+    "nodeVersion": "v26.7.0"
+  },
+  "end": {
+    "capturedAt": "2026-10-28T19:01:19.227Z",
+    "machineModel": "Mac14,2",
+    "cpu": "Apple M2",
+    "memoryBytes": "17179869184",
+    "macOSVersion": "15.8.2",
+    "powerSource": "AC Power",
+    "lowPowerMode": "off",
+    "chromeCliVersion": "Google Chrome 156.0.8078.48",
+    "nodeVersion": "v26.7.0"
+  }
+}

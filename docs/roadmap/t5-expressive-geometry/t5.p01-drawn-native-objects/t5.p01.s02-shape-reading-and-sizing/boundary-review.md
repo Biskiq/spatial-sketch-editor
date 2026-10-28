@@ -1,5 +1,46 @@
 # T5.P01.S02 — coordinator T1/T2 boundary review
 
+## Final re-review — 2026-10-28
+
+**T1: PASS. T2: PASS. No open implementation findings.**
+
+Reviewed and tested product head: `e28ed2e4f65c382af863fd9ac32b586db7f910ec`.
+Trusted integrated main: `85e675a6a47243808069b6d91d635fcfd55c43d3`, preserved by merge
+`687c04dec87e4f76e283a68e68a819b39831de4f`. Binary diff SHA-256 against that base:
+`32a6cbaed443711949393487326e4a13842853d126e6c112acbf80a5f4bac99e`.
+Reviewer: cross-track coordinator, without subagents. The fixes chat implemented and validated;
+the coordinator independently reviewed the repair and final integration.
+
+R1 is **resolved**. Settled Plan Height uses an explicit screen handle shared by overlay and
+hit testing. Press captures the starting height and projection scale; move computes a full
+per-axis source scale through the existing planner. 3D and the other axes retain their world-ray
+behavior. Preview follows the candidate, release installs one history result, and cancel, occupied
+lease refusal and source replacement preserve the existing Stage/F4 ownership. No new writer,
+selection, history, Camera or authored format appears. The PR #214 integration retains its host,
+Canvas, route, acceptance and harness changes alongside the Ink and task-owner fixes.
+
+Coordinator verification: independently reran Shape outline, reading adapter, palette, Stage
+facade, Stage acceptance host and Stage session: **6 files / 95 tests passed**. Inspected the
+revision-stamped browser evidence and Plan Height screenshot, and the repair chat's command logs:
+full editor correctness **229 files / 2,907 tests passed**; arch **23 / 188**; root check **0/0**;
+root build passed; Layout/project-model/Camera package checks passed; API check/build passed;
+DB-backed API **6 passed / 0 skipped**; integrated Chromium **3 specs passed**, with **21 passed
+scenario rows and one intentional Preview-availability not-run**. Those results are for this
+product revision and do not accept S03's exhaustive final gate. The raw evidence and command logs are now durably preserved with SHA-256 hashes in the S02
+[evidence folder](./evidence/2026-10-28/final-head-e28ed2e4/README.md); the source run folder was
+`/tmp/t5-p01-s02-validation.Cnv145`.
+
+The implementation/integration review is clean. **The owner release-list gate remains unresolved**:
+S02 is absent from `docs/roadmap/now.md` and its phase register remains proposed. Conditional
+acceptance/closeout/merge authorization is recorded in the coordinator chat, but release must be
+resolved explicitly before acceptance, compaction or merge. A new Luna/high closeout chat must
+handle mechanical closeout after gates are satisfied; the fixes chat must not be reused.
+
+The following initial review is retained as history; its blocked verdict is superseded by the
+final re-review above. S03, S04 and suspended unmeasured performance carryovers remain unchanged.
+
+## Initial review — superseded
+
 Date: 2026-10-28. Reviewer: cross-track coordinator, without subagents.
 Reviewed PR #215 head: `119b53057339218cdfb164e137553ee121b85a92`.
 Product/test identity: unchanged since `86595afe`; subsequent changes are documentation and

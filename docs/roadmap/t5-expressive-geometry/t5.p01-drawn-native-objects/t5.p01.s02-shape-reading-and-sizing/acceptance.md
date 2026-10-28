@@ -1,12 +1,12 @@
 # T5.P01.S02 — acceptance record: Shape reading and sizing
 
-**Slice:** T5.P01.S02 · **Status:** **implemented — awaiting owner acceptance.** This record claims no
-acceptance, merge, capability entry or gate state · **Plan:**
+**Slice:** T5.P01.S02 · **Status:** **accepted by reviewed evidence on 2026-10-28.** This record claims no
+phase closure, capability entry or new gate state · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (outline; it owns the slice scope) · **Phase:**
 [T5.P01](../README.md)
 
 ```text
-STATUS      implemented on t5/p01-s02-shape-reading at 86595afe; not accepted
+STATUS      accepted by owner on 2026-10-28 after clean T1/T2 review; implementation head e28ed2e4
 TIER        architecture-integration
 ROUTE       ../t5.p01.s03-integrated-final-gate/acceptance.md
             the phase's final gate owns exhaustive integrated acceptance and battery rows; the
@@ -17,6 +17,12 @@ CARRIED     Wall-face drawing waits for T1's face-frame query; the creator align
             by hand. Battery-mode performance rows remain S03's; the browser journey is recorded
             here as review evidence, not as the final gate's exhaustive acceptance.
 ```
+
+## Acceptance ruling — 2026-10-28
+
+The owner released and authorized acceptance, routine slice closeout and P1 merge after clean final reviews and satisfied repository gates. T1 and T2 both returned PASS at `e28ed2e4f65c382af863fd9ac32b586db7f910ec`; no implementation findings remain. The plan criteria are met: the shared Ink host capability delegates reading sessions without adding document state; Scene contributes Shape reading and uses the existing planners; Plan and 3D depth and per-axis sizing paths work; refused, cancelled and stale actions add no history; the Card remains the exact-value writer; browser journeys cover creation, sizing, Undo/Redo, save/reload and Preview. The approved upright-sheet fallback is used because T1's Wall face-frame query has not landed. No acceptance criterion was waived.
+
+The declared architecture-integration tier is satisfied by the final-head repository and browser results below. The standalone slice adds no gate or capability entry and changes no F4, Head, Save, Camera, planner, codec or unit format. S03 remains the exhaustive integrated final gate. S04 remains proposed and unreleased. Suspended performance rows are unmeasured, not passed.
 
 ## Delivered
 
@@ -134,6 +140,25 @@ The single not-run row is not a failure: before an Experience exists, Preview is
 unavailable and names that reason. A separate journey creates the Experience/Presentation and then
 exercises Preview.
 
+## Final integrated validation at `e28ed2e4`
+
+The coordinator independently re-reviewed the integrated product head `e28ed2e4f65c382af863fd9ac32b586db7f910ec` after the Plan Height repair. The final T1 and T2 boundary review is recorded in [boundary-review.md](./boundary-review.md); its implementation verdict is clean. The final tested revision differs from this acceptance record's earlier `86595afe` run, so the affected validation numbers below supersede the earlier numbers without erasing their historical record.
+
+| Command / evidence | Result |
+| --- | --- |
+| Full `npm test` | 229 files / **2,907 tests** passed |
+| Unconditional arch lane | 23 files / **188 tests** passed |
+| Root `npm run check` | 0 errors / 0 warnings |
+| Root `npm run build` | passed |
+| Layout, project-model and Camera package checks | passed |
+| API check and build | passed |
+| DB-backed API tests | **6 passed / 0 skipped** |
+| Integrated Chromium | 3 specs passed; **21 scenario rows passed**, one intentional Preview-availability not-run |
+
+Raw command logs, revision-stamped browser JSON, machine facts and their SHA-256 manifest are preserved under [final-head-e28ed2e4 evidence](./evidence/2026-10-28/final-head-e28ed2e4/README.md). Byte-identical copies of the earlier and final-head screenshots are archived in the [CLOSED.md evidence bundle](../../../../archive/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s02-shape-reading-and-sizing/evidence/2026-10-28/CLOSED.md). The final browser JSON records the complete tested revision. These results cover S02's declared architecture-integration tier; S03 still owns the exhaustive final gate and browser matrix. No performance benchmark was run or authorized, and suspended performance rows remain unmeasured.
+
+This section records evidence only. It does not claim owner acceptance, release authorization, a capability entry, S03 acceptance, or shipped status.
+
 ## Not run, and why
 
 - **Performance rows.** The performance mandate is suspended, so no benchmark was initiated and no
@@ -218,14 +243,9 @@ value change and Create state instead of only recording them. The committed evid
   results are diagnostic S02 evidence, not S03's exhaustive gate.
 - Performance items above are limitations of this record, not passes.
 
-## Remaining before acceptance
+## Follow-on and limits
 
-1. T1 review of `ink-readings-v1`, `openInkReading`, the palette delegation, the `hasWork` switch
-   guard and the task-owner fix.
-2. T2 review of the Scene-adapter contribution and the two existing planner call sites.
-3. Owner acceptance of this record, and a PR merge under the repository's P1 merge rule. The phase
-   register keeps S02 `proposed` because no release-list row exists: this record claims an
-   implementation awaiting review, not release authorization.
-4. `T5.P01.S03` closes the exhaustive integrated gate, the remaining browser matrix and performance
-   rows; the S02 review recorded above does not substitute for it. No capability entry is claimed
-   here.
+`T5.P01.S03` owns the exhaustive integrated gate and remaining browser matrix. Its completeness
+obligations are outstanding; this S02 acceptance does not substitute for them. S03 also carries the
+suspended performance rows, which remain unmeasured. Wall-face drawing remains deferred until T1's
+face-frame query exists. No new capability entry is claimed here.
