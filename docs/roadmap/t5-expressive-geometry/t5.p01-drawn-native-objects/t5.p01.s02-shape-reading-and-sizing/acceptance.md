@@ -58,10 +58,10 @@ All commands ran on the feature branch. Results:
 | --- | --- |
 | `npm run check` | 0 errors, 0 warnings |
 | `npm run build` | built, `@sveltejs/adapter-vercel` completed |
-| `npm run test:fast` | 193 files / **2,569 tests** passed |
+| `npm run test:fast` | 193 files / **2,570 tests** passed |
 | `npm run test:arch` | 23 files / **188 tests** passed |
-| `npx vitest run` on the 13 affected Stage/Layout/Scene/Shape suites | 13 files / **213 tests** passed |
-| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **21 tests** passed |
+| `npx vitest run` on the 13 affected Stage/Layout/Scene/Shape suites | 13 files / **214 tests** passed |
+| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **22 tests** passed |
 
 The three focused files are [shape-outline.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-outline.test.ts)
 (conversion and validation), [shape-reading-adapter.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts)
@@ -84,12 +84,14 @@ cover every non-heavy file at the same revision.
   reading, rays, Card, refusals, narrow/short shells and reduced-motion pass therefore has **no
   real-browser observation** in this record. It stays owed to `T5.P01.S03`, the declared integration
   route.
-- **Performance rows.** Live-reading, drag-preview and commit budgets are S02's evidence to plan,
-  not a measured result here; the final gate owns the measurement and the battery rows.
+- **Performance rows.** Live-reading, drag-preview, commit and Stage first-load growth budgets are
+  S02's evidence to plan, not a measured result here; the final gate owns the measurement and the
+  battery rows.
 
 ## Review corrections
 
-The first independent review round found seven concrete defects, all fixed here with regressions:
+The first independent review round found seven concrete defects, all fixed here with regressions
+for the creator-visible paths:
 
 - The depth handle intersected the drawing plane itself, so every drag collapsed to the minimum
   depth; it now measures the closest approach to the axis (`shape/ray.ts`).
@@ -105,7 +107,7 @@ The first independent review round found seven concrete defects, all fixed here 
 - The palette rewrote typed fields on every hover-published revision; it now rewrites only on a
   real sheet or depth change.
 
-A second round found four more, also fixed with regressions:
+A second round found four more, also fixed here:
 
 - The palette's local parse stopped invalid depth text from reaching the session, so Create stayed
   enabled over an older value; it now forwards the raw text and Create commits the field first.
