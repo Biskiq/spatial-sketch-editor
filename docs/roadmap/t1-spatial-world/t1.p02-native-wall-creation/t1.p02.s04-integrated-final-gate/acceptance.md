@@ -1,7 +1,8 @@
 # T1.P02.S04 — acceptance record: Integrated final gate
 
-**Slice:** T1.P02.S04 · **Status:** implemented and evidenced; **independent review pending** — the
-slice is not accepted until that review and the P1 merge complete · **Plan:**
+**Slice:** T1.P02.S04 · **Status:** implemented and evidenced; **P2 review correction applied,
+independent-review verdict pending** — the slice is not accepted until that review and the P1 merge
+complete · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [T1.P02](../README.md) ·
 **Declared** `FINAL PHASE GATE` artifact of T1.P02
 
@@ -26,8 +27,15 @@ browser                 Chrome 156.0.8078.48 (pinned) and Playwright Chromium
 PR #208 reached `main` before the branch was finalized, so the final pass is on `1e6e73aa`, not the
 release base. Two test-only corrections were needed on that base: `d0b0b808` keeps the release-list
 probes independent of the live T5 row, and `d1fe6e5c` reads the T5 form bounds through their Card
-writer. Neither changes product code or the S04 browser spec. The only post-browser commit is
-documentation.
+writer. Neither changes product code or the S04 browser spec. The post-browser commits are
+documentation only.
+
+**P2 review correction (2026-10-28).** The one foreign-track baton edit —
+`docs/operations/t2-composition/current.md` — was reverted to `main`; no foreign-track baton remains
+changed in this PR. T2's older benchmark
+carry is already superseded by the repository-wide suspension and is left for T2's next authorized
+handoff. This is a documentation-only correction and does not affect the browser or product
+revision `d1fe6e5c`.
 
 ## Browser acceptance
 
@@ -101,8 +109,9 @@ investigation after an observed slowdown. No performance row is a pass.
 
 ## Residuals and ownership
 
-- **Independent review — required.** The implementation PR requests the standing independent review;
-  the slice is not accepted and the phase is not yet closable until that verdict and the P1 merge.
+- **Independent review — required.** Owner review identified one P2 ownership finding (the T2 baton);
+  it is corrected on this branch. No verdict at the corrected revision is recorded, so the slice is
+  not accepted and the phase is not yet closable until that verdict and the P1 merge.
 - **Performance mandate — suspended.** No benchmark is owed; unmeasured rows remain unmeasured. A
   future owner-observed slowdown can commission a bounded investigation against the preserved harness.
 - **Stage bundle misses — history.** The S02 456.0 KiB br miss and S03 426.7 KiB br exception remain
@@ -113,6 +122,13 @@ investigation after an observed slowdown. No performance row is a pass.
   obligation here.
 - **Phase closure — not authorized.** Passing this gate makes T1.P02 closable; a separate owner
   instruction closes it. No phase, track or architecture-cycle closure is recorded.
+
+## Closeout — stopped at the review prerequisite (2026-10-28)
+
+The slice-closeout procedure was invoked after the P2 correction. It stops at step 1: no
+independent-review verdict covers the corrected revision. S04 therefore remains **in-progress**; no
+shipped status, preservation tag, stub/archive compaction or merge was recorded, and the final-gate
+artifact stays live. This is a contract stop, not a completed closeout.
 
 ## Recovery and merge
 

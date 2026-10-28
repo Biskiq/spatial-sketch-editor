@@ -6,13 +6,15 @@ PHASE: T1.P02 Native Wall creation is active. S01, S02, S03, S05 and S06 are shi
 SLICE: S04 integrated final gate — **owner-authorized and released 2026-10-28**
        (../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md) from `main` at
        `db7e5cd9` (the verified PR #209 merge), rebased onto `1e6e73aa` (PR #208) for the final
-       pass at `d1fe6e5c`. The integrated correctness and functional browser evidence is recorded
-       in the gate artifact; independent review and the P1 merge remain. Passing makes T1.P02
-       closable; it does not close it.
-NEXT:  Independent implementation review of the S04 PR, then the P1 merge. After that the phase-close
-       decision waits on a separate owner instruction.
-BLOCKERS: Independent review and P1 merge only. Performance is **not** a blocker: the owner suspended
-       the mandatory benchmarking strategy indefinitely
+       pass at `d1fe6e5c`; P2 (the foreign-track T2 baton edit) was corrected on 2026-10-28 and no
+       foreign-track baton remains changed. The integrated correctness and functional browser
+       evidence is recorded in the gate artifact; independent review and the P1 merge remain.
+       Passing makes T1.P02 closable; it does not close it.
+NEXT:  Re-review of the P2-corrected head, then the P1 merge. The slice-closeout procedure stops at
+       its independent-review prerequisite until that verdict is recorded. After the merge the
+       phase-close decision waits on a separate owner instruction.
+BLOCKERS: Independent-review verdict at the corrected head and P1 merge only. Performance is **not**
+       a blocker: the owner suspended the mandatory benchmarking strategy indefinitely
        (../../reference/decisions/performance-mandate-suspension-2026-10-28.md). No formal
        F2/F3/F4/F8/F13 matrix, battery certification or full `npm run perf` workflow was run or is
        authorized. S01's F2 S/M rows, S02's formal family, S03's Opening rows and S06's battery/
