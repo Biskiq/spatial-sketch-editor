@@ -2,13 +2,29 @@
 
 ```text
 AUTHORITY: NONE — the phase README owns slice status; this record reports implementation evidence.
-STATUS:    IMPLEMENTATION COMPLETE — awaiting owner acceptance, independent PR review and merge.
-SOURCE:    Branch t1/p02-s03-opening-family at 985cd214, based on main 98449a44; PR #209.
+STATUS:    OWNER ACCEPTED 2026-10-28 — owner-override for browser rerun at the reviewed head.
+SOURCE:    PR #209 implementation b0d4e252, based on main 98449a44.
 TIER:      architecture-integration; integrated exhaustive proof remains T1.P02.S04.
 INTEGRATION ROUTE: ../t1.p02.s04-integrated-final-gate/acceptance.md
 PHASE:     T1.P02 remains active; S04 is its declared final gate.
-NOT:       owner acceptance, a phase closure, a track completion or a performance pass.
+NOT:       a phase closure, a track completion or a performance pass.
 ```
+
+## Owner acceptance and current-head review — 2026-10-28
+
+The owner approved closeout at implementation revision `b0d4e252` after the independent review
+reported all blockers resolved, including typed host consistency and both deferred Ink re-arm
+orderings. The independent focused verification passed 92/92 tests. The implementation record at
+this revision reports `test:full` 216 files / 2,680 tests, `test:arch` 22 files / 180 tests,
+editor check 0 errors / 0 warnings, the four package checks and production build passing.
+The independent architecture run previously stalled without a summary; the implementation's
+completed architecture run is the recorded gate.
+
+The owner explicitly approved proceeding after being told that browser evidence was not rerun at
+`b0d4e252`: this is an **owner-override of the current-head browser rerun prerequisite only**.
+The 15/15 S03 and 28/28 S02 browser rows below remain evidence at `985cd214`, not at the reviewed
+head. Formal F4/F8 Opening S/M measurements remain unrun and assigned to S04; no performance pass
+is claimed. The owner also accepts the Stage bundle exception, measured 426.7 KiB br at the fix.
 
 ## Delivered
 
