@@ -6,14 +6,16 @@ acceptance, merge, capability entry or gate state · **Plan:**
 [T5.P01](../README.md)
 
 ```text
-STATUS      implemented on t5/p01-s02-shape-reading at 5428e66b; not accepted
+STATUS      implemented on t5/p01-s02-shape-reading at 6a925f5d; not accepted
 TIER        architecture-integration
 ROUTE       ../t5.p01.s03-integrated-final-gate/acceptance.md
-            the phase's final gate owns the integrated proof, browser journeys and battery rows
+            the phase's final gate owns exhaustive integrated acceptance and battery rows; the
+            browser review below is diagnostic S02 evidence, not the gate's verdict
 REVIEWS     T1: the Ink reading seam and the Stage host change (D5)
             T2: Scene-adapter and intent-call changes (D2); no planner, codec or unit-format change
 CARRIED     Wall-face drawing waits for T1's face-frame query; the creator aligns an upright sheet
-            by hand. Battery-mode performance and the integrated browser journey remain S03's.
+            by hand. Battery-mode performance rows remain S03's; the browser journey is recorded
+            here as review evidence, not as the final gate's exhaustive acceptance.
 ```
 
 ## Delivered
@@ -51,7 +53,7 @@ task. Without that, every later no-task press and key was still offered to the r
 and never reached the selection's direct manipulation. Opening any task also ends a no-task direct
 manipulation gesture — a live size ray releases its lease instead of stranding it.
 
-## Verification at `5428e66b`
+## Verification at `6a925f5d`
 
 All commands ran on the feature branch. Results:
 
@@ -59,36 +61,90 @@ All commands ran on the feature branch. Results:
 | --- | --- |
 | `npm run check` | 0 errors, 0 warnings |
 | `npm run build` | built, `@sveltejs/adapter-vercel` completed |
-| `npm run test:fast` | 193 files / **2,571 tests** passed |
+| `npm run test:fast` | 193 files / **2,572 tests** passed |
 | `npm run test:arch` | 23 files / **188 tests** passed |
-| `npx vitest run` on the 13 affected Stage/Layout/Scene/Shape suites | 13 files / **215 tests** passed |
-| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **23 tests** passed |
+| `npx vitest run` on the 11 affected Stage/Layout/Scene/Shape suites | 11 files / **195 tests** passed |
+| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **24 tests** passed |
+| S02 UX journey, Playwright Chromium | 3 specs passed; **18 scenario rows** passed, 1 recorded not-run |
 
 The three focused files are [shape-outline.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-outline.test.ts)
 (conversion and validation), [shape-reading-adapter.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts)
 (seam, floor creation, live refusal, upright Flip and raised-V depth drags, invalid-depth recovery,
-resize baselines, reading-switch protection, keyboard, size ray/task takeover and Card writer through
-the real F.4 host), and
+invalid typed depth recovered by a Plan pull, resize baselines, reading-switch protection, keyboard,
+size ray/task takeover and Card writer through the real F.4 host), and
 [shape-palette.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-palette.test.ts)
 (raw depth forwarding and hover-preserved fields). The affected run covered both Shape suites and
 the palette suite plus `stage-facade`, `stage-host-acceptance`, `stage-session`, `layout-opening`,
-`layout-wall-manipulation`, `layout-drawing`, `layout-precision`, `scene-composition-loop`,
-`scene-editing-surface` and `scene-proposal-lifetime`.
+`layout-wall-manipulation`, `scene-composition-loop`, `scene-editing-surface` and
+`scene-proposal-lifetime`.
 
 The **heavy** lane was not run: no geometry-core, kernel or heavy correctness subject changed.
 `npm test` (the complete suite) was not rerun as one command; `test:fast` and `test:arch` together
 cover every non-heavy file at the same revision.
 
+## Browser UX review at `6a925f5d`
+
+A real Chromium session drove the production Stage through a local API, a private PostgreSQL database
+and an authenticated creator project. The clean run produced 19 revision-stamped scenarios
+(18 passed, 1 intentional not-run observation) and screenshots:
+
+- [evidence JSON](./evidence/2026-10-28/ux-review/t5-p01-s02-ux-evidence.json)
+- [Room drawn and divided](./evidence/2026-10-28/ux-review/t5-s02-01-drawn-divided.png)
+- [invalid outline](./evidence/2026-10-28/ux-review/t5-s02-03-invalid-outline.png)
+- [depth phase cancelled](./evidence/2026-10-28/ux-review/t5-s02-04a-depth-cancel.png)
+- [invalid typed depth](./evidence/2026-10-28/ux-review/t5-s02-04-invalid-depth.png)
+- [Plan depth pull](./evidence/2026-10-28/ux-review/t5-s02-04b-depth-drag-plan.png)
+- [Plan pull recovers validity](./evidence/2026-10-28/ux-review/t5-s02-04c-depth-recovered.png)
+- [floor form and Card](./evidence/2026-10-28/ux-review/t5-s02-05-floor-created.png)
+- [upright form](./evidence/2026-10-28/ux-review/t5-s02-08-upright-created.png)
+- [reloaded project](./evidence/2026-10-28/ux-review/t5-s02-09-reloaded.png)
+- [Preview](./evidence/2026-10-28/ux-review/t5-s02-10-preview.png)
+- [900×700 shell](./evidence/2026-10-28/ux-review/t5-s02-11-narrow.png)
+- [1024×600 shell](./evidence/2026-10-28/ux-review/t5-s02-11-short.png)
+
+Passed in the browser, from an empty authenticated project:
+
+- Draw and close a Room, divide it through both Walls, then place a Wall-hosted Window.
+- Switch one Ink task between Wall, Opening and Shape without writing source; the readings remain
+  discoverable in the same palette.
+- A crossed outline names its issue live and disables Finish; Clear recovers. Backspace backtracks a
+  live point and Enter closes the outline.
+- Back to outline cancels the depth phase, restores the four live points, and writes no form.
+- A typed `0` names the admitted range and disables Create; a Plan depth pull recovers validity and a
+  subsequent Create succeeds. The 3D pull does the same.
+- Create a floor form, size it exactly through Width/Height/Depth, Undo/Redo it as one history entry,
+  then grow Width with the direct-manipulation ray.
+- Create an upright form on a hand-aligned 3D sheet.
+- Save, reload and recover both forms with their identities and both Rooms; Plan and 3D report the
+  same form identities.
+- Enter Preview after creating an Experience/Presentation, see the authored world, and leave with
+  Escape.
+- At 900×700 and 1024×600 with reduced motion, the Shape instrument fits, its body scrolls to Finish,
+  and there is no horizontal overflow. No console or shader errors were recorded.
+
+**UX verdict.** The S02 creator workflow is functionally correct and usable in a real browser. No
+confirmed defect remains after the two fixes above: the Shape reading is discoverable beside Wall
+and Opening, refusals name what is wrong and what is admitted, pointer and keyboard paths agree,
+Plan and 3D report the same authored identities, and the narrow/short shells stay operable. The
+only polish observation is that at 1440×900 the depth instrument scrolls inside its capped body, so
+a line can be clipped mid-height while scrolled; content remains reachable. Preview being
+unavailable before an Experience exists is explicit product behaviour, not a defect.
+
+The single not-run row is not a failure: before an Experience exists, Preview is deliberately
+unavailable and names that reason. A separate journey creates the Experience/Presentation and then
+exercises Preview.
+
 ## Not run, and why
 
-- **Browser design loop.** This checkout has no `.env`, local API/database or authenticated project
-  fixture, and the repository has no dev route that mounts the production Stage with a project. The
-  reading, rays, Card, refusals, narrow/short shells and reduced-motion pass therefore has **no
-  real-browser observation** in this record. It stays owed to `T5.P01.S03`, the declared integration
-  route.
-- **Performance rows.** Live-reading, drag-preview, commit and Stage first-load growth budgets are
-  S02's evidence to plan, not a measured result here; the final gate owns the measurement and the
-  battery rows.
+- **Performance rows.** The performance mandate is suspended, so no benchmark was initiated and no
+  live-reading, drag-preview, commit or first-load row is claimed. The final gate still owns those
+  rows; an unmeasured row is never a pass.
+- **Exhaustive final gate.** This is one diagnostic S02 journey, not the battery of epochs, browsers,
+  touch input or published-preview checks that `T5.P01.S03` owns. It does not claim that gate.
+- **Browser matrix.** The review used desktop Chromium at the recorded viewports only; Firefox,
+  WebKit, touch devices and a deployed production origin were not exercised.
+- **Preview depth.** Preview entry, visual fidelity and Escape return were observed; no pixel-parity,
+  published-output or cross-device comparison was performed.
 
 ## Review corrections
 
@@ -128,6 +184,17 @@ PR review then found two lifecycle gaps, fixed with regressions:
   existing `taskClosed` path as a task takes the pointer, so the lease is released and no scale
   commits.
 
+The real-browser review then found two creator-facing gaps, both fixed:
+
+- The Plan floor depth handle projected onto the outline centre because the floor normal faces the
+  Plan camera, so the advertised pull had no screen travel. It is now published up-screen by its
+  depth at the evaluated plane scale, hit-tested at that same point and mapped back to metres; 3D
+  keeps the world-axis ray. The journey covers invalid typed depth → valid Plan pull → Create.
+- Create and Place selected their installed entity canonically, but the route mirrored the selection
+  without reopening a dismissed Card, so a newly created form had no visible size controls. The
+  route now reopens the Card only when the primary subject identity changes, not when the same
+  dismissed subject is requalified by a revision.
+
 ## Deviations and decisions
 
 - The approved plan was an **outline**. The seam shape was resolved as a declared host capability
@@ -139,7 +206,9 @@ PR review then found two lifecycle gaps, fixed with regressions:
   adapter only calls the existing `create-form` and `set-form-size` planners.
 - The contributed-task owner correction in `stage-facade` is a Stage host change and needs T1's
   review with the seam.
-- Browser and performance items above are limitations of this record, not passes.
+- The browser review ran against a local authenticated fixture, not a production deployment; its
+  results are diagnostic S02 evidence, not S03's exhaustive gate.
+- Performance items above are limitations of this record, not passes.
 
 ## Remaining before acceptance
 
@@ -149,5 +218,6 @@ PR review then found two lifecycle gaps, fixed with regressions:
 3. Owner acceptance of this record, and a PR merge under the repository's P1 merge rule. The phase
    register keeps S02 `proposed` because no release-list row exists: this record claims an
    implementation awaiting review, not release authorization.
-4. `T5.P01.S03` closes the integrated browser journey, performance rows and the phase gate; no
-   capability entry is claimed here.
+4. `T5.P01.S03` closes the exhaustive integrated gate, the remaining browser matrix and performance
+   rows; the S02 review recorded above does not substitute for it. No capability entry is claimed
+   here.
