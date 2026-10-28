@@ -6,17 +6,22 @@ A scope absent from this table is held. A row states the condition under which t
 
 | Scope | Condition | Plan |
 | --- | --- | --- |
-| `T1.P02.S03` | released; starts after the [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md) batch PR (#199) merges on `main`; the registered plan is an outline, so the complete implementation plan and its plan review are recorded before implementation starts; recheck consumed gates and active scopes at its own trusted base | [Opening family](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/implementation-plan.md) |
+| `T1.P02.S04` | released; owner-authorized 2026-10-28 ([record](../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)) from `main` at `db7e5cd9`, the verified PR #209 merge; exhaustive integrated **correctness and functional** acceptance of native Wall creation; the [2026-10-28 performance-mandate suspension](../reference/decisions/performance-mandate-suspension-2026-10-28.md) removes the deferred benchmark family from the gate, leaves unmeasured rows unmeasured, and authorizes no benchmark; recheck every consumed gate and active scope at its own trusted base; passing makes the phase closable, not closed | [Integrated final gate](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/implementation-plan.md) |
 | `T5.P01.S01` | released; starts after PR #207 merges on `main`; the T2 prerequisite merged with PR #199 and T2.P02 closed 2026-10-27; recheck consumed gates and active scopes at its own trusted base | [Native form source and evaluation](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md) |
 
 Provenance: the
-[T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md) releases
-the Opening family and prunes one **verified shipped** row — `T1.P02.S02` (accepted `owner-override`
-and shipped 2026-10-27 on PR #201, merge commit `ce159a1e`, anchor `36c18db9` and tag
-`closed/T1.P02.S02` verified reachable). The T5.P01.S01 row was added by the owner's implementation
-authorization on 2026-10-27 after that verification, and it prunes one **verified shipped** row —
-`T2.P02.S03` (accepted `owner-override` and shipped 2026-10-27 on PR #199, merge commit `a674eedb`,
-anchor `221facc4` and tags `closed/T2.P02.S03` and `closed/T2.P02` verified reachable). The
+[T1.P02.S04 authorization](../reference/decisions/t1-p02-s04-authorization-2026-10-28.md) releases
+the phase's integrated final gate and prunes one **verified shipped** row — `T1.P02.S03` (accepted
+`owner-override` 2026-10-28 and shipped on PR #209, merge commit `db7e5cd9`; acceptance anchor
+`cbdb4785`). The [2026-10-28 performance-mandate
+suspension](../reference/decisions/performance-mandate-suspension-2026-10-28.md) amends the S04
+condition: no formal benchmark, battery certification or full `npm run perf` workflow is owed or
+authorized, and existing measurements are historical evidence only. The `T5.P01.S01` row was added
+by the owner's implementation authorization on 2026-10-27 after that verification, and it prunes one
+**verified shipped** row — `T2.P02.S03` (accepted `owner-override` and shipped 2026-10-27 on PR #199,
+merge commit `a674eedb`, anchor `221facc4` and tags `closed/T2.P02.S03` and `closed/T2.P02` verified
+reachable). The
+[T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md),
 [next-wave owner release](../reference/decisions/next-wave-authorization-2026-10-27.md),
 [performance foundation](../reference/decisions/performance-foundation-authorization-2026-10-24.md)
 and [post-Batch-E](../reference/decisions/post-batch-e-authorization-2026-10-23.md) records keep the
