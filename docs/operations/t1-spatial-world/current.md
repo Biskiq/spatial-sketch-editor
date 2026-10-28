@@ -35,8 +35,8 @@ ROUTE: ../../roadmap/t1-spatial-world/README.md
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/acceptance.md
        ../../reference/components/performance.md
-RELEASE: ../../roadmap/now.md remains the only permission list. The S04 row is pruned by the separate
-       owner release; no successor T1 scope is released.
+RELEASE: ../../roadmap/now.md remains the only permission list. The shipped S04 row is handled by
+       separate owner-release PR #212; no successor T1 scope is released.
 POLICY: ../../reference/decisions/performance-mandate-suspension-2026-10-28.md
 
 BOUNDARIES: No T1 TRACK COMPLETE event or owner architecture verdict is recorded. No performance
