@@ -6,7 +6,7 @@ slice is not accepted until that review and the P1 merge complete · **Plan:**
 **Declared** `FINAL PHASE GATE` artifact of T1.P02
 
 This artifact records the integrated correctness and functional evidence for native Wall creation on
-the released base `db7e5cd9` (the PR #209 merge). It claims no phase closure, track-completion event,
+the final verification base `1e6e73aa` (PR #208 on the released PR #209 merge). It claims no phase closure, track-completion event,
 architecture verdict or production epoch. The owner [suspended the mandatory performance-benchmarking
 strategy](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md) on 2026-10-28:
 no benchmark is an acceptance prerequisite, and every unmeasured performance row below stays
@@ -15,21 +15,23 @@ no benchmark is an acceptance prerequisite, and every unmeasured performance row
 ## Evidence revision
 
 ```text
-base                    db7e5cd9 (verified PR #209 merge; S01/S02/S03/S05/S06 accepted)
-product/browser         97801ac0 (both browser evidence bundles)
-harness                 8512dd48 (S04 Opening measurement rows only; no product change)
+base                    1e6e73aa (PR #208 on db7e5cd9, the verified PR #209 merge; all five slices accepted)
+product/browser         d1fe6e5c (both browser evidence bundles, final head)
+test corrections        d0b0b808, d1fe6e5c (PR #208 base only; no product change)
 acceptance docs         this branch
 machine                 Apple M2 8-core / 16 GiB, macOS, Node 26.7.0
 browser                 Chrome 156.0.8078.48 (pinned) and Playwright Chromium
 ```
 
-The only post-browser commits are test/evidence/documentation. `8512dd48` changes only the
-performance Opening flow in `apps/editor/perf/flows/drag-correlation.spec.ts`; it changes no product
-code, no S04 browser spec and no measured functional path.
+PR #208 reached `main` before the branch was finalized, so the final pass is on `1e6e73aa`, not the
+release base. Two test-only corrections were needed on that base: `d0b0b808` keeps the release-list
+probes independent of the live T5 row, and `d1fe6e5c` reads the T5 form bounds through their Card
+writer. Neither changes product code or the S04 browser spec. The only post-browser commit is
+documentation.
 
 ## Browser acceptance
 
-**4 journeys / 26 rows passed in both Chromium and Chrome** (`97801ac0`), with each row recording its
+**4 journeys / 26 rows passed in both Chromium and Chrome** (`d1fe6e5c`), with each row recording its
 revision, viewport and reduced-motion state:
 
 | Journey | Viewport / motion | Rows |
@@ -45,10 +47,10 @@ identity; post-reload edits allocating fresh identities; format 5 and unknown-fo
 download recovery; named Stage, pressed reading state and announced Card refusal; and no partial
 source from a refused keyboard or pointer path.
 
-- [Chromium evidence](./evidence/2026-10-28/97801ac0/chromium/t1-s04-integrated-evidence.json)
-- [Chrome evidence](./evidence/2026-10-28/97801ac0/chrome/t1-s04-integrated-evidence.json)
-- [Chromium machine facts](./evidence/2026-10-28/97801ac0/chromium/t1-s04-machine-facts.json)
-- [Chrome machine facts](./evidence/2026-10-28/97801ac0/chrome/t1-s04-machine-facts.json)
+- [Chromium evidence](./evidence/2026-10-28/d1fe6e5c/chromium/t1-s04-integrated-evidence.json)
+- [Chrome evidence](./evidence/2026-10-28/d1fe6e5c/chrome/t1-s04-integrated-evidence.json)
+- [Chromium machine facts](./evidence/2026-10-28/d1fe6e5c/chromium/t1-s04-machine-facts.json)
+- [Chrome machine facts](./evidence/2026-10-28/d1fe6e5c/chrome/t1-s04-machine-facts.json)
 
 ## Complete repository contract
 
@@ -56,14 +58,15 @@ Run on the integrated tree at the evidence revision; no lane was narrowed:
 
 ```text
 check (svelte-check)    0 errors / 0 warnings
-test:arch               22 files / 180 tests passed (unconditional)
+test:arch               23 files / 188 tests passed (unconditional)
 test:heavy              11 files / 138 tests passed
-test:full               216 files / 2,680 tests passed
+test:full               224 files / 2,874 tests passed
 check:layout-core       clean
 check:project-model     clean
 check:camera-core       clean
+check:geometry-core     clean
 check:api               clean
-test:api (DB-backed)    14 files / 114 tests, 0 failures, 0 skips (biskiq_t1_s04 PostgreSQL)
+test:api (DB-backed)    14 files / 115 tests, 0 failures, 0 skips (biskiq_t1_s04 PostgreSQL)
 build:editor            succeeded
 build:api               succeeded
 ```
@@ -114,9 +117,9 @@ investigation after an observed slowdown. No performance row is a pass.
 ## Recovery and merge
 
 ```text
-base        db7e5cd9 (PR #209 merge)
-evidence    97801ac0 (both browser bundles) · 8512dd48 (Opening harness, product-neutral)
-product     no product change after 97801ac0; acceptance docs follow
+base        1e6e73aa (PR #208 on the PR #209 merge db7e5cd9)
+evidence    d1fe6e5c (both browser bundles; test corrections only after the release)
+product     no product change after d1fe6e5c; acceptance docs follow
 merge       P1 merge commit only; anchor this artifact before merge
 phase       T1.P02 remains active; final-gate hand-off is the phase-close decision
 ```

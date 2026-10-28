@@ -5,9 +5,10 @@ PHASE: T1.P02 Native Wall creation is active. S01, S02, S03, S05 and S06 are shi
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
 SLICE: S04 integrated final gate — **owner-authorized and released 2026-10-28**
        (../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md) from `main` at
-       `db7e5cd9` (the verified PR #209 merge). The integrated correctness and functional browser
-       evidence is recorded in the gate artifact; independent review and the P1 merge remain.
-       Passing makes T1.P02 closable; it does not close it.
+       `db7e5cd9` (the verified PR #209 merge), rebased onto `1e6e73aa` (PR #208) for the final
+       pass at `d1fe6e5c`. The integrated correctness and functional browser evidence is recorded
+       in the gate artifact; independent review and the P1 merge remain. Passing makes T1.P02
+       closable; it does not close it.
 NEXT:  Independent implementation review of the S04 PR, then the P1 merge. After that the phase-close
        decision waits on a separate owner instruction.
 BLOCKERS: Independent review and P1 merge only. Performance is **not** a blocker: the owner suspended

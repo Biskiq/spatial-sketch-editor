@@ -23,11 +23,17 @@ are `accepted` in the [gate register](../../roadmap/README.md#gate-register), an
 scope (`unit-resolution-v1`, `unit-envelope-v1`, `unit-acceptance-v1`,
 `conditional-save-units-v1`, `viewport-projection-v1`) is `active`.
 
+**Final verification base.** After the release, `origin/main` advanced to `1e6e73aa` (PR #208). The
+branch was rebased onto that head before the final correctness and browser pass; the evidence is at
+`d1fe6e5c`. PR #208 required two test-only corrections (the live T5 release row and the form Card
+writer expectation), neither of which changes product code. The release scope, independent-review
+rule and P1 merge rule are unchanged.
+
 ## Authorized and released
 
 | Scope | Condition | Plan |
 | --- | --- | --- |
-| `T1.P02.S04` — Integrated final gate | Released. Owner-authorized 2026-10-28 from the trusted base `db7e5cd9`, with no separate authorization PR required. Exhaustive independent acceptance of native Wall creation on the integrated tree; the original release included the deferred performance rows, and the 2026-10-28 amendment below suspends that recheck, leaving correctness and functional acceptance as the current condition. Starts through the [T1 runbook](../../operations/t1-spatial-world/README.md) eligibility step, rechecking every consumed gate and active scope at its own trusted base. | [Integrated final gate](./../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/implementation-plan.md) |
+| `T1.P02.S04` — Integrated final gate | Released. Owner-authorized 2026-10-28 from the trusted base `db7e5cd9`, with no separate authorization PR required; the final verification base is `1e6e73aa` (PR #208), evidence at `d1fe6e5c`. Exhaustive independent acceptance of native Wall creation on the integrated tree; the original release included the deferred performance rows, and the 2026-10-28 amendment below suspends that recheck, leaving correctness and functional acceptance as the current condition. Starts through the [T1 runbook](../../operations/t1-spatial-world/README.md) eligibility step, rechecking every consumed gate and active scope at its own trusted base. | [Integrated final gate](./../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/implementation-plan.md) |
 
 ## Preserved
 
