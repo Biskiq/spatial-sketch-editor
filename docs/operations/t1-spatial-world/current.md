@@ -5,10 +5,9 @@ PHASE: T1.P02 Native Wall creation →
        T1.P01 closed 2026-10-21. T1.P02 is active; S01, S02, S05 and S06 are shipped and S03 is
        released.
 SLICE: S03 Opening family — **approved and released 2026-10-27**
-       (../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md). The registered plan is an
-       outline: the complete plan and its plan review are recorded before implementation, and it
-       starts after the batch PR #199 merges on `main`, rechecking consumed gates, active scopes and
-       its own trusted base through the runbook. S02 draw, close, divide and delete shipped
+       (../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md). The complete plan and its
+       pre-build plan review are recorded 2026-10-27; implementation is in progress on
+       `t1/p02-s03-opening-family` from trusted base `98449a44` (PR #199 `a674eedb` is an ancestor). S02 draw, close, divide and delete shipped
        `owner-override` on PR #201 (P1 merge `ce159a1e`; anchor `36c18db9` and tag
        `closed/T1.P02.S02` verified reachable; product/harness revision `64b9435d`)
        (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
@@ -26,21 +25,25 @@ ACC:   T1.P02.S02 draw/close/divide/delete — **accepted (`owner-override`) and
        passed 2026-10-26 (15/15 decision rows, 27 verdicts, full E5, 2,632.7 s on the designated M2,
        Chrome 156.0.8078.48, AC power); battery qualification, grid-XL timing and the sweep latency
        rows are assigned to S04.
-NEXT:  Complete S03's implementation plan and record its plan review, then implement after PR #199
-       merges, starting from its own trusted base through the runbook start step. S04 is the final
-       gate and carries: S02's deferred formal performance family, the recorded Stage bundle known
-       miss, S01's F2 S/M timings, S06's battery qualification and grid-XL/sweep rows, and
+NEXT:  Finish S03 implementation, run the focused/full gates and the on-demand browser journey,
+       measure F4/F8 Opening create/delete at S/M on the designated M2 or record those rows unrun
+       for S04, then obtain the independent implementation review and owner acceptance. S04 is the
+       final gate and carries: S02's deferred formal performance family, the recorded Stage bundle
+       known miss, S01's F2 S/M timings, S06's battery qualification and grid-XL/sweep rows, and
        integrated S03 proof once it ships. No other T1 slice is released: S04 needs its own
        release, and the [release list](../../roadmap/now.md) is the only permission list.
 BLOCKERS: None technical. S03 waits on the batch PR #199 merge and its own plan review; S04 remains
        held pending its own release, and S04 cannot accept while the deferred performance family or
        the Stage hard-budget miss is unaddressed. T3's S06 ownership acknowledgement remains a
        records-only item owned by T3, not a gate on T1 work.
-CLAIMS: S03 records its shared-file claim (writer, expected patch base, reviewer) in this baton
-       before editing a shared surface, and no shared test helper under
-       `apps/editor/tests/helpers/**` is edited without serializing every lane. PR #201 released its
-       `apps/editor/perf/**` and shared Stage/shell claim on acceptance; the T1 S02 writer owned
-       those paths, and S02's feature branch is retired after its P1 merge.
+CLAIMS: S03 shared-file claim (2026-10-27): writer `t1/p02-s03-opening-family` owns
+       `apps/editor/src/lib/authoring/adapters/layout/**` (the new Opening planners, Ink surface,
+       palette and adapter) and its Layout tests, on patch base `98449a44`; reviewer is the standing
+       independent implementation reviewer. No shared Stage/Head module, route or
+       `apps/editor/tests/helpers/**` edit is planned; one discovered during build stops and
+       reports. PR #201 released its `apps/editor/perf/**` and shared Stage/shell claim on
+       acceptance; the T1 S02 writer owned those paths, and S02's feature branch is retired after
+       its P1 merge.
 CARRY: - S02 formal performance family (F3/F4/F8 at S/M, per-move evaluation, F2 open, F13 leak
          cycles, Stage first-load delta) → S04, unrun and never a pass.
        - S02 Stage bundle hard miss: 456.0 KiB br against ≤400 KiB, recorded as a known condition;
