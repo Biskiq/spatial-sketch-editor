@@ -2456,51 +2456,49 @@ describe('routing and skill preflights', () => {
 		}));
 		const nowSource = readFile('docs/roadmap/now.md');
 		const live = { nowSource, slices, batons, runbooks, router };
-		// A synthetic released slice outside the release list keeps these probes true even when the
-		// real release list advances to include T5.P01.S01.
-		const unlisted = { id: 'T2.P09.S09', status: 'approved', authorization: 'released from the hold' };
 		expect(releaseListProblems(live)).toEqual([]);
 
-		const withoutRow = nowSource.replace(/^\| `T1\.P02\.S04`.*\n/m, '');
-		expect(releaseListProblems({ ...live, nowSource: withoutRow }).join('\n')).toContain(
-			'T1.P02.S04 says released and has no row'
+		// A synthetic released slice and row keep these probes independent of which real scope
+		// currently holds a release row. The live list is still checked above.
+		const unlisted = { id: 'T2.P09.S09', status: 'approved', authorization: 'released from the hold' };
+		const probeRow = '| `T2.P09.S09` | released; synthetic probe | [probe](./README.md) |';
+		const withProbeRow = nowSource.replace(/(\| `T5\.P01\.S01`.*\n)/, `$1${probeRow}\n`);
+		const probe = { ...live, nowSource: withProbeRow, slices: [...slices, unlisted] };
+		expect(releaseListProblems(probe)).toEqual([]);
+
+		const withoutRow = withProbeRow.replace(/^\| `T2\.P09\.S09`.*\n/m, '');
+		expect(releaseListProblems({ ...probe, nowSource: withoutRow }).join('\n')).toContain(
+			'T2.P09.S09 says released and has no row'
 		);
 		expect(
 			releaseListProblems({
-				...live,
-				nowSource: nowSource.replace(/^\| `T1\.P02\.S04` \| released;[^|]*\|/m, '| `T1.P02.S04` | Now |')
+				...probe,
+				nowSource: withProbeRow.replace(/^\| `T2\.P09\.S09` \| released;[^|]*\|/m, '| `T2.P09.S09` | Now |')
 			}).join('\n')
 		).toContain('evaluates the condition as Now');
-		expect(releaseListProblems({ ...live, nowSource: nowSource.replaceAll('T1.P02.S04', 'T9.P09.S09') }).join('\n')).toContain(
-			'is not a slice in any phase README'
-		);
+		expect(
+			releaseListProblems({ ...probe, nowSource: withProbeRow.replaceAll('T2.P09.S09', 'T9.P09.S09'), slices }).join('\n')
+		).toContain('T9.P09.S09 is not a slice in any phase README');
 		expect(
 			releaseListProblems({
-				...live,
-				slices: slices.map((slice) => (slice.id === 'T1.P02.S04' ? { ...slice, status: 'proposed' } : slice))
+				...probe,
+				slices: probe.slices.map((slice) => (slice.id === 'T2.P09.S09' ? { ...slice, status: 'proposed' } : slice))
 			}).join('\n')
-		).toContain('is proposed');
+		).toContain('T2.P09.S09 is proposed');
 		expect(
 			releaseListProblems({
-				...live,
-				slices: slices.map((slice) => (slice.id === 'T1.P02.S04' ? { ...slice, status: 'shipped' } : slice))
+				...probe,
+				slices: probe.slices.map((slice) => (slice.id === 'T2.P09.S09' ? { ...slice, status: 'shipped' } : slice))
 			})
 		).toEqual([]);
 		expect(
 			releaseListProblems({
-				...live,
-				slices: [...slices, unlisted]
-			}).join('\n')
-		).toContain('T2.P09.S09 says released and has no row');
-		expect(
-			releaseListProblems({
-				...live,
-				slices: [...slices, unlisted],
+				...probe,
 				batons: batons.map((baton) =>
-					baton.track === 't4-release' ? { ...baton, source: `${baton.source}\nT2.P09.S09` } : baton
+					baton.track === 't4-release' ? { ...baton, source: `${baton.source}\nT4.P09.S09` } : baton
 				)
 			}).join('\n')
-		).toContain('t4-release baton names T2.P09.S09');
+		).toContain('t4-release baton names T4.P09.S09');
 		expect(
 			releaseListProblems({
 				...live,
