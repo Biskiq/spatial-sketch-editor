@@ -26,9 +26,8 @@ BLOCKERS: None for the closed phase. Deferred verification is owned, not a block
         worker-boundary timing → repository owner (owner-run), tracked by T2; the placed model's
         Index subject row and pointer move/turn → T2 track. No row is a pass.
 CARRY:  T1's face-frame query and solve-once wall placement; T3 annotations consume T2 component
-        resolution; T4 release work stays frozen. T1.P02.S02's 456.0 KiB br Stage miss is historical;
-        its performance family is unmeasured, not an S04 prerequisite, under the 2026-10-28
-        performance-mandate suspension. No performance benchmark is authorized or owed.
+        resolution; T4 release work stays frozen. T1.P02.S02's 456.0 KiB br Stage miss and its
+        performance family remain with T1's own final gate (S04), not T2's.
 ROUTE:  ./README.md → ../../roadmap/t2-composition/README.md →
         ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
         → ../../reference/components/performance.md
