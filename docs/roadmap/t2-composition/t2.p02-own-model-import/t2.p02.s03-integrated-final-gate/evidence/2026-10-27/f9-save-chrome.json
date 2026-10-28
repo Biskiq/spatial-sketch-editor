@@ -1,0 +1,277 @@
+{
+  "name": "f9-save-chrome",
+  "startedAt": "2026-10-27T13:48:05.131Z",
+  "machine": {
+    "platform": "darwin",
+    "release": "24.6.0",
+    "cpuModel": "Apple M2",
+    "cores": 8,
+    "memoryGiB": 16,
+    "node": "v26.7.0",
+    "powerState": "not recorded (PERF_POWER_STATE unset)"
+  },
+  "profile": "milestone",
+  "acceptanceEvidence": false,
+  "passScoped": false,
+  "samplePlan": {
+    "profile": "milestone",
+    "acceptanceEvidence": true,
+    "runs": 3,
+    "warmup": 1,
+    "inputSamples": 60,
+    "dragSamples": 2,
+    "undoRedoCycles": 10,
+    "f13Edits": 20,
+    "f13Cycles": {
+      "cold": 10,
+      "warm": 1,
+      "repeat-use": 10
+    },
+    "cacheStates": {
+      "f2": [
+        "cold",
+        "warm"
+      ],
+      "f3": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ],
+      "f7": [
+        "warm"
+      ],
+      "f13": [
+        "cold",
+        "warm",
+        "repeat-use"
+      ]
+    },
+    "runCounts": {
+      "f2": 3,
+      "f3": {
+        "cold": 1,
+        "warm": 3,
+        "repeat-use": 1
+      },
+      "f7": 3,
+      "f13": 1
+    },
+    "oldMethod": false,
+    "delayProof": false,
+    "stageTraceTiers": [
+      "grid-L"
+    ],
+    "note": "milestone method: 3 independent runs per decision row, extended one run at a time to 10 (F7 to 5) only while a hard row is undecided; 60 pointer inputs; 10 Undo/Redo cycles; 20 F13 edits over ten measured cycles; F2 cold+warm; F7 warm; full E5 matrix; no A.6 or delayed-preview proof (Bench 1 evidence)"
+  },
+  "rows": [
+    {
+      "id": "F9-save-local-cold",
+      "flow": "F9 Save",
+      "workload": "S fixture, one typed edit, Save to the local test-auth stack",
+      "cacheState": "cold",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "wireBytesMedian": 44367,
+        "runs": 3
+      },
+      "stats": {
+        "savingLabelDomUpdate": {
+          "count": 3,
+          "min": 0.39999999990686774,
+          "median": 0.5,
+          "p75": 0.5,
+          "p95": 0.5,
+          "p99": 0.5,
+          "max": 0.5,
+          "values": [
+            0.39999999990686774,
+            0.5,
+            0.5
+          ]
+        },
+        "durableReceipt": {
+          "count": 3,
+          "min": 117.20000000018626,
+          "median": 123.10000000009313,
+          "p75": 123.10000000009313,
+          "p95": 123.10000000009313,
+          "p99": 123.10000000009313,
+          "max": 123.10000000009313,
+          "values": [
+            117.20000000018626,
+            123.10000000009313,
+            123.10000000009313
+          ]
+        },
+        "savedLabelDomUpdate": {
+          "count": 3,
+          "min": 119.1999999997206,
+          "median": 124.60000000009313,
+          "p75": 124.80000000004657,
+          "p95": 124.96000000000932,
+          "p99": 124.99200000000187,
+          "max": 125,
+          "values": [
+            119.1999999997206,
+            124.60000000009313,
+            125
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "save-status DOM updates are not paint/presentation timestamps and cannot establish the contract's presented-local-feedback gate",
+        "local loopback test API under the configured CDP network profile; no production-service baseline and the durable-receipt target formula is not accepted here",
+        "main-thread work during Save is not split out by this pass"
+      ]
+    },
+    {
+      "id": "F9-save-local-warm",
+      "flow": "F9 Save",
+      "workload": "S fixture, one typed edit, Save to the local test-auth stack",
+      "cacheState": "warm",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "wireBytesMedian": 44367,
+        "runs": 3
+      },
+      "stats": {
+        "savingLabelDomUpdate": {
+          "count": 3,
+          "min": 0.2999999998137355,
+          "median": 0.3000000002793968,
+          "p75": 0.4000000001396984,
+          "p95": 0.48000000002793963,
+          "p99": 0.49600000000558797,
+          "max": 0.5,
+          "values": [
+            0.2999999998137355,
+            0.3000000002793968,
+            0.5
+          ]
+        },
+        "durableReceipt": {
+          "count": 3,
+          "min": 114.6999999997206,
+          "median": 122.10000000009313,
+          "p75": 123.70000000018626,
+          "p95": 124.98000000026077,
+          "p99": 125.23600000027567,
+          "max": 125.3000000002794,
+          "values": [
+            114.6999999997206,
+            122.10000000009313,
+            125.3000000002794
+          ]
+        },
+        "savedLabelDomUpdate": {
+          "count": 3,
+          "min": 115.8000000002794,
+          "median": 123.60000000009313,
+          "p75": 125.05000000004657,
+          "p95": 126.21000000000932,
+          "p99": 126.44200000000187,
+          "max": 126.5,
+          "values": [
+            115.8000000002794,
+            123.60000000009313,
+            126.5
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "save-status DOM updates are not paint/presentation timestamps and cannot establish the contract's presented-local-feedback gate",
+        "local loopback test API under the configured CDP network profile; no production-service baseline and the durable-receipt target formula is not accepted here",
+        "main-thread work during Save is not split out by this pass"
+      ]
+    },
+    {
+      "id": "F9-save-local-repeat-use",
+      "flow": "F9 Save",
+      "workload": "S fixture, one typed edit, Save to the local test-auth stack",
+      "cacheState": "repeat-use",
+      "network": "N1",
+      "browser": "chrome 156.0.8078.48",
+      "cpuRate": 1,
+      "viewport": "1920x1080@1",
+      "metrics": {
+        "wireBytesMedian": 44367,
+        "runs": 3
+      },
+      "stats": {
+        "savingLabelDomUpdate": {
+          "count": 3,
+          "min": 0.19999999972060323,
+          "median": 0.20000000018626451,
+          "p75": 0.25,
+          "p95": 0.2899999998509884,
+          "p99": 0.2979999998211861,
+          "max": 0.2999999998137355,
+          "values": [
+            0.19999999972060323,
+            0.20000000018626451,
+            0.2999999998137355
+          ]
+        },
+        "durableReceipt": {
+          "count": 3,
+          "min": 117,
+          "median": 117.70000000018626,
+          "p75": 118.60000000009313,
+          "p95": 119.32000000001862,
+          "p99": 119.46400000000372,
+          "max": 119.5,
+          "values": [
+            117,
+            117.70000000018626,
+            119.5
+          ]
+        },
+        "savedLabelDomUpdate": {
+          "count": 3,
+          "min": 118,
+          "median": 118.60000000009313,
+          "p75": 119.5999999998603,
+          "p95": 120.39999999967404,
+          "p99": 120.55999999963679,
+          "max": 120.59999999962747,
+          "values": [
+            118,
+            118.60000000009313,
+            120.59999999962747
+          ]
+        }
+      },
+      "limitations": [
+        "S06 milestone method: decision rows start at 3 independent runs and extend one run at a time (to 10, F7 to 5) only while a hard row is undecided; every run must hold 25 % headroom to pass, and every run must breach the budget to fail early",
+        "actual plan: F3 warm 3 runs (+7 bound), cold/repeat-use 1 check each; F2 3 runs per state; F7 3 warm runs (+2 bound); F13 20 edits per measured cycle at cold 10, warm 1, repeat-use 10 cycles; 2 drag + 2 precision samples and 10 Undo/Redo cycles per run",
+        "decision bands: warm F3/F4/F8; F2 cold+warm at S/M; F7 warm at S/M; F13 cold/repeat-use 10-cycle growth. Single-run cold/repeat-use interaction rows and Target rows (F2 L, F7 L) are recorded checks, not statistical gates",
+        "not run: A.6 old-method rows and the delayed-preview proof (Bench 1 evidence), F2 repeat-use, F7 cold/repeat-use, grid-XL, realistic-L and sweep latency rows (report-only, deferred)",
+        "S06 milestone acceptance only: a small-sample p95 is not a rare-tail estimate, and this is not production-scale, grid-XL, or ultimate geometry/rendering certification",
+        "hard budgets require the designated reference machine and its recorded conditions",
+        "save-status DOM updates are not paint/presentation timestamps and cannot establish the contract's presented-local-feedback gate",
+        "local loopback test API under the configured CDP network profile; no production-service baseline and the durable-receipt target formula is not accepted here",
+        "main-thread work during Save is not split out by this pass"
+      ]
+    }
+  ],
+  "commit": "9e0fcb50d08666a0bd2eb1248be2a972f5d19426",
+  "writtenAt": "2026-10-27T13:48:21.221Z"
+}

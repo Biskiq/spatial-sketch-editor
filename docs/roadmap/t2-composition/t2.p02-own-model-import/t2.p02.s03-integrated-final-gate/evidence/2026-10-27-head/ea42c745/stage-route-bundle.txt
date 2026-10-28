@@ -1,0 +1,60 @@
+
+> personal-portfolios@0.1.0 perf:bundle
+> npm run perf:bundle -w @portfolio/editor
+
+
+> @portfolio/editor@0.1.0 perf:bundle
+> node perf/bundle-report.mjs
+
+client output: /Users/tony/Documents/Biskiq/sse-t2p02s03/apps/editor/.svelte-kit/output/client
+module identity evidence: source-map
+
+## / (leaf node 2) — 24 files
+  total  raw 1065.5 KiB | gzip 295.8 KiB | br 248.5 KiB
+  js     raw 1064.3 KiB | gzip 295.2 KiB | br 248.0 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /editor (leaf node 5) — 23 files
+  total  raw 1062.0 KiB | gzip 294.4 KiB | br 247.2 KiB
+  js     raw 1061.8 KiB | gzip 294.3 KiB | br 247.1 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /projects (leaf node 8) — 29 files
+  total  raw 1090.0 KiB | gzip 305.6 KiB | br 257.0 KiB
+  js     raw 1084.9 KiB | gzip 303.9 KiB | br 255.7 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /project/[projectId]/spatial (leaf node 7) — 37 files
+  total  raw 1792.1 KiB | gzip 508.4 KiB | br 428.6 KiB
+  js     raw 1758.8 KiB | gzip 501.4 KiB | br 422.5 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /p/[publicationId] (leaf node 6) — 33 files
+  total  raw 1275.4 KiB | gzip 362.9 KiB | br 307.5 KiB
+  js     raw 1271.9 KiB | gzip 361.5 KiB | br 306.4 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /dev/assets (leaf node 3) — 32 files
+  total  raw 1018.5 KiB | gzip 285.3 KiB | br 240.8 KiB
+  js     raw 1016.4 KiB | gzip 284.5 KiB | br 240.1 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## /dev/materials (leaf node 4) — 24 files
+  total  raw 856.4 KiB | gzip 236.5 KiB | br 197.7 KiB
+  js     raw 855.0 KiB | gzip 235.8 KiB | br 197.2 KiB
+  (incomplete/absent sourcemaps: package byte attribution unavailable)
+
+## emitted but in no product/dev route load set
+  _app/immutable/assets/ImportModelInstrument.BhTMJpNQ.css  2.0 KiB
+  _app/immutable/assets/basis_transcoder.VXdx5NbI.wasm  515.0 KiB
+  _app/immutable/assets/basis_transcoder.o4Hde_L7.js  56.2 KiB
+  _app/immutable/assets/draco_decoder.C32yEggz.wasm  279.0 KiB
+  _app/immutable/assets/draco_decoder.Z1_iN-Ht.wasm  187.9 KiB
+  _app/immutable/assets/draco_decoder.fzg4nYZr.js  702.5 KiB
+  _app/immutable/assets/draco_wasm_wrapper.DxJM36Ib.js  57.4 KiB
+  _app/immutable/assets/draco_wasm_wrapper.fZCQGLGb.js  57.1 KiB
+  _app/immutable/chunks/USa7ulmE.js  17.0 KiB
+  _app/immutable/chunks/wbPk3Yxo.js  1.3 KiB
+  _app/immutable/workers/chunks/CkeFj2jW.js  111.0 KiB
+  _app/immutable/workers/chunks/lQ38iPKc.js  103.4 KiB
+  _app/immutable/workers/worker-BPgNE7Tf.js  248.1 KiB

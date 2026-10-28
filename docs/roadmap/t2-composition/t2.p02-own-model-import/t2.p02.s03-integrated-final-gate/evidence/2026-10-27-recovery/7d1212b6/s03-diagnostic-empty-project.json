@@ -1,0 +1,13 @@
+{
+  "projectId": "perf-s03diagempty-mvr4wil2",
+  "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
+  "classificationWaitMs": 16080,
+  "placementAccepted": false,
+  "subject": "(no card)",
+  "feedback": "",
+  "instrumentText": "ENTITY Choose… Use selection Begin PLACE box cylinder sphere X (M) Z (M) Place No Room floor yet — draw an enclosure with Ink, then click the floor to place this model. An imported model is placed by clicking its floor position; these typed fields place a native primitive. SNAP (M, OPTIONAL) Snap is",
+  "stored": {
+    "resources": 0,
+    "entities": 0
+  }
+}

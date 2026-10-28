@@ -1,0 +1,15 @@
+{
+  "typed": {
+    "subject": "ENTITY · SCENE entity-073ddcc2-7668-4284-b959-5b79f4b49425 ✕ Domain scene Kind primitive Name Block Position 1.5 m · 0.5 m · -1 m Scale 1 (uniform) Yaw 0 rad Fo…",
+    "composeText": "Compose entity-073ddcc2-7668-4284-b959-5b79f4b49425 Resize… Duplicate Delete Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.",
+    "resizeDisabled": false
+  },
+  "pointer": {
+    "subjectSamples": [
+      "0ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…",
+      "200ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…",
+      "1000ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…",
+      "3000ms: ROOM · INCLUDED room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-templ…"
+    ]
+  }
+}

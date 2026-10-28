@@ -23,6 +23,11 @@ import {
 	type Texture
 } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extensions';
+
+import { sha256Hex } from './digest';
+
+/** The identity helper is re-exported for existing ingest callers and tests. */
+export { sha256Hex };
 import { getBounds, meshopt, textureCompress } from '@gltf-transform/functions';
 import { canonicalUnitJson } from '@portfolio/project-model/units';
 
@@ -67,13 +72,6 @@ export type CreatorImportEnvironment = {
 	/** Test seam: an injected draco decoder module. */
 	readonly dracoDecoder?: unknown;
 };
-
-/** SHA-256 of exact bytes as the `sha256-<hex>` identity S01 routes already use. */
-export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-	const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes as unknown as BufferSource);
-	const hex = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
-	return `sha256-${hex}`;
-}
 
 function refuse(
 	code: Extract<CreatorImportOutcome, { kind: 'refused' }>['code'],

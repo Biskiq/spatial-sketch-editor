@@ -25,7 +25,7 @@ import {
 	type ModelImportClient
 } from '$lib/platform/model-import-client';
 
-import { sha256Hex } from './ingest';
+import { sha256Hex } from './digest';
 import {
 	CREATOR_IMPORT_RECIPE,
 	type CreatorImportFile,
@@ -73,7 +73,8 @@ export type CreatorImportDeps = {
 	readonly apiOrigin: string;
 	readonly client?: ModelImportClient | null;
 	readonly worker?: CreatorImportWorkerClient;
-	/** Test seam: the worker-less recipe. */		readonly ingest?: (input: {
+	/** Test seam: the worker-less recipe. */
+	readonly ingest?: (input: {
 		files: readonly CreatorImportFile[];
 		parameters: CreatorImportParameters;
 		onProgress?: (progress: CreatorImportProgress) => void;

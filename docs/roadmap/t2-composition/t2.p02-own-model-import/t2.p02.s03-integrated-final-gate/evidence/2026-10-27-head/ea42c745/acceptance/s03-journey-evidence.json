@@ -1,0 +1,117 @@
+{
+  "projectId": "perf-s03-mvr91y0e",
+  "browser": "chrome",
+  "errors": [],
+  "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
+  "stagePlacedPixels": 34377,
+  "stagePlacedWaitedMs": 184,
+  "selectionAfterPlacement": "ENTITY · SCENE entity-97324769-0ebe-466b-9111-59accc557cd9 Collapse ✕ Domain scene Kind model Name Gate model Position 6.152097977753508 m · 0 m · -2.0158173039156795 m Scale 1 (uniform) Yaw 0 rad Focus Open task Bring into view Technical details",
+  "arrangeEntityOptions": [
+    "Choose…",
+    "Gate model · model",
+    "box",
+    "cylinder",
+    "sphere"
+  ],
+  "placedEntityId": "entity-97324769-0ebe-466b-9111-59accc557cd9",
+  "afterMoveTurn": {
+    "position": [
+      1.25,
+      0,
+      -0.5
+    ],
+    "rotation": [
+      0,
+      0.5,
+      0
+    ]
+  },
+  "afterResize": {
+    "scale": 1.5,
+    "position": [
+      1.25,
+      0,
+      -0.5
+    ]
+  },
+  "afterDuplicate": {
+    "entityIds": [
+      "entity-97324769-0ebe-466b-9111-59accc557cd9",
+      "entity-aae32754-df3f-4322-ac7d-485d740e9d4a"
+    ],
+    "scales": [
+      1.5,
+      1.5
+    ]
+  },
+  "afterDeleteModel": {
+    "entityIds": [
+      "entity-97324769-0ebe-466b-9111-59accc557cd9"
+    ]
+  },
+  "twoInstances": {
+    "entityIds": [
+      "entity-97324769-0ebe-466b-9111-59accc557cd9",
+      "entity-f3247593-cdfc-4387-b94f-5e69045bad24"
+    ],
+    "assetIds": [
+      "model-ccc41077-ee89-4cda-8bf1-0327647c90e9",
+      "model-ccc41077-ee89-4cda-8bf1-0327647c90e9"
+    ],
+    "resourceIds": [
+      "model-ccc41077-ee89-4cda-8bf1-0327647c90e9"
+    ]
+  },
+  "resource": {
+    "id": "model-ccc41077-ee89-4cda-8bf1-0327647c90e9",
+    "pin": {
+      "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78",
+      "mime": "model/gltf-binary",
+      "size": 1201064,
+      "locator": "/projects/perf-s03-mvr91y0e/models/content/sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+    },
+    "source": {
+      "manifestHash": "sha256-8ab968947ae796732bd527a388236c44d7945a069bc6b2669c4510efceff5357",
+      "size": 100872,
+      "fileCount": 1
+    },
+    "recipe": {
+      "id": "creator-import@1",
+      "version": 1
+    },
+    "reportDigest": "sha256-44969f5934367c63bf0757e121e78950013fcacc09d8e900852088273c0e06b6",
+    "placement": {
+      "metresPerSourceUnit": 1,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "footprint": {
+        "width": 2,
+        "depth": 2
+      },
+      "contactMinY": 0,
+      "placement": "floor"
+    },
+    "contentRevision": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+  },
+  "derivativeBytes": {
+    "size": 1201064,
+    "hash": "sha256-66ced4f5eb899b3faf787e8548e06c1992a5ba607f02da4d199838ff6dee7a78"
+  },
+  "reopenedPixels": 153450,
+  "reopenWaitedMs": 212,
+  "reopenErrors": [],
+  "previewPixelsWithModel": 157270,
+  "previewPaintedWithModel": 1070505,
+  "previewTextureWaitedMs": 654,
+  "controlStored": {
+    "rooms": 1,
+    "resources": 0,
+    "entities": 0
+  },
+  "previewPixelsControl": 0,
+  "previewControlPaintedPixels": 180321,
+  "controlErrors": []
+}

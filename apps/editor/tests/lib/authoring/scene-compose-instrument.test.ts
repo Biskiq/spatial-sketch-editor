@@ -11,6 +11,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
+import {
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
+import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
 
 import SceneTransformInstrument from '$lib/authoring/adapters/scene/SceneTransformInstrument.svelte';
 import {
@@ -18,10 +24,14 @@ import {
 	sceneReadingKey,
 	type ScenePlacementSession
 } from '$lib/authoring/adapters/scene/placement';
+import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
+import { attachUnitStageSource } from '$lib/authoring/stage/unit-stage-source';
 
 const BOX_ID = 'entity-compose-box';
 const LIGHT_ID = 'entity-compose-light';
+const MODEL_ID = 'entity-compose-model';
+const MODEL_ASSET_ID = 'model-compose-approved';
 const SOURCE_ID = `sha256-${'b'.repeat(64)}`;
 const EVALUATION = {
 	token: {
@@ -63,6 +73,52 @@ const SNAPSHOT = {
 	compileGeneration: 'generation-compose',
 	domain: { scene: { entities: [BOX, LIGHT] } }
 };
+const MODEL = {
+	kind: 'model',
+	id: MODEL_ID,
+	name: 'Approved model',
+	assetId: MODEL_ASSET_ID,
+	fallback: 'generic',
+	position: [2, 1, 2],
+	rotation: [0, 0, 0],
+	scale: 1
+};
+const MODEL_RESOURCE = creatorModelResourceEntry(MODEL_ASSET_ID, {
+	derivative: { hash: `sha256-${'a'.repeat(64)}`, mime: 'model/gltf-binary', size: 4096, locator: '/models/a.glb' },
+	source: { manifestHash: `sha256-${'d'.repeat(64)}`, size: 8192, fileCount: 1 },
+	recipe: { id: 'creator-import@1', version: 1 },
+	reportDigest: `sha256-${'c'.repeat(64)}`,
+	placement: {
+		metresPerSourceUnit: 1,
+		pivot: [0, 0, 0],
+		footprint: { width: 2, depth: 2 },
+		contactMinY: -0.25
+	}
+})!.resource;
+const MODEL_SNAPSHOT = attachUnitStageSource(
+	{
+		...SNAPSHOT,
+		sourceKind: UNIT_SOURCE_KIND,
+		sourceVersion: UNIT_SOURCE_VERSION,
+		domain: { scene: { entities: [BOX, LIGHT, MODEL] } }
+	} as unknown as StageReadSnapshot,
+	{
+		units: {
+			layout: {
+				header: { formatVersion: 6, contentRevision: 'sha256-layout' },
+				data: { rooms: [] }
+			},
+			scene: {
+				header: { formatVersion: 3, contentRevision: 'sha256-scene' },
+				data: { formatVersion: 3, textures: [], materials: [], entities: [MODEL] }
+			},
+			resources: {
+				header: { formatVersion: 2, contentRevision: 'sha256-resources' },
+				data: { formatVersion: 2, resources: [MODEL_RESOURCE] }
+			}
+		}
+	} as unknown as ProjectEnvelope
+);
 
 type ComposeSpies = {
 	readonly session: ScenePlacementSession;
@@ -112,7 +168,8 @@ function composeSpies(): ComposeSpies {
 
 function servicesFor(
 	session: ScenePlacementSession,
-	selectedId: string
+	selectedId: string,
+	snapshot: unknown = SNAPSHOT
 ): {
 	readonly services: StageAdapterServices;
 	select(id: string): void;
@@ -123,7 +180,7 @@ function servicesFor(
 	const notify = vi.fn();
 	const services = {
 		stage: {
-			snapshot: () => SNAPSHOT,
+			snapshot: () => snapshot,
 			selectionState: () => ({ primary: { domain: 'scene', subject: { kind: 'entity', id: selected } } }),
 			evaluation: () => EVALUATION,
 			evaluationId: () => EVALUATION_ID,
@@ -150,7 +207,7 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
-async function mountCompose(selectedId: string): Promise<{
+async function mountCompose(selectedId: string, snapshot: unknown = SNAPSHOT): Promise<{
 	readonly target: HTMLElement;
 	readonly spies: ComposeSpies;
 	readonly services: StageAdapterServices;
@@ -158,8 +215,11 @@ async function mountCompose(selectedId: string): Promise<{
 	readonly notify: ReturnType<typeof vi.fn>;
 }> {
 	const spies = composeSpies();
-	publishSceneSurface(SNAPSHOT, { reading: sceneReadingKey(EVALUATION), session: spies.session });
-	const { services, select, notify } = servicesFor(spies.session, selectedId);
+	// Publish the same snapshot the services expose; the surface registry is keyed
+	// by accepted snapshot, so a mismatch would build a real session instead of
+	// the mock this test drives.
+	publishSceneSurface(snapshot as never, { reading: sceneReadingKey(EVALUATION), session: spies.session });
+	const { services, select, notify } = servicesFor(spies.session, selectedId, snapshot);
 	const target = document.createElement('div');
 	document.body.appendChild(target);
 	const component = mount(SceneTransformInstrument, { target, props: { services } });
@@ -182,6 +242,29 @@ describe('Scene Compose — truthful capability and captured subject', () => {
 		expect(buttonNamed(target, 'Resize…').disabled).toBe(false);
 		expect(buttonNamed(target, 'Duplicate').disabled).toBe(false);
 		expect(target.textContent).not.toContain('no verified floor contact');
+	});
+
+	it('offers Resize and Duplicate for an approved model with recorded contact', async () => {
+		const { target } = await mountCompose(MODEL_ID, MODEL_SNAPSHOT);
+		expect(buttonNamed(target, 'Resize…').disabled).toBe(false);
+		expect(buttonNamed(target, 'Duplicate').disabled).toBe(false);
+		expect(target.textContent).not.toContain('needs a verified contact');
+	});
+
+	it('keeps a model Resize proposal open while the opening control is removed', async () => {
+		const { target } = await mountCompose(MODEL_ID, MODEL_SNAPSHOT);
+		buttonNamed(target, 'Resize…').click();
+		// Removing the focused Resize… control delivers a focusout with no related
+		// target while the replacement field is being installed.
+		target.querySelector('.editing')!.dispatchEvent(
+			new FocusEvent('focusout', { bubbles: true, relatedTarget: null })
+		);
+		await tick();
+		expect(target.textContent).toContain(`Compose ${MODEL_ID}`);
+		const input = target.querySelector<HTMLInputElement>('input[inputmode="decimal"]');
+		if (input === null) throw new Error('the Resize entry did not open');
+		expect(document.activeElement).toBe(input);
+		expect(target.textContent).not.toContain('Cancelled; the accepted pose is unchanged.');
 	});
 
 	it('cancels an open Resize when the canonical selection moves to another entity', async () => {

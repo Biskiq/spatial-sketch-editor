@@ -1,0 +1,13 @@
+{
+  "projectId": "perf-s03empty-mvr9xc2z",
+  "browser": "chrome",
+  "errors": [],
+  "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
+  "guidance": "ENTITY Choose… Use selection Begin PLACE box cylinder sphere X (M) Z (M) Place No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place object. The approved model is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it. SNAP (M, OPTIONAL) Snap is explicit and off by default.",
+  "selectionAfterPlacement": "ENTITY · SCENE entity-e6dae0e6-f117-49d1-90e1-472a6cd3a229 Collapse ✕ Domain scene Kind model Name empty-project Position 4 m · 0 m · -1.1102230246251565e-16 m Scale 1 (uniform) Yaw 0 rad Focus Open task Bring into view Technical details",
+  "stored": {
+    "rooms": 1,
+    "resources": 1,
+    "entities": 1
+  }
+}

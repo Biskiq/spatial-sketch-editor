@@ -1,0 +1,47 @@
+{
+  "projectId": "perf-s03diagsel-mvr92z6u",
+  "report": "Found 1 nodes (0 empty) · 1 meshes · 12 triangles · 2 textures Footprint 2.000 × 2.000 m · contact 0.000 m · height 2.000 m Textures capped at 2048 px: 1 reduced. Parts, clips and variants found: 0 animations, 0 variants — reported, not admitted. The imported object is one whole model.",
+  "subjectSamples": [
+    "0ms: ENTITY · SCENE entity-35553358-8dfe-4029-992b-b7566ffec28d Collapse ✕ Domain scene Kind model Name Diagnostic model Position 6.152097977753508 m · 0 m · -2.0158…",
+    "200ms: ENTITY · SCENE entity-35553358-8dfe-4029-992b-b7566ffec28d Collapse ✕ Domain scene Kind model Name Diagnostic model Position 6.152097977753508 m · 0 m · -2.0158…",
+    "1000ms: ENTITY · SCENE entity-35553358-8dfe-4029-992b-b7566ffec28d Collapse ✕ Domain scene Kind model Name Diagnostic model Position 6.152097977753508 m · 0 m · -2.0158…",
+    "3000ms: ENTITY · SCENE entity-35553358-8dfe-4029-992b-b7566ffec28d Collapse ✕ Domain scene Kind model Name Diagnostic model Position 6.152097977753508 m · 0 m · -2.0158…"
+  ],
+  "taskRegionHeadings": [
+    "EXPERIENCE · EXPERIENCE",
+    "ARRANGE · SCENE",
+    "PLACE · LAYOUT",
+    "PLACE · SCENE",
+    "LIBRARY · OWN MODEL"
+  ],
+  "taskRegionRows": [
+    "TASK Experience authoring",
+    "TASK Resize",
+    "TASK Duplicate",
+    "TASK Delete",
+    "TASK Arrange",
+    "TASK Place plinth",
+    "TASK Place object",
+    "TASK Import model…"
+  ],
+  "subjectRegionHeadings": [
+    "WALL",
+    "ROOM FLOOR"
+  ],
+  "subjectRegionRows": [
+    "WALL wall · wall-chain-1.starter-template",
+    "WALL wall · wall-chain-2.starter-template",
+    "WALL wall · wall-chain-3.starter-template",
+    "WALL wall · wall-chain-4.starter-template",
+    "FLOOR floor · room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-template-F.starter-template"
+  ],
+  "subjectRowsNamingTheModel": 0,
+  "taskRowsNamingTheModel": 0,
+  "compose": {
+    "opened": true,
+    "text": "Compose entity-35553358-8dfe-4029-992b-b7566ffec28d Resize… Duplicate Delete Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.",
+    "resizeDisabled": false,
+    "duplicateDisabled": false,
+    "deleteDisabled": false
+  }
+}

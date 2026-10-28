@@ -21,13 +21,13 @@
 	import type { LayoutRoomRegistry, RuntimeScene } from '@portfolio/project-model';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
-	import VisitorEntities from '$lib/visitor/VisitorEntities.svelte';
 	import type { StageGhostMesh } from '$lib/authoring/stage/stage-facade';
 	import {
 		neutralVisitorRoomPresentation,
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import StageCamera from './StageCamera.svelte';
+	import StageEntities from './StageEntities.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 
 	let {
@@ -70,7 +70,7 @@
 	-->
 	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} />
 	<VisitorLayoutShell {geometry} {presentation} />
-	<VisitorEntities {scene} {rooms} {modelUrls} />
+	<StageEntities {scene} {rooms} {modelUrls} />
 	<!--
 		Proposed-pose ghosts: the object's own shape at the captured pose, translucent
 		and depth-write-free so the accepted body stays readable underneath. They are
