@@ -1,0 +1,16 @@
+
+Running 7 tests using 1 worker
+
+(node:36031) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1;31m[404] GET /favicon.ico[0m
+  ✓  1 [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:343:1 › starter: draw a deliberate join, close an enclosure, divide a Room, delete, undo/redo and reload (11.4s)
+  ✓  2 [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:486:1 › empty: draw and close an enclosure, read it in 3D, edit Card precision and use the keyboard (7.7s)
+  ✓  3 [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:637:1 › policy: crossing, collinear overlap, nested ring and invalid input refuse with no partial source (9.4s)
+  ✓  4 [chrome] › perf/flows/t1-s02-browser-acceptance.spec.ts:710:1 › shell: narrow reduced-motion layout, Find, contributed-task arbitration and unsaved replacement (4.8s)
+  ✓  5 [chrome] › perf/flows/t1-s03-opening-acceptance.spec.ts:371:1 › starter: place, refuse/repair, remove, undo/redo, save and reload one Opening (11.8s)
+  ✓  6 [chrome] › perf/flows/t1-s03-opening-acceptance.spec.ts:561:1 › 3D: place on a visible Wall face, not only at datum height (5.4s)
+  ✓  7 [chrome] › perf/flows/t1-s03-opening-acceptance.spec.ts:599:1 › empty: draw a Wall, then place a window with keyboard metrics (5.4s)
+
+  7 passed (56.8s)

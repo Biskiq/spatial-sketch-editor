@@ -4,6 +4,9 @@ Retained from the Option B implementation session at product head `7c3445e1` (PR
 with the documentation head `a57588db`. The acceptance record and preservation route are the
 [closed acceptance stub](../../acceptance.md). This folder is evidence, not authority.
 
+The three `.log` files here are tracked deliberately past the repository's `*.log` ignore rule, as
+the T3.P04.S01 evidence logs are; they are cited receipts, not scratch output.
+
 Present:
 
 - [api-tests.log](./api-tests.log) — DB-backed API contract: 14 suites / 115 tests, 0 failed,
