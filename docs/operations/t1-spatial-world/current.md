@@ -4,17 +4,26 @@ PHASE: T1.P02 Native Wall creation →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21. T1.P02 is active; S01, S02, S05 and S06 are shipped and S03 is
        released.
-SLICE: S03 Opening family — **approved and released 2026-10-27**
+SLICE: S03 Opening family — **implementation complete, awaiting owner acceptance and merge**
        (../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md). The complete plan and its
-       pre-build plan review are recorded 2026-10-27; implementation is in progress on
-       `t1/p02-s03-opening-family` from trusted base `98449a44` (PR #199 `a674eedb` is an ancestor). S02 draw, close, divide and delete shipped
+       pre-build plan review are recorded 2026-10-27; implementation is committed on
+       `t1/p02-s03-opening-family` at `985cd214` from trusted base `98449a44` (PR #199 `a674eedb`
+       is an ancestor), and the branch is pushed for review. S02 draw, close, divide and delete shipped
        `owner-override` on PR #201 (P1 merge `ce159a1e`; anchor `36c18db9` and tag
        `closed/T1.P02.S02` verified reachable; product/harness revision `64b9435d`)
        (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
        with its formal performance family deferred to S04 and the Stage route's 456.0 KiB br
        recorded against the ≤400 KiB hard budget as an explicit known miss. M4 is re-armed. S04 is
        the final gate.
-ACC:   T1.P02.S02 draw/close/divide/delete — **accepted (`owner-override`) and shipped 2026-10-27**
+ACC:   T1.P02.S03 Opening family — **implementation evidence recorded at `985cd214`, not accepted**
+       (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/acceptance.md).
+       Gate: `check` 0/0, `arch` 22/180, `full` 216/2,674, `build` and `camera-core`/`layout-core`/
+       `project-model` checks clean; branded-Chrome browser 15/15 and S02 preservation 28/28. Three
+       independent Codex review rounds (gpt-6.1-sol, high effort) reproduced eleven defects; all are
+       repaired and re-reviewed with no unresolved finding. The Stage route is **426.6 KiB br**
+       against the ≤425 KiB hard row (1.6 KiB over) — an owner acceptance decision, not a pass. No
+       formal performance row is claimed.
+       T1.P02.S02 draw/close/divide/delete — **accepted (`owner-override`) and shipped 2026-10-27**
        (PR #201; P1 merge `ce159a1e`; anchor `36c18db9` and tag `closed/T1.P02.S02` verified
        reachable from `main`). Browser 28/28 in Chromium and 28/28 in branded Chrome; automated
        gate `check`, `arch` 22/180, `full` 214/2,653, `build` and the four package checks passed at
@@ -25,12 +34,12 @@ ACC:   T1.P02.S02 draw/close/divide/delete — **accepted (`owner-override`) and
        passed 2026-10-26 (15/15 decision rows, 27 verdicts, full E5, 2,632.7 s on the designated M2,
        Chrome 156.0.8078.48, AC power); battery qualification, grid-XL timing and the sweep latency
        rows are assigned to S04.
-NEXT:  Finish S03 implementation, run the focused/full gates and the on-demand browser journey,
-       measure F4/F8 Opening create/delete at S/M on the designated M2 or record those rows unrun
-       for S04, then obtain the independent implementation review and owner acceptance. S04 is the
-       final gate and carries: S02's deferred formal performance family, the recorded Stage bundle
-       known miss, S01's F2 S/M timings, S06's battery qualification and grid-XL/sweep rows, and
-       integrated S03 proof once it ships. No other T1 slice is released: S04 needs its own
+NEXT:  Owner review of the S03 implementation PR, its acceptance ruling on the 426.6 KiB br Stage
+       route, and the P1 merge that preserves the `985cd214` record. Formal F4/F8 Opening create/delete
+       S/M rows remain unrun and are owed to S04, never recorded as passes. S04 is the final gate and
+       carries: S02's deferred formal performance family, the S02 456.0 KiB br miss and this slice's
+       426.6 KiB br miss, S01's F2 S/M timings, S06's battery qualification and grid-XL/sweep rows,
+       and integrated S03 proof once it ships. No other T1 slice is released: S04 needs its own
        release, and the [release list](../../roadmap/now.md) is the only permission list.
 BLOCKERS: None technical. S03 waits on the batch PR #199 merge and its own plan review; S04 remains
        held pending its own release, and S04 cannot accept while the deferred performance family or
@@ -38,13 +47,17 @@ BLOCKERS: None technical. S03 waits on the batch PR #199 merge and its own plan 
        records-only item owned by T3, not a gate on T1 work.
 CLAIMS: S03 shared-file claim (2026-10-27): writer `t1/p02-s03-opening-family` owns
        `apps/editor/src/lib/authoring/adapters/layout/**` (the new Opening planners, Ink surface,
-       palette and adapter) and its Layout tests, on patch base `98449a44`; reviewer is the standing
-       independent implementation reviewer. No shared Stage/Head module, route or
-       `apps/editor/tests/helpers/**` edit is planned; one discovered during build stops and
-       reports. PR #201 released its `apps/editor/perf/**` and shared Stage/shell claim on
-       acceptance; the T1 S02 writer owned those paths, and S02's feature branch is retired after
-       its P1 merge.
-CARRY: - S02 formal performance family (F3/F4/F8 at S/M, per-move evaluation, F2 open, F13 leak
+       palette and adapter) and its Layout tests, on patch base `98449a44`; review was the independent
+       Codex CLI pass recorded in the acceptance evidence. The build also needed a bounded additive
+       hover dispatch in `stage-facade.ts`, its route caller, and the new browser spec; those edits are
+       recorded in the PR rather than hidden behind the original claim. PR #201 released its
+       `apps/editor/perf/**` and shared Stage/shell claim on acceptance; the T1 S02 writer owned those
+       paths, and S02's feature branch is retired after its P1 merge.
+CARRY: - S03 formal performance family (F4/F8 Opening create/delete at S/M) → S04, unrun and never
+         a pass.
+       - S03 Stage bundle hard miss: 426.6 KiB br against ≤425 KiB, recorded as a known condition
+         awaiting the owner's acceptance ruling; the per-slice +4.3 KiB growth does not waive the row.
+       - S02 formal performance family (F3/F4/F8 at S/M, per-move evaluation, F2 open, F13 leak
          cycles, Stage first-load delta) → S04, unrun and never a pass.
        - S02 Stage bundle hard miss: 456.0 KiB br against ≤400 KiB, recorded as a known condition;
          attribution/reduction remains owning delivery work and S04 cannot erase it.
