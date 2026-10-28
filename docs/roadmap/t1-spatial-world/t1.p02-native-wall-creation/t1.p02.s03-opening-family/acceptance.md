@@ -3,7 +3,7 @@
 ```text
 AUTHORITY: NONE — the phase README owns slice status; this record reports implementation evidence.
 STATUS:    IMPLEMENTATION COMPLETE — awaiting owner acceptance, independent PR review and merge.
-SOURCE:    Branch t1/p02-s03-opening-family at 985cd214, based on main 98449a44.
+SOURCE:    Branch t1/p02-s03-opening-family at 985cd214, based on main 98449a44; PR #209.
 TIER:      architecture-integration; integrated exhaustive proof remains T1.P02.S04.
 INTEGRATION ROUTE: ../t1.p02.s04-integrated-final-gate/acceptance.md
 PHASE:     T1.P02 remains active; S04 is its declared final gate.
@@ -105,11 +105,12 @@ regressions     apps/editor/tests/lib/authoring/layout-opening-adapter.test.ts
 
 ```text
 branch   t1/p02-s03-opening-family
+review   PR #209
 head     985cd214 (implementation evidence revision)
 base     98449a44 (origin/main; PR #199 merge a674eedb is an ancestor)
 bundle   426.6 KiB br Stage first-load JS — known miss above; owner ruling required
 merge    not performed
 ```
 
-The branch is pushed for review; no merge commit, acceptance tag or closeout preservation report
-exists yet. A future P1 merge must preserve this record rather than squash it.
+The branch is pushed for review as PR #209; no merge commit, acceptance tag or closeout
+preservation report exists yet. A future P1 merge must preserve this record rather than squash it.

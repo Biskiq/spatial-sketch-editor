@@ -8,7 +8,7 @@ SLICE: S03 Opening family — **implementation complete, awaiting owner acceptan
        (../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md). The complete plan and its
        pre-build plan review are recorded 2026-10-27; implementation is committed on
        `t1/p02-s03-opening-family` at `985cd214` from trusted base `98449a44` (PR #199 `a674eedb`
-       is an ancestor), and the branch is pushed for review. S02 draw, close, divide and delete shipped
+       is an ancestor), and the branch is pushed for review as PR #209. S02 draw, close, divide and delete shipped
        `owner-override` on PR #201 (P1 merge `ce159a1e`; anchor `36c18db9` and tag
        `closed/T1.P02.S02` verified reachable; product/harness revision `64b9435d`)
        (../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
