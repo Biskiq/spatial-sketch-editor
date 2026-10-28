@@ -301,14 +301,31 @@ Side and Top, revises the outline, reshapes a contour stretch with visible reach
 exact section dimensions, Applies or Discards each change as one undo step, and returns to World.
 Successive edits in different orientations compose; resizing scales refinements; an outline edit
 after shaping re-evaluates spatially or refuses; everything survives Save and reopen. A shaped form
-saves to My Objects with its operations and inserts as an editable copy; P02's Scene format change
-moves the library payload format with it.
+saves to My Objects with its operations and inserts as an editable copy.
+
+**My Objects across P02's format change.** P02's change to the form encoding moves the library
+payload format from 1 to 2, so the slice that makes it (expected: S03, shaping truth) also ships the
+upgrader and scripted migration under the [My Objects migration obligation](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects). Its acceptance must
+show:
+
+1. P01 S04's format-1 corpus migrates to format 2 with every logical id, owner, name and creation
+   time preserved, content ids recomputed, the strict format-2 codec accepting every item, and every
+   golden digest unchanged;
+2. on a DB-backed store holding several owners' items, the migration is all-or-nothing, a rerun
+   changes nothing, an injected failure leaves the store at format 1 intact, and the kept prior
+   bytes restore format 1 exactly;
+3. after migration, live readers refuse format-1 payloads;
+4. migrated items list, insert into a project, refine and survive Save and cold reopen.
+
+P02's final gate then repeats the journey with real data: an item saved to My Objects during P01 is
+still listed after P02 lands, is inserted, shaped in Focus, saved back to My Objects as a new item,
+and reinserted in another project.
 
 | Slice | Delivers | Notes |
 | --- | --- | --- |
 | S01 | Focus scope and section reading: a scoped-editing host capability (enter and return, context recession, pick filtering, framing intent, state pill), object-relative sections from a runtime-safe section query, slice position, Card facts | T1-reviewed seam; inspection only |
 | S02 | Outline revision in Focus: move, insert and remove anchors, straighten, smooth corners, exact entry; key lifetimes | First Focus writer |
-| S03 | Shaping truth, headless: `reshape`, `keep` and `release` operations, frozen displacement fields, deviation-driven refinement, fold, collapse and self-intersection validation, section target fit, corpus and budgets | Can run beside P01 S02 once registered |
+| S03 | Shaping truth, headless: `reshape`, `keep` and `release` operations, frozen displacement fields, deviation-driven refinement, fold, collapse and self-intersection validation, section target fit, corpus and budgets | Can run beside P01 S02 once registered; carries the My Objects format migration if it changes the form encoding |
 | S04 | Shaping interaction: stretch selection, oversketch, Straighten/Arc/Smooth, reach, Keep part, the pending candidate bar, refusals, the pending-exit choice, resize after shaping | The [Shape focus specification](../../../prototypes/native-object-shaping/UX-SPEC.md) is the starting design, through the feature design loop |
 | S05 | Integrated final gate | — |
 
@@ -356,14 +373,15 @@ slice, behind Scene admission, at three levels:
 | Functional geometry | Every accepted form evaluates to a closed, consistently outward-oriented 2-manifold with positive volume. A corpus of valid and invalid sources — concave, near-degenerate, collinear runs, minimum features, limits — passes or refuses with typed reasons. Footprint, contact and bounds agree with the mesh; Plan, 3D and Preview draw the same result | Each slice; the corpus grows with each capability |
 | Dependable revision | One accepted edit is one history entry; preview equals commit; Undo and Redo restore exact source and keys; refused, cancelled, stale or no-op edits add no history; Save and cold reopen reproduce identical evaluation; a session longer than the 100-entry history keeps every control editable; a My Objects copy is identical to its saved source, and edits to the copy, the original or the saved item never reach each other, across projects and through Save and reopen | Each writer slice; phase-gate journeys |
 | Performance | §5.7's rows on the designated machine with the peak-first method; no regression of existing hard rows; bundle growth recorded | Slice evidence; phase-gate recheck |
-| Source compatibility | Strict codec with format bump and regenerated fixtures; golden evaluation digests pinned per format version; bit-identical canonical evaluation in V8 and at least one other engine; no derived data persisted; a semantic change requires a format bump; the My Objects payload format moves with the Scene form encoding and older items refuse under the pre-baseline rule | Each format-changing slice; phase gate |
+| Source compatibility | Strict codec with format bump and regenerated fixtures; golden evaluation digests pinned per format version; bit-identical canonical evaluation in V8 and at least one other engine; no derived data persisted; a semantic change requires a format bump; the My Objects payload format moves with the Scene form encoding, and stored items are migrated forward with their meaning unchanged under its named pre-baseline exception | Each format-changing slice; phase gate |
 | Ownership | T2 review of Scene unit, codec, planner, library-scope and API changes; owner-only access to My Objects; T1 review of Stage seams; T3 review of any F4, Head or Save change; the unconditional architecture lane (visitor isolation, package direction, F4 public isolation); geometry-core free of domain meaning, renderer and DOM | Each slice |
 | User experience | PLATE conformance (one writer per fact, state pill and Put back, refusal grammar, keyboard and numeric paths, narrow and short shells, reduced motion); the feature design loop in a real browser; owner walkthroughs — three different objects from an empty project (P01), then one object refined to an intended form and deliberately revised in a later session (P02) — with blocked intentions recorded | Exposure slices; phase gate |
 
 ### 7.3 What blocks integration
 
 Lost accepted work; an invalid accepted body; a preview that differs from the accepted result;
-silent retargeting or repair; changed canonical output without a version change; a hard budget miss
+silent retargeting or repair; changed canonical output without a version change; a stored My
+Objects item left unmigrated, dropped or changed in meaning by a format change; a hard budget miss
 without an owner disposition; editor machinery in visitor chunks; a second selection, history,
 Camera or writer. Any of these stops the slice. It is fixed inside the slice or escalated, never
 waived by the slice itself.
