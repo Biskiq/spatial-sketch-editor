@@ -8,7 +8,13 @@ grids after a preview is already running:
 | M | `grid-M` (grid-7, about 112 walls) | Smooth: editor time, handler-to-presentation delay and frame intervals match the measured display period. |
 | L | `grid-L` (grid-14, about 420 walls) | Usable. Modest lag, including a stable half-rate, is acceptable. Interaction has to finish and stay correct. |
 
-M and L are not required to post the same numbers. The grids contain no imported GLBs and no
+M and L are not required to post the same numbers. For a one-shot typed commit, L uses the
+200 ms end-to-end completion allowance (including the rendering-opportunity proxy), not editor
+acceptance plus two refresh periods. Continuous L drag/pan still expects presentation within about
+two display periods; M's tighter response remains. The 10% decision margin still identifies
+borderline values. Report editor acceptance and later presentation separately.
+
+The grids contain no imported GLBs and no
 texture-heavy Scene composition. A result here does not certify those areas.
 
 ```sh
