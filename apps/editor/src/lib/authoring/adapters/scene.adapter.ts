@@ -337,6 +337,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readonly entity: SceneFormEntity;
 				readonly handle: FormSizeHandle;
 				readonly measurement: FormSizeMeasurement;
+				/** Plan hides world Y, so Height uses pointer travel in the same CSS axis as its marker. */
+				readonly planHeightTravel: { readonly startY: number; readonly metersPerCssPixel: number } | null;
 				scale: readonly [number, number, number] | null;
 				candidate: SceneFormEntity | null;
 				refusal: string | null;
@@ -345,6 +347,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** The last refusal a completed or abandoned size ray leaves on the Stage. */
 			let sizeRefusal: string | null = null;
 			const SIZE_HANDLE_HIT_CSS_PX = 12;
+			const SIZE_PLAN_HEIGHT_MARKER_GAP_CSS_PX = 24;
 
 			/**
 			 * Publish/read the surface for the **live** accepted snapshot and reading.
@@ -411,6 +414,52 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return adapterContext.project(world as [number, number, number]);
 			}
 
+			/** Plan looks down world Y, so only Height needs the screen-space sizing axis there. */
+			function usesPlanHeightScreenTravel(
+				adapterContext: StageAdapterContext,
+				handle: FormSizeHandle
+			): boolean {
+				return adapterContext.evaluation.settledReading === 'plan' && handle.axis === 1;
+			}
+
+			/** The same viewport point both publishes and hit-tests each size marker. */
+			function sizeHandleViewportCss(
+				adapterContext: StageAdapterContext,
+				entity: SceneFormEntity,
+				measurement: FormSizeMeasurement,
+				handle: FormSizeHandle
+			): readonly [number, number] | null {
+				if (!usesPlanHeightScreenTravel(adapterContext, handle)) {
+					return viewportCss(adapterContext, handle.world);
+				}
+				const metersPerCssPixel = adapterContext.evaluation.targetPlaneMetersPerCssPixel;
+				if (measurement.bounds === null || !(metersPerCssPixel > 0)) return null;
+				const base = viewportCss(
+					adapterContext,
+					formWorldPoint(entity, [handle.local[0], measurement.bounds.min[1], handle.local[2]])
+				);
+				if (base === null) return null;
+				return [
+					base[0],
+					base[1] - SIZE_PLAN_HEIGHT_MARKER_GAP_CSS_PX - handle.dimension / metersPerCssPixel
+				];
+			}
+
+			function sizeHandleStageCss(
+				adapterContext: StageAdapterContext,
+				entity: SceneFormEntity,
+				measurement: FormSizeMeasurement,
+				handle: FormSizeHandle
+			): readonly [number, number] | null {
+				const css = sizeHandleViewportCss(adapterContext, entity, measurement, handle);
+				return css === null
+					? null
+					: [
+							css[0] - adapterContext.evaluation.rect.left,
+							css[1] - adapterContext.evaluation.rect.top
+						];
+			}
+
 			function sizeHandleAt(
 				adapterContext: StageAdapterContext,
 				css: readonly [number, number]
@@ -420,7 +469,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const measurement = formSizeMeasurement(entity);
 				let best: { handle: FormSizeHandle; distance: number } | null = null;
 				for (const handle of measurement.handles) {
-					const projected = stageCss(adapterContext, handle.world);
+					const projected = sizeHandleStageCss(adapterContext, entity, measurement, handle);
 					if (projected === null) continue;
 					const distance = Math.hypot(css[0] - projected[0], css[1] - projected[1]);
 					if (distance > SIZE_HANDLE_HIT_CSS_PX) continue;
@@ -472,6 +521,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						entity: hit.entity,
 						handle: hit.handle,
 						measurement: hit.measurement,
+						planHeightTravel: usesPlanHeightScreenTravel(adapterContext, hit.handle)
+							? {
+									startY: intent.css[1],
+									metersPerCssPixel: adapterContext.evaluation.targetPlaneMetersPerCssPixel
+								}
+							: null,
 						scale: null,
 						candidate: null,
 						refusal: null
@@ -502,19 +557,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				}
 				if (intent.phase === 'move') {
-					const ray = adapterContext.ray([
-						intent.css[0] + adapterContext.evaluation.rect.left,
-						intent.css[1] + adapterContext.evaluation.rect.top
-					]);
-					const travel =
-						ray === null
-							? null
-							: axisTravelFromRay({
-									origin: formWorldPoint(current.entity, [0, 0, 0]),
-									direction: formWorldAxis(current.entity, current.handle.axis),
-									rayOrigin: ray.origin,
-									rayDirection: ray.direction
-								});
+					const travel = current.planHeightTravel === null
+						? (() => {
+								const ray = adapterContext.ray([
+									intent.css[0] + adapterContext.evaluation.rect.left,
+									intent.css[1] + adapterContext.evaluation.rect.top
+								]);
+								return ray === null
+									? null
+									: axisTravelFromRay({
+											origin: formWorldPoint(current.entity, [0, 0, 0]),
+											direction: formWorldAxis(current.entity, current.handle.axis),
+											rayOrigin: ray.origin,
+											rayDirection: ray.direction
+										});
+							})()
+						: current.handle.dimension / current.handle.factor +
+							((current.planHeightTravel.startY - intent.css[1]) *
+								current.planHeightTravel.metersPerCssPixel) /
+								current.handle.factor;
 					const scale =
 						travel === null
 							? null
@@ -526,7 +587,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (scale === null) {
 						current.scale = null;
 						current.candidate = null;
-						current.refusal = 'Drag outward to name a new size.';
+						current.refusal = 'Move the handle to name a new size.';
 					} else {
 						const preview = previewFormSize({
 							context: sizePlannerContext(adapterContext),
@@ -576,6 +637,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const entity = selectedFormEntity(adapterContext);
 				if (entity === null) return null;
 				const active = sizeGesture;
+				const displayEntity = active?.candidate ?? entity;
 				const measurement =
 					active === null
 						? formSizeMeasurement(entity)
@@ -584,16 +646,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							: formSizeMeasurement(active.candidate);
 				if (measurement.handles.length === 0) return null;
 				const markers = measurement.handles.flatMap((handle) => {
-					const projected = viewportCss(adapterContext, handle.world);
+					const projected = sizeHandleViewportCss(adapterContext, displayEntity, measurement, handle);
 					if (projected === null) return [];
-					const dimension =
-						active !== null && active.handle.axis === handle.axis && active.candidate !== null
-							? handle.baseDimension * active.candidate.form.scale[handle.axis]
-							: handle.dimension;
+					const interaction = usesPlanHeightScreenTravel(adapterContext, handle)
+						? 'drag upward to increase; downward to reduce'
+						: 'drag for size';
 					return [{
 						id: `scene-form-size-${handle.axis}`,
 						css: projected,
-						label: `${handle.label} ${dimension.toFixed(3)} m — drag for size; exact value in the Card`
+						label: `${handle.label} ${handle.dimension.toFixed(3)} m — ${interaction}; exact value in the Card`
 					}];
 				});
 				const refusal = active?.refusal ?? sizeRefusal;

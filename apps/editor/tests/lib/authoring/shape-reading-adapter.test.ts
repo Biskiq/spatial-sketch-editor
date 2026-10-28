@@ -157,6 +157,41 @@ function stageCss(facade: StageFacade, world: readonly [number, number, number])
 	return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
 }
 
+async function createFloorForm(mounted: Mounted): Promise<SceneFormEntity> {
+	armInk(mounted.facade);
+	const shape = shapeSurface(inkSurface()!.controller);
+	for (const point of [
+		[2, 0, 2],
+		[4, 0, 2],
+		[4, 0, 4],
+		[2, 0, 4]
+	] as const) {
+		click(mounted.facade, point);
+	}
+	shape.controller.finish();
+	const baseline = mounted.facade.snapshot().canonicalJson;
+	shape.controller.create();
+	await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+	const created = acceptedForms(mounted.facade)[0];
+	if (created === undefined) throw new Error('the floor Shape did not create a form');
+	return created;
+}
+
+function settleReading(facade: StageFacade, reading: 'plan' | '3d') {
+	const start = SETTLE_CLOCK + 10;
+	facade.camera.applyIntent({ kind: 'set-reading', reading }, start);
+	facade.camera.evaluate(RECT, start + 10);
+	const evaluation = facade.camera.evaluation();
+	if (evaluation?.settledReading !== reading) throw new Error(`the Camera did not settle in ${reading}`);
+	return evaluation;
+}
+
+function sizeMarker(facade: StageFacade, axis: 0 | 1 | 2) {
+	const marker = facade.overlays().find((entry) => entry.id === `scene-form-size-${axis}`);
+	if (marker === undefined) throw new Error(`the selected form published no size marker for axis ${axis}`);
+	return marker;
+}
+
 function click(facade: StageFacade, world: readonly [number, number, number]): void {
 	const evaluationId = facade.evaluationId();
 	if (evaluationId === null) throw new Error('the fixture has no evaluation');
@@ -431,6 +466,186 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(current.form.scale[1]).toBeCloseTo(1, 6);
 		expect(current.form.scale[2]).toBeCloseTo(1, 6);
 		expect(mounted.host.history()).toMatchObject({ depth: 5, position: 4 });
+	});
+
+	it('sizes Height in settled Plan through its screen handle and commits one undoable result', async () => {
+		const mounted = await mount();
+		const created = await createFloorForm(mounted);
+		const evaluation = settleReading(mounted.facade, 'plan');
+		const height = formSizeMeasurement(created).handles.find((handle) => handle.axis === 1)!;
+		const marker = sizeMarker(mounted.facade, 1);
+		const from = marker.css;
+		const projectedWorldHandle = stageCss(mounted.facade, height.world);
+		// Plan hides world Y. The published Height knob therefore needs its own
+		// visible screen travel, and the same point must be the hit-test target.
+		expect(marker.label).toContain('drag upward to increase');
+		expect(Math.abs(from[1] - projectedWorldHandle[1])).toBeGreaterThan(20);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const down = mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		expect(down.claimed).toBe(true);
+		const to = [from[0], from[1] - 80] as const;
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		const preview = mounted.facade.ghosts().find((ghost) => ghost.id === 'scene-form-size-preview');
+		expect(preview?.shape.kind).toBe('form');
+		if (preview?.shape.kind !== 'form') throw new Error('Plan Height produced no form preview');
+		const expectedScale =
+			(height.dimension + 80 * evaluation.targetPlaneMetersPerCssPixel) / height.baseDimension;
+		expect(preview.shape.form.scale[1]).toBeCloseTo(expectedScale, 5);
+		expect(sizeMarker(mounted.facade, 1).css[1]).toBeCloseTo(from[1] - 80, 1);
+
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => acceptedForms(mounted.facade)[0]!.form.scale[1] > created.form.scale[1]);
+		const committed = acceptedForms(mounted.facade)[0]!;
+		expect(committed.form.scale[0]).toBe(created.form.scale[0]);
+		expect(committed.form.scale[1]).toBeGreaterThan(created.form.scale[1]);
+		expect(committed.form.scale[2]).toBe(created.form.scale[2]);
+		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		await eventually(() => acceptedForms(mounted.facade)[0]!.form.scale[1] === created.form.scale[1]);
+		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 1 });
+	});
+
+	it('cancels Plan Height preview without changing source or history', async () => {
+		const mounted = await mount();
+		const created = await createFloorForm(mounted);
+		settleReading(mounted.facade, 'plan');
+		const before = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+		const from = sizeMarker(mounted.facade, 1).css;
+		const evaluationId = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		const to = [from[0], from[1] - 64] as const;
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-size-preview')).toBe(true);
+
+		expect(mounted.facade.pointerIntent({ phase: 'cancel', css: to, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		expect(acceptedForms(mounted.facade)[0]!.form.scale).toEqual(created.form.scale);
+		expect(mounted.host.history()).toEqual(history);
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-size-preview')).toBe(false);
+	});
+
+	it('refuses Plan Height while another gesture owns the Stage', async () => {
+		const mounted = await mount();
+		const created = await createFloorForm(mounted);
+		settleReading(mounted.facade, 'plan');
+		const before = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+		const evaluationId = mounted.facade.evaluationId()!;
+		const occupied = mounted.facade.acquireGesture({
+			owner: 'shape-size-test-owner',
+			evaluationId,
+			policy: 'cancel-on-reading-change'
+		});
+		expect(occupied.kind).toBe('granted');
+		const down = mounted.facade.pointerIntent({
+			phase: 'down',
+			css: sizeMarker(mounted.facade, 1).css,
+			evaluationId
+		});
+		expect(down.claimed).toBe(false);
+		expect(mounted.facade.overlays().find((entry) => entry.id === 'scene-form-size-refusal')?.label)
+			.toContain('shape-size-test-owner');
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-size-preview')).toBe(false);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		expect(acceptedForms(mounted.facade)[0]!.form.scale).toEqual(created.form.scale);
+		if (occupied.kind === 'granted') occupied.lease.release();
+		expect(mounted.host.history()).toEqual(history);
+	});
+
+	it('drops a live Plan Height preview when accepted content replaces its source', async () => {
+		const mounted = await mount();
+		await createFloorForm(mounted);
+		settleReading(mounted.facade, 'plan');
+		const from = sizeMarker(mounted.facade, 1).css;
+		const evaluationId = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		const to = [from[0], from[1] - 64] as const;
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-size-preview')).toBe(true);
+
+		const emptyProject = await createUnitProject({
+			id: PROJECT_ID,
+			name: 'Shape reading',
+			layout: fixtureDocument(),
+			scene: {
+				formatVersion: 1,
+				textures: [],
+				materials: [],
+				entities: [],
+				navigationNodes: [],
+				connections: []
+			}
+		});
+		const admitted = await admitSource(emptyProject, {
+			sessionEpoch: mounted.facade.snapshot().sessionEpoch,
+			acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-size-replacement' }
+		});
+		if (admitted.kind !== 'admitted') throw new Error('the replacement source was not admitted');
+		const installed = mounted.facade.installAccepted(admitted.snapshot);
+		expect(installed.kind).toBe('installed');
+		const installedSource = mounted.facade.snapshot().canonicalJson;
+		await eventually(() => acceptedForms(mounted.facade).length === 0);
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 30);
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-size-preview')).toBe(false);
+
+		// A release from the retired evaluation cannot write its captured form back.
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		expect(acceptedForms(mounted.facade)).toHaveLength(0);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(installedSource);
+	});
+
+	it('keeps upright-form Height on the world axis in 3D', async () => {
+		const mounted = await mount();
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'fit',
+				bounds: { min: [2.5, 0, 2.5], max: [4.5, 3, 3.5] },
+				rect: RECT
+			},
+			SETTLE_CLOCK + 1
+		);
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 20);
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		shape.controller.setPlane('elevation');
+		shape.controller.setSheet({ x: 3, z: 3, yaw: 0 });
+		for (const point of [
+			[3, 0, 3],
+			[4, 0, 3],
+			[4, 1, 3],
+			[3, 1, 3]
+		] as const) {
+			click(mounted.facade, point);
+		}
+		shape.controller.finish();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		shape.controller.create();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		const created = acceptedForms(mounted.facade)[0]!;
+		expect(created.form.generator.plane).toBe('elevation');
+		const evaluation = settleReading(mounted.facade, '3d');
+		const height = formSizeMeasurement(created).handles.find((handle) => handle.axis === 1)!;
+		const origin = formWorldPoint(created, [0, 0, 0]);
+		const axis = formWorldAxis(created, 1);
+		const travel = (1.5 * height.baseDimension) / height.factor;
+		const from = stageCss(mounted.facade, height.world);
+		const to = stageCss(mounted.facade, [
+			origin[0] + axis[0] * travel,
+			origin[1] + axis[1] * travel,
+			origin[2] + axis[2] * travel
+		]);
+		const evaluationId = mounted.facade.evaluationId()!;
+		expect(evaluation.settledReading).toBe('3d');
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => acceptedForms(mounted.facade)[0]!.form.scale[1] > created.form.scale[1]);
+		expect(acceptedForms(mounted.facade)[0]!.form.scale[1]).toBeCloseTo(1.5, 5);
 	});
 
 	it('keeps live Shape work when another reading would discard it', async () => {

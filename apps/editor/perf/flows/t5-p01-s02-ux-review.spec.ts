@@ -759,6 +759,54 @@ test('S02 integrated creator workflow', async ({ browser, baseURL }) => {
 			)
 		);
 
+		// In settled Plan, Height is hidden along the camera ray. Its screen-space
+		// handle remains a real size writer and one ray commit remains one Undo.
+		const heightFrom = await markerPoint(page, 'Height ');
+		if (heightFrom === null) throw new Error('the selected form\'s Height handle is not published in Plan');
+		if (!(await pointOverStage(page, heightFrom))) {
+			throw new Error(`the Plan Height handle at ${heightFrom.x},${heightFrom.y} is covered by another surface`);
+		}
+		const planHeightBefore = sceneForms(await downloadSource(page))[0]!;
+		const planHeightResultBefore = await acceptedResultCount(page);
+		await page.mouse.move(heightFrom.x, heightFrom.y);
+		await page.mouse.down();
+		await page.mouse.move(heightFrom.x, heightFrom.y - 60, { steps: 8 });
+		await page.mouse.up();
+		await waitForAcceptedResult(page, planHeightResultBefore);
+		const planHeightAfter = sceneForms(await downloadSource(page))[0]!;
+		expect(planHeightAfter.form.scale[1]).toBeGreaterThan(planHeightBefore.form.scale[1]);
+		rows.push(
+			row(
+				'size.plan-height-ray',
+				'Drag Height in Plan',
+				'passed',
+				`scale ${planHeightBefore.form.scale[1].toFixed(3)} → ${planHeightAfter.form.scale[1].toFixed(3)}; one accepted result`,
+				page,
+				viewport,
+				reducedMotion,
+				await capture(page, 't5-s02-07b-plan-height-size.png')
+			)
+		);
+		const planHeightUndoBefore = await acceptedResultCount(page);
+		await page.locator('[data-editor-history]').getByRole('button', { name: 'Undo', exact: true }).click();
+		await waitForAcceptedResult(page, planHeightUndoBefore);
+		expect(sceneForms(await downloadSource(page))[0]!.form.scale[1]).toBeCloseTo(planHeightBefore.form.scale[1], 6);
+		const planHeightRedoBefore = await acceptedResultCount(page);
+		await page.locator('[data-editor-history]').getByRole('button', { name: 'Redo', exact: true }).click();
+		await waitForAcceptedResult(page, planHeightRedoBefore);
+		expect(sceneForms(await downloadSource(page))[0]!.form.scale[1]).toBeCloseTo(planHeightAfter.form.scale[1], 6);
+		rows.push(
+			row(
+				'size.plan-height-undo-redo',
+				'Plan Height is one history entry',
+				'passed',
+				'Undo restores the previous Height scale; Redo restores the ray result',
+				page,
+				viewport,
+				reducedMotion
+			)
+		);
+
 		// An upright Shape on a 3D sheet, with Flip side.
 		await closeCard(page);
 		await setReading(page, '3D');
