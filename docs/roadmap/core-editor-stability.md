@@ -88,3 +88,5 @@ to the milestone only by an explicit owner amendment of this page. Part addressi
 assemblies, attached composition, advanced vertical architecture and overhead families likewise
 remain outside this milestone. A benchmark harness is not independently required if equivalent
 reproducible manual measurements supply the consuming-slice and integrated performance evidence.
+The [benchmark strategy proposal](./core-editor-stability-benchmark-strategy.md) is a review draft
+for a future owner-initiated investigation. This milestone's acceptance areas are unchanged.

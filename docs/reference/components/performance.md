@@ -17,7 +17,10 @@ acceptance prerequisite on an ordinary slice, phase or final gate. Performance i
 historical evidence; they are not mandatory acceptance prerequisites, and an unmeasured row stays
 **unmeasured**, never a pass. The harnesses, workloads and this document's method definitions stay
 in the tree for a future owner-initiated investigation. No benchmark is authorized by this
-amendment.
+amendment. The sample plan proposed for that investigation is
+[Core Editor Stability benchmark strategy](../../roadmap/core-editor-stability-benchmark-strategy.md).
+It is a review draft: this contract remains the historical method and budget record, and the
+suspension stands.
 
 Where the sections below say a row must pass before acceptance, that obligation is suspended by
 this amendment; the text is retained as the historical method and budget definition. Correctness,
