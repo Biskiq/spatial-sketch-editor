@@ -31,7 +31,8 @@ import {
 	waitForAcceptedResult,
 	waitForStageSettled
 } from './lib/flow';
-import { collectSessions, collectGesture, openTiming, typedLengthTiming, pickIdentity, sessionLabel, previewProvenance, type GestureObservation, type TimedOperation } from './lib/spot-measurement';
+import { clickPick, installPanObserver, workSnapshot, type WorkSnapshot } from './lib/spot-browser';
+import { collectSessions, collectGesture, openTiming, typedLengthTiming, sessionLabel, previewProvenance, type GestureObservation, type TimedOperation } from './lib/spot-measurement';
 import { correlateInputs, readLedger, type LedgerRecord } from './lib/ledger';
 import {
 	FRAME_CAP,
@@ -55,7 +56,6 @@ const TIERS: readonly { id: WorkloadId; tier: SpotTier }[] = [
 	{ id: 'grid-L', tier: 'L' }
 ];
 
-type WorkSnapshot = { spans: Record<string, { count: number; totalMs: number; maxMs: number }>; counts: Record<string, number> };
 
 type TierReport = {
 	readonly tier: SpotTier;
@@ -111,19 +111,6 @@ async function previewIsUp(): Promise<boolean> {
 
 async function pageNow(page: Page): Promise<number> {
 	return page.evaluate(() => performance.now());
-}
-
-async function workSnapshot(page: Page): Promise<WorkSnapshot | null> {
-	return page.evaluate(() => {
-		const ledger = (globalThis as { __BISKIQ_PERF_WORK__?: WorkSnapshot }).__BISKIQ_PERF_WORK__;
-		if (ledger === undefined) return null;
-		return JSON.parse(JSON.stringify(ledger)) as WorkSnapshot;
-	});
-}
-
-function countDelta(before: WorkSnapshot | null, after: WorkSnapshot | null, name: string): number | null {
-	if (before === null || after === null) return null;
-	return (after.counts[name] ?? 0) - (before.counts[name] ?? 0);
 }
 
 async function refreshPeriod(page: Page): Promise<{ ms: number; source: string }> {
@@ -185,17 +172,7 @@ export async function panSamples(page: Page, cdp: CDPSession, tier: SpotTier, re
 	const box = await page.locator('canvas').first().boundingBox();
 	if (box === null) return gestureColumns([]);
 	await cdp.send('Performance.enable');
-	await page.evaluate(() => {
-		const target = window as Window & { __spotPan?: { received: number; presented: number }[]; __spotPanBound?: boolean };
-		target.__spotPan = [];
-		if (target.__spotPanBound) return;
-		target.__spotPanBound = true;
-		document.addEventListener('pointermove', (event) => {
-			if (event.buttons === 0) return;
-			const received = performance.now();
-			requestAnimationFrame((time) => target.__spotPan?.push({ received, presented: time }));
-		}, true);
-	});
+	await page.evaluate(installPanObserver);
 	const originX = box.x + 12;
 	const originY = box.y + box.height * 0.15;
 	await page.mouse.move(originX, originY);
@@ -213,7 +190,7 @@ export async function panSamples(page: Page, cdp: CDPSession, tier: SpotTier, re
 			const taskMs = (metric(after, 'TaskDuration') - metric(before, 'TaskDuration')) * 1000;
 			return { dispatched, taskWindowMs: taskMs, events: fresh,
 				editorMs: sample && Number.isFinite(taskMs) ? taskMs : null,
-				presentedMs: sample ? Math.max(0, sample.presented - sample.received) : null,
+				presentedMs: sample ? sample.presented - sample.received : null,
 				automationMs: sample ? sample.received - dispatched : null };
 		}));
 	} finally { await page.mouse.up(); }
@@ -221,26 +198,6 @@ export async function panSamples(page: Page, cdp: CDPSession, tier: SpotTier, re
 
 function metric(payload: { metrics: { name: string; value: number }[] }, name: string): number {
 	return payload.metrics.find((entry) => entry.name === name)?.value ?? Number.NaN;
-}
-
-export async function clickPick(page: Page, wallId: string) {
-	// The Index selects the known identity; its current handles project that wall.
-	await selectWallById(page, wallId);
-	const start = await handlePoint(page, 'Wall start');
-	const end = await handlePoint(page, 'Wall end');
-	const point = { x: start.x * 0.75 + end.x * 0.25, y: start.y * 0.75 + end.y * 0.25 };
-	const before = await workSnapshot(page);
-	const marksBefore = (await readLedger(page)).records.length;
-	await page.mouse.click(point.x, point.y);
-	await page.waitForTimeout(50);
-	const ledger = await readLedger(page);
-	const marks = ledger.records.slice(marksBefore).filter((record) => record.name === 'stage:pick');
-	const mark = marks.length === 1 ? marks[0] : undefined;
-	const after = await workSnapshot(page);
-	const selected = await page.locator('button.item-row[aria-current="true"]', { hasText: wallId }).count();
-	return { elapsedMs: typeof mark?.detail?.elapsedMs === 'number' ? mark.detail.elapsedMs : null,
-		resolved: pickIdentity(mark, wallId) === null ? null : pickIdentity(mark, wallId) === true && selected === 1,
-		indexBuilds: countDelta(before, after, 'plan-pick:node-built'), mark: mark ?? null, point, selected };
 }
 
 async function waitForRelevantFrame(page: Page, timing: () => Promise<TimedOperation>): Promise<TimedOperation> {
@@ -446,7 +403,7 @@ async function main(): Promise<void> {
 		return { tier, label: sessionLabel([...sessions.map((session) => session.label), ...failures.filter((failure) => failure.tier === tier).map(() => 'incomplete' as const)]), sessions };
 	});
 	const labels = tiers.map((tier) => tier.label);
-	const previewVersions = [...new Set(reports.map((row) => row.previewVersion))];
+	const previewVersions = [...new Set([...reports.map((row) => row.previewVersion), ...failures.map(() => null)])];
 	const runnerRevision = gitRevision();
 	const provenance = previewProvenance(runnerRevision, runnerDirty, previewVersions);
 	const elapsedMs = Date.now() - measuredStarted;

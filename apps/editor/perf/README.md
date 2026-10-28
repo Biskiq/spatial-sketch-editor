@@ -29,7 +29,7 @@ setup time is reported separately from the measurement.
 For M, then L, in one fresh unthrottled context each:
 
 1. Open the cached project. Report admission (`f2:open-requested` → `f2:open-admitted`), editor opening through the first nonempty Stage render carrying that admitted source content ID, and its later rendering-opportunity proxy separately. Navigation, the chooser and observation overhead form the remaining automation wall time.
-2. One short wall drag, a known-wall pick, one typed Length commit, a pick on the same wall after that commit, and one short pan from the canvas margin. Picks use the cached focus wall, its projected quarter-point and the actual hit identity plus the selected Index identity; a miss or another wall is a failure.
+2. One short wall drag, a known-wall pick, one typed Length commit, a pick on the same wall after that commit, and one short pan from the canvas margin. Picks use the cached focus wall, its projected quarter-point, clear the existing selection so the Wall body cannot claim a manipulation press, and check the actual hit identity plus the newly selected Index identity; a miss or another wall is a failure.
 3. Frame intervals compared with the display period (`screen.refreshRate` when the browser exposes it, otherwise the idle animation-frame period).
 4. Undo at L always, and at M when the commit's editor time is past 50 ms.
 
@@ -53,7 +53,7 @@ A missing or ambiguous marker is incomplete. Undo starts at its fresh product `c
 
 The presentation column is a conservative rAF opportunity **after** the relevant render submission,
 not physical scanout. Drag uses its matching overlay update and the existing rAF proxy. Pan uses
-capture-handler receipt to rAF, with Chrome TaskDuration over that move's observation window as
+capture-handler receipt to the first rAF timestamp at or after receipt (earlier offers are retained, never clamped to zero), with Chrome TaskDuration over that move's observation window as
 the editor estimate; that task window can include render and observation work. It is not an isolated
 pan-handler CPU measurement. Those limitations apply to the labels as well as the numbers.
 
@@ -78,13 +78,25 @@ They are not active instructions and must not be merged over this implementation
 
 | Kept | Role |
 | --- | --- |
-| `spot.ts`, `lib/spot-decision.ts` | The spot check and its decision rules |
+| `spot.ts`, `lib/spot-decision.ts`, `lib/spot-measurement.ts`, `lib/spot-browser.ts` | The spot check and its decision rules |
 | `flows/*.spec.ts` still listed in `playwright.config.ts` | Functional browser acceptance and focused trace-library checks. They are not the spot check. |
 | `lib/flow.ts`, `lib/browser.ts`, `lib/ledger.ts`, `lib/fixtures.ts` | Shared product driving and perf-mark observation |
 | `lib/trace-*.ts`, `lib/save-trace.ts` | Diagnostics the project-lifecycle acceptance still uses |
 | `generate-workloads.ts`, `lib/workloads/grid.ts` | `grid-M` and `grid-L` only |
 | `bundle-report.mjs` | Route payload report (`npm run perf:bundle`) |
 | `regressions/` | Persistent-structure comparisons, not a timed suite |
+
+## Focused browser wiring regression
+
+`spot-wiring.spec.ts` opens one correctness Room and drives the real chooser, typed Length writer,
+source-matched render, before/after known-wall picks and pan clock. It has no workload tier or feel
+label and is not another M/L spot session. Run it through the existing Playwright config against a
+preview; it needs no API or test-auth service:
+
+```sh
+cd apps/editor
+npx playwright test --config perf/playwright.config.ts --project=chrome perf/flows/spot-wiring.spec.ts
+```
 
 ## Removed
 

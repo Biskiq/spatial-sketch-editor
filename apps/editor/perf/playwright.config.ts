@@ -17,6 +17,7 @@ const resultsDir = process.env.PERF_RESULTS_DIR;
 export default defineConfig({
 	testDir: './flows',
 	testMatch: [
+		'spot-wiring.spec.ts',
 		't1-s02-browser-acceptance.spec.ts',
 		't1-s03-opening-acceptance.spec.ts',
 		't1-s04-integrated-acceptance.spec.ts',
