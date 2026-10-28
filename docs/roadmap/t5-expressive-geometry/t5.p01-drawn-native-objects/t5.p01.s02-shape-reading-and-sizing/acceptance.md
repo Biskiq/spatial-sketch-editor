@@ -120,7 +120,7 @@ Passed in the browser, from an empty authenticated project:
 - Enter Preview after creating an Experience/Presentation, see the authored world, and leave with
   Escape.
 - At 900×700 and 1024×600 with reduced motion, the Shape instrument fits, its body scrolls to Finish,
-  and there is no horizontal overflow. No console or shader errors were recorded.
+  and there is no horizontal overflow. No THREE, shader or uncaught errors were recorded.
 
 **UX verdict.** The S02 creator workflow is functionally correct and usable in a real browser. No
 confirmed defect remains after the two fixes above: the Shape reading is discoverable beside Wall
