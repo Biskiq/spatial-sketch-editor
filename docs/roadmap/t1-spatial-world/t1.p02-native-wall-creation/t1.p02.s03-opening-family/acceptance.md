@@ -72,7 +72,8 @@ the owner-amended **≤425 KiB br hard row**: **1.6 KiB over**. The trusted base
 this slice adds 4.3 KiB br — inside the ≤25 KiB per-slice growth comparison, but the absolute hard
 row is missed. The owner accepts this approximately 1.6 KiB overage for PR #209; this is an
 exception for this slice, not a change to the budget or a claim that the hard row is met. The
-review-fix working tree remeasured 426.5 KiB br after a production build on 2026-10-27.
+first review-fix working tree remeasured 426.5 KiB br; the pending-accept race fix measured
+426.7 KiB br after a production build on 2026-10-27.
 
 ## Residuals and ownership
 

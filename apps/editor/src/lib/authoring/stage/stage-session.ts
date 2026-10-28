@@ -223,6 +223,8 @@ export type StageSession = {
 	resumeTask(validate: (task: StageTask, current: StageReadSnapshot) => TaskResumeOutcome): TaskResumeOutcome;
 	/** Invalidates lens/task-bound asynchronous writers without replacing accepted content. */
 	writerGeneration(): number;
+	/** Tracks deliberate task and lens choices, excluding automatic install closure. */
+	taskChoiceGeneration(): number;
 	select(selection: StageSelection | null): void;
 	task(): StageTask | null;
 	openTask(task: StageTask): boolean;
@@ -378,6 +380,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 	let lens: StageLens = 'world';
 	let taskStatus: 'active' | 'inactive' = 'active';
 	let writerGeneration = 0;
+	let taskChoiceGeneration = 0;
 	let task: StageTask | null = null;
 	let activeGesture: { lease: InternalGesture } | null = null;
 	/**
@@ -483,8 +486,10 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		select: setLegacy,
 		lens: () => lens,
 		writerGeneration: () => writerGeneration,
+		taskChoiceGeneration: () => taskChoiceGeneration,
 		changeLens(next) {
 			if (disposed || next === lens) return false;
+			taskChoiceGeneration += 1;
 			// Park before cancelling, and hold the parked task across cancellation: a
 			// canceller then observes an inactive task, and one that closes it anyway
 			// cannot take the only Resume path with it. Only a *cleared* task is held:
@@ -540,6 +545,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			let checked: TaskResumeOutcome;
 			try { checked = validate(candidate, current); } catch { checked = { kind: 'refused', code: 'invalid-configuration', message: 'Reconfigure this task before resuming.' }; }
 			if (checked.kind !== 'resumed') return checked;
+			taskChoiceGeneration += 1;
 			task = candidate;
 			taskStatus = 'active';
 			writerGeneration += 1;
@@ -550,6 +556,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		},
 		openTask(next) {
 			if (disposed || (next.lens ?? 'world') !== lens) return false;
+			taskChoiceGeneration += 1;
 			if (task !== null) cancelTaskWriters();
 			else writerGeneration += 1;
 			task = immutableF4Data({ ...next, target: next.target ?? (next.targetRef && current ? layoutSelectionReference(next.targetRef, current) : null) });
@@ -558,6 +565,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		},
 		closeTask() {
 			if (task === null) return false;
+			taskChoiceGeneration += 1;
 			cancelTaskWriters();
 			task = null;
 			return true;

@@ -746,6 +746,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				openingCommitInFlight = true;
+				const taskChoice = services.stage.session.taskChoiceGeneration();
 				try {
 					const capture = openingCapture ?? mintLayoutIdCapture();
 					openingCapture = capture;
@@ -775,7 +776,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						publishInk();
 						return;
 					}
-					const shouldRearm = services.stage.session.task() === null;
+					const shouldRearm = services.stage.session.taskChoiceGeneration() === taskChoice &&
+						services.stage.session.task() === null;
 					const openingId = preview.openingId;
 					clearOpeningState();
 					selectLayoutSubject('opening', openingId);

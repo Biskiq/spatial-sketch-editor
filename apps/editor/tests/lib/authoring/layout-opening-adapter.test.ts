@@ -89,7 +89,7 @@ function bottomWallId(document: LayoutDocumentWallFirst): string {
 	return wall.id;
 }
 
-async function mount(): Promise<Mounted> {
+async function mount(beforeAccept?: Promise<void>): Promise<Mounted> {
 	const document = fixtureDocument();
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
@@ -121,7 +121,13 @@ async function mount(): Promise<Mounted> {
 	let services: StageAdapterServices | undefined;
 	const registration = mountStageAdapter(facade, host, (port) => {
 		services = port;
-		return createAdapter(port);
+		return createAdapter(beforeAccept === undefined ? port : {
+			...port,
+			authoring: { ...port.authoring, accept: async (intent) => {
+				await beforeAccept;
+				return port.authoring.accept(intent);
+			} }
+		});
 	});
 	if (registration.kind !== 'registered' || services === undefined) {
 		throw new Error('Layout adapter did not mount');
@@ -347,6 +353,33 @@ describe('T1.P02.S03 — Opening placement', () => {
 			if (choice === 'close again') mounted.facade.closeTask();
 			for (const frame of frames.splice(0)) frame(0);
 			expect(mounted.session.task()?.kind ?? null).toBe(choice === 'leave open' ? 'layout-plinth-place' : null);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it.each(['leave open', 'close again'])('does not re-arm Ink when a newer tool is chosen while acceptance is pending (%s)', async (choice) => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal('window', { requestAnimationFrame: (callback: FrameRequestCallback) => { frames.push(callback); return frames.length; } });
+		try {
+			let release!: () => void;
+			const held = new Promise<void>((resolve) => { release = resolve; });
+			const mounted = await mount(held);
+			selectSubject(mounted.facade, 'wall', mounted.wallId);
+			const controller = armInk(mounted.facade);
+			controller.setReading('opening');
+			controller.placeOpening('1.5');
+			expect(acceptedLayout(mounted.facade).openings).toHaveLength(0);
+			expect(mounted.facade.openContributedTask('layout-place-plinth').kind).toBe('opened');
+			if (choice === 'close again') mounted.facade.closeTask();
+			release();
+			await eventually(() => acceptedLayout(mounted.facade).openings.length === 1);
+			// Let the acceptance continuation schedule any deferred re-arm.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			mounted.facade.camera.evaluate(RECT, 2);
+			for (const frame of frames.splice(0)) frame(0);
+			expect(mounted.session.task()).toBeNull();
+			expect(inkSurface()).toBeNull();
 		} finally {
 			vi.unstubAllGlobals();
 		}
