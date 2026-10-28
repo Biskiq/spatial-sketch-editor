@@ -12,6 +12,7 @@
  * public Stage services.
  */
 
+import { Euler, Vector3 } from 'three';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import type {
 	StageAdapterFactory,
@@ -47,6 +48,10 @@ import {
 	type NormalizedPlacementDefinition
 } from '@portfolio/project-model/scene-planning';
 
+import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
+import { planSceneHaloProbe, resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
+import FormCardFields from './scene/FormCardFields.svelte';
+import { formCardController } from './scene/form-card';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import {
@@ -143,6 +148,14 @@ function formSizeFacts(entity: SceneFormEntity): readonly StageCardFact[] {
 		{ label: 'Depth', value: formatFormMeters(mesh.bounds.max[2] - mesh.bounds.min[2]) },
 		{ label: 'Height', value: formatFormMeters(mesh.bounds.max[1] - mesh.bounds.min[1]) }
 	];
+}
+
+/** Canonical body centre for the shared selection echo and Bring into view. */
+function formCenter(entity: SceneFormEntity): [number, number, number] {
+	const mesh = evaluateFormMesh(entity.form);
+	if (mesh === null) return entity.position;
+	const center = mesh.bounds.min.map((value, axis) => (value + mesh.bounds.max[axis]!) / 2);
+	return new Vector3(center[0], center[1], center[2]).applyEuler(new Euler(...entity.rotation)).add(new Vector3(...entity.position)).toArray();
 }
 
 /** Metres to the millimetre shown in the Card, without float noise. */
@@ -450,7 +463,48 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				services.stage.notifySurfaceChange();
 			}
 
+			const footprints = buildPlanSceneFootprintProjection(source, { modelFootprintById: (id) => context.snapshot.domain.scene.modelFootprints?.get(id) }).footprints;
 			return {
+				subjects: source.entities.map((entity) => ({
+					id: `scene:entity:${entity.id}`,
+					label: `${entity.name} · ${entity.kind} · ${entity.id}`,
+					reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
+					worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
+				})),
+				hitProvider(candidate, live) {
+					const css: [number, number] = [candidate.css[0] + live.evaluation.rect.left, candidate.css[1] + live.evaluation.rect.top];
+					const ray = live.ray(css);
+					if (ray === null) return null;
+					const drawn = live.pickScene(ray);
+					if (drawn?.kind === 'layout' || drawn?.kind === 'floor' && live.evaluation.renderedReading !== 'plan') return null;
+					let entityId: string | null = drawn?.entityId ?? null;
+					let distance = drawn?.distanceMeters ?? Infinity;
+					if (live.evaluation.renderedReading === 'plan') {
+						const t = (live.snapshot.domain.datumMeters - ray.origin[1]) / ray.direction[1];
+						if (!(t >= 0 && Number.isFinite(t))) return null;
+						const point: [number, number] = [ray.origin[0] + ray.direction[0] * t, ray.origin[2] + ray.direction[2] * t];
+						const eligible = drawn?.kind !== 'entity' ? footprints : footprints.filter((footprint) => footprint.entityId === drawn.entityId);
+						const hit = resolvePlanSceneHit(eligible, point, 6 * live.evaluation.targetPlaneMetersPerCssPixel);
+						if (hit === null) return null;
+						if (drawn?.kind !== 'entity') {
+							// A footprint cannot select an unmounted or hidden body through a
+							// floor. Only an edge halo may probe its own visible silhouette.
+							if (hit.reason !== 'edge-halo') return null;
+							const probe = planSceneHaloProbe(hit.footprint, point);
+							const projected = probe === null ? null : live.project([probe[0], live.snapshot.domain.datumMeters, probe[1]]);
+							const probeRay = projected === null ? null : live.ray(projected);
+							if (probeRay === null || live.pickScene(probeRay)?.entityId !== hit.entityId) return null;
+						}
+						entityId = hit.entityId;
+						distance = drawn?.distanceMeters ?? t;
+					}
+					if (entityId === null) return null;
+					return {
+						sourceId: entityId, sourceKind: 'entity',
+						reference: sceneEntityReference(entityId, live.snapshot.domain.unitRevisions.scene),
+						worldPoint: ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number]
+					};
+				},
 				tasks: [
 					{
 						id: SCENE_PLACE_TASK,
@@ -703,6 +757,22 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									null;
 					const ghost = candidateGhost(entity, candidate);
 					return ghost === null ? [] : [ghost];
+				},
+				cardWriter(subject) {
+					if (subject.reference?.domain !== 'scene' || !source.entities.some((entity) => entity.id === subject.sourceId && entity.kind === 'form')) return null;
+					return { summary: 'Form fields', view: { component: FormCardFields, services } };
+				},
+				cardActions(subject) {
+					if (subject.reference?.domain !== 'scene') return [];
+					const controller = formCardController(services, subject.sourceId);
+					if (controller === null) return [];
+					return [{ id: 'scene-form-delete', label: 'Delete form', destructive: true,
+						detail: `Remove ${controller.entity.name}. Undo restores it.`,
+						async run() {
+							const result = await controller.delete();
+							return result.kind === 'refused' ? { kind: 'refused' as const, message: result.message }
+								: { kind: result.kind === 'no-op' ? 'no-op' as const : 'accepted' as const };
+						} }];
 				},
 				cardFacts(cardSubject: StageCardSubject) {
 					// Only a Scene entity subject claims Scene facts; a Layout subject keeps

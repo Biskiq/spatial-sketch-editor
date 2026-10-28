@@ -818,7 +818,7 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 			const [x, z] = midpointOf(fragment);
 			const hit = resolveAt([x, z], datum + (span.bottomY + span.topY) / 2);
 			expect(hit.kind === 'resolved' ? hit.hit.sourceId : null).toBe(wallId);
-			if (hit.kind !== 'resolved' || hit.hit.subRef?.kind !== 'interval') return;
+			if (hit.kind !== 'resolved' || hit.hit.reference !== undefined || hit.hit.subRef?.kind !== 'interval') return;
 			// The picked span's own identity: start and end of the span the pointer is on.
 			expect([hit.hit.subRef.start, hit.hit.subRef.end]).toEqual(intervalOf(fragment));
 		}

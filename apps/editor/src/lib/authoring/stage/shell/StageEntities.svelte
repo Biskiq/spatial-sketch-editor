@@ -12,6 +12,7 @@
 	 * does not have to wait for it, and a failed fetch retries instead of leaving
 	 * an approved model permanently invisible.
 	 */
+	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { LayoutRoomRegistry } from '@portfolio/project-model';
 	import VisitorEntityGroups from '$lib/visitor/VisitorEntityGroups.svelte';
@@ -22,7 +23,8 @@
 		scene,
 		rooms,
 		modelUrls = null,
-		onFormRendererReady
+		onFormRendererReady,
+		scenePick
 	}: {
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
@@ -30,6 +32,7 @@
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Notify the Stage shadow owner after the lazy form mesh has mounted. */
 		onFormRendererReady: () => void;
+		scenePick: ScenePickSource;
 	} = $props();
 
 	let ModelComponent = $state<AssetModelComponent | null>(null);
@@ -59,4 +62,4 @@
 	});
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} />
+<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} onEntityRoot={scenePick.register} />

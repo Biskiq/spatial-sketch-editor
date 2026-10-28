@@ -7,6 +7,7 @@
 	 * supplies a lazily loaded one. Geometry, material resolution and grouping have
 	 * exactly one implementation, so editor and visitor cannot drift.
 	 */
+	import type { Object3D } from 'three';
 	import { T } from '@threlte/core';
 	import type {
 		SceneDocument,
@@ -37,6 +38,7 @@
 		textureScope = null,
 		modelUrls = null,
 		onFormRendererReady,
+		onEntityRoot,
 		Model
 	}: {
 		scene: RuntimeScene;
@@ -46,6 +48,8 @@
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Optional Stage-only notification after a lazy form mesh has mounted. */
 		onFormRendererReady?: () => void;
+		/** Optional renderer lifecycle observer; no authoring behavior lives here. */
+		onEntityRoot?: (id: string, root: Object3D) => (() => void);
 		/** The model renderer; `null` until a lazy host has fetched it. */
 		Model: AssetModelComponent | null;
 	} = $props();
@@ -124,6 +128,7 @@
 {#each roomGroups as group (group.room?.id ?? '__world__')}
 	<T.Group position={group.room?.position ?? [0, 0, 0]} rotation={group.room?.rotation ?? [0, 0, 0]}>
 		{#each group.entities as entity (entity.id)}
+			<T.Group oncreate={(root) => onEntityRoot?.(entity.id, root)}>
 			{#if isSceneModelEntity(entity)}
 				{#if Model}
 					<Model
@@ -158,6 +163,7 @@
 					<EntityLight {entity} />
 				</T.Group>
 			{/if}
+			</T.Group>
 		{/each}
 	</T.Group>
 {/each}

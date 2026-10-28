@@ -1,7 +1,7 @@
 # T5.P01.S01 — Native form source and evaluation: implementation plan
 
 **Slice:** T5.P01.S01 · **Status:** approved by the owner's merge of the T5 planning PR
-([record](../../../../reference/decisions/t5-object-focus-planning-2026-10-27.md)); not on the
+([record](../../../../reference/decisions/t5-object-focus-planning-2026-10-27.md)); released on the
 [release list](../../../now.md) · **Phase:** [T5.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T5](../../README.md) · **Direction:**
 [umbrella plan](../../umbrella-plan.md) · **Runbook:**
@@ -46,15 +46,16 @@ and only when all of these hold at this slice's own trusted base:
   fixtures and seeds (decision D4).
 - Scene planners `create-form` and `set-form-size`; form support in the existing operations;
   dotted-path grants in Scene record scope.
-- The shared Scene renderer's form branch, Plan footprint and hits, selection, and the Card's
-  read-only form facts.
+- The shared Scene renderer's form branch, Plan footprint and hits, selection, Index/Head Find subject discovery, semantic selection, and the Card's form facts and supported
+  Move, Turn, Place on floor, per-axis Size, Duplicate and Delete controls.
 - A typed refusal of forms in the cold release check (publication remains T4's).
 - API fixtures and tests that carry Scene units.
 - The landed reference updates this format change requires.
 
-**Out of scope:** any Ink, stroke or Shape reading; per-axis size handles or Card writers (S02);
+**Out of scope:** any Ink, stroke or Shape reading; per-axis size handles (S02);
 Object Focus, sections and outline revision; operations stacks; materials beyond the existing
-material choice; publication of forms; any F4, Head, Save, Stage-host, Camera or PLATE change.
+material choice; publication of forms; any F4/Save protocol, Camera or PLATE contract change. The owner-approved Option B expansion
+includes the Stage-host and Head Find wiring required for production form selection.
 
 **Files T5 writes:** `packages/geometry-core/**`; the native-form parts of
 `packages/project-model/src/scene.ts`, `scene-codec/**`, `scene-validation.ts`, `units/**` and
@@ -62,7 +63,7 @@ material choice; publication of forms; any F4, Head, Save, Stage-host, Camera or
 `apps/editor/src/lib/visitor/VisitorEntities.svelte` (form branch only);
 `apps/editor/src/lib/visitor/visitor-cold-runtime.ts` (form refusal only);
 `apps/editor/src/lib/authoring/scene/plan-scene-footprint.ts`; the Scene adapter's resize gating
-and Card facts; root and package manifests and scripts; `apps/editor/test-lanes.ts`; tests and
+and Card fields/actions; the Stage facade and spatial host locator, hit and selection wiring; root and package manifests and scripts; `apps/editor/test-lanes.ts`; tests and
 fixtures; `apps/api/tests/**` fixtures; the reference documents in §8.
 
 ## 4. Design
@@ -236,9 +237,16 @@ export type SceneEntity = SceneModelEntity | ScenePrimitiveEntity | SceneFormEnt
   result.
 - **Plan.** `PlanSceneFootprint` gains `kind: 'form'`, with points from the form's footprint ring
   under its transform. Plan hits and selection reuse the existing footprint paths.
+- **Owner-approved Option B.** Production Plan footprint hit testing and 3D Scene picking run through
+  the existing Stage `hitProvider` seam and its one semantic selection authority. Scene hits carry
+  F.1 references without fabricated Layout representation. Adapter-owned subject rows feed Index
+  and Head Find; both select through the same `setSelection`. Selection identity requalifies
+  through existing F4 installs/history. Preview draws the same source in its isolated visitor run;
+  it offers no editor selection, Card, history or authoring controls, and returning restores Stage
+  selection. Visitor isolation is unchanged.
 - **Selection and Card.** Forms select through the existing Scene pick paths in Plan and 3D. The
   Card shows the form's name, material and read-only Width, Depth and Height from the scaled bounds.
-  The uniform resize affordance is not offered for forms, following `floorTransformSupport`'s
+  The Card also offers Move, Turn, Place on floor, Duplicate and confirmed Delete. The uniform resize affordance is not offered for forms, following `floorTransformSupport`'s
   pattern. Move, Turn, Place on floor, Duplicate and Delete work as for other objects.
 
 ### 4.8 Visitor and publication boundary
@@ -312,7 +320,11 @@ Each commit leaves the affected contracts green.
 4. `create-form` and `set-form-size` produce one accepted result each; existing operations work on
    forms; record scope holds.
 5. Undo, Redo, Save and cold reopen are exact for forms.
-6. Stage, Plan and Preview draw and select the same form result.
+6. Stage, Plan and Preview draw and select the same form result according to each surface's
+   interaction contract: Plan and 3D Stage genuinely select forms and expose supported Card
+   operations; Index and Head Find reach the same canonical subjects. Preview draws the same
+   accepted forms as an isolated visitor run, exposes no editor selection/writers, and return
+   preserves the Stage selection. Form selection is not deferred.
 7. Visitor isolation and package-direction tests pass; the cold-release check refuses forms.
 8. Performance rows in §9 are recorded.
 9. The complete merge-gate contract passes, per [tests/README](../../../../../apps/editor/tests/README.md):
@@ -350,7 +362,8 @@ workflow on the designated reference machine, with Laptop A reported:
 - **T2** reviews the Scene types, codec, validation, record scope, planners, fixtures and Scene
   adapter changes (D2).
 - **T4** reviews the cold-release refusal.
-- **T1** review is needed only if a Stage host file changes; this plan expects none.
+- **T1** reviews the Stage host, hit/semantic selection and Index/Head Find changes required by
+  the owner-approved Option B expansion, including the existing shadow-host diff.
 - An independent code review before merge, as for every implementation PR.
 
 ## 11. Stop conditions
@@ -358,7 +371,8 @@ workflow on the designated reference machine, with Laptop A reported:
 Stop and report rather than widening scope if:
 
 - a concurrent T2 change edits the same Scene files;
-- an F4, Head, Save, Stage host, Camera or PLATE change appears necessary;
+- an F4/Save protocol, Camera or PLATE contract change appears necessary beyond the approved
+  Stage/Head selection expansion;
 - a dependency beyond `robust-predicates` and `earcut` appears necessary;
 - the triangulation or simplicity strategy cannot meet the 256-anchor commit row;
 - a hard performance row misses;

@@ -27,7 +27,7 @@ export function resolvePlanSceneHit(
 ): PlanSceneHit | null {
 	for (let index = footprints.length - 1; index >= 0; index -= 1) {
 		const footprint = footprints[index]!;
-		if (pointInPlanPolygon(point, footprint.points)) {
+		if ((footprint.polygons ?? [footprint.points]).some((polygon) => pointInPlanPolygon(point, polygon))) {
 			return { entityId: footprint.entityId, footprint, reason: 'containment' };
 		}
 	}
@@ -35,7 +35,7 @@ export function resolvePlanSceneHit(
 	if (!Number.isFinite(edgeHaloMeters) || edgeHaloMeters < 0) return null;
 	for (let index = footprints.length - 1; index >= 0; index -= 1) {
 		const footprint = footprints[index]!;
-		if (distanceToPlanPolygonEdge(point, footprint.points) <= edgeHaloMeters) {
+		if ((footprint.polygons ?? [footprint.points]).some((polygon) => distanceToPlanPolygonEdge(point, polygon) <= edgeHaloMeters)) {
 			return { entityId: footprint.entityId, footprint, reason: 'edge-halo' };
 		}
 	}
@@ -109,4 +109,29 @@ function distanceToPlanSegment(point: LayoutVec2, start: LayoutVec2, end: Layout
 		Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
 	);
 	return Math.hypot(point[0] - (start[0] + t * dx), point[1] - (start[1] + t * dz));
+}
+
+/** A point just inside the nearest footprint edge, for rendered visibility of a halo hit. */
+export function planSceneHaloProbe(footprint: PlanSceneFootprint, point: LayoutVec2): LayoutVec2 | null {
+	let nearest: { distance: number; point: LayoutVec2 } | null = null;
+	for (const polygon of footprint.polygons ?? [footprint.points]) {
+		let area = 0;
+		for (let i = 0; i < polygon.length; i++) {
+			const a = polygon[i]!, b = polygon[(i + 1) % polygon.length]!;
+			area += a[0] * b[1] - b[0] * a[1];
+		}
+		if (Math.abs(area) < 1e-12) continue;
+		for (let i = 0; i < polygon.length; i++) {
+			const a = polygon[i]!, b = polygon[(i + 1) % polygon.length]!;
+			const dx = b[0] - a[0], dz = b[1] - a[1], length = Math.hypot(dx, dz);
+			if (length < 1e-9) continue;
+			const t = Math.max(0.00001, Math.min(0.99999, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dz) / (length * length)));
+			const x = a[0] + t * dx, z = a[1] + t * dz;
+			const distance = Math.hypot(point[0] - x, point[1] - z);
+			const epsilon = Math.min(length * 0.000001, 0.000001) * Math.sign(area);
+			const inside: LayoutVec2 = [x - dz / length * epsilon, z + dx / length * epsilon];
+			if ((nearest === null || distance < nearest.distance) && pointInPlanPolygon(inside, polygon)) nearest = { distance, point: inside };
+		}
+	}
+	return nearest?.point ?? null;
 }

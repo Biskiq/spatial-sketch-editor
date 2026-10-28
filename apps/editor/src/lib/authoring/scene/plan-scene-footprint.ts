@@ -1,3 +1,4 @@
+import { Euler, Vector3 } from 'three';
 import { getAssetById, normalizeAssetFootprintOutline, validateAssetFootprint } from '$lib/content/assets';
 import type { SceneDocument, SceneEntity, SceneFormEntity, ScenePrimitiveEntity } from '$lib/content/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
@@ -14,6 +15,8 @@ export type PlanSceneFootprint = {
 	kind: 'model' | 'primitive' | 'form';
 	primitive?: ScenePrimitiveEntity['primitive'];
 	points: LayoutVec2[];
+	/** Projected triangle union for a tilted form; upright forms keep their concave ring. */
+	polygons?: readonly LayoutVec2[][];
 	presentation?: PlanSceneFootprintPresentation;
 };
 
@@ -76,6 +79,7 @@ export function buildPlanSceneFootprintProjection(
 				entityId: entity.id,
 				kind: 'form',
 				points: formPoints,
+				...(entity.rotation[0] !== 0 || entity.rotation[2] !== 0 ? { polygons: tiltedFormPolygons(entity) } : {}),
 				...(formPresentation ? { presentation: formPresentation } : {})
 			});
 			continue;
@@ -98,6 +102,23 @@ export function buildPlanSceneFootprintProjection(
 	}
 
 	return { footprints };
+}
+
+/** Full XYZ placement matches the rendered body, including admitted non-upright forms. */
+function tiltedFormPolygons(entity: SceneFormEntity): LayoutVec2[][] {
+	const mesh = evaluateFormMesh(entity.form);
+	if (mesh === null) return [];
+	const rotation = new Euler(...entity.rotation);
+	const positions: LayoutVec2[] = [];
+	for (let i = 0; i < mesh.positions.length; i += 3) {
+		const point = new Vector3(mesh.positions[i], mesh.positions[i + 1], mesh.positions[i + 2]).applyEuler(rotation);
+		positions.push([point.x + entity.position[0], point.z + entity.position[2]]);
+	}
+	const polygons: LayoutVec2[][] = [];
+	for (let i = 0; i < mesh.indices.length; i += 3) polygons.push([
+		positions[mesh.indices[i]!]!, positions[mesh.indices[i + 1]!]!, positions[mesh.indices[i + 2]!]!
+	]);
+	return polygons;
 }
 
 function footprintForEntity(

@@ -21,6 +21,7 @@
 	import type { LayoutRoomRegistry, RuntimeScene } from '@portfolio/project-model';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
+	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import type { StageGhostMesh } from '$lib/authoring/stage/stage-facade';
 	import {
 		neutralVisitorRoomPresentation,
@@ -36,7 +37,8 @@
 		rooms,
 		evaluation,
 		ghosts = [],
-		modelUrls = null
+		modelUrls = null,
+		scenePick
 	}: {
 		geometry: CompiledLayoutGeometry;
 		scene: RuntimeScene;
@@ -46,6 +48,7 @@
 		ghosts?: readonly StageGhostMesh[];
 		/** Resolved approved creator-model bytes, owned by the route's session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		scenePick: ScenePickSource;
 	} = $props();
 
 	const presentation = $derived.by(() => {
@@ -54,6 +57,7 @@
 		return record;
 	});
 
+	$effect(() => scenePick.setSource(scene));
 	let formRenderRevision = $state(0);
 	function formRendererReady(): void {
 		formRenderRevision += 1;
@@ -74,8 +78,10 @@
 		trigger contract.
 	-->
 	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
-	<VisitorLayoutShell {geometry} {presentation} />
-	<StageEntities {scene} {rooms} {modelUrls} onFormRendererReady={formRendererReady} />
+	<T.Group oncreate={scenePick.registerLayout}>
+		<VisitorLayoutShell {geometry} {presentation} />
+	</T.Group>
+	<StageEntities {scenePick} {scene} {rooms} {modelUrls} onFormRendererReady={formRendererReady} />
 	<!--
 		Proposed-pose ghosts: the object's own shape at the captured pose, translucent
 		and depth-write-free so the accepted body stays readable underneath. They are
