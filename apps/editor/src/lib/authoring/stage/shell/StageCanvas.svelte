@@ -29,6 +29,7 @@
 	} from '$lib/visitor/room-presentation';
 	import StageCamera from './StageCamera.svelte';
 	import StageEntities from './StageEntities.svelte';
+	import StageFormGhost from './StageFormGhost.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 
 	let {
@@ -89,15 +90,19 @@
 		one more child of the same Canvas — never a second renderer or scene.
 	-->
 	{#each ghosts as ghost (ghost.id)}
-		<T.Mesh position={ghost.center} rotation={[0, ghost.yaw, 0]} renderOrder={2}>
-			{#if ghost.shape.kind === 'box'}
-				<T.BoxGeometry args={ghost.shape.size} />
-			{:else if ghost.shape.kind === 'cylinder'}
-				<T.CylinderGeometry args={[ghost.shape.radius, ghost.shape.radius, ghost.shape.height, 24]} />
-			{:else}
-				<T.SphereGeometry args={[ghost.shape.radius, 24, 16]} />
-			{/if}
-			<T.MeshStandardMaterial color={0xc9a9ff} transparent opacity={0.38} depthWrite={false} />
-		</T.Mesh>
+		{#if ghost.shape.kind === 'form'}
+			<StageFormGhost form={ghost.shape.form} position={ghost.center} yaw={ghost.yaw} />
+		{:else}
+			<T.Mesh position={ghost.center} rotation={[0, ghost.yaw, 0]} renderOrder={2}>
+				{#if ghost.shape.kind === 'box'}
+					<T.BoxGeometry args={ghost.shape.size} />
+				{:else if ghost.shape.kind === 'cylinder'}
+					<T.CylinderGeometry args={[ghost.shape.radius, ghost.shape.radius, ghost.shape.height, 24]} />
+				{:else}
+					<T.SphereGeometry args={[ghost.shape.radius, 24, 16]} />
+				{/if}
+				<T.MeshStandardMaterial color={0xc9a9ff} transparent opacity={0.38} depthWrite={false} />
+			</T.Mesh>
+		{/if}
 	{/each}
 </Canvas>

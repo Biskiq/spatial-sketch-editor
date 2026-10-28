@@ -5,7 +5,7 @@ import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSele
 import type { EntryRequalification } from './selection-requalification';
 import type { StageSelectionEntry } from './semantic-selection';
 import type { SelectionRemoval, StageLens, TaskResumeOutcome } from './stage-session';
-import type { SemanticReference, F4JsonValue } from '@portfolio/project-model';
+import type { SemanticReference, F4JsonValue, SceneFormSource } from '@portfolio/project-model';
 /**
  * The public editor host facade — the consumer boundary of
  * `T1.viewport-projection@1`.
@@ -183,7 +183,9 @@ export type StageGhostMesh = {
 	readonly shape:
 		| { readonly kind: 'box'; readonly size: Vec3 }
 		| { readonly kind: 'cylinder'; readonly radius: number; readonly height: number }
-		| { readonly kind: 'sphere'; readonly radius: number };
+		| { readonly kind: 'sphere'; readonly radius: number }
+		/** A native form's own evaluated body: the same source the planner will install. */
+		| { readonly kind: 'form'; readonly form: SceneFormSource };
 };
 
 /**

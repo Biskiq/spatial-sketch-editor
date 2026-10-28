@@ -51,6 +51,8 @@ import {
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { planSceneHaloProbe, resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
 import FormCardFields from './scene/FormCardFieldsLazy.svelte';
+import ShapeReadingPalette from './scene/shape/ShapeReadingPalette.svelte';
+import { createShapeReadingSession } from './scene/shape/reading';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import {
@@ -62,6 +64,7 @@ import {
 	rememberCreatorDefinition
 } from './scene/import/definitions';
 import { candidateGhost } from './scene/candidate-ghost';
+import { acceptFormCommand } from './scene/form-card-command';
 import {
 	publishSceneSurface,
 	retireSceneSurface,
@@ -280,7 +283,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 	const adapter: StageAdapter = {
 		id: 'scene',
-		requiredCapabilities: ['stage-instrument-v1'],
+		// The Shape reading is contributed to the one Ink Pen through the host's
+		// reading seam; Scene keeps every byte of its meaning.
+		requiredCapabilities: ['stage-instrument-v1', 'ink-readings-v1'],
 		bind(context): StageAdapterBinding {
 			const source = stageScene(context.snapshot);
 			// The accepted resource is the authority for every later placement, so a
@@ -487,6 +492,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						worldPoint: ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number]
 					};
 				},
+				readings: [
+					{
+						id: 'shape',
+						label: 'Shape',
+						order: 20,
+						summary: 'Close an outline on the floor or an upright sheet, pull its depth and create a native form.',
+						begin: () => createShapeReadingSession(services),
+						view: ShapeReadingPalette
+					}
+				],
 				tasks: [
 					{
 						id: SCENE_PLACE_TASK,
