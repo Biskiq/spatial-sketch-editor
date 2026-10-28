@@ -6,3 +6,6 @@ declare module 'virtual:museum-editor-entry' {
 	const MuseumEditorEntry: Component;
 	export default MuseumEditorEntry;
 }
+
+/** Replaced in the client bundle; absent in plain unit-test transforms. */
+declare const __BISKIQ_BUILD_REVISION__: string;

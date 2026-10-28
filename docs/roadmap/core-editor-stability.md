@@ -88,3 +88,6 @@ to the milestone only by an explicit owner amendment of this page. Part addressi
 assemblies, attached composition, advanced vertical architecture and overhead families likewise
 remain outside this milestone. A benchmark harness is not independently required if equivalent
 reproducible manual measurements supply the consuming-slice and integrated performance evidence.
+When an acceptance plan for this milestone is owner-approved, its basic-responsiveness evidence is
+one [M/L spot check](../reference/decisions/performance-spot-check-2026-10-28.md) on the final
+integrated revision. That check is not a standing gate before the plan exists.

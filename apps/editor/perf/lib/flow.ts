@@ -291,10 +291,9 @@ export async function handlePoint(page: Page, title: string): Promise<{ x: numbe
 /**
  * A continuous drag on the shipped straight-Wall handle.
  *
- * `samples` pointer moves are dispatched (the contract's floor is 60 per run)
- * along the Wall's own screen direction, so the planner keeps producing a valid
- * candidate instead of refusing a mirrored or colliding Wall. The product's
- * input sequence makes each sample a row in the correlation ledger.
+ * `samples` pointer moves are dispatched along the Wall's own screen direction,
+ * so the planner keeps producing a valid candidate. The spot check passes four,
+ * or up to eight while a result is on a threshold margin.
  */
 export async function dragWallHandle(
 	page: Page,

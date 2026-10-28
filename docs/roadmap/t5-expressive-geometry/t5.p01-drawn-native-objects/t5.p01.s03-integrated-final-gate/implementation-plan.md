@@ -53,7 +53,12 @@ Passing makes T5.P01 **closable**; only an explicit owner phase-close request cl
 
 ## Performance recheck
 
-Recheck the integrated rows from the [umbrella plan §5.7](../../umbrella-plan.md#57-performance-envelope)
-against the [performance contract](../../../../reference/components/performance.md#budgets) on the
-designated reference machine, with Laptop A reported, and record the Stage and visitor first-load
-deltas for the phase.
+The comprehensive performance matrix stays suspended. If this gate is an authorized
+[spot-check trigger](../../../../reference/decisions/performance-spot-check-2026-10-28.md) — a
+significant editor hot-path checkpoint, or an editor release candidate with relevant changes since
+the last measurement — run one `npm run perf:spot`. That result is M/L architectural-grid evidence.
+It does not certify form evaluation, imported models or the visitor. The historical budgets in the
+[performance contract](../../../../reference/components/performance.md#budgets) and the
+[umbrella envelope](../../umbrella-plan.md#57-performance-envelope) stay historical; an unmeasured
+row stays unmeasured. Stage and visitor first-load deltas, when delivery is in question, come from
+`npm run perf:bundle`.

@@ -49,6 +49,8 @@ import {
 	wallFrame,
 	wallManipulationIntent
 } from '$lib/authoring/adapters/layout/precision';
+import { typedLengthTiming } from '../../../perf/lib/spot-measurement';
+import type { PerfRecord } from '$lib/platform/perf-marks';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import {
 	pickWallHandle,
@@ -296,6 +298,46 @@ describe('T1.P01.S05 — existing straight-Wall manipulation planners', () => {
 });
 
 describe('T1.P01.S05 — typed Wall manipulation', () => {
+	it('pairs the real typed Length writer with its installed operation, never a prior pointer commit', async () => {
+		const target = globalThis as typeof globalThis & { __BISKIQ_PERF__?: { enabled: boolean }; __BISKIQ_PERF_RECORDS__?: PerfRecord[] };
+		const mounted = await mount();
+		target.__BISKIQ_PERF__ = { enabled: true };
+		target.__BISKIQ_PERF_RECORDS__ = [{ name: 'command:commit', kind: 'mark', sequence: 0, time: 0 }];
+		try {
+			const instrument = typedInstrument(mounted);
+			instrument.edit('length', '5');
+			const dispatched = performance.now();
+			expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+			const records = target.__BISKIQ_PERF_RECORDS__;
+			const start = records.find((record) => record.name === 'command:instrument')!;
+			const result = records.find((record) => record.name === 'accepted-result')!;
+			expect(start.detail).toMatchObject({ taskKind: 'layout-wall-length', wallId: mounted.wallId, operationId: expect.any(String) });
+			expect(result.detail).toMatchObject({ operationId: start.detail!.operationId, sourceContentId: mounted.facade.snapshot().sourceContentId });
+			const ledger = { records, ticks: [result.time + 20], renderFrames: [{ surface: 'stage', sourceContentId: mounted.facade.snapshot().sourceContentId, start: result.time + 1, end: result.time + 2, triangles: 10 }], longTasks: [], events: [], navigationStart: 0, paints: {}, lcp: null };
+			expect(typedLengthTiming(ledger, dispatched, mounted.wallId)).toMatchObject({ start: start.time, accepted: result.time, editorMs: result.time - start.time, presented: result.time + 20 });
+			expect(typedLengthTiming({ ...ledger, records: records.filter((record) => record !== start) }, dispatched, mounted.wallId).editorMs).toBeNull();
+			expect(typedLengthTiming({ ...ledger, records: records.map((record) => record === result ? { ...record, detail: { ...record.detail, operationId: 'other' } } : record) }, dispatched, mounted.wallId).accepted).toBeNull();
+			expect(typedLengthTiming({ ...ledger, renderFrames: [{ ...ledger.renderFrames[0]!, sourceContentId: 'old' }] }, dispatched, mounted.wallId).presentedMs).toBeNull();
+		} finally { delete target.__BISKIQ_PERF__; delete target.__BISKIQ_PERF_RECORDS__; }
+	});
+
+	it('records the actual resolved wall identity and distinguishes a failed pick', async () => {
+		const mounted = await mount();
+		const target = globalThis as typeof globalThis & { __BISKIQ_PERF__?: { enabled: boolean }; __BISKIQ_PERF_RECORDS__?: PerfRecord[] };
+		target.__BISKIQ_PERF__ = { enabled: true };
+		target.__BISKIQ_PERF_RECORDS__ = [];
+		try {
+			settle(mounted.facade);
+			const frame = wallFrame(mounted.document, mounted.wallId)!;
+			const css = stageCss(mounted.facade, [frame.start[0] * 0.75 + frame.end[0] * 0.25, frame.start[1] * 0.75 + frame.end[1] * 0.25]);
+			const hit = mounted.facade.resolveSourceHit({ evaluationId: mounted.facade.evaluationId()!, css });
+			expect(hit).toMatchObject({ kind: 'resolved', hit: { sourceKind: 'wall', sourceId: mounted.wallId } });
+			expect(target.__BISKIQ_PERF_RECORDS__.at(-1)?.detail).toMatchObject({ outcome: 'resolved', sourceKind: 'wall', sourceId: mounted.wallId });
+			mounted.facade.resolveSourceHit({ evaluationId: 'stale', css });
+			expect(target.__BISKIQ_PERF_RECORDS__.at(-1)?.detail).toMatchObject({ outcome: 'failed', sourceId: null });
+		} finally { delete target.__BISKIQ_PERF__; delete target.__BISKIQ_PERF_RECORDS__; }
+	});
+
 	it('honours the explicit fixed endpoint and writes exactly one history entry', async () => {
 		const mounted = await mount();
 		const instrument = typedInstrument(mounted);

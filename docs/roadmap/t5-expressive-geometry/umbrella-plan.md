@@ -237,8 +237,13 @@ no history. A preview never becomes a different accepted body.
 
 ### 5.7 Performance envelope
 
-Forms are measured with the [performance contract](../../reference/components/performance.md#budgets)
-and its on-demand workflow, on the designated reference machine with Laptop A reported:
+The numbers below are the historical form envelope. The comprehensive matrix that would have
+measured them is suspended. The current editor check is the
+[M/L spot workflow](../../reference/decisions/performance-spot-check-2026-10-28.md), which does not
+use these form workloads and does not certify them. An unmeasured form row stays unmeasured.
+
+Forms were specified against the [performance contract](../../reference/components/performance.md#budgets)
+on the designated reference machine with Laptop A reported:
 
 - form evaluation for one pointer move within the per-edit evaluation row (≤ 4 ms S, ≤ 8 ms M),
   applied to the edited form;

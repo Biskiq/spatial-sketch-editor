@@ -1,9 +1,11 @@
+import appConfig from './svelte.config.js';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { bundleProvenancePlugin } from './vite/bundle-provenance-plugin';
 import { previewSurfaceBoundaryPlugin } from './vite/preview-surface-boundary-plugin';
 import { publicSurfaceBoundaryPlugin } from './vite/public-surface-boundary-plugin';
 export default defineConfig({
+	define: { __BISKIQ_BUILD_REVISION__: JSON.stringify(appConfig.kit?.version?.name ?? 'unverified') },
 		plugins: [previewSurfaceBoundaryPlugin(), publicSurfaceBoundaryPlugin(), sveltekit(), bundleProvenancePlugin()],
 		server: {
 			fs: {

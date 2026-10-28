@@ -13,11 +13,7 @@
  * admit through `admitSourceJson` with zero blocking issues before it is written;
  * a refused or diagnostic workload fails the run and writes nothing.
  *
- * `--verify` writes nothing. For each named workload (default grid-S, grid-M
- * and museum, about a minute) it rebuilds the envelope from scratch and
- * requires the cached bytes' digest (reproducibility), admits the id-rewritten
- * copy every flow loads (`workloadJsonFor`), and checks the museum's fixed View
- * and focus Wall against the constants the E5 browser spec mirrors.
+ * `--verify` rebuilds grid-M and grid-L and requires the cached digest to match.
  */
 
 import { spawn } from 'node:child_process';
@@ -29,10 +25,7 @@ import { serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/proje
 
 import { admitSourceJson } from '$lib/authoring/stage/source-admission';
 
-import { E5_FIXED_VIEW_LABEL, E5_FOCUS_WALL_NAME } from './lib/tiers';
 import { buildWorkload } from './lib/workloads/build';
-import { FIXED_VIEW_LABEL } from './lib/workloads/museum-content';
-import { FOCUS_WALL_NAME } from './lib/workloads/museum-layout';
 import {
 	contentDigestOf,
 	loadWorkload,
@@ -101,7 +94,7 @@ async function generateOne(id: WorkloadId): Promise<void> {
 
 async function verifyOne(id: WorkloadId): Promise<string> {
 	const loaded = loadWorkload(id);
-	const { envelope, focusWallId } = await buildWorkload(loaded.spec);
+	const { envelope } = await buildWorkload(loaded.spec);
 	const rebuilt = contentDigestOf(serializeProjectEnvelope(envelope));
 	if (rebuilt !== loaded.meta.contentDigest) throw new Error(`${id} is not reproducible: cached ${loaded.meta.contentDigest}, rebuilt ${rebuilt}`);
 	const projectId = `perf-verify-${id.toLowerCase()}`;
@@ -113,12 +106,6 @@ async function verifyOne(id: WorkloadId): Promise<string> {
 	}
 	if (admitted.snapshot.domain.closure.length > 0 || admitted.snapshot.domain.diagnostics.length > 0) {
 		throw new Error(`${id}: the id-rewritten copy admitted with findings`);
-	}
-	if (loaded.spec.params.kind === 'museum' || loaded.spec.params.kind === 'sweep') {
-		if (FIXED_VIEW_LABEL !== E5_FIXED_VIEW_LABEL || FOCUS_WALL_NAME !== E5_FOCUS_WALL_NAME) throw new Error('the E5 spec mirrors stale fixed-view or focus-Wall names');
-		if (!parsed.units.camera.data.views.some((view) => view.label === FIXED_VIEW_LABEL)) throw new Error(`${id} has no fixed View`);
-		const focus = parsed.units.layout.data.walls.find((wall) => wall.name === FOCUS_WALL_NAME);
-		if (focus === undefined || focus.id !== focusWallId || focus.id !== loaded.meta.focusWallId) throw new Error(`${id}: the focus Wall does not match its recorded id`);
 	}
 	return rebuilt;
 }
@@ -139,7 +126,7 @@ async function main(): Promise<void> {
 	}
 	if (args.includes('--verify')) {
 		const named = args.filter((arg) => !arg.startsWith('--')) as WorkloadId[];
-		for (const id of named.length > 0 ? named : (['grid-S', 'grid-M', 'museum'] as WorkloadId[])) {
+		for (const id of named.length > 0 ? named : (['grid-M', 'grid-L'] as WorkloadId[])) {
 			const started = performance.now();
 			console.log(`${id}: reproducible, id-rewrite admits, ${await verifyOne(id)} (${((performance.now() - started) / 1000).toFixed(1)} s)`);
 		}

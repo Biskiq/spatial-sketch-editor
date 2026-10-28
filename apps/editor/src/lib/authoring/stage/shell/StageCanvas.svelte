@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
-	import { perfRenderer } from '$lib/platform/perf-marks';
+	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
 	/**
 	 * The **one persistent Stage Canvas**.
 	 *
@@ -34,6 +34,7 @@
 
 	let {
 		geometry,
+		sourceContentId,
 		scene,
 		rooms,
 		evaluation,
@@ -42,6 +43,7 @@
 		scenePick
 	}: {
 		geometry: CompiledLayoutGeometry;
+		sourceContentId: string;
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
 		evaluation: ViewportEvaluation | null;
@@ -58,6 +60,11 @@
 		return record;
 	});
 
+	// Runs after the accepted props update, before Threlte submits the next frame.
+	$effect(() => {
+		geometry;
+		perfMark('stage:source-ready', { sourceContentId });
+	});
 	$effect(() => scenePick.setSource(scene));
 	let formRenderRevision = $state(0);
 	function formRendererReady(): void {

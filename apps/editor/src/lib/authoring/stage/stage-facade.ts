@@ -1803,10 +1803,11 @@ export function createStageFacade(input: {
 		},
 		resolveSourceHit(candidate) {
 			const started = perfMarksEnabled() ? performance.now() : null;
+			let measuredHit: ResolvedStageHit | null = null;
 			try {
 			const evaluation = camera.evaluation();
 			if (evaluation === null || evaluationIdOf(evaluation) !== candidate.evaluationId) {
-				return { kind: 'failed', code: 'stale-evaluation' };
+				return measuredHit = { kind: 'failed', code: 'stale-evaluation' };
 			}
 			// Domain hit providers are asked first, in registration order, and the first
 			// claim wins. The host does not arbitrate one global priority among Camera,
@@ -1822,7 +1823,7 @@ export function createStageFacade(input: {
 					const provider = entry.contributions.hitProvider;
 					if (provider === undefined) continue;
 					const claimed = provider(candidate, handle.context);
-					if (claimed !== null) return { kind: 'resolved', hit: claimed };
+					if (claimed !== null) return measuredHit = { kind: 'resolved', hit: claimed };
 				}
 			}
 			// A candidate arrives in Stage-local CSS (the space `StagePointerIntent`
@@ -1838,11 +1839,11 @@ export function createStageFacade(input: {
 				!Number.isFinite(candidateCss[0]) ||
 				!Number.isFinite(candidateCss[1])
 			) {
-				return { kind: 'failed', code: 'invalid-css-point' };
+				return measuredHit = { kind: 'failed', code: 'invalid-css-point' };
 			}
 			const token = tokenOf(evaluation);
 			const planResult = planFor();
-			if (planResult.kind !== 'evaluated') return { kind: 'none', reason: 'no-fragment' };
+			if (planResult.kind !== 'evaluated') return measuredHit = { kind: 'none', reason: 'no-fragment' };
 			const plan = planResult.plan;
 			// `readonly` in the parameter so the same function is the pick index's
 			// projection and the exact test's: neither writes the point, and the index
@@ -1875,7 +1876,7 @@ export function createStageFacade(input: {
 				const surfaces = pickSurfacesOf(fragment, currentSnapshot.domain.geometry, currentSnapshot.domain.datumMeters);
 				const pick = cssDistanceToSurfaces(candidateCss, surfaces, project);
 				if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
-				return {
+				return measuredHit = {
 					kind: 'resolved',
 					hit: {
 						sourceId: fragment.ref.sourceId,
@@ -1887,8 +1888,15 @@ export function createStageFacade(input: {
 					}
 				};
 			}
-			return { kind: 'none', reason: 'no-fragment' };
-			} finally { if (started !== null) perfMark('stage:pick', { elapsedMs: performance.now() - started }); }
+			return measuredHit = { kind: 'none', reason: 'no-fragment' };
+			} finally {
+				if (started !== null) perfMark('stage:pick', {
+					elapsedMs: performance.now() - started,
+					outcome: measuredHit?.kind ?? 'threw',
+					sourceId: measuredHit?.kind === 'resolved' ? measuredHit.hit.sourceId : null,
+					sourceKind: measuredHit?.kind === 'resolved' ? measuredHit.hit.sourceKind : null
+				});
+			}
 		},
 		selection: () => session.selection(),
 		selectionState: () => session.selectionState(),
