@@ -563,6 +563,26 @@ test('S02 integrated creator workflow', async ({ browser, baseURL }) => {
 		await finishWithEnter(page);
 		await expect(page.locator('[data-shape-depth]')).toBeVisible();
 
+		// Cancelling the depth phase returns the live outline without writing a form.
+		await page.locator('[data-shape-back]').click();
+		await expect(page.locator('[data-shape-depth]')).toBeHidden();
+		await expect(page.locator('[data-shape-finish]')).toBeEnabled();
+		expect(sceneForms(await downloadSource(page))).toHaveLength(0);
+		rows.push(
+			row(
+				'shape.depth-cancel',
+				'Cancel the depth phase',
+				'passed',
+				'outline restored; no form written',
+				page,
+				viewport,
+				reducedMotion,
+				await capture(page, 't5-s02-04a-depth-cancel.png')
+			)
+		);
+		await finishWithEnter(page);
+		await expect(page.locator('[data-shape-depth]')).toBeVisible();
+
 		const depth = page.locator('[data-shape-depth]');
 		await depth.fill('0');
 		await depth.press('Tab');
@@ -581,8 +601,8 @@ test('S02 integrated creator workflow', async ({ browser, baseURL }) => {
 			)
 		);
 
-		// Observe the handle in Plan, where depth is the floor normal: it publishes at
-		// the outline centre, so the advertised drag has no screen travel to follow.
+		// The Plan floor normal faces the camera, so the handle is published up-screen
+		// by its depth: pull it vertically and the same point must accept the drag.
 		const planDepthHandle = await liftDepthHandle(page);
 		const planValueBefore = await depth.inputValue();
 		await page.mouse.move(planDepthHandle.x, planDepthHandle.y);
