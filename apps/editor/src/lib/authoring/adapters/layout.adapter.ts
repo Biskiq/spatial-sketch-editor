@@ -319,6 +319,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * authored operations that were meant to be one.
 			 */
 			let chainCommitInFlight = false;
+			let rearmEpoch = 0;
 			/**
 			 * The Opening reading's own one-operation state: one capture for preview
 			 * and commit, one in-flight acceptance, and a press lease that is released
@@ -573,10 +574,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				css: readonly [number, number],
 				walls: readonly ProjectedWall[]
 			): OpeningCandidate | null {
-				const ray = adapterContext.ray(css);
+				// `css` is Stage-local; the viewport ray expects viewport coordinates.
+				const ray = adapterContext.ray([
+					css[0] + adapterContext.evaluation.rect.left,
+					css[1] + adapterContext.evaluation.rect.top
+				]);
 				if (ray === null) return null;
 				const datum = adapterContext.snapshot.domain.datumMeters;
+				const preferredWallId = adapterContext.selectionState().primary;
+				const preferred =
+					preferredWallId === null
+						? null
+						: preferredHostOf(preferredWallId.subject.kind, preferredWallId.subject.id);
 				let best: { readonly candidate: OpeningCandidate; readonly distance: number } | null = null;
+				let preferredBest: { readonly candidate: OpeningCandidate; readonly distance: number } | null = null;
 				for (const wall of walls) {
 					const data = document.walls.find((candidate) => candidate.id === wall.id);
 					if (data === undefined) continue;
@@ -598,10 +609,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						length;
 					const y = hit.worldPoint[1];
 					if (offset < 0 || offset > length || y < datum || y > datum + data.height) continue;
-					if (best !== null && hit.distanceMeters >= best.distance) continue;
-					best = { candidate: { wallId: wall.id, offset }, distance: hit.distanceMeters };
+					const candidate = { wallId: wall.id, offset };
+					if (best === null || hit.distanceMeters < best.distance) {
+						best = { candidate, distance: hit.distanceMeters };
+					}
+					if (wall.id === preferred && (preferredBest === null || hit.distanceMeters < preferredBest.distance)) {
+						preferredBest = { candidate, distance: hit.distanceMeters };
+					}
 				}
-				return best?.candidate ?? null;
+				return (preferredBest ?? best)?.candidate ?? null;
 			}
 
 			/** The candidate one Stage-local pointer position names, or `null`. */
@@ -667,19 +683,22 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * An install disposes the binding synchronously; its replacement is built on
 			 * the next evaluation, so opening the task in the acceptance continuation
 			 * would find no contributed task. One frame later the rebuilt task exists.
-			 * This is a UI-only deferred re-arm (no document delay); a Stage that is gone
-			 * simply refuses and is left alone.
+			 * The epoch is invalidated by any later task close/dispose: a creator who
+			 * selects another tool or closes Ink before the frame must not see it reopen.
 			 */
 			function rearmInkAfterInstall(): void {
 				if (typeof window === 'undefined') return;
+				const epoch = ++rearmEpoch;
 				let attempts = 0;
 				const open = () => {
+					if (epoch !== rearmEpoch) return;
 					const result = services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
 					if (result.kind === 'refused' && result.code === 'unknown-task' && attempts < 3) {
 						attempts += 1;
 						window.requestAnimationFrame(open);
 						return;
 					}
+					if (epoch !== rearmEpoch) return;
 					services.stage.notifySurfaceChange();
 				};
 				window.requestAnimationFrame(open);
@@ -1827,6 +1846,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				/** Esc, task replacement and install all end the writer with no commit. */
 				taskClosed() {
+					rearmEpoch += 1;
 					openTaskKind = null;
 					if (pausedProposal !== null) {
 						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
@@ -1842,6 +1862,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					publishInkSurface(null);
 				},
 				dispose() {
+					rearmEpoch += 1;
 					openTaskKind = null;
 					if (pausedProposal !== null) {
 						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);

@@ -402,11 +402,16 @@ test('starter: place, refuse/repair, remove, undo/redo, save and reload one Open
 		const placed = layoutOf(placedSource).openings;
 		expect(placed).toHaveLength(1);
 		expect(placed[0]).toMatchObject({ wallId: host.id, kind: 'door', width: 0.9, height: 2.1, sillHeight: 0 });
+		// The install closes Ink and the shell re-arms the same dock tool on the
+		// next live evaluation; the Opening reading and measures survive it.
+		await expect(page.locator(INK)).toBeVisible({ timeout: 20_000 });
+		await expect(page.locator('[data-ink-reading-opening]')).toBeChecked();
+		await expect(page.locator('[data-opening-kind]')).toHaveValue('door');
 		rows.push(row(
 			'starter.place',
 			'place one door on a Wall face',
 			'passed',
-			`${placed[0]!.id} at ${placed[0]!.offset.toFixed(3)} m; one accepted result`,
+			`${placed[0]!.id} at ${placed[0]!.offset.toFixed(3)} m; one accepted result; Ink re-armed`,
 			page,
 			'1440x900',
 			false,

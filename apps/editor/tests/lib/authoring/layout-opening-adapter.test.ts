@@ -41,7 +41,9 @@ import {
 } from '$lib/authoring/adapters/layout/ink';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
-const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
+// A Stage that does not start at the window origin: pointer intents are
+// Stage-local, so the adapter must translate them before casting a ray.
+const RECT = { left: 96, top: 48, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-s03-opening';
 const ELEVATION = 0.5;
 
