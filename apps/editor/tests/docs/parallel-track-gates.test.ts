@@ -984,12 +984,13 @@ export function routeProblems(source: string): string[] {
 	return problems;
 }
 
-/** The four operational runbooks whose per-track baton wiring is part of the execution structure. */
+/** The operational runbooks whose per-track baton wiring is part of the execution structure. */
 export const TRACK_RUNBOOKS = [
 	't1-spatial-world',
 	't2-composition',
 	't3-experience',
-	't4-release'
+	't4-release',
+	't5-expressive-geometry'
 ] as const;
 
 /**
@@ -1063,7 +1064,7 @@ export function skillProblems(skills: { closeout: string; phase: string }): stri
 	return problems;
 }
 
-const RELEASE_SLICE_ID = /^T[1-4]\.P\d+\.S\d+$/;
+const RELEASE_SLICE_ID = /^T[1-5]\.P\d+\.S\d+$/;
 const RELEASE_STATUSES = new Set(['approved', 'in-progress', 'shipped']);
 
 /**
@@ -1105,7 +1106,7 @@ export function releaseListProblems(input: {
 	}
 	const byId = new Map(input.slices.map((slice) => [slice.id, slice]));
 	for (const baton of input.batons) {
-		const ids = baton.source.match(/\bT[1-4]\.P\d+\.S\d+\b/g) ?? [];
+		const ids = baton.source.match(/\bT[1-5]\.P\d+\.S\d+\b/g) ?? [];
 		for (const id of new Set(ids)) {
 			const slice = byId.get(id);
 			if (slice === undefined) {
@@ -1639,7 +1640,7 @@ describe('execution structure is registered, exact and eligible', () => {
 		expect(schemaProblems(readFile(CYCLE), 'State', CYCLE, CYCLE_STATE_COLUMNS)).toEqual([]);
 		expect(schemaProblems(readFile(CYCLE), 'Mechanism register', CYCLE, CYCLE_MECHANISM_COLUMNS)).toEqual([]);
 		expect(schemaProblems(readFile(`${R115_PHASE}/README.md`), 'Slice register', `${R115_PHASE}/README.md`, SLICE_COLUMNS)).toEqual([]);
-		for (const track of ['t1-spatial-world', 't2-composition', 't3-experience', 't4-release']) {
+		for (const track of ['t1-spatial-world', 't2-composition', 't3-experience', 't4-release', 't5-expressive-geometry']) {
 			const file = `docs/roadmap/${track}/README.md`;
 			expect(schemaProblems(readFile(file), 'Phase register', file, PHASE_COLUMNS)).toEqual([]);
 		}
@@ -2036,8 +2037,10 @@ describe('the capability-readiness rule', () => {
 			'T3.P03.S01': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:unit-acceptance-v1'],
 			'T3.P03.S02': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:unit-acceptance-v1'],
 			'T3.P04.S01': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:conditional-save-units-v1'],
+			// T5 planning registration (2026-10-27): T5.P01 consumes the same unit, acceptance, Save and
+			// viewport scopes as the Scene import phase. No slice provides a gate.
 			...Object.fromEntries(
-				['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T1.P02.S06', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03'].map(
+				['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T1.P02.S06', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03', 'T5.P01.S01', 'T5.P01.S02', 'T5.P01.S03', 'T5.P01.S04'].map(
 					(id) => [
 						id,
 						[

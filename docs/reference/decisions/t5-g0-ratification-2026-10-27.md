@@ -42,6 +42,11 @@ creates no production capability or scope obligation in another track.
 
 ## Next authorization
 
+> **Superseded routing (2026-10-27).** The owner withdrew E0 before any commission. The
+> [T5 planning record](./t5-object-focus-planning-2026-10-27.md) records the withdrawal and adopts
+> the [T5 umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) on merge; the
+> promotions above are unchanged. The E0 text below is historical.
+
 The owner must separately authorize a **bounded E0 experimental commission** before any experiment
 or prototype starts. It must identify the first creative job and alternatives, fair comparison,
 minimum semantic/numerical evidence, decision criteria, cost envelope and stop condition, with the

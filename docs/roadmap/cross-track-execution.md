@@ -72,10 +72,12 @@ records and rechecks its own trusted base through its owning runbook before impl
 
 **After S06 (2026-10-27).** `T1.P02.S06` is accepted and merged (`6af62eb4`); the researched
 world-scale study is [historical research](../../broad-research/all-visible-editing-and-town-overview.md)
-and the [T5 track](./t5-expressive-geometry/README.md) remains planning only. Its
-[G0 direction is ratified](../reference/decisions/t5-g0-ratification-2026-10-27.md);
-[E0](./t5-expressive-geometry/README.md#e0-next-experimental-decision-gate) is the next experimental
-decision gate, awaiting separate commission authorization. The owner also released the next wave — `T1.P02.S02` drawing
+and the [T5 track](./t5-expressive-geometry/README.md) has its
+[G0 direction ratified](../reference/decisions/t5-g0-ratification-2026-10-27.md). The owner then
+withdrew E0, and the [T5 planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)
+adopts the [umbrella plan](./t5-expressive-geometry/umbrella-plan.md) and registers
+[T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md) on merge, releasing
+nothing. The owner also released the next wave — `T1.P02.S02` drawing
 and `T2.P02.S03` import final gate — on 2026-10-27
 ([record](../reference/decisions/next-wave-authorization-2026-10-27.md)). The current
 `main` contains S06's compile, Plan and representation work, and every statement below about
@@ -90,7 +92,8 @@ flowchart TD
   O --> F["T1.P02.S04 final gate — held"]
   P -->  IF["T2.P02.S03 integrated final gate — accepted 2026-10-27; T2.P02 closed"]
   B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
-  B --> T5["T5 Expressive Geometry — planning; direction ratified, E0 commission needs authorization"]
+  B --> T5["T5.P01 drawn native objects — registered; S01 plan approved, held until released"]
+  IF --> T5
   F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
   IF --> CES
   C --> CES
@@ -163,7 +166,8 @@ baton before editing one of these files. DB-backed `test:api` runs and S06's res
 an isolated per-lane database or Compose stack ([local development](../local-development.md#backend-in-docker-recommended), "Parallel worktrees"),
 never a shared one another lane may reset. New dependencies follow the owner's
 [permissive-only admission ruling](../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction),
-narrowed for S06 to [full permissive licensing](../reference/decisions/performance-foundation-authorization-2026-10-24.md#full-permissive-licensing).
+narrowed for S06 to [full permissive licensing](../reference/decisions/performance-foundation-authorization-2026-10-24.md#full-permissive-licensing)
+and widened for T5 to weak-copyleft libraries after a documented review ([T5 licensing amendment](../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing)).
 The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/roadmap/cross-track-execution.md`.
 
 ## Shared files and merge protocol
@@ -176,6 +180,8 @@ The post-Batch-E three-lane tables are recoverable with `git show 696af6ea:docs/
 | Camera/Experience lowering, Guide, Preview lifecycle and return | T3 | T1 reviews host integration; keep shared evaluator and isolated runtime; S06 measures these flows and reports T3-owned misses |
 | Measurement harness (H0 workflow) | T3 | A future lane edits the shared harness and fixtures through T3 review; S06's harness edits are merged history |
 | C3 project lifecycle persistence/API | T3 (T3.P04.S01 shipped after the T2 handoff) | PR #191 shipped the owner-scoped API/persistence cleanup; its handoff and shared-file reviews are recorded acceptance history, not new next-wave work |
+| `@portfolio/geometry-core` and the native-form parts of the Scene unit, codec, validation and planners | T5 (T5.P01, when released) | T2 reviews every Scene unit, codec, planner and Scene-adapter change and keeps other entity kinds; `T2.P02.S03` has merged (PR #199), so T5 serializes only with any new T2 Scene writer; T1 reviews the Ink reading seam |
+| The `form` library scope (My Objects): its payload codec, `apps/api` owner-scoped routes and migration | T5 (T5.P01.S04, when released) | T2 reviews the library scope, codec, API and migration; the migration slot is serialized with other `apps/api` writers |
 | Test contract, runtime-safe shared packages and boundary checks | Existing concern owner | Touch only required call sites with owner review; no duplicate protocol, silent boundary weakening or private test substitute |
 
 Parallel work means independent domain edits. Serialize editing shared files; name the writer
@@ -203,11 +209,13 @@ closeout updates only the owning baton; cross-track status stays in its owning r
   and create no obligation in this coordination. T2.P02.S02's owner-run rows remain with
   T2.P02.S03 on S06's method. Unclaimed flow traces, hard rows and calibration remain consumer
   evidence, not implied by a correctness pass. No new waiver is granted by this coordination.
-- **T5:** [Expressive Geometry](./t5-expressive-geometry/README.md) is registered as a **planning**
-  track. The [G0 ratification](../reference/decisions/t5-g0-ratification-2026-10-27.md) promotes direction,
-  not a specific architecture or prototype. The track README owns the next E0 decision and its
-  authorization requirements. T5 consumes S06's accepted compiler/Plan foundation and owns no
-  T1/T2 surface. No T5 scope is on the release list; no new phase or F gate is registered.
+- **T5:** [Expressive Geometry](./t5-expressive-geometry/README.md) is `approved` with one
+  registered phase, [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md); E0 is
+  withdrawn and the [umbrella plan](./t5-expressive-geometry/umbrella-plan.md) owns direction.
+  T5.P01's first slice changes the Scene unit format and planners; its `T2.P02.S03`
+  prerequisite merged with PR #199, and it lands under T2 review; its Ink reading
+  seam is a T1-reviewed patch. Its My Objects slice lands the `form` library scope and an API
+  migration under T2 review. No T5 scope is on the release list; no F gate is registered.
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.

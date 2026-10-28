@@ -127,8 +127,9 @@ implementation.
 
 Interaction design, source/geometry representations, kernels, milestone definitions, slice counts,
 sequencing and specific implementation direction remain TBD where evidence is insufficient. The
-workflow advantage is a hypothesis; [E0](../roadmap/t5-expressive-geometry/README.md#e0-next-experimental-decision-gate)
-is the next experimental decision gate, subject to separate authorization. Sculpting, surface
+workflow advantage is a hypothesis. The E0 experiment was withdrawn on 2026-10-27; T5's planning
+direction is its [umbrella plan](../roadmap/t5-expressive-geometry/umbrella-plan.md), which is
+roadmap authority, not a reference contract. Sculpting, surface
 refinement or deliberately authored geometric controls are neither promised nor excluded solely
 by technique. They must earn admission through this boundary.
 
@@ -1171,7 +1172,9 @@ expressiveness. Product licensing is undecided: the owner rescinded the copyleft
 ([2026-10-23 ruling](./decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)). Established
 libraries remain candidates when justified by correctness, capability and performance; dependency
 licence compatibility must be established for the eventual product licence and shipped build;
-until then new dependencies follow the owner's permissive-only admission ruling (same record). Shared shell rules remain PLATE-owned.
+until then new dependencies follow the owner's permissive-only admission ruling (same record), except that T5
+may adopt weak-copyleft libraries after a documented compatibility, distribution and compliance review
+([T5 licensing amendment](./decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing)). Shared shell rules remain PLATE-owned.
 Precise integration of new prototype capabilities develops in each consuming slice through a
 reviewable draft, build, browser observation and revision; unfinished feature layout does not
 block unrelated capability planning.

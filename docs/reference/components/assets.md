@@ -226,4 +226,6 @@ established libraries on correctness, capability and measured browser cost insid
 ownership boundaries. Their admissibility cannot be assumed from the former copyleft direction.
 While licensing is undecided, a new dependency is admitted only under the owner's
 [permissive-only ruling](../decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction), recorded in the consuming slice's
-acceptance; this selects no licence file.
+acceptance; this selects no licence file. For T5, weak-copyleft libraries (LGPL, MPL) are eligible
+after a documented compatibility, distribution and compliance review
+([T5 licensing amendment](../decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing)).

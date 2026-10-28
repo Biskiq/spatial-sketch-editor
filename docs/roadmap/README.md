@@ -77,7 +77,7 @@ owns lifecycle only and never copies their content.
 | T2 | approved | [T2 — Composition](./t2-composition/README.md) |
 | T3 | approved | [T3 — Experience](./t3-experience/README.md) |
 | T4 | planning | [T4 — Release and delivery](./t4-release/README.md) |
-| T5 | planning | [T5 — Expressive Geometry](./t5-expressive-geometry/README.md) |
+| T5 | approved | [T5 — Expressive Geometry](./t5-expressive-geometry/README.md) |
 | R115 | shipped | [R115 — PR #115 architecture reset](./parallel-track-cutover/README.md) |
 
 - **R115 is a repository phase, not a fifth track.** It is registered here directly because it
@@ -95,17 +95,17 @@ owns lifecycle only and never copies their content.
 
 ## T5 direction and next evidence
 
-The [T5 G0 ruling](../reference/decisions/t5-g0-ratification-2026-10-27.md) promotes durable
-creative-depth principles into the owning references. T5 remains `planning`: no capability phase,
-slice, milestone, F interface gate or release is added. Existing track/phase lifecycle and
-release decisions remain intact.
-
-[E0](./t5-expressive-geometry/README.md#e0-next-experimental-decision-gate) is the next experimental
-decision gate and needs a separate owner-approved bounded commission. It is not an authorization
-to implement the proposed prototype or its architecture. The experiment must earn a bounded next
-investment; it may simplify, redirect or reject the recommendation. Specific interactions,
-representations, kernels, milestones, slice counts, sequencing and implementation direction remain
-TBD. The proposal's R1–R5 labels are historical candidates, not the grand roadmap's commitments.
+The [T5 G0 ruling](../reference/decisions/t5-g0-ratification-2026-10-27.md) promoted durable
+creative-depth principles into the owning references. The owner then withdrew the E0
+guide/arrangement experiment, and the [T5 planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)
+adopts the [T5 umbrella plan](./t5-expressive-geometry/umbrella-plan.md) as T5's direction on merge:
+native forms as Scene truth, created by drawing in World and refined in Object Focus, a scope on the
+one Stage, reusable across a creator's projects through My Objects. T5 is `approved` with one
+registered phase,
+[T5.P01 Drawn native objects](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md). No F
+interface gate is added and nothing is released: the first slice starts only from an owner
+[release-list](./now.md) row. Later phases are planned in the umbrella plan and registered on their
+entry evidence.
 
 ## Gate register
 
@@ -209,12 +209,13 @@ writers and merge order. Update this index only in the coordination change that 
 | T2 | T2.P01 (closed 2026-10-20); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) (closed 2026-10-27; S01–S03 shipped) | — | Next T2 phase planning/authorization (component identity/resolution/admission and revision correspondence) | No active T2 phase; the closed phase's formal performance rows are deferred to named T2 follow-ups, not passed |
 | T3 | [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
-| T5 | — | — | E0 execution and all production implementation | [G0 direction ratified](../reference/decisions/t5-g0-ratification-2026-10-27.md); [E0 commission](./t5-expressive-geometry/README.md#e0-next-experimental-decision-gate) needs owner authorization; no capability phase or release is registered |
+| T5 | — | — | [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) S01 (plan approved); S02, S03 and S04 My Objects (proposed) | S01 on an owner release-list row (its T2.P02.S03 prerequisite merged with PR #199); S04 on S01 and T2 agreement on the library scope; E0 withdrawn ([planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
 
 Release provenance is the [performance foundation decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md);
 the shipped post-Batch-E lanes keep the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md);
 T5's G0 approval is the [expressive geometry decision](../reference/decisions/t5-g0-approval-2026-10-27.md);
 its bounded direction promotion is the [G0 ratification](../reference/decisions/t5-g0-ratification-2026-10-27.md);
+its E0 withdrawal and first-phase planning is the [T5 planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md);
 the next-wave release is the [next-wave authorization](../reference/decisions/next-wave-authorization-2026-10-27.md);
 the T1 continuation is the [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md).
 Everything omitted from [now.md](./now.md) stays under the production hold. No gate, track or

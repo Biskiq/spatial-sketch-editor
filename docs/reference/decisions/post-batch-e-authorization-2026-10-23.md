@@ -60,3 +60,8 @@ may add a new runtime or dev dependency only under a permissive license compatib
 future project license (for example MIT, BSD, ISC, Apache-2.0, Zlib), recording each package,
 version and license in that slice's acceptance record. A copyleft (including weak copyleft such as
 LGPL or MPL), source-available or unclear license stops and reports to the owner. Any licensing selection needs its own explicit owner decision. This record changes no domain contract or implementation authority.
+
+> **Amended for T5 (2026-10-27).** For dependencies admitted through T5 plans, the owner superseded
+> this rule: weak-copyleft libraries (LGPL, MPL) are eligible after a documented compatibility,
+> distribution and compliance review ([T5 licensing amendment](./t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing)). Product licensing remains
+> undecided, other tracks keep this rule, and the text above is preserved as written.

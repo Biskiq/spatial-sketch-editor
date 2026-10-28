@@ -1,6 +1,13 @@
 # E0 — Owner-evaluated spatial creation playground
 
-**Status:** proposed implementation-ready experiment plan; documentation only. E0 has not been
+> **Withdrawn 2026-10-27 and superseded.** The owner rejected the E0 guide/arrangement experiment as
+> insufficiently valuable for T5's direction; PR #206, which implemented its playground, closed
+> without merge. This plan is historical evidence only and authorizes nothing. The
+> [planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-ruling-e0-withdrawn)
+> keeps the evidence, and the [T5 umbrella plan](./umbrella-plan.md) is T5's direction. The text
+> below is unchanged.
+
+**Status (historical):** proposed implementation-ready experiment plan; documentation only. E0 has not been
 implemented or evaluated. Merging this PR does not authorize execution; the owner must separately
 commission the prototype. The owner is the sole E0 product decision-maker.
 
