@@ -1,83 +1,60 @@
-# T1.P02.S04 — Integrated final gate: implementation plan
-
-**Slice:** T1.P02.S04 · **Status:** authorized 2026-10-28 and implemented; acceptance evidence is
-recorded in the [gate artifact](./acceptance.md) and independent review remains required · **Phase:** [T1.P02](../README.md) ·
-[slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:**
-[T1 operations](../../../../operations/t1-spatial-world/README.md)
+# T1.P02.S04 — Integrated final gate: implementation plan — CLOSED STUB
 
 ```text
-CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1
+AUTHORITY: NONE — the phase README owns lifecycle; the acceptance record owns the gate verdict,
+           owner ruling and evidence. This stub preserves the delivered scope and recovery only.
+STATUS:    ACCEPTED by owner 2026-10-28 at 46a31c81; closeout complete; P1 merge pending (PR #210).
+           T1.P02 is closable, not closed.
 VERIFICATION: exhaustive
+CONSUMES:  F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
+REQUIRES:  F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1,
+           F4.intent-acceptance@1:unit-acceptance-v1,
+           F4.intent-acceptance@1:conditional-save-units-v1,
+           T1.viewport-projection@1:viewport-projection-v1
+NOT:       a phase closure, track-completion event, architecture verdict or performance pass.
 ```
 
-This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01, S05, S06, S02
-and S03 send their deferred exhaustive proof to; its acceptance record is the phase's declared final-gate
-artifact. It is registered (batch E, E1) and owner-authorized 2026-10-28. The implementation and
-correctness/browser evidence are recorded; the slice is not accepted until independent review and the
-P1 merge complete.
+## Delivered
 
-## Prerequisite
+The phase's declared integrated final gate. It proved native Wall creation end-to-end from an empty
+project and the starter: draw Walls, close and divide Rooms, place Wall-hosted Openings, delete a
+Wall with its Openings, and Save/reload with identity preservation, Undo/Redo, Plan/3D agreement,
+strict format refusal and accessible keyboard/narrow-shell behavior.
 
-`T1.P02.S01`, `S05`, `S06`, `S02` and `S03` accepted with routine closeout, and every consumed gate `accepted` with
-every `Requires` scope `active` at this slice's own trusted base. S04 adds no product feature: it is
-the independent, integrated acceptance of native Wall creation.
+The complete repository contract and four browser journeys are recorded in the
+[acceptance record](./acceptance.md). Performance benchmarking is suspended; no benchmark was run
+and no unmeasured row is a pass.
 
-## Scope
+## Evidence
 
-Record independent acceptance on the integrated tree, from an empty project and from the starter:
+- [Acceptance and owner ruling](./acceptance.md)
+- [Chromium evidence](./evidence/2026-10-28/d1fe6e5c/chromium/t1-s04-integrated-evidence.json)
+- [Chrome evidence](./evidence/2026-10-28/d1fe6e5c/chrome/t1-s04-integrated-evidence.json)
+- [Archived final screenshots](../../../../archive/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/evidence/2026-10-28/d1fe6e5c/CLOSED.md)
 
-- empty → draw → close → divide → add an Opening → delete a Wall with its Openings → Save → reload,
-  with identities, Rooms and floors preserved and Plan and 3D agreeing at each step;
-- every unsupported case in the owner-accepted
-  [drawing policy](../README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22) refusing in
-  words with a repair and no partial source;
-- the S01 identity guards rechecked through creator journeys: delete and recreate, Undo then a
-  different edit, Redo, and Save/reload/edit never reuse or collide an identity;
-- format 6 strict refusal of format 5 and unknown versions in the editor and the API Save path, with
-  JSON download recovery;
-- Experience and Camera references to a deleted Wall keeping their retained identity with derived
-  diagnostics;
-- S05 legacy surface/export absence, defect-equivalent fixture coverage and preserved
-  registry/Scene-frame behavior on the integrated tree;
-- S06's deduplication differentials and scale oracles still green; its historical measurements are
-  not re-run under the 2026-10-28 performance-mandate suspension;
-- the bounded dock/Ink, Card fact migration, lower-column arbitration and keyboard path as built and browser-revised, at narrow and
-  short shells and with reduced motion.
+## Entry points
 
-## Acceptance criteria
+```text
+validation  apps/editor/perf/flows/t1-s04-integrated-acceptance.spec.ts
+            apps/editor/perf/run-t1-s04-integrated-qa.mjs
+regressions apps/editor/tests/lib/authoring/scene-composition-loop.test.ts
+            apps/editor/tests/docs/parallel-track-gates.test.ts
+```
 
-**Required evidence:** the complete repository contract — fast and heavy kernel correctness, the full
-editor suite, the unconditional architecture lane, root `check`/`build`, the affected shared-package
-checks, and `check:api` plus a DB-backed `test:api` with **zero skips** — together with browser
-journeys recorded with their revision, viewport and reduced-motion state. Use
-[tests/README](../../../../../apps/editor/tests/README.md) for lane and command policy and
-[browser hygiene](../../../../../.agents/skills/browser-hygiene/SKILL.md) when launching a browser.
-No performance benchmark is required: the owner suspended that mandate on 2026-10-28, and an
-unmeasured performance row stays unmeasured rather than passing.
+## Residuals
 
-Passing makes T1.P02 **closable**; only an explicit owner phase-close request closes it, and no phase,
-track or cycle closure is fabricated here.
+- Independent-review verdict: owner-reviewed/waived at closeout; no correctness or performance
+  evidence was waived.
+- Performance: suspended; S01/S02/S03/S06 rows remain unmeasured historical evidence, never passes.
+- Stage bundle history: S02 456.0 KiB br miss and S03 426.7 KiB br exception remain recorded.
+- Phase closure: not authorized; T1.P02 is closable and awaits a separate owner instruction.
+- P1 merge of PR #210 remains pending.
 
-## Performance recheck — suspended 2026-10-28
+## Recovery
 
-The owner suspended the mandatory performance-benchmarking strategy indefinitely
-([decision](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md)). S04 runs
-**no** formal F2/F3/F4/F8/F13 matrix, no battery-mode certification and no full `npm run perf`
-workflow; none is an acceptance prerequisite. Performance investigations are owner-initiated only,
-when an observed slowdown is named.
-
-The deferred rows keep their historical status and are **unmeasured**, not passes: S01's F2 S/M
-timings; S02's formal F3/F4/F8/F2/F13 family, per-move evaluation and Stage first-load delta; S03's
-F4/F8 Opening create/delete rows; and S06's battery qualification, grid-XL and sweep rows. Their
-recorded hard misses (S02's 456.0 KiB br Stage result and S03's 426.7 KiB br exception) remain
-recorded and are neither repaired nor erased. Existing measurements, harnesses and raw evidence
-stay available for a future owner-commissioned investigation.
-
-## Readiness declaration
-
-This slice is owner-authorized and implemented; it claims no gate state, capability or commit beyond
-its acceptance record, and no performance row. It consumes the same accepted gates as its siblings
-and no new or retired scope; it cannot supply its own prerequisite by editing a register. A passed
-final gate makes the phase closable, not closed. The architecture cycle is unchanged by this slice:
-S02's closeout records M4 as re-armed, and the owner's verdicts stay the owner's.
+```text
+git show 46a31c81:docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/implementation-plan.md
+anchor  46a31c81 (full plan and acceptance bodies, including the P2 correction)
+tag     closed/T1.P02.S04 → 46a31c81 (local only; P1 merge pending)
+merge   PR #210 — P1 merge commit only (no squash, no rebase)
+```

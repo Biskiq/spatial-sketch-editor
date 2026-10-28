@@ -1,14 +1,17 @@
 # T1.P02.S04 — acceptance record: Integrated final gate
 
-**Slice:** T1.P02.S04 · **Status:** implemented and evidenced; **P2 review correction applied,
-independent-review verdict pending** — the slice is not accepted until that review and the P1 merge
-complete · **Plan:**
-[implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [T1.P02](../README.md) ·
+**Slice:** T1.P02.S04 · **Status:** **accepted by owner 2026-10-28**; closeout complete on this
+branch, P1 merge pending. The declared `FINAL PHASE GATE` of T1.P02 is accepted and shipped; the
+phase is **closable, not closed** · **Plan:** [implementation-plan.md](./implementation-plan.md)
+(closed stub; owns the accepted scope) · **Phase:** [T1.P02](../README.md)
+
 **Declared** `FINAL PHASE GATE` artifact of T1.P02
 
 This artifact records the integrated correctness and functional evidence for native Wall creation on
-the final verification base `1e6e73aa` (PR #208 on the released PR #209 merge). It claims no phase closure, track-completion event,
-architecture verdict or production epoch. The owner [suspended the mandatory performance-benchmarking
+the final verification base `1e6e73aa` (PR #208 on the released PR #209 merge). The owner accepted
+the gate on 2026-10-28; the explicit slice-closeout trigger is the owner's review/waiver of the
+separate independent-review prerequisite, recorded below. This artifact claims no phase closure,
+track-completion event, architecture verdict or production epoch. The owner [suspended the mandatory performance-benchmarking
 strategy](../../../../reference/decisions/performance-mandate-suspension-2026-10-28.md) on 2026-10-28:
 no benchmark is an acceptance prerequisite, and every unmeasured performance row below stays
 **unmeasured**, never a pass.
@@ -19,7 +22,9 @@ no benchmark is an acceptance prerequisite, and every unmeasured performance row
 base                    1e6e73aa (PR #208 on db7e5cd9, the verified PR #209 merge; all five slices accepted)
 product/browser         d1fe6e5c (both browser evidence bundles, final head)
 test corrections        d0b0b808, d1fe6e5c (PR #208 base only; no product change)
-acceptance docs         this branch
+acceptance docs         this branch; P2 correction at 46a31c81
+anchor                  46a31c81 (full acceptance and plan bodies; tag local only)
+closeout                2026-10-28; P1 merge pending (PR #210)
 machine                 Apple M2 8-core / 16 GiB, macOS, Node 26.7.0
 browser                 Chrome 156.0.8078.48 (pinned) and Playwright Chromium
 ```
@@ -36,6 +41,22 @@ changed in this PR. T2's older benchmark
 carry is already superseded by the repository-wide suspension and is left for T2's next authorized
 handoff. This is a documentation-only correction and does not affect the browser or product
 revision `d1fe6e5c`.
+
+## Owner acceptance and review waiver — 2026-10-28
+
+```text
+RULING      The owner's explicit T1.P02.S04 slice-closeout trigger is the owner's review and
+            acceptance of this final gate at 46a31c81; it waives the separate independent-review
+            verdict for this slice only.
+SCOPE       The independent-review prerequisite only. The owner reviewed the P2 ownership
+            correction; no correctness, browser, architecture, API, build or performance evidence
+            is waived, and no performance row becomes a pass. No phase closure or merge is
+            authorized by this ruling.
+STATE       Accepted; S04 ships through PR #210 under the P1 merge rule. The phase register reads
+            `shipped`; the review prerequisite reads `owner-override`. T1.P02 is closable, not
+            closed.
+RATIFIED    owner, 2026-10-28.
+```
 
 ## Browser acceptance
 
@@ -59,6 +80,7 @@ source from a refused keyboard or pointer path.
 - [Chrome evidence](./evidence/2026-10-28/d1fe6e5c/chrome/t1-s04-integrated-evidence.json)
 - [Chromium machine facts](./evidence/2026-10-28/d1fe6e5c/chromium/t1-s04-machine-facts.json)
 - [Chrome machine facts](./evidence/2026-10-28/d1fe6e5c/chrome/t1-s04-machine-facts.json)
+- [Archived final screenshots](../../../../archive/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/evidence/2026-10-28/d1fe6e5c/CLOSED.md)
 
 ## Complete repository contract
 
@@ -109,9 +131,12 @@ investigation after an observed slowdown. No performance row is a pass.
 
 ## Residuals and ownership
 
-- **Independent review — required.** Owner review identified one P2 ownership finding (the T2 baton);
-  it is corrected on this branch. No verdict at the corrected revision is recorded, so the slice is
-  not accepted and the phase is not yet closable until that verdict and the P1 merge.
+- **Independent review — owner-reviewed/waived.** The owner's closeout trigger is the owner's review
+  and acceptance at `46a31c81`; the separate independent-review verdict is waived for this slice only.
+  The P2 ownership correction is recorded above. No correctness, browser, architecture, API, build or
+  performance evidence is waived.
+- **P1 merge — pending.** PR #210 must land as a merge commit, not squash or rebase; the anchor and
+  tag are not yet reachable from `main`.
 - **Performance mandate — suspended.** No benchmark is owed; unmeasured rows remain unmeasured. A
   future owner-observed slowdown can commission a bounded investigation against the preserved harness.
 - **Stage bundle misses — history.** The S02 456.0 KiB br miss and S03 426.7 KiB br exception remain
@@ -123,21 +148,42 @@ investigation after an observed slowdown. No performance row is a pass.
 - **Phase closure — not authorized.** Passing this gate makes T1.P02 closable; a separate owner
   instruction closes it. No phase, track or architecture-cycle closure is recorded.
 
-## Closeout — stopped at the review prerequisite (2026-10-28)
+## Closeout — accepted 2026-10-28
 
-The slice-closeout procedure was invoked after the P2 correction. It stops at step 1: no
-independent-review verdict covers the corrected revision. S04 therefore remains **in-progress**; no
-shipped status, preservation tag, stub/archive compaction or merge was recorded, and the final-gate
-artifact stays live. This is a contract stop, not a completed closeout.
+The slice-closeout procedure completed for the declared final gate. S04 is **accepted and shipped**
+on this branch; the phase README reads `shipped` and T1.P02 is **closable**. The final-gate exception
+keeps this artifact live for the phase-close decision. The implementation plan is a closed stub at
+its path, the 32 final PNGs have byte-identical archive copies, and the JSON/machine facts remain
+live. No phase closure, track-completion event, architecture-cycle verdict, deployment or merge is
+recorded here. The owner phase-close decision is the next step; P1 merge remains pending.
+
+## Preservation report
+
+```text
+CLOSEOUT PRESERVATION — T1.P02.S04 (2026-10-28)
+prose compacted:                 1   implementation plan → closed stub at its path
+reference promotions:             0   performance/policy truth already in reference/*
+renderable evidence archived:    32 files / 4,075,060 bytes (3.89 MiB)   final d1fe6e5c PNGs,
+                                     byte-identical copies
+evidence stubs / manifests:      1   CLOSED.md at the archived bundle
+transient artifacts removed:     0
+historical anchor:               46a31c81 · tag closed/T1.P02.S04 (local only; P1 merge pending)
+new live → archive prose links:  0
+manual-owed verification rows:   0   no benchmark is owed; unmeasured performance rows remain
+                                     historical evidence, never passes
+remaining deferred items:        4   performance family; Stage 456.0/426.7 KiB history;
+                                     lowerColumnHeight observation; S06 FO-1 … FO-5
+permanent stubs added:           1   (the owner-ratified cost)
+```
 
 ## Recovery and merge
 
 ```text
 base        1e6e73aa (PR #208 on the PR #209 merge db7e5cd9)
 evidence    d1fe6e5c (both browser bundles; test corrections only after the release)
-product     no product change after d1fe6e5c; acceptance docs follow
-merge       P1 merge commit only; anchor this artifact before merge
-phase       T1.P02 remains active; final-gate hand-off is the phase-close decision
+anchor      46a31c81 (full acceptance, plan and P2 correction)
+merge       P1 merge commit only (PR #210); pending, no squash or rebase
+phase       T1.P02 is closable; the phase-close decision is a separate owner instruction
 ```
 
 The P1 merge commit must preserve this record's revision and evidence paths; squash and rebase merges
