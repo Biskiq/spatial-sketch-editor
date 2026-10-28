@@ -89,7 +89,7 @@ it does not create the derivative. Approved revisions remain while project versi
 project deletion cleanup belongs to the later C3 work.
 
 The F2 resources unit (format 2) carries a model resource with derivative and source pins, recipe,
-report digest and placement definition. Scene format 3 may name a catalogue asset or a model resource
+report digest and placement definition. Scene format 4 may name a catalogue asset or a model resource
 locked in the same envelope. Editor host admission resolves that resource in the envelope, and Save
 checks its complete pin against an approved revision owned by the same project. The visitor/public
 release path remains catalogue-only. The import procedure that produces these revisions is described in

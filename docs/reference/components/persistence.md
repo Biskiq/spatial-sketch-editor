@@ -81,12 +81,14 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 6, Scene 3, Camera 1, Experience 2 and resources 2.
+`units`. Unit payload versions are Layout 6, Scene 4, Camera 1, Experience 2 and resources 2.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
-Scene 3 carries `textures`, `materials`, `entities` and optional `clusters`; it carries no Camera
-or editorial fields. Camera carries Views and connections. Connection endpoints are generated,
+Scene 4 carries `textures`, `materials`, `entities` and optional `clusters`; it carries no Camera
+or editorial fields. Format 4 adds the `form` entity, whose authored source (generator, outline,
+extent, per-axis scale, next key) is stored verbatim; generated geometry is never serialized, and a
+reader refuses format 3 rather than converting it. Camera carries Views and connections. Connection endpoints are generated,
 only interior anchors are authored, and directional framing envelopes retain their kernel rules.
 `validateProjectEnvelope` separates structural issues, repairable authored diagnostics and
 executable resource closure. The Stage discloses diagnostics and closure for inspection without
@@ -165,7 +167,7 @@ catalogue `assetId`s or a model resource pinned in the same envelope. T2.P02.S01
 staging and immutable approved model revisions in the project registry; Save verifies each model's
 derivative/source pins, recipe, report digest and placement against an approved revision owned by
 that project, refusing the save without changing the stored version when they disagree. Resources
-format 2 carries the model resource and lock; Scene format 3 may reference it. The visitor/public
+format 2 carries the model resource and lock; Scene format 4 may reference it. The visitor/public
 reader remains catalogue-only. T2.P02.S02 adds the import and placement flow that writes these revisions
 and their Scene references through the S01 routes and Save verification, which it reuses unchanged.
 

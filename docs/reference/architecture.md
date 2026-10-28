@@ -112,7 +112,7 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 | Authority | Owns | Current encoding (until cutover) |
 |---|---|---|
 | **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 6`: Junctions, Walls, persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path |
-| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 3 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources, no admitted general components or attachments |
+| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 4 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
 | **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 2, collection-capable); bounded capture/Presentation/Cut Guide authoring, with richer capabilities still future work |
 | **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | `units.resources.data` and the exact dependency lock; bytes stay in the P20 registry/private storage; general ingest remains future work |
@@ -295,9 +295,10 @@ interior-only.
 |---------|-----------------|
 | Junctions, Walls, Room boundaries, Wall-hosted openings | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`) |
 | Rough parametric layout objects | `project.layout.objects` |
-| Scene models, primitives, lights, materials | `project.scene` / `SceneDocument` (`@portfolio/project-model`) |
+| Scene models, primitives, lights, materials, native form sources | `project.scene` / `SceneDocument` (`@portfolio/project-model`) |
 | Camera nodes, connections, paths, view tracks | `project.scene` (until the Camera codec cutover) |
 | Derived geometry | pure `compileWallFirstLayoutGeometry()` → `compileLayoutGeometrySource` (`@portfolio/layout-core`) |
+| Derived native-form meshes | `@portfolio/geometry-core` (`evaluateProfile` → `extrudeProfile`, `formMeshDigest`); normals and metre UVs are editor render derivatives |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |
 | Cross-domain reference (F.1) and channel (F.3) interfaces | `packages/project-model/src/references` · `packages/project-model/src/channels` — shared runtime-safe interfaces with no editor/renderer dependency; their accepted readiness is recorded in the [gate register](../roadmap/README.md#gate-register) |
 | Plan presentation | T1.P01.S02 adds the orthographic Plan reading and Layout Plan representation over compiled geometry. The current Stage draws the canonical geometry in both readings; Plan membership, Reveal, Index and hit eligibility use the representation, but it does not draw a Plan cut. Plan-cut rendering remains future work |
@@ -373,7 +374,10 @@ component contracts under [`components/`](./components/).
 
 `LayoutDocumentWallFirst` = authored semantic CAD (Junctions, Walls, persistent Rooms, Wall-hosted Openings, objects). `CompiledLayoutGeometry` = derived,
 cacheable, renderer-neutral, never serialized; both are owned by
-`@portfolio/layout-core`. No SVG strings, `THREE.*`, DOM,
+`@portfolio/layout-core`. Native form sources are authored Scene truth and
+`@portfolio/geometry-core` evaluates them into a derived, deterministic,
+renderer-neutral `FormMesh` that is never serialized; the editor derives normals
+and metre UVs from it. No SVG strings, `THREE.*`, DOM,
 WebGL/WebGPU handles, materials, cameras, or UI state below the layout
 boundary. Plan and unified 3D consume the same compile; no consumer resamples
 curves or reinterprets opening topology. Junction resolution is derived in the
