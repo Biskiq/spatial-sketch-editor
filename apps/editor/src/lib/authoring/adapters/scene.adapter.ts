@@ -72,7 +72,11 @@ import {
 	type SceneSessionOutcome,
 	type SceneSurface
 } from './scene/placement';
-import { floorSupport, supportOccluders } from './scene/support-occlusion';
+import {
+	floorSupport,
+	supportOccluders,
+	type SupportOccluder
+} from './scene/support-occlusion';
 
 const SCENE_ARRANGE_TASK = 'scene-arrange';
 const SCENE_PLACE_TASK = 'scene-place';
@@ -146,6 +150,38 @@ function formatFormMeters(value: number): string {
 	return `${Math.round(value * 1000) / 1000} m`;
 }
 
+/**
+ * Occluders already built for one accepted snapshot, keyed by excluded subject.
+ *
+ * A snapshot is immutable: its compiled geometry and resolved Scene are the
+ * accepted revision's, not a working copy. Building the list evaluates every
+ * form's canonical key and allocates one occluder per drawn body, which pointer
+ * movement would otherwise repeat for an unchanged Stage. The WeakMap retires
+ * the lists with the snapshot, and the excluded id is part of the key because a
+ * live drag changes it while the snapshot stays current.
+ */
+const occludersBySnapshot = new WeakMap<
+	StageAdapterContext['snapshot'],
+	Map<string | null, readonly SupportOccluder[]>
+>();
+
+function snapshotOccluders(
+	context: StageAdapterContext,
+	exceptEntityId: string | null
+): readonly SupportOccluder[] {
+	let bySubject = occludersBySnapshot.get(context.snapshot);
+	if (bySubject === undefined) {
+		bySubject = new Map();
+		occludersBySnapshot.set(context.snapshot, bySubject);
+	}
+	const cached = bySubject.get(exceptEntityId);
+	if (cached !== undefined) return cached;
+	const domain = context.snapshot.domain;
+	const built = supportOccluders(domain.geometry, domain.scene, exceptEntityId);
+	bySubject.set(exceptEntityId, built);
+	return built;
+}
+
 /** The floor support one pointer position resolves against the drawn geometry. */
 function pointerFloorSupport(
 	context: StageAdapterContext,
@@ -156,11 +192,10 @@ function pointerFloorSupport(
 	// viewport's CSS coordinate space, whose origin includes the surface offset.
 	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
 	if (ray === null) return { kind: 'none' as const, reason: 'degenerate' as const };
-	const domain = context.snapshot.domain;
 	return floorSupport(
 		ray,
-		domain.datumMeters,
-		supportOccluders(domain.geometry, domain.scene, exceptEntityId)
+		context.snapshot.domain.datumMeters,
+		snapshotOccluders(context, exceptEntityId)
 	);
 }
 

@@ -183,6 +183,22 @@ describe('floor support against drawn geometry', () => {
 		expect(ownSubject.kind).toBe('floor');
 	});
 
+	it('occludes an oblique ray that meets a form side, not only its cap', async () => {
+		// The form is a unit cube at the origin. From inside the room the ray enters
+		// through the x = 1 side at y ≈ 0.9 and reaches the datum beyond it, so the
+		// broad-phase local-bound test must not reject a body it enters off-axis.
+		const domain = await domainFor([form('entity-side-form', [0, 0, 0])]);
+		const blocked = floorSupport(
+			ray([1.8, 1.1, 0.5], [-1, 0.4, 0.5]),
+			domain.datumMeters,
+			supportOccluders(domain.geometry, domain.scene)
+		);
+		expect(blocked.kind).toBe('occluded');
+		if (blocked.kind === 'occluded') {
+			expect(blocked.occluderId).toBe('scene:entity-side-form');
+		}
+	});
+
 	it('applies the full Euler rotation when testing form occlusion', async () => {
 		const rolledForm = form('entity-rolled-form', [0, 0, 0], undefined, [0, 0, Math.PI / 2]);
 		const domain = await domainFor([rolledForm]);

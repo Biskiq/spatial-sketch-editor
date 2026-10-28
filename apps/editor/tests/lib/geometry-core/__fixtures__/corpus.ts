@@ -8,8 +8,16 @@
  *
  * Test-owned fixtures stay readable at the call site; the golden digests they
  * pin live in `goldens.ts`.
+ *
+ * Regular rings are pinned unit-circle literals in `regular-ring-units.json`,
+ * never `Math.cos`/`Math.sin`. ECMAScript does not specify transcendental
+ * results bit-exactly, and V8's differ between arm64 and x64, so a runtime trig
+ * ring would make the bit-exact goldens a property of the runner's CPU rather
+ * than of the kernel. `regular()` refuses a count with no pinned table instead
+ * of falling back to trig.
  */
 import type { ProfileAnchor } from '@portfolio/geometry-core';
+import ringUnits from './regular-ring-units.json';
 
 export type ValidFormSource = {
   readonly name: string;
@@ -33,18 +41,29 @@ function ring(points: readonly (readonly [number, number])[], smooth = false): P
   return points.map(([u, v], index) => anchor(index + 1, u, v, smooth));
 }
 
-function regular(
-  count: number,
-  radius: number,
-  smooth = false,
-  startAngle = 0
-): ProfileAnchor[] {
-  const points: (readonly [number, number])[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const angle = startAngle + (Math.PI * 2 * index) / count;
-    points.push([Math.cos(angle) * radius, Math.sin(angle) * radius]);
+// JSON widens every pair to `number[]`; a validating reader would be more code
+// than the pinned table it checks, and a malformed pair fails the corpus test
+// that consumes it rather than passing silently.
+const UNIT_RINGS = ringUnits as unknown as Readonly<
+  Record<string, readonly (readonly [number, number])[]>
+>;
+
+function unitRing(count: number): readonly (readonly [number, number])[] {
+  const units = UNIT_RINGS[String(count)];
+  if (units === undefined) {
+    throw new Error(
+      `No pinned unit ring for ${count} anchors. Add shortest round-trip literals to ` +
+        'regular-ring-units.json; a runtime trigonometric ring is not deterministic across platforms.'
+    );
   }
-  return ring(points, smooth);
+  return units;
+}
+
+function regular(count: number, radius: number, smooth = false): ProfileAnchor[] {
+  return ring(
+    unitRing(count).map(([u, v]) => [u * radius, v * radius] as const),
+    smooth
+  );
 }
 
 function alternating(count: number, radius: number): ProfileAnchor[] {
@@ -115,10 +134,9 @@ const plus = ring([
 ]);
 
 const star = ring(
-  Array.from({ length: 10 }, (_, index) => {
-    const angle = (Math.PI * 2 * index) / 10;
+  unitRing(10).map(([u, v], index) => {
     const radius = index % 2 === 0 ? 1 : 0.45;
-    return [Math.cos(angle) * radius, Math.sin(angle) * radius] as const;
+    return [u * radius, v * radius] as const;
   })
 );
 
@@ -263,7 +281,11 @@ export const INVALID_PROFILES: readonly InvalidProfileSource[] = [
   {
     name: 'too-many',
     expected: 'too-many-anchors',
-    outline: regular(257, 2)
+    // The anchor count is refused before any coordinate is read; these values
+    // exist only to make the outline concrete, without a trig ring.
+    outline: Array.from({ length: 257 }, (_, index) =>
+      anchor(index + 1, (index % 17) * 0.25, Math.floor(index / 17) * 0.25)
+    )
   },
   {
     name: 'non-finite-u',

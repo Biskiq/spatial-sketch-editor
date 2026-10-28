@@ -8,6 +8,16 @@ import { parseModuleSpecifiers, stripComments } from '../../helpers/import-closu
 const testDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(testDir, '../../../../../packages/geometry-core');
 const sourceRoot = resolve(packageRoot, 'src');
+const fixtureRoot = resolve(testDir, '__fixtures__');
+
+/**
+ * Transcendental and exponentiation operations whose results ECMAScript does
+ * not specify bit-exactly. The kernel forbids them; the golden corpus must
+ * too, or a pinned digest would describe the runner's CPU (V8's `Math.sin`
+ * already differs between arm64 and x64) instead of the canonical output.
+ */
+const FORBIDDEN_CANONICAL_ARITHMETIC =
+  /\bMath\.(sin|cos|tan|asin|acos|atan|atan2|exp|log|pow|hypot|cbrt|expm1|log1p|sinh|cosh|tanh|random)\b|\*\*/;
 
 function sourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -49,11 +59,18 @@ describe('geometry-core boundary', () => {
   });
 
   it('keeps canonical arithmetic to the admitted operations', () => {
-    const forbidden =
-      /\bMath\.(sin|cos|tan|asin|acos|atan|atan2|exp|log|pow|hypot|cbrt|expm1|log1p|sinh|cosh|tanh|random)\b|\*\*/;
     for (const path of files) {
       const source = stripComments(readFileSync(path, 'utf8'));
-      expect(source, relative(packageRoot, path)).not.toMatch(forbidden);
+      expect(source, relative(packageRoot, path)).not.toMatch(FORBIDDEN_CANONICAL_ARITHMETIC);
+    }
+  });
+
+  it('pins golden inputs to literals, not engine-dependent arithmetic', () => {
+    const fixtureFiles = sourceFiles(fixtureRoot);
+    expect(fixtureFiles.length).toBeGreaterThan(0);
+    for (const path of fixtureFiles) {
+      const source = stripComments(readFileSync(path, 'utf8'));
+      expect(source, relative(packageRoot, path)).not.toMatch(FORBIDDEN_CANONICAL_ARITHMETIC);
     }
   });
 

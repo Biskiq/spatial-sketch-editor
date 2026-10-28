@@ -316,51 +316,86 @@ function hitCylinder(ray: PointerRay, occluder: Extract<SupportOccluder, { kind:
 	return null;
 }
 
+/**
+ * Conservative ray/bounds rejection in the form's own local space.
+ *
+ * Every triangle lies inside the canonical bounds, so a ray that misses the
+ * box cannot hit the body: skipping the loop cannot change a hit. The box is
+ * grown by the same epsilon the triangle test tolerates, so a ray grazing a
+ * boundary still reaches the exact test rather than being rejected by rounding.
+ */
+function rayMeetsBounds(
+	origin: Vec3,
+	direction: Vec3,
+	bounds: Extract<SupportOccluder, { kind: 'form-mesh' }>['mesh']['bounds']
+): boolean {
+	let near = 0;
+	let far = Number.POSITIVE_INFINITY;
+	for (let axis = 0; axis < 3; axis += 1) {
+		const value = origin[axis]!;
+		const slope = direction[axis]!;
+		const low = bounds.min[axis]! - EPSILON;
+		const high = bounds.max[axis]! + EPSILON;
+		if (Math.abs(slope) < EPSILON) {
+			if (value < low || value > high) return false;
+			continue;
+		}
+		const first = (low - value) / slope;
+		const second = (high - value) / slope;
+		const enter = Math.min(first, second);
+		const leave = Math.max(first, second);
+		if (enter > near) near = enter;
+		if (leave < far) far = leave;
+		if (near > far) return false;
+	}
+	return far >= 0;
+}
+
 /** Nearest hit against the canonical triangles the Stage's form renderer draws. */
 function hitFormMesh(
 	ray: PointerRay,
 	occluder: Extract<SupportOccluder, { kind: 'form-mesh' }>
 ): number | null {
 	const local = localFormRay(ray, occluder.center, occluder.rotation);
+	if (!rayMeetsBounds(local.origin, local.direction, occluder.mesh.bounds)) return null;
 	const { positions, indices } = occluder.mesh;
+	const [ox, oy, oz] = local.origin;
+	const [dx, dy, dz] = local.direction;
 	let nearest: number | null = null;
+	// Scalars, not Vec3 tuples: this runs for every triangle of every form on
+	// pointer movement, and one tuple per intermediate allocated more than the
+	// arithmetic cost. The operations and their order are the Vec3 form's, so the
+	// answer is unchanged.
 	for (let index = 0; index < indices.length; index += 3) {
 		const a = indices[index]! * 3;
 		const b = indices[index + 1]! * 3;
 		const c = indices[index + 2]! * 3;
-		const edge1: Vec3 = [
-			positions[b]! - positions[a]!,
-			positions[b + 1]! - positions[a + 1]!,
-			positions[b + 2]! - positions[a + 2]!
-		];
-		const edge2: Vec3 = [
-			positions[c]! - positions[a]!,
-			positions[c + 1]! - positions[a + 1]!,
-			positions[c + 2]! - positions[a + 2]!
-		];
-		const p: Vec3 = [
-			local.direction[1] * edge2[2] - local.direction[2] * edge2[1],
-			local.direction[2] * edge2[0] - local.direction[0] * edge2[2],
-			local.direction[0] * edge2[1] - local.direction[1] * edge2[0]
-		];
-		const determinant = edge1[0] * p[0] + edge1[1] * p[1] + edge1[2] * p[2];
+		const ax = positions[a]!;
+		const ay = positions[a + 1]!;
+		const az = positions[a + 2]!;
+		const e1x = positions[b]! - ax;
+		const e1y = positions[b + 1]! - ay;
+		const e1z = positions[b + 2]! - az;
+		const e2x = positions[c]! - ax;
+		const e2y = positions[c + 1]! - ay;
+		const e2z = positions[c + 2]! - az;
+		const px = dy * e2z - dz * e2y;
+		const py = dz * e2x - dx * e2z;
+		const pz = dx * e2y - dy * e2x;
+		const determinant = e1x * px + e1y * py + e1z * pz;
 		if (Math.abs(determinant) <= 1e-12) continue;
 		const inverseDeterminant = 1 / determinant;
-		const fromA: Vec3 = [
-			local.origin[0] - positions[a]!,
-			local.origin[1] - positions[a + 1]!,
-			local.origin[2] - positions[a + 2]!
-		];
-		const u = (fromA[0] * p[0] + fromA[1] * p[1] + fromA[2] * p[2]) * inverseDeterminant;
+		const fx = ox - ax;
+		const fy = oy - ay;
+		const fz = oz - az;
+		const u = (fx * px + fy * py + fz * pz) * inverseDeterminant;
 		if (u < -EPSILON || u > 1 + EPSILON) continue;
-		const q: Vec3 = [
-			fromA[1] * edge1[2] - fromA[2] * edge1[1],
-			fromA[2] * edge1[0] - fromA[0] * edge1[2],
-			fromA[0] * edge1[1] - fromA[1] * edge1[0]
-		];
-		const v = (local.direction[0] * q[0] + local.direction[1] * q[1] + local.direction[2] * q[2]) * inverseDeterminant;
+		const qx = fy * e1z - fz * e1y;
+		const qy = fz * e1x - fx * e1z;
+		const qz = fx * e1y - fy * e1x;
+		const v = (dx * qx + dy * qy + dz * qz) * inverseDeterminant;
 		if (v < -EPSILON || u + v > 1 + EPSILON) continue;
-		const distance = (edge2[0] * q[0] + edge2[1] * q[1] + edge2[2] * q[2]) * inverseDeterminant;
+		const distance = (e2x * qx + e2y * qy + e2z * qz) * inverseDeterminant;
 		if (distance >= 0 && (nearest === null || distance < nearest)) nearest = distance;
 	}
 	return nearest;
