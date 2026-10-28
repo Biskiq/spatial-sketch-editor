@@ -20,9 +20,9 @@ A native form exists in the product as Scene truth. A Scene unit at format 4 can
 entities; strict codecs read and write them; a new runtime-safe package,
 `@portfolio/geometry-core`, evaluates each form deterministically into a closed mesh with regions,
 bounds, footprint and contact; two new Scene planners create a form and size it per axis; the
-existing move, turn, place-on-floor, duplicate and delete operations work on forms; and Stage, Plan
-and Preview draw, pick and select them through the shared paths. Undo, Redo, Save and cold reopen
-are exact.
+existing move, turn, place-on-floor, duplicate and delete operations work on forms; and Stage and Plan
+draw and select them through the shared paths; isolated Preview draws the same accepted forms
+without editor selection or writers. Undo, Redo, Save and cold reopen are exact.
 
 Creators gain no new entry point in this slice. Forms reach the editor through opened documents,
 fixtures and tests; the drawing entry point is S02.
@@ -151,6 +151,9 @@ bounds, an XZ footprint ring and `contactMinY`.
   atan/atan2/exp/log/pow/hypot/cbrt/expm1/log1p/sinh/cosh/tanh`, `**` and `Math.random` are forbidden.
 - Iteration order is fixed by array order; no object-key or `Set` iteration feeds arithmetic.
 - An architecture-lane test scans `packages/geometry-core/src/**` for forbidden tokens and imports.
+- Numerical profile evaluation may memoize up to 32 exact structural inputs; signed zero is
+  distinguished, invalid inputs never reuse a valid entry, and every caller receives independent
+  buffers and bounds. This is generated numerical state, not a second form-mesh cache or source.
 - Golden digests (`formMeshDigest`) for the corpus in §6 are pinned per evaluator version. Changing
   canonical output for an accepted source requires a Scene format bump and new goldens.
 
@@ -236,7 +239,13 @@ export type SceneEntity = SceneModelEntity | ScenePrimitiveEntity | SceneFormEnt
   import, so documents without forms load no form code. Stage and Preview therefore draw the same
   result.
 - **Plan.** `PlanSceneFootprint` gains `kind: 'form'`, with points from the form's footprint ring
-  under its transform. Plan hits and selection reuse the existing footprint paths.
+  under its transform. Upright forms retain their concave ring; admitted tilted forms project
+  the canonical triangle union with the full XYZ transform. Plan hits reuse the footprint path
+  with rendered visibility, including the six-CSS-pixel edge halo. The Stage renderer supplies
+  mounted Scene and Layout meshes as geometry data; the existing adapter hit provider remains
+  the selection policy. Models, scalar scale, floors and Walls participate in nearest visible
+  body resolution. Cold opens with at least 32 forms yield between strict validation and runtime
+  preparation; accepted installs retain their known-identity path and existing epoch checks. Nothing in the render geometry source selects or writes authored source.
 - **Owner-approved Option B.** Production Plan footprint hit testing and 3D Scene picking run through
   the existing Stage `hitProvider` seam and its one semantic selection authority. Scene hits carry
   F.1 references without fabricated Layout representation. Adapter-owned subject rows feed Index
@@ -245,7 +254,8 @@ export type SceneEntity = SceneModelEntity | ScenePrimitiveEntity | SceneFormEnt
   it offers no editor selection, Card, history or authoring controls, and returning restores Stage
   selection. Visitor isolation is unchanged.
 - **Selection and Card.** Forms select through the existing Scene pick paths in Plan and 3D. The
-  Card shows the form's name, material and read-only Width, Depth and Height from the scaled bounds.
+  Card shows the form's name, material and Width, Depth and Height from the scaled bounds, with
+  per-axis Size through the existing `set-form-size` planner.
   The Card also offers Move, Turn, Place on floor, Duplicate and confirmed Delete. The uniform resize affordance is not offered for forms, following `floorTransformSupport`'s
   pattern. Move, Turn, Place on floor, Duplicate and Delete work as for other objects.
 
@@ -353,15 +363,18 @@ workflow on the designated reference machine, with Laptop A reported:
 - `create-form` and `set-form-size` commit, and their Undo/Redo, ≤ 100 ms;
 - cold open of the M fixture with 60 forms of up to 128 anchors: no main-thread task over 50 ms
   attributable to form evaluation;
-- Stage and visitor first-load JS deltas (expected near zero, since form code is lazy), within
-  ≤ 25 KiB br for the Stage and inside its ≤ 425 KiB br hard row, which had 2.7 KiB headroom at
-  `T2.P02.S03`.
+- Stage and visitor first-load JS deltas, within ≤ 25 KiB br growth for the Stage and its
+  ≤ 425 KiB br hard row, subject only to the explicit owner Stage exception in the acceptance
+  record. The form renderer and Card fields load lazily; registered Scene planners require the
+  kernel at first load. No other gate is waived.
 
 ## 10. Reviews
 
 - **T2** reviews the Scene types, codec, validation, record scope, planners, fixtures and Scene
   adapter changes (D2).
 - **T4** reviews the cold-release refusal.
+- **T3** reviews the bounded Head Find subject integration and existing F4 usage; no Save or F4
+  protocol changes are authorized.
 - **T1** reviews the Stage host, hit/semantic selection and Index/Head Find changes required by
   the owner-approved Option B expansion, including the existing shadow-host diff.
 - An independent code review before merge, as for every implementation PR.

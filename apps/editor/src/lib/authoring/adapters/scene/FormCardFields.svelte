@@ -87,4 +87,5 @@
 		border-radius: 0.4rem; background: var(--plate-control-surface, #f5f6f4); color: inherit; font: inherit; cursor: pointer; align-self: end; }
 	button:disabled { opacity: 0.5; cursor: default; }
 	input:focus-visible, button:focus-visible { outline: 2px solid var(--plate-focus, #c99a27); outline-offset: 2px; }
+	@media (pointer: coarse) { input, button { min-height: 2.75rem; } button { min-width: 2.75rem; } }
 </style>

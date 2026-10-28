@@ -25,4 +25,4 @@ jobs:
       - run: npm exec -w @portfolio/editor -- svelte-kit sync
       - name: Check pinned corpus and determinism boundary
         working-directory: apps/editor
-        run: npx vitest run tests/lib/geometry-core/profile-corpus.test.ts tests/lib/geometry-core/geometry-core-boundary.test.ts
+        run: npx vitest run tests/lib/geometry-core

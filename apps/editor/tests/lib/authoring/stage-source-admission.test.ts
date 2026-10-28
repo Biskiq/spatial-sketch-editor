@@ -21,7 +21,8 @@
  * `wall_offset_fold` that suite already pins — reused rather than re-derived, so
  * one document describes the hazard.
  */
-import { describe, expect, it } from 'vitest';
+import { createStageSession, runBoundLoad } from '$lib/authoring/stage/stage-session';
+import { describe, expect, it, vi } from 'vitest';
 
 import { MODEL_RESOURCE_MIME, SCENE_UNIT_FORMAT_VERSION, validateProjectEnvelope } from '@portfolio/project-model/units';
 import {
@@ -70,6 +71,40 @@ function starterSource(context: AdmissionContext = CONTEXT) {
 }
 
 describe('source admission', () => {
+
+	it('drops a form-heavy cold admission superseded at its real task boundary', async () => {
+		const baseline = await admitSource(await starterSource(), CONTEXT);
+		if (baseline.kind !== 'admitted') throw new Error('baseline refused');
+		const forms = await createUnitProject({ id: PROJECT_ID, name: 'Yielding forms', scene: {
+			formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [],
+			entities: Array.from({ length: 32 }, (_, index) => ({ kind: 'form' as const, id: `yield-form-${index}`, name: 'Form',
+				position: [0, 0, 0] as [number, number, number], rotation: [0, 0, 0] as [number, number, number],
+				materialId: 'plaster-warm' as const, castShadow: true, receiveShadow: true,
+				form: { generator: { kind: 'extrude' as const, plane: 'plan' as const, extent: 1, outline: [
+					{ key: 1, u: 0, v: 0, smooth: false }, { key: 2, u: 1, v: 0, smooth: false }, { key: 3, u: 0, v: 1, smooth: false }
+				] }, scale: [1, 1, 1] as [number, number, number], nextKey: 4 } }))
+		} });
+		const session = createStageSession({ sessionEpoch: CONTEXT.sessionEpoch });
+		session.replace(baseline.snapshot);
+		let resume: (() => void) | null = null;
+		const realTimeout = globalThis.setTimeout;
+		const timer = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((callback: () => void, delay?: number) => {
+			if (delay === 0) { resume = callback; return 0; }
+			return realTimeout(callback, delay);
+		}) as typeof setTimeout);
+		try {
+			const pending = runBoundLoad(session, () => admitSource(forms, CONTEXT));
+			expect(resume).not.toBeNull();
+			// A newer replacement ends the production load lease while admission is
+			// paused after strict validation. Its completion must remain uninstalled.
+			session.replace(baseline.snapshot);
+			timer.mockRestore();
+			(resume as unknown as () => void)();
+			expect(await pending).toBeNull();
+			expect(session.current()).toBe(baseline.snapshot);
+		} finally { timer.mockRestore(); session.dispose(); }
+	});
+
 	it('admits a real current source with the caller identity, the shared content identity and a usable domain read', async () => {
 		const project = await starterSource();
 		const before = JSON.stringify(project);

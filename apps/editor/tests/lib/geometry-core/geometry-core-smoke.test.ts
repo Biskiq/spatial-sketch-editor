@@ -24,7 +24,20 @@ describe('geometry core smoke', () => {
     expect(profile.pointEdgeKeys.length).toBe(4);
   });
 
-  it('extrudes a closed positive volume plan form', () => {
+  it('memoizes equal numerical profiles without sharing mutable output or accepting changed source', () => {
+    const source = square.map((anchor) => ({ ...anchor }));
+    const first = evaluateProfile(source);
+    const expected = evaluateProfile(source);
+    first.points.fill(99); first.pointEdgeKeys.fill(99); first.pointCreases.fill(99); first.triangles.fill(99);
+    (first.bounds as { minU: number }).minU = 99;
+    expect(evaluateProfile(source)).toEqual(expected);
+    source[1]!.u = 2;
+    expect(evaluateProfile(source).points).not.toEqual(expected.points);
+    source[1]!.key = source[0]!.key;
+    expect(() => evaluateProfile(source)).toThrow();
+  });
+
+  it('extrudes a closed positive volume plan form' , () => {
     const profile = evaluateProfile(square);
     const mesh = extrudeProfile({ profile, extent: 0.5, scale: [1, 1, 1], plane: 'plan' });
     expect(mesh.indices.length % 3).toBe(0);

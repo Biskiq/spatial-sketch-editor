@@ -94,6 +94,24 @@ export type EvaluatedProfile = {
   readonly bounds: ProfileBounds;
 };
 
+/** Bounded numerical memoization; callers always own fresh mutable output buffers. */
+const PROFILE_CACHE_LIMIT = 32;
+const evaluatedProfiles = new Map<string, EvaluatedProfile>();
+
+function copyProfile(profile: EvaluatedProfile): EvaluatedProfile {
+  return { points: profile.points.slice(), pointEdgeKeys: profile.pointEdgeKeys.slice(),
+    pointCreases: profile.pointCreases.slice(), triangles: profile.triangles.slice(), bounds: { ...profile.bounds } };
+}
+
+function profileCacheKey(anchors: readonly ProfileAnchor[]): string | null {
+  if (!Array.isArray(anchors) || anchors.length < PROFILE_LIMITS.minAnchors || anchors.length > PROFILE_LIMITS.maxAnchors ||
+    anchors.some((anchor) => anchor === null || typeof anchor !== 'object' ||
+      typeof anchor.key !== 'number' || typeof anchor.u !== 'number' || typeof anchor.v !== 'number' ||
+      typeof anchor.smooth !== 'boolean' || !Number.isFinite(anchor.key) || !Number.isFinite(anchor.u) || !Number.isFinite(anchor.v))) return null;
+  const numberKey = (value: number) => Object.is(value, -0) ? '-0' : String(value);
+  return anchors.map((anchor) => `${numberKey(anchor.key)},${numberKey(anchor.u)},${numberKey(anchor.v)},${anchor.smooth}`).join(';');
+}
+
 type Curve = {
   readonly samples: Float64Array;
   readonly steps: number;
@@ -276,6 +294,13 @@ export function canonicalizeWinding(
  * function never normalizes a defect into a body.
  */
 export function evaluateProfile(anchors: readonly ProfileAnchor[]): EvaluatedProfile {
+  const key = profileCacheKey(anchors);
+  const cached = key === null ? undefined : evaluatedProfiles.get(key);
+  if (cached !== undefined) {
+    evaluatedProfiles.delete(key!);
+    evaluatedProfiles.set(key!, cached);
+    return copyProfile(cached);
+  }
   const issues = validateProfile(anchors);
   if (issues.length > 0) {
     throw new GeometryCoreError(
@@ -300,13 +325,18 @@ export function evaluateProfile(anchors: readonly ProfileAnchor[]): EvaluatedPro
       { code: 'self-intersecting', anchorKeys: keysOf(anchors) }
     ]);
   }
-  return {
+  const result = {
     points: ring.points,
     pointEdgeKeys: ring.pointEdgeKeys,
     pointCreases: ring.pointCreases,
     triangles,
     bounds: ring.bounds
   };
+  if (key !== null) {
+    evaluatedProfiles.set(key, copyProfile(result));
+    if (evaluatedProfiles.size > PROFILE_CACHE_LIMIT) evaluatedProfiles.delete(evaluatedProfiles.keys().next().value!);
+  }
+  return result;
 }
 
 function keysOf(anchors: readonly ProfileAnchor[]): readonly number[] {

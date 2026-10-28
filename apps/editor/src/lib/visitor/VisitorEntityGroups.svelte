@@ -128,7 +128,7 @@
 {#each roomGroups as group (group.room?.id ?? '__world__')}
 	<T.Group position={group.room?.position ?? [0, 0, 0]} rotation={group.room?.rotation ?? [0, 0, 0]}>
 		{#each group.entities as entity (entity.id)}
-			<T.Group oncreate={(root) => onEntityRoot?.(entity.id, root)}>
+			<T.Group name={`SceneEntity:${entity.id}`} oncreate={(root) => onEntityRoot?.(entity.id, root)}>
 			{#if isSceneModelEntity(entity)}
 				{#if Model}
 					<Model

@@ -225,6 +225,13 @@ async function admitSourceOnce(
 	// validation is not immediately repeated over the same bytes (D.1/H2).
 	const read = validateProjectEnvelope(input);
 	if (!read.success) return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(read.issues) };
+	// Cold form-heavy opens have two independently bounded reads: strict source
+	// validation, then runtime preparation. Give input/paint a task boundary
+	// between them rather than joining their CPU work into one long task.
+	// Accepted installs already carry knownIdentity and keep their existing path.
+	if (knownIdentity === undefined && read.envelope.units.scene.data.entities.filter((entity) => entity.kind === 'form').length >= 32) {
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+	}
 	const prepared = p2311Measure('admission:runtime', () =>
 		prepareValidatedUnitRuntime(read, sceneOptionsFor(read.envelope), compileSession)
 	);

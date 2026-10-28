@@ -16,7 +16,7 @@ import {
 	PROFILE_LIMITS,
 	evaluateProfile,
 	extrudeProfile,
-	validateProfile
+	type EvaluatedProfile
 } from '@portfolio/geometry-core';
 import type {
 	SceneBoxDimensions,
@@ -460,13 +460,16 @@ function parseFormSource(
 		nextKey > 0
 	) {
 		const issuesBeforeProfile = issues.length;
-		for (const issue of validateProfile(outline)) {
-			addIssue(
-				issues,
-				outlinePath,
-				issue.code,
-				`${issue.code} at outline anchors ${issue.anchorKeys.join(', ')}`
-			);
+		let profile: EvaluatedProfile | undefined;
+		try {
+			// evaluateProfile performs validation itself; retain its typed issues
+			// rather than validating and sampling the same outline twice.
+			profile = evaluateProfile(outline);
+		} catch (error) {
+			if (error instanceof GeometryCoreError && error.issues.length > 0) {
+				for (const issue of error.issues) addIssue(issues, outlinePath, issue.code,
+					`${issue.code} at outline anchors ${issue.anchorKeys.join(', ')}`);
+			} else addIssue(issues, outlinePath, 'invalid_form_body', error instanceof Error ? error.message : 'The form body cannot evaluate');
 		}
 		if (outline.some((anchor) => nextKey <= anchor.key)) {
 			addIssue(
@@ -476,13 +479,13 @@ function parseFormSource(
 				'nextKey must be greater than every outline anchor key'
 			);
 		}
-		if (issues.length === issuesBeforeProfile) {
+		if (issues.length === issuesBeforeProfile && profile !== undefined) {
 			// Admission is the first reader: a source the renderer's own evaluator
 			// refuses (for example an extent and a scale whose product leaves the
 			// scaled-dimension limits) must not load and then draw nothing.
 			try {
 				extrudeProfile({
-					profile: evaluateProfile(outline),
+					profile,
 					extent,
 					scale,
 					plane

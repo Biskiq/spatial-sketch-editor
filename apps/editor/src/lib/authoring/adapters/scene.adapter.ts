@@ -50,7 +50,7 @@ import {
 
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { planSceneHaloProbe, resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
-import FormCardFields from './scene/FormCardFields.svelte';
+import FormCardFields from './scene/FormCardFieldsLazy.svelte';
 import { formCardController } from './scene/form-card';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';

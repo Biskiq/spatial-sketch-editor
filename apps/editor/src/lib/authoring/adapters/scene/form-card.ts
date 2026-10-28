@@ -1,4 +1,5 @@
 /** Card commands capture one accepted source and use the existing Scene planners/F4 host. */
+import { perfMark } from '$lib/platform/perf-marks';
 import type { AuthoringIntent } from '@portfolio/project-model';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageScene } from '$lib/authoring/stage/unit-stage-source';
@@ -14,6 +15,7 @@ export function formCardController(services: StageAdapterServices, entityId: str
 	const reference = sceneEntityReference(entityId, snapshot.domain.unitRevisions.scene);
 	const dimensions = mesh.bounds.max.map((value, axis) => value - mesh.bounds.min[axis]!);
 	async function run(kind: string, payload: AuthoringIntent['payload'], newId?: string) {
+		perfMark('command:scene-form', { operation: kind, entityId });
 		const outcome = await services.authoring.accept({
 			version: 1, kind, operationId: crypto.randomUUID(),
 			expectedRevision: snapshot.acceptedRevision, targets: [reference], payload,

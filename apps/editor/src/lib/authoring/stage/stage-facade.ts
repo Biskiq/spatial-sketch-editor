@@ -1,3 +1,4 @@
+import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { indexedCompiledWall } from '@portfolio/layout-core';
 import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
@@ -1705,6 +1706,8 @@ export function createStageFacade(input: {
 			return result.kind === 'evaluated' ? eligiblePlanFragments(result.plan) : [];
 		},
 		resolveSourceHit(candidate) {
+			const started = perfMarksEnabled() ? performance.now() : null;
+			try {
 			const evaluation = camera.evaluation();
 			if (evaluation === null || evaluationIdOf(evaluation) !== candidate.evaluationId) {
 				return { kind: 'failed', code: 'stale-evaluation' };
@@ -1789,6 +1792,7 @@ export function createStageFacade(input: {
 				};
 			}
 			return { kind: 'none', reason: 'no-fragment' };
+			} finally { if (started !== null) perfMark('stage:pick', { elapsedMs: performance.now() - started }); }
 		},
 		selection: () => session.selection(),
 		selectionState: () => session.selectionState(),

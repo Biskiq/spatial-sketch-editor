@@ -224,7 +224,7 @@
 				<summary>Find</summary>
 				<div class="find-body">
 					<label class="find-field">
-						<span>Find a tool or operation</span>
+						<span>Find a subject, tool or operation</span>
 						<input
 							type="search"
 							value={find.query}
@@ -232,7 +232,7 @@
 						/>
 					</label>
 					{#if find.entries.length === 0}
-						<p class="find-empty">Nothing contributed matches that name.</p>
+						<p class="find-empty">No subject, tool or operation matches that name.</p>
 					{:else}
 						<ul class="find-results">
 							{#each find.entries as entry (`${entry.adapterId}:${entry.id}`)}

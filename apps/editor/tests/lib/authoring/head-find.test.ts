@@ -104,7 +104,7 @@ describe('Head Find', () => {
 		const find = host.querySelector<HTMLDetailsElement>('[data-head-find]')!;
 		find.querySelector('summary')!.click();
 		await tick();
-		expect(find.querySelector('.find-empty')?.textContent).toContain('Nothing contributed matches');
+		expect(find.querySelector('.find-empty')?.textContent).toContain('No subject, tool or operation matches');
 
 		const input = find.querySelector<HTMLInputElement>('input')!;
 		input.value = 'ink';
