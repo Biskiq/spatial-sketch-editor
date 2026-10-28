@@ -46,7 +46,19 @@ CI           No scheduled battery, no per-slice performance gate, no automatic l
 M (`grid-7`) is smooth only when editor time, handler-to-presentation delay and frame intervals
 all match the measured display period. L (`grid-14`) may show modest lag, including a stable
 half-rate, and must stay usable and correct. The two labels are not the same number. Low editor
-CPU time alone does not establish smoothness. Thresholds and the early-stop rule live with the
+CPU time alone does not establish smoothness.
+
+**Owner clarification, 2026-10-28 — L typed-commit completion.** A one-shot L typed commit is
+usable when its operation-matched accepted result reaches the rendering-opportunity proxy within
+the **200 ms L completion allowance**, subject to the existing threshold-margin and correctness
+checks. The previous `editor time + two refresh intervals` cap was too strict for L's expressly
+permitted lag and is removed for this one-shot measure. The two-frame L presentation expectation
+still applies to continuous drag/pan input; M's stricter near-frame commit rule remains. Keep the
+editor, matching-render and presentation clocks separate and report slow observations even when
+the usability label passes. This changes only the feel classification, never a suspended historical
+gate or any recorded measurement.
+
+Thresholds and the early-stop rule live with the
 runner (`apps/editor/perf/lib/spot-decision.ts`) and the
 [harness readme](../../../apps/editor/perf/README.md).
 
