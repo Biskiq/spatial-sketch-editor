@@ -21,9 +21,15 @@
  * exact; an unmatched vertex falls back to the planar projection rather than
  * producing a NaN.
  *
- * The geometry owns copies of the kernel's buffers; the cached `FormMesh` is
- * shared and must stay immutable. Dispose the geometry when the source changes
- * or the entity unmounts.
+ * The geometry owns copies of every mutable buffer it hands to the GPU; the
+ * cached `FormMesh` is shared and must stay immutable. Dispose the geometry
+ * when the source changes or the entity unmounts.
+ *
+ * Known texture seam: side UVs are the profile arclength, so on a closed ring
+ * the closing quad runs from the last arclength back to `0` and mirrors its
+ * texture across that one quad. Every other side quad is continuous; fixing the
+ * seam would require duplicating the closing ring's vertices and would break
+ * normal sharing there.
  */
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute } from 'three';
 import type { FormMesh } from '@portfolio/geometry-core';
@@ -83,7 +89,7 @@ export function buildFormGeometry(mesh: FormMesh, plane: SceneFormPlane): Buffer
 	const geometry = new BufferGeometry();
 	geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
 	geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
-	geometry.setIndex(new BufferAttribute(mesh.indices, 1));
+	geometry.setIndex(new BufferAttribute(new Uint32Array(mesh.indices), 1));
 	geometry.computeVertexNormals();
 	geometry.computeBoundingBox();
 	geometry.computeBoundingSphere();

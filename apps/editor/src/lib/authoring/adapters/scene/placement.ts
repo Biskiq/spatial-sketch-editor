@@ -33,7 +33,6 @@ import {
 	planMoveHorizontal,
 	planResizeOnFloor,
 	planSetYaw,
-	sceneFormContactMinY,
 	type CreatorModelResourceEntry,
 	type NormalizedPlacementDefinition,
 	type SceneOperationContext,
@@ -47,6 +46,7 @@ import type {
 } from '@portfolio/project-model/units';
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
+import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
@@ -374,9 +374,10 @@ export function localContactMinY(entity: SceneEntity, modelContactMinY?: number 
 			? modelContactMinY
 			: null;
 	}
-	// A form's contact is derived from its authored source, exactly as the
-	// planner derives it, so the shown contact and the installed one agree.
-	if (entity.kind === 'form') return sceneFormContactMinY(entity.form);
+	// A form's contact is derived from its authored source through the one editor
+	// evaluation cache, so the Card/Compose contact and the installed one agree
+	// and no second kernel evaluation runs per recompute.
+	if (entity.kind === 'form') return evaluateFormMesh(entity.form)?.contactMinY ?? null;
 	if (entity.kind !== 'primitive') return null;
 	switch (entity.primitive) {
 		case 'box':

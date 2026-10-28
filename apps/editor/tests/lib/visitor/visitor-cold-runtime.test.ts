@@ -261,6 +261,53 @@ describe('P22.1 cold runtime + asset seam', () => {
 		]);
 	});
 
+	it('refuses to compose a release that carries a native form', async () => {
+		const project = await createUnitProject({
+			id: 'project:cold-form',
+			name: 'Cold form',
+			scene: {
+				formatVersion: 1,
+				textures: [],
+				materials: [],
+				entities: [
+					{
+						kind: 'form',
+						id: 'entity-form',
+						name: 'Drawn plinth',
+						position: [1, 0, 1],
+						rotation: [0, 0, 0],
+						form: {
+							generator: {
+								kind: 'extrude',
+								plane: 'plan',
+								outline: [
+									{ key: 1, u: 0, v: 0, smooth: false },
+									{ key: 2, u: 1, v: 0, smooth: false },
+									{ key: 3, u: 1, v: 1, smooth: false },
+									{ key: 4, u: 0, v: 1, smooth: false }
+								],
+								extent: 0.6
+							},
+							scale: [1, 1, 1],
+							nextKey: 5
+						},
+						materialId: 'plaster-warm',
+						castShadow: true,
+						receiveShadow: true
+					}
+				],
+				navigationNodes: [],
+				connections: []
+			}
+		});
+		expect(() =>
+			composeColdReleaseBundle({
+				document: project,
+				manifest: { releaseId: `${project.id}@v1`, bytesByUri: new Map() }
+			})
+		).toThrow(/Native forms are not admitted for publication/);
+	});
+
 	it('composes an empty project store-free and disposes cleanly', async () => {
 		setDefaultTextureSourceLoader(null);
 		const project = await createUnitProject({ id: 'project:cold-a', name: 'Cold A' });

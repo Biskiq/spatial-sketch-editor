@@ -555,7 +555,10 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
 			form: cloneFormSource(entity.form),
 			materialId: entity.materialId,
 			castShadow: entity.castShadow,
-			receiveShadow: entity.receiveShadow
+			receiveShadow: entity.receiveShadow,
+			...(entity.materialInstanceId === undefined
+				? {}
+				: { materialInstanceId: entity.materialInstanceId })
 		};
 	}
 
@@ -593,7 +596,9 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
     intensity: entity.intensity,
     castShadow: entity.castShadow
   };
-}function cloneVec3(point: Vec3): Vec3 {
+}
+
+function cloneVec3(point: Vec3): Vec3 {
 	return [...point];
 }
 

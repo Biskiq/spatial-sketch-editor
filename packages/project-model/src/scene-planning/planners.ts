@@ -150,22 +150,33 @@ function planCreateFormIntent(
 			[]
 		);
 	}
-	const result = planCreateForm({
-		context: {
-			layout: request.snapshot.domain.source.units.layout.data,
-			scene: request.snapshot.domain.source.units.scene.data,
-			sourceContentId: request.snapshot.sourceContentId
-		},
-		entityId: allocation.entityId,
-		plane: payload.plane,
-		outline: payload.outline,
-		extent: payload.extent,
-		position: payload.position,
-		yaw: payload.yaw,
-		materialId: payload.materialId,
-		name: payload.name,
-		...(payload.choice === undefined ? {} : { choice: payload.choice })
-	});
+	let result: SceneOperationResult;
+	try {
+		result = planCreateForm({
+			context: {
+				layout: request.snapshot.domain.source.units.layout.data,
+				scene: request.snapshot.domain.source.units.scene.data,
+				sourceContentId: request.snapshot.sourceContentId
+			},
+			entityId: allocation.entityId,
+			plane: payload.plane,
+			outline: payload.outline,
+			extent: payload.extent,
+			position: payload.position,
+			yaw: payload.yaw,
+			materialId: payload.materialId,
+			name: payload.name,
+			...(payload.choice === undefined ? {} : { choice: payload.choice })
+		});
+	} catch (error) {
+		// Parity with every existing-object planner: an unexpected kernel failure is
+		// a typed refusal, never an error escaping the coordinator.
+		return rejected(
+			'invalid-value',
+			`The create-form planner failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+			[]
+		);
+	}
 	return toOutcome(request, 'create-form', result);
 }
 

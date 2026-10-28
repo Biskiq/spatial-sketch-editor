@@ -9,6 +9,7 @@
  *
  * Tagged `@internal` — never imported outside `scene-codec/`.
  */
+import { cloneFormSource } from '../scene';
 import type {
 	CameraFramingEnvelope,
 	SceneCameraViewKeyframe,
@@ -94,24 +95,13 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 			...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
 			position: [...entity.position],
 			rotation: [...entity.rotation],
-			form: {
-				generator: {
-					kind: entity.form.generator.kind,
-					plane: entity.form.generator.plane,
-					outline: entity.form.generator.outline.map((anchor) => ({
-						key: anchor.key,
-						u: anchor.u,
-						v: anchor.v,
-						smooth: anchor.smooth
-					})),
-					extent: entity.form.generator.extent
-				},
-				scale: [...entity.form.scale],
-				nextKey: entity.form.nextKey
-			},
+			form: cloneFormSource(entity.form),
 			materialId: entity.materialId,
 			castShadow: entity.castShadow,
-			receiveShadow: entity.receiveShadow
+			receiveShadow: entity.receiveShadow,
+			...(entity.materialInstanceId === undefined
+				? {}
+				: { materialInstanceId: entity.materialInstanceId })
 		} as SceneFormEntity;
 	}
 	if (entity.light === 'spot') {

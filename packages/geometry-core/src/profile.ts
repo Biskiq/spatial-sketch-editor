@@ -80,13 +80,15 @@ export type ProfileBounds = {
  *
  * `points` is a closed ring (the final point is never repeated). Point `i`
  * starts the segment that ends at point `i + 1`, and `pointEdgeKeys[i]` is the
- * outline edge key that owns it. `pointCreases[i] === 1` marks a straight
+ * outline edge key that owns it. Keys are positive safe integers, so the array
+ * is `Float64Array`: a 32-bit store would silently truncate an admitted key.
+ * `pointCreases[i] === 1` marks a straight
  * anchor, where side normals must crease; a smooth-anchor sample is shared so
  * ordinary vertex normals stay smooth along the curve.
  */
 export type EvaluatedProfile = {
   readonly points: Float64Array;
-  readonly pointEdgeKeys: Uint32Array;
+  readonly pointEdgeKeys: Float64Array;
   readonly pointCreases: Uint8Array;
   readonly triangles: Uint32Array;
   readonly bounds: ProfileBounds;
@@ -106,7 +108,7 @@ type RingPoint = {
 
 type Ring = {
   readonly points: Float64Array;
-  readonly pointEdgeKeys: Uint32Array;
+  readonly pointEdgeKeys: Float64Array;
   readonly pointCreases: Uint8Array;
   readonly bounds: ProfileBounds;
 };
@@ -397,7 +399,7 @@ function buildRing(
 
   const count = pointList.length;
   const points = new Float64Array(count * 2);
-  const pointEdgeKeys = new Uint32Array(count);
+  const pointEdgeKeys = new Float64Array(count);
   const pointCreases = new Uint8Array(count);
   for (let index = 0; index < count; index += 1) {
     const point = pointList[index]!;
@@ -687,16 +689,13 @@ function triangulate(points: Float64Array): Uint32Array | null {
       points[c * 2]!,
       points[c * 2 + 1]!
     );
-    if (orientation === 0) return null;
-    if (orientation > 0) {
-      triangles[index] = a;
-      triangles[index + 1] = b;
-      triangles[index + 2] = c;
-    } else {
-      triangles[index] = a;
-      triangles[index + 1] = c;
-      triangles[index + 2] = b;
-    }
+    // Earcut must return the ring's own counter-clockwise orientation. A
+    // negative or zero triangle is not repaired here: the profile refuses as
+    // self-intersecting, so every accepted body has one canonical triangulation.
+    if (orientation <= 0) return null;
+    triangles[index] = a;
+    triangles[index + 1] = b;
+    triangles[index + 2] = c;
   }
   return triangles;
 }

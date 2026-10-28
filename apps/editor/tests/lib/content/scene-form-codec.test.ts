@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateSceneDocument } from '@portfolio/project-model';
+import { evaluateSceneForm } from '@portfolio/project-model/scene-planning';
 import {
   SCENE_UNIT_FORMAT_VERSION,
   validateCameraFreeScenePayload
@@ -205,6 +206,75 @@ describe('native form Scene codec', () => {
         )
       )
     ).toContain('self-intersecting');
+  });	it('refuses a body whose scaled dimensions leave the admitted range', () => {
+    // The outline and every individual field are inside their ranges, but the
+    // product (2 m wide × scale 100) is outside the scaled-dimension limit. The
+    // renderer's own evaluator refuses that body, so admission must refuse it too.
+    const result = validateSceneDocument(
+      document(
+        formEntity({
+          form: {
+            generator: { kind: 'extrude', plane: 'plan', outline: ANCHORS, extent: 0.8 },
+            scale: [100, 1, 1],
+            nextKey: 5
+          }
+        })
+      )
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.issues.map((issue) => issue.code)).toContain('invalid_form_body');
+  });
+
+  it('preserves large safe-integer outline keys through evaluation', () => {
+    const largeKey = 4294967296;
+    const outline = [
+      { key: largeKey, u: 0, v: 0, smooth: false },
+      { key: largeKey + 1, u: 2, v: 0, smooth: false },
+      { key: largeKey + 2, u: 2, v: 1, smooth: false },
+      { key: largeKey + 3, u: 0, v: 1, smooth: false }
+    ];
+    const result = validateSceneDocument(
+      document({
+        ...formEntity(),
+        form: {
+          generator: { kind: 'extrude', plane: 'plan', outline, extent: 0.8 },
+          scale: [1, 1, 1],
+          nextKey: largeKey + 4
+        }
+      })
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    const form = result.document.entities[0];
+    expect(form?.kind).toBe('form');
+    if (form?.kind !== 'form') return;
+    const mesh = evaluateSceneForm(form.form);
+    // A 32-bit key store would silently truncate these to 0, 1, 2, 3.
+    expect([...mesh.segmentKeys]).toEqual([largeKey, largeKey + 1, largeKey + 2, largeKey + 3]);
+  });
+
+  it('canonically writes a material instance override on a form', () => {		const result = validateSceneDocument({
+      ...document(formEntity({ materialInstanceId: 'instance-1' })),
+      materials: [{ id: 'instance-1', name: 'Walnut instance', baseMaterialId: 'wood-walnut' }]
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    const entity = (JSON.parse(result.canonicalJson) as { entities: Array<Record<string, unknown>> })
+      .entities[0]!;
+    expect(Object.keys(entity)).toEqual([
+      'kind',
+      'id',
+      'name',
+      'position',
+      'rotation',
+      'form',
+      'materialId',
+      'castShadow',
+      'receiveShadow',
+      'materialInstanceId'
+    ]);
+    expect(entity.materialInstanceId).toBe('instance-1');
   });
 
   it('refuses an unknown material and non-boolean shadow flags', () => {

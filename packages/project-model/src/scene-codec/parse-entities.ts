@@ -11,7 +11,13 @@
  * Tagged `@internal` — never imported outside `scene-codec/`; consumers walk
  * documents through `validateSceneDocument` or `parseSceneDocumentJson`.
  */
-import { PROFILE_LIMITS, validateProfile } from '@portfolio/geometry-core';
+import {
+	GeometryCoreError,
+	PROFILE_LIMITS,
+	evaluateProfile,
+	extrudeProfile,
+	validateProfile
+} from '@portfolio/geometry-core';
 import type {
 	SceneBoxDimensions,
 	SceneCylinderDimensions,
@@ -470,6 +476,28 @@ function parseFormSource(
 				'nextKey must be greater than every outline anchor key'
 			);
 		}
+		if (issues.length === issuesBeforeProfile) {
+			// Admission is the first reader: a source the renderer's own evaluator
+			// refuses (for example an extent and a scale whose product leaves the
+			// scaled-dimension limits) must not load and then draw nothing.
+			try {
+				extrudeProfile({
+					profile: evaluateProfile(outline),
+					extent,
+					scale,
+					plane
+				});
+			} catch (error) {
+				addIssue(
+					issues,
+					outlinePath,
+					'invalid_form_body',
+					error instanceof GeometryCoreError
+						? error.message
+						: 'The form body is outside the admitted limits'
+				);
+			}
+		}
 		if (issues.length > issuesBeforeProfile) return undefined;
 		return {
 			generator: { kind: 'extrude', plane, outline, extent },
@@ -489,7 +517,19 @@ export function parseFormEntity(
 	rejectRoomId(input, 'roomId', path, issues);
 	assertAllowedKeys(
 		input,
-		['kind', 'id', 'name', 'roomId', 'form', 'materialId', 'castShadow', 'receiveShadow', 'position', 'rotation'],
+		[
+			'kind',
+			'id',
+			'name',
+			'roomId',
+			'form',
+			'materialId',
+			'castShadow',
+			'receiveShadow',
+			'position',
+			'rotation',
+			'materialInstanceId'
+		],
 		path,
 		issues
 	);
@@ -506,6 +546,11 @@ export function parseFormEntity(
 	}
 	const castShadow = readRequiredBoolean(input, 'castShadow', path, issues);
 	const receiveShadow = readRequiredBoolean(input, 'receiveShadow', path, issues);
+	// A form is a renderable entity like any other, so the shared material
+	// instance override is admitted exactly when the caller's policy allows it.
+	const materialInstanceId = options.allowMaterialInstance
+		? readOptionalString(input, 'materialInstanceId', path, issues)
+		: undefined;
 	const transform = parseEntityTransform(input, path, issues);
 	if (
 		!id ||
@@ -514,7 +559,8 @@ export function parseFormEntity(
 		!materialId ||
 		castShadow === undefined ||
 		receiveShadow === undefined ||
-		!transform
+		!transform ||
+		(options.allowMaterialInstance && 'materialInstanceId' in input && !materialInstanceId)
 	) {
 		return undefined;
 	}
@@ -527,7 +573,8 @@ export function parseFormEntity(
 		castShadow,
 		receiveShadow,
 		position: transform.position,
-		rotation: transform.rotation
+		rotation: transform.rotation,
+		...(materialInstanceId === undefined ? {} : { materialInstanceId })
 	};
 }
 

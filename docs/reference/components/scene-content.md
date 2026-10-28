@@ -35,8 +35,11 @@ present a form is ordinary Scene truth: `create-form` creates one, `set-form-siz
 per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and
 Delete work through the existing planners. `resize-on-floor` refuses a form (uniform scale would
 contradict `form.scale`). Evaluation is deterministic and cached once in the editor; Stage, Plan
-and Preview draw the same mesh (metre UVs, computed normals), Plan uses the evaluated XZ ring,
-and the Card reports read-only Width, Depth and Height from the evaluated bounds. Publication
+and Preview draw the same mesh (metre UVs, computed normals), and the Card reports read-only Width,
+Depth and Height from the evaluated bounds. The evaluated XZ ring is exposed to the Plan
+footprint/hit seam ([`plan-scene-footprint.ts`](../../../apps/editor/src/lib/authoring/scene/plan-scene-footprint.ts))
+and unit-tested there; this base has no production Plan pointer-hit consumer for Scene entities, so
+the reachable Plan drawing path is the shared renderer. Publication
 still refuses a form in the cold release check; T4 owns any admission. Limits and operations:
 [T5.P01.S01 acceptance](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
 and [reference decision](../decisions/t5-object-focus-planning-2026-10-27.md).

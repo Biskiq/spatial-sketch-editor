@@ -9,8 +9,9 @@
 	 * `VisitorEntityGroups`, so they cannot draw different shapes.
 	 */
 	import { T } from '@threlte/core';
+	import type { BufferGeometry } from 'three';
 	import type { SceneFormEntity } from '$lib/content/scene';
-	import { evaluateFormMesh } from '$lib/content/form-evaluation';
+	import { evaluateFormMesh, formEvaluationKey } from '$lib/content/form-evaluation';
 	import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import type { Vec2 } from '$lib/types/materials';
@@ -31,15 +32,32 @@
 	// `defaultTileSizeMeters` becomes the only tiling scale.
 	const metreSurface: Vec2 = [1, 1];
 
-	// `null` only for corrupt in-memory source; an admitted form always evaluates.
+	/**
+	 * Geometry is leased by source identity, not by entity object identity.
+	 *
+	 * Every accepted edit resolves a new `RuntimeScene` and clones its entities,
+	 * so `entity.form` is a new object even when the form did not change. Keying
+	 * on `formEvaluationKey` keeps the existing buffers (and the cached mesh) for
+	 * an unchanged source; only a real source change builds new geometry and
+	 * disposes the old one.
+	 */
+	let leased: { readonly key: string; readonly geometry: BufferGeometry } | null = null;
 	const geometry = $derived.by(() => {
+		const key = formEvaluationKey(entity.form);
+		if (leased !== null && leased.key === key) return leased.geometry;
 		const mesh = evaluateFormMesh(entity.form);
-		return mesh === null ? null : buildFormGeometry(mesh, entity.form.generator.plane);
+		leased = mesh === null
+			? null
+			: { key, geometry: buildFormGeometry(mesh, entity.form.generator.plane) };
+		return leased?.geometry ?? null;
 	});
 
 	$effect(() => {
-		const leased = geometry;
-		return () => leased?.dispose();
+		const current = geometry;
+		return () => {
+			if (leased !== null && leased.geometry === current) leased = null;
+			current?.dispose();
+		};
 	});
 </script>
 

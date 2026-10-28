@@ -125,6 +125,29 @@ describe('native form evaluation cache', () => {
 		expect(formMeshDigest(again!)).toBe(formMeshDigest(first!));
 	});
 
+	it('refreshes a hit so the least recently used evaluation is evicted first', () => {
+		const base = formSourceOf(firstForm());
+		const variant = (index: number): SceneFormSource => ({
+			...base,
+			scale: [base.scale[0] + index * 0.001, base.scale[1], base.scale[2]]
+		});
+		const first = evaluateFormMesh(base);
+		const oldestVariant = evaluateFormMesh(variant(1));
+		expect(first).not.toBeNull();
+		expect(oldestVariant).not.toBeNull();
+		for (let index = 2; index < FORM_EVALUATION_CACHE_LIMIT; index += 1) {
+			expect(evaluateFormMesh(variant(index))).not.toBeNull();
+		}
+		expect(formEvaluationCacheSize()).toBe(FORM_EVALUATION_CACHE_LIMIT);
+
+		// Touch the oldest entry, then overflow by one: the untouched variant is
+		// the least recently used and must be the one re-evaluated.
+		expect(evaluateFormMesh(base)).toBe(first);
+		expect(evaluateFormMesh(variant(FORM_EVALUATION_CACHE_LIMIT))).not.toBeNull();
+		expect(evaluateFormMesh(base)).toBe(first);
+		expect(evaluateFormMesh(variant(1))).not.toBe(oldestVariant);
+	});
+
 	it('answers null for a source the kernel refuses instead of caching a failure', () => {
 		const base = formSourceOf(firstForm());
 		const degenerate: SceneFormSource = {

@@ -1768,6 +1768,31 @@ describe('scene operation planners — native forms', () => {
 		expect(result.candidate.changes[0]?.kind).toBe('scene-create-form');
 	});
 
+	it('recentres a rotated form in World, not in the drawing frame', async () => {
+		const snapshot = await snapshotOf(await projectWith(sceneWith([]), 0));
+		const captured = intent({
+			kind: 'create-form',
+			operationId: 'create-form-yaw',
+			snapshot,
+			payload: formCreatePayload({ yaw: Math.PI / 2 }),
+			allocatedIds: [{ kind: 'scene-entity', id: 'form-yaw' }]
+		});
+		const result = prepare('create-form', snapshot, captured);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const entity = result.candidate.source.units.scene.data.entities.find(
+			(candidate) => candidate.id === 'form-yaw'
+		);
+		expect(entity?.kind).toBe('form');
+		if (entity?.kind !== 'form') return;
+		// The recentring offset (u = 1, v = 0.5) is rotated by the form's yaw before
+		// it moves the base origin: +90° maps local +u to world −z and local +v to +x.
+		expect(entity.position[0]).toBeCloseTo(3.5, 9);
+		expect(entity.position[1]).toBeCloseTo(0, 9);
+		expect(entity.position[2]).toBeCloseTo(1, 9);
+		expect(entity.rotation).toEqual([0, Math.PI / 2, 0]);
+	});
+
 	it('canonicalizes a clockwise drawn outline and recentres elevation forms at min v', async () => {
 		const clockwise = [
 			{ u: 0, v: 2, smooth: false },

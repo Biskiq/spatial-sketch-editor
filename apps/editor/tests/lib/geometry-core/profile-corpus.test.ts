@@ -87,7 +87,23 @@ function positionKey(mesh: FormMesh, vertex: number): string {
   return `${mesh.positions[vertex * 3]}|${mesh.positions[vertex * 3 + 1]}|${mesh.positions[vertex * 3 + 2]}`;
 }
 
+function signedVolume(mesh: FormMesh): number {
+  let total = 0;
+  for (let index = 0; index < mesh.indices.length; index += 3) {
+    const a = mesh.indices[index]! * 3;
+    const b = mesh.indices[index + 1]! * 3;
+    const c = mesh.indices[index + 2]! * 3;
+    total += mesh.positions[a]! * (mesh.positions[b + 1]! * mesh.positions[c + 2]! - mesh.positions[b + 2]! * mesh.positions[c + 1]!) +
+      mesh.positions[a + 1]! * (mesh.positions[b + 2]! * mesh.positions[c]! - mesh.positions[b]! * mesh.positions[c + 2]!) +
+      mesh.positions[a + 2]! * (mesh.positions[b]! * mesh.positions[c + 1]! - mesh.positions[b + 1]! * mesh.positions[c]!);
+  }
+  return total / 6;
+}
+
 function assertClosedOutwardMesh(mesh: FormMesh): void {
+  // A closed mesh can still be inward: the signed volume is what separates the
+  // two, and the kernel's contract is a positive body.
+  expect(signedVolume(mesh)).toBeGreaterThan(0);
   const edges = new Map<string, number>();
   for (let index = 0; index < mesh.indices.length; index += 3) {
     const a = mesh.indices[index]!;

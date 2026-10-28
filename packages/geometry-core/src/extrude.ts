@@ -28,7 +28,8 @@ export type FormMesh = {
    * side. `segmentKeys[segmentIndex]` is the outline edge key it belongs to.
    */
   readonly regions: Uint32Array;
-  readonly segmentKeys: Uint32Array;
+  /** One outline edge key per profile point; safe integers, never truncated. */
+  readonly segmentKeys: Float64Array;
   readonly bounds: FormBounds;
   /** XZ footprint ring in local metres, counter-clockwise. */
   readonly footprint: readonly (readonly [number, number])[];
@@ -206,7 +207,7 @@ export function extrudeProfile(input: ExtrudeFormInput): FormMesh {
     positions: new Float64Array(positions),
     indices: new Uint32Array(indices),
     regions: new Uint32Array(regions),
-    segmentKeys: new Uint32Array(profile.pointEdgeKeys),
+    segmentKeys: new Float64Array(profile.pointEdgeKeys),
     bounds: boundsOf(positions),
     footprint,
     contactMinY
