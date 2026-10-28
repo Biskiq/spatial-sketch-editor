@@ -64,7 +64,7 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
-async function panel(): Promise<HTMLElement> {
+async function panel(initial: ShapeReadingSnapshot = snapshot()): Promise<HTMLElement> {
 	controller = {
 		setKind: vi.fn(),
 		setPlane: vi.fn(),
@@ -76,7 +76,7 @@ async function panel(): Promise<HTMLElement> {
 		flip: vi.fn(),
 		create: vi.fn()
 	};
-	publish(snapshot());
+	publish(initial);
 	// jsdom has no animation clock; the palette's one rAF loop still needs to run.
 	vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
 		setTimeout(() => callback(Date.now()), 0) as unknown as number
@@ -114,6 +114,17 @@ describe('T5.P01.S02 — Shape palette fields', () => {
 			vi.mocked(controller.create).mock.invocationCallOrder[0]!
 		);
 		expect(controller.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses a blank sheet field instead of committing zero', async () => {
+		const target = await panel(snapshot({ plane: 'elevation' }));
+		const x = target.querySelector<HTMLInputElement>('[data-shape-x]')!;
+		x.value = '';
+		x.dispatchEvent(new Event('input', { bubbles: true }));
+		target.querySelector<HTMLButtonElement>('[data-shape-sheet-apply]')!.click();
+		await tick();
+		expect(controller.setSheet).not.toHaveBeenCalled();
+		expect(target.querySelector('[role="alert"]')?.textContent).toContain('blank is not zero');
 	});
 
 	it('keeps text being typed across a hover-published revision', async () => {

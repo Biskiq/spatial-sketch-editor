@@ -448,9 +448,20 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(shapeReadingSurface()).toBe(shape);
 		expect(shape.snapshot()).toMatchObject({ phase: 'outline', points: 2 });
 		// Abandoning it is explicit, and writes nothing.
+		// A plane or sheet move would also discard the points; both refuse instead.
+		shape.controller.setPlane('elevation');
+		expect(shape.snapshot().plane).toBe('plan');
+		expect(shape.snapshot().refusal).toContain('before changing its sheet');
+		shape.controller.setSheet({ x: 2 });
+		expect(shape.snapshot().sheet.x).toBe(0);
+		expect(shape.snapshot().refusal).toContain('before changing its sheet');
+
+		// Abandoning it is explicit, and writes nothing.
 		shape.controller.clear();
 		expect(shape.snapshot().points).toBe(0);
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+		shape.controller.setPlane('elevation');
+		expect(shape.snapshot().plane).toBe('elevation');
 
 		// With no live work the switch goes through and the session is gone.
 		inkSurface()!.controller.setReading('wall');
