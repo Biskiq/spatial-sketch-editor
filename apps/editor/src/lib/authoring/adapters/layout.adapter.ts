@@ -1101,6 +1101,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							publishInk();
 							return;
 						}
+						// A contributed reading owns live input too; a switch must not
+						// silently throw away a half-drawn outline or a chosen depth.
+						if (contributedSession?.session.hasWork?.() === true) {
+							inkNotice = 'Finish or cancel the live reading before switching readings.';
+							publishInk();
+							return;
+						}
 						// A contributed reading's session lives only while it is selected.
 						endContributedSession();
 						inkReading = next;

@@ -19,17 +19,5 @@ export function formatDegrees(value: number): string {
 	return value.toFixed(1);
 }
 
-export type ExactNumberParse =
-	| { ok: true; value: number }
-	| { ok: false; display: string; reason: 'blank' | 'non-finite' };
-
-export function parseExactNumber(
-	raw: string,
-	fallback: number,
-	format: (value: number) => string = String
-): ExactNumberParse {
-	if (!raw.trim()) return { ok: false, display: format(fallback), reason: 'blank' };
-	const value = Number(raw);
-	if (!Number.isFinite(value)) return { ok: false, display: format(fallback), reason: 'non-finite' };
-	return { ok: true, value };
-}
+// The parser is domain-neutral: Scene's numeric fields use the same rule.
+export { parseExactNumber, type ExactNumberParse } from '../exact-number';

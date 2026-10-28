@@ -39,7 +39,7 @@ import {
 	type StageOverlayContribution,
 	type StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
-import { parseExactNumber } from '$lib/authoring/layout/layout-exact-input';
+import { parseExactNumber } from '$lib/authoring/exact-number';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { sceneEntityReference } from '../placement';
 import {
@@ -50,6 +50,7 @@ import {
 	type ShapeOutlineAnchor,
 	type ShapePoint
 } from './outline';
+import { axisTravelFromRay } from './ray';
 
 /** The material every native primitive is created with. */
 export const SHAPE_DEFAULT_MATERIAL = 'plaster-warm' as const;
@@ -171,6 +172,8 @@ export function createShapeReadingSession(
 	let depthText = String(DEFAULT_SHAPE_DEPTH_METERS);
 	let depth = DEFAULT_SHAPE_DEPTH_METERS;
 	let flipSide = false;
+	// A typed depth that failed to parse must not leave the previous value creatable.
+	let depthValid = true;
 	let refusal: string | null = null;
 	let derived: Derived = {
 		conversion: null,
@@ -246,6 +249,7 @@ export function createShapeReadingSession(
 		setDepth(text) {
 			const parsed = parseExactNumber(text, depth, (value) => String(value));
 			if (!parsed.ok) {
+				depthValid = false;
 				refusal =
 					parsed.reason === 'blank'
 						? 'Enter a depth; an empty field is not zero.'
@@ -254,11 +258,13 @@ export function createShapeReadingSession(
 				return;
 			}
 			if (parsed.value < MIN_DEPTH_METERS || parsed.value > MAX_DEPTH_METERS) {
+				depthValid = false;
 				refusal = `Depth must be between ${MIN_DEPTH_METERS} m and ${MAX_DEPTH_METERS} m.`;
 				publish();
 				return;
 			}
 			depth = parsed.value;
+			depthValid = true;
 			depthText = String(parsed.value);
 			refusal = null;
 			refresh();
@@ -289,11 +295,11 @@ export function createShapeReadingSession(
 			phase,
 			points: points.length,
 			canFinish: derived.conversion?.kind === 'outline',
-			canCreate: phase === 'depth' && derived.candidate !== null,
+			canCreate: phase === 'depth' && depthValid && derived.candidate !== null,
 			depthText,
 			depth,
 			flip: flipSide,
-			refusal: refusal ?? derived.plannerRefusal,
+			refusal: currentRefusal(),
 			outlineSize:
 				derived.bounds === null
 					? null
@@ -329,6 +335,20 @@ export function createShapeReadingSession(
 		if (!disposed) services.stage.notifySurfaceChange();
 	}
 
+	/**
+	 * The refusal the creator must see now: a typed complaint first, then an
+	 * unreadable outline's own reason, then the planner's. An unreadable outline
+	 * explains itself before the creator tries to close it; it stays uncreatable.
+	 */
+	function currentRefusal(): string | null {
+		return (
+			refusal ??
+			(derived.conversion?.kind === 'refused'
+				? derived.conversion.message
+				: derived.plannerRefusal)
+		);
+	}
+
 	function derive(): Derived {
 		const conversion =
 			phase === 'outline' && points.length > 0 ? shapeOutline(kind, points) : null;
@@ -350,6 +370,7 @@ export function createShapeReadingSession(
 		phase = 'outline';
 		hoverPoint = null;
 		depth = DEFAULT_SHAPE_DEPTH_METERS;
+		depthValid = true;
 		depthText = String(DEFAULT_SHAPE_DEPTH_METERS);
 		flipSide = false;
 		releaseLeases();
@@ -359,6 +380,7 @@ export function createShapeReadingSession(
 		phase = 'outline';
 		outline = null;
 		hoverPoint = null;
+		depthValid = true;
 		releaseLeases();
 	}
 
@@ -421,6 +443,13 @@ export function createShapeReadingSession(
 	async function create(): Promise<void> {
 		if (phase !== 'depth' || outline === null) {
 			refusal = 'Close the outline before creating the body.';
+			publish();
+			return;
+		}
+		// A depth field that failed to parse leaves the previous number on screen;
+		// that number is not what the creator asked for, so it cannot be committed.
+		if (!depthValid) {
+			refusal ??= 'Enter a valid depth before creating the body.';
 			publish();
 			return;
 		}
@@ -543,32 +572,21 @@ export function createShapeReadingSession(
 		return css === null ? null : [css[0] - context.evaluation.rect.left, css[1] - context.evaluation.rect.top];
 	}
 
-	/** Closest point on the depth axis to the pointer ray, as a new positive depth. */
+	/** Where the pointer ray passes closest to the depth axis, as a positive depth. */
 	function depthFromRay(context: StageAdapterContext, css: readonly [number, number]): number | null {
 		const axis = depthAxis(context);
 		const ray = rayAt(context, css);
 		if (axis === null || ray === null) return null;
-		const denominator =
-			axis.normal[0] * ray.direction[0] +
-			axis.normal[1] * ray.direction[1] +
-			axis.normal[2] * ray.direction[2];
-		if (Math.abs(denominator) < 1e-9) return null;
-		const distance =
-			(axis.normal[0] * (axis.base[0] - ray.origin[0]) +
-				axis.normal[1] * (axis.base[1] - ray.origin[1]) +
-				axis.normal[2] * (axis.base[2] - ray.origin[2])) /
-			denominator;
-		if (!(distance >= 0) || !Number.isFinite(distance)) return null;
-		const point: Vec3 = [
-			ray.origin[0] + ray.direction[0] * distance,
-			ray.origin[1] + ray.direction[1] * distance,
-			ray.origin[2] + ray.direction[2] * distance
-		];
-		const along =
-			(point[0] - axis.base[0]) * axis.normal[0] +
-			(point[1] - axis.base[1]) * axis.normal[1] +
-			(point[2] - axis.base[2]) * axis.normal[2];
-		if (!Number.isFinite(along)) return null;
+		// The drawing plane itself is perpendicular to the axis, so intersecting it
+		// would always report zero. The knob lives anywhere along the axis: use the
+		// line/line closest point instead.
+		const along = axisTravelFromRay({
+			origin: axis.base,
+			direction: axis.normal,
+			rayOrigin: ray.origin,
+			rayDirection: ray.direction
+		});
+		if (along === null) return null;
 		return Math.min(MAX_DEPTH_METERS, Math.max(MIN_DEPTH_METERS, along));
 	}
 
@@ -716,6 +734,9 @@ export function createShapeReadingSession(
 			}
 			return false;
 		},
+		hasWork() {
+			return points.length > 0 || phase === 'depth';
+		},
 		cancel() {
 			disposed = true;
 			releaseLeases();
@@ -765,7 +786,8 @@ export function createShapeReadingSession(
 					});
 				}
 			}
-			if ((refusal ?? derived.plannerRefusal) !== null) {
+			const liveRefusal = currentRefusal();
+			if (liveRefusal !== null) {
 				const anchor =
 					hoverPoint !== null
 						? project(context, worldOf(context, hoverPoint))
@@ -787,7 +809,7 @@ export function createShapeReadingSession(
 					markers.push({
 						id: 'scene-shape-refusal',
 						css: anchor,
-						label: (refusal ?? derived.plannerRefusal) as string
+						label: liveRefusal
 					});
 				}
 			}

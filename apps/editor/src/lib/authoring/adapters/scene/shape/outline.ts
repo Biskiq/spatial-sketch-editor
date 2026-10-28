@@ -56,17 +56,30 @@ export type ShapeOutlineResult =
 	| { readonly kind: 'outline'; readonly outline: readonly ShapeOutlineAnchor[] }
 	| { readonly kind: 'refused'; readonly message: string; readonly issue: ProfileIssue | null };
 
+/** Winding-canonical anchors, re-keyed in ring order. */
+function canonicalOutline(outline: readonly ShapeOutlineAnchor[]): readonly ShapeOutlineAnchor[] {
+	return canonicalizeWinding(
+		outline.map((anchor, index) => ({
+			key: index + 1,
+			u: anchor.u,
+			v: anchor.v,
+			smooth: anchor.smooth
+		}))
+	).map((anchor) => ({ u: anchor.u, v: anchor.v, smooth: anchor.smooth }));
+}
+
 /** One typed outline validation answer, ready for the palette. */
 export function validateShapeOutline(
 	outline: readonly ShapeOutlineAnchor[]
 ): { readonly kind: 'valid' } | { readonly kind: 'refused'; readonly message: string; readonly issue: ProfileIssue } {
-	const provisional = outline.map((anchor, index) => ({
-		key: index + 1,
-		u: anchor.u,
-		v: anchor.v,
-		smooth: anchor.smooth
-	}));
-	const issues = validateProfile(canonicalizeWinding(provisional));
+	const issues = validateProfile(
+		outline.map((anchor, index) => ({
+			key: index + 1,
+			u: anchor.u,
+			v: anchor.v,
+			smooth: anchor.smooth
+		}))
+	);
 	if (issues.length === 0) return { kind: 'valid' };
 	const issue = issues[0]!;
 	return { kind: 'refused', message: outlineIssueWords(issue), issue };
@@ -157,9 +170,13 @@ function boundsOutline(kind: 'box' | 'round', points: readonly ShapePoint[]): Sh
 function validateConverted(
 	outline: readonly ShapeOutlineAnchor[]
 ): ShapeOutlineResult {
-	const validated = validateShapeOutline(outline);
+	// The returned outline is canonical, not the drawn order: a clockwise stroke
+	// is a valid drawing, and every later session read (bounds, depth, preview)
+	// must see the same counter-clockwise profile the planner will store.
+	const canonical = canonicalOutline(outline);
+	const validated = validateShapeOutline(canonical);
 	return validated.kind === 'valid'
-		? { kind: 'outline', outline }
+		? { kind: 'outline', outline: canonical }
 		: { kind: 'refused', message: validated.message, issue: validated.issue };
 }
 

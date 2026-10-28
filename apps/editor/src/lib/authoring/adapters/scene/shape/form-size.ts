@@ -20,6 +20,7 @@ import {
 import type { SceneFormEntity } from '@portfolio/project-model';
 import type { Vec3 } from '@portfolio/camera-core';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
+import { axisTravelFromRay } from './ray';
 
 /** Local mesh axis: 0 = Width (X), 1 = Height (Y), 2 = Depth (Z). */
 export type FormSizeAxis = 0 | 1 | 2;
@@ -70,14 +71,19 @@ export function formSizeMeasurement(entity: SceneFormEntity): FormSizeMeasuremen
 		const local: Vec3 = [0, 0, 0];
 		local[axis] = max[axis];
 		const centred = Math.abs(min[axis] + max[axis]) < 1e-9 && max[axis] > 0;
-		const baseDimension = max[axis] - min[axis];
+		// `evaluateFormMesh` already applies the form scale, so the evaluated
+		// extent is the current dimension and the authored outline extent is that
+		// divided back out. Using the scaled extent as the baseline would make the
+		// second resize on an axis wrong by the first scale factor.
+		const dimension = max[axis] - min[axis];
+		const baseDimension = dimension / entity.form.scale[axis];
 		return {
 			axis,
 			label,
 			local,
 			world: formWorldPoint(entity, local),
 			factor: centred ? 2 : 1,
-			dimension: baseDimension * entity.form.scale[axis],
+			dimension,
 			baseDimension
 		};
 	});
@@ -111,8 +117,8 @@ export function formSizeScaleFromTravel(input: {
 	readonly handle: FormSizeHandle;
 	readonly travelMeters: number;
 }): readonly [number, number, number] | null {
-	if (!Number.isFinite(input.travelMeters)) return null;
-	const dimension = Math.max(0, input.travelMeters * input.handle.factor);
+	if (!Number.isFinite(input.travelMeters) || input.travelMeters <= 0) return null;
+	const dimension = input.travelMeters * input.handle.factor;
 	if (!(input.handle.baseDimension > 0)) return null;
 	const raw = dimension / input.handle.baseDimension;
 	if (!Number.isFinite(raw)) return null;
@@ -147,33 +153,5 @@ export function previewFormSize(input: {
 		: { refusal: result.message };
 }
 
-/**
- * The distance along an axis from the form's local origin that a pointer ray
- * names. `null` when the ray is parallel to the axis or points behind it.
- */
-export function axisTravelFromRay(input: {
-	readonly origin: Vec3;
-	readonly direction: Vec3;
-	readonly rayOrigin: Vec3;
-	readonly rayDirection: Vec3;
-}): number | null {
-	const direction = input.direction;
-	const rayDirection = input.rayDirection;
-	const b =
-		direction[0] * rayDirection[0] +
-		direction[1] * rayDirection[1] +
-		direction[2] * rayDirection[2];
-	const denominator = 1 - b * b;
-	if (Math.abs(denominator) < 1e-9) return null;
-	const w0: Vec3 = [
-		input.origin[0] - input.rayOrigin[0],
-		input.origin[1] - input.rayOrigin[1],
-		input.origin[2] - input.rayOrigin[2]
-	];
-	const d =
-		direction[0] * w0[0] + direction[1] * w0[1] + direction[2] * w0[2];
-	const e =
-		rayDirection[0] * w0[0] + rayDirection[1] * w0[1] + rayDirection[2] * w0[2];
-	const travel = (b * e - d) / denominator;
-	return Number.isFinite(travel) ? travel : null;
-}
+/** Re-exported so a sizing caller need not know the shared ray module. */
+export { axisTravelFromRay };

@@ -241,6 +241,8 @@ export type StageInkReadingSession = {
 	hover?(intent: StagePointerIntent, context: StageAdapterContext): boolean;
 	/** Answer a Stage command key while this reading is armed. */
 	key?(intent: StageKeyboardIntent, context: StageAdapterContext): boolean;
+	/** Whether the reading holds uncommitted input that a switch would discard. */
+	hasWork?(): boolean;
 	/** End the live reading with no commit. Run on cancel, task close and dispose. */
 	cancel(): void;
 	taskClosed?(): void;

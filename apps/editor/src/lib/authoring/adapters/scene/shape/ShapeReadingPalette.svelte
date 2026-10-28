@@ -7,6 +7,7 @@
 	 * outline, depth or source: those live in the session, and the session's one
 	 * planner is what previews and creates.
 	 */
+	import { parseExactNumber } from '$lib/authoring/exact-number';
 	import {
 		DEFAULT_SHAPE_DEPTH_METERS,
 		SHAPE_KINDS,
@@ -50,12 +51,21 @@
 			if (surface === null) return;
 			if (revision === seenRevision) return;
 			seenRevision = revision;
+			const previous = snapshot;
 			const next = surface.snapshot();
 			snapshot = next;
-			sheetX = String(Number(next.sheet.x.toFixed(3)));
-			sheetZ = String(Number(next.sheet.z.toFixed(3)));
-			sheetYaw = String(Number(((next.sheet.yaw * 180) / Math.PI).toFixed(1)));
-			depthText = next.depthText;
+			// Hovering publishes revisions; only a real sheet change may rewrite a
+			// field the creator is halfway through typing.
+			if (
+				next.sheet.x !== previous.sheet.x ||
+				next.sheet.z !== previous.sheet.z ||
+				next.sheet.yaw !== previous.sheet.yaw
+			) {
+				sheetX = String(Number(next.sheet.x.toFixed(3)));
+				sheetZ = String(Number(next.sheet.z.toFixed(3)));
+				sheetYaw = String(Number(((next.sheet.yaw * 180) / Math.PI).toFixed(1)));
+			}
+			if (next.depthText !== previous.depthText) depthText = next.depthText;
 		};
 		frame = requestAnimationFrame(watch);
 		return () => cancelAnimationFrame(frame);
@@ -71,12 +81,18 @@
 			: 'Pull the depth handle or type a depth, then Create.'
 	);
 
+	/** Blank is invalid, not zero: the shared exact-number rule. */
+	function parseField(text: string): number | null {
+		const parsed = parseExactNumber(text, 0);
+		return parsed.ok ? parsed.value : null;
+	}
+
 	function commitSheet(): void {
-		const x = Number(sheetX);
-		const z = Number(sheetZ);
-		const yawDegrees = Number(sheetYaw);
-		if (![x, z, yawDegrees].every(Number.isFinite)) {
-			sheetError = 'Enter finite metres and degrees.';
+		const x = parseField(sheetX);
+		const z = parseField(sheetZ);
+		const yawDegrees = parseField(sheetYaw);
+		if (x === null || z === null || yawDegrees === null) {
+			sheetError = 'Enter a number in every sheet field; a blank is not zero.';
 			return;
 		}
 		sheetError = null;
@@ -84,9 +100,8 @@
 	}
 
 	function commitDepth(): void {
-		const value = Number(depthText);
-		if (!Number.isFinite(value)) {
-			depthError = 'Enter a finite depth in metres.';
+		if (parseField(depthText) === null) {
+			depthError = 'Enter a depth; a blank is not zero.';
 			return;
 		}
 		depthError = null;
