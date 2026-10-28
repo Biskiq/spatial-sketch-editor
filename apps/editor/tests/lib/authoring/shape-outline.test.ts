@@ -74,6 +74,25 @@ describe('T5.P01.S02 — Shape outline conversions', () => {
 		expect(validateShapeOutline(result.outline).kind).toBe('valid');
 	});
 
+	it('canonicalizes a clockwise stroke instead of refusing it', () => {
+		const result = shapeOutline('line', [
+			{ u: 0, v: 0 },
+			{ u: 0, v: 1 },
+			{ u: 2, v: 1 },
+			{ u: 2, v: 0 }
+		]);
+		expect(result.kind).toBe('outline');
+		if (result.kind !== 'outline') return;
+		// The returned order is the canonical one every later read uses, so the
+		// outline is valid rather than merely canonicalized for validation.
+		expect(validateShapeOutline(result.outline).kind).toBe('valid');
+		const area = result.outline.reduce((sum, anchor, index) => {
+			const next = result.outline[(index + 1) % result.outline.length]!;
+			return sum + (anchor.u * next.v - next.u * anchor.v);
+		}, 0);
+		expect(area).toBeGreaterThan(0);
+	});
+
 	it('refuses a self-intersecting stroke with the kernel’s own reason', () => {
 		const result = shapeOutline('line', [
 			{ u: 0, v: 0 },

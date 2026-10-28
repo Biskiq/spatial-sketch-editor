@@ -215,6 +215,11 @@ describe('T5.P01.S02 — Shape reading', () => {
 		shape.controller.finish();
 		expect(shape.snapshot().phase).toBe('depth');
 		expect(shape.snapshot().canCreate).toBe(true);
+		// The preview and the commit are one form: same generator, same pose.
+		const preview = mounted.facade.ghosts();
+		expect(preview).toHaveLength(1);
+		const previewForm = preview[0]!.shape;
+		if (previewForm.kind !== 'form') throw new Error('the Shape preview is not a form ghost');
 
 		shape.controller.create();
 		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
@@ -229,6 +234,8 @@ describe('T5.P01.S02 — Shape reading', () => {
 		});
 		expect(created.form.generator).toMatchObject({ kind: 'extrude', plane: 'plan', extent: 1 });
 		expect(created.form.scale).toEqual([1, 1, 1]);
+		expect(previewForm.form).toEqual(created.form);
+		expect(mounted.facade.ghosts()).toHaveLength(0);
 		expect(mounted.facade.selectionState().primary).toMatchObject({
 			subject: { kind: 'entity', id: created.id }
 		});
@@ -255,6 +262,8 @@ describe('T5.P01.S02 — Shape reading', () => {
 			click(mounted.facade, point);
 		}
 		expect(shape.snapshot().canFinish).toBe(false);
+		// The reason is live feedback, not something Finish must be pressed to reveal.
+		expect(shape.snapshot().refusal).toContain('crosses itself');
 		shape.controller.finish();
 		expect(shape.snapshot().refusal).toContain('crosses itself');
 		expect(shape.snapshot().canCreate).toBe(false);
@@ -377,6 +386,11 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(current.form.scale[1]).toBe(1);
 		expect(current.form.scale[2]).toBe(1);
 		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
+		// The baseline stays the unscaled outline extent, so a second resize on an
+		// already-scaled axis is not off by the first scale factor.
+		const resized = formSizeMeasurement(current).handles.find((handle) => handle.axis === 0)!;
+		expect(resized.baseDimension).toBeCloseTo(2, 6);
+		expect(resized.dimension).toBeCloseTo(3, 6);
 
 		// The Card is the one writer for exact values: dimensions, not scales.
 		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 1);
@@ -393,5 +407,100 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(current.form.scale[1]).toBeCloseTo(1, 6);
 		expect(current.form.scale[2]).toBeCloseTo(1, 6);
 		expect(mounted.host.history()).toMatchObject({ depth: 4, position: 3 });
+	});
+
+	it('keeps live Shape work when another reading would discard it', async () => {
+		const mounted = await mount();
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		click(mounted.facade, [2, 0, 2]);
+		click(mounted.facade, [4, 0, 2]);
+		expect(shape.snapshot().points).toBe(2);
+
+		inkSurface()!.controller.setReading('wall');
+
+		expect(inkSurface()!.snapshot().reading).toBe('shape');
+		expect(inkSurface()!.snapshot().refusal).toContain('before switching readings');
+		expect(shapeReadingSurface()).toBe(shape);
+		expect(shape.snapshot()).toMatchObject({ phase: 'outline', points: 2 });
+		// Abandoning it is explicit, and writes nothing.
+		shape.controller.clear();
+		expect(shape.snapshot().points).toBe(0);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('refuses an invalid typed depth, then creates with the corrected value', async () => {
+		const mounted = await mount();
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		for (const point of [
+			[2, 0, 2],
+			[4, 0, 2],
+			[4, 0, 4],
+			[2, 0, 4]
+		] as const) {
+			click(mounted.facade, point);
+		}
+		shape.controller.finish();
+
+		shape.controller.setDepth('');
+		expect(shape.snapshot().refusal).toContain('empty field is not zero');
+		expect(shape.snapshot().canCreate).toBe(false);
+		shape.controller.setDepth('0');
+		expect(shape.snapshot().refusal).toContain('between');
+		expect(shape.snapshot().canCreate).toBe(false);
+		shape.controller.create();
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+
+		shape.controller.setDepth('2');
+		expect(shape.snapshot().canCreate).toBe(true);
+		shape.controller.create();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		expect(acceptedForms(mounted.facade)[0]!.form.generator).toMatchObject({ extent: 2 });
+	});
+
+	it('pulls depth along the axis from the handle instead of collapsing it', async () => {
+		const mounted = await mount();
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'fit',
+				bounds: { min: [1.5, -0.5, 1.5], max: [4.5, 2.5, 4.5] },
+				rect: RECT
+			},
+			SETTLE_CLOCK + 1
+		);
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		for (const point of [
+			[2, 0, 2],
+			[4, 0, 2],
+			[4, 0, 4],
+			[2, 0, 4]
+		] as const) {
+			click(mounted.facade, point);
+		}
+		shape.controller.finish();
+		expect(shape.snapshot().depth).toBe(1);
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, [3, 1, 3]);
+		const to = stageCss(mounted.facade, [3, 2.5, 3]);
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+
+		expect(shape.snapshot().depth).toBeCloseTo(2.5, 1);
+		expect(shape.snapshot().canCreate).toBe(true);
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		shape.controller.create();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		const generator = acceptedForms(mounted.facade)[0]!.form.generator;
+		expect(generator.kind).toBe('extrude');
+		if (generator.kind !== 'extrude') return;
+		expect(generator.extent).toBeCloseTo(2.5, 3);
 	});
 });
