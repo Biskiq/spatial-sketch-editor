@@ -245,6 +245,22 @@ describe('P22.1 cold runtime + asset seam', () => {
 		).toBeGreaterThan(0);
 	});
 
+	it('refuses a native form in a cold release', () => {
+		// Publication admits no form yet: T4 owns any admission, so a release must
+		// refuse one explicitly rather than ship it by omission.
+		const issues = validateColdReleaseReferences({
+			scene: {
+				textures: [],
+				materials: [],
+				entities: [{ kind: 'form', materialId: 'plaster-warm' }]
+			},
+			manifest: { releaseId: 'r1', bytesByUri: new Map<string, ReleaseBytesEntry>() }
+		});
+		expect(issues).toEqual([
+			{ path: '$.scene.entities[0]', message: 'Native forms are not admitted for publication' }
+		]);
+	});
+
 	it('composes an empty project store-free and disposes cleanly', async () => {
 		setDefaultTextureSourceLoader(null);
 		const project = await createUnitProject({ id: 'project:cold-a', name: 'Cold A' });

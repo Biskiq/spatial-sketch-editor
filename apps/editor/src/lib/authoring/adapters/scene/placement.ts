@@ -33,6 +33,7 @@ import {
 	planMoveHorizontal,
 	planResizeOnFloor,
 	planSetYaw,
+	sceneFormContactMinY,
 	type CreatorModelResourceEntry,
 	type NormalizedPlacementDefinition,
 	type SceneOperationContext,
@@ -373,6 +374,9 @@ export function localContactMinY(entity: SceneEntity, modelContactMinY?: number 
 			? modelContactMinY
 			: null;
 	}
+	// A form's contact is derived from its authored source, exactly as the
+	// planner derives it, so the shown contact and the installed one agree.
+	if (entity.kind === 'form') return sceneFormContactMinY(entity.form);
 	if (entity.kind !== 'primitive') return null;
 	switch (entity.primitive) {
 		case 'box':
@@ -425,6 +429,11 @@ export function sceneModelContactMinY(
  * or an unapproved catalogue model does not, so offering the command would only
  * take the gesture lease and then refuse (and the adapter would advertise a
  * `Scale` fact that cannot be written). Delete needs no contact.
+ *
+ * A native form has a real contact but no uniform Resize: its size is per-axis
+ * form source (`set-form-size`), and `resize-on-floor` refuses forms. So the
+ * uniform affordance is not offered and no `Scale` fact is advertised, while
+ * Duplicate — which copies the source verbatim — stays available.
  */
 export function sceneComposeSupport(
 	entity: SceneEntity,
@@ -445,7 +454,17 @@ export function sceneComposeSupport(
 			reason:
 				entity.kind === 'light'
 					? 'A light has no verified floor contact; Resize and Duplicate are unavailable.'
-					: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
+					: entity.kind === 'form'
+						? 'A form needs an evaluable source before it can be duplicated on the floor.'
+						: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
+		};
+	}
+	if (entity.kind === 'form') {
+		return {
+			resize: false,
+			duplicate: true,
+			code: 'unsupported-transform',
+			reason: 'A native form is sized per axis through its own source; uniform Resize is unavailable.'
 		};
 	}
 	return { resize: true, duplicate: true, code: null, reason: null };

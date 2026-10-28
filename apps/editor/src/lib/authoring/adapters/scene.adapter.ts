@@ -28,6 +28,8 @@ import type {
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
+import type { SceneFormEntity } from '$lib/content/scene';
+import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import {
 	NATIVE_PLACEMENT_PRIMITIVES,
 	nativePlacementDefinition
@@ -120,8 +122,28 @@ function entityFacts(
 						value: `${typeof entity.scale === 'number' ? entity.scale : 1} (uniform)`
 					}
 				]
-			: [])
+			: []),
+		// A form has no scalar scale to show; its size is the evaluated bounds of
+		// the authored source, so the Card reports metres it can never write from
+		// here (S02 owns the size writers).
+		...(entity.kind === 'form' ? formSizeFacts(entity) : [])
 	];
+}
+
+function formSizeFacts(entity: SceneFormEntity): readonly StageCardFact[] {
+	const mesh = evaluateFormMesh(entity.form);
+	if (mesh === null) return [];
+	return [
+		{ label: 'Material', value: entity.materialId },
+		{ label: 'Width', value: formatFormMeters(mesh.bounds.max[0] - mesh.bounds.min[0]) },
+		{ label: 'Depth', value: formatFormMeters(mesh.bounds.max[2] - mesh.bounds.min[2]) },
+		{ label: 'Height', value: formatFormMeters(mesh.bounds.max[1] - mesh.bounds.min[1]) }
+	];
+}
+
+/** Metres to the millimetre shown in the Card, without float noise. */
+function formatFormMeters(value: number): string {
+	return `${Math.round(value * 1000) / 1000} m`;
 }
 
 /** The floor support one pointer position resolves against the drawn geometry. */

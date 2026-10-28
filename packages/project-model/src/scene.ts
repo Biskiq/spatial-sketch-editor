@@ -482,8 +482,10 @@ export function isScenePrimitiveEntity(
   entity: SceneEntity
 ): entity is ScenePrimitiveEntity {
   return entity.kind === 'primitive';
-}export function isSceneFormEntity(entity: SceneEntity): entity is SceneFormEntity {
-	return entity.kind === 'form';
+}
+
+export function isSceneFormEntity(entity: SceneEntity): entity is SceneFormEntity {
+  return entity.kind === 'form';
 }
 
 export function isSceneLightEntity(entity: SceneEntity): entity is SceneLightEntity {
@@ -529,7 +531,9 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
         ? {}
         : { materialInstanceId: entity.materialInstanceId })
     };
-  }	if (entity.kind === 'primitive') {
+  }
+
+  if (entity.kind === 'primitive') {
 		return {
 			...transform,
 			kind: 'primitive',

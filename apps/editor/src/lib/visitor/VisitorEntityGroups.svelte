@@ -12,10 +12,12 @@
 		SceneDocument,
 		RuntimeScene,
 		SceneEntity,
+		SceneFormEntity,
 		SceneModelEntity,
 		ScenePrimitiveEntity
 	} from '$lib/content/scene';
 	import {
+		isSceneFormEntity,
 		isSceneLightEntity,
 		isSceneModelEntity,
 		isScenePrimitiveEntity
@@ -27,6 +29,7 @@
 	import EntityPrimitive from '$lib/museum/entities/EntityPrimitive.svelte';
 
 	type AssetModelComponent = typeof import('$lib/museum/assets/AssetModel.svelte')['default'];
+	type EntityFormComponent = typeof import('$lib/museum/entities/EntityForm.svelte')['default'];
 
 	let {
 		scene,
@@ -69,7 +72,7 @@
 	});
 
 	function entityEffective(
-		entity: ScenePrimitiveEntity | SceneModelEntity
+		entity: ScenePrimitiveEntity | SceneModelEntity | SceneFormEntity
 	): ReturnType<typeof resolveSceneMaterial> {
 		return resolveSceneMaterial(
 			{ materials: scene.materials, textures: scene.textures } as Pick<
@@ -78,10 +81,41 @@
 			>,
 			{
 				materialInstanceId: entity.materialInstanceId ?? null,
-				fallbackCatalogueId: entity.kind === 'primitive' ? entity.materialId : 'paper-aged'
+				fallbackCatalogueId:
+					entity.kind === 'primitive' || entity.kind === 'form' ? entity.materialId : 'paper-aged'
 			}
 		);
 	}
+
+	/**
+	 * The form renderer is fetched only once a document actually carries a form,
+	 * so a project without forms never downloads the kernel or its adapter. A
+	 * failed fetch retries a bounded number of times instead of leaving an
+	 * admitted form permanently invisible.
+	 */
+	let FormComponent = $state<EntityFormComponent | null>(null);
+	const hasForms = $derived(scene.entities.some(isSceneFormEntity));
+	$effect(() => {
+		if (FormComponent !== null || !hasForms) return;
+		let cancelled = false;
+		let attempt = 0;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const load = (): void => {
+			void import('$lib/museum/entities/EntityForm.svelte')
+				.then((module) => {
+					if (!cancelled) FormComponent = module.default;
+				})
+				.catch(() => {
+					attempt += 1;
+					if (!cancelled && attempt < 3) timer = setTimeout(load, 2_000);
+				});
+		};
+		load();
+		return () => {
+			cancelled = true;
+			if (timer !== null) clearTimeout(timer);
+		};
+	});
 </script>
 
 {#each roomGroups as group (group.room?.id ?? '__world__')}
@@ -105,6 +139,12 @@
 				<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 					<EntityPrimitive {entity} effective={entityEffective(entity)} scope={textureScope} />
 				</T.Group>
+			{:else if isSceneFormEntity(entity)}
+				{#if FormComponent}
+					<T.Group position={entity.position} rotation={entity.rotation}>
+						<FormComponent {entity} effective={entityEffective(entity)} scope={textureScope} />
+					</T.Group>
+				{/if}
 			{:else if isSceneLightEntity(entity)}
 				<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 					<EntityLight {entity} />

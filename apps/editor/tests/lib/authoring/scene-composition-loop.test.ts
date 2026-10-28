@@ -94,6 +94,35 @@ function lightEntity(id = LIGHT_ID, position: Vec3 = [3, 2.4, 3]): SceneEntity {
 
 const PLANE_ID = 'entity-composition-plane';
 const TILTED_ID = 'entity-composition-tilted';
+const FORM_ID = 'entity-composition-form';
+
+function formEntity(position: Vec3 = [4, 0, 3]): SceneEntity {
+	return {
+		kind: 'form',
+		id: FORM_ID,
+		name: 'Drawn plinth',
+		position,
+		rotation: [0, 0, 0],
+		form: {
+			generator: {
+				kind: 'extrude',
+				plane: 'plan',
+				outline: [
+					{ key: 1, u: 0, v: 0, smooth: false },
+					{ key: 2, u: 1, v: 0, smooth: false },
+					{ key: 3, u: 1, v: 1, smooth: false },
+					{ key: 4, u: 0, v: 1, smooth: false }
+				],
+				extent: 0.6
+			},
+			scale: [1, 1, 1],
+			nextKey: 5
+		},
+		materialId: 'plaster-warm',
+		castShadow: true,
+		receiveShadow: true
+	};
+}
 
 function planeEntity(): SceneEntity {
 	return {
@@ -227,6 +256,27 @@ describe('Scene Resize — one planner, one contact result', () => {
 		expect(port.intents).toEqual([]);
 		// Every refused attempt released its lease through the one commit path.
 		expect(port.releases()).toBe(1);
+	});
+
+	it('offers a native form Duplicate but never a uniform Resize', async () => {
+		const form = formEntity();
+		// A plan form rests exactly on its base, derived from the source.
+		expect(localContactMinY(form)).toBe(0);
+		expect(sceneComposeSupport(form)).toEqual({
+			resize: false,
+			duplicate: true,
+			code: 'unsupported-transform',
+			reason: expect.stringContaining('per axis')
+		});
+		const { session, port } = await sessionFor([form]);
+		// Resize refuses before the lease; Duplicate is a real command.
+		expect(session.beginResize(FORM_ID)).toMatchObject({
+			kind: 'refused',
+			code: 'unsupported-transform'
+		});
+		expect(port.releases()).toBe(0);
+		await expect(session.duplicate(FORM_ID)).resolves.toEqual({ kind: 'committed' });
+		expect(port.intents).toHaveLength(1);
 	});
 
 	it('refuses a light with no verified contact before taking a gesture lease', async () => {
@@ -419,6 +469,19 @@ describe('Scene composition journey — one host, one history stack', () => {
 		}
 		expect(sceneComposeSupport(lightEntity()).resize).toBe(false);
 		expect(sceneComposeSupport(planeEntity()).resize).toBe(false);
+	});
+
+	it('shows a native form’s evaluated metre bounds as read-only Card facts', async () => {
+		const { facade } = await mounted([formEntity()]);
+		const facts = facade.cardFacts({ sourceId: FORM_ID, sourceKind: 'entity', ref: null });
+		const labels = facts.map((fact) => fact.label);
+		expect(labels).toEqual(expect.arrayContaining(['Material', 'Width', 'Depth', 'Height']));
+		// No uniform scale is offered for a form, so no Scale fact may be shown.
+		expect(labels).not.toContain('Scale');
+		const valueOf = (label: string) => facts.find((fact) => fact.label === label)?.value;
+		expect(valueOf('Width')).toBe('1 m');
+		expect(valueOf('Depth')).toBe('1 m');
+		expect(valueOf('Height')).toBe('0.6 m');
 	});
 
 	it('resizes, undoes, redoes, duplicates and deletes through the accepted host', async () => {
