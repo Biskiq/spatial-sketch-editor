@@ -119,9 +119,8 @@ FINAL PHASE GATE: T1.P02.S04 → ./t1.p02.s04-integrated-final-gate/acceptance.m
 
 PHASE CLOSE
 Stage:        closed
-Closed:       2026-10-28 — owner ratification recorded in `eb0931d6` (PR #210 merge; owner
-              phase-close request)
-Owner ratification: closed by owner ruling 2026-10-28 (`eb0931d6`)
+Closed:       2026-10-28 — explicit owner phase-close request after PR #210 merged as `eb0931d6`
+Owner ratification: owner-directed phase closure on 2026-10-28, recorded by phase-close PR #211
 Final gate:   T1.P02.S04 → ./t1.p02.s04-integrated-final-gate/acceptance.md — accepted 2026-10-28
               at `46a31c81`
 Integration:  exhaustive integrated correctness/functional acceptance at `d1fe6e5c` — 4 journeys
