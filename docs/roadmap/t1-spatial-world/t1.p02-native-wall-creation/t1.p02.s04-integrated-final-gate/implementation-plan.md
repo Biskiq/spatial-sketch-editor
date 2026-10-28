@@ -3,7 +3,7 @@
 ```text
 AUTHORITY: NONE — the phase README owns lifecycle; the acceptance record owns the gate verdict,
            owner ruling and evidence. This stub preserves the delivered scope and recovery only.
-STATUS:    ACCEPTED by owner 2026-10-28 at 46a31c81; closeout complete; P1 merge pending (PR #210).
+STATUS:    ACCEPTED by owner 2026-10-28 at 46a31c81; closeout complete; P1 merge required (PR #210).
            T1.P02 is closable, not closed.
 VERIFICATION: exhaustive
 CONSUMES:  F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
@@ -48,13 +48,13 @@ regressions apps/editor/tests/lib/authoring/scene-composition-loop.test.ts
 - Performance: suspended; S01/S02/S03/S06 rows remain unmeasured historical evidence, never passes.
 - Stage bundle history: S02 456.0 KiB br miss and S03 426.7 KiB br exception remain recorded.
 - Phase closure: not authorized; T1.P02 is closable and awaits a separate owner instruction.
-- P1 merge of PR #210 remains pending.
+- P1 merge of PR #210 is required for recovery.
 
 ## Recovery
 
 ```text
 git show 46a31c81:docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/implementation-plan.md
 anchor  46a31c81 (full plan and acceptance bodies, including the P2 correction)
-tag     closed/T1.P02.S04 → 46a31c81 (local only; P1 merge pending)
+tag     closed/T1.P02.S04 → 46a31c81 (local only; push after P1 merge)
 merge   PR #210 — P1 merge commit only (no squash, no rebase)
 ```

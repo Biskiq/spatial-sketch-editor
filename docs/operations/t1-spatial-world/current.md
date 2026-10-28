@@ -7,7 +7,7 @@ PHASE: T1.P02 Native Wall creation is active and **CLOSABLE**. S01, S02, S03, S0
        shipped. S04, the declared final gate, was accepted by owner 2026-10-28 at `46a31c81`; no
        phase closure or track-completion event is recorded.
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
-SLICE: none active. S04 closeout is complete on PR #210; P1 merge pending. The final-gate artifact
+SLICE: none active. S04 closeout is complete on PR #210; P1 merge required. The final-gate artifact
        stays live for the phase-close decision:
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/acceptance.md
 ACCEPTANCE: The owner's explicit S04 closeout trigger is the owner's review/waiver of the separate

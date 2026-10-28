@@ -1,8 +1,8 @@
 # T1.P02.S04 — acceptance record: Integrated final gate
 
-**Slice:** T1.P02.S04 · **Status:** **accepted by owner 2026-10-28**; closeout complete on this
-branch, P1 merge pending. The declared `FINAL PHASE GATE` of T1.P02 is accepted and shipped; the
-phase is **closable, not closed** · **Plan:** [implementation-plan.md](./implementation-plan.md)
+**Slice:** T1.P02.S04 · **Status:** **accepted by owner 2026-10-28**; closeout complete; P1 merge
+required for recovery. The declared `FINAL PHASE GATE` of T1.P02 is accepted and shipped; the phase
+is **closable, not closed** · **Plan:** [implementation-plan.md](./implementation-plan.md)
 (closed stub; owns the accepted scope) · **Phase:** [T1.P02](../README.md)
 
 **Declared** `FINAL PHASE GATE` artifact of T1.P02
@@ -24,7 +24,7 @@ product/browser         d1fe6e5c (both browser evidence bundles, final head)
 test corrections        d0b0b808, d1fe6e5c (PR #208 base only; no product change)
 acceptance docs         this branch; P2 correction at 46a31c81
 anchor                  46a31c81 (full acceptance and plan bodies; tag local only)
-closeout                2026-10-28; P1 merge pending (PR #210)
+closeout                2026-10-28; P1 merge required (PR #210)
 machine                 Apple M2 8-core / 16 GiB, macOS, Node 26.7.0
 browser                 Chrome 156.0.8078.48 (pinned) and Playwright Chromium
 ```
@@ -135,8 +135,8 @@ investigation after an observed slowdown. No performance row is a pass.
   and acceptance at `46a31c81`; the separate independent-review verdict is waived for this slice only.
   The P2 ownership correction is recorded above. No correctness, browser, architecture, API, build or
   performance evidence is waived.
-- **P1 merge — pending.** PR #210 must land as a merge commit, not squash or rebase; the anchor and
-  tag are not yet reachable from `main`.
+- **P1 merge — required.** PR #210 must land as a merge commit, not squash or rebase; that merge
+  makes the anchor and tag reachable from `main`.
 - **Performance mandate — suspended.** No benchmark is owed; unmeasured rows remain unmeasured. A
   future owner-observed slowdown can commission a bounded investigation against the preserved harness.
 - **Stage bundle misses — history.** The S02 456.0 KiB br miss and S03 426.7 KiB br exception remain
@@ -151,11 +151,11 @@ investigation after an observed slowdown. No performance row is a pass.
 ## Closeout — accepted 2026-10-28
 
 The slice-closeout procedure completed for the declared final gate. S04 is **accepted and shipped**
-on this branch; the phase README reads `shipped` and T1.P02 is **closable**. The final-gate exception
+through PR #210; the phase README reads `shipped` and T1.P02 is **closable**. The final-gate exception
 keeps this artifact live for the phase-close decision. The implementation plan is a closed stub at
 its path, the 32 final PNGs have byte-identical archive copies, and the JSON/machine facts remain
 live. No phase closure, track-completion event, architecture-cycle verdict, deployment or merge is
-recorded here. The owner phase-close decision is the next step; P1 merge remains pending.
+recorded here. The owner phase-close decision is the next step; P1 merge is required for recovery.
 
 ## Preservation report
 
@@ -167,7 +167,7 @@ renderable evidence archived:    32 files / 4,075,060 bytes (3.89 MiB)   final d
                                      byte-identical copies
 evidence stubs / manifests:      1   CLOSED.md at the archived bundle
 transient artifacts removed:     0
-historical anchor:               46a31c81 · tag closed/T1.P02.S04 (local only; P1 merge pending)
+historical anchor:               46a31c81 · tag closed/T1.P02.S04 (local only; push after P1 merge)
 new live → archive prose links:  0
 manual-owed verification rows:   0   no benchmark is owed; unmeasured performance rows remain
                                      historical evidence, never passes
@@ -182,7 +182,7 @@ permanent stubs added:           1   (the owner-ratified cost)
 base        1e6e73aa (PR #208 on the PR #209 merge db7e5cd9)
 evidence    d1fe6e5c (both browser bundles; test corrections only after the release)
 anchor      46a31c81 (full acceptance, plan and P2 correction)
-merge       P1 merge commit only (PR #210); pending, no squash or rebase
+merge       P1 merge commit only (PR #210); required, no squash or rebase
 phase       T1.P02 is closable; the phase-close decision is a separate owner instruction
 ```
 
