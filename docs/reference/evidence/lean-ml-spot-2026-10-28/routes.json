@@ -1,0 +1,26 @@
+[
+  {
+    "route": "/",
+    "status": 200,
+    "pageErrors": [],
+    "body": "MUSEUM EDITOR\n\nStart a project\n\nCreate in Spatial. Sign in when you want cloud projects.\n\nStart creating\nContinue with Google"
+  },
+  {
+    "route": "/projects",
+    "status": 200,
+    "pageErrors": [],
+    "body": "Museum Editor\n\nPROJECT HUB\n\nProjects\nNew Project\n\nYour work stays in a temporary session until you sign in. No drafts are kept here.\n\nContinue with Google"
+  },
+  {
+    "route": "/project/pr214-route-smoke/spatial?create=1",
+    "status": 200,
+    "pageErrors": [],
+    "body": "MUSEUM EDITOR\n\nLoading project\nTechnical details\nWorld\nExperience\nFind\nRename\nDelete\nCloud project actions are unavailable because the Cloud service is not configured.\nUndo\nRedo\nNothing to undo yet — no change has been accepted.\nSave\nCondit"
+  },
+  {
+    "route": "/p/pr214-missing",
+    "status": 200,
+    "pageErrors": [],
+    "body": "PUBLISHED PROJECT\n\nThis link is unavailable\n\nIt may never have been published, or the owner may have unpublished it.\n\nStart a project"
+  }
+]

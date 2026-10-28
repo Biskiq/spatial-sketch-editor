@@ -53,8 +53,12 @@ any F4, Head, Save or Camera change.
 
 ## Evidence to plan
 
-- Live reading per pointer move within the per-edit evaluation row; drag preview p95 ≤ 33 ms (S) and
-  ≤ 50 ms (M); Create and size commits and their Undo ≤ 100 ms; Stage first-load growth ≤ 25 KiB br.
+- Responsiveness of live reading, drag, Create, size and Undo is an M/L spot check when one of the
+  [spot-check triggers](../../../../reference/decisions/performance-spot-check-2026-10-28.md) applies.
+  The comprehensive matrix and the S-tier drag quotas are suspended. `grid-M` / `grid-L` do not
+  measure a form-heavy Scene; a form workload is a separate investigation when forms are what changed.
+  Stage first-load growth stays the historical ≤ 25 KiB br delivery row, checked with `npm run perf:bundle`
+  when delivery is the question.
 - Agent E2E journeys: draw, read, pull depth, create on each surface; size by ray and by Card;
   refusals; Undo, Save, reload; Preview.
 - Reviews: T1 for the seam and any Stage host change; T2 for Scene adapter and intent changes.
@@ -62,4 +66,5 @@ any F4, Head, Save or Camera change.
 ## Stop conditions
 
 The seam cannot be agreed with T1; a second selection, history or writer appears necessary; an
-F4, Head or Save change appears necessary; a hard budget misses.
+F4, Head or Save change appears necessary. A slow interaction found by an authorized spot check is
+recorded on that check; it does not revive the suspended comprehensive benchmark.

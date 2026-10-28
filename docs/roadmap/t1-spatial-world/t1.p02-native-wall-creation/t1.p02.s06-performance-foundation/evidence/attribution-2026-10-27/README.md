@@ -182,5 +182,4 @@ PERF_TIERS=grid-S,grid-L PERF_PROFILE=diagnostic PERF_APP_REVISION=e8cc2fc0 \
   npx playwright test --config perf/attribution/playwright.config.ts
 ```
 
-The harness is [attribution.spec.ts](../../../../../../../apps/editor/perf/attribution/attribution.spec.ts)
-with [playwright.config.ts](../../../../../../../apps/editor/perf/attribution/playwright.config.ts).
+The attribution spec and its Playwright config were removed with the multi-hour suite on 2026-10-28. The commands above are the historical reproduction; they are not a current entry point.

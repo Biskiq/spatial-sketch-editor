@@ -592,9 +592,9 @@ OCCT and PostGIS are design references, not candidates under S06's full-permissi
 [route]: ../apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
 [grammar]: ../docs/reference/design-system/spatial-instrument-grammar.md#density-and-correspondence-between-readings
 [model-clone]: ../apps/editor/src/lib/museum/assets/model-utils.ts
-[orbit]: ../apps/editor/perf/flows/orbit.spec.ts
+[orbit]: ../apps/editor/perf/README.md
 [fixtures]: ../apps/editor/perf/lib/fixtures.ts
-[harness]: ../apps/editor/perf/README.md#correlation-why-the-ledger-exists
+[harness]: ../apps/editor/perf/README.md
 [three-batch]: https://threejs.org/docs/pages/BatchedMesh.html
 [three-instance]: https://threejs.org/docs/pages/InstancedMesh.html
 [three-batch-source]: https://github.com/mrdoob/three.js/blob/r186/src/objects/BatchedMesh.js#L1516

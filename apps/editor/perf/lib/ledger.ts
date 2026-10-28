@@ -28,7 +28,10 @@ export type LedgerRecord = {
 export type LongTaskEntry = { readonly start: number; readonly duration: number };
 export type EventEntry = { readonly name: string; readonly start: number; readonly duration: number };
 
+export type RenderFrame = { readonly surface: string; readonly sourceContentId: string | null; readonly start: number; readonly end: number; readonly triangles: number };
+
 export type PerfLedger = {
+	readonly renderFrames: readonly RenderFrame[];
 	readonly records: readonly LedgerRecord[];
 	readonly ticks: readonly number[];
 	readonly longTasks: readonly LongTaskEntry[];
@@ -47,6 +50,7 @@ type HarnessWindow = Window & {
 	__BISKIQ_PERF__?: { enabled?: boolean; frameDelayMs?: number };
 	__BISKIQ_PERF_RECORDS__?: LedgerRecord[];
 	__BISKIQ_PERF_TICKS__?: number[];
+	__BISKIQ_PERF_RENDER_FRAMES__?: RenderFrame[];
 	__BISKIQ_PERF_LONG_TASKS__?: LongTaskEntry[];
 	__BISKIQ_PERF_EVENTS__?: EventEntry[];
 	__BISKIQ_PERF_LCP__?: number;
@@ -59,6 +63,8 @@ export function perfInitScript(options: HarnessOptions): void {
 	target.__BISKIQ_PERF__ = { enabled: true, frameDelayMs };
 	const records: LedgerRecord[] = [];
 	const ticks: number[] = [];
+	const renderFrames: RenderFrame[] = [];
+	target.__BISKIQ_PERF_RENDER_FRAMES__ = renderFrames;
 	const longTasks: LongTaskEntry[] = [];
 	const events: EventEntry[] = [];
 	target.__BISKIQ_PERF_RECORDS__ = records;
@@ -259,6 +265,7 @@ export function perfInitScript(options: HarnessOptions): void {
 					queryOpen = true;
 				}
 			}
+			const sourceContentId = records.findLast((entry) => entry.name === 'stage:source-ready')?.detail?.sourceContentId;
 			const begin = performance.now();
 			try {
 				if (state.binCensusRequested === true) {
@@ -274,7 +281,9 @@ export function perfInitScript(options: HarnessOptions): void {
 					pendingQueries.push(query);
 				}
 			}
-			const cpuMs = performance.now() - begin;
+			const end = performance.now();
+			const cpuMs = end - begin;
+			if (renderFrames.length < 20_000) renderFrames.push({ surface, sourceContentId: typeof sourceContentId === 'string' ? sourceContentId : null, start: begin, end, triangles: renderer.info.render.triangles });
 			resolveQueries();
 			renderRefs[surface] = { renderer, scene, camera };
 			const info = renderer.info;
@@ -345,7 +354,7 @@ export async function clearObservations(page: import('@playwright/test').Page): 
 	await page.evaluate(() => {
 		const target = window as HarnessWindow;
 		for (const entries of [target.__BISKIQ_PERF_RECORDS__, target.__BISKIQ_PERF_TICKS__,
-			target.__BISKIQ_PERF_LONG_TASKS__, target.__BISKIQ_PERF_EVENTS__]) {
+			target.__BISKIQ_PERF_LONG_TASKS__, target.__BISKIQ_PERF_EVENTS__, target.__BISKIQ_PERF_RENDER_FRAMES__]) {
 			if (entries) entries.length = 0;
 		}
 		// The last rendered scene per surface: a closed project's scene graph must
@@ -364,6 +373,7 @@ export async function readLedger(page: import('@playwright/test').Page): Promise
 		const paints: Record<string, number> = {};
 		for (const paint of performance.getEntriesByType('paint')) paints[paint.name] = paint.startTime;
 		return {
+			renderFrames: (target.__BISKIQ_PERF_RENDER_FRAMES__ ?? []).slice(),
 			records: (target.__BISKIQ_PERF_RECORDS__ ?? []).slice(),
 			ticks: (target.__BISKIQ_PERF_TICKS__ ?? []).slice(),
 			longTasks: (target.__BISKIQ_PERF_LONG_TASKS__ ?? []).slice(),
