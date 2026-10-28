@@ -2462,7 +2462,9 @@ describe('routing and skill preflights', () => {
 		// currently holds a release row. The live list is still checked above.
 		const unlisted = { id: 'T2.P09.S09', status: 'approved', authorization: 'released from the hold' };
 		const probeRow = '| `T2.P09.S09` | released; synthetic probe | [probe](./README.md) |';
-		const withProbeRow = nowSource.replace(/(\| `T5\.P01\.S01`.*\n)/, `$1${probeRow}\n`);
+		const releaseHeader = /(\| Scope \| Condition \| Plan \|\n\| --- \| --- \| --- \|\n)/;
+		expect(nowSource).toMatch(releaseHeader);
+		const withProbeRow = nowSource.replace(releaseHeader, `$1${probeRow}\n`);
 		const probe = { ...live, nowSource: withProbeRow, slices: [...slices, unlisted] };
 		expect(releaseListProblems(probe)).toEqual([]);
 
