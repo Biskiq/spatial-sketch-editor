@@ -18,7 +18,11 @@ export function createScenePickSource() {
 		});
 		const cached = boxes.get(root);
 		if (cached && cached.stamp.length === stamp.length && stamp.every((value, i) => value === cached.stamp[i])) return cached.bounds;
-		const bounds = new Box3().setFromObject(root, true);
+		// Three's Mesh.raycast otherwise builds these on the first pointer event.
+		root.traverse((node) => {
+			if (node instanceof Mesh) { node.geometry.computeBoundingBox(); node.geometry.computeBoundingSphere(); }
+		});
+		const bounds = new Box3().setFromObject(root);
 		boxes.set(root, { stamp, bounds });
 		return bounds;
 	}

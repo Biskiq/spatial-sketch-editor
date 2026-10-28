@@ -652,10 +652,16 @@ describe('Scene adapter registration', () => {
 			mesh.position.x = 20;
 			expect(rendered.pick({ origin: [3.25, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
 			mesh.position.x = 2;
+			// A versioned vertex update must invalidate Three's existing box/sphere,
+			// not only the registry's world bounds.
+			const positions = mesh.geometry.getAttribute('position');
+			for (let i = 0; i < positions.count; i++) positions.setX(i, positions.getX(i) + 10);
+			positions.needsUpdate = true;
+			expect(rendered.pick({ origin: [32, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).toBe('model-front');
 			mesh.visible = false;
-			expect(rendered.pick({ origin: [2.75, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
+			expect(rendered.pick({ origin: [32, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
 			off();
-			expect(rendered.pick({ origin: [2.75, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
+			expect(rendered.pick({ origin: [32, 5, 3.5], direction: [0, -1, 0] }, facade.snapshot().domain.scene)?.entityId).not.toBe('model-front');
 		} finally { facade.dispose(); mesh.geometry.dispose(); }
 	});
 

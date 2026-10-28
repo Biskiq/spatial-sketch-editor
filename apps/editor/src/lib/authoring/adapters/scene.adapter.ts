@@ -131,21 +131,8 @@ function entityFacts(
 					}
 				]
 			: []),
-		// A form has no scalar scale to show; its size is the evaluated bounds of
-		// the authored source, so the Card reports metres it can never write from
-		// here; the Card writer supplies explicit per-axis Size commands.
-		...(entity.kind === 'form' ? formSizeFacts(entity) : [])
-	];
-}
-
-function formSizeFacts(entity: SceneFormEntity): readonly StageCardFact[] {
-	const mesh = evaluateFormMesh(entity.form);
-	if (mesh === null) return [];
-	return [
-		{ label: 'Material', value: entity.materialId },
-		...['Width', 'Height', 'Depth'].map((label, axis) => ({
-			label, value: formatFormMeters(mesh.bounds.max[axis]! - mesh.bounds.min[axis]!)
-		}))
+		// Dimensions are exposed by the lazy Card's per-axis Size fields.
+		...(entity.kind === 'form' ? [{ label: 'Material', value: entity.materialId }] : [])
 	];
 }
 
@@ -155,11 +142,6 @@ function formCenter(entity: SceneFormEntity): [number, number, number] {
 	if (mesh === null) return entity.position;
 	const center = mesh.bounds.min.map((value, axis) => (value + mesh.bounds.max[axis]!) / 2);
 	return new Vector3(center[0], center[1], center[2]).applyEuler(new Euler(...entity.rotation)).add(new Vector3(...entity.position)).toArray();
-}
-
-/** Metres to the millimetre shown in the Card, without float noise. */
-function formatFormMeters(value: number): string {
-	return `${Math.round(value * 1000) / 1000} m`;
 }
 
 /**
