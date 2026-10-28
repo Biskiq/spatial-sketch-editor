@@ -6,7 +6,7 @@ acceptance, merge, capability entry or gate state · **Plan:**
 [T5.P01](../README.md)
 
 ```text
-STATUS      implemented on t5/p01-s02-shape-reading at 7b8aafaa; not accepted
+STATUS      implemented on t5/p01-s02-shape-reading at 48a56f30; not accepted
 TIER        architecture-integration
 ROUTE       ../t5.p01.s03-integrated-final-gate/acceptance.md
             the phase's final gate owns the integrated proof, browser journeys and battery rows
@@ -50,7 +50,7 @@ session rather than `closeTask()`, so the facade's contributed-task owner is now
 task. Without that, every later no-task press and key was still offered to the retired Ink binding
 and never reached the selection's direct manipulation.
 
-## Verification at `7b8aafaa`
+## Verification at `48a56f30`
 
 All commands ran on the feature branch. Results:
 
@@ -58,18 +58,20 @@ All commands ran on the feature branch. Results:
 | --- | --- |
 | `npm run check` | 0 errors, 0 warnings |
 | `npm run build` | built, `@sveltejs/adapter-vercel` completed |
-| `npm run test:fast` | 192 files / **2,565 tests** passed |
+| `npm run test:fast` | 193 files / **2,569 tests** passed |
 | `npm run test:arch` | 23 files / **188 tests** passed |
-| `npx vitest run` on the 12 affected Stage/Layout/Scene/Shape suites | 12 files / **209 tests** passed |
-| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts` | 2 files / **17 tests** passed |
+| `npx vitest run` on the 13 affected Stage/Layout/Scene/Shape suites | 13 files / **213 tests** passed |
+| `npx vitest run tests/lib/authoring/shape-outline.test.ts tests/lib/authoring/shape-reading-adapter.test.ts tests/lib/authoring/shape-palette.test.ts` | 3 files / **21 tests** passed |
 
-The two new focused files are [shape-outline.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-outline.test.ts)
-(conversion and validation) and
-[shape-reading-adapter.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts)
-(seam, floor creation, live refusal, upright Flip, depth drag, resize baseline, reading-switch
-protection, size ray and Card writer through the real F.4 host). The affected run covered `stage-facade`, `stage-host-acceptance`, `stage-session`,
-`layout-opening`, `layout-wall-manipulation`, `layout-drawing`, `layout-precision`,
-`scene-composition-loop`, `scene-editing-surface`, `scene-proposal-lifetime` and the new suite.
+The three focused files are [shape-outline.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-outline.test.ts)
+(conversion and validation), [shape-reading-adapter.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts)
+(seam, floor creation, live refusal, upright Flip and raised-V depth drags, resize baselines,
+reading-switch protection, keyboard, size ray and Card writer through the real F.4 host), and
+[shape-palette.test.ts](../../../../../apps/editor/tests/lib/authoring/shape-palette.test.ts)
+(raw depth forwarding and hover-preserved fields). The affected run covered both Shape suites and
+the palette suite plus `stage-facade`, `stage-host-acceptance`, `stage-session`, `layout-opening`,
+`layout-wall-manipulation`, `layout-drawing`, `layout-precision`, `scene-composition-loop`,
+`scene-editing-surface` and `scene-proposal-lifetime`.
 
 The **heavy** lane was not run: no geometry-core, kernel or heavy correctness subject changed.
 `npm test` (the complete suite) was not rerun as one command; `test:fast` and `test:arch` together
@@ -103,6 +105,17 @@ The first independent review round found seven concrete defects, all fixed here 
 - The palette rewrote typed fields on every hover-published revision; it now rewrites only on a
   real sheet or depth change.
 
+A second round found four more, also fixed with regressions:
+
+- The palette's local parse stopped invalid depth text from reaching the session, so Create stayed
+  enabled over an older value; it now forwards the raw text and Create commits the field first.
+- The upright depth handle used the drawn V centre, not the standing body's midpoint, and Flip side
+  left it on the unextruded normal; both now follow the body the planner creates.
+- Plane and sheet changes discarded live points or depth without notice; they now refuse until the
+  reading is cleared, and backing out of the depth phase restores the effective value.
+- The Layout palette carried a hard-coded `shape` data hook; contributed readings now need no
+  Layout edit to appear.
+
 ## Deviations and decisions
 
 - The approved plan was an **outline**. The seam shape was resolved as a declared host capability
@@ -121,6 +134,8 @@ The first independent review round found seven concrete defects, all fixed here 
 1. T1 review of `ink-readings-v1`, `openInkReading`, the palette delegation, the `hasWork` switch
    guard and the task-owner fix.
 2. T2 review of the Scene-adapter contribution and the two existing planner call sites.
-3. Owner acceptance of this record, and a PR merge under the repository's P1 merge rule.
+3. Owner acceptance of this record, and a PR merge under the repository's P1 merge rule. The phase
+   register keeps S02 `proposed` because no release-list row exists: this record claims an
+   implementation awaiting review, not release authorization.
 4. `T5.P01.S03` closes the integrated browser journey, performance rows and the phase gate; no
    capability entry is claimed here.
