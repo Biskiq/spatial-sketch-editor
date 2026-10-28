@@ -1,0 +1,58 @@
+/**
+ * Pinned `formMeshDigest` values for `corpus.ts` at
+ * `GEOMETRY_CORE_EVALUATOR_VERSION = 1`.
+ *
+ * A change to a digest for an unchanged source is a canonical-output change:
+ * it needs a Scene format bump and a new golden set, never a refreshed value in
+ * place.
+ */
+export const GOLDEN_DIGESTS: Readonly<Record<string, string>> = {
+	'square-plan': 'gc1-13417092b6b4114c',
+	'square-elevation': 'gc1-db8909c404cb8f46',
+	'square-non-uniform': 'gc1-3743164add418a54',
+	'rectangle-plan': 'gc1-ba11ee1446aaa4be',
+	'rectangle-elevation': 'gc1-c4eb7370a9cb78e2',
+	'triangle-plan': 'gc1-67c6b4398290d063',
+	'triangle-elevation': 'gc1-bbef665b03cf7a01',
+	'pentagon': 'gc1-2c508d31453f7ebb',
+	'hexagon': 'gc1-66130678cfb54c0e',
+	'octagon': 'gc1-ae37fbfa514e8d54',
+	'dodecagon': 'gc1-4f03f0b611e3b840',
+	'hexadecagon': 'gc1-eaa4ba54fa86207a',
+	'polygon-32': 'gc1-4afb54bc197757f2',
+	'polygon-64': 'gc1-3db3bbd238142cf0',
+	'polygon-128': 'gc1-0aaece5d0ffebddf',
+	'polygon-256': 'gc1-514c57685c295a5e',
+	'l-shape': 'gc1-6806f1eda883cdc3',
+	'u-shape': 'gc1-4471cfe142573203',
+	'comb': 'gc1-5bef433b78d4e5cd',
+	'comb-elevation': 'gc1-2adbf3a98012207b',
+	'plus': 'gc1-bd7539cbed3be0ad',
+	'star-5': 'gc1-44d73d51c803fa17',
+	'trapezoid': 'gc1-bb7ce71ab36bf5c4',
+	'stepped': 'gc1-8f6e87bc91b4c456',
+	'smooth-square': 'gc1-9d910790be3efaf6',
+	'smooth-square-elevation': 'gc1-3f463ce2b80eb520',
+	'smooth-triangle': 'gc1-0631591c8232d93a',
+	'one-smooth-triangle': 'gc1-4499c9fe9468c54c',
+	'smooth-pentagon': 'gc1-6f65e5de943c9104',
+	'smooth-octagon': 'gc1-65d1f5b4014649da',
+	'smooth-16': 'gc1-b795d0df9293da49',
+	'smooth-64': 'gc1-7242956c9d890d1a',
+	'smooth-256-maximum-ring': 'gc1-b618112efdc1b924',
+	'mixed-square': 'gc1-7491e3016c9a70db',
+	'mixed-dodecagon': 'gc1-0aa7f0954f357077',
+	'mixed-64': 'gc1-8b497649f260381f',
+	'key-gapped': 'gc1-13417092b6b4114c',
+	'offset-square': 'gc1-1ecbe1c6e7824ce0',
+	'minimum-edge-square': 'gc1-6ab352e225633bdc',
+	'minimum-edge-triangle': 'gc1-e2cfb7f77a6eefa5',
+	'near-limit-square': 'gc1-5199d82a2d0960dc',
+	'narrow-sliver': 'gc1-7c42ae5ef2cdd548',
+	'extent-minimum': 'gc1-0cdc726abdc92dc4',
+	'extent-maximum': 'gc1-7162f3b240ca224c',
+	'scale-minimum': 'gc1-fa819046f0dff6d8',
+	'scale-maximum': 'gc1-7ae51642b1c204bc',
+	'non-uniform-elevation': 'gc1-9dead47584921353',
+	'curved-rectangle-elevation': 'gc1-b5fcc1b4068cea82',
+};

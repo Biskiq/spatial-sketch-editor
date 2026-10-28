@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@portfolio/camera-core": "*",
+    "@portfolio/geometry-core": "*",
     "@portfolio/layout-core": "*"
   },
   "devDependencies": {

@@ -26,6 +26,7 @@
     "@gltf-transform/extensions": "^4.4.1",
     "@gltf-transform/functions": "^4.4.1",
     "@portfolio/camera-core": "*",
+    "@portfolio/geometry-core": "*",
     "@portfolio/layout-core": "*",
     "@portfolio/project-model": "*",
     "@threlte/core": "^8.0.4",
