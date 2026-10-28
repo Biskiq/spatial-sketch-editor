@@ -123,6 +123,12 @@ function dragCacheStates(tier: WorkloadId): readonly (typeof CACHE_STATES)[numbe
 }
 const HANDLER_INPUT_CLOCK_LIMITATION =
 	'input-to-matching-preview uses the pointermove handler mark (performance.now()), not the event timestamp; time queued before handler entry is omitted';
+/**
+ * S04's supplemental Opening rows. Off by default so S06's accepted 15-row gate
+ * keeps its exact shape; the S04 pass enables it to measure the Opening family
+ * that S03 deferred.
+ */
+const OPENING_ROWS = process.env.PERF_OPENING_ROWS === '1';
 
 type DragRun = {
 	readonly dispatched: number;
@@ -144,6 +150,11 @@ type DragRun = {
 	/** Commit and precision completions per measured (not cache-served) sample. */
 	readonly commitCompletions: number[];
 	readonly precisionCompletions: number[];
+	/** S04 supplemental: Opening create/delete and Undo/Redo completions. */
+	readonly openingCreateCompletions: number[];
+	readonly openingDeleteCompletions: number[];
+	readonly openingUndoCompletion: number[];
+	readonly openingRedoCompletion: number[];
 	/** Drag samples that ran a compile (the denominator for the per-frame compile rate). */
 	readonly dragCompiled: number;
 	readonly cacheServed: number;
@@ -280,6 +291,53 @@ async function undoOnce(page: import('@playwright/test').Page): Promise<void> {
 	await waitForAcceptedResult(page, before);
 }
 
+/** Setup only: the shipped Opening palette, on the Wall selected through the Index. */
+async function armOpeningPalette(page: import('@playwright/test').Page): Promise<void> {
+	const closeCard = page.getByRole('button', { name: 'Close selection card' });
+	if (await closeCard.isVisible().catch(() => false)) await closeCard.click();
+	const dock = page.locator('[data-dock-tool="layout-ink"]');
+	if ((await dock.getAttribute('aria-pressed')) !== 'true') await dock.click();
+	await expect(page.locator('[data-layout-ink-palette]')).toBeVisible();
+	const radio = page.locator('[data-ink-reading-opening]');
+	if (!(await radio.isChecked())) await radio.check();
+	await expect(page.locator('[data-layout-opening-palette]')).toBeVisible();
+}
+
+/** One typed Door placement; returns command→presented completion. */
+async function measureOpeningCreate(page: import('@playwright/test').Page, offset: number): Promise<number | null> {
+	await armOpeningPalette(page);
+	await page.locator('[data-opening-kind]').selectOption('door');
+	await page.locator('[data-opening-offset]').fill(String(offset));
+	await page.locator('[data-opening-offset]').press('Tab');
+	const refusal = page.locator('[data-opening-refusal]');
+	const before = await acceptedResultCount(page);
+	await page.locator('[data-opening-place]').click();
+	await expect
+		.poll(
+			async () => {
+				if ((await refusal.count()) > 0) return 'refused';
+				return (await acceptedResultCount(page)) > before ? 'accepted' : 'pending';
+			},
+			{ timeout: 30_000, intervals: [100, 250, 500] }
+		)
+		.not.toBe('pending');
+	if ((await refusal.count()) > 0) throw new Error(`Opening placement refused: ${(await refusal.innerText()).trim()}`);
+	await waitForAcceptedResult(page, before);
+	return commandPresentation(page, 'command:instrument');
+}
+
+/** Remove the selected Opening through the Card's two-press disclosure. */
+async function measureOpeningDelete(page: import('@playwright/test').Page): Promise<number | null> {
+	const action = page.locator('[data-card-action="layout-opening-delete"]');
+	await expect(action).toBeVisible();
+	await action.click();
+	await expect(action).toContainText('Confirm');
+	const before = await acceptedResultCount(page);
+	await action.click();
+	await waitForAcceptedResult(page, before);
+	return commandPresentation(page, 'command:instrument');
+}
+
 async function runDrag(
 	session: MeasuredSession,
 	tier: WorkloadId,
@@ -378,6 +436,45 @@ async function runDrag(
 	await undoRedoCycles(page, undoCycles);
 	expect(await acceptedResultCount(page)).toBeGreaterThanOrEqual(beforeUndoRedo + undoCycles * 2 - 2);
 	addWork(undoRedoWork, workDelta(undoBefore, await readWork(page)));
+
+	// S04 supplemental Opening rows: two create/delete pairs and one Undo/Redo
+	// series over an accepted Opening create, all at the loaded peak. Setup and
+	// the Card's first confirm press stay outside the measured intervals.
+	const openingCreate: number[] = [];
+	const openingDelete: number[] = [];
+	const openingUndo: number[] = [];
+	const openingRedo: number[] = [];
+	if (OPENING_ROWS) {
+		for (const offset of [1, 4]) {
+			await openWall();
+			const create = await measureOpeningCreate(page, offset);
+			if (create !== null) openingCreate.push(create);
+			const deletion = await measureOpeningDelete(page);
+			if (deletion !== null) openingDelete.push(deletion);
+		}
+		await openWall();
+		const openingEditBefore = await acceptedResultCount(page);
+		const openingBeforeF8 = await measureOpeningCreate(page, 1);
+		if (openingBeforeF8 !== null) openingCreate.push(openingBeforeF8);
+		await waitForAcceptedResult(page, openingEditBefore);
+		const openingF8Start = await page.evaluate(() => performance.now());
+		await undoRedoCycles(page, undoCycles);
+		const openingLedger = await readLedger(page);
+		for (const [index, record] of openingLedger.records.entries()) {
+			if (record.time < openingF8Start) continue;
+			if (record.kind !== 'mark' || (record.name !== 'command:undo' && record.name !== 'command:redo')) continue;
+			const next = openingLedger.records
+				.slice(index + 1)
+				.find((candidate) => candidate.kind === 'result' && candidate.name === 'accepted-result');
+			if (next === undefined) continue;
+			const presentedAt = firstFrameAtOrAfter(openingLedger.ticks, next.time);
+			if (presentedAt === null) continue;
+			(record.name === 'command:undo' ? openingUndo : openingRedo).push(presentedAt - record.time);
+		}
+		// Restore the pre-measurement source so the retained-heap sample keeps its
+		// S06 meaning.
+		await undoOnce(page);
+	}
 	const heapAfterSequence = await readHeapAfterGc(session.cdp);
 
 	const ledger = await readLedger(page);
@@ -429,6 +526,10 @@ async function runDrag(
 		redoCompletion: redoCompletions,
 		commitCompletions,
 		precisionCompletions,
+		openingCreateCompletions: openingCreate,
+		openingDeleteCompletions: openingDelete,
+		openingUndoCompletion: openingUndo,
+		openingRedoCompletion: openingRedo,
 		dragCompiled,
 		cacheServed,
 		setupMs,
@@ -634,11 +735,99 @@ test.describe('F3/F4/F8 methodology', () => {
 				};
 				report.rows.push(row);
 				console.log(formatRow(row));
+
+				// S04 supplemental rows: the Opening family S03 deferred, measured with
+				// the same three-run decision rule and 100 ms F4/F8 hard budgets. They
+				// are extra report rows, never part of S06's promised 15 decision rows.
+				if (
+					OPENING_ROWS &&
+					cacheState === 'warm' &&
+					hardBudgets !== undefined &&
+					(tier === 'grid-S' || tier === 'grid-M')
+				) {
+					const openingCreate = runs.flatMap((run) => run.openingCreateCompletions);
+					const openingDelete = runs.flatMap((run) => run.openingDeleteCompletions);
+					const openingUndo = runs.flatMap((run) => run.openingUndoCompletion);
+					const openingRedo = runs.flatMap((run) => run.openingRedoCompletion);
+					const createDecision = decideMilestoneRow({
+						row: `F4-opening-${tier}-${cacheState}`,
+						budgetMs: hardBudgets.F4,
+						perRunP95Ms: runs.map((run) => summarize(run.openingCreateCompletions).p95),
+						pooledP95Ms: summarize(openingCreate).p95,
+						maxRuns: MILESTONE_MAX_RUNS.f3,
+						completedRuns: runs.length
+					});
+					const deleteDecision = decideMilestoneRow({
+						row: `F8-opening-delete-${tier}-${cacheState}`,
+						budgetMs: hardBudgets.F8,
+						perRunP95Ms: runs.map((run) => summarize(run.openingDeleteCompletions).p95),
+						pooledP95Ms: summarize(openingDelete).p95,
+						maxRuns: MILESTONE_MAX_RUNS.f3,
+						completedRuns: runs.length
+					});
+					report.rows.push({
+						id: `F4-opening-${tier}-${cacheState}`,
+						flow: 'F4 Opening create on the shipped palette (S04 supplemental)',
+						workload: `${tierWorkloadLabel(tier)}; two typed Door placements per run at 1.0 and 4.0 m, then one Undo/Redo series over an accepted create`,
+						cacheState,
+						network: NETWORK,
+						browser: `${testInfo.project.name} ${facts.chromeVersion}`,
+						cpuRate: 1,
+						viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+						metrics: {
+							measuredRuns: runs.length,
+							perRunCreateP95: runs.map((run) => summarize(run.openingCreateCompletions).p95).join('/'),
+							perRunDeleteP95: runs.map((run) => summarize(run.openingDeleteCompletions).p95).join('/'),
+							createVerdict: createDecision?.verdict ?? 'undecided',
+							deleteVerdict: deleteDecision?.verdict ?? 'undecided',
+							createRule: createDecision?.rule ?? 'no usable create samples',
+							deleteRule: deleteDecision?.rule ?? 'no usable delete samples'
+						},
+						stats: {
+							openingCreate: summarize(openingCreate),
+							openingDelete: summarize(openingDelete),
+							openingUndo: summarize(openingUndo),
+							openingRedo: summarize(openingRedo)
+						},
+						limitations: [
+							...limitations,
+							'S04 supplemental row, not one of S06\'s 15 promised decision rows',
+							'two create/delete samples per independent run; each run\'s p95 is therefore close to its maximum',
+							'the typed Opening offset is the start edge; the Card\'s first confirm press is outside the delete interval',
+							'presentation is the rendering-opportunity frame, not a traced image'
+						]
+					});
+					report.rows.push({
+						id: `F8-opening-${tier}-${cacheState}`,
+						flow: 'F8 Opening Undo/Redo on the shipped palette (S04 supplemental)',
+						workload: `${tierWorkloadLabel(tier)}; ${smokeOr(UNDO_REDO_CYCLES)} alternating Undo/Redo after one accepted Opening create`,
+						cacheState,
+						network: NETWORK,
+						browser: `${testInfo.project.name} ${facts.chromeVersion}`,
+						cpuRate: 1,
+						viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+						metrics: {
+							measuredRuns: runs.length,
+							perRunUndoP95: runs.map((run) => summarize(run.openingUndoCompletion).p95).join('/'),
+							perRunRedoP95: runs.map((run) => summarize(run.openingRedoCompletion).p95).join('/')
+						},
+						stats: {
+							openingUndo: summarize(openingUndo),
+							openingRedo: summarize(openingRedo)
+						},
+						limitations: [
+							...limitations,
+							'S04 supplemental row, not one of S06\'s 15 promised decision rows',
+							'each Undo/Redo command is a separate measured completion',
+							'presentation is the rendering-opportunity frame, not a traced image'
+						]
+					});
+				}
 				expect(runs.every((run) => run.rows === run.dispatched)).toBe(true);
 			}
 			const path = fileReport(report);
 			console.log(`raw results: ${path}`);
-			expect(report.rows).toHaveLength(3);
+			expect(report.rows).toHaveLength(OPENING_ROWS && (tier === 'grid-S' || tier === 'grid-M') ? 5 : 3);
 		});
 	}
 
