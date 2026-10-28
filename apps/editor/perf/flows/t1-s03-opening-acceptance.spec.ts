@@ -389,6 +389,12 @@ test('starter: place, refuse/repair, remove, undo/redo, save and reload one Open
 		await page.locator('[data-opening-kind]').selectOption('door');
 		await page.locator('[data-opening-width]').press('Tab');
 
+		// An unpressed hover previews the host and offset without claiming the move.
+		const hover = await cssPoint(page, points[0]!);
+		await page.mouse.move(hover.x, hover.y);
+		await expect(page.locator(OPENING_PALETTE)).toContainText(host.id);
+		rows.push(row('starter.hover', 'unpressed hover previews the host', 'passed', host.id, page, '1440x900', false));
+
 		const before = await acceptedResultCount(page);
 		await clickWorld(page, points[0]!);
 		await waitForAcceptedResult(page, before);
@@ -439,8 +445,29 @@ test('starter: place, refuse/repair, remove, undo/redo, save and reload one Open
 		await expect(page.locator(OPENING_REFUSAL)).toContainText('Check the Opening Width');
 		expect(layoutOf(await downloadSource(page)).openings).toHaveLength(2);
 		rows.push(row('starter.invalid', 'invalid measures block pointer placement', 'passed', 'no stale-value Opening installed', page, '1440x900', false));
-		await page.locator('[data-opening-width]').fill('0.9');
-		await page.locator('[data-opening-width]').press('Tab');
+
+		// Closing and reopening Ink discards the invalid draft; the remembered
+		// measures are valid and the adapter must agree before the next placement.
+		await page.getByRole('button', { name: 'Close Ink' }).click();
+		await expect(page.locator(INK)).toHaveCount(0);
+		const inkKey = page.locator('[data-dock-tool="layout-ink"]');
+		if ((await inkKey.getAttribute('aria-pressed')) === 'true') {
+			await inkKey.click();
+			await expect(inkKey).toHaveAttribute('aria-pressed', 'false');
+		}
+		await armOpening(page);
+		await expect(page.locator('[data-opening-width]')).toHaveValue('0.9');
+		await expect(page.locator('.error')).toHaveCount(0);
+		await selectSubject(page, host.id);
+		await armOpening(page);
+		await page.locator('[data-opening-offset]').fill('5');
+		await page.locator('[data-opening-place]').click();
+		await expect.poll(async () => layoutOf(await downloadSource(page)).openings.length, { timeout: 20_000 }).toBe(3);
+		const beforeRemountUndo = await acceptedResultCount(page);
+		await page.locator('[data-editor-history]').getByRole('button', { name: 'Undo', exact: true }).click();
+		await waitForAcceptedResult(page, beforeRemountUndo);
+		expect(layoutOf(await downloadSource(page)).openings).toHaveLength(2);
+		rows.push(row('starter.remount-validity', 'reopened Ink accepts remembered valid measures', 'passed', 'typed placement accepted, then Undo', page, '1440x900', false));
 
 		await selectSubject(page, placed[0]!.id);
 		await expect(page.locator(OPENING_DELETE)).toBeVisible();
@@ -521,6 +548,44 @@ test('starter: place, refuse/repair, remove, undo/redo, save and reload one Open
 
 		expect(errors).toEqual([]);
 		for (const evidenceRow of rows) await writeEvidence(evidenceRow);
+	} finally {
+		await started.close();
+	}
+});
+
+test('3D: place on a visible Wall face, not only at datum height', async ({ browser, baseURL }) => {
+	test.setTimeout(240_000);
+	const started = await session(browser, baseURL!, { viewport: { width: 1440, height: 900 } });
+	try {
+		const { page, errors } = started;
+		await startProject(page, 'Enclosed room');
+		await fitPlan(page);
+		await setReading(page, '3D');
+		await armOpening(page);
+		const host = hostWalls(await downloadSource(page))[0]!;
+		let face: [number, number, number] | null = null;
+		for (const fraction of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
+			const base = along(host, fraction);
+			const point: [number, number, number] = [base[0], 1, base[2]];
+			if (!(await exposed(page, point))) continue;
+			const { x, y } = await cssPoint(page, point);
+			await page.mouse.move(x, y);
+			await page.waitForTimeout(120);
+			const hostText = await page.locator('[data-layout-opening-palette] .live dd').first().innerText();
+			if (!hostText.includes('Aim at a Wall face')) {
+				face = point;
+				break;
+			}
+		}
+		if (face === null) throw new Error('no raised Wall face previewed a host in 3D');
+		const before = await acceptedResultCount(page);
+		await clickWorld(page, face);
+		await expect.poll(async () => layoutOf(await downloadSource(page)).openings.length, { timeout: 20_000 }).toBe(1);
+		const opening = layoutOf(await downloadSource(page)).openings[0]!;
+		expect(opening.wallId).toBe(host.id);
+		expect(opening.offset).toBeGreaterThan(0);
+		expect(errors).toEqual([]);
+		await writeEvidence(row('3d.face', '3D Wall face is a host', 'passed', `${opening.id} at ${opening.offset.toFixed(3)} m`, page, '1440x900', false, await capture(page, 't1-s03-3d-face.png')));
 	} finally {
 		await started.close();
 	}

@@ -276,6 +276,19 @@ describe('T1.P02.S03 — Opening placement', () => {
 		expect(acceptedLayout(mounted.facade).openings).toHaveLength(1);
 	});
 
+	it('previews an Opening on an unpressed hover without claiming the move', async () => {
+		const mounted = await mount();
+		const controller = armInk(mounted.facade);
+		controller.setReading('opening');
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const at = stageCss(mounted.facade, [3, 0]);
+		const result = mounted.facade.pointerIntent({ phase: 'move', css: at, evaluationId });
+		expect(result.claimed).toBe(false);
+		expect(inkSurface()!.snapshot().opening).toMatchObject({ hostId: mounted.wallId });
+		expect(inkSurface()!.snapshot().opening?.offset).toBeCloseTo(3, 2);
+	});
+
 	it('places by exact offset on the selected host with the keyed window metrics', async () => {
 		const mounted = await mount();
 		const baseline = mounted.facade.snapshot().canonicalJson;
