@@ -6,7 +6,6 @@ A scope absent from this table is held. A row states the condition under which t
 
 | Scope | Condition | Plan |
 | --- | --- | --- |
-| `T1.P02.S04` | released; owner-authorized 2026-10-28 ([record](../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)) from `main` at `db7e5cd9`, the verified PR #209 merge, rebased onto `1e6e73aa` (PR #208) for the final evidence at `d1fe6e5c`; exhaustive integrated **correctness and functional** acceptance of native Wall creation; the [2026-10-28 performance-mandate suspension](../reference/decisions/performance-mandate-suspension-2026-10-28.md) removes the deferred benchmark family from the gate, leaves unmeasured rows unmeasured, and authorizes no benchmark; recheck every consumed gate and active scope at its own trusted base; passing makes the phase closable, not closed | [Integrated final gate](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/implementation-plan.md) |
 | `T5.P01.S01` | released; starts after PR #207 merges on `main`; the T2 prerequisite merged with PR #199 and T2.P02 closed 2026-10-27; recheck consumed gates and active scopes at its own trusted base | [Native form source and evaluation](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md) |
 
 Provenance: the
@@ -26,6 +25,12 @@ reachable). The
 [performance foundation](../reference/decisions/performance-foundation-authorization-2026-10-24.md)
 and [post-Batch-E](../reference/decisions/post-batch-e-authorization-2026-10-23.md) records keep the
 earlier permission history, and each pruned row's own acceptance record keeps its evidence.
+
+The
+[T1.P02 phase-close and S04 release decision](../reference/decisions/t1-p02-phase-close-and-s04-release-2026-10-28.md)
+prunes the **verified shipped** `T1.P02.S04` row after its final gate was accepted at `46a31c81`
+and P1-merged in `eb0931d6` (PR #210); T1.P02 closed 2026-10-28 by owner ruling (phase-close PR
+#211). The `T5.P01.S01` row remains.
 
 T3 provenance: the [phase-close and P04 authorization decision](../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)
 closed `T3.P02` and `T3.P03` and released `T3.P04.S01`; that scope shipped, closed 2026-10-25 and no
