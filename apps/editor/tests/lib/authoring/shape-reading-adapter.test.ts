@@ -525,6 +525,9 @@ describe('T5.P01.S02 — Shape reading', () => {
 		}
 		shape.controller.finish();
 		expect(shape.snapshot().depth).toBe(1);
+		// Invalid typed text must not survive a later, valid handle drag.
+		shape.controller.setDepth('0');
+		expect(shape.snapshot().canCreate).toBe(false);
 
 		const evaluationId = mounted.facade.evaluationId()!;
 		const from = stageCss(mounted.facade, [3, 1, 3]);
@@ -602,6 +605,48 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(generator.kind).toBe('extrude');
 		if (generator.kind !== 'extrude') return;
 		expect(generator.extent).toBeCloseTo(1.5, 3);
+	});
+
+	it('cancels a live size ray when another task opens', async () => {
+		const mounted = await mount();
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		for (const point of [
+			[2, 0, 2],
+			[4, 0, 2],
+			[4, 0, 4],
+			[2, 0, 4]
+		] as const) {
+			click(mounted.facade, point);
+		}
+		shape.controller.finish();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		shape.controller.create();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK);
+		const created = acceptedForms(mounted.facade)[0]!;
+		const width = formSizeMeasurement(created).handles.find((handle) => handle.axis === 0)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, width.world);
+		const to = stageCss(mounted.facade, [width.world[0] + 1, width.world[1], width.world[2]]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+
+		// A task now owns the pointer. The open size lease must be gone, or every
+		// later gesture is refused and its preview can linger.
+		const opened = mounted.facade.openContributedTask('layout-ink');
+		expect(opened.kind).toBe('opened');
+		const probe = mounted.facade.acquireGesture({
+			owner: 'size-test-probe',
+			evaluationId,
+			policy: 'cancel-on-reading-change'
+		});
+		expect(probe.kind).toBe('granted');
+		if (probe.kind === 'granted') probe.lease.release();
+
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		expect(acceptedForms(mounted.facade)[0]!.form.scale).toEqual([1, 1, 1]);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
 	it('answers Finish, Backtrack and Cancel from the Stage keyboard', async () => {
