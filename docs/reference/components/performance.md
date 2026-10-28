@@ -35,6 +35,9 @@ are outside those grids and stay uncertified here. `npm run perf` refuses; it do
 former multi-hour suite. The budgets and recorded results below are historical. An unmeasured row
 stays unmeasured.
 
+The [measurement repair evidence](../evidence/lean-ml-spot-2026-10-28/README.md) withdraws the
+original #214 commit claims and records source-matched open, commit and pick observations.
+
 Where the sections below say a row must pass before acceptance, that obligation is suspended by
 this amendment; the text is retained as the historical method and budget definition. Correctness,
 architecture, build, package, DB-backed API and functional browser verification are unchanged.

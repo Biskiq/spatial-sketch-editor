@@ -68,6 +68,9 @@ typed operation and are invalid. They establish no commit-performance finding. N
 operation-matched acceptance, a matching rendered source, and verified preview provenance.
 See the [harness method](../../../apps/editor/perf/README.md#correlation-sessions-and-provenance).
 
+The repair and all measured attempts are recorded in the
+[measurement evidence](../evidence/lean-ml-spot-2026-10-28/README.md).
+
 ## Owner signature
 
 ```text

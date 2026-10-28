@@ -1,0 +1,129 @@
+{
+  "base": "94798241ce4de87b26febb5a12d24f52c64af8a2",
+  "measuredRevision": "d5097580bed2541276bab45ca90fa0509d4bfece",
+  "fullCorrectness": {
+    "command": "npm test",
+    "files": 226,
+    "passed": 2876,
+    "failed": 0,
+    "includesHeavy": true
+  },
+  "focusedInstrumentation": {
+    "command": "npm exec -w @portfolio/editor -- vitest run tests/lib/perf tests/lib/authoring/layout-wall-manipulation.test.ts tests/lib/authoring/layout-precision-adapter.test.ts tests/lib/platform/perf-marks.test.ts",
+    "files": 8,
+    "passed": 76
+  },
+  "architecture": {
+    "command": "npm run test:arch",
+    "passed": 188
+  },
+  "typesAndBuild": {
+    "passed": [
+      "npx tsc --noEmit -p apps/editor/tsconfig.json",
+      "npm run check",
+      "npm run build",
+      "npm run check:layout-core",
+      "npm run check:project-model",
+      "npm run check:camera-core",
+      "npm run check:geometry-core",
+      "npm run check:api"
+    ],
+    "svelteErrors": 0,
+    "svelteWarnings": 0
+  },
+  "api": {
+    "command": "DATABASE_URL=postgresql://localhost:5432/pr214_verification_20261028 npm run test:api",
+    "passed": 115,
+    "failed": 0,
+    "skipped": 0,
+    "database": "task-private database; created and dropped by this task"
+  },
+  "functionalBrowser": {
+    "spec": "t1-s04-integrated-acceptance.spec.ts",
+    "project": "chromium",
+    "passed": 4,
+    "recordedChecks": 26,
+    "runtimeRevision": "69123df5df7c4204ea8804a5a72e861b1f23aa76",
+    "note": "Product source, Vite config and Svelte config are unchanged between this revision and d5097580."
+  },
+  "browserWiring": {
+    "spec": "spot-wiring.spec.ts",
+    "project": "chrome",
+    "passed": 1,
+    "fixture": "one correctness Room, no M/L tier or feel label",
+    "runtimeRevision": "5f4dab1075c7e132d1a01eb7a502fa275ae6f8fe",
+    "harness": "working tree subsequently committed as d5097580; product source unchanged"
+  },
+  "retiredSuite": {
+    "command": "node apps/editor/perf/retired-suite.mjs",
+    "exit": 1,
+    "behavior": "refused; no comprehensive benchmark ran"
+  },
+  "verificationAttempts": [
+    {
+      "result": "full suite passed before final tests were added",
+      "passed": 2871
+    },
+    {
+      "result": "concurrent browser QA repeat timed out in existing 400-Room correctness case",
+      "passed": 2872,
+      "failed": 1,
+      "timeoutMs": 120000
+    },
+    {
+      "result": "repeat without browser contention passed",
+      "passed": 2873
+    },
+    {
+      "result": "final suite including entrypoint regression passed",
+      "passed": 2874
+    },
+    {
+      "result": "final suite including pick/pan regressions passed",
+      "passed": 2876
+    }
+  ],
+  "measuredSessions": [
+    {
+      "file": "incomplete-5f4dab10.json",
+      "status": "incomplete; pick and pan observations invalid; no feel claim"
+    },
+    {
+      "file": "spot-d5097580.json",
+      "status": "complete; verified preview; one session per tier; no additional session requested"
+    }
+  ],
+  "power": {
+    "start": {
+      "capturedAt": "2026-10-28T16:56:16.989Z",
+      "machineModel": "Mac14,2",
+      "cpu": "Apple M2",
+      "memoryBytes": "17179869184",
+      "macOSVersion": "15.8.2",
+      "powerSource": "AC Power",
+      "lowPowerMode": "off",
+      "chromeCliVersion": "Google Chrome 156.0.8078.48",
+      "nodeVersion": "v26.7.0"
+    },
+    "end": {
+      "capturedAt": "2026-10-28T16:59:41.016Z",
+      "machineModel": "Mac14,2",
+      "cpu": "Apple M2",
+      "memoryBytes": "17179869184",
+      "macOSVersion": "15.8.2",
+      "powerSource": "AC Power",
+      "lowPowerMode": "off",
+      "chromeCliVersion": "Google Chrome 156.0.8078.48",
+      "nodeVersion": "v26.7.0"
+    }
+  },
+  "rawHashes": {
+    "incomplete-5f4dab10.json": "33d21b029fdea03d2601225e01c16ded822cdd95496e857f44929f824d3d820d",
+    "spot-d5097580.json": "955a085a73b1e2eb0ebfbe44a1c7163e5deef7b304c5167852ee79cf1721405c"
+  },
+  "archivalEncoding": "Compact JSON, with every value preserved; parsed equality checked against original report files.",
+  "sourceReportHashes": {
+    "incomplete-5f4dab10.json": "92e7b5726bdf804eb2e9297d2de7bcd2165ac03429b22f316851c7e857fd1f9e",
+    "spot-d5097580.json": "52408df8bbd26a8b6950950d5cc45c7e88694ba72fe62ffd3bd96ef92e7af8da"
+  }
+}
