@@ -30,6 +30,7 @@ One local accepted history with Undo/Redo, unit F4 acceptance and conditional cl
 over the Camera/Experience source cutover and its shared execution interpreter
 ([T3.P01](../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md#bounded-outcome)).
 The later bounded loops add [straight-Wall drawing, closure, division and deletion](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
+[straight Wall-hosted door and window placement and deletion](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/acceptance.md),
 [single-model GLB import](../roadmap/t2-composition/t2.p02-own-model-import/README.md#outcome)
 and [Camera capture, Presentation/Guide authoring and isolated Cut Preview](../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
 Their acceptance records retain owner overrides, unrun rows and deferred evidence; this is no

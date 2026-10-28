@@ -43,6 +43,8 @@
 
 import {
 	mintLayoutIdCapture,
+	planCreateWallFirstOpening,
+	planDeleteWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
@@ -83,6 +85,13 @@ import {
 	type ChainPlanPreview
 } from './layout/chain';
 import {
+	createOpeningPlanners,
+	openingCreateIntent,
+	openingDeleteIntent,
+	openingRefusalWords,
+	type OpeningCreatePayload
+} from './layout/opening-planners';
+import {
 	createDrawingPlanners,
 	planWallDeletion,
 	wallChainCommitIntent,
@@ -91,11 +100,15 @@ import {
 } from './layout/drawing-planners';
 import {
 	classifyInkPointerTarget,
+	classifyOpeningHost,
+	offsetAlongWall,
 	pointOnWallCenterline,
 	publishInkSurface,
 	type InkController,
+	type InkOpeningOptions,
 	type InkPaletteSnapshot,
 	type InkPointerTarget,
+	type InkReading,
 	type ProjectedJunction,
 	type ProjectedWall
 } from './layout/ink';
@@ -104,6 +117,7 @@ import {
 	createLayoutPlanners,
 	layoutFacts,
 	layoutSubjectOf,
+	parseMeasureInput,
 	parsePlacementXZ,
 	planWallManipulation,
 	wallFrame,
@@ -197,6 +211,22 @@ function pointerDatumPoint(
 	return hit.kind === 'intersected' ? [hit.worldPoint[0], hit.worldPoint[2]] : null;
 }
 
+/**
+ * One host-relative Opening candidate.
+ *
+ * `offset` is the exact near-edge distance from the canonical Wall start; the
+ * ghost edges are world points for the overlay. A candidate that does not fit is
+ * still shown (with planner words), never moved to make it fit.
+ */
+type OpeningCandidate = {
+	readonly wallId: string;
+	readonly offset: number;
+};
+
+type OpeningPreview =
+	| { readonly kind: 'planned'; readonly openingId: string }
+	| { readonly kind: 'refused'; readonly message: string };
+
 /** One claimed Wall gesture, from its immutable baseline to its one commit. */
 type WallGesture = {
 	/** The evaluation the press was measured in; a change pauses the writer. */
@@ -218,7 +248,11 @@ type WallGesture = {
 };
 
 export const createAdapter: StageAdapterFactory = (services) => {
-	for (const planner of [...createLayoutPlanners(), ...createDrawingPlanners()]) {
+	for (const planner of [
+		...createLayoutPlanners(),
+		...createDrawingPlanners(),
+		...createOpeningPlanners()
+	]) {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
@@ -234,6 +268,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	 */
 	let inkThickness: number | null = null;
 	let inkHeight: number | null = null;
+	/**
+	 * The one Ink tool's current reading. It is adapter memory so a content
+	 * install's binding rebuild re-arms the tool on the reading the creator was
+	 * using, not on a shell default.
+	 */
+	let inkReading: InkReading = 'wall';
+	/** The next Opening's kind and exact defaults; UI state only, never serialized. */
+	let openingOptions: InkOpeningOptions = {
+		kind: 'door',
+		width: 0.9,
+		height: 2.1,
+		sillHeight: 0
+	};
+	/** The palette's fields are currently valid; pointer placement must honour that. */
+	let openingOptionsValid = true;
 	/**
 	 * The deleted-Wall disclosure is derived from the canonical planner, which is
 	 * a full planning pass; the Card asks for it on render, so the answer for one
@@ -270,6 +319,22 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * authored operations that were meant to be one.
 			 */
 			let chainCommitInFlight = false;
+			let rearmEpoch = 0;
+			/**
+			 * The Opening reading's own one-operation state: one capture for preview
+			 * and commit, one in-flight acceptance, and a press lease that is released
+			 * on every exit path (up, cancel, reading switch, task close, dispose).
+			 */
+			let openingCapture: ReturnType<typeof mintLayoutIdCapture> | null = null;
+			let openingCandidate: OpeningCandidate | null = null;
+			let openingPreview: OpeningPreview | null = null;
+			let openingNotice: string | null = null;
+			let openingCommitInFlight = false;
+			let openingPress: {
+				readonly evaluationId: string;
+				readonly lease: GestureAcquisition | null;
+				readonly css: readonly [number, number];
+			} | null = null;
 			let inkPress: {
 				/** Where the press landed, in Stage-local CSS: the drag's own first point. */
 				readonly origin: readonly [number, number];
@@ -401,6 +466,427 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return { junctions, walls };
 			}
 
+			/* --- Opening: host preference and one host-relative candidate ----- */
+
+			/** The Wall a selected subject should prefer as host, or `null`. */
+			function preferredHostOf(sourceKind: string, sourceId: string): string | null {
+				if (sourceKind === 'wall') return sourceId;
+				if (sourceKind !== 'opening') return null;
+				return document.openings.find((opening) => opening.id === sourceId)?.wallId ?? null;
+			}
+
+			/** The host Wall's frame and resolved length, when it has one. */
+			function openingSpan(wallId: string): { frame: WallFrame; length: number } | null {
+				const frame = wallFrame(document, wallId);
+				if (frame === null) return null;
+				const length = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
+				return length > 0 ? { frame, length } : null;
+			}
+
+			/**
+			 * The two ghost edge points in world space for one host-relative offset.
+			 * They are drawn even when the candidate overruns the Wall, so the refusal
+			 * points at the same geometry the planner rejected instead of hiding it.
+			 */
+			function openingGhost(
+				wallId: string,
+				offset: number
+			): readonly [LayoutVec2, LayoutVec2] | null {
+				const span = openingSpan(wallId);
+				if (span === null) return null;
+				const { frame, length } = span;
+				const at = (distance: number): LayoutVec2 => [
+					frame.start[0] + ((frame.end[0] - frame.start[0]) / length) * distance,
+					frame.start[1] + ((frame.end[1] - frame.start[1]) / length) * distance
+				];
+				return [at(offset), at(offset + openingOptions.width)];
+			}
+
+			/**
+			 * Plan the exact candidate with the canonical create planner. Preview and
+			 * acceptance share the minted capture, so the id the ghost implies is the id
+			 * acceptance writes.
+			 */
+			function planOpeningCandidate(candidate: OpeningCandidate): OpeningPreview {
+				const capture = openingCapture ?? mintLayoutIdCapture();
+				openingCapture = capture;
+				const payload: OpeningCreatePayload = {
+					wallId: candidate.wallId,
+					kind: openingOptions.kind,
+					offset: candidate.offset,
+					width: openingOptions.width,
+					height: openingOptions.height,
+					sillHeight: openingOptions.sillHeight
+				};
+				const plan = planCreateWallFirstOpening(document, payload, capture, levelId);
+				return plan.kind === 'rejected'
+					? { kind: 'refused', message: openingRefusalWords(document, plan.rejection, payload) }
+					: { kind: 'planned', openingId: plan.changedOpeningIds[0]! };
+			}
+
+			/** Re-plan the current candidate (pointer or typed) after any change. */
+			function refreshOpeningPreview(): void {
+				openingPreview =
+					openingCandidate === null
+						? null
+						: !openingOptionsValid
+							? {
+									kind: 'refused',
+									message: 'Check the Opening Width, Height and Sill before placing.'
+								}
+							: planOpeningCandidate(openingCandidate);
+			}
+
+			/** Set the candidate and publish its planner answer. */
+			function setOpeningCandidate(next: OpeningCandidate | null): void {
+				openingCandidate = next;
+				if (next === null) {
+					openingPreview = null;
+					return;
+				}
+				openingNotice = null;
+				refreshOpeningPreview();
+			}
+
+			/** Drop every Opening-reading transient; no document write. */
+			function clearOpeningState(): void {
+				openingCandidate = null;
+				openingPreview = null;
+				openingNotice = null;
+				openingCapture = null;
+				endOpeningPress();
+			}
+
+			function endOpeningPress(): void {
+				const current = openingPress;
+				openingPress = null;
+				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+			}
+
+			/**
+			 * The visible Wall face under the pointer, not just its datum line.
+			 * A 3D face is a vertical quad; intersecting its span plane and keeping the
+			 * hit only inside the authored height makes a click anywhere on the face
+			 * name the same host and signed offset as a click at the base.
+			 */
+			function openingFaceAt(
+				adapterContext: StageAdapterContext,
+				css: readonly [number, number],
+				walls: readonly ProjectedWall[]
+			): OpeningCandidate | null {
+				// `css` is Stage-local; the viewport ray expects viewport coordinates.
+				const ray = adapterContext.ray([
+					css[0] + adapterContext.evaluation.rect.left,
+					css[1] + adapterContext.evaluation.rect.top
+				]);
+				if (ray === null) return null;
+				const datum = adapterContext.snapshot.domain.datumMeters;
+				const preferredWallId = adapterContext.selectionState().primary;
+				const preferred =
+					preferredWallId === null
+						? null
+						: preferredHostOf(preferredWallId.subject.kind, preferredWallId.subject.id);
+				let best: { readonly candidate: OpeningCandidate; readonly distance: number } | null = null;
+				let preferredBest: { readonly candidate: OpeningCandidate; readonly distance: number } | null = null;
+				for (const wall of walls) {
+					const data = document.walls.find((candidate) => candidate.id === wall.id);
+					if (data === undefined) continue;
+					const dx = wall.end[0] - wall.start[0];
+					const dz = wall.end[1] - wall.start[1];
+					const length = Math.hypot(dx, dz);
+					if (!(length > 0)) continue;
+					const hit = adapterContext.intersect(ray, {
+						originMeters: [wall.start[0], datum, wall.start[1]],
+						normal: [-dz / length, 0, dx / length],
+						yawRadians: Math.atan2(dx, dz),
+						datumMeters: datum,
+						supportedLocalExtent: null
+					});
+					if (hit.kind !== 'intersected') continue;
+					const offset =
+						((hit.worldPoint[0] - wall.start[0]) * dx +
+							(hit.worldPoint[2] - wall.start[1]) * dz) /
+						length;
+					const y = hit.worldPoint[1];
+					if (offset < 0 || offset > length || y < datum || y > datum + data.height) continue;
+					const candidate = { wallId: wall.id, offset };
+					if (best === null || hit.distanceMeters < best.distance) {
+						best = { candidate, distance: hit.distanceMeters };
+					}
+					if (wall.id === preferred && (preferredBest === null || hit.distanceMeters < preferredBest.distance)) {
+						preferredBest = { candidate, distance: hit.distanceMeters };
+					}
+				}
+				return (preferredBest ?? best)?.candidate ?? null;
+			}
+
+			/** The candidate one Stage-local pointer position names, or `null`. */
+			function openingCandidateAt(
+				adapterContext: StageAdapterContext,
+				css: readonly [number, number]
+			): OpeningCandidate | null {
+				const projected = projectedScene(adapterContext);
+				const face = openingFaceAt(adapterContext, css, projected.walls);
+				if (face !== null) return face;
+				const primary = adapterContext.selectionState().primary;
+				const hit = classifyOpeningHost({
+					css,
+					walls: projected.walls,
+					preferredWallId:
+						primary === null ? null : preferredHostOf(primary.subject.kind, primary.subject.id)
+				});
+				if (hit === null) return null;
+				const wall = projected.walls.find((candidate) => candidate.id === hit.wallId);
+				if (wall === undefined) return null;
+				const point = pointerDatumPoint(adapterContext, css);
+				if (point === null) return null;
+				const offset = offsetAlongWall(wall, [point[0], point[1]]);
+				return { wallId: wall.id, offset };
+			}
+
+			/**
+			 * A typed placement on the preferred host: empty offset centers exactly;
+			 * a typed offset is used verbatim, never clamped. The planner still owns fit.
+			 */
+			function openingCandidateForHost(wallId: string, offsetText: string): OpeningCandidate | null {
+				const span = openingSpan(wallId);
+				if (span === null) {
+					openingNotice = 'That Wall has no resolvable span. Repair it or select another Wall.';
+					return null;
+				}
+				const { length } = span;
+				let offset: number;
+				if (offsetText.trim() === '') {
+					if (openingOptions.width > length) {
+						openingNotice = `A ${openingOptions.width.toFixed(2)} m ${openingOptions.kind} is wider than the ${length.toFixed(2)} m Wall. Narrow the Opening or choose another host.`;
+						return null;
+					}
+					offset = (length - openingOptions.width) / 2;
+				} else {
+					const parsed = parseMeasureInput(offsetText);
+					if (!parsed.ok) {
+						openingNotice = `Offset: ${parsed.reason}`;
+						return null;
+					}
+					if (parsed.value < 0) {
+						openingNotice = 'Offset must be zero or greater.';
+						return null;
+					}
+					offset = parsed.value;
+				}
+				return { wallId, offset };
+			}
+
+			/**
+			 * Re-arm Ink after an install, on the next live evaluation.
+			 *
+			 * An install disposes the binding synchronously; its replacement is built on
+			 * the next evaluation, so opening the task in the acceptance continuation
+			 * would find no contributed task. One frame later the rebuilt task exists.
+			 * The session writer generation also guards choices made on the replacement
+			 * binding, including a task opened and closed before the frame runs.
+			 */
+			function rearmInkAfterInstall(): void {
+				if (typeof window === 'undefined') return;
+				const epoch = ++rearmEpoch;
+				const generation = services.stage.session.writerGeneration();
+				let attempts = 0;
+				const open = () => {
+					if (epoch !== rearmEpoch || services.stage.session.writerGeneration() !== generation ||
+						services.stage.session.task() !== null) return;
+					const result = services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
+					if (result.kind === 'refused' && result.code === 'unknown-task' && attempts < 3) {
+						attempts += 1;
+						window.requestAnimationFrame(open);
+						return;
+					}
+					if (epoch !== rearmEpoch) return;
+					services.stage.notifySurfaceChange();
+				};
+				window.requestAnimationFrame(open);
+			}
+
+			/** Install one created Opening as the selection, by id, on the fresh source. */
+			function selectLayoutSubject(sourceKind: 'wall' | 'opening', sourceId: string): void {
+				const fresh = services.stage.snapshot();
+				services.stage.select({
+					sourceId,
+					sourceKind,
+					generationId: fresh.compileGeneration,
+					ref: {
+						sourceId,
+						sourceKind,
+						generationId: fresh.compileGeneration,
+						stream: 'projected',
+						subRef: null
+					}
+				});
+			}
+
+			/**
+			 * Accept one Opening placement exactly once.
+			 *
+			 * The preview's capture is the accepted intent's capture; a refusal leaves
+			 * the candidate editable and writes no source.
+			 */
+			async function commitOpening(target: OpeningCandidate | null = openingCandidate): Promise<void> {
+				if (openingCommitInFlight || target === null || inkReading !== 'opening') return;
+				if (!openingOptionsValid) {
+					openingNotice = 'Check the Opening Width, Height and Sill before placing.';
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return;
+				}
+				const preview = planOpeningCandidate(target);
+				openingPreview = preview;
+				if (preview.kind === 'refused') {
+					openingNotice = preview.message;
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return;
+				}
+				openingCommitInFlight = true;
+				const taskChoice = services.stage.session.taskChoiceGeneration();
+				try {
+					const capture = openingCapture ?? mintLayoutIdCapture();
+					openingCapture = capture;
+					const snapshot = services.stage.snapshot();
+					const payload: OpeningCreatePayload = {
+						wallId: target.wallId,
+						kind: openingOptions.kind,
+						offset: target.offset,
+						width: openingOptions.width,
+						height: openingOptions.height,
+						sillHeight: openingOptions.sillHeight
+					};
+					const outcome = await services.authoring.accept(
+						openingCreateIntent({
+							payload,
+							capture,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision: stageUnitRevision(snapshot, 'layout'),
+							levelId: snapshot.domain.layoutLevelId
+						})
+					);
+					if (outcome.kind === 'refused') {
+						openingNotice = outcome.message;
+						services.stage.notifySurfaceChange();
+						publishInk();
+						return;
+					}
+					const shouldRearm = services.stage.session.taskChoiceGeneration() === taskChoice &&
+						services.stage.session.task() === null;
+					const openingId = preview.openingId;
+					clearOpeningState();
+					selectLayoutSubject('opening', openingId);
+					// The install replaced the binding; re-arm Ink on the next evaluation
+					// against the installed source, on the remembered Opening reading.
+					if (shouldRearm) rearmInkAfterInstall();
+					services.stage.notifySurfaceChange();
+				} finally {
+					openingCommitInFlight = false;
+				}
+			}
+
+			/** The Opening half of the pointer contract. */
+			function openingPointer(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				if (intent.phase === 'down') {
+					if (!openingOptionsValid) {
+						openingNotice = 'Check the Opening Width, Height and Sill before placing.';
+						setOpeningCandidate(null);
+						services.stage.notifySurfaceChange();
+						publishInk();
+						return true;
+					}
+					const candidate = openingCandidateAt(adapterContext, intent.css);
+					if (candidate === null) {
+						openingNotice = 'Aim at a Wall face to place an Opening; the Stage is not a free host.';
+						setOpeningCandidate(null);
+						services.stage.notifySurfaceChange();
+						publishInk();
+						return true;
+					}
+					const acquisition = services.stage.acquireGesture({
+						owner: LAYOUT_INK_TASK,
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') {
+						openingNotice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+						publishInk();
+						return false;
+					}
+					openingPress = {
+						evaluationId: intent.evaluationId,
+						lease: acquisition,
+						css: intent.css
+					};
+					setOpeningCandidate(candidate);
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return true;
+				}
+				const current = openingPress;
+				if (current === null) return false;
+				if (intent.phase === 'cancel' || intent.evaluationId !== current.evaluationId) {
+					endOpeningPress();
+					setOpeningCandidate(null);
+					openingNotice =
+						intent.phase === 'cancel' ? null : 'The reading changed; aim again on the Wall.';
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const candidate = openingCandidateAt(adapterContext, intent.css);
+					if (candidate === null) {
+						openingNotice = 'Aim at a Wall face to place an Opening.';
+						setOpeningCandidate(null);
+					} else {
+						setOpeningCandidate(candidate);
+					}
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return true;
+				}
+				// Release: one click commits the candidate under the pointer, once.
+				const release = openingCandidateAt(adapterContext, intent.css) ?? openingCandidate;
+				endOpeningPress();
+				if (release === null) {
+					openingNotice = 'Aim at a Wall face to place an Opening.';
+					setOpeningCandidate(null);
+				} else {
+					setOpeningCandidate(release);
+					void commitOpening(release);
+				}
+				services.stage.notifySurfaceChange();
+				publishInk();
+				return true;
+			}
+
+			/** Preview the candidate under an unpressed hover; never claims the move. */
+			function openingHover(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				if (openTaskKind !== LAYOUT_INK_TASK || inkReading !== 'opening' || intent.phase !== 'move') {
+					return false;
+				}
+				const candidate = openingCandidateAt(adapterContext, intent.css);
+				if (candidate?.wallId === openingCandidate?.wallId && candidate?.offset === openingCandidate?.offset) {
+					return true;
+				}
+				setOpeningCandidate(candidate);
+				services.stage.notifySurfaceChange();
+				publishInk();
+				return true;
+			}
+
 			/**
 			 * The deliberate target one Stage-local pointer position names, in world
 			 * coordinates. `null` when the working plane cannot be resolved there.
@@ -455,7 +941,28 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const effective = 'points' in withHover ? withHover : draft;
 				const pending =
 					inkHover === null ? null : pendingLegFacts(draft, inkHover.point);
+				const selection = services.stage.selection();
+				const selectedHostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
+					reading: inkReading,
+					opening:
+						inkReading !== 'opening'
+							? null
+							: {
+									hostId,
+									selectedHostId,
+									offset: openingCandidate?.offset ?? null,
+									width: openingOptions.width,
+									height: openingOptions.height,
+									sillHeight: openingOptions.sillHeight,
+									kind: openingOptions.kind,
+									canPlace: openingPreview?.kind === 'planned',
+									refusal:
+										openingNotice ??
+										(openingPreview?.kind === 'refused' ? openingPreview.message : null)
+								}
+					,
 					points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
 					closed: effective.closed,
 					canFinish: draft.points.length >= 2,
@@ -516,6 +1023,49 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				const controller: InkController = {
+					setReading: (next) => {
+						if (next === inkReading) return;
+						if (next === 'opening' && draft.points.length > 0) {
+							inkNotice = 'Finish or cancel the Wall chain before switching readings.';
+							publishInk();
+							return;
+						}
+						inkReading = next;
+						inkNotice = null;
+						// The palette remounts from the last valid options on the next Opening
+						// reading, so its fields and the adapter agree again.
+						if (next === 'opening') openingOptionsValid = true;
+						clearOpeningState();
+						if (next === 'wall') {
+							inkHover = null;
+							refreshInkPreview();
+						}
+						services.stage.notifySurfaceChange();
+						publishInk();
+					},
+					setOpeningOptions: (options) => {
+						openingOptionsValid = options !== null;
+						if (options !== null) openingOptions = options;
+						if (openingCandidate !== null) refreshOpeningPreview();
+						services.stage.notifySurfaceChange();
+						publishInk();
+					},
+					placeOpening: (offsetText) => {
+						const selection = services.stage.selection();
+						const hostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+						if (hostId === null) {
+							openingNotice = 'Select a Wall — or one of its Openings — before placing by offset.';
+							publishInk();
+							return;
+						}
+						const candidate = openingCandidateForHost(hostId, offsetText);
+						if (candidate === null) {
+							publishInk();
+							return;
+						}
+						setOpeningCandidate(candidate);
+						void commitOpening(candidate);
+					},
 					finish: () => void commitChain(),
 					close: () => {
 						const closed = closeChainDraft(draft);
@@ -894,8 +1444,76 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						view: { component: LayoutCardFields, services }
 					};
 				},
-				/** The Wall's scoped delete, disclosing its consequences first. */
+				/**
+				 * Scoped deletes. The Wall action discloses hosted Openings and Room
+				 * consequences (S02); the Opening action removes exactly that Opening and
+				 * returns the host Wall to the selection.
+				 */
 				cardActions(cardSubject: StageCardSubject): readonly StageCardAction[] {
+					if (cardSubject.sourceKind === 'opening') {
+						const opening = document.openings.find((entry) => entry.id === cardSubject.sourceId);
+						if (opening === undefined) {
+							return [
+								{
+									id: 'layout-opening-delete',
+									label: 'Delete Opening',
+									detail: 'That Opening is no longer in the project. Select its Wall and try again.',
+									destructive: true,
+									run: async () => ({
+										kind: 'refused',
+										message: 'That Opening is no longer in the project.'
+									})
+								}
+							];
+						}
+						const disclosure = planDeleteWallFirstOpening(document, opening.id);
+						if (disclosure.kind === 'rejected') {
+							return [
+								{
+									id: 'layout-opening-delete',
+									label: 'Delete Opening',
+									detail: openingRefusalWords(document, disclosure.rejection, {
+										openingId: opening.id
+									}),
+									destructive: true,
+									run: async () => ({ kind: 'refused', message: 'The Opening could not be deleted.' })
+								}
+							];
+						}
+						const hostWallId = opening.wallId;
+						return [
+							{
+								id: 'layout-opening-delete',
+								label: 'Delete Opening',
+								detail: 'Removes this Opening from its Wall in one undo step.',
+								destructive: true,
+								run: async () => {
+									const capture = mintLayoutIdCapture();
+									const snapshot = services.stage.snapshot();
+									const outcome = await services.authoring.accept(
+										openingDeleteIntent({
+											openingId: opening.id,
+											capture,
+											operationId: globalThis.crypto.randomUUID(),
+											projectId: snapshot.acceptedRevision.projectId,
+											revisionId: services.authoring.acceptedRevision().revisionId,
+											contentRevision: stageUnitRevision(snapshot, 'layout'),
+											levelId: snapshot.domain.layoutLevelId
+										})
+									);
+									if (outcome.kind === 'refused') {
+										services.stage.notifySurfaceChange();
+										return { kind: 'refused', message: outcome.message };
+									}
+									selectLayoutSubject('wall', hostWallId);
+									services.stage.notifySurfaceChange();
+									return outcome.kind === 'no-op'
+										? { kind: 'no-op', message: 'The Opening was already gone.' }
+										: { kind: 'accepted' };
+								}
+							}
+						];
+					}
 					if (cardSubject.sourceKind !== 'wall') return [];
 					const wallId = cardSubject.sourceId;
 					const preview = deletionPreview(wallId);
@@ -976,7 +1594,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * is not on a handle is refused and falls through to navigation.
 				 */
 				pressWhenNoTask: true,
+				hoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					return openingHover(intent, adapterContext);
+				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (openTaskKind === LAYOUT_INK_TASK && inkReading === 'opening') {
+						return openingPointer(intent, adapterContext);
+					}
 					if (openTaskKind === LAYOUT_INK_TASK) return inkPointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
 
@@ -1109,6 +1733,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				},
 				overlay(adapterContext) {
+					if (openTaskKind === LAYOUT_INK_TASK && inkReading === 'opening') {
+						return openingOverlay(adapterContext);
+					}
 					if (openTaskKind === LAYOUT_INK_TASK) return inkOverlay(adapterContext);
 					if (openTaskKind !== null) return [];
 					// Direct manipulation is offered only while the creator is in Select.
@@ -1190,14 +1817,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (task.kind === LAYOUT_INK_TASK) {
 						publishInk();
 						return {
-							summary: 'Ink',
-							facts: [
-								{ label: 'Reading', value: 'Straight Wall' },
-								{
-									label: 'Finish',
-									value: 'Enter · Close ring from the start point · Esc cancels the chain'
-								}
-							],
+							summary: inkReading === 'opening' ? 'Ink · Opening' : 'Ink',
+							facts:
+								inkReading === 'opening'
+									? [
+											{ label: 'Reading', value: 'Opening on a Wall face' },
+											{
+												label: 'Host',
+												value: 'Aim at a Wall; a selected host wins a tie'
+											}
+										]
+									: [
+											{ label: 'Reading', value: 'Straight Wall' },
+											{
+												label: 'Finish',
+												value: 'Enter · Close ring from the start point · Esc cancels the chain'
+											}
+										],
 							view: { component: LayoutInkPalette, services }
 						};
 					}
@@ -1215,6 +1851,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				/** Esc, task replacement and install all end the writer with no commit. */
 				taskClosed() {
+					rearmEpoch += 1;
 					openTaskKind = null;
 					if (pausedProposal !== null) {
 						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
@@ -1222,12 +1859,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					pausedProposal = null;
 					refusal = null;
 					endGesture();
-					// Disarming the tool cancels the live chain: nothing is left hidden.
+					// Disarming the tool cancels the live chain and the Opening candidate:
+					// nothing is left hidden.
 					endInkPress();
 					clearChain();
+					clearOpeningState();
 					publishInkSurface(null);
 				},
 				dispose() {
+					rearmEpoch += 1;
 					openTaskKind = null;
 					if (pausedProposal !== null) {
 						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
@@ -1237,9 +1877,48 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					endGesture();
 					endInkPress();
 					clearChain();
+					clearOpeningState();
 					publishInkSurface(null);
 				}
 			};
+
+			/**
+			 * The host-relative Opening ghost: two edges, the live offset/width and the
+			 * planner's refusal words. The edges are drawn even when the candidate
+			 * overruns the Wall, so refusal points at what the planner rejected.
+			 */
+			function openingOverlay(
+				adapterContext: StageAdapterContext
+			): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
+				const markers: { id: string; css: readonly [number, number]; label: string }[] = [];
+				const y = adapterContext.snapshot.domain.datumMeters;
+				const project = (point: readonly [number, number]) => {
+					const css = adapterContext.project([point[0], y, point[1]]);
+					return css === null
+						? null
+						: ([css[0] - adapterContext.evaluation.rect.left, css[1] - adapterContext.evaluation.rect.top] as const);
+				};
+				const candidate = openingCandidate;
+				const ghost = candidate === null ? null : openingGhost(candidate.wallId, candidate.offset);
+				const start = ghost === null ? null : project(ghost[0]);
+				const mark = (id: string, css: readonly [number, number] | null, label: string) => {
+					if (css !== null) markers.push({ id, css, label });
+				};
+				if (candidate !== null) {
+					mark(
+						'layout-opening-start',
+						start,
+						`Opening start — offset ${candidate.offset.toFixed(3)} m on Wall ${candidate.wallId}`
+					);
+					mark('layout-opening-end', ghost === null ? null : project(ghost[1]), `Opening end — ${openingOptions.width.toFixed(3)} m wide`);
+				}
+				const refusal =
+					openingNotice ?? (openingPreview?.kind === 'refused' ? openingPreview.message : null);
+				if (refusal !== null) {
+					mark('layout-opening-refusal', start ?? (openingPress === null ? null : openingPress.css), refusal);
+				}
+				return markers;
+			}
 
 			/**
 			 * The ghost chain, its live marks and the refusal/repair words.
