@@ -19,6 +19,7 @@ export * from './metadata-identity';
 export * from './place-object';
 export * from './support';
 export * from './record-scope';
+export * from './form';
 export * from './operations';
 export * from './intent-payload';
 export * from './model-resource';

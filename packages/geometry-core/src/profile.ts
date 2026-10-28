@@ -1,3 +1,4 @@
+/// <reference path="./earcut.d.ts" />
 /**
  * Profile source rules and canonical evaluation.
  *

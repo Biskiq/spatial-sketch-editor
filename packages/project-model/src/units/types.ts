@@ -12,9 +12,10 @@
  * imported by the project-model root barrel: an F.2 envelope is reached through
  * its own package subpath, which `T3.P01.S04` activated.
  *
- * The Scene unit is Camera-free Scene 2: the landed Scene 1 record grammar
- * (textures, materials, entities, clusters) unchanged, with the navigation graph
- * moved out to the Camera and Experience units. The Camera unit keeps the
+ * The Scene unit is Camera-free Scene 4: the world-local record grammar
+ * (textures, materials, entities, clusters) with the navigation graph moved out
+ * to the Camera and Experience units, and native forms admitted as entities.
+ * The Camera unit keeps the
  * spatial half of the landed navigation records — views (eye/target/fov and
  * connectivity) and connections (path, view tracks, framing envelope, directed
  * timing) — while editorial order, holds, cycle entry and detour policy move to
@@ -43,7 +44,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 3 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 4 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 2 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
@@ -134,10 +135,11 @@ export type DependencyLock = {
 export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
- * Camera-free Scene 3: the landed world-local records without the navigation
- * graph. `formatVersion: 3` is the payload's own version and matches the unit
- * header. A model names a catalogue asset or a `model` resource of the same
- * envelope; the fallback vocabulary includes the generic footprint box.
+ * Camera-free Scene 4: the landed world-local records without the navigation
+ * graph, now carrying native forms. `formatVersion: 4` is the payload's own
+ * version and matches the unit header. A model names a catalogue asset or a
+ * `model` resource of the same envelope; the fallback vocabulary includes the
+ * generic footprint box.
  */
 export type CameraFreeSceneDocument = {
 	formatVersion: typeof SCENE_UNIT_FORMAT_VERSION;

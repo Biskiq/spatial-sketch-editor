@@ -290,12 +290,13 @@ export function validateLayoutPayload(input: unknown): ShapeValidation<LayoutUni
 }
 
 /**
- * Strict read of the Camera-free Scene 2 payload.
+ * Strict read of the Camera-free Scene 4 payload.
  *
- * Scene 2 owns exactly the landed shared records; the navigation graph is not
- * part of it, so `navigationNodes`/`connections` are not allowed keys at all
- * rather than tolerated-but-ignored. The shared record grammar itself is the
- * landed Scene v1 validator's, called with an explicitly empty navigation graph.
+ * Scene 4 owns exactly the landed shared records plus native forms; the
+ * navigation graph is not part of it, so `navigationNodes`/`connections` are
+ * not allowed keys at all rather than tolerated-but-ignored. The shared record
+ * grammar itself is the landed Scene v1 validator's, called with an explicitly
+ * empty navigation graph.
  */
 export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<CameraFreeSceneDocument> {
 	const reader = new ShapeReader();
@@ -305,7 +306,7 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 		reader.problem(
 			'$.formatVersion',
 			'unsupported_format_version',
-			`$.formatVersion must be ${SCENE_UNIT_FORMAT_VERSION}; Scene ${SCENE_UNIT_FORMAT_VERSION} is Camera-free and carries no navigation graph`
+			`$.formatVersion must be ${SCENE_UNIT_FORMAT_VERSION}; Scene ${SCENE_UNIT_FORMAT_VERSION} is Camera-free, carries native forms and carries no navigation graph`
 		);
 		return failed(reader);
 	}

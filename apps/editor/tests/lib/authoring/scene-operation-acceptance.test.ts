@@ -288,11 +288,13 @@ function now(coordinator: AcceptanceCoordinator<ProjectEnvelope>) {
 }
 
 describe('Scene operations through the F.4 coordinator', () => {
-	it('registers the seven Scene planners beside the conformance Layout planner', async () => {
+	it('registers the nine Scene planners beside the conformance Layout planner', async () => {
 		const { coordinator } = await boot();
 		expect(coordinator.planners().map((planner) => planner.kind).sort()).toEqual(
 			[
 				'place-object',
+				'create-form',
+				'set-form-size',
 				'move-horizontal',
 				'set-yaw',
 				'place-on-floor',

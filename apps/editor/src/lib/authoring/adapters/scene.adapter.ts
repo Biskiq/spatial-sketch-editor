@@ -1,7 +1,7 @@
 /**
  * T2.P01.S03 — the Scene adapter: the first coherent Scene editing surface.
  *
- * It registers `T2.P01.S02`'s seven Scene planners with the one F.4 coordinator
+ * It registers the Scene planners with the one F.4 coordinator
  * and contributes Place/Arrange Find entries, Card facts and one instrument
  * through T1.P01.S07's AM-5 points. It edits no host core, route or shell
  * module, and it never writes Layout: support is consulted by the retained

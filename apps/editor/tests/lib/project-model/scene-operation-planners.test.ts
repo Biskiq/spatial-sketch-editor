@@ -25,6 +25,7 @@ import {
 	selectSceneSupport,
 	checkSceneRecordScope,
 	DUPLICATE_OFFSET_METERS,
+	FORM_SCALE_SCOPE_FIELD,
 	YAW_SCOPE_FIELD,
 	sceneSupportGenerationId,
 	type NormalizedPlacementDefinition
@@ -34,6 +35,7 @@ import {
 	type AuthoringIntent,
 	type DomainPlanner,
 	type SceneEntity,
+	type SceneFormEntity,
 	type SceneObjectCluster,
 	type ScenePrimitiveEntity,
 	type SemanticReference,
@@ -235,6 +237,61 @@ function entityTarget(contentId: string, entityId: string): SemanticReference {
 	};
 }
 
+function formEntity(
+	id: string,
+	overrides: {
+		readonly position?: Vec3;
+		readonly rotation?: Vec3;
+		readonly plane?: 'plan' | 'elevation';
+		readonly scale?: Vec3;
+		readonly outline?: SceneFormEntity['form']['generator']['outline'];
+	} = {}
+): SceneFormEntity {
+	return {
+		kind: 'form',
+		id,
+		name: id,
+		position: overrides.position ?? [3, 0, 2],
+		rotation: overrides.rotation ?? [0, 0, 0],
+		form: {
+			generator: {
+				kind: 'extrude',
+				plane: overrides.plane ?? 'plan',
+				outline: overrides.outline ?? [
+					{ key: 1, u: -1, v: -1, smooth: false },
+					{ key: 2, u: 1, v: -1, smooth: false },
+					{ key: 3, u: 1, v: 1, smooth: false },
+					{ key: 4, u: -1, v: 1, smooth: false }
+				],
+				extent: 1
+			},
+			scale: overrides.scale ?? [1, 1, 1],
+			nextKey: 5
+		},
+		materialId: 'wood-walnut',
+		castShadow: true,
+		receiveShadow: true
+	};
+}
+
+function formCreatePayload(overrides: Record<string, unknown> = {}) {
+	return {
+		plane: 'plan',
+		outline: [
+			{ u: 0, v: 0, smooth: false },
+			{ u: 2, v: 0, smooth: false },
+			{ u: 2, v: 1, smooth: false },
+			{ u: 0, v: 1, smooth: false }
+		],
+		extent: 0.8,
+		position: [3, 0, 2],
+		yaw: 0,
+		materialId: 'wood-walnut',
+		name: 'Display plinth',
+		...overrides
+	};
+}
+
 function projectWorldFrame(): { origin: Vec3; yaw: number } {
 	return { origin: [0, 0, 0], yaw: 0 };
 }
@@ -323,10 +380,12 @@ function supportCandidates(
 }
 
 describe('scene operation planners — registration', () => {
-	it('registers exactly the seven Scene operations as single-domain planners', () => {
+	it('registers exactly the nine Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
 		expect(planners.map((planner) => planner.kind)).toEqual([
 			'place-object',
+			'create-form',
+			'set-form-size',
 			'move-horizontal',
 			'set-yaw',
 			'place-on-floor',
@@ -1673,5 +1732,389 @@ describe('scene operation determinism and write ownership', () => {
 			expect(first.candidate.source.units.scene.data, kind).not.toBe(snapshot.domain.source.units.scene.data);
 			expect(first.candidate.source.units.layout.data, kind).toBe(snapshot.domain.source.units.layout.data);
 		}
+	});
+});
+
+describe('scene operation planners — native forms', () => {
+	it('creates one recentred, keyed form resting on floor support', async () => {
+		const snapshot = await snapshotOf(await projectWith(sceneWith([]), 0));
+		const captured = intent({
+			kind: 'create-form',
+			operationId: 'create-form-1',
+			snapshot,
+			payload: formCreatePayload(),
+			allocatedIds: [{ kind: 'scene-entity', id: 'form-1' }]
+		});
+		const result = prepare('create-form', snapshot, captured);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const entity = result.candidate.source.units.scene.data.entities.find(
+			(candidate) => candidate.id === 'form-1'
+		);
+		expect(entity?.kind).toBe('form');
+		if (entity?.kind !== 'form') return;
+		// The drawn 2 × 1 outline is recentred on its evaluated bounds; the world
+		// base origin moves by the same offset, so it lands at (4, 0, 2.5).
+		expect(entity.position).toEqual([4, 0, 2.5]);
+		expect(entity.form.generator.outline).toEqual([
+			{ key: 1, u: -1, v: -0.5, smooth: false },
+			{ key: 2, u: 1, v: -0.5, smooth: false },
+			{ key: 3, u: 1, v: 0.5, smooth: false },
+			{ key: 4, u: -1, v: 0.5, smooth: false }
+		]);
+		expect(entity.form.nextKey).toBe(5);
+		expect(entity.form.scale).toEqual([1, 1, 1]);
+		expect(entity.rotation).toEqual([0, 0, 0]);
+		expect(result.candidate.changes[0]?.kind).toBe('scene-create-form');
+	});
+
+	it('canonicalizes a clockwise drawn outline and recentres elevation forms at min v', async () => {
+		const clockwise = [
+			{ u: 0, v: 2, smooth: false },
+			{ u: 0, v: 3, smooth: false },
+			{ u: 2, v: 3, smooth: false },
+			{ u: 2, v: 2, smooth: false }
+		];
+		const snapshot = await snapshotOf(await projectWith(sceneWith([]), 0));
+		const captured = intent({
+			kind: 'create-form',
+			operationId: 'create-form-2',
+			snapshot,
+			payload: formCreatePayload({ plane: 'elevation', outline: clockwise }),
+			allocatedIds: [{ kind: 'scene-entity', id: 'form-2' }]
+		});
+		const result = prepare('create-form', snapshot, captured);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const entity = result.candidate.source.units.scene.data.entities.find(
+			(candidate) => candidate.id === 'form-2'
+		);
+		expect(entity?.kind).toBe('form');
+		if (entity?.kind !== 'form') return;
+		expect(entity.position).toEqual([4, 0, 2]);
+		expect(entity.form.generator.plane).toBe('elevation');
+		expect(entity.form.generator.outline.map((anchor) => anchor.key)).toEqual([1, 2, 3, 4]);
+		expect(Math.min(...entity.form.generator.outline.map((anchor) => anchor.v))).toBe(0);
+		expect(entity.form.generator.outline.map((anchor) => anchor.u)).toEqual([1, 1, -1, -1]);
+	});
+
+	it('refuses invalid outlines, missing allocations and occupied ids without a candidate', async () => {
+		const snapshot = await snapshotOf(await projectWith(sceneWith([]), 0));
+		const invalid = prepare(
+			'create-form',
+			snapshot,
+			intent({
+				kind: 'create-form',
+				operationId: 'create-form-bad',
+				snapshot,
+				payload: formCreatePayload({
+					outline: [
+						{ u: 0, v: 0, smooth: false },
+						{ u: 2, v: 2, smooth: false },
+						{ u: 2, v: 0, smooth: false },
+						{ u: 0, v: 2, smooth: false }
+					]
+				}),
+				allocatedIds: [{ kind: 'scene-entity', id: 'form-bad' }]
+			})
+		);
+		expect(invalid.kind).toBe('rejected');
+		if (invalid.kind === 'rejected') {
+			expect(invalid.code).toBe('invalid-value');
+			expect(invalid.diagnostics.map((issue) => issue.message).join(' ')).toContain(
+				'self-intersecting'
+			);
+		}
+
+		const missing = prepare(
+			'create-form',
+			snapshot,
+			intent({
+				kind: 'create-form',
+				operationId: 'create-form-missing',
+				snapshot,
+				payload: formCreatePayload()
+			})
+		);
+		expect(missing.kind).toBe('rejected');
+
+		const occupied = await projectWith(sceneWith([formEntity('form-1')]));
+		const occupiedSnapshot = await snapshotOf(occupied);
+		const duplicateId = prepare(
+			'create-form',
+			occupiedSnapshot,
+			intent({
+				kind: 'create-form',
+				operationId: 'create-form-occupied',
+				snapshot: occupiedSnapshot,
+				payload: formCreatePayload(),
+				allocatedIds: [{ kind: 'scene-entity', id: 'form-1' }]
+			})
+		);
+		expect(duplicateId.kind).toBe('rejected');
+	});
+
+	it('sizes a form per axis, keeps its outline and rests it on support', async () => {
+		const entity = formEntity('form-1', {
+			plane: 'elevation',
+			position: [3, 1, 2],
+			outline: [
+				{ key: 1, u: -1, v: -1, smooth: false },
+				{ key: 2, u: 1, v: -1, smooth: false },
+				{ key: 3, u: 1, v: 1, smooth: false },
+				{ key: 4, u: -1, v: 1, smooth: false }
+			]
+		});
+		const snapshot = await snapshotOf(await projectWith(sceneWith([entity])));
+		const captured = intent({
+			kind: 'set-form-size',
+			operationId: 'size-form',
+			snapshot,
+			targets: [entityTarget(sceneTargetRevision(snapshot), 'form-1')],
+			payload: { entityId: 'form-1', scale: [1, 2, 1] }
+		});
+		const result = prepare('set-form-size', snapshot, captured);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const sized = result.candidate.source.units.scene.data.entities[0]!;
+		expect(sized.kind).toBe('form');
+		if (sized.kind !== 'form') return;
+		expect(sized.form.scale).toEqual([1, 2, 1]);
+		expect(sized.form.generator.outline).toEqual(entity.form.generator.outline);
+		expect(sized.position).toEqual([3, 2, 2]);
+		expect(result.candidate.changes[0]?.fields).toEqual(['form', 'position']);
+	});
+
+	it('refuses a non-form target, an out-of-range or no-op size, and an outline key', async () => {
+		const boxEntity = box('entity-a', [3, 0, 2]);
+		const snapshot = await snapshotOf(await projectWith(sceneWith([boxEntity])));
+		const target = entityTarget(sceneTargetRevision(snapshot), 'entity-a');
+		const nonForm = prepare(
+			'set-form-size',
+			snapshot,
+			intent({
+				kind: 'set-form-size',
+				operationId: 'size-box',
+				snapshot,
+				targets: [target],
+				payload: { entityId: 'entity-a', scale: [2, 1, 3] }
+			})
+		);
+		expect(nonForm.kind).toBe('rejected');
+		if (nonForm.kind === 'rejected') expect(nonForm.code).toBe('unsupported-transform');
+
+		const formProject = await projectWith(sceneWith([formEntity('form-1')]));
+		const formSnapshot = await snapshotOf(formProject);
+		const formTarget = entityTarget(sceneTargetRevision(formSnapshot), 'form-1');
+		const outOfRange = prepare(
+			'set-form-size',
+			formSnapshot,
+			intent({
+				kind: 'set-form-size',
+				operationId: 'size-form-bad',
+				snapshot: formSnapshot,
+				targets: [formTarget],
+				payload: { entityId: 'form-1', scale: [0.001, 1, 1] }
+			})
+		);
+		expect(outOfRange.kind).toBe('rejected');
+		const noOp = prepare(
+			'set-form-size',
+			formSnapshot,
+			intent({
+				kind: 'set-form-size',
+				operationId: 'size-form-noop',
+				snapshot: formSnapshot,
+				targets: [formTarget],
+				payload: { entityId: 'form-1', scale: [1, 1, 1] }
+			})
+		);
+		expect(noOp.kind).toBe('rejected');
+		if (noOp.kind === 'rejected') expect(noOp.code).toBe('no_op');
+		const outlineChange = prepare(
+			'set-form-size',
+			formSnapshot,
+			intent({
+				kind: 'set-form-size',
+				operationId: 'size-form-outline',
+				snapshot: formSnapshot,
+				targets: [formTarget],
+				payload: {
+					entityId: 'form-1',
+					scale: [2, 1, 3],
+					outline: [{ u: 0, v: 0, smooth: false }]
+				}
+			})
+		);
+		expect(outlineChange.kind).toBe('rejected');
+	});
+
+	it('supports move, yaw, place, duplicate and delete on forms, and refuses uniform resize', async () => {
+		const entity = formEntity('form-1');
+		const snapshot = await snapshotOf(await projectWith(sceneWith([entity])));
+		const target = entityTarget(sceneTargetRevision(snapshot), 'form-1');
+		const move = prepare(
+			'move-horizontal',
+			snapshot,
+			intent({
+				kind: 'move-horizontal',
+				operationId: 'move-form',
+				snapshot,
+				targets: [target],
+				payload: {
+					entityId: 'form-1',
+					worldXZ: [4, 3],
+					frame: projectWorldFrame(),
+					frameReference: frameReference(),
+					contactMinY: 0
+				}
+			})
+		);
+		expect(move.kind).toBe('prepared');
+		const yaw = prepare(
+			'set-yaw',
+			snapshot,
+			intent({
+				kind: 'set-yaw',
+				operationId: 'yaw-form',
+				snapshot,
+				targets: [target],
+				payload: {
+					entityId: 'form-1',
+					yaw: 0.75,
+					frame: projectWorldFrame(),
+					frameReference: frameReference()
+				}
+			})
+		);
+		expect(yaw.kind).toBe('prepared');
+		const place = prepare(
+			'place-on-floor',
+			snapshot,
+			intent({
+				kind: 'place-on-floor',
+				operationId: 'place-form',
+				snapshot,
+				targets: [target],
+				payload: {
+					entityId: 'form-1',
+					worldXZ: [1, 1],
+					frame: projectWorldFrame(),
+					frameReference: frameReference(),
+					contactMinY: 0
+				}
+			})
+		);
+		expect(place.kind).toBe('prepared');
+		const duplicate = prepare(
+			'duplicate-one',
+			snapshot,
+			intent({
+				kind: 'duplicate-one',
+				operationId: 'duplicate-form',
+				snapshot,
+				targets: [target],
+				payload: { entityId: 'form-1', contactMinY: 0 },
+				allocatedIds: [{ kind: 'scene-entity', id: 'form-copy' }]
+			})
+		);
+		expect(duplicate.kind).toBe('prepared');
+		if (duplicate.kind === 'prepared') {
+			const copy = duplicate.candidate.source.units.scene.data.entities.find(
+				(candidate) => candidate.id === 'form-copy'
+			);
+			expect(copy?.kind).toBe('form');
+			if (copy?.kind === 'form' && entity.kind === 'form') {
+				expect(copy.form).toEqual(entity.form);
+				expect(copy.form).not.toBe(entity.form);
+				expect(copy.form.generator.outline).not.toBe(entity.form.generator.outline);
+			}
+		}
+		const remove = prepare(
+			'delete-one',
+			snapshot,
+			intent({
+				kind: 'delete-one',
+				operationId: 'delete-form',
+				snapshot,
+				targets: [target],
+				payload: { entityId: 'form-1' }
+			})
+		);
+		expect(remove.kind).toBe('prepared');
+		const resize = prepare(
+			'resize-on-floor',
+			snapshot,
+			intent({
+				kind: 'resize-on-floor',
+				operationId: 'resize-form',
+				snapshot,
+				targets: [target],
+				payload: { entityId: 'form-1', scale: 2, contactMinY: 0 }
+			})
+		);
+		expect(resize.kind).toBe('rejected');
+		if (resize.kind === 'rejected') {
+			expect(resize.code).toBe('unsupported-transform');
+			expect(resize.message).toMatch(/per axis/);
+		}
+	});
+
+	it('refuses a captured contact that disagrees with the form source', async () => {
+		const snapshot = await snapshotOf(await projectWith(sceneWith([formEntity('form-1')])));
+		const result = prepare(
+			'move-horizontal',
+			snapshot,
+			intent({
+				kind: 'move-horizontal',
+				operationId: 'move-form-contact',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'form-1')],
+				payload: {
+					entityId: 'form-1',
+					worldXZ: [4, 3],
+					frame: projectWorldFrame(),
+					frameReference: frameReference(),
+					contactMinY: 1
+				}
+			})
+		);
+		expect(result.kind).toBe('rejected');
+		if (result.kind === 'rejected') expect(result.code).toBe('missing-contact-metadata');
+	});
+
+	it('grants only form.scale and position[1] on a sized form', async () => {
+		const before: CameraFreeSceneDocument = sceneWith([formEntity('form-1')]);
+		const after = JSON.parse(JSON.stringify(before)) as CameraFreeSceneDocument;
+		const target = after.entities[0];
+		expect(target?.kind).toBe('form');
+		if (target?.kind !== 'form') return;
+		target.form.scale = [2, 1, 3];
+		target.position = [3, 1, 2];
+		expect(
+			checkSceneRecordScope(before, after, {
+				operationKind: 'set-form-size',
+				changedEntityIds: ['form-1'],
+				changedEntityFields: [FORM_SCALE_SCOPE_FIELD, 'position[1]'],
+				createdEntityIds: [],
+				removedEntityIds: [],
+				allowClusterCleanup: false
+			})
+		).toEqual([]);
+
+		const overreach = JSON.parse(JSON.stringify(after)) as CameraFreeSceneDocument;
+		const changed = overreach.entities[0];
+		if (changed?.kind !== 'form') return;
+		changed.form.generator.extent = 2;
+		expect(
+			checkSceneRecordScope(before, overreach, {
+				operationKind: 'set-form-size',
+				changedEntityIds: ['form-1'],
+				changedEntityFields: [FORM_SCALE_SCOPE_FIELD, 'position[1]'],
+				createdEntityIds: [],
+				removedEntityIds: [],
+				allowClusterCleanup: false
+			}).map((issue) => issue.code)
+		).toContain('record-scope-violation');
 	});
 });

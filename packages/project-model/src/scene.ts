@@ -250,6 +250,45 @@ export type ScenePrimitiveEntity =
 			receiveShadow: boolean;
 	  });
 
+export type SceneFormPlane = 'plan' | 'elevation';
+
+/** One keyed outline anchor, in the form's local profile plane. */
+export type SceneFormAnchor = {
+	key: number;
+	u: number;
+	v: number;
+	smooth: boolean;
+};
+
+/**
+ * The authored source of one native form. The generator is the only admitted
+ * kind; `scale` is per-axis source scale about the local origin, and `nextKey`
+ * is the monotonic outline-key allocator. No generated geometry is stored.
+ */
+export type SceneFormSource = {
+	generator: {
+		kind: 'extrude';
+		plane: SceneFormPlane;
+		outline: SceneFormAnchor[];
+		extent: number;
+	};
+	scale: Vec3;
+	nextKey: number;
+};
+
+/**
+ * A native form is a Scene renderable whose shape is authored source. The
+ * shared entity shape still declares an optional `scale`, but a form never
+ * writes or accepts it: per-axis size is form source, so size has one writer.
+ */
+export type SceneFormEntity = SceneRenderableEntityBase & {
+	kind: 'form';
+	form: SceneFormSource;
+	materialId: MaterialId;
+	castShadow: boolean;
+	receiveShadow: boolean;
+};
+
 export type SceneLightEntity =
 	| (SceneEntityBase & {
 			kind: 'light';
@@ -277,7 +316,11 @@ export type SceneLightEntity =
 			castShadow: boolean;
 	  });
 
-export type SceneEntity = SceneModelEntity | ScenePrimitiveEntity | SceneLightEntity;
+export type SceneEntity =
+	| SceneModelEntity
+	| ScenePrimitiveEntity
+	| SceneFormEntity
+	| SceneLightEntity;
 
 export type SceneNavigationNode = Omit<
   NavigationNodeData,
@@ -364,7 +407,8 @@ export type SceneConnection = Omit<
  * The Scene document format discriminator. `1` is the one supported format
  * (PR #115 / WP3): physical values are project/world coordinates and no record
  * carries `roomId`, so a parsed document is runtime-final and is never resolved
- * through Room frames.
+ * through Room frames. Native forms are admitted through the F.2 Scene unit
+ * format 4 that wraps this record grammar.
  */
 export const SCENE_WORLD_LOCAL_FORMAT_VERSION = 1 as const;
 
@@ -438,10 +482,12 @@ export function isScenePrimitiveEntity(
   entity: SceneEntity
 ): entity is ScenePrimitiveEntity {
   return entity.kind === 'primitive';
+}export function isSceneFormEntity(entity: SceneEntity): entity is SceneFormEntity {
+	return entity.kind === 'form';
 }
 
 export function isSceneLightEntity(entity: SceneEntity): entity is SceneLightEntity {
-  return entity.kind === 'light';
+	return entity.kind === 'light';
 }
 
 export function listSceneModelEntities(
@@ -483,22 +529,31 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
         ? {}
         : { materialInstanceId: entity.materialInstanceId })
     };
-  }
+  }	if (entity.kind === 'primitive') {
+		return {
+			...transform,
+			kind: 'primitive',
+			primitive: entity.primitive,
+			dimensions: { ...entity.dimensions },
+			materialId: entity.materialId,
+			castShadow: entity.castShadow,
+			receiveShadow: entity.receiveShadow,
+			...(entity.materialInstanceId === undefined
+				? {}
+				: { materialInstanceId: entity.materialInstanceId })
+		} as ScenePrimitiveEntity;
+	}
 
-  if (entity.kind === 'primitive') {
-    return {
-      ...transform,
-      kind: 'primitive',
-      primitive: entity.primitive,
-      dimensions: { ...entity.dimensions },
-      materialId: entity.materialId,
-      castShadow: entity.castShadow,
-      receiveShadow: entity.receiveShadow,
-      ...(entity.materialInstanceId === undefined
-        ? {}
-        : { materialInstanceId: entity.materialInstanceId })
-    } as ScenePrimitiveEntity;
-  }
+	if (entity.kind === 'form') {
+		return {
+			...transform,
+			kind: 'form',
+			form: cloneFormSource(entity.form),
+			materialId: entity.materialId,
+			castShadow: entity.castShadow,
+			receiveShadow: entity.receiveShadow
+		};
+	}
 
   if (entity.light === 'point') {
     return {
@@ -534,10 +589,27 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
     intensity: entity.intensity,
     castShadow: entity.castShadow
   };
+}function cloneVec3(point: Vec3): Vec3 {
+	return [...point];
 }
 
-function cloneVec3(point: Vec3): Vec3 {
-  return [...point];
+/** Deep-clone a form source so duplicate and runtime resolution share nothing. */
+export function cloneFormSource(source: SceneFormSource): SceneFormSource {
+	return {
+		generator: {
+			kind: source.generator.kind,
+			plane: source.generator.plane,
+			outline: source.generator.outline.map((anchor) => ({
+				key: anchor.key,
+				u: anchor.u,
+				v: anchor.v,
+				smooth: anchor.smooth
+			})),
+			extent: source.generator.extent
+		},
+		scale: [...source.scale],
+		nextKey: source.nextKey
+	};
 }
 
 function resolveWaypoint(waypoint: SceneWaypoint): Vec3 {

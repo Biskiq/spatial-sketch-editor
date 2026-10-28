@@ -10,8 +10,10 @@
  * - the entity id sequence is exactly "before, minus removals, plus captured
  *   creations" — no reordering, no renaming, no uncaptured id;
  * - an operation may only change the values it owns on its targeted entity
- *   (move owns `position`, yaw owns `rotation[1]` alone, …) — everything else
- *   compares exactly, down to the components a vector grant does not name;
+ *   (move owns `position`, yaw owns `rotation[1]` alone, per-axis sizing owns
+ *   `form.scale` and `position[1]`, …) — everything else compares exactly, down
+ *   to the components a vector grant does not name and the parent fields a
+ *   dotted grant does not own;
  * - a created entity is new, appended and unclustered;
  * - cluster membership may only lose removed ids, and only a cluster that falls
  *   below the codec's two-member minimum may disappear. No cluster is created.
@@ -23,7 +25,7 @@
  *
  * The guard is only as complete as its adoption, and F.4's planner contract has
  * no hook that could require it: `createScenePlanners` is the sole registered
- * producer (all seven operations funnel through `finalizeSceneCandidate`), and
+ * producer (all nine operations funnel through `finalizeSceneCandidate`), and
  * the raw `plan*` exports are test seams. A future planner built outside that
  * registry must call this finalizer itself — the mutation-control acceptance
  * test exists because such a candidate would otherwise be admitted.
@@ -318,10 +320,27 @@ function checkClusterScope(
  * stays in the comparison, so a malformed grant can only make the guard
  * stricter, never looser.
  */
+/**
+ * Remove the values a grant owns from one entity copy.
+ *
+ * Three grant forms are admitted:
+ *
+ * - a whole field (`scale`);
+ * - one component of a vector (`position[1]`, `rotation[1]`);
+ * - a nested field by dotted path (`form.scale`).
+ *
+ * A dotted grant clones only the parent objects it walks through, so the
+ * parent's other fields still compare exactly. The source entity is never
+ * mutated.
+ */
 function omitGrants(entity: object, grants: readonly string[]): Record<string, unknown> {
 	const copy = { ...(entity as Record<string, unknown>) };
 	const componentGrants = new Map<string, Set<number>>();
 	for (const grant of grants) {
+		if (grant.includes('.')) {
+			omitDottedGrant(copy, grant.split('.'));
+			continue;
+		}
 		const component = /^([^[\]]+)\[(\d+)\]$/.exec(grant);
 		if (component === null) {
 			delete copy[grant];
@@ -337,6 +356,19 @@ function omitGrants(entity: object, grants: readonly string[]): Record<string, u
 		if (Array.isArray(value)) copy[field] = value.map((item, index) => (indexes.has(index) ? null : item));
 	}
 	return copy;
+}
+
+function omitDottedGrant(target: Record<string, unknown>, path: readonly string[]): void {
+	let current = target;
+	for (let index = 0; index < path.length - 1; index += 1) {
+		const key = path[index]!;
+		const value = current[key];
+		if (value === null || typeof value !== 'object' || Array.isArray(value)) return;
+		const clone = { ...(value as Record<string, unknown>) };
+		current[key] = clone;
+		current = clone;
+	}
+	delete current[path[path.length - 1]!];
 }
 
 /**

@@ -7,7 +7,7 @@
  *    commit run the same planner with the same captured inputs, snap is explicit,
  *    one cancel path restores the accepted baseline, and typed entry is never
  *    coerced (blank is not zero).
- * 2. **Adapter** (`createAdapter`): the seven Scene planners register with the one
+ * 2. **Adapter** (`createAdapter`): the nine Scene planners register with the one
  *    F.4 host, and the Place/Arrange Find entries, tasks, Card facts and instrument
  *    reach the Stage through AM-5 without any shell edit.
  *

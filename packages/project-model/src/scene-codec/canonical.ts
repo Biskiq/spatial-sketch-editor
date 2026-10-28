@@ -13,6 +13,7 @@ import type {
 	CameraFramingEnvelope,
 	SceneCameraViewKeyframe,
 	SceneEntity,
+	SceneFormEntity,
 	SceneModelEntity,
 	ScenePrimitiveEntity,
 	SceneWaypoint
@@ -84,6 +85,34 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 				? {}
 				: { materialInstanceId: entity.materialInstanceId })
 		} as ScenePrimitiveEntity;
+	}
+	if (entity.kind === 'form') {
+		return {
+			kind: 'form',
+			id: entity.id,
+			name: entity.name,
+			...(entity.roomId === undefined ? {} : { roomId: entity.roomId }),
+			position: [...entity.position],
+			rotation: [...entity.rotation],
+			form: {
+				generator: {
+					kind: entity.form.generator.kind,
+					plane: entity.form.generator.plane,
+					outline: entity.form.generator.outline.map((anchor) => ({
+						key: anchor.key,
+						u: anchor.u,
+						v: anchor.v,
+						smooth: anchor.smooth
+					})),
+					extent: entity.form.generator.extent
+				},
+				scale: [...entity.form.scale],
+				nextKey: entity.form.nextKey
+			},
+			materialId: entity.materialId,
+			castShadow: entity.castShadow,
+			receiveShadow: entity.receiveShadow
+		} as SceneFormEntity;
 	}
 	if (entity.light === 'spot') {
 		return {
