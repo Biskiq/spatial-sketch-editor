@@ -429,6 +429,19 @@ test('starter: place, refuse/repair, remove, undo/redo, save and reload one Open
 		await expect.poll(async () => layoutOf(await downloadSource(page)).openings.length, { timeout: 20_000 }).toBe(2);
 		rows.push(row('starter.repair', 'typed Offset repair accepts on the preferred host', 'passed', 'a second door installed at 1.000 m without a reading switch', page, '1440x900', false));
 
+		// Invalid fields must block pointer placement; the adapter must not fall
+		// back to its previous valid measures while the controls show an error.
+		await armOpening(page);
+		await page.locator('[data-opening-width]').fill('abc');
+		await page.locator('[data-opening-width]').press('Tab');
+		await expect(page.locator('.error')).toContainText('Width');
+		await clickWorld(page, points[0]!);
+		await expect(page.locator(OPENING_REFUSAL)).toContainText('Check the Opening Width');
+		expect(layoutOf(await downloadSource(page)).openings).toHaveLength(2);
+		rows.push(row('starter.invalid', 'invalid measures block pointer placement', 'passed', 'no stale-value Opening installed', page, '1440x900', false));
+		await page.locator('[data-opening-width]').fill('0.9');
+		await page.locator('[data-opening-width]').press('Tab');
+
 		await selectSubject(page, placed[0]!.id);
 		await expect(page.locator(OPENING_DELETE)).toBeVisible();
 		const beforeDelete = await acceptedResultCount(page);
@@ -451,17 +464,31 @@ test('starter: place, refuse/repair, remove, undo/redo, save and reload one Open
 
 		// Put one Opening back, save, and reopen the project in a fresh session.
 		await armOpening(page);
-		await page.locator('[data-opening-width]').fill('1.2');
 		await page.locator('[data-opening-kind]').selectOption('window');
-		await page.locator('[data-opening-height]').fill('1.2');
-		await page.locator('[data-opening-sill]').fill('1');
-		await page.locator('[data-opening-sill]').press('Tab');
+		await expect(page.locator('[data-opening-width]')).toHaveValue('1.2');
+		await expect(page.locator('[data-opening-height]')).toHaveValue('1.2');
+		await expect(page.locator('[data-opening-sill]')).toHaveValue('1');
 		const beforeSavePlace = await acceptedResultCount(page);
 		await clickWorld(page, points[0]!);
 		await waitForAcceptedResult(page, beforeSavePlace);
 		const savedSource = await downloadSource(page);
 		const windowOpening = layoutOf(savedSource).openings.find((opening) => opening.kind === 'window');
 		if (windowOpening === undefined) throw new Error('the window did not install');
+		rows.push(row('starter.window-defaults', 'Window uses canonical defaults', 'passed', '1.2 x 1.2, sill 1', page, '1440x900', false));
+
+		// A rebuilt Opening palette reads the adapter's remembered options.
+		const closeCard = page.getByRole('button', { name: 'Close selection card' });
+		if (await closeCard.isVisible().catch(() => false)) await closeCard.click();
+		await page.locator('[data-ink-reading-wall]').check();
+		await expect(page.locator(OPENING_PALETTE)).toHaveCount(0);
+		await page.locator('[data-ink-reading-opening]').check();
+		await expect(page.locator(OPENING_PALETTE)).toBeVisible();
+		await expect(page.locator('[data-opening-kind]')).toHaveValue('window');
+		await expect(page.locator('[data-opening-width]')).toHaveValue('1.2');
+		await expect(page.locator('[data-opening-height]')).toHaveValue('1.2');
+		await expect(page.locator('[data-opening-sill]')).toHaveValue('1');
+		rows.push(row('starter.remount', 'palette remount keeps remembered measures', 'passed', 'window 1.2 x 1.2 sill 1', page, '1440x900', false));
+
 		await setReading(page, '3D');
 		expect(layoutOf(await downloadSource(page)).openings).toHaveLength(2);
 		await setReading(page, 'Plan');
@@ -529,10 +556,9 @@ test('empty: draw a Wall, then place a window with keyboard metrics', async ({ b
 		await armOpening(page);
 		const { points } = await pickExposedHost(page, hostWalls(wallSource));
 		await page.locator('[data-opening-kind]').selectOption('window');
-		await page.locator('[data-opening-width]').fill('1.2');
-		await page.locator('[data-opening-height]').fill('1.2');
-		await page.locator('[data-opening-sill]').fill('1');
-		await page.locator('[data-opening-sill]').press('Tab');
+		await expect(page.locator('[data-opening-width]')).toHaveValue('1.2');
+		await expect(page.locator('[data-opening-height]')).toHaveValue('1.2');
+		await expect(page.locator('[data-opening-sill]')).toHaveValue('1');
 		const beforePlace = await acceptedResultCount(page);
 		await clickWorld(page, points[0]!);
 		await waitForAcceptedResult(page, beforePlace);
