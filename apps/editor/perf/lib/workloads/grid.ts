@@ -1,5 +1,5 @@
 /**
- * Grid workloads S/M/L/XL (T3.P03.S02 construction; L/XL added by T1.P02.S06).
+ * Grid workloads M and L (grid-7 and grid-14).
  *
  * The grid construction is the convergence packet's own fixture generator
  * (`buildGrid`/`addOpenings` at the recorded 2026-10-22 run). It builds every
@@ -8,7 +8,7 @@
  * gallery does.
  *
  * S = grid-3, M = grid-7, L = grid-14, XL = grid-20, per the performance
- * contract's representative workloads.
+ * contract's historical representative workloads. The spot check generates M and L.
  */
 
 import {

@@ -32,20 +32,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 export const PERF_ROOT = resolve(HERE, '../..');
 export const WORKLOAD_CACHE_DIR = process.env.PERF_WORKLOAD_DIR ?? join(PERF_ROOT, '.workloads');
 
-/** Bench tiers (A.3) plus the report-only census, sweep and realistic workloads (B). */
-export type WorkloadId =
-	| 'grid-S'
-	| 'grid-M'
-	| 'grid-L'
-	| 'grid-XL'
-	| 'museum'
-	| 'sweep-H3'
-	| 'sweep-H10'
-	| 'sweep-D3'
-	| 'sweep-D10'
-	| 'sweep-C3'
-	| 'sweep-C10'
-	| 'realistic-L';
+/** Spot-check tiers. S, XL, museum, sweeps and realistic-L are no longer generated. */
+export type WorkloadId = 'grid-M' | 'grid-L';
 
 export type WorkloadSpec = {
 	readonly id: WorkloadId;
@@ -58,44 +46,19 @@ export type WorkloadSpec = {
 };
 
 export const WORKLOADS: Readonly<Record<WorkloadId, WorkloadSpec>> = {
-	'grid-S': { id: 'grid-S', projectId: 'perf-grid-s', name: 'Perf S pavilion (grid-3)', params: { kind: 'grid', k: 3 } },
 	'grid-M': { id: 'grid-M', projectId: 'perf-grid-m', name: 'Perf M pavilion (grid-7)', params: { kind: 'grid', k: 7 } },
-	'grid-L': { id: 'grid-L', projectId: 'perf-grid-l', name: 'Perf L museum wing (grid-14)', params: { kind: 'grid', k: 14 } },
-	'grid-XL': { id: 'grid-XL', projectId: 'perf-grid-xl', name: 'Perf XL stress (grid-20)', params: { kind: 'grid', k: 20 } },
-	museum: { id: 'museum', projectId: 'perf-museum', name: 'Perf museum-shaped census layout', params: { kind: 'museum' } },
-	'sweep-H3': { id: 'sweep-H3', projectId: 'perf-sweep-h3', name: 'Perf sweep H ×3', params: { kind: 'sweep', variant: 'H', factor: 3 } },
-	'sweep-H10': { id: 'sweep-H10', projectId: 'perf-sweep-h10', name: 'Perf sweep H ×10', params: { kind: 'sweep', variant: 'H', factor: 10 } },
-	'sweep-D3': { id: 'sweep-D3', projectId: 'perf-sweep-d3', name: 'Perf sweep D ×3', params: { kind: 'sweep', variant: 'D', factor: 3 } },
-	'sweep-D10': { id: 'sweep-D10', projectId: 'perf-sweep-d10', name: 'Perf sweep D ×10', params: { kind: 'sweep', variant: 'D', factor: 10 } },
-	'sweep-C3': { id: 'sweep-C3', projectId: 'perf-sweep-c3', name: 'Perf sweep C ×3', params: { kind: 'sweep', variant: 'C', factor: 3 } },
-	'sweep-C10': { id: 'sweep-C10', projectId: 'perf-sweep-c10', name: 'Perf sweep C ×10', params: { kind: 'sweep', variant: 'C', factor: 10 } },
-	'realistic-L': {
-		id: 'realistic-L',
-		projectId: 'perf-realistic-l',
-		name: 'Perf realistic L (grid-14 + approved derivatives)',
-		params: { kind: 'realistic', k: 14 },
-		blocked:
-			'needs owner approval of each CC0/permissive GLB source (plan B) and the creator-import@1 seeding on an isolated per-lane API stack; see perf/README.md "Realistic-L"'
-	}
+	'grid-L': { id: 'grid-L', projectId: 'perf-grid-l', name: 'Perf L museum wing (grid-14)', params: { kind: 'grid', k: 14 } }
 };
 
-/** The bench order, peak first (A.3): realistic-L, L, then the hard S/M tiers; XL is report-only. */
-export const BENCH_TIERS: readonly WorkloadId[] = ['realistic-L', 'grid-L', 'grid-XL', 'grid-M', 'grid-S'];
+/** L then M: the heavier project first only when a caller asks for both. The spot runner runs M first. */
+export const BENCH_TIERS: readonly WorkloadId[] = ['grid-M', 'grid-L'];
 
 /**
  * Generator sources whose text is part of a workload's input key, per kind.
  * The CLI driver only admits and writes, so it is not content-bearing.
  */
 const GENERATOR_SOURCES: Readonly<Record<string, readonly string[]>> = {
-	grid: ['lib/workloads/grid.ts', 'lib/workloads/build.ts'],
-	museum: [
-		'lib/workloads/grid.ts',
-		'lib/workloads/build.ts',
-		'lib/workloads/plan-lines.ts',
-		'lib/workloads/museum-layout.ts',
-		'lib/workloads/museum-content.ts'
-	],
-	realistic: ['lib/workloads/grid.ts', 'lib/workloads/build.ts']
+	grid: ['lib/workloads/grid.ts', 'lib/workloads/build.ts']
 };
 export const FORMAT_NUMBERS = {
 	envelope: UNIT_ENVELOPE_FORMAT_VERSION,

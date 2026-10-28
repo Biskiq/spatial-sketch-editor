@@ -376,20 +376,18 @@ ids). Ownership and permission checks apply unchanged.
 
 ## Product convergence performance workflow
 
-**The mandatory workflow is suspended indefinitely.** The
-[2026-10-28 decision](../../../docs/reference/decisions/performance-mandate-suspension-2026-10-28.md)
-supersedes the 2026-10-22 on-demand acceptance requirement. No formal F2/F3/F4/F8/F13 matrix,
-battery-mode certification or full `npm run perf` workflow is authorized as an acceptance step.
-Performance investigations are exclusively owner-initiated after an observed slowdown.
+**The mandatory comprehensive workflow is suspended.** The
+[2026-10-28 suspension](../../../docs/reference/decisions/performance-mandate-suspension-2026-10-28.md)
+remains in force for the F2/F3/F4/F8/F13 matrix, battery certification and the former multi-hour
+suite. The [spot-check decision](../../../docs/reference/decisions/performance-spot-check-2026-10-28.md)
+authorizes `npm run perf:spot` at the four triggers named there. It is not a routine per-slice gate
+and it is not a CI job.
 
-Historical method, retained for such an investigation: a consuming slice recorded performance
-evidence against
-[the owning browser-performance contract](../../../docs/reference/components/performance.md)
-before acceptance; hard misses were resolved inside the slice and targets received a disposition;
-the phase final gate rechecked integrated flows. Those obligations are no longer current.
+`npm run perf` refuses and points at `perf:spot`. Functional browser specs that live under
+`apps/editor/perf/flows/` stay acceptance checks; they are not the spot check. Historical
+measurements remain historical. An unmeasured row stays unmeasured. `grid-M` and `grid-L` do not
+cover imported models or texture-heavy scenes.
 
-The Playwright/CDP harness and bundle report remain in the tree, outside the default lanes and with
-no CI job, schedule or registry. Harnesses, workloads and historical evidence are preserved; no
-benchmark was authorized by the suspension. The no-CI/no-scheduled-job policy remains current, and
-unrelated workflow additions still need owner authorization. Ratifying targets or retaining a
-harness releases no production scope from the owner hold.
+The Playwright harness used by those functional specs, and the bundle report, stay outside the
+default lanes. No schedule and no benchmark registry. Ratifying a spot-check trigger releases no
+production scope from the owner hold.

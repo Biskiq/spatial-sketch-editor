@@ -1,8 +1,9 @@
 # Browser performance and delivery
 
 **Status: owner-ratified destination, 2026-10-22, PR #173; mandatory acceptance strategy
-suspended 2026-10-28.** [Ratification decision](../decisions/product-convergence-ratification-2026-10-22.md) ·
-[suspension decision](../decisions/performance-mandate-suspension-2026-10-28.md).
+suspended 2026-10-28; M/L spot check authorized the same day.** [Ratification decision](../decisions/product-convergence-ratification-2026-10-22.md) ·
+[suspension decision](../decisions/performance-mandate-suspension-2026-10-28.md) ·
+[spot-check decision](../decisions/performance-spot-check-2026-10-28.md).
 This is the single owner of performance profiles, workloads, metric definitions and
 budget tables. The harness exists; this document still claims no new browser/GPU/reference-laptop
 result. The [review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md) separates
@@ -15,9 +16,24 @@ F2/F3/F4/F8/F13 matrix, battery-mode certification or full `npm run perf` workfl
 acceptance prerequisite on an ordinary slice, phase or final gate. Performance investigations are
 **owner-initiated only**, triggered by an observed slowdown. Existing measurements remain
 historical evidence; they are not mandatory acceptance prerequisites, and an unmeasured row stays
-**unmeasured**, never a pass. The harnesses, workloads and this document's method definitions stay
-in the tree for a future owner-initiated investigation. No benchmark is authorized by this
-amendment.
+**unmeasured**, never a pass. This amendment itself authorized no benchmark. The
+[spot-check section](#current-capability--ml-spot-check-2026-10-28) below is the later, narrower
+authorization, and it is what removed the multi-hour suite.
+
+## Current capability — M/L spot check, 2026-10-28
+
+The suspension above stands for the comprehensive matrix. The
+[spot-check decision](../decisions/performance-spot-check-2026-10-28.md) authorizes
+`npm run perf:spot` at four triggers: Core Editor Stability integrated acceptance when that
+acceptance plan's owner approves the check, a significant editor hot-path integration checkpoint,
+an owner-observed slowdown, and an editor release candidate after substantial relevant change.
+There is no scheduled CI battery and no per-slice performance gate.
+
+The spot check measures `grid-M` and `grid-L` only. M is judged smooth against the measured
+display period. L may lag and must stay usable. Imported GLBs and texture-heavy Scene composition
+are outside those grids and stay uncertified here. `npm run perf` refuses; it does not launch the
+former multi-hour suite. The budgets and recorded results below are historical. An unmeasured row
+stays unmeasured.
 
 Where the sections below say a row must pass before acceptance, that obligation is suspended by
 this amendment; the text is retained as the historical method and budget definition. Correctness,
