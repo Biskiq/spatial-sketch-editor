@@ -108,10 +108,12 @@ import {
 	type InkOpeningOptions,
 	type InkPaletteSnapshot,
 	type InkPointerTarget,
+	type InkPaletteReading,
 	type InkReading,
 	type ProjectedJunction,
 	type ProjectedWall
 } from './layout/ink';
+import type { StageInkReadingRecord, StageInkReadingSession } from '$lib/authoring/stage/stage-facade';
 import {
 	LAYOUT_PLINTH_PLACE_KIND,
 	createLayoutPlanners,
@@ -293,7 +295,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 	const adapter: StageAdapter = {
 		id: 'layout',
-		requiredCapabilities: ['stage-instrument-v1'],
+		// Ink is the one Pen and the host's reading contribution point is what lets
+		// Scene offer Shape beside Layout's Wall and Opening readings.
+		requiredCapabilities: ['stage-instrument-v1', 'ink-readings-v1'],
 		bind(context): StageAdapterBinding {
 			const document = stageLayout(context.snapshot);
 			const levelId = context.snapshot.domain.layoutLevelId;
@@ -303,6 +307,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let gesture: WallGesture | null = null;
 			let pausedProposal: PausedWallProposal | null = null;
 			let refusal: string | null = null;
+			/**
+			 * The contributed reading this binding is carrying, if any. Ink stays one
+			 * task: this session receives the same pointer/key phases the Wall reading
+			 * does, and publishes its own palette view. It is binding-scoped, so a
+			 * content install replaces it exactly as it replaces every other binding
+			 * fact; the reading selection itself is adapter memory.
+			 */
+			let contributedSession: { readonly readingId: string; readonly session: StageInkReadingSession } | null = null;
 			/** The live chain draft, its hover target and its planner preview. */
 			let draft: ChainDraft = EMPTY_CHAIN_DRAFT;
 			/** One operation, one capture: the same identity previews and commits. */
@@ -382,6 +394,35 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// The Card's field writer offers an explicit Resume from this store; it is
 				// not a document and the retained planner revalidates the request on apply.
 				publishPausedProposal(proposal);
+			}
+
+			/** The contributed reading currently selected, or `null` for a built-in. */
+			function contributedReading(): StageInkReadingRecord | null {
+				if (inkReading === 'wall' || inkReading === 'opening') return null;
+				return services.stage.inkReadings().find((reading) => reading.id === inkReading) ?? null;
+			}
+
+			/**
+			 * End the live contributed reading with no commit. The session is owned by the
+			 * contributing binding, never by this one; cancelling is the only operation
+			 * this adapter performs on it.
+			 */
+			function endContributedSession(): void {
+				const current = contributedSession;
+				contributedSession = null;
+				current?.session.cancel();
+			}
+
+			/** The live contributed session, opened lazily against the current binding. */
+			function ensureContributedSession(): StageInkReadingSession | null {
+				const reading = contributedReading();
+				if (reading === null) return null;
+				if (contributedSession?.readingId === reading.id) return contributedSession.session;
+				endContributedSession();
+				const opened = services.stage.openInkReading(reading.id, reading.adapterId);
+				if (opened === null) return null;
+				contributedSession = { readingId: opened.reading.id, session: opened.session };
+				return opened.session;
 			}
 
 			/** The straight Wall the canonical selection names, or `null`. */
@@ -916,6 +957,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			/** Re-plan the draft (with the hover point, when there is one). */
 			function refreshInkPreview(): void {
+				// A contributed reading owns its own preview; this binding's Wall chain
+				// planner must never speak for it.
+				if (inkReading !== 'wall' && inkReading !== 'opening') {
+					inkPreview = null;
+					inkNotice = null;
+					return;
+				}
 				const points =
 					inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
 				if (!('points' in points)) {
@@ -935,6 +983,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					inkPreview.kind === 'refused' && points.points.length >= 2 ? inkPreview.message : null;
 			}
 
+			/** Layout's built-in readings, then every contributed reading in host order. */
+			function paletteReadings(): readonly InkPaletteReading[] {
+				return [
+					{ id: 'wall', label: 'Wall', summary: 'Straight Wall chain.' },
+					{
+						id: 'opening',
+						label: 'Opening',
+						summary: 'A straight door or window on one Wall face.'
+					},
+					...services.stage.inkReadings().map((reading) => ({
+						id: reading.id,
+						label: reading.label,
+						summary: reading.summary
+					}))
+				];
+			}
+
 			function snapshotForPalette(): InkPaletteSnapshot {
 				const withHover =
 					inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
@@ -946,6 +1011,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
 					reading: inkReading,
+					readings: paletteReadings(),
 					opening:
 						inkReading !== 'opening'
 							? null
@@ -1025,21 +1091,34 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const controller: InkController = {
 					setReading: (next) => {
 						if (next === inkReading) return;
-						if (next === 'opening' && draft.points.length > 0) {
+						if (!paletteReadings().some((reading) => reading.id === next)) {
+							inkNotice = 'That reading is not available in this project.';
+							publishInk();
+							return;
+						}
+						if (draft.points.length > 0) {
 							inkNotice = 'Finish or cancel the Wall chain before switching readings.';
 							publishInk();
 							return;
 						}
+						// A contributed reading owns live input too; a switch must not
+						// silently throw away a half-drawn outline or a chosen depth.
+						if (contributedSession?.session.hasWork?.() === true) {
+							inkNotice = 'Finish or cancel the live reading before switching readings.';
+							publishInk();
+							return;
+						}
+						// A contributed reading's session lives only while it is selected.
+						endContributedSession();
 						inkReading = next;
 						inkNotice = null;
 						// The palette remounts from the last valid options on the next Opening
 						// reading, so its fields and the adapter agree again.
 						if (next === 'opening') openingOptionsValid = true;
 						clearOpeningState();
-						if (next === 'wall') {
-							inkHover = null;
-							refreshInkPreview();
-						}
+						inkHover = null;
+						if (next === 'wall') refreshInkPreview();
+						else if (next !== 'opening') ensureContributedSession();
 						services.stage.notifySurfaceChange();
 						publishInk();
 					},
@@ -1568,8 +1647,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * so no hidden proposal can survive as an invisible block on history. A key
 				 * the live chain has nothing to say about is refused, not swallowed.
 				 */
-				keyIntent(intent: StageKeyboardIntent): boolean {
+				keyIntent(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean {
 					if (openTaskKind !== LAYOUT_INK_TASK) return false;
+					if (inkReading !== 'wall' && inkReading !== 'opening') {
+						const session = ensureContributedSession();
+						if (session === null) return false;
+						const claimed = session.key?.(intent, adapterContext) ?? false;
+						publishInk();
+						return claimed;
+					}
 					switch (intent.kind) {
 						case 'finish':
 							if (draft.points.length < 2) return false;
@@ -1595,9 +1681,28 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 */
 				pressWhenNoTask: true,
 				hoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (openTaskKind !== LAYOUT_INK_TASK) return false;
+					if (inkReading !== 'wall' && inkReading !== 'opening') {
+						const session = ensureContributedSession();
+						if (session === null) return false;
+						const claimed = session.hover?.(intent, adapterContext) ?? false;
+						if (claimed) publishInk();
+						return claimed;
+					}
 					return openingHover(intent, adapterContext);
 				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (openTaskKind === LAYOUT_INK_TASK && inkReading !== 'wall' && inkReading !== 'opening') {
+						const session = ensureContributedSession();
+						if (session === null) {
+							inkNotice = 'That reading is not available in this project.';
+							publishInk();
+							return false;
+						}
+						const claimed = session.pointer(intent, adapterContext);
+						publishInk();
+						return claimed;
+					}
 					if (openTaskKind === LAYOUT_INK_TASK && inkReading === 'opening') {
 						return openingPointer(intent, adapterContext);
 					}
@@ -1733,6 +1838,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				},
 				overlay(adapterContext) {
+					if (openTaskKind === LAYOUT_INK_TASK && inkReading !== 'wall' && inkReading !== 'opening') {
+						return contributedSession?.session.overlay?.(adapterContext) ?? [];
+					}
 					if (openTaskKind === LAYOUT_INK_TASK && inkReading === 'opening') {
 						return openingOverlay(adapterContext);
 					}
@@ -1812,28 +1920,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							: [{ id: 'layout-wall-refusal', css: points.middle, label: refusal }])
 					];
 				},
+				/** A contributed reading's proposed body, drawn by the one Canvas. */
+				ghosts(adapterContext: StageAdapterContext) {
+					if (openTaskKind !== LAYOUT_INK_TASK) return [];
+					if (inkReading === 'wall' || inkReading === 'opening') return [];
+					return contributedSession?.session.ghosts?.(adapterContext) ?? [];
+				},
 				instrument(task) {
 					openTaskKind = task.kind;
 					if (task.kind === LAYOUT_INK_TASK) {
+						const contributed = contributedReading();
+						if (contributed !== null) ensureContributedSession();
 						publishInk();
 						return {
-							summary: inkReading === 'opening' ? 'Ink · Opening' : 'Ink',
+							summary: contributed !== null ? `Ink · ${contributed.label}` : inkReading === 'opening' ? 'Ink · Opening' : 'Ink',
 							facts:
-								inkReading === 'opening'
+								contributed !== null
 									? [
-											{ label: 'Reading', value: 'Opening on a Wall face' },
-											{
-												label: 'Host',
-												value: 'Aim at a Wall; a selected host wins a tie'
-											}
+											{ label: 'Reading', value: contributed.label },
+											{ label: 'Meaning', value: contributed.summary }
 										]
-									: [
-											{ label: 'Reading', value: 'Straight Wall' },
-											{
-												label: 'Finish',
-												value: 'Enter · Close ring from the start point · Esc cancels the chain'
-											}
-										],
+									: inkReading === 'opening'
+										? [
+												{ label: 'Reading', value: 'Opening on a Wall face' },
+												{
+													label: 'Host',
+													value: 'Aim at a Wall; a selected host wins a tie'
+												}
+											]
+										: [
+												{ label: 'Reading', value: 'Straight Wall' },
+												{
+													label: 'Finish',
+													value: 'Enter · Close ring from the start point · Esc cancels the chain'
+												}
+											],
 							view: { component: LayoutInkPalette, services }
 						};
 					}
@@ -1864,6 +1985,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					endInkPress();
 					clearChain();
 					clearOpeningState();
+					endContributedSession();
 					publishInkSurface(null);
 				},
 				dispose() {
@@ -1878,6 +2000,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					endInkPress();
 					clearChain();
 					clearOpeningState();
+					endContributedSession();
 					publishInkSurface(null);
 				}
 			};

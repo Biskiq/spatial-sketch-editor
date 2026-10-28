@@ -5,7 +5,7 @@ import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSele
 import type { EntryRequalification } from './selection-requalification';
 import type { StageSelectionEntry } from './semantic-selection';
 import type { SelectionRemoval, StageLens, TaskResumeOutcome } from './stage-session';
-import type { SemanticReference, F4JsonValue } from '@portfolio/project-model';
+import type { SemanticReference, F4JsonValue, SceneFormSource } from '@portfolio/project-model';
 /**
  * The public editor host facade — the consumer boundary of
  * `T1.viewport-projection@1`.
@@ -96,7 +96,11 @@ export const HOST_STAGE_CAPABILITIES: readonly string[] = [
 	'viewport-projection-v1',
 	'layout-plan-representation-v1',
 	'stage-selection-v1',
-	'stage-instrument-v1'
+	'stage-instrument-v1',
+	// T5.P01.S02 — Ink is one Pen that can carry readings from more than one
+	// domain. The host keeps the contribution list; the reading's own session
+	// owns its meaning, so this adds no document state to the Stage.
+	'ink-readings-v1'
 ];
 
 /** Screen-space tolerance for a Plan hit, in CSS pixels. */
@@ -179,7 +183,9 @@ export type StageGhostMesh = {
 	readonly shape:
 		| { readonly kind: 'box'; readonly size: Vec3 }
 		| { readonly kind: 'cylinder'; readonly radius: number; readonly height: number }
-		| { readonly kind: 'sphere'; readonly radius: number };
+		| { readonly kind: 'sphere'; readonly radius: number }
+		/** A native form's own evaluated body: the same source the planner will install. */
+		| { readonly kind: 'form'; readonly form: SceneFormSource };
 };
 
 /**
@@ -210,6 +216,60 @@ export type StagePointerIntent = {
  */
 export type StageKeyboardIntent = {
 	readonly kind: 'finish' | 'backtrack' | 'cancel';
+};
+
+/**
+ * One **Ink reading** a domain offers to the one Pen (decision D5).
+ *
+ * Ink stays one tool with one palette and one stroke buffer. A reading is a
+ * session a contributing domain owns: it receives the pointer and command keys
+ * the open Ink task already receives, answers with its own overlays and ghosts,
+ * and publishes its own palette view. The host contribution owns no document
+ * state, no selection, no history and no writer — an accepted result still
+ * travels through the owning domain's planner and F4, exactly as it does for
+ * the built-in Wall reading.
+ *
+ * `view` is editor-only UI rendered inside the Ink palette while this reading is
+ * active, so a domain brings its own controls without editing the shell. The
+ * palette reads the reading's published surface; the view receives no Stage
+ * internals.
+ */
+export type StageInkReadingSession = {
+	/** Claim a pointer phase for this reading. `false` leaves the press to the host. */
+	pointer(intent: StagePointerIntent, context: StageAdapterContext): boolean;
+	/** An unpressed move while this reading is armed. Preview only; never claimed. */
+	hover?(intent: StagePointerIntent, context: StageAdapterContext): boolean;
+	/** Answer a Stage command key while this reading is armed. */
+	key?(intent: StageKeyboardIntent, context: StageAdapterContext): boolean;
+	/** Whether the reading holds uncommitted input that a switch would discard. */
+	hasWork?(): boolean;
+	/** End the live reading with no commit. Run on cancel, task close and dispose. */
+	cancel(): void;
+	taskClosed?(): void;
+	overlay?(context: StageAdapterContext): readonly StageOverlayContribution[];
+	ghosts?(context: StageAdapterContext): readonly StageGhostMesh[];
+};
+
+export type StageInkReading = {
+	readonly id: string;
+	readonly label: string;
+	readonly summary: string;
+	/** Explicit deterministic order after the built-in readings; ties break by adapter ID. */
+	readonly order?: number;
+	/** Open one reading session. The contributing binding owns everything it reads. */
+	begin(): StageInkReadingSession;
+	/** Editor-only palette controls for this reading, rendered in the Ink palette. */
+	readonly view?: Component;
+};
+
+/** A contributed reading as the host publishes it, stamped with its owning adapter. */
+export type StageInkReadingRecord = {
+	readonly id: string;
+	readonly label: string;
+	readonly summary: string;
+	readonly order: number;
+	readonly adapterId: string;
+	readonly view?: Component;
 };
 
 /**
@@ -410,11 +470,16 @@ export type StageAdapterBinding = {
 	 * unwinding, so an unhandled Escape still closes the task.
 	 */
 	readonly keyIntent?: (intent: StageKeyboardIntent, context: StageAdapterContext) => boolean;
-	/** The host closed the contributed task (Esc, task replacement, or install). */
+	/**
+	 * The host closed the contributed task (Esc, task replacement, or install),
+	 * or a task opened over this binding's no-task direct manipulation.
+	 */
 	readonly taskClosed?: () => void;
 	readonly selectionChanged?: (selection: StageSelectionState) => void;
 	readonly selectionEcho?: (selection: StageSelection | null) => void;
 	readonly tasks?: readonly StageTaskContribution[];
+	/** Ink readings this binding offers to the one Pen, alongside the built-ins. */
+	readonly readings?: readonly StageInkReading[];
 	readonly subjects?: readonly StageSubject[];
 	readonly cardFacts?: (subject: StageCardSubject) => readonly StageCardFact[];
 	/**
@@ -617,6 +682,17 @@ export type StageFacade = {
 	onAdaptersChanged(listener: () => void): () => void;
 	/** Every contributed task, ordered deterministically and stamped with its adapter. */
 	tasks(): readonly StageTaskEntry[];
+	/** Every contributed Ink reading, ordered deterministically and stamped with its adapter. */
+	inkReadings(): readonly StageInkReadingRecord[];
+	/**
+	 * Open one contributed Ink reading's session. The reading is selected by its
+	 * contribution ID; when two adapters contribute the same ID, the first in the
+	 * deterministic order wins. A throwing begin refuses rather than degrading the
+	 * Stage, exactly as a throwing contributor does elsewhere in this host.
+	 */
+	openInkReading(id: string, adapterId?: string):
+		| { readonly reading: StageInkReadingRecord; readonly session: StageInkReadingSession }
+		| null;
 	/**
 	 * Open one contributed task by its contribution ID.
 	 *
@@ -1352,6 +1428,11 @@ export function createStageFacade(input: {
 	/** Tell every binding its contributed task is gone, exactly once per close. */
 	function notifyTaskClosed(): void {
 		pointerOwner = null;
+		// An accepted install closes the contributed task through the session, not
+		// through `closeTask()`; the owner record must end with it, or the host
+		// keeps offering presses and keys to a task that no longer exists and
+		// never reaches a binding's no-task direct manipulation.
+		contributedTaskOwner = null;
 		for (const entry of adapters.values()) {
 			try { entry.contributions.taskClosed?.(); } catch { /* Subscriber isolation. */ }
 		}
@@ -1491,6 +1572,21 @@ export function createStageFacade(input: {
 					...task,
 					adapterId,
 					order: task.order ?? 0
+				}))
+			)
+			.sort(compareEntries);
+	}
+
+	function inkReadingsOf(): readonly StageInkReadingRecord[] {
+		return [...adapters.entries()]
+			.flatMap(([adapterId, entry]) =>
+				(entry.contributions.readings ?? []).map((reading) => ({
+					id: reading.id,
+					label: reading.label,
+					summary: reading.summary,
+					order: reading.order ?? 0,
+					adapterId,
+					...(reading.view === undefined ? {} : { view: reading.view })
 				}))
 			)
 			.sort(compareEntries);
@@ -1947,6 +2043,27 @@ export function createStageFacade(input: {
 			ensureBindings();
 			return tasksOf();
 		},
+		inkReadings() {
+			ensureBindings();
+			return inkReadingsOf();
+		},
+		openInkReading(id, adapterId) {
+			if (!isLive()) return null;
+			ensureBindings();
+			const record = inkReadingsOf().find(
+				(candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId)
+			);
+			if (record === undefined) return null;
+			const reading = adapters
+				.get(record.adapterId)
+				?.contributions.readings?.find((candidate) => candidate.id === record.id);
+			if (reading === undefined) return null;
+			try {
+				return { reading: record, session: reading.begin() };
+			} catch {
+				return null;
+			}
+		},
 		instrumentForTask(id, adapterId) {
 			if (!isLive() || session.task() === null) return null;
 			ensureBindings();
@@ -2012,10 +2129,12 @@ export function createStageFacade(input: {
 				// creator returns there instead of reading "disposed" for a live Stage.
 				return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${lens} lens before invoking ${entry.label}.` };
 			}
-			// A replacement closes the previous contributed task first: its adapter gets
-			// the same taskClosed path as Esc, so no lease survives into the new task.
-			if (contributedTaskOwner !== null &&
-				(contributedTaskOwner.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id)) {
+			// Opening a task ends the no-task surface too: a direct-manipulation gesture
+			// (a size ray) must not outlive the task that now owns the pointer. A
+			// replacement also closes its previous contributed task through the same
+			// taskClosed path as Esc, so no lease survives into the new task.
+			if (contributedTaskOwner === null ||
+				contributedTaskOwner.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id) {
 				notifyTaskClosed();
 			}
 			const task: StageTask = {

@@ -22,6 +22,7 @@ export default defineConfig({
 		't1-s03-opening-acceptance.spec.ts',
 		't1-s04-integrated-acceptance.spec.ts',
 		'native-form-acceptance.spec.ts',
+		't5-p01-s02-ux-review.spec.ts',
 		's03-own-model-acceptance.spec.ts',
 		's03-diagnostics.spec.ts',
 		'project-lifecycle.spec.ts',

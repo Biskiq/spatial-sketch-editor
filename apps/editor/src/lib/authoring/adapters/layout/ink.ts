@@ -177,8 +177,18 @@ export function classifyOpeningHost(input: {
 	return { wallId: nearest.id, distance: nearest.distance };
 }
 
-/** The two Ink readings: the straight Wall chain and the Wall-hosted Opening. */
-export type InkReading = 'wall' | 'opening';
+/**
+ * One reading the one Pen offers. `wall` and `opening` are Layout's built-ins;
+ * any other id is a reading another domain contributed through the Stage host.
+ */
+export type InkReading = 'wall' | 'opening' | (string & {});
+
+/** One reading row as the palette renders it. */
+export type InkPaletteReading = {
+	readonly id: InkReading;
+	readonly label: string;
+	readonly summary: string;
+};
 
 export type InkOpeningKind = 'door' | 'window';
 
@@ -209,6 +219,8 @@ export type InkOpeningSnapshot = {
 /** What the Ink palette renders. Everything here is read from the live draft. */
 export type InkPaletteSnapshot = {
 	readonly reading: InkReading;
+	/** Every reading this project offers: Layout's built-ins then contributed readings. */
+	readonly readings: readonly InkPaletteReading[];
 	/** The Opening candidate while that reading is armed; `null` for the Wall reading. */
 	readonly opening: InkOpeningSnapshot | null;
 	readonly points: readonly LayoutVec2[];
