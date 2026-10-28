@@ -495,7 +495,7 @@ function fmt(value: number | null): string {
 	return value === null || !Number.isFinite(value) ? 'missing' : `${value.toFixed(1)} ms`;
 }
 
-if (process.argv[1]?.endsWith('perf/spot.ts')) main().catch((error: unknown) => {
+main().catch((error: unknown) => {
 	console.error(error);
 	process.exit(1);
 });
