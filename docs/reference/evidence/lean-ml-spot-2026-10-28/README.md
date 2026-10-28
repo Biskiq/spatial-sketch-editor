@@ -48,10 +48,17 @@ measurements. The old preview revision was not independently established. No ori
 that earlier PR claim was available in this task; the claims are preserved here as invalid claims.
 
 The repaired run shows fast typed acceptance (6.3/15.6 ms) and later matching presentation
-(42.8/120.0 ms). These miss the unchanged commit presentation clauses; M is `not-smooth` and L is
-`not-usable`. Opening through rendering takes 0.593/5.065 seconds. These are observed presentation
-and opening findings, not evidence for the old slow-acceptance claim. No product optimization or
-paired regression attribution is made. Performance labels are findings, not reinstated merge gates.
+(42.8/120.0 ms). The original report's **M `not-smooth` / L `not-usable`** labels reflect the
+then-active strict commit-presentation formula. The owner clarified on 2026-10-28 that a completed
+L one-shot commit uses the 200 ms L end-to-end allowance rather than acceptance plus two refresh
+periods. **Reclassifying the preserved observations under that rule gives M `not-smooth`, L
+`usable`.** L's 120.0 ms proxy is below the revised 200 ms allowance, with stable on-refresh frames,
+no superseded drag inputs, successful picks and 6.5 ms Undo. M's 42.8 ms proxy remains too slow
+for M's stricter near-frame expectation. This is a **decision-only reclassification**, not a new
+benchmark run or a rewrite of the raw `spot-d5097580.json` report, which retains its original
+captured labels. Opening through rendering remains 0.593/5.065 seconds, reported separately
+without a feel label. These are observations, not causal attribution, product optimization or a
+reinstated performance gate.
 
 ## Verification
 
