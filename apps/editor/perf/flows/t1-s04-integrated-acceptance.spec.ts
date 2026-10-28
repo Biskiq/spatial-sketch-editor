@@ -409,10 +409,15 @@ async function deleteWallThroughCard(page: Page, wallId: string): Promise<number
 }
 
 async function openSourceVariant(page: Page, source: Record<string, any>): Promise<void> {
-	const [chooser] = await Promise.all([
-		page.waitForEvent('filechooser'),
-		page.locator('.stage-actions').getByRole('button', { name: 'Open source JSON', exact: true }).click()
-	]);
+	const chooserPromise = page.waitForEvent('filechooser');
+	await page.locator('.stage-actions').getByRole('button', { name: 'Open source JSON', exact: true }).click();
+	// An active project always passes the replacement guard first; the file
+	// chooser belongs to the confirmed attempt, not to the guard's first press.
+	const replace = page.getByRole('alertdialog', { name: 'Replace project' });
+	if (await replace.isVisible().catch(() => false)) {
+		await replace.getByRole('button', { name: 'Replace', exact: true }).click();
+	}
+	const chooser = await chooserPromise;
 	await chooser.setFiles({
 		name: 's04-format-probe.json',
 		mimeType: 'application/json',
