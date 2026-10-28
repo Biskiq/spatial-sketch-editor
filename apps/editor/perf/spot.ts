@@ -25,25 +25,20 @@ import {
 	frameWindow,
 	handlePoint,
 	openSourceJson,
-	selectFirstWall,
+	selectWallById,
 	setStageReading,
 	uniqueProjectId,
 	waitForAcceptedResult,
 	waitForStageSettled
 } from './lib/flow';
+import { collectSessions, collectGesture, openTiming, typedLengthTiming, pickIdentity, sessionLabel, previewProvenance, type GestureObservation, type TimedOperation } from './lib/spot-measurement';
 import { correlateInputs, readLedger, type LedgerRecord } from './lib/ledger';
 import {
 	FRAME_CAP,
 	FRAME_FLOOR,
-	MOVE_EDITOR_MS,
-	SAMPLE_CAP,
-	SAMPLE_FLOOR,
-	SESSION_CAP,
 	WALL_CAP_MS,
 	frameStop,
 	interactionDecision,
-	nextSession,
-	seriesStop,
 	spotExitCode,
 	undoRequired,
 	type InteractionInput,
@@ -71,13 +66,17 @@ type TierReport = {
 	readonly onTheLine: boolean;
 	readonly refreshPeriodMs: number;
 	readonly refreshSource: string;
-	readonly open: { editorMs: number | null; automationMs: number | null };
-	readonly drag: { editorMs: number[]; presentedMs: number[]; automationMs: number[]; supersededFraction: number | null };
-	readonly pan: { editorMs: number[]; presentedMs: number[]; automationMs: number[] };
+	readonly previewVersion: string | null;
+	readonly open: TimedOperation & { admissionMs: number | null; automationMs: number | null; totalMs: number; editorThroughRenderMs: number | null };
+	readonly drag: { observations: GestureObservation[]; editorMs: number[]; presentedMs: number[]; automationMs: number[]; supersededFraction: number | null };
+	readonly pan: { observations: GestureObservation[]; editorMs: number[]; presentedMs: number[]; automationMs: number[] };
 	readonly frames: number[];
-	readonly commit: { editorMs: number | null; presentedMs: number | null; automationMs: number | null };
+	readonly commit: TimedOperation & { automationMs: number | null };
 	readonly undo: { required: boolean; editorMs: number | null };
 	readonly pick: { beforeMs: number | null; afterMs: number | null; resolved: boolean | null; indexBuilds: number | null };
+	readonly sessionRequest?: { another: boolean; reason: string };
+	readonly pickEvidence: { expectedId: string; before: unknown; after: unknown };
+	readonly observations: Awaited<ReturnType<typeof readLedger>>;
 	readonly work: WorkSnapshot | null;
 	readonly unsplit: boolean;
 	readonly elapsedMs: number;
@@ -85,7 +84,7 @@ type TierReport = {
 
 function gitRevision(): string {
 	try {
-		return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim();
+		return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim();
 	} catch {
 		return 'unknown';
 	}
@@ -112,19 +111,6 @@ async function previewIsUp(): Promise<boolean> {
 
 async function pageNow(page: Page): Promise<number> {
 	return page.evaluate(() => performance.now());
-}
-
-async function markDelta(page: Page, startName: string, endName: string): Promise<number | null> {
-	return page.evaluate(([start, end]) => {
-		const records = (window as Window & { __BISKIQ_PERF_RECORDS__?: LedgerRecord[] }).__BISKIQ_PERF_RECORDS__ ?? [];
-		let started: number | null = null;
-		let ended: number | null = null;
-		for (const record of records) {
-			if (record.name === start) started = record.time;
-			if (record.name === end && started !== null && record.time >= started) ended = record.time;
-		}
-		return started === null || ended === null ? null : ended - started;
-	}, [startName, endName] as const);
 }
 
 async function workSnapshot(page: Page): Promise<WorkSnapshot | null> {
@@ -163,102 +149,108 @@ async function refreshPeriod(page: Page): Promise<{ ms: number; source: string }
 	return { ms: median, source: 'idle-raf' };
 }
 
-async function dragSamples(page: Page, wanted: number): Promise<{ editor: number[]; presented: number[]; automation: number[]; superseded: number; inputs: number }> {
+function gestureColumns(observations: GestureObservation[]) {
+	const values = (key: 'editorMs' | 'presentedMs' | 'automationMs') => observations.flatMap((row) => typeof row[key] === 'number' && Number.isFinite(row[key]) ? [row[key] as number] : []);
+	return { observations, editor: values('editorMs'), presented: values('presentedMs'), automation: values('automationMs') };
+}
+
+export async function dragSamples(page: Page, tier: SpotTier, refreshMs: number) {
 	const startHandle = await handlePoint(page, 'Wall start');
 	const end = await handlePoint(page, 'Wall end');
-	const dx = end.x - startHandle.x;
-	const dy = end.y - startHandle.y;
-	const length = Math.hypot(dx, dy) || 1;
-	const direction = { x: dx / length, y: dy / length };
+	const length = Math.hypot(end.x - startHandle.x, end.y - startHandle.y) || 1;
+	const direction = { x: (end.x - startHandle.x) / length, y: (end.y - startHandle.y) / length };
 	const ledgerBefore = (await readLedger(page)).records.length;
 	await page.mouse.move(end.x, end.y);
 	await page.mouse.down();
-	const editor: number[] = [];
-	const presented: number[] = [];
-	const automation: number[] = [];
-	for (let index = 1; index <= wanted; index += 1) {
-		const progress = (24 * index) / wanted;
-		const dispatched = await pageNow(page);
-		await page.mouse.move(end.x + direction.x * progress, end.y + direction.y * progress);
-		await page.waitForTimeout(32);
-		const ledger = await readLedger(page);
-		const fresh = ledger.records.slice(ledgerBefore);
-		const sample = correlateInputs(fresh, ledger.ticks).at(-1);
-		if (sample === undefined) continue;
-		automation.push(Math.max(0, sample.inputTime - dispatched));
-		if (sample.installTime !== null) editor.push(sample.installTime - sample.inputTime);
-		if (sample.latency !== null) presented.push(sample.latency);
-	}
-	await page.mouse.up();
+	let observations: GestureObservation[];
+	try {
+		observations = await collectGesture(tier, refreshMs, async (index) => {
+			const before = (await readLedger(page)).records.length;
+			const dispatched = await pageNow(page);
+			await page.mouse.move(end.x + direction.x * 6 * (index + 1), end.y + direction.y * 6 * (index + 1));
+			await page.waitForTimeout(32);
+			const ledger = await readLedger(page);
+			const inputs = correlateInputs(ledger.records.slice(before), ledger.ticks);
+			const sample = inputs.length === 1 ? inputs[0] : undefined;
+			return { dispatched, inputs, editorMs: sample?.installTime == null ? null : sample.installTime - sample.inputTime,
+				presentedMs: sample?.latency ?? null, automationMs: sample === undefined ? null : sample.inputTime - dispatched };
+		});
+	} finally { await page.mouse.up(); }
 	const ledger = await readLedger(page);
-	const samples = correlateInputs(ledger.records.slice(ledgerBefore), ledger.ticks);
-	const superseded = samples.filter((sample) => sample.status === 'superseded').length;
-	return { editor, presented, automation, superseded, inputs: samples.length };
+	const inputs = correlateInputs(ledger.records.slice(ledgerBefore), ledger.ticks);
+	return { ...gestureColumns(observations), inputs: inputs.length, superseded: inputs.filter((row) => row.status === 'superseded').length };
 }
 
-async function panSamples(page: Page, cdp: CDPSession, wanted: number): Promise<{ editor: number[]; presented: number[]; automation: number[] }> {
+export async function panSamples(page: Page, cdp: CDPSession, tier: SpotTier, refreshMs: number) {
 	const box = await page.locator('canvas').first().boundingBox();
-	if (box === null) return { editor: [], presented: [], automation: [] };
+	if (box === null) return gestureColumns([]);
 	await cdp.send('Performance.enable');
 	await page.evaluate(() => {
-		const target = window as Window & { __spotPan?: { received: number; presented: number }[] };
+		const target = window as Window & { __spotPan?: { received: number; presented: number }[]; __spotPanBound?: boolean };
 		target.__spotPan = [];
-		if ((target as Window & { __spotPanBound?: boolean }).__spotPanBound) return;
-		(target as Window & { __spotPanBound?: boolean }).__spotPanBound = true;
+		if (target.__spotPanBound) return;
+		target.__spotPanBound = true;
 		document.addEventListener('pointermove', (event) => {
 			if (event.buttons === 0) return;
-			const received = event.timeStamp;
-			requestAnimationFrame((time) => {
-				target.__spotPan?.push({ received, presented: time });
-			});
+			const received = performance.now();
+			requestAnimationFrame((time) => target.__spotPan?.push({ received, presented: time }));
 		}, true);
 	});
-	const editor: number[] = [];
-	const presented: number[] = [];
-	const automation: number[] = [];
 	const originX = box.x + 12;
 	const originY = box.y + box.height * 0.15;
 	await page.mouse.move(originX, originY);
 	await page.mouse.down();
-	for (let index = 1; index <= wanted; index += 1) {
-		const beforeCount = await page.evaluate(() => (window as Window & { __spotPan?: unknown[] }).__spotPan?.length ?? 0);
-		const before = await cdp.send('Performance.getMetrics');
-		const dispatched = await pageNow(page);
-		await page.mouse.move(originX + index * 12, originY);
-		await page.waitForFunction((count) => ((window as Window & { __spotPan?: unknown[] }).__spotPan?.length ?? 0) > count, beforeCount, { timeout: 1000 }).catch(() => undefined);
-		const after = await cdp.send('Performance.getMetrics');
-		const sample = await page.evaluate(() => (window as Window & { __spotPan?: { received: number; presented: number }[] }).__spotPan?.at(-1) ?? null);
-		const taskSeconds = metric(after, 'TaskDuration') - metric(before, 'TaskDuration');
-		const editorMs = Number.isFinite(taskSeconds) ? Math.max(0, taskSeconds * 1000) : Number.NaN;
-		if (sample === null) continue;
-		if (Number.isFinite(editorMs)) editor.push(editorMs);
-		presented.push(Math.max(0, sample.presented - sample.received));
-		automation.push(Math.max(0, sample.received - dispatched));
-	}
-	await page.mouse.up();
-	return { editor, presented, automation };
+	try {
+		return gestureColumns(await collectGesture(tier, refreshMs, async (index) => {
+			const beforeCount = await page.evaluate(() => (window as Window & { __spotPan?: unknown[] }).__spotPan?.length ?? 0);
+			const before = await cdp.send('Performance.getMetrics');
+			const dispatched = await pageNow(page);
+			await page.mouse.move(originX + (index + 1) * 12, originY);
+			await page.waitForFunction((count) => ((window as Window & { __spotPan?: unknown[] }).__spotPan?.length ?? 0) > count, beforeCount, { timeout: 1000 }).catch(() => undefined);
+			const after = await cdp.send('Performance.getMetrics');
+			const fresh = await page.evaluate((count) => (window as Window & { __spotPan?: { received: number; presented: number }[] }).__spotPan?.slice(count) ?? [], beforeCount);
+			const sample = fresh.length === 1 ? fresh[0] : undefined;
+			const taskMs = (metric(after, 'TaskDuration') - metric(before, 'TaskDuration')) * 1000;
+			return { dispatched, taskWindowMs: taskMs, events: fresh,
+				editorMs: sample && Number.isFinite(taskMs) ? taskMs : null,
+				presentedMs: sample ? Math.max(0, sample.presented - sample.received) : null,
+				automationMs: sample ? sample.received - dispatched : null };
+		}));
+	} finally { await page.mouse.up(); }
 }
 
 function metric(payload: { metrics: { name: string; value: number }[] }, name: string): number {
 	return payload.metrics.find((entry) => entry.name === name)?.value ?? Number.NaN;
 }
 
-async function clickPick(page: Page): Promise<{ elapsedMs: number | null; resolved: boolean | null; indexBuilds: number | null }> {
+export async function clickPick(page: Page, wallId: string) {
+	// The Index selects the known identity; its current handles project that wall.
+	await selectWallById(page, wallId);
+	const start = await handlePoint(page, 'Wall start');
+	const end = await handlePoint(page, 'Wall end');
+	const point = { x: start.x * 0.75 + end.x * 0.25, y: start.y * 0.75 + end.y * 0.25 };
 	const before = await workSnapshot(page);
-	const box = await page.locator('canvas').first().boundingBox();
-	if (box === null) return { elapsedMs: null, resolved: null, indexBuilds: null };
 	const marksBefore = (await readLedger(page)).records.length;
-	await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.click(point.x, point.y);
 	await page.waitForTimeout(50);
 	const ledger = await readLedger(page);
-	const mark = [...ledger.records.slice(marksBefore)].reverse().find((record) => record.name === 'stage:pick');
-	const elapsed = typeof mark?.detail?.elapsedMs === 'number' ? mark.detail.elapsedMs : null;
+	const marks = ledger.records.slice(marksBefore).filter((record) => record.name === 'stage:pick');
+	const mark = marks.length === 1 ? marks[0] : undefined;
 	const after = await workSnapshot(page);
-	return {
-		elapsedMs: elapsed,
-		resolved: mark === undefined ? null : true,
-		indexBuilds: countDelta(before, after, 'plan-pick:node-built')
-	};
+	const selected = await page.locator('button.item-row[aria-current="true"]', { hasText: wallId }).count();
+	return { elapsedMs: typeof mark?.detail?.elapsedMs === 'number' ? mark.detail.elapsedMs : null,
+		resolved: pickIdentity(mark, wallId) === null ? null : pickIdentity(mark, wallId) === true && selected === 1,
+		indexBuilds: countDelta(before, after, 'plan-pick:node-built'), mark: mark ?? null, point, selected };
+}
+
+async function waitForRelevantFrame(page: Page, timing: () => Promise<TimedOperation>): Promise<TimedOperation> {
+	const deadline = Date.now() + 10_000;
+	let measured = await timing();
+	while (measured.presentedMs === null && Date.now() < deadline) {
+		await page.waitForTimeout(16);
+		measured = await timing();
+	}
+	return measured;
 }
 
 async function undoIfCommitted(page: Page, before: number): Promise<void> {
@@ -268,33 +260,31 @@ async function undoIfCommitted(page: Page, before: number): Promise<void> {
 	await waitForAcceptedResult(page, accepted).catch(() => undefined);
 }
 
-async function runOnce(page: Page, cdp: CDPSession, tier: SpotTier, projectId: string, canonicalJson: string): Promise<Omit<TierReport, 'tier' | 'workloadId' | 'digest' | 'sessions' | 'label' | 'onTheLine' | 'elapsedMs'>> {
+async function runOnce(page: Page, cdp: CDPSession, tier: SpotTier, projectId: string, canonicalJson: string, wallId: string): Promise<Omit<TierReport, 'tier' | 'workloadId' | 'digest' | 'sessions' | 'label' | 'onTheLine' | 'elapsedMs'>> {
 	const refresh = await refreshPeriod(page);
 	const openWallStart = Date.now();
+	const openDispatch = 0;
 	await page.goto(`${BASE_URL}/project/${encodeURIComponent(projectId)}/spatial?create=1`);
 	await page.getByRole('dialog', { name: 'Start a project' }).waitFor();
 	await openSourceJson(page, { size: tier, projectId, envelope: JSON.parse(canonicalJson), canonicalJson, facts: { walls: 0, openings: 0, rooms: 0 } });
+	const opened = await waitForRelevantFrame(page, async () => openTiming(await readLedger(page), openDispatch));
 	const openWallMs = Date.now() - openWallStart;
-	const openEditor = await markDelta(page, 'f2:open-requested', 'f2:open-admitted');
+	const previewVersion = await page.evaluate(() => {
+		const records = (window as Window & { __BISKIQ_PERF_RECORDS__?: LedgerRecord[] }).__BISKIQ_PERF_RECORDS__ ?? [];
+		const version = records.findLast((record) => record.name === 'build:identity')?.detail?.version;
+		return typeof version === 'string' ? version : null;
+	});
+	if (process.env.SPOT_REQUIRE_VERIFIED === '1' && previewVersion !== gitRevision()) throw new Error(`Preview revision mismatch: ${previewVersion} vs ${gitRevision()}`);
 	await setStageReading(page, 'Plan');
 	await fitStage(page);
 	await waitForStageSettled(page, 30_000);
-	await selectFirstWall(page);
-
+	await selectWallById(page, wallId);
 	const beforeDrag = await acceptedResultCount(page);
-	let dragWanted = SAMPLE_FLOOR;
-	let drag = await dragSamples(page, dragWanted);
-	let dragStop = seriesStop(drag.editor, MOVE_EDITOR_MS[tier]);
-	while (dragStop.action === 'extend' && dragWanted < SAMPLE_CAP) {
-		await undoIfCommitted(page, beforeDrag);
-		dragWanted += 1;
-		drag = await dragSamples(page, dragWanted);
-		dragStop = seriesStop(drag.editor, MOVE_EDITOR_MS[tier]);
-	}
+	const drag = await dragSamples(page, tier, refresh.ms);
+	await waitForAcceptedResult(page, beforeDrag);
 	await undoIfCommitted(page, beforeDrag);
-
-	const pickBefore = await clickPick(page);
-	await selectFirstWall(page);
+	const pickBefore = await clickPick(page, wallId);
+	await selectWallById(page, wallId);
 	const lengthField = page.locator('label.field', { hasText: 'Length' }).locator('input').first();
 	await lengthField.waitFor({ state: 'visible' });
 	const currentLength = Number(await lengthField.inputValue());
@@ -302,23 +292,12 @@ async function runOnce(page: Page, cdp: CDPSession, tier: SpotTier, projectId: s
 	const commitDispatch = await pageNow(page);
 	const acceptedBefore = await acceptedResultCount(page);
 	await commitPrecisionLength(page, Number.isFinite(nextLength) ? nextLength : currentLength + 0.05);
-	const accepted = await waitForAcceptedResult(page, acceptedBefore);
-	const command = [...(await readLedger(page)).records].reverse().find((record) => record.name === 'command:commit');
-	const commitEditor = command === undefined ? null : accepted.time - command.time;
-	const ledger = await readLedger(page);
-	const presentedTick = ledger.ticks.find((tick) => tick >= accepted.time);
-	const commitPresented = command === undefined || presentedTick === undefined ? null : presentedTick - command.time;
-	const commitAutomation = command === undefined ? null : Math.max(0, command.time - commitDispatch);
-
-	const pickAfter = await clickPick(page);
-	let panWanted = SAMPLE_FLOOR;
-	let pan = await panSamples(page, cdp, panWanted);
-	let panStop = seriesStop(pan.editor, MOVE_EDITOR_MS[tier]);
-	while (panStop.action === 'extend' && panWanted < SAMPLE_CAP) {
-		panWanted += 1;
-		pan = await panSamples(page, cdp, panWanted);
-		panStop = seriesStop(pan.editor, MOVE_EDITOR_MS[tier]);
-	}
+	await waitForAcceptedResult(page, acceptedBefore);
+	const commit = await waitForRelevantFrame(page, async () => typedLengthTiming(await readLedger(page), commitDispatch, wallId));
+	const commitEditor = commit.editorMs;
+	const commitAutomation = commit.start === null ? null : commit.start - commitDispatch;
+	const pickAfter = await clickPick(page, wallId);
+	const pan = await panSamples(page, cdp, tier, refresh.ms);
 
 	const frameFrom = await pageNow(page);
 	await page.evaluate(() => new Promise<void>((resolveFrames) => {
@@ -346,31 +325,34 @@ async function runOnce(page: Page, cdp: CDPSession, tier: SpotTier, projectId: s
 		const undoDispatch = await pageNow(page);
 		await page.getByRole('button', { name: 'Undo', exact: true }).click();
 		const undone = await waitForAcceptedResult(page, undoBefore);
-		undoEditor = undone.time - undoDispatch;
+		const marks = (await readLedger(page)).records.filter((record) => record.name === 'command:undo' && record.time >= undoDispatch);
+		undoEditor = marks.length === 1 ? undone.time - marks[0]!.time : null;
 	}
 
 	const work = await workSnapshot(page);
 	const supersededFraction = drag.inputs === 0 ? null : drag.superseded / drag.inputs;
 	return {
+		previewVersion,
 		refreshPeriodMs: refresh.ms,
 		refreshSource: refresh.source,
-		open: {
-			editorMs: openEditor,
-			automationMs: openEditor === null ? null : Math.max(0, openWallMs - openEditor)
-		},
-		drag: { editorMs: drag.editor, presentedMs: drag.presented, automationMs: drag.automation, supersededFraction },
-		pan: { editorMs: pan.editor, presentedMs: pan.presented, automationMs: pan.automation },
+		open: { ...opened, admissionMs: opened.editorMs, editorThroughRenderMs: opened.renderedMs,
+			editorMs: opened.renderedMs, totalMs: openWallMs,
+			automationMs: opened.presentedMs === null ? null : Math.max(0, openWallMs - opened.presentedMs) },
+		drag: { observations: drag.observations, editorMs: drag.editor, presentedMs: drag.presented, automationMs: drag.automation, supersededFraction },
+		pan: { observations: pan.observations, editorMs: pan.editor, presentedMs: pan.presented, automationMs: pan.automation },
 		frames,
-		commit: { editorMs: commitEditor, presentedMs: commitPresented, automationMs: commitAutomation },
+		commit: { ...commit, automationMs: commitAutomation },
 		undo: { required: undoIsRequired, editorMs: undoEditor },
 		pick: {
 			beforeMs: pickBefore.elapsedMs,
 			afterMs: pickAfter.elapsedMs,
-			resolved: pickBefore.resolved === null && pickAfter.resolved === null ? null : pickBefore.resolved !== false && pickAfter.resolved !== false,
+			resolved: pickBefore.resolved === null || pickAfter.resolved === null ? null : pickBefore.resolved === true && pickAfter.resolved === true,
 			indexBuilds: pickAfter.indexBuilds
 		},
+		pickEvidence: { expectedId: wallId, before: pickBefore, after: pickAfter },
+		observations: await readLedger(page),
 		work,
-		unsplit: openEditor === null && drag.editor.length === 0
+		unsplit: opened.renderedMs === null || commit.presentedMs === null || drag.observations.some((row) => row.editorMs === null || row.presentedMs === null) || pan.observations.some((row) => row.editorMs === null || row.presentedMs === null)
 	};
 }
 
@@ -386,7 +368,7 @@ function decisionInput(tier: SpotTier, measured: Omit<TierReport, 'tier' | 'work
 		commitEditorMs: measured.commit.editorMs,
 		commitPresentedMs: measured.commit.presentedMs,
 		supersededFraction: measured.drag.supersededFraction,
-		pickMeasured: measured.pick.beforeMs !== null || measured.pick.afterMs !== null,
+		pickMeasured: measured.pick.beforeMs !== null && measured.pick.afterMs !== null,
 		pickResolved: measured.pick.resolved,
 		undoRequired: measured.undo.required,
 		undoEditorMs: measured.undo.editorMs,
@@ -413,10 +395,17 @@ async function main(): Promise<void> {
 	const setupStarted = Date.now();
 	for (const tier of TIERS) generateWorkload(tier.id);
 	const setupMs = Date.now() - setupStarted;
+	if (process.env.SPOT_REQUIRE_VERIFIED === '1') {
+		const preview = await fetch(`${BASE_URL}/_app/version.json`, { cache: 'no-store' }).then((response) => response.json()) as { version?: string };
+		if (preview.version !== gitRevision()) throw new Error(`Preview build is ${preview.version ?? 'unknown'}, expected ${gitRevision()}`);
+		if (execFileSync('git', ['status', '--porcelain', '--untracked-files=normal'], { cwd: REPO, encoding: 'utf8' }).trim()) throw new Error('Verified spot check requires a clean committed runner');
+	}
 	const measuredStarted = Date.now();
 	const browser = await launchBrowser();
 	const browserVersion = browser.version();
 	const reports: TierReport[] = [];
+	const failures: { tier: SpotTier; session: number; error: string; observations: unknown }[] = [];
+	const runnerDirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=normal'], { cwd: REPO, encoding: 'utf8' }).trim() !== '';
 	let capped = false;
 	try {
 		for (const tier of TIERS) {
@@ -427,58 +416,44 @@ async function main(): Promise<void> {
 			const loaded = loadWorkload(tier.id);
 			const projectId = uniqueProjectId(tier.tier);
 			const canonicalJson = workloadJsonFor(loaded, projectId);
+			const source = JSON.parse(canonicalJson) as { units: { layout: { data: { walls: { id: string }[] } } } };
+			const wallId = loaded.meta.focusWallId ?? source.units.layout.data.walls[0]?.id;
+			if (!wallId) throw new Error(`Missing known wall for ${tier.id}`);
 			const tierStarted = Date.now();
-			let sessions = 0;
-			let last: TierReport | null = null;
-			let previousLabel: SpotLabel | null = null;
-			while (sessions < SESSION_CAP) {
-				if (Date.now() - measuredStarted > WALL_CAP_MS) {
-					capped = true;
-					break;
-				}
+			reports.push(...await collectSessions<TierReport>(async (sessionIndex) => {
+				if (Date.now() - measuredStarted > WALL_CAP_MS) { capped = true; return null; }
 				const session = await newMeasuredSession(browser, {
-					viewport: { width: 1920, height: 1080 },
-					deviceScaleFactor: 1,
-					network: 'N0',
-					cacheState: 'cold'
+					viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, network: 'N0', cacheState: 'cold'
 				});
 				try {
 					await session.page.goto(BASE_URL);
-					const measured = await runOnce(session.page, session.cdp, tier.tier, projectId, canonicalJson);
+					const measured = await runOnce(session.page, session.cdp, tier.tier, projectId, canonicalJson, wallId);
 					const decision = interactionDecision(decisionInput(tier.tier, measured));
-					sessions += 1;
-					last = {
-						tier: tier.tier,
-						workloadId: tier.id,
-						digest: loaded.meta.contentDigest,
-						sessions,
-						label: decision.label,
-						onTheLine: decision.onTheLine,
-						elapsedMs: Date.now() - tierStarted,
-						...measured
-					};
-					const request = nextSession({
-						sessionsSoFar: sessions,
-						onTheLine: decision.onTheLine,
-						transientContaminationCouldFlip: false,
-						labelsDisagree: previousLabel !== null && previousLabel !== decision.label
-					});
-					previousLabel = decision.label;
-					if (!request.another) break;
-				} finally {
-					await session.close();
-				}
-			}
-			if (last !== null) reports.push(last);
+					return { tier: tier.tier, workloadId: tier.id, digest: loaded.meta.contentDigest,
+						sessions: sessionIndex + 1, label: decision.label, onTheLine: decision.onTheLine,
+						elapsedMs: Date.now() - tierStarted, ...measured };
+				} catch (error) {
+					failures.push({ tier: tier.tier, session: sessionIndex + 1, error: String(error), observations: await readLedger(session.page).catch(() => null) });
+					return null;
+				} finally { await session.close(); }
+			}));
 		}
 	} finally {
 		await browser.close();
 	}
-	const labels = reports.map((report) => report.label);
+	const tiers = TIERS.map(({ tier }) => {
+		const sessions = reports.filter((report) => report.tier === tier);
+		return { tier, label: sessionLabel([...sessions.map((session) => session.label), ...failures.filter((failure) => failure.tier === tier).map(() => 'incomplete' as const)]), sessions };
+	});
+	const labels = tiers.map((tier) => tier.label);
+	const previewVersions = [...new Set(reports.map((row) => row.previewVersion))];
+	const runnerRevision = gitRevision();
+	const provenance = previewProvenance(runnerRevision, runnerDirty, previewVersions);
 	const elapsedMs = Date.now() - measuredStarted;
 	const report = {
 		command: 'perf:spot',
-		revision: gitRevision(),
+		revision: provenance.revision,
+		provenance,
 		baseUrl: BASE_URL,
 		machine: {
 			platform: process.platform,
@@ -492,7 +467,8 @@ async function main(): Promise<void> {
 		elapsedMs,
 		capped,
 		labels,
-		tiers: reports
+		failures,
+		tiers
 	};
 	const directory = process.env.PERF_RESULTS_DIR ?? join(tmpdir(), 'biskiq-spot');
 	mkdirSync(directory, { recursive: true });
@@ -500,11 +476,12 @@ async function main(): Promise<void> {
 	writeFileSync(file, `${JSON.stringify(report, null, 2)}\n`);
 	for (const tier of reports) {
 		console.log(`${tier.tier} ${tier.workloadId} ${tier.label} sessions=${tier.sessions} refresh=${tier.refreshPeriodMs.toFixed(2)} ms (${tier.refreshSource}) elapsed=${(tier.elapsedMs / 1000).toFixed(1)} s`);
-		console.log(`  open editor=${fmt(tier.open.editorMs)} automation=${fmt(tier.open.automationMs)}`);
+		console.log(`  open admission=${fmt(tier.open.admissionMs)} editor-through-render=${fmt(tier.open.editorMs)} presented=${fmt(tier.open.presentedMs)} automation=${fmt(tier.open.automationMs)}`);
 		console.log(`  drag editor max=${fmt(maxOf(tier.drag.editorMs))} presented max=${fmt(maxOf(tier.drag.presentedMs))} n=${tier.drag.editorMs.length}`);
 		console.log(`  pan editor max=${fmt(maxOf(tier.pan.editorMs))} presented max=${fmt(maxOf(tier.pan.presentedMs))} n=${tier.pan.editorMs.length}`);
-		console.log(`  commit editor=${fmt(tier.commit.editorMs)} presented=${fmt(tier.commit.presentedMs)} undo=${tier.undo.required ? fmt(tier.undo.editorMs) : 'not required'}`);
+		console.log(`  commit editor=${fmt(tier.commit.editorMs)} presented=${fmt(tier.commit.presentedMs)} automation=${fmt(tier.commit.automationMs)} undo=${tier.undo.required ? fmt(tier.undo.editorMs) : 'not required'}`);
 	}
+	for (const failure of failures) console.error(`${failure.tier} session ${failure.session}: ${failure.error}`);
 	console.log(`spot ${capped ? 'capped' : 'finished'} in ${(elapsedMs / 1000).toFixed(1)} s (setup ${(setupMs / 1000).toFixed(1)} s) → ${file}`);
 	process.exit(spotExitCode(labels, capped));
 }
@@ -518,7 +495,7 @@ function fmt(value: number | null): string {
 	return value === null || !Number.isFinite(value) ? 'missing' : `${value.toFixed(1)} ms`;
 }
 
-main().catch((error: unknown) => {
+if (process.argv[1]?.endsWith('perf/spot.ts')) main().catch((error: unknown) => {
 	console.error(error);
 	process.exit(1);
 });

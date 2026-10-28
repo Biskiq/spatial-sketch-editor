@@ -3,8 +3,8 @@
 **Status: owner decision, 2026-10-28.** This amends the
 [performance-mandate suspension](./performance-mandate-suspension-2026-10-28.md). The mandatory
 comprehensive benchmark strategy stays suspended. A lightweight M/L spot check is the approved
-editor performance workflow at the triggers below. Design reviewed in PR #213; this record
-authorizes the implementation. It changes no product format, package or correctness requirement.
+editor performance workflow at the triggers below. PR #213 supplied a review-only design proposal; this record
+authorizes the implementation and supersedes the proposal where they differ. It changes no product format, package or correctness requirement.
 
 ## Decision
 
@@ -49,6 +49,24 @@ half-rate, and must stay usable and correct. The two labels are not the same num
 CPU time alone does not establish smoothness. Thresholds and the early-stop rule live with the
 runner (`apps/editor/perf/lib/spot-decision.ts`) and the
 [harness readme](../../../apps/editor/perf/README.md).
+
+## Relationship to PR #213 and measurement repair
+
+[PR #213](https://github.com/Biskiq/spatial-sketch-editor/pull/213) remains open, unmerged and
+review-only. It is not a dependency of [PR #214](https://github.com/Biskiq/spatial-sketch-editor/pull/214).
+Its original four-to-twelve range rule, automatic contamination retry and promise to preserve the
+old runnable suite are superseded here: four observations, append-only extension to eight inside
+one gesture, at most three sessions under the threshold-margin/disagreement rules, and the retired
+suite refuses execution. No active copy of that proposal is added to this branch. Do not merge
+its conflicting adoption text over this decision. This relationship changes neither PR's state.
+
+The repair requested on 2026-10-28 keeps the triggers and thresholds above. Every measured session
+and outlier is retained, including disagreements; the tier summary is conservative. There is no
+automatic contamination trigger because this runner cannot identify non-editor task attribution.
+The earlier #214 commit figures of 411 ms (M) and 1,345 ms (L) used a stale pointer marker for a
+typed operation and are invalid. They establish no commit-performance finding. New claims require
+operation-matched acceptance, a matching rendered source, and verified preview provenance.
+See the [harness method](../../../apps/editor/perf/README.md#correlation-sessions-and-provenance).
 
 ## Owner signature
 

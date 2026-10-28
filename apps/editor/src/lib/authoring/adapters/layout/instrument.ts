@@ -236,7 +236,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	async function submit(intent: AuthoringIntent): Promise<LayoutInstrumentOutcome> {
 		// T3.P03.S02: an explicit typed command starts here; the accepted result it
 		// produces is marked by the host's acceptance path.
-		perfMark('command:instrument', { taskKind: intent.kind });
+		perfMark('command:instrument', { taskKind: intent.kind, operationId: intent.operationId, wallId: options.subject.kind === 'wall' ? options.subject.id : null });
 		inFlight = true;
 		try {
 			const outcome = await options.port.accept(intent);

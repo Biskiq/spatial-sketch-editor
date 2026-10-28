@@ -306,6 +306,7 @@ export function createStageAcceptanceHost(options: {
 		correspondence: readonly CorrespondenceEntry[],
 		installOptions: {
 			readonly fromHistory?: boolean;
+			readonly operationId?: string;
 			readonly knownIdentity?: {
 				readonly sourceContentId: string;
 				readonly canonicalJson: string;
@@ -423,7 +424,7 @@ export function createStageAcceptanceHost(options: {
 		// T3.P03.S02: the accepted revision is installed into the Stage here. The
 		// performance harness pairs this with the frame that presents it; the input
 		// sequence is the drag sample that produced the commit.
-		perfResult('accepted-result', { sourceContentId: installed.sourceContentId });
+		perfResult('accepted-result', { sourceContentId: installed.sourceContentId, operationId: installOptions.operationId });
 		const after = facade.selectionState();
 		const primaryLost =
 			beforePrimary !== null && !after.ordered.some((entry) => sameSubject(entry.reference, beforePrimary));
@@ -574,6 +575,7 @@ export function createStageAcceptanceHost(options: {
 							}
 						: undefined;
 				const installed = await install(result.snapshot, result.correspondence, {
+					operationId: intent.operationId,
 					knownIdentity
 				});
 				if (installed.kind === 'refused' && needsCompensation(installed.code)) {

@@ -140,13 +140,12 @@ describe('interaction labels', () => {
 });
 
 describe('sessions and exit', () => {
-	it('requests another session only for an unresolved label, a transient contaminant, or a disagreement', () => {
-		expect(nextSession({ sessionsSoFar: 1, onTheLine: false, transientContaminationCouldFlip: false, labelsDisagree: false })).toEqual({ another: false, reason: 'none' });
-		expect(nextSession({ sessionsSoFar: 1, onTheLine: true, transientContaminationCouldFlip: false, labelsDisagree: false }).reason).toBe('on-the-line');
-		expect(nextSession({ sessionsSoFar: 1, onTheLine: false, transientContaminationCouldFlip: true, labelsDisagree: false }).reason).toBe('transient-contamination');
-		expect(nextSession({ sessionsSoFar: 2, onTheLine: true, transientContaminationCouldFlip: false, labelsDisagree: false })).toEqual({ another: false, reason: 'none' });
-		expect(nextSession({ sessionsSoFar: 2, onTheLine: false, transientContaminationCouldFlip: false, labelsDisagree: true }).reason).toBe('labels-disagree');
-		expect(nextSession({ sessionsSoFar: 3, onTheLine: true, transientContaminationCouldFlip: true, labelsDisagree: true })).toEqual({ another: false, reason: 'capped' });
+	it('requests another session only for an unresolved label or a disagreement', () => {
+		expect(nextSession({ sessionsSoFar: 1, onTheLine: false, labelsDisagree: false })).toEqual({ another: false, reason: 'none' });
+		expect(nextSession({ sessionsSoFar: 1, onTheLine: true, labelsDisagree: false }).reason).toBe('on-the-line');
+		expect(nextSession({ sessionsSoFar: 2, onTheLine: true, labelsDisagree: false })).toEqual({ another: false, reason: 'none' });
+		expect(nextSession({ sessionsSoFar: 2, onTheLine: false, labelsDisagree: true }).reason).toBe('labels-disagree');
+		expect(nextSession({ sessionsSoFar: 3, onTheLine: true, labelsDisagree: true })).toEqual({ another: false, reason: 'capped' });
 	});
 
 	it('requires undo at L and at M only after a commit past the smooth line', () => {

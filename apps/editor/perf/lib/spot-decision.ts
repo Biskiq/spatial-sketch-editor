@@ -161,6 +161,7 @@ export function interactionDecision(input: InteractionInput): InteractionDecisio
 		|| commitEditor === 'on-the-line'
 		|| commitPresented === 'on-the-line'
 		|| undo === 'on-the-line';
+	const clearSeriesMiss = [moveEditor, movePresented, panEditor, panPresented].some((stop) => stop.classification === 'over');
 	const missing =
 		input.unsplit ||
 		input.moveEditor.length < SAMPLE_FLOOR ||
@@ -173,10 +174,8 @@ export function interactionDecision(input: InteractionInput): InteractionDecisio
 		undo === 'missing' ||
 		input.supersededFraction === null ||
 		!input.pickMeasured ||
-		moveEditor.action === 'extend' ||
-		movePresented.action === 'extend' ||
-		panEditor.action === 'extend' ||
-		panPresented.action === 'extend' ||
+		input.pickResolved === null ||
+		(!clearSeriesMiss && (moveEditor.action === 'extend' || movePresented.action === 'extend' || panEditor.action === 'extend' || panPresented.action === 'extend')) ||
 		frames.action === 'extend';
 	if (missing) return { label: 'incomplete', moveEditor, movePresented, panEditor, panPresented, frames, onTheLine };
 
@@ -202,7 +201,7 @@ export function interactionDecision(input: InteractionInput): InteractionDecisio
 
 export type SessionRequest = {
 	readonly another: boolean;
-	readonly reason: 'none' | 'on-the-line' | 'transient-contamination' | 'labels-disagree' | 'capped';
+	readonly reason: 'none' | 'on-the-line' | 'labels-disagree' | 'capped';
 };
 
 /**
@@ -214,7 +213,6 @@ export type SessionRequest = {
 export function nextSession(input: {
 	readonly sessionsSoFar: number;
 	readonly onTheLine: boolean;
-	readonly transientContaminationCouldFlip: boolean;
 	readonly labelsDisagree: boolean;
 }): SessionRequest {
 	if (input.sessionsSoFar >= SESSION_CAP) return { another: false, reason: 'capped' };
@@ -222,7 +220,6 @@ export function nextSession(input: {
 		return { another: true, reason: 'labels-disagree' };
 	}
 	if (input.sessionsSoFar >= 2) return { another: false, reason: 'none' };
-	if (input.transientContaminationCouldFlip) return { another: true, reason: 'transient-contamination' };
 	if (input.onTheLine) return { another: true, reason: 'on-the-line' };
 	return { another: false, reason: 'none' };
 }

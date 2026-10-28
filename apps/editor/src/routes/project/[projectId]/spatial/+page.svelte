@@ -748,6 +748,7 @@
 		unsubscribeHeadSave = null;
 		// The mounted facade is the epoch's source. The mark is the anchor the
 		// performance harness uses for the first architectural frame (F1/F2).
+		perfMark('build:identity', { version: typeof __BISKIQ_BUILD_REVISION__ === 'string' ? __BISKIQ_BUILD_REVISION__ : 'unverified' });
 		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
 		acceptance = mounted;
 		adapterServices = createStageAdapterServices(facade, mounted);
@@ -1557,7 +1558,7 @@
 		pendingSavedBase = null;
 		remoteSavedCanonicalJson = null;
 		applyState(next);
-		perfMark('f2:open-admitted');
+		perfMark('f2:open-admitted', { sourceContentId: next.snapshot.sourceContentId });
 	}
 
 	/* --- viewport measurement and evaluation -------------------------------- */
@@ -3065,6 +3066,7 @@
 					<StageCanvas
 						{scenePick}
 						geometry={boot.snapshot.domain.geometry}
+						sourceContentId={boot.snapshot.sourceContentId}
 						scene={boot.snapshot.domain.scene}
 						rooms={boot.snapshot.domain.rooms}
 						{evaluation}
