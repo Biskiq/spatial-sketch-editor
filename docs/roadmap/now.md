@@ -7,14 +7,17 @@ A scope absent from this table is held. A row states the condition under which t
 | Scope | Condition | Plan |
 | --- | --- | --- |
 | `T1.P02.S03` | released; starts after the [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md) batch PR (#199) merges on `main`; the registered plan is an outline, so the complete implementation plan and its plan review are recorded before implementation starts; recheck consumed gates and active scopes at its own trusted base | [Opening family](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/implementation-plan.md) |
-| `T2.P02.S03` | released; starts after PR #198 merges on `main`; `T2.P02.S01` and `S02` accepted; plan review complete ([review](./t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/plan-review.md)); recheck consumed gates and active scopes at its own trusted base | [Integrated final gate](./t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/implementation-plan.md) |
+| `T5.P01.S01` | released; starts after PR #207 merges on `main`; the T2 prerequisite merged with PR #199 and T2.P02 closed 2026-10-27; recheck consumed gates and active scopes at its own trusted base | [Native form source and evaluation](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md) |
 
 Provenance: the
 [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md) releases
 the Opening family and prunes one **verified shipped** row — `T1.P02.S02` (accepted `owner-override`
 and shipped 2026-10-27 on PR #201, merge commit `ce159a1e`, anchor `36c18db9` and tag
-`closed/T1.P02.S02` verified reachable). `T2.P02.S03`'s row stays until its own PR #199 merge is
-verified. The [next-wave owner release](../reference/decisions/next-wave-authorization-2026-10-27.md),
+`closed/T1.P02.S02` verified reachable). The T5.P01.S01 row was added by the owner's implementation
+authorization on 2026-10-27 after that verification, and it prunes one **verified shipped** row —
+`T2.P02.S03` (accepted `owner-override` and shipped 2026-10-27 on PR #199, merge commit `a674eedb`,
+anchor `221facc4` and tags `closed/T2.P02.S03` and `closed/T2.P02` verified reachable). The
+[next-wave owner release](../reference/decisions/next-wave-authorization-2026-10-27.md),
 [performance foundation](../reference/decisions/performance-foundation-authorization-2026-10-24.md)
 and [post-Batch-E](../reference/decisions/post-batch-e-authorization-2026-10-23.md) records keep the
 earlier permission history, and each pruned row's own acceptance record keeps its evidence.
