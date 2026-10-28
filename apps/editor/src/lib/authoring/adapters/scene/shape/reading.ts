@@ -588,11 +588,48 @@ export function createShapeReadingSession(
 		return css === null ? null : [css[0] - context.evaluation.rect.left, css[1] - context.evaluation.rect.top];
 	}
 
+	/**
+	 * The depth handle's viewport CSS.
+	 *
+	 * In 3D the handle is the world point along the depth axis. In Plan the floor
+	 * normal points at the camera, so that world point projects onto the outline's
+	 * centre and a drag would have no screen travel. The Plan handle is therefore
+	 * offset up-screen by its depth at the evaluated target-plane scale: the pull
+	 * has visible feedback, and the same offset is what the hit test uses.
+	 */
+	function depthHandle(context: StageAdapterContext): readonly [number, number] | null {
+		const axis = depthAxis(context);
+		if (axis === null) return null;
+		if (context.evaluation.settledReading !== 'plan') return project(context, axis.handle);
+		const base = project(context, axis.base);
+		if (base === null) return null;
+		const metersPerPixel = context.evaluation.targetPlaneMetersPerCssPixel;
+		if (!(metersPerPixel > 0)) return base;
+		return [base[0], base[1] - depth / metersPerPixel];
+	}
+
+	/** The same handle point in Stage-local CSS, the space pointer intents use. */
+	function depthHandleStage(context: StageAdapterContext): readonly [number, number] | null {
+		const css = depthHandle(context);
+		return css === null ? null : [css[0] - context.evaluation.rect.left, css[1] - context.evaluation.rect.top];
+	}
+
 	/** Where the pointer ray passes closest to the depth axis, as a positive depth. */
 	function depthFromRay(context: StageAdapterContext, css: readonly [number, number]): number | null {
 		const axis = depthAxis(context);
+		if (axis === null) return null;
+		if (context.evaluation.settledReading === 'plan') {
+			// The Plan camera looks down the floor normal: its rays are parallel to
+			// the depth axis and have no closest approach. The handle is a screen-space
+			// pull, so its vertical travel is the depth at the same target-plane scale.
+			const base = projectStage(context, axis.base);
+			const metersPerPixel = context.evaluation.targetPlaneMetersPerCssPixel;
+			if (base === null || !(metersPerPixel > 0)) return null;
+			const along = (base[1] - css[1]) * metersPerPixel;
+			return Math.min(MAX_DEPTH_METERS, Math.max(MIN_DEPTH_METERS, along));
+		}
 		const ray = rayAt(context, css);
-		if (axis === null || ray === null) return null;
+		if (ray === null) return null;
 		// The drawing plane itself is perpendicular to the axis, so intersecting it
 		// would always report zero. The knob lives anywhere along the axis: use the
 		// line/line closest point instead.
@@ -610,8 +647,7 @@ export function createShapeReadingSession(
 		pointer(intent, context) {
 			if (intent.phase === 'down') {
 				if (phase === 'depth') {
-					const axis = depthAxis(context);
-					const handle = axis === null ? null : projectStage(context, axis.handle);
+					const handle = depthHandleStage(context);
 					const distance =
 						handle === null
 							? Infinity
@@ -794,8 +830,7 @@ export function createShapeReadingSession(
 					}
 				}
 			} else {
-				const axis = depthAxis(context);
-				const handle = axis === null ? null : project(context, axis.handle);
+				const handle = depthHandle(context);
 				if (handle !== null) {
 					markers.push({
 						id: 'scene-shape-depth',

@@ -547,6 +547,39 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(generator.extent).toBeCloseTo(2.5, 3);
 	});
 
+	it('pulls floor depth upward in Plan, where the floor normal has no screen travel', async () => {
+		const mounted = await mount();
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		for (const point of [
+			[2, 0, 2],
+			[4, 0, 2],
+			[4, 0, 4],
+			[2, 0, 4]
+		] as const) {
+			click(mounted.facade, point);
+		}
+		shape.controller.finish();
+		// An invalid typed depth must not survive a valid handle drag.
+		shape.controller.setDepth('0');
+		expect(shape.snapshot().canCreate).toBe(false);
+
+		const centre = stageCss(mounted.facade, [3, 0, 3]);
+		const marker = () => mounted.facade.overlays().find((entry) => entry.id === 'scene-shape-depth')!;
+		expect(marker().css[1]).toBeLessThan(centre[1] - 1);
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = marker().css;
+		const to = [from[0], from[1] - 80] as const;
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+
+		expect(shape.snapshot().depth).toBeGreaterThan(1);
+		expect(shape.snapshot().canCreate).toBe(true);
+		expect(marker().css[1]).toBeLessThan(from[1]);
+	});
+
 	it('places the upright depth handle on the standing body and follows Flip side', async () => {
 		const mounted = await mount();
 		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
