@@ -221,7 +221,6 @@ function pointerDatumPoint(
 type OpeningCandidate = {
 	readonly wallId: string;
 	readonly offset: number;
-	readonly ghost: readonly [LayoutVec2, LayoutVec2] | null;
 };
 
 type OpeningPreview =
@@ -473,20 +472,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return document.openings.find((opening) => opening.id === sourceId)?.wallId ?? null;
 			}
 
-			/** Host preference from the canonical selection. */
-			function preferredHostId(adapterContext: StageAdapterContext): string | null {
-				const primary = adapterContext.selectionState().primary;
-				return primary === null
-					? null
-					: preferredHostOf(primary.subject.kind, primary.subject.id);
-			}
-
-			/** Host preference for the palette's typed placement (no pointer context). */
-			function preferredHostIdForPalette(): string | null {
-				const selection = services.stage.selection();
-				return selection === null
-					? null
-					: preferredHostOf(selection.sourceKind, selection.sourceId);
+			/** The host Wall's frame and resolved length, when it has one. */
+			function openingSpan(wallId: string): { frame: WallFrame; length: number } | null {
+				const frame = wallFrame(document, wallId);
+				if (frame === null) return null;
+				const length = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
+				return length > 0 ? { frame, length } : null;
 			}
 
 			/**
@@ -498,15 +489,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				wallId: string,
 				offset: number
 			): readonly [LayoutVec2, LayoutVec2] | null {
-				const frame = wallFrame(document, wallId);
-				if (frame === null) return null;
-				const length = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
-				if (!(length > 0)) return null;
-				const dx = (frame.end[0] - frame.start[0]) / length;
-				const dz = (frame.end[1] - frame.start[1]) / length;
+				const span = openingSpan(wallId);
+				if (span === null) return null;
+				const { frame, length } = span;
 				const at = (distance: number): LayoutVec2 => [
-					frame.start[0] + dx * distance,
-					frame.start[1] + dz * distance
+					frame.start[0] + ((frame.end[0] - frame.start[0]) / length) * distance,
+					frame.start[1] + ((frame.end[1] - frame.start[1]) / length) * distance
 				];
 				return [at(offset), at(offset + openingOptions.width)];
 			}
@@ -570,10 +558,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				css: readonly [number, number]
 			): OpeningCandidate | null {
 				const projected = projectedScene(adapterContext);
+				const primary = adapterContext.selectionState().primary;
 				const hit = classifyOpeningHost({
 					css,
 					walls: projected.walls,
-					preferredWallId: preferredHostId(adapterContext)
+					preferredWallId:
+						primary === null ? null : preferredHostOf(primary.subject.kind, primary.subject.id)
 				});
 				if (hit === null) return null;
 				const wall = projected.walls.find((candidate) => candidate.id === hit.wallId);
@@ -581,7 +571,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const point = pointerDatumPoint(adapterContext, css);
 				if (point === null) return null;
 				const offset = offsetAlongWall(wall, pointOnWallCenterline(wall, [point[0], point[1]]));
-				return { wallId: wall.id, offset, ghost: openingGhost(wall.id, offset) };
+				return { wallId: wall.id, offset };
 			}
 
 			/**
@@ -589,16 +579,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * a typed offset is used verbatim, never clamped. The planner still owns fit.
 			 */
 			function openingCandidateForHost(wallId: string, offsetText: string): OpeningCandidate | null {
-				const frame = wallFrame(document, wallId);
-				if (frame === null) {
-					openingNotice = 'That Wall is no longer in the project. Select another Wall.';
-					return null;
-				}
-				const length = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
-				if (!(length > 0)) {
+				const span = openingSpan(wallId);
+				if (span === null) {
 					openingNotice = 'That Wall has no resolvable span. Repair it or select another Wall.';
 					return null;
 				}
+				const { length } = span;
 				let offset: number;
 				if (offsetText.trim() === '') {
 					if (openingOptions.width > length) {
@@ -618,7 +604,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					offset = parsed.value;
 				}
-				return { wallId, offset, ghost: openingGhost(wallId, offset) };
+				return { wallId, offset };
 			}
 
 			/**
@@ -846,12 +832,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const effective = 'points' in withHover ? withHover : draft;
 				const pending =
 					inkHover === null ? null : pendingLegFacts(draft, inkHover.point);
-				const hostId = openingCandidate?.wallId ?? preferredHostIdForPalette();
-				const frame = hostId === null ? null : wallFrame(document, hostId);
-				const hostLength =
-					frame === null
-						? null
-						: Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
+				const selection = services.stage.selection();
+				const hostId =
+					openingCandidate?.wallId ??
+					(selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId));
 				return {
 					reading: inkReading,
 					opening:
@@ -859,7 +843,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							? null
 							: {
 									hostId,
-									hostLength,
 									offset: openingCandidate?.offset ?? null,
 									width: openingOptions.width,
 									height: openingOptions.height,
@@ -940,11 +923,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						inkReading = next;
 						inkNotice = null;
-						openingCandidate = null;
-						openingPreview = null;
-						openingNotice = null;
-						openingCapture = null;
-						endOpeningPress();
+						clearOpeningState();
 						if (next === 'wall') {
 							inkHover = null;
 							refreshInkPreview();
@@ -954,18 +933,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					},
 					setOpeningOptions: (options) => {
 						openingOptions = options;
-						if (openingCandidate !== null) {
-							openingCandidate = {
-								...openingCandidate,
-								ghost: openingGhost(openingCandidate.wallId, openingCandidate.offset)
-							};
-							refreshOpeningPreview();
-						}
+						if (openingCandidate !== null) refreshOpeningPreview();
 						services.stage.notifySurfaceChange();
 						publishInk();
 					},
 					placeOpening: (offsetText) => {
-						const hostId = preferredHostIdForPalette();
+						const selection = services.stage.selection();
+						const hostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
 						if (hostId === null) {
 							openingNotice = 'Select a Wall — or one of its Openings — before placing by offset.';
 							publishInk();
@@ -1759,33 +1733,35 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					return null;
 				},
-				/** Esc, task replacement and install all end the writer with no commit. */					taskClosed() {
-						openTaskKind = null;
-						if (pausedProposal !== null) {
-							clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
-						}
-						pausedProposal = null;
-						refusal = null;
-						endGesture();
-						// Disarming the tool cancels the live chain and the Opening candidate:
-						// nothing is left hidden.
-						endInkPress();
-						clearChain();
-						clearOpeningState();
-						publishInkSurface(null);
-					},					dispose() {
-						openTaskKind = null;
-						if (pausedProposal !== null) {
-							clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
-						}
-						pausedProposal = null;
-						refusal = null;
-						endGesture();
-						endInkPress();
-						clearChain();
-						clearOpeningState();
-						publishInkSurface(null);
+				/** Esc, task replacement and install all end the writer with no commit. */
+				taskClosed() {
+					openTaskKind = null;
+					if (pausedProposal !== null) {
+						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
 					}
+					pausedProposal = null;
+					refusal = null;
+					endGesture();
+					// Disarming the tool cancels the live chain and the Opening candidate:
+					// nothing is left hidden.
+					endInkPress();
+					clearChain();
+					clearOpeningState();
+					publishInkSurface(null);
+				},
+				dispose() {
+					openTaskKind = null;
+					if (pausedProposal !== null) {
+						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
+					}
+					pausedProposal = null;
+					refusal = null;
+					endGesture();
+					endInkPress();
+					clearChain();
+					clearOpeningState();
+					publishInkSurface(null);
+				}
 			};
 
 			/**
@@ -1805,29 +1781,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						: ([css[0] - adapterContext.evaluation.rect.left, css[1] - adapterContext.evaluation.rect.top] as const);
 				};
 				const candidate = openingCandidate;
-				const start = candidate?.ghost === null || candidate?.ghost === undefined ? null : project(candidate.ghost[0]);
-				const end = candidate?.ghost === null || candidate?.ghost === undefined ? null : project(candidate.ghost[1]);
-				if (candidate !== null && start !== null) {
-					markers.push({
-						id: 'layout-opening-start',
-						css: start,
-						label: `Opening start — offset ${candidate.offset.toFixed(3)} m on Wall ${candidate.wallId}`
-					});
-				}
-				if (candidate !== null && end !== null) {
-					markers.push({
-						id: 'layout-opening-end',
-						css: end,
-						label: `Opening end — ${openingOptions.width.toFixed(3)} m wide`
-					});
+				const ghost = candidate === null ? null : openingGhost(candidate.wallId, candidate.offset);
+				const start = ghost === null ? null : project(ghost[0]);
+				const mark = (id: string, css: readonly [number, number] | null, label: string) => {
+					if (css !== null) markers.push({ id, css, label });
+				};
+				if (candidate !== null) {
+					mark(
+						'layout-opening-start',
+						start,
+						`Opening start — offset ${candidate.offset.toFixed(3)} m on Wall ${candidate.wallId}`
+					);
+					mark('layout-opening-end', ghost === null ? null : project(ghost[1]), `Opening end — ${openingOptions.width.toFixed(3)} m wide`);
 				}
 				const refusal =
 					openingNotice ?? (openingPreview?.kind === 'refused' ? openingPreview.message : null);
 				if (refusal !== null) {
-					const anchor = start ?? (openingPress === null ? null : openingPress.css);
-					if (anchor !== null) {
-						markers.push({ id: 'layout-opening-refusal', css: anchor, label: refusal });
-					}
+					mark('layout-opening-refusal', start ?? (openingPress === null ? null : openingPress.css), refusal);
 				}
 				return markers;
 			}

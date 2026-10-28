@@ -189,7 +189,6 @@ export type InkOpeningOptions = {
 /** The host-relative candidate and its planner answer, as the palette reads it. */
 export type InkOpeningSnapshot = {
 	readonly hostId: string | null;
-	readonly hostLength: number | null;
 	readonly offset: number | null;
 	readonly width: number;
 	readonly height: number;

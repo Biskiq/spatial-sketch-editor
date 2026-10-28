@@ -32,14 +32,6 @@
 	let pointZ = $state('');
 	let pointError = $state<string | null>(null);
 
-	/** The next Opening's defaults; committed through the adapter's own surface. */
-	let openingKind = $state<'door' | 'window'>('door');
-	let openingWidth = $state('0.9');
-	let openingHeight = $state('2.1');
-	let openingSill = $state('0');
-	let openingOffset = $state('');
-	let openingError = $state<string | null>(null);
-
 	const emptySnapshot: InkPaletteSnapshot = {
 		reading: 'wall',
 		opening: null,
@@ -107,38 +99,6 @@
 		}
 		pointError = null;
 		inkSurface()?.controller.typePoint(pointX, pointZ);
-	}
-
-	/** Validate and remember the next Opening's kind and exact metrics. */
-	function commitOpeningOptions(): boolean {
-		const width = parseMeasureInput(openingWidth);
-		if (!width.ok || !(width.value > 0)) {
-			openingError = `Width: ${width.ok ? 'must be greater than zero.' : width.reason}`;
-			return false;
-		}
-		const height = parseMeasureInput(openingHeight);
-		if (!height.ok || !(height.value > 0)) {
-			openingError = `Height: ${height.ok ? 'must be greater than zero.' : height.reason}`;
-			return false;
-		}
-		const sill = parseMeasureInput(openingSill);
-		if (!sill.ok || sill.value < 0) {
-			openingError = `Sill: ${sill.ok ? 'must be zero or greater.' : sill.reason}`;
-			return false;
-		}
-		openingError = null;
-		inkSurface()?.controller.setOpeningOptions({
-			kind: openingKind,
-			width: width.value,
-			height: height.value,
-			sillHeight: sill.value
-		});
-		return true;
-	}
-
-	function placeOpeningByOffset(): void {
-		if (!commitOpeningOptions()) return;
-		inkSurface()?.controller.placeOpening(openingOffset);
 	}
 
 	const pendingText = $derived(
@@ -242,74 +202,9 @@
 		{#if pointError !== null}<p class="error" role="alert">{pointError}</p>{/if}
 		<p class="quiet">Click the Stage to place points; click the start point to close the ring. Drag to draw one Wall and finish.</p>
 	{:else}
-		<div class="options">
-			<label>
-				<span>Kind</span>
-				<select data-opening-kind bind:value={openingKind} onchange={commitOpeningOptions}>
-					<option value="door">Door</option>
-					<option value="window">Window</option>
-				</select>
-			</label>
-			<label>
-				<span>Width</span>
-				<input type="text" inputmode="decimal" data-opening-width bind:value={openingWidth} onchange={commitOpeningOptions} />
-				<span class="unit">m</span>
-			</label>
-			<label>
-				<span>Height</span>
-				<input type="text" inputmode="decimal" data-opening-height bind:value={openingHeight} onchange={commitOpeningOptions} />
-				<span class="unit">m</span>
-			</label>
-			<label>
-				<span>Sill</span>
-				<input type="text" inputmode="decimal" data-opening-sill bind:value={openingSill} onchange={commitOpeningOptions} />
-				<span class="unit">m</span>
-			</label>
-		</div>
-		{#if openingError !== null}<p class="error" role="alert">{openingError}</p>{/if}
-
-		<dl class="live">
-			<div><dt>Host</dt><dd>{snapshot.opening?.hostId ?? 'Aim at a Wall face'}</dd></div>
-			<div>
-				<dt>Offset</dt>
-				<dd>{snapshot.opening?.offset === null || snapshot.opening?.offset === undefined ? '—' : `${snapshot.opening.offset.toFixed(3)} m`}</dd>
-			</div>
-			<div><dt>Width</dt><dd>{snapshot.opening?.width.toFixed(3) ?? '—'} m</dd></div>
-			<div class="consequence">
-				<dt>Fit</dt>
-				<dd>{snapshot.opening?.canPlace ? 'Planner accepts this candidate.' : 'Adjust the aim or the Opening measures.'}</dd>
-			</div>
-		</dl>
-
-		{#if snapshot.opening?.refusal !== null && snapshot.opening?.refusal !== undefined}
-			<p class="refusal" role="alert" data-opening-refusal>{snapshot.opening.refusal}</p>
-		{/if}
-
-		<form
-			class="typed-point"
-			onsubmit={(event) => {
-				event.preventDefault();
-				placeOpeningByOffset();
-			}}
-		>
-			<label>
-				<span>Offset</span>
-				<input
-					type="text"
-					inputmode="decimal"
-					data-opening-offset
-					placeholder="center"
-					bind:value={openingOffset}
-					aria-label="Opening offset from the host Wall start"
-				/>
-			</label>
-			<button type="submit" data-opening-place disabled={snapshot.opening?.hostId === null || snapshot.opening?.hostId === undefined}>
-				Place by offset
-			</button>
-		</form>
-		<p class="quiet">
-			Click a Wall face to place at the pointer; a selected Wall (or an Opening’s host) wins a tie. Select a host to place by exact offset; leave Offset empty to center.
-		</p>
+		{#await import('./LayoutOpeningPalette.svelte') then { default: OpeningPalette }}
+			<OpeningPalette services={_services} opening={snapshot.opening} />
+		{/await}
 	{/if}
 </div>
 
@@ -352,8 +247,7 @@
 		align-items: center;
 		gap: 0.35rem;
 	}
-	input,
-	select {
+	input {
 		min-height: 1.9rem;
 		padding: 0.1rem 0.35rem;
 		border: 1px solid #635a6f;

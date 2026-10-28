@@ -248,7 +248,6 @@ describe('T1.P02.S03 — Opening placement', () => {
 		controller.setOpeningOptions({ kind: 'window', width: 1.2, height: 1.2, sillHeight: 1 });
 		expect(inkSurface()!.snapshot().opening).toMatchObject({
 			hostId: mounted.wallId,
-			hostLength: 6,
 			canPlace: false
 		});
 		controller.placeOpening('1.5');

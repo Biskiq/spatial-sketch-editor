@@ -77,48 +77,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function finiteNonNegative(value: unknown): value is number {
-	return typeof value === 'number' && Number.isFinite(value) && value >= 0;
-}
-
-function finitePositive(value: unknown): value is number {
-	return typeof value === 'number' && Number.isFinite(value) && value > 0;
-}
-
-function exactKeys(
-	payload: unknown,
-	expected: readonly string[]
-): { value: Record<string, unknown> } | { message: string } {
-	if (!isRecord(payload)) return { message: 'The Opening operation payload must be an object.' };
-	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
-	if (unknown.length > 0) {
-		return { message: `The Opening operation payload cannot carry ${unknown.join(', ')}.` };
-	}
-	for (const key of expected) {
-		if (!(key in payload)) return { message: `The Opening operation payload is missing "${key}".` };
-	}
-	return { value: payload };
-}
-
 function readCreatePayload(
 	payload: unknown
 ): OpeningCreatePayload | { readonly message: string } {
-	const parsed = exactKeys(payload, ['wallId', 'kind', 'offset', 'width', 'height', 'sillHeight']);
-	if ('message' in parsed) return parsed;
-	const { wallId, kind, offset, width, height, sillHeight } = parsed.value;
+	if (!isRecord(payload)) return { message: 'The Opening operation payload must be an object.' };
+	const { wallId, kind, offset, width, height, sillHeight } = payload;
 	if (typeof wallId !== 'string' || wallId.length === 0) {
 		return { message: 'An Opening placement needs one host wall id.' };
 	}
 	if (kind !== 'door' && kind !== 'window') {
 		return { message: 'An Opening placement supports a door or a window.' };
 	}
-	if (!finiteNonNegative(offset)) {
+	if (typeof offset !== 'number' || !Number.isFinite(offset) || offset < 0) {
 		return { message: 'An Opening offset must be a finite non-negative number of meters.' };
 	}
-	if (!finitePositive(width) || !finitePositive(height)) {
+	if (
+		typeof width !== 'number' || !Number.isFinite(width) || width <= 0 ||
+		typeof height !== 'number' || !Number.isFinite(height) || height <= 0
+	) {
 		return { message: 'An Opening width and height must be finite positive numbers of meters.' };
 	}
-	if (!finiteNonNegative(sillHeight)) {
+	if (typeof sillHeight !== 'number' || !Number.isFinite(sillHeight) || sillHeight < 0) {
 		return { message: 'An Opening sill must be a finite non-negative number of meters.' };
 	}
 	return { wallId, kind, offset, width, height, sillHeight };
@@ -127,18 +106,10 @@ function readCreatePayload(
 function readDeletePayload(
 	payload: unknown
 ): OpeningDeletePayload | { readonly message: string } {
-	const parsed = exactKeys(payload, ['openingId']);
-	if ('message' in parsed) return parsed;
-	const { openingId } = parsed.value;
-	if (typeof openingId !== 'string' || openingId.length === 0) {
-		return { message: 'An Opening deletion needs one opening id.' };
-	}
-	return { openingId };
-}
-
-/** The host Wall's own length, or `undefined` when its span is unresolved. */
-function hostLength(document: LayoutDocumentWallFirst, wallId: string): number | undefined {
-	return wallFirstWallLength(document, wallId);
+	if (!isRecord(payload)) return { message: 'The Opening operation payload must be an object.' };
+	return typeof payload.openingId === 'string' && payload.openingId.length > 0
+		? { openingId: payload.openingId }
+		: { message: 'An Opening deletion needs one opening id.' };
 }
 
 function kindWords(kind: OpeningKind): string {
@@ -164,46 +135,31 @@ export function openingRefusalWords(
 ): string {
 	const wallId = attempt.wallId ?? rejection.targetIds?.[0];
 	const wall = wallId === undefined ? undefined : document.walls.find((entry) => entry.id === wallId);
-	const length = wallId === undefined ? undefined : hostLength(document, wallId);
+	const length = wallId === undefined ? undefined : wallFirstWallLength(document, wallId);
 	const kind = attempt.kind === undefined ? 'Opening' : kindWords(attempt.kind);
-	const firstIssueCode = rejection.issues?.[0]?.code;
+	const issue = rejection.issues?.[0]?.code;
 
-	if (rejection.code === 'unknown_wall') {
-		return 'That Wall is no longer in the project. Aim at a Wall that is still there.';
-	}
-	if (rejection.code === 'unknown_opening') {
-		return 'That Opening is no longer in the project. Select its Wall and try again.';
-	}
-	if (rejection.code === 'no_op') {
-		return 'That Opening already has those values.';
-	}
-	if (rejection.code === 'captured_id_in_use') {
-		return 'This placement reuses an identity that is already taken. Start the placement again.';
-	}
-	if (firstIssueCode === 'opening_exceeds_wall') {
+	if (rejection.code === 'unknown_wall') return 'That Wall is gone. Aim at a Wall that is still there.';
+	if (rejection.code === 'unknown_opening') return 'That Opening is gone. Select its Wall and try again.';
+	if (rejection.code === 'no_op') return 'That Opening already has those values.';
+	if (rejection.code === 'captured_id_in_use') return 'That identity is already taken. Start again.';
+	if (issue === 'opening_exceeds_wall') {
 		if (length !== undefined && attempt.offset !== undefined && attempt.width !== undefined) {
 			const overrun = attempt.offset + attempt.width - length;
 			return `This ${kind} would end ${meters(overrun)} past the end of the ${meters(length)} Wall. Move it ${meters(overrun)} earlier or narrow it.`;
 		}
-		return `This ${kind} does not fit its Wall. Move it earlier along the Wall or narrow it.`;
+		return `This ${kind} does not fit its Wall. Move it earlier or narrow it.`;
 	}
-	if (firstIssueCode === 'opening_exceeds_wall_height') {
-		if (wall !== undefined && attempt.height !== undefined && attempt.sillHeight !== undefined) {
-			return `This ${meters(attempt.height)} ${kind} with a ${meters(attempt.sillHeight)} sill does not fit the ${meters(wall.height)} Wall. Shorten the Opening or raise the Wall in its Card.`;
-		}
-		return `This ${kind} is taller than its host Wall. Shorten it or raise the Wall in its Card.`;
+	if (issue === 'opening_exceeds_wall_height') {
+		return wall !== undefined && attempt.height !== undefined && attempt.sillHeight !== undefined
+			? `This ${meters(attempt.height)} ${kind} with a ${meters(attempt.sillHeight)} sill exceeds the ${meters(wall.height)} Wall. Shorten it or raise the Wall.`
+			: `This ${kind} is taller than its Wall. Shorten it or raise the Wall.`;
 	}
-	if (firstIssueCode === 'opening_overlap') {
-		return `This ${kind} overlaps another Opening on the Wall. Aim clear of it or narrow the Opening.`;
-	}
-	if (firstIssueCode === 'opening_host_wall_unresolved') {
-		return 'That Wall has no resolvable span. Repair the Wall or place the Opening on another Wall.';
-	}
-	if (rejection.code === 'invalid_value') {
-		return 'Check the Offset and size: offset and sill must be non-negative, width and height positive.';
-	}
+	if (issue === 'opening_overlap') return `This ${kind} overlaps another Opening. Aim clear or narrow it.`;
+	if (issue === 'opening_host_wall_unresolved') return 'That Wall has no resolvable span. Repair it or pick another Wall.';
+	if (rejection.code === 'invalid_value') return 'Check the Offset and size: offset and sill non-negative, width and height positive.';
 	if (rejection.code === 'candidate_does_not_compile' || rejection.code === 'invalid_candidate_document') {
-		return `That Wall cannot carry this ${kind}. Move it to another Wall or adjust its size.`;
+		return `That Wall cannot carry this ${kind}. Pick another Wall or adjust its size.`;
 	}
 	return `That ${kind} was refused. Adjust its host or size and try again.`;
 }
@@ -320,37 +276,36 @@ export function createOpeningPlanners(): readonly DomainPlanner<ProjectEnvelope>
 	return [openingCreatePlanner(), openingDeletePlanner()];
 }
 
-/** The F.4 intent for one Opening placement, addressed at its host Wall. */
-export function openingCreateIntent(input: {
-	readonly payload: OpeningCreatePayload;
+type OpeningIntentInput = {
 	readonly capture: LayoutIdCapture;
 	readonly operationId: string;
 	readonly projectId: string;
 	readonly revisionId: string;
 	readonly contentRevision: string;
 	readonly levelId: string;
-}): AuthoringIntent {
+};
+
+function openingIntent(
+	kind: string,
+	subjectKind: 'wall' | 'opening',
+	subjectId: string,
+	payload: AuthoringIntent['payload'],
+	input: OpeningIntentInput
+): AuthoringIntent {
 	return {
 		version: 1,
-		kind: LAYOUT_OPENING_CREATE_KIND,
+		kind,
 		operationId: input.operationId,
 		expectedRevision: { projectId: input.projectId, revisionId: input.revisionId },
 		targets: [
 			layoutSubjectReference({
-				kind: 'wall',
-				id: input.payload.wallId,
+				kind: subjectKind,
+				id: subjectId,
 				contentRevision: input.contentRevision,
 				levelId: input.levelId
 			})
 		],
-		payload: {
-			wallId: input.payload.wallId,
-			kind: input.payload.kind,
-			offset: input.payload.offset,
-			width: input.payload.width,
-			height: input.payload.height,
-			sillHeight: input.payload.sillHeight
-		},
+		payload,
 		capturedInputs: [
 			layoutWorkingLevelInput(input.levelId),
 			layoutIdCaptureInput(input.capture)
@@ -359,34 +314,28 @@ export function openingCreateIntent(input: {
 	};
 }
 
+/** The F.4 intent for one Opening placement, addressed at its host Wall. */
+export function openingCreateIntent(
+	input: OpeningIntentInput & { readonly payload: OpeningCreatePayload }
+): AuthoringIntent {
+	return openingIntent(
+		LAYOUT_OPENING_CREATE_KIND,
+		'wall',
+		input.payload.wallId,
+		{ ...input.payload },
+		input
+	);
+}
+
 /** The F.4 intent for one Opening deletion, addressed at the Opening. */
-export function openingDeleteIntent(input: {
-	readonly openingId: string;
-	readonly capture: LayoutIdCapture;
-	readonly operationId: string;
-	readonly projectId: string;
-	readonly revisionId: string;
-	readonly contentRevision: string;
-	readonly levelId: string;
-}): AuthoringIntent {
-	return {
-		version: 1,
-		kind: LAYOUT_OPENING_DELETE_KIND,
-		operationId: input.operationId,
-		expectedRevision: { projectId: input.projectId, revisionId: input.revisionId },
-		targets: [
-			layoutSubjectReference({
-				kind: 'opening',
-				id: input.openingId,
-				contentRevision: input.contentRevision,
-				levelId: input.levelId
-			})
-		],
-		payload: { openingId: input.openingId },
-		capturedInputs: [
-			layoutWorkingLevelInput(input.levelId),
-			layoutIdCaptureInput(input.capture)
-		],
-		allocatedIds: []
-	};
+export function openingDeleteIntent(
+	input: OpeningIntentInput & { readonly openingId: string }
+): AuthoringIntent {
+	return openingIntent(
+		LAYOUT_OPENING_DELETE_KIND,
+		'opening',
+		input.openingId,
+		{ openingId: input.openingId },
+		input
+	);
 }
