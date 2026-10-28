@@ -640,6 +640,79 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(generator.extent).toBeCloseTo(1.5, 3);
 	});
 
+	it('keeps upright depth on its projected axis when the camera switches to Plan', async () => {
+		const mounted = await mount();
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'fit',
+				bounds: { min: [2.5, 0.5, 2], max: [3.5, 3.5, 4] },
+				rect: RECT
+			},
+			SETTLE_CLOCK + 1
+		);
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		shape.controller.setPlane('elevation');
+		// A 45° sheet keeps its extrusion oblique in Plan, so the vertical floor
+		// fallback and the true projected world axis are visibly different.
+		const diagonal = Math.SQRT1_2;
+		shape.controller.setSheet({ x: 3, z: 3, yaw: Math.PI / 4 });
+
+		for (const [u, v] of [
+			[0, 0],
+			[1, 0],
+			[1, 1],
+			[0, 1]
+		] as const) {
+			click(mounted.facade, [3 + u * diagonal, v, 3 - u * diagonal]);
+		}
+		shape.controller.finish();
+		expect(shape.snapshot().phase).toBe('depth');
+
+		// The camera changes, not the Shape's sheet. Its world handle must keep the
+		// horizontal offset of the +X extrusion instead of receiving the floor's
+		// vertical screen-space fallback.
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, SETTLE_CLOCK + 3);
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'fit',
+				bounds: { min: [2, 0, 1], max: [5, 2, 4] },
+				rect: RECT
+			},
+			SETTLE_CLOCK + 4
+		);
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 5);
+
+		const marker = () => mounted.facade.overlays().find((entry) => entry.id === 'scene-shape-depth')!;
+		const baseWorld = [3 + diagonal * 0.5, 0.5, 3 - diagonal * 0.5] as const;
+		const base = stageCss(mounted.facade, baseWorld);
+		const expected = stageCss(mounted.facade, [
+			baseWorld[0] + diagonal,
+			baseWorld[1],
+			baseWorld[2] + diagonal
+		]);
+		expect(marker().css[0]).toBeCloseTo(expected[0], 1);
+		expect(marker().css[1]).toBeCloseTo(expected[1], 1);
+		expect(Math.abs(marker().css[0] - base[0])).toBeGreaterThan(10);
+		expect(Math.abs(marker().css[1] - base[1])).toBeGreaterThan(10);
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const target = stageCss(mounted.facade, [
+			baseWorld[0] + diagonal * 2,
+			baseWorld[1],
+			baseWorld[2] + diagonal * 2
+		]);
+		const from = marker().css;
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: target, evaluationId });
+
+		expect(shape.snapshot().depth).toBeCloseTo(2, 1);
+		expect(shape.snapshot().canCreate).toBe(true);
+	});
+
 	it('cancels a live size ray when another task opens', async () => {
 		const mounted = await mount();
 		armInk(mounted.facade);

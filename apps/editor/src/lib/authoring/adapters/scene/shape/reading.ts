@@ -589,18 +589,28 @@ export function createShapeReadingSession(
 	}
 
 	/**
+	 * Plan removes screen travel only when the extruded floor normal points at the
+	 * camera. An upright Shape extrudes horizontally, so its world handle still
+	 * projects a usable offset even while the camera is in Plan.
+	 */
+	function usesPlanScreenDepth(context: StageAdapterContext): boolean {
+		return context.evaluation.settledReading === 'plan' && plane === 'plan';
+	}
+
+	/**
 	 * The depth handle's viewport CSS.
 	 *
-	 * In 3D the handle is the world point along the depth axis. In Plan the floor
-	 * normal points at the camera, so that world point projects onto the outline's
-	 * centre and a drag would have no screen travel. The Plan handle is therefore
-	 * offset up-screen by its depth at the evaluated target-plane scale: the pull
-	 * has visible feedback, and the same offset is what the hit test uses.
+	 * In 3D, and for an upright Shape even in Plan, the handle is the world point
+	 * along the depth axis. On the floor in Plan the floor normal points at the
+	 * camera, so that world point projects onto the outline's centre and a drag
+	 * would have no screen travel. That handle is therefore offset up-screen by
+	 * its depth at the evaluated target-plane scale: the pull has visible
+	 * feedback, and the same offset is what the hit test uses.
 	 */
 	function depthHandle(context: StageAdapterContext): readonly [number, number] | null {
 		const axis = depthAxis(context);
 		if (axis === null) return null;
-		if (context.evaluation.settledReading !== 'plan') return project(context, axis.handle);
+		if (!usesPlanScreenDepth(context)) return project(context, axis.handle);
 		const base = project(context, axis.base);
 		if (base === null) return null;
 		const metersPerPixel = context.evaluation.targetPlaneMetersPerCssPixel;
@@ -618,7 +628,7 @@ export function createShapeReadingSession(
 	function depthFromRay(context: StageAdapterContext, css: readonly [number, number]): number | null {
 		const axis = depthAxis(context);
 		if (axis === null) return null;
-		if (context.evaluation.settledReading === 'plan') {
+		if (usesPlanScreenDepth(context)) {
 			// The Plan camera looks down the floor normal: its rays are parallel to
 			// the depth axis and have no closest approach. The handle is a screen-space
 			// pull, so its vertical travel is the depth at the same target-plane scale.

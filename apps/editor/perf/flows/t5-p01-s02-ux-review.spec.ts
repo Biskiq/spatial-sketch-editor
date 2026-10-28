@@ -612,6 +612,8 @@ test('S02 integrated creator workflow', async ({ browser, baseURL }) => {
 		await page.waitForTimeout(300);
 		const planValueAfter = await depth.inputValue();
 		const planCreateEnabled = await page.locator('[data-shape-create]').isEnabled();
+		expect(planValueAfter).not.toBe(planValueBefore);
+		expect(planCreateEnabled).toBe(true);
 		rows.push(
 			row(
 				'shape.depth-drag-plan',
