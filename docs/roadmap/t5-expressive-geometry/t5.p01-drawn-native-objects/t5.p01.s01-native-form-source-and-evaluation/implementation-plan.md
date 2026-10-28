@@ -245,7 +245,7 @@ export type SceneEntity = SceneModelEntity | ScenePrimitiveEntity | SceneFormEnt
   mounted Scene and Layout meshes as geometry data; the existing adapter hit provider remains
   the selection policy. Models, scalar scale, floors and Walls participate in nearest visible
   body resolution. Cold opens with at least 32 forms yield between strict validation and runtime
-  preparation; accepted installs retain their known-identity path and existing epoch checks. Nothing in the render geometry source selects or writes authored source.
+  preparation and again before digest/Stage installation; accepted installs retain their known-identity path and existing epoch checks. Nothing in the render geometry source selects or writes authored source.
 - **Owner-approved Option B.** Production Plan footprint hit testing and 3D Scene picking run through
   the existing Stage `hitProvider` seam and its one semantic selection authority. Scene hits carry
   F.1 references without fabricated Layout representation. Adapter-owned subject rows feed Index
@@ -365,7 +365,7 @@ workflow on the designated reference machine, with Laptop A reported:
   attributable to form evaluation;
 - Stage and visitor first-load JS deltas, within ≤ 25 KiB br growth for the Stage and its
   ≤ 425 KiB br hard row, subject only to the explicit owner Stage exception in the acceptance
-  record. The form renderer and Card fields load lazily; registered Scene planners require the
+  record (extended by the owner on 2026-10-28 to 439.0 KiB Brotli). The form renderer and Card fields load lazily; registered Scene planners require the
   kernel at first load. No other gate is waived.
 
 ## 10. Reviews

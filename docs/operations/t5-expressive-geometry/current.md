@@ -11,10 +11,14 @@ SLICES: S01 (native form source and evaluation) is released and in progress on b
        t5/p01-s01-native-form-source; S02, S03 (final gate) and S04 (My Objects) remain proposed.
 POLICY: T5 dependencies follow the T5 licensing amendment
        (../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing).
-NEXT:  S01 implements the approved plan through ./README.md's start step at its own trusted base;
-       review, acceptance and routine closeout follow. Its T2 prerequisite (T2's integrated import
-       final gate) merged with PR #199, and the owner released the row on 2026-10-27.
+NEXT:  PR #208 implements owner-approved Option B (2026-10-28): production Plan/3D selection,
+       Index/Find, Card operations and exact history/Save/reopen. Main PR #209 is integrated.
+       Read S01 acceptance.md and evidence/option-b/README.md for final verification/review receipts.
+       Preserve original a1ded6a3 goldens/occlusion evidence. Owner acceptance is pending;
+       do not merge, deploy or close the slice without separate authority.
 ROUTE: ./README.md → ../../roadmap/t5-expressive-geometry/README.md →
        ../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md
-BLOCKER: none recorded. Omitted scopes stay held.
+BLOCKER: formal battery-mode performance verification pending per owner direction to continue on AC.
+       Stage bundle exception explicitly extended to 439.0 KiB Brotli; no other gate waived.
+       Omitted scopes stay held.
 ```

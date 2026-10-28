@@ -1,7 +1,7 @@
 # Scene content
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
-**Last reviewed:** 2026-10-27 (T5.P01.S01 native forms and the Scene 4 baseline;
+**Last reviewed:** 2026-10-28 (T5.P01.S01 Option B selection and native forms and the Scene 4 baseline;
 production activation remains owner-controlled)
 
 ---
@@ -34,12 +34,7 @@ form only through an opened document, fixture or test — S02 adds the drawing e
 present a form is ordinary Scene truth: `create-form` creates one, `set-form-size` writes a full
 per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and
 Delete work through the existing planners. `resize-on-floor` refuses a form (uniform scale would
-contradict `form.scale`). Evaluation is deterministic and cached once in the editor; Stage, Plan
-and Preview draw the same mesh (metre UVs, computed normals), and the Card reports read-only Width,
-Depth and Height from the evaluated bounds. The evaluated XZ ring is exposed to the Plan
-footprint/hit seam ([`plan-scene-footprint.ts`](../../../apps/editor/src/lib/authoring/scene/plan-scene-footprint.ts))
-and unit-tested there; this base has no production Plan pointer-hit consumer for Scene entities, so
-the reachable Plan drawing path is the shared renderer. Publication
+contradict `form.scale`). Evaluation is deterministic and cached in the editor; Stage and Preview draw the same mesh (metre UVs, computed normals). Production Plan footprints and 3D mounted-mesh hits feed the existing Stage selection authority. Forms appear in Index and Head Find; their Card exposes Move, Turn, Place on floor, per-axis Size, Duplicate and confirmed Delete through existing Scene planners/F4. Preview preserves visitor isolation and return to Stage preserves selection. Publication
 still refuses a form in the cold release check; T4 owns any admission. Limits and operations:
 [T5.P01.S01 acceptance](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
 and [reference decision](../decisions/t5-object-focus-planning-2026-10-27.md).
