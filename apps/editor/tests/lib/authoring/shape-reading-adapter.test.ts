@@ -5,8 +5,8 @@
  * acceptance host and the one Ink task. It pins the slice's contracts:
  *
  * 1. Ink stays one Pen: Layout's built-in readings and the contributed Shape
- *    reading share one palette, and switching cancels the contributed session
- *    without writing source.
+ *    reading share one palette; switching refuses while the reading holds live
+ *    work and cancels the session without writing source once it is clear.
  * 2. A closed floor stroke reads as a Shape; Create issues exactly one
  *    `create-form` intent, selects the form, and Undo/Redo keeps its identity.
  * 3. An upright sheet creates an elevation form, and Flip side turns the
@@ -220,6 +220,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(preview).toHaveLength(1);
 		const previewForm = preview[0]!.shape;
 		if (previewForm.kind !== 'form') throw new Error('the Shape preview is not a form ghost');
+		const previewGhost = preview[0]!;
 
 		shape.controller.create();
 		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
@@ -235,6 +236,8 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(created.form.generator).toMatchObject({ kind: 'extrude', plane: 'plan', extent: 1 });
 		expect(created.form.scale).toEqual([1, 1, 1]);
 		expect(previewForm.form).toEqual(created.form);
+		expect(previewGhost.center).toEqual(created.position);
+		expect(previewGhost.yaw).toBeCloseTo(created.rotation[1], 9);
 		expect(mounted.facade.ghosts()).toHaveLength(0);
 		expect(mounted.facade.selectionState().primary).toMatchObject({
 			subject: { kind: 'entity', id: created.id }
@@ -392,8 +395,29 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(resized.baseDimension).toBeCloseTo(2, 6);
 		expect(resized.dimension).toBeCloseTo(3, 6);
 
-		// The Card is the one writer for exact values: dimensions, not scales.
+		// A second drag on the already-scaled axis must use the same baseline: the
+		// desired 4.5 m width is scale 2.25, not 2.25 divided by the first factor.
 		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 1);
+		const secondEvaluation = mounted.facade.evaluationId()!;
+		const secondFrom = stageCss(mounted.facade, resized.world);
+		const secondTravel = (2.25 * resized.baseDimension) / resized.factor;
+		const secondOrigin = formWorldPoint(current, [0, 0, 0]);
+		const widthAxis = formWorldAxis(current, 0);
+		const secondTo = stageCss(mounted.facade, [
+			secondOrigin[0] + widthAxis[0] * secondTravel,
+			secondOrigin[1] + widthAxis[1] * secondTravel,
+			secondOrigin[2] + widthAxis[2] * secondTravel
+		]);
+		mounted.facade.pointerIntent({ phase: 'down', css: secondFrom, evaluationId: secondEvaluation });
+		mounted.facade.pointerIntent({ phase: 'move', css: secondTo, evaluationId: secondEvaluation });
+		mounted.facade.pointerIntent({ phase: 'up', css: secondTo, evaluationId: secondEvaluation });
+		await eventually(() => Math.abs(acceptedForms(mounted.facade)[0]!.form.scale[0]! - 2.25) < 1e-6);
+		current = acceptedForms(mounted.facade)[0]!;
+		expect(current.form.scale[0]).toBeCloseTo(2.25, 6);
+		expect(mounted.host.history()).toMatchObject({ depth: 4, position: 3 });
+
+		// The Card is the one writer for exact values: dimensions, not scales.
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
 		const card = formCardController(mounted.services, current.id);
 		if (card === null) throw new Error('the created form published no Card controller');
 		const outcome = await card.size([4, 1, 2]);
@@ -406,7 +430,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(current.form.scale[0]).toBeCloseTo(2, 6);
 		expect(current.form.scale[1]).toBeCloseTo(1, 6);
 		expect(current.form.scale[2]).toBeCloseTo(1, 6);
-		expect(mounted.host.history()).toMatchObject({ depth: 4, position: 3 });
+		expect(mounted.host.history()).toMatchObject({ depth: 5, position: 4 });
 	});
 
 	it('keeps live Shape work when another reading would discard it', async () => {
@@ -427,6 +451,11 @@ describe('T5.P01.S02 — Shape reading', () => {
 		shape.controller.clear();
 		expect(shape.snapshot().points).toBe(0);
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+
+		// With no live work the switch goes through and the session is gone.
+		inkSurface()!.controller.setReading('wall');
+		expect(inkSurface()!.snapshot().reading).toBe('wall');
+		expect(shapeReadingSurface()).toBeNull();
 	});
 
 	it('refuses an invalid typed depth, then creates with the corrected value', async () => {
@@ -502,5 +531,89 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(generator.kind).toBe('extrude');
 		if (generator.kind !== 'extrude') return;
 		expect(generator.extent).toBeCloseTo(2.5, 3);
+	});
+
+	it('places the upright depth handle on the standing body and follows Flip side', async () => {
+		const mounted = await mount();
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
+		mounted.facade.camera.applyIntent(
+			{
+				kind: 'fit',
+				bounds: { min: [2.5, 0.5, 2.5], max: [4.5, 3.5, 3.5] },
+				rect: RECT
+			},
+			SETTLE_CLOCK + 1
+		);
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		shape.controller.setPlane('elevation');
+		shape.controller.setSheet({ x: 3, z: 3, yaw: 0 });
+
+		// Drawn at 2–3 m high: the planner rests the body on the floor, so the
+		// handle belongs at its 0.5 m midpoint, not at the drawn 2.5 m centre.
+		for (const [u, v] of [
+			[0, 0],
+			[1, 0],
+			[1, 1],
+			[0, 1]
+		] as const) {
+			click(mounted.facade, [3 + u, 2 + v, 3]);
+		}
+		shape.controller.finish();
+		expect(shape.snapshot().depth).toBe(1);
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, [3.5, 0.5, 4]);
+		const to = stageCss(mounted.facade, [3.5, 0.5, 5]);
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		expect(shape.snapshot().depth).toBeCloseTo(2, 1);
+
+		// Flipping turns the extrusion to −Z: the handle moves with the body, and a
+		// drag on that side must still increase depth instead of clamping.
+		shape.controller.flip();
+		expect(shape.snapshot().flip).toBe(true);
+		const flippedFrom = stageCss(mounted.facade, [3.5, 0.5, 1]);
+		const flippedTo = stageCss(mounted.facade, [3.5, 0.5, 1.5]);
+		mounted.facade.pointerIntent({ phase: 'down', css: flippedFrom, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: flippedTo, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: flippedTo, evaluationId });
+		expect(shape.snapshot().depth).toBeCloseTo(1.5, 1);
+
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		shape.controller.create();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		const created = acceptedForms(mounted.facade)[0]!;
+		expect(created.rotation[1]).toBeCloseTo(Math.PI, 6);
+		const generator = created.form.generator;
+		expect(generator.kind).toBe('extrude');
+		if (generator.kind !== 'extrude') return;
+		expect(generator.extent).toBeCloseTo(1.5, 3);
+	});
+
+	it('answers Finish, Backtrack and Cancel from the Stage keyboard', async () => {
+		const mounted = await mount();
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		for (const point of [
+			[2, 0, 2],
+			[4, 0, 2],
+			[4, 0, 4]
+		] as const) {
+			click(mounted.facade, point);
+		}
+		expect(shape.snapshot().points).toBe(3);
+
+		expect(mounted.facade.keyboardIntent({ kind: 'backtrack' }).claimed).toBe(true);
+		expect(shape.snapshot().points).toBe(2);
+		click(mounted.facade, [4, 0, 4]);
+		expect(mounted.facade.keyboardIntent({ kind: 'finish' }).claimed).toBe(true);
+		expect(shape.snapshot().phase).toBe('depth');
+
+		expect(mounted.facade.keyboardIntent({ kind: 'cancel' }).claimed).toBe(true);
+		expect(shape.snapshot()).toMatchObject({ phase: 'outline', points: 0 });
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 	});
 });
