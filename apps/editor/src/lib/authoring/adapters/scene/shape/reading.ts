@@ -674,6 +674,8 @@ export function createShapeReadingSession(
 					const next = depthFromRay(context, intent.css);
 					if (next !== null) {
 						depth = next;
+						// The handle named a valid depth: it supersedes invalid typed text.
+						depthValid = true;
 						depthText = String(next);
 						refusal = null;
 						refresh();

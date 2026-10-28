@@ -470,7 +470,10 @@ export type StageAdapterBinding = {
 	 * unwinding, so an unhandled Escape still closes the task.
 	 */
 	readonly keyIntent?: (intent: StageKeyboardIntent, context: StageAdapterContext) => boolean;
-	/** The host closed the contributed task (Esc, task replacement, or install). */
+	/**
+	 * The host closed the contributed task (Esc, task replacement, or install),
+	 * or a task opened over this binding's no-task direct manipulation.
+	 */
 	readonly taskClosed?: () => void;
 	readonly selectionChanged?: (selection: StageSelectionState) => void;
 	readonly selectionEcho?: (selection: StageSelection | null) => void;
@@ -2118,10 +2121,12 @@ export function createStageFacade(input: {
 				// creator returns there instead of reading "disposed" for a live Stage.
 				return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${lens} lens before invoking ${entry.label}.` };
 			}
-			// A replacement closes the previous contributed task first: its adapter gets
-			// the same taskClosed path as Esc, so no lease survives into the new task.
-			if (contributedTaskOwner !== null &&
-				(contributedTaskOwner.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id)) {
+			// Opening a task ends the no-task surface too: a direct-manipulation gesture
+			// (a size ray) must not outlive the task that now owns the pointer. A
+			// replacement also closes its previous contributed task through the same
+			// taskClosed path as Esc, so no lease survives into the new task.
+			if (contributedTaskOwner === null ||
+				contributedTaskOwner.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id) {
 				notifyTaskClosed();
 			}
 			const task: StageTask = {
