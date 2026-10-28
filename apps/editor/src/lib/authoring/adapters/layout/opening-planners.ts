@@ -139,6 +139,9 @@ export function openingRefusalWords(
 	const kind = attempt.kind === undefined ? 'Opening' : kindWords(attempt.kind);
 	const issue = rejection.issues?.[0]?.code;
 
+	if (attempt.offset !== undefined && attempt.offset < 0) {
+		return `This ${kind} would start before the Wall. Move it onto the Wall.`;
+	}
 	if (rejection.code === 'unknown_wall') return 'That Wall is gone. Aim at a Wall that is still there.';
 	if (rejection.code === 'unknown_opening') return 'That Opening is gone. Select its Wall and try again.';
 	if (rejection.code === 'no_op') return 'That Opening already has those values.';

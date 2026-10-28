@@ -281,6 +281,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		height: 2.1,
 		sillHeight: 0
 	};
+	/** The palette's fields are currently valid; pointer placement must honour that. */
+	let openingOptionsValid = true;
 	/**
 	 * The deleted-Wall disclosure is derived from the canonical planner, which is
 	 * a full planning pass; the Card asks for it on render, so the answer for one
@@ -523,7 +525,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			/** Re-plan the current candidate (pointer or typed) after any change. */
 			function refreshOpeningPreview(): void {
-				openingPreview = openingCandidate === null ? null : planOpeningCandidate(openingCandidate);
+				openingPreview =
+					openingCandidate === null
+						? null
+						: !openingOptionsValid
+							? {
+									kind: 'refused',
+									message: 'Check the Opening Width, Height and Sill before placing.'
+								}
+							: planOpeningCandidate(openingCandidate);
 			}
 
 			/** Set the candidate and publish its planner answer. */
@@ -570,7 +580,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (wall === undefined) return null;
 				const point = pointerDatumPoint(adapterContext, css);
 				if (point === null) return null;
-				const offset = offsetAlongWall(wall, pointOnWallCenterline(wall, [point[0], point[1]]));
+				const offset = offsetAlongWall(wall, [point[0], point[1]]);
 				return { wallId: wall.id, offset };
 			}
 
@@ -656,6 +666,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			async function commitOpening(target: OpeningCandidate | null = openingCandidate): Promise<void> {
 				if (openingCommitInFlight || target === null || inkReading !== 'opening') return;
+				if (!openingOptionsValid) {
+					openingNotice = 'Check the Opening Width, Height and Sill before placing.';
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return;
+				}
 				const preview = planOpeningCandidate(target);
 				openingPreview = preview;
 				if (preview.kind === 'refused') {
@@ -712,6 +728,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				adapterContext: StageAdapterContext
 			): boolean {
 				if (intent.phase === 'down') {
+					if (!openingOptionsValid) {
+						openingNotice = 'Check the Opening Width, Height and Sill before placing.';
+						setOpeningCandidate(null);
+						services.stage.notifySurfaceChange();
+						publishInk();
+						return true;
+					}
 					const candidate = openingCandidateAt(adapterContext, intent.css);
 					if (candidate === null) {
 						openingNotice = 'Aim at a Wall face to place an Opening; the Stage is not a free host.';
@@ -923,6 +946,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						inkReading = next;
 						inkNotice = null;
+						// The palette remounts from the last valid options on the next Opening
+						// reading, so its fields and the adapter agree again.
+						if (next === 'opening') openingOptionsValid = true;
 						clearOpeningState();
 						if (next === 'wall') {
 							inkHover = null;
@@ -932,7 +958,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						publishInk();
 					},
 					setOpeningOptions: (options) => {
-						openingOptions = options;
+						openingOptionsValid = options !== null;
+						if (options !== null) openingOptions = options;
 						if (openingCandidate !== null) refreshOpeningPreview();
 						services.stage.notifySurfaceChange();
 						publishInk();

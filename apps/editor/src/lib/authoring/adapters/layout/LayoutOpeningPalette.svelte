@@ -8,6 +8,8 @@
 	 * come from the canonical planner, and every command goes through the one
 	 * controller. It never owns document state.
 	 */
+	import { untrack } from 'svelte';
+	import { WALL_OPENING_DEFAULTS } from '@portfolio/layout-core';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { parseMeasureInput } from './precision';
 	import { inkSurface, type InkOpeningSnapshot } from './ink';
@@ -17,29 +19,46 @@
 		opening
 	}: { services: StageAdapterServices; opening: InkOpeningSnapshot | null } = $props();
 
-	let kind = $state<'door' | 'window'>('door');
-	let widthText = $state('0.9');
-	let heightText = $state('2.1');
-	let sillText = $state('0');
+	// A rebuilt palette (Wall reading and back) must show the adapter's remembered
+	// options, not its own door defaults: pointer placement uses those options.
+	function rememberedOptions(source: InkOpeningSnapshot | null) {
+		const fallback = WALL_OPENING_DEFAULTS.door;
+		return {
+			kind: source?.kind ?? 'door',
+			width: String(source?.width ?? fallback.width),
+			height: String(source?.height ?? fallback.height),
+			sill: String(source?.sillHeight ?? fallback.sillHeight)
+		};
+	}
+	const initial = untrack(() => rememberedOptions(opening));
+	let kind = $state<'door' | 'window'>(initial.kind);
+	let widthText = $state(initial.width);
+	let heightText = $state(initial.height);
+	let sillText = $state(initial.sill);
 	let offsetText = $state('');
 	let error = $state<string | null>(null);
+
+	function reject(message: string): false {
+		error = message;
+		// Pointer placement must not fall back to the last valid measures while the
+		// fields show invalid ones.
+		inkSurface()?.controller.setOpeningOptions(null);
+		return false;
+	}
 
 	/** Validate and remember the next Opening's kind and exact metrics. */
 	function commitOptions(): boolean {
 		const width = parseMeasureInput(widthText);
 		if (!width.ok || !(width.value > 0)) {
-			error = `Width: ${width.ok ? 'must be greater than zero.' : width.reason}`;
-			return false;
+			return reject(`Width: ${width.ok ? 'must be greater than zero.' : width.reason}`);
 		}
 		const height = parseMeasureInput(heightText);
 		if (!height.ok || !(height.value > 0)) {
-			error = `Height: ${height.ok ? 'must be greater than zero.' : height.reason}`;
-			return false;
+			return reject(`Height: ${height.ok ? 'must be greater than zero.' : height.reason}`);
 		}
 		const sill = parseMeasureInput(sillText);
 		if (!sill.ok || sill.value < 0) {
-			error = `Sill: ${sill.ok ? 'must be zero or greater.' : sill.reason}`;
-			return false;
+			return reject(`Sill: ${sill.ok ? 'must be zero or greater.' : sill.reason}`);
 		}
 		error = null;
 		inkSurface()?.controller.setOpeningOptions({
@@ -49,6 +68,15 @@
 			sillHeight: sill.value
 		});
 		return true;
+	}
+
+	/** A new kind starts from its canonical defaults, not the previous kind's size. */
+	function applyKind(): void {
+		const defaults = WALL_OPENING_DEFAULTS[kind];
+		widthText = String(defaults.width);
+		heightText = String(defaults.height);
+		sillText = String(defaults.sillHeight);
+		commitOptions();
 	}
 
 	function placeByOffset(): void {
@@ -61,7 +89,7 @@
 	<div class="options">
 		<label>
 			<span>Kind</span>
-			<select data-opening-kind bind:value={kind} onchange={commitOptions}>
+			<select data-opening-kind bind:value={kind} onchange={applyKind}>
 				<option value="door">Door</option>
 				<option value="window">Window</option>
 			</select>

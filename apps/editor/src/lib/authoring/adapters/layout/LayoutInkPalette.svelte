@@ -115,6 +115,7 @@
 			<input
 				type="radio"
 				name="layout-ink-reading"
+				data-ink-reading-wall
 				checked={snapshot.reading === 'wall'}
 				onchange={() => inkSurface()?.controller.setReading('wall')}
 			/>Wall

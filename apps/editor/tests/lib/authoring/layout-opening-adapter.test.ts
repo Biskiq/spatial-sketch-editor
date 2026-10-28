@@ -35,6 +35,7 @@ import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import {
 	classifyOpeningHost,
 	inkSurface,
+	offsetAlongWall,
 	type InkController,
 	type ProjectedWall
 } from '$lib/authoring/adapters/layout/ink';
@@ -235,6 +236,42 @@ describe('T1.P02.S03 — Opening placement', () => {
 		const valid = stageCss(mounted.facade, [2, 0]);
 		mounted.facade.pointerIntent({ phase: 'down', css: valid, evaluationId });
 		mounted.facade.pointerIntent({ phase: 'up', css: valid, evaluationId });
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		expect(acceptedLayout(mounted.facade).openings).toHaveLength(1);
+	});
+
+	it('keeps a pointer projection before the Wall start signed, never clamped', () => {
+		const wall: ProjectedWall = {
+			id: 'wall-signed-offset',
+			startCss: [0, 0],
+			endCss: [100, 0],
+			start: [0, 0],
+			end: [6, 0]
+		};
+		expect(offsetAlongWall(wall, [-0.25, 0])).toBeCloseTo(-0.25, 6);
+		expect(offsetAlongWall(wall, [2.5, 0])).toBeCloseTo(2.5, 6);
+		expect(offsetAlongWall(wall, [6.25, 0])).toBeCloseTo(6.25, 6);
+	});
+
+	it('refuses pointer placement while the Opening fields are invalid', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		controller.setReading('opening');
+		controller.setOpeningOptions(null);
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const at = stageCss(mounted.facade, [3, 0]);
+		mounted.facade.pointerIntent({ phase: 'down', css: at, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: at, evaluationId });
+		expect(inkSurface()!.snapshot().opening?.canPlace).toBe(false);
+		expect(inkSurface()!.snapshot().opening?.refusal).toContain('Check the Opening');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect(acceptedLayout(mounted.facade).openings).toHaveLength(0);
+
+		controller.setOpeningOptions({ kind: 'door', width: 0.9, height: 2.1, sillHeight: 0 });
+		mounted.facade.pointerIntent({ phase: 'down', css: at, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: at, evaluationId });
 		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
 		expect(acceptedLayout(mounted.facade).openings).toHaveLength(1);
 	});

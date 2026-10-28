@@ -123,15 +123,19 @@ export function projectedWallLength(wall: Pick<ProjectedWall, 'start' | 'end'>):
 }
 
 /**
- * The meter offset from a Wall's canonical start that a world point names.
+ * The signed meter offset from a Wall's canonical start that a world point names.
  *
  * This is the same convention as the Card's Offset field: distance along the
- * centerline to the Opening's near edge. The value is the pointer's exact
- * projection onto the segment, never a value slid inward to make a candidate fit.
+ * centerline to the Opening's near edge. The projection is onto the unbounded
+ * centerline, so a point before the start is negative and is refused by the
+ * planner rather than clamped to zero.
  */
 export function offsetAlongWall(wall: ProjectedWall, point: LayoutVec2): number {
-	const projected = pointOnWallCenterline(wall, point);
-	return Math.hypot(projected[0] - wall.start[0], projected[1] - wall.start[1]);
+	const dx = wall.end[0] - wall.start[0];
+	const dz = wall.end[1] - wall.start[1];
+	const length = Math.hypot(dx, dz);
+	if (!(length > 0)) return 0;
+	return ((point[0] - wall.start[0]) * dx + (point[1] - wall.start[1]) * dz) / length;
 }
 
 /** A point at one meter distance from the Wall start, for the opening ghost. */
@@ -227,7 +231,7 @@ export type InkController = {
 	/** Switch the one Ink tool between its supported readings. */
 	readonly setReading: (reading: InkReading) => void;
 	/** Remember the next Opening's kind and exact metrics. */
-	readonly setOpeningOptions: (options: InkOpeningOptions) => void;
+	readonly setOpeningOptions: (options: InkOpeningOptions | null) => void;
 	/**
 	 * Place on the preferred/tie-winning host. An empty offset uses the host's
 	 * exact center; a typed offset is used exactly (never clamped).
