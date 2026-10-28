@@ -1,0 +1,163 @@
+{
+  "flow": "T1.P02.S03 Opening browser acceptance",
+  "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+  "apiOrigin": "http://127.0.0.1:8792",
+  "browser": "chrome",
+  "generatedAt": "2026-10-28T02:23:59.376Z",
+  "rows": [
+    {
+      "id": "starter.baseline",
+      "concern": "starter host Wall",
+      "status": "passed",
+      "detail": "wall-chain-3.starter-template is 7.00 m; three exposed points",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.hover",
+      "concern": "unpressed hover previews the host",
+      "status": "passed",
+      "detail": "wall-chain-3.starter-template",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.place",
+      "concern": "place one door on a Wall face",
+      "status": "passed",
+      "detail": "opening:door:wall-chain-3.starter-template.08d1573f-4775-49b3-8dae-0445b6d96065 at 3.500 m; one accepted result; Ink re-armed",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1",
+      "screenshot": "t1-s03-starter-placed.png"
+    },
+    {
+      "id": "starter.refusal",
+      "concern": "Wall-end overflow refuses with a repair",
+      "status": "passed",
+      "detail": "This door would end 4.50 m past the end of the 7.00 m Wall. Move it 4.50 m earlier or narrow it.",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.repair",
+      "concern": "typed Offset repair accepts on the preferred host",
+      "status": "passed",
+      "detail": "a second door installed at 1.000 m without a reading switch",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.invalid",
+      "concern": "invalid measures block pointer placement",
+      "status": "passed",
+      "detail": "no stale-value Opening installed",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.remount-validity",
+      "concern": "reopened Ink accepts remembered valid measures",
+      "status": "passed",
+      "detail": "typed placement accepted, then Undo",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.remove",
+      "concern": "Card removes one Opening in one undo step",
+      "status": "passed",
+      "detail": "Confirm press then accepted; host remains",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.undo-redo",
+      "concern": "Undo restores and Redo re-removes the same identity",
+      "status": "passed",
+      "detail": "opening:door:wall-chain-3.starter-template.08d1573f-4775-49b3-8dae-0445b6d96065",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.window-defaults",
+      "concern": "Window uses canonical defaults",
+      "status": "passed",
+      "detail": "1.2 x 1.2, sill 1",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.remount",
+      "concern": "palette remount keeps remembered measures",
+      "status": "passed",
+      "detail": "window 1.2 x 1.2 sill 1",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1"
+    },
+    {
+      "id": "starter.save-reload",
+      "concern": "Plan/3D agreement, Save and a fresh-session reload keep identity",
+      "status": "passed",
+      "detail": "opening:window:wall-chain-3.starter-template.af46870c-5e81-40ff-80f8-aaca3bdc3759; 1.2 × 1.2 sill 1",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhq1x5/spatial?create=1",
+      "screenshot": "t1-s03-starter-reloaded.png"
+    },
+    {
+      "id": "3d.face",
+      "concern": "3D Wall face is a host",
+      "status": "passed",
+      "detail": "opening:door:wall-chain-1.starter-template.1861afd4-151f-4484-8fc6-9572c1261a52 at 3.500 m",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhqaru/spatial?create=1",
+      "screenshot": "t1-s03-3d-face.png"
+    },
+    {
+      "id": "empty.wall",
+      "concern": "empty project gains one drawn Wall",
+      "status": "passed",
+      "detail": "0,0 → 6,0 accepted",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1280x800",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhqgdc/spatial?create=1"
+    },
+    {
+      "id": "empty.window",
+      "concern": "place a keyed window on the new Wall",
+      "status": "passed",
+      "detail": "opening:window:wall-chain-1.43d5105c-2f01-4204-8434-90c801e79110.a09c52e1-6dff-4911-875b-4b31187f768c at 3.000 m",
+      "revision": "985cd2145ee0177ddf5965a8411f16547023bd05",
+      "viewport": "1280x800",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4180/project/perf-t1s03-mvrhqgdc/spatial?create=1",
+      "screenshot": "t1-s03-empty-window.png"
+    }
+  ]
+}

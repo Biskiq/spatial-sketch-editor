@@ -2274,7 +2274,16 @@
 	}
 
 	function onPointerMove(event: PointerEvent): void {
-		if (drag === null) return;
+		if (drag === null) {
+			// Preview-only hover: the facade offers the unpressed move to the open
+			// task's adapter but never claims it, so navigation stays untouched.
+			const stage = facade;
+			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
+			if (stage !== null && id !== null) {
+				stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+			}
+			return;
+		}
 		if (drag.mode === 'adapter') {
 			if (!press.ownsPointer(event.pointerId)) return;
 			// A reading change cancels the adapter's gesture lease before the next

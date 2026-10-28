@@ -33,6 +33,8 @@
 	let pointError = $state<string | null>(null);
 
 	const emptySnapshot: InkPaletteSnapshot = {
+		reading: 'wall',
+		opening: null,
 		points: [],
 		closed: false,
 		canFinish: false,
@@ -110,76 +112,101 @@
 	<fieldset class="reading">
 		<legend>Reading</legend>
 		<label class="reading-option">
-			<input type="radio" name="layout-ink-reading" checked readonly />Wall
+			<input
+				type="radio"
+				name="layout-ink-reading"
+				data-ink-reading-wall
+				checked={snapshot.reading === 'wall'}
+				onchange={() => inkSurface()?.controller.setReading('wall')}
+			/>Wall
 		</label>
-		<span class="quiet">Straight Wall chain. Slice, Eraser, Brush, Measure and Shape readings are not supported here.</span>
+		<label class="reading-option">
+			<input
+				type="radio"
+				name="layout-ink-reading"
+				data-ink-reading-opening
+				checked={snapshot.reading === 'opening'}
+				onchange={() => inkSurface()?.controller.setReading('opening')}
+			/>Opening
+		</label>
+		<span class="quiet">
+			{snapshot.reading === 'wall'
+				? 'Straight Wall chain. Slice, Eraser, Brush, Measure and Shape readings are not supported here.'
+				: 'A straight door or window on one Wall face. Curved hosts and other profiles are not supported here.'}
+		</span>
 	</fieldset>
 
-	<div class="options">
-		<label>
-			<span>Thickness</span>
-			<input
-				type="text"
-				inputmode="decimal"
-				data-ink-thickness
-				bind:value={thicknessText}
-				onchange={commitOptions}
-			/>
-			<span class="unit">m</span>
-		</label>
-		<label>
-			<span>Height</span>
-			<input type="text" inputmode="decimal" data-ink-height bind:value={heightText} onchange={commitOptions} />
-			<span class="unit">m</span>
-		</label>
-	</div>
-	{#if optionError !== null}<p class="error" role="alert">{optionError}</p>{/if}
-
-	<dl class="live">
-		<div><dt>Points</dt><dd>{snapshot.points.length}{snapshot.closed ? ' · closed' : ''}</dd></div>
-		<div><dt>Pending</dt><dd>{pendingText ?? '—'}</dd></div>
-		<div class="consequence">
-			<dt>On finish</dt>
-			<dd>{snapshot.consequence ?? 'Name at least two points to see the planner’s consequence.'}</dd>
+	{#if snapshot.reading === 'wall'}
+		<div class="options">
+			<label>
+				<span>Thickness</span>
+				<input
+					type="text"
+					inputmode="decimal"
+					data-ink-thickness
+					bind:value={thicknessText}
+					onchange={commitOptions}
+				/>
+				<span class="unit">m</span>
+			</label>
+			<label>
+				<span>Height</span>
+				<input type="text" inputmode="decimal" data-ink-height bind:value={heightText} onchange={commitOptions} />
+				<span class="unit">m</span>
+			</label>
 		</div>
-	</dl>
+		{#if optionError !== null}<p class="error" role="alert">{optionError}</p>{/if}
 
-	{#if snapshot.refusal !== null}
-		<p class="refusal" role="alert" data-ink-refusal>{snapshot.refusal}</p>
+		<dl class="live">
+			<div><dt>Points</dt><dd>{snapshot.points.length}{snapshot.closed ? ' · closed' : ''}</dd></div>
+			<div><dt>Pending</dt><dd>{pendingText ?? '—'}</dd></div>
+			<div class="consequence">
+				<dt>On finish</dt>
+				<dd>{snapshot.consequence ?? 'Name at least two points to see the planner’s consequence.'}</dd>
+			</div>
+		</dl>
+
+		{#if snapshot.refusal !== null}
+			<p class="refusal" role="alert" data-ink-refusal>{snapshot.refusal}</p>
+		{/if}
+
+		<div class="actions">
+			<button type="button" data-ink-finish disabled={!snapshot.canFinish} onclick={() => inkSurface()?.controller.finish()}>
+				Finish (Enter)
+			</button>
+			<button type="button" data-ink-close disabled={!snapshot.canClose} onclick={() => inkSurface()?.controller.close()}>
+				Close ring
+			</button>
+			<button type="button" data-ink-backtrack disabled={!snapshot.canBacktrack} onclick={() => inkSurface()?.controller.backtrack()}>
+				Backtrack (Backspace)
+			</button>
+			<button type="button" data-ink-cancel onclick={() => inkSurface()?.controller.cancel()}>Cancel (Esc)</button>
+		</div>
+
+		<form
+			class="typed-point"
+			onsubmit={(event) => {
+				event.preventDefault();
+				addTypedPoint();
+			}}
+		>
+			<label>
+				<span>X</span>
+				<input type="text" inputmode="decimal" data-ink-x bind:value={pointX} aria-label="Next point X" />
+			</label>
+			<label>
+				<span>Z</span>
+				<input type="text" inputmode="decimal" data-ink-z bind:value={pointZ} aria-label="Next point Z" />
+			</label>
+			<button type="submit" data-ink-add-point>Add point</button>
+		</form>
+		{#if pointError !== null}<p class="error" role="alert">{pointError}</p>{/if}
+		<p class="quiet">Click the Stage to place points; click the start point to close the ring. Drag to draw one Wall and finish.</p>
+	{:else}
+		{#await import('./LayoutOpeningPalette.svelte') then { default: OpeningPalette }}
+			<OpeningPalette services={_services} opening={snapshot.opening} />
+		{/await}
 	{/if}
-
-	<div class="actions">
-		<button type="button" data-ink-finish disabled={!snapshot.canFinish} onclick={() => inkSurface()?.controller.finish()}>
-			Finish (Enter)
-		</button>
-		<button type="button" data-ink-close disabled={!snapshot.canClose} onclick={() => inkSurface()?.controller.close()}>
-			Close ring
-		</button>
-		<button type="button" data-ink-backtrack disabled={!snapshot.canBacktrack} onclick={() => inkSurface()?.controller.backtrack()}>
-			Backtrack (Backspace)
-		</button>
-		<button type="button" data-ink-cancel onclick={() => inkSurface()?.controller.cancel()}>Cancel (Esc)</button>
-	</div>
-
-	<form
-		class="typed-point"
-		onsubmit={(event) => {
-			event.preventDefault();
-			addTypedPoint();
-		}}
-	>
-		<label>
-			<span>X</span>
-			<input type="text" inputmode="decimal" data-ink-x bind:value={pointX} aria-label="Next point X" />
-		</label>
-		<label>
-			<span>Z</span>
-			<input type="text" inputmode="decimal" data-ink-z bind:value={pointZ} aria-label="Next point Z" />
-		</label>
-		<button type="submit" data-ink-add-point>Add point</button>
-	</form>
-	{#if pointError !== null}<p class="error" role="alert">{pointError}</p>{/if}
-	<p class="quiet">Click the Stage to place points; click the start point to close the ring. Drag to draw one Wall and finish.</p>
 </div>
 
 <style>
