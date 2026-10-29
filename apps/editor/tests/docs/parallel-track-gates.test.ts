@@ -1286,9 +1286,14 @@ export function readStructure(): StructureModel {
 		}
 	}
 
-	// Phase workspaces: named by a track's phase register, plus the repository phase R115.
+	// Phase workspaces: named by a track's phase register, plus every repository phase (`R…`), whose
+	// track-register row routes straight to its own phase README. R115 stays seeded by path.
 	const phaseFiles = new Set<string>();
 	for (const track of tracks) {
+		if (REPOSITORY_PHASE.test(track.id) && track.roadmap !== '') {
+			phaseFiles.add(track.roadmap.endsWith('.md') ? track.roadmap : `${track.roadmap}/README.md`);
+			continue;
+		}
 		const source = readOrNull(track.roadmap);
 		if (source === null) continue;
 		const table = tableUnderHeading(source, 'Phase register');
@@ -1640,6 +1645,12 @@ describe('execution structure is registered, exact and eligible', () => {
 		expect(schemaProblems(readFile(CYCLE), 'State', CYCLE, CYCLE_STATE_COLUMNS)).toEqual([]);
 		expect(schemaProblems(readFile(CYCLE), 'Mechanism register', CYCLE, CYCLE_MECHANISM_COLUMNS)).toEqual([]);
 		expect(schemaProblems(readFile(`${R115_PHASE}/README.md`), 'Slice register', `${R115_PHASE}/README.md`, SLICE_COLUMNS)).toEqual([]);
+		// Every registered repository phase is read as a phase under its own id, so its slice register
+		// is held to the same rules as a track phase's rather than silently skipped.
+		for (const track of model.tracks.filter((row) => REPOSITORY_PHASE.test(row.id))) {
+			expect(schemaProblems(readFile(track.roadmap), 'Slice register', track.roadmap, SLICE_COLUMNS)).toEqual([]);
+			expect(model.phases.filter((phase) => phase.file === track.roadmap).map((phase) => phase.id)).toEqual([track.id]);
+		}
 		for (const track of ['t1-spatial-world', 't2-composition', 't3-experience', 't4-release', 't5-expressive-geometry']) {
 			const file = `docs/roadmap/${track}/README.md`;
 			expect(schemaProblems(readFile(file), 'Phase register', file, PHASE_COLUMNS)).toEqual([]);
@@ -2038,9 +2049,13 @@ describe('the capability-readiness rule', () => {
 			'T3.P03.S02': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:unit-acceptance-v1'],
 			'T3.P04.S01': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:conditional-save-units-v1'],
 			// T5 planning registration (2026-10-27): T5.P01 consumes the same unit, acceptance, Save and
-			// viewport scopes as the Scene import phase. No slice provides a gate.
+			// viewport scopes as the Scene import phase. R217 registration (2026-10-28): the Core Editor
+			// Stability repository phase consumes the same scopes. No slice provides a gate.
 			...Object.fromEntries(
-				['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T1.P02.S06', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03', 'T5.P01.S01', 'T5.P01.S02', 'T5.P01.S03', 'T5.P01.S04'].map(
+				[
+					...['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T1.P02.S06', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03', 'T5.P01.S01', 'T5.P01.S02', 'T5.P01.S03', 'T5.P01.S04'],
+					...Array.from({ length: 11 }, (_, index) => `R217.S${String(index + 1).padStart(2, '0')}`)
+				].map(
 					(id) => [
 						id,
 						[
