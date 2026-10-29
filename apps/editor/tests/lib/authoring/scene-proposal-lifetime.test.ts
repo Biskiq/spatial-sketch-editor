@@ -88,6 +88,7 @@ function sessionSpies(): SessionSpies {
 		begin,
 		beginPlace: vi.fn(() => ({ kind: 'idle' as const })),
 		placePrimitive: () => 'box' as const,
+		armedFormCopy: () => null,
 		setPlacePrimitive: vi.fn(),
 		previewMove: vi.fn(() => ({ kind: 'idle' as const })),
 		previewYaw: vi.fn(() => ({ kind: 'idle' as const })),

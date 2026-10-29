@@ -18,6 +18,7 @@
 	import type { StageAdapterServices } from '../../stage/stage-adapter-host';
 	import { stageEnvelope } from '../../stage/unit-stage-source';
 	import { choosePrimitive, peekArmedModel } from './import/definitions';
+	import MyObjectsSectionLazy from './library/MyObjectsSectionLazy.svelte';
 	import {
 		NATIVE_PLACEMENT_PRIMITIVES,
 		type NativePlacementPrimitive
@@ -30,6 +31,7 @@
 		sceneModelContactMinY,
 		sceneSessionFromServices,
 		sceneSurfaceFor,
+		type ArmedFormCopy,
 		type SceneCandidate,
 		type ScenePlacementSession,
 		type SceneSurface,
@@ -94,6 +96,14 @@
 	 * project's pending approval is applied to whenever Place opens.
 	 */
 	let armedModelPresent = $state(false);
+	/**
+	 * The My Objects copy armed for this Place session, mirrored for its panel.
+	 * `$state.raw` keeps the session's own handle identity: a deep proxy would
+	 * differ from the raw arm on every frame and rewrite the mirror forever.
+	 */
+	let armedFormCopy = $state.raw<ArmedFormCopy | null>(null);
+	/** The ready words written for `armedFormCopy`; replaced, never left stale. */
+	let readyMessage: string | null = null;
 
 	function selectionEntityId(): string | null {
 		const primary = services.stage.selectionState().primary;
@@ -156,6 +166,10 @@
 			// that will commit, not from Import's already-consumed pending slot.
 			const previous = session;
 			const proposalWasOpen = editing;
+			// A saved copy is armed for one reading's session. Replacing the session
+			// must not leave the panel saying it is ready when the next click would
+			// place a native primitive instead.
+			const previousCopy = previous?.armedFormCopy() ?? null;
 			// A reading change replaces the session without rebuilding the adapter
 			// binding, so the persistent-Place listener the adapter installed is carried
 			// to whichever session carries the creator's next typed commit.
@@ -203,6 +217,12 @@
 				editing = false;
 				candidate = null;
 				message = 'Cancelled; the accepted pose is unchanged.';
+			} else if (previousCopy !== null && session?.armedFormCopy() === null) {
+				// An accepted insertion consumes the arm in the session that committed
+				// it; a replaced session loses it. Only the latter reaches here with an
+				// arm the creator still believes is live.
+				armedFormCopy = null;
+				message = 'The saved copy is no longer armed; choose Insert again.';
 			}
 			applySnap();
 		}
@@ -517,16 +537,20 @@
 			return;
 		}
 		const appliedSnap = current.snapStep();
-		const modelArmed = current.armedModel() !== null;
+		const copyArmed = current.armedFormCopy();
+		const modelArmed = copyArmed === null && current.armedModel() !== null;
 		const outcome = await current.place(primitive, Number(x), Number(z));
 		if (outcome.kind === 'committed') {
 			candidate = null;
+			if (copyArmed !== null) armedFormCopy = null;
 			// Snap is never silent: a Place that applied a step says so. The adapter's
 			// completion selects the new entity and keeps the tool armed; the instrument
 			// does not select through its task-scoped services, which the accepted
 			// install has already retired.
 			const snapNote = appliedSnap === null ? '' : ` · snap ${appliedSnap} m applied`;
-			if (modelArmed) {
+			if (copyArmed !== null) {
+				message = `Placed an editable copy of “${copyArmed.item.name}”${snapNote}.`;
+			} else if (modelArmed) {
 				armedModelPresent = false;
 				message = `Placed the approved model${snapNote}.`;
 			} else {
@@ -535,6 +559,33 @@
 			return;
 		}
 		applyOutcome(outcome);
+	}
+
+	/**
+	 * Arm one saved My Objects copy for this Place session.
+	 *
+	 * The copy is a session arm like an approved model: the adapter's pointer claim
+	 * previews it and the typed Place commits it. Its captured contact comes from
+	 * the item's own evaluated source; the planner re-validates it at accept.
+	 */
+	function armFormCopy(copy: ArmedFormCopy): boolean {
+		const current = ensureSession();
+		if (current === null) return false;
+		current.setArmedFormCopy(copy);
+		armedFormCopy = copy;
+		armedModelPresent = false;
+		candidate = null;
+		readyMessage = `${copy.item.name} is ready: click its floor position, or enter X/Z and Place.`;
+		message = readyMessage;
+		return true;
+	}
+
+	/** Disarm the copy without closing Place or the panel. */
+	function clearFormCopy(): void {
+		session?.setArmedFormCopy(null);
+		armedFormCopy = null;
+		readyMessage = null;
+		message = 'The saved copy is no longer armed.';
 	}
 
 	// The task's instrument mounts with a live session so the adapter's pointer
@@ -584,6 +635,20 @@
 			// put has ended the proposal all the same, and this frame loop is the one
 			// observer that runs even when the panel is not re-rendered.
 			dropDeadProposal();
+			// An accepted insertion consumes the armed copy inside the session; the
+			// panel reads the same arm, so it clears its marker from that authority
+			// rather than from a second completion path.
+			const liveCopy = session?.armedFormCopy() ?? null;
+			if (liveCopy !== armedFormCopy) {
+				// A pointer commit consumes the arm without passing through this panel.
+				// Its ready line is no longer true, so replace it at the same authority
+				// the panel reads.
+				if (liveCopy === null && armedFormCopy !== null && message === readyMessage) {
+					message = 'The saved copy is no longer armed; choose Insert again.';
+					readyMessage = null;
+				}
+				armedFormCopy = liveCopy;
+			}
 		};
 		frame = requestAnimationFrame(watch);
 		return () => cancelAnimationFrame(frame);
@@ -737,6 +802,13 @@
 							session,
 							primitive
 						);
+						// Choosing a primitive is the explicit replacement of an armed copy.
+						const liveCopy = session?.armedFormCopy() ?? null;
+						if (liveCopy === null && armedFormCopy !== null && message === readyMessage) {
+							message = 'The saved copy is no longer armed; the primitive replaces it.';
+							readyMessage = null;
+						}
+						armedFormCopy = liveCopy;
 					}}
 				>
 					{#each NATIVE_PLACEMENT_PRIMITIVES as option (option)}
@@ -756,17 +828,29 @@
 		</div>
 		{#if placeTask && !hasRoomFloor}
 			<p class="hint refusal" role="status">
-				{armedModelPresent
-					? 'No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place object.'
-					: 'No Room floor yet. Draw an enclosure with Ink before placing an object.'}
+				{armedFormCopy !== null
+					? 'No Room floor yet. This saved copy stays ready: draw an enclosure with Ink, then click its floor position.'
+					: armedModelPresent
+						? 'No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place object.'
+						: 'No Room floor yet. Draw an enclosure with Ink before placing an object.'}
 			</p>
 		{/if}
 		<p class="hint">
-			{armedModelPresent
-				? 'The approved model is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.'
-				: 'An imported model is placed by clicking its floor position; these typed fields place a native primitive.'}
+			{armedFormCopy !== null
+				? 'The saved copy is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.'
+				: armedModelPresent
+					? 'The approved model is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.'
+					: 'An imported model is placed by clicking its floor position; these typed fields place a native primitive.'}
 		</p>
 		{@render snapRow()}
+		{#if placeTask}
+			<MyObjectsSectionLazy
+				armedCopy={armedFormCopy}
+				{hasRoomFloor}
+				onArm={armFormCopy}
+				onClear={clearFormCopy}
+			/>
+		{/if}
 	{/if}
 
 	<p class="feedback" aria-live="polite">{message}</p>

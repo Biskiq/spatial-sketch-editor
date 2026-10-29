@@ -7,7 +7,7 @@
  *    commit run the same planner with the same captured inputs, snap is explicit,
  *    one cancel path restores the accepted baseline, and typed entry is never
  *    coerced (blank is not zero).
- * 2. **Adapter** (`createAdapter`): the nine Scene planners register with the one
+ * 2. **Adapter** (`createAdapter`): the ten Scene planners register with the one
  *    F.4 host, and the Place/Arrange Find entries, tasks, Card facts and instrument
  *    reach the Stage through AM-5 without any shell edit.
  *
@@ -36,6 +36,7 @@ import {
 	sceneEntityReference,
 	sceneReadingKey,
 	sceneSurfaceFor,
+	type ArmedFormCopy,
 	type ArmedModelPlacement,
 	type ScenePlacementSession,
 	type SceneWritePort
@@ -44,6 +45,7 @@ import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/uni
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { formCardController } from '$lib/authoring/adapters/scene/form-card';
 import { captureUnitSave } from '@portfolio/project-model/units';
+import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
@@ -465,6 +467,133 @@ describe('Scene placement session', () => {
 		expect(session.armedModel()).toBeNull();
 	});
 
+	it('places an armed My Objects copy with its saved source verbatim and consumes the arm', async () => {
+		const { session, port } = await sessionFor([boxEntity()]);
+		const item = canonicalFormLibraryPayload({
+			formatVersion: 1,
+			kind: 'form',
+			name: 'Saved plinth',
+			form: {
+				generator: {
+					kind: 'extrude',
+					plane: 'plan',
+					outline: [
+						{ key: 1, u: 0, v: 0, smooth: false },
+						{ key: 2, u: 2, v: 0, smooth: true },
+						{ key: 3, u: 2, v: 1, smooth: false },
+						{ key: 4, u: 0, v: 1, smooth: false }
+					],
+					extent: 0.8
+				},
+				scale: [1, 1.5, 0.75],
+				nextKey: 5
+			},
+			materialId: 'wood-walnut',
+			castShadow: true,
+			receiveShadow: true
+		});
+		const copy: ArmedFormCopy = { itemId: 'library-item-1', item, contactMinY: 0 };
+
+		expect(session.beginPlace('box')).toEqual({ kind: 'idle' });
+		session.setArmedFormCopy(copy);
+		expect(session.armedFormCopy()).toBe(copy);
+		const support = {
+			kind: 'elevation' as const,
+			elevation: 0,
+			generationId: 'scene-support@source-1'
+		};
+		const preview = session.previewPlaceFormCopy(copy, 2.5, 3.5, 0, support);
+		expect(preview.kind).toBe('candidate');
+		if (preview.kind !== 'candidate') return;
+		expect(preview.candidate.primitive).toBeNull();
+		expect(preview.candidate.form).toEqual(item.form);
+		expect(preview.candidate.position).toEqual([2.5, 0, 3.5]);
+
+		expect(await session.commitPlace()).toEqual({ kind: 'committed' });
+		expect(port.intents).toHaveLength(1);
+		const intent = port.intents[0]!;
+		expect(intent.kind).toBe('place-form-copy');
+		expect(intent.targets).toEqual([]);
+		expect(intent.allocatedIds).toHaveLength(1);
+		expect(intent.payload).toMatchObject({
+			item,
+			worldXZ: [2.5, 3.5],
+			yaw: 0,
+			contactMinY: 0,
+			// The floor the preview showed travels with the commit, so an ambiguous
+			// point can never resolve somewhere else at acceptance.
+			supportChoice: support
+		});
+		// The copy is consumed by its insertion; a second insertion needs a new click.
+		expect(session.armedFormCopy()).toBeNull();
+		expect(session.placedEntityId()).toBe(intent.allocatedIds[0]!.id);
+	});
+
+	it('places the armed copy through typed coordinates instead of the primitive', async () => {
+		const { session, port } = await sessionFor([boxEntity()]);
+		const item = canonicalFormLibraryPayload({
+			formatVersion: 1,
+			kind: 'form',
+			name: 'Typed copy',
+			form: {
+				generator: {
+					kind: 'extrude',
+					plane: 'plan',
+					outline: [
+						{ key: 1, u: 0, v: 0, smooth: false },
+						{ key: 2, u: 1, v: 0, smooth: false },
+						{ key: 3, u: 1, v: 1, smooth: false }
+					],
+					extent: 0.5
+				},
+				scale: [1, 1, 1],
+				nextKey: 4
+			},
+			materialId: 'wood-walnut',
+			castShadow: true,
+			receiveShadow: true
+		});
+		session.setArmedFormCopy({ itemId: 'library-item-2', item, contactMinY: 0 });
+		expect(await session.place('box', 3, 4)).toEqual({ kind: 'committed' });
+		expect(port.intents[0]!.kind).toBe('place-form-copy');
+		expect(session.armedFormCopy()).toBeNull();
+	});
+
+	it('keeps the armed copy when an insertion is refused', async () => {
+		const refused = await sessionFor(
+			[boxEntity()],
+			writePort({
+				accept: async () => ({ kind: 'refused', code: 'support-unresolved', message: 'No floor.' })
+			})
+		);
+		const item = canonicalFormLibraryPayload({
+			formatVersion: 1,
+			kind: 'form',
+			name: 'Retry copy',
+			form: {
+				generator: {
+					kind: 'extrude',
+					plane: 'plan',
+					outline: [
+						{ key: 1, u: 0, v: 0, smooth: false },
+						{ key: 2, u: 1, v: 0, smooth: false },
+						{ key: 3, u: 1, v: 1, smooth: false }
+					],
+					extent: 0.5
+				},
+				scale: [1, 1, 1],
+				nextKey: 4
+			},
+			materialId: 'wood-walnut',
+			castShadow: true,
+			receiveShadow: true
+		});
+		const copy: ArmedFormCopy = { itemId: 'library-item-3', item, contactMinY: 0 };
+		refused.session.setArmedFormCopy(copy);
+		expect(await refused.session.place('box', 1, 1)).toMatchObject({ kind: 'refused' });
+		expect(refused.session.armedFormCopy()).toBe(copy);
+	});
+
 	it('keeps the armed model when a typed placement is refused', async () => {
 		const refused = await sessionFor(
 			[boxEntity()],
@@ -682,6 +811,28 @@ describe('Scene adapter registration', () => {
 			const sized = stageScene(facade.snapshot()).entities.find((entity) => entity.id === 'form-plan');
 			expect(sized?.kind === 'form' && sized.form.scale).toEqual([2, 1.5, 1]);
 			const depth = host.history().depth;
+			// Save posts the accepted source this Card was built for, adds no history
+			// entry and never touches the project.
+			const beforeSave = JSON.stringify(stageScene(facade.snapshot()).entities);
+			const sent: { form: unknown }[] = [];
+			const saveOutcome = await card().save({
+				save: async (payload: { form: unknown }) => {
+					sent.push(payload);
+					return {
+						id: '11111111-1111-4111-8111-111111111111',
+						name: 'plan form',
+						kind: 'form' as const,
+						formatVersion: 1,
+						contentId: `sha256-${'a'.repeat(64)}`,
+						createdAt: '2026-10-28T12:00:00.000Z'
+					};
+				}
+			} as never);
+			expect(saveOutcome.kind).toBe('accepted');
+			expect(sent).toHaveLength(1);
+			expect(sent[0]?.form).toEqual(sized?.kind === 'form' ? sized.form : null);
+			expect(host.history().depth).toBe(depth);
+			expect(JSON.stringify(stageScene(facade.snapshot()).entities)).toBe(beforeSave);
 			expect((await card().size([0, 1, 1])).kind).toBe('refused');
 			expect(host.history().depth).toBe(depth);
 			expect((await card().duplicate()).kind).toBe('installed');
@@ -700,6 +851,39 @@ describe('Scene adapter registration', () => {
 			expect(reopened.kind).toBe('admitted');
 			if (reopened.kind === 'admitted') expect(stageScene(reopened.snapshot).entities).toEqual(stageScene(facade.snapshot()).entities);
 		} finally { facade.dispose(); }
+	});
+
+	it('Save re-reads the live accepted source after an accepted edit', async () => {
+		const { facade, host } = await mounted(await supportedProject([nativeForm('plan', 2)]));
+		mountStageAdapter(facade, host, createAdapter);
+		const services = createStageAdapterServices(facade, host);
+		const stale = formCardController(services, 'form-plan')!;
+		try {
+			expect((await formCardController(services, 'form-plan')!.size([2, 1, 1])).kind).toBe('installed');
+			const live = stageScene(facade.snapshot()).entities.find((entity) => entity.id === 'form-plan');
+			expect(live?.kind).toBe('form');
+			if (live?.kind !== 'form') return;
+			const sent: { form: unknown }[] = [];
+			const depth = host.history().depth;
+			const outcome = await stale.save({
+				save: async (payload: { form: unknown }) => {
+					sent.push(payload);
+					return {
+						id: '11111111-1111-4111-8111-111111111111',
+						name: 'plan form',
+						kind: 'form' as const,
+						formatVersion: 1,
+						contentId: `sha256-${'b'.repeat(64)}`,
+						createdAt: '2026-10-28T12:00:00.000Z'
+					};
+				}
+			} as never);
+			expect(outcome.kind).toBe('accepted');
+			expect(sent[0]?.form).toEqual(live.form);
+			expect(host.history().depth).toBe(depth);
+		} finally {
+			facade.dispose();
+		}
 	});
 
 	it('selects a Scene entity canonically without fabricating a Plan fragment', async () => {
