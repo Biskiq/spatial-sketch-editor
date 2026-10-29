@@ -1,8 +1,9 @@
 # R217.S11 — Integrated final gate: implementation plan
 
-**Slice:** R217.S11 · **Status:** approved (plan); not released · **Phase:** [R217](../README.md) ·
-[slice register](../README.md#slice-register) · **Writer:** T1 · **Reviewers:** T2, T3, T5 and an
-independent reviewer · **Runbook:** [T1 operations](../../../operations/t1-spatial-world/README.md)
+**Slice:** R217.S11 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+[R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
+**Reviewers:** T2, T3, T5 and an independent reviewer · **Runbook:**
+[T1 operations](../../../operations/t1-spatial-world/README.md)
 
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
@@ -10,56 +11,95 @@ REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1
 VERIFICATION: exhaustive
 ```
 
-This is R217's declared **FINAL PHASE GATE** and the integration route for S01–S10. It adds no
-feature. Fixes are allowed only for defects the gate itself finds, each recorded with its owner's
-review.
+## 1. Outcome
 
-## Prerequisite
+One integrated tree at a recorded revision proves the Core Editor Stability **Shell coherence**
+criterion end to end, with a fine pointer and a coarse one. R217 becomes closable. This slice adds no
+feature.
 
-R217.S01–S10 are accepted with routine closeout, and every consumed gate and required scope is
-rechecked at this slice's trusted base.
+## 2. Why this is the smallest sensible slice
 
-## Evidence
+S01–S10 each prove their own seams and send exhaustive proof here. This slice proves only what
+needs the pieces together: journeys that cross Shell, Plan, drafting, marks and dock, and the
+persistence classes.
 
-On one integrated tree at a recorded revision:
+## 3. Dependencies
 
-1. **Merge gate:** the complete merge gate in the [test contract](../../../../apps/editor/tests/README.md#what-a-change-requires), including `test:heavy`, the arch lane, checks and builds, and DB-backed `test:api` with zero skips.
-2. **Journeys:** every journey below, in two browsers per the agent E2E contract, with screenshots kept as the acceptance artifacts:
-   - with a fine pointer at 1440 × 900 and 1280 × 800;
-   - under coarse-pointer and touch emulation (`hasTouch`, `pointer: coarse`, `hover: none`) at 1024 × 768 and 768 × 1024.
+- R217.S01–S10 accepted with routine closeout, and every consumed gate and required scope rechecked
+  at this slice's trusted base.
+- Agent browser runs follow the `browser-hygiene` skill.
+- Fixes are allowed only for defects the gate finds, each as a bounded patch reviewed by its owner
+  and recorded in the acceptance record.
 
-   A real-iPad pass is recorded as an owner-run observation when available. It is not a
-   prerequisite.
-3. **Isolation:** visitor, public and preview boundaries are green, and no new module is in a `/p` chunk.
-4. **Seams:** the S06 Height Sheet consumer seam and the S07 descriptor admission are reviewed.
-5. **Review:** an independent review of the integrated diff since the phase base.
+## 4. Design
 
-Performance is not measured: the mandate is
-[suspended](../../../reference/decisions/performance-mandate-suspension-2026-10-28.md). The Stage
-bundle delta for the phase is reported, and no budget is claimed.
+### 4.1 Fixtures
 
-## Journeys
+| Fixture | Contents |
+| --- | --- |
+| **starter** | The product starter |
+| **empty** | A new empty project |
+| **L** | The existing L Layout fixture from the H0 harness |
+| **mixed** | A 3 × 2 room plan with a plinth, one catalogue model, one primitive and one native form, including a 0.9 m low Wall and a 0.75 m table |
 
-Fixtures: the starter, an empty project, an L Layout fixture, and a fixture containing a catalogue
-object, a primitive and a native form.
+The *mixed* fixture is added as a checked-in project JSON in `apps/editor/tests/lib/authoring/fixtures/`.
+
+### 4.2 Pointer and viewport matrix
+
+| Pointer | Viewports | Browsers |
+| --- | --- | --- |
+| Fine | 1440 × 900, 1280 × 800 | Chromium, Chrome |
+| Coarse (`hasTouch`, `pointer: coarse`, `hover: none`) | 1024 × 768, 768 × 1024 | Chromium, Chrome |
+
+A real-iPad run is recorded as an owner-run observation when available. It is not a prerequisite.
+
+### 4.3 Evidence
+
+1. **Complete merge gate** per the [test contract](../../../../apps/editor/tests/README.md#what-a-change-requires):
+   - `npm run check` and `npm run test:arch`;
+   - `npm run test:heavy` and `npm test`;
+   - `npm run build`;
+   - `npm run check:api`, and DB-backed `npm run test:api` with zero skips.
+2. **Journeys** J1–J11 below, run by an agent in each cell of the matrix. Screenshots are archived as
+   PNGs in this slice's workspace, and a row passes only with its PNG.
+3. **Isolation:** the visitor, public and preview boundary tests, plus a build-chunk scan proving no
+   R217 module is in a `/p` chunk.
+4. **Seam reviews:**
+   - S06: a test-only Sheet consumer registers without editing the Sheet;
+   - S07: descriptor admission refuses a planner-less mark;
+   - S03: the resolver never reorders within a domain.
+5. **Independent review** of the integrated diff since the phase base.
+6. **Bundle:** the Stage route br delta since the phase base is reported. No budget is claimed.
+   Performance is not measured; the mandate is
+   [suspended](../../../reference/decisions/performance-mandate-suspension-2026-10-28.md).
+
+## 5. Journeys
 
 | # | Journey | Must observe |
 | --- | --- | --- |
-| J1 | **Shell composition.** Open a project at each width; collapse and expand the Index; select and deselect; open the Library; open the app menu and Find (⌘K) | Head stays one row with the location chip while the Index is collapsed; a collapsed Index takes no width; no empty Card; the Card never covers the Instrument or drafting words; narrow sheets behave per PLATE; the Camera target, scale and pose never change on a layout change |
-| J2 | **Plan truth.** Open the starter; switch to 2D; select a Wall from its line; flip to 3D and back; switch to shaded Plan | Paper is the default; every stream is drawn; the pick hits what is drawn; gold ink in 2D and a gold contour in 3D on one identity; target and scale kept; 90° azimuth detent; no refit; armed tool and open work survive; shaded changes appearance only |
-| J3 | **Drafting.** Zoom across the range; toggle Grid and Snap; hold the snap-suspending modifier; draw a Box room; Measure a Wall; use Scale detents and Fit all | No grid spacing below 8 px, and a fixed origin; words name the state; Box gives one Undo step with Rooms derived; Measure adds no history and no dirty state; Fit all goes through Camera |
-| J4 | **Height Sheet.** Drag it past a Wall top and a found surface; add a pin; use it from the keyboard; switch to Experience; reload | The Plan cut changes visibly; snap names show while dragging; the 3D plane is a neutral tint; there is no history and no dirty state; it is absent in Experience; pins and height reset after reload |
-| J5 | **Legibility.** Hover and select a Wall, an Opening, an object and a form in both readings; navigate by keyboard only | Hover is never gold; selection is echoed in Stage, Index and Card; Esc clears; the focus cue is distinct from selection and hover |
-| J6 | **Walls and Openings.** Drag a Wall end, length and angle; move an Opening; set thickness in the Card; release one drag invalidly; type a value at the gesture | One Undo step per valid release and none for an invalid one; Junctions are preserved; Plan and 3D agree; the refusal shows at the mark or field; Esc restores then cancels; blur never commits |
-| J7 | **Objects and forms.** Move and turn an object; tap its scale point and resize uniformly; size a form per axis and by depth; match each with a Card edit | The tag names the verb; the base stays on its support; mark and Card give identical source and refusal; the form's Plan symbol follows its 3D form |
-| J8 | **Eraser.** Arm it; hover a Wall and an object; erase each; try an ineligible target; Undo twice | Red dashes only while armed; one step each; the refusal is in words; Undo restores the same identities |
-| J9 | **Coarse pointer and touch.** Repeat J1, J5, J6, J7 and J8 under touch emulation; start a two-finger gesture during a drag | Every control, mark and the Sheet knob has at least a 44 × 44 px target; hover reveals have touch paths (press feedback, tap the scale point, the Eraser's press-and-slide-off); the second finger cancels the drag cleanly; no mis-pick falls through to navigation |
-| J10 | **Interrupted gestures.** Start a drag, then trigger each of: pointer cancel, lost capture, window blur, hidden tab, Esc, reading flip, lens switch. Start an Ink chain, then blur and return | Each drag cancels: no history entry, no dirty change, selection kept, Undo available again with no stale reason, and an immediate restart works. The Ink chain stays open until Finish, Backtrack or Esc. Save during a live drag saves only the last accepted source |
-| J11 | **Source versus history and state.** After J2–J8, Save; Undo once and Redo; reload; reopen from the project list | The source after reload is byte-identical to the saved bytes. After reload, Undo and Redo are unavailable with their reason. Selection, hover, armed tool, reading, grid and snap, Sheet height and pins are back at defaults. App preferences (Paper or shaded, Reduce motion) are kept. No session or view state is in the Save payload |
+| J1 | **Shell composition.** At each viewport: collapse and expand the Index; select and deselect; open the Library; open the app menu; open Find with ⌘K | The Head stays one row, with the location chip while the Index is collapsed. A collapsed Index takes zero width. There is no empty Card. The Card never covers the Instrument, dock, reading control or drafting words. Narrow sheets match S02 §4.5. The Camera target, scale, azimuth and elevation are unchanged by every layout change |
+| J2 | **Plan truth.** Open *starter*; switch to 2D; select a Wall by its poché; flip to 3D and back; switch to Shaded and back | Paper is the default, and cut, projected, hidden and symbol are drawn as specified. The pick hits what is drawn. Gold ink in 2D and a gold outline in 3D are on the same id. Target and scale are kept, the 2D azimuth is a multiple of 90° and there is no refit. The armed tool and open work survive. Shaded changes appearance only |
+| J3 | **Drafting.** On *empty*: zoom across the scale range; toggle Grid and Snap; hold Alt; draw a Box room; Measure one Wall; choose Scale 1:50, then Fit all | No grid spacing below 8 px, and a fixed origin. The words name their state. Box is one Undo step with a derived Room and snapped corners. Measure leaves history, dirty state and Undo availability unchanged. The framing changes go through Camera |
+| J4 | **Height Sheet.** On *mixed*: drag the Sheet from 1.2 m to 0.6 m and back; add a pin; step it by keyboard; switch to Experience and back; reload | The 0.9 m Wall moves cut ↔ projected. Ticks show Floor, the plinth top and 0.75 m. The snap name shows while dragging. The 3D plane is a neutral tint, not yellow or gold. No history and no dirty state. The Sheet is absent in Experience. After reload the height is 1.2 m and there are no pins |
+| J5 | **Legibility.** On *mixed*: hover then select a Wall, an Opening, the model and the form, in both readings; then repeat by keyboard only | Hover is never gold, and is drawn for every kind. Selection is echoed in Stage, Index and Card. Esc clears. The focus cue is distinct from hover and selection |
+| J6 | **Walls and Openings.** Drag a Wall end, length ring and move track; move and widen an Opening; set thickness in the Card; release one drag invalidly; type `3.5` during a length drag; press Esc twice | One F4 entry per valid release and none for the invalid one. Junctions are preserved. Plan and 3D agree. The refusal shows at the mark or field. Typed entry commits once. Esc restores, then cancels. Blur never commits |
+| J7 | **Objects and forms.** On *mixed*: move and turn the model; tap its scale point and resize it; resize the form's Width and Height; match each value in the Card | The tags name the verb. The base stays on its support. Mark and Card give identical source and refusal. The form's Plan footprint follows its 3D form. There is no Arrange instrument |
+| J8 | **Eraser.** Arm it; hover a Wall and the model; erase each; click a Room floor; Undo twice | Red dashes appear only while armed. Each erase is one step, with the Wall's consequence disclosure shown. The Room floor refuses in words. Undo restores the same ids |
+| J9 | **Coarse pointer and touch.** Repeat J1, J5, J6, J7 and J8 in the coarse cells; start a second finger during a mark drag; press, slide off and release with the Eraser | Every control, mark, dock key and the Sheet knob has a hit area of at least 44 × 44 px. Every hover reveal has its touch path. A second finger cancels the drag cleanly with no entry. Eraser slide-off erases nothing. No mis-pick falls through to navigation |
+| J10 | **Interrupted gestures.** During a Wall drag, an object drag and a pan, trigger each in turn: pointer cancel, lost capture, window blur, hidden tab, Esc, reading flip, lens switch. Then start an Ink chain, blur and return. Click Save during a live drag | Each drag ends with no F4 entry and no dirty change. Selection is kept. Undo becomes available with no stale reason. An immediate new press works. The Ink chain survives blur and return. Save during the drag saves only the last accepted source (byte comparison) |
+| J11 | **Source versus history and state.** After J3–J8 on *mixed*: Save; Undo once, then Redo; reload; reopen from the project list in a new session | The source after reload is byte-identical to the saved bytes. After reload and after reopen, Undo and Redo are unavailable, with their reason. Selection, hover, armed tool, reading, grid and snap, Sheet height and pins are at defaults. The app preferences (Paper or Shaded, Reduce motion) are kept. The Save payload contains no session or view state (key scan) |
 
-## Acceptance criteria
+## 6. Acceptance criteria, reviews and stop conditions
 
-Every row of every journey passes in both browsers with the specified pointer, and every evidence item
-above is recorded in [the acceptance record](./acceptance.md) with its revision. A failed or
-unevidenced row blocks acceptance. Waiving one needs an explicit owner ruling recorded there.
-Passing this gate makes R217 closable; phase close stays owner-invoked.
+- **Pass bar:** every journey row passes in every applicable matrix cell, and every evidence item in
+  §4.3 is recorded in [the acceptance record](./acceptance.md) with its revision. A failed or
+  unevidenced row blocks acceptance. Waiving a row needs an explicit owner ruling recorded there.
+- **Reviews:** T2, T3 and T5 for their domains' rows; an independent reviewer for the integrated
+  diff.
+- **Stop and report if:** a fix would exceed a bounded owner patch, or would change a planner,
+  format or Camera rule. That goes back to its owning slice or owner.
+
+## 7. Handoff
+
+Passing this gate makes R217 closable; phase close stays owner-invoked. The Core Editor Stability
+acceptance plan cites this record for the Shell coherence criterion.

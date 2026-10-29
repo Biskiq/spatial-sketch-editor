@@ -1,9 +1,9 @@
 # R217.S08 — Scene object marks: implementation plan
 
-**Slice:** R217.S08 · **Status:** approved (plan); not released · **Phase:** [R217](../README.md) ·
-[slice register](../README.md#slice-register) · **Writer:** T2 · **Reviewers:** T1 (mark layer,
-host), T5 (shared Scene adapter files) · **Runbook:**
-[T2 operations](../../../operations/t2-composition/README.md)
+**Slice:** R217.S08 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+[R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T2 ·
+**Reviewers:** T1 (mark layer, host), T5 (shared Scene adapter files), T3 (Card writer) ·
+**Runbook:** [T2 operations](../../../operations/t2-composition/README.md)
 
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
@@ -12,49 +12,92 @@ VERIFICATION: architecture-integration
 INTEGRATION ROUTE: ../r217.s11-integrated-final-gate/implementation-plan.md
 ```
 
-Moves catalogue and primitive object manipulation onto the S07 mark layer, under the
-[Scene transform contract](../../../reference/components/scene-content.md).
+## 1. Outcome
 
-## Prerequisite
+A creator selects a catalogue model or a primitive and moves, turns and resizes it on the Stage,
+with the same marks Walls use. The Card is where they type the exact position, yaw and size, and it
+refuses exactly as a drag does. The separate Arrange instrument is gone.
 
-R217.S07 is accepted. Merges before S09, unless the claims record a swap.
+## 2. Why this is the smallest sensible slice
 
-## Scope
+The Scene planners already exist (`place-on-floor`, `set-yaw`, `resize-on-floor` in
+`packages/project-model/src/scene-planning/intent-payload.ts`), so this slice adds no planner and no
+format change. It adds on-Stage marks for operations that today live in the **Arrange** instrument
+(`SCENE_ARRANGE_TASK` in `scene.adapter.ts`) and in Card actions. It moves Arrange's exact fields
+into the Card writer, which is PLATE's one writer; T1.P02 did the same for Dimensions.
 
-1. **Descriptors** for a selected object:
-   - a move track on the floor;
-   - a yaw ring;
-   - **uniform** size through the scale point.
+**Deferred:**
+- per-axis scale for catalogue models (the domain does not admit it);
+- attachments and multi-select;
+- Align/Distribute;
+- material and light editing.
 
-   No per-axis scale is added for catalogue models; the domain does not admit it.
-2. **Progressive size.** Clicking or tapping the scale point reveals the size ray. The tag names the
-   verb ("Size 1.10 · base stays"). The base stays on its support, and resting objects ride along
-   per the existing support rule.
-3. **Scene policy stays T2's.** Support occlusion, eligibility and refusal text are unchanged; the
-   provider only reports them.
-4. **Typing at the gesture and the Card** write the same fact with the same refusal.
-5. Remove the Scene adapter's local knob drawing and drag state in the same PR. Duplicate and delete
-   remain available from the Card's scoped list and the context menu.
+## 3. Dependencies
 
-## Not in scope
+- R217.S07 accepted, with the descriptor contract approved by T2.
+- Merges before S09, because both edit `scene.adapter.ts`.
+- **Claims:** `scene.adapter.ts`, `SceneTransformInstrument.svelte`, the Scene Card writer, and
+  `apps/editor/src/lib/authoring/adapters/scene/placement.ts`.
 
-Form marks (S09), attachments, multi-select, Align/Distribute, and material or light editing.
+## 4. Design
 
-## Shared-file claims
+### 4.1 Descriptors for a selected object (not a form)
 
-`scene.adapter.ts`, `SceneTransformInstrument.svelte` and the placement modules. T5 reviews
-because it shares the adapter.
+| Descriptor | Kind | Fact | Planner | Reveal |
+| --- | --- | --- | --- | --- |
+| Move | track on the floor plane, through the footprint centre | position | `place-on-floor` | always |
+| Turn | ring around the vertical axis | yaw | `set-yaw` | always |
+| Scale point | point at the upper corner of the bounds | — | — | always |
+| Size | ray from the base, along the bounds diagonal | scale | `resize-on-floor` | on-scale-point |
 
-## Acceptance criteria
+- **Progressive size.** Clicking or tapping the scale point reveals the Size ray until selection
+  changes or Esc is pressed. The tag reads `Size {scale} · base stays`.
+- **Support.** `place-on-floor` and `resize-on-floor` capture `contactMinY` and the support choice as
+  today, so the base stays on its support. Resting objects follow by the existing support rule.
+- **Snap.** Move honours the S05 snap fact for free positions.
+- **Lights:** have no marks. They keep their existing Card facts.
 
-1. **Undo entries:** move, yaw and uniform size each make one F4 entry on a valid release and none on an invalid one.
-2. **Support:** the base stays on its support, and a resting object follows its support's move.
-3. **Same fact:** the mark, the typed value and the Card produce identical source and refusal.
-4. **Coarse pointer:** the scale-point tap reveals size, and the tracks are reachable with 44 px targets.
-5. **Regression:** Save and reload are byte-identical, and T2.P01 and T2.P02 journeys pass.
-6. **No leftovers:** the adapter-local knob code is gone.
+### 4.2 Card writer
 
-## Verification
+The Scene `cardWriter` for objects gains editable Position (x, z), Yaw (degrees) and Size (uniform
+scale):
 
-Affected Scene adapter and planner contracts; then the complete merge gate in the
-[test contract](../../../../apps/editor/tests/README.md#what-a-change-requires).
+- each field is written through the same planner as its mark, with the refusal shown in the field;
+- Enter commits once, Esc restores and then cancels, and blur never commits;
+- the Arrange task, its Find entry and `SceneTransformInstrument.svelte`'s arrange posture are
+  removed in the same PR;
+- the Place object (Library) posture of that component stays.
+
+### 4.3 Removal
+
+The no-task `pointerIntent` branch that recognizes form size knobs moves to S09. This slice
+removes any object-specific overlay ids. Duplicate and Delete stay as Card actions and in the
+context menu.
+
+## 5. Tests and acceptance criteria
+
+1. **One entry per release** (extends `scene-editing-surface.test.ts`). Move, turn and size each make
+   exactly one F4 entry on a valid release. A release on an unsupported target, or with a scale
+   outside the domain range, makes none and shows the domain's refusal.
+2. **Support.** After resize, `contactMinY` equals the support height. An object resting on a resized
+   or moved object follows its support (extends `scene-floor-support.test.ts`).
+3. **Same fact.** Dragging to a value and typing that value in the Card give byte-identical Scene
+   source, and identical refusal text for an invalid value.
+4. **Progressive size.** The Size ray is hidden until the scale point is pressed or tapped. Under
+   `pointer: coarse`, a tap reveals it and every mark has a 44 px area.
+5. **Arrange removed.** No `scene-arrange` task, Find entry or instrument posture remains. Every
+   field it offered is in the Card, by a field-set equality test.
+6. **Regression.** The `T2.P01` and `T2.P02` composition and import tests pass, and Save and reload
+   are byte-identical.
+
+## 6. Reviews and stop conditions
+
+- **Reviews:** T1 for mark-layer use; T5 for shared adapter files; T3 for Card writer conventions.
+- **Stop and report if:**
+  - a mark needs a new Scene planner or payload field;
+  - removing Arrange strands a field the Card cannot hold;
+  - support behaviour changes under any existing test.
+
+## 7. Handoff
+
+S09 adds form descriptors to the same adapter. S10's Eraser uses `delete-one`.

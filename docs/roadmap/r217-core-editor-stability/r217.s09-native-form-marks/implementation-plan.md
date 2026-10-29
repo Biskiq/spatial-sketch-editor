@@ -1,8 +1,8 @@
 # R217.S09 — Native form marks: implementation plan
 
-**Slice:** R217.S09 · **Status:** approved (plan); not released · **Phase:** [R217](../README.md) ·
-[slice register](../README.md#slice-register) · **Writer:** T5 · **Reviewers:** T2 (Scene adapter
-files), T1 (mark layer) · **Runbook:**
+**Slice:** R217.S09 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+[R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T5 ·
+**Reviewers:** T2 (Scene adapter files), T1 (mark layer) · **Runbook:**
 [T5 operations](../../../operations/t5-expressive-geometry/README.md)
 
 ```text
@@ -12,40 +12,77 @@ VERIFICATION: architecture-integration
 INTEGRATION ROUTE: ../r217.s11-integrated-final-gate/implementation-plan.md
 ```
 
-Moves native form depth and per-axis sizing onto the S07 mark layer, under the T5.P01 native form
-policy.
+## 1. Outcome
 
-## Prerequisite
+A selected native form shows the same marks as other objects:
 
-R217.S08 is merged, because both edit the Scene adapter.
+- a move track and a turn ring;
+- a scale point that reveals **three** size rays (Width, Height, Depth), because forms size per axis.
 
-## Scope
+Its Card fields and its marks write the same facts.
 
-1. **Descriptors** for a selected form:
-   - a depth ray along the profile normal;
-   - width, depth and height rays through the scale point, which is per axis for forms;
-   - the move track and yaw ring shared with S08's object descriptors.
-2. **Measurement.** The closest-approach measurement in
-   `apps/editor/src/lib/authoring/adapters/scene/shape/ray.ts` stays T5's gesture arithmetic, used by
-   the descriptor's planner. The host does not reimplement it.
-3. **Refusals and bounds** stay the form policy's (extent 1 mm–100 m, scale [0.01, 100]), shown at
-   the mark and the Card.
-4. Remove the form-local knob drawing and drag state in the same PR.
+## 2. Why this is the smallest sensible slice
 
-## Not in scope
+- **Existing measurement and planner:** per-axis sizing already exists as T5 session arithmetic with
+  its own planner (`apps/editor/src/lib/authoring/adapters/scene/shape/form-size.ts` → `set-form-size`;
+  `apps/editor/src/lib/authoring/adapters/scene/shape/ray.ts` for closest-approach measurement).
+- **Existing Card fields:** `FormCardFields.svelte`.
+- **What changes:** only how the three size "knobs" are drawn and pressed. They become S07
+  descriptors, and the measurement stays T5's.
 
-Object Focus, outline editing, sections, shaping and anchors (T5.P02).
+**Deferred:** Object Focus, outline editing, sections, shaping and anchors (T5.P02).
 
-## Acceptance criteria
+## 3. Dependencies
 
-1. **Undo entries:** depth and each axis make one F4 entry on a valid release and none on an invalid one.
-2. **Plan and 3D:** the form's footprint symbol in Plan updates with its 3D evaluation from the same source.
-3. **Same fact:** mark, typed value and Card agree on source and refusal.
-4. **Coarse pointer:** per-axis rays are reachable and disambiguated by the form provider.
-5. **Regression:** Save, reload, My Objects insert and T5.P01 journeys pass.
-6. **No leftovers:** the form-local knob code is gone.
+- R217.S08 merged; it is the shared `scene.adapter.ts` writer.
+- **Claims:** `scene.adapter.ts` (form branch), `form-size.ts` and `FormCardFields.svelte`.
 
-## Verification
+## 4. Design
 
-Affected form, Scene adapter and `geometry-core` contracts; then the complete merge gate in the
-[test contract](../../../../apps/editor/tests/README.md#what-a-change-requires).
+### 4.1 Descriptors for a selected form
+
+| Descriptor | Kind | Fact | Planner | Reveal |
+| --- | --- | --- | --- | --- |
+| Move | track, as S08 | position | `place-on-floor` | always |
+| Turn | ring, as S08 | yaw | `set-yaw` | always |
+| Scale point | point | — | — | always |
+| Width / Height / Depth | ray along the form's local X / Y / Z from its centre | scale[axis] | `set-form-size` | on-scale-point |
+
+- **Measurement.** The descriptor's drag still calls `axisTravelFromRay` and the existing
+  `FormSizeMeasurement`. The host draws; T5 measures.
+- **Labels and refusals.** Tags read `Width {value} m`, `Height {value} m · base stays` and
+  `Depth {value} m`. Refusals keep the form policy's words: extent 1 mm–100 m, scale [0.01, 100].
+- **Overlap.** Rays that overlap at a small projected size follow S07's density rule. Same-class
+  overlap resolves by T5's descriptor order: Height, then Width, then Depth.
+
+### 4.2 Removal
+
+- The no-task `pointerIntent` knob recognition and the `scene-form-size-*` overlay markers are
+  removed. The refusal and preview text moves to the mark tag.
+- The form `scene-form-delete` overlay is removed. Delete stays a Card action.
+
+## 5. Tests and acceptance criteria
+
+1. **One entry per release.** Each axis ray makes one F4 entry on a valid release and none on an
+   invalid one (extends `shape-reading-adapter.test.ts` or the T5 form-size tests).
+2. **Plan follows 3D.** After a Width change, the form's Plan footprint (S04) equals the footprint
+   derived from its new evaluation; there is no stale silhouette.
+3. **Same fact.** The mark, the typed value and `FormCardFields` give identical `form.scale` and
+   identical refusal.
+4. **Coarse pointer.** Each ray is pressable through a 44 px area, and overlapping rays resolve by
+   T5's order.
+5. **Regression.** T5.P01's journeys pass (draw → size → Save → reopen; My Objects insert), and the
+   golden digests are unchanged.
+6. **No leftovers.** No `scene-form-size-*` overlay ids remain.
+
+## 6. Reviews and stop conditions
+
+- **Reviews:** T2 for shared adapter files; T1 for descriptor use.
+- **Stop and report if:**
+  - sizing needs a new planner or a form-policy change;
+  - S08's object descriptors and form descriptors cannot share Move and Turn without a Scene planner
+    change.
+
+## 7. Handoff
+
+T5.P02 Object Focus inherits the descriptor contract for its outline and section marks.

@@ -1,8 +1,8 @@
 # R217.S10 — Dock completion: implementation plan
 
-**Slice:** R217.S10 · **Status:** approved (plan); not released · **Phase:** [R217](../README.md) ·
-[slice register](../README.md#slice-register) · **Writer:** T1 · **Reviewers:** T2 (Scene delete,
-Shape Box), T5 (form delete), T3 (Find arming) · **Runbook:**
+**Slice:** R217.S10 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+[R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
+**Reviewers:** T2 (Scene delete, Library key), T5 (form delete), T3 (Find arming) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md)
 
 ```text
@@ -12,55 +12,130 @@ VERIFICATION: architecture-integration
 INTEGRATION ROUTE: ../r217.s11-integrated-final-gate/implementation-plan.md
 ```
 
-Completes the owner-ruled dock: Select · Ink (Line, Box) · Measure · Eraser · Library.
+## 1. Outcome
 
-## Prerequisite
+The dock is the owner-ruled set (D3): **Select · Ink · Measure · Eraser**, with **Library** beside
+it. Each tool has an icon, a key and a palette where it needs one.
 
-R217.S02 (the lower edge), S05 (snap) and S07 (hover and marks) are accepted.
+- **Ink:** draws a room as a Box in one step.
+- **Measure:** measures without touching the project.
+- **Eraser:** removes one thing per click, and Undo brings it back.
 
-## Scope
+## 2. Why this is the smallest sensible slice
 
-1. **Dock keys.**
-   - Keys are icon-first, with tooltips that give the name and key hint.
-   - The armed key is ivory on the forest dock; tool colour appears only as a 2 px mark.
-   - Palette collapse is explicit, and Esc collapses the palette before it disarms.
-   - Arming never changes selection.
-2. **Ink palette: Line and Box.**
-   - Box makes the same closed-chain intent as four Lines, through the existing Layout drawing planner, in one Undo step. Rooms are derived.
-   - On the Shape reading, Box is a rectangle outline through T5's existing planner.
-   - Both honour the S05 snap fact.
+- **What exists:**
+  - the dock (`StageDock.svelte`, fed by contributions with `home: 'dock'`);
+  - Ink with its Wall and Shape readings;
+  - the delete planners: `layout-wall-delete`, `layout-opening-delete` and Scene `delete-one`;
+  - Place object, which becomes the Library key.
+- **What is new:**
+  - Box for the Wall reading (the Shape reading already has Line, Box, Round and Sketch);
+  - two host tools, Measure and Eraser, that write nothing of their own;
+  - the dock's visual and key treatment.
+
+**Deferred:**
+- Slice and Brush;
+- Round and Sketch for Walls (curved Walls are outside R217);
+- the Eraser's sweep and kind filter, and cross-domain composed erase.
+
+## 3. Dependencies
+
+- R217.S02 accepted (lower column), S05 (snap fact), S07 (hover drawing) and S08 and S09 (no Scene
+  knob path left).
+- **Claims:** `StageDock.svelte`, `stage-contributions.ts`, `layout.adapter.ts` (Ink Box) and
+  `apps/editor/src/lib/authoring/adapters/layout/ink.ts`; a new host tool module; and a
+  T2-reviewed patch to `scene.adapter.ts` for the Library key's home.
+
+## 4. Design
+
+### 4.1 Dock treatment
+
+- **Keys:** icon-first (inline SVG, 20 px, white on the forest dock), each with a tooltip giving its
+  name and key. The armed key is ivory `#f3f0e4` with a dark icon; tool colour appears only as a
+  2 px mark.
+- **Order:** Select · Ink · Measure · Eraser | Library.
+- **Palette:** clicking the armed key collapses or reopens its palette. Esc collapses an open
+  palette, then disarms. A faint caret marks a collapsed palette.
+- **Arming never changes selection.**
+- **Keys:** V Select, P Ink, M Measure, E Eraser, L Library. The existing `p` reading key moves to
+  `2`, beside `3`. This is recorded as a production key-map decision, and the Keys list (S02) shows
+  the map.
+- **Find:** arms every dock tool with its Arm verb (existing Find plumbing).
+
+### 4.2 Ink: Box for the Wall reading
+
+- The Ink palette gains **Line | Box** for the Wall reading.
+- **Box:** two presses (or press-drag-release) on the datum plane give opposite corners. Corners
+  honour the S05 snap and existing Junction targets.
+- **Release:** builds a 4-point closed `ChainDraft` and submits **one** `layout-wall-chain-commit`,
+  the same intent as four Lines closed by hand, so Rooms derive as today.
+- A degenerate box (edge below the minimum) refuses in words.
+- The Shape reading's Line, Box, Round and Sketch options are unchanged.
+
+### 4.3 Measure (host tool)
+
+- **Module:** a new `stage-measure.ts` in `apps/editor/src/lib/authoring/stage/`.
+- **Gesture:** press, drag or click twice. Endpoints resolve through the S03 resolver with
+  `purpose: 'tool'`, preferring geometry hits (Wall ends, object corners) and else the snapped datum
+  point.
+- **Result:** a dimension line and a mono tag (`3.42 m`), drawn in the mark layer as a dimension
+  line.
+- **Lifetime:** Esc clears it, and it persists only until the next measurement or disarm.
+- **No proposal:** it registers none, so it never blocks Undo, writes nothing, never makes the
+  project dirty and is never saved.
+
+### 4.4 Eraser (host tool)
+
+- **Module:** a new `stage-eraser.ts` in `apps/editor/src/lib/authoring/stage/`.
+- **Marking:** while armed, the hover winner (S03 resolver with `purpose: 'tool'`) is drawn in red
+  dashes `#d0412d`, using S07's hover mechanism with the erase treatment. On a coarse pointer the
+  dashes appear on press; sliding off cancels.
+- **Click:** looks up the subject's owning binding and calls its delete action:
+  - Layout Wall → `wallDeleteIntent`, with its existing consequence summary;
+  - Layout Opening → `openingDeleteIntent`;
+  - Scene object or form → `delete-one`.
+
+  Each is one F4 entry. When a domain's delete needs confirmation (a Wall whose removal merges
+  Rooms), the domain's existing disclosure shows at the pointer. The Eraser adds no rule of its own.
+- **Refusal:** an ineligible target (a Room floor, the datum) refuses in words beside the pointer.
+- **Contract:** bindings expose deletion through a new optional `eraseAction?(subject)` that returns
+  their existing Card delete action. No new planner.
+
+### 4.5 Library
+
+The Library key opens Scene's Place object task (`place-object`) as the Library Instrument above
+the dock. Its Find entry moves from Find-only (S02) to `home: 'dock'` with `slot: 'library'`.
+
+## 5. Tests and acceptance criteria
+
+1. **Arming.** Arming each tool leaves `selectionState()` unchanged, and Esc collapses the palette
+   and then disarms (extends `stage-input.test.ts` and the shell tests).
+2. **Box.** It makes one F4 entry and derives Rooms. Its Layout source is byte-identical to four
+   Lines with the same corners. A degenerate box refuses with no entry (extends
+   `layout-drawing-adapter.test.ts`).
 3. **Measure.**
-   - A session-only distance between snapped points, with a live tag.
-   - Esc clears it.
-   - It makes no history entry and no dirty state, and is never saved.
+   - Measuring between two Wall ends reports their distance to 1 mm.
+   - Measure creates no F4 entry, no dirty state and no proposal, and Undo stays available during it.
 4. **Eraser.**
-   - While armed, the eligible subject under the pointer shows red dashes, driven by S03's hover.
-   - On a coarse pointer the dashes appear on press, a release erases, and sliding off cancels.
-   - A click erases one admitted subject through its owning domain's existing delete planner, in one Undo step. Ineligible targets refuse in words.
-5. **Library** keeps its key, and Find arms every dock tool by its Arm verb.
-6. **Keyboard:** every tool can be armed and used without a pointer, where its domain offers a
-   non-pointer path. The production key map is this slice's choice, reviewed against the existing
-   viewing keys.
+   - Erasing a Wall, an Opening, an object and a form gives one entry each, and Undo restores the same ids.
+   - Red dashes appear only while the Eraser is armed.
+   - A Room floor refuses in words.
+   - On a coarse pointer, press shows the dashes, release erases and slide-off erases nothing.
+5. **Library.** The Library key opens the placement Instrument, and placing an object still works
+   (T2 tests).
+6. **Find.** It arms all four tools and the Library.
+7. **Coarse pointer.** Dock keys are at least 44 × 44 px under `pointer: coarse`.
 
-## Not in scope
+## 6. Reviews and stop conditions
 
-Slice, Brush, Sketch, Round, the Eraser's sweep and kind filter, and cross-domain composed erase.
+- **Reviews:** T2 for Scene delete and the Library; T5 for form delete; T3 for Find arming and the
+  key-map change.
+- **Stop and report if:**
+  - Box needs a Layout planner change;
+  - an erase needs a cross-domain composed plan;
+  - the `p` key move conflicts with an existing accepted key contract.
 
-## Acceptance criteria
+## 7. Handoff
 
-1. **Arming:** a test proves arming never changes selection.
-2. **Box:**
-   - one F4 entry;
-   - derived Rooms;
-   - identical source to four Lines with the same points.
-3. **Measure and the Eraser:**
-   - Measure leaves source, history and dirty state unchanged;
-   - the Eraser's single erase is one entry, and Undo restores the same identities;
-   - red dashes appear only while the Eraser is armed.
-4. **Coarse pointer:** the Eraser's press, slide-off and release behave as specified, and dock keys are 44 px.
-5. **Find** arms every dock tool, and every tool refuses ineligible targets in words.
-
-## Verification
-
-Affected dock, Layout drawing, Scene and form delete contracts; then the complete merge gate in the
-[test contract](../../../../apps/editor/tests/README.md#what-a-change-requires).
+A later Slice tool gets its own dock key through capability admission. Sweep erasing waits for a
+composed multi-subject plan.

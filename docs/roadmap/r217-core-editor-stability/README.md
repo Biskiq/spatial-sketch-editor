@@ -31,11 +31,11 @@ A creator opens a project in a shell that matches the ratified production design
 | Head, Index, Card | `apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte` has the lens switch, Undo/Redo, Save, Preview, source download and a bounded Find disclosure. `EditorIndex.svelte` is a collapsible locator that also lists contributed tool and task entries and a subject search, and becomes an overlay below 720 px. `EditorCard.svelte` is an overlay with collapse and a 72 rem narrow rule | The Head has no app menu (viewing preferences, Settings, Keys) and no location chip. A collapsed Index must take no width. The Index must hold no tools. Card and lower-edge arbitration, and the narrow sheets, are not designed as one composition |
 | Plan reading | `packages/camera-core/src/viewport.ts` gives an exact orthographic Plan endpoint. `apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte` draws the same lit, fogged meshes (`VisitorLayoutShell`) on a `0x111117` ground in both readings | Plan looks like 3D seen from above. `evaluateLayoutPlan` (`packages/layout-core/src/layout-plan-representation.ts`) only feeds the pick index in `apps/editor/src/lib/authoring/stage/stage-facade.ts`, so **what Plan draws is not what Plan picks** |
 | Drafting state | No Paper or mat material, grid, Scale · Grid · Snap words or Height Sheet. The Plan cut is a fixed 1.2 m calibration in `apps/editor/src/lib/authoring/stage/plan-parameters.ts` | PLATE §World authoring and §Material and working surfaces |
-| Dock | `apps/editor/src/lib/authoring/stage/shell/StageDock.svelte`: Select plus contributed tools, as text keys | Icon-first keys; Measure and Eraser are missing; Ink has no Box |
+| Dock | `apps/editor/src/lib/authoring/stage/shell/StageDock.svelte`: Select plus contributed tools, as text keys | Icon-first keys; Measure and Eraser are missing; Ink's Wall reading has no Box (the Shape reading already has Line, Box, Round and Sketch) |
 | Selection and hover | Selection on Stage is one gold SVG dot (`apps/editor/src/lib/authoring/stage/shell/StageOverlay.svelte`); other markers are grey circles. Adapters receive `hoverIntent`, but the host draws no hover | Gold contour with a quiet tint; hover below selection and never gold |
 | Marks | Each adapter draws its own knobs and owns its own drag state: Layout (`apps/editor/src/lib/authoring/adapters/layout.adapter.ts`), Scene (`apps/editor/src/lib/authoring/adapters/scene.adapter.ts`) and forms (`apps/editor/src/lib/authoring/adapters/scene/shape/ray.ts`), joined through the host's no-task press offer | One mark language, drawn and arbitrated by the Stage and admitted by domain |
-| Picking | The Plan pick index over Plan fragments, a Three raycast (`apps/editor/src/lib/authoring/scene/scene-pick-source.ts`) and adapter-local hits (`apps/editor/src/lib/authoring/scene/plan-scene-hit.ts`, form rays, `apps/editor/src/lib/authoring/adapters/scene/support-occlusion.ts`) | One coordinator over the domain policies |
-| Gesture interruption | The spatial route (`apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`, 3,571 lines) handles `pointercancel` and lost pointer capture | Window blur, a hidden page and a second touch point are not routed to the gesture owner; no test covers recovery |
+| Picking | Click-select (`StageFacade.resolveSourceHit`) asks each adapter `hitProvider` in **registration order** (alphabetical by file), then the Plan pick index in Layout priority. A no-task press goes to `pressWhenNoTask` bindings, also in registration order. Scene's provider consults the rendered raycast (`apps/editor/src/lib/authoring/scene/scene-pick-source.ts`) and yields to a nearer Layout surface | One documented resolver: spatial truth across domains, domain policy within one; press offered only to the selection's owner |
+| Gestures | `StageSession` already holds one gesture lease at a time, with per-lease reading-change policies, and live proposals that give the one "Undo unavailable" reason. The spatial route (`apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`, 3,571 lines) ends a press on `pointercancel`, lost capture, Esc, lens change and replacement | Window blur, a hidden page and a second touch point are not handled; there is no hover outside an open task |
 | History | One F4 history (`apps/editor/src/lib/authoring/f4/history.ts`, owned by T3). [Persistence](../../reference/components/persistence.md): history is bounded session state, and no Undo crosses a replacement baseline | Already one authority; only enforcement is missing |
 | Packages | `layout-core` and `geometry-core` are independent leaves; `camera-core` depends only on `three`; `project-model` depends on all three. Runtime-safe helpers live in the editor (`apps/editor/src/lib/authoring/scene/plan-scene-footprint.ts`, `apps/editor/src/lib/authoring/scene/obb-util.ts`) | Dependency directions are not enforced, and helper ownership is unwritten |
 
@@ -46,7 +46,8 @@ A creator opens a project in a shell that matches the ratified production design
   `ViewportEvaluation`. Plan hits resolve against what is drawn. **Paper is the default (D5)**;
   shaded Plan is an app-menu viewing preference. The Camera transition is unchanged.
 - **Dock set (D3):** Select · Ink (Line, Box) · Measure · Eraser (one subject per click), with the
-  Library beside it. Slice, Brush, Sketch and Round stay absent rather than inert.
+  Library beside it. Ink's Wall reading gains Box; the Shape reading keeps its shipped Line, Box,
+  Round and Sketch. Slice, Brush and curved-Wall Round and Sketch stay absent rather than inert.
 - **History is already one authority.** R217 enforces F4 and gives the live-gesture Undo refusal
   one owner. It does not rebuild history.
 - **Packages are clarified, not merged.** `layout-core` (architectural topology, compilation, Plan
@@ -71,7 +72,7 @@ writes it into [`architecture.md`](../../reference/architecture.md).
 | Normalizes fine and coarse pointer input, and routes it by state: a live gesture's owner captures; otherwise the armed tool's domain; otherwise Select | Which of its subjects and handles are eligible in this reading, tool and selection |
 | Asks each domain for candidates. It resolves **across** domains only by spatial truth: the nearest visible surface along the ray in 3D, and the Paper reading's own draw order in Plan. The selected subject's admitted marks rank above world geometry | Its own hit test, its ranking within the domain (for example Layout's locked hit priority) and its **occlusion policy** (for example Scene support occlusion, or Layout pick surfaces at drawn height) |
 | Holds hover and selection as session state, and draws hover, selection and marks | Which marks exist (handle admission), what each addresses, and the planner a drag calls |
-| Owns gesture lifecycle (begin → preview → commit or cancel), its interruption triggers, and the reason Undo is unavailable | What a gesture means, its candidate, its **refusal text** and its pointer capture semantics |
+| Keeps the existing single gesture lease and live-proposal Undo reason; owns every interruption trigger | What a gesture means, its candidate, its **refusal text** and its pointer capture semantics |
 | Grows mark hit areas to 44 × 44 px on a coarse pointer while marks stay visually small | Whether a larger hit area could be ambiguous within its class, and how to disambiguate |
 
 The host never computes a domain hit, reorders a domain's candidates, rewrites a refusal or imposes
@@ -180,7 +181,7 @@ and `phase-closeout` then moves its track-register row to `shipped`.
 ## Acceptance journeys
 
 S11 runs every journey in two browsers, with fine and coarse pointers. The criteria are in
-[S11's plan](./r217.s11-integrated-final-gate/implementation-plan.md#journeys).
+[S11's plan](./r217.s11-integrated-final-gate/implementation-plan.md#5-journeys).
 
 | # | Journey |
 | --- | --- |
