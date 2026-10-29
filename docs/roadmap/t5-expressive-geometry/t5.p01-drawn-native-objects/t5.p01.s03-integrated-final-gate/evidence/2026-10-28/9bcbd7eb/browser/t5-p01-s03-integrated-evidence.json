@@ -1,0 +1,303 @@
+{
+  "flow": "T5.P01.S03 integrated final-gate browser acceptance",
+  "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+  "apiOrigin": "http://127.0.0.1:8794",
+  "browser": "chromium",
+  "generatedAt": "2026-10-29T01:48:55.422Z",
+  "rows": [
+    {
+      "id": "layout.close",
+      "scenario": "Draw and close the Room, then Undo/Redo it",
+      "status": "passed",
+      "detail": "4 Walls / 1 Room; Undo removed the Room and Redo restored it",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-01-empty-room.png"
+    },
+    {
+      "id": "shape.floor.create",
+      "scenario": "Create a floor native form",
+      "status": "passed",
+      "detail": "1 form 2b1a1ce9-2be3-4fc8-ba66-8db1a57731a7; plan extrude 1.2 m",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-02-floor-form.png",
+      "digest": "gc1-56855396662b6718"
+    },
+    {
+      "id": "history.create",
+      "scenario": "Create is one history entry",
+      "status": "passed",
+      "detail": "Undo removed the form; Redo restored the identical entity",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1"
+    },
+    {
+      "id": "edit.move",
+      "scenario": "Move is one history entry",
+      "status": "passed",
+      "detail": "position [3,0,1]; Undo/Redo exact",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1"
+    },
+    {
+      "id": "edit.turn",
+      "scenario": "Turn is one history entry",
+      "status": "passed",
+      "detail": "yaw 0.4 written; Undo/Redo exact",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1"
+    },
+    {
+      "id": "edit.size",
+      "scenario": "Size per axis is one history entry",
+      "status": "passed",
+      "detail": "width 3 / height 1.2 / depth 2; Undo/Redo exact",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-03-sized.png"
+    },
+    {
+      "id": "edit.no-op",
+      "scenario": "Unchanged Size adds no history",
+      "status": "passed",
+      "detail": "“No change.” shown; accepted-result count unchanged",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1"
+    },
+    {
+      "id": "edit.duplicate",
+      "scenario": "Duplicate is one history entry",
+      "status": "passed",
+      "detail": "one detached copy; Undo/Redo exact",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1"
+    },
+    {
+      "id": "edit.delete",
+      "scenario": "Delete is one history entry",
+      "status": "passed",
+      "detail": "removed da3a173f-3db3-42a5-b0c0-9ffa0ce30bdb; Undo/Redo exact",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1"
+    },
+    {
+      "id": "refusal.outline",
+      "scenario": "Self-crossing outline refuses with no history",
+      "status": "passed",
+      "detail": "The outline crosses itself; redraw it without crossing.; Finish disabled",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-04-refused-outline.png"
+    },
+    {
+      "id": "refusal.depth-cancel",
+      "scenario": "Cancelling depth restores the outline with no history",
+      "status": "passed",
+      "detail": "Back restored Finish; no accepted result",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-05-depth-cancel.png"
+    },
+    {
+      "id": "refusal.depth-range",
+      "scenario": "Invalid typed depth refuses Create",
+      "status": "passed",
+      "detail": "0 m names the admitted range; Create disabled",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1"
+    },
+    {
+      "id": "walkthrough.three-objects",
+      "scenario": "Three different objects from an empty project",
+      "status": "passed",
+      "detail": "floor rectangle 2b1a1ce9-2be3-4fc8-ba66-8db1a57731a7, floor triangle a11b46a6-eb7a-4033-a2fb-c37f4eb6f5d0, upright 94f6c3d3-b6e1-4b69-8d35-d936ac734c9c; each accepts Move/Turn/Size",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-06-three-forms.png"
+    },
+    {
+      "id": "my-objects.save",
+      "scenario": "Save a selected form to My Objects",
+      "status": "passed",
+      "detail": "item d8b583c1-04ae-4c73-8bfb-397f59b08af9; content sha256-7e64213b3fe13a3ed75277d3300e7b132e107302364cab37ce86b2b1e3691597; no history entry",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-07-saved-item.png",
+      "digest": "sha256-7e64213b3fe13a3ed75277d3300e7b132e107302364cab37ce86b2b1e3691597"
+    },
+    {
+      "id": "cold-reopen.a",
+      "scenario": "Save and cold reopen project A",
+      "status": "passed",
+      "detail": "all 3 entities and form digests identical",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?load=1",
+      "screenshot": "t5-s03-08-reopened-a.png",
+      "digest": "{\"2b1a1ce9-2be3-4fc8-ba66-8db1a57731a7\":\"gc1-f300dad2aa6e8efc\",\"a11b46a6-eb7a-4033-a2fb-c37f4eb6f5d0\":\"gc1-a3bfb43a6a2fdbf8\",\"94f6c3d3-b6e1-4b69-8d35-d936ac734c9c\":\"gc1-75a5467f636c5ecd\"}"
+    },
+    {
+      "id": "parity.plan-3d",
+      "scenario": "Plan and 3D show the same forms",
+      "status": "passed",
+      "detail": "3 forms; rendered positions/world matrices identical; every Plan pick selected its form",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?load=1",
+      "screenshot": "t5-s03-09-plan-parity.png"
+    },
+    {
+      "id": "parity.preview",
+      "scenario": "Preview renders the same forms without writing",
+      "status": "passed",
+      "detail": "3 preview meshes identical to Stage; source unchanged",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?load=1",
+      "screenshot": "t5-s03-10-preview-parity.png"
+    },
+    {
+      "id": "refusal.scene-format-3",
+      "scenario": "Scene format 3 is refused",
+      "status": "passed",
+      "detail": "The source was not opened: it is not the current document format. The current project is unchanged. ($.units.scene.header.formatVersion: $.units.scene.header.formatVersion must be 4 for the scene unit)",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-11-format-3.png"
+    },
+    {
+      "id": "refusal.malformed-form",
+      "scenario": "A malformed form is refused",
+      "status": "passed",
+      "detail": "The source was not opened: it is not the current document format. The current project is unchanged. ($.units.scene.data.entities[0].form.generator.outline: self-intersecting at outline anchors 1, 3)",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-a-mvsvuxtf/spatial?create=1",
+      "screenshot": "t5-s03-12-malformed.png"
+    },
+    {
+      "id": "my-objects.insert",
+      "scenario": "Insert a saved form as an editable copy",
+      "status": "passed",
+      "detail": "copy entity-55516286-113d-4027-bcae-fcb60f5dd495; form source identical to item d8b583c1-04ae-4c73-8bfb-397f59b08af9; no item reference",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-b-mvsvwcu2/spatial?create=1",
+      "screenshot": "t5-s03-13-inserted-copy.png",
+      "digest": "gc1-f300dad2aa6e8efc"
+    },
+    {
+      "id": "my-objects.insert-history",
+      "scenario": "Insertion is one exact history entry",
+      "status": "passed",
+      "detail": "Undo removed the copy; Redo restored identical source",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-b-mvsvwcu2/spatial?create=1"
+    },
+    {
+      "id": "my-objects.second-copy",
+      "scenario": "Two insertions are independent entities",
+      "status": "passed",
+      "detail": "entity-55516286-113d-4027-bcae-fcb60f5dd495 and entity-a97951d2-c7f8-4a90-b9b1-2a0680ffff34 share the saved source but not identity",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-b-mvsvwcu2/spatial?create=1"
+    },
+    {
+      "id": "my-objects.independence",
+      "scenario": "Copy edits reach neither the item nor project A",
+      "status": "passed",
+      "detail": "copy scale/pose changed; item sha256-7e64213b3fe13a3ed75277d3300e7b132e107302364cab37ce86b2b1e3691597 and A 2b1a1ce9-2be3-4fc8-ba66-8db1a57731a7 unchanged",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-b-mvsvwcu2/spatial?create=1",
+      "screenshot": "t5-s03-14-copy-refined.png"
+    },
+    {
+      "id": "cold-reopen.b",
+      "scenario": "Save and cold reopen project B",
+      "status": "passed",
+      "detail": "2 entities and 2 form digests identical; Plan/3D geometry equal",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-b-mvsvwcu2/spatial?load=1",
+      "screenshot": "t5-s03-15-reopened-b.png",
+      "digest": "{\"entity-55516286-113d-4027-bcae-fcb60f5dd495\":\"gc1-e1bdb2ba979f6fcc\",\"entity-a97951d2-c7f8-4a90-b9b1-2a0680ffff34\":\"gc1-f300dad2aa6e8efc\"}"
+    },
+    {
+      "id": "lifecycle.delete-a",
+      "scenario": "Delete project A; item and B copy survive",
+      "status": "passed",
+      "detail": "A perf-t5-s03-a-mvsvuxtf deleted; item d8b583c1-04ae-4c73-8bfb-397f59b08af9 still listed; B entities unchanged",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/projects",
+      "screenshot": "t5-s03-16-a-deleted.png"
+    },
+    {
+      "id": "lifecycle.remove-item",
+      "scenario": "Remove the item; B copies stay editable",
+      "status": "passed",
+      "detail": "item d8b583c1-04ae-4c73-8bfb-397f59b08af9 removed; both copies unchanged; B saved a further edit",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": false,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-b-mvsvwcu2/spatial?load=1",
+      "screenshot": "t5-s03-17-item-removed.png"
+    },
+    {
+      "id": "starter.draw",
+      "scenario": "Draw and create a form from the starter",
+      "status": "passed",
+      "detail": "starter Room plus one form; Save/reload preserved gc1-cbb7326016fee0c6",
+      "revision": "9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c",
+      "viewport": "1440x900",
+      "reducedMotion": true,
+      "url": "http://127.0.0.1:4182/project/perf-t5-s03-starter-mvsvx0hr/spatial?load=1",
+      "screenshot": "t5-s03-18-starter.png",
+      "digest": "gc1-cbb7326016fee0c6"
+    }
+  ]
+}
