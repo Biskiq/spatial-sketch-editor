@@ -4,8 +4,8 @@
 AUTHORITY: NONE — the phase README owns lifecycle; the acceptance record owns the gate verdict,
            evidence, residuals and owner direction. This stub preserves the approved scope and
            recovery path only.
-STATUS:    ACCEPTED 2026-10-28 at 9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c; routine closeout
-           complete; P1 merge required (PR #218). T5.P01 is CLOSABLE, not closed.
+STATUS:    ACCEPTED 2026-10-28 at 9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c; shipped through
+           PR #218 (P1 merge 25e1bd8f). T5.P01 closed 2026-10-28 by owner ruling; T5 is not complete.
 VERIFICATION: exhaustive
 CONSUMES:  F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
 REQUIRES:  F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1,
@@ -41,11 +41,10 @@ suspended and unmeasured rows stay unmeasured.
 ## Evidence
 
 - [Acceptance record](./acceptance.md)
-- [Archived screenshots](../../../../archive/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/evidence/2026-10-28/9bcbd7eb/CLOSED.md)
 
-The raw JSON/data, logs and capture scripts were transient and pruned from the final tree at owner
-direction after acceptance; recover them from `574a823b` and `9bcbd7eb` as recorded in the
-acceptance record.
+The raw JSON/data, logs, screenshots and capture scripts were transient and pruned from the final
+tree at owner direction after acceptance; recover them from `574a823b` and `9bcbd7eb` as recorded
+in the acceptance record.
 
 ## Entry points
 
@@ -65,6 +64,7 @@ full gate/raw evidence  git show 574a823b:docs/roadmap/t5-expressive-geometry/t5
 capture harness         git show 9bcbd7eb:apps/editor/perf/flows/t5-p01-s03-integrated-final-gate.spec.ts
 anchor  c13a949d — full approved plan body on main
          574a823b — full acceptance body and raw evidence
-merge   PR #218 — P1 merge commit required; no squash or rebase
-tag     closed/T5.P01.S03 after the P1 merge
+merge   PR #218 — P1 merge 25e1bd8f; no squash or rebase
+phase   T5.P01 closed 2026-10-28 — PHASE CLOSE in the phase README
+tags    closed/T5.P01.S03 → da091a7f; closed/T5.P01 → the phase-close P1 merge commit
 ```

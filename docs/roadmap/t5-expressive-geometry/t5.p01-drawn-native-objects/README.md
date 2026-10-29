@@ -1,8 +1,8 @@
 # T5.P01 — Drawn native objects
 
-**Phase:** T5.P01 · **Status:** active; S01, S02 and S04 shipped; S03's integrated final gate was
-accepted 2026-10-28 — T5.P01 is **CLOSABLE**, not closed, and the phase-close decision remains the
-owner's. Registered by the T5 planning PR on the owner's merge
+**Phase:** T5.P01 · **Status:** **closed 2026-10-28** by owner ruling after S03's integrated final
+gate; S01–S04 shipped. T5 remains approved and is not complete. Registered by the T5 planning PR on
+the owner's merge
 ([record](../../../reference/decisions/t5-object-focus-planning-2026-10-27.md)). Merging releases
 nothing: released scopes and their conditions are the [release list](../../now.md), and the
 [production hold](../../README.md#production-implementation-hold) covers every scope that list
@@ -72,7 +72,7 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T5.P01.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md) | [acceptance and preservation stub](./t5.p01.s01-native-form-source-and-evaluation/acceptance.md) | plan approved by the owner's merge of the T5 planning PR ([record](../../../reference/decisions/t5-object-focus-planning-2026-10-27.md)); owner released S01 on 2026-10-27 and approved Option B selection expansion on 2026-10-28; **accepted by owner-override 2026-10-28** at product head `7c3445e1` (PR #208): missing raw browser artifacts, final-head review receipts and a full-contract rerun are not claimed; battery-mode performance is **deferred, not passed**, to `T5.P01.S03`, the plan's integration route, and AC diagnostics are not acceptance; the Stage `439.0 KiB` br exception remains; no correctness criterion, including 6, is waived; shipped under the P1 merge rule; its `T2.P02.S03` prerequisite merged with PR #199 |
 | T5.P01.S02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t5.p01.s02-shape-reading-and-sizing/implementation-plan.md) | [acceptance and preservation stub](./t5.p01.s02-shape-reading-and-sizing/acceptance.md) | owner released and accepted by reviewed evidence 2026-10-28; shipped through PR #215 under the P1 merge rule |
-| T5.P01.S03 | in-progress | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate (closed stub)](./t5.p01.s03-integrated-final-gate/implementation-plan.md) | [accepted final-gate record](./t5.p01.s03-integrated-final-gate/acceptance.md) | owner released 2026-10-28 to execute the approved exhaustive plan from the trusted base `c13a949d` (PR #216 merge), with one `perf:spot` checkpoint; accepted by owner direction 2026-10-28 at tested revision `9bcbd7eb`: complete contract, 3 Chromium journeys / 27 rows, V8/WebKit/Firefox digest parity; the one spot measured `not-usable` M/L under load and is not a performance pass; P1 merge required (PR #218), no phase closure |
+| T5.P01.S03 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate (closed stub)](./t5.p01.s03-integrated-final-gate/implementation-plan.md) | [acceptance and preservation stub](./t5.p01.s03-integrated-final-gate/acceptance.md) | owner released 2026-10-28 to execute the approved exhaustive plan from the trusted base `c13a949d` (PR #216 merge), with one `perf:spot` checkpoint; accepted by owner direction 2026-10-28 at tested revision `9bcbd7eb`: complete contract, 3 Chromium journeys / 27 rows, V8/WebKit/Firefox digest parity; the one spot measured `not-usable` M/L under load and is not a performance pass; shipped through PR #218 (P1 merge `25e1bd8f`); raw JSON/data, logs, screenshots and capture scripts pruned by owner direction; phase closed 2026-10-28 (PHASE CLOSE below) |
 | T5.P01.S04 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [closed plan stub](./t5.p01.s04-my-objects-editable-copies/implementation-plan.md) | [acceptance and preservation stub](./t5.p01.s04-my-objects-editable-copies/acceptance.md) | owner amendment in the planning PR ([record](../../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)); accepted by the owner 2026-10-28 at product head `de9451ba` (PR #216): T2's D8 library scope and the Card-fields Save and `private, no-store` deviations were accepted; browser E2E and performance rows are **deferred, not passed**, to S03; shipped under the P1 merge rule; no S03 gate, phase closure or performance pass is claimed |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` at this
@@ -84,11 +84,20 @@ owner amendment after the final gate was numbered, so the gate keeps id S03.
 FINAL PHASE GATE: T5.P01.S03 → ./t5.p01.s03-integrated-final-gate/acceptance.md
 
 PHASE CLOSE
-Stage:        closable
+Stage:        closed
+Closed:       2026-10-28 — owner ratified closure after approving the S03 P1 merge
+              (PR #218, merge commit 25e1bd8f)
+Final gate:   T5.P01.S03 → ./t5.p01.s03-integrated-final-gate/acceptance.md — accepted 2026-10-28
+Integration:  complete repository contract, 3 Chromium journeys / 27 rows, V8/WebKit/Firefox
+              digest parity at 9bcbd7eb; the one spot measured not-usable M/L under load and is
+              not a performance pass
+Preservation: acceptance compacted to the closed stub at its own path (anchor da091a7f); raw
+              JSON/data, logs, 18 screenshots and capture scripts pruned, recover at 574a823b
 ```
 
-The final gate passed and was accepted 2026-10-28; T5.P01 is closable. Only an explicit owner
-phase-close request closes it. The phase configures no architecture-cycle window.
+The final gate passed and was accepted 2026-10-28; the owner then invoked this phase close. T5.P01
+is closed. T5 remains approved and is not complete. The phase configures no architecture-cycle
+window.
 
 ## Dependencies and boundaries
 
