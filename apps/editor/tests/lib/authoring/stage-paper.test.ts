@@ -56,6 +56,7 @@ import {
 	PAPER_LAYER,
 	PAPER_LINE_STYLE,
 	stageCameraLayerMask,
+	unionOutline,
 	STAGE_OVERLAY_LAYER,
 	STAGE_WORLD_LAYER
 } from '$lib/authoring/stage/paper-plan';
@@ -350,6 +351,33 @@ describe('Paper Plan — stream treatment', () => {
 });
 
 describe('Paper Plan — Scene and native-form outlines', () => {
+	it('keeps the outer silhouette when an edge is only partly covered', () => {
+		// Two offset rectangles: A=[0,2]×[0,2], B=[1,3]×[1,3]. Four full edges have
+		// their midpoint inside the other rectangle, but each still contributes a
+		// partial outer boundary. A midpoint-only test would drop those whole edges.
+		const outline = unionOutline([
+			[[0, 0], [2, 0], [2, 2], [0, 2]],
+			[[1, 1], [3, 1], [3, 3], [1, 3]]
+		]);
+		const key = (segment: readonly [LayoutVec2, LayoutVec2]): string => {
+			const point = (value: LayoutVec2): string => `${value[0].toFixed(6)},${value[1].toFixed(6)}`;
+			const forward = `${point(segment[0])}|${point(segment[1])}`;
+			const reverse = `${point(segment[1])}|${point(segment[0])}`;
+			return forward < reverse ? forward : reverse;
+		};
+		const expected: ReadonlyArray<readonly [LayoutVec2, LayoutVec2]> = [
+			[[0, 0], [2, 0]],
+			[[2, 0], [2, 1]],
+			[[2, 1], [3, 1]],
+			[[3, 1], [3, 3]],
+			[[3, 3], [1, 3]],
+			[[1, 3], [1, 2]],
+			[[1, 2], [0, 2]],
+			[[0, 2], [0, 0]]
+		];
+		expect(new Set(outline.map(key))).toEqual(new Set(expected.map(key)));
+	});
+
 	it('draws tilted forms as the boundary of their projected polygon union', () => {
 		const entities: SceneEntity[] = [form('entity-tilted', [2, 0, 2], [0.4, 0, 0])];
 		const projection = projectionOf(entities);
@@ -477,6 +505,16 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 
 		const camera = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte'), 'utf8');
 		expect(camera).toContain('renderer.setClearColor');
+	});
+
+	it('redraws Paper when a root gains geometry or a lazy renderer arrives', () => {
+		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
+		expect(canvas).toContain('hasPickableBody');
+		expect(canvas).toContain('onEntityRenderable={entityRendererReady}');
+		expect(canvas).toContain('revision={sceneRootRevision + entityRenderRevision}');
+
+		const entities = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageEntities.svelte'), 'utf8');
+		expect(entities).toContain('onEntityRenderable?.()');
 	});
 
 	it('never writes Object3D.visible in Paper or appearance code', () => {

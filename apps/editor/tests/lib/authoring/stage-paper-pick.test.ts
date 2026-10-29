@@ -44,7 +44,7 @@ import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider
 import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
-import { PAPER_LAYER, stageCameraLayerMask, STAGE_OVERLAY_LAYER, STAGE_WORLD_LAYER } from '$lib/authoring/stage/paper-plan';
+import { buildPaperPlan, PAPER_LAYER, stageCameraLayerMask, STAGE_OVERLAY_LAYER, STAGE_WORLD_LAYER } from '$lib/authoring/stage/paper-plan';
 import { resolveStagePick, type StagePickProvider } from '$lib/authoring/stage/stage-pick';
 import type {
 	StageAdapterBinding,
@@ -351,6 +351,35 @@ describe('Paper Plan — picking with real mounted meshes', () => {
 		}
 		expect(results.paper).toEqual(results.shaded);
 		expect(results.paper).toContain('entity-box');
+	});
+
+	it('draws a registered entity only after its root receives a renderable mesh', () => {
+		const late = primitive('entity-late', [2, 0, 2]);
+		const document = { entities: [late] } as Pick<SceneDocument, 'entities'>;
+		const runtimeScene = document as unknown as RuntimeScene;
+		const pick = createScenePickSource();
+		pick.setSource(runtimeScene);
+		const root = new Group();
+		pick.register('entity-late', root);
+		const projection = planSceneFootprintsFor(document, undefined);
+		const draw = () => buildPaperPlan(plan, compiled, projection, {
+			isFootprintMounted: (entityId) => pick.hasPickableBody(entityId)
+		});
+
+		// The root exists before the lazy model/form renderer mounts its geometry.
+		expect(pick.hasPickableBody('entity-late')).toBe(false);
+		expect(draw().footprints).toHaveLength(0);
+
+		const body = new Mesh(new BoxGeometry(1, 1.6, 1), new MeshBasicMaterial());
+		root.add(body);
+		pick.refresh();
+		expect(pick.hasPickableBody('entity-late')).toBe(true);
+		expect(draw().footprints.map((footprint) => footprint.entityId)).toEqual(['entity-late']);
+
+		// A body that later becomes unrenderable is no longer drawn.
+		body.visible = false;
+		expect(pick.hasPickableBody('entity-late')).toBe(false);
+		expect(draw().footprints).toHaveLength(0);
 	});
 
 	it('keeps the Layout Plan providers’ own ranks and still resolves a cut Wall', () => {

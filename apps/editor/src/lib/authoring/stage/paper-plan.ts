@@ -360,6 +360,79 @@ function mergeCollinear(segments: readonly PaperSegment[]): PaperSegment[] {
 	return merged;
 }
 
+const UNION_EPSILON = 1e-9;
+const UNION_ON_EDGE_EPSILON = 1e-6;
+const UNION_SPLIT_EPSILON = 1e-7;
+
+function clampParameter(value: number): number {
+	if (value <= UNION_EPSILON) return 0;
+	if (value >= 1 - UNION_EPSILON) return 1;
+	return value;
+}
+
+/** The parameter on `a → b` where it crosses `c → d`, or null when it does not. */
+function crossParameter(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): number | null {
+	const rx = b[0] - a[0];
+	const rz = b[1] - a[1];
+	const sx = d[0] - c[0];
+	const sz = d[1] - c[1];
+	const denominator = rx * sz - rz * sx;
+	if (!(Math.abs(denominator) > UNION_EPSILON)) return null;
+	const qx = c[0] - a[0];
+	const qz = c[1] - a[1];
+	const t = (qx * sz - qz * sx) / denominator;
+	const u = (qx * rz - qz * rx) / denominator;
+	if (t < -UNION_SPLIT_EPSILON || t > 1 + UNION_SPLIT_EPSILON) return null;
+	if (u < -UNION_SPLIT_EPSILON || u > 1 + UNION_SPLIT_EPSILON) return null;
+	return clampParameter(t);
+}
+
+/** Where a point lands on `a → b`, when it lies on that segment. */
+function pointParameter(point: LayoutVec2, a: LayoutVec2, b: LayoutVec2): number | null {
+	const dx = b[0] - a[0];
+	const dz = b[1] - a[1];
+	const lengthSquared = dx * dx + dz * dz;
+	if (!(lengthSquared > UNION_EPSILON)) return null;
+	const t = ((point[0] - a[0]) * dx + (point[1] - a[1]) * dz) / lengthSquared;
+	if (t < -UNION_SPLIT_EPSILON || t > 1 + UNION_SPLIT_EPSILON) return null;
+	const px = a[0] + dx * t;
+	const pz = a[1] + dz * t;
+	if (Math.hypot(point[0] - px, point[1] - pz) > UNION_ON_EDGE_EPSILON) return null;
+	return clampParameter(t);
+}
+
+function pointOnEdge(a: LayoutVec2, b: LayoutVec2, t: number): LayoutVec2 {
+	if (t === 0) return a;
+	if (t === 1) return b;
+	return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
+/** Split an edge wherever another polygon crosses, touches or overlaps it. */
+function splitParametersOfEdge(a: LayoutVec2, b: LayoutVec2, polygons: readonly UnionPolygon[]): number[] {
+	const parameters = [0, 1];
+	for (const polygon of polygons) {
+		if (polygon.length < 3) continue;
+		for (let index = 0; index < polygon.length; index += 1) {
+			const c = polygon[index]!;
+			const d = polygon[(index + 1) % polygon.length]!;
+			const cross = crossParameter(a, b, c, d);
+			if (cross !== null) parameters.push(cross);
+		}
+		// A T-junction or a collinear overlap has no strict crossing: its split is
+		// the other polygon's vertex lying on this edge.
+		for (const point of polygon) {
+			const touched = pointParameter(point, a, b);
+			if (touched !== null) parameters.push(touched);
+		}
+	}
+	parameters.sort((left, right) => left - right);
+	const unique: number[] = [];
+	for (const parameter of parameters) {
+		if (unique.length === 0 || parameter - unique[unique.length - 1]! > UNION_SPLIT_EPSILON) unique.push(parameter);
+	}
+	return unique;
+}
+
 export function unionOutline(polygons: readonly UnionPolygon[]): PaperSegment[] {
 	const segments: PaperSegment[] = [];
 	const seen = new Set<string>();
@@ -368,21 +441,26 @@ export function unionOutline(polygons: readonly UnionPolygon[]): PaperSegment[] 
 		for (let index = 0; index < polygon.length; index += 1) {
 			const a = polygon[index]!;
 			const b = polygon[(index + 1) % polygon.length]!;
-			const dx = b[0] - a[0];
-			const dz = b[1] - a[1];
-			const length = Math.hypot(dx, dz);
-			if (!(length > 1e-9)) continue;
-			const nx = -dz / length;
-			const nz = dx / length;
-			const probe = Math.min(0.001, Math.max(1e-6, length * 1e-4));
-			const middle: LayoutVec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-			const left = pointInUnion([middle[0] + nx * probe, middle[1] + nz * probe], polygons);
-			const right = pointInUnion([middle[0] - nx * probe, middle[1] - nz * probe], polygons);
-			if (left === right) continue;
-			const key = edgeKey(a, b);
-			if (seen.has(key)) continue;
-			seen.add(key);
-			segments.push([a, b]);
+			const parameters = splitParametersOfEdge(a, b, polygons);
+			for (let split = 1; split < parameters.length; split += 1) {
+				const start = pointOnEdge(a, b, parameters[split - 1]!);
+				const end = pointOnEdge(a, b, parameters[split]!);
+				const dx = end[0] - start[0];
+				const dz = end[1] - start[1];
+				const length = Math.hypot(dx, dz);
+				if (!(length > UNION_SPLIT_EPSILON)) continue;
+				const nx = -dz / length;
+				const nz = dx / length;
+				const probe = Math.min(0.001, Math.max(1e-7, length * 1e-4));
+				const middle: LayoutVec2 = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+				const left = pointInUnion([middle[0] + nx * probe, middle[1] + nz * probe], polygons);
+				const right = pointInUnion([middle[0] - nx * probe, middle[1] - nz * probe], polygons);
+				if (left === right) continue;
+				const key = edgeKey(start, end);
+				if (seen.has(key)) continue;
+				seen.add(key);
+				segments.push([start, end]);
+			}
 		}
 	}
 	return mergeCollinear(segments);

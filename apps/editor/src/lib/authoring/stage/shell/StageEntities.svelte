@@ -24,6 +24,7 @@
 		rooms,
 		modelUrls = null,
 		onFormRendererReady,
+		onEntityRenderable,
 		scenePick,
 		onEntityRoot
 	}: {
@@ -33,6 +34,8 @@
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Notify the Stage shadow owner after the lazy form mesh has mounted. */
 		onFormRendererReady: () => void;
+		/** Notify Paper after a lazy model renderer mounts its fallback or body. */
+		onEntityRenderable?: () => void;
 		scenePick: ScenePickSource;
 		/** Optional registration wrapper; Paper redraws when a Scene root arrives. */
 		onEntityRoot?: (id: string, root: Parameters<ScenePickSource['register']>[1]) => () => void;
@@ -62,6 +65,15 @@
 			clearTimeout(idle);
 			if (timer !== null) clearTimeout(timer);
 		};
+	});
+
+	// The model component is shared by every model entity. Its root may have been
+	// registered long before this lazy chunk arrived; bump Paper once the fallback
+	// (or the loaded GLB) is actually mounted under those roots.
+	$effect(() => {
+		if (ModelComponent === null) return;
+		const frame = requestAnimationFrame(() => onEntityRenderable?.());
+		return () => cancelAnimationFrame(frame);
 	});
 </script>
 

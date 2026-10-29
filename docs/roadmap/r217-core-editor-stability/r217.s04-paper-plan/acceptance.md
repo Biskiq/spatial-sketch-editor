@@ -26,8 +26,8 @@ performed**, and this record claims no phase release.
 - **Scene and native-form outlines.** Footprints come from `planSceneFootprintsFor`, the same
   cached projection the Scene adapter's Plan pick reads. Upright footprints draw their ring;
   tilted forms draw the boundary of their existing projected polygon union, with collinear pieces
-  merged. A footprint is drawn only when `scenePick.hasVisibleRoot` says its body is mounted and
-  visible, matching the hit path.
+  merged. A footprint is drawn only when `scenePick.hasPickableBody` finds a visible renderable
+  mesh under the entity root, matching the hit path.
 - **Appearance is a mask.** Paper geometry is on layer 2. `StageCamera` sets `camera.layers` from
   the appearance; no appearance code writes `Object3D.visible`. The pick source's raycaster keeps
   its default layer-0 mask, so world meshes stay pickable while Paper hides them.
@@ -43,14 +43,14 @@ All commands ran in the branch worktree with the final source tree.
 
 | Check | Result |
 | --- | --- |
-| `apps/editor npm run test:full` | **239 files / 3,018 tests passed**, exit 0 |
-| Focused `stage-paper.test.ts` | **19 tests passed** |
-| Focused `stage-paper-pick.test.ts` | **5 tests passed** (real Three roots, both masks) |
+| `apps/editor npm run test:full` | **239 files / 3,021 tests passed**, exit 0 |
+| Focused `stage-paper.test.ts` | **20 tests passed** |
+| Focused `stage-paper-pick.test.ts` | **7 tests passed** (real Three roots, both masks) |
 | `apps/editor npm run test:arch` | **23 files / 193 tests passed**, exit 0 |
 | `npm run check` | **0 errors, 0 warnings** |
 | `npm run build:editor` | **success**, Vercel adapter output written |
 | Built chunk scan | `StagePaper` / `buildPaperPlan` appear only in the Stage route chunk, not in the `/p` public chunk |
-| Stage route client bundle | Brotli **151,675 → 159,325 B (+7,650 B, +5.04%)**; gzip 183,119 → 192,325 B (+9,206); raw 638,002 → 666,523 B (+28,521) |
+| Stage route client bundle | Brotli **151,675 → 159,788 B (+8,113 B, +5.35%)**; gzip 183,119 → 192,909 B (+9,790); raw 638,002 → 668,119 B (+30,117) |
 
 The full suite includes the existing camera, reading-transition, gesture, selection, source and
 history suites; no S04 change touches their authorities. The architecture lane includes the
@@ -66,8 +66,18 @@ findings were corrected before this record:
    Canvas drew the runtime Scene. The adapter now reads `context.snapshot.domain.scene`, the same
    object the route passes to the Canvas as `boot.snapshot.domain.scene`, and both sides use
    `planSceneFootprintsFor`'s identity cache. The reviewer's remaining concerns were the Shaded
-   mat decision and the S07 `visible` boundary, both recorded below. Per the owner's direction,
-   the corrected tree was not sent through a second review loop.
+   mat decision and the S07 `visible` boundary, both recorded below.
+
+Two follow-up P2 findings were also fixed before merge, without reopening the review loop:
+
+3. **Partial union edges.** `unionOutline` split an edge only at its midpoint, so a partially
+   overlapping polygon could discard a whole silhouette edge. Edges are now split at crossings,
+   T-junctions and collinear-vertex overlaps before the inside/outside test; the crossing-rectangle
+   regression asserts the exact eight-segment union boundary.
+4. **Empty registered roots.** `hasPickableBody` now requires a visible mesh with real vertices,
+   not merely a registered group. Paper refreshes when a root settles, when the lazy model
+   renderer arrives, and when a form mounts; the registered-empty-root-to-mesh transition is
+   covered by `stage-paper-pick.test.ts`.
 
 **Browser verification.** Exercised in Chromium against the current dev server at
 `127.0.0.1:5190`: a starter enclosure in 3D, the same source on Paper, and Shaded Plan; then a
@@ -89,8 +99,9 @@ the earlier capture and was switched explicitly for each state.
 2. **Stream treatment — met.** Cut walls are poché bands; a below-cut Wall is hidden dashed ink; a
    lintel above the cut is projected; an Opening is a symbol; a revealed floor draws.
 3. **Picking under both appearances — met.** The focused pick suite covers the forms fixture,
-   unmounted and support-occluded bodies, the S03 Wall/Opening regression, and the identical result
-   sets under both masks. The structural tests find no `.visible` write in Paper or appearance code.
+   unmounted and support-occluded bodies, a registered-but-empty root that later receives a mesh,
+   the S03 Wall/Opening regression, and the identical result sets under both masks. The structural
+   tests find no `.visible` write in Paper or appearance code.
 4. **Continuity — met by preservation and browser observation.** The Camera realizer still only
    copies the `ViewportEvaluation`; the full existing camera/gesture/task suite is green, and the
    browser switch retained the selected subject. No Camera code was changed for continuity.
@@ -121,7 +132,7 @@ the earlier capture and was switched explicitly for each state.
   architectural door symbol and should be resolved in the representation before the integrated
   gate if the owner wants swings.
 - **S07 `visible` conflict.** S07's `StageSelectionLayer` currently writes `root.visible` in its
-  worktree. That directly contradicts S04's rule and will make `hasVisibleRoot`/Paper footprint
+  worktree. That directly contradicts S04's rule and will make `hasPickableBody`/Paper footprint
   filtering disagree with the mark. S07 must not take that approach; see the handoff.
 - **Shaded Plan quality.** With today's visitor surfaces the settled Shaded view is a dark mesh
   field on the mat. It is functional and preference-preserving, but it is not a light architectural

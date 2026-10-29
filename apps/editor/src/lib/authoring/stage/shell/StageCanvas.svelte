@@ -74,7 +74,7 @@
 	/** The mat ground is the Stage's own surface in both mesh readings; Paper hides it. */
 	const matVisible = $derived(!paperVisible);
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
-	const footprintMounted = (entityId: string): boolean => scenePick.hasVisibleRoot(entityId);
+	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
 	const matGroundArgs = [6000, 6000] as [number, number];
 
 	const presentation = $derived.by(() => {
@@ -92,14 +92,28 @@
 	let formRenderRevision = $state(0);
 	function formRendererReady(): void {
 		formRenderRevision += 1;
+		entityRenderRevision += 1;
 		scenePick.refresh();
 	}
-	/** A Scene root arriving or leaving changes which footprints Paper may draw. */
+	/** A Scene root or lazy body arriving or leaving changes what Paper may draw. */
 	let sceneRootRevision = $state(0);
+	let entityRenderRevision = $state(0);
+	/** A model/form renderer has mounted geometry for already-registered roots. */
+	function entityRendererReady(): void {
+		entityRenderRevision += 1;
+		scenePick.refresh();
+	}
 	function registerSceneRoot(id: string, root: import('three').Object3D): () => void {
 		const unregister = scenePick.register(id, root);
 		sceneRootRevision += 1;
+		// A primitive mounts in the same render as its root; a model's fallback can
+		// still mount on the next frame. Ask once more after children settle.
+		const frame = requestAnimationFrame(() => {
+			sceneRootRevision += 1;
+			scenePick.refresh();
+		});
 		return () => {
+			cancelAnimationFrame(frame);
 			unregister();
 			sceneRootRevision += 1;
 		};
@@ -133,7 +147,15 @@
 	<T.Group oncreate={scenePick.registerLayout}>
 		<VisitorLayoutShell {geometry} {presentation} />
 	</T.Group>
-	<StageEntities {scenePick} {scene} {rooms} {modelUrls} onFormRendererReady={formRendererReady} onEntityRoot={registerSceneRoot} />
+	<StageEntities
+		{scenePick}
+		{scene}
+		{rooms}
+		{modelUrls}
+		onFormRendererReady={formRendererReady}
+		onEntityRenderable={entityRendererReady}
+		onEntityRoot={registerSceneRoot}
+	/>
 	{#if paperVisible && plan !== null && evaluation !== null}
 		<!--
 			The Plan is a drawing on Paper: the same Plan evaluation the Layout pick
@@ -148,7 +170,7 @@
 			instant={reducedMotion}
 			isFootprintMounted={footprintMounted}
 			{datumMeters}
-			revision={sceneRootRevision}
+			revision={sceneRootRevision + entityRenderRevision}
 		/>
 	{/if}
 	<!--
