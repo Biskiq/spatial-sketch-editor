@@ -10,9 +10,10 @@ S04:   released 2026-10-28 by the owner's greenlight and implemented on `t5/p01-
        Save, Place-panel My Objects section, detached place-form-copy planner/insertion. Evidence:
        editor 232 files/2,938 tests, full DB API suite exit 0 with zero skips, three typechecks clean;
        exact commands and limitations are in the slice's acceptance record. No acceptance or
-       closeout is claimed; T2 library-scope review and the PR are outstanding.
+       closeout is claimed; T2 library-scope review and
+       [PR #216](https://github.com/Biskiq/spatial-sketch-editor/pull/216) are outstanding.
 NEXT:  S03 is the outstanding exhaustive final gate, still proposed and unreleased; owner release
-       is required before it starts. S04 awaits T2 review and merge.
+       is required before it starts. S04 awaits T2 review and merge on PR #216.
 CARRY: Wall-face reading waits for T1's face-frame query; preserve the existing side-quad texture
        seam carryover. S03 owns the exhaustive browser gate and suspended, unmeasured performance
        rows, including S04's cross-project browser journeys and 100-item/50 ms and 25 KiB rows.

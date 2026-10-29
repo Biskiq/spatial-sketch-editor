@@ -6,8 +6,9 @@
 
 This record claims no acceptance, capability entry, gate state or closeout. The plan is completed
 and approved only after `T5.P01.S01` is accepted and T2 agrees the library-scope design (D8). S01 is
-accepted; **T2's library-scope review remains outstanding on the implementation PR**. The owner
-released S04 for implementation on 2026-10-28; that release is not acceptance.
+accepted; **T2's library-scope review remains outstanding on
+[PR #216](https://github.com/Biskiq/spatial-sketch-editor/pull/216)**. The owner released S04 for
+implementation on 2026-10-28; that release is not acceptance.
 
 Its verification tier is `architecture-integration`; the exhaustive integrated proof, including the
 full cross-project browser journey and the suspended performance rows, lives in the phase's
@@ -61,5 +62,6 @@ performance mandate. No browser acceptance is claimed.
 - The independent review found and the implementation fixed: a fresh-owner FK failure, a two-click
   My Objects open, stale ready words, an unvalidated material, an unpinned support choice, a stale
   Save source, a duplicate Save path, owner-scoped list/read caching, and missing cross-project
-  acceptance evidence. The final independent verdict belongs on the pull request that carries this
-  change set; no verdict, acceptance or closeout is claimed here.
+  acceptance evidence. The final independent verdict belongs on
+  [PR #216](https://github.com/Biskiq/spatial-sketch-editor/pull/216); no acceptance or closeout is
+  claimed here.
