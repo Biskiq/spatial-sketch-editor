@@ -298,6 +298,7 @@ describe('spatial route resume Save', () => {
 		harness.saveBehavior = 'auth';
 		await mountPage();
 		await waitForReady('Preferences fixture');
+		expect(target.querySelector('[data-head-motion]')?.getAttribute('aria-pressed')).toBe('false');
 		headSaveButton().click();
 		await vi.waitFor(() => expect(harness.saves).toHaveLength(1));
 		const first = harness.saves[0] as SaveRequest;
@@ -314,6 +315,7 @@ describe('spatial route resume Save', () => {
 		harness.savedRevision = first.capture.acceptedRevision;
 		await mountPage();
 		await waitForReady('Preferences fixture');
+		expect(target.querySelector('[data-head-motion]')?.getAttribute('aria-pressed')).toBe('true');
 		headSaveButton().click();
 		await vi.waitFor(() => expect(harness.saves).toHaveLength(2));
 		const second = harness.saves[1] as SaveRequest;
