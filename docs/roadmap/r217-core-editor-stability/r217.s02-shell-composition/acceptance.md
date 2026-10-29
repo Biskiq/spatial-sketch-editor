@@ -1,10 +1,14 @@
 # R217.S02 — acceptance record: Shell composition
 
-**Slice:** R217.S02 · **Status:** approved (plan); no acceptance recorded · **Plan:**
+**Slice:** R217.S02 · **Status:** accepted, reviewed 2026-10-29 · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
 [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
-Owner released S02 for implementation on 2026-10-28. Trusted base: `8c2c86e638e65a4a0500fa1e3e15b647932549f7` (PR #220). Implementation, reviews and acceptance remain outstanding.
+Owner released S02 for implementation on 2026-10-28 and directed acceptance and routine closeout
+after verification and cross-track review on 2026-10-29. Trusted base:
+`8c2c86e638e65a4a0500fa1e3e15b647932549f7` (PR #220); reviewed implementation and test revision:
+`535af8d5`. Independent T3, T2 and T5 agent reviews are clean for their respective Camera/Experience,
+Scene and native-form concerns after corrections. They are technical reviews, not GitHub approvals.
 
 **Owner ruling, 2026-10-29:** Preserve the existing Camera contract on viewport resize: target,
 orientation and vertical world extent remain fixed, while meters per CSS pixel follows the extent
@@ -47,3 +51,29 @@ the existing task entry and domain owner. Owner review is still required.
 | Place object, Arrange, Resize, Duplicate, Delete, Import model | Scene / T2 | Find (Invoke); S10 supplies Library for Place object |
 | Experience authoring | Experience / T3 | Find (Invoke); existing Experience lens remains owner |
 | Shape | Scene forms / T5 | Ink reading; review the existing contribution and any moved form entries |
+
+## Acceptance evidence
+
+| Criterion | Evidence at the reviewed revision |
+| --- | --- |
+| Audit | First commit `708cbfe6` records the PLATE audit and pre-move inventory above; gap rows route to plan §4 and its tests. |
+| Camera and shell | `stage-shell-composition.test.ts` checks the owner's 768 → 1024 px vertical-extent rule; `spatial-route-gesture.test.ts` exercises Index, Card, Instrument and viewport changes and asserts no viewing intent. T3 reviewed Camera compatibility. |
+| Index and entries | The mounted route compares every adapter-qualified registered entry with Head Find and verifies no contributed Index rows. Scene coverage invokes all six Scene entries through their owning adapter. Collapsed Index is `hidden` with zero layout width; the location chip reopens it. |
+| Head and preferences | `head-find.test.ts` covers the shortcut and location chip. `spatial-route-resume-save.test.ts` checks reduced motion after remount and compares fresh Save capture source bytes before and after the preference. Storage failure and clock continuity have focused tests. |
+| Arbitration | At 1024 × 768 with a selected Wall and Place plinth Instrument, browser boxes were Card (624,394–960,465), Instrument (294,476–730,696), dock (426,703–598,756), reading slot (12,66–204,114) and height slot (968,118–1012,688); they did not overlap. At 768 × 1024 Card and Instrument were vertically disjoint as well. Breakpoint: overlay/sheet at ≤1279 px; docked Index at ≥1280 px. |
+| Coarse pointer | On a task-owned agent-browser session, Chrome touch emulation reported `pointer: coarse` and `hover: none` at 1024 × 768 and 768 × 1024. Visible shell controls, including open Find, app menu, Index, Card and Instrument, were checked for 44 × 44 px minimum; none were undersized. Index row actions and dock names are visible without hover. |
+| Experience | Browser journey created an Experience, captured a Presentation, entered and exited Preview; the Experience surface and invoked Instrument were disjoint. T3 reviewed the shell and Camera seam. Editor motion speed affects inspection timing; isolated Preview timing is unchanged. |
+| Isolation | `f4-public-isolation.test.ts` walks both public and visitor Preview closures and excludes the browser-local preference module. The architecture lane and production build passed. |
+
+**Verification:** `npm test` 234 files / 2,952 tests, `npm run test:arch` 23 files / 193 tests,
+`npm run check` 0 errors / 0 warnings, `npm run build`, the Layout, project-model, Camera and API
+type checks, and DB-backed `npm run test:api` 122 passed / 0 skipped. The API used a dedicated local
+database, removed after the run. The build, API and package checks covered the same production tree
+at `0ff839a7`; subsequent commits through `535af8d5` add tests only. The full editor suite, arch
+lane and editor check ran at `535af8d5` with a clean working tree. `git diff --check` passed from
+trusted base to that revision. An earlier full run failed one unrelated Layout timeout under
+competing verification load; the isolated rerun passed. No performance benchmark was run.
+
+**Integration obligations:** R217.S04 consumes Paper/Shaded; S05/S06 fill the reserved furniture
+slots; S10 owns dock completion and Library. R217.S11 owns the exhaustive integrated final gate.
+S03's separately claimed pointer/key handlers remain its own integration and merge obligation.
