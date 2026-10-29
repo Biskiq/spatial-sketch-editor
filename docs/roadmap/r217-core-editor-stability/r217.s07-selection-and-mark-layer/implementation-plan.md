@@ -5,6 +5,15 @@
 **Reviewers:** T2 and T5 (descriptor contract), T3 (selection echo in Experience) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md)
 
+> **As-built note and owner amendment (2026-10-29).** Marks draw at calibrated screen sizes,
+> the move mark is a two-way base ray, and `extent` reads as the mark's world reach. The owner
+> **removed the §4.4 Wall angle ring**: it is not part of the ratified Wall vocabulary and was
+> competing with the geometry. The `layout-wall-angle` planner and the Card's Angle field are
+> unchanged; no replacement gizmo was added. Height and thickness grips stay deferred, and
+> thickness remains a Card field (currently top-level; grouping it under More is Card work
+> outside S07 and is not landed here). The rulings and the descriptor contract for S08/S09 are
+> in [acceptance.md](./acceptance.md#owner-rulings-2026-10-29).
+
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
 REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1
@@ -77,7 +86,8 @@ type StageHandleBase = {
   readonly kind: 'ray' | 'point' | 'ring' | 'track';
   readonly anchor: Vec3;                       // world
   readonly axis?: Vec3;                        // ray/track direction; ring normal
-  readonly extent?: number;                    // drawn length (m) for ray/track; radius for ring
+  readonly extent?: number;                    // world reach: driven distance (ray/track) or planar radius (ring); not the drawn size
+  readonly bothWays?: boolean;                 // ray/track draws both sides; presentation only
   readonly label: string;                      // accessible name, e.g. 'Size'
 };
 type StageEditingGrip = StageHandleBase & {
@@ -117,13 +127,18 @@ type StageHandleDescriptor = StageEditingGrip | StageDisclosureMark;
 - **Drawing.** The host draws admitted marks in the SVG overlay, projected through the same
   `ViewportEvaluation`, the existing overlay pattern. Each mark is:
   - a white 1.5 px dashed line with a 3 px dark halo `#152C26`;
-  - an open arrowhead at the drag end;
+  - an open arrowhead at the drag end (both ends for a `bothWays` ray/track);
   - a 6 px white point at anchors, gold `#d4ad45` while held; a disclosure point is a 7 px white
     ring, filled while open;
   - a dark mono value tag, shown only on hover or drag.
+
+  The vocabulary is drawn at a calibrated screen size (`STAGE_MARK_GLYPH_CSS`: ray 30 px,
+  two-way half 16 px, ring radius 30 px), so a 0.6 m plinth and a 24 m roof read alike. `extent`
+  remains the mark's world reach, never its drawn size.
 - **Hit areas:** 22 px on a fine pointer and 44 px on a coarse one, while the visual size stays the
   same. Marks fill the S03 resolver's mark tier above world candidates.
-- **Density.** A mark whose projected length is below 12 px is suppressed. When two marks' hit areas
+- **Density.** A ray/track whose projected axis is edge-on (a one-metre step under 3 px) is
+  withheld, and so is a ring whose projected minor axis is under 8 px. When two marks' hit areas
   overlap, the owning domain's descriptor order wins.
 
 ### 4.3 Drag through descriptors
@@ -149,14 +164,17 @@ type StageHandleDescriptor = StageEditingGrip | StageDisclosureMark;
 | --- | --- | --- | --- |
 | Start point | point | length | — |
 | End point | point | length | — |
-| Length | ray, along the Wall frame | length | — |
-| Angle | ring at the fixed end | angle | — |
-| Move | track, across the Wall | position | — |
+| Length | ray at the free end, along the Wall frame | length | — |
+| Move | two-way track across the base | position | — |
 
+- **Owner amendment (2026-10-29):** the Angle ring is removed from the plan and the Stage. It
+  competed with the geometry and is not in the ratified Wall vocabulary. Angle remains a Card
+  field through the unchanged `layout-wall-angle` planner; no replacement grip is added.
 - **Opening:** position (track along the host Wall) and width (two rays).
-- **Wall thickness** stays a Card field under More.
-- **Removed in the same PR:** the three CSS-point overlay handles and their labels. The shift-drag
-  angle mode is replaced by the ring.
+- **Wall thickness** stays a Card field. It is currently top-level; grouping it under More is
+  Card work outside S07 and is not landed here.
+- **Removed in the same PR:** the three CSS-point overlay handles and their labels, and the
+  shift-drag angle mode. Angle is Card-only after the owner amendment.
 - The Junction-preserving planners are unchanged.
 
 ## 5. Tests and acceptance criteria
@@ -170,7 +188,8 @@ type StageHandleDescriptor = StageEditingGrip | StageDisclosureMark;
    - the selected subject has the gold outline and tint, or ink in Plan;
    - Index and Card identities equal the Stage selection's source id.
 3. **Layout marks** (extends `layout-wall-manipulation.test.ts`):
-   - a valid length, angle or move release makes exactly one F4 entry, and an invalid release none;
+   - a valid length or move release makes exactly one F4 entry, and an invalid release none;
+   - the Angle writer is the Card field (no Stage mark), through the unchanged planner;
    - Junction ids are preserved across an end drag;
    - each mark and its Card field give byte-identical source and the same refusal text.
 4. **Typing at the gesture.** The sequences digits → Enter, digits → Esc → Esc, and digits → blur

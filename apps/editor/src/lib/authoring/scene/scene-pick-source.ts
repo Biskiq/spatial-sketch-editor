@@ -7,6 +7,13 @@ export type SceneRenderedHit = { readonly entityId: string | null; readonly kind
 export function createScenePickSource() {
 	const roots = new Map<string, Object3D>();
 	let layoutRoot: Object3D | null = null;
+	/** Renderer-only observers; they never participate in picking. */
+	const listeners = new Set<() => void>();
+	function notify(): void {
+		for (const listener of [...listeners]) {
+			try { listener(); } catch { /* A render observer must not break the pick source. */ }
+		}
+	}
 	const raycaster = new Raycaster();
 	const boxes = new WeakMap<Object3D, { stamp: number[]; bounds: Box3 }>();
 	function boundsOf(root: Object3D): Box3 {
@@ -77,12 +84,24 @@ export function createScenePickSource() {
 			return box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
 		},
 		registerLayout(root: Object3D) {
-			layoutRoot = root; refresh();
-			return () => { if (layoutRoot === root) layoutRoot = null; };
+			layoutRoot = root; refresh(); notify();
+			return () => { if (layoutRoot === root) { layoutRoot = null; notify(); } };
 		},
 		register(id: string, root: Object3D) {
-			roots.set(id, root); refresh();
-			return () => { if (roots.get(id) === root) roots.delete(id); };
+			roots.set(id, root); refresh(); notify();
+			return () => { if (roots.get(id) === root) { roots.delete(id); notify(); } };
+		},
+		/** A read-only render root lookup for the Stage's selection layer. */
+		layoutObject(): Object3D | null {
+			return layoutRoot;
+		},
+		entityObject(id: string): Object3D | null {
+			return roots.get(id) ?? null;
+		},
+		/** Observe renderer registration/lifecycle; never used by the hit path. */
+		onRenderRootsChanged(listener: () => void): () => void {
+			listeners.add(listener);
+			return () => { listeners.delete(listener); };
 		},
 		pick(ray: PointerRay, expected: RuntimeScene): SceneRenderedHit | null {
 			if (source !== expected || ![...ray.origin, ...ray.direction].every(Number.isFinite)) return null;

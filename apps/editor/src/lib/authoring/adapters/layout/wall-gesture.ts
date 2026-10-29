@@ -1,20 +1,16 @@
 /**
- * T1.P01.S05 — pointer handles for an **existing straight Wall**.
+ * T1.P01.S05 — pointer parameters for an **existing straight Wall**.
  *
- * The module is deliberately framework-free and makes no document: it answers
- * three questions the adapter needs and nothing more.
- *
- * 1. Where are the two endpoint handles and the body handle, in the CSS pixels
- *    the Stage's one live evaluation projects them to? (`projectWallHandles`)
- * 2. Which handle did the press actually land on, with an endpoint winning a tie
- *    against the body? (`pickWallHandle`)
- * 3. Which explicit parameter does this pointer position name, given the
- *    endpoint that stays fixed? (`pointerWallRequest`)
+ * The module is deliberately framework-free and makes no document. Marks are
+ * admitted, projected and hit-tested by the Stage's shared mark layer; what is
+ * left here is the one question the adapter still needs answered: which explicit
+ * parameter does this pointer position name, given the endpoint that stays fixed?
+ * (`pointerWallRequest`).
  *
  * The parameter it returns is the same one a typed field produces; the canonical
  * planner is what turns it into a document, previews it and refuses what it
  * cannot preserve. No second solver and no coordinate-to-connectivity shortcut
- * lives here — a handle is a *way to name a length/angle/delta*, never a second
+ * lives here — a mark is a *way to name a length/angle/delta*, never a second
  * authority over the Wall.
  */
 
@@ -27,11 +23,6 @@ import {
 	type WallManipulationRequest
 } from './precision';
 
-/** How near a press must be to an endpoint, in CSS pixels. */
-export const WALL_ENDPOINT_HANDLE_CSS_PX = 12;
-/** How near a press must be to the Wall body, in CSS pixels. */
-export const WALL_BODY_HANDLE_CSS_PX = 8;
-
 export type WallHandle = 'start' | 'end' | 'body';
 
 /** The three projected handle points, in Stage-local CSS pixels. */
@@ -41,64 +32,14 @@ export type WallHandlePoints = {
 	readonly middle: readonly [number, number];
 };
 
-/** The squared distance from a CSS point to a CSS segment. */
-function squaredDistanceToSegment(
-	point: readonly [number, number],
-	start: readonly [number, number],
-	end: readonly [number, number]
-): number {
-	const dx = end[0] - start[0];
-	const dy = end[1] - start[1];
-	const squared = dx * dx + dy * dy;
-	if (squared === 0) return (point[0] - start[0]) ** 2 + (point[1] - start[1]) ** 2;
-	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared;
-	const amount = Math.min(1, Math.max(0, raw));
-	const nearestX = start[0] + dx * amount;
-	const nearestY = start[1] + dy * amount;
-	return (point[0] - nearestX) ** 2 + (point[1] - nearestY) ** 2;
-}
-
-export function distanceToWallSegmentCss(
-	point: readonly [number, number],
-	start: readonly [number, number],
-	end: readonly [number, number]
-): number {
-	return Math.sqrt(squaredDistanceToSegment(point, start, end));
-}
-
-/**
- * The handle under a press, or `null` when the press is not on this Wall's
- * helpers. Endpoints are tested first and their tolerance is larger: a press
- * that could mean both must mean the precise handle, never the body drag that
- * would translate the whole Wall.
- */
-export function pickWallHandle(
-	css: readonly [number, number],
-	points: WallHandlePoints
-): WallHandle | null {
-	const startDistance = Math.hypot(css[0] - points.start[0], css[1] - points.start[1]);
-	const endDistance = Math.hypot(css[0] - points.end[0], css[1] - points.end[1]);
-	const nearestEndpoint = startDistance <= endDistance ? ('start' as const) : ('end' as const);
-	const endpointDistance = Math.min(startDistance, endDistance);
-	if (endpointDistance <= WALL_ENDPOINT_HANDLE_CSS_PX) return nearestEndpoint;
-	if (distanceToWallSegmentCss(css, points.start, points.end) <= WALL_BODY_HANDLE_CSS_PX) return 'body';
-	return null;
-}
-
-/**
- * Dragging an endpoint keeps the **other** endpoint fixed. A body drag names no
- * endpoint at all (both move), so `start` is only the neutral vocabulary value.
- */
-export function wallHandleFixedEndpoint(handle: WallHandle): FixedWallEndpoint {
-	return handle === 'start' ? 'end' : 'start';
-}
-
 export type WallPointerMode = 'length' | 'angle' | 'move';
 
 /**
  * The parameter one pointer position names. `mode` is decided by the adapter from
- * the handle and the modifier state (a shift-drag on an endpoint is the angle) so
- * the same handle cannot quietly mean two operations.
+ * the mark's descriptor: an endpoint or the free-end length ray names a length,
+ * the two-way base ray names a move. The Wall angle has **no** Stage grip by the
+ * owner's 2026-10-29 ruling; its pure inverse is retained here for the domain
+ * planner and tests, not as a pointer affordance.
  */
 export function pointerWallRequest(input: {
 	readonly handle: WallHandle;

@@ -114,14 +114,18 @@ describe('Stage shell composition', () => {
 		);
 		expect(offenders).toEqual([]);
 
-		// Only the renderer components touch Three. The camera is the one authority that
-		// copies an evaluation onto a camera; Paper builds a drawing, never a pose.
+		// The renderer boundary is explicit: the Canvas, the Camera that copies the
+		// evaluated pose, Paper's drawing scene, its selection re-stroke, and the
+		// selection-ink realizer that builds outlines and tint clones from the
+		// already-rendered meshes. None of them owns a camera or a pick root; they
+		// are listed here so another Three importer cannot appear unnoticed.
 		const threeImporters = STAGE_FILES.filter((file) =>
 			parseModuleSpecifiers(readSource(file)).some(
 				(specifier) => specifier === 'three' || specifier.startsWith('three/')
 			)
 		);
 		expect(threeImporters).toEqual([
+			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
 			'apps/editor/src/lib/authoring/stage/paper-scene.ts'

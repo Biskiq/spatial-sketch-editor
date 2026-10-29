@@ -23,6 +23,7 @@
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
 	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import type { StageGhostMesh } from '$lib/authoring/stage/stage-facade';
+	import type { StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import {
 		neutralVisitorRoomPresentation,
 		type VisitorRoomPresentation
@@ -33,6 +34,7 @@
 	import StageEntities from './StageEntities.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
+	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 
 	let {
@@ -47,6 +49,8 @@
 		planAppearance = 'paper',
 		reducedMotion = false,
 		datumMeters = 0,
+		selection = null,
+		hover = null,
 		scenePick
 	}: {
 		geometry: CompiledLayoutGeometry;
@@ -65,6 +69,9 @@
 		reducedMotion?: boolean;
 		/** The level datum the mat ground sits at. */
 		datumMeters?: number;
+		/** Canonical primary selection and pointer hover; ink is Stage-owned. */
+		selection?: StageSelectionEntry | null;
+		hover?: StageSelectionEntry | null;
 		scenePick: ScenePickSource;
 	} = $props();
 
@@ -170,7 +177,26 @@
 			instant={reducedMotion}
 			isFootprintMounted={footprintMounted}
 			{datumMeters}
+			{selection}
+			{hover}
 			revision={sceneRootRevision + entityRenderRevision}
+		/>
+	{/if}
+	{#if !paperVisible}
+		<!--
+			Selection and hover ink on the mat: the same accepted meshes, gold for the
+			selected identity and quiet neutral for hover. It is a Canvas child, never a
+			pick root, and lives on the Stage overlay layer so raycasting cannot hit it.
+			Paper re-strokes the same identity on the drawing instead; the two never run
+			together, and neither writes `Object3D.visible` for appearance.
+		-->
+		<StageSelectionLayer
+			{selection}
+			{hover}
+			{geometry}
+			{scenePick}
+			width={evaluation?.rect.width ?? 1}
+			height={evaluation?.rect.height ?? 1}
 		/>
 	{/if}
 	<!--

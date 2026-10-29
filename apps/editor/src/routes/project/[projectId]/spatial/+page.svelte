@@ -50,7 +50,7 @@
 		validateProjectEnvelope,
 		type ProjectEnvelope
 	} from '@portfolio/project-model/units';
-	import { layoutSelectionReference, primaryEntry, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
+	import { layoutSelectionReference, primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import {
 		bootEmpty,
 		bootFromLoadOutcome,
@@ -78,10 +78,11 @@
 		type StageFacade,
 		type StageIntentResult,
 		type StageInstrumentContent,
-	type StageGhostMesh,
-	type StageOverlayContribution,
-	type StageSourceHit
-} from '$lib/authoring/stage/stage-facade';
+		type StageGhostMesh,
+		type StageOverlayContribution,
+		type StageSourceHit
+	} from '$lib/authoring/stage/stage-facade';
+	import type { StageMarkView } from '$lib/authoring/stage/stage-handles';
 	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
 	import {
 		createStageAdapterServices,
@@ -232,6 +233,8 @@
 		redoUnavailableReason: 'Nothing to redo.'
 	});
 	let selection = $state<StageSelectionEntry | null>(null);
+	/** The hovered subject's echoed entry; never the primary selection. */
+	let hoverSelection = $state<StageSelectionEntry | null>(null);
 	let task = $state<StageTask | null>(null);
 	/** Instrument content contributed by the adapter whose task is open, if any. */
 	const contributedInstrument = $derived.by((): StageInstrumentContent | null => {
@@ -509,7 +512,7 @@
 	let installedModelSignature = '';
 	/** The model-failure notice this resolver last set, so an unrelated notice survives. */
 	let modelNotice: string | null = null;
-	let selectionMarker = $state<{ css: readonly [number, number]; label: string } | null>(null);
+	let marks = $state<readonly StageMarkView[]>([]);
 	let notice = $state('');
 	let pendingReplacement = $state<null | 'starter' | 'empty' | 'source'>(null);
 	/** Set by the route's teardown: no late completion may mount a stage after it. */
@@ -649,7 +652,8 @@
 		planKey = '';
 		planParametersKey = '';
 		markers = [];
-		selectionMarker = null;
+		marks = [];
+		hoverSelection = null;
 	}
 
 	/**
@@ -1687,49 +1691,7 @@
 			}
 		}
 		ghosts = stage.ghosts();
-		const selected = selection;
-		selectionMarker = selected === null ? null : selectionEcho(selected);
-	}
-
-	function selectionEcho(selected: StageSelectionEntry): { css: readonly [number, number]; label: string } | null {
-		const stage = facade;
-		if (stage === null) return null;
-		if (selected.reference.domain !== 'layout') {
-			const subject = locatedSubjectMap.get(`${selected.reference.domain}:${selected.reference.subject.kind}:${selected.reference.subject.id}`);
-			if (subject === undefined) return null;
-			const projected = stage.projectWorld(subject.worldPoint, stage.evaluationId() ?? '');
-			const viewport = stage.evaluation()?.rect;
-			return projected.kind !== 'projected' || projected.visibility === 'behind' || viewport === undefined ? null : {
-				css: [projected.css[0] - viewport.left, projected.css[1] - viewport.top], label: subject.label
-			};
-		}
-		const plan = planView;
-		// `planFragmentOf` is indexed against the fragment array, so this lookup —
-		// which runs on every presented frame while something is selected — costs a
-		// map probe rather than a scan of the project.
-		const fragment = plan === null ? undefined : planFragmentOf(plan, selected.reference.subject.id);
-		if (fragment === undefined) return null;
-		const points =
-			fragment.geometry.kind === 'span'
-				? [fragment.geometry.start, fragment.geometry.end]
-				: fragment.geometry.kind === 'polyline'
-					? fragment.geometry.polyline
-					: fragment.geometry.polygon;
-		const center = points.reduce<[number, number]>(
-			(accumulator, point) => [accumulator[0] + point[0] / points.length, accumulator[1] + point[1] / points.length],
-			[0, 0]
-		);
-		const projected = stage.projectWorld([center[0], fragment.elevationMeters, center[1]], stage.evaluationId() ?? '');
-		if (projected.kind !== 'projected') return null;
-		// The Camera projects into viewport CSS; the overlay paints inside the Stage
-		// surface, so the echo subtracts the same evaluation rect the hit path adds.
-		const evaluationRect = stage.evaluation()?.rect ?? rect;
-		const offsetX = evaluationRect?.left ?? 0;
-		const offsetY = evaluationRect?.top ?? 0;
-		return {
-			css: [projected.css[0] - offsetX, projected.css[1] - offsetY],
-			label: selected.reference.subject.id
-		};
+		marks = stage.marks();
 	}
 
 	onMount(() => {
@@ -2256,7 +2218,7 @@
 	let adapterEvaluationId: string | null = null;
 	let pinch: Map<number, [number, number]> | null = null;
 	let hoverFrame: number | null = null;
-	let hoverSample: { css: [number, number]; shift: boolean } | null = null;
+	let hoverSample: { css: [number, number]; shift: boolean; coarse: boolean } | null = null;
 	/**
 	 * The drag-versus-click decision. It is **not** the gesture: pointer up ends the
 	 * gesture, but the click that follows still has to know how far the pointer
@@ -2302,10 +2264,20 @@
 		const pointerEvaluationId = stage.evaluationId();
 		if (pointerEvaluationId !== null) {
 			const css = stageCss(event);
-			if (stage.pointerIntent({ phase: 'down', css, evaluationId: pointerEvaluationId, shift: event.shiftKey }).claimed) {
+			const coarse = event.pointerType !== 'mouse';
+			const mark = stage.hitMark({ css, coarse });
+			// A disclosure is a press, not a drag: it reveals grips while the same
+			// gesture context stays selected, and no adapter may claim the pointer for it.
+			if (mark?.role === 'disclose') {
+				press.refuse(event.pointerId);
+				if (stage.activateDisclosure(mark.id)) stage.notifySurfaceChange();
+				return;
+			}
+			const handleId = mark?.role === 'edit' ? mark.id : undefined;
+			if (stage.pointerIntent({ phase: 'down', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse, ...(handleId === undefined ? {} : { handleId }) }).claimed) {
 				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 				if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
-					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey });
+					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
 					return;
 				}
 				adapterEvaluationId = pointerEvaluationId;
@@ -2345,7 +2317,9 @@
 		if (hoverFrame !== null) cancelAnimationFrame(hoverFrame);
 		hoverFrame = null;
 		hoverSample = null;
+		facade?.setMarkHover(null);
 		session.setHover(null);
+		hoverSelection = null;
 	}
 
 	function resolveHover(): void {
@@ -2355,15 +2329,39 @@
 		const stage = facade;
 		const id = stage?.evaluationId() ?? null;
 		if (sample === null || stage === null || id === null || session.gesture() !== null || drag !== null) return;
-		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift })) { session.setHover(null); return; }
-		const result = stage.resolvePick({ css: sample.css, evaluationId: id, purpose: 'hover', tool: null });
-		if (result.kind !== 'resolved') { session.setHover(null); return; }
-		const hit = result.hit;
-		if (hit.reference !== undefined) session.setHover({ reference: hit.reference });
-		else {
-			const ref = { sourceId: hit.sourceId, sourceKind: hit.sourceKind, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef };
-			session.setHover({ reference: layoutSelectionReference(ref, stage.snapshot()), representation: ref });
+		// The mark tier is above world candidates: a hovered grip suppresses the
+		// subject tint underneath, so two emphases never compete for one pointer.
+		const mark = stage.hitMark({ css: sample.css, coarse: sample.coarse });
+		if (mark !== null) {
+			stage.setMarkHover({ adapterId: mark.adapterId, id: mark.id });
+			session.setHover(null);
+			hoverSelection = null;
+			return;
 		}
+		stage.setMarkHover(null);
+		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift })) {
+			session.setHover(null);
+			hoverSelection = null;
+			return;
+		}
+		const result = stage.resolvePick({ css: sample.css, evaluationId: id, purpose: 'hover', tool: null });
+		if (result.kind !== 'resolved') {
+			session.setHover(null);
+			hoverSelection = null;
+			return;
+		}
+		const hit = result.hit;
+		const representation = hit.reference === undefined
+			? { sourceId: hit.sourceId, sourceKind: hit.sourceKind, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef }
+			: undefined;
+		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
+		session.setHover({ reference });
+		const primary = primaryEntry(stage.selectionState());
+		hoverSelection = primary !== null && sameReference(primary.reference, reference)
+			? null
+			: representation === undefined
+				? { reference }
+				: { reference, representation };
 	}
 
 	function onPointerMove(event: PointerEvent): void {
@@ -2381,7 +2379,7 @@
 		}
 		if (drag === null) {
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
-			hoverSample = { css: stageCss(event), shift: event.shiftKey };
+			hoverSample = { css: stageCss(event), shift: event.shiftKey, coarse: event.pointerType !== 'mouse' };
 			if (hoverFrame === null) hoverFrame = requestAnimationFrame(resolveHover);
 			return;
 		}
@@ -2401,7 +2399,7 @@
 			// T3.P03.S02: one monotonic sequence per continuous input sample. The
 			// adapter's preview installation and the accepted result inherit it.
 			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
-			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey, coarse: event.pointerType !== 'mouse' });
 			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 			return;
 		}
@@ -2481,7 +2479,7 @@
 				// rather than released, so no stale projection commits.
 				const phase = session.gesture() === null ? 'cancel' : 'up';
 				perfMark('input:release', { phase });
-				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey, coarse: event.pointerType !== 'mouse' });
 			}
 			return;
 		}
@@ -2566,6 +2564,27 @@
 		// Typing in the Index's subject search must never move the camera.
 		if (stageKeyFromTextEntry(event.target)) return;
 		const action = stageKeyAction(event.key);
+		// A direct-manipulation writer keeps the keyboard while its press is live:
+		// Tab moves between numeric fields and a printable key opens/extends entry.
+		const gestureStage = facade;
+		if (event.key === 'Tab' && drag?.mode === 'adapter' && gestureStage !== null) {
+			if (gestureStage.gestureKeyIntent({ kind: 'type', key: '\t' }).claimed) {
+				event.preventDefault();
+				return;
+			}
+		}
+		if (
+			action.kind === 'none' &&
+			event.key.length === 1 &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			gestureStage !== null &&
+			gestureStage.gestureKeyIntent({ kind: 'type', key: event.key }).claimed
+		) {
+			event.preventDefault();
+			return;
+		}
 		// An activation key belongs to the focused control first: Enter on the palette's
 		// Backtrack/Cancel button, a Find result or a Head control must run that
 		// control, never the armed tool's command. The guard is limited to the three
@@ -2588,10 +2607,15 @@
 				break;
 			case 'finish':
 			case 'backtrack': {
-				// The armed tool's own command, answered by the task that owns it. A tool
-				// with nothing to finish refuses and the key does nothing at all.
+				// A live direct-manipulation writer answers first (numeric entry's Enter
+				// and Backspace); otherwise the armed tool's task owns the command.
 				const stage = facade;
-				if (stage === null || !stage.keyboardIntent({ kind: action.kind }).claimed) break;
+				if (stage === null) break;
+				if (stage.gestureKeyIntent({ kind: action.kind }).claimed) {
+					event.preventDefault();
+					break;
+				}
+				if (!stage.keyboardIntent({ kind: action.kind }).claimed) break;
 				// One key, one activation: the palette's own control must not also be
 				// activated by the same keystroke.
 				event.preventDefault();
@@ -2611,6 +2635,13 @@
 					break;
 				}
 				const stage = facade;
+				// A live mark writer cancels first, then an open disclosure closes; neither
+				// is a task, and neither may reach the task/selection unwinding below.
+				// The adapter claimed this Escape (first restores numeric entry, second
+				// cancels the writer). Interrupting the press here would turn the first
+				// Escape into the second, so only an unclaimed key unwinds the press.
+				if (stage !== null && stage.gestureKeyIntent({ kind: 'cancel' }).claimed) break;
+				if (stage !== null && stage.closeDisclosure()) { stage.notifySurfaceChange(); break; }
 				if (stage !== null && stage.keyboardIntent({ kind: 'cancel' }).claimed) { interruptPress('escape'); break; }
 				const hadPress = drag !== null || pinch !== null;
 				interruptPress('escape');
@@ -3171,10 +3202,12 @@
 						planAppearance={preferences.planAppearance}
 						{reducedMotion}
 						datumMeters={boot.snapshot.domain.datumMeters}
+						selection={selection}
+						hover={hoverSelection}
 					/>
 				{/if}
 				<div class="overlay-layer">
-					<StageOverlay {markers} {selectionMarker} {tracePreview} />
+					<StageOverlay {markers} {marks} {tracePreview} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 				</div>
 
 				{#if boot.status === 'empty' && (currentEnvelope?.units.layout.data.rooms.length ?? 0) === 0}
