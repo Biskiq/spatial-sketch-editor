@@ -380,11 +380,12 @@ function supportCandidates(
 }
 
 describe('scene operation planners — registration', () => {
-	it('registers exactly the nine Scene operations as single-domain planners', () => {
+	it('registers exactly the ten Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
 		expect(planners.map((planner) => planner.kind)).toEqual([
 			'place-object',
 			'create-form',
+			'place-form-copy',
 			'set-form-size',
 			'move-horizontal',
 			'set-yaw',

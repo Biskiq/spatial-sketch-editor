@@ -36,6 +36,9 @@ export function candidateGhost(
 ): StageGhostMesh | null {
 	const shape: StageGhostMesh['shape'] | null = (() => {
 		if (candidate.kind === 'place') {
+			// A My Objects insertion previews the item's own authored body, never
+			// a stand-in primitive: what the creator sees is what acceptance writes.
+			if (candidate.form !== undefined) return { kind: 'form', form: candidate.form };
 			return candidate.primitive === null ? null : primitiveShape(candidate.primitive);
 		}
 		if (entity === null || entity.kind !== 'primitive') return null;

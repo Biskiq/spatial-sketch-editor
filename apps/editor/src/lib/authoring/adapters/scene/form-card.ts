@@ -5,6 +5,7 @@ import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-ho
 import { stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { sceneEntityReference } from './placement';
+import type { FormLibraryClient } from './library/client';
 
 export function formCardController(services: StageAdapterServices, entityId: string) {
 	const snapshot = services.stage.snapshot();
@@ -35,6 +36,21 @@ export function formCardController(services: StageAdapterServices, entityId: str
 			entityId, scale: values.map((value, axis) => value / dimensions[axis]! * entity.form.scale[axis]!)
 		}),
 		duplicate: () => run('duplicate-one', { entityId, contactMinY: mesh.contactMinY }, crypto.randomUUID()),
+		/**
+		 * Save the **live accepted** source, re-read by id so an accepted edit this
+		 * controller was not rebuilt for cannot be saved stale. The library chunk is
+		 * downloaded here, not with the Card's fields.
+		 */
+		save: async (client?: FormLibraryClient) => {
+			const latest = stageScene(services.stage.snapshot()).entities.find(
+				(entry) => entry.id === entityId
+			);
+			if (latest?.kind !== 'form') {
+				return { kind: 'refused' as const, message: 'That form is no longer accepted; nothing was saved.' };
+			}
+			const { saveFormToMyObjects } = await import('./library/save');
+			return saveFormToMyObjects(latest, client === undefined ? {} : { client });
+		},
 		delete: () => run('delete-one', { entityId })
 	};
 }

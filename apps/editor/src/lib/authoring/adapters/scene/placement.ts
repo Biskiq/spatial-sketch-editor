@@ -36,9 +36,11 @@ import {
 	type CreatorModelResourceEntry,
 	type NormalizedPlacementDefinition,
 	type SceneOperationContext,
-	type SceneOperationResult
+	type SceneOperationResult,
+	type SceneSupportChoice
 } from '@portfolio/project-model/scene-planning';
-import type { AuthoringIntent, SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { AuthoringIntent, SceneEntity, SceneFormSource, Vec3 } from '@portfolio/project-model';
+import type { FormLibraryPayload } from '@portfolio/project-model/library';
 import type {
 	CameraFreeSceneDocument,
 	LayoutUnitPayload,
@@ -120,6 +122,8 @@ export type SceneCandidate = {
 	readonly snappedStep: number | null;
 	/** A creator model's confirmed footprint, so its ghost is its own extent. */
 	readonly footprint?: { readonly width: number; readonly depth: number };
+	/** A My Objects copy's authored source, so the ghost is its own body. */
+	readonly form?: SceneFormSource;
 };
 
 /**
@@ -132,6 +136,20 @@ export type SceneCandidate = {
 export type ArmedModelPlacement = {
 	readonly definition: NormalizedPlacementDefinition;
 	readonly resource: CreatorModelResourceEntry | null;
+};
+
+/**
+ * One saved My Objects form armed for insertion.
+ *
+ * `contactMinY` is the evaluated contact of the item's own source (the panel
+ * derives it once from the codec-verified bytes). The planner re-evaluates and
+ * refuses a disagreement, so the captured value can never install a wrong Y.
+ */
+export type ArmedFormCopy = {
+	/** The listed item's logical id, for this panel's armed marker only. */
+	readonly itemId: string;
+	readonly item: FormLibraryPayload;
+	readonly contactMinY: number;
 };
 
 export type SceneSessionOutcome =
@@ -161,6 +179,26 @@ export type ScenePlacementSession = {
 	/** Arm one approved creator model for the next floor placement, or clear it. */
 	setArmedModel(model: ArmedModelPlacement | null): void;
 	armedModel(): ArmedModelPlacement | null;
+	/** Arm one My Objects copy for insertion, or clear it. */
+	setArmedFormCopy(copy: ArmedFormCopy | null): void;
+	armedFormCopy(): ArmedFormCopy | null;
+	/** Begin one pointer insertion of an armed My Objects copy. */
+	beginPlaceFormCopy(copy: ArmedFormCopy): SceneSessionOutcome;
+	/** Preview one My Objects insertion at a resolved floor elevation. */
+	previewPlaceFormCopy(
+		copy: ArmedFormCopy,
+		x: number,
+		z: number,
+		supportElevation: number,
+		choice?: SceneSupportChoice
+	): SceneSessionOutcome;
+	/** Place one My Objects copy at exact X/Z; the saved source is written verbatim. */
+	placeFormCopy(
+		copy: ArmedFormCopy,
+		x: number,
+		z: number,
+		choice?: SceneSupportChoice
+	): Promise<SceneSessionOutcome>;
 	/** Begin one pointer placement of the armed creator model. */
 	beginPlaceModel(model: ArmedModelPlacement): SceneSessionOutcome;
 	/** Preview one creator-model placement at a resolved floor elevation. */
@@ -495,6 +533,10 @@ export function createSceneSession(input: {
 	let placePrimitive: NativePlacementPrimitive = 'box';
 	let armedModelPlacement: ArmedModelPlacement | null = null;
 	let candidateModel: ArmedModelPlacement | null = null;
+	let armedFormCopyPlacement: ArmedFormCopy | null = null;
+	let candidateFormCopy: ArmedFormCopy | null = null;
+	/** The support the pointer preview showed, pinned for this commit. */
+	let candidateFormCopyChoice: SceneSupportChoice | null = null;
 	let placementCommitted: ((placedEntityId: string | null) => void) | null = null;
 
 	/**
@@ -709,6 +751,7 @@ export function createSceneSession(input: {
 		release();
 		candidate = null;
 		candidateModel = null;
+		candidateFormCopy = null;
 		entryError = null;
 	}
 
@@ -726,6 +769,7 @@ export function createSceneSession(input: {
 		const step = snap === null || !(snap > 0) ? null : snap;
 		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
 		const contactMinY = nativePlacementContactMinY(primitive);
+		candidateFormCopy = null;
 		const next: SceneCandidate = {
 			kind: 'place',
 			entityId: null,
@@ -759,6 +803,45 @@ export function createSceneSession(input: {
 		};
 	}
 
+	/**
+	 * One My Objects preview: the ghost is the item's own source and the shown Y
+	 * is the item's evaluated contact over the resolved support. Commit re-runs
+	 * the retained `place-form-copy` planner with the same captured inputs.
+	 */
+	function placeFormCopyCandidate(
+		copy: ArmedFormCopy,
+		x: number,
+		z: number,
+		supportElevation: number,
+		choice?: SceneSupportChoice
+	): SceneSessionOutcome {
+		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
+			candidate = null;
+			candidateFormCopy = null;
+			candidateFormCopyChoice = null;
+			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
+		}
+		const step = snap === null || !(snap > 0) ? null : snap;
+		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
+		candidateModel = null;
+		candidateFormCopy = copy;
+		candidateFormCopyChoice = choice ?? null;
+		const next: SceneCandidate = {
+			kind: 'place',
+			entityId: null,
+			primitive: null,
+			form: copy.item.form,
+			position: [worldXZ[0], supportElevation - copy.contactMinY, worldXZ[1]],
+			rotation: [0, 0, 0],
+			worldXZ,
+			yaw: 0,
+			scale: 1,
+			snappedStep: step
+		};
+		candidate = next;
+		return { kind: 'candidate', candidate: next };
+	}
+
 	/** One creator-model placement preview; the same candidate is committed. */
 	function placeModelCandidate(
 		model: ArmedModelPlacement,
@@ -773,6 +856,7 @@ export function createSceneSession(input: {
 		}
 		const step = snap === null || !(snap > 0) ? null : snap;
 		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
+		candidateFormCopy = null;
 		const next: SceneCandidate = {
 			kind: 'place',
 			entityId: null,
@@ -918,6 +1002,53 @@ export function createSceneSession(input: {
 		return { kind: 'committed' };
 	}
 
+	/**
+	 * The one My Objects insertion intent.
+	 *
+	 * The saved payload is written verbatim under a distinct allocated entity id,
+	 * so the copy carries no link to the source item or to another project: later
+	 * edits to either are independent by construction.
+	 */
+	async function acceptFormCopyPlacement(
+		copy: ArmedFormCopy,
+		worldXZ: readonly [number, number],
+		choice?: SceneSupportChoice
+	): Promise<SceneSessionOutcome> {
+		const allocatedId = `entity-${mint()}`;
+		const intentToAccept: AuthoringIntent = {
+			version: 1,
+			kind: 'place-form-copy',
+			operationId: mint(),
+			expectedRevision: {
+				projectId: input.snapshot.projectId,
+				revisionId: input.port.acceptedRevision().revisionId
+			},
+			targets: [],
+			payload: {
+				item: copy.item,
+				worldXZ: [worldXZ[0], worldXZ[1]],
+				yaw: 0,
+				contactMinY: copy.contactMinY,
+				...(choice === undefined ? {} : { supportChoice: choice })
+			},
+			capturedInputs: [],
+			allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+		};
+		let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
+		try {
+			outcome = await input.port.accept(intentToAccept);
+		} catch (error) {
+			return {
+				kind: 'failed',
+				code: 'accept-failed',
+				message: error instanceof Error ? error.message : 'The accepted install failed.'
+			};
+		}
+		if (outcome.kind === 'refused') return outcome;
+		lastPlacedEntityId = allocatedId;
+		return { kind: 'committed' };
+	}
+
 	const session: ScenePlacementSession = {
 		armed: () => mode,
 		arm(next) {
@@ -1041,9 +1172,12 @@ export function createSceneSession(input: {
 		beginPlace(primitive) {
 			release();
 			// An explicit native primitive is the placement this gesture will show;
-			// an armed creator model does not silently substitute itself.
+			// neither an armed creator model nor a saved My Objects copy silently
+			// substitutes itself.
 			armedModelPlacement = null;
 			candidateModel = null;
+			armedFormCopyPlacement = null;
+			candidateFormCopy = null;
 			lease = input.port.acquireGesture({
 				owner: 'scene-transform',
 				evaluationId: evaluationIdNow(),
@@ -1067,13 +1201,62 @@ export function createSceneSession(input: {
 		placePrimitive: () => placePrimitive,
 		setPlacePrimitive(primitive) {
 			placePrimitive = primitive;
-			// Choosing a native primitive is an explicit replacement of an armed model.
+			// Choosing a native primitive is an explicit replacement of an armed model
+			// or saved copy.
 			armedModelPlacement = null;
 			candidateModel = null;
+			armedFormCopyPlacement = null;
+			candidateFormCopy = null;
 		},
 		setArmedModel(model) {
 			armedModelPlacement = model;
 			candidateModel = null;
+			// Choosing another object is an explicit replacement of an armed copy.
+			if (model !== null) {
+				armedFormCopyPlacement = null;
+				candidateFormCopy = null;
+			}
+		},
+		setArmedFormCopy(copy) {
+			armedFormCopyPlacement = copy;
+			candidateFormCopy = null;
+			// Choosing a saved copy is an explicit replacement of an armed model.
+			if (copy !== null) {
+				armedModelPlacement = null;
+				candidateModel = null;
+			}
+		},
+		armedFormCopy: () => armedFormCopyPlacement,
+		beginPlaceFormCopy(copy) {
+			// The lease comes from the same begin path a native placement uses; the
+			// copy is re-armed afterwards because that path clears an armed copy on
+			// purpose (an explicit primitive replaces it).
+			const outcome = session.beginPlace('box');
+			if (outcome.kind === 'refused') return outcome;
+			armedFormCopyPlacement = copy;
+			candidateFormCopyChoice = null;
+			mode = 'place';
+			return outcome;
+		},
+		previewPlaceFormCopy(copy, x, z, supportElevation, choice) {
+			mode = 'place';
+			armedFormCopyPlacement = copy;
+			return placeFormCopyCandidate(copy, x, z, supportElevation, choice);
+		},
+		async placeFormCopy(copy, x, z, choice) {
+			if (!Number.isFinite(x) || !Number.isFinite(z)) {
+				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
+			}
+			lastPlacedEntityId = null;
+			const outcome = await acceptFormCopyPlacement(copy, [snapped(x), snapped(z)], choice);
+			if (outcome.kind === 'committed') {
+				candidate = null;
+				candidateFormCopy = null;
+				candidateFormCopyChoice = null;
+				armedFormCopyPlacement = null;
+				notifyPlacementCommitted();
+			}
+			return outcome;
 		},
 		armedModel: () => armedModelPlacement,
 		beginPlaceModel(model) {
@@ -1107,6 +1290,7 @@ export function createSceneSession(input: {
 			// previous pose is no longer what a release would install, so it must stop
 			// being committable; the lease and the armed tool stay as they are.
 			candidate = null;
+			candidateFormCopy = null;
 			entryError = null;
 		},
 		abortGesture() {
@@ -1115,6 +1299,7 @@ export function createSceneSession(input: {
 			release();
 			entityId = null;
 			candidate = null;
+			candidateFormCopy = null;
 			entryError = null;
 		},
 		setEntry(kind, text) {
@@ -1231,7 +1416,11 @@ export function createSceneSession(input: {
 			return { kind: 'committed' };
 		},
 		async commitPlace() {
-			if (candidate === null || candidate.kind !== 'place' || (candidate.primitive === null && candidateModel === null)) {
+			if (
+				candidate === null ||
+				candidate.kind !== 'place' ||
+				(candidate.primitive === null && candidateModel === null && candidateFormCopy === null)
+			) {
 				release();
 				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid placement before committing.' };
 			}
@@ -1244,45 +1433,60 @@ export function createSceneSession(input: {
 			lastPlacedEntityId = null;
 			const worldXZ = candidate.worldXZ;
 			const model = candidateModel;
-			const outcome = model === null
-				? candidate.primitive === null
-					? { kind: 'refused' as const, code: 'no-candidate', message: 'Preview a valid placement before committing.' }
-					: await acceptPlacement(candidate.primitive, worldXZ)
-				: await acceptModelPlacement(model, worldXZ);
+			const copy = candidateFormCopy;
+			const copyChoice = candidateFormCopyChoice ?? undefined;
+			const outcome = copy !== null
+				? await acceptFormCopyPlacement(copy, worldXZ, copyChoice)
+				: model === null
+					? candidate.primitive === null
+						? { kind: 'refused' as const, code: 'no-candidate', message: 'Preview a valid placement before committing.' }
+						: await acceptPlacement(candidate.primitive, worldXZ)
+					: await acceptModelPlacement(model, worldXZ);
 			if (outcome.kind !== 'committed') {
 				withdraw();
 				return outcome;
 			}
 			// The committed pose is exactly the displayed candidate, and Place stays
 			// armed: a release never disarms the tool, only Esc/Select does. The model
-			// itself is consumed by its placement, so the next release is a native
-			// primitive unless the Library arms another model.
+			// or saved copy is consumed by its placement, so the next release is a
+			// native primitive unless the creator arms another.
 			release();
 			candidate = null;
 			candidateModel = null;
 			armedModelPlacement = null;
+			candidateFormCopy = null;
+			candidateFormCopyChoice = null;
+			armedFormCopyPlacement = null;
 			notifyPlacementCommitted();
 			return { kind: 'committed' };
 		},
 		async place(primitive, x, z) {
-			// An approved model armed for this project is what these coordinates place.
-			// Choosing a primitive is the one explicit replacement (`setPlacePrimitive`),
-			// so the typed form can no longer install a box behind a model approval.
-			const model = armedModelPlacement;
+			// An armed My Objects copy or approved model is what these coordinates
+			// place. Choosing a primitive is the one explicit replacement
+			// (`setPlacePrimitive`), so the typed form can no longer install a box
+			// behind a model approval or a saved copy.
+			const copy = armedFormCopyPlacement;
+			const model = copy === null ? armedModelPlacement : null;
 			lastPlacedEntityId = null;
 			if (!Number.isFinite(x) || !Number.isFinite(z)) {
 				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
 			}
-			const outcome = model === null
-				? await acceptPlacement(primitive, [snapped(x), snapped(z)])
-				: await acceptModelPlacement(model, [snapped(x), snapped(z)]);
+			const outcome = copy !== null
+				? await acceptFormCopyPlacement(copy, [snapped(x), snapped(z)])
+				: model === null
+					? await acceptPlacement(primitive, [snapped(x), snapped(z)])
+					: await acceptModelPlacement(model, [snapped(x), snapped(z)]);
 			if (outcome.kind === 'committed') {
 				candidate = null;
-				// The model is consumed by its placement; a failed attempt keeps the arm
-				// so the creator can retry the same approved model.
+				// The model or copy is consumed by its placement; a failed attempt keeps
+				// the arm so the creator can retry the same object.
 				if (model !== null) {
 					candidateModel = null;
 					armedModelPlacement = null;
+				}
+				if (copy !== null) {
+					candidateFormCopy = null;
+					armedFormCopyPlacement = null;
 				}
 				notifyPlacementCommitted();
 			}
@@ -1306,12 +1510,14 @@ export function createSceneSession(input: {
 			release();
 			entityId = null;
 			candidate = null;
+			candidateFormCopy = null;
 			entryError = null;
 			// Esc/Select disarms Place per the editing-surface contract, and the armed
-			// creator model returns to rest with it.
+			// creator model or saved copy returns to rest with it.
 			mode = 'select';
 			candidateModel = null;
 			armedModelPlacement = null;
+			armedFormCopyPlacement = null;
 		},
 		baseline: () => (baseline === null ? null : { position: [...baseline.position] as Vec3, rotation: [...baseline.rotation] as Vec3 })
 	};

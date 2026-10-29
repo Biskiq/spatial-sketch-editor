@@ -1,8 +1,9 @@
 # Scene content
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
-**Last reviewed:** 2026-10-28 (T5.P01.S02 Shape reading and per-axis sizing, on the S01 native-form
-and Scene 4 baseline; production activation remains owner-controlled)
+**Last reviewed:** 2026-10-28 (T5.P01.S04 My Objects insertion in review, on the S02 Shape reading
+and per-axis sizing and the S01 native-form and Scene 4 baseline; production activation remains
+owner-controlled)
 
 ---
 
@@ -42,7 +43,13 @@ is not landed: the upright sheet is aligned by X/Z/yaw until T1's face-frame que
 
 Once present a form is ordinary Scene truth: `create-form` creates one, `set-form-size` writes a
 full per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and
-Delete work through the existing planners. `resize-on-floor` refuses a form (uniform scale would
+Delete work through the existing planners. `place-form-copy` inserts one **detached** editable copy
+from a My Objects item: its payload carries the strict library payload, world X/Z, yaw and the
+captured contact; the planner re-validates the payload, re-evaluates that contact and refuses a
+disagreement, re-resolves support from the accepted snapshot, allocates a new entity id, writes the
+saved source verbatim (keys, scale and `nextKey` included) and returns one accepted result. The copy
+carries no resource, lock entry, reference or other link to the library item. It is one history
+entry; Undo and Redo are the ordinary F4 path. `resize-on-floor` refuses a form (uniform scale would
 contradict `form.scale`). A selected form offers three per-axis size rays (Width, Height, Depth); a
 ray previews through `set-form-size` and release commits one intent, while the Card's per-axis Size
 fields remain the one writer for exact values. Evaluation is deterministic and cached in the editor;

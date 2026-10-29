@@ -46,7 +46,8 @@ import {
 	createScenePlanners,
 	creatorModelDefinition,
 	sceneSupportGenerationId,
-	type NormalizedPlacementDefinition
+	type NormalizedPlacementDefinition,
+	type SceneSupportChoice
 } from '@portfolio/project-model/scene-planning';
 
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
@@ -240,7 +241,13 @@ function pointerPlaceSupport(
 	context: StageAdapterContext,
 	css: readonly [number, number],
 	snapStep: number | null
-): { readonly x: number; readonly z: number; readonly elevation: number } | null {
+): {
+	readonly x: number;
+	readonly z: number;
+	readonly elevation: number;
+	/** The exact floor the preview stood on, qualified and pinned for commit. */
+	readonly choice: SceneSupportChoice;
+} | null {
 	const visible = pointerFloorSupport(context, css, null);
 	if (visible.kind !== 'floor') return null;
 	const step = snapStep !== null && snapStep > 0 ? snapStep : null;
@@ -255,7 +262,16 @@ function pointerPlaceSupport(
 	if (queried.kind !== 'candidates') return null;
 	const chosen = chooseFloorSupport(queried.candidates);
 	if (chosen.kind !== 'resolved') return null;
-	return { x, z, elevation: chosen.support.elevation };
+	return {
+		x,
+		z,
+		elevation: chosen.support.elevation,
+		choice: {
+			kind: 'elevation',
+			elevation: chosen.support.elevation,
+			generationId: sceneSupportGenerationId(context.snapshot.sourceContentId)
+		}
+	};
 }
 
 export const createAdapter: StageAdapterFactory = (services) => {
@@ -945,11 +961,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (intent.phase === 'down') {
 						if (openTaskKind === 'place-object') {
-							// An approved model armed by Import places exactly like a native
-							// primitive: press, preview on the compiled floor, release to commit.
-							const armed = session.armedModel();
+							// A My Objects copy or an approved model armed here places exactly
+							// like a native primitive: press, preview on the compiled floor,
+							// release to commit. The copy is the saved source verbatim.
+							const copy = session.armedFormCopy();
+							const armed = copy === null ? session.armedModel() : null;
 							const primitive = session.placePrimitive();
-							const begun = armed === null ? session.beginPlace(primitive) : session.beginPlaceModel(armed);
+							const begun =
+								copy !== null
+									? session.beginPlaceFormCopy(copy)
+									: armed === null
+										? session.beginPlace(primitive)
+										: session.beginPlaceModel(armed);
 							if (begun.kind === 'refused') {
 								gestureSurface = null;
 								return false;
@@ -962,8 +985,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								gestureSurface = null;
 								return false;
 							}
-							if (armed === null) session.previewPlace(primitive, support.x, support.z, support.elevation);
-							else session.previewPlaceModel(armed, support.x, support.z, support.elevation);
+			if (copy !== null) {
+				session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice);
+			} else if (armed === null) {
+				session.previewPlace(primitive, support.x, support.z, support.elevation);
+							} else {
+								session.previewPlaceModel(armed, support.x, support.z, support.elevation);
+							}
 							return true;
 						}
 						const primary = adapterContext.selectionState().primary;
@@ -1014,8 +1042,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							session.invalidatePreview();
 							return true;
 						}
-						const armed = session.armedModel();
-						if (armed === null) {
+						const copy = session.armedFormCopy();
+						const armed = copy === null ? session.armedModel() : null;
+			if (copy !== null) {
+				session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice);
+			} else if (armed === null) {
 							session.previewPlace(
 								session.placePrimitive(),
 								support.x,
@@ -1114,14 +1145,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				cardActions(subject) {
 					if (subject.reference?.domain !== 'scene') return [];
 					const entity = source.entities.find((entity) => entity.id === subject.sourceId && entity.kind === 'form');
-					if (entity === undefined) return [];
+					if (entity === undefined || entity.kind !== 'form') return [];
 					const snapshot = services.stage.snapshot();
-					return [{ id: 'scene-form-delete', label: 'Delete form', destructive: true,
-						detail: `Remove ${entity.name}. Undo restores it.`,
-						async run() {
-							const { deleteForm } = await import('./scene/form-card-command');
-							return deleteForm(services, snapshot, entity.id);
-						} }];
+					// My Objects Save is adapter-owned UI inside the form fields, so the
+					// Card action row keeps its one destructive action and the host shell is
+					// unchanged.
+					return [
+						{
+							id: 'scene-form-delete',
+							label: 'Delete form',
+							destructive: true,
+							detail: `Remove ${entity.name}. Undo restores it.`,
+							async run() {
+								const { deleteForm } = await import('./scene/form-card-command');
+								return deleteForm(services, snapshot, entity.id);
+							}
+						}
+					];
 				},
 				cardFacts(cardSubject: StageCardSubject) {
 					// Only a Scene entity subject claims Scene facts; a Layout subject keeps

@@ -124,7 +124,7 @@ test('two concurrent migration runners serialize and both finish cleanly', async
 			['fulfilled', 'fulfilled']
 		);
 		const versions = await left.query('SELECT version FROM schema_migrations ORDER BY version');
-		assert.deepEqual(versions.rows.map((row) => row.version), [1, 2, 3, 4, 5, 6, 7]);
+		assert.deepEqual(versions.rows.map((row) => row.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 		const fence = await left.query(
 			"SELECT is_nullable FROM information_schema.columns WHERE table_schema = $1 AND table_name = 'project_versions' AND column_name = 'source_format'",
 			[schema]

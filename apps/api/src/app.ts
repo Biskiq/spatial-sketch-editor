@@ -49,6 +49,14 @@ import {
 	readModelRevisionContent,
 	uploadModelFile
 } from './model-persistence.js';
+import {
+	FormLibraryInputError,
+	FormLibraryNotFoundError,
+	listFormLibraryItems,
+	readFormLibraryItem,
+	removeFormLibraryItem,
+	saveFormLibraryItem
+} from './form-library.js';
 import type { ObjectStore } from './object-store.js';
 import { listProjects, loadProject, ProjectNotFoundError } from './project-persistence.js';
 import { SaveRefusalError, saveAcceptedSource } from './save-persistence.js';
@@ -166,7 +174,9 @@ export function createApp({
 					.header('Access-Control-Allow-Credentials', 'true')
 					.header('Vary', 'Origin')
 					.header('Access-Control-Allow-Methods', 'GET, PUT, POST, PATCH, DELETE, OPTIONS')
-					.header('Access-Control-Allow-Headers', 'Content-Type');
+					.header('Access-Control-Allow-Headers', 'Content-Type')
+					// My Objects reads these two headers to verify the item it listed.
+					.header('Access-Control-Expose-Headers', 'ETag, X-Library-Format-Version');
 			}
 			if (request.method === 'OPTIONS') {
 				if (!origin || origin !== expectedBrowserOrigin) {
@@ -672,6 +682,75 @@ export function createApp({
 		}
 	});
 
+	// T5.P01.S04 — My Objects, the owner-scoped `form` library scope. Every route
+	// is authenticated and owner-filtered; another owner's item answers as not
+	// found. An item is not project data, so no project/release/visitor route can
+	// reach it.
+	const requireLibrarySession = async (request: FastifyRequest, reply: FastifyReply) => {
+		if (!sessionUserId(request, sessionsEnabled)) return unauthorized(reply);
+	};
+
+	app.get('/library/items', { onRequest: requireLibrarySession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		if (!userId) return unauthorized(reply);
+		try {
+			// Owner names and ids are as private as the bytes; never let a browser
+			// retain them across a sign-out or owner switch.
+			reply.header('Cache-Control', 'private, no-store');
+			return { items: await listFormLibraryItems(pool, userId) };
+		} catch (error) {
+			return libraryFailure(app, reply, error, 'Library list failed');
+		}
+	});
+
+	app.post('/library/items', { onRequest: requireLibrarySession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		if (!userId) return unauthorized(reply);
+		try {
+			if (!isJsonContentType(request.headers['content-type'])) {
+				return reply.code(415).send(errorBody('unsupported_media_type', 'Unsupported Media Type'));
+			}
+			return reply.code(201).send(await saveFormLibraryItem(pool, userId, request.body));
+		} catch (error) {
+			return libraryFailure(app, reply, error, 'Library save failed');
+		}
+	});
+
+	app.get('/library/items/:itemId', { onRequest: requireLibrarySession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const itemId = (request.params as { itemId?: unknown }).itemId;
+		if (!userId) return unauthorized(reply);
+		if (!isValidLibraryItemId(itemId)) return notFound(reply);
+		try {
+			const { summary, bytes } = await readFormLibraryItem(pool, userId, itemId);
+			return reply
+				.header('Content-Type', 'application/json; charset=utf-8')
+				.header('Content-Length', String(bytes.byteLength))
+				.header('ETag', `"${summary.contentId}"`)
+				.header('X-Library-Format-Version', String(summary.formatVersion))
+				// Owner-scoped bytes are never a shared or long-lived browser cache:
+				// Remove must be immediate, and a later session must re-authorize rather
+				// than read a previous owner's item from disk.
+				.header('Cache-Control', 'private, no-store')
+				.send(Buffer.from(bytes));
+		} catch (error) {
+			return libraryFailure(app, reply, error, 'Library read failed');
+		}
+	});
+
+	app.delete('/library/items/:itemId', { onRequest: requireLibrarySession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const itemId = (request.params as { itemId?: unknown }).itemId;
+		if (!userId) return unauthorized(reply);
+		if (!isValidLibraryItemId(itemId)) return notFound(reply);
+		try {
+			await removeFormLibraryItem(pool, userId, itemId);
+			return reply.code(204).send();
+		} catch (error) {
+			return libraryFailure(app, reply, error, 'Library remove failed');
+		}
+	});
+
 	// AM-9's publication gap: prepared delivery is T4's, and no public document
 	// or asset read is served from an authored row. Both routes answer an
 	// honest not-found for every ID, including a prior `/p/` link.
@@ -801,6 +880,21 @@ function assetInputFailure(reply: FastifyReply, error: AssetInputError) {
 
 function modelInputFailure(reply: FastifyReply, error: ModelInputError) {
 	return reply.code(error.statusCode).send(errorBody(error.code, error.message));
+}
+
+function libraryFailure(app: FastifyInstance, reply: FastifyReply, error: unknown, message: string) {
+	if (error instanceof FormLibraryInputError) {
+		return reply.code(error.statusCode).send(errorBody(error.code, error.message));
+	}
+	if (error instanceof FormLibraryNotFoundError) return notFound(reply);
+	return databaseFailure(app, reply, error, message);
+}
+
+function isValidLibraryItemId(value: unknown): value is string {
+	return (
+		typeof value === 'string' &&
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+	);
 }
 
 function modelFailure(app: FastifyInstance, reply: FastifyReply, error: unknown, message: string) {
