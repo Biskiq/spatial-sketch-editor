@@ -1,9 +1,11 @@
 # T5.P01.S04 — My Objects: save and insert editable copies: implementation plan
 
-**Slice:** T5.P01.S04 · **Status:** proposed. It is completed and approved after `T5.P01.S01` is
-accepted and T2 agrees the library-scope design (decision D8 in the
-[record](../../../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-decisions));
-it may run beside S02 · **Phase:** [T5.P01](../README.md) ·
+**Slice:** T5.P01.S04 · **Status:** accepted by owner ruling 2026-10-28; routine closeout and P1
+merge authorized on [PR #216](https://github.com/Biskiq/spatial-sketch-editor/pull/216), with
+browser and performance evidence deferred to S03. `T5.P01.S01` is accepted and the owner accepted
+T2's library-scope review (decision D8 in the
+[record](../../../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-decisions)) ·
+**Phase:** [T5.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T5](../../README.md) · **Direction:**
 [umbrella plan](../../umbrella-plan.md) · **Runbook:**
 [T5 operations](../../../../operations/t5-expressive-geometry/README.md)

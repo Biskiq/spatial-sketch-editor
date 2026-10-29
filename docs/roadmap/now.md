@@ -8,7 +8,7 @@ A scope absent from this table is held. A row states the condition under which t
 | --- | --- | --- |
 | `T5.P01.S01` | released; starts after PR #207 merges on `main`; the T2 prerequisite merged with PR #199 and T2.P02 closed 2026-10-27; recheck consumed gates and active scopes at its own trusted base | [Native form source and evaluation](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md) |
 | `T5.P01.S02` | released 2026-10-28; owner authorized acceptance, closeout and P1 merge after clean T1/T2 reviews and satisfied repository gates; recheck consumed gates and active scopes at the trusted base | [Shape reading and sizing](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s02-shape-reading-and-sizing/implementation-plan.md) |
-| `T5.P01.S04` | released 2026-10-28 by the owner's explicit greenlight in the implementation thread; S01 is accepted; D8 records T5 landing the `form` library scope under T2 review, and that review is pending on the implementation PR; recheck consumed gates and active scopes at the trusted base | [My Objects: save and insert editable copies](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s04-my-objects-editable-copies/implementation-plan.md) |
+| `T5.P01.S04` | released 2026-10-28 by the owner's implementation greenlight; the owner accepted T2's D8 library-scope review and the two recorded deviations on 2026-10-28, deferred browser and performance evidence to S03, and authorized acceptance, routine same-PR closeout and the P1 merge; S01 is accepted; the row remains until a later explicit owner release prunes the verified shipped scope | [My Objects: save and insert editable copies](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s04-my-objects-editable-copies/implementation-plan.md) |
 
 Provenance: the
 [T1.P02.S04 authorization](../reference/decisions/t1-p02-s04-authorization-2026-10-28.md) releases
@@ -36,9 +36,11 @@ and P1-merged in `eb0931d6` (PR #210); T1.P02 closed 2026-10-28 by owner ruling 
  directing the coordinator to proceed with S02 acceptance, closeout and merge, conditional on clean
  reviews and satisfied repository gates. This ruling is S02-only; it releases neither S03 nor S04
  and waives no acceptance criterion. The S02 row remains until a later explicit owner release prunes
- the verified shipped scope. On 2026-10-28 the owner also greenlit `T5.P01.S04` implementation in
- that thread; its row records T2's still-outstanding library-scope review rather than a completed
- agreement or acceptance.
+ the verified shipped scope.On 2026-10-28 the owner also greenlit `T5.P01.S04` implementation in
+that thread, then accepted T2's D8 library-scope review and the two recorded S04 deviations and
+authorized acceptance, routine same-PR closeout and the P1 merge; browser and performance evidence
+remain deferred to S03. The row stays until a later explicit owner release prunes the verified
+shipped scope.
 
 T3 provenance: the [phase-close and P04 authorization decision](../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)
 closed `T3.P02` and `T3.P03` and released `T3.P04.S01`; that scope shipped, closed 2026-10-25 and no
