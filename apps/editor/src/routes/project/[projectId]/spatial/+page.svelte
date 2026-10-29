@@ -2357,11 +2357,16 @@
 		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
 		session.setHover({ reference });
 		const primary = primaryEntry(stage.selectionState());
-		hoverSelection = primary !== null && sameReference(primary.reference, reference)
-			? null
-			: representation === undefined
-				? { reference }
-				: { reference, representation };
+		const nextHover =
+			primary !== null && sameReference(primary.reference, reference)
+				? null
+				: representation === undefined
+					? { reference }
+					: { reference, representation };
+		// Identity, not object identity: a pointer moving within one subject must not
+		// rebuild the Stage's ink every frame.
+		if (nextHover === null) hoverSelection = null;
+		else if (hoverSelection === null || !sameReference(hoverSelection.reference, nextHover.reference)) hoverSelection = nextHover;
 	}
 
 	function onPointerMove(event: PointerEvent): void {

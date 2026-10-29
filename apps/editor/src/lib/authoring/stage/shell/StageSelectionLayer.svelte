@@ -17,9 +17,10 @@
 	 *   camera shows only when world meshes are drawn. Raycasting keeps its
 	 *   default layer mask and never hits this ink.
 	 *
-	 * It deliberately does not own Paper ink: S04's Paper layer re-strokes the
-	 * selected fragment and footprint on vellum, where a mesh tint would be the
-	 * wrong reading.
+	 * It deliberately does not own Paper ink: `StagePaper` re-strokes the selected
+	 * fragment and footprint on vellum through `paper-marks`, where a mesh tint
+	 * would be the wrong reading. The two are mounted exclusively: this layer on
+	 * the mat, the Paper re-stroke while Paper is visible.
 	 */
 	import { T, useThrelte } from '@threlte/core';
 	import {
@@ -36,7 +37,7 @@
 	import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
-	import type { ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
+	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 
 	let {
@@ -44,7 +45,6 @@
 		hover,
 		geometry,
 		scenePick,
-		visible = true,
 		width = 1,
 		height = 1
 	}: {
@@ -52,7 +52,6 @@
 		hover: StageSelectionEntry | null;
 		geometry: CompiledLayoutGeometry;
 		scenePick: ScenePickSource;
-		visible?: boolean;
 		/** Viewport CSS size; fat-line width is in CSS pixels at this resolution. */
 		width?: number;
 		height?: number;
@@ -142,10 +141,11 @@
 		};
 	}
 
+	/** An invisible node is not drawn, so it must not contribute a gold clone either. */
 	function meshesUnder(object: Object3D): Mesh[] {
 		const meshes: Mesh[] = [];
 		object.traverse((node) => {
-			if (node instanceof Mesh && node.geometry !== undefined) meshes.push(node);
+			if (node instanceof Mesh && node.geometry !== undefined && hasVisibleAncestor(node)) meshes.push(node);
 		});
 		return meshes;
 	}
@@ -197,17 +197,21 @@
 					resolution
 				});
 				const halo = new LineSegments2(edgeGeometry, haloMaterial);
+				// Selection outranks hover when two subjects share an edge: the gold
+				// identity must never be cut by a neighbouring neutral preview.
+				const haloOrder = tone === 'selection' ? 21 : 18;
+				const lineOrder = haloOrder + 1;
 				halo.matrixAutoUpdate = false;
 				halo.matrix.copy(matrix);
 				halo.frustumCulled = false;
-				halo.renderOrder = 19;
+				halo.renderOrder = haloOrder;
 				halo.layers.set(2);
 				root.add(halo);
 				const line = new LineSegments2(edgeGeometry, lineMaterial);
 				line.matrixAutoUpdate = false;
 				line.matrix.copy(matrix);
 				line.frustumCulled = false;
-				line.renderOrder = 20;
+				line.renderOrder = lineOrder;
 				line.layers.set(2);
 				root.add(line);
 				inked.push({
@@ -236,7 +240,8 @@
 				const tint = new Mesh(tintGeometry, tintMaterial);
 				tint.matrixAutoUpdate = false;
 				tint.matrix.copy(matrix);
-				tint.renderOrder = 18;
+				// Above hover's line (19), below the selection's own halo/contour.
+				tint.renderOrder = 20;
 				tint.layers.set(2);
 				root.add(tint);
 				inked.push({
@@ -255,7 +260,6 @@
 
 	function rebuild(): void {
 		releaseAll();
-		root.visible = visible;
 		apply(selection, 'selection');
 		// Hover is subordinate and never drawn for the selected subject itself. The
 		// full canonical reference is the identity, not just its id.
@@ -271,7 +275,6 @@
 		selection;
 		hover;
 		geometry;
-		visible;
 		width;
 		height;
 		rebuild();

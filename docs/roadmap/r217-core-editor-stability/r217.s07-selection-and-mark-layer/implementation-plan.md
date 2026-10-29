@@ -1,6 +1,6 @@
 # R217.S07 — Selection, hover and the mark layer: implementation plan
 
-**Slice:** R217.S07 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+**Slice:** R217.S07 · **Status:** implemented; owner release-list registration explicitly waived · **Phase:**
 [R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
 **Reviewers:** T2 and T5 (descriptor contract), T3 (selection echo in Experience) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md)
@@ -62,11 +62,15 @@ Experience Camera marks (unchanged).
   Both live in the one Canvas on the Stage overlay layer (S04 §4.1.1), with no post-processing
   composer. They are built from the existing Layout and Scene render groups by source id, and are
   never parented under a registered pick root, so the pick source cannot hit a tint clone.
-- **Plan selection.** The Paper layer re-strokes the selected source's fragments and footprints in
-  contrast-safe gold ink `#74560c`, at +0.5 px width, above their layer.
-- **Hover.** The same two mechanisms in a neutral tone: edge `#F3F4EE` at 0.6, no tint in 3D, and a
-  1 px outline in Plan. It is drawn from `session.hover()` and never in gold. Hover is not drawn
-  for the selected subject.
+- **Plan selection (as built).** The Paper layer re-strokes the selected source's fragments and
+  footprints in PLATE gold `#d4ad45` over the vocabulary's dark halo, above the sheet. A filled
+  subject is stroked from the **union** of its fills, so a Wall's per-span cut bands do not
+  expose a tick at every shared span edge; non-cut lines (lintel, projected, symbol) remain part
+  of the identity. The plan's earlier `#74560c` / +0.5 px line was rejected on the dark cut
+  band, where it disappears; the halo is what makes gold legible on both vellum and poché.
+- **Hover (as built).** The same two mechanisms in a neutral tone: edge `#F3F4EE` at 0.6, no tint
+  in 3D, and a 2 px neutral contour over the dark halo in Plan. It is drawn from
+  `session.hover()` and never in gold. Hover is not drawn for the selected subject.
 - **Echo.** The Index row and Card identity already follow `selectionState()`; they are unchanged.
   The collapsed-Index chip (S02) uses the same entry.
 - **Removed:** `selectionMarker` and its gold dot. Generic `markers` remain only for task previews,
@@ -170,7 +174,8 @@ type StageHandleDescriptor = StageEditingGrip | StageDisclosureMark;
 - **Owner amendment (2026-10-29):** the Angle ring is removed from the plan and the Stage. It
   competed with the geometry and is not in the ratified Wall vocabulary. Angle remains a Card
   field through the unchanged `layout-wall-angle` planner; no replacement grip is added.
-- **Opening:** position (track along the host Wall) and width (two rays).
+- **Opening:** position (track along the host Wall) and width (one ray from the free edge; the
+  existing planner fixes the start edge, so a second width grip would be a false affordance).
 - **Wall thickness** stays a Card field. It is currently top-level; grouping it under More is
   Card work outside S07 and is not landed here.
 - **Removed in the same PR:** the three CSS-point overlay handles and their labels, and the

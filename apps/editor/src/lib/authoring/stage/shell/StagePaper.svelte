@@ -10,12 +10,15 @@
 	 *
 	 * It owns no geometry authority: every line, fill and outline comes from
 	 * `buildPaperPlan`. S05 adds the grid on the same layer; S07 re-strokes the
-	 * selected source's entries from the same drawing set.
+	 * selected source's entries from the same drawing set through `paper-marks`,
+	 * as a filter over this drawing rather than a second Plan.
 	 */
 	import { useThrelte } from '@threlte/core';
 	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
 	import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
+	import type { StageSelectionEntry } from '../semantic-selection';
 	import { buildPaperPlan } from '../paper-plan';
+	import { createPaperMarkScene, paperMarkSet, type PaperMarkSceneResources } from '../paper-marks';
 	import { createPaperScene, type PaperSceneResources } from '../paper-scene';
 
 	let {
@@ -27,6 +30,8 @@
 		instant = false,
 		isFootprintMounted = () => true,
 		datumMeters = 0,
+		selection = null,
+		hover = null,
 		revision = 0
 	}: {
 		plan: PlanEvaluation;
@@ -41,13 +46,20 @@
 		isFootprintMounted?: (entityId: string) => boolean;
 		/** The level datum the Plan is drawn on; footprints sit on the same plane. */
 		datumMeters?: number;
+		/** The canonical primary selection; its Paper ink is a re-stroke, never a pick root. */
+		selection?: StageSelectionEntry | null;
+		/** The hovered subject; quiet neutral contour, suppressed for the selection itself. */
+		hover?: StageSelectionEntry | null;
 		/** Changes when Scene entity roots mount or unmount, so the drawing follows. */
 		revision?: number;
 	} = $props();
 
 	const { scene, invalidate } = useThrelte();
 	let resources = $state.raw<PaperSceneResources | null>(null);
+	let markResources = $state.raw<PaperMarkSceneResources | null>(null);
 	let shown = false;
+	/** The current settle-in amount, so a selection built mid-fade joins the same fade. */
+	let fade = 0;
 
 	// Rebuilt only when the evaluation or the footprint projection changes identity.
 	// A Camera move retains the Plan, so a pan does not rebuild the drawing.
@@ -57,6 +69,10 @@
 		void revision;
 		return buildPaperPlan(plan, compiled, footprints, { isFootprintMounted, datumMeters });
 	});
+
+	// The selection is a filter over the drawing Paper already owns; a pan does not
+	// rebuild it, and the entries can never disagree with what is drawn underneath.
+	const marks = $derived.by(() => paperMarkSet(drawing, selection, hover));
 
 	$effect(() => {
 		const built = createPaperScene(drawing, [1, 1]);
@@ -72,17 +88,40 @@
 	});
 
 	$effect(() => {
+		const built = createPaperMarkScene(marks, [1, 1]);
+		built.setFade(fade);
+		markResources = built;
+		scene.add(built.group);
+		invalidate();
+		return () => {
+			scene.remove(built.group);
+			built.dispose();
+			markResources = null;
+			invalidate();
+		};
+	});
+
+	$effect(() => {
 		const current = resources;
-		if (current === null) return;
-		current.setResolution(width, height);
+		const currentMarks = markResources;
+		if (current === null && currentMarks === null) return;
+		current?.setResolution(width, height);
+		currentMarks?.setResolution(width, height);
 		invalidate();
 	});
 
 	$effect(() => {
 		const current = resources;
+		// A selection built mid-settle joins the drawing's fade instead of popping in.
+		const currentMarks = markResources;
 		if (current === null) return;
+		const apply = (amount: number): void => {
+			fade = amount;
+			current.setFade(amount);
+			currentMarks?.setFade(amount);
+		};
 		if (instant || shown) {
-			current.setFade(1);
+			apply(1);
 			shown = true;
 			invalidate();
 			return;
@@ -93,12 +132,12 @@
 		let frame = 0;
 		const step = (now: number): void => {
 			const amount = Math.min(1, (now - started) / 150);
-			current.setFade(amount);
+			apply(amount);
 			invalidate();
 			if (amount < 1) frame = requestAnimationFrame(step);
 			else shown = true;
 		};
-		current.setFade(0);
+		apply(0);
 		frame = requestAnimationFrame(step);
 		return () => cancelAnimationFrame(frame);
 	});

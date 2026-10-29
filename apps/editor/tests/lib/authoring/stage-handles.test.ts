@@ -13,7 +13,9 @@
  *    are structurally gone.
  */
 import { readFileSync } from 'node:fs';
+import { BoxGeometry, Group, Mesh } from 'three';
 import { describe, expect, it } from 'vitest';
+import { createScenePickSource, hasVisibleAncestor } from '$lib/authoring/scene/scene-pick-source';
 import {
 	STAGE_MARK_GLYPH_CSS,
 	admitStageHandles,
@@ -443,10 +445,8 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		expect(mounted.facade.selectionState().primary).not.toBeNull();
 		expect(mounted.facade.closeDisclosure()).toBe(false);
 	});
-});
-
-describe('R217.S07 — selection and hover ink', () => {
-	it('keeps gold for the selected subject and neutral for hover', () => {
+});	describe('R217.S07 — selection and hover ink', () => {
+	it('keeps gold for the selected subject and neutral for hover on the mat', () => {
 		const layer = readFileSync(
 			new URL('../../../src/lib/authoring/stage/shell/StageSelectionLayer.svelte', import.meta.url),
 			'utf8'
@@ -464,7 +464,46 @@ describe('R217.S07 — selection and hover ink', () => {
 		// The accepted subject is depth-tested; an occluded wall must not glow
 		// through the wall in front of it.
 		expect(layer).toContain('depthTest: true');
+		// Appearance, selection and hover are conditions of mounting, never a
+		// write to `Object3D.visible` (the pick source's eligibility flag).
+		expect(layer).not.toContain('root.visible');
+		// Hidden LODs/children are not drawn, so they cannot contribute a gold clone.
+		expect(layer).toContain('hasVisibleAncestor(node)');
+		// Selection outranks hover when two identities share an edge.
+		expect(layer).toContain("tone === 'selection' ? 21 : 18");
+		expect(layer).toContain('tint.renderOrder = 20');
+		const canvas = readFileSync(
+			new URL('../../../src/lib/authoring/stage/shell/StageCanvas.svelte', import.meta.url),
+			'utf8'
+		);
+		expect(canvas).toMatch(/\{#if !paperVisible\}[\s\S]*<StageSelectionLayer/);
 	});
+
+	it('re-strokes the selected Paper entries instead of tinting a mesh', () => {
+		const paper = readFileSync(
+			new URL('../../../src/lib/authoring/stage/shell/StagePaper.svelte', import.meta.url),
+			'utf8'
+		);
+		expect(paper).toContain('paperMarkSet(drawing, selection, hover)');
+		expect(paper).toContain('createPaperMarkScene(marks');
+		const marks = readFileSync(
+			new URL('../../../src/lib/authoring/stage/paper-marks.ts', import.meta.url),
+			'utf8'
+		);
+		// Same gold as the mesh ink, a restrained neutral for hover, and a filter
+		// over Paper's own drawing by the identity the selection names.
+		expect(marks).toContain("PAPER_SELECTION_INK = '#d4ad45'");
+		expect(marks).toContain("PAPER_HOVER_INK = '#f3f4ee'");
+		expect(marks).toContain('PAPER_MARK_HALO_INK');
+		expect(marks).toContain("line.sourceId === id");
+		expect(marks).toContain("footprint.entityId === id");
+		expect(marks).toContain('sameReference(hover.reference, selection.reference)');
+		// S04 handoff: overlay layer, no depth test, above the whole sheet.
+		expect(marks).toContain('STAGE_OVERLAY_LAYER');
+		expect(marks).toContain('depthTest: false');
+		expect(marks).toContain('PAPER_LAYER.sceneFootprint + 12');
+	});
+
 
 	it('never uses gold for a hovered disclosure', () => {
 		const overlay = readFileSync(
@@ -472,6 +511,34 @@ describe('R217.S07 — selection and hover ink', () => {
 			'utf8'
 		);
 		expect(overlay).not.toMatch(/disclose:hovered\s+\.disclosure\s*\{[^}]*#d4ad45/s);
+	});
+});
+
+describe('R217.S07 — lazy render ink', () => {
+	it('treats a hidden child as ineligible ink geometry', () => {
+		const root = new Group();
+		const hidden = new Group();
+		const mesh = new Mesh(new BoxGeometry(1, 1, 1));
+		hidden.add(mesh);
+		root.add(hidden);
+		expect(hasVisibleAncestor(mesh)).toBe(true);
+		hidden.visible = false;
+		expect(hasVisibleAncestor(mesh)).toBe(false);
+	});
+
+	it('notifies the render observers after a late child mounts', async () => {
+		const pick = createScenePickSource();
+		const root = new Group();
+		pick.register('entity-a', root);
+		// The registration's own microtask is not this assertion's subject.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		let notifications = 0;
+		const stop = pick.onRenderRootsChanged(() => { notifications += 1; });
+		root.add(new Mesh(new BoxGeometry(1, 1, 1)));
+		pick.refresh();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(notifications).toBeGreaterThan(0);
+		stop();
 	});
 });
 

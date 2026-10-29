@@ -128,7 +128,8 @@ describe('Stage shell composition', () => {
 			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
-			'apps/editor/src/lib/authoring/stage/paper-scene.ts'
+			'apps/editor/src/lib/authoring/stage/paper-scene.ts',
+			'apps/editor/src/lib/authoring/stage/paper-marks.ts'
 		]);
 
 		// The pose math lives in exactly one place: the realizer copies the
