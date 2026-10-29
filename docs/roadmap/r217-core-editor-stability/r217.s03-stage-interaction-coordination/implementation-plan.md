@@ -51,37 +51,50 @@ order (S04 supplies its layer ranks).
 
 ## 4. Design
 
-### 4.1 Pick candidates (additive binding contract)
+### 4.1 Domain picks (additive binding contract)
 
-`StageAdapterBinding` gains `pickCandidates?(query, context): readonly StagePickCandidate[]` in
-`stage-facade.ts`:
+Resolution has **two stages**:
+
+1. Each domain resolves its **own** winner with its own policy.
+2. The host arbitrates **only between domain winners**.
+
+The host never sees two candidates from one domain, so it cannot reorder within a domain.
+
+`StageAdapterBinding` gains these members in `stage-facade.ts`:
 
 ```ts
 type StagePickQuery = { readonly css: readonly [number, number]; readonly evaluationId: string;
-  readonly purpose: 'select' | 'hover' | 'tool'; readonly toolKind: string | null };
-type StagePickCandidate = {
-  readonly hit: StageSourceHit;
-  readonly depthMeters: number | null; // 3D: distance along the pointer ray to the hit surface
-  readonly planLayer: number | null;   // Plan: the reading's draw rank (higher is on top)
-  readonly cssDistance: number;        // screen distance from the pointer to the hit geometry
-  readonly domainRank: number;         // the domain's own order; lower wins inside the domain
+  readonly purpose: 'select' | 'hover' | 'tool'; readonly tool: StageToolQuery | null };
+type StageToolQuery = { readonly kind: string; readonly scope: 'domain' | 'host' };
+type StageDomainPick = {
+  readonly hit: StageSourceHit;        // the domain's winner, chosen by its own policy
+  readonly refusal: string | null;     // domain words when this subject is ineligible for the tool
+  readonly depthMeters: number | null; // 3D: distance along the pointer ray to the winner's surface
+  readonly planLayer: number | null;   // Plan: draw rank of the winner's layer (higher on top)
+  readonly cssDistance: number;        // screen distance from the pointer to the winner
 };
+// StageAdapterBinding additions
+readonly pick?: (query: StagePickQuery, context: StageAdapterContext) => StageDomainPick | null;
+readonly hostTools?: readonly string[]; // host tool kinds this domain answers, e.g. 'erase', 'measure'
 ```
 
-The domain computes each field with its own policy:
+Each domain computes its winner as it does today:
 
 - **Layout.** The retained Plan pick index moves from the facade into a Layout provider module,
-  `plan-pick-provider.ts`, beside `apps/editor/src/lib/authoring/layout/plan-pick-index.ts`. It keeps
-  its locked Wall → Opening → object → floor priority as `domainRank`. In 3D, `depthMeters` is the
-  ray distance to the pick surface at its drawn height (`pickSurfacesOf` / `worldPointOnSurface`,
-  moved unchanged).
-- **Scene.** The existing `hitProvider` body becomes `pickCandidates`. It keeps its rendered-raycast
-  test (`pickScene`), its yield to a nearer Layout or floor surface, its Plan footprint test and its
-  edge-halo probe through support occlusion. Native forms are Scene entities, so T5 reviews only the
-  form-ray portion.
+  `plan-pick-provider.ts`, beside `apps/editor/src/lib/authoring/layout/plan-pick-index.ts`. Its
+  locked Wall → Opening → object → floor priority and the 8 px tolerance choose the **one** Layout
+  winner, exactly as `resolveSourceHit` does now. In 3D, `depthMeters` is the ray distance to that
+  winner's pick surface at its drawn height (`pickSurfacesOf` / `worldPointOnSurface`, moved
+  unchanged).
+- **Scene.** The existing `hitProvider` body becomes `pick`. It keeps its rendered-raycast test
+  (`pickScene`), its yield to a nearer Layout or floor surface, its Plan footprint test, its
+  edge-halo probe and support occlusion. Its winner's depth is the raycast distance. Native forms
+  are Scene entities, so T5 reviews only the form-ray portion.
 - **Experience lens.** The bindings keep their framing hits and are wrapped unchanged.
 
-`hitProvider` is removed once both domains have moved; there is no compatibility shim.
+`hitProvider` is removed once both domains have moved; there is no compatibility shim. Any change a
+domain wants to its own priority (for example Opening over Wall on Paper) is that domain's policy
+change. It needs its owner's decision and its own test, and it is outside this slice.
 
 ### 4.2 The resolver
 
@@ -89,18 +102,30 @@ The domain computes each field with its own policy:
 It replaces `resolveSourceHit`'s body and keeps its `ResolvedStageHit` result type, so callers are
 unchanged.
 
-1. **Gather** the candidates from every binding eligible for the query: the armed tool's domain
-   only for `tool`; every binding for `select` and `hover`.
-2. **Mark tier.** It is reserved and returns nothing until S07.
-3. **3D:** the smallest `depthMeters` wins. Ties within 1 mm fall to the lower `cssDistance`,
-   then the owning domain's `domainRank`. Ties across domains after that resolve by adapter id, as
-   a recorded last resort.
-4. **Plan:** the highest `planLayer` wins, then the lower `cssDistance`, then `domainRank`.
-   - **Until S04,** `planLayer` reproduces today's order: Scene footprint candidates rank above Layout fragments, as the current Scene-first `hitProvider` loop does.
-   - **From S04,** the Paper layer table supplies the ranks.
+1. **Ask.** Which bindings are asked depends on the query:
 
-The resolver never reorders candidates within a domain, never synthesizes a hit and never rewrites a
-refusal.
+   | Query | Bindings asked |
+   | --- | --- |
+   | `select`, `hover` | Every binding |
+   | `tool` with `scope: 'domain'` (Ink, the Library's placement) | Only the binding that owns the armed tool |
+   | `tool` with `scope: 'host'` (Measure, Eraser; S10) | Every binding whose `hostTools` includes `tool.kind` |
+
+   For a host tool, each domain applies **its own** eligibility for that tool kind. It returns its
+   winner, with `refusal` set when the winner is ineligible (a Room floor for `erase`). It never
+   skips to an eligible subject behind it. For `measure`, the winner's `hit.worldPoint` is the
+   domain's preferred measurable point: Layout snaps to a Wall end or Junction within its
+   tolerance; Scene snaps to a bounds corner within 8 px; otherwise the surface point.
+2. **Mark tier.** It is reserved and returns nothing until S07. A mark winner, when one exists,
+   beats every domain winner.
+3. **Arbitrate between domain winners only:**
+   - **3D:** the smallest `depthMeters` wins; ties within 1 mm fall to the lower `cssDistance`.
+   - **Plan:** the highest `planLayer` wins, then the lower `cssDistance`.
+     - **Until S04,** Scene winners take layer 60 and Layout winners layer 40, which reproduces today's Scene-first order.
+     - **From S04,** the Paper layer table supplies the ranks.
+   - **Final tie** across domains: adapter id, recorded as a last resort.
+4. **Result.** The winning domain's pick is returned as it was given. A refused winner is returned as
+   a refusal carrying the domain's words. The resolver never synthesizes a hit, never rewrites a
+   refusal and never consults a second candidate from any domain.
 
 ### 4.3 Press arbitration
 
@@ -148,11 +173,12 @@ true by construction and becomes a test.
 
 1. **Pick differential** (a new `stage-pick-differential.test.ts` in `apps/editor/tests/lib/authoring/`).
    - **Inputs:** the starter, the L Layout fixture and a fixture with a catalogue model, a primitive and a native form; a fixed grid of 400 pointer samples in each reading.
-   - **Result:** `resolveStagePick({ purpose: 'select' })` equals the recorded pre-S03 `resolveSourceHit` result for every sample.
-   - Any difference is listed in the test with its reason. The only admissible reason is a 3D sample where a Scene entity sat behind a nearer Layout surface the old order did not consult.
-2. **Domain policy preserved.** The tests in `plan-pick-index.test.ts`, `scene-floor-support.test.ts`
-   and `shape-reading-adapter.test.ts` pass without edits. A new test seeds a resolver that reorders
-   one domain's candidates and fails.
+   - **Result:** `resolveStagePick({ purpose: 'select' })` equals the recorded pre-S03 `resolveSourceHit` result for every sample. **Zero differences are expected.**
+   - Any difference fails the test. It may be admitted only as an intended cross-domain policy change approved by T1 and T2 in the acceptance record, and never within a domain.
+2. **Domain order is preserved.**
+   - The tests in `plan-pick-index.test.ts`, `scene-floor-support.test.ts` and `shape-reading-adapter.test.ts` pass without edits.
+   - **Regression (new):** a Wall with a hosted Opening, sampled where the Opening and the Wall overlap within tolerance in both readings. The winner equals Layout's locked-priority winner today, the Wall.
+   - A seeded resolver that ranks two candidates from one domain fails the test. The `pick` contract returns one winner per domain, so this is a type and structural check.
 3. **Hover equals click.** For every differential sample, hover and select resolve the same winner.
    Hover produces no F4 entry, no dirty state and nothing in the Save payload.
 4. **Press arbitration.** With a Wall selected, a press on its end handle is claimed by Layout. With
@@ -171,6 +197,11 @@ true by construction and becomes a test.
 7. **Removal.** `hitProvider` and the registration-order loops are gone from `stage-facade.ts`
    (structural check). The S01 inventory rows for picking point at `stage-pick.ts` or a domain
    provider.
+8. **Host-tool routing.**
+   - A test-only host tool kind `probe` declared by Layout and Scene receives winners from both domains and arbitrates them spatially.
+   - A domain that does not declare it is never asked.
+   - A refused nearest winner returns its domain's refusal rather than a subject behind it.
+   - With a domain tool armed, only its owning binding is asked.
 
 ## 6. Reviews and stop conditions
 
@@ -178,7 +209,7 @@ true by construction and becomes a test.
   Experience wrapping and the Undo reason.
 - **Stop and report if:**
   - the differential shows a change that is not the one admissible case;
-  - a domain's tie-breaking cannot be expressed as `domainRank` without changing its policy;
+  - a domain cannot return its single winner without changing its policy;
   - pinch hand-off needs a Camera change. That goes to Camera's owner.
 
 ## 7. Handoff

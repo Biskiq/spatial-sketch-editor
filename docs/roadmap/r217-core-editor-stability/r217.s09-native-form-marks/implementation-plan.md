@@ -41,12 +41,12 @@ Its Card fields and its marks write the same facts.
 
 ### 4.1 Descriptors for a selected form
 
-| Descriptor | Kind | Fact | Planner | Reveal |
+| Mark | Role and kind | Fact | Planner | Disclosed by |
 | --- | --- | --- | --- | --- |
-| Move | track, as S08 | position | `place-on-floor` | always |
-| Turn | ring, as S08 | yaw | `set-yaw` | always |
-| Scale point | point | — | — | always |
-| Width / Height / Depth | ray along the form's local X / Y / Z from its centre | scale[axis] | `set-form-size` | on-scale-point |
+| Move | grip · track, as S08 | position | `place-on-floor` | — |
+| Turn | grip · ring, as S08 | yaw | `set-yaw` | — |
+| Scale point | **disclosure** · point; reveals Width, Height, Depth | — | none | — |
+| Width / Height / Depth | grip · ray along the form's local X / Y / Z from its centre | scale[axis] | `set-form-size` | Scale point |
 
 - **Measurement.** The descriptor's drag still calls `axisTravelFromRay` and the existing
   `FormSizeMeasurement`. The host draws; T5 measures.
@@ -69,8 +69,9 @@ Its Card fields and its marks write the same facts.
    derived from its new evaluation; there is no stale silhouette.
 3. **Same fact.** The mark, the typed value and `FormCardFields` give identical `form.scale` and
    identical refusal.
-4. **Coarse pointer.** Each ray is pressable through a 44 px area, and overlapping rays resolve by
-   T5's order.
+4. **Disclosure and coarse pointer.**
+   - The three rays are hidden until the scale point is activated, and activation adds no history.
+   - Each ray is pressable through a 44 px area, and overlapping rays resolve by T5's order.
 5. **Regression.** T5.P01's journeys pass (draw → size → Save → reopen; My Objects insert), and the
    golden digests are unchanged.
 6. **No leftovers.** No `scene-form-size-*` overlay ids remain.

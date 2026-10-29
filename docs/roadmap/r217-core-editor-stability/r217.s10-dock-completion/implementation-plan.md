@@ -75,9 +75,14 @@ it. Each tool has an icon, a key and a palette where it needs one.
 ### 4.3 Measure (host tool)
 
 - **Module:** a new `stage-measure.ts` in `apps/editor/src/lib/authoring/stage/`.
-- **Gesture:** press, drag or click twice. Endpoints resolve through the S03 resolver with
-  `purpose: 'tool'`, preferring geometry hits (Wall ends, object corners) and else the snapped datum
-  point.
+- **Gesture:** press, drag or click twice. Each endpoint resolves through the S03 resolver as host
+  tool `{ kind: 'measure', scope: 'host' }`.
+  - Layout and Scene declare `hostTools` including `measure`, and each returns its own measurable
+    point: Layout a Wall end or Junction within its tolerance, Scene a bounds corner within 8 px,
+    or else the surface point.
+  - The two domains' winners are arbitrated spatially, so one measurement can run from a Wall end
+    to an object corner.
+  - With no domain winner, the endpoint is the snapped datum point (S05).
 - **Result:** a dimension line and a mono tag (`3.42 m`), drawn in the mark layer as a dimension
   line.
 - **Lifetime:** Esc clears it, and it persists only until the next measurement or disarm.
@@ -87,9 +92,19 @@ it. Each tool has an icon, a key and a palette where it needs one.
 ### 4.4 Eraser (host tool)
 
 - **Module:** a new `stage-eraser.ts` in `apps/editor/src/lib/authoring/stage/`.
-- **Marking:** while armed, the hover winner (S03 resolver with `purpose: 'tool'`) is drawn in red
-  dashes `#d0412d`, using S07's hover mechanism with the erase treatment. On a coarse pointer the
-  dashes appear on press; sliding off cancels.
+- **Marking:** while armed, the winner of host tool `{ kind: 'erase', scope: 'host' }` is drawn in
+  red dashes `#d0412d`, using S07's hover mechanism with the erase treatment. Layout and Scene
+  declare `hostTools` including `erase`. On a coarse pointer the dashes appear on press; sliding off
+  cancels.
+- **Eligibility is each domain's.**
+
+  | Domain | Eligible | Refused (in the domain's words) |
+  | --- | --- | --- |
+  | Layout | Walls, Openings (its existing Card delete actions) | Room floors, the plinth and the datum |
+  | Scene | Models, primitives, forms (`delete-one`) | Lights; lights are not picked |
+
+  A refused winner is reported with its refusal. The Eraser never skips to an eligible subject
+  behind it.
 - **Click:** looks up the subject's owning binding and calls its delete action:
   - Layout Wall → `wallDeleteIntent`, with its existing consequence summary;
   - Layout Opening → `openingDeleteIntent`;
@@ -98,8 +113,11 @@ it. Each tool has an icon, a key and a palette where it needs one.
   Each is one F4 entry. When a domain's delete needs confirmation (a Wall whose removal merges
   Rooms), the domain's existing disclosure shows at the pointer. The Eraser adds no rule of its own.
 - **Refusal:** an ineligible target (a Room floor, the datum) refuses in words beside the pointer.
-- **Contract:** bindings expose deletion through a new optional `eraseAction?(subject)` that returns
-  their existing Card delete action. No new planner.
+- **Contract:**
+  - bindings expose deletion through a new optional `eraseAction?(subject)`, which returns their
+    existing Card delete action, or a refusal;
+  - the Eraser calls the **winning** domain's `eraseAction` only;
+  - there is no new planner.
 
 ### 4.5 Library
 
@@ -115,11 +133,14 @@ the dock. Its Find entry moves from Find-only (S02) to `home: 'dock'` with `slot
    `layout-drawing-adapter.test.ts`).
 3. **Measure.**
    - Measuring between two Wall ends reports their distance to 1 mm.
+   - One measurement from a Wall end (Layout winner) to a model's bounds corner (Scene winner)
+     reports their distance to 1 mm, which proves cross-domain routing.
    - Measure creates no F4 entry, no dirty state and no proposal, and Undo stays available during it.
 4. **Eraser.**
-   - Erasing a Wall, an Opening, an object and a form gives one entry each, and Undo restores the same ids.
+   - Erasing a Wall, an Opening, a catalogue model, a primitive and a form gives one entry each,
+     each dispatched to its owning domain's action, and Undo restores the same ids.
+   - A Room floor and the plinth refuse in Layout's words, with no entry.
    - Red dashes appear only while the Eraser is armed.
-   - A Room floor refuses in words.
    - On a coarse pointer, press shows the dashes, release erases and slide-off erases nothing.
 5. **Library.** The Library key opens the placement Instrument, and placing an object still works
    (T2 tests).

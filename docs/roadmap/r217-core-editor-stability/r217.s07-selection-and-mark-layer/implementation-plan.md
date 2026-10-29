@@ -50,8 +50,9 @@ Experience Camera marks (unchanged).
     halo pass beneath;
   - a translucent gold tint clone (opacity 0.18, `depthWrite: false`, polygon offset).
 
-  Both live in the one Canvas, with no post-processing composer. The meshes come from the existing
-  Layout and Scene render groups, by source id.
+  Both live in the one Canvas on the Stage overlay layer (S04 §4.1.1), with no post-processing
+  composer. They are built from the existing Layout and Scene render groups by source id, and are
+  never parented under a registered pick root, so the pick source cannot hit a tint clone.
 - **Plan selection.** The Paper layer re-strokes the selected source's fragments and footprints in
   contrast-safe gold ink `#74560c`, at +0.5 px width, above their layer.
 - **Hover.** The same two mechanisms in a neutral tone: edge `#F3F4EE` at 0.6, no tint in 3D, and a
@@ -67,27 +68,58 @@ Experience Camera marks (unchanged).
 `StageAdapterBinding` gains `handles?(context): readonly StageHandleDescriptor[]`, asked only for
 the primary selection's owning binding with no task open:
 
+There are two kinds of mark. An **editing grip** changes source through a domain planner. A
+**disclosure mark** only reveals grips: it writes nothing and enters no history.
+
 ```ts
-type StageHandleDescriptor = {
+type StageHandleBase = {
   readonly id: string;
   readonly kind: 'ray' | 'point' | 'ring' | 'track';
   readonly anchor: Vec3;                       // world
   readonly axis?: Vec3;                        // ray/track direction; ring normal
   readonly extent?: number;                    // drawn length (m) for ray/track; radius for ring
+  readonly label: string;                      // accessible name, e.g. 'Size'
+};
+type StageEditingGrip = StageHandleBase & {
+  readonly role: 'edit';
   readonly fact: string;                       // the Card field this addresses, e.g. 'length'
   readonly verb: string;                       // tag template, e.g. 'Length {value} m'
   readonly planner: string;                    // the domain intent kind a release submits
-  readonly reveal?: 'always' | 'on-scale-point'; // progressive disclosure
+  readonly disclosedBy?: string;               // id of the disclosure mark that reveals it; omitted = always shown
 };
+type StageDisclosureMark = StageHandleBase & {
+  readonly role: 'disclose';
+  readonly reveals: readonly string[];         // ids of this binding's editing grips
+};
+type StageHandleDescriptor = StageEditingGrip | StageDisclosureMark;
 ```
 
-- **Admission.** At registration, the host checks `planner` against the binding's registered domain
-  planners and refuses a descriptor whose planner it lacks, recording it as a diagnostic.
-- **Drawing.** The host draws admitted descriptors in the SVG overlay, projected through the same
+- **Admission** at registration:
+  - **Editing grips** are refused when their `planner` is not one of the binding's registered
+    domain planners, or when their `disclosedBy` names no disclosure mark of the same binding.
+  - **Disclosure marks** are refused when they reveal nothing, or reveal an id that is not an
+    admitted editing grip of the same binding.
+
+  Each refusal is recorded as a diagnostic and the mark is not drawn.
+- **Disclosure state** is host-owned session view state: a set of open disclosure ids for the
+  current primary selection.
+  - **Activation:** a click, a tap, or Enter or Space on a focused disclosure mark. It toggles the
+    mark open or closed.
+  - **No source effect:** it acquires **no** gesture lease, registers no proposal, creates no F4
+    entry and makes nothing dirty. Undo stays available.
+  - **Reset:** a selection change, a lens change or a replacement closes it. **Esc** closes an open
+    disclosure before it clears selection (the route's `dismiss` branch gains this step before
+    `closeSelection`). A 2D ↔ 3D flip keeps it, per reading continuity.
+  - **Hidden grips:** while closed, its grips are not drawn and have no hit area.
+- **Keyboard path:** the Card's fields for the same facts are the non-pointer path. Disclosure marks
+  are also focusable in the overlay, in descriptor order, after the Card.
+
+- **Drawing.** The host draws admitted marks in the SVG overlay, projected through the same
   `ViewportEvaluation`, the existing overlay pattern. Each mark is:
   - a white 1.5 px dashed line with a 3 px dark halo `#152C26`;
   - an open arrowhead at the drag end;
-  - a 6 px white point at anchors, gold `#d4ad45` while held;
+  - a 6 px white point at anchors, gold `#d4ad45` while held; a disclosure point is a 7 px white
+    ring, filled while open;
   - a dark mono value tag, shown only on hover or drag.
 - **Hit areas:** 22 px on a fine pointer and 44 px on a coarse one, while the visual size stays the
   same. Marks fill the S03 resolver's mark tier above world candidates.
@@ -96,7 +128,7 @@ type StageHandleDescriptor = {
 
 ### 4.3 Drag through descriptors
 
-- A press on a mark acquires the gesture lease with the owning adapter as owner and calls the
+- A press on an **editing grip** acquires the gesture lease with the owning adapter as owner and calls the
   binding's existing `pointerIntent` path, with the descriptor id added to `StagePointerIntent` as
   `handleId`.
 - The adapter keeps its candidate, planner and refusal. The tag shows the adapter's published live
@@ -113,13 +145,13 @@ type StageHandleDescriptor = {
 
 `layout.adapter.ts` publishes descriptors for a selected Wall:
 
-| Descriptor | Kind | Fact | Reveal |
+| Descriptor | Kind | Fact | Disclosed by |
 | --- | --- | --- | --- |
-| Start point | point | length | always |
-| End point | point | length | always |
-| Length | ray, along the Wall frame | length | always |
-| Angle | ring at the fixed end | angle | always |
-| Move | track, across the Wall | position | always |
+| Start point | point | length | — |
+| End point | point | length | — |
+| Length | ray, along the Wall frame | length | — |
+| Angle | ring at the fixed end | angle | — |
+| Move | track, across the Wall | position | — |
 
 - **Opening:** position (track along the host Wall) and width (two rays).
 - **Wall thickness** stays a Card field under More.
@@ -129,8 +161,10 @@ type StageHandleDescriptor = {
 
 ## 5. Tests and acceptance criteria
 
-1. **Admission.** A descriptor whose `planner` the binding does not register is refused and not
-   drawn (a new `stage-handles.test.ts` in `apps/editor/tests/lib/authoring/`).
+1. **Admission** (a new `stage-handles.test.ts` in `apps/editor/tests/lib/authoring/`):
+   - an editing grip with an unregistered `planner` is refused and not drawn;
+   - a disclosure mark with no planner and a valid `reveals` is admitted;
+   - a disclosure mark that reveals nothing, or reveals a foreign id, is refused.
 2. **Colour roles.** In both readings:
    - hover never uses `#d4ad45` or `#74560c`;
    - the selected subject has the gold outline and tint, or ink in Plan;
@@ -141,9 +175,14 @@ type StageHandleDescriptor = {
    - each mark and its Card field give byte-identical source and the same refusal text.
 4. **Typing at the gesture.** The sequences digits → Enter, digits → Esc → Esc, and digits → blur
    give one entry, no entry and no entry respectively.
-5. **Coarse pointer.** Under emulated `pointer: coarse`, every Layout mark is pressable through a
+5. **Disclosure behaviour** (a probe binding with one disclosure mark revealing one grip):
+   - opening it shows the grip, with no F4 entry, no dirty state and no live proposal;
+   - Undo stays available;
+   - Esc closes the disclosure first and clears the selection second;
+   - a selection change closes it; a 2D ↔ 3D flip keeps it.
+6. **Coarse pointer.** Under emulated `pointer: coarse`, every Layout mark is pressable through a
    44 px area. A press 20 px from a mark on empty Stage starts navigation, not a mark drag.
-6. **No leftovers.** No `layout-wall-start`, `layout-wall-end` or `layout-wall-body` overlay ids
+7. **No leftovers.** No `layout-wall-start`, `layout-wall-end` or `layout-wall-body` overlay ids
    remain, and `selectionMarker` is removed (structural check).
 
 ## 6. Reviews and stop conditions

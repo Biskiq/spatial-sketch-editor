@@ -55,12 +55,33 @@ remains available as a viewing preference.
 
 - The Paper layer is visible when `evaluation.renderedReading === 'plan'`,
   `evaluation.orthographicWeight === 1` and the preference is **Paper (default)**.
-- While Paper is visible, the 3D Layout and Scene meshes are not drawn. They stay mounted and
-  `visible = false`, so a flip back costs no rebuild.
+- While Paper is visible, the 3D Layout and Scene meshes are **not drawn but remain pickable**.
+  The details are in §4.1.1.
 - During the projective transition the 3D meshes draw on the mat. On settling at `w = 1`, Paper
   fades in over 150 ms; with Reduce motion on, it switches instantly.
-- With **Shaded** chosen, 2D keeps today's mesh rendering. Picking is identical in both, because it
-  never reads the meshes for Plan.
+- With **Shaded** chosen, 2D keeps today's mesh rendering. The semantic pick inputs are identical
+  in both appearances (§4.1.1), so the winners are too.
+
+#### 4.1.1 Appearance is a render mask, never pick eligibility
+
+Scene's Plan pick reads the mounted meshes. `ScenePickSource.pick` raycasts the registered entity
+and Layout roots, and **skips any hit under an ancestor with `visible === false`**
+(`apps/editor/src/lib/authoring/scene/scene-pick-source.ts`). Scene's `pick` (S03) uses that
+raycast twice in Plan: to know which entity is under the pointer, and for the edge-halo probe that
+stops a footprint selecting a hidden or unmounted body. Hiding meshes with `visible = false` would
+therefore make every Paper object symbol unpickable. The rules:
+
+- **`Object3D.visible` keeps one meaning:** mounted and eligible to be hit. No appearance code
+  writes it.
+- **Appearance uses Three's camera layer mask:**
+  - world meshes (Layout shell, Scene entities, ghosts) stay on the default layer 0;
+  - the Paper layer, and every later Stage overlay drawn in the Canvas (S05 grids, S06 Sheet plane, S07 selection and hover outlines), go on a dedicated **Stage overlay layer**, 2;
+  - `StageCamera.svelte`, the realizer, sets `camera.layers` to {0} in 3D and Shaded Plan, to {2} while Paper is visible, and to {0, 2} where both draw.
+- **Raycasting is unaffected.** The pick source's `Raycaster` keeps its default layer mask {0},
+  so it still hits world meshes while they are undrawn, and never hits overlay geometry.
+- **Overlay geometry is never parented** under a registered pick root, so a recursive raycast
+  cannot reach it.
+- **Support occlusion is unaffected.** It uses analytic boxes and evaluated forms, not meshes.
 
 ### 4.2 The Paper layer
 
@@ -128,8 +149,17 @@ tests and fixes only an observed violation, which must not be a Camera change.
    - the comparison is by source id and stream.
 2. **Stream treatment.** A Wall whose top is below the cut height draws in `projected`, not `cut`.
    A seeded hidden fragment draws dashed. A revealed source draws.
-3. **Appearance only.** Under Paper and under Shaded, the S03 pick differential sample set resolves
-   identically. A fresh browser defaults to Paper.
+3. **Picking under both appearances, with real meshes** (a new `stage-paper-pick.test.ts` in
+   `apps/editor/tests/lib/authoring/`). The test mounts the actual Layout and Scene roots in a
+   Three scene graph registered with `createScenePickSource`, and runs `resolveStagePick` (S03).
+   On the forms fixture, under both the Paper mask and the Shaded mask:
+   - a pick at each footprint's interior and at its edge-halo band resolves to its entity;
+   - a footprint whose body is unmounted, or occluded below a support, resolves to nothing;
+   - the Wall/Opening regression from S03 resolves as before;
+   - the result sets under Paper and Shaded are identical.
+
+   A structural check finds no write to `.visible` in Paper or appearance code. A fresh browser
+   defaults to Paper.
 4. **Continuity.** Across 2D → 3D → 2D: the target and `targetPlaneMetersPerCssPixel` are equal,
    the 2D azimuth is a multiple of 90°, and the 3D elevation equals the last working elevation. A
    selected Wall, the armed Ink tool and an open Ink chain survive.
@@ -148,6 +178,7 @@ tests and fixes only an observed violation, which must not be a Camera change.
   - a fragment cannot be drawn without changing the Plan evaluator, since that is a T1
     representation change needing its own review;
   - Paper and picking cannot share one evaluation instance;
+  - a render-mask approach would change visitor rendering, since the visitor never uses layer 2;
   - a continuity rule fails inside Camera code.
 
 ## 7. Handoff

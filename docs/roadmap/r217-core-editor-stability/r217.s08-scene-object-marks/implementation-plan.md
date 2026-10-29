@@ -43,15 +43,19 @@ into the Card writer, which is PLATE's one writer; T1.P02 did the same for Dimen
 
 ### 4.1 Descriptors for a selected object (not a form)
 
-| Descriptor | Kind | Fact | Planner | Reveal |
+| Mark | Role and kind | Fact | Planner | Disclosed by |
 | --- | --- | --- | --- | --- |
-| Move | track on the floor plane, through the footprint centre | position | `place-on-floor` | always |
-| Turn | ring around the vertical axis | yaw | `set-yaw` | always |
-| Scale point | point at the upper corner of the bounds | — | — | always |
-| Size | ray from the base, along the bounds diagonal | scale | `resize-on-floor` | on-scale-point |
+| Move | grip · track on the floor plane, through the footprint centre | position | `place-on-floor` | — |
+| Turn | grip · ring around the vertical axis | yaw | `set-yaw` | — |
+| Scale point | **disclosure** · point at the upper corner of the bounds; reveals Size | — | none | — |
+| Size | grip · ray from the base, along the bounds diagonal | scale | `resize-on-floor` | Scale point |
 
-- **Progressive size.** Clicking or tapping the scale point reveals the Size ray until selection
-  changes or Esc is pressed. The tag reads `Size {scale} · base stays`.
+- **Progressive size.** The scale point is an S07 disclosure mark:
+  - clicking, tapping, or Enter on it toggles the Size ray;
+  - it takes no gesture lease, writes nothing, adds no history and leaves Undo available;
+  - Esc or a selection change closes it.
+
+  The Size grip's tag reads `Size {scale} · base stays`.
 - **Support.** `place-on-floor` and `resize-on-floor` capture `contactMinY` and the support choice as
   today, so the base stays on its support. Resting objects follow by the existing support rule.
 - **Snap.** Move honours the S05 snap fact for free positions.
@@ -83,8 +87,11 @@ context menu.
    or moved object follows its support (extends `scene-floor-support.test.ts`).
 3. **Same fact.** Dragging to a value and typing that value in the Card give byte-identical Scene
    source, and identical refusal text for an invalid value.
-4. **Progressive size.** The Size ray is hidden until the scale point is pressed or tapped. Under
-   `pointer: coarse`, a tap reveals it and every mark has a 44 px area.
+4. **Progressive size.**
+   - The Size grip is hidden and unhittable until the scale point is activated.
+   - Activation creates no F4 entry, no dirty state and no live proposal.
+   - Esc closes the disclosure before clearing selection.
+   - Under `pointer: coarse`, a tap reveals the grip, and every mark has a 44 px area.
 5. **Arrange removed.** No `scene-arrange` task, Find entry or instrument posture remains. Every
    field it offered is in the Card, by a field-set equality test.
 6. **Regression.** The `T2.P01` and `T2.P02` composition and import tests pass, and Save and reload
