@@ -36,7 +36,12 @@
 		onDeleteProject = async () => ({ kind: 'refused' as const, message: 'Unavailable' }),
 		onProjectActionComplete = async () => {},
 		onProjectActionBusyChange = () => {},
-		onRefreshRemoteProject = null
+		onRefreshRemoteProject = null,
+		find = null,
+		indexOpen = true,
+		onOpenIndex = () => {},
+		reducedMotion = false,
+		onToggleReducedMotion = () => {}
 	}: {
 		projectName: string;
 		projectId?: string;
@@ -54,6 +59,11 @@
 		onProjectActionComplete?: (result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>) => void | Promise<void>;
 		onProjectActionBusyChange?: (busy: boolean) => void;
 		onRefreshRemoteProject?: (() => void | Promise<void>) | null;
+		find?: { entries: readonly { id: string; adapterId: string; label: string; verb: string }[]; onRun: (entry: { id: string; adapterId: string; label: string; verb: string }) => void } | null;
+		indexOpen?: boolean;
+		onOpenIndex?: () => void;
+		reducedMotion?: boolean;
+		onToggleReducedMotion?: () => void;
 	} = $props();
 
 	let version = $state(0);
@@ -104,6 +114,15 @@
 	data-project-actions-reason={projectActionsUnavailableReason ?? 'available'}
 	data-project-action-busy={String(projectActionBusy)}
 >
+	{#if !indexOpen}<button type="button" data-head-location onclick={onOpenIndex}>Open Index</button>{/if}
+	<button type="button" data-head-motion aria-pressed={reducedMotion} onclick={onToggleReducedMotion}>Reduce motion</button>
+	{#if find}
+		<div data-head-find><div class="find-results">
+			{#each find.entries as entry (`${entry.adapterId}:${entry.id}`)}
+				<button type="button" data-find-id={entry.id} data-find-adapter={entry.adapterId} onclick={() => find?.onRun(entry)}>{entry.verb} {entry.label}</button>
+			{/each}
+		</div></div>
+	{/if}
 	<ProjectLifecycleActions
 		{projectId}
 		{projectName}

@@ -23,6 +23,8 @@
 	 * target can never intercept input.
 	 */
 	import { onMount, untrack } from 'svelte';
+	import { readAppPreferences, writeAppPreferences, type AppPreferences } from '$lib/platform/app-preferences';
+	import { createEditorMotionClock } from '$lib/platform/editor-motion-clock';
 	import { beforeNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
@@ -90,7 +92,7 @@
 		stageCardActions,
 		stageCardFacts,
 		stageCardWriter,
-		stageContributionGroups,
+		stageFindEntries,
 		stageDockTools
 	} from '$lib/authoring/stage/stage-contributions';
 	import {
@@ -267,6 +269,14 @@
 	let indexOpen = $state(true);
 	let query = $state('');
 	let reducedMotion = $state(false);
+	let preferences = $state<AppPreferences>({ planAppearance: 'paper', reducedMotion: null, motionSpeed: 'normal' });
+	const motionClock = createEditorMotionClock();
+	function updatePreferences(next: AppPreferences): void {
+		const real = performance.now() / 1000;
+		motionClock.setSpeed(next.motionSpeed, real);
+		preferences = next;
+		writeAppPreferences(next);
+	}
 	/**
 	 * The isolated visitor Preview session (T3.P02.S02).
 	 *
@@ -1577,7 +1587,8 @@
 	}
 
 	function nowSeconds(): number {
-		return typeof performance === 'undefined' ? Date.now() / 1000 : performance.now() / 1000;
+		const real = typeof performance === 'undefined' ? Date.now() / 1000 : performance.now() / 1000;
+		return motionClock.read(real);
 	}
 
 	let planKey = '';
@@ -1748,18 +1759,22 @@
 		frame = requestAnimationFrame(tick);
 
 		const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-		reducedMotion = media.matches;
+		preferences = readAppPreferences();
+		motionClock.setSpeed(preferences.motionSpeed, performance.now() / 1000);
+		reducedMotion = preferences.reducedMotion ?? media.matches;
 		const onMedia = (event: MediaQueryListEvent) => {
-			reducedMotion = event.matches;
+			if (preferences.reducedMotion === null) reducedMotion = event.matches;
 		};
 		media.addEventListener('change', onMedia);
 
 		// The shell's width rule: at a constrained width the Card folds to identity
 		// rather than covering the dock/palette's one lower column.
-		const narrow = window.matchMedia('(max-width: 72rem)');
+		const narrow = window.matchMedia('(max-width: 1279px)');
 		narrowShell = narrow.matches;
+		if (narrow.matches) indexOpen = false;
 		const onNarrow = (event: MediaQueryListEvent) => {
 			narrowShell = event.matches;
+			if (event.matches) indexOpen = false;
 		};
 		narrow.addEventListener('change', onNarrow);
 
@@ -2120,7 +2135,7 @@
 		if (selected.reference.domain !== 'layout') {
 			// The host's own task is Plan membership, a Layout projection. A Scene or
 			// other-domain subject is worked through its adapter's contributed task.
-			notice = 'This subject has no Plan membership task. Invoke a contributed operation from the Index.';
+			notice = 'This subject has no Plan membership task. Invoke a contributed operation from Find.';
 			return;
 		}
 		const next: StageTask = {
@@ -2130,6 +2145,8 @@
 		};
 		if (stage.openTask(next)) {
 			task = next;
+			paletteOpen = true;
+			if (narrowShell) cardExpanded = false;
 			// The host's own task: no adapter contributed this instrument.
 			contributedTaskId = null;
 		}
@@ -2171,7 +2188,7 @@
 	 * content; this host only mirrors them into the one instrument home, so a new
 	 * domain adapter needs no change here.
 	 */
-	function invokeContribution(adapterId: string, id: string): void {
+	function invokeContribution(adapterId: string, id: string, revealInstrument = true): void {
 		const stage = facade;
 		if (stage === null) return;
 		// Opening any other contributed operation takes the lower column: put the
@@ -2186,6 +2203,8 @@
 			return;
 		}
 		task = opened.task;
+		if (revealInstrument) paletteOpen = true;
+		if (narrowShell) cardExpanded = false;
 		contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
 	}
 
@@ -2621,11 +2640,11 @@
 	const selectedSubjectLabel = $derived.by((): string | null => {
 		const plan = planView;
 		const selected = selection;
-		if (plan === null || selected === null) return null;
+		if (selected === null) return null;
 		if (selected.reference.domain !== 'layout') return locatedSubjects.find((item) =>
-			item.reference.domain === selected.reference.domain && item.reference.subject.id === selected.reference.subject.id)?.label ?? null;
-		const row = planMembershipOf(plan, selected.reference.subject.id);
-		return row === null ? null : sourceLabel(row.sourceId, row.sourceKind);
+			item.reference.domain === selected.reference.domain && item.reference.subject.id === selected.reference.subject.id)?.label ?? sourceLabel(selected.reference.subject.id, selected.reference.subject.kind);
+		const row = plan === null ? null : planMembershipOf(plan, selected.reference.subject.id);
+		return row === null ? sourceLabel(selected.reference.subject.id, selected.reference.subject.kind) : sourceLabel(row.sourceId, row.sourceKind);
 	});
 
 	/** Plan membership is a Layout fact; another domain's subject has none to report. */
@@ -2744,13 +2763,13 @@
 	 * creator's explicit expansion wins, and the fold is reconsidered once the task
 	 * closes.
 	 */
-	const cardCollapsed = $derived(cardExpanded === null ? narrowShell && task !== null : !cardExpanded);
+	const cardCollapsed = $derived(cardExpanded === null ? narrowShell || (task !== null && (rect?.width ?? 0) < 1100) : !cardExpanded);
 
 	/** Every contributed Find/rail entry from the adapters currently mounted. */
-	const contributionGroups = $derived.by(() => {
+	const findContributions = $derived.by(() => {
 		// Same signal: a newly registered adapter's Find entries appear at once.
 		void contributionsVersion;
-		return stageContributionGroups(facade);
+		return stageFindEntries(facade);
 	});
 
 	/** The bottom dock's armable tools: the contributed entries whose home is the dock. */
@@ -2779,14 +2798,9 @@
 				label: tool.label,
 				verb: 'Arm'
 			})),
-			...contributionGroups.flatMap((group) =>
-				group.entries.map((entry) => ({
-					id: entry.id,
-					adapterId: entry.adapterId,
-					label: entry.label,
-					verb: 'Invoke'
-				}))
-			)
+			...findContributions.map((entry) => ({
+				id: entry.id, adapterId: entry.adapterId, label: entry.label, verb: 'Invoke'
+			}))
 		];
 		return needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle));
 	});
@@ -2823,7 +2837,7 @@
 			.findEntries()
 			.some((entry) => entry.id === armed.id && entry.adapterId === armed.adapterId);
 		if (!stillContributed) return;
-		invokeContribution(armed.adapterId, armed.id);
+		invokeContribution(armed.adapterId, armed.id, false);
 	}
 
 	/** Pressing the armed key again folds or re-opens its palette without disarming the tool. */
@@ -2962,7 +2976,14 @@
 			? 'Preview needs an admitted project source.'
 			: 'Create an Experience in the Experience lens to Preview it.'}
 		{reducedMotion}
-		onToggleReducedMotion={() => (reducedMotion = !reducedMotion)}
+		onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
+		{indexOpen}
+		locationLabel={selectedSubjectLabel}
+		onOpenIndex={() => (indexOpen = true)}
+		planAppearance={preferences.planAppearance}
+		onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+		motionSpeed={preferences.motionSpeed}
+		onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
 		projectActionsUnavailableReason={projectActionsUnavailableReason}
 		{projectActionBusy}
 		onPrepareRename={() => prepareProjectLifecycle(false)}
@@ -3027,13 +3048,10 @@
 			open={indexOpen}
 			onToggle={() => (indexOpen = !indexOpen)}
 			groups={indexGroups}
-			contributions={contributionGroups}
 			selectionId={selectedLocatorId}
-			selectedLabel={selectedSubjectLabel}
 			{query}
 			onQuery={(next) => (query = next)}
 			onSelect={selectSource}
-			onInvokeContribution={invokeContribution}
 			onBringIntoView={(sourceId) => {
 				const subject = locatedSubjects.find((item) => item.id === sourceId);
 				if (subject !== undefined) { bringIntoView(subject.worldPoint); return; }
@@ -3195,6 +3213,8 @@
 				<p class="stage-note preview-actions-note" role="status">Project rename and delete are unavailable in Preview. Exit Preview to manage this project.</p>
 			{/if}
 
+			<div class="reserved-reading" aria-hidden="true" data-shell-reading-slot></div>
+			<div class="reserved-height" aria-hidden="true" data-shell-height-slot></div>
 			<EditorCard
 				identity={preview === null && cardOpen ? cardIdentity : null}
 				facts={cardFacts}
@@ -3234,6 +3254,7 @@
 				entry declares `home: 'dock'`; the shell owns no domain slot of its own.
 			-->
 			<div class="lower-column" hidden={preview !== null} inert={preview !== null} data-lower-column bind:this={lowerColumnEl}>
+				{#if lens === 'world'}
 				<StageDock
 					{armedTaskKind}
 					tools={dockTools}
@@ -3242,6 +3263,7 @@
 					onArm={armDockTool}
 					onTogglePalette={togglePalette}
 				/>
+				{/if}
 				<StageInstrumentHost
 					task={paletteOpen ? taskHost : null}
 					onClose={closeTask}
@@ -3332,6 +3354,7 @@
 		height: 100dvh;
 	}
 	.editor-body {
+		position: relative;
 		display: flex;
 		min-height: 0;
 		flex: 1;
@@ -3374,7 +3397,7 @@
 		bottom: 0.75rem;
 		z-index: 6;
 		display: flex;
-		flex-direction: column;
+		flex-direction: column-reverse;
 		align-items: center;
 		gap: 0.4rem;
 		pointer-events: none;
@@ -3382,10 +3405,20 @@
 	.lower-column > :global(*) {
 		pointer-events: auto;
 	}
+	.lower-column[hidden] { display: none; }
+	.reserved-reading { position: absolute; top: 0.75rem; left: 0.75rem; width: 12rem; height: 3rem; pointer-events: none; }
+	.reserved-height { position: absolute; top: 4rem; right: 0.75rem; bottom: 5rem; width: 2.75rem; pointer-events: none; }
+	@media (max-width: 1279px) {
+		.editor-body > :global(.plate-index) { position: absolute; z-index: 20; top: 0; bottom: 5rem; left: 0; width: min(22rem, 80%); box-shadow: 0 0 0 100vmax rgb(0 0 0 / 25%); clip-path: inset(0 -100vmax 0 0); }
+	}
+	@media (pointer: coarse) {
+		.editor-host { --shell-touch-target: 44px; }
+		.editor-host :global(button), .editor-host :global(summary), .editor-host :global(select), .editor-host :global(input) { min-width: var(--shell-touch-target); min-height: var(--shell-touch-target); }
+	}
 	.stage-actions {
 		position: absolute;
 		top: 0.75rem;
-		right: 0.75rem;
+		left: 0.75rem;
 		display: flex;
 		gap: 0.4rem;
 	}
@@ -3410,7 +3443,7 @@
 	.lens-surface {
 		position: absolute;
 		left: 50%;
-		bottom: 0.75rem;
+		bottom: calc(0.75rem + var(--lower-column-height, 0px));
 		transform: translateX(-50%);
 		max-height: calc(100% - 5rem);
 		width: min(52rem, calc(100% - 1.5rem));

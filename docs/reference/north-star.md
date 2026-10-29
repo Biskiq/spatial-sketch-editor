@@ -33,6 +33,11 @@ The later bounded loops add [straight-Wall drawing, closure, division and deleti
 [straight Wall-hosted door and window placement and deletion](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/acceptance.md),
 [single-model GLB import](../roadmap/t2-composition/t2.p02-own-model-import/README.md#outcome)
 and [Camera capture, Presentation/Guide authoring and isolated Cut Preview](../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
+The shared shell also provides a location chip and browser-local viewing settings in the Head, a
+zero-width collapsed locator Index, contextual Card and centered lower task edge. Narrow desktop
+and iPad use an overlay Index and an invoked Card; Camera vertical framing stays fixed as the
+viewport changes. Paper/Shaded is a preference for the later Paper Plan consumer; editor motion
+speed affects inspection time, while visitor Preview keeps its own timing.
 Their acceptance records retain owner overrides, unrun rows and deferred evidence; this is no
 claim of general modeling or complete destination coverage. Publication reads stay unavailable
 under AM-9 until T4's prepared reader. Sign-in, the project hub and the API remain.

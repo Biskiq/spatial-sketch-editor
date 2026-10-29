@@ -85,9 +85,9 @@
 		width: max-content;
 		max-width: 100%;
 		max-height: min(16rem, 45vh);
-		border: 1px solid #4d4655;
+		border: 1px solid #2f4a3d;
 		border-radius: 0.5rem;
-		background: rgb(25 24 31 / 96%);
+		background: rgb(17 41 31 / 96%);
 		box-shadow: 0 -0.5rem 1.5rem rgb(0 0 0 / 35%);
 		color: #f4f0e9;
 		font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -98,7 +98,7 @@
 		align-items: center;
 		gap: 0.85rem;
 		padding: 0.6rem 0.75rem;
-		border-bottom: 1px solid #383340;
+		border-bottom: 1px solid #2f4a3d;
 	}
 
 	.identity {
@@ -109,7 +109,7 @@
 	}
 
 	.eyebrow {
-		color: #c9a9ff;
+		color: #aebbb0;
 		font-size: 0.65rem;
 		font-weight: 700;
 		letter-spacing: 0.12em;
@@ -163,7 +163,7 @@
 	}
 
 	.close:hover {
-		border-color: #c9a9ff;
+		border-color: #aebbb0;
 	}
 
 	.close:focus-visible {

@@ -109,7 +109,7 @@ beforeEach(async () => {
 	harness.document = await createUnitProject({ id: 'project-1', name: 'Mounted gestures', layout });
 	vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { frames.set(++frameId, cb); return frameId; });
 	vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
-	vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() { }, removeEventListener() { } }));
+	vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('prefers-reduced-motion'), addEventListener() { }, removeEventListener() { } }));
 	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(RECT);
 	vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(RECT.width);
 	vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(RECT.height);
@@ -146,6 +146,43 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 describe('mounted Stage pointer lifecycle', () => {
+	it('moves every registered task entry to Find or the dock and leaves the Index a locator', () => {
+		const registered = facade().findEntries().map((entry) => `${entry.adapterId}:${entry.id}`).sort();
+		const reachable = [...target.querySelectorAll<HTMLElement>('[data-head-find] [data-find-id]')]
+			.filter((entry) => entry.dataset.findAdapter !== 'subject')
+			.map((entry) => `${entry.dataset.findAdapter}:${entry.dataset.findId}`).sort();
+		expect(reachable).toEqual(registered);
+		expect(target.querySelector('[data-plate-landmark="index"] .contributed-group')).toBeNull();
+	});
+	it('changes a browser preference without changing project source or history', async () => {
+		const before = facade().snapshot().canonicalJson;
+		const historyBefore = (harness.host as StageAcceptanceHost).history();
+		target.querySelector<HTMLButtonElement>('[data-head-motion]')!.click();
+		await frame();
+		expect(facade().snapshot().canonicalJson).toBe(before);
+		expect((harness.host as StageAcceptanceHost).history()).toEqual(historyBefore);
+	});
+	it('panel changes and viewport resize do not request Camera framing', async () => {
+		const stageFacade = facade();
+		const request = vi.spyOn(stageFacade, 'requestViewingIntent');
+		const before = stageFacade.camera.state().pose;
+		target.querySelector<HTMLButtonElement>('.index-toggle')!.click();
+		await frame();
+		expect(target.querySelector('[data-plate-landmark="index"]')?.hasAttribute('hidden')).toBe(true);
+		target.querySelector<HTMLButtonElement>('[data-head-location]')!.click();
+		await frame();
+		button('Collapse').click();
+		await frame();
+		button('Expand').click();
+		await frame();
+		const place = [...target.querySelectorAll<HTMLButtonElement>('[data-head-find] button')].find((item) => item.textContent?.includes('Place plinth'))!;
+		place.click();
+		await frame();
+		vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(1024);
+		await frame();
+		expect(stageFacade.camera.state().pose).toEqual(before);
+		expect(request).not.toHaveBeenCalled();
+	});
 	it('selects a located Index row without passing a reactive proxy to immutable selection', async () => {
 		const row = [...target.querySelectorAll<HTMLButtonElement>('.item-row')].find(b => b.textContent?.includes(STARTER_WALL_2))!;
 		row.click();
@@ -286,9 +323,9 @@ describe('mounted Stage drawing and deletion', () => {
 		await frame();
 	}
 
-	/** Invoke a contributed task from the Index by its visible row label. */
+	/** Invoke a contributed task from Find by its visible row label. */
 	async function invokeIndexTask(label: string): Promise<void> {
-		const row = [...target.querySelectorAll<HTMLButtonElement>('.contributed-item button.item-row')].find(
+		const row = [...target.querySelectorAll<HTMLButtonElement>('[data-head-find] .find-results button')].find(
 			(item) => item.textContent?.includes(label)
 		);
 		if (row === undefined) throw new Error(`Missing contributed row ${label}`);
@@ -383,6 +420,22 @@ describe('mounted Stage drawing and deletion', () => {
 		expect(inkSurface()?.snapshot().points).toHaveLength(2);
 	});
 
+	it('keeps the Ink palette collapsed after an accepted drawing re-arms it', async () => {
+		dockKey('layout-ink').click();
+		await settled();
+		await drawPoint([2, 0, -1]);
+		await drawPoint([5, 0, -1]);
+		const canonical = facade().snapshot().canonicalJson;
+		dockKey('layout-ink').click();
+		await settled();
+		expect(target.querySelector('[data-layout-ink-palette]')).toBeNull();
+		key('Enter');
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(canonical));
+		await settled();
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+		expect(target.querySelector('[data-layout-ink-palette]')).toBeNull();
+	});
+
 	it('keeps Stage selection while a non-dock contributed task is open', async () => {
 		const otherWall = wallCenterCss(STARTER_WALL_2);
 		await invokeIndexTask('Place plinth');
@@ -402,12 +455,16 @@ describe('mounted Stage drawing and deletion', () => {
 		dockKey('layout-ink').click();
 		await settled();
 		expect(facade().session.task()?.kind).toBe('layout-ink');
+		dockKey('layout-ink').click();
+		await settled();
+		expect(target.querySelector('[data-stage-instrument]')).toBeNull();
 
 		// Invoking another operation takes the lower column. When that task closes
 		// (an install, a replacement or an explicit close), the tool the creator
 		// left must not come back.
 		await invokeIndexTask('Place plinth');
 		expect(facade().session.task()?.kind).toBe('layout-plinth-place');
+		expect(target.querySelector('[data-stage-instrument="layout-plinth-place"]')).not.toBeNull();
 		facade().closeTask();
 		await settled();
 		expect(facade().session.task()).toBeNull();

@@ -43,7 +43,7 @@ afterEach(() => {
 	target.remove();
 });
 
-function head(find: FindProps | null) {
+function head(find: FindProps | null, location?: { onOpenIndex: () => void }) {
 	target = document.createElement('div');
 	document.body.append(target);
 	component = mount(EditorHead, {
@@ -60,6 +60,9 @@ function head(find: FindProps | null) {
 			previewUnavailableReason: 'Preview needs an admitted project source.',
 			reducedMotion: false,
 			onToggleReducedMotion: () => {},
+			indexOpen: location === undefined,
+			locationLabel: 'Selected wall',
+			onOpenIndex: location?.onOpenIndex,
 			find
 		}
 	});
@@ -72,6 +75,18 @@ const ENTRIES: readonly FindEntry[] = [
 ];
 
 describe('Head Find', () => {
+	it('opens and focuses Find with the shortcut and reopens the Index from location', async () => {
+		const onOpenIndex = vi.fn();
+		const host = head({ query: '', entries: ENTRIES, onQuery: () => {}, onRun: () => {} }, { onOpenIndex });
+		await tick();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true }));
+		const find = host.querySelector<HTMLDetailsElement>('[data-head-find]')!;
+		expect(find.open).toBe(true);
+		expect(document.activeElement).toBe(find.querySelector('input'));
+		const location = [...host.querySelectorAll('button')].find((button) => button.textContent?.includes('Selected wall'))!;
+		location.click();
+		expect(onOpenIndex).toHaveBeenCalledOnce();
+	});
 	it('renders nothing at all when the host contributes no Find', () => {
 		const host = head(null);
 		expect(host.querySelector('[data-head-find]')).toBeNull();

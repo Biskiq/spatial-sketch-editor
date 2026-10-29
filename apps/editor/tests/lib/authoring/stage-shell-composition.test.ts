@@ -26,6 +26,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core';
 
 import {
 	EDITOR_SRC,
@@ -61,6 +62,25 @@ const STAGE_FILES = listSourceFiles(STAGE_DIR)
 const CANVAS_FILE = 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte';
 
 describe('Stage shell composition', () => {
+	it('preserves Camera pose and vertical extent when the viewport height changes', () => {
+		const camera = createViewportCameraState({
+			outputId: 'output', sessionEpoch: 'session', sourceRevision: 'source',
+			pose: { target: [0, 2, 0], azimuthRadians: 0, elevationRadians: 0.35, targetPlaneHeightMeters: 8 },
+			sceneRadiusMeters: 6
+		});
+		const rect = { left: 0, top: 0, width: 1024, height: 768, devicePixelRatio: 1 };
+		const before = evaluateViewport(camera, rect, 0, 1);
+		const after = evaluateViewport(camera, { ...rect, height: 1024 }, 0, 2);
+		expect(before.kind).toBe('evaluated');
+		expect(after.kind).toBe('evaluated');
+		if (before.kind !== 'evaluated' || after.kind !== 'evaluated') throw new Error('viewport unavailable');
+		expect(after.evaluation.target).toEqual(before.evaluation.target);
+		expect(after.evaluation.pose.azimuthRadians).toBe(before.evaluation.pose.azimuthRadians);
+		expect(after.evaluation.pose.elevationRadians).toBe(before.evaluation.pose.elevationRadians);
+		expect(after.evaluation.pose.targetPlaneHeightMeters).toBe(before.evaluation.pose.targetPlaneHeightMeters);
+		expect(before.evaluation.targetPlaneMetersPerCssPixel).toBe(8 / 768);
+		expect(after.evaluation.targetPlaneMetersPerCssPixel).toBe(8 / 1024);
+	});
 	it('mounts exactly one Canvas, through the visitor’s own renderers', () => {
 		// Positive control: the walk is real and non-trivial.
 		expect(STAGE_FILES.length).toBeGreaterThan(4);

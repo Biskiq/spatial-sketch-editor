@@ -28,6 +28,16 @@ const SAVE_STATE = join(EDITOR_SRC, 'lib', 'authoring', 'save', 'save-state.ts')
 const SAVE_CLIENT = join(EDITOR_SRC, 'lib', 'platform', 'project-persistence.ts');
 
 describe('F.4 editor-only isolation', () => {
+	it('keeps browser-local editor preferences out of visitor and public import closures', () => {
+		const preferences = join(EDITOR_SRC, 'lib', 'platform', 'app-preferences.ts');
+		expect(existsSync(preferences)).toBe(true);
+		const preview = join(EDITOR_SRC, 'lib', 'visitor', 'VisitorPreviewSurface.svelte');
+		for (const root of [PUBLIC_ROUTE_ROOT, preview]) {
+			const reached = importClosure([root]);
+			expect(reached.has(root)).toBe(true);
+			expect(reached.has(preferences)).toBe(false);
+		}
+	});
 	it('keeps the acceptance coordinator and its history out of the public route closure', () => {
 		expect(existsSync(COORDINATOR), 'the coordinator must exist for this proof to mean anything').toBe(true);
 

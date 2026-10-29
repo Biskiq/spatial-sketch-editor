@@ -27,15 +27,6 @@ export type StageContributionRow = {
 	readonly taskKind: string;
 };
 
-/** One rail family + capability group of contributed operations. */
-export type StageContributionGroup = {
-	readonly id: string;
-	readonly label: string;
-	readonly family: string;
-	readonly capability: string;
-	readonly entries: readonly StageContributionRow[];
-};
-
 /** One armable **dock** tool contributed by an adapter. */
 export type StageDockTool = {
 	readonly id: string;
@@ -44,11 +35,6 @@ export type StageDockTool = {
 	readonly taskKind: string;
 	readonly order: number;
 };
-
-function humanize(value: string): string {
-	const spaced = value.replace(/[-_]+/g, ' ').trim();
-	return spaced.length === 0 ? value : spaced[0]!.toUpperCase() + spaced.slice(1);
-}
 
 /**
  * The armable tools the **bottom dock** shows: every contributed Find entry whose
@@ -72,37 +58,10 @@ export function stageDockTools(facade: StageFacade | null): readonly StageDockTo
 		}));
 }
 
-/**
- * Everything a mounted adapter contributes to the Index/Find surface.
- *
- * A group with no entries is never returned, and a disposed adapter's entries are
- * gone on the next read because the facade publishes only live registrations. An
- * entry whose home is the dock is **not** listed here: it is armed from the dock,
- * and listing it twice would offer two routes to one task.
- */
-export function stageContributionGroups(
-	facade: StageFacade | null
-): readonly StageContributionGroup[] {
-	if (facade === null) return [];
-	const groups = new Map<string, { family: string; capability: string; entries: StageContributionRow[] }>();
-	for (const entry of facade.findEntries()) {
-		if (entry.home === 'dock') continue;
-		const key = `${entry.railFamily}\u0000${entry.capability}`;
-		const group = groups.get(key) ?? { family: entry.railFamily, capability: entry.capability, entries: [] };
-		group.entries.push({
-			id: entry.id,
-			label: entry.label,
-			adapterId: entry.adapterId,
-			taskKind: entry.taskKind
-		});
-		groups.set(key, group);
-	}
-	return [...groups.entries()].map(([key, group]) => ({
-		id: key.replace('\u0000', ':'),
-		label: `${humanize(group.family)} · ${humanize(group.capability)}`,
-		family: group.family,
-		capability: group.capability,
-		entries: group.entries
+/** Every non-dock contribution remains reachable by Find. */
+export function stageFindEntries(facade: StageFacade | null): readonly StageContributionRow[] {
+	return (facade?.findEntries() ?? []).filter((entry) => entry.home !== 'dock').map((entry) => ({
+		id: entry.id, label: entry.label, adapterId: entry.adapterId, taskKind: entry.taskKind
 	}));
 }
 
