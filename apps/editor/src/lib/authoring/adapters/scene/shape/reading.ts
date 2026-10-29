@@ -191,6 +191,14 @@ export function createShapeReadingSession(
 	let depthDrag: {
 		readonly evaluationId: string;
 		readonly lease: ReturnType<StageAdapterServices['stage']['acquireGesture']>;
+		// A press that is interrupted never chose a depth: the candidate goes back
+		// to the depth (and field) the creator had before the handle was taken.
+		readonly restore: {
+			readonly depth: number;
+			readonly depthText: string;
+			readonly depthValid: boolean;
+			readonly refusal: string | null;
+		};
 	} | null = null;
 	let disposed = false;
 
@@ -393,6 +401,17 @@ export function createShapeReadingSession(
 		depthText = String(depth);
 		depthValid = true;
 		releaseLeases();
+	}
+
+	/** Roll a live depth press back to the state it started from, if one is live. */
+	function discardDepthDrag(): boolean {
+		const interrupted = depthDrag?.restore ?? null;
+		if (interrupted === null) return false;
+		depth = interrupted.depth;
+		depthText = interrupted.depthText;
+		depthValid = interrupted.depthValid;
+		refusal = interrupted.refusal;
+		return true;
 	}
 
 	function releaseLeases(): void {
@@ -677,7 +696,11 @@ export function createShapeReadingSession(
 						publish();
 						return false;
 					}
-					depthDrag = { evaluationId: intent.evaluationId, lease };
+					depthDrag = {
+						evaluationId: intent.evaluationId,
+						lease,
+						restore: { depth, depthText, depthValid, refusal }
+					};
 					return true;
 				}
 				const local = pointAt(context, intent.css);
@@ -702,8 +725,16 @@ export function createShapeReadingSession(
 				return true;
 			}
 			if (intent.phase === 'cancel') {
+				// A cancel is not an ending. The press never selected a depth, so the
+				// candidate it dragged is discarded and the pre-press depth returns —
+				// the open outline and proposal stay exactly where they were.
+				const discarded = discardDepthDrag();
 				releaseLeases();
 				hoverPoint = null;
+				if (discarded) {
+					refresh();
+					return true;
+				}
 				publish();
 				services.stage.notifySurfaceChange();
 				return true;
@@ -711,10 +742,13 @@ export function createShapeReadingSession(
 			if (depthDrag !== null) {
 				if (intent.phase === 'move') {
 					if (intent.evaluationId !== depthDrag.evaluationId) {
-						// A reading flip measured the drag in a projection that is gone.
+						// A reading flip measured the drag in a projection that is gone, so its
+						// partial depth is not the creator's choice either: discard it exactly
+						// as a cancel from the host would.
+						discardDepthDrag();
 						releaseLeases();
 						refusal = 'The reading changed; pull the depth again.';
-						publish();
+						refresh();
 						return true;
 					}
 					const next = depthFromRay(context, intent.css);

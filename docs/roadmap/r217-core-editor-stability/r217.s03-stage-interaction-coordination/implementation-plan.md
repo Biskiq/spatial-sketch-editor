@@ -1,8 +1,9 @@
 # R217.S03 — Stage interaction coordination: implementation plan
 
-**Slice:** R217.S03 · **Status:** released for implementation; owner review and acceptance pending · **Phase:**
+**Slice:** R217.S03 · **Status:** correction applied after dedicated cross-domain review; acceptance pending · **Phase:**
 [R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
-**Reviewers:** T2 (Scene provider), T5 (form provider), T3 (Experience lens, Undo reason) ·
+**Review:** one dedicated independent cross-domain review per the latest owner direction,
+in place of separate T2/T3/T5 cycles ·
 **Runbook:** [T1 operations](../../../operations/t1-spatial-world/README.md)
 
 ```text
@@ -205,8 +206,11 @@ true by construction and becomes a test.
 
 ## 6. Reviews and stop conditions
 
-- **Reviews:** T2 for the Scene provider move (no policy edits), T5 for form rays, T3 for the
-  Experience wrapping and the Undo reason.
+- **Review:** one dedicated independent cross-domain review, per the latest owner direction;
+  the separate T2/T3/T5 cycles and the personal full-change review are not outstanding. The
+  2026-10-29 review returned changes required with one P2 (an interrupted Shape depth press
+  kept its candidate); the correction and its focused regression checks are recorded in the
+  [acceptance record](./acceptance.md#independent-cross-domain-review--2026-10-29).
 - **Stop and report if:**
   - the differential shows a change that is not the one admissible case;
   - a domain cannot return its single winner without changing its policy;

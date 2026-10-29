@@ -43,6 +43,7 @@ const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
+import { shapeReadingSurface } from '$lib/authoring/adapters/scene/shape/reading';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 const RECT = { left: 352, top: 73, width: 928, height: 720, right: 1280, bottom: 793, x: 352, y: 73, toJSON() { } };
 let component: ReturnType<typeof mount>;
@@ -711,5 +712,42 @@ describe('mounted Stage drawing and deletion', () => {
 		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(canonical));
 		await frame();
 		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+	});
+});
+
+describe('Shape depth press interruption', () => {
+	it.each(['blur', 'hidden', 'pointercancel', 'lostpointercapture', 'second-pointer', 'pointerup'])('keeps the correct Create depth after %s', async (ending) => {
+		target.querySelector<HTMLButtonElement>('[data-dock-tool="layout-ink"]')!.click();
+		await settled();
+		inkSurface()!.controller.setReading('shape');
+		await settled();
+		const shape = shapeReadingSurface()!;
+		for (const point of [[2, 0, -1], [4, 0, -1], [4, 0, -3], [2, 0, -3]] as const) {
+			const css = projected(point);
+			pointer('pointerdown', css); pointer('pointerup', css); pointer('click', css); await frame();
+		}
+		shape.controller.finish(); await frame();
+		const before = shape.snapshot();
+		expect(before.phase).toBe('depth');
+		const marker = facade().overlays().find((entry) => entry.id === 'scene-shape-depth')!;
+		const from: [number, number] = [marker.css[0] + RECT.left, marker.css[1] + RECT.top];
+		const to: [number, number] = [from[0], from[1] - 80];
+		pointer('pointerdown', from); pointer('pointermove', to); await frame();
+		const during = shape.snapshot().depth;
+		expect(during).not.toBe(before.depth);
+		if (ending === 'blur') window.dispatchEvent(new Event('blur'));
+		else if (ending === 'hidden') { vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange')); }
+		else if (ending === 'second-pointer') { pointer('pointerdown', [to[0] + 100, to[1]], false, 2, 'touch'); pointer('pointerup', [to[0] + 100, to[1]], false, 2, 'touch'); }
+		else pointer(ending, to);
+		await frame();
+		expect(facade().session.gesture()).toBeNull();
+		expect(shape.snapshot().phase).toBe('depth');
+		expect(shape.snapshot().depth).toBe(ending === 'pointerup' ? during : before.depth);
+		const baseline = facade().snapshot().canonicalJson;
+		shape.controller.create();
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(baseline));
+		const created = facade().snapshot().domain.scene.entities.find((entry) => entry.kind === 'form');
+		if (created?.kind !== 'form') throw new Error('No created form');
+		expect(created.form.generator.extent).toBe(ending === 'pointerup' ? during : before.depth);
 	});
 });

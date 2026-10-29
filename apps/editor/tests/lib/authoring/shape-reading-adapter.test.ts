@@ -795,6 +795,79 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(marker().css[1]).toBeLessThan(from[1]);
 	});
 
+	it('discards an interrupted depth press and keeps a completed one', async () => {
+		const mounted = await mount();
+		armInk(mounted.facade);
+		const shape = shapeSurface(inkSurface()!.controller);
+		for (const point of [
+			[2, 0, 2],
+			[4, 0, 2],
+			[4, 0, 4],
+			[2, 0, 4]
+		] as const) {
+			click(mounted.facade, point);
+		}
+		shape.controller.finish();
+		const marker = () => mounted.facade.overlays().find((entry) => entry.id === 'scene-shape-depth')!;
+		// The ghost is the candidate Create would install, so its extent is the
+		// press's own report of what the next Create commits.
+		const previewExtent = () => {
+			const ghost = mounted.facade.ghosts()[0];
+			if (ghost?.shape.kind !== 'form') throw new Error('the Shape published no preview');
+			const generator = ghost.shape.form.generator;
+			if (generator.kind !== 'extrude') throw new Error('the Shape preview is not an extrusion');
+			return generator.extent;
+		};
+		const evaluationId = mounted.facade.evaluationId()!;
+		const before = shape.snapshot().depth;
+		expect(previewExtent()).toBeCloseTo(before, 6);
+
+		// The environment takes the pointer mid-pull: the depth it never chose, and
+		// the candidate built from it, both go back to the pre-press state.
+		const from = marker().css;
+		const to = [from[0], from[1] - 80] as const;
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(shape.snapshot().depth).toBeGreaterThan(before);
+		expect(previewExtent()).toBeCloseTo(shape.snapshot().depth, 6);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: to, evaluationId });
+		expect(shape.snapshot()).toMatchObject({ phase: 'depth', depth: before, canCreate: true });
+		expect(previewExtent()).toBeCloseTo(before, 6);
+
+		// A press that ends normally keeps what it pulled, and Create commits it.
+		const again = marker().css;
+		const pulled = [again[0], again[1] - 80] as const;
+		mounted.facade.pointerIntent({ phase: 'down', css: again, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: pulled, evaluationId });
+		const completed = shape.snapshot().depth;
+		expect(completed).toBeGreaterThan(before);
+		mounted.facade.pointerIntent({ phase: 'up', css: pulled, evaluationId });
+		expect(shape.snapshot().depth).toBe(completed);
+		expect(previewExtent()).toBeCloseTo(completed, 6);
+
+		// A reading flip ends the press through its evaluation mismatch; the partial
+		// depth it measured is discarded the same way a cancel discards it.
+		const flipFrom = marker().css;
+		const flipTo = [flipFrom[0], flipFrom[1] - 80] as const;
+		mounted.facade.pointerIntent({ phase: 'down', css: flipFrom, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: flipTo, evaluationId });
+		expect(shape.snapshot().depth).toBeGreaterThan(completed);
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 30);
+		const flippedEvaluationId = mounted.facade.evaluationId()!;
+		expect(flippedEvaluationId).not.toBe(evaluationId);
+		mounted.facade.pointerIntent({ phase: 'move', css: flipTo, evaluationId: flippedEvaluationId });
+		expect(shape.snapshot()).toMatchObject({ phase: 'depth', depth: completed });
+		expect(shape.snapshot().refusal).toContain('reading changed');
+		expect(previewExtent()).toBeCloseTo(completed, 6);
+
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		shape.controller.create();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		const created = acceptedForms(mounted.facade)[0]!;
+		if (created.form.generator.kind !== 'extrude') throw new Error('the created form is not an extrusion');
+		expect(created.form.generator.extent).toBeCloseTo(completed, 6);
+	});
+
 	it('places the upright depth handle on the standing body and follows Flip side', async () => {
 		const mounted = await mount();
 		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
