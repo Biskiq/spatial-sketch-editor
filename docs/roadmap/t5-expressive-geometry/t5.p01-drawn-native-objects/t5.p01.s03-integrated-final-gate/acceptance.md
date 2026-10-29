@@ -20,7 +20,8 @@ NOT:       T5.P01 closure, T5 completion, a performance pass, a Wall-face delive
 ## Delivered
 
 The integrated gate proved drawn native objects end to end on the merged tree, with no product
-feature added. From an empty project: a Room was closed and reversed through Undo/Redo; floor
+feature added. It re-proved the behavior independently of the contributing slices' own acceptance
+evidence; no separate GitHub reviewer verdict is claimed. From an empty project: a Room was closed and reversed through Undo/Redo; floor
 rectangle, floor triangle and upright-sheet elevation forms were drawn, read and created with
 typed depth; Move, Turn, Size per axis, Duplicate and Delete each produced one exact history entry;
 no-op, self-crossing, cancelled-depth and out-of-range-depth paths added none; the rectangle was

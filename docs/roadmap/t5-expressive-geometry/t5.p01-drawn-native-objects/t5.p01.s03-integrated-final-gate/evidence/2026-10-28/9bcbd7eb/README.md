@@ -102,7 +102,7 @@ JSON.
 | M (`grid-7`) | `not-usable` | 584.4 / 976.2 ms | 48.1–56.6 ms | 439.9–598.8 ms | 8.0 / 104.6 ms |
 | L (`grid-14`) | `not-usable` | 5,213.1 / 5,573.4 ms | 158.8–310.2 ms | 1,067.4–1,176.2 ms | 28.2 / 415.9 ms |
 
-The M drag presentation series is 3–3.4 display periods at the measured 16.7 ms idle-rAF period;
+The M drag presentation series is 2.9–3.4 display periods at the measured 16.7 ms idle-rAF period;
 the L drag series exceeds the half-rate allowance, and the L typed commit exceeds its 200 ms
 completion allowance. **These labels are not a performance pass.** The run began at load average
 9.10 on an 8-core M2, and the harness explicitly treats load average as context rather than
