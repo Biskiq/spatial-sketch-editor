@@ -1,6 +1,6 @@
 # R217.S03 — Stage interaction coordination: implementation plan
 
-**Slice:** R217.S03 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+**Slice:** R217.S03 · **Status:** released for implementation; owner review and acceptance pending · **Phase:**
 [R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
 **Reviewers:** T2 (Scene provider), T5 (form provider), T3 (Experience lens, Undo reason) ·
 **Runbook:** [T1 operations](../../../operations/t1-spatial-world/README.md)

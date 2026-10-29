@@ -366,7 +366,7 @@ split survivor by evidence order, one Room born). The creator-facing expression 
 
 ## Editor interaction authorities
 
-### Current interaction (verified at `686e724d`)
+### Current interaction (R217.S03)
 
 `StageSession` owns the canonical selection and one gesture lease at a time, with
 reading-change policy per lease. Its `registerProposal` and `liveProposal` expose live
@@ -375,11 +375,17 @@ proposals to the Undo availability reason. F4 owns the one chronological history
 `apps/editor/src/lib/authoring/stage/stage-session.ts` and
 `apps/editor/src/lib/authoring/stage/stage-facade.ts`.
 
-`StageFacade.resolveSourceHit` asks adapter hit providers in registration order, then
-the retained Plan pick index in Layout priority. With no task, the facade offers a press
-to `pressWhenNoTask` bindings in registration order.
+`StageFacade.resolvePick` delegates cross-domain arbitration to
+[`stage-pick.ts`](../../apps/editor/src/lib/authoring/stage/stage-pick.ts). Layout chooses
+its own winner through [`plan-pick-provider.ts`](../../apps/editor/src/lib/authoring/layout/plan-pick-provider.ts),
+while the Scene adapter retains its rendered-raycast, footprint and occlusion policy.
+Finite forward 3D hits outrank tolerance-only hits; Plan uses the temporary Scene 60,
+Layout 40 ranks until S04. With no task, a press is offered only to the primary
+selection's owner. Hover is session-only and uses the same resolver. Window blur,
+hidden-page, capture loss and pointer cancellation end live presses; a second pointer
+ends the authored press and hands navigation the pair. S07 owns visible marks.
 
-### Coordination over domain policy (destination until R217.S03/S07 land)
+### Coordination over domain policy
 
 The Stage host coordinates pointer routing, arbitration between each domain's winner,
 session selection, hover, mark disclosure, gesture leases and interruption. Domains own
