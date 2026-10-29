@@ -171,14 +171,24 @@ function adapterHistoryViolations(source: string, file = 'adapter.ts'): string[]
  const code = file.endsWith('.svelte') ? [...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((match) => match[1]).join('\n') : source;
  const tree = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
  const violations: string[] = [];
+ function unwrap(expression: ts.Expression): ts.Expression {
+  while (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression) || ts.isSatisfiesExpression(expression) || ts.isNonNullExpression(expression)) expression = expression.expression;
+  return expression;
+ }
+ function arrayInitializer(expression: ts.Expression): boolean {
+  const value = unwrap(expression);
+  return ts.isArrayLiteralExpression(value) ||
+   (ts.isNewExpression(value) && value.expression.getText(tree) === 'Array') ||
+   (ts.isCallExpression(value) && value.arguments.some((argument) => ts.isArrayLiteralExpression(unwrap(argument))));
+ }
  function visit(node: ts.Node): void {
   if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && /(?:^|\/)f4\/history(?:\.ts)?$/.test(node.moduleSpecifier.text)) violations.push('history import');
   if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || node.expression.getText(tree) === 'require') && node.arguments[0] && ts.isStringLiteral(node.arguments[0]) && /(?:^|\/)f4\/history(?:\.ts)?$/.test(node.arguments[0].text)) violations.push('history import');
-  if (ts.isPropertyAssignment(node) && /(?:undo|redo)/i.test(node.name.getText(tree)) && ts.isArrayLiteralExpression(node.initializer)) violations.push('history stack');
+  if (ts.isPropertyAssignment(node) && /(?:undo|redo)/i.test(node.name.getText(tree)) && arrayInitializer(node.initializer)) violations.push('history stack');
   if (ts.isVariableDeclaration(node) || ts.isPropertyDeclaration(node)) {
    const name = node.name.getText(tree);
    const type = node.type?.getText(tree) ?? '';
-   const array = (node.initializer && (ts.isArrayLiteralExpression(node.initializer) || (ts.isNewExpression(node.initializer) && node.initializer.expression.getText(tree) === 'Array') || (ts.isCallExpression(node.initializer) && node.initializer.arguments.some(ts.isArrayLiteralExpression)))) || /\[\]|\b(?:Readonly)?Array\s*<|(?:undo|redo)\w*stack/i.test(type);
+   const array = (node.initializer && arrayInitializer(node.initializer)) || /\[\]|\b(?:Readonly)?Array\s*<|(?:undo|redo)\w*stack/i.test(type);
    if (array && /(?:undo|redo)/i.test(name + ' ' + type)) violations.push('history stack');
   }
   ts.forEachChild(node, visit);
@@ -193,6 +203,11 @@ describe('adapter history boundary', () => {
   expect(adapterHistoryViolations('let entries: RedoEntry[] = [];')).toContain('history stack');
   expect(adapterHistoryViolations('const binding = { redoStack: [] };')).toContain('history stack');
   expect(adapterHistoryViolations('let undoStack = $state([]);')).toContain('history stack');
+  expect(adapterHistoryViolations('const undoStack = [] as Entry[];')).toContain('history stack');
+  expect(adapterHistoryViolations('const redoStack = $state([] as Entry[]);')).toContain('history stack');
+  expect(adapterHistoryViolations('const binding = { undoStack: (([] as Entry[])) };')).toContain('history stack');
+  expect(adapterHistoryViolations('const redoStack = ($state((<Entry[]>[])));')).toContain('history stack');
+  expect(adapterHistoryViolations('const undoLabel = ("Undo" as string);')).toEqual([]);
   expect(adapterHistoryViolations("import { history } from '../../f4/history';")).toContain('history import');
   const root = join(EDITOR_SRC, 'lib/authoring/adapters');
   function walk(dir: string): string[] {

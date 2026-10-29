@@ -94,3 +94,8 @@ final status and adapter positive-control edits were being completed, which were
 then covered by the final arch run and type check. The complete pre-merge gate
 remains owed separately. T2 owns Scene review, T3 owns F4 and
 Camera review, and T5 owns geometry-core review. All three are pending.
+
+Review correction on the diff based on `774f085d`: the adapter history guard unwraps
+asserted and parenthesized initializers and call arguments, with positive controls.
+`npm run test:arch` passed 23 files / 191 tests and `npm run check` passed with
+0 errors and 0 warnings. The earlier full-suite result remains tied to its stated diff.
