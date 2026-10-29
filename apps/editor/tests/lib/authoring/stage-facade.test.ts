@@ -18,8 +18,12 @@
  * through the one admission path, so the suite exercises the host on real
  * current-format documents rather than on hand-written shapes.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
+import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
+import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
+import { resolveStagePick } from '$lib/authoring/stage/stage-pick';
+import type { StageAdapterContext } from '$lib/authoring/stage/stage-facade';
 import {
 	createEmptyWallFirstLayoutDocument,
 	planCreateWallFirstOpening,
@@ -99,7 +103,7 @@ type Mounted = {
 };
 
 /** The host's own mount order: admit, replace the session, then create the facade. */
-async function mount(document?: ProjectEnvelope): Promise<Mounted> {
+async function mount(document?: ProjectEnvelope, withLayoutPicker = true): Promise<Mounted> {
 	const source = document ?? (await enclosureProject(STARTER_ENCLOSURE_POINTS));
 	const context = admissionContext(source.id);
 	const admitted = await admitSource(source, context);
@@ -107,6 +111,7 @@ async function mount(document?: ProjectEnvelope): Promise<Mounted> {
 	const session = createStageSession({ sessionEpoch: context.sessionEpoch });
 	session.replace(admitted.snapshot);
 	const facade = createStageFacade({ snapshot: admitted.snapshot, session });
+	if (withLayoutPicker) facade.registerStageAdapter({ id: 'layout', pick: createPlanPickProvider(() => facade.plan()) });
 	return { facade, session, snapshot: admitted.snapshot, revision: revisionCounter };
 }
 
@@ -400,7 +405,7 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 	});
 
 	it('refuses an adapter that requires a capability this host does not provide', async () => {
-		const { facade } = await mount();
+		const { facade } = await mount(undefined, false);
 
 		const refused = facade.registerStageAdapter({
 			id: 'probe-unknown-capability',
@@ -487,21 +492,20 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 			reason: 'no-fragment'
 		});
 
-		// `hitProvider` was declared on the seam but never consulted, so a T2/T3
-		// adapter could register a 3D picker and nothing it offered was reachable.
+		// A domain provider can answer when Layout finds no eligible fragment.
 		const contexts: string[] = [];
 		const probe = facade.registerStageAdapter({
 			id: 'scene-probe',
-			hitProvider: (candidate, context) => {
+			pick: (candidate, context) => {
 				contexts.push(context.evaluationId);
 				if (candidate.css[0] !== freeCss[0] || candidate.css[1] !== freeCss[1]) return null;
-				return {
+				return { refusal: null, depthMeters: 1, planLayer: 60, cssDistance: 0, hit: {
 					sourceId: 'entity-plinth',
 					sourceKind: 'object',
 					generationId: snapshot.compileGeneration,
 					stream: 'symbol',
 					subRef: null,
-					worldPoint: [0, 0, 0]
+					worldPoint: [0, 0, 0] }
 				};
 			}
 		});
@@ -511,12 +515,10 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 		expect(claimed.kind === 'resolved' ? claimed.hit.sourceId : null).toBe('entity-plinth');
 		expect(contexts).toEqual([id]);
 		// The provider is handed the host's own live evaluation, never a second one.
-		const withContext = facade.adapters()[0];
-		expect(withContext?.hitProvider).toBeDefined();
+		const withContext = facade.adapters().find((adapter) => adapter.id === 'scene-probe');
+		expect(withContext?.pick).toBeDefined();
 
-		// A provider that declines leaves the candidate to the next claimant, and the
-		// built-in Layout resolution still answers over the drawn room floor:
-		// adapter-first order changes nothing while no adapter claims.
+		// A provider that declines leaves the Layout winner available over the room floor.
 		const floorPlan = facade.plan();
 		expect(floorPlan.kind).toBe('evaluated');
 		if (floorPlan.kind !== 'evaluated') return;
@@ -546,18 +548,16 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 		const layoutHit = facade.resolveSourceHit({ evaluationId: id, css: onFloor.css });
 		expect(layoutHit.kind === 'resolved' ? layoutHit.hit.sourceKind : null).toBe('room-floor');
 
-		// Registration order is the deterministic tie rule: a later adapter that
-		// claims the same point wins over Layout's own fragment, and the host never
-		// invents a cross-domain priority it cannot measure.
+		// A finite, closer Scene winner beats the Layout winner independently of registration order.
 		const claiming = facade.registerStageAdapter({
 			id: 'scene-claim-all',
-			hitProvider: () => ({
+			pick: () => ({ refusal: null, depthMeters: 0, planLayer: 60, cssDistance: 0, hit: {
 				sourceId: 'entity-claim',
 				sourceKind: 'object',
 				generationId: snapshot.compileGeneration,
 				stream: 'symbol',
 				subRef: null,
-				worldPoint: [0, 0, 0]
+				worldPoint: [0, 0, 0] }
 			})
 		});
 		expect(claiming.kind).toBe('registered');
@@ -1040,5 +1040,174 @@ describe('Stage facade — the indexed hit path never prunes a real hit', () => 
 		if (reprojected.kind !== 'projected') return;
 		const after = facade.resolveSourceHit({ evaluationId: movedId, css: reprojected.css });
 		expect(after.kind).toBe('resolved');
+	});
+});
+
+describe('S03 investigation — retained Layout halo', () => {
+	it('can resolve a Wall at a point not on the pointer ray', async () => {
+		const { facade } = await mount(await enclosureWithDoor());
+		const id = evaluate(facade);
+		const walls = facade.eligibleFragments().filter((fragment) => fragment.ref.sourceKind === 'wall');
+		let example: { css: readonly [number, number]; separation: number } | null = null;
+		for (const fragment of walls) {
+			if (fragment.geometry.kind !== 'span') continue;
+			for (const endpoint of [fragment.geometry.start, fragment.geometry.end]) {
+				const projected = facade.projectWorld([endpoint[0], fragment.elevationMeters, endpoint[1]], id);
+				if (projected.kind !== 'projected') continue;
+				for (let dx = -7; dx <= 7 && example === null; dx++) for (let dy = -7; dy <= 7 && example === null; dy++) {
+					const css: [number, number] = [projected.css[0] + dx, projected.css[1] + dy];
+					const hit = facade.resolveSourceHit({ evaluationId: id, css });
+					const ray = facade.pointerRay(css, id);
+					if (hit.kind !== 'resolved' || hit.hit.sourceKind !== 'wall' || ray.kind !== 'ray') continue;
+					const d = hit.hit.worldPoint.map((v, i) => v - ray.ray.origin[i]!);
+					const t = d.reduce((sum, v, i) => sum + v * ray.ray.direction[i]!, 0);
+					const separation = Math.hypot(...d.map((v, i) => v - t * ray.ray.direction[i]!));
+					if (separation > 0.001) example = { css, separation };
+				}
+			}
+		}
+		expect(example).not.toBeNull();
+		const context = { snapshot: facade.snapshot(), evaluation: facade.evaluation()!, evaluationId: id } as StageAdapterContext;
+		const provider = createPlanPickProvider(() => facade.plan());
+		const halo = provider({ css: example!.css, evaluationId: id, purpose: 'select', tool: null }, context);
+		expect(halo?.hit.sourceKind).toBe('wall');
+		expect(halo?.depthMeters).toBeNull();
+		const exact = { ...halo!, depthMeters: 12, cssDistance: 3 };
+		const providers = [
+			{ adapterId: 'layout', binding: { pick: () => halo } },
+			{ adapterId: 'scene', binding: { pick: () => exact } }
+		];
+		const query = { css: example!.css, evaluationId: id, purpose: 'select' as const, tool: null };
+		expect(resolveStagePick(query, providers, context, '3d')?.adapterId).toBe('scene');
+		expect(resolveStagePick(query, [providers[0]!], context, '3d')?.adapterId).toBe('layout');
+	});
+});
+
+
+describe('S03 no-task press routing', () => {
+	it('asks no adapter without a selection and only Layout for its selection', async () => {
+		const { facade } = await mount(undefined, false);
+		const id = evaluate(facade);
+		const layout = vi.fn(() => true);
+		const scene = vi.fn(() => true);
+		facade.registerStageAdapter({ id: 'scene', pressWhenNoTask: true, pointerIntent: scene });
+		facade.registerStageAdapter({ id: 'layout', pressWhenNoTask: true, pointerIntent: layout });
+		const down = { phase: 'down' as const, css: [0, 0] as const, evaluationId: id };
+		expect(facade.pointerIntent(down).claimed).toBe(false);
+		expect(layout).not.toHaveBeenCalled();
+		expect(scene).not.toHaveBeenCalled();
+		const fragment = facade.eligibleFragments().find((item) => item.ref.sourceKind === 'wall')!;
+		facade.select({ sourceId: fragment.ref.sourceId, sourceKind: fragment.ref.sourceKind, generationId: fragment.ref.generationId, ref: fragment.ref });
+		expect(facade.pointerIntent(down)).toEqual({ claimed: true, adapterId: 'layout' });
+		expect(layout).toHaveBeenCalledOnce();
+		expect(scene).not.toHaveBeenCalled();
+	});
+	it('never offers a Scene selection press to Layout', async () => {
+		const base = await enclosureProject(STARTER_ENCLOSURE_POINTS);
+		const scene = { formatVersion: 1 as const, textures: [], materials: [], navigationNodes: [], connections: [], entities: [{
+			kind: 'primitive' as const, primitive: 'box' as const, id: 'selected-box', name: 'Box', dimensions: { width: 1, height: 1, depth: 1 },
+			materialId: 'plaster-warm' as const, castShadow: true, receiveShadow: true, position: [2, .5, -2] as [number, number, number], rotation: [0, 0, 0] as [number, number, number]
+		}] };
+		const source = await createUnitProject({ id: base.id, name: base.name, layout: base.units.layout.data, scene });
+		const { facade } = await mount(source, false);
+		const id = evaluate(facade);
+		const layout = vi.fn(() => true), sceneClaim = vi.fn(() => true);
+		facade.registerStageAdapter({ id: 'layout', pressWhenNoTask: true, pointerIntent: layout });
+		facade.registerStageAdapter({ id: 'scene', pressWhenNoTask: true, pointerIntent: sceneClaim });
+		const reference = sceneEntityReference('selected-box', facade.snapshot().domain.unitRevisions.scene);
+		expect(facade.setSelection({ ordered: [{ reference }], primary: reference }).kind).toBe('selected');
+		expect(facade.pointerIntent({ phase: 'down', css: [0, 0], evaluationId: id })).toEqual({ claimed: true, adapterId: 'scene' });
+		expect(layout).not.toHaveBeenCalled();
+		expect(sceneClaim).toHaveBeenCalledOnce();
+	});
+
+});
+
+
+describe('S03 facade dispatch to the Layout provider', () => {
+	it('returns the provider winner over 400 samples in each reading', async () => {
+		const fixtures = [
+			await enclosureProject(STARTER_ENCLOSURE_POINTS),
+			await enclosureProject([[0, 0], [8, 0], [8, 3], [4, 3], [4, 7], [0, 7]]),
+			await enclosureWithDoor()
+		];
+		for (const fixture of fixtures) {
+		const { facade, snapshot } = await mount(fixture);
+		evaluate(facade);
+		const provider = createPlanPickProvider(() => facade.plan());
+		let exactCount = 0;
+		for (const reading of ['3d', 'plan'] as const) {
+			if (reading === 'plan') {
+				facade.acquireInspection('exclusive');
+				facade.requestViewingIntent({ kind: 'set-reading', reading }, facade.inspectionTicket(), 1);
+				facade.camera.evaluate(RECT, 1 + VIEWPORT_READING_TRANSITION_SECONDS + 0.5);
+			}
+			const evaluation = facade.evaluation()!;
+			const id = facade.evaluationId()!;
+			const context = { snapshot, evaluation, evaluationId: id } as StageAdapterContext;
+			for (let x = 0; x < 20; x++) for (let y = 0; y < 20; y++) {
+				const css = [(x + 0.5) * RECT.width / 20, (y + 0.5) * RECT.height / 20] as const;
+				const previous = facade.resolveSourceHit({ css, evaluationId: id });
+				const next = provider({ css, evaluationId: id, purpose: 'select', tool: null }, context);
+				expect(next?.hit ?? null, `${reading} sample ${x},${y}`).toEqual(previous.kind === 'resolved' ? previous.hit : null);
+				if (reading === '3d' && next?.depthMeters != null) {
+					expect(Number.isFinite(next.depthMeters) && next.depthMeters >= 0).toBe(true);
+					exactCount++;
+				}
+			}
+		}
+		expect(exactCount).toBeGreaterThan(0);
+		}
+	});
+});
+
+describe('S03 Layout host-tool picks', () => {
+	it('refuses an erase on the winning Room floor and snaps measure to a Wall end', async () => {
+		const { facade } = await mount(undefined, false);
+		facade.registerStageAdapter({ id: 'layout', pick: createPlanPickProvider(() => facade.plan()), hostTools: ['erase', 'measure'] });
+		const id = evaluate(facade);
+		const center: [number, number, number] = [
+			STARTER_ENCLOSURE_POINTS.reduce((sum, p) => sum + p[0], 0) / STARTER_ENCLOSURE_POINTS.length,
+			0,
+			STARTER_ENCLOSURE_POINTS.reduce((sum, p) => sum + p[1], 0) / STARTER_ENCLOSURE_POINTS.length
+		];
+		const floor = facade.projectWorld(center, id);
+		if (floor.kind !== 'projected') throw new Error('floor not projected');
+		const erased = facade.resolvePick({ css: floor.css, evaluationId: id, purpose: 'tool', tool: { kind: 'erase', scope: 'host' } });
+		expect(erased).toMatchObject({ kind: 'refused', hit: { sourceKind: 'room-floor' }, message: 'A Room floor cannot be erased.' });
+		const wall = facade.snapshot().domain.geometry.walls[0]!;
+		const end = wall.samples[0]!.point;
+		const endpoint: [number, number, number] = [end[0], facade.snapshot().domain.datumMeters, end[1]];
+		const projected = facade.projectWorld(endpoint, id);
+		if (projected.kind !== 'projected') throw new Error('wall end not projected');
+		const measured = facade.resolvePick({ css: projected.css, evaluationId: id, purpose: 'tool', tool: { kind: 'measure', scope: 'host' } });
+		expect(measured.kind).toBe('resolved');
+		if (measured.kind === 'resolved') expect(measured.hit.worldPoint).toEqual(endpoint);
+	});
+});
+
+describe('S03 Layout priority at a hosted Opening', () => {
+	it('keeps the Wall winner where both are within tolerance in each reading', async () => {
+		const { facade } = await mount(await enclosureWithDoor());
+		facade.acquireInspection('exclusive');
+		for (const reading of ['3d', 'plan'] as const) {
+			facade.camera.applyIntent({ kind: 'set-reading', reading }, 1);
+			facade.camera.evaluate(RECT, 3);
+			const id = facade.evaluationId()!;
+			const openings = facade.eligibleFragments().filter((fragment) => fragment.ref.sourceKind === 'opening');
+			expect(openings.length).toBeGreaterThan(0);
+			let overlap = false;
+			for (const opening of openings) {
+				const geometry = opening.geometry;
+				const points = geometry.kind === 'span' ? [geometry.start, geometry.end] : geometry.kind === 'polyline' ? geometry.polyline : geometry.polygon;
+				for (const point of points) {
+					const css = facade.projectWorld([point[0], opening.elevationMeters, point[1]], id);
+					if (css.kind !== 'projected') continue;
+					const result = facade.resolveSourceHit({ evaluationId: id, css: css.css });
+					if (result.kind === 'resolved' && result.hit.sourceKind === 'wall') overlap = true;
+				}
+			}
+			expect(overlap, `${reading} overlap`).toBe(true);
+		}
 	});
 });

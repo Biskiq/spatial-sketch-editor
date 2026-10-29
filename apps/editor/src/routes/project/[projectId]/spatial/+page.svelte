@@ -50,7 +50,7 @@
 		validateProjectEnvelope,
 		type ProjectEnvelope
 	} from '@portfolio/project-model/units';
-	import { primaryEntry, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
+	import { layoutSelectionReference, primaryEntry, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import {
 		bootEmpty,
 		bootFromLoadOutcome,
@@ -121,6 +121,7 @@
 		stageKeyFromControl,
 		stageKeyFromTextEntry
 	} from '$lib/authoring/stage/stage-input';
+	import { installStageInterruptions, type StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
@@ -248,7 +249,8 @@
 	function changeLens(next: 'world' | 'experience'): void {
 		// Preview returns to the lens it was entered from; a lens switch ends it.
 		closePreview();
-		abortGesture();
+		clearHover();
+		interruptPress('lens-change');
 		// A notice describes the previous context; the lens is the new one.
 		notice = '';
 		if (facade?.changeLens(next)) {
@@ -708,6 +710,8 @@
 		if (tornDown) return;
 		// Replacement: validate first (the snapshot is already admitted), then the
 		// session atomically cancels writers, clears selection/task and swaps.
+		clearHover();
+		interruptPress('replacement');
 		session.replace(snapshot);
 		// A Preview run and the lens focus name identities from the replaced source.
 		preview = null;
@@ -726,7 +730,7 @@
 		unsubscribeContributions = null;
 		facade?.dispose();
 		acceptance?.dispose();
-		facade = createStageFacade({ snapshot, session, scenePick: scenePick.pick });
+		facade = createStageFacade({ snapshot, session, scenePick: scenePick.pick, sceneBounds: scenePick.bounds });
 		unsubscribeContributions = facade.onAdaptersChanged(() => {
 			contributionsVersion += 1;
 			task = facade?.session.task() ?? null;
@@ -1783,6 +1787,7 @@
 			handleKey(event);
 		};
 		window.addEventListener('keydown', onKey);
+		const removeInterruptions = installStageInterruptions(window, document, interruptPress);
 
 		void load(projectId, intent);
 
@@ -1793,9 +1798,11 @@
 			// result instead of mounting a second stage.
 			tornDown = true;
 			cancelAnimationFrame(frame);
+			clearHover();
 			media.removeEventListener('change', onMedia);
 			narrow.removeEventListener('change', onNarrow);
 			window.removeEventListener('keydown', onKey);
+			removeInterruptions();
 			// Session teardown cancels every registered writer (including an in-flight
 			// project GET) and runs every registered disposer exactly once; no
 			// project-specific singleton — acceptance host, history or facade — survives
@@ -1929,10 +1936,9 @@
 				const id = facade.evaluationId();
 				if (id !== null) {
 					facade.pointerIntent({ phase: 'move', css, evaluationId: id });
-					facade.pointerIntent({ phase: 'cancel', css, evaluationId: id });
 				}
 			}
-			abortGesture();
+			interruptPress('reading-change');
 		}
 	}
 
@@ -2243,12 +2249,15 @@
 	 * `cancel-on-reading-change` policy.
 	 */
 	let adapterEvaluationId: string | null = null;
+	let pinch: Map<number, [number, number]> | null = null;
+	let hoverFrame: number | null = null;
+	let hoverSample: { css: [number, number]; shift: boolean } | null = null;
 	/**
 	 * The drag-versus-click decision. It is **not** the gesture: pointer up ends the
 	 * gesture, but the click that follows still has to know how far the pointer
 	 * travelled, and an interruption has to stop that click from selecting. It also
-	 * owns which pointer the press belongs to, so a second pointer cannot end the
-	 * first one's lease or select through its refused press.
+	 * owns which pointer the press belongs to, including cancellation before a
+	 * two-pointer navigation handoff.
 	 */
 	const press = createStagePressTracker();
 
@@ -2266,6 +2275,21 @@
 	function onPointerDown(event: PointerEvent): void {
 		const stage = facade;
 		if (stage === null || evaluation === null) return;
+		clearHover();
+		const firstId = press.owner();
+		if (firstId !== null && firstId !== event.pointerId && drag !== null) {
+			const first: [number, number] = [drag.x, drag.y];
+			interruptPress('second-pointer');
+			press.refuse(firstId); press.refuse(event.pointerId);
+			const acquisition = stage.acquireGesture({ owner: 'stage-pinch', evaluationId: stage.evaluationId() ?? '', policy: 'continue-after-revalidation', navigation: true });
+			if (acquisition.kind === 'granted') {
+				pinch = new Map([[firstId, first], [event.pointerId, [event.clientX, event.clientY]]]);
+				const surface = event.currentTarget as HTMLElement;
+				try { surface.setPointerCapture(event.pointerId); } catch { /* A pointer may already have ended. */ }
+			} else if (stageEl?.hasPointerCapture?.(firstId)) stageEl.releasePointerCapture(firstId);
+			return;
+		}
+		if (pinch !== null) { press.refuse(event.pointerId); return; }
 		// The adapters get the press first: the binding that owns an open task (a Scene
 		// transform, an armed Ink chain) may claim it, and so may a binding that offers
 		// direct manipulation with no task at all (a selected Wall's handles). Only a
@@ -2312,15 +2336,48 @@
 		drag = { x: event.clientX, y: event.clientY, mode: event.button === 0 && !event.shiftKey ? 'pan' : 'orbit' };
 	}
 
+	function clearHover(): void {
+		if (hoverFrame !== null) cancelAnimationFrame(hoverFrame);
+		hoverFrame = null;
+		hoverSample = null;
+		session.setHover(null);
+	}
+
+	function resolveHover(): void {
+		hoverFrame = null;
+		const sample = hoverSample;
+		hoverSample = null;
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		if (sample === null || stage === null || id === null || session.gesture() !== null || drag !== null) return;
+		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift })) { session.setHover(null); return; }
+		const result = stage.resolvePick({ css: sample.css, evaluationId: id, purpose: 'hover', tool: null });
+		if (result.kind !== 'resolved') { session.setHover(null); return; }
+		const hit = result.hit;
+		if (hit.reference !== undefined) session.setHover({ reference: hit.reference });
+		else {
+			const ref = { sourceId: hit.sourceId, sourceKind: hit.sourceKind, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef };
+			session.setHover({ reference: layoutSelectionReference(ref, stage.snapshot()), representation: ref });
+		}
+	}
+
 	function onPointerMove(event: PointerEvent): void {
+		if (pinch !== null) {
+			if (!pinch.has(event.pointerId)) return;
+			if (session.gesture() === null) { endPinch(); return; }
+			const before = [...pinch.values()];
+			pinch.set(event.pointerId, [event.clientX, event.clientY]);
+			const after = [...pinch.values()];
+			const oldDistance = Math.hypot(before[0]![0] - before[1]![0], before[0]![1] - before[1]![1]);
+			const newDistance = Math.hypot(after[0]![0] - after[1]![0], after[0]![1] - after[1]![1]);
+			pan((after[0]![0] + after[1]![0] - before[0]![0] - before[1]![0]) / 2, (after[0]![1] + after[1]![1] - before[0]![1] - before[1]![1]) / 2);
+			if (oldDistance > 0 && newDistance > 0) zoom(oldDistance / newDistance);
+			return;
+		}
 		if (drag === null) {
-			// Preview-only hover: the facade offers the unpressed move to the open
-			// task's adapter but never claims it, so navigation stays untouched.
-			const stage = facade;
-			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
-			if (stage !== null && id !== null) {
-				stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
-			}
+			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
+			hoverSample = { css: stageCss(event), shift: event.shiftKey };
+			if (hoverFrame === null) hoverFrame = requestAnimationFrame(resolveHover);
 			return;
 		}
 		if (drag.mode === 'adapter') {
@@ -2330,7 +2387,7 @@
 			// press ends instead of dragging a proposal through a view it was never
 			// measured in.
 			if (session.gesture() === null) {
-				cancelAdapterDrag(event);
+				interruptPress('reading-change');
 				return;
 			}
 			const stage = facade;
@@ -2369,6 +2426,17 @@
 	 * **gesture** only: a normal pointer up still owes the following click its
 	 * drag-versus-click decision, which is why the press tracker is not touched here.
 	 */
+	function endPinch(): void {
+		const ending = pinch;
+		pinch = null;
+		if (ending === null) return;
+		for (const id of ending.keys()) {
+			press.refuse(id);
+			if (stageEl?.hasPointerCapture?.(id)) stageEl.releasePointerCapture(id);
+		}
+		session.gesture()?.release();
+	}
+
 	function endGesture(): void {
 		drag = null;
 		adapterEvaluationId = null;
@@ -2384,10 +2452,12 @@
 	 */
 	function abortGesture(): void {
 		press.abort();
+		endPinch();
 		endGesture();
 	}
 
 	function onPointerUp(event: PointerEvent): void {
+		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
 		// ended, not aborted. Only the owning pointer may end it — a refused second
 		// pointer's release must not release the first pointer's lease.
@@ -2413,49 +2483,28 @@
 		endGesture();
 	}
 
-	/**
-	 * Tell an adapter drag the press was interrupted, then drop it.
-	 *
-	 * The adapter owns its own candidate and baseline; ending only the host's
-	 * gesture would leave it showing (and able to commit) a proposal from a press
-	 * the creator never finished. The explicit `cancel` is the same one a real
-	 * pointer cancel sends, so pointer cancel and capture loss converge on one adapter path. A reading
-	 * interruption first reaches the adapter's changed-evaluation path above.
-	 */
-	function cancelAdapterDrag(event: PointerEvent): void {
-		const stage = facade;
-		const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
-		drag = null;
-		adapterEvaluationId = null;
-		if (stage !== null && id !== null) {
-			stage.pointerIntent({ phase: 'cancel', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+	/** End the captured press without ending an independent multi-step proposal. */
+	function interruptPress(reason: StageInterruptionReason): void {
+		if (pinch !== null) { endPinch(); clearHover(); return; }
+		const pointerId = press.owner();
+		if (pointerId === null || drag === null) { clearHover(); return; }
+		perfMark('input:interruption', { reason });
+		if (drag.mode === 'adapter') {
+			const id = adapterEvaluationId ?? facade?.evaluationId() ?? null;
+			const css: [number, number] = [drag.x - (rect?.left ?? 0), drag.y - (rect?.top ?? 0)];
+			if (id !== null) facade?.pointerIntent({ phase: 'cancel', css, evaluationId: id });
 		}
+		abortGesture();
+		clearHover();
+		if (reason !== 'second-pointer' && stageEl?.hasPointerCapture?.(pointerId)) stageEl.releasePointerCapture(pointerId);
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
-		// The browser took the pointer back (touch interruption, a system gesture, the
-		// window losing focus). Without this the lease would stay held and the next
-		// stray move would pan with samples from a gesture the creator never finished.
-		if (!press.abort(event.pointerId)) return;
-		if (drag?.mode === 'adapter') {
-			cancelAdapterDrag(event);
-			return;
-		}
-		endGesture();
+		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
-		// Capture is also released implicitly *after* a normal pointer up, and that click
-		// is still owed its drag decision. Losing it while the press is live is an
-		// interruption instead. A non-owning pointer's capture is not this gesture.
-		if (!press.ownsPointer(event.pointerId)) return;
-		if (drag?.mode === 'adapter') {
-			cancelAdapterDrag(event);
-			press.abort(event.pointerId);
-			return;
-		}
-		if (drag !== null) abortGesture();
-		else endGesture();
+		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
 
 	/** A click's pointer id, when the event carries one (a `PointerEvent` click does). */
@@ -2557,8 +2606,10 @@
 					break;
 				}
 				const stage = facade;
-				if (stage !== null && stage.keyboardIntent({ kind: 'cancel' }).claimed) break;
-				abortGesture();
+				if (stage !== null && stage.keyboardIntent({ kind: 'cancel' }).claimed) { interruptPress('escape'); break; }
+				const hadPress = drag !== null || pinch !== null;
+				interruptPress('escape');
+				if (hadPress) break;
 				if (task !== null) closeTask();
 				else if (selection !== null) closeSelection();
 				break;
@@ -3091,6 +3142,7 @@
 				role="application"
 				tabindex="0"
 				aria-label="Spatial stage"
+				onpointerleave={clearHover}
 				onpointerdown={onPointerDown}
 				onpointermove={onPointerMove}
 				onpointerup={onPointerUp}

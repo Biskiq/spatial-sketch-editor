@@ -216,6 +216,9 @@ export type StageSession = {
 	/** Layout convenience view of the primary item; canonical state is selectionState(). */
 	selection(): StageSelection | null;
 	selectionState(): StageSelectionState;
+	/** Ephemeral pointer hover; never part of accepted content or history. */
+	hover(): StageSelectionEntry | null;
+	setHover(entry: StageSelectionEntry | null): void;
 	setSelection(value: StageSelectionState): StageSelectionChange;
 	lens(): StageLens;
 	changeLens(next: StageLens): boolean;
@@ -377,6 +380,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 	let epoch = options.epoch ?? 0;
 	let current: StageReadSnapshot | null = null;
 	let selectionValue: StageSelectionState = EMPTY_SELECTION;
+	let hoverValue: StageSelectionEntry | null = null;
 	let lens: StageLens = 'world';
 	let taskStatus: 'active' | 'inactive' = 'active';
 	let writerGeneration = 0;
@@ -476,6 +480,8 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		},
 		selection: layoutPrimary,
 		selectionState: () => selectionValue,
+		hover: () => hoverValue,
+		setHover(entry) { if (!disposed) hoverValue = entry; },
 		setSelection(value) {
 			if (disposed || current === null) return { kind: 'refused', code: 'stale-session', message: 'Open a current source before selecting.' };
 			const admitted = admitSelection(value, current);
@@ -489,6 +495,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		taskChoiceGeneration: () => taskChoiceGeneration,
 		changeLens(next) {
 			if (disposed || next === lens) return false;
+			hoverValue = null;
 			taskChoiceGeneration += 1;
 			// Park before cancelling, and hold the parked task across cancellation: a
 			// canceller then observes an inactive task, and one that closes it anyway
@@ -759,6 +766,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			activeGesture = null;
 			for (const proposal of [...liveProposals]) proposal.release();
 			selectionValue = EMPTY_SELECTION;
+			hoverValue = null;
 			task = null;
 			current = admitted;
 			return {
@@ -807,6 +815,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		dispose() {
 			if (disposed) return;
 			disposed = true;
+			hoverValue = null;
 			registry.cancelAll('teardown');
 			activeGesture?.lease.release();
 			activeGesture = null;

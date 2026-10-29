@@ -210,7 +210,7 @@ describe('Stage shell composition', () => {
 		// The mounted spatial-route-gesture suite also proves the adapter receives
 		// the interruption first and preserves its exact Resume/Discard proposal.
 		const reading = route.slice(route.indexOf('function setReading('), route.indexOf('function fit('));
-		expect(reading).toMatch(/if \(drag !== null && session\.gesture\(\) === null\) \{[\s\S]*abortGesture\(\);/);
+		expect(reading).toMatch(/if \(drag !== null && session\.gesture\(\) === null\) \{[\s\S]*interruptPress\('reading-change'\);/);
 		// One ending, used by every path, so a policy- released lease is not released
 		// twice and no ending is forgotten.
 		expect((route.match(/function endGesture\(\)/g) ?? []).length).toBe(1);
@@ -218,30 +218,26 @@ describe('Stage shell composition', () => {
 		// The click that follows pointerup still has to know how far the pointer travelled,
 		// so a normal ending **ends** the press decision while an interruption aborts it.
 		// Collapsing the two is how every drag came to select what it was dropped on.
-		const pointerUp = route.slice(route.indexOf('function onPointerUp('));
-		const pointerUpBody = pointerUp.slice(0, pointerUp.indexOf('}'));
+		const pointerUpBody = route.slice(route.indexOf('function onPointerUp('), route.indexOf('function interruptPress('));
 		expect(pointerUpBody).toContain('press.end(event.pointerId)');
 		expect(pointerUpBody).not.toContain('press.abort(');
 
-		// An interrupted adapter drag must reach the adapter, not just the host's
-		// lease: the adapter owns its candidate, so capture loss has to take the same
-		// explicit `cancel` a real pointer cancel sends. One helper serves both
-		// endings, so the two cannot drift apart.
-		expect((route.match(/function cancelAdapterDrag\(/g) ?? []).length).toBe(1);
-		const pointerCancel = route.slice(route.indexOf('function onPointerCancel('));
-		const pointerCancelBody = pointerCancel.slice(0, pointerCancel.indexOf('function onLostPointerCapture('));
-		expect(pointerCancelBody).toContain('cancelAdapterDrag(event)');
-		const lostCapture = route.slice(route.indexOf('function onLostPointerCapture('));
-		const lostCaptureBody = lostCapture.slice(0, lostCapture.indexOf('function pointerIdOf('));
-		expect(lostCaptureBody).toContain('cancelAdapterDrag(event)');
-		expect(lostCaptureBody).toContain('press.abort(event.pointerId)');
+		// Every environmental ending reaches the same interruption path, which
+		// delivers cancel to the adapter before dropping the lease and capture.
+		const interruption = route.slice(route.indexOf('function interruptPress('), route.indexOf('function onPointerCancel('));
+		expect(interruption).toContain("phase: 'cancel'");
+		expect(interruption).toContain('abortGesture()');
+		const pointerCancel = route.slice(route.indexOf('function onPointerCancel('), route.indexOf('function onLostPointerCapture('));
+		const lostCapture = route.slice(route.indexOf('function onLostPointerCapture('), route.indexOf('function pointerIdOf('));
+		expect(pointerCancel).toContain("interruptPress('pointercancel')");
+		expect(lostCapture).toContain("interruptPress('lostpointercapture')");
 		expect(route).toContain('press.decide(');
 		expect(route).toContain('createStagePressTracker()');
 
 		// Pointer ownership: a refused second pointer cannot end the holder's press, and its
 		// own click is marked so it cannot select either.
 		expect(route).toContain('press.refuse(event.pointerId)');
-		expect(route).toContain('press.abort(event.pointerId)');
+		expect(route).toContain("interruptPress('second-pointer')");
 
 		// …and its **movement** is refused too, before any sample is consumed. Movement is
 		// the one event a refused pointer keeps producing, and the owner's drag origin is
@@ -250,9 +246,8 @@ describe('Stage shell composition', () => {
 		const pointerMove = route.slice(route.indexOf('function onPointerMove('));
 		const pointerMoveBody = pointerMove.slice(0, pointerMove.indexOf('function onPointerUp('));
 		expect(pointerMoveBody).toContain('if (!press.ownsPointer(event.pointerId)) return;');
-		expect(pointerMoveBody.indexOf('press.ownsPointer(event.pointerId)')).toBeLessThan(
-			pointerMoveBody.indexOf('pan(')
-		);
+		const singlePointerMove = pointerMoveBody.slice(pointerMoveBody.lastIndexOf('if (!press.ownsPointer(event.pointerId)) return;'));
+		expect(singlePointerMove.indexOf('press.ownsPointer(event.pointerId)')).toBeLessThan(singlePointerMove.indexOf('pan('));
 	});
 
 	it('measures the viewport in one place and never scales the stage with CSS', () => {

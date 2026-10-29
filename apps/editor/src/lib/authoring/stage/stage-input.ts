@@ -221,6 +221,7 @@ export function createStagePressTracker(): StagePressTracker {
 	const refused = new Set<number>();
 	return {
 		begin(point, pointerId) {
+			refused.delete(pointerId);
 			if (phase === 'pressed' && owner !== null && owner !== pointerId) {
 				refused.add(pointerId);
 				return 'refused';

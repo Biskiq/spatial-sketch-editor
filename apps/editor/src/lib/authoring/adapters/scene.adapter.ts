@@ -51,7 +51,7 @@ import {
 } from '@portfolio/project-model/scene-planning';
 
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
-import { planSceneHaloProbe, resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
+import { distanceToPlanPolygonEdge, planSceneHaloProbe, resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
 import FormCardFields from './scene/FormCardFieldsLazy.svelte';
 import ShapeReadingPalette from './scene/shape/ShapeReadingPalette.svelte';
 import { createShapeReadingSession } from './scene/shape/reading';
@@ -800,7 +800,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
 					worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
 				})),
-				hitProvider(candidate, live) {
+				hostTools: ['erase', 'measure'],
+				pick(candidate, live) {
 					if (!source.entities.some((entity) => entity.kind !== 'light')) return null;
 					const css: [number, number] = [candidate.css[0] + live.evaluation.rect.left, candidate.css[1] + live.evaluation.rect.top];
 					const ray = live.ray(css);
@@ -809,6 +810,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (drawn?.kind === 'layout' || drawn?.kind === 'floor' && live.evaluation.renderedReading !== 'plan') return null;
 					let entityId: string | null = drawn?.entityId ?? null;
 					let distance = drawn?.distanceMeters ?? Infinity;
+					let cssDistance = 0;
 					if (live.evaluation.renderedReading === 'plan') {
 						const t = (live.snapshot.domain.datumMeters - ray.origin[1]) / ray.direction[1];
 						if (!(t >= 0 && Number.isFinite(t))) return null;
@@ -816,6 +818,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const eligible = drawn?.kind !== 'entity' ? footprints : footprints.filter((footprint) => footprint.entityId === drawn.entityId);
 						const hit = resolvePlanSceneHit(eligible, point, 6 * live.evaluation.targetPlaneMetersPerCssPixel);
 						if (hit === null) return null;
+						if (hit.reason === 'edge-halo') cssDistance = Math.min(...(hit.footprint.polygons ?? [hit.footprint.points]).map((polygon) => distanceToPlanPolygonEdge(point, polygon))) / live.evaluation.targetPlaneMetersPerCssPixel;
 						if (drawn?.kind !== 'entity') {
 							// A footprint cannot select an unmounted or hidden body through a
 							// floor. Only an edge halo may probe its own visible silhouette.
@@ -829,10 +832,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						distance = drawn?.distanceMeters ?? t;
 					}
 					if (entityId === null) return null;
+					let worldPoint = ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number];
+					if (candidate.purpose === 'tool' && candidate.tool?.kind === 'measure') {
+						const bounds = live.sceneBounds(entityId);
+						let nearest = 8;
+						if (bounds !== null) for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
+							const corner: [number, number, number] = [x, y, z];
+							const projected = live.project(corner);
+							if (projected === null) continue;
+							const d = Math.hypot(projected[0] - css[0], projected[1] - css[1]);
+							if (d <= nearest) { nearest = d; worldPoint = corner; }
+						}
+					}
 					return {
-						sourceId: entityId, sourceKind: 'entity',
+						hit: { sourceId: entityId, sourceKind: 'entity',
 						reference: sceneEntityReference(entityId, live.snapshot.domain.unitRevisions.scene),
-						worldPoint: ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number]
+						worldPoint },
+						refusal: null, depthMeters: drawn?.kind === 'entity' ? drawn.distanceMeters : null,
+						planLayer: 60, cssDistance
 					};
 				},
 				readings: [
