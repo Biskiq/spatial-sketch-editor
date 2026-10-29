@@ -34,8 +34,9 @@ and discards its candidate.
   `apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts`.
 - **Contract:** current interaction authorities and the cross-domain rule (finite forward 3D
   ray–surface hits outrank tolerance-only winners; Layout reports `depthMeters: null` when its finite
-  pick surface is missed; Plan uses temporary Scene 60 / Layout 40 ranks until S04) are owned by
-  [`architecture.md`](../../../reference/architecture.md#editor-interaction-authorities).
+  pick surface is missed) are owned by
+  [`architecture.md`](../../../reference/architecture.md#editor-interaction-authorities). Plan ranks
+  and Paper appearance are now owned with S04's layer order.
 - **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md) owns the
   phase's integrated final gate and the full-tree result; this record covers S03's own evidence.
 - **Residuals:** S04 supplies Paper layer ranks; S07 owns visible hover and the mark language; S10

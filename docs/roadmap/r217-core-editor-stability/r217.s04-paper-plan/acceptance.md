@@ -1,167 +1,69 @@
-# R217.S04 — acceptance record: Paper Plan
+# R217.S04 — closed-work acceptance stub
 
-**Slice:** R217.S04 · **Status:** implemented, independently reviewed, ready to merge; the
-phase's integrated gate remains [R217.S11](../r217.s11-integrated-final-gate/acceptance.md) ·
-**Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
-[R217](../README.md)
+**AUTHORITY: NONE.** S04 makes settled Plan a drawing on Paper over the Plan evaluation and Scene
+footprints the Stage already computes. The phase [slice register](../README.md#slice-register) owns
+status; the current interaction and Plan-appearance contract is owned by
+[architecture.md](../../../reference/architecture.md#editor-interaction-authorities).
 
-The owner authorised this implementation and a ready-to-merge PR without a release-list row. The
-slice was implemented from `83d50b70` (the S03 merge); `main` `c13a949d` is an ancestor of the
-branch. The implementation revision is the PR head that contains this record. **No merge has been
-performed**, and this record claims no phase release.
-
-## 1. What ships
-
-2D is now a drawing of the Plan the Stage already computes, not a second projection:
-
-- **Paper layer.** `StagePaper.svelte` mounts inside the one Stage `<Canvas>` and draws one
-  `PlanEvaluation` plus the existing Scene footprint projection. It is mounted only when the
-  reading is settled Plan at orthographic weight 1 and the preference is Paper.
-- **Poché.** Cut Wall spans become a band at the compiled Wall thickness, filled `#1b201c` with a
-  1.5 CSS px edge. Junction ends square off; Opening jambs keep their exact edge.
-- **Streams.** `projected` draws at 0.7 opacity, `hidden` dashed at 0.45, `symbol` at full ink, and
-  `room-floor` is the vellum tint under everything. Every fragment comes from
-  `eligiblePlanFragments`, so excluded and unrevealed sources contribute nothing to either the
-  drawing or the picker.
-- **Scene and native-form outlines.** Footprints come from `planSceneFootprintsFor`, the same
-  cached projection the Scene adapter's Plan pick reads. Upright footprints draw their ring;
-  tilted forms draw the boundary of their existing projected polygon union, with collinear pieces
-  merged. A footprint is drawn only when `scenePick.hasPickableBody` finds a visible renderable
-  mesh under the entity root, matching the hit path.
-- **Appearance is a mask.** Paper geometry is on layer 2. `StageCamera` sets `camera.layers` from
-  the appearance; no appearance code writes `Object3D.visible`. The pick source's raycaster keeps
-  its default layer-0 mask, so world meshes stay pickable while Paper hides them.
-- **3D mat.** The Stage background is `#152c26`, a mat ground `#1d3a33` sits at the level datum,
-  and `<T.Fog>` is gone. Visitor rendering is untouched.
-- **Preference and continuity.** The existing `planAppearance` preference gains its Paper/Shaded
-  effect. The Camera pose, selection, armed tool, Card, Index, open work and history are not
-  re-authored; the reading transition remains the existing `ViewingIntent` seam.
-
-## 2. Verification
-
-All commands ran in the branch worktree with the final source tree.
-
-| Check | Result |
-| --- | --- |
-| `apps/editor npm run test:full` | **239 files / 3,021 tests passed**, exit 0 |
-| Focused `stage-paper.test.ts` | **20 tests passed** |
-| Focused `stage-paper-pick.test.ts` | **7 tests passed** (real Three roots, both masks) |
-| `apps/editor npm run test:arch` | **23 files / 193 tests passed**, exit 0 |
-| `npm run check` | **0 errors, 0 warnings** |
-| `npm run build:editor` | **success**, Vercel adapter output written |
-| Built chunk scan | `StagePaper` / `buildPaperPlan` appear only in the Stage route chunk, not in the `/p` public chunk |
-| Stage route client bundle | Brotli **151,675 → 159,788 B (+8,113 B, +5.35%)**; gzip 183,119 → 192,909 B (+9,790); raw 638,002 → 668,119 B (+30,117) |
-
-The full suite includes the existing camera, reading-transition, gesture, selection, source and
-history suites; no S04 change touches their authorities. The architecture lane includes the
-visitor, public and preview boundary checks and documentation references.
-
-**Independent review.** One independent technical reviewer examined the actual diff. Two blocking
-findings were corrected before this record:
-
-1. **Datum.** Footprint outlines were written at `y = 0`; they now use the accepted level
-   `datumMeters`, matching Plan fragments and the Scene Plan ray. A non-zero-datum regression test
-   was added.
-2. **One projection.** The Scene adapter built footprints from a derived Scene document while the
-   Canvas drew the runtime Scene. The adapter now reads `context.snapshot.domain.scene`, the same
-   object the route passes to the Canvas as `boot.snapshot.domain.scene`, and both sides use
-   `planSceneFootprintsFor`'s identity cache. The reviewer's remaining concerns were the Shaded
-   mat decision and the S07 `visible` boundary, both recorded below.
-
-Two follow-up P2 findings were also fixed before merge, without reopening the review loop:
-
-3. **Partial union edges.** `unionOutline` split an edge only at its midpoint, so a partially
-   overlapping polygon could discard a whole silhouette edge. Edges are now split at crossings,
-   T-junctions and collinear-vertex overlaps before the inside/outside test; the crossing-rectangle
-   regression asserts the exact eight-segment union boundary.
-4. **Empty registered roots.** `hasPickableBody` now requires a visible mesh with real vertices,
-   not merely a registered group. Paper refreshes when a root settles, when the lazy model
-   renderer arrives, and when a form mounts; the registered-empty-root-to-mesh transition is
-   covered by `stage-paper-pick.test.ts`.
-
-**Browser verification.** Exercised in Chromium against the current dev server at
-`127.0.0.1:5190`: a starter enclosure in 3D, the same source on Paper, and Shaded Plan; then a
-Wall selected, a 0.9 m door placed by offset through the real Ink adapter, and a native primitive
-placed. Paper showed the vellum, Wall poché, the Opening's symbol in the wall, and the primitive's
-outline. 3D showed the mat, the Opening void, and the same primitive. Switching 3D ↔ Plan retained
-the selected subject; the existing camera, gesture and task suites cover the rest of the reading
-continuity. A fresh preference store defaults to Paper
-(asserted by `stage-paper.test.ts`); the browser session itself had a persisted Shaded choice from
-the earlier capture and was switched explicitly for each state.
-
-## 3. Acceptance criteria
-
-1. **Drawn equals picked — met.** `stage-paper.test.ts` proves source/stream set equality and
-   layer-rank equality against `eligiblePlanFragments` on the starter and L fixtures; every drawn
-   Scene footprint resolves to its own entity through `resolvePlanSceneHit`. `stage-paper-pick.test.ts`
-   mounts real Layout and Scene roots and proves interior, edge-halo and occlusion outcomes are
-   identical under the Paper and Shaded masks.
-2. **Stream treatment — met.** Cut walls are poché bands; a below-cut Wall is hidden dashed ink; a
-   lintel above the cut is projected; an Opening is a symbol; a revealed floor draws.
-3. **Picking under both appearances — met.** The focused pick suite covers the forms fixture,
-   unmounted and support-occluded bodies, a registered-but-empty root that later receives a mesh,
-   the S03 Wall/Opening regression, and the identical result sets under both masks. The structural
-   tests find no `.visible` write in Paper or appearance code.
-4. **Continuity — met by preservation and browser observation.** The Camera realizer still only
-   copies the `ViewportEvaluation`; the full existing camera/gesture/task suite is green, and the
-   browser switch retained the selected subject. No Camera code was changed for continuity.
-5. **3D ground — met.** No `<T.Fog>` remains, mat ink is set, and visitor suites are unchanged.
-6. **Boundaries — met.** Architecture lane green; the built Stage route is the only client chunk
-   containing `StagePaper` or `buildPaperPlan`.
-7. **Bundle — reported above.** No budget is claimed.
-
-## 4. Deliberate deviations
-
-1. **The mat also grounds Shaded Plan.** The plan scoped the mat to 3D and said Shaded keeps
-   today's mesh rendering. In practice the visitor plinth reads as a black void in a settled 2D
-   mesh view, so the mat background/ground is kept in both mesh readings; Shaded still draws the
-   existing visitor surfaces and meshes, just on that surface. To revert strictly to the plan's
-   wording, gate the mat ground on the reading rather than on `!paperVisible` in
-   `StageCanvas.svelte`.
-2. **Non-Paper camera masks are `{0, 2}`, not `{0}`.** Paper is unmounted outside Paper, so this
-   changes no S04 image. It is deliberate so S07's selection/hover overlays on layer 2 are visible
-   on the mat and in Shaded without another mask decision. If a strict `{0}` is preferred, change
-   `stageCameraLayerMask(false)` and S07 must revisit the mask.
-
-## 5. Residual risks
-
-- **Opening symbol detail.** The representation's Opening symbol is `centerPolyline`, the straight
-  centerline across the void. It carries no swing hand or swing-arc geometry. Paper draws that
-  evaluated symbol faithfully; a swing arc would be fabricated without a representation field,
-  which is the plan's stop condition for a T1 change. This is the main visual gap against a fully
-  architectural door symbol and should be resolved in the representation before the integrated
-  gate if the owner wants swings.
-- **S07 `visible` conflict.** S07's `StageSelectionLayer` currently writes `root.visible` in its
-  worktree. That directly contradicts S04's rule and will make `hasPickableBody`/Paper footprint
-  filtering disagree with the mark. S07 must not take that approach; see the handoff.
-- **Shaded Plan quality.** With today's visitor surfaces the settled Shaded view is a dark mesh
-  field on the mat. It is functional and preference-preserving, but it is not a light architectural
-  surface; a later appearance slice may need to restyle it.
-- **Browser evidence is manual.** The three captures below are the visual record; no automated
+- **Accepted:** 2026-10-29 by owner closeout and merge direction, after the one independent technical
+  review at accepted revision `7bbbea5938f0291cf544283795df61bd7e2f0015`. That review raised two P2
+  findings — partial union edges and registered-but-empty Scene roots — both fixed and covered by
+  focused regressions before acceptance; no GitHub approval was recorded. The authorization covers
+  S04 only and did not add a release-list row.
+- **Delivered:** Vellum Paper with cut Wall poché, projected ink, hidden dashes, Opening symbols,
+  Room-floor tint and Scene/model/primitive/native-form outlines. Paper reads the same
+  `PlanEvaluation` and footprint projection as the pick path; appearance is a camera layer mask, so
+  drawn and picked subjects agree without changing `Object3D.visible`. 3D sits on the dark mat with
+  no fog; Shaded Plan remains the viewing preference; Camera pose, selection, armed tool, open work
+  and history are preserved.
+- **Verification:** `apps/editor npm run test:full` — 239 files / 3,021 tests passed; focused
+  `stage-paper.test.ts` — 20 passed; `stage-paper-pick.test.ts` — 7 passed (real Three roots, both
+  masks, late lazy mesh); `npm run test:arch` — 23 files / 193 passed; `npm run check` — 0 errors /
+  0 warnings; `npm run build:editor` — success. Stage route Brotli 151,675 → 159,788 B (+8,113 B,
+  +5.35%). Closeout documentation gate — 2 files / 56 passed, including every link and anchor this
+  close moved. Built chunk scan found `StagePaper` / `buildPaperPlan` only in the Stage route chunk.
+  Browser observation in Chromium covered 3D, Paper and Shaded Plan, a selected Wall, an Ink-placed
+  door and a native primitive; the visual record is the archived evidence below. No automated
   screenshot diff was added.
+- **Contract and entry points:** implementation
+  `apps/editor/src/lib/authoring/stage/paper-plan.ts`,
+  `apps/editor/src/lib/authoring/stage/paper-scene.ts`,
+  `apps/editor/src/lib/authoring/stage/shell/StagePaper.svelte`,
+  `apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte`,
+  `apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte`,
+  `apps/editor/src/lib/authoring/scene/plan-scene-footprint.ts`,
+  `apps/editor/src/lib/authoring/scene/scene-pick-source.ts`; regressions
+  `apps/editor/tests/lib/authoring/stage-paper.test.ts`,
+  `apps/editor/tests/lib/authoring/stage-paper-pick.test.ts`.
+- **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md) owns the phase's
+  integrated final gate and full-tree result.
+- **S07 handoff:** put Canvas marks on `STAGE_OVERLAY_LAYER` (2) with `depthTest: false` and
+  `renderOrder` above `PAPER_LAYER.sceneFootprint` (60); never write `Object3D.visible` for
+  appearance, selection or hover; do not parent overlay geometry under a pick root. Reuse
+  `buildPaperPlan` and filter its entries by `sourceId` rather than regrouping streams. S04 owns none
+  of S07's selection/mark files.
+- **Residuals:** the Opening symbol is the representation's straight `centerPolyline`, with no swing
+  arc until the representation carries one; S07 must remove its `root.visible` write; settled Shaded
+  Plan remains a dark mesh field on the mat and may need a later appearance slice; S11 retains the
+  integrated gate.
+- **Evidence:** [archived captures and manifest](../../../archive/roadmap/r217-core-editor-stability/r217.s04-paper-plan/evidence/CLOSED.md).
+- **Preservation:**
 
-## 6. S07 integration handoff
+  ```text
+  CLOSEOUT PRESERVATION — R217.S04 (2026-10-29)
+  prose compacted:                 2   stubs at their own paths
+  reference promotions:            1   Plan presentation, Plan ranks and appearance mask in docs/reference/architecture.md
+  renderable evidence archived:    3 files / 260,110 bytes
+  evidence stubs / manifests:      1   evidence/CLOSED.md
+  transient artifacts removed:     0
+  historical anchor:               7bbbea5938f0291cf544283795df61bd7e2f0015 · tag closed/r217.s04 (local only — not pushed)
+  merge method:                    P1 GitHub merge commit (PR #223); post-merge anchor verification owed
+  new live → archive prose links:  0
+  manual-owed verification rows:   0
+  remaining deferred items:        4   Opening swing representation · S07 visible-write removal · Shaded Plan restyle · S11 integrated gate
+  permanent stubs added:           2
+  ```
 
-1. Import `STAGE_OVERLAY_LAYER` and `PAPER_LAYER` from
-   `apps/editor/src/lib/authoring/stage/paper-plan.ts`.
-2. Put every Canvas-drawn mark on `STAGE_OVERLAY_LAYER` (2) with `depthTest: false` and
-   `renderOrder` above `PAPER_LAYER.sceneFootprint` (60); 70 is the next free band.
-3. **Do not write `Object3D.visible`** for appearance, selection or hover. `visible` remains the
-   pick source's mounted-and-eligible flag; the camera mask is the only appearance switch. Do not
-   parent overlay geometry under a registered pick root.
-4. Reuse the one drawing set: `buildPaperPlan(plan, compiled, footprints, …)` is the source/stream
-   authority, and `fragmentLayer` is the pick rank. S07 can filter its selected source's line/fill
-   entries by `sourceId`; it should not regroup streams or build a second plan drawing.
-5. No S04 change is needed for the mark to appear in all three states: Paper's mask is `{2}` and
-   the mesh readings' mask already includes layer 2. If S07 needs a different rank, change only
-   its own `renderOrder`, not the camera mask or `PAPER_LAYER`.
-6. S04 does not own S07's selection/mark files. S07 owns removing its `root.visible` write and
-   proving its mark layer does not enter the pick raycaster.
-
-## 7. Evidence
-
-![Paper Plan: poché walls, Opening symbol, Scene primitive outline](./evidence-paper-plan.png)
-
-![Shaded Plan: the existing mesh surface on the mat](./evidence-shaded-plan.png)
-
-![3D: mat ground, Opening void, no fog](./evidence-3d-mat.png)
+- **Recovery:**
+  `git show 7bbbea5938f0291cf544283795df61bd7e2f0015:docs/roadmap/r217-core-editor-stability/r217.s04-paper-plan/acceptance.md`
+  · tag `closed/r217.s04`.
