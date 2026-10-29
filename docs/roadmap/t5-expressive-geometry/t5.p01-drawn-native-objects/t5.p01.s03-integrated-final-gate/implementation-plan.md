@@ -41,17 +41,15 @@ suspended and unmeasured rows stay unmeasured.
 ## Evidence
 
 - [Acceptance record](./acceptance.md)
-- [Evidence bundle, contract and browser details](./evidence/2026-10-28/9bcbd7eb/README.md)
-- [Browser JSON](./evidence/2026-10-28/9bcbd7eb/browser/t5-p01-s03-integrated-evidence.json)
-- [Digest parity](./evidence/2026-10-28/9bcbd7eb/digest-parity.json)
-- [Raw spot check](./evidence/2026-10-28/9bcbd7eb/perf/spot-9bcbd7eb.json)
 - [Archived screenshots](../../../../archive/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/evidence/2026-10-28/9bcbd7eb/CLOSED.md)
+
+The raw JSON/data, logs and capture scripts were transient and pruned from the final tree at owner
+direction after acceptance; recover them from `574a823b` and `9bcbd7eb` as recorded in the
+acceptance record.
 
 ## Entry points
 
 ```text
-validation  apps/editor/perf/flows/t5-p01-s03-integrated-final-gate.spec.ts
-            apps/editor/perf/digest-parity.mjs
 regressions apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts
             apps/editor/tests/lib/content/form-evaluation.test.ts
             apps/editor/tests/lib/geometry-core/**
@@ -63,7 +61,10 @@ regressions apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts
 
 ```text
 git show c13a949d:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/implementation-plan.md
+full gate/raw evidence  git show 574a823b:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/acceptance.md
+capture harness         git show 9bcbd7eb:apps/editor/perf/flows/t5-p01-s03-integrated-final-gate.spec.ts
 anchor  c13a949d — full approved plan body on main
+         574a823b — full acceptance body and raw evidence
 merge   PR #218 — P1 merge commit required; no squash or rebase
 tag     closed/T5.P01.S03 after the P1 merge
 ```

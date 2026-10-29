@@ -7,7 +7,8 @@ STATUS:    ACCEPTED 2026-10-28 under the owner's release and final-gate directio
            is recorded; the slice requires its P1 merge (PR #218, no squash or rebase). T5.P01 stays
            in-progress until a separate owner phase-close instruction.
 SOURCE:    trusted base c13a949d (PR #216 merge); tested final product/test revision
-           9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c; documentation and evidence follow.
+           9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c; documentation follows. The owner then directed
+           the transient raw evidence and capture scripts to be pruned.
 TIER:      exhaustive. This is T5.P01's declared FINAL PHASE GATE and the integration route of
            S01, S02 and S04.
 DECISION:  the owner released S03, directed execution of its approved exhaustive plan, authorized
@@ -21,14 +22,14 @@ NOT:       T5.P01 closure, T5 completion, a performance pass, a Wall-face delive
 
 The integrated gate proved drawn native objects end to end on the merged tree, with no product
 feature added. It re-proved the behavior independently of the contributing slices' own acceptance
-evidence; no separate GitHub reviewer verdict is claimed. From an empty project: a Room was closed and reversed through Undo/Redo; floor
-rectangle, floor triangle and upright-sheet elevation forms were drawn, read and created with
-typed depth; Move, Turn, Size per axis, Duplicate and Delete each produced one exact history entry;
-no-op, self-crossing, cancelled-depth and out-of-range-depth paths added none; the rectangle was
-saved to My Objects; Experience and Capture were created; Save and cold reopen preserved every
-entity and golden form digest; Plan and 3D produced identical rendered geometry and every form was
-picked in Plan; Preview reproduced the same geometry without changing source; Scene format 3 and a
-malformed form were refused without changing the project.
+evidence; no separate GitHub reviewer verdict is claimed. From an empty project: a Room was closed
+and reversed through Undo/Redo; floor rectangle, floor triangle and upright-sheet elevation forms
+were drawn, read and created with typed depth; Move, Turn, Size per axis, Duplicate and Delete each
+produced one exact history entry; no-op, self-crossing, cancelled-depth and out-of-range-depth paths
+added none; the rectangle was saved to My Objects; Experience and Capture were created; Save and
+cold reopen preserved every entity and golden form digest; Plan and 3D produced identical rendered
+geometry and every form was picked in Plan; Preview reproduced the same geometry without changing
+source; Scene format 3 and a malformed form were refused without changing the project.
 
 The two-project owner journey then inserted the saved item into a starter project as an editable
 copy with the exact authored source and no item reference, reversed the insertion exactly, created
@@ -38,7 +39,7 @@ item while B's copies stayed editable and B still saved.
 
 ## Evidence
 
-**Repository contract at `9bcbd7eb`** (raw logs and the full bundle are linked below):
+**Repository contract at `9bcbd7eb`:**
 
 ```text
 test:full                232 files / 2,938 tests passed, 0 skipped
@@ -72,22 +73,18 @@ pin 9679388d3437d929db09ac0de1267bd920a89a707f582bfd53386e4a1cd892e3  (all three
 ```
 
 **Performance recheck:** one authorized `npm run perf:spot` ran at `9bcbd7eb` with verified runner
-and preview provenance. It produced `not-usable` for both M and L. Raw numbers and the load
-context are in the evidence bundle; the run began at load average 9.10 on the 8-core M2 and the
-harness cannot attribute that load. No second session was permitted for an over-threshold result.
-This is **measured, unfavorable evidence, not a performance pass**; the comprehensive matrix stays
-suspended and every unmeasured row stays unmeasured.
+and preview provenance. It produced `not-usable` for both M and L. The run began at load average
+9.10 on the 8-core M2 and the harness cannot attribute that load. No second session was permitted
+for an over-threshold result. This is **measured, unfavorable evidence, not a performance pass**;
+the comprehensive matrix stays suspended and every unmeasured row stays unmeasured.
 
-### Links
+**Retained evidence:** the 18 browser screenshots are archived byte-identically. The transient raw
+JSON, machine facts, logs, manifest, evidence index and the two capture scripts were pruned from the
+final tree at owner direction after acceptance; they remain recoverable from Git at `574a823b`
+(raw evidence and the full acceptance body) and `9bcbd7eb` (capture harness). The documentation
+gate passed 2 files / 56 tests after closeout.
 
-- [Evidence bundle and contract/browser/spot details](./evidence/2026-10-28/9bcbd7eb/README.md)
-- [Browser JSON](./evidence/2026-10-28/9bcbd7eb/browser/t5-p01-s03-integrated-evidence.json)
-- [Digest parity JSON](./evidence/2026-10-28/9bcbd7eb/digest-parity.json)
-- [Raw spot JSON](./evidence/2026-10-28/9bcbd7eb/perf/spot-9bcbd7eb.json)
-- [SHA-256 manifest](./evidence/2026-10-28/9bcbd7eb/SHA256SUMS)
 - [Archived screenshots — 18 files / 2,579,018 bytes](../../../../archive/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/evidence/2026-10-28/9bcbd7eb/CLOSED.md)
-- [Integration harness](../../../../../apps/editor/perf/flows/t5-p01-s03-integrated-final-gate.spec.ts)
-- [Digest parity runner](../../../../../apps/editor/perf/digest-parity.mjs)
 
 ## Coverage against the approved scope
 
@@ -113,8 +110,6 @@ implementation  packages/geometry-core/src
                 apps/editor/src/lib/authoring/adapters/scene
                 apps/editor/src/lib/authoring/adapters/scene/library
                 apps/api/src/form-library.ts
-validation      apps/editor/perf/flows/t5-p01-s03-integrated-final-gate.spec.ts
-                apps/editor/perf/digest-parity.mjs
 regressions     apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts
                 apps/editor/tests/lib/content/form-evaluation.test.ts
                 apps/editor/tests/lib/geometry-core/**
@@ -136,14 +131,20 @@ records. This gate reuses their evidence and does not rewrite it.
   are not claimed by this gate.
 - **Performance:** the one authorized spot measured `not-usable` M/L under load; the comprehensive
   matrix is suspended, and no unmeasured row is a pass.
+- **Pruned evidence:** raw JSON/data, logs and the capture scripts are not live files; recover them
+  from the Git anchors below rather than treating this record as a raw-data store.
 - **Preserve:** the side-quad texture seam; T4 owns the visitor `/p` first-load target.
 
 ## Recovery
 
 ```text
 full plan        git show c13a949d:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/implementation-plan.md
-policy           docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/acceptance.md (this live final-gate artifact)
+full gate body   git show 574a823b:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/acceptance.md
+raw evidence     git show 574a823b:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/evidence/2026-10-28/9bcbd7eb/browser/t5-p01-s03-integrated-evidence.json
+capture harness  git show 9bcbd7eb:apps/editor/perf/flows/t5-p01-s03-integrated-final-gate.spec.ts
+                 git show 9bcbd7eb:apps/editor/perf/digest-parity.mjs
 anchor           c13a949d — full approved plan body on main
+                 574a823b — full acceptance body and raw evidence
 merge            PR #218 — P1 merge commit required for this slice; no squash or rebase
 tag              closed/T5.P01.S03 after the P1 merge, on the commit carrying this acceptance body
 ```
@@ -158,9 +159,10 @@ CLOSEOUT PRESERVATION — T5.P01.S03 (2026-10-28)
 prose compacted:                 1   implementation plan → stub at its own path
 reference promotions:            0   no new durable reference conclusion beyond the acceptance record
 renderable evidence archived:    18 files / 2,579,018 bytes (2.46 MiB), byte-identical copies
-evidence stubs / manifests:      1   archive CLOSED.md plus live SHA256SUMS
-transient artifacts removed:     0
-historical anchor:               c13a949d · full plan body; final-gate acceptance stays live
+evidence stubs / manifests:      1   archive CLOSED.md
+transient artifacts removed:     22 live evidence files (5 JSON/data, 1 manifest, 1 index, 15 logs)
+                                     and 2 capture scripts plus 1 flow-list entry
+historical anchor:               574a823b · full acceptance body and raw evidence; plan c13a949d
 new live → archive prose links:  0
 manual-owed verification rows:   2   M/L spot labels (not a performance pass) and the suspended matrix
 remaining deferred items:        4   owner phase close; Wall-face query; S04 residual edges; T4 visitor target
