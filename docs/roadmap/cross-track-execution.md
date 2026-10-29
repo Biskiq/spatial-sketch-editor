@@ -232,7 +232,10 @@ closeout updates only the owning baton; cross-track status stays in its owning r
   in the owning tracks. They are not accepted providers or newly released scopes.
 - **Core Editor Stability and T4:** owned by [the milestone](./core-editor-stability.md) and the
   [T4 baton](../operations/t4-release/current.md); this batch neither accepts the milestone nor
-  creates its acceptance workspace.
+  creates its acceptance workspace. Its shell-coherence work is the repository phase
+  [R217](./r217-core-editor-stability/README.md), registered 2026-10-28 with no slice released;
+  it starts after `T5.P01.S03` merges and serializes its Stage, route and Scene adapter edits
+  under the protocol above.
 - **Cycle/closure:** no track completion, owner architecture verdict, phase closure or baseline
   is created here. Re-arming a mechanism in its consuming slice is not a verdict.
 

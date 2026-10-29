@@ -79,9 +79,14 @@ owns lifecycle only and never copies their content.
 | T4 | planning | [T4 — Release and delivery](./t4-release/README.md) |
 | T5 | approved | [T5 — Expressive Geometry](./t5-expressive-geometry/README.md) |
 | R115 | shipped | [R115 — PR #115 architecture reset](./parallel-track-cutover/README.md) |
+| R217 | approved | [R217 — Core Editor Stability](./r217-core-editor-stability/README.md) |
 
 - **R115 is a repository phase, not a fifth track.** It is registered here directly because it
   has no parent track; its sole child is `R115.S01` and its own README owns that child.
+- **R217 is a repository phase**, registered here on the owner's 2026-10-28 ruling
+  ([record](../reference/decisions/core-editor-stability-planning-2026-10-28.md), D4). All track
+  phases were closed and its work crosses T1, T2, T3 and T5, which keep ownership and review per
+  slice. Its own README owns its eleven slices; nothing in it is released.
 - **`planning`** means the track's roadmap and evidence exist and no capability phase is
   registered or authorized. It is the honest state after PR #115: planning evidence is
   recorded, implementation is not authorized.
