@@ -2,9 +2,10 @@
 
 **Read when:** catalogue, licences, model preparation and validation, project texture registry,
 published release delivery.
-**Last reviewed:** 2026-10-27 (T5 destination promotion; current single-model import remains bounded
-by T2.P02 and its acceptance evidence). Landed contracts keep describing current behavior until
-their explicit cutover; T5 admits no resource or dependency here.
+**Last reviewed:** 2026-10-28 (T5.P01.S04 `form` library scope in review; T5 destination promotion;
+current single-model import remains bounded by T2.P02 and its acceptance evidence). Landed
+contracts keep describing current behavior until their explicit cutover; T5 admits no resource or
+dependency here.
 
 ---
 
@@ -77,6 +78,31 @@ texture before project replacement, verifies registry metadata plus MIME/size/SH
 existing binary store; failure leaves the current project unchanged. Provider search and general
 delete/GC remain deferred. Built-ins retain catalogue identity — do not invent registry behavior for
 them.
+
+## My Objects `form` library scope (T5.P01.S04, in review)
+
+The first consumer of the ratified **library scope**, landing in review, is one typed `form` item,
+owned by the signed-in creator, not by a project. Its payload is format 1
+`{ formatVersion, kind: 'form', name, form, materialId, castShadow, receiveShadow }`; `form` is the
+Scene native-form source verbatim, including controls, keys, per-axis scale and `nextKey`. It is
+source only: no mesh, footprint, normal, UV or cache is stored.
+
+A strict shared reader/writer in `@portfolio/project-model/library` is used by both the editor and
+the API. It refuses unknown keys, any other format number and an unevaluable body. The server
+recomputes the canonical bytes and the `sha256` content identity, stores at most 256 KiB per item
+and 1,000 items per owner, and refuses a mismatch. Save creates a new immutable item; items are
+never edited in place. Only the owner lists, reads, inserts from or removes one, and another
+owner's id answers as not found. Items survive project deletion, and no project, release, visitor
+or publication route can reach them.
+
+Inserting creates a **detached authored copy**: the Scene intent `place-form-copy` allocates a new
+entity id and writes the saved source verbatim, with no resource, lock entry, reference or other
+link to the item. Editing the copy, the original or the saved item never reaches the others. The
+copy is ordinary native-form Scene truth afterwards.
+
+Until beta an item records the format it was written with. An older-format item stays listed and
+removable, is marked as made with an earlier development version, and is refused at insertion; it
+is never migrated or misread ([owner ruling](../decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)).
 
 ## Creator model resource storage (T2.P02.S01)
 

@@ -2,9 +2,9 @@
 
 **Read when:** scene/layout/project codecs, cloud Save/Load, asset durability, publication,
 release delivery, fidelity.
-**Last reviewed:** 2026-10-27 (T5 destination promotion; live unit versions reconciled).
-The code contract below describes the F2 cutover tree. Deployment and migration 005 remain
-owner-controlled after merge; it does not claim production activation.
+**Last reviewed:** 2026-10-28 (T5.P01.S04 library storage in review; T5 destination promotion; live
+unit versions reconciled). The code contract below describes the F2 cutover tree. Deployment and
+migration 005 remain owner-controlled after merge; it does not claim production activation.
 
 ---
 
@@ -151,6 +151,19 @@ selection, history and saved base; stale admission after replacement cannot inst
 advisory lock; rerun is a no-op and pre-epoch writers refuse. Namespace-owned R2 purge is a separate
 owner action after the epoch; unknown or foreign keys refuse the purge. No production data reset
 or deployment is implied by this source contract. Activation follows AM-9's owner-run runbook.
+
+**My Objects library storage (T5.P01.S04, in review).** Migration 008 adds
+`form_library_items`, the library-scope storage for the `form` kind. It is owner-scoped, not project
+data: `owner_id` references `users`, while no project/release/asset foreign key exists, so deleting
+a project leaves its items. Each row carries a server logical id, name, kind, payload format number,
+the `sha256` content id and the exact canonical payload bytes in Postgres (small payloads, not R2),
+plus a creation time. Items are immutable revisions: Save inserts, Remove deletes. The API
+recomputes the content id from the canonical bytes and refuses unknown keys, other format numbers,
+a mismatch, more than 256 KiB and more than 1,000 items per owner; the count is serialized by an
+owner-scoped advisory lock in the same transaction. The owner predicate is on every list, read and
+delete statement, so another owner's id answers as not found. The library is outside F2 project
+Save: it adds no project version, dependency-lock entry or authored reference, and a Scene
+`place-form-copy` writes a detached form source with a new entity id.
 
 **Project asset durability (P20 shipped 2026-09-04):** registry metadata in Postgres, heavy
 texture bytes in private R2 through `apps/api` only. Session/package texture URIs cannot reach
