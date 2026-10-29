@@ -364,6 +364,43 @@ Division keeps the landed Room reconciliation (P23.8 lineage:
 split survivor by evidence order, one Room born). The creator-facing expression is
 [PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
 
+## Editor interaction authorities
+
+### Current interaction (verified at `686e724d`)
+
+`StageSession` owns the canonical selection and one gesture lease at a time, with
+reading-change policy per lease. Its `registerProposal` and `liveProposal` expose live
+proposals to the Undo availability reason. F4 owns the one chronological history
+(`apps/editor/src/lib/authoring/f4/history.ts`). See
+`apps/editor/src/lib/authoring/stage/stage-session.ts` and
+`apps/editor/src/lib/authoring/stage/stage-facade.ts`.
+
+`StageFacade.resolveSourceHit` asks adapter hit providers in registration order, then
+the retained Plan pick index in Layout priority. With no task, the facade offers a press
+to `pressWhenNoTask` bindings in registration order.
+
+### Coordination over domain policy (destination until R217.S03/S07 land)
+
+The Stage host coordinates pointer routing, arbitration between each domain's winner,
+session selection, hover, mark disclosure, gesture leases and interruption. Domains own
+eligibility, hit tests and internal ranking, occlusion, marks, gesture meaning, capture
+and refusal text. The host does not compute or reorder a domain's hits. The complete
+rule, including host tools, spatial arbitration and coarse-pointer targets, is in
+[R217 coordination](../roadmap/r217-core-editor-stability/README.md#shared-stage-interaction-coordination-over-domain-policy).
+
+### Package responsibilities
+
+| Package | Owns | Track |
+| --- | --- | --- |
+| `layout-core` | Topology, compilation, Plan representation | T1 |
+| `geometry-core` | Native form profile, extrusion, digest | T5 |
+| `camera-core` | Viewport, projection, Camera evaluation | T1 viewport; T3 route and motion |
+| `project-model` | Units, codecs, Scene planning and validation | T2 Scene; T3 units/F4 |
+
+A runtime-safe helper moves into a package only when it has a second runtime-safe
+consumer. Session arithmetic stays in the editor. Persistence classes are specified
+in [R217 persistence](../roadmap/r217-core-editor-stability/README.md#persistence-history-and-session-state).
+
 ## Where to look (per surface)
 
 Doc routing lives in the router ([`../README.md`](../README.md) §Where truth

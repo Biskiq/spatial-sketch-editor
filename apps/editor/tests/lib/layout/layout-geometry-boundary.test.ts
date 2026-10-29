@@ -77,7 +77,7 @@ const CONSUMER_FILES = ['lib/visitor/VisitorLayoutShell.svelte'].map((relative) 
 	resolve(srcRoot, relative)
 );
 
-const IMPORT_SPECIFIER = /from\s+['"]([^'"]+)['"]|import\(?\s*['"]([^'"]+)['"]/g;
+const IMPORT_SPECIFIER = /from\s+['"]([^'"]+)['"]|(?:import\s*\(?|require\s*\()\s*['"]([^'"]+)['"]/g;
 
 /**
  * Renderer, editor and browser-global coupling in one predicate — the
@@ -116,6 +116,12 @@ function packageFilesDefining(signature: string): string[] {
 }
 
 describe('G1 geometry boundary', () => {
+	it('keeps layout-core independent of all portfolio packages', () => {
+		const forbidden = (source: string) => importSpecifiers(stripComments(source)).filter((specifier) => specifier.startsWith('@portfolio/'));
+		expect(forbidden("import { shape } from '@portfolio/geometry-core';")).toEqual(['@portfolio/geometry-core']);
+		for (const file of PACKAGE_SOURCE_FILES) expect(forbidden(sourceOf(file)), file).toEqual([]);
+	});
+
 	it('exposes the wall-first layout contract directly from layout-core', () => {
 		const document = createEmptyWallFirstLayoutDocument();
 		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
