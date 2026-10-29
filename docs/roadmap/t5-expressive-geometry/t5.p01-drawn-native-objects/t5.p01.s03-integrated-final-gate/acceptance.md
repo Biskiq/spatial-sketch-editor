@@ -4,7 +4,7 @@
 AUTHORITY: NONE — the phase README owns slice status and order; this record owns the final-gate
            verdict, evidence and residuals. T5.P01 is CLOSABLE, not closed.
 STATUS:    ACCEPTED 2026-10-28 under the owner's release and final-gate direction. Routine closeout
-           is recorded; the slice requires its P1 merge commit (no squash or rebase). T5.P01 stays
+           is recorded; the slice requires its P1 merge (PR #218, no squash or rebase). T5.P01 stays
            in-progress until a separate owner phase-close instruction.
 SOURCE:    trusted base c13a949d (PR #216 merge); tested final product/test revision
            9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c; documentation and evidence follow.
@@ -143,7 +143,7 @@ records. This gate reuses their evidence and does not rewrite it.
 full plan        git show c13a949d:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/implementation-plan.md
 policy           docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/acceptance.md (this live final-gate artifact)
 anchor           c13a949d — full approved plan body on main
-merge            P1 merge commit required for this slice; no squash or rebase
+merge            PR #218 — P1 merge commit required for this slice; no squash or rebase
 tag              closed/T5.P01.S03 after the P1 merge, on the commit carrying this acceptance body
 ```
 

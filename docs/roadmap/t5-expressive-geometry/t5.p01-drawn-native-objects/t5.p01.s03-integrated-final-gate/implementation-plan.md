@@ -5,7 +5,7 @@ AUTHORITY: NONE — the phase README owns lifecycle; the acceptance record owns 
            evidence, residuals and owner direction. This stub preserves the approved scope and
            recovery path only.
 STATUS:    ACCEPTED 2026-10-28 at 9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c; routine closeout
-           complete; P1 merge required. T5.P01 is CLOSABLE, not closed.
+           complete; P1 merge required (PR #218). T5.P01 is CLOSABLE, not closed.
 VERIFICATION: exhaustive
 CONSUMES:  F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
 REQUIRES:  F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1,
@@ -64,6 +64,6 @@ regressions apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts
 ```text
 git show c13a949d:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/implementation-plan.md
 anchor  c13a949d — full approved plan body on main
-merge   P1 merge commit required; no squash or rebase
+merge   PR #218 — P1 merge commit required; no squash or rebase
 tag     closed/T5.P01.S03 after the P1 merge
 ```
