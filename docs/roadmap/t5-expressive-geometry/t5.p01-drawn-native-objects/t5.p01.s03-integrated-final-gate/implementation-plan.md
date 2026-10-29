@@ -1,64 +1,70 @@
-# T5.P01.S03 — Integrated final gate: implementation plan
-
-**Slice:** T5.P01.S03 · **Status:** proposed; approved with `T5.P01.S02` and `S04` or after them ·
-**Phase:** [T5.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
-[T5](../../README.md) · **Runbook:** [T5 operations](../../../../operations/t5-expressive-geometry/README.md)
+# T5.P01.S03 — Integrated final gate: implementation plan — CLOSED STUB
 
 ```text
-CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1
+AUTHORITY: NONE — the phase README owns lifecycle; the acceptance record owns the gate verdict,
+           evidence, residuals and owner direction. This stub preserves the approved scope and
+           recovery path only.
+STATUS:    ACCEPTED 2026-10-28 at 9bcbd7ebe4142d59d2b82d6ef428e7ffdcbfde4c; routine closeout
+           complete; P1 merge required (PR #218). T5.P01 is CLOSABLE, not closed.
 VERIFICATION: exhaustive
+CONSUMES:  F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
+REQUIRES:  F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1,
+           F4.intent-acceptance@1:unit-acceptance-v1,
+           F4.intent-acceptance@1:conditional-save-units-v1,
+           T1.viewport-projection@1:viewport-projection-v1
+NOT:       T5.P01 closure, track completion, a performance pass or a Wall-face delivery.
 ```
 
-This plan is the phase's declared **FINAL PHASE GATE** and the integration route that S01, S02 and
-S04 send their deferred exhaustive proof to; its acceptance record is the phase's declared final-gate
-artifact. It adds no product feature. Nothing here has run.
+## Approved scope
 
-## Prerequisite
+The phase's declared **FINAL PHASE GATE** and the integration route for S01, S02 and S04. It added
+no product feature. It proved drawn native objects from an empty project and the starter: draw,
+read, pull depth and create floor and upright-sheet forms; place, turn, size per axis, duplicate
+and delete; exact Undo/Redo for every accepted edit and no history for refused, cancelled, stale or
+no-op edits; Save and cold reopen with identical golden digests; the two-project My Objects reuse
+journey with independent copy, item and project A; Plan/3D/Preview agreement; strict refusal of
+Scene format 3 and malformed forms; the cold-release form refusal; and the golden corpus in V8 plus
+a non-V8 engine with bit-identical digests.
 
-`T5.P01.S01`, `S02` and `S04` accepted with routine closeout, every consumed gate `accepted` and every
-`Requires` scope `active` at this slice's own trusted base.
+The owner walkthrough required three different objects from an empty project, one reused in a
+second project through My Objects. Wall-face creation waits for T1's face-frame query; the approved
+hand-aligned upright sheet is the delivered upright route.
 
-## Scope
+## Result
 
-Record independent acceptance of drawn native objects on the integrated tree, from an empty project
-and from the starter:
+Accepted. The complete repository contract, 3 Chromium journeys / 27 rows, three-engine digest
+parity and the one authorized spot check are recorded in the
+[acceptance record](./acceptance.md). The spot measured `not-usable` M/L under load; it is
+unfavorable evidence, not a performance pass. The comprehensive performance matrix stays
+suspended and unmeasured rows stay unmeasured.
 
-- draw, read, pull depth and create forms on the floor and on an upright sheet (and on a Wall face,
-  if S02 delivered it), then place, turn, size per axis, duplicate and delete them;
-- Undo and Redo across every accepted edit; refused, cancelled, stale and no-op edits add no history;
-- Save and cold reopen in a fresh session with identical golden digests;
-- the reuse journey across two projects of one owner: draw a form in project A, save it to My
-  Objects, open project B, insert an editable copy, refine it, Save and cold-reopen both projects,
-  and show the copy, the original and the saved item unaffected by each other's edits; then delete
-  project A and remove the item, and show B's copy intact;
-- Plan, 3D and Preview showing the same results;
-- strict refusal of Scene format 3 and of malformed forms; the cold-release check refusing forms;
-- the golden corpus run in V8 and in at least one non-V8 engine (WebKit or Firefox), with
-  bit-identical digests;
-- the owner walkthrough: three different objects created from an empty project, one of them reused
-  in a second project through My Objects, with any blocked intention recorded as evidence for the
-  next phase.
+## Evidence
 
-## Acceptance criteria
+- [Acceptance record](./acceptance.md)
+- [Archived screenshots](../../../../archive/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/evidence/2026-10-28/9bcbd7eb/CLOSED.md)
 
-**Required evidence:** the complete repository contract — fast and heavy kernel correctness, the full
-editor suite, the unconditional architecture lane, root `check` and `build`, the shared-package
-checks including `check:geometry-core`, and `check:api` plus a DB-backed `test:api` with **zero
-skips** — with browser journeys recorded with their revision, viewport and reduced-motion state.
-Use [tests/README](../../../../../apps/editor/tests/README.md) for lane and command policy and
-[browser hygiene](../../../../../.agents/skills/browser-hygiene/SKILL.md) when launching a browser.
+The raw JSON/data, logs and capture scripts were transient and pruned from the final tree at owner
+direction after acceptance; recover them from `574a823b` and `9bcbd7eb` as recorded in the
+acceptance record.
 
-Passing makes T5.P01 **closable**; only an explicit owner phase-close request closes it.
+## Entry points
 
-## Performance recheck
+```text
+regressions apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts
+            apps/editor/tests/lib/content/form-evaluation.test.ts
+            apps/editor/tests/lib/geometry-core/**
+            apps/editor/tests/lib/authoring/scene-operation-acceptance.test.ts
+            apps/api/tests/form-library.test.mjs
+```
 
-The comprehensive performance matrix stays suspended. If this gate is an authorized
-[spot-check trigger](../../../../reference/decisions/performance-spot-check-2026-10-28.md) — a
-significant editor hot-path checkpoint, or an editor release candidate with relevant changes since
-the last measurement — run one `npm run perf:spot`. That result is M/L architectural-grid evidence.
-It does not certify form evaluation, imported models or the visitor. The historical budgets in the
-[performance contract](../../../../reference/components/performance.md#budgets) and the
-[umbrella envelope](../../umbrella-plan.md#57-performance-envelope) stay historical; an unmeasured
-row stays unmeasured. Stage and visitor first-load deltas, when delivery is in question, come from
-`npm run perf:bundle`.
+## Recovery
+
+```text
+git show c13a949d:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/implementation-plan.md
+full gate/raw evidence  git show 574a823b:docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s03-integrated-final-gate/acceptance.md
+capture harness         git show 9bcbd7eb:apps/editor/perf/flows/t5-p01-s03-integrated-final-gate.spec.ts
+anchor  c13a949d — full approved plan body on main
+         574a823b — full acceptance body and raw evidence
+merge   PR #218 — P1 merge commit required; no squash or rebase
+tag     closed/T5.P01.S03 after the P1 merge
+```

@@ -96,7 +96,7 @@ investment.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T5.P01 | approved | — | [Drawn native objects](./t5.p01-drawn-native-objects/README.md) |
+| T5.P01 | in-progress | — | [Drawn native objects](./t5.p01-drawn-native-objects/README.md) |
 
 ## Operations and authorization route
 
