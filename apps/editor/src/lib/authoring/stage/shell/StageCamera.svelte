@@ -9,13 +9,21 @@
 	 * overlays and the pointer rays all come from the same evaluated matrices.
 	 */
 	import { T, useTask, useThrelte } from '@threlte/core';
-	import type { PerspectiveCamera } from 'three';
+	import { Color, type PerspectiveCamera } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
+	import { MAT_BACKGROUND_INK, PAPER_GROUND_INK, stageCameraLayerMask } from '../paper-plan';
 
-	let { evaluation }: { evaluation: ViewportEvaluation | null } = $props();
+	let {
+		evaluation,
+		paperVisible
+	}: {
+		evaluation: ViewportEvaluation | null;
+		/** Paper masks the world meshes without touching their `visible` flag. */
+		paperVisible: boolean;
+	} = $props();
 
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
-	const { invalidate } = useThrelte();
+	const { invalidate, scene, renderer } = useThrelte();
 
 	// Runs before the render pass each frame, so the evaluated matrices are the
 	// ones the meshes are actually drawn with even if Threlte touched the camera.
@@ -45,6 +53,35 @@
 		// through Threlte's own reactivity.
 		void evaluation;
 		invalidate();
+	});
+
+	$effect(() => {
+		// Appearance is a camera mask, never `Object3D.visible`: the pick source's
+		// raycaster keeps its default layer-0 mask and can still hit the undrawn world.
+		const camera = cameraRef;
+		if (camera === undefined) return;
+		camera.layers.disableAll();
+		for (const layer of stageCameraLayerMask(paperVisible)) camera.layers.enable(layer);
+		invalidate();
+	});
+
+	$effect(() => {
+		// The surface is its own redraw trigger. Clearing the drawing buffer directly
+		// makes the surface an opaque PLATE material rather than a scene object; a
+		// settled Shaded Plan has no Paper build or Camera move to request the frame
+		// that would otherwise show it.
+		scene.background = null;
+		renderer.setClearColor(new Color(paperVisible ? PAPER_GROUND_INK : MAT_BACKGROUND_INK), 1);
+		invalidate();
+	});
+
+	$effect(() => {
+		// The mask and surface change together and the mat ground is a conditional
+		// child: request the frame after this update has been applied so a settled
+		// Shaded Plan cannot keep the previous frame's ground or surface.
+		void paperVisible;
+		const frame = requestAnimationFrame(() => invalidate());
+		return () => cancelAnimationFrame(frame);
 	});
 </script>
 

@@ -104,6 +104,36 @@ export function buildPlanSceneFootprintProjection(
 	return { footprints };
 }
 
+/**
+ * The one footprint projection for a live Scene snapshot.
+ *
+ * Paper and Scene's Plan hit path must read the **same** projection, not two
+ * evaluations of the same function: an identity, a point ring and a tilted form's
+ * polygon union can otherwise drift when one call site resolves a different
+ * scale or model footprint. The cache is keyed by the Scene object the accepted
+ * snapshot carries, and by the model-footprint map it was built with.
+ */
+const projections = new WeakMap<
+	object,
+	{
+		readonly modelFootprints: ReadonlyMap<string, { readonly width: number; readonly depth: number }> | undefined;
+		readonly projection: PlanSceneProjection;
+	}
+>();
+
+export function planSceneFootprintsFor(
+	document: Pick<SceneDocument, 'entities'>,
+	modelFootprints?: ReadonlyMap<string, { readonly width: number; readonly depth: number }>
+): PlanSceneProjection {
+	const cached = projections.get(document);
+	if (cached !== undefined && cached.modelFootprints === modelFootprints) return cached.projection;
+	const projection = buildPlanSceneFootprintProjection(document, {
+		modelFootprintById: (assetId) => modelFootprints?.get(assetId)
+	});
+	projections.set(document, { modelFootprints, projection });
+	return projection;
+}
+
 /** Full XYZ placement matches the rendered body, including admitted non-upright forms. */
 function tiltedFormPolygons(entity: SceneFormEntity): LayoutVec2[][] {
 	const mesh = evaluateFormMesh(entity.form);

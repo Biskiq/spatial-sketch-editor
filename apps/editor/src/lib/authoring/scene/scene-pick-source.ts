@@ -39,6 +39,23 @@ export function createScenePickSource() {
 	let source: RuntimeScene | null = null;
 	return {
 		setSource(next: RuntimeScene) { source = next; refresh(); },
+		/**
+		 * Whether this entity has a mounted, visible root.
+		 *
+		 * Paper draws a footprint only for a body the pick path can reach: an
+		 * entity the Scene renderer never mounted (an unknown Room, for example) or
+		 * a hidden root is neither drawn nor eligible. This reads the same roots and
+		 * visibility the raycast walks; it never writes `visible` and is not a
+		 * second eligibility model.
+		 */
+		hasVisibleRoot(id: string): boolean {
+			const root = roots.get(id);
+			if (root === undefined) return false;
+			for (let node: Object3D | null = root; node !== null; node = node.parent) {
+				if (!node.visible) return false;
+			}
+			return true;
+		},
 		refresh,
 		bounds(id: string, expected: RuntimeScene): { min: [number, number, number]; max: [number, number, number] } | null {
 			const root = source === expected ? roots.get(id) : undefined;

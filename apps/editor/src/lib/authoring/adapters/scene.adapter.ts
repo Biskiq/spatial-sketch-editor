@@ -50,8 +50,9 @@ import {
 	type SceneSupportChoice
 } from '@portfolio/project-model/scene-planning';
 
-import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
-import { distanceToPlanPolygonEdge, planSceneHaloProbe, resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
+import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
+import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';
+import { PAPER_LAYER } from '$lib/authoring/stage/paper-plan';
 import FormCardFields from './scene/FormCardFieldsLazy.svelte';
 import ShapeReadingPalette from './scene/shape/ShapeReadingPalette.svelte';
 import { createShapeReadingSession } from './scene/shape/reading';
@@ -792,7 +793,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				services.stage.notifySurfaceChange();
 			}
 
-			const footprints = buildPlanSceneFootprintProjection(source, { modelFootprintById: (id) => context.snapshot.domain.scene.modelFootprints?.get(id) }).footprints;
+			// The same projection Paper draws: the accepted runtime Scene the route hands
+			// to the Canvas, not a second projection of the authored unit document.
+			const runtimeScene = context.snapshot.domain.scene;
+			const footprints = planSceneFootprintsFor(runtimeScene, runtimeScene.modelFootprints).footprints;
 			return {
 				subjects: source.entities.map((entity) => ({
 					id: `scene:entity:${entity.id}`,
@@ -815,21 +819,22 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const t = (live.snapshot.domain.datumMeters - ray.origin[1]) / ray.direction[1];
 						if (!(t >= 0 && Number.isFinite(t))) return null;
 						const point: [number, number] = [ray.origin[0] + ray.direction[0] * t, ray.origin[2] + ray.direction[2] * t];
-						const eligible = drawn?.kind !== 'entity' ? footprints : footprints.filter((footprint) => footprint.entityId === drawn.entityId);
-						const hit = resolvePlanSceneHit(eligible, point, 6 * live.evaluation.targetPlaneMetersPerCssPixel);
-						if (hit === null) return null;
-						if (hit.reason === 'edge-halo') cssDistance = Math.min(...(hit.footprint.polygons ?? [hit.footprint.points]).map((polygon) => distanceToPlanPolygonEdge(point, polygon))) / live.evaluation.targetPlaneMetersPerCssPixel;
-						if (drawn?.kind !== 'entity') {
-							// A footprint cannot select an unmounted or hidden body through a
-							// floor. Only an edge halo may probe its own visible silhouette.
-							if (hit.reason !== 'edge-halo') return null;
-							const probe = planSceneHaloProbe(hit.footprint, point);
-							const projected = probe === null ? null : live.project([probe[0], live.snapshot.domain.datumMeters, probe[1]]);
-							const probeRay = projected === null ? null : live.ray(projected);
-							if (probeRay === null || live.pickScene(probeRay)?.entityId !== hit.entityId) return null;
-						}
-						entityId = hit.entityId;
-						distance = drawn?.distanceMeters ?? t;
+						const planHit = pickPlanSceneSubject({
+							footprints,
+							point,
+							edgeHaloMeters: 6 * live.evaluation.targetPlaneMetersPerCssPixel,
+							datumMeters: live.snapshot.domain.datumMeters,
+							datumDistanceMeters: t,
+							pixelsPerMeter: live.evaluation.targetPlaneMetersPerCssPixel,
+							ray,
+							pickScene: (probe) => live.pickScene(probe),
+							projectWorld: (probe) => live.project(probe),
+							rayAtCss: (probeCss) => live.ray(probeCss)
+						});
+						if (planHit === null) return null;
+						entityId = planHit.entityId;
+						distance = planHit.distanceMeters;
+						cssDistance = planHit.cssDistance;
 					}
 					if (entityId === null) return null;
 					let worldPoint = ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number];
@@ -849,7 +854,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						reference: sceneEntityReference(entityId, live.snapshot.domain.unitRevisions.scene),
 						worldPoint },
 						refusal: null, depthMeters: drawn?.kind === 'entity' ? drawn.distanceMeters : null,
-						planLayer: 60, cssDistance
+						planLayer: PAPER_LAYER.sceneFootprint, cssDistance
 					};
 				},
 				readings: [

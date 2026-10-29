@@ -130,6 +130,7 @@
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	const scenePick = createScenePickSource();
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
+	import { isPaperPlanVisible } from '$lib/authoring/stage/paper-plan';
 	import {
 		approvedModelPins,
 		resolveApprovedModels,
@@ -484,6 +485,10 @@
 	// Generated Plan evaluations are replaced whole; raw data keeps their references
 	// cloneable when Index selection crosses the immutable selection boundary.
 	let planView = $state.raw<PlanEvaluation | null>(null);
+	// The chrome's own paper/material cue follows the same truth as the Canvas: a
+	// settled Plan in the Paper appearance. It is a CSS inset perimeter only, never a
+	// second drawing surface or a pointer target.
+	const paperVisible = $derived(isPaperPlanVisible(evaluation, preferences.planAppearance));
 	let rect = $state<ViewportRect | null>(null);
 	let markers = $state<readonly StageOverlayContribution[]>([]);
 	let ghosts = $state<readonly StageGhostMesh[]>([]);
@@ -3141,6 +3146,7 @@
 				bind:this={stageEl}
 				role="application"
 				tabindex="0"
+				data-paper={paperVisible ? 'true' : 'false'}
 				aria-label="Spatial stage"
 				onpointerleave={clearHover}
 				onpointerdown={onPointerDown}
@@ -3161,6 +3167,10 @@
 						{evaluation}
 						{ghosts}
 						{modelUrls}
+						plan={planView}
+						planAppearance={preferences.planAppearance}
+						{reducedMotion}
+						datumMeters={boot.snapshot.domain.datumMeters}
 					/>
 				{/if}
 				<div class="overlay-layer">
@@ -3420,9 +3430,18 @@
 	.stage {
 		position: absolute;
 		inset: 0;
-		background: #111117;
+		/* The mat is the Stage's default surface; Paper's vellum is drawn in the Canvas. */
+		background: #152c26;
 		outline: none;
 		touch-action: none;
+	}
+	/*
+		PLATE's 1 CSS px inset perimeter separates Paper from the chassis. It is an
+		inset shadow, not a border: the canvas rectangle, Camera aspect and pointer
+		mapping stay unchanged, and it intercepts no picking.
+	*/
+	.stage[data-paper='true'] {
+		box-shadow: inset 0 0 0 1px #c9cfc2;
 	}
 	.stage:focus-visible {
 		box-shadow: inset 0 0 0 1px #d4ad45;

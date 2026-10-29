@@ -24,7 +24,8 @@
 		rooms,
 		modelUrls = null,
 		onFormRendererReady,
-		scenePick
+		scenePick,
+		onEntityRoot
 	}: {
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
@@ -33,6 +34,8 @@
 		/** Notify the Stage shadow owner after the lazy form mesh has mounted. */
 		onFormRendererReady: () => void;
 		scenePick: ScenePickSource;
+		/** Optional registration wrapper; Paper redraws when a Scene root arrives. */
+		onEntityRoot?: (id: string, root: Parameters<ScenePickSource['register']>[1]) => () => void;
 	} = $props();
 
 	let ModelComponent = $state<AssetModelComponent | null>(null);
@@ -62,4 +65,4 @@
 	});
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} onEntityRoot={scenePick.register} />
+<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />
