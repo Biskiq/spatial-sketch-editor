@@ -119,7 +119,7 @@
 	{#if find}
 		<div data-head-find><div class="find-results">
 			{#each find.entries as entry (`${entry.adapterId}:${entry.id}`)}
-				<button type="button" onclick={() => find?.onRun(entry)}>{entry.verb} {entry.label}</button>
+				<button type="button" data-find-id={entry.id} data-find-adapter={entry.adapterId} onclick={() => find?.onRun(entry)}>{entry.verb} {entry.label}</button>
 			{/each}
 		</div></div>
 	{/if}

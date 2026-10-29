@@ -146,6 +146,14 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 describe('mounted Stage pointer lifecycle', () => {
+	it('moves every registered task entry to Find or the dock and leaves the Index a locator', () => {
+		const registered = facade().findEntries().map((entry) => `${entry.adapterId}:${entry.id}`).sort();
+		const reachable = [...target.querySelectorAll<HTMLElement>('[data-head-find] [data-find-id]')]
+			.filter((entry) => entry.dataset.findAdapter !== 'subject')
+			.map((entry) => `${entry.dataset.findAdapter}:${entry.dataset.findId}`).sort();
+		expect(reachable).toEqual(registered);
+		expect(target.querySelector('[data-plate-landmark="index"] .contributed-group')).toBeNull();
+	});
 	it('changes a browser preference without changing project source or history', async () => {
 		const before = facade().snapshot().canonicalJson;
 		const historyBefore = (harness.host as StageAcceptanceHost).history();
