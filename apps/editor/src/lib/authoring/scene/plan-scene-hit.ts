@@ -1,4 +1,6 @@
 import type { LayoutVec2 } from '@portfolio/layout-core';
+import type { PointerRay, Vec3 } from '@portfolio/camera-core';
+import type { SceneRenderedHit } from './scene-pick-source';
 import type { PlanSceneFootprint } from './plan-scene-footprint';
 
 /** CSS-pixel tolerance used by Scene Plan's footprint edge hit target. */
@@ -109,6 +111,65 @@ function distanceToPlanSegment(point: LayoutVec2, start: LayoutVec2, end: Layout
 		Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
 	);
 	return Math.hypot(point[0] - (start[0] + t * dx), point[1] - (start[1] + t * dz));
+}
+
+/**
+ * Resolve the Scene subject under a Plan pointer.
+ *
+ * This is the Scene footprint **policy** the Scene adapter applies in Plan: a
+ * rendered entity under the pointer limits the candidate footprints to that
+ * entity; otherwise a footprint may only win through its edge halo, and the halo
+ * must probe its own visible silhouette. Extracted so the drawn/picked test can
+ * exercise the same policy against real mounted meshes instead of a copy of it.
+ *
+ * `point` is the pointer's intersection with the level datum and `datumDistanceMeters`
+ * is the ray distance to it; the adapter keeps both because they are already the
+ * answer when the ray hit no entity.
+ */
+export function pickPlanSceneSubject(input: {
+	readonly footprints: readonly PlanSceneFootprint[];
+	readonly point: LayoutVec2;
+	readonly edgeHaloMeters: number;
+	readonly datumMeters: number;
+	readonly datumDistanceMeters: number;
+	readonly pixelsPerMeter: number;
+	readonly ray: PointerRay;
+	readonly pickScene: (ray: PointerRay) => SceneRenderedHit | null;
+	readonly projectWorld: (point: Vec3) => readonly [number, number] | null;
+	readonly rayAtCss: (css: readonly [number, number]) => PointerRay | null;
+}): { readonly entityId: string; readonly distanceMeters: number; readonly cssDistance: number } | null {
+	const drawn = input.pickScene(input.ray);
+	if (drawn?.kind === 'layout') return null;
+	const eligible =
+		drawn?.kind === 'entity'
+			? input.footprints.filter((footprint) => footprint.entityId === drawn.entityId)
+			: input.footprints;
+	const hit = resolvePlanSceneHit(eligible, input.point, input.edgeHaloMeters);
+	if (hit === null) return null;
+	let cssDistance = 0;
+	if (hit.reason === 'edge-halo') {
+		if (!(input.pixelsPerMeter > 0) || !Number.isFinite(input.pixelsPerMeter)) return null;
+		cssDistance =
+			Math.min(
+				...(hit.footprint.polygons ?? [hit.footprint.points]).map((polygon) =>
+					distanceToPlanPolygonEdge(input.point, polygon)
+				)
+			) / input.pixelsPerMeter;
+	}
+	if (drawn?.kind !== 'entity') {
+		// A footprint cannot select an unmounted or hidden body through a floor. Only
+		// an edge halo may probe its own visible silhouette.
+		if (hit.reason !== 'edge-halo') return null;
+		const probe = planSceneHaloProbe(hit.footprint, input.point);
+		const projected = probe === null ? null : input.projectWorld([probe[0], input.datumMeters, probe[1]]);
+		const probeRay = projected === null ? null : input.rayAtCss(projected);
+		if (probeRay === null || input.pickScene(probeRay)?.entityId !== hit.entityId) return null;
+	}
+	return {
+		entityId: hit.entityId,
+		distanceMeters: drawn?.distanceMeters ?? input.datumDistanceMeters,
+		cssDistance
+	};
 }
 
 /** A point just inside the nearest footprint edge, for rendered visibility of a halo hit. */

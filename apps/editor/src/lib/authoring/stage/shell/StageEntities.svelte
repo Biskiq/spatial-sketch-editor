@@ -24,7 +24,9 @@
 		rooms,
 		modelUrls = null,
 		onFormRendererReady,
-		scenePick
+		onEntityRenderable,
+		scenePick,
+		onEntityRoot
 	}: {
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
@@ -32,7 +34,11 @@
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Notify the Stage shadow owner after the lazy form mesh has mounted. */
 		onFormRendererReady: () => void;
+		/** Notify Paper after a lazy model renderer mounts its fallback or body. */
+		onEntityRenderable?: () => void;
 		scenePick: ScenePickSource;
+		/** Optional registration wrapper; Paper redraws when a Scene root arrives. */
+		onEntityRoot?: (id: string, root: Parameters<ScenePickSource['register']>[1]) => () => void;
 	} = $props();
 
 	let ModelComponent = $state<AssetModelComponent | null>(null);
@@ -60,6 +66,15 @@
 			if (timer !== null) clearTimeout(timer);
 		};
 	});
+
+	// The model component is shared by every model entity. Its root may have been
+	// registered long before this lazy chunk arrived; bump Paper once the fallback
+	// (or the loaded GLB) is actually mounted under those roots.
+	$effect(() => {
+		if (ModelComponent === null) return;
+		const frame = requestAnimationFrame(() => onEntityRenderable?.());
+		return () => cancelAnimationFrame(frame);
+	});
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} onEntityRoot={scenePick.register} />
+<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />

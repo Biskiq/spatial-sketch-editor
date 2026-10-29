@@ -17,7 +17,7 @@
 	 */
 	import { Canvas, T } from '@threlte/core';
 	import { PCFShadowMap } from 'three';
-	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
 	import type { LayoutRoomRegistry, RuntimeScene } from '@portfolio/project-model';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
@@ -27,9 +27,12 @@
 		neutralVisitorRoomPresentation,
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
+	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
+	import { isPaperPlanVisible, MAT_GROUND_INK } from '../paper-plan';
 	import StageCamera from './StageCamera.svelte';
 	import StageEntities from './StageEntities.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
+	import StagePaper from './StagePaper.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 
 	let {
@@ -40,6 +43,10 @@
 		evaluation,
 		ghosts = [],
 		modelUrls = null,
+		plan = null,
+		planAppearance = 'paper',
+		reducedMotion = false,
+		datumMeters = 0,
 		scenePick
 	}: {
 		geometry: CompiledLayoutGeometry;
@@ -51,8 +58,24 @@
 		ghosts?: readonly StageGhostMesh[];
 		/** Resolved approved creator-model bytes, owned by the route's session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		/** The facade's retained Plan: the drawing and the hit path share this object. */
+		plan?: PlanEvaluation | null;
+		/** PLATE's app preference; Paper is the default. */
+		planAppearance?: 'paper' | 'shaded';
+		reducedMotion?: boolean;
+		/** The level datum the mat ground sits at. */
+		datumMeters?: number;
 		scenePick: ScenePickSource;
 	} = $props();
+
+	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
+	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
+	const paperVisible = $derived(isPaperPlanVisible(evaluation, planAppearance));
+	/** The mat ground is the Stage's own surface in both mesh readings; Paper hides it. */
+	const matVisible = $derived(!paperVisible);
+	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
+	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
+	const matGroundArgs = [6000, 6000] as [number, number];
 
 	const presentation = $derived.by(() => {
 		const record: Record<string, VisitorRoomPresentation> = {};
@@ -69,17 +92,51 @@
 	let formRenderRevision = $state(0);
 	function formRendererReady(): void {
 		formRenderRevision += 1;
+		entityRenderRevision += 1;
 		scenePick.refresh();
+	}
+	/** A Scene root or lazy body arriving or leaving changes what Paper may draw. */
+	let sceneRootRevision = $state(0);
+	let entityRenderRevision = $state(0);
+	/** A model/form renderer has mounted geometry for already-registered roots. */
+	function entityRendererReady(): void {
+		entityRenderRevision += 1;
+		scenePick.refresh();
+	}
+	function registerSceneRoot(id: string, root: import('three').Object3D): () => void {
+		const unregister = scenePick.register(id, root);
+		sceneRootRevision += 1;
+		// A primitive mounts in the same render as its root; a model's fallback can
+		// still mount on the next frame. Ask once more after children settle.
+		const frame = requestAnimationFrame(() => {
+			sceneRootRevision += 1;
+			scenePick.refresh();
+		});
+		return () => {
+			cancelAnimationFrame(frame);
+			unregister();
+			sceneRootRevision += 1;
+		};
 	}
 </script>
 
 <Canvas createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas), 'stage')} dpr={[1, 1.5]} shadows={PCFShadowMap}>
-	<T.Color attach="background" args={[0x111117]} />
-	<T.Fog attach="fog" args={[0x111117, 40, 120]} />
+	<!--
+		PLATE's two Paper materials: the light vellum while Paper draws, the dark cutting
+		mat for the model, applied by the Camera's appearance realizer. No fog: the mat is
+		a measured ground, not an atmospheric room.
+	-->
 	<T.AmbientLight intensity={0.35} />
 	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} castShadow />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
-	<StageCamera {evaluation} />
+	<StageCamera {evaluation} {paperVisible} />
+	{#if matVisible}
+		<!-- The mat ground gives depth and shadows; it is not a registered pick root. -->
+		<T.Mesh position={[0, datumMeters - 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+			<T.PlaneGeometry args={matGroundArgs} />
+			<T.MeshStandardMaterial color={MAT_GROUND_INK} roughness={1} metalness={0} />
+		</T.Mesh>
+	{/if}
 	<!--
 		T1.P02.S06 D.6 (H9) — the Stage's shadow maps are rendered when their own
 		dependencies change, not on every frame. Mounted inside this one Canvas
@@ -90,7 +147,32 @@
 	<T.Group oncreate={scenePick.registerLayout}>
 		<VisitorLayoutShell {geometry} {presentation} />
 	</T.Group>
-	<StageEntities {scenePick} {scene} {rooms} {modelUrls} onFormRendererReady={formRendererReady} />
+	<StageEntities
+		{scenePick}
+		{scene}
+		{rooms}
+		{modelUrls}
+		onFormRendererReady={formRendererReady}
+		onEntityRenderable={entityRendererReady}
+		onEntityRoot={registerSceneRoot}
+	/>
+	{#if paperVisible && plan !== null && evaluation !== null}
+		<!--
+			The Plan is a drawing on Paper: the same Plan evaluation the Layout pick
+			provider reads, and the same Scene footprints the Scene pick reads.
+		-->
+		<StagePaper
+			{plan}
+			compiled={geometry}
+			{footprints}
+			width={evaluation.rect.width}
+			height={evaluation.rect.height}
+			instant={reducedMotion}
+			isFootprintMounted={footprintMounted}
+			{datumMeters}
+			revision={sceneRootRevision + entityRenderRevision}
+		/>
+	{/if}
 	<!--
 		Proposed-pose ghosts: the object's own shape at the captured pose, translucent
 		and depth-write-free so the accepted body stays readable underneath. They are

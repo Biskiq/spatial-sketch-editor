@@ -114,7 +114,8 @@ describe('Stage shell composition', () => {
 		);
 		expect(offenders).toEqual([]);
 
-		// Only the two realizers touch Three at all, and only to copy evaluated output.
+		// Only the renderer components touch Three. The camera is the one authority that
+		// copies an evaluation onto a camera; Paper builds a drawing, never a pose.
 		const threeImporters = STAGE_FILES.filter((file) =>
 			parseModuleSpecifiers(readSource(file)).some(
 				(specifier) => specifier === 'three' || specifier.startsWith('three/')
@@ -122,7 +123,8 @@ describe('Stage shell composition', () => {
 		);
 		expect(threeImporters).toEqual([
 			CANVAS_FILE,
-			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte'
+			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
+			'apps/editor/src/lib/authoring/stage/paper-scene.ts'
 		]);
 
 		// The pose math lives in exactly one place: the realizer copies the
@@ -165,11 +167,20 @@ describe('Stage shell composition', () => {
 		const canvas = codeOf(CANVAS_FILE);
 
 		// One geometry set: the Canvas takes the compiled domain geometry and the
-		// renderer components take that and nothing else.
+		// renderer components take that and nothing else. The retained Plan reaches it
+		// as one typed value for the Paper layer; the Canvas itself never interprets a
+		// fragment, groups streams or builds plan geometry.
 		expect(canvas).toContain('geometry: CompiledLayoutGeometry');
 		expect(route).toContain('<StageCanvas');
 		expect(route).toContain('geometry={boot.snapshot.domain.geometry}');
-		expect(canvas).not.toMatch(/planView|PlanFragment|PlanEvaluation|planParameters/);
+		expect(canvas).toContain('plan?: PlanEvaluation | null');
+		expect(canvas).toContain("from './StagePaper.svelte'");
+		expect(canvas).not.toMatch(/PlanFragment|planParameters|buildPaperPlan/);
+		// Paper is the one consumer of the Plan as a drawing, and it reads the same
+		// evaluation the hit path uses.
+		const paper = codeOf('apps/editor/src/lib/authoring/stage/shell/StagePaper.svelte');
+		expect(paper).toContain("from '../paper-plan'");
+		expect(paper).toContain('buildPaperPlan(plan, compiled, footprints');
 
 		// The representation drives eligibility and the Index, through the facade's
 		// own evaluation — the same call the hit path makes.

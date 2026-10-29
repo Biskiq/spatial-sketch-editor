@@ -2,6 +2,7 @@ import { projectWorld, pointerRay, intersectWorkingPlane, type Vec3, type Viewpo
 import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry } from '@portfolio/layout-core';
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '../stage/stage-facade';
+import { fragmentLayer } from '../stage/paper-plan';
 import type { PlanEvaluationResult } from '@portfolio/layout-core';
 
 const PLAN_HIT_TOLERANCE_CSS_PX = 8;
@@ -472,7 +473,7 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 					generationId: fragment.ref.generationId, stream: fragment.ref.stream, subRef: fragment.ref.subRef,
 					worldPoint },
 				refusal: query.purpose === 'tool' && query.tool?.kind === 'erase' && fragment.ref.sourceKind === 'room-floor' ? 'A Room floor cannot be erased.' : null, depthMeters: surfaceDepth(rayResult.kind === 'ray' ? rayResult.ray : null, pick.surface),
-				planLayer: 40, cssDistance: pick.distanceCss
+				planLayer: fragmentLayer(fragment), cssDistance: pick.distanceCss
 			};
 		}
 		return null;

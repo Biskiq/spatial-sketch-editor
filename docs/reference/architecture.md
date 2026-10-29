@@ -301,7 +301,7 @@ interior-only.
 | Derived native-form meshes | `@portfolio/geometry-core` (`evaluateProfile` → `extrudeProfile`, `formMeshDigest`); normals and metre UVs are editor render derivatives |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |
 | Cross-domain reference (F.1) and channel (F.3) interfaces | `packages/project-model/src/references` · `packages/project-model/src/channels` — shared runtime-safe interfaces with no editor/renderer dependency; their accepted readiness is recorded in the [gate register](../roadmap/README.md#gate-register) |
-| Plan presentation | T1.P01.S02 adds the orthographic Plan reading and Layout Plan representation over compiled geometry. The current Stage draws the canonical geometry in both readings; Plan membership, Reveal, Index and hit eligibility use the representation, but it does not draw a Plan cut. Plan-cut rendering remains future work |
+| Plan presentation | The orthographic Plan reading evaluates the Layout Plan representation over compiled geometry. R217.S04 draws that evaluation on Paper: cut Wall poché, projected ink, hidden dashes, Opening symbols, Room-floor tint and Scene/native-form footprints. Paper and the pick path share one `PlanEvaluation` and one Scene footprint projection; appearance is a camera layer mask, never `Object3D.visible` |
 | 3D wall meshes | compiled Junction contract (`CompiledJunction` / `resolveJunctionGeometry`) → Junction-aware `wall-mesh-builder` → `wall-geometry-adapter` |
 | Camera route/motion | `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) — replaceable mechanism under the one Camera authority |
 | Publication status, active version, revision | `publications` row (`apps/api`) |
@@ -379,11 +379,19 @@ proposals to the Undo availability reason. F4 owns the one chronological history
 [`stage-pick.ts`](../../apps/editor/src/lib/authoring/stage/stage-pick.ts). Layout chooses
 its own winner through [`plan-pick-provider.ts`](../../apps/editor/src/lib/authoring/layout/plan-pick-provider.ts),
 while the Scene adapter retains its rendered-raycast, footprint and occlusion policy.
-Finite forward 3D hits outrank tolerance-only hits; Plan uses the temporary Scene 60,
-Layout 40 ranks until S04. With no task, a press is offered only to the primary
-selection's owner. Hover is session-only and uses the same resolver. Window blur,
-hidden-page, capture loss and pointer cancellation end live presses; a second pointer
-ends the authored press and hands navigation the pair. S07 owns visible marks.
+Finite forward 3D hits outrank tolerance-only hits; Plan ranks by the Paper layer order in
+[`paper-plan.ts`](../../apps/editor/src/lib/authoring/stage/paper-plan.ts): Room floor 10,
+hidden 20, projected 30, cut 40, Opening symbol 50 and Scene footprint 60. With no task, a
+press is offered only to the primary selection's owner. Hover is session-only and uses the
+same resolver. Window blur, hidden-page, capture loss and pointer cancellation end live
+presses; a second pointer ends the authored press and hands navigation the pair. S07 owns
+visible marks.
+
+Paper is an appearance mask, not pick eligibility. While settled Paper is visible,
+`StageCamera` draws the Stage overlay layer 2 only; the pick source's raycaster keeps its
+default layer-0 mask and `Object3D.visible` keeps meaning mounted-and-eligible. Shaded Plan
+draws world layer 0 and overlay layer 2 together. Paper geometry is never parented under a
+registered pick root.
 
 ### Coordination over domain policy
 
