@@ -1,14 +1,15 @@
 # R217.S07 — acceptance record: Selection, hover and the mark layer
 
 **Slice:** R217.S07 · **Status:** implemented on the S04-merged tree; combined independent review
-complete; ready-to-merge PR pending · **Plan:**
+complete; ready-to-merge PR [#224](https://github.com/Biskiq/spatial-sketch-editor/pull/224) open
+· **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the criteria, as amended by the owner
 rulings and the as-built notes below) · **Phase:** [R217](../README.md) · **Integration route:**
 [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 Base revision `757a927f` (S04 Paper merged, PR #223) plus the S07 branch commits. The branch is
-committed locally and not pushed; this record claims only the checks listed at the end. It is not
-a slice acceptance, and no release-list row is claimed (the owner waived registration).
+committed and pushed; this record claims only the checks listed at the end. It is not a slice
+acceptance, and no release-list row is claimed (the owner waived registration).
 
 ## Implemented
 
@@ -196,7 +197,7 @@ conflict. Its actionable findings were fixed and pinned:
 
 ## Not run / open
 
-- Push and open the ready-to-merge PR (the branch is committed locally; S11 owns the integrated
-  final gate).
+- PR [#224](https://github.com/Biskiq/spatial-sketch-editor/pull/224) is open for review; S11 owns
+  the integrated final gate. This slice does not merge it.
 - Card grouping of thickness under More (outside S07; not claimed above).
 - No release-list row is claimed; the owner waived registration.
