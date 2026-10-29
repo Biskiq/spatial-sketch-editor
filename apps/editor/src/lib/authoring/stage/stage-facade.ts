@@ -321,12 +321,12 @@ export type StageTaskEntry = StageTaskContribution & {
 
 /**
  * Where a contributed operation lives: the bottom **dock** (an armable tool), or
- * the Index/Find list (the default).
+ * Find (the default).
  *
- * Additive with a default: a contribution that names no home is an Index entry,
+ * Additive with a default: a contribution that names no home is a Find entry,
  * exactly as before this field existed, so no existing adapter has to change.
  */
-export type StageEntryHome = 'dock' | 'index';
+export type StageEntryHome = 'dock' | 'find';
 
 /** One PLATE rail-family / capability-Find entry that invokes this adapter's task. */
 export type StageFindEntry = {
@@ -338,7 +338,7 @@ export type StageFindEntry = {
 	readonly label: string;
 	/** The contributed task this entry invokes. */
 	readonly taskKind: string;
-	/** `dock` arms the tool from the bottom dock; `index` (default) lists it. */
+	/** `dock` arms the tool from the bottom dock; `find` (default) invokes it. */
 	readonly home?: StageEntryHome;
 	readonly order?: number;
 };

@@ -115,10 +115,11 @@ out of scope.
 ### 4.6 Layout never moves the Camera
 
 Shell changes update only the viewport rectangle passed to `ViewportEvaluation`: Index collapse,
-Card open or close, Instrument open, sheet presentation and window resize. The evaluation's
-target, `targetPlaneMetersPerCssPixel`, azimuth and elevation must be identical before and after;
-only the aspect ratio may change. The route already measures the viewport in one place; this rule
-becomes a test.
+Card open or close, Instrument open, sheet presentation and window resize never issue an implicit
+Fit, Zoom, Pan or framing request. Camera target, azimuth, elevation and
+`targetPlaneHeightMeters` remain unchanged; changes to the rectangle and projection aspect are
+permitted. `targetPlaneMetersPerCssPixel` follows Camera's existing vertical-extent formula and may
+change when viewport height changes. Panels must not unexpectedly move or reframe the Stage.
 
 ### 4.7 Coarse pointer and touch
 
@@ -143,7 +144,10 @@ and Settings per browser:
 1. **Audit.** The table is complete, and every *gap* row names the test that closes it.
 2. **Viewport invariance** (extends `apps/editor/tests/lib/authoring/stage-shell-composition.test.ts`).
    Across Index collapse and expand, Card open and close, Instrument open and window resize, the
-   evaluation's target, scale, azimuth and elevation are equal, and only the aspect changes.
+   evaluation's target, `targetPlaneHeightMeters`, azimuth and elevation are equal; no implicit
+   Fit, Zoom, Pan or framing request occurs. Rectangle and projection aspect may change. A
+   768 → 1024 px height case asserts meters per pixel equals the preserved vertical extent divided
+   by the corresponding viewport height.
 3. **Index.** It renders no tool or task entry. Every former entry is reachable from Find or the
    dock, by an equality check between the before and after entry sets. A collapsed Index has zero
    rendered width.

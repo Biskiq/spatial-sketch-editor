@@ -25,15 +25,12 @@
 		open,
 		onToggle,
 		groups,
-		contributions = [],
 		selectionId,
-		selectedLabel,
 		query,
 		onQuery,
 		onSelect,
 		onBringIntoView,
-		onReveal,
-		onInvokeContribution = () => {}
+		onReveal
 	}: {
 		open: boolean;
 		onToggle: () => void;
@@ -50,31 +47,12 @@
 				membership: string;
 			}[];
 		}[];
-		/**
-			* The collapsed header's one-line "Selected: …", resolved by the host for the
-			* selected subject alone. Reading it from `groups` would make the whole
-			* located-subject list a dependency of a closed panel.
-			*/
-		selectedLabel: string | null;
-		/**
-			* Contributed rail-family / capability-Find entries, from whatever adapters
-			* are registered. The Index renders them generically: a domain adapter never
-			* edits this component to appear here.
-			*/
-		contributions?: readonly {
-			id: string;
-			label: string;
-			family: string;
-			capability: string;
-			entries: readonly { id: string; label: string; adapterId: string; taskKind: string }[];
-		}[];
 		selectionId: string | null;
 		query: string;
 		onQuery: (query: string) => void;
 		onSelect: (sourceId: string) => void;
 		onBringIntoView: (sourceId: string) => void;
 		onReveal: (sourceId: string) => void;
-		onInvokeContribution?: (adapterId: string, id: string) => void;
 	} = $props();
 
 	/**
@@ -153,6 +131,7 @@
 	aria-label="Project locator"
 	data-plate-landmark="index"
 	class:collapsed={!open}
+	hidden={!open}
 >
 	<div class="index-head">
 		<button
@@ -165,15 +144,6 @@
 			<span class="index-title">Index</span>
 			<span class="index-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
 		</button>
-		{#if !open}
-			<p class="collapsed-selection" aria-live="polite">
-				{#if selectedLabel !== null}
-					Selected: <strong>{selectedLabel}</strong>
-				{:else}
-					No selection
-				{/if}
-			</p>
-		{/if}
 	</div>
 
 	<div id="plate-index-body" class="index-body" hidden={!open}>
@@ -256,34 +226,6 @@
 			{/each}
 		{/if}
 
-		<!-- Contributed operations: whatever registered adapters offer, grouped by
-		     their declared rail family and capability. Nothing is listed when no adapter
-		     contributes, so the Index stays a locator rather than a menu of unknowns. -->
-		{#each contributions as group (group.id)}
-			<section
-				class="index-group contributed-group"
-				aria-labelledby={`plate-index-contributed-${group.id}`}
-				data-contributed-family={group.family}
-				data-contributed-capability={group.capability}
-			>
-				<h3 class="group-heading" id={`plate-index-contributed-${group.id}`}>{group.label}</h3>
-				<ul class="group-items">
-					{#each group.entries as entry (JSON.stringify([entry.adapterId, entry.id]))}
-						<li class="item contributed-item" data-contributed-adapter={entry.adapterId}>
-							<button
-								type="button"
-								class="item-row"
-								title={`${entry.label} — contributed by ${entry.adapterId}`}
-								onclick={() => onInvokeContribution(entry.adapterId, entry.id)}
-							>
-								<span class="item-kind">Task</span>
-								<span class="item-name">{entry.label}</span>
-							</button>
-						</li>
-					{/each}
-				</ul>
-			</section>
-		{/each}
 	</div>
 </nav>
 
@@ -304,6 +246,8 @@
 		color: #1b201c;
 		font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 	}
+
+	.plate-index[hidden] { display: none; }
 
 	.index-head {
 		flex-shrink: 0;
@@ -350,15 +294,6 @@
 		color: #6b7466;
 	}
 
-	.collapsed-selection {
-		margin: 0;
-		padding: 0 0.4rem 0.2rem;
-		overflow: hidden;
-		color: #4b5349;
-		font-size: 0.78rem;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
 
 	.index-body[hidden] {
 		display: none;

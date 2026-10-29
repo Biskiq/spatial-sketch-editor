@@ -42,7 +42,7 @@ import {
 } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { requalifySelection } from '$lib/authoring/stage/selection-requalification';
-import { stageCardFacts, stageContributionGroups } from '$lib/authoring/stage/stage-contributions';
+import { stageCardFacts, stageFindEntries } from '$lib/authoring/stage/stage-contributions';
 import {
 	FIXTURE_ENTITY_ID,
 	FIXTURE_PROJECT_ID,
@@ -147,7 +147,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		});
 		if (registration.kind !== 'registered' || !services) throw new Error('consumer did not mount');
 		expect(host.coordinator().planners()).toHaveLength(2);
-		expect(stageContributionGroups(facade)[0]?.entries[0]?.label).toBe('Move probe');
+		expect(stageFindEntries(facade)[0]?.label).toBe('Move probe');
 		expect(facade.openContributedTask('consumer-move')).toMatchObject({ kind: 'opened', instrument: { summary: snapshot.sourceContentId } });
 		const pose = facade.camera.state().pose;
 		expect((await consumerMove(services, objectId)).kind).toBe('installed');
@@ -166,7 +166,6 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		facade.openContributedTask('consumer-move');
 		expect(facade.session.task()).not.toBeNull();
 		registration.dispose();
-		expect(stageContributionGroups(facade)).toEqual([]);
 		expect(facade.instrumentForTask('consumer-move')).toBeNull();
 		expect(facade.session.task()).toBeNull();
 		facade.dispose();
@@ -546,8 +545,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		// The shell's own generic view (what the Index and Card render) sees the same
 		// contributions without knowing which adapter registered them.
 		const subject = { sourceId: objectId, sourceKind: 'object' as const, ref: null };
-		expect(stageContributionGroups(facade).map((group) => group.label)).toEqual(['Measure · Measure']);
-		expect(stageContributionGroups(facade)[0]?.entries.map((entry) => entry.id)).toEqual(['find-b']);
+		expect(stageFindEntries(facade).map((entry) => entry.id)).toEqual(['find-b']);
 		expect(
 			stageCardFacts(facade, subject, [{ label: 'Stream', value: 'projected' }]).map((fact) => fact.label)
 		).toEqual(['Stream', 'Kind', 'Kind (z-adapter)']);
@@ -555,13 +553,11 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		if (first.kind === 'registered') first.dispose();
 		expect(facade.tasks().map((task) => task.id)).toEqual(['task-a']);
 		expect(facade.findEntries()).toEqual([]);
-		expect(stageContributionGroups(facade)).toEqual([]);
 		expect(
 			facade.cardFacts({ sourceId: objectId, sourceKind: 'object', ref: null }).map((fact) => fact.value)
 		).toEqual(['A']);
 		if (second.kind === 'registered') second.dispose();
 		expect(facade.tasks()).toEqual([]);
-		expect(stageContributionGroups(facade)).toEqual([]);
 		expect(stageCardFacts(facade, subject, [])).toEqual([]);
 	});
 

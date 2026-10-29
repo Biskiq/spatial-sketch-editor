@@ -38,7 +38,7 @@ import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/sta
 import {
 	stageCardFacts,
 	stageCardWriter,
-	stageContributionGroups,
+	stageFindEntries,
 	stageDockTools
 } from '$lib/authoring/stage/stage-contributions';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
@@ -164,14 +164,13 @@ describe('T1.P01.S04 — Layout precision', () => {
 			LAYOUT_WALL_CHAIN_COMMIT_KIND,
 			LAYOUT_WALL_DELETE_KIND
 		]);
-		const groups = stageContributionGroups(facade);
-		expect(groups.some((group) => group.entries.some((entry) => entry.taskKind === 'layout-plinth-place'))).toBe(true);
+		expect(stageFindEntries(facade).some((entry) => entry.taskKind === 'layout-plinth-place')).toBe(true);
 		expect(facade.openContributedTask('layout-place-plinth')).toMatchObject({ kind: 'opened', instrument: { summary: 'Place plinth' } });
 
 		// Ink is a **dock** tool, so it arms from the dock rather than listing itself a
 		// second time among the Index entries.
 		expect(stageDockTools(facade).map((tool) => tool.taskKind)).toEqual(['layout-ink']);
-		expect(stageContributionGroups(facade).some((group) => group.entries.some((entry) => entry.taskKind === 'layout-ink'))).toBe(false);
+		expect(stageFindEntries(facade).some((entry) => entry.taskKind === 'layout-ink')).toBe(false);
 
 		// The Dimensions task is retired with the writer it hosted: the Card owns those
 		// fields now, so the old kind opens nothing at all.

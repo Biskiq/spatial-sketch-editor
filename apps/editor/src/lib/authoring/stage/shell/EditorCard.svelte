@@ -174,7 +174,7 @@
 				</p>
 				<!-- The full name stays available even when the header ellipsizes. -->
 				<h2 class="name" title={identity.label}>{identity.label}</h2>
-				{#if nameWriter}
+				{#if nameWriter && !collapsed}
 					<form
 						class="rename"
 						onsubmit={(event) => {
@@ -280,11 +280,11 @@
 <style>
 	.card {
 		position: absolute;
-		inset-inline-start: 1rem;
-		bottom: 1rem;
+		inset-inline-end: 4rem;
+		bottom: calc(1rem + var(--lower-column-height, 0px) + 0.4rem);
 		z-index: 12;
 		width: min(21rem, calc(100% - 2rem));
-		max-height: calc(100% - 2rem);
+		max-height: calc(100% - var(--lower-column-height, 0px) - 2rem);
 		overflow: auto;
 		box-sizing: border-box;
 		padding: 0.85rem 0.95rem 0.75rem;
@@ -476,7 +476,7 @@
 	 * edge. Clearing the column's measured height keeps the two from overlapping
 	 * without reflowing the Stage or moving the Camera.
 	 */
-	@media (max-width: 72rem) {
+	@media (max-width: 1279px) {
 		.card {
 			bottom: calc(1rem + var(--lower-column-height, 0px) + 0.4rem);
 			max-height: calc(100% - var(--lower-column-height, 0px) - 2rem);

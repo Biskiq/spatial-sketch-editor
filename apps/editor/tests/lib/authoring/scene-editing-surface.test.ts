@@ -48,6 +48,7 @@ import { captureUnitSave } from '@portfolio/project-model/units';
 import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
+import { stageDockTools, stageFindEntries } from '$lib/authoring/stage/stage-contributions';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { admitSource } from '$lib/authoring/stage/source-admission';
@@ -1725,6 +1726,12 @@ describe('Scene adapter registration', () => {
 		// Import is a Library procedure invoked by name: it appears in Find with
 		// its own family and capability, and never as a permanent pointer tool.
 		const findEntries = facade.findEntries().filter((entry) => entry.adapterId === 'scene');
+		const reachable = [...stageFindEntries(facade), ...stageDockTools(facade)].filter((entry) => entry.adapterId === 'scene');
+		expect(reachable.map((entry) => entry.id).sort()).toEqual(findEntries.map((entry) => entry.id).sort());
+		for (const entry of reachable) {
+			expect(facade.openFindEntry(entry.adapterId, entry.id)).toMatchObject({ kind: 'opened', adapterId: 'scene' });
+			facade.closeTask();
+		}
 		expect(findEntries.map((entry) => [entry.railFamily, entry.capability, entry.taskKind])).toEqual([
 			['arrange', 'scene', 'scene-compose'],
 			['arrange', 'scene', 'scene-compose'],

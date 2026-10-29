@@ -6,6 +6,12 @@
 
 Owner released S02 for implementation on 2026-10-28. Trusted base: `8c2c86e638e65a4a0500fa1e3e15b647932549f7` (PR #220). Implementation, reviews and acceptance remain outstanding.
 
+**Owner ruling, 2026-10-29:** Preserve the existing Camera contract on viewport resize: target,
+orientation and vertical world extent remain fixed, while meters per CSS pixel follows the extent
+divided by viewport height. This resolves the former acceptance wording, which demanded constant
+pixel scale even as height changed. Shell changes issue no implicit framing intents; no Camera
+implementation change is authorized. T3 review of Camera compatibility remains required.
+
 ## PLATE conformance audit at the trusted base
 
 The dispositions below cover the shared shell and responsive rules; gaps are planned work, not

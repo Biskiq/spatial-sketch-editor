@@ -62,6 +62,13 @@
 		previewUnavailableReason,
 		reducedMotion,
 		onToggleReducedMotion,
+		indexOpen = true,
+		locationLabel = null,
+		onOpenIndex = () => {},
+		planAppearance = 'paper',
+		onPlanAppearance = () => {},
+		motionSpeed = 'normal',
+		onMotionSpeed = () => {},
 		projectActionsUnavailableReason = null,
 		projectActionBusy = false,
 		onPrepareRename = async () => ({ kind: 'blocked' as const, message: 'Project actions are unavailable.' }),
@@ -97,6 +104,13 @@
 		previewUnavailableReason: string;
 		reducedMotion: boolean;
 		onToggleReducedMotion: () => void;
+		indexOpen?: boolean;
+		locationLabel?: string | null;
+		onOpenIndex?: () => void;
+		planAppearance?: 'paper' | 'shaded';
+		onPlanAppearance?: (value: 'paper' | 'shaded') => void;
+		motionSpeed?: 'slow' | 'normal' | 'fast';
+		onMotionSpeed?: (value: 'slow' | 'normal' | 'fast') => void;
 		projectActionsUnavailableReason?: string | null;
 		projectActionBusy?: boolean;
 		onPrepareRename?: () => Promise<ProjectLifecyclePrepareResult>;
@@ -130,6 +144,15 @@
 
 	let selectedLensIndex = $derived(LENSES.findIndex((entry) => entry.id === lens));
 	const lensButtons: HTMLButtonElement[] = [];
+	let findDisclosure = $state<HTMLDetailsElement>();
+	let findInput = $state<HTMLInputElement>();
+	function findShortcut(event: KeyboardEvent): void {
+		if (find === null || event.defaultPrevented || !(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
+		event.preventDefault();
+		if (findDisclosure === undefined || findInput === undefined) return;
+		findDisclosure.open = true;
+		findInput.focus();
+	}
 
 	// The Save state notifies on every settled command; this counter is the
 	// component's read signal, not a second copy of the state. `subscribe`
@@ -191,7 +214,46 @@
 	}
 </script>
 
+<svelte:window onkeydown={findShortcut} />
 <header class="head" data-editor-head>
+	<details class="app-menu">
+		<summary aria-label="Application menu">☰</summary>
+		<div class="menu-body">
+			<strong>Viewing</strong>
+			<label>2D appearance <select value={planAppearance} onchange={(event) => onPlanAppearance(event.currentTarget.value as 'paper' | 'shaded')}><option value="paper">Paper</option><option value="shaded">Shaded</option></select></label>
+			<strong>Settings</strong>
+			<label><input type="checkbox" checked={reducedMotion} onchange={onToggleReducedMotion} /> Reduce motion</label>
+			<label>Editor motion speed <select value={motionSpeed} onchange={(event) => onMotionSpeed(event.currentTarget.value as 'slow' | 'normal' | 'fast')}><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select></label>
+			<strong>Project</strong>
+		<ProjectLifecycleActions
+			{projectId}
+			{projectName}
+			variant="head"
+			disabledReason={projectActionsUnavailableReason}
+			onPrepareRename={onPrepareRename}
+			onRename={onRenameProject}
+			onPrepareDelete={onPrepareDelete}
+			onDelete={onDeleteProject}
+			onComplete={onProjectActionComplete}
+			onBusyChange={onProjectActionBusyChange}
+			onRefreshRemote={onRefreshRemoteProject}
+		/>
+		<button
+			type="button"
+			class="action"
+			disabled={!canDownloadSource}
+			onclick={onDownloadSource}
+		>
+			Download source JSON
+		</button>
+			<strong>Status</strong>
+			{#if !canUndo && !canRedo}<p>{historyUnavailableReason}</p>{/if}
+			{#if saveControl === null}<p>{saveUnavailableReason}</p>{:else if saveControl.reason}<p>{saveControl.reason}</p>{/if}
+			{#if !canPreview}<p>{previewUnavailableReason}</p>{/if}
+			<strong>Keys</strong>
+			<p>⌘K / Ctrl+K Find · 3 3D · P Plan · F Fit · Esc Cancel</p>
+		</div>
+	</details>
 	<div class="identity">
 		<p class="app">Museum Editor</p>
 		<h1 class="project" title={projectName}>{projectName}</h1>
@@ -200,6 +262,9 @@
 			<code class="project-id" title={projectId}>{projectId}</code>
 		</details>
 	</div>
+	{#if !indexOpen}
+		<button type="button" class="location" title={locationLabel ?? projectName} onclick={onOpenIndex}>{locationLabel ?? projectName}</button>
+	{/if}
 
 	<div class="lens" role="group" aria-label="Product lens">
 		{#each LENSES as entry, index (entry.id)}
@@ -220,12 +285,13 @@
 
 	<div class="actions">
 		{#if find !== null}
-			<details class="find" data-head-find>
+			<details class="find" data-head-find bind:this={findDisclosure}>
 				<summary>Find</summary>
 				<div class="find-body">
 					<label class="find-field">
 						<span>Find a subject, tool or operation</span>
 						<input
+							bind:this={findInput}
 							type="search"
 							value={find.query}
 							oninput={(event) => find?.onQuery(event.currentTarget.value)}
@@ -248,19 +314,7 @@
 				</div>
 			</details>
 		{/if}
-		<ProjectLifecycleActions
-			{projectId}
-			{projectName}
-			variant="head"
-			disabledReason={projectActionsUnavailableReason}
-			onPrepareRename={onPrepareRename}
-			onRename={onRenameProject}
-			onPrepareDelete={onPrepareDelete}
-			onDelete={onDeleteProject}
-			onComplete={onProjectActionComplete}
-			onBusyChange={onProjectActionBusyChange}
-			onRefreshRemote={onRefreshRemoteProject}
-		/>
+
 		<div class="capability" data-editor-history data-unavailable-capability={!canUndo && !canRedo ? '' : undefined}>
 			<div class="history-actions">
 				<button
@@ -352,23 +406,7 @@
 			</div>
 		{/if}
 
-		<button
-			type="button"
-			class="action"
-			disabled={!canDownloadSource}
-			onclick={onDownloadSource}
-		>
-			Download source JSON
-		</button>
 
-		<button
-			type="button"
-			class="action motion"
-			aria-pressed={reducedMotion}
-			onclick={onToggleReducedMotion}
-		>
-			Reduced motion {reducedMotion ? 'on' : 'off'}
-		</button>
 	</div>
 </header>
 
@@ -385,7 +423,7 @@
 		--radius: 0.35rem;
 
 		display: flex;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 		align-items: center;
 		gap: 0.5rem 1rem;
 		padding: 0.5rem 0.85rem;
@@ -454,7 +492,7 @@
 
 	.actions {
 		display: flex;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 		align-items: flex-start;
 		gap: 0.35rem 0.7rem;
 		margin-left: auto;
@@ -621,10 +659,6 @@
 		color: var(--head-ink);
 	}
 
-	.motion[aria-pressed='true'] {
-		background: var(--active-lens);
-		border-color: var(--active-lens);
-	}
 
 	button:focus-visible,
 	summary:focus-visible {
@@ -632,10 +666,11 @@
 		outline-offset: 2px;
 	}
 
-	@media (pointer: coarse) {
-		button {
-			min-height: 44px;
-			min-width: 44px;
-		}
-	}
+	.app-menu { position: relative; flex: none; }
+	.app-menu summary { cursor: pointer; list-style: none; padding: 0.35rem; }
+	.menu-body { position: absolute; z-index: 30; top: 100%; left: 0; width: 16rem; padding: 0.8rem; display: grid; gap: 0.6rem; background: var(--chassis-forest); border: 1px solid var(--chassis-hairline); }
+	.menu-body label { display: flex; justify-content: space-between; gap: 0.6rem; align-items: center; }
+	.menu-body p { margin: 0; font-size: 0.75rem; }
+	.location { min-width: 0; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	@media (max-width: 1279px) { .app, .technical, .reason { display: none; } .head { gap: 0.35rem; } .actions { gap: 0.2rem; } }
 </style>
