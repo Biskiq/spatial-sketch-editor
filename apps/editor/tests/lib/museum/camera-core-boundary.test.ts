@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { stripComments } from '../../helpers/import-closure';
 import {
   CAMERA_EASING,
   CAMERA_FOV,
@@ -80,7 +81,15 @@ describe('one navigation system — single route evaluator', () => {
   });
 });
 
+function portfolioImports(source: string): string[] {
+  return [...stripComments(source).matchAll(/(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)['"](@portfolio\/[^'"]+)['"]/g)].map((match) => match[1]);
+}
+
 describe('camera-core package boundary', () => {
+  it('refuses every portfolio package throughout camera-core', () => {
+    expect(portfolioImports("import { x } from '@portfolio/layout-core';")).toEqual(['@portfolio/layout-core']);
+    for (const file of sourceFiles(packageSrc)) expect(portfolioImports(readFileSync(file, 'utf8')), file).toEqual([]);
+  });
   it('exposes the camera API directly without an app shim', () => {
     const node: CameraGraphNode = {
       id: 'node',

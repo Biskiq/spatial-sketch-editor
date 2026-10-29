@@ -79,7 +79,7 @@ owns lifecycle only and never copies their content.
 | T4 | planning | [T4 — Release and delivery](./t4-release/README.md) |
 | T5 | approved | [T5 — Expressive Geometry](./t5-expressive-geometry/README.md) |
 | R115 | shipped | [R115 — PR #115 architecture reset](./parallel-track-cutover/README.md) |
-| R217 | approved | [R217 — Core Editor Stability](./r217-core-editor-stability/README.md) |
+| R217 | in-progress | [R217 — Core Editor Stability](./r217-core-editor-stability/README.md) |
 
 - **R115 is a repository phase, not a fifth track.** It is registered here directly because it
   has no parent track; its sole child is `R115.S01` and its own README owns that child.

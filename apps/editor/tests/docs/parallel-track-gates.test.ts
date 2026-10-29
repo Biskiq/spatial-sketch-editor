@@ -1064,7 +1064,7 @@ export function skillProblems(skills: { closeout: string; phase: string }): stri
 	return problems;
 }
 
-const RELEASE_SLICE_ID = /^T[1-5]\.P\d+\.S\d+$/;
+const RELEASE_SLICE_ID = /^(?:T[1-5]\.P\d+|R\d+)\.S\d+$/;
 const RELEASE_STATUSES = new Set(['approved', 'in-progress', 'shipped']);
 
 /**
@@ -1106,7 +1106,7 @@ export function releaseListProblems(input: {
 	}
 	const byId = new Map(input.slices.map((slice) => [slice.id, slice]));
 	for (const baton of input.batons) {
-		const ids = baton.source.match(/\bT[1-5]\.P\d+\.S\d+\b/g) ?? [];
+		const ids = baton.source.match(/\b(?:T[1-5]\.P\d+|R\d+)\.S\d+\b/g) ?? [];
 		for (const id of new Set(ids)) {
 			const slice = byId.get(id);
 			if (slice === undefined) {
@@ -2482,6 +2482,15 @@ describe('routing and skill preflights', () => {
 		const withProbeRow = nowSource.replace(releaseHeader, `$1${probeRow}\n`);
 		const probe = { ...live, nowSource: withProbeRow, slices: [...slices, unlisted] };
 		expect(releaseListProblems(probe)).toEqual([]);
+
+		// Repository phases use the same release and baton rules as track phases.
+		const repositorySlice = { id: 'R999.S09', status: 'in-progress', authorization: 'released' };
+		const repositoryRow = '| `R999.S09` | released; synthetic probe | [probe](./README.md) |';
+		const repositorySource = nowSource.replace(releaseHeader, `$1${repositoryRow}\n`);
+		const repositoryBaton = batons.map((baton) => baton.track === 't1-spatial-world' ? { ...baton, source: `${baton.source}\nR999.S09` } : baton);
+		const repositoryProbe = { ...live, nowSource: repositorySource, slices: [...slices, repositorySlice], batons: repositoryBaton };
+		expect(releaseListProblems(repositoryProbe)).toEqual([]);
+		expect(releaseListProblems({ ...repositoryProbe, nowSource }).join('\n')).toContain('t1-spatial-world baton names R999.S09, which is not on the release list');
 
 		const withoutRow = withProbeRow.replace(/^\| `T2\.P09\.S09`.*\n/m, '');
 		expect(releaseListProblems({ ...probe, nowSource: withoutRow }).join('\n')).toContain(

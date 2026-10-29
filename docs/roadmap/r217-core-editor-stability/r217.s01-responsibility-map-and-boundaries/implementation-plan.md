@@ -1,6 +1,6 @@
 # R217.S01 — Responsibility map and boundaries: implementation plan
 
-**Slice:** R217.S01 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+**Slice:** R217.S01 · **Status:** in progress; owner released 2026-10-28 · **Phase:**
 [R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
 **Reviewers:** T2, T3, T5 · **Runbook:** [T1 operations](../../../operations/t1-spatial-world/README.md)
 
