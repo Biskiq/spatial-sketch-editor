@@ -50,6 +50,7 @@ import {
 	type LayoutVec2
 } from '@portfolio/layout-core';
 
+import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
 import type { StageAdapterFactory, StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	datumWorkingPlane,
@@ -250,6 +251,7 @@ type WallGesture = {
 };
 
 export const createAdapter: StageAdapterFactory = (services) => {
+	const pick = createPlanPickProvider(() => services.stage.plan());
 	for (const planner of [
 		...createLayoutPlanners(),
 		...createDrawingPlanners(),
@@ -1456,6 +1458,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			return {
+				pick,
+				hostTools: ['erase', 'measure'],
 				tasks: [
 					{
 						id: LAYOUT_INK_TASK,

@@ -40,6 +40,12 @@ export function createScenePickSource() {
 	return {
 		setSource(next: RuntimeScene) { source = next; refresh(); },
 		refresh,
+		bounds(id: string, expected: RuntimeScene): { min: [number, number, number]; max: [number, number, number] } | null {
+			const root = source === expected ? roots.get(id) : undefined;
+			if (root === undefined) return null;
+			const box = boundsOf(root);
+			return box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
+		},
 		registerLayout(root: Object3D) {
 			layoutRoot = root; refresh();
 			return () => { if (layoutRoot === root) layoutRoot = null; };

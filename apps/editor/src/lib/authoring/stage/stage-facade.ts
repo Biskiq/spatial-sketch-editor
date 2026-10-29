@@ -1,6 +1,6 @@
 import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
-import { indexedCompiledWall } from '@portfolio/layout-core';
+import { resolveStagePick } from './stage-pick';
 import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
 import type { EntryRequalification } from './selection-requalification';
 import type { StageSelectionEntry } from './semantic-selection';
@@ -56,20 +56,16 @@ import {
 	eligiblePlanFragments,
 	planDependsOnTarget,
 	planTargetsLiveView,
-	pointInPolygon,
-	type CompiledLayoutGeometry,
 	type LayoutVec2,
 	type PlanEvaluation,
 	type PlanEvaluationResult,
 	type PlanFragment,
-	type PlanFragmentGeometry,
 	type PlanParameters,
 	type PlanSourceKind,
 	type PlanSourceRef,
 	type PlanSubRef,
 	type PlanStream
 } from '@portfolio/layout-core';
-import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from '$lib/authoring/layout/plan-pick-index';
 import { requestCameraOutput } from '@portfolio/project-model';
 import type {
 	CameraOutputClaim,
@@ -103,8 +99,6 @@ export const HOST_STAGE_CAPABILITIES: readonly string[] = [
 	'ink-readings-v1'
 ];
 
-/** Screen-space tolerance for a Plan hit, in CSS pixels. */
-export const PLAN_HIT_TOLERANCE_CSS_PX = 8;
 
 /** Domain-owned locator row, shared by Index and Head Find. */
 export type StageSubject = {
@@ -117,6 +111,19 @@ export type StageSubject = {
 export type StageHitCandidate = {
 	readonly evaluationId: string;
 	readonly css: readonly [number, number];
+};
+
+export type StageToolQuery = { readonly kind: string; readonly scope: 'domain' | 'host' };
+export type StagePickQuery = StageHitCandidate & {
+	readonly purpose: 'select' | 'hover' | 'tool';
+	readonly tool: StageToolQuery | null;
+};
+export type StageDomainPick = {
+	readonly hit: StageSourceHit;
+	readonly refusal: string | null;
+	readonly depthMeters: number | null;
+	readonly planLayer: number | null;
+	readonly cssDistance: number;
 };
 
 export type StageSourceHit = {
@@ -136,6 +143,7 @@ export type StageSourceHit = {
 
 export type ResolvedStageHit =
 	| { readonly kind: 'resolved'; readonly hit: StageSourceHit }
+	| { readonly kind: 'refused'; readonly hit: StageSourceHit; readonly message: string }
 	/**
 	 * Nothing selectable is under the candidate.
 	 *
@@ -289,6 +297,7 @@ export type StageAdapterContext = {
 	project(point: Vec3): readonly [number, number] | null;
 	ray(css: readonly [number, number]): PointerRay | null;
 	pickScene(ray: PointerRay): SceneRenderedHit | null;
+	sceneBounds(id: string): { readonly min: Vec3; readonly max: Vec3 } | null;
 	intersect(ray: PointerRay, plane: WorkingPlane): WorkingPlaneHit;
 	selection(): StageSelection | null;
 	selectionState(): StageSelectionState;
@@ -448,7 +457,8 @@ export type StageAdapterBinding = {
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
 	/** Proposed-pose meshes the shared Canvas draws; empty when nothing is proposed. */
 	readonly ghosts?: (context: StageAdapterContext) => readonly StageGhostMesh[];
-	readonly hitProvider?: (candidate: StageHitCandidate, context: StageAdapterContext) => StageSourceHit | null;
+	readonly pick?: (query: StagePickQuery, context: StageAdapterContext) => StageDomainPick | null;
+	readonly hostTools?: readonly string[];
 	/**
 	 * Claim a press for this adapter's open task. Returning `true` on `down` takes
 	 * the press from the host's navigation gesture; the same binding then receives
@@ -663,6 +673,7 @@ export type StageFacade = {
 	setPlanParameters(overrides: PlanParameterOverrides): void;
 	eligibleFragments(): readonly PlanFragment[];
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
+	resolvePick(query: StagePickQuery, toolOwner?: string | null): ResolvedStageHit;
 	selection(): StageSelection | null;
 	selectionState(): StageSelectionState;
 	setSelection(value: StageSelectionState): StageSelectionChange;
@@ -732,6 +743,7 @@ export type StageFacade = {
 	 * that claimed it, or `null` when the host's navigation gesture keeps it.
 	 */
 	pointerIntent(intent: StagePointerIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	hoverIntent(intent: StagePointerIntent): boolean;
 	/**
 	 * Offer a command key to the binding that owns the open task. Returns the
 	 * adapter that answered it, or `null` when the host's own unwinding keeps it.
@@ -757,289 +769,6 @@ function tokenOf(evaluation: ViewportEvaluation): ViewportEvaluationToken {
 	return evaluation.token;
 }
 
-/** The closest point on one CSS segment to a CSS point, as a `[distance, amount]` pair. */
-function closestOnCssSegment(
-	point: readonly [number, number],
-	start: readonly [number, number],
-	end: readonly [number, number]
-): { readonly distance: number; readonly amount: number } {
-	const dx = end[0] - start[0];
-	const dy = end[1] - start[1];
-	const squared = dx * dx + dy * dy;
-	if (squared === 0) {
-		return { distance: Math.hypot(point[0] - start[0], point[1] - start[1]), amount: 0 };
-	}
-	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared;
-	const amount = Math.min(1, Math.max(0, raw));
-	return {
-		distance: Math.hypot(point[0] - (start[0] + dx * amount), point[1] - (start[1] + dy * amount)),
-		amount
-	};
-}
-
-/**
- * One surface the pointer can actually land on, expressed in the coordinates it is
- * **drawn** in and projected through the one live evaluation.
- *
- * `face` is a vertical Wall surface between two plan points, with the vertical extent
- * the compiler draws. `flat` is a fragment drawn in plan only — a floor, an object
- * footprint, an Opening symbol — at its own elevation.
- */
-type StagePickSurface =
-	| {
-			readonly kind: 'face';
-			readonly start: LayoutVec2;
-			readonly end: LayoutVec2;
-			readonly bottomMeters: number;
-			readonly topMeters: number;
-		}
-	| {
-			readonly kind: 'flat';
-			readonly elevationMeters: number;
-			readonly geometry: PlanFragmentGeometry;
-		};
-
-type StagePick = { readonly distanceCss: number; readonly surface: StagePickSurface };
-
-function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, LayoutVec2])[] {
-	const segments: (readonly [LayoutVec2, LayoutVec2])[] = [];
-	if (geometry.kind === 'span') {
-		segments.push([geometry.start, geometry.end]);
-	} else if (geometry.kind === 'polyline') {
-		for (let index = 1; index < geometry.polyline.length; index += 1) {
-			segments.push([geometry.polyline[index - 1]!, geometry.polyline[index]!]);
-		}
-	} else {
-		for (let index = 0; index < geometry.polygon.length; index += 1) {
-			segments.push([geometry.polygon[index]!, geometry.polygon[(index + 1) % geometry.polygon.length]!]);
-		}
-	}
-	return segments;
-}
-
-/** Two compiled distances that name the same place, allowing for float round-off. */
-const SPAN_INTERVAL_EPSILON_METERS = 1e-6;
-
-function sameSpanDistance(left: number, right: number): boolean {
-	return Math.abs(left - right) <= SPAN_INTERVAL_EPSILON_METERS;
-}
-
-/**
- * The surfaces one fragment is **drawn** as.
- *
- * A Plan fragment is Layout's cut placement: a Wall cut at 1.2 m yields a fragment at
- * 1.2 m even when the Wall is drawn to 3 m. Building the pickable face from the
- * fragment's own elevation therefore shortened every Wall above the cut, so a click
- * high on the visible Wall missed it — the Plan cut quietly decided 3D picking. The
- * compiled Wall's own solid spans (the same records the mesh builders draw, including
- * their `bottomY`/`topY`) carry the real extent, so the surface tested is the surface
- * on screen. Layout remains the one geometry authority: this reads compiled Layout,
- * never the renderer or a second compiler, and it does not change what is drawn.
- */
-function pickSurfacesOf(
-	fragment: PlanFragment,
-	geometry: CompiledLayoutGeometry,
-	datumMeters: number
-): readonly StagePickSurface[] {
-	const flat: StagePickSurface = {
-		kind: 'flat',
-		elevationMeters: fragment.elevationMeters,
-		geometry: fragment.geometry
-	};
-	if (fragment.ref.sourceKind !== 'wall') return [flat];
-	const wall = indexedCompiledWall(geometry, fragment.ref.sourceId);
-	if (wall === undefined) return [flat];
-	const faceAtWallHeight = (): readonly StagePickSurface[] =>
-		planSegments(fragment.geometry).map(([start, end]) => ({
-			kind: 'face' as const,
-			start,
-			end,
-			bottomMeters: datumMeters,
-			topMeters: datumMeters + wall.height
-		}));
-
-	// **Correspondence first.** A Wall fragment names one compiled span through its
-	// `interval` subRef, and a Wall split by an Opening has several. Testing the whole
-	// Wall from every fragment let an earlier fragment answer for a later span and
-	// report *its* interval, and made a span the Plan excluded reachable through a
-	// sibling that was still eligible. Only the named span becomes this fragment's
-	// pick surface, at that span's own drawn height (a lintel starts where the Opening
-	// ends, not at the datum).
-	const interval = fragment.ref.subRef?.kind === 'interval' ? fragment.ref.subRef : null;
-	if (interval === null) return faceAtWallHeight();
-	const matching = wall.solidSpans.filter(
-		(span) =>
-			sameSpanDistance(span.startDistance, interval.start) &&
-			sameSpanDistance(span.endDistance, interval.end)
-	);
-	if (matching.length === 0) {
-		// A fragment whose interval the compiled snapshot no longer emits is tested at its
-		// own line and full Wall height — never at a neighbour's span, which would answer
-		// for a place this fragment does not name.
-		return faceAtWallHeight();
-	}
-	return matching.map((span) => ({
-		kind: 'face' as const,
-		start: span.start,
-		end: span.end,
-		bottomMeters: datumMeters + span.bottomY,
-		topMeters: datumMeters + span.topY
-	}));
-}
-
-/**
- * The distance, in **CSS pixels**, from a pointer position to the surfaces a fragment
- * is drawn as — the surface the creator is actually pointing at.
- *
- * This replaces a datum-plane-only pick, which measured plan metres from a point that
- * the ray reached at floor level: in the 3D reading that point sits metres behind the
- * surface under the pointer, so a visible Wall could not be selected at all. Proximity
- * is a screen question and the drawing is where the creator looks, so the test is made
- * where both agree, through the one live evaluation.
- */
-function cssDistanceToSurfaces(
-	css: readonly [number, number],
-	surfaces: readonly StagePickSurface[],
-	project: (point: Vec3) => readonly [number, number] | null
-): StagePick | null {
-	let best: StagePick | null = null;
-	const consider = (distanceCss: number, surface: StagePickSurface): void => {
-		if (best === null || distanceCss < best.distanceCss) best = { distanceCss, surface };
-	};
-	const considerSegment = (
-		start: readonly [number, number] | null,
-		end: readonly [number, number] | null,
-		surface: StagePickSurface
-	): void => {
-		// A segment with an endpoint behind the camera is not something the pointer can be
-		// over; skipping it also keeps a mirrored projection out of the test.
-		if (start === null || end === null) return;
-		consider(closestOnCssSegment(css, start, end).distance, surface);
-	};
-
-	for (const surface of surfaces) {
-		if (surface.kind === 'face') {
-			// A Wall is a **face**, not a line: the quad between its footprint and its top
-			// edge, at the extent the compiler draws.
-			const corners = [
-				project([surface.start[0], surface.bottomMeters, surface.start[1]]),
-				project([surface.end[0], surface.bottomMeters, surface.end[1]]),
-				project([surface.end[0], surface.topMeters, surface.end[1]]),
-				project([surface.start[0], surface.topMeters, surface.start[1]])
-			];
-			for (let index = 0; index < 4; index += 1) {
-				considerSegment(corners[index] ?? null, corners[(index + 1) % 4] ?? null, surface);
-			}
-			const polygon: [number, number][] = [];
-			for (const corner of corners) {
-				if (corner !== null) polygon.push([corner[0], corner[1]]);
-			}
-			if (polygon.length === 4 && pointInPolygon([css[0], css[1]], polygon)) consider(0, surface);
-			continue;
-		}
-
-		const elevation = surface.elevationMeters;
-		const projectAt = (point: LayoutVec2): readonly [number, number] | null =>
-			project([point[0], elevation, point[1]]);
-		for (const [start, end] of planSegments(surface.geometry)) {
-			considerSegment(projectAt(start), projectAt(end), surface);
-		}
-		if (surface.geometry.kind === 'polygon') {
-			// Inside the drawn footprint the pointer is on the surface itself.
-			const projected: [number, number][] = [];
-			for (const point of surface.geometry.polygon) {
-				const cssPoint = projectAt(point);
-				if (cssPoint !== null) projected.push([cssPoint[0], cssPoint[1]]);
-			}
-			if (
-				projected.length === surface.geometry.polygon.length &&
-				pointInPolygon([css[0], css[1]], projected)
-			) {
-				consider(0, surface);
-			}
-		}
-	}
-	return best;
-}
-
-/**
- * The world point a resolved hit reports, **on the surface that was picked**.
- *
- * A Wall is a vertical plane, so a horizontal plane at the fragment's elevation would
- * report a point that is not on the surface the creator pointed at — the Plan cut
- * height again, in world coordinates. A face hit therefore intersects the face's own
- * plane (the plane of its span, clamped to the span) and keeps the ray's height; a flat
- * fragment keeps the horizontal-plane answer. When the ray never meets the plane (a
- * nearly parallel view), the fragment's first drawn point is the honest fallback rather
- * than an invented position.
- */
-function worldPointOnSurface(
-	css: readonly [number, number],
-	surface: StagePickSurface,
-	fragment: PlanFragment,
-	evaluation: ViewportEvaluation,
-	token: ViewportEvaluationToken
-): Vec3 {
-	const geometry = fragment.geometry;
-	const first: LayoutVec2 =
-		geometry.kind === 'span'
-			? geometry.start
-			: geometry.kind === 'polyline'
-				? (geometry.polyline[0] ?? [0, 0])
-				: (geometry.polygon[0] ?? [0, 0]);
-	const fallback: Vec3 = [first[0], fragment.elevationMeters, first[1]];
-	const ray = pointerRay(css, evaluation, token);
-	if (ray.kind !== 'ray') return fallback;
-
-	if (surface.kind === 'face') {
-		const dx = surface.end[0] - surface.start[0];
-		const dz = surface.end[1] - surface.start[1];
-		const length = Math.hypot(dx, dz);
-		if (length > 0) {
-			const hit = intersectWorkingPlane(
-				ray.ray,
-				{
-					originMeters: [surface.start[0], surface.bottomMeters, surface.start[1]],
-					// The horizontal normal of the face: perpendicular to its span, in the plane
-					// the Wall is drawn in. The yaw is the span's own direction, so the frame's
-					// local up axis is the span rather than a second horizontal axis that could
-					// collapse onto the normal (a wall parallel to the default axis).
-					normal: [-dz / length, 0, dx / length],
-					yawRadians: Math.atan2(dx, dz),
-					datumMeters: surface.bottomMeters,
-					supportedLocalExtent: null
-				},
-				evaluation,
-				token
-			);
-			if (hit.kind === 'intersected') {
-				// Keep the point on the span the face covers: the ray's height is already on the
-				// face's plane, and clamping along the span stays on it.
-				const raw =
-					((hit.worldPoint[0] - surface.start[0]) * dx + (hit.worldPoint[2] - surface.start[1]) * dz) /
-					(length * length);
-				const amount = Math.min(1, Math.max(0, raw));
-				return [surface.start[0] + dx * amount, hit.worldPoint[1], surface.start[1] + dz * amount];
-			}
-		}
-	}
-
-	const elevation = surface.kind === 'flat' ? surface.elevationMeters : fragment.elevationMeters;
-	const hit = intersectWorkingPlane(
-		ray.ray,
-		{
-			originMeters: [0, elevation, 0],
-			normal: [0, 1, 0],
-			yawRadians: 0,
-			datumMeters: elevation,
-			supportedLocalExtent: null
-		},
-		evaluation,
-		token
-	);
-	return hit.kind === 'intersected' ? hit.worldPoint : fallback;
-}
-
 /** The working plane the Plan hit path intersects: the level datum, unbounded. */
 export function datumWorkingPlane(datumMeters: number): WorkingPlane {
 	return {
@@ -1057,6 +786,7 @@ export function createStageFacade(input: {
 	readonly viewportId?: string;
 	readonly outputId?: string;
 	readonly scenePick?: (ray: PointerRay, scene: StageReadSnapshot['domain']['scene']) => SceneRenderedHit | null;
+	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => { readonly min: Vec3; readonly max: Vec3 } | null;
 }): StageFacade {
 	const { session } = input;
 	let currentSnapshot = input.snapshot;
@@ -1238,118 +968,6 @@ export function createStageFacade(input: {
 		});
 	}
 
-	/**
-	 * The retained pick index for one Plan evaluation.
-	 *
-	 * Built lazily on the first hit that needs it and kept with the evaluation, so a
-	 * second click in the same view — or the same evaluation after a pan, which no
-	 * longer produces a new one — costs no build. The Plan is the only key: its
-	 * `fragments` array identity already names the compiled geometry and datum it
-	 * was evaluated from, so a recompile or a parameter change retires the index
-	 * with the evaluation.
-	 */
-	type RetainedPickIndex = {
-		readonly index: PlanPickIndex;
-		/** The fragments the index's entries address, in the hit path's priority order. */
-		readonly fragments: readonly PlanFragment[];
-	};
-	const pickIndexes = new WeakMap<PlanEvaluation, RetainedPickIndex>();
-
-	function pickIndexFor(plan: PlanEvaluation): RetainedPickIndex {
-		const existing = pickIndexes.get(plan);
-		if (existing !== undefined) return existing;
-		const geometry = currentSnapshot.domain.geometry;
-		// The fragments are indexed in the **hit path's own priority order**, so a
-		// candidate index is also its rank: the caller never re-sorts to decide.
-		//
-		// That order is already `plan.fragments`': the evaluator emits Wall before
-		// Opening before object before floor, then source identity, then interval, and
-		// eligibility is a **per-source** fact, so a source's fragments are contiguous
-		// and filtering out ineligible sources is order-preserving. Sorting here again
-		// was an `O(F log F)` pass that could not change the array it sorted.
-		const fragments = eligiblePlanFragments(plan);
-		const boxes = fragments.map((fragment) => pickBoxOf(fragment, geometry, plan.datumMeters));
-		const retained: RetainedPickIndex = { index: createPlanPickIndex(boxes), fragments };
-		pickIndexes.set(plan, retained);
-		return retained;
-	}
-
-	/**
-	 * The world box that contains everything one fragment's exact test projects.
-	 *
-	 * **Conservative on purpose, and never the Plan cut.** A Wall fragment is drawn
-	 * as faces at the compiled Wall's own extent (a lintel starts where the Opening
-	 * ends), so the compiled Wall's bounds are the box. A flat fragment is tested at
-	 * its own elevation only, so its plan extent at that elevation is exact. Deriving
-	 * the box from the cut elevation would prune precisely the Walls above it — the
-	 * defect the face surfaces were introduced to fix, moved into a broad phase.
-	 */
-	function pickBoxOf(
-		fragment: PlanFragment,
-		geometry: CompiledLayoutGeometry,
-		datumMeters: number
-	): PlanPickBox {
-		const planBounds = planExtentOf(fragment.geometry);
-		const elevation = Number.isFinite(fragment.elevationMeters)
-			? fragment.elevationMeters
-			: datumMeters;
-		if (fragment.ref.sourceKind === 'wall') {
-			const wall = indexedCompiledWall(geometry, fragment.ref.sourceId);
-			if (wall !== undefined) {
-				// The compiled Wall's own bounds plus its declared vertical extent. The
-				// union is deliberate: `pickSurfacesOf` may fall back to the fragment's
-				// whole line at full Wall height, and a box narrowed to the solid spans
-				// would prune a hit the exact test would have made.
-				return {
-					minX: Math.min(wall.bounds3.min[0], planBounds.minX),
-					minY: Math.min(wall.bounds3.min[1], datumMeters),
-					minZ: Math.min(wall.bounds3.min[2], planBounds.minZ),
-					maxX: Math.max(wall.bounds3.max[0], planBounds.maxX),
-					maxY: Math.max(wall.bounds3.max[1], datumMeters + wall.height, elevation),
-					maxZ: Math.max(wall.bounds3.max[2], planBounds.maxZ)
-				};
-			}
-		}
-		// A flat fragment is tested at its own elevation, and only there.
-		return {
-			minX: planBounds.minX,
-			minY: elevation,
-			minZ: planBounds.minZ,
-			maxX: planBounds.maxX,
-			maxY: elevation,
-			maxZ: planBounds.maxZ
-		};
-	}
-
-	function planExtentOf(geometry: PlanFragmentGeometry): {
-		readonly minX: number;
-		readonly minZ: number;
-		readonly maxX: number;
-		readonly maxZ: number;
-	} {
-		const points =
-			geometry.kind === 'span'
-				? [geometry.start, geometry.end]
-				: geometry.kind === 'polyline'
-					? geometry.polyline
-					: geometry.polygon;
-		let minX = Infinity;
-		let minZ = Infinity;
-		let maxX = -Infinity;
-		let maxZ = -Infinity;
-		for (const point of points) {
-			if (point[0] < minX) minX = point[0];
-			if (point[1] < minZ) minZ = point[1];
-			if (point[0] > maxX) maxX = point[0];
-			if (point[1] > maxZ) maxZ = point[1];
-		}
-		// An empty or non-finite plan gives a box the box test cannot prune, rather
-		// than an empty one it would prune every time.
-		if (!(minX <= maxX && minZ <= maxZ)) {
-			return { minX: -Infinity, minZ: -Infinity, maxX: Infinity, maxZ: Infinity };
-		}
-		return { minX, minZ, maxX, maxZ };
-	}
 
 	/**
 	 * One adapter context plus the handle that ends it.
@@ -1392,6 +1010,7 @@ export function createStageFacade(input: {
 				return intersectWorkingPlane(ray, plane, evaluation, token);
 			},
 			pickScene: (ray) => hasLiveEvaluation() ? input.scenePick?.(ray, currentSnapshot.domain.scene) ?? null : null,
+			sceneBounds: (id) => hasLiveEvaluation() ? input.sceneBounds?.(id, currentSnapshot.domain.scene) ?? null : null,
 			selection: () => contextIsLive() ? session.selection() : null,
 			selectionState: () => contextIsLive() ? session.selectionState() : EMPTY_SELECTION,
 			setSelection: (value) => contextIsLive() ? setSelection(value) : { kind: 'refused', code: 'stale-binding', message: 'Reacquire the active adapter binding.' },
@@ -1802,100 +1421,27 @@ export function createStageFacade(input: {
 			return result.kind === 'evaluated' ? eligiblePlanFragments(result.plan) : [];
 		},
 		resolveSourceHit(candidate) {
+			return facade.resolvePick({ ...candidate, purpose: 'select', tool: null });
+		},
+		resolvePick(query, toolOwner = null) {
 			const started = perfMarksEnabled() ? performance.now() : null;
-			let measuredHit: ResolvedStageHit | null = null;
+			let result: ResolvedStageHit = { kind: 'none', reason: 'no-fragment' };
 			try {
-			const evaluation = camera.evaluation();
-			if (evaluation === null || evaluationIdOf(evaluation) !== candidate.evaluationId) {
-				return measuredHit = { kind: 'failed', code: 'stale-evaluation' };
-			}
-			// Domain hit providers are asked first, in registration order, and the first
-			// claim wins. The host does not arbitrate one global priority among Camera,
-			// Scene and Layout species (interfaces §“Viewport projection v1”): an adapter
-			// answers for its own domain and its own hit policy, so a Scene object mounted
-			// on a Wall is reachable even though the Wall's Plan fragment is nearer the
-			// datum-plane point. Layout's own Plan resolution is the built-in fallback
-			// when no adapter claims, which keeps its priority deterministic within Layout.
-			ensureBindings();
-			const handle = adapterContext();
-			if (handle !== null) {
-				for (const entry of adapters.values()) {
-					const provider = entry.contributions.hitProvider;
-					if (provider === undefined) continue;
-					const claimed = provider(candidate, handle.context);
-					if (claimed !== null) return measuredHit = { kind: 'resolved', hit: claimed };
-				}
-			}
-			// A candidate arrives in Stage-local CSS (the space `StagePointerIntent`
-			// uses); the Camera projects into viewport CSS, whose origin includes the
-			// Stage's own offset in the window. Translate once, here, or a Stage that
-			// does not start at the window origin picks a subject metres away from
-			// the one under the pointer.
-			const candidateCss: [number, number] = [
-				candidate.css[0] + evaluation.rect.left,
-				candidate.css[1] + evaluation.rect.top
-			];
-			if (
-				!Number.isFinite(candidateCss[0]) ||
-				!Number.isFinite(candidateCss[1])
-			) {
-				return measuredHit = { kind: 'failed', code: 'invalid-css-point' };
-			}
-			const token = tokenOf(evaluation);
-			const planResult = planFor();
-			if (planResult.kind !== 'evaluated') return measuredHit = { kind: 'none', reason: 'no-fragment' };
-			const plan = planResult.plan;
-			// `readonly` in the parameter so the same function is the pick index's
-			// projection and the exact test's: neither writes the point, and the index
-			// must not be handed a narrower signature than the surface test has.
-			const project = (point: readonly [number, number, number]): readonly [number, number] | null => {
-				const result = projectWorld(point as Vec3, evaluation, token);
-				// A point behind the camera projects to a mirrored CSS position; it is not
-				// something the pointer can be over, so it must not become a candidate.
-				return result.kind === 'projected' && result.visibility !== 'behind' ? result.css : null;
-			};
-			// Only eligible placements become fragments, so the first fragment within the
-			// screen tolerance *is* the eligible hit; there is no second pass that could
-			// surface an excluded target. The retained index keeps the Layout priority
-			// deterministic (Wall before Opening before object before floor, then source
-			// identity), never Map iteration or a changing label, and returns its
-			// candidates in exactly that order.
-			//
-			// **Broad phase, then the same exact test.** The index is a conservative
-			// superset of the fragments that can lie within tolerance, so the answer below
-			// is the whole-scan answer — the work before the first candidate is what
-			// changes. Before: sort every eligible fragment and project every surface.
-			// Now: visit the boxes whose projected extent can reach the pointer (`O(log F + c)`
-			// over ordinary geometry; `O(F)` when the projected boxes really overlap) and
-			// project no fragment that cannot be hit. See the index for the full statement.
-			const retained = pickIndexFor(plan);
-			const candidates = retained.index.candidates(candidateCss, PLAN_HIT_TOLERANCE_CSS_PX, project);
-			for (const candidateIndex of candidates) {
-				const fragment = retained.fragments[candidateIndex];
-				if (fragment === undefined) continue;
-				const surfaces = pickSurfacesOf(fragment, currentSnapshot.domain.geometry, currentSnapshot.domain.datumMeters);
-				const pick = cssDistanceToSurfaces(candidateCss, surfaces, project);
-				if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
-				return measuredHit = {
-					kind: 'resolved',
-					hit: {
-						sourceId: fragment.ref.sourceId,
-						sourceKind: fragment.ref.sourceKind,
-						generationId: fragment.ref.generationId,
-						stream: fragment.ref.stream,
-						subRef: fragment.ref.subRef,
-						worldPoint: worldPointOnSurface(candidateCss, pick.surface, fragment, evaluation, token)
-					}
-				};
-			}
-			return measuredHit = { kind: 'none', reason: 'no-fragment' };
+				const evaluation = camera.evaluation();
+				if (evaluation === null || evaluationIdOf(evaluation) !== query.evaluationId) return result = { kind: 'failed', code: 'stale-evaluation' };
+				if (!query.css.every(Number.isFinite)) return result = { kind: 'failed', code: 'invalid-css-point' };
+				ensureBindings();
+				const handle = adapterContext();
+				if (handle === null) return result;
+				const winner = resolveStagePick(query, [...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })), handle.context, evaluation.renderedReading === 'plan' ? 'plan' : '3d', toolOwner ?? contributedTaskOwner?.adapterId ?? null);
+				if (winner === null) return result;
+				return result = winner.pick.refusal === null
+					? { kind: 'resolved', hit: winner.pick.hit }
+					: { kind: 'refused', hit: winner.pick.hit, message: winner.pick.refusal };
 			} finally {
-				if (started !== null) perfMark('stage:pick', {
-					elapsedMs: performance.now() - started,
-					outcome: measuredHit?.kind ?? 'threw',
-					sourceId: measuredHit?.kind === 'resolved' ? measuredHit.hit.sourceId : null,
-					sourceKind: measuredHit?.kind === 'resolved' ? measuredHit.hit.sourceKind : null
-				});
+				if (started !== null) perfMark('stage:pick', { elapsedMs: performance.now() - started, outcome: result.kind,
+					sourceId: result.kind === 'resolved' ? result.hit.sourceId : null,
+					sourceKind: result.kind === 'resolved' ? result.hit.sourceKind : null });
 			}
 		},
 		selection: () => session.selection(),
@@ -2194,18 +1740,15 @@ export function createStageFacade(input: {
 					}
 					return { claimed: false, adapterId: null };
 				}
-				// No contributed task owns the surface. A binding that declares it offers a
-				// press without a task — direct manipulation of the current selection — is
-				// asked in **registration order**, so the claimant is deterministic and a
-				// binding that does not declare the capability is never asked at all.
-				for (const [adapterId, entry] of adapters.entries()) {
-					if (entry.contributions.pressWhenNoTask !== true) continue;
-					const claim = entry.contributions.pointerIntent;
-					if (claim === undefined) continue;
+				// Direct manipulation belongs only to the primary selection's domain.
+				const adapterId = primaryEntry(session.selectionState())?.reference.domain;
+				const entry = adapterId === undefined ? undefined : adapters.get(adapterId);
+				const claim = entry?.contributions.pressWhenNoTask === true ? entry.contributions.pointerIntent : undefined;
+				if (claim !== undefined) {
 					try {
 						if (claim(intent, handle.context)) {
-							pointerOwner = adapterId;
-							return { claimed: true, adapterId };
+							pointerOwner = adapterId!;
+							return { claimed: true, adapterId: adapterId! };
 						}
 					} catch {
 						// A throwing claim is a refusal, not a stolen press.
@@ -2215,12 +1758,7 @@ export function createStageFacade(input: {
 			}
 			const owner = pointerOwner;
 			if (owner === null) {
-				// Hover is preview-only: the open task may update a ghost, but the move is
-				// never claimed, so navigation and the next press remain the host's.
-				if (intent.phase === 'move' && contributedTaskOwner !== null) {
-					const entry = adapters.get(contributedTaskOwner.adapterId);
-					try { entry?.contributions.hoverIntent?.(intent, handle.context); } catch { /* Subscriber isolation. */ }
-				}
+				if (intent.phase === 'move') facade.hoverIntent(intent);
 				return { claimed: false, adapterId: null };
 			}
 			const entry = adapters.get(owner);
@@ -2231,6 +1769,14 @@ export function createStageFacade(input: {
 			try { entry.contributions.pointerIntent?.(intent, handle.context); } catch { /* Subscriber isolation. */ }
 			if (intent.phase !== 'move') pointerOwner = null;
 			return { claimed: true, adapterId: owner };
+		},
+		hoverIntent(intent) {
+			if (!isLive() || session.gesture() !== null || contributedTaskOwner === null) return false;
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return false;
+			try { return adapters.get(contributedTaskOwner.adapterId)?.contributions.hoverIntent?.(intent, handle.context) === true; }
+			catch { return false; }
 		},
 		keyboardIntent(intent) {
 			if (!isLive()) return { claimed: false, adapterId: null };

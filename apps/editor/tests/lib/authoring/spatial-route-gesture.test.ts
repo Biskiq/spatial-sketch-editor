@@ -30,6 +30,7 @@ vi.mock('$lib/platform/project-persistence', async (original) => {
 		createProjectApi: () => ({ async loadProject() { return { document: harness.document, savedBaseToken: 'base', savedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, savedSourceContentId: 'content-1' }; } }) };
 });
 import { mount, tick, unmount } from 'svelte';
+import { captureUnitSave } from '@portfolio/project-model/units';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { layoutCapturedId } from '@portfolio/layout-core';
 import {
@@ -40,6 +41,7 @@ import {
 /** The starter keeps its fixed captured identity across every boot. */
 const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
+import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 const RECT = { left: 352, top: 73, width: 928, height: 720, right: 1280, bottom: 793, x: 352, y: 73, toJSON() { } };
@@ -82,10 +84,11 @@ function projected(point: readonly [
 function pointer(type: string, point: readonly [
 	number,
 	number
-], shift = false) {
+], shift = false, id = 1, pointerType = 'mouse') {
 	// jsdom has no native PointerEvent/capture. Dispatch the DOM event to the real route handlers.
 	const event = new MouseEvent(type, { bubbles: true, clientX: point[0], clientY: point[1], shiftKey: shift });
-	Object.defineProperty(event, 'pointerId', { value: 1 });
+	Object.defineProperty(event, 'pointerId', { value: id });
+	Object.defineProperty(event, 'pointerType', { value: pointerType });
 	stage().dispatchEvent(event);
 }
 const history = () => target.querySelector<HTMLElement>('[data-testid="head"]')!.dataset;
@@ -272,6 +275,146 @@ describe('mounted Stage pointer lifecycle', () => {
 		expect(history().canUndo).toBe('false');
 		expect(pausedWallProposal(facade().snapshot().domain.unitRevisions.layout, wallId)).toBeNull();
 	});
+	it('resolves hover once per frame without changing selection, history, or source', async () => {
+		const baseline = facade().snapshot().canonicalJson;
+		const selection = facade().selectionState();
+		const point = projected([3.5, 0, -4]);
+		pointer('pointermove', point);
+		await frame();
+		const hover = facade().session.hover();
+		expect(hover?.reference.subject.id).toBe(wallId);
+		expect(facade().selectionState()).toEqual(selection);
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect(history().canUndo).toBe('false');
+		pointer('pointerdown', point); pointer('pointerup', point); pointer('click', point);
+		await frame();
+		expect(facade().selectionState().primary?.subject.id).toBe(hover?.reference.subject.id);
+		pointer('pointermove', point, false, 4, 'touch');
+		await frame();
+		expect(facade().session.hover()).toBeNull();
+	});
+	it('lets an open tool own hover before the host updates it', async () => {
+		const point = projected([3.5, 0, -4]);
+		pointer('pointermove', point); await frame();
+		expect(facade().session.hover()).not.toBeNull();
+		const hover = vi.fn(() => true);
+		facade().registerStageAdapter({ id: 'hover-probe', tasks: [{ id: 'hover-probe-task', taskKind: 'hover-probe-task', label: 'Probe' }], hoverIntent: hover });
+		expect(facade().openContributedTask('hover-probe-task', 'hover-probe').kind).toBe('opened');
+		pointer('pointermove', point); await frame();
+		expect(hover).toHaveBeenCalledOnce();
+		expect(facade().session.hover()).toBeNull();
+	});
+	it('reports the active drag reason and saves only the accepted source', async () => {
+		const host = harness.host as StageAcceptanceHost;
+		const before = await captureUnitSave({ snapshot: host.coordinator().acceptedSnapshot(), operationId: 'before', precondition: { kind: 'create-only' } });
+		await startDrag();
+		await frame();
+		const reason = facade().session.liveProposal()?.reason;
+		expect(reason).toBeTruthy();
+		expect(history().undoReason).toBe(reason);
+		const during = await captureUnitSave({ snapshot: host.coordinator().acceptedSnapshot(), operationId: 'during', precondition: { kind: 'create-only' } });
+		expect(before.kind).toBe('captured'); expect(during.kind).toBe('captured');
+		if (before.kind === 'captured' && during.kind === 'captured') expect(during.capture.canonicalJson).toBe(before.capture.canonicalJson);
+		window.dispatchEvent(new Event('blur'));
+		await frame();
+		expect(facade().session.liveProposal()).toBeNull();
+		expect(history().undoReason).not.toBe(reason);
+	});
+	it('cancels a Wall drag when a second touch starts, then navigates by pinch', async () => {
+		const baseline = facade().snapshot().canonicalJson;
+		const selected = facade().selectionState();
+		const first = await startDrag();
+		const second: [number, number] = [first[0] + 100, first[1]];
+		pointer('pointerdown', second, false, 2, 'touch');
+		await frame();
+		expect(facade().session.gesture()?.navigation).toBe(true);
+		expect(facade().session.liveProposal()).toBeNull();
+		const before = facade().camera.state().pose.targetPlaneHeightMeters;
+		pointer('pointermove', [second[0] + 40, second[1]], false, 2, 'touch');
+		await frame();
+		expect(facade().camera.state().pose.targetPlaneHeightMeters).toBeLessThan(before);
+		pointer('pointerup', second, false, 2, 'touch');
+		await frame();
+		expect(facade().session.gesture()).toBeNull();
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect(facade().selectionState()).toEqual(selected);
+		expect(history().canUndo).toBe('false');
+	});
+	it.each(['blur', 'hidden', 'pointercancel', 'lostpointercapture', 'Escape', 'second-pointer'])('cancels a Scene drag on %s without an accepted change', async (type) => {
+		unmount(component); target.replaceChildren();
+		const scene = { formatVersion: 1 as const, textures: [], materials: [], navigationNodes: [], connections: [], entities: [{
+			kind: 'primitive' as const, primitive: 'box' as const, id: 'gesture-box', name: 'Box', dimensions: { width: 1, height: 1, depth: 1 },
+			materialId: 'plaster-warm' as const, castShadow: true, receiveShadow: true, position: [2, .5, -2] as [number, number, number], rotation: [0, 0, 0] as [number, number, number]
+		}] };
+		harness.document = await createUnitProject({ id: 'project-1', name: 'Scene gesture', layout: buildStarterEnclosureLayout(), scene });
+		component = mount(Page, { target });
+		await vi.waitFor(() => expect(target.querySelector('[data-testid="stage-canvas"]')).not.toBeNull());
+		await frame();
+		const reference = sceneEntityReference('gesture-box', facade().snapshot().domain.unitRevisions.scene);
+		expect(facade().setSelection({ ordered: [{ reference }], primary: reference }).kind).toBe('selected');
+		expect(facade().openContributedTask('scene-arrange', 'scene').kind).toBe('opened');
+		const selected = facade().selectionState();
+		const baseline = facade().snapshot().canonicalJson;
+		const point: [number, number] = [RECT.left + 100, RECT.top + 100];
+		pointer('pointerdown', point);
+		expect(facade().session.gesture()).not.toBeNull();
+		pointer('pointermove', [point[0] + 30, point[1]], true);
+		if (type === 'blur') window.dispatchEvent(new Event('blur'));
+		else if (type === 'hidden') { vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange')); }
+		else if (type === 'Escape') key(type);
+		else if (type === 'second-pointer') {
+			pointer('pointerdown', [point[0] + 100, point[1]], false, 2, 'touch');
+			expect(facade().session.gesture()?.navigation).toBe(true);
+			pointer('pointerup', [point[0] + 100, point[1]], false, 2, 'touch');
+		}
+		else pointer(type, point);
+		await frame();
+		expect(facade().session.gesture()).toBeNull();
+		expect(facade().session.liveProposal()).toBeNull();
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect(facade().selectionState()).toEqual(selected);
+		expect((harness.host as StageAcceptanceHost).history().depth).toBe(1);
+		pointer('pointerdown', point);
+		expect(facade().session.gesture()).not.toBeNull();
+		pointer('pointercancel', point);
+	});
+	it.each(['blur', 'hidden', 'pointercancel', 'lostpointercapture', 'Escape'])('ends navigation on %s and permits an immediate new press', async (type) => {
+		const point: [number, number] = [RECT.left + 25, RECT.top + 25];
+		const baseline = facade().snapshot().canonicalJson;
+		const selected = facade().selectionState();
+		pointer('pointerdown', point);
+		expect(facade().session.gesture()?.navigation).toBe(true);
+		pointer('pointermove', [point[0] + 10, point[1] + 10]);
+		if (type === 'blur') window.dispatchEvent(new Event('blur'));
+		else if (type === 'hidden') { vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange')); }
+		else if (type === 'Escape') key(type);
+		else pointer(type, point);
+		await frame();
+		expect(facade().session.gesture()).toBeNull();
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect(facade().selectionState()).toEqual(selected);
+		pointer('pointerdown', point);
+		expect(facade().session.gesture()?.navigation).toBe(true);
+		pointer('pointerup', point);
+	});
+	it.each(['blur', 'hidden'])('interrupts a Wall drag on %s and permits a new press', async (type) => {
+		const baseline = facade().snapshot().canonicalJson;
+		const selected = facade().selectionState();
+		await startDrag();
+		if (type === 'blur') window.dispatchEvent(new Event('blur'));
+		else {
+			vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+			document.dispatchEvent(new Event('visibilitychange'));
+		}
+		await frame();
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect(facade().selectionState()).toEqual(selected);
+		expect(facade().session.gesture()).toBeNull();
+		expect(facade().session.liveProposal()).toBeNull();
+		expect(history().canUndo).toBe('false');
+		await startDrag();
+		expect(facade().session.gesture()).not.toBeNull();
+	});
 	it.each(['pointercancel', 'lostpointercapture', 'Escape'])('cancels %s without a proposal or history', async (type) => {
 		const baseline = facade().snapshot().canonicalJson;
 		const point = await startDrag();
@@ -399,6 +542,16 @@ describe('mounted Stage drawing and deletion', () => {
 		expect(facade().snapshot().canonicalJson).toBe(canonical);
 	});
 
+	it.each(['blur', 'hidden'])('keeps an open Ink chain on %s', async (type) => {
+		dockKey('layout-ink').click(); await settled();
+		await drawPoint([2, 0, -1]); await drawPoint([5, 0, -1]);
+		const points = structuredClone(inkSurface()!.snapshot().points);
+		if (type === 'blur') window.dispatchEvent(new Event('blur'));
+		else { vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange')); }
+		await frame();
+		expect(inkSurface()?.snapshot().points).toEqual(points);
+		expect(facade().session.liveProposal()).not.toBeNull();
+	});
 	it('leaves Enter to a focused palette control instead of finishing the chain', async () => {
 		dockKey('layout-ink').click();
 		await settled();

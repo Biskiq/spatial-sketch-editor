@@ -26,6 +26,7 @@
 		canDownloadSource,
 		canUndo = false,
 		canRedo = false,
+		historyUnavailableReason = '',
 		save = null,
 		onReloadRemote = () => {},
 		projectActionsUnavailableReason = null,
@@ -48,6 +49,7 @@
 		canDownloadSource: boolean;
 		canUndo?: boolean;
 		canRedo?: boolean;
+		historyUnavailableReason?: string;
 		save?: HeadSave | null;
 		onReloadRemote?: (offer: ReloadOffer) => void;
 		projectActionsUnavailableReason?: string | null;
@@ -111,6 +113,7 @@
 	data-save-disabled={String(control?.disabled ?? true)}
 	data-can-undo={String(canUndo)}
 	data-can-redo={String(canRedo)}
+	data-undo-reason={historyUnavailableReason}
 	data-project-actions-reason={projectActionsUnavailableReason ?? 'available'}
 	data-project-action-busy={String(projectActionBusy)}
 >

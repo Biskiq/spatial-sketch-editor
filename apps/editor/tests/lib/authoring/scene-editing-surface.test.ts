@@ -668,7 +668,7 @@ describe('Scene adapter registration', () => {
 			rendered.register(entity.id, mesh);
 			meshes.push(mesh);
 		}
-		const facade = createStageFacade({ snapshot: admitted.snapshot, session: stageSession, scenePick: rendered.pick });
+		const facade = createStageFacade({ snapshot: admitted.snapshot, session: stageSession, scenePick: rendered.pick, sceneBounds: rendered.bounds });
 		// A factory-bound adapter only binds against a live evaluation.
 		const evaluated = facade.camera.evaluate(rect, 1);
 		if (evaluated.kind !== 'evaluated') throw new Error('the adapter fixture did not evaluate');
@@ -696,6 +696,23 @@ describe('Scene adapter registration', () => {
 				{ key: 3, u: 0.5, v: 1, smooth: false }, { key: 4, u: -0.5, v: 1, smooth: false }
 			] }, scale: [1, 1, 1], nextKey: 5 } };
 	}
+
+	it('offers a Scene host measurement at a rendered bounds corner', async () => {
+		const form = nativeForm('plan', 2);
+		const { facade, host, rendered } = await mounted(await supportedProject([form]));
+		mountStageAdapter(facade, host, createAdapter);
+		const bounds = rendered.bounds(form.id, facade.snapshot().domain.scene)!;
+		let snapped = false;
+		for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
+			const corner: [number, number, number] = [x, y, z];
+			const css = facade.projectWorld(corner, facade.evaluationId()!);
+			if (css.kind !== 'projected') continue;
+			const pick = facade.resolvePick({ css: css.css, evaluationId: facade.evaluationId()!, purpose: 'tool', tool: { kind: 'measure', scope: 'host' } });
+			if (pick.kind === 'resolved' && pick.hit.sourceId === form.id && pick.hit.worldPoint.every((n, i) => Math.abs(n - corner[i]!) < 1e-8)) snapped = true;
+		}
+		expect(snapped).toBe(true);
+		facade.dispose();
+	});
 
 	it('picks both form planes through the mounted adapter in Plan and 3D at a surface offset', async () => {
 		const rect = { ...RECT, left: 230, top: 91 };

@@ -371,3 +371,19 @@ describe('stage session — the reduced-motion endpoint rule', () => {
 		expect(settled.evaluation.orthographicWeight).toBe(1);
 	});
 });
+
+describe('stage session hover', () => {
+	it('is ephemeral and clears on lens change and replacement', async () => {
+		const session = createStageSession();
+		const first = await admit(await enclosureProject(PROJECT_ID));
+		session.replace(first);
+		const entry = { reference: {} as never };
+		session.setHover(entry);
+		expect(session.hover()).toEqual(entry);
+		expect(session.changeLens('experience')).toBe(true);
+		expect(session.hover()).toBeNull();
+		session.setHover(entry);
+		session.replace(await admit(await enclosureProject(OTHER_PROJECT_ID)));
+		expect(session.hover()).toBeNull();
+	});
+});
