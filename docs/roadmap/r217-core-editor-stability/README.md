@@ -135,7 +135,7 @@ T5.P01.S03 merged
      S01 ─┬─ S02 shell composition ─────────────────────────────┐
           └─ S03 interaction ─┬─ S04 Paper Plan → S05 drafting ─┼─ S06 Height Sheet
                               └─ S07 marks → S08 objects → S09 forms
-                                                                └─ S10 dock (needs S02, S05, S07)
+                                                                └─ S10 dock (needs S02, S05, S07, S08, S09)
                                                      S11 final gate (needs all)
 ```
 
