@@ -38,6 +38,7 @@ import {
 } from './intent-payload';
 import {
 	planCreateForm,
+	planPlaceFormCopy,
 	planDeleteOne,
 	planDuplicateOne,
 	planMoveHorizontal,
@@ -117,6 +118,7 @@ export function createScenePlanners(
 		scenePlanner(kind, (request) => {
 			if (kind === 'place-object') return planPlaceObject(request, definitionsOf());
 			if (kind === 'create-form') return planCreateFormIntent(request);
+			if (kind === 'place-form-copy') return planPlaceFormCopyIntent(request);
 			return planExistingObject(request, kind);
 		})
 	);
@@ -178,6 +180,59 @@ function planCreateFormIntent(
 		);
 	}
 	return toOutcome(request, 'create-form', result);
+}
+
+function planPlaceFormCopyIntent(
+	request: PlannerRequest<ProjectEnvelope>
+): PlannerOutcome<ProjectEnvelope> {
+	const reader = new ShapeReader();
+	const payload = readSceneOperationPayload(reader, 'place-form-copy', request.intent.payload);
+	if (payload === null || payload.kind !== 'place-form-copy') return invalidPayload(reader.issues);
+	const subject = readSceneOperationSubject({
+		reader,
+		kind: 'place-form-copy',
+		targets: request.intent.targets,
+		payload,
+		sourceContentId: request.snapshot.domain.source.units.scene.header.contentRevision
+	});
+	const allocation = readSceneOperationAllocation({
+		reader,
+		kind: 'place-form-copy',
+		allocations: request.intent.allocatedIds,
+		scene: request.snapshot.domain.source.units.scene.data
+	});
+	if (subject === null || allocation === null) return invalidPayload(reader.issues);
+	if (reader.issues.length > 0) return invalidPayload(reader.issues);
+	if (subject.kind !== 'none' || allocation.kind !== 'created') {
+		return rejected(
+			'invalid-value',
+			'A saved form copy addresses no existing subject and captures one new entity id.',
+			[]
+		);
+	}
+	let result: SceneOperationResult;
+	try {
+		result = planPlaceFormCopy({
+			context: {
+				layout: request.snapshot.domain.source.units.layout.data,
+				scene: request.snapshot.domain.source.units.scene.data,
+				sourceContentId: request.snapshot.sourceContentId
+			},
+			entityId: allocation.entityId,
+			item: payload.item,
+			worldXZ: payload.worldXZ,
+			yaw: payload.yaw,
+			contactMinY: payload.contactMinY,
+			...(payload.choice === undefined ? {} : { choice: payload.choice })
+		});
+	} catch (error) {
+		return rejected(
+			'invalid-value',
+			`The place-form-copy planner failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+			[]
+		);
+	}
+	return toOutcome(request, 'place-form-copy', result);
 }
 
 function scenePlanner(
@@ -361,14 +416,15 @@ function sameMeter(left: number, right: number): boolean {
 
 function planExistingObject(
 	request: PlannerRequest<ProjectEnvelope>,
-	kind: Exclude<SceneOperationKind, 'place-object' | 'create-form'>
+	kind: Exclude<SceneOperationKind, 'place-object' | 'create-form' | 'place-form-copy'>
 ): PlannerOutcome<ProjectEnvelope> {
 	const reader = new ShapeReader();
 	const payload = readSceneOperationPayload(reader, kind, request.intent.payload);
 	if (
 		payload === null ||
 		payload.kind === 'place-object' ||
-		payload.kind === 'create-form'
+		payload.kind === 'create-form' ||
+		payload.kind === 'place-form-copy'
 	) {
 		return invalidPayload(reader.issues);
 	}
@@ -419,10 +475,10 @@ function planExistingObject(
 }
 
 function planOperation(
-	kind: Exclude<SceneOperationKind, 'place-object' | 'create-form'>,
+	kind: Exclude<SceneOperationKind, 'place-object' | 'create-form' | 'place-form-copy'>,
 	payload: Exclude<
 		SceneOperationPayload,
-		{ kind: 'place-object' } | { kind: 'create-form' }
+		{ kind: 'place-object' } | { kind: 'create-form' } | { kind: 'place-form-copy' }
 	>,
 	entityId: string,
 	allocation: { readonly kind: 'none' } | { readonly kind: 'created'; readonly entityId: string },

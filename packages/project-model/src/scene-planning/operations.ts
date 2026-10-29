@@ -11,6 +11,7 @@
  *
  * | Operation | Owned values |
  * | --- | --- |
+ * | `place-form-copy` | one appended form entity from a saved library payload, a new id and the captured support |
  * | `move-horizontal` | world X/Z only; Y, rotation, scale, dimensions and materials are preserved |
  * | `set-yaw` | the yaw component of `rotation` only; position, pitch, roll and every other value are preserved |
  * | `place-on-floor` | contact-resolved Y and X/Z; the captured yaw component when the payload supplies one |
@@ -48,7 +49,8 @@ import {
 	type Vec3
 } from '../scene';
 import { framePointToWorld, frameYawToWorld, isFinitePlacementFrame } from './frame';
-import { sceneFormContactMinY } from './form';
+import { evaluateSceneForm, sceneFormContactMinY } from './form';
+import { readFormLibraryPayload, type FormLibraryPayload } from '../library/form-library';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import { resolveSceneSupport, type SceneSupportChoice } from './support';
 import type { LocalInputFrame } from './types';
@@ -56,6 +58,7 @@ import type { LocalInputFrame } from './types';
 export const SCENE_OPERATION_KINDS = [
 	'place-object',
 	'create-form',
+	'place-form-copy',
 	'set-form-size',
 	'move-horizontal',
 	'set-yaw',
@@ -454,6 +457,111 @@ export function planCreateForm(input: {
 	return {
 		kind: 'candidate',
 		operationKind: 'create-form',
+		entityId: input.entityId,
+		scene: finalized.scene,
+		fields: ['entities'],
+		correspondence: [{ relation: 'created', entityId: input.entityId }],
+		support: support.support,
+		worldPose: {
+			position: [...entity.position] as Vec3,
+			rotation: [...entity.rotation] as Vec3,
+			scale: 1
+		},
+		diagnostics: []
+	};
+}
+
+/**
+ * `place-form-copy` — one detached copy of a saved My Objects form.
+ *
+ * The saved payload is the source: its outline, keys, per-axis scale and
+ * `nextKey` are written verbatim, so the copy evaluates to the same body as the
+ * item and the original. The planner re-reads the payload through the shared
+ * strict codec, re-evaluates the body, and refuses a captured contact that
+ * disagrees with it. A new entity id is allocated by the caller; the copy holds
+ * no reference to the library item, so later edits never reach either side.
+ */
+export function planPlaceFormCopy(input: {
+	readonly context: SceneOperationContext;
+	readonly entityId: string;
+	readonly item: FormLibraryPayload;
+	readonly worldXZ: LayoutVec2;
+	readonly yaw: number;
+	readonly contactMinY: number;
+	readonly choice?: SceneSupportChoice | undefined;
+}): SceneOperationResult {
+	const scene = input.context.scene;
+	if (scene.entities.some((entity) => entity.id === input.entityId)) {
+		return invalid(
+			`Captured copy id "${input.entityId}" is already used by the accepted source; it is never renamed.`,
+			['entityId', 'duplicate-entity-id']
+		);
+	}
+	const parsed = readFormLibraryPayload(input.item);
+	if (!parsed.success) {
+		return invalid(
+			`The saved form copy refuses: ${parsed.issues[0]?.message ?? 'invalid library item'}.`,
+			parsed.issues.map((issue) => `${issue.path}: ${issue.code}`)
+		);
+	}
+	if (
+		input.worldXZ.length !== 2 ||
+		input.worldXZ.some((value) => !Number.isFinite(value)) ||
+		!Number.isFinite(input.yaw) ||
+		!Number.isFinite(input.contactMinY)
+	) {
+		return invalid('A form copy needs a finite world X/Z, yaw and captured contact.', [
+			'worldXZ',
+			'yaw',
+			'contactMinY'
+		]);
+	}
+	let mesh;
+	try {
+		mesh = evaluateSceneForm(parsed.payload.form);
+	} catch (error) {
+		return invalid(
+			error instanceof GeometryCoreError ? error.message : 'The saved form body could not be evaluated.',
+			['item']
+		);
+	}
+	if (Math.abs(input.contactMinY - mesh.contactMinY) > CONTACT_TOLERANCE_METERS) {
+		return invalid(
+			`The captured contact ${input.contactMinY} disagrees with the saved form's evaluated contact ${mesh.contactMinY}.`,
+			['contactMinY']
+		);
+	}
+	const support = resolveSupport(input.context, [input.worldXZ[0], input.worldXZ[1]], null, input.choice);
+	if (support.kind !== 'resolved') return support;
+
+	const entity: SceneFormEntity = {
+		kind: 'form',
+		id: input.entityId,
+		name: parsed.payload.name,
+		position: [input.worldXZ[0], support.support.elevation - mesh.contactMinY, input.worldXZ[1]],
+		rotation: [0, input.yaw, 0],
+		form: cloneFormSource(parsed.payload.form),
+		materialId: parsed.payload.materialId,
+		castShadow: parsed.payload.castShadow,
+		receiveShadow: parsed.payload.receiveShadow
+	};
+	const after: SceneDocument = { ...scene, entities: [...scene.entities, entity] };
+	const finalized = finalizeSceneCandidate({
+		before: scene,
+		after,
+		scope: {
+			operationKind: 'place-form-copy',
+			changedEntityIds: [],
+			changedEntityFields: [],
+			createdEntityIds: [input.entityId],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		}
+	});
+	if (finalized.kind === 'rejected') return fromFinalization(finalized);
+	return {
+		kind: 'candidate',
+		operationKind: 'place-form-copy',
 		entityId: input.entityId,
 		scene: finalized.scene,
 		fields: ['entities'],

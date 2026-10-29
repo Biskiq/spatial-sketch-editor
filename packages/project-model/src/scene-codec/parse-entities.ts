@@ -379,7 +379,7 @@ function parseFormAnchor(
 	return { key, u, v, smooth };
 }
 
-function parseFormSource(
+export function parseFormSource(
 	input: unknown,
 	path: string,
 	issues: SceneDocumentIssue[]

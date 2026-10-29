@@ -20,6 +20,10 @@
       "types": "./src/scene-planning/index.ts",
       "default": "./src/scene-planning/index.ts"
     },
+    "./library": {
+      "types": "./src/library/index.ts",
+      "default": "./src/library/index.ts"
+    },
     "./references/unit-resolution": {
       "types": "./src/references/unit-resolution.ts",
       "default": "./src/references/unit-resolution.ts"

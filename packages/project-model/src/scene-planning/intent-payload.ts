@@ -26,6 +26,10 @@ import type { SceneSupportChoice } from './support';
 import type { CapturedIdAllocation } from '../f4/types';
 import type { SceneOperationKind } from './operations';
 import type { CreatorModelResourcePayload } from './model-resource';
+import {
+	readFormLibraryPayload,
+	type FormLibraryPayload
+} from '../library/form-library';
 
 export type SceneOperationPayload =
 	| {
@@ -41,6 +45,14 @@ export type SceneOperationPayload =
 			readonly yaw: number;
 			readonly materialId: MaterialId;
 			readonly name: string;
+			readonly choice?: SceneSupportChoice;
+	  }
+	| {
+			readonly kind: 'place-form-copy';
+			readonly item: FormLibraryPayload;
+			readonly worldXZ: LayoutVec2;
+			readonly yaw: number;
+			readonly contactMinY: number;
 			readonly choice?: SceneSupportChoice;
 	  }
 	| {
@@ -115,6 +127,8 @@ export function readSceneOperationPayload(
 	switch (kind) {
 		case 'create-form':
 			return readCreateFormPayload(reader, raw);
+		case 'place-form-copy':
+			return readPlaceFormCopyPayload(reader, raw);
 		case 'set-form-size':
 			return readSetFormSizePayload(reader, raw);
 		case 'place-object':
@@ -208,6 +222,54 @@ function readCreateFormPayload(reader: ShapeReader, raw: unknown): SceneOperatio
 		name,
 		...(choice.choice === undefined ? {} : { choice: choice.choice })
 	};
+}
+
+function readPlaceFormCopyPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+	const path = '$.payload';
+	const record = reader.object(raw, path, [
+		'item',
+		'worldXZ',
+		'yaw',
+		'contactMinY',
+		'supportChoice'
+	]);
+	if (record === null) return null;
+	const item = readFormLibraryItem(reader, record.item, `${path}.item`);
+	const worldXZ = readPoint(reader, record.worldXZ, `${path}.worldXZ`);
+	const yaw = reader.number(record.yaw, `${path}.yaw`);
+	const contactMinY = reader.number(record.contactMinY, `${path}.contactMinY`);
+	const choice = readSupportChoice(reader, record.supportChoice, `${path}.supportChoice`);
+	if (
+		item === null ||
+		worldXZ === null ||
+		yaw === null ||
+		contactMinY === null ||
+		choice === undefined
+	) {
+		return null;
+	}
+	return {
+		kind: 'place-form-copy',
+		item,
+		worldXZ,
+		yaw,
+		contactMinY,
+		...(choice.choice === undefined ? {} : { choice: choice.choice })
+	};
+}
+
+/** Reuse the one library payload reader; its `$` paths become payload paths. */
+function readFormLibraryItem(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string
+): FormLibraryPayload | null {
+	const parsed = readFormLibraryPayload(raw);
+	if (parsed.success) return parsed.payload;
+	for (const issue of parsed.issues) {
+		reader.problem(`${path}${issue.path.slice(1)}`, issue.code, issue.message);
+	}
+	return null;
 }
 
 function readSetFormSizePayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
@@ -513,7 +575,7 @@ export function readSceneOperationSubject(input: {
 	readonly sourceContentId: string;
 }): SceneOperationSubject | null {
 	const { reader, kind, targets, payload, sourceContentId } = input;
-	if (kind === 'place-object' || kind === 'create-form') {
+	if (kind === 'place-object' || kind === 'create-form' || kind === 'place-form-copy') {
 		if (targets.length !== 0) {
 			reader.problem(
 				'$.targets',
@@ -532,7 +594,7 @@ export function readSceneOperationSubject(input: {
 		);
 		return null;
 	}
-	if (payload.kind === 'place-object' || payload.kind === 'create-form') return null;
+	if (payload.kind === 'place-object' || payload.kind === 'create-form' || payload.kind === 'place-form-copy') return null;
 	const target = targets[0]!;
 	const entityId = payload.entityId;
 	const problem = sceneEntityTargetProblem(target, entityId, sourceContentId);
@@ -551,7 +613,12 @@ export function readSceneOperationAllocation(input: {
 	readonly scene: SceneDocument;
 }): { readonly kind: 'none' } | { readonly kind: 'created'; readonly entityId: string } | null {
 	const { reader, kind, allocations, scene } = input;
-	if (kind !== 'place-object' && kind !== 'create-form' && kind !== 'duplicate-one') {
+	if (
+		kind !== 'place-object' &&
+		kind !== 'create-form' &&
+		kind !== 'place-form-copy' &&
+		kind !== 'duplicate-one'
+	) {
 		if (allocations.length !== 0) {
 			reader.problem(
 				'$.allocatedIds',
