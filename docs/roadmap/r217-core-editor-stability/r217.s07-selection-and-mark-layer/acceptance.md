@@ -148,6 +148,16 @@ disclosure, drawing, hit testing and the calibrated screen size.
   [Paper Wall close-up](./evidence-paper-wall-closeup.png),
   [selected Room on Paper](./evidence-paper-room-selected.png),
   [neutral Paper hover close-up](./evidence-paper-hover-closeup.png).
+- **Full gates at tested revision `183cad90`** (branch head; the working tree was clean, so the
+  tested working diff is exactly that commit):
+  - `apps/editor` `npm run test:arch` — 23 files / 193 tests passed, exit 0.
+  - `apps/editor` `npm run test:full` — 241 files / 3,057 tests passed, exit 0, including the
+    heavy correctness lane. The first local run in this worktree resolved `@portfolio/*` through a
+    shared `node_modules` symlink into another checkout, so `t1s06-persistent-storage` loaded two
+    copies of `layout-core`; after a worktree-local `npm ci` (no tracked file changed) the suite is
+    green and that file passes on its own too.
+  - repo root `npm run build:editor` — success; Vite build in 8.67 s and
+    `@sveltejs/adapter-vercel` completed.
 
 ## Independent review (2026-10-29)
 
