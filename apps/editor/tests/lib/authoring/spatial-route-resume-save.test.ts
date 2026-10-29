@@ -22,6 +22,7 @@ const harness = vi.hoisted(() => ({
 	loadKind: 'document' as 'document' | 'not-found' | 'auth',
 	document: null as unknown,
 	savedBaseToken: null as string | null,
+	savedRevision: { projectId: 'project-1', revisionId: 'revision-1' },
 	saveBehavior: 'success' as 'auth' | 'success',
 	saves: [] as unknown[],
 	signInCalls: [] as (string | undefined)[],
@@ -72,7 +73,7 @@ vi.mock('$lib/platform/project-persistence', async (importOriginal) => {
 				return {
 					document: harness.document,
 					savedBaseToken: harness.savedBaseToken,
-					savedRevision: { projectId: 'project-1', revisionId: 'revision-1' },
+					savedRevision: harness.savedRevision,
 					savedSourceContentId: 'sha256-content'
 				};
 			},
@@ -239,6 +240,7 @@ beforeEach(() => {
 	harness.loadKind = 'document';
 	harness.document = null;
 	harness.savedBaseToken = BASE_TOKEN;
+	harness.savedRevision = { projectId: 'project-1', revisionId: 'revision-1' };
 	harness.saveBehavior = 'success';
 	harness.saves = [];
 	harness.signInCalls = [];
@@ -284,6 +286,39 @@ afterEach(() => {
 });
 
 describe('spatial route resume Save', () => {
+	it('captures identical project source bytes with browser preferences unset and set', async () => {
+		const stored = new Map<string, string>();
+		vi.stubGlobal('localStorage', {
+			getItem: (key: string) => stored.get(key) ?? null,
+			setItem: (key: string, value: string) => stored.set(key, value)
+		});
+		harness.loadKind = 'document';
+		harness.document = await sceneProject('Preferences fixture');
+		harness.savedBaseToken = null;
+		harness.saveBehavior = 'auth';
+		await mountPage();
+		await waitForReady('Preferences fixture');
+		headSaveButton().click();
+		await vi.waitFor(() => expect(harness.saves).toHaveLength(1));
+		const first = harness.saves[0] as SaveRequest;
+		target.querySelector<HTMLButtonElement>('[data-head-motion]')!.click();
+		await settled();
+		expect([...stored.values()].some((value) => value.includes('"reducedMotion":true'))).toBe(true);
+		unmount(component!);
+		component = null;
+		target.replaceChildren();
+		sessionStorage.clear();
+		harness.loadKind = 'document';
+		harness.document = JSON.parse(first.capture.canonicalJson);
+		harness.savedBaseToken = null;
+		harness.savedRevision = first.capture.acceptedRevision;
+		await mountPage();
+		await waitForReady('Preferences fixture');
+		headSaveButton().click();
+		await vi.waitFor(() => expect(harness.saves).toHaveLength(2));
+		const second = harness.saves[1] as SaveRequest;
+		expect(second.capture.canonicalJson).toBe(first.capture.canonicalJson);
+	});
 	it('offers a create-only capture after the sign-in return 404 and replays it exactly', async () => {
 		// First visit: a minted identity the server does not have. The creator starts
 		// empty, then the Save answers auth-required and the route captures it.
