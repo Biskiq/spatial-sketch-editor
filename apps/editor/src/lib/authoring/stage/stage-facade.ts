@@ -1,7 +1,7 @@
 import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { resolveStagePick } from './stage-pick';
-import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
+import { EMPTY_SELECTION, primaryEntry, sameReference, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
 import type { EntryRequalification } from './selection-requalification';
 import type { StageSelectionEntry } from './semantic-selection';
 import type { SelectionRemoval, StageLens, TaskResumeOutcome } from './stage-session';
@@ -78,6 +78,16 @@ import type {
 import { planParameters, type PlanParameterOverrides } from './plan-parameters';
 import { createCameraSession, evaluationIdOf, type CameraSession } from './camera-session';
 import type { StageReadSnapshot } from './accepted-read';
+import {
+	admitStageHandles,
+	hitStageMark,
+	projectStageHandles,
+	stageHandleVisible,
+	type StageHandleDescriptor,
+	type StageHandleDiagnostic,
+	type StageMarkHit,
+	type StageMarkView
+} from './stage-handles';
 import type {
 	GestureAcquisition,
 	SelectionRequalification,
@@ -117,6 +127,8 @@ export type StageToolQuery = { readonly kind: string; readonly scope: 'domain' |
 export type StagePickQuery = StageHitCandidate & {
 	readonly purpose: 'select' | 'hover' | 'tool';
 	readonly tool: StageToolQuery | null;
+	/** Pointer class for the mark tier; default fine (22 px areas). */
+	readonly coarse?: boolean;
 };
 export type StageDomainPick = {
 	readonly hit: StageSourceHit;
@@ -144,6 +156,8 @@ export type StageSourceHit = {
 export type ResolvedStageHit =
 	| { readonly kind: 'resolved'; readonly hit: StageSourceHit }
 	| { readonly kind: 'refused'; readonly hit: StageSourceHit; readonly message: string }
+	/** The mark tier: an admitted mark of the primary selection's owning binding. */
+	| { readonly kind: 'mark'; readonly mark: StageMarkView }
 	/**
 	 * Nothing selectable is under the candidate.
 	 *
@@ -211,6 +225,10 @@ export type StagePointerIntent = {
 	readonly evaluationId: string;
 	/** Modifier state at the press; a drag may use it for a second mode (yaw). */
 	readonly shift?: boolean;
+	/** The admitted mark the press started on, when the host resolved one. */
+	readonly handleId?: string;
+	/** Pointer class, so a coarse press uses the 44 px hit area. */
+	readonly coarse?: boolean;
 };
 
 /**
@@ -222,9 +240,10 @@ export type StagePointerIntent = {
  * adapter: a task that answers `false` simply leaves the key to the host's
  * unwinding.
  */
-export type StageKeyboardIntent = {
-	readonly kind: 'finish' | 'backtrack' | 'cancel';
-};
+export type StageKeyboardIntent =
+	| { readonly kind: 'finish' | 'backtrack' | 'cancel' }
+	/** One printable keystroke while a gesture owns the pointer (numeric entry). */
+	| { readonly kind: 'type'; readonly key: string };
 
 /**
  * One **Ink reading** a domain offers to the one Pen (decision D5).
@@ -453,6 +472,15 @@ export type StageAdapterBindingContext = StageAdapterContext & { readonly adapte
  * live editing without ever reading a snapshot it was not built from.
  */
 export type StageAdapterBinding = {
+	/**
+	 * This binding's manipulation marks for the primary selection.
+	 *
+	 * The host asks only the binding that owns the primary selection, and only
+	 * while no contributed task is open. It admits the descriptors against the
+	 * adapter's registered planners, owns disclosure state and draws/hit-tests the
+	 * marks; the domain keeps every fact, planner and refusal.
+	 */
+	readonly handles?: (context: StageAdapterContext) => readonly StageHandleDescriptor[];
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
 	/** Proposed-pose meshes the shared Canvas draws; empty when nothing is proposed. */
@@ -526,6 +554,15 @@ export type StageAdapter = StageAdapterBinding & {
 	readonly id: string;
 	/** Capabilities this adapter requires the host to provide. Unknown ones refuse mounting. */
 	readonly requiredCapabilities?: readonly string[];
+	/**
+	 * The intent kinds this adapter's factory registered as its domain planners.
+	 *
+	 * Handle admission refuses an editing grip that names a planner outside this
+	 * set, so a mark cannot promise an operation the domain never registered. It is
+	 * host-facing data, not a second planner registry: the coordinator remains the
+	 * one authority that accepts an intent.
+	 */
+	readonly plannerKinds?: readonly string[];
 	/**
 	 * Host-owned re-binding: built for each accepted snapshot and disposed exactly
 	 * once when the next binding replaces it. An adapter without a factory keeps
@@ -674,6 +711,18 @@ export type StageFacade = {
 	eligibleFragments(): readonly PlanFragment[];
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
 	resolvePick(query: StagePickQuery, toolOwner?: string | null): ResolvedStageHit;
+	/** Admitted marks for the primary selection, in descriptor order, projected. */
+	marks(): readonly StageMarkView[];
+	/** The mark under a Stage-local CSS point, or `null`. */
+	hitMark(query: { readonly css: readonly [number, number]; readonly coarse: boolean }): StageMarkHit | null;
+	/** Hover emphasis for one mark; never selection, history or source. */
+	setMarkHover(mark: { readonly adapterId: string; readonly id: string } | null): void;
+	/** Toggle a disclosure mark. Returns `true` when a disclosure was activated. */
+	activateDisclosure(id: string): boolean;
+	/** Close an open disclosure; `true` when one was open and is now closed. */
+	closeDisclosure(): boolean;
+	/** Every handle admission refusal the host has recorded. */
+	handleDiagnostics(): readonly StageHandleDiagnostic[];
 	selection(): StageSelection | null;
 	selectionState(): StageSelectionState;
 	setSelection(value: StageSelectionState): StageSelectionChange;
@@ -749,6 +798,12 @@ export type StageFacade = {
 	 * adapter that answered it, or `null` when the host's own unwinding keeps it.
 	 */
 	keyboardIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	/**
+	 * Offer a command/typing key to the adapter that claimed the live no-task
+	 * press. This is the gesture's own writer path; a task's keys still travel
+	 * through `keyboardIntent`.
+	 */
+	gestureKeyIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };
 	/**
 	 * Ask the shell to re-read contributions now. An adapter that changes preview
 	 * state (a candidate pose) calls this so the overlay reflects it without a
@@ -844,6 +899,29 @@ export function createStageFacade(input: {
 	let contributedTaskOwner: { adapterId: string; taskId: string } | null = null;
 	/** The adapter that claimed the live press, if any. Cleared on up/cancel/close. */
 	let pointerOwner: string | null = null;
+	/** Which mark the pointer is over; view state only. */
+	let markHover: { readonly adapterId: string; readonly id: string } | null = null;
+	/** The mark a live press started on, for gold emphasis and live tags. */
+	let activeMarkId: string | null = null;
+	/** Open disclosure ids for the current primary selection. */
+	const openDisclosures = new Set<string>();
+	/** The selection the disclosure set belongs to; a change closes every one. */
+	let disclosureSelection: SemanticReference | null = null;
+	const handleDiagnostics: StageHandleDiagnostic[] = [];
+	const reportedHandleDiagnostics = new Set<string>();
+
+	/** A selection change closes disclosure; a 2D ↔ 3D flip deliberately does not. */
+	function syncDisclosureSelection(): void {
+		const entry = primaryEntry(session.selectionState());
+		const next = entry?.reference ?? null;
+		// The full canonical address is the identity: a same-id subject at another
+		// instance path or revision is a different selection and closes the set.
+		if (next === null ? disclosureSelection === null : disclosureSelection !== null && sameReference(next, disclosureSelection)) return;
+		disclosureSelection = next;
+		openDisclosures.clear();
+		markHover = null;
+		activeMarkId = null;
+	}
 
 	/**
 	 * The next host inspection run epoch. It is monotonic over this output's whole
@@ -1028,6 +1106,7 @@ export function createStageFacade(input: {
 	function select(selection: StageSelection | null): void {
 		if (!isLive()) return;
 		session.select(selection);
+		syncDisclosureSelection();
 		echoSelection();
 		notifyAdaptersChanged();
 	}
@@ -1040,7 +1119,7 @@ export function createStageFacade(input: {
 	function setSelection(value: StageSelectionState): StageSelectionChange {
 		if (!isLive()) return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
 		const result = session.setSelection(value);
-		if (result.kind === 'selected') { echoSelection(); notifyAdaptersChanged(); }
+		if (result.kind === 'selected') { syncDisclosureSelection(); echoSelection(); notifyAdaptersChanged(); }
 		return result;
 	}
 
@@ -1055,6 +1134,65 @@ export function createStageFacade(input: {
 		for (const entry of adapters.values()) {
 			try { entry.contributions.taskClosed?.(); } catch { /* Subscriber isolation. */ }
 		}
+	}
+
+	/**
+	 * The primary selection's admitted marks, projected through the live viewport.
+	 *
+	 * Asked only of the binding whose domain owns the primary selection, and only
+	 * while no contributed task is open. Admission refusals are recorded once each
+	 * and the mark is not returned, so "not drawn" and "not hit-testable" are the
+	 * same fact.
+	 */
+	function stageMarks(): readonly StageMarkView[] {
+		if (!isLive()) return [];
+		syncDisclosureSelection();
+		if (session.task() !== null) return [];
+		const entry = primaryEntry(session.selectionState());
+		if (entry === null) return [];
+		ensureBindings();
+		const adapterEntry = adapters.get(entry.reference.domain);
+		if (adapterEntry === undefined) return [];
+		const handle = adapterContext();
+		if (handle === null) return [];
+		let descriptors: readonly StageHandleDescriptor[] = [];
+		try {
+			descriptors = adapterEntry.contributions.handles?.(handle.context) ?? [];
+		} catch {
+			descriptors = [];
+		} finally {
+			handle.end();
+		}
+		if (descriptors.length === 0) return [];
+		const admission = admitStageHandles({
+			adapterId: adapterEntry.adapter.id,
+			descriptors,
+			plannerKinds: adapterEntry.adapter.plannerKinds ?? [],
+			alreadyReported: reportedHandleDiagnostics
+		});
+		for (const diagnostic of admission.diagnostics) {
+			reportedHandleDiagnostics.add(`${diagnostic.adapterId}\u0000${diagnostic.handleId}\u0000${diagnostic.code}`);
+			handleDiagnostics.push(diagnostic);
+		}
+		const evaluation = camera.evaluation();
+		if (evaluation === null) return [];
+		return projectStageHandles({
+			adapterId: adapterEntry.adapter.id,
+			descriptors: admission.admitted,
+			openDisclosures,
+			hoveredId: markHover?.adapterId === adapterEntry.adapter.id ? markHover.id : null,
+			activeId: activeMarkId,
+			project: (point) => {
+				const projected = projectWorld(point, evaluation, tokenOf(evaluation));
+				// A behind-camera point mirrors through the origin; a clipped or
+				// outside-frame point would paint outside the Stage. Neither is a mark
+				// the creator can see and press.
+				return projected.kind === 'projected' && projected.visibility === 'visible'
+					? projected.css
+					: null;
+			},
+			offset: [evaluation.rect.left, evaluation.rect.top]
+		});
 	}
 
 	/** End every binding and registration: used by dispose, never by a content change. */
@@ -1345,6 +1483,11 @@ export function createStageFacade(input: {
 			// old content) without touching the pose, and the host re-acquires at once.
 			camera.rebaseSource(next.sourceContentId);
 			currentSnapshot = next;
+			// A replacement closes disclosure: the grips it revealed belong to the
+			// source that was replaced, not to whatever now shares its identity.
+			openDisclosures.clear();
+			markHover = null;
+			activeMarkId = null;
 			// Every factory-bound adapter is rebuilt for *this* snapshot: the registration
 			// survives the edit, each previous binding is disposed exactly once, and its
 			// replacements were built from the source that is now mounted.
@@ -1400,6 +1543,11 @@ export function createStageFacade(input: {
 			// the new authored envelope while retaining the session's selection/task.
 			camera.rebaseSource(next.sourceContentId);
 			currentSnapshot = next;
+			// Metadata still replaces the accepted bytes: a disclosed grip set belongs
+			// to the source it was opened against and must not survive the swap.
+			openDisclosures.clear();
+			markHover = null;
+			activeMarkId = null;
 			rebindAdapters();
 			camera.acquireInspection('exclusive', nextInspectionRun());
 			notifyAdaptersChanged();
@@ -1433,6 +1581,12 @@ export function createStageFacade(input: {
 				ensureBindings();
 				const handle = adapterContext();
 				if (handle === null) return result;
+				// The mark tier sits above world candidates. A host tool (Measure, Eraser)
+				// asks the world, not the selection's manipulation language.
+				if (query.purpose !== 'tool') {
+					const mark = hitStageMark(stageMarks(), { css: query.css, coarse: query.coarse === true });
+					if (mark !== null) return result = { kind: 'mark', mark: mark.mark };
+				}
 				const winner = resolveStagePick(query, [...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })), handle.context, evaluation.renderedReading === 'plan' ? 'plan' : '3d', toolOwner ?? contributedTaskOwner?.adapterId ?? null);
 				if (winner === null) return result;
 				return result = winner.pick.refusal === null
@@ -1443,6 +1597,32 @@ export function createStageFacade(input: {
 					sourceId: result.kind === 'resolved' ? result.hit.sourceId : null,
 					sourceKind: result.kind === 'resolved' ? result.hit.sourceKind : null });
 			}
+		},
+		marks() {
+			return stageMarks();
+		},
+		hitMark(query) {
+			return hitStageMark(stageMarks(), query);
+		},
+		setMarkHover(mark) {
+			if (!isLive()) return;
+			markHover = mark === null ? null : { adapterId: mark.adapterId, id: mark.id };
+		},
+		activateDisclosure(id) {
+			if (!isLive()) return false;
+			const mark = stageMarks().find((candidate) => candidate.id === id);
+			if (mark === undefined || mark.role !== 'disclose') return false;
+			if (openDisclosures.has(id)) openDisclosures.delete(id);
+			else openDisclosures.add(id);
+			return true;
+		},
+		closeDisclosure() {
+			if (openDisclosures.size === 0) return false;
+			openDisclosures.clear();
+			return true;
+		},
+		handleDiagnostics() {
+			return handleDiagnostics;
 		},
 		selection: () => session.selection(),
 		selectionState: () => session.selectionState(),
@@ -1461,6 +1641,9 @@ export function createStageFacade(input: {
 		},
 		changeLens(next) {
 			if (!isLive() || !session.changeLens(next)) return false;
+			openDisclosures.clear();
+			markHover = null;
+			activeMarkId = null;
 			// A lens exit ends bindings as well as writers. Old callbacks cannot become live on return.
 			rebindAdapters();
 			notifyAdaptersChanged();
@@ -1748,6 +1931,10 @@ export function createStageFacade(input: {
 					try {
 						if (claim(intent, handle.context)) {
 							pointerOwner = adapterId!;
+							if (intent.handleId !== undefined) {
+								activeMarkId = intent.handleId;
+								markHover = { adapterId: adapterId!, id: intent.handleId };
+							}
 							return { claimed: true, adapterId: adapterId! };
 						}
 					} catch {
@@ -1767,7 +1954,15 @@ export function createStageFacade(input: {
 				return { claimed: false, adapterId: null };
 			}
 			try { entry.contributions.pointerIntent?.(intent, handle.context); } catch { /* Subscriber isolation. */ }
-			if (intent.phase !== 'move') pointerOwner = null;
+			if (intent.phase !== 'move') {
+				// A writer that deliberately kept its gesture lease (numeric entry after
+				// pointer-up) also keeps the keyboard until Enter or Esc. A writer that
+				// released has ended, so the host drops ownership with it.
+				if (session.gesture() === null) {
+					pointerOwner = null;
+					activeMarkId = null;
+				}
+			}
 			return { claimed: true, adapterId: owner };
 		},
 		hoverIntent(intent) {
@@ -1798,6 +1993,23 @@ export function createStageFacade(input: {
 				// A throwing claim is a refusal, never a stolen key.
 			}
 			return { claimed: false, adapterId: null };
+		},
+		gestureKeyIntent(intent) {
+			if (!isLive() || session.task() !== null) return { claimed: false, adapterId: null };
+			const owner = pointerOwner;
+			if (owner === null) return { claimed: false, adapterId: null };
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return { claimed: false, adapterId: null };
+			const claim = adapters.get(owner)?.contributions.keyIntent;
+			if (claim === undefined) return { claimed: false, adapterId: null };
+			try {
+				return claim(intent, handle.context)
+					? { claimed: true, adapterId: owner }
+					: { claimed: false, adapterId: null };
+			} catch {
+				return { claimed: false, adapterId: null };
+			}
 		},
 		notifySurfaceChange() {
 			if (isLive()) notifyAdaptersChanged();

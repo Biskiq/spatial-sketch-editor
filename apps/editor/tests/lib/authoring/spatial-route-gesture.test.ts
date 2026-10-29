@@ -94,15 +94,31 @@ function pointer(type: string, point: readonly [
 }
 const history = () => target.querySelector<HTMLElement>('[data-testid="head"]')!.dataset;
 function key(key: string) { window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })); }
+/** A projected Wall that is not the selected one, so its hover is not a mark. */
+function anotherWall(): { readonly id: string; readonly css: [number, number] } {
+	const plan = facade().plan();
+	if (plan.kind !== 'evaluated') throw new Error('no Plan');
+	const fragment = plan.plan.fragments.find((f) => f.ref.sourceKind === 'wall' && f.ref.sourceId !== wallId)!;
+	const geometry = fragment.geometry;
+	const points = geometry.kind === 'span' ? [geometry.start, geometry.end] : geometry.kind === 'polyline' ? geometry.polyline : geometry.polygon;
+	const center = points.reduce((sum, p) => [sum[0]! + p[0] / points.length, sum[1]! + p[1] / points.length], [0, 0]);
+	return { id: fragment.ref.sourceId, css: projected([center[0]!, fragment.elevationMeters, center[1]!]) };
+}
+
 async function startDrag() {
-	const end = projected([7, 0, -4]);
-	pointer('pointerdown', end, true);
+	// The Wall's free end is the length mark; the angle ring is gone (owner ruling
+	// 2026-10-29), so direct manipulation is length or move. Marks are already in
+	// Stage-local CSS; pointer intents add the accepted Stage rect.
+	const end = facade().marks().find((mark) => mark.id === 'layout-wall-end-mark');
+	if (end === undefined) throw new Error('the Wall end mark is not projected');
+	const press: [number, number] = [end.anchor[0] + RECT.left, end.anchor[1] + RECT.top];
+	pointer('pointerdown', press);
 	await frame();
 	expect(facade().session.gesture()).not.toBeNull();
-	const desired = projected([7, 0, -3.7]);
-	pointer('pointermove', desired, true);
+	const desired = projected([5.5, 0, -4]);
+	pointer('pointermove', desired);
 	await frame();
-	expect([...target.querySelectorAll('.marker')].some(e => e.textContent?.includes('Angle'))).toBe(true);
+	expect([...target.querySelectorAll('.marker')].some(e => e.textContent?.includes('Length'))).toBe(true);
 	return desired;
 }
 beforeEach(async () => {
@@ -193,20 +209,15 @@ describe('mounted Stage pointer lifecycle', () => {
 		await frame();
 		expect(facade().selection()?.sourceId).toBe(STARTER_WALL_2);
 	});
-	it('hits and echoes the same Wall with an offset Stage', async () => {
-		const plan = facade().plan();
-		if (plan.kind !== 'evaluated')
-			throw new Error('no Plan');
-		const fragment = plan.plan.fragments.find(f => f.ref.sourceId === wallId)!;
-		const geometry = fragment.geometry;
-		const points = geometry.kind === 'span' ? [geometry.start, geometry.end] : geometry.kind === 'polyline' ? geometry.polyline : geometry.polygon;
-		const center = points.reduce((sum, p) => [sum[0]! + p[0] / points.length, sum[1]! + p[1] / points.length], [0, 0]);
-		const point = projected([center[0]!, fragment.elevationMeters, center[1]!]);
-		const transform = target.querySelector('.selection')!.getAttribute('transform')!;
-		const coords = transform.match(/translate\(([^ ]+) ([^)]+)\)/)!;
-		expect(Number(coords[1])).toBeCloseTo(point[0] - RECT.left, 8);
-		expect(Number(coords[2])).toBeCloseTo(point[1] - RECT.top, 8);
+	it('keeps Stage, Card and Index on the same selected identity with an offset Stage', async () => {
+		// The placeholder gold dot is gone; identity is echoed by the Card and the
+		// Index rather than by a second projection marker.
+		expect(target.querySelector('.selection')).toBeNull();
 		expect(facade().selection()?.sourceId).toBe(wallId);
+		const card = target.querySelector('[aria-label="Selected subject"]');
+		expect(card?.textContent).toContain(wallId);
+		const index = target.querySelector('[data-plate-landmark="index"]');
+		expect(index?.textContent).toContain(wallId);
 	});
 	it('commits one uninterrupted drag across ordinary Camera evaluation updates', async () => {
 		const baseline = facade().snapshot().canonicalJson;
@@ -247,7 +258,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		expect(button('Resume')).toBeDefined();
 		expect(button('Discard')).toBeDefined();
 		const request = paused!.request;
-		expect(request.kind).toBe('angle');
+		expect(request.kind).toBe('length');
 		const accept = vi.spyOn(harness.host as StageAcceptanceHost, 'accept');
 		button('Resume').click();
 		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(baseline));
@@ -260,7 +271,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		expect(target.querySelector('.instrument')).toBeNull();
 		expect([...target.querySelectorAll('.marker')].some(e => e.textContent?.includes('Paused'))).toBe(false);
 		expect(accept).toHaveBeenCalledTimes(1);
-		expect(accept.mock.calls[0]![0]).toMatchObject({ payload: { angleRadians: request.kind === 'angle' ? request.angleRadians : NaN } });
+		expect(accept.mock.calls[0]![0]).toMatchObject({ payload: { length: request.kind === 'length' ? request.length : NaN, fixed: 'start' } });
 		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
 	});
 	it('discards a reading-interrupted proposal without history or a stale release commit', async () => {
@@ -279,23 +290,23 @@ describe('mounted Stage pointer lifecycle', () => {
 	it('resolves hover once per frame without changing selection, history, or source', async () => {
 		const baseline = facade().snapshot().canonicalJson;
 		const selection = facade().selectionState();
-		const point = projected([3.5, 0, -4]);
-		pointer('pointermove', point);
+		const other = anotherWall();
+		pointer('pointermove', other.css);
 		await frame();
 		const hover = facade().session.hover();
-		expect(hover?.reference.subject.id).toBe(wallId);
+		expect(hover?.reference.subject.id).toBe(other.id);
 		expect(facade().selectionState()).toEqual(selection);
 		expect(facade().snapshot().canonicalJson).toBe(baseline);
 		expect(history().canUndo).toBe('false');
-		pointer('pointerdown', point); pointer('pointerup', point); pointer('click', point);
+		pointer('pointerdown', other.css); pointer('pointerup', other.css); pointer('click', other.css);
 		await frame();
 		expect(facade().selectionState().primary?.subject.id).toBe(hover?.reference.subject.id);
-		pointer('pointermove', point, false, 4, 'touch');
+		pointer('pointermove', other.css, false, 4, 'touch');
 		await frame();
 		expect(facade().session.hover()).toBeNull();
 	});
 	it('lets an open tool own hover before the host updates it', async () => {
-		const point = projected([3.5, 0, -4]);
+		const point = anotherWall().css;
 		pointer('pointermove', point); await frame();
 		expect(facade().session.hover()).not.toBeNull();
 		const hover = vi.fn(() => true);

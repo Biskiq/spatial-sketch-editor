@@ -4,9 +4,25 @@ import type { PointerRay } from '@portfolio/camera-core';
 import type { RuntimeScene } from '@portfolio/project-model';
 
 export type SceneRenderedHit = { readonly entityId: string | null; readonly kind: 'entity' | 'floor' | 'layout'; readonly distanceMeters: number; readonly worldPoint: [number, number, number] };
+
+/** True when this node and every ancestor are visible; the same rule the pick ray uses. */
+export function hasVisibleAncestor(node: Object3D): boolean {
+	for (let ancestor: Object3D | null = node; ancestor !== null; ancestor = ancestor.parent) {
+		if (!ancestor.visible) return false;
+	}
+	return true;
+}
+
 export function createScenePickSource() {
 	const roots = new Map<string, Object3D>();
 	let layoutRoot: Object3D | null = null;
+	/** Renderer-only observers; they never participate in picking. */
+	const listeners = new Set<() => void>();
+	function notify(): void {
+		for (const listener of [...listeners]) {
+			try { listener(); } catch { /* A render observer must not break the pick source. */ }
+		}
+	}
 	const raycaster = new Raycaster();
 	const boxes = new WeakMap<Object3D, { stamp: number[]; bounds: Box3 }>();
 	function boundsOf(root: Object3D): Box3 {
@@ -34,6 +50,10 @@ export function createScenePickSource() {
 			queued = false;
 			for (const root of roots.values()) boundsOf(root);
 			if (layoutRoot) boundsOf(layoutRoot);
+			// A lazy model/form can mount after its root was registered; the bounds
+			// refresh is also the moment the Stage's renderer-only ink can rebuild from
+			// the new children. This is not a pick notification and never writes state.
+			notify();
 		});
 	}
 	let source: RuntimeScene | null = null;
@@ -44,9 +64,7 @@ export function createScenePickSource() {
 			if (found || !(node instanceof Mesh)) return;
 			const position = node.geometry.getAttribute('position');
 			if (position === undefined || position.count < 3) return;
-			for (let ancestor: Object3D | null = node; ancestor !== null; ancestor = ancestor.parent) {
-				if (!ancestor.visible) return;
-			}
+			if (!hasVisibleAncestor(node)) return;
 			found = true;
 		});
 		return found;
@@ -78,11 +96,23 @@ export function createScenePickSource() {
 		},
 		registerLayout(root: Object3D) {
 			layoutRoot = root; refresh();
-			return () => { if (layoutRoot === root) layoutRoot = null; };
+			return () => { if (layoutRoot === root) { layoutRoot = null; notify(); } };
 		},
 		register(id: string, root: Object3D) {
 			roots.set(id, root); refresh();
-			return () => { if (roots.get(id) === root) roots.delete(id); };
+			return () => { if (roots.get(id) === root) { roots.delete(id); notify(); } };
+		},
+		/** A read-only render root lookup for the Stage's selection layer. */
+		layoutObject(): Object3D | null {
+			return layoutRoot;
+		},
+		entityObject(id: string): Object3D | null {
+			return roots.get(id) ?? null;
+		},
+		/** Observe renderer registration/lifecycle; never used by the hit path. */
+		onRenderRootsChanged(listener: () => void): () => void {
+			listeners.add(listener);
+			return () => { listeners.delete(listener); };
 		},
 		pick(ray: PointerRay, expected: RuntimeScene): SceneRenderedHit | null {
 			if (source !== expected || ![...ray.origin, ...ray.direction].every(Number.isFinite)) return null;

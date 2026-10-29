@@ -384,14 +384,40 @@ Finite forward 3D hits outrank tolerance-only hits; Plan ranks by the Paper laye
 hidden 20, projected 30, cut 40, Opening symbol 50 and Scene footprint 60. With no task, a
 press is offered only to the primary selection's owner. Hover is session-only and uses the
 same resolver. Window blur, hidden-page, capture loss and pointer cancellation end live
-presses; a second pointer ends the authored press and hands navigation the pair. S07 owns
-visible marks.
+presses; a second pointer ends the authored press and hands navigation the pair. Visible
+selection and marks are owned by the Stage mark host
+([below](#current-selection-and-marks-r217s07)).
 
 Paper is an appearance mask, not pick eligibility. While settled Paper is visible,
 `StageCamera` draws the Stage overlay layer 2 only; the pick source's raycaster keeps its
 default layer-0 mask and `Object3D.visible` keeps meaning mounted-and-eligible. Shaded Plan
 draws world layer 0 and overlay layer 2 together. Paper geometry is never parented under a
 registered pick root.
+
+### Current selection and marks (R217.S07)
+
+The Stage owns one mark host and draws every admitted mark; domains publish descriptors and keep
+their planners, refusals and gesture meaning. `StageAdapterBinding.handles` returns
+`StageHandleDescriptor`s for the primary selection with no task open. An **editing grip** names the
+Card `fact`, its `verb`, the registered domain `planner` a release submits and an optional
+`disclosedBy`; a **disclosure mark** only reveals grips — it writes nothing and enters no history.
+Admission refuses an unregistered planner or a disclosure that reveals nothing, records a
+diagnostic and draws nothing. `extent` is the mark's world reach, never its drawn size: the host
+draws the vocabulary at `STAGE_MARK_GLYPH_CSS` (ray 30 px, two-way half 16 px, ring radius 30 px),
+keeps 22 px fine / 44 px coarse hit areas, and withholds a ray or ring whose axis is edge-on. An
+overlap resolves by the owning domain's descriptor order. A press acquires the one gesture lease
+through the binding's existing pointer intent, and digits at a live gesture reuse the Card's
+numeric entry.
+
+Selection ink is PLATE gold `#d4ad45` over a dark halo with the 0.18 tint in 3D; hover is neutral
+`#F3F4EE`, never gold, and always drawn below selection. 3D ink is built only from a source's
+visible meshes — a mesh with a hidden ancestor is skipped — and is never parented under a pick
+root. On Paper the same identity is a re-stroke filter over `buildPaperPlan` in
+[`paper-marks.ts`](../../apps/editor/src/lib/authoring/stage/paper-marks.ts): a filled subject uses
+its union boundary, non-cut lines remain, and the marks sit on layer 2 with `depthTest: false`
+above Paper's layer order. A Wall publishes start and end points, a free-end length ray and a
+two-way base move ray; it publishes no angle ring — Angle stays the Card's `layout-wall-angle`
+writer — and height and thickness grips remain deferred, with thickness a Card field.
 
 ### Coordination over domain policy
 
