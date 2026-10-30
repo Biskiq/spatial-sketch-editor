@@ -102,7 +102,7 @@ Run slices in this total order: **S12, S13, S14, S15, owner checkpoint, S16, S17
 | `EditorIndex.svelte` | S20 → S21 → S23 → S25 |
 | The spatial route | S13 → S15 → S16 → S20 → S22 → S23 → S25 |
 
-**Safe to run in parallel, in separate worktrees:** S12 with S13. S16 with S17. S18 with S19. S24 at any point before S25. Each still merges one at a time, rebased on the latest `main`. D05 and D27 need no work. D29 and D43 are watched, not fixed.
+**Sequential campaign policy:** execute one implementation slice at a time in the total order above. Do not open the next implementation slice before the current slice's reviewed PR has merged and its recovery anchor is verified. Even technically independent pairs (S12/S13, S16/S17, S18/S19, or S24 with earlier work) remain sequential unless the owner explicitly approves an exception. D05 and D27 need no work. D29 and D43 are watched, not fixed.
 
 ## Architecture map
 
