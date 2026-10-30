@@ -65,5 +65,6 @@ inventing an extent. Native-form marks remain S09 work.
   catalogue model without mounted bounds keeps Move and Turn but withholds Scale/Size; Compose's
   pre-existing Resize field remains available and was not made a second S08 writer; no automated
   visual capture was added because S08 does not change the shell or general visual language.
-- **Recovery:** `git show 31a669ae` for the implementation tree; the pull request is the review and
-  closeout entry point and is not merged by this record.
+- **Recovery:** `git show 31a669ae` for the implementation tree; pull request
+  [#225](https://github.com/Biskiq/spatial-sketch-editor/pull/225) is the review and closeout entry
+  point and is not merged by this record.
