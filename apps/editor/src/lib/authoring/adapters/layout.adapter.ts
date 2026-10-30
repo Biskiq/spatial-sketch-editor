@@ -71,6 +71,7 @@ import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-
 import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-session';
 import { snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
 import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
+import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
 import LayoutCardFields from './layout/LayoutCardFields.svelte';
@@ -2262,6 +2263,31 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				/** The one mark vocabulary: Stage admits, projects, hit-tests and draws. */
 				handles(adapterContext: StageAdapterContext) {
 					return markDescriptors(adapterContext);
+				},
+				/**
+				 * The Height Sheet's found surfaces this domain owns: the floor datum and
+				 * the tops of solid Layout objects. Layout deliberately does not special-case
+				 * a plinth preset id — a plinth is an ordinary box, and any box/cylinder
+				 * top is a real surface a creator can snap to. Heights are datum-relative.
+				 */
+				heightTicks(): readonly StageHeightTick[] {
+					const datum = context.snapshot.domain.datumMeters;
+					const ticks: StageHeightTick[] = [{ kind: 'datum', heightMeters: 0, label: 'Floor' }];
+					for (const object of document.objects) {
+						if (object.kind !== 'box' && object.kind !== 'cylinder') continue;
+						// A top tilted away from horizontal is not a surface the Plan cut can
+						// snap to; the owner publishes only its real horizontal tops.
+						if (Math.abs(object.rotation[0]) > 1e-6 || Math.abs(object.rotation[2]) > 1e-6) continue;
+						const top = object.position[1] + object.dimensions[1] / 2;
+						const heightMeters = top - datum;
+						if (!Number.isFinite(heightMeters) || heightMeters <= 0) continue;
+						ticks.push({
+							kind: 'found',
+							heightMeters,
+							label: `${object.kind === 'box' ? 'Box' : 'Cylinder'} ${object.id}`
+						});
+					}
+					return ticks;
 				},
 				hoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
 					if (openTaskKind !== LAYOUT_INK_TASK) return false;

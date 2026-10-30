@@ -63,6 +63,7 @@ type Mounted = {
 	readonly session: StageSession;
 	readonly host: StageAcceptanceHost;
 	readonly services: StageAdapterServices;
+	readonly sceneRegistration: { dispose(): void };
 };
 
 /** A closed 7 × 6 enclosure on the datum, with no Scene entities. */
@@ -130,7 +131,7 @@ async function mount(): Promise<Mounted> {
 		throw new Error('Shape fixture adapters did not mount');
 	}
 	const services = createStageAdapterServices(facade, host);
-	return { facade, session, host, services };
+	return { facade, session, host, services, sceneRegistration: sceneMount };
 }
 
 function armInk(facade: StageFacade): void {
@@ -1065,5 +1066,31 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(mounted.facade.keyboardIntent({ kind: 'cancel' }).claimed).toBe(true);
 		expect(shape.snapshot()).toMatchObject({ phase: 'outline', points: 0 });
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+});
+
+describe('R217.S06 — Scene owner height ticks', () => {
+	it('publishes a floor-standing form top and drops it with the Scene binding', async () => {
+		const mounted = await mount();
+		const form = await createFloorForm(mounted);
+		const bounds = formSizeMeasurement(form).bounds;
+		if (bounds === null) throw new Error('the created form has no evaluated bounds');
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 5);
+
+		const ticks = mounted.facade.heightTicks();
+		expect(ticks[0]).toMatchObject({ kind: 'datum', heightMeters: 0, label: 'Floor' });
+		const top = bounds.max[1];
+		const found = ticks.find(
+			(tick) => tick.kind === 'found' && Math.abs(tick.heightMeters - top) < 1e-6
+		);
+		expect(found).toBeDefined();
+
+		// The Scene binding is the owner. Without it the host does not compute a
+		// surface of its own, so the form's tick disappears.
+		mounted.sceneRegistration.dispose();
+		const after = mounted.facade.heightTicks();
+		expect(
+			after.some((tick) => tick.kind === 'found' && Math.abs(tick.heightMeters - top) < 1e-6)
+		).toBe(false);
 	});
 });

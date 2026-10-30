@@ -80,7 +80,11 @@ import type {
 	CameraOutputTicket
 } from '@portfolio/project-model';
 
-import { planParameters, type PlanParameterOverrides } from './plan-parameters';
+import {
+	PLAN_DEFAULT_CUT_HEIGHT_METERS,
+	planParameters,
+	type PlanParameterOverrides
+} from './plan-parameters';
 import { createCameraSession, evaluationIdOf, type CameraSession } from './camera-session';
 import type { StageReadSnapshot } from './accepted-read';
 import {
@@ -93,6 +97,11 @@ import {
 	type StageMarkHit,
 	type StageMarkView
 } from './stage-handles';
+import {
+	mergeStageHeightTicks,
+	type StageHeightSheet,
+	type StageHeightTick
+} from './stage-height-sheet';
 import type {
 	GestureAcquisition,
 	SelectionRequalification,
@@ -488,6 +497,14 @@ export type StageAdapterBinding = {
 	 * marks; the domain keeps every fact, planner and refusal.
 	 */
 	readonly handles?: (context: StageAdapterContext) => readonly StageHandleDescriptor[];
+	/**
+	 * The heights this binding's own surfaces offer to the Height Sheet.
+	 *
+	 * Additive and optional: a binding that declares nothing contributes no tick,
+	 * and the host computes no surface itself. The Sheet merges and sorts the
+	 * declarations; a throwing contributor contributes none.
+	 */
+	readonly heightTicks?: (context: StageAdapterContext) => readonly StageHeightTick[];
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
 	/** Proposed-pose meshes the shared Canvas draws; empty when nothing is proposed. */
@@ -717,6 +734,10 @@ export type StageFacade = {
 	 * too — never a per-call argument that could disagree with the render.
 	 */
 	setPlanParameters(overrides: PlanParameterOverrides): void;
+	/** The one Height Sheet height fact; session view state, never source. */
+	heightSheet(): StageHeightSheet;
+	/** Owner-declared height ticks, merged and sorted by the host. */
+	heightTicks(): readonly StageHeightTick[];
 	eligibleFragments(): readonly PlanFragment[];
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
 	resolvePick(query: StagePickQuery, toolOwner?: string | null): ResolvedStageHit;
@@ -952,6 +973,8 @@ export function createStageFacade(input: {
 
 	/** The host's live Plan parameters: calibration defaults plus what the host set. */
 	let planOverrides: PlanParameterOverrides = {};
+	/** The Sheet's role registration; one per facade lifetime, released on dispose. */
+	let planCutUnsubscribe: (() => void) | null = null;
 
 	/**
 	 * The retained Plan evaluation, with the exact inputs it was produced from.
@@ -1451,6 +1474,32 @@ export function createStageFacade(input: {
 		},
 		drafting: () => session.drafting(),
 		setDrafting: (patch) => session.setDrafting(patch),
+		heightSheet: () => session.heightSheet(),
+		heightTicks() {
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			const declared: StageHeightTick[] = [];
+			for (const entry of adapters.values()) {
+				try {
+					declared.push(...(entry.contributions.heightTicks?.(handle.context) ?? []));
+				} catch {
+					// A contributor that throws contributes no tick; the rest still count.
+				}
+			}
+			const merged = mergeStageHeightTicks(declared);
+			// The Sheet's range follows the surfaces its owners actually declared,
+			// plus one metre of headroom. The default cut is itself a known height,
+			// so an enclosure with no found surface still has a metre above it to
+			// explore. The cap never moves the current height; it only bounds the
+			// next creator action.
+			const highest = merged.length === 0 ? 0 : merged[merged.length - 1]!.heightMeters;
+			const sheet = session.heightSheet();
+			sheet.setMaxHeightMeters(
+				Math.max(PLAN_DEFAULT_CUT_HEIGHT_METERS + 1, highest + 1, sheet.height())
+			);
+			return merged;
+		},
 		acquireInspection(policy = 'exclusive') {
 			// The host owns one inspection output, so it mints its own run order: every
 			// claim this facade acquires is strictly newer than any epoch the output has
@@ -2103,8 +2152,19 @@ export function createStageFacade(input: {
 			// and no listener may outlive the facade it was registered on.
 			notifyAdaptersChanged();
 			adapterListeners.clear();
+			planCutUnsubscribe?.();
+			planCutUnsubscribe = null;
 		}
 	};
+
+	// The one v1 consumer of the height fact. Registration is at mount, the
+	// current height is pushed immediately (a recreated facade must not disagree
+	// with the session), and the existing Plan-override path remains the only
+	// parameter authority. The Sheet never imports this consumer.
+	planCutUnsubscribe = session.heightSheet().subscribe('plan-cut', (heightMeters) => {
+		facade.setPlanParameters({ cutHeightMeters: heightMeters });
+	});
+	facade.setPlanParameters({ cutHeightMeters: session.heightSheet().height() });
 
 	return facade;
 }

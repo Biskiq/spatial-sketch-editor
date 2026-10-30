@@ -56,7 +56,11 @@ import StageGrid from './StageGrid.svelte';
 		datumMeters = 0,
 		selection = null,
 		hover = null,
-		scenePick
+		scenePick,
+		/** R217.S06's live Height Sheet height, or null in Experience. */
+		heightMeters = null,
+		/** Shown while the Sheet is active (plus its one-second tail). */
+		heightPlaneVisible = false
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
@@ -80,6 +84,8 @@ import StageGrid from './StageGrid.svelte';
 		selection?: StageSelectionEntry | null;
 		hover?: StageSelectionEntry | null;
 		scenePick: ScenePickSource;
+		heightMeters?: number | null;
+		heightPlaneVisible?: boolean;
 	} = $props();
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
@@ -90,6 +96,24 @@ import StageGrid from './StageGrid.svelte';
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
 	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
 	const matGroundArgs = [6000, 6000] as [number, number];
+	/**
+	 * R217.S06's quiet cut-plane cue: a neutral sheet at `datum + height`, spanning
+	 * the Layout bounds. It is drawn only while the Sheet is active, carries no
+	 * depth write and is never a pick root; it is not the future Slice's yellow
+	 * inspection or cut-away.
+	 */
+	const heightPlane = $derived.by(() => {
+		if (!heightPlaneVisible || heightMeters === null || geometry.bounds === null) return null;
+		const { min, max } = geometry.bounds;
+		return {
+			center: [
+				(min[0] + max[0]) / 2,
+				datumMeters + heightMeters,
+				(min[2] + max[2]) / 2
+			] as [number, number, number],
+			size: [Math.max(0.1, max[0] - min[0]), Math.max(0.1, max[2] - min[2])] as [number, number]
+		};
+	});
 	/**
 	 * Grid visibility is one fact on both surfaces: under a Grid-off state, and in
 	 * Shaded Plan it is never drawn. The mat keeps its grid in shaded 3D.
@@ -170,6 +194,17 @@ import StageGrid from './StageGrid.svelte';
 		<T.Mesh position={[0, datumMeters - 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
 			<T.PlaneGeometry args={matGroundArgs} />
 			<T.MeshStandardMaterial color={MAT_GROUND_INK} roughness={1} metalness={0} />
+		</T.Mesh>
+	{/if}
+	{#if heightPlane !== null && !paperVisible}
+		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->
+		<T.Mesh
+			position={heightPlane.center}
+			rotation={[-Math.PI / 2, 0, 0]}
+			renderOrder={1}
+		>
+			<T.PlaneGeometry args={heightPlane.size} />
+			<T.MeshBasicMaterial color={0xf3f4ee} transparent opacity={0.12} depthWrite={false} />
 		</T.Mesh>
 	{/if}
 	<!--

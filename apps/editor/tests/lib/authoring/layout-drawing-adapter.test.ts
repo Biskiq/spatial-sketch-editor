@@ -60,7 +60,9 @@ type Mounted = {
  * neighbour and the first Wall hosts an Opening, so a drawn extension lands on real
  * topology and a deletion has real consequences to disclose.
  */
-function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string; openingId: string } {
+function fixtureDocument(
+	extraObjects: LayoutDocumentWallFirst['objects'] = []
+): { document: LayoutDocumentWallFirst; wallId: string; openingId: string } {
 	const base = createEmptyWallFirstLayoutDocument();
 	base.floor.elevation = ELEVATION;
 	const chained = planWallChain({
@@ -84,11 +86,12 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 		chained.document.floor.id
 	);
 	if (opening.kind === 'rejected') throw new Error(`opening fixture refused: ${opening.rejection.message}`);
+	opening.document.objects.push(...extraObjects);
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };
 }
 
-async function mount(): Promise<Mounted> {
-	const { document, wallId, openingId } = fixtureDocument();
+async function mount(extraObjects: LayoutDocumentWallFirst['objects'] = []): Promise<Mounted> {
+	const { document, wallId, openingId } = fixtureDocument(extraObjects);
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'S02 drawing',
@@ -519,5 +522,40 @@ describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
 		// The Wall target was not rounded to the 1 m grid: its exact aim survives.
 		expect(anchored![0]).toBeCloseTo(1.37, 6);
 		expect(anchored![1]).toBeCloseTo(4, 6);
+	});
+});
+
+describe('R217.S06 — Layout owner height ticks', () => {
+	it('publishes the floor datum and an upright solid object top', async () => {
+		const mounted = await mount([
+			{
+				id: 'plinth-height-test',
+				kind: 'box',
+				position: [2, 1.25, 2],
+				rotation: [0, 0, 0],
+				dimensions: [1, 1.5, 1]
+			}
+		]);
+		const ticks = mounted.facade.heightTicks();
+		expect(ticks[0]).toMatchObject({ kind: 'datum', heightMeters: 0, label: 'Floor' });
+		const found = ticks.filter((tick) => tick.kind === 'found');
+		expect(found).toHaveLength(1);
+		// The floor datum is 0.5 m above the world origin; the box top is 2.0 m
+		// world, so the owner reports 1.5 m above its datum.
+		expect(found[0]!.heightMeters).toBeCloseTo(1.5, 6);
+		expect(found[0]!.label).toContain('plinth-height-test');
+	});
+
+	it('does not publish a tilted top as a horizontal surface', async () => {
+		const mounted = await mount([
+			{
+				id: 'tilted-height-test',
+				kind: 'box',
+				position: [2, 1.25, 2],
+				rotation: [0.4, 0, 0],
+				dimensions: [1, 1.5, 1]
+			}
+		]);
+		expect(mounted.facade.heightTicks().filter((tick) => tick.kind === 'found')).toEqual([]);
 	});
 });
