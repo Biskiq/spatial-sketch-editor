@@ -282,20 +282,6 @@ export function formMarkDescriptors(input: {
 			refusal: refusal(SCENE_FORM_MARK.move)
 		},
 		{
-			id: SCENE_FORM_MARK.turn,
-			kind: 'ring',
-			role: 'edit',
-			anchor: [position[0], baseY, position[2]],
-			axis: [0, 1, 0],
-			extent: Math.max(0.2, Math.max(width, depth) / 2),
-			label: 'Turn',
-			fact: 'yaw',
-			verb: 'Yaw',
-			planner: 'set-yaw',
-			value: `Yaw ${((yaw * 180) / Math.PI).toFixed(1)}°`,
-			refusal: refusal(SCENE_FORM_MARK.turn)
-		},
-		{
 			id: SCENE_FORM_MARK.scalePoint,
 			kind: 'point',
 			role: 'disclose',
@@ -326,6 +312,23 @@ export function formMarkDescriptors(input: {
 			refusal: refusal(ray.id)
 		});
 	}
+	// The turn ring is drawn at the shared 30 px calibration, so the three rays
+	// would be unreachable if a ring hit won first. The ring is therefore last:
+	// its free arc stays pressable and the same-class ray order is unchanged.
+	descriptors.push({
+		id: SCENE_FORM_MARK.turn,
+		kind: 'ring',
+		role: 'edit',
+		anchor: [position[0], baseY, position[2]],
+		axis: [0, 1, 0],
+		extent: Math.max(0.2, Math.max(width, depth) / 2),
+		label: 'Turn',
+		fact: 'yaw',
+		verb: 'Yaw',
+		planner: 'set-yaw',
+		value: `Yaw ${((yaw * 180) / Math.PI).toFixed(1)}°`,
+		refusal: refusal(SCENE_FORM_MARK.turn)
+	});
 	return descriptors;
 }
 

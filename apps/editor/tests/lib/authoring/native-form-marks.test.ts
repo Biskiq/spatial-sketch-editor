@@ -66,31 +66,31 @@ function descriptorsFor(
 }
 
 describe('R217.S09 — native form marks', () => {
-	it('publishes Move, Turn, Scale, then Height, Width and Depth in domain order', () => {
+	it('publishes Move, Scale, Height, Width, Depth and finally Turn', () => {
 		const descriptors = descriptorsFor(squareForm());
 		expect(descriptors.map((descriptor) => descriptor.id)).toEqual([
 			SCENE_FORM_MARK.move,
-			SCENE_FORM_MARK.turn,
 			SCENE_FORM_MARK.scalePoint,
 			SCENE_FORM_MARK.height,
 			SCENE_FORM_MARK.width,
-			SCENE_FORM_MARK.depth
+			SCENE_FORM_MARK.depth,
+			SCENE_FORM_MARK.turn
 		]);
 		expect(descriptors.map((descriptor) => descriptor.role)).toEqual([
 			'edit',
-			'edit',
 			'disclose',
+			'edit',
 			'edit',
 			'edit',
 			'edit'
 		]);
 		expect(descriptors.map((descriptor) => descriptor.kind)).toEqual([
 			'track',
-			'ring',
 			'point',
 			'ray',
 			'ray',
-			'ray'
+			'ray',
+			'ring'
 		]);
 		expect(descriptors[0]).toMatchObject({
 			label: 'Move',
@@ -99,22 +99,22 @@ describe('R217.S09 — native form marks', () => {
 			planner: 'place-on-floor'
 		});
 		expect(descriptors[1]).toMatchObject({
-			label: 'Turn',
-			fact: 'yaw',
-			verb: 'Yaw',
-			planner: 'set-yaw'
-		});
-		expect(descriptors[2]).toMatchObject({
 			label: 'Scale',
 			reveals: [SCENE_FORM_MARK.height, SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth]
 		});
-		for (const descriptor of descriptors.slice(3)) {
+		for (const descriptor of descriptors.slice(2, 5)) {
 			expect(descriptor).toMatchObject({
 				role: 'edit',
 				planner: 'set-form-size',
 				disclosedBy: SCENE_FORM_MARK.scalePoint
 			});
 		}
+		expect(descriptors[5]).toMatchObject({
+			label: 'Turn',
+			fact: 'yaw',
+			verb: 'Yaw',
+			planner: 'set-yaw'
+		});
 	});
 
 	it('uses the one measurement for contact, footprint, anchors, axes, extents and tags', () => {
@@ -135,13 +135,13 @@ describe('R217.S09 — native form marks', () => {
 		expect(move.extent).toBeCloseTo(Math.max(0.2, measurement.footprint.width / 2), 9);
 		expect(move.value).toBe(`X 2.000 · Z 3.000 m`);
 
-		const turn = descriptors[1]!;
+		const turn = descriptors[5]!;
 		expect(turn.extent).toBeCloseTo(
 			Math.max(0.2, Math.max(measurement.footprint.width, measurement.footprint.depth) / 2),
 			9
 		);
 
-		const scale = descriptors[2]!;
+		const scale = descriptors[1]!;
 		expectVec(scale.anchor, formWorldPoint(entity, bounds.max));
 
 		const rays = [
@@ -151,7 +151,7 @@ describe('R217.S09 — native form marks', () => {
 		];
 		for (let index = 0; index < rays.length; index += 1) {
 			const ray = rays[index]!;
-			const descriptor = descriptors[3 + index]!;
+			const descriptor = descriptors[2 + index]!;
 			const handle = measurement.handles.find((entry) => entry.axis === ray.axis)!;
 			expect(descriptor.id).toBe(ray.id);
 			expect(descriptor.label).toBe(ray.label);
@@ -170,7 +170,7 @@ describe('R217.S09 — native form marks', () => {
 		const entity = squareForm({ rotation: [0, Math.PI / 2, 0] });
 		const measurement = formSizeMeasurement(entity);
 		const descriptors = descriptorsFor(entity);
-		const width = descriptors[3 + 1]!;
+		const width = descriptors[3]!;
 		expectVec(width.axis, formWorldAxis(entity, 0));
 		expect(Math.abs(width.axis![0])).toBeLessThan(1e-9);
 		expect(Math.abs(width.axis![2])).toBeCloseTo(1, 9);
@@ -178,7 +178,7 @@ describe('R217.S09 — native form marks', () => {
 		const move = descriptors[0]!;
 		expect(move.axis![0]).toBeCloseTo(Math.cos(Math.PI / 2), 9);
 		expect(move.axis![2]).toBeCloseTo(-Math.sin(Math.PI / 2), 9);
-		expectVec(descriptors[2]!.anchor, formWorldPoint(entity, measurement.bounds!.max));
+		expectVec(descriptors[1]!.anchor, formWorldPoint(entity, measurement.bounds!.max));
 	});
 
 	it('shows a live refusal and pose on its own mark only', () => {
@@ -192,9 +192,9 @@ describe('R217.S09 — native form marks', () => {
 		};
 		const descriptors = descriptorsFor(entity, live);
 		expect(descriptors[0]!.refusal).toBeNull();
-		expect(descriptors[1]!.refusal).toBe('The turn is refused.');
-		expect(descriptors[1]!.value).toBe(`Yaw ${((0.4 * 180) / Math.PI).toFixed(1)}°`);
-		for (const ray of descriptors.slice(3)) expect(ray.refusal).toBeNull();
+		expect(descriptors[5]!.refusal).toBe('The turn is refused.');
+		expect(descriptors[5]!.value).toBe(`Yaw ${((0.4 * 180) / Math.PI).toFixed(1)}°`);
+		for (const ray of descriptors.slice(2, 5)) expect(ray.refusal).toBeNull();
 		expect(descriptors[0]!.anchor[0]).toBeCloseTo(3, 9);
 		expect(descriptors[0]!.anchor[2]).toBeCloseTo(4, 9);
 	});
