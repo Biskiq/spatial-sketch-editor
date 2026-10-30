@@ -192,6 +192,13 @@ export type InkPaletteReading = {
 
 export type InkOpeningKind = 'door' | 'window';
 
+/**
+ * R217.S10 — how the Wall reading names a chain: **Line** taps or drags points one
+ * at a time; **Box** takes two opposite corners and closes the four-Wall ring.
+ * Both submit the same one Wall-chain commit.
+ */
+export type InkWallMode = 'line' | 'box';
+
 /** The next Opening's palette defaults; a session remembers them. */
 export type InkOpeningOptions = {
 	readonly kind: InkOpeningKind;
@@ -219,6 +226,10 @@ export type InkOpeningSnapshot = {
 /** What the Ink palette renders. Everything here is read from the live draft. */
 export type InkPaletteSnapshot = {
 	readonly reading: InkReading;
+	/** The Wall reading's Line or Box; meaningless for other readings. */
+	readonly wallMode: InkWallMode;
+	/** The live Box's extent on X and Z, in meters, once a corner and a pointer name one. */
+	readonly box: { readonly width: number; readonly depth: number } | null;
 	/** Every reading this project offers: Layout's built-ins then contributed readings. */
 	readonly readings: readonly InkPaletteReading[];
 	/** The Opening candidate while that reading is armed; `null` for the Wall reading. */
@@ -244,6 +255,8 @@ export type InkPaletteSnapshot = {
 export type InkController = {
 	/** Switch the one Ink tool between its supported readings. */
 	readonly setReading: (reading: InkReading) => void;
+	/** Switch the Wall reading between Line and Box; refused while a chain is live. */
+	readonly setWallMode: (mode: InkWallMode) => void;
 	/** Remember the next Opening's kind and exact metrics. */
 	readonly setOpeningOptions: (options: InkOpeningOptions | null) => void;
 	/**

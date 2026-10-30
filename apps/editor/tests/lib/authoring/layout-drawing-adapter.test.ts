@@ -16,7 +16,7 @@
  * 4. deleting a Wall discloses its hosted Openings and Room consequence before
  *    acceptance, deletes the Opening in the same undo step, and Undo restores both.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
 	planCreateWallFirstOpening,
@@ -362,6 +362,115 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
  * targets keep precedence, so snapping can never move a connection off the
  * subject the creator deliberately aimed at.
  */
+/**
+ * R217.S10 — Ink's Box for the Wall reading. Two opposite corners are one closed
+ * four-point chain through the same `layout-wall-chain-commit`, so the Room derives
+ * exactly as four Lines closed by hand would derive it.
+ */
+describe('R217.S10 — Ink Box', () => {
+	const FIXED_NONCE = '00000000-0000-4000-8000-0000000000b0';
+
+	function boxCss(facade: StageFacade, point: readonly [number, number]): readonly [number, number] {
+		const projected = facade.projectWorld([point[0], ELEVATION, point[1]], facade.evaluationId()!);
+		if (projected.kind !== 'projected') throw new Error('the fixture point did not project');
+		return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
+	}
+
+	it('commits one drag as four Walls and one Room, byte-identical to four closed Lines', async () => {
+		// Both fixtures mint the same id sequence and both operations capture one
+		// fixed identity, so the two accepted Layouts can be compared byte for byte.
+		let minted = 0;
+		const uuid = vi
+			.spyOn(globalThis.crypto, 'randomUUID')
+			.mockImplementation(() => `00000000-0000-4000-8000-${String(++minted).padStart(12, '0')}` as `${string}-${string}-${string}-${string}-${string}`);
+		try {
+			const boxed = await mount();
+			minted = 0;
+			const lined = await mount();
+			uuid.mockReturnValue(FIXED_NONCE);
+			const baseline = boxed.facade.snapshot().canonicalJson;
+			const controller = armInk(boxed.facade);
+			controller.setWallMode('box');
+			expect(inkSurface()?.snapshot().wallMode).toBe('box');
+			const evaluationId = boxed.facade.evaluationId()!;
+			const from = boxCss(boxed.facade, [8, 0]);
+			const to = boxCss(boxed.facade, [11, 3]);
+			expect(boxed.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+			boxed.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+			expect(inkSurface()?.snapshot().box).toEqual({ width: 3, depth: 3 });
+			boxed.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+			await eventually(() => boxed.facade.snapshot().canonicalJson !== baseline);
+
+			const layout = acceptedLayout(boxed.facade);
+			expect(layout.walls).toHaveLength(boxed.document.walls.length + 4);
+			expect(layout.rooms).toHaveLength(boxed.document.rooms.length + 1);
+			expect(boxed.host.history()).toMatchObject({ depth: 2, position: 1 });
+
+			const lineBaseline = lined.facade.snapshot().canonicalJson;
+			const lines = armInk(lined.facade);
+			lines.typePoint('8', '0');
+			lines.typePoint('11', '0');
+			lines.typePoint('11', '3');
+			lines.typePoint('8', '3');
+			lines.close();
+			await eventually(() => lined.facade.snapshot().canonicalJson !== lineBaseline);
+			expect(JSON.stringify(acceptedLayout(lined.facade))).toBe(JSON.stringify(layout));
+			uuid.mockRestore();
+
+			expect((await boxed.host.undo()).kind).toBe('installed');
+			expect(boxed.facade.snapshot().canonicalJson).toBe(baseline);
+		} finally {
+			vi.restoreAllMocks();
+		}
+	});
+
+	it('takes two clicked corners, and holds Undo with the chain reason until the second', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		armInk(mounted.facade).setWallMode('box');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const click = (point: readonly [number, number]) => {
+			const css = boxCss(mounted.facade, point);
+			mounted.facade.pointerIntent({ phase: 'down', css, evaluationId });
+			mounted.facade.pointerIntent({ phase: 'up', css, evaluationId });
+		};
+		click([8, 0]);
+		expect(mounted.session.liveProposal()).not.toBeNull();
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		click([10, 2]);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		expect(acceptedLayout(mounted.facade).rooms).toHaveLength(mounted.document.rooms.length + 1);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect(mounted.session.liveProposal()).toBeNull();
+	});
+
+	it('refuses a degenerate box in words with no entry', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		armInk(mounted.facade).setWallMode('box');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = boxCss(mounted.facade, [8, 0]);
+		const along = boxCss(mounted.facade, [11, 0]);
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: along, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: along, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(inkSurface()?.snapshot().refusal).toMatch(/Box needs two corners apart/);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+		expect(mounted.session.liveProposal()).toBeNull();
+	});
+
+	it('refuses switching to Box while a Line chain is live', async () => {
+		const mounted = await mount();
+		const controller = armInk(mounted.facade);
+		controller.typePoint('8', '0');
+		controller.setWallMode('box');
+		expect(inkSurface()?.snapshot().wallMode).toBe('line');
+		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line and Box/);
+	});
+});
+
 describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
 	function stageCss(facade: StageFacade, point: readonly [number, number]): readonly [number, number] {
 		const evaluationId = facade.evaluationId();
