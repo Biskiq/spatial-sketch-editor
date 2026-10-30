@@ -31,13 +31,14 @@ owns status; the current interaction, selection, mark and support contract is ow
   errors / 0 warnings; `apps/editor npm run build` — success (Vite SSR/client plus the Vercel
   adapter); focused `npx vitest run` — 5 files / 118 tests (`scene-editing-surface`,
   `scene-object-card`, `spatial-route-gesture`, `scene-floor-support`,
-  `scene-compose-instrument`); `npx vitest run tests/docs/documentation-references.test.ts` — 25
-  tests. Coverage includes one F4 entry per mark release, S05 Move snap, Turn at the drawn floor
-  plane, support-preserving Size, same-fact drag/typed editing, disclosure-without-write,
-  Card refusal/blur/Escape, draft and refusal survival across a surface notification, subject-change
-  reset, object Duplicate/Delete, and zero history/source change for an out-of-domain Size. S07's
-  calibrated 22/44 px hit areas and coarse-pointer tests remain green. No browser capture was added;
-  S08 changes no shell or general visual language.
+  `scene-compose-instrument`). The closeout documentation gate, run after compaction,
+  `npx vitest run --config vitest.arch.config.ts tests/docs` — 2 files / 56 tests. Coverage includes
+  one F4 entry per mark release, S05 Move snap, Turn at the drawn floor plane, support-preserving
+  Size, same-fact drag/typed editing, disclosure-without-write, Card refusal/blur/Escape, draft and
+  refusal survival across a surface notification, subject-change reset, object Duplicate/Delete, and
+  zero history/source change for an out-of-domain Size. S07's calibrated 22/44 px hit areas and
+  coarse-pointer tests remain green. No browser capture was added; S08 changes no shell or general
+  visual language.
 - **Contract and entry points:** contract in
   [`architecture.md`](../../../reference/architecture.md#editor-interaction-authorities);
   implementation `apps/editor/src/lib/authoring/adapters/scene/object-marks.ts`,
