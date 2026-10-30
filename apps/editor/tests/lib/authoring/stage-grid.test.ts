@@ -23,7 +23,7 @@ import {
 	gridPlanFor,
 	gridRectFor
 } from '$lib/authoring/stage/stage-grid';
-import { STAGE_DRAFTING_DEFAULTS } from '$lib/authoring/stage/stage-drafting';
+import { STAGE_DRAFTING_DEFAULTS, snapWord } from '$lib/authoring/stage/stage-drafting';
 
 describe('R217.S05 — grid interval decimation', () => {
 	it('uses the 1, 2, 5 × 10^n ladder at or above the configured minor', () => {
@@ -57,7 +57,7 @@ describe('R217.S05 — grid interval decimation', () => {
 			// Major is five times the chosen minor, and the fade is the next finer
 			// ladder value than the chosen level.
 			expect(levels.majorMeters).toBeCloseTo(levels.minorMeters * 5, 9);
-			const ladder = gridLadderFrom(1);
+			const ladder = gridLadderFrom(0.01);
 			const chosen = ladder.indexOf(levels.minorMeters);
 			expect(chosen).toBeGreaterThanOrEqual(0);
 			if (levels.fadingMinorMeters !== null) {
@@ -77,8 +77,8 @@ describe('R217.S05 — grid interval decimation', () => {
 
 		const full = gridLevelsFor({ metersPerCssPixel: 0.06, baseMinorMeters: 1, surface: 'paper' })!;
 		expect(full.minorMeters).toBe(1);
-		expect(full.fadingMinorMeters).toBeNull();
-		expect(full.levels.map((level) => level.role)).toEqual(['minor', 'major']);
+		expect(full.fadingMinorMeters).toBe(0.5);
+		expect(full.levels.map((level) => level.role)).toEqual(['fade', 'minor', 'major']);
 	});
 
 	it('suppresses the finer level below 8 px rather than drawing it faintly', () => {
@@ -108,8 +108,10 @@ describe('R217.S05 — grid interval decimation', () => {
 			const lines = gridLinesFor({ ...plan, rect });
 			expect(lines.some((line) => line.axis === 'x' && line.atMeters === 0)).toBe(true);
 			expect(lines.some((line) => line.axis === 'z' && line.atMeters === 0)).toBe(true);
-			// No line sits off the chosen interval's lattice.
+			// No line sits off the chosen interval's lattice; the configured value is
+			// the reference, while close zoom may refine below it.
 			for (const line of lines) {
+				const interval = plan.levels.levels.find((level) => level.role === line.role)!.intervalMeters;
 				const ratio = line.atMeters / interval;
 				expect(Math.abs(ratio - Math.round(ratio))).toBeLessThan(1e-9);
 			}
@@ -180,9 +182,11 @@ describe('R217.S05 — grid surfaces, visibility and the Grid word', () => {
 	});
 
 	it('names the interval the evaluation actually draws', () => {
-		expect(drawnGridMinorMeters(STAGE_DRAFTING_DEFAULTS, 0.01)).toBe(1);
+		expect(drawnGridMinorMeters(STAGE_DRAFTING_DEFAULTS, 0.01)).toBe(0.2);
 		// At 0.1 m/px the 1 m line is below 16 px, so the Grid word reads 2 m.
 		expect(drawnGridMinorMeters(STAGE_DRAFTING_DEFAULTS, 0.1)).toBe(2);
+		// The configured 1 m reference is not a lower bound: close zoom refines.
+		expect(snapWord(STAGE_DRAFTING_DEFAULTS, drawnGridMinorMeters(STAGE_DRAFTING_DEFAULTS, 0.01))).toBe('Snap 0.2 m');
 		expect(drawnGridMinorMeters(STAGE_DRAFTING_DEFAULTS, null)).toBe(1);
 	});
 

@@ -23,7 +23,7 @@ export type StageDraftingState = {
 	readonly snap: boolean;
 	/** Follows a held Alt/Option key; released on keyup, blur and teardown. */
 	readonly snapSuspended: boolean;
-	/** The configured minor interval, and the snap increment when Snap is on. */
+	/** Configured minor interval used when scale is unavailable. */
 	readonly gridMinorMeters: number;
 };
 
@@ -98,9 +98,12 @@ export function applyDraftingPatch(
  * independent facts, and turning the drawing off must not silently change where
  * the next point lands.
  */
-export function draftingSnapIncrementMeters(state: StageDraftingState): number | null {
+export function draftingSnapIncrementMeters(
+	state: StageDraftingState,
+	currentMinorMeters = state.gridMinorMeters
+): number | null {
 	if (!state.snap || state.snapSuspended) return null;
-	return isGridMinorMeters(state.gridMinorMeters) ? state.gridMinorMeters : null;
+	return isGridMinorMeters(currentMinorMeters) ? currentMinorMeters : null;
 }
 
 /**
@@ -118,6 +121,13 @@ export function snapDraftingCoordinate(value: number, step: number): number {
 	// the origin instead of inheriting Math.round's asymmetry at negative halves.
 	const snapped = (Math.sign(quotient) * Math.round(Math.abs(quotient))) * step;
 	const cleaned = Math.round(snapped * 1e9) / 1e9;
+	return Object.is(cleaned, -0) ? 0 : cleaned;
+}
+
+/** Canonicalize pointer arithmetic without applying a grid interval. */
+function cleanDraftingCoordinate(value: number): number {
+	if (!Number.isFinite(value)) return value;
+	const cleaned = Math.round(value * 1e9) / 1e9;
 	return Object.is(cleaned, -0) ? 0 : cleaned;
 }
 
@@ -146,7 +156,11 @@ export function snapDraftingPlacement(
 		!Number.isFinite(point[0]) ||
 		!Number.isFinite(point[1])
 	) {
-		return { x: point[0], z: point[1], snappedStep: null };
+		return {
+			x: cleanDraftingCoordinate(point[0]),
+			z: cleanDraftingCoordinate(point[1]),
+			snappedStep: null
+		};
 	}
 	return {
 		x: snapDraftingCoordinate(point[0], incrementMeters),
@@ -177,10 +191,10 @@ export function gridWord(state: StageDraftingState, drawnMinorMeters = state.gri
 }
 
 /** The Snap word: off, held, or the increment in force. */
-export function snapWord(state: StageDraftingState): string {
+export function snapWord(state: StageDraftingState, currentMinorMeters = state.gridMinorMeters): string {
 	if (!state.snap) return 'Snap off';
 	if (state.snapSuspended) return 'Snap held';
-	return `Snap ${formatMeters(state.gridMinorMeters)}`;
+	return `Snap ${formatMeters(currentMinorMeters)}`;
 }
 
 /** PLATE's stated reference for the ratio: one CSS pixel is 1/96 in. */

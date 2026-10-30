@@ -254,7 +254,7 @@
 							checked={drafting.snap}
 							onchange={(event) => onPatch({ snap: event.currentTarget.checked })}
 						/>
-						<span>Snap free points to the configured minor interval</span>
+						<span>Snap free points to the current Grid interval</span>
 					</label>
 				</div>
 			{/if}

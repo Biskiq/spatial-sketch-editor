@@ -35,6 +35,8 @@ import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface, type InkController } from '$lib/authoring/adapters/layout/ink';
+import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
+import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -373,6 +375,15 @@ describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
 		facade.pointerIntent({ phase: 'up', css, evaluationId });
 	}
 
+	function snappedPoint(facade: StageFacade, point: readonly [number, number]) {
+		const drafting = facade.drafting();
+		const minor = drawnGridMinorMeters(
+			drafting,
+			facade.evaluation()?.targetPlaneMetersPerCssPixel ?? null
+		);
+		return snapDraftingPlacement(point, draftingSnapIncrementMeters(drafting, minor));
+	}
+
 	/** Every junction of the walls this drawing created, in world coordinates. */
 	function createdEndpoints(
 		mounted: Mounted,
@@ -383,8 +394,10 @@ describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
 		return [...ids].map((id) => layout.junctions.find((junction) => junction.id === id)!.point);
 	}
 
-	it('rounds a free point to the 1 m increment by default', async () => {
+	it('rounds free points to the current shared Grid/Snap increment by default', async () => {
 		const mounted = await mount();
+		const expectedA = snappedPoint(mounted.facade, [1.37, 2.81]);
+		const expectedB = snappedPoint(mounted.facade, [3.37, 2.81]);
 		const baseline = mounted.facade.snapshot().canonicalJson;
 		const controller = armInk(mounted.facade);
 		tap(mounted.facade, [1.37, 2.81]);
@@ -398,10 +411,10 @@ describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
 		);
 		expect(created).toHaveLength(1);
 		const ends = [...createdEndpoints(mounted, layout, created)].sort((a, b) => a[0] - b[0]);
-		expect(ends[0]![0]).toBeCloseTo(1, 6);
-		expect(ends[0]![1]).toBeCloseTo(3, 6);
-		expect(ends[1]![0]).toBeCloseTo(3, 6);
-		expect(ends[1]![1]).toBeCloseTo(3, 6);
+		expect(ends[0]![0]).toBeCloseTo(expectedA.x, 6);
+		expect(ends[0]![1]).toBeCloseTo(expectedA.z, 6);
+		expect(ends[1]![0]).toBeCloseTo(expectedB.x, 6);
+		expect(ends[1]![1]).toBeCloseTo(expectedB.z, 6);
 	});
 
 	it.each([
@@ -476,6 +489,7 @@ describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
 
 	it('keeps a Wall-interior target exact while the free end snaps', async () => {
 		const mounted = await mount();
+		const snappedEnd = snappedPoint(mounted.facade, [3.37, 2.81]);
 		const baseline = mounted.facade.snapshot().canonicalJson;
 		const controller = armInk(mounted.facade);
 		// Aimed at the north Wall's centerline (z = 4), where no Opening is hosted,
@@ -495,7 +509,8 @@ describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
 			const ends = [wall.startJunctionId, wall.endJunctionId].map(
 				(id) => layout.junctions.find((junction) => junction.id === id)!.point
 			);
-			return ends.some((point) => Math.abs(point[0] - 3) < 1e-6 && Math.abs(point[1] - 3) < 1e-6);
+			return ends.some((point) => Math.abs(point[1] - 4) < 1e-6 && Math.abs(point[0] - 1.37) < 1e-6) &&
+				ends.some((point) => Math.abs(point[0] - snappedEnd.x) < 1e-6 && Math.abs(point[1] - snappedEnd.z) < 1e-6);
 		});
 		expect(drawn).toBeDefined();
 		const anchored = [drawn!.startJunctionId, drawn!.endJunctionId]

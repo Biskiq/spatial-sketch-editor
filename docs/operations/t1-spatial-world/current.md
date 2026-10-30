@@ -3,9 +3,12 @@
 ```text
 PHASE: R217 Core Editor Stability (shared repository phase). S01–S04 and S07 are shipped;
        S11 remains the FINAL PHASE GATE.
-NEXT: S07 shipped 2026-10-29 (PR #224, preservation anchor c5aa694f). Consult the phase register
-      and owner release list for the next eligible T1 scope; S05 and S06 have no release-list row.
-      S08/S09 publish Scene and form descriptors against S07's mark contract.
+NEXT: Owner-directed R217.S05 recovery review and repair of PR #226; resume the checkpoint.
+RESUME: ../checkpoints/r217-s05-recovery-review.md
+CLAIM: T1 repair writer owns S05 worktree on interrupted d5c7fe48 plus main ac944f02 merge:
+       Scene adapter/instrument (T2 review concern), Stage grid/facade/Canvas and spatial route
+       (T3 framing review concern). Preserve S08 Card writers, object marks, support and F4.
+       Owner re-review precedes any separately delegated closeout; no merge authorized.
 BOUNDARIES: T1.P02 remains closed; T1 is not complete. Performance investigations are
             owner-initiated only after an observed slowdown.
 CARRY: T1 maintenance retains the one-frame `lowerColumnHeight` observation; S06 FO-1 … FO-5 and

@@ -70,6 +70,7 @@ import {
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-session';
 import { snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
+import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
 import LayoutCardFields from './layout/LayoutCardFields.svelte';
@@ -1476,7 +1477,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// is guarded too: a snapped point that would land on an existing Junction
 				// or Wall centerline keeps the creator's raw aim instead of authoring an
 				// undeclared contact the chain policy must refuse.
-				const snapped = snapDraftingPoint([point[0], point[1]], adapterContext.drafting());
+				const drafting = adapterContext.drafting();
+				const currentMinor = drawnGridMinorMeters(
+					drafting,
+					adapterContext.evaluation.targetPlaneMetersPerCssPixel
+				);
+				const snapped = snapDraftingPoint(
+					[point[0], point[1]],
+					{ ...drafting, gridMinorMeters: currentMinor }
+				);
 				if (freePointWouldCreateContact(snapped, projected)) {
 					return { target: { kind: 'free' }, point: [point[0], point[1]], css };
 				}

@@ -1,14 +1,17 @@
 /**
  * T2.P01.S03 — the Scene adapter: the first coherent Scene editing surface.
  *
- * It registers the Scene planners with the one F.4 coordinator
- * and contributes Place/Arrange Find entries, Card facts and one instrument
- * through T1.P01.S07's AM-5 points. It edits no host core, route or shell
- * module, and it never writes Layout: support is consulted by the retained
- * planner.
+ * It registers the Scene planners with the one F.4 coordinator and contributes
+ * Place, Compose and Import through T1.P01.S07's AM-5 points. R217.S08 adds the
+ * shared Stage mark vocabulary for a selected object: Move, Turn, a Scale point
+ * disclosure and the Size ray it reveals. The Arrange task and its instrument
+ * posture are gone; the same exact Position, Yaw and Size values are the Card's
+ * writer. It edits no host core, route or shell module, and it never writes
+ * Layout: support is consulted by the retained planner.
  *
- * The session (`./scene/placement`) owns arming, the gesture lease, the
- * candidate preview and the one cancel path. This factory only wires it to the
+ * The session (`./scene/placement`) owns Place arming, the candidate preview and
+ * the one cancel path. The no-task mark gesture owns its own lease and submits
+ * the same planner the Card field does. This factory only wires both to the
  * public Stage services.
  */
 
@@ -26,10 +29,17 @@ import type {
 	StageCardFact,
 	StageCardSubject,
 	StageGhostMesh,
+	StageKeyboardIntent,
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
+import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
-import { draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-drafting';
+import type { SceneEntity } from '@portfolio/project-model';
+import {
+	draftingSnapIncrementMeters,
+	snapDraftingPlacement
+} from '$lib/authoring/stage/stage-drafting';
+import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import type { SceneFormEntity } from '$lib/content/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
@@ -55,10 +65,12 @@ import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprin
 import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';
 import { PAPER_LAYER } from '$lib/authoring/stage/paper-plan';
 import FormCardFields from './scene/FormCardFieldsLazy.svelte';
+import SceneObjectCardFields from './scene/SceneObjectCardFields.svelte';
 import ShapeReadingPalette from './scene/shape/ShapeReadingPalette.svelte';
 import { createShapeReadingSession } from './scene/shape/reading';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
+import { perfMark } from '$lib/platform/perf-marks';
 import {
 	armedModelDefinition,
 	clearArmedModel,
@@ -80,6 +92,24 @@ import {
 	type FormSizeMeasurement
 } from './scene/shape/form-size';
 import { acceptFormCommand } from './scene/form-card-command';
+import { deleteSceneObject, duplicateSceneObject } from './scene/object-card';
+import {
+	SCENE_OBJECT_MARK,
+	boundsFootprint,
+	isSceneObjectEditMarkId,
+	isSceneObjectEntity,
+	markCandidate,
+	planSceneObjectMark,
+	primitiveBounds,
+	sceneObjectMarkDescriptors,
+	sceneObjectMarkIntent,
+	sceneObjectScale,
+	sizeRayGeometry,
+	type SceneObjectBounds,
+	type SceneObjectEditMarkId,
+	type SceneObjectFootprint,
+	type SceneObjectMarkLive
+} from './scene/object-marks';
 import {
 	publishSceneSurface,
 	retireSceneSurface,
@@ -87,6 +117,7 @@ import {
 	sceneReadingKey,
 	sceneSessionFromServices,
 	sceneSurfaceFor,
+	localContactMinY,
 	sceneComposeSupport,
 	sceneModelContactMinY,
 	snapFreePlacement,
@@ -101,7 +132,6 @@ import {
 	type SupportOccluder
 } from './scene/support-occlusion';
 
-const SCENE_ARRANGE_TASK = 'scene-arrange';
 const SCENE_PLACE_TASK = 'scene-place';
 /**
  * T2.P01.S04's bounded composition surface: uniform Resize, duplicate and
@@ -253,15 +283,9 @@ function pointerPlaceSupport(
 } | null {
 	const visible = pointerFloorSupport(context, css, null);
 	if (visible.kind !== 'floor') return null;
-	// One rounding pass produces the shown pose and the planner's commit input;
-	// the placement builders never round again. Support is queried **after**
-	// rounding: a snapped point must stand on a real floor.
-	const snappedPlacement = snapFreePlacement(
-		[visible.worldPoint[0], visible.worldPoint[2]],
-		snapStep
-	);
-	const x = snappedPlacement.x;
-	const z = snappedPlacement.z;
+	const snapped = snapFreePlacement([visible.worldPoint[0], visible.worldPoint[2]], snapStep);
+	const x = snapped.x;
+	const z = snapped.z;
 	const domain = context.snapshot.domain;
 	const queried = queryFloorSupports(floorSupportSnapshotOf(domain.geometry), {
 		generationId: sceneSupportGenerationId(context.snapshot.sourceContentId),
@@ -320,6 +344,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 	const adapter: StageAdapter = {
 		id: 'scene',
+		// Handle admission refuses a grip that names anything outside this set. The
+		// Scene marks name place-on-floor, set-yaw and resize-on-floor, all of which
+		// are registered here; no mark introduces a fourth planner.
+		plannerKinds: planners.map((planner) => planner.kind),
 		// The Shape reading is contributed to the one Ink Pen through the host's
 		// reading seam; Scene keeps every byte of its meaning.
 		requiredCapabilities: ['stage-instrument-v1', 'ink-readings-v1'],
@@ -509,6 +537,501 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (current?.lease.kind === 'granted' && current.lease.lease.active) {
 					current.lease.lease.release();
 				}
+			}
+
+			/* --- Object marks: move, turn and the disclosed size ray ----------- */
+
+			/**
+			 * Pointer intersection arithmetic is floating-point; an exact Card value is
+			 * not. Quantizing at a nanometre keeps a drag from writing 2.6000000000000005
+			 * and then disagreeing byte-for-byte with the creator typing `2.6`.
+			 */
+			function quantizeMarkValue(value: number): number {
+				return Number.isFinite(value) ? Number(value.toFixed(9)) : value;
+			}
+
+			/**
+			 * One no-task mark gesture. The press captures the accepted baseline and the
+			 * exact world reading its mark drives; every move previews through the same
+			 * planner the release submits. The lease is the S03 one, so a reading change
+			 * ends the gesture rather than reinterpreting it.
+			 */
+			type ObjectMarkGesture = {
+				readonly evaluationId: string;
+				readonly markId: SceneObjectEditMarkId;
+				readonly lease: GestureAcquisition;
+				readonly entityId: string;
+				readonly contactMinY: number;
+				readonly bounds: SceneObjectBounds | null;
+				readonly startYaw: number;
+				readonly startScale: number;
+				/** The ring's floor-plane elevation, shared by press and every move. */
+				readonly ringY: number;
+				turnStartAngle: number | null;
+				sizeStartTravel: number | null;
+				candidate: SceneCandidate | null;
+				refusal: string | null;
+			};
+			let objectMarkGesture: ObjectMarkGesture | null = null;
+			/** The refusal keyed to the subject it came from; a new subject replaces it. */
+			let objectMarkRefusal: {
+				readonly entityId: string;
+				readonly markId: SceneObjectEditMarkId;
+				readonly message: string;
+			} | null = null;
+
+			function endObjectMarkGesture(): void {
+				const current = objectMarkGesture;
+				objectMarkGesture = null;
+				if (current?.lease.kind === 'granted' && current.lease.lease.active) {
+					current.lease.lease.release();
+				}
+			}
+
+			/** A lease ended under a proposal is the proposal's end too. */
+			function pruneObjectMarkGesture(): void {
+				const current = objectMarkGesture;
+				if (current === null) return;
+				if (current.lease.kind !== 'granted' || !current.lease.lease.active) {
+					objectMarkGesture = null;
+					objectMarkRefusal = {
+						entityId: current.entityId,
+						markId: current.markId,
+						message: 'The reading changed; start the gesture again.'
+					};
+				}
+			}
+
+			function selectedObjectEntity(adapterContext: StageAdapterContext): SceneEntity | null {
+				const primary = adapterContext.selectionState().primary;
+				if (primary === null || primary.domain !== 'scene' || primary.subject.kind !== 'entity') {
+					return null;
+				}
+				const entity = stageScene(adapterContext.snapshot).entities.find(
+					(entry) => entry.id === primary.subject.id
+				);
+				return isSceneObjectEntity(entity) ? entity : null;
+			}
+
+			function objectContact(entity: SceneEntity): number | null {
+				return localContactMinY(
+					entity,
+					entity.kind === 'model'
+						? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), entity)
+						: null
+				);
+			}
+
+			/**
+			 * Drawn bounds when the pick source has them; an analytic primitive derives
+			 * the same box. A model without a mounted body has no honest extent here,
+			 * so the Scale point and Size ray are withheld rather than guessed.
+			 */
+			function objectBounds(
+				adapterContext: StageAdapterContext,
+				entity: SceneEntity
+			): SceneObjectBounds | null {
+				const rendered = adapterContext.sceneBounds(entity.id);
+				if (rendered !== null) return rendered;
+				return entity.kind === 'primitive' ? primitiveBounds(entity) : null;
+			}
+
+			function objectFootprint(
+				entity: SceneEntity,
+				bounds: SceneObjectBounds | null
+			): SceneObjectFootprint | null {
+				if (bounds !== null) return boundsFootprint(bounds);
+				if (entity.kind !== 'model') return null;
+				for (const resource of stageEnvelope(services.stage.snapshot()).units.resources.data.resources) {
+					if (resource.kind === 'model' && resource.id === entity.assetId && resource.model !== undefined) {
+						return {
+							width: resource.model.placement.footprint.width,
+							depth: resource.model.placement.footprint.depth
+						};
+					}
+				}
+				return null;
+			}
+
+			function objectMarkLive(entity: SceneEntity): SceneObjectMarkLive | null {
+				const current = objectMarkGesture;
+				if (current !== null && current.entityId === entity.id) {
+					return {
+						markId: current.markId,
+						position: current.candidate?.position ?? entity.position,
+						yaw: current.candidate?.yaw ?? entity.rotation[1],
+						scale: current.candidate?.scale ?? sceneObjectScale(entity),
+						refusal: current.refusal
+					};
+				}
+				if (objectMarkRefusal !== null && objectMarkRefusal.entityId === entity.id) {
+					return {
+						markId: objectMarkRefusal.markId,
+						position: entity.position,
+						yaw: entity.rotation[1],
+						scale: sceneObjectScale(entity),
+						refusal: objectMarkRefusal.message
+					};
+				}
+				return null;
+			}
+
+			function objectMarkDescriptors(
+				adapterContext: StageAdapterContext
+			): ReturnType<typeof sceneObjectMarkDescriptors> {
+				pruneObjectMarkGesture();
+				const entity = selectedObjectEntity(adapterContext);
+				if (entity === null) return [];
+				const contactMinY = objectContact(entity);
+				if (contactMinY === null) return [];
+				// The planners' own gate: a light, a vertical plane, a tilted entity or a
+				// model without verified contact publishes no mark that would refuse.
+				if (!sceneComposeSupport(entity, contactMinY).resize) return [];
+				const bounds = objectBounds(adapterContext, entity);
+				return sceneObjectMarkDescriptors({
+					entity,
+					contactMinY,
+					bounds,
+					footprint: objectFootprint(entity, bounds),
+					live: objectMarkLive(entity)
+				});
+			}
+
+			function objectMarkGhost(
+				adapterContext: StageAdapterContext
+			): StageGhostMesh | null {
+				pruneObjectMarkGesture();
+				const current = objectMarkGesture;
+				if (current?.candidate === null || current?.candidate === undefined) return null;
+				const entity = stageScene(adapterContext.snapshot).entities.find(
+					(entry) => entry.id === current.entityId
+				);
+				return entity === undefined ? null : candidateGhost(entity, current.candidate);
+			}
+
+			/** The pointer ray's angle around the entity's vertical axis. */
+			function turnAngleAt(
+				adapterContext: StageAdapterContext,
+				entityId: string,
+				css: readonly [number, number],
+				planeY: number
+			): number | null {
+				const entity = stageScene(adapterContext.snapshot).entities.find((entry) => entry.id === entityId);
+				if (entity === undefined) return null;
+				const ray = adapterContext.ray([
+					css[0] + adapterContext.evaluation.rect.left,
+					css[1] + adapterContext.evaluation.rect.top
+				]);
+				if (ray === null || Math.abs(ray.direction[1]) < 1e-6) return null;
+				const t = (planeY - ray.origin[1]) / ray.direction[1];
+				if (!Number.isFinite(t) || t <= 0) return null;
+				const x = ray.origin[0] + ray.direction[0] * t;
+				const z = ray.origin[2] + ray.direction[2] * t;
+				const angle = Math.atan2(-(z - entity.position[2]), x - entity.position[0]);
+				return Number.isFinite(angle) ? angle : null;
+			}
+
+			/** The signed travel along the bounds diagonal the pointer names. */
+			function sizeTravelAt(
+				adapterContext: StageAdapterContext,
+				bounds: SceneObjectBounds,
+				css: readonly [number, number]
+			): number | null {
+				const ray = adapterContext.ray([
+					css[0] + adapterContext.evaluation.rect.left,
+					css[1] + adapterContext.evaluation.rect.top
+				]);
+				const geometry = sizeRayGeometry(bounds);
+				if (ray === null || geometry === null) return null;
+				return axisTravelFromRay({
+					origin: geometry.anchor,
+					direction: geometry.axis,
+					rayOrigin: ray.origin,
+					rayDirection: ray.direction
+				});
+			}
+
+			function applyObjectMarkPlan(
+				gesture: ObjectMarkGesture,
+				result: ReturnType<typeof planSceneObjectMark>
+			): void {
+				if (result.kind === 'rejected') {
+					gesture.candidate = null;
+					gesture.refusal = result.message;
+					return;
+				}
+				const candidate = markCandidate(result);
+				gesture.candidate = candidate;
+				gesture.refusal = candidate === null ? 'The candidate entity vanished.' : null;
+			}
+
+			/**
+			 * The no-task press path for an object mark.
+			 *
+			 * A press that did not start on an admitted editing mark is refused, so the
+			 * host's navigation gesture keeps the pointer. The form size knobs stay on
+			 * their own path until S09 converts them to descriptors.
+			 */
+			function objectMarkPointer(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				if (services.stage.session.task() !== null) return false;
+				pruneObjectMarkGesture();
+				if (intent.phase === 'down') {
+					const markId = intent.handleId;
+					if (!isSceneObjectEditMarkId(markId)) return false;
+					const entity = selectedObjectEntity(adapterContext);
+					if (entity === null) return false;
+					const contactMinY = objectContact(entity);
+					if (contactMinY === null) return false;
+					const bounds = objectBounds(adapterContext, entity);
+					if (markId === SCENE_OBJECT_MARK.size && bounds === null) return false;
+					if (objectMarkGesture !== null) endObjectMarkGesture();
+					const acquisition = services.stage.acquireGesture({
+						owner: 'scene-object-marks',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') {
+						objectMarkRefusal = {
+							entityId: entity.id,
+							markId,
+							message: `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`
+						};
+						services.stage.notifySurfaceChange();
+						return false;
+					}
+					objectMarkRefusal = null;
+					const ringY =
+						entity.position[1] + sceneObjectScale(entity) * contactMinY;
+					objectMarkGesture = {
+						evaluationId: intent.evaluationId,
+						markId,
+						lease: acquisition,
+						entityId: entity.id,
+						contactMinY,
+						bounds,
+						startYaw: entity.rotation[1],
+						startScale: sceneObjectScale(entity),
+						ringY,
+						turnStartAngle:
+							markId === SCENE_OBJECT_MARK.turn
+								? turnAngleAt(adapterContext, entity.id, intent.css, ringY)
+								: null,
+						sizeStartTravel:
+							markId === SCENE_OBJECT_MARK.size && bounds !== null
+								? sizeTravelAt(adapterContext, bounds, intent.css)
+								: null,
+						candidate: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+
+				const gesture = objectMarkGesture;
+				if (gesture === null) return false;
+				if (gesture.lease.kind === 'granted' && !gesture.lease.lease.active) {
+					endObjectMarkGesture();
+					objectMarkRefusal = {
+						entityId: gesture.entityId,
+						markId: gesture.markId,
+						message: 'The content changed; start the gesture again.'
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'cancel') {
+					endObjectMarkGesture();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.evaluationId !== gesture.evaluationId) {
+					// A reading flip measured this gesture in a projection that no longer
+					// exists. Ending it is the one safe outcome.
+					endObjectMarkGesture();
+					objectMarkRefusal = {
+						entityId: gesture.entityId,
+						markId: gesture.markId,
+						message: 'The reading changed; start the gesture again.'
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				const entity = stageScene(adapterContext.snapshot).entities.find(
+					(entry) => entry.id === gesture.entityId
+				);
+				if (entity === undefined) {
+					endObjectMarkGesture();
+					objectMarkRefusal = {
+						entityId: gesture.entityId,
+						markId: gesture.markId,
+						message: 'The entity no longer exists.'
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					if (gesture.markId === SCENE_OBJECT_MARK.move) {
+						const support = pointerFloorSupport(adapterContext, intent.css, gesture.entityId);
+						if (support.kind !== 'floor') {
+							gesture.candidate = null;
+							const refusal = moveSupportRefusal(support);
+							gesture.refusal = refusal.kind === 'refused'
+								? refusal.message
+								: 'The pointer position is not a committable floor support.';
+						} else {
+							// Object Move consumes the same live Grid/Snap fact as Layout Ink
+							// and Place. Alt/Option suspension is therefore immediate, and
+							// there is one shared rounding and float-cleaning pass.
+							const drafting = adapterContext.drafting();
+							const minor = drawnGridMinorMeters(
+								drafting,
+								adapterContext.evaluation.targetPlaneMetersPerCssPixel
+							);
+							const step = draftingSnapIncrementMeters(drafting, minor);
+							const snapped = snapDraftingPlacement(
+								[support.worldPoint[0], support.worldPoint[2]],
+								step
+							);
+							applyObjectMarkPlan(
+								gesture,
+								planSceneObjectMark({
+									markId: SCENE_OBJECT_MARK.move,
+									context: sizePlannerContext(adapterContext),
+									entityId: gesture.entityId,
+									contactMinY: gesture.contactMinY,
+									worldXZ: [snapped.x, snapped.z]
+								})
+							);
+						}
+					} else if (gesture.markId === SCENE_OBJECT_MARK.turn) {
+						const angle = turnAngleAt(adapterContext, gesture.entityId, intent.css, gesture.ringY);
+						if (angle === null) {
+							gesture.candidate = null;
+							gesture.refusal = 'The pointer ray is not on the turn plane.';
+						} else {
+							if (gesture.turnStartAngle === null) gesture.turnStartAngle = angle;
+							let delta = angle - gesture.turnStartAngle;
+							while (delta > Math.PI) delta -= Math.PI * 2;
+							while (delta < -Math.PI) delta += Math.PI * 2;
+							applyObjectMarkPlan(
+								gesture,
+								planSceneObjectMark({
+									markId: SCENE_OBJECT_MARK.turn,
+									context: sizePlannerContext(adapterContext),
+									entityId: gesture.entityId,
+									yaw: quantizeMarkValue(gesture.startYaw + delta)
+								})
+							);
+						}
+					} else if (gesture.bounds !== null) {
+						const travel = sizeTravelAt(adapterContext, gesture.bounds, intent.css);
+						const geometry = sizeRayGeometry(gesture.bounds);
+						if (travel === null || geometry === null) {
+							gesture.candidate = null;
+							gesture.refusal = 'Move along the bounds diagonal to name a size.';
+						} else {
+							if (gesture.sizeStartTravel === null) gesture.sizeStartTravel = travel;
+							const unscaledDiagonal = geometry.extent / gesture.startScale;
+							const scale =
+								gesture.startScale +
+								(travel - gesture.sizeStartTravel) / unscaledDiagonal;
+							applyObjectMarkPlan(
+								gesture,
+								planSceneObjectMark({
+									markId: SCENE_OBJECT_MARK.size,
+									context: sizePlannerContext(adapterContext),
+									entityId: gesture.entityId,
+									contactMinY: gesture.contactMinY,
+									scale: quantizeMarkValue(scale)
+								})
+							);
+						}
+					}
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+
+				// Release: one captured candidate, one F4 intent, one history entry.
+				const preview = gesture;
+				endObjectMarkGesture();
+				if (preview.candidate !== null) {
+					const snapshot = services.stage.snapshot();
+					perfMark('command:commit', { entityId: preview.entityId });
+					try {
+						const intentToAccept = sceneObjectMarkIntent({
+							...(preview.markId === SCENE_OBJECT_MARK.move
+								? {
+										markId: SCENE_OBJECT_MARK.move,
+										entityId: preview.entityId,
+										contactMinY: preview.contactMinY,
+										worldXZ: preview.candidate.worldXZ
+									} as const
+								: preview.markId === SCENE_OBJECT_MARK.turn
+									? {
+											markId: SCENE_OBJECT_MARK.turn,
+											entityId: preview.entityId,
+											yaw: preview.candidate.yaw
+										} as const
+									: {
+											markId: SCENE_OBJECT_MARK.size,
+											entityId: preview.entityId,
+											contactMinY: preview.contactMinY,
+											scale: preview.candidate.scale
+										} as const),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							sceneContentRevision: snapshot.domain.unitRevisions.scene,
+							operationId: globalThis.crypto.randomUUID()
+						});
+						void services.authoring.accept(intentToAccept).then(
+							(outcome) => {
+								if (outcome.kind === 'refused') {
+									objectMarkRefusal = {
+										entityId: preview.entityId,
+										markId: preview.markId,
+										message: outcome.message
+									};
+								}
+								services.stage.notifySurfaceChange();
+							},
+							(error: unknown) => {
+								objectMarkRefusal = {
+									entityId: preview.entityId,
+									markId: preview.markId,
+									message:
+										error instanceof Error ? error.message : 'The accepted install failed.'
+								};
+								services.stage.notifySurfaceChange();
+							}
+						);
+					} catch (error) {
+						objectMarkRefusal = {
+							entityId: preview.entityId,
+							markId: preview.markId,
+							message: error instanceof Error ? error.message : 'The intent could not be built.'
+						};
+					}
+				} else if (preview.refusal !== null) {
+					objectMarkRefusal = {
+						entityId: preview.entityId,
+						markId: preview.markId,
+						message: preview.refusal
+					};
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
+			/** Escape during a live mark gesture is the writer's cancel, not a task's. */
+			function objectMarkKey(intent: StageKeyboardIntent): boolean {
+				if (openTaskKind !== null || objectMarkGesture === null) return false;
+				if (intent.kind !== 'cancel') return false;
+				endObjectMarkGesture();
+				services.stage.notifySurfaceChange();
+				return true;
 			}
 
 			/** The accepted Scene payload the size planner reads, never the runtime projection. */
@@ -884,13 +1407,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						order: 20
 					},
 					{
-						id: SCENE_ARRANGE_TASK,
-						taskKind: SCENE_ARRANGE_TASK,
-						label: 'Arrange',
-						targetRef: context.selection()?.ref ?? null,
-						order: 10
-					},
-					{
 						id: SCENE_COMPOSE_TASK,
 						taskKind: SCENE_COMPOSE_TASK,
 						label: 'Compose',
@@ -913,14 +1429,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						railFamily: 'place',
 						capability: 'scene',
 						order: 20
-					},
-					{
-						id: SCENE_ARRANGE_TASK,
-						taskKind: SCENE_ARRANGE_TASK,
-						label: 'Arrange',
-						railFamily: 'arrange',
-						capability: 'scene',
-						order: 10
 					},
 					{
 						id: 'scene-resize',
@@ -964,8 +1472,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * than silently starting an arrange drag.
 				 */
 				pressWhenNoTask: true,
+				/**
+				 * The one mark vocabulary: when no task is open, a selected object publishes
+				 * Move, Turn and the Scale point, and the disclosed Size ray. The host admits,
+				 * projects and hit-tests those descriptors; this binding only says which
+				 * facts and planner each one names.
+				 */
+				handles(adapterContext: StageAdapterContext): readonly StageHandleDescriptor[] {
+					return objectMarkDescriptors(adapterContext);
+				},
 				// The pointer claim is offered before the host's navigation gesture and
-				// only while this adapter's task owns the press (or a size ray is live).
+				// only while this adapter's task owns the press (or a mark is live).
 				// A refused clamp or a missing selection refuses the claim rather than
 				// starting a drag.
 				pointerIntent(intent: StagePointerIntent, adapterContext) {
@@ -974,21 +1491,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// move/yaw of the selected entity.
 					if (openTaskKind === SCENE_COMPOSE_TASK) return false;
 					// With no contributed task open this binding is the selection's direct
-					// manipulation surface: only a size knob (and the rest of its drag) is
-					// claimed here. The arrange read below belongs to its own task.
-					if (openTaskKind === null) return sizePointer(intent, adapterContext);
+					// manipulation surface: an admitted object mark claims its own drag; a
+					// form's per-axis size knobs remain their own path until S09 converts
+					// them to descriptors.
+					if (openTaskKind === null) {
+						return objectMarkPointer(intent, adapterContext) || sizePointer(intent, adapterContext);
+					}
 					// Claim the surface once, on the press. Every later phase of this
 					// gesture reads the same session even if the viewport is re-evaluated.
 					if (intent.phase === 'down') gestureSurface = surfaceFor(adapterContext.evaluation);
 					const surface = gestureSurface ?? surfaceFor(adapterContext.evaluation);
 					const session = surface.session;
-					// R217.S05: the drafting cluster's Snap is the only increment a free
-					// **placement** applies. Mirroring it per phase keeps pointer Place
-					// reading the current switch and Alt/Option hold, including a modifier
-					// change during the drag. Move is not a free placement: it keeps the
-					// session's explicit step (off unless a direct-manipulation owner sets
-					// it), so dragging an existing object is not silently quantised.
-					const snapStep = draftingSnapIncrementMeters(adapterContext.drafting());
+					const drafting = adapterContext.drafting();
+					const minor = drawnGridMinorMeters(
+						drafting,
+						adapterContext.evaluation.targetPlaneMetersPerCssPixel
+					);
+					const snapStep = draftingSnapIncrementMeters(drafting, minor);
+					// Keep the Place session mirror in sync for its typed entry path; the
+					// adapter context remains the only switch/increment authority.
 					session.setSnapStep(openTaskKind === 'place-object' ? snapStep : null);
 					if (intent.phase === 'cancel') {
 						dragOrigin = null;
@@ -1024,30 +1545,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								return false;
 							}
 							if (copy !== null) {
-								session.previewPlaceFormCopy(
-									copy,
-									support.x,
-									support.z,
-									support.elevation,
-									support.choice,
-									snapStep
-								);
-							} else if (armed === null) {
-								session.previewPlace(
-									primitive,
-									support.x,
-									support.z,
-									support.elevation,
-									snapStep
-								);
+								session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice, snapStep);
+			} else if (armed === null) {
+								session.previewPlace(primitive, support.x, support.z, support.elevation, snapStep);
 							} else {
-								session.previewPlaceModel(
-									armed,
-									support.x,
-									support.z,
-									support.elevation,
-									snapStep
-								);
+								session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep);
 							}
 							return true;
 						}
@@ -1101,31 +1603,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						const copy = session.armedFormCopy();
 						const armed = copy === null ? session.armedModel() : null;
-						if (copy !== null) {
-							session.previewPlaceFormCopy(
-								copy,
-								support.x,
-								support.z,
-								support.elevation,
-								support.choice,
-								snapStep
-							);
-						} else if (armed === null) {
+							if (copy !== null) {
+								session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice, snapStep);
+			} else if (armed === null) {
 							session.previewPlace(
 								session.placePrimitive(),
 								support.x,
 								support.z,
-								support.elevation,
-								snapStep
+									support.elevation,
+									snapStep
 							);
 						} else {
-							session.previewPlaceModel(
-								armed,
-								support.x,
-								support.z,
-								support.elevation,
-								snapStep
-							);
+								session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep);
 						}
 						return true;
 					}
@@ -1147,21 +1636,33 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					session.reportPointerOutcome(outcome);
 					return true;
 				},
+				/**
+				 * Escape during a live mark gesture cancels that writer before the host
+				 * unwinds the selection. No task is open, so this is reached through the
+				 * host's gesture-key path, not the contributed-task key path.
+				 */
+				keyIntent(intent: StageKeyboardIntent): boolean {
+					return objectMarkKey(intent);
+				},
 				// Closing the task (Esc at the shell, replacement) uses the one cancel path.
 				selectionChanged() {
 					// A knob belongs to the subject it was drawn for; a new subject's
 					// handles replace it, and a stale refusal would name the old one.
 					if (sizeGesture !== null) endSizeGesture();
 					sizeRefusal = null;
+					if (objectMarkGesture !== null) endObjectMarkGesture();
+					objectMarkRefusal = null;
 				},
 				taskClosed() {
 					if (sizeGesture !== null) {
 						endSizeGesture();
 						sizeRefusal = null;
 					}
+					if (objectMarkGesture !== null) endObjectMarkGesture();
+					objectMarkRefusal = null;
 					dragOrigin = null;
-					// Cancel the session this task armed (Place) or this press claimed
-					// (Arrange), not whichever session another binding may have published.
+				// Cancel the session this task armed (Place), not whichever session
+				// another binding may have published.
 					const closing = taskSurface ?? gestureSurface;
 					gestureSurface = null;
 					openTaskKind = null;
@@ -1198,9 +1699,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// in the one Canvas, so Plan and 3D show what Commit will install.
 				ghosts(adapterContext): readonly StageGhostMesh[] {
 					const size = sizeGhost();
+					const object = objectMarkGhost(adapterContext);
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate: SceneCandidate | null = surface?.session.candidate() ?? null;
-					if (candidate === null) return size === null ? [] : [size];
+					if (candidate === null) {
+						if (object === null) return size === null ? [] : [size];
+						return size === null ? [object] : [size, object];
+					}
 					const entity =
 							candidate.entityId === null
 								? null
@@ -1210,26 +1715,60 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return size === null ? (ghost === null ? [] : [ghost]) : ghost === null ? [size] : [size, ghost];
 				},
 				cardWriter(subject) {
-					if (subject.reference?.domain !== 'scene' || !source.entities.some((entity) => entity.id === subject.sourceId && entity.kind === 'form')) return null;
-					return { summary: 'Form fields', view: { component: FormCardFields, services } };
+					if (subject.reference?.domain !== 'scene') return null;
+					const entity = source.entities.find((entry) => entry.id === subject.sourceId);
+					if (entity?.kind === 'form') {
+						return { summary: 'Form fields', view: { component: FormCardFields, services } };
+					}
+					// A catalogue model or primitive gets the Arrange instrument's exact
+					// Position, Yaw and Size writers where PLATE puts ordinary dimensions.
+					if (!isSceneObjectEntity(entity)) return null;
+					return { summary: 'Object fields', view: { component: SceneObjectCardFields, services } };
 				},
 				cardActions(subject) {
 					if (subject.reference?.domain !== 'scene') return [];
-					const entity = source.entities.find((entity) => entity.id === subject.sourceId && entity.kind === 'form');
-					if (entity === undefined || entity.kind !== 'form') return [];
+					// Read the live accepted source: an immediate command can install a
+					// copy whose action row is requested before the next binding rebuild.
 					const snapshot = services.stage.snapshot();
-					// My Objects Save is adapter-owned UI inside the form fields, so the
-					// Card action row keeps its one destructive action and the host shell is
-					// unchanged.
+					const entity = stageScene(snapshot).entities.find((entity) => entity.id === subject.sourceId);
+					if (entity === undefined) return [];
+					if (entity.kind === 'form') {
+						// My Objects Save is adapter-owned UI inside the form fields, so the
+						// Card action row keeps its one destructive action and the host shell is
+						// unchanged.
+						return [
+							{
+								id: 'scene-form-delete',
+								label: 'Delete form',
+								destructive: true,
+								detail: `Remove ${entity.name}. Undo restores it.`,
+								async run() {
+									const { deleteForm } = await import('./scene/form-card-command');
+									return deleteForm(services, snapshot, entity.id);
+								}
+							}
+						];
+					}
+					if (!isSceneObjectEntity(entity)) return [];
+					// S08 moves the object's exact fields to the Card; the existing
+					// immediate commands stay beside them, so the creator does not have to
+					// open Compose to duplicate or delete the selected object.
 					return [
 						{
-							id: 'scene-form-delete',
-							label: 'Delete form',
+							id: 'scene-object-duplicate',
+							label: 'Duplicate',
+							detail: `Add one copy of ${entity.name} at +0.5 m X/Z. Undo removes it.`,
+							async run() {
+								return duplicateSceneObject(services, services.stage.snapshot(), entity.id);
+							}
+						},
+						{
+							id: 'scene-object-delete',
+							label: 'Delete object',
 							destructive: true,
 							detail: `Remove ${entity.name}. Undo restores it.`,
 							async run() {
-								const { deleteForm } = await import('./scene/form-card-command');
-								return deleteForm(services, snapshot, entity.id);
+								return deleteSceneObject(services, services.stage.snapshot(), entity.id);
 							}
 						}
 					];
@@ -1286,13 +1825,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								? 'Place object'
 								: task.kind === SCENE_COMPOSE_TASK
 									? 'Compose'
-									: 'Arrange',
+									: 'Import model',
 						view: { component: SceneTransformInstrument, services }
 					};
 				},
 				dispose() {
 					if (sizeGesture !== null) endSizeGesture();
 					sizeRefusal = null;
+					if (objectMarkGesture !== null) endObjectMarkGesture();
+					objectMarkRefusal = null;
 					gestureSurface = null;
 					openTaskKind = null;
 					taskSurface = null;

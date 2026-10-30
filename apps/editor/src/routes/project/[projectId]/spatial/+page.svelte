@@ -521,7 +521,12 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 			drawnGridMinorMeters(drafting, evaluation?.targetPlaneMetersPerCssPixel ?? null)
 		)
 	);
-	const draftingSnapWord = $derived(draftingWordForSnap(drafting));
+	const draftingSnapWord = $derived(
+		draftingWordForSnap(
+			drafting,
+			drawnGridMinorMeters(drafting, evaluation?.targetPlaneMetersPerCssPixel ?? null)
+		)
+	);
 	const draftingScaleBar = $derived(
 		roundScaleBarLength(evaluation?.targetPlaneMetersPerCssPixel ?? 0)
 	);
@@ -2651,7 +2656,7 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		// An **armed dock tool** owns the Stage surface: its tap already placed a
 		// point, split a Wall or was refused, and re-selecting underneath it would
 		// silently move what the tool is editing. Another adapter's task (Compose,
-		// Arrange, Import) does not: clicking the Stage stays the host's own Select,
+		// Import) does not: clicking the Stage stays the host's own Select,
 		// which those tasks already depend on to reach their subject.
 		if (task !== null && armedTool !== null) return;
 		const stage = facade;

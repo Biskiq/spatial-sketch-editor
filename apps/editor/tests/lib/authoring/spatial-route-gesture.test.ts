@@ -43,7 +43,8 @@ import {
 const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
-import { metersPerCssPixelForScaleRatio } from '$lib/authoring/stage/stage-drafting';
+import { formatMeters, metersPerCssPixelForScaleRatio } from '$lib/authoring/stage/stage-drafting';
+import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { shapeReadingSurface } from '$lib/authoring/adapters/scene/shape/reading';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
@@ -55,6 +56,12 @@ let frameId = 0;
 let wallId: string;
 let captureDescriptor: PropertyDescriptor | undefined;
 const facade = () => harness.facade as StageFacade;
+const currentGridMinor = () =>
+	drawnGridMinorMeters(
+		facade().session.drafting(),
+		facade().evaluation()?.targetPlaneMetersPerCssPixel ?? null
+	);
+const currentSnapLabel = () => `Snap ${formatMeters(currentGridMinor())}`;
 const button = (text: string) => {
 	const found = [...target.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') ?? b.textContent)?.replace(/\s+/g, '').toLowerCase() === text.replace(/\s+/g, '').toLowerCase());
 	if (!found)
@@ -374,10 +381,13 @@ describe('mounted Stage pointer lifecycle', () => {
 		await frame();
 		const reference = sceneEntityReference('gesture-box', facade().snapshot().domain.unitRevisions.scene);
 		expect(facade().setSelection({ ordered: [{ reference }], primary: reference }).kind).toBe('selected');
-		expect(facade().openContributedTask('scene-arrange', 'scene').kind).toBe('opened');
+		// Object manipulation is direct: no Arrange task exists, and a press on the
+		// admitted Move mark claims its own writer lease.
+		const move = facade().marks().find((mark) => mark.id === 'scene-object-move');
+		expect(move).toBeDefined();
 		const selected = facade().selectionState();
 		const baseline = facade().snapshot().canonicalJson;
-		const point: [number, number] = [RECT.left + 100, RECT.top + 100];
+		const point: [number, number] = [RECT.left + move!.anchor[0], RECT.top + move!.anchor[1]];
 		pointer('pointerdown', point);
 		expect(facade().session.gesture()).not.toBeNull();
 		pointer('pointermove', [point[0] + 30, point[1]], true);
@@ -826,7 +836,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		// Grid and Snap are independent: Grid stays off while Snap comes back on.
 		snapKey().click();
 		await frame();
-		expect(snapKey().textContent?.trim()).toBe('Snap 1 m');
+		expect(snapKey().textContent?.trim()).toBe(currentSnapLabel());
 		expect(gridKey().textContent?.trim()).toBe('Grid off');
 	});
 
@@ -839,7 +849,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', bubbles: true }));
 		await frame();
 		expect(facade().session.drafting().snapSuspended).toBe(false);
-		expect(snapKey().textContent?.trim()).toBe('Snap 1 m');
+		expect(snapKey().textContent?.trim()).toBe(currentSnapLabel());
 
 		// Losing the window cannot strand the modifier off.
 		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true, bubbles: true }));
@@ -918,7 +928,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 	it('announces the temporary Snap hold without changing the durable switch', async () => {
 		const status = target.querySelector<HTMLElement>('#drafting-snap-state')!;
 		expect(status.getAttribute('role')).toBe('status');
-		expect(status.textContent?.trim()).toBe('Snap 1 m');
+		expect(status.textContent?.trim()).toBe(currentSnapLabel());
 		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true, bubbles: true }));
 		await frame();
 		expect(status.textContent?.trim()).toBe('Snap held');
@@ -926,7 +936,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(snapKey().getAttribute('aria-pressed')).toBe('true');
 		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', bubbles: true }));
 		await frame();
-		expect(status.textContent?.trim()).toBe('Snap 1 m');
+		expect(status.textContent?.trim()).toBe(currentSnapLabel());
 	});
 
 	it('switches 2D | 3D through set-reading and keeps grid, snap and selection', async () => {
@@ -971,7 +981,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 });
 
 describe('R217.S05 — the drafting configuration and scale bar', () => {
-	it('overrides the minor interval from the configuration disclosure as view state', async () => {
+	it('sets the configured minor interval as view state and reports the adaptive current interval', async () => {
 		const before = facade().snapshot().canonicalJson;
 		const interval = target.querySelector<HTMLSelectElement>('[data-drafting-config]')!;
 		interval.click();
@@ -982,7 +992,9 @@ describe('R217.S05 — the drafting configuration and scale bar', () => {
 		select!.dispatchEvent(new Event('change', { bubbles: true }));
 		await frame();
 		expect(facade().session.drafting().gridMinorMeters).toBe(2);
-		expect(target.querySelector('[data-drafting-grid]')!.textContent?.trim()).toBe('Grid 2 m');
+		expect(target.querySelector('[data-drafting-grid]')!.textContent?.trim()).toBe(
+			`Grid ${formatMeters(currentGridMinor())}`
+		);
 		expect(facade().snapshot().canonicalJson).toBe(before);
 	});
 

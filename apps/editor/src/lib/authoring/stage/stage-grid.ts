@@ -103,7 +103,10 @@ export function gridLevelsFor(input: {
 	if (!Number.isFinite(metersPerCssPixel) || metersPerCssPixel <= 0) return null;
 	if (!Number.isFinite(baseMinorMeters) || baseMinorMeters <= 0) return null;
 	const ink = surface === 'paper' ? PAPER_GRID_INK : MAT_GRID_INK;
-	const ladder = gridLadderFrom(baseMinorMeters);
+	// With an active scale, choose from the complete supported ladder. The
+	// configured interval is the no-evaluation fallback; using it as a floor here
+	// would prevent the default 1 m setting from refining at close zoom.
+	const ladder = gridLadderFrom(0.01);
 	const primaryIndex = ladder.findIndex(
 		(interval) => interval / metersPerCssPixel >= GRID_FULL_SPACING_CSS_PX - 1e-9
 	);

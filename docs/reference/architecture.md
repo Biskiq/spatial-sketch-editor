@@ -419,6 +419,18 @@ above Paper's layer order. A Wall publishes start and end points, a free-end len
 two-way base move ray; it publishes no angle ring — Angle stays the Card's `layout-wall-angle`
 writer — and height and thickness grips remain deferred, with thickness a Card field.
 
+A selected Scene catalogue model or primitive publishes the same vocabulary (R217.S08): a floor
+**Move** track through the footprint centre, a vertical **Turn** ring, a **Scale** point disclosure
+and the **Size** ray it reveals along the bounds diagonal. Move submits `place-on-floor` and keeps
+the S05 snap step; Turn submits `set-yaw`; Size submits `resize-on-floor` and leaves the base on
+its support through the captured `contactMinY`. The Card is the exact writer for Position X/Z,
+Yaw and uniform Size, and each field calls the same planner dispatch as its mark, so a typed
+value and a dragged value share refusal words and install the same fact. A light, a form, a
+vertical plane or a model without verified contact publishes no object marks. Marks are drawn
+only while no contributed task is open; opening Place, Compose or Import hides them. The old
+Scene Arrange task, its Find entry and its instrument posture are removed; Place, Compose, Import
+and the Library posture remain.
+
 ### Coordination over domain policy
 
 The Stage host coordinates pointer routing, arbitration between each domain's winner,
