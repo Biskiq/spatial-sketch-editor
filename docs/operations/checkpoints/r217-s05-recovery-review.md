@@ -68,8 +68,9 @@ VERIFICATION:
   `25d96ef517a6b621fe04285e4e537d9fc8ca4294`, based on interrupted commit
   `d5c7fe4854dda29c71e51ef4baa2ac025a2535bb` and main/S08 commit
   `ac944f02beaa892aa5579a03e0b5fa4561831cae`.
-- Follow-up repair is committed at `c5273726f3b3d854c845857b79fdcbb7339373e8`; final documentation
-  recording this revision and PR synchronization are pending. PR #226 remains open and unmerged.
+- Follow-up product repair is committed at `c5273726f3b3d854c845857b79fdcbb7339373e8`; verification
+  records are committed at `c1d18c625edeb23ba96f26ffcfb14e1448030bb0` and pushed to PR #226. The PR
+  remains open and unmerged.
 
 NEXT:
 1. Finish required repository verification, update this checkpoint and acceptance with exact tested
