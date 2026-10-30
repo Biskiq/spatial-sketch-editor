@@ -8,6 +8,7 @@ A scope absent from this table is held. A row states the condition under which t
 | --- | --- | --- |
 | `R217.S02` | released 2026-10-28 by owner direction for implementation; starts from current `main` after PR #220; recheck consumed gates and active scopes at the trusted base | [Shell composition](./r217-core-editor-stability/r217.s02-shell-composition/implementation-plan.md) |
 | `R217.S03` | released 2026-10-28 by owner direction for implementation; rebased onto `main` `71100651` after PR #221 (S02); the dedicated cross-domain review on 2026-10-29 raised one P2, now corrected with focused regression checks; acceptance pending | [Stage interaction coordination](./r217-core-editor-stability/r217.s03-stage-interaction-coordination/implementation-plan.md) |
+| `R217.S05` | owner authorized recovery and repair of existing PR #226 on 2026-10-29, limited to the approved S05 plan and required verification for independent review; closeout is conditionally authorized only after that review finds the repair acceptable; no merge or omitted scope is authorized | [Drafting state](./r217-core-editor-stability/r217.s05-drafting-state/implementation-plan.md) |
 | `R217.S01` | released 2026-10-28 by owner direction; starts from current `main` including PR #217 merge `686e724d`, after T5.P01.S03 merged; recheck consumed gates and active scopes at the trusted base | [Responsibility map and boundaries](./r217-core-editor-stability/r217.s01-responsibility-map-and-boundaries/implementation-plan.md) |
 | `T5.P01.S01` | released; starts after PR #207 merges on `main`; the T2 prerequisite merged with PR #199 and T2.P02 closed 2026-10-27; recheck consumed gates and active scopes at its own trusted base | [Native form source and evaluation](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md) |
 | `T5.P01.S02` | released 2026-10-28; owner authorized acceptance, closeout and P1 merge after clean T1/T2 reviews and satisfied repository gates; recheck consumed gates and active scopes at the trusted base | [Shape reading and sizing](./t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s02-shape-reading-and-sizing/implementation-plan.md) |
@@ -47,6 +48,10 @@ remain deferred to S03. The row stays until a later explicit owner release prune
 shipped scope. The owner then released `T5.P01.S03` on 2026-10-28 to execute its approved exhaustive
 plan from `c13a949d`, authorized one `perf:spot` checkpoint, and directed that a pass mark the final
 gate accepted and T5.P01 closable; no phase closure was authorized.
+
+The owner directly authorized recovery and repair of the existing `R217.S05` PR #226 on
+2026-10-29, with slice closeout conditional on an acceptable independent review. This narrowly
+scoped row records that authorization; it does not authorize omitted work or a merge.
 
 T3 provenance: the [phase-close and P04 authorization decision](../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)
 closed `T3.P02` and `T3.P03` and released `T3.P04.S01`; that scope shipped, closed 2026-10-25 and no

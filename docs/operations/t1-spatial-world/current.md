@@ -1,11 +1,11 @@
 # T1 — Spatial world: current baton
 
 ```text
-PHASE: R217 Core Editor Stability (shared repository phase). S01–S04 and S07 are shipped;
+PHASE: R217 Core Editor Stability (shared repository phase). S01–S05 and S07–S08 are shipped;
        S11 remains the FINAL PHASE GATE.
-NEXT: S07 shipped 2026-10-29 (PR #224, preservation anchor c5aa694f). Consult the phase register
-      and owner release list for the next eligible T1 scope; S05 and S06 have no release-list row.
-      S08/S09 publish Scene and form descriptors against S07's mark contract.
+ACTIVE: No unreleased R217 slice is authorized for implementation.
+NEXT: Owner action on open PR #226; accepted S05 closeout is recorded in its acceptance artifact.
+BLOCKER: PR #226 merge decision belongs to the owner; no merge has been authorized here.
 BOUNDARIES: T1.P02 remains closed; T1 is not complete. Performance investigations are
             owner-initiated only after an observed slowdown.
 CARRY: T1 maintenance retains the one-frame `lowerColumnHeight` observation; S06 FO-1 … FO-5 and
@@ -15,6 +15,6 @@ CARRY: T1 maintenance retains the one-frame `lowerColumnHeight` observation; S06
        stays a Card field; grouping it under More is Card work) and keeps the agreed UX drifts —
        gold Paper selection ink and the one-ray Opening width — for post-S10 convergence.
 ROUTES: ../../roadmap/r217-core-editor-stability/README.md ·
-        ../../roadmap/r217-core-editor-stability/r217.s07-selection-and-mark-layer/acceptance.md ·
+        ../../roadmap/r217-core-editor-stability/r217.s05-drafting-state/acceptance.md ·
         ../../reference/architecture.md#editor-interaction-authorities
 ```

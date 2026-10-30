@@ -5,6 +5,11 @@ import { EMPTY_SELECTION, primaryEntry, sameReference, type StageSelectionState,
 import type { EntryRequalification } from './selection-requalification';
 import type { StageSelectionEntry } from './semantic-selection';
 import type { SelectionRemoval, StageLens, TaskResumeOutcome } from './stage-session';
+import {
+	STAGE_DRAFTING_DEFAULTS,
+	type StageDraftingPatch,
+	type StageDraftingState
+} from './stage-drafting';
 import type { SemanticReference, F4JsonValue, SceneFormSource } from '@portfolio/project-model';
 /**
  * The public editor host facade — the consumer boundary of
@@ -322,6 +327,8 @@ export type StageAdapterContext = {
 	selectionState(): StageSelectionState;
 	setSelection(value: StageSelectionState): StageSelectionChange;
 	select(selection: StageSelection | null): void;
+	/** The one Grid/Snap view state, read live and never written by an adapter. */
+	drafting(): StageDraftingState;
 	requestIntent(intent: ViewingIntent, clockSeconds: number): StageIntentResult;
 };
 
@@ -655,6 +662,8 @@ export type StageFacade = {
 	readonly camera: CameraSession;
 	evaluation(): ViewportEvaluation | null;
 	evaluationId(): string | null;
+	/** The drawn body of one Scene entity, as the host's pick source measured it. */
+	sceneBounds(id: string): { readonly min: Vec3; readonly max: Vec3 } | null;
 	projectWorld(point: unknown, evaluationId: string): ProjectWorldResult;
 	pointerRay(cssPoint: unknown, evaluationId: string): PointerRayResult;
 	intersectWorkingPlane(ray: PointerRay, plane: WorkingPlane, evaluationId: string): WorkingPlaneHit;
@@ -727,6 +736,9 @@ export type StageFacade = {
 	selectionState(): StageSelectionState;
 	setSelection(value: StageSelectionState): StageSelectionChange;
 	select(selection: StageSelection | null): void;
+	/** The one Grid/Snap view state. It never reaches source, history or Save. */
+	drafting(): StageDraftingState;
+	setDrafting(patch: StageDraftingPatch): StageDraftingState;
 	openTask(task: StageTask): boolean;
 	closeTask(): boolean;
 	changeLens(next: StageLens): boolean;
@@ -1093,6 +1105,9 @@ export function createStageFacade(input: {
 			selectionState: () => contextIsLive() ? session.selectionState() : EMPTY_SELECTION,
 			setSelection: (value) => contextIsLive() ? setSelection(value) : { kind: 'refused', code: 'stale-binding', message: 'Reacquire the active adapter binding.' },
 			select: (selection) => { if (contextIsLive()) select(selection); },
+			// View state is still a session fact: an ended binding must not keep
+			// reading the live session's Grid/Snap after its adapter is gone.
+			drafting: () => (contextIsLive() ? session.drafting() : STAGE_DRAFTING_DEFAULTS),
 			// The adapter names the clock: an adapter-initiated transition starts at
 			// the caller's own time, never at a fabricated zero that would make every
 			// transition begin in the past and land instantly.
@@ -1367,6 +1382,7 @@ export function createStageFacade(input: {
 		camera,
 		evaluation: () => camera.evaluation(),
 		evaluationId: () => camera.evaluationId(),
+		sceneBounds: (id) => input.sceneBounds?.(id, currentSnapshot.domain.scene) ?? null,
 		projectWorld(point, evaluationId) {
 			const evaluation = camera.evaluation();
 			if (evaluation === null || evaluationIdOf(evaluation) !== evaluationId) {
@@ -1433,6 +1449,8 @@ export function createStageFacade(input: {
 			}
 			return result;
 		},
+		drafting: () => session.drafting(),
+		setDrafting: (patch) => session.setDrafting(patch),
 		acquireInspection(policy = 'exclusive') {
 			// The host owns one inspection output, so it mints its own run order: every
 			// claim this facade acquires is strictly newer than any epoch the output has

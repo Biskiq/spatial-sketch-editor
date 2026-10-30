@@ -16,6 +16,7 @@
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
 	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
 	import { perfMeasureSync } from '$lib/platform/perf-marks';
+import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 	import type {
 		PreparedProjectLifecycle,
 		ProjectLifecycleActionResult,
@@ -67,6 +68,12 @@
 		onOpenIndex = () => {},
 		planAppearance = 'paper',
 		onPlanAppearance = () => {},
+		/** R217.S05's drafting configuration, also reachable from the words. */
+		gridIntervalMode = 'automatic',
+		gridMinorMeters = 1,
+		snapOnGrid = true,
+		onGridMinorMeters = () => {},
+		onSnapOnGrid = () => {},
 		motionSpeed = 'normal',
 		onMotionSpeed = () => {},
 		projectActionsUnavailableReason = null,
@@ -109,6 +116,12 @@
 		onOpenIndex?: () => void;
 		planAppearance?: 'paper' | 'shaded';
 		onPlanAppearance?: (value: 'paper' | 'shaded') => void;
+		/** The one Grid/Snap view state, configured from Viewing. */
+		gridIntervalMode?: 'automatic' | 'override';
+		gridMinorMeters?: number;
+		snapOnGrid?: boolean;
+		onGridMinorMeters?: (mode: 'automatic' | 'override', meters?: number) => void;
+		onSnapOnGrid?: (snap: boolean) => void;
 		motionSpeed?: 'slow' | 'normal' | 'fast';
 		onMotionSpeed?: (value: 'slow' | 'normal' | 'fast') => void;
 		projectActionsUnavailableReason?: string | null;
@@ -221,6 +234,8 @@
 		<div class="menu-body">
 			<strong>Viewing</strong>
 			<label>2D appearance <select value={planAppearance} onchange={(event) => onPlanAppearance(event.currentTarget.value as 'paper' | 'shaded')}><option value="paper">Paper</option><option value="shaded">Shaded</option></select></label>
+			<label>Grid interval <select value={gridIntervalMode === 'automatic' ? 'automatic' : String(gridMinorMeters)} onchange={(event) => { const value = event.currentTarget.value; if (value === 'automatic') onGridMinorMeters('automatic'); else onGridMinorMeters('override', Number(value)); }}><option value="automatic">Automatic</option>{#each GRID_MINOR_CHOICES as choice (choice)}<option value={choice}>{formatMeters(choice)} override</option>{/each}</select></label>
+			<label><input type="checkbox" checked={snapOnGrid} onchange={(event) => onSnapOnGrid(event.currentTarget.checked)} /> Snap to the grid</label>
 			<strong>Settings</strong>
 			<label><input type="checkbox" checked={reducedMotion} onchange={onToggleReducedMotion} /> Reduce motion</label>
 			<label>Editor motion speed <select value={motionSpeed} onchange={(event) => onMotionSpeed(event.currentTarget.value as 'slow' | 'normal' | 'fast')}><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select></label>

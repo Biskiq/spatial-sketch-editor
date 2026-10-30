@@ -46,6 +46,8 @@ import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { formCardController } from '$lib/authoring/adapters/scene/form-card';
 import { sceneObjectCardController } from '$lib/authoring/adapters/scene/object-card';
 import { sceneObjectMarkDescriptors } from '$lib/authoring/adapters/scene/object-marks';
+import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
+import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
@@ -220,6 +222,30 @@ describe('Scene placement session', () => {
 		if (snapped.kind !== 'candidate') return;
 		expect(snapped.candidate.snappedStep).toBe(0.5);
 		expect(snapped.candidate.worldXZ).toEqual([2.5, 2.5]);
+	});
+
+	it('never re-rounds a placement X/Z it was handed, and reports only the applied step', async () => {
+		const { session } = await sessionFor([boxEntity()]);
+		session.setSnapStep(2);
+		session.beginPlace('box');
+		// The adapter has already rounded to the shared 1 m increment and resolved
+		// floor support at (1, 3). A second round through the session's own 2 m step
+		// would move the pose off that floor, so the handed X/Z is authoritative.
+		const handed = session.previewPlace('box', 1, 3, 0.5, 1);
+		expect(handed.kind).toBe('candidate');
+		if (handed.kind !== 'candidate') return;
+		expect(handed.candidate.worldXZ).toEqual([1, 3]);
+		expect(handed.candidate.snappedStep).toBe(1);
+		// Support is 0.5 m and the box's local contact is -0.5 m: the installed Y is 1.
+		expect(handed.candidate.position[1]).toBeCloseTo(1, 9);
+		expect(handed.candidate.yaw).toBe(0);
+
+		// No applied step means no report, even while the session happens to hold one.
+		const raw = session.previewPlace('box', 1.37, 2.81, 0.5);
+		expect(raw.kind).toBe('candidate');
+		if (raw.kind !== 'candidate') return;
+		expect(raw.candidate.worldXZ).toEqual([1.37, 2.81]);
+		expect(raw.candidate.snappedStep).toBeNull();
 	});
 
 	it('keeps exact typed values exact and never inherits the gesture snap step', async () => {
@@ -1078,6 +1104,7 @@ describe('Scene adapter registration', () => {
 			project,
 			rect
 		);
+		facade.setDrafting({ snap: false });
 		const move = markOf(facade, 'scene-object-move');
 		// +page.svelte sends Stage-local CSS, while projectWorld returns viewport CSS.
 		const local = stageCssOf(facade, [2.6, 0, 2.4]);
@@ -1228,8 +1255,20 @@ describe('Scene adapter registration', () => {
 		const movedPreview = session.candidate();
 		expect(movedPreview?.kind).toBe('place');
 		if (movedPreview === null) return;
-		expect(movedPreview.worldXZ[0]).toBeCloseTo(3.5, 6);
-		expect(movedPreview.worldXZ[1]).toBeCloseTo(3, 6);
+		// The preview uses the live adaptive Grid/Snap minor; it is the exact pose
+		// the planner will commit, with no commit-time correction.
+		const drafting = facade.drafting();
+		const minor = drawnGridMinorMeters(drafting, facade.evaluation()!.targetPlaneMetersPerCssPixel);
+		const expected = snapDraftingPlacement(
+			[3.5, 3],
+			draftingSnapIncrementMeters(drafting, minor)
+		);
+		expect(movedPreview.worldXZ[0]).toBeCloseTo(expected.x, 6);
+		expect(movedPreview.worldXZ[1]).toBeCloseTo(expected.z, 6);
+		// Only the plan position rounds; the support-resolved Y and retained yaw do not.
+		expect(movedPreview.position[1]).toBeCloseTo(preview!.position[1], 9);
+		expect(movedPreview.yaw).toBe(0);
+		expect(movedPreview.snappedStep).toBe(expected.snappedStep);
 
 		facade.pointerIntent({ phase: 'up', css: moved, evaluationId });
 		await eventually(() => intents.length === 1);
@@ -1252,6 +1291,28 @@ describe('Scene adapter registration', () => {
 		expect(facade.closeTask()).toBe(true);
 		expect(session.armed()).toBe('select');
 		expect(facade.pointerIntent({ phase: 'down', css: second, evaluationId }).claimed).toBe(false);
+	});
+
+	it.each([
+		{ name: 'Snap off', patch: { snap: false } },
+		{ name: 'Snap held', patch: { snapSuspended: true } }
+	])('commits the raw pointer Place when $name', async ({ patch }) => {
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId } = await withSceneSurface(
+			undefined,
+			'scene-place',
+			project
+		);
+		facade.setDrafting(patch);
+		const css = cssOf(facade, [3.37, 0, 2.81]);
+		expect(facade.pointerIntent({ phase: 'down', css, evaluationId }).claimed).toBe(true);
+		const candidate = session.candidate();
+		expect(candidate?.kind).toBe('place');
+		if (candidate === null) return;
+		expect(candidate.worldXZ[0]).toBeCloseTo(3.37, 6);
+		expect(candidate.worldXZ[1]).toBeCloseTo(2.81, 6);
+		expect(candidate.snappedStep).toBeNull();
+		facade.pointerIntent({ phase: 'cancel', css, evaluationId });
 	});
 
 	it('releases the pose the press claimed even when the viewport is re-evaluated mid-press', async () => {
@@ -1505,9 +1566,9 @@ describe('Scene adapter registration', () => {
 			'scene-place',
 			project
 		);
-		session.setSnapStep(1);
-		// Raw x = 6.6 is inside the Room floor (max 6.9); snapped x = 7 is outside.
-		const raw = cssOf(facade, [6.6, 0, 3]);
+		// Raw x = 6.8 is inside the Room floor (max 6.9); the shared 0.5 m
+		// current minor snaps it to 7 m, outside support.
+		const raw = cssOf(facade, [6.8, 0, 3]);
 		expect(facade.pointerIntent({ phase: 'down', css: raw, evaluationId })).toEqual({
 			claimed: false,
 			adapterId: null
@@ -1564,27 +1625,85 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('commits one Move entry and honours the S05 snap step', async () => {
-		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
-		const { facade, session, evaluationId } = await withSceneSurface(undefined, null, project);
-		session.setSnapStep(0.5);
+		const { facade, host } = await acceptedMarksSurface();
+		const evaluationId = facade.evaluationId()!;
+		// Leave a stale Place-session mirror behind, then close Place and change the
+		// shared Stage setting after the Move capture. Move must read the live host
+		// fact, never this local 0.5 m value.
+		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 0.5, snap: true });
+		expect(facade.openContributedTask('scene-place', 'scene').kind).toBe('opened');
+		const placeStart = stageCssOf(facade, [2.5, 0, 2.5]);
+		facade.pointerIntent({ phase: 'down', css: placeStart, evaluationId });
+		const placeSurface = sceneSurfaceFor(facade.snapshot(), facade.evaluation()!);
+		expect(placeSurface?.session.snapStep()).toBe(0.5);
+		expect(facade.closeTask()).toBe(true);
+		// Model a still-live stale local mirror after task teardown; it is not the
+		// source of truth for the no-task object mark surface.
+		placeSurface!.session.setSnapStep(0.5);
+		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 0.5, snap: true });
+
 		const move = markOf(facade, 'scene-object-move');
-		const scalePointBefore = markOf(facade, 'scene-object-scale-point').descriptor.anchor;
-		const target = stageCssOf(facade, [2.62, 0, 2.54]);
+		const target = stageCssOf(facade, [3.62, 0, 2.54]);
+		const depth = host.history().depth;
 		expect(facade.pointerIntent({ phase: 'down', css: move.anchor, evaluationId, handleId: move.id }).claimed).toBe(true);
 		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
-		// The disclosure belongs to the body, so its corner follows the candidate
-		// instead of staying at the accepted pose.
-		const scalePointAfter = markOf(facade, 'scene-object-scale-point').descriptor.anchor;
-		expect(scalePointAfter[0]).not.toBeCloseTo(scalePointBefore[0], 6);
+		expect(facade.ghosts()[0]!.center[0]).toBe(3.5);
+		expect(facade.ghosts()[0]!.center[2]).toBe(2.5);
+		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 2 });
+		expect(placeSurface?.session.snapStep()).toBe(0.5);
+		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
 		const ghost = facade.ghosts()[0];
 		expect(ghost).toBeDefined();
-		expect(ghost!.center[0]).toBeCloseTo(2.5, 6);
-		expect(ghost!.center[2]).toBeCloseTo(2.5, 6);
+		// Numeric expectations are independent of the production interval/rounding helpers.
+		expect(ghost!.center[0]).toBe(4);
+		expect(ghost!.center[2]).toBe(2);
 		facade.pointerIntent({ phase: 'up', css: target, evaluationId });
-		await eventually(() => facade.snapshot().domain.scene.entities[0]?.position[0] === 2.5);
+		await eventually(() => facade.snapshot().domain.scene.entities[0]?.position[0] === 4);
 		const live = facade.snapshot().domain.scene.entities[0]!;
-		expect(live.position[0]).toBe(2.5);
-		expect(live.position[2]).toBe(2.5);
+		expect(live.position[0]).toBe(4);
+		expect(live.position[2]).toBe(2);
+		expect(host.history().depth).toBe(depth + 1);
+		const acceptedPosition = host.history().position;
+		expect((await host.undo()).kind).toBe('installed');
+		expect(facade.snapshot().domain.scene.entities[0]!.position).toEqual([2, 0.5, 2]);
+		expect(host.history().depth).toBe(depth + 1);
+		expect(host.history().position).toBe(acceptedPosition - 1);
+	});
+
+	it('keeps Move numeric for Snap off and Alt/Option hold, and refuses a snapped floor boundary', async () => {
+		for (const state of [
+			{ snap: false, snapSuspended: false },
+			{ snap: true, snapSuspended: true }
+		]) {
+			const { facade } = await acceptedMarksSurface();
+			facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 2, ...state });
+			const evaluationId = facade.evaluationId()!;
+			const move = markOf(facade, 'scene-object-move');
+			const target = stageCssOf(facade, [2.62, 0, 2.54]);
+			expect(facade.pointerIntent({ phase: 'down', css: move.anchor, evaluationId, handleId: move.id }).claimed).toBe(true);
+			facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+			expect(facade.ghosts()[0]!.center[0]).toBe(2.62);
+			expect(facade.ghosts()[0]!.center[2]).toBe(2.54);
+			facade.pointerIntent({ phase: 'cancel', css: target, evaluationId });
+			facade.dispose();
+		}
+
+		const { facade, host } = await acceptedMarksSurface();
+		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 2, snap: true });
+		const evaluationId = facade.evaluationId()!;
+		const move = markOf(facade, 'scene-object-move');
+		// Raw aim is inside the 7 × 6 m Room floor; snapping Z to exactly 6 m
+		// reaches its boundary, which the accepted planner must refuse.
+		const boundary = stageCssOf(facade, [6.8, 0, 5.8]);
+		const source = facade.snapshot().canonicalJson;
+		const depth = host.history().depth;
+		expect(facade.pointerIntent({ phase: 'down', css: move.anchor, evaluationId, handleId: move.id }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: boundary, evaluationId });
+		expect(facade.ghosts()).toEqual([]);
+		facade.pointerIntent({ phase: 'up', css: boundary, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(facade.snapshot().canonicalJson).toBe(source);
+		expect(host.history().depth).toBe(depth);
 	});
 
 	it('commits one Turn entry through the yaw planner', async () => {
@@ -1787,6 +1906,7 @@ describe('Scene adapter registration', () => {
 
 	it('installs the same Scene source from a dragged Move and typed Position fields', async () => {
 		const dragged = await acceptedMarksSurface();
+		dragged.facade.setDrafting({ snap: false });
 		const draggedMove = markOf(dragged.facade, 'scene-object-move');
 		const draggedTarget = stageCssOf(dragged.facade, [2.6, 0, 2.4]);
 		const draggedEvaluation = dragged.facade.evaluationId()!;
@@ -1824,6 +1944,7 @@ describe('Scene adapter registration', () => {
 
 	it('commits one F4 entry for a mark release on a real acceptance host', async () => {
 		const { facade, host } = await acceptedMarksSurface();
+		facade.setDrafting({ snap: false });
 		const before = host.history().depth;
 		const move = markOf(facade, 'scene-object-move');
 		const target = stageCssOf(facade, [2.6, 0, 2.4]);

@@ -26,6 +26,12 @@ import type { EntryRequalification } from './selection-requalification';
 import type { PlanSourceKind, PlanSourceRef } from '@portfolio/layout-core';
 import type { StageReadSnapshot } from './accepted-read';
 import { EMPTY_SELECTION, admitSelection, primaryEntry, layoutSelectionReference, sameReference, type StageSelectionState, type StageSelectionChange, type StageSelectionEntry } from './semantic-selection';
+import {
+	STAGE_DRAFTING_DEFAULTS,
+	applyDraftingPatch,
+	type StageDraftingPatch,
+	type StageDraftingState
+} from './stage-drafting';
 
 export type SessionEpoch = string;
 
@@ -222,6 +228,12 @@ export type StageSession = {
 	setSelection(value: StageSelectionState): StageSelectionChange;
 	lens(): StageLens;
 	changeLens(next: StageLens): boolean;
+	/**
+	 * The one Grid/Snap view state. It is view state only: changing it writes no
+	 * source, no history entry and no Save, and a project replacement keeps it.
+	 */
+	drafting(): StageDraftingState;
+	setDrafting(patch: StageDraftingPatch): StageDraftingState;
 	taskLifecycle(): TaskLifecycle | null;
 	resumeTask(validate: (task: StageTask, current: StageReadSnapshot) => TaskResumeOutcome): TaskResumeOutcome;
 	/** Invalidates lens/task-bound asynchronous writers without replacing accepted content. */
@@ -382,6 +394,9 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 	let selectionValue: StageSelectionState = EMPTY_SELECTION;
 	let hoverValue: StageSelectionEntry | null = null;
 	let lens: StageLens = 'world';
+	// Grid/Snap are creator view state, not project state: they survive a content
+	// change and a replacement exactly as the lens does.
+	let draftingValue: StageDraftingState = STAGE_DRAFTING_DEFAULTS;
 	let taskStatus: 'active' | 'inactive' = 'active';
 	let writerGeneration = 0;
 	let taskChoiceGeneration = 0;
@@ -491,6 +506,12 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		},
 		select: setLegacy,
 		lens: () => lens,
+		drafting: () => draftingValue,
+		setDrafting(patch) {
+			if (disposed) return draftingValue;
+			draftingValue = applyDraftingPatch(draftingValue, patch);
+			return draftingValue;
+		},
 		writerGeneration: () => writerGeneration,
 		taskChoiceGeneration: () => taskChoiceGeneration,
 		changeLens(next) {
