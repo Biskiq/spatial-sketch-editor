@@ -1,6 +1,6 @@
 # Post-S10 convergence — owner decisions
 
-**All nine accepted by the owner on 2026-10-30, as recommended.** Everything else in the [target specification](./target-specification.md) follows from evidence or an existing contract. The alternatives and tradeoffs stay here as the record of what was decided against. The owner then directed registration as R217.S12–S25. No slice is released.
+**All nine accepted by the owner on 2026-10-30, as recommended.** Everything else in the [target specification](./target-specification.md) follows from evidence or an existing contract. The alternatives and tradeoffs stay here as the record of what was decided against. The owner then directed registration as R217.S12–S25, and proposed one [campaign authorization](../../../reference/decisions/r217-convergence-campaign-2026-10-30.md) for the batch, which takes effect when PR #230 merges.
 
 Decisions marked **amends a contract** change ratified text. The implementing slice updates that text at cutover, not before; until then the landed contract still describes current behaviour.
 
@@ -86,7 +86,7 @@ Today's end point already moves the shared Junction, but only along the Wall's l
 
 **Why 1 m and 0.5 m:** they are the wireframe's values and PLATE's reference scale. Half of all snap points therefore land between lines; the snap mark shows the landing, so this should read fine, and S13 checks it.
 
-**Precision is preserved:** typed values, Alt to free the pointer, and semantic snap targets are unaffected. Interval state stays internal, ready for a preference later, with no toolbar control.
+**Precision is preserved:** typed values, Alt to free the pointer, and semantic snap targets are unaffected. The values stay named constants, so a later preference has one seam to extend, with no toolbar control.
 
 ## O8 — Scale control
 
@@ -112,6 +112,24 @@ The evidence is sufficient for these, so they are simply in the plan:
 - **Primitive click placement:** the instrument offers typed X/Z only; click placement already exists for models.
 - **Card during a gesture:** it must not cover what is being edited.
 - **Junction onto Junction:** stays a refusal, because the planner rejects it and no merge operation exists. Adding one is new topology work and is outside this plan.
+
+## Deferred: door swing
+
+**Proposal, accepted by merging PR #230:** defer door swing from this campaign and from S16. I'd earlier listed it as a small closing item, which was wrong.
+
+- **Evidence:** `LayoutWallOpening` has `kind: 'door' | 'window'`, with no hinge side or swing direction. The Plan representation carries only `centerPolyline`, and S04 recorded that an arc waits until the representation carries one.
+- **Why not derive it:** the wireframe picks a hinge end and side with no data behind them. Doing the same in production would draw a fact nobody authored, and it could flip after an edit.
+- **What it would take:** new Layout fields, a format change, representation output and Paper drawing, which is a new capability.
+- **Until then:** doors keep today's straight symbol. The carry stays on the T1 baton.
+
+## Tightening notes
+
+The final pass settled these within the accepted rulings, each narrowing what was specified:
+
+- **Junction hover is Plan-only (O9).** In 3D, a Junction behind a Wall would need a new occlusion policy.
+- **Layout has no 3D candidate mesh.** It draws the same outline at the datum, because a mesh would be a new rendering path. Scene and form ghosts stay meshes.
+- **No new snap geometry.** Parallel-Wall alignment is removed, and `extension-guide` stays unused because it has no candidates. A Wall body snaps by distance.
+- **S12 and S19 move to T1 ownership**, per the architecture contract.
 
 ## Contract conflicts
 

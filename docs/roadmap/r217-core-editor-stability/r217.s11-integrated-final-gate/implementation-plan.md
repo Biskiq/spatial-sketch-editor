@@ -1,6 +1,6 @@
 # R217.S11 — Integrated final gate: implementation plan
 
-**Slice:** R217.S11 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+**Slice:** R217.S11 · **Status:** approved (plan); released by the [campaign record](../../../reference/decisions/r217-convergence-campaign-2026-10-30.md) when PR #230 merges; acceptance and merge stay with the owner · **Phase:**
 [R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
 **Reviewers:** T2, T3, T5 and an independent reviewer · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md)
@@ -42,7 +42,7 @@ persistence classes.
 | **L** | The existing L Layout fixture from the H0 harness |
 | **mixed** | A 3 × 2 room plan with a plinth, one catalogue model, one primitive and one native form, including a 0.9 m low Wall and a 0.75 m table |
 
-The *mixed* fixture is added as a checked-in project JSON in `apps/editor/tests/lib/authoring/fixtures/`.
+The *mixed* fixture and its browser seeding come from [R217.S17](../r217.s17-scene-and-form-manipulation/implementation-plan.md), so this slice adds no second fixture.
 
 ### 4.2 Pointer and viewport matrix
 

@@ -1,8 +1,9 @@
 # R217.S23 — Ink palette and constrained widths: implementation plan
 
-**Slice:** R217.S23 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
-[R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
-**Reviewers:** T2, T5 · **Runbook:**
+**Slice:** R217.S23 · **Status:** approved (plan); released by the
+[campaign record](../../../reference/decisions/r217-convergence-campaign-2026-10-30.md) when PR #230 merges · **Phase:**
+[R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** the convergence
+integrator · **Architecture owner:** T1 (host, Layout), T2 and T5 (their instruments) · **Specialist review:** T2 and T5: instruments in the shared host · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md)
 
 ```text
@@ -12,7 +13,7 @@ VERIFICATION: affected-subsystem
 INTEGRATION ROUTE: ../r217.s11-integrated-final-gate/implementation-plan.md
 ```
 
-Planning label C03b. Fixes D13, D14 in the [drift register](../post-s10-convergence/drift-register.md).
+Planning label C03b. **Class:** Core drift from the accepted wireframe. Fixes D13, D14 in the [drift register](../post-s10-convergence/drift-register.md).
 
 ## 1. Outcome
 
@@ -22,23 +23,25 @@ The Ink palette no longer covers the drawing, and the shell stays usable at 1280
 
 - R217.S14 and R217.S22
 - Every consumed gate and required scope rechecked at this slice's trusted base.
-- The [rules for every slice](../post-s10-convergence/execution-plan.md#rules-for-every-slice) apply: shared-file claims, browser widths, the interaction journey, rollback and contract edits.
+- The [rules for every slice](../post-s10-convergence/execution-plan.md#rules-for-every-slice) apply: shared-file order, browser widths, the interaction journey, rollback and contract edits.
 
 ## 3. Scope
 
 **Behaviour:** [Lower edge](../post-s10-convergence/target-specification.md#lower-edge-height-sheet-and-responsive).
 
-**Files:**
+**Components:**
 
-- `apps/editor/src/lib/authoring/adapters/layout/LayoutInkPalette.svelte`
-- `apps/editor/src/lib/authoring/stage/shell/StageInstrumentHost.svelte`
-- `apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte`
-- The spatial route
+| Part | Where | Change |
+| --- | --- | --- |
+| Instrument container | `apps/editor/src/lib/authoring/stage/shell/StageInstrumentHost.svelte` | Drops the `WORLD INSTRUMENT` panel treatment for one row above the dock, for every instrument it hosts |
+| Ink content | `apps/editor/src/lib/authoring/adapters/layout/LayoutInkPalette.svelte` | Reading and mode as compact keys; Finish, Backtrack and Cancel in the row; typed X/Z and options disclose upward |
+| Opening and Scene instruments | `apps/editor/src/lib/authoring/adapters/layout/LayoutOpeningPalette.svelte` and `apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte` | Must still fit the new container; content is not redesigned |
+| Narrow Index | `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` `@media (max-width: 1279px)` and `apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte` | Starts collapsed below 1280 as session state. The `100vmax` shadow becomes an explicit scrim that ends at the dock's measured span |
 
 **Rules:**
 
-- Compact icons and modes in a single row above the dock, keeping typed X/Z, Finish, Backtrack, Cancel, Wall Box and Shape Line, Box, Round and Sketch. Parameters that need room disclose upward.
-- At constrained widths the Index starts collapsed and opens as a sheet with an explicit scrim that stops above the dock.
+- Every Ink mode, typed path and Shape reading is retained.
+- Browser calibration owns icon choice and spacing.
 
 **Contracts this slice updates at cutover:**
 
@@ -46,6 +49,7 @@ The Ink palette no longer covers the drawing, and the shell stays usable at 1280
 
 ## 4. Test cases
 
+- Tests: `layout-drawing-adapter.test.ts`, `shape-reading-adapter.test.ts`, `stage-shell-composition.test.ts`.
 - Every Ink mode and typed path is retained.
 - The scrim stops above the dock.
 
@@ -59,4 +63,4 @@ The Ink palette no longer covers the drawing, and the shell stays usable at 1280
 
 - Experience.
 
-Stop and report if correctness needs a planner, persisted-format or Camera-authority change this plan does not name, or a decision the [owner rulings](../post-s10-convergence/owner-decisions.md) do not cover. The [Plan authoring audit](../post-s10-convergence/plan-authoring-audit.md) has the evidence behind this scope.
+Stop and report if correctness needs a planner, persisted-format, new snap geometry or Camera-authority change this plan does not name, or a decision the [owner rulings](../post-s10-convergence/owner-decisions.md) do not cover. The [Plan authoring audit](../post-s10-convergence/plan-authoring-audit.md) has the evidence behind this scope.

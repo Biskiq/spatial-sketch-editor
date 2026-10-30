@@ -38,7 +38,7 @@ The foundation is sound. These passed live and should not be rebuilt:
 | **Wall angle, height, thickness** (A) | Card fields | — | — | S07: no ring, no grips | Kept |
 | **Curved Wall** (C) | Curve planners in layout-core | — | No Stage marks | Admission waits for curved authoring | Kept |
 | **Opening slide and width** (B slide, A width) | Mark, tag and one Undo; slides along host | Tag can sit under the Card | Unsnapped: 4.5038 m. Body drag absent. `resolveOpeningDragSnap` unused (D31) | Head and sill rays | S16 |
-| **Opening symbol** (B) | Reads as a gap with a thin line | No door swing | — | S04 carried swing | S16 |
+| **Opening symbol** (B) | Reads as a gap with a thin line | No door swing | — | [Door swing deferred](./owner-decisions.md#deferred-door-swing): no hinge or side is authored | — |
 | **Primitive placement** (B) | Typed X/Z works | No ghost | **Click placement absent;** the default X 0, Z 0 landed on the Room boundary (D37) | — | S17 |
 | **Catalogue and model placement** (C, A) | Click placement | Paper ghost masked (D17); model ghost null (D18) | The Library showed no catalogue in this project; not verified live | — | S17 |
 | **Object Move mark** (B) | Snaps; live tag; one Undo | **Accepted outline stays and nothing moves until release** (D17) | Body drag absent on large objects (D33) | — | S17 |

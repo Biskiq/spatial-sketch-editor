@@ -235,8 +235,10 @@ closeout updates only the owning baton; cross-track status stays in its owning r
   creates its acceptance workspace. Its shell-coherence work is the repository phase
   [R217](./r217-core-editor-stability/README.md), registered 2026-10-28 with no slice released;
   it starts after `T5.P01.S03` merges and serializes its Stage, route and Scene adapter edits
-  under the protocol above. Post-S10 slices S12–S25 were registered there on 2026-10-30, also with
-  no slice released.
+  under the protocol above. Post-S10 slices S12–S25 were registered there on 2026-10-30. When the
+  owner merges PR #230, its [campaign record](../reference/decisions/r217-convergence-campaign-2026-10-30.md) replaces this
+  section's track-by-track writers and reviews for that batch, keeping architecture owners,
+  serialized shared files and the merge gate.
 - **Cycle/closure:** no track completion, owner architecture verdict, phase closure or baseline
   is created here. Re-arming a mechanism in its consuming slice is not a verdict.
 

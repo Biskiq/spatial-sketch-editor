@@ -25,28 +25,29 @@ It has crisp edges, like a sheet of drafting paper. It grows when a candidate le
 
 **Ruler.** `StageScaleBar.svelte` becomes a 1 px horizontal line with 5 px perpendicular end ticks and the distance label centred below it. No fill, border or badge. Ink comes from the surface. Shown in Plan only, because a perspective length is true only at the target plane. It stays bottom-left and rises only when it would actually overlap the lower column.
 
-**Zoom cluster (D40).** Lower right: zoom in, zoom out, Fit, moving aside for the Height Sheet as in the wireframe. Fit uses the existing `fit` intent; zoom steps use the same Camera zoom the wheel drives.
+**Zoom cluster (D40).** Lower right: zoom in, zoom out, Fit, moving aside for the Height Sheet as in the wireframe. Fit uses the existing `fit` intent; zoom steps use the same Camera zoom the wheel drives, by a factor of 1.25 per press.
 
-**Preserved, not removed.** Scale detents via Find; the `f` key as today; Alt for a free point; typed values everywhere; interval state stays internal so a preference can expose it later.
+**Preserved, not removed.** Scale detents via Find; the `f` key as today; Alt for a free point; typed values everywhere. The values are named constants in one module, so a later preference has one seam to extend.
 
 ## One snap service
 
-There is no new engine. A small Stage helper chooses what is allowed per operation and calls the existing resolvers against the captured baseline, with the moving owners excluded, as pre-prune did.
+There is no new engine and no new snap geometry. Layout's policy is a small module in the Layout adapter that chooses what is allowed per operation and calls the existing resolvers against the captured baseline, with the moving owners excluded, as pre-prune did. Scene keeps `snapDraftingPoint`.
 
 | Operation | Allowed targets, highest first | Falls back to |
 | --- | --- | --- |
 | Ink Wall point | Existing Junction and host targets; `orthogonal-guide` from the last point | Grid 0.5 m |
-| Junction drag | `orthogonal-guide` and `extension-guide` from each neighbour | Grid 0.5 m |
-| Wall body | Normal distance: another Wall's parallel line within 8 px | Axis-aligned: grid line. Otherwise: multiples of 0.5 m |
-| Wall length ray | — | Length multiples of 0.5 m |
-| Opening slide | `resolveOpeningDragSnap` edge and centre targets | Offset multiples of 0.5 m |
-| Opening width | — | Width multiples of 0.1 m |
+| Junction drag from a selected Wall | `orthogonal-guide` from that Wall's other end | Grid 0.5 m |
+| Hovered Junction drag | — | Grid 0.5 m |
+| Wall body and two-way grip | — | Normal distance in multiples of 0.5 m |
+| Wall length ray | — | Length in multiples of 0.5 m |
+| Opening slide | `resolveOpeningDragSnap` edge and centre targets | Offset in multiples of 0.5 m |
+| Opening width | — | Width in multiples of 0.1 m |
 | Scene and form Move | — | Grid 0.5 m, as today |
 | Turn | Existing Turn steps | — |
 
 A Junction may not snap onto another Junction or a Wall, because the planner refuses both; offering the target would promise a refused result. Alt suspends every row. The acquisition radius is `resolveLayoutSnap`'s existing 8 CSS px.
 
-**Snap mark.** At the winning point, a small mark plus a one-word tag: `Junction`, `Midpoint`, `Aligned`, `Grid`, as the grammar requires. Nothing shows when nothing is winning.
+**Snap mark.** At the winning point, a small mark plus a one-word tag: `Junction`, `Aligned`, `Grid`, as the grammar requires. Nothing shows when nothing is winning.
 
 ## Hit priority
 
@@ -59,7 +60,7 @@ One table for Plan and 3D, Select tool, fine and coarse pointers. Applies O9.
 | 3 | Disclosure mark | Reveals | Nothing |
 | 4 | Edit mark of the selection (22 px, 44 px coarse) | Nothing | That mark's edit |
 | 5 | Selected subject's body, when the pick winner **is** that subject | Keeps selection | Edits, per the tables below |
-| 6 | Hovered Junction, mouse only | Nothing | Junction move |
+| 6 | Hovered Junction, mouse in Plan only | Nothing | Junction move |
 | 7 | Other geometry | Selects the winner | Pans |
 | 8 | Empty Stage | Clears selection | Pans; Shift-drag orbits in 3D |
 
@@ -93,7 +94,7 @@ Reads the existing `planRigidWallMove`, `planExactJunctionMove` and `planExactWa
 | Free-standing Wall | Moves with nothing else affected |
 | Openings on the moved Wall | Keep identity, host, offset, width and profile |
 | Openings on a reshaped neighbour | Keep their offset. If one no longer fits, the whole candidate is refused; **Openings are never re-seated silently** |
-| Junction onto a Junction or across a Wall | Refused as `topology_invalid`. No merge exists |
+| Junction onto a Junction or across a Wall | Refused by the planner. No merge exists |
 | Room identity or portal relation breaks | Refused atomically |
 | Curved Wall | Its Junctions and rigid move use the same planners; curve marks stay deferred. If `wallFrame` returns null, Card only |
 | Scene objects in a changed Room | Unaffected by this gesture. They are not re-supported and show their own state after commit |
@@ -102,7 +103,7 @@ Reads the existing `planRigidWallMove`, `planExactJunctionMove` and `planExactWa
 
 | State | Shown |
 | --- | --- |
-| **Preview** | The planner's candidate: moved Wall in selection ink, each reshaped neighbour in a neutral outline, over the accepted drawing. In 3D, the same candidate as a translucent mesh |
+| **Preview** | The planner's candidate: moved Wall in selection ink, each reshaped neighbour in a neutral outline, over the accepted drawing. In 3D, the same outline at the datum; no Layout candidate mesh is added |
 | **Valid** | Value tag at the gesture; snap mark at the winning point |
 | **Invalid** | Candidate removed, since no valid one exists. A thin neutral dashed line to the pointer and a tag with a readable reason near it. Never red, which means erase, and never a clamp to the last valid pose |
 | **Refusal words** | Human text from the adapter, for example `This would cross another Wall`, never a raw id or code |
@@ -135,7 +136,7 @@ type StageCandidatePreview = {
 
 **Ink palette.** It must not cover the drawing, per the [lower edge](#lower-edge-height-sheet-and-responsive) rule below.
 
-**Openings.** A Plan click within an Opening's aperture selects the Opening, and Select uses the same Opening-over-host rule the Eraser already uses. A selected Opening's body drag slides it along its host, with position track and width ray kept. Door swing is drawn, closing S04's carried gap.
+**Openings.** A Plan click within an Opening's aperture selects the Opening, and Select uses the same Opening-over-host rule the Eraser already uses. A selected Opening's body drag slides it along its host, with position track and width ray kept. Door swing is [deferred](./owner-decisions.md#deferred-door-swing).
 
 **Objects and forms.** A selected object's or form's body drag is Move, using the existing `place-on-floor` planner. Turn and Size keep their marks. Marks must not crowd a small subject: below 48 px across, the Turn ring and Scale point stay at their fixed screen radius and the body remains Move.
 
@@ -176,7 +177,7 @@ near       = max(NEAR_FLOOR, min(distance − sceneRadius, 0.9 × groundNear))
 
 **Mat (`StageCanvas.svelte`).** Centred on the quantised target, half-extent at least 1.5 × reach, with a polygon offset.
 
-**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in S19's browser check, the slice uses O4's fade alternative. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
+**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in S19's browser check, the slice uses O4's fade alternative. The [slice plan](../r217.s19-3d-ground-clipping/implementation-plan.md#3a-experimental-checkpoint) owns the checkpoint, pass criteria and fallbacks. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
 
 ## Selection
 
@@ -233,4 +234,4 @@ Shared homes: lens in the Head, locator in the Index, selected facts in the Card
 
 ## Non-goals
 
-No new geometry or picking authority, global shell rewrite, Junction merge, Wall height or thickness grips, angle ring, curve marks, Slice or Brush, Levels, publication feature or visitor authoring machinery. No removal of imported models, native-form axis sizing, catalogue uniform scale, Paper and shaded preference, or typed precision. No formal performance benchmark: [the mandate is suspended](../../../reference/decisions/performance-mandate-suspension-2026-10-28.md), so slices assert deterministic bounds and observed smoothness.
+No new geometry or picking authority, new snap geometry, door swing, global shell rewrite, Junction merge, Wall height or thickness grips, angle ring, curve marks, Slice or Brush, Levels, publication feature or visitor authoring machinery. No removal of imported models, native-form axis sizing, catalogue uniform scale, Paper and shaded preference, or typed precision. No formal performance benchmark: [the mandate is suspended](../../../reference/decisions/performance-mandate-suspension-2026-10-28.md), so slices assert deterministic bounds and observed smoothness.
