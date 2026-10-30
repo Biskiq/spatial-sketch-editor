@@ -1,9 +1,11 @@
 # R217.S13 — acceptance record: Drafting simplification
 
-**AUTHORITY: NONE.** Status: **implemented; independent review pending**. This record claims no
-review result and no merge. **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the
-criteria) · **Phase:** [R217](../README.md) · **Integration route:**
-[R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**AUTHORITY: NONE.** R217.S13 is shipped. The phase [slice register](../README.md#slice-register)
+owns status. **Accepted 2026-10-30** after a fresh independent review returned **CLEAN** at
+`71c058e0`; three non-blocking P3 wording nits were corrected after that verdict without changing
+behaviour, and no P0–P2 finding remains. **Plan:** closed stub
+[implementation-plan.md](./implementation-plan.md) · **Phase:** [R217](../README.md) · **Integration
+route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 ## Implementation
 
@@ -66,12 +68,13 @@ editor, starter **Enclosed room**:
   the cluster, lower-left ruler and lower-right zoom/Fit furniture match in structure; the
   remaining differences are PLATE calibration, not a drafting-value or layering difference.
 - Two free Walls, one drawn at Fit and one after two zoom-in presses, were downloaded from
-  **Download source JSON** and preserved as [two-zoom-source.json](./evidence/2026-10-30-browser/two-zoom-source.json).
+  **Download source JSON** and preserved as
+  [two-zoom-source.json](../../../archive/roadmap/r217-core-editor-stability/r217.s13-drafting-simplification/evidence/2026-10-30-browser/two-zoom-source.json).
   The new Junction points are `-1.5,1.5`, `-1,1.5`, `-3,-2.5` and `-2,-2.5`; every coordinate is
   an exact multiple of 0.5 m, so the drawings share one lattice.
 - D43 did not reproduce: the reading control answered on the first press and every later press.
 
-Captures and byte hashes are in the [evidence record](./evidence/README.md).
+Captures and byte hashes are in the [archived evidence manifest](../../../archive/roadmap/r217-core-editor-stability/r217.s13-drafting-simplification/evidence/2026-10-30-browser/CLOSED.md).
 
 ## Evidence limits
 
@@ -85,3 +88,23 @@ were not treated as a new defect in this slice. 3D clipping remains R217.S19.
 ## Residuals
 
 No known defect for this slice. No waiver or deferred acceptance item is carried by this record.
+
+## Closeout preservation — R217.S13 (2026-10-30)
+
+```text
+prose compacted:                 1   approved plan -> stub at its own path
+reference promotions:            0   PLATE and the milestone were updated at implementation cutover
+renderable evidence archived:    14 files / 890,250 bytes
+evidence stubs / manifests:      1   archive CLOSED.md + live evidence pointer
+                                 (source JSON archived alongside, 6,909 bytes)
+transient artifacts removed:     0
+historical anchor:               050a30d9418a9a910a320388ae2ea4d879f1b34c · tag closed/r217.s13
+new live -> archive prose links: 0   evidence links point at the manifest and source JSON
+manual-owed verification rows:   0
+remaining deferred items:        0 known defects; S11 integrated journeys only
+permanent stubs added:           1   the closed plan
+```
+
+P1 merge required (PR #232). After merge, verify the historical anchor is an ancestor of `main`,
+inspect the recovery path with `git show <anchor>:<path>`, and confirm the tag target retains the
+anchor. The branch head is deliberately not pinned here because this PR's merge will change it.
