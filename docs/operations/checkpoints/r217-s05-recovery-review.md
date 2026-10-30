@@ -10,7 +10,7 @@ CONSTRAINTS:
 - Owner authorizes recovery and repairs directly in this conversation despite the stale release-list wording. No visual polish (post-S10).
 - No merge. Do not run slice closeout until the reviewing conversation finds the repair acceptable; a separate Luna medium chat will own closeout.
 - Worktree: `/Users/tony/Documents/Biskiq/worktrees/r217-s05-drafting-state`; branch `codex/r217-s05-drafting-state`.
-- Preserve existing work and other worktrees. A merge is currently in progress; do not restart or discard it.
+- Preserve existing work and other worktrees. The merge is complete; do not close out or merge the PR.
 
 READ:
 - docs/README.md; T1 runbook and baton; R217 phase README; S05 implementation plan and acceptance record.
@@ -56,16 +56,19 @@ VERIFICATION:
   switched between Plan and 3D, used Scale detents and Fit all, orbited and wheel-zoomed in 3D, and
   toggled Grid, Snap and Alt/Option hold/release. Grid and Snap both read `0.5 m` after Fit all; no
   source was saved. The owned browser and Vite server were closed.
-- Tested working tree was based on `d5c7fe4854dda29c71e51ef4baa2ac025a2535bb` plus the
-  `ac944f02beaa892aa5579a03e0b5fa4561831cae` merge. The merge-resolution commit records its final
-  identity.
+- Product verification ran against merge-resolution commit
+  `8c5e39b5325dab650cf6e3640a4ecac2623f5338`, tree
+  `25d96ef517a6b621fe04285e4e537d9fc8ca4294`, based on interrupted commit
+  `d5c7fe4854dda29c71e51ef4baa2ac025a2535bb` and main/S08 commit
+  `ac944f02beaa892aa5579a03e0b5fa4561831cae`.
+- PR #226 is updated and pushed at `8c5e39b5325dab650cf6e3640a4ecac2623f5338`; it remains open
+  and unmerged. The parent conversation received the independent-review handoff.
 
 NEXT:
-1. Finish the merge-resolution commit and update the existing PR description and acceptance evidence.
-2. Send the repaired PR and severity-rated findings to the parent conversation for independent review.
-3. Do not close out or merge; the parent will decide whether the release-list exception and
+1. Parent performs independent review and decides whether the release-list exception and
    configured-interval semantics are acceptable.
+2. Do not close out or merge in this repair chat; the separate owner/reviewer closeout path remains.
 
 OPEN:
-- Repair agent must report severity-rated fixed and unresolved findings and exact checked revision/tree.
+- Product repair and reporting are complete; independent review is pending.
 - Parent chat: `01a18a8e-a188-7e93-ae0f-c8b613fa7174` (Review and repair PR #226). Human explicitly authorizes the repair chat to message it for re-review.

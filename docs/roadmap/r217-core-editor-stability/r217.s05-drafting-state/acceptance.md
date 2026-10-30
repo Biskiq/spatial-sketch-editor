@@ -14,7 +14,9 @@ slice closeout.
 `d5c7fe4854dda29c71e51ef4baa2ac025a2535bb` with `origin/main`
 `ac944f02beaa892aa5579a03e0b5fa4561831cae` merged in the working tree. The Scene conflicts were
 resolved from the S08 main-side Card/marks structure, carrying only S05's shared placement snap
-into it. Final repaired commit identity is recorded after the merge-resolution commit.
+into it. Product verification ran against merge-resolution commit
+`8c5e39b5325dab650cf6e3640a4ecac2623f5338` (tree
+`25d96ef517a6b621fe04285e4e537d9fc8ca4294`).
 
 ### Findings
 
