@@ -85,5 +85,5 @@ Ordered by what a creator feels most.
 
 - **One drag target per Wall.** Select it, then drag it. Marks stay for precision and touch.
 - **One snap fact.** Zoom never changes it, so it needs no explanation.
-- **Fewer permanent controls.** Grid and Snap words, a ruler and three zoom buttons replace a Scale menu, interval selectors and a settings popover on the toolbar.
+- **Fewer permanent controls.** Grid and Snap words, a ruler and three zoom buttons replace a Scale menu and interval selectors. One ⚙ for viewing preferences replaces the ☰ menu.
 - **Progressive depth.** Typed values at the gesture, Card fields, Alt for free movement and preferences later. None of it is removed, and none of it is mandatory.

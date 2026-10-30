@@ -1,6 +1,6 @@
 # Rendering and Camera investigation
 
-Audit base `9139f3c2`, Chromium, 2026-10-30. No production file was instrumented or fixed. Browser evaluation observed the existing renderer hook; numerical probes imported Camera-core directly. Results below distinguish reproduced causes from remaining hypotheses.
+Audit base `9139f3c2`, Chromium, 2026-10-30. No production file was instrumented or fixed. Browser evaluation observed the existing renderer hook; numerical probes imported Camera-core directly. Results below distinguish reproduced causes from remaining hypotheses. Where this record says O1, O3 or O4 still need adjudicating, the owner has since [accepted them](../owner-decisions.md).
 
 ## Grid cutoff: reproduced, open
 

@@ -1,6 +1,6 @@
 # Post-S10 convergence — execution plan
 
-**Proposal. Nothing here is registered or released.** The labels below are planning names. An owner decision turns them into R217 slices under [bounded replanning](../../../operations/README.md#bounded-replanning), with a [release list](../../now.md) row for each, before any implementation starts. S11 stays R217's final gate and runs after them. Behaviour is defined in the [target specification](./target-specification.md).
+**[Owner decisions](./owner-decisions.md) O1–O9 accepted 2026-10-30. No slice is registered or released.** The labels below are planning names. An owner decision turns them into R217 slices under [bounded replanning](../../../operations/README.md#bounded-replanning), with a [release list](../../now.md) row for each, before any implementation starts. S11 stays R217's final gate and runs after them. Behaviour is defined in the [target specification](./target-specification.md).
 
 ## How C01–C10 changed
 
@@ -24,9 +24,9 @@ Four slices split, because each either hid a consequential decision or mixed unr
 | 2 Direct editing | C07a Wall manipulation | D19, D31, D33 | C05, C09b, O2, O6 | T1 | T2 |
 | | C07b Openings and Junction hover | D31, D35 | C07a, O9 | T1 | — |
 | | C06 Scene and form manipulation | D17, D18, D33, D37, D38 | C05, C09b, O9 | T2 | T1, T5 |
-| | C10 Selection | D22 | C06; O1 for calibration | T1 | T2, T5 |
+| | C10 Selection | D22 | C06; O1 | T1 | T2, T5 |
 | | C09a 3D clipping | D21, D28 | C08, C09b, O4 | T3, then T1 | T1, T3 |
-| 3 Shell | C01 Roles and Head | D01–D04, D25, D26 | Interim Find; O5 for final placement | T1 | T3 |
+| 3 Shell | C01 Roles and Head | D01–D04, D25, D26 | O5 | T1 | T3 |
 | | C02 Index and Card | D06–D10 | C01 | T1 | T2, T3, T5 |
 | | C03a Geometry, Card, Height Sheet | D11, D12, D36, D42 | C01, C02 | T1 | T3 |
 | | C03b Ink palette, constrained widths | D13, D14 | C03a, C05 | T1 | T2, T5 |
@@ -83,7 +83,7 @@ Paths under `stage/`, `scene/`, `adapters/` and `layout/` are relative to `apps/
 
 - **Files:** `stage/stage-drafting.ts`, `stage/stage-grid.ts`, `stage/stage-measure.ts`, `stage/shell/StageDraftingControl.svelte`, `stage/shell/StageScaleBar.svelte`, `stage/shell/StageGrid.svelte`, `stage/shell/EditorHead.svelte` viewing menu, spatial route, Scene and Layout snap call sites. Tests: `stage-drafting.test.ts`, `stage-grid.test.ts`, `head-drafting-config.test.ts`, `layout-drawing-adapter.test.ts`, `shape-reading-adapter.test.ts`, `scene-editing-surface.test.ts`, `stage-session.test.ts`.
 - **Contract:** `draftingSnapIncrementMeters` stops taking a zoom-derived level. `gridLevelsFor` returns fixed levels with thinning. Paper rectangle from content bounds. PLATE's drafting and grid paragraphs update per O7 and O8.
-- **Rules:** as specified under [Drafting](./target-specification.md#drafting-grid-snap-and-ruler). Remove the toolbar interval and Scale controls; add Find entries for detents; add the zoom cluster.
+- **Rules:** as specified under [Drafting](./target-specification.md#drafting-grid-snap-and-ruler). Remove the toolbar interval and Scale controls; add Find entries for detents; add the zoom cluster. The ⚙ holds only interval and snap settings today, so it leaves with them and returns in C01.
 - **Tests:** snap value identical at every zoom and in every consumer (Ink, Place, Move, Measure, Height stepping). Line positions unchanged across zoom. Paper rectangle contains all content plus margin, grows for a candidate, never changes the pose. Ruler stays hidden in 3D.
 - **Browser:** zoom through full range: no interval flicker, no moiré, sheet edges crisp; draw at two zooms and confirm points share a lattice; ruler has no fill; Fit, zoom and detents all reachable; Grid and Snap words work on both surfaces. Compare with the wireframe's 2D capture.
 - **Excludes:** 3D clipping; a preferences panel.
@@ -136,8 +136,7 @@ Paths under `stage/`, `scene/`, `adapters/` and `layout/` are relative to `apps/
 ### C10 — Selection
 
 - **Files:** `stage/paper-marks.ts`, `stage/shell/StageSelectionLayer.svelte`. Tests: `paper-marks.test.ts`.
-- **Rules:** [Selection table](./target-specification.md#selection). Without O1, ship the Scene fill at S07's values.
-- **Tests:** per-subject fill and contour; concave and tilted forms; Opening never filled as its Wall; model with no footprint contour-only; hover untinted.
+- **Rules:** [Selection table](./target-specification.md#selection).- **Tests:** per-subject fill and contour; concave and tilted forms; Opening never filled as its Wall; model with no footprint contour-only; hover untinted.
 - **Browser:** each subject in both readings, overlaps, light walls on the dark mat, hidden subjects.
 - **Excludes:** pick changes.
 
@@ -152,8 +151,8 @@ Paths under `stage/`, `scene/`, `adapters/` and `layout/` are relative to `apps/
 
 ### C01 — Roles and Head
 
-- **Files:** new shell stylesheet, `stage/shell/EditorHead.svelte`, route. Tests: `head-find.test.ts`, `head-save.test.ts`, `head-save-journey.test.ts`.
-- **Rules:** [Head](./target-specification.md#head). Every displaced capability gets a Find entry in the same PR.
+- **Files:** new shell stylesheet, `stage/shell/EditorHead.svelte`, `stage/shell/StageDraftingControl.svelte`, route. Tests: `head-find.test.ts`, `head-save.test.ts`, `head-save-journey.test.ts`.
+- **Rules:** [Head](./target-specification.md#head). Every displaced capability gets a Find entry in the same PR. The ☰ menu leaves: viewing preferences return in the Stage's ⚙, and project lifecycle and source go under the project name.
 - **Tests:** Find reaches each former menu capability; refusal is announced accessibly.
 - **Browser:** empty, dirty and refused states; keyboard only; coarse sizes; one row at all four widths.
 - **Excludes:** Index and Card content.

@@ -1,6 +1,6 @@
 # Post-S10 convergence — target specification
 
-**Proposal, not a contract and not a release.** Landed contracts keep describing current behaviour until a released slice cuts over. Audit base `9139f3c2`. Choices that need you are in [owner decisions](./owner-decisions.md); where this document depends on one, it says which and assumes the recommendation.
+**Planning target, not a contract and not a release.** Landed contracts keep describing current behaviour until a released slice cuts over. Audit base `9139f3c2`. [Owner decisions](./owner-decisions.md) O1–O9 were accepted on 2026-10-30, and this document applies them.
 
 **Governing goal.** Biskiq should feel effortless, with the wireframe as the minimum baseline and no loss of the depth already built. Visual parity is never bought with lost function. Nothing here changes a persisted format. Candidates, previews, generated names, selection, height and ghosts stay session-only.
 
@@ -8,7 +8,7 @@
 
 These were checked against every consumer: Ink, Scene placement and Move, Measure, Height Sheet stepping and the Head's viewing menu all read one seam, `draftingSnapIncrementMeters` fed by `drawnGridMinorMeters`.
 
-**Toolbar (O8).** `2D | 3D · Grid · Snap`. Words only, off state struck through and named as a word, as in the wireframe. No ratio, interval or settings popover on the toolbar. A held Alt still reads `Snap held`.
+**Toolbar (O8, O5).** `2D | 3D · Grid · Snap · ⚙`. Words only, off state struck through and named as a word, as in the wireframe. No ratio or interval control. The ⚙ holds viewing preferences only (2D appearance, Height Sheet side, reduced motion, motion speed), never a drafting value. A held Alt still reads `Snap held`.
 
 **Values (O7).** Snap is a fixed 0.5 m and Grid draws 1 m minor and 5 m major. Zoom never changes either. Consumers read a fixed increment instead of the drawn level, which is one change at one seam.
 
@@ -50,7 +50,7 @@ A Junction may not snap onto another Junction or a Wall, because the planner ref
 
 ## Hit priority
 
-One table for Plan and 3D, Select tool, fine and coarse pointers. **O9 assumes the recommendation.**
+One table for Plan and 3D, Select tool, fine and coarse pointers. Applies O9.
 
 | # | Press lands on | Click | Drag |
 | --- | --- | --- | --- |
@@ -72,7 +72,7 @@ One table for Plan and 3D, Select tool, fine and coarse pointers. **O9 assumes t
 
 ## Wall direct manipulation
 
-Reads the existing `planRigidWallMove`, `planExactJunctionMove` and `planExactWallLength`. **No planner changes and no second geometry authority.** Assumes O2 and O6.
+Reads the existing `planRigidWallMove`, `planExactJunctionMove` and `planExactWallLength`. **No planner changes and no second geometry authority.** Applies O2 and O6.
 
 | Target | Drag does | Planner | Tag |
 | --- | --- | --- | --- |
@@ -153,7 +153,7 @@ type StageCandidatePreview = {
 
 **Cause.** `upForReading('plan', azimuth)` returns `[sin a, 0, cos a]`, while the projection of world +Y approaching overhead tends to `[-sin a, 0, -cos a]`, so the basis turns 180° at the threshold.
 
-**Target.** Negate that one vector. Transitions, pan and `viewScreenBasis` inherit the fix. Target, target-plane scale, nearest-quarter-turn snapping, remembered elevation and detented azimuth are preserved. Restoring an earlier arbitrary azimuth is a separate change and not part of this. Needs O3.
+**Target.** Negate that one vector. Transitions, pan and `viewScreenBasis` inherit the fix. Target, target-plane scale, nearest-quarter-turn snapping, remembered elevation and detented azimuth are preserved. Restoring an earlier arbitrary azimuth is a separate change and not part of this. Applies O3.
 
 **Proven by the [probe](./evidence/rendering-investigation.md#candidate-fix-probe):** minimum consecutive right-vector dot goes from −1 to 0.999998. No existing test pins the sign, so C08 adds one.
 
@@ -176,7 +176,7 @@ near       = max(NEAR_FLOOR, min(distance − sceneRadius, 0.9 × groundNear))
 
 **Mat (`StageCanvas.svelte`).** Centred on the quantised target, half-extent at least 1.5 × reach, with a polygon offset.
 
-**Residual.** A horizon band up to about 12 CSS px at 900 px may remain. O4 accepts or tightens it. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
+**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in C09a's browser check, the slice uses O4's fade alternative. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
 
 ## Selection
 
@@ -190,7 +190,7 @@ Stage ink stays on actual geometry with canonical identity. Paper uses polygons 
 | Approved model | Approved footprint; contour only if none | Footprint segments | Mesh clone | Gold with dark halo |
 | Native form | Concave ring, or `polygons` when tilted; never a bounding rectangle | Footprint segments | Mesh clone | Gold with dark halo |
 
-Paper fills sit under cut ink and are never a hit source. 3D stays depth-tested, with no x-ray. Hover stays neutral and untinted; a selected identity suppresses its own hover. Opacity and Paper edge are O1's calibration; Scene fills are a defect fix regardless.
+Paper fills sit under cut ink and are never a hit source. 3D stays depth-tested, with no x-ray. Hover stays neutral and untinted; a selected identity suppresses its own hover. Opacity and Paper edge apply O1.
 
 ## Shell
 
@@ -208,7 +208,7 @@ Order: Index toggle · Biskiq · serif project name · World / Experience · con
 
 - Eligibility and refusal semantics are unchanged; the words move into a focus, hover and tap disclosure with an accessible description.
 - `Technical details` and the Stage's `Open source JSON` leave the ordinary surface. Viewing preferences, Keys, rename, delete, source download, source replacement and Scale detents each get a Find entry from C01.
-- O5 sets their permanent home.
+- Permanent homes, per O5: viewing preferences in the Stage's ⚙; rename, delete, source download and source replacement under the project name. The ☰ menu leaves.
 - The context chip shows real canonical location only.
 
 ### Index and Card

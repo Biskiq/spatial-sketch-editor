@@ -1,17 +1,17 @@
 # Post-S10 convergence — owner decisions
 
-**These are the only choices that need you.** Everything else in the [target specification](./target-specification.md) follows from evidence or an existing contract. Each decision has a recommendation, so saying "accept all" gives a complete, buildable plan. Nothing here is released until you rule and register the slices.
+**All nine accepted by the owner on 2026-10-30, as recommended.** Everything else in the [target specification](./target-specification.md) follows from evidence or an existing contract. The alternatives and tradeoffs stay here as the record of what was decided against. These rulings do not register or release any slice.
 
-Decisions marked **amends a contract** change ratified text. If accepted, the implementing slice updates that text at cutover, not before.
+Decisions marked **amends a contract** change ratified text. The implementing slice updates that text at cutover, not before; until then the landed contract still describes current behaviour.
 
 ## Summary
 
-| # | Decision | Recommendation | Blocks |
+| # | Decision | Ruling | Governs |
 | --- | --- | --- | --- |
 | O1 | Selection strength | Mat .28, Paper .22 with dark gold edge | C10 calibration only |
 | O2 | What dragging a Wall body does | Slide along the Wall's normal; neighbours stretch | C07a |
-| O3 | Plan orientation change | Accept it | C08 |
-| O4 | 3D ground reach and line budget | Accept the specified values | C09a |
+| O3 | Plan orientation change | Right +X, up −Z at azimuth 0 | C08 |
+| O4 | 3D ground reach and line budget | The specified reach, budget and horizon band | C09a |
 | O5 | Permanent home for Head utilities | Stage settings control and the project name | C01 final placement |
 | O6 | What a Wall's end point does | Moves the Junction; the ray keeps length | C07a |
 | O7 | Fixed grid and snap values | 1 m grid, 5 m major, 0.5 m snap, drawing only thins | C09b |
@@ -40,7 +40,7 @@ Decisions marked **amends a contract** change ratified text. If accepted, the im
 
 ## O3 — Plan orientation
 
-**Amends a contract only by reading:** `T1.viewport-projection@1` does not fix a Plan screen-up, so no new gate version is needed. You confirm that reading.
+**Amends a contract only by reading:** `T1.viewport-projection@1` does not fix a Plan screen-up, so no new gate version is needed. The owner confirmed that reading.
 
 - **Recommendation:** accept. At azimuth 0, Plan becomes right +X, up −Z, the only orientation continuous with 3D.
 - **Alternative:** keep today's Plan orientation and rotate 3D's convention instead. That moves every 3D default view, which is more disruptive.
@@ -52,7 +52,7 @@ Decisions marked **amends a contract** change ratified text. If accepted, the im
 
 ## O5 — Utility home
 
-- **Recommendation:** viewing preferences in the Stage's existing settings control; project lifecycle and source under the project name. Find gives every one of them an interim route, so visual work does not wait.
+- **Recommendation:** viewing preferences in the Stage's existing settings control; project lifecycle and source under the project name. Find also reaches every one of them. That control holds only interval and snap settings today, so C09b removes it with them and C01 returns it holding viewing preferences only.
 - **Alternative:** keep an app menu beside the Index toggle. It is familiar, but it is the second menu button you asked to replace.
 
 ## O6 — A Wall's end point
