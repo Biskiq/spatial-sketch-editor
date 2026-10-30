@@ -24,7 +24,7 @@ finding remains.
   repetition only, owned by T1 follow-up TD-15. Grid, Wall ghost, direct-manipulation and general UX
   convergence remain outside this slice. S11 retains its integrated journey and final-gate work.
 - **Renderables:** none captured. No reference promotion or new live-to-archive prose link.
-- **Recovery:** `git show <S06_ANCHOR>:docs/roadmap/r217-core-editor-stability/r217.s06-height-sheet-foundation/implementation-plan.md`
+- **Recovery:** `git show 9b5a42fe9c254db561a864905eaf3a3a7f989426:docs/roadmap/r217-core-editor-stability/r217.s06-height-sheet-foundation/implementation-plan.md`
   (anchor commit recorded below); tag `closed/r217.s06`.
 
 ## Closeout preservation — R217.S06 (2026-10-30)
@@ -32,7 +32,7 @@ finding remains.
 - Prose compacted: 1 approved plan stub; detailed independent review/evidence retained.
 - Reference promotions: 0. Renderable evidence archived: 0 files / 0 bytes.
 - Evidence stubs/manifests: 0. Transient artifacts removed: 0.
-- Historical anchor: `<S06_ANCHOR>` · tag `closed/r217.s06` (pushed to origin).
+- Historical anchor: `9b5a42fe9c254db561a864905eaf3a3a7f989426` · tag `closed/r217.s06` (pushed to origin).
 - Merge method: P1 GitHub merge commit (PR #227); post-merge anchor verification required.
 - New live → archive prose links: 0. Manual-owed verification rows: 0.
 - Remaining deferred items: 1 P3 hint repetition; phase integration and deferred convergence remain S11/out-of-scope.
