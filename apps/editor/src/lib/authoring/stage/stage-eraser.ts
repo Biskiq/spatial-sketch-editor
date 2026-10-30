@@ -67,9 +67,26 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 	let notice: StageEraseNotice | null = null;
 	/** The subject whose disclosure the creator has read; a second click runs it. */
 	let disclosed: StageEraseCandidate | null = null;
-	let press: { readonly lease: GestureAcquisition; readonly target: StageEraseCandidate } | null = null;
+	let press: { readonly lease: GestureAcquisition; readonly target: StageEraseCandidate; cancelled: boolean } | null = null;
+	let source = facade.snapshot();
+	let inFlight = false;
+	let uiGeneration = 0;
+
+	// An install/Undo spends the words the creator read, even when Undo restores
+	// byte-identical source and subject ids. It also invalidates an old press.
+	function syncSource(): void {
+		const next = facade.snapshot();
+		if (next === source) return;
+		source = next;
+		endPress();
+		current = null;
+		notice = null;
+		disclosed = null;
+		uiGeneration += 1;
+	}
 
 	function candidateAt(input: PointerInput): StageEraseCandidate | null {
+		syncSource();
 		const target = facade.hostToolTarget({ ...input, tool: 'erase' });
 		return target.kind === 'hit' ? { adapterId: target.adapterId, hit: target.hit, refusal: target.refusal } : null;
 	}
@@ -110,12 +127,20 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 		notice = null;
 		// The subject is about to go: nothing it named stays drawn.
 		current = null;
-		const outcome = await answer.action.run();
-		notice =
-			outcome.kind === 'accepted'
-				? null
+		const generation = uiGeneration;
+		inFlight = true;
+		try {
+			const outcome = await answer.action.run();
+			syncSource();
+			if (generation !== uiGeneration) return;
+			notice = outcome.kind === 'accepted' ? null
 				: { kind: outcome.kind === 'refused' ? 'refused' : 'none', message: outcome.message ?? 'Nothing was erased.', css };
-		onChange();
+		} catch {
+			if (generation === uiGeneration) notice = { kind: 'refused', message: 'The erase could not finish. Try again.', css };
+		} finally {
+			inFlight = false;
+			onChange();
+		}
 	}
 
 	return {
@@ -125,6 +150,7 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 			if (!sameSubject(next, current) || (next === null) !== (current === null)) current = next;
 		},
 		down(input) {
+			if (inFlight || press !== null) return false;
 			const target = candidateAt(input);
 			if (target === null) {
 				// The datum and empty Stage name no subject; the press stays navigation.
@@ -138,7 +164,7 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 				policy: 'cancel-on-reading-change'
 			});
 			if (lease.kind !== 'granted') return false;
-			press = { lease, target };
+			press = { lease, target, cancelled: false };
 			current = target;
 			return true;
 		},
@@ -146,13 +172,16 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 			if (press === null) return;
 			// Sliding off the pressed subject cancels: the release will erase nothing.
 			const under = candidateAt(input);
-			current = sameSubject(under, press.target) ? press.target : null;
+			if (press === null) return;
+			if (!sameSubject(under, press.target)) press.cancelled = true;
+			current = press.cancelled ? null : press.target;
 		},
 		async up(input) {
+			syncSource();
 			const ending = press;
 			if (ending === null) return;
 			const under = candidateAt(input);
-			const stillOn = sameSubject(under, ending.target) && sameSubject(current, ending.target);
+			const stillOn = !ending.cancelled && sameSubject(under, ending.target) && sameSubject(current, ending.target);
 			endPress();
 			if (input.coarse === true) current = null;
 			if (!stillOn) return;
@@ -161,14 +190,20 @@ export function createStageEraser(facade: StageFacade, onChange: () => void = ()
 		cancel() {
 			endPress();
 			current = null;
+			disclosed = null;
+			notice = null;
+			uiGeneration += 1;
 		},
 		candidate() {
+			syncSource();
 			return current;
 		},
 		notice() {
+			syncSource();
 			return notice;
 		},
 		clear() {
+			uiGeneration += 1;
 			const had = notice !== null || disclosed !== null || press !== null;
 			endPress();
 			notice = null;

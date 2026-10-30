@@ -444,6 +444,23 @@ describe('R217.S10 — Ink Box', () => {
 		expect(mounted.session.liveProposal()).toBeNull();
 	});
 
+	it('commits the previewed anchor when the second corner is dragged after a first tap', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		armInk(mounted.facade).setWallMode('box');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const sample = (phase: 'down' | 'move' | 'up', point: readonly [number, number]) =>
+			mounted.facade.pointerIntent({ phase, css: boxCss(mounted.facade, point), evaluationId });
+		sample('down', [8, 0]); sample('up', [8, 0]);
+		sample('down', [9, 1]); sample('move', [11, 3]);
+		const preview = inkSurface()!.snapshot().points;
+		expect(preview).toEqual([[8, 0], [11, 0], [11, 3], [8, 3]]);
+		sample('up', [11, 3]);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		const created = acceptedLayout(mounted.facade).junctions.filter(j => !mounted.document.junctions.some(old => old.id === j.id));
+		expect(created.map(j => j.point)).toEqual(preview);
+	});
+
 	it('refuses a degenerate box in words with no entry', async () => {
 		const mounted = await mount();
 		const baseline = mounted.facade.snapshot().canonicalJson;
@@ -459,6 +476,42 @@ describe('R217.S10 — Ink Box', () => {
 		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 		expect(mounted.session.liveProposal()).toBeNull();
+	});
+
+	it('keeps the existing Junction identity and cancels a half Box without an entry', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		controller.setWallMode('box');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const tap = (point: readonly [number, number]) => {
+			const css = boxCss(mounted.facade, point);
+			mounted.facade.pointerIntent({ phase: 'down', css, evaluationId });
+			mounted.facade.pointerIntent({ phase: 'up', css, evaluationId });
+		};
+		tap([0, 4]);
+		controller.cancel();
+		expect(mounted.session.liveProposal()).toBeNull();
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		tap([0, 4]); tap([-3, 7]);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		const layout = acceptedLayout(mounted.facade);
+		expect(layout.junctions.filter(j => j.point[0] === 0 && j.point[1] === 4).map(j => j.id)).toEqual([mounted.cornerJunctionId]);
+		expect(layout.walls.filter(w => w.startJunctionId === mounted.cornerJunctionId || w.endJunctionId === mounted.cornerJunctionId)).toHaveLength(4);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('refuses a Line/Box switch during the first captured press', async () => {
+		const mounted = await mount();
+		const controller = armInk(mounted.facade);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const css = boxCss(mounted.facade, [8, 0]);
+		mounted.facade.pointerIntent({ phase: 'down', css, evaluationId });
+		controller.setWallMode('box');
+		expect(inkSurface()?.snapshot().wallMode).toBe('line');
+		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line and Box/);
+		mounted.facade.pointerIntent({ phase: 'cancel', css, evaluationId });
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 	});
 
 	it('refuses switching to Box while a Line chain is live', async () => {

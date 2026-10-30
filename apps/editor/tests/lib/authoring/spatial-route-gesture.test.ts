@@ -697,6 +697,17 @@ describe('mounted Stage drawing and deletion', () => {
 	});
 
 	/** R217.S10 — the dock's keys, shortcuts, Find and host tools through the route. */
+	it('leaves Dock letters and 2 with the live numeric writer', async () => {
+		const desired = await startDrag();
+		const type = vi.spyOn(facade(), 'gestureKeyIntent');
+		for (const letter of ['2', 'm', 'e', 'l', 'p', 'v']) key(letter);
+		expect(type.mock.calls.map(([intent]) => intent)).toEqual(['2', 'm', 'e', 'l', 'p', 'v'].map(key => ({ kind: 'type', key })));
+		expect(facade().evaluation()?.settledReading).toBe('plan');
+		expect(facade().session.task()).toBeNull();
+		pointer('pointercancel', desired);
+		await frame();
+	});
+
 	it('arms every dock key by its shortcut and from Find without changing the selection', async () => {
 		const before = facade().selectionState();
 		for (const [letter, kind] of [['p', 'layout-ink'], ['m', 'host-measure'], ['e', 'host-erase'], ['l', 'place-object']] as const) {
@@ -792,6 +803,29 @@ describe('mounted Stage drawing and deletion', () => {
 		expect(canvas().dataset.hoverTone).toBe('hover');
 		expect(await (harness.host as StageAcceptanceHost).undo()).toMatchObject({ kind: 'installed' });
 		expect(facade().snapshot().canonicalJson).toBe(canonical);
+	});
+
+	it('keeps Measure and Eraser live across rendered frames during a press', async () => {
+		key('m');
+		await settled();
+		const from = projected([0, 0, 0]);
+		const to = projected([7, 0, 0]);
+		pointer('pointerdown', from);
+		await frame();
+		pointer('pointermove', to);
+		await frame();
+		pointer('pointerup', to);
+		await settled();
+		expect(Number(target.querySelector('[data-measure]')?.getAttribute('data-measure-label')?.replace(' m', ''))).toBeCloseTo(7, 3);
+
+		key('e');
+		await settled();
+		const wall = wallCenterCss(STARTER_WALL_2);
+		pointer('pointerdown', wall);
+		await frame();
+		pointer('pointerup', wall);
+		await settled();
+		expect(target.querySelector('[data-erase-notice="disclose"]')).not.toBeNull();
 	});
 
 	it('refuses a Room floor beside the pointer with no entry', async () => {

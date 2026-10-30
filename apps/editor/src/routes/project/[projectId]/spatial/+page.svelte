@@ -2710,7 +2710,7 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 				interruptPress('reading-change');
 				return;
 			}
-			const id = adapterEvaluationId ?? facade?.evaluationId() ?? null;
+			const id = facade?.evaluationId() ?? null;
 			if (id === null) return;
 			const input = { css: stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' };
 			if (armedHostTool === 'measure') measureTool?.move(input);
@@ -2804,7 +2804,9 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		if (drag?.mode === 'host') {
 			// The host tool's tap is its own command, never a selection.
 			press.claim(event.pointerId);
-			const id = adapterEvaluationId ?? facade?.evaluationId() ?? null;
+			// Host tools resolve against the current image on every sample. Unlike a
+			// domain writer, they do not carry a press-time projection into a planner.
+			const id = facade?.evaluationId() ?? null;
 			drag = null;
 			adapterEvaluationId = null;
 			const tool = armedHostTool === 'measure' ? measureTool : eraserTool;
@@ -3624,7 +3626,7 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 				The Stage surface is a pointer-driven viewport, not a widget: it handles
 				click (selection through eligible Plan fragments) and wheel (zoom), while
 				keyboard viewing intents are handled once by the host's own window listener
-				(3/p/f/arrows/Escape) so a focused element handler cannot double-apply them.
+				(3/2/f/arrows/Escape) so a focused element handler cannot double-apply them.
 			-->
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions, a11y_no_noninteractive_tabindex -->
 			<div

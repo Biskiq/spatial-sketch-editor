@@ -14,8 +14,12 @@
  * 3. a coarse press shows the winner, release erases, and sliding off erases
  *    nothing.
  */
-import { describe, expect, it } from 'vitest';
-import { BoxGeometry, Mesh, MeshBasicMaterial } from 'three';
+import { describe, expect, it, vi } from 'vitest';
+import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Texture, type Object3D } from 'three';
+import { readFile } from 'node:fs/promises';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { getAssetById } from '$lib/content/assets';
 import {
 	createEmptyWallFirstLayoutDocument,
 	nextLayoutPresetObjectId,
@@ -24,6 +28,7 @@ import {
 	planWallChain,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
+import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
 import type { SceneEntity } from '@portfolio/project-model';
 import type { Vec3 } from '@portfolio/camera-core';
 import { admitSource } from '$lib/authoring/stage/source-admission';
@@ -98,14 +103,22 @@ function layoutDocument(): { document: LayoutDocumentWallFirst; wallId: string; 
 	return { document: plinth.document, wallId, openingId: opening.changedOpeningIds[0]!, plinthId: plinth.createdObjectId };
 }
 
-async function mount(reading: 'plan' | '3d' = 'plan', entities: readonly SceneEntity[] = [PRIMITIVE, FORM]): Promise<Mounted> {
+async function mount(reading: 'plan' | '3d' = 'plan', entities: readonly SceneEntity[] = [PRIMITIVE, FORM], modelRoot?: Object3D, lockModel = false): Promise<Mounted> {
 	const { document, wallId, openingId, plinthId } = layoutDocument();
-	const project = await createUnitProject({
+	const modelEntry = lockModel ? creatorModelResourceEntry(MODEL.kind === 'model' ? MODEL.assetId : '', {
+		derivative: { hash: `sha256-${'a'.repeat(64)}`, mime: 'model/gltf-binary', size: 4096, locator: 'models/test.glb' },
+		source: { manifestHash: `sha256-${'b'.repeat(64)}`, size: 8192, fileCount: 1 },
+		recipe: { id: 'creator-import@1', version: 1 }, reportDigest: `sha256-${'c'.repeat(64)}`,
+		placement: { metresPerSourceUnit: 1, pivot: [0, 0, 0], footprint: { width: 1.48, depth: 1.59 }, contactMinY: 0 }
+	}) : null;
+	let project = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'S10 host tools',
 		layout: document,
+		...(modelEntry === null ? {} : { resources: { formatVersion: 2 as const, resources: [modelEntry.resource] } }),
 		scene: { formatVersion: 1, textures: [], materials: [], entities: [...entities], navigationNodes: [], connections: [] }
 	});
+	if (modelEntry !== null) project = { ...project, dependencyLock: { ...project.dependencyLock, entries: [modelEntry.lock] } };
 	const admitted = await admitSource(project, {
 		sessionEpoch: 'session-s10-host-tools',
 		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-boot' }
@@ -117,6 +130,7 @@ async function mount(reading: 'plan' | '3d' = 'plan', entities: readonly SceneEn
 	const rendered = createScenePickSource();
 	rendered.setSource(snapshot.domain.scene);
 	for (const entity of snapshot.domain.scene.entities) {
+		if (entity.kind === 'model' && modelRoot !== undefined) { rendered.register(entity.id, modelRoot); continue; }
 		const geometry = entity.kind === 'form'
 			? buildFormGeometry(evaluateFormMesh(entity.form)!, entity.form.generator.plane)
 			: new BoxGeometry(1, 1, 1);
@@ -298,6 +312,13 @@ describe('R217.S10 — Eraser', () => {
 		expect(layout().openings.some((candidate) => candidate.id === mounted.openingId)).toBe(true);
 	});
 
+	it('ranks an Opening above its own Wall for erase while Select keeps Wall priority', async () => {
+		const { facade, wallId, openingId } = await mount();
+		const query = { css: css(facade, [1.45, 0, 0]), evaluationId: facade.evaluationId()! };
+		expect(facade.resolvePick({ ...query, purpose: 'select', tool: null })).toMatchObject({ kind: 'resolved', hit: { sourceId: wallId } });
+		expect(facade.hostToolTarget({ ...query, tool: 'erase' })).toMatchObject({ kind: 'hit', adapterId: 'layout', hit: { sourceId: openingId } });
+	});
+
 	it('dispatches a catalogue model to the same Scene delete action', async () => {
 		// Its acceptance needs a resource lock this bare fixture does not carry, so the
 		// dispatch is asserted at the owning binding; the primitive above proves the
@@ -346,5 +367,135 @@ describe('R217.S10 — Eraser', () => {
 
 		expect(await click(eraser, facade, [PRIMITIVE.position[0], 0, PRIMITIVE.position[2]], true)).toBe(true);
 		await eventually(() => !entityIds(facade).includes(PRIMITIVE.id));
+	});
+});
+
+
+describe('host-tool source and history contracts', () => {
+	it('measures snapped datum points and leaves real Undo available during its press', async () => {
+		const { facade, host } = await mount();
+		const eraser = createStageEraser(facade);
+		await click(eraser, facade, [2, 0, 2]);
+		settle(facade);
+		const canonical = facade.snapshot().canonicalJson;
+		const history = host.history();
+		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 0.5 });
+		const query = { css: css(facade, [15.14, 0, 12.17]), evaluationId: facade.evaluationId()! };
+		expect(resolveMeasureEndpoint(facade, query)).toEqual({ point: [15, 0, 12], source: null });
+		facade.setDrafting({ snap: false });
+		const free = resolveMeasureEndpoint(facade, query)!;
+		expect(free.point[0]).toBeCloseTo(15.14, 8);
+		expect(free.point[2]).toBeCloseTo(12.17, 8);
+		const measure = createStageMeasure(facade);
+		expect(measure.down(query)).toBe(true);
+		expect(facade.session.liveProposal()).toBeNull();
+		expect(facade.snapshot().canonicalJson).toBe(canonical);
+		expect(host.history()).toEqual(history);
+		expect(await host.undo()).toMatchObject({ kind: 'installed' });
+		expect(entityIds(facade)).toContain(PRIMITIVE.id);
+		measure.cancel();
+	});
+
+	it('erases a model with its resource lock through F4 and restores the exact source with Undo', async () => {
+		const { facade, host } = await mount('plan', [MODEL], undefined, true);
+		const eraser = createStageEraser(facade);
+		const canonical = facade.snapshot().canonicalJson;
+		await click(eraser, facade, [MODEL.position[0], 0, MODEL.position[2]]);
+		expect(entityIds(facade)).not.toContain(MODEL.id);
+		expect(host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect(await host.undo()).toMatchObject({ kind: 'installed' });
+		expect(facade.snapshot().canonicalJson).toBe(canonical);
+	});
+});
+
+describe('Eraser confirmation lifetime', () => {
+	it('requires fresh disclosure after a source install and Undo, even with identical restored source', async () => {
+		const { facade, host } = await mount();
+		const eraser = createStageEraser(facade);
+		const wall: Vec3 = [6, 0, 0];
+		await click(eraser, facade, wall);
+		expect(eraser.notice()?.kind).toBe('disclose');
+		const other = createStageEraser(facade);
+		await click(other, facade, [2, 0, 2]);
+		expect((await host.undo()).kind).toBe('installed');
+		settle(facade);
+		const baseline = facade.snapshot().canonicalJson;
+		await click(eraser, facade, wall);
+		expect(eraser.notice()?.kind).toBe('disclose');
+		expect(facade.snapshot().canonicalJson).toBe(baseline);
+	});
+
+	it('does not erase after a coarse pointer leaves and re-enters the pressed subject', async () => {
+		const { facade } = await mount();
+		const eraser = createStageEraser(facade);
+		const evaluationId = facade.evaluationId()!;
+		const block = { css: css(facade, [2, 0, 2]), evaluationId, coarse: true };
+		const baseline = facade.snapshot().canonicalJson;
+		eraser.down(block);
+		eraser.move({ ...block, css: css(facade, [3.5, 0, 3]) });
+		eraser.move(block);
+		await eraser.up(block);
+		expect(facade.snapshot().canonicalJson).toBe(baseline);
+	});
+
+	it('serializes async deletes and spends their UI completion on disarm', async () => {
+		const { facade } = await mount();
+		let finish!: () => void;
+		const run = vi.fn(() => new Promise<{ kind: 'refused'; message: string }>((resolve) => {
+			finish = () => resolve({ kind: 'refused', message: 'Old refusal' });
+		}));
+		vi.spyOn(facade, 'eraseAnswer').mockReturnValue({ kind: 'action', confirm: false, action: { id: 'delayed-delete', label: 'Delete', run } });
+		const eraser = createStageEraser(facade);
+		const pending = click(eraser, facade, [2, 0, 2]);
+		const second = click(eraser, facade, [5, 0, 2.5]);
+		expect(run).toHaveBeenCalledTimes(1);
+		eraser.clear();
+		finish();
+		await Promise.all([pending, second]);
+		expect(eraser.notice()).toBeNull();
+	});
+});
+
+
+describe('Measure rendered model geometry', () => {
+	it('uses the actual normalized catalogue mesh bounds in Paper and 3D', async () => {
+		const asset = getAssetById('paris-grand-piano')!;
+		const bytes = await readFile(new URL('../../../static' + asset.productionFile, import.meta.url));
+		const textures: Texture[] = [];
+		const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+		loader.register(() => ({ name: 'EXT_texture_webp', loadTexture: () => {
+			const texture = new Texture(); textures.push(texture); return Promise.resolve(texture);
+		} }));
+		const gltf = await loader.parseAsync(Uint8Array.from(bytes).buffer, '');
+		const normalized = new Group();
+		normalized.scale.setScalar(asset.defaultScale);
+		if (asset.defaultRotation) normalized.rotation.set(...asset.defaultRotation);
+		normalized.add(gltf.scene);
+		const root = new Group();
+		root.position.fromArray(MODEL.position);
+		root.add(normalized);
+		try {
+			for (const reading of ['plan', '3d'] as const) {
+				const { facade } = await mount(reading, [MODEL], root);
+				const bounds = facade.sceneBounds(MODEL.id)!;
+				expect(bounds.max[2] - bounds.min[2]).toBeGreaterThan(2.5);
+				const outcomes = [];
+				for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
+					const corner: Vec3 = [x, y, z];
+					const endpoint = resolveMeasureEndpoint(facade, { css: css(facade, corner), evaluationId: facade.evaluationId()! });
+					outcomes.push({ corner, endpoint });
+				}
+				expect(outcomes.some(({ corner, endpoint }) => endpoint?.source?.sourceId === MODEL.id && Math.hypot(...corner.map((n, i) => n - endpoint.point[i]!)) < 0.001)).toBe(true);
+				// A hidden model must not contribute a bounds target through the floor.
+				root.visible = false;
+				const hidden = resolveMeasureEndpoint(facade, { css: css(facade, [bounds.max[0], bounds.max[1], bounds.max[2]]), evaluationId: facade.evaluationId()! });
+				expect(hidden?.source?.sourceId).not.toBe(MODEL.id);
+				root.visible = true;
+				facade.dispose();
+			}
+		} finally {
+			gltf.scene.traverse(node => { if (node instanceof Mesh) { node.geometry.dispose(); for (const material of Array.isArray(node.material) ? node.material : [node.material]) material.dispose(); } });
+			textures.forEach(texture => texture.dispose());
+		}
 	});
 });

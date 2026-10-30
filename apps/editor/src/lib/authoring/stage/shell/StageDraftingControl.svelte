@@ -148,7 +148,7 @@
 			type="button"
 			data-drafting-reading="plan"
 			aria-pressed={reading === 'plan'}
-			title="2D plan reading (P)"
+			title="2D plan reading (2)"
 			onclick={() => onReading('plan')}
 		>
 			2D

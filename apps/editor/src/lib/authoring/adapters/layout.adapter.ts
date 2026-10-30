@@ -1728,7 +1728,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					},
 					setWallMode: (mode: InkWallMode) => {
 						if (mode === inkWallMode) return;
-						if (draft.points.length > 0) {
+						if (draft.points.length > 0 || inkPress !== null) {
 							inkNotice = 'Finish or cancel the Wall chain before switching between Line and Box.';
 							publishInk();
 							return;
@@ -2042,7 +2042,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// Box: a drag names both corners; a tap names the first corner, and the
 					// next tap the opposite one.
 					const releasePoint: ChainDraftPoint = { point: release.point, target: release.target };
-					if (travel > 4) commitBox({ point: pressTarget.point, target: pressTarget.target }, releasePoint);
+					if (travel > 4) commitBox(draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target }, releasePoint);
 					else if (draft.points.length === 0) beginChain(releasePoint);
 					else commitBox(draft.points[0]!, releasePoint);
 				} else if (travel <= 4) appendInkPoint({ point: release.point, target: release.target });

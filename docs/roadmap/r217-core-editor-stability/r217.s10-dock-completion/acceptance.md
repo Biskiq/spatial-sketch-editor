@@ -1,12 +1,14 @@
 # R217.S10 — acceptance record: Dock completion
 
-**Slice:** R217.S10 · **Status:** implemented; **awaiting owner review and acceptance** (no
+**Slice:** R217.S10 · **Status:** implemented; **awaiting owner acceptance** (no
 acceptance recorded) · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the
 criteria) · **Phase:** [R217](../README.md) · **Integration route:**
 [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
-This record holds implementation evidence only. It claims no acceptance, closeout or merge. By owner
-instruction (2026-10-30) no independent agent review was run; the owner reviews the PR directly.
+This record holds implementation and review evidence. It claims no owner acceptance, closeout or merge.
+The initial implementation omitted independent review under the original brief. The owner subsequently
+requested combined independent T1/T2/T3/T5 review and P0–P2 repairs on PR #229. The
+[independent review](./independent-review.md) records that verdict and the superseding verification.
 
 ## Implementation
 
@@ -55,8 +57,9 @@ Library workflows), plus `stage-input`, `paper-marks`, `stage-shell-composition`
   its host Wall; Select keeps the accepted Wall-before-Opening order.
 - **Disclosure is domain-owned:** Layout sets `confirm` when a Wall delete hosts Openings or retires
   or creates Rooms; Scene deletes never confirm.
-- **Fixture limit:** catalogue-model erase is asserted at the binding level, because the bare test
-  fixture has no resource lock; primitives and forms are erased end to end.
+- **Fixture limit:** catalogue-model erase is asserted at the binding level, because the original bare test
+  fixture had no resource lock. The independent review adds a pinned-model F4 delete/Undo fixture;
+  primitives and forms remain covered end to end.
 - **Label:** the Find entry formerly "Place object" is now "Library"; instrument copy says "reopen the
   Library".
 - **Out of scope, untouched:** grid cutoff, Wall Ink ghosts, direct Wall manipulation, object ghosts,
