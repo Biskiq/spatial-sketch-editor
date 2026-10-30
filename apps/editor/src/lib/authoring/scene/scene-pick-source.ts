@@ -90,7 +90,7 @@ export function createScenePickSource() {
 		refresh,
 		bounds(id: string, expected: RuntimeScene): { min: [number, number, number]; max: [number, number, number] } | null {
 			const root = source === expected ? roots.get(id) : undefined;
-			if (root === undefined) return null;
+			if (root === undefined || !hasRenderableMesh(root)) return null;
 			const box = boundsOf(root);
 			return box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
 		},

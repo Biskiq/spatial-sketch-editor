@@ -4,7 +4,8 @@
 	 *
 	 * PLATE (Round 2) puts the armable tool, its supported readings and the live
 	 * facts in one palette above the palette's own dock key. Ink exposes exactly the
-	 * reading the domain supports — a straight Wall chain. There are no empty
+	 * reading the domain supports — a straight Wall chain, drawn as Line points or
+	 * as a Box from two opposite corners (R217.S10). There are no empty
 	 * Slice/Eraser/Brush/Measure slots and no unsupported Shape/Round/roof option,
 	 * because a control this shell offers would be a promise the domain cannot keep.
 	 *
@@ -35,6 +36,8 @@
 
 	const emptySnapshot: InkPaletteSnapshot = {
 		reading: 'wall',
+		wallMode: 'line',
+		box: null,
 		readings: [
 			{ id: 'wall', label: 'Wall', summary: 'Straight Wall chain.' },
 			{ id: 'opening', label: 'Opening', summary: 'A straight door or window on one Wall face.' }
@@ -142,6 +145,19 @@
 		{@const ReadingView = readingView}
 		<ReadingView />
 	{:else if snapshot.reading === 'wall'}
+		<div class="wall-mode" role="radiogroup" aria-label="Wall shape">
+			{#each [{ id: 'line', label: 'Line' }, { id: 'box', label: 'Box' }] as const as mode (mode.id)}
+				<button
+					type="button"
+					role="radio"
+					aria-checked={snapshot.wallMode === mode.id}
+					data-ink-wall-mode={mode.id}
+					onclick={() => inkSurface()?.controller.setWallMode(mode.id)}
+				>
+					{mode.label}
+				</button>
+			{/each}
+		</div>
 		<div class="options">
 			<label>
 				<span>Thickness</span>
@@ -163,8 +179,15 @@
 		{#if optionError !== null}<p class="error" role="alert">{optionError}</p>{/if}
 
 		<dl class="live">
-			<div><dt>Points</dt><dd>{snapshot.points.length}{snapshot.closed ? ' · closed' : ''}</dd></div>
-			<div><dt>Pending</dt><dd>{pendingText ?? '—'}</dd></div>
+			{#if snapshot.wallMode === 'box'}
+				<div>
+					<dt>Box</dt>
+					<dd data-ink-box-size>{snapshot.box === null ? '—' : `${snapshot.box.width.toFixed(3)} × ${snapshot.box.depth.toFixed(3)} m`}</dd>
+				</div>
+			{:else}
+				<div><dt>Points</dt><dd>{snapshot.points.length}{snapshot.closed ? ' · closed' : ''}</dd></div>
+				<div><dt>Pending</dt><dd>{pendingText ?? '—'}</dd></div>
+			{/if}
 			<div class="consequence">
 				<dt>On finish</dt>
 				<dd>{snapshot.consequence ?? 'Name at least two points to see the planner’s consequence.'}</dd>
@@ -175,6 +198,12 @@
 			<p class="refusal" role="alert" data-ink-refusal>{snapshot.refusal}</p>
 		{/if}
 
+		{#if snapshot.wallMode === 'box'}
+		<div class="actions">
+			<button type="button" data-ink-cancel onclick={() => inkSurface()?.controller.cancel()}>Cancel (Esc)</button>
+		</div>
+		<p class="quiet">Press one corner and drag to the opposite corner, or click two opposite corners. The four Walls close a Room.</p>
+		{:else}
 		<div class="actions">
 			<button type="button" data-ink-finish disabled={!snapshot.canFinish} onclick={() => inkSurface()?.controller.finish()}>
 				Finish (Enter)
@@ -207,6 +236,7 @@
 		</form>
 		{#if pointError !== null}<p class="error" role="alert">{pointError}</p>{/if}
 		<p class="quiet">Click the Stage to place points; click the start point to close the ring. Drag to draw one Wall and finish.</p>
+		{/if}
 	{:else}
 		{#await import('./LayoutOpeningPalette.svelte') then { default: OpeningPalette }}
 			<OpeningPalette services={_services} opening={snapshot.opening} />
@@ -241,6 +271,15 @@
 		display: flex;
 		align-items: center;
 		gap: 0.35rem;
+	}
+	.wall-mode {
+		display: flex;
+		gap: 0.25rem;
+	}
+	.wall-mode button[aria-checked='true'] {
+		border-color: #f3f0e4;
+		background: #f3f0e4;
+		color: #14231b;
 	}
 	.options {
 		display: flex;

@@ -272,7 +272,7 @@ import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 			{#if saveControl === null}<p>{saveUnavailableReason}</p>{:else if saveControl.reason}<p>{saveControl.reason}</p>{/if}
 			{#if !canPreview}<p>{previewUnavailableReason}</p>{/if}
 			<strong>Keys</strong>
-			<p>⌘K / Ctrl+K Find · 3 3D · P Plan · F Fit · Esc Cancel</p>
+			<p>⌘K / Ctrl+K Find · 3 3D · 2 Plan · F Fit · V Select · P Ink · M Measure · E Eraser · L Library · Esc Cancel</p>
 		</div>
 	</details>
 	<div class="identity">
@@ -644,6 +644,15 @@ import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 	.history-actions {
 		display: flex;
 		gap: 0.3rem;
+	}
+
+	/* The live Undo refusal is three lines at this width. Reserve its space
+	 * before a press: growing the Head during an erase resizes the Camera and
+	 * moves the subject away from a stationary pointer before release. */
+	@media (min-width: 1280px) {
+		.capability {
+			min-height: calc(var(--control-height) + 0.1rem + 2.325rem);
+		}
 	}
 
 	.reason {

@@ -29,6 +29,7 @@ import type {
 	StageCardFact,
 	StageCardSubject,
 	StageGhostMesh,
+	StageDomainPick,
 	StageKeyboardIntent,
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
@@ -1628,7 +1629,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		return Math.abs(rotation[0]) < 1e-8 && Math.abs(rotation[2]) < 1e-8;
 	}
 
-	return {
+	const binding: StageAdapterBinding = {
 		/** Owner-declared found surfaces; the host merges and sorts them. */
 		heightTicks(adapterContext: StageAdapterContext): readonly StageHeightTick[] {
 			return heightTicksFor(adapterContext);
@@ -1640,6 +1641,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
 				})),
 				hostTools: ['erase', 'measure'],
+				/**
+				 * The Eraser reuses the Card's own delete for a model, primitive or form:
+				 * `delete-one`, one F4 entry, and Undo restores the same id. Lights are
+				 * never picked, so they never reach here.
+				 */
+				eraseAction(hit) {
+					if (hit.reference?.domain !== 'scene') return null;
+					const action = binding.cardActions?.({ sourceId: hit.sourceId, sourceKind: hit.sourceKind, reference: hit.reference, ref: null })
+						.find((candidate) => candidate.destructive === true);
+					return action === undefined
+						? { kind: 'refused', message: 'That object cannot be erased.' }
+						: { kind: 'action', action, confirm: false };
+				},
 				pick(candidate, live) {
 					if (!source.entities.some((entity) => entity.kind !== 'light')) return null;
 					const css: [number, number] = [candidate.css[0] + live.evaluation.rect.left, candidate.css[1] + live.evaluation.rect.top];
@@ -1647,6 +1661,33 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (ray === null) return null;
 					const drawn = live.pickScene(ray);
 					if (drawn?.kind === 'layout' || drawn?.kind === 'floor' && live.evaluation.renderedReading !== 'plan') return null;
+					// Measure admits rendered bounds corners independently of a surface hit.
+					// An AABB corner often lies outside a model's silhouette/declared Paper
+					// footprint; requiring Select to hit first made real model bounds unreachable.
+					if (candidate.purpose === 'tool' && candidate.tool?.kind === 'measure') {
+						let nearest = 8;
+						let cornerHit: StageDomainPick | null = null;
+						for (const entity of source.entities) {
+							if (entity.kind === 'light') continue;
+							const bounds = live.sceneBounds(entity.id);
+							if (bounds === null) continue;
+							for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
+								const corner: [number, number, number] = [x, y, z];
+								const projected = live.project(corner);
+								if (projected === null) continue;
+								const depth = corner.reduce((sum, n, axis) => sum + (n - ray.origin[axis]!) * ray.direction[axis]!, 0);
+								if (depth < 0 || drawn?.kind === 'entity' && drawn.entityId !== entity.id && drawn.distanceMeters < depth - 0.001) continue;
+								const distanceCss = Math.hypot(projected[0] - css[0], projected[1] - css[1]);
+								if (distanceCss > nearest) continue;
+								nearest = distanceCss;
+								cornerHit = {
+									hit: { sourceId: entity.id, sourceKind: 'entity', reference: sceneEntityReference(entity.id, live.snapshot.domain.unitRevisions.scene), worldPoint: corner },
+									refusal: null, depthMeters: depth, planLayer: PAPER_LAYER.sceneFootprint, cssDistance: distanceCss
+								};
+							}
+						}
+						if (cornerHit !== null) return cornerHit;
+					}
 					let entityId: string | null = drawn?.entityId ?? null;
 					let distance = drawn?.distanceMeters ?? Infinity;
 					let cssDistance = 0;
@@ -1672,18 +1713,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						cssDistance = planHit.cssDistance;
 					}
 					if (entityId === null) return null;
-					let worldPoint = ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number];
-					if (candidate.purpose === 'tool' && candidate.tool?.kind === 'measure') {
-						const bounds = live.sceneBounds(entityId);
-						let nearest = 8;
-						if (bounds !== null) for (const x of [bounds.min[0], bounds.max[0]]) for (const y of [bounds.min[1], bounds.max[1]]) for (const z of [bounds.min[2], bounds.max[2]]) {
-							const corner: [number, number, number] = [x, y, z];
-							const projected = live.project(corner);
-							if (projected === null) continue;
-							const d = Math.hypot(projected[0] - css[0], projected[1] - css[1]);
-							if (d <= nearest) { nearest = d; worldPoint = corner; }
-						}
-					}
+					const worldPoint = ray.origin.map((value, axis) => value + ray.direction[axis]! * distance) as [number, number, number];
 					return {
 						hit: { sourceId: entityId, sourceKind: 'entity',
 						reference: sceneEntityReference(entityId, live.snapshot.domain.unitRevisions.scene),
@@ -1729,9 +1759,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					{
 						id: SCENE_PLACE_TASK,
 						taskKind: 'place-object',
-						label: 'Place object',
+						// R217.S10: Place object is the dock's Library key. Arming it opens
+						// the same task, so placement behaviour is unchanged.
+						label: 'Library',
 						railFamily: 'place',
 						capability: 'scene',
+						home: 'dock',
+						slot: 'library',
 						order: 20
 					},
 					{
@@ -2155,6 +2189,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					retireSceneSurface(owned.snapshot, owned.surface);
 				}
 			};
+	return binding;
 		}
 	};
 	return adapter;

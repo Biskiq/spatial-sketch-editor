@@ -14,6 +14,10 @@
 	 * It is an absolutely positioned, `pointer-events: none` layer above the
 	 * canvas; pointer hit testing happens through the Stage resolver, in the same
 	 * CSS space.
+	 *
+	 * R217.S10 adds the host tools' own marks: Measure's dimension line with its
+	 * mono tag, and the Eraser's words beside the pointer. Both are drawn here,
+	 * never written anywhere.
 	 */
 	import type { StageMarkView } from '../stage-handles';
 
@@ -21,11 +25,16 @@
 		markers,
 		marks = [],
 		tracePreview = null,
+		hostTools = null,
 		onActivateDisclosure = () => {}
 	}: {
 		markers: readonly { id: string; css: readonly [number, number]; label: string }[];
 		marks?: readonly StageMarkView[];
 		tracePreview?: import('$lib/platform/perf-marks').PerfTracePreview | null;
+		hostTools?: {
+			readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean } | null;
+			readonly notice: { readonly css: readonly [number, number]; readonly message: string; readonly kind: string } | null;
+		} | null;
 		onActivateDisclosure?: (id: string) => void;
 	} = $props();
 
@@ -46,6 +55,17 @@
 
 	function tagWidth(text: string): number {
 		return Math.max(34, Math.round(text.length * 6.1 + 10));
+	}
+
+	/** The two short end ticks of a dimension line, perpendicular to it. */
+	function dimensionTicks(from: readonly [number, number], to: readonly [number, number]): string {
+		const dx = to[0] - from[0];
+		const dy = to[1] - from[1];
+		const length = Math.hypot(dx, dy);
+		if (length === 0) return '';
+		const nx = (-dy / length) * 5;
+		const ny = (dx / length) * 5;
+		return `M${from[0] + nx},${from[1] + ny} L${from[0] - nx},${from[1] - ny} M${to[0] + nx},${to[1] + ny} L${to[0] - nx},${to[1] - ny}`;
 	}
 
 	function onDisclosureKey(event: KeyboardEvent, id: string): void {
@@ -181,6 +201,32 @@
 		</g>
 	{/each}
 
+	{#if hostTools?.measure}
+		{@const dimension = hostTools.measure}
+		{@const middle = [(dimension.from[0] + dimension.to[0]) / 2, (dimension.from[1] + dimension.to[1]) / 2]}
+		<g class="mark dimension" class:live={dimension.live} data-measure data-measure-label={dimension.label}>
+			<line class="halo" x1={dimension.from[0]} y1={dimension.from[1]} x2={dimension.to[0]} y2={dimension.to[1]} />
+			<line class="dimension-line" x1={dimension.from[0]} y1={dimension.from[1]} x2={dimension.to[0]} y2={dimension.to[1]} />
+			<path class="halo" d={dimensionTicks(dimension.from, dimension.to)} />
+			<path class="dimension-line" d={dimensionTicks(dimension.from, dimension.to)} />
+			<g class="tag" transform={`translate(${middle[0] + 8} ${middle[1] - 22})`}>
+				<rect width={tagWidth(dimension.label)} height="17" rx="2" />
+				<text x="5" y="12">{dimension.label}</text>
+			</g>
+		</g>
+	{/if}
+
+	{#if hostTools?.notice}
+		{@const words = hostTools.notice}
+		<g class="mark tag-only" data-erase-notice={words.kind} transform={`translate(${words.css[0] + 12} ${words.css[1] + 12})`}>
+			<g class="tag">
+				<rect width={tagWidth(words.message)} height="17" rx="2" />
+				<text x="5" y="12" class:refused={words.kind === 'refused'}>{words.message}</text>
+			</g>
+			<title>{words.message}</title>
+		</g>
+	{/if}
+
 	{#if tracePreview}
 		<g data-perf-trace-proof transform="translate(8 8)">
 			<rect x="-2" y="-2" width="132" height="132" fill="white" />
@@ -264,5 +310,14 @@
 	}
 	.mark .tag text.refused {
 		fill: #f0b3ab;
+	}
+	.dimension .dimension-line {
+		fill: none;
+		stroke: #f3f4ee;
+		stroke-width: 1.25;
+		stroke-linecap: round;
+	}
+	.dimension.live .dimension-line {
+		stroke-dasharray: 4 3;
 	}
 </style>

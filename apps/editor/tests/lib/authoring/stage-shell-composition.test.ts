@@ -73,6 +73,19 @@ const HEIGHT_SHEET = relativeToRepo(join(SHELL_DIR, 'StageHeightSheet.svelte'));
 const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 
 describe('Stage shell composition', () => {
+	it('gives every dock key at least 44 × 44 px under a coarse pointer, icon-first (R217.S10)', () => {
+		const dock = codeOf('apps/editor/src/lib/authoring/stage/shell/StageDock.svelte');
+		expect(dock).toMatch(/@media \(pointer: coarse\)\s*\{\s*\.key\s*\{\s*width: 44px;\s*height: 44px;/);
+		// Icon-first: every key is an inline 20 px SVG with its name as the label and
+		// its name and key as the tooltip.
+		expect(dock).toContain('width="20" height="20"');
+		expect(dock).toContain('aria-label={key.label}');
+		expect(dock).toContain('title={tooltip(key)}');
+		// The armed key is ivory; tool colour is only a 2 px mark.
+		expect(dock).toContain('background: #f3f0e4;');
+		expect(dock).toContain('height: 2px;');
+	});
+
 	it('preserves Camera pose and vertical extent when the viewport height changes', () => {
 		const camera = createViewportCameraState({
 			outputId: 'output', sessionEpoch: 'session', sourceRevision: 'source',

@@ -283,7 +283,7 @@
 	{#if !hasRoomFloor}
 		<p class="hint" role="status">
 			This project has no Room floor yet. Approval can proceed, but placement waits: draw an
-			enclosure with Ink, then reopen Place object.
+			enclosure with Ink, then reopen the Library.
 		</p>
 	{/if}
 

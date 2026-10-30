@@ -11,6 +11,9 @@
  * sorts by explicit order, then adapter ID, then entry ID), and grouping preserves
  * the first appearance of each rail family / capability pair.
  */
+import { STAGE_DOCK_SHORTCUTS, type StageDockSlot } from './stage-input';
+import { STAGE_ERASER_TASK } from './stage-eraser';
+import { STAGE_MEASURE_TASK } from './stage-measure';
 import type {
 	StageCardActionRecord,
 	StageCardFact,
@@ -34,7 +37,74 @@ export type StageDockTool = {
 	readonly adapterId: string;
 	readonly taskKind: string;
 	readonly order: number;
+	readonly slot?: 'ink' | 'library';
 };
+
+/** The adapter id the host's own dock keys (Select, Measure, Eraser) are stamped with. */
+export const STAGE_HOST_ADAPTER_ID = 'host';
+
+/**
+ * One key the **dock** draws (R217.S10): the host's Select, Measure and Eraser
+ * plus the contributed Ink and Library, in the owner-ruled order
+ * Select · Ink · Measure · Eraser | Library.
+ */
+export type StageDockKey = {
+	readonly id: string;
+	/** `null` for a contributed key the dock has no fixed slot for. */
+	readonly slot: StageDockSlot | null;
+	readonly label: string;
+	/** The one production key, e.g. `M`; `null` for a slotless contributed key. */
+	readonly shortcut: string | null;
+	readonly adapterId: string;
+	/** The task kind arming this key opens; Select opens none. */
+	readonly taskKind: string | null;
+	/** The key opens a palette above the dock (its invoked instrument). */
+	readonly palette: boolean;
+	/** Draw the separator before this key (Library sits beside the tools). */
+	readonly separated: boolean;
+};
+
+const HOST_DOCK_KEYS: Readonly<Record<'select' | 'measure' | 'erase', { id: string; label: string; taskKind: string | null }>> = {
+	select: { id: 'host-select', label: 'Select', taskKind: null },
+	measure: { id: STAGE_MEASURE_TASK, label: 'Measure', taskKind: STAGE_MEASURE_TASK },
+	erase: { id: STAGE_ERASER_TASK, label: 'Eraser', taskKind: STAGE_ERASER_TASK }
+};
+
+/**
+ * The dock's keys, in dock order. The host contributes only its own tools; a
+ * missing contributed slot (no Library mounted) is simply absent, never an inert key.
+ */
+export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDockKey[] {
+	const host = (slot: 'select' | 'measure' | 'erase'): StageDockKey => ({
+		...HOST_DOCK_KEYS[slot],
+		slot,
+		shortcut: STAGE_DOCK_SHORTCUTS[slot],
+		adapterId: STAGE_HOST_ADAPTER_ID,
+		palette: false,
+		separated: false
+	});
+	const contributed = (tool: StageDockTool, separated = false): StageDockKey => ({
+		id: tool.id,
+		slot: tool.slot ?? null,
+		label: tool.label,
+		shortcut: tool.slot === undefined ? null : STAGE_DOCK_SHORTCUTS[tool.slot],
+		adapterId: tool.adapterId,
+		taskKind: tool.taskKind,
+		palette: true,
+		separated
+	});
+	const ink = tools.find((tool) => tool.slot === 'ink');
+	const library = tools.find((tool) => tool.slot === 'library');
+	const others = tools.filter((tool) => tool.slot === undefined);
+	return [
+		host('select'),
+		...(ink === undefined ? [] : [contributed(ink)]),
+		host('measure'),
+		host('erase'),
+		...others.map((tool) => contributed(tool)),
+		...(library === undefined ? [] : [contributed(library, true)])
+	];
+}
 
 /**
  * The armable tools the **bottom dock** shows: every contributed Find entry whose
@@ -54,7 +124,8 @@ export function stageDockTools(facade: StageFacade | null): readonly StageDockTo
 			label: entry.label,
 			adapterId: entry.adapterId,
 			taskKind: entry.taskKind,
-			order: entry.order
+			order: entry.order,
+			...(entry.slot === undefined ? {} : { slot: entry.slot })
 		}));
 }
 

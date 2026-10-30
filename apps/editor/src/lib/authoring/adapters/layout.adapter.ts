@@ -81,6 +81,7 @@ import {
 	EMPTY_CHAIN_DRAFT,
 	appendChainPoint,
 	backtrackChainPoint,
+	boxChainDraft,
 	chainPlanRequest,
 	classifyTypedChainPoint,
 	closeChainDraft,
@@ -118,6 +119,7 @@ import {
 	type InkPointerTarget,
 	type InkPaletteReading,
 	type InkReading,
+	type InkWallMode,
 	type ProjectedJunction,
 	type ProjectedWall
 } from './layout/ink';
@@ -356,6 +358,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	 * using, not on a shell default.
 	 */
 	let inkReading: InkReading = 'wall';
+	/** Line or Box for the Wall reading; adapter memory for the same reason. */
+	let inkWallMode: InkWallMode = 'line';
 	/** The next Opening's kind and exact defaults; UI state only, never serialized. */
 	let openingOptions: InkOpeningOptions = {
 		kind: 'door',
@@ -1499,6 +1503,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					inkNotice = null;
 					return;
 				}
+				if (inkReading === 'wall' && inkWallMode === 'box') {
+					// Box previews the very ring its release commits. With no second corner
+					// yet there is nothing to plan, and a refusal set by the last release
+					// stays readable until the pointer names a new box.
+					const box = boxPreviewDraft();
+					inkPreview = box === null ? null : planInkDraft(box);
+					if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
+					return;
+				}
 				const points =
 					inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
 				if (!('points' in points)) {
@@ -1516,6 +1529,51 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// A refusal is only words for the palette: the live chain is untouched.
 				inkNotice =
 					inkPreview.kind === 'refused' && points.points.length >= 2 ? inkPreview.message : null;
+			}
+
+			/** One planner pass over a draft at the remembered thickness and height. */
+			function planInkDraft(target: ChainDraft): ChainPlanPreview {
+				return planChainDraft({
+					document,
+					draft: target,
+					capture: chainCapture ?? mintLayoutIdCapture(),
+					levelId,
+					...(inkThickness === null ? {} : { thickness: inkThickness }),
+					...(inkHeight === null ? {} : { height: inkHeight })
+				});
+			}
+
+			/**
+			 * Box's first corner: the one a tap already placed, or the corner the live
+			 * press landed on (press-drag-release names both corners in one gesture).
+			 */
+			function boxAnchor(): ChainDraftPoint | null {
+				const placed = draft.points[0];
+				if (placed !== undefined) return placed;
+				const pressed = inkPress?.pressTarget;
+				return pressed === undefined ? null : { point: pressed.point, target: pressed.target };
+			}
+
+			/** The closed four-Wall ring the anchor and the pointer name, or `null`. */
+			function boxPreviewDraft(): ChainDraft | null {
+				const anchor = boxAnchor();
+				if (anchor === null || inkHover === null) return null;
+				const box = boxChainDraft(document, anchor, { point: inkHover.point, target: inkHover.target });
+				return 'points' in box ? box : null;
+			}
+
+			/**
+			 * Commit one Box through the same Wall-chain acceptance four Lines use. A
+			 * degenerate box refuses in words and writes nothing; a tapped first corner
+			 * stays so the creator can name another opposite corner.
+			 */
+			function commitBox(first: ChainDraftPoint, opposite: ChainDraftPoint): void {
+				const box = boxChainDraft(document, first, opposite);
+				if (!('points' in box)) {
+					inkNotice = box.message;
+					return;
+				}
+				void commitChain(box);
 			}
 
 			/** Layout's built-in readings, then every contributed reading in host order. */
@@ -1536,16 +1594,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			function snapshotForPalette(): InkPaletteSnapshot {
+				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
 				const withHover =
 					inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
-				const effective = 'points' in withHover ? withHover : draft;
+				const effective = boxMode ? boxPreviewDraft() ?? draft : 'points' in withHover ? withHover : draft;
 				const pending =
-					inkHover === null ? null : pendingLegFacts(draft, inkHover.point);
+					inkHover === null || boxMode ? null : pendingLegFacts(draft, inkHover.point);
+				const anchor = boxMode ? boxAnchor() : null;
+				const box =
+					anchor === null || inkHover === null
+						? null
+						: {
+								width: Math.abs(inkHover.point[0] - anchor.point[0]),
+								depth: Math.abs(inkHover.point[1] - anchor.point[1])
+							};
 				const selection = services.stage.selection();
 				const selectedHostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
 				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
 					reading: inkReading,
+					wallMode: inkWallMode,
+					box,
 					readings: paletteReadings(),
 					opening:
 						inkReading !== 'opening'
@@ -1566,8 +1635,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					,
 					points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
 					closed: effective.closed,
-					canFinish: draft.points.length >= 2,
-					canClose: draft.points.length >= 3 && !draft.closed,
+					canFinish: !boxMode && draft.points.length >= 2,
+					canClose: !boxMode && draft.points.length >= 3 && !draft.closed,
 					canBacktrack: draft.points.length > 0,
 					consequence:
 						inkPreview !== null && inkPreview.kind === 'planned' && effective.points.length >= 2
@@ -1654,6 +1723,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						inkHover = null;
 						if (next === 'wall') refreshInkPreview();
 						else if (next !== 'opening') ensureContributedSession();
+						services.stage.notifySurfaceChange();
+						publishInk();
+					},
+					setWallMode: (mode: InkWallMode) => {
+						if (mode === inkWallMode) return;
+						if (draft.points.length > 0 || inkPress !== null) {
+							inkNotice = 'Finish or cancel the Wall chain before switching between Line and Box.';
+							publishInk();
+							return;
+						}
+						inkWallMode = mode;
+						inkNotice = null;
+						inkHover = null;
+						refreshInkPreview();
 						services.stage.notifySurfaceChange();
 						publishInk();
 					},
@@ -1955,7 +2038,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const pressTarget = current.pressTarget;
 				endInkPress();
 				inkHover = null;
-				if (travel <= 4) appendInkPoint({ point: release.point, target: release.target });
+				if (inkReading === 'wall' && inkWallMode === 'box') {
+					// Box: a drag names both corners; a tap names the first corner, and the
+					// next tap the opposite one.
+					const releasePoint: ChainDraftPoint = { point: release.point, target: release.target };
+					if (travel > 4) commitBox(draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target }, releasePoint);
+					else if (draft.points.length === 0) beginChain(releasePoint);
+					else commitBox(draft.points[0]!, releasePoint);
+				} else if (travel <= 4) appendInkPoint({ point: release.point, target: release.target });
 				else dragInkWall(pressTarget, release);
 				refreshInkPreview();
 				services.stage.notifySurfaceChange();
@@ -1990,9 +2080,29 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return preview;
 			}
 
-			return {
+			const binding: StageAdapterBinding = {
 				pick,
 				hostTools: ['erase', 'measure'],
+				/**
+				 * The Eraser reuses the Card's own delete for a Wall or an Opening — the
+				 * same planner-derived disclosure and the same one F4 entry. Every other
+				 * Layout subject was already refused, in Layout's words, by the pick.
+				 */
+				eraseAction(hit) {
+					if (hit.sourceKind !== 'wall' && hit.sourceKind !== 'opening') {
+						return { kind: 'refused', message: 'That Layout subject cannot be erased.' };
+					}
+					const action = binding.cardActions?.({ sourceId: hit.sourceId, sourceKind: hit.sourceKind, ref: null })
+						.find((candidate) => candidate.destructive === true);
+					if (action === undefined) return { kind: 'refused', message: 'That Layout subject cannot be erased.' };
+					// A Wall that hosts Openings or changes Rooms has consequences beyond
+					// itself; its existing disclosure is read before the second click runs it.
+					const preview = hit.sourceKind === 'wall' ? deletionPreview(hit.sourceId) : null;
+					const confirm =
+						preview?.kind === 'planned' &&
+						(preview.hostedOpeningIds.length > 0 || preview.retiredRoomIds.length > 0 || preview.createdRoomIds.length > 0);
+					return { kind: 'action', action, confirm };
+				},
 				tasks: [
 					{
 						id: LAYOUT_INK_TASK,
@@ -2017,6 +2127,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// Ink is an armable **dock** tool: it is armed from the bottom dock
 						// (and found by name in the Head), not listed as an Index task.
 						home: 'dock',
+						slot: 'ink',
 						order: 0
 					},
 					{
@@ -2713,6 +2824,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					publishInkSurface(null);
 				}
 			};
+			return binding;
 
 			/**
 			 * The host-relative Opening ghost: two edges, the live offset/width and the
@@ -2782,8 +2894,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						});
 					}
 				}
-				const livePoints =
-					inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
+				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
+				const livePoints = boxMode
+					? boxPreviewDraft() ?? draft
+					: inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
 				const points = 'points' in livePoints ? livePoints.points : draft.points;
 				points.forEach((entry, index) => {
 					const css = project(entry.point);
@@ -2812,7 +2926,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									: 'Free point'
 					});
 				}
-				const pending = inkHover === null ? null : pendingLegFacts(draft, inkHover.point);
+				const pending = inkHover === null || boxMode ? null : pendingLegFacts(draft, inkHover.point);
+				const anchor = boxMode ? boxAnchor() : null;
+				if (anchor !== null && inkHover !== null) {
+					const css = project(inkHover.point);
+					if (css !== null) {
+						markers.push({
+							id: 'layout-ink-box',
+							css,
+							label: `Box ${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(3)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(3)} m`
+						});
+					}
+				}
 				if (pending !== null && inkHover !== null) {
 					const css = project(inkHover.point);
 					if (css !== null) {

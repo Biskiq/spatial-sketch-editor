@@ -12,10 +12,24 @@
 import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import type { ViewingIntent } from '@portfolio/camera-core';
 
+/** The dock's fixed keys, in dock order (R217.S10, owner ruling D3). */
+export type StageDockSlot = 'select' | 'ink' | 'measure' | 'erase' | 'library';
+
+/** The one production key for each dock slot; the Keys list shows this map. */
+export const STAGE_DOCK_SHORTCUTS: Readonly<Record<StageDockSlot, string>> = {
+	select: 'V',
+	ink: 'P',
+	measure: 'M',
+	erase: 'E',
+	library: 'L'
+};
+
 /** What one key asks the Stage to do. */
 export type StageKeyAction =
 	| { readonly kind: 'reading'; readonly reading: '3d' | 'plan' }
 	| { readonly kind: 'fit' }
+	/** Arm one dock key (R217.S10): V Select · P Ink · M Measure · E Eraser · L Library. */
+	| { readonly kind: 'tool'; readonly slot: StageDockSlot }
 	/**
 	 * Finish the live proposal (a drawing chain) — the same command its palette's
 	 * Finish control runs. The armed tool's own controller answers it.
@@ -39,16 +53,37 @@ export type StageKeyAction =
  * `Enter`/`Backspace`/`Delete` are the drawing and deletion commands. They are
  * **not** copied from the prototype: each one is either the command's own key
  * (the palette names Finish as Enter and Backtrack as Backspace) or the platform's
- * delete key, and none of them collides with the viewing map (3/p/f/arrows/Escape)
+ * delete key, and none of them collides with the viewing map (3/2/f/arrows/Escape)
  * or with typing, which the text-entry guard already excludes.
+ *
+ * R217.S10 production key-map decision: the dock's letters arm its keys and the
+ * Plan reading moves from `p` to `2`, beside `3`. While a press is live
+ * (`pressing`), the dock letters and `2` keep their pre-S10 meaning of *no Stage
+ * command*, so they still reach the live gesture's typed entry exactly as before;
+ * `3`'s reading flip during a press is unchanged.
  */
-export function stageKeyAction(key: string): StageKeyAction {
+export function stageKeyAction(key: string, options: { readonly pressing?: boolean } = {}): StageKeyAction {
+	const pressing = options.pressing === true;
 	switch (key) {
 		case '3':
 			return { kind: 'reading', reading: '3d' };
+		case '2':
+			return pressing ? { kind: 'none' } : { kind: 'reading', reading: 'plan' };
+		case 'v':
+		case 'V':
+			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'select' };
 		case 'p':
 		case 'P':
-			return { kind: 'reading', reading: 'plan' };
+			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'ink' };
+		case 'm':
+		case 'M':
+			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'measure' };
+		case 'e':
+		case 'E':
+			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'erase' };
+		case 'l':
+		case 'L':
+			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'library' };
 		case 'f':
 		case 'F':
 			return { kind: 'fit' };

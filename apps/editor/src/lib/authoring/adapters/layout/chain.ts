@@ -23,6 +23,7 @@
 import {
 	coincidesAsJunction,
 	detectUnsupportedChainConnections,
+	JUNCTION_COINCIDENCE_EPSILON,
 	planWallChain,
 	wallCenterlineCarriesPoint,
 	type LayoutDocumentWallFirst,
@@ -126,6 +127,44 @@ export function classifyTypedChainPoint(
 		return { point: [point[0], point[1]], target: { kind: 'host', wallId: wall.id } };
 	}
 	return { point: [point[0], point[1]], target: { kind: 'free' } };
+}
+
+/**
+ * R217.S10 — Ink's **Box** for the Wall reading: two opposite corners name the
+ * closed four-point ring a creator would otherwise tap by hand.
+ *
+ * The two named corners keep the targets the gesture gave them (a Junction mark,
+ * a Wall interior or a snapped free point). The two derived corners are exact
+ * coordinates, so they name a target only by landing on one exactly, as a typed
+ * point does. The ring runs first → (opposite x, first z) → opposite →
+ * (first x, opposite z) and is closed, so it is the same draft — and the same
+ * one `layout-wall-chain-commit` — as those four points tapped and closed by hand.
+ *
+ * A box with no extent on either axis would hand the planner zero-length legs;
+ * it is refused in words here, before any preview or acceptance.
+ */
+export function boxChainDraft(
+	document: LayoutDocumentWallFirst,
+	first: ChainDraftPoint,
+	opposite: ChainDraftPoint
+): ChainDraft | ChainDraftRefusal {
+	const [ax, az] = first.point;
+	const [cx, cz] = opposite.point;
+	if (Math.abs(cx - ax) <= JUNCTION_COINCIDENCE_EPSILON || Math.abs(cz - az) <= JUNCTION_COINCIDENCE_EPSILON) {
+		return {
+			kind: 'refused',
+			message: 'A Box needs two corners apart on both axes; drag diagonally to open a rectangle.'
+		};
+	}
+	return {
+		points: [
+			{ point: [ax, az], target: first.target },
+			classifyTypedChainPoint(document, [cx, az]),
+			{ point: [cx, cz], target: opposite.target },
+			classifyTypedChainPoint(document, [ax, cz])
+		],
+		closed: true
+	};
 }
 
 /** The planner input this draft names: points in order, plus its declarations. */

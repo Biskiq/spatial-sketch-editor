@@ -39,10 +39,12 @@
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
+	import { STAGE_ERASE_INK } from '../stage-eraser';
 
 	let {
 		selection,
 		hover,
+		hoverTone = 'hover',
 		geometry,
 		scenePick,
 		width = 1,
@@ -50,6 +52,8 @@
 	}: {
 		selection: StageSelectionEntry | null;
 		hover: StageSelectionEntry | null;
+		/** R217.S10: the armed Eraser's winner reads as red dashes, never gold. */
+		hoverTone?: 'hover' | 'erase';
 		geometry: CompiledLayoutGeometry;
 		scenePick: ScenePickSource;
 		/** Viewport CSS size; fat-line width is in CSS pixels at this resolution. */
@@ -59,6 +63,7 @@
 
 	const GOLD = 0xd4ad45;
 	const NEUTRAL = 0xf3f4ee;
+	const ERASE = Number.parseInt(STAGE_ERASE_INK.slice(1), 16);
 	const { invalidate } = useThrelte();
 
 	const root = new Group();
@@ -157,7 +162,7 @@
 
 	function apply(
 		entry: StageSelectionEntry | null,
-		tone: 'selection' | 'hover'
+		tone: 'selection' | 'hover' | 'erase'
 	): void {
 		if (entry === null) return;
 		const source = sourceMeshes(entry);
@@ -180,7 +185,7 @@
 				const resolution = new Vector2(width, height);
 				const haloMaterial = new LineMaterial({
 					color: 0x152c26,
-					linewidth: tone === 'selection' ? 4.5 : 3.5,
+					linewidth: tone === 'selection' ? 4.5 : tone === 'erase' ? 4 : 3.5,
 					transparent: true,
 					opacity: 0.9,
 					depthTest: true,
@@ -188,18 +193,20 @@
 					resolution
 				});
 				const lineMaterial = new LineMaterial({
-					color: tone === 'selection' ? GOLD : NEUTRAL,
-					linewidth: tone === 'selection' ? 2.5 : 1.8,
+					color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL,
+					linewidth: tone === 'selection' ? 2.5 : tone === 'erase' ? 2.2 : 1.8,
 					transparent: true,
-					opacity: tone === 'selection' ? 1 : 0.6,
+					opacity: tone === 'hover' ? 0.6 : 1,
 					depthTest: true,
 					depthWrite: false,
-					resolution
+					resolution,
+					// The erase treatment is dashed; dash lengths are world meters.
+					...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
 				});
 				const halo = new LineSegments2(edgeGeometry, haloMaterial);
 				// Selection outranks hover when two subjects share an edge: the gold
 				// identity must never be cut by a neighbouring neutral preview.
-				const haloOrder = tone === 'selection' ? 21 : 18;
+				const haloOrder = tone === 'selection' ? 21 : tone === 'erase' ? 23 : 18;
 				const lineOrder = haloOrder + 1;
 				halo.matrixAutoUpdate = false;
 				halo.matrix.copy(matrix);
@@ -208,6 +215,7 @@
 				halo.layers.set(2);
 				root.add(halo);
 				const line = new LineSegments2(edgeGeometry, lineMaterial);
+				if (tone === 'erase') line.computeLineDistances();
 				line.matrixAutoUpdate = false;
 				line.matrix.copy(matrix);
 				line.frustumCulled = false;
@@ -225,7 +233,7 @@
 				// The gold/neutral line shares the same geometry and is removed with the
 				// halo; its own dispose is the shared one above.
 				inked.push({ object: line, dispose: () => {} });
-				if (tone === 'hover') continue;
+				if (tone !== 'selection') continue;
 				const tintGeometry = mesh.geometry.clone();
 				const tintMaterial = new MeshBasicMaterial({
 					color: GOLD,
@@ -263,7 +271,10 @@
 		apply(selection, 'selection');
 		// Hover is subordinate and never drawn for the selected subject itself. The
 		// full canonical reference is the identity, not just its id.
-		if (hover !== null && (selection === null || !sameReference(hover.reference, selection.reference))) {
+		// The Eraser's winner is drawn even when it is the selection: it says what the
+		// next click removes, which gold alone cannot.
+		if (hover !== null && hoverTone === 'erase') apply(hover, 'erase');
+		else if (hover !== null && (selection === null || !sameReference(hover.reference, selection.reference))) {
 			apply(hover, 'hover');
 		}
 		// These objects are added and removed imperatively, so Threlte cannot infer
@@ -274,6 +285,7 @@
 	$effect(() => {
 		selection;
 		hover;
+		hoverTone;
 		geometry;
 		width;
 		height;
