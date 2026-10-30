@@ -2275,6 +2275,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const ticks: StageHeightTick[] = [{ kind: 'datum', heightMeters: 0, label: 'Floor' }];
 					for (const object of document.objects) {
 						if (object.kind !== 'box' && object.kind !== 'cylinder') continue;
+						// A top tilted away from horizontal is not a surface the Plan cut can
+						// snap to; the owner publishes only its real horizontal tops.
+						if (Math.abs(object.rotation[0]) > 1e-6 || Math.abs(object.rotation[2]) > 1e-6) continue;
 						const top = object.position[1] + object.dimensions[1] / 2;
 						const heightMeters = top - datum;
 						if (!Number.isFinite(heightMeters) || heightMeters <= 0) continue;

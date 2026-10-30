@@ -42,7 +42,9 @@
 		indexOpen = true,
 		onOpenIndex = () => {},
 		reducedMotion = false,
-		onToggleReducedMotion = () => {}
+		onToggleReducedMotion = () => {},
+		lens = 'world',
+		onLens = () => {}
 	}: {
 		projectName: string;
 		projectId?: string;
@@ -66,6 +68,8 @@
 		onOpenIndex?: () => void;
 		reducedMotion?: boolean;
 		onToggleReducedMotion?: () => void;
+		lens?: 'world' | 'experience';
+		onLens?: (lens: 'world' | 'experience') => void;
 	} = $props();
 
 	let version = $state(0);
@@ -119,6 +123,8 @@
 >
 	{#if !indexOpen}<button type="button" data-head-location onclick={onOpenIndex}>Open Index</button>{/if}
 	<button type="button" data-head-motion aria-pressed={reducedMotion} onclick={onToggleReducedMotion}>Reduce motion</button>
+	<button type="button" data-testid="lens-world" aria-pressed={lens === 'world'} onclick={() => onLens('world')}>World</button>
+	<button type="button" data-testid="lens-experience" aria-pressed={lens === 'experience'} onclick={() => onLens('experience')}>Experience</button>
 	{#if find}
 		<div data-head-find><div class="find-results">
 			{#each find.entries as entry (`${entry.adapterId}:${entry.id}`)}

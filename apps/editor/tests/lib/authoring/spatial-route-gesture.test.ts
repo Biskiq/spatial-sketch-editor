@@ -43,7 +43,11 @@ import {
 const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
-import { formatMeters, metersPerCssPixelForScaleRatio } from '$lib/authoring/stage/stage-drafting';
+import {
+	draftingSnapIncrementMeters,
+	formatMeters,
+	metersPerCssPixelForScaleRatio
+} from '$lib/authoring/stage/stage-drafting';
 import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { shapeReadingSurface } from '$lib/authoring/adapters/scene/shape/reading';
@@ -1007,6 +1011,26 @@ describe('R217.S05 — the drafting configuration and scale bar', () => {
 });
 
 describe('R217.S06 — mounted Height Sheet', () => {
+	const sheetNode = () => target.querySelector<HTMLElement>('[data-stage-height-sheet]');
+	const sliderNode = () => sheetNode()?.querySelector<HTMLElement>('[role="slider"]') ?? null;
+	const height = () => facade().session.heightSheet().height();
+	const pins = () => facade().session.heightSheet().pins();
+	const canvasProbe = () => target.querySelector<HTMLElement>('[data-testid="stage-canvas"]');
+	const snapToggle = () => target.querySelector<HTMLButtonElement>('[data-drafting-snap]')!;
+	function trackPointer(type: string, clientY: number): void {
+		const track = sliderNode();
+		if (track === null) throw new Error('the Height Sheet slider is not mounted');
+		const event = new MouseEvent(type, {
+			bubbles: true,
+			cancelable: true,
+			clientX: RECT.left + RECT.width / 2,
+			clientY
+		});
+		Object.defineProperty(event, 'pointerId', { value: 7 });
+		Object.defineProperty(event, 'pointerType', { value: 'touch' });
+		track.dispatchEvent(event);
+	}
+
 	it('steps the one height fact without an F4 entry, dirty history or changed Save bytes', async () => {
 		const host = harness.host as StageAcceptanceHost;
 		const sheet = target.querySelector<HTMLElement>('[data-stage-height-sheet]');
@@ -1030,6 +1054,23 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		expect(raised).toBeGreaterThan(1.2);
 		expect(Number(slider!.getAttribute('aria-valuenow'))).toBeCloseTo(raised, 6);
 
+		// Pins and a drag are the same session fact, not a source edit.
+		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		await frame();
+		expect(pins()).toHaveLength(1);
+		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+		await frame();
+		expect(pins()).toEqual([]);
+		const max = Number(slider!.getAttribute('aria-valuemax'));
+		const fromY = RECT.bottom - (height() / max) * RECT.height;
+		trackPointer('pointerdown', fromY);
+		await frame();
+		trackPointer('pointermove', fromY + 48);
+		await frame();
+		trackPointer('pointerup', fromY + 48);
+		await frame();
+		expect(height()).toBeLessThan(raised);
+
 		// The Sheet is view state: no install, no history entry, and Save is the
 		// same canonical bytes as before the step.
 		expect(facade().snapshot().canonicalJson).toBe(before);
@@ -1044,5 +1085,97 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		if (saveBefore.kind === 'captured' && saveAfter.kind === 'captured') {
 			expect(saveAfter.capture.canonicalJson).toBe(saveBefore.capture.canonicalJson);
 		}
+	});
+
+	it('steps by the drafting increment, falls back to 0.1 m, jumps ticks and names the nearest', async () => {
+		// The route reads the merged tick set after the binding exists; force that
+		// read so the aria name is the owner's Floor, not an empty placeholder.
+		facade().heightTicks();
+		await frame();
+		const slider = sliderNode();
+		expect(slider).not.toBeNull();
+		expect(slider!.getAttribute('aria-valuetext')).toMatch(/metres, nearest Floor/);
+		const step =
+			draftingSnapIncrementMeters(facade().session.drafting(), currentGridMinor()) ?? 0.1;
+		const start = height();
+		const max = Number(slider!.getAttribute('aria-valuemax'));
+		slider!.focus();
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await frame();
+		expect(height()).toBeCloseTo(Math.min(max, start + step), 6);
+
+		// Snap off: the same key steps a fixed 0.1 m.
+		snapToggle().click();
+		await frame();
+		const beforeFallback = height();
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+		await frame();
+		expect(height()).toBeCloseTo(Math.max(0, beforeFallback - 0.1), 6);
+
+		// Page Up/Down and Home walk the owner ticks and pins, not an invented grid.
+		facade().session.heightSheet().set(0.75, 'key');
+		await frame();
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		await frame();
+		facade().session.heightSheet().set(0.4, 'key');
+		await frame();
+		slider!.focus();
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true }));
+		await frame();
+		expect(height()).toBeCloseTo(0.75, 6);
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }));
+		await frame();
+		expect(height()).toBeCloseTo(0, 6);
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+		await frame();
+		expect(height()).toBe(0);
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+		await frame();
+		expect(pins()).toEqual([]);
+	});
+
+	it('hides the Sheet and its plane in Experience and returns the session height', async () => {
+		facade().session.heightSheet().set(0.8, 'key');
+		await frame();
+		const slider = sliderNode();
+		expect(slider).not.toBeNull();
+		slider!.focus();
+		await frame();
+		expect(canvasProbe()?.dataset.heightMeters).toBe('0.8');
+		expect(canvasProbe()?.dataset.heightPlane).toBe('true');
+
+		target.querySelector<HTMLButtonElement>('[data-testid="lens-experience"]')!.click();
+		await frame();
+		expect(sheetNode()).toBeNull();
+		expect(canvasProbe()?.dataset.heightMeters ?? 'none').toBe('none');
+		expect(canvasProbe()?.dataset.heightPlane ?? 'false').toBe('false');
+		expect(height()).toBeCloseTo(0.8, 6);
+
+		target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
+		await frame();
+		expect(sheetNode()).not.toBeNull();
+		expect(Number(sliderNode()!.getAttribute('aria-valuenow'))).toBeCloseTo(0.8, 6);
+	});
+
+	it('keeps a 44 px coarse target and names the snap while dragging', async () => {
+		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
+		expect(source).toContain('@media (pointer: coarse)');
+		expect(source).toMatch(/width:\s*44px/);
+		expect(source).toMatch(/min-width:\s*44px/);
+		expect(source).toMatch(/min-height:\s*44px/);
+
+		const slider = sliderNode();
+		expect(slider).not.toBeNull();
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		await frame();
+		const max = Number(slider!.getAttribute('aria-valuemax'));
+		const pinY = RECT.bottom - (height() / max) * RECT.height;
+		trackPointer('pointerdown', pinY);
+		await frame();
+		const snap = sheetNode()!.querySelector<HTMLElement>('.snap');
+		expect(snap?.textContent ?? '').toContain('Snapped to Pin');
+		trackPointer('pointerup', pinY);
+		await frame();
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
 	});
 });
