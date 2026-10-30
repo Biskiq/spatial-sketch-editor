@@ -2,14 +2,15 @@
 	/**
 	 * T2.P01.S03 — the Scene editing instrument.
 	 *
-	 * It is mounted by `StageInstrumentHost` for the two tasks this adapter
-	 * contributes (`place-object`, `scene-arrange`) and receives only the public
+	 * It is mounted by `StageInstrumentHost` for this adapter's tasks
+	 * (`place-object`, `scene-compose`, `import-model`) and receives only the public
 	 * `StageAdapterServices`, so it reads no host internals and edits no shell.
 	 *
-	 * Presentation is deliberately plain: P1 is a functional foundation, so the
-	 * instrument's job is to expose the same writer for pointer-free exact values,
-	 * show the planner's captured candidate and refusal reason, and never commit on
-	 * blur. Esc/Close and unmount both run the session's one `cancel()`.
+	 * R217.S08 removes the old Arrange posture: a selected object's exact Position,
+	 * Yaw and Size are the Card writer, while this panel keeps Place and the
+	 * bounded Compose commands. Presentation is deliberately plain; it shows the
+	 * planner's captured candidate and refusal reason, and never commits on blur.
+	 * Esc/Close and unmount both run the session's one `cancel()`.
 	 */
 	import { onDestroy, tick, untrack } from 'svelte';
 
@@ -40,10 +41,8 @@
 
 	let { services }: { services: StageAdapterServices } = $props();
 
-	let entityId = $state('');
 	let x = $state('0');
 	let z = $state('0');
-	let yaw = $state('0');
 	let snapText = $state('');
 	/** S04's uniform Resize entry; blank/non-finite/non-positive never commits. */
 	let composeScaleText = $state('');
@@ -53,7 +52,6 @@
 	let primitive = $state<NativePlacementPrimitive>('box');
 	let candidate = $state<SceneCandidate | null>(null);
 	let message = $state('');
-	let editing = $state(false);
 
 	let session: ScenePlacementSession | null = null;
 	/** Whether `message` is a refusal or failure reason the creator still needs. */
@@ -165,7 +163,7 @@
 			// The hint below is capability-specific: read the arm from the session
 			// that will commit, not from Import's already-consumed pending slot.
 			const previous = session;
-			const proposalWasOpen = editing;
+			const proposalWasOpen = composeActive;
 			// A saved copy is armed for one reading's session. Replacing the session
 			// must not leave the panel saying it is ready when the next click would
 			// place a native primitive instead.
@@ -214,7 +212,8 @@
 			// has been released, so the instrument shows the same cancel the creator
 			// would see from Esc rather than an editable form with nothing behind it.
 			if (proposalWasOpen) {
-				editing = false;
+				composeActive = false;
+				composeSubjectId = null;
 				candidate = null;
 				message = 'Cancelled; the accepted pose is unchanged.';
 			} else if (previousCopy !== null && session?.armedFormCopy() === null) {
@@ -237,13 +236,6 @@
 		session?.setSnapStep(snapText.trim() === '' || !Number.isFinite(parsed) || parsed <= 0 ? null : parsed);
 	}
 
-	function candidateMessage(next: SceneCandidate): string {
-		const pose = `${next.worldXZ[0].toFixed(3)}, ${next.worldXZ[1].toFixed(3)} m · ${next.yaw.toFixed(3)} rad`;
-		return next.snappedStep === null
-			? `Candidate ${pose}.`
-			: `Candidate ${pose} · snap ${next.snappedStep} m applied.`;
-	}
-
 	/**
 	 * A pointer commit is an accepted install too: the host closes the task and
 	 * retires this panel before the adapter reports the outcome. Only a
@@ -263,27 +255,10 @@
 					// the creator sees exactly the re-seat commit will install.
 					message = `Candidate scale ${outcome.candidate.scale} · Y ${outcome.candidate.position[1].toFixed(3)} m.`;
 					services.stage.notifySurfaceChange();
-					break;
 				}
-				// The fields show the pose the planner captured, not text it replaced.
-				// A proposal is one exact group: a yaw proposal is the accepted X/Z plus
-				// the new angle, and a move proposal keeps the accepted yaw. Rewriting
-				// only the group this entry did not touch leaves the field being typed
-				// alone, so incremental typing (`3.` on the way to `3.5`) is never
-				// retyped from under the creator.
-				if (outcome.candidate.kind === 'yaw') {
-					x = String(outcome.candidate.position[0]);
-					z = String(outcome.candidate.position[2]);
-				} else if (outcome.candidate.kind === 'move') {
-					yaw = String(outcome.candidate.yaw);
-				}
-				message = candidateMessage(outcome.candidate);
-				// Both readings show the pose; the overlay reads the session's candidate.
-				services.stage.notifySurfaceChange();
 				break;
 			case 'committed':
 				candidate = null;
-				editing = false;
 				proposalRefused = false;
 				message = 'Committed.';
 				services.stage.notifySurfaceChange();
@@ -316,66 +291,9 @@
 		}
 	}
 
-	function useSelection(): void {
-		const selected = selectionEntityId();
-		if (selected === null) {
-			message = 'Select one Scene entity first.';
-			return;
-		}
-		entityId = selected;
-	}
-
-	function begin(): void {
-		const current = ensureSession();
-		if (current === null) return;
-		if (entityId.trim() === '') {
-			message = 'Choose a Scene entity to edit.';
-			return;
-		}
-		const outcome = current.begin(entityId);
-		if (outcome.kind === 'refused') {
-			message = `${outcome.code}: ${outcome.message}`;
-			return;
-		}
-		const entity = entities.find((entry) => entry.id === entityId);
-		if (entity !== undefined) {
-			x = String(entity.position[0]);
-			z = String(entity.position[2]);
-			yaw = String(entity.rotation[1]);
-		}
-		editing = true;
-		candidate = null;
-		proposalRefused = false;
-		message = `Editing ${entityId}; no document change until Commit.`;
-	}
-
-	function updateEntry(kind: 'x' | 'z' | 'yaw', value: string): void {
-		if (kind === 'x') x = value;
-		else if (kind === 'z') z = value;
-		else yaw = value;
-		if (!editing || session === null) return;
-		applyOutcome(session.setEntry(kind, value));
-	}
-
-	async function commit(): Promise<void> {
-		if (session === null) return;
-		const outcome = await session.commit();
-		// An accepted install closes the open task synchronously (the host retires
-		// this panel's task-scoped services before this continuation runs).
-		// Reporting the result through those services would read a retired
-		// instrument, so the accepted branch only clears local form state.
-		if (outcome.kind === 'committed') {
-			editing = false;
-			candidate = null;
-			return;
-		}
-		applyOutcome(outcome);
-	}
-
 	function cancel(): void {
-		if (!editing && !composeActive) return;
+		if (!composeActive) return;
 		session?.cancel();
-		editing = false;
 		composeActive = false;
 		composeSubjectId = null;
 		candidate = null;
@@ -474,7 +392,7 @@
 	 * through the one release path the creator also reaches with Esc.
 	 */
 	function dropDeadProposal(): void {
-		if ((!editing && !composeActive) || session === null || session.proposalLive()) return;
+		if (!composeActive || session === null || session.proposalLive()) return;
 		// A refusal or failure reason outlives the form: it is why the proposal ended,
 		// and the creator still needs it.
 		const reason = proposalRefused ? message : null;
@@ -496,16 +414,6 @@
 			}
 			return;
 		}
-		if (!editing) return;
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			if (candidate !== null) void commit();
-			return;
-		}
-		if (event.key === 'Escape') {
-			event.preventDefault();
-			cancel();
-		}
 	}
 
 	/**
@@ -513,12 +421,12 @@
 	 * it is not.
 	 *
 	 * The handler is bound to the editing subtree, not the instrument root. Opening
-	 * a proposal removes the focused Begin control through the Svelte branch
+	 * a proposal removes the focused Resize… control through the Svelte branch
 	 * transition, and the browser delivers that removal's `focusout` at the root;
 	 * binding here keeps it from cancelling the proposal it just opened.
 	 */
 	function onFocusOut(event: FocusEvent): void {
-		if (!editing && !composeActive) return;
+		if (!composeActive) return;
 		// A control that opens a proposal is removed by that same update. Its
 		// focusout names no related target, but the replacement field is focused
 		// a tick later; it is a transition, not the creator leaving the form.
@@ -592,9 +500,9 @@
 	// claim, the overlay and typed entry read the same candidate.
 	$effect(() => {
 		// The host re-providing services is the one reason to re-read the session.
-		// The check itself reads this instrument's own state (`editing`, `snapText`)
-		// and writes `message`; tracking that made the effect re-run on every
-		// keystroke, tearing down the session — and the proposal — it was showing.
+		// The check itself reads this instrument's own state (`composeActive`,
+		// `snapText`) and writes `message`; tracking that made the effect re-run on
+		// every keystroke, tearing down the session — and the proposal — it was showing.
 		void services;
 		untrack(() => ensureSession());
 	});
@@ -732,64 +640,7 @@
 				<p class="hint">{composeSupport.reason}</p>
 			{/if}
 		</div>
-	{:else if editing}
-		<div class="editing" onfocusout={onFocusOut}>
-			<div class="row">
-				<span class="subject">Editing <code>{entityId}</code></span>
-				<button type="button" class="quiet" onclick={cancel}>Cancel</button>
-			</div>
-			<div class="fields">
-				<label>
-					<span>X (m)</span>
-					<input
-						type="text"
-						inputmode="decimal"
-						value={x}
-						onkeydown={onKeydown}
-						oninput={(event) => updateEntry('x', event.currentTarget.value)}
-					/>
-				</label>
-				<label>
-					<span>Z (m)</span>
-					<input
-						type="text"
-						inputmode="decimal"
-						value={z}
-						onkeydown={onKeydown}
-						oninput={(event) => updateEntry('z', event.currentTarget.value)}
-					/>
-				</label>
-				<label>
-					<span>Yaw (rad)</span>
-					<input
-						type="text"
-						inputmode="decimal"
-						value={yaw}
-						onkeydown={onKeydown}
-						oninput={(event) => updateEntry('yaw', event.currentTarget.value)}
-					/>
-				</label>
-			</div>
-			<div class="row">
-				<button type="button" onclick={commit} disabled={candidate === null}>Commit</button>
-				<span class="hint">Enter commits exact values; Esc or leaving the instrument cancels.</span>
-			</div>
-			{@render snapRow()}
-		</div>
 	{:else}
-		<div class="row">
-			<label class="grow">
-				<span>Entity</span>
-				<select bind:value={entityId}>
-					<option value="">Choose…</option>
-					{#each entities as entity (entity.id)}
-						<option value={entity.id}>{entity.name} · {entity.kind}</option>
-					{/each}
-				</select>
-			</label>
-			<button type="button" class="quiet" onclick={useSelection}>Use selection</button>
-			<button type="button" onclick={begin}>Begin</button>
-		</div>
 		<div class="row place">
 			<label>
 				<span>Place</span>
