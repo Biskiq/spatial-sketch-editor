@@ -1,0 +1,111 @@
+diff --git a/apps/editor/src/lib/authoring/stage/stage-grid.ts b/apps/editor/src/lib/authoring/stage/stage-grid.ts
+index 8445e7b5..add76f89 100644
+--- a/apps/editor/src/lib/authoring/stage/stage-grid.ts
++++ b/apps/editor/src/lib/authoring/stage/stage-grid.ts
+@@ -251,43 +251,20 @@ export function gridDatumFootprintFor(input: {
+ 	const matrix = input.inverseViewProjectionMatrix;
+ 	if (!Array.isArray(matrix) || matrix.length !== 16) return null;
+ 	if (!(input.rect.width > 0) || !(input.rect.height > 0)) return null;
+-	const height = Math.max(0.001, input.targetPlaneHeightMeters);
+-	const width = height * Math.max(0.1, input.aspect);
+-	const clampExtent = Math.max(2, (input.maxHalfExtents ?? 24) * Math.max(width, height));
+-	const points: { readonly x: number; readonly z: number }[] = [];
+-	for (const ndcX of [-1, 1] as const) {
+-		for (const ndcY of [-1, 1] as const) {
+-			const near = unprojectPoint(matrix, ndcX, ndcY, -1);
+-			const far = unprojectPoint(matrix, ndcX, ndcY, 1);
+-			if (near === null || far === null) continue;
+-			const directionY = far[1] - near[1];
+-			if (Math.abs(directionY) < 1e-9) continue;
+-			const travel = (input.datumMeters - near[1]) / directionY;
+-			if (!(travel > 0) || !Number.isFinite(travel)) continue;
+-			const x = near[0] + (far[0] - near[0]) * travel;
+-			const z = near[2] + (far[2] - near[2]) * travel;
+-			if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
+-			points.push({
+-				x: Math.min(input.targetXZ[0] + clampExtent, Math.max(input.targetXZ[0] - clampExtent, x)),
+-				z: Math.min(input.targetXZ[1] + clampExtent, Math.max(input.targetXZ[1] - clampExtent, z))
+-			});
+-		}
+-	}
+-	if (points.length < 2) return null;
+-	// The target-plane rect is always visible, so the footprint is its union with
+-	// the ray hits. This also covers a corner ray that lands behind a near plane.
+-	const nearHalfX = Math.max(2, width * 0.75);
+-	const nearHalfZ = Math.max(2, height * 0.75);
+-	let minX = input.targetXZ[0] - nearHalfX;
+-	let maxX = input.targetXZ[0] + nearHalfX;
+-	let minZ = input.targetXZ[1] - nearHalfZ;
+-	let maxZ = input.targetXZ[1] + nearHalfZ;
+-	for (const point of points) {
+-		minX = Math.min(minX, point.x);
+-		maxX = Math.max(maxX, point.x);
+-		minZ = Math.min(minZ, point.z);
+-		maxZ = Math.max(maxZ, point.z);
++	const corners: (readonly [number, number, number] | null)[] = [];
++	for (const ndcZ of [-1, 1] as const) for (const ndcY of [-1, 1] as const) for (const ndcX of [-1, 1] as const) corners.push(unprojectPoint(matrix, ndcX, ndcY, ndcZ));
++	const edges = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]] as const;
++	let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, hits = 0;
++	for (const [i, j] of edges) {
++		const a = corners[i], b = corners[j];
++		if (!a || !b) continue;
++		const da = a[1] - input.datumMeters, db = b[1] - input.datumMeters;
++		if (da === db || da * db > 0) continue;
++		const t = da / (da - db);
++		const x = a[0] + (b[0] - a[0]) * t, z = a[2] + (b[2] - a[2]) * t;
++		minX = Math.min(minX, x); maxX = Math.max(maxX, x); minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z); hits += 1;
+ 	}
++	if (hits < 3) return null;
+ 	return { minX, maxX, minZ, maxZ };
+ }
+ 
+diff --git a/packages/camera-core/src/viewport.ts b/packages/camera-core/src/viewport.ts
+index 5c41881d..ec081989 100644
+--- a/packages/camera-core/src/viewport.ts
++++ b/packages/camera-core/src/viewport.ts
+@@ -454,7 +454,7 @@ export function nearestQuarterTurn(azimuthRadians: number): number {
+ /** The view "up" vector for a reading: project +Y in 3D, the plan's own north at the top-down endpoint. */
+ function upForReading(reading: ViewportReading, azimuthRadians: number): Vec3 {
+ 	if (reading === '3d') return [0, 1, 0];
+-	return [Math.sin(azimuthRadians), 0, Math.cos(azimuthRadians)];
++	return [-Math.sin(azimuthRadians), 0, -Math.cos(azimuthRadians)];
+ }
+ 
+ /**
+@@ -481,10 +481,12 @@ function perspectiveDistanceMeters(targetPlaneHeightMeters: number): number {
+ 	return targetPlaneHeightMeters / 2 / Math.tan(VIEWPORT_REFERENCE_FOV_Y_RADIANS / 2);
+ }
+ 
+-function depthRange(distanceMeters: number, sceneRadiusMeters: number): { near: number; far: number; clamped: boolean } {
++export const VIEWPORT_DISPLAY_GROUND_REACH_TARGET_PLANES = 24;
++
++function depthRange(distanceMeters: number, sceneRadiusMeters: number, displayReachMeters = 0): { near: number; far: number; clamped: boolean } {
+ 	const rawNear = distanceMeters - Math.max(sceneRadiusMeters, VIEWPORT_NEAR_FLOOR_METERS);
+ 	const near = Math.max(VIEWPORT_NEAR_FLOOR_METERS, rawNear);
+-	const far = Math.max(near + VIEWPORT_NEAR_FLOOR_METERS, distanceMeters + sceneRadiusMeters);
++	const far = Math.max(near + VIEWPORT_NEAR_FLOOR_METERS, distanceMeters + Math.max(sceneRadiusMeters, displayReachMeters));
+ 	return { near, far, clamped: rawNear < VIEWPORT_NEAR_FLOOR_METERS };
+ }
+ 
+@@ -621,8 +623,20 @@ export function evaluateViewport(
+ 		);
+ 	}
+ 
+-	const depth = depthRange(distanceMeters, state.sceneRadiusMeters);
+ 	const aspect = rect.width / rect.height;
++	const baseDepth = depthRange(
++		distanceMeters,
++		state.sceneRadiusMeters,
++		orthographic ? 0 : VIEWPORT_DISPLAY_GROUND_REACH_TARGET_PLANES * pose.targetPlaneHeightMeters * Math.max(1, aspect)
++	);
++	// Probe: ground plane at y=0. View depth of the ground at the frame's bottom row.
++	const eyeHeight = eye[1];
++	const bottomRay = Math.atan(tanHalfFov);
++	const groundNear =
++		!orthographic && eyeHeight > 0 && pose.elevationRadians + bottomRay > 0
++			? (eyeHeight * Math.cos(bottomRay)) / Math.sin(pose.elevationRadians + bottomRay)
++			: Infinity;
++	const depth = { ...baseDepth, near: Math.max(VIEWPORT_NEAR_FLOOR_METERS, Math.min(baseDepth.near, groundNear * 0.9)) };
+ 	const projectionMatrix = orthographic
+ 		? orthographicMatrix(halfHeightMeters, aspect, depth.near, depth.far)
+ 		: perspectiveMatrix(tanHalfFov, aspect, depth.near, depth.far);

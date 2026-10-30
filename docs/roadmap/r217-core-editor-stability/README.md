@@ -10,7 +10,17 @@ R217 is named after its planning PR, as R115 is. It is a shared phase because ev
 phase is closed and the work crosses T1, T2, T3 and T5 boundaries. **Ownership does not move.** Each
 slice has one writer from the track that owns the concern, runs through that track's runbook start
 step, and records its work in that track's baton. The other tracks review as listed in
-[Ownership and review](#ownership-and-review).
+[Ownership and review](#ownership-and-review). **Exception:** R217.S11–S25 run under one convergence
+integrator through the [campaign record](../../reference/decisions/r217-convergence-campaign-2026-10-30.md); architecture ownership is unchanged.
+
+## Post-S10 convergence plan
+
+The owner-requested [convergence audit and plan](./post-s10-convergence/README.md) records the
+findings and the target specification. The owner accepted [decisions O1–O9](./post-s10-convergence/owner-decisions.md)
+on 2026-10-30 and directed that the resulting work be registered here, under
+[bounded replanning](../../operations/README.md#bounded-replanning), as R217.S12–S25. The
+[campaign record](../../reference/decisions/r217-convergence-campaign-2026-10-30.md) releases them together, and S11, when the owner merges
+PR #230. It does not close R217. Those rulings amend landed contracts only at each slice's cutover.
 
 ## Outcome
 
@@ -18,9 +28,9 @@ A creator opens a project in a shell that matches the ratified production design
 
 - **Shell:** a compact Head, an Index that collapses to nothing, a Card that appears only for a selection, and one lower working edge, at laptop and iPad widths.
 - **Plan and 3D:** they read Plan as a drawing on Paper and 3D as a model on the mat. Flipping between them keeps their place, selection and tool.
-- **Drafting:** they draft with a working dock, a grid, snap, a scale control and a Height Sheet that sets the Plan cut.
+- **Drafting:** they draft with a working dock, a quiet grid, one fixed snap value, a ruler, visible zoom and Fit controls, and a Height Sheet that sets the Plan cut.
 - **Legibility:** they can tell what the pointer is over, what is selected and which marks can be dragged, with a mouse or a finger.
-- **Manipulation:** they move, turn and resize Walls, Openings, objects and native forms with one mark vocabulary. Every valid release is one Undo step; every interrupted or invalid gesture leaves no trace.
+- **Manipulation:** they move, turn and resize Walls, Openings, objects and native forms with one mark vocabulary, or by dragging the selected subject directly, and they see the result while dragging. Every valid release is one Undo step; every interrupted or invalid gesture leaves no trace.
 - **Save and reload:** Save and reload restore the source exactly. Undo history and every view setting are session state and never persist.
 
 ## Starting evidence (verified at `c13a949d`)
@@ -115,11 +125,11 @@ baseline.
 
 | Concern | Owner | R217 slices that touch it | Reviews |
 | --- | --- | --- | --- |
-| Shell (Head, Index, Card, lower edge), Stage host, input, picking coordination, selection, marks, drafting state, Height Sheet | T1 | S01–S07, S10, S11 | T3 for Head, Find and Experience-lens effects; T2 and T5 for contributions |
-| Layout representation, Layout hits and planners | T1 | S04, S06, S07 | — |
-| Scene placement, transforms, footprints, support occlusion, delete | T2 | S04 (symbols), S06 (found surfaces), S08, S10 (Eraser) | T1 |
-| Native forms, form handles, `geometry-core` | T5 | S04 (form footprints), S09 | T2 for Scene adapter files, T1 for the mark layer |
-| F4 acceptance and history, Save, Camera/Experience lens, the H0 harness | T3 | S01 (history enforcement), S02 (Head), S03 (Undo reason, Experience routing), S11 | T1 |
+| Shell (Head, Index, Card, lower edge), Stage host, input, picking coordination, selection, marks, drafting state, Height Sheet | T1 | S01–S07, S10, S11, S12–S16, S18–S23 | T3 for Head, Find and Experience-lens effects; T2 and T5 for contributions |
+| Layout representation, Layout hits and planners | T1 | S04, S06, S07, S14–S16 | — |
+| Scene placement, transforms, footprints, support occlusion, delete | T2 | S04 (symbols), S06 (found surfaces), S08, S10 (Eraser), S17 | T1 |
+| Native forms, form handles, `geometry-core` | T5 | S04 (form footprints), S09, S17 (form marks and ghosts, reviewed by T5) | T2 for Scene adapter files, T1 for the mark layer |
+| F4 acceptance and history, Save, Camera/Experience lens, the H0 harness | T3 | S01 (history enforcement), S02 (Head), S03 (Undo reason, Experience routing), S11, S24, S25 | T1 |
 
 Each slice records its shared-file claim (writer, expected patch base, reviewer) in its writer's
 baton before editing `stage-facade.ts`, `StageCanvas.svelte`, the spatial route or another track's
@@ -143,6 +153,24 @@ claimed. After S03 there are two lanes: drawing surface (S04 → S05 → S06) an
 (S07 → S08 → S09). S08 and S09 both edit the Scene adapter, so T2 merges first unless the claims
 record a swap.
 
+The post-S10 slices run before S11. They were numbered after it because accepted identities stay
+stable, so S11 is still the final gate:
+
+```text
+S12 Camera basis ──────────────────────────────┐
+S13 Drafting ─┬────────────────────────────────┤
+              └─ S14 Live feedback ─ S15 Walls ─┬─ S16 Openings, Junction hover
+                                                └─ S17 Scene and forms ─┬─ S18 Selection ink
+                                                                        └─ S19 3D ground clipping
+S13 → S20 Roles and Head → S21 Index and Card → S22 Geometry, Card, Sheet → S23 Ink palette, widths
+S24 Experience controller ─────────────────────────────────────────────────┴─ S25 Experience homes
+                                                     S11 final gate (needs all)
+```
+
+Editing comes before shell polish, because polish over a surface that cannot be edited would be
+visual parity at the expense of function. The [execution plan](./post-s10-convergence/execution-plan.md#shared-file-order)
+owns the total order and shared-file conflicts.
+
 ## Slice register
 
 Each slice's scope, exit evidence and verification tier live in its plan; this register owns
@@ -160,7 +188,21 @@ lifecycle and prerequisites only.
 | R217.S08 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Scene object marks](./r217.s08-scene-object-marks/implementation-plan.md) | [record](./r217.s08-scene-object-marks/acceptance.md) | owner authorized implementation 2026-10-29 without a release-list row; independent review and owner Card-lifecycle correction resolved; accepted by owner closeout 2026-10-29; P1 merge (PR #225) |
 | R217.S09 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Native form marks](./r217.s09-native-form-marks/implementation-plan.md) | [record](./r217.s09-native-form-marks/acceptance.md) | plan approved by the owner's merge of PR #217; independently reviewed and accepted 2026-10-30; P1 merge commit (PR #228) |
 | R217.S10 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Dock completion](./r217.s10-dock-completion/implementation-plan.md) | [record](./r217.s10-dock-completion/acceptance.md) | plan approved by the owner's merge of PR #217; owner accepted 2026-10-30 after independent combined T1/T2/T3/T5 review; P1 merge required (PR #229) |
-| R217.S11 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./r217.s11-integrated-final-gate/implementation-plan.md) | [record](./r217.s11-integrated-final-gate/acceptance.md) | plan approved by the owner's merge of PR #217; awaits an owner release-list row |
+| R217.S11 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./r217.s11-integrated-final-gate/implementation-plan.md) | [record](./r217.s11-integrated-final-gate/acceptance.md) | plan approved by the owner's merge of PR #217; released by the owner's merge of PR #230 to run after R217.S12–S25; its acceptance and merge stay with the owner |
+| R217.S12 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Camera basis](./r217.s12-camera-basis/implementation-plan.md) | [record](./r217.s12-camera-basis/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S13 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Drafting simplification](./r217.s13-drafting-simplification/implementation-plan.md) | [record](./r217.s13-drafting-simplification/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S14 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Live feedback](./r217.s14-live-feedback/implementation-plan.md) | [record](./r217.s14-live-feedback/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S15 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Wall direct manipulation](./r217.s15-wall-direct-manipulation/implementation-plan.md) | [record](./r217.s15-wall-direct-manipulation/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S16 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Openings and Junction hover](./r217.s16-openings-and-junction-hover/implementation-plan.md) | [record](./r217.s16-openings-and-junction-hover/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S17 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Scene and form manipulation](./r217.s17-scene-and-form-manipulation/implementation-plan.md) | [record](./r217.s17-scene-and-form-manipulation/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S18 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Selection ink](./r217.s18-selection-ink/implementation-plan.md) | [record](./r217.s18-selection-ink/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S19 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [3D ground clipping](./r217.s19-3d-ground-clipping/implementation-plan.md) | [record](./r217.s19-3d-ground-clipping/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S20 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Roles and Head](./r217.s20-roles-and-head/implementation-plan.md) | [record](./r217.s20-roles-and-head/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S21 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Index and Card](./r217.s21-index-and-card/implementation-plan.md) | [record](./r217.s21-index-and-card/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S22 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Geometry, Card and Height Sheet](./r217.s22-geometry-card-and-height-sheet/implementation-plan.md) | [record](./r217.s22-geometry-card-and-height-sheet/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S23 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Ink palette and constrained widths](./r217.s23-ink-palette-and-constrained-widths/implementation-plan.md) | [record](./r217.s23-ink-palette-and-constrained-widths/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S24 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Experience controller](./r217.s24-experience-controller/implementation-plan.md) | [record](./r217.s24-experience-controller/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
+| R217.S25 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Experience shared homes](./r217.s25-experience-shared-homes/implementation-plan.md) | [record](./r217.s25-experience-shared-homes/acceptance.md) | owner accepted O1–O9 and directed registration 2026-10-30; plan approved and slice released by the owner's merge of PR #230, under the campaign record |
 
 Every consumed gate is `accepted` and every required scope `active` on `main` at this registration.
 Each slice rechecks them at its own trusted base. No slice provides a gate, changes a persisted
@@ -195,6 +237,10 @@ S11 runs every journey in two browsers, with fine and coarse pointers. The crite
 | J9 | Coarse pointer and touch |
 | J10 | Interrupted-gesture recovery |
 | J11 | Source persistence versus session history and state |
+| J12 | Plan flip continuity across azimuths |
+| J13 | 3D ground and grid with the horizon in frame |
+| J14 | Direct Wall, Junction and Opening editing from Plan alone |
+| J15 | Direct manipulation of every subject type, in both readings |
 
 ## Non-goals
 

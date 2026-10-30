@@ -65,6 +65,7 @@ services:
     volumes:
       - ./apps/api/src:/repo/apps/api/src:ro
       - ./packages/camera-core/src:/repo/packages/camera-core/src:ro
+      - ./packages/geometry-core/src:/repo/packages/geometry-core/src:ro
       - ./packages/layout-core/src:/repo/packages/layout-core/src:ro
       - ./packages/project-model/src:/repo/packages/project-model/src:ro
     depends_on:
