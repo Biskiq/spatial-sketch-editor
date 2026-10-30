@@ -34,7 +34,8 @@ import type {
 } from '$lib/authoring/stage/stage-facade';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
-import type { SceneEntity } from '@portfolio/project-model';
+import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model';
 import {
 	draftingSnapIncrementMeters,
 	snapDraftingPlacement
@@ -1326,10 +1327,59 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			// The same projection Paper draws: the accepted runtime Scene the route hands
 			// to the Canvas, not a second projection of the authored unit document.
-			const runtimeScene = context.snapshot.domain.scene;
-			const footprints = planSceneFootprintsFor(runtimeScene, runtimeScene.modelFootprints).footprints;
-			return {
-				subjects: source.entities.map((entity) => ({
+	const runtimeScene = context.snapshot.domain.scene;
+	const footprints = planSceneFootprintsFor(runtimeScene, runtimeScene.modelFootprints).footprints;
+
+	/**
+	 * The Height Sheet's found surfaces this domain owns: the tops of
+	 * floor-standing entities. "Floor-standing" is measured, not authored: an
+	 * entity whose evaluated bounds start within 5 cm of the datum is standing on
+	 * it. No second evaluation is introduced — primitives use their analytic
+	 * bounds, models the drawn bounds the Scene pick source already measured, and
+	 * forms their one native-form evaluation.
+	 */
+	function heightTicksFor(adapterContext: StageAdapterContext): readonly StageHeightTick[] {
+		const datum = adapterContext.snapshot.domain.datumMeters;
+		const ticks: StageHeightTick[] = [];
+		for (const entity of stageScene(adapterContext.snapshot).entities) {
+			let bounds: { readonly min: Vec3; readonly max: Vec3 } | null = null;
+			if (entity.kind === 'form') {
+				const mesh = evaluateFormMesh(entity.form);
+				if (mesh !== null) {
+					bounds = {
+						min: [
+							entity.position[0] + mesh.bounds.min[0],
+							entity.position[1] + mesh.bounds.min[1],
+							entity.position[2] + mesh.bounds.min[2]
+						] as Vec3,
+						max: [
+							entity.position[0] + mesh.bounds.max[0],
+							entity.position[1] + mesh.bounds.max[1],
+							entity.position[2] + mesh.bounds.max[2]
+						] as Vec3
+					};
+				}
+			} else if (entity.kind === 'primitive') {
+				bounds = primitiveBounds(entity);
+			} else if (entity.kind === 'model') {
+				bounds = adapterContext.sceneBounds(entity.id);
+			}
+			if (bounds === null) continue;
+			if (Math.abs(bounds.min[1] - datum) > 0.05) continue;
+			const heightMeters = bounds.max[1] - datum;
+			if (!Number.isFinite(heightMeters) || heightMeters <= 0) continue;
+			const name = 'name' in entity && typeof entity.name === 'string' ? entity.name : entity.id;
+			ticks.push({ kind: 'found', heightMeters, label: name });
+		}
+		return ticks;
+	}
+
+	return {
+		/** Owner-declared found surfaces; the host merges and sorts them. */
+		heightTicks(adapterContext: StageAdapterContext): readonly StageHeightTick[] {
+			return heightTicksFor(adapterContext);
+		},
+		subjects: source.entities.map((entity) => ({
 					id: `scene:entity:${entity.id}`,
 					label: `${entity.name} · ${entity.kind} · ${entity.id}`,
 					reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),

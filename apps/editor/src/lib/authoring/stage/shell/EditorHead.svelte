@@ -74,6 +74,8 @@ import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 		snapOnGrid = true,
 		onGridMinorMeters = () => {},
 		onSnapOnGrid = () => {},
+		heightSheetSide = 'right',
+		onHeightSheetSide = () => {},
 		motionSpeed = 'normal',
 		onMotionSpeed = () => {},
 		projectActionsUnavailableReason = null,
@@ -122,6 +124,9 @@ import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 		snapOnGrid?: boolean;
 		onGridMinorMeters?: (mode: 'automatic' | 'override', meters?: number) => void;
 		onSnapOnGrid?: (snap: boolean) => void;
+		/** R217.S06's Height Sheet side; session preference, never source. */
+		heightSheetSide?: 'left' | 'right';
+		onHeightSheetSide?: (side: 'left' | 'right') => void;
 		motionSpeed?: 'slow' | 'normal' | 'fast';
 		onMotionSpeed?: (value: 'slow' | 'normal' | 'fast') => void;
 		projectActionsUnavailableReason?: string | null;
@@ -236,6 +241,7 @@ import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 			<label>2D appearance <select value={planAppearance} onchange={(event) => onPlanAppearance(event.currentTarget.value as 'paper' | 'shaded')}><option value="paper">Paper</option><option value="shaded">Shaded</option></select></label>
 			<label>Grid interval <select value={gridIntervalMode === 'automatic' ? 'automatic' : String(gridMinorMeters)} onchange={(event) => { const value = event.currentTarget.value; if (value === 'automatic') onGridMinorMeters('automatic'); else onGridMinorMeters('override', Number(value)); }}><option value="automatic">Automatic</option>{#each GRID_MINOR_CHOICES as choice (choice)}<option value={choice}>{formatMeters(choice)} override</option>{/each}</select></label>
 			<label><input type="checkbox" checked={snapOnGrid} onchange={(event) => onSnapOnGrid(event.currentTarget.checked)} /> Snap to the grid</label>
+			<label>Height Sheet <select value={heightSheetSide} onchange={(event) => onHeightSheetSide(event.currentTarget.value as 'left' | 'right')}><option value="right">Right</option><option value="left">Left</option></select></label>
 			<strong>Settings</strong>
 			<label><input type="checkbox" checked={reducedMotion} onchange={onToggleReducedMotion} /> Reduce motion</label>
 			<label>Editor motion speed <select value={motionSpeed} onchange={(event) => onMotionSpeed(event.currentTarget.value as 'slow' | 'normal' | 'fast')}><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select></label>

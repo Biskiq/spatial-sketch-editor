@@ -1005,3 +1005,44 @@ describe('R217.S05 — the drafting configuration and scale bar', () => {
 		expect(bar!.querySelector('.rule')).not.toBeNull();
 	});
 });
+
+describe('R217.S06 — mounted Height Sheet', () => {
+	it('steps the one height fact without an F4 entry, dirty history or changed Save bytes', async () => {
+		const host = harness.host as StageAcceptanceHost;
+		const sheet = target.querySelector<HTMLElement>('[data-stage-height-sheet]');
+		expect(sheet).not.toBeNull();
+		const slider = sheet!.querySelector<HTMLElement>('[role="slider"]');
+		expect(slider).not.toBeNull();
+		expect(slider!.getAttribute('aria-valuenow')).toBe('1.2');
+
+		const before = facade().snapshot().canonicalJson;
+		const historyBefore = host.history();
+		const saveBefore = await captureUnitSave({
+			snapshot: host.coordinator().acceptedSnapshot(),
+			operationId: 'height-before',
+			precondition: { kind: 'create-only' }
+		});
+
+		slider!.focus();
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await frame();
+		const raised = facade().session.heightSheet().height();
+		expect(raised).toBeGreaterThan(1.2);
+		expect(Number(slider!.getAttribute('aria-valuenow'))).toBeCloseTo(raised, 6);
+
+		// The Sheet is view state: no install, no history entry, and Save is the
+		// same canonical bytes as before the step.
+		expect(facade().snapshot().canonicalJson).toBe(before);
+		expect(host.history()).toEqual(historyBefore);
+		const saveAfter = await captureUnitSave({
+			snapshot: host.coordinator().acceptedSnapshot(),
+			operationId: 'height-after',
+			precondition: { kind: 'create-only' }
+		});
+		expect(saveBefore.kind).toBe('captured');
+		expect(saveAfter.kind).toBe('captured');
+		if (saveBefore.kind === 'captured' && saveAfter.kind === 'captured') {
+			expect(saveAfter.capture.canonicalJson).toBe(saveBefore.capture.canonicalJson);
+		}
+	});
+});

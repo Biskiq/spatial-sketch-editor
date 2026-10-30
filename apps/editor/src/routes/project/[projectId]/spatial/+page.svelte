@@ -128,7 +128,9 @@
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 	import StageDock from '$lib/authoring/stage/shell/StageDock.svelte';
 import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
+import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
+import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	const scenePick = createScenePickSource();
@@ -154,6 +156,7 @@ import {
 	SCALE_DETENTS,
 	STAGE_DRAFTING_DEFAULTS,
 	applyDraftingPatch,
+	draftingSnapIncrementMeters,
 	formatScaleRatio,
 	gridWord as draftingWordForGrid,
 	roundScaleBarLength,
@@ -509,6 +512,66 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	 * history or Save, and a replacement keeps it.
 	 */
 	let drafting = $state<StageDraftingState>(STAGE_DRAFTING_DEFAULTS);
+	/**
+	 * R217.S06's one Height Sheet fact, mirrored from the session so the control,
+	 * the Canvas plane and the mounted chrome all read the same height. It is
+	 * session view state: a replacement resets it, and nothing here is saved.
+	 */
+	const heightSheet = session.heightSheet();
+	let heightMeters = $state(heightSheet.height());
+	let heightTicks = $state<readonly StageHeightTick[]>([]);
+	let heightPins = $state<readonly number[]>([]);
+	let heightSheetSide = $state<'left' | 'right'>('right');
+	let heightPlaneVisible = $state(false);
+	let heightPlaneTimer: ReturnType<typeof setTimeout> | null = null;
+	$effect(() => {
+		heightMeters = heightSheet.height();
+		heightPins = heightSheet.pins();
+		return heightSheet.subscribe('route-height-sheet', (height) => {
+			heightMeters = height;
+		});
+	});
+	$effect(() => {
+		// A binding rebuild can add or remove owner surfaces, and a viewport output
+		// is needed before the binding exists; read the merged set for both.
+		evaluation;
+		contributionsVersion;
+		const stage = facade;
+		heightTicks = stage === null ? [] : stage.heightTicks();
+	});
+	$effect(() => () => {
+		if (heightPlaneTimer !== null) clearTimeout(heightPlaneTimer);
+	});
+	function setHeight(heightMetersValue: number, cause: 'drag' | 'key' | 'tick'): void {
+		heightSheet.set(heightMetersValue, cause);
+		heightMeters = heightSheet.height();
+	}
+	function addHeightPin(): void {
+		heightSheet.addPin(heightMeters);
+		heightPins = heightSheet.pins();
+	}
+	function removeHeightPin(heightMetersValue: number): void {
+		heightSheet.removePin(heightMetersValue);
+		heightPins = heightSheet.pins();
+	}
+	function setHeightPlaneActive(active: boolean): void {
+		if (heightPlaneTimer !== null) {
+			clearTimeout(heightPlaneTimer);
+			heightPlaneTimer = null;
+		}
+		if (active) {
+			heightPlaneVisible = true;
+			return;
+		}
+		if (reducedMotion) {
+			heightPlaneVisible = false;
+			return;
+		}
+		heightPlaneTimer = setTimeout(() => {
+			heightPlaneVisible = false;
+			heightPlaneTimer = null;
+		}, 1000);
+	}
 	const draftingReading: 'plan' | '3d' = $derived(
 		evaluation?.settledReading === 'plan' ? 'plan' : '3d'
 	);
@@ -521,6 +584,10 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	const draftingGridWord = $derived(draftingWordForGrid(drafting, draftingEffectiveMinor));
 	const draftingSnapWord = $derived(
 		draftingWordForSnap(drafting, draftingEffectiveMinor)
+	);
+	/** Arrow-key stepping follows S05's increment, or 0.1 m while Snap is off. */
+	const heightSnapIncrement = $derived(
+		draftingSnapIncrementMeters(drafting, draftingEffectiveMinor) ?? 0.1
 	);
 	const draftingScaleBar = $derived(
 		roundScaleBarLength(evaluation?.targetPlaneMetersPerCssPixel ?? 0)
@@ -3201,6 +3268,8 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		snapOnGrid={drafting.snap}
 		onGridMinorMeters={(mode, meters) => patchDrafting({ gridIntervalMode: mode, ...(meters === undefined ? {} : { gridMinorMeters: meters }) })}
 		onSnapOnGrid={(snap) => patchDrafting({ snap })}
+		heightSheetSide={heightSheetSide}
+		onHeightSheetSide={(side) => (heightSheetSide = side)}
 		motionSpeed={preferences.motionSpeed}
 		onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
 		projectActionsUnavailableReason={projectActionsUnavailableReason}
@@ -3337,6 +3406,8 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 						datumMeters={boot.snapshot.domain.datumMeters}
 						selection={selection}
 						hover={hoverSelection}
+						heightMeters={lens === 'world' ? heightMeters : null}
+						heightPlaneVisible={lens === 'world' && heightPlaneVisible}
 					/>
 				{/if}
 				<div class="overlay-layer">
@@ -3382,6 +3453,34 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 				>
 					<button type="button" onclick={() => requestReplacement('source')}>Open source JSON</button>
 				</div>
+
+				{#if lens === 'world'}
+					<!--
+						PLATE's Height Sheet in S02's right-edge slot. It is world-lens chrome:
+						the control and its plane are hidden in Experience and return with the
+						session height on the way back.
+					-->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="stage-height-slot"
+						class:left={heightSheetSide === 'left'}
+						onclick={(event) => event.stopPropagation()}
+						onpointerdown={(event) => event.stopPropagation()}
+					>
+						<StageHeightSheet
+							heightMeters={heightMeters}
+							ticks={heightTicks}
+							pins={heightPins}
+							snapIncrement={heightSnapIncrement}
+							{reducedMotion}
+							side={heightSheetSide}
+							onSetHeight={setHeight}
+							onAddPin={addHeightPin}
+							onRemovePin={removeHeightPin}
+							onActiveChange={setHeightPlaneActive}
+						/>
+					</div>
+				{/if}
 
 				{#if lens === 'experience'}
 					<!--
@@ -3682,6 +3781,17 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		right: 0.75rem;
 		display: flex;
 		gap: 0.4rem;
+	}
+	.stage-height-slot {
+		position: absolute;
+		top: 50%;
+		right: 0.75rem;
+		transform: translateY(-50%);
+		z-index: 8;
+	}
+	.stage-height-slot.left {
+		right: auto;
+		left: 0.75rem;
 	}
 	.stage-project-actions button {
 		padding: 0.4rem 0.6rem;

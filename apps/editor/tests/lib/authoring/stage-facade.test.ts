@@ -27,6 +27,7 @@ import type { StageAdapterContext } from '$lib/authoring/stage/stage-facade';
 import {
 	createEmptyWallFirstLayoutDocument,
 	planCreateWallFirstOpening,
+	planFragmentOf,
 	planWallChain,
 	type LayoutVec2
 } from '@portfolio/layout-core';
@@ -38,6 +39,7 @@ import {
 	type StageReadSnapshot
 } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
+import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 import {
 	createStageFacade,
 	HOST_STAGE_CAPABILITIES,
@@ -107,7 +109,7 @@ async function mount(document?: ProjectEnvelope, withLayoutPicker = true): Promi
 	const source = document ?? (await enclosureProject(STARTER_ENCLOSURE_POINTS));
 	const context = admissionContext(source.id);
 	const admitted = await admitSource(source, context);
-	if (admitted.kind !== 'admitted') throw new Error(`the fixture source was not admitted: ${admitted.kind}`);
+	if (admitted.kind !== 'admitted') throw new Error(`the fixture source was not admitted: ${JSON.stringify(admitted)}`);
 	const session = createStageSession({ sessionEpoch: context.sessionEpoch });
 	session.replace(admitted.snapshot);
 	const facade = createStageFacade({ snapshot: admitted.snapshot, session });
@@ -1209,5 +1211,89 @@ describe('S03 Layout priority at a hosted Opening', () => {
 			}
 			expect(overlap, `${reading} overlap`).toBe(true);
 		}
+	});
+});
+
+describe('R217.S06 — the Height Sheet drives the Plan cut', () => {
+	/** The placement stream one Wall earned in the current Plan evaluation. */
+	function wallStream(facade: StageFacade, wallId: string): string | null {
+		const result = facade.plan();
+		return result.kind === 'evaluated' ? planFragmentOf(result.plan, wallId)?.ref.stream ?? null : null;
+	}
+
+	it('moves a 0.9 m Wall from projected to cut at 0.6 m and back, with no source write', async () => {
+		const base = await enclosureProject(STARTER_ENCLOSURE_POINTS);
+		const layout = structuredClone(base.units.layout.data);
+		const lowWallId = layout.walls[0]!.id;
+		const highWallId = layout.walls[1]!.id;
+		layout.walls[0]!.height = 0.9;
+		layout.walls[1]!.height = 3;
+		const source = await createUnitProject({ id: base.id, name: base.name, layout });
+		const { facade } = await mount(source, false);
+
+		// The cut consumer is registered by the facade itself; this test never calls
+		// setPlanParameters. At the calibrated 1.2 m cut the low Wall is wholly
+		// below it, so the landed representation draws it in the hidden stream.
+		// (The plan's criterion called this "projected"; the representation's own
+		// stream vocabulary is hidden/projected/cut, and a floor-standing Wall below
+		// the cut is hidden — no evaluator change is warranted.)
+		expect(wallStream(facade, lowWallId)).toBe('hidden');
+		expect(wallStream(facade, highWallId)).toBe('cut');
+		const acceptedRevision = facade.snapshot().acceptedRevision;
+		const sourceContentId = facade.snapshot().sourceContentId;
+
+		facade.heightSheet().set(0.6, 'drag');
+		expect(wallStream(facade, lowWallId)).toBe('cut');
+		expect(wallStream(facade, highWallId)).toBe('cut');
+
+		facade.heightSheet().set(1.2, 'drag');
+		expect(wallStream(facade, lowWallId)).toBe('hidden');
+
+		// The height is session view state: no revision, byte or history moved.
+		expect(facade.snapshot().acceptedRevision).toBe(acceptedRevision);
+		expect(facade.snapshot().sourceContentId).toBe(sourceContentId);
+	});
+
+	it('reads ticks only from owner declarations and drops them with their owner', async () => {
+		const { facade } = await mount(undefined, false);
+		evaluate(facade);
+		let sceneTicks: readonly StageHeightTick[] = [
+			{ kind: 'found', heightMeters: 0.75, label: 'Table top' }
+		];
+		facade.registerStageAdapter({
+			id: 'layout',
+			heightTicks: () => [
+				{ kind: 'datum', heightMeters: 0, label: 'Floor' },
+				{ kind: 'found', heightMeters: 0.9, label: 'Plinth' }
+			]
+		});
+		facade.registerStageAdapter({ id: 'scene', heightTicks: () => sceneTicks });
+
+		expect(facade.heightTicks().map((tick) => [tick.kind, tick.heightMeters, tick.label])).toEqual([
+			['datum', 0, 'Floor'],
+			['found', 0.75, 'Table top'],
+			['found', 0.9, 'Plinth']
+		]);
+
+		// The Scene binding declares nothing any more. The host computes no surface
+		// of its own, so the 0.75 m tick disappears rather than being guessed.
+		sceneTicks = [];
+		expect(facade.heightTicks().map((tick) => tick.heightMeters)).toEqual([0, 0.9]);
+	});
+
+	it('publishes the height to a test-only role and creates no source effect', async () => {
+		const { facade } = await mount(undefined, false);
+		const seen: number[] = [];
+		const off = facade.heightSheet().subscribe('probe', (height) => seen.push(height));
+		const revision = facade.snapshot().acceptedRevision;
+		facade.heightSheet().set(1.8, 'key');
+		facade.heightSheet().addPin(0.75);
+		facade.heightSheet().removePin(0.75);
+		expect(seen).toEqual([1.8]);
+		expect(facade.heightSheet().pins()).toEqual([]);
+		expect(facade.snapshot().acceptedRevision).toBe(revision);
+		off();
+		facade.heightSheet().set(2.1, 'key');
+		expect(seen).toEqual([1.8]);
 	});
 });
