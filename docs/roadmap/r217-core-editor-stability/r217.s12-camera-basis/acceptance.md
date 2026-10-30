@@ -1,9 +1,11 @@
 # R217.S12 — acceptance record: Camera basis
 
-**Slice:** R217.S12 · **Status:** in-progress — implementation complete; independent T3 review pending ·
-**Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
-[R217](../README.md) · **Integration route:**
-[R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**AUTHORITY: NONE.** R217.S12 is shipped. The phase [slice register](../README.md#slice-register)
+owns status. **Accepted 2026-10-30** after the independent T3 Camera/Experience review returned
+**ACCEPT** at `87d2eb3e`; its two P2 evidence-integrity findings were corrected in that revision and
+a second fresh reviewer confirmed them. No P0–P2 finding remains. **Plan:** closed stub
+[implementation-plan.md](./implementation-plan.md) · **Phase:** [R217](../README.md) · **Integration
+route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 ## Implementation
 
@@ -38,8 +40,9 @@ Tier: `affected-subsystem`; the integrated result remains owed to
   cut fail (right/up dot −1; Plan right −X); reversal and fast switching already stayed continuous.
 - Browser, Chromium at 1440×900 on the local editor: flips at azimuth 0 and 90°, a Wall on
   screen-left before the flip stays left in Plan, selection/Card, armed Select tool and source are
-  unchanged, and Plan hover and pan track the pointer. Captures and journeys:
-  [browser evidence](./evidence/README.md).
+  unchanged, and Plan hover and pan track the pointer. Captures and journeys are in the
+  [archived evidence manifest](../../../archive/roadmap/r217-core-editor-stability/r217.s12-camera-basis/evidence/2026-10-30-browser/CLOSED.md);
+  the live path holds the [evidence pointer](./evidence/README.md).
 
 ## Evidence limits
 
@@ -50,3 +53,22 @@ where they pinned the old Plan orientation; their own contracts are S17/S18 scop
 ## Residuals
 
 None known for this slice. No waiver or deferred item is carried by this record.
+
+## Closeout preservation — R217.S12 (2026-10-30)
+
+```text
+prose compacted:                 1   approved plan -> stub at its own path
+reference promotions:            0   O3 is already the target specification's Camera basis
+renderable evidence archived:    8 files / 2,129,128 bytes
+evidence stubs / manifests:      1   archive CLOSED.md + live evidence pointer
+transient artifacts removed:     0
+historical anchor:               050a30d9418a9a910a320388ae2ea4d879f1b34c · tag closed/r217.s12 (pushed to origin)
+new live -> archive prose links: 0   evidence links are to the archive manifest, not prose authority
+manual-owed verification rows:   0
+remaining deferred items:        0 known defects; S11 integrated journeys only
+permanent stubs added:           1   the closed plan
+```
+
+P1 merge required (PR #231). After merge, verify the historical anchor is an ancestor of `main`,
+inspect the recovery path with `git show <anchor>:<path>`, and confirm the tag target retains the
+anchor. The branch head is deliberately not pinned here because this PR's merge will change it.
