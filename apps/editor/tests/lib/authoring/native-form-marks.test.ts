@@ -11,7 +11,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Vec3 } from '@portfolio/camera-core';
 import type { SceneFormEntity } from '$lib/content/scene';
-import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
+import {
+	hitStageMark,
+	projectStageHandles,
+	type StageHandleDescriptor
+} from '$lib/authoring/stage/stage-handles';
 import {
 	SCENE_FORM_MARK,
 	formMarkDescriptors,
@@ -240,5 +244,44 @@ describe('R217.S09 — native form marks', () => {
 				(descriptor) => descriptor.screen === undefined
 			)
 		).toBe(true);
+	});
+
+	it('keeps Move and the Width ray separately pressable when Plan hides Y', () => {
+		// Plan projects the form's floor contact and its centre to one point. With
+		// the same yaw the 30 px Move track and Width ray coincide unless Move is
+		// offset, and the host takes the first descriptor that hits.
+		const entity = squareForm();
+		const measurement = formSizeMeasurement(entity);
+		const screenMove = { offset: [0, 24] } as const;
+		const descriptors = formMarkDescriptors({ entity, measurement, screenMove });
+		const move = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.move)!;
+		const width = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.width)!;
+		expect(move.screen).toEqual(screenMove);
+		expect(width.screen).toBeUndefined();
+
+		const project = (point: Vec3): readonly [number, number] => [
+			640 + point[0] * 100,
+			360 + point[2] * 100
+		];
+		const marks = projectStageHandles({
+			adapterId: 'scene',
+			descriptors,
+			openDisclosures: new Set([SCENE_FORM_MARK.scalePoint]),
+			hoveredId: null,
+			activeId: null,
+			project,
+			offset: [0, 0]
+		});
+		const moveMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.move)!;
+		const widthMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.width)!;
+		expect(widthMark.anchor[1]).toBeCloseTo(moveMark.anchor[1] - 24, 9);
+		expect(widthMark.tip).not.toBeNull();
+		expect(moveMark.tip).not.toBeNull();
+		expect(hitStageMark(marks, { css: widthMark.tip!, coarse: true })?.id).toBe(
+			SCENE_FORM_MARK.width
+		);
+		expect(hitStageMark(marks, { css: moveMark.tip!, coarse: true })?.id).toBe(
+			SCENE_FORM_MARK.move
+		);
 	});
 });

@@ -245,6 +245,15 @@ export function formMarkDescriptors(input: {
 	 * Width and Depth keep their real world axes in every reading.
 	 */
 	readonly screenHeight?: FormMarkScreenHeight | null;
+	/**
+	 * Plan's Move grip offset. Move's contact anchor and the Width ray's centre
+	 * anchor project to the same point when Plan hides world Y, and with the
+	 * same yaw their 30 px glyphs coincide. The host takes the first descriptor
+	 * that hits, so Move (published first) would otherwise swallow every Width
+	 * press. The offset changes drawing and hit area only; the gesture still
+	 * drives the form's real floor position.
+	 */
+	readonly screenMove?: { readonly offset: readonly [number, number] } | null;
 }): readonly StageHandleDescriptor[] {
 	const { entity, measurement } = input;
 	const live = input.live ?? null;
@@ -279,6 +288,7 @@ export function formMarkDescriptors(input: {
 			verb: 'Position',
 			planner: 'place-on-floor',
 			value: `X ${position[0].toFixed(3)} · Z ${position[2].toFixed(3)} m`,
+			...(input.screenMove == null ? {} : { screen: { offset: input.screenMove.offset } }),
 			refusal: refusal(SCENE_FORM_MARK.move)
 		},
 		{

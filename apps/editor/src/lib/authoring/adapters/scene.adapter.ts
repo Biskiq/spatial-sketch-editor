@@ -413,6 +413,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readonly message: string;
 			} | null = null;
 			const FORM_PLAN_HEIGHT_MARKER_GAP_CSS_PX = 24;
+			// Move's contact anchor and the Width ray share one projected point in
+			// Plan; one gap keeps the two 30 px glyphs separately pressable.
+			const FORM_PLAN_MOVE_MARKER_GAP_CSS_PX = 24;
 
 			/**
 			 * Publish/read the surface for the **live** accepted snapshot and reading.
@@ -506,6 +509,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				};
 			}
 
+			/** Plan hides world Y, so Move is offset clear of the Width ray. */
+			function formScreenMove(
+				adapterContext: StageAdapterContext
+			): { offset: readonly [number, number] } | null {
+				return adapterContext.evaluation.settledReading === 'plan'
+					? { offset: [0, FORM_PLAN_MOVE_MARKER_GAP_CSS_PX] }
+					: null;
+			}
+
 			/** The six descriptors for the selected form, live candidate included. */
 			function formMarkDescriptorsFor(
 				adapterContext: StageAdapterContext
@@ -526,7 +538,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					entity,
 					measurement,
 					live: formMarkLive(accepted),
-					screenHeight: formScreenHeight(adapterContext, measurement)
+					screenHeight: formScreenHeight(adapterContext, measurement),
+					screenMove: formScreenMove(adapterContext)
 				});
 			}
 
