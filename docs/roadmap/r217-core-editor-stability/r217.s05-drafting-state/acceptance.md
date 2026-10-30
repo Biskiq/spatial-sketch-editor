@@ -1,12 +1,13 @@
 # R217.S05 — acceptance record: Drafting state
 
-**Slice:** R217.S05 · **Status:** approved (plan); independent repair review pending · **Plan:**
+**Slice:** R217.S05 · **Status:** accepted and closed out 2026-10-29; PR #226 remains open pending owner merge · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
 [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 The owner authorized recovery and repair of existing PR #226 on 2026-10-29, limited to the
-approved S05 plan and required verification. Independent review remains pending. Conditional
-closeout is authorized only if that review finds the repair acceptable; this is not slice closeout.
+approved S05 plan and required verification. The independent review found the repair acceptable.
+The owner-authorized closeout is recorded below. Merge remains a separate owner action; no phase
+closure or merge is claimed here.
 
 ## Repair review evidence — 2026-10-29
 
@@ -53,7 +54,42 @@ row. Verification for this follow-up is recorded below after the tested revision
   longer exists in the restored source”; S08 Move behavior is covered by the numeric assertions
   above.
 
-### Acceptance status
+### Independent recovery review — 2026-10-29
 
-Independent owner review is pending. This record does not claim slice acceptance, release,
-closeout, a phase status change, or a merge.
+The reviewing conversation `01a18a8e-a188-7e93-ae0f-c8b613fa7174` independently reviewed the
+follow-up at `a1112eb6d091892c76a1a6acded8fd5f046e1039`, whose product implementation remains
+`c5273726f3b3d854c845857b79fdcbb7339373e8`. Verdict: **acceptable for the owner-authorized
+slice closeout; no unresolved substantive finding**. S08's object Card and mark modules are
+unchanged against the merged S08 base. The interval override defect and release-list guard
+failure from the earlier review are resolved. The reviewer reran the six affected grid, drafting,
+Layout Ink, Scene editing, floor support and mounted-route contracts: **160 tests passed**.
+
+The reviewer also closed the prior browser Move evidence gap on this same product revision:
+in a fresh Enclosed room on the worktree's Vite server at port 5174, Place created a box at
+X/Z `(2, 2)`, Place was closed, and the reading switched to 2D. Dragging the selected object's
+Move mark with the active 0.5 m Snap committed `(1.5, 1.5)`. Repeating the same pointer path with
+Snap off committed `(1.626129983, 1.365477549)`. Alt-modified keyboard input announced `Snap held`,
+and repeating that path committed those same unsnapped coordinates. Releasing Alt restored
+`Snap 0.5 m`. One Undo after each completed Move restored `(2, 2)` with the Card and marks still
+available; no stale-selection warning occurred. Nothing was saved. The task-owned browser and
+Vite server were closed after verification.
+
+### Acceptance and closeout — 2026-10-29
+
+Accepted following independent review of PR #226 revision
+`a1112eb6d091892c76a1a6acded8fd5f046e1039`, with product implementation and full verification at
+`c5273726f3b3d854c845857b79fdcbb7339373e8`. The approved architecture-integration tier and its
+S11 integration route are recorded above; this slice does not claim the integrated final-gate
+result. No source, test, or config files changed after product verification. The review re-ran six
+affected behavioral suites (160 passed) and completed the real-browser Move scenarios recorded
+above. Manual verification remains separate from automated tests; no DB-backed API tests were run.
+
+**Outcome:** all S05 criteria are accepted at the reviewed revision. The independent review found
+no unresolved substantive finding. Durable shared drafting behavior remains owned by the current
+implementation and the S05 plan; no new cross-slice reference contract was required. S08 Card
+writers and marks remain intact. The S11 final phase gate is outstanding, and R217 remains active.
+
+Preservation details will be recorded in the closed-work stub at this path after its full body has been committed and anchored.
+
+Closeout is documentation-complete. PR #226 remains open and unmerged; the owner retains the merge
+decision. No phase closure, track completion, or cycle transition is implied.
