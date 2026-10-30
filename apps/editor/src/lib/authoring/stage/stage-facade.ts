@@ -93,6 +93,11 @@ import {
 	type StageMarkHit,
 	type StageMarkView
 } from './stage-handles';
+import {
+	mergeStageHeightTicks,
+	type StageHeightSheet,
+	type StageHeightTick
+} from './stage-height-sheet';
 import type {
 	GestureAcquisition,
 	SelectionRequalification,
@@ -488,6 +493,14 @@ export type StageAdapterBinding = {
 	 * marks; the domain keeps every fact, planner and refusal.
 	 */
 	readonly handles?: (context: StageAdapterContext) => readonly StageHandleDescriptor[];
+	/**
+	 * The heights this binding's own surfaces offer to the Height Sheet.
+	 *
+	 * Additive and optional: a binding that declares nothing contributes no tick,
+	 * and the host computes no surface itself. The Sheet merges and sorts the
+	 * declarations; a throwing contributor contributes none.
+	 */
+	readonly heightTicks?: (context: StageAdapterContext) => readonly StageHeightTick[];
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
 	/** Proposed-pose meshes the shared Canvas draws; empty when nothing is proposed. */
@@ -717,6 +730,10 @@ export type StageFacade = {
 	 * too — never a per-call argument that could disagree with the render.
 	 */
 	setPlanParameters(overrides: PlanParameterOverrides): void;
+	/** The one Height Sheet height fact; session view state, never source. */
+	heightSheet(): StageHeightSheet;
+	/** Owner-declared height ticks, merged and sorted by the host. */
+	heightTicks(): readonly StageHeightTick[];
 	eligibleFragments(): readonly PlanFragment[];
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
 	resolvePick(query: StagePickQuery, toolOwner?: string | null): ResolvedStageHit;
@@ -1451,6 +1468,21 @@ export function createStageFacade(input: {
 		},
 		drafting: () => session.drafting(),
 		setDrafting: (patch) => session.setDrafting(patch),
+		heightSheet: () => session.heightSheet(),
+		heightTicks() {
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			const declared: StageHeightTick[] = [];
+			for (const entry of adapters.values()) {
+				try {
+					declared.push(...(entry.contributions.heightTicks?.(handle.context) ?? []));
+				} catch {
+					// A contributor that throws contributes no tick; the rest still count.
+				}
+			}
+			return mergeStageHeightTicks(declared);
+		},
 		acquireInspection(policy = 'exclusive') {
 			// The host owns one inspection output, so it mints its own run order: every
 			// claim this facade acquires is strictly newer than any epoch the output has
