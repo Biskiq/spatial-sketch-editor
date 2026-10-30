@@ -39,6 +39,7 @@ import StageGrid from './StageGrid.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
+	import type { GridRect } from '../stage-grid';
 
 	let {
 		geometry,
@@ -52,6 +53,8 @@ import StageGrid from './StageGrid.svelte';
 		planAppearance = 'paper',
 		/** R217.S05's one Grid/Snap view state; the grid is display-only. */
 		drafting = STAGE_DRAFTING_DEFAULTS,
+		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
+		contentBounds = null,
 		reducedMotion = false,
 		datumMeters = 0,
 		selection = null,
@@ -78,6 +81,8 @@ import StageGrid from './StageGrid.svelte';
 		planAppearance?: 'paper' | 'shaded';
 		/** Grid/Snap view state. It is never a pick source or a Camera mode. */
 		drafting?: StageDraftingState;
+		/** Layout ∪ Scene datum bounds for Paper's bounded sheet. */
+		contentBounds?: GridRect | null;
 		reducedMotion?: boolean;
 		/** The level datum the mat ground sits at. */
 		datumMeters?: number;
@@ -188,8 +193,7 @@ import StageGrid from './StageGrid.svelte';
 			{evaluation}
 			surface="mat"
 			{datumMeters}
-			baseMinorMeters={drafting.gridMinorMeters}
-			intervalMode={drafting.gridIntervalMode}
+			{contentBounds}
 		/>
 	{/if}
 	{#if matVisible}
@@ -240,8 +244,7 @@ import StageGrid from './StageGrid.svelte';
 				{evaluation}
 				surface="paper"
 				{datumMeters}
-				baseMinorMeters={drafting.gridMinorMeters}
-				intervalMode={drafting.gridIntervalMode}
+				{contentBounds}
 			/>
 		{/if}
 		<StagePaper

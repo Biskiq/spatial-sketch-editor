@@ -70,7 +70,6 @@ import {
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-session';
 import { snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
-import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
@@ -1483,11 +1482,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// or Wall centerline keeps the creator's raw aim instead of authoring an
 				// undeclared contact the chain policy must refuse.
 				const drafting = adapterContext.drafting();
-				const currentMinor = drawnGridMinorMeters(
-					drafting,
-					adapterContext.evaluation.targetPlaneMetersPerCssPixel
-				);
-				const snapped = snapDraftingPoint([point[0], point[1]], drafting, currentMinor);
+				const snapped = snapDraftingPoint([point[0], point[1]], drafting);
 				if (freePointWouldCreateContact(snapped, projected)) {
 					return { target: { kind: 'free' }, point: [point[0], point[1]], css };
 				}

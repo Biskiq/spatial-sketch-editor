@@ -1,0 +1,238 @@
+{
+  "formatVersion": 1,
+  "id": "project:4a98e247-725b-49a9-8012-06eb439402a8",
+  "name": "Enclosed room",
+  "acceptedRevision": {
+    "projectId": "project:4a98e247-725b-49a9-8012-06eb439402a8",
+    "revisionId": "revision-2"
+  },
+  "dependencyLock": {
+    "formatVersion": 1,
+    "entries": []
+  },
+  "units": {
+    "layout": {
+      "header": {
+        "domain": "layout",
+        "unitId": "project:4a98e247-725b-49a9-8012-06eb439402a8:layout",
+        "formatVersion": 6,
+        "contentRevision": "sha256-9bcab9447d4c66afa28bd511d4ba20290caecfe61a0c075f57b62aeef777d477"
+      },
+      "data": {
+        "units": "meters",
+        "formatVersion": 6,
+        "floor": {
+          "id": "floor",
+          "name": "Floor",
+          "elevation": 0
+        },
+        "junctions": [
+          {
+            "id": "junction-chain-1.starter-template",
+            "point": [
+              0,
+              -4
+            ]
+          },
+          {
+            "id": "junction-chain-2.starter-template",
+            "point": [
+              7,
+              -4
+            ]
+          },
+          {
+            "id": "junction-chain-3.starter-template",
+            "point": [
+              7,
+              2
+            ]
+          },
+          {
+            "id": "junction-chain-4.starter-template",
+            "point": [
+              0,
+              2
+            ]
+          },
+          {
+            "id": "junction-chain-1.2eefba3f-8d65-4e14-9995-3f2e334e0fe5",
+            "point": [
+              -1.5,
+              1.5
+            ]
+          },
+          {
+            "id": "junction-chain-2.2eefba3f-8d65-4e14-9995-3f2e334e0fe5",
+            "point": [
+              -1,
+              1.5
+            ]
+          },
+          {
+            "id": "junction-chain-1.a57c3922-80da-4c8b-afc2-6cffc49ff64c",
+            "point": [
+              -3,
+              -2.5
+            ]
+          },
+          {
+            "id": "junction-chain-2.a57c3922-80da-4c8b-afc2-6cffc49ff64c",
+            "point": [
+              -2,
+              -2.5
+            ]
+          }
+        ],
+        "walls": [
+          {
+            "id": "wall-chain-1.starter-template",
+            "startJunctionId": "junction-chain-1.starter-template",
+            "endJunctionId": "junction-chain-2.starter-template",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-chain-2.starter-template",
+            "startJunctionId": "junction-chain-2.starter-template",
+            "endJunctionId": "junction-chain-3.starter-template",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-chain-3.starter-template",
+            "startJunctionId": "junction-chain-3.starter-template",
+            "endJunctionId": "junction-chain-4.starter-template",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-chain-4.starter-template",
+            "startJunctionId": "junction-chain-4.starter-template",
+            "endJunctionId": "junction-chain-1.starter-template",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-chain-1.2eefba3f-8d65-4e14-9995-3f2e334e0fe5",
+            "startJunctionId": "junction-chain-1.2eefba3f-8d65-4e14-9995-3f2e334e0fe5",
+            "endJunctionId": "junction-chain-2.2eefba3f-8d65-4e14-9995-3f2e334e0fe5",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "wall-chain-1.a57c3922-80da-4c8b-afc2-6cffc49ff64c",
+            "startJunctionId": "junction-chain-1.a57c3922-80da-4c8b-afc2-6cffc49ff64c",
+            "endJunctionId": "junction-chain-2.a57c3922-80da-4c8b-afc2-6cffc49ff64c",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          }
+        ],
+        "rooms": [
+          {
+            "id": "room.5:4:face31:wall-chain-1.starter-template-F31:wall-chain-2.starter-template-F31:wall-chain-3.starter-template-F31:wall-chain-4.starter-template-F.starter-template",
+            "name": "Draft Room 1",
+            "boundary": [
+              {
+                "wallId": "wall-chain-1.starter-template",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-chain-2.starter-template",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-chain-3.starter-template",
+                "direction": "forward"
+              },
+              {
+                "wallId": "wall-chain-4.starter-template",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          }
+        ],
+        "openings": [],
+        "objects": [],
+        "identity": {
+          "cursor": 0,
+          "rooms": {},
+          "junctions": {},
+          "walls": {},
+          "openings": {}
+        }
+      }
+    },
+    "scene": {
+      "header": {
+        "domain": "scene",
+        "unitId": "project:4a98e247-725b-49a9-8012-06eb439402a8:scene",
+        "formatVersion": 4,
+        "contentRevision": "sha256-6a35366b72990cba5cc04e07d40b7a0e54a9483c9505d379d1fab5e3f2aad7c4"
+      },
+      "data": {
+        "formatVersion": 4,
+        "textures": [],
+        "materials": [],
+        "entities": []
+      }
+    },
+    "camera": {
+      "header": {
+        "domain": "camera",
+        "unitId": "project:4a98e247-725b-49a9-8012-06eb439402a8:camera",
+        "formatVersion": 1,
+        "contentRevision": "sha256-bc34d5cbec17db2aed8857f8d0489e4917e5832839aeec337e42934abca17df0"
+      },
+      "data": {
+        "formatVersion": 1,
+        "views": [],
+        "connections": []
+      }
+    },
+    "experience": {
+      "header": {
+        "domain": "experience",
+        "unitId": "project:4a98e247-725b-49a9-8012-06eb439402a8:experience",
+        "formatVersion": 2,
+        "contentRevision": "sha256-bc298db67a49c45b109bd9c6859462d26a47a5bcbfcbb62b4695d830f2b8aa59"
+      },
+      "data": {
+        "formatVersion": 2,
+        "experiences": []
+      }
+    },
+    "resources": {
+      "header": {
+        "domain": "resources",
+        "unitId": "project:4a98e247-725b-49a9-8012-06eb439402a8:resources",
+        "formatVersion": 2,
+        "contentRevision": "sha256-908d76fe2cc2f3fb9ef28dff065b1ddf4dbff3590a68d204ed73dc0b3633d54e"
+      },
+      "data": {
+        "formatVersion": 2,
+        "resources": []
+      }
+    }
+  }
+}

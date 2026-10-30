@@ -1,22 +1,24 @@
 /**
- * R217.S05 — the **grid** as measured drawing.
+ * R217.S13 — the **grid** as measured drawing at fixed values.
  *
  * PLATE fixes the grid's grammar, and this module is the only implementation of
  * it:
  *
- * - minor intervals are `1, 2, 5 × 10^n` m, and major is five times minor;
- * - the chosen minor is the smallest ladder interval whose projected spacing at
- *   the target plane is at least 16 CSS pixels;
- * - the next finer interval fades linearly from 16 to 8 px and is suppressed
- *   below 8 px, so an interval change is a cross-fade rather than a jump;
+ * - every surface draws only the fixed 1 m minor and 5 m major levels;
+ * - each level fades from 16 to 8 CSS px projected spacing and hides below 8,
+ *   so a zoom change only thins the drawing and never changes a value;
+ * - a 25 m level appears only while the 5 m level is hidden, so a large site
+ *   keeps one reference before the ruler becomes the only one;
  * - lines are anchored to world `(0, datum, 0)` and generated only inside the
- *   visible rectangle plus one interval of margin;
+ *   drawn rectangle;
+ * - Paper's rectangle is a bounded sheet around the work, while the mat keeps
+ *   the actual datum footprint the Camera's corner rays see;
  * - Paper and the mat have their own inks from PLATE §Semantic color.
  *
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.
  */
-import { isGridMinorMeters, type StageDraftingState } from './stage-drafting';
+import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from './stage-drafting';
 
 /** PLATE's grid inks. Opacity is part of the role, not a renderer default. */
 export type GridInk = {
@@ -46,10 +48,10 @@ export type GridSurface = 'paper' | 'mat';
 export const GRID_FULL_SPACING_CSS_PX = 16;
 /** Below this projected spacing, an interval is not drawn at all. */
 export const GRID_SUPPRESS_SPACING_CSS_PX = 8;
-/** PLATE's reference minor interval. */
-export const GRID_REFERENCE_MINOR_METERS = 1;
+/** The coarser reference that appears only while the 5 m level is hidden. */
+export const GRID_COARSE_METERS = 25;
 
-export type GridLevelRole = 'fade' | 'minor' | 'major';
+export type GridLevelRole = 'minor' | 'major' | 'coarse';
 
 /** One drawn interval level, with the spacing that decides its opacity. */
 export type GridLevel = {
@@ -61,13 +63,13 @@ export type GridLevel = {
 };
 
 export type GridLevels = {
-	/** The chosen minor interval (full ink). */
+	/** The finest visible interval, used to quantise the drawing rectangle. */
 	readonly minorMeters: number;
-	/** `5 × minor`. */
-	readonly majorMeters: number;
-	/** The fading finer interval, when one is still visible. */
-	readonly fadingMinorMeters: number | null;
-	/** In draw order: fade, minor, major. */
+	/** The fixed 5 m level when it is visible. */
+	readonly majorMeters: number | null;
+	/** The 25 m level, present only while the 5 m level is hidden. */
+	readonly coarseMeters: number | null;
+	/** In draw order: minor, major, coarse. */
 	readonly levels: readonly GridLevel[];
 };
 
@@ -75,89 +77,87 @@ function clean(value: number): number {
 	return Math.round(value * 1e9) / 1e9;
 }
 
-/** Every `1, 2, 5 × 10^n` value at or above `base`, ascending. */
-export function gridLadderFrom(baseMinorMeters: number): readonly number[] {
-	const values = new Set<number>();
-	for (let exponent = -6; exponent <= 6; exponent += 1) {
-		for (const mantissa of [1, 2, 5]) {
-			const value = clean(mantissa * 10 ** exponent);
-			if (value >= baseMinorMeters * (1 - 1e-9)) values.add(value);
-		}
-	}
-	return [...values].sort((a, b) => a - b);
+/**
+ * The opacity a fixed level draws at: full at 16 px and above, a linear fade
+ * from 16 to 8 px, and absent below 8 px.
+ */
+function levelOpacity(
+	intervalMeters: number,
+	metersPerCssPixel: number,
+	fullOpacity: number
+): { readonly spacingCssPx: number; readonly opacity: number } | null {
+	const spacingCssPx = intervalMeters / metersPerCssPixel;
+	if (spacingCssPx < GRID_SUPPRESS_SPACING_CSS_PX - 1e-9) return null;
+	const fade = Math.min(
+		1,
+		Math.max(
+			0,
+			(spacingCssPx - GRID_SUPPRESS_SPACING_CSS_PX) /
+				(GRID_FULL_SPACING_CSS_PX - GRID_SUPPRESS_SPACING_CSS_PX)
+		)
+	);
+	if (fade <= 0) return null;
+	return { spacingCssPx, opacity: fullOpacity * fade };
 }
 
 /**
- * The interval levels for one scale and surface.
+ * The fixed interval levels for one scale and surface.
  *
- * The chosen minor already guarantees at least 16 px. The immediately finer
- * ladder value is still drawn while it is at least 8 px, at the linear fade
- * that makes a ladder change continuous.
+ * The values never depend on zoom: the 1 m and 5 m levels simply fade and hide
+ * as the drawing gets denser. The 25 m reference exists only while 5 m is
+ * hidden, and obeys the same rule itself.
  */
 export function gridLevelsFor(input: {
 	readonly metersPerCssPixel: number;
-	readonly baseMinorMeters: number;
-	readonly intervalMode?: 'automatic' | 'override';
 	readonly surface: GridSurface;
 }): GridLevels | null {
-	const { metersPerCssPixel, baseMinorMeters, surface } = input;
-	const intervalMode = input.intervalMode ?? 'automatic';
+	const { metersPerCssPixel, surface } = input;
 	if (!Number.isFinite(metersPerCssPixel) || metersPerCssPixel <= 0) return null;
-	if (!isGridMinorMeters(baseMinorMeters)) return null;
 	const ink = surface === 'paper' ? PAPER_GRID_INK : MAT_GRID_INK;
-	// Automatic follows scale across the full ladder. Override uses the selected
-	// interval as its finest full-ink level, while scale can still coarsen it when
-	// the selected lines would fall below 16 px.
-	const ladder = gridLadderFrom(intervalMode === 'override' ? baseMinorMeters : 0.01);
-	const primaryIndex = ladder.findIndex(
-		(interval) => interval / metersPerCssPixel >= GRID_FULL_SPACING_CSS_PX - 1e-9
-	);
-	if (primaryIndex < 0) return null;
-	const minorMeters = ladder[primaryIndex]!;
-	const majorMeters = clean(minorMeters * 5);
 	const levels: GridLevel[] = [];
-	let fadingMinorMeters: number | null = null;
-
-	if (primaryIndex > 0) {
-		const finer = ladder[primaryIndex - 1]!;
-		const spacingCssPx = finer / metersPerCssPixel;
-		if (
-			spacingCssPx >= GRID_SUPPRESS_SPACING_CSS_PX - 1e-9 &&
-			spacingCssPx < GRID_FULL_SPACING_CSS_PX - 1e-9
-		) {
-			const fade = Math.min(
-				1,
-				Math.max(0, (spacingCssPx - GRID_SUPPRESS_SPACING_CSS_PX) / 8)
-			);
-			if (fade > 0) {
-				fadingMinorMeters = finer;
-				levels.push({
-					intervalMeters: finer,
-					role: 'fade',
-					spacingCssPx,
-					opacity: ink.minorOpacity * fade,
-					color: ink.minor
-				});
-			}
-		}
+	const minor = levelOpacity(GRID_MINOR_METERS, metersPerCssPixel, ink.minorOpacity);
+	if (minor !== null) {
+		levels.push({
+			intervalMeters: GRID_MINOR_METERS,
+			role: 'minor',
+			spacingCssPx: minor.spacingCssPx,
+			opacity: minor.opacity,
+			color: ink.minor
+		});
 	}
-
-	levels.push({
-		intervalMeters: minorMeters,
-		role: 'minor',
-		spacingCssPx: minorMeters / metersPerCssPixel,
-		opacity: ink.minorOpacity,
-		color: ink.minor
-	});
-	levels.push({
-		intervalMeters: majorMeters,
-		role: 'major',
-		spacingCssPx: majorMeters / metersPerCssPixel,
-		opacity: ink.majorOpacity,
-		color: ink.major
-	});
-
-	return { minorMeters, majorMeters, fadingMinorMeters, levels };
+	const major = levelOpacity(GRID_MAJOR_METERS, metersPerCssPixel, ink.majorOpacity);
+	if (major !== null) {
+		levels.push({
+			intervalMeters: GRID_MAJOR_METERS,
+			role: 'major',
+			spacingCssPx: major.spacingCssPx,
+			opacity: major.opacity,
+			color: ink.major
+		});
+	}
+	// The coarse level is a fallback reference, never a third simultaneous
+	// lattice: it appears only after the 5 m level has hidden.
+	const coarse =
+		major === null
+			? levelOpacity(GRID_COARSE_METERS, metersPerCssPixel, ink.majorOpacity)
+			: null;
+	if (coarse !== null) {
+		levels.push({
+			intervalMeters: GRID_COARSE_METERS,
+			role: 'coarse',
+			spacingCssPx: coarse.spacingCssPx,
+			opacity: coarse.opacity,
+			color: ink.major
+		});
+	}
+	if (levels.length === 0) return null;
+	const finest = levels[0]!.intervalMeters;
+	return {
+		minorMeters: finest,
+		majorMeters: major === null ? null : GRID_MAJOR_METERS,
+		coarseMeters: coarse === null ? null : GRID_COARSE_METERS,
+		levels
+	};
 }
 
 /** A world-axis-aligned rectangle on the datum plane. */
@@ -221,6 +221,54 @@ export function gridRectFor(input: {
 		minZ: clean(quantisedMinZ),
 		maxZ: clean(quantisedMaxZ)
 	};
+}
+
+/**
+ * The bounded Paper sheet: the work's datum bounds expanded by 5 m and rounded
+ * outward to 5 m, or a 20 × 20 m default around the target for an empty
+ * project.
+ *
+ * The sheet is intersected with the visible coverage, so a zoomed-in view
+ * generates only the lines it can see. The intersection never moves the Camera
+ * and never changes the lattice; it only bounds the drawing.
+ */
+export function paperSheetRectFor(input: {
+	readonly targetXZ: readonly [number, number];
+	readonly targetPlaneHeightMeters: number;
+	readonly aspect: number;
+	readonly intervalMeters: number;
+	readonly contentBounds?: GridRect | null;
+}): GridRect | null {
+	const sheet =
+		input.contentBounds === null || input.contentBounds === undefined
+			? {
+					minX: input.targetXZ[0] - 10,
+					maxX: input.targetXZ[0] + 10,
+					minZ: input.targetXZ[1] - 10,
+					maxZ: input.targetXZ[1] + 10
+				}
+			: {
+					minX: Math.floor((input.contentBounds.minX - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+					maxX: Math.ceil((input.contentBounds.maxX + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+					minZ: Math.floor((input.contentBounds.minZ - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+					maxZ: Math.ceil((input.contentBounds.maxZ + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS
+				};
+	const visible = gridRectFor({
+		targetXZ: input.targetXZ,
+		targetPlaneHeightMeters: input.targetPlaneHeightMeters,
+		aspect: input.aspect,
+		intervalMeters: input.intervalMeters,
+		coverage: 0.75
+	});
+	const minX = Math.max(sheet.minX, visible.minX);
+	const maxX = Math.min(sheet.maxX, visible.maxX);
+	const minZ = Math.max(sheet.minZ, visible.minZ);
+	const maxZ = Math.min(sheet.maxZ, visible.maxZ);
+	if (minX >= maxX || minZ >= maxZ) return null;
+	// Both inputs are already quantised (the sheet to 5 m, the visible coverage
+	// to the finest interval), so their intersection is stable without a second
+	// rounding pass. An empty project keeps its exact 20 × 20 m sheet.
+	return { minX: clean(minX), maxX: clean(maxX), minZ: clean(minZ), maxZ: clean(maxZ) };
 }
 
 /**
@@ -312,7 +360,7 @@ function unprojectPoint(
 }
 
 export type GridPlan = {
-	/** Changes only when the drawing itself changes (interval, fade, rectangle). */
+	/** Changes only when the drawing itself changes (levels or rectangle). */
 	readonly key: string;
 	readonly surface: GridSurface;
 	readonly datumMeters: number;
@@ -327,38 +375,47 @@ export function gridPlanFor(input: {
 	readonly aspect: number;
 	readonly targetXZ: readonly [number, number];
 	readonly datumMeters: number;
-	readonly baseMinorMeters: number;
-	readonly intervalMode?: 'automatic' | 'override';
 	readonly surface: GridSurface;
 	/** The Camera evaluation's corner-ray source, when one is available. */
 	readonly inverseViewProjectionMatrix?: readonly number[];
 	readonly viewport?: { readonly width: number; readonly height: number };
+	/** Layout ∪ Scene datum bounds; Paper draws a bounded sheet around them. */
+	readonly contentBounds?: GridRect | null;
 }): GridPlan | null {
 	const levels = gridLevelsFor(input);
 	if (levels === null) return null;
-	const visible =
-		input.surface === 'mat' &&
-		input.inverseViewProjectionMatrix !== undefined &&
-		input.viewport !== undefined
-			? gridDatumFootprintFor({
-					inverseViewProjectionMatrix: input.inverseViewProjectionMatrix,
-					rect: input.viewport,
-					datumMeters: input.datumMeters,
-					targetXZ: input.targetXZ,
-					targetPlaneHeightMeters: input.targetPlaneHeightMeters,
-					aspect: input.aspect
-				})
-			: null;
-	const rect = gridRectFor({
-		targetXZ: input.targetXZ,
-		targetPlaneHeightMeters: input.targetPlaneHeightMeters,
-		aspect: input.aspect,
-		intervalMeters: levels.minorMeters,
-		// A perspective mat sees the datum far beyond the target plane; Paper is
-		// exactly orthographic, so its drawing only needs the visible sheet.
-		coverage: input.surface === 'mat' ? 3 : 0.75,
-		visible
-	});
+	let rect: GridRect | null;
+	if (input.surface === 'paper') {
+		rect = paperSheetRectFor({
+			targetXZ: input.targetXZ,
+			targetPlaneHeightMeters: input.targetPlaneHeightMeters,
+			aspect: input.aspect,
+			intervalMeters: levels.minorMeters,
+			contentBounds: input.contentBounds ?? null
+		});
+	} else {
+		const visible =
+			input.inverseViewProjectionMatrix !== undefined && input.viewport !== undefined
+				? gridDatumFootprintFor({
+						inverseViewProjectionMatrix: input.inverseViewProjectionMatrix,
+						rect: input.viewport,
+						datumMeters: input.datumMeters,
+						targetXZ: input.targetXZ,
+						targetPlaneHeightMeters: input.targetPlaneHeightMeters,
+						aspect: input.aspect
+					})
+				: null;
+		rect = gridRectFor({
+			targetXZ: input.targetXZ,
+			targetPlaneHeightMeters: input.targetPlaneHeightMeters,
+			aspect: input.aspect,
+			intervalMeters: levels.minorMeters,
+			// A perspective mat sees the datum far beyond the target plane.
+			coverage: 3,
+			visible
+		});
+	}
+	if (rect === null) return null;
 	// Opacity is deliberately absent: the fade changes continuously while zooming,
 	// but the lattice does not. A rebuild keyed on opacity would dispose and
 	// regenerate every line on nearly every frame; the renderer updates the
@@ -393,21 +450,27 @@ function isMultiple(value: number, interval: number): boolean {
  * The lines of one plan.
  *
  * Coarser roles own coincident lines: a major line is not also drawn as a minor
- * one, and a fading interval does not repaint the chosen minor. Every axis
- * includes world zero when the rectangle covers it, which is what keeps the
- * origin stable across interval changes.
+ * one, and the coarse fallback owns its own lattice. Every axis includes world
+ * zero when the rectangle covers it, which is what keeps the origin stable
+ * across a zoom change.
  */
 export function gridLinesFor(plan: GridPlan): readonly GridLine[] {
 	const { rect, levels } = plan;
 	const lines: GridLine[] = [];
-	// No global truncation: the interval is chosen so spacing is at least 16 px and
-	// the mat footprint is clamped, which bounds the count by the viewport rather
-	// than by an arbitrary number. A cap here could silently omit every major line
-	// on a wide Stage, which is worse than drawing the bounded patch.
+	// No global truncation: the fixed levels and the bounded rectangles already
+	// bound the count by the viewport. A cap here could silently omit every major
+	// line on a wide Stage, which is worse than drawing the bounded patch.
 	for (const level of levels.levels) {
 		const exclusions: number[] = [];
-		if (level.role === 'minor') exclusions.push(levels.majorMeters);
-		if (level.role === 'fade') exclusions.push(levels.minorMeters, levels.majorMeters);
+		if (level.role === 'minor') exclusions.push(GRID_MAJOR_METERS);
+		// A coarser role owns a coincident line only while that role is actually
+		// drawn; otherwise the visible level must still draw world zero.
+		if (level.role === 'minor' && levels.coarseMeters !== null) {
+			exclusions.push(GRID_COARSE_METERS);
+		}
+		if (level.role === 'major' && levels.coarseMeters !== null) {
+			exclusions.push(GRID_COARSE_METERS);
+		}
 		for (const axis of ['x', 'z'] as const) {
 			const minimum = axis === 'x' ? rect.minX : rect.minZ;
 			const maximum = axis === 'x' ? rect.maxX : rect.maxZ;
@@ -440,20 +503,4 @@ export function gridIsVisible(input: {
 }): boolean {
 	if (!input.grid) return false;
 	return !(input.appearance === 'shaded' && input.renderedReading === 'plan');
-}
-
-/** The Grid word's interval: the level in force at this evaluation. */
-export function drawnGridMinorMeters(
-	state: StageDraftingState,
-	metersPerCssPixel: number | null
-): number {
-	const fallback = state.gridIntervalMode === 'override' ? state.gridMinorMeters : GRID_REFERENCE_MINOR_METERS;
-	if (metersPerCssPixel === null) return fallback;
-	const levels = gridLevelsFor({
-		metersPerCssPixel,
-		baseMinorMeters: state.gridMinorMeters,
-		intervalMode: state.gridIntervalMode,
-		surface: 'paper'
-	});
-	return levels?.minorMeters ?? fallback;
 }

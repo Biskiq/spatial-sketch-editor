@@ -136,6 +136,7 @@
 import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
 import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
+import StageZoomControls from '$lib/authoring/stage/shell/StageZoomControls.svelte';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
@@ -163,7 +164,6 @@ import {
 	STAGE_DRAFTING_DEFAULTS,
 	applyDraftingPatch,
 	draftingSnapIncrementMeters,
-	formatScaleRatio,
 	gridWord as draftingWordForGrid,
 	roundScaleBarLength,
 	scaleDetentIntent,
@@ -171,7 +171,7 @@ import {
 	type StageDraftingPatch,
 	type StageDraftingState
 } from '$lib/authoring/stage/stage-drafting';
-import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
+import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	// Harness-gated work ledger (T1.P02.S06); inert without the perf flag.
 	installPerfWorkObserver();
@@ -518,6 +518,9 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	 * history or Save, and a replacement keeps it.
 	 */
 	let drafting = $state<StageDraftingState>(STAGE_DRAFTING_DEFAULTS);
+	/** Re-evaluates content bounds when a lazy model or form root mounts. */
+	let renderRootsRevision = $state(0);
+	$effect(() => scenePick.onRenderRootsChanged(() => (renderRootsRevision += 1)));
 	/**
 	 * R217.S06's one Height Sheet fact, mirrored from the session so the control,
 	 * the Canvas plane and the mounted chrome all read the same height. It is
@@ -605,23 +608,55 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	const draftingReading: 'plan' | '3d' = $derived(
 		evaluation?.settledReading === 'plan' ? 'plan' : '3d'
 	);
-	const draftingScaleWord = $derived(
-		`Scale ${formatScaleRatio(evaluation?.targetPlaneMetersPerCssPixel ?? null)}`
-	);
-	const draftingEffectiveMinor = $derived(
-		drawnGridMinorMeters(drafting, evaluation?.targetPlaneMetersPerCssPixel ?? null)
-	);
-	const draftingGridWord = $derived(draftingWordForGrid(drafting, draftingEffectiveMinor));
-	const draftingSnapWord = $derived(
-		draftingWordForSnap(drafting, draftingEffectiveMinor)
-	);
-	/** Arrow-key stepping follows S05's increment, or 0.1 m while Snap is off. */
+	const draftingGridWord = $derived(draftingWordForGrid(drafting));
+	const draftingSnapWord = $derived(draftingWordForSnap(drafting));
+	/** Arrow-key stepping follows the fixed increment, or 0.1 m while Snap is off. */
 	const heightSnapIncrement = $derived(
-		draftingSnapIncrementMeters(drafting, draftingEffectiveMinor) ?? 0.1
+		draftingSnapIncrementMeters(drafting) ?? 0.1
 	);
 	const draftingScaleBar = $derived(
 		roundScaleBarLength(evaluation?.targetPlaneMetersPerCssPixel ?? 0)
 	);
+	/**
+	 * Layout ∪ Scene datum bounds, the one read Fit and Paper's sheet share.
+	 *
+	 * A free Scene object outside the drawing is still on the Stage, so the sheet
+	 * and Fit must see it. The bounds contain no Camera state: they never move a
+	 * pose or ask the Camera to reframe.
+	 */
+	function readStageContentBounds(stage: StageFacade): {
+		readonly min: [number, number, number];
+		readonly max: [number, number, number];
+	} | null {
+		const layoutBounds = stage.snapshot().domain.geometry.bounds;
+		let min: [number, number, number] | null =
+			layoutBounds === null ? null : [layoutBounds.min[0], layoutBounds.min[1], layoutBounds.min[2]];
+		let max: [number, number, number] | null =
+			layoutBounds === null ? null : [layoutBounds.max[0], layoutBounds.max[1], layoutBounds.max[2]];
+		for (const entity of stage.snapshot().domain.scene.entities) {
+			const bounds = stage.sceneBounds(entity.id);
+			if (bounds === null) continue;
+			min =
+				min === null
+					? [bounds.min[0], bounds.min[1], bounds.min[2]]
+					: [Math.min(min[0], bounds.min[0]), Math.min(min[1], bounds.min[1]), Math.min(min[2], bounds.min[2])];
+			max =
+				max === null
+					? [bounds.max[0], bounds.max[1], bounds.max[2]]
+					: [Math.max(max[0], bounds.max[0]), Math.max(max[1], bounds.max[1]), Math.max(max[2], bounds.max[2])];
+		}
+		return min === null || max === null ? null : { min, max };
+	}
+	const paperContentBounds = $derived.by((): GridRect | null => {
+		void renderRootsRevision;
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		const stage = facade;
+		if (stage === null) return null;
+		const bounds = readStageContentBounds(stage);
+		return bounds === null
+			? null
+			: { minX: bounds.min[0], maxX: bounds.max[0], minZ: bounds.min[2], maxZ: bounds.max[2] };
+	});
 	// Generated Plan evaluations are replaced whole; raw data keeps their references
 	// cloneable when Index selection crosses the immutable selection boundary.
 	let planView = $state.raw<PlanEvaluation | null>(null);
@@ -2174,25 +2209,17 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	function fit(): void {
 		const stage = facade;
 		if (stage === null || rect === null) return;
-		const layoutBounds = stage.snapshot().domain.geometry.bounds;
-		let min: [number, number, number] | null =
-			layoutBounds === null ? null : [layoutBounds.min[0], layoutBounds.min[1], layoutBounds.min[2]];
-		let max: [number, number, number] | null =
-			layoutBounds === null ? null : [layoutBounds.max[0], layoutBounds.max[1], layoutBounds.max[2]];
-		for (const entity of stage.snapshot().domain.scene.entities) {
-			const bounds = stage.sceneBounds(entity.id);
-			if (bounds === null) continue;
-			min =
-				min === null
-					? [bounds.min[0], bounds.min[1], bounds.min[2]]
-					: [Math.min(min[0], bounds.min[0]), Math.min(min[1], bounds.min[1]), Math.min(min[2], bounds.min[2])];
-			max =
-				max === null
-					? [bounds.max[0], bounds.max[1], bounds.max[2]]
-					: [Math.max(max[0], bounds.max[0]), Math.max(max[1], bounds.max[1]), Math.max(max[2], bounds.max[2])];
-		}
-		if (min === null || max === null) return;
-		submit({ kind: 'fit', bounds: { min, max }, rect }, nowSeconds());
+		const bounds = readStageContentBounds(stage);
+		if (bounds === null) return;
+		submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect }, nowSeconds());
+	}
+
+	/** Zoom steps use the same Camera `zoom` the wheel drives: 1.25 per press. */
+	function zoomIn(): void {
+		zoom(1 / 1.25);
+	}
+	function zoomOut(): void {
+		zoom(1.25);
 	}
 
 	function bringIntoView(target: readonly [number, number, number]): void {
@@ -3279,6 +3306,14 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 			})),
 			...findContributions.map((entry) => ({
 				id: entry.id, adapterId: entry.adapterId, label: entry.label, verb: 'Invoke'
+			})),
+			// O8: the Scale detents stay reachable after the Scale word leaves the
+			// toolbar. They are the same existing zoom intent, not a second control.
+			...SCALE_DETENTS.map((ratio) => ({
+				id: `scale:${ratio}`,
+				adapterId: 'scale',
+				label: `Scale 1:${ratio}`,
+				verb: 'Zoom'
 			}))
 		];
 		return needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle));
@@ -3384,6 +3419,10 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
 	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string }): void {
 		if (entry.adapterId === 'subject') { selectSource(entry.id); return; }
+		if (entry.adapterId === 'scale') {
+			requestScaleDetent(Number(entry.id.slice('scale:'.length)));
+			return;
+		}
 		const key = dockKeys.find(
 			(candidate) => candidate.id === entry.id && candidate.adapterId === entry.adapterId
 		);
@@ -3519,11 +3558,6 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		onOpenIndex={() => (indexOpen = true)}
 		planAppearance={preferences.planAppearance}
 		onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
-		gridIntervalMode={drafting.gridIntervalMode}
-		gridMinorMeters={drafting.gridMinorMeters}
-		snapOnGrid={drafting.snap}
-		onGridMinorMeters={(mode, meters) => patchDrafting({ gridIntervalMode: mode, ...(meters === undefined ? {} : { gridMinorMeters: meters }) })}
-		onSnapOnGrid={(snap) => patchDrafting({ snap })}
 		heightSheetSide={heightSheetSide}
 		onHeightSheetSide={(side) => (heightSheetSide = side)}
 		motionSpeed={preferences.motionSpeed}
@@ -3660,6 +3694,7 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 						{drafting}
 						{reducedMotion}
 						datumMeters={boot.snapshot.domain.datumMeters}
+						contentBounds={paperContentBounds}
 						selection={selection}
 						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
 						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
@@ -3670,8 +3705,14 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 				<div class="overlay-layer">
 					<StageOverlay {markers} {marks} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 				</div>
-				<!-- The measured bar is a reading of the same evaluation, never a control. -->
-				<StageScaleBar bar={draftingScaleBar} />
+				<!--
+					The measured ruler is a Plan-only reading of the same evaluation. It
+					hides as soon as the projection leaves Plan, not only once 3D settles,
+					so it cannot float over a transition. World-lens chrome, like the Sheet.
+				-->
+				{#if lens === 'world' && evaluation?.projectionKind === 'plan-orthographic'}
+					<StageScaleBar bar={draftingScaleBar} quiet={paperVisible} />
+				{/if}
 
 				{#if boot.status === 'empty' && (currentEnvelope?.units.layout.data.rooms.length ?? 0) === 0}
 					<p class="stage-note" role="status">Empty baseline — draw an enclosure with Ink to create a Room floor, or start from the gallery for a compilable room.</p>
@@ -3691,16 +3732,24 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 					<StageDraftingControl
 						{drafting}
 						reading={draftingReading}
-						scaleLabel={draftingScaleWord}
-						scaleDetents={SCALE_DETENTS}
+						quiet={paperVisible}
 						gridWord={draftingGridWord}
 						snapWord={draftingSnapWord}
 						onReading={setReading}
 						onPatch={patchDrafting}
-						onScaleDetent={requestScaleDetent}
-						onFitAll={fit}
 					/>
 				</div>
+				{#if lens === 'world'}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="stage-zoom-slot"
+						class:sheet-right={heightSheetSide === 'right'}
+						onclick={(event) => event.stopPropagation()}
+						onpointerdown={(event) => event.stopPropagation()}
+					>
+						<StageZoomControls quiet={paperVisible} onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={fit} />
+					</div>
+				{/if}
 				<!-- A project-replacement action, deliberately outside the drafting cluster. -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
@@ -4025,6 +4074,23 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		left: 0.75rem;
 		display: flex;
 		gap: 0.4rem;
+	}
+	.stage-zoom-slot {
+		position: absolute;
+		right: 0.75rem;
+		bottom: calc(0.75rem + var(--lower-column-height, 0px));
+		z-index: 7;
+		display: flex;
+		gap: 0.4rem;
+	}
+	/*
+		The Height Sheet owns the right edge; the cluster clears its 5.5 rem body
+		plus the 0.75 rem Stage inset, with a 4 px gap. This also holds when the
+		lower column (dock plus palette) lifts the cluster up beside the Sheet; the
+		measured clearance is 3.6 px at 1440 × 900.
+	*/
+	.stage-zoom-slot.sheet-right {
+		right: calc(5.5rem + 1rem);
 	}
 	.stage-project-actions {
 		position: absolute;

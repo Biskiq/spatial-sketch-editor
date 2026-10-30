@@ -41,7 +41,6 @@ import {
 	draftingSnapIncrementMeters,
 	snapDraftingPlacement
 } from '$lib/authoring/stage/stage-drafting';
-import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import type { SceneFormEntity } from '$lib/content/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
@@ -929,11 +928,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							// and Place. Alt/Option suspension is therefore immediate, and
 							// there is one shared rounding and float-cleaning pass.
 							const drafting = adapterContext.drafting();
-							const minor = drawnGridMinorMeters(
-								drafting,
-								adapterContext.evaluation.targetPlaneMetersPerCssPixel
-							);
-							const step = draftingSnapIncrementMeters(drafting, minor);
+							const step = draftingSnapIncrementMeters(drafting);
 							const snapped = snapDraftingPlacement(
 								[support.worldPoint[0], support.worldPoint[2]],
 								step
@@ -1265,11 +1260,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						} else {
 							const drafting = adapterContext.drafting();
 							const grabOffset = current.moveGrabOffset ?? [0, 0];
-							const minor = drawnGridMinorMeters(
-								drafting,
-								adapterContext.evaluation.targetPlaneMetersPerCssPixel
-							);
-							const step = draftingSnapIncrementMeters(drafting, minor);
+							const step = draftingSnapIncrementMeters(drafting);
 							const snapped = snapDraftingPlacement(
 								[
 									support.worldPoint[0] - grabOffset[0],
@@ -1845,11 +1836,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const surface = gestureSurface ?? surfaceFor(adapterContext.evaluation);
 					const session = surface.session;
 					const drafting = adapterContext.drafting();
-					const minor = drawnGridMinorMeters(
-						drafting,
-						adapterContext.evaluation.targetPlaneMetersPerCssPixel
-					);
-					const snapStep = draftingSnapIncrementMeters(drafting, minor);
+					const snapStep = draftingSnapIncrementMeters(drafting);
 					// Keep the Place session mirror in sync for its typed entry path; the
 					// adapter context remains the only switch/increment authority.
 					session.setSnapStep(openTaskKind === 'place-object' ? snapStep : null);

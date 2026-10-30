@@ -15,7 +15,6 @@
  */
 import type { Vec3 } from '@portfolio/camera-core';
 import { formatMeters, snapDraftingPoint } from './stage-drafting';
-import { drawnGridMinorMeters } from './stage-grid';
 import type { StageFacade } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';
 import { isStageDrag } from './stage-input';
@@ -64,8 +63,7 @@ export function resolveMeasureEndpoint(
 	const datum = target.datumPoint;
 	if (datum === null) return null;
 	const drafting = facade.drafting();
-	const minor = drawnGridMinorMeters(drafting, facade.evaluation()?.targetPlaneMetersPerCssPixel ?? null);
-	const snapped = snapDraftingPoint([datum[0], datum[2]], drafting, minor);
+	const snapped = snapDraftingPoint([datum[0], datum[2]], drafting);
 	return { point: [snapped[0], datum[1], snapped[1]], source: null };
 }
 

@@ -645,9 +645,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 			const mounted = await mount();
 			const created = await createFloorForm(mounted);
 			settleReading(mounted.facade, state.reading);
-			mounted.facade.setDrafting({
-				gridIntervalMode: 'override', gridMinorMeters: 0.5, snap: state.snap, snapSuspended: state.snapSuspended
-			});
+			mounted.facade.setDrafting({ snap: state.snap, snapSuspended: state.snapSuspended });
 			const evaluationId = mounted.facade.evaluationId()!;
 			const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
 			const hit = hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: true });
