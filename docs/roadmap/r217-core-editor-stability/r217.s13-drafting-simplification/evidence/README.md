@@ -5,14 +5,14 @@ Nine Chromium captures at **1440 × 900 CSS px**, DPR 1, against the Vite dev se
 
 | Capture | State shown | Bytes | SHA-256 |
 | --- | --- | ---: | --- |
-| [browser-01-plan-fit.png](2026-10-30-browser/browser-01-plan-fit.png) | Plan after Fit; quiet Grid/Snap words, local sheet, ruler, lower-right zoom cluster | 94,408 | `ed21faa257efb1569d6503181c3cf4ba300bab3fd7b48ccfc39bf2fd418f6f22` |
+| [browser-01-plan-fit.png](2026-10-30-browser/browser-01-plan-fit.png) | Plan after Fit; Grid/Snap cluster over the local sheet, ruler, lower-right zoom cluster | 94,408 | `ed21faa257efb1569d6503181c3cf4ba300bab3fd7b48ccfc39bf2fd418f6f22` |
 | [browser-02-plan-zoom-out.png](2026-10-30-browser/browser-02-plan-zoom-out.png) | four zoom-out presses from Fit; drawing thins, values unchanged | 99,442 | `96b19014e4127d1c95d62746293383f985649b70ca63f40e04177fb501ff6c57` |
 | [browser-03-plan-zoom-in.png](2026-10-30-browser/browser-03-plan-zoom-in.png) | six zoom-in presses from Fit; sheet crops to the visible coverage | 93,066 | `a5c338a829109272828e04f7841f1b313680b6b63bf8eeb08909eb5837173797` |
 | [browser-04-plan-zoom-out-coarse.png](2026-10-30-browser/browser-04-plan-zoom-out-coarse.png) | ten more zoom-out presses; bounded 20–25 m sheet frames the work | 96,890 | `0e4cdb37d389ef46e56c9b7771e4350ea753d802dcd09666f7b6a443b1a049d2` |
 | [browser-05-plan-far-zoom.png](2026-10-30-browser/browser-05-plan-far-zoom.png) | eighteen zoom-out presses; far bounded sheet with fixed-value thinning, 5 m still visible | 91,436 | `795ca6806f527b02c0504bcab16d382ba5737ca35c1e6eecb7841ac99e44d2f5` |
 | [browser-06-3d-ruler-hidden.png](2026-10-30-browser/browser-06-3d-ruler-hidden.png) | settled 3D; ruler absent, zoom cluster and mat grid present | 139,074 | `811be8ae5906ed7e0a40fae2485eceb88018acc7a32ef16f1920a1926a818830` |
 | [browser-07-find-scale-detents.png](2026-10-30-browser/browser-07-find-scale-detents.png) | Head Find filtered to `Scale`; the five detents are `Zoom` entries | 113,627 | `2e22ae44e0b271c93aa146abfede899e05ee38d545f167bd9ab2d580e1458437` |
-| [browser-08-plan-words-off.png](2026-10-30-browser/browser-08-plan-words-off.png) | Plan with Grid off and Snap off; words, not colour alone, on quiet Paper | 91,430 | `6da2f3c670ee3a1d09caf067547abdff81f44ce57cccceb1cd8b1d663c965002` |
+| [browser-08-plan-words-off.png](2026-10-30-browser/browser-08-plan-words-off.png) | Plan with Grid off and Snap off; words name the state (the still predates the struck-through treatment) | 91,430 | `6da2f3c670ee3a1d09caf067547abdff81f44ce57cccceb1cd8b1d663c965002` |
 | [browser-09-two-zoom-drawing.png](2026-10-30-browser/browser-09-two-zoom-drawing.png) | two free Walls drawn at Fit and after two zoom-in presses, with Snap on | 110,333 | `b24d7fbfd433398ac4ec82d54b04334bffdfe804cf786d73aa1426d7adcd220a` |
 
 Total renderable evidence: **9 PNG files / 929,706 bytes**. The downloaded source from capture 09 is
@@ -50,7 +50,8 @@ These are settled endpoints. A mid-fade still cannot prove the 16 → 8 px opaci
 `25 m` hand-off, or the absence of interval flicker; those are proven numerically in
 `apps/editor/tests/lib/authoring/stage-grid.test.ts`. The observed far endpoint still shows
 5 m, so the browser run does not claim the hidden-grid endpoint or the ruler as the only
-reference. Exact ruler/zoom/Sheet collision behaviour
+reference. The stills predate the final visual revision; the struck-through off words and the
+centred ruler label are verified by the route/source tests, not by these captures. Exact ruler/zoom/Sheet collision behaviour
 at narrower widths and with the palette open is browser calibration, not claimed here. The
 starter's Room-floor fill covers the Paper grid inside the room; the bounded sheet and its
 crisp edges remain visible around the work and were not treated as a new defect in this slice.

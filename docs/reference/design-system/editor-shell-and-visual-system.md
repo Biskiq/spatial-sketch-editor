@@ -594,7 +594,7 @@ gesture. Focusing a consequence row emphasizes that identity as view-only; selec
 stays unchanged.
 
 **Drafting state.** **Grid · Snap** remain legible beside the 2D | 3D control. Off
-states are words, not color alone. Grid and Snap are fixed values: 1 m minor and 5 m
+states are named words struck through, not color alone. Grid and Snap are fixed values: 1 m minor and 5 m
 major lines, and a 0.5 m free-point increment. Zoom never changes either value; it
 only thins the drawing. A held snap-suspending modifier is reflected in the word. Scale
 is a reading rather than a toolbar word: the Plan ruler carries it, Scale detents live
