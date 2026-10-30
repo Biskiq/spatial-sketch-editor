@@ -204,6 +204,18 @@ export type SceneFormMarkLive = {
 	readonly refusal: string | null;
 };
 
+/**
+ * The Plan-only screen fallback for the edge-on Height ray.
+ *
+ * Plan looks down world Y, so Height's world axis projects to nothing. The
+ * adapter derives a CSS offset from the live measurement and the evaluation's
+ * metres-per-pixel; the host uses it to draw and hit the same real Height fact.
+ */
+export type FormMarkScreenHeight = {
+	readonly offset: readonly [number, number];
+	readonly axis: readonly [number, number];
+};
+
 /** The three size rays in the domain's overlap order: Height, Width, Depth. */
 const FORM_SIZE_RAY_ORDER: readonly {
 	readonly axis: FormSizeAxis;
@@ -228,6 +240,11 @@ export function formMarkDescriptors(input: {
 	readonly entity: SceneFormEntity;
 	readonly measurement: FormSizeMeasurement;
 	readonly live?: SceneFormMarkLive | null;
+	/**
+	 * The Plan legibility fallback for Height. Only the Height ray carries it;
+	 * Width and Depth keep their real world axes in every reading.
+	 */
+	readonly screenHeight?: FormMarkScreenHeight | null;
 }): readonly StageHandleDescriptor[] {
 	const { entity, measurement } = input;
 	const live = input.live ?? null;
@@ -303,6 +320,9 @@ export function formMarkDescriptors(input: {
 			planner: 'set-form-size',
 			disclosedBy: SCENE_FORM_MARK.scalePoint,
 			value: `${ray.label} ${handle.dimension.toFixed(3)} m${ray.note}`,
+			...(ray.axis === 1 && input.screenHeight != null
+				? { screen: input.screenHeight }
+				: {}),
 			refusal: refusal(ray.id)
 		});
 	}

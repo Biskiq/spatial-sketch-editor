@@ -219,4 +219,26 @@ describe('R217.S09 — native form marks', () => {
 		}
 		expect(formMarkDescriptors({ entity: squareForm(), measurement: { ...formSizeMeasurement(squareForm()), bounds: null } })).toEqual([]);
 	});
+
+	it('carries the Plan screen fallback on Height only', () => {
+		const measurement = formSizeMeasurement(squareForm());
+		const screenHeight = { offset: [0, -48], axis: [0, -1] } as const;
+		const descriptors = formMarkDescriptors({
+			entity: squareForm(),
+			measurement,
+			screenHeight
+		});
+		const height = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.height);
+		expect(height?.screen).toEqual(screenHeight);
+		for (const descriptor of descriptors) {
+			if (descriptor.id !== SCENE_FORM_MARK.height) {
+				expect(descriptor.screen).toBeUndefined();
+			}
+		}
+		expect(
+			formMarkDescriptors({ entity: squareForm(), measurement }).every(
+				(descriptor) => descriptor.screen === undefined
+			)
+		).toBe(true);
+	});
 });

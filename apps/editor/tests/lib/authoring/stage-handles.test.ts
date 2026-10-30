@@ -333,6 +333,64 @@ describe('R217.S07 — calibrated mark glyphs', () => {
 	});
 });
 
+describe('R217.S09 — screen fallback for an edge-on mark', () => {
+	// Plan looks down world Y: a vertical step moves zero CSS pixels.
+	const planLike = (point: readonly [number, number, number]): readonly [number, number] => [
+		640 + point[0] * 100,
+		360 + point[2] * 100
+	];
+	const heightRay: StageHandleDescriptor = {
+		id: 'probe-height',
+		kind: 'ray',
+		role: 'edit',
+		anchor: [0, 0, 0],
+		axis: [0, 1, 0],
+		extent: 1,
+		label: 'Height',
+		fact: 'scale[1]',
+		verb: 'Height',
+		planner: 'probe-size'
+	};
+	const base = {
+		adapterId: 'scene',
+		openDisclosures: new Set<string>(),
+		hoveredId: null,
+		activeId: null,
+		project: planLike,
+		offset: [0, 0] as const
+	};
+
+	it('withholds the edge-on ray without a screen hint', () => {
+		expect(projectStageHandles({ ...base, descriptors: [heightRay] })).toEqual([]);
+	});
+
+	it('draws and hits the ray along the CSS axis, and applies the CSS offset', () => {
+		const marks = projectStageHandles({
+			...base,
+			descriptors: [{ ...heightRay, screen: { offset: [0, -40], axis: [0, -1] } }]
+		});
+		expect(marks).toHaveLength(1);
+		expect(marks[0]?.anchor).toEqual([640, 320]);
+		expect(marks[0]?.tip).toEqual([640, 320 - STAGE_MARK_GLYPH_CSS.ray]);
+		expect(hitStageMark(marks, { css: [640, 300], coarse: false })?.id).toBe('probe-height');
+	});
+
+	it('still withholds a zero or non-finite screen axis', () => {
+		for (const axis of [
+			[0, 0],
+			[Number.NaN, -1],
+			[Number.POSITIVE_INFINITY, -1]
+		] as const) {
+			expect(
+				projectStageHandles({
+					...base,
+					descriptors: [{ ...heightRay, screen: { axis } }]
+				})
+			).toEqual([]);
+		}
+	});
+});
+
 describe('R217.S07 — disclosure through the Stage host', () => {
 	type Mounted = {
 		readonly facade: StageFacade;
