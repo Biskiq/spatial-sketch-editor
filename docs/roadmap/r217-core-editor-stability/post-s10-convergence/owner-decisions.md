@@ -1,6 +1,6 @@
 # Post-S10 convergence — owner decisions
 
-**All nine accepted by the owner on 2026-10-30, as recommended.** Everything else in the [target specification](./target-specification.md) follows from evidence or an existing contract. The alternatives and tradeoffs stay here as the record of what was decided against. These rulings do not register or release any slice.
+**All nine accepted by the owner on 2026-10-30, as recommended.** Everything else in the [target specification](./target-specification.md) follows from evidence or an existing contract. The alternatives and tradeoffs stay here as the record of what was decided against. The owner then directed registration as R217.S12–S25. No slice is released.
 
 Decisions marked **amends a contract** change ratified text. The implementing slice updates that text at cutover, not before; until then the landed contract still describes current behaviour.
 
@@ -8,15 +8,15 @@ Decisions marked **amends a contract** change ratified text. The implementing sl
 
 | # | Decision | Ruling | Governs |
 | --- | --- | --- | --- |
-| O1 | Selection strength | Mat .28, Paper .22 with dark gold edge | C10 calibration only |
-| O2 | What dragging a Wall body does | Slide along the Wall's normal; neighbours stretch | C07a |
-| O3 | Plan orientation change | Right +X, up −Z at azimuth 0 | C08 |
-| O4 | 3D ground reach and line budget | The specified reach, budget and horizon band | C09a |
-| O5 | Permanent home for Head utilities | Stage settings control and the project name | C01 final placement |
-| O6 | What a Wall's end point does | Moves the Junction; the ray keeps length | C07a |
-| O7 | Fixed grid and snap values | 1 m grid, 5 m major, 0.5 m snap, drawing only thins | C09b |
-| O8 | Scale control | Remove from the toolbar; add zoom and Fit controls | C09b |
-| O9 | Dragging something not yet selected | Select first, except a hovered Junction with a mouse | C07b, C06 |
+| O1 | Selection strength | Mat .28, Paper .22 with dark gold edge | S18 calibration only |
+| O2 | What dragging a Wall body does | Slide along the Wall's normal; neighbours stretch | S15 |
+| O3 | Plan orientation change | Right +X, up −Z at azimuth 0 | S12 |
+| O4 | 3D ground reach and line budget | The specified reach, budget and horizon band | S19 |
+| O5 | Permanent home for Head utilities | Stage settings control and the project name | S20 final placement |
+| O6 | What a Wall's end point does | Moves the Junction; the ray keeps length | S15 |
+| O7 | Fixed grid and snap values | 1 m grid, 5 m major, 0.5 m snap, drawing only thins | S13 |
+| O8 | Scale control | Remove from the toolbar; add zoom and Fit controls | S13 |
+| O9 | Dragging something not yet selected | Select first, except a hovered Junction with a mouse | S16, S17 |
 
 ## O1 — Selection strength
 
@@ -48,11 +48,11 @@ Decisions marked **amends a contract** change ratified text. The implementing sl
 ## O4 — 3D ground limits
 
 - **Recommendation:** reach `max(24 × extent, 64 × eyeHeight)`, at most 6,000 lines, and a horizon band up to about 12 px, per the [specification](./target-specification.md#3d-ground-clipping).
-- **Alternative:** a fade to the mat near the horizon. It looks softer but needs per-vertex alpha and is more code. It stays available if the band reads badly in C09a's browser check.
+- **Alternative:** a fade to the mat near the horizon. It looks softer but needs per-vertex alpha and is more code. It stays available if the band reads badly in S19's browser check.
 
 ## O5 — Utility home
 
-- **Recommendation:** viewing preferences in the Stage's existing settings control; project lifecycle and source under the project name. Find also reaches every one of them. That control holds only interval and snap settings today, so C09b removes it with them and C01 returns it holding viewing preferences only.
+- **Recommendation:** viewing preferences in the Stage's existing settings control; project lifecycle and source under the project name. Find also reaches every one of them. That control holds only interval and snap settings today, so S13 removes it with them and S20 returns it holding viewing preferences only.
 - **Alternative:** keep an app menu beside the Index toggle. It is familiar, but it is the second menu button you asked to replace.
 
 ## O6 — A Wall's end point
@@ -84,7 +84,7 @@ Today's end point already moves the shared Junction, but only along the Wall's l
 | C | Fixed 0.5 m | Current ladder | Snap is fixed, but the grid still switches, which you asked to remove |
 | D | Current, follows zoom | Current ladder | Rejected: the defect above |
 
-**Why 1 m and 0.5 m:** they are the wireframe's values and PLATE's reference scale. Half of all snap points therefore land between lines; the snap mark shows the landing, so this should read fine, and C09b checks it.
+**Why 1 m and 0.5 m:** they are the wireframe's values and PLATE's reference scale. Half of all snap points therefore land between lines; the snap mark shows the landing, so this should read fine, and S13 checks it.
 
 **Precision is preserved:** typed values, Alt to free the pointer, and semantic snap targets are unaffected. Interval state stays internal, ready for a preference later, with no toolbar control.
 
@@ -105,7 +105,7 @@ Today's end point already moves the shared Junction, but only along the Wall's l
 
 The evidence is sufficient for these, so they are simply in the plan:
 
-- **Opening selection in Plan:** always selecting the Wall contradicts the architecture contract's rank order. It is a defect.
+- **Opening selection in Plan:** always selecting the Wall contradicts the architecture contract's rank order, and the older P23.11 priority also put Openings above Wall bodies. It is a defect. **Correction, 2026-10-30:** when this was accepted, this record implied only code comments call the Wall-first order locked. The [R217 README](../README.md#shared-stage-interaction-coordination-over-domain-policy) also gives "locked Wall → Opening priority" as an example, so S16 updates that sentence too.
 - **Wall and Opening marks ignoring Snap:** a defect.
 - **Ruler in Plan only:** a scale bar is true only at the target plane in perspective, and the wireframe also draws it in Plan only.
 - **Paper grid extent:** follow the wireframe's model-local sheet.
@@ -123,5 +123,5 @@ The evidence is sufficient for these, so they are simply in the plan:
 | S07 | 0.18 tint, bright Paper gold | Stronger selection | O1 |
 | S07 | No angle ring; no height or thickness grips | Unchanged | Kept. Not reopened |
 | Grammar, mark table | Red dashes mean erase only | A refused preview | Kept. Refusal uses neutral dashes and a tag, never red |
-| `plan-pick-provider.ts` "locked Wall → Opening order" | Wall wins in Select | Opening selectable | Defect against `architecture.md` Plan ranks |
+| R217 README and `plan-pick-provider.ts`, "locked Wall → Opening" | Wall wins in Select | Opening selectable | Defect against `architecture.md` Plan ranks. S16 updates all three |
 | PLATE, drafting state | Configuration reachable from the words | No interval selector | Reached from preferences, per O7 and O5 |

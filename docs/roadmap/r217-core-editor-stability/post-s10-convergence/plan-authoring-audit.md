@@ -24,33 +24,33 @@ The foundation is sound. These passed live and should not be rebuilt:
 
 | Operation | Works | Visually broken | Functionally missing | Intentionally deferred | Slice |
 | --- | --- | --- | --- | --- | --- |
-| **Ink Wall chain** (B) | Points land, chain commits, new Wall selected, Junction and Wall targets | Markers offset by the Index and Head width (D15). No line to the cursor; `Ghost Wall` exists only as a hidden title | Live length, angle and snap marks (D16) | — | C05 |
-| **Ink Wall Box** (C) | Plans through `planInkDraft` | Same as chain | Same as chain | — | C05 |
-| **Ink Opening** (B) | Hover finds host and offset; click commits | Two offset circles. No aperture preview. Palette covers the drawing (D14) | Width preview on the Wall; offset ignores Snap | — | C05, C07b |
-| **Ink Shape** (C, A) | Native form planners | Paper ghost masked (D17) | Same preview as Scene | T5.P02 outline editing | C06 |
-| **Select Wall** (B) | Click selects; gold fill and marks | Card covers the Wall's far end (D36) | — | — | C03a |
-| **Select Opening** (B) | Index selection works | — | **Six of six clicks in the aperture selected the host Wall** (D35) | — | C07b |
-| **Wall end point** (B) | One Undo; neighbour reshapes; numeric entry (A) | No geometry moves until release: only a tag and a circle (D34) | Off-axis pointer is ignored; result unsnapped: 8.094 m with Snap at 0.5 m (D31) | — | C07a |
-| **Wall body** (B) | — | — | **Dragging a selected Wall pans the Stage** (D33) | — | C07a |
-| **Wall move grip** (B) | One Undo; neighbours reshape | No geometry moves. Two-way glyph promises one axis, drag is free (D19) | Unsnapped: ΔX −1.121, ΔZ −0.747 (D31) | — | C07a |
-| **Wall length ray** (B code path, A) | Free-end length with fixed start | Same | Unsnapped | — | C07a |
-| **Shared Junction** (C) | Planner exact and tested; moved along the Wall's line today | — | Free move, typed X/Z, a reachable mark (D19) | Merge, no planner exists | C07a, C07b |
+| **Ink Wall chain** (B) | Points land, chain commits, new Wall selected, Junction and Wall targets | Markers offset by the Index and Head width (D15). No line to the cursor; `Ghost Wall` exists only as a hidden title | Live length, angle and snap marks (D16) | — | S14 |
+| **Ink Wall Box** (C) | Plans through `planInkDraft` | Same as chain | Same as chain | — | S14 |
+| **Ink Opening** (B) | Hover finds host and offset; click commits | Two offset circles. No aperture preview. Palette covers the drawing (D14) | Width preview on the Wall; offset ignores Snap | — | S14, S16 |
+| **Ink Shape** (C, A) | Native form planners | Paper ghost masked (D17) | Same preview as Scene | T5.P02 outline editing | S17 |
+| **Select Wall** (B) | Click selects; gold fill and marks | Card covers the Wall's far end (D36) | — | — | S22 |
+| **Select Opening** (B) | Index selection works | — | **Six of six clicks in the aperture selected the host Wall** (D35) | — | S16 |
+| **Wall end point** (B) | One Undo; neighbour reshapes; numeric entry (A) | No geometry moves until release: only a tag and a circle (D34) | Off-axis pointer is ignored; result unsnapped: 8.094 m with Snap at 0.5 m (D31) | — | S15 |
+| **Wall body** (B) | — | — | **Dragging a selected Wall pans the Stage** (D33) | — | S15 |
+| **Wall move grip** (B) | One Undo; neighbours reshape | No geometry moves. Two-way glyph promises one axis, drag is free (D19) | Unsnapped: ΔX −1.121, ΔZ −0.747 (D31) | — | S15 |
+| **Wall length ray** (B code path, A) | Free-end length with fixed start | Same | Unsnapped | — | S15 |
+| **Shared Junction** (C) | Planner exact and tested; moved along the Wall's line today | — | Free move, typed X/Z, a reachable mark (D19) | Merge, no planner exists | S15, S16 |
 | **Wall angle, height, thickness** (A) | Card fields | — | — | S07: no ring, no grips | Kept |
 | **Curved Wall** (C) | Curve planners in layout-core | — | No Stage marks | Admission waits for curved authoring | Kept |
-| **Opening slide and width** (B slide, A width) | Mark, tag and one Undo; slides along host | Tag can sit under the Card | Unsnapped: 4.5038 m. Body drag absent. `resolveOpeningDragSnap` unused (D31) | Head and sill rays | C07b |
-| **Opening symbol** (B) | Reads as a gap with a thin line | No door swing | — | S04 carried swing | C07b |
-| **Primitive placement** (B) | Typed X/Z works | No ghost | **Click placement absent;** the default X 0, Z 0 landed on the Room boundary (D37) | — | C06 |
-| **Catalogue and model placement** (C, A) | Click placement | Paper ghost masked (D17); model ghost null (D18) | The Library showed no catalogue in this project; not verified live | — | C06 |
-| **Object Move mark** (B) | Snaps; live tag; one Undo | **Accepted outline stays and nothing moves until release** (D17) | Body drag absent on large objects (D33) | — | C06 |
-| **Object Turn and Scale** (C, A) | S08 accepted | Paper ghost masked (D17). Marks crowd a small object: the Turn ring is wider than a 1 m box | Live synthetic check inconclusive; owed by C06 | Scale disclosure kept | C06 |
-| **Native form marks** (C, A) | S09 accepted | Paper ghost masked (D17) | Not re-driven | Sections, outline editing in T5.P02 | C06 |
-| **Selection fill** (B) | Layout gold fill in Paper | Scene outline only (D22) | — | Strength is O1 | C10 |
-| **Eraser, Measure** (A) | S10 accepted | Measure snaps with the zoom-driven step | Not re-driven | — | C09b |
-| **Pan, zoom, Fit** (B) | Drag pans; wheel zooms | `Nothing selectable there.` shows on empty clicks | No visible zoom or Fit controls except inside Scale (D40) | — | C09b |
-| **Snap** (B, C) | Alt suspends; toggles | No mark shows what was hit (D32) | **Value changes with zoom** (D30). Applies to Ink, Place and Move but not Wall or Opening marks (D31). `resolveLayoutSnap` unused | — | C09b, C07a |
+| **Opening slide and width** (B slide, A width) | Mark, tag and one Undo; slides along host | Tag can sit under the Card | Unsnapped: 4.5038 m. Body drag absent. `resolveOpeningDragSnap` unused (D31) | Head and sill rays | S16 |
+| **Opening symbol** (B) | Reads as a gap with a thin line | No door swing | — | S04 carried swing | S16 |
+| **Primitive placement** (B) | Typed X/Z works | No ghost | **Click placement absent;** the default X 0, Z 0 landed on the Room boundary (D37) | — | S17 |
+| **Catalogue and model placement** (C, A) | Click placement | Paper ghost masked (D17); model ghost null (D18) | The Library showed no catalogue in this project; not verified live | — | S17 |
+| **Object Move mark** (B) | Snaps; live tag; one Undo | **Accepted outline stays and nothing moves until release** (D17) | Body drag absent on large objects (D33) | — | S17 |
+| **Object Turn and Scale** (C, A) | S08 accepted | Paper ghost masked (D17). Marks crowd a small object: the Turn ring is wider than a 1 m box | Live synthetic check inconclusive; owed by S17 | Scale disclosure kept | S17 |
+| **Native form marks** (C, A) | S09 accepted | Paper ghost masked (D17) | Not re-driven | Sections, outline editing in T5.P02 | S17 |
+| **Selection fill** (B) | Layout gold fill in Paper | Scene outline only (D22) | — | Strength is O1 | S18 |
+| **Eraser, Measure** (A) | S10 accepted | Measure snaps with the zoom-driven step | Not re-driven | — | S13 |
+| **Pan, zoom, Fit** (B) | Drag pans; wheel zooms | `Nothing selectable there.` shows on empty clicks | No visible zoom or Fit controls except inside Scale (D40) | — | S13 |
+| **Snap** (B, C) | Alt suspends; toggles | No mark shows what was hit (D32) | **Value changes with zoom** (D30). Applies to Ink, Place and Move but not Wall or Opening marks (D31). `resolveLayoutSnap` unused | — | S13, S15 |
 | **Interruption** (A, C) | Blur, hidden page, capture loss, second pointer and reading flip all cancel | — | — | — | Kept |
-| **Candidate agreement** (C) | Planner previews are the same plan the commit uses | Preview is not drawn, so agreement cannot be seen | A test comparing drawn preview to accepted geometry | — | C05, C07a |
-| **2D and 3D consistency** (C, A) | Same planners, marks and history | Plan flip roll (D23) | Body drag absent in both | Plan keeps X/Z and yaw | C08 |
+| **Candidate agreement** (C) | Planner previews are the same plan the commit uses | Preview is not drawn, so agreement cannot be seen | A test comparing drawn preview to accepted geometry | — | S14, S15 |
+| **2D and 3D consistency** (C, A) | Same planners, marks and history | Plan flip roll (D23) | Body drag absent in both | Plan keeps X/Z and yaw | S12 |
 
 ## Regressions the first audit missed
 

@@ -1,6 +1,6 @@
 # Post-S10 convergence — target specification
 
-**Planning target, not a contract and not a release.** Landed contracts keep describing current behaviour until a released slice cuts over. Audit base `9139f3c2`. [Owner decisions](./owner-decisions.md) O1–O9 were accepted on 2026-10-30, and this document applies them.
+**Planning target, not a contract and not a release.** Landed contracts keep describing current behaviour until a released slice cuts over. Audit base `9139f3c2`. [Owner decisions](./owner-decisions.md) O1–O9 were accepted on 2026-10-30, and this document applies them. The work is registered as R217.S12–S25; slice names below refer to those plans.
 
 **Governing goal.** Biskiq should feel effortless, with the wireframe as the minimum baseline and no loss of the depth already built. Visual parity is never bought with lost function. Nothing here changes a persisted format. Candidates, previews, generated names, selection, height and ghosts stay session-only.
 
@@ -155,7 +155,7 @@ type StageCandidatePreview = {
 
 **Target.** Negate that one vector. Transitions, pan and `viewScreenBasis` inherit the fix. Target, target-plane scale, nearest-quarter-turn snapping, remembered elevation and detented azimuth are preserved. Restoring an earlier arbitrary azimuth is a separate change and not part of this. Applies O3.
 
-**Proven by the [probe](./evidence/rendering-investigation.md#candidate-fix-probe):** minimum consecutive right-vector dot goes from −1 to 0.999998. No existing test pins the sign, so C08 adds one.
+**Proven by the [probe](./evidence/rendering-investigation.md#candidate-fix-probe):** minimum consecutive right-vector dot goes from −1 to 0.999998. No existing test pins the sign, so S12 adds one.
 
 ## 3D ground clipping
 
@@ -176,7 +176,7 @@ near       = max(NEAR_FLOOR, min(distance − sceneRadius, 0.9 × groundNear))
 
 **Mat (`StageCanvas.svelte`).** Centred on the quantised target, half-extent at least 1.5 × reach, with a polygon offset.
 
-**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in C09a's browser check, the slice uses O4's fade alternative. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
+**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in S19's browser check, the slice uses O4's fade alternative. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
 
 ## Selection
 
@@ -207,7 +207,7 @@ Values calibrate the wireframe against PLATE's roles. Roles live in one scoped s
 Order: Index toggle · Biskiq · serif project name · World / Experience · context chip · Find · Undo · Redo · Save · gold Preview.
 
 - Eligibility and refusal semantics are unchanged; the words move into a focus, hover and tap disclosure with an accessible description.
-- `Technical details` and the Stage's `Open source JSON` leave the ordinary surface. Viewing preferences, Keys, rename, delete, source download, source replacement and Scale detents each get a Find entry from C01.
+- `Technical details` and the Stage's `Open source JSON` leave the ordinary surface. Viewing preferences, Keys, rename, delete, source download, source replacement and Scale detents each get a Find entry from S20.
 - Permanent homes, per O5: viewing preferences in the Stage's ⚙; rename, delete, source download and source replacement under the project name. The ☰ menu leaves.
 - The context chip shows real canonical location only.
 

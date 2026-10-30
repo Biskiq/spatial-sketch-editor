@@ -1,8 +1,8 @@
 # Post-S10 convergence — audit and plan
 
-**Planning complete, 2026-10-30; owner decisions accepted, slices not registered.** No convergence implementation is authorized by this plan. R217 remains open; S11 is not launched. Audit base: `9139f3c21f468b43d76dfccd3a3d4994b42c4234` (S10 merge, PR #229).
+**Planning complete, 2026-10-30; owner decisions accepted; slices registered as R217.S12–S25; none released.** No convergence implementation is authorized by this plan. R217 remains open; S11 is not launched. Audit base: `9139f3c21f468b43d76dfccd3a3d4994b42c4234` (S10 merge, PR #229).
 
-The owner requested an independent integrated audit and one planning PR: drift register, reconciled target specification, architecture map, small ordered execution slices, browser acceptance and owner decisions. All of these are below, revised after the owner's review of PR #230. The owner accepted [O1–O9](./owner-decisions.md) as recommended on 2026-10-30. The next step is the owner's decision to register the slices.
+The owner requested an independent integrated audit and one planning PR: drift register, reconciled target specification, architecture map, small ordered execution slices, browser acceptance and owner decisions. All of these are below, revised after the owner's review of PR #230. The owner accepted [O1–O9](./owner-decisions.md) as recommended on 2026-10-30. They are [registered](../README.md#slice-register), and the next step is the owner's release of each slice.
 
 ## Executive findings
 
@@ -18,7 +18,7 @@ The owner requested an independent integrated audit and one planning PR: drift r
 
 1. [Owner decisions](./owner-decisions.md): the nine accepted rulings, the alternatives considered and what each governs.
 2. [Target specification](./target-specification.md): what each area should become, including the interaction model.
-3. [Execution plan](./execution-plan.md): order, ownership, files, rules, tests and browser acceptance per slice.
+3. [Execution plan](./execution-plan.md): order, ownership and shared rules, with links to each slice's plan.
 4. [Plan authoring audit](./plan-authoring-audit.md): every 2D operation, and what works, is broken, missing or deferred.
 5. [Drift register](./drift-register.md): observed/inspected findings, severity and code anchors.
 6. [Rendering investigation](./evidence/rendering-investigation.md): grid, Camera and selection diagnosis and the candidate probe.

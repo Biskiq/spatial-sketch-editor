@@ -86,7 +86,7 @@ Run 2026-10-30 in a disposable checkout of `152f63ae`, since removed. No product
 - **Existing tests:** with the sign, far and footprint changes, 12 affected Camera, Stage and grid files passed (290 tests). The Camera file passed again with the near change (23 tests). Passing also shows **no existing test pins the Plan sign**. The whole lane was not run on the candidate.
 - **Browser, 1440×900:** a low orbit shows grid continuous to the top and bottom of the frame with no near band ([capture](./candidate-grid-low-orbit.jpg)). One 3D→2D flip kept the room on the same side of the screen. The horizon was never in frame in a captured candidate view, so moiré near it is untested.
 
-**Revised 2026-10-30:** fixed interval levels (O7) now replace the ladder in the mat grid, and C09b lands before C09a. Both reduce the probed line counts, so the budget's numbers must be confirmed by C09a rather than read from this table.
+**Revised 2026-10-30:** fixed interval levels (O7) now replace the ladder in the mat grid, and S13 lands before S19. Both reduce the probed line counts, so the budget's numbers must be confirmed by S19 rather than read from this table.
 
 ## Selected geometry: confirmed gap and decision
 
