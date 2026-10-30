@@ -92,7 +92,11 @@ function planeAt(origin: Vec3, extent: WorkingPlane['supportedLocalExtent'] = nu
 	return { originMeters: origin, normal: [0, 1, 0], yawRadians: 0, datumMeters: null, supportedLocalExtent: extent };
 }
 
-/** The signed screen basis in project world: the axes a pan and every mark are expressed in. */
+/**
+ * The signed screen basis in project world: the axes a pan and every mark are expressed in.
+ * Deliberately an independent oracle from the evaluation's own up/eye/target, not the
+ * production helper, so a wrong basis in `viewport.ts` cannot satisfy its own test.
+ */
 function screenBasis(evaluation: ViewportEvaluation): { right: Vec3; up: Vec3 } {
 	const backward = normalizeVec3(subtractVec3(evaluation.eye, evaluation.target));
 	if (backward === null) throw new Error('the evaluation has no view direction');

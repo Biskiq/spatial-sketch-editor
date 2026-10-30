@@ -18,9 +18,10 @@ Corrected pinned captures, named for review:
   projection now uses screen right +X and screen up −Z, and its yaw-0 Move offset expectation follows
   the projected axis (`−24` px instead of `+24`).
 - `apps/editor/tests/lib/authoring/__fixtures__/stage-pick-baseline.json` re-records only its **Plan**
-  half. Before re-recording, all 1,200 Plan samples (3 fixtures × 400) resolved the same semantic
-  winner when mirrored onto the old basis (`kind`, `sourceKind`, `sourceId`, `subRef`); exact JSON
-  differed only by floating-point world points. The 3D half is the untouched historical capture.
+  half. Before re-recording, all 1,200 Plan samples (3 fixtures × 400) matched the old basis at the
+  mirrored sample on **every field except `worldPoint`** — including `kind`, `sourceKind`, `sourceId`,
+  `subRef`, `stream` and `generationId`. The 132 samples that carry a world point differ by at most
+  1.8e-15 m, i.e. floating-point noise. The 3D half is the untouched historical capture.
 
 ## Verification
 
@@ -33,7 +34,8 @@ Tier: `affected-subsystem`; the integrated result remains owed to
 - `camera-viewport-evaluation.test.ts`: 27 tests pass, including new signed continuity across 601
   frames for 21 pose pairs in both directions, the signed Plan endpoint at quarter-turn ties,
   mid-transition reversal, repeated fast switching, the reduced-motion cut and 20 settled cycles.
-  The four new continuity/endpoint tests fail on the old basis (right/up dot −1; Plan right −X).
+  On the old basis the continuity sweep, the signed endpoint/20-cycle checks and the reduced-motion
+  cut fail (right/up dot −1; Plan right −X); reversal and fast switching already stayed continuous.
 - Browser, Chromium at 1440×900 on the local editor: flips at azimuth 0 and 90°, a Wall on
   screen-left before the flip stays left in Plan, selection/Card, armed Select tool and source are
   unchanged, and Plan hover and pan track the pointer. Captures and journeys:

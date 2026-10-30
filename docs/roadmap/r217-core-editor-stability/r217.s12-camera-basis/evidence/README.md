@@ -41,9 +41,14 @@ under the new basis.
 
 ## Notes
 
-- The reading flips in these captures use the in-canvas 2D/3D control. Real keyboard `2`/`3` was
-  also exercised in the same session with the same result; the control is the stable capture path.
+- The reading flips in these captures use the in-canvas 2D/3D control. A physical mouse click on
+  that same control was exercised separately and flipped as expected; the orbit and pan journeys
+  used real pointer input. The captures are settled endpoints; continuity **through** the
+  transition is not visible in a still frame and is proved by the 601-frame numerical sweep in
+  `camera-viewport-evaluation.test.ts`.
 - Plan's quarter-turn snapping is intentional (`nearestQuarterTurn`), so the 114° orbit reports a
   90° Plan reading. That is the declared detent policy, not drift.
 - No source, history or Save change was made: Undo stayed disabled and Save stayed on its
   "Nothing to undo yet" state throughout.
+- Evidence limit: one Chromium session at 1440×900; native touch, Safari, authenticated save/reload
+  and dense scenes remain S11's.

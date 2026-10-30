@@ -108,9 +108,10 @@ describe('S03 recorded pre-change selection differential', () => {
 		{
 			const expected = JSON.parse(readFileSync(baselinePath, 'utf8'));
 			// The 3D half is the historical pre-S03 capture. Plan was re-recorded for
-			// R217.S12: O3's basis fix is exactly Plan's 180° screen roll, and before the
-			// re-record all 1,200 Plan samples resolved the same winner when mirrored onto
-			// the old basis. Exact values are pinned again so later drift fails this test.
+			// R217.S12: O3's basis fix is exactly Plan's 180° screen roll. Before the
+			// re-record, all 1,200 Plan samples matched the old basis at the mirrored
+			// sample on every field except worldPoint, which differed by at most 1.8e-15.
+			// Exact values are pinned again so later drift fails this test.
 			expect(actual).toEqual(expected);
 		}
 	});
