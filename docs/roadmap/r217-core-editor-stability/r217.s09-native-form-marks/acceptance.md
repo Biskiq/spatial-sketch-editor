@@ -13,7 +13,7 @@ prerequisites were adjudicated; no P0–P2 finding remains.
   passed 247 files / 3,154 tests; explicit heavy 11 files / 138; architecture 23 files / 193;
   `npm run check` 0 errors/warnings; build passed. Kernel checks and API check passed; DB-backed API
   122 passed, 15 contracts, zero skipped. The focused documentation gate is recorded in the S06
-  closeout; S09 closeout runs the same 2-file/56-test docs gate after these edits.
+  closeout; S09 closeout documentation gate: 2 files / 56 tests passed.
 - **Entry points:** implementation `apps/editor/src/lib/authoring/adapters/scene.adapter.ts`,
   `apps/editor/src/lib/authoring/adapters/scene/shape/form-size.ts`; regressions
   `apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts`,
@@ -26,7 +26,7 @@ prerequisites were adjudicated; no P0–P2 finding remains.
   Integrated R217 journeys and final-gate work remain owned by S11. Deferred grid, Wall ghost,
   direct-manipulation and general UX convergence remain outside this slice.
 - **Renderables:** none captured. No reference promotion or new live-to-archive prose link.
-- **Recovery:** the full plan and acceptance body are preserved at commit `<S09_ANCHOR>` under tag
+- **Recovery:** the full plan and acceptance body are preserved at commit `ca1a149512b42e7618b74db2e2e08fcd58fe486c` under tag
   `closed/r217.s09`.
 
 ## Closeout preservation — R217.S09 (2026-10-30)
@@ -34,7 +34,7 @@ prerequisites were adjudicated; no P0–P2 finding remains.
 - Prose compacted: 1 approved plan stub; detailed independent review/evidence retained.
 - Reference promotions: 0. Renderable evidence archived: 0 files / 0 bytes.
 - Evidence stubs/manifests: 0. Transient artifacts removed: 0.
-- Historical anchor: `<S09_ANCHOR>` · tag `closed/r217.s09` (pushed to origin).
+- Historical anchor: `ca1a149512b42e7618b74db2e2e08fcd58fe486c` · tag `closed/r217.s09` (pushed to origin).
 - Merge method: P1 GitHub merge commit (PR #228); post-merge anchor verification required.
 - New live → archive prose links: 0. Manual-owed verification rows: 0.
 - Remaining deferred items: T5.P02 scope, S11 integrated journeys and final gate, plus deferred convergence.
