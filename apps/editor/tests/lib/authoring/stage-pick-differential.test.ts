@@ -21,7 +21,8 @@ import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
 
 const rect = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
-// Captured against trusted main 8c2c86e6 with this fixture and the real Layout renderers.
+// Captured against trusted main 8c2c86e6 with this fixture and the real Layout
+// renderers. Plan was re-recorded for R217.S12 (O3 Camera basis); 3D is unchanged.
 const baselinePath = resolve('tests/lib/authoring/__fixtures__/stage-pick-baseline.json');
 const entities: SceneEntity[] = [
 	{ kind: 'model', id: 'catalogue', name: 'Catalogue', assetId: 'paris-grand-piano', fallback: 'piano', position: [2, 1, 4], rotation: [0, 0, 0], scale: 2 },
@@ -106,13 +107,10 @@ describe('S03 recorded pre-change selection differential', () => {
 		}
 		{
 			const expected = JSON.parse(readFileSync(baselinePath, 'utf8'));
-			for (const name of Object.keys(actual)) for (const reading of ['3d', 'plan']) {
-				const oldItems = expected[name][reading] as unknown[];
-				const newItems = (actual[name] as Record<string, unknown[]>)[reading]!;
-				for (let index = 0; index < oldItems.length; index++) if (JSON.stringify(oldItems[index]) !== JSON.stringify(newItems[index])) {
-					console.log('S03 DIFFERENCE', { fixture: name, reading, index, css: [(index % 20 + .5) * 64, (Math.floor(index / 20) + .5) * 36], before: oldItems[index], after: newItems[index] });
-				}
-			}
+			// The 3D half is the historical pre-S03 capture. Plan was re-recorded for
+			// R217.S12: O3's basis fix is exactly Plan's 180° screen roll, and before the
+			// re-record all 1,200 Plan samples resolved the same winner when mirrored onto
+			// the old basis. Exact values are pinned again so later drift fails this test.
 			expect(actual).toEqual(expected);
 		}
 	});
