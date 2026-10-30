@@ -364,10 +364,13 @@ describe('mounted Stage pointer lifecycle', () => {
 		await frame();
 		const reference = sceneEntityReference('gesture-box', facade().snapshot().domain.unitRevisions.scene);
 		expect(facade().setSelection({ ordered: [{ reference }], primary: reference }).kind).toBe('selected');
-		expect(facade().openContributedTask('scene-arrange', 'scene').kind).toBe('opened');
+		// Object manipulation is direct: no Arrange task exists, and a press on the
+		// admitted Move mark claims its own writer lease.
+		const move = facade().marks().find((mark) => mark.id === 'scene-object-move');
+		expect(move).toBeDefined();
 		const selected = facade().selectionState();
 		const baseline = facade().snapshot().canonicalJson;
-		const point: [number, number] = [RECT.left + 100, RECT.top + 100];
+		const point: [number, number] = [RECT.left + move!.anchor[0], RECT.top + move!.anchor[1]];
 		pointer('pointerdown', point);
 		expect(facade().session.gesture()).not.toBeNull();
 		pointer('pointermove', [point[0] + 30, point[1]], true);
