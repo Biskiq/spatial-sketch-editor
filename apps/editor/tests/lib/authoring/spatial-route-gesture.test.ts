@@ -46,10 +46,8 @@ import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-propos
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import {
 	draftingSnapIncrementMeters,
-	formatMeters,
 	metersPerCssPixelForScaleRatio
 } from '$lib/authoring/stage/stage-drafting';
-import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { shapeReadingSurface } from '$lib/authoring/adapters/scene/shape/reading';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
@@ -61,12 +59,8 @@ let frameId = 0;
 let wallId: string;
 let captureDescriptor: PropertyDescriptor | undefined;
 const facade = () => harness.facade as StageFacade;
-const currentGridMinor = () =>
-	drawnGridMinorMeters(
-		facade().session.drafting(),
-		facade().evaluation()?.targetPlaneMetersPerCssPixel ?? null
-	);
-const currentSnapLabel = () => `Snap ${formatMeters(currentGridMinor())}`;
+const currentSnapLabel = () =>
+	draftingSnapIncrementMeters(facade().session.drafting()) === null ? 'Snap off' : 'Snap';
 const button = (text: string) => {
 	const found = [...target.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') ?? b.textContent)?.replace(/\s+/g, '').toLowerCase() === text.replace(/\s+/g, '').toLowerCase());
 	if (!found)
@@ -74,13 +68,12 @@ const button = (text: string) => {
 	return found;
 };
 const stage = () => target.querySelector<HTMLElement>('.stage')!;
-/** Scale detents and Fit all live behind the Scale word, as PLATE specifies. */
+/** Fit is the lower-right cluster's own button (O8). */
 async function fitAll() {
-	const scale = target.querySelector<HTMLButtonElement>('[data-drafting-scale]');
-	if (scale === null) throw new Error('Missing Scale control');
-	scale.click();
+	const fit = target.querySelector<HTMLButtonElement>('[data-stage-fit]');
+	if (fit === null) throw new Error('Missing Fit control');
+	fit.click();
 	await tick();
-	button('Fit all').click();
 }
 async function frame() {
 	await tick();
@@ -199,7 +192,9 @@ describe('mounted Stage pointer lifecycle', () => {
 		const reachable = [...target.querySelectorAll<HTMLElement>('[data-head-find] [data-find-id]')]
 			.filter((entry) => entry.dataset.findAdapter !== 'subject')
 			.map((entry) => `${entry.dataset.findAdapter}:${entry.dataset.findId}`).sort();
-		expect(reachable).toEqual(registered);
+		// O8: the five Scale detents are Find entries now that Scale left the toolbar.
+		const detents = [20, 50, 100, 200, 500].map((ratio) => `scale:scale:${ratio}`);
+		expect(reachable).toEqual([...registered, ...detents].sort());
 		expect(target.querySelector('[data-plate-landmark="index"] .contributed-group')).toBeNull();
 	});
 	it('changes a browser preference without changing project source or history', async () => {
@@ -1031,12 +1026,11 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(facade().session.drafting().snapSuspended).toBe(false);
 	});
 
-	it('requests Scale detents and Fit all as existing Camera viewing intents', async () => {
+	it('reaches Scale detents through Find and Fit through the zoom cluster', async () => {
 		const request = vi.spyOn(facade(), 'requestViewingIntent');
-		target.querySelector<HTMLButtonElement>('[data-drafting-scale]')!.click();
-		await tick();
-		expect(target.querySelector<HTMLButtonElement>('[data-drafting-scale]')!.getAttribute('aria-expanded')).toBe('true');
-		target.querySelector<HTMLButtonElement>('[data-drafting-detent="100"]')!.click();
+		const detent = target.querySelector<HTMLButtonElement>('[data-head-find] [data-find-id="scale:100"]')!;
+		expect(detent).not.toBeNull();
+		detent.click();
 		await frame();
 
 		const detentIntent = request.mock.calls.at(-1)![0];
@@ -1050,50 +1044,68 @@ describe('R217.S05 — mounted drafting furniture', () => {
 			metersPerCssPixelForScaleRatio(100)!,
 			9
 		);
-		// A refused framing request moves neither the Camera nor the word.
+		// A refused framing request moves neither the Camera nor the ruler.
 		const before = evaluation!.targetPlaneMetersPerCssPixel;
 		request.mockReturnValue({
 			kind: 'superseded',
 			state: facade().camera.state(),
 			message: 'the inspection output is held by another run'
 		});
-		target.querySelector<HTMLButtonElement>('[data-drafting-scale]')!.click();
-		await tick();
-		target.querySelector<HTMLButtonElement>('[data-drafting-detent="50"]')!.click();
+		const refused = target.querySelector<HTMLButtonElement>('[data-head-find] [data-find-id="scale:50"]')!;
+		refused.click();
 		await frame();
 		expect(facade().evaluation()!.targetPlaneMetersPerCssPixel).toBeCloseTo(before, 9);
 		// No new intent kind and no Camera pose composition in the shell.
 		expect(request.mock.calls.every(([intent]) => ['zoom', 'fit'].includes(intent.kind))).toBe(true);
 
-		target.querySelector<HTMLButtonElement>('[data-drafting-scale]')!.click();
-		await tick();
-		target.querySelector<HTMLButtonElement>('[data-drafting-fit]')!.click();
+		target.querySelector<HTMLButtonElement>('[data-stage-fit]')!.click();
 		await frame();
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'fit' });
 	});
 
-	it('dismisses a disclosure on a sibling press and moves focus into then out of it', async () => {
-		const trigger = target.querySelector<HTMLButtonElement>('[data-drafting-scale]')!;
-		trigger.click();
-		await tick();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		const panel = target.querySelector<HTMLElement>('#drafting-scale-panel')!;
-		expect(panel).not.toBeNull();
-		// Opening the dialog puts focus on a control inside it, not behind it.
-		expect(panel.contains(document.activeElement)).toBe(true);
+	it('exposes the fixed values on both readings and hides the ruler in 3D', async () => {
+		const bar = target.querySelector<HTMLElement>('[data-stage-scale-bar]')!;
+		expect(bar).not.toBeNull();
+		expect(bar.getAttribute('aria-label')).toMatch(/^Scale bar: [0-9.]+ m$/);
+		expect(bar.querySelectorAll('.tick')).toHaveLength(2);
+		expect(bar.querySelector('.length')?.textContent?.trim()).toMatch(/[0-9.]+ m/);
+		// Grid and Snap are fixed values, so their words name no zoom-driven interval.
+		expect(gridKey().textContent?.trim()).toBe('Grid');
+		expect(snapKey().textContent?.trim()).toBe('Snap');
+		expect(gridKey().getAttribute('title')).toContain('fixed 1 m and 5 m');
+		expect(snapKey().getAttribute('title')).toContain('fixed 0.5 m');
 
-		// A sibling control is outside the disclosure and dismisses it before its
-		// own click runs; the action wrapper's stopPropagation must not defeat that.
-		gridKey().dispatchEvent(new Event('pointerdown', { bubbles: true }));
-		await tick();
-		expect(trigger.getAttribute('aria-expanded')).toBe('false');
+		button('3D').click();
+		await frame();
+		expect(target.querySelector('[data-stage-scale-bar]')).toBeNull();
+		expect(gridKey().textContent?.trim()).toBe('Grid');
+		expect(snapKey().textContent?.trim()).toBe('Snap');
+		button('2D').click();
+		await frame();
+		expect(target.querySelector('[data-stage-scale-bar]')).not.toBeNull();
+	});
 
-		trigger.click();
-		await tick();
-		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-		await tick();
-		expect(trigger.getAttribute('aria-expanded')).toBe('false');
-		expect(document.activeElement).toBe(trigger);
+	it('offers zoom in, zoom out and Fit as the lower-right cluster, with no Scale or config disclosure', async () => {
+		const request = vi.spyOn(facade(), 'requestViewingIntent');
+		expect(target.querySelector('[data-drafting-scale]')).toBeNull();
+		expect(target.querySelector('[data-drafting-config]')).toBeNull();
+		const zoomIn = target.querySelector<HTMLButtonElement>('[data-stage-zoom-in]')!;
+		const zoomOut = target.querySelector<HTMLButtonElement>('[data-stage-zoom-out]')!;
+		expect(zoomIn).not.toBeNull();
+		expect(zoomOut).not.toBeNull();
+		zoomIn.click();
+		await frame();
+		const inward = request.mock.calls.at(-1)![0];
+		expect(inward.kind).toBe('zoom');
+		expect(inward.kind === 'zoom' ? inward.scale : 1).toBeCloseTo(0.8, 9);
+		zoomOut.click();
+		await frame();
+		const outward = request.mock.calls.at(-1)![0];
+		expect(outward.kind).toBe('zoom');
+		expect(outward.kind === 'zoom' ? outward.scale : 1).toBeCloseTo(1.25, 9);
+		target.querySelector<HTMLButtonElement>('[data-stage-fit]')!.click();
+		await frame();
+		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'fit' });
 	});
 
 	it('announces the temporary Snap hold without changing the durable switch', async () => {
@@ -1127,7 +1139,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 
 	it('exposes the words as native, stateful, focusable controls with 44 px coarse targets', async () => {
 		const controls = [...target.querySelectorAll<HTMLButtonElement>('[data-stage-drafting] button')];
-		expect(controls.length).toBeGreaterThan(3);
+		expect(controls.length).toBe(4);
 		for (const control of controls) {
 			expect(control.tagName).toBe('BUTTON');
 			expect(control.getAttribute('type')).toBe('button');
@@ -1138,8 +1150,8 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(gridKey().getAttribute('aria-pressed')).toMatch(/^(true|false)$/);
 		expect(snapKey().getAttribute('aria-pressed')).toMatch(/^(true|false)$/);
 		expect(target.querySelector('[data-drafting-reading="plan"]')!.getAttribute('aria-pressed')).toBe('true');
-		expect(target.querySelector('[data-drafting-scale]')!.getAttribute('aria-expanded')).toBe('false');
-		expect(target.querySelector('[data-drafting-config]')!.getAttribute('aria-expanded')).toBe('false');
+		expect(target.querySelector('[data-drafting-scale]')).toBeNull();
+		expect(target.querySelector('[data-drafting-config]')).toBeNull();
 
 		const source = readFileSync(
 			'src/lib/authoring/stage/shell/StageDraftingControl.svelte',
@@ -1148,32 +1160,6 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(source).toContain('@media (pointer: coarse)');
 		expect(source).toMatch(/min-height:\s*44px/);
 		expect(source).toMatch(/min-width:\s*44px/);
-	});
-});
-
-describe('R217.S05 — the drafting configuration and scale bar', () => {
-	it('sets the configured minor interval as view state and reports the adaptive current interval', async () => {
-		const before = facade().snapshot().canonicalJson;
-		const interval = target.querySelector<HTMLSelectElement>('[data-drafting-config]')!;
-		interval.click();
-		await tick();
-		const select = target.querySelector<HTMLSelectElement>('[data-drafting-config] + .panel select, .config-panel select');
-		expect(select).not.toBeNull();
-		select!.value = '2';
-		select!.dispatchEvent(new Event('change', { bubbles: true }));
-		await frame();
-		expect(facade().session.drafting().gridMinorMeters).toBe(2);
-		expect(target.querySelector('[data-drafting-grid]')!.textContent?.trim()).toBe(
-			`Grid ${formatMeters(currentGridMinor())}`
-		);
-		expect(facade().snapshot().canonicalJson).toBe(before);
-	});
-
-	it('reads a round scale bar on the settled evaluation', async () => {
-		const bar = target.querySelector<HTMLElement>('[data-stage-scale-bar]');
-		expect(bar).not.toBeNull();
-		expect(bar!.getAttribute('aria-label')).toMatch(/^Scale bar: [0-9.]+ m$/);
-		expect(bar!.querySelector('.rule')).not.toBeNull();
 	});
 });
 
@@ -1350,8 +1336,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		const slider = sliderNode();
 		expect(slider).not.toBeNull();
 		expect(slider!.getAttribute('aria-valuetext')).toMatch(/metres, nearest Floor/);
-		const step =
-			draftingSnapIncrementMeters(facade().session.drafting(), currentGridMinor()) ?? 0.1;
+		const step = draftingSnapIncrementMeters(facade().session.drafting()) ?? 0.1;
 		const start = height();
 		const max = Number(slider!.getAttribute('aria-valuemax'));
 		slider!.focus();

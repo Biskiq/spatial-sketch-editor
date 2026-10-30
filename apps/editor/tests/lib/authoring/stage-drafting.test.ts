@@ -1,13 +1,16 @@
 /**
- * R217.S05 — the drafting fact's arithmetic.
+ * R217.S13 — the drafting fact's arithmetic.
  *
  * Grid, Snap and Scale are one view state: they must never become a source
  * writer, a second Camera or a hidden commit correction. These are the pure
- * facts the shell, Layout Ink and Scene placement share.
+ * facts the shell, Layout Ink and Scene placement share. Grid and Snap are
+ * fixed, so zoom can only thin the drawing; it can never move a point.
  */
 import { describe, expect, it } from 'vitest';
 import {
-	GRID_MINOR_CHOICES,
+	DRAFTING_SNAP_METERS,
+	GRID_MAJOR_METERS,
+	GRID_MINOR_METERS,
 	METERS_PER_CSS_PIXEL_AT_UNITY_SCALE,
 	SCALE_DETENTS,
 	STAGE_DRAFTING_DEFAULTS,
@@ -16,7 +19,6 @@ import {
 	formatMeters,
 	formatScaleRatio,
 	gridWord,
-	isGridMinorMeters,
 	metersPerCssPixelForScaleRatio,
 	roundScaleBarLength,
 	scaleDetentIntent,
@@ -27,57 +29,40 @@ import {
 	snapWord
 } from '$lib/authoring/stage/stage-drafting';
 
-describe('R217.S05 — the one Grid/Snap view state', () => {
-	it('starts with Grid and Snap on at the 1 m reference interval', () => {
+describe('R217.S13 — the one fixed Grid/Snap view state', () => {
+	it('starts with Grid and Snap on at the fixed values', () => {
 		expect(STAGE_DRAFTING_DEFAULTS).toEqual({
 			grid: true,
 			snap: true,
-			snapSuspended: false,
-			gridIntervalMode: 'automatic',
-			gridMinorMeters: 1
+			snapSuspended: false
 		});
-	});
-
-	it('accepts only the approved 1, 2, 5 ladder as a configured interval', () => {
-		for (const value of [0.01, 0.5, 1, 2, 5, 10, 200, 1000, 1_000_000]) {
-			expect(isGridMinorMeters(value)).toBe(true);
-		}
-		for (const value of [0, -1, 0.3, 3, 7, 1_000_001, Number.NaN, Number.POSITIVE_INFINITY, '1', null]) {
-			expect(isGridMinorMeters(value)).toBe(false);
-		}
-		expect(GRID_MINOR_CHOICES.every(isGridMinorMeters)).toBe(true);
+		expect(GRID_MINOR_METERS).toBe(1);
+		expect(GRID_MAJOR_METERS).toBe(5);
+		expect(DRAFTING_SNAP_METERS).toBe(0.5);
 	});
 
 	it('applies a patch as one value and keeps identity for a no-op', () => {
-		const next = applyDraftingPatch(STAGE_DRAFTING_DEFAULTS, { grid: false, gridMinorMeters: 2 });
-		expect(next).toEqual({ ...STAGE_DRAFTING_DEFAULTS, grid: false, gridMinorMeters: 2 });
-		expect(applyDraftingPatch(next, { gridIntervalMode: 'override' }).gridIntervalMode).toBe('override');
+		const next = applyDraftingPatch(STAGE_DRAFTING_DEFAULTS, { grid: false });
+		expect(next).toEqual({ ...STAGE_DRAFTING_DEFAULTS, grid: false });
 		expect(applyDraftingPatch(next, { grid: false })).toBe(next);
-		// An unsupported interval is ignored rather than inventing spacing.
-		expect(applyDraftingPatch(next, { gridMinorMeters: 3 }).gridMinorMeters).toBe(2);
+		// The removed zoom-driven interval facts are not accepted even if a stale
+		// value reaches the one patch seam.
+		expect(
+			applyDraftingPatch(next, { gridIntervalMode: 'override', gridMinorMeters: 2 } as never)
+		).toBe(next);
 	});
 
-	it('gives Snap the one minor interval and honours off and held independently of Grid', () => {
-		expect(draftingSnapIncrementMeters(STAGE_DRAFTING_DEFAULTS)).toBe(1);
+	it('gives Snap the fixed 0.5 m increment at every zoom and honours off and held independently of Grid', () => {
+		expect(draftingSnapIncrementMeters(STAGE_DRAFTING_DEFAULTS)).toBe(0.5);
 		expect(draftingSnapIncrementMeters({ ...STAGE_DRAFTING_DEFAULTS, snap: false })).toBeNull();
 		expect(draftingSnapIncrementMeters({ ...STAGE_DRAFTING_DEFAULTS, snapSuspended: true })).toBeNull();
 		// The two controls are independent facts: Grid off must not silently move
 		// where the next free point lands.
-		expect(draftingSnapIncrementMeters({ ...STAGE_DRAFTING_DEFAULTS, grid: false })).toBe(1);
-		for (const interval of [0.01, 1_000_000]) {
-			expect(draftingSnapIncrementMeters({
-				...STAGE_DRAFTING_DEFAULTS,
-				gridIntervalMode: 'override',
-				gridMinorMeters: interval
-			})).toBe(interval);
-		}
+		expect(draftingSnapIncrementMeters({ ...STAGE_DRAFTING_DEFAULTS, grid: false })).toBe(0.5);
 	});
 
-	it('rounds a datum point to the shared increment, or passes it through when held', () => {
-		expect(snapDraftingPoint([1.37, 2.81], STAGE_DRAFTING_DEFAULTS)).toEqual([1, 3]);
-		expect(
-			snapDraftingPoint([1.37, 2.81], { ...STAGE_DRAFTING_DEFAULTS, gridIntervalMode: 'override', gridMinorMeters: 0.5 })
-		).toEqual([1.5, 3]);
+	it('rounds a datum point to the fixed increment, or passes it through when held', () => {
+		expect(snapDraftingPoint([1.37, 2.81], STAGE_DRAFTING_DEFAULTS)).toEqual([1.5, 3]);
 		expect(
 			snapDraftingPoint([1.37, 2.81], { ...STAGE_DRAFTING_DEFAULTS, snapSuspended: true })
 		).toEqual([1.37, 2.81]);
@@ -109,10 +94,9 @@ describe('R217.S05 — the one Grid/Snap view state', () => {
 	});
 
 	it('says each state in words, never colour alone', () => {
-		expect(gridWord(STAGE_DRAFTING_DEFAULTS)).toBe('Grid 1 m');
+		expect(gridWord(STAGE_DRAFTING_DEFAULTS)).toBe('Grid');
 		expect(gridWord({ ...STAGE_DRAFTING_DEFAULTS, grid: false })).toBe('Grid off');
-		expect(gridWord(STAGE_DRAFTING_DEFAULTS, 2)).toBe('Grid 2 m');
-		expect(snapWord(STAGE_DRAFTING_DEFAULTS)).toBe('Snap 1 m');
+		expect(snapWord(STAGE_DRAFTING_DEFAULTS)).toBe('Snap');
 		expect(snapWord({ ...STAGE_DRAFTING_DEFAULTS, snapSuspended: true })).toBe('Snap held');
 		expect(snapWord({ ...STAGE_DRAFTING_DEFAULTS, snap: false })).toBe('Snap off');
 		expect(formatMeters(0.5)).toBe('0.5 m');

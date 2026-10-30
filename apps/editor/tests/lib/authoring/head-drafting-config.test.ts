@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 /**
- * R217.S05 — the drafting configuration is also reachable from the app menu.
+ * R217.S13 — drafting values left the Head's Viewing group.
  *
- * PLATE requires Grid/Snap configuration from the drafting words **and** the app
- * menu's Viewing group. The Head renders the same facts and hands each change
- * back to the host; it owns no Grid/Snap state itself.
+ * Grid and Snap are fixed and owned by the Stage's drafting words. The Head no
+ * longer renders a Grid interval menu or a Snap-to-grid checkbox: those were the
+ * only settings in the old ⚙ disclosure, and the menu must not reintroduce a
+ * second drafting authority. Viewing preferences (2D appearance, Height Sheet,
+ * reduced motion, motion speed) stay.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
 import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 
@@ -19,13 +21,7 @@ afterEach(() => {
 	target.remove();
 });
 
-function mountHead(props: {
-	readonly gridMinorMeters: number;
-	readonly gridIntervalMode: 'automatic' | 'override';
-	readonly snapOnGrid: boolean;
-	readonly onGridMinorMeters: (mode: 'automatic' | 'override', meters?: number) => void;
-	readonly onSnapOnGrid: (snap: boolean) => void;
-}): HTMLElement {
+function mountHead(): HTMLElement {
 	target = document.createElement('div');
 	document.body.append(target);
 	component = mount(EditorHead, {
@@ -41,58 +37,35 @@ function mountHead(props: {
 			saveUnavailableReason: 'Conditional Save needs the cloud client; this session has none.',
 			previewUnavailableReason: 'Preview needs an admitted project source.',
 			reducedMotion: false,
-			onToggleReducedMotion: () => {},
-			...props
+			onToggleReducedMotion: () => {}
 		}
 	});
 	return target;
 }
 
-describe('R217.S05 — Head Viewing drafting configuration', () => {
-	it('edits the minor interval and the Snap fact by handing them to the host', async () => {
-		const onGridMinorMeters = vi.fn();
-		const onSnapOnGrid = vi.fn();
-		const host = mountHead({
-			gridMinorMeters: 1,
-			gridIntervalMode: 'automatic',
-			snapOnGrid: true,
-			onGridMinorMeters,
-			onSnapOnGrid
-		});
-		(target.querySelector('.app-menu') as HTMLDetailsElement).open = true;
+describe('R217.S13 — Head Viewing has no drafting values', () => {
+	it('renders no Grid interval menu or Snap-to-grid checkbox', async () => {
+		const host = mountHead();
+		(host.querySelector('.app-menu') as HTMLDetailsElement).open = true;
 		await tick();
 
-		const labels = [...host.querySelectorAll('label')];
-		const interval = labels.find((label) => label.textContent?.includes('Grid interval'))!
-			.querySelector('select')!;
-		expect(interval.value).toBe('automatic');
-		interval.value = '2';
-		interval.dispatchEvent(new Event('change', { bubbles: true }));
-		expect(onGridMinorMeters).toHaveBeenCalledWith('override', 2);
-		interval.value = 'automatic';
-		interval.dispatchEvent(new Event('change', { bubbles: true }));
-		expect(onGridMinorMeters).toHaveBeenCalledWith('automatic');
-
-		const snap = labels.find((label) => label.textContent?.includes('Snap to the grid'))!
-			.querySelector('input')!;
-		expect(snap.checked).toBe(true);
-		snap.click();
-		expect(onSnapOnGrid).toHaveBeenCalledWith(false);
+		const labels = [...host.querySelectorAll('.app-menu label')];
+		expect(labels.some((label) => label.textContent?.includes('Grid interval'))).toBe(false);
+		expect(labels.some((label) => label.textContent?.includes('Snap to the grid'))).toBe(false);
+		expect(host.querySelector('.app-menu select option[value="automatic"]')).toBeNull();
 	});
 
-	it('keeps the configuration out of Settings so motion stays its own group', async () => {
-		const host = mountHead({
-			gridMinorMeters: 1,
-			gridIntervalMode: 'automatic',
-			snapOnGrid: true,
-			onGridMinorMeters: () => {},
-			onSnapOnGrid: () => {}
-		});
+	it('keeps viewing and motion preferences in their own groups', async () => {
+		const host = mountHead();
+		(host.querySelector('.app-menu') as HTMLDetailsElement).open = true;
+		await tick();
 		const menu = host.querySelector('.app-menu')!;
-		const viewing = [...menu.querySelectorAll('strong')].find((node) => node.textContent === 'Viewing')!;
-		const gridLabel = [...menu.querySelectorAll('label')].find((label) =>
-			label.textContent?.includes('Grid interval')
-		)!;
-		expect(viewing.compareDocumentPosition(gridLabel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		const groups = [...menu.querySelectorAll('strong')].map((node) => node.textContent);
+		expect(groups).toContain('Viewing');
+		expect(groups).toContain('Settings');
+		const labels = [...menu.querySelectorAll('label')].map((label) => label.textContent ?? '');
+		expect(labels.some((label) => label.includes('2D appearance'))).toBe(true);
+		expect(labels.some((label) => label.includes('Height Sheet'))).toBe(true);
+		expect(labels.some((label) => label.includes('Reduce motion'))).toBe(true);
 	});
 });

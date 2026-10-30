@@ -35,7 +35,6 @@ import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface, type InkController } from '$lib/authoring/adapters/layout/ink';
-import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -542,11 +541,7 @@ describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
 
 	function snappedPoint(facade: StageFacade, point: readonly [number, number]) {
 		const drafting = facade.drafting();
-		const minor = drawnGridMinorMeters(
-			drafting,
-			facade.evaluation()?.targetPlaneMetersPerCssPixel ?? null
-		);
-		return snapDraftingPlacement(point, draftingSnapIncrementMeters(drafting, minor));
+		return snapDraftingPlacement(point, draftingSnapIncrementMeters(drafting));
 	}
 
 	/** Every junction of the walls this drawing created, in world coordinates. */

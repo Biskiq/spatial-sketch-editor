@@ -19,7 +19,6 @@
 	import type { StageAdapterServices } from '../../stage/stage-adapter-host';
 	import { stageEnvelope } from '../../stage/unit-stage-source';
 	import { draftingSnapIncrementMeters } from '../../stage/stage-drafting';
-	import { drawnGridMinorMeters } from '../../stage/stage-grid';
 	import { choosePrimitive, peekArmedModel } from './import/definitions';
 	import MyObjectsSectionLazy from './library/MyObjectsSectionLazy.svelte';
 	import {
@@ -440,12 +439,7 @@
 			return;
 		}
 		const drafting = services.stage.drafting();
-		const evaluation = services.stage.evaluation();
-		const currentMinor = drawnGridMinorMeters(
-			drafting,
-			evaluation?.targetPlaneMetersPerCssPixel ?? null
-		);
-		const appliedSnap = draftingSnapIncrementMeters(drafting, currentMinor);
+		const appliedSnap = draftingSnapIncrementMeters(drafting);
 		current.setSnapStep(appliedSnap);
 		const copyArmed = current.armedFormCopy();
 		const modelArmed = copyArmed === null && current.armedModel() !== null;

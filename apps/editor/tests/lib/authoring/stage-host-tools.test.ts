@@ -379,7 +379,7 @@ describe('host-tool source and history contracts', () => {
 		settle(facade);
 		const canonical = facade.snapshot().canonicalJson;
 		const history = host.history();
-		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 0.5 });
+		// Snap is fixed at 0.5 m; no zoom or override can change it.
 		const query = { css: css(facade, [15.14, 0, 12.17]), evaluationId: facade.evaluationId()! };
 		expect(resolveMeasureEndpoint(facade, query)).toEqual({ point: [15, 0, 12], source: null });
 		facade.setDrafting({ snap: false });

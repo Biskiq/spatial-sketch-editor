@@ -1,14 +1,15 @@
 /**
- * R217.S05 — the **drafting state** and its arithmetic.
+ * R217.S13 — the **drafting state** and its arithmetic.
  *
  * PLATE's drafting cluster is one view-state fact, not a second document, a
  * Camera mode or a source writer:
  *
- * - **Grid** is on or off and names the minor interval it draws.
- * - **Snap** is on or off, may be temporarily **held** by Alt/Option, and uses
- *   the same minor interval as its increment.
- * - **Scale** is a reading of the current Camera evaluation and opens framing
- *   requests; it never writes a pose of its own.
+ * - **Grid** is on or off and always draws the fixed 1 m minor and 5 m major
+ *   levels. Drawing thins with zoom; the values never change.
+ * - **Snap** is on or off, may be temporarily **held** by Alt/Option, and always
+ *   rounds to the fixed 0.5 m increment.
+ * - **Scale** is a reading of the current Camera evaluation, reachable through
+ *   Find and the ruler; it never writes a pose of its own.
  *
  * Everything here is pure. The session owns the one state value; the adapter
  * context publishes it read-only; the shell renders it; Layout Ink and free
@@ -23,62 +24,37 @@ export type StageDraftingState = {
 	readonly snap: boolean;
 	/** Follows a held Alt/Option key; released on keyup, blur and teardown. */
 	readonly snapSuspended: boolean;
-	/** Whether the minor interval follows zoom or uses the selected override. */
-	readonly gridIntervalMode: 'automatic' | 'override';
-	/** Selected override; retained while Automatic is active. */
-	readonly gridMinorMeters: number;
 };
 
-/** Grid on and Snap on at the 1 m reference scale. */
+/** The fixed minor line interval. Zoom never changes it. */
+export const GRID_MINOR_METERS = 1;
+/** The fixed major line interval. Zoom never changes it. */
+export const GRID_MAJOR_METERS = 5;
+/** The fixed free-point increment. Zoom never changes it. */
+export const DRAFTING_SNAP_METERS = 0.5;
+
+/** Grid on and Snap on at the fixed values. */
 export const STAGE_DRAFTING_DEFAULTS: StageDraftingState = Object.freeze({
 	grid: true,
 	snap: true,
-	snapSuspended: false,
-	gridIntervalMode: 'automatic',
-	gridMinorMeters: 1
+	snapSuspended: false
 });
 
-/**
- * The intervals the configuration popover offers. The approved ladder is
- * `1, 2, 5 × 10^n`; 0.5 m is `5 × 10^-1`, and the coarser values keep the
- * reference scale recognisable at architectural zooms.
- */
-export const GRID_MINOR_CHOICES = [0.5, 1, 2, 5, 10] as const;
-
-export const GRID_MINOR_MIN_METERS = 0.01;
-/** Match the full supported adaptive ladder so a drawn level always remains snappable. */
-export const GRID_MINOR_MAX_METERS = 1_000_000;
-
-/** A partial change the shell, the app menu or a key may request. */
+/** A partial change the shell or a key may request. */
 export type StageDraftingPatch = Partial<StageDraftingState>;
-
-/**
- * Whether a number is a `1, 2, 5 × 10^n` ladder value, not an arbitrary
- * interval. A configured override is validated against the approved ladder so
- * the grid can never invent a spacing the design contract does not name.
- */
-export function isGridMinorMeters(value: unknown): value is number {
-	if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return false;
-	if (value < GRID_MINOR_MIN_METERS || value > GRID_MINOR_MAX_METERS) return false;
-	const exponent = Math.floor(Math.log10(value) + 1e-9);
-	const mantissa = value / 10 ** exponent;
-	return [1, 2, 5].some((candidate) => Math.abs(mantissa - candidate) < 1e-9);
-}
 
 export function sameDraftingState(a: StageDraftingState, b: StageDraftingState): boolean {
 	return (
 		a.grid === b.grid &&
 		a.snap === b.snap &&
-		a.snapSuspended === b.snapSuspended &&
-		a.gridIntervalMode === b.gridIntervalMode &&
-		a.gridMinorMeters === b.gridMinorMeters
+		a.snapSuspended === b.snapSuspended
 	);
 }
 
 /**
- * Apply one patch, ignoring anything that is not a declared fact or a supported
- * ladder interval. The previous object is returned when nothing changed, so a
- * reactive reader is not invalidated by a no-op.
+ * Apply one patch, ignoring anything that is not a declared fact. The previous
+ * object is returned when nothing changed, so a reactive reader is not
+ * invalidated by a no-op.
  */
 export function applyDraftingPatch(
 	current: StageDraftingState,
@@ -88,14 +64,7 @@ export function applyDraftingPatch(
 		grid: typeof patch.grid === 'boolean' ? patch.grid : current.grid,
 		snap: typeof patch.snap === 'boolean' ? patch.snap : current.snap,
 		snapSuspended:
-			typeof patch.snapSuspended === 'boolean' ? patch.snapSuspended : current.snapSuspended,
-		gridIntervalMode:
-			patch.gridIntervalMode === 'automatic' || patch.gridIntervalMode === 'override'
-				? patch.gridIntervalMode
-				: current.gridIntervalMode,
-		gridMinorMeters: isGridMinorMeters(patch.gridMinorMeters)
-			? patch.gridMinorMeters
-			: current.gridMinorMeters
+			typeof patch.snapSuspended === 'boolean' ? patch.snapSuspended : current.snapSuspended
 	};
 	return sameDraftingState(current, next) ? current : next;
 }
@@ -103,17 +72,11 @@ export function applyDraftingPatch(
 /**
  * The increment a free point rounds to, or `null` when Snap is off or held.
  *
- * Snap uses the minor interval even while Grid is off: the two controls are
- * independent facts, and turning the drawing off must not silently change where
- * the next point lands.
+ * This is the one seam every consumer reads. It takes no zoom input, so a
+ * point lands on the same lattice at every scale.
  */
-export function draftingSnapIncrementMeters(
-	state: StageDraftingState,
-	currentMinorMeters?: number
-): number | null {
-	if (!state.snap || state.snapSuspended) return null;
-	const effectiveMinor = currentMinorMeters ?? (state.gridIntervalMode === 'override' ? state.gridMinorMeters : 1);
-	return isGridMinorMeters(effectiveMinor) ? effectiveMinor : null;
+export function draftingSnapIncrementMeters(state: StageDraftingState): number | null {
+	return state.snap && !state.snapSuspended ? DRAFTING_SNAP_METERS : null;
 }
 
 /**
@@ -182,11 +145,9 @@ export function snapDraftingPlacement(
 /** Round a datum-plane point to the shared increment; identity when Snap is off. */
 export function snapDraftingPoint(
 	point: readonly [number, number],
-	state: StageDraftingState,
-	currentMinorMeters?: number
+	state: StageDraftingState
 ): readonly [number, number] {
-	const defaultInterval = currentMinorMeters ?? (state.gridIntervalMode === 'override' ? state.gridMinorMeters : 1);
-	const snapped = snapDraftingPlacement(point, draftingSnapIncrementMeters(state, defaultInterval));
+	const snapped = snapDraftingPlacement(point, draftingSnapIncrementMeters(state));
 	return [snapped.x, snapped.z];
 }
 
@@ -198,21 +159,15 @@ export function formatMeters(meters: number): string {
 }
 
 /** The Grid word. Off is a word, never colour alone. */
-export function gridWord(
-	state: StageDraftingState,
-	drawnMinorMeters = state.gridIntervalMode === 'override' ? state.gridMinorMeters : 1
-): string {
-	return state.grid ? `Grid ${formatMeters(drawnMinorMeters)}` : 'Grid off';
+export function gridWord(state: StageDraftingState): string {
+	return state.grid ? 'Grid' : 'Grid off';
 }
 
-/** The Snap word: off, held, or the increment in force. */
-export function snapWord(
-	state: StageDraftingState,
-	currentMinorMeters = state.gridIntervalMode === 'override' ? state.gridMinorMeters : 1
-): string {
+/** The Snap word: off, held, or the fixed increment in force. */
+export function snapWord(state: StageDraftingState): string {
 	if (!state.snap) return 'Snap off';
 	if (state.snapSuspended) return 'Snap held';
-	return `Snap ${formatMeters(currentMinorMeters)}`;
+	return 'Snap';
 }
 
 /** PLATE's stated reference for the ratio: one CSS pixel is 1/96 in. */
@@ -265,7 +220,7 @@ export function scaleDetentIntent(
 	return { kind: 'zoom', scale: target / currentMetersPerCssPixel };
 }
 
-/** The five PLATE scale detents. */
+/** The five PLATE scale detents, reached through Find. */
 export const SCALE_DETENTS = [20, 50, 100, 200, 500] as const;
 
 /**

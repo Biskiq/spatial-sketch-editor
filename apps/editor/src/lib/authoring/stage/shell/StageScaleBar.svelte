@@ -1,64 +1,92 @@
 <script lang="ts">
 	/**
-	 * R217.S05 — the Stage's **scale bar**, at the bottom left.
+	 * R217.S13 — the Stage's **scale ruler**, at the bottom left (D41).
 	 *
 	 * It is a reading, not a control: the round length and its projected width are
 	 * derived from the evaluation's own target-plane scale, so the bar cannot
-	 * disagree with the drawing. It never takes a pointer (the Stage underneath
-	 * remains draggable) and it writes nothing.
+	 * disagree with the drawing. It is a 1 px rule with 5 px perpendicular end
+	 * ticks and its label below — no fill, border or badge. The route mounts it in
+	 * Plan only, because a perspective length is true only at the target plane.
+	 * It never takes a pointer and writes nothing.
 	 */
 	import { formatMeters } from '../stage-drafting';
 
 	let {
-		bar
+		bar,
+		quiet = false
 	}: {
 		/** `null` while no evaluation supplies a target-plane scale. */
 		bar: { readonly meters: number; readonly cssPx: number } | null;
+		/** Paper's quiet dark ink instead of the mat's light ink. */
+		quiet?: boolean;
 	} = $props();
 </script>
 
 {#if bar !== null}
 	<div
 		class="scale-bar"
+		class:quiet
 		data-stage-scale-bar
 		role="img"
 		aria-label={`Scale bar: ${formatMeters(bar.meters)}`}
 	>
+		<span class="rule" style={`width: ${Math.max(24, Math.round(bar.cssPx))}px`}>
+			<span class="tick start"></span>
+			<span class="tick end"></span>
+		</span>
 		<span class="length">{formatMeters(bar.meters)}</span>
-		<span class="rule" style={`width: ${Math.max(24, Math.round(bar.cssPx))}px`}></span>
 	</div>
 {/if}
 
 <style>
 	.scale-bar {
 		position: absolute;
-		/* Clear the centered lower column instead of being painted under it. */
-		bottom: calc(0.7rem + var(--lower-column-height, 0px));
+		bottom: 0.7rem;
 		left: 0.8rem;
 		display: grid;
-		gap: 0.18rem;
-		padding: 0.22rem 0.4rem;
-		border: 1px solid rgb(244 240 233 / 24%);
-		border-radius: 0.3rem;
-		background: rgb(21 44 38 / 82%);
+		justify-items: start;
+		gap: 0.2rem;
 		color: #f4f0e9;
 		pointer-events: none;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 		font-size: 0.72rem;
 		letter-spacing: 0.02em;
+		text-shadow: 0 1px 2px rgb(6 20 14 / 55%);
+	}
+	.scale-bar.quiet {
+		color: #233a2e;
+		text-shadow: none;
+	}
+	.rule {
+		position: relative;
+		display: block;
+		height: 1px;
+		background: currentColor;
+	}
+	.tick {
+		position: absolute;
+		bottom: 0;
+		width: 1px;
+		height: 5px;
+		background: currentColor;
+	}
+	.tick.start {
+		left: 0;
+	}
+	.tick.end {
+		right: 0;
 	}
 	.length {
 		line-height: 1;
 	}
-	.rule {
-		display: block;
-		height: 0;
-		border-top: 1px solid #f4f0e9;
-		border-bottom: 1px solid rgb(21 44 38 / 90%);
+	/* The ruler rises only when the centred lower column can reach it. */
+	@media (max-width: 760px) {
+		.scale-bar {
+			bottom: calc(0.7rem + var(--lower-column-height, 0px));
+		}
 	}
 	@media (pointer: coarse) {
 		.scale-bar {
-			bottom: calc(0.55rem + var(--lower-column-height, 0px));
 			left: 0.6rem;
 			font-size: 0.76rem;
 		}

@@ -593,19 +593,20 @@ step**, with read-only counts from owners, in the acceptance bar or bubble besid
 gesture. Focusing a consequence row emphasizes that identity as view-only; selection
 stays unchanged.
 
-**Drafting state.** **Scale · Grid · Snap** remain legible beside the 2D | 3D control.
-Off states are words, not color alone. Scale opens detents and Fit all as Camera
-framing requests. Grid/Snap toggle their one fact and name the interval/increment in
-force; a held snap-suspending modifier is reflected in the word. A fourth drafting-state
-word needs an owner ruling: admission requires changing how a distance reads or where the
-next point lands. No messages, hints, history, tool state or motion settings belong in
-that cluster. Grid is one fact across 2D surfaces; on a wall laid flat it is Wall grid,
-and off reveals real wall material under the [paper rule](#material-and-working-surfaces-44).
-Configuration (grid ladder, snap increments/targets, labels, dimension display, rulers,
-cut height and what to show) is reachable from the drafting words and the app menu's
-viewing preferences; its container is a feature decision, and the word **Sheet** now
-means only the Height Sheet. Reduce motion and Motion speed live in Settings. The World
-status rail is retired.
+**Drafting state.** **Grid · Snap** remain legible beside the 2D | 3D control. Off
+states are words, not color alone. Grid and Snap are fixed values: 1 m minor and 5 m
+major lines, and a 0.5 m free-point increment. Zoom never changes either value; it
+only thins the drawing. A held snap-suspending modifier is reflected in the word. Scale
+is a reading rather than a toolbar word: the Plan ruler carries it, Scale detents live
+in Find, and zoom in, zoom out and Fit form the lower-right cluster. A fourth
+drafting-state word needs an owner ruling: admission requires changing how a distance
+reads or where the next point lands. No messages, hints, history, tool state or motion
+settings belong in that cluster. Grid is one fact across 2D surfaces; on a wall laid
+flat it is Wall grid, and off reveals real wall material under the
+[paper rule](#material-and-working-surfaces-44). Viewing preferences (2D appearance,
+Height Sheet side, reduced motion, motion speed) stay in the app menu's Viewing and
+Settings groups. A later grid or snap preference has one named seam to extend; the word
+**Sheet** now means only the Height Sheet. The World status rail is retired.
 
 **2D | 3D continuity.** The switch requests a tilt through Camera about the current
 target, keeping scale. 2D settles azimuth to the nearest 90° detent; 3D returns
@@ -903,11 +904,17 @@ copied pixels. Stop cards are semantic composition items in the Guide instrument
 the shell does not become nested dashboard cards. Spatial marks
 retain the precision and legibility requirements of their domain grammar.
 
-**Grid and wall sheet.** At reference architectural scale, Paper has a 1 m minor/
-5 m major grid on a `1, 2, 5 × 10^n` ladder, major five times minor. Decimate by
-projected CSS-pixel spacing: target at least 16 px, fade from 16 to 8 px and suppress
-below 8 px. Anchor to the world/floor datum with a stable origin across interval
-changes. It is drawing state, never a Camera mode or a reason to delay navigation.
+**Grid and wall sheet.** Paper draws fixed 1 m minor and 5 m major lines; there is no
+zoom-driven interval ladder. Decimate the **drawing** by projected CSS-pixel spacing:
+each level is fully inked at 16 px and above, fades from 16 to 8 px and is suppressed
+below 8 px. A 25 m reference appears only while the 5 m level is suppressed, and obeys
+the same rule. Anchor to the world/floor datum with a stable origin across zoom changes.
+Paper's grid is a bounded sheet around the work: the datum bounds of Layout, Scene and
+the live candidate, expanded by 5 m and rounded outward to 5 m, or a 20 × 20 m sheet
+around the target for an empty project. The sheet is intersected with the visible
+coverage so a zoomed-in view cannot generate unbounded lines; it grows with the work and
+never moves the Camera. The mat keeps the datum footprint its corner rays actually see.
+It is drawing state, never a Camera mode or a reason to delay navigation.
 
 The **paper rule** is fixed: a Wall wears the drafting sheet when it is the settled
 subject of a Face session, straight or curved, or is off its footprint, and keeps
@@ -1235,8 +1242,8 @@ loop, not to an unfinished shell gate.
 - Similar names in dense projects need thumbnails or hover highlight beyond room and Level context.
 - Experience hides the Height Sheet; whether View placement needs a working height is open.
 - Non-text contrast of every mark and the touch targets above are unmeasured.
-- The configuration container for grid ladder, snap targets, labels, rulers and cut height
-  is undecided; pin persistence is a domain question.
+- The configuration container for a later grid/snap preference, snap targets, labels,
+  rulers and cut height is undecided; pin persistence is a domain question.
 
 Internal-component selectable identity and shared-source/local-override semantics
 remain domain questions. Use capabilities and scope choices the domains declare;

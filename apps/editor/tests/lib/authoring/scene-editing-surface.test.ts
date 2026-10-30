@@ -46,7 +46,6 @@ import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { formCardController } from '$lib/authoring/adapters/scene/form-card';
 import { sceneObjectCardController } from '$lib/authoring/adapters/scene/object-card';
 import { sceneObjectMarkDescriptors } from '$lib/authoring/adapters/scene/object-marks';
-import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
@@ -1258,11 +1257,7 @@ describe('Scene adapter registration', () => {
 		// The preview uses the live adaptive Grid/Snap minor; it is the exact pose
 		// the planner will commit, with no commit-time correction.
 		const drafting = facade.drafting();
-		const minor = drawnGridMinorMeters(drafting, facade.evaluation()!.targetPlaneMetersPerCssPixel);
-		const expected = snapDraftingPlacement(
-			[3.5, 3],
-			draftingSnapIncrementMeters(drafting, minor)
-		);
+		const expected = snapDraftingPlacement([3.5, 3], draftingSnapIncrementMeters(drafting));
 		expect(movedPreview.worldXZ[0]).toBeCloseTo(expected.x, 6);
 		expect(movedPreview.worldXZ[1]).toBeCloseTo(expected.z, 6);
 		// Only the plan position rounds; the support-resolved Y and retained yaw do not.
@@ -1630,7 +1625,6 @@ describe('Scene adapter registration', () => {
 		// Leave a stale Place-session mirror behind, then close Place and change the
 		// shared Stage setting after the Move capture. Move must read the live host
 		// fact, never this local 0.5 m value.
-		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 0.5, snap: true });
 		expect(facade.openContributedTask('scene-place', 'scene').kind).toBe('opened');
 		const placeStart = stageCssOf(facade, [2.5, 0, 2.5]);
 		facade.pointerIntent({ phase: 'down', css: placeStart, evaluationId });
@@ -1640,7 +1634,7 @@ describe('Scene adapter registration', () => {
 		// Model a still-live stale local mirror after task teardown; it is not the
 		// source of truth for the no-task object mark surface.
 		placeSurface!.session.setSnapStep(0.5);
-		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 0.5, snap: true });
+		facade.setDrafting({ snap: true });
 
 		const move = markOf(facade, 'scene-object-move');
 		const target = stageCssOf(facade, [3.62, 0, 2.54]);
@@ -1649,19 +1643,24 @@ describe('Scene adapter registration', () => {
 		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
 		expect(facade.ghosts()[0]!.center[0]).toBe(3.5);
 		expect(facade.ghosts()[0]!.center[2]).toBe(2.5);
-		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 2 });
+		facade.setDrafting({ snap: false });
 		expect(placeSurface?.session.snapStep()).toBe(0.5);
 		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
 		const ghost = facade.ghosts()[0];
 		expect(ghost).toBeDefined();
-		// Numeric expectations are independent of the production interval/rounding helpers.
-		expect(ghost!.center[0]).toBe(4);
-		expect(ghost!.center[2]).toBe(2);
+		// Numeric expectations are independent of the production rounding helpers: the
+		// live Switch is off, so the Move poses the raw pointer point.
+		expect(ghost!.center[0]).toBe(3.62);
+		expect(ghost!.center[2]).toBe(2.54);
+		facade.setDrafting({ snap: true });
+		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+		expect(facade.ghosts()[0]!.center[0]).toBe(3.5);
+		expect(facade.ghosts()[0]!.center[2]).toBe(2.5);
 		facade.pointerIntent({ phase: 'up', css: target, evaluationId });
-		await eventually(() => facade.snapshot().domain.scene.entities[0]?.position[0] === 4);
+		await eventually(() => facade.snapshot().domain.scene.entities[0]?.position[0] === 3.5);
 		const live = facade.snapshot().domain.scene.entities[0]!;
-		expect(live.position[0]).toBe(4);
-		expect(live.position[2]).toBe(2);
+		expect(live.position[0]).toBe(3.5);
+		expect(live.position[2]).toBe(2.5);
 		expect(host.history().depth).toBe(depth + 1);
 		const acceptedPosition = host.history().position;
 		expect((await host.undo()).kind).toBe('installed');
@@ -1676,7 +1675,7 @@ describe('Scene adapter registration', () => {
 			{ snap: true, snapSuspended: true }
 		]) {
 			const { facade } = await acceptedMarksSurface();
-			facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 2, ...state });
+			facade.setDrafting({ ...state });
 			const evaluationId = facade.evaluationId()!;
 			const move = markOf(facade, 'scene-object-move');
 			const target = stageCssOf(facade, [2.62, 0, 2.54]);
@@ -1689,7 +1688,7 @@ describe('Scene adapter registration', () => {
 		}
 
 		const { facade, host } = await acceptedMarksSurface();
-		facade.setDrafting({ gridIntervalMode: 'override', gridMinorMeters: 2, snap: true });
+		facade.setDrafting({ snap: true });
 		const evaluationId = facade.evaluationId()!;
 		const move = markOf(facade, 'scene-object-move');
 		// Raw aim is inside the 7 × 6 m Room floor; snapping Z to exactly 6 m
