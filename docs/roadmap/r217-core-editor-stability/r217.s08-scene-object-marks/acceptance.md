@@ -31,7 +31,7 @@ inventing an extent. Native-form marks remain S09 work.
   `duplicate-one` / `delete-one` planners through the one F4 host. Removed: `scene-arrange`, its Find
   entries, its `SceneTransformInstrument` editing posture, and the two obsolete Arrange-only test
   files (`scene-instrument-focus.test.ts`, `scene-proposal-lifetime.test.ts`).
-- **Verification:** at tested revision `9d50dbd2` (clean tree): `apps/editor npm run test:arch` —
+- **Verification:** at tested revision `9d50dbd2`: `apps/editor npm run test:arch` —
   23 files / 193 tests; `apps/editor npm run test:full` — 240 files / 3,049 tests; `apps/editor
   npm run check` — 0 errors / 0 warnings; `apps/editor npm run build` — success (Vite SSR/client plus
   the Vercel adapter). Focused `npx vitest run` — 5 files / 118 tests
