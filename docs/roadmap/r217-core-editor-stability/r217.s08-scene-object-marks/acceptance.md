@@ -6,11 +6,11 @@ disclosure and the Size ray it reveals. The phase [slice register](../README.md#
 owns status; the current interaction, selection, mark and support contract is owned by
 [architecture.md](../../../reference/architecture.md#editor-interaction-authorities).
 
-- **Accepted:** 2026-10-29 by owner closeout direction. One independent cross-domain review covered
-  the pre-integration tree and raised only should-fix findings; a follow-up owner Card lifecycle
-  review found that ordinary Stage surface notifications rebuilt the Card controller and discarded
-  uncommitted drafts and refusals. All actionable findings were fixed and pinned by the focused
-  regressions below. No GitHub approval was recorded. The authorization covers S08 only and added no
+- **Accepted:** 2026-10-29 by owner closeout direction. One independent cross-domain review found Card refusal and rejected-acceptance
+  blockers, missing Duplicate/Delete Card actions, and should-fix Turn-plane, disclosure and
+  listener findings. A follow-up owner Card lifecycle review found that ordinary Stage surface
+  notifications rebuilt the Card controller and discarded uncommitted drafts and refusals. All
+  actionable findings were fixed and pinned by the focused regressions below. No GitHub approval was recorded. The authorization covers S08 only and added no
   release-list row. Tested implementation revision `9d50dbd2`; preservation anchor `8b2f0ffc`.
 - **Delivered:** `object-marks.ts` owns the four descriptor facts, live-pose bounds and shared planner
   dispatch. The selected catalogue model or primitive publishes a Move track through the footprint
