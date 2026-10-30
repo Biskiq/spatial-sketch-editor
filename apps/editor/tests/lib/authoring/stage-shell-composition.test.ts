@@ -61,6 +61,17 @@ const STAGE_FILES = listSourceFiles(STAGE_DIR)
 
 const CANVAS_FILE = 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte';
 
+/**
+ * The Height Sheet is a control, not the Stage surface. Pointer travel on its
+ * rail is mapped to a height against the rail's own rect; that rect is never
+ * used as, or compared with, the evaluation rect, so it cannot put the drawn
+ * image, the pointer ray and the overlays in different coordinate spaces. It
+ * is the one stage file allowed to measure its own chrome — every other file
+ * still has to use the route's single measurement. Adding another exception
+ * here is a composition decision, not a test fix.
+ */
+const HEIGHT_SHEET = relativeToRepo(join(SHELL_DIR, 'StageHeightSheet.svelte'));
+
 describe('Stage shell composition', () => {
 	it('preserves Camera pose and vertical extent when the viewport height changes', () => {
 		const camera = createViewportCameraState({
@@ -284,8 +295,12 @@ describe('Stage shell composition', () => {
 			.filter(([, source]) =>
 				/getBoundingClientRect|clientWidth|clientHeight|devicePixelRatio/.test(source)
 			)
-			.map(([file]) => file);
+			.map(([file]) => file)
+			.filter((file) => file !== HEIGHT_SHEET);
 		expect(measurers).toEqual([ROUTE]);
+		// The exception is the rail mapping only: the Sheet reads the track it
+		// draws into and nothing else.
+		expect(codeOf(HEIGHT_SHEET)).toContain('track?.getBoundingClientRect()');
 		expect((route.match(/getBoundingClientRect\(\)/g) ?? []).length).toBe(2);
 		// One function reads the element — one `clientWidth`/`clientHeight` pair and
 		// one left/top pair — and both the mount and the per-frame refresh call it.
