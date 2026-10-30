@@ -2080,9 +2080,29 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return preview;
 			}
 
-			return {
+			const binding: StageAdapterBinding = {
 				pick,
 				hostTools: ['erase', 'measure'],
+				/**
+				 * The Eraser reuses the Card's own delete for a Wall or an Opening — the
+				 * same planner-derived disclosure and the same one F4 entry. Every other
+				 * Layout subject was already refused, in Layout's words, by the pick.
+				 */
+				eraseAction(hit) {
+					if (hit.sourceKind !== 'wall' && hit.sourceKind !== 'opening') {
+						return { kind: 'refused', message: 'That Layout subject cannot be erased.' };
+					}
+					const action = binding.cardActions?.({ sourceId: hit.sourceId, sourceKind: hit.sourceKind, ref: null })
+						.find((candidate) => candidate.destructive === true);
+					if (action === undefined) return { kind: 'refused', message: 'That Layout subject cannot be erased.' };
+					// A Wall that hosts Openings or changes Rooms has consequences beyond
+					// itself; its existing disclosure is read before the second click runs it.
+					const preview = hit.sourceKind === 'wall' ? deletionPreview(hit.sourceId) : null;
+					const confirm =
+						preview?.kind === 'planned' &&
+						(preview.hostedOpeningIds.length > 0 || preview.retiredRoomIds.length > 0 || preview.createdRoomIds.length > 0);
+					return { kind: 'action', action, confirm };
+				},
 				tasks: [
 					{
 						id: LAYOUT_INK_TASK,
@@ -2107,6 +2127,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// Ink is an armable **dock** tool: it is armed from the bottom dock
 						// (and found by name in the Head), not listed as an Index task.
 						home: 'dock',
+						slot: 'ink',
 						order: 0
 					},
 					{
@@ -2803,6 +2824,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					publishInkSurface(null);
 				}
 			};
+			return binding;
 
 			/**
 			 * The host-relative Opening ghost: two edges, the live offset/width and the

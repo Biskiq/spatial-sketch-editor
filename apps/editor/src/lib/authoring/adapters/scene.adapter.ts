@@ -1628,7 +1628,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		return Math.abs(rotation[0]) < 1e-8 && Math.abs(rotation[2]) < 1e-8;
 	}
 
-	return {
+	const binding: StageAdapterBinding = {
 		/** Owner-declared found surfaces; the host merges and sorts them. */
 		heightTicks(adapterContext: StageAdapterContext): readonly StageHeightTick[] {
 			return heightTicksFor(adapterContext);
@@ -1640,6 +1640,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
 				})),
 				hostTools: ['erase', 'measure'],
+				/**
+				 * The Eraser reuses the Card's own delete for a model, primitive or form:
+				 * `delete-one`, one F4 entry, and Undo restores the same id. Lights are
+				 * never picked, so they never reach here.
+				 */
+				eraseAction(hit) {
+					if (hit.reference?.domain !== 'scene') return null;
+					const action = binding.cardActions?.({ sourceId: hit.sourceId, sourceKind: hit.sourceKind, reference: hit.reference, ref: null })
+						.find((candidate) => candidate.destructive === true);
+					return action === undefined
+						? { kind: 'refused', message: 'That object cannot be erased.' }
+						: { kind: 'action', action, confirm: false };
+				},
 				pick(candidate, live) {
 					if (!source.entities.some((entity) => entity.kind !== 'light')) return null;
 					const css: [number, number] = [candidate.css[0] + live.evaluation.rect.left, candidate.css[1] + live.evaluation.rect.top];
@@ -1729,9 +1742,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					{
 						id: SCENE_PLACE_TASK,
 						taskKind: 'place-object',
-						label: 'Place object',
+						// R217.S10: Place object is the dock's Library key. Arming it opens
+						// the same task, so placement behaviour is unchanged.
+						label: 'Library',
 						railFamily: 'place',
 						capability: 'scene',
+						home: 'dock',
+						slot: 'library',
 						order: 20
 					},
 					{
@@ -2155,6 +2172,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					retireSceneSurface(owned.snapshot, owned.surface);
 				}
 			};
+	return binding;
 		}
 	};
 	return adapter;

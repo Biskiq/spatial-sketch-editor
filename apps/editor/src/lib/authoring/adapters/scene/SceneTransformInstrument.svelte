@@ -666,7 +666,7 @@
 				{armedFormCopy !== null
 					? 'No Room floor yet. This saved copy stays ready: draw an enclosure with Ink, then click its floor position.'
 					: armedModelPresent
-						? 'No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen Place object.'
+						? 'No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen the Library.'
 						: 'No Room floor yet. Draw an enclosure with Ink before placing an object.'}
 			</p>
 		{/if}

@@ -433,6 +433,18 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 		return { minX, minZ, maxX, maxZ };
 	}
 
+	/**
+	 * Layout's Eraser eligibility, in its own words (R217.S10). A Room floor derives
+	 * from its Walls and a Layout object (the plinth) has no Layout delete, so the
+	 * Eraser refuses them here rather than skipping to a subject behind them.
+	 */
+	const eraseRefusal = (sourceKind: string): string | null =>
+		sourceKind === 'room-floor'
+			? 'A Room floor cannot be erased.'
+			: sourceKind === 'object'
+				? 'A plinth cannot be erased; Layout has no delete for its objects.'
+				: null;
+
 	return (query: StagePickQuery, context: StageAdapterContext): StageDomainPick | null => {
 		const evaluation = context.evaluation;
 		const css: [number, number] = [query.css[0] + evaluation.rect.left, query.css[1] + evaluation.rect.top];
@@ -445,12 +457,32 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 			return projected.kind === 'projected' && projected.visibility !== 'behind' ? projected.css : null;
 		};
 		const retained = pickIndexFor(result.plan, context);
+		const erasing = query.purpose === 'tool' && query.tool?.kind === 'erase';
+		type Ranked = { readonly fragment: PlanFragment; readonly pick: NonNullable<ReturnType<typeof cssDistanceToSurfaces>> };
+		let winner: Ranked | null = null;
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
 			const fragment = retained.fragments[index];
 			if (fragment === undefined) continue;
 			const surfaces = pickSurfacesOf(fragment, context.snapshot.domain.geometry, context.snapshot.domain.datumMeters);
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
+			if (winner === null) {
+				winner = { fragment, pick };
+				// Select keeps the locked Wall → Opening order. Only the Eraser, whose
+				// click removes what it names, lets an Opening in tolerance outrank its
+				// own host Wall: aiming at a window must not name the Wall around it.
+				if (!erasing || fragment.ref.sourceKind !== 'wall') break;
+				continue;
+			}
+			if (fragment.ref.sourceKind === 'opening' && winner.fragment.ref.sourceKind === 'wall'
+				&& context.snapshot.domain.geometry.walls?.some((wall) => wall.wallId === winner!.fragment.ref.sourceId
+					&& wall.openings.some((opening) => opening.openingId === fragment.ref.sourceId))) {
+				winner = { fragment, pick };
+				break;
+			}
+		}
+		if (winner !== null) {
+			const { fragment, pick } = winner;
 			const rayResult = pointerRay(css, evaluation, token);
 			let worldPoint = worldPointOnSurface(css, pick.surface, fragment, evaluation, token);
 			if (query.purpose === 'tool' && query.tool?.kind === 'measure') {
@@ -472,7 +504,7 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 				hit: { sourceId: fragment.ref.sourceId, sourceKind: fragment.ref.sourceKind,
 					generationId: fragment.ref.generationId, stream: fragment.ref.stream, subRef: fragment.ref.subRef,
 					worldPoint },
-				refusal: query.purpose === 'tool' && query.tool?.kind === 'erase' && fragment.ref.sourceKind === 'room-floor' ? 'A Room floor cannot be erased.' : null, depthMeters: surfaceDepth(rayResult.kind === 'ray' ? rayResult.ray : null, pick.surface),
+				refusal: query.purpose === 'tool' && query.tool?.kind === 'erase' ? eraseRefusal(fragment.ref.sourceKind) : null, depthMeters: surfaceDepth(rayResult.kind === 'ray' ? rayResult.ray : null, pick.surface),
 				planLayer: fragmentLayer(fragment), cssDistance: pick.distanceCss
 			};
 		}

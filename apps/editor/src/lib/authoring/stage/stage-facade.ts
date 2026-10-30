@@ -188,6 +188,44 @@ export type ResolvedStageHit =
 			readonly code: 'stale-evaluation' | 'invalid-css-point' | 'invalid-viewport' | 'degenerate-ray' | 'parallel' | 'behind' | 'outside-supported-domain' | 'invalid-frame';
 	  };
 
+/**
+ * R217.S10 — what one **host tool** (Measure, Eraser) finds at a Stage-local point.
+ *
+ * The host asks every binding that declares the tool in `hostTools` and arbitrates
+ * only between their winners, exactly as Select does. `datumPoint` is the raw
+ * (unsnapped) datum-plane point under the pointer, for a tool whose miss still
+ * names a place; the host computes no domain fact from it.
+ */
+export type StageHostToolTarget =
+	| { readonly kind: 'failed'; readonly code: 'stale-evaluation' | 'invalid-css-point' }
+	| { readonly kind: 'none'; readonly datumPoint: Vec3 | null }
+	| {
+			readonly kind: 'hit';
+			readonly adapterId: string;
+			readonly hit: StageSourceHit;
+			/** The winning domain's refusal for this tool, in its own words; `null` when eligible. */
+			readonly refusal: string | null;
+			readonly datumPoint: Vec3 | null;
+	  };
+
+/**
+ * A binding's answer to the Eraser for one of its own subjects: its existing Card
+ * delete action (with the planner-derived disclosure it already shows), or a
+ * refusal in the domain's words. The Eraser adds no rule and no planner.
+ */
+export type StageEraseAnswer =
+	| {
+			readonly kind: 'action';
+			readonly action: StageCardAction;
+			/**
+			 * The domain asks for its disclosure to be read first (a Wall whose removal
+			 * changes Rooms or hosted Openings): the Eraser shows `action.detail` at the
+			 * pointer and runs on a second click of the same subject.
+			 */
+			readonly confirm: boolean;
+	  }
+	| { readonly kind: 'refused'; readonly message: string };
+
 export type StageOverlayContribution = {
 	readonly id: string;
 	/**
@@ -384,6 +422,12 @@ export type StageFindEntry = {
 	readonly taskKind: string;
 	/** `dock` arms the tool from the bottom dock; `find` (default) invokes it. */
 	readonly home?: StageEntryHome;
+	/**
+	 * R217.S10 — the fixed dock key a `dock` entry fills (`ink`, `library`). The
+	 * dock's order, icon and shortcut belong to the slot; an entry with no slot is
+	 * an extra key after the Eraser.
+	 */
+	readonly slot?: 'ink' | 'library';
 	readonly order?: number;
 };
 
@@ -511,6 +555,12 @@ export type StageAdapterBinding = {
 	readonly ghosts?: (context: StageAdapterContext) => readonly StageGhostMesh[];
 	readonly pick?: (query: StagePickQuery, context: StageAdapterContext) => StageDomainPick | null;
 	readonly hostTools?: readonly string[];
+	/**
+	 * R217.S10 — the Eraser's one question to the winning domain: which existing
+	 * delete action removes this subject, or why it cannot be erased. Additive and
+	 * optional; a binding that declares `erase` but answers `null` erases nothing.
+	 */
+	readonly eraseAction?: (hit: StageSourceHit) => StageEraseAnswer | null;
 	/**
 	 * Claim a press for this adapter's open task. Returning `true` on `down` takes
 	 * the press from the host's navigation gesture; the same binding then receives
@@ -741,6 +791,10 @@ export type StageFacade = {
 	eligibleFragments(): readonly PlanFragment[];
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
 	resolvePick(query: StagePickQuery, toolOwner?: string | null): ResolvedStageHit;
+	/** R217.S10 — the one host-tool winner (with its owning adapter) at a Stage-local point. */
+	hostToolTarget(query: StageHitCandidate & { readonly tool: string; readonly coarse?: boolean }): StageHostToolTarget;
+	/** R217.S10 — the owning binding's erase answer for its own winner. */
+	eraseAnswer(adapterId: string, hit: StageSourceHit): StageEraseAnswer | null;
 	/** Admitted marks for the primary selection, in descriptor order, projected. */
 	marks(): readonly StageMarkView[];
 	/** The mark under a Stage-local CSS point, or `null`. */
@@ -1663,6 +1717,41 @@ export function createStageFacade(input: {
 				if (started !== null) perfMark('stage:pick', { elapsedMs: performance.now() - started, outcome: result.kind,
 					sourceId: result.kind === 'resolved' ? result.hit.sourceId : null,
 					sourceKind: result.kind === 'resolved' ? result.hit.sourceKind : null });
+			}
+		},
+		hostToolTarget(query) {
+			const evaluation = camera.evaluation();
+			if (evaluation === null || evaluationIdOf(evaluation) !== query.evaluationId) return { kind: 'failed', code: 'stale-evaluation' };
+			if (!query.css.every(Number.isFinite)) return { kind: 'failed', code: 'invalid-css-point' };
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return { kind: 'none', datumPoint: null };
+			try {
+				const context = handle.context;
+				const ray = context.ray([query.css[0] + evaluation.rect.left, query.css[1] + evaluation.rect.top]);
+				const plane = ray === null ? null : context.intersect(ray, datumWorkingPlane(context.snapshot.domain.datumMeters));
+				const datumPoint = plane?.kind === 'intersected' ? plane.worldPoint : null;
+				const winner = resolveStagePick(
+					{ evaluationId: query.evaluationId, css: query.css, purpose: 'tool', tool: { kind: query.tool, scope: 'host' }, ...(query.coarse === undefined ? {} : { coarse: query.coarse }) },
+					[...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })),
+					context,
+					evaluation.renderedReading === 'plan' ? 'plan' : '3d'
+				);
+				if (winner === null) return { kind: 'none', datumPoint };
+				return { kind: 'hit', adapterId: winner.adapterId, hit: winner.pick.hit, refusal: winner.pick.refusal, datumPoint };
+			} finally {
+				handle.end();
+			}
+		},
+		eraseAnswer(adapterId, hit) {
+			if (!isLive()) return null;
+			const entry = adapters.get(adapterId);
+			if (entry === undefined || !entry.contributions.hostTools?.includes('erase')) return null;
+			try {
+				return entry.contributions.eraseAction?.(hit) ?? null;
+			} catch {
+				// A throwing contributor erases nothing, as everywhere else in this host.
+				return null;
 			}
 		},
 		marks() {
