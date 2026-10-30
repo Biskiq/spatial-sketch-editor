@@ -25,6 +25,7 @@ import {
 	advanceViewport,
 	createViewportCameraState,
 	crossVec3,
+	dotVec3,
 	evaluateViewport,
 	intersectWorkingPlane,
 	multiplyMatrices,
@@ -91,11 +92,38 @@ function planeAt(origin: Vec3, extent: WorkingPlane['supportedLocalExtent'] = nu
 	return { originMeters: origin, normal: [0, 1, 0], yawRadians: 0, datumMeters: null, supportedLocalExtent: extent };
 }
 
+/**
+ * The signed screen basis in project world: the axes a pan and every mark are expressed in.
+ * Deliberately an independent oracle from the evaluation's own up/eye/target, not the
+ * production helper, so a wrong basis in `viewport.ts` cannot satisfy its own test.
+ */
+function screenBasis(evaluation: ViewportEvaluation): { right: Vec3; up: Vec3 } {
+	const backward = normalizeVec3(subtractVec3(evaluation.eye, evaluation.target));
+	if (backward === null) throw new Error('the evaluation has no view direction');
+	const right = normalizeVec3(crossVec3(evaluation.up, backward));
+	if (right === null) throw new Error('the evaluation has no screen right');
+	const up = normalizeVec3(crossVec3(backward, right));
+	if (up === null) throw new Error('the evaluation has no screen up');
+	return { right, up };
+}
+
 /** Screen-right in project world for an evaluation: the basis a pan is expressed in. */
 function screenRight(evaluation: ViewportEvaluation): Vec3 {
-	const right = normalizeVec3(crossVec3(evaluation.up, subtractVec3(evaluation.eye, evaluation.target)));
-	if (right === null) throw new Error('the evaluation has no screen basis');
-	return right;
+	return screenBasis(evaluation).right;
+}
+
+/** A pose from the 21-pose camera trace: four viewports collapse to a matrix sweep here. */
+function traceState(azimuthDegrees: number, elevationDegrees: number): ViewportCameraState {
+	return createViewportCameraState({
+		...IDENTITY,
+		pose: {
+			target: [3.5, 1.5, -1],
+			azimuthRadians: (azimuthDegrees * Math.PI) / 180,
+			elevationRadians: (elevationDegrees * Math.PI) / 180,
+			targetPlaneHeightMeters: 15.2
+		},
+		sceneRadiusMeters: 5
+	});
 }
 
 describe('view viewport', () => {
@@ -205,6 +233,149 @@ describe('view viewport', () => {
 });
 
 describe('view reading flip', () => {
+	it('keeps the signed screen basis continuous on every transition frame', () => {
+		// The D23 regression: near the overhead threshold the view basis used to turn
+		// 180°, so screen right and up reversed and a Wall on the left jumped to the
+		// right. Every elevation/azimuth pair from the camera trace is swept at the
+		// transition's own 601-frame sampling rate, in both directions.
+		for (const elevation of [5, 45, 88]) {
+			for (const azimuth of [0, 44, 46, 90, 179, 225, 315]) {
+				const camera = traceState(azimuth, elevation);
+				const flip = requestViewingIntent(camera, { kind: 'set-reading', reading: 'plan' }, 0);
+				if (flip.kind !== 'accepted') throw new Error(`expected an accepted flip, got ${flip.code}`);
+				let previous = screenBasis(evaluated(flip.state, RECT, 0));
+				for (let frame = 1; frame <= 600; frame += 1) {
+					const clock = (VIEWPORT_READING_TRANSITION_SECONDS * frame) / 600;
+					const current = screenBasis(evaluated(flip.state, RECT, clock));
+					expect(dotVec3(previous.right, current.right)).toBeGreaterThan(0.999);
+					expect(dotVec3(previous.up, current.up)).toBeGreaterThan(0.999);
+					previous = current;
+				}
+
+				// The reverse transition owns the same guarantee, including its onset.
+				const settled = advanceViewport(flip.state, VIEWPORT_READING_TRANSITION_SECONDS);
+				const back = requestViewingIntent(settled, { kind: 'set-reading', reading: '3d' }, 10);
+				if (back.kind !== 'accepted') throw new Error(`expected an accepted flip back, got ${back.code}`);
+				previous = screenBasis(evaluated(back.state, RECT, 10));
+				for (let frame = 1; frame <= 600; frame += 1) {
+					const clock = 10 + (VIEWPORT_READING_TRANSITION_SECONDS * frame) / 600;
+					const current = screenBasis(evaluated(back.state, RECT, clock));
+					expect(dotVec3(previous.right, current.right)).toBeGreaterThan(0.999);
+					expect(dotVec3(previous.up, current.up)).toBeGreaterThan(0.999);
+					previous = current;
+				}
+			}
+		}
+	});
+
+	it('keeps the signed Plan basis at the settled azimuth, including the quarter-turn tie', () => {
+		for (const azimuth of [0, 44, 45, 46, 90, 179, 180, 225, 315]) {
+			const camera = traceState(azimuth, 45);
+			const flip = requestViewingIntent(camera, { kind: 'set-reading', reading: 'plan' }, 0);
+			if (flip.kind !== 'accepted') throw new Error('expected an accepted flip');
+			const plan = evaluated(flip.state, RECT, VIEWPORT_READING_TRANSITION_SECONDS);
+			const settledAzimuth = nearestQuarterTurn((azimuth * Math.PI) / 180);
+			expect(plan.pose.azimuthRadians).toBe(settledAzimuth);
+			// Plan reads screen right +X at azimuth 0 and screen up −Z: O3's endpoint contract.
+			const basis = screenBasis(plan);
+			for (const [actual, expected] of [
+				[basis.right, [Math.cos(settledAzimuth), 0, -Math.sin(settledAzimuth)]],
+				[basis.up, [-Math.sin(settledAzimuth), 0, -Math.cos(settledAzimuth)]]
+			] as const) {
+				for (let axis = 0; axis < 3; axis += 1) expectClose(actual[axis], expected[axis], 1e-9);
+			}
+		}
+	});
+
+	it('does not reverse under a mid-transition reversal, fast switching or a reduced-motion cut', () => {
+		// One interruption, then every frame the session would realise: a reversal may
+		// extend or cancel a motion, but never turn the drawing over.
+		let camera = traceState(0, 45);
+		const first = requestViewingIntent(camera, { kind: 'set-reading', reading: 'plan' }, 0);
+		if (first.kind !== 'accepted') throw new Error('expected an accepted flip');
+		camera = advanceViewport(first.state, 0.3);
+		const reversed = requestViewingIntent(camera, { kind: 'set-reading', reading: '3d' }, 0.3);
+		if (reversed.kind !== 'accepted') throw new Error('expected an accepted reversal');
+		camera = reversed.state;
+		let previous = screenBasis(evaluated(camera, RECT, 0.3));
+		for (let frame = 1; frame <= 90; frame += 1) {
+			const clock = 0.3 + frame * 0.01;
+			camera = advanceViewport(camera, clock);
+			const current = screenBasis(evaluated(camera, RECT, clock));
+			expect(dotVec3(previous.right, current.right)).toBeGreaterThan(0.99);
+			expect(dotVec3(previous.up, current.up)).toBeGreaterThan(0.99);
+			previous = current;
+		}
+		expect(camera.reading).toBe('3d');
+
+		// Repeated fast switching, sampled at the frame rate the session evaluates at.
+		camera = traceState(0, 45);
+		let clock = 0;
+		let reading: '3d' | 'plan' = '3d';
+		previous = screenBasis(evaluated(camera));
+		for (let switchIndex = 0; switchIndex < 24; switchIndex += 1) {
+			clock += 0.05;
+			reading = reading === '3d' ? 'plan' : '3d';
+			const next = requestViewingIntent(camera, { kind: 'set-reading', reading }, clock);
+			if (next.kind !== 'accepted') throw new Error('expected an accepted switch');
+			camera = next.state;
+			for (let step = 0; step < 5; step += 1) {
+				const sample = clock + 0.01 * (step + 1);
+				camera = advanceViewport(camera, sample);
+				const current = screenBasis(evaluated(camera, RECT, sample));
+				expect(dotVec3(previous.right, current.right)).toBeGreaterThan(0.99);
+				expect(dotVec3(previous.up, current.up)).toBeGreaterThan(0.99);
+				previous = current;
+			}
+		}
+
+		// Reduced motion dates the request before its own transition, so the next frame
+		// is already the endpoint: a cut, never a shortened tween and never a roll. A cut
+		// may change pitch; it may not turn the drawing over, and it lands on Plan's
+		// signed endpoint basis.
+		const reduced = traceState(0, 45);
+		const before = screenBasis(evaluated(reduced));
+		const cut = requestViewingIntent(
+			reduced,
+			{ kind: 'set-reading', reading: 'plan' },
+			20 - VIEWPORT_READING_TRANSITION_SECONDS - 1
+		);
+		if (cut.kind !== 'accepted') throw new Error('expected an accepted cut');
+		const endpoint = evaluated(cut.state, RECT, 20);
+		expect(endpoint.projectionKind).toBe('plan-orthographic');
+		expect(endpoint.orthographicWeight).toBe(1);
+		const cutBasis = screenBasis(endpoint);
+		expect(dotVec3(before.right, cutBasis.right)).toBeGreaterThan(0.999);
+		expectClose(cutBasis.up[2], -1, 1e-9);
+	});
+
+	it('keeps target, scale and remembered elevation across twenty settled cycles', () => {
+		let camera = traceState(0, 45);
+		let clock = 0;
+		for (let cycle = 0; cycle < 20; cycle += 1) {
+			const plan = requestViewingIntent(camera, { kind: 'set-reading', reading: 'plan' }, clock);
+			if (plan.kind !== 'accepted') throw new Error('expected an accepted flip');
+			clock += VIEWPORT_READING_TRANSITION_SECONDS + 0.001;
+			camera = advanceViewport(plan.state, clock);
+			expect(camera.reading).toBe('plan');
+			expect(camera.pose.target).toEqual([3.5, 1.5, -1]);
+			expect(camera.pose.targetPlaneHeightMeters).toBe(15.2);
+			const settledPlan = evaluated(camera, RECT, clock);
+			expectClose(screenBasis(settledPlan).right[0], 1, 1e-9);
+
+			clock += 1;
+			const back = requestViewingIntent(camera, { kind: 'set-reading', reading: '3d' }, clock);
+			if (back.kind !== 'accepted') throw new Error('expected an accepted flip back');
+			clock += VIEWPORT_READING_TRANSITION_SECONDS + 0.001;
+			camera = advanceViewport(back.state, clock);
+			expect(camera.reading).toBe('3d');
+			expectClose(camera.pose.elevationRadians, Math.PI / 4, 1e-12);
+			expect(camera.pose.target).toEqual([3.5, 1.5, -1]);
+			expect(camera.pose.targetPlaneHeightMeters).toBe(15.2);
+			clock += 1;
+		}
+	});
+
 	it('starts exactly at the settled matrices and settles at the exact Plan endpoint', () => {
 		const camera = state();
 		const before = evaluated(camera);

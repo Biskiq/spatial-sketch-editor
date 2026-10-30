@@ -451,10 +451,15 @@ export function nearestQuarterTurn(azimuthRadians: number): number {
 	return detent * quadrant;
 }
 
-/** The view "up" vector for a reading: project +Y in 3D, the plan's own north at the top-down endpoint. */
+/**
+ * The view "up" vector for a reading: project +Y in 3D, the plan's own north at the
+ * top-down endpoint. Plan's up is the **limit** the projected world +Y approaches as
+ * the view passes overhead, not its negation: at azimuth 0, Plan reads right +X and up
+ * −Z, so flipping the reading never rolls the drawing 180°.
+ */
 function upForReading(reading: ViewportReading, azimuthRadians: number): Vec3 {
 	if (reading === '3d') return [0, 1, 0];
-	return [Math.sin(azimuthRadians), 0, Math.cos(azimuthRadians)];
+	return [-Math.sin(azimuthRadians), 0, -Math.cos(azimuthRadians)];
 }
 
 /**

@@ -253,10 +253,11 @@ describe('R217.S09 — native form marks', () => {
 		// offset, and the host takes the first descriptor that hits. A fixed offset
 		// would collide again at a quarter turn, so the offset follows the projected
 		// Move axis and always lies opposite the Depth ray.
-		// Plan's screen mapping: +Z is up, as in the Plan reading.
+		// Plan's screen mapping: right +X, up −Z (screen y grows with +Z), as in the
+		// Plan reading's endpoint contract.
 		const project = (point: Vec3): readonly [number, number] => [
 			640 + point[0] * 100,
-			360 - point[2] * 100
+			360 + point[2] * 100
 		];
 		for (const yaw of [0, Math.PI / 2, -Math.PI / 2, Math.PI / 4]) {
 			const entity = squareForm({ rotation: [0, yaw, 0] });
@@ -267,7 +268,7 @@ describe('R217.S09 — native form marks', () => {
 				project,
 				gapPx: 24
 			});
-			if (yaw === 0) expect(screenMove.offset[1]).toBeCloseTo(24, 6);
+			if (yaw === 0) expect(screenMove.offset[1]).toBeCloseTo(-24, 6);
 			const descriptors = formMarkDescriptors({ entity, measurement, screenMove });
 			const move = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.move)!;
 			const width = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.width)!;
