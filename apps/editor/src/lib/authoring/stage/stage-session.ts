@@ -32,6 +32,7 @@ import {
 	type StageDraftingPatch,
 	type StageDraftingState
 } from './stage-drafting';
+import { createStageHeightSheet, type StageHeightSheet } from './stage-height-sheet';
 
 export type SessionEpoch = string;
 
@@ -234,6 +235,11 @@ export type StageSession = {
 	 */
 	drafting(): StageDraftingState;
 	setDrafting(patch: StageDraftingPatch): StageDraftingState;
+	/**
+	 * The one Height Sheet height fact. Session view state: a replacement resets
+	 * it, it is never serialized and it never reaches history or Save.
+	 */
+	heightSheet(): StageHeightSheet;
 	taskLifecycle(): TaskLifecycle | null;
 	resumeTask(validate: (task: StageTask, current: StageReadSnapshot) => TaskResumeOutcome): TaskResumeOutcome;
 	/** Invalidates lens/task-bound asynchronous writers without replacing accepted content. */
@@ -397,6 +403,10 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 	// Grid/Snap are creator view state, not project state: they survive a content
 	// change and a replacement exactly as the lens does.
 	let draftingValue: StageDraftingState = STAGE_DRAFTING_DEFAULTS;
+	// One Sheet per session, created here rather than per facade mount: a lens
+	// exit rebuilds adapters but must not lose the creator's height. A
+	// replacement resets the Sheet, and its subscribers stay registered.
+	const heightSheetValue = createStageHeightSheet();
 	let taskStatus: 'active' | 'inactive' = 'active';
 	let writerGeneration = 0;
 	let taskChoiceGeneration = 0;
@@ -512,6 +522,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			draftingValue = applyDraftingPatch(draftingValue, patch);
 			return draftingValue;
 		},
+		heightSheet: () => heightSheetValue,
 		writerGeneration: () => writerGeneration,
 		taskChoiceGeneration: () => taskChoiceGeneration,
 		changeLens(next) {
@@ -789,6 +800,7 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			selectionValue = EMPTY_SELECTION;
 			hoverValue = null;
 			task = null;
+			heightSheetValue.reset();
 			current = admitted;
 			return {
 				token: token(),

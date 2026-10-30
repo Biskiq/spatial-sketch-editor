@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
+import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
 const harness = vi.hoisted(() => ({ document: null as unknown, facade: null as unknown, host: null as unknown }));
 vi.mock('$lib/authoring/stage/stage-facade', async (original) => {
 	const actual = await original<typeof import('$lib/authoring/stage/stage-facade')>();
@@ -43,7 +44,11 @@ import {
 const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
-import { formatMeters, metersPerCssPixelForScaleRatio } from '$lib/authoring/stage/stage-drafting';
+import {
+	draftingSnapIncrementMeters,
+	formatMeters,
+	metersPerCssPixelForScaleRatio
+} from '$lib/authoring/stage/stage-drafting';
 import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { shapeReadingSurface } from '$lib/authoring/adapters/scene/shape/reading';
@@ -1003,5 +1008,266 @@ describe('R217.S05 — the drafting configuration and scale bar', () => {
 		expect(bar).not.toBeNull();
 		expect(bar!.getAttribute('aria-label')).toMatch(/^Scale bar: [0-9.]+ m$/);
 		expect(bar!.querySelector('.rule')).not.toBeNull();
+	});
+});
+
+describe('R217.S06 — mounted Height Sheet', () => {
+	const sheetNode = () => target.querySelector<HTMLElement>('[data-stage-height-sheet]');
+	const sliderNode = () => sheetNode()?.querySelector<HTMLElement>('[role="slider"]') ?? null;
+	const height = () => facade().session.heightSheet().height();
+	const pins = () => facade().session.heightSheet().pins();
+	const canvasProbe = () => target.querySelector<HTMLElement>('[data-testid="stage-canvas"]');
+	const snapToggle = () => target.querySelector<HTMLButtonElement>('[data-drafting-snap]')!;
+	function trackPointer(type: string, clientY: number, pointerId = 7): void {
+		const track = sliderNode();
+		if (track === null) throw new Error('the Height Sheet slider is not mounted');
+		const event = new MouseEvent(type, {
+			bubbles: true,
+			cancelable: true,
+			clientX: RECT.left + RECT.width / 2,
+			clientY
+		});
+		Object.defineProperty(event, 'pointerId', { value: pointerId });
+		Object.defineProperty(event, 'pointerType', { value: 'touch' });
+		track.dispatchEvent(event);
+	}
+
+	it('steps the one height fact without an F4 entry, dirty history or changed Save bytes', async () => {
+		const host = harness.host as StageAcceptanceHost;
+		const sheet = target.querySelector<HTMLElement>('[data-stage-height-sheet]');
+		expect(sheet).not.toBeNull();
+		const slider = sheet!.querySelector<HTMLElement>('[role="slider"]');
+		expect(slider).not.toBeNull();
+		expect(slider!.getAttribute('aria-valuenow')).toBe('1.2');
+
+		const before = facade().snapshot().canonicalJson;
+		const historyBefore = host.history();
+		const saveBefore = await captureUnitSave({
+			snapshot: host.coordinator().acceptedSnapshot(),
+			operationId: 'height-before',
+			precondition: { kind: 'create-only' }
+		});
+
+		slider!.focus();
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await frame();
+		const raised = facade().session.heightSheet().height();
+		expect(raised).toBeGreaterThan(1.2);
+		expect(Number(slider!.getAttribute('aria-valuenow'))).toBeCloseTo(raised, 6);
+
+		// Pins and a drag are the same session fact, not a source edit.
+		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		await frame();
+		expect(pins()).toHaveLength(1);
+		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+		await frame();
+		expect(pins()).toEqual([]);
+		const max = Number(slider!.getAttribute('aria-valuemax'));
+		const fromY = RECT.bottom - (height() / max) * RECT.height;
+		trackPointer('pointerdown', fromY);
+		await frame();
+		trackPointer('pointermove', fromY + 48);
+		await frame();
+		trackPointer('pointerup', fromY + 48);
+		await frame();
+		expect(height()).toBeLessThan(raised);
+		// The slider is still focused after the release, so the plane must remain
+		// up instead of starting its hide tail behind a focused control.
+		expect(canvasProbe()?.dataset.heightPlane).toBe('true');
+
+		// The Sheet is view state: no install, no history entry, and Save is the
+		// same canonical bytes as before the step.
+		expect(facade().snapshot().canonicalJson).toBe(before);
+		expect(host.history()).toEqual(historyBefore);
+		const saveAfter = await captureUnitSave({
+			snapshot: host.coordinator().acceptedSnapshot(),
+			operationId: 'height-after',
+			precondition: { kind: 'create-only' }
+		});
+		expect(saveBefore.kind).toBe('captured');
+		expect(saveAfter.kind).toBe('captured');
+		if (saveBefore.kind === 'captured' && saveAfter.kind === 'captured') {
+			expect(saveAfter.capture.canonicalJson).toBe(saveBefore.capture.canonicalJson);
+		}
+	});
+
+	it('drops a mounted pin when the session fact resets', async () => {
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		await frame();
+		expect(pins()).toHaveLength(1);
+		expect(
+			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')
+		).not.toBeNull();
+
+		facade().session.heightSheet().reset();
+		await frame();
+		expect(pins()).toEqual([]);
+		expect(
+			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')
+		).toBeNull();
+	});
+
+	it.each(['lostpointercapture', 'blur'] as const)(
+		'stops a drag when %s interrupts the gesture',
+		async (interruption) => {
+			const slider = sliderNode();
+			expect(slider).not.toBeNull();
+			const max = Number(slider!.getAttribute('aria-valuemax'));
+			const fromY = RECT.bottom - (height() / max) * RECT.height;
+			trackPointer('pointerdown', fromY);
+			await frame();
+			const stopped = height();
+
+			if (interruption === 'lostpointercapture') {
+				trackPointer('lostpointercapture', fromY);
+			} else {
+				window.dispatchEvent(new Event('blur'));
+			}
+			await frame();
+			trackPointer('pointermove', fromY + 80);
+			await frame();
+
+			expect(height()).toBeCloseTo(stopped, 6);
+			expect(sheetNode()!.querySelector('.snap')).toBeNull();
+		}
+	);
+
+	it('keeps a drag with its initiating pointer through secondary contacts', async () => {
+		const slider = sliderNode()!;
+		const max = Number(slider.getAttribute('aria-valuemax'));
+		const fromY = RECT.bottom - (height() / max) * RECT.height;
+		const capture = vi.spyOn(HTMLElement.prototype, 'setPointerCapture');
+		trackPointer('pointerdown', fromY, 7);
+		await frame();
+		const started = height();
+
+		trackPointer('pointerdown', fromY + 140, 8);
+		trackPointer('pointermove', fromY + 140, 8);
+		trackPointer('pointerup', fromY + 140, 8);
+		await frame();
+		expect(capture.mock.calls.map(([id]) => id)).toEqual([7]);
+		expect(height()).toBeCloseTo(started, 6);
+
+		trackPointer('pointermove', fromY + 48, 7);
+		await frame();
+		const moved = height();
+		expect(moved).not.toBeCloseTo(started, 4);
+		trackPointer('pointerup', fromY + 48, 7);
+		trackPointer('pointermove', fromY + 120, 7);
+		await frame();
+		expect(height()).toBeCloseTo(moved, 6);
+	});
+
+	it('invalidates a live control drag when session.replace resets to the same height', async () => {
+		const slider = sliderNode()!;
+		const max = Number(slider.getAttribute('aria-valuemax'));
+		const fromY = RECT.bottom - (height() / max) * RECT.height;
+		trackPointer('pointerdown', fromY, 7);
+		await frame();
+		expect(height()).toBeCloseTo(1.2, 6);
+
+		// This is the route's actual replacement seam: activate() calls
+		// session.replace(snapshot) before rebuilding the facade.
+		facade().session.replace({ sessionEpoch: 'height-sheet-replacement' } as unknown as StageReadSnapshot);
+		await frame();
+		trackPointer('pointermove', fromY + 120, 7);
+		await frame();
+		expect(height()).toBeCloseTo(1.2, 6);
+		expect(sheetNode()!.querySelector('.snap')).toBeNull();
+	});
+
+	it('steps by the drafting increment, falls back to 0.1 m, jumps ticks and names the nearest', async () => {
+		// The route reads the merged tick set after the binding exists; force that
+		// read so the aria name is the owner's Floor, not an empty placeholder.
+		facade().heightTicks();
+		await frame();
+		const slider = sliderNode();
+		expect(slider).not.toBeNull();
+		expect(slider!.getAttribute('aria-valuetext')).toMatch(/metres, nearest Floor/);
+		const step =
+			draftingSnapIncrementMeters(facade().session.drafting(), currentGridMinor()) ?? 0.1;
+		const start = height();
+		const max = Number(slider!.getAttribute('aria-valuemax'));
+		slider!.focus();
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await frame();
+		expect(height()).toBeCloseTo(Math.min(max, start + step), 6);
+
+		// Snap off: the same key steps a fixed 0.1 m.
+		snapToggle().click();
+		await frame();
+		const beforeFallback = height();
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+		await frame();
+		expect(height()).toBeCloseTo(Math.max(0, beforeFallback - 0.1), 6);
+
+		// Page Up/Down and Home walk the owner ticks and pins, not an invented grid.
+		facade().session.heightSheet().set(0.75, 'key');
+		await frame();
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		await frame();
+		facade().session.heightSheet().set(0.4, 'key');
+		await frame();
+		slider!.focus();
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true }));
+		await frame();
+		expect(height()).toBeCloseTo(0.75, 6);
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }));
+		await frame();
+		expect(height()).toBeCloseTo(0, 6);
+		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+		await frame();
+		expect(height()).toBe(0);
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+		await frame();
+		expect(pins()).toEqual([]);
+	});
+
+	it('hides the Sheet and its plane in Experience and returns the session height', async () => {
+		facade().session.heightSheet().set(0.8, 'key');
+		await frame();
+		const slider = sliderNode();
+		expect(slider).not.toBeNull();
+		slider!.focus();
+		await frame();
+		expect(canvasProbe()?.dataset.heightMeters).toBe('0.8');
+		expect(canvasProbe()?.dataset.heightPlane).toBe('true');
+
+		target.querySelector<HTMLButtonElement>('[data-testid="lens-experience"]')!.click();
+		await frame();
+		expect(sheetNode()).toBeNull();
+		expect(canvasProbe()?.dataset.heightMeters ?? 'none').toBe('none');
+		expect(canvasProbe()?.dataset.heightPlane ?? 'false').toBe('false');
+		expect(height()).toBeCloseTo(0.8, 6);
+
+		target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
+		await frame();
+		expect(sheetNode()).not.toBeNull();
+		expect(Number(sliderNode()!.getAttribute('aria-valuenow'))).toBeCloseTo(0.8, 6);
+		// The unmount published inactive before the lens returned; no tail survives
+		// the switch and the plane starts hidden until the Sheet is activated again.
+		expect(canvasProbe()?.dataset.heightPlane).toBe('false');
+	});
+
+	it('keeps a 44 px coarse target and names the snap while dragging', async () => {
+		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
+		expect(source).toContain('@media (pointer: coarse)');
+		expect(source).toMatch(/width:\s*44px/);
+		expect(source).toMatch(/min-width:\s*44px/);
+		expect(source).toMatch(/min-height:\s*44px/);
+
+		const slider = sliderNode();
+		expect(slider).not.toBeNull();
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		await frame();
+		const max = Number(slider!.getAttribute('aria-valuemax'));
+		const pinY = RECT.bottom - (height() / max) * RECT.height;
+		trackPointer('pointerdown', pinY);
+		await frame();
+		const snap = sheetNode()!.querySelector<HTMLElement>('.snap');
+		expect(snap?.textContent ?? '').toContain('Snapped to Pin');
+		trackPointer('pointerup', pinY);
+		await frame();
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
 	});
 });
