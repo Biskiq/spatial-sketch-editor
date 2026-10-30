@@ -36,6 +36,11 @@ type PinListener = {
 	readonly onPins: (pins: readonly number[]) => void;
 };
 
+type ResetListener = {
+	readonly role: string;
+	readonly onReset: () => void;
+};
+
 export type StageHeightSheet = {
 	/** Metres above the floor datum. */
 	height(): number;
@@ -63,6 +68,8 @@ export type StageHeightSheet = {
 	 * height notification alone.
 	 */
 	subscribePins(role: string, onPins: (pins: readonly number[]) => void): () => void;
+	/** Observe replacement resets even when height and pins already match defaults. */
+	subscribeReset(role: string, onReset: () => void): () => void;
 	/** A project replacement's reset: datum height, no pins, same subscription. */
 	reset(): void;
 };
@@ -97,6 +104,7 @@ export function createStageHeightSheet(
 	let pinsValue: number[] = [];
 	const listeners: HeightListener[] = [];
 	const pinListeners: PinListener[] = [];
+	const resetListeners: ResetListener[] = [];
 
 	function clamp(value: number): number {
 		return Math.min(maximum, Math.max(0, value));
@@ -167,12 +175,27 @@ export function createStageHeightSheet(
 				if (index >= 0) pinListeners.splice(index, 1);
 			};
 		},
+		subscribeReset(role, onReset) {
+			const listener: ResetListener = { role, onReset };
+			resetListeners.push(listener);
+			return () => {
+				const index = resetListeners.indexOf(listener);
+				if (index >= 0) resetListeners.splice(index, 1);
+			};
+		},
 		reset() {
 			const previous = heightValue;
 			heightValue = Math.min(initial, maximum);
 			pinsValue = [];
 			notify(previous);
 			notifyPins();
+			for (const listener of [...resetListeners]) {
+				try {
+					listener.onReset();
+				} catch {
+					// One view's interrupted gesture must not prevent other reset observers.
+				}
+			}
 		}
 	};
 }

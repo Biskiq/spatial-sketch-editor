@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
+import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
 const harness = vi.hoisted(() => ({ document: null as unknown, facade: null as unknown, host: null as unknown }));
 vi.mock('$lib/authoring/stage/stage-facade', async (original) => {
 	const actual = await original<typeof import('$lib/authoring/stage/stage-facade')>();
@@ -1017,7 +1018,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 	const pins = () => facade().session.heightSheet().pins();
 	const canvasProbe = () => target.querySelector<HTMLElement>('[data-testid="stage-canvas"]');
 	const snapToggle = () => target.querySelector<HTMLButtonElement>('[data-drafting-snap]')!;
-	function trackPointer(type: string, clientY: number): void {
+	function trackPointer(type: string, clientY: number, pointerId = 7): void {
 		const track = sliderNode();
 		if (track === null) throw new Error('the Height Sheet slider is not mounted');
 		const event = new MouseEvent(type, {
@@ -1026,7 +1027,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 			clientX: RECT.left + RECT.width / 2,
 			clientY
 		});
-		Object.defineProperty(event, 'pointerId', { value: 7 });
+		Object.defineProperty(event, 'pointerId', { value: pointerId });
 		Object.defineProperty(event, 'pointerType', { value: 'touch' });
 		track.dispatchEvent(event);
 	}
@@ -1118,7 +1119,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 			const stopped = height();
 
 			if (interruption === 'lostpointercapture') {
-				slider!.dispatchEvent(new Event('lostpointercapture', { bubbles: true }));
+				trackPointer('lostpointercapture', fromY);
 			} else {
 				window.dispatchEvent(new Event('blur'));
 			}
@@ -1130,6 +1131,50 @@ describe('R217.S06 — mounted Height Sheet', () => {
 			expect(sheetNode()!.querySelector('.snap')).toBeNull();
 		}
 	);
+
+	it('keeps a drag with its initiating pointer through secondary contacts', async () => {
+		const slider = sliderNode()!;
+		const max = Number(slider.getAttribute('aria-valuemax'));
+		const fromY = RECT.bottom - (height() / max) * RECT.height;
+		const capture = vi.spyOn(HTMLElement.prototype, 'setPointerCapture');
+		trackPointer('pointerdown', fromY, 7);
+		await frame();
+		const started = height();
+
+		trackPointer('pointerdown', fromY + 140, 8);
+		trackPointer('pointermove', fromY + 140, 8);
+		trackPointer('pointerup', fromY + 140, 8);
+		await frame();
+		expect(capture.mock.calls.map(([id]) => id)).toEqual([7]);
+		expect(height()).toBeCloseTo(started, 6);
+
+		trackPointer('pointermove', fromY + 48, 7);
+		await frame();
+		const moved = height();
+		expect(moved).not.toBeCloseTo(started, 4);
+		trackPointer('pointerup', fromY + 48, 7);
+		trackPointer('pointermove', fromY + 120, 7);
+		await frame();
+		expect(height()).toBeCloseTo(moved, 6);
+	});
+
+	it('invalidates a live control drag when session.replace resets to the same height', async () => {
+		const slider = sliderNode()!;
+		const max = Number(slider.getAttribute('aria-valuemax'));
+		const fromY = RECT.bottom - (height() / max) * RECT.height;
+		trackPointer('pointerdown', fromY, 7);
+		await frame();
+		expect(height()).toBeCloseTo(1.2, 6);
+
+		// This is the route's actual replacement seam: activate() calls
+		// session.replace(snapshot) before rebuilding the facade.
+		facade().session.replace({ sessionEpoch: 'height-sheet-replacement' } as unknown as StageReadSnapshot);
+		await frame();
+		trackPointer('pointermove', fromY + 120, 7);
+		await frame();
+		expect(height()).toBeCloseTo(1.2, 6);
+		expect(sheetNode()!.querySelector('.snap')).toBeNull();
+	});
 
 	it('steps by the drafting increment, falls back to 0.1 m, jumps ticks and names the nearest', async () => {
 		// The route reads the merged tick set after the binding exists; force that

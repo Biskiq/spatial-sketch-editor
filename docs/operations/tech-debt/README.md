@@ -35,6 +35,23 @@ separately approved the TD-13 Index correction. The exact scope and provenance a
 
 ---
 
+## TD-15 — Height Sheet hint repetition is shared across Stage sessions
+
+Status        open
+Found         2026-10-30, independent S06 review
+Owner         T1 / R217.S06 follow-up
+Symptom       After the one-time found-tick hint has appeared in one Stage session, a later distinct
+              Stage session may not show the hint even when its own first found tick appears.
+Reproduce     In one module lifetime, mount Stage A and trigger the found-tick hint; unmount it,
+              then mount a fresh Stage B with a found tick. The module-scoped flag suppresses B's hint.
+Root cause    The hint-once flag is module-scoped rather than owned by the Stage session lifecycle.
+Why green     Existing acceptance checks cover the hint within one Stage and do not create a second
+              Stage session in the same module lifetime.
+Fix options   Scope the flag to a Stage session/host, or explicitly define the hint as application-wide.
+              Do not change the product's hint cadence without the owning T1 decision.
+Then add      A mounted two-session regression that proves the selected cadence and teardown behavior.
+Evidence      R217.S06 `evidence/independent-final-review.md` (P3 residual).
+
 ## Fixed
 
 ## TD-13 — Index selection passes a reactive Plan reference to immutable selection

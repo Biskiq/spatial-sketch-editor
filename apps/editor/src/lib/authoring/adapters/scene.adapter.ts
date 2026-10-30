@@ -1334,16 +1334,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	 * The Height Sheet's found surfaces this domain owns: the tops of
 	 * floor-standing entities. "Floor-standing" is measured, not authored: an
 	 * entity whose evaluated bounds start within 5 cm of the datum is standing on
-	 * it. No second evaluation is introduced — primitives use their analytic
-	 * bounds, models the drawn bounds the Scene pick source already measured, and
-	 * forms their one native-form evaluation.
+	 * it. Prefer the Scene pick source's evaluated bounds for every mounted entity.
+	 * Analytic/evaluated fallbacks are used only where their local bounds remain
+	 * valid in world space; tilted entities without drawn bounds have no tick.
 	 */
 	function heightTicksFor(adapterContext: StageAdapterContext): readonly StageHeightTick[] {
 		const datum = adapterContext.snapshot.domain.datumMeters;
 		const ticks: StageHeightTick[] = [];
 		for (const entity of stageScene(adapterContext.snapshot).entities) {
 			let bounds: { readonly min: Vec3; readonly max: Vec3 } | null = null;
-			if (entity.kind === 'form') {
+			const drawnBounds = adapterContext.sceneBounds(entity.id);
+			if (drawnBounds !== null) {
+				bounds = drawnBounds;
+			} else if (entity.kind === 'form' && isYawOnly(entity.rotation)) {
 				const mesh = evaluateFormMesh(entity.form);
 				if (mesh !== null) {
 					bounds = {
@@ -1359,10 +1362,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						] as Vec3
 					};
 				}
-			} else if (entity.kind === 'primitive') {
+			} else if (entity.kind === 'primitive' && isYawOnly(entity.rotation)) {
 				bounds = primitiveBounds(entity);
-			} else if (entity.kind === 'model') {
-				bounds = adapterContext.sceneBounds(entity.id);
 			}
 			if (bounds === null) continue;
 			if (Math.abs(bounds.min[1] - datum) > 0.05) continue;
@@ -1372,6 +1373,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			ticks.push({ kind: 'found', heightMeters, label: name });
 		}
 		return ticks;
+	}
+
+	function isYawOnly(rotation: Vec3): boolean {
+		return Math.abs(rotation[0]) < 1e-8 && Math.abs(rotation[2]) < 1e-8;
 	}
 
 	return {

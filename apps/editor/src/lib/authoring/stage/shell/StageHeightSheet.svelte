@@ -30,7 +30,8 @@
 		onSetHeight,
 		onAddPin,
 		onRemovePin,
-		onActiveChange
+		onActiveChange,
+		onResetSubscribe
 	}: {
 		heightMeters: number;
 		ticks: readonly StageHeightTick[];
@@ -43,6 +44,7 @@
 		onAddPin: () => void;
 		onRemovePin: (heightMeters: number) => void;
 		onActiveChange: (active: boolean) => void;
+		onResetSubscribe: (onReset: () => void) => () => void;
 	} = $props();
 
 	let active = false;
@@ -134,6 +136,13 @@
 	}
 
 	function onPointerDown(event: PointerEvent): void {
+		// One press owns the Sheet until its matching terminal event. A secondary
+		// contact must not take over capture or end the active drag.
+		if (dragPointerId !== null) {
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
 		if (event.pointerType === 'mouse' && event.button !== 0) return;
 		event.preventDefault();
 		event.stopPropagation();
@@ -145,9 +154,14 @@
 	}
 
 	function onPointerMove(event: PointerEvent): void {
-		if (!dragging) return;
+		if (!dragging || event.pointerId !== dragPointerId) return;
 		event.preventDefault();
 		applyDrag(event.clientY, event.altKey);
+	}
+
+	function onPointerEnd(event: PointerEvent): void {
+		if (event.pointerId !== dragPointerId) return;
+		finishDrag();
 	}
 
 	/**
@@ -177,11 +191,13 @@
 		const onVisibility = (): void => {
 			if (document.visibilityState === 'hidden') finishDrag();
 		};
+		const unsubscribeReset = onResetSubscribe(finishDrag);
 		window.addEventListener('blur', onBlur);
 		document.addEventListener('visibilitychange', onVisibility);
 		return () => {
 			window.removeEventListener('blur', onBlur);
 			document.removeEventListener('visibilitychange', onVisibility);
+			unsubscribeReset();
 			// The lens switch unmounts the Sheet; no active tail may survive it.
 			dragging = false;
 			dragPointerId = null;
@@ -287,9 +303,9 @@
 			aria-valuetext={valueText}
 			onpointerdown={onPointerDown}
 			onpointermove={onPointerMove}
-			onpointerup={finishDrag}
-			onpointercancel={finishDrag}
-			onlostpointercapture={finishDrag}
+			onpointerup={onPointerEnd}
+			onpointercancel={onPointerEnd}
+			onlostpointercapture={onPointerEnd}
 			onkeydown={onKeydown}
 		>
 			<span class="rail" aria-hidden="true"></span>

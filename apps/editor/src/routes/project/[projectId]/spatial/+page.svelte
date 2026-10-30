@@ -3502,6 +3502,7 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 							onAddPin={addHeightPin}
 							onRemovePin={removeHeightPin}
 							onActiveChange={setHeightPlaneActive}
+							onResetSubscribe={(onReset) => heightSheet.subscribeReset('height-sheet-control', onReset)}
 						/>
 					</div>
 				{/if}
