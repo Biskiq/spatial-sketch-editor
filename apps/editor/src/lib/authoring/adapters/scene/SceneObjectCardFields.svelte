@@ -8,7 +8,7 @@
 	 * the first Escape restores the accepted text, a second Escape leaves the key
 	 * to the shell (which clears the selection), and blur never commits.
 	 */
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import {
 		sceneObjectCardController,
@@ -23,15 +23,14 @@
 		alive = false;
 	});
 
-	let version = $state(0);
 	let busy = $state(false);
-	let controller: SceneObjectCardController | null = $derived.by(() => {
-		void version;
-		const primary = services.stage.selectionState().primary;
-		return primary?.domain === 'scene' && primary.subject.kind === 'entity'
-			? sceneObjectCardController(services, primary.subject.id)
-			: null;
-	});
+	/**
+	 * One controller per selected entity. The controller reads the live accepted
+	 * source on every `fields()` call, so a surface notification only needs to
+	 * re-sync the inputs; rebuilding it would discard every uncommitted draft.
+	 */
+	let controller = $state<SceneObjectCardController | null>(null);
+	let activeEntityId: string | null = null;
 
 	let values = $state<Record<SceneObjectCardFieldId, string>>({
 		'position-x': '',
@@ -42,6 +41,13 @@
 	/** The planner refusal currently under each field, held as component state. */
 	let errors = $state<Partial<Record<SceneObjectCardFieldId, string | null>>>({});
 
+	function resetFields(): void {
+		for (const id of SCENE_OBJECT_CARD_FIELD_IDS) {
+			values[id] = '';
+			errors[id] = null;
+		}
+	}
+
 	function sync(): void {
 		const current = controller;
 		if (current === null) return;
@@ -51,16 +57,31 @@
 		}
 	}
 
-	$effect(() => {
-		void controller;
+	/**
+	 * A subject change owns a fresh draft map; an ordinary surface notification
+	 * keeps the controller and drafts while refreshing accepted values beneath them.
+	 */
+	function reconcile(): void {
+		const primary = services.stage.selectionState().primary;
+		const nextEntityId =
+			primary?.domain === 'scene' && primary.subject.kind === 'entity'
+				? primary.subject.id
+				: null;
+		if (nextEntityId !== activeEntityId) {
+			activeEntityId = nextEntityId;
+			controller = nextEntityId === null ? null : sceneObjectCardController(services, nextEntityId);
+			resetFields();
+		} else if (nextEntityId !== null && controller === null) {
+			// The subject was selected before its Scene row was live. Retry when the
+			// surface reports accepted state rather than waiting for a selection change.
+			controller = sceneObjectCardController(services, nextEntityId);
+		}
 		sync();
-	});
+	}
 
 	$effect(() => {
-		const unsubscribe = services.stage.onAdaptersChanged(() => {
-			version += 1;
-		});
-		return unsubscribe;
+		untrack(reconcile);
+		return services.stage.onAdaptersChanged(() => untrack(reconcile));
 	});
 
 	function errorOf(id: SceneObjectCardFieldId): string | null {
@@ -89,13 +110,9 @@
 		try {
 			const outcome = await current.commit(id);
 			if (!alive) return;
-			if (outcome.kind === 'accepted' || outcome.kind === 'no-op') {
-				// The accepted install rebuilds the Card; refresh both the controller
-				// and the field text from the new accepted source.
-				version += 1;
-			}
-			// Always republish the controller's field state: a refusal must stay in
-			// the field that caused it, and a success must show the accepted value.
+			// The controller reads the accepted source live, so a success needs no
+			// rebuild; republish its fields after every outcome. A refusal must stay
+			// in the field that caused it, and a success must show the accepted value.
 			sync();
 		} catch (error) {
 			if (alive) {

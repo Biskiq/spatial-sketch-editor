@@ -48,8 +48,14 @@ const BOX = {
 	position: [2, 0.5, 2],
 	rotation: [0, 0, 0]
 };
+const OTHER_BOX = {
+	...BOX,
+	id: 'entity-card-other',
+	name: 'Other block',
+	position: [5, 0.5, 2]
+};
 
-function snapshotOf(box = BOX): StageReadSnapshot {
+function snapshotOf(entities: readonly unknown[] = [BOX]): StageReadSnapshot {
 	return attachUnitStageSource(
 		{
 			acceptedRevision: { projectId: 'project-card', revisionId: 'revision-card' },
@@ -58,7 +64,7 @@ function snapshotOf(box = BOX): StageReadSnapshot {
 			sourceKind: UNIT_SOURCE_KIND,
 			sourceVersion: UNIT_SOURCE_VERSION,
 			domain: {
-				scene: { entities: [box] },
+				scene: { entities },
 				unitRevisions: {
 					layout: 'sha256-layout',
 					scene: 'sha256-scene',
@@ -83,7 +89,7 @@ function snapshotOf(box = BOX): StageReadSnapshot {
 						formatVersion: SCENE_UNIT_FORMAT_VERSION,
 						textures: [],
 						materials: [],
-						entities: [box]
+						entities
 					}
 				},
 				resources: {
@@ -98,7 +104,8 @@ function snapshotOf(box = BOX): StageReadSnapshot {
 type Harness = {
 	readonly target: HTMLElement;
 	readonly accept: ReturnType<typeof vi.fn>;
-	readonly notify: ReturnType<typeof vi.fn>;
+	readonly fireAdaptersChanged: () => void;
+	readonly select: (id: string) => void;
 };
 
 let cleanup: (() => void) | null = null;
@@ -108,24 +115,35 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
-async function mountCard(): Promise<Harness> {
-	const snapshot = snapshotOf();
+async function mountCard(
+	options: { selectedId?: string; entities?: readonly unknown[] } = {}
+): Promise<Harness> {
+	const snapshot = snapshotOf(options.entities ?? [BOX]);
+	let selectedId = options.selectedId ?? BOX_ID;
 	const accept = vi.fn(async () => ({
 		kind: 'refused' as const,
 		code: 'invalid',
 		message: 'Resize needs one finite positive uniform scale.'
 	}));
-	const notify = vi.fn();
+	const adapterListeners = new Set<() => void>();
+	const fireAdaptersChanged = (): void => {
+		for (const listener of adapterListeners) listener();
+	};
 	const services = {
 		stage: {
 			snapshot: () => snapshot,
 			selectionState: () => ({
-				primary: { domain: 'scene', subject: { kind: 'entity', id: BOX_ID } }
+				primary: { domain: 'scene', subject: { kind: 'entity', id: selectedId } }
 			}),
 			evaluation: () => EVALUATION,
 			evaluationId: () => EVALUATION_ID,
-			onAdaptersChanged: () => () => {},
-			notifySurfaceChange: notify,
+			onAdaptersChanged: (listener: () => void) => {
+				adapterListeners.add(listener);
+				return () => {
+					adapterListeners.delete(listener);
+				};
+			},
+			notifySurfaceChange: fireAdaptersChanged,
 			setSelection: vi.fn()
 		},
 		authoring: {
@@ -138,7 +156,11 @@ async function mountCard(): Promise<Harness> {
 	const component = mount(SceneObjectCardFields, { target, props: { services } });
 	cleanup = () => unmount(component);
 	await tick();
-	return { target, accept, notify };
+	const select = (id: string): void => {
+		selectedId = id;
+		fireAdaptersChanged();
+	};
+	return { target, accept, fireAdaptersChanged, select };
 }
 
 function input(target: HTMLElement, field: string): HTMLInputElement {
@@ -161,6 +183,61 @@ describe('Scene object Card writer', () => {
 		expect(accept).toHaveBeenCalledTimes(1);
 		expect(target.textContent).toContain('Resize needs one finite positive uniform scale.');
 		expect(size.value).toBe('0');
+	});
+
+	it('keeps an uncommitted draft and its refusal across a Stage surface notification', async () => {
+		const { target, accept, fireAdaptersChanged } = await mountCard();
+		const size = input(target, 'size');
+		size.focus();
+		size.value = '2';
+		size.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+
+		// A notification from an unrelated Stage surface must not replace the
+		// controller (and therefore the field's draft map).
+		fireAdaptersChanged();
+		await tick();
+		expect(size.value).toBe('2');
+
+		size.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(accept).toHaveBeenCalledTimes(1);
+		expect(target.textContent).toContain('Resize needs one finite positive uniform scale.');
+
+		fireAdaptersChanged();
+		await tick();
+		expect(size.value).toBe('2');
+		expect(target.textContent).toContain('Resize needs one finite positive uniform scale.');
+
+		// Only cancellation restores the accepted text.
+		const event = new KeyboardEvent('keydown', {
+			key: 'Escape',
+			bubbles: true,
+			cancelable: true
+		});
+		size.dispatchEvent(event);
+		await tick();
+		expect(size.value).toBe('1');
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it('resets an uncommitted draft when the selected object changes', async () => {
+		const { target, select } = await mountCard({ entities: [BOX, OTHER_BOX] });
+		const x = input(target, 'position-x');
+		x.focus();
+		x.value = '7.5';
+		x.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		expect(x.value).toBe('7.5');
+
+		select(OTHER_BOX.id);
+		await tick();
+		expect(x.value).toBe('5');
+
+		select(BOX_ID);
+		await tick();
+		expect(x.value).toBe('2');
 	});
 
 	it('never commits on blur and restores the accepted text', async () => {
