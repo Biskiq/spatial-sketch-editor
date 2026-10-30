@@ -37,6 +37,7 @@
 		type SceneSurface,
 		type SceneSessionOutcome
 	} from './placement';
+	import { draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-drafting';
 
 	let { services }: { services: StageAdapterServices } = $props();
 
@@ -44,7 +45,6 @@
 	let x = $state('0');
 	let z = $state('0');
 	let yaw = $state('0');
-	let snapText = $state('');
 	/** S04's uniform Resize entry; blank/non-finite/non-positive never commits. */
 	let composeScaleText = $state('');
 	let composeActive = $state(false);
@@ -224,17 +224,11 @@
 				armedFormCopy = null;
 				message = 'The saved copy is no longer armed; choose Insert again.';
 			}
-			applySnap();
 		}
 		// A redraw reaches here too, and a redraw is where a host that ended the
 		// lease underneath the proposal is first seen.
 		dropDeadProposal();
 		return session;
-	}
-
-	function applySnap(): void {
-		const parsed = Number(snapText.trim());
-		session?.setSnapStep(snapText.trim() === '' || !Number.isFinite(parsed) || parsed <= 0 ? null : parsed);
 	}
 
 	function candidateMessage(next: SceneCandidate): string {
@@ -536,6 +530,10 @@
 			message = 'X and Z are required; a blank field is not zero.';
 			return;
 		}
+		// Typed Place consumes the same shared increment as pointer Place. The
+		// session owns no switch; this mirrors the Stage fact at the commit that
+		// uses it, so a toggle since the last pointer gesture is still honoured.
+		current.setSnapStep(draftingSnapIncrementMeters(services.stage.drafting()));
 		const appliedSnap = current.snapStep();
 		const copyArmed = current.armedFormCopy();
 		const modelArmed = copyArmed === null && current.armedModel() !== null;
@@ -592,8 +590,8 @@
 	// claim, the overlay and typed entry read the same candidate.
 	$effect(() => {
 		// The host re-providing services is the one reason to re-read the session.
-		// The check itself reads this instrument's own state (`editing`, `snapText`)
-		// and writes `message`; tracking that made the effect re-run on every
+		// The check itself reads this instrument's own state (`editing`) and
+		// writes `message`; tracking that made the effect re-run on every
 		// keystroke, tearing down the session — and the proposal — it was showing.
 		void services;
 		untrack(() => ensureSession());
@@ -668,24 +666,6 @@
 		surfaceSnapshot = null;
 	});
 </script>
-
-{#snippet snapRow()}
-	<div class="row">
-		<label>
-			<span>Snap (m, optional)</span>
-			<input
-				type="text"
-				inputmode="decimal"
-				value={snapText}
-				oninput={(event) => {
-					snapText = event.currentTarget.value;
-					applySnap();
-				}}
-			/>
-		</label>
-		<span class="hint">Snap is explicit and off by default.</span>
-	</div>
-{/snippet}
 
 <section class="scene-instrument" aria-label="Scene transform">
 	{#if composeTask}
@@ -774,7 +754,6 @@
 				<button type="button" onclick={commit} disabled={candidate === null}>Commit</button>
 				<span class="hint">Enter commits exact values; Esc or leaving the instrument cancels.</span>
 			</div>
-			{@render snapRow()}
 		</div>
 	{:else}
 		<div class="row">
@@ -842,7 +821,6 @@
 					? 'The approved model is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.'
 					: 'An imported model is placed by clicking its floor position; these typed fields place a native primitive.'}
 		</p>
-		{@render snapRow()}
 		{#if placeTask}
 			<MyObjectsSectionLazy
 				armedCopy={armedFormCopy}

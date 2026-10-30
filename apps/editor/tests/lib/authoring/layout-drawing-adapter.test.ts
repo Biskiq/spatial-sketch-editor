@@ -349,3 +349,160 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		expect(restored.rooms).toHaveLength(1);
 	});
 });
+
+/**
+ * R217.S05 — free Ink points honour the shared drafting Snap.
+ *
+ * The increment is the same fact Scene placement consumes; Junction and Wall
+ * targets keep precedence, so snapping can never move a connection off the
+ * subject the creator deliberately aimed at.
+ */
+describe('R217.S05 — the shared drafting snap in Layout Ink', () => {
+	function stageCss(facade: StageFacade, point: readonly [number, number]): readonly [number, number] {
+		const evaluationId = facade.evaluationId();
+		if (evaluationId === null) throw new Error('the mounted fixture has no evaluation');
+		const projected = facade.projectWorld([point[0], ELEVATION, point[1]], evaluationId);
+		if (projected.kind !== 'projected') throw new Error('the fixture point did not project');
+		return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
+	}
+
+	function tap(facade: StageFacade, point: readonly [number, number]): void {
+		const evaluationId = facade.evaluationId()!;
+		const css = stageCss(facade, point);
+		facade.pointerIntent({ phase: 'down', css, evaluationId });
+		facade.pointerIntent({ phase: 'up', css, evaluationId });
+	}
+
+	/** Every junction of the walls this drawing created, in world coordinates. */
+	function createdEndpoints(
+		mounted: Mounted,
+		layout: LayoutDocumentWallFirst,
+		created: readonly { readonly startJunctionId: string; readonly endJunctionId: string }[]
+	): readonly (readonly [number, number])[] {
+		const ids = new Set(created.flatMap((wall) => [wall.startJunctionId, wall.endJunctionId]));
+		return [...ids].map((id) => layout.junctions.find((junction) => junction.id === id)!.point);
+	}
+
+	it('rounds a free point to the 1 m increment by default', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		tap(mounted.facade, [1.37, 2.81]);
+		tap(mounted.facade, [3.37, 2.81]);
+		controller.finish();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+
+		const layout = acceptedLayout(mounted.facade);
+		const created = layout.walls.filter(
+			(wall) => !mounted.document.walls.some((known) => known.id === wall.id)
+		);
+		expect(created).toHaveLength(1);
+		const ends = [...createdEndpoints(mounted, layout, created)].sort((a, b) => a[0] - b[0]);
+		expect(ends[0]![0]).toBeCloseTo(1, 6);
+		expect(ends[0]![1]).toBeCloseTo(3, 6);
+		expect(ends[1]![0]).toBeCloseTo(3, 6);
+		expect(ends[1]![1]).toBeCloseTo(3, 6);
+	});
+
+	it.each([
+		{ name: 'Snap off', patch: { snap: false } },
+		{ name: 'Snap held', patch: { snapSuspended: true } }
+	])('commits the raw free point when %s', async ({ patch }) => {
+		const mounted = await mount();
+		mounted.facade.setDrafting(patch);
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		tap(mounted.facade, [1.37, 2.81]);
+		tap(mounted.facade, [3.37, 2.81]);
+		controller.finish();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+
+		const layout = acceptedLayout(mounted.facade);
+		const created = layout.walls.filter(
+			(wall) => !mounted.document.walls.some((known) => known.id === wall.id)
+		);
+		expect(created).toHaveLength(1);
+		const ends = [...createdEndpoints(mounted, layout, created)].sort((a, b) => a[0] - b[0]);
+		expect(ends[0]![0]).toBeCloseTo(1.37, 6);
+		expect(ends[0]![1]).toBeCloseTo(2.81, 6);
+		expect(ends[1]![0]).toBeCloseTo(3.37, 6);
+	});
+
+	it('keeps a Junction target while Snap is on, even when the snapped grid point is elsewhere', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		// Aim inside the Junction's CSS tolerance but away from the grid point: the
+		// deliberate connection wins, and the snapped coordinate never replaces it.
+		tap(mounted.facade, [0.02, 3.98]);
+		tap(mounted.facade, [2.37, 2.52]);
+		controller.finish();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+
+		const layout = acceptedLayout(mounted.facade);
+		const created = layout.walls.filter(
+			(wall) => !mounted.document.walls.some((known) => known.id === wall.id)
+		);
+		expect(created).toHaveLength(1);
+		const createdJunctions = new Set(
+			created.flatMap((wall) => [wall.startJunctionId, wall.endJunctionId])
+		);
+		expect(createdJunctions.has(mounted.cornerJunctionId)).toBe(true);
+		const corner = layout.junctions.find((junction) => junction.id === mounted.cornerJunctionId)!;
+		expect(corner.point[0]).toBeCloseTo(0, 6);
+		expect(corner.point[1]).toBeCloseTo(4, 6);
+	});
+
+	it('does not let a free snap invent an undeclared Wall contact', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		// Both points are 0.22 m from the z = 4 Wall, outside its CSS hit tolerance,
+		// and snap to (1, 4) and (3, 4) if rounding is allowed to create contact. The
+		// guard must keep the creator's raw free aim rather than author that contact.
+		tap(mounted.facade, [1.37, 3.78]);
+		tap(mounted.facade, [3.37, 3.78]);
+		controller.finish();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+
+		const layout = acceptedLayout(mounted.facade);
+		const created = layout.walls.filter(
+			(wall) => !mounted.document.walls.some((known) => known.id === wall.id)
+		);
+		expect(created).toHaveLength(1);
+		const ends = createdEndpoints(mounted, layout, created);
+		for (const end of ends) expect(end[1]).toBeCloseTo(3.78, 6);
+	});
+
+	it('keeps a Wall-interior target exact while the free end snaps', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		// Aimed at the north Wall's centerline (z = 4), where no Opening is hosted,
+		// and not at a grid line.
+		tap(mounted.facade, [1.37, 3.98]);
+		tap(mounted.facade, [3.37, 2.81]);
+		controller.finish();
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+
+		const layout = acceptedLayout(mounted.facade);
+		const created = layout.walls.filter(
+			(wall) => !mounted.document.walls.some((known) => known.id === wall.id)
+		);
+		// The split Wall segments plus the drawn Wall; the drawn Wall is the one
+		// that reaches the snapped free point.
+		const drawn = created.find((wall) => {
+			const ends = [wall.startJunctionId, wall.endJunctionId].map(
+				(id) => layout.junctions.find((junction) => junction.id === id)!.point
+			);
+			return ends.some((point) => Math.abs(point[0] - 3) < 1e-6 && Math.abs(point[1] - 3) < 1e-6);
+		});
+		expect(drawn).toBeDefined();
+		const anchored = [drawn!.startJunctionId, drawn!.endJunctionId]
+			.map((id) => layout.junctions.find((junction) => junction.id === id)!.point)
+			.find((point) => Math.abs(point[1] - 4) < 1e-6);
+		// The Wall target was not rounded to the 1 m grid: its exact aim survives.
+		expect(anchored![0]).toBeCloseTo(1.37, 6);
+		expect(anchored![1]).toBeCloseTo(4, 6);
+	});
+});

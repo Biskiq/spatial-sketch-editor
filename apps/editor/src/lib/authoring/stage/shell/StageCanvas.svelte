@@ -29,8 +29,11 @@
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
-	import { isPaperPlanVisible, MAT_GROUND_INK } from '../paper-plan';
-	import StageCamera from './StageCamera.svelte';
+import { isPaperPlanVisible, MAT_GROUND_INK } from '../paper-plan';
+import { gridIsVisible } from '../stage-grid';
+import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
+import StageCamera from './StageCamera.svelte';
+import StageGrid from './StageGrid.svelte';
 	import StageEntities from './StageEntities.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
@@ -47,6 +50,8 @@
 		modelUrls = null,
 		plan = null,
 		planAppearance = 'paper',
+		/** R217.S05's one Grid/Snap view state; the grid is display-only. */
+		drafting = STAGE_DRAFTING_DEFAULTS,
 		reducedMotion = false,
 		datumMeters = 0,
 		selection = null,
@@ -66,6 +71,8 @@
 		plan?: PlanEvaluation | null;
 		/** PLATE's app preference; Paper is the default. */
 		planAppearance?: 'paper' | 'shaded';
+		/** Grid/Snap view state. It is never a pick source or a Camera mode. */
+		drafting?: StageDraftingState;
 		reducedMotion?: boolean;
 		/** The level datum the mat ground sits at. */
 		datumMeters?: number;
@@ -83,6 +90,17 @@
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
 	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
 	const matGroundArgs = [6000, 6000] as [number, number];
+	/**
+	 * Grid visibility is one fact on both surfaces: under a Grid-off state, and in
+	 * Shaded Plan it is never drawn. The mat keeps its grid in shaded 3D.
+	 */
+	const gridVisible = $derived(
+		gridIsVisible({
+			grid: drafting.grid,
+			appearance: planAppearance,
+			renderedReading: evaluation?.renderedReading ?? null
+		})
+	);
 
 	const presentation = $derived.by(() => {
 		const record: Record<string, VisitorRoomPresentation> = {};
@@ -137,6 +155,15 @@
 	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} castShadow />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 	<StageCamera {evaluation} {paperVisible} />
+	{#if evaluation !== null && gridVisible && matVisible}
+		<!-- The mat's grid is world geometry on the datum; walls occlude it. -->
+		<StageGrid
+			{evaluation}
+			surface="mat"
+			{datumMeters}
+			baseMinorMeters={drafting.gridMinorMeters}
+		/>
+	{/if}
 	{#if matVisible}
 		<!-- The mat ground gives depth and shadows; it is not a registered pick root. -->
 		<T.Mesh position={[0, datumMeters - 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -168,6 +195,15 @@
 			The Plan is a drawing on Paper: the same Plan evaluation the Layout pick
 			provider reads, and the same Scene footprints the Scene pick reads.
 		-->
+		{#if gridVisible && evaluation !== null}
+			<!-- Paper's grid is overlay ink beneath the drawing, on the same sheet. -->
+			<StageGrid
+				{evaluation}
+				surface="paper"
+				{datumMeters}
+				baseMinorMeters={drafting.gridMinorMeters}
+			/>
+		{/if}
 		<StagePaper
 			{plan}
 			compiled={geometry}

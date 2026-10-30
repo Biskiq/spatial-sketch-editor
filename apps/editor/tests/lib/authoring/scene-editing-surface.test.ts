@@ -221,6 +221,30 @@ describe('Scene placement session', () => {
 		expect(snapped.candidate.worldXZ).toEqual([2.5, 2.5]);
 	});
 
+	it('never re-rounds a placement X/Z it was handed, and reports only the applied step', async () => {
+		const { session } = await sessionFor([boxEntity()]);
+		session.setSnapStep(2);
+		session.beginPlace('box');
+		// The adapter has already rounded to the shared 1 m increment and resolved
+		// floor support at (1, 3). A second round through the session's own 2 m step
+		// would move the pose off that floor, so the handed X/Z is authoritative.
+		const handed = session.previewPlace('box', 1, 3, 0.5, 1);
+		expect(handed.kind).toBe('candidate');
+		if (handed.kind !== 'candidate') return;
+		expect(handed.candidate.worldXZ).toEqual([1, 3]);
+		expect(handed.candidate.snappedStep).toBe(1);
+		// Support is 0.5 m and the box's local contact is -0.5 m: the installed Y is 1.
+		expect(handed.candidate.position[1]).toBeCloseTo(1, 9);
+		expect(handed.candidate.yaw).toBe(0);
+
+		// No applied step means no report, even while the session happens to hold one.
+		const raw = session.previewPlace('box', 1.37, 2.81, 0.5);
+		expect(raw.kind).toBe('candidate');
+		if (raw.kind !== 'candidate') return;
+		expect(raw.candidate.worldXZ).toEqual([1.37, 2.81]);
+		expect(raw.candidate.snappedStep).toBeNull();
+	});
+
 	it('keeps exact typed values exact and never inherits the gesture snap step', async () => {
 		const { session, port } = await sessionFor([boxEntity()]);
 		session.begin(ENTITY_ID);
@@ -1206,8 +1230,15 @@ describe('Scene adapter registration', () => {
 		const movedPreview = session.candidate();
 		expect(movedPreview?.kind).toBe('place');
 		if (movedPreview === null) return;
-		expect(movedPreview.worldXZ[0]).toBeCloseTo(3.5, 6);
+		// R217.S05: free placement honours the shared drafting Snap, on by default
+		// at the 1 m reference interval. The pointer at 3.5 m therefore shows the
+		// 4 m candidate the planner will commit, not a commit-time correction.
+		expect(movedPreview.worldXZ[0]).toBeCloseTo(4, 6);
 		expect(movedPreview.worldXZ[1]).toBeCloseTo(3, 6);
+		// Only the plan position rounds; the support-resolved Y and retained yaw do not.
+		expect(movedPreview.position[1]).toBeCloseTo(preview!.position[1], 9);
+		expect(movedPreview.yaw).toBe(0);
+		expect(movedPreview.snappedStep).toBe(1);
 
 		facade.pointerIntent({ phase: 'up', css: moved, evaluationId });
 		await eventually(() => intents.length === 1);
@@ -1230,6 +1261,28 @@ describe('Scene adapter registration', () => {
 		expect(facade.closeTask()).toBe(true);
 		expect(session.armed()).toBe('select');
 		expect(facade.pointerIntent({ phase: 'down', css: second, evaluationId }).claimed).toBe(false);
+	});
+
+	it.each([
+		{ name: 'Snap off', patch: { snap: false } },
+		{ name: 'Snap held', patch: { snapSuspended: true } }
+	])('commits the raw pointer Place when $name', async ({ patch }) => {
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId } = await withSceneSurface(
+			undefined,
+			'scene-place',
+			project
+		);
+		facade.setDrafting(patch);
+		const css = cssOf(facade, [3.37, 0, 2.81]);
+		expect(facade.pointerIntent({ phase: 'down', css, evaluationId }).claimed).toBe(true);
+		const candidate = session.candidate();
+		expect(candidate?.kind).toBe('place');
+		if (candidate === null) return;
+		expect(candidate.worldXZ[0]).toBeCloseTo(3.37, 6);
+		expect(candidate.worldXZ[1]).toBeCloseTo(2.81, 6);
+		expect(candidate.snappedStep).toBeNull();
+		facade.pointerIntent({ phase: 'cancel', css, evaluationId });
 	});
 
 	it('releases the pose the press claimed even when the viewport is re-evaluated mid-press', async () => {

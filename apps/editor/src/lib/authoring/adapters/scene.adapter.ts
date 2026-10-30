@@ -29,6 +29,7 @@ import type {
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
+import { draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-drafting';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import type { SceneFormEntity } from '$lib/content/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
@@ -88,6 +89,7 @@ import {
 	sceneSurfaceFor,
 	sceneComposeSupport,
 	sceneModelContactMinY,
+	snapFreePlacement,
 	type SceneCandidate,
 	type ScenePlacementSession,
 	type SceneSessionOutcome,
@@ -251,9 +253,15 @@ function pointerPlaceSupport(
 } | null {
 	const visible = pointerFloorSupport(context, css, null);
 	if (visible.kind !== 'floor') return null;
-	const step = snapStep !== null && snapStep > 0 ? snapStep : null;
-	const x = step === null ? visible.worldPoint[0] : Math.round(visible.worldPoint[0] / step) * step;
-	const z = step === null ? visible.worldPoint[2] : Math.round(visible.worldPoint[2] / step) * step;
+	// One rounding pass produces the shown pose and the planner's commit input;
+	// the placement builders never round again. Support is queried **after**
+	// rounding: a snapped point must stand on a real floor.
+	const snappedPlacement = snapFreePlacement(
+		[visible.worldPoint[0], visible.worldPoint[2]],
+		snapStep
+	);
+	const x = snappedPlacement.x;
+	const z = snappedPlacement.z;
 	const domain = context.snapshot.domain;
 	const queried = queryFloorSupports(floorSupportSnapshotOf(domain.geometry), {
 		generationId: sceneSupportGenerationId(context.snapshot.sourceContentId),
@@ -974,6 +982,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (intent.phase === 'down') gestureSurface = surfaceFor(adapterContext.evaluation);
 					const surface = gestureSurface ?? surfaceFor(adapterContext.evaluation);
 					const session = surface.session;
+					// R217.S05: the drafting cluster's Snap is the only increment a free
+					// **placement** applies. Mirroring it per phase keeps pointer Place
+					// reading the current switch and Alt/Option hold, including a modifier
+					// change during the drag. Move is not a free placement: it keeps the
+					// session's explicit step (off unless a direct-manipulation owner sets
+					// it), so dragging an existing object is not silently quantised.
+					const snapStep = draftingSnapIncrementMeters(adapterContext.drafting());
+					session.setSnapStep(openTaskKind === 'place-object' ? snapStep : null);
 					if (intent.phase === 'cancel') {
 						dragOrigin = null;
 						gestureSurface = null;
@@ -999,7 +1015,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								gestureSurface = null;
 								return false;
 							}
-							const support = pointerPlaceSupport(adapterContext, intent.css, session.snapStep());
+							const support = pointerPlaceSupport(adapterContext, intent.css, snapStep);
 							if (support === null) {
 								// No visible, compiled Room-floor support under the press: refuse
 								// the claim rather than showing a pose commit would reject.
@@ -1007,12 +1023,31 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								gestureSurface = null;
 								return false;
 							}
-			if (copy !== null) {
-				session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice);
-			} else if (armed === null) {
-				session.previewPlace(primitive, support.x, support.z, support.elevation);
+							if (copy !== null) {
+								session.previewPlaceFormCopy(
+									copy,
+									support.x,
+									support.z,
+									support.elevation,
+									support.choice,
+									snapStep
+								);
+							} else if (armed === null) {
+								session.previewPlace(
+									primitive,
+									support.x,
+									support.z,
+									support.elevation,
+									snapStep
+								);
 							} else {
-								session.previewPlaceModel(armed, support.x, support.z, support.elevation);
+								session.previewPlaceModel(
+									armed,
+									support.x,
+									support.z,
+									support.elevation,
+									snapStep
+								);
 							}
 							return true;
 						}
@@ -1059,24 +1094,38 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// Place follows the pointer on the floor; a move without visible
 						// compiled Room-floor support withdraws the displayed pose so release
 						// cannot install it.
-						const support = pointerPlaceSupport(adapterContext, intent.css, session.snapStep());
+						const support = pointerPlaceSupport(adapterContext, intent.css, snapStep);
 						if (support === null) {
 							session.invalidatePreview();
 							return true;
 						}
 						const copy = session.armedFormCopy();
 						const armed = copy === null ? session.armedModel() : null;
-			if (copy !== null) {
-				session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice);
-			} else if (armed === null) {
+						if (copy !== null) {
+							session.previewPlaceFormCopy(
+								copy,
+								support.x,
+								support.z,
+								support.elevation,
+								support.choice,
+								snapStep
+							);
+						} else if (armed === null) {
 							session.previewPlace(
 								session.placePrimitive(),
 								support.x,
 								support.z,
-								support.elevation
+								support.elevation,
+								snapStep
 							);
 						} else {
-							session.previewPlaceModel(armed, support.x, support.z, support.elevation);
+							session.previewPlaceModel(
+								armed,
+								support.x,
+								support.z,
+								support.elevation,
+								snapStep
+							);
 						}
 						return true;
 					}

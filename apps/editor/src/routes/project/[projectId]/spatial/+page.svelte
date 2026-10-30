@@ -127,6 +127,8 @@
 	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 	import StageDock from '$lib/authoring/stage/shell/StageDock.svelte';
+import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
+import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	const scenePick = createScenePickSource();
@@ -148,6 +150,19 @@
 		returnPreview
 	} from '$lib/authoring/experience/preview-handover';
 	import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
+import {
+	SCALE_DETENTS,
+	STAGE_DRAFTING_DEFAULTS,
+	applyDraftingPatch,
+	formatScaleRatio,
+	gridWord as draftingWordForGrid,
+	roundScaleBarLength,
+	scaleDetentIntent,
+	snapWord as draftingWordForSnap,
+	type StageDraftingPatch,
+	type StageDraftingState
+} from '$lib/authoring/stage/stage-drafting';
+import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 
 	// Harness-gated work ledger (T1.P02.S06); inert without the perf flag.
 	installPerfWorkObserver();
@@ -398,6 +413,9 @@
 		const stage = facade;
 		const active = preview;
 		preview = null;
+		// A hold entered before Preview may have been released while its keyup was
+		// guarded; leaving Preview always reconciles Snap to the physical modifier.
+		if (drafting.snapSuspended) patchDrafting({ snapSuspended: false });
 		// The takeover stays mounted, so the Exit control the creator pressed is now
 		// inside an inert subtree and would keep focus while invisible. Returning
 		// drops focus to the document, as unmounting the takeover used to.
@@ -485,6 +503,28 @@
 		}
 	}
 	let evaluation = $state<ViewportEvaluation | null>(null);
+	/**
+	 * R217.S05's one Grid/Snap view state. It is host view state, mirrored from the
+	 * session so the furniture re-renders; it is never part of the project source,
+	 * history or Save, and a replacement keeps it.
+	 */
+	let drafting = $state<StageDraftingState>(STAGE_DRAFTING_DEFAULTS);
+	const draftingReading: 'plan' | '3d' = $derived(
+		evaluation?.settledReading === 'plan' ? 'plan' : '3d'
+	);
+	const draftingScaleWord = $derived(
+		`Scale ${formatScaleRatio(evaluation?.targetPlaneMetersPerCssPixel ?? null)}`
+	);
+	const draftingGridWord = $derived(
+		draftingWordForGrid(
+			drafting,
+			drawnGridMinorMeters(drafting, evaluation?.targetPlaneMetersPerCssPixel ?? null)
+		)
+	);
+	const draftingSnapWord = $derived(draftingWordForSnap(drafting));
+	const draftingScaleBar = $derived(
+		roundScaleBarLength(evaluation?.targetPlaneMetersPerCssPixel ?? 0)
+	);
 	// Generated Plan evaluations are replaced whole; raw data keeps their references
 	// cloneable when Index selection crosses the immutable selection boundary.
 	let planView = $state.raw<PlanEvaluation | null>(null);
@@ -740,6 +780,9 @@
 		facade?.dispose();
 		acceptance?.dispose();
 		facade = createStageFacade({ snapshot, session, scenePick: scenePick.pick, sceneBounds: scenePick.bounds });
+		// The session keeps Grid/Snap across a replacement; the presenter re-reads it
+		// from the mounted authority rather than assuming its own default.
+		drafting = facade.drafting();
 		unsubscribeContributions = facade.onAdaptersChanged(() => {
 			contributionsVersion += 1;
 			task = facade?.session.task() ?? null;
@@ -1751,9 +1794,21 @@
 
 		const onKey = (event: KeyboardEvent) => {
 			if (event.defaultPrevented) return;
+			// A held Alt/Option is the shared Snap suspension. Reading it from the
+			// event's own modifier keeps the fact true for a key pressed while Alt was
+			// already down, not only for Alt's own keydown.
+			if (event.altKey) suspendSnap(true);
 			handleKey(event);
 		};
+		// Releasing the modifier — or losing the window — always restores Snap: a
+		// modifier the browser never delivers a keyup for must not strand it off.
+		const onReleaseSnap = (event: KeyboardEvent) => {
+			if (event.key === 'Alt') suspendSnap(false);
+		};
+		const onWindowBlur = () => suspendSnap(false);
 		window.addEventListener('keydown', onKey);
+		window.addEventListener('keyup', onReleaseSnap);
+		window.addEventListener('blur', onWindowBlur);
 		const removeInterruptions = installStageInterruptions(window, document, interruptPress);
 
 		void load(projectId, intent);
@@ -1769,6 +1824,8 @@
 			media.removeEventListener('change', onMedia);
 			narrow.removeEventListener('change', onNarrow);
 			window.removeEventListener('keydown', onKey);
+			window.removeEventListener('keyup', onReleaseSnap);
+			window.removeEventListener('blur', onWindowBlur);
 			removeInterruptions();
 			// Session teardown cancels every registered writer (including an in-flight
 			// project GET) and runs every registered disposer exactly once; no
@@ -1909,12 +1966,77 @@
 		}
 	}
 
+	/**
+	 * Change the one Grid/Snap fact through the session authority.
+	 *
+	 * Nothing here touches acceptance, history or Save: the session's view state
+	 * is not authored content, so a Grid/Snap toggle cannot dirty the project.
+	 */
+	function patchDrafting(patch: StageDraftingPatch): void {
+		drafting = facade === null ? applyDraftingPatch(drafting, patch) : facade.setDrafting(patch);
+	}
+
+	/**
+	 * A Scale detent as the **existing** zoom viewing intent.
+	 *
+	 * The shell computes no pose: it converts the requested ratio to the settled
+	 * target-plane size and lets the Camera's own zoom semantics land on it.
+	 */
+	function requestScaleDetent(ratio: number): void {
+		const stage = facade;
+		const viewport = rect;
+		if (stage === null || viewport === null || viewport.height <= 0) return;
+		// Derive the ratio from the live settled pose, not the last painted frame:
+		// a zoom or Fit between frames must not leave the detent computed against a
+		// stale evaluation. The multiply stays in Camera's `zoom` intent.
+		const settledHeight = stage.camera.state().pose.targetPlaneHeightMeters;
+		const metersPerCssPixel = settledHeight / viewport.height;
+		const intent = scaleDetentIntent(ratio, metersPerCssPixel);
+		if (intent !== null) submit(intent, nowSeconds());
+	}
+
+	/**
+	 * Alt/Option holds Snap off until release, blur or teardown.
+	 *
+	 * Entering the hold is ignored during Preview (the Stage is not listening for
+	 * drawing there), but releasing it always applies: a keyup the Preview guard
+	 * swallowed would otherwise strand `Snap held` after Exit forever.
+	 */
+	function suspendSnap(suspended: boolean): void {
+		if (drafting.snapSuspended === suspended) return;
+		if (preview !== null && suspended) return;
+		patchDrafting({ snapSuspended: suspended });
+	}
+
+	/**
+	 * Fit all through the existing `fit` intent.
+	 *
+	 * The frame is the union of the compiled Layout bounds and every placed Scene
+	 * entity's drawn body: a free Scene object outside the drawing is still on the
+	 * Stage, so "Fit all" must not leave it off-screen. No pose is composed here.
+	 */
 	function fit(): void {
 		const stage = facade;
-		if (stage === null) return;
-		const bounds = stage.snapshot().domain.geometry.bounds;
-		if (bounds === null || rect === null) return;
-		submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect }, nowSeconds());
+		if (stage === null || rect === null) return;
+		const layoutBounds = stage.snapshot().domain.geometry.bounds;
+		let min: [number, number, number] | null =
+			layoutBounds === null ? null : [layoutBounds.min[0], layoutBounds.min[1], layoutBounds.min[2]];
+		let max: [number, number, number] | null =
+			layoutBounds === null ? null : [layoutBounds.max[0], layoutBounds.max[1], layoutBounds.max[2]];
+		for (const entity of stage.snapshot().domain.scene.entities) {
+			const bounds = stage.sceneBounds(entity.id);
+			if (bounds === null) continue;
+			min =
+				min === null
+					? [bounds.min[0], bounds.min[1], bounds.min[2]]
+					: [Math.min(min[0], bounds.min[0]), Math.min(min[1], bounds.min[1]), Math.min(min[2], bounds.min[2])];
+			max =
+				max === null
+					? [bounds.max[0], bounds.max[1], bounds.max[2]]
+					: [Math.max(max[0], bounds.max[0]), Math.max(max[1], bounds.max[1]), Math.max(max[2], bounds.max[2])];
+		}
+		if (min === null || max === null) return;
+		submit({ kind: 'fit', bounds: { min, max }, rect }, nowSeconds());
 	}
 
 	function bringIntoView(target: readonly [number, number, number]): void {
@@ -3074,6 +3196,10 @@
 		onOpenIndex={() => (indexOpen = true)}
 		planAppearance={preferences.planAppearance}
 		onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+		gridMinorMeters={drafting.gridMinorMeters}
+		snapOnGrid={drafting.snap}
+		onGridMinorMeters={(meters) => patchDrafting({ gridMinorMeters: meters })}
+		onSnapOnGrid={(snap) => patchDrafting({ snap })}
 		motionSpeed={preferences.motionSpeed}
 		onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
 		projectActionsUnavailableReason={projectActionsUnavailableReason}
@@ -3205,6 +3331,7 @@
 						{modelUrls}
 						plan={planView}
 						planAppearance={preferences.planAppearance}
+						{drafting}
 						{reducedMotion}
 						datumMeters={boot.snapshot.domain.datumMeters}
 						selection={selection}
@@ -3214,6 +3341,8 @@
 				<div class="overlay-layer">
 					<StageOverlay {markers} {marks} {tracePreview} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 				</div>
+				<!-- The measured bar is a reading of the same evaluation, never a control. -->
+				<StageScaleBar bar={draftingScaleBar} />
 
 				{#if boot.status === 'empty' && (currentEnvelope?.units.layout.data.rooms.length ?? 0) === 0}
 					<p class="stage-note" role="status">Empty baseline — draw an enclosure with Ink to create a Room floor, or start from the gallery for a compilable room.</p>
@@ -3230,9 +3359,26 @@
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
-					<button type="button" onclick={() => setReading('plan')} aria-pressed={evaluation?.settledReading === 'plan'}>Plan</button>
-					<button type="button" onclick={() => setReading('3d')} aria-pressed={evaluation?.settledReading === '3d'}>3D</button>
-					<button type="button" onclick={fit}>Fit</button>
+					<StageDraftingControl
+						{drafting}
+						reading={draftingReading}
+						scaleLabel={draftingScaleWord}
+						scaleDetents={SCALE_DETENTS}
+						gridWord={draftingGridWord}
+						snapWord={draftingSnapWord}
+						onReading={setReading}
+						onPatch={patchDrafting}
+						onScaleDetent={requestScaleDetent}
+						onFitAll={fit}
+					/>
+				</div>
+				<!-- A project-replacement action, deliberately outside the drafting cluster. -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					class="stage-project-actions"
+					onclick={(event) => event.stopPropagation()}
+					onpointerdown={(event) => event.stopPropagation()}
+				>
 					<button type="button" onclick={() => requestReplacement('source')}>Open source JSON</button>
 				</div>
 
@@ -3313,7 +3459,6 @@
 				<p class="stage-note preview-actions-note" role="status">Project rename and delete are unavailable in Preview. Exit Preview to manage this project.</p>
 			{/if}
 
-			<div class="reserved-reading" aria-hidden="true" data-shell-reading-slot></div>
 			<div class="reserved-height" aria-hidden="true" data-shell-height-slot></div>
 			<EditorCard
 				identity={preview === null && cardOpen ? cardIdentity : null}
@@ -3515,7 +3660,6 @@
 		pointer-events: auto;
 	}
 	.lower-column[hidden] { display: none; }
-	.reserved-reading { position: absolute; top: 0.75rem; left: 0.75rem; width: 12rem; height: 3rem; pointer-events: none; }
 	.reserved-height { position: absolute; top: 4rem; right: 0.75rem; bottom: 5rem; width: 2.75rem; pointer-events: none; }
 	@media (max-width: 1279px) {
 		.editor-body > :global(.plate-index) { position: absolute; z-index: 20; top: 0; bottom: 5rem; left: 0; width: min(22rem, 80%); box-shadow: 0 0 0 100vmax rgb(0 0 0 / 25%); clip-path: inset(0 -100vmax 0 0); }
@@ -3531,7 +3675,14 @@
 		display: flex;
 		gap: 0.4rem;
 	}
-	.stage-actions button {
+	.stage-project-actions {
+		position: absolute;
+		top: 0.75rem;
+		right: 0.75rem;
+		display: flex;
+		gap: 0.4rem;
+	}
+	.stage-project-actions button {
 		padding: 0.4rem 0.6rem;
 		border: 1px solid #635a6f;
 		border-radius: 0.35rem;
@@ -3539,10 +3690,7 @@
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
-	}
-	.stage-actions button[aria-pressed='true'] {
-		border-color: #d4ad45;
-		color: #f4d98a;
+		opacity: 0.82;
 	}
 	/*
 		Round 2's one lower working edge: the invited Guide instrument sits above the

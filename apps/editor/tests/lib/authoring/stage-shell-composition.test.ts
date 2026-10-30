@@ -125,7 +125,9 @@ describe('Stage shell composition', () => {
 			)
 		);
 		expect(threeImporters).toEqual([
+			'apps/editor/src/lib/authoring/stage/shell/stage-grid-scene.ts',
 			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/StageGrid.svelte',
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
 			'apps/editor/src/lib/authoring/stage/paper-scene.ts',

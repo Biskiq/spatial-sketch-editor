@@ -13,6 +13,7 @@ import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 
 import { floorSupport, supportOccluders } from '$lib/authoring/adapters/scene/support-occlusion';
+import { snapFreePlacement } from '$lib/authoring/adapters/scene/placement';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -114,6 +115,22 @@ async function domainFor(entities: readonly SceneEntity[]) {
 	if (admitted.kind !== 'admitted') throw new Error(`the fixture was not admitted: ${admitted.kind}`);
 	return admitted.snapshot.domain;
 }
+
+describe('R217.S05 — the shared drafting snap for free placement', () => {
+	it('rounds the plan position only, so support elevation and yaw are untouched', () => {
+		// Snap is one fact consumed by Scene; the support-resolved Y the planner
+		// installs is not a plan coordinate and this helper never manufactures one.
+		expect(snapFreePlacement([1.37, 2.81], 1)).toEqual({ x: 1, z: 3, snappedStep: 1 });
+		expect(snapFreePlacement([1.37, 2.81], 0.5)).toEqual({ x: 1.5, z: 3, snappedStep: 0.5 });
+		expect(snapFreePlacement([1.37, 2.81], 0.2)).toEqual({ x: 1.4, z: 2.8, snappedStep: 0.2 });
+	});
+
+	it('is off for a null, zero or non-positive increment rather than snapping to zero', () => {
+		expect(snapFreePlacement([1.37, 2.81], null)).toEqual({ x: 1.37, z: 2.81, snappedStep: null });
+		expect(snapFreePlacement([1.37, 2.81], 0)).toEqual({ x: 1.37, z: 2.81, snappedStep: null });
+		expect(snapFreePlacement([1.37, 2.81], -1)).toEqual({ x: 1.37, z: 2.81, snappedStep: null });
+	});
+});
 
 describe('floor support against drawn geometry', () => {
 	it('reports the datum point when nothing is between the ray and the floor', async () => {

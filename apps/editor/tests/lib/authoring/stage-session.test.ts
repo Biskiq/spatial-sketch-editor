@@ -387,3 +387,32 @@ describe('stage session hover', () => {
 		expect(session.hover()).toBeNull();
 	});
 });
+
+describe('stage session — the drafting view state', () => {
+	it('defaults on, patches as one value, and survives a project replacement', async () => {
+		const session = createStageSession({ sessionEpoch: 'session-drafting' });
+		expect(session.drafting()).toEqual({
+			grid: true,
+			snap: true,
+			snapSuspended: false,
+			gridMinorMeters: 1
+		});
+		expect(session.setDrafting({ grid: false, gridMinorMeters: 2 })).toEqual({
+			grid: false,
+			snap: true,
+			snapSuspended: false,
+			gridMinorMeters: 2
+		});
+
+		session.replace(await admit(await enclosureProject(PROJECT_ID)));
+		// Grid/Snap are creator view state, like the lens: a replacement does not
+		// silently reset the drafting surface.
+		expect(session.drafting()).toMatchObject({ grid: false, gridMinorMeters: 2 });
+		expect(session.setDrafting({ snapSuspended: true }).snapSuspended).toBe(true);
+
+		session.dispose();
+		// A disposed session still answers read-only view state; it accepts no new
+		// patch, so a late modifier release cannot write into a dead host.
+		expect(session.setDrafting({ snapSuspended: false }).snapSuspended).toBe(true);
+	});
+});

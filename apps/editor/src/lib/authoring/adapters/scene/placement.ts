@@ -12,9 +12,10 @@
  *   call the **same** pure planner with the same captured inputs; the last
  *   displayed pose is what the intent carries, so there is no post-preview Y
  *   correction.
- * - **Snap is an explicit session option.** It is off by default; when enabled
- *   the step is applied to the captured candidate and reported in feedback. It
- *   never becomes a hidden commit-time correction.
+ * - **Snap is the shared Stage fact.** The session applies the increment its
+ *   adapter supplies from `StageAdapterContext.drafting()`; it owns no switch
+ *   and no default. The step is applied to the captured candidate and reported
+ *   in feedback. It never becomes a hidden commit-time correction.
  * - **One cancel path.** The lease policy is `cancel-on-reading-change`; Esc,
  *   blur, capture loss, replacement and adapter unmount all use `cancel()`,
  *   which restores the accepted baseline and releases the lease exactly once.
@@ -52,12 +53,30 @@ import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
+import {
+	snapDraftingCoordinate,
+	snapDraftingPlacement
+} from '$lib/authoring/stage/stage-drafting';
 
 import {
 	nativePlacementContactMinY,
 	nativePlacementDefinition,
 	type NativePlacementPrimitive
 } from '../../scene/object-definition-policy';
+
+/**
+ * The shared drafting snap applied to one **free** scene placement.
+ *
+ * Only the plan position rounds: the support-resolved elevation and the retain
+ * yaw are not placement coordinates and are never re-derived from the snapped
+ * point here. A null or non-positive increment is off, not a zero step.
+ */
+export function snapFreePlacement(
+	point: readonly [number, number],
+	incrementMeters: number | null
+): { readonly x: number; readonly z: number; readonly snappedStep: number | null } {
+	return snapDraftingPlacement(point, incrementMeters);
+}
 
 export type SceneWriteOutcome =
 	| { readonly kind: 'installed' | 'unchanged' | 'no-op' }
@@ -190,7 +209,9 @@ export type ScenePlacementSession = {
 		x: number,
 		z: number,
 		supportElevation: number,
-		choice?: SceneSupportChoice
+		choice?: SceneSupportChoice,
+		/** The increment the caller already applied; omission reports none. */
+		snappedStep?: number | null
 	): SceneSessionOutcome;
 	/** Place one My Objects copy at exact X/Z; the saved source is written verbatim. */
 	placeFormCopy(
@@ -206,7 +227,8 @@ export type ScenePlacementSession = {
 		model: ArmedModelPlacement,
 		x: number,
 		z: number,
-		supportElevation: number
+		supportElevation: number,
+		snappedStep?: number | null
 	): SceneSessionOutcome;
 	previewMove(x: number, z: number): SceneSessionOutcome;
 	previewYaw(radians: number): SceneSessionOutcome;
@@ -236,7 +258,9 @@ export type ScenePlacementSession = {
 		primitive: NativePlacementPrimitive,
 		x: number,
 		z: number,
-		supportElevation: number
+		supportElevation: number,
+		/** The increment the caller already applied; omission reports none. */
+		snappedStep?: number | null
 	): SceneSessionOutcome;
 	/**
 	 * Withdraw the displayed candidate without ending the subject or the lease: a
@@ -575,7 +599,7 @@ export function createSceneSession(input: {
 
 	function snapped(value: number): number {
 		if (snap === null || !(snap > 0)) return value;
-		return Math.round(value / snap) * snap;
+		return snapDraftingCoordinate(value, snap);
 	}
 
 	function candidateFrom(result: SceneOperationResult, step: number | null): SceneSessionOutcome {
@@ -760,14 +784,19 @@ export function createSceneSession(input: {
 		primitive: NativePlacementPrimitive,
 		x: number,
 		z: number,
-		supportElevation: number
+		supportElevation: number,
+		snappedStep: number | null
 	): SceneSessionOutcome {
 		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
 			candidate = null;
 			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
 		}
-		const step = snap === null || !(snap > 0) ? null : snap;
-		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
+		// The caller already snapped and resolved floor support at this exact X/Z.
+		// Re-rounding here would move a supported pose off the floor whose
+		// elevation it displays, so the coordinates and the reported step are
+		// authoritative inputs, not a second application of session state.
+		const step = snappedStep !== null && snappedStep > 0 ? snappedStep : null;
+		const worldXZ: [number, number] = [x, z];
 		const contactMinY = nativePlacementContactMinY(primitive);
 		candidateFormCopy = null;
 		const next: SceneCandidate = {
@@ -813,7 +842,8 @@ export function createSceneSession(input: {
 		x: number,
 		z: number,
 		supportElevation: number,
-		choice?: SceneSupportChoice
+		choice: SceneSupportChoice | undefined,
+		snappedStep: number | null
 	): SceneSessionOutcome {
 		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
 			candidate = null;
@@ -821,8 +851,10 @@ export function createSceneSession(input: {
 			candidateFormCopyChoice = null;
 			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
 		}
-		const step = snap === null || !(snap > 0) ? null : snap;
-		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
+		// One rounding layer: the caller's X/Z is the pose support was resolved
+		// against, and the pinned floor choice belongs to it.
+		const step = snappedStep !== null && snappedStep > 0 ? snappedStep : null;
+		const worldXZ: [number, number] = [x, z];
 		candidateModel = null;
 		candidateFormCopy = copy;
 		candidateFormCopyChoice = choice ?? null;
@@ -847,15 +879,18 @@ export function createSceneSession(input: {
 		model: ArmedModelPlacement,
 		x: number,
 		z: number,
-		supportElevation: number
+		supportElevation: number,
+		snappedStep: number | null
 	): SceneSessionOutcome {
 		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
 			candidate = null;
 			candidateModel = null;
 			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
 		}
-		const step = snap === null || !(snap > 0) ? null : snap;
-		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
+		// One rounding layer: the caller's X/Z is the pose support was resolved
+		// against, and the pinned floor choice belongs to it.
+		const step = snappedStep !== null && snappedStep > 0 ? snappedStep : null;
+		const worldXZ: [number, number] = [x, z];
 		candidateFormCopy = null;
 		const next: SceneCandidate = {
 			kind: 'place',
@@ -1238,17 +1273,18 @@ export function createSceneSession(input: {
 			mode = 'place';
 			return outcome;
 		},
-		previewPlaceFormCopy(copy, x, z, supportElevation, choice) {
+		previewPlaceFormCopy(copy, x, z, supportElevation, choice, snappedStep = null) {
 			mode = 'place';
 			armedFormCopyPlacement = copy;
-			return placeFormCopyCandidate(copy, x, z, supportElevation, choice);
+			return placeFormCopyCandidate(copy, x, z, supportElevation, choice, snappedStep);
 		},
 		async placeFormCopy(copy, x, z, choice) {
 			if (!Number.isFinite(x) || !Number.isFinite(z)) {
 				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
 			}
 			lastPlacedEntityId = null;
-			const outcome = await acceptFormCopyPlacement(copy, [snapped(x), snapped(z)], choice);
+			const placement = snapDraftingPlacement([x, z], snap);
+			const outcome = await acceptFormCopyPlacement(copy, [placement.x, placement.z], choice);
 			if (outcome.kind === 'committed') {
 				candidate = null;
 				candidateFormCopy = null;
@@ -1269,10 +1305,10 @@ export function createSceneSession(input: {
 			mode = 'place';
 			return outcome;
 		},
-		previewPlaceModel(model, x, z, supportElevation) {
+		previewPlaceModel(model, x, z, supportElevation, snappedStep = null) {
 			mode = 'place';
 			armedModelPlacement = model;
-			return placeModelCandidate(model, x, z, supportElevation);
+			return placeModelCandidate(model, x, z, supportElevation, snappedStep);
 		},
 		previewMove(x, z) {
 			return moveCandidate(x, z, snap !== null);
@@ -1280,10 +1316,10 @@ export function createSceneSession(input: {
 		previewYaw(radians) {
 			return yawCandidate(radians);
 		},
-		previewPlace(primitive, x, z, supportElevation) {
+		previewPlace(primitive, x, z, supportElevation, snappedStep = null) {
 			mode = 'place';
 			placePrimitive = primitive;
-			return placeCandidate(primitive, x, z, supportElevation);
+			return placeCandidate(primitive, x, z, supportElevation, snappedStep);
 		},
 		invalidatePreview() {
 			// The expression the creator is now pointing at has no valid support. The
@@ -1471,11 +1507,13 @@ export function createSceneSession(input: {
 			if (!Number.isFinite(x) || !Number.isFinite(z)) {
 				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
 			}
+			const placement = snapDraftingPlacement([x, z], snap);
+			const worldXZ: [number, number] = [placement.x, placement.z];
 			const outcome = copy !== null
-				? await acceptFormCopyPlacement(copy, [snapped(x), snapped(z)])
+				? await acceptFormCopyPlacement(copy, worldXZ)
 				: model === null
-					? await acceptPlacement(primitive, [snapped(x), snapped(z)])
-					: await acceptModelPlacement(model, [snapped(x), snapped(z)]);
+					? await acceptPlacement(primitive, worldXZ)
+					: await acceptModelPlacement(model, worldXZ);
 			if (outcome.kind === 'committed') {
 				candidate = null;
 				// The model or copy is consumed by its placement; a failed attempt keeps

@@ -69,6 +69,7 @@ import {
 } from '$lib/authoring/stage/stage-facade';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-session';
+import { snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
 import LayoutCardFields from './layout/LayoutCardFields.svelte';
@@ -1413,6 +1414,39 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			/**
+			 * Whether rounding a free point would land it on an existing Junction or
+			 * Wall centerline.
+			 *
+			 * A free target that silently becomes a contact is an undeclared
+			 * connection: the chain policy refuses `unconnected_interior_contact` (or a
+			 * crossing) even though the creator aimed at open floor. The deliberate
+			 * target must stay the creator's aim, so such a point keeps its raw
+			 * coordinate rather than inventing a connection the drawing did not name.
+			 */
+			function freePointWouldCreateContact(
+				point: readonly [number, number],
+				projected: ReturnType<typeof projectedScene>
+			): boolean {
+				const tolerance = 1e-6;
+				if (
+					projected.junctions.some(
+						(junction) =>
+							Math.hypot(junction.point[0] - point[0], junction.point[1] - point[1]) <=
+							tolerance
+					)
+				) {
+					return true;
+				}
+				return projected.walls.some((wall) => {
+					const onCenterline = pointOnWallCenterline(wall, [point[0], point[1]]);
+					return (
+						Math.hypot(onCenterline[0] - point[0], onCenterline[1] - point[1]) <=
+						tolerance
+					);
+				});
+			}
+
+			/**
 			 * The deliberate target one Stage-local pointer position names, in world
 			 * coordinates. `null` when the working plane cannot be resolved there.
 			 */
@@ -1436,7 +1470,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// that Wall's centerline, never the cursor's raw plane point.
 					return { target: hit, point: pointOnWallCenterline(wall, [point[0], point[1]]), css };
 				}
-				return { target: { kind: 'free' }, point: [point[0], point[1]], css };
+				// Free placement is the one point the shared Snap fact rounds. A Junction
+				// or Wall target above keeps precedence and its exact geometry, so snap can
+				// never move a connection off the subject the creator aimed at. The inverse
+				// is guarded too: a snapped point that would land on an existing Junction
+				// or Wall centerline keeps the creator's raw aim instead of authoring an
+				// undeclared contact the chain policy must refuse.
+				const snapped = snapDraftingPoint([point[0], point[1]], adapterContext.drafting());
+				if (freePointWouldCreateContact(snapped, projected)) {
+					return { target: { kind: 'free' }, point: [point[0], point[1]], css };
+				}
+				return { target: { kind: 'free' }, point: [snapped[0], snapped[1]], css };
 			}
 
 			/** Re-plan the draft (with the hover point, when there is one). */
