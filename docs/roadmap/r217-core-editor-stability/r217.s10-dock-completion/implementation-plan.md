@@ -1,6 +1,6 @@
 # R217.S10 — Dock completion: implementation plan
 
-**Slice:** R217.S10 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+**Slice:** R217.S10 · **Status:** approved (plan); owner authorized direct implementation 2026-10-30 · **Phase:**
 [R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
 **Reviewers:** T2 (Scene delete, Library key), T5 (form delete), T3 (Find arming) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md)
