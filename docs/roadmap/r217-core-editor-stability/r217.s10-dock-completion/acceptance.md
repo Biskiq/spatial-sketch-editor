@@ -1,66 +1,33 @@
-# R217.S10 — acceptance record: Dock completion
+# R217.S10 — acceptance and closeout (closed)
 
-**Slice:** R217.S10 · **Status:** implemented; **awaiting owner acceptance** (no
-acceptance recorded) · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the
-criteria) · **Phase:** [R217](../README.md) · **Integration route:**
-[R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**AUTHORITY: NONE.** Slice accepted and shipped 2026-10-30 after independent combined T1/T2/T3/T5 review (ACCEPT; no unresolved S10 P0–P2 findings; no required waiver). Owner accepted PR #229 at implementation anchor `696fbd0667e6c552e8343c6029a93c0a4d44d4eb`.
 
-This record holds implementation and review evidence. It claims no owner acceptance, closeout or merge.
-The initial implementation omitted independent review under the original brief. The owner subsequently
-requested combined independent T1/T2/T3/T5 review and P0–P2 repairs on PR #229. The
-[independent review](./independent-review.md) records that verdict and the superseding verification.
+**Delivered:** Ink Box, Measure, Eraser and Library Dock completion, including Find, Escape, keyboard and coarse-pointer behavior. All seven criteria in the approved plan passed. The integrated `architecture-integration` result remains S11's final-gate responsibility; S11 is not released or closed.
 
-## Implementation
+**Evidence:** At the tested implementation anchor, `npm test` 248 files / 3,184 tests; architecture 23 / 194; heavy 11 / 138; `npm run check` 0 errors / 0 warnings; Camera, Layout, Geometry and Project-model package checks; build; and browser workflows all passed. See the independent review recovery stub and [preserved browser evidence](evidence/README.md). No new waiver or known defect is carried. Approved deferred scope remains recorded in the plan's recovered body.
 
-Branch `claude/r217-s10-dock-completion` from `origin/main` `cc7e0537`:
+**Entry points:** `apps/editor/src/lib/authoring/stage/`; `apps/editor/src/lib/authoring/adapters/layout/`; `apps/editor/src/lib/authoring/adapters/scene.adapter.ts`; regressions under `apps/editor/tests/lib/authoring/`.
 
-- `ddf461cc` — Ink Box in the Wall reading: two corners become one closed four-point `ChainDraft`
-  committed through the existing `layout-wall-chain-commit` planner (four Walls, one derived Room,
-  one F4 entry). Drag or two clicks; a degenerate box and a Line/Box switch during a live chain are
-  refused in Layout's words.
-- `e3368ebb` — Measure and Eraser host tools. The Stage asks each binding that declares host tool
-  `measure`/`erase` through the one `resolveStagePick` arbitration (`hostToolTarget`); the Eraser
-  then asks only the winning binding for its `eraseAction`, which returns that domain's existing
-  Card delete. No new geometry, delete planner or picking authority.
-- `5f62fa62` — icon-first Dock **Select · Ink · Measure · Eraser | Library** (V/P/M/E/L, `2` Plan),
-  Find arming, Escape order, coarse 44 px keys, and the Place task re-homed as the Library key.
+**Recovery:** full acceptance record, plan and independent review at their accepted revision:
 
-## Verification (before the docs commit)
+```sh
+git show 696fbd0667e6c552e8343c6029a93c0a4d44d4eb:docs/roadmap/r217-core-editor-stability/r217.s10-dock-completion/acceptance.md
+git show closed/R217.S10:docs/roadmap/r217-core-editor-stability/r217.s10-dock-completion/acceptance.md
+```
 
-All exit 0: `npm run test:arch` 23 files / 194 tests; `npm test` 248 / 3,172; `npm run test:heavy`
-11 / 138; `npm run check` 0 errors / 0 warnings; camera-core, layout-core, geometry-core and
-project-model checks; `npm run build`. The architecture lane was rerun after these docs edits.
+## Closeout preservation — 2026-10-30
 
-Focused regressions: `apps/editor/tests/lib/authoring/layout-drawing-adapter.test.ts` (Ink Box,
-byte-identical to four closed Lines), `apps/editor/tests/lib/authoring/stage-host-tools.test.ts`
-(new), `apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts` (mounted Dock, Measure, Eraser and
-Library workflows), plus `stage-input`, `paper-marks`, `stage-shell-composition` updates.
+```text
+prose compacted:                 3   stubs at their own paths
+reference promotions:            0   no new durable reference contract
+renderable evidence archived:    5 files / 1,186,627 bytes
+evidence stubs / manifests:      1   evidence/README.md
+transient artifacts removed:     0
+historical anchor:               696fbd0667e6c552e8343c6029a93c0a4d44d4eb · tag closed/R217.S10 (pushed)
+new live → archive prose links:  0
+manual-owed verification rows:   0
+remaining deferred items:        0 known bugs; approved deferred scope only
+permanent stubs added:           3   one for each closed prose artifact
+```
 
-## Browser workflows (dev editor, Enclosed room starter, Plan reading)
-
-- **Box:** P, Box, drag → four closed Walls and a selectable Room.
-- **Measure:** live dashed preview, settled 9.22 m between Room and Box corners; cross-domain Room
-  corner → placed Block corner 7.506 m. Selection, Undo and dirty state unchanged.
-- **Library:** L opens Place with the selection unchanged; a typed Place placed a Block.
-- **Eraser:** red dashed hover; Room floor refused ("A Room floor cannot be erased."); Block erased
-  in one click; a Room-bounding Wall shows Layout's disclosure first, the second click erases it and
-  opens the Room; Head Undo restores Wall and Room.
-- **Keyboard / touch:** shortcuts and Find arm without changing selection; Escape disarms to Select;
-  coarse-pointer emulation renders 44 × 44 px keys.
-
-## Notes for the owner
-
-- **Keyboard contract unchanged:** the Dock letters and `2` are inert as Stage commands while a press
-  is live, so S07 numeric gesture typing is untouched. `3` still flips the reading during a drag
-  (pre-existing asymmetry, not changed here).
-- **Opening reachability:** for `erase` only, Layout's Plan pick ranks an in-tolerance Opening over
-  its host Wall; Select keeps the accepted Wall-before-Opening order.
-- **Disclosure is domain-owned:** Layout sets `confirm` when a Wall delete hosts Openings or retires
-  or creates Rooms; Scene deletes never confirm.
-- **Fixture limit:** catalogue-model erase is asserted at the binding level, because the original bare test
-  fixture had no resource lock. The independent review adds a pinned-model F4 delete/Undo fixture;
-  primitives and forms remain covered end to end.
-- **Label:** the Find entry formerly "Place object" is now "Library"; instrument copy says "reopen the
-  Library".
-- **Out of scope, untouched:** grid cutoff, Wall Ink ghosts, direct Wall manipulation, object ghosts,
-  narrow-viewport shell overflow and general shell polish.
+P1 merge commit required. After merge, verify the historical anchor is an ancestor of `main`, inspect each recovery path with `git show <anchor>:<path>`, and confirm the tag target retains the anchor. The branch head is deliberately not pinned here because this PR's merge will change it.
