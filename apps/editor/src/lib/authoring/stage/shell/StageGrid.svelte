@@ -20,6 +20,7 @@
 		evaluation,
 		datumMeters = 0,
 		contentBounds = null,
+		candidateBounds = null,
 		surface
 	}: {
 		evaluation: ViewportEvaluation | null;
@@ -27,6 +28,8 @@
 		datumMeters?: number;
 		/** Layout ∪ Scene datum bounds; Paper draws a bounded sheet around them. */
 		contentBounds?: GridRect | null;
+		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
+		candidateBounds?: GridRect | null;
 		surface: GridSurface;
 	} = $props();
 
@@ -46,6 +49,7 @@
 			targetXZ: [evaluation.target[0], evaluation.target[2]],
 			datumMeters,
 			contentBounds,
+			candidateBounds,
 			surface,
 			// The mat's patch is the actual datum the Camera's corner rays see,
 			// never a fixed multiple of the target plane that ends inside the frame.

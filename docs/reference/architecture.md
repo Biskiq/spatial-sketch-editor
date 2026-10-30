@@ -425,11 +425,20 @@ and the **Size** ray it reveals along the bounds diagonal. Move submits `place-o
 the S05 snap step; Turn submits `set-yaw`; Size submits `resize-on-floor` and leaves the base on
 its support through the captured `contactMinY`. The Card is the exact writer for Position X/Z,
 Yaw and uniform Size, and each field calls the same planner dispatch as its mark, so a typed
-value and a dragged value share refusal words and install the same fact. A light, a form, a
-vertical plane or a model without verified contact publishes no object marks. Marks are drawn
+value and a dragged value share refusal words and install the same fact. Alight, a form, a vertical plane or a model without verified contact publishes no object marks. Marks are drawn
 only while no contributed task is open; opening Place, Compose or Import hides them. The old
 Scene Arrange task, its Find entry and its instrument posture are removed; Place, Compose, Import
 and the Library posture remain.
+
+R217.S14 adds one optional `candidatePreview(context)` contribution beside `overlay` and `graphics`:
+the subject, affected neighbours and refusal words a domain is proposing right now. A domain
+publishes world-space polygons, segments, labels and the winning snap; the Stage facade projects
+every point once through the accepted evaluation and `StageOverlay.svelte` draws the result as SVG
+in both readings. A refused candidate contributes no geometry, only its reason. Nothing is
+persisted, admitted to history or serialized. Layout builds its preview from the planner's own
+candidate document through the existing compile and `buildPaperPlan` path — the same solve release
+commits — and filters it to the changed Wall and Opening ids. Paper's bounded sheet includes a live
+candidate's extent, so a drag never leaves the sheet, and the Camera is never reframed by it.
 
 ### Coordination over domain policy
 

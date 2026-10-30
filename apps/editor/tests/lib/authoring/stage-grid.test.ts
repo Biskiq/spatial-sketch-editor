@@ -227,6 +227,34 @@ describe('R217.S13 — Paper’s bounded sheet', () => {
 	});
 });
 
+describe('R217.S14 — Paper’s sheet includes the live candidate', () => {
+	const content = { minX: 0, maxX: 7, minZ: -4, maxZ: 2 };
+	const wide = { ...PAPER_BASE, targetPlaneHeightMeters: 80, aspect: 2, intervalMeters: 1 };
+
+	it('grows past the accepted work without moving the Camera inputs', () => {
+		const accepted = paperSheetRectFor({ ...wide, contentBounds: content })!;
+		const grown = paperSheetRectFor({
+			...wide,
+			contentBounds: content,
+			candidateBounds: { minX: 30, maxX: 33, minZ: -4, maxZ: 2 }
+		})!;
+		expect(grown.maxX).toBeGreaterThan(accepted.maxX);
+		expect(grown.maxX).toBeGreaterThanOrEqual(38);
+		expect(grown.minX).toBe(accepted.minX);
+	});
+
+	it('frames a candidate drawn on an otherwise empty project', () => {
+		const sheet = paperSheetRectFor({
+			...wide,
+			targetXZ: [0, 0],
+			contentBounds: null,
+			candidateBounds: { minX: 24, maxX: 26, minZ: 0, maxZ: 2 }
+		})!;
+		expect(sheet.minX).toBeLessThanOrEqual(19);
+		expect(sheet.maxX).toBeGreaterThanOrEqual(31);
+	});
+});
+
 describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 	it('is never drawn in Shaded Plan or under Grid off, and the mat keeps it in 3D', () => {
 		expect(gridIsVisible({ grid: false, appearance: 'paper', renderedReading: 'plan' })).toBe(false);

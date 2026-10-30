@@ -45,6 +45,8 @@
  */
 
 import {
+	compileWallFirstLayoutGeometry,
+	evaluateLayoutPlan,
 	mintLayoutIdCapture,
 	planCreateWallFirstOpening,
 	planDeleteWallFirstOpening,
@@ -64,12 +66,12 @@ import {
 	type StageCardAction,
 	type StageCardFact,
 	type StageCardSubject,
+	type StageCandidatePreview,
 	type StageKeyboardIntent,
 	type StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-session';
-import { snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
@@ -165,6 +167,18 @@ import {
 	type WallPointerMode
 } from './layout/wall-gesture';
 import {
+	resolveInkPointSnap,
+	resolveOpeningSlideSnap,
+	resolveOpeningWidthSnap,
+	type LayoutSnapWinner
+} from './layout/snap';
+import {
+	buildLayoutCandidatePaper,
+	candidatePreviewOf,
+	openingIdsOnWalls,
+	type CandidatePaperGeometry
+} from './layout/candidate-preview';
+import {
 	clearPausedProposal,
 	clearPausedProposalsForSource,
 	pausedWallProposal,
@@ -249,7 +263,13 @@ type OpeningCandidate = {
 };
 
 type OpeningPreview =
-	| { readonly kind: 'planned'; readonly openingId: string }
+	| {
+			readonly kind: 'planned';
+			readonly openingId: string;
+			/** The planner candidate preview compiles; release submits the same request. */
+			readonly document: LayoutDocumentWallFirst;
+			readonly changedWallIds: readonly string[];
+	  }
 	| { readonly kind: 'refused'; readonly message: string };
 
 /** One claimed Wall gesture, from its immutable baseline to its one commit. */
@@ -275,6 +295,10 @@ type WallGesture = {
 	request: WallManipulationRequest | null;
 	/** The planner's candidate frame for the overlay, or `null`. */
 	preview: WallFrame | null;
+	/** The planner's exact candidate document; preview compiles this one. */
+	previewDocument: LayoutDocumentWallFirst | null;
+	/** The snap the pointer named, when one won. */
+	snap: LayoutSnapWinner | null;
 	/** Neighbours the candidate reshaped at the edited junction. */
 	neighbours: readonly WallNeighbourPreview[];
 };
@@ -296,6 +320,10 @@ type OpeningMarkGesture = {
 	readonly baseline: LayoutDocumentWallFirst;
 	/** The last candidate this gesture owns, or `null` after a refusal. */
 	request: { readonly field: 'offset' | 'width'; readonly value: number } | null;
+	/** The snap the pointer named, when one won. */
+	snap: LayoutSnapWinner | null;
+	/** The canonical candidate document the preview compiles. */
+	previewDocument: LayoutDocumentWallFirst | null;
 	numeric: PlanNumericEntryState | null;
 };
 
@@ -407,6 +435,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** One operation, one capture: the same identity previews and commits. */
 			let chainCapture: ReturnType<typeof mintLayoutIdCapture> | null = null;
 			let inkHover: InkPointerTarget | null = null;
+			/** The snap the current Ink hover named; never persisted. */
+			let inkSnapWinner: LayoutSnapWinner | null = null;
 			let inkNotice: string | null = null;
 			let inkPreview: ChainPlanPreview | null = null;
 			/** The live chain's lease: Undo names finish-or-cancel until it settles. */
@@ -426,6 +456,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			let openingCapture: ReturnType<typeof mintLayoutIdCapture> | null = null;
 			let openingCandidate: OpeningCandidate | null = null;
+			/** The snap the current Opening pointer named; never persisted. */
+			let openingSnapWinner: LayoutSnapWinner | null = null;
 			let openingPreview: OpeningPreview | null = null;
 			let openingNotice: string | null = null;
 			let openingCommitInFlight = false;
@@ -1052,7 +1084,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const plan = planCreateWallFirstOpening(document, payload, capture, levelId);
 				return plan.kind === 'rejected'
 					? { kind: 'refused', message: openingRefusalWords(document, plan.rejection, payload) }
-					: { kind: 'planned', openingId: plan.changedOpeningIds[0]! };
+					: {
+							kind: 'planned',
+							openingId: plan.changedOpeningIds[0]!,
+							document: plan.document,
+							changedWallIds: plan.changedWallIds
+						};
 			}
 
 			/** Re-plan the current candidate (pointer or typed) after any change. */
@@ -1069,8 +1106,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			/** Set the candidate and publish its planner answer. */
-			function setOpeningCandidate(next: OpeningCandidate | null): void {
+			function setOpeningCandidate(
+				next: OpeningCandidate | null,
+				snap: LayoutSnapWinner | null = null
+			): void {
 				openingCandidate = next;
+				openingSnapWinner = next === null ? null : snap;
 				if (next === null) {
 					openingPreview = null;
 					return;
@@ -1082,6 +1123,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** Drop every Opening-reading transient; no document write. */
 			function clearOpeningState(): void {
 				openingCandidate = null;
+				openingSnapWinner = null;
 				openingPreview = null;
 				openingNotice = null;
 				openingCapture = null;
@@ -1173,6 +1215,28 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (point === null) return null;
 				const offset = offsetAlongWall(wall, [point[0], point[1]]);
 				return { wallId: wall.id, offset };
+			}
+
+			/** Apply the Opening slide policy to one new-Opening candidate. */
+			function snappedOpeningCandidate(
+				adapterContext: StageAdapterContext,
+				candidate: OpeningCandidate
+			): { readonly candidate: OpeningCandidate; readonly snap: LayoutSnapWinner | null } {
+				const span = openingSpan(candidate.wallId);
+				if (span === null) return { candidate, snap: null };
+				const winner = resolveOpeningSlideSnap({
+					geometry: adapterContext.snapshot.domain.geometry,
+					hostSpan: { segmentId: candidate.wallId, start: span.frame.start, end: span.frame.end },
+					openingId: '',
+					pointerCenterOffset: candidate.offset + openingOptions.width / 2,
+					width: openingOptions.width,
+					pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
+					drafting: adapterContext.drafting()
+				});
+				return {
+					candidate: winner.winner === null ? candidate : { ...candidate, offset: winner.offset },
+					snap: winner.winner
+				};
 			}
 
 			/**
@@ -1334,7 +1398,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						publishInk();
 						return true;
 					}
-					const candidate = openingCandidateAt(adapterContext, intent.css);
+					const raw = openingCandidateAt(adapterContext, intent.css);
+					const candidate = raw === null ? null : snappedOpeningCandidate(adapterContext, raw);
 					if (candidate === null) {
 						openingNotice = 'Aim at a Wall face to place an Opening; the Stage is not a free host.';
 						setOpeningCandidate(null);
@@ -1357,7 +1422,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						lease: acquisition,
 						css: intent.css
 					};
-					setOpeningCandidate(candidate);
+					setOpeningCandidate(candidate.candidate, candidate.snap);
 					services.stage.notifySurfaceChange();
 					publishInk();
 					return true;
@@ -1374,26 +1439,28 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				}
 				if (intent.phase === 'move') {
-					const candidate = openingCandidateAt(adapterContext, intent.css);
+					const raw = openingCandidateAt(adapterContext, intent.css);
+					const candidate = raw === null ? null : snappedOpeningCandidate(adapterContext, raw);
 					if (candidate === null) {
 						openingNotice = 'Aim at a Wall face to place an Opening.';
 						setOpeningCandidate(null);
 					} else {
-						setOpeningCandidate(candidate);
+						setOpeningCandidate(candidate.candidate, candidate.snap);
 					}
 					services.stage.notifySurfaceChange();
 					publishInk();
 					return true;
 				}
 				// Release: one click commits the candidate under the pointer, once.
-				const release = openingCandidateAt(adapterContext, intent.css) ?? openingCandidate;
+				const rawRelease = openingCandidateAt(adapterContext, intent.css);
+				const release = rawRelease === null ? null : snappedOpeningCandidate(adapterContext, rawRelease);
 				endOpeningPress();
 				if (release === null) {
 					openingNotice = 'Aim at a Wall face to place an Opening.';
 					setOpeningCandidate(null);
 				} else {
-					setOpeningCandidate(release);
-					void commitOpening(release);
+					setOpeningCandidate(release.candidate, release.snap);
+					void commitOpening(release.candidate);
 				}
 				services.stage.notifySurfaceChange();
 				publishInk();
@@ -1408,11 +1475,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (openTaskKind !== LAYOUT_INK_TASK || inkReading !== 'opening' || intent.phase !== 'move') {
 					return false;
 				}
-				const candidate = openingCandidateAt(adapterContext, intent.css);
-				if (candidate?.wallId === openingCandidate?.wallId && candidate?.offset === openingCandidate?.offset) {
+				const raw = openingCandidateAt(adapterContext, intent.css);
+				const candidate = raw === null ? null : snappedOpeningCandidate(adapterContext, raw);
+				if (candidate?.candidate.wallId === openingCandidate?.wallId && candidate?.candidate.offset === openingCandidate?.offset) {
 					return true;
 				}
-				setOpeningCandidate(candidate);
+				setOpeningCandidate(candidate?.candidate ?? null, candidate?.snap ?? null);
 				services.stage.notifySurfaceChange();
 				publishInk();
 				return true;
@@ -1464,6 +1532,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (hit?.kind === 'junction') {
 					const junction = projected.junctions.find((candidate) => candidate.id === hit.junctionId);
 					if (junction === undefined) return null;
+					inkSnapWinner = { point: junction.point, kind: 'junction', name: 'Junction' };
 					return { target: hit, point: junction.point, css };
 				}
 				const point = pointerDatumPoint(adapterContext, css);
@@ -1473,24 +1542,55 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (wall === undefined) return null;
 					// The split lands where the creator aimed: the pointer projected onto
 					// that Wall's centerline, never the cursor's raw plane point.
-					return { target: hit, point: pointOnWallCenterline(wall, [point[0], point[1]]), css };
+					const split = pointOnWallCenterline(wall, [point[0], point[1]]);
+					inkSnapWinner = { point: split, kind: 'wall-span', name: 'Wall', wallId: wall.id };
+					return { target: hit, point: split, css };
 				}
-				// Free placement is the one point the shared Snap fact rounds. A Junction
-				// or Wall target above keeps precedence and its exact geometry, so snap can
-				// never move a connection off the subject the creator aimed at. The inverse
-				// is guarded too: a snapped point that would land on an existing Junction
-				// or Wall centerline keeps the creator's raw aim instead of authoring an
-				// undeclared contact the chain policy must refuse.
+				// Free placement asks the one Layout snap resolver. Junction and host
+				// targets above keep precedence, so snap can never move a connection off
+				// the subject the creator deliberately aimed at. The inverse is guarded
+				// too: a grid point that would land on an existing Junction or Wall keeps
+				// the creator's raw aim instead of authoring an undeclared contact.
 				const drafting = adapterContext.drafting();
-				const snapped = snapDraftingPoint([point[0], point[1]], drafting);
-				if (freePointWouldCreateContact(snapped, projected)) {
-					return { target: { kind: 'free' }, point: [point[0], point[1]], css };
+				const winner = resolveInkPointSnap({
+					geometry: adapterContext.snapshot.domain.geometry,
+					point: [point[0], point[1]],
+					pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
+					anchor: draft.points[draft.points.length - 1]?.point ?? null,
+					drafting
+				});
+				if (winner !== null) {
+					if (winner.kind === 'junction') {
+						const junction = projected.junctions.find(
+							(candidate) =>
+								Math.hypot(candidate.point[0] - winner.point[0], candidate.point[1] - winner.point[1]) <= 1e-9
+						);
+						if (junction !== undefined) {
+							inkSnapWinner = winner;
+							return { target: { kind: 'junction', junctionId: junction.id }, point: junction.point, css };
+						}
+					}
+					if (winner.kind === 'wall-span' && winner.wallId !== undefined) {
+						const wall = projected.walls.find((candidate) => candidate.id === winner.wallId);
+						if (wall !== undefined) {
+							inkSnapWinner = winner;
+							return { target: { kind: 'host', wallId: wall.id }, point: winner.point, css };
+						}
+					}
+					if (freePointWouldCreateContact(winner.point, projected)) {
+						inkSnapWinner = null;
+						return { target: { kind: 'free' }, point: [point[0], point[1]], css };
+					}
+					inkSnapWinner = winner;
+					return { target: { kind: 'free' }, point: winner.point, css };
 				}
-				return { target: { kind: 'free' }, point: [snapped[0], snapped[1]], css };
+				inkSnapWinner = null;
+				return { target: { kind: 'free' }, point: [point[0], point[1]], css };
 			}
 
 			/** Re-plan the draft (with the hover point, when there is one). */
 			function refreshInkPreview(): void {
+				if (inkHover === null) inkSnapWinner = null;
 				// A contributed reading owns its own preview; this binding's Wall chain
 				// planner must never speak for it.
 				if (inkReading !== 'wall' && inkReading !== 'opening') {
@@ -1674,6 +1774,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				draft = EMPTY_CHAIN_DRAFT;
 				chainCapture = null;
 				inkHover = null;
+				inkSnapWinner = null;
 				inkPreview = null;
 				inkNotice = null;
 				inkProposal?.release();
@@ -2075,6 +2176,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return preview;
 			}
 
+			const EMPTY_CANDIDATE_GEOMETRY: CandidatePaperGeometry = { polygons: [], segments: [] };
 			const binding: StageAdapterBinding = {
 				pick,
 				hostTools: ['erase', 'measure'],
@@ -2404,7 +2506,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (claimed) publishInk();
 						return claimed;
 					}
-					return openingHover(intent, adapterContext);
+					if (inkReading === 'opening') return openingHover(intent, adapterContext);
+					// A Wall-reading hover updates the live chain. It never claims a move:
+					// the host's navigation gesture and the next press stay the host's.
+					if (intent.phase !== 'move') return false;
+					inkHover = inkTargetAt(adapterContext, intent.css);
+					refreshInkPreview();
+					services.stage.notifySurfaceChange();
+					publishInk();
+					return true;
 				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
 					if (openTaskKind === LAYOUT_INK_TASK && inkReading !== 'wall' && inkReading !== 'opening') {
@@ -2475,6 +2585,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								lease: acquisition,
 								request: null,
 								preview: null,
+								previewDocument: null,
+								snap: null,
 								neighbours: []
 							};
 							warmLayoutPlannerBaseline(gesture.baseline);
@@ -2502,6 +2614,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							numericField: planNumericFields(numericHost)[0]!,
 							baseline: stageLayout(adapterContext.snapshot),
 							request: null,
+							snap: null,
+							previewDocument: null,
 							numeric: null
 						};
 						services.stage.notifySurfaceChange();
@@ -2551,16 +2665,39 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								? 0
 								: (point[0] - openingGesture.frame.start[0]) * direction[0] +
 									(point[1] - openingGesture.frame.start[1]) * direction[1];
-							const value =
-								field === 'offset'
-									? Math.min(
-											Math.max(along - openingGesture.widthAtStart / 2, 0),
-											Math.max(0, openingGesture.length - openingGesture.widthAtStart)
-										)
-									: Math.min(
-											Math.max(along - openingGesture.offsetAtStart, 0.05),
-											openingGesture.length - openingGesture.offsetAtStart
-										);
+							const hostSpan = {
+								segmentId: openingGesture.wallId,
+								start: openingGesture.frame.start,
+								end: openingGesture.frame.end
+							};
+							const pixelsPerMeter = 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel;
+							let value: number;
+							let winner: LayoutSnapWinner | null;
+							if (field === 'offset') {
+								const snapped = resolveOpeningSlideSnap({
+									geometry: adapterContext.snapshot.domain.geometry,
+									hostSpan,
+									openingId: openingGesture.openingId,
+									pointerCenterOffset: along,
+									width: openingGesture.widthAtStart,
+									pixelsPerMeter,
+									drafting: adapterContext.drafting()
+								});
+								value = snapped.offset;
+								winner = snapped.winner;
+							} else {
+								const snapped = resolveOpeningWidthSnap({
+									geometry: adapterContext.snapshot.domain.geometry,
+									hostSpan,
+									openingId: openingGesture.openingId,
+									pointerEdgeOffset: along,
+									pixelsPerMeter,
+									drafting: adapterContext.drafting()
+								});
+								value = Math.max(snapped.edgeOffset - openingGesture.offsetAtStart, 0.05);
+								winner = snapped.winner;
+							}
+							openingGesture.snap = winner;
 							const planned = planUpdateWallFirstOpening(
 								openingGesture.baseline,
 								openingGesture.openingId,
@@ -2568,9 +2705,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							);
 							if (planned.kind === 'rejected') {
 								openingGesture.request = null;
+								openingGesture.previewDocument = null;
 								refusal = planned.rejection.message;
 							} else {
 								openingGesture.request = { field, value };
+								openingGesture.previewDocument = planned.document;
 								refusal = null;
 							}
 							services.stage.notifySurfaceChange();
@@ -2592,6 +2731,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (request.kind === 'length' && request.length <= 0) {
 							wallGesture.request = null;
 							wallGesture.preview = null;
+							wallGesture.previewDocument = null;
 							wallGesture.neighbours = [];
 							refusal = 'Drag the endpoint back across the fixed endpoint to name a length.';
 							// T3.P03.S02: a refused sample installs no preview, so the harness must
@@ -2611,12 +2751,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							// later release cannot install the last valid pose on its behalf.
 							wallGesture.request = null;
 							wallGesture.preview = null;
+							wallGesture.previewDocument = null;
 							wallGesture.neighbours = [];
 							refusal = planned.message;
 							perfMark('wall-preview:refused', { wallId: wallGesture.frame.wallId });
 						} else {
 							wallGesture.request = request;
 							wallGesture.preview = planned.wall;
+							wallGesture.previewDocument = planned.document;
 							wallGesture.neighbours = planned.neighbours;
 							refusal = null;
 							// The candidate is installed into the overlay here; presentation is
@@ -2653,6 +2795,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (pending !== null) void commit(pending, fixed, wallId);
 					services.stage.notifySurfaceChange();
 					return true;
+				},
+				/**
+				 * The planner's live candidate, in world coordinates. The Stage projects it
+				 * once; this binding owns no second projection and no second drawing.
+				 */
+				candidatePreview(adapterContext) {
+					return candidatePreviews(adapterContext);
 				},
 				overlay(adapterContext) {
 					if (openTaskKind === LAYOUT_INK_TASK && inkReading !== 'wall' && inkReading !== 'opening') {
@@ -2821,6 +2970,166 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			};
 			return binding;
 
+			/** The filtered Paper drawing for one planner candidate document. */
+			function candidatePaper(
+				document: LayoutDocumentWallFirst,
+				subjectIds: ReadonlySet<string>,
+				affectedIds: ReadonlySet<string>
+			): { readonly paper: ReturnType<typeof buildLayoutCandidatePaper>; readonly plan: true } | null {
+				const result = services.stage.plan();
+				if (result.kind !== 'evaluated') return null;
+				return {
+					paper: buildLayoutCandidatePaper(document, result.plan, subjectIds, affectedIds),
+					plan: true
+				};
+			}
+
+			/**
+			 * The live candidate or candidates this binding proposes.
+			 *
+			 * Every geometry comes from the planner's candidate document through the
+			 * existing compile + Paper path, filtered to the sources the operation
+			 * changed. A refusal contributes no geometry: only its words, which the
+			 * overlay paints at the pointer. Nothing is persisted.
+			 */
+			function candidatePreviews(adapterContext: StageAdapterContext): readonly StageCandidatePreview[] {
+				const y = adapterContext.snapshot.domain.datumMeters;
+				const world = (point: LayoutVec2, elevation = y): [number, number, number] => [point[0], elevation, point[1]];
+				const snapOf = (winner: LayoutSnapWinner | null) =>
+					winner === null ? undefined : { world: world(winner.point), name: winner.name };
+
+				const activeWall = gesture;
+				if (activeWall !== null && activeWall.previewDocument !== null) {
+					const subjectWalls = new Set([activeWall.frame.wallId]);
+					const affectedWalls = new Set(activeWall.neighbours.map((neighbour) => neighbour.wallId));
+					const subjectIds = new Set([...subjectWalls, ...openingIdsOnWalls(activeWall.previewDocument, subjectWalls)]);
+					const affectedIds = new Set([...affectedWalls, ...openingIdsOnWalls(activeWall.previewDocument, affectedWalls)]);
+					const built = candidatePaper(activeWall.previewDocument, subjectIds, affectedIds);
+					if (built !== null) {
+						return [
+							candidatePreviewOf({
+								id: 'layout-candidate-wall',
+								role: 'subject',
+								geometry: built.paper.subject,
+								...(activeWall.request === null
+									? {}
+									: { labels: [{ world: world(activeWall.preview!.end), text: wallRequestLabel(activeWall.request, activeWall.fixed) }] })
+							}),
+							...(built.paper.affected.polygons.length === 0 && built.paper.affected.segments.length === 0
+								? []
+								: [candidatePreviewOf({ id: 'layout-candidate-neighbours', role: 'affected', geometry: built.paper.affected })])
+						];
+					}
+					// A live Wall gesture owns the preview. A refused sample has no
+					// candidate, so the overlay's refusal words are its whole answer; the
+					// Ink hover must not leak a stale chain mark into it.
+					return [];
+				}
+				if (activeWall !== null) return [];
+
+				const activeOpeningMark = openingGesture;
+				if (activeOpeningMark !== null && activeOpeningMark.previewDocument !== null) {
+					const subjectIds = new Set([activeOpeningMark.openingId, activeOpeningMark.wallId]);
+					const built = candidatePaper(activeOpeningMark.previewDocument, subjectIds, new Set());
+					if (built !== null) {
+						return [candidatePreviewOf({ id: 'layout-candidate-opening-mark', role: 'subject', geometry: built.paper.subject, snap: snapOf(activeOpeningMark.snap) })];
+					}
+					return [];
+				}
+				if (activeOpeningMark !== null) return [];
+
+				if (inkReading === 'opening') {
+					if (openingPreview?.kind === 'planned') {
+						const subjectIds = new Set([openingPreview.openingId, ...openingPreview.changedWallIds]);
+						const built = candidatePaper(openingPreview.document, subjectIds, new Set());
+						if (built !== null) {
+							const ghost = openingCandidate === null ? null : openingGhost(openingCandidate.wallId, openingCandidate.offset);
+							return [candidatePreviewOf({
+								id: 'layout-candidate-opening',
+								role: 'subject',
+								geometry: built.paper.subject,
+								labels: ghost === null ? [] : [{ world: world(ghost[1]), text: `Width ${openingOptions.width.toFixed(3)} m` }],
+								snap: snapOf(openingSnapWinner)
+							})];
+						}
+					}
+					const refusedWords =
+						openingNotice ?? (openingPreview?.kind === 'refused' ? openingPreview.message : null);
+					if (openingCandidate !== null && refusedWords !== null) {
+						const ghost = openingGhost(openingCandidate.wallId, openingCandidate.offset);
+						return [candidatePreviewOf({
+							id: 'layout-candidate-opening-refused',
+							role: 'refused',
+							geometry: EMPTY_CANDIDATE_GEOMETRY,
+							...(ghost === null ? {} : { labels: [{ world: world(ghost[0]), text: refusedWords }] })
+						})];
+					}
+					return [];
+				}
+
+				// Wall chain / Box, including the cursor point before a plan exists.
+				const boxMode = inkWallMode === 'box';
+				const live = boxMode
+					? boxPreviewDraft() ?? draft
+					: inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
+				const points = 'points' in live ? live.points : draft.points;
+				if (inkPreview?.kind === 'planned') {
+					const subjectIds = new Set([...inkPreview.authoredWallIds, ...inkPreview.createdRoomIds]);
+					const affectedIds = new Set(inkPreview.splitWallIds);
+					const built = candidatePaper(inkPreview.document, subjectIds, affectedIds);
+					const geometry = built?.paper.subject ?? EMPTY_CANDIDATE_GEOMETRY;
+					const labels: { world: [number, number, number]; text: string }[] = [];
+					if (inkHover !== null && !boxMode) {
+						const pending = pendingLegFacts(draft, inkHover.point);
+						if (pending !== null) labels.push({ world: world(inkHover.point), text: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°` });
+					}
+					if (boxMode && inkHover !== null) {
+						const anchor = boxAnchor();
+						if (anchor !== null) {
+							labels.push({
+								world: world(inkHover.point),
+								text: `Box ${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(3)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(3)} m`
+							});
+						}
+						labels.push({ world: world(inkHover.point), text: inkPreview.consequence.summary });
+					}
+					return [
+						candidatePreviewOf({ id: 'layout-candidate-chain', role: 'subject', geometry, labels, snap: snapOf(inkSnapWinner) }),
+						...(built === null || (built.paper.affected.polygons.length === 0 && built.paper.affected.segments.length === 0)
+							? []
+							: [candidatePreviewOf({ id: 'layout-candidate-chain-affected', role: 'affected', geometry: built.paper.affected })])
+					];
+				}
+				if (inkPreview?.kind === 'refused' && points.length >= 2) {
+					return [candidatePreviewOf({
+						id: 'layout-candidate-chain-refused',
+						role: 'refused',
+						geometry: EMPTY_CANDIDATE_GEOMETRY,
+						labels: [{ world: world(points[points.length - 1]!.point), text: inkPreview.message }]
+					})];
+				}
+				if (inkHover !== null && draft.points.length > 0) {
+					const last = draft.points[draft.points.length - 1]!.point;
+					const pending = pendingLegFacts(draft, inkHover.point);
+					return [candidatePreviewOf({
+						id: 'layout-candidate-cursor',
+						role: 'subject',
+						geometry: { polygons: [], segments: [[world(last), world(inkHover.point)]] },
+						labels: pending === null ? [] : [{ world: world(inkHover.point), text: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°` }],
+						snap: snapOf(inkSnapWinner)
+					})];
+				}
+				if (inkHover !== null && inkSnapWinner !== null) {
+					return [candidatePreviewOf({
+						id: 'layout-candidate-cursor',
+						role: 'subject',
+						geometry: EMPTY_CANDIDATE_GEOMETRY,
+						snap: snapOf(inkSnapWinner)
+					})];
+				}
+				return [];
+			}
+
 			/**
 			 * The host-relative Opening ghost: two edges, the live offset/width and the
 			 * planner's refusal words. The edges are drawn even when the candidate
@@ -2831,12 +3140,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
 				const markers: { id: string; css: readonly [number, number]; label: string }[] = [];
 				const y = adapterContext.snapshot.domain.datumMeters;
-				const project = (point: readonly [number, number]) => {
-					const css = adapterContext.project([point[0], y, point[1]]);
-					return css === null
-						? null
-						: ([css[0] - adapterContext.evaluation.rect.left, css[1] - adapterContext.evaluation.rect.top] as const);
-				};
+				const project = (point: readonly [number, number]) =>
+					adapterContext.project([point[0], y, point[1]]);
 				const candidate = openingCandidate;
 				const ghost = candidate === null ? null : openingGhost(candidate.wallId, candidate.offset);
 				const start = ghost === null ? null : project(ghost[0]);
@@ -2869,12 +3174,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function inkOverlay(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
 				const markers: { id: string; css: readonly [number, number]; label: string }[] = [];
 				const y = adapterContext.snapshot.domain.datumMeters;
-				const project = (point: readonly [number, number]) => {
-					const css = adapterContext.project([point[0], y, point[1]]);
-					return css === null
-						? null
-						: ([css[0] - adapterContext.evaluation.rect.left, css[1] - adapterContext.evaluation.rect.top] as const);
-				};
+				const project = (point: readonly [number, number]) =>
+					adapterContext.project([point[0], y, point[1]]);
 				if (inkPreview !== null && inkPreview.kind === 'planned' && inkPreview.authoredWallIds.length > 0) {
 					for (const leg of plannedLegs(inkPreview.document, inkPreview.authoredWallIds)) {
 						const css = project([
