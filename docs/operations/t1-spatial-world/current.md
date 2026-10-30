@@ -2,9 +2,10 @@
 
 ```text
 PHASE: R217 Core Editor Stability (shared repository phase). S01–S10 shipped; S11 remains the FINAL PHASE GATE.
-ACTIVE: No T1 slice is active. The R217 phase register owns the remaining child order and final-gate designation.
-NEXT: Owner release decision for the next approved R217 work. No S10 closeout or merge work remains.
-BLOCKER: Owner release decision for the next R217 slice.
+ACTIVE: Owner-requested post-S10 convergence audit/planning is paused for handoff; no implementation slice is launched.
+NEXT: Resume the post-S10 planning checkpoint; complete the planning PR only.
+RESUME: ../checkpoints/r217-post-s10-convergence.md
+BLOCKER: Implementation still requires owner release; planning may resume within the recorded scope.
 BOUNDARIES: T1.P02 remains closed; T1 is not complete. Performance investigations are owner-initiated only after an observed slowdown. No post-S10 convergence is released here.
 CARRY: T1 maintenance retains the one-frame `lowerColumnHeight` observation; S06 TD-15 owns the module-scoped Height hint repetition residual; S06 FO-1 … FO-5 and T1 deferred-retirement rows remain in their records; S03 real-browser multi-touch capture ordering remains manual-owed. S04 carries the Opening swing representation gap and settled Shaded Plan restyle. S07 defers Wall height and thickness grips.
 ROUTES: ../../roadmap/r217-core-editor-stability/README.md · ../../roadmap/r217-core-editor-stability/r217.s10-dock-completion/acceptance.md · ../../operations/tech-debt/README.md#td-14 · ../../reference/architecture.md#editor-interaction-authorities

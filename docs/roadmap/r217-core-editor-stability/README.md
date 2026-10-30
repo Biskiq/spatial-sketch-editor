@@ -12,6 +12,12 @@ slice has one writer from the track that owns the concern, runs through that tra
 step, and records its work in that track's baton. The other tracks review as listed in
 [Ownership and review](#ownership-and-review).
 
+## Post-S10 audit draft
+
+The owner-requested [convergence audit draft](./post-s10-convergence/README.md) records
+research and a paused planning frontier. It does not approve new slices, alter the release
+list, launch S11 or close R217.
+
 ## Outcome
 
 A creator opens a project in a shell that matches the ratified production design:

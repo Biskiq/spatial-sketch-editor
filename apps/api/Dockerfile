@@ -17,6 +17,7 @@ COPY package.json package-lock.json .npmrc ./
 COPY apps/api/package.json apps/api/
 COPY apps/editor/package.json apps/editor/
 COPY packages/camera-core/package.json packages/camera-core/
+COPY packages/geometry-core/package.json packages/geometry-core/
 COPY packages/layout-core/package.json packages/layout-core/
 COPY packages/project-model/package.json packages/project-model/
 COPY packages/tsconfig/package.json packages/tsconfig/
@@ -24,6 +25,7 @@ RUN npm ci --workspace @biskiq/api --include-workspace-root=false --ignore-scrip
 
 COPY packages/tsconfig packages/tsconfig
 COPY packages/camera-core packages/camera-core
+COPY packages/geometry-core packages/geometry-core
 COPY packages/layout-core packages/layout-core
 COPY packages/project-model packages/project-model
 COPY apps/api apps/api
