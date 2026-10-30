@@ -94,8 +94,13 @@
 		stageCardFacts,
 		stageCardWriter,
 		stageFindEntries,
-		stageDockTools
+		stageDockKeys,
+		stageDockTools,
+		STAGE_HOST_ADAPTER_ID,
+		type StageDockKey
 	} from '$lib/authoring/stage/stage-contributions';
+	import { createStageMeasure, STAGE_MEASURE_TASK, type StageMeasureController } from '$lib/authoring/stage/stage-measure';
+	import { createStageEraser, STAGE_ERASER_TASK, type StageEraserController } from '$lib/authoring/stage/stage-eraser';
 	import {
 		createStageAcceptanceHost,
 		type StageAcceptanceHost,
@@ -120,7 +125,8 @@
 		readingIntentClockSeconds,
 		stageKeyAction,
 		stageKeyFromControl,
-		stageKeyFromTextEntry
+		stageKeyFromTextEntry,
+		type StageDockSlot
 	} from '$lib/authoring/stage/stage-input';
 	import { installStageInterruptions, type StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
@@ -674,6 +680,19 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	 * creator put down.
 	 */
 	let armedTool = $state<{ readonly id: string; readonly adapterId: string } | null>(null);
+	/**
+	 * R217.S10 — the host's own tools. Each is bound to the live facade and keeps
+	 * only session view state (a measurement, an erase candidate or its words).
+	 */
+	let measureTool: StageMeasureController | null = null;
+	let eraserTool: StageEraserController | null = null;
+	/** What the host tools draw this frame, in Stage-local CSS. */
+	let hostToolOverlay = $state<{
+		readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean } | null;
+		readonly notice: { readonly css: readonly [number, number]; readonly message: string; readonly kind: string } | null;
+	} | null>(null);
+	/** The Eraser's winner, drawn with the erase treatment in place of hover. */
+	let eraseHover = $state<StageSelectionEntry | null>(null);
 	/** The Head's bounded Find query. */
 	let findQuery = $state('');
 	/**
@@ -871,6 +890,8 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		facade?.dispose();
 		acceptance?.dispose();
 		facade = createStageFacade({ snapshot, session, scenePick: scenePick.pick, sceneBounds: scenePick.bounds });
+		measureTool = createStageMeasure(facade);
+		eraserTool = createStageEraser(facade, () => refreshHostTools());
 		// The session keeps Grid/Snap across a replacement; the presenter re-reads it
 		// from the mounted authority rather than assuming its own default.
 		drafting = facade.drafting();
@@ -1826,6 +1847,50 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		}
 		ghosts = stage.ghosts();
 		marks = stage.marks();
+		refreshHostTools();
+	}
+
+	/**
+	 * Project what the host tools draw through the same evaluation as everything
+	 * else: Measure's dimension line and tag, the Eraser's words, and its winner as
+	 * the erase-treated hover. Identity is kept while the subject is unchanged so a
+	 * pointer moving within one subject does not rebuild the Stage's ink.
+	 */
+	function refreshHostTools(): void {
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		if (stage === null || id === null || armedHostTool === null) {
+			if (hostToolOverlay !== null) hostToolOverlay = null;
+			if (eraseHover !== null) eraseHover = null;
+			return;
+		}
+		const local = (point: readonly [number, number, number]): readonly [number, number] | null => {
+			const projected = stage.projectWorld([point[0], point[1], point[2]], id);
+			if (projected.kind !== 'projected') return null;
+			const current = rect ?? measure();
+			return [projected.css[0] - current.left, projected.css[1] - current.top];
+		};
+		let measured: NonNullable<typeof hostToolOverlay>['measure'] = null;
+		const view = armedHostTool === 'measure' ? measureTool?.view() ?? null : null;
+		if (view !== null) {
+			const from = local(view.from.point);
+			const to = local(view.to.point);
+			if (from !== null && to !== null) measured = { from, to, label: view.label, live: view.live };
+		}
+		const eraseNotice = armedHostTool === 'erase' ? eraserTool?.notice() ?? null : null;
+		hostToolOverlay = { measure: measured, notice: eraseNotice };
+		const candidate = armedHostTool === 'erase' ? eraserTool?.candidate() ?? null : null;
+		if (candidate === null || candidate.refusal !== null) {
+			if (eraseHover !== null) eraseHover = null;
+			return;
+		}
+		const hit = candidate.hit;
+		const representation = hit.reference === undefined
+			? { sourceId: hit.sourceId, sourceKind: hit.sourceKind, generationId: hit.generationId, stream: hit.stream, subRef: hit.subRef }
+			: undefined;
+		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
+		if (eraseHover !== null && sameReference(eraseHover.reference, reference)) return;
+		eraseHover = representation === undefined ? { reference } : { reference, representation };
 	}
 
 	onMount(() => {
@@ -2399,6 +2464,10 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		// notification re-arms an armed dock tool. An explicit close puts the tool down
 		// first, so the notification it causes cannot pick it back up.
 		armedTool = null;
+		measureTool?.clear();
+		eraserTool?.clear();
+		eraseHover = null;
+		hostToolOverlay = null;
 		facade?.closeTask();
 		task = null;
 		contributedTaskId = null;
@@ -2415,7 +2484,7 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 
 	/* --- pointer and keyboard ---------------------------------------------- */
 
-	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' } | null = null;
+	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' } | null = null;
 	/**
 	 * The evaluation a claimed adapter press was measured in.
 	 *
@@ -2478,6 +2547,24 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		if (pointerEvaluationId !== null) {
 			const css = stageCss(event);
 			const coarse = event.pointerType !== 'mouse';
+			// R217.S10: an armed host tool asks every declaring domain for its winner. A
+			// press that names nothing to measure or erase stays the host's navigation.
+			const hostTool = armedHostTool === 'measure' ? measureTool : armedHostTool === 'erase' ? eraserTool : null;
+			if (hostTool !== null) {
+				const claimed = hostTool.down({ css, evaluationId: pointerEvaluationId, coarse });
+				refreshHostTools();
+				if (claimed) {
+					(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+					if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
+						hostTool.cancel();
+						refreshHostTools();
+						return;
+					}
+					adapterEvaluationId = pointerEvaluationId;
+					drag = { x: event.clientX, y: event.clientY, mode: 'host' };
+					return;
+				}
+			}
 			const mark = stage.hitMark({ css, coarse });
 			// A disclosure is a press, not a drag: it reveals grips while the same
 			// gesture context stays selected, and no adapter may claim the pointer for it.
@@ -2533,6 +2620,11 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		facade?.setMarkHover(null);
 		session.setHover(null);
 		hoverSelection = null;
+		if (drag?.mode !== 'host') {
+			measureTool?.hover(null);
+			eraserTool?.hover(null);
+			eraseHover = null;
+		}
 	}
 
 	function resolveHover(): void {
@@ -2542,6 +2634,17 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		const stage = facade;
 		const id = stage?.evaluationId() ?? null;
 		if (sample === null || stage === null || id === null || session.gesture() !== null || drag !== null) return;
+		// An armed host tool previews its own winner (the Eraser's dashes, Measure's
+		// second point); the ordinary subject hover would compete with it.
+		if (armedHostTool !== null) {
+			const input = { css: sample.css, evaluationId: id, coarse: sample.coarse };
+			if (armedHostTool === 'measure') measureTool?.hover(input);
+			else eraserTool?.hover(input);
+			session.setHover(null);
+			hoverSelection = null;
+			refreshHostTools();
+			return;
+		}
 		// The mark tier is above world candidates: a hovered grip suppresses the
 		// subject tint underneath, so two emphases never compete for one pointer.
 		const mark = stage.hitMark({ css: sample.css, coarse: sample.coarse });
@@ -2599,6 +2702,21 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
 			hoverSample = { css: stageCss(event), shift: event.shiftKey, coarse: event.pointerType !== 'mouse' };
 			if (hoverFrame === null) hoverFrame = requestAnimationFrame(resolveHover);
+			return;
+		}
+		if (drag.mode === 'host') {
+			if (!press.ownsPointer(event.pointerId)) return;
+			if (session.gesture() === null) {
+				interruptPress('reading-change');
+				return;
+			}
+			const id = adapterEvaluationId ?? facade?.evaluationId() ?? null;
+			if (id === null) return;
+			const input = { css: stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' };
+			if (armedHostTool === 'measure') measureTool?.move(input);
+			else eraserTool?.move(input);
+			drag = { x: event.clientX, y: event.clientY, mode: 'host' };
+			refreshHostTools();
 			return;
 		}
 		if (drag.mode === 'adapter') {
@@ -2683,6 +2801,24 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		// ended, not aborted. Only the owning pointer may end it — a refused second
 		// pointer's release must not release the first pointer's lease.
 		if (!press.end(event.pointerId)) return;
+		if (drag?.mode === 'host') {
+			// The host tool's tap is its own command, never a selection.
+			press.claim(event.pointerId);
+			const id = adapterEvaluationId ?? facade?.evaluationId() ?? null;
+			drag = null;
+			adapterEvaluationId = null;
+			const tool = armedHostTool === 'measure' ? measureTool : eraserTool;
+			if (tool === null) return;
+			if (session.gesture() === null || id === null) {
+				tool.cancel();
+				refreshHostTools();
+				return;
+			}
+			const input = { css: stageCss(event), evaluationId: id, coarse: event.pointerType !== 'mouse' };
+			void Promise.resolve(tool.up(input)).then(() => refreshHostTools());
+			refreshHostTools();
+			return;
+		}
 		if (drag?.mode === 'adapter') {
 			// The press belonged to an adapter: its tap is the tool's own command
 			// (place a point, split a Wall, or a refusal) and never a selection, so the
@@ -2714,6 +2850,11 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 			const id = adapterEvaluationId ?? facade?.evaluationId() ?? null;
 			const css: [number, number] = [drag.x - (rect?.left ?? 0), drag.y - (rect?.top ?? 0)];
 			if (id !== null) facade?.pointerIntent({ phase: 'cancel', css, evaluationId: id });
+		}
+		if (drag.mode === 'host') {
+			measureTool?.cancel();
+			eraserTool?.cancel();
+			refreshHostTools();
 		}
 		abortGesture();
 		clearHover();
@@ -2781,7 +2922,9 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		}
 		// Typing in the Index's subject search must never move the camera.
 		if (stageKeyFromTextEntry(event.target)) return;
-		const action = stageKeyAction(event.key);
+		// While a press is live the dock letters and `2` keep reaching the gesture's
+		// typed entry, exactly as before they were dock keys.
+		const action = stageKeyAction(event.key, { pressing: drag !== null || pinch !== null });
 		// A direct-manipulation writer keeps the keyboard while its press is live:
 		// Tab moves between numeric fields and a printable key opens/extends entry.
 		const gestureStage = facade;
@@ -2819,6 +2962,12 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 				break;
 			case 'fit':
 				fit();
+				break;
+			case 'tool':
+				// A modified letter is the platform's (⌘P prints), and the dock is World's.
+				if (event.metaKey || event.ctrlKey || event.altKey || lens !== 'world') break;
+				event.preventDefault();
+				pressDockSlot(action.slot);
 				break;
 			case 'pan':
 				pan(action.deltaCss[0], action.deltaCss[1]);
@@ -2864,6 +3013,12 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 				const hadPress = drag !== null || pinch !== null;
 				interruptPress('escape');
 				if (hadPress) break;
+				// R217.S10: a host tool clears its own measurement or words first, an open
+				// palette folds next, and only then does the armed tool disarm.
+				if (armedHostTool === 'measure' && measureTool?.clear()) { refreshHostTools(); break; }
+				if (armedHostTool === 'erase' && eraserTool?.clear()) { eraseHover = null; refreshHostTools(); break; }
+				const armedKey = dockKeys.find((key) => key.id === armedDockId);
+				if (task !== null && armedKey?.palette === true && paletteOpen) { paletteOpen = false; break; }
 				if (task !== null) closeTask();
 				else if (selection !== null) closeSelection();
 				break;
@@ -3083,8 +3238,25 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		return stageDockTools(facade);
 	});
 
-	/** The armed contributed task's kind, or `null` when the host's Select is armed. */
-	const armedTaskKind = $derived(task?.kind ?? null);
+	/** R217.S10 — the dock's keys: Select · Ink · Measure · Eraser | Library. */
+	const dockKeys = $derived(stageDockKeys(dockTools));
+
+	/** The armed host tool, read from the one task the session holds. */
+	const armedHostTool = $derived<'measure' | 'erase' | null>(
+		task?.kind === STAGE_MEASURE_TASK ? 'measure' : task?.kind === STAGE_ERASER_TASK ? 'erase' : null
+	);
+
+	/**
+	 * The armed dock key: Select when no task is open, the armed tool's key while
+	 * one is, and none while a non-dock task (Compose, Import) holds the column.
+	 */
+	const armedDockId = $derived.by(() => {
+		if (task === null) return 'host-select';
+		if (armedHostTool !== null) return task.kind;
+		const armed = armedTool;
+		if (armed !== null && dockKeys.some((key) => key.id === armed.id && key.adapterId === armed.adapterId)) return armed.id;
+		return dockKeys.find((key) => key.taskKind === task?.kind && key.adapterId !== STAGE_HOST_ADAPTER_ID)?.id ?? '';
+	});
 
 	/**
 	 * The bounded **Find in Head** list: every contributed entry by label, with the
@@ -3097,10 +3269,10 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		const needle = findQuery.trim().toLowerCase();
 		const entries = [
 			...locatedSubjects.map((subject) => ({ id: subject.id, adapterId: 'subject', label: subject.label, verb: 'Select' })),
-			...dockTools.map((tool) => ({
-				id: tool.id,
-				adapterId: tool.adapterId,
-				label: tool.label,
+			...dockKeys.map((key) => ({
+				id: key.id,
+				adapterId: key.adapterId,
+				label: key.label,
 				verb: 'Arm'
 			})),
 			...findContributions.map((entry) => ({
@@ -3126,6 +3298,57 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		closeTask();
 	}
 
+	/** The host task an armed Measure or Eraser holds. It names no target. */
+	function hostToolTask(kind: string): StageTask | null {
+		if (kind === STAGE_MEASURE_TASK) return { kind, label: 'Measure', targetRef: null, target: null };
+		if (kind === STAGE_ERASER_TASK) return { kind, label: 'Eraser', targetRef: null, target: null };
+		return null;
+	}
+
+	/**
+	 * Arm Measure or Eraser. Like every dock key it takes the lower column and leaves
+	 * the selection exactly as it was; it opens no adapter instrument.
+	 */
+	function armHostTool(kind: string): void {
+		const stage = facade;
+		const next = hostToolTask(kind);
+		if (stage === null || next === null) return;
+		closeTask();
+		if (!stage.openTask(next)) return;
+		task = next;
+		armedTool = { id: kind, adapterId: STAGE_HOST_ADAPTER_ID };
+		paletteOpen = true;
+		pendingDelete = null;
+		notice = '';
+		refreshHostTools();
+	}
+
+	/** Arm one dock key (from the dock, its key or Find). */
+	function armDockKey(key: StageDockKey): void {
+		if (key.slot === 'select') selectTool();
+		else if (key.adapterId === STAGE_HOST_ADAPTER_ID) armHostTool(key.id);
+		else armDockTool({ id: key.id, adapterId: key.adapterId });
+	}
+
+	/** A dock press: arm the key, or fold/unfold the armed key's own palette. */
+	function pressDockKey(key: StageDockKey): void {
+		if (key.id === armedDockId && key.slot !== 'select') {
+			if (key.palette) togglePalette();
+			return;
+		}
+		armDockKey(key);
+	}
+
+	/** A dock shortcut: the same press as the key, or a word when the key is absent. */
+	function pressDockSlot(slot: StageDockSlot): void {
+		const key = dockKeys.find((candidate) => candidate.slot === slot);
+		if (key === undefined) {
+			notice = 'That tool is not available in this project.';
+			return;
+		}
+		pressDockKey(key);
+	}
+
 	/**
 	 * Re-arm the dock's tool after an accepted install.
 	 *
@@ -3138,6 +3361,12 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		const armed = armedTool;
 		const stage = facade;
 		if (armed === null || stage === null) return;
+		if (armed.adapterId === STAGE_HOST_ADAPTER_ID) {
+			// An erase installs new content, which closes the task; the Eraser stays armed.
+			const next = hostToolTask(armed.id);
+			if (next !== null && stage.session.task() === null && stage.openTask(next)) task = next;
+			return;
+		}
 		const stillContributed = stage
 			.findEntries()
 			.some((entry) => entry.id === armed.id && entry.adapterId === armed.adapterId);
@@ -3153,11 +3382,12 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
 	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string }): void {
 		if (entry.adapterId === 'subject') { selectSource(entry.id); return; }
-		const tool = dockTools.find(
+		const key = dockKeys.find(
 			(candidate) => candidate.id === entry.id && candidate.adapterId === entry.adapterId
 		);
-		if (tool !== undefined) {
-			armDockTool(tool);
+		if (key !== undefined) {
+			armDockKey(key);
+			if (key.palette) paletteOpen = true;
 			return;
 		}
 		invokeContribution(entry.adapterId, entry.id);
@@ -3213,7 +3443,7 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	 * works on its host Wall.
 	 */
 	const taskHost = $derived(
-		task === null
+		task === null || armedHostTool !== null
 			? null
 			: {
 					kind: task.kind,
@@ -3429,13 +3659,14 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 						{reducedMotion}
 						datumMeters={boot.snapshot.domain.datumMeters}
 						selection={selection}
-						hover={hoverSelection}
+						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
+						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
 						heightMeters={lens === 'world' ? heightMeters : null}
 						heightPlaneVisible={lens === 'world' && heightPlaneVisible}
 					/>
 				{/if}
 				<div class="overlay-layer">
-					<StageOverlay {markers} {marks} {tracePreview} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+					<StageOverlay {markers} {marks} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 				</div>
 				<!-- The measured bar is a reading of the same evaluation, never a control. -->
 				<StageScaleBar bar={draftingScaleBar} />
@@ -3625,14 +3856,7 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 			-->
 			<div class="lower-column" hidden={preview !== null} inert={preview !== null} data-lower-column bind:this={lowerColumnEl}>
 				{#if lens === 'world'}
-				<StageDock
-					{armedTaskKind}
-					tools={dockTools}
-					{paletteOpen}
-					onSelect={selectTool}
-					onArm={armDockTool}
-					onTogglePalette={togglePalette}
-				/>
+				<StageDock keys={dockKeys} armedId={armedDockId} {paletteOpen} onPress={pressDockKey} />
 				{/if}
 				<StageInstrumentHost
 					task={paletteOpen ? taskHost : null}

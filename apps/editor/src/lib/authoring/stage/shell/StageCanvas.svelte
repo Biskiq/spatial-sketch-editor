@@ -56,6 +56,7 @@ import StageGrid from './StageGrid.svelte';
 		datumMeters = 0,
 		selection = null,
 		hover = null,
+		hoverTone = 'hover',
 		scenePick,
 		/** R217.S06's live Height Sheet height, or null in Experience. */
 		heightMeters = null,
@@ -83,6 +84,8 @@ import StageGrid from './StageGrid.svelte';
 		/** Canonical primary selection and pointer hover; ink is Stage-owned. */
 		selection?: StageSelectionEntry | null;
 		hover?: StageSelectionEntry | null;
+		/** R217.S10: the armed Eraser draws its winner in red dashes instead of hover. */
+		hoverTone?: 'hover' | 'erase';
 		scenePick: ScenePickSource;
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
@@ -252,6 +255,7 @@ import StageGrid from './StageGrid.svelte';
 			{datumMeters}
 			{selection}
 			{hover}
+			{hoverTone}
 			revision={sceneRootRevision + entityRenderRevision}
 		/>
 	{/if}
@@ -266,6 +270,7 @@ import StageGrid from './StageGrid.svelte';
 		<StageSelectionLayer
 			{selection}
 			{hover}
+			{hoverTone}
 			{geometry}
 			{scenePick}
 			width={evaluation?.rect.width ?? 1}

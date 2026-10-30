@@ -11,7 +11,9 @@
  * - a **gold** pass for the primary selection: a translucent tint under a solid
  *   contour, so a selected Room, Wall, Opening or Scene footprint reads as one
  *   identity;
- * - a **quiet neutral** contour for hover, never gold (gold means selected).
+ * - a **quiet neutral** contour for hover, never gold (gold means selected);
+ * - R217.S10's **erase** treatment: the armed Eraser's winner in red dashes, drawn
+ *   above the selection so it reads even on the selected subject.
  *
  * Every mark is depth-test-free and ordered above `PAPER_LAYER.sceneFootprint`,
  * as S04's handoff requires. Nothing writes `Object3D.visible`; the Paper layer is
@@ -33,6 +35,7 @@ import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import { sameReference, type StageSelectionEntry } from './semantic-selection';
+import { STAGE_ERASE_INK } from './stage-eraser';
 import {
 	PAPER_LAYER,
 	STAGE_OVERLAY_LAYER,
@@ -55,10 +58,12 @@ export const PAPER_MARK_LAYER = {
 	hover: PAPER_LAYER.sceneFootprint + 9,
 	selectionTint: PAPER_LAYER.sceneFootprint + 10,
 	selectionHalo: PAPER_LAYER.sceneFootprint + 11,
-	selectionLine: PAPER_LAYER.sceneFootprint + 12
+	selectionLine: PAPER_LAYER.sceneFootprint + 12,
+	eraseHalo: PAPER_LAYER.sceneFootprint + 13,
+	erase: PAPER_LAYER.sceneFootprint + 14
 } as const;
 
-export type PaperMarkTone = 'selection' | 'hover';
+export type PaperMarkTone = 'selection' | 'hover' | 'erase';
 
 /** One elevation's contour; the union of a filled subject has no internal edges. */
 export type PaperMarkContour = {
@@ -75,6 +80,8 @@ export type PaperMarkGeometry = {
 export type PaperMarkSet = {
 	readonly selection: PaperMarkGeometry;
 	readonly hover: PaperMarkGeometry;
+	/** The armed Eraser's winner; empty unless the hover tone is `erase`. */
+	readonly erase: PaperMarkGeometry;
 };
 
 const EMPTY_GEOMETRY: PaperMarkGeometry = { fills: [], contours: [] };
@@ -145,14 +152,18 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 export function paperMarkSet(
 	drawing: PaperPlanDrawing,
 	selection: StageSelectionEntry | null,
-	hover: StageSelectionEntry | null
+	hover: StageSelectionEntry | null,
+	hoverTone: 'hover' | 'erase' = 'hover'
 ): PaperMarkSet {
 	const selected = selection === null ? EMPTY_GEOMETRY : geometryOf(drawing, selection);
+	if (hoverTone === 'erase') {
+		return { selection: selected, hover: EMPTY_GEOMETRY, erase: hover === null ? EMPTY_GEOMETRY : geometryOf(drawing, hover) };
+	}
 	const hovered =
 		hover === null || (selection !== null && sameReference(hover.reference, selection.reference))
 			? EMPTY_GEOMETRY
 			: geometryOf(drawing, hover);
-	return { selection: selected, hover: hovered };
+	return { selection: selected, hover: hovered, erase: EMPTY_GEOMETRY };
 }
 
 export type PaperMarkSceneResources = {
@@ -213,7 +224,8 @@ export function createPaperMarkScene(
 		ink: string,
 		widthCssPx: number,
 		opacity: number,
-		renderOrder: number
+		renderOrder: number,
+		dashed = false
 	): void => {
 		const positions = linePositions(geometry);
 		if (positions.length === 0) return;
@@ -228,10 +240,13 @@ export function createPaperMarkScene(
 			depthWrite: false,
 			// PLATE inks are semantic colors; tone mapping would shift the gold.
 			toneMapped: false,
-			dashed: false
+			dashed,
+			// Dash lengths are world meters on the sheet.
+			...(dashed ? { dashSize: 0.12, gapSize: 0.08 } : {})
 		});
 		material.resolution.set(resolution[0], resolution[1]);
 		const object = new LineSegments2(lineGeometry, material);
+		if (dashed) object.computeLineDistances();
 		object.renderOrder = renderOrder;
 		object.frustumCulled = false;
 		object.layers.set(STAGE_OVERLAY_LAYER);
@@ -274,6 +289,10 @@ export function createPaperMarkScene(
 	// the contour and above the sheet, so identity reads without hiding the Plan.
 	addLine(marks.selection, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.selectionHalo);
 	addLine(marks.selection, PAPER_SELECTION_INK, 2.5, 1, PAPER_MARK_LAYER.selectionLine);
+
+	// Erase: red dashes over a dark halo, above the selection it may be naming.
+	addLine(marks.erase, PAPER_MARK_HALO_INK, 4, 0.7, PAPER_MARK_LAYER.eraseHalo);
+	addLine(marks.erase, STAGE_ERASE_INK, 2.2, 1, PAPER_MARK_LAYER.erase, true);
 
 	return {
 		group,

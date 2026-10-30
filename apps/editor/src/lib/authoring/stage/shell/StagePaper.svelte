@@ -32,6 +32,7 @@
 		datumMeters = 0,
 		selection = null,
 		hover = null,
+		hoverTone = 'hover',
 		revision = 0
 	}: {
 		plan: PlanEvaluation;
@@ -50,6 +51,8 @@
 		selection?: StageSelectionEntry | null;
 		/** The hovered subject; quiet neutral contour, suppressed for the selection itself. */
 		hover?: StageSelectionEntry | null;
+		/** R217.S10: `erase` re-strokes the hovered subject in the Eraser's red dashes. */
+		hoverTone?: 'hover' | 'erase';
 		/** Changes when Scene entity roots mount or unmount, so the drawing follows. */
 		revision?: number;
 	} = $props();
@@ -72,7 +75,7 @@
 
 	// The selection is a filter over the drawing Paper already owns; a pan does not
 	// rebuild it, and the entries can never disagree with what is drawn underneath.
-	const marks = $derived.by(() => paperMarkSet(drawing, selection, hover));
+	const marks = $derived.by(() => paperMarkSet(drawing, selection, hover, hoverTone));
 
 	$effect(() => {
 		const built = createPaperScene(drawing, [1, 1]);

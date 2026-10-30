@@ -511,10 +511,10 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		);
 		expect(layer).toContain('const GOLD = 0xd4ad45');
 		expect(layer).toContain('const NEUTRAL = 0xf3f4ee');
-		expect(layer).toContain("color: tone === 'selection' ? GOLD : NEUTRAL");
-		expect(layer).toContain('opacity: tone === \'selection\' ? 1 : 0.6');
-		// Hover is edges only; the tint is selection's alone.
-		expect(layer).toContain("if (tone === 'hover') continue;");
+		expect(layer).toContain("color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL");
+		expect(layer).toContain("opacity: tone === 'hover' ? 0.6 : 1");
+		// Hover (and S10's erase dashes) are edges only; the tint is selection's alone.
+		expect(layer).toContain("if (tone !== 'selection') continue;");
 		expect(layer).toContain('opacity: 0.18');
 		// A selection at rest must repaint even though the ink objects are added
 		// imperatively rather than declared as Threlte children.
@@ -528,7 +528,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		// Hidden LODs/children are not drawn, so they cannot contribute a gold clone.
 		expect(layer).toContain('hasVisibleAncestor(node)');
 		// Selection outranks hover when two identities share an edge.
-		expect(layer).toContain("tone === 'selection' ? 21 : 18");
+		expect(layer).toContain("tone === 'selection' ? 21 : tone === 'erase' ? 23 : 18");
 		expect(layer).toContain('tint.renderOrder = 20');
 		const canvas = readFileSync(
 			new URL('../../../src/lib/authoring/stage/shell/StageCanvas.svelte', import.meta.url),
@@ -542,7 +542,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 			new URL('../../../src/lib/authoring/stage/shell/StagePaper.svelte', import.meta.url),
 			'utf8'
 		);
-		expect(paper).toContain('paperMarkSet(drawing, selection, hover)');
+		expect(paper).toContain('paperMarkSet(drawing, selection, hover, hoverTone)');
 		expect(paper).toContain('createPaperMarkScene(marks');
 		const marks = readFileSync(
 			new URL('../../../src/lib/authoring/stage/paper-marks.ts', import.meta.url),

@@ -189,7 +189,13 @@ afterEach(() => {
 });
 describe('mounted Stage pointer lifecycle', () => {
 	it('moves every registered task entry to Find or the dock and leaves the Index a locator', () => {
-		const registered = facade().findEntries().map((entry) => `${entry.adapterId}:${entry.id}`).sort();
+		// The host's own dock keys (Select, Measure, Eraser) are Find entries too.
+		const registered = [
+			...facade().findEntries().map((entry) => `${entry.adapterId}:${entry.id}`),
+			'host:host-select',
+			'host:host-measure',
+			'host:host-erase'
+		].sort();
 		const reachable = [...target.querySelectorAll<HTMLElement>('[data-head-find] [data-find-id]')]
 			.filter((entry) => entry.dataset.findAdapter !== 'subject')
 			.map((entry) => `${entry.dataset.findAdapter}:${entry.dataset.findId}`).sort();
@@ -676,11 +682,137 @@ describe('mounted Stage drawing and deletion', () => {
 		expect(history().canUndo).toBe('false');
 		expect(facade().snapshot().canonicalJson).toBe(canonical);
 
-		// The next unwind is the tool's: it disarms and leaves Select.
+		// R217.S10: the next Escape folds the open palette and keeps the tool armed…
+		key('Escape');
+		await frame();
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+		expect(target.querySelector('[data-layout-ink-palette]')).toBeNull();
+		expect(target.querySelector('[data-dock-caret]')).not.toBeNull();
+
+		// …and the one after it disarms and leaves Select.
 		key('Escape');
 		await frame();
 		expect(facade().session.task()).toBeNull();
 		expect(target.querySelector('[data-layout-ink-palette]')).toBeNull();
+	});
+
+	/** R217.S10 — the dock's keys, shortcuts, Find and host tools through the route. */
+	it('arms every dock key by its shortcut and from Find without changing the selection', async () => {
+		const before = facade().selectionState();
+		for (const [letter, kind] of [['p', 'layout-ink'], ['m', 'host-measure'], ['e', 'host-erase'], ['l', 'place-object']] as const) {
+			key(letter);
+			await settled();
+			expect(facade().session.task()?.kind, letter).toBe(kind);
+			expect(facade().selectionState()).toEqual(before);
+			expect(target.querySelectorAll('[data-stage-dock] [aria-pressed="true"]')).toHaveLength(1);
+		}
+		key('v');
+		await settled();
+		expect(facade().session.task()).toBeNull();
+		expect(target.querySelector('[data-dock-select]')?.getAttribute('aria-pressed')).toBe('true');
+		expect(facade().selectionState()).toEqual(before);
+		// The dock order is the owner's: Select · Ink · Measure · Eraser | Library.
+		expect([...target.querySelectorAll<HTMLElement>('[data-stage-dock] [data-dock-slot]')].map((node) => node.dataset.dockSlot))
+			.toEqual(['select', 'ink', 'measure', 'erase', 'library']);
+		// Find arms the same five keys with its Arm verb.
+		for (const [id, kind] of [['host-measure', 'host-measure'], ['host-erase', 'host-erase'], ['layout-ink', 'layout-ink'], ['scene-place', 'place-object'], ['host-select', null]] as const) {
+			target.querySelector<HTMLButtonElement>(`[data-head-find] [data-find-id="${id}"]`)!.click();
+			await settled();
+			expect(facade().session.task()?.kind ?? null, id).toBe(kind);
+		}
+		// `2` is now the Plan reading; `p` no longer flips it.
+		key('3');
+		await frame();
+		key('p');
+		await settled();
+		expect(facade().evaluation()?.renderedReading).not.toBe('plan');
+		key('Escape');
+		key('Escape');
+		await settled();
+		key('2');
+		await frame();
+		await frame();
+		expect(facade().evaluation()?.settledReading).toBe('plan');
+	});
+
+	it('measures with two clicks and writes nothing; Escape clears it, then disarms', async () => {
+		const canonical = facade().snapshot().canonicalJson;
+		key('m');
+		await settled();
+		await drawPoint([0, 0, 0]);
+		await drawPoint([7, 0, 0]);
+		const tag = target.querySelector<SVGElement>('[data-measure]');
+		expect(tag?.getAttribute('data-measure-label')).toMatch(/ m$/);
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 1, position: 0 });
+		expect(facade().session.liveProposal()).toBeNull();
+		key('Escape');
+		await frame();
+		expect(target.querySelector('[data-measure]')).toBeNull();
+		expect(facade().session.task()?.kind).toBe('host-measure');
+		key('Escape');
+		await frame();
+		expect(facade().session.task()).toBeNull();
+	});
+
+	it('draws the erase treatment only while the Eraser is armed, and erases a Wall after its disclosure', async () => {
+		const otherWall = wallCenterCss(STARTER_WALL_2);
+		pointer('pointermove', otherWall);
+		await frame();
+		expect(target.querySelector('[data-testid="stage-canvas"]')?.getAttribute('data-hover-tone')).toBe('hover');
+		key('e');
+		await settled();
+		pointer('pointermove', [otherWall[0] + 1, otherWall[1]]);
+		await frame();
+		const canvas = () => target.querySelector<HTMLElement>('[data-testid="stage-canvas"]')!;
+		expect(canvas().dataset.hoverTone).toBe('erase');
+		expect(canvas().dataset.hoverId).toBe(STARTER_WALL_2);
+		const canonical = facade().snapshot().canonicalJson;
+		pointer('pointerdown', otherWall);
+		pointer('pointerup', otherWall);
+		pointer('click', otherWall);
+		await settled();
+		// The Wall closes the Room, so Layout's disclosure is read first.
+		expect(target.querySelector('[data-erase-notice="disclose"]')).not.toBeNull();
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+		expect(facade().selection()?.sourceId).toBe(wallId);
+		pointer('pointerdown', otherWall);
+		pointer('pointerup', otherWall);
+		pointer('click', otherWall);
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(canonical));
+		await settled();
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+		// The Eraser stays armed against the installed source.
+		expect(facade().session.task()?.kind).toBe('host-erase');
+		key('Escape');
+		await settled();
+		key('Escape');
+		await settled();
+		expect(facade().session.task()).toBeNull();
+		expect(canvas().dataset.hoverTone).toBe('hover');
+		expect(await (harness.host as StageAcceptanceHost).undo()).toMatchObject({ kind: 'installed' });
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+	});
+
+	it('refuses a Room floor beside the pointer with no entry', async () => {
+		key('e');
+		await settled();
+		const canonical = facade().snapshot().canonicalJson;
+		const floor = projected([2, 0, -2]);
+		pointer('pointerdown', floor);
+		pointer('pointerup', floor);
+		pointer('click', floor);
+		await settled();
+		expect(target.querySelector('[data-erase-notice="refused"]')?.textContent).toContain('A Room floor cannot be erased.');
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('opens the placement Instrument from the Library key', async () => {
+		target.querySelector<HTMLButtonElement>('[data-dock-slot="library"]')!.click();
+		await settled();
+		expect(facade().session.task()?.kind).toBe('place-object');
+		expect(target.querySelector('[data-stage-instrument="place-object"]')).not.toBeNull();
 	});
 
 	it('binds a Card confirmation to the subject whose consequences it disclosed', async () => {

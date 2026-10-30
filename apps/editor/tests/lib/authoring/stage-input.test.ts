@@ -44,8 +44,16 @@ const RECT: ViewportRect = { left: 0, top: 0, width: 1280, height: 720, devicePi
 describe('Stage input policy', () => {
 	it('maps every key it claims, in both letter cases, and answers none otherwise', () => {
 		expect(stageKeyAction('3')).toEqual({ kind: 'reading', reading: '3d' });
-		expect(stageKeyAction('p')).toEqual({ kind: 'reading', reading: 'plan' });
-		expect(stageKeyAction('P')).toEqual({ kind: 'reading', reading: 'plan' });
+		// R217.S10: Plan moves from `p` to `2`; the dock letters arm its keys.
+		expect(stageKeyAction('2')).toEqual({ kind: 'reading', reading: 'plan' });
+		for (const [letter, slot] of [['v', 'select'], ['p', 'ink'], ['m', 'measure'], ['e', 'erase'], ['l', 'library']] as const) {
+			expect(stageKeyAction(letter)).toEqual({ kind: 'tool', slot });
+			expect(stageKeyAction(letter.toUpperCase())).toEqual({ kind: 'tool', slot });
+			// While a press is live the letter keeps reaching the gesture's typed entry.
+			expect(stageKeyAction(letter, { pressing: true })).toEqual({ kind: 'none' });
+		}
+		expect(stageKeyAction('2', { pressing: true })).toEqual({ kind: 'none' });
+		expect(stageKeyAction('3', { pressing: true })).toEqual({ kind: 'reading', reading: '3d' });
 		expect(stageKeyAction('f')).toEqual({ kind: 'fit' });
 		expect(stageKeyAction('F')).toEqual({ kind: 'fit' });
 		expect(stageKeyAction('Escape')).toEqual({ kind: 'dismiss' });
@@ -76,7 +84,7 @@ describe('Stage input policy', () => {
 		// Total: nothing outside the map moves the camera, and a modified key is not
 		// recognised by its bare character (`'p'` with Control held is `Paste`, and
 		// the route consults the modifier state — the map itself claims no chords).
-		for (const key of ['a', 'Escapee', ' ', 'enter', 'delete', 'Backspac', 'ArrowLeft ', '0', '2']) {
+		for (const key of ['a', 'Escapee', ' ', 'enter', 'delete', 'Backspac', 'ArrowLeft ', '0', '1']) {
 			expect(stageKeyAction(key), key).toEqual({ kind: 'none' });
 		}
 	});

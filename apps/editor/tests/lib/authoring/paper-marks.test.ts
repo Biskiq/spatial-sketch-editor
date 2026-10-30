@@ -192,6 +192,14 @@ describe('R217.S07 — Paper mark filtering', () => {
 		expect(marks.hover.fills).toEqual([]);
 	});
 
+	it('draws the Eraser winner as its own erase pass, even on the selection (R217.S10)', () => {
+		const selected = entry('layout', 'wall', WALL_ID);
+		const marks = paperMarkSet(DRAWING, selected, selected, 'erase');
+		expect(marks.erase.contours).toHaveLength(1);
+		expect(marks.hover.contours).toEqual([]);
+		expect(paperMarkSet(DRAWING, selected, selected).erase.contours).toEqual([]);
+	});
+
 	it('keeps a different hover quiet and never gold', () => {
 		const marks = paperMarkSet(DRAWING, entry('layout', 'wall', WALL_ID), entry('layout', 'wall', OTHER_WALL_ID));
 		expect(marks.hover.contours).toHaveLength(1);
