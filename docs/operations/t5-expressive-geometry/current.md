@@ -11,7 +11,8 @@ S03:   accepted 2026-10-28 at 9bcbd7eb and shipped through PR #218 (P1 merge 25e
 NEXT:  no active T5 phase. The next step is owner T5 planning/authorization; T5 is approved but not
        complete. Do not infer a successor phase from this closure.
 CARRY: Wall-face reading waits for T1's face-frame query; preserve the side-quad texture seam.
-       S04's residual edges remain unexercised. The comprehensive performance matrix is suspended;
+       S04's residual edges remain unexercised. R217.S09 native form marks shipped through PR #228;
+       S11 retains the integrated phase gate. The comprehensive performance matrix is suspended;
        unmeasured rows stay unmeasured, not passes. T4 owns the visitor /p target.
 ROUTE: ./README.md → ../../roadmap/t5-expressive-geometry/README.md
 RELEASE: ../../roadmap/now.md remains owner-written; the S01–S04 rows remain until a later explicit
