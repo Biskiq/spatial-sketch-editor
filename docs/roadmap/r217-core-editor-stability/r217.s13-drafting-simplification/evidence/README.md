@@ -15,7 +15,9 @@ Nine Chromium captures at **1440 × 900 CSS px**, DPR 1, against the Vite dev se
 | [browser-08-plan-words-off.png](browser-08-plan-words-off.png) | Plan with Grid off and Snap off; words, not colour alone, on quiet Paper | 91,430 | `6da2f3c670ee3a1d09caf067547abdff81f44ce57cccceb1cd8b1d663c965002` |
 | [browser-09-two-zoom-drawing.png](browser-09-two-zoom-drawing.png) | two free Walls drawn at Fit and after two zoom-in presses, with Snap on | 110,333 | `b24d7fbfd433398ac4ec82d54b04334bffdfe804cf786d73aa1426d7adcd220a` |
 
-Total renderable evidence: **9 PNG files / 929,706 bytes**.
+Total renderable evidence: **9 PNG files / 929,706 bytes**. The downloaded source from capture 09 is
+preserved beside them as [two-zoom-source.json](two-zoom-source.json) (6,909 bytes, SHA-256
+`f7c271e7fa4834bc6ef7d75634532f3e06b6ecce6244201ec596802159ab9b09`).
 
 ## What the journey established
 
@@ -34,9 +36,10 @@ Total renderable evidence: **9 PNG files / 929,706 bytes**.
   menu and ⚙ are absent from the drafting cluster; the Head's Viewing group has no Grid
   interval or Snap checkbox.
 - **Two-zoom lattice.** A Wall drawn after Fit and a second drawn after two 1.25× zoom-in
-  presses were downloaded from **Download source JSON**. The new Junction points were
-  `-1.5,1.5`, `-1,1.5`, `-3,-2.5` and `-2,-2.5`; every coordinate is an exact multiple of
-  0.5 m, so the two free drawings share one lattice.
+  presses were downloaded from **Download source JSON** into
+  [two-zoom-source.json](two-zoom-source.json). The new Junction points in
+  `units.layout.data.junctions` are `-1.5,1.5`, `-1,1.5`, `-3,-2.5` and `-2,-2.5`; every
+  coordinate is an exact multiple of 0.5 m, so the two free drawings share one lattice.
 - **D43 did not reproduce.** The 2D/3D control responded on the first press in this fresh
   session, and on every later press; no dead first click was observed.
 

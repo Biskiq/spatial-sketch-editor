@@ -56,8 +56,9 @@ Browser, Chromium at 1440 × 900 on the local editor, starter **Enclosed room**:
   word, interval menu and ⚙ are absent.
 - Grid and Snap toggle to the words `Grid off` and `Snap off` on quiet Paper.
 - Two free Walls, one drawn at Fit and one after two zoom-in presses, were downloaded from
-  **Download source JSON**. The new Junction points are `-1.5,1.5`, `-1,1.5`, `-3,-2.5` and
-  `-2,-2.5`; every coordinate is an exact multiple of 0.5 m, so the drawings share one lattice.
+  **Download source JSON** and preserved as [two-zoom-source.json](./evidence/2026-10-30-browser/two-zoom-source.json).
+  The new Junction points are `-1.5,1.5`, `-1,1.5`, `-3,-2.5` and `-2,-2.5`; every coordinate is
+  an exact multiple of 0.5 m, so the drawings share one lattice.
 - D43 did not reproduce: the reading control answered on the first press and every later press.
 
 Captures and byte hashes are in the [evidence record](./evidence/README.md).
