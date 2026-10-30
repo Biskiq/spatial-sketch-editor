@@ -21,8 +21,9 @@ afterEach(() => {
 
 function mountHead(props: {
 	readonly gridMinorMeters: number;
+	readonly gridIntervalMode: 'automatic' | 'override';
 	readonly snapOnGrid: boolean;
-	readonly onGridMinorMeters: (meters: number) => void;
+	readonly onGridMinorMeters: (mode: 'automatic' | 'override', meters?: number) => void;
 	readonly onSnapOnGrid: (snap: boolean) => void;
 }): HTMLElement {
 	target = document.createElement('div');
@@ -53,6 +54,7 @@ describe('R217.S05 — Head Viewing drafting configuration', () => {
 		const onSnapOnGrid = vi.fn();
 		const host = mountHead({
 			gridMinorMeters: 1,
+			gridIntervalMode: 'automatic',
 			snapOnGrid: true,
 			onGridMinorMeters,
 			onSnapOnGrid
@@ -63,10 +65,13 @@ describe('R217.S05 — Head Viewing drafting configuration', () => {
 		const labels = [...host.querySelectorAll('label')];
 		const interval = labels.find((label) => label.textContent?.includes('Grid interval'))!
 			.querySelector('select')!;
-		expect(interval.value).toBe('1');
+		expect(interval.value).toBe('automatic');
 		interval.value = '2';
 		interval.dispatchEvent(new Event('change', { bubbles: true }));
-		expect(onGridMinorMeters).toHaveBeenCalledWith(2);
+		expect(onGridMinorMeters).toHaveBeenCalledWith('override', 2);
+		interval.value = 'automatic';
+		interval.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(onGridMinorMeters).toHaveBeenCalledWith('automatic');
 
 		const snap = labels.find((label) => label.textContent?.includes('Snap to the grid'))!
 			.querySelector('input')!;
@@ -78,6 +83,7 @@ describe('R217.S05 — Head Viewing drafting configuration', () => {
 	it('keeps the configuration out of Settings so motion stays its own group', async () => {
 		const host = mountHead({
 			gridMinorMeters: 1,
+			gridIntervalMode: 'automatic',
 			snapOnGrid: true,
 			onGridMinorMeters: () => {},
 			onSnapOnGrid: () => {}

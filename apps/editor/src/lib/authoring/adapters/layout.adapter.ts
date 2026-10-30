@@ -1482,10 +1482,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					drafting,
 					adapterContext.evaluation.targetPlaneMetersPerCssPixel
 				);
-				const snapped = snapDraftingPoint(
-					[point[0], point[1]],
-					{ ...drafting, gridMinorMeters: currentMinor }
-				);
+				const snapped = snapDraftingPoint([point[0], point[1]], drafting, currentMinor);
 				if (freePointWouldCreateContact(snapped, projected)) {
 					return { target: { kind: 'free' }, point: [point[0], point[1]], css };
 				}

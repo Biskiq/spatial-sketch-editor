@@ -69,6 +69,7 @@ import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 		planAppearance = 'paper',
 		onPlanAppearance = () => {},
 		/** R217.S05's drafting configuration, also reachable from the words. */
+		gridIntervalMode = 'automatic',
 		gridMinorMeters = 1,
 		snapOnGrid = true,
 		onGridMinorMeters = () => {},
@@ -116,9 +117,10 @@ import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 		planAppearance?: 'paper' | 'shaded';
 		onPlanAppearance?: (value: 'paper' | 'shaded') => void;
 		/** The one Grid/Snap view state, configured from Viewing. */
+		gridIntervalMode?: 'automatic' | 'override';
 		gridMinorMeters?: number;
 		snapOnGrid?: boolean;
-		onGridMinorMeters?: (meters: number) => void;
+		onGridMinorMeters?: (mode: 'automatic' | 'override', meters?: number) => void;
 		onSnapOnGrid?: (snap: boolean) => void;
 		motionSpeed?: 'slow' | 'normal' | 'fast';
 		onMotionSpeed?: (value: 'slow' | 'normal' | 'fast') => void;
@@ -232,7 +234,7 @@ import { GRID_MINOR_CHOICES, formatMeters } from '../stage-drafting';
 		<div class="menu-body">
 			<strong>Viewing</strong>
 			<label>2D appearance <select value={planAppearance} onchange={(event) => onPlanAppearance(event.currentTarget.value as 'paper' | 'shaded')}><option value="paper">Paper</option><option value="shaded">Shaded</option></select></label>
-			<label>Grid interval <select value={gridMinorMeters} onchange={(event) => onGridMinorMeters(Number(event.currentTarget.value))}>{#each GRID_MINOR_CHOICES as choice (choice)}<option value={choice}>{formatMeters(choice)}</option>{/each}</select></label>
+			<label>Grid interval <select value={gridIntervalMode === 'automatic' ? 'automatic' : String(gridMinorMeters)} onchange={(event) => { const value = event.currentTarget.value; if (value === 'automatic') onGridMinorMeters('automatic'); else onGridMinorMeters('override', Number(value)); }}><option value="automatic">Automatic</option>{#each GRID_MINOR_CHOICES as choice (choice)}<option value={choice}>{formatMeters(choice)} override</option>{/each}</select></label>
 			<label><input type="checkbox" checked={snapOnGrid} onchange={(event) => onSnapOnGrid(event.currentTarget.checked)} /> Snap to the grid</label>
 			<strong>Settings</strong>
 			<label><input type="checkbox" checked={reducedMotion} onchange={onToggleReducedMotion} /> Reduce motion</label>

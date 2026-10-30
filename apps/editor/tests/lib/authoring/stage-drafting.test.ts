@@ -33,15 +33,16 @@ describe('R217.S05 — the one Grid/Snap view state', () => {
 			grid: true,
 			snap: true,
 			snapSuspended: false,
+			gridIntervalMode: 'automatic',
 			gridMinorMeters: 1
 		});
 	});
 
 	it('accepts only the approved 1, 2, 5 ladder as a configured interval', () => {
-		for (const value of [0.5, 1, 2, 5, 10, 0.02, 200, 1000]) {
+		for (const value of [0.01, 0.5, 1, 2, 5, 10, 200, 1000, 1_000_000]) {
 			expect(isGridMinorMeters(value)).toBe(true);
 		}
-		for (const value of [0, -1, 0.3, 3, 7, 5000, Number.NaN, Number.POSITIVE_INFINITY, '1', null]) {
+		for (const value of [0, -1, 0.3, 3, 7, 1_000_001, Number.NaN, Number.POSITIVE_INFINITY, '1', null]) {
 			expect(isGridMinorMeters(value)).toBe(false);
 		}
 		expect(GRID_MINOR_CHOICES.every(isGridMinorMeters)).toBe(true);
@@ -50,6 +51,7 @@ describe('R217.S05 — the one Grid/Snap view state', () => {
 	it('applies a patch as one value and keeps identity for a no-op', () => {
 		const next = applyDraftingPatch(STAGE_DRAFTING_DEFAULTS, { grid: false, gridMinorMeters: 2 });
 		expect(next).toEqual({ ...STAGE_DRAFTING_DEFAULTS, grid: false, gridMinorMeters: 2 });
+		expect(applyDraftingPatch(next, { gridIntervalMode: 'override' }).gridIntervalMode).toBe('override');
 		expect(applyDraftingPatch(next, { grid: false })).toBe(next);
 		// An unsupported interval is ignored rather than inventing spacing.
 		expect(applyDraftingPatch(next, { gridMinorMeters: 3 }).gridMinorMeters).toBe(2);
@@ -62,12 +64,19 @@ describe('R217.S05 — the one Grid/Snap view state', () => {
 		// The two controls are independent facts: Grid off must not silently move
 		// where the next free point lands.
 		expect(draftingSnapIncrementMeters({ ...STAGE_DRAFTING_DEFAULTS, grid: false })).toBe(1);
+		for (const interval of [0.01, 1_000_000]) {
+			expect(draftingSnapIncrementMeters({
+				...STAGE_DRAFTING_DEFAULTS,
+				gridIntervalMode: 'override',
+				gridMinorMeters: interval
+			})).toBe(interval);
+		}
 	});
 
 	it('rounds a datum point to the shared increment, or passes it through when held', () => {
 		expect(snapDraftingPoint([1.37, 2.81], STAGE_DRAFTING_DEFAULTS)).toEqual([1, 3]);
 		expect(
-			snapDraftingPoint([1.37, 2.81], { ...STAGE_DRAFTING_DEFAULTS, gridMinorMeters: 0.5 })
+			snapDraftingPoint([1.37, 2.81], { ...STAGE_DRAFTING_DEFAULTS, gridIntervalMode: 'override', gridMinorMeters: 0.5 })
 		).toEqual([1.5, 3]);
 		expect(
 			snapDraftingPoint([1.37, 2.81], { ...STAGE_DRAFTING_DEFAULTS, snapSuspended: true })

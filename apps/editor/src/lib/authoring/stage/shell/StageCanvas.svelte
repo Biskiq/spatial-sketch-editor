@@ -162,6 +162,7 @@ import StageGrid from './StageGrid.svelte';
 			surface="mat"
 			{datumMeters}
 			baseMinorMeters={drafting.gridMinorMeters}
+			intervalMode={drafting.gridIntervalMode}
 		/>
 	{/if}
 	{#if matVisible}
@@ -202,6 +203,7 @@ import StageGrid from './StageGrid.svelte';
 				surface="paper"
 				{datumMeters}
 				baseMinorMeters={drafting.gridMinorMeters}
+				intervalMode={drafting.gridIntervalMode}
 			/>
 		{/if}
 		<StagePaper

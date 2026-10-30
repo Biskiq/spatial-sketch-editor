@@ -19,6 +19,7 @@
 		evaluation,
 		datumMeters = 0,
 		baseMinorMeters,
+		intervalMode = 'automatic',
 		surface
 	}: {
 		evaluation: ViewportEvaluation | null;
@@ -26,6 +27,7 @@
 		datumMeters?: number;
 		/** The configured minor interval; decimation may draw a coarser one. */
 		baseMinorMeters: number;
+		intervalMode?: 'automatic' | 'override';
 		surface: GridSurface;
 	} = $props();
 
@@ -45,6 +47,7 @@
 			targetXZ: [evaluation.target[0], evaluation.target[2]],
 			datumMeters,
 			baseMinorMeters,
+			intervalMode,
 			surface,
 			// The mat's patch is the actual datum the Camera's corner rays see,
 			// never a fixed multiple of the target plane that ends inside the frame.

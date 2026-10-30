@@ -23,7 +23,11 @@ import {
 	gridPlanFor,
 	gridRectFor
 } from '$lib/authoring/stage/stage-grid';
-import { STAGE_DRAFTING_DEFAULTS, snapWord } from '$lib/authoring/stage/stage-drafting';
+import {
+	STAGE_DRAFTING_DEFAULTS,
+	draftingSnapIncrementMeters,
+	snapWord
+} from '$lib/authoring/stage/stage-drafting';
 
 describe('R217.S05 — grid interval decimation', () => {
 	it('uses the 1, 2, 5 × 10^n ladder at or above the configured minor', () => {
@@ -188,6 +192,60 @@ describe('R217.S05 — grid surfaces, visibility and the Grid word', () => {
 		// The configured 1 m reference is not a lower bound: close zoom refines.
 		expect(snapWord(STAGE_DRAFTING_DEFAULTS, drawnGridMinorMeters(STAGE_DRAFTING_DEFAULTS, 0.01))).toBe('Snap 0.2 m');
 		expect(drawnGridMinorMeters(STAGE_DRAFTING_DEFAULTS, null)).toBe(1);
+	});
+
+	it('uses a chosen override as the finest full-ink lattice and shared Snap step', () => {
+		for (const chosen of [0.01, 0.5, 2, 10, 1_000_000]) {
+			const state = {
+				...STAGE_DRAFTING_DEFAULTS,
+				gridIntervalMode: 'override' as const,
+				gridMinorMeters: chosen
+			};
+			const interval = drawnGridMinorMeters(state, 0.0001);
+			const plan = gridPlanFor({
+				metersPerCssPixel: 0.0001,
+				targetPlaneHeightMeters: 8,
+				aspect: 1.5,
+				targetXZ: [0, 0],
+				datumMeters: 0,
+				baseMinorMeters: state.gridMinorMeters,
+				intervalMode: state.gridIntervalMode,
+				surface: 'paper'
+			})!;
+			expect(interval).toBe(chosen);
+			expect(plan.levels.minorMeters).toBe(chosen);
+			expect(draftingSnapIncrementMeters(state, interval)).toBe(chosen);
+			expect(snapWord(state, interval)).toBe(`Snap ${chosen} m`);
+		}
+	});
+
+	it('coarsens a fixed override only to preserve the 16 px rule and fades only above 8 px', () => {
+		const state = {
+			...STAGE_DRAFTING_DEFAULTS,
+			gridIntervalMode: 'override' as const,
+			gridMinorMeters: 2
+		};
+		const coarsened = gridLevelsFor({
+			metersPerCssPixel: 0.2,
+			baseMinorMeters: 2,
+			intervalMode: 'override',
+			surface: 'paper'
+		})!;
+		expect(coarsened.minorMeters).toBe(5);
+		expect(coarsened.fadingMinorMeters).toBe(2);
+		for (const level of coarsened.levels) {
+			expect(level.spacingCssPx).toBeGreaterThanOrEqual(GRID_SUPPRESS_SPACING_CSS_PX - 1e-9);
+		}
+		const sparse = gridLevelsFor({
+			metersPerCssPixel: 0.3,
+			baseMinorMeters: 2,
+			intervalMode: 'override',
+			surface: 'paper'
+		})!;
+		expect(sparse.minorMeters).toBe(5);
+		expect(sparse.fadingMinorMeters).toBeNull();
+		expect(drawnGridMinorMeters(state, 0.3)).toBe(sparse.minorMeters);
+		expect(draftingSnapIncrementMeters(state, sparse.minorMeters)).toBe(sparse.minorMeters);
 	});
 
 	it('covers the tilted mat’s actual datum footprint instead of a fixed multiple', () => {

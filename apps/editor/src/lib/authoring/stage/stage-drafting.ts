@@ -23,7 +23,9 @@ export type StageDraftingState = {
 	readonly snap: boolean;
 	/** Follows a held Alt/Option key; released on keyup, blur and teardown. */
 	readonly snapSuspended: boolean;
-	/** Configured minor interval used when scale is unavailable. */
+	/** Whether the minor interval follows zoom or uses the selected override. */
+	readonly gridIntervalMode: 'automatic' | 'override';
+	/** Selected override; retained while Automatic is active. */
 	readonly gridMinorMeters: number;
 };
 
@@ -32,6 +34,7 @@ export const STAGE_DRAFTING_DEFAULTS: StageDraftingState = Object.freeze({
 	grid: true,
 	snap: true,
 	snapSuspended: false,
+	gridIntervalMode: 'automatic',
 	gridMinorMeters: 1
 });
 
@@ -43,7 +46,8 @@ export const STAGE_DRAFTING_DEFAULTS: StageDraftingState = Object.freeze({
 export const GRID_MINOR_CHOICES = [0.5, 1, 2, 5, 10] as const;
 
 export const GRID_MINOR_MIN_METERS = 0.01;
-export const GRID_MINOR_MAX_METERS = 1000;
+/** Match the full supported adaptive ladder so a drawn level always remains snappable. */
+export const GRID_MINOR_MAX_METERS = 1_000_000;
 
 /** A partial change the shell, the app menu or a key may request. */
 export type StageDraftingPatch = Partial<StageDraftingState>;
@@ -66,6 +70,7 @@ export function sameDraftingState(a: StageDraftingState, b: StageDraftingState):
 		a.grid === b.grid &&
 		a.snap === b.snap &&
 		a.snapSuspended === b.snapSuspended &&
+		a.gridIntervalMode === b.gridIntervalMode &&
 		a.gridMinorMeters === b.gridMinorMeters
 	);
 }
@@ -84,6 +89,10 @@ export function applyDraftingPatch(
 		snap: typeof patch.snap === 'boolean' ? patch.snap : current.snap,
 		snapSuspended:
 			typeof patch.snapSuspended === 'boolean' ? patch.snapSuspended : current.snapSuspended,
+		gridIntervalMode:
+			patch.gridIntervalMode === 'automatic' || patch.gridIntervalMode === 'override'
+				? patch.gridIntervalMode
+				: current.gridIntervalMode,
 		gridMinorMeters: isGridMinorMeters(patch.gridMinorMeters)
 			? patch.gridMinorMeters
 			: current.gridMinorMeters
@@ -100,10 +109,11 @@ export function applyDraftingPatch(
  */
 export function draftingSnapIncrementMeters(
 	state: StageDraftingState,
-	currentMinorMeters = state.gridMinorMeters
+	currentMinorMeters?: number
 ): number | null {
 	if (!state.snap || state.snapSuspended) return null;
-	return isGridMinorMeters(currentMinorMeters) ? currentMinorMeters : null;
+	const effectiveMinor = currentMinorMeters ?? (state.gridIntervalMode === 'override' ? state.gridMinorMeters : 1);
+	return isGridMinorMeters(effectiveMinor) ? effectiveMinor : null;
 }
 
 /**
@@ -172,9 +182,11 @@ export function snapDraftingPlacement(
 /** Round a datum-plane point to the shared increment; identity when Snap is off. */
 export function snapDraftingPoint(
 	point: readonly [number, number],
-	state: StageDraftingState
+	state: StageDraftingState,
+	currentMinorMeters?: number
 ): readonly [number, number] {
-	const snapped = snapDraftingPlacement(point, draftingSnapIncrementMeters(state));
+	const defaultInterval = currentMinorMeters ?? (state.gridIntervalMode === 'override' ? state.gridMinorMeters : 1);
+	const snapped = snapDraftingPlacement(point, draftingSnapIncrementMeters(state, defaultInterval));
 	return [snapped.x, snapped.z];
 }
 
@@ -186,12 +198,18 @@ export function formatMeters(meters: number): string {
 }
 
 /** The Grid word. Off is a word, never colour alone. */
-export function gridWord(state: StageDraftingState, drawnMinorMeters = state.gridMinorMeters): string {
+export function gridWord(
+	state: StageDraftingState,
+	drawnMinorMeters = state.gridIntervalMode === 'override' ? state.gridMinorMeters : 1
+): string {
 	return state.grid ? `Grid ${formatMeters(drawnMinorMeters)}` : 'Grid off';
 }
 
 /** The Snap word: off, held, or the increment in force. */
-export function snapWord(state: StageDraftingState, currentMinorMeters = state.gridMinorMeters): string {
+export function snapWord(
+	state: StageDraftingState,
+	currentMinorMeters = state.gridIntervalMode === 'override' ? state.gridMinorMeters : 1
+): string {
 	if (!state.snap) return 'Snap off';
 	if (state.snapSuspended) return 'Snap held';
 	return `Snap ${formatMeters(currentMinorMeters)}`;

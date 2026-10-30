@@ -16,7 +16,7 @@
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.
  */
-import type { StageDraftingState } from './stage-drafting';
+import { isGridMinorMeters, type StageDraftingState } from './stage-drafting';
 
 /** PLATE's grid inks. Opacity is part of the role, not a renderer default. */
 export type GridInk = {
@@ -97,16 +97,18 @@ export function gridLadderFrom(baseMinorMeters: number): readonly number[] {
 export function gridLevelsFor(input: {
 	readonly metersPerCssPixel: number;
 	readonly baseMinorMeters: number;
+	readonly intervalMode?: 'automatic' | 'override';
 	readonly surface: GridSurface;
 }): GridLevels | null {
 	const { metersPerCssPixel, baseMinorMeters, surface } = input;
+	const intervalMode = input.intervalMode ?? 'automatic';
 	if (!Number.isFinite(metersPerCssPixel) || metersPerCssPixel <= 0) return null;
-	if (!Number.isFinite(baseMinorMeters) || baseMinorMeters <= 0) return null;
+	if (!isGridMinorMeters(baseMinorMeters)) return null;
 	const ink = surface === 'paper' ? PAPER_GRID_INK : MAT_GRID_INK;
-	// With an active scale, choose from the complete supported ladder. The
-	// configured interval is the no-evaluation fallback; using it as a floor here
-	// would prevent the default 1 m setting from refining at close zoom.
-	const ladder = gridLadderFrom(0.01);
+	// Automatic follows scale across the full ladder. Override uses the selected
+	// interval as its finest full-ink level, while scale can still coarsen it when
+	// the selected lines would fall below 16 px.
+	const ladder = gridLadderFrom(intervalMode === 'override' ? baseMinorMeters : 0.01);
 	const primaryIndex = ladder.findIndex(
 		(interval) => interval / metersPerCssPixel >= GRID_FULL_SPACING_CSS_PX - 1e-9
 	);
@@ -326,6 +328,7 @@ export function gridPlanFor(input: {
 	readonly targetXZ: readonly [number, number];
 	readonly datumMeters: number;
 	readonly baseMinorMeters: number;
+	readonly intervalMode?: 'automatic' | 'override';
 	readonly surface: GridSurface;
 	/** The Camera evaluation's corner-ray source, when one is available. */
 	readonly inverseViewProjectionMatrix?: readonly number[];
@@ -444,11 +447,13 @@ export function drawnGridMinorMeters(
 	state: StageDraftingState,
 	metersPerCssPixel: number | null
 ): number {
-	if (metersPerCssPixel === null) return state.gridMinorMeters;
+	const fallback = state.gridIntervalMode === 'override' ? state.gridMinorMeters : GRID_REFERENCE_MINOR_METERS;
+	if (metersPerCssPixel === null) return fallback;
 	const levels = gridLevelsFor({
 		metersPerCssPixel,
 		baseMinorMeters: state.gridMinorMeters,
+		intervalMode: state.gridIntervalMode,
 		surface: 'paper'
 	});
-	return levels?.minorMeters ?? state.gridMinorMeters;
+	return levels?.minorMeters ?? fallback;
 }

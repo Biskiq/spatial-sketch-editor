@@ -1,6 +1,6 @@
 # R217.S05 — Drafting state: implementation plan
 
-**Slice:** R217.S05 · **Status:** approved (plan); awaits an owner release-list row · **Phase:**
+**Slice:** R217.S05 · **Status:** approved (plan); owner-authorized recovery/repair of existing PR #226; independent review pending · **Phase:**
 [R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
 **Reviewers:** T2 (Scene snap consumer), T3 (framing requests) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md)

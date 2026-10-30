@@ -515,17 +515,12 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	const draftingScaleWord = $derived(
 		`Scale ${formatScaleRatio(evaluation?.targetPlaneMetersPerCssPixel ?? null)}`
 	);
-	const draftingGridWord = $derived(
-		draftingWordForGrid(
-			drafting,
-			drawnGridMinorMeters(drafting, evaluation?.targetPlaneMetersPerCssPixel ?? null)
-		)
+	const draftingEffectiveMinor = $derived(
+		drawnGridMinorMeters(drafting, evaluation?.targetPlaneMetersPerCssPixel ?? null)
 	);
+	const draftingGridWord = $derived(draftingWordForGrid(drafting, draftingEffectiveMinor));
 	const draftingSnapWord = $derived(
-		draftingWordForSnap(
-			drafting,
-			drawnGridMinorMeters(drafting, evaluation?.targetPlaneMetersPerCssPixel ?? null)
-		)
+		draftingWordForSnap(drafting, draftingEffectiveMinor)
 	);
 	const draftingScaleBar = $derived(
 		roundScaleBarLength(evaluation?.targetPlaneMetersPerCssPixel ?? 0)
@@ -3201,9 +3196,10 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 		onOpenIndex={() => (indexOpen = true)}
 		planAppearance={preferences.planAppearance}
 		onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+		gridIntervalMode={drafting.gridIntervalMode}
 		gridMinorMeters={drafting.gridMinorMeters}
 		snapOnGrid={drafting.snap}
-		onGridMinorMeters={(meters) => patchDrafting({ gridMinorMeters: meters })}
+		onGridMinorMeters={(mode, meters) => patchDrafting({ gridIntervalMode: mode, ...(meters === undefined ? {} : { gridMinorMeters: meters }) })}
 		onSnapOnGrid={(snap) => patchDrafting({ snap })}
 		motionSpeed={preferences.motionSpeed}
 		onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}

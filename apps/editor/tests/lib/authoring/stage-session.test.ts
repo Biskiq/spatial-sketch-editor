@@ -395,19 +395,21 @@ describe('stage session — the drafting view state', () => {
 			grid: true,
 			snap: true,
 			snapSuspended: false,
+			gridIntervalMode: 'automatic',
 			gridMinorMeters: 1
 		});
-		expect(session.setDrafting({ grid: false, gridMinorMeters: 2 })).toEqual({
+		expect(session.setDrafting({ grid: false, gridIntervalMode: 'override', gridMinorMeters: 2 })).toEqual({
 			grid: false,
 			snap: true,
 			snapSuspended: false,
+			gridIntervalMode: 'override',
 			gridMinorMeters: 2
 		});
 
 		session.replace(await admit(await enclosureProject(PROJECT_ID)));
 		// Grid/Snap are creator view state, like the lens: a replacement does not
 		// silently reset the drafting surface.
-		expect(session.drafting()).toMatchObject({ grid: false, gridMinorMeters: 2 });
+		expect(session.drafting()).toMatchObject({ grid: false, gridIntervalMode: 'override', gridMinorMeters: 2 });
 		expect(session.setDrafting({ snapSuspended: true }).snapSuspended).toBe(true);
 
 		session.dispose();

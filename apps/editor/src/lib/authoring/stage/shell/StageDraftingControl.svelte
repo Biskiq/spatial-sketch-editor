@@ -136,8 +136,9 @@
 	}
 
 	function setMinor(event: Event): void {
-		const value = Number((event.currentTarget as HTMLSelectElement).value);
-		onPatch({ gridMinorMeters: value });
+		const value = (event.currentTarget as HTMLSelectElement).value;
+		if (value === 'automatic') onPatch({ gridIntervalMode: 'automatic' });
+		else onPatch({ gridIntervalMode: 'override', gridMinorMeters: Number(value) });
 	}
 </script>
 
@@ -211,7 +212,7 @@
 			type="button"				data-drafting-snap
 				aria-pressed={drafting.snap}
 				aria-describedby="drafting-snap-state"
-				title="Snap: round free points to the configured minor interval (hold Alt or Option to suspend)"
+							title="Snap: round free points to the current Grid interval (hold Alt or Option to suspend)"
 			onclick={() => onPatch({ snap: !drafting.snap })}
 		>
 			{snapWord}
@@ -241,10 +242,14 @@
 					aria-label="Drafting configuration"
 				>
 					<label>
-						<span>Minor interval</span>
-						<select value={drafting.gridMinorMeters} onchange={setMinor}>
+						<span>Grid interval</span>
+						<select
+							value={drafting.gridIntervalMode === 'automatic' ? 'automatic' : String(drafting.gridMinorMeters)}
+							onchange={setMinor}
+						>
+							<option value="automatic">Automatic</option>
 							{#each GRID_MINOR_CHOICES as choice (choice)}
-								<option value={choice}>{formatMeters(choice)}</option>
+								<option value={choice}>{formatMeters(choice)} override</option>
 							{/each}
 						</select>
 					</label>
