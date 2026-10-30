@@ -39,8 +39,8 @@ row. Verification for this follow-up is recorded below after the tested revision
 
 ### Verification
 
-- Follow-up verification was run on the finalized product/documentation worktree immediately before
-  commit `FOLLOW-UP-REVISION` (tree recorded in the PR update): `npm run test:arch` passed, 193 tests
+- Follow-up verification was run on commit `c5273726f3b3d854c845857b79fdcbb7339373e8`:
+  `npm run test:arch` passed, 193 tests
   across 23 files; full `npm test` passed, 3,101 tests across 243 files; the focused 10-suite
   S05/S08 run passed, 227 tests; `npm run check` passed with 0 errors and 0 warnings; and
   `npm run build` passed. Build emitted existing dependency externalization, unused import, and

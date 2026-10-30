@@ -51,8 +51,8 @@ VERIFICATION:
   found the release-list guard failed; the owner-authorized recovery row is now recorded in
   `docs/roadmap/now.md` and the R217 slice register without changing gate requirements or claiming
   acceptance.
-- Follow-up verification was run on the finalized product/documentation worktree immediately before
-  commit `FOLLOW-UP-REVISION`: `npm run test:arch` passed (193 tests/23 files), full `npm test`
+- Follow-up verification was run on commit `c5273726f3b3d854c845857b79fdcbb7339373e8`:
+  `npm run test:arch` passed (193 tests/23 files), full `npm test`
   passed (3,101 tests/243 files), the focused S05/S08 suites passed (227 tests/10 files),
   `npm run check` passed (0 errors/0 warnings), `npm run build` passed with existing dependency and
   chunk warnings, and `git diff --check` passed. No API code changed; DB-backed API tests were not
@@ -68,8 +68,8 @@ VERIFICATION:
   `25d96ef517a6b621fe04285e4e537d9fc8ca4294`, based on interrupted commit
   `d5c7fe4854dda29c71e51ef4baa2ac025a2535bb` and main/S08 commit
   `ac944f02beaa892aa5579a03e0b5fa4561831cae`.
-- PR #226 currently points at `7bcbfda5679b62ee000ea75c95df75a6008241d8`; this follow-up is not yet
-  committed or pushed. It remains open and unmerged.
+- Follow-up repair is committed at `c5273726f3b3d854c845857b79fdcbb7339373e8`; final documentation
+  recording this revision and PR synchronization are pending. PR #226 remains open and unmerged.
 
 NEXT:
 1. Finish required repository verification, update this checkpoint and acceptance with exact tested
