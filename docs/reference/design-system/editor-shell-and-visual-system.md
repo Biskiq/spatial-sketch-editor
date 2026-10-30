@@ -909,8 +909,8 @@ zoom-driven interval ladder. Decimate the **drawing** by projected CSS-pixel spa
 each level is fully inked at 16 px and above, fades from 16 to 8 px and is suppressed
 below 8 px. A 25 m reference appears only while the 5 m level is suppressed, and obeys
 the same rule. Anchor to the world/floor datum with a stable origin across zoom changes.
-Paper's grid is a bounded sheet around the work: the datum bounds of Layout, Scene and
-the live candidate, expanded by 5 m and rounded outward to 5 m, or a 20 × 20 m sheet
+Paper's grid is a bounded sheet around the work: the datum bounds of Layout and
+Scene, expanded by 5 m and rounded outward to 5 m, or a 20 × 20 m sheet
 around the target for an empty project. The sheet is intersected with the visible
 coverage so a zoomed-in view cannot generate unbounded lines; it grows with the work and
 never moves the Camera. The mat keeps the datum footprint its corner rays actually see.

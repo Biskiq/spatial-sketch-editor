@@ -43,8 +43,9 @@
 		position: absolute;
 		bottom: 0.7rem;
 		left: 0.8rem;
-		display: grid;
-		justify-items: start;
+		display: inline-flex;
+		flex-direction: column;
+		align-items: center;
 		gap: 0.2rem;
 		color: #f4f0e9;
 		pointer-events: none;
@@ -78,6 +79,7 @@
 	}
 	.length {
 		line-height: 1;
+		text-align: center;
 	}
 	/* The ruler rises only when the centred lower column can reach it. */
 	@media (max-width: 760px) {

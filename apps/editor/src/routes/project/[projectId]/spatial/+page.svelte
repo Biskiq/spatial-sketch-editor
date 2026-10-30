@@ -3705,8 +3705,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				<div class="overlay-layer">
 					<StageOverlay {markers} {marks} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 				</div>
-				<!-- The measured ruler is a Plan-only reading of the same evaluation. -->
-				{#if draftingReading === 'plan'}
+				<!--
+					The measured ruler is a Plan-only reading of the same evaluation. It
+					hides as soon as the projection leaves Plan, not only once 3D settles,
+					so it cannot float over a transition. World-lens chrome, like the Sheet.
+				-->
+				{#if lens === 'world' && evaluation?.projectionKind === 'plan-orthographic'}
 					<StageScaleBar bar={draftingScaleBar} quiet={paperVisible} />
 				{/if}
 
@@ -3735,15 +3739,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onPatch={patchDrafting}
 					/>
 				</div>
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					class="stage-zoom-slot"
-					class:sheet-right={lens === 'world' && heightSheetSide === 'right'}
-					onclick={(event) => event.stopPropagation()}
-					onpointerdown={(event) => event.stopPropagation()}
-				>
-					<StageZoomControls quiet={paperVisible} onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={fit} />
-				</div>
+				{#if lens === 'world'}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="stage-zoom-slot"
+						class:sheet-right={heightSheetSide === 'right'}
+						onclick={(event) => event.stopPropagation()}
+						onpointerdown={(event) => event.stopPropagation()}
+					>
+						<StageZoomControls quiet={paperVisible} onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={fit} />
+					</div>
+				{/if}
 				<!-- A project-replacement action, deliberately outside the drafting cluster. -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div

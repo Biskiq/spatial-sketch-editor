@@ -47,8 +47,9 @@ Tier: `affected-subsystem`; the integrated result remains owed to
 Browser, Chromium at 1440 × 900 on the local editor, starter **Enclosed room**:
 
 - Plan at Fit, four zoom-outs, six zoom-ins, ten more zoom-outs and eighteen zoom-outs show a
-  crisp bounded sheet, fixed-value thinning and the 25 m fallback before the ruler becomes the only
-  reference; no interval control changed and no value flickered.
+  crisp bounded sheet and fixed-value thinning across a wide projected range; no interval control
+  changed and no value flickered. The observed far endpoint still shows 5 m; the 25 m fall-off and
+  the ruler-only endpoint are proven numerically, not claimed from a still.
 - The ruler is a line with end ticks and no fill in Plan, and absent in settled 3D. The `+`, `−` and
   `Fit` cluster is present in both readings and does not overlap the Height Sheet or lower column at
   this width.

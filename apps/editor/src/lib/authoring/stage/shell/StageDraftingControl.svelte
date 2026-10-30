@@ -144,6 +144,12 @@
 		color: #14231b;
 		font-weight: 650;
 	}
+	/* The off state is struck through as well as named; the reading segmented
+	   control is not a value and keeps its own selected treatment. */
+	.words button[aria-pressed='false'] {
+		text-decoration: line-through;
+		opacity: 0.5;
+	}
 	button:focus-visible {
 		outline: 2px solid #9fd0b4;
 		outline-offset: 2px;

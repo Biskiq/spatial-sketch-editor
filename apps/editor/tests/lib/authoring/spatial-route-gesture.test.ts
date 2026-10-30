@@ -1080,6 +1080,22 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(target.querySelector('[data-stage-scale-bar]')).toBeNull();
 		expect(gridKey().textContent?.trim()).toBe('Grid');
 		expect(snapKey().textContent?.trim()).toBe('Snap');
+
+		// The words keep working on the mat: the fixed values are not a Plan-only
+		// preference. Turn them back on before leaving the reading.
+		gridKey().click();
+		snapKey().click();
+		await frame();
+		expect(gridKey().getAttribute('aria-pressed')).toBe('false');
+		expect(snapKey().getAttribute('aria-pressed')).toBe('false');
+		expect(gridKey().textContent?.trim()).toBe('Grid off');
+		expect(snapKey().textContent?.trim()).toBe('Snap off');
+		gridKey().click();
+		snapKey().click();
+		await frame();
+		expect(gridKey().textContent?.trim()).toBe('Grid');
+		expect(snapKey().textContent?.trim()).toBe('Snap');
+
 		button('2D').click();
 		await frame();
 		expect(target.querySelector('[data-stage-scale-bar]')).not.toBeNull();
@@ -1106,6 +1122,15 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		target.querySelector<HTMLButtonElement>('[data-stage-fit]')!.click();
 		await frame();
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'fit' });
+	});
+
+	it('strikes the off words and centres the ruler label below its rule', () => {
+		const control = readFileSync('src/lib/authoring/stage/shell/StageDraftingControl.svelte', 'utf8');
+		expect(control).toMatch(/text-decoration:\s*line-through/);
+		expect(control).toMatch(/\.words button\[aria-pressed='false'\]/);
+		const ruler = readFileSync('src/lib/authoring/stage/shell/StageScaleBar.svelte', 'utf8');
+		expect(ruler).toMatch(/align-items:\s*center/);
+		expect(ruler).not.toMatch(/justify-items:\s*start/);
 	});
 
 	it('announces the temporary Snap hold without changing the durable switch', async () => {
@@ -1387,6 +1412,10 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		target.querySelector<HTMLButtonElement>('[data-testid="lens-experience"]')!.click();
 		await frame();
 		expect(sheetNode()).toBeNull();
+		// The zoom cluster and ruler are World-lens chrome: Experience keeps its
+		// own point of view and does not inherit Stage framing furniture.
+		expect(target.querySelector('[data-stage-zoom]')).toBeNull();
+		expect(target.querySelector('[data-stage-scale-bar]')).toBeNull();
 		expect(canvasProbe()?.dataset.heightMeters ?? 'none').toBe('none');
 		expect(canvasProbe()?.dataset.heightPlane ?? 'false').toBe('false');
 		expect(height()).toBeCloseTo(0.8, 6);
@@ -1394,6 +1423,8 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
 		await frame();
 		expect(sheetNode()).not.toBeNull();
+		expect(target.querySelector('[data-stage-zoom]')).not.toBeNull();
+		expect(target.querySelector('[data-stage-scale-bar]')).not.toBeNull();
 		expect(Number(sliderNode()!.getAttribute('aria-valuenow'))).toBeCloseTo(0.8, 6);
 		// The unmount published inactive before the lens returned; no tail survives
 		// the switch and the plane starts hidden until the Sheet is activated again.
