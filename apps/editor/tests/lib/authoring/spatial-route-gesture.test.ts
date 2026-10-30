@@ -1124,6 +1124,14 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'fit' });
 	});
 
+	it('clears the Height Sheet when the lower column lifts the zoom cluster', () => {
+		// Geometry is browser calibration; the route owns the clearance rule. A
+		// regression here let the lifted cluster overlap the Sheet by 10 px.
+		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
+		expect(route).toMatch(/\.stage-zoom-slot\.sheet-right\s*\{[^}]*right:\s*calc\(5\.5rem \+ 1rem\)/s);
+		expect(target.querySelector('.stage-zoom-slot')?.classList.contains('sheet-right')).toBe(true);
+	});
+
 	it('strikes the off words and centres the ruler label below its rule', () => {
 		const control = readFileSync('src/lib/authoring/stage/shell/StageDraftingControl.svelte', 'utf8');
 		expect(control).toMatch(/text-decoration:\s*line-through/);

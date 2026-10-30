@@ -33,29 +33,38 @@ are updated at this cutover.
 Tier: `affected-subsystem`; the integrated result remains owed to
 [R217.S11](../r217.s11-integrated-final-gate/implementation-plan.md).
 
-- `npm test`: **248 files / 3,188 tests passed**.
+- `npm test`: **248 files / 3,189 tests passed**.
 - `npm run test:arch`: **23 files / 194 tests passed**.
 - `npm run check`: **0 errors, 0 warnings**.
 - `stage-drafting.test.ts` pins the fixed state, the 0.5 m increment at every zoom, off/held
   independence and the one rounding/tie rule. `stage-grid.test.ts` pins only 1/5/25 m values, the
   16→8 fade and 8 px hide, the 25 m hand-off, the bounded/fitted/growing sheet, world anchoring and
   the line-count bound. `spatial-route-gesture.test.ts` pins Find detents, Fit/zoom intents, the
-  Plan-only ruler, the fixed words, the quiet off states and the absence of the Scale/config
-  disclosures. `stage-session.test.ts`, `layout-drawing-adapter.test.ts`, `scene-editing-surface.test.ts`,
+  Plan-only ruler, the fixed words, the off words, the strike-through rule, ruler centring and
+  the palette-lift clearance, and the absence of the Scale/config disclosures. `stage-session.test.ts`, `layout-drawing-adapter.test.ts`, `scene-editing-surface.test.ts`,
   `shape-reading-adapter.test.ts` and `stage-host-tools.test.ts` cover the consumer seam.
 
-Browser, Chromium at 1440 × 900 on the local editor, starter **Enclosed room**:
+Browser, Chromium at **1440 × 900, 1280 × 800, 1180 × 820 and 820 × 1180** on the local
+editor, starter **Enclosed room**:
 
-- Plan at Fit, four zoom-outs, six zoom-ins, ten more zoom-outs and eighteen zoom-outs show a
-  crisp bounded sheet and fixed-value thinning across a wide projected range; no interval control
-  changed and no value flickered. The observed far endpoint still shows 5 m; the 25 m hand-off and
-  the ruler-only endpoint are proven numerically, not claimed from a still.
-- The ruler is a line with end ticks and no fill in Plan, and absent in settled 3D. The `+`, `−` and
-  `Fit` cluster is present in both readings and does not overlap the Height Sheet or lower column at
-  this width.
+- The full zoom range was used: the zoom-in limit reads `0.005 m` on an 81 px rule and the
+  zoom-out limit reads `100 m` on an 81 px rule. At the far endpoint the bounded sheet is smaller
+  than one 25 m interval, so the ruler is the only visible reference; no interval control changed
+  and no value flickered. The exact 25 m hand-off at its fade threshold remains numerically proven.
+- The ruler is a line with end ticks, its distance centred below, and no fill in Plan. It is absent
+  in settled 3D and in Experience. The `+`, `−` and `Fit` cluster is present in Plan and 3D in the
+  World lens and absent in Experience. Measured boxes at all four required widths, including with
+  the Ink palette open, show no overlap between the ruler, zoom cluster, Height Sheet, dock, palette
+  or Index; at 1440 × 900 palette-open the cluster's right edge is 3.6 px left of the Sheet.
 - Head Find filtered to `Scale` lists `Zoom Scale 1:20 · 1:50 · 1:100 · 1:200 · 1:500`. The Scale
   word, interval menu and ⚙ are absent.
-- Grid and Snap toggle to the words `Grid off` and `Snap off` on quiet Paper.
+- Grid and Snap toggle to the words `Grid off` and `Snap off` in Plan and 3D. Both off words
+  computed as `text-decoration-line: line-through` and `opacity: 0.5`; the 2D/3D segmented control
+  kept its own selected treatment. This Plan appearance uses the dark chassis ink, so no quiet
+  Paper claim is made.
+- Compared with the wireframe's [2D capture](../post-s10-convergence/evidence/prototype-2d-1440.png),
+  the cluster, lower-left ruler and lower-right zoom/Fit furniture match in structure; the
+  remaining differences are PLATE calibration, not a drafting-value or layering difference.
 - Two free Walls, one drawn at Fit and one after two zoom-in presses, were downloaded from
   **Download source JSON** and preserved as [two-zoom-source.json](./evidence/2026-10-30-browser/two-zoom-source.json).
   The new Junction points are `-1.5,1.5`, `-1,1.5`, `-3,-2.5` and `-2,-2.5`; every coordinate is
@@ -66,11 +75,12 @@ Captures and byte hashes are in the [evidence record](./evidence/README.md).
 
 ## Evidence limits
 
-One Chromium session at 1440 × 900; native touch, Safari, narrow-width collision calibration and the
-integrated R217 journeys remain S11's. Mid-fade continuity and the exact 25 m hand-off are numerical
-tests, not still frames. The starter's Room-floor fill covers the Paper grid inside the room; the
-bounded sheet and its crisp edges remain visible around the work and were not treated as a new defect
-in this slice. 3D clipping remains R217.S19.
+One Chromium session at the four required widths; native touch, Safari and the integrated R217
+journeys remain S11's. Mid-fade continuity and the exact 25 m hand-off are numerical tests, not
+still frames. Capture 09 predates the final shell visual and is retained only for the two-zoom
+drawing; the lattice claim is carried by its source JSON. The starter's Room-floor fill covers the
+Paper grid inside the room; the bounded sheet and its crisp edges remain visible around the work and
+were not treated as a new defect in this slice. 3D clipping remains R217.S19.
 
 ## Residuals
 
