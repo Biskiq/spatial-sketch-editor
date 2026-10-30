@@ -397,10 +397,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readonly entity: SceneFormEntity;
 				readonly measurement: FormSizeMeasurement;
 				readonly contactMinY: number;
+				/** World-space pointer-to-origin offset captured on the Move press. */
+				readonly moveGrabOffset: readonly [number, number] | null;
 				readonly startYaw: number;
 				readonly ringY: number;
 				/** Plan hides world Y, so Height uses pointer travel in the same CSS axis as its mark. */
 				readonly planHeightTravel: { readonly startY: number; readonly metersPerCssPixel: number } | null;
+				/** World-axis cursor coordinate at pointerdown; size rays start at a fixed screen glyph. */
+				readonly sizeStartTravelMeters: number | null;
 				turnStartAngle: number | null;
 				scale: readonly [number, number, number] | null;
 				candidate: SceneFormEntity | null;
@@ -1142,6 +1146,39 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return false;
 					}
 					const ringY = entity.position[1] + measurement.contactMinY;
+					const movePressSupport =
+						markId === SCENE_FORM_MARK.move
+							? pointerFloorSupport(adapterContext, intent.css, entity.id)
+							: null;
+					const planHeightTravel =
+						markId === SCENE_FORM_MARK.height &&
+						adapterContext.evaluation.settledReading === 'plan' &&
+						adapterContext.evaluation.targetPlaneMetersPerCssPixel > 0
+							? {
+									startY: intent.css[1],
+									metersPerCssPixel: adapterContext.evaluation.targetPlaneMetersPerCssPixel
+								}
+							: null;
+					let sizeStartTravelMeters: number | null = null;
+					if (
+						ray !== null &&
+						planHeightTravel === null &&
+						markId !== SCENE_FORM_MARK.move &&
+						markId !== SCENE_FORM_MARK.turn
+					) {
+						const startRay = adapterContext.ray([
+							intent.css[0] + adapterContext.evaluation.rect.left,
+							intent.css[1] + adapterContext.evaluation.rect.top
+						]);
+						if (startRay !== null) {
+							sizeStartTravelMeters = axisTravelFromRay({
+								origin: formWorldPoint(entity, [0, 0, 0]),
+								direction: formWorldAxis(entity, ray.axis),
+								rayOrigin: startRay.origin,
+								rayDirection: startRay.direction
+							});
+						}
+					}
 					formMarkGesture = {
 						evaluationId: intent.evaluationId,
 						markId,
@@ -1149,17 +1186,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						entity,
 						measurement,
 						contactMinY: measurement.contactMinY,
+						moveGrabOffset:
+							movePressSupport?.kind === 'floor'
+								? [
+										movePressSupport.worldPoint[0] - entity.position[0],
+										movePressSupport.worldPoint[2] - entity.position[2]
+									]
+								: null,
 						startYaw: entity.rotation[1],
 						ringY,
-						planHeightTravel:
-							markId === SCENE_FORM_MARK.height &&
-							adapterContext.evaluation.settledReading === 'plan' &&
-							adapterContext.evaluation.targetPlaneMetersPerCssPixel > 0
-								? {
-										startY: intent.css[1],
-										metersPerCssPixel: adapterContext.evaluation.targetPlaneMetersPerCssPixel
-									}
-								: null,
+						planHeightTravel,
+						sizeStartTravelMeters,
 						turnStartAngle:
 							markId === SCENE_FORM_MARK.turn
 								? turnAngleAt(adapterContext, entity.id, intent.css, ringY)
@@ -1225,13 +1262,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									: 'The pointer position is not a committable floor support.';
 						} else {
 							const drafting = adapterContext.drafting();
+							const grabOffset = current.moveGrabOffset ?? [0, 0];
 							const minor = drawnGridMinorMeters(
 								drafting,
 								adapterContext.evaluation.targetPlaneMetersPerCssPixel
 							);
 							const step = draftingSnapIncrementMeters(drafting, minor);
 							const snapped = snapDraftingPlacement(
-								[support.worldPoint[0], support.worldPoint[2]],
+								[
+									support.worldPoint[0] - grabOffset[0],
+									support.worldPoint[2] - grabOffset[1]
+								],
 								step
 							);
 							applyFormMarkPlan(
@@ -1283,7 +1324,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									intent.css[0] + adapterContext.evaluation.rect.left,
 									intent.css[1] + adapterContext.evaluation.rect.top
 								]);
-								travel =
+								const currentTravel =
 									ray === null
 										? null
 										: axisTravelFromRay({
@@ -1292,6 +1333,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 												rayOrigin: ray.origin,
 												rayDirection: ray.direction
 											});
+								travel =
+									current.sizeStartTravelMeters === null || currentTravel === null
+										? null
+										: handle.dimension / handle.factor + currentTravel - current.sizeStartTravelMeters;
 							}
 							const scale =
 								travel === null
