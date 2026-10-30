@@ -84,6 +84,7 @@ import {
 	SCENE_FORM_MARK,
 	axisTravelFromRay,
 	formMarkDescriptors,
+	formMoveScreenOffset,
 	formSizeMeasurement,
 	formSizeScaleFromTravel,
 	formWorldAxis,
@@ -509,12 +510,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				};
 			}
 
-			/** Plan hides world Y, so Move is offset clear of the Width ray. */
+			/**
+			 * Plan hides world Y, so Move is offset perpendicular to its own projected
+			 * axis and away from the Width/Depth rays. A fixed downward offset would
+			 * collide again when a quarter turn points Move down.
+			 */
 			function formScreenMove(
-				adapterContext: StageAdapterContext
+				adapterContext: StageAdapterContext,
+				entity: SceneFormEntity,
+				measurement: FormSizeMeasurement
 			): { offset: readonly [number, number] } | null {
 				return adapterContext.evaluation.settledReading === 'plan'
-					? { offset: [0, FORM_PLAN_MOVE_MARKER_GAP_CSS_PX] }
+					? formMoveScreenOffset({
+						entity,
+						measurement,
+						project: (point) => adapterContext.project(point),
+						gapPx: FORM_PLAN_MOVE_MARKER_GAP_CSS_PX
+						})
 					: null;
 			}
 
@@ -539,7 +551,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					measurement,
 					live: formMarkLive(accepted),
 					screenHeight: formScreenHeight(adapterContext, measurement),
-					screenMove: formScreenMove(adapterContext)
+					screenMove: formScreenMove(adapterContext, entity, measurement)
 				});
 			}
 

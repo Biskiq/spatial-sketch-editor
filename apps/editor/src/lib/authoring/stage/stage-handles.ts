@@ -50,14 +50,16 @@ export type StageHandleBase = {
 	 */
 	readonly bothWays?: boolean;
 	/**
-	 * Screen-space legibility fallback for a world axis the reading hides.
+	 * Screen-space legibility/separation hint for a mark.
 	 *
 	 * Plan looks down world Y, so a vertical ray projects edge-on and would be
 	 * withheld. `offset` is a Stage-local CSS offset applied after the world
-	 * anchor projects; `axis` is a unit CSS direction used **only** for a
-	 * ray/track whose world axis is edge-on. They change the drawing and hit
-	 * area only: the gesture still measures the descriptor's real world axis.
-	 * A malformed or zero `axis` falls back to withholding, never guessing.
+	 * anchor projects; it may also separate two admitted descriptors that project
+	 * onto the same segment (a domain collision policy). `axis` is a unit CSS
+	 * direction used **only** for a ray/track whose world axis is edge-on. They
+	 * change the drawing and hit area only: the gesture still measures the
+	 * descriptor's real world axis. A malformed or zero `axis` falls back to
+	 * withholding, never guessing.
 	 */
 	readonly screen?: {
 		readonly offset?: readonly [number, number];

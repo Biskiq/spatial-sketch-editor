@@ -19,6 +19,7 @@ import {
 import {
 	SCENE_FORM_MARK,
 	formMarkDescriptors,
+	formMoveScreenOffset,
 	formSizeMeasurement,
 	formWorldAxis,
 	formWorldPoint,
@@ -249,39 +250,54 @@ describe('R217.S09 — native form marks', () => {
 	it('keeps Move and the Width ray separately pressable when Plan hides Y', () => {
 		// Plan projects the form's floor contact and its centre to one point. With
 		// the same yaw the 30 px Move track and Width ray coincide unless Move is
-		// offset, and the host takes the first descriptor that hits.
-		const entity = squareForm();
-		const measurement = formSizeMeasurement(entity);
-		const screenMove = { offset: [0, 24] } as const;
-		const descriptors = formMarkDescriptors({ entity, measurement, screenMove });
-		const move = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.move)!;
-		const width = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.width)!;
-		expect(move.screen).toEqual(screenMove);
-		expect(width.screen).toBeUndefined();
-
+		// offset, and the host takes the first descriptor that hits. A fixed offset
+		// would collide again at a quarter turn, so the offset follows the projected
+		// Move axis and always lies opposite the Depth ray.
+		// Plan's screen mapping: +Z is up, as in the Plan reading.
 		const project = (point: Vec3): readonly [number, number] => [
 			640 + point[0] * 100,
-			360 + point[2] * 100
+			360 - point[2] * 100
 		];
-		const marks = projectStageHandles({
-			adapterId: 'scene',
-			descriptors,
-			openDisclosures: new Set([SCENE_FORM_MARK.scalePoint]),
-			hoveredId: null,
-			activeId: null,
-			project,
-			offset: [0, 0]
-		});
-		const moveMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-		const widthMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.width)!;
-		expect(widthMark.anchor[1]).toBeCloseTo(moveMark.anchor[1] - 24, 9);
-		expect(widthMark.tip).not.toBeNull();
-		expect(moveMark.tip).not.toBeNull();
-		expect(hitStageMark(marks, { css: widthMark.tip!, coarse: true })?.id).toBe(
-			SCENE_FORM_MARK.width
-		);
-		expect(hitStageMark(marks, { css: moveMark.tip!, coarse: true })?.id).toBe(
-			SCENE_FORM_MARK.move
-		);
+		for (const yaw of [0, Math.PI / 2, -Math.PI / 2, Math.PI / 4]) {
+			const entity = squareForm({ rotation: [0, yaw, 0] });
+			const measurement = formSizeMeasurement(entity);
+			const screenMove = formMoveScreenOffset({
+				entity,
+				measurement,
+				project,
+				gapPx: 24
+			});
+			if (yaw === 0) expect(screenMove.offset[1]).toBeCloseTo(24, 6);
+			const descriptors = formMarkDescriptors({ entity, measurement, screenMove });
+			const move = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.move)!;
+			const width = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.width)!;
+			expect(move.screen).toEqual(screenMove);
+			expect(width.screen).toBeUndefined();
+
+			const marks = projectStageHandles({
+				adapterId: 'scene',
+				descriptors,
+				openDisclosures: new Set([SCENE_FORM_MARK.scalePoint]),
+				hoveredId: null,
+				activeId: null,
+				project,
+				offset: [0, 0]
+			});
+			const moveMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.move)!;
+			const widthMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.width)!;
+			const depthMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.depth)!;
+			expect(widthMark.tip).not.toBeNull();
+			expect(moveMark.tip).not.toBeNull();
+			expect(depthMark.tip).not.toBeNull();
+			expect(
+				hitStageMark(marks, { css: widthMark.tip!, coarse: true })?.id
+			).toBe(SCENE_FORM_MARK.width);
+			expect(
+				hitStageMark(marks, { css: moveMark.tip!, coarse: true })?.id
+			).toBe(SCENE_FORM_MARK.move);
+			expect(
+				hitStageMark(marks, { css: depthMark.tip!, coarse: true })?.id
+			).toBe(SCENE_FORM_MARK.depth);
+		}
 	});
 });

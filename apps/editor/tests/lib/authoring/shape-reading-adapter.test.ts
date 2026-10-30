@@ -37,7 +37,8 @@ import {
 	mountStageAdapter,
 	type StageAdapterServices
 } from '$lib/authoring/stage/stage-adapter-host';
-import { stageScene } from '$lib/authoring/stage/unit-stage-source';
+import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
+import { hitStageMark } from '$lib/authoring/stage/stage-handles';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLayoutAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
@@ -48,8 +49,10 @@ import {
 import {
 	SCENE_FORM_MARK,
 	formSizeMeasurement,
+	formSizeScaleFromTravel,
 	formWorldAxis,
-	formWorldPoint
+	formWorldPoint,
+	previewFormSize
 } from '$lib/authoring/adapters/scene/shape/form-size';
 import { formCardController } from '$lib/authoring/adapters/scene/form-card';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
@@ -511,6 +514,190 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(ids()).toEqual(
 			expect.arrayContaining([SCENE_FORM_MARK.width, SCENE_FORM_MARK.height, SCENE_FORM_MARK.depth])
 		);
+		expect(mounted.host.history()).toEqual(history);
+	});
+
+	it('separates the Plan Move grip from the Width ray through the real host', async () => {
+		const mounted = await mount();
+		await createFloorForm(mounted);
+		settleReading(mounted.facade, 'plan');
+		if (!mounted.facade.marks().some((mark) => mark.id === SCENE_FORM_MARK.width)) {
+			mounted.facade.activateDisclosure(SCENE_FORM_MARK.scalePoint);
+		}
+		const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
+		const width = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.width)!;
+		expect(move.descriptor.screen?.offset).not.toEqual([0, 0]);
+		expect(width.descriptor.screen).toBeUndefined();
+		expect(hitStageMark(mounted.facade.marks(), { css: width.tip!, coarse: true })?.id).toBe(
+			SCENE_FORM_MARK.width
+		);
+		expect(hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: true })?.id).toBe(
+			SCENE_FORM_MARK.move
+		);
+	});
+
+	it('moves a form from the hit-resolved Move mark with one history entry', async () => {
+		const mounted = await mount();
+		const created = await createFloorForm(mounted);
+		settleReading(mounted.facade, 'plan');
+		mounted.facade.closeDisclosure();
+		const history = mounted.host.history();
+		const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
+		const hit = hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: true });
+		expect(hit?.id).toBe(SCENE_FORM_MARK.move);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = move.tip!;
+		expect(
+			mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: hit!.id }).claimed
+		).toBe(true);
+		const to = [
+			from[0] + (from[0] - move.anchor[0]),
+			from[1] + (from[1] - move.anchor[1])
+		] as const;
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => {
+			const current = acceptedForms(mounted.facade)[0];
+			return current !== undefined && (
+				Math.abs(current.position[0] - created.position[0]) > 1e-6 ||
+				Math.abs(current.position[2] - created.position[2]) > 1e-6
+			);
+		});
+		expect(mounted.host.history()).toMatchObject({ depth: history.depth + 1, position: history.position + 1 });
+	});
+
+	it('turns a form from the hit-resolved Turn ring with one history entry', async () => {
+		const mounted = await mount();
+		const created = await createFloorForm(mounted);
+		settleReading(mounted.facade, 'plan');
+		mounted.facade.closeDisclosure();
+		const history = mounted.host.history();
+		const marks = mounted.facade.marks();
+		const turn = marks.find((mark) => mark.id === SCENE_FORM_MARK.turn)!;
+		const ring = turn.ring!;
+		const index = ring.findIndex((point) =>
+			hitStageMark(marks, { css: point, coarse: true })?.id === SCENE_FORM_MARK.turn
+		);
+		if (index < 0) throw new Error('the Turn ring published no unclaimed point');
+		const from = ring[index]!;
+		const to = ring[(index + 4) % ring.length]!;
+		const hit = hitStageMark(marks, { css: from, coarse: true });
+		const evaluationId = mounted.facade.evaluationId()!;
+		expect(
+			mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: hit!.id }).claimed
+		).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => {
+			const current = acceptedForms(mounted.facade)[0];
+			return current !== undefined && Math.abs(current.rotation[1] - created.rotation[1]) > 1e-6;
+		});
+		expect(mounted.host.history()).toMatchObject({ depth: history.depth + 1, position: history.position + 1 });
+	});
+
+	it('sizes Depth from the hit-resolved ray with one history entry', async () => {
+		const mounted = await mount();
+		const created = await createFloorForm(mounted);
+		settleReading(mounted.facade, 'plan');
+		const history = mounted.host.history();
+		const depth = sizeMark(mounted.facade, 2);
+		const hit = hitStageMark(mounted.facade.marks(), { css: depth.tip!, coarse: true });
+		expect(hit?.id).toBe(SCENE_FORM_MARK.depth);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = depth.tip!;
+		expect(
+			mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: hit!.id }).claimed
+		).toBe(true);
+		const to = [
+			from[0] + (from[0] - depth.anchor[0]),
+			from[1] + (from[1] - depth.anchor[1])
+		] as const;
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => acceptedForms(mounted.facade)[0]!.form.scale[2] !== created.form.scale[2]);
+		const current = acceptedForms(mounted.facade)[0]!;
+		expect(current.form.scale[0]).toBe(created.form.scale[0]);
+		expect(current.form.scale[1]).toBe(created.form.scale[1]);
+		expect(mounted.host.history()).toMatchObject({ depth: history.depth + 1, position: history.position + 1 });
+	});
+
+	it('refuses an out-of-range ray without history or source change', async () => {
+		const mounted = await mount();
+		await createFloorForm(mounted);
+		settleReading(mounted.facade, 'plan');
+		const before = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+		const width = sizeMark(mounted.facade, 0);
+		const hit = hitStageMark(mounted.facade.marks(), { css: width.tip!, coarse: true });
+		expect(hit?.id).toBe(SCENE_FORM_MARK.width);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = width.tip!;
+		expect(
+			mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: hit!.id }).claimed
+		).toBe(true);
+		const to = [
+			from[0] + (from[0] - width.anchor[0]) * 100,
+			from[1] + (from[1] - width.anchor[1]) * 100
+		] as const;
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		expect(sizeMark(mounted.facade, 0).refusal).toContain('within [0.001, 100] m');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		expect(mounted.host.history()).toEqual(history);
+	});
+
+	it('keeps mark and Card scale and refusal identical at the policy bounds', async () => {
+		const mounted = await mount();
+		const created = await createFloorForm(mounted);
+		const before = mounted.facade.snapshot().canonicalJson;
+		const history = mounted.host.history();
+		const card = formCardController(mounted.services, created.id);
+		if (card === null) throw new Error('the created form published no Card controller');
+		const width = formSizeMeasurement(created).handles.find((handle) => handle.axis === 0)!;
+		const envelope = stageEnvelope(mounted.facade.snapshot());
+		const context = {
+			layout: envelope.units.layout.data,
+			scene: envelope.units.scene.data,
+			sourceContentId: mounted.facade.snapshot().sourceContentId
+		};
+		const preview = (scale: readonly [number, number, number]) =>
+			previewFormSize({ context, entityId: created.id, scale });
+		const validScale = formSizeScaleFromTravel({
+			entity: created,
+			handle: width,
+			travelMeters: (1.5 * width.baseDimension) / width.factor
+		})!;
+		const validCardScale = 3 / card.dimensions[0]! * created.form.scale[0]!;
+		expect(validScale[0]).toBeCloseTo(validCardScale, 9);
+		for (const [desired, value] of [
+			[0.0005, 0.001],
+			[500, 1000]
+		] as const) {
+			const markScale = formSizeScaleFromTravel({
+				entity: created,
+				handle: width,
+				travelMeters: (desired * width.baseDimension) / width.factor
+			})!;
+			const cardScale = [
+				value / card.dimensions[0]! * created.form.scale[0]!,
+				created.form.scale[1]!,
+				created.form.scale[2]!
+			] as const;
+			for (let axis = 0; axis < 3; axis += 1) {
+				expect(markScale[axis]!).toBeCloseTo(cardScale[axis]!, 9);
+			}
+			const markPreview = preview(markScale);
+			const cardPreview = preview(cardScale);
+			if (!('refusal' in markPreview) || !('refusal' in cardPreview)) {
+				throw new Error('the out-of-range scale was not refused');
+			}
+			expect(markPreview.refusal).toBe(cardPreview.refusal);
+			const outcome = await card.size([value, card.dimensions[1]!, card.dimensions[2]!]);
+			expect(outcome.kind).toBe('refused');
+			if (outcome.kind === 'refused') expect(outcome.message).toBe(markPreview.refusal);
+		}
+		// Neither the mark planner nor the Card wrote an F4 entry or source.
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
 		expect(mounted.host.history()).toEqual(history);
 	});
 

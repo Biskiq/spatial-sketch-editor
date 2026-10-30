@@ -12,7 +12,6 @@
  * authored outline plus `form.scale`; nothing generated is stored.
  */
 import { Euler, Vector3 } from 'three';
-import { PROFILE_LIMITS } from '@portfolio/geometry-core';
 import {
 	planSetFormSize,
 	type SceneOperationResult
@@ -120,9 +119,10 @@ export function formWorldAxis(entity: SceneFormEntity, axis: FormSizeAxis): Vec3
 }
 
 /**
- * The full per-axis scale a knob travel names, or `null` when it is a no-op or
- * outside the admitted limits. The planner still owns validity; this only keeps
- * a preview from naming an impossible scale.
+ * The full per-axis scale a knob travel names, or `null` when it is a no-op.
+ * The planner owns the admitted range: returning the raw scale lets a mark show
+ * the same refusal and write the same fact as the Card instead of silently
+ * clamping an out-of-range drag.
  */
 export function formSizeScaleFromTravel(input: {
 	readonly entity: SceneFormEntity;
@@ -139,10 +139,7 @@ export function formSizeScaleFromTravel(input: {
 		input.entity.form.scale[1],
 		input.entity.form.scale[2]
 	];
-	scale[input.handle.axis] = Math.min(
-		PROFILE_LIMITS.maxScale,
-		Math.max(PROFILE_LIMITS.minScale, raw)
-	);
+	scale[input.handle.axis] = raw;
 	if (scale.every((value, index) => value === input.entity.form.scale[index])) return null;
 	return scale;
 }
@@ -216,6 +213,66 @@ export type FormMarkScreenHeight = {
 	readonly axis: readonly [number, number];
 };
 
+/**
+ * Plan's separation offset for the Move grip.
+ *
+ * Move's contact anchor and the Width ray's centre project to one point when
+ * Plan hides world Y. Offset Move perpendicular to its own projected axis and
+ * away from the Depth ray: a fixed downward offset would land back on the
+ * ray when the form is turned a quarter turn. The sign is chosen so yaw 0 keeps
+ * the existing downward grip. The offset changes drawing and hit area only; the
+ * gesture still drives the form's real floor position.
+ */
+export function formMoveScreenOffset(input: {
+	readonly entity: SceneFormEntity;
+	readonly measurement: FormSizeMeasurement;
+	readonly project: (point: Vec3) => readonly [number, number] | null;
+	readonly gapPx?: number;
+}): { readonly offset: readonly [number, number] } {
+	const gap =
+		input.gapPx !== undefined && Number.isFinite(input.gapPx) && input.gapPx > 0
+			? input.gapPx
+			: 24;
+	const yaw = input.entity.rotation[1];
+	const base: Vec3 = [
+		input.entity.position[0],
+		input.entity.position[1] + input.measurement.contactMinY,
+		input.entity.position[2]
+	];
+	const axis: Vec3 = [Math.cos(yaw), 0, -Math.sin(yaw)];
+	const start = input.project(base);
+	const end = input.project([
+		base[0] + axis[0] * 0.5,
+		base[1],
+		base[2] + axis[2] * 0.5
+	]);
+	if (start === null || end === null) return { offset: [0, gap] };
+	const dx = end[0] - start[0];
+	const dy = end[1] - start[1];
+	const length = Math.hypot(dx, dy);
+	if (!(length > 1e-6)) return { offset: [0, gap] };
+	let offset: [number, number] = [(dy / length) * gap, -(dx / length) * gap];
+	// Pick the side opposite the projected Depth ray, so the separated Move grip
+	// cannot land on the other perpendicular ray either.
+	const depthEnd = input.project([
+		base[0] + Math.sin(yaw) * 0.5,
+		base[1],
+		base[2] + Math.cos(yaw) * 0.5
+	]);
+	if (depthEnd !== null) {
+		const depthX = depthEnd[0] - start[0];
+		const depthY = depthEnd[1] - start[1];
+		const depthLength = Math.hypot(depthX, depthY);
+		if (
+			depthLength > 1e-6 &&
+			offset[0] * (depthX / depthLength) + offset[1] * (depthY / depthLength) > 0
+		) {
+			offset = [-offset[0], -offset[1]];
+		}
+	}
+	return { offset };
+}
+
 /** The three size rays in the domain's overlap order: Height, Width, Depth. */
 const FORM_SIZE_RAY_ORDER: readonly {
 	readonly axis: FormSizeAxis;
@@ -250,8 +307,8 @@ export function formMarkDescriptors(input: {
 	 * anchor project to the same point when Plan hides world Y, and with the
 	 * same yaw their 30 px glyphs coincide. The host takes the first descriptor
 	 * that hits, so Move (published first) would otherwise swallow every Width
-	 * press. The offset changes drawing and hit area only; the gesture still
-	 * drives the form's real floor position.
+	 * press. The adapter derives a perpendicular offset from the projected Move
+	 * axis; it changes drawing and hit area only, never the driven fact.
 	 */
 	readonly screenMove?: { readonly offset: readonly [number, number] } | null;
 }): readonly StageHandleDescriptor[] {
