@@ -48,6 +48,8 @@ window.__BISKIQ_PERF_ON_RENDERER__ = (renderer, surface) => {
 
 Use `camera.getWorldPosition(camera.position.clone())`, not `camera.position`: Stage copies matrices. Inspect actual BufferGeometry positions/bounds and project the ground sample through `matrixWorldInverse` then `projectionMatrix`. Do not interpret an infinite ray-plane hit as an in-frustum hit.
 
+**Correction from the later probe:** the near plane also cuts the ground. The first pass named far clipping only; the dark band at the bottom of [shallow](./grid-shallow-3d.png) is ground nearer than `distance − sceneRadius`. See [the probe](#candidate-fix-probe) and D28.
+
 ## Camera flip: reproduced, open
 
 `upForReading('plan', azimuth)` supplies `[sin(azimuth),0,cos(azimuth)]`. `viewUpForPose` uses world +Y until elevation reaches the near-overhead limit, then switches to that Plan vector. But the limiting projected world-up approaches the **negative** of that vector. The view basis reverses at the threshold.
@@ -65,6 +67,24 @@ The [numerical sweep](./camera-sweep.jsonl) imported current Camera-core and sam
 The current contract intentionally snaps Plan to nearest quarter turn (ties lower) and returns to remembered3D elevation without fit; it retains the detented azimuth rather than restoring an earlier arbitrary azimuth. Do not misclassify that as numerical drift. Prototype `stage.js` is an SVG/mock Camera; it provides stable visual expectations, not an interpolation implementation to copy.
 
 Proposed fix direction: derive one continuous basis in Camera-core and settle to its overhead limit; preserve target, target-plane scale and quarter-turn policy. Endpoint sign convention changes need O3 adjudication. Extend `apps/editor/tests/lib/museum/navigation/camera-viewport-evaluation.test.ts` with signed screen-axis continuity, not only absolute orthographic distances. Add reversal mid-transition, repeated fast switching, reduced motion, quarter-turn ties, multiple azimuth/elevation browser journeys and no source/selection/tool changes. A fresh browser test across multiple azimuths remains owed: the live trace confirmed one azimuth; the 21-pose sweep provides numerical coverage, not browser coverage.
+
+## Candidate fix probe
+
+Run 2026-10-30 in a disposable checkout of `152f63ae`, since removed. No production file on this branch changed. It tested [this diff](./candidate-camera-grid-probe.diff) with [this sweep](./candidate-grid-sweep-probe.ts.txt), a test-file copy kept as text so no lane collects it. The diff hard-codes the ground at y=0 and is evidence, not the implementation; it predates the eye-height `reach` term and the line budget in the [target specification](../target-specification.md#ground-and-grid), which **have not been run**.
+
+| Measure, 2,352 poses (4 viewports, 7 elevations, 7 azimuths, 6 zooms, 2 targets) | Current | Candidate |
+| --- | --- | --- |
+| Ground samples inside clip range but outside grid coverage | 15,750 | **0** |
+| Ground samples beyond the far plane | 67,788 | 10,584 |
+| Poses with more than 2 px between clipped ground and horizon (elevation above 0) | 1,344 | 588 |
+| Worst such gap | 611 px | 359 px, target far above the ground at extreme zoom; 27 px at target-plane height 5 m or more |
+| Lines drawn, median and maximum | 806, 1,998 | 1,622, **11,138** |
+| Minimum consecutive right-vector dot across the flip, 21 poses | −1 | 0.999998 |
+
+- **Coverage:** the exact footprint removes every sampled coverage miss. The remaining beyond-far samples come from reach not accounting for eye height, which is why the specification adds that term.
+- **Budget:** the line increase is real, which is why the specification adds a budget.
+- **Existing tests:** with the sign, far and footprint changes, 12 affected Camera, Stage and grid files passed (290 tests). The Camera file passed again with the near change (23 tests). Passing also shows **no existing test pins the Plan sign**. The whole lane was not run on the candidate.
+- **Browser, 1440×900:** a low orbit shows grid continuous to the top and bottom of the frame with no near band ([capture](./candidate-grid-low-orbit.jpg)). One 3D→2D flip kept the room on the same side of the screen. The horizon was never in frame in a captured candidate view, so moiré near it is untested.
 
 ## Selected geometry: confirmed gap and decision
 

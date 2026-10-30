@@ -1,0 +1,47 @@
+import { it } from 'vitest';
+import { writeFileSync } from 'node:fs';
+import { createViewportCameraState, evaluateViewport, requestViewingIntent, advanceViewport, VIEWPORT_READING_TRANSITION_SECONDS, projectWorld } from '@portfolio/camera-core';
+import { gridPlanFor, gridLinesFor } from '../../../src/lib/authoring/stage/stage-grid';
+const rad = (d:number)=>d*Math.PI/180;
+it('sweep', () => {
+  const out:string[]=[]; let worstGap=0, gapRows=0; let worst=0, miss=0, samples=0, clipped=0;
+  for (const [W,H] of [[1088,814],[1440,900],[820,1180],[1280,577]])
+  for (const elev of [1,5,15,45,75,89,-5]) for (const az of [0,30,45,90,135,225,315]) for (const height of [0.05,1,5,15.2,60,1000]) for (const target of [[3.5,1.5,-1],[500,0,-400]]) {
+    const st = createViewportCameraState({ pose:{ target:target as any, azimuthRadians:rad(az), elevationRadians:rad(elev), targetPlaneHeightMeters:height }, reading:'3d', sceneRadiusMeters:5, sourceRevision:'r', sessionEpoch:'e', outputId:'o' } as any);
+    const res = evaluateViewport(st,{left:0,top:0,width:W,height:H,devicePixelRatio:1},0,1);
+    if (res.kind!=='evaluated') { out.push(JSON.stringify({W,H,elev,az,height,refused:res.reason})); continue; }
+    const e=res.evaluation;
+    const plan=gridPlanFor({metersPerCssPixel:e.targetPlaneMetersPerCssPixel,targetPlaneHeightMeters:height,aspect:W/H,targetXZ:[target[0],target[2]],datumMeters:0,baseMinorMeters:1,surface:'mat',inverseViewProjectionMatrix:e.inverseViewProjectionMatrix as any,viewport:{width:W,height:H}});
+    if(!plan) continue;
+    const lines=gridLinesFor(plan).length; const bound=lines/Math.max(W,H); worst=Math.max(worst,bound);
+    // Sample the ground visible through the screen: each in-clip ground hit must be inside the rect.
+    let m=0,c=0,n=0;
+    for(let iy=0;iy<=24;iy++)for(let ix=0;ix<=8;ix++){
+      const ndc=[ix/8*2-1,iy/24*2-1]; const inv=e.inverseViewProjectionMatrix as number[];
+      const un=(z:number)=>{const x=ndc[0],y=ndc[1];const w=inv[3]*x+inv[7]*y+inv[11]*z+inv[15];return [(inv[0]*x+inv[4]*y+inv[8]*z+inv[12])/w,(inv[1]*x+inv[5]*y+inv[9]*z+inv[13])/w,(inv[2]*x+inv[6]*y+inv[10]*z+inv[14])/w];};
+      const a=un(-1),b=un(1); const dy=b[1]-a[1]; if(Math.abs(dy)<1e-12)continue; const t=(0-a[1])/dy; if(t<0)continue;
+      const p=[a[0]+(b[0]-a[0])*t,0,a[2]+(b[2]-a[2])*t]; n++;
+      if(t>1){c++;continue;}
+      if(p[0]<plan.rect.minX||p[0]>plan.rect.maxX||p[2]<plan.rect.minZ||p[2]>plan.rect.maxZ)m++;
+    }
+    // Screen gap between the last in-clip ground row and the horizon (or frame top), centre column.
+    let lastInClip=-1, lastGround=-1; const rows=1600;
+    for(let r=0;r<=rows;r++){const y=r/rows*2-1;const inv=e.inverseViewProjectionMatrix as number[];const un=(z:number)=>{const w=inv[7]*y+inv[11]*z+inv[15];return (inv[5]*y+inv[9]*z+inv[13])/w;};const a=un(-1),b=un(1),dy=b-a;if(Math.abs(dy)<1e-12)continue;const t=(0-a)/dy;if(t<0)continue;lastGround=r;if(t<=1)lastInClip=r;}
+    const gapPx=lastGround<0?0:Math.round((lastGround-lastInClip)/rows*H);
+    if(elev>0){worstGap=Math.max(worstGap,gapPx); if(gapPx>2)gapRows++;}
+    miss+=m;clipped+=c;samples+=n;
+    out.push(JSON.stringify({W,H,elev,az,height,target0:target[0],far:+e.far.toFixed(2),near:+e.near.toFixed(3),lines,perMax:+bound.toFixed(2),samples:n,outsideRect:m,beyondFar:c,gapPx}));
+  }
+  // Continuity sweep across the flip
+  let minDot=1; const flips:any[]=[];
+  for(const az of [0,44,46,90,179,225,315]) for(const elev of [5,45,88]) {
+    let st:any=createViewportCameraState({pose:{target:[3.5,1.5,-1],azimuthRadians:rad(az),elevationRadians:rad(elev),targetPlaneHeightMeters:15.2},reading:'3d',sceneRadiusMeters:5,sourceRevision:'r',sessionEpoch:'e',outputId:'o'} as any);
+    const r=requestViewingIntent(st,{kind:'set-reading',reading:'plan'},0); if(r.kind!=='accepted')throw new Error('x');
+    let prev:number[]|null=null,localMin=1;
+    for(let i=0;i<=600;i++){const t=i/600*VIEWPORT_READING_TRANSITION_SECONDS;const res=evaluateViewport(r.state,{left:0,top:0,width:1088,height:814,devicePixelRatio:1},t,1);if(res.kind!=='evaluated')continue;const v=res.evaluation.viewMatrix as number[];const right=[v[0],v[4],v[8]];if(prev){const d=prev[0]*right[0]+prev[1]*right[1]+prev[2]*right[2];localMin=Math.min(localMin,d);}prev=right;}
+    flips.push({az,elev,minConsecutiveRightDot:+localMin.toFixed(6)}); minDot=Math.min(minDot,localMin);
+  }
+  writeFileSync(process.env.PROBE_OUT!, out.join('\n')+'\n');
+  console.log('SUMMARY',JSON.stringify({poses:out.length,samples,outsideRect:miss,beyondFar:clipped,worstLinesPerMaxDim:worst,minFlipDot:minDot,worstGapPx:worstGap,posesGapOver2Px:gapRows}));
+  console.log('FLIPS',JSON.stringify(flips.slice(0,6)));
+});
