@@ -527,9 +527,16 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 	$effect(() => {
 		heightMeters = heightSheet.height();
 		heightPins = heightSheet.pins();
-		return heightSheet.subscribe('route-height-sheet', (height) => {
+		const unsubscribeHeight = heightSheet.subscribe('route-height-sheet', (height) => {
 			heightMeters = height;
 		});
+		const unsubscribePins = heightSheet.subscribePins('route-height-sheet-pins', (pins) => {
+			heightPins = pins;
+		});
+		return () => {
+			unsubscribeHeight();
+			unsubscribePins();
+		};
 	});
 	$effect(() => {
 		// A binding rebuild can add or remove owner surfaces, and a viewport output
@@ -559,6 +566,12 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 			clearTimeout(heightPlaneTimer);
 			heightPlaneTimer = null;
 		}
+		// The Sheet is World-lens chrome. Its teardown on a lens switch is not a
+		// pointer release: do not leave a tail running behind the Experience lens.
+		if (lens !== 'world') {
+			heightPlaneVisible = false;
+			return;
+		}
 		if (active) {
 			heightPlaneVisible = true;
 			return;
@@ -572,6 +585,17 @@ import { drawnGridMinorMeters } from '$lib/authoring/stage/stage-grid';
 			heightPlaneTimer = null;
 		}, 1000);
 	}
+	$effect(() => {
+		// A lens switch can happen after the Sheet already went inactive (for
+		// example focus moved to the lens button first), so cancel any live tail
+		// on the lens change itself rather than relying on the unmount callback.
+		if (lens === 'world') return;
+		if (heightPlaneTimer !== null) {
+			clearTimeout(heightPlaneTimer);
+			heightPlaneTimer = null;
+		}
+		heightPlaneVisible = false;
+	});
 	const draftingReading: 'plan' | '3d' = $derived(
 		evaluation?.settledReading === 'plan' ? 'plan' : '3d'
 	);

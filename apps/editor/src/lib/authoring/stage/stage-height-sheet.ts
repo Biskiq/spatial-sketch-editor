@@ -31,6 +31,11 @@ type HeightListener = {
 	readonly onHeight: (heightMeters: number) => void;
 };
 
+type PinListener = {
+	readonly role: string;
+	readonly onPins: (pins: readonly number[]) => void;
+};
+
 export type StageHeightSheet = {
 	/** Metres above the floor datum. */
 	height(): number;
@@ -52,6 +57,12 @@ export type StageHeightSheet = {
 	 * filter: every subscriber receives every height change.
 	 */
 	subscribe(role: string, onHeight: (heightMeters: number) => void): () => void;
+	/**
+	 * Register a pin consumer. Pins change without a height change (a reset can
+	 * clear them at the same height), so the chrome cannot derive them from the
+	 * height notification alone.
+	 */
+	subscribePins(role: string, onPins: (pins: readonly number[]) => void): () => void;
 	/** A project replacement's reset: datum height, no pins, same subscription. */
 	reset(): void;
 };
@@ -85,6 +96,7 @@ export function createStageHeightSheet(
 	let heightValue = Math.min(initial, maximum);
 	let pinsValue: number[] = [];
 	const listeners: HeightListener[] = [];
+	const pinListeners: PinListener[] = [];
 
 	function clamp(value: number): number {
 		return Math.min(maximum, Math.max(0, value));
@@ -95,6 +107,17 @@ export function createStageHeightSheet(
 		for (const listener of [...listeners]) {
 			try {
 				listener.onHeight(heightValue);
+			} catch {
+				// One consumer's failure must not strand the others.
+			}
+		}
+	}
+
+	function notifyPins(): void {
+		const pins = [...pinsValue];
+		for (const listener of [...pinListeners]) {
+			try {
+				listener.onPins(pins);
 			} catch {
 				// One consumer's failure must not strand the others.
 			}
@@ -114,10 +137,14 @@ export function createStageHeightSheet(
 			if (!finiteNonNegative(value)) return;
 			if (pinsValue.some((pin) => sameHeight(pin, value))) return;
 			pinsValue = [...pinsValue, value].sort((a, b) => a - b);
+			notifyPins();
 		},
 		removePin(value) {
 			if (!Number.isFinite(value)) return;
-			pinsValue = pinsValue.filter((pin) => !sameHeight(pin, value));
+			const next = pinsValue.filter((pin) => !sameHeight(pin, value));
+			if (next.length === pinsValue.length) return;
+			pinsValue = next;
+			notifyPins();
 		},
 		maxHeightMeters: () => maximum,
 		setMaxHeightMeters(value) {
@@ -132,11 +159,20 @@ export function createStageHeightSheet(
 				if (index >= 0) listeners.splice(index, 1);
 			};
 		},
+		subscribePins(role, onPins) {
+			const listener: PinListener = { role, onPins };
+			pinListeners.push(listener);
+			return () => {
+				const index = pinListeners.indexOf(listener);
+				if (index >= 0) pinListeners.splice(index, 1);
+			};
+		},
 		reset() {
 			const previous = heightValue;
 			heightValue = Math.min(initial, maximum);
 			pinsValue = [];
 			notify(previous);
+			notifyPins();
 		}
 	};
 }

@@ -1221,7 +1221,7 @@ describe('R217.S06 — the Height Sheet drives the Plan cut', () => {
 		return result.kind === 'evaluated' ? planFragmentOf(result.plan, wallId)?.ref.stream ?? null : null;
 	}
 
-	it('moves a 0.9 m Wall from projected to cut at 0.6 m and back, with no source write', async () => {
+	it('moves a 0.9 m Wall from hidden to cut at 0.6 m and back, with no source write', async () => {
 		const base = await enclosureProject(STARTER_ENCLOSURE_POINTS);
 		const layout = structuredClone(base.units.layout.data);
 		const lowWallId = layout.walls[0]!.id;

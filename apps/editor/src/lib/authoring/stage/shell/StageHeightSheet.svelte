@@ -16,6 +16,7 @@
 	 * The host has already merged the owners' declarations; this component only
 	 * draws them and maps pointer travel to the same height fact.
 	 */
+	import { onMount } from 'svelte';
 	import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from '../plan-parameters';
 	import type { StageHeightCause, StageHeightTick } from '../stage-height-sheet';
 
@@ -44,8 +45,11 @@
 		onActiveChange: (active: boolean) => void;
 	} = $props();
 
-	let active = $state(false);
+	let active = false;
 	let dragging = $state(false);
+	let hovered = false;
+	let focused = false;
+	let dragPointerId: number | null = null;
 	let snapName = $state<string | null>(null);
 	let hintDismissed = $state(false);
 	let track = $state<HTMLDivElement | undefined>(undefined);
@@ -79,10 +83,17 @@
 			: `${heightMeters.toFixed(2)} metres, nearest ${nearestTick.label}`
 	);
 
-	function announce(activeValue: boolean): void {
-		if (active === activeValue) return;
-		active = activeValue;
-		onActiveChange(activeValue);
+	/**
+	 * The plane is shown while the Sheet is hovered, focused **or** dragged. They
+	 * are separate reasons: releasing a drag while the slider is still focused
+	 * must not start the hide tail, and leaving the pointer during a drag must
+	 * keep the plane up until the gesture ends.
+	 */
+	function syncActive(): void {
+		const next = dragging || hovered || focused;
+		if (active === next) return;
+		active = next;
+		onActiveChange(next);
 	}
 
 	function clamp(value: number): number {
@@ -127,8 +138,9 @@
 		event.preventDefault();
 		event.stopPropagation();
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		dragPointerId = event.pointerId;
 		dragging = true;
-		announce(true);
+		syncActive();
 		applyDrag(event.clientY, event.altKey);
 	}
 
@@ -138,17 +150,48 @@
 		applyDrag(event.clientY, event.altKey);
 	}
 
-	function endDrag(event: PointerEvent): void {
+	/**
+	 * End the drag without applying anything. The height only ever changes from
+	 * applyDrag, so an interrupted press leaves the fact exactly where it was.
+	 * Set `dragging` before releasing capture: releasing dispatches
+	 * lostpointercapture synchronously, and the re-entrant call must be a no-op.
+	 */
+	function finishDrag(): void {
 		if (!dragging) return;
 		dragging = false;
 		snapName = null;
-		try {
-			(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
-		} catch {
-			// Capture may already have been lost; the gesture still ends here.
+		const pointerId = dragPointerId;
+		dragPointerId = null;
+		if (pointerId !== null) {
+			try {
+				track?.releasePointerCapture(pointerId);
+			} catch {
+				// Capture may already have been lost; the gesture still ends here.
+			}
 		}
-		announce(false);
+		syncActive();
 	}
+
+	onMount(() => {
+		const onBlur = (): void => finishDrag();
+		const onVisibility = (): void => {
+			if (document.visibilityState === 'hidden') finishDrag();
+		};
+		window.addEventListener('blur', onBlur);
+		document.addEventListener('visibilitychange', onVisibility);
+		return () => {
+			window.removeEventListener('blur', onBlur);
+			document.removeEventListener('visibilitychange', onVisibility);
+			// The lens switch unmounts the Sheet; no active tail may survive it.
+			dragging = false;
+			dragPointerId = null;
+			snapName = null;
+			if (active) {
+				active = false;
+				onActiveChange(false);
+			}
+		};
+	});
 
 	function stepBy(delta: number): void {
 		const step = Number.isFinite(snapIncrement) && snapIncrement > 0 ? snapIncrement : 0.1;
@@ -209,13 +252,23 @@
 	class:left={side === 'left'}
 	class:instant={reducedMotion}
 	data-stage-height-sheet
-	onpointerenter={() => announce(true)}
-	onpointerleave={() => {
-		if (!dragging) announce(false);
+	onpointerenter={() => {
+		hovered = true;
+		syncActive();
 	}}
-	onfocusin={() => announce(true)}
+	onpointerleave={() => {
+		hovered = false;
+		syncActive();
+	}}
+	onfocusin={() => {
+		focused = true;
+		syncActive();
+	}}
 	onfocusout={(event) => {
-		if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) announce(false);
+		if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) {
+			focused = false;
+			syncActive();
+		}
 	}}
 >
 	<span class="title">Height</span>
@@ -234,8 +287,9 @@
 			aria-valuetext={valueText}
 			onpointerdown={onPointerDown}
 			onpointermove={onPointerMove}
-			onpointerup={endDrag}
-			onpointercancel={endDrag}
+			onpointerup={finishDrag}
+			onpointercancel={finishDrag}
+			onlostpointercapture={finishDrag}
 			onkeydown={onKeydown}
 		>
 			<span class="rail" aria-hidden="true"></span>

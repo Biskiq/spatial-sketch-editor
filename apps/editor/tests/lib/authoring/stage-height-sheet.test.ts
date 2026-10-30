@@ -74,6 +74,22 @@ describe('R217.S06 — the one Height Sheet height fact', () => {
 		expect(seen).toEqual([1.8, 2.1]);
 	});
 
+	it('notifies pin subscribers on add, remove and reset, including a same-height reset', () => {
+		const sheet = createStageHeightSheet();
+		const seen: (readonly number[])[] = [];
+		const off = sheet.subscribePins('probe', (pins) => seen.push([...pins]));
+		sheet.addPin(0.75);
+		sheet.addPin(0.3);
+		sheet.removePin(0.75);
+		// A reset at the current height still clears pins, so the pin channel must
+		// announce it even though the height channel has nothing to say.
+		sheet.reset();
+		expect(seen).toEqual([[0.75], [0.3, 0.75], [0.3], []]);
+		off();
+		sheet.addPin(1);
+		expect(seen).toHaveLength(4);
+	});
+
 	it('keeps pins session-only, finite, sorted and deduped within 5 mm', () => {
 		const sheet = createStageHeightSheet();
 		sheet.addPin(0.75);

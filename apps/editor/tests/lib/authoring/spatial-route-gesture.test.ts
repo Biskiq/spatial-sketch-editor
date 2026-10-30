@@ -1070,6 +1070,9 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		trackPointer('pointerup', fromY + 48);
 		await frame();
 		expect(height()).toBeLessThan(raised);
+		// The slider is still focused after the release, so the plane must remain
+		// up instead of starting its hide tail behind a focused control.
+		expect(canvasProbe()?.dataset.heightPlane).toBe('true');
 
 		// The Sheet is view state: no install, no history entry, and Save is the
 		// same canonical bytes as before the step.
@@ -1086,6 +1089,47 @@ describe('R217.S06 — mounted Height Sheet', () => {
 			expect(saveAfter.capture.canonicalJson).toBe(saveBefore.capture.canonicalJson);
 		}
 	});
+
+	it('drops a mounted pin when the session fact resets', async () => {
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		await frame();
+		expect(pins()).toHaveLength(1);
+		expect(
+			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')
+		).not.toBeNull();
+
+		facade().session.heightSheet().reset();
+		await frame();
+		expect(pins()).toEqual([]);
+		expect(
+			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')
+		).toBeNull();
+	});
+
+	it.each(['lostpointercapture', 'blur'] as const)(
+		'stops a drag when %s interrupts the gesture',
+		async (interruption) => {
+			const slider = sliderNode();
+			expect(slider).not.toBeNull();
+			const max = Number(slider!.getAttribute('aria-valuemax'));
+			const fromY = RECT.bottom - (height() / max) * RECT.height;
+			trackPointer('pointerdown', fromY);
+			await frame();
+			const stopped = height();
+
+			if (interruption === 'lostpointercapture') {
+				slider!.dispatchEvent(new Event('lostpointercapture', { bubbles: true }));
+			} else {
+				window.dispatchEvent(new Event('blur'));
+			}
+			await frame();
+			trackPointer('pointermove', fromY + 80);
+			await frame();
+
+			expect(height()).toBeCloseTo(stopped, 6);
+			expect(sheetNode()!.querySelector('.snap')).toBeNull();
+		}
+	);
 
 	it('steps by the drafting increment, falls back to 0.1 m, jumps ticks and names the nearest', async () => {
 		// The route reads the merged tick set after the binding exists; force that
@@ -1155,6 +1199,9 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		await frame();
 		expect(sheetNode()).not.toBeNull();
 		expect(Number(sliderNode()!.getAttribute('aria-valuenow'))).toBeCloseTo(0.8, 6);
+		// The unmount published inactive before the lens returned; no tail survives
+		// the switch and the plane starts hidden until the Sheet is activated again.
+		expect(canvasProbe()?.dataset.heightPlane).toBe('false');
 	});
 
 	it('keeps a 44 px coarse target and names the snap while dragging', async () => {
