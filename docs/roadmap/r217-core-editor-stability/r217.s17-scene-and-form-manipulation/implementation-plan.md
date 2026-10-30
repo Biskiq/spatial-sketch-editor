@@ -57,7 +57,7 @@ Every placed subject can be placed, dragged, turned and sized directly, with a g
 - **Mixed project fixture.** A builder in `apps/editor/tests/lib/authoring/__fixtures__/` returns one project envelope: a 3 × 2 room plan with a door and a window, a plinth, a 0.9 m low Wall, a 0.75 m table, a native box, a floor catalogue model from `CATALOGUE_MODEL_CONTACT_RECORDS`, an unapproved model, an approved creator model built with `creatorModelResourceEntry`, and rectangular, concave and tilted native forms.
 - **Unit tests** use the builder directly and need no API.
 - **Browser seeding.** A helper under `apps/editor/tests/e2e/` logs in with `tests/e2e/test-auth.ts`, saves the envelope through the project API, and approves the model through the real import routes, using the smallest GLB in `apps/editor/assets-source/models/`.
-- If the local API or Postgres is unavailable, this slice still runs every subject but the approved model in the browser, and names that row as owed in its acceptance record.
+- If the local API or Postgres is unavailable, this slice still runs every subject but the approved model in the browser, and names that row as owed in its acceptance record. The owed row carries to R217.S11 as blocking final-gate evidence. It lets S17 merge, but it doesn't discharge the requirement.
 
 **Contracts this slice updates at cutover:**
 

@@ -127,7 +127,7 @@ The evidence is sufficient for these, so they are simply in the plan:
 The final pass settled these within the accepted rulings, each narrowing what was specified:
 
 - **Junction hover is Plan-only (O9).** In 3D, a Junction behind a Wall would need a new occlusion policy.
-- **Layout has no 3D candidate mesh.** It draws the same outline at the datum, because a mesh would be a new rendering path. Scene and form ghosts stay meshes.
+- **Layout has no 3D candidate mesh.** Its 3D preview is the candidate's footprint at the datum, not the full Wall mesh, because a mesh would be a new rendering path. Scene and form ghosts stay meshes. The owner judges whether this is sufficient at the checkpoint after S15.
 - **No new snap geometry.** Parallel-Wall alignment is removed, and `extension-guide` stays unused because it has no candidates. A Wall body snaps by distance.
 - **S12 and S19 move to T1 ownership**, per the architecture contract.
 

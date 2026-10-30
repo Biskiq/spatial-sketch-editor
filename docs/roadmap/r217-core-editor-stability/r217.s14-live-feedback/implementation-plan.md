@@ -35,7 +35,7 @@ Drawing and Wall gestures show their real result while the pointer moves: the li
 - Only existing resolvers are wired: `resolveLayoutSnap` with `orthogonal-guide` and `grid`, and the `resolveOpeningDragSnap` family. `extension-guide` has a kind but no candidates, so it stays unused. No new snap geometry is written.
 - `StageAdapterBinding` gains one optional `candidatePreview(context)` beside `overlay`. The facade projects it once and `StageOverlay.svelte` draws it as SVG, in both readings.
 - Layout's preview comes from the planner's candidate document through the existing compile and `buildPaperPlan` path, filtered to changed Wall and Opening ids. There is no second solve.
-- Layout draws an outline in 3D too, at the datum. **No Layout candidate mesh is added**, because that would be a new rendering path. Scene and form ghosts stay meshes in 3D.
+- In 3D, Layout draws the candidate's footprint at the datum, not the full Wall mesh. **No Layout candidate mesh is added**, because that would be a new rendering path. Scene and form ghosts stay meshes in 3D.
 - Preview colours: `subject` uses selection ink, `affected` a neutral outline, `refused` a thin neutral dash. Red stays reserved for the Eraser.
 
 **Files:**

@@ -68,11 +68,24 @@ Run this once, on the implementation branch, before asking for review. Extend th
 
 The earlier probe measured 0 on row 1, 27 px on row 2 without the eye-height term, 359 px on row 3 and 11,138 lines on row 4, so rows 2, 3 and 4 are the real test.
 
-**Fallbacks, taken in order and only for a failed row:**
+**Recording.** Rows 1–6 are numerical and row 7 is visual. The acceptance record states each row's measured value and result, on the final revision, along with any value measured before a fallback. Rows 1–6 are measured from geometry and clip range, so a fade or any other appearance change can't make them pass.
 
-1. **Row 2, 3 or 7 fails at the horizon:** add O4's accepted fade to the mat near the horizon.
-2. **Row 4 fails:** shrink the minor rectangle around the target, then draw major lines only beyond it.
-3. **Row 5 or 7 still fails:** cap reach at the largest value that passes. Ship the near-plane fix and exact footprint, and record the remaining band in the acceptance record and drift register. **This is an owner checkpoint**, with captures.
+**Fallbacks, taken in order and only for the named row. Rerun every row after each one:**
+
+1. **Row 7 fails at the horizon:** add O4's accepted fade to the mat near the horizon. This can only resolve row 7. A fade may also soften a band while row 2 or 3 is failing, but those rows stay failed.
+2. **Row 4 fails:** shrink the minor rectangle around the target, then draw major lines only beyond it. Row 4 passes only on its re-measured count.
+3. **Row 5 fails, or row 7 still fails:** cap reach at the largest value that passes those rows. Ship the near-plane fix and exact footprint, and record the remaining band in the acceptance record and drift register.
+
+Rows 1 and 6 have no fallback. A failure there is a defect to fix in this slice.
+
+**Outcomes, one of which the acceptance record states:**
+
+| Outcome | Condition | What happens next |
+| --- | --- | --- |
+| **Passed** | Rows 1–7 pass with no fallback | Normal review and merge |
+| **Passed with visual fallback** | Rows 1–6 pass, and row 7 passes only with the fade | Normal review and merge, with before and after captures recorded |
+| **Numerical failure** | Any of rows 1–6 still fails on the final revision, whatever it looks like | **Owner checkpoint**, with measured values and captures. The slice doesn't merge until the owner rules |
+| **Reach capped** | Fallback 3 was used | **Owner checkpoint**, with captures. The slice doesn't merge until the owner rules |
 
 Never use an infinite grid, disabled depth tests, a moved Camera or widened semantic bounds. Timing is not a criterion.
 

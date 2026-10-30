@@ -103,7 +103,7 @@ Reads the existing `planRigidWallMove`, `planExactJunctionMove` and `planExactWa
 
 | State | Shown |
 | --- | --- |
-| **Preview** | The planner's candidate: moved Wall in selection ink, each reshaped neighbour in a neutral outline, over the accepted drawing. In 3D, the same outline at the datum; no Layout candidate mesh is added |
+| **Preview** | The planner's candidate: moved Wall in selection ink, each reshaped neighbour in a neutral outline, over the accepted drawing. In 3D, the candidate's footprint at the datum, not the full Wall mesh; no Layout candidate mesh is added |
 | **Valid** | Value tag at the gesture; snap mark at the winning point |
 | **Invalid** | Candidate removed, since no valid one exists. A thin neutral dashed line to the pointer and a tag with a readable reason near it. Never red, which means erase, and never a clamp to the last valid pose |
 | **Refusal words** | Human text from the adapter, for example `This would cross another Wall`, never a raw id or code |
@@ -177,7 +177,7 @@ near       = max(NEAR_FLOOR, min(distance − sceneRadius, 0.9 × groundNear))
 
 **Mat (`StageCanvas.svelte`).** Centred on the quantised target, half-extent at least 1.5 × reach, with a polygon offset.
 
-**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in S19's browser check, the slice uses O4's fade alternative. The [slice plan](../r217.s19-3d-ground-clipping/implementation-plan.md#3a-experimental-checkpoint) owns the checkpoint, pass criteria and fallbacks. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
+**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in S19's browser check, the slice uses O4's fade alternative, which never counts as passing a numerical row. The [slice plan](../r217.s19-3d-ground-clipping/implementation-plan.md#3a-experimental-checkpoint) owns the checkpoint, pass criteria and fallbacks. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
 
 ## Selection
 

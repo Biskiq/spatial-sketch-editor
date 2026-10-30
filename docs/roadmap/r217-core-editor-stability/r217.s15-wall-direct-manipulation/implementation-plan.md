@@ -17,7 +17,7 @@ Planning label C07a. **Class:** Core regression, using existing planners. Fixes 
 
 ## 1. Outcome
 
-A selected Wall can be dragged directly. Its body slides along its normal, its end points edit the shared Junction, and the preview shows exactly what release will commit.
+A selected Wall can be dragged directly. Its body slides along its normal, its end points edit the shared Junction, and the preview shows the footprint release will commit.
 
 ## 2. Dependencies
 
@@ -79,10 +79,10 @@ A selected Wall can be dragged directly. Its body slides along its normal, its e
 ## 5. Browser acceptance
 
 - The same list with real pointer input, in Plan and 3D.
-- The preview matches the accepted result at release.
+- The preview footprint matches the accepted footprint at release. In 3D, the live preview is the candidate's footprint at the datum, not the full 3D Wall mesh, so it does not show height or the extruded result.
 - Mouse and coarse hit sizes.
 - Numeric entry.
-- **Owner checkpoint:** the integrator pauses here so the owner can try the Wall drag. O2 can be revisited cheaply now.
+- **Owner checkpoint:** the integrator pauses here so the owner can try the Wall drag, in Plan and 3D, and judge whether the footprint preview is sufficient in 3D. O2 can be revisited cheaply now. A full-mesh preview is not in this plan, so asking for one is a material change the owner rules on here.
 
 ## 6. Exclusions and stop conditions
 

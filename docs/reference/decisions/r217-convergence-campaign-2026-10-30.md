@@ -27,10 +27,10 @@ R217.S12–S25 and S11 run as one integrated product campaign under one **conver
 
 The integrator stops and asks only for these:
 
-1. **Wall feel, after R217.S15.** The owner tries the Wall drag before S16 and S17 build on it. O2 can change cheaply here.
-2. **3D ground, only if R217.S19 reaches its last fallback** and ships a visible residual band.
+1. **Wall feel, after R217.S15.** The owner tries the Wall drag before S16 and S17 build on it, and judges whether Layout's footprint-only 3D preview is sufficient. O2 can change cheaply here.
+2. **3D ground, only if R217.S19 ends with a numerical failure or capped reach.** A fade alone never counts as passing a numerical row.
 3. **Material change.** Anything needing a persisted format, a new gate or gate version, a planner or Camera-authority change, a new capability, a change to an owner ruling, or a contract change its plan doesn't name.
-4. **Waived evidence.** Any criterion that can't be evidenced and isn't already named as owed in its plan.
+4. **Waived evidence.** Any criterion that can't be evidenced and isn't already named as owed in its plan. Evidence a plan names as owed still blocks the slice it is carried to.
 5. **Final gate.** R217.S11 may run when S12–S25 have merged. Its acceptance, its merge, phase close and milestone acceptance stay with the owner.
 
 Browser-only visual calibration isn't a checkpoint. The integrator decides it within the role tables and attaches captures to the acceptance record.

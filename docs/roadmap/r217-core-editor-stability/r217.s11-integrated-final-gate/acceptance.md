@@ -8,5 +8,7 @@ This artifact is the phase's declared final-gate artifact, but it records no evi
 destination of the integration routes declared by `R217.S01`–`S10` and `R217.S12`–`S25`: the exhaustive integrated
 acceptance of Core Editor Stability shell coherence lives here, not in their records.
 
+**Blocking carried evidence:** any approved-model browser row that R217.S17 records as owed must pass here. It stays open until it is recorded with its revision, or the owner explicitly waives it.
+
 The slice has not been released, implemented, reviewed or accepted. This record claims no result,
 tested revision, gate state or commit.
