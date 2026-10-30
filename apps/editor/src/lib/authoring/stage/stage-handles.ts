@@ -49,6 +49,22 @@ export type StageHandleBase = {
 	 * the descriptor already names.
 	 */
 	readonly bothWays?: boolean;
+	/**
+	 * Screen-space legibility/separation hint for a mark.
+	 *
+	 * Plan looks down world Y, so a vertical ray projects edge-on and would be
+	 * withheld. `offset` is a Stage-local CSS offset applied after the world
+	 * anchor projects; it may also separate two admitted descriptors that project
+	 * onto the same segment (a domain collision policy). `axis` is a unit CSS
+	 * direction used **only** for a ray/track whose world axis is edge-on. They
+	 * change the drawing and hit area only: the gesture still measures the
+	 * descriptor's real world axis. A malformed or zero `axis` falls back to
+	 * withholding, never guessing.
+	 */
+	readonly screen?: {
+		readonly offset?: readonly [number, number];
+		readonly axis?: readonly [number, number];
+	};
 	/** Accessible name, e.g. 'Size'. */
 	readonly label: string;
 	/**
@@ -294,6 +310,18 @@ function normalize(value: Vec3): Vec3 | null {
 	return [value[0] / length, value[1] / length, value[2] / length];
 }
 
+function finiteCssPair(value: readonly [number, number] | undefined): value is readonly [number, number] {
+	return value !== undefined && value.length === 2 && value.every(Number.isFinite);
+}
+
+/** A finite, non-zero CSS direction, or `null` when the hint cannot be trusted. */
+function screenDirection(value: readonly [number, number] | undefined): readonly [number, number] | null {
+	if (!finiteCssPair(value)) return null;
+	const length = Math.hypot(value[0], value[1]);
+	if (!Number.isFinite(length) || length === 0) return null;
+	return [value[0] / length, value[1] / length];
+}
+
 function basisFor(axis: Vec3): { readonly u: Vec3; readonly v: Vec3 } | null {
 	const unit = normalize(axis);
 	if (unit === null) return null;
@@ -392,15 +420,25 @@ export function projectStageHandles(input: {
 			const css = input.project(point);
 			return css === null ? null : [css[0] - input.offset[0], css[1] - input.offset[1]];
 		};
-		const anchor = project(descriptor.anchor);
-		if (anchor === null) continue;
+		const projected = project(descriptor.anchor);
+		if (projected === null) continue;
+		const screenOffset = descriptor.screen?.offset;
+		const anchor: readonly [number, number] = finiteCssPair(screenOffset)
+			? [projected[0] + screenOffset[0], projected[1] + screenOffset[1]]
+			: projected;
 		let tip: readonly [number, number] | null = null;
 		let tail: readonly [number, number] | null = null;
 		let ring: readonly (readonly [number, number])[] | null = null;
 		if (descriptor.kind === 'ray' || descriptor.kind === 'track') {
 			const axis = descriptor.axis === undefined ? null : normalize(descriptor.axis);
 			if (axis === null) continue;
-			const direction = projectedAxis(anchor, axis, descriptor.anchor, project);
+			// The world axis wins whenever it projects. The screen hint is a
+			// legibility fallback for Plan's edge-on Height, not a second axis.
+			const direction =
+				// Measure the world axis against the **un-offset** projected anchor: a
+				// CSS offset would otherwise look like a projected axis step.
+				projectedAxis(projected, axis, descriptor.anchor, project) ??
+				screenDirection(descriptor.screen?.axis);
 			if (direction === null) continue;
 			if (descriptor.bothWays === true) {
 				tip = [

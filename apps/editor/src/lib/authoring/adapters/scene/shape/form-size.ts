@@ -12,7 +12,6 @@
  * authored outline plus `form.scale`; nothing generated is stored.
  */
 import { Euler, Vector3 } from 'three';
-import { PROFILE_LIMITS } from '@portfolio/geometry-core';
 import {
 	planSetFormSize,
 	type SceneOperationResult
@@ -20,6 +19,7 @@ import {
 import type { SceneFormEntity } from '@portfolio/project-model';
 import type { Vec3 } from '@portfolio/camera-core';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
+import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
 import { axisTravelFromRay } from './ray';
 
 /** Local mesh axis: 0 = Width (X), 1 = Height (Y), 2 = Depth (Z). */
@@ -53,6 +53,10 @@ export type FormSizeMeasurement = {
 	readonly handles: readonly FormSizeHandle[];
 	/** Evaluated local bounds of the accepted source, or `null`. */
 	readonly bounds: { readonly min: Vec3; readonly max: Vec3 } | null;
+	/** Lowest local Y of the evaluated body; the floor contact Move is drawn on. */
+	readonly contactMinY: number;
+	/** Evaluated local X/Z extent, the footprint Move and Turn are drawn around. */
+	readonly footprint: { readonly width: number; readonly depth: number };
 };
 
 /**
@@ -64,7 +68,9 @@ export type FormSizeMeasurement = {
  */
 export function formSizeMeasurement(entity: SceneFormEntity): FormSizeMeasurement {
 	const mesh = evaluateFormMesh(entity.form);
-	if (mesh === null) return { handles: [], bounds: null };
+	if (mesh === null) {
+		return { handles: [], bounds: null, contactMinY: 0, footprint: { width: 0, depth: 0 } };
+	}
 	const min: Vec3 = [mesh.bounds.min[0], mesh.bounds.min[1], mesh.bounds.min[2]];
 	const max: Vec3 = [mesh.bounds.max[0], mesh.bounds.max[1], mesh.bounds.max[2]];
 	const handles: FormSizeHandle[] = FORM_SIZE_AXES.map(({ axis, label }) => {
@@ -87,7 +93,12 @@ export function formSizeMeasurement(entity: SceneFormEntity): FormSizeMeasuremen
 			baseDimension
 		};
 	});
-	return { handles, bounds: { min, max } };
+	return {
+		handles,
+		bounds: { min, max },
+		contactMinY: min[1],
+		footprint: { width: max[0] - min[0], depth: max[2] - min[2] }
+	};
 }
 
 /** One local point of a form in world space through its authored pose. */
@@ -108,9 +119,10 @@ export function formWorldAxis(entity: SceneFormEntity, axis: FormSizeAxis): Vec3
 }
 
 /**
- * The full per-axis scale a knob travel names, or `null` when it is a no-op or
- * outside the admitted limits. The planner still owns validity; this only keeps
- * a preview from naming an impossible scale.
+ * The full per-axis scale a knob travel names, or `null` when it is a no-op.
+ * The planner owns the admitted range: returning the raw scale lets a mark show
+ * the same refusal and write the same fact as the Card instead of silently
+ * clamping an out-of-range drag.
  */
 export function formSizeScaleFromTravel(input: {
 	readonly entity: SceneFormEntity;
@@ -127,10 +139,7 @@ export function formSizeScaleFromTravel(input: {
 		input.entity.form.scale[1],
 		input.entity.form.scale[2]
 	];
-	scale[input.handle.axis] = Math.min(
-		PROFILE_LIMITS.maxScale,
-		Math.max(PROFILE_LIMITS.minScale, raw)
-	);
+	scale[input.handle.axis] = raw;
 	if (scale.every((value, index) => value === input.entity.form.scale[index])) return null;
 	return scale;
 }
@@ -151,6 +160,243 @@ export function previewFormSize(input: {
 	return result.kind === 'candidate'
 		? { candidate: result }
 		: { refusal: result.message };
+}
+
+/** The stable ids a selected native form publishes. The host owns disclosure state. */
+export const SCENE_FORM_MARK = {
+	move: 'scene-form-mark-move',
+	turn: 'scene-form-mark-turn',
+	scalePoint: 'scene-form-mark-scale',
+	width: 'scene-form-mark-width',
+	height: 'scene-form-mark-height',
+	depth: 'scene-form-mark-depth'
+} as const;
+
+export type SceneFormMarkId = (typeof SCENE_FORM_MARK)[keyof typeof SCENE_FORM_MARK];
+
+/** Editing marks; the scale point is a disclosure and never claims a gesture. */
+export type SceneFormEditMarkId =
+	| typeof SCENE_FORM_MARK.move
+	| typeof SCENE_FORM_MARK.turn
+	| typeof SCENE_FORM_MARK.width
+	| typeof SCENE_FORM_MARK.height
+	| typeof SCENE_FORM_MARK.depth;
+
+export function isSceneFormEditMarkId(id: string | undefined): id is SceneFormEditMarkId {
+	return (
+		id === SCENE_FORM_MARK.move ||
+		id === SCENE_FORM_MARK.turn ||
+		id === SCENE_FORM_MARK.width ||
+		id === SCENE_FORM_MARK.height ||
+		id === SCENE_FORM_MARK.depth
+	);
+}
+
+/** The live values a gesture or refusal shows on its mark. */
+export type SceneFormMarkLive = {
+	readonly markId: SceneFormMarkId;
+	readonly position: Vec3;
+	readonly yaw: number;
+	readonly scale: readonly [number, number, number];
+	readonly refusal: string | null;
+};
+
+/**
+ * The Plan-only screen fallback for the edge-on Height ray.
+ *
+ * Plan looks down world Y, so Height's world axis projects to nothing. The
+ * adapter derives a CSS offset from the live measurement and the evaluation's
+ * metres-per-pixel; the host uses it to draw and hit the same real Height fact.
+ */
+export type FormMarkScreenHeight = {
+	readonly offset: readonly [number, number];
+	readonly axis: readonly [number, number];
+};
+
+/**
+ * Plan's separation offset for the Move grip.
+ *
+ * Move's contact anchor and the Width ray's centre project to one point when
+ * Plan hides world Y. Offset Move perpendicular to its own projected axis and
+ * away from the Depth ray: a fixed downward offset would land back on the
+ * ray when the form is turned a quarter turn. The sign is chosen so yaw 0 keeps
+ * the existing downward grip. The offset changes drawing and hit area only; the
+ * gesture still drives the form's real floor position.
+ */
+export function formMoveScreenOffset(input: {
+	readonly entity: SceneFormEntity;
+	readonly measurement: FormSizeMeasurement;
+	readonly project: (point: Vec3) => readonly [number, number] | null;
+	readonly gapPx?: number;
+}): { readonly offset: readonly [number, number] } {
+	const gap =
+		input.gapPx !== undefined && Number.isFinite(input.gapPx) && input.gapPx > 0
+			? input.gapPx
+			: 24;
+	const yaw = input.entity.rotation[1];
+	const base: Vec3 = [
+		input.entity.position[0],
+		input.entity.position[1] + input.measurement.contactMinY,
+		input.entity.position[2]
+	];
+	const axis: Vec3 = [Math.cos(yaw), 0, -Math.sin(yaw)];
+	const start = input.project(base);
+	const end = input.project([
+		base[0] + axis[0] * 0.5,
+		base[1],
+		base[2] + axis[2] * 0.5
+	]);
+	if (start === null || end === null) return { offset: [0, gap] };
+	const dx = end[0] - start[0];
+	const dy = end[1] - start[1];
+	const length = Math.hypot(dx, dy);
+	if (!(length > 1e-6)) return { offset: [0, gap] };
+	let offset: [number, number] = [(dy / length) * gap, -(dx / length) * gap];
+	// Pick the side opposite the projected Depth ray, so the separated Move grip
+	// cannot land on the other perpendicular ray either.
+	const depthEnd = input.project([
+		base[0] + Math.sin(yaw) * 0.5,
+		base[1],
+		base[2] + Math.cos(yaw) * 0.5
+	]);
+	if (depthEnd !== null) {
+		const depthX = depthEnd[0] - start[0];
+		const depthY = depthEnd[1] - start[1];
+		const depthLength = Math.hypot(depthX, depthY);
+		if (
+			depthLength > 1e-6 &&
+			offset[0] * (depthX / depthLength) + offset[1] * (depthY / depthLength) > 0
+		) {
+			offset = [-offset[0], -offset[1]];
+		}
+	}
+	return { offset };
+}
+
+/** The three size rays in the domain's overlap order: Height, Width, Depth. */
+const FORM_SIZE_RAY_ORDER: readonly {
+	readonly axis: FormSizeAxis;
+	readonly id: typeof SCENE_FORM_MARK.width | typeof SCENE_FORM_MARK.height | typeof SCENE_FORM_MARK.depth;
+	readonly label: string;
+	readonly note: string;
+}[] = [
+	{ axis: 1, id: SCENE_FORM_MARK.height, label: 'Height', note: ' · base stays' },
+	{ axis: 0, id: SCENE_FORM_MARK.width, label: 'Width', note: '' },
+	{ axis: 2, id: SCENE_FORM_MARK.depth, label: 'Depth', note: '' }
+];
+
+/**
+ * Publish the six descriptors for one selected native form.
+ *
+ * A form sizes per axis, so its scale point discloses three size rays rather
+ * than the object marks' one uniform size ray. Every descriptor names the fact
+ * and planner the Card already writes; the host admits, draws and hit-tests
+ * them, and this module never writes source.
+ */
+export function formMarkDescriptors(input: {
+	readonly entity: SceneFormEntity;
+	readonly measurement: FormSizeMeasurement;
+	readonly live?: SceneFormMarkLive | null;
+	/**
+	 * The Plan legibility fallback for Height. Only the Height ray carries it;
+	 * Width and Depth keep their real world axes in every reading.
+	 */
+	readonly screenHeight?: FormMarkScreenHeight | null;
+	/**
+	 * Plan's Move grip offset. Move's contact anchor and the Width ray's centre
+	 * anchor project to the same point when Plan hides world Y, and with the
+	 * same yaw their 30 px glyphs coincide. The host takes the first descriptor
+	 * that hits, so Move (published first) would otherwise swallow every Width
+	 * press. The adapter derives a perpendicular offset from the projected Move
+	 * axis; it changes drawing and hit area only, never the driven fact.
+	 */
+	readonly screenMove?: { readonly offset: readonly [number, number] } | null;
+}): readonly StageHandleDescriptor[] {
+	const { entity, measurement } = input;
+	const live = input.live ?? null;
+	if (measurement.bounds === null || measurement.handles.length !== 3) return [];
+	// The live pose lets every mark follow a Move or Turn preview without a
+	// second measurement; the accepted source remains the only authored truth.
+	const pose: SceneFormEntity =
+		live === null
+			? entity
+			: {
+					...entity,
+					position: [...live.position] as Vec3,
+					rotation: [entity.rotation[0], live.yaw, entity.rotation[2]]
+				};
+	const position = pose.position;
+	const yaw = pose.rotation[1];
+	const baseY = position[1] + measurement.contactMinY;
+	const { width, depth } = measurement.footprint;
+	const refusal = (id: SceneFormMarkId): string | null =>
+		live !== null && live.markId === id ? live.refusal : null;
+	const centre = formWorldPoint(pose, [0, 0, 0]);
+	const descriptors: StageHandleDescriptor[] = [
+		{
+			id: SCENE_FORM_MARK.move,
+			kind: 'track',
+			role: 'edit',
+			anchor: [position[0], baseY, position[2]],
+			axis: [Math.cos(yaw), 0, -Math.sin(yaw)],
+			extent: Math.max(0.2, width / 2),
+			label: 'Move',
+			fact: 'position',
+			verb: 'Position',
+			planner: 'place-on-floor',
+			value: `X ${position[0].toFixed(3)} · Z ${position[2].toFixed(3)} m`,
+			...(input.screenMove == null ? {} : { screen: { offset: input.screenMove.offset } }),
+			refusal: refusal(SCENE_FORM_MARK.move)
+		},
+		{
+			id: SCENE_FORM_MARK.scalePoint,
+			kind: 'point',
+			role: 'disclose',
+			anchor: formWorldPoint(pose, measurement.bounds.max),
+			label: 'Scale',
+			reveals: [SCENE_FORM_MARK.height, SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth]
+		}
+	];
+	for (const ray of FORM_SIZE_RAY_ORDER) {
+		const handle = measurement.handles.find((entry) => entry.axis === ray.axis);
+		if (handle === undefined) return [];
+		descriptors.push({
+			id: ray.id,
+			kind: 'ray',
+			role: 'edit',
+			anchor: centre,
+			axis: formWorldAxis(pose, ray.axis),
+			extent: Math.max(0.2, Math.abs(handle.local[ray.axis])),
+			label: ray.label,
+			fact: `scale[${ray.axis}]`,
+			verb: ray.label,
+			planner: 'set-form-size',
+			disclosedBy: SCENE_FORM_MARK.scalePoint,
+			value: `${ray.label} ${handle.dimension.toFixed(3)} m${ray.note}`,
+			...(ray.axis === 1 && input.screenHeight != null
+				? { screen: input.screenHeight }
+				: {}),
+			refusal: refusal(ray.id)
+		});
+	}
+	// The turn ring is drawn at the shared 30 px calibration, so the three rays
+	// would be unreachable if a ring hit won first. The ring is therefore last:
+	// its free arc stays pressable and the same-class ray order is unchanged.
+	descriptors.push({
+		id: SCENE_FORM_MARK.turn,
+		kind: 'ring',
+		role: 'edit',
+		anchor: [position[0], baseY, position[2]],
+		axis: [0, 1, 0],
+		extent: Math.max(0.2, Math.max(width, depth) / 2),
+		label: 'Turn',
+		fact: 'yaw',
+		verb: 'Yaw',
+		planner: 'set-yaw',
+		value: `Yaw ${((yaw * 180) / Math.PI).toFixed(1)}°`,
+		refusal: refusal(SCENE_FORM_MARK.turn)
+	});
+	return descriptors;
 }
 
 /** Re-exported so a sizing caller need not know the shared ray module. */

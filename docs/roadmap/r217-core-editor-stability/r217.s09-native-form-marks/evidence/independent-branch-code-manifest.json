@@ -1,0 +1,9 @@
+{
+  "apps/editor/src/lib/authoring/adapters/scene.adapter.ts": "c594731e656108e0f2a4900f0b561b5bc56b93503e65c1469dfd4e869f0fec21",
+  "apps/editor/src/lib/authoring/adapters/scene/shape/form-size.ts": "b7c3bba21d0655ea450ae4d2fa2de98473f231cb2d590b1b3c98c076b6f3fe73",
+  "apps/editor/src/lib/authoring/stage/stage-handles.ts": "e0e044c7d7b07a04832062f42730bd914853343353d45c37a4daf42abb4076bb",
+  "apps/editor/tests/lib/authoring/native-form-marks.test.ts": "a9747ffb0d5be65b3fbcaee29daef86f40a0a427e628dae655394b943b9e6c3e",
+  "apps/editor/tests/lib/authoring/native-form-paper-agreement.test.ts": "39142bbcb85cb8ea37c9195a24e06dee777ddccfa337adf5b9a0c3d332f6d02c",
+  "apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts": "d5e91885fc0acc7b9f553b5c59f4d0aeaaf76e371376a4d7f13c8851b7893508",
+  "apps/editor/tests/lib/authoring/stage-handles.test.ts": "015c2ad92c45f261382f93a32f6e45f213c9768fd52521702b8ffa350278664a"
+}
