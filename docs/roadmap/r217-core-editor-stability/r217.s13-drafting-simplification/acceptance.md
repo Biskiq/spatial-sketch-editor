@@ -21,7 +21,7 @@ Scene datum bounds plus 5 m, rounded outward to 5 m, or 20 × 20 m around the ta
 project, intersected with the visible coverage. The mat keeps its corner-ray footprint. Fit and the
 sheet share one `readStageContentBounds` read in the route.
 
-The drafting cluster is `2D | 3D · Grid · Snap`, quiet on Paper. Scale's detents are `Zoom` entries
+The drafting cluster is `2D | 3D · Grid · Snap`, quiet when the Paper appearance is visible. Scale's detents are `Zoom` entries
 in Head Find and still use `scaleDetentIntent`; Fit, zoom in and zoom out (1.25 per press) are the
 lower-right cluster. The ruler is a 1 px rule with two 5 px end ticks and its label below, Plan-only.
 The Scale word, interval menu and ⚙ are gone from the shell; the Head's Viewing group no longer owns

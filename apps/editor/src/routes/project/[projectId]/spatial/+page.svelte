@@ -4086,7 +4086,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/*
 		The Height Sheet owns the right edge; the cluster clears its 5.5 rem body
 		plus the 0.75 rem Stage inset, with a 4 px gap. This also holds when the
-		lower column (dock plus palette) lifts the cluster up beside the Sheet.
+		lower column (dock plus palette) lifts the cluster up beside the Sheet; the
+		measured clearance is 3.6 px at 1440 × 900.
 	*/
 	.stage-zoom-slot.sheet-right {
 		right: calc(5.5rem + 1rem);

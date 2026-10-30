@@ -1124,7 +1124,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'fit' });
 	});
 
-	it('clears the Height Sheet when the lower column lifts the zoom cluster', () => {
+	it('keeps the zoom cluster clear of a right-side Sheet', () => {
 		// Geometry is browser calibration; the route owns the clearance rule. A
 		// regression here let the lifted cluster overlap the Sheet by 10 px.
 		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
