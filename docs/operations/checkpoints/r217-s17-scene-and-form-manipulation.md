@@ -26,20 +26,20 @@ READ:
 - `.agents/skills/work-checkpoint/SKILL.md`
 
 ESTABLISHED:
-- Branch `codex/r217-s17-scene-and-form-manipulation` is based on `origin/main` `8a0474cf87a1e022c91f1705619fbbb19deb3ab3`. Commit `afb41b4f8fa44cb99ed60613b9c6b239e3e8e197` is pushed; PR #239 is open against `main` at that head.
+- Branch `codex/r217-s17-scene-and-form-manipulation` is based on `origin/main` `8a0474cf87a1e022c91f1705619fbbb19deb3ab3`. Catalogue admission is committed at `afb41b4f`; the delivered P2 repairs and current verification record are committed and pushed at `d0b4fa53`. PR #239 remains open against `main`.
 - The current candidate admits only the salon chair (`paris-salon-chair`) after retained r186 GLTFLoader + Meshopt measurement. Contact is −5.2503e−12 m; outward-rounded footprint is 0.643 × 0.537 m after applying the 0.92 default scale once. The grandfather clock remains unverified and excluded.
 - `npm run check` passed with 0 errors and 0 warnings. The current focused suite passed 3 files / 79 tests: Scene editing surface, catalogue model verification and object-definition policy.
 - `npm run test:arch` had 22/23 files and 193/194 tests pass. Its only failure is the pre-existing S16 evidence pointer resolving under `docs/roadmap/archive/` instead of `docs/archive/`; no S16 file is in the S17 diff.
 - A 1440×900 Chromium run completed the primitive Plan sequence: pointer Place; body Move from X 2.5 to 2 m; live Turn from 0 to −179.99995°; live Size from 1 to 1.12954; Duplicate with a distinct selected identity; off-floor refusal; and five Undo operations back to no history.
 - Additional 3D browser evidence confirms native-box pointer Place, body Move, live Turn and live Size. Duplicate from the accepted right-edge placement was refused. A 3D pointer Place of the verified salon chair was saved and the project document retained `assetId: paris-salon-chair`.
 - Earlier local evidence records partial native-form Turn/Size and approved creator-model Move/Turn/Size/Duplicate/Undo journeys in Plan and 3D. These do not satisfy the current complete per-subject matrix.
-- The fresh Sol review thread is `01a19315-f6ee-7302-9eea-e42341a82c8d` (gpt-6.1-sol, high). It was instructed to send P0–P2 findings directly to parent task `Continue S17 checkpoints` (`01a19308-fbf9-7df0-bf33-2b12f72330a7`) and not to poll or comment on the PR.
+- The delivered Sol review thread is `01a19315-f6ee-7302-9eea-e42341a82c8d` (gpt-6.1-sol, high). It sent the two actionable P2 findings to parent task `Continue S17 checkpoints` (`01a19308-fbf9-7df0-bf33-2b12f72330a7`). The owner prohibits re-review; no post-fix clean verdict is claimed.
 - Luna thread `01a19316-769d-76d3-8c39-dedb5d4563e6` was dispatched before implementation and acceptance verification finished. Do not poll or reuse it; the owner-directed post-acceptance closeout requires a new Luna thread.
-- PR #239 body now describes the verified chair, current evidence and outstanding gates. GitHub reports the PR open with a clean merge state and no review decision; that does not satisfy S11.
+- PR #239 body describes the verified chair, the P2 fixes, current verification and outstanding gates. GitHub reports the PR open with a clean merge state and no review decision; that does not satisfy S11.
 
 EVIDENCE:
 - PR #239: https://github.com/Biskiq/spatial-sketch-editor/pull/239
-- Commit: `afb41b4f8fa44cb99ed60613b9c6b239e3e8e197`
+- Commits: `afb41b4f8fa44cb99ed60613b9c6b239e3e8e197` (verified chair metadata), `d0b4fa53` (P2 repairs and verification update).
 - The S17 acceptance record is the current index for the local browser evidence and incomplete matrix.
 - Earlier completed runs cleaned their disposable projects. The interrupted matrix run has unconfirmed cleanup. Scratch runners were recovered locally; see CURRENT before reuse.
 
@@ -58,7 +58,7 @@ DO NOT REPEAT:
 CURRENT:
 - This chat owns coordination again by explicit owner direction. All other listed S17 chats are idle; the previous matrix runner was stopped, not left running. The stale PID entry is retired.
 - Removed scratch runners have been recovered from the original execution records: `apps/editor/.s17-browser-{acceptance,smoke,3d-debug}.ts`, `apps/editor/.s17-cleanup.ts`, and `apps/editor/tests/e2e/.s17-resume-run.ts`. Older runners are historical recovery copies, not acceptance evidence or ready-to-run commands; inspect their origin/configuration and cleanup before reuse.
-- HEAD is `3bdb64b7` before the current follow-up commit. The delivered P2 repairs synchronize the Place chooser after remount and seat model proxies using approved contact. Current verification passes: `npm run check` and the affected-subsystem suite, 11 files / 156 tests. `npm run test:arch` remains 22/23 files and 193/194 tests because of the same unrelated S16 documentation link.
+- The P2 repair commit `d0b4fa53` is pushed. Current verification passes: `npm run check` and the affected-subsystem suite, 11 files / 156 tests. `npm run test:arch` remains 22/23 files and 193/194 tests because of the same unrelated S16 documentation link.
 - The resumed primitive Plan and catalogue Plan sequences passed all five actions and Undo. Catalogue Plan also verified retention across a Plan/3D flip. Local results: `/tmp/s17-plan-primitive-resume.log`, `/tmp/s17-plan-catalogue-resume.log`.
 - `/tmp/s17-remaining.log` is an interrupted, failed attempt, not acceptance: 3D catalogue/primitive body drags hit the native-box occluder; approved Plan selected-subject mark lookup timed out; approved 3D was interrupted. Disposable resource cleanup from that interrupted run is unconfirmed.
 - Owner instructions: no re-review; finish all fixes and required verification before starting a new **Luna 6 medium chat** for closeout and merge as the final step. Do not poll, reuse an earlier closeout invocation, or dispatch while review/acceptance work is unfinished.
