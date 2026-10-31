@@ -39,7 +39,10 @@ its creator model through the real import routes, using measured importer output
   its relative path resolves under `docs/roadmap/archive/`, while the manifest is under
   `docs/archive/`. The pointer is unchanged from the trusted base; no S16 file was changed.
 
-The repaired revision has not yet received a reviewer verdict. The record remains unaccepted.
+Independent re-review on 2026-10-31 of PR #239 at tip `38639c0e` confirmed the body-click fix at
+`b48545e5` and found no actionable P0–P2 regressions. It also exercised pointer-up within click
+range after a prior drag for both body paths. This closes the review finding; the slice remains
+unaccepted while its browser matrix, catalogue row and S11 integration evidence remain unresolved.
 
 ## Unresolved criteria and integration
 
