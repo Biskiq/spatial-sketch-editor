@@ -19,9 +19,13 @@ its creator model through the real import routes, using measured importer output
 ## Verification evidence
 
 - `npm run check` passed with 0 errors and 0 warnings.
-- The affected-subsystem suite passed: 9 files, 155 tests. It covered scene editing, object cards,
-  manipulation marks, operation acceptance, shape reading, candidate ghosts, stage facade, and the
-  mixed fixture contract.
+- The affected-subsystem suite passed at the repaired revision: 9 files, 157 tests. It covered
+  scene editing, object cards, manipulation marks, operation acceptance, shape reading, candidate
+  ghosts, stage facade, and the mixed fixture contract.
+- The independent review found a P2 click-tolerance defect in both body-drag paths. Revision
+  `b48545e58f4b9a6005487e65838b5f286691b4dd` captures the press CSS, uses the shared Stage drag
+  boundary for preview and release, and clears the candidate when the pointer returns within click
+  range. New object and form regressions cover sub-threshold jitter and return-to-click release.
 - `npx vitest run tests/lib/authoring/scene/object-definition-policy.test.ts` passed: 1 file,
   9 tests.
 - Browser work against a disposable API-seeded mixed project confirmed primitive body Move,
@@ -34,6 +38,8 @@ its creator model through the real import routes, using measured importer output
   (`docs/roadmap/r217-core-editor-stability/r217.s16-openings-and-junction-hover/evidence/CLOSED.md`);
   its relative path resolves under `docs/roadmap/archive/`, while the manifest is under
   `docs/archive/`. The pointer is unchanged from the trusted base; no S16 file was changed.
+
+The repaired revision has not yet received a reviewer verdict. The record remains unaccepted.
 
 ## Unresolved criteria and integration
 
