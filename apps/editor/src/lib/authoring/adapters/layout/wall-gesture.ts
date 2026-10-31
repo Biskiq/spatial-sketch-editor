@@ -4,14 +4,15 @@
  * The module is deliberately framework-free and makes no document. Marks are
  * admitted, projected and hit-tested by the Stage's shared mark layer; what is
  * left here is the one question the adapter still needs answered: which explicit
- * parameter does this pointer position name, given the endpoint that stays fixed?
- * (`pointerWallRequest`).
+ * parameter does this pointer position name? (`pointerWallRequest`). An end mark
+ * names its Junction point, the free-end ray names a length, and the body or its
+ * two-way grip names a signed distance on the Wall normal.
  *
  * The parameter it returns is the same one a typed field produces; the canonical
  * planner is what turns it into a document, previews it and refuses what it
  * cannot preserve. No second solver and no coordinate-to-connectivity shortcut
- * lives here — a mark is a *way to name a length/angle/delta*, never a second
- * authority over the Wall.
+ * lives here — a mark is a *way to name a length/delta/Junction point*, never a
+ * second authority over the Wall.
  */
 
 import type { FixedWallEndpoint, LayoutVec2 } from '@portfolio/layout-core';

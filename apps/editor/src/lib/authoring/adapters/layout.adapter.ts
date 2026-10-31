@@ -446,6 +446,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let pausedProposal: PausedWallProposal | null = null;
 			let refusal: string | null = null;
 			/**
+			 * A refused release leaves no geometry and no history, but the reason must
+			 * outlive the pointer-up so the tag can say why the change did not land.
+			 * The next press clears it; nothing is serialized.
+			 */
+			let settledRefusal: { readonly wallId: string; readonly point: LayoutVec2; readonly text: string } | null = null;
+			/**
 			 * The contributed reading this binding is carrying, if any. Ink stays one
 			 * task: this session receives the same pointer/key phases the Wall reading
 			 * does, and publishes its own palette view. It is binding-scoped, so a
@@ -2564,10 +2570,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (intent.phase === 'down') {
 						if (gesture !== null) endGesture();
 						if (openingGesture !== null) endOpeningGesture();
-						pausedProposal = null;
-						// A new gesture supersedes the previous paused value for this source.
-						clearPausedProposalsForSource(adapterContext.snapshot.domain.unitRevisions.layout);
-						refusal = null;
+					pausedProposal = null;
+					// A new gesture supersedes the previous paused value for this source.
+					clearPausedProposalsForSource(adapterContext.snapshot.domain.unitRevisions.layout);
+					refusal = null;
+					settledRefusal = null;
 						const selected = selectedWall(adapterContext);
 						const selectedOpeningSubject = selected === null ? selectedOpening(adapterContext) : null;
 						if (selected === null && selectedOpeningSubject === null) return false;
@@ -2583,8 +2590,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							} else if (selected !== null) {
 								// R217.S15 — a selected subject's owner may claim a press on its
 								// own body. The pick is resolved once, with the same purpose a
-								// click uses: an Opening on the Wall is a different winner, so it
-								// selects and pans rather than moving the Wall underneath it.
+								// click uses. S16 makes an Opening on the Wall its own winner;
+								// until then Select ranks the host Wall first, so that press moves
+								// the Wall.
 								const picked = services.stage.resolvePick({
 									css: intent.css,
 									evaluationId: intent.evaluationId,
@@ -3007,6 +3015,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const pending = gesture!.numeric === null ? gesture!.request : null;
 					const fixed = gesture!.fixed;
 					const wallId = gesture!.frame.wallId;
+					const refusedPoint = gesture!.pointerPoint;
+					const refusedText = refusal;
+					if (pending === null && refusedText !== null && refusedPoint !== null) {
+						settledRefusal = { wallId, point: refusedPoint, text: refusedText };
+					}
 					endGesture();
 					if (pending !== null) void commit(pending, fixed, wallId);
 					services.stage.notifySurfaceChange();
@@ -3213,6 +3226,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					winner === null ? undefined : { world: world(winner.point), name: winner.name };
 
 				const activeWall = gesture;
+				// The reason a refused release did not write outlives the gesture; the
+				// tag stays until the next press, with no geometry and no history.
+				if (
+					activeWall === null &&
+					settledRefusal !== null &&
+					services.stage.session.task() === null &&
+					selectedWall(adapterContext)?.frame.wallId === settledRefusal.wallId
+				) {
+					return [
+						candidatePreviewOf({
+							id: 'layout-candidate-wall-refused-settled',
+							role: 'refused',
+							geometry: { polygons: [], segments: [] },
+							labels: [{ world: world(settledRefusal.point), text: settledRefusal.text }]
+						})
+					];
+				}
 				// A refused sample has no candidate; it draws one neutral dashed reach to
 				// the pointer plus the human reason, never the last valid pose and never
 				// the Ink hover mark. This is checked before the preview document because

@@ -23,6 +23,7 @@ import {
 	planExactJunctionMove,
 	planWallChain,
 	type LayoutDocumentWallFirst,
+	type LayoutWall,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
@@ -610,6 +611,15 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(wallPoints(acceptedLayout(mounted.facade), mounted.wallId)).toEqual(
 			wallPoints(mounted.document, mounted.wallId)
 		);
+		// The release writes nothing, but the reason must outlive the pointer-up.
+		const settled = mounted.facade.candidatePreviews().find((candidate) => candidate.role === 'refused');
+		expect(settled).toBeDefined();
+		expect(settled!.segments).toHaveLength(0);
+		expect(settled!.labels[0]?.text).toContain('cross or meet another Wall');
+		// The next press retires it.
+		mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId });
+		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-refused-settled')).toBe(false);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: endCss, evaluationId });
 	});
 
 	it('translates the body rigidly from the pointer delta', async () => {
@@ -1289,6 +1299,64 @@ describe('R217.S15 — gesture numeric entry', () => {
 			return frame !== null && Math.abs(frame.end[1] - 1) < 1e-6;
 		});
 		expect(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).end[0]).toBeCloseTo(6, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('offers a curved Wall the Card only, with no body press or edit marks', async () => {
+		const base = createEmptyWallFirstLayoutDocument();
+		base.floor.elevation = ELEVATION;
+		base.junctions = [
+			{ id: 'c-a', point: [0, 0] },
+			{ id: 'c-b', point: [6, 0] }
+		];
+		base.walls = [
+			{
+				id: 'curved',
+				startJunctionId: 'c-a',
+				endJunctionId: 'c-b',
+				thickness: 0.2,
+				height: 3,
+				centerline: {
+					kind: 'cubic-chain',
+					knots: [],
+					spans: [{ handleOut: [2, 3], handleIn: [4, 3] }]
+				}
+			} satisfies LayoutWall
+		];
+		const mounted = await mount({ document: base, wallId: 'curved', openingId: '' });
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, 'curved');
+		const editMarks = mounted.facade
+			.marks()
+			.filter((mark) => mark.adapterId === 'layout' && mark.role === 'edit');
+		expect(editMarks).toHaveLength(0);
+		const body = stageCss(mounted.facade, [3, 0]);
+		expect(
+			mounted.facade.pointerIntent({
+				phase: 'down',
+				css: body,
+				evaluationId: mounted.facade.evaluationId()!
+			}).claimed
+		).toBe(false);
+		// The Card remains the non-pointer path for the Wall's ordinary fields.
+		expect(createCardFieldsInstrument(mounted.services)!.fields().some((field) => field.id === 'height')).toBe(true);
+	});
+
+	it('commits a typed Junction X alone and keeps the current Z', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const endCss = stageCss(mounted.facade, [6, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '5' }).claimed).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
+		await eventually(() => {
+			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+			return frame !== null && Math.abs(frame.end[0] - 5) < 1e-6;
+		});
+		const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		expect(frame.end[1]).toBeCloseTo(0, 9);
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 

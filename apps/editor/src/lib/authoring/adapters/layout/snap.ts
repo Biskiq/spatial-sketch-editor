@@ -13,10 +13,9 @@
  *   from the previous point, then the fixed 0.5 m grid.
  * - Opening slide: the Opening drag family's edge/centre targets, then the
  *   fixed 0.5 m grid.
- * Wall length and rigid-move fallbacks are R217.S15's normal-lock and snap
- * row, not this slice's: S14 only publishes the live candidate for the Wall
- * marks that already exist, and never snaps a Wall onto another Wall or
- * Junction.
+ * Wall length and body-move fallbacks belong to R217.S15 and live here: the
+ * normal distance or the length rounds to the fixed 0.5 m grid, and neither
+ * ever snaps a Wall onto another Wall or Junction.
  *
  * `Snap held` (Alt) suspends every row. The callers pass the one shared
  * drafting state, so this module never invents a second Snap switch.
