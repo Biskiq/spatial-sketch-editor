@@ -1,22 +1,14 @@
 /**
- * T5.P01.S02 — Shape reading and sizing through the live host.
+ * T5.P01.S02, R217.S17A — native-form marks and sizing through the live host.
  *
- * The suite drives the production Scene and Layout adapters, the real F.4
- * acceptance host and the one Ink task. It pins the slice's contracts:
- *
- * 1. Ink stays one Pen: Layout's built-in readings and the contributed Shape
- *    reading share one palette; switching refuses while the reading holds live
- *    work and cancels the session without writing source once it is clear.
- * 2. A closed floor stroke reads as a Shape; Create issues exactly one
- *    `create-form` intent, selects the form, and Undo/Redo keeps its identity.
- * 3. An upright sheet creates an elevation form, and Flip side turns the
- *    extrusion without moving the drawn profile.
- * 4. An invalid outline refuses in the kernel's words, offers no Create and
- *    writes no history.
- * 5. A per-axis size ray commits one `set-form-size`; the Card writes the same
- *    operation for exact values, and each edit is one undo step.
+ * The suite drives the production Scene and Layout adapters and the real F.4
+ * acceptance host, seeding forms through the same `create-form` intent the Objects
+ * panel issues. Floor and upright forms both stay fully editable, though Objects
+ * draws only on the floor plane. A per-axis size ray commits one `set-form-size`;
+ * the Card writes the same operation for exact values, and each edit is one step.
  */
 import { describe, expect, it } from 'vitest';
+import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import {
 	createEmptyWallFirstLayoutDocument,
 	planWallChain,
@@ -41,11 +33,6 @@ import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-sourc
 import { hitStageMark } from '$lib/authoring/stage/stage-handles';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLayoutAdapter } from '$lib/authoring/adapters/layout.adapter';
-import { inkSurface } from '$lib/authoring/adapters/layout/ink';
-import {
-	shapeReadingSurface,
-	type ShapeReadingSurface
-} from '$lib/authoring/adapters/scene/shape/reading';
 import {
 	SCENE_FORM_MARK,
 	axisTravelFromRay,
@@ -139,22 +126,6 @@ async function mount(): Promise<Mounted> {
 	return { facade, session, host, services, sceneRegistration: sceneMount };
 }
 
-function armInk(facade: StageFacade): void {
-	const opened = facade.openContributedTask('layout-ink');
-	if (opened.kind !== 'opened') throw new Error(`Ink did not arm: ${opened.message}`);
-}
-
-function shapeSurface(controller: NonNullable<ReturnType<typeof inkSurface>>['controller']): ShapeReadingSurface {
-	// Force the binding to open a fresh session: after an install both adapters
-	// rebuild and the Layout binding may remember Shape as its reading without a
-	// live session yet.
-	controller.setReading('wall');
-	controller.setReading('shape');
-	const surface = shapeReadingSurface();
-	if (surface === null) throw new Error('Shape reading published no surface');
-	return surface;
-}
-
 function stageCss(facade: StageFacade, world: readonly [number, number, number]): readonly [number, number] {
 	const evaluationId = facade.evaluationId();
 	if (evaluationId === null) throw new Error('the fixture has no evaluation');
@@ -163,27 +134,34 @@ function stageCss(facade: StageFacade, world: readonly [number, number, number])
 	return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
 }
 
-async function createFloorForm(mounted: Mounted): Promise<SceneFormEntity> {
-	armInk(mounted.facade);
-	const shape = shapeSurface(inkSurface()!.controller);
-	for (const point of [
-		[2, 0, 2],
-		[4, 0, 2],
-		[4, 0, 4],
-		[2, 0, 4]
-	] as const) {
-		click(mounted.facade, point);
-	}
-	shape.controller.finish();
-	const baseline = mounted.facade.snapshot().canonicalJson;
-	shape.controller.create();
-	await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
-	const created = acceptedForms(mounted.facade)[0];
-	if (created === undefined) throw new Error('the floor Shape did not create a form');
-	// The install retires the evaluation the Shape press used; the next read of
-	// marks projects through a fresh one, exactly as the route's frame does.
+async function acceptForm(mounted: Mounted, plane: 'plan' | 'elevation', outline: readonly { u: number; v: number; smooth: boolean }[], position: readonly [number, number, number]): Promise<SceneFormEntity> {
+	const outcome = await mounted.services.authoring.accept({
+		version: 1,
+		kind: 'create-form',
+		operationId: globalThis.crypto.randomUUID(),
+		expectedRevision: mounted.facade.snapshot().acceptedRevision,
+		targets: [],
+		payload: { plane, outline, extent: 1, position, yaw: 0, materialId: 'plaster-warm', name: 'Shape' },
+		capturedInputs: [],
+		allocatedIds: [{ kind: 'scene-entity', id: globalThis.crypto.randomUUID() }]
+	});
+	if (outcome.kind !== 'installed') throw new Error(`create-form did not install: ${outcome.kind}`);
+	const installed = acceptedForms(mounted.facade).at(-1)!;
+	const reference = sceneEntityReference(installed.id, mounted.facade.snapshot().domain.unitRevisions.scene);
+	mounted.services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+	// The install retires the evaluation; the next read of marks projects through a
+	// fresh one, exactly as the route's frame does.
 	mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK);
-	return created;
+	return acceptedForms(mounted.facade).at(-1)!;
+}
+
+function createFloorForm(mounted: Mounted): Promise<SceneFormEntity> {
+	return acceptForm(mounted, 'plan', [
+		{ u: 2, v: 2, smooth: false },
+		{ u: 4, v: 2, smooth: false },
+		{ u: 4, v: 4, smooth: false },
+		{ u: 2, v: 4, smooth: false }
+	], [0, 0, 0]);
 }
 
 function settleReading(facade: StageFacade, reading: 'plan' | '3d') {
@@ -266,14 +244,6 @@ function cursorAtAxisTravel(
 	]);
 }
 
-function click(facade: StageFacade, world: readonly [number, number, number]): void {
-	const evaluationId = facade.evaluationId();
-	if (evaluationId === null) throw new Error('the fixture has no evaluation');
-	const css = stageCss(facade, world);
-	facade.pointerIntent({ phase: 'down', css, evaluationId });
-	facade.pointerIntent({ phase: 'up', css, evaluationId });
-}
-
 async function eventually(check: () => boolean, attempts = 200): Promise<void> {
 	for (let attempt = 0; attempt < attempts; attempt += 1) {
 		if (check()) return;
@@ -289,187 +259,14 @@ function acceptedForms(facade: StageFacade): readonly SceneFormEntity[] {
 }
 
 describe('T5.P01.S02 — Shape reading', () => {
-	it('offers Shape beside the built-in readings and cancels its session on a switch', async () => {
-		const mounted = await mount();
-		armInk(mounted.facade);
-		const controller = inkSurface()!.controller;
-		expect(inkSurface()!.snapshot().readings.map((reading) => reading.id)).toEqual([
-			'wall',
-			'opening',
-			'shape'
-		]);
-		const shape = shapeSurface(controller);
-		expect(inkSurface()!.snapshot().reading).toBe('shape');
-		expect(shape.snapshot().facts).toContainEqual({ label: 'Reading', value: 'Shape' });
-		controller.setReading('wall');
-		expect(shapeReadingSurface()).toBeNull();
-		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
-	});
-
-	it('creates one floor form from a closed stroke and keeps it through Undo/Redo', async () => {
-		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		const baseline = mounted.facade.snapshot().canonicalJson;
-
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 2],
-			[4, 0, 4],
-			[2, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		expect(shape.snapshot()).toMatchObject({ phase: 'outline', points: 4, canFinish: true });
-		shape.controller.finish();
-		expect(shape.snapshot().phase).toBe('depth');
-		expect(shape.snapshot().canCreate).toBe(true);
-		// The preview and the commit are one form: same generator, same pose.
-		const preview = mounted.facade.ghosts();
-		expect(preview).toHaveLength(1);
-		const previewForm = preview[0]!.shape;
-		if (previewForm.kind !== 'form') throw new Error('the Shape preview is not a form ghost');
-		const previewGhost = preview[0]!;
-
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
-
-		const forms = acceptedForms(mounted.facade);
-		expect(forms).toHaveLength(1);
-		const created = forms[0]!;
-		expect(created).toMatchObject({
-			name: 'Shape',
-			materialId: 'plaster-warm',
-			position: [3, 0, 3]
-		});
-		expect(created.form.generator).toMatchObject({ kind: 'extrude', plane: 'plan', extent: 1 });
-		expect(created.form.scale).toEqual([1, 1, 1]);
-		expect(previewForm.form).toEqual(created.form);
-		expect(previewGhost.center).toEqual(created.position);
-		expect(previewGhost.yaw).toBeCloseTo(created.rotation[1], 9);
-		expect(mounted.facade.ghosts()).toHaveLength(0);
-		expect(mounted.facade.selectionState().primary).toMatchObject({
-			subject: { kind: 'entity', id: created.id }
-		});
-		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
-
-		expect((await mounted.host.undo()).kind).toBe('installed');
-		expect(acceptedForms(mounted.facade)).toHaveLength(0);
-		expect((await mounted.host.redo()).kind).toBe('installed');
-		expect(acceptedForms(mounted.facade).map((form) => form.id)).toEqual([created.id]);
-	});
-
-	it('refuses a self-intersecting outline in words, with no Create and no history', async () => {
-		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		const baseline = mounted.facade.snapshot().canonicalJson;
-
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 4],
-			[4, 0, 2],
-			[2, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		expect(shape.snapshot().canFinish).toBe(false);
-		// The reason is live feedback, not something Finish must be pressed to reveal.
-		expect(shape.snapshot().refusal).toContain('crosses itself');
-		shape.controller.finish();
-		expect(shape.snapshot().refusal).toContain('crosses itself');
-		expect(shape.snapshot().canCreate).toBe(false);
-		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
-		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
-	});
-
-	it('creates on an upright sheet and Flip side reverses the extrusion only', async () => {
-		const mounted = await mount();
-		// An elevated reading is not needed: a tilted 3D view makes vertical points distinct.
-		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
-		mounted.facade.camera.applyIntent(
-			{
-				kind: 'fit',
-				bounds: { min: [2.5, 0, 2.5], max: [4.5, 1.5, 3.5] },
-				rect: RECT
-			},
-			SETTLE_CLOCK + 1
-		);
-		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		shape.controller.setPlane('elevation');
-		shape.controller.setSheet({ x: 3, z: 3, yaw: 0 });
-		const baseline = mounted.facade.snapshot().canonicalJson;
-
-		for (const [u, v] of [
-			[0, 0],
-			[1, 0],
-			[1, 1],
-			[0, 1]
-		] as const) {
-			click(mounted.facade, [3 + u, v, 3]);
-		}
-		shape.controller.setDepth('0.25');
-		expect(shape.snapshot().canFinish).toBe(true);
-		shape.controller.finish();
-		expect(shape.snapshot().canCreate).toBe(true);
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
-
-		let form = acceptedForms(mounted.facade)[0]!;
-		expect(form.form.generator).toMatchObject({ kind: 'extrude', plane: 'elevation', extent: 0.25 });
-		expect(form.position[0]).toBeCloseTo(3.5, 9);
-		expect(form.position[1]).toBeCloseTo(0, 9);
-		expect(form.position[2]).toBeCloseTo(3, 9);
-		expect(form.rotation[1]).toBeCloseTo(0, 9);
-
-		// Flip side is offered in the depth phase and mirrors the profile so the
-		// extrusion leaves from the other face while the drawn world profile stays.
-		const before = form.form.generator.outline.map((anchor) => [anchor.u, anchor.v]);
-		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 3);
-		armInk(mounted.facade);
-		const second = shapeSurface(inkSurface()!.controller);
-		second.controller.setPlane('elevation');
-		second.controller.setSheet({ x: 3, z: 3, yaw: 0 });
-		for (const [u, v] of [
-			[0, 0],
-			[1, 0],
-			[1, 1],
-			[0, 1]
-		] as const) {
-			click(mounted.facade, [3 + u, v, 3]);
-		}
-		second.controller.finish();
-		second.controller.flip();
-		expect(second.snapshot().flip).toBe(true);
-		second.controller.create();
-		await eventually(() => acceptedForms(mounted.facade).length === 2);
-		const flipped = acceptedForms(mounted.facade).find((candidate) => candidate.id !== form.id)!;
-		expect(flipped.rotation[1]).toBeCloseTo(Math.PI, 9);
-		const axes = (outline: readonly { readonly u: number; readonly v: number }[]) =>
-			outline.map((anchor) => `${anchor.u.toFixed(6)}:${anchor.v.toFixed(6)}`).sort();
-		expect(axes(flipped.form.generator.outline)).toEqual(
-			axes(before.map(([u, v]) => ({ u: -u!, v: v! })))
-		);
-	});
-
 	it('sizes one axis by ray, then writes an exact size through the Card, one history entry each', async () => {
 		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 2],
-			[4, 0, 4],
-			[2, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		shape.controller.finish();
-		const baseline = mounted.facade.snapshot().canonicalJson;
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		await acceptForm(mounted, 'plan', [
+			{ u: 2, v: 2, smooth: false },
+			{ u: 4, v: 2, smooth: false },
+			{ u: 4, v: 4, smooth: false },
+			{ u: 2, v: 4, smooth: false }
+		], [0, 0, 0]);
 		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK);
 		const created = acceptedForms(mounted.facade)[0]!;
 		const measurement = formSizeMeasurement(created);
@@ -646,7 +443,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		}
 	});
 
-	it('applies Move offset before Snap in Plan and 3D and refuses unsupported commits', async () => {
+	it('applies Move offset before Snap in Plan and 3D and continues onto the datum beyond the Room', async () => {
 		for (const state of [
 			{ reading: 'plan' as const, snap: true, snapSuspended: false, expected: [3.5, 0, 2.5] as const },
 			{ reading: '3d' as const, snap: true, snapSuspended: true, expected: [3.62, 0, 2.54] as const }
@@ -695,11 +492,11 @@ describe('T5.P01.S02 — Shape reading', () => {
 		const hit = hitStageMark(mounted.facade.marks(), { css: from, coarse: true });
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: hit!.id }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(mounted.facade.ghosts()).toEqual([]);
+		expect(mounted.facade.ghosts()).toHaveLength(1);
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(mounted.facade.snapshot().canonicalJson).toBe(source);
-		expect(mounted.host.history()).toMatchObject(history);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== source);
+		expect(acceptedForms(mounted.facade)[0]!.position[1]).toBe(created.position[1]);
+		expect(mounted.host.history().depth).toBe(history.depth + 1);
 		mounted.facade.dispose();
 	});
 
@@ -1014,22 +811,12 @@ describe('T5.P01.S02 — Shape reading', () => {
 			SETTLE_CLOCK + 1
 		);
 		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 20);
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		shape.controller.setPlane('elevation');
-		shape.controller.setSheet({ x: 3, z: 3, yaw: 0 });
-		for (const point of [
-			[3, 0, 3],
-			[4, 0, 3],
-			[4, 1, 3],
-			[3, 1, 3]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		shape.controller.finish();
-		const baseline = mounted.facade.snapshot().canonicalJson;
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		await acceptForm(mounted, 'elevation', [
+			{ u: 0, v: 0, smooth: false },
+			{ u: 1, v: 0, smooth: false },
+			{ u: 1, v: 1, smooth: false },
+			{ u: 0, v: 1, smooth: false }
+		], [3, 0, 3]);
 		let created = acceptedForms(mounted.facade)[0]!;
 		expect(created.form.generator.plane).toBe('elevation');
 		const card = formCardController(mounted.services, created.id)!;
@@ -1057,375 +844,14 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(acceptedForms(mounted.facade)[0]!.form.scale[1]).toBeCloseTo(1.5, 5);
 	});
 
-	it('keeps live Shape work when another reading would discard it', async () => {
-		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		click(mounted.facade, [2, 0, 2]);
-		click(mounted.facade, [4, 0, 2]);
-		expect(shape.snapshot().points).toBe(2);
-
-		inkSurface()!.controller.setReading('wall');
-
-		expect(inkSurface()!.snapshot().reading).toBe('shape');
-		expect(inkSurface()!.snapshot().refusal).toContain('before switching readings');
-		expect(shapeReadingSurface()).toBe(shape);
-		expect(shape.snapshot()).toMatchObject({ phase: 'outline', points: 2 });
-		// Abandoning it is explicit, and writes nothing.
-		// A plane or sheet move would also discard the points; both refuse instead.
-		shape.controller.setPlane('elevation');
-		expect(shape.snapshot().plane).toBe('plan');
-		expect(shape.snapshot().refusal).toContain('before changing its sheet');
-		shape.controller.setSheet({ x: 2 });
-		expect(shape.snapshot().sheet.x).toBe(0);
-		expect(shape.snapshot().refusal).toContain('before changing its sheet');
-
-		// Abandoning it is explicit, and writes nothing.
-		shape.controller.clear();
-		expect(shape.snapshot().points).toBe(0);
-		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
-		shape.controller.setPlane('elevation');
-		expect(shape.snapshot().plane).toBe('elevation');
-
-		// With no live work the switch goes through and the session is gone.
-		inkSurface()!.controller.setReading('wall');
-		expect(inkSurface()!.snapshot().reading).toBe('wall');
-		expect(shapeReadingSurface()).toBeNull();
-	});
-
-	it('refuses an invalid typed depth, then creates with the corrected value', async () => {
-		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		const baseline = mounted.facade.snapshot().canonicalJson;
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 2],
-			[4, 0, 4],
-			[2, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		shape.controller.finish();
-
-		shape.controller.setDepth('');
-		expect(shape.snapshot().refusal).toContain('empty field is not zero');
-		expect(shape.snapshot().canCreate).toBe(false);
-		shape.controller.setDepth('0');
-		expect(shape.snapshot().refusal).toContain('between');
-		expect(shape.snapshot().canCreate).toBe(false);
-		shape.controller.create();
-		await new Promise((resolve) => setTimeout(resolve, 10));
-		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
-
-		shape.controller.setDepth('2');
-		expect(shape.snapshot().canCreate).toBe(true);
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
-		expect(acceptedForms(mounted.facade)[0]!.form.generator).toMatchObject({ extent: 2 });
-	});
-
-	it('pulls depth along the axis from the handle instead of collapsing it', async () => {
-		const mounted = await mount();
-		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
-		mounted.facade.camera.applyIntent(
-			{
-				kind: 'fit',
-				bounds: { min: [1.5, -0.5, 1.5], max: [4.5, 2.5, 4.5] },
-				rect: RECT
-			},
-			SETTLE_CLOCK + 1
-		);
-		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 2],
-			[4, 0, 4],
-			[2, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		shape.controller.finish();
-		expect(shape.snapshot().depth).toBe(1);
-		// Invalid typed text must not survive a later, valid handle drag.
-		shape.controller.setDepth('0');
-		expect(shape.snapshot().canCreate).toBe(false);
-
-		const evaluationId = mounted.facade.evaluationId()!;
-		const from = stageCss(mounted.facade, [3, 1, 3]);
-		const to = stageCss(mounted.facade, [3, 2.5, 3]);
-		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
-
-		expect(shape.snapshot().depth).toBeCloseTo(2.5, 1);
-		expect(shape.snapshot().canCreate).toBe(true);
-		const baseline = mounted.facade.snapshot().canonicalJson;
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
-		const generator = acceptedForms(mounted.facade)[0]!.form.generator;
-		expect(generator.kind).toBe('extrude');
-		if (generator.kind !== 'extrude') return;
-		expect(generator.extent).toBeCloseTo(2.5, 3);
-	});
-
-	it('pulls floor depth upward in Plan, where the floor normal has no screen travel', async () => {
-		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 2],
-			[4, 0, 4],
-			[2, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		shape.controller.finish();
-		// An invalid typed depth must not survive a valid handle drag.
-		shape.controller.setDepth('0');
-		expect(shape.snapshot().canCreate).toBe(false);
-
-		const centre = stageCss(mounted.facade, [3, 0, 3]);
-		const marker = () => mounted.facade.overlays().find((entry) => entry.id === 'scene-shape-depth')!;
-		expect(marker().css[1]).toBeLessThan(centre[1] - 1);
-
-		const evaluationId = mounted.facade.evaluationId()!;
-		const from = marker().css;
-		const to = [from[0], from[1] - 80] as const;
-		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
-
-		expect(shape.snapshot().depth).toBeGreaterThan(1);
-		expect(shape.snapshot().canCreate).toBe(true);
-		expect(marker().css[1]).toBeLessThan(from[1]);
-	});
-
-	it('discards an interrupted depth press and keeps a completed one', async () => {
-		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 2],
-			[4, 0, 4],
-			[2, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		shape.controller.finish();
-		const marker = () => mounted.facade.overlays().find((entry) => entry.id === 'scene-shape-depth')!;
-		// The ghost is the candidate Create would install, so its extent is the
-		// press's own report of what the next Create commits.
-		const previewExtent = () => {
-			const ghost = mounted.facade.ghosts()[0];
-			if (ghost?.shape.kind !== 'form') throw new Error('the Shape published no preview');
-			const generator = ghost.shape.form.generator;
-			if (generator.kind !== 'extrude') throw new Error('the Shape preview is not an extrusion');
-			return generator.extent;
-		};
-		const evaluationId = mounted.facade.evaluationId()!;
-		const before = shape.snapshot().depth;
-		expect(previewExtent()).toBeCloseTo(before, 6);
-
-		// The environment takes the pointer mid-pull: the depth it never chose, and
-		// the candidate built from it, both go back to the pre-press state.
-		const from = marker().css;
-		const to = [from[0], from[1] - 80] as const;
-		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(shape.snapshot().depth).toBeGreaterThan(before);
-		expect(previewExtent()).toBeCloseTo(shape.snapshot().depth, 6);
-		mounted.facade.pointerIntent({ phase: 'cancel', css: to, evaluationId });
-		expect(shape.snapshot()).toMatchObject({ phase: 'depth', depth: before, canCreate: true });
-		expect(previewExtent()).toBeCloseTo(before, 6);
-
-		// A press that ends normally keeps what it pulled, and Create commits it.
-		const again = marker().css;
-		const pulled = [again[0], again[1] - 80] as const;
-		mounted.facade.pointerIntent({ phase: 'down', css: again, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'move', css: pulled, evaluationId });
-		const completed = shape.snapshot().depth;
-		expect(completed).toBeGreaterThan(before);
-		mounted.facade.pointerIntent({ phase: 'up', css: pulled, evaluationId });
-		expect(shape.snapshot().depth).toBe(completed);
-		expect(previewExtent()).toBeCloseTo(completed, 6);
-
-		// A reading flip ends the press through its evaluation mismatch; the partial
-		// depth it measured is discarded the same way a cancel discards it.
-		const flipFrom = marker().css;
-		const flipTo = [flipFrom[0], flipFrom[1] - 80] as const;
-		mounted.facade.pointerIntent({ phase: 'down', css: flipFrom, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'move', css: flipTo, evaluationId });
-		expect(shape.snapshot().depth).toBeGreaterThan(completed);
-		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 30);
-		const flippedEvaluationId = mounted.facade.evaluationId()!;
-		expect(flippedEvaluationId).not.toBe(evaluationId);
-		mounted.facade.pointerIntent({ phase: 'move', css: flipTo, evaluationId: flippedEvaluationId });
-		expect(shape.snapshot()).toMatchObject({ phase: 'depth', depth: completed });
-		expect(shape.snapshot().refusal).toContain('reading changed');
-		expect(previewExtent()).toBeCloseTo(completed, 6);
-
-		const baseline = mounted.facade.snapshot().canonicalJson;
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
-		const created = acceptedForms(mounted.facade)[0]!;
-		if (created.form.generator.kind !== 'extrude') throw new Error('the created form is not an extrusion');
-		expect(created.form.generator.extent).toBeCloseTo(completed, 6);
-	});
-
-	it('places the upright depth handle on the standing body and follows Flip side', async () => {
-		const mounted = await mount();
-		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
-		mounted.facade.camera.applyIntent(
-			{
-				kind: 'fit',
-				bounds: { min: [2.5, 0.5, 2.5], max: [4.5, 3.5, 3.5] },
-				rect: RECT
-			},
-			SETTLE_CLOCK + 1
-		);
-		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		shape.controller.setPlane('elevation');
-		shape.controller.setSheet({ x: 3, z: 3, yaw: 0 });
-
-		// Drawn at 2–3 m high: the planner rests the body on the floor, so the
-		// handle belongs at its 0.5 m midpoint, not at the drawn 2.5 m centre.
-		for (const [u, v] of [
-			[0, 0],
-			[1, 0],
-			[1, 1],
-			[0, 1]
-		] as const) {
-			click(mounted.facade, [3 + u, 2 + v, 3]);
-		}
-		shape.controller.finish();
-		expect(shape.snapshot().depth).toBe(1);
-
-		const evaluationId = mounted.facade.evaluationId()!;
-		const from = stageCss(mounted.facade, [3.5, 0.5, 4]);
-		const to = stageCss(mounted.facade, [3.5, 0.5, 5]);
-		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
-		expect(shape.snapshot().depth).toBeCloseTo(2, 1);
-
-		// Flipping turns the extrusion to −Z: the handle moves with the body, and a
-		// drag on that side must still increase depth instead of clamping.
-		shape.controller.flip();
-		expect(shape.snapshot().flip).toBe(true);
-		const flippedFrom = stageCss(mounted.facade, [3.5, 0.5, 1]);
-		const flippedTo = stageCss(mounted.facade, [3.5, 0.5, 1.5]);
-		mounted.facade.pointerIntent({ phase: 'down', css: flippedFrom, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'move', css: flippedTo, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'up', css: flippedTo, evaluationId });
-		expect(shape.snapshot().depth).toBeCloseTo(1.5, 1);
-
-		const baseline = mounted.facade.snapshot().canonicalJson;
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
-		const created = acceptedForms(mounted.facade)[0]!;
-		expect(created.rotation[1]).toBeCloseTo(Math.PI, 6);
-		const generator = created.form.generator;
-		expect(generator.kind).toBe('extrude');
-		if (generator.kind !== 'extrude') return;
-		expect(generator.extent).toBeCloseTo(1.5, 3);
-	});
-
-	it('keeps upright depth on its projected axis when the camera switches to Plan', async () => {
-		const mounted = await mount();
-		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, SETTLE_CLOCK);
-		mounted.facade.camera.applyIntent(
-			{
-				kind: 'fit',
-				bounds: { min: [2.5, 0.5, 2], max: [3.5, 3.5, 4] },
-				rect: RECT
-			},
-			SETTLE_CLOCK + 1
-		);
-		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		shape.controller.setPlane('elevation');
-		// A 45° sheet keeps its extrusion oblique in Plan, so the vertical floor
-		// fallback and the true projected world axis are visibly different.
-		const diagonal = Math.SQRT1_2;
-		shape.controller.setSheet({ x: 3, z: 3, yaw: Math.PI / 4 });
-
-		for (const [u, v] of [
-			[0, 0],
-			[1, 0],
-			[1, 1],
-			[0, 1]
-		] as const) {
-			click(mounted.facade, [3 + u * diagonal, v, 3 - u * diagonal]);
-		}
-		shape.controller.finish();
-		expect(shape.snapshot().phase).toBe('depth');
-
-		// The camera changes, not the Shape's sheet. Its world handle must keep the
-		// horizontal offset of the +X extrusion instead of receiving the floor's
-		// vertical screen-space fallback.
-		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, SETTLE_CLOCK + 3);
-		mounted.facade.camera.applyIntent(
-			{
-				kind: 'fit',
-				bounds: { min: [2, 0, 1], max: [5, 2, 4] },
-				rect: RECT
-			},
-			SETTLE_CLOCK + 4
-		);
-		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 5);
-
-		const marker = () => mounted.facade.overlays().find((entry) => entry.id === 'scene-shape-depth')!;
-		const baseWorld = [3 + diagonal * 0.5, 0.5, 3 - diagonal * 0.5] as const;
-		const base = stageCss(mounted.facade, baseWorld);
-		const expected = stageCss(mounted.facade, [
-			baseWorld[0] + diagonal,
-			baseWorld[1],
-			baseWorld[2] + diagonal
-		]);
-		expect(marker().css[0]).toBeCloseTo(expected[0], 1);
-		expect(marker().css[1]).toBeCloseTo(expected[1], 1);
-		expect(Math.abs(marker().css[0] - base[0])).toBeGreaterThan(10);
-		expect(Math.abs(marker().css[1] - base[1])).toBeGreaterThan(10);
-
-		const evaluationId = mounted.facade.evaluationId()!;
-		const target = stageCss(mounted.facade, [
-			baseWorld[0] + diagonal * 2,
-			baseWorld[1],
-			baseWorld[2] + diagonal * 2
-		]);
-		const from = marker().css;
-		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'move', css: target, evaluationId });
-		mounted.facade.pointerIntent({ phase: 'up', css: target, evaluationId });
-
-		expect(shape.snapshot().depth).toBeCloseTo(2, 1);
-		expect(shape.snapshot().canCreate).toBe(true);
-	});
-
 	it('cancels a live size ray when another task opens', async () => {
 		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 2],
-			[4, 0, 4],
-			[2, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		shape.controller.finish();
-		const baseline = mounted.facade.snapshot().canonicalJson;
-		shape.controller.create();
-		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		await acceptForm(mounted, 'plan', [
+			{ u: 2, v: 2, smooth: false },
+			{ u: 4, v: 2, smooth: false },
+			{ u: 4, v: 4, smooth: false },
+			{ u: 2, v: 4, smooth: false }
+		], [0, 0, 0]);
 		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK);
 		const created = acceptedForms(mounted.facade)[0]!;
 		const width = formSizeMeasurement(created).handles.find((handle) => handle.axis === 0)!;
@@ -1453,29 +879,6 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
-	it('answers Finish, Backtrack and Cancel from the Stage keyboard', async () => {
-		const mounted = await mount();
-		armInk(mounted.facade);
-		const shape = shapeSurface(inkSurface()!.controller);
-		for (const point of [
-			[2, 0, 2],
-			[4, 0, 2],
-			[4, 0, 4]
-		] as const) {
-			click(mounted.facade, point);
-		}
-		expect(shape.snapshot().points).toBe(3);
-
-		expect(mounted.facade.keyboardIntent({ kind: 'backtrack' }).claimed).toBe(true);
-		expect(shape.snapshot().points).toBe(2);
-		click(mounted.facade, [4, 0, 4]);
-		expect(mounted.facade.keyboardIntent({ kind: 'finish' }).claimed).toBe(true);
-		expect(shape.snapshot().phase).toBe('depth');
-
-		expect(mounted.facade.keyboardIntent({ kind: 'cancel' }).claimed).toBe(true);
-		expect(shape.snapshot()).toMatchObject({ phase: 'outline', points: 0 });
-		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
-	});
 });
 
 describe('R217.S06 — Scene owner height ticks', () => {

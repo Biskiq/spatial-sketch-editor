@@ -31,15 +31,20 @@ editor-only hierarchy metadata, and cloning a Three hierarchy supplies no author
 identity or revision policy. GLB provenance: [`assets.md`](./assets.md).
 
 **Native forms (current).** T5.P01.S01 lands the authored form source and T5.P01.S02 lands the
-creator entry point. Ink stays one Pen: a declared host capability (`ink-readings-v1`) lets the Scene
-binding contribute the **Shape** reading to the same Ink palette that carries Layout's Wall and
-Opening readings. A creator draws a closed outline on the floor or a hand-aligned upright sheet,
-and the Shape kinds Line, Box, Round and Sketch convert that one stroke into outline anchors. Live
-validity is `validateProfile`; an invalid outline names its issue and offers no Create. A depth ray
-or an exact metre field sets the extrusion, Flip side mirrors an upright profile without moving its
-world position, and Create issues exactly one `create-form` intent. The preview body comes from the
-same planner candidate the commit installs, so it cannot differ from the result. Wall-face drawing
-is not landed: the upright sheet is aligned by X/Z/yaw until T1's face-frame query arrives.
+creator entry point. R217.S17A puts it in the **Objects** panel, the dock's one place to create and
+insert objects; Ink draws architecture only. Box and Round create a standard 1 m form on a click and
+the form two corners span on a drag; Free takes clicked corners and drawn smooth runs and closes on
+its start, Enter or Finish. Live validity is `validateProfile`, and an invalid outline names its
+issue. Each creation issues exactly one `create-form` intent, and the preview body comes from the
+same planner candidate the commit installs, so it cannot differ from the result. Upright forms stay
+fully supported in the model, in saved projects and on the Card, but the Stage does not draw them
+until T1's face-frame query arrives.
+
+**Support.** Every Scene planner resolves support through `resolveSceneSupport`: the compiled Room
+floor that covers the point, otherwise the Layout's explicit horizontal datum. Placement therefore
+needs no enclosure, and an operation that must keep another resting elevation refuses rather than
+moving vertically. A verified catalogue model is offered only where the envelope holds its asset
+resource, because the entity cannot close without it.
 
 Once present a form is ordinary Scene truth: `create-form` creates one, `set-form-size` writes a
 full per-axis scale resting on the evaluated contact, and Move, Turn, Place on floor, Duplicate and

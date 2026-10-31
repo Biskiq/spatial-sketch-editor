@@ -251,7 +251,7 @@ test.describe('T2.P02.S03 diagnostics (recorded, never acceptance rows)', () => 
 		// Typed X/Z Place: the positive control, so a broken Compose would show up
 		// here instead of being blamed on the pointer path.
 		await savedStarter(page, uniqueProjectId('s03diagtyped'));
-		await page.locator('.contributed-item button.item-row', { hasText: 'Place object' }).first().click();
+		await page.locator('.contributed-item button.item-row', { hasText: 'Objects' }).first().click();
 		await expect(page.locator(INSTRUMENT)).toBeVisible({ timeout: 120_000 });
 		const beforeTyped = await acceptedResultCount(page);
 		await page.locator(`${INSTRUMENT} input[inputmode="decimal"]`).nth(0).fill('1.5');
@@ -269,7 +269,7 @@ test.describe('T2.P02.S03 diagnostics (recorded, never acceptance rows)', () => 
 
 		// Floor click on the same primitive: recorded, not asserted.
 		await savedStarter(page, uniqueProjectId('s03diagpointer'));
-		await page.locator('.contributed-item button.item-row', { hasText: 'Place object' }).first().click();
+		await page.locator('.contributed-item button.item-row', { hasText: 'Objects' }).first().click();
 		await expect(page.locator(INSTRUMENT)).toBeVisible({ timeout: 120_000 });
 		const beforePointer = await acceptedResultCount(page);
 		const box = await page.locator('canvas').first().boundingBox();

@@ -85,7 +85,8 @@ async function saveProject(page: Page): Promise<void> {
 }
 
 async function openImport(page: Page): Promise<void> {
-	await page.locator('.contributed-item button.item-row', IMPORT_ENTRY).first().click();
+	await page.locator('[data-stage-dock] [data-dock-slot="library"]').click();
+	await page.getByRole('button', { name: 'Import model…', exact: true }).click();
 	await expect(page.locator('#creator-model-file')).toBeVisible();
 }
 
@@ -585,7 +586,7 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		await session.context.close();
 	});
 
-	test('from an empty project: approve, follow the no-floor guidance, draw, then place', async ({ browser }, testInfo) => {
+	test('from an empty project: approve, then place on the Stage datum', async ({ browser }, testInfo) => {
 		test.skip(apiOrigin === undefined || secret === undefined || editorOrigin === undefined, 'requires the S03 supervisor');
 		const session = await signedInSession(browser);
 		const { page } = session;
@@ -596,8 +597,6 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		const evidence: Record<string, unknown> = { projectId, browser: testInfo.project.name, errors };
 
 		await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-		await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-		await page.getByRole('button', { name: 'Begin empty' }).click();
 		await expect(page.locator('canvas').first()).toBeVisible({ timeout: 120_000 });
 		await saveProject(page);
 
@@ -607,36 +606,10 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 		evidence.report = await readModel(page, await mappedModelGlb(), 'empty-project.glb');
 		await page.getByRole('button', { name: 'Approve and place' }).click();
 		await expect(page.locator(INSTRUMENT)).toBeVisible({ timeout: 120_000 });
-		const guidance = (await page.locator(INSTRUMENT).innerText()).replace(/\s+/g, ' ');
-		evidence.guidance = guidance;
-		expect(guidance, 'the Place instrument names the missing floor').toContain('No Room floor yet');
-		expect(guidance, 'the guidance names the recovery entry point').toContain('Place object');
-		await saveProject(page);
-
-		// Follow the guidance: open Ink (closing Place), draw, then reopen Place and
-		// resume the same armed model. The camera sits inside the new enclosure, so
-		// the flow frames the drawn floor through the product's own locator before
-		// clicking it — the same control a creator has.
-		await drawInkEnclosure(page);
-		// Closing the enclosure leaves Ink armed; the creator returns to Select before
-		// opening Place, exactly as the dock offers.
-		await page.locator('[data-dock-select]').click();
-		await setStageReading(page, '3D');
-		const floorRow = page.locator('.index-group li', { hasText: 'floor ·' }).first();
-		await floorRow.getByRole('button', { name: 'Bring into view' }).click();
-		await waitForCameraSettled(page);
-		await floorRow.locator('button.item-row').click();
-		// The marker already shows the previously selected wall, so wait for the
-		// canonical subject to become the room floor before reading its projection.
-		await expect(page.locator('[aria-label="Selected subject"]')).toContainText(/room · included/i, {
-			timeout: 20_000
-		});
-		const floorPoint = await selectedSubjectPoint(page);
-		await saveProject(page);
-		await invokeIndexTask(page, 'Place object');
-		await expect(page.locator(INSTRUMENT)).toContainText('Use selection');
-		// Click the floor's own projection: the framed floor sits above the canvas
-		// centre once the bottom instrument is accounted for.
+		// No enclosure and no guidance about one: the Stage datum supports the model.
+		await expect(page.getByText('No Room floor')).toHaveCount(0);
+		const box = (await page.locator('[role="application"][aria-label="Spatial stage"]').boundingBox())!;
+		const floorPoint = { x: box.x + box.width / 2, y: box.y + box.height * 0.42 };
 		const before = await acceptedResultCount(page);
 		await page.mouse.click(floorPoint.x, floorPoint.y);
 		await waitAccepted(page, before, 30_000);
@@ -654,8 +627,8 @@ test.describe('T2.P02.S03 integrated own-model import', () => {
 			resources: modelResources(stored.document).length,
 			entities: sceneEntities(stored.document).length
 		};
-		expect(evidence.stored, 'the drawn floor and the approved model both persist').toEqual({
-			rooms: 1,
+		expect(evidence.stored, 'the approved model persists with no Room').toEqual({
+			rooms: 0,
 			resources: 1,
 			entities: 1
 		});

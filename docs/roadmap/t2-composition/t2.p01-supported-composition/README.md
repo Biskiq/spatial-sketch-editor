@@ -35,7 +35,7 @@ floor support, chooses an upright native/verified model object, places/moves/yaw
 exact input and shared Undo/Redo in Plan and 3D. S04 adds Resize, duplicate/delete and the safe
 Save/reload journey. Source JSON recovery is available from the first surface.
 
-Genuinely empty Layout still has no floor polygon: Place refuses and offers **Start gallery**
+**Superseded by R217 O11 (2026-10-31):** an empty Layout places on the explicit datum. As closed here: genuinely empty Layout still has no floor polygon: Place refuses and offers **Start gallery**
 through T1's explicit project-replacement flow or opening supported source. It never inserts
 architecture silently. Neither a datum nor T1's plinth is support. General Wall drawing and its
 derived-role/schema cutover are not prerequisites for a validated canonical starter.

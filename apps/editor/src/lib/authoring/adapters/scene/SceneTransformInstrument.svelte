@@ -21,6 +21,15 @@
 	import { draftingSnapIncrementMeters } from '../../stage/stage-drafting';
 	import { choosePrimitive, clearArmedModel, rememberArmedModel, peekArmedModel } from './import/definitions';
 	import MyObjectsSectionLazy from './library/MyObjectsSectionLazy.svelte';
+	import { SHAPE_KINDS } from './shape/outline';
+	import {
+		armTile,
+		armedTile,
+		objectsPanelCompact,
+		setObjectsPanelCompact,
+		type ObjectTile
+	} from './shape/armed-tile';
+	import { objectDrawSession, subscribeObjectDraw } from './shape/draw-surface';
 	import {
 		admittedCatalogueModelAssets,
 		catalogueModelDefinition,
@@ -54,7 +63,68 @@
 	let primitive = $state<NativePlacementPrimitive>('box');
 	let placementChoice = $state('native:box');
 	let catalogueArmRequest = 0;
-	const catalogueModels = admittedCatalogueModelAssets();
+	const projectIdNow = (): string => services.stage.snapshot().acceptedRevision.projectId;
+	const OBJECT_TILES: readonly { readonly id: ObjectTile; readonly label: string; readonly summary: string }[] = [
+		...SHAPE_KINDS,
+		{ id: 'sphere', label: 'Sphere', summary: 'Click to place a sphere.' }
+	];
+	let activeTile = $state<ObjectTile>(untrack(() => armedTile(projectIdNow())) ?? 'box');
+	let compact = $state(untrack(() => objectsPanelCompact(projectIdNow())));
+	let drawCanFinish = $state(false);
+	$effect(() =>
+		subscribeObjectDraw(() => {
+			drawCanFinish = objectDrawSession()?.canFinish() ?? false;
+			compact = objectsPanelCompact(projectIdNow());
+			const refusal = objectDrawSession()?.refusal() ?? null;
+			if (refusal !== null) message = refusal;
+		})
+	);
+	function setCompact(next: boolean): void {
+		compact = next;
+		setObjectsPanelCompact(projectIdNow(), next);
+	}
+	/** Pick one shape: replaces any armed model or saved copy, and clears a Free draft. */
+	function chooseTile(tile: ObjectTile): void {
+		objectDrawSession()?.cancel();
+		catalogueArmRequest += 1;
+		armTile(projectIdNow(), tile);
+		activeTile = tile;
+		placementChoice = `native:${tile === 'sphere' ? 'sphere' : 'box'}`;
+		primitive = tile === 'sphere' ? 'sphere' : 'box';
+		choosePrimitive(projectIdNow(), session, primitive);
+		armedFormCopy = session?.armedFormCopy() ?? null;
+		armedModelPresent = false;
+		readyMessage = null;
+		message = '';
+		setCompact(true);
+	}
+	function finishDraw(): void {
+		objectDrawSession()?.finish();
+	}
+	function chooseCatalogueModel(assetId: string): void {
+		objectDrawSession()?.cancel();
+		const request = ++catalogueArmRequest;
+		placementChoice = `catalogue:${assetId}`;
+		armTile(projectIdNow(), null);
+		setCompact(true);
+		void armCatalogueModel(assetId, request);
+	}
+	function openImport(): void {
+		services.stage.openContributedTask('scene-import', 'scene');
+	}
+	/**
+	 * Verified catalogue models this project can actually hold. A catalogue entity
+	 * needs its asset resource in the envelope, which only a project that already
+	 * carries it has; listing the others would offer a placement that always refuses.
+	 */
+	const catalogueModels = $derived.by(() => {
+		const snapshot = services.stage.snapshot();
+		if (snapshot.sourceKind !== UNIT_SOURCE_KIND) return admittedCatalogueModelAssets();
+		const held = stageEnvelope(snapshot).units.resources.data.resources;
+		return admittedCatalogueModelAssets().filter((asset) =>
+			held.some((resource) => resource.kind === 'asset' && resource.id === asset.id && resource.unresolved === null)
+		);
+	});
 	let candidate = $state<SceneCandidate | null>(null);
 	let message = $state('');
 
@@ -71,12 +141,6 @@
 	let openingProposal = false;
 
 	const entities = $derived(services.stage.snapshot().domain.scene.entities);
-	/** An empty baseline has a datum but no Room floor to seat a placement on. */
-	const hasRoomFloor = $derived.by(() => {
-		const snapshot = services.stage.snapshot();
-		if (snapshot.sourceKind !== UNIT_SOURCE_KIND) return true;
-		return stageEnvelope(snapshot).units.layout.data.rooms.length > 0;
-	});
 	/**
 	 * Whether this mount is S04's bounded Compose surface. The adapter contributes
 	 * the same instrument for all three tasks, and a new task re-provides services,
@@ -94,11 +158,17 @@
 	/**
 	 * Whether this Place session carries an approved creator model.
 	 *
-	 * A native primitive needs no floor, so the no-floor guidance must not appear
-	 * for it. The arm is read from the live session, which is the session the
-	 * project's pending approval is applied to whenever Place opens.
+	 * The arm is read from the live session, which is the session the project's
+	 * pending approval is applied to whenever Place opens.
 	 */
 	let armedModelPresent = $state(false);
+	/** The name a model or saved copy shows while it, not a shape, is armed. */
+	const armedName = $derived.by(() => {
+		if (armedFormCopy !== null) return armedFormCopy.item.name;
+		if (!armedModelPresent) return null;
+		const assetId = placementChoice.startsWith('catalogue:') ? placementChoice.slice('catalogue:'.length) : null;
+		return catalogueModels.find((asset) => asset.id === assetId)?.name ?? 'Imported model';
+	});
 	/**
 	 * The My Objects copy armed for this Place session, mirrored for its panel.
 	 * `$state.raw` keeps the session's own handle identity: a deep proxy would
@@ -455,6 +525,11 @@
 		}
 		const drafting = services.stage.drafting();
 		const appliedSnap = draftingSnapIncrementMeters(drafting);
+		if (armedName === null && (activeTile === 'box' || activeTile === 'round')) {
+			const created = await objectDrawSession()?.placeAt(Number(x), Number(z));
+			if (created != null) message = `Placed one ${activeTile}.`;
+			return;
+		}
 		current.setSnapStep(appliedSnap);
 		const copyArmed = current.armedFormCopy();
 		const modelArmed = copyArmed === null && current.armedModel() !== null;
@@ -505,29 +580,7 @@
 		readyMessage = null;
 		armedModelPresent = true;
 		candidate = null;
-		message = `${definition.creationDefaults.name} is ready: click its floor position, or enter X/Z and Place.`;
-	}
-
-	function choosePlacementChoice(value: string): void {
-		const request = ++catalogueArmRequest;
-		placementChoice = value;
-		if (value.startsWith('catalogue:')) {
-			void armCatalogueModel(value.slice('catalogue:'.length), request);
-			return;
-		}
-		const selectedPrimitive = value.slice('native:'.length) as NativePlacementPrimitive;
-		primitive = selectedPrimitive;
-		choosePrimitive(
-			services.stage.snapshot().acceptedRevision.projectId,
-			session,
-			selectedPrimitive
-		);
-		const liveCopy = session?.armedFormCopy() ?? null;
-		if (liveCopy === null && armedFormCopy !== null && message === readyMessage) {
-			message = 'The saved copy is no longer armed; the primitive replaces it.';
-			readyMessage = null;
-		}
-		armedFormCopy = liveCopy;
+		message = `${definition.creationDefaults.name} is ready: click where it goes, or enter an exact position.`;
 	}
 
 	/**
@@ -543,11 +596,14 @@
 		catalogueArmRequest += 1;
 		placementChoice = `native:${primitive}`;
 		clearArmedModel(services.stage.snapshot().acceptedRevision.projectId);
+		objectDrawSession()?.cancel();
+		armTile(projectIdNow(), null);
+		setCompact(true);
 		current.setArmedFormCopy(copy);
 		armedFormCopy = copy;
 		armedModelPresent = false;
 		candidate = null;
-		readyMessage = `${copy.item.name} is ready: click its floor position, or enter X/Z and Place.`;
+		readyMessage = `${copy.item.name} is ready: click where it goes, or enter an exact position.`;
 		message = readyMessage;
 		return true;
 	}
@@ -556,6 +612,7 @@
 	function clearFormCopy(): void {
 		session?.setArmedFormCopy(null);
 		armedFormCopy = null;
+		armTile(projectIdNow(), activeTile);
 		readyMessage = null;
 		message = 'The saved copy is no longer armed.';
 	}
@@ -688,61 +745,58 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="row place">
-			<label>
-				<span>Place</span>
-				<select
-						aria-label="Place object"
-						value={placementChoice}
-						onchange={(event) => choosePlacementChoice(event.currentTarget.value)}
-				>
-						<optgroup label="Native objects">
-							{#each NATIVE_PLACEMENT_PRIMITIVES as option (option)}
-								<option value={`native:${option}`}>{option}</option>
-							{/each}
-						</optgroup>
-						{#if catalogueModels.length > 0}
-							<optgroup label="Verified catalogue models">
-								{#each catalogueModels as asset (asset.id)}
-									<option value={`catalogue:${asset.id}`}>{asset.name}</option>
-								{/each}
-							</optgroup>
-						{/if}
-				</select>
-			</label>
-			<label>
-				<span>X (m)</span>
-				<input type="text" inputmode="decimal" value={x} oninput={(event) => (x = event.currentTarget.value)} />
-			</label>
-			<label>
-				<span>Z (m)</span>
-				<input type="text" inputmode="decimal" value={z} oninput={(event) => (z = event.currentTarget.value)} />
-			</label>
-			<button type="button" onclick={place}>Place</button>
+		<div class="objects-tiles" role="group" aria-label="Shapes">
+			{#each OBJECT_TILES as tile (tile.id)}
+				<button
+					type="button"
+					aria-pressed={armedName === null && activeTile === tile.id}
+					title={tile.summary}
+					onclick={() => chooseTile(tile.id)}
+				>{tile.label}</button>
+			{/each}
+			{#if armedName !== null}<span class="armed-name">{armedName}</span>{/if}
+			{#if drawCanFinish}<button type="button" onclick={finishDraw}>Finish</button>{/if}
+			{#if compact}<button type="button" class="quiet" onclick={() => setCompact(false)}>All</button>{/if}
 		</div>
-		{#if placeTask && !hasRoomFloor}
-			<p class="hint refusal" role="status">
-				{armedFormCopy !== null
-					? 'No Room floor yet. This saved copy stays ready: draw an enclosure with Ink, then click its floor position.'
-					: armedModelPresent
-						? 'No Room floor yet. This model stays ready: draw an enclosure with Ink, then reopen the Library.'
-						: 'No Room floor yet. Draw an enclosure with Ink before placing an object.'}
-			</p>
-		{/if}
-		<p class="hint">
-			{armedFormCopy !== null
-				? 'The saved copy is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.'
-				: armedModelPresent
-					? 'The approved model is placed by clicking its floor position; Place installs it at X/Z, and choosing a primitive replaces it.'
-					: 'An imported model is placed by clicking its floor position; these typed fields place a native primitive.'}
-		</p>
-		{#if placeTask}
-			<MyObjectsSectionLazy
-				armedCopy={armedFormCopy}
-				{hasRoomFloor}
-				onArm={armFormCopy}
-				onClear={clearFormCopy}
-			/>
+		{#if !compact}
+			{#if catalogueModels.length > 0}
+				<div class="objects-section">
+					<h4>Models</h4>
+					<ul class="objects-models">
+						{#each catalogueModels as asset (asset.id)}
+							<li>
+								<button
+									type="button"
+									aria-pressed={placementChoice === `catalogue:${asset.id}`}
+									onclick={() => chooseCatalogueModel(asset.id)}
+								>{asset.name}</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+			{#if placeTask}
+				<MyObjectsSectionLazy
+					armedCopy={armedFormCopy}
+					onArm={armFormCopy}
+					onClear={clearFormCopy}
+				/>
+				<button type="button" onclick={openImport}>Import model…</button>
+			{/if}
+			{#if armedName !== null || activeTile !== 'free'}
+				<div class="row place" role="group" aria-label="Exact position">
+					<span>Exact position</span>
+					<label>
+						<span>X (m)</span>
+						<input type="text" inputmode="decimal" value={x} oninput={(event) => (x = event.currentTarget.value)} />
+					</label>
+					<label>
+						<span>Z (m)</span>
+						<input type="text" inputmode="decimal" value={z} oninput={(event) => (z = event.currentTarget.value)} />
+					</label>
+					<button type="button" onclick={place}>Place</button>
+				</div>
+			{/if}
 		{/if}
 	{/if}
 
@@ -750,6 +804,32 @@
 </section>
 
 <style>
+	.objects-tiles {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		flex-wrap: wrap;
+	}
+
+	.objects-section h4 {
+		margin: 0 0 0.25rem;
+		font-size: inherit;
+		font-weight: 600;
+	}
+
+	.objects-models {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.armed-name {
+		padding: 0 0.25rem;
+	}
+
 	.scene-instrument {
 		display: flex;
 		flex-direction: column;
@@ -790,7 +870,6 @@
 	}
 
 	input,
-	select,
 	button {
 		font: inherit;
 		padding: 0.2rem 0.4rem;

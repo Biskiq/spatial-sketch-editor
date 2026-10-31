@@ -32,7 +32,6 @@
 	let {
 		client = createFormLibraryClient({ apiOrigin: env.PUBLIC_API_ORIGIN ?? '' }),
 		armedCopy = null,
-		hasRoomFloor = true,
 		startOpen = false,
 		showToggle = true,
 		onArm,
@@ -41,7 +40,6 @@
 		/** Injectable for tests; production reads the public API origin. */
 		client?: FormLibraryClient;
 		armedCopy?: ArmedFormCopy | null;
-		hasRoomFloor?: boolean;
 		/** The lazy wrapper owns the only toggle and mounts this section open. */
 		startOpen?: boolean;
 		showToggle?: boolean;
@@ -174,10 +172,6 @@
 
 	async function insert(item: FormLibraryItemSummary): Promise<void> {
 		if (busyId !== null) return;
-		if (!hasRoomFloor) {
-			message = 'No Room floor yet. Draw an enclosure with Ink, then insert this copy.';
-			return;
-		}
 		busyId = item.id;
 		error = null;
 		message = null;
@@ -297,7 +291,7 @@
 										type="button"
 										data-my-objects-insert
 										onclick={() => void insert(item)}
-										disabled={busyId !== null || !hasRoomFloor}
+										disabled={busyId !== null}
 									>
 										Insert
 									</button>
@@ -343,11 +337,6 @@
 			{/if}
 		{/if}
 
-		{#if !hasRoomFloor}
-			<p class="hint refusal" role="status">
-				No Room floor yet. This project needs an enclosure before a copy can be placed.
-			</p>
-		{/if}
 		{#if messageVisible}<p class="notice" role="status">{message}</p>{/if}
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
 		</div>
@@ -483,8 +472,5 @@
 	.error {
 		margin: 0;
 		color: #ff9f8a;
-	}
-	.refusal {
-		color: #e0c48f;
 	}
 </style>

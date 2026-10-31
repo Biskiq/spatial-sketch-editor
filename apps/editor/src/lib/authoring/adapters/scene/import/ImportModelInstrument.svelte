@@ -2,7 +2,7 @@
 	/**
 	 * T2.P02.S02 — the Import procedure instrument.
 	 *
-	 * A Library procedure hosted in the one lower Instrument: choose, read,
+	 * An Objects procedure hosted in the one lower Instrument: choose, read,
 	 * review, confirm and approve one of the creator's own models, then arm it for
 	 * a floor placement. It reads only the public `StageAdapterServices`, so it
 	 * edits no host, shell or route module.
@@ -87,17 +87,11 @@
 	onDestroy(() => {
 		unsubscribe();
 		session.dispose();
-		// Focus returns to the Library/Find control that invoked Import.
+		// Focus returns to the Objects/Find control that invoked Import.
 		invokingFocus?.focus();
 	});
 
 	const report = $derived(view.report);
-	/** A model is approved without a floor, but placement needs one. */
-	const hasRoomFloor = $derived.by(() => {
-		const snapshot = services.stage.snapshot();
-		if (snapshot.sourceKind !== UNIT_SOURCE_KIND) return true;
-		return stageEnvelope(snapshot).units.layout.data.rooms.length > 0;
-	});
 	const canPrepare = $derived(view.files.length > 0 && !busy && view.step !== 'uploading');
 	const canApprove = $derived(
 		report !== null && !busy && view.step !== 'uploading' && view.step !== 'approved'
@@ -278,13 +272,6 @@
 				{/each}
 			</ul>
 		</section>
-	{/if}
-
-	{#if !hasRoomFloor}
-		<p class="hint" role="status">
-			This project has no Room floor yet. Approval can proceed, but placement waits: draw an
-			enclosure with Ink, then reopen the Library.
-		</p>
 	{/if}
 
 	<div class="actions">

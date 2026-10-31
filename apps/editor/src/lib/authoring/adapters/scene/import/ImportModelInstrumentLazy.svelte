@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Import is a Library procedure, not part of Stage boot.
+	 * Import is an Objects procedure, not part of Stage boot.
 	 *
 	 * Its session, API client and worker client are loaded on the first open, so
 	 * an editor who never imports a model does not download the procedure. The

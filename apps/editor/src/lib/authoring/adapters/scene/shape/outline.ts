@@ -1,17 +1,14 @@
 /**
- * T5.P01.S02 — a drawn stroke becomes a native-form outline.
+ * R217.S17A — a drawn gesture becomes a native-form outline.
  *
- * This module is session work, not a format: it reads the points a creator
- * named in one working plane and produces the outline anchors `create-form`
- * captures. The only canonical outline is the one the Scene planner stores; a
- * conversion here may use ordinary arithmetic freely.
+ * This module is session work, not a format: it reads points on the horizontal
+ * X/Z plane and produces the outline anchors `create-form` captures. The only
+ * canonical outline is the one the Scene planner stores; a conversion here may use
+ * ordinary arithmetic freely.
  *
- * The four Shape kinds are conversions of one gesture, never four tools:
- *
- * - **Line** keeps each named point as a straight anchor.
- * - **Sketch** keeps each named point as a smooth anchor.
- * - **Box** reads the stroke's bounding rectangle.
- * - **Round** reads the stroke's bounding ellipse.
+ * - **Box** and **Round** read the rectangle two corners span, or a standard size
+ *   around one point. A click and a drag therefore make the same kind of object.
+ * - **Free** keeps clicked corners sharp and drawn runs smooth.
  *
  * Winding is canonicalized before validation because a clockwise drawing is a
  * valid drawing, not a refusal; every remaining issue is reported with the same
@@ -25,7 +22,7 @@ import {
 	type ProfileIssue
 } from '@portfolio/geometry-core';
 
-export type ShapeKind = 'line' | 'box' | 'round' | 'sketch';
+export type ShapeKind = 'box' | 'round' | 'free';
 
 export type ShapeOutlineAnchor = {
 	readonly u: number;
@@ -40,11 +37,13 @@ export const SHAPE_KINDS: readonly {
 	readonly label: string;
 	readonly summary: string;
 }[] = [
-	{ id: 'line', label: 'Line', summary: 'Straight edges through the points you name.' },
-	{ id: 'box', label: 'Box', summary: 'The rectangle that bounds the stroke.' },
-	{ id: 'round', label: 'Round', summary: 'The ellipse that bounds the stroke.' },
-	{ id: 'sketch', label: 'Sketch', summary: 'A smooth outline through the points you name.' }
+	{ id: 'box', label: 'Box', summary: 'Click for a 1 m box, or drag corner to corner.' },
+	{ id: 'round', label: 'Round', summary: 'Click for a 1 m round, or drag corner to corner.' },
+	{ id: 'free', label: 'Free', summary: 'Click corners or drag curves, then close on the start.' }
 ];
+
+/** The size one click creates: the same native form a drag of this size would. */
+export const STANDARD_SHAPE_METERS = 1;
 
 /** Minimum edge a conversion may produce, matching the kernel's own control edge. */
 export const MIN_SHAPE_EDGE_METERS = PROFILE_LIMITS.minControlEdgeMeters;
@@ -85,42 +84,129 @@ export function validateShapeOutline(
 	return { kind: 'refused', message: outlineIssueWords(issue), issue };
 }
 
-/** Convert named plane points into one outline, or refuse in words. */
+/** The outline two opposite corners span. */
 export function shapeOutline(
-	kind: ShapeKind,
-	points: readonly ShapePoint[]
+	kind: 'box' | 'round',
+	first: ShapePoint,
+	second: ShapePoint
 ): ShapeOutlineResult {
-	const unique = dedupe(points);
-	if (kind === 'box' || kind === 'round') {
-		if (unique.length < 2) {
-			return {
-				kind: 'refused',
-				message: `${kind === 'box' ? 'Box' : 'Round'} needs two points; click opposite corners or draw a stroke.`,
-				issue: null
-			};
+	return boundsOutline(kind, [first, second]);
+}
+
+/** The standard outline one click creates, centred on the point. */
+export function standardOutline(kind: 'box' | 'round', centre: ShapePoint): ShapeOutlineResult {
+	const half = STANDARD_SHAPE_METERS / 2;
+	return boundsOutline(kind, [
+		{ u: centre.u - half, v: centre.v - half },
+		{ u: centre.u + half, v: centre.v + half }
+	]);
+}
+
+function exactlyCollinear(a: ShapePoint, b: ShapePoint, c: ShapePoint): boolean {
+	return Math.abs((b.u - a.u) * (c.v - a.v) - (b.v - a.v) * (c.u - a.u)) < 1e-12;
+}
+
+/** Distance from a point to the segment between two others. */
+function segmentDistance(point: ShapePoint, a: ShapePoint, b: ShapePoint): number {
+	const du = b.u - a.u;
+	const dv = b.v - a.v;
+	const span = du * du + dv * dv;
+	const t = span === 0 ? 0 : Math.max(0, Math.min(1, ((point.u - a.u) * du + (point.v - a.v) * dv) / span));
+	return Math.hypot(point.u - a.u - du * t, point.v - a.v - dv * t);
+}
+
+/** Douglas–Peucker over one drawn run; both ends always stay. */
+function simplifyRun(
+	run: readonly ShapeOutlineAnchor[],
+	toleranceMeters: number
+): readonly ShapeOutlineAnchor[] {
+	if (run.length < 3) return run;
+	let farthest = 0;
+	let index = -1;
+	for (let at = 1; at < run.length - 1; at += 1) {
+		const distance = segmentDistance(run[at]!, run[0]!, run[run.length - 1]!);
+		if (distance > farthest) {
+			farthest = distance;
+			index = at;
 		}
-		return boundsOutline(kind, unique);
 	}
-	if (unique.length < PROFILE_LIMITS.minAnchors) {
-		return {
-			kind: 'refused',
-			message: `An outline needs at least ${PROFILE_LIMITS.minAnchors} points; name ${PROFILE_LIMITS.minAnchors - unique.length} more.`,
-			issue: null
-		};
+	if (index === -1 || farthest <= toleranceMeters) return [run[0]!, run[run.length - 1]!];
+	return [
+		...simplifyRun(run.slice(0, index + 1), toleranceMeters).slice(0, -1),
+		...simplifyRun(run.slice(index), toleranceMeters)
+	];
+}
+
+/**
+ * One Free outline from clicked corners and drawn runs.
+ *
+ * Snapped clicks often land three corners on one grid line, which the kernel
+ * refuses as collinear though the creator meant one straight edge. Those exact
+ * middle corners are dropped, across the ring seam too. A drawn run is simplified
+ * at the caller's tolerance, doubling until it fits under the kernel's anchor cap.
+ */
+export function freeOutline(
+	runs: readonly (readonly ShapeOutlineAnchor[])[],
+	toleranceMeters: number
+): ShapeOutlineResult {
+	let tolerance = toleranceMeters;
+	for (let attempt = 0; attempt < 24; attempt += 1) {
+		const anchors = freeAnchors(runs, tolerance);
+		if (anchors.length <= PROFILE_LIMITS.maxAnchors) {
+			if (anchors.length < PROFILE_LIMITS.minAnchors) {
+				return {
+					kind: 'refused',
+					message: `An outline needs at least ${PROFILE_LIMITS.minAnchors} points off one line.`,
+					issue: null
+				};
+			}
+			return validateConverted(anchors);
+		}
+		tolerance *= 2;
 	}
-	if (unique.length > PROFILE_LIMITS.maxAnchors) {
-		return {
-			kind: 'refused',
-			message: `An outline can hold at most ${PROFILE_LIMITS.maxAnchors} points.`,
-			issue: null
-		};
+	return {
+		kind: 'refused',
+		message: `An outline can hold at most ${PROFILE_LIMITS.maxAnchors} points.`,
+		issue: null
+	};
+}
+
+function freeAnchors(
+	runs: readonly (readonly ShapeOutlineAnchor[])[],
+	toleranceMeters: number
+): readonly ShapeOutlineAnchor[] {
+	const joined: ShapeOutlineAnchor[] = [];
+	for (const run of runs) {
+		for (const anchor of simplifyRun(run, toleranceMeters)) {
+			if (!Number.isFinite(anchor.u) || !Number.isFinite(anchor.v)) continue;
+			const previous = joined[joined.length - 1];
+			if (previous !== undefined && Math.hypot(anchor.u - previous.u, anchor.v - previous.v) < MIN_SHAPE_EDGE_METERS) continue;
+			joined.push(anchor);
+		}
 	}
-	const outline = unique.map((point) => ({
-		u: point.u,
-		v: point.v,
-		smooth: kind === 'sketch'
-	}));
-	return validateConverted(outline);
+	while (joined.length > 1) {
+		const first = joined[0]!;
+		const last = joined[joined.length - 1]!;
+		if (Math.hypot(last.u - first.u, last.v - first.v) >= MIN_SHAPE_EDGE_METERS) break;
+		joined.pop();
+	}
+	let kept: readonly ShapeOutlineAnchor[] = joined;
+	let changed = true;
+	while (changed && kept.length > 2) {
+		changed = false;
+		for (let index = 0; index < kept.length; index += 1) {
+			const anchor = kept[index]!;
+			if (anchor.smooth) continue;
+			const before = kept[(index + kept.length - 1) % kept.length]!;
+			const after = kept[(index + 1) % kept.length]!;
+			if (exactlyCollinear(before, anchor, after)) {
+				kept = kept.filter((_, at) => at !== index);
+				changed = true;
+				break;
+			}
+		}
+	}
+	return kept;
 }
 
 function boundsOutline(kind: 'box' | 'round', points: readonly ShapePoint[]): ShapeOutlineResult {
@@ -171,35 +257,13 @@ function validateConverted(
 	outline: readonly ShapeOutlineAnchor[]
 ): ShapeOutlineResult {
 	// The returned outline is canonical, not the drawn order: a clockwise stroke
-	// is a valid drawing, and every later session read (bounds, depth, preview)
+	// is a valid drawing, and every later session read (bounds, preview)
 	// must see the same counter-clockwise profile the planner will store.
 	const canonical = canonicalOutline(outline);
 	const validated = validateShapeOutline(canonical);
 	return validated.kind === 'valid'
 		? { kind: 'outline', outline: canonical }
 		: { kind: 'refused', message: validated.message, issue: validated.issue };
-}
-
-/** Drop consecutive duplicates and a repeated closing point, inside 1 mm. */
-function dedupe(points: readonly ShapePoint[]): readonly ShapePoint[] {
-	const result: ShapePoint[] = [];
-	for (const point of points) {
-		if (!Number.isFinite(point.u) || !Number.isFinite(point.v)) continue;
-		const previous = result[result.length - 1];
-		if (
-			previous !== undefined &&
-			Math.hypot(point.u - previous.u, point.v - previous.v) < MIN_SHAPE_EDGE_METERS
-		) {
-			continue;
-		}
-		result.push({ u: point.u, v: point.v });
-	}
-	if (result.length > 1) {
-		const first = result[0]!;
-		const last = result[result.length - 1]!;
-		if (Math.hypot(last.u - first.u, last.v - first.v) < MIN_SHAPE_EDGE_METERS) result.pop();
-	}
-	return result;
 }
 
 /** The creator-facing words for one kernel issue. */
@@ -224,19 +288,4 @@ export function outlineIssueWords(issue: ProfileIssue): string {
 		case 'clockwise':
 			return 'The outline is wound the wrong way; redraw it in the other direction.';
 	}
-}
-
-/**
- * Mirror an outline across the profile plane's local Y axis.
- *
- * `Flip side` on an upright outline keeps the drawn profile where it is and
- * turns the extrusion to the other side of the sheet: the frame yaw rotates by
- * π and local U is mirrored, so every world point is unchanged while local +Z
- * (the extrusion) points the other way. Winding is canonicalized again by the
- * planner after this, so the mirror needs no order surgery here.
- */
-export function flipUprightOutline(
-	outline: readonly ShapeOutlineAnchor[]
-): readonly ShapeOutlineAnchor[] {
-	return outline.map((anchor) => ({ ...anchor, u: -anchor.u }));
 }

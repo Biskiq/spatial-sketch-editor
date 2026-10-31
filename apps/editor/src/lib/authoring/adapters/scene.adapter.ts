@@ -56,14 +56,10 @@ import {
 } from '$lib/authoring/scene/object-definition-policy';
 import { getAssetById } from '$lib/content/assets';
 import {
-	chooseFloorSupport,
-	floorSupportSnapshotOf,
-	queryFloorSupports
-} from '@portfolio/layout-core';
-import {
 	approvedModelResources,
 	createScenePlanners,
 	creatorModelDefinition,
+	resolveSceneSupportOnGeometry,
 	sceneSupportGenerationId,
 	type NormalizedPlacementDefinition,
 	type SceneSupportChoice
@@ -74,8 +70,10 @@ import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';
 import { PAPER_LAYER } from '$lib/authoring/stage/paper-plan';
 import FormCardFields from './scene/FormCardFieldsLazy.svelte';
 import SceneObjectCardFields from './scene/SceneObjectCardFields.svelte';
-import ShapeReadingPalette from './scene/shape/ShapeReadingPalette.svelte';
-import { createShapeReadingSession } from './scene/shape/reading';
+import { createObjectDrawSession, type ObjectDrawSession } from './scene/shape/draw-session';
+import { armTile, armedTile, setObjectsPanelCompact } from './scene/shape/armed-tile';
+import { publishObjectDraw } from './scene/shape/draw-surface';
+import type { ShapeKind } from './scene/shape/outline';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import ImportModelInstrumentLazy from './scene/import/ImportModelInstrumentLazy.svelte';
 import { perfMark } from '$lib/platform/perf-marks';
@@ -239,7 +237,7 @@ function snapshotOccluders(
 	return built;
 }
 
-/** The floor support one pointer position resolves against the drawn geometry. */
+/** The datum point one pointer position reaches past the drawn geometry. */
 function pointerFloorSupport(
 	context: StageAdapterContext,
 	css: readonly [number, number],
@@ -256,7 +254,7 @@ function pointerFloorSupport(
 	);
 }
 
-/** The pointer ray's datum-plane point, even when a Room floor refuses it. */
+/** The pointer ray's datum-plane point, even when support refuses it. */
 function pointerDatumPoint(
 	context: StageAdapterContext,
 	css: readonly [number, number]
@@ -386,22 +384,18 @@ function moveSupportRefusal(
 		code: 'no-floor-support',
 		message: support.reason === 'degenerate'
 			? 'The pointer ray is unavailable for this reading.'
-			: `No visible Room floor supports this pointer position (${support.reason}).`
+			: `The pointer does not reach the Stage datum (${support.reason}).`
 	};
 }
 
 /**
- * The floor support a pointer Place may show, or `null`.
+ * The support a pointer Place may show, or `null`.
  *
- * A visible datum hit is not enough: the point must also be covered by exactly
- * one eligible compiled Room floor, so preview and the retained planner (which
- * re-derives the same support at commit) agree. The query is the Layout-owned
- * canonical resolution, reused here rather than a second membership test, and
- * `chooseFloorSupport` refuses `none` and `choice-required` exactly as commit
- * does. The point is the **snapped** X/Z the candidate will commit at, so an
- * enabled snap cannot move a shown pose off its floor. The drawn-geometry
- * occluder test still runs first so a Wall or plinth can never be mistaken for
- * floor.
+ * Resolved by the planner's own rule at the **snapped** X/Z the candidate will
+ * commit at: the Room floor that covers the point, otherwise the Layout's explicit
+ * datum. Preview and commit therefore cannot disagree, and `choice-required` is
+ * refused here exactly as it is at commit. The drawn-geometry occluder test still
+ * runs first so a Wall or plinth can never be mistaken for a place to stand.
  */
 function pointerPlaceSupport(
 	context: StageAdapterContext,
@@ -411,7 +405,7 @@ function pointerPlaceSupport(
 	readonly x: number;
 	readonly z: number;
 	readonly elevation: number;
-	/** The exact floor the preview stood on, qualified and pinned for commit. */
+	/** The exact support the preview stood on, qualified and pinned for commit. */
 	readonly choice: SceneSupportChoice;
 } | null {
 	const visible = pointerFloorSupport(context, css, null);
@@ -420,23 +414,19 @@ function pointerPlaceSupport(
 	const x = snapped.x;
 	const z = snapped.z;
 	const domain = context.snapshot.domain;
-	const queried = queryFloorSupports(floorSupportSnapshotOf(domain.geometry), {
-		generationId: sceneSupportGenerationId(context.snapshot.sourceContentId),
-		x,
-		z
+	const generationId = sceneSupportGenerationId(context.snapshot.sourceContentId);
+	const resolved = resolveSceneSupportOnGeometry({
+		geometry: domain.geometry,
+		generationId,
+		point: [x, z],
+		requiredElevation: null
 	});
-	if (queried.kind !== 'candidates') return null;
-	const chosen = chooseFloorSupport(queried.candidates);
-	if (chosen.kind !== 'resolved') return null;
+	if (resolved.kind !== 'resolved') return null;
 	return {
 		x,
 		z,
-		elevation: chosen.support.elevation,
-		choice: {
-			kind: 'elevation',
-			elevation: chosen.support.elevation,
-			generationId: sceneSupportGenerationId(context.snapshot.sourceContentId)
-		}
+		elevation: resolved.support.elevation,
+		choice: { kind: 'elevation', elevation: resolved.support.elevation, generationId }
 	};
 }
 
@@ -486,9 +476,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		// Scene marks name place-on-floor, set-yaw and resize-on-floor, all of which
 		// are registered here; no mark introduces a fourth planner.
 		plannerKinds: planners.map((planner) => planner.kind),
-		// The Shape reading is contributed to the one Ink Pen through the host's
-		// reading seam; Scene keeps every byte of its meaning.
-		requiredCapabilities: ['stage-instrument-v1', 'ink-readings-v1'],
+		requiredCapabilities: ['stage-instrument-v1'],
 		bind(context): StageAdapterBinding {
 			const source = stageScene(context.snapshot);
 			// The accepted resource is the authority for every later placement, so a
@@ -575,7 +563,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const message =
 					refusal?.kind === 'refused'
 						? refusal.message
-						: 'No Room floor supports this pointer position at the active snap interval.';
+						: 'More than one floor could support this pointer position.';
 				placementPointerRefusal = {
 					css: [css[0], css[1]],
 					world,
@@ -583,6 +571,50 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					candidate: world === null ? null : placementRefusalCandidate(session, world)
 				};
 			}
+
+			const projectIdOf = (): string => services.stage.snapshot().acceptedRevision.projectId;
+			/** The drawn Shape tile this Place task is armed with, when a tile is what is armed. */
+			function drawnTile(): ShapeKind | null {
+				if (openTaskKind !== 'place-object') return null;
+				const session = taskSurface?.session ?? ownedSurface?.surface.session ?? null;
+				if (session?.armedFormCopy() != null || session?.armedModel() != null) return null;
+				if (peekArmedModel(projectIdOf()) !== null) return null;
+				const tile = armedTile(projectIdOf());
+				return tile === null || tile === 'sphere' ? null : tile;
+			}
+			let lastTile: ShapeKind = 'box';
+			const objectDraw: ObjectDrawSession = createObjectDrawSession(services, {
+				tile: () => {
+					lastTile = drawnTile() ?? lastTile;
+					return lastTile;
+				},
+				pressRefusal(adapterContext, css) {
+					const visible = pointerFloorSupport(adapterContext, css, null);
+					if (visible.kind === 'floor') return null;
+					return visible.kind === 'occluded'
+						? 'Another object or Wall is in the way; press open ground.'
+						: 'That press does not reach the Stage datum.';
+				},
+				beginCommit() {
+					const epoch = taskEpoch;
+					return (entityId) => {
+						const reference = sceneEntityReference(
+							entityId,
+							services.stage.snapshot().domain.unitRevisions.scene
+						);
+						services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+						if (epoch !== taskEpoch) return;
+						reopenPlace();
+					};
+				},
+				drawingStarted() {
+					setObjectsPanelCompact(projectIdOf(), true);
+				},
+				changed() {
+					publishObjectDraw(objectDraw);
+				}
+			});
+			publishObjectDraw(objectDraw);
 
 			/** One direct-manipulation mark on a selected native form; never a task. */
 			type FormMarkGesture = {
@@ -1793,6 +1825,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function attachPlaceCompletion(session: ScenePlacementSession): void {
 				const epoch = taskEpoch;					session.setPlacementCommittedListener((placedId) => {
 						if (placedId !== null) {
+							setObjectsPanelCompact(projectIdOf(), true);
+							// A placed model or saved copy is used up: the panel's shape is armed
+							// again, never a primitive the panel does not offer.
+							if (armedTile(projectIdOf()) === null) armTile(projectIdOf(), 'box');
 							// The model is a project resource now; no later Place task may
 							// silently install a second instance from the same approval.
 							clearArmedModel(services.stage.snapshot().acceptedRevision.projectId);
@@ -1818,6 +1854,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * session that first carried it.
 			 */
 			function applyPendingArm(session: ScenePlacementSession): void {
+				// An install replaces the session; the Sphere tile stays what is armed.
+				if (armedTile(projectIdOf()) === 'sphere') session.setPlacePrimitive('sphere');
 				if (session.armedModel() !== null) return;
 				const pending = peekArmedModel(services.stage.snapshot().acceptedRevision.projectId);
 				if (pending !== null) session.setArmedModel(pending);
@@ -1847,6 +1885,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					opening = true;
 					let opened = false;
 					try {
+						// A creation keeps the panel out of the way of what it just made.
+						setObjectsPanelCompact(projectIdOf(), true);
 						opened = stage.openContributedTask(SCENE_PLACE_TASK, 'scene').kind === 'opened';
 					} finally {
 						opening = false;
@@ -1864,7 +1904,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// completion, which selects the new entity and reopens this persistent task
 				// through the host's one install path. Re-read the surface either way, so a
 				// refused release withdraws any shown pose.
-				await session.commitPlace();
+				const outcome = await session.commitPlace();
+				if (outcome.kind === 'refused') session.reportPointerOutcome(outcome);
 				services.stage.notifySurfaceChange();
 			}
 
@@ -2015,21 +2056,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						planLayer: PAPER_LAYER.sceneFootprint, cssDistance
 					};
 				},
-				readings: [
-					{
-						id: 'shape',
-						label: 'Shape',
-						order: 20,
-						summary: 'Close an outline on the floor or an upright sheet, pull its depth and create a native form.',
-						begin: () => createShapeReadingSession(services),
-						view: ShapeReadingPalette
-					}
-				],
 				tasks: [
 					{
 						id: SCENE_PLACE_TASK,
 						taskKind: 'place-object',
-						label: 'Place object',
+						label: 'Objects',
 						targetRef: null,
 						order: 20
 					},
@@ -2052,9 +2083,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					{
 						id: SCENE_PLACE_TASK,
 						taskKind: 'place-object',
-						// R217.S10: Place object is the dock's Library key. Arming it opens
-						// the same task, so placement behaviour is unchanged.
-						label: 'Library',
+						// R217.S17A: Objects is the one place to create and insert an object.
+						label: 'Objects',
 						railFamily: 'place',
 						capability: 'scene',
 						home: 'dock',
@@ -2085,7 +2115,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						capability: 'scene',
 						order: 7
 					},
-					// Library and Head Find both read these entries: Import is a
+					// Objects and Head Find both read these entries: Import is a
 					// procedure invoked by name, never a permanent pointer tool.
 					{
 						id: SCENE_IMPORT_TASK,
@@ -2132,6 +2162,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (openTaskKind === null) {
 						return objectMarkPointer(intent, adapterContext) || formMarkPointer(intent, adapterContext);
 					}
+					if (drawnTile() !== null) return objectDraw.pointer(intent, adapterContext);
 					// Claim the surface once, on the press. Every later phase of this
 					// gesture reads the same session even if the viewport is re-evaluated.
 					if (intent.phase === 'down') gestureSurface = surfaceFor(adapterContext.evaluation);
@@ -2292,7 +2323,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * host's gesture-key path, not the contributed-task key path.
 				 */
 				keyIntent(intent: StageKeyboardIntent): boolean {
+					if (drawnTile() !== null && objectDraw.key(intent)) return true;
 					return objectMarkKey(intent) || formMarkKey(intent);
+				},
+				hoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					return drawnTile() !== null && objectDraw.hover(intent, adapterContext);
 				},
 				// Closing the task (Esc at the shell, replacement) uses the one cancel path.
 				selectionChanged() {
@@ -2313,6 +2348,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					objectMarkRefusal = null;
 					placementPointerRefusal = null;
 					dragOrigin = null;
+					objectDraw.cancel();
+					// A creation closes and reopens the task, in an order the host owns; only
+					// a close nothing reopened brings the full panel back next time.
+					{
+						const projectId = projectIdOf();
+						const stage = services.stage;
+						setTimeout(() => {
+							if (stage.session.task() === null) setObjectsPanelCompact(projectId, false);
+						}, 400);
+					}
 				// Cancel the session this task armed (Place), not whichever session
 				// another binding may have published.
 					const closing = taskSurface ?? gestureSurface;
@@ -2328,6 +2373,26 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					abortReopen = null;
 				},
 				candidatePreview(adapterContext): readonly StageCandidatePreview[] {
+					if (drawnTile() !== null) {
+						const drawn = objectDraw.candidatePreview(adapterContext);
+						if (drawn === null) return [];
+						const footprint = drawn.entity === null
+							? null
+							: sceneCandidatePaperPreview(
+								drawn.entity,
+								adapterContext.snapshot.domain.datumMeters,
+								undefined,
+								'subject'
+							);
+						return [{
+							id: 'scene-draw-footprint',
+							role: drawn.refused ? 'refused' : 'subject',
+							polygons: footprint?.polygons ?? [],
+							segments: drawn.segments,
+							labels: drawn.label === null ? [] : [drawn.label],
+							...(drawn.snap === null ? {} : { snap: { world: drawn.snap, name: 'Grid' } })
+						}];
+					}
 					if (
 						adapterContext.evaluation.settledReading !== 'plan' ||
 						adapterContext.evaluation.renderedReading !== 'plan'
@@ -2373,6 +2438,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// The captured candidate is shown through the existing overlay surface,
 				// so Plan and 3D present the same pose the planner would commit.
 				overlay(adapterContext) {
+					if (drawnTile() !== null) return objectDraw.overlay(adapterContext);
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate = surface?.session.candidate() ?? null;
 					if (candidate === null) {
@@ -2408,6 +2474,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const form = formMarkGhost();
 					const object = objectMarkGhost(adapterContext);
 					const marks: StageGhostMesh[] = [];
+					if (drawnTile() !== null) marks.push(...objectDraw.ghosts());
 					if (form !== null) marks.push(form);
 					if (object !== null) marks.push(object);
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
@@ -2540,7 +2607,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return {
 						summary:
 							task.kind === 'place-object'
-								? 'Place object'
+								? 'Objects'
 								: task.kind === SCENE_COMPOSE_TASK
 									? 'Compose'
 									: 'Import model',
@@ -2557,6 +2624,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					taskSurface = null;
 					abortReopen?.();
 					abortReopen = null;
+					objectDraw.cancel();
+					publishObjectDraw(null, objectDraw);
 					// Teardown cancels exactly what this binding published or held. Reading
 					// the registry's "current" entry would let an old binding cancel a
 					// newer replacement it never owned.

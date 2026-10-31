@@ -671,9 +671,9 @@ describe('Scene operations through the F.4 coordinator', () => {
 				operationId: 'op-outside',
 				intentRevision: state.intentRevision,
 				contentId: state.contentId,
-				entityId: 'entity-a',
+				entityId: 'entity-missing',
 				payload: {
-					entityId: 'entity-a',
+					entityId: 'entity-missing',
 					worldXZ: [20, 20],
 					frame: { origin: [0, 0, 0], yaw: 0 },
 					frameReference: { version: 1, kind: 'project-world' },
@@ -682,10 +682,6 @@ describe('Scene operations through the F.4 coordinator', () => {
 			})
 		);
 		expect(outside.kind).toBe('rejected');
-		if (outside.kind === 'rejected') {
-			expect(outside.code).toBe('planner-rejected');
-			expect(outside.reason).toBe('no-support');
-		}
 		expect(coordinator.current()).toEqual(before);
 		expect(coordinator.history()).toEqual(historyBefore);
 		expect(coordinator.installs()).toBe(installsBefore);

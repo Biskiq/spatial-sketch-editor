@@ -3,8 +3,8 @@
 	 * PLATE **bottom dock** (Production shell Round 2, D2/D8; R217.S10, D3).
 	 *
 	 * The dock is the one home for armable tools, in the owner-ruled order
-	 * **Select · Ink · Measure · Eraser | Library**. Select, Measure and Eraser are
-	 * the host's own keys; Ink and Library are adapter contributions that fill their
+	 * **Select · Ink · Measure · Eraser | Objects**. Select, Measure and Eraser are
+	 * the host's own keys; Ink and Objects are adapter contributions that fill their
 	 * slot with `home: 'dock'`. A key is icon-first (20 px, white on the forest
 	 * dock) with a tooltip naming it and its key; the armed key is ivory with a dark
 	 * icon. Pressing the armed key again collapses or re-opens its palette, and a

@@ -143,6 +143,44 @@ export type FloorSupportCandidate = {
 	label: string;
 };
 
+/** The stable choice identity of datum support; it can never equal a Room witness key. */
+export const DATUM_SUPPORT_ORDER_KEY = 'stage-datum';
+
+/**
+ * The horizontal datum of one compiled Layout, in project-world meters.
+ *
+ * Current wall-first Layout carries exactly one Floor, so the datum is its
+ * elevation. A compile with no Floor at all has nothing to measure against, which
+ * is why the fallback is the origin rather than a guess.
+ */
+export function layoutDatumElevation(geometry: { readonly floors: readonly { readonly elevation: number }[] }): number {
+	return geometry.floors[0]?.elevation ?? 0;
+}
+
+/**
+ * The support the explicit datum offers at one point (R217.S17A).
+ *
+ * The datum is authored, not compiled from a Room, so it has no witness. It is
+ * only ever offered where `queryFloorSupports` found no Room floor: a floor that
+ * covers a point always decides that point's elevation.
+ */
+export function datumSupportCandidate(input: {
+	readonly elevation: number;
+	readonly generationId: string;
+	readonly x: number;
+	readonly z: number;
+}): FloorSupportCandidate {
+	return {
+		queryPoint: [input.x, input.z],
+		elevation: input.elevation,
+		upNormal: [0, 1, 0],
+		generationId: input.generationId,
+		witnesses: [],
+		orderKey: DATUM_SUPPORT_ORDER_KEY,
+		label: 'Stage datum'
+	};
+}
+
 export type FloorSupportQueryResult =
 	| { kind: 'candidates'; candidates: readonly FloorSupportCandidate[] }
 	| { kind: 'none' }

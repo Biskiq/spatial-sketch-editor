@@ -3376,7 +3376,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return stageDockTools(facade);
 	});
 
-	/** R217.S10 — the dock's keys: Select · Ink · Measure · Eraser | Library. */
+	/** R217.S10 — the dock's keys: Select · Ink · Measure · Eraser | Objects. */
 	const dockKeys = $derived(stageDockKeys(dockTools));
 
 	/** The armed host tool, read from the one task the session holds. */
@@ -3831,7 +3831,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{/if}
 
 				{#if boot.status === 'empty' && (currentEnvelope?.units.layout.data.walls.length ?? 0) === 0 && (currentEnvelope?.units.layout.data.objects.length ?? 0) === 0 && (currentEnvelope?.units.scene.data.entities.length ?? 0) === 0}
-					<p class="stage-note" role="status">Empty workspace — draw with Ink, or use Find to choose the enclosed room starter.</p>
+					<p class="stage-note" role="status">Empty workspace — add from Objects, draw with Ink, or use Find to choose the enclosed room starter.</p>
 				{/if}
 
 				<!--
