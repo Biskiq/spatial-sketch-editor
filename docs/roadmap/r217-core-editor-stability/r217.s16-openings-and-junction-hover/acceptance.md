@@ -6,6 +6,8 @@
 [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 Implementation branch: `codex/r217-s16-opening-junction-hover`.
+Implementation commit: `334a38f4` (based on `b5a6fb1c`) · Pull request:
+[#237](https://github.com/Biskiq/spatial-sketch-editor/pull/237).
 
 ## Verification
 
