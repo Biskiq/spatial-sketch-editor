@@ -14,7 +14,6 @@
 	type MyObjectsComponent = Component<{
 		client?: FormLibraryClient;
 		armedCopy?: ArmedFormCopy | null;
-		hasRoomFloor?: boolean;
 		startOpen?: boolean;
 		showToggle?: boolean;
 		onArm: (copy: ArmedFormCopy) => boolean;
@@ -24,14 +23,12 @@
 	let {
 		client,
 		armedCopy = null,
-		hasRoomFloor = true,
 		onArm,
 		onClear
 	}: {
 		/** Injectable for the one-click wrapper test; production reads the API origin. */
 		client?: FormLibraryClient;
 		armedCopy?: ArmedFormCopy | null;
-		hasRoomFloor?: boolean;
 		onArm: (copy: ArmedFormCopy) => boolean;
 		onClear: () => void;
 	} = $props();
@@ -79,7 +76,7 @@
 	{#if open}
 		<div id="my-objects-lazy-panel">
 			{#if Section}
-				<Section {client} {armedCopy} {hasRoomFloor} {onArm} {onClear} startOpen showToggle={false} />
+				<Section {client} {armedCopy} {onArm} {onClear} startOpen showToggle={false} />
 			{:else if loadError}
 				<p class="loading" role="alert">{loadError}</p>
 				<button type="button" class="toggle" onclick={load}>Try again</button>

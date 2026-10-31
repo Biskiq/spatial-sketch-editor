@@ -755,13 +755,13 @@ test('shell: narrow reduced-motion layout, Find, contributed-task arbitration an
 
 		// The Library's own Scene contribution, not only the Layout dock's task:
 		// opening it must not clear the selected subject or leave Ink armed.
-		const libraryTask = page.locator('.contributed-item button.item-row', { hasText: 'Place object' }).first();
+		const libraryTask = page.locator('.contributed-item button.item-row', { hasText: 'Objects' }).first();
 		await expect(libraryTask).toBeVisible();
 		await libraryTask.click();
 		await expect(page.locator('[data-stage-instrument]')).toBeVisible();
 		await selectSubject(page, wallId);
 		await expect(page.locator(CARD)).toBeVisible();
-		await page.getByRole('button', { name: 'Close Place object' }).click();
+		await page.getByRole('button', { name: 'Close Objects' }).click();
 		await expect(page.locator('[data-dock-tool="layout-ink"]')).toHaveAttribute('aria-pressed', 'false');
 		rows.push(row('shell.library-task', 'active Library contribution and Card arbitration', 'passed', 'Scene Place object opened while the Wall stayed selected; closing it did not re-arm Ink', page, '900x700', true));
 

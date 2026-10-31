@@ -16,7 +16,7 @@ prerequisites were adjudicated; no P0–P2 finding remains.
   closeout; S09 closeout documentation gate: 2 files / 56 tests passed.
 - **Entry points:** implementation `apps/editor/src/lib/authoring/adapters/scene.adapter.ts`,
   `apps/editor/src/lib/authoring/adapters/scene/shape/form-size.ts`; regressions
-  `apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts`,
+  `apps/editor/tests/lib/authoring/shape-form-marks.test.ts`,
   `apps/editor/tests/lib/authoring/native-form-paper-agreement.test.ts`,
   `apps/editor/tests/lib/authoring/native-form-marks.test.ts`.
 - **Contract:** marks call the existing planner and measurement path; dimensions remain 0.001–100 m

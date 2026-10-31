@@ -144,7 +144,7 @@ type StageCandidatePreview = {
 - **3D ghost:** candidate meshes, nonpickable and ephemeral.
 - **Model ghost:** approved bounds, marked as a proxy, never guessed.
 - **Off a floor:** the refused state, with the Scene planner's reason.
-- **Placement:** Library primitives arm click placement with a live ghost. Typed X/Z stays as the precision path, defaulting to the visible target rather than world zero.
+- **Placement:** Objects shapes arm click placement with a live ghost. Typed X/Z stays as the precision path, defaulting to the visible target rather than world zero.
 
 **Selection.** See [Selection](#selection).
 
@@ -224,7 +224,7 @@ Order: Index toggle · Biskiq · serif project name · World / Experience · con
 - **Measured geometry.** The route publishes Index, Card, Sheet-lane and dock spans as CSS variables, replacing the fixed `.reserved-height`. **A layout change never moves the Camera.**
 - **Card during a gesture (D36).** While a gesture is live, the Card fades and takes no pointer events, returning on release. It holds its position through a refusal, and stays collapsed if the user collapsed it. It never expands because of a commit.
 - **Height Sheet.** Thin line with knob and semantic ticks. Value on focus, drag and touch. Heights, pins, found tops, side swap and keyboard input preserved. The pin hint appears only on first pin use and clears by itself.
-- **Ink palette.** Compact icons and modes in a single row above the dock, keeping typed X/Z, Finish, Backtrack, Cancel, Wall Box and Shape Line, Box, Round and Sketch. Parameters that need room disclose upward.
+- **Ink palette.** Compact icons and modes in a single row above the dock, keeping typed X/Z, Finish, Backtrack, Cancel and Wall Box. Shape is not in Ink (O10). Parameters that need room disclose upward.
 - **Notices.** `Nothing selectable there.` no longer appears on an ordinary empty click.
 - **Constrained widths** (1280, 1180, 820 px). Index starts collapsed and opens as a sheet with an explicit scrim that stops above the dock. Dock, palette and drafting controls stay usable.
 

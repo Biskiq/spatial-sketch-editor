@@ -28,6 +28,7 @@ import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core';
  */
 import {
 	hasBlockingLayoutIssues,
+	layoutDatumElevation,
 	measureWorkAsync,
 	p2311Measure,
 	type CompiledLayoutGeometry,
@@ -89,12 +90,10 @@ const UNIT_DOMAINS: readonly UnitDomain[] = ['layout', 'scene', 'camera', 'exper
 /**
  * The level datum of one compiled Layout, in project-world meters.
  *
- * Current wall-first Layout carries exactly one Floor, so the datum is its
- * elevation. A compile with no Floor at all is not admitted (it has nothing to
- * measure against), which is why the fallback is the origin rather than a guess.
+ * The Layout-owned rule, so the Stage and the Scene planners name one datum.
  */
 export function layoutDatumMeters(geometry: CompiledLayoutGeometry): number {
-	return geometry.floors[0]?.elevation ?? 0;
+	return layoutDatumElevation(geometry);
 }
 
 function compileGenerationOf(sourceContentId: string): string {

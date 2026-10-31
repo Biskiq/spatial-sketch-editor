@@ -108,7 +108,6 @@ afterEach(() => {
 
 async function mountPanel(options: {
 	client?: Client;
-	hasRoomFloor?: boolean;
 	armedCopy?: { itemId: string; item: FormLibraryPayload; contactMinY: number } | null;
 	onArm?: ReturnType<typeof vi.fn>;
 	onClear?: ReturnType<typeof vi.fn>;
@@ -125,7 +124,6 @@ async function mountPanel(options: {
 		target,
 		props: {
 			client: options.client ?? client(),
-			hasRoomFloor: options.hasRoomFloor ?? true,
 			armedCopy: options.armedCopy ?? null,
 			onArm,
 			onClear
@@ -297,12 +295,4 @@ describe('My Objects panel', () => {
 		expect(onArm).not.toHaveBeenCalled();
 	});
 
-	it('refuses Insert without a Room floor and says why', async () => {
-		const { target, onArm } = await mountPanel({ hasRoomFloor: false });
-		await open(target);
-		const insert = target.querySelector<HTMLButtonElement>('[data-my-objects-insert]')!;
-		expect(insert.disabled).toBe(true);
-		expect(target.textContent).toContain('No Room floor yet');
-		expect(onArm).not.toHaveBeenCalled();
-	});
 });

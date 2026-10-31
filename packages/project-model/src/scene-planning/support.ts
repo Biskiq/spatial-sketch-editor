@@ -8,6 +8,11 @@
  * - **No captured geometry, no mesh height.** A support query runs against
  *   compiled `room-floor` records, so a renderer hit's face Y cannot enter a
  *   committed pose (S01's planner has nowhere to put it).
+ * - **The datum is the support of last resort (R217.S17A).** Where no Room floor
+ *   covers a point, the Layout's explicit horizontal datum supports it, so object
+ *   creation never needs an enclosure. A Room floor always wins where it exists,
+ *   and the datum goes through the same selection: an operation that must keep
+ *   another resting elevation refuses rather than dropping to the datum.
  * - **The snapshot is the qualification.** The compile is a pure function of the
  *   accepted Layout, so the support generation identity is derived from the
  *   snapshot's own content identity (`sceneSupportGenerationId`). There is no
@@ -25,13 +30,19 @@ import {
 	FLOOR_SUPPORT_TOLERANCES,
 	chooseFloorSupport,
 	compileWallFirstLayoutGeometry,
+	datumSupportCandidate,
 	floorSupportSnapshotOf,
+	layoutDatumElevation,
 	queryFloorSupports,
 	type FloorSupportCandidate,
 	type FloorSupportQueryResult,
+	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
+/** A live draw preview plans on every pointer move; one accepted Layout compiles once. */
+const compiledBySource = new WeakMap<LayoutDocumentWallFirst, CompiledLayoutGeometry>();
+
 /** The compile/support generation of one accepted snapshot. */
 export function sceneSupportGenerationId(sourceContentId: string): string {
 	return `scene-support@${sourceContentId}`;
@@ -143,7 +154,7 @@ export function selectSceneSupport(input: {
 	if (eligible.length === 0) {
 		return {
 			kind: 'no-support',
-			message: `No compiled Room floor supports this point at ${requiredElevation === null ? 'any elevation' : `${requiredElevation} m`}.`,
+			message: `Nothing supports this point at ${requiredElevation === null ? 'any elevation' : `${requiredElevation} m`}; an object keeps its height when it moves.`,
 			availableElevations: elevationsOf(candidates)
 		};
 	}
@@ -184,14 +195,44 @@ export function resolveSceneSupport(input: {
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneSupportResolution {
 	const generationId = sceneSupportGenerationId(input.sourceContentId);
-	const compiled = compileWallFirstLayoutGeometry(input.layout);
-	const queried = queryFloorSupports(floorSupportSnapshotOf(compiled.geometry), {
+	let geometry = compiledBySource.get(input.layout);
+	if (geometry === undefined) {
+		geometry = compileWallFirstLayoutGeometry(input.layout).geometry;
+		compiledBySource.set(input.layout, geometry);
+	}
+	return resolveSceneSupportOnGeometry({ ...input, geometry, generationId });
+}
+
+/**
+ * The same resolution over an already compiled Layout. The Stage previews through
+ * this, so a shown pose and the planner's commit cannot disagree about support.
+ */
+export function resolveSceneSupportOnGeometry(input: {
+	readonly geometry: CompiledLayoutGeometry;
+	readonly generationId: string;
+	readonly point: LayoutVec2;
+	readonly requiredElevation: number | null;
+	readonly choice?: SceneSupportChoice | undefined;
+}): SceneSupportResolution {
+	const { geometry, generationId, point } = input;
+	const queried = queryFloorSupports(floorSupportSnapshotOf(geometry), {
 		generationId,
 		...(input.choice === undefined ? {} : { evidenceGenerationId: input.choice.generationId }),
-		x: input.point[0],
-		z: input.point[1]
+		x: point[0],
+		z: point[1]
 	});
-	return fromQuery(queried, generationId, input.requiredElevation, input.choice);
+	const withDatum: FloorSupportQueryResult = queried.kind === 'none'
+		? {
+			kind: 'candidates',
+			candidates: [datumSupportCandidate({
+				elevation: layoutDatumElevation(geometry),
+				generationId,
+				x: point[0],
+				z: point[1]
+			})]
+		}
+		: queried;
+	return fromQuery(withDatum, generationId, input.requiredElevation, input.choice);
 }
 
 function fromQuery(
@@ -201,12 +242,7 @@ function fromQuery(
 	choice: SceneSupportChoice | undefined
 ): SceneSupportResolution {
 	if (queried.kind === 'none') {
-		return {
-			kind: 'refused',
-			code: 'no-support',
-			message: 'No compiled Room floor supports this point.',
-			candidates: []
-		};
+		return { kind: 'refused', code: 'no-support', message: 'Nothing supports this point.', candidates: [] };
 	}
 	if (queried.kind === 'invalid-input') {
 		return {

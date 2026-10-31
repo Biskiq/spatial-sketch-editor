@@ -40,7 +40,8 @@ The Ink palette no longer covers the drawing, and the shell stays usable at 1280
 
 **Rules:**
 
-- Every Ink mode, typed path and Shape reading is retained.
+- Ink content is exactly Wall (Line, Box) and Opening, with typed X/Z, Finish, Backtrack and Cancel. Shape left Ink in S17A and lives in the Objects panel, whose full panel and compact row this slice must also fit.
+- S23 presents controls and adds none. It may not bring back an upright sheet, Flip, alignment, depth, Create, or Shape in Ink; `objects-panel-guard.test.ts` fails if it does. It depends on S17A.
 - Browser calibration owns icon choice and spacing.
 
 **Contracts this slice updates at cutover:**

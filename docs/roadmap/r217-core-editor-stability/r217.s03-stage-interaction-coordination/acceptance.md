@@ -24,14 +24,14 @@ and discards its candidate.
   `apps/editor/src/lib/authoring/stage/stage-session.ts`,
   `apps/editor/src/lib/authoring/stage/stage-interruption.ts`,
   `apps/editor/src/lib/authoring/adapters/scene.adapter.ts`,
-  `apps/editor/src/lib/authoring/adapters/scene/shape/reading.ts`,
+  `apps/editor/src/lib/authoring/adapters/scene/shape/draw-session.ts`,
   `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`;
   regressions `apps/editor/tests/lib/authoring/stage-pick.test.ts`,
   `apps/editor/tests/lib/authoring/stage-pick-differential.test.ts`,
   `apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts`,
   `apps/editor/tests/lib/authoring/stage-facade.test.ts`,
   `apps/editor/tests/lib/authoring/stage-interruption.test.ts`,
-  `apps/editor/tests/lib/authoring/shape-reading-adapter.test.ts`.
+  `apps/editor/tests/lib/authoring/shape-form-marks.test.ts`.
 - **Contract:** current interaction authorities and the cross-domain rule (finite forward 3D
   ray–surface hits outrank tolerance-only winners; Layout reports `depthMeters: null` when its finite
   pick surface is missed) are owned by

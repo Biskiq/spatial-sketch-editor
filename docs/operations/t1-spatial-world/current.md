@@ -1,9 +1,9 @@
 # T1 current work
 
 PHASE: R217 Core Editor Stability.
-ACTIVE: No implementation slice is active. R217.S17 shipped 2026-10-31 via [PR #239](https://github.com/Biskiq/spatial-sketch-editor/pull/239); its [closed plan](../../roadmap/r217-core-editor-stability/r217.s17-scene-and-form-manipulation/implementation-plan.md) and [acceptance stub](../../roadmap/r217-core-editor-stability/r217.s17-scene-and-form-manipulation/acceptance.md) route the evidence. S16 remains shipped via PR #237.
+ACTIVE: No implementation slice is active. R217.S17A (Objects entry point, datum placement) is the latest shipped slice.
 RESUME: no checkpoint is active.
 NEXT: R217.S18 is approved and next in the shared-file order; start it only under the campaign release and the normal runbook. S11 remains the final integration check after S25, not an earlier merge gate.
 BLOCKER: None for S17. S11 still owes the integrated journeys plus the manual coarse-pointer, native-touch and Safari rows; its schedule is unchanged.
 BOUNDARIES: One active implementation slice at a time. Camera pose/clip/basis stays T1-owned in `packages/camera-core/src/viewport.ts`; Wall and Junction outcomes stay in Layout planners. S17's landed Scene/form manipulation follows the approved upright planner boundary; no non-upright planner support was added.
-CARRY: S17's recorded UX gap — shape-creation simplification, hiding advanced working-plane controls, and Pen/wireframe visual polish — is separate owner-directed follow-up, not S17 scope. The tilted-form Size ghost remains unclaimed. T1 maintenance retains the one-frame lowerColumnHeight observation; S06 TD-15 owns module-scoped Height hint repetition; S06 FO-1–FO-5 and T1 deferred-retirement rows remain in their records; S03 real-browser multi-touch capture ordering remains an S11 manual-owed row. S04 carries the Opening swing representation gap and Shaded Plan restyle. S07 defers Wall height/thickness grips. S18 selection calibration, S19 grid clipping and S23 palette overhaul stay in their registered slices. S12–S16 carry no residual beyond S11 rows.
+CARRY: S17A residuals: built-in catalogue models are offered only in projects holding their asset resource, because nothing yet introduces that resource; Find-only Place plinth is unreviewed against Objects; `ink-readings-v1` has no contributor.

@@ -18,7 +18,7 @@ import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PlaneGeometry } from 'thre
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	type AuthoringIntent,
 	type SceneDocument,
@@ -51,6 +51,7 @@ import { sceneObjectMarkDescriptors } from '$lib/authoring/adapters/scene/object
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { catalogueModelDefinition } from '$lib/authoring/scene/object-definition-policy';
 import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
+import { armTile } from '$lib/authoring/adapters/scene/shape/armed-tile';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
 import { creatorModelDefinition, creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
@@ -67,6 +68,11 @@ import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 const ENTITY_ID = 'entity-scene-box';
 const PROJECT_ID = 'project-scene-editing';
+// These pin existing Place; a drawn tile is a separate route (shape-draw-session).
+beforeEach(() => {
+	armTile(PROJECT_ID, null);
+	armTile(FIXTURE_PROJECT_ID, null);
+});
 const BASELINE: Vec3 = [2, 0.5, 2];
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 
@@ -1681,6 +1687,9 @@ describe('Scene adapter registration', () => {
 
 		// A second pointer placement works without re-invoking the tool.
 		const second = cssOf(facade, [4.5, 0, 1.5]);
+		// A used arm returns to the Box tile; this pins the session's own second Place.
+		armTile(PROJECT_ID, null);
+		armTile(FIXTURE_PROJECT_ID, null);
 		facade.pointerIntent({ phase: 'down', css: second, evaluationId });
 		facade.pointerIntent({ phase: 'up', css: second, evaluationId });
 		await eventually(() => intents.length === 2);
@@ -1900,78 +1909,17 @@ describe('Scene adapter registration', () => {
 		expect(facade.session.task()).toBeNull();
 	});
 
-	it('shows an off-floor Place refusal at the pointer and writes nothing on release', async () => {
+	it('previews and commits a pointer Place on the datum beyond the Room floor', async () => {
 		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const offsetRect = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };
-		const { facade, session, evaluationId, intents } = await withSceneSurface(
-			undefined,
-			'scene-place',
-			project,
-			offsetRect
-		);
-		// Both points lie on the floor plane the pointer ray reaches; the outside
-		// press remains claimable so the creator can drag onto a supported Room floor.
-		const inside = stageCssOf(facade, [3, 0, 3]);
+		const { facade, session, evaluationId } = await withSceneSurface(undefined, 'scene-place', project, offsetRect);
 		const outside = stageCssOf(facade, [3.5, 0, 7.5]);
-
 		expect(facade.pointerIntent({ phase: 'down', css: outside, evaluationId }).claimed).toBe(true);
-		expect(session.candidate()).toBeNull();
-		expect(facade.ghosts()).toHaveLength(1);
-		expect(facade.ghosts()[0]?.treatment).toBe('refused');
-		expect(facade.overlays().find((marker) => marker.id === 'scene-candidate-refusal')?.css).toEqual(outside);
-		facade.pointerIntent({ phase: 'up', css: outside, evaluationId });
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(intents).toEqual([]);
-
-		// The point inside the Room floor replaces refusal with a committable pose.
-		expect(facade.pointerIntent({ phase: 'down', css: inside, evaluationId }).claimed).toBe(true);
-		expect(session.candidate()?.kind).toBe('place');
-		facade.pointerIntent({ phase: 'cancel', css: inside, evaluationId });
-	});
-
-	it('does not show a snapped pointer Place that lands off the compiled Room floor', async () => {
-		// A Room whose far wall sits at a non-integer bound, so a snap step can move an
-		// interior pointer point past the floor. Support must be resolved at the snapped
-		// point commit will use, not the raw pointer point.
-		const planned = planWallChain({
-			baseline: createEmptyWallFirstLayoutDocument(),
-			points: [
-				[0, 0],
-				[6.9, 0],
-				[6.9, 5.9],
-			[0, 5.9]
-		],
-		close: true,
-		capture: freshCapture(),
-		levelId: createEmptyWallFirstLayoutDocument().floor.id
-	});
-		if (planned.kind !== 'success') throw new Error('the snap fixture was refused');
-		const scene: SceneDocument = {
-			formatVersion: 1,
-			textures: [],
-			materials: [],
-			entities: [boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])],
-			navigationNodes: [],
-			connections: []
-		};
-		const project = await createUnitProject({
-			id: PROJECT_ID,
-			name: 'Snap floor',
-			layout: planned.document,
-			scene
-		});
-		const { facade, session, evaluationId } = await withSceneSurface(
-			undefined,
-			'scene-place',
-			project
-		);
-		// Raw x = 6.8 is inside the Room floor (max 6.9); the shared 0.5 m
-		// current minor snaps it to 7 m, outside support.
-		const raw = cssOf(facade, [6.8, 0, 3]);
-		expect(facade.pointerIntent({ phase: 'down', css: raw, evaluationId }).claimed).toBe(true);
-		expect(session.candidate()).toBeNull();
-		expect(facade.ghosts()[0]?.treatment).toBe('refused');
-		facade.pointerIntent({ phase: 'up', css: raw, evaluationId });
+		const shown = session.candidate();
+		expect(shown?.kind).toBe('place');
+		expect(shown?.position[1]).toBe(0.5);
+		expect(facade.ghosts()[0]?.treatment).not.toBe('refused');
+		facade.pointerIntent({ phase: 'cancel', css: outside, evaluationId });
 	});
 
 	it('publishes Move, Turn, the Scale disclosure and the Size ray it reveals', async () => {

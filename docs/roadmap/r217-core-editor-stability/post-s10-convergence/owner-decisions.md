@@ -131,6 +131,9 @@ The final pass settled these within the accepted rulings, each narrowing what wa
 - **No new snap geometry.** Parallel-Wall alignment is removed, and `extension-guide` stays unused because it has no candidates. A Wall body snaps by distance.
 - **S12 and S19 move to T1 ownership**, per the architecture contract.
 
+- **O10 (2026-10-31, S17A). Pen draws architecture; Objects creates objects.** The dock's Library key becomes **Objects**, the single place to create, find and insert objects: Box, Round, Free and Sphere, verified models, My Objects and Import. A click places a standard shape and a drag draws its size, with one object type and one edit behaviour. Shape leaves Ink. This amends wireframe R9 ("one Pen, no Object Pen").
+- **O11 (2026-10-31, S17A). Objects do not need a Room.** Where no compiled Room floor covers a point, the Layout's explicit horizontal datum supports it, including in a genuinely empty project. A Room floor still decides elevation where it covers. An operation that must keep another resting elevation refuses rather than moving vertically. This reverses D38 and the T2.P01 rule that a datum is not support.
+
 ## Contract conflicts
 
 | Contract | Says | Desired | Resolution |

@@ -85,12 +85,12 @@ Four planning labels split, because each either hid a consequential decision or 
 
 ### Shared-file order
 
-Run slices in this total order: **S12, S13, S14, S15, owner checkpoint, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25, S11.** Following it resolves every conflict below.
+Run slices in this total order: **S12, S13, S14, S15, owner checkpoint, S16, S17, S17A, S18, S19, S20, S21, S22, S23, S24, S25, S11.** Following it resolves every conflict below.
 
 | Shared file | Order |
 | --- | --- |
 | `layout.adapter.ts` | S13 → S14 → S15 → S16 → S21 |
-| `scene.adapter.ts` | S13 → S17 → S21 |
+| `scene.adapter.ts` | S13 → S17 → S17A → S21 |
 | `stage-facade.ts` | S14 → S16 → S21 |
 | `StageOverlay.svelte` | S14 → S17 |
 | `stage-grid.ts` | S13 → S14 → S19 |

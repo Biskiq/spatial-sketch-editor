@@ -752,7 +752,7 @@ describe('scene operation planners — poses and ownership', () => {
 
 describe('scene operation planners — support and refusals', () => {
 	it('refuses a destination without support at the resting elevation', async () => {
-		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 2.5, 2])]));
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'move-horizontal',
@@ -774,8 +774,8 @@ describe('scene operation planners — support and refusals', () => {
 		expect(result).toMatchObject({ kind: 'rejected', code: 'no-support' });
 	});
 
-	it('refuses a duplicate whose shifted contact leaves the supported floor', async () => {
-		const project = await projectWith(sceneWith([box('entity-corner', [6.6, 0.5, 5.6])]));
+	it('refuses a duplicate whose shifted contact leaves the supported elevation', async () => {
+		const project = await projectWith(sceneWith([box('entity-corner', [6.6, 2.5, 5.6])]));
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'duplicate-one',
@@ -790,6 +790,44 @@ describe('scene operation planners — support and refusals', () => {
 			})
 		);
 		expect(result).toMatchObject({ kind: 'rejected', code: 'no-support' });
+	});
+
+	it('moves and duplicates onto the datum beyond the Room at the same elevation', async () => {
+		const project = await projectWith(sceneWith([box('entity-a', [6.6, 0.5, 5.6])]));
+		const snapshot = await snapshotOf(project);
+		const moved = prepare(
+			'move-horizontal',
+			snapshot,
+			intent({
+				kind: 'move-horizontal',
+				operationId: 'op-move-datum',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: {
+					entityId: 'entity-a',
+					worldXZ: [20, 20],
+					frame: projectWorldFrame(),
+					frameReference: frameReference(),
+					contactMinY: -0.5
+				}
+			})
+		);
+		expect(moved.kind).toBe('prepared');
+		if (moved.kind !== 'prepared') return;
+		expect(moved.candidate.source.units.scene.data.entities[0]!.position).toEqual([20, 0.5, 20]);
+		const duplicated = prepare(
+			'duplicate-one',
+			snapshot,
+			intent({
+				kind: 'duplicate-one',
+				operationId: 'op-duplicate-datum',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: { entityId: 'entity-a', contactMinY: -0.5 },
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }]
+			})
+		);
+		expect(duplicated.kind).toBe('prepared');
 	});
 
 	it('refuses a stale or unknown captured support choice instead of re-choosing', async () => {
@@ -2142,5 +2180,17 @@ describe('scene operation planners — native forms', () => {
 				allowClusterCleanup: false
 			}).map((issue) => issue.code)
 		).toContain('record-scope-violation');
+	});
+});
+
+describe('scene support — the explicit datum (R217.S17A)', () => {
+	it('resolves the datum only where no Room floor covers the point', async () => {
+		const { resolveSceneSupport } = await import('@portfolio/project-model/scene-planning');
+		const { createEmptyWallFirstLayoutDocument } = await import('@portfolio/layout-core');
+		const empty = createEmptyWallFirstLayoutDocument();
+		empty.floor.elevation = 1.25;
+		const open = resolveSceneSupport({ layout: empty, sourceContentId: 'c', point: [9, 9], requiredElevation: null });
+		expect(open).toMatchObject({ kind: 'resolved', support: { elevation: 1.25, orderKey: 'stage-datum', witnesses: [] } });
+		expect(resolveSceneSupport({ layout: empty, sourceContentId: 'c', point: [9, 9], requiredElevation: 4 })).toMatchObject({ kind: 'refused', code: 'no-support' });
 	});
 });

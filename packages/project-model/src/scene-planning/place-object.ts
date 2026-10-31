@@ -28,7 +28,7 @@
  * query's code), then staleness (`stale-generation`). Snapshot/frame qualification
  * is checked with captured inputs; stale support query refusals keep their code.
  */
-import { FLOOR_SUPPORT_TOLERANCES, type FloorSupportCandidate, type LayoutVec2 } from '@portfolio/layout-core';
+import { DATUM_SUPPORT_ORDER_KEY, FLOOR_SUPPORT_TOLERANCES, type FloorSupportCandidate, type LayoutVec2 } from '@portfolio/layout-core';
 import { validateCameraFreeScenePayload } from '../units/validate';
 import { validateFrameReference, validateSnapshotIdentity, type DerivedSourceRef, type FrameReference, type SnapshotIdentity } from '../references';
 import { isSimplePlacementFootprint } from './footprint';
@@ -96,8 +96,9 @@ export type PlacementSupportEvidence = {
 	fragments: readonly DerivedSourceRef[];
 	witnesses: FloorSupportCandidate['witnesses'];
 	queryPoint: LayoutVec2;
-	floorId: string;
-	roomId: string;
+	/** Null on the datum, which no Room witnesses. */
+	floorId: string | null;
+	roomId: string | null;
 	elevation: number;
 	generationId: string;
 	orderKey: string;
@@ -158,7 +159,7 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 	if (input.support.kind === 'none') {
 		return refuse(
 			'no-support',
-			'No compiled Room floor supports this point, so nothing can rest on it.',
+			'Nothing supports this point, so nothing can rest on it.',
 			['no-support']
 		);
 	}
@@ -182,7 +183,7 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 		);
 	}
 
-	if (support.witnesses.length === 0) {
+	if (support.witnesses.length === 0 && support.orderKey !== DATUM_SUPPORT_ORDER_KEY) {
 		return refuse(
 			'invalid-value',
 			'A resolved floor support carries no compiled source witness, so its evidence is unqualified.',
@@ -271,8 +272,8 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 				})),
 				witnesses: support.witnesses.map(witness => ({ ...witness })),
 				queryPoint: [...support.queryPoint],
-				floorId: support.witnesses[0]!.floorId,
-				roomId: support.witnesses[0]!.roomId,
+				floorId: support.witnesses[0]?.floorId ?? null,
+				roomId: support.witnesses[0]?.roomId ?? null,
 				elevation: support.elevation,
 				generationId: support.generationId,
 				orderKey: support.orderKey,

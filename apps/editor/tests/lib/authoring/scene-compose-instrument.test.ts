@@ -8,7 +8,8 @@
  * the canonical selection moves to another entity rather than committing the
  * entity the panel no longer names.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { setObjectsPanelCompact } from '$lib/authoring/adapters/scene/shape/armed-tile';
 import { mount, tick, unmount } from 'svelte';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import {
@@ -119,7 +120,7 @@ const MODEL_SNAPSHOT = attachUnitStageSource(
 			},
 			resources: {
 				header: { formatVersion: 2, contentRevision: 'sha256-resources' },
-				data: { formatVersion: 2, resources: [MODEL_RESOURCE] }
+				data: { formatVersion: 2, resources: [MODEL_RESOURCE, { kind: 'asset', id: 'paris-salon-chair', unresolved: null }] }
 			}
 		}
 	} as unknown as ProjectEnvelope
@@ -238,6 +239,8 @@ async function mountCompose(selectedId: string, snapshot: unknown = SNAPSHOT): P
 }
 
 describe('Scene Compose — truthful capability and captured subject', () => {
+	beforeEach(() => setObjectsPanelCompact('project-compose', false));
+
 	it('restores the catalogue choice when Place remounts with its remembered model armed', async () => {
 		const first = composeSpies().session;
 		let firstModel: ReturnType<ScenePlacementSession['armedModel']> = null;
@@ -250,9 +253,7 @@ describe('Scene Compose — truthful capability and captured subject', () => {
 		const firstComponent = mount(SceneTransformInstrument, { target: firstTarget, props: { services: firstServices } });
 		cleanup = () => unmount(firstComponent);
 		await tick();
-		const firstChooser = firstTarget.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
-		firstChooser.value = 'catalogue:paris-salon-chair';
-		firstChooser.dispatchEvent(new Event('change', { bubbles: true }));
+		([...firstTarget.querySelectorAll<HTMLButtonElement>('.objects-models button')].find((b) => b.textContent?.includes('Salon Chair'))!).click();
 		await vi.waitFor(() => expect(firstModel?.definition.creationDefaults.kind).toBe('model'));
 		await unmount(firstComponent);
 		cleanup = null;
@@ -270,11 +271,9 @@ describe('Scene Compose — truthful capability and captured subject', () => {
 		cleanup = () => unmount(secondComponent);
 		await tick();
 		await vi.waitFor(() => expect(secondModel?.definition).toEqual(firstModel?.definition));
-		const secondChooser = secondTarget.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
-		expect(secondChooser.value).toBe('catalogue:paris-salon-chair');
+		expect(secondTarget.querySelector('.armed-name')?.textContent).toContain('Salon Chair');
 
-		secondChooser.value = 'native:box';
-		secondChooser.dispatchEvent(new Event('change', { bubbles: true }));
+		buttonNamed(secondTarget, 'Box').click();
 		await tick();
 		expect(secondModel).toBeNull();
 		expect(peekArmedModel('project-compose')).toBeNull();
@@ -303,16 +302,17 @@ describe('Scene Compose — truthful capability and captured subject', () => {
 		const component = mount(SceneTransformInstrument, { target, props: { services } });
 		cleanup = () => unmount(component);
 		await tick();
-		const chooser = target.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
-		chooser.value = 'catalogue:paris-salon-chair';
-		chooser.dispatchEvent(new Event('change', { bubbles: true }));
+		const chair = [...target.querySelectorAll<HTMLButtonElement>('.objects-models button')].find((b) => b.textContent?.includes('Salon Chair'))!;
+		chair.click();
+		await tick();
 		await vi.waitFor(() => expect(first.armedModel()?.definition.creationDefaults.kind).toBe('model'));
 		expect(peekArmedModel('project-compose')?.definition).toEqual(first.armedModel()?.definition);
 		evaluation = { ...EVALUATION, settledReading: 'plan' } as unknown as ViewportEvaluation;
 		publishSceneSurface(SNAPSHOT, { reading: sceneReadingKey(evaluation), session: second });
 		await vi.waitFor(() => expect(second.armedModel()?.definition).toEqual(first.armedModel()?.definition));
-		expect(chooser.value).toBe('catalogue:paris-salon-chair');
-		expect(target.textContent).toContain('is ready: click its floor position');
+		expect(target.textContent).toContain('is ready: click where it goes');
+		buttonNamed(target, 'All').click();
+		await tick();
 		buttonNamed(target, 'My Objects').click();
 		await vi.waitFor(() => expect(target.querySelector('[data-my-objects-insert]')).not.toBeNull());
 		target.querySelector<HTMLButtonElement>('[data-my-objects-insert]')!.click();
@@ -336,15 +336,14 @@ describe('Scene Compose — truthful capability and captured subject', () => {
 		const component = mount(SceneTransformInstrument, { target, props: { services } });
 		cleanup = () => unmount(component);
 		await tick();
-		const chooser = target.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
-		chooser.value = 'catalogue:paris-salon-chair';
-		chooser.dispatchEvent(new Event('change', { bubbles: true }));
+		const chair = [...target.querySelectorAll<HTMLButtonElement>('.objects-models button')].find((b) => b.textContent?.includes('Salon Chair'))!;
+		chair.click();
+		await tick();
 		if (replacement === 'unmount') {
 			await unmount(component);
 			cleanup = null;
 		} else {
-			chooser.value = 'native:box';
-			chooser.dispatchEvent(new Event('change', { bubbles: true }));
+			buttonNamed(target, 'Box').click();
 		}
 		resolveDefinition(definition);
 		await tick();
