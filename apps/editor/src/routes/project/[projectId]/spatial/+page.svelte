@@ -2537,6 +2537,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/* --- pointer and keyboard ---------------------------------------------- */
 
 	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' } | null = null;
+	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
+	let adapterMarkPress = false;
 	/**
 	 * The evaluation a claimed adapter press was measured in.
 	 *
@@ -2633,6 +2635,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					return;
 				}
 				adapterEvaluationId = pointerEvaluationId;
+				adapterMarkPress = handleId !== undefined;
 				drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 				return;
 			}
@@ -2853,6 +2856,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function endGesture(): void {
 		drag = null;
 		adapterEvaluationId = null;
+		adapterMarkPress = false;
 		session.gesture()?.release();
 	}
 
@@ -2902,11 +2906,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// produces no request, so the ordinary click still runs and keeps the
 			// selection; a real drag is longer than the click tolerance and the
 			// click's own distance check discards it.
-			if (task !== null) press.claim(event.pointerId);
+			if (task !== null || adapterMarkPress) press.claim(event.pointerId);
 			const stage = facade;
 			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			drag = null;
 			adapterEvaluationId = null;
+			adapterMarkPress = false;
 			if (stage !== null && id !== null) {
 				// After a reading change the lease is already gone: the press is cancelled
 				// rather than released, so no stale projection commits.

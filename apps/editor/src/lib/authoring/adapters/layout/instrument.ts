@@ -53,6 +53,7 @@ import {
 	type LayoutWritableFact,
 	type WallManipulationRequest
 } from './precision';
+import { wallRefusalWords } from './refusals';
 
 export type LayoutWriteOutcome =
 	| { readonly kind: 'installed' | 'unchanged' | 'no-op' }
@@ -407,7 +408,7 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 						levelId
 					})
 				);
-				if (outcome.kind === 'refused') errors.set(id, outcome.message);
+				if (outcome.kind === 'refused') errors.set(id, wallRefusalWords(outcome.code));
 				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
 				return outcome;
 			}

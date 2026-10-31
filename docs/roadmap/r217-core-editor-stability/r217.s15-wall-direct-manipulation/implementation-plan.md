@@ -33,13 +33,13 @@ A selected Wall can be dragged directly. Its body slides along its normal, its e
 **Decisions settled here:**
 
 - **Press routing.** In `pointerIntent`, when no mark was hit, the adapter calls `services.stage.resolvePick` with purpose `select`. It claims the press only if the winner is the selected Wall. This is the body-press rule S17 reuses. The route's press order does not change.
-- **Clicks.** `press.decide` already separates a click from a drag at `STAGE_CLICK_TOLERANCE_CSS_PX` (4 px). A release within tolerance produces no request and no commit, and the ordinary click runs.
+- **Clicks.** `press.decide` already separates a click from a drag at `STAGE_CLICK_TOLERANCE_CSS_PX` (4 px). A release within tolerance produces no request and no commit, and the ordinary click runs — except with Alt held, where the release commits the remembered pointer so a lift-off can turn snapping off without dragging.
 - **Pointer plane.** Every Wall drag uses the existing `pointerDatumPoint`, in Plan and 3D. A move whose ray misses the datum keeps the last preview; a press whose ray misses is not claimed.
 - **Normal lock.** `pointerWallRequest`'s move branch projects the delta on the normal of `WallFrame` and returns the same `kind: 'move'` request, so `planRigidWallMove` is unchanged.
 - **Junctions.** Start and end points get a new planner kind beside `LAYOUT_WALL_MOVE_KIND`, and `WallManipulationRequest` gains `{ kind: 'junction', junctionId, point }`, routed to `planExactJunctionMove`. `layout-wall-length` stays a length ray on the end point.
-- **Snap.** Junction: `orthogonal-guide` from the Wall's other end, then the 0.5 m grid. Body: the normal distance rounds to multiples of 0.5 m. Length: multiples of 0.5 m. Alt frees all three.
+- **Snap.** Junction: `orthogonal-guide` from the Wall's other end, then the 0.5 m grid. Body: the normal distance rounds to multiples of 0.5 m once the point leaves rest; at rest the restored distance is returned unchanged, and Alt held on release commits the remembered pointer without rounding. Length: multiples of 0.5 m. Alt frees all three.
 - **Curves.** If `wallFrame` returns null, nothing changes: no body claim and no new marks.
-- **Numeric entry.** A new numeric host gives X then Z on a point, moved by Tab. Body and two-way grip take one distance, positive in the current drag direction.
+- **Numeric entry.** A new numeric host gives X then Z on a point, Tab reaching each axis. Body and two-way grip take one signed distance, positive in the current drag direction and negative mirrored across the fixed edge. Enter commits only once every axis is filled; an empty axis keeps committing disabled.
 - **Refusals.** A small map turns planner codes into human sentences, with one generic fallback. Raw planner messages and ids no longer reach the Stage.
 
 **Files:**
@@ -47,8 +47,12 @@ A selected Wall can be dragged directly. Its body slides along its normal, its e
 - `apps/editor/src/lib/authoring/adapters/layout.adapter.ts` (`markDescriptors`, `wallMarkSpec`, `pointerIntent`)
 - `apps/editor/src/lib/authoring/adapters/layout/wall-gesture.ts`
 - `apps/editor/src/lib/authoring/adapters/layout/precision.ts`
+- `apps/editor/src/lib/authoring/adapters/layout/refusals.ts` (planner codes in human words)
+- `apps/editor/src/lib/authoring/adapters/layout/instrument.ts`
+- `apps/editor/src/lib/authoring/adapters/layout/LayoutCardFields.svelte`
+- `apps/editor/src/lib/authoring/layout/plan-numeric-entry.ts`
 - `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` (cursor only)
-- Tests: `layout-wall-manipulation.test.ts`, `spatial-route-gesture.test.ts`, `stage-handles.test.ts`
+- Tests: `layout-wall-manipulation.test.ts`, `layout-precision-adapter.test.ts`, `layout-candidate-preview.test.ts`, `layout-card-junction-fields.test.ts`, `spatial-route-gesture.test.ts`, `stage-handles.test.ts`
 
 **Rules:**
 
