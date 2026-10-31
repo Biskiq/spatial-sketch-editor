@@ -455,7 +455,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let openingCapture: ReturnType<typeof mintLayoutIdCapture> | null = null;
 			let openingCandidate: OpeningCandidate | null = null;
 			/** The snap the current Opening pointer named; never persisted. */
-			let openingSnapWinner: LayoutSnapWinner | null = null;
+
 			let openingPreview: OpeningPreview | null = null;
 			let openingNotice: string | null = null;
 			let openingCommitInFlight = false;
@@ -1103,13 +1103,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							: planOpeningCandidate(openingCandidate);
 			}
 
-			/** Set the candidate and publish its planner answer. */
-			function setOpeningCandidate(
-				next: OpeningCandidate | null,
-				snap: LayoutSnapWinner | null = null
-			): void {
+			/**
+			 * Set the candidate and publish its planner answer. New-Opening placement
+			 * is edge-positioned and deliberately unsnapped, so there is no placement
+			 * snap winner to carry here.
+			 */
+			function setOpeningCandidate(next: OpeningCandidate | null): void {
 				openingCandidate = next;
-				openingSnapWinner = next === null ? null : snap;
 				if (next === null) {
 					openingPreview = null;
 					return;
@@ -1121,7 +1121,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** Drop every Opening-reading transient; no document write. */
 			function clearOpeningState(): void {
 				openingCandidate = null;
-				openingSnapWinner = null;
 				openingPreview = null;
 				openingNotice = null;
 				openingCapture = null;
@@ -1380,8 +1379,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						publishInk();
 						return true;
 					}
-					const raw = openingCandidateAt(adapterContext, intent.css);
-					const candidate = raw;
+					const candidate = openingCandidateAt(adapterContext, intent.css);
 					if (candidate === null) {
 						openingNotice = 'Aim at a Wall face to place an Opening; the Stage is not a free host.';
 						setOpeningCandidate(null);
@@ -1421,8 +1419,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				}
 				if (intent.phase === 'move') {
-					const raw = openingCandidateAt(adapterContext, intent.css);
-					const candidate = raw;
+					const candidate = openingCandidateAt(adapterContext, intent.css);
 					if (candidate === null) {
 						openingNotice = 'Aim at a Wall face to place an Opening.';
 						setOpeningCandidate(null);
@@ -2629,11 +2626,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if ((gesture?.numeric ?? openingGesture?.numeric ?? null) !== null) return true;
 						const point = pointerDatumPoint(adapterContext, intent.css);
 						if (point === null) {
+							// The pointer left the datum plane: withdraw every candidate mark,
+							// not just the numeric request. A stale `previewDocument` would keep
+							// promising geometry the release can never commit.
 							if (gesture !== null) {
 								gesture.request = null;
 								gesture.preview = null;
+								gesture.previewDocument = null;
+								gesture.neighbours = [];
 							}
-							if (openingGesture !== null) openingGesture.request = null;
+							if (openingGesture !== null) {
+								openingGesture.request = null;
+								openingGesture.previewDocument = null;
+								openingGesture.snap = null;
+							}
 							services.stage.notifySurfaceChange();
 							return true;
 						}
@@ -3025,8 +3031,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								id: 'layout-candidate-opening',
 								role: 'subject',
 								geometry: built.paper.subject,
-								labels: ghost === null ? [] : [{ world: world(ghost[1]), text: `Width ${openingOptions.width.toFixed(3)} m` }],
-								snap: snapOf(openingSnapWinner)
+								labels: ghost === null ? [] : [{ world: world(ghost[1]), text: `Width ${openingOptions.width.toFixed(3)} m` }]
 							})];
 						}
 					}
@@ -3136,7 +3141,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const refusal =
 					openingNotice ?? (openingPreview?.kind === 'refused' ? openingPreview.message : null);
 				if (refusal !== null) {
-					mark('layout-opening-refusal', start ?? (openingPress === null ? null : openingPress.css), refusal);
+					// Overlay contributions are viewport CSS; only the no-ghost fallback
+					// carries a raw Stage-local pointer point, so translate that one here.
+					const press = openingPress;
+					const fallback =
+						press === null
+							? null
+							: ([press.css[0] + adapterContext.evaluation.rect.left, press.css[1] + adapterContext.evaluation.rect.top] as const);
+					mark('layout-opening-refusal', start ?? fallback, refusal);
 				}
 				return markers;
 			}
@@ -3188,16 +3200,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					});
 				});
 				if (inkHover !== null) {
-					markers.push({
-						id: 'layout-ink-target',
-						css: inkHover.css,
+					const targetCss = project(inkHover.point);
+					if (targetCss !== null) {
+						markers.push({
+							id: 'layout-ink-target',
+							css: targetCss,
 						label:
 							inkHover.target.kind === 'junction'
 								? `Deliberate Junction ${inkHover.target.junctionId}`
 								: inkHover.target.kind === 'host'
 									? `Deliberate Wall interior — splits ${inkHover.target.wallId}`
 									: 'Free point'
-					});
+						});
+					}
 				}
 				const pending = inkHover === null || boxMode ? null : pendingLegFacts(draft, inkHover.point);
 				const anchor = boxMode ? boxAnchor() : null;
@@ -3227,7 +3242,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							? points.length > 0
 								? project(points[points.length - 1]!.point)
 								: null
-							: inkHover.css;
+							: project(inkHover.point);
 					if (anchor !== null) {
 						markers.push({
 							id: 'layout-ink-refusal',

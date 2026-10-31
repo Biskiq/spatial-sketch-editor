@@ -283,6 +283,51 @@ describe('R217.S14 — candidate preview coordinates', () => {
 	});
 });
 
+describe('R217.S14 — overlay marker space', () => {
+	it('keeps the raw pointer target in Stage-local overlay space with a nonzero rect', async () => {
+		const mounted = await mount({ left: 96, top: 48, width: 1280, height: 720, devicePixelRatio: 1 });
+		settle(mounted.facade, mounted.rect);
+		armInk(mounted.facade);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const at = stageCss(mounted, [1, 1]);
+		expect(mounted.facade.hoverIntent({ phase: 'move', css: at, evaluationId })).toBe(true);
+		const marker = mounted.facade.overlays().find((entry) => entry.id === 'layout-ink-target');
+		expect(marker).toBeDefined();
+		const expected = stageCss(mounted, [1, 1]);
+		expect(marker!.css[0]).toBeCloseTo(expected[0], 5);
+		expect(marker!.css[1]).toBeCloseTo(expected[1], 5);
+	});
+
+	it('keeps the Opening refusal marker in the same Stage-local space', async () => {
+		const mounted = await mount({ left: 96, top: 48, width: 1280, height: 720, devicePixelRatio: 1 });
+		settle(mounted.facade, mounted.rect);
+		armInk(mounted.facade).setReading('opening');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const at = stageCss(mounted, [5.95, 0]);
+		expect(mounted.facade.hoverIntent({ phase: 'move', css: at, evaluationId })).toBe(true);
+		const marker = mounted.facade.overlays().find((entry) => entry.id === 'layout-opening-refusal');
+		expect(marker).toBeDefined();
+		const expected = stageCss(mounted, [5.95, 0]);
+		expect(marker!.css[0]).toBeCloseTo(expected[0], 5);
+		expect(marker!.css[1]).toBeCloseTo(expected[1], 5);
+	});
+
+	it('withdraws a live Wall candidate when the pointer leaves the datum plane', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, mounted.rect);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted, [3, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		expect(
+			mounted.facade.pointerIntent({ phase: 'move', css: [640, -400], evaluationId }).claimed
+		).toBe(true);
+		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-wall')).toBe(false);
+		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-neighbours')).toBe(false);
+	});
+});
+
 describe('R217.S14 — the preview is the candidate geometry', () => {
 	it('matches the compiled Paper drawing of the Wall move release commits', async () => {
 		const mounted = await mount();

@@ -91,6 +91,26 @@ function reversedHostGeometry(geometry: CompiledLayoutGeometry, wallId: string):
 	};
 }
 
+/**
+ * The same host with a room-qualified compiled `segmentId` on its Wall and
+ * Opening records. The authored id survives only as `wallKey`/`sourceId`, the
+ * shape a legacy room-scoped query uses.
+ */
+function roomScopedHostGeometry(geometry: CompiledLayoutGeometry, wallId: string): CompiledLayoutGeometry {
+	return {
+		...geometry,
+		queries: {
+			...geometry.queries,
+			spans: geometry.queries.spans.map((span) =>
+				(span.kind === 'wall' || span.kind === 'opening') &&
+				(span.wallKey === wallId || span.sourceId === wallId || span.segmentId === wallId)
+					? { ...span, segmentId: `room-scoped:${wallId}`, roomId: 'room-scoped' }
+					: span
+			)
+		}
+	};
+}
+
 describe('R217.S14 — Opening snap frame', () => {
 	it('measures the winner and its offset from the authored Wall, not a room-qualified reversed span', () => {
 		const { document, wallId } = fixture();
@@ -124,6 +144,31 @@ describe('R217.S14 — Opening snap frame', () => {
 		// The reversed frame's mirror of offset 1 is at length - 1; a mark there
 		// would not be the edge the committed offset targets.
 		expect(resolution.winner!.point[0]).not.toBeCloseTo(host.start[0] + (dx / length) * (length - 1), 3);
+	});
+
+	it('keeps the authored offset when the compiled records use a room-qualified segment id', () => {
+		const { document, wallId } = fixture();
+		const host = authoredSpan(document, wallId);
+		const geometry = compileWallFirstLayoutGeometry(document).geometry;
+
+		const resolution = resolveOpeningSlideSnap({
+			geometry: roomScopedHostGeometry(geometry, wallId),
+			hostSpan: host,
+			openingId: 'opening-being-dragged',
+			pointerCenterOffset: 1.6,
+			width: 1.2,
+			pixelsPerMeter: PIXELS_PER_METER,
+			drafting: DRAFTING
+		});
+
+		expect(resolution.winner).not.toBeNull();
+		expect(resolution.winner!.kind).toBe('opening-edge');
+		expect(resolution.offset).toBeCloseTo(1, 6);
+		const dx = host.end[0] - host.start[0];
+		const dz = host.end[1] - host.start[1];
+		const length = Math.hypot(dx, dz);
+		expect(resolution.winner!.point[0]).toBeCloseTo(host.start[0] + (dx / length) * 1, 6);
+		expect(resolution.winner!.point[1]).toBeCloseTo(host.start[1] + (dz / length) * 1, 6);
 	});
 });
 
