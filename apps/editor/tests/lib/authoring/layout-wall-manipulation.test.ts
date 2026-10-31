@@ -616,10 +616,14 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(settled).toBeDefined();
 		expect(settled!.segments).toHaveLength(0);
 		expect(settled!.labels[0]?.text).toContain('cross or meet another Wall');
-		// The next press retires it.
+		// The next press retires it; the cancelled gesture leaves nothing behind.
 		mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId });
-		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-refused-settled')).toBe(false);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: endCss, evaluationId });
+		expect(
+			mounted.facade
+				.candidatePreviews()
+				.some((candidate) => candidate.id === 'layout-candidate-wall-refused-settled')
+		).toBe(false);
 	});
 
 	it('translates the body rigidly from the pointer delta', async () => {
@@ -1330,7 +1334,8 @@ describe('R217.S15 — gesture numeric entry', () => {
 			.marks()
 			.filter((mark) => mark.adapterId === 'layout' && mark.role === 'edit');
 		expect(editMarks).toHaveLength(0);
-		const body = stageCss(mounted.facade, [3, 0]);
+		// The midpoint of the authored cubic lies on the curve, not on its chord.
+		const body = stageCss(mounted.facade, [3, 2.25]);
 		expect(
 			mounted.facade.pointerIntent({
 				phase: 'down',

@@ -2743,7 +2743,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		session.setHover({ reference });
 		const primary = primaryEntry(stage.selectionState());
 		// R217.S15 — the pick winner is the selected Wall itself, so a press here
-		// would be claimed as its body drag. An Opening over it is a different winner.
+		// would be claimed as its body drag. Select keeps the host Wall first until
+		// S16 makes an Opening over it its own winner.
 		hoverMove =
 			primary !== null &&
 			primary.reference.domain === 'layout' &&

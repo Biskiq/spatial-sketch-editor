@@ -450,7 +450,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * outlive the pointer-up so the tag can say why the change did not land.
 			 * The next press clears it; nothing is serialized.
 			 */
-			let settledRefusal: { readonly wallId: string; readonly point: LayoutVec2; readonly text: string } | null = null;
+			let settledRefusal: {
+				readonly wallId: string;
+				readonly contentRevision: string;
+				readonly point: LayoutVec2;
+				readonly text: string;
+			} | null = null;
 			/**
 			 * The contributed reading this binding is carrying, if any. Ink stays one
 			 * task: this session receives the same pointer/key phases the Wall reading
@@ -2575,7 +2580,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					clearPausedProposalsForSource(adapterContext.snapshot.domain.unitRevisions.layout);
 					refusal = null;
 					settledRefusal = null;
-						const selected = selectedWall(adapterContext);
+					const selected = selectedWall(adapterContext);
 						const selectedOpeningSubject = selected === null ? selectedOpening(adapterContext) : null;
 						if (selected === null && selectedOpeningSubject === null) return false;
 						const descriptors = markDescriptors(adapterContext);
@@ -3018,7 +3023,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const refusedPoint = gesture!.pointerPoint;
 					const refusedText = refusal;
 					if (pending === null && refusedText !== null && refusedPoint !== null) {
-						settledRefusal = { wallId, point: refusedPoint, text: refusedText };
+						settledRefusal = {
+							wallId,
+							contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
+							point: refusedPoint,
+							text: refusedText
+						};
 					}
 					endGesture();
 					if (pending !== null) void commit(pending, fixed, wallId);
@@ -3121,6 +3131,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				instrument(task) {
 					openTaskKind = task.kind;
+					settledRefusal = null;
 					if (task.kind === LAYOUT_INK_TASK) {
 						const contributed = contributedReading();
 						if (contributed !== null) ensureContributedSession();
@@ -3167,6 +3178,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				taskClosed() {
 					rearmEpoch += 1;
 					openTaskKind = null;
+					settledRefusal = null;
 					if (pausedProposal !== null) {
 						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
 					}
@@ -3231,6 +3243,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (
 					activeWall === null &&
 					settledRefusal !== null &&
+					settledRefusal.contentRevision === adapterContext.snapshot.domain.unitRevisions.layout &&
 					services.stage.session.task() === null &&
 					selectedWall(adapterContext)?.frame.wallId === settledRefusal.wallId
 				) {
