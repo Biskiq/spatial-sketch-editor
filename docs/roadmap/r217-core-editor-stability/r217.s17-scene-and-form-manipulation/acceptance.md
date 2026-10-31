@@ -1,6 +1,6 @@
 # R217.S17 — acceptance record: Scene and form manipulation
 
-**Slice:** R217.S17 · **Status:** implementation in review; no acceptance recorded · **Plan:**
+**Slice:** R217.S17 · **Status:** [implementation PR #239](https://github.com/Biskiq/spatial-sketch-editor/pull/239) in review; no acceptance recorded · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
 [R217](../README.md) · **Integration route:**
 [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
@@ -30,9 +30,10 @@ its creator model through the real import routes, using measured importer output
   Move, Turn, Size, Duplicate and Undo in Plan and 3D. The live approved-model footprint came from
   measured importer geometry. The disposable project was deleted after the checks.
 - `npm run test:arch` did not pass: 22 files / 23 passed and 193 / 194 tests passed. The failure
-  is the pre-existing broken S16 evidence link in
-  `docs/roadmap/r217-core-editor-stability/r217.s16-openings-and-junction-hover/acceptance.md`;
-  it points to an archived path that does not exist on the trusted base. No S16 file was changed.
+  is the pre-existing broken link in the S16 evidence pointer
+  (`docs/roadmap/r217-core-editor-stability/r217.s16-openings-and-junction-hover/evidence/CLOSED.md`);
+  its relative path resolves under `docs/roadmap/archive/`, while the manifest is under
+  `docs/archive/`. The pointer is unchanged from the trusted base; no S16 file was changed.
 
 ## Unresolved criteria and integration
 
