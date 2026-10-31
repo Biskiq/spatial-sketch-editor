@@ -38,6 +38,7 @@ export type PlanNumericFieldId =
 	| 'offset'
 	| 'dx'
 	| 'dz'
+	| 'distance'
 	| 'x'
 	| 'z'
 	| 'yaw';
@@ -117,6 +118,8 @@ export type PlanNumericHost =
 	| 'opening-resize'
 	/** Rigid Wall move: "ΔX / ΔZ". */
 	| 'wall-move'
+	/** R217.S15 body drag: one signed distance along the Wall's current normal. */
+	| 'wall-normal'
 	/** Junction move: "X/Z when numeric editing". */
 	| 'junction'
 	/** Curve bend point: "active point X/Z on focus". */
@@ -137,6 +140,7 @@ export const PLAN_NUMERIC_FIELD_SETS = {
 	'opening-slide': [meters('offset', 'Offset', 'nonnegative'), meters('width', 'Width', 'positive')],
 	'opening-resize': [meters('width', 'Width', 'positive'), meters('offset', 'Offset', 'nonnegative')],
 	'wall-move': [meters('dx', 'ΔX', 'signed'), meters('dz', 'ΔZ', 'signed')],
+	'wall-normal': [meters('distance', 'Distance', 'signed')],
 	junction: [meters('x', 'X', 'signed'), meters('z', 'Z', 'signed')],
 	'curve-point': [meters('x', 'X', 'signed'), meters('z', 'Z', 'signed')],
 	'object-transform': [
@@ -671,6 +675,19 @@ export function planNumericEntryTab(
 	const count = state.fields.length;
 	const fieldIndex = ((state.fieldIndex + step) % count + count) % count;
 	return focusField({ ...state, candidates }, fieldIndex);
+}
+
+/**
+ * One typed character.
+ *
+ * §7's first keystroke in a field **replaces** the displayed candidate; later
+ * keystrokes append. A field reached by Tab is untouched, so typing Z after Tab
+ * must not silently turn the seeded `0` into `0.001`.
+ */
+export function planNumericEntryKey(state: PlanNumericEntryState, key: string): PlanNumericEntryState {
+	const field = planNumericEntryField(state);
+	const text = state.typed[field.id] === undefined ? key : `${state.text}${key}`;
+	return planNumericEntryInput(state, text);
 }
 
 /** Typing. Validation is continuous, but never a commit by itself. */

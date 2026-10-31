@@ -419,6 +419,17 @@ above Paper's layer order. A Wall publishes start and end points, a free-end len
 two-way base move ray; it publishes no angle ring — Angle stays the Card's `layout-wall-angle`
 writer — and height and thickness grips remain deferred, with thickness a Card field.
 
+R217.S15 gives a selected Wall's owner a press on its own body: the binding resolves the pick once
+with purpose `select` and claims the press only when the winner is that Wall. Select still ranks a
+host Wall before an Opening until S16 changes that order, so an aperture press names the Wall here.
+End points move their shared Junction through `planExactJunctionMove`; the body projects the pointer
+delta on the Wall normal and submits the unchanged `planRigidWallMove`; the free-end ray keeps
+`planExactWallLength`. A press and release below the existing 4 CSS px click tolerance is a click,
+the body holds its restored distance until the pointer moves, and the Card carries Start/End X/Z
+under one disclosure through the same Junction planner. A refused release writes nothing; its
+reason stays at the last pointer until the next press. The cursor reads `move` over that selected
+body and `grab` elsewhere.
+
 A selected Scene catalogue model or primitive publishes the same vocabulary (R217.S08): a floor
 **Move** track through the footprint centre, a vertical **Turn** ring, a **Scale** point disclosure
 and the **Size** ray it reveals along the bounds diagonal. Move submits `place-on-floor` and keeps

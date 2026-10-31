@@ -121,12 +121,12 @@ function anotherWall(): { readonly id: string; readonly css: [number, number] } 
 }
 
 async function startDrag() {
-	// The Wall's free end is the length mark; the angle ring is gone (owner ruling
-	// 2026-10-29), so direct manipulation is length or move. Marks are already in
-	// Stage-local CSS; pointer intents add the accepted Stage rect.
-	const end = facade().marks().find((mark) => mark.id === 'layout-wall-end-mark');
-	if (end === undefined) throw new Error('the Wall end mark is not projected');
-	const press: [number, number] = [end.anchor[0] + RECT.left, end.anchor[1] + RECT.top];
+	// R217.S15 — the end point now moves the shared Junction; the measure ray is
+	// the outward grip at that end. Marks are already in Stage-local CSS; pointer
+	// intents add the accepted Stage rect.
+	const ray = facade().marks().find((mark) => mark.id === 'layout-wall-length');
+	if (ray?.tip === null || ray?.tip === undefined) throw new Error('the Wall length ray is not projected');
+	const press: [number, number] = [ray.tip[0] + RECT.left, ray.tip[1] + RECT.top];
 	pointer('pointerdown', press);
 	await frame();
 	expect(facade().session.gesture()).not.toBeNull();
@@ -1459,5 +1459,84 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		trackPointer('pointerup', pinY);
 		await frame();
 		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+	});
+});
+
+describe('R217.S15 — Stage cursor truth', () => {
+	it('shows move over the selected Wall and grab over anything else', async () => {
+		const body = projected([3.5, 0, -4]);
+		pointer('pointermove', body);
+		await frame();
+		expect(stage().dataset.cursor).toBe('move');
+
+		const other = anotherWall();
+		pointer('pointermove', other.css);
+		await frame();
+		expect(stage().dataset.cursor).toBe('grab');
+	});
+});
+
+describe('R217.S15 — Card Junction writer', () => {
+	it('refreshes the sibling fields from the accepted source after a Start X commit', async () => {
+		const details = target.querySelector<HTMLDetailsElement>('details[data-layout-junction-fields]');
+		expect(details).not.toBeNull();
+		details!.open = true;
+		const startX = details!.querySelector<HTMLInputElement>('input[data-field="startX"]')!;
+		const lengthBefore = target.querySelector<HTMLInputElement>('input[data-field="length"]')!.value;
+		const startZBefore = target.querySelector<HTMLInputElement>('input[data-field="startZ"]')!.value;
+		startX.value = '0.5';
+		startX.dispatchEvent(new Event('input', { bubbles: true }));
+		startX.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		await vi.waitFor(() => {
+			expect(target.querySelector<HTMLInputElement>('input[data-field="length"]')!.value).not.toBe(lengthBefore);
+		});
+		// The companion coordinate is the accepted one: committing X never rewrites Z.
+		expect(target.querySelector<HTMLInputElement>('input[data-field="startZ"]')!.value).toBe(startZBefore);
+	});
+});
+
+describe('R217.S15 — press routing', () => {
+	it('pans from an unselected Wall without selecting it or writing history', async () => {
+		const other = anotherWall();
+		const before = [...facade().camera.state().pose.target];
+		const beforeSelection = facade().selection()?.sourceId;
+		const historyBefore = history();
+		pointer('pointerdown', other.css);
+		pointer('pointermove', [other.css[0] + 60, other.css[1] + 40]);
+		await frame();
+		pointer('pointerup', [other.css[0] + 60, other.css[1] + 40]);
+		pointer('click', [other.css[0] + 60, other.css[1] + 40]);
+		await frame();
+		expect(facade().camera.state().pose.target).not.toEqual(before);
+		expect(facade().selection()?.sourceId).toBe(beforeSelection);
+		expect(history()).toEqual(historyBefore);
+	});
+
+	it('pans from the empty Stage without selecting or writing history', async () => {
+		const before = [...facade().camera.state().pose.target];
+		const beforeSelection = facade().selection()?.sourceId;
+		const historyBefore = history();
+		const start: [number, number] = [RECT.left + 40, RECT.bottom - 40];
+		pointer('pointerdown', start);
+		pointer('pointermove', [start[0] + 50, start[1] - 20]);
+		await frame();
+		pointer('pointerup', [start[0] + 50, start[1] - 20]);
+		pointer('click', [start[0] + 50, start[1] - 20]);
+		await frame();
+		expect(facade().camera.state().pose.target).not.toEqual(before);
+		expect(facade().selection()?.sourceId).toBe(beforeSelection);
+		expect(history()).toEqual(historyBefore);
+	});
+
+	it('keeps a click on the selected body a click, not a commit', async () => {
+		const body = projected([3.5, 0, -4]);
+		const historyBefore = history();
+		pointer('pointerdown', body);
+		pointer('pointerup', body);
+		pointer('click', body);
+		await frame();
+		expect(facade().selection()?.sourceId).toBe(wallId);
+		expect(history()).toEqual(historyBefore);
+		expect(facade().candidatePreviews()).toHaveLength(0);
 	});
 });

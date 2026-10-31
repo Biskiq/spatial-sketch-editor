@@ -260,6 +260,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let selection = $state<StageSelectionEntry | null>(null);
 	/** The hovered subject's echoed entry; never the primary selection. */
 	let hoverSelection = $state<StageSelectionEntry | null>(null);
+	/** R217.S15 — whether the pointer is over a draggable selected Wall body or grip. */
+	let hoverMove = $state(false);
 	let task = $state<StageTask | null>(null);
 	/** Instrument content contributed by the adapter whose task is open, if any. */
 	const contributedInstrument = $derived.by((): StageInstrumentContent | null => {
@@ -2535,6 +2537,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/* --- pointer and keyboard ---------------------------------------------- */
 
 	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' } | null = null;
+	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
+	let adapterMarkPress = false;
 	/**
 	 * The evaluation a claimed adapter press was measured in.
 	 *
@@ -2631,6 +2635,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					return;
 				}
 				adapterEvaluationId = pointerEvaluationId;
+				adapterMarkPress = handleId !== undefined;
 				drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 				return;
 			}
@@ -2670,6 +2675,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		facade?.setMarkHover(null);
 		session.setHover(null);
 		hoverSelection = null;
+		hoverMove = false;
 		if (drag?.mode !== 'host') {
 			measureTool?.hover(null);
 			eraserTool?.hover(null);
@@ -2692,6 +2698,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			else eraserTool?.hover(input);
 			session.setHover(null);
 			hoverSelection = null;
+			hoverMove = false;
 			refreshHostTools();
 			return;
 		}
@@ -2702,18 +2709,30 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			stage.setMarkHover({ adapterId: mark.adapterId, id: mark.id });
 			session.setHover(null);
 			hoverSelection = null;
+			// R217.S15 — a selected Wall's own grips are draggable; every other
+			// mark (an Opening's track, a disclosure) is not a body move.
+			const primary = primaryEntry(stage.selectionState());
+			hoverMove =
+				primary !== null &&
+				primary.reference.domain === 'layout' &&
+				primary.reference.subject.kind === 'wall' &&
+				mark.adapterId === 'layout' &&
+				mark.id.startsWith('layout-wall-') &&
+				mark.id !== 'layout-wall-preview';
 			return;
 		}
 		stage.setMarkHover(null);
 		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift })) {
 			session.setHover(null);
 			hoverSelection = null;
+			hoverMove = false;
 			return;
 		}
 		const result = stage.resolvePick({ css: sample.css, evaluationId: id, purpose: 'hover', tool: null });
 		if (result.kind !== 'resolved') {
 			session.setHover(null);
 			hoverSelection = null;
+			hoverMove = false;
 			return;
 		}
 		const hit = result.hit;
@@ -2723,6 +2742,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
 		session.setHover({ reference });
 		const primary = primaryEntry(stage.selectionState());
+		// R217.S15 — the pick winner is the selected Wall itself, so a press here
+		// would be claimed as its body drag. Select keeps the host Wall first until
+		// S16 makes an Opening over it its own winner.
+		hoverMove =
+			primary !== null &&
+			primary.reference.domain === 'layout' &&
+			primary.reference.subject.kind === 'wall' &&
+			hit.sourceKind === 'wall' &&
+			hit.sourceId === primary.reference.subject.id;
 		const nextHover =
 			primary !== null && sameReference(primary.reference, reference)
 				? null
@@ -2829,6 +2857,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function endGesture(): void {
 		drag = null;
 		adapterEvaluationId = null;
+		adapterMarkPress = false;
 		session.gesture()?.release();
 	}
 
@@ -2872,14 +2901,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (drag?.mode === 'adapter') {
-			// The press belonged to an adapter: its tap is the tool's own command
-			// (place a point, split a Wall, or a refusal) and never a selection, so the
-			// click that follows selects nothing at all.
-			press.claim(event.pointerId);
+			// A task's tap is its own command (place a point, split a Wall, or a
+			// refusal) and never a selection, so it claims the click. Direct
+			// manipulation with no task is different: a release within tolerance
+			// produces no request, so the ordinary click still runs and keeps the
+			// selection; a real drag is longer than the click tolerance and the
+			// click's own distance check discards it.
+			if (task !== null || adapterMarkPress) press.claim(event.pointerId);
 			const stage = facade;
 			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			drag = null;
 			adapterEvaluationId = null;
+			adapterMarkPress = false;
 			if (stage !== null && id !== null) {
 				// After a reading change the lease is already gone: the press is cancelled
 				// rather than released, so no stale projection commits.
@@ -3692,6 +3725,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				role="application"
 				tabindex="0"
 				data-paper={paperVisible ? 'true' : 'false'}
+				data-cursor={hoverMove ? 'move' : task?.kind === 'layout-ink' || armedHostTool !== null ? 'crosshair' : 'grab'}
 				aria-label="Spatial stage"
 				onpointerleave={clearHover}
 				onpointerdown={onPointerDown}
@@ -4041,7 +4075,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: #152c26;
 		outline: none;
 		touch-action: none;
+		cursor: grab;
 	}
+	.stage[data-cursor='move'] { cursor: move; }
+	.stage[data-cursor='crosshair'] { cursor: crosshair; }
+	.stage[data-cursor='grab'] { cursor: grab; }
 	/*
 		PLATE's 1 CSS px inset perimeter separates Paper from the chassis. It is an
 		inset shadow, not a border: the canvas rectangle, Camera aspect and pointer

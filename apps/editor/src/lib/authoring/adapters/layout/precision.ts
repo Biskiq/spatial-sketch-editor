@@ -45,6 +45,7 @@ import {
 	readLayoutIdCapture,
 	readLayoutWorkingLevel,
 	recordPreparedCowCandidate,
+	planExactJunctionMove,
 	planExactWallAngle,
 	planExactWallHeight,
 	planExactWallLength,
@@ -91,6 +92,8 @@ export const LAYOUT_WALL_LENGTH_KIND = 'layout-wall-length';
 export const LAYOUT_WALL_ANGLE_KIND = 'layout-wall-angle';
 /** T1.P01.S05 — rigid straight-Wall translation: both endpoints move by one delta. */
 export const LAYOUT_WALL_MOVE_KIND = 'layout-wall-move';
+/** R217.S15 — one shared Junction moves freely in X/Z; every incident Wall follows. */
+export const LAYOUT_JUNCTION_MOVE_KIND = 'layout-junction-move';
 
 /** The one opening field each edit owns; the UI never sends a combined patch. */
 export type LayoutOpeningField = 'offset' | 'width' | 'height' | 'sillHeight';
@@ -110,6 +113,7 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_LENGTH_KIND]: ['wallId', 'length', 'fixed'],
 	[LAYOUT_WALL_ANGLE_KIND]: ['wallId', 'angleRadians', 'fixed'],
 	[LAYOUT_WALL_MOVE_KIND]: ['wallId', 'deltaX', 'deltaZ'],
+	[LAYOUT_JUNCTION_MOVE_KIND]: ['wallId', 'junctionId', 'x', 'z'],
 	[LAYOUT_OPENING_MEASURE_KIND]: ['openingId', 'field', 'value'],
 	[LAYOUT_ENTITY_NAME_KIND]: ['subjectKind', 'subjectId', 'name'],
 	[LAYOUT_PLINTH_PLACE_KIND]: ['point', 'floorElevation', 'objectId']
@@ -462,6 +466,47 @@ function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
+/**
+ * R217.S15 — move one shared Junction freely. The selected Wall supplies the
+ * F.1 target and the payload names the Junction that must be one of its ends, so
+ * a stale gesture cannot move a Junction on another Wall. The retained planner
+ * owns the shared-Junction consequences and every identity/Opening/Room gate.
+ */
+function junctionMovePlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_JUNCTION_MOVE_KIND, (request) => {
+		const payload = readPayload(LAYOUT_JUNCTION_MOVE_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, junctionId, x, z } = payload.value;
+		if (!opaqueId(wallId) || !opaqueId(junctionId) || !finiteNumber(x) || !finiteNumber(z)) {
+			return rejected(
+				'invalid-value',
+				'A Junction move needs one wall id, one junction id and finite X and Z coordinates in meters.'
+			);
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const wall = request.snapshot.domain.source.units.layout.data.walls.find(
+			(candidate) => candidate.id === wallId
+		);
+		if (wall === undefined || (wall.startJunctionId !== junctionId && wall.endJunctionId !== junctionId)) {
+			return rejected('invalid-value', "The Junction must be one of the addressed Wall's endpoints.");
+		}
+		const plan = planExactJunctionMove(
+			request.snapshot.domain.source.units.layout.data,
+			junctionId,
+			[x, z]
+		);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return preparedLayoutCandidate(
+			request,
+			'layout-junction-move',
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['start', 'end']
+		);
+	});
+}
+
 function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_OPENING_MEASURE_KIND, (request) => {
 		const payload = readPayload(LAYOUT_OPENING_MEASURE_KIND, request.intent.payload);
@@ -629,6 +674,7 @@ export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		wallLengthPlanner(),
 		wallAnglePlanner(),
 		wallMovePlanner(),
+		junctionMovePlanner(),
 		openingMeasurePlanner(),
 		entityNamePlanner(),
 		plinthPlanner()
@@ -657,6 +703,9 @@ export function layoutSubjectOf(
  */
 export type WallFrame = {
 	readonly wallId: string;
+	/** The canonical Junctions the Wall's endpoints name. */
+	readonly startJunctionId: string;
+	readonly endJunctionId: string;
 	readonly start: LayoutVec2;
 	readonly end: LayoutVec2;
 	readonly direction: LayoutVec2;
@@ -676,6 +725,8 @@ export function wallFrame(document: LayoutDocumentWallFirst, wallId: string): Wa
 	if (!(length > 0)) return null;
 	return {
 		wallId,
+		startJunctionId: wall.startJunctionId,
+		endJunctionId: wall.endJunctionId,
 		start: [start[0], start[1]],
 		end: [end[0], end[1]],
 		direction: [dx / length, dz / length],
@@ -726,7 +777,8 @@ export function wallAngleFromPointer(
 export type WallManipulationRequest =
 	| { readonly kind: 'length'; readonly length: number }
 	| { readonly kind: 'angle'; readonly angleRadians: number }
-	| { readonly kind: 'move'; readonly delta: LayoutVec2 };
+	| { readonly kind: 'move'; readonly delta: LayoutVec2 }
+	| { readonly kind: 'junction'; readonly junctionId: string; readonly point: LayoutVec2 };
 
 /** One Wall reshaped by a shared-Junction edit, at its candidate endpoint. */
 export type WallNeighbourPreview = {
@@ -770,6 +822,7 @@ function movedJunctionIds(
 ): readonly string[] {
 	const wall = lookupIndexedWall(baseline, wallId);
 	if (wall === undefined) return [];
+	if (request.kind === 'junction') return [request.junctionId];
 	if (request.kind === 'move') return [wall.startJunctionId, wall.endJunctionId];
 	return [fixed === 'start' ? wall.endJunctionId : wall.startJunctionId];
 }
@@ -826,6 +879,8 @@ export function planWallManipulation(
 			plan = planExactWallLength(baseline, { wallId, length: request.length, fixedEndpoint: fixed });
 		} else if (request.kind === 'angle') {
 			plan = planExactWallAngle(baseline, { wallId, angle: request.angleRadians, fixedEndpoint: fixed });
+		} else if (request.kind === 'junction') {
+			plan = planExactJunctionMove(baseline, request.junctionId, request.point);
 		} else {
 			plan = planRigidWallMove(baseline, wallId, request.delta);
 		}
@@ -900,6 +955,18 @@ export function wallManipulationIntent(input: {
 			...base,
 			kind: LAYOUT_WALL_LENGTH_KIND,
 			payload: { wallId: input.wallId, length: input.request.length, fixed: input.fixed }
+		});
+	}
+	if (input.request.kind === 'junction') {
+		return buildLayoutIntent({
+			...base,
+			kind: LAYOUT_JUNCTION_MOVE_KIND,
+			payload: {
+				wallId: input.wallId,
+				junctionId: input.request.junctionId,
+				x: input.request.point[0],
+				z: input.request.point[1]
+			}
 		});
 	}
 	if (input.request.kind === 'angle') {
@@ -1003,7 +1070,12 @@ export function layoutWritableFacts(
 			{ id: 'length', label: 'Length', value: frame.length, unit: 'm' },
 			{ id: 'angle', label: 'Angle', value: (frame.angleRadians * 180) / Math.PI, unit: 'deg' },
 			{ id: 'deltaX', label: 'Move ΔX', value: 0, unit: 'm' },
-			{ id: 'deltaZ', label: 'Move ΔZ', value: 0, unit: 'm' }
+			{ id: 'deltaZ', label: 'Move ΔZ', value: 0, unit: 'm' },
+			// R217.S15 — the non-pointer path for the same shared-Junction planner.
+			{ id: 'startX', label: 'Start X', value: frame.start[0], unit: 'm' },
+			{ id: 'startZ', label: 'Start Z', value: frame.start[1], unit: 'm' },
+			{ id: 'endX', label: 'End X', value: frame.end[0], unit: 'm' },
+			{ id: 'endZ', label: 'End Z', value: frame.end[1], unit: 'm' }
 		];
 	}
 	if (subject.kind === 'opening') {

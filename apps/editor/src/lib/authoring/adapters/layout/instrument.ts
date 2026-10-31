@@ -47,11 +47,13 @@ import {
 	layoutWritableFacts,
 	parseMeasureInput,
 	parsePlacementXZ,
+	wallFrame,
 	wallManipulationIntent,
 	type LayoutSubject,
 	type LayoutWritableFact,
 	type WallManipulationRequest
 } from './precision';
+import { wallRefusalWords } from './refusals';
 
 export type LayoutWriteOutcome =
 	| { readonly kind: 'installed' | 'unchanged' | 'no-op' }
@@ -363,6 +365,50 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 					})
 				);
 				if (outcome.kind === 'refused') errors.set(id, outcome.message);
+				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
+				return outcome;
+			}
+			// R217.S15 — the Card's disclosed Start/End X/Z use the same shared-Junction
+			// planner as the Stage's endpoint drag. The companion coordinate is the
+			// accepted one, so committing X never silently rewrites Z.
+			if (
+				options.subject.kind === 'wall' &&
+				(id === 'startX' || id === 'startZ' || id === 'endX' || id === 'endZ')
+			) {
+				const frame = wallFrame(options.document, options.subject.id);
+				if (frame === null) {
+					const reason = 'A curved Wall has no exact Junction X/Z writer.';
+					errors.set(id, reason);
+					return { kind: 'refused', code: 'unavailable', message: reason };
+				}
+				const start = id.startsWith('start');
+				const companion = id === 'startX' || id === 'endX' ? (start ? 'startZ' : 'endZ') : start ? 'startX' : 'endX';
+				const other = Number(accepted.get(companion));
+				if (!Number.isFinite(other)) {
+					const reason = 'The other coordinate is not a finite number.';
+					errors.set(id, reason);
+					return { kind: 'invalid', code: 'malformed', message: reason };
+				}
+				const point: LayoutVec2 = id === 'startX' || id === 'endX'
+					? [parsed.value, other]
+					: [other, parsed.value];
+				const outcome = await submit(
+					wallManipulationIntent({
+						request: {
+							kind: 'junction',
+							junctionId: start ? frame.startJunctionId : frame.endJunctionId,
+							point
+						},
+						wallId: options.subject.id,
+						fixed: fixedEndpoint,
+						operationId: mint(),
+						projectId: options.projectId,
+						revisionId: options.port.acceptedRevision().revisionId,
+						contentRevision: options.contentRevision,
+						levelId
+					})
+				);
+				if (outcome.kind === 'refused') errors.set(id, wallRefusalWords(outcome.code));
 				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
 				return outcome;
 			}
