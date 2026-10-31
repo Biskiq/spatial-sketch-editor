@@ -141,6 +141,8 @@ export type SceneCandidate = {
 	readonly snappedStep: number | null;
 	/** A creator model's confirmed footprint, so its ghost is its own extent. */
 	readonly footprint?: { readonly width: number; readonly depth: number };
+	/** The creator model resource key for the candidate-only Plan footprint. */
+	readonly modelAssetId?: string;
 	/** A My Objects copy's authored source, so the ghost is its own body. */
 	readonly form?: SceneFormSource;
 };
@@ -902,7 +904,10 @@ export function createSceneSession(input: {
 			yaw: 0,
 			scale: 1,
 			snappedStep: step,
-			footprint: footprintOf(model.definition)
+			footprint: footprintOf(model.definition),
+			...(model.definition.creationDefaults.kind === 'model'
+				? { modelAssetId: model.definition.creationDefaults.assetId }
+				: {})
 		};
 		candidate = next;
 		candidateModel = model;

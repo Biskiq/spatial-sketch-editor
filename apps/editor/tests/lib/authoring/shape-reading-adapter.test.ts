@@ -561,23 +561,32 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(mounted.host.history()).toEqual(history);
 	});
 
-	it('separates the Plan Move grip from the Width ray through the real host', async () => {
+	it.each(['plan', '3d'] as const)('separates the %s Move grip from the Width ray through the real host', async (reading) => {
 		const mounted = await mount();
 		await createFloorForm(mounted);
-		settleReading(mounted.facade, 'plan');
+		settleReading(mounted.facade, reading);
 		if (!mounted.facade.marks().some((mark) => mark.id === SCENE_FORM_MARK.width)) {
 			mounted.facade.activateDisclosure(SCENE_FORM_MARK.scalePoint);
 		}
 		const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
 		const width = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.width)!;
+		const scale = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.scalePoint)!;
+		const widthMidpoint = [
+			(width.anchor[0] + width.tip![0]) / 2,
+			(width.anchor[1] + width.tip![1]) / 2
+		] as const;
 		expect(move.descriptor.screen?.offset).not.toEqual([0, 0]);
 		expect(width.descriptor.screen).toBeUndefined();
-		expect(hitStageMark(mounted.facade.marks(), { css: width.tip!, coarse: true })?.id).toBe(
+		expect(hitStageMark(mounted.facade.marks(), { css: scale.anchor, coarse: false })?.id).toBe(
+			SCENE_FORM_MARK.scalePoint
+		);
+		expect(hitStageMark(mounted.facade.marks(), { css: widthMidpoint, coarse: false })?.id).toBe(
 			SCENE_FORM_MARK.width
 		);
-		expect(hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: true })?.id).toBe(
+		expect(hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: false })?.id).toBe(
 			SCENE_FORM_MARK.move
 		);
+		mounted.facade.dispose();
 	});
 
 	it('preserves the Move press offset for stationary and small drags at several yaws', async () => {

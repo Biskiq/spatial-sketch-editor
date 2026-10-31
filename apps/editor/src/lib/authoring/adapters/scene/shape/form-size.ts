@@ -214,14 +214,15 @@ export type FormMarkScreenHeight = {
 };
 
 /**
- * Plan's separation offset for the Move grip.
+ * Separation offset for the Move grip.
  *
- * Move's contact anchor and the Width ray's centre project to one point when
- * Plan hides world Y. Offset Move perpendicular to its own projected axis and
- * away from the Depth ray: a fixed downward offset would land back on the
- * ray when the form is turned a quarter turn. The sign is chosen so yaw 0 keeps
- * the existing downward grip. The offset changes drawing and hit area only; the
- * gesture still drives the form's real floor position.
+ * Move's contact anchor and the Width ray's centre share an origin and axis for
+ * upright forms, so their hit areas overlap in both Plan and 3D. Offset Move
+ * perpendicular to its own projected axis and away from the Depth ray: a fixed
+ * downward offset would land back on the ray when the form is turned a quarter
+ * turn. The sign is chosen so yaw 0 keeps the existing downward grip. The offset
+ * changes drawing and hit area only; the gesture still drives the form's real
+ * floor position.
  */
 export function formMoveScreenOffset(input: {
 	readonly entity: SceneFormEntity;

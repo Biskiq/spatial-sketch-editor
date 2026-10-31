@@ -14,12 +14,16 @@
 	let {
 		form,
 		position,
-		yaw
+		yaw,
+		treatment = 'subject'
 	}: {
 		form: SceneFormSource;
 		position: readonly [number, number, number];
 		yaw: number;
+		treatment?: 'subject' | 'proxy' | 'refused';
 	} = $props();
+
+	function ignoreRaycast(): void {}
 
 	let leased: { readonly key: string; readonly geometry: ReturnType<typeof buildFormGeometry> } | null = null;
 	/** Threlte takes a mutable tuple; the ghost contract stays readonly. */
@@ -44,7 +48,12 @@
 </script>
 
 {#if geometry}
-	<T.Mesh {geometry} position={at} rotation={[0, yaw, 0]} renderOrder={2}>
-		<T.MeshStandardMaterial color={0xc9a9ff} transparent opacity={0.38} depthWrite={false} />
+	<T.Mesh {geometry} position={at} rotation={[0, yaw, 0]} renderOrder={2} raycast={ignoreRaycast}>
+		<T.MeshStandardMaterial
+			color={treatment === 'refused' ? 0xe27666 : 0xc9a9ff}
+			transparent
+			opacity={treatment === 'proxy' ? 0.17 : treatment === 'refused' ? 0.23 : 0.38}
+			depthWrite={false}
+		/>
 	</T.Mesh>
 {/if}

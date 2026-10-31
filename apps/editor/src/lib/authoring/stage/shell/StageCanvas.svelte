@@ -41,6 +41,8 @@ import StageGrid from './StageGrid.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import type { GridRect } from '../stage-grid';
 
+	function ignoreRaycast(): void {}
+
 	let {
 		geometry,
 		sourceContentId,
@@ -290,20 +292,34 @@ import StageGrid from './StageGrid.svelte';
 		and depth-write-free so the accepted body stays readable underneath. They are
 		one more child of the same Canvas — never a second renderer or scene.
 	-->
-	{#each ghosts as ghost (ghost.id)}
-		{#if ghost.shape.kind === 'form'}
-			<StageFormGhost form={ghost.shape.form} position={ghost.center} yaw={ghost.yaw} />
-		{:else}
-			<T.Mesh position={ghost.center} rotation={[0, ghost.yaw, 0]} renderOrder={2}>
-				{#if ghost.shape.kind === 'box'}
-					<T.BoxGeometry args={ghost.shape.size} />
-				{:else if ghost.shape.kind === 'cylinder'}
-					<T.CylinderGeometry args={[ghost.shape.radius, ghost.shape.radius, ghost.shape.height, 24]} />
-				{:else}
-					<T.SphereGeometry args={[ghost.shape.radius, 24, 16]} />
-				{/if}
-				<T.MeshStandardMaterial color={0xc9a9ff} transparent opacity={0.38} depthWrite={false} />
-			</T.Mesh>
-		{/if}
-	{/each}
+	{#if !paperVisible}
+		{#each ghosts as ghost (ghost.id)}
+			{@const ghostColor = ghost.treatment === 'refused' ? 0xe27666 : 0xc9a9ff}
+			{@const ghostOpacity = ghost.treatment === 'proxy' ? 0.17 : ghost.treatment === 'refused' ? 0.23 : 0.38}
+			{#if ghost.shape.kind === 'form'}
+				<StageFormGhost
+					form={ghost.shape.form}
+					position={ghost.center}
+					yaw={ghost.yaw}
+					treatment={ghost.treatment}
+				/>
+			{:else}
+				<T.Mesh
+					position={ghost.center}
+					rotation={[0, ghost.yaw, 0]}
+					renderOrder={2}
+					raycast={ignoreRaycast}
+				>
+					{#if ghost.shape.kind === 'box'}
+						<T.BoxGeometry args={ghost.shape.size} />
+					{:else if ghost.shape.kind === 'cylinder'}
+						<T.CylinderGeometry args={[ghost.shape.radius, ghost.shape.radius, ghost.shape.height, 24]} />
+					{:else}
+						<T.SphereGeometry args={[ghost.shape.radius, 24, 16]} />
+					{/if}
+					<T.MeshStandardMaterial color={ghostColor} transparent opacity={ghostOpacity} depthWrite={false} />
+				</T.Mesh>
+			{/if}
+		{/each}
+	{/if}
 </Canvas>

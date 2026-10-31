@@ -28,6 +28,7 @@ import type {
 	StageAdapterContext,
 	StageCardFact,
 	StageCardSubject,
+	StageCandidatePreview,
 	StageGhostMesh,
 	StageDomainPick,
 	StageKeyboardIntent,
@@ -46,6 +47,7 @@ import type { SceneFormEntity } from '$lib/content/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import {
 	NATIVE_PLACEMENT_PRIMITIVES,
+	NATIVE_PLACEMENT_DIMENSIONS,
 	nativePlacementDefinition
 } from '$lib/authoring/scene/object-definition-policy';
 import {
@@ -62,7 +64,7 @@ import {
 	type SceneSupportChoice
 } from '@portfolio/project-model/scene-planning';
 
-import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
+import { buildPlanSceneFootprintProjection, planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';
 import { PAPER_LAYER } from '$lib/authoring/stage/paper-plan';
 import FormCardFields from './scene/FormCardFieldsLazy.svelte';
@@ -249,6 +251,117 @@ function pointerFloorSupport(
 	);
 }
 
+/** The pointer ray's datum-plane point, even when a Room floor refuses it. */
+function pointerDatumPoint(
+	context: StageAdapterContext,
+	css: readonly [number, number]
+): Vec3 | null {
+	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
+	if (ray === null || Math.abs(ray.direction[1]) < 1e-8) return null;
+	const distance = (context.snapshot.domain.datumMeters - ray.origin[1]) / ray.direction[1];
+	if (!Number.isFinite(distance) || distance < 0) return null;
+	const point: Vec3 = [
+		ray.origin[0] + ray.direction[0] * distance,
+		context.snapshot.domain.datumMeters,
+		ray.origin[2] + ray.direction[2] * distance
+	];
+	return point.every(Number.isFinite) ? point : null;
+}
+
+/** A Scene entity at the exact pose a candidate would install. */
+function sceneEntityAtCandidate(
+	candidate: SceneCandidate,
+	acceptedEntities: readonly SceneEntity[]
+): SceneEntity | null {
+	if (candidate.entityId !== null) {
+		const accepted = acceptedEntities.find((entity) => entity.id === candidate.entityId);
+		if (accepted === undefined) return null;
+		if (accepted.kind === 'form') {
+			return {
+				...accepted,
+				position: [...candidate.position] as Vec3,
+				rotation: [...candidate.rotation] as Vec3,
+				...(candidate.form === undefined ? {} : { form: candidate.form })
+			};
+		}
+		return {
+			...accepted,
+			position: [...candidate.position] as Vec3,
+			rotation: [...candidate.rotation] as Vec3,
+			scale: candidate.scale
+		};
+	}
+	if (candidate.form !== undefined) {
+		return {
+			kind: 'form',
+			id: 'scene-candidate-form',
+			name: 'Candidate form',
+			position: [...candidate.position] as Vec3,
+			rotation: [...candidate.rotation] as Vec3,
+			materialId: 'plaster-warm',
+			castShadow: true,
+			receiveShadow: true,
+			form: candidate.form
+		};
+	}
+	if (candidate.primitive !== null) {
+		const base = {
+			kind: 'primitive' as const,
+			id: 'scene-candidate-primitive',
+			name: 'Candidate object',
+			materialId: 'plaster-warm' as const,
+			castShadow: true,
+			receiveShadow: true,
+			position: [...candidate.position] as Vec3,
+			rotation: [...candidate.rotation] as Vec3
+		};
+		switch (candidate.primitive) {
+			case 'box':
+				return { ...base, primitive: 'box', dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.box } };
+			case 'cylinder':
+				return { ...base, primitive: 'cylinder', dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.cylinder } };
+			case 'sphere':
+				return { ...base, primitive: 'sphere', dimensions: { ...NATIVE_PLACEMENT_DIMENSIONS.sphere } };
+		}
+	}
+	if (candidate.modelAssetId !== undefined && candidate.footprint !== undefined) {
+		return {
+			kind: 'model',
+			id: 'scene-candidate-model',
+			name: 'Candidate model',
+			assetId: candidate.modelAssetId,
+			fallback: 'generic',
+			position: [...candidate.position] as Vec3,
+			rotation: [...candidate.rotation] as Vec3
+		};
+	}
+	return null;
+}
+
+/** Build the Paper silhouette through the same Scene footprint authority as picking. */
+function sceneCandidatePaperPreview(
+	entity: SceneEntity,
+	datumMeters: number,
+	modelFootprints: ReadonlyMap<string, { readonly width: number; readonly depth: number }> | undefined,
+	role: StageCandidatePreview['role'] = 'subject',
+	label?: { readonly world: Vec3; readonly text: string }
+): StageCandidatePreview | null {
+	const projection = buildPlanSceneFootprintProjection(
+		{ entities: [entity] },
+		{ modelFootprintById: (assetId) => modelFootprints?.get(assetId) }
+	);
+	const footprint = projection.footprints[0];
+	if (footprint === undefined) return null;
+	const rings = footprint.polygons ?? [footprint.points];
+	return {
+		id: 'scene-candidate-footprint',
+		role,
+		polygons: rings.map((ring) => ring.map(([x, z]) => [x, datumMeters, z] as Vec3)),
+		segments: [],
+		labels: label === undefined ? [] : [label]
+	};
+}
+
 function moveSupportRefusal(
 	support: Exclude<ReturnType<typeof floorSupport>, { readonly kind: 'floor' }>
 ): SceneSessionOutcome {
@@ -389,6 +502,68 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let ownedSurface: { readonly snapshot: object; readonly surface: SceneSurface } | null = null;
 			/** The surface this binding armed when it opened the current task. */
 			let taskSurface: SceneSurface | null = null;
+			let placementPointerRefusal: {
+				readonly css: readonly [number, number];
+				readonly world: Vec3 | null;
+				readonly message: string;
+				readonly candidate: SceneCandidate | null;
+			} | null = null;
+
+			function placementRefusalCandidate(
+				session: ScenePlacementSession,
+				world: Vec3
+			): SceneCandidate | null {
+				const worldXZ: readonly [number, number] = [world[0], world[2]];
+				const copy = session.armedFormCopy();
+				if (copy !== null) {
+					return {
+						kind: 'place', entityId: null, primitive: null,
+						position: [world[0], world[1] - copy.contactMinY, world[2]],
+						rotation: [0, 0, 0], worldXZ, yaw: 0, scale: 1, snappedStep: null,
+						form: copy.item.form
+					};
+				}
+				const model = session.armedModel();
+				if (model !== null && model.definition.creationDefaults.kind === 'model') {
+					const xs = model.definition.footprintMeters.map(([x]) => x);
+					const zs = model.definition.footprintMeters.map(([, z]) => z);
+					return {
+						kind: 'place', entityId: null, primitive: null,
+						position: [world[0], world[1] - model.definition.contactMinY, world[2]],
+						rotation: [0, 0, 0], worldXZ, yaw: 0, scale: 1, snappedStep: null,
+						footprint: {
+							width: Math.max(...xs) - Math.min(...xs),
+							depth: Math.max(...zs) - Math.min(...zs)
+						},
+						modelAssetId: model.definition.creationDefaults.assetId
+					};
+				}
+				return {
+					kind: 'place', entityId: null, primitive: session.placePrimitive(),
+					position: [world[0], world[1] + 0.5, world[2]],
+					rotation: [0, 0, 0], worldXZ, yaw: 0, scale: 1, snappedStep: null
+				};
+			}
+
+			function refusePlaceAtPointer(
+				session: ScenePlacementSession,
+				adapterContext: StageAdapterContext,
+				css: readonly [number, number]
+			): void {
+				const world = pointerDatumPoint(adapterContext, css);
+				const visible = pointerFloorSupport(adapterContext, css, null);
+				const refusal = visible.kind !== 'floor' ? moveSupportRefusal(visible) : null;
+				const message =
+					refusal?.kind === 'refused'
+						? refusal.message
+						: 'No Room floor supports this pointer position at the active snap interval.';
+				placementPointerRefusal = {
+					css: [css[0], css[1]],
+					world,
+					message,
+					candidate: world === null ? null : placementRefusalCandidate(session, world)
+				};
+			}
 
 			/** One direct-manipulation mark on a selected native form; never a task. */
 			type FormMarkGesture = {
@@ -419,9 +594,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readonly message: string;
 			} | null = null;
 			const FORM_PLAN_HEIGHT_MARKER_GAP_CSS_PX = 24;
-			// Move's contact anchor and the Width ray share one projected point in
-			// Plan; one gap keeps the two 30 px glyphs separately pressable.
-			const FORM_PLAN_MOVE_MARKER_GAP_CSS_PX = 24;
+			// Move and Width share an origin and axis for upright forms. A 24 px gap
+			// keeps their two 30 px glyphs separately pressable in every reading.
+			const FORM_MOVE_MARKER_GAP_CSS_PX = 24;
 
 			/**
 			 * Publish/read the surface for the **live** accepted snapshot and reading.
@@ -516,23 +691,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			/**
-			 * Plan hides world Y, so Move is offset perpendicular to its own projected
-			 * axis and away from the Width/Depth rays. A fixed downward offset would
-			 * collide again when a quarter turn points Move down.
+			 * Move and Width share their origin and axis for upright forms, so their
+			 * hit areas overlap in 3D as well as Plan. Keep Move perpendicular to its
+			 * projected axis and away from the Depth ray in every reading.
 			 */
 			function formScreenMove(
 				adapterContext: StageAdapterContext,
 				entity: SceneFormEntity,
 				measurement: FormSizeMeasurement
 			): { offset: readonly [number, number] } | null {
-				return adapterContext.evaluation.settledReading === 'plan'
-					? formMoveScreenOffset({
-						entity,
-						measurement,
-						project: (point) => adapterContext.project(point),
-						gapPx: FORM_PLAN_MOVE_MARKER_GAP_CSS_PX
-						})
-					: null;
+				return formMoveScreenOffset({
+					entity,
+					measurement,
+					project: (point) => adapterContext.project(point),
+					gapPx: FORM_MOVE_MARKER_GAP_CSS_PX
+				});
 			}
 
 			/** The six descriptors for the selected form, live candidate included. */
@@ -607,6 +780,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readonly bounds: SceneObjectBounds | null;
 				readonly startYaw: number;
 				readonly startScale: number;
+				/** Body presses preserve the pointer's offset from the selected origin. */
+				readonly moveGrabOffset: readonly [number, number] | null;
 				/** The ring's floor-plane elevation, shared by press and every move. */
 				readonly ringY: number;
 				turnStartAngle: number | null;
@@ -748,7 +923,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const entity = stageScene(adapterContext.snapshot).entities.find(
 					(entry) => entry.id === current.entityId
 				);
-				return entity === undefined ? null : candidateGhost(entity, current.candidate);
+				return entity === undefined
+					? null
+					: candidateGhost(entity, current.candidate, {
+							modelFootprint:
+								entity.kind === 'model'
+									? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ?? null
+									: null
+						});
 			}
 
 			/** The pointer ray's angle around the entity's vertical axis. */
@@ -821,7 +1003,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (services.stage.session.task() !== null) return false;
 				pruneObjectMarkGesture();
 				if (intent.phase === 'down') {
-					const markId = intent.handleId;
+					let markId = intent.handleId;
+					let bodyPress = false;
+					if (markId === undefined) {
+						const selected = selectedObjectEntity(adapterContext);
+						if (selected === null) return false;
+						const picked = services.stage.resolvePick({
+							css: intent.css,
+							evaluationId: intent.evaluationId,
+							purpose: 'select',
+							tool: null,
+							...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+						});
+						if (
+							picked.kind !== 'resolved' ||
+							picked.hit.reference?.domain !== 'scene' ||
+							picked.hit.sourceKind !== 'entity' ||
+							picked.hit.sourceId !== selected.id
+						) return false;
+						markId = SCENE_OBJECT_MARK.move;
+						bodyPress = true;
+					}
 					if (!isSceneObjectEditMarkId(markId)) return false;
 					const entity = selectedObjectEntity(adapterContext);
 					if (entity === null) return false;
@@ -847,6 +1049,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					objectMarkRefusal = null;
 					const ringY =
 						entity.position[1] + sceneObjectScale(entity) * contactMinY;
+					const pressPoint = bodyPress ? pointerDatumPoint(adapterContext, intent.css) : null;
 					objectMarkGesture = {
 						evaluationId: intent.evaluationId,
 						markId,
@@ -856,6 +1059,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						bounds,
 						startYaw: entity.rotation[1],
 						startScale: sceneObjectScale(entity),
+						moveGrabOffset:
+							pressPoint === null
+								? null
+								: [pressPoint[0] - entity.position[0], pressPoint[2] - entity.position[2]],
 						ringY,
 						turnStartAngle:
 							markId === SCENE_OBJECT_MARK.turn
@@ -929,8 +1136,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							// there is one shared rounding and float-cleaning pass.
 							const drafting = adapterContext.drafting();
 							const step = draftingSnapIncrementMeters(drafting);
+							const grabOffset = gesture.moveGrabOffset ?? [0, 0];
 							const snapped = snapDraftingPlacement(
-								[support.worldPoint[0], support.worldPoint[2]],
+								[support.worldPoint[0] - grabOffset[0], support.worldPoint[2] - grabOffset[1]],
 								step
 							);
 							applyObjectMarkPlan(
@@ -1118,7 +1326,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (services.stage.session.task() !== null) return false;
 				pruneFormMarkGesture();
 				if (intent.phase === 'down') {
-					const markId = intent.handleId;
+					let markId = intent.handleId;
+					let bodyPress = false;
+					if (markId === undefined) {
+						const selected = selectedFormEntity(adapterContext);
+						if (selected === null) return false;
+						const picked = services.stage.resolvePick({
+							css: intent.css,
+							evaluationId: intent.evaluationId,
+							purpose: 'select',
+							tool: null,
+							...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+						});
+						if (
+							picked.kind !== 'resolved' ||
+							picked.hit.reference?.domain !== 'scene' ||
+							picked.hit.sourceKind !== 'entity' ||
+							picked.hit.sourceId !== selected.id
+						) return false;
+						markId = SCENE_FORM_MARK.move;
+						bodyPress = true;
+					}
 					if (!isSceneFormEditMarkId(markId)) return false;
 					const entity = selectedFormEntity(adapterContext);
 					if (entity === null) return false;
@@ -1144,9 +1372,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					const ringY = entity.position[1] + measurement.contactMinY;
 					const movePressSupport =
-						markId === SCENE_FORM_MARK.move
+						markId === SCENE_FORM_MARK.move && !bodyPress
 							? pointerFloorSupport(adapterContext, intent.css, entity.id)
 							: null;
+					const movePressPoint =
+						markId !== SCENE_FORM_MARK.move
+							? null
+							: bodyPress
+								? pointerDatumPoint(adapterContext, intent.css)
+								: movePressSupport?.kind === 'floor'
+									? movePressSupport.worldPoint
+									: null;
 					const planHeightTravel =
 						markId === SCENE_FORM_MARK.height &&
 						adapterContext.evaluation.settledReading === 'plan' &&
@@ -1184,10 +1420,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						measurement,
 						contactMinY: measurement.contactMinY,
 						moveGrabOffset:
-							movePressSupport?.kind === 'floor'
+							movePressPoint !== null
 								? [
-										movePressSupport.worldPoint[0] - entity.position[0],
-										movePressSupport.worldPoint[2] - entity.position[2]
+										movePressPoint[0] - entity.position[0],
+										movePressPoint[2] - entity.position[2]
 									]
 								: null,
 						startYaw: entity.rotation[1],
@@ -1797,8 +2033,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				/**
 				 * Marks are direct manipulation of the current selection, not a task. The
 				 * Scene binding joins Layout's handles in the host's no-task press offer; a
-				 * press that is not on a mark falls through to navigation rather than
-				 * silently starting an arrange drag.
+				 * selected body's press can claim Move, while unrelated geometry falls
+				 * through to navigation.
 				 */
 				pressWhenNoTask: true,
 				/**
@@ -1843,12 +2079,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (intent.phase === 'cancel') {
 						dragOrigin = null;
 						gestureSurface = null;
+						placementPointerRefusal = null;
 						// An interruption is not Esc/Select: Place stays armed.
 						session.abortGesture();
 						return true;
 					}
 					if (intent.phase === 'down') {
 						if (openTaskKind === 'place-object') {
+							placementPointerRefusal = null;
 							// A My Objects copy or an approved model armed here places exactly
 							// like a native primitive: press, preview on the compiled floor,
 							// release to commit. The copy is the saved source verbatim.
@@ -1867,12 +2105,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							}
 							const support = pointerPlaceSupport(adapterContext, intent.css, snapStep);
 							if (support === null) {
-								// No visible, compiled Room-floor support under the press: refuse
-								// the claim rather than showing a pose commit would reject.
-								session.abortGesture();
-								gestureSurface = null;
-								return false;
+								// Keep the press so the pointer can move onto a supported floor, while
+								// naming the refusal at its actual position.
+								if (pointerDatumPoint(adapterContext, intent.css) === null) {
+									session.abortGesture();
+									gestureSurface = null;
+									return false;
+								}
+								session.invalidatePreview();
+								refusePlaceAtPointer(session, adapterContext, intent.css);
+								services.stage.notifySurfaceChange();
+								return true;
 							}
+							placementPointerRefusal = null;
 							if (copy !== null) {
 								session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice, snapStep);
 			} else if (armed === null) {
@@ -1928,22 +2173,32 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const support = pointerPlaceSupport(adapterContext, intent.css, snapStep);
 						if (support === null) {
 							session.invalidatePreview();
+							refusePlaceAtPointer(session, adapterContext, intent.css);
+							services.stage.notifySurfaceChange();
 							return true;
 						}
+						placementPointerRefusal = null;
 						const copy = session.armedFormCopy();
 						const armed = copy === null ? session.armedModel() : null;
-							if (copy !== null) {
-								session.previewPlaceFormCopy(copy, support.x, support.z, support.elevation, support.choice, snapStep);
-			} else if (armed === null) {
+						if (copy !== null) {
+							session.previewPlaceFormCopy(
+								copy,
+								support.x,
+								support.z,
+								support.elevation,
+								support.choice,
+								snapStep
+							);
+						} else if (armed === null) {
 							session.previewPlace(
 								session.placePrimitive(),
 								support.x,
 								support.z,
-									support.elevation,
-									snapStep
+								support.elevation,
+								snapStep
 							);
 						} else {
-								session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep);
+							session.previewPlaceModel(armed, support.x, support.z, support.elevation, snapStep);
 						}
 						return true;
 					}
@@ -1981,6 +2236,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					formMarkRefusal = null;
 					if (objectMarkGesture !== null) endObjectMarkGesture();
 					objectMarkRefusal = null;
+					placementPointerRefusal = null;
 				},
 				taskClosed() {
 					if (formMarkGesture !== null) {
@@ -1989,6 +2245,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (objectMarkGesture !== null) endObjectMarkGesture();
 					objectMarkRefusal = null;
+					placementPointerRefusal = null;
 					dragOrigin = null;
 				// Cancel the session this task armed (Place), not whichever session
 				// another binding may have published.
@@ -2004,12 +2261,69 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					abortReopen?.();
 					abortReopen = null;
 				},
+				candidatePreview(adapterContext): readonly StageCandidatePreview[] {
+					if (
+						adapterContext.evaluation.settledReading !== 'plan' ||
+						adapterContext.evaluation.renderedReading !== 'plan'
+					) return [];
+					const runtimeScene = adapterContext.snapshot.domain.scene;
+					let entity: SceneEntity | null = formMarkGesture?.candidate ?? null;
+					let candidate: SceneCandidate | null = null;
+					let role: StageCandidatePreview['role'] = 'subject';
+					let label: { readonly world: Vec3; readonly text: string } | undefined;
+					if (entity === null && objectMarkGesture !== null && objectMarkGesture.candidate !== null) {
+						candidate = objectMarkGesture.candidate;
+					}
+					if (entity === null && candidate === null && placementPointerRefusal !== null) {
+						candidate = placementPointerRefusal.candidate;
+						role = 'refused';
+						if (placementPointerRefusal.world !== null) {
+							label = { world: placementPointerRefusal.world, text: placementPointerRefusal.message };
+						}
+					}
+					if (entity === null && candidate === null) {
+						const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
+						candidate = surface?.session.candidate() ?? null;
+					}
+					if (entity === null && candidate !== null) {
+						entity = sceneEntityAtCandidate(candidate, runtimeScene.entities);
+					}
+					if (entity === null) return [];
+					let modelFootprints = runtimeScene.modelFootprints;
+					if (candidate?.modelAssetId !== undefined && candidate.footprint !== undefined) {
+						const expanded = new Map(modelFootprints ?? []);
+						expanded.set(candidate.modelAssetId, candidate.footprint);
+						modelFootprints = expanded;
+					}
+					const preview = sceneCandidatePaperPreview(
+						entity,
+						adapterContext.snapshot.domain.datumMeters,
+						modelFootprints,
+						role,
+						label
+					);
+					return preview === null ? [] : [preview];
+				},
 				// The captured candidate is shown through the existing overlay surface,
 				// so Plan and 3D present the same pose the planner would commit.
 				overlay(adapterContext) {
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate = surface?.session.candidate() ?? null;
-					if (candidate === null) return [];
+					if (candidate === null) {
+						return placementPointerRefusal === null
+							? []
+							: [{
+									id: 'scene-candidate-refusal',
+									// StageFacade applies the viewport-to-surface translation to all
+									// adapter overlays. This refusal is captured in surface CSS by the
+									// pointer path, so restore viewport CSS before returning it.
+									css: [
+										placementPointerRefusal.css[0] + adapterContext.evaluation.rect.left,
+										placementPointerRefusal.css[1] + adapterContext.evaluation.rect.top
+									],
+									label: placementPointerRefusal.message
+								}];
+					}
 					const css = adapterContext.project(candidate.position);
 					if (css === null) return [];
 					const snap = candidate.snappedStep === null ? '' : ` · snap ${candidate.snappedStep} m`;
@@ -2032,13 +2346,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (object !== null) marks.push(object);
 					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate: SceneCandidate | null = surface?.session.candidate() ?? null;
-					if (candidate === null) return marks;
+					const refused = candidate === null ? placementPointerRefusal?.candidate ?? null : null;
+					const shown = candidate ?? refused;
+					if (shown === null) return marks;
 					const entity =
-							candidate.entityId === null
-								? null
-								: adapterContext.snapshot.domain.scene.entities.find((entry) => entry.id === candidate.entityId) ??
-									null;
-					const ghost = candidateGhost(entity, candidate);
+						shown.entityId === null
+							? null
+							: adapterContext.snapshot.domain.scene.entities.find((entry) => entry.id === shown.entityId) ??
+								null;
+					const ghost = candidateGhost(entity, shown, {
+						modelFootprint:
+							entity?.kind === 'model'
+								? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ?? null
+								: null,
+						treatment: refused === null ? 'subject' : 'refused'
+					});
 					return ghost === null ? marks : [...marks, ghost];
 				},
 				cardWriter(subject) {

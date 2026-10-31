@@ -23,6 +23,7 @@ import {
 	type AuthoringIntent,
 	type SceneDocument,
 	type SceneEntity,
+	type ScenePrimitiveEntity,
 	type Vec3
 } from '@portfolio/project-model';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
@@ -46,15 +47,19 @@ import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { formCardController } from '$lib/authoring/adapters/scene/form-card';
 import { sceneObjectCardController } from '$lib/authoring/adapters/scene/object-card';
 import { sceneObjectMarkDescriptors } from '$lib/authoring/adapters/scene/object-marks';
+import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
+import { creatorModelDefinition } from '@portfolio/project-model/scene-planning';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { admitSource } from '$lib/authoring/stage/source-admission';
+import { hitStageMark } from '$lib/authoring/stage/stage-handles';
 import { buildCurrentSourceFixture, FIXTURE_ENTITY_ID, FIXTURE_PROJECT_ID } from './__fixtures__/f4-current-source-fixtures';
+import { buildS17MixedProject } from './__fixtures__/s17-mixed-project';
 import { admitUnitProject, createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -86,7 +91,7 @@ async function supportedProject(entities: readonly SceneEntity[]): Promise<Proje
 }
 
 
-function boxEntity(id = ENTITY_ID, position: Vec3 = BASELINE): SceneEntity {
+function boxEntity(id = ENTITY_ID, position: Vec3 = BASELINE): Extract<ScenePrimitiveEntity, { primitive: 'box' }> {
 	return {
 		kind: 'primitive',
 		primitive: 'box',
@@ -950,9 +955,15 @@ describe('Scene adapter registration', () => {
 		accept?: SceneWritePort['accept'],
 		taskId: 'scene-place' | null = null,
 		project?: ProjectEnvelope,
-		rect: typeof RECT = RECT
+		rect: typeof RECT = RECT,
+		reading: '3d' | 'plan' = '3d',
+		selectedEntityId = FIXTURE_ENTITY_ID
 	) {
-		const { facade, host } = await mounted(project, rect);
+		const { facade, host, rendered } = await mounted(project, rect);
+		if (reading === 'plan') {
+			facade.camera.applyIntent({ kind: 'set-reading', reading }, 2);
+			facade.camera.evaluate(rect, 3);
+		}
 		mountStageAdapter(facade, host, createAdapter);
 		const evaluationId = facade.evaluationId();
 		if (evaluationId === null) throw new Error('the adapter fixture has no evaluation');
@@ -980,10 +991,10 @@ describe('Scene adapter registration', () => {
 		const evaluation = facade.evaluation();
 		if (evaluation === null) throw new Error('the adapter fixture has no evaluation');
 		publishSceneSurface(snapshot, { reading: sceneReadingKey(evaluation), session });
-		const reference = sceneEntityReference(FIXTURE_ENTITY_ID, snapshot.domain.unitRevisions.scene);
+		const reference = sceneEntityReference(selectedEntityId, snapshot.domain.unitRevisions.scene);
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
 		if (taskId !== null) facade.openContributedTask(taskId, 'scene');
-		return { facade, host, session, evaluationId, evaluation, intents, snapshot };
+		return { facade, host, rendered, session, evaluationId, evaluation, intents, snapshot };
 	}
 
 	/** The admitted mark a test presses, by role and optional id. */
@@ -1017,6 +1028,190 @@ describe('Scene adapter registration', () => {
 		}
 		throw new Error('the fixture did not settle');
 	}
+
+	it('claims a selected object body press in Plan and keeps the grab point under the pointer', async () => {
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, rendered, evaluationId } = await withSceneSurface(undefined, null, project, RECT, 'plan');
+		const body = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+		body.position.set(2, 0.5, 2);
+		const unregister = rendered.register(FIXTURE_ENTITY_ID, body);
+		facade.setDrafting({ snap: false });
+		const press = stageCssOf(facade, [1.65, 0, 1.85]);
+		const target = stageCssOf(facade, [2.65, 0, 2.35]);
+		expect(facade.hitMark({ css: press, coarse: false })).toBeNull();
+		const bodyPick = facade.resolvePick({ evaluationId, css: press, purpose: 'select', tool: null });
+		expect(bodyPick.kind === 'resolved' ? bodyPick.hit.sourceId : null).toBe(FIXTURE_ENTITY_ID);
+
+		expect(facade.pointerIntent({ phase: 'down', css: press, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+		expect(facade.ghosts()[0]?.center[0]).toBeCloseTo(3, 6);
+		expect(facade.ghosts()[0]?.center[2]).toBeCloseTo(2.5, 6);
+		facade.pointerIntent({ phase: 'up', css: target, evaluationId });
+		await eventually(() => {
+			const entity = stageScene(facade.snapshot()).entities.find((entry) => entry.id === FIXTURE_ENTITY_ID);
+			return entity !== undefined && Math.abs(entity.position[0] - 3) < 1e-9;
+		});
+		expect(stageScene(facade.snapshot()).entities.find((entry) => entry.id === FIXTURE_ENTITY_ID)?.position)
+			.toEqual([3, 0.5, 2.5]);
+		unregister();
+		body.geometry.dispose();
+	});
+
+	it('keeps screen-sized marks and direct Move on a subject under 48 CSS px', async () => {
+		const base = boxEntity(FIXTURE_ENTITY_ID, [2, 0.15, 2]);
+		const small: SceneEntity = {
+			...base,
+			dimensions: { width: 0.3, height: 0.3, depth: 0.3 }
+		};
+		const project = await supportedProject([small]);
+		const { facade, rendered, evaluationId } = await withSceneSurface(
+			undefined,
+			null,
+			project,
+			RECT,
+			'plan'
+		);
+		const body = new Mesh(new BoxGeometry(0.3, 0.3, 0.3), new MeshBasicMaterial());
+		body.position.fromArray(small.position);
+		const unregister = rendered.register(FIXTURE_ENTITY_ID, body);
+		const corners = [
+			cssOf(facade, [1.85, 0, 1.85]),
+			cssOf(facade, [2.15, 0, 1.85]),
+			cssOf(facade, [1.85, 0, 2.15]),
+			cssOf(facade, [2.15, 0, 2.15])
+		];
+		const width = Math.max(...corners.map(([x]) => x)) - Math.min(...corners.map(([x]) => x));
+		const height = Math.max(...corners.map(([, y]) => y)) - Math.min(...corners.map(([, y]) => y));
+		expect(Math.max(width, height)).toBeLessThan(48);
+
+		const move = markOf(facade, 'scene-object-move');
+		expect(move.tip).not.toBeNull();
+		expect(Math.hypot(move.tip![0] - move.anchor[0], move.tip![1] - move.anchor[1])).toBeCloseTo(30, 3);
+		facade.setDrafting({ snap: false });
+		// The Move track runs through the body center; this point stays inside the
+		// small silhouette while sitting beyond its 11 px fine hit radius.
+		const press: [number, number] = [move.anchor[0], move.anchor[1] - 13];
+		const target = stageCssOf(facade, [2.5, 0, 2.4]);
+		expect(facade.hitMark({ css: press, coarse: false })).toBeNull();
+		expect(facade.resolvePick({ evaluationId, css: press, purpose: 'select', tool: null })).toMatchObject({
+			kind: 'resolved',
+			hit: { sourceId: FIXTURE_ENTITY_ID }
+		});
+		expect(facade.pointerIntent({ phase: 'down', css: press, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+		expect(facade.ghosts()[0]?.center[0]).toBeCloseTo(2.5, 6);
+		expect(facade.ghosts()[0]?.center[2]).toBeGreaterThan(2.4);
+		facade.pointerIntent({ phase: 'cancel', css: target, evaluationId });
+		unregister();
+		body.geometry.dispose();
+	});
+
+	it('claims a selected native form body press in Plan without requiring a Move mark hit', async () => {
+		const project = await supportedProject([nativeForm('plan', 2)]);
+		const { facade, evaluationId } = await withSceneSurface(
+			undefined,
+			null,
+			project,
+			RECT,
+			'plan',
+			'form-plan'
+		);
+		facade.setDrafting({ snap: false });
+		const press = stageCssOf(facade, [2.25, 0, 3.2]);
+		const target = stageCssOf(facade, [2.75, 0, 3.7]);
+
+		expect(facade.pointerIntent({ phase: 'down', css: press, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+		expect(facade.ghosts()[0]?.center[0]).toBeCloseTo(2.5, 6);
+		expect(facade.ghosts()[0]?.center[2]).toBeCloseTo(3.5, 6);
+		facade.pointerIntent({ phase: 'up', css: target, evaluationId });
+		await eventually(() => {
+			const entity = stageScene(facade.snapshot()).entities.find((entry) => entry.id === 'form-plan');
+			return entity !== undefined && Math.abs(entity.position[0] - 2.5) < 1e-9;
+		});
+		expect(stageScene(facade.snapshot()).entities.find((entry) => entry.id === 'form-plan')?.position)
+			.toEqual([2.5, 0, 3.5]);
+	});
+
+	it('draws the Paper candidate polygon from the same pose and footprint as the planner candidate', async () => {
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId } = await withSceneSurface(
+			undefined,
+			null,
+			project,
+			RECT,
+			'plan'
+		);
+		expect(session.begin(FIXTURE_ENTITY_ID).kind).toBe('idle');
+		expect(session.setEntry('x', '4').kind).toBe('candidate');
+		expect(session.setEntry('z', '4').kind).toBe('candidate');
+		const candidate = session.candidate();
+		if (candidate === null) throw new Error('the typed Move did not create a candidate');
+
+		const accepted = stageScene(facade.snapshot()).entities.find((entity) => entity.id === FIXTURE_ENTITY_ID)!;
+		const candidateEntity = {
+			...accepted,
+			position: [...candidate.position] as Vec3,
+			rotation: [...candidate.rotation] as Vec3,
+			scale: candidate.scale
+		};
+		const footprint = buildPlanSceneFootprintProjection({ entities: [candidateEntity] }).footprints[0]!;
+		const expected = footprint.points.map(([x, z]) => {
+			const projected = facade.projectWorld([x, facade.snapshot().domain.datumMeters, z], evaluationId);
+			if (projected.kind !== 'projected') throw new Error('candidate footprint did not project');
+			return [projected.css[0], projected.css[1]] as const;
+		});
+		const paper = facade.candidatePreviews().find((preview) => preview.id === 'scene-candidate-footprint');
+		expect(paper?.role).toBe('subject');
+		expect(paper?.polygons).toEqual([expected]);
+	});
+
+	it('keeps an approved-model candidate footprint equal to its confirmed placement footprint', async () => {
+		const { project, ids } = await buildS17MixedProject(`${PROJECT_ID}-candidate-model`);
+		const resource = project.units.resources.data.resources.find(
+			(entry) => entry.kind === 'model' && entry.id === ids.approvedModelId
+		);
+		if (resource === undefined) throw new Error('the mixed fixture has no approved creator model');
+		const definition = await creatorModelDefinition(resource, 'Approved creator model');
+		if (definition === null) throw new Error('the approved fixture model has no placement definition');
+		const model: ArmedModelPlacement = { definition, resource: null };
+		const { facade, session, evaluationId } = await withSceneSurface(
+			undefined,
+			'scene-place',
+			project,
+			RECT,
+			'plan',
+			ids.approvedModelId
+		);
+		expect(session.beginPlaceModel(model).kind).toBe('idle');
+		expect(session.previewPlaceModel(model, 1.5, 1, 0).kind).toBe('candidate');
+		const candidate = session.candidate();
+		if (candidate === null) throw new Error('the approved-model placement did not create a candidate');
+
+		const candidateEntity: SceneEntity = {
+			kind: 'model',
+			id: 'scene-candidate-model',
+			name: 'Candidate model',
+			assetId: ids.approvedModelId,
+			fallback: 'generic',
+			position: [...candidate.position] as Vec3,
+			rotation: [...candidate.rotation] as Vec3
+		};
+		const acceptedFootprint = buildPlanSceneFootprintProjection(
+			{ entities: [candidateEntity] },
+			{ modelFootprintById: () => candidate.footprint }
+		).footprints[0];
+		if (acceptedFootprint === undefined) throw new Error('the approved model has no accepted Paper footprint');
+		const expected = acceptedFootprint.points.map(([x, z]) => {
+			const projected = facade.projectWorld([x, facade.snapshot().domain.datumMeters, z], evaluationId);
+			if (projected.kind !== 'projected') throw new Error('the approved candidate footprint did not project');
+			return [projected.css[0], projected.css[1]] as const;
+		});
+		const paper = facade.candidatePreviews().find((preview) => preview.id === 'scene-candidate-footprint');
+		expect(paper?.role).toBe('subject');
+		expect(paper?.polygons).toEqual([expected]);
+		expect(candidate.footprint).toEqual(resource.model?.placement.footprint);
+	});
 
 	/** A mounted adapter over a real acceptance host, with the Place task open. */
 	async function acceptedPlaceSurface(beforeAccept?: () => Promise<void>) {
@@ -1496,30 +1691,30 @@ describe('Scene adapter registration', () => {
 		expect(facade.session.task()).toBeNull();
 	});
 
-	it('refuses a pointer Place whose datum hit is outside every compiled Room floor', async () => {
+	it('shows an off-floor Place refusal at the pointer and writes nothing on release', async () => {
 		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const offsetRect = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };
 		const { facade, session, evaluationId, intents } = await withSceneSurface(
 			undefined,
 			'scene-place',
-			project
+			project,
+			offsetRect
 		);
-		// Both points lie on the floor plane the pointer ray reaches; only the first
-		// is covered by the compiled Room floor, so only it may show a candidate.
-		const inside = cssOf(facade, [3, 0, 3]);
-		const outside = cssOf(facade, [3.5, 0, 7.5]);
+		// Both points lie on the floor plane the pointer ray reaches; the outside
+		// press remains claimable so the creator can drag onto a supported Room floor.
+		const inside = stageCssOf(facade, [3, 0, 3]);
+		const outside = stageCssOf(facade, [3.5, 0, 7.5]);
 
-		expect(facade.pointerIntent({ phase: 'down', css: outside, evaluationId })).toEqual({
-			claimed: false,
-			adapterId: null
-		});
+		expect(facade.pointerIntent({ phase: 'down', css: outside, evaluationId }).claimed).toBe(true);
 		expect(session.candidate()).toBeNull();
-		expect(facade.ghosts()).toEqual([]);
+		expect(facade.ghosts()).toHaveLength(1);
+		expect(facade.ghosts()[0]?.treatment).toBe('refused');
+		expect(facade.overlays().find((marker) => marker.id === 'scene-candidate-refusal')?.css).toEqual(outside);
 		facade.pointerIntent({ phase: 'up', css: outside, evaluationId });
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(intents).toEqual([]);
 
-		// The point inside the Room floor is still claimable, so the refusal above was
-		// membership, not a degenerate ray.
+		// The point inside the Room floor replaces refusal with a committable pose.
 		expect(facade.pointerIntent({ phase: 'down', css: inside, evaluationId }).claimed).toBe(true);
 		expect(session.candidate()?.kind).toBe('place');
 		facade.pointerIntent({ phase: 'cancel', css: inside, evaluationId });
@@ -1564,20 +1759,19 @@ describe('Scene adapter registration', () => {
 		// Raw x = 6.8 is inside the Room floor (max 6.9); the shared 0.5 m
 		// current minor snaps it to 7 m, outside support.
 		const raw = cssOf(facade, [6.8, 0, 3]);
-		expect(facade.pointerIntent({ phase: 'down', css: raw, evaluationId })).toEqual({
-			claimed: false,
-			adapterId: null
-		});
+		expect(facade.pointerIntent({ phase: 'down', css: raw, evaluationId }).claimed).toBe(true);
 		expect(session.candidate()).toBeNull();
+		expect(facade.ghosts()[0]?.treatment).toBe('refused');
+		facade.pointerIntent({ phase: 'up', css: raw, evaluationId });
 	});
 
 	it('publishes Move, Turn, the Scale disclosure and the Size ray it reveals', async () => {
 		const { facade } = await withSceneSurface();
 		const marks = facade.marks();
 		expect(marks.map((mark) => mark.id)).toEqual([
+			'scene-object-scale-point',
 			'scene-object-move',
-			'scene-object-turn',
-			'scene-object-scale-point'
+			'scene-object-turn'
 		]);
 		expect(marks.find((mark) => mark.id === 'scene-object-size')).toBeUndefined();
 		expect(marks.every((mark) => mark.adapterId === 'scene')).toBe(true);
@@ -1602,6 +1796,12 @@ describe('Scene adapter registration', () => {
 			role: 'disclose',
 			reveals: ['scene-object-size']
 		});
+		expect(
+			hitStageMark(marks, {
+				css: marks.find((mark) => mark.id === 'scene-object-scale-point')!.anchor,
+				coarse: false
+			})?.id
+		).toBe('scene-object-scale-point');
 
 		// A disclosure is session view state: it writes no source and enters no
 		// history, so Undo remains exactly what it was before activation.
@@ -1614,6 +1814,13 @@ describe('Scene adapter registration', () => {
 			planner: 'resize-on-floor',
 			disclosedBy: 'scene-object-scale-point'
 		});
+		const sizeRayProbe: [number, number] = [
+			size!.anchor[0] + (size!.tip![0] - size!.anchor[0]) * 0.75,
+			size!.anchor[1] + (size!.tip![1] - size!.anchor[1]) * 0.75
+		];
+		expect(hitStageMark(facade.marks(), { css: sizeRayProbe, coarse: false })?.id).toBe(
+			'scene-object-size'
+		);
 		expect(facade.snapshot().canonicalJson).toBe(canonical);
 		expect(facade.closeDisclosure()).toBe(true);
 		expect(facade.marks().some((mark) => mark.id === 'scene-object-size')).toBe(false);
@@ -1812,15 +2019,27 @@ describe('Scene adapter registration', () => {
 			footprint: { width: 2, depth: 2 }
 		});
 		expect(descriptors.map((descriptor) => descriptor.id)).toEqual([
-			'scene-object-move',
-			'scene-object-turn',
 			'scene-object-scale-point',
-			'scene-object-size'
+			'scene-object-size',
+			'scene-object-move',
+			'scene-object-turn'
 		]);
 		expect(descriptors.find((descriptor) => descriptor.id === 'scene-object-size')).toMatchObject({
 			planner: 'resize-on-floor',
 			fact: 'scale'
 		});
+	});
+
+	it.each(['3d', 'plan'] as const)('keeps the approved creator model Turn mark in %s', async (reading) => {
+		const { project, ids } = await buildS17MixedProject();
+		const { facade } = await withSceneSurface(undefined, null, project, RECT, reading, ids.approvedModelId);
+		try {
+			expect(facade.marks().map((mark) => mark.id)).toEqual(
+				expect.arrayContaining(['scene-object-move', 'scene-object-turn'])
+			);
+		} finally {
+			facade.dispose();
+		}
 	});
 
 	it('removes the Arrange task, its Find entry and instrument posture', async () => {

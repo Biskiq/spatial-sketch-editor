@@ -247,12 +247,11 @@ describe('R217.S09 — native form marks', () => {
 		).toBe(true);
 	});
 
-	it('keeps Move and the Width ray separately pressable when Plan hides Y', () => {
-		// Plan projects the form's floor contact and its centre to one point. With
-		// the same yaw the 30 px Move track and Width ray coincide unless Move is
-		// offset, and the host takes the first descriptor that hits. A fixed offset
-		// would collide again at a quarter turn, so the offset follows the projected
-		// Move axis and always lies opposite the Depth ray.
+	it('keeps Move and the Width ray separately pressable across readings', () => {
+		// Move and Width share their world origin and axis for upright forms. The
+		// 30 px Move track would therefore swallow the Width ray unless Move is
+		// offset; a fixed offset would collide again at a quarter turn, so it follows
+		// the projected Move axis and always lies opposite the Depth ray.
 		// Plan's screen mapping: right +X, up −Z (screen y grows with +Z), as in the
 		// Plan reading's endpoint contract.
 		const project = (point: Vec3): readonly [number, number] => [

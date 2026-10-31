@@ -195,10 +195,11 @@ export function sizeRayGeometry(bounds: SceneObjectBounds): {
 /**
  * Publish the four descriptors for one selected object.
  *
- * Descriptor order is the domain's hit order. The disclosure is admitted before
- * the ray it reveals, and `admitStageHandles` refuses a disclosure that reveals
- * nothing; the size ray is therefore withheld (never silently published
- * un-disclosed) when the object has no drawn bounds.
+ * Descriptor order is the domain's hit order. Scale handles come before Move
+ * and Turn because the disclosure and inward ray overlap those marks on small
+ * subjects. The ray follows its disclosure; `admitStageHandles` refuses a
+ * disclosure that reveals nothing, so the size ray is withheld when the object
+ * has no drawn bounds.
  */
 /**
  * The accepted bounds carried to the gesture's live pose.
@@ -272,40 +273,38 @@ export function sceneObjectMarkDescriptors(input: {
 	const footprint = input.footprint;
 	const bounds = liveSceneObjectBounds(entity, input.bounds, live);
 	const axis: Vec3 = [Math.cos(entity.rotation[1]), 0, -Math.sin(entity.rotation[1])];
-	const descriptors: StageHandleDescriptor[] = [
-		{
-			id: SCENE_OBJECT_MARK.move,
-			kind: 'track',
-			role: 'edit',
-			anchor: [position[0], baseY, position[2]],
-			axis,
-			extent: Math.max(0.2, footprint.width / 2),
-			label: 'Move',
-			fact: 'position',
-			verb: 'Position',
-			planner: 'place-on-floor',
-			value: `X ${position[0].toFixed(3)} · Z ${position[2].toFixed(3)} m`,
-			refusal: live?.markId === SCENE_OBJECT_MARK.move ? live.refusal : null
-		},
-		{
-			id: SCENE_OBJECT_MARK.turn,
-			kind: 'ring',
-			role: 'edit',
-			anchor: [position[0], baseY, position[2]],
-			axis: [0, 1, 0],
-			extent: Math.max(0.2, Math.max(footprint.width, footprint.depth) / 2),
-			label: 'Turn',
-			fact: 'yaw',
-			verb: 'Yaw',
-			planner: 'set-yaw',
-			value: `Yaw ${sceneYawDegrees(yaw).toFixed(1)}°`,
-			refusal: live?.markId === SCENE_OBJECT_MARK.turn ? live.refusal : null
-		}
-	];
-	if (bounds === null) return descriptors;
+	const move: StageHandleDescriptor = {
+		id: SCENE_OBJECT_MARK.move,
+		kind: 'track',
+		role: 'edit',
+		anchor: [position[0], baseY, position[2]],
+		axis,
+		extent: Math.max(0.2, footprint.width / 2),
+		label: 'Move',
+		fact: 'position',
+		verb: 'Position',
+		planner: 'place-on-floor',
+		value: `X ${position[0].toFixed(3)} · Z ${position[2].toFixed(3)} m`,
+		refusal: live?.markId === SCENE_OBJECT_MARK.move ? live.refusal : null
+	};
+	const turn: StageHandleDescriptor = {
+		id: SCENE_OBJECT_MARK.turn,
+		kind: 'ring',
+		role: 'edit',
+		anchor: [position[0], baseY, position[2]],
+		axis: [0, 1, 0],
+		extent: Math.max(0.2, Math.max(footprint.width, footprint.depth) / 2),
+		label: 'Turn',
+		fact: 'yaw',
+		verb: 'Yaw',
+		planner: 'set-yaw',
+		value: `Yaw ${sceneYawDegrees(yaw).toFixed(1)}°`,
+		refusal: live?.markId === SCENE_OBJECT_MARK.turn ? live.refusal : null
+	};
+	if (bounds === null) return [move, turn];
 	const ray = sizeRayGeometry(bounds);
-	if (ray === null) return descriptors;
-	descriptors.push(
+	if (ray === null) return [move, turn];
+	return [
 		{
 			id: SCENE_OBJECT_MARK.scalePoint,
 			kind: 'point',
@@ -328,9 +327,10 @@ export function sceneObjectMarkDescriptors(input: {
 			disclosedBy: SCENE_OBJECT_MARK.scalePoint,
 			value: `Size ${scale.toFixed(3)} · base stays`,
 			refusal: live?.markId === SCENE_OBJECT_MARK.size ? live.refusal : null
-		}
-	);
-	return descriptors;
+		},
+		move,
+		turn
+	];
 }
 
 export type SceneObjectMarkPlanInput =
