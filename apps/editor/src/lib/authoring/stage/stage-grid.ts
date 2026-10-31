@@ -228,6 +228,10 @@ export function gridRectFor(input: {
  * outward to 5 m, or a 20 × 20 m default around the target for an empty
  * project.
  *
+ * A live candidate is part of "the work": while a gesture proposes geometry
+ * outside the accepted bounds, the sheet grows to include it. It never moves the
+ * Camera, so the sheet can grow without the drawing shifting under the pointer.
+ *
  * The sheet is intersected with the visible coverage, so a zoomed-in view
  * generates only the lines it can see. The intersection never moves the Camera
  * and never changes the lattice; it only bounds the drawing.
@@ -238,9 +242,22 @@ export function paperSheetRectFor(input: {
 	readonly aspect: number;
 	readonly intervalMeters: number;
 	readonly contentBounds?: GridRect | null;
+	/** R217.S14 — the live candidate's world extent, never an accepted bound. */
+	readonly candidateBounds?: GridRect | null;
 }): GridRect | null {
-	const sheet =
+	const work =
 		input.contentBounds === null || input.contentBounds === undefined
+			? input.candidateBounds ?? null
+			: input.candidateBounds === null || input.candidateBounds === undefined
+				? input.contentBounds
+				: {
+						minX: Math.min(input.contentBounds.minX, input.candidateBounds.minX),
+						maxX: Math.max(input.contentBounds.maxX, input.candidateBounds.maxX),
+						minZ: Math.min(input.contentBounds.minZ, input.candidateBounds.minZ),
+						maxZ: Math.max(input.contentBounds.maxZ, input.candidateBounds.maxZ)
+					};
+	const sheet =
+		work === null
 			? {
 					minX: input.targetXZ[0] - 10,
 					maxX: input.targetXZ[0] + 10,
@@ -248,10 +265,10 @@ export function paperSheetRectFor(input: {
 					maxZ: input.targetXZ[1] + 10
 				}
 			: {
-					minX: Math.floor((input.contentBounds.minX - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-					maxX: Math.ceil((input.contentBounds.maxX + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-					minZ: Math.floor((input.contentBounds.minZ - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-					maxZ: Math.ceil((input.contentBounds.maxZ + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS
+					minX: Math.floor((work.minX - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+					maxX: Math.ceil((work.maxX + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+					minZ: Math.floor((work.minZ - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+					maxZ: Math.ceil((work.maxZ + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS
 				};
 	const visible = gridRectFor({
 		targetXZ: input.targetXZ,
@@ -381,6 +398,8 @@ export function gridPlanFor(input: {
 	readonly viewport?: { readonly width: number; readonly height: number };
 	/** Layout ∪ Scene datum bounds; Paper draws a bounded sheet around them. */
 	readonly contentBounds?: GridRect | null;
+	/** The live candidate's world extent; Paper's sheet grows to include it. */
+	readonly candidateBounds?: GridRect | null;
 }): GridPlan | null {
 	const levels = gridLevelsFor(input);
 	if (levels === null) return null;
@@ -391,7 +410,8 @@ export function gridPlanFor(input: {
 			targetPlaneHeightMeters: input.targetPlaneHeightMeters,
 			aspect: input.aspect,
 			intervalMeters: levels.minorMeters,
-			contentBounds: input.contentBounds ?? null
+			contentBounds: input.contentBounds ?? null,
+			candidateBounds: input.candidateBounds ?? null
 		});
 	} else {
 		const visible =

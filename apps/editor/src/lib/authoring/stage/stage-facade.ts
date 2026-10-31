@@ -238,6 +238,58 @@ export type StageOverlayContribution = {
 	readonly label: string;
 };
 
+/**
+ * One candidate the creator is currently proposing, before acceptance.
+ *
+ * Domain contribution, in world coordinates. The Stage projects every point
+ * once through the same `ViewportEvaluation` as the drawing, so a preview can
+ * never disagree with the geometry release commits.
+ */
+export type StageCandidatePreview = {
+	readonly id: string;
+	readonly role: 'subject' | 'affected' | 'refused';
+	readonly polygons: readonly (readonly Vec3[])[];
+	readonly segments: readonly (readonly [Vec3, Vec3])[];
+	readonly labels: readonly { readonly world: Vec3; readonly text: string }[];
+	readonly snap?: { readonly world: Vec3; readonly name: string };
+};
+
+/** The world AABB of a candidate's drawn geometry, or `null` when it draws none. */
+function candidateBounds(candidate: StageCandidatePreview): { readonly min: Vec3; readonly max: Vec3 } | null {
+	const points = [
+		...candidate.polygons.flat(),
+		...candidate.segments.flatMap(([from, to]) => [from, to])
+	];
+	if (points.length === 0) return null;
+	const min: [number, number, number] = [Infinity, Infinity, Infinity];
+	const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+	for (const point of points) {
+		if (!point.every(Number.isFinite)) return null;
+		min[0] = Math.min(min[0], point[0]);
+		min[1] = Math.min(min[1], point[1]);
+		min[2] = Math.min(min[2], point[2]);
+		max[0] = Math.max(max[0], point[0]);
+		max[1] = Math.max(max[1], point[1]);
+		max[2] = Math.max(max[2], point[2]);
+	}
+	return { min, max };
+}
+
+/** One candidate after the facade's single projection into Stage CSS space. */
+export type StageCandidatePreviewView = {
+	readonly id: string;
+	readonly role: StageCandidatePreview['role'];
+	readonly polygons: readonly (readonly (readonly [number, number])[])[];
+	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly labels: readonly { readonly css: readonly [number, number]; readonly text: string }[];
+	readonly snap?: { readonly css: readonly [number, number]; readonly name: string };
+	/**
+	 * The candidate's world extent, for Paper's bounded sheet. `null` when the
+	 * candidate draws no geometry.
+	 */
+	readonly bounds: { readonly min: Vec3; readonly max: Vec3 } | null;
+};
+
 export type StageWorldGraphic = {
 	readonly id: string;
 	readonly kind: string;
@@ -550,6 +602,14 @@ export type StageAdapterBinding = {
 	 */
 	readonly heightTicks?: (context: StageAdapterContext) => readonly StageHeightTick[];
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
+	/**
+	 * R217.S14 — the candidate geometry this binding proposes right now.
+	 *
+	 * Additive and optional. World coordinates only: the facade projects them
+	 * once and the Stage overlay paints them, so no adapter owns a second
+	 * projection or a second renderer. Nothing here is persisted.
+	 */
+	readonly candidatePreview?: (context: StageAdapterContext) => readonly StageCandidatePreview[];
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
 	/** Proposed-pose meshes the shared Canvas draws; empty when nothing is proposed. */
 	readonly ghosts?: (context: StageAdapterContext) => readonly StageGhostMesh[];
@@ -871,6 +931,8 @@ export type StageFacade = {
 	/** Every scoped Card action contributed for a subject, in deterministic order. */
 	cardActions(subject: StageCardSubject): readonly StageCardActionRecord[];
 	overlays(): readonly StageOverlayContribution[];
+	/** Every adapter candidate, projected once into Stage CSS space. */
+	candidatePreviews(): readonly StageCandidatePreviewView[];
 	graphics(): readonly StageWorldGraphic[];
 	/** Every adapter's proposed-pose mesh for the live evaluation. */
 	ghosts(): readonly StageGhostMesh[];
@@ -1905,6 +1967,54 @@ export function createStageFacade(input: {
 						...marker,
 						css: [marker.css[0] - left, marker.css[1] - top] as const
 					}));
+				} catch { return []; }
+			});
+		},
+		candidatePreviews() {
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			const { left, top } = handle.context.evaluation.rect;
+			// One projection, at the same boundary the overlay uses. World points an
+			// adapter contributes are never translated again by it.
+			const css = (world: Vec3): readonly [number, number] | null => {
+				if (world.length !== 3 || !world.every(Number.isFinite)) return null;
+				const projected = handle.context.project(world);
+				return projected === null ? null : [projected[0] - left, projected[1] - top];
+			};
+			return [...adapters.values()].flatMap((entry) => {
+				try {
+					return (entry.contributions.candidatePreview?.(handle.context) ?? []).flatMap(
+						(candidate): StageCandidatePreviewView[] => {
+							const polygons = candidate.polygons.flatMap((polygon) => {
+								const points = polygon.map(css);
+								return points.length >= 3 && points.every((point) => point !== null)
+									? [points as readonly (readonly [number, number])[]]
+									: [];
+							});
+							const segments = candidate.segments.flatMap(([from, to]) => {
+								const a = css(from);
+								const b = css(to);
+								return a === null || b === null ? [] : [[a, b] as const];
+							});
+							const labels = candidate.labels.flatMap((label) => {
+								const point = css(label.world);
+								return point === null ? [] : [{ css: point, text: label.text }];
+							});
+							const snapPoint = candidate.snap === undefined ? null : css(candidate.snap.world);
+							return [{
+								id: candidate.id,
+								role: candidate.role,
+								polygons,
+								segments,
+								labels,
+								bounds: candidateBounds(candidate),
+								...(snapPoint === null || candidate.snap === undefined
+									? {}
+									: { snap: { css: snapPoint, name: candidate.snap.name } })
+							}];
+						}
+					);
 				} catch { return []; }
 			});
 		},

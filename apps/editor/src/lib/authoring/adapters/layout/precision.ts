@@ -739,7 +739,12 @@ export type WallManipulationPlan =
 	| {
 			readonly kind: 'planned';
 			readonly wall: WallFrame;
-			/** Neighbours the canonical candidate reshaped, never a second solve. */
+			/**
+			 * The planner's exact candidate document. Preview compiles this and
+			 * release submits the same request, so both describe one solve.
+			 */
+			readonly document: LayoutDocumentWallFirst;
+			/** Neighbours the candidate reshaped, never a second solve. */
 			readonly neighbours: readonly WallNeighbourPreview[];
 	  }
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
@@ -838,6 +843,7 @@ export function planWallManipulation(
 		return {
 			kind: 'planned',
 			wall,
+			document: plan.document,
 			neighbours: wallNeighbourPreviews(
 				baseline,
 				plan.document,

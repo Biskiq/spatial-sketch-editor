@@ -20,16 +20,19 @@
 	 * never written anywhere.
 	 */
 	import type { StageMarkView } from '../stage-handles';
+	import type { StageCandidatePreviewView } from '../stage-facade';
 
 	let {
 		markers,
 		marks = [],
+		candidates = [],
 		tracePreview = null,
 		hostTools = null,
 		onActivateDisclosure = () => {}
 	}: {
 		markers: readonly { id: string; css: readonly [number, number]; label: string }[];
 		marks?: readonly StageMarkView[];
+		candidates?: readonly StageCandidatePreviewView[];
 		tracePreview?: import('$lib/platform/perf-marks').PerfTracePreview | null;
 		hostTools?: {
 			readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean } | null;
@@ -57,6 +60,40 @@
 		return Math.max(34, Math.round(text.length * 6.1 + 10));
 	}
 
+	/**
+	 * Candidate reasons are full sentences, not marker words. Wrap them by word
+	 * count so a long refusal stays readable without measuring the Stage: the
+	 * overlay owns no layout read of its own.
+	 */
+	function labelLines(text: string, maxChars = 46): readonly string[] {
+		if (text.length <= maxChars) return [text];
+		const lines: string[] = [];
+		let line = '';
+		const flush = (): void => {
+			if (line !== '') lines.push(line);
+			line = '';
+		};
+		for (const word of text.split(' ')) {
+			// An id can be longer than a whole readable line. Hard-split it rather
+			// than let one unbreakable token push the tag past the Stage edge.
+			if (word.length > maxChars) {
+				flush();
+				for (let offset = 0; offset < word.length; offset += maxChars) {
+					lines.push(word.slice(offset, offset + maxChars));
+				}
+				continue;
+			}
+			const next = line === '' ? word : `${line} ${word}`;
+			if (next.length <= maxChars) line = next;
+			else {
+				flush();
+				line = word;
+			}
+		}
+		flush();
+		return lines;
+	}
+
 	/** The two short end ticks of a dimension line, perpendicular to it. */
 	function dimensionTicks(from: readonly [number, number], to: readonly [number, number]): string {
 		const dx = to[0] - from[0];
@@ -68,6 +105,11 @@
 		return `M${from[0] + nx},${from[1] + ny} L${from[0] - nx},${from[1] - ny} M${to[0] + nx},${to[1] + ny} L${to[0] - nx},${to[1] - ny}`;
 	}
 
+	/** One projected polygon as an SVG path, in the overlay's CSS space. */
+	function polygonPath(points: readonly (readonly [number, number])[]): string {
+		return `${points.map((point, index) => `${index === 0 ? 'M' : 'L'}${point[0]},${point[1]}`).join(' ')} Z`;
+	}
+
 	function onDisclosureKey(event: KeyboardEvent, id: string): void {
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
@@ -77,6 +119,43 @@
 </script>
 
 <svg class="overlay" role="group" aria-label="Stage manipulation marks" focusable="false">
+	{#each candidates as candidate (candidate.id)}
+		<g
+			class="candidate"
+			class:subject={candidate.role === 'subject'}
+			class:affected={candidate.role === 'affected'}
+			class:refused={candidate.role === 'refused'}
+			data-candidate-id={candidate.id}
+			data-candidate-role={candidate.role}
+		>
+			{#each candidate.polygons as polygon, index (`${candidate.id}:polygon:${index}`)}
+				<path class="candidate-fill" d={polygonPath(polygon)} />
+				<path class="candidate-edge" d={polygonPath(polygon)} />
+			{/each}
+			{#each candidate.segments as segment, index (`${candidate.id}:segment:${index}`)}
+				<line class="candidate-edge" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
+			{/each}
+			{#each candidate.labels as label, index (`${candidate.id}:label:${index}`)}
+				{@const lines = labelLines(label.text)}
+				{@const width = Math.max(...lines.map((line) => tagWidth(line))) + 10}
+				<!-- The tag sits above the snap mark at the same point, so the two
+				     never overprint each other. -->
+				<g class="tag" transform={`translate(${label.css[0] + 10} ${label.css[1] - 26 - index * 20})`}>
+					<rect width={width} height={6 + lines.length * 12} rx="2" />
+					{#each lines as line, lineIndex (`${candidate.id}:label:${index}:${lineIndex}`)}
+						<text x="5" y={12 + lineIndex * 12}>{line}</text>
+					{/each}
+				</g>
+			{/each}
+			{#if candidate.snap}
+				<g class="candidate-snap" data-snap-name={candidate.snap.name} transform={`translate(${candidate.snap.css[0]} ${candidate.snap.css[1]})`}>
+					<circle r="4" />
+					<text x="7" y="3">{candidate.snap.name}</text>
+				</g>
+			{/if}
+		</g>
+	{/each}
+
 	{#each markers as marker (marker.id)}
 		<g class="task-marker marker" transform={`translate(${marker.css[0]} ${marker.css[1]})`}>
 			<circle r="4" />
@@ -295,6 +374,56 @@
 	.mark.disclose:focus-visible {
 		outline: 2px solid #d4ad45;
 		outline-offset: 2px;
+	}
+	.candidate .candidate-fill {
+		fill: transparent;
+		stroke: none;
+	}
+	.candidate.subject .candidate-fill {
+		fill: rgb(212 173 69 / 0.18);
+	}
+	.candidate .candidate-edge {
+		fill: none;
+		stroke: #f3f4ee;
+		stroke-width: 1.25;
+		stroke-linejoin: round;
+		stroke-linecap: round;
+	}
+	.candidate.subject .candidate-edge {
+		stroke: #d4ad45;
+		stroke-width: 1.5;
+	}
+	.candidate.affected .candidate-edge {
+		stroke-opacity: 0.55;
+	}
+	.candidate.refused .candidate-edge {
+		stroke-opacity: 0.7;
+		stroke-dasharray: 4 3;
+	}
+	.candidate-snap circle {
+		fill: none;
+		stroke: #d4ad45;
+		stroke-width: 1.5;
+	}
+	.candidate-snap text {
+		fill: #f3f4ee;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 10px;
+		paint-order: stroke;
+		stroke: #152c26;
+		stroke-width: 2.5;
+	}
+	.candidate .tag rect {
+		fill: #152c26;
+		stroke: #f3f4ee;
+		stroke-opacity: 0.35;
+		stroke-width: 0.5;
+	}
+	.candidate .tag text {
+		fill: #f3f4ee;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 10px;
+		letter-spacing: 0.02em;
 	}
 	.mark .tag rect {
 		fill: #152c26;

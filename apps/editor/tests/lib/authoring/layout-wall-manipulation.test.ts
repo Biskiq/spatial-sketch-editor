@@ -921,6 +921,9 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectOpening(mounted.facade, mounted.openingId);
+		// This contract is the track anchor itself: hold Snap so the committed
+		// offset is the pointer's own, not a grid winner's.
+		mounted.facade.setDrafting({ snapSuspended: true });
 		const before = currentOpening(mounted);
 		const evaluationId = mounted.facade.evaluationId()!;
 		const slide = mounted.facade.marks().find((mark) => mark.id === 'layout-opening-position')!;

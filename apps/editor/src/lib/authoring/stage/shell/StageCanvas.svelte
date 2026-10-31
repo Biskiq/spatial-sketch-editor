@@ -55,6 +55,8 @@ import StageGrid from './StageGrid.svelte';
 		drafting = STAGE_DRAFTING_DEFAULTS,
 		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
 		contentBounds = null,
+		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
+		candidateBounds = null,
 		reducedMotion = false,
 		datumMeters = 0,
 		selection = null,
@@ -83,6 +85,8 @@ import StageGrid from './StageGrid.svelte';
 		drafting?: StageDraftingState;
 		/** Layout ∪ Scene datum bounds for Paper's bounded sheet. */
 		contentBounds?: GridRect | null;
+		/** The live candidate's extent, added to Paper's sheet only. */
+		candidateBounds?: GridRect | null;
 		reducedMotion?: boolean;
 		/** The level datum the mat ground sits at. */
 		datumMeters?: number;
@@ -245,6 +249,7 @@ import StageGrid from './StageGrid.svelte';
 				surface="paper"
 				{datumMeters}
 				{contentBounds}
+				{candidateBounds}
 			/>
 		{/if}
 		<StagePaper
