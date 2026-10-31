@@ -207,7 +207,17 @@
 					const pending = peekArmedModel(snapshot.acceptedRevision.projectId);
 					if (pending !== null) session.setArmedModel(pending);
 				}
-				armedModelPresent = session.armedModel() !== null;
+				const armedModel = session.armedModel();
+				armedModelPresent = armedModel !== null;
+				if (armedModel?.definition.creationDefaults.kind === 'model') {
+					const assetId = armedModel.definition.creationDefaults.assetId;
+					if (catalogueModels.some((asset) => asset.id === assetId)) {
+						placementChoice = `catalogue:${assetId}`;
+					}
+				} else if (armedModel === null) {
+					primitive = session.placePrimitive();
+					placementChoice = `native:${primitive}`;
+				}
 			} else {
 				armedModelPresent = false;
 			}

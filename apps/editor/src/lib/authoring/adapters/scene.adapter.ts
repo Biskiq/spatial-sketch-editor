@@ -549,6 +549,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						kind: 'place', entityId: null, primitive: null,
 						position: [world[0], world[1] - model.definition.contactMinY, world[2]],
 						rotation: [0, 0, 0], worldXZ, yaw: 0, scale: 1, snappedStep: null,
+						modelContactMinY: model.definition.contactMinY,
 						footprint: {
 							width: Math.max(...xs) - Math.min(...xs),
 							depth: Math.max(...zs) - Math.min(...zs)
@@ -964,7 +965,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								entity.kind === 'model'
 									? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ??
 									  admittedModelFootprint(adapterContext.snapshot, entity.assetId)
-									: null
+									: null,
+							modelContactMinY: entity.kind === 'model' ? current.contactMinY : null
 						});
 			}
 
@@ -2421,8 +2423,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const ghost = candidateGhost(entity, shown, {
 						modelFootprint:
 							entity?.kind === 'model'
-								? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ?? null
+								? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ??
+								  admittedModelFootprint(adapterContext.snapshot, entity.assetId)
 								: null,
+						modelContactMinY:
+							shown.modelContactMinY ?? (entity?.kind === 'model' ? objectContact(entity) : null),
 						treatment: refused === null ? 'subject' : 'refused'
 					});
 					return ghost === null ? marks : [...marks, ghost];

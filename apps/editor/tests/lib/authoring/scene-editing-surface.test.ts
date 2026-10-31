@@ -53,7 +53,7 @@ import { catalogueModelDefinition } from '$lib/authoring/scene/object-definition
 import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
-import { creatorModelDefinition } from '@portfolio/project-model/scene-planning';
+import { creatorModelDefinition, creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
@@ -70,7 +70,10 @@ const PROJECT_ID = 'project-scene-editing';
 const BASELINE: Vec3 = [2, 0.5, 2];
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 
-async function supportedProject(entities: readonly SceneEntity[]): Promise<ProjectEnvelope> {
+async function supportedProject(
+	entities: readonly SceneEntity[],
+	modelEntry?: NonNullable<ReturnType<typeof creatorModelResourceEntry>>
+): Promise<ProjectEnvelope> {
 	const planned = planWallChain({
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points: [
@@ -84,12 +87,18 @@ async function supportedProject(entities: readonly SceneEntity[]): Promise<Proje
 		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
-	return createUnitProject({
+	const project = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'Scene editing',
 		layout: planned.document,
+		...(modelEntry === undefined
+			? {}
+			: { resources: { formatVersion: 2 as const, resources: [modelEntry.resource] } }),
 		scene: { formatVersion: 1, textures: [], materials: [], entities: [...entities], navigationNodes: [], connections: [] }
 	});
+	return modelEntry === undefined
+		? project
+		: { ...project, dependencyLock: { ...project.dependencyLock, entries: [modelEntry.lock] } };
 }
 
 
@@ -154,9 +163,11 @@ function writePort(
 
 async function sessionFor(
 	entities: readonly SceneEntity[],
-	port: TestPort = writePort()
+	port: TestPort = writePort(),
+	contactMinYFor?: (entity: SceneEntity) => number | null,
+	modelEntry?: NonNullable<ReturnType<typeof creatorModelResourceEntry>>
 ): Promise<{ session: ScenePlacementSession; port: TestPort }> {
-	const project = await supportedProject(entities);
+	const project = await supportedProject(entities, modelEntry);
 	const admitted = await admitUnitProject(project, {
 		projectId: PROJECT_ID,
 		revisionId: 'revision-boot'
@@ -168,6 +179,7 @@ async function sessionFor(
 			projectId: PROJECT_ID,
 			contentRevision: admitted.snapshot.domain.unitRevisions.scene,
 			source: { layout: stageLayout(admitted.snapshot), scene: stageScene(admitted.snapshot) },
+			...(contactMinYFor === undefined ? {} : { contactMinYFor }),
 			compileGeneration: 'generation-1',
 			evaluationId: 'evaluation-1'
 		},
@@ -178,6 +190,42 @@ async function sessionFor(
 }
 
 describe('Scene placement session', () => {
+	it('carries an approved model contact on existing Move and Resize candidates', async () => {
+		const model: SceneEntity = {
+			kind: 'model',
+			id: 'entity-contact-model',
+			name: 'Bounds-centred model',
+			assetId: 's17-approved-model',
+			fallback: 'generic',
+			position: [2, 0.5, 2],
+			rotation: [0, 0, 0],
+			scale: 1
+		};
+		const modelEntry = creatorModelResourceEntry(model.assetId, {
+			derivative: { hash: `sha256-${'a'.repeat(64)}`, mime: 'model/gltf-binary', size: 4096, locator: 'models/s17-contact-model.glb' },
+			source: { manifestHash: `sha256-${'b'.repeat(64)}`, size: 8192, fileCount: 1 },
+			recipe: { id: 'creator-import@1', version: 1 },
+			reportDigest: `sha256-${'c'.repeat(64)}`,
+			placement: { metresPerSourceUnit: 1, pivot: [0, 0, 0], footprint: { width: 1, depth: 1 }, contactMinY: -0.5 }
+		});
+		if (modelEntry === null) throw new Error('the approved contact model was refused');
+		const contactMinYFor = (entity: SceneEntity) => entity.id === model.id ? -0.5 : null;
+		const moving = await sessionFor([model], writePort(), contactMinYFor, modelEntry);
+		moving.session.begin(model.id);
+		const move = moving.session.previewMove(3, 3);
+		expect(move.kind).toBe('candidate');
+		if (move.kind !== 'candidate') return;
+		expect(move.candidate.modelContactMinY).toBe(-0.5);
+
+		const resizing = await sessionFor([model], writePort(), contactMinYFor, modelEntry);
+		resizing.session.beginResize(model.id);
+		const resize = resizing.session.previewResize(2);
+		expect(resize.kind).toBe('candidate');
+		if (resize.kind !== 'candidate') return;
+		expect(resize.candidate.modelContactMinY).toBe(-0.5);
+		expect(resize.candidate.position[1]).toBeCloseTo(1, 9);
+	});
+
 	it('uses only an admitted catalogue model contact for its floor-aware commands', async () => {
 		const { project, ids } = await buildS17MixedProject();
 		const admitted = await admitSource(project, {

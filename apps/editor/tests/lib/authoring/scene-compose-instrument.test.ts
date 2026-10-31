@@ -238,6 +238,48 @@ async function mountCompose(selectedId: string, snapshot: unknown = SNAPSHOT): P
 }
 
 describe('Scene Compose — truthful capability and captured subject', () => {
+	it('restores the catalogue choice when Place remounts with its remembered model armed', async () => {
+		const first = composeSpies().session;
+		let firstModel: ReturnType<ScenePlacementSession['armedModel']> = null;
+		first.armedModel = () => firstModel;
+		first.setArmedModel = (next) => { firstModel = next; };
+		const { services: firstServices } = servicesFor(first, BOX_ID, MODEL_SNAPSHOT, 'place-object');
+		publishSceneSurface(MODEL_SNAPSHOT, { reading: sceneReadingKey(EVALUATION), session: first });
+		const firstTarget = document.createElement('div');
+		document.body.appendChild(firstTarget);
+		const firstComponent = mount(SceneTransformInstrument, { target: firstTarget, props: { services: firstServices } });
+		cleanup = () => unmount(firstComponent);
+		await tick();
+		const firstChooser = firstTarget.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
+		firstChooser.value = 'catalogue:paris-salon-chair';
+		firstChooser.dispatchEvent(new Event('change', { bubbles: true }));
+		await vi.waitFor(() => expect(firstModel?.definition.creationDefaults.kind).toBe('model'));
+		await unmount(firstComponent);
+		cleanup = null;
+
+		const second = composeSpies().session;
+		let secondModel: ReturnType<ScenePlacementSession['armedModel']> = null;
+		second.armedModel = () => secondModel;
+		second.setArmedModel = (next) => { secondModel = next; };
+		second.setPlacePrimitive = () => { secondModel = null; };
+		const { services: secondServices } = servicesFor(second, BOX_ID, MODEL_SNAPSHOT, 'place-object');
+		publishSceneSurface(MODEL_SNAPSHOT, { reading: sceneReadingKey(EVALUATION), session: second });
+		const secondTarget = document.createElement('div');
+		document.body.appendChild(secondTarget);
+		const secondComponent = mount(SceneTransformInstrument, { target: secondTarget, props: { services: secondServices } });
+		cleanup = () => unmount(secondComponent);
+		await tick();
+		await vi.waitFor(() => expect(secondModel?.definition).toEqual(firstModel?.definition));
+		const secondChooser = secondTarget.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
+		expect(secondChooser.value).toBe('catalogue:paris-salon-chair');
+
+		secondChooser.value = 'native:box';
+		secondChooser.dispatchEvent(new Event('change', { bubbles: true }));
+		await tick();
+		expect(secondModel).toBeNull();
+		expect(peekArmedModel('project-compose')).toBeNull();
+	});
+
 	it('keeps a catalogue arm across readings until a saved form explicitly replaces it', async () => {
 		const payload = canonicalFormLibraryPayload({formatVersion: 1, kind: 'form', name: 'Saved plinth', form: {generator: {kind: 'extrude', plane: 'plan', extent: 0.4, outline: [{key:1,u:0,v:0,smooth:false},{key:2,u:1,v:0,smooth:false},{key:3,u:1,v:1,smooth:false},{key:4,u:0,v:1,smooth:false}]},scale:[1,1,1],nextKey:5},materialId:'plaster-warm',castShadow:true,receiveShadow:true});
 		const item = {id:'11111111-1111-4111-8111-111111111111',name:payload.name,kind:'form' as const,formatVersion:1,contentId:`sha256-${'a'.repeat(64)}`,createdAt:'2026-10-31T12:00:00Z'};

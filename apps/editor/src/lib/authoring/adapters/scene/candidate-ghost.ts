@@ -17,6 +17,8 @@ import type { SceneCandidate } from './placement';
 export type CandidateGhostOptions = {
 	/** Only admitted creator or verified catalogue metadata may supply a proxy extent. */
 	readonly modelFootprint?: { readonly width: number; readonly depth: number } | null;
+	/** Approved model-local contact used to seat its proxy on the floor. */
+	readonly modelContactMinY?: number | null;
 	readonly treatment?: StageGhostMesh['treatment'];
 };
 
@@ -50,8 +52,17 @@ export function candidateGhost(
 			if (candidate.primitive !== null) return primitiveShape(candidate.primitive);
 			if (candidate.footprint === undefined) return null;
 			treatment = options.treatment ?? 'proxy';
-			center = [candidate.position[0], candidate.position[1] + 0.5, candidate.position[2]];
-			return { kind: 'box', size: [candidate.footprint.width, 1, candidate.footprint.depth] };
+			const scale = candidate.scale;
+			const contactMinY = candidate.modelContactMinY ?? options.modelContactMinY ?? 0;
+			center = [
+				candidate.position[0],
+				candidate.position[1] + scale * (contactMinY + 0.5),
+				candidate.position[2]
+			];
+			return {
+				kind: 'box',
+				size: [candidate.footprint.width * scale, scale, candidate.footprint.depth * scale]
+			};
 		}
 		if (entity === null) return null;
 		if (entity.kind === 'form') return { kind: 'form', form: candidate.form ?? entity.form };
@@ -59,14 +70,19 @@ export function candidateGhost(
 			const footprint = options.modelFootprint ?? candidate.footprint;
 			if (footprint === undefined || footprint === null) return null;
 			const scale = candidate.scale;
+			const contactMinY = candidate.modelContactMinY ?? options.modelContactMinY ?? 0;
 			treatment = options.treatment ?? 'proxy';
-			center = [candidate.position[0], candidate.position[1] + 0.5 * scale, candidate.position[2]];
+			center = [
+				candidate.position[0],
+				candidate.position[1] + scale * (contactMinY + 0.5),
+				candidate.position[2]
+			];
 			return { kind: 'box', size: [footprint.width * scale, scale, footprint.depth * scale] };
 		}
 		if (entity.kind !== 'primitive') return null;
-		// A Resize candidate is drawn at the scale it would install, so the ghost is
-		// the object's own new body rather than its previous size at the new Y.
-		const scale = candidate.kind === 'resize' ? candidate.scale : 1;
+		// Every candidate carries the effective scale, including Move and Turn
+		// after a prior Size. Preview the body acceptance will install.
+		const scale = candidate.scale;
 		switch (entity.primitive) {
 			case 'box':
 				return {

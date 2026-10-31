@@ -16,12 +16,29 @@ accepted placement. Manipulation mark priority, form sizing, and pointer placeme
 updated with focused regression coverage. The browser seed creates the mixed fixture and approves
 its creator model through the real import routes, using measured importer output for normalization.
 
+The owner's 2026-10-31 criterion revision keeps the landed upright-only planner boundary.
+Rectangular and concave upright forms owe the full successful journey; the tilted fixture owes
+explicit Move, Place, Turn and Duplicate refusals with unchanged source/history. Tilted Size
+ghost agreement is not claimed. The mixed-fixture regression confirms all four planner refusals
+and unchanged authored Scene data.
+
+The fresh Sol review at the pre-fix PR candidate identified two P2 defects: a remounted Place
+chooser could display a native primitive while a remembered catalogue model remained armed, and
+model proxy ghosts could float because they ignored the approved floor contact. The current
+candidate synchronizes the chooser from the armed catalogue model, carries approved contact into
+model Place/Move/Size ghosts, and seats each proxy at the candidate scale. Regression coverage
+checks remount-and-replace behavior and nonzero model contact. The owner instructed no re-review;
+these repairs are not described as a new clean review verdict.
+
 ## Verification evidence
 
 - `npm run check` passed with 0 errors and 0 warnings.
-- The affected-subsystem suite passed at the repaired revision: 9 files, 157 tests. It covered
-  scene editing, object cards, manipulation marks, operation acceptance, shape reading, candidate
-  ghosts, stage facade, and the mixed fixture contract.
+- After the delivered P2 repairs, the current affected-subsystem run passed 11 files / 156 tests:
+  candidate ghosts, Scene Compose, Scene editing, Scene operation acceptance, object cards,
+  native-form marks and Paper agreement, Stage facade, the S17 mixed fixture, catalogue model
+  verification, and object-definition policy.
+- `npm run test:arch` still fails at the same pre-existing S16 documentation link: 22 / 23 files
+  and 193 / 194 tests passed. No S16 file was changed.
 - The independent review found a P2 click-tolerance defect in both body-drag paths. Revision
   `b48545e58f4b9a6005487e65838b5f286691b4dd` captures the press CSS, uses the shared Stage drag
   boundary for preview and release, and clears the candidate when the pointer returns within click
@@ -33,11 +50,6 @@ its creator model through the real import routes, using measured importer output
   Undo of a valid placement; native-form Turn and Size in Plan and 3D; and approved-model body
   Move, Turn, Size, Duplicate and Undo in Plan and 3D. The live approved-model footprint came from
   measured importer geometry. The disposable project was deleted after the checks.
-- `npm run test:arch` did not pass: 22 files / 23 passed and 193 / 194 tests passed. The failure
-  is the pre-existing broken link in the S16 evidence pointer
-  (`docs/roadmap/r217-core-editor-stability/r217.s16-openings-and-junction-hover/evidence/CLOSED.md`);
-  its relative path resolves under `docs/roadmap/archive/`, while the manifest is under
-  `docs/archive/`. The pointer is unchanged from the trusted base; no S16 file was changed.
 
 Independent re-review on 2026-10-31 of PR #239 at tip `38639c0e` confirmed the body-click fix at
 `b48545e5` and found no actionable P0–P2 regressions. It also exercised pointer-up within click
