@@ -16,7 +16,7 @@ export function readCredentials(value: unknown): { username: string; password: s
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
 	const record = value as Record<string, unknown>;
 	if (Object.keys(record).length !== 2 || typeof record.username !== 'string' || typeof record.password !== 'string') return null;
-	if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(record.username) || record.password.length < 12 || record.password.length > 128) return null;
+	if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(record.username) || record.password.length < 8 || record.password.length > 128) return null;
 	return { username: record.username.toLowerCase(), password: record.password };
 }
 

@@ -30,7 +30,7 @@ The [architecture](../../../reference/architecture.md) and
 
 Final commands passed:
 
-- `npm test`: **253 files / 3,245 tests**, zero skips.
+- `npm test`: **254 files / 3,247 tests**, zero skips.
 - `npm run test:arch`: **23 files / 194 tests**, zero skips; renderer importer list explicitly
   includes the buffer-batching helper. Documentation references also pass after adding this record.
 - `npm run test:heavy`: **11 files / 138 tests**, zero skips.
@@ -64,6 +64,14 @@ asset upload was not part of these journeys.
    cancellation were exercised without an extra Wall or history entry.
 4. Live preview/refusal legibility was inspected at **1440×900, 1280×800, 1180×820 and 820×1180**.
    Screenshots below show the actual current palette; they make no S23 redesign claim.
+
+## Password minimum follow-up
+
+The owner's follow-up lowered the minimum to **8 characters**, retaining the 128-character
+maximum. The API credential parser, login/register/enrollment form, HTML constraints and help
+text agree. The DB-backed register, enrollment and login journey runs with an exactly
+8-character password and rejects 7 characters; mounted form tests cover the same boundary.
+Existing hashes, sessions and ownership need no migration.
 
 ## Visual scope and remaining decisions
 

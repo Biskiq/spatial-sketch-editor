@@ -157,7 +157,7 @@ always creates a new local ID and cannot claim a legacy owner. Signed-out recove
 without a current session has no approved identity-proof path yet and remains an owner decision;
 accounts are never linked by email.
 
-Passwords are constrained to 12–128 characters and usernames to 3–32 ASCII letters, digits, dot,
+Passwords are constrained to 8–128 characters and usernames to 3–32 ASCII letters, digits, dot,
 underscore or hyphen; usernames are lowercased before uniqueness checks. Hash records use the
 `scrypt-v1` encoding with N=131072, r=8, p=1, a random 16-byte salt and a 64-byte derived key.
 Credential endpoints cap request bodies at 2,048 bytes, return generic login failures for unknown

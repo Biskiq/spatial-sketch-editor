@@ -228,7 +228,7 @@ export function createApp({
 			const existingUserId = sessionUserId(request, sessionsEnabled);
 			if (action === 'credentials' && !existingUserId) return unauthorized(reply);
 			const credentials = readCredentials(request.body);
-			if (!credentials) return reply.code(400).send(errorBody('invalid_credentials', 'Use a 3–32 character username and a 12–128 character password'));
+			if (!credentials) return reply.code(400).send(errorBody('invalid_credentials', 'Use a 3–32 character username and an 8–128 character password'));
 			if (authBusy) return reply.header('Retry-After', '1').code(429).send(errorBody('auth_busy', 'Try again shortly'));
 			authBusy = true;
 			try {

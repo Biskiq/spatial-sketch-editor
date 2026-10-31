@@ -104,7 +104,8 @@ test('CORS, credentials, origin checks, and logout are restricted to the editor 
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
 const EDITOR_ORIGIN = 'https://editor.auth-test.example';
-const TEST_PASSWORD = 'correct horse battery staple';
+// Exercise registration, legacy enrollment and login at the minimum length.
+const TEST_PASSWORD = 'eightchr';
 
 async function withIsolatedAuthApp(run) {
 	const admin = new Pool({ connectionString: DATABASE_URL, max: 1 });
@@ -241,7 +242,7 @@ test('local credentials authenticate, preserve legacy ownership, and enforce bou
 		const invalidCredentials = [
 			{ username: 'ab', password: TEST_PASSWORD },
 			{ username: 'bad/name', password: TEST_PASSWORD },
-			{ username: 'valid.name', password: 'too-short' },
+			{ username: 'valid.name', password: 'short7!' },
 			{ username: 'valid.name', password: 'p'.repeat(129) },
 			{ username: 'valid.name', password: TEST_PASSWORD, extra: true }
 		];

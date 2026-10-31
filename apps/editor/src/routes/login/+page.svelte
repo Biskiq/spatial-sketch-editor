@@ -64,8 +64,8 @@
 			notice = 'Username must be 3–32 characters using letters, numbers, dot, underscore or hyphen.';
 			return;
 		}
-		if (password.length < 12 || password.length > 128) {
-			notice = 'Password must be between 12 and 128 characters.';
+		if (password.length < 8 || password.length > 128) {
+			notice = 'Password must be between 8 and 128 characters.';
 			return;
 		}
 
@@ -124,11 +124,11 @@
 					type="password"
 					bind:value={password}
 					autocomplete={mode === 'login' ? 'current-password' : 'new-password'}
-					minlength="12"
+					minlength="8"
 					maxlength="128"
 					required
 				/>
-				<p class="hint">Use 12–128 characters for the password.</p>
+				<p class="hint">Use 8–128 characters for the password.</p>
 				{#if notice}<p class="status" role="alert">{notice}</p>{/if}
 				<button class="primary" type="submit" disabled={busy}>
 					{busy ? 'Please wait…' : mode === 'enroll' ? 'Save password' : mode === 'register' ? 'Create account' : 'Sign in'}
