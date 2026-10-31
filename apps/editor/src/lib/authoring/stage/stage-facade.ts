@@ -331,6 +331,8 @@ export type StagePointerIntent = {
 	readonly shift?: boolean;
 	/** The admitted mark the press started on, when the host resolved one. */
 	readonly handleId?: string;
+	/** The binding that published the admitted mark, when the host resolved one. */
+	readonly handleAdapterId?: string;
 	/** Pointer class, so a coarse press uses the 44 px hit area. */
 	readonly coarse?: boolean;
 };
@@ -594,6 +596,12 @@ export type StageAdapterBinding = {
 	 */
 	readonly handles?: (context: StageAdapterContext) => readonly StageHandleDescriptor[];
 	/**
+	 * Marks that can appear under an idle pointer without a selected subject.
+	 * Their owner updates them through `idleHoverIntent`; the host admits and
+	 * projects them with the same planner and viewport rules as selected marks.
+	 */
+	readonly idleHandles?: (context: StageAdapterContext) => readonly StageHandleDescriptor[];
+	/**
 	 * The heights this binding's own surfaces offer to the Height Sheet.
 	 *
 	 * Additive and optional: a binding that declares nothing contributes no tick,
@@ -627,6 +635,11 @@ export type StageAdapterBinding = {
 	 * `move`, `up` and `cancel`. A binding that returns `false` never sees the rest.
 	 */
 	readonly pointerIntent?: (intent: StagePointerIntent, context: StageAdapterContext) => boolean;
+	/**
+	 * Update this binding's transient idle-hover target. The host offers fine,
+	 * unpressed moves only when no task or gesture owns the Stage.
+	 */
+	readonly idleHoverIntent?: (intent: StagePointerIntent, context: StageAdapterContext) => boolean;
 	/**
 	 * An unpressed move while this adapter's task is open. It is a preview only:
 	 * the move is never claimed, so Stage navigation and the next press stay with
@@ -855,10 +868,12 @@ export type StageFacade = {
 	hostToolTarget(query: StageHitCandidate & { readonly tool: string; readonly coarse?: boolean }): StageHostToolTarget;
 	/** R217.S10 — the owning binding's erase answer for its own winner. */
 	eraseAnswer(adapterId: string, hit: StageSourceHit): StageEraseAnswer | null;
-	/** Admitted marks for the primary selection, in descriptor order, projected. */
+	/** Admitted selected-subject marks, then any current domain idle-hover marks. */
 	marks(): readonly StageMarkView[];
 	/** The mark under a Stage-local CSS point, or `null`. */
 	hitMark(query: { readonly css: readonly [number, number]; readonly coarse: boolean }): StageMarkHit | null;
+	/** Update idle-hover contributors and return their mark at this pointer, if any. */
+	idleHoverIntent(intent: StagePointerIntent): StageMarkHit | null;
 	/** Hover emphasis for one mark; never selection, history or source. */
 	setMarkHover(mark: { readonly adapterId: string; readonly id: string } | null): void;
 	/** Toggle a disclosure mark. Returns `true` when a disclosure was activated. */
@@ -1050,6 +1065,8 @@ export function createStageFacade(input: {
 	let pointerOwner: string | null = null;
 	/** Which mark the pointer is over; view state only. */
 	let markHover: { readonly adapterId: string; readonly id: string } | null = null;
+	/** The idle-hover mark whose hover state is owned by an adapter contribution. */
+	let idleMarkHover: { readonly adapterId: string; readonly id: string } | null = null;
 	/** The mark a live press started on, for gold emphasis and live tags. */
 	let activeMarkId: string | null = null;
 	/** Open disclosure ids for the current primary selection. */
@@ -1298,25 +1315,11 @@ export function createStageFacade(input: {
 	 * and the mark is not returned, so "not drawn" and "not hit-testable" are the
 	 * same fact.
 	 */
-	function stageMarks(): readonly StageMarkView[] {
-		if (!isLive()) return [];
-		syncDisclosureSelection();
-		if (session.task() !== null) return [];
-		const entry = primaryEntry(session.selectionState());
-		if (entry === null) return [];
-		ensureBindings();
-		const adapterEntry = adapters.get(entry.reference.domain);
-		if (adapterEntry === undefined) return [];
-		const handle = adapterContext();
-		if (handle === null) return [];
-		let descriptors: readonly StageHandleDescriptor[] = [];
-		try {
-			descriptors = adapterEntry.contributions.handles?.(handle.context) ?? [];
-		} catch {
-			descriptors = [];
-		} finally {
-			handle.end();
-		}
+	function admittedMarks(
+		adapterEntry: NonNullable<ReturnType<typeof adapters.get>>,
+		descriptors: readonly StageHandleDescriptor[],
+		context: StageAdapterContext
+	): readonly StageMarkView[] {
 		if (descriptors.length === 0) return [];
 		const admission = admitStageHandles({
 			adapterId: adapterEntry.adapter.id,
@@ -1328,8 +1331,7 @@ export function createStageFacade(input: {
 			reportedHandleDiagnostics.add(`${diagnostic.adapterId}\u0000${diagnostic.handleId}\u0000${diagnostic.code}`);
 			handleDiagnostics.push(diagnostic);
 		}
-		const evaluation = camera.evaluation();
-		if (evaluation === null) return [];
+		const evaluation = context.evaluation;
 		return projectStageHandles({
 			adapterId: adapterEntry.adapter.id,
 			descriptors: admission.admitted,
@@ -1347,6 +1349,50 @@ export function createStageFacade(input: {
 			},
 			offset: [evaluation.rect.left, evaluation.rect.top]
 		});
+	}
+
+	function selectionMarks(): readonly StageMarkView[] {
+		if (!isLive()) return [];
+		syncDisclosureSelection();
+		if (session.task() !== null) return [];
+		const entry = primaryEntry(session.selectionState());
+		if (entry === null) return [];
+		ensureBindings();
+		const adapterEntry = adapters.get(entry.reference.domain);
+		if (adapterEntry === undefined) return [];
+		const handle = adapterContext();
+		if (handle === null) return [];
+		let descriptors: readonly StageHandleDescriptor[] = [];
+		try { descriptors = adapterEntry.contributions.handles?.(handle.context) ?? []; }
+		catch { descriptors = []; }
+		try {
+			return admittedMarks(adapterEntry, descriptors, handle.context);
+		} finally {
+			handle.end();
+		}
+	}
+
+	function idleMarks(): readonly StageMarkView[] {
+		if (!isLive() || session.task() !== null) return [];
+		ensureBindings();
+		const handle = adapterContext();
+		if (handle === null) return [];
+		const marks: StageMarkView[] = [];
+		try {
+			for (const entry of adapters.values()) {
+				let descriptors: readonly StageHandleDescriptor[] = [];
+				try { descriptors = entry.contributions.idleHandles?.(handle.context) ?? []; }
+				catch { descriptors = []; }
+				marks.push(...admittedMarks(entry, descriptors, handle.context));
+			}
+		} finally {
+			handle.end();
+		}
+		return marks;
+	}
+
+	function stageMarks(): readonly StageMarkView[] {
+		return [...selectionMarks(), ...idleMarks()];
 	}
 
 	/** End every binding and registration: used by dispose, never by a content change. */
@@ -1670,6 +1716,7 @@ export function createStageFacade(input: {
 			// source that was replaced, not to whatever now shares its identity.
 			openDisclosures.clear();
 			markHover = null;
+			idleMarkHover = null;
 			activeMarkId = null;
 			// Every factory-bound adapter is rebuilt for *this* snapshot: the registration
 			// survives the edit, each previous binding is disposed exactly once, and its
@@ -1730,6 +1777,7 @@ export function createStageFacade(input: {
 			// to the source it was opened against and must not survive the swap.
 			openDisclosures.clear();
 			markHover = null;
+			idleMarkHover = null;
 			activeMarkId = null;
 			rebindAdapters();
 			camera.acquireInspection('exclusive', nextInspectionRun());
@@ -1767,7 +1815,7 @@ export function createStageFacade(input: {
 				// The mark tier sits above world candidates. A host tool (Measure, Eraser)
 				// asks the world, not the selection's manipulation language.
 				if (query.purpose !== 'tool') {
-					const mark = hitStageMark(stageMarks(), { css: query.css, coarse: query.coarse === true });
+					const mark = hitStageMark(selectionMarks(), { css: query.css, coarse: query.coarse === true });
 					if (mark !== null) return result = { kind: 'mark', mark: mark.mark };
 				}
 				const winner = resolveStagePick(query, [...adapters].map(([adapterId, entry]) => ({ adapterId, binding: entry.contributions })), handle.context, evaluation.renderedReading === 'plan' ? 'plan' : '3d', toolOwner ?? contributedTaskOwner?.adapterId ?? null);
@@ -1820,11 +1868,70 @@ export function createStageFacade(input: {
 			return stageMarks();
 		},
 		hitMark(query) {
-			return hitStageMark(stageMarks(), query);
+			return hitStageMark(selectionMarks(), query);
+		},
+		idleHoverIntent(intent) {
+			if (!isLive()) return null;
+			ensureBindings();
+			const evaluation = camera.evaluation();
+			const allowed = intent.phase === 'move' &&
+				session.task() === null &&
+				session.gesture() === null &&
+				intent.coarse !== true &&
+				evaluation !== null &&
+				evaluationIdOf(evaluation) === intent.evaluationId &&
+				intent.css.every(Number.isFinite) &&
+				hitStageMark(selectionMarks(), { css: intent.css, coarse: false }) === null;
+			const clearPrevious = () => {
+				if (idleMarkHover !== null && markHover?.adapterId === idleMarkHover.adapterId && markHover.id === idleMarkHover.id) {
+					markHover = null;
+				}
+				idleMarkHover = null;
+			};
+			const handle = adapterContext();
+			if (handle === null) {
+				clearPrevious();
+				return null;
+			}
+			let contributed = false;
+			try {
+				if (allowed) {
+					for (const entry of adapters.values()) {
+						const update = entry.contributions.idleHoverIntent;
+						if (update === undefined) continue;
+						try {
+							contributed = update(intent, handle.context) || contributed;
+						} catch { /* A throwing idle-hover contribution names no mark. */ }
+					}
+				} else {
+					const cancel = { ...intent, phase: 'cancel' as const };
+					for (const entry of adapters.values()) {
+						try { entry.contributions.idleHoverIntent?.(cancel, handle.context); }
+						catch { /* Subscriber isolation. */ }
+					}
+				}
+			} finally {
+				handle.end();
+			}
+			if (!contributed) {
+				clearPrevious();
+				return null;
+			}
+			const hit = hitStageMark(idleMarks(), { css: intent.css, coarse: false });
+			if (hit === null) {
+				clearPrevious();
+				return null;
+			}
+			idleMarkHover = { adapterId: hit.adapterId, id: hit.id };
+			markHover = idleMarkHover;
+			return hit;
 		},
 		setMarkHover(mark) {
 			if (!isLive()) return;
 			markHover = mark === null ? null : { adapterId: mark.adapterId, id: mark.id };
+			if (mark === null || mark.adapterId !== idleMarkHover?.adapterId || mark.id !== idleMarkHover.id) {
+				idleMarkHover = null;
+			}
 		},
 		activateDisclosure(id) {
 			if (!isLive()) return false;
@@ -1861,6 +1968,7 @@ export function createStageFacade(input: {
 			if (!isLive() || !session.changeLens(next)) return false;
 			openDisclosures.clear();
 			markHover = null;
+			idleMarkHover = null;
 			activeMarkId = null;
 			// A lens exit ends bindings as well as writers. Old callbacks cannot become live on return.
 			rebindAdapters();
@@ -2190,7 +2298,16 @@ export function createStageFacade(input: {
 					return { claimed: false, adapterId: null };
 				}
 				// Direct manipulation belongs only to the primary selection's domain.
-				const adapterId = primaryEntry(session.selectionState())?.reference.domain;
+				const admittedMark = intent.handleId === undefined
+					? undefined
+					: stageMarks().find((mark) =>
+						mark.id === intent.handleId &&
+						(intent.handleAdapterId === undefined || mark.adapterId === intent.handleAdapterId)
+					);
+				if (intent.handleId !== undefined && admittedMark === undefined) {
+					return { claimed: false, adapterId: null };
+				}
+				const adapterId = admittedMark?.adapterId ?? primaryEntry(session.selectionState())?.reference.domain;
 				const entry = adapterId === undefined ? undefined : adapters.get(adapterId);
 				const claim = entry?.contributions.pressWhenNoTask === true ? entry.contributions.pointerIntent : undefined;
 				if (claim !== undefined) {
