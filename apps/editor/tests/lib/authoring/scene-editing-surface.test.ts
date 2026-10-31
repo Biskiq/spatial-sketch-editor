@@ -18,7 +18,7 @@ import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PlaneGeometry } from 'thre
 import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import { buildFormGeometry } from '$lib/museum/entities/form-geometry';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	type AuthoringIntent,
 	type SceneDocument,
@@ -1057,6 +1057,40 @@ describe('Scene adapter registration', () => {
 		body.geometry.dispose();
 	});
 
+	it('keeps selected object body jitter and a drag returned to click range from committing', async () => {
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, host, rendered, evaluationId } = await withSceneSurface(undefined, null, project, RECT, 'plan');
+		const body = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+		body.position.set(2, 0.5, 2);
+		const unregister = rendered.register(FIXTURE_ENTITY_ID, body);
+		const accept = vi.spyOn(host, 'accept');
+		const depth = host.history().depth;
+		facade.setDrafting({ snap: false });
+		const press = stageCssOf(facade, [1.65, 0, 1.85]);
+		const click = [press[0] + 1, press[1]] as const;
+		const drag = stageCssOf(facade, [2.65, 0, 2.35]);
+
+		expect(facade.pointerIntent({ phase: 'down', css: press, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: click, evaluationId });
+		expect(facade.ghosts()).toEqual([]);
+		facade.pointerIntent({ phase: 'up', css: click, evaluationId });
+		expect(accept).not.toHaveBeenCalled();
+
+		expect(facade.pointerIntent({ phase: 'down', css: press, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: drag, evaluationId });
+		expect(facade.ghosts()).toHaveLength(1);
+		facade.pointerIntent({ phase: 'move', css: click, evaluationId });
+		expect(facade.ghosts()).toEqual([]);
+		facade.pointerIntent({ phase: 'up', css: click, evaluationId });
+
+		expect(accept).not.toHaveBeenCalled();
+		expect(host.history().depth).toBe(depth);
+		expect(stageScene(facade.snapshot()).entities.find((entry) => entry.id === FIXTURE_ENTITY_ID)?.position)
+			.toEqual([2, 0.5, 2]);
+		unregister();
+		body.geometry.dispose();
+	});
+
 	it('keeps screen-sized marks and direct Move on a subject under 48 CSS px', async () => {
 		const base = boxEntity(FIXTURE_ENTITY_ID, [2, 0.15, 2]);
 		const small: SceneEntity = {
@@ -1131,6 +1165,42 @@ describe('Scene adapter registration', () => {
 		});
 		expect(stageScene(facade.snapshot()).entities.find((entry) => entry.id === 'form-plan')?.position)
 			.toEqual([2.5, 0, 3.5]);
+	});
+
+	it('keeps selected form body jitter and a drag returned to click range from committing', async () => {
+		const project = await supportedProject([nativeForm('plan', 2)]);
+		const { facade, host, evaluationId } = await withSceneSurface(
+			undefined,
+			null,
+			project,
+			RECT,
+			'plan',
+			'form-plan'
+		);
+		const accept = vi.spyOn(host, 'accept');
+		const depth = host.history().depth;
+		facade.setDrafting({ snap: false });
+		const press = stageCssOf(facade, [2.25, 0, 3.2]);
+		const click = [press[0] + 1, press[1]] as const;
+		const drag = stageCssOf(facade, [2.75, 0, 3.7]);
+
+		expect(facade.pointerIntent({ phase: 'down', css: press, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: click, evaluationId });
+		expect(facade.ghosts()).toEqual([]);
+		facade.pointerIntent({ phase: 'up', css: click, evaluationId });
+		expect(accept).not.toHaveBeenCalled();
+
+		expect(facade.pointerIntent({ phase: 'down', css: press, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: drag, evaluationId });
+		expect(facade.ghosts()).toHaveLength(1);
+		facade.pointerIntent({ phase: 'move', css: click, evaluationId });
+		expect(facade.ghosts()).toEqual([]);
+		facade.pointerIntent({ phase: 'up', css: click, evaluationId });
+
+		expect(accept).not.toHaveBeenCalled();
+		expect(host.history().depth).toBe(depth);
+		expect(stageScene(facade.snapshot()).entities.find((entry) => entry.id === 'form-plan')?.position)
+			.toEqual([2, 0, 3]);
 	});
 
 	it('draws the Paper candidate polygon from the same pose and footprint as the planner candidate', async () => {

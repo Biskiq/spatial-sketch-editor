@@ -42,6 +42,7 @@ import {
 	draftingSnapIncrementMeters,
 	snapDraftingPlacement
 } from '$lib/authoring/stage/stage-drafting';
+import { isStageDrag } from '$lib/authoring/stage/stage-input';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import type { SceneFormEntity } from '$lib/content/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
@@ -266,6 +267,14 @@ function pointerDatumPoint(
 		ray.origin[2] + ray.direction[2] * distance
 	];
 	return point.every(Number.isFinite) ? point : null;
+}
+
+/** Apply the Stage's shared CSS-pixel click/drag boundary to a captured body press. */
+function isStagePointerDrag(
+	origin: readonly [number, number],
+	point: readonly [number, number]
+): boolean {
+	return isStageDrag({ x: origin[0], y: origin[1] }, { x: point[0], y: point[1] });
 }
 
 /** A Scene entity at the exact pose a candidate would install. */
@@ -568,6 +577,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** One direct-manipulation mark on a selected native form; never a task. */
 			type FormMarkGesture = {
 				readonly evaluationId: string;
+				readonly pressCss: readonly [number, number];
+				readonly bodyPress: boolean;
 				readonly markId: SceneFormEditMarkId;
 				readonly lease: GestureAcquisition;
 				readonly entity: SceneFormEntity;
@@ -773,6 +784,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			type ObjectMarkGesture = {
 				readonly evaluationId: string;
+				readonly pressCss: readonly [number, number];
+				readonly bodyPress: boolean;
 				readonly markId: SceneObjectEditMarkId;
 				readonly lease: GestureAcquisition;
 				readonly entityId: string;
@@ -1052,6 +1065,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const pressPoint = bodyPress ? pointerDatumPoint(adapterContext, intent.css) : null;
 					objectMarkGesture = {
 						evaluationId: intent.evaluationId,
+						pressCss: [intent.css[0], intent.css[1]],
+						bodyPress,
 						markId,
 						lease: acquisition,
 						entityId: entity.id,
@@ -1122,6 +1137,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				}
 				if (intent.phase === 'move') {
+					if (gesture.bodyPress && !isStagePointerDrag(gesture.pressCss, intent.css)) {
+						// A body press is still a click until the shared 4 CSS px boundary is
+						// crossed. Clear again if a drag returns inside the tolerance.
+						gesture.candidate = null;
+						gesture.refusal = null;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
 					if (gesture.markId === SCENE_OBJECT_MARK.move) {
 						const support = pointerFloorSupport(adapterContext, intent.css, gesture.entityId);
 						if (support.kind !== 'floor') {
@@ -1203,6 +1226,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// Release: one captured candidate, one F4 intent, one history entry.
 				const preview = gesture;
 				endObjectMarkGesture();
+				if (preview.bodyPress && !isStagePointerDrag(preview.pressCss, intent.css)) {
+					services.stage.notifySurfaceChange();
+					return true;
+				}
 				if (preview.candidate !== null) {
 					const snapshot = services.stage.snapshot();
 					perfMark('command:commit', { entityId: preview.entityId });
@@ -1414,6 +1441,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					formMarkGesture = {
 						evaluationId: intent.evaluationId,
+						pressCss: [intent.css[0], intent.css[1]],
+						bodyPress,
 						markId,
 						lease: acquisition,
 						entity,
@@ -1483,6 +1512,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				}
 				if (intent.phase === 'move') {
+					if (current.bodyPress && !isStagePointerDrag(current.pressCss, intent.css)) {
+						// Match object body handling: jitter and a drag returned to the
+						// tolerance are clicks, so no stale candidate remains visible.
+						current.candidate = null;
+						current.refusal = null;
+						current.scale = null;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
 					const context = sizePlannerContext(adapterContext);
 					if (current.markId === SCENE_FORM_MARK.move) {
 						const support = pointerFloorSupport(adapterContext, intent.css, current.entity.id);
@@ -1608,6 +1646,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// Release commits one captured candidate through the existing planner.
 				const preview = current;
 				endFormMarkGesture();
+				if (preview.bodyPress && !isStagePointerDrag(preview.pressCss, intent.css)) {
+					services.stage.notifySurfaceChange();
+					return true;
+				}
 				if (preview.markId !== SCENE_FORM_MARK.move && preview.markId !== SCENE_FORM_MARK.turn) {
 					if (preview.scale !== null && preview.candidate !== null) {
 						void acceptFormCommand(
