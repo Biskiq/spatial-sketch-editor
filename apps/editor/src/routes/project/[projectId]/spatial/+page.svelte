@@ -2644,17 +2644,42 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				if (stage.activateDisclosure(mark.id)) stage.notifySurfaceChange();
 				return;
 			}
-			const handleId = mark?.role === 'edit' ? mark.id : undefined;
-			if (stage.pointerIntent({ phase: 'down', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse, ...(handleId === undefined ? {} : { handleId }) }).claimed) {
+			const claimAdapterPress = (handleId?: string, handleAdapterId?: string): boolean => {
+				if (!stage.pointerIntent({
+					phase: 'down',
+					css,
+					evaluationId: pointerEvaluationId,
+					shift: event.shiftKey,
+					coarse,
+					...(handleId === undefined ? {} : { handleId }),
+					...(handleAdapterId === undefined ? {} : { handleAdapterId })
+				}).claimed) return false;
 				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 				if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
 					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
-					return;
+					return true;
 				}
 				adapterEvaluationId = pointerEvaluationId;
 				adapterMarkPress = handleId !== undefined;
 				drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
-				return;
+				return true;
+			};
+			if (mark?.role === 'edit') {
+				stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+				if (claimAdapterPress(mark.id, mark.adapterId)) return;
+			} else {
+				// Hit priority: a selected subject body gets the press before an idle
+				// Junction can offer its overlapping point mark.
+				if (claimAdapterPress()) {
+					stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+					return;
+				}
+				if (mark === null) {
+					const idleMark = stage.idleHoverIntent({ phase: 'move', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+					if (idleMark?.role === 'edit' && claimAdapterPress(idleMark.id, idleMark.adapterId)) return;
+				} else {
+					stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+				}
 			}
 		}
 		// A gesture is one captured writer with an explicit transition policy; a
@@ -2710,6 +2735,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// An armed host tool previews its own winner (the Eraser's dashes, Measure's
 		// second point); the ordinary subject hover would compete with it.
 		if (armedHostTool !== null) {
+			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 			const input = { css: sample.css, evaluationId: id, coarse: sample.coarse };
 			if (armedHostTool === 'measure') measureTool?.hover(input);
 			else eraserTool?.hover(input);
@@ -2723,6 +2749,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// subject tint underneath, so two emphases never compete for one pointer.
 		const mark = stage.hitMark({ css: sample.css, coarse: sample.coarse });
 		if (mark !== null) {
+			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 			stage.setMarkHover({ adapterId: mark.adapterId, id: mark.id });
 			session.setHover(null);
 			hoverSelection = null;
@@ -2739,6 +2766,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		stage.setMarkHover(null);
+		const idleMark = stage.idleHoverIntent({ phase: 'move', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
+		if (idleMark !== null) {
+			stage.setMarkHover({ adapterId: idleMark.adapterId, id: idleMark.id });
+			session.setHover(null);
+			hoverSelection = null;
+			hoverMove = true;
+			return;
+		}
+		stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift })) {
 			session.setHover(null);
 			hoverSelection = null;

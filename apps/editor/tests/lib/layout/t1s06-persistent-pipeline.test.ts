@@ -66,8 +66,9 @@ describe('persistent candidate → certification → compile → indexed consume
   }
   walls.dispose(); objects.dispose(); session.reset();
  // The exhaustive cold/output oracle dominates this test under full-suite
- // worker contention. Runtime is measured separately, without assertions here.
- }, 120_000);
+ // worker contention (the 400-Room case takes about 45 s in isolation). Keep
+ // headroom for that contention without reducing the edit or fixture density.
+ }, 300_000);
  it('restores deeply immutable historical compile roots and safely branches from an old revision', () => {
   const session = createLayoutCompileSession();
   let document = immutableF4Data(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));

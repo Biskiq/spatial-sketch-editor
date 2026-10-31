@@ -387,8 +387,9 @@ while the Scene adapter retains its rendered-raycast, footprint and occlusion po
 Finite forward 3D hits outrank tolerance-only hits; Plan ranks by the Paper layer order in
 [`paper-plan.ts`](../../apps/editor/src/lib/authoring/stage/paper-plan.ts): Room floor 10,
 hidden 20, projected 30, cut 40, Opening symbol 50 and Scene footprint 60. With no task, a
-press is offered only to the primary selection's owner. Hover is session-only and uses the
-same resolver. Window blur, hidden-page, capture loss and pointer cancellation end live
+press is offered to the primary selection's owner; a fine-pointer Junction hover in Plan is
+the one unselected Layout mark exception. Hover is session-only and uses the same resolver.
+Window blur, hidden-page, capture loss and pointer cancellation end live
 presses; a second pointer ends the authored press and hands navigation the pair. Visible
 selection and marks are owned by the Stage mark host
 ([below](#current-selection-and-marks-r217s07)).
@@ -425,9 +426,10 @@ two-way base move ray; it publishes no angle ring — Angle stays the Card's `la
 writer — and height and thickness grips remain deferred, with thickness a Card field.
 
 R217.S15 gives a selected Wall's owner a press on its own body: the binding resolves the pick once
-with purpose `select` and claims the press only when the winner is that Wall. Select still ranks a
-host Wall before an Opening until S16 changes that order, so an aperture press names the Wall here.
-End points move their shared Junction through `planExactJunctionMove`; the body projects the pointer
+with purpose `select` and claims the press only when the winner is that Wall. R217.S16 makes an
+Opening outrank its own host Wall in Plan Select; 3D keeps Wall-first pick order. A selected Opening
+claims its body only when it is the Plan pick winner and moves through the same slide operation as its
+position mark. End points move their shared Junction through `planExactJunctionMove`; the body projects the pointer
 delta on the Wall normal and submits the unchanged `planRigidWallMove`; the free-end ray keeps
 `planExactWallLength`. A press and release below the existing 4 CSS px click tolerance is a click,
 the body holds its restored distance until the pointer moves, and the Card carries Start/End X/Z

@@ -34,7 +34,8 @@ import { readFileSync } from 'node:fs';
 import { mount, tick, unmount } from 'svelte';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
-import { layoutCapturedId } from '@portfolio/layout-core';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { layoutCapturedId, planCreateWallFirstOpening } from '@portfolio/layout-core';
 import {
 	buildStarterEnclosureLayout,
 	STARTER_TEMPLATE_ID_CAPTURE
@@ -50,6 +51,7 @@ import {
 } from '$lib/authoring/stage/stage-drafting';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import { shapeReadingSurface } from '$lib/authoring/adapters/scene/shape/reading';
+import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 const RECT = { left: 352, top: 73, width: 928, height: 720, right: 1280, bottom: 793, x: 352, y: 73, toJSON() { } };
 let component: ReturnType<typeof mount>;
@@ -136,20 +138,10 @@ async function startDrag() {
 	expect([...target.querySelectorAll('.marker')].some(e => e.textContent?.includes('Length'))).toBe(true);
 	return desired;
 }
-beforeEach(async () => {
-	frames = new Map();
-	frameId = 0;
-	const layout = buildStarterEnclosureLayout();
+
+async function mountRoute(layout = buildStarterEnclosureLayout()): Promise<void> {
 	wallId = layout.walls[0]!.id;
 	harness.document = await createUnitProject({ id: 'project-1', name: 'Mounted gestures', layout });
-	vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { frames.set(++frameId, cb); return frameId; });
-	vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
-	vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('prefers-reduced-motion'), addEventListener() { }, removeEventListener() { } }));
-	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(RECT);
-	vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(RECT.width);
-	vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(RECT.height);
-	captureDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'setPointerCapture');
-	Object.defineProperty(HTMLElement.prototype, 'setPointerCapture', { configurable: true, value: () => { } });
 	target = document.createElement('div');
 	document.body.append(target);
 	component = mount(Page, { target });
@@ -159,12 +151,30 @@ beforeEach(async () => {
 	await frame();
 	await fitAll();
 	await frame();
+}
+
+async function selectFirstWall(): Promise<void> {
 	const center = projected([3.5, 0, -4]);
 	pointer('pointerdown', center);
 	pointer('pointerup', center);
 	pointer('click', center);
 	await frame();
 	expect(facade().selection()?.sourceId).toBe(wallId);
+}
+
+beforeEach(async () => {
+	frames = new Map();
+	frameId = 0;
+	vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { frames.set(++frameId, cb); return frameId; });
+	vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+	vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('prefers-reduced-motion'), addEventListener() { }, removeEventListener() { } }));
+	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(RECT);
+	vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(RECT.width);
+	vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(RECT.height);
+	captureDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'setPointerCapture');
+	Object.defineProperty(HTMLElement.prototype, 'setPointerCapture', { configurable: true, value: () => { } });
+	await mountRoute();
+	await selectFirstWall();
 	// T1.P02.S02: the Wall's own Card carries its fields and a handle press is direct
 	// manipulation, so this contract runs with **no** contributed task open — an
 	// adapter's gesture is offered the press first either way.
@@ -1539,5 +1549,62 @@ describe('R217.S15 — press routing', () => {
 		expect(facade().selection()?.sourceId).toBe(wallId);
 		expect(history()).toEqual(historyBefore);
 		expect(facade().candidatePreviews()).toHaveLength(0);
+	});
+});
+
+describe('R217.S16 — selected Opening body priority', () => {
+	it('slides an Opening at its Wall end before the overlapping idle Junction can claim it', async () => {
+		unmount(component);
+		target.remove();
+		const layout = buildStarterEnclosureLayout();
+		const wall = layout.walls[0]!;
+		const openingPlan = planCreateWallFirstOpening(
+			layout,
+			{ wallId: wall.id, kind: 'door', offset: 0, width: 0.9, height: 2, sillHeight: 0 },
+			freshCapture(),
+			layout.floor.id
+		);
+		if (openingPlan.kind === 'rejected') throw new Error(`Opening fixture refused: ${openingPlan.rejection.message}`);
+		const openingId = openingPlan.changedOpeningIds[0]!;
+		await mountRoute(openingPlan.document);
+		target.querySelector<HTMLButtonElement>('[data-drafting-snap]')!.click();
+		await frame();
+
+		const junctions = new Map(layout.junctions.map((junction) => [junction.id, junction.point]));
+		const start = junctions.get(wall.startJunctionId)!;
+		const end = junctions.get(wall.endJunctionId)!;
+		const length = Math.hypot(end[0] - start[0], end[1] - start[1]);
+		const direction: [number, number] = [(end[0] - start[0]) / length, (end[1] - start[1]) / length];
+		const pointAt = (offset: number): [number, number] => [start[0] + direction[0] * offset, start[1] + direction[1] * offset];
+		const openingCenter = projected([pointAt(0.45)[0], 0, pointAt(0.45)[1]]);
+		pointer('pointerdown', openingCenter);
+		pointer('pointerup', openingCenter);
+		pointer('click', openingCenter);
+		await frame();
+		expect(facade().selection()?.sourceId).toBe(openingId);
+
+		const nearEnd = projected([pointAt(0.04)[0], 0, pointAt(0.04)[1]]);
+		const local = [nearEnd[0] - RECT.left, nearEnd[1] - RECT.top] as [number, number];
+		const evaluationId = facade().evaluationId()!;
+		expect(facade().hitMark({ css: local, coarse: false })).toBeNull();
+		expect(facade().idleHoverIntent({ phase: 'move', css: local, evaluationId, coarse: false })).toMatchObject({
+			id: 'layout-junction-hover', adapterId: 'layout'
+		});
+
+		const pointerDown = nearEnd;
+		pointer('pointerdown', pointerDown);
+		expect(facade().session.gesture()).not.toBeNull();
+		const moved = projected([pointAt(0.54)[0], 0, pointAt(0.54)[1]]);
+		pointer('pointermove', moved);
+		await frame();
+		pointer('pointerup', moved);
+		pointer('click', moved);
+		await vi.waitFor(() => {
+			const current = stageEnvelope(facade().snapshot()).units.layout.data.openings.find((opening) => opening.id === openingId);
+			expect(current?.offset).toBeCloseTo(0.5, 5);
+		});
+		const accepted = stageEnvelope(facade().snapshot()).units.layout.data;
+		expect(accepted.junctions.find((junction) => junction.id === wall.startJunctionId)?.point).toEqual(start);
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
 	});
 });

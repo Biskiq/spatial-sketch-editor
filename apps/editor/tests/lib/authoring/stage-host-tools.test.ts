@@ -312,11 +312,14 @@ describe('R217.S10 — Eraser', () => {
 		expect(layout().openings.some((candidate) => candidate.id === mounted.openingId)).toBe(true);
 	});
 
-	it('ranks an Opening above its own Wall for erase while Select keeps Wall priority', async () => {
+	it('ranks an Opening above its own Wall for Plan Select and Eraser', async () => {
 		const { facade, wallId, openingId } = await mount();
 		const query = { css: css(facade, [1.45, 0, 0]), evaluationId: facade.evaluationId()! };
-		expect(facade.resolvePick({ ...query, purpose: 'select', tool: null })).toMatchObject({ kind: 'resolved', hit: { sourceId: wallId } });
+		expect(facade.resolvePick({ ...query, purpose: 'select', tool: null })).toMatchObject({ kind: 'resolved', hit: { sourceId: openingId } });
 		expect(facade.hostToolTarget({ ...query, tool: 'erase' })).toMatchObject({ kind: 'hit', adapterId: 'layout', hit: { sourceId: openingId } });
+		// The host Wall remains an eligible Select winner on its solid body.
+		const solid = { css: css(facade, [3.5, 0, 0]), evaluationId: query.evaluationId };
+		expect(facade.resolvePick({ ...solid, purpose: 'select', tool: null })).toMatchObject({ kind: 'resolved', hit: { sourceId: wallId } });
 	});
 
 	it('dispatches a catalogue model to the same Scene delete action', async () => {
