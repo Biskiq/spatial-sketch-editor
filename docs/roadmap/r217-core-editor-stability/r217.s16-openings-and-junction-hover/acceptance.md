@@ -14,6 +14,8 @@ Recorded at `0a32f53e086d13477e85e581bdfdcd727753c751`: full `npm test` 255 file
 
 S11 still owes integration, coarse pointer, native touch, Safari and integrated journeys. No S17 work started during this closeout. Browser evidence predates the final bounded repair; no new browser journey is claimed.
 
+P1 merge commit: `4d13b89381c34c74165b50319b42ad94f5ec9e10` (PR #237; merge commit method).
+
 ## Recovery and preservation report — 2026-10-31
 
 ```text
@@ -22,7 +24,7 @@ reference promotions:            0   landed architecture is already in docs/refe
 renderable evidence archived:    30 files / 1,972,640 bytes
 evidence manifest:               docs/archive/roadmap/r217-core-editor-stability/r217.s16-openings-and-junction-hover/evidence/CLOSED.md
 transient artifacts removed:     0
-historical anchors:              plan 050a30d9418a9a910a320388ae2ea4d879f1b34c; acceptance 0a32f53e086d13477e85e581bdfdcd727753c751; tag closed/r217.s16 (push state reported after merge)
+historical anchors:              plan 050a30d9418a9a910a320388ae2ea4d879f1b34c; acceptance 0a32f53e086d13477e85e581bdfdcd727753c751; tag closed/r217.s16 (pushed to origin)
 new live -> archive prose links: 0
 manual-owed verification rows:   4 categories carried by S11: coarse pointer, native touch, Safari, integrated journeys
 remaining deferred items:        S11 integration/manual journeys; door swing and 3D Junction hover remain outside S16
