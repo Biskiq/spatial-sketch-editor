@@ -426,7 +426,8 @@ End points move their shared Junction through `planExactJunctionMove`; the body 
 delta on the Wall normal and submits the unchanged `planRigidWallMove`; the free-end ray keeps
 `planExactWallLength`. A press and release below the existing 4 CSS px click tolerance is a click,
 the body holds its restored distance until the pointer moves, and the Card carries Start/End X/Z
-under one disclosure through the same Junction planner. The cursor reads `move` over that selected
+under one disclosure through the same Junction planner. A refused release writes nothing; its
+reason stays at the last pointer until the next press. The cursor reads `move` over that selected
 body and `grab` elsewhere.
 
 A selected Scene catalogue model or primitive publishes the same vocabulary (R217.S08): a floor
