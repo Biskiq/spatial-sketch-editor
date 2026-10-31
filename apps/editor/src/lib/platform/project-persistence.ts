@@ -219,7 +219,7 @@ export function createProjectAuth(apiOrigin: string, fetchImpl?: FetchLike): Pro
 			requestJson(requestFetch, origin, '/auth/me', { method: 'GET' }, signal).then(readSession),
 		signIn: (intent = 'projects') => {
 			if (typeof window === 'undefined') throw new ProjectPersistenceError('configuration', 'Sign-in is unavailable');
-			window.location.assign(`${origin}/auth/login?intent=${encodeURIComponent(intent)}`);
+			window.location.assign(`/login?intent=${encodeURIComponent(intent)}`);
 		},
 		signOut: (signal) =>
 			requestJson(requestFetch, origin, '/auth/logout', { method: 'POST' }, signal).then(() => undefined)

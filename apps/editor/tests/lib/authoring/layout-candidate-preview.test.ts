@@ -8,7 +8,7 @@
  *    moves the Stage without moving the mark within it;
  * 2. the preview's polygons/segments are the planner candidate's compiled Paper
  *    geometry, not a second interpolation;
- * 3. a refused candidate contributes no geometry, only its reason;
+ * 3. a refused candidate has no Wall band; a dashed cursor reach retains its input and reason;
  * 4. the winning resolver names the mark, and Alt suppresses it.
  */
 import { describe, expect, it } from 'vitest';
@@ -27,7 +27,7 @@ import { createStageFacade, type StageFacade, type StageCandidatePreviewView } f
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
-import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
+import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/paper-plan';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface, type InkController } from '$lib/authoring/adapters/layout/ink';
@@ -212,8 +212,16 @@ function acceptedPaperCss(mounted: Mounted, sourceIds: ReadonlySet<string>): {
 		.flatMap((fill) =>
 			fill.polygons.map((polygon) => polygon.map((point) => projectWorld(mounted, [point[0], datum, point[1]])))
 		);
-	const segments = drawing.lines
-		.filter((line) => sourceIds.has(line.sourceId))
+	const cutSources = new Set(
+		drawing.fills.filter((fill) => sourceIds.has(fill.sourceId) && fill.treatment === 'cut').map((fill) => fill.sourceId)
+	);
+	const fillOutlines = [...sourceIds].flatMap((sourceId) =>
+		unionOutline(
+			drawing.fills.filter((fill) => fill.sourceId === sourceId).flatMap((fill) => fill.polygons)
+		).map(([start, end]) => [projectWorld(mounted, [start[0], datum, start[1]]), projectWorld(mounted, [end[0], datum, end[1]])] as const)
+	);
+	const planLines = drawing.lines
+		.filter((line) => sourceIds.has(line.sourceId) && !(line.treatment === 'cut' && cutSources.has(line.sourceId)))
 		.flatMap((line) =>
 			line.segments.map(
 				([start, end]) =>
@@ -223,7 +231,7 @@ function acceptedPaperCss(mounted: Mounted, sourceIds: ReadonlySet<string>): {
 					] as const
 			)
 		);
-	return { polygons, segments };
+	return { polygons, segments: [...fillOutlines, ...planLines] };
 }
 
 function candidate(mounted: Mounted, id: string): StageCandidatePreviewView {
@@ -242,6 +250,67 @@ function expectPointsClose(
 		expect(point[1]).toBeCloseTo(expected[index]![1], 5);
 	}
 }
+
+describe('R217 batch repair — first-stroke feedback', () => {
+	it('previews a fresh Line drag before committing the same Wall', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		armInk(mounted.facade);
+		const baseline = acceptedLayout(mounted.facade);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted, [8, 0]);
+		const to = stageCss(mounted, [11, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		const preview = candidate(mounted, 'layout-candidate-chain');
+		expect(preview.polygons.length).toBeGreaterThan(0);
+		expect(preview.labels.some((label) => label.text.includes('Length 3.000'))).toBe(true);
+		expect(acceptedLayout(mounted.facade)).toEqual(baseline);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => acceptedLayout(mounted.facade).walls.length === baseline.walls.length + 1);
+		const next = acceptedLayout(mounted.facade);
+		const added = next.walls.find((wall) => !baseline.walls.some((previous) => previous.id === wall.id))!;
+		expect(next.junctions.find((point) => point.id === added.startJunctionId)!.point).toEqual([8, 0]);
+		expect(next.junctions.find((point) => point.id === added.endJunctionId)!.point).toEqual([11, 0]);
+	});
+
+	it('withdraws an off-plane drag and cancelling leaves no anchor or source', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		armInk(mounted.facade);
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted, [8, 0]);
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted, [11, 0]), evaluationId });
+		expect(candidate(mounted, 'layout-candidate-chain').polygons.length).toBeGreaterThan(0);
+		mounted.facade.pointerIntent({ phase: 'move', css: [640, -400], evaluationId });
+		expect(mounted.facade.candidatePreviews()).toEqual([]);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: from, evaluationId });
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect(inkSurface()!.snapshot().points).toEqual([]);
+	});
+
+	it('shows a refused crossing as a cursor reach and recovers without a partial write', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		armInk(mounted.facade);
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted, [-1, 2]);
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted, [7, 2]), evaluationId });
+		const refused = candidate(mounted, 'layout-candidate-chain-refused');
+		expect(refused.polygons).toEqual([]);
+		expect(refused.segments).toHaveLength(1);
+		expect(refused.labels[0]!.text).not.toBe('');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted, [-1, 3]), evaluationId });
+		expect(candidate(mounted, 'layout-candidate-chain').polygons.length).toBeGreaterThan(0);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: from, evaluationId });
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+	});
+});
 
 describe('R217.S14 — candidate preview coordinates', () => {
 	it('keeps the mark in the same Stage-local place when the Stage is offset or resized', async () => {
@@ -392,10 +461,7 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		]);
 		const acceptedAffected = acceptedPaperCss(mounted, affectedSourceIds);
 		expect(neighbours).toBeDefined();
-		expect(neighbours!.polygons.length).toBe(acceptedAffected.polygons.length);
-		for (const [index, polygon] of neighbours!.polygons.entries()) {
-			expectPointsClose(polygon, acceptedAffected.polygons[index]!);
-		}
+		expect(neighbours!.polygons).toEqual([]);
 		expect(neighbours!.segments.length).toBe(acceptedAffected.segments.length);
 		for (const [index, segment] of neighbours!.segments.entries()) {
 			expectPointsClose(segment, acceptedAffected.segments[index]!);
@@ -460,7 +526,7 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 });
 
 describe('R217.S14 — refusals and snap words', () => {
-	it('proposes no geometry for a refused chain and shows its reason', async () => {
+	it('shows a refused chain as words and a cursor reach without a Wall band', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, mounted.rect);
 		const controller = armInk(mounted.facade);
@@ -469,7 +535,9 @@ describe('R217.S14 — refusals and snap words', () => {
 		const refused = candidate(mounted, 'layout-candidate-chain-refused');
 		expect(refused.role).toBe('refused');
 		expect(refused.polygons).toEqual([]);
-		expect(refused.segments).toEqual([]);
+		// A refused chain has no candidate shape; its one dashed reach only connects
+		// the last authored point to the rejected pointer location.
+		expect(refused.segments).toHaveLength(1);
 		expect(refused.labels[0]?.text.length).toBeGreaterThan(20);
 	});
 

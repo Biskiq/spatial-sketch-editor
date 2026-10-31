@@ -3,8 +3,6 @@ export type ApiConfig = {
 	port: number;
 	editorOrigin?: string;
 	apiOrigin?: string;
-	googleClientId?: string;
-	googleClientSecret?: string;
 	sessionKey?: Buffer;
 	r2Endpoint: string;
 	r2Bucket: string;
@@ -20,7 +18,7 @@ export type ApiConfig = {
 	 * Optional bearer secret enabling the test-only authentication seam.
 	 * Absent by default (fail closed). Never set this on production — it is
 	 * read here only so local/CI API instances can mint automation sessions
-	 * without the external OAuth ceremony. Never a PUBLIC_* variable.
+	 * without registering local credentials. Never a PUBLIC_* variable.
 	 */
 	testAuthSecret?: string;
 };
@@ -151,8 +149,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 		port,
 		editorOrigin,
 		...(apiOrigin ? { apiOrigin } : {}),
-		googleClientId: readRequired(env.GOOGLE_CLIENT_ID, 'GOOGLE_CLIENT_ID'),
-		googleClientSecret: readRequired(env.GOOGLE_CLIENT_SECRET, 'GOOGLE_CLIENT_SECRET'),
 		sessionKey: readSessionKey(env.SESSION_KEY),
 		r2Endpoint: readR2Endpoint(env.R2_ENDPOINT),
 		r2Bucket: readRequired(env.R2_BUCKET, 'R2_BUCKET'),

@@ -84,7 +84,7 @@ function starterDocument(context: AdmissionContext): Promise<ProjectEnvelope> {
 }
 
 describe('the editor host boots into exactly one named state', () => {
-	it('offers the starter gallery only for a minted identity, and reports an opened absence as missing', async () => {
+	it('boots a minted absence empty, and reports an opened absence as missing', async () => {
 		// The intent is how the identity was reached; `?create=1` is the mint.
 		expect(bootIntentFromSearch(new URLSearchParams('create=1'))).toBe('create');
 		expect(bootIntentFromSearch(new URLSearchParams(''))).toBe('open');
@@ -95,7 +95,11 @@ describe('the editor host boots into exactly one named state', () => {
 			{ kind: 'not-found' },
 			contextFor()
 		);
-		expect(minted).toEqual({ status: 'new', projectId: PROJECT_ID, intent: 'create' });
+		expect(minted.status).toBe('empty');
+		if (minted.status === 'empty') {
+			expect(minted.snapshot.domain.geometry.floors.every((floor) => floor.roomIds.length === 0)).toBe(true);
+			expect(minted.snapshot.domain.geometry.walls).toEqual([]);
+		}
 
 		// The same server answer, an identity someone asked to open: never a
 		// silent new project over an address that simply is not there.
@@ -317,8 +321,8 @@ describe('the editor host boots into exactly one named state', () => {
 		for (const outcome of outcomes) {
 			states.push(await bootFromLoadOutcome(initialBootState(PROJECT_ID, 'open'), outcome, contextFor()));
 		}
-		// The minted identity's own absent row: `new`, distinct from the `missing`
-		// an opened absence produces for the same server answer.
+		// A minted absence starts on the admitted empty baseline; an opened absence
+		// above remains `missing` for the same server answer.
 		states.push(
 			await bootFromLoadOutcome(initialBootState(PROJECT_ID, 'create'), { kind: 'not-found' }, contextFor())
 		);
@@ -336,7 +340,7 @@ describe('the editor host boots into exactly one named state', () => {
 				contextFor(FIXTURE_PROJECT_ID)
 			)
 		);
-		states.push(await bootEmpty(PROJECT_ID, contextFor()));
+		states.push({ status: 'new', projectId: PROJECT_ID, intent: 'create' });
 		states.push(await bootFromSourceJson('{ "id": ', PROJECT_ID, contextFor()));
 
 		// One state per status, and nothing outside the declared vocabulary.
@@ -350,8 +354,8 @@ describe('the editor host boots into exactly one named state', () => {
 
 	it('is reached by the product: every mint entry marks its mint, and no open entry does', () => {
 		// Machinery correctness is not call-site correctness: `bootIntentFromSearch`
-		// reads `?create=1`, so if no entry ever wrote it, `new` (and with it the
-		// starter gallery and the empty baseline) would be unreachable and every
+		// reads `?create=1`, so if no entry ever wrote it, the empty baseline and
+		// starter replacement would be unreachable and every
 		// mistyped address would still answer `missing`. Nothing imports these routes,
 		// so only a source-level call-site proof can hold it.
 		const MINT_ENTRIES = [

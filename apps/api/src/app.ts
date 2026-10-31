@@ -7,14 +7,7 @@ import Fastify, {
 } from 'fastify';
 import { Readable } from 'node:stream';
 
-import {
-	createOidcLoginState,
-	googleUserId,
-	isGoogleUserId,
-	type OidcClient,
-	type OidcLoginIntent,
-	type OidcLoginState
-} from './auth.js';
+import { admitAuthAttempt, enrollCredentials, findCredentials, hasCredentials, isSessionUserId, readCredentials, verifyPassword } from './auth.js';
 import { sanitizeDatabaseError, type DatabasePool } from './database.js';
 import {
 	assetMetadata,
@@ -85,7 +78,6 @@ export type ApiAppOptions = {
 	pool: DatabasePool;
 	apiOrigin?: string;
 	editorOrigin?: string;
-	oidc?: OidcClient;
 	sessionKey?: Buffer;
 	objectStore?: ObjectStore;
 	/** Deployment-owned key namespace; production passes `R2_OBJECT_NAMESPACE`. */
@@ -112,7 +104,6 @@ export function createApp({
 	pool,
 	apiOrigin,
 	editorOrigin,
-	oidc,
 	sessionKey,
 	objectStore,
 	objectNamespace = 'default',
@@ -228,97 +219,55 @@ export function createApp({
 		return reply.code(500).send(errorBody('internal_error', 'Internal Server Error'));
 	});
 
-	app.get('/auth/login', async (request, reply) => {
-		if (!sessionsEnabled || !oidc) return authUnavailable(reply);
-		const intent = readLoginIntent(request, apiOrigin);
-		if (!intent) return invalidLoginIntent(reply);
-		try {
-			const login = await createOidcLoginState(intent);
-			const redirectUri = getCallbackUrl(request, apiOrigin).toString();
-			const authorizationUrl = await oidc.createAuthorizationUrl({
-				redirectUri,
-				state: login.state,
-				codeChallenge: login.codeChallenge,
-				nonce: login.nonce
-			});
-			appSession(request).set('oidcLogin', {
-				state: login.state,
-				codeVerifier: login.codeVerifier,
-				nonce: login.nonce,
-				intent: login.intent
-			} satisfies OidcLoginState);
-			return reply.redirect(String(authorizationUrl));
-		} catch (error) {
-			app.log.warn({ auth: { stage: 'login', error: sanitizeAuthError(error) } }, 'OIDC login failed');
-			return authUnavailable(reply);
-		}
+	// Bound memory-hard work without an unbounded request queue.
+	let authBusy = false;
+	for (const action of ['register', 'login', 'credentials'] as const) {
+		app.post(`/auth/${action}`, { bodyLimit: 2048 }, async (request, reply) => {
+			reply.header('Cache-Control', 'no-store');
+			if (!sessionsEnabled) return authUnavailable(reply);
+			const existingUserId = sessionUserId(request, sessionsEnabled);
+			if (action === 'credentials' && !existingUserId) return unauthorized(reply);
+			const credentials = readCredentials(request.body);
+			if (!credentials) return reply.code(400).send(errorBody('invalid_credentials', 'Use a 3–32 character username and a 12–128 character password'));
+			if (authBusy) return reply.header('Retry-After', '1').code(429).send(errorBody('auth_busy', 'Try again shortly'));
+			authBusy = true;
+			try {
+				if (!await admitAuthAttempt(pool, request.ip, credentials.username)) {
+					return reply.header('Retry-After', '900').code(429).send(errorBody('rate_limited', 'Too many attempts; try again later'));
+				}
+				let userId: string;
+				if (action === 'login') {
+					const account = await findCredentials(pool, credentials.username);
+					if (!await verifyPassword(credentials.password, account?.password_hash)) {
+						return reply.code(401).send(errorBody('invalid_login', 'Username or password is incorrect'));
+					}
+					userId = account!.user_id;
+				} else {
+					userId = await enrollCredentials(pool, credentials, action === 'credentials' ? existingUserId! : undefined);
+				}
+				appSession(request).regenerate();
+				appSession(request).set('userId', userId);
+				return reply.code(action === 'login' ? 200 : 201).send({ authenticated: true, user: { id: userId } });
+			} catch (error) {
+				if ((error as { code?: string }).code === '23505') {
+					return reply.code(409).send(errorBody('credentials_unavailable', 'Username or account is already registered'));
+				}
+				return databaseFailure(app, reply, error, 'Local authentication failed');
+			} finally {
+				authBusy = false;
+			}
+		});
+	}
+	app.get('/auth/credentials', async (request, reply) => {
+		reply.header('Cache-Control', 'no-store');
+		const userId = sessionUserId(request, sessionsEnabled);
+		if (!userId) return unauthorized(reply);
+		try { return { enrolled: await hasCredentials(pool, userId) }; }
+		catch (error) { return databaseFailure(app, reply, error, 'Credential status failed'); }
 	});
 
-	app.get('/auth/callback', async (request, reply) => {
-		if (!sessionsEnabled || !oidc) return authUnavailable(reply);
-		const login = readOidcLoginState(appSession(request).get('oidcLogin'));
-		let callbackUrl: URL;
-		try {
-			callbackUrl = getRequestUrl(request, apiOrigin);
-		} catch {
-			clearOidcLoginState(request);
-			return invalidCallback(reply);
-		}
-		const state = singleQueryParam(callbackUrl, 'state');
-		const code = singleQueryParam(callbackUrl, 'code');
-		const callbackError = singleQueryParam(callbackUrl, 'error');
-		if (!login || !state || state !== login.state) {
-			app.log.warn(
-				{ auth: { stage: 'callback', reason: 'invalid_state', hasLogin: Boolean(login), hasState: Boolean(state) } },
-				'OIDC callback rejected'
-			);
-			clearOidcLoginState(request);
-			return invalidCallback(reply);
-		}
-		if (callbackError) {
-			app.log.warn(
-				{ auth: { stage: 'callback', reason: callbackError === 'access_denied' ? 'access_denied' : 'provider_error' } },
-				'OIDC callback failed'
-			);
-			clearOidcLoginState(request);
-			return callbackFailure(reply, editorOrigin, login.intent, callbackError === 'access_denied' ? 'cancelled' : 'failed');
-		}
-		if (!code) {
-			app.log.warn({ auth: { stage: 'callback', reason: 'missing_code' } }, 'OIDC callback failed');
-			clearOidcLoginState(request);
-			return callbackFailure(reply, editorOrigin, login.intent, 'failed');
-		}
-
-		try {
-			const result = await oidc.exchangeAuthorizationCode({
-				callbackUrl,
-				codeVerifier: login.codeVerifier,
-				expectedState: login.state,
-				expectedNonce: login.nonce
-			});
-			const userId = googleUserId(result.subject);
-			if (!userId) throw new Error('Invalid OIDC subject');
-			clearOidcLoginState(request);
-			appSession(request).regenerate();
-			appSession(request).set('userId', userId);
-			app.log.info({ auth: { stage: 'callback', intent: login.intent } }, 'OIDC callback succeeded');
-			return reply.redirect(
-				boundedRedirect(
-					editorOrigin ?? apiOrigin,
-					login.intent === 'projects' ? '/projects' : '/?auth=success&intent=save'
-				)
-			);
-		} catch (error) {
-			app.log.warn(
-				{ auth: { stage: 'callback', reason: 'exchange_failed', error: sanitizeAuthError(error) } },
-				'OIDC callback failed'
-			);
-			clearOidcLoginState(request);
-			return callbackFailure(reply, editorOrigin, login.intent, 'failed');
-		}
-	});
-
-	app.get('/auth/me', async (request) => {
+	app.get('/auth/me', async (request, reply) => {
+		reply.header('Cache-Control', 'no-store');
 		const userId = sessionUserId(request, sessionsEnabled);
 		app.log.info(
 			{
@@ -353,8 +302,8 @@ export function createApp({
 			if (!target) return reply.code(400).send(errorBody('invalid_body', 'Expected a test user body'));
 			const userId = resolveTestAuthUserId(target.user);
 			if (!userId) return reply.code(400).send(errorBody('unknown_test_user', 'Unknown test user'));
-			// The canonical session creation path — identical to the OAuth
-			// callback below the external ceremony. Everything downstream
+			// The canonical session creation path — identical to local login
+			// issuance after credential verification. Everything downstream
 			// (ownership, permission checks, persistence) sees a normal user.
 			appSession(request).regenerate();
 			appSession(request).set('userId', userId);
@@ -1010,32 +959,7 @@ function readUploadContentLength(request: FastifyRequest): number | AssetInputEr
 function sessionUserId(request: FastifyRequest, sessionsEnabled: boolean): string | null {
 	if (!sessionsEnabled) return null;
 	const userId = appSession(request).get('userId');
-	return isGoogleUserId(userId) ? userId : null;
-}
-
-function readOidcLoginState(value: unknown): OidcLoginState | null {
-	if (!isRecord(value)) return null;
-	if (
-		typeof value.state !== 'string' ||
-		typeof value.codeVerifier !== 'string' ||
-		typeof value.nonce !== 'string' ||
-		!isLoginIntent(value.intent) ||
-		!value.state ||
-		!value.codeVerifier ||
-		!value.nonce
-	) {
-		return null;
-	}
-	return {
-		state: value.state,
-		codeVerifier: value.codeVerifier,
-		nonce: value.nonce,
-		intent: value.intent
-	};
-}
-
-function clearOidcLoginState(request: FastifyRequest): void {
-	appSession(request).set('oidcLogin', undefined);
+	return isSessionUserId(userId) ? userId : null;
 }
 
 type AppSession = {
@@ -1049,64 +973,8 @@ function appSession(request: FastifyRequest): AppSession {
 	return request.session as unknown as AppSession;
 }
 
-function singleQueryParam(url: URL, name: string): string | null {
-	const values = url.searchParams.getAll(name);
-	return values.length === 1 && values[0] ? values[0] : null;
-}
-
-function readLoginIntent(request: FastifyRequest, apiOrigin?: string): OidcLoginIntent | null {
-	let url: URL;
-	try {
-		url = getRequestUrl(request, apiOrigin);
-	} catch {
-		return null;
-	}
-	const values = url.searchParams.getAll('intent');
-	if (values.length === 0) return 'projects';
-	return values.length === 1 && isLoginIntent(values[0]) ? values[0] : null;
-}
-
-function isLoginIntent(value: unknown): value is OidcLoginIntent {
-	return value === 'projects' || value === 'save';
-}
-
-function getCallbackUrl(request: FastifyRequest, apiOrigin?: string): URL {
-	return publicApiUrl(request, apiOrigin, '/auth/callback');
-}
-
-function getRequestUrl(request: FastifyRequest, apiOrigin?: string): URL {
-	return publicApiUrl(request, apiOrigin, request.raw.url ?? request.url);
-}
-
-function publicApiUrl(request: FastifyRequest, apiOrigin: string | undefined, path: string): URL {
-	const base = `${apiOrigin ?? `${request.protocol}://${request.headers.host ?? 'localhost'}`}/`;
-	return new URL(path.replace(/^\/+/, ''), base);
-}
-
 function authUnavailable(reply: { code(statusCode: number): { send(body: unknown): unknown } }) {
 	return reply.code(503).send(errorBody('auth_unavailable', 'Authentication is unavailable'));
-}
-
-function invalidCallback(reply: { code(statusCode: number): { send(body: unknown): unknown } }) {
-	return reply.code(400).send(errorBody('invalid_callback', 'Authentication callback was rejected'));
-}
-
-function invalidLoginIntent(reply: { code(statusCode: number): { send(body: unknown): unknown } }) {
-	return reply.code(400).send(errorBody('invalid_intent', 'Authentication intent was rejected'));
-}
-
-function callbackFailure(
-	reply: { redirect(url: string): unknown; code(statusCode: number): { send(body: unknown): unknown } },
-	editorOrigin: string | undefined,
-	intent: OidcLoginIntent,
-	status: 'cancelled' | 'failed'
-) {
-	if (!editorOrigin) return invalidCallback(reply);
-	return reply.redirect(boundedRedirect(editorOrigin, `/?auth=${status}&intent=${intent}`));
-}
-
-function boundedRedirect(origin: string | undefined, path: string): string {
-	return origin ? new URL(path, origin).toString() : path;
 }
 
 function readExpectedPublicationRevision(value: unknown): number | null {
@@ -1187,12 +1055,6 @@ function databaseFailure(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function sanitizeAuthError(error: unknown): { name: string; code?: string } {
-	if (!(error instanceof Error)) return { name: 'Error' };
-	const code = (error as { code?: unknown }).code;
-	return typeof code === 'string' ? { name: error.name, code } : { name: error.name };
 }
 
 function safeRequestLog(request: { method?: string; url?: string }) {

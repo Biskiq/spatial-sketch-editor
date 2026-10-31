@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../../helpers/import-closure';
-import { Layers } from 'three';
+import { Layers, Mesh } from 'three';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
@@ -30,6 +30,7 @@ import {
 	evaluateLayoutPlan,
 	planCreateWallFirstOpening,
 	planWallChain,
+	setWorkObserver,
 	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
@@ -45,6 +46,7 @@ import {
 } from '$lib/authoring/scene/plan-scene-footprint';
 import { resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
 import { createPaperScene } from '$lib/authoring/stage/paper-scene';
+import { createPaperMarkScene } from '$lib/authoring/stage/paper-marks';
 import {
 	buildPaperPlan,
 	fragmentLayer,
@@ -76,6 +78,19 @@ function enclosure(points: readonly LayoutVec2[]): Fixture {
 		levelId: baseline.floor.id
 	});
 	if (planned.kind !== 'success') throw new Error(`the envelope no longer plans: ${planned.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(planned.document).geometry, document: planned.document };
+}
+
+function standaloneWall(): Fixture {
+	const baseline = createEmptyWallFirstLayoutDocument();
+	const planned = planWallChain({
+		baseline,
+		points: [[0, 0], [4, 0]],
+		close: false,
+		capture: freshCapture(),
+		levelId: baseline.floor.id
+	});
+	if (planned.kind !== 'success') throw new Error(`the standalone Wall no longer plans: ${planned.rejection.code}`);
 	return { compiled: compileWallFirstLayoutGeometry(planned.document).geometry, document: planned.document };
 }
 
@@ -258,6 +273,17 @@ describe('Paper Plan — drawn equals picked', () => {
 });
 
 describe('Paper Plan — stream treatment', () => {
+	it('draws a deselected standalone Wall on an otherwise empty Layout', () => {
+		const fixture = standaloneWall();
+		expect(fixture.document.rooms).toHaveLength(0);
+		const plan = evaluate(fixture.compiled);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const wallId = fixture.document.walls[0]!.id;
+		expect(eligiblePlanFragments(plan).some((fragment) => fragment.ref.sourceId === wallId)).toBe(true);
+		expect(drawing.fills.some((fill) => fill.sourceId === wallId && fill.treatment === 'cut')).toBe(true);
+		expect(drawing.lines.some((line) => line.sourceId === wallId && line.treatment === 'cut')).toBe(true);
+	});
+
 	it('draws cut Walls as poché with a band at the compiled thickness', () => {
 		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
 		const plan = evaluate(fixture.compiled);
@@ -351,6 +377,83 @@ describe('Paper Plan — stream treatment', () => {
 });
 
 describe('Paper Plan — Scene and native-form outlines', () => {
+	it('unions thousands of sampled 1000m Wall bands to the exact outer contour', () => {
+		// The compiler samples the long Wall at 0.25m, and Plan emits one cut-band
+		// quad per solid sample interval. The contour remains the four exact outer
+		// edges; internal sample seams are not authored or drawn boundaries.
+		const fixture = enclosure([[0, 0], [1000, 0], [1000, 4], [0, 4]]);
+		const wallId = fixture.document.walls[0]!.id;
+		const drawing = buildPaperPlan(evaluate(fixture.compiled, { depthMeters: 2000 }), fixture.compiled, EMPTY_PROJECTION);
+		const bands = drawing.fills.filter((fill) => fill.sourceId === wallId).flatMap((fill) => fill.polygons);
+		expect(bands).toHaveLength(4000);
+		const fills = drawing.fills.filter((fill) => fill.sourceId === wallId);
+		const paper = createPaperScene({ fills, lines: [], footprints: [] }, [1280, 720]);
+		const selected = createPaperMarkScene({
+			selection: { fills, contours: [] },
+			hover: { fills: [], contours: [] },
+			erase: { fills: [], contours: [] }
+		}, [1280, 720]);
+		try {
+			for (const resources of [paper, selected]) {
+				// Render cost must not grow one draw call/material per sample band.
+				expect(resources.group.children).toHaveLength(1);
+				const mesh = resources.group.children[0] as Mesh;
+				expect(mesh).toBeInstanceOf(Mesh);
+				expect(mesh.geometry.index!.count).toBe(bands.length * 6);
+				const positions = mesh.geometry.getAttribute('position');
+				expect(positions.count).toBe(bands.length * 4);
+				for (let index = 0; index < positions.count; index += 1) {
+					expect(positions.getY(index)).toBeCloseTo(fills[0]!.elevationMeters, 6);
+				}
+			}
+		} finally {
+			paper.dispose();
+			selected.dispose();
+		}
+
+		const counts = new Map<string, number>();
+		const previousObserver = setWorkObserver({
+			span() {},
+			count(name, amount) {
+				counts.set(name, (counts.get(name) ?? 0) + amount);
+			}
+		});
+		let outline: ReturnType<typeof unionOutline>;
+		try {
+			outline = unionOutline(bands);
+		} finally {
+			setWorkObserver(previousObserver);
+		}
+		expect(outline).toHaveLength(4);
+		// Every narrow-phase interaction comes from the indexed candidate set.
+		// This deterministic work ceiling fails if the former all-bands scan returns.
+		expect(counts.get('grid:build-box-visit')).toBe(bands.length);
+		expect(counts.get('grid:entry-test')).toBeGreaterThan(0);
+		expect(counts.get('grid:entry-test')!).toBeLessThan(bands.length * 64);
+		const lengths = outline.map(([start, end]) => Math.hypot(end[0] - start[0], end[1] - start[1])).sort((a, b) => a - b);
+		expect(lengths[0]).toBeCloseTo(0.2, 6);
+		expect(lengths[1]).toBeCloseTo(0.2, 6);
+		expect(lengths[2]).toBeCloseTo(1000.2, 6);
+		expect(lengths[3]).toBeCloseTo(1000.2, 6);
+
+		// Rotation changes both the broad-phase cell coverage and exact edge
+		// coordinates; it must retain the same source union and output lengths.
+		const angle = Math.PI / 4;
+		const rotated = bands.map((polygon) => polygon.map(([x, z]) => [
+			x * Math.cos(angle) - z * Math.sin(angle),
+			x * Math.sin(angle) + z * Math.cos(angle)
+		] as LayoutVec2));
+		const rotatedOutline = unionOutline(rotated);
+		const rotatedLengths = rotatedOutline
+			.map(([start, end]) => Math.hypot(end[0] - start[0], end[1] - start[1]))
+			.sort((a, b) => a - b);
+		expect(rotatedOutline).toHaveLength(4);
+		expect(rotatedLengths[0]).toBeCloseTo(0.2, 5);
+		expect(rotatedLengths[1]).toBeCloseTo(0.2, 5);
+		expect(rotatedLengths[2]).toBeCloseTo(1000.2, 5);
+		expect(rotatedLengths[3]).toBeCloseTo(1000.2, 5);
+	});
+
 	it('keeps the outer silhouette when an edge is only partly covered', () => {
 		// Two offset rectangles: A=[0,2]×[0,2], B=[1,3]×[1,3]. Four full edges have
 		// their midpoint inside the other rectangle, but each still contributes a

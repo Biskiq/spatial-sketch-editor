@@ -1,205 +1,19 @@
 /**
- * API contract: OIDC login/callback, session issuance, origin enforcement and
+ * API contract: local credentials, session issuance, origin enforcement and
  * logout. Split out of `api.test.mjs` by WP3T.
  *
- * The OIDC client is injected, so this file runs without a real identity
- * provider; the origin/credential checks are asserted through real HTTP
- * injection.
+ * Origin/session checks use real HTTP injection. Password and ownership
+ * round trips below use PostgreSQL, with no skipped contracts.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
 
 import { createApp } from '../dist/app.js';
+import { runMigrations } from '../dist/migrate.js';
 
 import { cookieFrom, memoryPool, projectDocument, SESSION_COOKIE, SESSION_KEY, sessionCookie, stubPool } from './test-support.mjs';
-
-test('login creates fresh state, PKCE, nonce, callback URL, and secure cookie', async () => {
-	let authorization;
-	const app = createApp({
-		pool: stubPool(),
-		apiOrigin: 'https://editor.example.test/api',
-		editorOrigin: 'https://editor.example.test',
-		sessionKey: SESSION_KEY,
-		oidc: {
-			async createAuthorizationUrl(input) {
-				authorization = input;
-				return `https://accounts.google.test/auth?${new URLSearchParams({
-					client_id: 'client-id',
-					redirect_uri: input.redirectUri,
-					response_type: 'code',
-					scope: 'openid email profile',
-					state: input.state,
-					code_challenge: input.codeChallenge,
-					code_challenge_method: 'S256',
-					nonce: input.nonce
-				})}`;
-			},
-			async exchangeAuthorizationCode() {
-				throw new Error('not called');
-			}
-		},
-		logger: false
-	});
-	try {
-		const response = await app.inject({ method: 'GET', url: '/auth/login' });
-		assert.equal(response.statusCode, 302);
-		assert.equal(authorization.redirectUri, 'https://editor.example.test/api/auth/callback');
-		assert.match(authorization.state, /^\S+$/);
-		assert.match(authorization.codeChallenge, /^\S+$/);
-		assert.match(authorization.nonce, /^\S+$/);
-		assert.notEqual(authorization.codeChallenge, authorization.state);
-		const location = new URL(response.headers.location);
-		assert.equal(location.searchParams.get('scope'), 'openid email profile');
-		assert.equal(location.searchParams.get('redirect_uri'), authorization.redirectUri);
-		assert.equal(location.searchParams.get('state'), authorization.state);
-		assert.equal(location.searchParams.get('code_challenge_method'), 'S256');
-		const cookie = cookieFrom(response);
-		assert.match(response.headers['set-cookie'], /HttpOnly/i);
-		assert.match(response.headers['set-cookie'], /Secure/i);
-		assert.match(response.headers['set-cookie'], /SameSite=Lax/i);
-		assert.match(cookie, new RegExp(`^${SESSION_COOKIE}=`));
-	} finally {
-		await app.close();
-	}
-});
-
-test('callback validates the session-bound state and forwards PKCE plus nonce', async () => {
-	let authorization;
-	let callback;
-	let queries = 0;
-	const pool = stubPool({ query: async () => queries++ });
-	const app = createApp({
-		pool,
-		apiOrigin: 'https://editor.example.test/api',
-		editorOrigin: 'https://editor.example.test',
-		sessionKey: SESSION_KEY,
-		oidc: {
-			async createAuthorizationUrl(input) {
-				authorization = input;
-				return 'https://accounts.google.test/auth';
-			},
-			async exchangeAuthorizationCode(input) {
-				callback = input;
-				return { subject: 'google-subject-1' };
-			}
-		},
-		logger: false
-	});
-	try {
-		const login = await app.inject({ method: 'GET', url: '/auth/login' });
-		const callbackResponse = await app.inject({
-			method: 'GET',
-			url: `/auth/callback?code=authorization-code&state=${encodeURIComponent(authorization.state)}`,
-			headers: { cookie: cookieFrom(login) }
-		});
-		assert.equal(callbackResponse.statusCode, 302);
-		assert.equal(callbackResponse.headers.location, 'https://editor.example.test/projects');
-		assert.equal(callback.callbackUrl.toString(), `https://editor.example.test/api/auth/callback?code=authorization-code&state=${encodeURIComponent(authorization.state)}`);
-		assert.equal(callback.codeVerifier.length > 20, true);
-		assert.equal(callback.expectedState, authorization.state);
-		assert.equal(callback.expectedNonce, authorization.nonce);
-		assert.equal(queries, 0);
-
-		const me = await app.inject({
-			method: 'GET',
-			url: '/auth/me',
-			headers: { cookie: cookieFrom(callbackResponse) }
-		});
-		assert.deepEqual(me.json(), { authenticated: true, user: { id: 'google:google-subject-1' } });
-	} finally {
-		await app.close();
-	}
-});
-
-test('tampered state, rejected PKCE/token, and invalid identity never create a session', async () => {
-	let exchangeCalls = 0;
-	const logs = [];
-	const app = createApp({
-		pool: stubPool(),
-		apiOrigin: 'https://api.example.test',
-		editorOrigin: 'https://editor.example.test',
-		sessionKey: SESSION_KEY,
-		oidc: {
-			async createAuthorizationUrl(input) {
-				return `https://accounts.google.test/auth?state=${encodeURIComponent(input.state)}`;
-			},
-			async exchangeAuthorizationCode() {
-				exchangeCalls += 1;
-				throw new Error('token exchange rejected');
-			}
-		},
-		logger: { level: 'warn', stream: { write: (line) => logs.push(JSON.parse(line)) } }
-	});
-	try {
-		const login = await app.inject({ method: 'GET', url: '/auth/login' });
-		const cookie = cookieFrom(login);
-		const tampered = await app.inject({
-			method: 'GET',
-			url: '/auth/callback?code=authorization-code&state=wrong',
-			headers: { cookie }
-		});
-		assert.equal(tampered.statusCode, 400);
-		assert.equal(exchangeCalls, 0);
-		const tamperedMe = await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: cookieFrom(tampered) } });
-		assert.deepEqual(tamperedMe.json(), { authenticated: false });
-
-		const secondLogin = await app.inject({ method: 'GET', url: '/auth/login' });
-		const state = new URL(secondLogin.headers.location).searchParams.get('state');
-		const rejected = await app.inject({
-			method: 'GET',
-			url: `/auth/callback?code=authorization-code&state=${encodeURIComponent(state)}`,
-			headers: { cookie: cookieFrom(secondLogin) }
-		});
-		assert.equal(rejected.statusCode, 302);
-		assert.equal(rejected.headers.location, 'https://editor.example.test/?auth=failed&intent=projects');
-		assert.equal(exchangeCalls, 1);
-		assert.equal(
-			logs.some((entry) => entry.msg === 'OIDC callback failed' && entry.auth?.reason === 'exchange_failed' && entry.auth?.error?.name === 'Error'),
-			true
-		);
-		assert.equal(JSON.stringify(logs).includes('token exchange rejected'), false);
-		const rejectedMe = await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: cookieFrom(rejected) } });
-		assert.deepEqual(rejectedMe.json(), { authenticated: false });
-		assert.equal(rejected.body.includes('token exchange'), false);
-	} finally {
-		await app.close();
-	}
-});
-
-test('save login intent survives the OIDC round trip and access denial is bounded', async () => {
-	let authorization;
-	const app = createApp({
-		pool: stubPool(),
-		apiOrigin: 'https://api.example.test',
-		editorOrigin: 'https://editor.example.test',
-		sessionKey: SESSION_KEY,
-		oidc: {
-			async createAuthorizationUrl(input) {
-				authorization = input;
-				return `https://accounts.google.test/auth?state=${encodeURIComponent(input.state)}`;
-			},
-			async exchangeAuthorizationCode() {
-				return { subject: 'google-save-user' };
-			}
-		},
-		logger: false
-	});
-	try {
-		const invalid = await app.inject({ method: 'GET', url: '/auth/login?intent=other' });
-		assert.equal(invalid.statusCode, 400);
-
-		const saveLogin = await app.inject({ method: 'GET', url: '/auth/login?intent=save' });
-		const saveCallback = await app.inject({
-			method: 'GET',
-			url: `/auth/callback?error=access_denied&state=${encodeURIComponent(authorization.state)}`,
-			headers: { cookie: cookieFrom(saveLogin) }
-		});
-		assert.equal(saveCallback.statusCode, 302);
-		assert.equal(saveCallback.headers.location, 'https://editor.example.test/?auth=cancelled&intent=save');
-	} finally {
-		await app.close();
-	}
-});
 
 test('project routes require a valid secure session and do not query anonymously', async () => {
 	let queries = 0;
@@ -286,4 +100,196 @@ test('CORS, credentials, origin checks, and logout are restricted to the editor 
 	} finally {
 		await app.close();
 	}
+});
+
+const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
+const EDITOR_ORIGIN = 'https://editor.auth-test.example';
+const TEST_PASSWORD = 'correct horse battery staple';
+
+async function withIsolatedAuthApp(run) {
+	const admin = new Pool({ connectionString: DATABASE_URL, max: 1 });
+	const schema = `auth_test_${randomUUID().replaceAll('-', '')}`;
+	let pool;
+	let app;
+	try {
+		await admin.query(`CREATE SCHEMA ${schema}`);
+		pool = new Pool({
+			connectionString: DATABASE_URL,
+			max: 4,
+			options: `-c search_path=${schema},public`
+		});
+		await runMigrations(pool);
+		app = createApp({
+			pool,
+			apiOrigin: 'https://api.auth-test.example',
+			editorOrigin: EDITOR_ORIGIN,
+			sessionKey: SESSION_KEY,
+			logger: false
+		});
+		await app.ready();
+		await run({ app, pool });
+	} finally {
+		if (app) await app.close();
+		else if (pool) await pool.end();
+		await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+		await admin.end();
+	}
+}
+
+function authRequest(app, method, url, { payload, cookie, origin = EDITOR_ORIGIN, remoteAddress = '127.0.0.1' } = {}) {
+	return app.inject({
+		method,
+		url,
+		remoteAddress,
+		headers: {
+			...(origin ? { origin } : {}),
+			...(cookie ? { cookie } : {})
+		},
+		...(payload === undefined ? {} : { payload })
+	});
+}
+
+test('local credentials authenticate, preserve legacy ownership, and enforce bounds', async () => {
+	await withIsolatedAuthApp(async ({ app, pool }) => {
+		const legacyId = 'google:stable-owner-subject';
+		await pool.query('INSERT INTO users (id) VALUES ($1)', [legacyId]);
+		const legacyProjectId = `legacy-project-${randomUUID()}`;
+		await pool.query('INSERT INTO projects (id, owner_id, name, latest_version) VALUES ($1, $2, $3, 1)', [
+			legacyProjectId,
+			legacyId,
+			'Legacy project'
+		]);
+		await pool.query(
+			"INSERT INTO project_versions (project_id, version, document, source_format) VALUES ($1, 1, $2::jsonb, 'unit-envelope-v1')",
+			[legacyProjectId, JSON.stringify(projectDocument('Legacy project', { id: legacyProjectId }))]
+		);
+		const legacyCookie = await sessionCookie(app, legacyId);
+
+		const anonymousEnrollment = await authRequest(app, 'POST', '/auth/credentials', {
+			payload: { username: 'legacy.owner', password: TEST_PASSWORD }
+		});
+		assert.equal(anonymousEnrollment.statusCode, 401);
+		assert.equal((await authRequest(app, 'GET', '/auth/credentials', { cookie: legacyCookie })).json().enrolled, false);
+
+		const enrollment = await authRequest(app, 'POST', '/auth/credentials', {
+			cookie: legacyCookie,
+			payload: { username: 'Legacy.Owner', password: TEST_PASSWORD }
+		});
+		assert.equal(enrollment.statusCode, 201);
+		assert.deepEqual(enrollment.json(), { authenticated: true, user: { id: legacyId } });
+		const enrollmentCookie = cookieFrom(enrollment);
+		assert.equal((await authRequest(app, 'GET', '/auth/credentials', { cookie: enrollmentCookie })).json().enrolled, true);
+
+		const legacyCredential = await pool.query(
+			'SELECT user_id, username, password_hash FROM local_credentials WHERE user_id = $1',
+			[legacyId]
+		);
+		assert.equal(legacyCredential.rows[0].user_id, legacyId);
+		assert.equal(legacyCredential.rows[0].username, 'legacy.owner');
+		assert.match(legacyCredential.rows[0].password_hash, /^scrypt-v1\$[0-9a-f]{32}\$[0-9a-f]{128}$/);
+		assert.equal(legacyCredential.rows[0].password_hash.includes(TEST_PASSWORD), false);
+
+		const overwritten = await authRequest(app, 'POST', '/auth/credentials', {
+			cookie: enrollmentCookie,
+			payload: { username: 'replacement.name', password: TEST_PASSWORD }
+		});
+		assert.equal(overwritten.statusCode, 409);
+		const legacyLogin = await authRequest(app, 'POST', '/auth/login', {
+			payload: { username: 'LEGACY.OWNER', password: TEST_PASSWORD }
+		});
+		assert.equal(legacyLogin.statusCode, 200);
+		assert.deepEqual(legacyLogin.json(), { authenticated: true, user: { id: legacyId } });
+		const owned = await authRequest(app, 'GET', '/projects', { cookie: cookieFrom(legacyLogin) });
+		assert.equal(owned.statusCode, 200);
+		assert.equal(owned.json().projects.some((project) => project.name === 'Legacy project'), true);
+		const loggedOut = await authRequest(app, 'POST', '/auth/logout', { cookie: cookieFrom(legacyLogin) });
+		assert.equal(loggedOut.statusCode, 204);
+		assert.deepEqual((await authRequest(app, 'GET', '/auth/me', { cookie: cookieFrom(loggedOut) })).json(), { authenticated: false });
+
+		const registration = await authRequest(app, 'POST', '/auth/register', {
+			payload: { username: 'new.creator', password: TEST_PASSWORD }
+		});
+		assert.equal(registration.statusCode, 201);
+		const registeredId = registration.json().user.id;
+		assert.match(registeredId, /^local:[0-9a-f-]{36}$/);
+		assert.notEqual(registeredId, legacyId);
+		const secondRegistration = await authRequest(app, 'POST', '/auth/register', {
+			payload: { username: 'second.creator', password: TEST_PASSWORD }
+		});
+		assert.equal(secondRegistration.statusCode, 201);
+		assert.notEqual(
+			(await pool.query('SELECT password_hash FROM local_credentials WHERE user_id = $1', [registeredId])).rows[0].password_hash,
+			(await pool.query('SELECT password_hash FROM local_credentials WHERE user_id = $1', [secondRegistration.json().user.id])).rows[0].password_hash,
+			'same password must receive independent salt and hash'
+		);
+		const duplicateName = await authRequest(app, 'POST', '/auth/register', {
+			payload: { username: 'NEW.CREATOR', password: TEST_PASSWORD }
+		});
+		assert.equal(duplicateName.statusCode, 409);
+		assert.equal((await pool.query('SELECT count(*)::int AS count FROM local_credentials WHERE username = $1', ['new.creator'])).rows[0].count, 1);
+
+		const wrongPassword = await authRequest(app, 'POST', '/auth/login', {
+			payload: { username: 'new.creator', password: 'incorrect password value' }
+		});
+		const unknownUsername = await authRequest(app, 'POST', '/auth/login', {
+			payload: { username: 'unknown.creator', password: 'incorrect password value' }
+		});
+		assert.equal(wrongPassword.statusCode, 401);
+		assert.equal(unknownUsername.statusCode, 401);
+		assert.deepEqual(wrongPassword.json(), unknownUsername.json(), 'unknown and incorrect credentials expose the same response');
+
+		const invalidCredentials = [
+			{ username: 'ab', password: TEST_PASSWORD },
+			{ username: 'bad/name', password: TEST_PASSWORD },
+			{ username: 'valid.name', password: 'too-short' },
+			{ username: 'valid.name', password: 'p'.repeat(129) },
+			{ username: 'valid.name', password: TEST_PASSWORD, extra: true }
+		];
+		for (const payload of invalidCredentials) {
+			const response = await authRequest(app, 'POST', '/auth/register', { payload });
+			assert.equal(response.statusCode, 400);
+		}
+		const oversized = await authRequest(app, 'POST', '/auth/register', {
+			payload: { username: 'valid.name', password: 'p'.repeat(3000) }
+		});
+		assert.equal(oversized.statusCode, 413);
+
+		const claimedLegacy = await authRequest(app, 'POST', '/auth/register', {
+			payload: { username: 'claim.attempt', password: TEST_PASSWORD }
+		});
+		assert.equal(claimedLegacy.statusCode, 201);
+		assert.notEqual(claimedLegacy.json().user.id, legacyId);
+		assert.equal((await pool.query('SELECT count(*)::int AS count FROM local_credentials WHERE user_id = $1', [legacyId])).rows[0].count, 1);
+
+		const badOrigin = await authRequest(app, 'POST', '/auth/login', {
+			origin: 'https://other.example.test',
+			payload: { username: 'new.creator', password: TEST_PASSWORD }
+		});
+		assert.equal(badOrigin.statusCode, 403);
+		assert.equal((await authRequest(app, 'GET', '/auth/login')).statusCode, 404);
+		assert.equal((await authRequest(app, 'GET', '/auth/callback')).statusCode, 404);
+
+		await pool.query(
+			`INSERT INTO auth_attempts (key, attempts, window_start) VALUES ($1, 10, now()) ON CONFLICT (key) DO UPDATE SET attempts = 10, window_start = now()`,
+			['name:limited.name']
+		);
+		const limited = await authRequest(app, 'POST', '/auth/login', {
+			payload: { username: 'limited.name', password: TEST_PASSWORD }
+		});
+		assert.equal(limited.statusCode, 429);
+		assert.equal(limited.json().error.code, 'rate_limited');
+
+		const first = authRequest(app, 'POST', '/auth/register', {
+			remoteAddress: '127.0.0.2',
+			payload: { username: 'parallel.one', password: TEST_PASSWORD }
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		const second = await authRequest(app, 'POST', '/auth/register', {
+			remoteAddress: '127.0.0.3',
+			payload: { username: 'parallel.two', password: TEST_PASSWORD }
+		});
+		assert.equal(second.statusCode, 429);
+		assert.equal(second.json().error.code, 'auth_busy');
+		assert.equal((await first).statusCode, 201);
+	});
 });

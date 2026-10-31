@@ -1,13 +1,13 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { isGoogleUserId } from './auth.js';
+import { isSessionUserId } from './auth.js';
 
 /**
  * P22 test-auth seam — deterministic automation identities.
  *
  * Test-only issuer in front of the existing session adapter: it replaces
- * only the external OAuth ceremony and then creates the exact session
- * representation the OAuth callback creates (`userId` in secure-session).
+ * only the password ceremony and then creates the exact session
+ * representation the local login creates (`userId` in secure-session).
  * Ownership, authorization, session validation and persistence rules are
  * untouched — they only ever see a normal user id.
  *
@@ -20,10 +20,9 @@ export type TestAuthOptions = {
 };
 
 /**
- * Allowlisted automation keys → normal app user ids. The `google:` namespace
- * is reused so every downstream check (session validation, ownership)
- * treats them as ordinary users; the `e2e-` infix can never collide with a
- * real Google `sub` (numeric).
+ * Allowlisted automation keys → normal app user ids. The historical `google:`
+ * namespace is retained for fixture compatibility; the `e2e-` infix cannot
+ * collide with the numeric subject values used by the former provider flow.
  */
 const TEST_AUTH_USERS = {
 	'agent-admin': 'google:e2e-agent-admin',
@@ -36,7 +35,7 @@ export type TestAuthUserKey = keyof typeof TEST_AUTH_USERS;
 export function resolveTestAuthUserId(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const userId: string | undefined = (TEST_AUTH_USERS as Record<string, string>)[value];
-	if (!userId || !isGoogleUserId(userId)) return null;
+	if (!userId || !isSessionUserId(userId)) return null;
 	return userId;
 }
 

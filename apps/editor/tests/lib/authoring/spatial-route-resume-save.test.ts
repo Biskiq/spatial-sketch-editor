@@ -20,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const harness = vi.hoisted(() => ({
 	loadKind: 'document' as 'document' | 'not-found' | 'auth',
+	loadCalls: 0,
 	document: null as unknown,
 	savedBaseToken: null as string | null,
 	savedRevision: { projectId: 'project-1', revisionId: 'revision-1' },
@@ -64,6 +65,7 @@ vi.mock('$lib/platform/project-persistence', async (importOriginal) => {
 		}),
 		createProjectApi: () => ({
 			async loadProject() {
+				harness.loadCalls += 1;
 				if (harness.loadKind === 'auth') {
 					throw new actual.ProjectPersistenceError('auth', 'sign in');
 				}
@@ -238,6 +240,7 @@ async function waitForReady(projectName?: string): Promise<void> {
 beforeEach(() => {
 	sessionStorage.clear();
 	harness.loadKind = 'document';
+	harness.loadCalls = 0;
 	harness.document = null;
 	harness.savedBaseToken = BASE_TOKEN;
 	harness.savedRevision = { projectId: 'project-1', revisionId: 'revision-1' };
@@ -286,6 +289,22 @@ afterEach(() => {
 });
 
 describe('spatial route resume Save', () => {
+	it('boots minted projects directly into an admitted empty Stage without a cloud read and keeps the starter in Find', async () => {
+		harness.loadKind = 'auth';
+		await mountPage('?create=1');
+		await waitForReady('Untitled project');
+
+		expect(harness.loadCalls).toBe(0);
+		expect(head().dataset.saveStatus).toBe('never-saved');
+		expect(target.querySelector('[data-find-id="starter"][data-find-adapter="project-replacement"]')).not.toBeNull();
+
+		target.querySelector<HTMLButtonElement>('[data-find-id="starter"][data-find-adapter="project-replacement"]')!.click();
+		await vi.waitFor(() => expect(target.querySelector('[aria-label="Replace project"]')).not.toBeNull());
+		button('Replace').click();
+		await waitForReady('Enclosed room');
+		expect(harness.loadCalls).toBe(0);
+	});
+
 	it('captures identical project source bytes with browser preferences unset and set', async () => {
 		const stored = new Map<string, string>();
 		vi.stubGlobal('localStorage', {
@@ -322,14 +341,13 @@ describe('spatial route resume Save', () => {
 		expect(second.capture.canonicalJson).toBe(first.capture.canonicalJson);
 	});
 	it('offers a create-only capture after the sign-in return 404 and replays it exactly', async () => {
-		// First visit: a minted identity the server does not have. The creator starts
-		// empty, then the Save answers auth-required and the route captures it.
+		// First visit: a minted identity starts locally without a cloud read, then the
+		// Save answers auth-required and the route captures it.
 		harness.loadKind = 'auth';
 		harness.saveBehavior = 'auth';
 		await mountPage('?create=1');
-		await vi.waitFor(() => expect(button('Begin empty')).not.toBeNull());
-		button('Begin empty').click();
 		await waitForReady('Untitled project');
+		expect(harness.loadCalls).toBe(0);
 		expect(head().dataset.saveStatus).toBe('never-saved');
 
 		headSaveButton().click();
@@ -349,6 +367,7 @@ describe('spatial route resume Save', () => {
 		harness.loadKind = 'not-found';
 		harness.saveBehavior = 'success';
 		await mountPage('?resume-save=1');
+		expect(harness.loadCalls).toBe(1);
 		await vi.waitFor(() => {
 			expect(button('Resume pending Save')).not.toBeNull();
 		});

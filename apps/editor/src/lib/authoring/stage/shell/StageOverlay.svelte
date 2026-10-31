@@ -26,6 +26,8 @@
 		markers,
 		marks = [],
 		candidates = [],
+		viewportWidth = 0,
+		viewportHeight = 0,
 		tracePreview = null,
 		hostTools = null,
 		onActivateDisclosure = () => {}
@@ -33,6 +35,8 @@
 		markers: readonly { id: string; css: readonly [number, number]; label: string }[];
 		marks?: readonly StageMarkView[];
 		candidates?: readonly StageCandidatePreviewView[];
+		viewportWidth?: number;
+		viewportHeight?: number;
 		tracePreview?: import('$lib/platform/perf-marks').PerfTracePreview | null;
 		hostTools?: {
 			readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean } | null;
@@ -58,6 +62,19 @@
 
 	function tagWidth(text: string): number {
 		return Math.max(34, Math.round(text.length * 6.1 + 10));
+	}
+
+	function candidateTagPosition(css: readonly [number, number], width: number, height: number, index: number): string {
+		let x = css[0] + 10;
+		let y = css[1] - 26 - index * 20;
+		// Keep the refusal readable at the right edge, including beside the Height
+		// Sheet. This only places the tag; the cursor reach stays at the input.
+		if (viewportWidth > 0) {
+			if (x + width > viewportWidth - 100) x = css[0] - width - 10;
+			x = Math.max(8, Math.min(x, viewportWidth - 100 - width - 8));
+		}
+		if (viewportHeight > 0) y = Math.max(8, Math.min(y, viewportHeight - height - 8));
+		return `translate(${x} ${y})`;
 	}
 
 	/**
@@ -130,7 +147,6 @@
 		>
 			{#each candidate.polygons as polygon, index (`${candidate.id}:polygon:${index}`)}
 				<path class="candidate-fill" d={polygonPath(polygon)} />
-				<path class="candidate-edge" d={polygonPath(polygon)} />
 			{/each}
 			{#each candidate.segments as segment, index (`${candidate.id}:segment:${index}`)}
 				<line class="candidate-edge" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
@@ -138,10 +154,11 @@
 			{#each candidate.labels as label, index (`${candidate.id}:label:${index}`)}
 				{@const lines = labelLines(label.text)}
 				{@const width = Math.max(...lines.map((line) => tagWidth(line))) + 10}
+				{@const height = 6 + lines.length * 12}
 				<!-- The tag sits above the snap mark at the same point, so the two
 				     never overprint each other. -->
-				<g class="tag" transform={`translate(${label.css[0] + 10} ${label.css[1] - 26 - index * 20})`}>
-					<rect width={width} height={6 + lines.length * 12} rx="2" />
+				<g class="tag" transform={candidateTagPosition(label.css, width, height, index)}>
+					<rect {width} {height} rx="2" />
 					{#each lines as line, lineIndex (`${candidate.id}:label:${index}:${lineIndex}`)}
 						<text x="5" y={12 + lineIndex * 12}>{line}</text>
 					{/each}

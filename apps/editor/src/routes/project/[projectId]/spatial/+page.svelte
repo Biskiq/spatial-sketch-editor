@@ -14,8 +14,9 @@
 	 *
 	 * Every explicit state is rendered: loading, new (starter gallery/empty), empty,
 	 * ready, diagnostics (blocking compile), refused (invalid/non-current format),
-	 * missing, forbidden and error. A minted identity the server does not have offers
-	 * the gallery; an explicitly opened absence is `missing`.
+	 * missing, forbidden and error. A minted identity starts directly on an admitted
+	 * empty baseline; starter replacement remains available through Find. An
+	 * explicitly opened absence is `missing`.
 	 *
 	 * One Stage canvas serves both readings and both lenses. Reading flips are
 	 * Camera-evaluated (never a shell tween); pointer input becomes viewing intent;
@@ -1090,11 +1091,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		remoteSavedCanonicalJson = null;
 		headSave = null;
 		boot = initialBootState(projectIdToLoad, requestedIntent);
+		// A minted identity is a local editing intent, not a request to discover
+		// whether the cloud happens to be reachable. Admit the empty baseline through
+		// the same source path as every other mounted Stage and leave Save create-only.
+		// Explicit opens still perform a cloud read so missing/forbidden/network
+		// outcomes remain distinct.
+		if (requestedIntent === 'create') {
+			const token = session.token();
+			const next = await bootEmpty(projectIdToLoad, admissionContext());
+			if (!session.isCurrent(token)) return;
+			applyState(next);
+			perfMark(next.status === 'empty' ? 'f2:create-empty' : `f2:create-${next.status}`);
+			if (next.status === 'empty') offerResumeSave({ createOnly: true });
+			return;
+		}
 		if (api === null) {
-			boot =
-				requestedIntent === 'create'
-					? { status: 'new', projectId: projectIdToLoad, intent: 'create' }
-					: { status: 'error', projectId: projectIdToLoad, message: 'Cloud service is unavailable' };
+			boot = { status: 'error', projectId: projectIdToLoad, message: 'Cloud service is unavailable' };
 			return;
 		}
 		const token = session.token();
@@ -3353,6 +3365,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const headFindEntries = $derived.by(() => {
 		const needle = findQuery.trim().toLowerCase();
 		const entries = [
+			{ id: 'starter', adapterId: 'project-replacement', label: 'Use enclosed room starter', verb: 'Replace' },
 			...locatedSubjects.map((subject) => ({ id: subject.id, adapterId: 'subject', label: subject.label, verb: 'Select' })),
 			...dockKeys.map((key) => ({
 				id: key.id,
@@ -3474,6 +3487,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
 	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string }): void {
+		if (entry.adapterId === 'project-replacement' && entry.id === 'starter') {
+			requestReplacement('starter');
+			return;
+		}
 		if (entry.adapterId === 'subject') { selectSource(entry.id); return; }
 		if (entry.adapterId === 'scale') {
 			requestScaleDetent(Number(entry.id.slice('scale:'.length)));
@@ -3761,7 +3778,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					/>
 				{/if}
 				<div class="overlay-layer">
-					<StageOverlay {markers} {marks} candidates={candidatePreviews} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+					<StageOverlay {markers} {marks} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 				</div>
 				<!--
 					The measured ruler is a Plan-only reading of the same evaluation. It
@@ -3772,8 +3789,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<StageScaleBar bar={draftingScaleBar} quiet={paperVisible} />
 				{/if}
 
-				{#if boot.status === 'empty' && (currentEnvelope?.units.layout.data.rooms.length ?? 0) === 0}
-					<p class="stage-note" role="status">Empty baseline — draw an enclosure with Ink to create a Room floor, or start from the gallery for a compilable room.</p>
+				{#if boot.status === 'empty' && (currentEnvelope?.units.layout.data.walls.length ?? 0) === 0 && (currentEnvelope?.units.layout.data.objects.length ?? 0) === 0 && (currentEnvelope?.units.scene.data.entities.length ?? 0) === 0}
+					<p class="stage-note" role="status">Empty workspace — draw with Ink, or use Find to choose the enclosed room starter.</p>
 				{/if}
 
 				<!--

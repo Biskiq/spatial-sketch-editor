@@ -510,7 +510,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 */
 				readonly pressTarget: InkPointerTarget;
 				/** The latest deliberate target under the pointer; the release falls back to it. */
-			hover: InkPointerTarget;
+				hover: InkPointerTarget;
+				dragging: boolean;
 			} | null = null;
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
@@ -1594,7 +1595,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					geometry: adapterContext.snapshot.domain.geometry,
 					point: [point[0], point[1]],
 					pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
-					anchor: draft.points[draft.points.length - 1]?.point ?? null,
+					anchor: linePreviewBase().points.at(-1)?.point ?? null,
 					drafting
 				});
 				if (winner !== null) {
@@ -1626,6 +1627,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return { target: { kind: 'free' }, point: [point[0], point[1]], css };
 			}
 
+			/** The transient press anchor follows the same start rule as dragInkWall.
+			 * It never appends to the deliberate click chain before release. */
+			function linePreviewBase(): ChainDraft {
+				if (!inkPress?.dragging) return draft;
+				const pressed = inkPress.pressTarget;
+				const start: ChainDraftPoint = { point: pressed.point, target: pressed.target };
+				const tip = draft.points.at(-1);
+				if (tip?.point[0] === start.point[0] && tip?.point[1] === start.point[1]) return draft;
+				if (draft.points.length === 0) return { points: [start], closed: false };
+				if (isDraftStart(draft, start.point, 1e-9) && draft.points.length >= 2) return { points: draft.points, closed: true };
+				const begun = appendChainPoint(draft, start);
+				return 'points' in begun ? begun : draft;
+			}
+
+			function linePreviewDraft(): ChainDraft {
+				const base = linePreviewBase();
+				if (base.closed || inkHover === null) return base;
+				const extended = appendChainPoint(base, { point: inkHover.point, target: inkHover.target });
+				return 'points' in extended ? extended : base;
+			}
+
 			/** Re-plan the draft (with the hover point, when there is one). */
 			function refreshInkPreview(): void {
 				if (inkHover === null) inkSnapWinner = null;
@@ -1646,7 +1668,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				const points =
-					inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
+					linePreviewDraft();
 				if (!('points' in points)) {
 					inkPreview = null;
 					return;
@@ -1729,10 +1751,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function snapshotForPalette(): InkPaletteSnapshot {
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
 				const withHover =
-					inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
+					linePreviewDraft();
 				const effective = boxMode ? boxPreviewDraft() ?? draft : 'points' in withHover ? withHover : draft;
 				const pending =
-					inkHover === null || boxMode ? null : pendingLegFacts(draft, inkHover.point);
+					inkHover === null || boxMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
 				const anchor = boxMode ? boxAnchor() : null;
 				const box =
 					anchor === null || inkHover === null
@@ -2123,7 +2145,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						evaluationId: intent.evaluationId,
 						lease: acquisition,
 						pressTarget: target,
-						hover: target
+						hover: target,
+						dragging: false
 					};
 					inkHover = target;
 					refreshInkPreview();
@@ -2152,12 +2175,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				}
 				if (intent.phase === 'move') {
+					current.dragging = Math.hypot(intent.css[0] - current.origin[0], intent.css[1] - current.origin[1]) > 4;
 					const target = inkTargetAt(adapterContext, intent.css);
 					if (target !== null) {
 						current.hover = target;
 						inkHover = target;
-						refreshInkPreview();
+					} else {
+						inkHover = null;
 					}
+					refreshInkPreview();
 					services.stage.notifySurfaceChange();
 					publishInk();
 					return true;
@@ -3375,7 +3401,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const boxMode = inkWallMode === 'box';
 				const live = boxMode
 					? boxPreviewDraft() ?? draft
-					: inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
+					: linePreviewDraft();
 				const points = 'points' in live ? live.points : draft.points;
 				if (inkPreview?.kind === 'planned') {
 					const subjectIds = new Set([...inkPreview.authoredWallIds, ...inkPreview.createdRoomIds]);
@@ -3384,7 +3410,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const geometry = built?.paper.subject ?? EMPTY_CANDIDATE_GEOMETRY;
 					const labels: { world: [number, number, number]; text: string }[] = [];
 					if (inkHover !== null && !boxMode) {
-						const pending = pendingLegFacts(draft, inkHover.point);
+						const pending = pendingLegFacts(linePreviewBase(), inkHover.point);
 						if (pending !== null) labels.push({ world: world(inkHover.point), text: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°` });
 					}
 					if (boxMode && inkHover !== null) {
@@ -3408,13 +3434,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return [candidatePreviewOf({
 						id: 'layout-candidate-chain-refused',
 						role: 'refused',
-						geometry: EMPTY_CANDIDATE_GEOMETRY,
+						// A dashed cursor reach names the refused input, never a Wall band.
+						geometry: { polygons: [], segments: [[world(points[points.length - 2]!.point), world(points[points.length - 1]!.point)]] },
 						labels: [{ world: world(points[points.length - 1]!.point), text: inkPreview.message }]
 					})];
 				}
-				if (inkHover !== null && draft.points.length > 0) {
-					const last = draft.points[draft.points.length - 1]!.point;
-					const pending = pendingLegFacts(draft, inkHover.point);
+				if (inkHover !== null && linePreviewBase().points.length > 0) {
+					const last = linePreviewBase().points.at(-1)!.point;
+					const pending = pendingLegFacts(linePreviewBase(), inkHover.point);
 					return [candidatePreviewOf({
 						id: 'layout-candidate-cursor',
 						role: 'subject',
@@ -3504,7 +3531,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
 				const livePoints = boxMode
 					? boxPreviewDraft() ?? draft
-					: inkHover === null ? draft : appendChainPoint(draft, { point: inkHover.point, target: inkHover.target });
+					: linePreviewDraft();
 				const points = 'points' in livePoints ? livePoints.points : draft.points;
 				points.forEach((entry, index) => {
 					const css = project(entry.point);
@@ -3536,7 +3563,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						});
 					}
 				}
-				const pending = inkHover === null || boxMode ? null : pendingLegFacts(draft, inkHover.point);
+				const pending = inkHover === null || boxMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
 				const anchor = boxMode ? boxAnchor() : null;
 				if (anchor !== null && inkHover !== null) {
 					const css = project(inkHover.point);

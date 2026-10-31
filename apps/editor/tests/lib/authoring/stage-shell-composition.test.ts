@@ -139,7 +139,7 @@ describe('Stage shell composition', () => {
 		expect(offenders).toEqual([]);
 
 		// The renderer boundary is explicit: the Canvas, the Camera that copies the
-		// evaluated pose, Paper's drawing scene, its selection re-stroke, and the
+		// evaluated pose, Paper's drawing scene, its selection re-stroke/buffer batching, and the
 		// selection-ink realizer that builds outlines and tint clones from the
 		// already-rendered meshes. None of them owns a camera or a pick root; they
 		// are listed here so another Three importer cannot appear unnoticed.
@@ -155,7 +155,8 @@ describe('Stage shell composition', () => {
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
 			'apps/editor/src/lib/authoring/stage/paper-scene.ts',
-			'apps/editor/src/lib/authoring/stage/paper-marks.ts'
+			'apps/editor/src/lib/authoring/stage/paper-marks.ts',
+			'apps/editor/src/lib/authoring/stage/paper-fill-geometry.ts'
 		]);
 
 		// The pose math lives in exactly one place: the realizer copies the

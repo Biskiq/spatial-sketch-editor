@@ -185,6 +185,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		// The host's own dock keys (Select, Measure, Eraser) are Find entries too.
 		const registered = [
 			...facade().findEntries().map((entry) => `${entry.adapterId}:${entry.id}`),
+			'project-replacement:starter',
 			'host:host-select',
 			'host:host-measure',
 			'host:host-erase'

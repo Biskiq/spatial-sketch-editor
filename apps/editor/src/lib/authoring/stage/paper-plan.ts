@@ -16,9 +16,11 @@
  */
 import {
 	eligiblePlanFragments,
+	createPlanBoxIndex,
 	indexedCompiledWall,
 	type CompiledLayoutGeometry,
 	type LayoutVec2,
+	type PlanBox,
 	type PlanEvaluation,
 	type PlanFragment,
 	type PlanStream
@@ -249,6 +251,54 @@ export function cutWallBandOf(
 
 type UnionPolygon = readonly LayoutVec2[];
 
+type UnionPolygonBounds = PlanBox & { readonly candidate: PlanBox };
+
+/** Conservative bounds for one polygon and its edge-tolerance expansion. */
+function unionPolygonBounds(polygon: UnionPolygon): UnionPolygonBounds {
+	let minX = Infinity;
+	let minZ = Infinity;
+	let maxX = -Infinity;
+	let maxZ = -Infinity;
+	let longestEdge = 0;
+	for (let index = 0; index < polygon.length; index += 1) {
+		const point = polygon[index]!;
+		const next = polygon[(index + 1) % polygon.length]!;
+		minX = Math.min(minX, point[0]);
+		minZ = Math.min(minZ, point[1]);
+		maxX = Math.max(maxX, point[0]);
+		maxZ = Math.max(maxZ, point[1]);
+		longestEdge = Math.max(longestEdge, Math.hypot(next[0] - point[0], next[1] - point[1]));
+	}
+	const padding = UNION_ON_EDGE_EPSILON + longestEdge * UNION_SPLIT_EPSILON;
+	return {
+		minX,
+		minZ,
+		maxX,
+		maxZ,
+		candidate: { minX: minX - padding, minZ: minZ - padding, maxX: maxX + padding, maxZ: maxZ + padding }
+	};
+}
+
+/** Spatial broad phase for the exact edge and containment predicates below. */
+function unionPolygonIndex(polygons: readonly UnionPolygon[]): {
+	readonly bounds: readonly UnionPolygonBounds[];
+	overlaps(box: PlanBox): number[];
+} {
+	const bounds = polygons.map(unionPolygonBounds);
+	const index = createPlanBoxIndex(bounds.map((entry) => entry.candidate));
+	return { bounds, overlaps: (box) => index.overlaps(box) };
+}
+
+function paddedEdgeBounds(a: LayoutVec2, b: LayoutVec2): PlanBox {
+	const padding = UNION_ON_EDGE_EPSILON + Math.hypot(b[0] - a[0], b[1] - a[1]) * UNION_SPLIT_EPSILON;
+	return {
+		minX: Math.min(a[0], b[0]) - padding,
+		minZ: Math.min(a[1], b[1]) - padding,
+		maxX: Math.max(a[0], b[0]) + padding,
+		maxZ: Math.max(a[1], b[1]) + padding
+	};
+}
+
 function pointInTriangle(point: LayoutVec2, a: LayoutVec2, b: LayoutVec2, c: LayoutVec2): boolean {
 	const cross = (p: LayoutVec2, q: LayoutVec2, r: LayoutVec2): number =>
 		(q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
@@ -260,8 +310,19 @@ function pointInTriangle(point: LayoutVec2, a: LayoutVec2, b: LayoutVec2, c: Lay
 	return !(hasNegative && hasPositive);
 }
 
-function pointInUnion(point: LayoutVec2, polygons: readonly UnionPolygon[]): boolean {
-	for (const polygon of polygons) {
+function pointInUnion(
+	point: LayoutVec2,
+	polygons: readonly UnionPolygon[],
+	index: ReturnType<typeof unionPolygonIndex>
+): boolean {
+	const candidates = index.overlaps({
+		minX: point[0] - 1e-9,
+		minZ: point[1] - 1e-9,
+		maxX: point[0] + 1e-9,
+		maxZ: point[1] + 1e-9
+	});
+	for (const polygonIndex of candidates) {
+		const polygon = polygons[polygonIndex]!;
 		if (polygon.length < 3) continue;
 		if (polygon.length === 3) {
 			if (pointInTriangle(point, polygon[0]!, polygon[1]!, polygon[2]!)) return true;
@@ -408,9 +469,15 @@ function pointOnEdge(a: LayoutVec2, b: LayoutVec2, t: number): LayoutVec2 {
 }
 
 /** Split an edge wherever another polygon crosses, touches or overlaps it. */
-function splitParametersOfEdge(a: LayoutVec2, b: LayoutVec2, polygons: readonly UnionPolygon[]): number[] {
+function splitParametersOfEdge(
+	a: LayoutVec2,
+	b: LayoutVec2,
+	polygons: readonly UnionPolygon[],
+	index: ReturnType<typeof unionPolygonIndex>
+): number[] {
 	const parameters = [0, 1];
-	for (const polygon of polygons) {
+	for (const polygonIndex of index.overlaps(paddedEdgeBounds(a, b))) {
+		const polygon = polygons[polygonIndex]!;
 		if (polygon.length < 3) continue;
 		for (let index = 0; index < polygon.length; index += 1) {
 			const c = polygon[index]!;
@@ -436,12 +503,13 @@ function splitParametersOfEdge(a: LayoutVec2, b: LayoutVec2, polygons: readonly 
 export function unionOutline(polygons: readonly UnionPolygon[]): PaperSegment[] {
 	const segments: PaperSegment[] = [];
 	const seen = new Set<string>();
+	const polygonIndex = unionPolygonIndex(polygons);
 	for (const polygon of polygons) {
 		if (polygon.length < 3) continue;
-		for (let index = 0; index < polygon.length; index += 1) {
-			const a = polygon[index]!;
-			const b = polygon[(index + 1) % polygon.length]!;
-			const parameters = splitParametersOfEdge(a, b, polygons);
+		for (let edgeIndex = 0; edgeIndex < polygon.length; edgeIndex += 1) {
+			const a = polygon[edgeIndex]!;
+			const b = polygon[(edgeIndex + 1) % polygon.length]!;
+			const parameters = splitParametersOfEdge(a, b, polygons, polygonIndex);
 			for (let split = 1; split < parameters.length; split += 1) {
 				const start = pointOnEdge(a, b, parameters[split - 1]!);
 				const end = pointOnEdge(a, b, parameters[split]!);
@@ -453,8 +521,8 @@ export function unionOutline(polygons: readonly UnionPolygon[]): PaperSegment[] 
 				const nz = dx / length;
 				const probe = Math.min(0.001, Math.max(1e-7, length * 1e-4));
 				const middle: LayoutVec2 = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
-				const left = pointInUnion([middle[0] + nx * probe, middle[1] + nz * probe], polygons);
-				const right = pointInUnion([middle[0] - nx * probe, middle[1] - nz * probe], polygons);
+				const left = pointInUnion([middle[0] + nx * probe, middle[1] + nz * probe], polygons, polygonIndex);
+				const right = pointInUnion([middle[0] - nx * probe, middle[1] - nz * probe], polygons, polygonIndex);
 				if (left === right) continue;
 				const key = edgeKey(start, end);
 				if (seen.has(key)) continue;

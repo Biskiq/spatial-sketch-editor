@@ -110,7 +110,7 @@
 		{:else}
 			<div class="actions">
 				<button type="button" class="primary" onclick={() => void startCreating()}>Start creating</button>
-				<button type="button" disabled={!auth} onclick={() => void signIn('projects')}>Continue with Google</button>
+				<button type="button" disabled={!auth} onclick={() => void signIn('projects')}>Sign in</button>
 			</div>
 		{/if}
 		{#if notice && authStatus !== 'cancelled' && authStatus !== 'failed'}

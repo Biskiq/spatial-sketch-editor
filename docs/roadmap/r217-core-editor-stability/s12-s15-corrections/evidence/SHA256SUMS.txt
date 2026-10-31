@@ -1,0 +1,8 @@
+0b51bf4cf371df55d77ae6aa5ec192509d43474404892ca629a7d4ef39a2cb06  docs/roadmap/r217-core-editor-stability/s12-s15-corrections/evidence/1000m-oblique-1440.png
+43e4e1607e1d0efbdf08d0213360890e8dc01bf57b9b517e07493cb835cf138a  docs/roadmap/r217-core-editor-stability/s12-s15-corrections/evidence/body-preview-3d-1440.png
+1f2bd22a23cf8644f90981b22e25a0d16c8296e05c5fe3f0d2be07d64eb9a4cc  docs/roadmap/r217-core-editor-stability/s12-s15-corrections/evidence/live-line-1440.png
+dc46c8b25b26470a8afab8283bf52f3f615f6dacf20536d741d51259765ca0d9  docs/roadmap/r217-core-editor-stability/s12-s15-corrections/evidence/local-auth-saved-1440.png
+974440890f4a5cb2e89a0e7d927955189431c2b19743847dfa66f5451ca191bc  docs/roadmap/r217-core-editor-stability/s12-s15-corrections/evidence/preview-1180.png
+ee81ca5517f42feaa9440578fc5d2f5396d400273037176e10349cb68657b4a3  docs/roadmap/r217-core-editor-stability/s12-s15-corrections/evidence/preview-1280.png
+4211af2e708e17915a0c2e78e5f739fda53cb3528dded70ca4c1a8648beb318c  docs/roadmap/r217-core-editor-stability/s12-s15-corrections/evidence/preview-820.png
+71d4f7739e72276f90c278bc43d2de07499b0a1c11698dabedac0c503992ff93  docs/roadmap/r217-core-editor-stability/s12-s15-corrections/evidence/refusal-1440.png

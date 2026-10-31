@@ -26,10 +26,9 @@ import {
 	Group,
 	Mesh,
 	MeshBasicMaterial,
-	Shape,
-	ShapeGeometry,
 	type Material
 } from 'three';
+import { createPaperFillGeometry } from './paper-fill-geometry';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
@@ -177,13 +176,7 @@ export type PaperMarkSceneResources = {
 
 type FadeEntry = { readonly material: Material & { opacity: number }; readonly baseOpacity: number };
 
-function shapeOf(polygon: readonly LayoutVec2[]): Shape {
-	const shape = new Shape();
-	shape.moveTo(polygon[0]![0], polygon[0]![1]);
-	for (let index = 1; index < polygon.length; index += 1) shape.lineTo(polygon[index]![0], polygon[index]![1]);
-	shape.closePath();
-	return shape;
-}
+
 
 function linePositions(geometry: PaperMarkGeometry): Float32Array {
 	const positions: number[] = [];
@@ -205,7 +198,7 @@ function linePositions(geometry: PaperMarkGeometry): Float32Array {
 /**
  * Build the overlay group for one mark set.
  *
- * Lines are one fat-line batch per tone, fills one mesh per polygon. Every object
+ * Lines are one fat-line batch per tone, fills one batch at their original elevations. Every object
  * is on `STAGE_OVERLAY_LAYER`, has `depthTest: false`, and is ordered above the
  * Paper sheet, so the re-stroke can never be hidden by the drawing it annotates.
  */
@@ -260,29 +253,20 @@ export function createPaperMarkScene(
 	addLine(marks.hover, PAPER_MARK_HALO_INK, 4, 0.4, PAPER_MARK_LAYER.hoverHalo);
 	addLine(marks.hover, PAPER_HOVER_INK, 2, 0.75, PAPER_MARK_LAYER.hover);
 
-	const tint = marks.selection.fills;
-	for (const fill of tint) {
-		for (const polygon of fill.polygons) {
-			if (polygon.length < 3) continue;
-			const geometry = new ShapeGeometry(shapeOf(polygon)).rotateX(Math.PI / 2);
-			const material = new MeshBasicMaterial({
-				color: new Color(PAPER_SELECTION_INK).getHex(),
-				side: DoubleSide,
-				transparent: true,
-				opacity: 0.18,
-				depthTest: false,
-				depthWrite: false,
-				toneMapped: false
-			});
-			const mesh = new Mesh(geometry, material);
-			mesh.position.y = fill.elevationMeters;
-			mesh.renderOrder = PAPER_MARK_LAYER.selectionTint;
-			mesh.frustumCulled = false;
-			mesh.layers.set(STAGE_OVERLAY_LAYER);
-			group.add(mesh);
-			disposables.push(geometry, material);
-			fades.push({ material, baseOpacity: material.opacity });
-		}
+	const tintGeometry = createPaperFillGeometry(marks.selection.fills);
+	if (tintGeometry !== null) {
+		const material = new MeshBasicMaterial({
+			color: new Color(PAPER_SELECTION_INK).getHex(),
+			side: DoubleSide, transparent: true, opacity: 0.18,
+			depthTest: false, depthWrite: false, toneMapped: false
+		});
+		const mesh = new Mesh(tintGeometry, material);
+		mesh.renderOrder = PAPER_MARK_LAYER.selectionTint;
+		mesh.frustumCulled = false;
+		mesh.layers.set(STAGE_OVERLAY_LAYER);
+		group.add(mesh);
+		disposables.push(tintGeometry, material);
+		fades.push({ material, baseOpacity: material.opacity });
 	}
 
 	// Selection: the same dark halo, with PLATE gold over it. The tint sits under

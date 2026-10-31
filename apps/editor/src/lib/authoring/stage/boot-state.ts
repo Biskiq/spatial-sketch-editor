@@ -5,8 +5,9 @@
  * folded into another, and none is inferred from a payload's shape:
  *
  * - `loading` — a cloud read is in flight.
- * - `new` — a freshly minted project identity the server does not have yet: the
- *   creator chooses the canonical starter gallery or a genuinely empty baseline.
+ * - `new` — a freshly minted identity awaiting the starter/empty choice. The
+ *   spatial route now admits an empty baseline immediately and keeps the starter
+ *   available as an explicit replacement.
  * - `empty` — a genuinely empty baseline is active (honest: no floor, no starter).
  * - `ready` — an admitted source is mounted on the Stage.
  * - `diagnostics` — the source validates but its canonical compile has blocking
@@ -130,10 +131,11 @@ export async function bootFromLoadOutcome(
 	const projectId = state.projectId;
 	switch (outcome.kind) {
 		case 'not-found':
-			// A minted identity the server does not have is the starter-gallery offer;
-			// an explicitly opened absence is `missing`.
+			// A minted identity may start empty; an explicitly opened absence remains
+			// `missing`. The route handles minted starts before issuing any cloud read,
+			// and this reducer keeps the same result if a caller already has a 404.
 			return state.status === 'loading' && state.intent === 'create'
-				? { status: 'new', projectId, intent: 'create' }
+				? await bootEmpty(projectId, context)
 				: { status: 'missing', projectId };
 		case 'forbidden':
 			return { status: 'forbidden', projectId };

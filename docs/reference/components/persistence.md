@@ -2,9 +2,9 @@
 
 **Read when:** scene/layout/project codecs, cloud Save/Load, asset durability, publication,
 release delivery, fidelity.
-**Last reviewed:** 2026-10-28 (T5.P01.S04 library storage in review; T5 destination promotion; live
-unit versions reconciled). The code contract below describes the F2 cutover tree. Deployment and
-migration 005 remain owner-controlled after merge; it does not claim production activation.
+**Last reviewed:** 2026-10-31 (local credential migration 009). The code contract below describes
+the F2 cutover tree. Deployment and migration 005 remain owner-controlled after merge; it does not
+claim production activation.
 
 ---
 
@@ -145,6 +145,27 @@ F2 request in session storage. The auth return page routes to `resume-save`; the
 offers it even after a cloud 404 for a create-only request. Only explicit Resume installs and
 replays it with the original operation ID and precondition. Cancellation preserves source,
 selection, history and saved base; stale admission after replacement cannot install.
+
+**Current account authentication (migration 009).** Authentication uses local username/password
+credentials only; the API makes no external-provider request. `local_credentials.user_id` is a
+one-to-one credential record for `users.id`, with a normalized unique username and a versioned
+scrypt hash. New users receive `local:<uuid>` IDs. Existing `google:<subject>` IDs remain opaque,
+valid session identities: migration 009 does not rewrite `users`, project owner IDs, or any other
+owner foreign key. An existing legacy user may set a username/password only from an already
+authenticated session; enrollment stores the credential against that exact `users.id`. Registration
+always creates a new local ID and cannot claim a legacy owner. Signed-out recovery for legacy owners
+without a current session has no approved identity-proof path yet and remains an owner decision;
+accounts are never linked by email.
+
+Passwords are constrained to 12–128 characters and usernames to 3–32 ASCII letters, digits, dot,
+underscore or hyphen; usernames are lowercased before uniqueness checks. Hash records use the
+`scrypt-v1` encoding with N=131072, r=8, p=1, a random 16-byte salt and a 64-byte derived key.
+Credential endpoints cap request bodies at 2,048 bytes, return generic login failures for unknown
+usernames and wrong passwords, and use database-backed attempt windows of 15 minutes (30 per IP,
+10 per normalized username). One password-hash operation is admitted per API process at a time.
+Successful authentication uses the existing `@fastify/secure-session` cookie: HttpOnly, Secure,
+SameSite=Lax, seven-day expiry; browser-origin checks remain required for unsafe requests. The
+test-only issuer remains isolated from production and creates the same app session.
 
 **Clean epoch.** Migration 005 removes authored rows in one transaction and installs the
 `unit-envelope-v1` schema fence, retaining users and migration history. The runner holds a session

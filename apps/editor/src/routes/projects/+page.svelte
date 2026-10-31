@@ -284,7 +284,7 @@
 			<button type="button" class="primary new-project" onclick={() => void startCreating()}>New Project</button>
 		{:else}
 			<p class="muted">Your work stays in a temporary session until you sign in. No drafts are kept here.</p>
-			<button type="button" disabled={!auth} onclick={() => void signIn()}>Continue with Google</button>
+			<button type="button" disabled={!auth} onclick={() => void signIn()}>Sign in</button>
 		{/if}
 		{#if notice && sessionStatus !== 'error'}<p bind:this={noticeElement} class="status" role="status" tabindex="-1">{notice}</p>{/if}
 	</section>
