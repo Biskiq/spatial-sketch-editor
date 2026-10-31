@@ -320,6 +320,12 @@ describe('R217.S14 — overlay marker space', () => {
 		const evaluationId = mounted.facade.evaluationId()!;
 		const from = stageCss(mounted, [3, 0]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		// Prove a candidate existed before the pointer leaves the plane; otherwise
+		// the withdrawal assertion would pass for a gesture that never proposed.
+		expect(
+			mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted, [3.5, 0.5]), evaluationId }).claimed
+		).toBe(true);
+		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-wall')).toBe(true);
 		expect(
 			mounted.facade.pointerIntent({ phase: 'move', css: [640, -400], evaluationId }).claimed
 		).toBe(true);

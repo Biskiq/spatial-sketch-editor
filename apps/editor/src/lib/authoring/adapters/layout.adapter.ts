@@ -233,9 +233,10 @@ function projectWallHandles(
  * The working-plane point a Stage-local pointer position names.
  *
  * The ray uses the viewport's CSS space (its origin includes the surface offset,
- * exactly as the Scene adapter's floor query does), while the intents and the
- * overlay use Stage-local pixels; the one accepted evaluation rect is the only
- * translation between them.
+ * exactly as the Scene adapter's floor query does), while pointer intents use
+ * Stage-local pixels; the one accepted evaluation rect is the only translation
+ * between them. Overlay contributions are viewport CSS and are translated once
+ * by `StageFacade.overlays()`, never here.
  */
 function pointerDatumPoint(
 	context: StageAdapterContext,
@@ -454,8 +455,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			let openingCapture: ReturnType<typeof mintLayoutIdCapture> | null = null;
 			let openingCandidate: OpeningCandidate | null = null;
-			/** The snap the current Opening pointer named; never persisted. */
-
 			let openingPreview: OpeningPreview | null = null;
 			let openingNotice: string | null = null;
 			let openingCommitInFlight = false;
