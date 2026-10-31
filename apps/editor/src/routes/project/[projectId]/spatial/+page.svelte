@@ -2636,12 +2636,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					return;
 				}
 			}
-			let mark = stage.hitMark({ css, coarse });
-			if (mark === null) {
-				mark = stage.idleHoverIntent({ phase: 'move', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
-			} else {
-				stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
-			}
+			const mark = stage.hitMark({ css, coarse });
 			// A disclosure is a press, not a drag: it reveals grips while the same
 			// gesture context stays selected, and no adapter may claim the pointer for it.
 			if (mark?.role === 'disclose') {
@@ -2649,18 +2644,42 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				if (stage.activateDisclosure(mark.id)) stage.notifySurfaceChange();
 				return;
 			}
-			const handleId = mark?.role === 'edit' ? mark.id : undefined;
-			const handleAdapterId = mark?.role === 'edit' ? mark.adapterId : undefined;
-			if (stage.pointerIntent({ phase: 'down', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse, ...(handleId === undefined ? {} : { handleId }), ...(handleAdapterId === undefined ? {} : { handleAdapterId }) }).claimed) {
+			const claimAdapterPress = (handleId?: string, handleAdapterId?: string): boolean => {
+				if (!stage.pointerIntent({
+					phase: 'down',
+					css,
+					evaluationId: pointerEvaluationId,
+					shift: event.shiftKey,
+					coarse,
+					...(handleId === undefined ? {} : { handleId }),
+					...(handleAdapterId === undefined ? {} : { handleAdapterId })
+				}).claimed) return false;
 				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 				if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
 					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
-					return;
+					return true;
 				}
 				adapterEvaluationId = pointerEvaluationId;
 				adapterMarkPress = handleId !== undefined;
 				drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
-				return;
+				return true;
+			};
+			if (mark?.role === 'edit') {
+				stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+				if (claimAdapterPress(mark.id, mark.adapterId)) return;
+			} else {
+				// Hit priority: a selected subject body gets the press before an idle
+				// Junction can offer its overlapping point mark.
+				if (claimAdapterPress()) {
+					stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+					return;
+				}
+				if (mark === null) {
+					const idleMark = stage.idleHoverIntent({ phase: 'move', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+					if (idleMark?.role === 'edit' && claimAdapterPress(idleMark.id, idleMark.adapterId)) return;
+				} else {
+					stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+				}
 			}
 		}
 		// A gesture is one captured writer with an explicit transition policy; a

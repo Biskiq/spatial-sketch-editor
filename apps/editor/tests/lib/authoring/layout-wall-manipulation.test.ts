@@ -29,6 +29,7 @@ import {
 	type PlanSourceRef
 } from '@portfolio/layout-core';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { captureUnitSave, readUnitEnvelopeForSave } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
@@ -1585,6 +1586,10 @@ describe('R217.S16 — Opening priority and idle Junction hover', () => {
 		settle(facade, 10);
 	}
 
+	function currentOpening(mounted: Mounted) {
+		return acceptedLayout(mounted.facade).openings.find((opening) => opening.id === mounted.openingId)!;
+	}
+
 	it('moves an unselected hovered Junction on the 0.5 m grid in one Undo step', async () => {
 		const mounted = await mount();
 		planReading(mounted.facade);
@@ -1613,6 +1618,279 @@ describe('R217.S16 — Opening priority and idle Junction hover', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 		expect((await mounted.host.undo()).kind).toBe('installed');
 		expect(acceptedLayout(mounted.facade).junctions.find((candidate) => candidate.id === junctionId)?.point).toEqual(junction.point);
+	});
+
+	it('offers a selected Opening at the Wall end before the overlapping idle Junction', async () => {
+		const base = fixtureDocument();
+		base.document.openings[0]!.offset = 0;
+		const mounted = await mount(base);
+		planReading(mounted.facade);
+		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, 11);
+		selectOpening(mounted.facade, mounted.openingId);
+		const wall = mounted.document.walls.find((candidate) => candidate.id === mounted.wallId)!;
+		const start = mounted.document.junctions.find((candidate) => candidate.id === wall.startJunctionId)!;
+		const pressPoint: [number, number] = [start.point[0] + 0.04, start.point[1]];
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, pressPoint);
+		const hit = mounted.facade.resolvePick({ css: from, evaluationId, purpose: 'select', tool: null });
+		expect(hit).toMatchObject({ kind: 'resolved', hit: { sourceKind: 'opening', sourceId: mounted.openingId } });
+		expect(mounted.facade.hitMark({ css: from, coarse: false })).toBeNull();
+		const junctionMark = mounted.facade.idleHoverIntent({ phase: 'move', css: from, evaluationId, coarse: false });
+		expect(junctionMark).toMatchObject({ id: 'layout-junction-hover', adapterId: 'layout' });
+
+		const before = currentOpening(mounted);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		const to = stageCss(mounted.facade, [pressPoint[0] + 0.5, pressPoint[1]]);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => Math.abs(currentOpening(mounted).offset - 0.5) < 1e-6);
+		expect(currentOpening(mounted).id).toBe(before.id);
+		expect(acceptedLayout(mounted.facade).junctions.find((candidate) => candidate.id === wall.startJunctionId)?.point).toEqual(start.point);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(currentOpening(mounted)).toEqual(before);
+		expect(acceptedLayout(mounted.facade).junctions.find((candidate) => candidate.id === wall.startJunctionId)?.point).toEqual(start.point);
+	});
+
+	it('keeps a one-CSS-pixel hovered Junction press below the drag threshold', async () => {
+		const mounted = await mount();
+		planReading(mounted.facade);
+		const junction = mounted.document.junctions.find((candidate) => candidate.id === mounted.document.walls[0]!.startJunctionId)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, junction.point);
+		const mark = mounted.facade.idleHoverIntent({ phase: 'move', css: from, evaluationId, coarse: false })!;
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		const to: [number, number] = [from[0] + 1, from[1]];
+		expect(mounted.facade.pointerIntent({
+			phase: 'down', css: from, evaluationId, handleId: mark.id, handleAdapterId: mark.adapterId
+		}).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-junction-hover')).toBe(false);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('keeps a one-CSS-pixel selected Opening body press below the drag threshold', async () => {
+		const mounted = await mount();
+		planReading(mounted.facade);
+		selectOpening(mounted.facade, mounted.openingId);
+		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, 11);
+		const before = currentOpening(mounted);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, [before.offset + 0.05, 0]);
+		const to: [number, number] = [from[0] + 1, from[1]];
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		expect(mounted.facade.hitMark({ css: from, coarse: false })).toBeNull();
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect(currentOpening(mounted)).toEqual(before);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('types X then Z during an idle Junction drag and commits once on Enter', async () => {
+		const mounted = await mount();
+		planReading(mounted.facade);
+		const junction = mounted.document.junctions.find((candidate) => candidate.id === mounted.document.walls[0]!.startJunctionId)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, junction.point);
+		const mark = mounted.facade.idleHoverIntent({ phase: 'move', css: from, evaluationId, coarse: false })!;
+		expect(mounted.facade.pointerIntent({
+			phase: 'down', css: from, evaluationId, handleId: mark.id, handleAdapterId: mark.adapterId
+		}).claimed).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '1' }).claimed).toBe(true);
+		expect(mounted.facade.marks().find((candidate) => candidate.id === mark.id)?.tag).toContain('X 1');
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '\t' }).claimed).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '2' }).claimed).toBe(true);
+		expect(mounted.facade.marks().find((candidate) => candidate.id === mark.id)?.tag).toContain('Z 2');
+		expect(mounted.facade.pointerIntent({ phase: 'up', css: from, evaluationId }).claimed).toBe(true);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
+		await eventually(() => {
+			const current = acceptedLayout(mounted.facade).junctions.find((candidate) => candidate.id === junction.id);
+			return current?.point[0] === 1 && current.point[1] === 2;
+		});
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade).junctions.find((candidate) => candidate.id === junction.id)?.point).toEqual(junction.point);
+	});
+
+	it('cancels Junction and selected Opening drags on Escape with no trace', async () => {
+		const mounted = await mount();
+		planReading(mounted.facade);
+		const junction = mounted.document.junctions.find((candidate) => candidate.id === mounted.document.walls[0]!.startJunctionId)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, junction.point);
+		const mark = mounted.facade.idleHoverIntent({ phase: 'move', css: from, evaluationId, coarse: false })!;
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		expect(mounted.facade.pointerIntent({
+			phase: 'down', css: from, evaluationId, handleId: mark.id, handleAdapterId: mark.adapterId
+		}).claimed).toBe(true);
+		const to = stageCss(mounted.facade, [junction.point[0] + 0.62, junction.point[1] + 0.77]);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-junction-hover')).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'cancel' }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+
+		planReading(mounted.facade);
+		selectOpening(mounted.facade, mounted.openingId);
+		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, 11);
+		const openingBefore = currentOpening(mounted);
+		const openingBaseline = mounted.facade.snapshot().canonicalJson;
+		const openingEvaluationId = mounted.facade.evaluationId()!;
+		const openingFrom = stageCss(mounted.facade, [openingBefore.offset + 0.05, 0]);
+		const openingTo = stageCss(mounted.facade, [openingBefore.offset + 0.55, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: openingFrom, evaluationId: openingEvaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: openingTo, evaluationId: openingEvaluationId });
+		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-opening-mark')).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'cancel' }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: openingTo, evaluationId: openingEvaluationId });
+		expect(mounted.facade.snapshot().canonicalJson).toBe(openingBaseline);
+		expect(currentOpening(mounted)).toEqual(openingBefore);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('refuses invalid Junction and Opening releases without writing source or history', async () => {
+		const mounted = await mount();
+		planReading(mounted.facade);
+		const junction = mounted.document.junctions.find((candidate) => candidate.id === mounted.document.walls[0]!.startJunctionId)!;
+		const other = mounted.document.junctions.find((candidate) => candidate.id !== junction.id)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, junction.point);
+		const mark = mounted.facade.idleHoverIntent({ phase: 'move', css: from, evaluationId, coarse: false })!;
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		expect(mounted.facade.pointerIntent({
+			phase: 'down', css: from, evaluationId, handleId: mark.id, handleAdapterId: mark.adapterId
+		}).claimed).toBe(true);
+		const otherCss = stageCss(mounted.facade, other.point);
+		mounted.facade.pointerIntent({ phase: 'move', css: otherCss, evaluationId });
+		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-junction-hover')).toBe(false);
+		mounted.facade.pointerIntent({ phase: 'up', css: otherCss, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+
+		planReading(mounted.facade);
+		selectOpening(mounted.facade, mounted.openingId);
+		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, 11);
+		const openingBefore = currentOpening(mounted);
+		const openingBaseline = mounted.facade.snapshot().canonicalJson;
+		const openingEvaluationId = mounted.facade.evaluationId()!;
+		const openingFrom = stageCss(mounted.facade, [openingBefore.offset + openingBefore.width / 2, 0]);
+		const openingMark = mounted.facade.hitMark({ css: openingFrom, coarse: false });
+		expect(openingMark?.id).toBe('layout-opening-position');
+		expect(mounted.facade.pointerIntent({
+			phase: 'down', css: openingFrom, evaluationId: openingEvaluationId,
+			handleId: openingMark!.id, handleAdapterId: openingMark!.adapterId
+		}).claimed).toBe(true);
+		const invalid = stageCss(mounted.facade, [5.8, 0]);
+		mounted.facade.pointerIntent({ phase: 'move', css: invalid, evaluationId: openingEvaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: invalid, evaluationId: openingEvaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(openingBaseline);
+		expect(currentOpening(mounted)).toEqual(openingBefore);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('ends Junction and Opening gestures without a stale commit on a reading flip', async () => {
+		const mounted = await mount();
+		planReading(mounted.facade);
+		const junction = mounted.document.junctions.find((candidate) => candidate.id === mounted.document.walls[0]!.startJunctionId)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, junction.point);
+		const mark = mounted.facade.idleHoverIntent({ phase: 'move', css: from, evaluationId, coarse: false })!;
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		expect(mounted.facade.pointerIntent({
+			phase: 'down', css: from, evaluationId, handleId: mark.id, handleAdapterId: mark.adapterId
+		}).claimed).toBe(true);
+		const to = stageCss(mounted.facade, [junction.point[0] + 0.62, junction.point[1] + 0.77]);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, 11);
+		settle(mounted.facade, 20);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+
+		planReading(mounted.facade);
+		selectOpening(mounted.facade, mounted.openingId);
+		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, 11);
+		const openingBefore = currentOpening(mounted);
+		const openingBaseline = mounted.facade.snapshot().canonicalJson;
+		const openingEvaluationId = mounted.facade.evaluationId()!;
+		const openingFrom = stageCss(mounted.facade, [openingBefore.offset + 0.05, 0]);
+		const openingTo = stageCss(mounted.facade, [openingBefore.offset + 0.55, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: openingFrom, evaluationId: openingEvaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: openingTo, evaluationId: openingEvaluationId });
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, 21);
+		settle(mounted.facade, 30);
+		mounted.facade.pointerIntent({ phase: 'up', css: openingTo, evaluationId: openingEvaluationId });
+		expect(mounted.facade.snapshot().canonicalJson).toBe(openingBaseline);
+		expect(currentOpening(mounted)).toEqual(openingBefore);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('round-trips accepted Opening and Junction edits through the Save envelope', async () => {
+		const mounted = await mount();
+		planReading(mounted.facade);
+		selectOpening(mounted.facade, mounted.openingId);
+		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, 11);
+		const opening = currentOpening(mounted);
+		const openingFrom = stageCss(mounted.facade, [opening.offset + 0.05, 0]);
+		const openingTo = stageCss(mounted.facade, [opening.offset + 0.55, 0]);
+		const openingEvaluationId = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: openingFrom, evaluationId: openingEvaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: openingTo, evaluationId: openingEvaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: openingTo, evaluationId: openingEvaluationId });
+		await eventually(() => Math.abs(currentOpening(mounted).offset - (opening.offset + 0.5)) < 1e-6);
+		settle(mounted.facade, 12);
+
+		const junction = mounted.document.junctions.find((candidate) => candidate.id === mounted.document.walls[0]!.startJunctionId)!;
+		const junctionEvaluationId = mounted.facade.evaluationId()!;
+		const junctionFrom = stageCss(mounted.facade, junction.point);
+		const junctionMark = mounted.facade.idleHoverIntent({ phase: 'move', css: junctionFrom, evaluationId: junctionEvaluationId, coarse: false })!;
+		expect(mounted.facade.pointerIntent({
+			phase: 'down', css: junctionFrom, evaluationId: junctionEvaluationId,
+			handleId: junctionMark.id, handleAdapterId: junctionMark.adapterId
+		}).claimed).toBe(true);
+		const junctionTo = stageCss(mounted.facade, [junction.point[0] + 0.62, junction.point[1] + 0.77]);
+		mounted.facade.pointerIntent({ phase: 'move', css: junctionTo, evaluationId: junctionEvaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: junctionTo, evaluationId: junctionEvaluationId });
+		await eventually(() => {
+			const current = acceptedLayout(mounted.facade).junctions.find((candidate) => candidate.id === junction.id);
+			return current?.point[0] === 0.62 && current.point[1] === 0.77;
+		});
+		settle(mounted.facade, 12);
+
+		const captured = await captureUnitSave({
+			snapshot: mounted.host.coordinator().acceptedSnapshot(),
+			operationId: 's16-opening-junction-roundtrip',
+			precondition: { kind: 'create-only' }
+		});
+		expect(captured.kind).toBe('captured');
+		if (captured.kind !== 'captured') throw new Error(`Save capture refused: ${captured.message}`);
+		const reloaded = await readUnitEnvelopeForSave(captured.capture.canonicalJson);
+		expect(reloaded.kind).toBe('read');
+		if (reloaded.kind !== 'read') throw new Error(`Save reload refused: ${reloaded.message}`);
+		const readmitted = await admitSource(reloaded.envelope, {
+			sessionEpoch: 'session-s16-save-reload',
+			acceptedRevision: captured.capture.acceptedRevision
+		});
+		expect(readmitted.kind).toBe('admitted');
+		if (readmitted.kind !== 'admitted') throw new Error(`Reload admission refused: ${readmitted.kind}`);
+		expect(readmitted.snapshot.canonicalJson).toBe(captured.capture.canonicalJson);
+		expect(stageEnvelope(readmitted.snapshot).units).toEqual(stageEnvelope(mounted.facade.snapshot()).units);
 	});
 
 	it('limits Junction hover to an idle fine pointer in Plan and omits selected Wall ends', async () => {

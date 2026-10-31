@@ -72,6 +72,7 @@ import {
 	type StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
 import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
+import { isStageDrag } from '$lib/authoring/stage/stage-input';
 import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-session';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
@@ -286,6 +287,8 @@ type OpeningPreview =
 type WallGesture = {
 	/** The evaluation the press was measured in; a change pauses the writer. */
 	readonly evaluationId: string;
+	/** Stage-local CSS origin shared with the host's click tolerance. */
+	readonly pressCss: readonly [number, number];
 	readonly markId: string;
 	readonly handle: WallHandle;
 	readonly fixed: FixedWallEndpoint;
@@ -330,12 +333,15 @@ type WallGesture = {
 /** One unselected Junction gesture admitted from the Plan-only hover mark. */
 type JunctionHoverGesture = {
 	readonly evaluationId: string;
+	/** Stage-local CSS origin shared with the host's click tolerance. */
+	readonly pressCss: readonly [number, number];
 	readonly junctionId: string;
 	readonly wallId: string;
 	readonly wallIds: readonly string[];
 	readonly startPoint: LayoutVec2;
 	readonly lease: GestureAcquisition | null;
 	readonly baseline: LayoutDocumentWallFirst;
+	numeric: PlanNumericEntryState | null;
 	request: Extract<WallManipulationRequest, { readonly kind: 'junction' }> | null;
 	previewDocument: LayoutDocumentWallFirst | null;
 	snap: LayoutSnapWinner | null;
@@ -345,6 +351,8 @@ type JunctionHoverGesture = {
 /** One claimed Opening mark: slide position or width, through the Opening planner. */
 type OpeningMarkGesture = {
 	readonly evaluationId: string;
+	/** Stage-local CSS origin shared with the host's click tolerance. */
+	readonly pressCss: readonly [number, number];
 	readonly markId: string;
 	readonly openingId: string;
 	readonly wallId: string;
@@ -367,6 +375,16 @@ type OpeningMarkGesture = {
 	previewDocument: LayoutDocumentWallFirst | null;
 	numeric: PlanNumericEntryState | null;
 };
+
+function isPointerDrag(
+	origin: readonly [number, number],
+	point: readonly [number, number]
+): boolean {
+	return isStageDrag(
+		{ x: origin[0], y: origin[1] },
+		{ x: point[0], y: point[1] }
+	);
+}
 
 /** The accepted Opening a mark addresses, with its host Wall's frame. */
 type OpeningMarkSubject = {
@@ -737,6 +755,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const source = document.junctions.find((candidate) => candidate.id === junctionId);
 				if (source === undefined) return [];
 				const point = active?.request?.point ?? active?.startPoint ?? hover!.point;
+				const numericValue = active?.numeric === null || active === null
+					? null
+					: `${planNumericEntryField(active.numeric).label} ${active.numeric.text}`;
 				const selected = selectedWall(adapterContext);
 				if (
 					active === null && selected !== null &&
@@ -751,9 +772,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					fact: 'junction',
 					verb: 'Move',
 					planner: LAYOUT_JUNCTION_MOVE_KIND,
-					value: active?.request === null || active?.request === undefined
+					value: numericValue ?? (active?.request === null || active?.request === undefined
 						? `Junction ${junctionId}`
-						: `X ${active.request.point[0].toFixed(3)} · Z ${active.request.point[1].toFixed(3)} m`,
+						: `X ${active.request.point[0].toFixed(3)} · Z ${active.request.point[1].toFixed(3)} m`),
 					refusal: active === null ? null : refusal
 				}];
 			}
@@ -1088,6 +1109,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 										: { length }
 					};
 				}
+				const junction = junctionGesture;
+				if (junction !== null) {
+					const field = planNumericFields('junction').find((candidate) => candidate.id === 'x');
+					if (field === undefined) return null;
+					const point = junction.request?.point ?? junction.startPoint;
+					return {
+						host: 'junction',
+						field,
+						ownerId: junction.junctionId,
+						candidates: { x: point[0], z: point[1] }
+					};
+				}
 				const opening = openingGesture;
 				if (opening === null) return null;
 				return {
@@ -1096,6 +1129,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					ownerId: opening.openingId,
 					candidates: { offset: opening.offsetAtStart, width: opening.widthAtStart }
 				};
+			}
+
+			function activeGestureNumeric(): PlanNumericEntryState | null {
+				return gesture?.numeric ?? junctionGesture?.numeric ?? openingGesture?.numeric ?? null;
+			}
+
+			function setActiveGestureNumeric(next: PlanNumericEntryState | null): void {
+				if (gesture !== null) gesture.numeric = next;
+				else if (junctionGesture !== null) junctionGesture.numeric = next;
+				else if (openingGesture !== null) openingGesture.numeric = next;
 			}
 
 			/** Digits while a mark is held freeze the candidate and open numeric entry. */
@@ -1107,19 +1150,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					target.candidates
 				);
 				const state = planNumericEntryInput(opened, key);
-				if (gesture !== null) gesture.numeric = state;
-				else if (openingGesture !== null) openingGesture.numeric = state;
+				setActiveGestureNumeric(state);
 				refusal = null;
 				services.stage.notifySurfaceChange();
 				return true;
 			}
 
 			function growGestureNumeric(key: string): boolean {
-				const state = gesture?.numeric ?? openingGesture?.numeric ?? null;
+				const state = activeGestureNumeric();
 				if (state === null) return false;
 				const next = planNumericEntryKey(state, key);
-				if (gesture !== null) gesture.numeric = next;
-				else if (openingGesture !== null) openingGesture.numeric = next;
+				setActiveGestureNumeric(next);
 				// Correcting the text clears the previous refusal immediately; the tag
 				// must not keep saying a value is invalid after it changed.
 				refusal = null;
@@ -1176,6 +1217,29 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const wallId = wall.frame.wallId;
 					endGesture();
 					if (request !== null) void commit(request, fixed, wallId);
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				const junction = junctionGesture;
+				if (junction !== null) {
+					if (junction.numeric === null) return false;
+					const outcome = planNumericEntrySubmit(junction.numeric);
+					if (outcome.kind === 'refuse') {
+						junction.numeric = outcome.state;
+						refusal = numericWords(outcome.reason);
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					if (outcome.kind === 'ignored') return true;
+					const point = junction.request?.point ?? junction.startPoint;
+					const request: WallManipulationRequest = {
+						kind: 'junction',
+						junctionId: junction.junctionId,
+						point: [outcome.values.x ?? point[0], outcome.values.z ?? point[1]]
+					};
+					const wallId = junction.wallId;
+					endJunctionGesture();
+					void commit(request, 'start', wallId);
 					services.stage.notifySurfaceChange();
 					return true;
 				}
@@ -2607,17 +2671,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 */
 				keyIntent(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean {
 					if (openTaskKind !== LAYOUT_INK_TASK) {
-						if (junctionGesture !== null) {
-							if (intent.kind !== 'cancel') return false;
-							refusal = null;
-							endJunctionGesture();
-							services.stage.notifySurfaceChange();
-							return true;
-						}
 						// Direct manipulation has no task, but its press is a writer: typing
 						// freezes the pointer candidate and opens numeric entry, Enter commits
 						// once, and Esc discards without a document change or history entry.
-						const active = gesture ?? openingGesture;
+						const active = gesture ?? junctionGesture ?? openingGesture;
 						if (active === null) return false;
 						if (intent.kind === 'type') {
 							if (intent.key === '\t') {
@@ -2625,8 +2682,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								const target = gestureNumericTarget();
 								if (target === null) return false;
 								const next = planNumericEntryTab(active.numeric, 'forward', target.candidates);
-								if (gesture !== null) gesture.numeric = next;
-								else if (openingGesture !== null) openingGesture.numeric = next;
+								setActiveGestureNumeric(next);
 								services.stage.notifySurfaceChange();
 								return true;
 							}
@@ -2636,16 +2692,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (intent.kind === 'backtrack') {
 							if (active.numeric === null) return false;
 							const next = active.numeric.text.length <= 1 ? null : planNumericEntryInput(active.numeric, active.numeric.text.slice(0, -1));
-							if (gesture !== null) gesture.numeric = next;
-							else if (openingGesture !== null) openingGesture.numeric = next;
+							setActiveGestureNumeric(next);
 							services.stage.notifySurfaceChange();
 							return true;
 						}
 						// First Esc restores the transient pointer value and keeps the writer;
 						// the next Esc cancels the gesture. Neither writes source or history.
 						if (active.numeric !== null) {
-							if (gesture !== null) gesture.numeric = null;
-							else if (openingGesture !== null) openingGesture.numeric = null;
+							setActiveGestureNumeric(null);
 							services.stage.notifySurfaceChange();
 							return true;
 						}
@@ -2765,58 +2819,60 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (gesture !== null) endGesture();
 						if (junctionGesture !== null) endJunctionGesture();
 						if (openingGesture !== null) endOpeningGesture();
-					pausedProposal = null;
-					// A new gesture supersedes the previous paused value for this source.
-					clearPausedProposalsForSource(adapterContext.snapshot.domain.unitRevisions.layout);
-					refusal = null;
-					settledRefusal = null;
-					if (intent.handleId === 'layout-junction-hover') {
-						const hovered = idleJunctionHover;
-						if (hovered === null || intent.coarse === true) return false;
-						const current = document.junctions.find((junction) => junction.id === hovered.junctionId);
-					const wallId = hovered.wallId;
-					if (
-						current === undefined ||
-						!document.walls.some((wall) => wall.id === wallId &&
-							(wall.startJunctionId === hovered.junctionId || wall.endJunctionId === hovered.junctionId))
-					) {
-						idleJunctionHover = null;
-						return false;
-					}
-					const point = pointerDatumPoint(adapterContext, intent.css);
-					if (point === null) return false;
-					const acquisition = services.stage.acquireGesture({
-						owner: 'layout-precision',
-						evaluationId: intent.evaluationId,
-						policy: 'cancel-on-reading-change'
-					});
-					if (acquisition.kind !== 'granted') return false;
-					const baseline = stageLayout(adapterContext.snapshot);
-					junctionGesture = {
-						evaluationId: intent.evaluationId,
-						junctionId: hovered.junctionId,
-						wallId,
-						wallIds: hovered.wallIds,
-						startPoint: current.point,
-						lease: acquisition,
-						baseline,
-						request: null,
-						previewDocument: null,
-						snap: null,
-						pointerPoint: [point[0], point[1]]
-					};
-					idleJunctionHover = null;
-					warmLayoutPlannerBaseline(baseline);
-					services.stage.notifySurfaceChange();
-					return true;
-				}
-					const selected = selectedWall(adapterContext);
+						pausedProposal = null;
+						// A new gesture supersedes the previous paused value for this source.
+						clearPausedProposalsForSource(adapterContext.snapshot.domain.unitRevisions.layout);
+						refusal = null;
+						settledRefusal = null;
+						if (intent.handleId === 'layout-junction-hover') {
+							const hovered = idleJunctionHover;
+							if (hovered === null || intent.coarse === true) return false;
+							const current = document.junctions.find((junction) => junction.id === hovered.junctionId);
+							const wallId = hovered.wallId;
+							if (
+								current === undefined ||
+								!document.walls.some((wall) => wall.id === wallId &&
+									(wall.startJunctionId === hovered.junctionId || wall.endJunctionId === hovered.junctionId))
+							) {
+								idleJunctionHover = null;
+								return false;
+							}
+							const point = pointerDatumPoint(adapterContext, intent.css);
+							if (point === null) return false;
+							const acquisition = services.stage.acquireGesture({
+								owner: 'layout-precision',
+								evaluationId: intent.evaluationId,
+								policy: 'cancel-on-reading-change'
+							});
+							if (acquisition.kind !== 'granted') return false;
+							const baseline = stageLayout(adapterContext.snapshot);
+							junctionGesture = {
+								evaluationId: intent.evaluationId,
+								pressCss: intent.css,
+								junctionId: hovered.junctionId,
+								wallId,
+								wallIds: hovered.wallIds,
+								startPoint: current.point,
+								lease: acquisition,
+								baseline,
+								numeric: null,
+								request: null,
+								previewDocument: null,
+								snap: null,
+								pointerPoint: [point[0], point[1]]
+							};
+							idleJunctionHover = null;
+							warmLayoutPlannerBaseline(baseline);
+							services.stage.notifySurfaceChange();
+							return true;
+						}
+						const selected = selectedWall(adapterContext);
 						const selectedOpeningSubject = selected === null ? selectedOpening(adapterContext) : null;
 						if (selected === null && selectedOpeningSubject === null) return false;
 						const descriptors = markDescriptors(adapterContext);
 						let markId = intent.handleId;
 						let bodyPress = false;
-					let openingBodyPress = false;
+						let openingBodyPress = false;
 						if (markId === undefined) {
 							// The host's resolver is the one mark-tier authority; a fallback press
 							// (an older caller, a test) uses the same admitted hit areas.
@@ -2912,6 +2968,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									: point;
 							const nextGesture: WallGesture = {
 								evaluationId: intent.evaluationId,
+								pressCss: intent.css,
 								markId,
 								handle: wallSpec.handle,
 								fixed: wallSpec.fixed,
@@ -2960,6 +3017,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							: selectedOpeningSubject.offset + selectedOpeningSubject.width;
 						openingGesture = {
 							evaluationId: intent.evaluationId,
+							pressCss: intent.css,
 							markId,
 							openingId: selectedOpeningSubject.openingId,
 							wallId: selectedOpeningSubject.wallId,
@@ -3009,7 +3067,31 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (intent.phase === 'move') {
 						// Typing freezes the proposal: the pointer no longer rewrites the value
 						// the creator is entering, and its eventual up never commits.
-						if ((gesture?.numeric ?? openingGesture?.numeric ?? null) !== null) return true;
+						if ((gesture?.numeric ?? junctionGesture?.numeric ?? openingGesture?.numeric ?? null) !== null) return true;
+						const pressCss = junctionGesture?.pressCss ?? gesture?.pressCss ?? openingGesture!.pressCss;
+						if (!isPointerDrag(pressCss, intent.css)) {
+							if (junctionGesture !== null) {
+								junctionGesture.request = null;
+								junctionGesture.previewDocument = null;
+								junctionGesture.snap = null;
+							}
+							if (gesture !== null) {
+								gesture.request = null;
+								gesture.preview = null;
+								gesture.previewDocument = null;
+								gesture.neighbours = [];
+								gesture.snap = null;
+								gesture.pointerPoint = null;
+							}
+							if (openingGesture !== null) {
+								openingGesture.request = null;
+								openingGesture.previewDocument = null;
+								openingGesture.snap = null;
+							}
+							refusal = null;
+							services.stage.notifySurfaceChange();
+							return true;
+						}
 						const point = pointerDatumPoint(adapterContext, intent.css);
 						if (point === null) {
 							// R217.S15 — a Wall drag whose ray misses the datum keeps its last
@@ -3307,12 +3389,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						services.stage.notifySurfaceChange();
 						return true;
 					}
+					if (junctionGesture?.numeric !== null && junctionGesture !== null) {
+						services.stage.notifySurfaceChange();
+						return true;
+					}
 					if (gesture?.numeric !== null && gesture !== null) {
 						services.stage.notifySurfaceChange();
 						return true;
 					}
 					if (junctionGesture !== null) {
-						const pending = junctionGesture.request;
+						const pending = isPointerDrag(junctionGesture.pressCss, intent.css) ? junctionGesture.request : null;
 						const wallId = junctionGesture.wallId;
 						endJunctionGesture();
 						if (pending !== null) void commit(pending, 'start', wallId);
@@ -3320,18 +3406,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					if (openingGesture !== null) {
-						const pendingOpening = openingGesture.numeric === null ? openingGesture.request : null;
+						const pendingOpening = openingGesture.numeric === null && isPointerDrag(openingGesture.pressCss, intent.css)
+							? openingGesture.request
+							: null;
 						const openingId = openingGesture.openingId;
 						endOpeningGesture();
 						if (pendingOpening !== null) void commitMarkOpening({ ...pendingOpening, openingId });
 						services.stage.notifySurfaceChange();
 						return true;
 					}
-					const pending = gesture!.numeric === null ? gesture!.request : null;
+					const dragged = isPointerDrag(gesture!.pressCss, intent.css);
+					const pending = gesture!.numeric === null && dragged ? gesture!.request : null;
 					const fixed = gesture!.fixed;
 					const wallId = gesture!.frame.wallId;
-					const refusedPoint = gesture!.pointerPoint;
-					const refusedText = refusal;
+					const refusedPoint = dragged ? gesture!.pointerPoint : null;
+					const refusedText = dragged ? refusal : null;
 					if (pending === null && refusedText !== null && refusedPoint !== null) {
 						settledRefusal = {
 							wallId,
