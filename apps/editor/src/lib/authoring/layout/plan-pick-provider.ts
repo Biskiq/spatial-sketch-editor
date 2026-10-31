@@ -458,7 +458,7 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 		};
 		const retained = pickIndexFor(result.plan, context);
 		const erasing = query.purpose === 'tool' && query.tool?.kind === 'erase';
-		const openingOverHost = erasing || (query.purpose === 'select' && query.tool === null);
+		const openingOverHost = erasing || (evaluation.renderedReading === 'plan' && query.purpose === 'select' && query.tool === null);
 		type Ranked = { readonly fragment: PlanFragment; readonly pick: NonNullable<ReturnType<typeof cssDistanceToSurfaces>> };
 		let winner: Ranked | null = null;
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
@@ -470,8 +470,8 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 			if (winner === null) {
 				winner = { fragment, pick };
 				// Plan Select and Eraser name an Opening over its own host Wall. Other
-				// Plan queries keep their first candidate; 3D has its separate Wall-first
-				// ray policy in the Stage resolver.
+				// Plan queries and 3D Select keep Layout's first candidate, preserving
+				// Wall-first priority before Stage arbitrates between domain winners.
 				if (!openingOverHost || fragment.ref.sourceKind !== 'wall') break;
 				continue;
 			}

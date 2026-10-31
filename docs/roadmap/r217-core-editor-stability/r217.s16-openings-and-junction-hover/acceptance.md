@@ -27,6 +27,40 @@ slice acceptance remain pending.
   exact Undo restoration, and Save-envelope read/admission with accepted Opening and Junction
   edits.
 
+### Merge-gate repairs — 2026-10-31
+
+The bounded repair starts at `df0ebddfa162fbb04ecbc5940aeee3da3d1039e7` and preserves the
+earlier S16 gesture fixes. It addresses the two merge-gate failures:
+
+- **3D hosted-Opening priority:** the new Select override ran in both readings. Stage only
+  arbitrates between domain winners, so it could not recover the host Wall after Layout
+  returned an Opening. The override now requires the rendered Plan reading; the existing
+  Eraser policy stays intact. The facade contract asserts the host Wall's identity in 3D
+  and its Opening's identity in Plan at the fixture's overlapping picks.
+- **400-Room timeout:** the unchanged heavy contract passed all six tests in isolation, with
+  the 400-Room case taking 44.4 s. Its exhaustive cold-compile and complete-output comparisons
+  exceeded the old 120 s timeout under full-suite contention. The test now has 300 s of
+  timeout headroom; all 24 edits, all three Room counts and every correctness assertion remain.
+
+Verification of the repair:
+
+- Four complete picking contracts (`stage-facade`, `plan-pick-index`, `stage-paper-pick`,
+  `stage-host-tools`) — 58/58 tests passed.
+- `npm test` — 255/255 files, 3,274/3,274 tests passed, exit 0; includes the complete heavy
+  lane. The 400-Room case passed in 62.9 s. An earlier run alongside build/API work passed
+  every assertion (including the 400-Room case in 209.6 s), but exited with Vitest's internal
+  `Timeout calling "onTaskUpdate"` error; that run is not counted as a green gate. The
+  complete suite was rerun with those jobs finished, without changing runner configuration.
+- `npm run test:arch` — 23/23 files, 194/194 tests passed.
+- `npm run check` — 0 errors, 0 warnings; `npm run build` — passed.
+- Layout, project-model, Camera, geometry-core and API type checks — passed.
+- `DATABASE_URL=postgresql://localhost:5432/biskiq npm run test:api` — 128/128 tests across
+  all 15 API contracts passed, zero skips, using local PostgreSQL.
+- `git diff --check df0ebddfa162fbb04ecbc5940aeee3da3d1039e7` — passed for the pending repair.
+
+The browser captures below precede this repair; no new browser journey is claimed. Integration,
+fresh independent review, merge and slice acceptance remain pending.
+
 ## Browser evidence
 
 Manual journeys ran in the local editor at `http://localhost:5173` with the Index collapsed.
