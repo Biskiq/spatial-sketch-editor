@@ -59,7 +59,7 @@ remains scheduled after S25 and is not an S17 merge prerequisite. The owner-dire
 shape-creation simplification, hiding advanced working-plane controls and Pen/wireframe visual
 polish — was recorded and deliberately not implemented in S17.
 
-P1 merge commit: recorded in the post-merge anchor commit.
+P1 merge commit: `a9a383c6f284792016154f1db3ca20a713470d0a` (PR #239; merge commit method).
 
 ## Recovery and preservation report — 2026-10-31
 
@@ -69,7 +69,7 @@ reference promotions:           0   landed contracts already describe the behavi
 renderable evidence archived:   39 files / 5,269,288 bytes
 evidence stubs / manifests:     1   docs/archive/roadmap/r217-core-editor-stability/r217.s17-scene-and-form-manipulation/evidence/CLOSED.md
 transient artifacts removed:    6   five .s17-* scratch runners and the S17 checkpoint
-historical anchors:              plan afb41b4f8fa44cb99ed60613b9c6b239e3e8e197; acceptance a5099cdcc33f2da3848cc677d8d813d599c2bc5e; tag closed/r217.s17 (push state reported after merge)
+historical anchors:              plan afb41b4f8fa44cb99ed60613b9c6b239e3e8e197; acceptance a5099cdcc33f2da3848cc677d8d813d599c2bc5e; tag closed/r217.s17 (pushed to origin)
 new live -> archive prose links: 0
 manual-owed verification rows:  4   coarse pointer, native touch, Safari, integrated journeys (S11)
 remaining deferred items:       3   S11 rows; S17 UX gap; tilted Size ghost
