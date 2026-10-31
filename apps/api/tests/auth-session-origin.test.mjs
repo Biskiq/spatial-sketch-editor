@@ -107,7 +107,7 @@ const EDITOR_ORIGIN = 'https://editor.auth-test.example';
 // Exercise registration, legacy enrollment and login at the minimum length.
 const TEST_PASSWORD = 'eightchr';
 
-async function withIsolatedAuthApp(run) {
+async function withIsolatedAuthApp(run, { trustProxy } = {}) {
 	const admin = new Pool({ connectionString: DATABASE_URL, max: 1 });
 	const schema = `auth_test_${randomUUID().replaceAll('-', '')}`;
 	let pool;
@@ -125,7 +125,8 @@ async function withIsolatedAuthApp(run) {
 			apiOrigin: 'https://api.auth-test.example',
 			editorOrigin: EDITOR_ORIGIN,
 			sessionKey: SESSION_KEY,
-			logger: false
+			logger: false,
+			...(trustProxy ? { trustProxy } : {})
 		});
 		await app.ready();
 		await run({ app, pool });
@@ -137,18 +138,228 @@ async function withIsolatedAuthApp(run) {
 	}
 }
 
-function authRequest(app, method, url, { payload, cookie, origin = EDITOR_ORIGIN, remoteAddress = '127.0.0.1' } = {}) {
+function authRequest(app, method, url, { payload, cookie, origin = EDITOR_ORIGIN, remoteAddress = '127.0.0.1', forwardedFor } = {}) {
 	return app.inject({
 		method,
 		url,
 		remoteAddress,
 		headers: {
 			...(origin ? { origin } : {}),
-			...(cookie ? { cookie } : {})
+			...(cookie ? { cookie } : {}),
+			...(forwardedFor ? { 'x-forwarded-for': forwardedFor } : {})
 		},
 		...(payload === undefined ? {} : { payload })
 	});
 }
+
+test('a successful login never consumes or retains the credential failure budget', async () => {
+	await withIsolatedAuthApp(async ({ app, pool }) => {
+		const username = 'reset.target';
+		const source = '10.10.0.1';
+		const password = TEST_PASSWORD;
+		assert.equal(
+			(await authRequest(app, 'POST', '/auth/register', { remoteAddress: source, payload: { username, password } })).statusCode,
+			201
+		);
+
+		const login = (remoteAddress = source, submitted = password) =>
+			authRequest(app, 'POST', '/auth/login', { remoteAddress, payload: { username, password: submitted } });
+		const sourceAttempts = async () =>
+			(await pool.query('SELECT attempts FROM auth_attempts WHERE key = $1', [`ip:${source}`])).rows[0]?.attempts ?? 0;
+
+		// Registration consumed one source attempt. A correct credential
+		// submission records no failure and leaves that source counter unchanged.
+		assert.equal(await sourceAttempts(), 1);
+		assert.equal((await login()).statusCode, 200);
+		assert.equal(await sourceAttempts(), 1);
+		assert.equal(
+			(await pool.query("SELECT count(*)::int AS count FROM auth_attempts WHERE key LIKE 'credential:%'")).rows[0].count,
+			0
+		);
+
+		// Three failures, then a success: the budget is cleared...
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			assert.equal((await login(source, 'incorrect password value')).statusCode, 401);
+		}
+		assert.equal(
+			(await pool.query("SELECT attempts FROM auth_attempts WHERE key LIKE 'credential:%'")).rows[0].attempts,
+			3
+		);
+		assert.equal((await login()).statusCode, 200);
+		assert.equal(
+			(await pool.query("SELECT count(*)::int AS count FROM auth_attempts WHERE key LIKE 'credential:%'")).rows[0].count,
+			0
+		);
+
+		// ...so nine more failures still verify instead of locking at ten total.
+		for (let attempt = 0; attempt < 9; attempt += 1) {
+			assert.equal((await login(source, 'incorrect password value')).statusCode, 401);
+		}
+		assert.equal((await login()).statusCode, 200);
+
+		// A reset restores the full budget: ten failures verify, the eleventh is
+		// refused. No prior counts survived the success above.
+		for (let attempt = 0; attempt < 10; attempt += 1) {
+			assert.equal((await login(source, 'incorrect password value')).statusCode, 401);
+		}
+		assert.equal((await login(source, 'incorrect password value')).statusCode, 429);
+	});
+});
+
+test('failures from one source cannot lock a username out from another', async () => {
+	await withIsolatedAuthApp(async ({ app }) => {
+		const username = 'target.account';
+		const password = TEST_PASSWORD;
+		const attacker = '10.20.0.1';
+		const owner = '10.20.0.2';
+		assert.equal(
+			(await authRequest(app, 'POST', '/auth/register', { remoteAddress: attacker, payload: { username, password } })).statusCode,
+			201
+		);
+		for (let attempt = 0; attempt < 10; attempt += 1) {
+			assert.equal(
+				(await authRequest(app, 'POST', '/auth/login', { remoteAddress: attacker, payload: { username, password: 'incorrect password value' } })).statusCode,
+				401
+			);
+		}
+		const attackerRefused = await authRequest(app, 'POST', '/auth/login', {
+			remoteAddress: attacker,
+			payload: { username, password: 'incorrect password value' }
+		});
+		assert.equal(attackerRefused.statusCode, 429);
+
+		const ownerLogin = await authRequest(app, 'POST', '/auth/login', { remoteAddress: owner, payload: { username, password } });
+		assert.equal(ownerLogin.statusCode, 200);
+	});
+});
+
+test('one source probing many usernames is still throttled', async () => {
+	await withIsolatedAuthApp(async ({ app }) => {
+		const source = '10.30.0.1';
+		for (let probe = 0; probe < 30; probe += 1) {
+			const response = await authRequest(app, 'POST', '/auth/login', {
+				remoteAddress: source,
+				payload: { username: `probe.${String(probe).padStart(2, '0')}`, password: 'incorrect password value' }
+			});
+			assert.equal(response.statusCode, 401, `probe ${probe} should verify and fail`);
+		}
+		const refused = await authRequest(app, 'POST', '/auth/login', {
+			remoteAddress: source,
+			payload: { username: 'probe.30', password: 'incorrect password value' }
+		});
+		assert.equal(refused.statusCode, 429);
+		assert.equal(refused.json().error.code, 'rate_limited');
+	});
+});
+
+test('trusted proxy forwarding keys budgets by the real client and ignores untrusted forwarding', async () => {
+	await withIsolatedAuthApp(async ({ app, pool }) => {
+		const username = 'proxy.target';
+		const password = TEST_PASSWORD;
+		const proxyPeer = '10.40.0.9';
+		const clientA = '203.0.113.10';
+		const clientB = '203.0.113.11';
+		const directPeer = '198.51.100.50';
+		const spoofed = '203.0.113.99';
+		assert.equal(
+			(await authRequest(app, 'POST', '/auth/register', {
+				remoteAddress: proxyPeer,
+				forwardedFor: clientA,
+				payload: { username, password }
+			})).statusCode,
+			201
+		);
+		for (const { remoteAddress, forwardedFor } of [
+			{ remoteAddress: proxyPeer, forwardedFor: clientA },
+			{ remoteAddress: proxyPeer, forwardedFor: clientB },
+			{ remoteAddress: directPeer, forwardedFor: spoofed }
+		]) {
+			assert.equal(
+				(await authRequest(app, 'POST', '/auth/login', {
+					remoteAddress,
+					forwardedFor,
+					payload: { username, password: 'incorrect password value' }
+				})).statusCode,
+				401
+			);
+		}
+		const keys = (await pool.query('SELECT key FROM auth_attempts ORDER BY key')).rows.map((row) => row.key);
+		// Two clients forwarded by the trusted proxy are distinct sources.
+		assert.ok(keys.includes(`ip:${clientA}`));
+		assert.ok(keys.includes(`ip:${clientB}`));
+		assert.ok(keys.includes(`credential:${clientA}|${username}`));
+		assert.ok(keys.includes(`credential:${clientB}|${username}`));
+		// A direct peer cannot choose its source with a forwarded header.
+		assert.ok(keys.includes(`ip:${directPeer}`));
+		assert.ok(!keys.includes(`ip:${spoofed}`));
+	}, { trustProxy: '10.40.0.0/24, loopback' });
+});
+
+test('concurrent failures from one source cannot both pass the last credential slot', async () => {
+	await withIsolatedAuthApp(async ({ app, pool }) => {
+		const username = 'race.target';
+		const password = TEST_PASSWORD;
+		const peer = '10.50.0.9';
+		const source = '203.0.113.20';
+		const wrong = 'incorrect password value';
+		// A second app shares the pool and has its own in-process authBusy: exactly
+		// the multi-worker condition the database lock must cover.
+		const workerPool = {
+			query: (text, values) => pool.query(text, values),
+			connect: () => pool.connect(),
+			end: async () => {},
+			on: (event, listener) => pool.on(event, listener)
+		};
+		const second = createApp({
+			pool: workerPool,
+			apiOrigin: 'https://api.auth-test.example',
+			editorOrigin: EDITOR_ORIGIN,
+			sessionKey: SESSION_KEY,
+			logger: false,
+			trustProxy: '10.0.0.0/8'
+		});
+		await second.ready();
+		try {
+			assert.equal(
+				(await authRequest(app, 'POST', '/auth/register', {
+					remoteAddress: peer,
+					forwardedFor: source,
+					payload: { username, password }
+				})).statusCode,
+				201
+			);
+			for (let attempt = 0; attempt < 9; attempt += 1) {
+				assert.equal(
+					(await authRequest(app, 'POST', '/auth/login', {
+						remoteAddress: peer,
+						forwardedFor: source,
+						payload: { username, password: wrong }
+					})).statusCode,
+					401
+				);
+			}
+			const [first, concurrent] = await Promise.all([
+				authRequest(app, 'POST', '/auth/login', {
+					remoteAddress: peer,
+					forwardedFor: source,
+					payload: { username, password: wrong }
+				}),
+				authRequest(second, 'POST', '/auth/login', {
+					remoteAddress: peer,
+					forwardedFor: source,
+					payload: { username, password: wrong }
+				})
+			]);
+			assert.deepEqual([first.statusCode, concurrent.statusCode].sort(), [401, 429]);
+			const credential = await pool.query('SELECT attempts FROM auth_attempts WHERE key = $1', [
+				`credential:${source}|${username}`
+			]);
+			assert.equal(credential.rows[0].attempts, 10);
+		} finally {
+			await second.close();
+		}
+	}, { trustProxy: '10.0.0.0/8' });
+});
 
 test('local credentials authenticate, preserve legacy ownership, and enforce bounds', async () => {
 	await withIsolatedAuthApp(async ({ app, pool }) => {
@@ -270,15 +481,18 @@ test('local credentials authenticate, preserve legacy ownership, and enforce bou
 		assert.equal((await authRequest(app, 'GET', '/auth/login')).statusCode, 404);
 		assert.equal((await authRequest(app, 'GET', '/auth/callback')).statusCode, 404);
 
+		// A legacy global `name:` row (the pre-correction key) must not gate a
+		// login: budgets are per source + username now. Old rows are ignored and
+		// age out, so existing throttle state stays backward compatible.
 		await pool.query(
 			`INSERT INTO auth_attempts (key, attempts, window_start) VALUES ($1, 10, now()) ON CONFLICT (key) DO UPDATE SET attempts = 10, window_start = now()`,
-			['name:limited.name']
+			['name:new.creator']
 		);
-		const limited = await authRequest(app, 'POST', '/auth/login', {
-			payload: { username: 'limited.name', password: TEST_PASSWORD }
+		const legacyKeyIgnored = await authRequest(app, 'POST', '/auth/login', {
+			remoteAddress: '127.0.0.9',
+			payload: { username: 'new.creator', password: TEST_PASSWORD }
 		});
-		assert.equal(limited.statusCode, 429);
-		assert.equal(limited.json().error.code, 'rate_limited');
+		assert.equal(legacyKeyIgnored.statusCode, 200);
 
 		const first = authRequest(app, 'POST', '/auth/register', {
 			remoteAddress: '127.0.0.2',

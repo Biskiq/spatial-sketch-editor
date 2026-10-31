@@ -18,6 +18,7 @@
  * never re-derives fit or overlap.
  */
 import {
+	LAYOUT_DIMENSION_LIMIT_MESSAGE,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	planCreateWallFirstOpening,
@@ -138,6 +139,7 @@ export function openingRefusalWords(
 	const length = wallId === undefined ? undefined : wallFirstWallLength(document, wallId);
 	const kind = attempt.kind === undefined ? 'Opening' : kindWords(attempt.kind);
 	const issue = rejection.issues?.[0]?.code;
+	if (rejection.code === 'dimension_out_of_range') return LAYOUT_DIMENSION_LIMIT_MESSAGE;
 
 	if (attempt.offset !== undefined && attempt.offset < 0) {
 		return `This ${kind} would start before the Wall. Move it onto the Wall.`;

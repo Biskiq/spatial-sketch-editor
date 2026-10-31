@@ -21,6 +21,9 @@
  */
 
 import {
+	exceedsLayoutDimension,
+	exceedsLayoutWallSpanAfterJunctionMove,
+	LAYOUT_DIMENSION_LIMIT_MESSAGE,
 	mintLayoutIdCapture,
 	nextLayoutPresetObjectId,
 	type FixedWallEndpoint,
@@ -337,6 +340,17 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 				return { kind: 'invalid', code: parsed.code, message: parsed.reason };
 			}
 
+			// Refuse an unsupported dimension before an intent exists. The planners
+			// enforce the same measured envelope, but the host reports a planner
+			// rejection as `planner-rejected`; checking here keeps the Card's words
+			// identical for every field and never takes the gesture lease for it.
+			const dimension =
+				id === 'length' || id === 'height' || id === 'thickness' || isLayoutOpeningField(id);
+			if (dimension && exceedsLayoutDimension(parsed.value)) {
+				errors.set(id, LAYOUT_DIMENSION_LIMIT_MESSAGE);
+				return { kind: 'refused', code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE };
+			}
+
 			// **T1.P01.S05 — existing straight-Wall manipulation.** Length and angle are
 			// exact solves with one explicit fixed endpoint; the rigid move takes both
 			// deltas so it is one intent and one history result. All three build the
@@ -392,6 +406,14 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 				const point: LayoutVec2 = id === 'startX' || id === 'endX'
 					? [parsed.value, other]
 					: [other, parsed.value];
+				// A Junction move can stretch the selected Wall or any incident
+				// neighbour. Refuse the unsupported span here, before the intent, with
+				// the same words every other dimension refusal uses.
+				const movedJunctionId = start ? frame.startJunctionId : frame.endJunctionId;
+				if (exceedsLayoutWallSpanAfterJunctionMove(options.document, movedJunctionId, point)) {
+					errors.set(id, LAYOUT_DIMENSION_LIMIT_MESSAGE);
+					return { kind: 'refused', code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE };
+				}
 				const outcome = await submit(
 					wallManipulationIntent({
 						request: {

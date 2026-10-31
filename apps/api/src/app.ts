@@ -7,7 +7,14 @@ import Fastify, {
 } from 'fastify';
 import { Readable } from 'node:stream';
 
-import { admitAuthAttempt, enrollCredentials, findCredentials, hasCredentials, isSessionUserId, readCredentials, verifyPassword } from './auth.js';
+import {
+	admitAuthAttempt,
+	enrollCredentials,
+	hasCredentials,
+	isSessionUserId,
+	loginAttempt,
+	readCredentials
+} from './auth.js';
 import { sanitizeDatabaseError, type DatabasePool } from './database.js';
 import {
 	assetMetadata,
@@ -71,6 +78,7 @@ import {
 	resolveTestAuthUserId,
 	type TestAuthOptions
 } from './test-auth.js';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
 import { readSaveRequest } from '@portfolio/project-model/save';
 import { MODEL_SOURCE_SET_MAX_BYTES, validateProjectEnvelope } from '@portfolio/project-model/units';
 
@@ -83,6 +91,8 @@ export type ApiAppOptions = {
 	/** Deployment-owned key namespace; production passes `R2_OBJECT_NAMESPACE`. */
 	objectNamespace?: string;
 	logger?: FastifyServerOptions['logger'];
+	/** Trusted proxy addresses/CIDRs; unset ignores forwarded headers. */
+	trustProxy?: FastifyServerOptions['trustProxy'];
 	/** Timeout/clock injection seam for deterministic lifecycle fault tests. */
 	projectLifecyclePolicy?: Partial<ProjectLifecyclePolicy>;
 	/**
@@ -109,6 +119,7 @@ export function createApp({
 	objectNamespace = 'default',
 	testAuth,
 	projectLifecyclePolicy,
+	trustProxy,
 	logger = true
 }: ApiAppOptions): FastifyInstance {
 	const lifecyclePolicy = resolveProjectLifecyclePolicy(projectLifecyclePolicy);
@@ -118,7 +129,7 @@ export function createApp({
 			: logger && typeof logger === 'object'
 				? { ...logger, serializers: { ...logger.serializers, req: safeRequestLog } }
 				: logger;
-	const app = Fastify({ logger: safeLogger, bodyLimit: BODY_LIMIT_BYTES });
+	const app = Fastify({ logger: safeLogger, bodyLimit: BODY_LIMIT_BYTES, trustProxy });
 	const sessionsEnabled = sessionKey !== undefined;
 	const expectedBrowserOrigin = editorOrigin ?? apiOrigin;
 	app.addContentTypeParser(
@@ -232,17 +243,23 @@ export function createApp({
 			if (authBusy) return reply.header('Retry-After', '1').code(429).send(errorBody('auth_busy', 'Try again shortly'));
 			authBusy = true;
 			try {
-				if (!await admitAuthAttempt(pool, request.ip, credentials.username)) {
-					return reply.header('Retry-After', '900').code(429).send(errorBody('rate_limited', 'Too many attempts; try again later'));
-				}
 				let userId: string;
 				if (action === 'login') {
-					const account = await findCredentials(pool, credentials.username);
-					if (!await verifyPassword(credentials.password, account?.password_hash)) {
+					// Admission, verification and failure recording are one serialized
+					// transaction: a success is charged nothing and clears only this
+					// source's budget for the username.
+					const attempt = await loginAttempt(pool, request.ip, credentials.username, credentials.password);
+					if (attempt.kind === 'limited') {
+						return reply.header('Retry-After', '900').code(429).send(errorBody('rate_limited', 'Too many attempts; try again later'));
+					}
+					if (attempt.kind === 'invalid') {
 						return reply.code(401).send(errorBody('invalid_login', 'Username or password is incorrect'));
 					}
-					userId = account!.user_id;
+					userId = attempt.userId;
 				} else {
+					if (!await admitAuthAttempt(pool, request.ip)) {
+						return reply.header('Retry-After', '900').code(429).send(errorBody('rate_limited', 'Too many attempts; try again later'));
+					}
 					userId = await enrollCredentials(pool, credentials, action === 'credentials' ? existingUserId! : undefined);
 				}
 				appSession(request).regenerate();
@@ -423,6 +440,16 @@ export function createApp({
 			const loaded = await loadProject(pool, userId, projectId);
 			const validation = validateProjectEnvelope(loaded.document);
 			if (!validation.success || validation.envelope.id !== projectId) {
+				// A stored project that fails only the dimension envelope is not a
+				// broken database row: it is unsupported geometry, and the creator gets
+				// the same canonical refusal as every other dimension entry point.
+				if (
+					!validation.success &&
+					validation.issues.length > 0 &&
+					validation.issues.every((issue) => issue.code === 'dimension_out_of_range')
+				) {
+					return reply.code(422).send(errorBody('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE));
+				}
 				return databaseFailure(app, reply, new Error('Stored project failed validation'), 'Stored project failed validation');
 			}
 			return { ...loaded, document: validation.envelope };

@@ -49,6 +49,7 @@ import {
 } from './layout-identity';
 import type { LayoutDocumentIssue } from './layout-issue';
 import { LayoutDocumentValidationError } from './layout-issue';
+import { layoutDimensionLimitIssues } from './layout-geometry-limits';
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutObject } from './layout-wall-first-types';
 
@@ -173,6 +174,13 @@ export function validateWallFirstLayoutDocument(
 	const parsed = parseDocument(input, '$', issues);
 	if (!parsed || issues.length > 0) {
 		return { success: false, issues };
+	}
+	// The unsupported-dimension gate is part of the read contract: an imported
+	// source is refused here, before the compiler, Paper drawing or Camera ever
+	// samples it. The limit and its measurement live in layout-geometry-limits.
+	const limitIssues = layoutDimensionLimitIssues(parsed);
+	if (limitIssues.length > 0) {
+		return { success: false, issues: limitIssues };
 	}
 
 	let memoizedCanonicalJson: string | undefined;

@@ -26,6 +26,7 @@ import {
 } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE } from './layout-geometry-limits';
 import {
 	cowUpdateOpening,
 	ensureLayoutWorldIndex,
@@ -64,6 +65,7 @@ export type WallOpeningRejectionCode =
 	| 'unknown_wall'
 	| 'unknown_opening'
 	| 'invalid_value'
+	| 'dimension_out_of_range'
 	| 'portal_relation_invalid'
 	| 'no_op'
 	| 'invalid_candidate_document'
@@ -213,6 +215,12 @@ export function planCreateWallFirstOpening(
 		]);
 	}
 	const defaults = WALL_OPENING_DEFAULTS[intent.kind];
+	const width = intent.width ?? defaults.width;
+	const height = intent.height ?? defaults.height;
+	const sillHeight = intent.sillHeight ?? defaults.sillHeight;
+	if ([intent.offset, width, height, sillHeight].some(exceedsLayoutDimension)) {
+		return reject('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, [intent.wallId]);
+	}
 	let id = intent.id;
 	if (id === undefined) {
 		try {
@@ -233,9 +241,9 @@ export function planCreateWallFirstOpening(
 		wallId: intent.wallId,
 		kind: intent.kind,
 		offset: intent.offset,
-		width: intent.width ?? defaults.width,
-		height: intent.height ?? defaults.height,
-		sillHeight: intent.sillHeight ?? defaults.sillHeight,
+		width,
+		height,
+		sillHeight,
 		profile: intent.profile ?? 'rectangular',
 		...(intent.connectsRoomIds
 			? { connectsRoomIds: [...intent.connectsRoomIds] as [string, string] }
@@ -309,6 +317,9 @@ export function planUpdateWallFirstOpening(
 				`Opening '${openingId}' ${field} must be a finite ${field === 'offset' || field === 'sillHeight' ? 'non-negative' : 'positive'} number`,
 				[openingId]
 			);
+		}
+		if (exceedsLayoutDimension(value)) {
+			return reject('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, [openingId]);
 		}
 	}
 	const next: LayoutWallOpening = {

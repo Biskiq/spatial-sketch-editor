@@ -164,6 +164,7 @@ vi.mock('$lib/authoring/stage/boot-state', async (importOriginal) => {
 });
 
 import { mount, tick, unmount } from 'svelte';
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
 import { createEmptyUnitSceneDocument, serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import type { ReloadOffer } from '$lib/authoring/save/save-state';
@@ -376,6 +377,50 @@ describe('spatial route source replacement', () => {
 		expect(head().dataset.canDownload).toBe('true');
 		expect(head().dataset.saveBase).toBe('token-1');
 		expect(head().dataset.saveStatus).toBe('saved');
+	});
+
+	it('reports the canonical geometry refusal, not a format refusal, for oversized Open geometry', async () => {
+		await mountReady();
+		const originalCanvas = stageCanvas();
+		const layout: LayoutDocumentWallFirst = {
+			units: 'meters',
+			formatVersion: 6,
+			floor: { id: 'floor', name: 'Floor', elevation: 0 },
+			junctions: [
+				{ id: 'j-1', point: [0, 0] },
+				{ id: 'j-2', point: [2000, 0] }
+			],
+			walls: [
+				{
+					id: 'w-1',
+					startJunctionId: 'j-1',
+					endJunctionId: 'j-2',
+					thickness: 0.2,
+					height: 3,
+					centerline: { kind: 'line' }
+				}
+			],
+			rooms: [],
+			openings: [],
+			objects: []
+		};
+		const project = await createUnitProject({ id: 'project-1', name: 'Oversized' });
+		const imported = {
+			...project,
+			units: { ...project.units, layout: { ...project.units.layout, data: layout } }
+		};
+		// Serialization would refuse this envelope: the file is the source that a
+		// creator imported, and admission is the door that must classify it.
+		nextFile = new File([JSON.stringify(imported)], 'oversized.json', { type: 'application/json' });
+		await requestOpen();
+		await vi.waitFor(() => {
+			expect(target.textContent).toContain(LAYOUT_DIMENSION_LIMIT_MESSAGE);
+		});
+		expect(target.textContent).not.toContain('it is not the current document format');
+		// The refusal is local: the mounted source, history and saved base survive.
+		expect(stageCanvas()).toBe(originalCanvas);
+		expect(head().dataset.project).toBe('Mounted project');
+		expect(head().dataset.saveBase).toBe('token-1');
 	});
 
 	it('reports the typed project-mismatch refusal without replacing the mounted project', async () => {

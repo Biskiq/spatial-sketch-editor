@@ -161,8 +161,17 @@ Passwords are constrained to 8–128 characters and usernames to 3–32 ASCII le
 underscore or hyphen; usernames are lowercased before uniqueness checks. Hash records use the
 `scrypt-v1` encoding with N=131072, r=8, p=1, a random 16-byte salt and a 64-byte derived key.
 Credential endpoints cap request bodies at 2,048 bytes, return generic login failures for unknown
-usernames and wrong passwords, and use database-backed attempt windows of 15 minutes (30 per IP,
-10 per normalized username). One password-hash operation is admitted per API process at a time.
+usernames and wrong passwords, and use database-backed 15-minute windows keyed by client source: 30
+consumed attempts per source (failed logins and register/enroll attempts), and 10 failures per
+source + normalized username, so one source cannot lock a username out for every other source. A verified login records no failure and clears that source's
+budget for the username; register/enroll consume the source attempt budget. The per-account budget
+is deliberately not global, so distributed guessing is bounded per source rather than per account;
+existing `ip:` rows keep counting and legacy global `name:` rows are ignored and age out. Client
+source is Fastify's `request.ip`, so a proxy deployment must set `TRUST_PROXY` to the terminating
+proxy's addresses/CIDRs; without it forwarded headers are ignored and every client shares one
+source. Admission, verification and failure recording for one source are one transaction
+serialized by a transaction-scoped advisory lock, so API workers cannot all pass the same stale
+count. One password-hash operation is admitted per API process at a time.
 Successful authentication uses the existing `@fastify/secure-session` cookie: HttpOnly, Secure,
 SameSite=Lax, seven-day expiry; browser-origin checks remain required for unsafe requests. The
 test-only issuer remains isolated from production and creates the same app session.

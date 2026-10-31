@@ -82,6 +82,7 @@ test('configuration validates deployment auth values without exposing secrets', 
 		API_ORIGIN: 'https://editor.example.test/api/',
 		EDITOR_ORIGIN: 'https://editor.example.test/',
 		SESSION_KEY: key.toString('base64'),
+		TRUST_PROXY: '10.0.0.0/8, loopback',
 		...R2_ENV
 	});
 	assert.equal(config.databaseUrl, 'postgres://user@db.example.test/app');
@@ -89,6 +90,7 @@ test('configuration validates deployment auth values without exposing secrets', 
 	assert.equal(config.apiOrigin, 'https://editor.example.test/api');
 	assert.equal(config.editorOrigin, 'https://editor.example.test');
 	assert.deepEqual(config.sessionKey, key);
+	assert.equal(config.trustProxy, '10.0.0.0/8,loopback');
 	assert.equal(config.r2Endpoint, R2_ENV.R2_ENDPOINT);
 	assert.equal(config.r2Bucket, R2_ENV.R2_BUCKET);
 	assert.equal(config.r2ObjectNamespace, R2_ENV.R2_OBJECT_NAMESPACE);

@@ -115,12 +115,13 @@
 		type HeadSave,
 		type ReloadOffer
 	} from '$lib/authoring/save';
-	import {
-		planFragmentOf,
-		planMembershipOf,
-		type PlanEvaluation,
-		type PlanMembershipReason
-	} from '@portfolio/layout-core';
+import {
+	LAYOUT_DIMENSION_LIMIT_MESSAGE,
+	planFragmentOf,
+	planMembershipOf,
+	type PlanEvaluation,
+	type PlanMembershipReason
+} from '@portfolio/layout-core';
 	import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
 	import {
 		createStagePressTracker,
@@ -1058,6 +1059,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function reportSourceRefusal(next: BootState, action: 'open' | 'reload'): void {
 		const outcome = action === 'open' ? 'The source was not opened' : 'The remote copy was not installed';
 		if (next.status === 'refused') {
+			if (next.reason === 'dimension-limit') {
+				notice = `${outcome}: ${LAYOUT_DIMENSION_LIMIT_MESSAGE} The current project is unchanged.`;
+				return;
+			}
 			const reason =
 				next.reason === 'invalid-json'
 					? 'the JSON did not parse'
@@ -4025,11 +4030,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			{:else if boot.status === 'refused'}
 				<h1>Unsupported project source</h1>
 				<p>
-					{boot.reason === 'invalid-json'
-						? 'The source JSON did not parse.'
-						: boot.reason === 'project-mismatch'
-							? 'That source belongs to another project.'
-							: 'The source is not the current document format.'}
+					{boot.reason === 'dimension-limit'
+						? LAYOUT_DIMENSION_LIMIT_MESSAGE
+						: boot.reason === 'invalid-json'
+							? 'The source JSON did not parse.'
+							: boot.reason === 'project-mismatch'
+								? 'That source belongs to another project.'
+								: 'The source is not the current document format.'}
 				</p>
 				<ul>
 					{#each boot.issues.slice(0, 5) as issue (issue.path + issue.code)}

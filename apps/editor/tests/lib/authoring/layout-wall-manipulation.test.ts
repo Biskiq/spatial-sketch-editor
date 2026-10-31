@@ -19,6 +19,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
+	LAYOUT_DIMENSION_LIMIT_MESSAGE,
+	MAX_LAYOUT_DIMENSION_METERS,
 	planCreateWallFirstOpening,
 	planExactJunctionMove,
 	planWallChain,
@@ -465,6 +467,33 @@ describe('T1.P01.S05 — typed Wall manipulation', () => {
 		expect(after.junctions.map((junction) => `${junction.id}:${junction.point.join(',')}`)).toEqual(junctionsBefore);
 		expect(wallPoints(after, mounted.wallId).end[1]).toBeCloseTo(before.end[1], 12);
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('refuses typed dimensions beyond the supported envelope without source or history', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const before = acceptedLayout(mounted.facade);
+		const historyBefore = mounted.host.history();
+
+		instrument.edit('length', String(MAX_LAYOUT_DIMENSION_METERS + 1));
+		expect(await instrument.commit('length')).toMatchObject({
+			kind: 'refused',
+			code: 'dimension_out_of_range',
+			message: LAYOUT_DIMENSION_LIMIT_MESSAGE
+		});
+
+		// The Card's disclosed Junction coordinates are the same envelope: a typed
+		// X that would stretch the Wall past the limit is refused by the same
+		// shared-Junction planner.
+		instrument.edit('endX', String(MAX_LAYOUT_DIMENSION_METERS + 100));
+		expect(await instrument.commit('endX')).toMatchObject({
+			kind: 'refused',
+			code: 'dimension_out_of_range',
+			message: LAYOUT_DIMENSION_LIMIT_MESSAGE
+		});
+
+		expect(acceptedLayout(mounted.facade)).toEqual(before);
+		expect(mounted.host.history()).toEqual(historyBefore);
 	});
 });
 

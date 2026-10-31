@@ -8,8 +8,12 @@
  * unhandled branch. Both surfaces import this one map: the Stage's tag and the
  * Card's field error must say the same thing.
  */
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
+
 export function wallRefusalWords(code: string): string {
 	switch (code) {
+		case 'dimension_out_of_range':
+			return LAYOUT_DIMENSION_LIMIT_MESSAGE;
 		case 'opening_exceeds_wall':
 		case 'opening_out_of_bounds':
 		case 'opening_overlap':
