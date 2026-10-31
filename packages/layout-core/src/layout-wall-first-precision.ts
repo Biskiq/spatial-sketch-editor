@@ -516,14 +516,14 @@ export function planExactWallThickness(
 }
 
 /**
- * Set a Wall's authoritative physical height (P23.6H, unbounded since P23.6I),
+ * Set a Wall's authoritative physical height (P23.6H),
  * preserving Wall, Junction, Opening and Room identity.
  *
  * Height is independent of X/Z topology: the Wall stays the same authored Wall
  * with the same `role` and the same Room participation; only its vertical extent
- * changes (`topY = floor.elevation + height`). There is **no upper bound** — the
- * canonical Floor has no storey scalar to cap against — so any finite positive
- * value is accepted, including values taller than neighbouring Walls. A Wall
+ * changes (`topY = floor.elevation + height`). The shared 1,000 m geometry
+ * envelope applies; there is no Floor-relative or storey-height cap, so a Wall
+ * may be shorter or taller than its neighbours within that envelope. A Wall
  * shortened below a hosted Opening's top still rejects atomically with the Opening
  * untouched (the canonical Opening validator owns that rule), and nothing is ever
  * clamped.

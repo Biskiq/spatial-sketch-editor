@@ -24,11 +24,11 @@
  * arbitrary bound or a second performance mechanism. The 1,000 m acceptance
  * evidence from #235 stays exactly on the supported side of the boundary.
  *
- * The limit applies to authored linear dimensions (Wall height/thickness,
- * Opening measures) and to every Wall's authored span: a straight Wall's chord,
- * or a curved Wall's control-polygon length (an upper bound on arc length, so a
- * far handle cannot hide an oversized curve). Positions are not dimensions; a
- * rigid move may translate a Wall anywhere without changing this check.
+ * The limit applies to authored Wall height/thickness, Opening measures and
+ * every Wall span: a straight Wall's chord, or a curved Wall's control-polygon
+ * length (an upper bound on arc length, so a far handle cannot hide an oversized
+ * curve). Positions are not dimensions; a rigid move may translate a Wall
+ * anywhere without changing this check.
  */
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutDocumentIssue } from './layout-issue';

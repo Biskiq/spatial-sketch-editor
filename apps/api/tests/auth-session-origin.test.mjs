@@ -295,6 +295,54 @@ test('trusted proxy forwarding keys budgets by the real client and ignores untru
 	}, { trustProxy: '10.40.0.0/24, loopback' });
 });
 
+test('forwarded addresses are ignored unless the proxy peer is configured', async () => {
+	await withIsolatedAuthApp(async ({ app, pool }) => {
+		const peer = '198.51.100.50';
+		const spoofed = '203.0.113.99';
+		const username = 'untrusted.proxy';
+		const response = await authRequest(app, 'POST', '/auth/login', {
+			remoteAddress: peer,
+			forwardedFor: spoofed,
+			payload: { username, password: 'incorrect password value' }
+		});
+		assert.equal(response.statusCode, 401);
+
+		const keys = (await pool.query('SELECT key FROM auth_attempts ORDER BY key')).rows.map((row) => row.key);
+		assert.ok(keys.includes(`ip:${peer}`));
+		assert.ok(keys.includes(`credential:${peer}|${username}`));
+		assert.ok(!keys.includes(`ip:${spoofed}`));
+		assert.ok(!keys.includes(`credential:${spoofed}|${username}`));
+	});
+});
+
+test('expired authentication windows reset their source and credential budgets', async () => {
+	await withIsolatedAuthApp(async ({ app, pool }) => {
+		const source = '198.51.100.51';
+		const username = 'expired.window';
+		const sourceKey = `ip:${source}`;
+		const credentialKey = `credential:${source}|${username}`;
+		await pool.query(
+			`INSERT INTO auth_attempts (key, attempts, window_start)
+VALUES ($1, 30, now() - interval '16 minutes'), ($2, 10, now() - interval '16 minutes')
+ON CONFLICT (key) DO UPDATE SET attempts = EXCLUDED.attempts, window_start = EXCLUDED.window_start`,
+			[sourceKey, credentialKey]
+		);
+
+		const response = await authRequest(app, 'POST', '/auth/login', {
+			remoteAddress: source,
+			payload: { username, password: 'incorrect password value' }
+		});
+		assert.equal(response.statusCode, 401);
+		const rows = (await pool.query('SELECT key, attempts FROM auth_attempts WHERE key = ANY($1::text[])', [
+			[sourceKey, credentialKey]
+		])).rows;
+		assert.deepEqual(Object.fromEntries(rows.map((row) => [row.key, row.attempts])), {
+			[sourceKey]: 1,
+			[credentialKey]: 1
+		});
+	});
+});
+
 test('concurrent failures from one source cannot both pass the last credential slot', async () => {
 	await withIsolatedAuthApp(async ({ app, pool }) => {
 		const username = 'race.target';
@@ -355,6 +403,57 @@ test('concurrent failures from one source cannot both pass the last credential s
 				`credential:${source}|${username}`
 			]);
 			assert.equal(credential.rows[0].attempts, 10);
+		} finally {
+			await second.close();
+		}
+	}, { trustProxy: '10.0.0.0/8' });
+});
+
+test('concurrent login and registration share the last source slot across workers', async () => {
+	await withIsolatedAuthApp(async ({ app, pool }) => {
+		const second = createApp({
+			pool: {
+				query: (text, values) => pool.query(text, values),
+				connect: () => pool.connect(),
+				end: async () => {},
+				on: (event, listener) => pool.on(event, listener)
+			},
+			apiOrigin: 'https://api.auth-test.example',
+			editorOrigin: EDITOR_ORIGIN,
+			sessionKey: SESSION_KEY,
+			logger: false,
+			trustProxy: '10.0.0.0/8'
+		});
+		await second.ready();
+		try {
+			const peer = '10.60.0.9';
+			const source = '203.0.113.30';
+			const username = 'mixed.race';
+			await pool.query(
+				`INSERT INTO auth_attempts (key, attempts, window_start)
+VALUES ($1, 29, now()), ($2, 9, now())`,
+				[`ip:${source}`, `credential:${source}|${username}`]
+			);
+
+			const [login, registration] = await Promise.all([
+				authRequest(app, 'POST', '/auth/login', {
+					remoteAddress: peer,
+					forwardedFor: source,
+					payload: { username, password: 'incorrect password value' }
+				}),
+				authRequest(second, 'POST', '/auth/register', {
+					remoteAddress: peer,
+					forwardedFor: source,
+					payload: { username: 'mixed.register', password: TEST_PASSWORD }
+				})
+			]);
+			const statuses = [login.statusCode, registration.statusCode];
+			assert.equal(statuses.filter((status) => status === 429).length, 1);
+			assert.ok(statuses.includes(401) || statuses.includes(201));
+			assert.equal(
+				(await pool.query('SELECT attempts FROM auth_attempts WHERE key = $1', [`ip:${source}`])).rows[0].attempts,
+				30
+			);
 		} finally {
 			await second.close();
 		}

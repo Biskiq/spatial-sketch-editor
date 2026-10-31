@@ -469,11 +469,26 @@ describe('T1.P01.S05 — typed Wall manipulation', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 	});
 
-	it('refuses typed dimensions beyond the supported envelope without source or history', async () => {
+	it('accepts the exact typed bound and refuses larger geometry without source or history', async () => {
 		const mounted = await mount();
 		const instrument = typedInstrument(mounted);
 		const before = acceptedLayout(mounted.facade);
-		const historyBefore = mounted.host.history();
+
+		instrument.setFixedEndpoint('start');
+		instrument.edit('length', String(MAX_LAYOUT_DIMENSION_METERS));
+		expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+		const atLimit = acceptedLayout(mounted.facade);
+		const pointsAtLimit = wallPoints(atLimit, mounted.wallId);
+		expect(
+			Math.hypot(
+				pointsAtLimit.end[0] - pointsAtLimit.start[0],
+				pointsAtLimit.end[1] - pointsAtLimit.start[1]
+			)
+		).toBeCloseTo(MAX_LAYOUT_DIMENSION_METERS, 6);
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade)).toEqual(before);
+		const historyAfterUndo = mounted.host.history();
+		expect(historyAfterUndo.position).toBe(0);
 
 		instrument.edit('length', String(MAX_LAYOUT_DIMENSION_METERS + 1));
 		expect(await instrument.commit('length')).toMatchObject({
@@ -493,7 +508,7 @@ describe('T1.P01.S05 — typed Wall manipulation', () => {
 		});
 
 		expect(acceptedLayout(mounted.facade)).toEqual(before);
-		expect(mounted.host.history()).toEqual(historyBefore);
+		expect(mounted.host.history()).toEqual(historyAfterUndo);
 	});
 });
 

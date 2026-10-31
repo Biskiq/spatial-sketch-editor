@@ -14,11 +14,6 @@ services:
         sync: false
       - key: SESSION_KEY
         sync: false
-      # Comma-separated edge proxy addresses/CIDRs. Set this to Render's edge
-      # proxy range; unset means X-Forwarded-For is ignored and every client
-      # shares one throttle source.
-      - key: TRUST_PROXY
-        sync: false
       - key: EDITOR_ORIGIN
         sync: false
       - key: API_ORIGIN

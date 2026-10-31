@@ -143,6 +143,11 @@ async function clearAuthFailures(db: AuthQuery, ip: string, username: string): P
 	await db.query('DELETE FROM auth_attempts WHERE key = $1', [authCredentialKey(ip, username)]);
 }
 
+/** Serialize every credential action that reads or changes one source budget. */
+async function lockAuthSource(db: AuthQuery, ip: string): Promise<void> {
+	await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [authSourceKey(ip)]);
+}
+
 export type LoginAttemptResult =
 	| { readonly kind: 'limited' }
 	| { readonly kind: 'invalid' }
@@ -165,7 +170,7 @@ export async function loginAttempt(
 	password: string
 ): Promise<LoginAttemptResult> {
 	return withTransaction(pool, async (db) => {
-		await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [authSourceKey(ip)]);
+		await lockAuthSource(db, ip);
 		if (!await authAttemptsWithinLimit(db, [
 			[authSourceKey(ip), AUTH_SOURCE_LIMIT],
 			[authCredentialKey(ip, username), AUTH_CREDENTIAL_LIMIT]
@@ -184,11 +189,16 @@ export async function loginAttempt(
 
 /**
  * Register/enroll admission. These actions have no credential check whose
- * failure could be recorded, so the source attempt budget is consumed here;
- * login deliberately uses the serialized admission above instead.
+ * failure could be recorded, so the source attempt budget is consumed here.
+ * They share login's transaction-scoped source lock so mixed actions cannot
+ * race past the same threshold across API workers.
  */
 export async function admitAuthAttempt(pool: DatabasePool, ip: string): Promise<boolean> {
-	if (await consumeAuthAttempt(pool, authSourceKey(ip)) > AUTH_SOURCE_LIMIT) return false;
-	await pool.query("DELETE FROM auth_attempts WHERE window_start < now() - interval '1 day'");
-	return true;
+	return withTransaction(pool, async (db) => {
+		await lockAuthSource(db, ip);
+		if (!await authAttemptsWithinLimit(db, [[authSourceKey(ip), AUTH_SOURCE_LIMIT]])) return false;
+		await consumeAuthAttempt(db, authSourceKey(ip));
+		await db.query("DELETE FROM auth_attempts WHERE window_start < now() - interval '1 day'");
+		return true;
+	});
 }

@@ -570,8 +570,9 @@ function parseJunction(
 }
 
 /**
- * P23.6I — `height` is finite and strictly positive with **no Floor cap**: the
- * canonical Floor carries no vertical extent to clamp against.
+ * `height` is finite and strictly positive with no Floor-relative cap; the shared
+ * Layout geometry envelope applies its 1,000 m global maximum after decoding.
+ * The canonical Floor carries no vertical extent to clamp against.
  */
 function parseWall(
 	input: unknown,

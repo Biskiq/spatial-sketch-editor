@@ -284,4 +284,52 @@ describe('the supported geometry envelope at import', () => {
 		expect(admitted.issues.length).toBeGreaterThan(0);
 		expect(admitted.issues.every((issue) => issue.code === 'dimension_out_of_range')).toBe(true);
 	});
+
+	it('refuses imported Wall heights and Opening measures beyond the envelope before admission', async () => {
+		const baseline = enclosure(6);
+		const openingPlan = planCreateWallFirstOpening(
+			baseline,
+			{ wallId: baseline.walls[0]!.id, kind: 'door', offset: 1, width: 1, height: 2.1, sillHeight: 0 },
+			freshCapture(),
+			baseline.floor.id
+		);
+		if (openingPlan.kind === 'rejected') throw new Error(`the Opening fixture was refused: ${openingPlan.rejection.code}`);
+
+		const cases: readonly [string, LayoutDocumentWallFirst, LayoutDocumentWallFirst][] = [
+			['wall-height', baseline, {
+				...baseline,
+				walls: baseline.walls.map((wall, index) => index === 0 ? { ...wall, height: OVER_LIMIT } : wall)
+			}],
+			['opening-width', openingPlan.document, {
+				...openingPlan.document,
+				openings: openingPlan.document.openings.map((opening, index) => index === 0 ? { ...opening, width: OVER_LIMIT } : opening)
+			}]
+		];
+
+		for (const [caseId, validLayout, invalidLayout] of cases) {
+			const project = await createUnitProject({
+				id: `project-dimension-limit-${caseId}`,
+				name: `Oversized imported ${caseId}`,
+				layout: validLayout
+			});
+			const imported = {
+				...project,
+				units: { ...project.units, layout: { ...project.units.layout, data: invalidLayout } }
+			};
+			const read = validateProjectEnvelope(imported);
+			expect(read.success, `${caseId} should fail the project read`).toBe(false);
+			if (read.success) continue;
+			expect(read.issues.some((issue) => issue.code === 'dimension_out_of_range')).toBe(true);
+
+			const admitted = await admitSource(imported, {
+				sessionEpoch: `session-dimension-limit-${caseId}`,
+				acceptedRevision: { projectId: `project-dimension-limit-${caseId}`, revisionId: 'revision-boot' }
+			});
+			expect(admitted).toMatchObject({ kind: 'refused', reason: 'dimension-limit' });
+			if (admitted.kind === 'refused') {
+				expect(admitted.issues.length).toBeGreaterThan(0);
+				expect(admitted.issues.every((issue) => issue.code === 'dimension_out_of_range')).toBe(true);
+			}
+		}
+	});
 });
