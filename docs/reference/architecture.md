@@ -55,7 +55,8 @@ apps/editor (product)            frozen Chopin project (separate)
 
 | Route | Role |
 |---|---|
-| `/` | Public entry (guest start, or continue with Google) |
+| `/` | Public entry (guest start or local account sign-in) |
+| `/login` | Local username/password login, registration, and signed-in legacy credential enrollment |
 | `/projects` | Project hub (owned cloud project list for authenticated creators) |
 | `/editor` | Compatibility redirect → `/project/<fresh id>/spatial?create=1` (the mint marks a new identity, so a 404 is read as `new`, not `missing`) |
 | `/project/:id/spatial` | F2 authoring Stage: stored source, starter, empty or Open JSON; unit-scoped Layout/Scene operations, one history, conditional Head Save and guarded replacement |
@@ -82,21 +83,25 @@ writes return `prepared-reader-required`; see [persistence](./components/persist
 | API runtime + compute | Fastify + TypeScript on Render |
 | Platform/database state | Neon Postgres |
 | Heavy asset bytes | Cloudflare R2 |
-| Identity authentication | Google OIDC — external identity; Museum Editor owns its session + authorization |
+| Identity authentication | Local username/password credentials in Postgres; Museum Editor owns credential verification, sessions and authorization |
 | Product/project authorization | Fastify + Postgres |
 
 P18 provisions the Render API and Neon database through secret `DATABASE_URL`.
-P19 introduced Google OpenID Connect (Authorization Code + PKCE) plus the
-app-owned secure session used for verified identity, single-user project
-ownership and authenticated Save/Load. P20 introduced the project-scoped asset
+P19 originally introduced Google OpenID Connect. Migration 009 replaces provider
+authentication with local usernames and scrypt password hashes while retaining
+the app-owned secure session and every existing owner ID. New account IDs use
+`local:<uuid>`; legacy `google:<subject>` IDs remain valid internal identifiers
+and can enroll credentials only from an authenticated existing session. No
+external identity provider is contacted. Signed-out recovery for a legacy owner
+without an existing session remains an owner decision. P20 introduced the project-scoped asset
 registry + private R2 storage (asset metadata in Postgres, heavy bytes through
 `apps/api` only — no R2/S3 client enters the editor or shared packages). P22
 shipped basic Publish + visitor runtime: `publications`/`releases` rows,
 private-R2 bytes served only through release membership, cold public route
 `/p/:publicationId` with a visitor-safe closure. A test-only issuer
 (`POST /test-auth/session`, allowlisted automation identities) may mint the same
-app-owned session for agent/E2E testing; it replaces only the external ceremony
-and is structurally absent unless explicitly configured, never in production.
+app-owned session for agent/E2E testing; it replaces only credential entry and
+is structurally absent unless explicitly configured, never in production.
 The live source is `ProjectEnvelope`, with five distinct codec-bounded units, accepted-revision
 provenance and a dependency lock. Migration 005's F2 schema fence rejects pre-epoch writers;
 applying that destructive migration to the deployed environment is a separate owner-run action.
@@ -446,8 +451,9 @@ R217.S14 adds one optional `candidatePreview(context)` contribution beside `over
 the subject, affected neighbours and refusal words a domain is proposing right now. A domain
 publishes world-space polygons, segments, labels and the winning snap; the Stage facade projects
 every point once through the accepted evaluation and `StageOverlay.svelte` draws the result as SVG
-in both readings. A refused candidate contributes no geometry, only its reason. Nothing is
-persisted, admitted to history or serialized. Layout builds its preview from the planner's own
+in both readings. A refused candidate contributes no Wall or Opening geometry. Its reason stays
+beside the pointer; a dashed cursor reach may retain the refused input so it can be corrected
+without implying an admitted Wall. Nothing is persisted, admitted to history or serialized. Layout builds its preview from the planner's own
 candidate document through the existing compile and `buildPaperPlan` path — the same solve release
 commits — and filters it to the changed Wall and Opening ids. Paper's bounded sheet includes a live
 candidate's extent, so a drag never leaves the sheet, and the Camera is never reframed by it.

@@ -19,7 +19,7 @@ import {
 	type PlanEvaluation
 } from '@portfolio/layout-core';
 
-import { buildPaperPlan } from '$lib/authoring/stage/paper-plan';
+import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/paper-plan';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-facade';
 
 type Vec3 = [number, number, number];
@@ -80,9 +80,23 @@ export function buildLayoutCandidatePaper(
 					)
 				: []
 		);
-	const segmentsFor = (ids: ReadonlySet<string>): CandidatePaperGeometry['segments'] =>
-		drawing.lines.flatMap((line) =>
-			ids.has(line.sourceId)
+	const segmentsFor = (ids: ReadonlySet<string>): CandidatePaperGeometry['segments'] => {
+		const cutSources = new Set(
+			drawing.fills
+				.filter((fill) => ids.has(fill.sourceId) && fill.treatment === 'cut')
+				.map((fill) => fill.sourceId)
+		);
+		const fillOutlines = [...ids].flatMap((sourceId) => {
+			const polygons = drawing.fills
+				.filter((fill) => fill.sourceId === sourceId)
+				.flatMap((fill) => fill.polygons);
+			return unionOutline(polygons).map(
+				([start, end]) =>
+					[worldPoint(start, datumMeters), worldPoint(end, datumMeters)] as const
+			);
+		});
+		const planLines = drawing.lines.flatMap((line) =>
+			ids.has(line.sourceId) && !(line.treatment === 'cut' && cutSources.has(line.sourceId))
 				? line.segments.map(
 						([start, end]) =>
 							[
@@ -92,9 +106,12 @@ export function buildLayoutCandidatePaper(
 					)
 				: []
 		);
+		return [...fillOutlines, ...planLines];
+	};
 	return {
 		subject: { polygons: polygonsFor(subjectIds), segments: segmentsFor(subjectIds) },
-		affected: { polygons: polygonsFor(affectedIds), segments: segmentsFor(affectedIds) }
+		// Affected geometry is context for the edit, not another filled candidate.
+		affected: { polygons: [], segments: segmentsFor(affectedIds) }
 	};
 }
 

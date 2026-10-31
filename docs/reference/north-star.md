@@ -689,9 +689,8 @@ canonical project document rather than replacing it.
 **Current:** `projects` + `project_versions` versioned JSONB; conditional Save validates the
 F2 capture and its `create-only` or `expected-saved-base` precondition under a project-row lock.
 The [persistence contract](./components/persistence.md) owns saved-base conflict and recovery
-semantics, distinct from local expected-revision acceptance. External identity proves who the user
-is; Fastify + Postgres own
-product authorization and project permissions.
+semantics, distinct from local expected-revision acceptance. Local username/password credentials
+authenticate account access; Fastify + Postgres own product authorization and project permissions.
 
 **Destination:** one accepted project revision and dependency lock; deterministic
 authoring operations from an expected revision plus a typed, serializable intent;

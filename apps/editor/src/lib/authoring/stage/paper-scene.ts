@@ -4,26 +4,23 @@
  * One group on the Stage overlay layer, built only from `PaperPlanDrawing`. It is
  * editor-only and never imported by a visitor surface. Lines are batched into one
  * `LineSegments2` per treatment, so a project's plan costs a handful of draw calls
- * rather than one per fragment; fills are one mesh per drawn polygon.
+ * rather than one per fragment; fills are batched by ink and draw order.
  *
  * Every material is depth-test-free and ordered by the drawing's own layer rank:
  * the Plan is a measured drawing on the paper, not a second depth-sorted scene.
  */
 import {
-	BufferGeometry,
 	Color,
 	DoubleSide,
 	Group,
 	Mesh,
 	MeshBasicMaterial,
-	Shape,
-	ShapeGeometry,
 	type Material
 } from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
-import type { LayoutVec2 } from '@portfolio/layout-core';
+import { createPaperFillGeometry } from './paper-fill-geometry';
 import {
 	PAPER_FILL_INK,
 	PAPER_LINE_STYLE,
@@ -53,22 +50,6 @@ function linePositions(lines: readonly PaperLineDraw[]): Float32Array {
 		}
 	}
 	return new Float32Array(positions);
-}
-
-function shapeOf(polygon: readonly LayoutVec2[]): Shape {
-	const shape = new Shape();
-	shape.moveTo(polygon[0]![0], polygon[0]![1]);
-	for (let index = 1; index < polygon.length; index += 1) shape.lineTo(polygon[index]![0], polygon[index]![1]);
-	shape.closePath();
-	return shape;
-}
-
-function fillGeometriesOf(fill: PaperFillDraw): BufferGeometry[] {
-	// ShapeGeometry is authored in XY; rotating +90° about X maps (x, y) onto the
-	// datum's (x, z) without changing the plan point or its winding.
-	return fill.polygons
-		.filter((polygon) => polygon.length >= 3)
-		.map((polygon) => new ShapeGeometry(shapeOf(polygon)).rotateX(Math.PI / 2));
 }
 
 export function createPaperScene(
@@ -123,27 +104,28 @@ export function createPaperScene(
 		addFade(material, style.opacity);
 	}
 
+	// One batch per ink/order preserves the exact polygon triangles while keeping
+	// a long sampled Wall from issuing thousands of material/draw commands.
+	const fillBatches = new Map<PaperFillDraw['treatment'], PaperFillDraw[]>();
 	for (const fill of drawing.fills) {
+		const batch = fillBatches.get(fill.treatment) ?? [];
+		batch.push(fill);
+		fillBatches.set(fill.treatment, batch);
+	}
+	for (const [treatment, fills] of fillBatches) {
+		const geometry = createPaperFillGeometry(fills);
+		if (geometry === null) continue;
 		const material = new MeshBasicMaterial({
-			color: new Color(PAPER_FILL_INK[fill.treatment]).getHex(),
-			side: DoubleSide,
-			transparent: true,
-			opacity: 1,
-			depthTest: false,
-			depthWrite: false,
-			toneMapped: false
+			color: new Color(PAPER_FILL_INK[treatment]).getHex(),
+			side: DoubleSide, transparent: true, opacity: 1,
+			depthTest: false, depthWrite: false, toneMapped: false
 		});
-		for (const geometry of fillGeometriesOf(fill)) {
-			const mesh = new Mesh(geometry, material);
-			mesh.position.y = fill.elevationMeters;
-			// The poché fill sits under its own edge pass, still above projected ink.
-			mesh.renderOrder = fill.treatment === 'cut' ? fill.layer - 1 : fill.layer;
-			mesh.frustumCulled = false;
-			mesh.layers.set(STAGE_OVERLAY_LAYER);
-			group.add(mesh);
-			disposables.push(geometry);
-		}
-		disposables.push(material);
+		const mesh = new Mesh(geometry, material);
+		mesh.renderOrder = treatment === 'cut' ? fills[0]!.layer - 1 : fills[0]!.layer;
+		mesh.frustumCulled = false;
+		mesh.layers.set(STAGE_OVERLAY_LAYER);
+		group.add(mesh);
+		disposables.push(geometry, material);
 		addFade(material, 1);
 	}
 

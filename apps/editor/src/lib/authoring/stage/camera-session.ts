@@ -87,8 +87,15 @@ export function initialInspectionPose(bounds: { min: Vec3; max: Vec3 } | null): 
 }
 
 /** The declared scene radius used for the depth range and the Plan eye distance. */
-export function sceneRadiusOf(bounds: { min: Vec3; max: Vec3 } | null): number {
+export function sceneRadiusOf(bounds: { min: Vec3; max: Vec3 } | null, target?: Vec3): number {
 	if (bounds === null) return 1;
+	if (target !== undefined) {
+		// The inspection target stays put during editing and may also be panned.
+		// A half-diagonal about the bounds centre no longer encloses the scene then.
+		return Math.max(1, Math.hypot(...target.map((coordinate, axis) =>
+			Math.max(Math.abs(bounds.min[axis]! - coordinate), Math.abs(bounds.max[axis]! - coordinate))
+		)));
+	}
 	return Math.max(
 		Math.hypot(
 			bounds.max[0] - bounds.min[0],
@@ -108,7 +115,7 @@ export type CameraSession = {
 	/** Submit one viewing intent through the authority. */
 	applyIntent(intent: ViewingIntent, clockSeconds: number): ViewingIntentResult;
 	/** A content change: camera pose is preserved; the landed output claim is rebased too. */
-	rebaseSource(sourceRevision: string): {
+	rebaseSource(sourceRevision: string, bounds?: { min: Vec3; max: Vec3 } | null): {
 		readonly viewport: ViewportSourceRebase;
 		readonly output: CameraOutputRebaseDecision;
 	};
@@ -142,7 +149,7 @@ export function evaluationIdOf(evaluation: ViewportEvaluation): string {
 }
 
 export function createCameraSession(input: CameraSessionInput): CameraSession {
-	const bounds = input.snapshot.domain.geometry.bounds ?? null;
+	let bounds = input.snapshot.domain.geometry.bounds ?? null;
 	const pose = input.pose ?? initialInspectionPose(bounds);
 	let currentState = createViewportCameraState({
 		outputId: input.outputId,
@@ -193,6 +200,10 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			// happened to arrive: the Plan toggle would still read "3D" over a plan
 			// view, and the settled endpoint would be reported by a frame nobody drew.
 			currentState = advanceViewport(currentState, clockSeconds);
+			// Source bounds calibrate Camera's own depth evaluation; they never refit
+			// the pose. Recompute after a pan as well as after an authored edit.
+			const radius = sceneRadiusOf(bounds, currentState.pose.target);
+			if (radius !== currentState.sceneRadiusMeters) currentState = { ...currentState, sceneRadiusMeters: radius };
 			generation += 1;
 			const result = evaluateViewport(currentState, rect, clockSeconds, generation);
 			currentEvaluation = result.kind === 'evaluated' ? result.evaluation : null;
@@ -203,9 +214,10 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			currentState = result.state;
 			return result;
 		},
-		rebaseSource(sourceRevision) {
+		rebaseSource(sourceRevision, nextBounds = bounds) {
 			const viewport = rebaseViewportSource(currentState, sourceRevision);
 			currentState = viewport.state;
+			if (viewport.kind !== 'refused') bounds = nextBounds;
 			// The output named the previous revision, so it is not the current output
 			// any more: dropping it is the honest answer until the host evaluates the
 			// new source, and it stops a stale token being handed out as live.

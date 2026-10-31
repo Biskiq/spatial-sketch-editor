@@ -5,7 +5,7 @@
 #
 # The SvelteKit editor is deliberately not containerized. Production deployment
 # (render.yaml, vercel.json) is unaffected by this file.
-# Secrets (Google OAuth, SESSION_KEY, R2_*) come from the developer's .env; the
+# Secrets (SESSION_KEY, R2_*) come from the developer's .env; the
 # database and origins are overridden here so the container never targets the
 # database named in .env.
 # BISKIQ_STACK names the Compose project, its image and its volume. The default

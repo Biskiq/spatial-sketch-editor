@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 
 import { createApp } from './app.js';
-import { createGoogleOidc, type OidcClient } from './auth.js';
 import { ConfigError, readConfig, type ApiConfig } from './config.js';
 import { createPool, type DatabasePool } from './database.js';
 import { createR2ObjectStore, type ObjectStore } from './object-store.js';
@@ -11,23 +10,16 @@ export type StartServerOptions = {
 	config?: ApiConfig;
 	env?: NodeJS.ProcessEnv;
 	pool?: DatabasePool;
-	oidc?: OidcClient;
 	objectStore?: ObjectStore;
 	processLike?: ShutdownProcess;
 };
 
 export async function startServer(options: StartServerOptions = {}): Promise<FastifyInstance> {
 	const config = options.config ?? readConfig(options.env);
-	const oidc =
-		options.oidc ??
-		(config.googleClientId && config.googleClientSecret
-			? createGoogleOidc({ clientId: config.googleClientId, clientSecret: config.googleClientSecret })
-			: undefined);
 	const app = createApp({
 		pool: options.pool ?? createPool(config),
 		apiOrigin: config.apiOrigin,
 		editorOrigin: config.editorOrigin,
-		oidc,
 		sessionKey: config.sessionKey,
 		objectStore: options.objectStore ?? createR2ObjectStore(config),
 		objectNamespace: config.r2ObjectNamespace,

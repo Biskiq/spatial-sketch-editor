@@ -16,7 +16,7 @@
  * while a replacement moves both.
  */
 import { describe, expect, it } from 'vitest';
-import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
+import { projectWorld, VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutVec2 } from '@portfolio/layout-core';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
@@ -28,6 +28,7 @@ import {
 	type StageReadSnapshot
 } from '$lib/authoring/stage/source-admission';
 import { createCameraSession } from '$lib/authoring/stage/camera-session';
+import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import {
 	createCancellationRegistry,
 	createStageSession,
@@ -336,6 +337,35 @@ describe('stage session — the gesture policy runs at a reading change', () => 
 			'the current document'
 		);
 		expect(live.writers().size).toBe(0);
+	});
+});
+
+describe('stage session — changed source depth calibration', () => {
+	it('keeps the first Wall cut and body inside Camera depth after empty boot without refitting', async () => {
+		const empty = await admit(await createUnitProject({ id: PROJECT_ID, name: 'Empty', layout: createEmptyWallFirstLayoutDocument() }));
+		const session = createStageSession({ sessionEpoch: empty.sessionEpoch });
+		session.replace(empty);
+		const facade = createStageFacade({ snapshot: empty, session });
+		facade.acquireInspection('exclusive');
+		const rect = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
+		facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, Number.POSITIVE_INFINITY);
+		facade.camera.evaluate(rect, Number.POSITIVE_INFINITY);
+		const pose = facade.camera.state().pose;
+		const next = await admit(await enclosureProject(PROJECT_ID), PROJECT_ID, empty.sessionEpoch);
+		expect(facade.installAccepted(next).kind).toBe('installed');
+		expect(facade.camera.state().pose).toEqual(pose);
+		const result = facade.camera.evaluate(rect, Number.POSITIVE_INFINITY);
+		if (result.kind !== 'evaluated') throw new Error('depth calibration did not evaluate');
+		for (const y of [0, 1.2, 3]) {
+			const projected = projectWorld([0, y, 0], result.evaluation, result.evaluation.token);
+			expect(projected.kind === 'projected' && projected.visibility).toBe('visible');
+		}
+		// Pan changes the centre of the radius, never source bounds or projection policy.
+		facade.camera.applyIntent({ kind: 'bring-into-view', target: [0, 20, 0] }, 10);
+		const panned = facade.camera.evaluate(rect, 10);
+		if (panned.kind !== 'evaluated') throw new Error('pan did not evaluate');
+		const projected = projectWorld([0, 1.2, 0], panned.evaluation, panned.evaluation.token);
+		expect(projected.kind === 'projected' && projected.visibility).toBe('visible');
 	});
 });
 

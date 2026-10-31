@@ -13,18 +13,14 @@ npm install
 cp .env.example .env
 ```
 
-Keep valid local Google OAuth credentials, a 32-byte `SESSION_KEY` and the
-`R2_*` values in `.env`, with the editor's API origin:
+Set a 32-byte `SESSION_KEY` and the `R2_*` values in `.env`, with the editor's
+API origin. No username/password account is preconfigured: open the editor's
+sign-in page and choose **Create an account**. An already signed-in legacy
+account can enroll credentials while keeping its existing projects. There are
+no external identity-provider credentials or callback registrations.
 
 ```env
 PUBLIC_API_ORIGIN=http://localhost:8787
-```
-
-Google must allow:
-
-```text
-Authorized JavaScript origin: http://localhost:5173
-Authorized redirect URI:     http://localhost:8787/auth/callback
 ```
 
 ## Backend in Docker (recommended)
@@ -51,7 +47,7 @@ the API serves `http://localhost:8787` and restarts when `apps/api/src` or
 restarts; the database is also reachable from the host at
 `postgresql://biskiq:biskiq@localhost:5433/biskiq`. `BISKIQ_DB_PORT` and
 `BISKIQ_API_PORT` change the host ports; with a different API port, set
-`PUBLIC_API_ORIGIN` and the Google redirect URI to match.
+`PUBLIC_API_ORIGIN` to match.
 
 ```bash
 npm run stack:logs      # follow API, migration and database logs
@@ -78,8 +74,7 @@ export BISKIQ_STACK=biskiq-t2 BISKIQ_DB_PORT=5434 BISKIQ_API_PORT=8788
 npm run stack:up
 ```
 
-Its `.env` then needs `PUBLIC_API_ORIGIN=http://localhost:8788`, and Google must
-allow `http://localhost:8788/auth/callback`.
+Its `.env` then needs `PUBLIC_API_ORIGIN=http://localhost:8788`.
 
 The image is for local development only; deployment (`render.yaml`,
 `vercel.json`) does not use it.
@@ -129,8 +124,9 @@ Stop Postgres when finished:
 brew services stop postgresql@14
 ```
 
-The editor alone can still run without the API; cloud Save/Load and Google
-sign-in stay disabled until `PUBLIC_API_ORIGIN` and the backend are configured.
+The editor alone can still run without the API. Guest editing remains available;
+cloud Save/Load and username/password sign-in are unavailable until
+`PUBLIC_API_ORIGIN` and the backend are configured.
 
 ## Other commands
 

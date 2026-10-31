@@ -621,3 +621,15 @@ describe('R217.S07 — no leftover ad hoc handles', () => {
 		}
 	});
 });
+
+describe('R217.S14 — candidate outlines follow boundary segments', () => {
+	it('fills candidate polygons without stroking every polygon seam', () => {
+		const overlay = readFileSync(
+			new URL('../../../src/lib/authoring/stage/shell/StageOverlay.svelte', import.meta.url),
+			'utf8'
+		);
+		expect(overlay).toContain('<path class="candidate-fill" d={polygonPath(polygon)} />');
+		expect(overlay).not.toContain('<path class="candidate-edge" d={polygonPath(polygon)} />');
+		expect(overlay).toContain('<line class="candidate-edge"');
+	});
+});

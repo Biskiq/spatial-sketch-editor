@@ -81,8 +81,6 @@ test('configuration validates deployment auth values without exposing secrets', 
 		PORT: '3000',
 		API_ORIGIN: 'https://editor.example.test/api/',
 		EDITOR_ORIGIN: 'https://editor.example.test/',
-		GOOGLE_CLIENT_ID: 'client-id',
-		GOOGLE_CLIENT_SECRET: 'client-secret',
 		SESSION_KEY: key.toString('base64'),
 		...R2_ENV
 	});
@@ -90,8 +88,6 @@ test('configuration validates deployment auth values without exposing secrets', 
 	assert.equal(config.port, 3000);
 	assert.equal(config.apiOrigin, 'https://editor.example.test/api');
 	assert.equal(config.editorOrigin, 'https://editor.example.test');
-	assert.equal(config.googleClientId, 'client-id');
-	assert.equal(config.googleClientSecret, 'client-secret');
 	assert.deepEqual(config.sessionKey, key);
 	assert.equal(config.r2Endpoint, R2_ENV.R2_ENDPOINT);
 	assert.equal(config.r2Bucket, R2_ENV.R2_BUCKET);
@@ -103,8 +99,6 @@ test('configuration validates deployment auth values without exposing secrets', 
 			DATABASE_URL: 'postgres://user@db.example.test/app',
 			PORT: '3000',
 			EDITOR_ORIGIN: 'https://editor.example.test',
-			GOOGLE_CLIENT_ID: 'client-id',
-			GOOGLE_CLIENT_SECRET: 'client-secret',
 			SESSION_KEY: 'short'
 		}),
 		(error) => error instanceof ConfigError && !error.message.includes('short')
@@ -114,8 +108,6 @@ test('configuration validates deployment auth values without exposing secrets', 
 			DATABASE_URL: 'postgres://user@db.example.test/app',
 			PORT: '3000',
 			EDITOR_ORIGIN: 'https://editor.example.test',
-			GOOGLE_CLIENT_ID: 'client-id',
-			GOOGLE_CLIENT_SECRET: 'client-secret',
 			SESSION_KEY: key.toString('base64'),
 			...R2_ENV,
 			R2_ENDPOINT: 'https://user:secret@r2.example.test'
@@ -127,8 +119,6 @@ test('configuration validates deployment auth values without exposing secrets', 
 			DATABASE_URL: 'postgres://user@db.example.test/app',
 			PORT: '3000',
 			EDITOR_ORIGIN: 'https://editor.example.test',
-			GOOGLE_CLIENT_ID: 'client-id',
-			GOOGLE_CLIENT_SECRET: 'client-secret',
 			SESSION_KEY: key.toString('base64'),
 			...R2_ENV,
 			R2_OBJECT_NAMESPACE: 'Preview/Bucket'
