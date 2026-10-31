@@ -57,6 +57,7 @@ DO NOT REPEAT:
 
 CURRENT:
 - The implementation, tests and evidence updates are committed and pushed; no tracked product-code diff remains. A separate `.s17-resume-run.ts` appeared under `apps/editor/tests/e2e/` after the handoff work began. It was not created or modified in this task and is left untouched for its owner to review.
+- A separate `node .../.s17-resume-run.ts` process (PID 24279 when checked) is still running in the shared worktree. It has emitted partial live screenshots for 3D catalogue, 3D primitive and Plan approved-model cases. Do not start a competing browser run or treat those files as passes; inspect the process owner's final output and cleanup after it exits.
 - The complete Plan/3D matrix remains owed for the verified catalogue chair, upright native forms, approved creator model, and the tilted-form refusal criterion. The S11 integrated, coarse-pointer, native-touch and Safari evidence is also owed.
 - The task was not accepted or merged. No reviewer result has been polled; the Sol and Luna threads were dispatched asynchronously.
 
@@ -65,9 +66,9 @@ VERIFICATION:
 - Merge gate: exhaustive R217.S11 acceptance is still required and absent.
 
 NEXT:
-1. Act only on actionable P0–P2 findings delivered directly from the Sol review; fix within S17, verify impacted behavior and push an updated PR candidate.
-2. Complete and record the outstanding S17 Plan/3D journeys without promoting partial implementation evidence to acceptance.
-3. Keep PR #239 open until the exhaustive S11 gate is accepted or the owner explicitly changes the merge prerequisite.
+1. Inspect the in-flight `.s17-resume-run.ts` result after it exits; record only cases whose assertions passed and verify its disposable project/library cleanup.
+2. Act only on actionable P0–P2 findings delivered directly from the Sol review; fix within S17, verify impacted behavior and push an updated PR candidate.
+3. Complete the remaining S17 Plan/3D journeys, then keep PR #239 open until the exhaustive S11 gate is accepted or the owner explicitly changes the merge prerequisite.
 
 OPEN:
 - S17 acceptance matrix is incomplete.
