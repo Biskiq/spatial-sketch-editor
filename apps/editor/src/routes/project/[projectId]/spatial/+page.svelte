@@ -260,6 +260,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let selection = $state<StageSelectionEntry | null>(null);
 	/** The hovered subject's echoed entry; never the primary selection. */
 	let hoverSelection = $state<StageSelectionEntry | null>(null);
+	/** R217.S15 — whether the pointer is over a draggable selected Wall body or grip. */
+	let hoverMove = $state(false);
 	let task = $state<StageTask | null>(null);
 	/** Instrument content contributed by the adapter whose task is open, if any. */
 	const contributedInstrument = $derived.by((): StageInstrumentContent | null => {
@@ -2670,6 +2672,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		facade?.setMarkHover(null);
 		session.setHover(null);
 		hoverSelection = null;
+		hoverMove = false;
 		if (drag?.mode !== 'host') {
 			measureTool?.hover(null);
 			eraserTool?.hover(null);
@@ -2692,6 +2695,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			else eraserTool?.hover(input);
 			session.setHover(null);
 			hoverSelection = null;
+			hoverMove = false;
 			refreshHostTools();
 			return;
 		}
@@ -2702,18 +2706,30 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			stage.setMarkHover({ adapterId: mark.adapterId, id: mark.id });
 			session.setHover(null);
 			hoverSelection = null;
+			// R217.S15 — a selected Wall's own grips are draggable; every other
+			// mark (an Opening's track, a disclosure) is not a body move.
+			const primary = primaryEntry(stage.selectionState());
+			hoverMove =
+				primary !== null &&
+				primary.reference.domain === 'layout' &&
+				primary.reference.subject.kind === 'wall' &&
+				mark.adapterId === 'layout' &&
+				mark.id.startsWith('layout-wall-') &&
+				mark.id !== 'layout-wall-preview';
 			return;
 		}
 		stage.setMarkHover(null);
 		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift })) {
 			session.setHover(null);
 			hoverSelection = null;
+			hoverMove = false;
 			return;
 		}
 		const result = stage.resolvePick({ css: sample.css, evaluationId: id, purpose: 'hover', tool: null });
 		if (result.kind !== 'resolved') {
 			session.setHover(null);
 			hoverSelection = null;
+			hoverMove = false;
 			return;
 		}
 		const hit = result.hit;
@@ -2723,6 +2739,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const reference = hit.reference ?? layoutSelectionReference(representation!, stage.snapshot());
 		session.setHover({ reference });
 		const primary = primaryEntry(stage.selectionState());
+		// R217.S15 — the pick winner is the selected Wall itself, so a press here
+		// would be claimed as its body drag. An Opening over it is a different winner.
+		hoverMove =
+			primary !== null &&
+			primary.reference.domain === 'layout' &&
+			primary.reference.subject.kind === 'wall' &&
+			hit.sourceKind === 'wall' &&
+			hit.sourceId === primary.reference.subject.id;
 		const nextHover =
 			primary !== null && sameReference(primary.reference, reference)
 				? null
@@ -3692,6 +3716,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				role="application"
 				tabindex="0"
 				data-paper={paperVisible ? 'true' : 'false'}
+				data-cursor={hoverMove ? 'move' : task?.kind === 'layout-ink' || armedHostTool !== null ? 'crosshair' : 'grab'}
 				aria-label="Spatial stage"
 				onpointerleave={clearHover}
 				onpointerdown={onPointerDown}
@@ -4041,7 +4066,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: #152c26;
 		outline: none;
 		touch-action: none;
+		cursor: grab;
 	}
+	.stage[data-cursor='move'] { cursor: move; }
+	.stage[data-cursor='crosshair'] { cursor: crosshair; }
+	.stage[data-cursor='grab'] { cursor: grab; }
 	/*
 		PLATE's 1 CSS px inset perimeter separates Paper from the chassis. It is an
 		inset shadow, not a border: the canvas rectangle, Camera aspect and pointer

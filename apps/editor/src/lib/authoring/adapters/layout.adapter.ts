@@ -128,7 +128,9 @@ import type { StageInkReadingRecord, StageInkReadingSession } from '$lib/authori
 import type { SemanticReference } from '@portfolio/project-model';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
 import {
+	planNumericEntryField,
 	planNumericEntryInput,
+	planNumericEntryKey,
 	planNumericEntryOpen,
 	planNumericEntrySubmit,
 	planNumericEntryTab,
@@ -140,6 +142,7 @@ import {
 import {
 	LAYOUT_OPENING_MEASURE_KIND,
 	LAYOUT_PLINTH_PLACE_KIND,
+	LAYOUT_JUNCTION_MOVE_KIND,
 	LAYOUT_WALL_LENGTH_KIND,
 	LAYOUT_WALL_MOVE_KIND,
 	buildLayoutIntent,
@@ -168,10 +171,14 @@ import {
 } from './layout/wall-gesture';
 import {
 	resolveInkPointSnap,
+	resolveJunctionPointSnap,
 	resolveOpeningSlideSnap,
 	resolveOpeningWidthSnap,
+	snapWallDistance,
+	snapWallLength,
 	type LayoutSnapWinner
 } from './layout/snap';
+import { draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-drafting';
 import {
 	buildLayoutCandidatePaper,
 	candidatePreviewOf,
@@ -280,8 +287,16 @@ type WallGesture = {
 	readonly markId: string;
 	readonly handle: WallHandle;
 	readonly fixed: FixedWallEndpoint;
-	/** What the mark means: length, angle or rigid move. */
+	/** What the mark means: length, angle, rigid move or a free Junction move. */
 	readonly mode: WallPointerMode;
+	/** The Junction a point gesture moves, or `null` for a body/length gesture. */
+	readonly junctionId: string | null;
+	/** The Wall's other end: the orthogonal guide for a point gesture. */
+	readonly otherPoint: readonly [number, number] | null;
+	/** The Wall's current normal, in world X/Z. */
+	readonly normal: readonly [number, number];
+	/** Which way the current drag moves along that normal. */
+	normalSign: 1 | -1;
 	readonly numericHost: PlanNumericHost;
 	readonly numericField: PlanNumericField;
 	/** Numeric entry opened by typing at the gesture; `null` while pointer-driven. */
@@ -300,6 +315,14 @@ type WallGesture = {
 	previewDocument: LayoutDocumentWallFirst | null;
 	/** Neighbours the candidate reshaped at the edited junction. */
 	neighbours: readonly WallNeighbourPreview[];
+	/** The winning snap, or `null` when nothing won. */
+	snap: LayoutSnapWinner | null;
+	/** The pointer's last datum point, for a refused candidate's dash. */
+	pointerPoint: LayoutVec2 | null;
+	/** The signed body distance the pointer currently names. */
+	distance: number;
+	/** The moving endpoint's current point (the Junction or free end). */
+	movingPoint: readonly [number, number];
 };
 
 /** One claimed Opening mark: slide position or width, through the Opening planner. */
@@ -353,6 +376,78 @@ function framePoint(frame: WallFrame, distance: number, y: number): [number, num
 	const direction = wallDirection(frame);
 	if (direction === null) return [frame.start[0], y, frame.start[1]];
 	return [frame.start[0] + direction[0] * distance, y, frame.start[1] + direction[1] * distance];
+}
+
+/**
+ * R217.S15 — the Wall planner's refusals in human words.
+ *
+ * The planner's own message names ids and operation codes; those are diagnostics,
+ * not something a creator should read on the Stage. This map covers the Wall
+ * operations this slice exposes and falls back to one neutral sentence for a
+ * future code, so a raw message can never leak through an unhandled branch.
+ */
+function wallRefusalWords(code: string): string {
+	switch (code) {
+		case 'opening_exceeds_wall':
+		case 'opening_out_of_bounds':
+		case 'opening_overlap':
+		case 'opening_exceeds_wall_height':
+		case 'opening_height_invalid':
+		case 'opening_width_invalid':
+		case 'opening_offset_invalid':
+		case 'opening_sill_invalid':
+		case 'opening_profile_invalid':
+		case 'opening_segment_invalid':
+		case 'opening_host_wall_unresolved':
+		case 'opening_set_invalid':
+		case 'opening_over_height':
+		case 'wall_height_below_opening':
+		case 'opening_dimensions_invalid':
+		case 'arch_profile_width_invalid':
+		case 'arch_profile_height_invalid':
+			return 'An Opening would no longer fit this Wall.';
+		case 'duplicate_junction_point':
+		case 'duplicate_joined_wall':
+		case 'junction_point_mismatch':
+		case 'unconnected_interior_contact':
+		case 'unconnected_crossing':
+		case 'collinear_overlap':
+		case 'self_intersection':
+		case 'self_intersecting_chain':
+		case 'noding_rejected':
+		case 'incompatible_wall_pair':
+		case 'topology_invalid':
+			return 'This would cross or meet another Wall.';
+		case 'room_identity_lost':
+		case 'room_reconciliation_rejected':
+		case 'ambiguous_room_correspondence':
+		case 'ambiguous_room_removal':
+		case 'nonadjacent_portal_relation':
+		case 'portal_relation_invalid':
+			return 'This would break a Room.';
+		case 'zero_length_wall':
+		case 'zero_length_segment':
+		case 'zero_length_leg':
+			return 'A Wall cannot be zero length.';
+		case 'no_op':
+			return 'That is already the Wall\'s position.';
+		case 'unsupported_wall_topology':
+		case 'invalid_candidate_document':
+		case 'candidate_does_not_compile':
+		case 'junction_degree_not_two':
+		case 'curved_wall_unsupported':
+		case 'unsupported_geometry':
+			return 'This shape is not a valid Wall layout.';
+		case 'invalid_value':
+		case 'invalid_point':
+		case 'non_finite_point':
+		case 'non_finite_endpoint':
+		case 'unknown_wall':
+		case 'unknown_junction':
+			return 'The Wall cannot be placed there.';
+		default:
+			return 'This change cannot be applied.';
+	}
 }
 
 export const createAdapter: StageAdapterFactory = (services) => {
@@ -592,7 +687,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (direction === null) return [];
 					const numericValue = (markId: string): string | null => {
 						if (gesture?.markId !== markId || gesture.numeric === null) return null;
-						return `${gesture.numericField.label} ${gesture.numeric.text}`;
+						return `${planNumericEntryField(gesture.numeric).label} ${gesture.numeric.text}`;
 					};
 					const valueFor = (markId: string, accepted: string): string => {
 						const numeric = numericValue(markId);
@@ -612,10 +707,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							role: 'edit',
 							anchor: framePoint(wall.frame, 0, y),
 							label: 'Wall start',
-							fact: 'length',
-							verb: 'Length',
-							planner: LAYOUT_WALL_LENGTH_KIND,
-							value: valueFor('layout-wall-start-mark', `Length ${length.toFixed(3)} m`),
+							fact: 'start',
+							verb: 'Junction',
+							planner: LAYOUT_JUNCTION_MOVE_KIND,
+							value: valueFor(
+								'layout-wall-start-mark',
+								`X ${wall.frame.start[0].toFixed(2)} · Z ${wall.frame.start[1].toFixed(2)} m`
+							),
 							refusal: refusalFor('layout-wall-start-mark')
 						},
 						{
@@ -624,10 +722,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							role: 'edit',
 							anchor: framePoint(wall.frame, length, y),
 							label: 'Wall end',
-							fact: 'length',
-							verb: 'Length',
-							planner: LAYOUT_WALL_LENGTH_KIND,
-							value: valueFor('layout-wall-end-mark', `Length ${length.toFixed(3)} m`),
+							fact: 'end',
+							verb: 'Junction',
+							planner: LAYOUT_JUNCTION_MOVE_KIND,
+							value: valueFor(
+								'layout-wall-end-mark',
+								`X ${wall.frame.end[0].toFixed(2)} · Z ${wall.frame.end[1].toFixed(2)} m`
+							),
 							refusal: refusalFor('layout-wall-end-mark')
 						},
 						{
@@ -741,16 +842,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readonly fixed: FixedWallEndpoint;
 				readonly mode: WallPointerMode;
 				readonly host: PlanNumericHost;
-				readonly numericField: 'length' | 'angle' | 'dx';
+				readonly numericField: 'length' | 'angle' | 'distance' | 'x';
 			} | null {
 				switch (markId) {
 					case 'layout-wall-start-mark':
-						return { handle: 'start', fixed: 'end', mode: 'length', host: 'wall-edit', numericField: 'length' };
+						return { handle: 'start', fixed: 'end', mode: 'junction', host: 'junction', numericField: 'x' };
 					case 'layout-wall-end-mark':
+						return { handle: 'end', fixed: 'start', mode: 'junction', host: 'junction', numericField: 'x' };
 					case 'layout-wall-length':
 						return { handle: 'end', fixed: 'start', mode: 'length', host: 'wall-edit', numericField: 'length' };
 					case 'layout-wall-move-mark':
-						return { handle: 'body', fixed: 'start', mode: 'move', host: 'wall-move', numericField: 'dx' };
+						return { handle: 'body', fixed: 'start', mode: 'move', host: 'wall-normal', numericField: 'distance' };
 					default:
 						return null;
 				}
@@ -790,7 +892,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						levelId: snapshot.domain.layoutLevelId
 					})
 				);
-				refusal = outcome.kind === 'refused' ? outcome.message : null;
+				refusal = outcome.kind === 'refused' ? wallRefusalWords(outcome.code) : null;
 				services.stage.notifySurfaceChange();
 			}
 
@@ -876,11 +978,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						field: wall.numericField,
 						ownerId: wall.frame.wallId,
 						candidates:
-							wall.numericHost === 'wall-move'
-								? { dx: 0, dz: 0 }
-								: wall.numericField.id === 'angle'
-									? { angle }
-									: { length }
+							wall.numericHost === 'wall-normal'
+								? { distance: Math.abs(wall.distance) }
+								: wall.numericHost === 'junction'
+									? { x: wall.movingPoint[0], z: wall.movingPoint[1] }
+									: wall.numericField.id === 'angle'
+										? { angle }
+										: { length }
 					};
 				}
 				const opening = openingGesture;
@@ -912,7 +1016,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function growGestureNumeric(key: string): boolean {
 				const state = gesture?.numeric ?? openingGesture?.numeric ?? null;
 				if (state === null) return false;
-				const next = planNumericEntryInput(state, `${state.text}${key}`);
+				const next = planNumericEntryKey(state, key);
 				if (gesture !== null) gesture.numeric = next;
 				else if (openingGesture !== null) openingGesture.numeric = next;
 				// Correcting the text clears the previous refusal immediately; the tag
@@ -953,8 +1057,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					wall.numeric = null;
 					const values = outcome.values;
 					let request: WallManipulationRequest | null = null;
-					if (wall.numericHost === 'wall-move') {
-						request = { kind: 'move', delta: [values.dx ?? 0, values.dz ?? 0] };
+					if (wall.numericHost === 'wall-normal') {
+						const distance = (values.distance ?? 0) * wall.normalSign;
+						request = { kind: 'move', delta: [wall.normal[0] * distance, wall.normal[1] * distance] };
+					} else if (wall.numericHost === 'junction' && wall.junctionId !== null) {
+						request = {
+							kind: 'junction',
+							junctionId: wall.junctionId,
+							point: [values.x ?? wall.movingPoint[0], values.z ?? wall.movingPoint[1]]
+						};
 					} else if (wall.numericField.id === 'length' && values.length !== undefined) {
 						request = { kind: 'length', length: values.length };
 					} else if (wall.numericField.id === 'angle' && values.angle !== undefined) {
@@ -2522,15 +2633,42 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (selected === null && selectedOpeningSubject === null) return false;
 						const descriptors = markDescriptors(adapterContext);
 						let markId = intent.handleId;
+						let bodyPress = false;
 						if (markId === undefined) {
 							// The host's resolver is the one mark-tier authority; a fallback press
 							// (an older caller, a test) uses the same admitted hit areas.
 							const hit = services.stage.hitMark({ css: intent.css, coarse: intent.coarse === true });
-							if (hit === null || hit.adapterId !== 'layout' || hit.role !== 'edit') return false;
-							markId = hit.id;
+							if (hit !== null && hit.adapterId === 'layout' && hit.role === 'edit') {
+								markId = hit.id;
+							} else if (selected !== null) {
+								// R217.S15 — a selected subject's owner may claim a press on its
+								// own body. The pick is resolved once, with the same purpose a
+								// click uses: an Opening on the Wall is a different winner, so it
+								// selects and pans rather than moving the Wall underneath it.
+								const picked = services.stage.resolvePick({
+									css: intent.css,
+									evaluationId: intent.evaluationId,
+									purpose: 'select',
+									tool: null,
+									...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+								});
+								if (
+									picked.kind !== 'resolved' ||
+									picked.hit.sourceKind !== 'wall' ||
+									picked.hit.sourceId !== selected.wallId
+								) {
+									return false;
+								}
+								bodyPress = true;
+								markId = 'layout-wall-body';
+							} else {
+								return false;
+							}
 						}
-						const descriptor = descriptors.find((candidate) => candidate.id === markId);
-						if (descriptor === undefined || descriptor.role !== 'edit') return false;
+						const descriptor = bodyPress
+							? undefined
+							: descriptors.find((candidate) => candidate.id === markId);
+						if (!bodyPress && (descriptor === undefined || descriptor.role !== 'edit')) return false;
 						const point = pointerDatumPoint(adapterContext, intent.css);
 						if (point === null) return false;
 						const acquisition = services.stage.acquireGesture({
@@ -2542,16 +2680,46 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							refusal = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
 							return false;
 						}
-						const wallSpec = selected === null ? null : wallMarkSpec(markId);
+						const wallSpec = selected === null
+							? null
+							: bodyPress
+								? { handle: 'body' as const, fixed: 'start' as const, mode: 'move' as const, host: 'wall-normal' as const, numericField: 'distance' as const }
+								: wallMarkSpec(markId);
 						if (selected !== null && wallSpec !== null) {
 							const numericFields = planNumericFields(wallSpec.host);
 							const numericField = numericFields.find((field) => field.id === wallSpec.numericField) ?? numericFields[0]!;
-							gesture = {
+							const normal: readonly [number, number] = [
+								-selected.frame.direction[1],
+								selected.frame.direction[0]
+							];
+							const junctionId =
+								wallSpec.mode !== 'junction'
+									? null
+									: wallSpec.handle === 'start'
+										? selected.frame.startJunctionId
+										: selected.frame.endJunctionId;
+							const otherPoint =
+								wallSpec.mode !== 'junction'
+									? null
+									: wallSpec.handle === 'start'
+										? selected.frame.end
+										: selected.frame.start;
+							const movingPoint =
+								wallSpec.mode === 'junction'
+									? wallSpec.handle === 'start'
+										? selected.frame.start
+										: selected.frame.end
+									: point;
+							const nextGesture: WallGesture = {
 								evaluationId: intent.evaluationId,
 								markId,
 								handle: wallSpec.handle,
 								fixed: wallSpec.fixed,
 								mode: wallSpec.mode,
+								junctionId,
+								otherPoint,
+								normal,
+								normalSign: 1,
 								numericHost: wallSpec.host,
 								numericField,
 								numeric: null,
@@ -2562,9 +2730,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								request: null,
 								preview: null,
 								previewDocument: null,
-								neighbours: []
+								neighbours: [],
+								snap: null,
+								pointerPoint: [point[0], point[1]],
+								distance: 0,
+								movingPoint
 							};
-							warmLayoutPlannerBaseline(gesture.baseline);
+							gesture = nextGesture;
+							warmLayoutPlannerBaseline(nextGesture.baseline);
 							services.stage.notifySurfaceChange();
 							return true;
 						}
@@ -2625,14 +2798,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if ((gesture?.numeric ?? openingGesture?.numeric ?? null) !== null) return true;
 						const point = pointerDatumPoint(adapterContext, intent.css);
 						if (point === null) {
-							// The pointer left the datum plane: withdraw every candidate mark,
-							// not just the numeric request. A stale `previewDocument` would keep
-							// promising geometry the release can never commit.
+							// R217.S15 — a Wall drag whose ray misses the datum keeps its last
+							// preview. The creator is still holding the same press; dropping
+							// the candidate on one bad sample would flash the drawing away
+							// and back without naming a different value.
 							if (gesture !== null) {
-								gesture.request = null;
-								gesture.preview = null;
-								gesture.previewDocument = null;
-								gesture.neighbours = [];
+								services.stage.notifySurfaceChange();
+								return true;
 							}
 							if (openingGesture !== null) {
 								openingGesture.request = null;
@@ -2700,14 +2872,88 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							return true;
 						}
 						const wallGesture = gesture!;
-						const request = pointerWallRequest({
-							handle: wallGesture.handle,
-							mode: wallGesture.mode,
-							frame: wallGesture.frame,
-							fixed: wallGesture.fixed,
-							startPoint: wallGesture.startPoint,
-							point
-						});
+						const drafting = adapterContext.drafting();
+						const snapActive = draftingSnapIncrementMeters(drafting) !== null;
+						wallGesture.pointerPoint = [point[0], point[1]];
+						let request: WallManipulationRequest;
+						let winner: LayoutSnapWinner | null = null;
+						let snappedPoint: readonly [number, number] = point;
+						if (wallGesture.mode === 'junction') {
+							const anchor = wallGesture.otherPoint;
+							if (anchor === null) return true;
+							const snapped = resolveJunctionPointSnap({
+								geometry: adapterContext.snapshot.domain.geometry,
+								point: [point[0], point[1]],
+								anchor: [anchor[0], anchor[1]],
+								pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
+								drafting
+							});
+							snappedPoint = snapped?.point ?? point;
+							winner = snapped;
+							request = pointerWallRequest({
+								handle: wallGesture.handle,
+								mode: 'junction',
+								frame: wallGesture.frame,
+								fixed: wallGesture.fixed,
+								startPoint: wallGesture.startPoint,
+								point: snappedPoint
+							});
+							wallGesture.movingPoint = snappedPoint;
+							// A press that has not left the endpoint's own cell names no move. It is
+							// neither a refusal nor a proposal, so release commits nothing.
+							const origin = wallGesture.handle === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
+							if (Math.hypot(snappedPoint[0] - origin[0], snappedPoint[1] - origin[1]) < 1e-9) {
+								wallGesture.request = null;
+								wallGesture.preview = null;
+								wallGesture.previewDocument = null;
+								wallGesture.neighbours = [];
+								wallGesture.snap = null;
+								refusal = null;
+								services.stage.notifySurfaceChange();
+								return true;
+							}
+						} else if (wallGesture.handle === 'body' || wallGesture.mode === 'move') {
+							const rawDistance =
+								(point[0] - wallGesture.startPoint[0]) * wallGesture.normal[0] +
+								(point[1] - wallGesture.startPoint[1]) * wallGesture.normal[1];
+							wallGesture.normalSign = rawDistance < 0 ? -1 : 1;
+							const distance = snapWallDistance(rawDistance, drafting);
+							wallGesture.distance = distance;
+							if (distance === 0) {
+								// A zero delta is not a refusal and not a proposal: the Wall has not
+								// left its line, so release commits nothing.
+								wallGesture.request = null;
+								wallGesture.preview = null;
+								wallGesture.previewDocument = null;
+								wallGesture.neighbours = [];
+								wallGesture.snap = null;
+								refusal = null;
+								services.stage.notifySurfaceChange();
+								return true;
+							}
+							snappedPoint = [
+								wallGesture.startPoint[0] + wallGesture.normal[0] * distance,
+								wallGesture.startPoint[1] + wallGesture.normal[1] * distance
+							];
+							wallGesture.movingPoint = snappedPoint;
+							request = pointerWallRequest({
+								handle: 'body',
+								mode: 'move',
+								frame: wallGesture.frame,
+								fixed: wallGesture.fixed,
+								startPoint: wallGesture.startPoint,
+								point: snappedPoint
+							});
+						} else {
+							request = pointerWallRequest({
+								handle: wallGesture.handle,
+								mode: 'length',
+								frame: wallGesture.frame,
+								fixed: wallGesture.fixed,
+								startPoint: wallGesture.startPoint,
+								point
+							});
+						}
 						// A pointer dragged across the fixed endpoint names no length on this
 						// Wall: the planner would place the moved endpoint on the existing side,
 						// mirroring the preview away from the hand. Withdraw the candidate and
@@ -2717,12 +2963,44 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							wallGesture.preview = null;
 							wallGesture.previewDocument = null;
 							wallGesture.neighbours = [];
+							wallGesture.snap = null;
 							refusal = 'Drag the endpoint back across the fixed endpoint to name a length.';
 							// T3.P03.S02: a refused sample installs no preview, so the harness must
 							// see it as refused rather than as an input that never arrived.
 							perfMark('wall-preview:refused', { wallId: wallGesture.frame.wallId });
 							services.stage.notifySurfaceChange();
 							return true;
+						}
+						if (request.kind === 'length') {
+							const snappedLength = snapWallLength(request.length, drafting);
+							if (snappedLength !== request.length) {
+								request = { kind: 'length', length: snappedLength };
+							}
+							// The ray's own accepted length is not a proposal: a click-like sample
+							// leaves the Wall and the Card untouched.
+							if (Math.abs(request.length - wallGesture.frame.length) < 1e-9) {
+								wallGesture.request = null;
+								wallGesture.preview = null;
+								wallGesture.previewDocument = null;
+								wallGesture.neighbours = [];
+								wallGesture.snap = null;
+								refusal = null;
+								services.stage.notifySurfaceChange();
+								return true;
+							}
+							if (snapActive) {
+								const fixedPoint = wallGesture.fixed === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
+								const sign = wallGesture.fixed === 'start' ? 1 : -1;
+								winner = {
+									point: [
+										fixedPoint[0] + wallGesture.frame.direction[0] * snappedLength * sign,
+										fixedPoint[1] + wallGesture.frame.direction[1] * snappedLength * sign
+									],
+									kind: 'grid',
+									name: 'Grid'
+								};
+							}
+							wallGesture.movingPoint = winner?.point ?? point;
 						}
 						const planned = planWallManipulation(
 							wallGesture.baseline,
@@ -2737,13 +3015,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							wallGesture.preview = null;
 							wallGesture.previewDocument = null;
 							wallGesture.neighbours = [];
-							refusal = planned.message;
+							wallGesture.snap = null;
+							refusal = wallRefusalWords(planned.code);
 							perfMark('wall-preview:refused', { wallId: wallGesture.frame.wallId });
 						} else {
 							wallGesture.request = request;
 							wallGesture.preview = planned.wall;
 							wallGesture.previewDocument = planned.document;
 							wallGesture.neighbours = planned.neighbours;
+							wallGesture.snap =
+								request.kind === 'move' && snapActive
+									? {
+											point: [
+												(planned.wall.start[0] + planned.wall.end[0]) / 2,
+												(planned.wall.start[1] + planned.wall.end[1]) / 2
+											],
+											kind: 'grid',
+											name: 'Grid'
+										}
+									: winner;
 							refusal = null;
 							// The candidate is installed into the overlay here; presentation is
 							// the next frame, which the harness pairs by sequence.
@@ -2976,11 +3266,29 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			function candidatePreviews(adapterContext: StageAdapterContext): readonly StageCandidatePreview[] {
 				const y = adapterContext.snapshot.domain.datumMeters;
-				const world = (point: LayoutVec2, elevation = y): [number, number, number] => [point[0], elevation, point[1]];
+				const world = (point: readonly [number, number], elevation = y): [number, number, number] => [point[0], elevation, point[1]];
 				const snapOf = (winner: LayoutSnapWinner | null) =>
 					winner === null ? undefined : { world: world(winner.point), name: winner.name };
 
 				const activeWall = gesture;
+				// A refused sample has no candidate; it draws one neutral dashed reach to
+				// the pointer plus the human reason, never the last valid pose and never
+				// the Ink hover mark. This is checked before the preview document because
+				// a refusal deliberately clears it.
+				if (activeWall !== null && activeWall.request === null && refusal !== null && activeWall.pointerPoint !== null) {
+					const middle: LayoutVec2 = [
+						(activeWall.frame.start[0] + activeWall.frame.end[0]) / 2,
+						(activeWall.frame.start[1] + activeWall.frame.end[1]) / 2
+					];
+					return [
+						candidatePreviewOf({
+							id: 'layout-candidate-wall-refused',
+							role: 'refused',
+							geometry: { polygons: [], segments: [[world(middle), world(activeWall.pointerPoint)]] },
+							labels: [{ world: world(activeWall.pointerPoint), text: refusal }]
+						})
+					];
+				}
 				if (activeWall !== null && activeWall.previewDocument !== null) {
 					const subjectWalls = new Set([activeWall.frame.wallId]);
 					const affectedWalls = new Set(activeWall.neighbours.map((neighbour) => neighbour.wallId));
@@ -2995,16 +3303,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								geometry: built.paper.subject,
 								...(activeWall.request === null
 									? {}
-									: { labels: [{ world: world(activeWall.preview!.end), text: wallRequestLabel(activeWall.request, activeWall.fixed) }] })
+									: {
+											labels: [
+												{
+													world: world(activeWall.movingPoint),
+													text: wallRequestLabel(activeWall.request, activeWall.fixed, {
+														frame: activeWall.preview ?? undefined,
+														incidentWalls: activeWall.neighbours.length + 1
+													})
+												}
+											]
+										}),
+								snap: snapOf(activeWall.snap)
 							}),
 							...(built.paper.affected.polygons.length === 0 && built.paper.affected.segments.length === 0
 								? []
 								: [candidatePreviewOf({ id: 'layout-candidate-neighbours', role: 'affected', geometry: built.paper.affected })])
 						];
 					}
-					// A live Wall gesture owns the preview. A refused sample has no
-					// candidate, so the overlay's refusal words are its whole answer; the
-					// Ink hover must not leak a stale chain mark into it.
 					return [];
 				}
 				if (activeWall !== null) return [];

@@ -152,6 +152,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 		);
 		expect(createLayoutPlanners().map((planner) => planner.kind).sort()).toEqual([
 			'layout-entity-name',
+			'layout-junction-move',
 			'layout-opening-measure',
 			'layout-plinth-place',
 			'layout-wall-angle',

@@ -108,6 +108,61 @@ export function resolveInkPointSnap(input: {
 	};
 }
 
+/**
+ * R217.S15 — the end point's free Junction move: its orthogonal guide from the
+ * Wall's other end, then the fixed grid. No Junction or Wall-span target is
+ * offered here: attaching a point is Ink's job, and the drag is a free X/Z move.
+ */
+export function resolveJunctionPointSnap(input: {
+	readonly geometry: CompiledLayoutGeometry;
+	readonly point: LayoutVec2;
+	readonly anchor: LayoutVec2;
+	readonly pixelsPerMeter: number;
+	readonly drafting: StageDraftingState;
+}): LayoutSnapWinner | null {
+	if (draftingSnapIncrementMeters(input.drafting) === null) return null;
+	const resolution = resolveLayoutSnap(
+		input.geometry,
+		input.point,
+		{
+			pixelsPerMeter: input.pixelsPerMeter,
+			gridStep: DRAFTING_SNAP_METERS,
+			anchor: input.anchor
+		},
+		{ allowedKinds: ['orthogonal-guide', 'grid'] }
+	);
+	if (resolution.kind !== 'snap') return null;
+	const { candidate } = resolution;
+	return {
+		point: [cleanCoordinate(candidate.point[0]), cleanCoordinate(candidate.point[1])],
+		kind: candidate.kind,
+		name: layoutSnapName(candidate.kind)
+	};
+}
+
+/**
+ * Round one signed distance on the fixed 0.5 m grid, or return it unchanged
+ * while Snap is held. Zero stays zero: a body drag that never leaves its line
+ * names no movement rather than the nearest half metre.
+ */
+export function snapWallDistance(distance: number, drafting: StageDraftingState): number {
+	if (draftingSnapIncrementMeters(drafting) === null) return distance;
+	const snapped = Math.round(distance / DRAFTING_SNAP_METERS) * DRAFTING_SNAP_METERS;
+	return Math.abs(snapped) < 1e-9 ? 0 : cleanCoordinate(snapped);
+}
+
+/**
+ * Round a positive Wall length on the fixed 0.5 m grid. A pointer that crossed
+ * the fixed endpoint keeps its negative sign so the adapter can refuse it; it is
+ * never laundered into a tiny positive Wall.
+ */
+export function snapWallLength(length: number, drafting: StageDraftingState): number {
+	if (!(length > 0)) return length;
+	if (draftingSnapIncrementMeters(drafting) === null) return length;
+	const snapped = Math.round(length / DRAFTING_SNAP_METERS) * DRAFTING_SNAP_METERS;
+	return snapped < DRAFTING_SNAP_METERS ? DRAFTING_SNAP_METERS : cleanCoordinate(snapped);
+}
+
 /** Resolve an Opening slide's start-edge offset, or the raw offset. */
 export function resolveOpeningSlideSnap(input: {
 	readonly geometry: CompiledLayoutGeometry;

@@ -121,7 +121,7 @@ There is no single universal handle, and a subject gets only the marks its domai
 | Subject | Marks (when its domain supports the operation) |
 | --- | --- |
 | **Object** | Move cross at the base; planar rotation ring; a scale point that, when clicked, opens a ray from each face (width, depth) and from the top (height) past the ring; corner proportional scale. Resizing keeps the base on its support and riders follow |
-| **Wall** | End points (length); a top ray (height, snapping to Sheet heights); a two-way base ray (move parallel); a two-way thickness arrow on the cap, symmetric about the wall's line |
+| **Wall** | End points (shared Junction X/Z); the selected body slides along its normal; a free-end length ray (length, other end fixed); a top ray (height, snapping to Sheet heights); a two-way base ray (move parallel); a two-way thickness arrow on the cap, symmetric about the wall's line |
 | **Opening** | A dashed track along the host with a slide point; side rays (width); a head ray; a sill ray |
 | **Platform** | Corner points and a height ray |
 | **Roof** | A ridge ray up and an eave ray down on the nearer eave; a roof-local section with joint points, midpoint **＋** and a gold profile for Edit shape |

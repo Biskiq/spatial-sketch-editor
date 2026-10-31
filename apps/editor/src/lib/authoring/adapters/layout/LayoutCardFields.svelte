@@ -49,6 +49,13 @@
 	const editable = $derived(
 		fields.filter((field) => field.id !== 'name')
 	);
+	/** R217.S15 — the endpoint coordinates are the Card's one disclosed group. */
+	const junctionFields = $derived(
+		editable.filter((field) => field.id === 'startX' || field.id === 'startZ' || field.id === 'endX' || field.id === 'endZ')
+	);
+	const ordinaryFields = $derived(
+		editable.filter((field) => field.id !== 'startX' && field.id !== 'startZ' && field.id !== 'endX' && field.id !== 'endZ')
+	);
 	const unavailableNote = $derived(
 		instrument === null
 			? ''
@@ -155,6 +162,41 @@
 	}
 </script>
 
+{#snippet fieldRow(field: LayoutFieldState)}
+	<label class="field">
+		<span>{field.label}</span>
+		<input
+			type="text"
+			inputmode="decimal"
+			data-field={field.id}
+			value={field.text}
+			aria-invalid={field.error === null ? undefined : 'true'}
+			oninput={(event) => onInput(field.id, event)}
+			onkeydown={(event) => {
+				if (event.key === 'Enter') {
+					event.preventDefault();
+					void commit(field.id);
+				} else if (event.key === 'Escape') {
+					event.preventDefault();
+					discard(field.id, event.currentTarget as HTMLInputElement);
+				}
+			}}
+			onblur={(event) => {
+				// Removing the focused input during an accepted install can blur
+				// it after this panel or its keyed field row has retired. Read the
+				// captured DOM identity, never the row's destroyed derived value.
+				const input = event.currentTarget;
+				const id = input.dataset.field;
+				if (!alive || !input.isConnected || id === undefined) return;
+				currentController?.blur(id);
+				refresh();
+				restoreText(id, input);
+			}}
+		/>
+		<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>
+	</label>
+{/snippet}
+
 {#if instrument === null}
 	<p class="empty">Select a Wall, Opening or Layout object to edit its measures.</p>
 {:else}
@@ -192,40 +234,17 @@
 				</label>
 			</fieldset>
 		{/if}
-		{#each editable as field (field.id)}
-			<label class="field">
-				<span>{field.label}</span>
-				<input
-					type="text"
-					inputmode="decimal"
-					data-field={field.id}
-					value={field.text}
-					aria-invalid={field.error === null ? undefined : 'true'}
-					oninput={(event) => onInput(field.id, event)}
-					onkeydown={(event) => {
-						if (event.key === 'Enter') {
-							event.preventDefault();
-							void commit(field.id);
-						} else if (event.key === 'Escape') {
-							event.preventDefault();
-							discard(field.id, event.currentTarget as HTMLInputElement);
-						}
-					}}
-					onblur={(event) => {
-						// Removing the focused input during an accepted install can blur
-						// it after this panel or its keyed field row has retired. Read the
-						// captured DOM identity, never the row's destroyed derived value.
-						const input = event.currentTarget;
-						const id = input.dataset.field;
-						if (!alive || !input.isConnected || id === undefined) return;
-						currentController?.blur(id);
-						refresh();
-						restoreText(id, input);
-					}}
-				/>
-				<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>
-			</label>
+		{#each ordinaryFields as field (field.id)}
+			{@render fieldRow(field)}
 		{/each}
+		{#if junctionFields.length > 0}
+			<details class="junction-fields" data-layout-junction-fields>
+				<summary>Start and End X/Z</summary>
+				{#each junctionFields as field (field.id)}
+					{@render fieldRow(field)}
+				{/each}
+			</details>
+		{/if}
 		{#if error !== null}
 			<p class="error" role="alert">{error}</p>
 		{/if}
@@ -280,6 +299,18 @@
 		margin: 0;
 		font-size: 0.68rem;
 		color: var(--plate-ink-quiet, #5c665e);
+	}
+	.junction-fields {
+		display: grid;
+		gap: 0.35rem;
+		padding: 0.15rem 0.35rem;
+		border: 1px solid var(--plate-control-edge, #cfd5cb);
+		border-radius: 0.35rem;
+	}
+	.junction-fields summary {
+		color: var(--plate-ink-quiet, #5c665e);
+		font-size: 0.72rem;
+		cursor: pointer;
 	}
 	.fixed-endpoint {
 		display: flex;

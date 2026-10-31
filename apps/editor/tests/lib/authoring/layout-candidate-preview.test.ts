@@ -312,7 +312,7 @@ describe('R217.S14 — overlay marker space', () => {
 		expect(marker!.css[1]).toBeCloseTo(expected[1], 5);
 	});
 
-	it('withdraws a live Wall candidate when the pointer leaves the datum plane', async () => {
+	it('keeps the last Wall candidate when a move leaves the datum plane', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, mounted.rect);
 		selectWall(mounted.facade, mounted.wallId);
@@ -329,8 +329,10 @@ describe('R217.S14 — overlay marker space', () => {
 		expect(
 			mounted.facade.pointerIntent({ phase: 'move', css: [640, -400], evaluationId }).claimed
 		).toBe(true);
-		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-wall')).toBe(false);
-		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-neighbours')).toBe(false);
+		// R217.S15 — the press is still live and the last valid sample is the one
+		// release would commit; a bad ray does not withdraw it.
+		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-wall')).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: [640, -400], evaluationId });
 	});
 });
 
@@ -354,7 +356,7 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 			const next = acceptedLayout(mounted.facade);
 			const wall = next.walls.find((entry) => entry.id === mounted.wallId);
 			const start = next.junctions.find((entry) => entry.id === wall?.startJunctionId);
-			return start !== undefined && Math.abs(start.point[0] - 0.5) < 1e-5;
+			return start !== undefined && Math.abs(start.point[1] - 0.5) < 1e-5;
 		});
 		settle(mounted.facade, mounted.rect, 3);
 
@@ -508,7 +510,8 @@ describe('R217.S14 — refusals and snap words', () => {
 		mounted.facade.pointerIntent({ phase: 'move', css: across, evaluationId });
 		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-wall')).toBe(false);
 		const refused = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-end-mark');
-		expect(refused?.refusal).toContain('across');
+		expect(refused?.refusal).toContain('cross');
+		expect(refused?.refusal).not.toContain('topology_invalid');
 
 		const baseline = mounted.facade.snapshot().canonicalJson;
 		mounted.facade.pointerIntent({ phase: 'up', css: across, evaluationId });

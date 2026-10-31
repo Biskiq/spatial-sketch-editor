@@ -20,6 +20,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
 	planCreateWallFirstOpening,
+	planExactJunctionMove,
 	planWallChain,
 	type LayoutDocumentWallFirst,
 	type PlanSourceRef
@@ -53,6 +54,7 @@ import { typedLengthTiming } from '../../../perf/lib/spot-measurement';
 import type { PerfRecord } from '$lib/platform/perf-marks';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { pointerWallRequest } from '$lib/authoring/adapters/layout/wall-gesture';
+import { resolveJunctionPointSnap } from '$lib/authoring/adapters/layout/snap';
 import { STAGE_MARK_GLYPH_CSS } from '$lib/authoring/stage/stage-handles';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -108,8 +110,10 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };
 }
 
-async function mount(): Promise<Mounted> {
-	const { document, wallId, openingId } = fixtureDocument();
+async function mount(
+	fixture: { document: LayoutDocumentWallFirst; wallId: string; openingId: string } = fixtureDocument()
+): Promise<Mounted> {
+	const { document, wallId, openingId } = fixture;
 	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'S05 wall manipulation',
@@ -210,6 +214,17 @@ function stageCss(facade: StageFacade, point: readonly [number, number]): readon
 	const projected = facade.projectWorld([point[0], ELEVATION, point[1]], id);
 	if (projected.kind !== 'projected') throw new Error('the fixture point did not project');
 	return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
+}
+
+/**
+ * R217.S15 — the length ray is the outward measure grip at the free end. Its
+ * tip is Stage-local CSS, so pressing it exercises the real mark tier rather
+ * than passing a handle id around it.
+ */
+function lengthRayPress(mounted: Mounted): [number, number] {
+	const mark = mounted.facade.marks().find((candidate) => candidate.id === 'layout-wall-length');
+	if (mark?.tip === null || mark?.tip === undefined) throw new Error('the Wall length ray is not projected');
+	return [mark.tip[0], mark.tip[1]];
 }
 
 async function eventually(predicate: () => boolean): Promise<void> {
@@ -469,13 +484,13 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		// with no contributed task open, so nothing has to be invoked first.
 		expect(mounted.facade.session.task()).toBeNull();
 		const evaluationId = mounted.facade.evaluationId()!;
-		const endCss = stageCss(mounted.facade, [6, 0]);
+		const rayCss = lengthRayPress(mounted);
 		const lengthCss = stageCss(mounted.facade, [5, 0]);
 
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: lengthCss, evaluationId });
 		// The preview is the planner's candidate, not a second interpolation.
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.000 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.00 m'))).toBe(true);
 		// The edited junction also reshapes the neighbour that shares it; the overlay
 		// names that reach instead of leaving canonical validation as the only evidence.
 		const neighbour = mounted.document.walls.find((wall) => wall.id !== mounted.wallId)!;
@@ -551,12 +566,12 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		selectWall(mounted.facade, mounted.wallId);
 		expect(mounted.facade.session.task()).toBeNull();
 		const evaluationId = mounted.facade.evaluationId()!;
-		const endCss = stageCss(mounted.facade, [6, 0]);
+		const rayCss = lengthRayPress(mounted);
 		// Beyond the fixed start: a magnitude would preview/commit a 1 m Wall on the
 		// opposite side of the hand, which the pointer never named.
 		const crossedCss = stageCss(mounted.facade, [-1, 0]);
 
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: crossedCss, evaluationId });
 		expect(
 			mounted.facade.overlays().some((marker) => marker.label.includes('Drag the endpoint back'))
@@ -570,23 +585,26 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		);
 	});
 
-	it('refuses a length dragged across the fixed end endpoint and commits nothing', async () => {
+	it('refuses a Junction moved onto another Junction with human words and no merge', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		expect(mounted.facade.session.task()).toBeNull();
 		const evaluationId = mounted.facade.evaluationId()!;
-		// Dragging the start fixes the **end**; the pointer beyond the end is the
-		// same crossing in the opposite fixed-endpoint case.
-		const startCss = stageCss(mounted.facade, [0, 0]);
-		const crossedCss = stageCss(mounted.facade, [7, 0]);
+		const endCss = stageCss(mounted.facade, [6, 0]);
+		// The enclosure's north-west corner is another canonical Junction. Moving
+		// this Wall's end onto it would merge topology, which no planner offers.
+		const otherJunctionCss = stageCss(mounted.facade, [0, 0]);
 
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: startCss, evaluationId }).claimed).toBe(true);
-		mounted.facade.pointerIntent({ phase: 'move', css: crossedCss, evaluationId });
-		expect(
-			mounted.facade.overlays().some((marker) => marker.label.includes('Drag the endpoint back'))
-		).toBe(true);
-		mounted.facade.pointerIntent({ phase: 'up', css: crossedCss, evaluationId });
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: otherJunctionCss, evaluationId });
+		const refusal = mounted.facade.candidatePreviews().find((candidate) => candidate.role === 'refused');
+		expect(refusal).toBeDefined();
+		expect(refusal!.segments.length).toBe(1);
+		expect(refusal!.labels[0]?.text).toContain('cross or meet another Wall');
+		expect(refusal!.labels[0]?.text).not.toContain('duplicate_junction_point');
+		expect(refusal!.labels[0]?.text).not.toContain('junction');
+		mounted.facade.pointerIntent({ phase: 'up', css: otherJunctionCss, evaluationId });
 		await new Promise((resolve) => setTimeout(resolve, 20));
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 		expect(wallPoints(acceptedLayout(mounted.facade), mounted.wallId)).toEqual(
@@ -606,7 +624,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move ΔX'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move 0.50 m'))).toBe(true);
 		// A body drag moves **both** junctions, so every Wall sharing either endpoint
 		// is reshaped. The overlay must name the full reach, not only the neighbour
 		// of the endpoint the length path would have moved.
@@ -627,12 +645,14 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		mounted.facade.pointerIntent({ phase: 'up', css: shifted, evaluationId });
 		await eventually(() => {
 			const points = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
-			return Math.abs(points.start[0] - (before.start[0] + 0.5)) < 1e-5;
+			return Math.abs(points.start[1] - (before.start[1] + 0.5)) < 1e-5;
 		});
 		const after = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
-		expect(after.start[0]).toBeCloseTo(before.start[0] + 0.5, 5);
+		// R217.S15 O2 — the body slides along the Wall's normal only: the pointer's
+		// sideways X travel is discarded, so both endpoints move in Z by 0.5 m.
+		expect(after.start[0]).toBeCloseTo(before.start[0], 9);
 		expect(after.start[1]).toBeCloseTo(before.start[1] + 0.5, 5);
-		expect(after.end[0]).toBeCloseTo(before.end[0] + 0.5, 5);
+		expect(after.end[0]).toBeCloseTo(before.end[0], 9);
 		expect(after.end[1]).toBeCloseTo(before.end[1] + 0.5, 5);
 		expect(after.length).toBeCloseTo(before.length, 9);
 	});
@@ -691,7 +711,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const exactLength = 5.123456;
 		const frame = wallFrame(mounted.document, mounted.wallId)!;
 		const targetCss = stageCss(mounted.facade, [exactLength, 0]);
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: stageCss(mounted.facade, [6, 0]), evaluationId: firstId }).claimed).toBe(true);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: lengthRayPress(mounted), evaluationId: firstId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: targetCss, evaluationId: firstId });
 
 		// A reading flip ends the writer and preserves the exact parameter. The
@@ -847,7 +867,11 @@ describe('T1.P01.S05 — handle hit-testing and inverse mapping', () => {
 			'length',
 			'angle',
 			'deltaX',
-			'deltaZ'
+			'deltaZ',
+			'startX',
+			'startZ',
+			'endX',
+			'endZ'
 		]);
 		expect(instrument.fields().find((field) => field.id === 'angle')?.unit).toBe('deg');
 		expect(Number(instrument.fields().find((field) => field.id === 'length')?.value)).toBeCloseTo(6, 9);
@@ -958,16 +982,16 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		const endCss = stageCss(mounted.facade, [6, 0]);
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		const rayCss = lengthRayPress(mounted);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '7' }).claimed).toBe(true);
 		expect(
-			mounted.facade.marks().some((mark) => mark.id === 'layout-wall-end-mark' && mark.tag.includes('Length 7'))
+			mounted.facade.marks().some((mark) => mark.id === 'layout-wall-length' && mark.tag.includes('Length 7'))
 		).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
 		await eventually(() => Math.abs(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).length - 7) < 1e-6);
 		// The release that follows is consumed; it cannot install a second entry.
-		mounted.facade.pointerIntent({ phase: 'up', css: endCss, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: rayCss, evaluationId });
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
@@ -976,19 +1000,19 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		const endCss = stageCss(mounted.facade, [6, 0]);
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		const rayCss = lengthRayPress(mounted);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '4' }).claimed).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'cancel' }).claimed).toBe(true);
 		// The first Escape restores the transient pointer value and keeps the writer.
 		expect(mounted.session.gesture()).not.toBeNull();
 		expect(
 			mounted.facade.marks().some(
-				(mark) => mark.id === 'layout-wall-end-mark' && mark.tag.includes('Length 6.000') && !mark.tag.includes('Length 4')
+				(mark) => mark.id === 'layout-wall-length' && mark.tag.includes('Length 6') && !mark.tag.includes('Length 4')
 			)
 		).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'cancel' }).claimed).toBe(true);
-		mounted.facade.pointerIntent({ phase: 'up', css: endCss, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: rayCss, evaluationId });
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 		expect(wallPoints(acceptedLayout(mounted.facade), mounted.wallId)).toEqual(
 			wallPoints(mounted.document, mounted.wallId)
@@ -1000,10 +1024,10 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		const endCss = stageCss(mounted.facade, [6, 0]);
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		const rayCss = lengthRayPress(mounted);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '4' }).claimed).toBe(true);
-		mounted.facade.pointerIntent({ phase: 'up', css: endCss, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: rayCss, evaluationId });
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 	});
 
@@ -1012,12 +1036,12 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		const endCss = stageCss(mounted.facade, [6, 0]);
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		const rayCss = lengthRayPress(mounted);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '4' }).claimed).toBe(true);
 		// The browser's pointer-up is consumed: no commit, and the writer keeps its
 		// lease so the keyboard still reaches it.
-		expect(mounted.facade.pointerIntent({ phase: 'up', css: endCss, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.pointerIntent({ phase: 'up', css: rayCss, evaluationId }).claimed).toBe(true);
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 		expect(mounted.session.gesture()).not.toBeNull();
 		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
@@ -1046,5 +1070,271 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		expect(length.tip).not.toBeNull();
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: length.tip!, evaluationId, coarse: true }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: length.tip!, evaluationId, coarse: true });
+	});
+});
+
+describe('R217.S15 — Wall direct manipulation', () => {
+	it('moves a degree-3 shared Junction and every incident Wall follows', () => {
+		const document = createEmptyWallFirstLayoutDocument();
+		document.floor.elevation = ELEVATION;
+		document.junctions = [
+			{ id: 'junction-centre', point: [0, 0] },
+			{ id: 'junction-east', point: [3, 0] },
+			{ id: 'junction-north', point: [-1.5, 2.5] },
+			{ id: 'junction-south', point: [-1.5, -2.5] }
+		];
+		document.walls = [
+			{ id: 'wall-east', startJunctionId: 'junction-centre', endJunctionId: 'junction-east', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'wall-north', startJunctionId: 'junction-centre', endJunctionId: 'junction-north', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'wall-south', startJunctionId: 'junction-centre', endJunctionId: 'junction-south', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+		];
+		const plan = planExactJunctionMove(document, 'junction-centre', [0.5, 0.75]);
+		if (plan.kind === 'rejected') throw new Error(plan.rejection.message);
+		expect(plan.document.junctions.find((junction) => junction.id === 'junction-centre')?.point).toEqual([0.5, 0.75]);
+		expect(plan.document.walls).toHaveLength(3);
+		for (const wall of plan.document.walls) {
+			expect(wall.startJunctionId).toBe('junction-centre');
+			const start = plan.document.junctions.find((junction) => junction.id === wall.startJunctionId)!;
+			expect(start.point).toEqual([0.5, 0.75]);
+		}
+	});
+
+	it('keeps a hosted Opening’s identity, offset and width when its Wall reshapes', async () => {
+		const mounted = await mount();
+		const before = acceptedLayout(mounted.facade).openings.find((opening) => opening.id === mounted.openingId)!;
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, [6, 0]);
+		const to = stageCss(mounted.facade, [5.5, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => Math.abs(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).length - 5.5) < 1e-6);
+		const after = acceptedLayout(mounted.facade);
+		const opening = after.openings.find((entry) => entry.id === mounted.openingId)!;
+		expect(opening.wallId).toBe(before.wallId);
+		expect(opening.offset).toBeCloseTo(before.offset, 9);
+		expect(opening.width).toBeCloseTo(before.width, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('refuses atomically when a neighbour’s Opening no longer fits', async () => {
+		const base = fixtureDocument();
+		const neighbour = base.document.walls[1]!;
+		const added = planCreateWallFirstOpening(
+			base.document,
+			{ wallId: neighbour.id, kind: 'window', offset: 2, width: 2, height: 1.2, sillHeight: 1 },
+			freshCapture(),
+			base.document.floor.id
+		);
+		if (added.kind === 'rejected') throw new Error(`neighbour opening fixture refused: ${added.rejection.message}`);
+		const mounted = await mount({ ...base, document: added.document });
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const before = mounted.facade.snapshot().canonicalJson;
+		const from = stageCss(mounted.facade, [6, 0]);
+		// The neighbour Wall shrinks to 2 m; its 2 m Opening cannot fit at offset 2.
+		const to = stageCss(mounted.facade, [6, 2]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		const refused = mounted.facade.candidatePreviews().find((candidate) => candidate.role === 'refused');
+		expect(refused).toBeDefined();
+		expect(refused!.labels[0]?.text).toContain('Opening');
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('treats a press and release without travel as a click, not a commit', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const endCss = stageCss(mounted.facade, [6, 0]);
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.pointerIntent({ phase: 'up', css: endCss, evaluationId }).claimed).toBe(true);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+	});
+
+	it('snaps a body drag to the 0.5 m normal grid and Alt frees it', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const middle = stageCss(mounted.facade, [3, 0]);
+		const shifted = stageCss(mounted.facade, [3.37, 0.37]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move 0.50 m'))).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: shifted, evaluationId });
+
+		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, 3);
+		const secondId = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId: secondId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId: secondId });
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move 0.37 m'))).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: shifted, evaluationId: secondId });
+	});
+
+	it('snaps a length-ray drag to 0.5 m and commits the snapped value', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const rayCss = lengthRayPress(mounted);
+		const to = stageCss(mounted.facade, [5.26, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.50 m'))).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => Math.abs(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).length - 5.5) < 1e-6);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('commits the Card’s Start X through the shared-Junction planner', async () => {
+		const mounted = await mount();
+		selectWall(mounted.facade, mounted.wallId);
+		const instrument = createCardFieldsInstrument(mounted.services)!;
+		instrument.edit('startX', '0.5');
+		expect(await instrument.commit('startX')).toEqual({ kind: 'accepted' });
+		await eventually(() => {
+			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+			return frame !== null && Math.abs(frame.start[0] - 0.5) < 1e-9;
+		});
+		const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		expect(frame.start[1]).toBeCloseTo(0, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+});
+
+describe('R217.S15 — gesture numeric entry', () => {
+	it('types a body distance and commits it along the normal once', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const middle = stageCss(mounted.facade, [3, 0]);
+		const shifted = stageCss(mounted.facade, [3, 0.37]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '3' }).claimed).toBe(true);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-move-mark' && mark.tag.includes('Distance 3'))).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
+		await eventually(() => {
+			const points = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
+			return Math.abs(points.start[1] - 3) < 1e-6;
+		});
+		const after = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
+		expect(after.start[0]).toBeCloseTo(0, 9);
+		expect(after.end[0]).toBeCloseTo(6, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('types a Junction X then Z with Tab and commits one shared-Junction edit', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const endCss = stageCss(mounted.facade, [6, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '6' }).claimed).toBe(true);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-end-mark' && mark.tag.includes('X 6'))).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '\t' }).claimed).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '1' }).claimed).toBe(true);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-end-mark' && mark.tag.includes('Z 1'))).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
+		await eventually(() => {
+			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+			return frame !== null && Math.abs(frame.end[1] - 1) < 1e-6;
+		});
+		expect(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).end[0]).toBeCloseTo(6, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+});
+
+describe('R217.S15 — Junction snap policy', () => {
+	it('prefers the orthogonal guide from the Wall’s other end, then the 0.5 grid, and Alt frees it', async () => {
+		const mounted = await mount();
+		const geometry = mounted.facade.snapshot().domain.geometry;
+		const snap = resolveJunctionPointSnap({
+			geometry,
+			point: [5.52, 0.03],
+			anchor: [0, 0],
+			pixelsPerMeter: 100,
+			drafting: mounted.facade.drafting()
+		});
+		expect(snap).not.toBeNull();
+		expect(snap!.point[1]).toBeCloseTo(0, 9);
+		expect(['Aligned', 'Grid']).toContain(snap!.name);
+
+		mounted.facade.setDrafting({ snapSuspended: true });
+		expect(
+			resolveJunctionPointSnap({
+				geometry,
+				point: [5.52, 0.03],
+				anchor: [0, 0],
+				pixelsPerMeter: 100,
+				drafting: mounted.facade.drafting()
+			})
+		).toBeNull();
+	});
+});
+
+describe('R217.S15 — body and length reach', () => {
+	it('changes only length when the length ray is dragged off-axis', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const rayCss = lengthRayPress(mounted);
+		const to = stageCss(mounted.facade, [5, 2]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.00 m'))).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => {
+			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+			return frame !== null && Math.abs(frame.length - 5) < 1e-6;
+		});
+		const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		expect(frame.angleRadians).toBeCloseTo(0, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('moves a free-standing Wall with nothing else affected', async () => {
+		const document = createEmptyWallFirstLayoutDocument();
+		document.floor.elevation = ELEVATION;
+		document.junctions = [
+			{ id: 'free-start', point: [0, 0] },
+			{ id: 'free-end', point: [4, 0] }
+		];
+		document.walls = [
+			{ id: 'free-wall', startJunctionId: 'free-start', endJunctionId: 'free-end', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+		];
+		const mounted = await mount({ document, wallId: 'free-wall', openingId: '' });
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, 'free-wall');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const middle = stageCss(mounted.facade, [2, 0]);
+		const shifted = stageCss(mounted.facade, [2.37, 0.5]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
+		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-neighbours')).toBe(false);
+		mounted.facade.pointerIntent({ phase: 'up', css: shifted, evaluationId });
+		await eventually(() => {
+			const points = wallPoints(acceptedLayout(mounted.facade), 'free-wall');
+			return Math.abs(points.start[1] - 0.5) < 1e-6;
+		});
+		const accepted = acceptedLayout(mounted.facade);
+		expect(accepted.walls).toHaveLength(1);
+		expect(accepted.openings).toHaveLength(0);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 });
