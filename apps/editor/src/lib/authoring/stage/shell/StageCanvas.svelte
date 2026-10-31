@@ -36,6 +36,7 @@ import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
 	import StageEntities from './StageEntities.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
+	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
@@ -294,8 +295,6 @@ import StageGrid from './StageGrid.svelte';
 	-->
 	{#if !paperVisible}
 		{#each ghosts as ghost (ghost.id)}
-			{@const ghostColor = ghost.treatment === 'refused' ? 0xe27666 : 0xc9a9ff}
-			{@const ghostOpacity = ghost.treatment === 'proxy' ? 0.17 : ghost.treatment === 'refused' ? 0.23 : 0.38}
 			{#if ghost.shape.kind === 'form'}
 				<StageFormGhost
 					form={ghost.shape.form}
@@ -304,21 +303,7 @@ import StageGrid from './StageGrid.svelte';
 					treatment={ghost.treatment}
 				/>
 			{:else}
-				<T.Mesh
-					position={ghost.center}
-					rotation={[0, ghost.yaw, 0]}
-					renderOrder={2}
-					raycast={ignoreRaycast}
-				>
-					{#if ghost.shape.kind === 'box'}
-						<T.BoxGeometry args={ghost.shape.size} />
-					{:else if ghost.shape.kind === 'cylinder'}
-						<T.CylinderGeometry args={[ghost.shape.radius, ghost.shape.radius, ghost.shape.height, 24]} />
-					{:else}
-						<T.SphereGeometry args={[ghost.shape.radius, 24, 16]} />
-					{/if}
-					<T.MeshStandardMaterial color={ghostColor} transparent opacity={ghostOpacity} depthWrite={false} />
-				</T.Mesh>
+				<StagePrimitiveGhost ghost={{ ...ghost, shape: ghost.shape }} />
 			{/if}
 		{/each}
 	{/if}

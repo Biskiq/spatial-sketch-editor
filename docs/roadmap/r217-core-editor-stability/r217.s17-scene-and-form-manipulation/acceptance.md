@@ -8,6 +8,18 @@
 This record documents the implementation candidate and its current evidence. It does not accept
 the slice or the R217 integrated gate.
 
+## Owner amendment — 2026-10-31
+
+S11 is the final integration check **after S25**. The owner explicitly clarified that S11 is
+not an S17 merge prerequisite; its schedule and required evidence remain unchanged. Generic
+one-slice merge-gate wording must not move S11 ahead of S17 or prevent S17's routine closeout.
+S17 must satisfy its own approved criteria and verification before the parent starts a fresh
+Luna 6 medium chat for closeout through merge. No re-review or polling is requested.
+
+The owner also authorized the single relative-link correction in S16's evidence pointer so the
+architecture lane can run clean. This changes no S16 acceptance or product behavior and authorizes
+no other S16 edits.
+
 ## Implemented
 
 Selected Scene objects and native forms can be moved from their bodies in Plan and 3D. Placement

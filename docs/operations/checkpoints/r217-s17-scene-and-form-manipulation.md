@@ -9,9 +9,9 @@ GOAL: Finish approved S17 and the delivered P0–P2 repairs, verify the complete
 CONSTRAINTS:
 - Keep implementation within S17. API and Postgres are available, so the approved-model row cannot use the unavailable-service exception.
 - Do not claim S17 acceptance while the approved Plan/3D matrix is incomplete.
-- The test contract requires the exhaustive S11 gate before a one-slice implementation PR merges. S11 depends on accepted S01–S10 and S12–S25 and currently has no acceptance evidence. Do not merge or waive this gate without completing it or an explicit owner ruling.
+- Owner amendment 2026-10-31: S11 is the final integration check after S25, not an S17 merge prerequisite. Preserve that schedule and all S11 evidence requirements. S17 own criteria and verification still precede final Luna closeout dispatch.
 - The Sol findings were delivered. Fix and verify them without re-review, per the owner; do not poll review or closeout chats.
-- Keep S16 outside scope. Its broken architecture-test evidence link is pre-existing and must not be edited here.
+- The owner authorized one S16 edit only: fix its evidence pointer from ../../../archive to ../../../../archive. No S16 behavior or acceptance changes.
 - The S17 plan now records a 2026-10-31 owner ruling: full manipulation applies to upright rectangular and concave forms; the tilted fixture retains its planner refusals. Verify that behavior before claiming acceptance.
 
 READ:
@@ -56,17 +56,20 @@ DO NOT REPEAT:
 - Do not treat the partial Plan primitive or 3D Place/Move/Turn/Size evidence as full S17 acceptance or the S11 gate.
 
 CURRENT:
-- This chat owns coordination again by explicit owner direction. All other listed S17 chats are idle; the previous matrix runner was stopped, not left running. The stale PID entry is retired.
-- Removed scratch runners have been recovered from the original execution records: `apps/editor/.s17-browser-{acceptance,smoke,3d-debug}.ts`, `apps/editor/.s17-cleanup.ts`, and `apps/editor/tests/e2e/.s17-resume-run.ts`. Older runners are historical recovery copies, not acceptance evidence or ready-to-run commands; inspect their origin/configuration and cleanup before reuse.
-- The P2 repair commit `d0b4fa53` is pushed. Current verification passes: `npm run check` and the affected-subsystem suite, 11 files / 156 tests. `npm run test:arch` remains 22/23 files and 193/194 tests because of the same unrelated S16 documentation link.
-- The resumed primitive Plan and catalogue Plan sequences passed all five actions and Undo. Catalogue Plan also verified retention across a Plan/3D flip. Local results: `/tmp/s17-plan-primitive-resume.log`, `/tmp/s17-plan-catalogue-resume.log`.
-- `/tmp/s17-remaining.log` is an interrupted, failed attempt, not acceptance: 3D catalogue/primitive body drags hit the native-box occluder; approved Plan selected-subject mark lookup timed out; approved 3D was interrupted. Disposable resource cleanup from that interrupted run is unconfirmed.
-- Owner instructions: no re-review; finish all fixes and required verification before starting a new **Luna 6 medium chat** for closeout and merge as the final step. Do not poll, reuse an earlier closeout invocation, or dispatch while review/acceptance work is unfinished.
-- The complete remaining subject/reading matrix and browser tilted-refusal criterion remain owed. The new mixed-fixture planner test verifies Move, Place, Turn and Duplicate refusals without changing authored Scene data. S11 and the unrelated S16 architecture-link failure are still unresolved merge gates.
+- Parent chat owns coordination. No new review or premature closeout dispatch is authorized. Existing review and closeout chats are idle; use a **fresh Luna 6 medium chat only after S17 is clean**, and do not poll it.
+- HEAD is `e516464b`; `d0b4fa53` contains the delivered model-contact/chooser repairs and primitive Move/Turn scale correction. The working tree adds visible unlit/outlined 3D ghosts (`StageCanvas.svelte`, `StageFormGhost.svelte`, new `StagePrimitiveGhost.svelte`) and tests for the owner's two ghost reports.
+- Frozen candidate verification passed: `npm run check` (0 errors / 0 warnings), affected-subsystem 11 files / 190 tests. The authorized S16 pointer fix clears the architecture lane: 23 files / 194 tests. Logs: `/tmp/s17-final-candidate-check.log`, `/tmp/s17-final-candidate-tests.log`, `/tmp/s17-authorized-link-arch.log`.
+- Active owned browser run: functions exec session `83596`, OS Node PID 38214 when checked, `apps/editor/tests/e2e/.s17-resume-run.ts`, output `/tmp/s17-final-browser-matrix.log`, disposable project `67713044-dbfb-416e-a61e-8986e64154e8`. Let it finish or explicitly clean that exact project if interrupted; do not start a competing browser. Source is frozen during this run.
+- Current run has passed primitive 3D, catalogue 3D and approved creator-model Plan with Place, Move, Turn, Size, Duplicate, off-floor refusal and five Undo steps. Approved creator-model 3D is in progress; upright rectangular/concave forms in both readings follow. Read final results, not partial live captures, before claiming a row.
+- The new post-Size Turn capture `/tmp/s17-primitive-3d-sized-turn-preview.png` visibly shows the enlarged ghost at −135° against the accepted −180° body. The post-Size Move capture hit an occluder, so a clear-target Move preview remains owed for that owner report despite green direct/adapter scale regressions.
+- Earlier primitive Plan and catalogue Plan sequences passed all five actions and Undo; catalogue Plan also verified its arm through a Plan/3D flip. Those predate the new outline renderer and are implementation evidence, not final-scope acceptance.
+- Remaining browser checks: complete the running subject matrix, tilted-form refusal in Plan/3D, four declared viewport sizes, and a valid post-Size Move ghost. Complete the automated implementation gate before final handoff; do not run S11 early.
+- Owner amendment is recorded in S17 acceptance: **S11 stays after S25 and is not an S17 merge prerequisite**. Scheduling and S11 evidence remain unchanged. S16 mutation is limited to the one authorized link correction.
+- Recovered scratch runners remain local and untracked. Preserve recovery copies outside the worktree before final commit rather than deleting the recovered work. Old failed/interrupted logs are not acceptance; current run cleans its exact project and any library items it creates.
 
 VERIFICATION:
 - Tier: S17 affected-subsystem. After the P2 repairs, `npm run check` passed with 0 errors / 0 warnings and the affected-subsystem run passed 11 files / 156 tests. The architecture lane was rerun and remains 22/23 files and 193/194 tests due to the unrelated S16 path.
-- Merge gate: exhaustive R217.S11 acceptance is still required and absent.
+- S11 remains due after S25; the owner explicitly clarified it is not an S17 pre-merge gate. The new renderer/scale fixes passed 11 files / 190 tests and `npm run check` with zero diagnostics; current browser verification remains in progress.
 
 NEXT:
 1. Finish S17 browser journeys from the recovered runner; choose visible supported targets and assert actual accepted changes, not only candidates.
@@ -75,4 +78,4 @@ NEXT:
 
 OPEN:
 - S17 acceptance matrix is incomplete.
-- S11 acceptance and prerequisite slices remain unresolved; an explicit owner ruling is required if the team wants to change the merge prerequisite instead of completing that gate.
+- No S11 scheduling change is pending: retain its registered final integration slot after S25. Do not resurrect the superseded S17/S11 merge blocker.

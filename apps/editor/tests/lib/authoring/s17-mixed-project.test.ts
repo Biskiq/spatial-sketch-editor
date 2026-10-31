@@ -12,7 +12,7 @@ describe('R217.S17 mixed project fixture', () => {
 		const context = { layout: stageLayout(admitted.snapshot), scene: stageScene(admitted.snapshot), sourceContentId: admitted.snapshot.sourceContentId };
 		const before = structuredClone(context.scene);
 		const target = { context, entityId: ids.tiltedFormId, contactMinY: 0 };
-		const frame = { origin: [0, 0, 0] as const, yaw: 0 };
+		const frame = { origin: [0, 0, 0] as [number, number, number], yaw: 0 };
 		const results = [
 			planMoveHorizontal({ ...target, worldXZ: [1, 1], frame }),
 			planPlaceOnFloor({ ...target, worldXZ: [1, 1], frame }),

@@ -2121,17 +2121,34 @@ describe('Scene adapter registration', () => {
 		expect(host.history().depth).toBe(depth);
 	});
 
-	it('commits one Turn entry through the yaw planner', async () => {
+	it.each(['3d', 'plan'] as const)('previews and commits the same Turn pose in %s', async (reading) => {
 		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
-		const { facade, evaluationId } = await withSceneSurface(undefined, null, project);
+		const { facade, evaluationId } = await withSceneSurface(undefined, null, project, RECT, reading);
 		const turn = markOf(facade, 'scene-object-turn');
 		const target: [number, number] = [turn.anchor[0] + 50, turn.anchor[1]];
 		expect(facade.pointerIntent({ phase: 'down', css: turn.anchor, evaluationId, handleId: turn.id }).claimed).toBe(true);
 		facade.pointerIntent({ phase: 'move', css: target, evaluationId });
 		expect(facade.ghosts()).toHaveLength(1);
+		const yaw = facade.ghosts()[0]!.yaw;
+		expect(Math.abs(yaw)).toBeGreaterThan(0);
+		if (reading === 'plan') expect(facade.candidatePreviews()).toHaveLength(1);
 		facade.pointerIntent({ phase: 'up', css: target, evaluationId });
 		await eventually(() => facade.snapshot().domain.scene.entities[0]!.rotation[1] !== 0);
 		expect(Number.isFinite(facade.snapshot().domain.scene.entities[0]!.rotation[1])).toBe(true);
+		expect(facade.snapshot().domain.scene.entities[0]!.rotation[1]).toBeCloseTo(yaw, 9);
+	});
+
+	it.each(['move', 'turn'] as const)('keeps the sized body in the adapter %s ghost', async (action) => {
+		const entity = { ...boxEntity(FIXTURE_ENTITY_ID, [2, 1.5, 2]), scale: 3 };
+		const project = await supportedProject([entity]);
+		const { facade, evaluationId } = await withSceneSurface(undefined, null, project);
+		try {
+			const mark = markOf(facade, `scene-object-${action}`);
+			const target: [number, number] = [mark.anchor[0] + 50, mark.anchor[1]];
+			facade.pointerIntent({ phase: 'down', css: mark.anchor, evaluationId, handleId: mark.id });
+			facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+			expect(facade.ghosts()[0]?.shape).toEqual({ kind: 'box', size: [3, 3, 3] });
+		} finally { facade.dispose(); }
 	});
 
 	it('commits one Size entry only after the Scale point reveals the ray and keeps the base on its support', async () => {
