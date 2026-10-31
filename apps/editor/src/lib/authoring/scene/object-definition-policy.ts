@@ -91,12 +91,11 @@ export type CatalogueModelContactRecord = {
 /**
  * Declared contacts for the catalogue's floor models.
  *
- * The floor-pivoted production models declare their contact as 0 m. That is a
- * *declaration*, not a verification: the retained-loader contact verification on
- * the landed r186 base (three 0.186.1, `PCFShadowMap`) is the outstanding
- * obligation recorded with this slice. The piano geometry check failed and is
- * recorded below; the other models await verification. Every model remains
- * excluded until corrected geometry, footprint/contact and readiness are verified. Analytical primitives need no such verification.
+ * A floor-pivot note is a declaration, not a verification. The salon chair's
+ * corrected contact and footprint have been measured on the landed r186 loader
+ * base (three 0.186.1); its browser-rendering readiness is checked by the S17
+ * matrix. The piano geometry check failed and is recorded below; the remaining
+ * models await verification. Analytical primitives need no such verification.
  */
 export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactRecord[] = [
 	{
@@ -116,11 +115,13 @@ export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactReco
 	},
 	{
 		assetId: 'paris-salon-chair',
-		contactMinY: 0,
-		contactSource: 'catalogue-floor-pivot-note',
-		verified: false,
+		contactMinY: -5.2503001946035965e-12,
+		contactSource: 'r186-loader-verification',
+		verified: true,
+		verificationId: 'r186-salon-chair-contact-footprint-v1',
 		nonUnitSourceNormalization: true,
-		notes: 'Floor-centred pivot, defaultScale 0.92; corrected contact awaits the r186 loader verification.'
+		notes:
+			'r186 GLTFLoader + Meshopt bounds after defaultScale 0.92: X 0.6429088471 m, Y contact -0.000000000005 m, Z 0.5360769552 m. The admitted rectangular footprint rounds X/Z outward to 0.643 × 0.537 m.'
 	},
 	{
 		assetId: 'paris-salon-sofa',
@@ -197,6 +198,13 @@ export function admittedDefinitionKeys(manifest: readonly Asset[] = assets): rea
 		.map((entry) => entry.definitionKey);
 }
 
+/** Built-in catalogue assets whose complete floor-placement definition is admitted. */
+export function admittedCatalogueModelAssets(manifest: readonly Asset[] = assets): readonly Asset[] {
+	return manifest.filter(
+		(asset) => asset.placementSurface === 'floor' && catalogueModelExclusions(asset).length === 0
+	);
+}
+
 /**
  * Catalogue models whose only outstanding gate is the r186 contact verification.
  *
@@ -247,7 +255,8 @@ export async function catalogueModelDefinition(
 ): Promise<NormalizedPlacementDefinition | null> {
 	const asset = findAsset(manifest, assetId);
 	if (asset === undefined) return null;
-	if (catalogueModelExclusions(asset).length > 0) return null;
+	const contactMinY = catalogueModelContactMinY(assetId, manifest);
+	if (contactMinY === null) return null;
 	const record = contactRecordFor(assetId);
 	const verificationId = record?.verificationId;
 	if (record === undefined || verificationId === undefined) return null;
@@ -261,7 +270,7 @@ export async function catalogueModelDefinition(
 			exclusions: []
 		} satisfies ObjectDefinitionAdmission,
 		footprintMeters: normalizeAssetFootprintOutline(asset.footprint!),
-		contactMinY: record.contactMinY,
+		contactMinY,
 		creationDefaults: {
 			kind: 'model' as const,
 			name: asset.name,
@@ -276,6 +285,17 @@ export async function catalogueModelDefinition(
 		}
 	};
 	return { ...facts, metadataContentId: await definitionMetadataContentId(facts) };
+}
+
+/** A verified floor contact for an admitted built-in model, or `null` when excluded. */
+export function catalogueModelContactMinY(
+	assetId: string,
+	manifest: readonly Asset[] = assets
+): number | null {
+	const asset = findAsset(manifest, assetId);
+	const record = contactRecordFor(assetId);
+	if (asset === undefined || record === undefined || catalogueModelExclusions(asset).length > 0) return null;
+	return record.contactMinY;
 }
 
 /**

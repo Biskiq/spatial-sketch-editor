@@ -28,6 +28,10 @@ import {
 import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { attachUnitStageSource } from '$lib/authoring/stage/unit-stage-source';
+import * as formLibrary from '$lib/authoring/adapters/scene/library/client';
+import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
+import * as objectDefinitions from '$lib/authoring/scene/object-definition-policy';
+import { clearArmedModel, peekArmedModel } from '$lib/authoring/adapters/scene/import/definitions';
 
 const BOX_ID = 'entity-compose-box';
 const LIGHT_ID = 'entity-compose-light';
@@ -171,7 +175,8 @@ function composeSpies(): ComposeSpies {
 function servicesFor(
 	session: ScenePlacementSession,
 	selectedId: string,
-	snapshot: unknown = SNAPSHOT
+	snapshot: unknown = SNAPSHOT,
+	taskKind = 'scene-compose'
 ): {
 	readonly services: StageAdapterServices;
 	select(id: string): void;
@@ -186,7 +191,7 @@ function servicesFor(
 			selectionState: () => ({ primary: { domain: 'scene', subject: { kind: 'entity', id: selected } } }),
 			evaluation: () => EVALUATION,
 			evaluationId: () => EVALUATION_ID,
-			session: { task: () => ({ kind: 'scene-compose' }) },
+			session: { task: () => ({ kind: taskKind }) },
 			notifySurfaceChange: notify,
 			setSelection: vi.fn()
 		}
@@ -204,6 +209,8 @@ function buttonNamed(target: HTMLElement, name: string): HTMLButtonElement {
 
 let cleanup: (() => void) | null = null;
 afterEach(() => {
+	vi.restoreAllMocks();
+	clearArmedModel('project-compose');
 	cleanup?.();
 	cleanup = null;
 	document.body.replaceChildren();
@@ -231,6 +238,121 @@ async function mountCompose(selectedId: string, snapshot: unknown = SNAPSHOT): P
 }
 
 describe('Scene Compose — truthful capability and captured subject', () => {
+	it('restores the catalogue choice when Place remounts with its remembered model armed', async () => {
+		const first = composeSpies().session;
+		let firstModel: ReturnType<ScenePlacementSession['armedModel']> = null;
+		first.armedModel = () => firstModel;
+		first.setArmedModel = (next) => { firstModel = next; };
+		const { services: firstServices } = servicesFor(first, BOX_ID, MODEL_SNAPSHOT, 'place-object');
+		publishSceneSurface(MODEL_SNAPSHOT, { reading: sceneReadingKey(EVALUATION), session: first });
+		const firstTarget = document.createElement('div');
+		document.body.appendChild(firstTarget);
+		const firstComponent = mount(SceneTransformInstrument, { target: firstTarget, props: { services: firstServices } });
+		cleanup = () => unmount(firstComponent);
+		await tick();
+		const firstChooser = firstTarget.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
+		firstChooser.value = 'catalogue:paris-salon-chair';
+		firstChooser.dispatchEvent(new Event('change', { bubbles: true }));
+		await vi.waitFor(() => expect(firstModel?.definition.creationDefaults.kind).toBe('model'));
+		await unmount(firstComponent);
+		cleanup = null;
+
+		const second = composeSpies().session;
+		let secondModel: ReturnType<ScenePlacementSession['armedModel']> = null;
+		second.armedModel = () => secondModel;
+		second.setArmedModel = (next) => { secondModel = next; };
+		second.setPlacePrimitive = () => { secondModel = null; };
+		const { services: secondServices } = servicesFor(second, BOX_ID, MODEL_SNAPSHOT, 'place-object');
+		publishSceneSurface(MODEL_SNAPSHOT, { reading: sceneReadingKey(EVALUATION), session: second });
+		const secondTarget = document.createElement('div');
+		document.body.appendChild(secondTarget);
+		const secondComponent = mount(SceneTransformInstrument, { target: secondTarget, props: { services: secondServices } });
+		cleanup = () => unmount(secondComponent);
+		await tick();
+		await vi.waitFor(() => expect(secondModel?.definition).toEqual(firstModel?.definition));
+		const secondChooser = secondTarget.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
+		expect(secondChooser.value).toBe('catalogue:paris-salon-chair');
+
+		secondChooser.value = 'native:box';
+		secondChooser.dispatchEvent(new Event('change', { bubbles: true }));
+		await tick();
+		expect(secondModel).toBeNull();
+		expect(peekArmedModel('project-compose')).toBeNull();
+	});
+
+	it('keeps a catalogue arm across readings until a saved form explicitly replaces it', async () => {
+		const payload = canonicalFormLibraryPayload({formatVersion: 1, kind: 'form', name: 'Saved plinth', form: {generator: {kind: 'extrude', plane: 'plan', extent: 0.4, outline: [{key:1,u:0,v:0,smooth:false},{key:2,u:1,v:0,smooth:false},{key:3,u:1,v:1,smooth:false},{key:4,u:0,v:1,smooth:false}]},scale:[1,1,1],nextKey:5},materialId:'plaster-warm',castShadow:true,receiveShadow:true});
+		const item = {id:'11111111-1111-4111-8111-111111111111',name:payload.name,kind:'form' as const,formatVersion:1,contentId:`sha256-${'a'.repeat(64)}`,createdAt:'2026-10-31T12:00:00Z'};
+		vi.spyOn(formLibrary, 'createFormLibraryClient').mockReturnValue({list:vi.fn(async()=>[item]),read:vi.fn(async()=>({payload,contentId:item.contentId})),save:vi.fn(),remove:vi.fn()});
+		const first = composeSpies().session;
+		const second = composeSpies().session;
+		for (const session of [first, second]) {
+			let model: ReturnType<ScenePlacementSession['armedModel']> = null;
+			session.armedModel = () => model;
+			let copy: ReturnType<ScenePlacementSession['armedFormCopy']> = null;
+			session.setArmedModel = (next) => { model = next; copy = null; };
+			session.armedFormCopy = () => copy;
+			session.setArmedFormCopy = (next) => { copy = next; model = null; };
+		}
+		let evaluation = EVALUATION;
+		const { services } = servicesFor(first, BOX_ID, SNAPSHOT, 'place-object');
+		services.stage.evaluation = () => evaluation;
+		publishSceneSurface(SNAPSHOT, { reading: sceneReadingKey(evaluation), session: first });
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		const component = mount(SceneTransformInstrument, { target, props: { services } });
+		cleanup = () => unmount(component);
+		await tick();
+		const chooser = target.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
+		chooser.value = 'catalogue:paris-salon-chair';
+		chooser.dispatchEvent(new Event('change', { bubbles: true }));
+		await vi.waitFor(() => expect(first.armedModel()?.definition.creationDefaults.kind).toBe('model'));
+		expect(peekArmedModel('project-compose')?.definition).toEqual(first.armedModel()?.definition);
+		evaluation = { ...EVALUATION, settledReading: 'plan' } as unknown as ViewportEvaluation;
+		publishSceneSurface(SNAPSHOT, { reading: sceneReadingKey(evaluation), session: second });
+		await vi.waitFor(() => expect(second.armedModel()?.definition).toEqual(first.armedModel()?.definition));
+		expect(chooser.value).toBe('catalogue:paris-salon-chair');
+		expect(target.textContent).toContain('is ready: click its floor position');
+		buttonNamed(target, 'My Objects').click();
+		await vi.waitFor(() => expect(target.querySelector('[data-my-objects-insert]')).not.toBeNull());
+		target.querySelector<HTMLButtonElement>('[data-my-objects-insert]')!.click();
+		await vi.waitFor(() => expect(second.armedFormCopy()?.item.name).toBe('Saved plinth'));
+		expect(second.armedModel()).toBeNull();
+		expect(peekArmedModel('project-compose')).toBeNull();
+	});
+
+	it.each(['unmount', 'primitive'] as const)('does not restore a catalogue arm after %s replaces an in-flight choice', async (replacement) => {
+		const definition = await objectDefinitions.catalogueModelDefinition('paris-salon-chair');
+		let resolveDefinition!: (value: typeof definition) => void;
+		vi.spyOn(objectDefinitions, 'catalogueModelDefinition').mockImplementation(() => new Promise((resolve) => { resolveDefinition = resolve; }));
+		const session = composeSpies().session;
+		let armed: ReturnType<ScenePlacementSession['armedModel']> = null;
+		session.armedModel = () => armed;
+		session.setArmedModel = (next) => { armed = next; };
+		const { services } = servicesFor(session, BOX_ID, MODEL_SNAPSHOT, 'place-object');
+		publishSceneSurface(MODEL_SNAPSHOT, { reading: sceneReadingKey(EVALUATION), session });
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		const component = mount(SceneTransformInstrument, { target, props: { services } });
+		cleanup = () => unmount(component);
+		await tick();
+		const chooser = target.querySelector<HTMLSelectElement>('[aria-label="Place object"]')!;
+		chooser.value = 'catalogue:paris-salon-chair';
+		chooser.dispatchEvent(new Event('change', { bubbles: true }));
+		if (replacement === 'unmount') {
+			await unmount(component);
+			cleanup = null;
+		} else {
+			chooser.value = 'native:box';
+			chooser.dispatchEvent(new Event('change', { bubbles: true }));
+		}
+		resolveDefinition(definition);
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(armed).toBeNull();
+		expect(peekArmedModel('project-compose')).toBeNull();
+	});
+
 	it('offers no Resize, Duplicate or Scale fact for a light with no verified contact', async () => {
 		const { target } = await mountCompose(LIGHT_ID);
 		expect(buttonNamed(target, 'Resize…').disabled).toBe(true);

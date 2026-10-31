@@ -19,9 +19,11 @@
 	import type { StageAdapterServices } from '../../stage/stage-adapter-host';
 	import { stageEnvelope } from '../../stage/unit-stage-source';
 	import { draftingSnapIncrementMeters } from '../../stage/stage-drafting';
-	import { choosePrimitive, peekArmedModel } from './import/definitions';
+	import { choosePrimitive, clearArmedModel, rememberArmedModel, peekArmedModel } from './import/definitions';
 	import MyObjectsSectionLazy from './library/MyObjectsSectionLazy.svelte';
 	import {
+		admittedCatalogueModelAssets,
+		catalogueModelDefinition,
 		NATIVE_PLACEMENT_PRIMITIVES,
 		type NativePlacementPrimitive
 	} from '../../scene/object-definition-policy';
@@ -50,6 +52,9 @@
 	/** The entity the active Resize proposal was opened for, never a live guess. */
 	let composeSubjectId = $state<string | null>(null);
 	let primitive = $state<NativePlacementPrimitive>('box');
+	let placementChoice = $state('native:box');
+	let catalogueArmRequest = 0;
+	const catalogueModels = admittedCatalogueModelAssets();
 	let candidate = $state<SceneCandidate | null>(null);
 	let message = $state('');
 
@@ -202,7 +207,17 @@
 					const pending = peekArmedModel(snapshot.acceptedRevision.projectId);
 					if (pending !== null) session.setArmedModel(pending);
 				}
-				armedModelPresent = session.armedModel() !== null;
+				const armedModel = session.armedModel();
+				armedModelPresent = armedModel !== null;
+				if (armedModel?.definition.creationDefaults.kind === 'model') {
+					const assetId = armedModel.definition.creationDefaults.assetId;
+					if (catalogueModels.some((asset) => asset.id === assetId)) {
+						placementChoice = `catalogue:${assetId}`;
+					}
+				} else if (armedModel === null) {
+					primitive = session.placePrimitive();
+					placementChoice = `native:${primitive}`;
+				}
 			} else {
 				armedModelPresent = false;
 			}
@@ -456,6 +471,7 @@
 				message = `Placed an editable copy of “${copyArmed.item.name}”${snapNote}.`;
 			} else if (modelArmed) {
 				armedModelPresent = false;
+				placementChoice = `native:${primitive}`;
 				message = `Placed the approved model${snapNote}.`;
 			} else {
 				message = `Placed one ${primitive}${snapNote}.`;
@@ -463,6 +479,55 @@
 			return;
 		}
 		applyOutcome(outcome);
+	}
+
+	/** Arm one verified built-in catalogue model through the same model placer. */
+	async function armCatalogueModel(assetId: string, request: number): Promise<void> {
+		const projectId = services.stage.snapshot().acceptedRevision.projectId;
+		const definition = await catalogueModelDefinition(assetId);
+		if (
+			request !== catalogueArmRequest || placementChoice !== `catalogue:${assetId}` ||
+			services.stage.session?.task?.()?.kind !== 'place-object' ||
+			services.stage.snapshot().acceptedRevision.projectId !== projectId
+		) return;
+		if (definition === null || definition.creationDefaults.kind !== 'model') {
+			message = 'That catalogue model has no verified floor placement definition.';
+			return;
+		}
+		const current = ensureSession();
+		if (current === null) return;
+		const model = { definition, resource: null };
+		// The pending arm survives reading/session replacement until Place commits
+		// or an explicit primitive replaces it, just as an approved creator model does.
+		rememberArmedModel(projectId, model);
+		current.setArmedModel(model);
+		armedFormCopy = null;
+		readyMessage = null;
+		armedModelPresent = true;
+		candidate = null;
+		message = `${definition.creationDefaults.name} is ready: click its floor position, or enter X/Z and Place.`;
+	}
+
+	function choosePlacementChoice(value: string): void {
+		const request = ++catalogueArmRequest;
+		placementChoice = value;
+		if (value.startsWith('catalogue:')) {
+			void armCatalogueModel(value.slice('catalogue:'.length), request);
+			return;
+		}
+		const selectedPrimitive = value.slice('native:'.length) as NativePlacementPrimitive;
+		primitive = selectedPrimitive;
+		choosePrimitive(
+			services.stage.snapshot().acceptedRevision.projectId,
+			session,
+			selectedPrimitive
+		);
+		const liveCopy = session?.armedFormCopy() ?? null;
+		if (liveCopy === null && armedFormCopy !== null && message === readyMessage) {
+			message = 'The saved copy is no longer armed; the primitive replaces it.';
+			readyMessage = null;
+		}
+		armedFormCopy = liveCopy;
 	}
 
 	/**
@@ -475,6 +540,9 @@
 	function armFormCopy(copy: ArmedFormCopy): boolean {
 		const current = ensureSession();
 		if (current === null) return false;
+		catalogueArmRequest += 1;
+		placementChoice = `native:${primitive}`;
+		clearArmedModel(services.stage.snapshot().acceptedRevision.projectId);
 		current.setArmedFormCopy(copy);
 		armedFormCopy = copy;
 		armedModelPresent = false;
@@ -563,6 +631,7 @@
 	// release cannot live in an effect cleanup. The identity-checked retirement
 	// cannot delete a replacement published for a newer reading.
 	onDestroy(() => {
+		catalogueArmRequest += 1;
 		session?.setPointerOutcomeListener?.(null);
 		session?.cancel();
 		if (surface !== null && surfaceSnapshot !== null) {
@@ -623,26 +692,22 @@
 			<label>
 				<span>Place</span>
 				<select
-					value={primitive}
-					onchange={(event) => {
-						primitive = event.currentTarget.value as NativePlacementPrimitive;
-						choosePrimitive(
-							services.stage.snapshot().acceptedRevision.projectId,
-							session,
-							primitive
-						);
-						// Choosing a primitive is the explicit replacement of an armed copy.
-						const liveCopy = session?.armedFormCopy() ?? null;
-						if (liveCopy === null && armedFormCopy !== null && message === readyMessage) {
-							message = 'The saved copy is no longer armed; the primitive replaces it.';
-							readyMessage = null;
-						}
-						armedFormCopy = liveCopy;
-					}}
+						aria-label="Place object"
+						value={placementChoice}
+						onchange={(event) => choosePlacementChoice(event.currentTarget.value)}
 				>
-					{#each NATIVE_PLACEMENT_PRIMITIVES as option (option)}
-						<option value={option}>{option}</option>
-					{/each}
+						<optgroup label="Native objects">
+							{#each NATIVE_PLACEMENT_PRIMITIVES as option (option)}
+								<option value={`native:${option}`}>{option}</option>
+							{/each}
+						</optgroup>
+						{#if catalogueModels.length > 0}
+							<optgroup label="Verified catalogue models">
+								{#each catalogueModels as asset (asset.id)}
+									<option value={`catalogue:${asset.id}`}>{asset.name}</option>
+								{/each}
+							</optgroup>
+						{/if}
 				</select>
 			</label>
 			<label>

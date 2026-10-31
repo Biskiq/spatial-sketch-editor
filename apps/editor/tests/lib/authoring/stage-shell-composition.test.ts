@@ -148,16 +148,18 @@ describe('Stage shell composition', () => {
 				(specifier) => specifier === 'three' || specifier.startsWith('three/')
 			)
 		);
-		expect(threeImporters).toEqual([
+		expect(threeImporters.sort()).toEqual([
 			'apps/editor/src/lib/authoring/stage/shell/stage-grid-scene.ts',
 			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/StagePrimitiveGhost.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageGrid.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/StageFormGhost.svelte',
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
 			'apps/editor/src/lib/authoring/stage/paper-scene.ts',
 			'apps/editor/src/lib/authoring/stage/paper-marks.ts',
 			'apps/editor/src/lib/authoring/stage/paper-fill-geometry.ts'
-		]);
+		].sort());
 
 		// The pose math lives in exactly one place: the realizer copies the
 		// evaluation's own matrices instead of composing its own camera.

@@ -306,6 +306,8 @@ export type StageGhostMesh = {
 	readonly id: string;
 	readonly center: Vec3;
 	readonly yaw: number;
+	/** A model proxy is deliberately quieter; a refused candidate uses refusal ink. */
+	readonly treatment?: 'subject' | 'proxy' | 'refused';
 	readonly shape:
 		| { readonly kind: 'box'; readonly size: Vec3 }
 		| { readonly kind: 'cylinder'; readonly radius: number; readonly height: number }

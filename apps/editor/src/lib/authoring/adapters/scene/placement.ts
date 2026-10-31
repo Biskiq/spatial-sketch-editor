@@ -59,6 +59,7 @@ import {
 } from '$lib/authoring/stage/stage-drafting';
 
 import {
+	catalogueModelContactMinY,
 	nativePlacementContactMinY,
 	nativePlacementDefinition,
 	type NativePlacementPrimitive
@@ -141,6 +142,10 @@ export type SceneCandidate = {
 	readonly snappedStep: number | null;
 	/** A creator model's confirmed footprint, so its ghost is its own extent. */
 	readonly footprint?: { readonly width: number; readonly depth: number };
+	/** Approved model-local floor contact used to seat a footprint proxy ghost. */
+	readonly modelContactMinY?: number;
+	/** The creator model resource key for the candidate-only Plan footprint. */
+	readonly modelAssetId?: string;
 	/** A My Objects copy's authored source, so the ghost is its own body. */
 	readonly form?: SceneFormSource;
 };
@@ -481,7 +486,7 @@ export function sceneModelContactMinY(
 			return resource.model.placement.contactMinY;
 		}
 	}
-	return null;
+	return catalogueModelContactMinY(entity.assetId);
 }
 
 /**
@@ -613,6 +618,7 @@ export function createSceneSession(input: {
 		// what acceptance will install, so preview and commit cannot disagree.
 		const next = result.scene.entities.find((entry) => entry.id === result.entityId);
 		if (next === undefined) return { kind: 'refused', code: 'missing-target', message: 'The candidate entity vanished.' };
+		const modelContactMinY = next.kind === 'model' ? contactOf(next) : null;
 		return {
 			kind: 'candidate',
 			candidate: {
@@ -629,7 +635,8 @@ export function createSceneSession(input: {
 				worldXZ: [next.position[0], next.position[2]],
 				yaw: next.rotation[1],
 				scale: scaleOf(next),
-				snappedStep: step
+				snappedStep: step,
+				...(modelContactMinY === null ? {} : { modelContactMinY })
 			}
 		};
 	}
@@ -902,7 +909,11 @@ export function createSceneSession(input: {
 			yaw: 0,
 			scale: 1,
 			snappedStep: step,
-			footprint: footprintOf(model.definition)
+			footprint: footprintOf(model.definition),
+			modelContactMinY: model.definition.contactMinY,
+			...(model.definition.creationDefaults.kind === 'model'
+				? { modelAssetId: model.definition.creationDefaults.assetId }
+				: {})
 		};
 		candidate = next;
 		candidateModel = model;
@@ -1582,7 +1593,10 @@ export function sceneSessionFromServices(input: {
 			projectId: snapshot.acceptedRevision.projectId,
 			contentRevision: stageUnitRevision(snapshot, 'scene'),
 			source,
-			contactMinYFor: (entity) => (entity.kind === 'model' ? modelContacts.get(entity.assetId) ?? null : null),
+			contactMinYFor: (entity) =>
+				entity.kind === 'model'
+					? modelContacts.get(entity.assetId) ?? catalogueModelContactMinY(entity.assetId)
+					: null,
 			compileGeneration: snapshot.compileGeneration,
 			evaluationId: input.evaluationId,
 			currentEvaluationId: () => input.services.stage.evaluationId()
