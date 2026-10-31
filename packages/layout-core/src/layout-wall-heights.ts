@@ -9,20 +9,21 @@
  * topY    = floor.elevation + wall.height
  * ```
  *
- * One rule set, consumed by every wall-first surface — the codec's current-format
- * branch, every authoring planner's final gate (through
+ * Finiteness and positivity are consumed by every wall-first surface — the
+ * codec's current-format branch, every authoring planner's final gate (through
  * `validateWallFirstLayoutDocument`), the Opening-fit validator and the compiler:
  *
  * ```text
  * Number.isFinite(wall.height) && wall.height > 0
  * ```
  *
- * **No global upper bound** (P23.6I). P23.6H capped a Wall at `floor.height`
- * because the Floor was the storey envelope; P23.6I removed the canonical Floor
- * scalar entirely, so the enclosure is defined by its Walls: a Wall may be shorter
- * or taller than its neighbours, adjacent Rooms may derive different ceilings, and
- * a Room's ceiling is the maximum of its boundary Wall heights. `floor.height` no
- * longer exists in the current schema, so there is nothing to clamp against.
+ * The separate `layout-geometry-limits` contract applies a 1,000 m global
+ * authored-dimension maximum at the canonical reader and precision planners.
+ * There is no Floor-relative or storey cap: the enclosure is defined by its Walls,
+ * a Wall may be shorter or taller than its neighbours, adjacent Rooms may derive
+ * different ceilings, and a Room's ceiling is the maximum of its boundary Wall
+ * heights. `floor.height` no longer exists in the current schema, so there is
+ * nothing to clamp against.
  *
  * Wall height is **not** topology: face extraction reads Junction connectivity +
  * Wall X/Z geometry + `role` only, so a height change never creates, retires,
@@ -63,8 +64,8 @@ export type WallHeightIssue = {
 };
 
 /**
- * Validate one Wall's authoritative height: finite and strictly positive, with no
- * upper bound.
+ * Validate one Wall's authoritative height for finiteness and positivity. The
+ * canonical geometry-envelope check applies the separate 1,000 m maximum.
  *
  * `path` is the caller's document path (the codec passes `$.walls[i].height`, the
  * document-level helper below derives it from document order).

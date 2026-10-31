@@ -102,3 +102,32 @@ or the numerical/ownership assertions above; tests and the HTTP journey own thos
 - [Live preview, 1280](./evidence/preview-1280.png)
 - [Live preview, 1180](./evidence/preview-1180.png)
 - [Live preview, 820 portrait](./evidence/preview-820.png)
+
+## PR #236 local follow-up
+
+The resumed PR keeps the measured 1,000 m envelope and the existing local-auth ownership model.
+Exact 1,000 m edits pass; edits just over the boundary refuse without changing source/history.
+Canonical reads and Stage admission refuse imported over-limit Wall spans, Wall heights and
+Opening measures before geometry compilation. Local database tests retain the stable legacy
+`google:<id>` owner and access to its existing project after credential enrollment/login.
+
+Authentication verification covers the 15-minute source and source-plus-username budgets, expired
+window reset, concurrent failures and mixed login/registration at the final source slot across two
+API app instances. Forwarded addresses are ignored by default and used only when the simulated
+local proxy peer matches configured `TRUST_PROXY` addresses. The independent review's P2 findings
+were fixed: mixed auth actions now share a source lock, the Wall-height contract matches the shared
+limit, and imported Wall height/Opening measure refusals have admission coverage. The follow-up
+review reported no remaining P0–P2 findings.
+
+Local verification for the resumed PR:
+
+- `npm test`: **255 files / 3,260 tests**, all passed.
+- `npm run test:arch`: **23 files / 194 tests**, all passed.
+- `npm run test:heavy`: **11 files / 138 tests**, all passed.
+- `DATABASE_URL=postgresql://biskiq:biskiq@localhost:5433/biskiq npm run test:api`:
+  **128 tests across 15 files**, all passed against local PostgreSQL.
+- Editor, API and all four shared-package checks passed; editor and API builds passed.
+- `git diff --check` passed. The force-updated PR branch contains no `.cloud-attachments` paths.
+
+No live service or provider integration was checked. The Render-specific proxy Blueprint entry was
+removed from this PR; proxy trust remains an optional generic API setting for local simulation.

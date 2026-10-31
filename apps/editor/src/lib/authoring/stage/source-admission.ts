@@ -59,7 +59,11 @@ import type { StageDomainRead, StageReadSnapshot } from './accepted-read';
 export type { StageDomainRead, StageReadSnapshot } from './accepted-read';
 import { attachUnitStageSource } from './unit-stage-source';
 
-export type AdmissionRefusalReason = 'invalid-json' | 'invalid-format' | 'project-mismatch';
+export type AdmissionRefusalReason =
+	| 'invalid-json'
+	| 'invalid-format'
+	| 'dimension-limit'
+	| 'project-mismatch';
 
 export type AdmissionOutcome =
 	| { readonly kind: 'admitted'; readonly snapshot: StageReadSnapshot }
@@ -224,7 +228,16 @@ async function admitSourceOnce(
 	// into a validating entry point and this validated half, so admission's own
 	// validation is not immediately repeated over the same bytes (D.1/H2).
 	const read = validateProjectEnvelope(input);
-	if (!read.success) return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(read.issues) };
+	if (!read.success) {
+		// A source refused only for unsupported dimensions is valid in every other
+		// respect. Keep that distinct from a format refusal so the host can show
+		// the canonical geometry message rather than "not the current format".
+		const reason =
+			read.issues.length > 0 && read.issues.every((issue) => issue.code === 'dimension_out_of_range')
+				? 'dimension-limit'
+				: 'invalid-format';
+		return { kind: 'refused', reason, issues: projectIssues(read.issues) };
+	}
 	// Cold form-heavy opens have two independently bounded reads: strict source
 	// validation, then runtime preparation. Give input/paint a task boundary
 	// between them rather than joining their CPU work into one long task.

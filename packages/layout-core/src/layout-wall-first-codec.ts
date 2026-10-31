@@ -49,6 +49,7 @@ import {
 } from './layout-identity';
 import type { LayoutDocumentIssue } from './layout-issue';
 import { LayoutDocumentValidationError } from './layout-issue';
+import { layoutDimensionLimitIssues } from './layout-geometry-limits';
 import type { LayoutVec2 } from './layout-coordinates';
 import type { LayoutObject } from './layout-wall-first-types';
 
@@ -173,6 +174,13 @@ export function validateWallFirstLayoutDocument(
 	const parsed = parseDocument(input, '$', issues);
 	if (!parsed || issues.length > 0) {
 		return { success: false, issues };
+	}
+	// The unsupported-dimension gate is part of the read contract: an imported
+	// source is refused here, before the compiler, Paper drawing or Camera ever
+	// samples it. The limit and its measurement live in layout-geometry-limits.
+	const limitIssues = layoutDimensionLimitIssues(parsed);
+	if (limitIssues.length > 0) {
+		return { success: false, issues: limitIssues };
 	}
 
 	let memoizedCanonicalJson: string | undefined;
@@ -562,8 +570,9 @@ function parseJunction(
 }
 
 /**
- * P23.6I — `height` is finite and strictly positive with **no Floor cap**: the
- * canonical Floor carries no vertical extent to clamp against.
+ * `height` is finite and strictly positive with no Floor-relative cap; the shared
+ * Layout geometry envelope applies its 1,000 m global maximum after decoding.
+ * The canonical Floor carries no vertical extent to clamp against.
  */
 function parseWall(
 	input: unknown,

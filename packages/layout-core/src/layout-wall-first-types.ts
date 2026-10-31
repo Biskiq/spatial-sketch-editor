@@ -58,9 +58,10 @@ export type LayoutObject = {
  *
  * P23.6H bumped the canonical format to `5` and P23.6I made it the **final**
  * Wall-defined vertical model: `LayoutWall.height` is the only authored vertical
- * Wall authority (finite, strictly positive, no storey cap), the canonical Floor
- * carries `id`/`name`/`elevation` only, and a Room ceiling is derived from its
- * boundary Wall heights.
+ * Wall authority, the canonical Floor carries `id`/`name`/`elevation` only, and a
+ * Room ceiling is derived from its boundary Wall heights. Heights have no
+ * Floor-relative cap; the shared 1,000 m Layout geometry envelope is enforced by
+ * the current reader and authoring planners.
  *
  * **T1.P02.S01 moved the canonical format to `6`: format 5 without the authored
  * Wall `role`.** A Wall's role is derived from face membership instead
@@ -173,11 +174,12 @@ export type LayoutWallCenterline =
  * topY    = floor.elevation + wall.height
  * ```
  *
- * It is finite, strictly positive, per physical Wall, shared by both sides of the
- * Wall, and **has no global upper bound** (P23.6I): a Wall may be shorter or
- * taller than its neighbours, and a Room's derived ceiling is the maximum of its
- * boundary Wall heights. Wall height is consumed by the canonical compiler,
- * bounds, mesh inputs and Opening fit — and is deliberately **not** part of Plan
+ * It is finite and strictly positive, per physical Wall, shared by both sides of
+ * the Wall, and uses the shared 1,000 m Layout geometry envelope. It has no
+ * Floor-relative cap: a Wall may be shorter or taller than its neighbours, and a
+ * Room's derived ceiling is the maximum of its boundary Wall heights. Wall
+ * height is consumed by the canonical compiler, bounds, mesh inputs and Opening
+ * fit — and is deliberately **not** part of Plan
  * face extraction, so a height change alone never alters Room topology.
  *
  * `centerline` is the authoritative P23.11 curve state: `'line'` for straight

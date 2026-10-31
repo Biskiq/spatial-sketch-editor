@@ -9,7 +9,7 @@
  * ```text
  * bottomY = floor.elevation
  * topY    = floor.elevation + wall.height
- * wall.height > 0        // finite, strictly positive, NO upper bound
+ * 0 < wall.height <= 1000 // finite, positive, shared Layout envelope; no Floor-relative cap
  * ```
  *
  * This suite pins what the slice exists for:
@@ -23,9 +23,9 @@
  * 3. **one compiler path** — compiled Wall vertical bounds/sections follow
  *    `wall.height`, and a Room's ceiling is the derived flat plane at
  *    `floor.elevation + max(boundary Wall heights)`;
- * 4. **one edit operation** — `planExactWallHeight` accepts any positive finite
- *    value, rejects an Opening-invalidating lowering (never clamps) and leaves
- *    Wall/Junction/Opening/Room identity and topology untouched.
+ * 4. **one edit operation** — `planExactWallHeight` accepts values inside the
+ *    shared 1,000 m envelope, rejects an Opening-invalidating lowering (never
+ *    clamps) and leaves Wall/Junction/Opening/Room identity and topology untouched.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -405,7 +405,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 	});
 });
 
-describe('P23.6I range and validation — positive, finite, unbounded', () => {
+describe('P23.6I range and validation — positive and finite, with the shared geometry envelope', () => {
 	it('reports every invalid Wall height in document order', () => {
 		const document = rectangleDocument({ wallHeight: 1 });
 		document.walls[1]!.height = 0;
@@ -447,10 +447,10 @@ describe('P23.6I range and validation — positive, finite, unbounded', () => {
  * P23.6I supersedes the P23.6H "standalone Walls share the Floor envelope" rule:
  * there is no Floor envelope any more. Nothing in `layout-wall-heights.ts` reads
  * Room membership, so a freestanding partition — referenced by no Room — has
- * exactly the same (unbounded) Wall rule as a Room-bounding one. These assertions
+ * exactly the same 1,000 m geometry envelope as a Room-bounding one. These assertions
  * replace the former cap pins.
  */
-describe('P23.6I standalone (non-room-bounding) Walls have the same unbounded rule', () => {
+describe('P23.6I standalone (non-room-bounding) Walls have the same geometry envelope', () => {
 	function standalonePartitionDocument(wallHeight: number, elevation = 0): LayoutDocumentWallFirst {
 		const document = rectangleDocument({ elevation });
 		return {
@@ -484,7 +484,7 @@ describe('P23.6I standalone (non-room-bounding) Walls have the same unbounded ru
 
 	it('does not depend on the Floor elevation or any Floor scalar', () => {
 		// The same Wall on an elevated Floor still admits the same heights: the
-		// reachable range is the Wall's own `0 < height`, full stop.
+		// bound is global to Layout dimensions, not relative to the Floor elevation.
 		const document = standalonePartitionDocument(1.2, 2);
 		const taller = planExactWallHeight(document, 'w1', 9);
 		if (taller.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(taller)}`);
@@ -497,7 +497,7 @@ describe('P23.6I standalone (non-room-bounding) Walls have the same unbounded ru
 });
 
 describe('P23.6H compiler — compiled Wall vertical extent follows wall.height', () => {
-	it('ends a Wall at floor.elevation + wall.height, on an unbounded scale', () => {
+	it('ends a Wall at floor.elevation + wall.height independently of Floor elevation', () => {
 		const document = rectangleDocument({ elevation: 2, wallHeight: 1.5 });
 		const compiled = compileWallFirstLayoutGeometry(document);
 		const wall = compiled.geometry.walls.find((candidate) => candidate.wallId === 'w1')!;

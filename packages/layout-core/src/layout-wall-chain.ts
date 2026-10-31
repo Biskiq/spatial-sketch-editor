@@ -52,6 +52,7 @@ import type { LayoutVec2 } from './layout-coordinates';
 import { p2311Measure } from './p2311-perf';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
+import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE } from './layout-geometry-limits';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import type { WallFirstAcceptanceCompile } from './layout-wall-first-precision';
 import {
@@ -158,6 +159,7 @@ export type WallChainRejectionCode =
 	| 'insufficient_chain'
 	| 'non_finite_point'
 	| 'zero_length_leg'
+	| 'dimension_out_of_range'
 	| 'collinear_overlap'
 	| 'self_intersecting_chain'
 	| 'noding_rejected'
@@ -471,7 +473,16 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		if (coincidesAsJunction(start.point, end.point)) {
 			return reject({ code: 'zero_length_leg', message: 'Chain legs must have non-zero length' });
 		}
+		// Refuse an oversized leg before noding, Room reconciliation or a compile
+		// samples it. 1,000 m is the measured supported span; see
+		// layout-geometry-limits.
+		if (exceedsLayoutDimension(Math.hypot(end.point[0] - start.point[0], end.point[1] - start.point[1]))) {
+			return reject({ code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE });
+		}
 		legEndpoints.push({ start, end });
+	}
+	if (exceedsLayoutDimension(height) || exceedsLayoutDimension(thickness)) {
+		return reject({ code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE });
 	}
 
 	// P23B.3a S6 (review correction) — the DECLARED host-Wall anchors are

@@ -26,6 +26,7 @@ import { countWork, p2311Measure } from './p2311-perf';
 import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
+import { exceedsLayoutDimension, LAYOUT_DIMENSION_LIMIT_MESSAGE } from './layout-geometry-limits';
 import {
 	serializeWallFirstLayoutDocument,
 	validateWallFirstLayoutDocument
@@ -39,6 +40,7 @@ import {
 	cowSetWallScalar,
 	cowUpdateObject,
 	ensureLayoutWorldIndex,
+	exceedsLayoutWallSpan,
 	getCowDocumentDelta,
 	hasAnySamplingTestObserver,
 	peekLayoutWorldIndex,
@@ -198,6 +200,8 @@ export type PrecisionRejection = {
 		| 'unknown_room'
 		| 'unknown_object'
 		| 'invalid_value'
+		/** R217 — a linear dimension or Wall span is outside the supported envelope. */
+		| 'dimension_out_of_range'
 		| 'invalid_endpoint'
 		| 'invalid_reference'
 		| 'unsupported_geometry'
@@ -504,6 +508,7 @@ export function planExactWallThickness(
 		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (!finitePositive(thickness)) return reject('invalid_value', 'Wall thickness must be finite and greater than zero', [wallId]);
+	if (exceedsLayoutDimension(thickness)) return reject('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, [wallId]);
 	if (wall.thickness === thickness) return reject('no_op', `Wall '${wallId}' already has that thickness`, [wallId]);
 
 	const candidate = cowSetWallScalar(document, wallId, { thickness }, worldIndex);
@@ -511,14 +516,14 @@ export function planExactWallThickness(
 }
 
 /**
- * Set a Wall's authoritative physical height (P23.6H, unbounded since P23.6I),
+ * Set a Wall's authoritative physical height (P23.6H),
  * preserving Wall, Junction, Opening and Room identity.
  *
  * Height is independent of X/Z topology: the Wall stays the same authored Wall
  * with the same `role` and the same Room participation; only its vertical extent
- * changes (`topY = floor.elevation + height`). There is **no upper bound** — the
- * canonical Floor has no storey scalar to cap against — so any finite positive
- * value is accepted, including values taller than neighbouring Walls. A Wall
+ * changes (`topY = floor.elevation + height`). The shared 1,000 m geometry
+ * envelope applies; there is no Floor-relative or storey-height cap, so a Wall
+ * may be shorter or taller than its neighbours within that envelope. A Wall
  * shortened below a hosted Opening's top still rejects atomically with the Opening
  * untouched (the canonical Opening validator owns that rule), and nothing is ever
  * clamped.
@@ -534,6 +539,7 @@ export function planExactWallHeight(
 		: document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (!finitePositive(height)) return reject('invalid_value', 'Wall height must be finite and greater than zero', [wallId]);
+	if (exceedsLayoutDimension(height)) return reject('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, [wallId]);
 	if (wall.height === height) return reject('no_op', `Wall '${wallId}' already has that height`, [wallId]);
 
 	const candidate = cowSetWallScalar(document, wallId, { height }, worldIndex);
@@ -2000,6 +2006,13 @@ function finalizeWallGeometryCandidate(options: {
 	createdWallIds?: readonly string[];
 }): PrecisionPlan {
 	const { baseline, candidate, operation, changedJunctionIds, changedWallIds } = options;
+
+	// One dimension gate for every geometry precision planner (length, junction
+	// move, angle and rigid move). It runs before the acceptance compile, so an
+	// oversized edit is refused without sampling, compiling or writing history.
+	if (exceedsLayoutWallSpan(candidate, [...changedWallIds, ...(options.createdWallIds ?? [])])) {
+		return reject('dimension_out_of_range', LAYOUT_DIMENSION_LIMIT_MESSAGE, [...changedWallIds]);
+	}
 
 	if (!hasAnyTestObserverInPrecision() && !options.createdWallIds?.length) {
 		const cowDelta = getCowDocumentDelta(candidate);

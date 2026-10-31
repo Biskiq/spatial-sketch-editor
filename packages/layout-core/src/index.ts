@@ -1,6 +1,7 @@
 export * from './layout-face-extraction';
 export * from './layout-geometry';
 export * from './layout-geometry-curve';
+export * from './layout-geometry-limits';
 export * from './layout-geometry-objects';
 export * from './layout-geometry-openings';
 export * from './layout-geometry-queries';

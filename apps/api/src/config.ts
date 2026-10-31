@@ -4,6 +4,11 @@ export type ApiConfig = {
 	editorOrigin?: string;
 	apiOrigin?: string;
 	sessionKey?: Buffer;
+	/**
+	 * Comma-separated trusted proxy addresses/CIDRs (or a proxy-addr preset).
+	 * Unset means forwarded headers are ignored; see `createApp`'s trustProxy.
+	 */
+	trustProxy?: string;
 	r2Endpoint: string;
 	r2Bucket: string;
 	/**
@@ -129,6 +134,11 @@ function readSessionKey(value: string | undefined): Buffer {
 	return key;
 }
 
+function readTrustProxy(value: string | undefined): string | undefined {
+	const proxies = value?.split(',').map((entry) => entry.trim()).filter(Boolean);
+	return proxies && proxies.length > 0 ? proxies.join(',') : undefined;
+}
+
 function readObjectNamespace(value: string | undefined): string {
 	const namespace = readRequired(value, 'R2_OBJECT_NAMESPACE');
 	if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(namespace)) {
@@ -150,6 +160,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 		editorOrigin,
 		...(apiOrigin ? { apiOrigin } : {}),
 		sessionKey: readSessionKey(env.SESSION_KEY),
+		trustProxy: readTrustProxy(env.TRUST_PROXY),
 		r2Endpoint: readR2Endpoint(env.R2_ENDPOINT),
 		r2Bucket: readRequired(env.R2_BUCKET, 'R2_BUCKET'),
 		r2ObjectNamespace: readObjectNamespace(env.R2_OBJECT_NAMESPACE),

@@ -56,7 +56,7 @@ export type BootState =
 	| {
 			readonly status: 'refused';
 			readonly projectId: string;
-			readonly reason: 'invalid-json' | 'invalid-format' | 'project-mismatch';
+			readonly reason: 'invalid-json' | 'invalid-format' | 'dimension-limit' | 'project-mismatch';
 			readonly issues: readonly ProjectIssue[];
 	  }
 	| { readonly status: 'missing'; readonly projectId: string }

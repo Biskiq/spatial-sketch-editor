@@ -19,6 +19,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
+	LAYOUT_DIMENSION_LIMIT_MESSAGE,
+	MAX_LAYOUT_DIMENSION_METERS,
 	planCreateWallFirstOpening,
 	planExactJunctionMove,
 	planWallChain,
@@ -465,6 +467,48 @@ describe('T1.P01.S05 — typed Wall manipulation', () => {
 		expect(after.junctions.map((junction) => `${junction.id}:${junction.point.join(',')}`)).toEqual(junctionsBefore);
 		expect(wallPoints(after, mounted.wallId).end[1]).toBeCloseTo(before.end[1], 12);
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+	});
+
+	it('accepts the exact typed bound and refuses larger geometry without source or history', async () => {
+		const mounted = await mount();
+		const instrument = typedInstrument(mounted);
+		const before = acceptedLayout(mounted.facade);
+
+		instrument.setFixedEndpoint('start');
+		instrument.edit('length', String(MAX_LAYOUT_DIMENSION_METERS));
+		expect(await instrument.commit('length')).toEqual({ kind: 'accepted' });
+		const atLimit = acceptedLayout(mounted.facade);
+		const pointsAtLimit = wallPoints(atLimit, mounted.wallId);
+		expect(
+			Math.hypot(
+				pointsAtLimit.end[0] - pointsAtLimit.start[0],
+				pointsAtLimit.end[1] - pointsAtLimit.start[1]
+			)
+		).toBeCloseTo(MAX_LAYOUT_DIMENSION_METERS, 6);
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(acceptedLayout(mounted.facade)).toEqual(before);
+		const historyAfterUndo = mounted.host.history();
+		expect(historyAfterUndo.position).toBe(0);
+
+		instrument.edit('length', String(MAX_LAYOUT_DIMENSION_METERS + 1));
+		expect(await instrument.commit('length')).toMatchObject({
+			kind: 'refused',
+			code: 'dimension_out_of_range',
+			message: LAYOUT_DIMENSION_LIMIT_MESSAGE
+		});
+
+		// The Card's disclosed Junction coordinates are the same envelope: a typed
+		// X that would stretch the Wall past the limit is refused by the same
+		// shared-Junction planner.
+		instrument.edit('endX', String(MAX_LAYOUT_DIMENSION_METERS + 100));
+		expect(await instrument.commit('endX')).toMatchObject({
+			kind: 'refused',
+			code: 'dimension_out_of_range',
+			message: LAYOUT_DIMENSION_LIMIT_MESSAGE
+		});
+
+		expect(acceptedLayout(mounted.facade)).toEqual(before);
+		expect(mounted.host.history()).toEqual(historyAfterUndo);
 	});
 });
 

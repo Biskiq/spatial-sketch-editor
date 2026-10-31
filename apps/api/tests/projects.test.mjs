@@ -7,9 +7,12 @@
  * `npm run test:api` with a reachable `DATABASE_URL`.
  */
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
+
+import { LAYOUT_DIMENSION_LIMIT_MESSAGE } from '@portfolio/layout-core';
+import { canonicalUnitJson } from '@portfolio/project-model/units';
 
 import { createApp } from '../dist/app.js';
 import { runMigrations } from '../dist/migrate.js';
@@ -36,6 +39,41 @@ function nextProjectId() {
 function track(projectId) {
 	createdProjects.push(projectId);
 	return projectId;
+}
+
+/** A syntactically valid F.2 envelope whose only invalid input is a 2 km Wall. */
+function oversizedProjectDocument(projectId) {
+	const document = projectDocument('Oversized project', { id: projectId });
+	const layout = {
+		units: 'meters',
+		formatVersion: 6,
+		floor: { id: 'floor', name: 'Floor', elevation: 0 },
+		junctions: [
+			{ id: 'j-1', point: [0, 0] },
+			{ id: 'j-2', point: [2000, 0] }
+		],
+		walls: [
+			{
+				id: 'w-1',
+				startJunctionId: 'j-1',
+				endJunctionId: 'j-2',
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			}
+		],
+		rooms: [],
+		openings: [],
+		objects: []
+	};
+	document.units.layout = {
+		header: {
+			...document.units.layout.header,
+			contentRevision: `sha256-${createHash('sha256').update(canonicalUnitJson(layout)).digest('hex')}`
+		},
+		data: layout
+	};
+	return document;
 }
 
 async function cleanupProject(projectId) {
@@ -213,6 +251,32 @@ test('project body parsing keeps malformed, invalid, mismatched and oversized re
 		projectId
 	]);
 	assert.equal(count.rows[0].count, 0);
+});
+
+test('a stored project that fails only the dimension envelope is a typed refusal, not a server error', async () => {
+	const owner = 'google:s02-owner-1';
+	const cookie = await sessionCookie(app, owner);
+	const projectId = track(nextProjectId());
+	const document = oversizedProjectDocument(projectId);
+	await pool.query('INSERT INTO projects (id, owner_id, name, latest_version) VALUES ($1, $2, $3, 1)', [
+		projectId,
+		owner,
+		document.name
+	]);
+	await pool.query(
+		"INSERT INTO project_versions (project_id, version, document, source_format) VALUES ($1, 1, $2::jsonb, 'unit-envelope-v1')",
+		[projectId, JSON.stringify(document)]
+	);
+
+	const loaded = await app.inject({
+		method: 'GET',
+		url: `/projects/${projectId}`,
+		headers: { cookie }
+	});
+	assert.equal(loaded.statusCode, 422, JSON.stringify(loaded.json()));
+	assert.deepEqual(loaded.json(), {
+		error: { code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE }
+	});
 });
 
 test('asset routes require an F.2 project version, not merely an owned row', async () => {

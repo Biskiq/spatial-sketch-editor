@@ -21,6 +21,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Fas
 		apiOrigin: config.apiOrigin,
 		editorOrigin: config.editorOrigin,
 		sessionKey: config.sessionKey,
+		trustProxy: config.trustProxy,
 		objectStore: options.objectStore ?? createR2ObjectStore(config),
 		objectNamespace: config.r2ObjectNamespace,
 		...(config.testAuthSecret ? { testAuth: { secret: config.testAuthSecret } } : {})

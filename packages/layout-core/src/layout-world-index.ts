@@ -48,6 +48,7 @@ import {
 	type WallSamplingDerivation
 } from './layout-wall-centerline';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import { exceedsLayoutDimension, layoutWallSpanMeters } from './layout-geometry-limits';
 import type {
 	LayoutDerivedWallRole,
 	LayoutDocumentWallFirst,
@@ -360,6 +361,70 @@ export function lookupIndexedObject(
 		if (cand && cand.id === objectId) return cand;
 	}
 	return document.objects.find((entry) => entry.id === objectId);
+}
+
+/**
+ * True when any named Wall's authored span is outside the supported envelope.
+ *
+ * Uses the indexed Wall/Junction lookups so a COW candidate answers from its
+ * persistent roots: a precision plan must not materialize a whole collection
+ * just to check one changed Wall (T1.P02.S06's bounded container work).
+ */
+export function exceedsLayoutWallSpan(
+	document: LayoutDocumentWallFirst,
+	wallIds: readonly string[]
+): boolean {
+	for (const wallId of wallIds) {
+		const wall = lookupIndexedWall(document, wallId);
+		if (wall === undefined) continue;
+		const start = lookupIndexedJunction(document, wall.startJunctionId);
+		const end = lookupIndexedJunction(document, wall.endJunctionId);
+		if (start === undefined || end === undefined) continue;
+		const pointById = new Map([
+			[start.id, start.point],
+			[end.id, end.point]
+		]);
+		const span = layoutWallSpanMeters(wall, pointById);
+		if (span !== null && exceedsLayoutDimension(span)) return true;
+	}
+	return false;
+}
+
+/**
+ * True when moving one Junction to `point` would stretch any incident Wall
+ * outside the supported envelope. Reads the incident Walls through the index so
+ * an uncommitted Card edit never materializes a collection.
+ */
+export function exceedsLayoutWallSpanAfterJunctionMove(
+	document: LayoutDocumentWallFirst,
+	junctionId: string,
+	point: LayoutVec2
+): boolean {
+	const walls =
+		lookupIncidentWallsOrdered(document, [junctionId]) ??
+		document.walls.filter(
+			(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId
+		);
+	for (const wall of walls) {
+		const startPoint =
+			wall.startJunctionId === junctionId
+				? point
+				: lookupIndexedJunction(document, wall.startJunctionId)?.point;
+		const endPoint =
+			wall.endJunctionId === junctionId
+				? point
+				: lookupIndexedJunction(document, wall.endJunctionId)?.point;
+		if (startPoint === undefined || endPoint === undefined) continue;
+		const span = layoutWallSpanMeters(
+			wall,
+			new Map([
+				[wall.startJunctionId, startPoint],
+				[wall.endJunctionId, endPoint]
+			])
+		);
+		if (span !== null && exceedsLayoutDimension(span)) return true;
+	}
+	return false;
 }
 
 /**
