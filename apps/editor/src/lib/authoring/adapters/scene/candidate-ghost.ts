@@ -15,7 +15,7 @@ import { NATIVE_PLACEMENT_DIMENSIONS, type NativePlacementPrimitive } from '../.
 import type { SceneCandidate } from './placement';
 
 export type CandidateGhostOptions = {
-	/** Only approved creator-model metadata may supply a proxy extent. */
+	/** Only admitted creator or verified catalogue metadata may supply a proxy extent. */
 	readonly modelFootprint?: { readonly width: number; readonly depth: number } | null;
 	readonly treatment?: StageGhostMesh['treatment'];
 };

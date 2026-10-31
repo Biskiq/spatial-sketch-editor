@@ -59,7 +59,9 @@ export const assets: Asset[] = [
     attribution:
       'Chair by shuvalov.di, licensed under CC BY-SA 4.0. Modified for the museum: floor-centered pivot, geometry optimization, WebP textures, and Meshopt compression.',
     placementSurface: 'floor',
-    footprint: { width: 0.64, depth: 0.54 },
+    // Corrected from the retained r186 loader bounds (defaultScale applied once).
+    // Rounded outward to the nearest millimeter so the occupied proxy contains the mesh.
+    footprint: { width: 0.643, depth: 0.537 },
     defaultScale: 0.92,
     castShadow: true,
     receiveShadow: false,

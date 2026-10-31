@@ -17,7 +17,7 @@ Planning label C06. **Class:** Core regression, plus integration of existing foo
 
 ## 1. Outcome
 
-Every placed subject can be placed, dragged, turned and sized directly, with a ghost that follows the pointer and matches the accepted result in both readings. This slice must show that manipulation works, not only that ghosts render.
+Every supported upright subject can be placed, dragged, turned and sized directly, with a ghost that follows the pointer and matches the accepted result in both readings. Tilted forms retain the landed planner refusals described below. This slice must show that manipulation works, not only that ghosts render.
 
 ## 2. Dependencies
 
@@ -65,7 +65,12 @@ Every placed subject can be placed, dragged, turned and sized directly, with a g
 
 ## 4. Test cases
 
-- Move, Turn, Size and Place for a primitive, a catalogue object, an approved model and a native form, including concave and tilted forms.
+- Move, Turn, Size and Place for a primitive, a catalogue object, an approved model and upright native forms, including concave forms.
+- **Owner ruling, 2026-10-31:** keep the landed planner boundary. The full manipulation
+  journey applies to upright rectangular and concave forms. The tilted fixture remains a
+  refusal case: Move, Turn, Place and Duplicate refuse without an authored change or history
+  entry. S17 does not add non-upright planner support or claim agreement for the tilted 3D
+  Size ghost, whose pitch/roll representation remains unresolved.
 - Candidate footprint equals accepted footprint.
 - A model with no approved bounds draws no shape.
 - A ghost never intercepts a pick.
@@ -77,6 +82,9 @@ Every placed subject can be placed, dragged, turned and sized directly, with a g
 
 - For each subject type, in Plan and in 3D: place it, drag it by its body, turn it, size it, duplicate it and undo each step, watching the ghost follow the pointer throughout.
 - Turn and Size must be driven live; the audit's synthetic check was inconclusive.
+- The tilted fixture follows the owner-ratified refusal criterion above in both readings,
+  rather than the successful manipulation sequence. This is an explicit criterion revision,
+  not a claim that tilted manipulation has shipped.
 
 ## 6. Exclusions and stop conditions
 

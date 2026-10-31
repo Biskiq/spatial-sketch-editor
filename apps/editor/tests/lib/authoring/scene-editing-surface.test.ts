@@ -35,6 +35,7 @@ import {
 	localContactMinY,
 	publishSceneSurface,
 	sceneEntityReference,
+	sceneModelContactMinY,
 	sceneReadingKey,
 	sceneSurfaceFor,
 	type ArmedFormCopy,
@@ -48,6 +49,7 @@ import { formCardController } from '$lib/authoring/adapters/scene/form-card';
 import { sceneObjectCardController } from '$lib/authoring/adapters/scene/object-card';
 import { sceneObjectMarkDescriptors } from '$lib/authoring/adapters/scene/object-marks';
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
+import { catalogueModelDefinition } from '$lib/authoring/scene/object-definition-policy';
 import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { canonicalFormLibraryPayload } from '@portfolio/project-model/library';
@@ -176,6 +178,22 @@ async function sessionFor(
 }
 
 describe('Scene placement session', () => {
+	it('uses only an admitted catalogue model contact for its floor-aware commands', async () => {
+		const { project, ids } = await buildS17MixedProject();
+		const admitted = await admitSource(project, {
+			sessionEpoch: 's17-catalogue-contact',
+			acceptedRevision: project.acceptedRevision
+		});
+		if (admitted.kind !== 'admitted') throw new Error('the S17 fixture was refused');
+		const scene = stageScene(admitted.snapshot);
+		const catalogue = scene.entities.find((entity) => entity.id === ids.catalogueModelId)!;
+		const excluded = scene.entities.find((entity) => entity.id === ids.unapprovedModelId)!;
+		expect(sceneModelContactMinY(project, catalogue)).toBeCloseTo(0, 10);
+		expect(localContactMinY(catalogue, sceneModelContactMinY(project, catalogue))).not.toBeNull();
+		expect(sceneModelContactMinY(project, excluded)).toBeNull();
+		expect(localContactMinY(excluded, sceneModelContactMinY(project, excluded))).toBeNull();
+	});
+
 	it('arms and disarms without touching the document or history', async () => {
 		const { session, port } = await sessionFor([boxEntity()]);
 		expect(session.armed()).toBe('select');
@@ -1028,6 +1046,79 @@ describe('Scene adapter registration', () => {
 		}
 		throw new Error('the fixture did not settle');
 	}
+
+	it('places a verified catalogue model through the persistent Place planner', async () => {
+		const { project, ids } = await buildS17MixedProject();
+		const { facade, host } = await mounted(project);
+		mountStageAdapter(facade, host, createAdapter);
+		try {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const opened = facade.openContributedTask('scene-place', 'scene');
+			expect(opened.kind).toBe('opened');
+			const evaluation = facade.evaluation();
+			if (evaluation === null) throw new Error('the catalogue placement fixture has no evaluation');
+			const surface = sceneSurfaceFor(facade.snapshot(), evaluation);
+			if (surface === null) throw new Error('Place did not publish its Scene surface');
+			const definition = await catalogueModelDefinition('paris-salon-chair');
+			if (definition === null) throw new Error('the verified catalogue definition was refused');
+			const model: ArmedModelPlacement = { definition, resource: null };
+			surface.session.setArmedModel(model);
+			expect(surface.session.beginPlaceModel(model).kind).toBe('idle');
+			const preview = surface.session.previewPlaceModel(model, 2.5, 1.25, 0);
+			expect(preview.kind).toBe('candidate');
+			if (preview.kind !== 'candidate') return;
+			expect(preview.candidate.footprint).toEqual({ width: 0.643, depth: 0.537 });
+			expect((await surface.session.commitPlace()).kind).toBe('committed');
+			await eventually(() => facade.snapshot().domain.scene.entities.some((entity) =>
+				entity.id !== ids.catalogueModelId && entity.kind === 'model' && entity.assetId === 'paris-salon-chair'
+			));
+			const placed = facade.snapshot().domain.scene.entities.find((entity) =>
+				entity.id !== ids.catalogueModelId && entity.kind === 'model' && entity.assetId === 'paris-salon-chair'
+			);
+			expect(placed?.kind === 'model' && placed.position[0]).toBeCloseTo(2.5, 8);
+		} finally {
+			facade.dispose();
+		}
+	});
+
+	it('publishes and accepts direct Move for a verified catalogue model', async () => {
+		const { project, ids } = await buildS17MixedProject();
+		const { facade, host, rendered } = await mounted(project);
+		facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, 2);
+		if (facade.camera.evaluate(RECT, 3).kind !== 'evaluated') throw new Error('Plan did not evaluate');
+		const model = stageScene(facade.snapshot()).entities.find((entity) => entity.id === ids.catalogueModelId)!;
+		const body = new Mesh(new BoxGeometry(0.643, 0.89758, 0.537), new MeshBasicMaterial());
+		body.position.set(model.position[0], 0.89758 / 2, model.position[2]);
+		const unregister = rendered.register(ids.catalogueModelId, body);
+		mountStageAdapter(facade, host, createAdapter);
+		try {
+			const snapshot = facade.snapshot();
+			const reference = sceneEntityReference(ids.catalogueModelId, snapshot.domain.unitRevisions.scene);
+			expect(facade.setSelection({ ordered: [{ reference }], primary: reference }).kind).toBe('selected');
+			expect(facade.selectionState().primary?.subject.id).toBe(ids.catalogueModelId);
+			const move = markOf(facade, 'scene-object-move');
+			const evaluationId = facade.evaluationId()!;
+			const target = cssOf(facade, [2.2, 0, 1.6]);
+			expect(facade.pointerIntent({ phase: 'down', css: move.anchor, evaluationId, handleId: move.id }).claimed).toBe(true);
+			const movedPreview = facade.pointerIntent({ phase: 'move', css: target, evaluationId });
+			expect(movedPreview.claimed).toBe(true);
+			const ghost = facade.ghosts()[0];
+			expect(ghost).toBeDefined();
+			expect(ghost!.center[0]).toBeCloseTo(2, 5);
+			facade.pointerIntent({ phase: 'up', css: target, evaluationId });
+			await eventually(() => {
+				const current = facade.snapshot().domain.scene.entities.find((entity) => entity.id === ids.catalogueModelId);
+				return current?.position[0] !== model.position[0];
+			});
+			const moved = facade.snapshot().domain.scene.entities.find((entity) => entity.id === ids.catalogueModelId)!;
+			expect(moved.position[0]).toBeCloseTo(2, 5);
+		} finally {
+			unregister();
+			body.geometry.dispose();
+			body.material.dispose();
+			facade.dispose();
+		}
+	});
 
 	it('claims a selected object body press in Plan and keeps the grab point under the pointer', async () => {
 		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);

@@ -18,8 +18,10 @@ import { assets, getAssetById } from '$lib/content/assets';
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import {
 	CATALOGUE_MODEL_CONTACT_RECORDS,
+	admittedCatalogueModelAssets,
 	NATIVE_PLACEMENT_PRIMITIVES,
 	admittedDefinitionKeys,
+	catalogueModelContactMinY,
 	catalogueModelDefinition,
 	catalogueModelExclusions,
 	isAdmittedPlacementAssetId,
@@ -147,6 +149,18 @@ describe('native normalized definitions', () => {
 });
 
 describe('catalogue model admission', () => {
+	it('admits only the salon chair after its r186 contact and footprint verification', async () => {
+		const definition = await catalogueModelDefinition('paris-salon-chair');
+		expect(definition).not.toBeNull();
+		expect(definition?.admission.provenance).toEqual({
+			kind: 'verified-model',
+			verificationId: 'r186-salon-chair-contact-footprint-v1'
+		});
+		expect(definition?.contactMinY).toBe(CATALOGUE_MODEL_CONTACT_RECORDS.find((record) => record.assetId === 'paris-salon-chair')?.contactMinY);
+		expect(catalogueModelContactMinY('paris-salon-chair')).toBe(definition?.contactMinY);
+		expect(admittedCatalogueModelAssets().map((asset) => asset.id)).toEqual(['paris-salon-chair']);
+	});
+
 	it('refuses the non-unit-normalization piano while its contact is unverified', async () => {
 		const asset = getAssetById('paris-grand-piano');
 		expect(asset?.defaultScale).toBe(0.032);

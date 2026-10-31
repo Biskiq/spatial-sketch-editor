@@ -223,8 +223,12 @@ export async function buildS17MixedProject(projectId = PROJECT_ID): Promise<{
 		)
 	};
 
-	const catalogueRecord = CATALOGUE_MODEL_CONTACT_RECORDS[0];
-	const unapprovedRecord = CATALOGUE_MODEL_CONTACT_RECORDS[1];
+	const catalogueRecord = CATALOGUE_MODEL_CONTACT_RECORDS.find(
+		(record) => record.assetId === 'paris-salon-chair'
+	);
+	const unapprovedRecord = CATALOGUE_MODEL_CONTACT_RECORDS.find(
+		(record) => record.assetId === 'paris-grandfather-clock'
+	);
 	if (catalogueRecord === undefined || unapprovedRecord === undefined) {
 		throw new Error('S17 needs at least two declared floor catalogue model records');
 	}
@@ -242,7 +246,7 @@ export async function buildS17MixedProject(projectId = PROJECT_ID): Promise<{
 			assetId: catalogueRecord.assetId, fallback: 'generic', position: [0.55, 0, 0.55], rotation: [0, 0, 0]
 		},
 		{
-			kind: 'model', id: 's17-unapproved-model', name: 'Unapproved catalogue model',
+			kind: 'model', id: 's17-unapproved-model', name: 'Unverified catalogue model',
 			assetId: unapprovedRecord.assetId, fallback: 'generic', position: [2.45, 0, 0.45], rotation: [0, 0, 0]
 		},
 		{

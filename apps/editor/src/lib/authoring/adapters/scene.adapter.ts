@@ -49,8 +49,12 @@ import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import {
 	NATIVE_PLACEMENT_PRIMITIVES,
 	NATIVE_PLACEMENT_DIMENSIONS,
+	admittedCatalogueModelAssets,
+	catalogueModelContactMinY,
+	catalogueModelDefinition,
 	nativePlacementDefinition
 } from '$lib/authoring/scene/object-definition-policy';
+import { getAssetById } from '$lib/content/assets';
 import {
 	chooseFloorSupport,
 	floorSupportSnapshotOf,
@@ -443,8 +447,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	// approved creator model becomes placeable after the adapter is already
 	// mounted. The intent still carries `metadataContentId`, so a stale
 	// definition refuses (`definition-changed`) rather than placing something
-	// else. Catalogue models stay excluded until their r186 contact verification
-	// is recorded; only admitted natives and approved creator models are here.
+	// else. Built-in catalogue models enter this set only after their r186 contact
+	// verification is recorded; approved creator models remain project-scoped.
 	const admitted: NormalizedPlacementDefinition[] = [];
 	const planners = createScenePlanners({
 		definitions: () => {
@@ -465,10 +469,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			);
 		}
 	}
-	void Promise.all(
-		NATIVE_PLACEMENT_PRIMITIVES.map((primitive) => nativePlacementDefinition(primitive))
-	).then((definitions) => {
-		admitted.push(...definitions);
+	void Promise.all([
+		...NATIVE_PLACEMENT_PRIMITIVES.map((primitive) => nativePlacementDefinition(primitive)),
+		...admittedCatalogueModelAssets().map((asset) => catalogueModelDefinition(asset.id))
+	]).then((definitions) => {
+		admitted.push(
+			...definitions.filter(
+				(definition): definition is NormalizedPlacementDefinition => definition !== null
+			)
+		);
 	});
 
 	const adapter: StageAdapter = {
@@ -872,13 +881,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			): SceneObjectFootprint | null {
 				if (bounds !== null) return boundsFootprint(bounds);
 				if (entity.kind !== 'model') return null;
-				for (const resource of stageEnvelope(services.stage.snapshot()).units.resources.data.resources) {
-					if (resource.kind === 'model' && resource.id === entity.assetId && resource.model !== undefined) {
+				return admittedModelFootprint(services.stage.snapshot(), entity.assetId);
+			}
+
+			/** A model proxy comes only from its captured creator metadata or verified catalogue record. */
+			function admittedModelFootprint(
+				snapshot: StageAdapterContext['snapshot'],
+				assetId: string
+			): SceneObjectFootprint | null {
+				for (const resource of stageEnvelope(snapshot).units.resources.data.resources) {
+					if (resource.kind === 'model' && resource.id === assetId && resource.model !== undefined) {
 						return {
 							width: resource.model.placement.footprint.width,
 							depth: resource.model.placement.footprint.depth
 						};
 					}
+				}
+				const asset = getAssetById(assetId);
+				if (catalogueModelContactMinY(assetId) !== null && asset?.footprint !== undefined) {
+					return { width: asset.footprint.width, depth: asset.footprint.depth };
 				}
 				return null;
 			}
@@ -941,7 +962,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					: candidateGhost(entity, current.candidate, {
 							modelFootprint:
 								entity.kind === 'model'
-									? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ?? null
+									? adapterContext.snapshot.domain.scene.modelFootprints?.get(entity.assetId) ??
+									  admittedModelFootprint(adapterContext.snapshot, entity.assetId)
 									: null
 						});
 			}

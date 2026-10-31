@@ -46,16 +46,30 @@ unaccepted while its browser matrix, catalogue row and S11 integration evidence 
 
 ## Unresolved criteria and integration
 
-The mixed fixture includes a floor catalogue model, but `CATALOGUE_MODEL_CONTACT_RECORDS` marks
-every such record `verified: false`. The object-definition policy admits only verified model
-contact and footprint metadata. Therefore the catalogue row cannot honestly receive manipulation
-marks or floor placement from this implementation. No dimensions are guessed and the admission
-policy is not bypassed. The plan's catalogue-object Move, Turn, Size and Place criterion remains
-owed and blocks R217.S11 J15 until the verification record or an owner-approved scope resolution
-provides an eligible catalogue subject.
+The current working candidate admits the salon chair (`paris-salon-chair`) after retained r186
+GLTFLoader + Meshopt measurement: contact −5.2503e−12 m and an outward-rounded 0.643 × 0.537 m
+footprint after applying its 0.92 default scale once. The model-verification test retains this
+measurement. Place exposes admitted catalogue models through the existing placement session;
+unverified models remain excluded. Its complete browser interaction row is still owed.
+
+The resumed 2026-10-31 Chromium run at 1440×900 completed the primitive **Plan** sequence on
+HEAD `5e4a1e19` plus the checkpoint's production diff: pointer Place, body Move (X 2.5 → 2 m),
+live Turn (0 → −179.99995°), live Size (1 → 1.12954), Duplicate with a distinct selected identity,
+off-floor refusal, then five Undo operations back to no history. Plan candidate polygons were
+observed during Place, Move, Turn and Size. Local scratch evidence is
+`/tmp/s17-plan-primitive-resume.log` and `/tmp/s17-native-box-*-preview.png`; it is not archived
+S11 evidence. The runner checks Duplicate's new identity because a near-edge placement can
+legitimately refuse the +0.5 m X/Z copy.
+
+An additional resumed Chromium run confirmed 3D pointer Place for both a native box and the
+verified `paris-salon-chair`; the saved chair entity retained the expected `assetId`. For the
+native box, the 3D run also confirmed body Move, live Turn and live Size. The accepted placement
+was near the Room edge, so its +0.5 m Duplicate was refused; this does not complete the 3D row.
+These runs are local implementation evidence, not archived S11 evidence.
 
 The S11 integrated gate also remains outstanding. Browser evidence above is implementation
 evidence, not slice acceptance. The complete per-subject Place, body Move, Turn, Size, Duplicate
-and Undo matrix has not been recorded in both Plan and 3D; 3D pointer placement and the catalogue
-row are still owed. Required S11 integrated, coarse-pointer, native-touch and Safari evidence is
-also not claimed here.
+and Undo matrix has not been recorded in both Plan and 3D. The verified catalogue chair's
+manipulation row and the upright native-form and approved creator-model matrices remain owed.
+Required S11 integrated, coarse-pointer, native-touch and Safari evidence is also not claimed
+here.

@@ -59,6 +59,7 @@ import {
 } from '$lib/authoring/stage/stage-drafting';
 
 import {
+	catalogueModelContactMinY,
 	nativePlacementContactMinY,
 	nativePlacementDefinition,
 	type NativePlacementPrimitive
@@ -483,7 +484,7 @@ export function sceneModelContactMinY(
 			return resource.model.placement.contactMinY;
 		}
 	}
-	return null;
+	return catalogueModelContactMinY(entity.assetId);
 }
 
 /**
@@ -1587,7 +1588,10 @@ export function sceneSessionFromServices(input: {
 			projectId: snapshot.acceptedRevision.projectId,
 			contentRevision: stageUnitRevision(snapshot, 'scene'),
 			source,
-			contactMinYFor: (entity) => (entity.kind === 'model' ? modelContacts.get(entity.assetId) ?? null : null),
+			contactMinYFor: (entity) =>
+				entity.kind === 'model'
+					? modelContacts.get(entity.assetId) ?? catalogueModelContactMinY(entity.assetId)
+					: null,
 			compileGeneration: snapshot.compileGeneration,
 			evaluationId: input.evaluationId,
 			currentEvaluationId: () => input.services.stage.evaluationId()
