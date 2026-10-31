@@ -1,99 +1,114 @@
 # R217.S17 — acceptance record: Scene and form manipulation
 
-**Slice:** R217.S17 · **Status:** [implementation PR #239](https://github.com/Biskiq/spatial-sketch-editor/pull/239) in review; no acceptance recorded · **Plan:**
+**Slice:** R217.S17 · **Status:** accepted 2026-10-31; routine closeout on
+[PR #239](https://github.com/Biskiq/spatial-sketch-editor/pull/239) · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
 [R217](../README.md) · **Integration route:**
 [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
-This record documents the implementation candidate and its current evidence. It does not accept
-the slice or the R217 integrated gate.
+## Acceptance — 2026-10-31
 
-## Owner amendment — 2026-10-31
+Owner combined acceptance-and-closeout instruction. The accepted implementation revision is
+`28143cce1d7eb8b014d53564edfbc1a2c5144f16`; closeout changes no production code. It removes the
+temporary `.s17-*` browser runners and records this evidence.
 
-S11 is the final integration check **after S25**. The owner explicitly clarified that S11 is
-not an S17 merge prerequisite; its schedule and required evidence remain unchanged. Generic
-one-slice merge-gate wording must not move S11 ahead of S17 or prevent S17's routine closeout.
-S17 must satisfy its own approved criteria and verification before the parent starts a fresh
-Luna 6 medium chat for closeout through merge. No re-review or polling is requested.
+**Owner ruling — no additional review round.** After the delivered P2 repairs the owner directed
+that no further independent review round be opened unless a new material defect appeared. The
+waived prerequisite is the independent re-review of this revision only; no acceptance criterion,
+verification row, integration route or S11 evidence requirement is waived. The fresh Sol review of
+the pre-fix candidate found two P2 defects — the remounted Place chooser could show a native
+primitive while a remembered catalogue model stayed armed, and model proxy ghosts ignored approved
+contact. Both were repaired at `d0b4fa53`, and regression tests plus the final browser matrix cover
+the repaired behaviour. No post-fix clean review verdict is claimed; the register records
+`owner-override: no additional review round`.
 
-The owner also authorized the single relative-link correction in S16's evidence pointer so the
-architecture lane can run clean. This changes no S16 acceptance or product behavior and authorizes
-no other S16 edits.
+**Owner amendment.** S11 remains the final integration check after S25. It is not an S17 merge
+prerequisite; its schedule and required integrated, coarse-pointer, native-touch and Safari
+evidence are unchanged.
 
-## Implemented
+## Delivered
 
-Selected Scene objects and native forms can be moved from their bodies in Plan and 3D. Placement
-and manipulation previews follow the pointer; Plan ghosts use the same projected footprints as
-accepted placement. Manipulation mark priority, form sizing, and pointer placement refusal were
-updated with focused regression coverage. The browser seed creates the mixed fixture and approves
-its creator model through the real import routes, using measured importer output for normalization.
+Selected Scene primitives, catalogue models, approved creator models and native forms can be moved
+from their bodies in Plan and 3D. The grab offset is preserved, manipulation marks remain separately
+hittable at calibrated screen size, and the shared 4 CSS px click tolerance keeps a click from
+starting or previewing a drag. Placement and manipulation previews follow the pointer. Plan ghosts
+use the accepted footprint; 3D uses the object or form ghost at the candidate pose with unlit,
+outlined, non-picking geometry. Off-floor placements and releases refuse without writing.
 
-The owner's 2026-10-31 criterion revision keeps the landed upright-only planner boundary.
-Rectangular and concave upright forms owe the full successful journey; the tilted fixture owes
-explicit Move, Place, Turn and Duplicate refusals with unchanged source/history. Tilted Size
-ghost agreement is not claimed. The mixed-fixture regression confirms all four planner refusals
-and unchanged authored Scene data.
+The Place chooser re-synchronises from an armed remembered catalogue model after remount. Model
+ghosts use the approved contact and candidate scale, so they seat on the floor instead of floating.
+Only the verified salon chair (`paris-salon-chair`) is admitted from the catalogue, using retained
+r186 GLTFLoader + Meshopt measurement: contact −5.2503e−12 m and an outward-rounded 0.643 × 0.537 m
+footprint after applying the 0.92 default scale once. Unverified catalogue models remain excluded.
 
-The fresh Sol review at the pre-fix PR candidate identified two P2 defects: a remounted Place
-chooser could display a native primitive while a remembered catalogue model remained armed, and
-model proxy ghosts could float because they ignored the approved floor contact. The current
-candidate synchronizes the chooser from the armed catalogue model, carries approved contact into
-model Place/Move/Size ghosts, and seats each proxy at the candidate scale. Regression coverage
-checks remount-and-replace behavior and nonzero model contact. The owner instructed no re-review;
-these repairs are not described as a new clean review verdict.
+The mixed fixture carries a 3 × 2 room with a door and window, plinth, 0.9 m low Wall, 0.75 m table,
+native box, catalogue chair, an unverified model, an approved creator model, and rectangular,
+concave and tilted native forms. Browser seeding saves it through the project API and approves the
+creator model through the real staging/upload/approval routes.
 
-## Verification evidence
+The owner's 2026-10-31 criterion revision keeps the landed upright-only planner boundary:
+rectangular and concave upright forms owe the full journey; the tilted form owes explicit Move,
+Place, Turn and Duplicate refusals with unchanged source and history. S17 adds no non-upright
+planner support and claims no agreement for the tilted Size ghost.
+
+## Final-revision verification
 
 - `npm run check` passed with 0 errors and 0 warnings.
-- After the delivered P2 repairs, the current affected-subsystem run passed 11 files / 156 tests:
-  candidate ghosts, Scene Compose, Scene editing, Scene operation acceptance, object cards,
-  native-form marks and Paper agreement, Stage facade, the S17 mixed fixture, catalogue model
-  verification, and object-definition policy.
-- `npm run test:arch` still fails at the same pre-existing S16 documentation link: 22 / 23 files
-  and 193 / 194 tests passed. No S16 file was changed.
-- The independent review found a P2 click-tolerance defect in both body-drag paths. Revision
-  `b48545e58f4b9a6005487e65838b5f286691b4dd` captures the press CSS, uses the shared Stage drag
-  boundary for preview and release, and clears the candidate when the pointer returns within click
-  range. New object and form regressions cover sub-threshold jitter and return-to-click release.
-- `npx vitest run tests/lib/authoring/scene/object-definition-policy.test.ts` passed: 1 file,
-  9 tests.
-- Browser work against a disposable API-seeded mixed project confirmed primitive body Move,
-  Turn, Size, Duplicate and Undo; live Plan pointer placement, an off-floor refused candidate, and
-  Undo of a valid placement; native-form Turn and Size in Plan and 3D; and approved-model body
-  Move, Turn, Size, Duplicate and Undo in Plan and 3D. The live approved-model footprint came from
-  measured importer geometry. The disposable project was deleted after the checks.
+- The declared affected-subsystem tier passed: 11 files / 190 tests — candidate ghosts, Scene
+  Compose, Scene editing surface, Scene operation acceptance, object cards, native-form marks and
+  Paper agreement, Stage facade, the S17 mixed fixture, catalogue model verification and
+  object-definition policy.
+- The whole architecture lane passed: 23 files / 194 tests, including the documentation gate. The
+  only S16 edit is the authorized evidence-pointer correction.
+- Real Chromium pointer journeys ran against a disposable API-seeded mixed project at 1440 × 900.
+  Every successful subject row completed pointer Place, body Move, live Turn, live Size, Duplicate,
+  an off-floor refusal and five Undo operations back to no history:
 
-Independent re-review on 2026-10-31 of PR #239 at tip `38639c0e` confirmed the body-click fix at
-`b48545e5` and found no actionable P0–P2 regressions. It also exercised pointer-up within click
-range after a prior drag for both body paths. This closes the review finding; the slice remains
-unaccepted while its browser matrix, catalogue row and S11 integration evidence remain unresolved.
+| Subject | Plan | 3D |
+| --- | --- | --- |
+| Native primitive | passed (`X 2.5→2`, yaw 0→−180°, size 1→1.08636) | passed (`X 2.5→2`, yaw 0→−179.99998°, size 1→1.09866) |
+| Catalogue salon chair | passed (`X 2→1.5`, `Z 1→1.5`, yaw 0→−180°, size 1→1.14590) | passed (`X 2.5→2`, yaw 0→−180°, size 1→1.15864) |
+| Approved creator model | passed (`Z 0.5→1`, yaw 0→−180°, size 1→1.15044) | passed (`X 2.5→2`, yaw 0→−180°, size 1→1.17072) |
+| Upright rectangular form | passed (`X 2.5→2`, yaw 0→−180°, size 0.7→0.82213) | passed (`X 2.5→2`, `Z 1→1.5`, yaw 0→−180°, size 0.7→0.84901) |
+| Upright concave form | passed (`X 2.5→2`, yaw 0→−180°, size 0.7→0.82213) | passed (`X 2.5→2`, `Z 1→1.5`, yaw 0→−180°, size 0.7→0.84901) |
 
-## Unresolved criteria and integration
+  The catalogue chair's saved entity retained `assetId: paris-salon-chair`. Live Turn and Size were
+  driven by pointer drags, not typed or synthetic values. A near-edge Duplicate can legitimately
+  refuse the +0.5 m copy; the runner therefore proves Duplicate by a new selected identity rather
+  than by assuming a particular room edge.
 
-The current working candidate admits the salon chair (`paris-salon-chair`) after retained r186
-GLTFLoader + Meshopt measurement: contact −5.2503e−12 m and an outward-rounded 0.643 × 0.537 m
-footprint after applying its 0.92 default scale once. The model-verification test retains this
-measurement. Place exposes admitted catalogue models through the existing placement session;
-unverified models remain excluded. Its complete browser interaction row is still owed.
+- **Tilted fixture refusals, Plan and 3D.** Selecting `s17-tilted-form` exposes Move, Turn and the
+  Scale disclosure. A body press refused, and both the Turn mark and the Card Move, Turn, Place on
+  floor and Duplicate commands returned the planner's `unsupported-transform` refusal:
+  *"Entity \"s17-tilted-form\" is not a truthful upright floor object, so this operation cannot own
+  its transform."* The authored X/Z/yaw/width, selection and entity count were unchanged, and Undo
+  was unavailable before and after in both readings.
+- **Scaled-object ghost correctness, Plan.** After Size raised the native box from 1 to 1.097152322,
+  a live Move preview's subject footprint area grew by 1.20374× — the same factor as the size change
+  squared. A live Turn preview at 51.8° showed the enlarged, rotated candidate. Cancelling both with
+  Escape left the accepted pose and size byte-identical.
+- **Scaled-object ghost correctness, 3D.** After the same Size change, a live Move preview read
+  `X 1.500 · Z 0.000 m` and the enlarged outlined ghost was visible away from the accepted body; a
+  live Turn preview at 50.3° showed the enlarged rotated ghost against the accepted 0° body. The
+  accepted pose and size were unchanged after cancelling both.
+- **Layout widths.** 1440 × 900, 1280 × 800, 1180 × 820 and 820 × 1180 all rendered without document
+  overflow; the stage, overlay, 2D/3D reading controls, selected-subject Card and Move mark stayed
+  inside the viewport, and the Card fields were operable.
 
-The resumed 2026-10-31 Chromium run at 1440×900 completed the primitive **Plan** sequence on
-HEAD `5e4a1e19` plus the checkpoint's production diff: pointer Place, body Move (X 2.5 → 2 m),
-live Turn (0 → −179.99995°), live Size (1 → 1.12954), Duplicate with a distinct selected identity,
-off-floor refusal, then five Undo operations back to no history. Plan candidate polygons were
-observed during Place, Move, Turn and Size. Local scratch evidence is
-`/tmp/s17-plan-primitive-resume.log` and `/tmp/s17-native-box-*-preview.png`; it is not archived
-S11 evidence. The runner checks Duplicate's new identity because a near-edge placement can
-legitimately refuse the +0.5 m X/Z copy.
+Local scratch logs and screenshots are the evidence above; archived copies are listed in the
+[evidence manifest](../../../archive/roadmap/r217-core-editor-stability/r217.s17-scene-and-form-manipulation/evidence/CLOSED.md).
+They are local implementation evidence, not S11 integrated, coarse-pointer, native-touch or Safari
+evidence.
 
-An additional resumed Chromium run confirmed 3D pointer Place for both a native box and the
-verified `paris-salon-chair`; the saved chair entity retained the expected `assetId`. For the
-native box, the 3D run also confirmed body Move, live Turn and live Size. The accepted placement
-was near the Room edge, so its +0.5 m Duplicate was refused; this does not complete the 3D row.
-These runs are local implementation evidence, not archived S11 evidence.
+## Residuals and follow-up
 
-The S11 integrated gate also remains outstanding. Browser evidence above is implementation
-evidence, not slice acceptance. The complete per-subject Place, body Move, Turn, Size, Duplicate
-and Undo matrix has not been recorded in both Plan and 3D. The verified catalogue chair's
-manipulation row and the upright native-form and approved creator-model matrices remain owed.
-Required S11 integrated, coarse-pointer, native-touch and Safari evidence is also not claimed
-here.
+- **S11 carries** the integrated journeys and the manual-owed coarse-pointer, native-touch and Safari
+  rows. S11 remains scheduled after S25 and does not block S17's merge.
+- **Recorded UX gap, not implemented in S17:** shape creation is still more complex than the target,
+  advanced working-plane controls remain visible, and Pen/wireframe presentation needs visual
+  polish. These are owner-directed separate follow-up work, not S17 defects; S17 deliberately does
+  not redesign the UI.
+- Tilted-form Size ghost agreement remains unresolved and unclaimed; the tilted planner boundary is
+  unchanged.
+- The architecture lane's single authorized S16 edit is the evidence-pointer correction; no other
+  S16 behavior or acceptance changed.
