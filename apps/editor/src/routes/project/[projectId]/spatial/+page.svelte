@@ -2636,7 +2636,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					return;
 				}
 			}
-			const mark = stage.hitMark({ css, coarse });
+			let mark = stage.hitMark({ css, coarse });
+			if (mark === null) {
+				mark = stage.idleHoverIntent({ phase: 'move', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+			} else {
+				stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+			}
 			// A disclosure is a press, not a drag: it reveals grips while the same
 			// gesture context stays selected, and no adapter may claim the pointer for it.
 			if (mark?.role === 'disclose') {
@@ -2645,7 +2650,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				return;
 			}
 			const handleId = mark?.role === 'edit' ? mark.id : undefined;
-			if (stage.pointerIntent({ phase: 'down', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse, ...(handleId === undefined ? {} : { handleId }) }).claimed) {
+			const handleAdapterId = mark?.role === 'edit' ? mark.adapterId : undefined;
+			if (stage.pointerIntent({ phase: 'down', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse, ...(handleId === undefined ? {} : { handleId }), ...(handleAdapterId === undefined ? {} : { handleAdapterId }) }).claimed) {
 				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 				if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
 					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
@@ -2710,6 +2716,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// An armed host tool previews its own winner (the Eraser's dashes, Measure's
 		// second point); the ordinary subject hover would compete with it.
 		if (armedHostTool !== null) {
+			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 			const input = { css: sample.css, evaluationId: id, coarse: sample.coarse };
 			if (armedHostTool === 'measure') measureTool?.hover(input);
 			else eraserTool?.hover(input);
@@ -2723,6 +2730,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// subject tint underneath, so two emphases never compete for one pointer.
 		const mark = stage.hitMark({ css: sample.css, coarse: sample.coarse });
 		if (mark !== null) {
+			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 			stage.setMarkHover({ adapterId: mark.adapterId, id: mark.id });
 			session.setHover(null);
 			hoverSelection = null;
@@ -2739,6 +2747,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		stage.setMarkHover(null);
+		const idleMark = stage.idleHoverIntent({ phase: 'move', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
+		if (idleMark !== null) {
+			stage.setMarkHover({ adapterId: idleMark.adapterId, id: idleMark.id });
+			session.setHover(null);
+			hoverSelection = null;
+			hoverMove = true;
+			return;
+		}
+		stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 		if (stage.hoverIntent({ phase: 'move', css: sample.css, evaluationId: id, shift: sample.shift })) {
 			session.setHover(null);
 			hoverSelection = null;
