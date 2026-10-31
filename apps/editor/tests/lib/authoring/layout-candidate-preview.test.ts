@@ -152,6 +152,25 @@ function selectWall(facade: StageFacade, sourceId: string): void {
 	facade.setSelection({ ordered: [{ reference }], primary: reference });
 }
 
+function selectOpening(facade: StageFacade, sourceId: string): void {
+	const snapshot = facade.snapshot();
+	const reference = {
+		version: 1 as const,
+		domain: 'layout' as const,
+		revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.layout },
+		subject: { kind: 'opening' as const, id: sourceId },
+		instancePath: [],
+		location: {
+			kind: 'layout-location' as const,
+			levelId: snapshot.domain.layoutLevelId,
+			structureInstancePath: []
+		},
+		componentId: null,
+		capabilityId: null
+	};
+	facade.setSelection({ ordered: [{ reference }], primary: reference });
+}
+
 function acceptedLayout(facade: StageFacade): LayoutDocumentWallFirst {
 	return stageEnvelope(facade.snapshot()).units.layout.data;
 }
@@ -173,22 +192,25 @@ function projectWorld(mounted: Mounted, point: readonly [number, number, number]
 	return [projected.css[0] - mounted.rect.left, projected.css[1] - mounted.rect.top];
 }
 
-/** The accepted Paper geometry for one candidate's changed sources, projected. */
+/**
+ * The accepted Paper geometry for one candidate's changed sources, projected
+ * on the **same datum** the candidate uses. Only x/z is being compared; the
+ * candidate's own height is pinned by its bounds test.
+ */
 function acceptedPaperCss(mounted: Mounted, sourceIds: ReadonlySet<string>): {
 	readonly polygons: readonly (readonly (readonly [number, number])[])[];
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
 } {
 	const planResult = mounted.facade.plan();
 	if (planResult.kind !== 'evaluated') throw new Error('the accepted Plan is not evaluated');
+	const datum = mounted.facade.snapshot().domain.datumMeters;
 	const document = acceptedLayout(mounted.facade);
 	const compiled = compileWallFirstLayoutGeometry(document).geometry;
 	const drawing = buildPaperPlan(planResult.plan, compiled, { footprints: [] });
 	const polygons = drawing.fills
 		.filter((fill) => sourceIds.has(fill.sourceId))
 		.flatMap((fill) =>
-			fill.polygons.map((polygon) =>
-				polygon.map((point) => projectWorld(mounted, [point[0], fill.elevationMeters, point[1]]))
-			)
+			fill.polygons.map((polygon) => polygon.map((point) => projectWorld(mounted, [point[0], datum, point[1]])))
 		);
 	const segments = drawing.lines
 		.filter((line) => sourceIds.has(line.sourceId))
@@ -196,8 +218,8 @@ function acceptedPaperCss(mounted: Mounted, sourceIds: ReadonlySet<string>): {
 			line.segments.map(
 				([start, end]) =>
 					[
-						projectWorld(mounted, [start[0], line.elevationMeters, start[1]]),
-						projectWorld(mounted, [end[0], line.elevationMeters, end[1]])
+						projectWorld(mounted, [start[0], datum, start[1]]),
+						projectWorld(mounted, [end[0], datum, end[1]])
 					] as const
 			)
 		);
@@ -222,7 +244,7 @@ function expectPointsClose(
 }
 
 describe('R217.S14 — candidate preview coordinates', () => {
-	it('keeps the mark in the same Stage-local place when the Stage is offset', async () => {
+	it('keeps the mark in the same Stage-local place when the Stage is offset or resized', async () => {
 		const atOrigin = await mount();
 		settle(atOrigin.facade, atOrigin.rect);
 		armInk(atOrigin.facade);
@@ -242,6 +264,22 @@ describe('R217.S14 — candidate preview coordinates', () => {
 		expect(offsetSnap).toBeDefined();
 		expect(offsetSnap![0]).toBeCloseTo(originSnap![0], 6);
 		expect(offsetSnap![1]).toBeCloseTo(originSnap![1], 6);
+
+		// A different Stage **size** may change the projection, so the mark is
+		// compared with its own world point rather than the origin Stage's CSS.
+		// Stage-local means it is measured inside that Stage, not that every Stage
+		// must produce the same pixel.
+		const resized = await mount({ left: 60, top: 24, width: 960, height: 540, devicePixelRatio: 1 });
+		settle(resized.facade, resized.rect);
+		armInk(resized.facade);
+		const resizedCss = stageCss(resized, point);
+		expect(resized.facade.hoverIntent({ phase: 'move', css: resizedCss, evaluationId: resized.facade.evaluationId()! })).toBe(true);
+		const resizedSnap = candidate(resized, 'layout-candidate-cursor').snap?.css;
+		const datum = resized.facade.snapshot().domain.datumMeters;
+		const expected = projectWorld(resized, [1, datum, 1]);
+		expect(resizedSnap).toBeDefined();
+		expect(resizedSnap![0]).toBeCloseTo(expected[0], 5);
+		expect(resizedSnap![1]).toBeCloseTo(expected[1], 5);
 	});
 });
 
@@ -257,6 +295,9 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		const preview = candidate(mounted, 'layout-candidate-wall');
 		expect(preview.polygons.length + preview.segments.length).toBeGreaterThan(0);
+		const neighbours = mounted.facade
+			.candidatePreviews()
+			.find((entry) => entry.id === 'layout-candidate-neighbours');
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		await eventually(() => {
 			const next = acceptedLayout(mounted.facade);
@@ -278,6 +319,55 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		for (const [index, segment] of preview.segments.entries()) {
 			expectPointsClose(segment, accepted.segments[index]!);
 		}
+
+		// The affected contribution is the same promise for reshaped neighbours,
+		// derived here from the accepted topology rather than the preview's list.
+		const affectedWalls = new Set(
+			document.walls
+				.filter(
+					(entry) =>
+						entry.id !== wall.id &&
+						[entry.startJunctionId, entry.endJunctionId].some(
+							(id) => id === wall.startJunctionId || id === wall.endJunctionId
+						)
+				)
+				.map((entry) => entry.id)
+		);
+		const affectedSourceIds = new Set([
+			...affectedWalls,
+			...document.openings.filter((entry) => affectedWalls.has(entry.wallId)).map((entry) => entry.id)
+		]);
+		const acceptedAffected = acceptedPaperCss(mounted, affectedSourceIds);
+		expect(neighbours).toBeDefined();
+		expect(neighbours!.polygons.length).toBe(acceptedAffected.polygons.length);
+		for (const [index, polygon] of neighbours!.polygons.entries()) {
+			expectPointsClose(polygon, acceptedAffected.polygons[index]!);
+		}
+		expect(neighbours!.segments.length).toBe(acceptedAffected.segments.length);
+		for (const [index, segment] of neighbours!.segments.entries()) {
+			expectPointsClose(segment, acceptedAffected.segments[index]!);
+		}
+	});
+
+	it('draws every candidate point on the level datum, never the Paper cut elevation', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const datum = mounted.facade.snapshot().domain.datumMeters;
+		const plan = mounted.facade.plan();
+		if (plan.kind !== 'evaluated') throw new Error('the fixture Plan is not evaluated');
+		expect(plan.plan.cutElevationMeters).not.toBeCloseTo(datum, 5);
+		const from = stageCss(mounted, [3, 0]);
+		const to = stageCss(mounted, [3.5, 0.5]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		const preview = candidate(mounted, 'layout-candidate-wall');
+		expect(preview.bounds).not.toBeNull();
+		// A 3D evaluation must sit the footprint on the mat, not float it at the
+		// Paper cut. Plan alone cannot see the difference, so bounds pin the height.
+		expect(preview.bounds!.min[1]).toBeCloseTo(datum, 9);
+		expect(preview.bounds!.max[1]).toBeCloseTo(datum, 9);
 	});
 
 	it('matches the compiled Paper drawing of the Opening placement release commits', async () => {
@@ -330,20 +420,67 @@ describe('R217.S14 — refusals and snap words', () => {
 		expect(refused.labels[0]?.text.length).toBeGreaterThan(20);
 	});
 
-	it('names the winning grid relation and shows nothing while Snap is held', async () => {
+	it('names the winning grid relation and drops only the snap while Snap is held', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, mounted.rect);
-		armInk(mounted.facade);
+		const controller = armInk(mounted.facade);
+		// One typed point keeps a pending leg, so the candidate exists on its own
+		// merit. Without it, a no-snap assertion could pass because the whole
+		// preview vanished with the pointer having nothing left to draw.
+		controller.typePoint('1', '1');
 		const evaluationId = mounted.facade.evaluationId()!;
-		const css = stageCss(mounted, [1.05, 1.03]);
+		const css = stageCss(mounted, [2.05, 2.03]);
 		expect(mounted.facade.hoverIntent({ phase: 'move', css, evaluationId })).toBe(true);
-		expect(candidate(mounted, 'layout-candidate-cursor').snap?.name).toBe('Grid');
+		expect(candidate(mounted, 'layout-candidate-chain').snap?.name).toBe('Grid');
 
 		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, mounted.rect);
 		expect(mounted.facade.hoverIntent({ phase: 'move', css, evaluationId })).toBe(true);
+		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-chain')).toBe(true);
+		expect(candidate(mounted, 'layout-candidate-chain').segments.length).toBeGreaterThan(0);
 		expect(
-			mounted.facade.candidatePreviews().find((preview) => preview.id === 'layout-candidate-cursor')?.snap
+			mounted.facade.candidatePreviews().find((preview) => preview.id === 'layout-candidate-chain')?.snap
 		).toBeUndefined();
+	});
+
+	it('withdraws a refused Wall candidate, names the refusal and installs nothing', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, mounted.rect);
+		const end = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-end-mark');
+		if (end === undefined) throw new Error('the Wall end mark is not projected');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from: [number, number] = [end.anchor[0] + mounted.rect.left, end.anchor[1] + mounted.rect.top];
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		const across = stageCss(mounted, [-0.5, 0]);
+		mounted.facade.pointerIntent({ phase: 'move', css: across, evaluationId });
+		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-wall')).toBe(false);
+		const refused = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-end-mark');
+		expect(refused?.refusal).toContain('across');
+
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		mounted.facade.pointerIntent({ phase: 'up', css: across, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+	});
+
+	it('publishes only the refusal for an Opening that does not fit its Wall', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		armInk(mounted.facade).setReading('opening');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const nearEnd = stageCss(mounted, [5.95, 0]);
+		expect(mounted.facade.hoverIntent({ phase: 'move', css: nearEnd, evaluationId })).toBe(true);
+		const refused = mounted.facade
+			.candidatePreviews()
+			.find((preview) => preview.id === 'layout-candidate-opening-refused');
+		expect(refused).toBeDefined();
+		expect(refused!.role).toBe('refused');
+		expect(refused!.polygons).toEqual([]);
+		expect(refused!.segments).toEqual([]);
+		expect(refused!.labels[0]?.text.length).toBeGreaterThan(10);
+		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-opening')).toBe(false);
 	});
 
 	it('names the orthogonal guide Aligned from the previous chain point', async () => {
@@ -360,9 +497,12 @@ describe('R217.S14 — refusals and snap words', () => {
 		expect(aligned?.snap?.name).toBe('Aligned');
 	});
 
-	it('publishes the Box candidate through the same Wall-chain planner', async () => {
+	it('publishes the Box candidate through the same Wall-chain planner and its release matches', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, mounted.rect);
+		const baseline = acceptedLayout(mounted.facade);
+		const baselineWallIds = new Set(baseline.walls.map((entry) => entry.id));
+		const baselineRoomIds = new Set(baseline.rooms.map((entry) => entry.id));
 		armInk(mounted.facade).setWallMode('box');
 		const evaluationId = mounted.facade.evaluationId()!;
 		const first = stageCss(mounted, [8, 0]);
@@ -373,27 +513,31 @@ describe('R217.S14 — refusals and snap words', () => {
 		const preview = candidate(mounted, 'layout-candidate-chain');
 		expect(preview.role).toBe('subject');
 		expect(preview.polygons.length + preview.segments.length).toBeGreaterThan(0);
+
+		mounted.facade.pointerIntent({ phase: 'down', css: opposite, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: opposite, evaluationId });
+		await eventually(() => acceptedLayout(mounted.facade).walls.length > baseline.walls.length);
+		settle(mounted.facade, mounted.rect, 3);
+
+		const document = acceptedLayout(mounted.facade);
+		const createdWalls = document.walls.filter((entry) => !baselineWallIds.has(entry.id));
+		const createdRooms = document.rooms.filter((entry) => !baselineRoomIds.has(entry.id));
+		const sourceIds = new Set([...createdWalls.map((entry) => entry.id), ...createdRooms.map((entry) => entry.id)]);
+		const accepted = acceptedPaperCss(mounted, sourceIds);
+		expect(preview.polygons.length).toBe(accepted.polygons.length);
+		for (const [index, polygon] of preview.polygons.entries()) {
+			expectPointsClose(polygon, accepted.polygons[index]!);
+		}
+		expect(preview.segments.length).toBe(accepted.segments.length);
+		for (const [index, segment] of preview.segments.entries()) {
+			expectPointsClose(segment, accepted.segments[index]!);
+		}
 	});
 
 	it('publishes the selected Opening slide candidate', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, mounted.rect);
-		const snapshot = mounted.facade.snapshot();
-		const reference = {
-			version: 1 as const,
-			domain: 'layout' as const,
-			revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.layout },
-			subject: { kind: 'opening' as const, id: mounted.openingId },
-			instancePath: [],
-			location: {
-				kind: 'layout-location' as const,
-				levelId: snapshot.domain.layoutLevelId,
-				structureInstancePath: []
-			},
-			componentId: null,
-			capabilityId: null
-		};
-		mounted.facade.setSelection({ ordered: [{ reference }], primary: reference });
+		selectOpening(mounted.facade, mounted.openingId);
 		settle(mounted.facade, mounted.rect);
 		const slide = mounted.facade.marks().find((mark) => mark.id === 'layout-opening-position')!;
 		const evaluationId = mounted.facade.evaluationId()!;
@@ -404,5 +548,30 @@ describe('R217.S14 — refusals and snap words', () => {
 		const preview = candidate(mounted, 'layout-candidate-opening-mark');
 		expect(preview.role).toBe('subject');
 		expect(preview.polygons.length + preview.segments.length).toBeGreaterThan(0);
+	});
+
+	it('snaps the selected Opening slide through the resolver and names Grid', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		selectOpening(mounted.facade, mounted.openingId);
+		settle(mounted.facade, mounted.rect);
+		const before = acceptedLayout(mounted.facade).openings.find((entry) => entry.id === mounted.openingId)!;
+		const slide = mounted.facade.marks().find((mark) => mark.id === 'layout-opening-position')!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from: [number, number] = [slide.anchor[0] + mounted.rect.left, slide.anchor[1] + mounted.rect.top];
+		// The body anchor is the Opening centre; 2.52 is within the 8 CSS px
+		// acquisition radius of the 2.5 m grid centre, so the winner is Grid and
+		// the committed start edge is the centre minus half the width.
+		const to = stageCss(mounted, [2.52, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		const preview = candidate(mounted, 'layout-candidate-opening-mark');
+		expect(preview.snap?.name).toBe('Grid');
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => {
+			const next = acceptedLayout(mounted.facade).openings.find((entry) => entry.id === mounted.openingId);
+			return next !== undefined && Math.abs(next.offset - 1.9) < 1e-6;
+		});
+		expect(before.offset).toBeCloseTo(1, 6);
 	});
 });

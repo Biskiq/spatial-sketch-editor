@@ -34,14 +34,21 @@ export type LayoutCandidatePaper = {
 	readonly affected: CandidatePaperGeometry;
 };
 
-function worldPoint(point: LayoutVec2, elevationMeters: number): Vec3 {
-	return [point[0], elevationMeters, point[1]];
+function worldPoint(point: LayoutVec2, datumMeters: number): Vec3 {
+	return [point[0], datumMeters, point[1]];
 }
 
-/** Build the filtered Paper drawing for one candidate document. */
+/**
+ * Build the filtered Paper drawing for one candidate document.
+ *
+ * Every point is placed on the level **datum**, never the Paper cut elevation:
+ * Plan is top-down and cannot tell the difference, but 3D must show the
+ * candidate's footprint on the mat, not a slice floating at cut height.
+ */
 export function buildLayoutCandidatePaper(
 	document: LayoutDocumentWallFirst,
 	plan: PlanEvaluation,
+	datumMeters: number,
 	subjectIds: ReadonlySet<string>,
 	affectedIds: ReadonlySet<string>
 ): LayoutCandidatePaper {
@@ -69,7 +76,7 @@ export function buildLayoutCandidatePaper(
 		drawing.fills.flatMap((fill) =>
 			ids.has(fill.sourceId)
 				? fill.polygons.map((polygon) =>
-						polygon.map((point) => worldPoint(point, fill.elevationMeters))
+						polygon.map((point) => worldPoint(point, datumMeters))
 					)
 				: []
 		);
@@ -79,8 +86,8 @@ export function buildLayoutCandidatePaper(
 				? line.segments.map(
 						([start, end]) =>
 							[
-								worldPoint(start, line.elevationMeters),
-								worldPoint(end, line.elevationMeters)
+								worldPoint(start, datumMeters),
+								worldPoint(end, datumMeters)
 							] as const
 					)
 				: []

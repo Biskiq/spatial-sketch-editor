@@ -69,15 +69,28 @@
 		if (text.length <= maxChars) return [text];
 		const lines: string[] = [];
 		let line = '';
+		const flush = (): void => {
+			if (line !== '') lines.push(line);
+			line = '';
+		};
 		for (const word of text.split(' ')) {
+			// An id can be longer than a whole readable line. Hard-split it rather
+			// than let one unbreakable token push the tag past the Stage edge.
+			if (word.length > maxChars) {
+				flush();
+				for (let offset = 0; offset < word.length; offset += maxChars) {
+					lines.push(word.slice(offset, offset + maxChars));
+				}
+				continue;
+			}
 			const next = line === '' ? word : `${line} ${word}`;
 			if (next.length <= maxChars) line = next;
 			else {
-				if (line !== '') lines.push(line);
+				flush();
 				line = word;
 			}
 		}
-		if (line !== '') lines.push(line);
+		flush();
 		return lines;
 	}
 

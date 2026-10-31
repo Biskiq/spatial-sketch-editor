@@ -425,8 +425,9 @@ and the **Size** ray it reveals along the bounds diagonal. Move submits `place-o
 the S05 snap step; Turn submits `set-yaw`; Size submits `resize-on-floor` and leaves the base on
 its support through the captured `contactMinY`. The Card is the exact writer for Position X/Z,
 Yaw and uniform Size, and each field calls the same planner dispatch as its mark, so a typed
-value and a dragged value share refusal words and install the same fact. Alight, a form, a vertical plane or a model without verified contact publishes no object marks. Marks are drawn
-only while no contributed task is open; opening Place, Compose or Import hides them. The old
+value and a dragged value share refusal words and install the same fact. A light, a form, a vertical
+plane or a model without verified contact publishes no object marks. Marks are drawn only while no
+contributed task is open; opening Place, Compose or Import hides them. The old
 Scene Arrange task, its Find entry and its instrument posture are removed; Place, Compose, Import
 and the Library posture remain.
 

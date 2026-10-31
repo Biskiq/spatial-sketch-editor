@@ -297,8 +297,6 @@ type WallGesture = {
 	preview: WallFrame | null;
 	/** The planner's exact candidate document; preview compiles this one. */
 	previewDocument: LayoutDocumentWallFirst | null;
-	/** The snap the pointer named, when one won. */
-	snap: LayoutSnapWinner | null;
 	/** Neighbours the candidate reshaped at the edited junction. */
 	neighbours: readonly WallNeighbourPreview[];
 };
@@ -1217,27 +1215,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return { wallId: wall.id, offset };
 			}
 
-			/** Apply the Opening slide policy to one new-Opening candidate. */
-			function snappedOpeningCandidate(
-				adapterContext: StageAdapterContext,
-				candidate: OpeningCandidate
-			): { readonly candidate: OpeningCandidate; readonly snap: LayoutSnapWinner | null } {
-				const span = openingSpan(candidate.wallId);
-				if (span === null) return { candidate, snap: null };
-				const winner = resolveOpeningSlideSnap({
-					geometry: adapterContext.snapshot.domain.geometry,
-					hostSpan: { segmentId: candidate.wallId, start: span.frame.start, end: span.frame.end },
-					openingId: '',
-					pointerCenterOffset: candidate.offset + openingOptions.width / 2,
-					width: openingOptions.width,
-					pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
-					drafting: adapterContext.drafting()
-				});
-				return {
-					candidate: winner.winner === null ? candidate : { ...candidate, offset: winner.offset },
-					snap: winner.winner
-				};
-			}
+			// New-Opening placement is **edge-positioned**: the pointer names the
+			// start edge, so a slide resolver would snap a centre the creator did not
+			// name (and at a non-integer width shift the edge off the pointer). Snap
+			// belongs to the existing Opening slide and width marks, where the
+			// resolver's centre/edge anchors are the authored gesture.
 
 			/**
 			 * A typed placement on the preferred host: empty offset centers exactly;
@@ -1399,7 +1381,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					const raw = openingCandidateAt(adapterContext, intent.css);
-					const candidate = raw === null ? null : snappedOpeningCandidate(adapterContext, raw);
+					const candidate = raw;
 					if (candidate === null) {
 						openingNotice = 'Aim at a Wall face to place an Opening; the Stage is not a free host.';
 						setOpeningCandidate(null);
@@ -1422,7 +1404,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						lease: acquisition,
 						css: intent.css
 					};
-					setOpeningCandidate(candidate.candidate, candidate.snap);
+					setOpeningCandidate(candidate);
 					services.stage.notifySurfaceChange();
 					publishInk();
 					return true;
@@ -1440,12 +1422,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				}
 				if (intent.phase === 'move') {
 					const raw = openingCandidateAt(adapterContext, intent.css);
-					const candidate = raw === null ? null : snappedOpeningCandidate(adapterContext, raw);
+					const candidate = raw;
 					if (candidate === null) {
 						openingNotice = 'Aim at a Wall face to place an Opening.';
 						setOpeningCandidate(null);
 					} else {
-						setOpeningCandidate(candidate.candidate, candidate.snap);
+						setOpeningCandidate(candidate);
 					}
 					services.stage.notifySurfaceChange();
 					publishInk();
@@ -1453,14 +1435,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				}
 				// Release: one click commits the candidate under the pointer, once.
 				const rawRelease = openingCandidateAt(adapterContext, intent.css);
-				const release = rawRelease === null ? null : snappedOpeningCandidate(adapterContext, rawRelease);
 				endOpeningPress();
-				if (release === null) {
+				if (rawRelease === null) {
 					openingNotice = 'Aim at a Wall face to place an Opening.';
 					setOpeningCandidate(null);
 				} else {
-					setOpeningCandidate(release.candidate, release.snap);
-					void commitOpening(release.candidate);
+					setOpeningCandidate(rawRelease);
+					void commitOpening(rawRelease);
 				}
 				services.stage.notifySurfaceChange();
 				publishInk();
@@ -1475,12 +1456,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (openTaskKind !== LAYOUT_INK_TASK || inkReading !== 'opening' || intent.phase !== 'move') {
 					return false;
 				}
-				const raw = openingCandidateAt(adapterContext, intent.css);
-				const candidate = raw === null ? null : snappedOpeningCandidate(adapterContext, raw);
-				if (candidate?.candidate.wallId === openingCandidate?.wallId && candidate?.candidate.offset === openingCandidate?.offset) {
+				const candidate = openingCandidateAt(adapterContext, intent.css);
+				if (candidate?.wallId === openingCandidate?.wallId && candidate?.offset === openingCandidate?.offset) {
 					return true;
 				}
-				setOpeningCandidate(candidate?.candidate ?? null, candidate?.snap ?? null);
+				setOpeningCandidate(candidate);
 				services.stage.notifySurfaceChange();
 				publishInk();
 				return true;
@@ -2586,7 +2566,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								request: null,
 								preview: null,
 								previewDocument: null,
-								snap: null,
 								neighbours: []
 							};
 							warmLayoutPlannerBaseline(gesture.baseline);
@@ -2973,15 +2952,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** The filtered Paper drawing for one planner candidate document. */
 			function candidatePaper(
 				document: LayoutDocumentWallFirst,
+				datumMeters: number,
 				subjectIds: ReadonlySet<string>,
 				affectedIds: ReadonlySet<string>
-			): { readonly paper: ReturnType<typeof buildLayoutCandidatePaper>; readonly plan: true } | null {
+			): { readonly paper: ReturnType<typeof buildLayoutCandidatePaper> } | null {
 				const result = services.stage.plan();
 				if (result.kind !== 'evaluated') return null;
-				return {
-					paper: buildLayoutCandidatePaper(document, result.plan, subjectIds, affectedIds),
-					plan: true
-				};
+				return { paper: buildLayoutCandidatePaper(document, result.plan, datumMeters, subjectIds, affectedIds) };
 			}
 
 			/**
@@ -3004,7 +2981,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const affectedWalls = new Set(activeWall.neighbours.map((neighbour) => neighbour.wallId));
 					const subjectIds = new Set([...subjectWalls, ...openingIdsOnWalls(activeWall.previewDocument, subjectWalls)]);
 					const affectedIds = new Set([...affectedWalls, ...openingIdsOnWalls(activeWall.previewDocument, affectedWalls)]);
-					const built = candidatePaper(activeWall.previewDocument, subjectIds, affectedIds);
+					const built = candidatePaper(activeWall.previewDocument, y, subjectIds, affectedIds);
 					if (built !== null) {
 						return [
 							candidatePreviewOf({
@@ -3030,7 +3007,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const activeOpeningMark = openingGesture;
 				if (activeOpeningMark !== null && activeOpeningMark.previewDocument !== null) {
 					const subjectIds = new Set([activeOpeningMark.openingId, activeOpeningMark.wallId]);
-					const built = candidatePaper(activeOpeningMark.previewDocument, subjectIds, new Set());
+					const built = candidatePaper(activeOpeningMark.previewDocument, y, subjectIds, new Set());
 					if (built !== null) {
 						return [candidatePreviewOf({ id: 'layout-candidate-opening-mark', role: 'subject', geometry: built.paper.subject, snap: snapOf(activeOpeningMark.snap) })];
 					}
@@ -3041,7 +3018,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (inkReading === 'opening') {
 					if (openingPreview?.kind === 'planned') {
 						const subjectIds = new Set([openingPreview.openingId, ...openingPreview.changedWallIds]);
-						const built = candidatePaper(openingPreview.document, subjectIds, new Set());
+						const built = candidatePaper(openingPreview.document, y, subjectIds, new Set());
 						if (built !== null) {
 							const ghost = openingCandidate === null ? null : openingGhost(openingCandidate.wallId, openingCandidate.offset);
 							return [candidatePreviewOf({
@@ -3076,7 +3053,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (inkPreview?.kind === 'planned') {
 					const subjectIds = new Set([...inkPreview.authoredWallIds, ...inkPreview.createdRoomIds]);
 					const affectedIds = new Set(inkPreview.splitWallIds);
-					const built = candidatePaper(inkPreview.document, subjectIds, affectedIds);
+					const built = candidatePaper(inkPreview.document, y, subjectIds, affectedIds);
 					const geometry = built?.paper.subject ?? EMPTY_CANDIDATE_GEOMETRY;
 					const labels: { world: [number, number, number]; text: string }[] = [];
 					if (inkHover !== null && !boxMode) {

@@ -56,16 +56,23 @@ export function layoutSnapName(kind: SnapFeatureKind): string {
 		case 'junction':
 			return 'Junction';
 		case 'orthogonal-guide':
+		case 'extension-guide':
 			return 'Aligned';
 		case 'grid':
 			return 'Grid';
 		case 'wall-span':
+		case 'wall-midpoint':
+		case 'wall-intersection':
 			return 'Wall';
 		case 'opening-edge':
 			return 'Opening';
-		default:
-			return 'Aligned';
+		case 'object-bounds-edge':
+		case 'object-bounds-center':
+			return 'Object';
 	}
+	// Unreachable for the current union; a future or foreign kind still reads as
+	// a neutral tag instead of a wrong relation.
+	return 'Snap';
 }
 
 /** Resolve the Ink Wall point's semantic/guide/grid winner, or `null`. */
@@ -183,6 +190,11 @@ export function resolveOpeningWidthSnap(input: {
  * `segmentId` can be a sampled or room-qualified id. The opening-drag resolver
  * matches the host by `segmentId`, so the adapter passes the compiled record's
  * own id rather than assuming the authored id is the segment key.
+ *
+ * The **authored** start/end stay authoritative. The resolver, the winning
+ * point and the offset the candidate applies must all be measured in the same
+ * frame, so a sampled or room-qualified compiled span contributes its id and
+ * room only — never a different origin or direction.
  */
 function compiledHostSpan(
 	geometry: CompiledLayoutGeometry,
@@ -197,7 +209,12 @@ function compiledHostSpan(
 	);
 	return span === undefined
 		? hostSpan
-		: { segmentId: span.segmentId, ...(span.roomId === undefined ? {} : { roomId: span.roomId }), start: span.start, end: span.end };
+		: {
+				segmentId: span.segmentId,
+				...(span.roomId === undefined ? {} : { roomId: span.roomId }),
+				start: hostSpan.start,
+				end: hostSpan.end
+			};
 }
 
 /** A finite coordinate with no negative zero; never a second grid rounding. */
