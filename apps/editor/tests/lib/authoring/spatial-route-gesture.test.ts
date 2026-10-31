@@ -1476,6 +1476,25 @@ describe('R217.S15 — Stage cursor truth', () => {
 	});
 });
 
+describe('R217.S15 — Card Junction writer', () => {
+	it('refreshes the sibling fields from the accepted source after a Start X commit', async () => {
+		const details = target.querySelector<HTMLDetailsElement>('details[data-layout-junction-fields]');
+		expect(details).not.toBeNull();
+		details!.open = true;
+		const startX = details!.querySelector<HTMLInputElement>('input[data-field="startX"]')!;
+		const lengthBefore = target.querySelector<HTMLInputElement>('input[data-field="length"]')!.value;
+		const startZBefore = target.querySelector<HTMLInputElement>('input[data-field="startZ"]')!.value;
+		startX.value = '0.5';
+		startX.dispatchEvent(new Event('input', { bubbles: true }));
+		startX.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		await vi.waitFor(() => {
+			expect(target.querySelector<HTMLInputElement>('input[data-field="length"]')!.value).not.toBe(lengthBefore);
+		});
+		// The companion coordinate is the accepted one: committing X never rewrites Z.
+		expect(target.querySelector<HTMLInputElement>('input[data-field="startZ"]')!.value).toBe(startZBefore);
+	});
+});
+
 describe('R217.S15 — press routing', () => {
 	it('pans from an unselected Wall without selecting it or writing history', async () => {
 		const other = anotherWall();
@@ -1491,5 +1510,33 @@ describe('R217.S15 — press routing', () => {
 		expect(facade().camera.state().pose.target).not.toEqual(before);
 		expect(facade().selection()?.sourceId).toBe(beforeSelection);
 		expect(history()).toEqual(historyBefore);
+	});
+
+	it('pans from the empty Stage without selecting or writing history', async () => {
+		const before = [...facade().camera.state().pose.target];
+		const beforeSelection = facade().selection()?.sourceId;
+		const historyBefore = history();
+		const start: [number, number] = [RECT.left + 40, RECT.bottom - 40];
+		pointer('pointerdown', start);
+		pointer('pointermove', [start[0] + 50, start[1] - 20]);
+		await frame();
+		pointer('pointerup', [start[0] + 50, start[1] - 20]);
+		pointer('click', [start[0] + 50, start[1] - 20]);
+		await frame();
+		expect(facade().camera.state().pose.target).not.toEqual(before);
+		expect(facade().selection()?.sourceId).toBe(beforeSelection);
+		expect(history()).toEqual(historyBefore);
+	});
+
+	it('keeps a click on the selected body a click, not a commit', async () => {
+		const body = projected([3.5, 0, -4]);
+		const historyBefore = history();
+		pointer('pointerdown', body);
+		pointer('pointerup', body);
+		pointer('click', body);
+		await frame();
+		expect(facade().selection()?.sourceId).toBe(wallId);
+		expect(history()).toEqual(historyBefore);
+		expect(facade().candidatePreviews()).toHaveLength(0);
 	});
 });

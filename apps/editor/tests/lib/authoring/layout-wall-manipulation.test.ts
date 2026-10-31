@@ -618,6 +618,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		selectWall(mounted.facade, mounted.wallId);
 		expect(mounted.facade.session.task()).toBeNull();
 		const before = wallPoints(mounted.document, mounted.wallId);
+		const idsBefore = acceptedLayout(mounted.facade).walls.map((wall) => wall.id).sort();
 		const evaluationId = mounted.facade.evaluationId()!;
 		const middle = stageCss(mounted.facade, [3, 0]);
 		const shifted = stageCss(mounted.facade, [3.5, 0.5]);
@@ -655,6 +656,9 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(after.end[0]).toBeCloseTo(before.end[0], 9);
 		expect(after.end[1]).toBeCloseTo(before.end[1] + 0.5, 5);
 		expect(after.length).toBeCloseTo(before.length, 9);
+		// Four Walls keep their identities, and the release is one Undo step.
+		expect(acceptedLayout(mounted.facade).walls.map((wall) => wall.id).sort()).toEqual(idsBefore);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
 	it('cancels with no document change and releases the gesture lease', async () => {
@@ -1226,6 +1230,12 @@ describe('R217.S15 — gesture numeric entry', () => {
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '3' }).claimed).toBe(true);
 		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-move-mark' && mark.tag.includes('Distance 3'))).toBe(true);
+		expect(
+			mounted.facade
+				.candidatePreviews()
+				.flatMap((candidate) => candidate.labels)
+				.some((label) => label.text.includes('Distance 3'))
+		).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
 		await eventually(() => {
 			const points = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
@@ -1234,6 +1244,28 @@ describe('R217.S15 — gesture numeric entry', () => {
 		const after = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
 		expect(after.start[0]).toBeCloseTo(0, 9);
 		expect(after.end[0]).toBeCloseTo(6, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('types a body distance from a press away from the move grip', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		// 4.5 m along a 6 m Wall: past the midpoint grip, inside the body band.
+		const body = stageCss(mounted.facade, [4.5, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: body, evaluationId }).claimed).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '2' }).claimed).toBe(true);
+		// The fallback press carries the move mark's id, so both the mark tag and the
+		// pointer tag name the value being typed even though the press was not on the grip.
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-move-mark' && mark.tag.includes('Distance 2'))).toBe(true);
+		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
+		// The release after Enter must not write a second time.
+		mounted.facade.pointerIntent({ phase: 'up', css: body, evaluationId });
+		await eventually(() => {
+			const points = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
+			return Math.abs(points.start[1] - 2) < 1e-6;
+		});
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
@@ -1250,12 +1282,51 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '1' }).claimed).toBe(true);
 		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-end-mark' && mark.tag.includes('Z 1'))).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
+		// The release after Enter must not write a second time.
+		mounted.facade.pointerIntent({ phase: 'up', css: endCss, evaluationId });
 		await eventually(() => {
 			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
 			return frame !== null && Math.abs(frame.end[1] - 1) < 1e-6;
 		});
 		expect(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).end[0]).toBeCloseTo(6, 9);
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('commits the winning Junction snap point exactly', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const endCss = stageCss(mounted.facade, [6, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		const to = stageCss(mounted.facade, [5.52, 0.03]);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		// The guide from the other end fixes Z; the 0.5 m grid fixes X. The commit
+		// must be that winning point, not the raw pointer sample beside it.
+		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.snap !== undefined)).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => {
+			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+			return frame !== null && Math.abs(frame.end[0] - 5.5) < 1e-9;
+		});
+		const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		expect(frame.end[0]).toBeCloseTo(5.5, 9);
+		expect(frame.end[1]).toBeCloseTo(0, 9);
+	});
+
+	it('tags the moving end point with the candidate length and angle', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const endCss = stageCss(mounted.facade, [6, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted.facade, [5.5, 0.5]), evaluationId });
+		const tag = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-end-mark')?.tag ?? '';
+		expect(tag).toContain('Length');
+		expect(tag).toContain('°');
+		expect(tag).not.toMatch(/^X /);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: endCss, evaluationId });
 	});
 });
 
@@ -1306,6 +1377,21 @@ describe('R217.S15 — body and length reach', () => {
 		const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
 		expect(frame.angleRadians).toBeCloseTo(0, 9);
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('frees the length ray from the 0.5 m grid while Snap is suspended', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		mounted.facade.setDrafting({ snapSuspended: true });
+		settle(mounted.facade, 3);
+		const evaluationId = mounted.facade.evaluationId()!;
+		const rayCss = lengthRayPress(mounted);
+		const to = stageCss(mounted.facade, [5.37, 0]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.37 m'))).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: to, evaluationId });
 	});
 
 	it('moves a free-standing Wall with nothing else affected', async () => {

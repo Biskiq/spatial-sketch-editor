@@ -2896,10 +2896,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (drag?.mode === 'adapter') {
-			// The press belonged to an adapter: its tap is the tool's own command
-			// (place a point, split a Wall, or a refusal) and never a selection, so the
-			// click that follows selects nothing at all.
-			press.claim(event.pointerId);
+			// A task's tap is its own command (place a point, split a Wall, or a
+			// refusal) and never a selection, so it claims the click. Direct
+			// manipulation with no task is different: a release within tolerance
+			// produces no request, so the ordinary click still runs and keeps the
+			// selection; a real drag is longer than the click tolerance and the
+			// click's own distance check discards it.
+			if (task !== null) press.claim(event.pointerId);
 			const stage = facade;
 			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			drag = null;

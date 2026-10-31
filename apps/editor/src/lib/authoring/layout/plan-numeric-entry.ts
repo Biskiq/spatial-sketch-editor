@@ -38,10 +38,6 @@ export type PlanNumericFieldId =
 	| 'offset'
 	| 'dx'
 	| 'dz'
-	| 'startX'
-	| 'startZ'
-	| 'endX'
-	| 'endZ'
 	| 'distance'
 	| 'x'
 	| 'z'
@@ -124,8 +120,6 @@ export type PlanNumericHost =
 	| 'wall-move'
 	/** R217.S15 body drag: one signed distance along the Wall's current normal. */
 	| 'wall-normal'
-	/** R217.S15 Card disclosure: the two shared Junctions' exact X/Z. */
-	| 'wall-junctions'
 	/** Junction move: "X/Z when numeric editing". */
 	| 'junction'
 	/** Curve bend point: "active point X/Z on focus". */
@@ -147,12 +141,6 @@ export const PLAN_NUMERIC_FIELD_SETS = {
 	'opening-resize': [meters('width', 'Width', 'positive'), meters('offset', 'Offset', 'nonnegative')],
 	'wall-move': [meters('dx', 'ΔX', 'signed'), meters('dz', 'ΔZ', 'signed')],
 	'wall-normal': [meters('distance', 'Distance', 'signed')],
-	'wall-junctions': [
-		meters('startX', 'Start X', 'signed'),
-		meters('startZ', 'Start Z', 'signed'),
-		meters('endX', 'End X', 'signed'),
-		meters('endZ', 'End Z', 'signed')
-	],
 	junction: [meters('x', 'X', 'signed'), meters('z', 'Z', 'signed')],
 	'curve-point': [meters('x', 'X', 'signed'), meters('z', 'Z', 'signed')],
 	'object-transform': [

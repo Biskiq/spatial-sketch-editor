@@ -693,7 +693,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const numeric = numericValue(markId);
 						if (numeric !== null) return numeric;
 						if (gesture?.markId === markId && gesture.request !== null) {
-							return wallRequestLabel(gesture.request, gesture.fixed);
+							// The target's point tag is the candidate's length and angle (plus the
+							// shared-Wall count); X/Z stays in the Card's disclosure.
+							return wallRequestLabel(
+								gesture.request,
+								gesture.fixed,
+								gesture.request.kind === 'junction'
+									? {
+											frame: gesture.preview ?? undefined,
+											incidentWalls: gesture.neighbours.length + 1
+										}
+									: undefined
+							);
 						}
 						return accepted;
 					};
@@ -2660,7 +2671,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									return false;
 								}
 								bodyPress = true;
-								markId = 'layout-wall-body';
+								// The fallback press is the same body writer as the move grip, so it
+								// carries that mark's id: its tag, numeric entry and refusal stay visible.
+								markId = 'layout-wall-move-mark';
 							} else {
 								return false;
 							}
@@ -3307,10 +3320,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 											labels: [
 												{
 													world: world(activeWall.movingPoint),
-													text: wallRequestLabel(activeWall.request, activeWall.fixed, {
-														frame: activeWall.preview ?? undefined,
-														incidentWalls: activeWall.neighbours.length + 1
-													})
+													// While numeric entry is open it is the live value: the pointer's last
+												// request is frozen and must not overwrite what the creator is typing.
+													text:
+														activeWall.numeric !== null
+															? `${planNumericEntryField(activeWall.numeric).label} ${activeWall.numeric.text}`
+															: wallRequestLabel(activeWall.request, activeWall.fixed, {
+																	frame: activeWall.preview ?? undefined,
+																	incidentWalls: activeWall.neighbours.length + 1
+																})
 												}
 											]
 										}),
