@@ -313,6 +313,11 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		for (const literal of ['8.0', '16.0', '/ 1.0', '/ 5.0', '/ 25.0']) {
 			expect(material.fragmentShader).toContain(literal);
 		}
+		// One weight per level from the denser direction, outside the per-axis loop.
+		const fragment = material.fragmentShader;
+		expect(fragment).toContain('min(metreSpacingCssPx(vLattice.x), metreSpacingCssPx(vLattice.y))');
+		expect(fragment.indexOf('levelFade(metre')).toBeLessThan(fragment.indexOf('for (int axis'));
+		expect(fragment.slice(fragment.indexOf('for (int axis'))).not.toContain('levelFade');
 		updateMatGridMaterial(material, { centerXZ: [512, -256], halfExtentMeters: 1024, latticeOffsetXZ: [12, -6] }, 1.5);
 		expect(material.uniforms.uSize!.value).toBe(2048);
 		expect(material.uniforms.uLatticeOffset!.value).toEqual([12, -6]);

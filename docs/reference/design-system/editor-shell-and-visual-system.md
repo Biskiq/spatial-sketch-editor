@@ -909,8 +909,9 @@ zoom-driven interval ladder. Decimate the **drawing** by projected CSS-pixel spa
 each level is fully inked at 16 px and above, fades from 16 to 8 px and is suppressed
 below 8 px. On Paper a 25 m reference appears only while the 5 m level is suppressed, and
 obeys the same rule. The 3D mat applies the same fade per pixel, from each pixel's own
-projected spacing, so near ground keeps 1 m, farther ground 5 m and the far ground 25 m;
-there the 25 m level cross-fades in as the 5 m level fades out, so a zoom never passes
+projected spacing, so near ground keeps 1 m, farther ground 5 m and the far ground 25 m.
+Both directions of a level share one weight from the denser direction, so they leave together
+and the farthest ground is plain mat, never one direction of lines. The 25 m level cross-fades in as the 5 m level fades out, so a zoom never passes
 through a band with no reference (R217.S19). The mat is subdivided and pushed back four depth
 steps, so a floor on the datum holds in motion with the near plane at its floor. Anchor to the
 world/floor datum with a stable origin across zoom changes.

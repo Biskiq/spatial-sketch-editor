@@ -6,9 +6,11 @@
  * projected spacing of every fixed level from its own screen derivatives and
  * applies the grammar's 16 → 8 CSS px fade there: 1 m near the eye, 5 m further
  * out, 25 m toward the horizon, and plain mat where even 25 m would be denser
- * than 8 px. The 25 m level cross-fades in as the 5 m level fades out, so a zoom
- * never passes through a band with no reference. `matGridLevelWeights` in
- * `stage-grid.ts` is the tested twin of these weights.
+ * than 8 px. Both directions of a level share one weight, taken from the denser
+ * direction: foreshortening compresses the crosswise lines first, and a per-axis
+ * weight left only the receding lines there. The 25 m level cross-fades in as the
+ * 5 m level fades out, so a zoom never passes through a band with no reference.
+ * `matGridLevelWeights` in `stage-grid.ts` is the tested twin of these weights.
  *
  * The quad is one draw at constant cost: no line geometry, no line budget and no
  * rebuild on pan or zoom, only uniform updates. Lines stay anchored to world
@@ -78,9 +80,9 @@ float levelFade(float spacingCssPx) {
 	);
 }
 
-// Projected spacing, in CSS px, of lines one cell apart along this coordinate.
-float spacingCssPx(float cells) {
-	float perPixel = length(vec2(dFdx(cells), dFdy(cells)));
+// Projected spacing, in CSS px, of lines one metre apart along this coordinate.
+float metreSpacingCssPx(float meters) {
+	float perPixel = length(vec2(dFdx(meters), dFdy(meters)));
 	return 1.0 / max(perPixel, 1e-9) / uPixelRatio;
 }
 
@@ -91,6 +93,12 @@ float lineCoverage(float cells) {
 }
 
 void main() {
+	// One weight per level, from the denser direction, so a level's two directions
+	// always leave together.
+	float metre = min(metreSpacingCssPx(vLattice.x), metreSpacingCssPx(vLattice.y));
+	float minorWeight = levelFade(metre * ${float(GRID_MINOR_METERS)});
+	float majorWeight = levelFade(metre * ${float(GRID_MAJOR_METERS)});
+	float coarseWeight = levelFade(metre * ${float(GRID_COARSE_METERS)}) * (1.0 - majorWeight);
 	float minorAlpha = 0.0;
 	float majorAlpha = 0.0;
 	for (int axis = 0; axis < 2; axis++) {
@@ -98,9 +106,6 @@ void main() {
 		float minorCells = meters / ${float(GRID_MINOR_METERS)};
 		float majorCells = meters / ${float(GRID_MAJOR_METERS)};
 		float coarseCells = meters / ${float(GRID_COARSE_METERS)};
-		float minorWeight = levelFade(spacingCssPx(minorCells));
-		float majorWeight = levelFade(spacingCssPx(majorCells));
-		float coarseWeight = levelFade(spacingCssPx(coarseCells)) * (1.0 - majorWeight);
 		minorAlpha = max(minorAlpha, lineCoverage(minorCells) * minorWeight * uMinorOpacity);
 		majorAlpha = max(
 			majorAlpha,

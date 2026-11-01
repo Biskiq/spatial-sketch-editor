@@ -402,7 +402,9 @@ export function gridLinesFor(plan: GridPlan): readonly GridLine[] {
  * `shell/stage-mat-grid.ts` computes exactly these weights; this function is
  * their testable twin.
  *
- * `minorSpacingCssPx` is the projected spacing of 1 m lines at the pixel.
+ * `minorSpacingCssPx` is the projected spacing of 1 m lines at the pixel, in the
+ * denser of the two directions: one weight serves both, so a level's directions
+ * leave together and the far ground ends as plain mat, not as receding lines.
  */
 export function matGridLevelWeights(minorSpacingCssPx: number): {
 	readonly minor: number;
