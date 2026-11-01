@@ -203,11 +203,18 @@ Anchors, computed before the compaction commit:
 plan        050a30d9418a9a910a320388ae2ea4d879f1b34c   last commit with the full plan body (on main through PR #230);
                                                        the stub at its path names this anchor
 acceptance  e6d6faf8af4e48a9c88dc7d2db4347a372c98c14   the full record before this close-out; kept in full at its path
-tag         closed/r217.s20 -> e6d6faf8               tag target keeps both anchors reachable; created and pushed
-                                                       after the merge
-merge       P1 merge of PR #248 with `--merge`; the merge-commit SHA and the post-merge checks are recorded by the
-            post-merge anchors follow-up
+tag         closed/r217.s20 -> e6d6faf8               tag target keeps both anchors reachable; annotated tag object
+                                                       `66ade40039b9cf5bfa79d35b0703ab8ce0e34d8b`, pushed to origin
+merge       P1 merge commit `7d00a9263c07fccdc47c5d6a8f3d0ebcde69a131` (PR #248, `--merge`; parents `7cdc662e` and
+            `a43641d5`)
 ```
+
+Post-merge verification, run on `main` at `7d00a926`:
+
+- Both anchors are ancestors of `main`: `050a30d9` (plan) and `e6d6faf8` (acceptance). `git show` of each
+  returns its full body at its path.
+- The tag `closed/r217.s20` peels to `e6d6faf8`, and both anchors are its ancestors.
+- The tag is on origin.
 
 ```text
 CLOSEOUT PRESERVATION — R217.S20 (2026-11-01)
@@ -217,7 +224,7 @@ reference promotions:            0   the Head and shell-role contract already re
 renderable evidence archived:    49 files / 4.2 MiB (23 PNG, 21 JSON, 4 text, 1 script), moved byte-identical
 evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/CLOSED.md
 transient artifacts removed:     0
-historical anchors:              plan 050a30d9; acceptance e6d6faf8; tag closed/r217.s20 -> e6d6faf8
+historical anchors:              plan 050a30d9; acceptance e6d6faf8; tag closed/r217.s20 -> e6d6faf8 (pushed to origin)
 new live -> archive prose links: 0
 manual-owed verification rows:   2   native touch and Safari, owed by S11 and kept distinct from automated evidence
 remaining deferred items:        4   Index and Card density roles (S21, D06); Height Sheet pin hint (S22, D42);
