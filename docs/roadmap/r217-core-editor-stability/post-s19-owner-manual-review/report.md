@@ -125,7 +125,7 @@ the through Wall has no surface there to weld to, so edge incidence still report
 - **Readability.** Without cast shadows, Wall faces still separate by their lighting and the floor and ground stay clean.
 - **Eligibility.** Walls and objects keep their flags. The unlit floor can't receive a shadow itself, so a `ShadowMaterial` receiver on the same shape does; it draws nothing with no casting light and is never picked.
 - **Passes.** three skips the pass with no casting light. `needsPerFrameShadows` also stops a model from forcing per-frame updates unless a light casts.
-- **Limit: add, remove and Undo aren't verified end to end.** The editor has no control that adds or removes a light. The trigger is Scene identity, unchanged. On the live renderer, removing the authored light changed the frame and restoring it returned the same pixels. Fixtures with and without the light load correctly.
+- **Limit: add, remove and Undo aren't verified end to end.** The editor has no control that adds or removes a light. The trigger is Scene identity, unchanged. On the live renderer, removing the authored light changed about 136,000 pixels; restoring it left about 3,200 different from the first frame, a difference I did not explain. Fixtures with and without the light load correctly.
 
 **Left for the owner:**
 
