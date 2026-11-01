@@ -1,8 +1,8 @@
 # R217.S21 — acceptance record: Index and Card
 
-**Slice:** R217.S21 · **Status:** implementation evidence recorded at tested revision `edfab667`; no review, acceptance or verdict recorded here · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**Slice:** R217.S21 · **Status:** accepted 2026-11-01 at tested revision `edfab667` (clean independent review; routine close-out) · **Plan:** [implementation-plan.md](./implementation-plan.md) (closed to a stub; owns the criteria in its recovery line) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
-This record reports what was implemented, the gates run on the tested revision, the browser matrix and the residuals. It claims no independent review, no acceptance and no close-out. The [phase slice register](../README.md#slice-register) owns status.
+**AUTHORITY: NONE.** This record reports what was implemented, the gates run on the tested revision, the browser matrix, the independent review and the acceptance. The [phase slice register](../README.md#slice-register) owns status. The verdict is in [Acceptance](#acceptance), and the closeout anchors and preservation report are in [Closeout and preservation](#closeout-and-preservation).
 
 ## Drift reconciled at cutover
 
@@ -75,12 +75,12 @@ Against S20's recorded baseline (262 files, 3404 tests), S21 adds three suites a
 
 | State | 1440×900 | 1280×800 | 1180×820 | 820×1180 |
 | --- | --- | --- | --- | --- |
-| Wall, long and repeated names | [wall-long-repeated-1440x900.png](./evidence/2026-11-01-browser/wall-long-repeated-1440x900.png) | [wall-long-repeated-1280x800.png](./evidence/2026-11-01-browser/wall-long-repeated-1280x800.png) | [wall-long-repeated-1180x820.png](./evidence/2026-11-01-browser/wall-long-repeated-1180x820.png) | [wall-long-repeated-820x1180.png](./evidence/2026-11-01-browser/wall-long-repeated-820x1180.png) |
-| Opening (Door) | [opening-1440x900.png](./evidence/2026-11-01-browser/opening-1440x900.png) | [opening-1280x800.png](./evidence/2026-11-01-browser/opening-1280x800.png) | [opening-1180x820.png](./evidence/2026-11-01-browser/opening-1180x820.png) | [opening-820x1180.png](./evidence/2026-11-01-browser/opening-820x1180.png) |
-| Object (Sphere) | [object-sphere-1440x900.png](./evidence/2026-11-01-browser/object-sphere-1440x900.png) | [object-sphere-1280x800.png](./evidence/2026-11-01-browser/object-sphere-1280x800.png) | [object-sphere-1180x820.png](./evidence/2026-11-01-browser/object-sphere-1180x820.png) | [object-sphere-820x1180.png](./evidence/2026-11-01-browser/object-sphere-820x1180.png) |
-| Native form (Shape) | [native-form-1440x900.png](./evidence/2026-11-01-browser/native-form-1440x900.png) | [native-form-1280x800.png](./evidence/2026-11-01-browser/native-form-1280x800.png) | [native-form-1180x820.png](./evidence/2026-11-01-browser/native-form-1180x820.png) | [native-form-820x1180.png](./evidence/2026-11-01-browser/native-form-820x1180.png) |
-| Keyboard: a row's Actions disclosure open, from the keyboard | [index-actions-keyboard-1440x900.png](./evidence/2026-11-01-browser/index-actions-keyboard-1440x900.png) | [index-actions-keyboard-1280x800.png](./evidence/2026-11-01-browser/index-actions-keyboard-1280x800.png) | [index-actions-keyboard-1180x820.png](./evidence/2026-11-01-browser/index-actions-keyboard-1180x820.png) | [index-actions-keyboard-820x1180.png](./evidence/2026-11-01-browser/index-actions-keyboard-820x1180.png) |
-| Head chip with the Index away | [head-chip-index-away-1440x900.png](./evidence/2026-11-01-browser/head-chip-index-away-1440x900.png) | [head-chip-index-away-1280x800.png](./evidence/2026-11-01-browser/head-chip-index-away-1280x800.png) | [head-chip-index-away-1180x820.png](./evidence/2026-11-01-browser/head-chip-index-away-1180x820.png) | [head-chip-index-away-820x1180.png](./evidence/2026-11-01-browser/head-chip-index-away-820x1180.png) |
+| Wall, long and repeated names | [wall-long-repeated-1440x900.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/wall-long-repeated-1440x900.png) | [wall-long-repeated-1280x800.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/wall-long-repeated-1280x800.png) | [wall-long-repeated-1180x820.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/wall-long-repeated-1180x820.png) | [wall-long-repeated-820x1180.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/wall-long-repeated-820x1180.png) |
+| Opening (Door) | [opening-1440x900.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/opening-1440x900.png) | [opening-1280x800.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/opening-1280x800.png) | [opening-1180x820.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/opening-1180x820.png) | [opening-820x1180.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/opening-820x1180.png) |
+| Object (Sphere) | [object-sphere-1440x900.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/object-sphere-1440x900.png) | [object-sphere-1280x800.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/object-sphere-1280x800.png) | [object-sphere-1180x820.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/object-sphere-1180x820.png) | [object-sphere-820x1180.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/object-sphere-820x1180.png) |
+| Native form (Shape) | [native-form-1440x900.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/native-form-1440x900.png) | [native-form-1280x800.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/native-form-1280x800.png) | [native-form-1180x820.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/native-form-1180x820.png) | [native-form-820x1180.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/native-form-820x1180.png) |
+| Keyboard: a row's Actions disclosure open, from the keyboard | [index-actions-keyboard-1440x900.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/index-actions-keyboard-1440x900.png) | [index-actions-keyboard-1280x800.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/index-actions-keyboard-1280x800.png) | [index-actions-keyboard-1180x820.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/index-actions-keyboard-1180x820.png) | [index-actions-keyboard-820x1180.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/index-actions-keyboard-820x1180.png) |
+| Head chip with the Index away | [head-chip-index-away-1440x900.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/head-chip-index-away-1440x900.png) | [head-chip-index-away-1280x800.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/head-chip-index-away-1280x800.png) | [head-chip-index-away-1180x820.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/head-chip-index-away-1180x820.png) | [head-chip-index-away-820x1180.png](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/head-chip-index-away-820x1180.png) |
 
 Results, at every width and state:
 
@@ -90,7 +90,7 @@ Results, at every width and state:
 - Select and frame stay distinct: the mounted-route test asserts that a row select leaves the Camera pose and the row's Bring into view moves it. The matrix did not measure the Camera.
 - Keyboard, checked by Tab in the browser: a Wall row, its Actions toggle, then `Open location` and `Bring into view` once the disclosure is open, then the next row. In the Card: Rename, Collapse and close. The Card's writer fields, Delete, Bring into view and More were not walked by Tab in the browser.
 
-Measurements and error logs: `<state>-<width>-metrics.json`, `console-<width>.txt`, `page-errors-<width>.txt`, and the probe [matrix-metrics.js](./evidence/2026-11-01-browser/matrix-metrics.js).
+Measurements and error logs: `<state>-<width>-metrics.json`, `console-<width>.txt`, `page-errors-<width>.txt`, and the probe [matrix-metrics.js](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/matrix-metrics.js).
 
 ### Coarse-pointer pass (review P1)
 
@@ -98,8 +98,8 @@ Measurements and error logs: `<state>-<width>-metrics.json`, `console-<width>.tx
 - Scope: every visible Card and Index control in each capture, skipping only controls inside a closed disclosure. The Card's writer fields, rename field, buttons and summaries are included, as are each Index row, its Actions toggle, the disclosed operations and the search field.
 - Result, after the fixes (`edfab667`): **266 visible controls, 0 below 44 × 44 CSS px** (minimum 44 × 44). No horizontal overflow. `(pointer: coarse)` matched in every capture.
 - Before the explicit rules (`424b78e2`): also 266 controls and 0 below 44 × 44. The branch's existing host rule (`.editor-host :global(button|summary|select|input)` under `pointer: coarse`) already sets the floor, so the regression described in the review did not reproduce on this branch. The explicit component rules now keep the Card and the Index at 44 px on their own, and the fine-pointer density stays 32 px.
-- Evidence, in the [2026-11-01 browser folder](./evidence/2026-11-01-browser/): [coarse-pointer-targets.json](./evidence/2026-11-01-browser/coarse-pointer-targets.json) (after), [coarse-pointer-targets-before-fix.json](./evidence/2026-11-01-browser/coarse-pointer-targets-before-fix.json) (before), the eight PNGs of each (`coarse-final-<state>-<width>.png` and `coarse-before-fix-<state>-<width>.png`), and the probe [coarse-pass.cjs](./evidence/2026-11-01-browser/coarse-pass.cjs).
-- Screenshots after the fixes: [wall 820×1180](./evidence/2026-11-01-browser/coarse-final-wall-820x1180.png), [opening 820×1180](./evidence/2026-11-01-browser/coarse-final-opening-820x1180.png), and the 1180×820 captures alongside them.
+- Evidence, in the [2026-11-01 browser folder](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/): [coarse-pointer-targets.json](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/coarse-pointer-targets.json) (after), [coarse-pointer-targets-before-fix.json](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/coarse-pointer-targets-before-fix.json) (before), the eight PNGs of each (`coarse-final-<state>-<width>.png` and `coarse-before-fix-<state>-<width>.png`), and the probe [coarse-pass.cjs](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/coarse-pass.cjs).
+- Screenshots after the fixes: [wall 820×1180](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/coarse-final-wall-820x1180.png), [opening 820×1180](../../../archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/2026-11-01-browser/coarse-final-opening-820x1180.png), and the 1180×820 captures alongside them.
 
 ### Decisions taken inside the plan
 
@@ -140,3 +140,52 @@ These are judgments the plan left open. None needed an owner ruling, and each is
 - **Fixes:** `28538e19` adds `Position (X · Z)` and a read-only `Elevation`, each stated once, with tests. `edfab667` adds explicit 44 px coarse rules. Coarse pass: 266 controls, 0 below 44 × 44. The re-review at `edfab667` is clean, with nothing open, withdrawn or unadjudicated.
 - **Verdict at `edfab667`:** the slice meets plan §3 to §5 within the declared `affected-subsystem` tier. Generated `Kind n` labels never reach source, because rename reads the writer's authored value. The drift reconciliation follows PR #247's baseline. Routine close-out may proceed.
 - **Noted for later slices:** at 1440 × 900 the Card overlaps the Height Sheet (S22, D42). The Card's Delete keeps its pre-existing destructive colour, and S23 owns the ink palette.
+
+## Acceptance
+
+Accepted on 2026-11-01 at tested revision `edfab667`. The owner directed that each slice go through routine
+close-out after the coordinator's independent review, and this close-out is that direction. It is not an
+owner override, and nothing was waived.
+
+- **Review:** the independent review verdict covers `edfab667` and is clean, with no open, withdrawn or
+  unadjudicated finding. The first review's P1 and P2 are fixed by `28538e19` and `edfab667`, with tests, and
+  re-reviewed.
+- **Criteria:** the reviewer's verdict records plan §3 to §5 as met within the declared `affected-subsystem`
+  tier. The gates and the browser matrix cover the plan's test cases and browser rows, except one: the keyboard
+  Tab path of the Card's writer fields, Delete, Bring into view and More was not walked in the browser (see
+  Browser matrix). That path is carried below as a manual-owed row, distinct from the automated evidence.
+- **Prerequisites:** the plan's dependency R217.S20 is shipped in the register.
+- **Capability outcomes:** none. The register's Effects column for R217.S21 is `—`.
+- **Gates:** no product gate was re-run at close-out. The recorded numbers above are reused. The documentation
+  gate `tests/docs` ran after the link repairs.
+
+## Closeout and preservation
+
+Anchors, computed before the compaction commit:
+
+```text
+plan        370c99d9f1dc4a5baf92aae6b18b0e06e1026ce1   last commit with the full plan body (a branch commit,
+                                                       reachable on main through the P1 merge); the stub at
+                                                       its path names this anchor
+acceptance  928aa5f89a2470b80092052abf9fa6e3e848b894   the full record before this close-out; kept in full at its path
+tag         closed/r217.s21 -> 928aa5f8               created and pushed after the merge; the tag target keeps
+                                                       both anchors reachable
+merge       P1 merge of PR #250 with `--merge`; the merge-commit SHA and the post-merge verification are recorded
+            by the post-merge anchors follow-up
+```
+
+```text
+CLOSEOUT PRESERVATION — R217.S21 (2026-11-01)
+prose compacted:                 1   approved plan -> stub at its own path; acceptance record kept in full
+reference promotions:            0   the Index and Card contract already reads in PLATE (Card identity, facts and
+                                     More); the target specification was reconciled at cutover
+renderable evidence archived:    76 files / 6.9 MB (40 PNG, 26 JSON, 8 text, 1 script, 1 probe), moved byte-identical
+evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/CLOSED.md
+transient artifacts removed:     0
+historical anchors:              plan 370c99d9; acceptance 928aa5f8; tag closed/r217.s21 -> 928aa5f8 (annotated; pushed to origin)
+new live -> archive prose links: 0
+manual-owed verification rows:   3   native touch and Safari, owed by S11 (J9 and the Safari cells); the keyboard Tab
+                                     path of the Card's writer fields, Delete, Bring into view and More, not walked
+remaining deferred items:        10  the nine Residuals and the later-slice note on the Height Sheet overlap
+permanent stubs added:           1   approved plan
+```
