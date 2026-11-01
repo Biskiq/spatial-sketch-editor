@@ -160,6 +160,11 @@
 		};
 	}));
 
+	/** A straight frame only fits a rectangular door; an arch keeps its bare reveal. */
+	function isFramedDoor(opening: { kind: string; profile: string }): boolean {
+		return opening.kind === 'door' && opening.profile === 'rectangular';
+	}
+
 	function adaptedFor(roomId: string): AdaptedRoom | undefined {
 		return adaptedRooms.find((room) => room.roomId === roomId);
 	}
@@ -226,12 +231,13 @@
 			{/if}
 
 			{#each room.walls as wall (wall.segmentId)}
-				{#each wall.openings.filter((opening) => opening.kind === 'door') as opening (opening.openingId)}
+				{#each wall.openings.filter(isFramedDoor) as opening (opening.openingId)}
 					<RoomPortal
-						position={[opening.center.point[0], room.floorElevation, opening.center.point[1]]}
+						position={[opening.center.point[0], room.floorElevation + opening.sillHeight, opening.center.point[1]]}
 						rotation={[0, opening.center.yaw, 0]}
 						width={opening.width}
 						height={opening.height}
+						wallThickness={wall.thickness}
 						color={colors.accentColor}
 					/>
 				{/each}
@@ -245,12 +251,13 @@
 	-->
 	<T is={walls.object3d} />
 	{#each geometry.walls ?? [] as wall (wall.wallId)}
-		{#each wall.openings.filter((opening) => opening.kind === 'door') as opening (opening.openingId)}
+		{#each wall.openings.filter(isFramedDoor) as opening (opening.openingId)}
 			<RoomPortal
-				position={[opening.center.point[0], roomElevation(wall.floorId), opening.center.point[1]]}
+				position={[opening.center.point[0], roomElevation(wall.floorId) + opening.sillHeight, opening.center.point[1]]}
 				rotation={[0, opening.center.yaw, 0]}
 				width={opening.width}
 				height={opening.height}
+				wallThickness={wall.thickness}
 				color={neutralVisitorRoomPresentation.accentColor}
 			/>
 		{/each}
