@@ -8,19 +8,28 @@
 	 * into view**, **Reveal**). Selecting never navigates, and navigation,
 	 * location and inspection never require a prior selection.
 	 *
- * Group headings are visually distinct from selectable entities; a group with
- * no items renders nothing. An excluded source stays **visible and
- * findable** with its declared membership reason as text, but is not
- * selectable — its row is announced `aria-disabled` (still focusable, so it can
- * be located) while its locator operations remain available. **Bring into view**
- * needs placeable geometry, so it is disabled with its reason on an excluded row;
- * **Open location** works for every listed subject.
+	 * R217.S21 — one compact row per subject at the role's Index width. The row's
+	 * main control is **Select** and nothing else; the locator operations sit behind
+	 * the row's **Actions** disclosure, so each stays a separate, keyboard-reachable
+	 * control without repeating itself on every row. The label is the subject's
+	 * authored name, or a session-stable `Kind n` (see `index-labels.ts`); the full
+	 * canonical identity lives in the row's accessible name.
+	 *
+	 * Group headings are visually distinct from selectable entities; a group with
+	 * no items renders nothing. An excluded source stays **visible and
+	 * findable** with its declared membership reason as text, but is not
+	 * selectable — its row is announced `aria-disabled` (still focusable, so it can
+	 * be located) while its locator operations remain available. **Bring into view**
+	 * needs placeable geometry, so it is disabled with its reason on an excluded row;
+	 * **Open location** works for every listed subject.
 	 *
 	 * A **revealed** item carries the evaluator's own `revealed` flag rather than
 	 * re-deriving it: the declared membership reason and the display/hit eligibility
 	 * are two independent facts, and a revealed source is styled distinctly from an
 	 * `included` one without hiding the reason it was excluded for.
 	 */
+	import { membershipLabel } from './index-labels';
+
 	let {
 		open,
 		groups,
@@ -38,7 +47,11 @@
 			label: string;
 			items: readonly {
 				sourceId: string;
+				/** The display label: the authored name, or a generated `Kind n`. */
 				label: string;
+				/** `false` when the label is generated rather than authored. */
+				authored: boolean;
+				/** The human kind word shown before the label. */
 				kind: string;
 				eligible: boolean;
 				/** The evaluator's own revealed flag: Reveal keeps the declared reason. */
@@ -84,6 +97,21 @@
 		row.focus();
 	}
 
+	/** Which rows have their Actions disclosure open. Closed by default on every row. */
+	let disclosed = $state<ReadonlySet<string>>(new Set());
+
+	function toggleActions(sourceId: string): void {
+		const next = new Set(disclosed);
+		if (next.has(sourceId)) next.delete(sourceId);
+		else next.add(sourceId);
+		disclosed = next;
+	}
+
+	/** A DOM id that is safe for any canonical identity, which contains colons. */
+	function domId(prefix: string, sourceId: string): string {
+		return `${prefix}-${sourceId.replace(/[^A-Za-z0-9_-]/g, '_')}`;
+	}
+
 	/**
 	 * Only non-empty groups are rendered, and a group with items is never hidden.
 	 *
@@ -101,27 +129,10 @@
 
 	const searchedNothing = $derived(query.trim() !== '' && !hasItems);
 
-	const KIND_LABELS: Record<string, string> = {
-		wall: 'Wall',
-		opening: 'Opening',
-		object: 'Object',
-		'room-floor': 'Floor'
-	};
-
-	const MEMBERSHIP_LABELS: Record<string, string> = {
-		included: 'In the current Plan',
-		'filtered-type': 'Hidden by the source-kind filter',
-		'outside-depth': 'Below the Plan depth',
-		'outside-span': 'Outside the Plan lateral span',
-		'no-meaningful-projection': 'No meaningful projection'
-	};
-
-	function kindLabel(kind: string): string {
-		return KIND_LABELS[kind] ?? kind;
-	}
-
-	function membershipLabel(membership: string): string {
-		return MEMBERSHIP_LABELS[membership] ?? membership;
+	/** The row's accessible name: the kind, the full label and the canonical identity. */
+	function accessibleName(item: { kind: string; label: string; sourceId: string; revealed: boolean; eligible: boolean; membership: string }): string {
+		const badge = item.revealed ? 'Revealed' : !item.eligible ? membershipLabel(item.membership) : '';
+		return `${item.kind} ${item.label}. Identity ${item.sourceId}.${badge === '' ? '' : ` ${badge}.`}`;
 	}
 </script>
 
@@ -140,7 +151,7 @@
 				id="plate-index-search"
 				type="search"
 				class="search-input"
-				placeholder="Search subjects by name or identity…"
+				placeholder="Search by name, kind or identity…"
 				value={query}
 				oninput={(event) => onQuery((event.currentTarget as HTMLInputElement).value)}
 			/>
@@ -157,55 +168,77 @@
 					<ul class="group-items">
 						{#each group.items as item (item.sourceId)}
 							{@const selected = item.sourceId === selectionId}
-							<li class="item" class:revealed={item.revealed} class:excluded={!item.eligible}>
-								<button
-									type="button"
-									class="item-row"
-									use:locate={item.sourceId}
-									aria-current={selected ? 'true' : undefined}
-									aria-disabled={!item.eligible}
-									title={item.eligible ? item.label : membershipLabel(item.membership)}
-									onclick={() => {
-										// An excluded subject stays focusable and locatable, but it is
-										// not selectable: selection means "this is the subject now".
-										if (!item.eligible) return;
-										onSelect(item.sourceId);
-									}}
-								>
-									<span class="item-kind">{kindLabel(item.kind)}</span>
-									<span class="item-name">{item.label}</span>
-									{#if item.revealed}
-										<span class="item-badge revealed-badge">Revealed</span>
-									{:else if !item.eligible}
-										<span class="item-badge excluded-badge">{membershipLabel(item.membership)}</span>
-									{/if}
-								</button>
-
-								<div class="item-ops">
-									<button type="button" class="op" onclick={() => openLocation(item.sourceId)}>
-										Open location
+							{@const expanded = disclosed.has(item.sourceId)}
+							<li
+								class="item"
+								class:revealed={item.revealed}
+								class:excluded={!item.eligible}
+								class:expanded
+								data-source-id={item.sourceId}
+							>
+								<div class="item-head">
+									<button
+										type="button"
+										class="item-row"
+										use:locate={item.sourceId}
+										aria-current={selected ? 'true' : undefined}
+										aria-disabled={!item.eligible}
+										aria-label={accessibleName(item)}
+										title={item.eligible ? item.label : membershipLabel(item.membership)}
+										onclick={() => {
+											// An excluded subject stays focusable and locatable, but it is
+											// not selectable: selection means "this is the subject now".
+											if (!item.eligible) return;
+											onSelect(item.sourceId);
+										}}
+									>
+										<span class="item-kind">{item.kind}</span>
+										<span class="item-name" class:generated={!item.authored}>{item.label}</span>
+										{#if item.revealed}
+											<span class="item-badge revealed-badge" aria-hidden="true">Revealed</span>
+										{:else if !item.eligible}
+											<span class="item-badge excluded-badge" aria-hidden="true">{membershipLabel(item.membership)}</span>
+										{/if}
 									</button>
 									<button
 										type="button"
-										class="op"
-										disabled={!item.eligible}
-										title={item.eligible
-											? `Bring ${item.label} into view`
-											: `${membershipLabel(item.membership)} — Reveal it to navigate to it`}
-										onclick={() => onBringIntoView(item.sourceId)}
+										class="item-actions-toggle"
+										aria-expanded={expanded}
+										aria-controls={domId('plate-index-actions', item.sourceId)}
+										aria-label={`Actions for ${item.label}`}
+										onclick={() => toggleActions(item.sourceId)}
 									>
-										Bring into view
+										Actions
 									</button>
-									{#if item.membership !== 'included' || item.revealed}
+								</div>
+
+								{#if expanded}
+									<div class="item-ops" id={domId('plate-index-actions', item.sourceId)}>
+										<button type="button" class="op" onclick={() => openLocation(item.sourceId)}>
+											Open location
+										</button>
 										<button
 											type="button"
-											class="op op-reveal"
-											onclick={() => onReveal(item.sourceId)}
+											class="op"
+											disabled={!item.eligible}
+											title={item.eligible
+												? `Bring ${item.label} into view`
+												: `${membershipLabel(item.membership)} — Reveal it to navigate to it`}
+											onclick={() => onBringIntoView(item.sourceId)}
 										>
-											{item.revealed ? 'Hide' : 'Reveal'}
+											Bring into view
 										</button>
-									{/if}
-								</div>
+										{#if item.membership !== 'included' || item.revealed}
+											<button
+												type="button"
+												class="op op-reveal"
+												onclick={() => onReveal(item.sourceId)}
+											>
+												{item.revealed ? 'Hide' : 'Reveal'}
+											</button>
+										{/if}
+									</div>
+								{/if}
 							</li>
 						{/each}
 					</ul>
@@ -217,21 +250,24 @@
 </nav>
 
 <style>
-	/* Chassis (quiet neutral / pale stone). The Index locates identity; it never
-	   borrows the selection gold as its own surface. */
+	/*
+	 * PLATE shell roles (shell-roles.css). The Index is a pale stone working surface
+	 * at the role's density; no colour is introduced here.
+	 */
 	.plate-index {
 		box-sizing: border-box;
 		min-height: 0;
 		display: flex;
-		width: 100%;
+		width: var(--shell-index-width, 256px);
+		max-width: 100%;
 		min-width: 0;
-		max-width: 22rem;
 		flex-direction: column;
-		border: 1px solid #d8dcd6;
+		border: 1px solid var(--shell-paper, #e9ebe6);
 		border-radius: 0.5rem;
-		background: #f5f6f4;
-		color: #1b201c;
-		font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+		background: var(--shell-index, #f5f6f4);
+		color: var(--shell-forest, #11291f);
+		font-family: var(--shell-sans, Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif);
+		font-size: var(--shell-text-body, 13px);
 	}
 
 	.plate-index[hidden] { display: none; }
@@ -245,8 +281,8 @@
 		overflow: auto;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		padding: 0.7rem;
+		gap: 0.6rem;
+		padding: 0.55rem;
 	}
 
 	.index-search {
@@ -256,8 +292,8 @@
 	}
 
 	.search-label {
-		color: #6b7466;
-		font-size: 0.68rem;
+		color: var(--shell-forest-raised, #22503c);
+		font-size: var(--shell-text-utility, 12px);
 		font-weight: 600;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -267,32 +303,33 @@
 		width: 100%;
 		min-width: 0;
 		box-sizing: border-box;
-		padding: 0.4rem 0.5rem;
-		border: 1px solid #c9cec5;
+		min-height: var(--shell-control-height, 32px);
+		padding: 0.3rem 0.45rem;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
 		border-radius: 0.35rem;
-		background: #ffffff;
+		background: var(--shell-card, #ffffff);
 		color: inherit;
 		font: inherit;
-		font-size: 0.85rem;
+		font-size: var(--shell-text-body, 13px);
 	}
 
 	.index-empty {
 		margin: 0;
-		color: #6b7466;
-		font-size: 0.82rem;
+		color: var(--shell-forest-raised, #22503c);
+		font-size: var(--shell-text-utility, 12px);
 		line-height: 1.4;
 	}
 
 	.index-group {
 		display: flex;
 		flex-direction: column;
-		gap: 0.35rem;
+		gap: 0.3rem;
 	}
 
 	.group-heading {
 		margin: 0;
-		color: #6b7466;
-		font-size: 0.68rem;
+		color: var(--shell-forest-raised, #22503c);
+		font-size: var(--shell-text-utility, 12px);
 		font-weight: 700;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
@@ -301,7 +338,7 @@
 	.group-items {
 		display: flex;
 		flex-direction: column;
-		gap: 0.3rem;
+		gap: 0.25rem;
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -310,26 +347,34 @@
 	.item {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		padding: 0.3rem;
+		gap: 0.2rem;
+		min-width: 0;
 		border: 1px solid transparent;
 		border-radius: 0.4rem;
-		background: #ffffff;
+		background: var(--shell-card, #ffffff);
 	}
 
 	.item.revealed {
 		border-style: dashed;
-		border-color: #b9c3b3;
-		background: #fbfcf9;
+		border-color: var(--shell-hairline, #2f4a3d);
 	}
 
+	.item-head {
+		display: flex;
+		align-items: stretch;
+		gap: 0.2rem;
+		min-width: 0;
+	}
+
+	/* One line: the kind, the label (ellipsized, full in its title) and a badge. */
 	.item-row {
 		display: flex;
-		align-items: baseline;
-		gap: 0.45rem;
-		width: 100%;
-		min-height: 2.5rem;
-		padding: 0.35rem 0.4rem;
+		align-items: center;
+		flex: 1 1 auto;
+		gap: 0.4rem;
+		min-width: 0;
+		min-height: var(--shell-control-height, 32px);
+		padding: 0.2rem 0.4rem;
 		border: 1px solid transparent;
 		border-radius: 0.3rem;
 		background: none;
@@ -340,13 +385,14 @@
 	}
 
 	.item-row:hover:not(:disabled) {
-		background: #eef1ec;
+		background: var(--shell-paper, #e9ebe6);
 	}
 
+	/* Canonical selection: the gold contour and its gold ink, never a page flood. */
 	.item-row[aria-current='true'] {
-		border-color: #d4ad45;
-		box-shadow: inset 0 0 0 1px #d4ad45;
-		background: #fdf7e6;
+		border-color: var(--shell-gold, #d4ad45);
+		box-shadow: inset 0 0 0 1px var(--shell-gold, #d4ad45);
+		color: var(--shell-gold-ink, #74560c);
 	}
 
 	.item-row[aria-disabled='true'] {
@@ -361,8 +407,8 @@
 
 	.item-kind {
 		flex: none;
-		color: #6b7466;
-		font-size: 0.68rem;
+		color: var(--shell-forest-raised, #22503c);
+		font-size: var(--shell-text-utility, 12px);
 		font-weight: 700;
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
@@ -372,14 +418,19 @@
 		min-width: 0;
 		flex: 1 1 auto;
 		overflow: hidden;
-		font-size: 0.85rem;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
+	/* A generated `Kind n` reads as a quiet placeholder, never as an authored name. */
+	.item-name.generated {
+		color: var(--shell-forest-raised, #22503c);
+		font-style: italic;
+	}
+
 	.item-badge {
 		flex: none;
-		padding: 0.1rem 0.35rem;
+		padding: 0.05rem 0.3rem;
 		border-radius: 999px;
 		font-size: 0.64rem;
 		font-weight: 700;
@@ -388,52 +439,72 @@
 	}
 
 	.revealed-badge {
-		border: 1px solid #6a7c63;
-		color: #43503d;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		color: var(--shell-forest, #11291f);
 	}
 
 	.excluded-badge {
-		border: 1px solid #c9cec5;
-		color: #6b7466;
+		border: 1px solid var(--shell-paper, #e9ebe6);
+		color: var(--shell-forest-raised, #22503c);
+	}
+
+	.item-actions-toggle {
+		flex: none;
+		min-height: var(--shell-control-height, 32px);
+		padding: 0 0.45rem;
+		border: 1px solid var(--shell-paper, #e9ebe6);
+		border-radius: 0.3rem;
+		background: var(--shell-index, #f5f6f4);
+		color: var(--shell-forest-raised, #22503c);
+		font: inherit;
+		font-size: var(--shell-text-utility, 12px);
+		cursor: pointer;
+	}
+
+	.item-actions-toggle[aria-expanded='true'] {
+		border-color: var(--shell-hairline, #2f4a3d);
+		color: var(--shell-forest, #11291f);
 	}
 
 	.item-ops {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.3rem;
-		padding: 0 0.4rem 0.15rem;
+		padding: 0 0.35rem 0.3rem;
 	}
 
 	.op {
-		padding: 0.28rem 0.45rem;
-		border: 1px solid #cfd4cb;
+		min-height: var(--shell-control-height, 32px);
+		padding: 0.2rem 0.45rem;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
 		border-radius: 0.3rem;
-		background: #f5f6f4;
-		color: #3c4239;
+		background: var(--shell-index, #f5f6f4);
+		color: var(--shell-forest, #11291f);
 		font: inherit;
-		font-size: 0.72rem;
+		font-size: var(--shell-text-utility, 12px);
 		cursor: pointer;
 	}
 
 	.op:hover {
-		border-color: #6a7c63;
-		background: #e9ebe6;
+		background: var(--shell-paper, #e9ebe6);
 	}
 
 	.op-reveal {
-		border-color: #a9b6a2;
+		border-style: dashed;
 	}
 
 	/* Focus is an independent, non-hue cue (never the selection contour). */
 	.item-row:focus-visible,
+	.item-actions-toggle:focus-visible,
 	.op:focus-visible,
 	.search-input:focus-visible {
-		outline: 2px solid #2f6b4f;
+		outline: 2px solid var(--shell-forest-raised, #22503c);
 		outline-offset: 2px;
 	}
 
 	@media (max-width: 720px) {
 		.plate-index {
+			width: 100%;
 			max-width: none;
 			max-height: 45%;
 		}

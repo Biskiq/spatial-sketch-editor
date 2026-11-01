@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
+	import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
+	import {
+		indexLabels,
+		layoutKindWord,
+		membershipLabel,
+		sceneKindWord,
+		type IndexLabelInput
+	} from '$lib/authoring/stage/shell/index-labels';
 
 	/**
 	 * T1.P01.S02 — the editor **route host**.
@@ -3206,59 +3213,153 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (selected === null) return null;
 		return `${selected.reference.domain}:${selected.reference.subject.kind === 'room' ? 'room-floor' : selected.reference.subject.kind}:${selected.reference.subject.id}`;
 	});
-	const indexGroups = $derived.by(() => {
+	/**
+	 * R217.S21 — the authored names and kind words the Index and the Card read, taken from
+	 * the admitted source: Layout walls, openings and floors, and Scene entities. A read
+	 * only. A generated `Kind n` is shown and never written back.
+	 */
+	const layoutPayload = $derived.by(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		try {
+			return stageLayout(boot.snapshot);
+		} catch {
+			return null;
+		}
+	});
+	const scenePayload = $derived.by(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		try {
+			return stageScene(boot.snapshot);
+		} catch {
+			return null;
+		}
+	});
+
+	/** The authored name of one Layout subject, or `null` when it has none (objects never do). */
+	function layoutNameOf(sourceKind: string, sourceId: string): string | null {
+		const document = layoutPayload;
+		if (document === null) return null;
+		if (sourceKind === 'wall') return document.walls.find((wall) => wall.id === sourceId)?.name ?? null;
+		if (sourceKind === 'opening') return document.openings.find((opening) => opening.id === sourceId)?.name ?? null;
+		if (sourceKind === 'room-floor' || sourceKind === 'room') {
+			return document.rooms.find((room) => room.id === sourceId)?.name ?? null;
+		}
+		return null;
+	}
+
+	/** The kind word of one Layout subject; an Opening reads its own door or window. */
+	function layoutKindWordOf(sourceKind: string, sourceId: string): string {
+		if (sourceKind !== 'opening') return layoutKindWord(sourceKind);
+		const opening = layoutPayload?.openings.find((candidate) => candidate.id === sourceId);
+		return layoutKindWord(sourceKind, opening?.kind);
+	}
+
+	/** One Scene entity's authored name and kind word, from the admitted Scene. */
+	function sceneEntityOf(entityId: string) {
+		return scenePayload?.entities.find((entity) => entity.id === entityId) ?? null;
+	}
+
+	/**
+	 * Every located subject, before any search: the Plan's Layout membership rows and the
+	 * contributed subjects. The labels are numbered over this whole list, so a search never
+	 * changes a label.
+	 */
+	const indexEntries = $derived.by(() => {
+		const entries: {
+			group: string;
+			sourceId: string;
+			kindWord: string;
+			name: string | null;
+			eligible: boolean;
+			revealed: boolean;
+			membership: string;
+		}[] = [];
 		const plan = planView;
-		if (plan === null) return [];
-		const byKind = new Map<
-			string,
-			{ sourceId: string; label: string; kind: string; eligible: boolean; revealed: boolean; membership: string }[]
-		>();
+		if (plan === null) return entries;
 		for (const membership of plan.membership) {
-			const items = byKind.get(membership.sourceKind) ?? [];
-			items.push({
+			entries.push({
+				group: membership.sourceKind,
 				sourceId: `layout:${membership.sourceKind}:${membership.sourceId}`,
-				label: sourceLabel(membership.sourceId, membership.sourceKind),
-				kind: membership.sourceKind,
+				kindWord: layoutKindWordOf(membership.sourceKind, membership.sourceId),
+				name: layoutNameOf(membership.sourceKind, membership.sourceId),
 				eligible: membership.eligible,
 				revealed: membership.revealed,
 				membership: membership.reason
 			});
-			byKind.set(membership.sourceKind, items);
 		}
 		for (const subject of locatedSubjects) {
-			const kind = subject.reference.domain;
-			const items = byKind.get(kind) ?? [];
-			items.push({ sourceId: subject.id, label: subject.label, kind: subject.reference.subject.kind,
-				eligible: true, revealed: false, membership: 'included' });
-			byKind.set(kind, items);
+			const entity = subject.reference.domain === 'scene' ? sceneEntityOf(subject.reference.subject.id) : null;
+			entries.push({
+				group: subject.reference.domain,
+				sourceId: subject.id,
+				kindWord: entity === null ? 'Subject' : sceneKindWord(entity.kind),
+				name: entity?.name ?? null,
+				eligible: true,
+				revealed: false,
+				membership: 'included'
+			});
 		}
-		const filtered = [...byKind.entries()]
+		return entries;
+	});
+
+	/** Each located subject's display label, keyed by its Index row. */
+	const indexLabelMap = $derived(
+		indexLabels(
+			indexEntries.map((entry): IndexLabelInput => ({
+				identity: entry.sourceId,
+				kind: entry.kindWord,
+				name: entry.name
+			}))
+		)
+	);
+	const indexEntryMap = $derived(new Map(indexEntries.map((entry) => [entry.sourceId, entry])));
+
+	const indexGroups = $derived.by(() => {
+		if (planView === null) return [];
+		const byGroup = new Map<string, { sourceId: string; label: string; authored: boolean; kind: string; eligible: boolean; revealed: boolean; membership: string }[]>();
+		for (const entry of indexEntries) {
+			const label = indexLabelMap.get(entry.sourceId) ?? { label: entry.kindWord, authored: false };
+			const items = byGroup.get(entry.group) ?? [];
+			items.push({
+				sourceId: entry.sourceId,
+				label: label.label,
+				authored: label.authored,
+				kind: entry.kindWord,
+				eligible: entry.eligible,
+				revealed: entry.revealed,
+				membership: entry.membership
+			});
+			byGroup.set(entry.group, items);
+		}
+		const filtered = [...byGroup.entries()]
 			.filter(([, items]) => items.length > 0)
-			.map(([kind, items]) => ({ id: kind, label: kind.replace('-', ' '), items }));
+			.map(([group, items]) => ({ id: group, label: group.replace('-', ' '), items }));
 		if (query.trim() === '') return filtered;
 		const needle = query.trim().toLowerCase();
 		return filtered
-			.map((group) => ({ ...group, items: group.items.filter((item) => item.label.toLowerCase().includes(needle)) }))
+			.map((group) => ({
+				...group,
+				items: group.items.filter((item) =>
+					item.label.toLowerCase().includes(needle) ||
+					item.kind.toLowerCase().includes(needle) ||
+					item.sourceId.toLowerCase().includes(needle)
+				)
+			}))
 			.filter((group) => group.items.length > 0);
 	});
 
 	/**
-	 * The collapsed Index header's one-line "Selected: …".
-	 *
-	 * Resolved from the membership row rather than from the Index's own item list:
-	 * the panel is `hidden` when closed, so its body still evaluates, and letting it
-	 * search the complete located-subject list made the whole list a dependency of a
-	 * closed panel on every Plan evaluation. `planMembershipOf` is indexed, so this is
-	 * the same string for `O(1)`.
+	 * The Head's context chip: the selected subject's canonical location, read from its
+	 * reference. A Layout reference names its authored level (`layout-location`), so the
+	 * chip shows that floor's authored name. A Scene reference is `project-root` and names
+	 * no location, so no chip appears. The chip never repeats the selection.
 	 */
-	const selectedSubjectLabel = $derived.by((): string | null => {
-		const plan = planView;
+	const locationLabel = $derived.by((): string | null => {
 		const selected = selection;
-		if (selected === null) return null;
-		if (selected.reference.domain !== 'layout') return locatedSubjects.find((item) =>
-			item.reference.domain === selected.reference.domain && item.reference.subject.id === selected.reference.subject.id)?.label ?? sourceLabel(selected.reference.subject.id, selected.reference.subject.kind);
-		const row = plan === null ? null : planMembershipOf(plan, selected.reference.subject.id);
-		return row === null ? sourceLabel(selected.reference.subject.id, selected.reference.subject.kind) : sourceLabel(row.sourceId, row.sourceKind);
+		if (selected === null || selected.reference.domain !== 'layout') return null;
+		if (selected.reference.location.kind !== 'layout-location') return null;
+		const name = layoutPayload?.floor.name.trim() ?? '';
+		return name === '' ? null : name;
 	});
 
 	/** Plan membership is a Layout fact; another domain's subject has none to report. */
@@ -3271,51 +3372,72 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return planMembershipOf(plan, selected.reference.subject.id)?.reason ?? null;
 	});
 
-	/** The Card's identity: the canonical subject and, for Layout, its membership. */
-	const cardIdentity = $derived(
-		selection === null
-			? null
-			: {
-					sourceId: selection.reference.subject.id,
-					label: selection.reference.subject.id,
-					kind: selection.reference.subject.kind,
-					// Plan membership is the Layout status; a non-Layout subject names its
-					// own domain instead of claiming an "unknown" Layout membership.
-					status: selectedMembership ?? (selection.reference.domain === 'layout' ? 'unknown' : selection.reference.domain)
-				}
-	);
+	/**
+	 * The Card's identity: the subject's name (authored, or its generated `Kind n`), its
+	 * kind word and, for Layout, its Plan membership in words. The canonical ID stays in
+	 * Technical details.
+	 */
+	const cardIdentity = $derived.by(() => {
+		const selected = selection;
+		if (selected === null) return null;
+		const key = selectedLocatorId ?? '';
+		const entry = indexEntryMap.get(key);
+		const label = indexLabelMap.get(key);
+		const domainWord = selected.reference.domain === 'layout' ? 'Layout' : 'Scene';
+		return {
+			sourceId: selected.reference.subject.id,
+			label: label?.label ?? entry?.kindWord ?? domainWord,
+			kind: entry?.kindWord ?? domainWord,
+			// A Layout subject states its Plan membership; a Scene subject names its own domain.
+			status:
+				selected.reference.domain !== 'layout'
+					? domainWord
+					: selectedMembership !== null
+						? membershipLabel(selectedMembership)
+						: 'Not in the current Plan'
+		};
+	});
 
 	/**
-	 * The Card's owner/source/reach facts, read from the same Plan evaluation the
-	 * Stage draws: the Card can never disagree with the render about membership.
+	 * The Card's ordinary facts: the Layout datum, then whatever adapters registered for
+	 * this subject, without this route knowing which domain contributed them. A fact whose
+	 * field the header or the writer shows is dropped by the Card, so each value appears once.
 	 */
-	const cardFacts = $derived.by((): readonly { readonly label: string; readonly value: string }[] => {
+	const cardFacts = $derived.by((): readonly { readonly label: string; readonly value: string; readonly fieldId?: string }[] => {
 		// Reading the version makes an adapter registration or disposal re-derive.
 		void contributionsVersion;
 		const selected = selection;
 		if (selected === null) return [];
 		const own = selected.reference.domain === 'layout'
 			? [
-				{ label: 'Stream', value: selected.representation?.stream ?? 'canonical' },
-				{
-					label: 'Eligible',
-					value: String(
-						(planView === null ? null : planMembershipOf(planView, selected.reference.subject.id))?.eligible ?? false
-					)
-				},
-				{ label: 'Revealed', value: String(revealed.includes(selected.reference.subject.id)) },
 				{
 					label: 'Datum',
 					value: `${boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0} m`
 				}
 			]
-			// Plan eligibility, Reveal and datum are Layout projections. A Scene or
-			// other-domain subject shows its domain here and lets its own adapter
-			// contribute the facts it actually owns.
-			: [{ label: 'Domain', value: selected.reference.domain }];
-		// Whatever adapters registered for this subject appears here without this
-		// route knowing which domain contributed it.
+			: [];
 		return stageCardFacts(facade, { sourceId: selected.reference.subject.id, sourceKind: selected.reference.subject.kind, ref: selected.representation ?? null, reference: selected.reference }, own);
+	});
+
+	/**
+	 * How the selection is drawn and which domain owns it. These are diagnostics, shown
+	 * under Technical details rather than in the ordinary Card.
+	 */
+	const cardTechnicalFacts = $derived.by((): readonly { readonly label: string; readonly value: string }[] => {
+		void contributionsVersion;
+		const selected = selection;
+		if (selected === null) return [];
+		if (selected.reference.domain !== 'layout') return [{ label: 'Domain', value: selected.reference.domain }];
+		return [
+			{ label: 'Stream', value: selected.representation?.stream ?? 'canonical' },
+			{
+				label: 'Eligible',
+				value: String(
+					(planView === null ? null : planMembershipOf(planView, selected.reference.subject.id))?.eligible ?? false
+				)
+			},
+			{ label: 'Revealed', value: String(revealed.includes(selected.reference.subject.id)) }
+		];
 	});
 
 	/**
@@ -3711,7 +3833,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			: 'Create an Experience in the Experience lens to Preview it.'}
 		{indexOpen}
 		onToggleIndex={() => (indexOpen = !indexOpen)}
-		locationLabel={selectedSubjectLabel}
+		locationLabel={locationLabel}
 		onOpenIndex={() => (indexOpen = true)}
 		projectActionsUnavailableReason={projectActionsUnavailableReason}
 		{projectActionBusy}
@@ -4056,6 +4178,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			<EditorCard
 				identity={preview === null && cardOpen ? cardIdentity : null}
 				facts={cardFacts}
+				technicalFacts={cardTechnicalFacts}
 				nameWriter={cardNameWriter}
 				writer={cardWriter}
 				actions={cardActions}
@@ -4254,7 +4377,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.lower-column[hidden] { display: none; }
 	.reserved-height { position: absolute; top: 4rem; right: 0.75rem; bottom: 5rem; width: 2.75rem; pointer-events: none; }
 	@media (max-width: 1279px) {
-		.editor-body > :global(.plate-index) { position: absolute; z-index: 20; top: 0; bottom: 5rem; left: 0; width: min(22rem, 80%); box-shadow: 0 0 0 100vmax rgb(0 0 0 / 25%); clip-path: inset(0 -100vmax 0 0); }
+		.editor-body > :global(.plate-index) { position: absolute; z-index: 20; top: 0; bottom: 5rem; left: 0; width: min(var(--shell-index-width, 256px), 80%); box-shadow: 0 0 0 100vmax rgb(0 0 0 / 25%); clip-path: inset(0 -100vmax 0 0); }
 	}
 	@media (pointer: coarse) {
 		.editor-host { --shell-touch-target: 44px; }
