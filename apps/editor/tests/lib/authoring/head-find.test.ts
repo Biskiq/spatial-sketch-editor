@@ -221,4 +221,21 @@ describe('Head Find', () => {
 		expect(menu.textContent).toContain('Rename');
 		expect(menu.textContent).toContain('Delete');
 	});
+
+	it('closes the project menu on Escape and returns focus to the project name', async () => {
+		const host = head(null);
+		const name = host.querySelector<HTMLButtonElement>('[data-head-project]')!;
+		const menu = host.querySelector<HTMLElement>('[data-head-project-menu]')!;
+		name.click();
+		await tick();
+		expect(menu.hidden).toBe(false);
+		// Focus inside the open menu, as a keyboard user would have it.
+		const download = menu.querySelector<HTMLButtonElement>('[data-head-download]')!;
+		download.focus();
+		download.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await tick();
+		expect(menu.hidden).toBe(true);
+		expect(name.getAttribute('aria-expanded')).toBe('false');
+		expect(document.activeElement).toBe(name);
+	});
 });
