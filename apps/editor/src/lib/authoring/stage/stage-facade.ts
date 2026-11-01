@@ -467,8 +467,19 @@ export type StageFindEntryRecord = StageFindEntry & {
 	readonly order: number;
 };
 
-/** One Card fact for a subject the adapter owns. */
-export type StageCardFact = { readonly label: string; readonly value: string };
+/**
+ * One Card fact for a subject the adapter owns.
+ *
+ * `fieldId` names the subject field the fact shows (`height`, `position`, `name`, …).
+ * The Card does not repeat a fact whose field is carried by its header (`name`, `kind`)
+ * or by its contributed writer, which edits that field in place. A fact with no
+ * `fieldId` is read-only and always shown.
+ */
+export type StageCardFact = {
+	readonly label: string;
+	readonly value: string;
+	readonly fieldId?: string;
+};
 
 /** The Card's subject identity, supplied by the host (never private Stage state). */
 export type StageCardSubject = {
@@ -525,6 +536,12 @@ export type StageCardAction = {
 	readonly detail?: string;
 	/** A destructive action states so, and the Card confirms before running it. */
 	readonly destructive?: boolean;
+	/**
+	 * `primary` (the default) stays in the Card's action row. `secondary` moves into the
+	 * Card's More disclosure. Only `destructive: true` gets destructive styling, so a
+	 * secondary action such as Duplicate never looks dangerous.
+	 */
+	readonly group?: 'primary' | 'secondary';
 	run(): Promise<StageCardActionOutcome>;
 };
 
@@ -547,6 +564,11 @@ export type StageCardWriterRecord = StageInstrumentContent & { readonly adapterI
 export type StageInstrumentContent = {
 	readonly summary: string;
 	readonly facts?: readonly StageCardFact[];
+	/**
+	 * The subject fields this content edits when it is the Card's writer. An ordinary
+	 * Card fact whose `fieldId` is listed is shown by this writer, so it is not repeated.
+	 */
+	readonly fieldIds?: readonly string[];
 	/** Editor-only UI; never serialized or imported by visitor surfaces. */
 	readonly view?: { readonly component: Component<{ services: StageAdapterServices }>; readonly services: StageAdapterServices };
 };

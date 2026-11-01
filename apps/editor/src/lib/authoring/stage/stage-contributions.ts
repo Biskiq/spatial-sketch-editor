@@ -161,7 +161,9 @@ export function stageCardFacts(
 			suffix += 1;
 		}
 		used.add(label);
-		facts.push({ label, value: contributed.value });
+		facts.push(contributed.fieldId === undefined
+			? { label, value: contributed.value }
+			: { label, value: contributed.value, fieldId: contributed.fieldId });
 	}
 	return facts;
 }

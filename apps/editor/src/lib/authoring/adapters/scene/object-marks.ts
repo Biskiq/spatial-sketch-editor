@@ -480,6 +480,14 @@ export function cardFieldFact(id: SceneObjectCardFieldId): string {
 			: 'scale';
 }
 
+/**
+ * The mark facts the object Card writes, each once: the Card's writer declares these
+ * `fieldId`s, so the ordinary fact rows for them are not repeated beside the fields.
+ */
+export function sceneObjectCardFieldFacts(): readonly string[] {
+	return [...new Set(SCENE_OBJECT_CARD_FIELD_IDS.map(cardFieldFact))];
+}
+
 /** A Scene candidate for one accepted planner result, or `null` if it refused. */
 export function markCandidate(result: SceneOperationResult): SceneCandidate | null {
 	if (result.kind === 'rejected') return null;

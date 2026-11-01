@@ -106,7 +106,11 @@ export type LayoutSubject = {
 	readonly id: string;
 };
 
-export type LayoutFact = { readonly label: string; readonly value: string };
+/**
+ * One read-only Card fact for a Layout subject. `fieldId` names the field the fact shows;
+ * the Card drops it when the contributed writer edits that field, so each value appears once.
+ */
+export type LayoutFact = { readonly label: string; readonly value: string; readonly fieldId: string };
 
 const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_HEIGHT_KIND]: ['wallId', 'height'],
@@ -1023,34 +1027,34 @@ export function layoutFacts(
 		const wall = lookupIndexedWall(document, subject.id);
 		if (wall === undefined) return [];
 		return [
-			{ label: 'Kind', value: 'Wall' },
-			{ label: 'Name', value: wall.name ?? '(unnamed)' },
-			{ label: 'Height', value: formatMeters(wall.height) },
-			{ label: 'Thickness', value: formatMeters(wall.thickness) },
+			{ label: 'Kind', value: 'Wall', fieldId: 'kind' },
+			{ label: 'Name', value: wall.name ?? '(unnamed)', fieldId: 'name' },
+			{ label: 'Height', value: formatMeters(wall.height), fieldId: 'height' },
+			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' },
 			// Format 6 — the role is derived from Room boundary membership, shown
 			// read-only because it follows geometry rather than a control.
-			{ label: 'Role', value: `${deriveLayoutWallRole(document, wall.id) ?? 'free-standing'} (derived)` }
+			{ label: 'Role', value: `${deriveLayoutWallRole(document, wall.id) ?? 'free-standing'} (derived)`, fieldId: 'role' }
 		];
 	}
 	if (subject.kind === 'opening') {
 		const opening = lookupIndexedOpening(document, subject.id);
 		if (opening === undefined) return [];
 		return [
-			{ label: 'Kind', value: opening.kind === 'door' ? 'Door' : 'Window' },
-			{ label: 'Name', value: opening.name ?? '(unnamed)' },
-			{ label: 'Offset', value: formatMeters(opening.offset) },
-			{ label: 'Width', value: formatMeters(opening.width) },
-			{ label: 'Height', value: formatMeters(opening.height) },
-			{ label: 'Sill', value: formatMeters(opening.sillHeight) }
+			{ label: 'Kind', value: opening.kind === 'door' ? 'Door' : 'Window', fieldId: 'kind' },
+			{ label: 'Name', value: opening.name ?? '(unnamed)', fieldId: 'name' },
+			{ label: 'Offset', value: formatMeters(opening.offset), fieldId: 'offset' },
+			{ label: 'Width', value: formatMeters(opening.width), fieldId: 'width' },
+			{ label: 'Height', value: formatMeters(opening.height), fieldId: 'height' },
+			{ label: 'Sill', value: formatMeters(opening.sillHeight), fieldId: 'sillHeight' }
 		];
 	}
 	const object = lookupIndexedObject(document, subject.id);
 	if (object === undefined) return [];
 	return [
-		{ label: 'Kind', value: object.kind },
-		{ label: 'Name', value: '(read-only identity)' },
-		{ label: 'Position', value: object.position.map(formatMeters).join(' · ') },
-		{ label: 'Dimensions', value: object.dimensions.map(formatMeters).join(' · ') }
+		{ label: 'Kind', value: object.kind, fieldId: 'kind' },
+		{ label: 'Name', value: '(read-only identity)', fieldId: 'name' },
+		{ label: 'Position', value: object.position.map(formatMeters).join(' · '), fieldId: 'position' },
+		{ label: 'Dimensions', value: object.dimensions.map(formatMeters).join(' · '), fieldId: 'dimensions' }
 	];
 }
 
@@ -1109,6 +1113,20 @@ export function layoutWritableFacts(
 		];
 	}
 	return [];
+}
+
+/**
+ * The fields the Card's Layout writer edits for one subject: every writable field except
+ * the name, which the Card header's rename writer owns. A read-only fact on the same
+ * subject with one of these `fieldId`s is shown by the writer and is not repeated.
+ */
+export function layoutCardFieldIds(
+	document: LayoutDocumentWallFirst,
+	subject: LayoutSubject
+): readonly string[] {
+	return layoutWritableFacts(document, subject)
+		.map((field) => field.id)
+		.filter((id) => id !== 'name');
 }
 
 /**
