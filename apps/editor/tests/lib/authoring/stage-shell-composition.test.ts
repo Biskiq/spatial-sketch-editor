@@ -141,7 +141,8 @@ describe('Stage shell composition', () => {
 		// The renderer boundary is explicit: the Canvas, the Camera that copies the
 		// evaluated pose, Paper's drawing scene, its selection re-stroke/buffer batching, and the
 		// selection-ink realizer that builds outlines and tint clones from the
-		// already-rendered meshes. None of them owns a camera or a pick root; they
+		// already-rendered meshes, and R217.S19's mat ground with its per-pixel grid
+		// material. None of them owns a camera or a pick root; they
 		// are listed here so another Three importer cannot appear unnoticed.
 		const threeImporters = STAGE_FILES.filter((file) =>
 			parseModuleSpecifiers(readSource(file)).some(
@@ -153,6 +154,8 @@ describe('Stage shell composition', () => {
 			'apps/editor/src/lib/authoring/stage/shell/StageSelectionLayer.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StagePrimitiveGhost.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/StageGrid.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/StageMatGround.svelte',
+			'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts',
 			'apps/editor/src/lib/authoring/stage/shell/StageFormGhost.svelte',
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',

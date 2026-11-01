@@ -114,8 +114,15 @@ export type CameraSession = {
 	evaluate(rect: ViewportRect, clockSeconds: number): ViewportEvaluationResult;
 	/** Submit one viewing intent through the authority. */
 	applyIntent(intent: ViewingIntent, clockSeconds: number): ViewingIntentResult;
-	/** A content change: camera pose is preserved; the landed output claim is rebased too. */
-	rebaseSource(sourceRevision: string, bounds?: { min: Vec3; max: Vec3 } | null): {
+	/**
+	 * A content change: camera pose is preserved; the landed output claim is rebased too.
+	 * `displayGroundYMeters` is the new level datum the mat ground sits at, when it changed.
+	 */
+	rebaseSource(
+		sourceRevision: string,
+		bounds?: { min: Vec3; max: Vec3 } | null,
+		displayGroundYMeters?: number
+	): {
 		readonly viewport: ViewportSourceRebase;
 		readonly output: CameraOutputRebaseDecision;
 	};
@@ -156,7 +163,10 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		sessionEpoch: input.snapshot.sessionEpoch,
 		sourceRevision: input.snapshot.sourceContentId,
 		pose,
-		sceneRadiusMeters: sceneRadiusOf(bounds)
+		sceneRadiusMeters: sceneRadiusOf(bounds),
+		// R217.S19 — the mat ground's datum widens the clip range to the visible
+		// ground. It is a session input only: never scene bounds, Fit or the pose.
+		displayGroundYMeters: input.snapshot.domain.datumMeters
 	});
 	let generation = 0;
 	let currentEvaluation: ViewportEvaluation | null = null;
@@ -214,10 +224,15 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			currentState = result.state;
 			return result;
 		},
-		rebaseSource(sourceRevision, nextBounds = bounds) {
+		rebaseSource(sourceRevision, nextBounds = bounds, displayGroundYMeters) {
 			const viewport = rebaseViewportSource(currentState, sourceRevision);
 			currentState = viewport.state;
-			if (viewport.kind !== 'refused') bounds = nextBounds;
+			if (viewport.kind !== 'refused') {
+				bounds = nextBounds;
+				if (displayGroundYMeters !== undefined && Number.isFinite(displayGroundYMeters)) {
+					currentState = { ...currentState, displayGroundYMeters };
+				}
+			}
 			// The output named the previous revision, so it is not the current output
 			// any more: dropping it is the honest answer until the host evaluates the
 			// new source, and it stops a stale token being handed out as live.

@@ -41,6 +41,7 @@ import {
 	VIEWPORT_ELEVATION_LIMIT_RADIANS,
 	VIEWPORT_READING_TRANSITION_SECONDS,
 	VIEWPORT_TARGET_PLANE_MAX_METERS,
+	viewportGroundReachMeters,
 	type ViewportCameraState,
 	type ViewportEvaluation,
 	type ViewportRect,
@@ -689,5 +690,90 @@ describe('view source rebase', () => {
 		expect(rebased.state.transition).toBeNull();
 		expect(rebased.state.reading).toBe('plan');
 		expect(rebased.state.pose.elevationRadians).toBe(Math.PI / 2);
+	});
+});
+
+/**
+ * R217.S19 — the display ground's clip range.
+ *
+ * `displayGroundYMeters` is an optional session input. Absent or `null`, the
+ * evaluation is exactly the scene-sphere one (checkpoint row 6). Present, far
+ * reaches `distance + max(sceneRadius, reach)` and near never passes 0.9 × the
+ * nearest ground depth the frame's bottom row sees.
+ */
+describe('R217.S19 — display ground clip range', () => {
+	const rect = { left: 0, top: 0, width: 1440, height: 900, devicePixelRatio: 1 };
+	const pose = {
+		target: [3.5, 1.5, -1] as Vec3,
+		azimuthRadians: 0.5,
+		elevationRadians: 0.2,
+		targetPlaneHeightMeters: 12
+	};
+	function evaluated(displayGroundYMeters?: number | null, sceneRadiusMeters = 5) {
+		const state = createViewportCameraState({
+			outputId: 'o',
+			sessionEpoch: 'e',
+			sourceRevision: 'r',
+			pose,
+			sceneRadiusMeters,
+			...(displayGroundYMeters === undefined ? {} : { displayGroundYMeters })
+		});
+		const result = evaluateViewport(state, rect, 0, 1);
+		if (result.kind !== 'evaluated') throw new Error('not evaluated');
+		return result.evaluation;
+	}
+
+	it('evaluates identically with no display ground (row 6)', () => {
+		const absent = evaluated();
+		const none = evaluated(null);
+		expect(none).toEqual(absent);
+		const distance = Math.hypot(...subtractVec3(absent.eye, absent.target));
+		expect(absent.near).toBeCloseTo(distance - 5, 9);
+		expect(absent.far).toBeCloseTo(distance + 5, 9);
+		// A non-finite input is no ground, never a NaN clip plane.
+		expect(evaluated(Number.NaN)).toEqual(absent);
+	});
+
+	it('reaches the specified far and near for a ground plane', () => {
+		const evaluation = evaluated(0);
+		const distance = Math.hypot(...subtractVec3(evaluation.eye, evaluation.target));
+		const halfFov = Math.atan(pose.targetPlaneHeightMeters / 2 / distance);
+		const eyeHeight = evaluation.eye[1];
+		const reach = Math.max(24 * 12 * (1440 / 900), 96 * eyeHeight);
+		expect(viewportGroundReachMeters({ targetPlaneHeightMeters: 12, aspect: 1440 / 900, eyeHeightMeters: eyeHeight })).toBeCloseTo(reach, 9);
+		expect(evaluation.far).toBeCloseTo(distance + reach, 9);
+		const groundNear = (eyeHeight * Math.cos(halfFov)) / Math.sin(pose.elevationRadians + halfFov);
+		expect(evaluation.near).toBeCloseTo(Math.max(0.01, Math.min(distance - 5, 0.9 * groundNear)), 9);
+		// The pose, the view and the scale are the scene-sphere evaluation's.
+		const sphere = evaluated(null);
+		expect(evaluation.viewMatrix).toEqual(sphere.viewMatrix);
+		expect(evaluation.pose).toEqual(sphere.pose);
+		expect(evaluation.targetPlaneMetersPerCssPixel).toBe(sphere.targetPlaneMetersPerCssPixel);
+	});
+
+	it('keeps the scene sphere when it reaches farther, and leaves Plan orthographic untouched', () => {
+		const wide = evaluated(0, 5000);
+		const distance = Math.hypot(...subtractVec3(wide.eye, wide.target));
+		expect(wide.far).toBeCloseTo(distance + 5000, 6);
+		const state = createViewportCameraState({
+			outputId: 'o',
+			sessionEpoch: 'e',
+			sourceRevision: 'r',
+			pose,
+			sceneRadiusMeters: 5,
+			reading: 'plan',
+			displayGroundYMeters: 0
+		});
+		const withGround = evaluateViewport(state, rect, 0, 1);
+		const without = evaluateViewport({ ...state, displayGroundYMeters: null }, rect, 0, 1);
+		expect(withGround).toEqual(without);
+	});
+
+	it('ignores a ground above the eye instead of inverting the range', () => {
+		const evaluation = evaluated(500);
+		const sphere = evaluated(null);
+		expect(evaluation.near).toBe(sphere.near);
+		expect(evaluation.far).toBeGreaterThanOrEqual(sphere.far);
+		expect(evaluation.near).toBeLessThan(evaluation.far);
 	});
 });

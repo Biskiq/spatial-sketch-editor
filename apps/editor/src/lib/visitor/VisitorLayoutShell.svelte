@@ -19,11 +19,17 @@
 	let {
 		geometry,
 		presentation,
-		textureScope = null
+		textureScope = null,
+		plinth = true
 	}: {
 		geometry: CompiledLayoutGeometry;
 		presentation: Readonly<Record<string, VisitorRoomPresentation>>;
 		textureScope?: TextureLoadScope | null;
+		/**
+		 * The visitor's dark ground plinth. A host with its own ground surface (the
+		 * editor Stage's mat) turns it off, so the two grounds never overlap.
+		 */
+		plinth?: boolean;
 	} = $props();
 
 	function polygonShape(points: readonly LayoutVec2[], invertZ = true): Shape {
@@ -175,7 +181,9 @@
 </script>
 
 <T.Group name="VisitorLayoutShell">
-	<GroundPlinth />
+	{#if plinth}
+		<GroundPlinth />
+	{/if}
 	{#each geometry.rooms as room (room.roomId)}
 		{@const colors = roomPresentation(room.roomId)}
 		{@const adapted = adaptedFor(room.roomId)}

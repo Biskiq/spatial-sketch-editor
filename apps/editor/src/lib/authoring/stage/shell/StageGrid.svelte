@@ -1,11 +1,12 @@
 <script lang="ts">
 	/**
-	 * R217.S13 — the fixed-value world-anchored grid, in the one Stage Canvas.
+	 * R217.S13 — Paper's fixed-value world-anchored grid, in the one Stage Canvas.
+	 * The mat's grid is per-pixel and lives in `StageMatGround.svelte` (R217.S19).
 	 *
 	 * The drawing is rebuilt only when its own key changes: the visible levels or
 	 * the quantised rectangle. A pan inside the same rectangle retains the
 	 * geometry, and the lines stay anchored to world zero. Paper is a bounded sheet
-	 * around the work; the mat is the datum footprint the Camera sees. It is
+	 * around the work. It is
 	 * display-only — never a pick root, never `Object3D.visible` appearance — and it
 	 * reads the evaluation's target-plane scale rather than a Camera of its own.
 	 */
@@ -13,15 +14,14 @@
 	import { T, useThrelte } from '@threlte/core';
 	import { Group } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
-	import { gridPlanFor, type GridRect, type GridSurface } from '../stage-grid';
+	import { gridPlanFor, type GridRect } from '../stage-grid';
 	import { createGridScene, type GridSceneResources } from './stage-grid-scene';
 
 	let {
 		evaluation,
 		datumMeters = 0,
 		contentBounds = null,
-		candidateBounds = null,
-		surface
+		candidateBounds = null
 	}: {
 		evaluation: ViewportEvaluation | null;
 		/** The level datum the grid is drawn on. */
@@ -30,7 +30,6 @@
 		contentBounds?: GridRect | null;
 		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
 		candidateBounds?: GridRect | null;
-		surface: GridSurface;
 	} = $props();
 
 	const { invalidate } = useThrelte();
@@ -50,11 +49,7 @@
 			datumMeters,
 			contentBounds,
 			candidateBounds,
-			surface,
-			// The mat's patch is the actual datum the Camera's corner rays see,
-			// never a fixed multiple of the target plane that ends inside the frame.
-			inverseViewProjectionMatrix: evaluation.inverseViewProjectionMatrix,
-			viewport: { width: evaluation.rect.width, height: evaluation.rect.height }
+			surface: 'paper'
 		});
 	});
 
