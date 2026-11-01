@@ -89,6 +89,42 @@ Rows 1 and 6 have no fallback. A failure there is a defect to fix in this slice.
 
 Never use an infinite grid, disabled depth tests, a moved Camera or widened semantic bounds. Timing is not a criterion.
 
+## 3b. Amendment — 2026-10-31
+
+The owner directed this amendment on 2026-10-31 after reviewing the first checkpoint, in which rows 2,
+4 and 5 failed with the formulas above, and after reporting two visible defects: a dark disc on the
+mat and a grid that vanished and changed between zoom levels. It supersedes the conflicting parts of
+§3 and §3a. The [acceptance record](./acceptance.md) keeps the first checkpoint's values.
+
+**Causes.**
+
+- **Disc.** The mat's polygon offset, added in this slice, left a dark disc around the target.
+- **Grid behaviour.** S13 faded each level by its spacing at the target, applied to the whole
+  lattice. A perspective mat therefore faded together everywhere. Between 5 and 10 px per 5 m it
+  drew only a fading 5 m level, because 25 m appeared only after 5 m had gone.
+- **Row 2.** At the 54° reference FOV, `64 × eyeHeight` leaves a 13–15 px band.
+- **Row 4.** Line geometry over a horizon-deep footprint exceeds 6,000 lines with majors alone.
+
+**Amended scope.**
+
+- **Mat grid per pixel.** The mat's grid is a shader on one finite quad that shares the mat's
+  transform. Each pixel applies the 16 → 8 CSS px fade from its own projected spacing, so near ground
+  shows 1 m, mid-distance 5 m and far 25 m, and the grid fades to plain mat before the horizon. The
+  25 m level cross-fades in as 5 m fades out (`25 m weight × (1 − 5 m weight)`). Lines stay anchored to
+  world zero. Paper keeps its line grid: it is orthographic, so its spacing is uniform.
+- **No line footprint or budget on the mat.** The exact-footprint rule and the 6,000-line budget no
+  longer apply to it, and row 4 is replaced by "the mat grid is one quad at constant cost". This
+  is a finite grid on the finite mat, not an infinite grid.
+- **Mat depth.** The mat draws first (`renderOrder −1`) and writes no depth, with no polygon offset.
+  Every wall, floor and object draws over it; the grid quad depth-tests against real geometry only.
+- **Reach.** `reach = max(24 × extent, 96 × eyeHeight)`. Rows 2 and 3 keep their limits.
+- **Row 5.** It is measured for poses where the target-centred scene sphere does not reach the eye.
+  Otherwise near stays the scene-sphere floor, unchanged from today, and is recorded as a residual. A
+  near plane derived from content bounds would add bounds to Camera state and is proposed separately.
+- **Files.** Add `shell/StageMatGround.svelte` and `shell/stage-mat-grid.ts`. `StageGrid.svelte` and
+  `stage-grid-scene.ts` become Paper-only.
+- **Contract.** The shell + visual-system contract's grid paragraph is updated in the same PR.
+
 ## 4. Test cases
 
 - Ground samples classified sky, behind, near or far, across the sweep, through actual Stage wiring.

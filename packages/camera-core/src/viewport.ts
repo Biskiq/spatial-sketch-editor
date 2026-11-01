@@ -507,14 +507,18 @@ function depthRange(distanceMeters: number, sceneRadiusMeters: number): { near: 
 
 /** R217.S19 — the display ground reaches this many target-plane extents. */
 export const VIEWPORT_GROUND_REACH_EXTENTS = 24;
-/** R217.S19 — and at least this many eye heights above the display ground. */
-export const VIEWPORT_GROUND_REACH_EYE_HEIGHTS = 64;
+/**
+ * R217.S19 — and at least this many eye heights above the display ground. The
+ * plan's 64 left a 13–15 CSS px band below the horizon at the 54° reference FOV;
+ * 96 keeps it within 12 px at 900 px (amended plan §3a row 2).
+ */
+export const VIEWPORT_GROUND_REACH_EYE_HEIGHTS = 96;
 /** R217.S19 — the near plane sits this fraction of the nearest visible ground depth. */
 export const VIEWPORT_GROUND_NEAR_FRACTION = 0.9;
 
 /**
  * The display-ground reach for a perspective evaluation, in metres:
- * `max(24 × extent, 64 × eyeHeight)` with `extent = targetPlaneHeight × max(1, aspect)`.
+ * `max(24 × extent, 96 × eyeHeight)` with `extent = targetPlaneHeight × max(1, aspect)`.
  * The Stage sizes its finite mat from the same function, so the mat and the clip
  * range cannot disagree.
  */

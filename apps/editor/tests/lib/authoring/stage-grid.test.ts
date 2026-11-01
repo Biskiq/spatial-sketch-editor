@@ -10,7 +10,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { Matrix4, PerspectiveCamera, Vector3 } from 'three';
+import { LineSegments, ShaderMaterial } from 'three';
 import {
 	VIEWPORT_NEAR_FLOOR_METERS,
 	type InspectionPose,
@@ -18,11 +18,12 @@ import {
 	type ViewportEvaluation
 } from '@portfolio/camera-core';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
-import { createCameraSession } from '$lib/authoring/stage/camera-session';
+import { createCameraSession, sceneRadiusOf } from '$lib/authoring/stage/camera-session';
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createGridScene } from '$lib/authoring/stage/shell/stage-grid-scene';
+import { createMatGridMaterial, updateMatGridMaterial } from '$lib/authoring/stage/shell/stage-mat-grid';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '$lib/authoring/stage/stage-drafting';
 import {
 	GRID_COARSE_METERS,
@@ -31,15 +32,13 @@ import {
 	MAT_GRID_INK,
 	PAPER_GRID_INK,
 	gridIsVisible,
-	gridDatumFootprintFor,
 	gridLevelsFor,
 	gridLinesFor,
 	gridPlanFor,
 	gridRectFor,
-	GRID_MAT_LINE_BUDGET,
+	matGridLevelWeights,
 	matGroundFor,
 	paperSheetRectFor,
-	stageGridPlanFor,
 	type GridRect
 } from '$lib/authoring/stage/stage-grid';
 
@@ -279,43 +278,23 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		expect(gridIsVisible({ grid: true, appearance: 'shaded', renderedReading: '3d' })).toBe(true);
 	});
 
-	it('covers the tilted mat’s actual datum footprint instead of a fixed multiple', () => {
-		// A normal 3D inspection pose, not a top-down one: the top-of-frame ray meets
-		// the datum far beyond three target-plane heights, which is where the old
-		// fixed coverage ended the grid in a visible straight cut.
-		const camera = new PerspectiveCamera(50, 16 / 9, 0.1, 2000);
-		camera.position.set(0, 12, 14);
-		camera.lookAt(0, 0, 0);
-		camera.updateMatrixWorld();
-		camera.updateProjectionMatrix();
-		const inverse = new Matrix4()
-			.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
-			.invert().elements;
-		const inverseMatrix = new Matrix4().fromArray(inverse);
-		const groundAt = (ndcX: number, ndcY: number): readonly [number, number] => {
-			const near = new Vector3(ndcX, ndcY, -1).applyMatrix4(inverseMatrix);
-			const far = new Vector3(ndcX, ndcY, 1).applyMatrix4(inverseMatrix);
-			const directionY = far.y - near.y;
-			const travel = -near.y / directionY;
-			return [near.x + (far.x - near.x) * travel, near.z + (far.z - near.z) * travel];
-		};
-		const footprint = gridDatumFootprintFor({
-			inverseViewProjectionMatrix: inverse,
-			rect: { width: 1600, height: 900 },
-			datumMeters: 0
-		});
-		expect(footprint).not.toBeNull();
-		if (footprint === null) return;
-		for (const ndcY of [-0.9, -0.5, 0]) {
-			const [x, z] = groundAt(0, ndcY);
-			expect(x).toBeGreaterThanOrEqual(footprint.minX - 1e-6);
-			expect(x).toBeLessThanOrEqual(footprint.maxX + 1e-6);
-			expect(z).toBeGreaterThanOrEqual(footprint.minZ - 1e-6);
-			expect(z).toBeLessThanOrEqual(footprint.maxZ + 1e-6);
+	it('draws the mat grid per pixel on one quad, never as line geometry', () => {
+		const material = createMatGridMaterial();
+		expect(material).toBeInstanceOf(ShaderMaterial);
+		expect(material).not.toBeInstanceOf(LineSegments);
+		// Walls occlude it; it never writes depth, so nothing can fight it.
+		expect(material.depthTest).toBe(true);
+		expect(material.depthWrite).toBe(false);
+		expect(material.transparent).toBe(true);
+		// The grammar's thresholds and the fixed levels are the shader's own.
+		for (const literal of ['8.0', '16.0', '/ 1.0', '/ 5.0', '/ 25.0']) {
+			expect(material.fragmentShader).toContain(literal);
 		}
-		// More than the old 3 × 8 m fallback reaches toward the visible datum.
-		const extent = Math.max(footprint.maxX - footprint.minX, footprint.maxZ - footprint.minZ);
-		expect(extent).toBeGreaterThan(3 * 8);
+		updateMatGridMaterial(material, { centerXZ: [512, -256], halfExtentMeters: 1024, latticeOffsetXZ: [12, -6] }, 1.5);
+		expect(material.uniforms.uSize!.value).toBe(2048);
+		expect(material.uniforms.uLatticeOffset!.value).toEqual([12, -6]);
+		expect(material.uniforms.uPixelRatio!.value).toBe(1.5);
+		material.dispose();
 	});
 
 	it('draws every major line on a wide Stage and stays bounded by the viewport', () => {
@@ -323,8 +302,7 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 			...PAPER_BASE,
 			metersPerCssPixel: 0.01,
 			targetPlaneHeightMeters: 8,
-			aspect: 3840 / 2160,
-			surface: 'mat'
+			aspect: 3840 / 2160
 		})!;
 		const lines = gridLinesFor(plan);
 		expect(lines.some((line) => line.role === 'major')).toBe(true);
@@ -343,11 +321,10 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		expect(moreFading.levels.levels[0]!.opacity).not.toBeCloseTo(fading.levels.levels[0]!.opacity, 6);
 	});
 
-	it('draws both surfaces on the Stage overlay layer', () => {
+	it('draws Paper’s grid on the Stage overlay layer', () => {
 		const plan = gridPlanFor({
 			...PAPER_BASE,
-			metersPerCssPixel: 0.01,
-			surface: 'mat'
+			metersPerCssPixel: 0.01
 		})!;
 		const scene = createGridScene(plan);
 		for (const child of scene.group.children) {
@@ -376,11 +353,13 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
  * R217.S19 — the §3a experimental checkpoint, kept as a test.
  *
  * The audit's sweep extended to the real Stage wiring: an admitted enclosure
- * source, the Stage's own Camera session with its datum, `stageGridPlanFor` and
- * `matGroundFor` exactly as `StageGrid.svelte` and `StageCanvas.svelte` call
- * them. Every screen sample's ground hit is classified sky, behind, near-clipped,
- * far-clipped or drawn; rows 1–6 are measured from geometry and clip range, so no
- * appearance change can make them pass.
+ * source, the Stage's own Camera session with its datum, and `matGroundFor`
+ * exactly as `StageMatGround.svelte` calls it. The mat's grid is drawn per pixel
+ * on the mat's own quad, so grid coverage *is* the mat's extent. Every screen
+ * sample's ground hit is classified sky, near-clipped, far-clipped or drawn;
+ * rows 1, 2, 3 and 5 are measured from geometry and clip range, so no appearance
+ * change can make them pass. Row 4 (the line budget) no longer applies: the mat
+ * grid is one quad at constant cost, whatever the pose.
  */
 describe('R217.S19 — 3D ground clipping checkpoint', () => {
 	const VIEWPORTS = [
@@ -517,13 +496,11 @@ describe('R217.S19 — 3D ground clipping checkpoint', () => {
 			nearClipped: 0,
 			nearClippedAboveFloor: 0,
 			farClipped: 0,
-			drawnOutsideGrid: 0,
 			drawnOutsideMat: 0,
 			worstGapPxAtLeast5m: 0,
 			worstGapPxBelow5m: 0,
-			worstLines: 0,
-			majorsDropped: 0,
-			worstDepthStepMeters: 0
+			worstDepthStepMeters: 0,
+			worstSceneLocalDepthStepMeters: 0
 		};
 		for (const [width, height] of VIEWPORTS) {
 			for (const elevation of ELEVATIONS) {
@@ -542,7 +519,6 @@ describe('R217.S19 — 3D ground clipping checkpoint', () => {
 								height
 							);
 							summary.poses += 1;
-							const plan = stageGridPlanFor(evaluation, { surface: 'mat', datumMeters: datum });
 							const mat = matGroundFor(evaluation, datum);
 							const matRect: GridRect = {
 								minX: mat.centerXZ[0] - mat.halfExtentMeters,
@@ -550,7 +526,7 @@ describe('R217.S19 — 3D ground clipping checkpoint', () => {
 								minZ: mat.centerXZ[1] - mat.halfExtentMeters,
 								maxZ: mat.centerXZ[1] + mat.halfExtentMeters
 							};
-							// Rows 1: every drawn ground sample lies inside grid coverage and the mat.
+							// Row 1: every drawn ground sample lies on the mat, which carries the grid.
 							for (let iy = 0; iy <= 24; iy += 1) {
 								for (let ix = 0; ix <= 8; ix += 1) {
 									const sample = classify(evaluation, datum, (ix / 8) * 2 - 1, (iy / 24) * 2 - 1);
@@ -563,10 +539,7 @@ describe('R217.S19 — 3D ground clipping checkpoint', () => {
 										if (evaluation.near > VIEWPORT_NEAR_FLOOR_METERS) summary.nearClippedAboveFloor += 1;
 									}
 									else if (sample.kind === 'far') summary.farClipped += 1;
-									else {
-										if (plan === null || !inside(plan.rect, sample.point!)) summary.drawnOutsideGrid += 1;
-										if (!inside(matRect, sample.point!)) summary.drawnOutsideMat += 1;
-									}
+									else if (!inside(matRect, sample.point!)) summary.drawnOutsideMat += 1;
 								}
 							}
 							// Rows 2 and 3: the band between clipped ground and the horizon,
@@ -574,18 +547,20 @@ describe('R217.S19 — 3D ground clipping checkpoint', () => {
 							const gap = (horizonGapPx(evaluation, datum) / height) * 900;
 							if (zoom >= 5) summary.worstGapPxAtLeast5m = Math.max(summary.worstGapPxAtLeast5m, gap);
 							else summary.worstGapPxBelow5m = Math.max(summary.worstGapPxBelow5m, gap);
-							// Row 4: the line budget, with every major line kept.
-							if (plan !== null) {
-								const lines = gridLinesFor(plan);
-								summary.worstLines = Math.max(summary.worstLines, lines.length);
-								const majors = lines.filter((line) => line.role !== 'minor').length;
-								const unbudgeted = gridLinesFor({ ...plan, minorRect: plan.rect }).filter(
-									(line) => line.role !== 'minor'
-								).length;
-								if (majors !== unbudgeted) summary.majorsDropped += 1;
-							}
 							// Row 5: depth resolution at the target distance.
-							summary.worstDepthStepMeters = Math.max(summary.worstDepthStepMeters, depthStepMeters(evaluation));
+							const step = depthStepMeters(evaluation);
+							summary.worstDepthStepMeters = Math.max(summary.worstDepthStepMeters, step);
+							// The scene sphere reaching the eye floors the near plane by
+							// design (the amended row 5 residual); every other pose is held
+							// to 1 mm.
+							const distance = Math.hypot(
+								evaluation.eye[0] - evaluation.target[0],
+								evaluation.eye[1] - evaluation.target[1],
+								evaluation.eye[2] - evaluation.target[2]
+							);
+							if (distance > sceneRadiusOf(snapshot.domain.geometry.bounds ?? null, target)) {
+								summary.worstSceneLocalDepthStepMeters = Math.max(summary.worstSceneLocalDepthStepMeters, step);
+							}
 						}
 					}
 				}
@@ -595,55 +570,45 @@ describe('R217.S19 — 3D ground clipping checkpoint', () => {
 		expect(summary.poses).toBe(4 * 7 * 7 * 6 * 2);
 		// Every row is checked at once, so a failure reports all of them.
 		expect({
-			row1DrawnOutsideGrid: summary.drawnOutsideGrid,
 			row1DrawnOutsideMat: summary.drawnOutsideMat,
 			d28NearClippedAboveFloor: summary.nearClippedAboveFloor,
 			row2GapWithin12Px: summary.worstGapPxAtLeast5m <= 12,
 			row3GapWithin40Px: summary.worstGapPxBelow5m <= 40,
-			row4WithinBudget: summary.worstLines <= GRID_MAT_LINE_BUDGET,
-			row4MajorsDropped: summary.majorsDropped,
-			row5DepthWithin1Mm: summary.worstDepthStepMeters <= 0.001
+			row5SceneLocalDepthWithin1Mm: summary.worstSceneLocalDepthStepMeters <= 0.001
 		}).toEqual({
-			row1DrawnOutsideGrid: 0,
 			row1DrawnOutsideMat: 0,
 			d28NearClippedAboveFloor: 0,
 			row2GapWithin12Px: true,
 			row3GapWithin40Px: true,
-			row4WithinBudget: true,
-			row4MajorsDropped: 0,
-			row5DepthWithin1Mm: true
+			row5SceneLocalDepthWithin1Mm: true
 		});
 	});
 
-	it('keeps the line budget at every zoom between the sweep values, never dropping a major line', async () => {
-		const snapshot = await enclosureSnapshot();
-		let worst = 0;
-		for (const [width, height] of VIEWPORTS) {
-			for (const elevation of [5, 15, 45, 89]) {
-				for (let zoom = 0.05; zoom <= 2000; zoom *= 1.25) {
-					const evaluation = evaluateAt(
-						snapshot,
-						{ target: [3.5, 0, -1], azimuthRadians: rad(30), elevationRadians: rad(elevation), targetPlaneHeightMeters: zoom },
-						width,
-						height
-					);
-					const plan = stageGridPlanFor(evaluation, { surface: 'mat', datumMeters: 0 });
-					if (plan === null) continue;
-					const lines = gridLinesFor(plan);
-					worst = Math.max(worst, lines.length);
-					expect(lines.length).toBeLessThanOrEqual(GRID_MAT_LINE_BUDGET);
-					const majors = lines.filter((line) => line.role !== 'minor').length;
-					const full = gridLinesFor({ ...plan, minorRect: plan.rect }).filter((line) => line.role !== 'minor').length;
-					expect(majors).toBe(full);
-					// The budgeted minor rectangle is always inside the covered one.
-					expect(plan.minorRect.minX).toBeGreaterThanOrEqual(plan.rect.minX);
-					expect(plan.minorRect.maxX).toBeLessThanOrEqual(plan.rect.maxX);
-					expect(plan.minorRect.minZ).toBeGreaterThanOrEqual(plan.rect.minZ);
-					expect(plan.minorRect.maxZ).toBeLessThanOrEqual(plan.rect.maxZ);
-				}
+	it('always inks a reference: 25 m cross-fades in as 5 m fades out, per pixel', () => {
+		// The old zoom-wide rule drew 25 m only after 5 m had fully hidden, so a
+		// zoom passed through a band where the only lines were a fading 5 m level.
+		let worstReference = 1;
+		for (let spacing = 0.64; spacing <= 200; spacing *= 1.01) {
+			const weights = matGridLevelWeights(spacing);
+			// 5 m and 25 m lines together never drop below half strength while the
+			// 25 m level is itself at full spacing (≥ 16 px).
+			worstReference = Math.min(worstReference, Math.max(weights.major, weights.coarse));
+			for (const weight of [weights.minor, weights.major, weights.coarse]) {
+				expect(weight).toBeGreaterThanOrEqual(0);
+				expect(weight).toBeLessThanOrEqual(1);
 			}
 		}
-		expect(worst).toBeGreaterThan(0);
+		expect(worstReference).toBeGreaterThanOrEqual(0.5);
+		// Near the eye (1 m at 40 px), 1 m and 5 m are fully inked and 25 m is absent.
+		expect(matGridLevelWeights(40)).toEqual({ minor: 1, major: 1, coarse: 0 });
+		// Mid-distance (1 m at 2 px): 1 m hidden, 5 m fading, 25 m fading in.
+		const mid = matGridLevelWeights(2);
+		expect(mid.minor).toBe(0);
+		expect(mid.major).toBeGreaterThan(0);
+		expect(mid.coarse).toBeGreaterThan(0);
+		expect(mid.major + mid.coarse).toBeCloseTo(1, 9);
+		// Toward the horizon (1 m at 0.2 px): every level is denser than 8 px.
+		expect(matGridLevelWeights(0.2)).toEqual({ minor: 0, major: 0, coarse: 0 });
 	});
 
 	it('follows a datum change and keeps covering ground across the horizon crossing', async () => {
@@ -658,13 +623,23 @@ describe('R217.S19 — 3D ground clipping checkpoint', () => {
 						width,
 						height
 					);
-					const plan = stageGridPlanFor(evaluation, { surface: 'mat', datumMeters: datum });
-					expect(plan).not.toBeNull();
+					const mat = matGroundFor(evaluation, datum);
+					const matRect: GridRect = {
+						minX: mat.centerXZ[0] - mat.halfExtentMeters,
+						maxX: mat.centerXZ[0] + mat.halfExtentMeters,
+						minZ: mat.centerXZ[1] - mat.halfExtentMeters,
+						maxZ: mat.centerXZ[1] + mat.halfExtentMeters
+					};
+					// The lattice stays anchored to world zero through the offset.
+					for (const axis of [0, 1] as const) {
+						const anchored = (mat.centerXZ[axis] - mat.latticeOffsetXZ[axis]) / 25;
+						expect(Math.abs(anchored - Math.round(anchored))).toBeLessThan(1e-9);
+					}
 					for (let iy = 0; iy <= 40; iy += 1) {
 						for (const ndcX of [-1, 0, 1]) {
 							const sample = classify(evaluation, datum, ndcX, (iy / 40) * 2 - 1);
 							expect(sample.kind).not.toBe('near');
-							if (sample.kind === 'drawn') expect(inside(plan!.rect, sample.point!)).toBe(true);
+							if (sample.kind === 'drawn') expect(inside(matRect, sample.point!)).toBe(true);
 						}
 					}
 				}

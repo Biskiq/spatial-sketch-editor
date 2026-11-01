@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, Shape, ShapeGeometry } from 'three';
+import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Shape, ShapeGeometry } from 'three';
 import { createWallRepresentation } from '$lib/render/layout-wall-representation';
 import { createObjectRepresentation } from '$lib/render/layout-object-representation';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
@@ -48,12 +48,11 @@ async function samples(fixture: typeof fixtures[number], registerLayout = true) 
 	const rendered = createScenePickSource(); rendered.setSource(admitted.snapshot.domain.scene);
 	const meshes: Mesh[] = [];
 	// Match VisitorLayoutShell under StageCanvas's registerLayout group: the
-	// canonical wall/object renderers and its floor, ceiling and ground meshes.
+	// canonical wall/object renderers and its floor and ceiling meshes. The Stage
+	// turns the visitor ground plinth off (R217.S19): the mat is its ground.
 	const root = new Group();
 	const walls = createWallRepresentation(); walls.update(admitted.snapshot.domain.geometry); root.add(walls.object3d);
 	const objects = createObjectRepresentation(); objects.update(admitted.snapshot.domain.geometry); root.add(objects.object3d);
-	const ground = new Mesh(new CylinderGeometry(22, 22, .05, 96), new MeshBasicMaterial());
-	ground.name = 'MuseumGroundPlinth'; ground.position.y = -.08; root.add(ground); meshes.push(ground);
 	for (const room of admitted.snapshot.domain.geometry.rooms) {
 		for (const [name, points, height, rotation, invert] of [
 			['floor', room.floorPolygon, room.floorElevation, -Math.PI / 2, true],
@@ -112,8 +111,9 @@ describe('S03 recorded pre-change selection differential', () => {
 			// re-record, all 1,200 Plan samples matched the old basis at the mirrored
 			// sample on every field except worldPoint, which differed by at most 1.8e-15.
 			// Re-recorded for R217.S19: the display ground's clip range changes the 3D
-			// projection's near and far, so 177 worldPoint coordinates moved by at most
-			// 8.9e-15; every winner and every other field is unchanged.
+			// projection's near and far, so 167 worldPoint coordinates moved by at most
+			// 8.5e-15, and the Stage no longer draws the visitor plinth, which no sample
+			// had hit. Every winner and every other field is unchanged.
 			// Exact values are pinned again so later drift fails this test.
 			expect(actual).toEqual(expected);
 		}

@@ -739,7 +739,7 @@ describe('R217.S19 — display ground clip range', () => {
 		const distance = Math.hypot(...subtractVec3(evaluation.eye, evaluation.target));
 		const halfFov = Math.atan(pose.targetPlaneHeightMeters / 2 / distance);
 		const eyeHeight = evaluation.eye[1];
-		const reach = Math.max(24 * 12 * (1440 / 900), 64 * eyeHeight);
+		const reach = Math.max(24 * 12 * (1440 / 900), 96 * eyeHeight);
 		expect(viewportGroundReachMeters({ targetPlaneHeightMeters: 12, aspect: 1440 / 900, eyeHeightMeters: eyeHeight })).toBeCloseTo(reach, 9);
 		expect(evaluation.far).toBeCloseTo(distance + reach, 9);
 		const groundNear = (eyeHeight * Math.cos(halfFov)) / Math.sin(pose.elevationRadians + halfFov);
