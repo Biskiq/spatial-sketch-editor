@@ -26,14 +26,14 @@ The R217 README's "Starting evidence" table describes the audited base at `c13a9
 
 ### Tested revision
 
-- Production code: `3f124420` · `feat(shell): one Head row, scoped shell roles and the Stage ⚙`
-- Tests: `05bf3ca3` · `test(shell): Find reaches the former menu, refusals are announced`
-- Review fixes: `4277f4d7` (⚙ closes on an outside press and reads the shell roles), `a1ce0ef1` (route
-  indentation and comment placement) and `25a3f763` (Escape on the project menu, test).
-- **Tested SHA: `25a3f763`.** Every gate below ran against this tree. The docs commit that carries this
-  record changes no production or test file. The earlier tested SHA `05bf3ca3` is superseded by the review fixes.
+- Production code: `1873ca4e` · `feat(shell): one Head row, scoped shell roles and the Stage ⚙`
+- Tests: `62d1a743` · `test(shell): Find reaches the former menu, refusals are announced`
+- Review fixes: `331fe8b4` (⚙ closes on an outside press and reads the shell roles), `8b856425` (route
+  indentation and comment placement) and `b5f1440b` (Escape on the project menu, test).
+- **Tested SHA: `b5f1440b`.** Every gate below ran against this tree. The docs commit that carries this
+  record changes no production or test file. The earlier tested SHA `62d1a743` is superseded by the review fixes.
 - Branch `claude/r217-s20-roles-and-head`, from `main` at `7cdc662e`. The existing S11 J12 docs commit
-  `bda1df6b` is kept.
+  `57f93780` is kept.
 
 ### Gates
 
@@ -166,3 +166,12 @@ Measurements: `<width>-metrics-{empty,refused,dirty}.json` (produced by [head-me
 - **Coarse Head height is 60 px**, taller than the 44 px fine-pointer row, so that 44 px targets fit on one row.
 - **A stale error in the development session.** An earlier hot-reload left `HEAD_PREFERENCE_ENTRIES is not
   defined` in one tab's error log. A fresh session logs no errors, and the Find list holds all 30 entries.
+
+## Independent review
+
+**Reviewer:** the convergence coordinator, independent of the implementer. Date: 2026-11-01.
+
+- **First review, `dc931564`** (tree of the original `ca24a6f1`): no P1. P2-1: the ⚙ panel did not close on an outside press, unlike the Head's disclosures. P2-2: the new panel's colours were hard-coded instead of reading the shell roles. Nit: the route's inserted block was mis-indented and displaced a doc comment. Nit: no test for Escape on the project menu. Accepted: Find closes after a run.
+- **Fixes:** `331fe8b4`, `8b856425` and `b5f1440b` resolve all four findings, with tests. The re-review at `b5f1440b` is clean, with nothing open, withdrawn or unadjudicated.
+- **Commit messages rewritten:** the branch's commit messages were rewritten to drop agent trailers (AGENTS.md rule 12). Every tree is unchanged, and the SHAs in this record are the rewritten ones. Tested tree `239af05b` was `25a3f763` before the rewrite and is `b5f1440b` after it.
+- **Verdict at `b5f1440b`:** the implementation meets plan §3 to §5 within the declared `affected-subsystem` tier, the recorded gates and browser matrix cover the plan's rows, and the drift reconciliation follows PR #247's baseline. Routine close-out may proceed.
