@@ -46,7 +46,6 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 	group.name = 'StageGrid';
 	const paper = plan.surface === 'paper';
 	const elevation = plan.datumMeters + (paper ? PAPER_GRID_LIFT_METERS : MAT_GRID_LIFT_METERS);
-	const { rect } = plan;
 	const buckets = new Map<string, Bucket>();
 
 	for (const line of gridLinesFor(plan)) {
@@ -55,9 +54,9 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 		const key = `${line.role}:${line.color}`;
 		const bucket = buckets.get(key) ?? { color: line.color, opacity: line.opacity, positions: [] };
 		if (line.axis === 'x') {
-			bucket.positions.push(line.atMeters, elevation, rect.minZ, line.atMeters, elevation, rect.maxZ);
+			bucket.positions.push(line.atMeters, elevation, line.fromMeters, line.atMeters, elevation, line.toMeters);
 		} else {
-			bucket.positions.push(rect.minX, elevation, line.atMeters, rect.maxX, elevation, line.atMeters);
+			bucket.positions.push(line.fromMeters, elevation, line.atMeters, line.toMeters, elevation, line.atMeters);
 		}
 		buckets.set(key, bucket);
 	}

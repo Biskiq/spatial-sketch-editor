@@ -13,7 +13,7 @@
 	import { T, useThrelte } from '@threlte/core';
 	import { Group } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
-	import { gridPlanFor, type GridRect, type GridSurface } from '../stage-grid';
+	import { stageGridPlanFor, type GridRect, type GridSurface } from '../stage-grid';
 	import { createGridScene, type GridSceneResources } from './stage-grid-scene';
 
 	let {
@@ -39,24 +39,11 @@
 	let builtKey = '';
 	let resources: GridSceneResources | null = null;
 
-	const plan = $derived.by(() => {
-		if (evaluation === null) return null;
-		const aspect = evaluation.rect.height > 0 ? evaluation.rect.width / evaluation.rect.height : 1;
-		return gridPlanFor({
-			metersPerCssPixel: evaluation.targetPlaneMetersPerCssPixel,
-			targetPlaneHeightMeters: evaluation.pose.targetPlaneHeightMeters,
-			aspect,
-			targetXZ: [evaluation.target[0], evaluation.target[2]],
-			datumMeters,
-			contentBounds,
-			candidateBounds,
-			surface,
-			// The mat's patch is the actual datum the Camera's corner rays see,
-			// never a fixed multiple of the target plane that ends inside the frame.
-			inverseViewProjectionMatrix: evaluation.inverseViewProjectionMatrix,
-			viewport: { width: evaluation.rect.width, height: evaluation.rect.height }
-		});
-	});
+	const plan = $derived(
+		evaluation === null
+			? null
+			: stageGridPlanFor(evaluation, { surface, datumMeters, contentBounds, candidateBounds })
+	);
 
 	/** Only the drawing key is a dependency; the plan object is read untracked. */
 	const planKey = $derived(plan?.key ?? '');

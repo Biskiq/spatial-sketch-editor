@@ -111,6 +111,9 @@ describe('S03 recorded pre-change selection differential', () => {
 			// R217.S12: O3's basis fix is exactly Plan's 180° screen roll. Before the
 			// re-record, all 1,200 Plan samples matched the old basis at the mirrored
 			// sample on every field except worldPoint, which differed by at most 1.8e-15.
+			// Re-recorded for R217.S19: the display ground's clip range changes the 3D
+			// projection's near and far, so 177 worldPoint coordinates moved by at most
+			// 8.9e-15; every winner and every other field is unchanged.
 			// Exact values are pinned again so later drift fails this test.
 			expect(actual).toEqual(expected);
 		}

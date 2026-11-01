@@ -12,12 +12,15 @@
  * - lines are anchored to world `(0, datum, 0)` and generated only inside the
  *   drawn rectangle;
  * - Paper's rectangle is a bounded sheet around the work, while the mat keeps
- *   the actual datum footprint the Camera's corner rays see;
+ *   the exact datum footprint inside the Camera's clipped frustum (R217.S19);
+ * - the mat draws at most 6,000 lines: over budget, the minor rectangle shrinks
+ *   around the target and the major lines still cover the whole footprint;
  * - Paper and the mat have their own inks from PLATE §Semantic color.
  *
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.
  */
+import { viewportGroundReachMeters, type ViewportEvaluation } from '@portfolio/camera-core';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from './stage-drafting';
 
 /** PLATE's grid inks. Opacity is part of the role, not a renderer default. */
@@ -289,72 +292,67 @@ export function paperSheetRectFor(input: {
 }
 
 /**
- * The datum-plane rectangle the mat actually shows, from the evaluation's own
- * four viewport-corner rays.
+ * R217.S19 — the datum-plane rectangle the mat actually shows: the bounds of the
+ * exact intersection of the evaluation's clipped frustum with the datum plane.
  *
- * A fixed multiple of the target plane was only correct while the Camera looked
- * straight down: a tilted 3D view sees the datum much farther than 3 target
- * heights, so the grid ended in a visible straight cut. This intersects each
- * corner ray with the datum plane and clamps the result to a bounded multiple of
- * the target-plane size. Below the horizon a corner ray has no forward hit; the
- * clamp is what keeps that case finite instead of drawing to infinity.
+ * Four corner rays lost coverage two ways: a ray could hit the datum beyond the
+ * far plane, and near the horizon the visible ground is not described by its
+ * corners at all. Intersecting all twelve frustum edges with the datum gives
+ * every vertex of the visible ground polygon, so the grid's coverage and the
+ * Camera's clip range come from the same frustum and cannot disagree. The far
+ * plane is what keeps a horizon view finite.
  *
- * Returns `null` when fewer than two corners meet the datum; the caller then
- * falls back to the symmetric rectangle. It composes no pose and reads no Camera
- * state beyond the matrices and rect the evaluation already published.
+ * Returns `null` when the clipped frustum does not meet the datum (the view sees
+ * no ground). It composes no pose and reads no Camera state beyond the matrix and
+ * rect the evaluation already published.
  */
 export function gridDatumFootprintFor(input: {
 	readonly inverseViewProjectionMatrix: readonly number[];
 	readonly rect: { readonly width: number; readonly height: number };
 	readonly datumMeters: number;
-	readonly targetXZ: readonly [number, number];
-	readonly targetPlaneHeightMeters: number;
-	readonly aspect: number;
-	/** Symmetric half-extent clamp, in target-plane heights. */
-	readonly maxHalfExtents?: number;
 }): GridRect | null {
 	const matrix = input.inverseViewProjectionMatrix;
 	if (!Array.isArray(matrix) || matrix.length !== 16) return null;
 	if (!(input.rect.width > 0) || !(input.rect.height > 0)) return null;
-	const height = Math.max(0.001, input.targetPlaneHeightMeters);
-	const width = height * Math.max(0.1, input.aspect);
-	const clampExtent = Math.max(2, (input.maxHalfExtents ?? 24) * Math.max(width, height));
-	const points: { readonly x: number; readonly z: number }[] = [];
-	for (const ndcX of [-1, 1] as const) {
+	// Corner index bits: x = bit 0, y = bit 1, z (near/far) = bit 2.
+	const corners: (readonly [number, number, number] | null)[] = [];
+	for (const ndcZ of [-1, 1] as const) {
 		for (const ndcY of [-1, 1] as const) {
-			const near = unprojectPoint(matrix, ndcX, ndcY, -1);
-			const far = unprojectPoint(matrix, ndcX, ndcY, 1);
-			if (near === null || far === null) continue;
-			const directionY = far[1] - near[1];
-			if (Math.abs(directionY) < 1e-9) continue;
-			const travel = (input.datumMeters - near[1]) / directionY;
-			if (!(travel > 0) || !Number.isFinite(travel)) continue;
-			const x = near[0] + (far[0] - near[0]) * travel;
-			const z = near[2] + (far[2] - near[2]) * travel;
-			if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
-			points.push({
-				x: Math.min(input.targetXZ[0] + clampExtent, Math.max(input.targetXZ[0] - clampExtent, x)),
-				z: Math.min(input.targetXZ[1] + clampExtent, Math.max(input.targetXZ[1] - clampExtent, z))
-			});
+			for (const ndcX of [-1, 1] as const) corners.push(unprojectPoint(matrix, ndcX, ndcY, ndcZ));
 		}
 	}
-	if (points.length < 2) return null;
-	// The target-plane rect is always visible, so the footprint is its union with
-	// the ray hits. This also covers a corner ray that lands behind a near plane.
-	const nearHalfX = Math.max(2, width * 0.75);
-	const nearHalfZ = Math.max(2, height * 0.75);
-	let minX = input.targetXZ[0] - nearHalfX;
-	let maxX = input.targetXZ[0] + nearHalfX;
-	let minZ = input.targetXZ[1] - nearHalfZ;
-	let maxZ = input.targetXZ[1] + nearHalfZ;
-	for (const point of points) {
-		minX = Math.min(minX, point.x);
-		maxX = Math.max(maxX, point.x);
-		minZ = Math.min(minZ, point.z);
-		maxZ = Math.max(maxZ, point.z);
+	let minX = Infinity;
+	let maxX = -Infinity;
+	let minZ = Infinity;
+	let maxZ = -Infinity;
+	let hits = 0;
+	for (const [from, to] of FRUSTUM_EDGES) {
+		const a = corners[from];
+		const b = corners[to];
+		if (a === null || a === undefined || b === null || b === undefined) continue;
+		const aboveA = a[1] - input.datumMeters;
+		const aboveB = b[1] - input.datumMeters;
+		if (aboveA === aboveB || aboveA * aboveB > 0) continue;
+		const travel = aboveA / (aboveA - aboveB);
+		const x = a[0] + (b[0] - a[0]) * travel;
+		const z = a[2] + (b[2] - a[2]) * travel;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
+		minX = Math.min(minX, x);
+		maxX = Math.max(maxX, x);
+		minZ = Math.min(minZ, z);
+		maxZ = Math.max(maxZ, z);
+		hits += 1;
 	}
+	if (hits < 3 || !(maxX > minX) || !(maxZ > minZ)) return null;
 	return { minX, maxX, minZ, maxZ };
 }
+
+/** The twelve edges of a frustum whose corners are indexed x | y << 1 | z << 2. */
+const FRUSTUM_EDGES: readonly (readonly [number, number])[] = [
+	[0, 1], [2, 3], [4, 5], [6, 7],
+	[0, 2], [1, 3], [4, 6], [5, 7],
+	[0, 4], [1, 5], [2, 6], [3, 7]
+];
 
 function unprojectPoint(
 	inverseViewProjection: readonly number[],
@@ -382,8 +380,108 @@ export type GridPlan = {
 	readonly surface: GridSurface;
 	readonly datumMeters: number;
 	readonly levels: GridLevels;
+	/** The covered rectangle: every level except the minor one spans all of it. */
 	readonly rect: GridRect;
+	/**
+	 * R217.S19 — the minor level's rectangle. It equals `rect` unless the mat's
+	 * line budget shrank it around the target; it is always inside `rect`.
+	 */
+	readonly minorRect: GridRect;
 };
+
+/** R217.S19 — the most lines one mat drawing may hold. Major lines are never dropped. */
+export const GRID_MAT_LINE_BUDGET = 6000;
+
+/** The coincident intervals a coarser drawn role owns instead of this level. */
+function exclusionsFor(level: GridLevel, levels: GridLevels): number[] {
+	const exclusions: number[] = [];
+	if (level.role === 'minor') exclusions.push(GRID_MAJOR_METERS);
+	// A coarser role owns a coincident line only while that role is actually
+	// drawn; otherwise the visible level must still draw world zero.
+	if (level.role === 'minor' && levels.coarseMeters !== null) {
+		exclusions.push(GRID_COARSE_METERS);
+	}
+	if (level.role === 'major' && levels.coarseMeters !== null) {
+		exclusions.push(GRID_COARSE_METERS);
+	}
+	return exclusions;
+}
+
+/** Whole multiples of `interval` in `[minimum, maximum]`, matching `gridLinesFor`. */
+function multiplesIn(minimum: number, maximum: number, interval: number): number {
+	const first = Math.ceil((minimum - 1e-9) / interval);
+	const last = Math.floor((maximum + 1e-9) / interval);
+	return Math.max(0, last - first + 1);
+}
+
+/**
+ * The number of lines one level draws over a rectangle. The excluded intervals
+ * are nested multiples of each other (25 m lines are 5 m lines), so the smallest
+ * one alone removes every coincident line.
+ */
+function levelLineCount(level: GridLevel, levels: GridLevels, rect: GridRect): number {
+	const exclusions = exclusionsFor(level, levels);
+	const excluded = exclusions.length === 0 ? null : Math.min(...exclusions);
+	let count = 0;
+	for (const [minimum, maximum] of [
+		[rect.minX, rect.maxX],
+		[rect.minZ, rect.maxZ]
+	] as const) {
+		count += multiplesIn(minimum, maximum, level.intervalMeters);
+		if (excluded !== null) count -= multiplesIn(minimum, maximum, excluded);
+	}
+	return count;
+}
+
+/**
+ * R217.S19 — the mat's minor rectangle under the line budget.
+ *
+ * Every non-minor level keeps the whole rectangle, so a major line is never
+ * dropped. Over budget, the minor level keeps only the largest square around
+ * the quantised target that fits what the other levels leave. The square's edges
+ * are whole minor intervals, so a small pan does not rebuild the drawing.
+ */
+function budgetedMinorRect(
+	levels: GridLevels,
+	rect: GridRect,
+	targetXZ: readonly [number, number],
+	budget: number
+): GridRect {
+	const minor = levels.levels.find((level) => level.role === 'minor');
+	if (minor === undefined) return rect;
+	let others = 0;
+	for (const level of levels.levels) {
+		if (level.role !== 'minor') others += levelLineCount(level, levels, rect);
+	}
+	if (others + levelLineCount(minor, levels, rect) <= budget) return rect;
+	const interval = minor.intervalMeters;
+	const centerX = Math.round(targetXZ[0] / interval) * interval;
+	const centerZ = Math.round(targetXZ[1] / interval) * interval;
+	const square = (steps: number): GridRect => {
+		const half = steps * interval;
+		return {
+			minX: clean(Math.max(rect.minX, centerX - half)),
+			maxX: clean(Math.min(rect.maxX, centerX + half)),
+			minZ: clean(Math.max(rect.minZ, centerZ - half)),
+			maxZ: clean(Math.min(rect.maxZ, centerZ + half))
+		};
+	};
+	const fits = (steps: number): boolean => {
+		const candidate = square(steps);
+		if (candidate.minX > candidate.maxX || candidate.minZ > candidate.maxZ) return true;
+		return others + levelLineCount(minor, levels, candidate) <= budget;
+	};
+	let low = 0;
+	let high = Math.ceil(
+		Math.max(rect.maxX - centerX, centerX - rect.minX, rect.maxZ - centerZ, centerZ - rect.minZ) / interval
+	);
+	while (low < high) {
+		const middle = Math.ceil((low + high) / 2);
+		if (fits(middle)) low = middle;
+		else high = middle - 1;
+	}
+	return square(low);
+}
 
 /** One complete grid drawing for one evaluation and surface. */
 export function gridPlanFor(input: {
@@ -419,10 +517,7 @@ export function gridPlanFor(input: {
 				? gridDatumFootprintFor({
 						inverseViewProjectionMatrix: input.inverseViewProjectionMatrix,
 						rect: input.viewport,
-						datumMeters: input.datumMeters,
-						targetXZ: input.targetXZ,
-						targetPlaneHeightMeters: input.targetPlaneHeightMeters,
-						aspect: input.aspect
+						datumMeters: input.datumMeters
 					})
 				: null;
 		rect = gridRectFor({
@@ -436,6 +531,10 @@ export function gridPlanFor(input: {
 		});
 	}
 	if (rect === null) return null;
+	const minorRect =
+		input.surface === 'mat'
+			? budgetedMinorRect(levels, rect, input.targetXZ, GRID_MAT_LINE_BUDGET)
+			: rect;
 	// Opacity is deliberately absent: the fade changes continuously while zooming,
 	// but the lattice does not. A rebuild keyed on opacity would dispose and
 	// regenerate every line on nearly every frame; the renderer updates the
@@ -444,11 +543,73 @@ export function gridPlanFor(input: {
 		.map((level) => `${level.role}:${level.intervalMeters}`)
 		.join('|');
 	return {
-		key: `${input.surface}:${input.datumMeters}:${levelKey}:${rect.minX}:${rect.maxX}:${rect.minZ}:${rect.maxZ}`,
+		key: `${input.surface}:${input.datumMeters}:${levelKey}:${rect.minX}:${rect.maxX}:${rect.minZ}:${rect.maxZ}:${minorRect.minX}:${minorRect.maxX}:${minorRect.minZ}:${minorRect.maxZ}`,
 		surface: input.surface,
 		datumMeters: input.datumMeters,
 		levels,
-		rect
+		rect,
+		minorRect
+	};
+}
+
+/**
+ * The Stage's grid plan for one evaluation: the exact wiring `StageGrid.svelte`
+ * draws, kept here so the checkpoint sweep exercises the same path.
+ */
+export function stageGridPlanFor(
+	evaluation: ViewportEvaluation,
+	input: {
+		readonly surface: GridSurface;
+		readonly datumMeters: number;
+		readonly contentBounds?: GridRect | null;
+		readonly candidateBounds?: GridRect | null;
+	}
+): GridPlan | null {
+	const aspect = evaluation.rect.height > 0 ? evaluation.rect.width / evaluation.rect.height : 1;
+	return gridPlanFor({
+		metersPerCssPixel: evaluation.targetPlaneMetersPerCssPixel,
+		targetPlaneHeightMeters: evaluation.pose.targetPlaneHeightMeters,
+		aspect,
+		targetXZ: [evaluation.target[0], evaluation.target[2]],
+		datumMeters: input.datumMeters,
+		contentBounds: input.contentBounds ?? null,
+		candidateBounds: input.candidateBounds ?? null,
+		surface: input.surface,
+		// The mat's patch is the datum inside the evaluation's own clipped frustum,
+		// never a fixed multiple of the target plane that ends inside the frame.
+		inverseViewProjectionMatrix: evaluation.inverseViewProjectionMatrix,
+		viewport: { width: evaluation.rect.width, height: evaluation.rect.height }
+	});
+}
+
+/** The finite mat ground: a square on the datum, as a centre and a half-extent. */
+export type MatGround = {
+	readonly centerXZ: readonly [number, number];
+	readonly halfExtentMeters: number;
+};
+
+/**
+ * R217.S19 — the finite mat follows the Camera's own ground reach.
+ *
+ * The half-extent is at least 1.5 × the reach the evaluator clips the ground at,
+ * rounded up to a power of two so a zoom rarely changes it. The centre is the
+ * target quantised to an eighth of that half-extent, so a pan never moves the mat
+ * by more than its spare margin. It never enters scene bounds or Fit.
+ */
+export function matGroundFor(evaluation: ViewportEvaluation, datumMeters: number): MatGround {
+	const reach = viewportGroundReachMeters({
+		targetPlaneHeightMeters: evaluation.pose.targetPlaneHeightMeters,
+		aspect: evaluation.rect.width / evaluation.rect.height,
+		eyeHeightMeters: evaluation.eye[1] - datumMeters
+	});
+	const halfExtentMeters = 2 ** Math.ceil(Math.log2(Math.max(1, 1.5 * reach)));
+	const step = halfExtentMeters / 8;
+	return {
+		centerXZ: [
+			Math.round(evaluation.target[0] / step) * step,
+			Math.round(evaluation.target[2] / step) * step
+		],
+		halfExtentMeters
 	};
 }
 
@@ -456,6 +617,9 @@ export function gridPlanFor(input: {
 export type GridLine = {
 	readonly axis: 'x' | 'z';
 	readonly atMeters: number;
+	/** The line's span along the other axis: its level's rectangle edges. */
+	readonly fromMeters: number;
+	readonly toMeters: number;
 	readonly role: GridLevelRole;
 	readonly color: string;
 	readonly opacity: number;
@@ -475,22 +639,13 @@ function isMultiple(value: number, interval: number): boolean {
  * across a zoom change.
  */
 export function gridLinesFor(plan: GridPlan): readonly GridLine[] {
-	const { rect, levels } = plan;
+	const { levels } = plan;
 	const lines: GridLine[] = [];
-	// No global truncation: the fixed levels and the bounded rectangles already
-	// bound the count by the viewport. A cap here could silently omit every major
-	// line on a wide Stage, which is worse than drawing the bounded patch.
+	// No truncation here: the plan already bounded the minor rectangle, and a cap
+	// at this point could silently omit every major line on a wide Stage.
 	for (const level of levels.levels) {
-		const exclusions: number[] = [];
-		if (level.role === 'minor') exclusions.push(GRID_MAJOR_METERS);
-		// A coarser role owns a coincident line only while that role is actually
-		// drawn; otherwise the visible level must still draw world zero.
-		if (level.role === 'minor' && levels.coarseMeters !== null) {
-			exclusions.push(GRID_COARSE_METERS);
-		}
-		if (level.role === 'major' && levels.coarseMeters !== null) {
-			exclusions.push(GRID_COARSE_METERS);
-		}
+		const exclusions = exclusionsFor(level, levels);
+		const rect = level.role === 'minor' ? plan.minorRect : plan.rect;
 		for (const axis of ['x', 'z'] as const) {
 			const minimum = axis === 'x' ? rect.minX : rect.minZ;
 			const maximum = axis === 'x' ? rect.maxX : rect.maxZ;
@@ -502,6 +657,8 @@ export function gridLinesFor(plan: GridPlan): readonly GridLine[] {
 				lines.push({
 					axis,
 					atMeters,
+					fromMeters: axis === 'x' ? rect.minZ : rect.minX,
+					toMeters: axis === 'x' ? rect.maxZ : rect.maxX,
 					role: level.role,
 					color: level.color,
 					opacity: level.opacity

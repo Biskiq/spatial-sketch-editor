@@ -8,8 +8,20 @@
  * the origin never moves across a zoom change, and no view state reaches the
  * source.
  */
+import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Matrix4, PerspectiveCamera, Vector3 } from 'three';
+import {
+	VIEWPORT_NEAR_FLOOR_METERS,
+	type InspectionPose,
+	type Vec3,
+	type ViewportEvaluation
+} from '@portfolio/camera-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import { createCameraSession } from '$lib/authoring/stage/camera-session';
+import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createGridScene } from '$lib/authoring/stage/shell/stage-grid-scene';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '$lib/authoring/stage/stage-drafting';
 import {
@@ -24,7 +36,11 @@ import {
 	gridLinesFor,
 	gridPlanFor,
 	gridRectFor,
-	paperSheetRectFor
+	GRID_MAT_LINE_BUDGET,
+	matGroundFor,
+	paperSheetRectFor,
+	stageGridPlanFor,
+	type GridRect
 } from '$lib/authoring/stage/stage-grid';
 
 const PAPER_BASE = {
@@ -286,10 +302,7 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		const footprint = gridDatumFootprintFor({
 			inverseViewProjectionMatrix: inverse,
 			rect: { width: 1600, height: 900 },
-			datumMeters: 0,
-			targetXZ: [0, 0],
-			targetPlaneHeightMeters: 8,
-			aspect: 16 / 9
+			datumMeters: 0
 		});
 		expect(footprint).not.toBeNull();
 		if (footprint === null) return;
@@ -356,5 +369,327 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		expect(rect.maxZ - rect.minZ).toBeGreaterThan(8);
 		expect(Number.isInteger(rect.minX)).toBe(true);
 		expect(Number.isInteger(rect.maxZ)).toBe(true);
+	});
+});
+
+/**
+ * R217.S19 — the §3a experimental checkpoint, kept as a test.
+ *
+ * The audit's sweep extended to the real Stage wiring: an admitted enclosure
+ * source, the Stage's own Camera session with its datum, `stageGridPlanFor` and
+ * `matGroundFor` exactly as `StageGrid.svelte` and `StageCanvas.svelte` call
+ * them. Every screen sample's ground hit is classified sky, behind, near-clipped,
+ * far-clipped or drawn; rows 1–6 are measured from geometry and clip range, so no
+ * appearance change can make them pass.
+ */
+describe('R217.S19 — 3D ground clipping checkpoint', () => {
+	const VIEWPORTS = [
+		[1088, 814],
+		[1440, 900],
+		[820, 1180],
+		[1280, 577]
+	] as const;
+	const ELEVATIONS = [5, 10, 15, 30, 45, 75, 89];
+	const AZIMUTHS = [0, 30, 45, 90, 135, 225, 315];
+	const ZOOMS = [0.05, 1, 5, 15.2, 60, 1000];
+	const TARGETS: readonly Vec3[] = [
+		[3.5, 1.5, -1],
+		[500, 0, -400]
+	];
+	const DEPTH_BITS = 2 ** 24;
+	const rad = (degrees: number): number => (degrees * Math.PI) / 180;
+
+	async function enclosureSnapshot(datumMeters = 0): Promise<StageReadSnapshot> {
+		const plan = planWallChain({
+			baseline: createEmptyWallFirstLayoutDocument(),
+			points: [
+				[0, -4],
+				[7, -4],
+				[7, 2],
+				[0, 2]
+			],
+			close: true,
+			capture: freshCapture(),
+			levelId: createEmptyWallFirstLayoutDocument().floor.id
+		});
+		if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
+		const envelope = await createUnitProject({ id: 'project-s19', name: 'S19', layout: plan.document });
+		const admitted = await admitSource(envelope, {
+			sessionEpoch: 'session-s19',
+			acceptedRevision: { projectId: 'project-s19', revisionId: 'revision-s19' }
+		});
+		if (admitted.kind !== 'admitted') throw new Error(`fixture not admitted: ${admitted.kind}`);
+		// The level datum is the session input the Stage supplies; a datum change is
+		// a different snapshot of the same source.
+		return datumMeters === admitted.snapshot.domain.datumMeters
+			? admitted.snapshot
+			: { ...admitted.snapshot, domain: { ...admitted.snapshot.domain, datumMeters } };
+	}
+
+	function unproject(inverse: readonly number[], x: number, y: number, z: number): Vec3 {
+		const w = inverse[3]! * x + inverse[7]! * y + inverse[11]! * z + inverse[15]!;
+		return [
+			(inverse[0]! * x + inverse[4]! * y + inverse[8]! * z + inverse[12]!) / w,
+			(inverse[1]! * x + inverse[5]! * y + inverse[9]! * z + inverse[13]!) / w,
+			(inverse[2]! * x + inverse[6]! * y + inverse[10]! * z + inverse[14]!) / w
+		];
+	}
+
+	type GroundClass = 'sky' | 'near' | 'far' | 'drawn';
+
+	/** One screen point's ground hit from the eye, against the realized clip planes. */
+	function classify(evaluation: ViewportEvaluation, datum: number, ndcX: number, ndcY: number): {
+		readonly kind: GroundClass;
+		readonly point?: readonly [number, number];
+	} {
+		const inverse = evaluation.inverseViewProjectionMatrix as readonly number[];
+		const nearPoint = unproject(inverse, ndcX, ndcY, -1);
+		const eye = evaluation.eye;
+		const direction: Vec3 = [nearPoint[0] - eye[0], nearPoint[1] - eye[1], nearPoint[2] - eye[2]];
+		if (!(direction[1] < 0) || !(eye[1] > datum)) return { kind: 'sky' };
+		const travel = (datum - eye[1]) / direction[1];
+		const hit: Vec3 = [eye[0] + direction[0] * travel, datum, eye[2] + direction[2] * travel];
+		// View depth along the Camera's forward axis, against the realized clip planes.
+		const forward: Vec3 = [evaluation.target[0] - eye[0], evaluation.target[1] - eye[1], evaluation.target[2] - eye[2]];
+		const length = Math.hypot(...forward);
+		const depth =
+			((hit[0] - eye[0]) * forward[0] + (hit[1] - eye[1]) * forward[1] + (hit[2] - eye[2]) * forward[2]) / length;
+		if (depth < evaluation.near * (1 - 1e-9)) return { kind: 'near', point: [hit[0], hit[2]] };
+		if (depth > evaluation.far * (1 + 1e-9)) return { kind: 'far', point: [hit[0], hit[2]] };
+		return { kind: 'drawn', point: [hit[0], hit[2]] };
+	}
+
+	function inside(rect: GridRect, point: readonly [number, number], slack = 1e-6): boolean {
+		return (
+			point[0] >= rect.minX - slack &&
+			point[0] <= rect.maxX + slack &&
+			point[1] >= rect.minZ - slack &&
+			point[1] <= rect.maxZ + slack
+		);
+	}
+
+	/** CSS px between the last drawn ground row and the horizon (or frame top), centre column. */
+	function horizonGapPx(evaluation: ViewportEvaluation, datum: number): number {
+		const rows = 1800;
+		let lastDrawn = -1;
+		let lastGround = -1;
+		for (let row = 0; row <= rows; row += 1) {
+			const ndcY = (row / rows) * 2 - 1;
+			const sample = classify(evaluation, datum, 0, ndcY);
+			if (sample.kind === 'sky') continue;
+			lastGround = row;
+			if (sample.kind === 'drawn') lastDrawn = row;
+		}
+		if (lastGround < 0) return 0;
+		return ((lastGround - lastDrawn) / rows) * evaluation.rect.height;
+	}
+
+	/** 24-bit depth step at the target distance for the realized range. */
+	function depthStepMeters(evaluation: ViewportEvaluation): number {
+		const distance = Math.hypot(
+			evaluation.eye[0] - evaluation.target[0],
+			evaluation.eye[1] - evaluation.target[1],
+			evaluation.eye[2] - evaluation.target[2]
+		);
+		const { near, far } = evaluation;
+		return (distance * distance * (far - near)) / (far * near * DEPTH_BITS);
+	}
+
+	function evaluateAt(
+		snapshot: StageReadSnapshot,
+		pose: InspectionPose,
+		width: number,
+		height: number
+	): ViewportEvaluation {
+		const camera = createCameraSession({ snapshot, viewportId: 'stage', outputId: 'output:s19', pose });
+		const result = camera.evaluate({ left: 0, top: 0, width, height, devicePixelRatio: 1 }, 0);
+		if (result.kind !== 'evaluated') throw new Error(`pose not evaluated: ${result.reason}`);
+		return result.evaluation;
+	}
+
+	it('meets rows 1–5 across the whole sweep through the Stage wiring', async () => {
+		const snapshot = await enclosureSnapshot();
+		const datum = snapshot.domain.datumMeters;
+		const summary = {
+			poses: 0,
+			samples: 0,
+			sky: 0,
+			nearClipped: 0,
+			nearClippedAboveFloor: 0,
+			farClipped: 0,
+			drawnOutsideGrid: 0,
+			drawnOutsideMat: 0,
+			worstGapPxAtLeast5m: 0,
+			worstGapPxBelow5m: 0,
+			worstLines: 0,
+			majorsDropped: 0,
+			worstDepthStepMeters: 0
+		};
+		for (const [width, height] of VIEWPORTS) {
+			for (const elevation of ELEVATIONS) {
+				for (const azimuth of AZIMUTHS) {
+					for (const zoom of ZOOMS) {
+						for (const target of TARGETS) {
+							const evaluation = evaluateAt(
+								snapshot,
+								{
+									target,
+									azimuthRadians: rad(azimuth),
+									elevationRadians: rad(elevation),
+									targetPlaneHeightMeters: zoom
+								},
+								width,
+								height
+							);
+							summary.poses += 1;
+							const plan = stageGridPlanFor(evaluation, { surface: 'mat', datumMeters: datum });
+							const mat = matGroundFor(evaluation, datum);
+							const matRect: GridRect = {
+								minX: mat.centerXZ[0] - mat.halfExtentMeters,
+								maxX: mat.centerXZ[0] + mat.halfExtentMeters,
+								minZ: mat.centerXZ[1] - mat.halfExtentMeters,
+								maxZ: mat.centerXZ[1] + mat.halfExtentMeters
+							};
+							// Rows 1: every drawn ground sample lies inside grid coverage and the mat.
+							for (let iy = 0; iy <= 24; iy += 1) {
+								for (let ix = 0; ix <= 8; ix += 1) {
+									const sample = classify(evaluation, datum, (ix / 8) * 2 - 1, (iy / 24) * 2 - 1);
+									summary.samples += 1;
+									if (sample.kind === 'sky') summary.sky += 1;
+									else if (sample.kind === 'near') {
+										summary.nearClipped += 1;
+										// Below the near floor nothing is left to give: only a cut
+										// with a near plane above the floor is a D28 defect.
+										if (evaluation.near > VIEWPORT_NEAR_FLOOR_METERS) summary.nearClippedAboveFloor += 1;
+									}
+									else if (sample.kind === 'far') summary.farClipped += 1;
+									else {
+										if (plan === null || !inside(plan.rect, sample.point!)) summary.drawnOutsideGrid += 1;
+										if (!inside(matRect, sample.point!)) summary.drawnOutsideMat += 1;
+									}
+								}
+							}
+							// Rows 2 and 3: the band between clipped ground and the horizon,
+							// normalised to a 900 px frame.
+							const gap = (horizonGapPx(evaluation, datum) / height) * 900;
+							if (zoom >= 5) summary.worstGapPxAtLeast5m = Math.max(summary.worstGapPxAtLeast5m, gap);
+							else summary.worstGapPxBelow5m = Math.max(summary.worstGapPxBelow5m, gap);
+							// Row 4: the line budget, with every major line kept.
+							if (plan !== null) {
+								const lines = gridLinesFor(plan);
+								summary.worstLines = Math.max(summary.worstLines, lines.length);
+								const majors = lines.filter((line) => line.role !== 'minor').length;
+								const unbudgeted = gridLinesFor({ ...plan, minorRect: plan.rect }).filter(
+									(line) => line.role !== 'minor'
+								).length;
+								if (majors !== unbudgeted) summary.majorsDropped += 1;
+							}
+							// Row 5: depth resolution at the target distance.
+							summary.worstDepthStepMeters = Math.max(summary.worstDepthStepMeters, depthStepMeters(evaluation));
+						}
+					}
+				}
+			}
+		}
+		if (process.env.S19_SWEEP_OUT) writeFileSync(process.env.S19_SWEEP_OUT, `${JSON.stringify(summary, null, 2)}\n`);
+		expect(summary.poses).toBe(4 * 7 * 7 * 6 * 2);
+		// Every row is checked at once, so a failure reports all of them.
+		expect({
+			row1DrawnOutsideGrid: summary.drawnOutsideGrid,
+			row1DrawnOutsideMat: summary.drawnOutsideMat,
+			d28NearClippedAboveFloor: summary.nearClippedAboveFloor,
+			row2GapWithin12Px: summary.worstGapPxAtLeast5m <= 12,
+			row3GapWithin40Px: summary.worstGapPxBelow5m <= 40,
+			row4WithinBudget: summary.worstLines <= GRID_MAT_LINE_BUDGET,
+			row4MajorsDropped: summary.majorsDropped,
+			row5DepthWithin1Mm: summary.worstDepthStepMeters <= 0.001
+		}).toEqual({
+			row1DrawnOutsideGrid: 0,
+			row1DrawnOutsideMat: 0,
+			d28NearClippedAboveFloor: 0,
+			row2GapWithin12Px: true,
+			row3GapWithin40Px: true,
+			row4WithinBudget: true,
+			row4MajorsDropped: 0,
+			row5DepthWithin1Mm: true
+		});
+	});
+
+	it('keeps the line budget at every zoom between the sweep values, never dropping a major line', async () => {
+		const snapshot = await enclosureSnapshot();
+		let worst = 0;
+		for (const [width, height] of VIEWPORTS) {
+			for (const elevation of [5, 15, 45, 89]) {
+				for (let zoom = 0.05; zoom <= 2000; zoom *= 1.25) {
+					const evaluation = evaluateAt(
+						snapshot,
+						{ target: [3.5, 0, -1], azimuthRadians: rad(30), elevationRadians: rad(elevation), targetPlaneHeightMeters: zoom },
+						width,
+						height
+					);
+					const plan = stageGridPlanFor(evaluation, { surface: 'mat', datumMeters: 0 });
+					if (plan === null) continue;
+					const lines = gridLinesFor(plan);
+					worst = Math.max(worst, lines.length);
+					expect(lines.length).toBeLessThanOrEqual(GRID_MAT_LINE_BUDGET);
+					const majors = lines.filter((line) => line.role !== 'minor').length;
+					const full = gridLinesFor({ ...plan, minorRect: plan.rect }).filter((line) => line.role !== 'minor').length;
+					expect(majors).toBe(full);
+					// The budgeted minor rectangle is always inside the covered one.
+					expect(plan.minorRect.minX).toBeGreaterThanOrEqual(plan.rect.minX);
+					expect(plan.minorRect.maxX).toBeLessThanOrEqual(plan.rect.maxX);
+					expect(plan.minorRect.minZ).toBeGreaterThanOrEqual(plan.rect.minZ);
+					expect(plan.minorRect.maxZ).toBeLessThanOrEqual(plan.rect.maxZ);
+				}
+			}
+		}
+		expect(worst).toBeGreaterThan(0);
+	});
+
+	it('follows a datum change and keeps covering ground across the horizon crossing', async () => {
+		for (const datum of [0, 3, -2.5]) {
+			const snapshot = await enclosureSnapshot(datum);
+			for (const [width, height] of VIEWPORTS) {
+				// Orbit from just above the horizon down through it to overhead.
+				for (let elevation = 1; elevation <= 89; elevation += 2) {
+					const evaluation = evaluateAt(
+						snapshot,
+						{ target: [3.5, datum + 1.5, -1], azimuthRadians: rad(45), elevationRadians: rad(elevation), targetPlaneHeightMeters: 12 },
+						width,
+						height
+					);
+					const plan = stageGridPlanFor(evaluation, { surface: 'mat', datumMeters: datum });
+					expect(plan).not.toBeNull();
+					for (let iy = 0; iy <= 40; iy += 1) {
+						for (const ndcX of [-1, 0, 1]) {
+							const sample = classify(evaluation, datum, ndcX, (iy / 40) * 2 - 1);
+							expect(sample.kind).not.toBe('near');
+							if (sample.kind === 'drawn') expect(inside(plan!.rect, sample.point!)).toBe(true);
+						}
+					}
+				}
+			}
+		}
+	});
+
+	it('rebases the session datum with the source, never refitting the pose', async () => {
+		const snapshot = await enclosureSnapshot();
+		const pose: InspectionPose = {
+			target: [3.5, 1.5, -1],
+			azimuthRadians: rad(30),
+			elevationRadians: rad(10),
+			targetPlaneHeightMeters: 12
+		};
+		const camera = createCameraSession({ snapshot, viewportId: 'stage', outputId: 'output:s19', pose });
+		const rect = { left: 0, top: 0, width: 1440, height: 900, devicePixelRatio: 1 };
+		const before = camera.evaluate(rect, 0);
+		camera.rebaseSource('revision-s19-raised', snapshot.domain.geometry.bounds ?? null, 1);
+		const after = camera.evaluate(rect, 0);
+		if (before.kind !== 'evaluated' || after.kind !== 'evaluated') throw new Error('not evaluated');
+		expect(camera.state().displayGroundYMeters).toBe(1);
+		expect(after.evaluation.pose).toEqual(before.evaluation.pose);
+		// A higher ground is nearer the eye, so the near plane comes in to keep it.
+		expect(after.evaluation.near).toBeLessThan(before.evaluation.near);
+		expect(classify(after.evaluation, 1, 0, -1).kind).toBe('drawn');
 	});
 });

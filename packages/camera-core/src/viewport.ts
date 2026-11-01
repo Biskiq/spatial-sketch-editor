@@ -226,6 +226,12 @@ export type ViewportCameraState = {
 	readonly lastReadingElevationRadians: number;
 	/** Declared scene radius in meters, used for the depth range and the Plan eye distance. */
 	readonly sceneRadiusMeters: number;
+	/**
+	 * R217.S19 — the session's display-ground height, or `null` for none. It only
+	 * widens the perspective clip range to the visible ground; it never enters scene
+	 * bounds, Fit or the pose.
+	 */
+	readonly displayGroundYMeters?: number | null;
 	readonly transition: ViewportTransition | null;
 };
 
@@ -236,6 +242,8 @@ export type ViewportCameraInput = {
 	readonly pose: InspectionPose;
 	readonly sceneRadiusMeters: number;
 	readonly reading?: ViewportReading;
+	/** R217.S19 — optional session display ground; defaults to `null`. */
+	readonly displayGroundYMeters?: number | null;
 };
 
 export type ViewingIntent =
@@ -387,6 +395,10 @@ export function createViewportCameraState(input: ViewportCameraInput): ViewportC
 		pose: input.pose,
 		lastReadingElevationRadians: clamp(input.pose.elevationRadians, -VIEWPORT_ELEVATION_LIMIT_RADIANS, VIEWPORT_ELEVATION_LIMIT_RADIANS),
 		sceneRadiusMeters: Math.max(0, input.sceneRadiusMeters),
+		displayGroundYMeters:
+			typeof input.displayGroundYMeters === 'number' && Number.isFinite(input.displayGroundYMeters)
+				? input.displayGroundYMeters
+				: null,
 		transition: null
 	};
 }
@@ -491,6 +503,64 @@ function depthRange(distanceMeters: number, sceneRadiusMeters: number): { near: 
 	const near = Math.max(VIEWPORT_NEAR_FLOOR_METERS, rawNear);
 	const far = Math.max(near + VIEWPORT_NEAR_FLOOR_METERS, distanceMeters + sceneRadiusMeters);
 	return { near, far, clamped: rawNear < VIEWPORT_NEAR_FLOOR_METERS };
+}
+
+/** R217.S19 — the display ground reaches this many target-plane extents. */
+export const VIEWPORT_GROUND_REACH_EXTENTS = 24;
+/** R217.S19 — and at least this many eye heights above the display ground. */
+export const VIEWPORT_GROUND_REACH_EYE_HEIGHTS = 64;
+/** R217.S19 — the near plane sits this fraction of the nearest visible ground depth. */
+export const VIEWPORT_GROUND_NEAR_FRACTION = 0.9;
+
+/**
+ * The display-ground reach for a perspective evaluation, in metres:
+ * `max(24 × extent, 64 × eyeHeight)` with `extent = targetPlaneHeight × max(1, aspect)`.
+ * The Stage sizes its finite mat from the same function, so the mat and the clip
+ * range cannot disagree.
+ */
+export function viewportGroundReachMeters(input: {
+	readonly targetPlaneHeightMeters: number;
+	readonly aspect: number;
+	readonly eyeHeightMeters: number;
+}): number {
+	const extent = input.targetPlaneHeightMeters * Math.max(1, input.aspect);
+	return Math.max(
+		VIEWPORT_GROUND_REACH_EXTENTS * extent,
+		VIEWPORT_GROUND_REACH_EYE_HEIGHTS * input.eyeHeightMeters
+	);
+}
+
+/**
+ * R217.S19 — the clip range that keeps a display ground visible.
+ *
+ * The scene-sphere range clipped the finite ground twice: the far plane cut it in
+ * a straight line (D21) and, at a low orbit, the near plane cut the ground at the
+ * frame's bottom (D28). Far reaches the specified ground distance; near never
+ * passes the nearest ground the frame's bottom row sees. With no ground the range
+ * is exactly the scene-sphere one.
+ */
+function groundDepthRange(
+	distanceMeters: number,
+	sceneRadiusMeters: number,
+	ground: {
+		readonly eyeHeightMeters: number;
+		readonly elevationRadians: number;
+		readonly halfFovRadians: number;
+		readonly reachMeters: number;
+	}
+): { near: number; far: number; clamped: boolean } {
+	const base = depthRange(distanceMeters, sceneRadiusMeters);
+	const far = Math.max(base.far, distanceMeters + ground.reachMeters);
+	const bottomAngle = ground.elevationRadians + ground.halfFovRadians;
+	const groundNear =
+		ground.eyeHeightMeters > 0 && bottomAngle > 0
+			? (ground.eyeHeightMeters * Math.cos(ground.halfFovRadians)) / Math.sin(bottomAngle)
+			: Infinity;
+	const near = Math.max(
+		VIEWPORT_NEAR_FLOOR_METERS,
+		Math.min(distanceMeters - sceneRadiusMeters, VIEWPORT_GROUND_NEAR_FRACTION * groundNear)
+	);
+	return { near, far: Math.max(far, near + VIEWPORT_NEAR_FLOOR_METERS), clamped: base.clamped };
 }
 
 /** The pose a reading settles at. Plan snaps its azimuth and stands exactly over the target. */
@@ -626,8 +696,21 @@ export function evaluateViewport(
 		);
 	}
 
-	const depth = depthRange(distanceMeters, state.sceneRadiusMeters);
 	const aspect = rect.width / rect.height;
+	const displayGroundY = state.displayGroundYMeters ?? null;
+	const depth =
+		orthographic || displayGroundY === null
+			? depthRange(distanceMeters, state.sceneRadiusMeters)
+			: groundDepthRange(distanceMeters, state.sceneRadiusMeters, {
+					eyeHeightMeters: eye[1] - displayGroundY,
+					elevationRadians: pose.elevationRadians,
+					halfFovRadians: Math.atan(tanHalfFov),
+					reachMeters: viewportGroundReachMeters({
+						targetPlaneHeightMeters: pose.targetPlaneHeightMeters,
+						aspect,
+						eyeHeightMeters: eye[1] - displayGroundY
+					})
+				});
 	const projectionMatrix = orthographic
 		? orthographicMatrix(halfHeightMeters, aspect, depth.near, depth.far)
 		: perspectiveMatrix(tanHalfFov, aspect, depth.near, depth.far);

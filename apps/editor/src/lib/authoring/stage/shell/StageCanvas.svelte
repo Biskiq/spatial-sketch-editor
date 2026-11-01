@@ -30,7 +30,7 @@
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { isPaperPlanVisible, MAT_GROUND_INK } from '../paper-plan';
-import { gridIsVisible } from '../stage-grid';
+import { gridIsVisible, matGroundFor } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
@@ -110,7 +110,16 @@ import StageGrid from './StageGrid.svelte';
 	const matVisible = $derived(!paperVisible);
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
 	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
-	const matGroundArgs = [6000, 6000] as [number, number];
+	/** R217.S19 — the finite mat, sized and centred from the Camera's ground reach. */
+	const matGround = $derived.by(() => {
+		if (evaluation === null) return null;
+		const ground = matGroundFor(evaluation, datumMeters);
+		const size = 2 * ground.halfExtentMeters;
+		return {
+			position: [ground.centerXZ[0], datumMeters - 0.004, ground.centerXZ[1]] as [number, number, number],
+			scale: [size, size, 1] as [number, number, number]
+		};
+	});
 	/**
 	 * R217.S06's quiet cut-plane cue: a neutral sheet at `datum + height`, spanning
 	 * the Layout bounds. It is drawn only while the Sheet is active, carries no
@@ -203,11 +212,22 @@ import StageGrid from './StageGrid.svelte';
 			{contentBounds}
 		/>
 	{/if}
-	{#if matVisible}
-		<!-- The mat ground gives depth and shadows; it is not a registered pick root. -->
-		<T.Mesh position={[0, datumMeters - 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-			<T.PlaneGeometry args={matGroundArgs} />
-			<T.MeshStandardMaterial color={MAT_GROUND_INK} roughness={1} metalness={0} />
+	{#if matVisible && matGround !== null}
+		<!--
+			The mat ground gives depth and shadows; it is not a registered pick root. Its
+			polygon offset pushes it behind the grid lifted above it, so far ground keeps
+			its lines instead of fighting them in the depth buffer.
+		-->
+		<T.Mesh position={matGround.position} scale={matGround.scale} rotation={[-Math.PI / 2, 0, 0]}>
+			<T.PlaneGeometry args={[1, 1]} />
+			<T.MeshStandardMaterial
+				color={MAT_GROUND_INK}
+				roughness={1}
+				metalness={0}
+				polygonOffset
+				polygonOffsetFactor={1}
+				polygonOffsetUnits={1}
+			/>
 		</T.Mesh>
 	{/if}
 	{#if heightPlane !== null && !paperVisible}
