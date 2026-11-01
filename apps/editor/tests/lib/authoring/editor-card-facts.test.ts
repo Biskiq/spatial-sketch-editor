@@ -112,6 +112,21 @@ describe('Card facts: each fact appears once', () => {
 		expect(target.querySelector('.quiet')?.textContent).toBe('No further facts.');
 	});
 
+	it('keeps the elevation of a writer-edited subject as a read-only row, because no writer edits Y', () => {
+		const target = mountCard({
+			facts: [
+				{ label: 'Position (X · Z)', value: '2 m · 2 m', fieldId: 'position' },
+				{ label: 'Elevation', value: '0.5 m' },
+				{ label: 'Yaw', value: '0 rad', fieldId: 'yaw' }
+			],
+			writer: { summary: 'Object fields', adapterId: 'scene', fieldIds: ['position', 'yaw', 'scale'] }
+		});
+		// X and Z, and the yaw, are the writer's fields; the elevation is stated once here.
+		expect(factLabels(target)).toEqual(['Elevation']);
+		expect(factLabels(target)).not.toContain('Position (X · Z)');
+		expect(target.querySelector('dl.facts:not(.mono)')?.textContent).toContain('0.5 m');
+	});
+
 	it('moves diagnostics about the drawing into Technical details, out of the ordinary facts', () => {
 		const target = mountCard({
 			facts: [{ label: 'Datum', value: '0 m' }],

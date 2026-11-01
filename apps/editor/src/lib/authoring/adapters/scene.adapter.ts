@@ -174,10 +174,17 @@ function entityFacts(
 	return [
 		{ label: 'Kind', value: entity.kind, fieldId: 'kind' },
 		{ label: 'Name', value: entity.name, fieldId: 'name' },
+		// The plan position is X and Z. A writer that edits them (the object and form
+		// writers) shows them in its fields, so this row is dropped there; Y is not
+		// written by any writer, so Elevation below always states it.
 		{
-			label: 'Position',
-			value: entity.position.map((value) => `${value} m`).join(' · '),
+			label: 'Position (X · Z)',
+			value: `${entity.position[0]} m · ${entity.position[2]} m`,
 			fieldId: 'position'
+		},
+		{
+			label: 'Elevation',
+			value: `${entity.position[1]} m`
 		},
 		{
 			label: 'Yaw',
