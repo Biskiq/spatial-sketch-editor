@@ -92,12 +92,12 @@ the through Wall has no surface there to weld to, so edge incidence still report
 
 ### Visual direction
 
-**Landed after browser prototypes:** a cream ground (`#efe8d8`) inside Paper's sheet around Layout ∪ Scene, forest outside, Paper's two green inks on it, and warm cream default Walls (`#f1e6cf`).
+**Landed after browser prototypes and the owner's explicit workspace requirement:** a finite cream drafting surface (`#efe8d8`, 1 m rounded corners) inside Paper's sheet around Layout ∪ Scene, with Paper's two green inks on it and none beyond it. Outside is plain forest, exactly the Stage background (`#152c26`, sampled), so no horizon shows. Default Walls are warm cream (`#f1e6cf`).
 
 | Requirement | How | Evidence |
 | --- | --- | --- |
-| Follows the work and grows | `groundPlateRectFor`: 5 m margin, rounded out to 5 m, plus the live candidate | [growth, right](./evidence/ground-plate-zoom-growth.png) |
-| World anchoring | The same lattice either side of the edge. An empty project's plate is 20 × 20 m around world zero, not the target as on Paper, so pans don't move it | Unit tests |
+| Follows the work, never the Camera | `groundPlateRectFor` reads only the work: 5 m margin, rounded out to 5 m, plus the live candidate. A Shape moved to X 30 gave plate X 20–40; sized to 40 m deep, Z −25–25; each Undo restored it. It also contracts when the work leaves, so it always fits the work | [far zoom and growth](./evidence/ground-plate-zoom-growth.png) |
+| World anchoring | The plate only clips the lattice, and its origin stayed at 0,0 through every step above. An empty project's plate is 20 × 20 m around world zero, not the target as on Paper, so pans don't move it | Unit tests |
 | Depth stability | One opaque draw changes colour at the edge, so plate and mat can't fight | 28 poses on the large room: 0 floor and 0 grid pixels lost. Ground and floor blink under 0.3‰ |
 | Unrestricted zoom | No Camera limit. The plate shrinks into the forest and the fade is unchanged | [far zoom](./evidence/ground-plate-zoom-growth.png) |
 | Authored materials | Only physical Walls change, and they carry no authored material yet. Shapes, floors and catalogue objects keep theirs | Unit test |
@@ -110,9 +110,13 @@ the through Wall has no surface there to weld to, so edge incidence still report
 - **The ground is unlit now.** A lit cream drifts with the view. This also removes the lighter mat near the horizon.
 - **Gold needed Paper's contour.** Over cream the forest halo swallowed the gold, so 3D selection now uses the same `#74560c` under `#d4ad45`. Hover and erase keep their halo.
 - **Paper's inks are recalibrated, not replaced.** Same hues, at 0.34 and 0.55 instead of 0.28 and 0.45, to read on warmer cream. Higher values looked stronger but blinked more: 39–70‰ at 0.55 and 0.8. Paper's own values are unchanged.
-- **The forest lines stay outside the plate,** so a far pan keeps a world reference.
+- **My first version kept forest lines outside the plate and a separate mat tone. The owner ruled both out,** so a pan far from the work now has no ground reference outside the plate until the plate is back in view.
 
-**Owner's call, pushed back but not changed:** the room floor stays dark slate. It is now the heaviest thing in the frame, and it is what makes the black shadow patch obvious. A paler default floor would likely suit this direction, but it was not in the brief, and it is one shared tint with the floor's walnut material.
+**Differences from the owner's reference image, not changed because they aren't in the written requirement:**
+
+- **Room floor.** The reference shows a Room on plain cream; here it stays dark slate, the heaviest thing in the frame, and that makes the black shadow patch obvious. It shares one tint with the floor's walnut material.
+- **Ground shadows.** The reference has soft Wall shadows on the ground. This ground is unlit and receives none. Adding them means a shadow-only pass plus fixing the ±5 m shadow box, which is itself a recorded residual.
+- **Corner ticks and Wall hue.** The reference has small corner marks and a pinker Wall. Neither is drawn, and the hue is one constant.
 
 ## Summary
 

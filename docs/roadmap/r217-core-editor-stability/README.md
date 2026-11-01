@@ -246,7 +246,7 @@ S11 runs every journey in two browsers, with fine and coarse pointers. The crite
 | J14 | Direct Wall, Junction and Opening editing from Plan alone |
 | J15 | Direct manipulation of every subject type, in both readings |
 | J16 | Walls read as closed solids from every side, selected and unselected, in Stage and Preview |
-| J17 | A cream ground around the work inside a forest Stage, and warm cream default Walls |
+| J17 | A finite cream ground around the work, on plain forest, and warm cream default Walls |
 
 ## Non-goals
 

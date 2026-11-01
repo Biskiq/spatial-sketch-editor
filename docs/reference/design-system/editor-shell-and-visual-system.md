@@ -889,7 +889,7 @@ PLATE has exactly three material classes; a task name is not a new material clas
 | **Paper** | Spatial Stage, expressed as dark **cutting mat** for model/depth work or light **vellum** for measured drawing; top-down and flat readings render as paper or shaded by an application viewing preference |
 | **Instrument** | Controls acting on the work: the dark forest **dock and palettes** with an ivory armed key, the forest task surface of the Library, repair and Guide, neutral working items and restrained edges |
 
-The mat gives depth, artwork and geometry a dark ground, with a cream plate around the work. Vellum makes measured
+The mat gives depth, artwork and geometry a dark ground, with a cream surface around the work. Vellum makes measured
 architecture the drawing subject. Ink and ochre are mark/state roles, not additional
 materials. Section, Unroll or precision can use a measured vellum reading without
 creating another shell. A camera route on Plan uses the same Paper as World drafting;
@@ -911,7 +911,7 @@ below 8 px. On Paper a 25 m reference appears only while the 5 m level is suppre
 obeys the same rule. The 3D mat applies the same fade per pixel, from each pixel's own
 projected spacing, so near ground keeps 1 m, farther ground 5 m and the far ground 25 m.
 Both directions of a level share one weight from the denser direction, so they leave together
-and the farthest ground is plain mat, never one direction of lines. The 25 m level cross-fades in as the 5 m level fades out, so a zoom never passes
+and the farthest ground is plain, never one direction of lines. The 25 m level cross-fades in as the 5 m level fades out, so a zoom never passes
 through a band with no reference (R217.S19). The mat is subdivided and pushed back four depth
 steps, so a floor on the datum holds in motion with the near plane at its floor. Anchor to the
 world/floor datum with a stable origin across zoom changes.
@@ -921,9 +921,9 @@ around the target for an empty project. The sheet is intersected with the visibl
 coverage so a zoomed-in view cannot generate unbounded lines; it grows with the work and
 never moves the Camera. The mat's grid covers the finite mat, which the Camera's ground
 reach sizes; it has no line geometry and no line budget. Inside the same sheet around the work the
-3D ground is cream, with Paper's two inks at their plate calibration, and outside it stays the forest
-mat with the mat's lines. An empty project's plate is 20 × 20 m around world zero. It is one unlit draw, grows with
-a live candidate, and never enters bounds, Fit or the Camera.
+3D ground is a finite cream surface with rounded corners and Paper's two inks at their plate calibration. Outside it
+the Stage is plain forest with no lines and no horizon. An empty project's surface is 20 × 20 m around world zero. It is
+one unlit draw, follows Layout and Scene with a live candidate, keeps the lattice world-anchored, and never reads or moves the Camera.
 It is drawing state, never a Camera mode or a reason to delay navigation.
 
 The **paper rule** is fixed: a Wall wears the drafting sheet when it is the settled
@@ -945,7 +945,7 @@ display-only. Paper and selection compose; selection does not replace the sheet.
 | Primary technical / reference dimension ink on light surfaces | Dark neutral ink, contrast-calibrated (`#1b201c` reference) |
 | Light overlay ink/halo | `#F3F4EE` |
 | Paper grid minor / major | `#9FB2A2` at 0.28 / `#809984` at 0.45 |
-| Mat / background / minor and major grid | `#1D3A33` / `#152C26` / `#2B5147` and `#3C6A5C` |
+| 3D background, inside and outside the drawn ground | `#152C26` |
 | 3D ground plate / its minor and major grid | `#EFE8D8` / `#9FB2A2` at 34% and `#809984` at 55% |
 | Default physical Wall | `#F1E6CF`, half unlit and untoned so it reads the same in the Stage and Preview; never over an authored material |
 | Camera infrastructure / active context | Restrained leaf green (`#4f8f6c` reference), reinforced by shape/line; no mandatory competing blue/teal shell hue |
