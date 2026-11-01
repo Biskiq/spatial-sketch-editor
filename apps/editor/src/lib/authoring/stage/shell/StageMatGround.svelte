@@ -4,7 +4,7 @@
 	 *
 	 * The mat is a unit plane scaled from the Camera's own ground reach. It is an
 	 * opaque ground, as before S19: it writes depth, so anything below the datum
-	 * stays under it. It is cream inside the plate around the work and plain
+	 * stays under it. It is Paper's colour inside the plate around the work and plain
 	 * forest outside, in one draw; only the plate carries grid lines. The grid is one subdivided quad with `stage-mat-grid`'s
 	 * shader, sharing the mat's transform; it is occluded only by real geometry,
 	 * and a pan or zoom updates uniforms and never rebuilds geometry. Neither is a

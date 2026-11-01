@@ -36,11 +36,11 @@ Apple M2), 1440 × 900. Stage settings on `main`: 24-bit depth, antialias on, Th
 
 - **Corners under about 45° and an arched Opening at a free end** are pre-existing limits; see [the comparison](#corners-and-arches-against-main).
 - **A T junction's root** stays an abutment; see [what J16 guarantees](#what-j16-guarantees-at-a-t).
-- **Black patch in a large project (unproven).** The Stage shadow box is ±5 m, map 512, bias 0. It shows more against the new cream.
+- **Black patch in a large project (unproven).** The Stage shadow box is ±5 m, map 512, bias 0. It shows more against the pale ground.
 - **Mat offset, accepted by the owner (2026-11-01) as a documented residual, not a merge blocker.** Content under the datum within four
   depth steps can draw over the ground. With the near floor that is about 24 cm at 100 m, and only with the eye inside the bounds.
-- **Thin-line motion.** Full-scene motion scores 23–41‰ blink on the large room with the cream plate, against 11–29‰ on the dark mat, because
-  the lines contrast more with cream; the ground and floor score under 0.3‰. Judge by eye.
+- **Thin-line motion.** Full-scene motion scores 23–41‰ blink on the large room with the plate, against 11–29‰ on the dark mat, because
+  the lines contrast more with a pale ground; the ground and floor score under 0.3‰. Judge by eye.
 - **Not run:** Safari, other GPUs and a published release. Preview was rendered in Chromium ([capture](./evidence/preview-wall.png)).
 
 ## Second owner review (2026-11-01)
@@ -92,7 +92,9 @@ the through Wall has no surface there to weld to, so edge incidence still report
 
 ### Visual direction
 
-**Landed after browser prototypes and the owner's explicit workspace requirement:** a finite cream drafting surface (`#efe8d8`, 1 m rounded corners) inside Paper's sheet around Layout ∪ Scene, with Paper's two green inks on it and none beyond it. Outside is plain forest, exactly the Stage background (`#152c26`, sampled), so no horizon shows. Default Walls are warm cream (`#f1e6cf`).
+"Cream" below names the owner's first wording; the ground is Paper's colour. Default Walls stay warm cream, as the brief says, pending the owner's look.
+
+**Landed after browser prototypes and the owner's explicit workspace requirement:** a finite drafting surface in Paper's own token (`PAPER_GROUND_INK`, `#e9ebe6`, 1 m rounded corners) inside Paper's sheet around Layout ∪ Scene, with Paper's two grid inks at Paper's own opacities on it and none beyond it. Outside is plain forest, exactly the Stage background (`#152c26`, sampled), so no horizon shows. Default Walls are warm cream (`#f1e6cf`).
 
 | Requirement | How | Evidence |
 | --- | --- | --- |
@@ -108,13 +110,13 @@ the through Wall has no surface there to weld to, so edge incidence still report
 - **Cream can't be a plain colour under these lights.** `#e6d9bf` rendered khaki, then grey under AgX tone mapping. The default Wall now holds half its colour unlit and skips tone mapping. Raising the lights
   would have shifted every authored material too.
 - **The ground is unlit now.** A lit cream drifts with the view. This also removes the lighter mat near the horizon.
-- **Gold needed Paper's contour.** Over cream the forest halo swallowed the gold, so 3D selection now uses the same `#74560c` under `#d4ad45`. Hover and erase keep their halo.
-- **Paper's inks are recalibrated, not replaced.** Same hues, at 0.34 and 0.55 instead of 0.28 and 0.45, to read on warmer cream. Higher values looked stronger but blinked more: 39–70‰ at 0.55 and 0.8. Paper's own values are unchanged.
+- **Gold needed Paper's contour.** Over the pale ground the forest halo swallowed the gold, so 3D selection now uses the same `#74560c` under `#d4ad45`. Hover and erase keep their halo.
+- **The owner ruled that "cream" means Paper, not a literal cream.** My first `#efe8d8` and recalibrated line opacities are gone, so 2D and 3D share one ground token and one grid ink, and the controls and highlights sit on one surface. The ground is unlit and untoned, so its pixels equal Paper's.
 - **My first version kept forest lines outside the plate and a separate mat tone. The owner ruled both out,** so a pan far from the work now has no ground reference outside the plate until the plate is back in view.
 
 **Differences from the owner's reference image, not changed because they aren't in the written requirement:**
 
-- **Room floor.** The reference shows a Room on plain cream; here it stays dark slate, the heaviest thing in the frame, and that makes the black shadow patch obvious. It shares one tint with the floor's walnut material.
+- **Room floor.** The reference shows a Room on the plain ground; here it stays dark slate, the heaviest thing in the frame, and that makes the black shadow patch obvious. It shares one tint with the floor's walnut material.
 - **Ground shadows.** The reference has soft Wall shadows on the ground. This ground is unlit and receives none. Adding them means a shadow-only pass plus fixing the ±5 m shadow box, which is itself a recorded residual.
 - **Corner ticks and Wall hue.** The reference has small corner marks and a pinker Wall. Neither is drawn, and the hue is one constant.
 

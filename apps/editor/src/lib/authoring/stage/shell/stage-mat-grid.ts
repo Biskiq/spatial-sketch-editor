@@ -6,7 +6,7 @@
  * projected spacing of every fixed level from its own screen derivatives and
  * applies the grammar's 16 → 8 CSS px fade there: 1 m near the eye, 5 m further
  * out, 25 m toward the horizon, and plain mat where even 25 m would be denser
- * than 8 px. Lines exist only on the cream plate around the work. Both directions of a level share one weight, taken from the denser
+ * than 8 px. Lines exist only on the plate around the work. Both directions of a level share one weight, taken from the denser
  * direction: foreshortening compresses the crosswise lines first, and a per-axis
  * weight left only the receding lines there. The 25 m level cross-fades in as the
  * 5 m level fades out, so a zoom never passes through a band with no reference.
@@ -18,13 +18,13 @@
  * coordinates. It owns no Camera and is never a pick root.
  */
 import { Color, ShaderMaterial } from 'three';
-import { GROUND_PLATE_INK, MAT_BACKGROUND_INK } from '../paper-plan';
+import { MAT_BACKGROUND_INK, PAPER_GROUND_INK } from '../paper-plan';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '../stage-drafting';
 import {
 	GRID_COARSE_METERS,
 	GRID_FULL_SPACING_CSS_PX,
 	GRID_SUPPRESS_SPACING_CSS_PX,
-	PLATE_GRID_INK,
+	PAPER_GRID_INK,
 	type GridRect,
 	type MatGround
 } from '../stage-grid';
@@ -149,10 +149,10 @@ export function createMatGridMaterial(): ShaderMaterial {
 			uPixelRatio: { value: 1 },
 			uPlate: { value: [0, 0, 0, 0] },
 			// PLATE's semantic inks, unlit and untoned like the Paper lines.
-			uPlateMinorInk: { value: new Color(PLATE_GRID_INK.minor) },
-			uPlateMajorInk: { value: new Color(PLATE_GRID_INK.major) },
-			uPlateMinorOpacity: { value: PLATE_GRID_INK.minorOpacity },
-			uPlateMajorOpacity: { value: PLATE_GRID_INK.majorOpacity }
+			uPlateMinorInk: { value: new Color(PAPER_GRID_INK.minor) },
+			uPlateMajorInk: { value: new Color(PAPER_GRID_INK.major) },
+			uPlateMinorOpacity: { value: PAPER_GRID_INK.minorOpacity },
+			uPlateMajorOpacity: { value: PAPER_GRID_INK.majorOpacity }
 		},
 		vertexShader: VERTEX,
 		fragmentShader: FRAGMENT,
@@ -184,7 +184,7 @@ void main() {
 `;
 
 /**
- * The ground: one opaque unlit draw, cream inside the plate and the Stage's own
+ * The ground: one opaque unlit draw, Paper's colour inside the plate and the Stage's own
  * background colour outside, so no horizon shows and the plate's edge can never
  * fight the mat. It stays opaque out there to keep what lies below the datum hidden.
  */
@@ -194,7 +194,7 @@ export function createMatGroundMaterial(): ShaderMaterial {
 			uSize: { value: 1 },
 			uLatticeOffset: { value: [0, 0] },
 			uPlate: { value: [0, 0, 0, 0] },
-			uPlateInk: { value: new Color(GROUND_PLATE_INK) },
+			uPlateInk: { value: new Color(PAPER_GROUND_INK) },
 			uMatInk: { value: new Color(MAT_BACKGROUND_INK) }
 		},
 		vertexShader: GROUND_VERTEX,

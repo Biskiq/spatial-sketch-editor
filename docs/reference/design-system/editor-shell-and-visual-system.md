@@ -889,7 +889,7 @@ PLATE has exactly three material classes; a task name is not a new material clas
 | **Paper** | Spatial Stage, expressed as dark **cutting mat** for model/depth work or light **vellum** for measured drawing; top-down and flat readings render as paper or shaded by an application viewing preference |
 | **Instrument** | Controls acting on the work: the dark forest **dock and palettes** with an ivory armed key, the forest task surface of the Library, repair and Guide, neutral working items and restrained edges |
 
-The mat gives depth, artwork and geometry a dark ground, with a cream surface around the work. Vellum makes measured
+The mat gives depth, artwork and geometry a dark ground, with a Paper surface around the work. Vellum makes measured
 architecture the drawing subject. Ink and ochre are mark/state roles, not additional
 materials. Section, Unroll or precision can use a measured vellum reading without
 creating another shell. A camera route on Plan uses the same Paper as World drafting;
@@ -921,7 +921,7 @@ around the target for an empty project. The sheet is intersected with the visibl
 coverage so a zoomed-in view cannot generate unbounded lines; it grows with the work and
 never moves the Camera. The mat's grid covers the finite mat, which the Camera's ground
 reach sizes; it has no line geometry and no line budget. Inside the same sheet around the work the
-3D ground is a finite cream surface with rounded corners and Paper's two inks at their plate calibration. Outside it
+3D ground is a finite surface in Paper's own colour, with rounded corners and Paper's grid inks at Paper's opacities. Outside it
 the Stage is plain forest with no lines and no horizon. An empty project's surface is 20 × 20 m around world zero. It is
 one unlit draw, follows Layout and Scene with a live candidate, keeps the lattice world-anchored, and never reads or moves the Camera.
 It is drawing state, never a Camera mode or a reason to delay navigation.
@@ -946,7 +946,7 @@ display-only. Paper and selection compose; selection does not replace the sheet.
 | Light overlay ink/halo | `#F3F4EE` |
 | Paper grid minor / major | `#9FB2A2` at 0.28 / `#809984` at 0.45 |
 | 3D background, inside and outside the drawn ground | `#152C26` |
-| 3D ground plate / its minor and major grid | `#EFE8D8` / `#9FB2A2` at 34% and `#809984` at 55% |
+| 3D ground plate and its grid | Paper's ground and grid tokens, never separate values |
 | Default physical Wall | `#F1E6CF`, half unlit and untoned so it reads the same in the Stage and Preview; never over an authored material |
 | Camera infrastructure / active context | Restrained leaf green (`#4f8f6c` reference), reinforced by shape/line; no mandatory competing blue/teal shell hue |
 | Selection, the held anchor and current playback moment | Gold (`#d4ad45`, dark ink `#74560c` reference), local contour and quiet tint; selection and playback retain different shape/text cues. Gold means selected geometry (or the point being held), never hover, an available action or inspection |

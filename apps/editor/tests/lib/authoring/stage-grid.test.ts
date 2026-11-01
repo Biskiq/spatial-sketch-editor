@@ -23,6 +23,7 @@ import { createCameraSession, sceneRadiusOf } from '$lib/authoring/stage/camera-
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
+import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
 import { createGridScene } from '$lib/authoring/stage/shell/stage-grid-scene';
 import {
 	createMatGridMaterial,
@@ -38,7 +39,6 @@ import {
 	GRID_SUPPRESS_SPACING_CSS_PX,
 	MAT_GRID_INK,
 	PAPER_GRID_INK,
-	PLATE_GRID_INK,
 	gridIsVisible,
 	gridLevelsFor,
 	gridLinesFor,
@@ -73,7 +73,7 @@ describe('the mat keeps its depth away from a floor on the datum', () => {
 	});
 });
 
-describe('the cream plate around the work', () => {
+describe('the Paper plate around the work', () => {
 	it('is Paper\'s sheet around the work, and grows with a candidate', () => {
 		const contentBounds = { minX: 0, maxX: 6, minZ: -5, maxZ: 0 };
 		expect(groundPlateRectFor({ contentBounds })).toEqual({ minX: -5, maxX: 15, minZ: -10, maxZ: 5 });
@@ -128,9 +128,16 @@ describe('the cream plate around the work', () => {
 		expect(source).toContain('groundPlateRectFor({ contentBounds, candidateBounds })');
 	});
 
-	it('uses Paper\'s two inks, calibrated for the plate', () => {
-		expect(PLATE_GRID_INK.minor).toBe(PAPER_GRID_INK.minor);
-		expect(PLATE_GRID_INK.major).toBe(PAPER_GRID_INK.major);
+	it('is Paper: the same ground token and the same grid inks and opacities', () => {
+		const ground = createMatGroundMaterial();
+		expect(`#${ground.uniforms.uPlateInk!.value.getHexString()}`).toBe(PAPER_GROUND_INK);
+		ground.dispose();
+		const grid = createMatGridMaterial();
+		expect(`#${grid.uniforms.uPlateMinorInk!.value.getHexString()}`).toBe(PAPER_GRID_INK.minor.toLowerCase());
+		expect(`#${grid.uniforms.uPlateMajorInk!.value.getHexString()}`).toBe(PAPER_GRID_INK.major.toLowerCase());
+		expect(grid.uniforms.uPlateMinorOpacity!.value).toBe(PAPER_GRID_INK.minorOpacity);
+		expect(grid.uniforms.uPlateMajorOpacity!.value).toBe(PAPER_GRID_INK.majorOpacity);
+		grid.dispose();
 	});
 });
 

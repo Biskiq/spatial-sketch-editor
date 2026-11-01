@@ -186,7 +186,7 @@
 				edges.dispose();
 				const resolution = new Vector2(width, height);
 				const haloMaterial = new LineMaterial({
-					// Paper's two-tone contour: the forest halo swallows gold on the cream
+					// Paper's two-tone contour: the forest halo swallows gold on the pale
 					// ground, while this edge holds there and on the forest mat.
 					color: tone === 'selection' ? SELECTION_EDGE : 0x152c26,
 					linewidth: tone === 'selection' ? 5 : tone === 'erase' ? 4 : 3.5,

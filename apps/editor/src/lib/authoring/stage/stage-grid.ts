@@ -16,7 +16,7 @@
  *   fades each level by its own projected spacing, so a perspective view keeps
  *   1 m near the eye, 5 m further out and 25 m toward the horizon;
  * - Paper and the mat have their own inks from PLATE §Semantic color, and the
- *   mat's cream plate wears Paper's two inks, calibrated for it.
+ *   3D ground's plate is Paper's own surface and inks.
  *
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.
@@ -44,14 +44,6 @@ export const MAT_GRID_INK: GridInk = {
 	major: '#3C6A5C',
 	minorOpacity: 1,
 	majorOpacity: 1
-};
-
-/** Paper's two inks, calibrated for 3D's cream plate. */
-export const PLATE_GRID_INK: GridInk = {
-	minor: PAPER_GRID_INK.minor,
-	major: PAPER_GRID_INK.major,
-	minorOpacity: 0.34,
-	majorOpacity: 0.55
 };
 
 export type GridSurface = 'paper' | 'mat';
@@ -246,7 +238,7 @@ function sheetAroundWork(work: GridRect): GridRect {
 }
 
 /**
- * The 3D ground's cream plate: the same sheet Paper draws around the work, in
+ * The 3D ground's plate, drawn in Paper's own colour: the same sheet Paper draws around the work, in
  * full rather than intersected with the view, because the shader only compares
  * against it. With no work it is 20 × 20 m around world zero, not around the
  * target as on Paper, so a pan or zoom never moves it. It grows with the work
