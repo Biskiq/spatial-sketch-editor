@@ -1,8 +1,8 @@
 # R217.S22 — acceptance record: Geometry, Card and Height Sheet
 
-**Slice:** R217.S22 · **Status:** implemented at tested revision `fb57a662`; implementation evidence recorded (re-recorded after the owner's light-ground P1 and the compositor review); independent review and acceptance pending (this record states no verdict) · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**Slice:** R217.S22 · **Status:** accepted 2026-11-01 at tested revision `fb57a662` (clean independent review; routine close-out) · **Plan:** [implementation-plan.md](./implementation-plan.md) (closed to a stub; owns the criteria in its recovery line) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
-**AUTHORITY: NONE.** This record reports what was implemented, the gates run, the browser evidence and the drift reconciled at cutover. The [phase slice register](../README.md#slice-register) owns status. Acceptance is for the independent review.
+**AUTHORITY: NONE.** This record reports what was implemented, the gates run, the browser evidence and the drift reconciled at cutover. The [phase slice register](../README.md#slice-register) owns status. The verdict is in [Acceptance](#acceptance), and the closeout anchors and preservation report are in [Closeout and preservation](#closeout-and-preservation).
 
 ## Drift reconciled at cutover
 
@@ -60,7 +60,7 @@ Against S21's recorded baseline (265 files, 3440 tests, arch 194), S22 adds 20 t
 
 Real pointer and keyboard input in Chromium, at the execution plan's four widths (1440×900, 1280×800, 1180×820, 820×1180). The app ran from this checkout (Vite dev server, `localhost:5173`) against a scratch API (`localhost:8790`) on a scratch database created for this slice on the local Compose Postgres. The project is the enclosed-room starter, saved to the cloud and reloaded (`Enclosed room`). The sessions were task-owned and released at the end (see [Residuals](#residuals)).
 
-Evidence folder: [`evidence/2026-11-01-browser/`](./evidence/2026-11-01-browser/). Every JSON file there is the probe output for one state; the probe is [`shell-measure.js`](./evidence/2026-11-01-browser/shell-measure.js).
+Evidence folder: [`evidence/2026-11-01-browser/`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/). Every JSON file there is the probe output for one state; the probe is [`shell-measure.js`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/shell-measure.js).
 
 #### Matrix: wall, pinned, palette, at each width
 
@@ -68,9 +68,9 @@ Each state was reached after a fresh load, so the first-pin hint was live for th
 
 | State | 1440×900 | 1280×800 | 1180×820 | 820×1180 |
 | --- | --- | --- | --- | --- |
-| Wall 1 selected | [PNG](./evidence/2026-11-01-browser/wall-1440x900.png) · [JSON](./evidence/2026-11-01-browser/wall-1440x900.json) | [PNG](./evidence/2026-11-01-browser/wall-1280x800.png) · [JSON](./evidence/2026-11-01-browser/wall-1280x800.json) | [PNG](./evidence/2026-11-01-browser/wall-1180x820.png) · [JSON](./evidence/2026-11-01-browser/wall-1180x820.json) | [PNG](./evidence/2026-11-01-browser/wall-820x1180.png) · [JSON](./evidence/2026-11-01-browser/wall-820x1180.json) |
-| Pinned, first-pin hint showing (1440 and 1180 re-captured after the ink fix; 1280 and 820 are pre-fix, superseded) | [PNG](./evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.json) | [PNG](./evidence/2026-11-01-browser/superseded-light-ground/pinned-1280x800.png) · [JSON](./evidence/2026-11-01-browser/superseded-light-ground/pinned-1280x800.json) | [PNG](./evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.json) | [PNG](./evidence/2026-11-01-browser/superseded-light-ground/pinned-820x1180.png) · [JSON](./evidence/2026-11-01-browser/superseded-light-ground/pinned-820x1180.json) |
-| Ink palette open | [PNG](./evidence/2026-11-01-browser/ink-1440x900.png) · [JSON](./evidence/2026-11-01-browser/ink-1440x900.json) | [PNG](./evidence/2026-11-01-browser/ink-1280x800.png) · [JSON](./evidence/2026-11-01-browser/ink-1280x800.json) | [PNG](./evidence/2026-11-01-browser/ink-1180x820.png) · [JSON](./evidence/2026-11-01-browser/ink-1180x820.json) | [PNG](./evidence/2026-11-01-browser/ink-820x1180.png) · [JSON](./evidence/2026-11-01-browser/ink-820x1180.json) |
+| Wall 1 selected | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-1440x900.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-1280x800.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-1280x800.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-1180x820.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-1180x820.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-820x1180.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-820x1180.json) |
+| Pinned, first-pin hint showing (1440 and 1180 re-captured after the ink fix; 1280 and 820 are pre-fix, superseded) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-light-ground/pinned-1280x800.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-light-ground/pinned-1280x800.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-light-ground/pinned-820x1180.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-light-ground/pinned-820x1180.json) |
+| Ink palette open | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/ink-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/ink-1440x900.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/ink-1280x800.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/ink-1280x800.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/ink-1180x820.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/ink-1180x820.json) | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/ink-820x1180.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/ink-820x1180.json) |
 
 Measured geometry, CSS px (`l, t, r, b`), from the JSON files. The Sheet's captures in the light-ground section are from a headed Chromium (see the review finding below); the matrix captures are headless and carry the artifact described there, where the Card is expanded at 1440.
 
@@ -89,8 +89,8 @@ The Card was expanded, and a Wall was edited by a press on an endpoint outside t
 
 | Width | Before | During the drag | After release | Evidence |
 | --- | --- | --- | --- | --- |
-| 1440×900 | opacity 1, pointer-events auto | opacity 0.2, pointer-events none, `data-card-gesturing="true"`, centre point is not the Card | back to 1 / auto; the Card box is unchanged (`1064, 60, 288, 730`) | [during PNG](./evidence/2026-11-01-browser/edit-under-card-1440-during.png) · [after PNG](./evidence/2026-11-01-browser/edit-under-card-1440-after.png) · [JSON](./evidence/2026-11-01-browser/edit-under-card-1440-during.json) |
-| 1180×820 | opacity 1, pointer-events auto | opacity 0.2, pointer-events none, `data-card-gesturing="true"`, centre point is not the Card | back to 1 / auto; the Card box is unchanged (`804, 60, 288, 650`) | [during PNG](./evidence/2026-11-01-browser/edit-under-card-1180x820-during.png) · [after PNG](./evidence/2026-11-01-browser/edit-under-card-1180x820-after.png) · [JSON](./evidence/2026-11-01-browser/edit-under-card-1180x820.json) |
+| 1440×900 | opacity 1, pointer-events auto | opacity 0.2, pointer-events none, `data-card-gesturing="true"`, centre point is not the Card | back to 1 / auto; the Card box is unchanged (`1064, 60, 288, 730`) | [during PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/edit-under-card-1440-during.png) · [after PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/edit-under-card-1440-after.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/edit-under-card-1440-during.json) |
+| 1180×820 | opacity 1, pointer-events auto | opacity 0.2, pointer-events none, `data-card-gesturing="true"`, centre point is not the Card | back to 1 / auto; the Card box is unchanged (`804, 60, 288, 650`) | [during PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/edit-under-card-1180x820-during.png) · [after PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/edit-under-card-1180x820-after.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/edit-under-card-1180x820.json) |
 
 The 1440 edit was accepted: Undo became available, and the Wall's end moved. The Card's lane and its fold did not change during the gesture.
 
@@ -98,21 +98,21 @@ The 1440 edit was accepted: Undo became available, and the Wall's end moved. The
 
 The Sheet now draws its own pale plate (`--shell-paper`) and forest ink (`--shell-forest`, `--shell-forest-raised`), with gold pins (`--shell-gold`, `--shell-gold-ink`). It no longer switches on the 2D-only flag. The coordinator review found the earlier ink invisible on the pale 3D ground, and the tick names unreadable. Every capture below is re-taken on the Stage with the Sheet at 1.20 m or dragged, and the project carries a raised surface (`Shape`, top at 1.000 m), so the found tick and its name render.
 
-Contrast is measured from the PNG: for each visible ink, the **backing actually rendered behind it** (the modal colour of the plate, chip or face in the capture) is compared with the element's computed ink, by WCAG 2.x relative luminance. Thresholds: text (value, tick names, snap, hint, glyphs) 4.5:1; line, tick, knob ring 3:1. Method and every element: [`sheet-contrast-measured.json`](./evidence/2026-11-01-browser/sheet-contrast-measured.json) (produced by [`measure-sheet-contrast.py`](./evidence/2026-11-01-browser/measure-sheet-contrast.py)).
+Contrast is measured from the PNG: for each visible ink, the **backing actually rendered behind it** (the modal colour of the plate, chip or face in the capture) is compared with the element's computed ink, by WCAG 2.x relative luminance. Thresholds: text (value, tick names, snap, hint, glyphs) 4.5:1; line, tick, knob ring 3:1. Method and every element: [`sheet-contrast-measured.json`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-contrast-measured.json) (produced by [`measure-sheet-contrast.py`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/measure-sheet-contrast.py)).
 
 | Capture | Text min | Line / tick min | Plate under Sheet | Mat probe (dark mat corner) | Ticks rendered (names) | PNG · JSON |
 | --- | --- | --- | --- | --- | --- | --- |
-| 3d pinned-1440x900 | 7.67 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.json) |
-| 3d dragging-1440x900 | 7.67 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-3d-dragging-1440x900.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-dragging-1440x900.json) |
-| 3d pinned-1180x820 | 7.67 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.json) |
-| 3d dragging-1180x820 | 7.67 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-3d-dragging-1180x820.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-dragging-1180x820.json) |
-| 2d paper-pinned-1440x900 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-2d-paper-pinned-1440x900.png) · [JSON](./evidence/2026-11-01-browser/sheet-2d-paper-pinned-1440x900.json) |
-| 2d paper-dragging-1440x900 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-2d-paper-dragging-1440x900.png) · [JSON](./evidence/2026-11-01-browser/sheet-2d-paper-dragging-1440x900.json) |
-| 2d paper-pinned-1180x820 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-2d-paper-pinned-1180x820.png) · [JSON](./evidence/2026-11-01-browser/sheet-2d-paper-pinned-1180x820.json) |
-| 2d paper-dragging-1180x820 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-2d-paper-dragging-1180x820.png) · [JSON](./evidence/2026-11-01-browser/sheet-2d-paper-dragging-1180x820.json) |
-| shaded 2d-pinned-1440x900 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-shaded-2d-pinned-1440x900.png) · [JSON](./evidence/2026-11-01-browser/sheet-shaded-2d-pinned-1440x900.json) |
-| shaded 2d-dragging-1440x900 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-shaded-2d-dragging-1440x900.png) · [JSON](./evidence/2026-11-01-browser/sheet-shaded-2d-dragging-1440x900.json) |
-| 3d pinned-coarse-820x1180 | 7.25 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](./evidence/2026-11-01-browser/sheet-3d-pinned-coarse-820x1180.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-pinned-coarse-820x1180.json) |
+| 3d pinned-1440x900 | 7.67 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.json) |
+| 3d dragging-1440x900 | 7.67 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-dragging-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-dragging-1440x900.json) |
+| 3d pinned-1180x820 | 7.67 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.json) |
+| 3d dragging-1180x820 | 7.67 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-dragging-1180x820.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-dragging-1180x820.json) |
+| 2d paper-pinned-1440x900 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-2d-paper-pinned-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-2d-paper-pinned-1440x900.json) |
+| 2d paper-dragging-1440x900 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-2d-paper-dragging-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-2d-paper-dragging-1440x900.json) |
+| 2d paper-pinned-1180x820 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-2d-paper-pinned-1180x820.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-2d-paper-pinned-1180x820.json) |
+| 2d paper-dragging-1180x820 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-2d-paper-dragging-1180x820.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-2d-paper-dragging-1180x820.json) |
+| shaded 2d-pinned-1440x900 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-shaded-2d-pinned-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-shaded-2d-pinned-1440x900.json) |
+| shaded 2d-dragging-1440x900 | 7.67 | 7.67 | #e9ebe6 | #e9ebe6 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-shaded-2d-dragging-1440x900.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-shaded-2d-dragging-1440x900.json) |
+| 3d pinned-coarse-820x1180 | 7.25 | 7.67 | #e9ebe6 | #152c26 | Floor, Shape | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-coarse-820x1180.png) · [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/sheet-3d-pinned-coarse-820x1180.json) |
 
 Across the 11 captures (100 measured inks in total), the lowest text ratio is **7.25:1** (threshold 4.5) and the lowest line, tick and knob ratio is **7.67:1** (threshold 3). Every capture passes. The pair ratios on the plate are: forest on paper **12.85:1** (tick names, value, knob ring, datum tick); forest-raised on paper **7.67:1** (rail, ticks, add glyph ground); gold ink on paper **5.68:1** (pin border); paper on forest-raised **7.67:1** (add glyph); forest on gold **7.25:1** (pin glyph). The lowest text ratio in the coarse capture is the pin glyph (forest on gold, 7.25:1). The lowest line is the forest-raised rail and ticks (7.67:1).
 
@@ -120,32 +120,32 @@ The 3D captures show the dark mat (`#152c26`) in the top-right corner, and the S
 
 Coarse pass (touch emulation, 820×1180, pinned, 3D): text min 7.25:1, line min 7.67:1; the knob and track stay 44 × 44 CSS px (see the coarse pass above).
 
-Superseded, pre-fix captures (the P1 images, kept for comparison): [`superseded-light-ground/`](./evidence/2026-11-01-browser/superseded-light-ground/). The 1280 and 820 pinned captures in the matrix are these files, because the owner asked for 1440 and 1180 to be re-taken.
+Superseded, pre-fix captures (the P1 images, kept for comparison): [`superseded-light-ground/`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-light-ground/). The 1280 and 820 pinned captures in the matrix are these files, because the owner asked for 1440 and 1180 to be re-taken.
 
 #### Pin, drag and key a height (1440)
 
 | Step | Height (m) | Readout shown | Pins | Evidence |
 | --- | --- | --- | --- | --- |
-| Start | 1.20 | no | 0 | [JSON](./evidence/2026-11-01-browser/height-0-start.json) |
-| Dragging the track | 1.553 | yes | 0 | [JSON](./evidence/2026-11-01-browser/height-1-dragging.json) · [PNG, pre-fix](./evidence/2026-11-01-browser/superseded-light-ground/height-1-dragging.png) |
-| Released | 1.553 | no | 0 | [JSON](./evidence/2026-11-01-browser/height-2-released.json) |
-| ArrowUp on the slider | 2.053 | yes | 0 | [JSON](./evidence/2026-11-01-browser/height-3-keyed.json) · [PNG, pre-fix](./evidence/2026-11-01-browser/superseded-light-ground/height-3-keyed.png) |
-| Pin at 2.05 m | 2.053 | yes | 1, `Remove the pin at 2.05 metres` | [JSON](./evidence/2026-11-01-browser/pin-after-pin.json) · [PNG](./evidence/2026-11-01-browser/pin-after-pin.png) |
+| Start | 1.20 | no | 0 | [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/height-0-start.json) |
+| Dragging the track | 1.553 | yes | 0 | [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/height-1-dragging.json) · [PNG, pre-fix](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-light-ground/height-1-dragging.png) |
+| Released | 1.553 | no | 0 | [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/height-2-released.json) |
+| ArrowUp on the slider | 2.053 | yes | 0 | [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/height-3-keyed.json) · [PNG, pre-fix](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-light-ground/height-3-keyed.png) |
+| Pin at 2.05 m | 2.053 | yes | 1, `Remove the pin at 2.05 metres` | [JSON](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/pin-after-pin.json) · [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/pin-after-pin.png) |
 
 #### Refusal and commit: the Card holds, and does not expand
 
-- **Refusal (Card writer, Height `-1`, the refused value):** the alert reads `Enter a value greater than zero.`; the Card box stays `1064, 60, 288, 730` and its fold stays `Collapse` ([before](./evidence/2026-11-01-browser/refusal-card-before.json) · [after](./evidence/2026-11-01-browser/refusal-card-after.json) · [PNG](./evidence/2026-11-01-browser/refusal-card-after.png)). This is a writer refusal, not a gesture refusal; a gesture refusal was not exercised in the browser (see Residuals).
-- **Commit with the Card folded (1440):** the Card was collapsed by the user, then an accepted drag of the Wall's end. The Card stays `Expand` (folded) and its box stays `1064, 712, 288, 78` before and after ([before](./evidence/2026-11-01-browser/commit-collapsed-before.json) · [after](./evidence/2026-11-01-browser/commit-collapsed-after.json)). The fold test in the mounted suite pins the same rule for a task that closes underneath the Card.
+- **Refusal (Card writer, Height `-1`, the refused value):** the alert reads `Enter a value greater than zero.`; the Card box stays `1064, 60, 288, 730` and its fold stays `Collapse` ([before](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/refusal-card-before.json) · [after](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/refusal-card-after.json) · [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/refusal-card-after.png)). This is a writer refusal, not a gesture refusal; a gesture refusal was not exercised in the browser (see Residuals).
+- **Commit with the Card folded (1440):** the Card was collapsed by the user, then an accepted drag of the Wall's end. The Card stays `Expand` (folded) and its box stays `1064, 712, 288, 78` before and after ([before](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/commit-collapsed-before.json) · [after](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/commit-collapsed-after.json)). The fold test in the mounted suite pins the same rule for a task that closes underneath the Card.
 
 #### Keyboard walk: the S21 owed row, Wall and Scene
 
 S21 recorded that the Card's writer fields, Delete, Bring into view and More were not walked by Tab in the browser. This pass walks each of them, from the Card's first header control, at 1440×900, and then operates each one from the keyboard.
 
-**Wall (Wall 1, the saved starter).** Focus order, as recorded in [`keyboard-walk-wall-1440x900.json`](./evidence/2026-11-01-browser/keyboard-walk-wall-1440x900.json), with a PNG per stop (`kbd-walk-wall-00.png` to `kbd-walk-wall-15.png`):
+**Wall (Wall 1, the saved starter).** Focus order, as recorded in [`keyboard-walk-wall-1440x900.json`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/keyboard-walk-wall-1440x900.json), with a PNG per stop (`kbd-walk-wall-00.png` to `kbd-walk-wall-15.png`):
 
 0. Collapse (header) · 1. Close selection card · 2. Name field · 3. Rename · 4. Fixed endpoint, the radio group (Start is selected; End is reached with the arrow keys) · 5. Height · 6. Thickness · 7. Length · 8. Angle · 9. Move ΔX · 10. Move ΔZ · 11. Start and End X/Z (disclosure) · 12. **Delete Wall** · 13. Bring into view · 14. More (disclosure) · 15. Technical details (disclosure).
 
-Operation, from [`keyboard-operate-wall-1440x900.json`](./evidence/2026-11-01-browser/keyboard-operate-wall-1440x900.json) (one PNG per step, `kbd-op-*.png`):
+Operation, from [`keyboard-operate-wall-1440x900.json`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/keyboard-operate-wall-1440x900.json) (one PNG per step, `kbd-op-*.png`):
 
 - Collapse and Expand by Enter: fold changes as expected.
 - Rename by typing and Enter: the title becomes the new name.
@@ -155,26 +155,26 @@ Operation, from [`keyboard-operate-wall-1440x900.json`](./evidence/2026-11-01-br
 - More by Enter opens it; Tab reaches `Focus`, then `Open task`.
 - Technical details by Enter opens it.
 
-**Scene object (a native form placed from the Objects instrument).** Focus order, [`keyboard-walk-scene-1440x900.json`](./evidence/2026-11-01-browser/keyboard-walk-scene-1440x900.json), 19 stops with PNGs `kbd-scene-00.png` to `kbd-scene-18.png`: Collapse, Close, Form X, Form Z, Move, Place on floor, Form yaw, Turn, Form width, Form height, Form depth, Size, Duplicate, Save to My Objects, Delete, Bring into view, More, Technical details, then the dock's Select. Operation, [`keyboard-operate-scene-1440x900.json`](./evidence/2026-11-01-browser/keyboard-operate-scene-1440x900.json): Collapse and Expand by Enter, Bring into view by Enter, More and Technical details opened by Enter.
+**Scene object (a native form placed from the Objects instrument).** Focus order, [`keyboard-walk-scene-1440x900.json`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/keyboard-walk-scene-1440x900.json), 19 stops with PNGs `kbd-scene-00.png` to `kbd-scene-18.png`: Collapse, Close, Form X, Form Z, Move, Place on floor, Form yaw, Turn, Form width, Form height, Form depth, Size, Duplicate, Save to My Objects, Delete, Bring into view, More, Technical details, then the dock's Select. Operation, [`keyboard-operate-scene-1440x900.json`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/keyboard-operate-scene-1440x900.json): Collapse and Expand by Enter, Bring into view by Enter, More and Technical details opened by Enter.
 
-The keyboard walk and operation were run in a task-owned Playwright Chromium context ([`shell-passes.cjs`](./evidence/2026-11-01-browser/shell-passes.cjs)); the Wall walk through agent-browser in the same session gave the same order before the session lost its cookie (see Residuals).
+The keyboard walk and operation were run in a task-owned Playwright Chromium context ([`shell-passes.cjs`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/shell-passes.cjs)); the Wall walk through agent-browser in the same session gave the same order before the session lost its cookie (see Residuals).
 
 #### Coarse-pointer pass (touch emulation, 820×1180 and 1180×820)
 
-Chromium through Playwright with `hasTouch`, so `(pointer: coarse)` matched. Every visible Stage-shell control was measured in CSS px: the Head, the Stage actions, the zoom cluster, the dock, the Sheet's track, knob, add and pin buttons, and the Card's controls. Results in [`coarse-pointer-targets.json`](./evidence/2026-11-01-browser/coarse-pointer-targets.json):
+Chromium through Playwright with `hasTouch`, so `(pointer: coarse)` matched. Every visible Stage-shell control was measured in CSS px: the Head, the Stage actions, the zoom cluster, the dock, the Sheet's track, knob, add and pin buttons, and the Card's controls. Results in [`coarse-pointer-targets.json`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/coarse-pointer-targets.json):
 
 | Width | State | Controls measured | Below 44 × 44 | Sheet knob box | Horizontal overflow | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| 820×1180 | Card folded, pinned | 28 | 0 | 44 × 44 | no | [PNG](./evidence/2026-11-01-browser/coarse-820x1180.png) |
-| 820×1180 | Card expanded | 43 | 0 | 44 × 44 | no | [PNG](./evidence/2026-11-01-browser/coarse-820x1180-card-expanded.png) |
-| 1180×820 | Card folded, pinned | 28 | 0 | 44 × 44 | no | [PNG](./evidence/2026-11-01-browser/coarse-1180x820.png) |
-| 1180×820 | Card expanded | 43 | 0 | 44 × 44 | no | [PNG](./evidence/2026-11-01-browser/coarse-1180x820-card-expanded.png) |
+| 820×1180 | Card folded, pinned | 28 | 0 | 44 × 44 | no | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/coarse-820x1180.png) |
+| 820×1180 | Card expanded | 43 | 0 | 44 × 44 | no | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/coarse-820x1180-card-expanded.png) |
+| 1180×820 | Card folded, pinned | 28 | 0 | 44 × 44 | no | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/coarse-1180x820.png) |
+| 1180×820 | Card expanded | 43 | 0 | 44 × 44 | no | [PNG](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/coarse-1180x820-card-expanded.png) |
 
 Touch emulation in Chromium only. Native touch and Safari remain S11's.
 
 ### Review finding: a dark rectangle under the expanded Card (compositor artifact)
 
-**What was seen.** In the re-review of `fb57a662`, the headless captures [`sheet-3d-pinned-1440x900.png`](./evidence/2026-11-01-browser/superseded-headless-compositor/sheet-3d-pinned-1440x900.png) and [`sheet-3d-dragging-1440x900.png`](./evidence/2026-11-01-browser/superseded-headless-compositor/sheet-3d-dragging-1440x900.png) showed a solid forest rectangle directly under the expanded Card at 1440×900: about x 993–1273, y 785–900, exactly the Card's width, with the zoom cluster on it. The folded Card in `height-1-dragging.png` does not show it.
+**What was seen.** In the re-review of `fb57a662`, the headless captures [`sheet-3d-pinned-1440x900.png`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-headless-compositor/sheet-3d-pinned-1440x900.png) and [`sheet-3d-dragging-1440x900.png`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-headless-compositor/sheet-3d-dragging-1440x900.png) showed a solid forest rectangle directly under the expanded Card at 1440×900: about x 993–1273, y 785–900, exactly the Card's width, with the zoom cluster on it. The folded Card in `height-1-dragging.png` does not show it.
 
 **What it is.** A headless-compositor artifact, not product paint. The steps:
 
@@ -185,12 +185,12 @@ Touch emulation in Chromium only. Native touch and Safari remain S11's.
 
 Conclusion: the rectangle is a headless capture artifact. The product paints nothing there, and the headed captures show the ground. This is recorded per the review's instruction, and the cause is not otherwise pinned down. The Card's overflow is the trigger, which is the second finding below.
 
-- Evidence: [`compositor-check.json`](./evidence/2026-11-01-browser/compositor-check.json) (headless and headed pixels, every variant), the variant captures and scripts in [`compositor-check/`](./evidence/2026-11-01-browser/compositor-check/), and the headed captures of every Sheet state in the light-ground section above. The headless originals are kept in [`superseded-headless-compositor/`](./evidence/2026-11-01-browser/superseded-headless-compositor/).
-- The older headless matrix capture [`wall-1440x900.png`](./evidence/2026-11-01-browser/wall-1440x900.png) and the edit-under-card captures at 1440 (`edit-under-card-1440-*.png`) carry the same artifact, because the Card is expanded in them. Their JSON probes are unaffected, and no claim in the record rests on those PNGs for the ground.
+- Evidence: [`compositor-check.json`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/compositor-check.json) (headless and headed pixels, every variant), the variant captures and scripts in [`compositor-check/`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/compositor-check/), and the headed captures of every Sheet state in the light-ground section above. The headless originals are kept in [`superseded-headless-compositor/`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/superseded-headless-compositor/).
+- The older headless matrix capture [`wall-1440x900.png`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/wall-1440x900.png) and the edit-under-card captures at 1440 (`edit-under-card-1440-*.png`) carry the same artifact, because the Card is expanded in them. Their JSON probes are unaffected, and no claim in the record rests on those PNGs for the ground.
 
 **The Card's content overflows its max-height.** Yes. The Card's bottom now sits above the zoom cluster, so its `max-height` is smaller than before. At 1440×900 the content is 753 px in a 728 px box at rest, and 829 px once More is open. The Technical details row is cut at the bottom edge at rest, as the review noticed. It is a scroll region, and the row is reachable.
 
-- Evidence: [`card-scroll-reachability.json`](./evidence/2026-11-01-browser/card-scroll-reachability.json). Every control in the expanded Card is reachable by scrolling at 1440×900 and at 1180×820: 19 controls, none covered at its centre. With the scroll at the bottom, the Technical details summary and the Canonical ID row sit inside the box, at both widths.
+- Evidence: [`card-scroll-reachability.json`](../../../archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/2026-11-01-browser/card-scroll-reachability.json). Every control in the expanded Card is reachable by scrolling at 1440×900 and at 1180×820: 19 controls, none covered at its centre. With the scroll at the bottom, the Technical details summary and the Canonical ID row sit inside the box, at both widths.
 - Two More actions, Focus and Open task, end 0.72 px below the scroll-port edge at the bottom of the scroll, and stay inside the Card's border. The check's 0.5 px tolerance records them as not inside. They are reachable and fully visible in the scroll region.
 - No code change was made for the overflow. The fix is a layout choice: the Card's bottom sits above the zoom cluster, which the lane rules require. The alternatives are a tighter Card chrome, or a smaller zoom cluster placed elsewhere. Both change the layout the owner has accepted, so this is recorded as a residual for an owner decision rather than changed here.
 
@@ -213,7 +213,7 @@ These are judgments the plan left open. Review may overturn any of them.
 
 - **Sheet over the dark mat.** No capture places the Sheet over the dark mat itself: the captures show the plate under the Sheet, and the mat only in the top-right corner. The plate is opaque, so the ink's contrast does not depend on the ground; the 3D mat corner is sampled in every 3D capture (`matProbe`).
 - **Plinth top.** `Place plinth` created no found top in this build (the instrument closed and no Layout box appeared in the Index). The raised surface used for the semantic ticks is a Scene form whose top is at 1.000 m (`Shape`). S11 J4's plinth top and 0.75 m tick are not reproduced here.
-- **Focus after Cancel (keyboard).** After Cancel clears a destructive confirmation (Delete Wall or Delete Object), focus falls to the page body rather than returning to the Delete control. Found in the keyboard pass. The Card's confirmation is S21's code and is outside this plan's scope; not fixed here. Owner: the Card follow-up.
+- **Focus after Cancel (keyboard).** After Cancel clears a destructive confirmation (Delete Wall or Delete Object), focus falls to the page body rather than returning to the Delete control. Found in the keyboard pass. The Card's confirmation is S21's code and is outside this plan's scope; not fixed here. Routed to the tech-debt ledger as TD-17 at close-out.
 - **Pin hint and stage notice.** The hint sits above the lower column at the left. A stage notice (`.stage-note`, bottom 6 rem on the left) can overlap it by about 16 px if both are visible at the same time. Not measured together. Owner: T1 notice placement.
 - **Keys panel.** The Keys reference (opened from Find) sits at the top right and can overlap the top of a tall Card while open. Not in the matrix. Owner: S23 or the Keys follow-up.
 - **Constrained-width Index.** At 1180 and 820 with the Index open, it is a 256 px overlay with a scrim over the Stage's left edge. Not measured as an overlap, because the overlay is the S23 sheet behaviour.
@@ -222,7 +222,7 @@ These are judgments the plan left open. Review may overturn any of them.
 - **Browser session.** The agent-browser session lost its session cookie partway through the run (`/auth/me` reported no cookie; the project then read as forbidden). The Wall walk and matrix were taken before this, and the later passes ran in a task-owned Playwright context with the cookie set directly. This is an environment incident. No product path was found to clear the cookie.
 - **Touch and Safari.** Coarse measurements are Chromium touch emulation. Native touch and Safari remain S11's rows.
 - **Performance.** No performance measurement was taken; the 2026-10-28 owner policy keeps those owner-initiated.
-- **Scratch data.** The browser passes used a scratch database (`biskiq_r217_s22`) created on the local Compose Postgres and a scratch API on port 8790. The database and servers are released at the end of this slice (see the final report).
+- **Scratch data.** The browser passes used a scratch database (`biskiq_r217_s22`) created on the local Compose Postgres and a scratch API on port 8790. Checked at close-out: the scratch database is no longer present, and nothing listens on ports 5173 or 8790.
 
 ## Independent review
 
@@ -235,5 +235,59 @@ These are judgments the plan left open. Review may overturn any of them.
 - **Accepted residuals:**
   - At 1440×900 the expanded Card overflows its max-height by 25 px at rest, and 101 px with More open. Every control stays reachable by scrolling.
   - The plinth-top and 0.75 m ticks from S11 J4 were not reproduced, because Place plinth created no found top in this build. S11 J4 owns that row.
-  - Focus after Cancel on a destructive confirmation in S21's Card goes to tech-debt.
+  - Focus after Cancel on a destructive confirmation in S21's Card goes to tech-debt (TD-17).
 - **Verdict at `fb57a662`:** the slice meets plan §3 to §5 within the declared `affected-subsystem` tier. It submits no Camera intent on layout change and leaves the PR #247 flip untouched. S21's owed keyboard walk is done here for a Wall and a Scene object. With nothing open, withdrawn or unadjudicated, routine close-out may proceed.
+
+## Acceptance
+
+Accepted on 2026-11-01 at tested revision `fb57a662`. The owner directed that each slice go through routine
+close-out after the coordinator's independent review, and this close-out is that direction. It is not an
+owner override, and nothing was waived.
+
+- **Review:** the independent review verdict covers `fb57a662` and is clean, with no open, withdrawn or
+  unadjudicated finding. The first review's P1 is fixed by `fb57a662`, with five tests, and the second
+  review's finding is a headless-compositor artifact, proven and recorded in `ba168967`.
+- **Criteria:** the reviewer's verdict records plan §3 to §5 as met within the declared `affected-subsystem`
+  tier. The plan's integrated result is owed by R217.S11, its integration route.
+- **Manual-owed rows,** kept distinct from the automated evidence:
+  - native touch and Safari: S11's rows, as the record states;
+  - the plinth top and the 0.75 m ticks: S11 J4, which the reviewer accepted;
+  - a refused press in the browser, so the Card's hold through a gesture refusal: **not exercised**. The
+    reviewer's verdict does not list it among the accepted residuals, so the owner should confirm it or assign
+    it to S11 before S11 closes.
+- **Prerequisites:** the plan's dependencies R217.S20 and R217.S21 are shipped in the register.
+- **Capability outcomes:** none. The register's Effects column for R217.S22 is `—`.
+- **Gates:** no product gate was re-run at close-out. The recorded numbers above are reused. The documentation
+  gate `tests/docs` runs after the link repairs.
+
+## Closeout and preservation
+
+Anchors, computed before the compaction commit:
+
+```text
+plan        050a30d9418a9a910a320388ae2ea4d879f1b34c   last commit with the full plan body (reachable on main); the stub
+                                                       at its path names this anchor
+acceptance  68ac2091495bac77b18047ccb216697e478b82ee   the full record before this close-out; kept in full at its path
+tag         closed/r217.s22 -> 68ac2091               created and pushed after the merge; the tag target keeps
+                                                       both anchors reachable
+merge       P1 merge of PR #252 with `--merge`; the merge-commit SHA and the post-merge verification are recorded
+            by the post-merge anchors follow-up
+```
+
+```text
+CLOSEOUT PRESERVATION — R217.S22 (2026-11-01)
+prose compacted:                 1   approved plan -> stub at its own path; acceptance record kept in full
+reference promotions:            0   the Height Sheet, pin hint and Card contract were reconciled in the reference doc
+                                     during implementation
+renderable evidence archived:    181 files / 19 MB (112 PNG, 56 JSON, 4 text, 9 scripts and probes), moved byte-identical
+evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/CLOSED.md
+transient artifacts removed:     0
+historical anchors:              plan 050a30d9; acceptance 68ac2091; tag closed/r217.s22 -> 68ac2091 (created after the merge)
+new live -> archive prose links: 0
+manual-owed verification rows:   3   native touch and Safari (S11); the plinth top and 0.75 m ticks (S11 J4); a refused
+                                     press in the browser, not exercised
+remaining deferred items:        8   the Card's 1440×900 overflow; the Sheet over the dark mat; TD-17; the pin hint and
+                                     stage notice overlap; the Keys panel overlap; the constrained-width Index (S23); a Sphere
+                                     not placed; performance (owner policy)
+permanent stubs added:           1   approved plan
+```
