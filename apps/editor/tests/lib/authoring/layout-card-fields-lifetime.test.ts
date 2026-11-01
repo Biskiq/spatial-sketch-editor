@@ -11,6 +11,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
 import LayoutCardFields from '$lib/authoring/adapters/layout/LayoutCardFields.svelte';
+import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
+import { layoutCardFieldIds, layoutFacts } from '$lib/authoring/adapters/layout/precision';
 import CardFieldsLifetimeProbe from './fixtures/CardFieldsLifetimeProbe.svelte';
 import { createCardFieldsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import type { LayoutInstrument, LayoutInstrumentOutcome } from '$lib/authoring/adapters/layout/instrument';
@@ -138,4 +140,18 @@ it('an outgoing detached input cannot cancel a replacement controller draft', as
 	expect(first.blur).not.toHaveBeenCalled();
 	expect(second.blur).not.toHaveBeenCalled();
 	expect(target.querySelector<HTMLInputElement>('input[data-field="width"]')?.value).toBe('7');
+});
+
+describe('the Layout writer and the Card facts divide the subject\'s fields', () => {
+	it('gives the writer every editable field but the name, and leaves only the derived Role as a fact row', () => {
+		const layout = buildStarterEnclosureLayout();
+		const subject = { kind: 'wall' as const, id: layout.walls[0]!.id };
+		const writer = layoutCardFieldIds(layout, subject);
+		expect(writer).toEqual(expect.arrayContaining(['height', 'thickness', 'length', 'angle']));
+		expect(writer).not.toContain('name');
+		const rows = layoutFacts(layout, subject)
+			.filter((fact) => fact.fieldId !== 'kind' && fact.fieldId !== 'name' && !writer.includes(fact.fieldId))
+			.map((fact) => fact.label);
+		expect(rows).toEqual(['Role']);
+	});
 });

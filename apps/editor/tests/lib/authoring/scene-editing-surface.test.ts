@@ -2257,6 +2257,15 @@ describe('Scene adapter registration', () => {
 		);
 		const duplicate = actions.find((action) => action.id === 'scene-object-duplicate');
 		expect(duplicate?.destructive).toBeUndefined();
+		// Duplicate is a secondary action (More), not a destructive one.
+		expect(duplicate?.group).toBe('secondary');
+		expect(actions.find((action) => action.id === 'scene-object-delete')?.group).toBeUndefined();
+		// The object writer edits Position, Yaw and Size, so those facts are shown by the
+		// writer rather than repeated as rows; the header carries the name and the kind.
+		expect(facade.cardWriter(subject())?.fieldIds).toEqual(['position', 'yaw', 'scale']);
+		expect(facade.cardFacts(subject()).map((fact) => fact.fieldId)).toEqual(
+			expect.arrayContaining(['kind', 'name', 'position', 'yaw', 'scale'])
+		);
 		await expect(duplicate!.run()).resolves.toMatchObject({ kind: 'accepted' });
 		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
 		const copy = facade.snapshot().domain.scene.entities.find(
