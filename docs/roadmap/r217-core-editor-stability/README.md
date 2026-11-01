@@ -241,7 +241,7 @@ S11 runs every journey in two browsers, with fine and coarse pointers. The crite
 | J9 | Coarse pointer and touch |
 | J10 | Interrupted-gesture recovery |
 | J11 | Source persistence versus session history and state |
-| J12 | Plan flip continuity across azimuths |
+| J12 | Plan flip continuity across azimuths, moving through linework to poché |
 | J13 | 3D ground and grid with the horizon in frame |
 | J14 | Direct Wall, Junction and Opening editing from Plan alone |
 | J15 | Direct manipulation of every subject type, in both readings |
