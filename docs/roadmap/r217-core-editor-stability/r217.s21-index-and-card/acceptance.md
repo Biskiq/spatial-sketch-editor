@@ -1,6 +1,6 @@
 # R217.S21 — acceptance record: Index and Card
 
-**Slice:** R217.S21 · **Status:** implementation evidence recorded at tested revision `43579f1c`; no review, acceptance or verdict recorded here · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**Slice:** R217.S21 · **Status:** implementation evidence recorded at tested revision `edfab667`; no review, acceptance or verdict recorded here · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 This record reports what was implemented, the gates run on the tested revision, the browser matrix and the residuals. It claims no independent review, no acceptance and no close-out. The [phase slice register](../README.md#slice-register) owns status.
 
@@ -21,31 +21,40 @@ Where landed PR #247 or S20 disagreed with older text, the landed baseline stand
 
 The R217 README's "Starting evidence" table and the S20 record are left as recorded.
 
+## Review of PR #250 at 424b78e2
+
+The coordinator's review found one P1 and one P2, both fixed on this branch and re-gated at `edfab667`.
+
+- **P1, coarse targets.** The explicit coarse rules are in `EditorCard.svelte` (icon and action buttons, the rename field, summaries) and `EditorIndex.svelte` (each row, its Actions toggle, the disclosed operations, the search field). Each sets 44 px under `pointer: coarse` and keeps the 32 px fine density. The measured state is in the coarse-pointer pass: before and after both 0 below 44 × 44 across 266 controls, because the host rule already applied the floor on this branch.
+- **P2, a lost fact.** The object and form writers edit X and Z only, but the Position fact was dropped whenever a writer covered its field, so Y was stated nowhere. The Scene card now shows `Position (X · Z)`, keyed to the writer's `position` field, and `Elevation` as a read-only row with no field id, so the Y is stated once.
+
+The coordinator's review accepted the judgment calls under "Decisions taken inside the plan", and those stand as cutover reconciliation.
+
 ## Implementation evidence
 
 ### Tested revision
 
 - Branch `claude/r217-s21-index-and-card`, from `main` at `c577904c` (R217.S20 merged).
-- Production and test commits, in order: `8902a6ca` (card contract types and adapter tagging), `3292d8fb` (Index labels, Card identity and the chip), `a92050a2` (tests), `43579f1c` (select and frame distinct on the route).
-- **Tested SHA: `43579f1c`.** Every gate below ran against that tree. The docs commits that carry this record change no production or test file.
+- Production and test commits, in order: `8902a6ca` (card contract types and adapter tagging), `3292d8fb` (Index labels, Card identity and the chip), `a92050a2` (tests), `43579f1c` (select and frame distinct on the route), then the review fixes `28538e19` (the Y of a writer-edited object stays stated, as a read-only Elevation fact) and `edfab667` (explicit 44 px coarse-pointer targets for Card and Index controls).
+- **Tested SHA: `edfab667`.** Every gate below ran against that tree, after the review fixes. The docs commits that carry this record and its evidence change no production or test file.
 - `apps/api` is untouched (`git diff --name-only c577904c HEAD` names no `apps/api` path). `npm run check:api` and `npm run test:api` therefore do not apply to this diff, and were not run.
 
 ### Gates
 
 | Command | Subject | Result |
 | --- | --- | --- |
-| `npm run check` | `apps/editor` svelte-check, generated tsconfig (includes `tests/`) | 2049 files, 0 errors, 0 warnings |
+| `npm run check` | `apps/editor` svelte-check, generated tsconfig (includes `tests/`) | 2050 files, 0 errors, 0 warnings |
 | `npm run check:camera-core` | `packages/camera-core`, `tsc --noEmit` | exit 0 |
 | `npm run check:layout-core` | `packages/layout-core`, `tsc --noEmit` | exit 0 |
 | `npm run check:geometry-core` | `packages/geometry-core`, `tsc --noEmit` | exit 0 |
 | `npm run check:project-model` | `packages/project-model`, `tsc --noEmit` | exit 0 |
 | `npm run test:arch` | `vitest.arch.config.ts`, the whole arch lane, including the documentation and parallel-track gates | 23 files, 194 tests pass |
-| `npm test` | `apps/editor` `vitest run`, the complete suite | 264 files, 3437 tests pass |
+| `npm test` | `apps/editor` `vitest run`, the complete suite | 265 files, 3440 tests pass |
 | `npm run test:heavy` | `vitest.heavy.config.ts` | 11 files, 138 tests pass |
 | `npm run build` | `apps/editor` production build, adapter-vercel | exit 0 |
-| `git diff --check c577904c 43579f1c` | whitespace over the branch | clean, no output |
+| `git diff --check c577904c edfab667` | whitespace over the branch | clean, no output |
 
-Against S20's recorded baseline (262 files, 3404 tests), S21 adds two suites and 33 tests. Focused iteration runs were used during the work and are not acceptance. The authoring subtree (77 files, 1011 tests) passed before the final route test was added; the complete suite above covers the tested tree.
+Against S20's recorded baseline (262 files, 3404 tests), S21 adds three suites and 36 tests. Focused iteration runs were used during the work and are not acceptance. The authoring subtree (77 files, 1011 tests) passed before the final route test was added; the complete suite above covers the tested tree.
 
 ### Plan test coverage
 
@@ -56,6 +65,7 @@ Against S20's recorded baseline (262 files, 3404 tests), S21 adds two suites and
 - `tests/lib/authoring/scene-editing-surface.test.ts`: on a real host, Duplicate is `secondary` and not destructive, and the object writer declares its fields.
 - `tests/lib/authoring/spatial-route-gesture.test.ts`, the S21 block (7 tests): the unnamed Wall row is labelled `Wall n` with the identity in its accessible name; the Card title matches the row; a Wall states Height and Thickness once; Delete is the only destructive action; the row's Actions disclosure is closed by default; the chip shows the floor; Select leaves the Camera and the row's Bring into view moves it.
 - `tests/lib/authoring/editor-card-confirmation.test.ts`: unchanged, passing against the Card with groups.
+- Review fixes: `scene-editing-surface.test.ts` (real host) asserts `Position (X · Z)` carries the writer's `position` field and `Elevation` is a read-only row; `editor-card-facts.test.ts` keeps a writer-edited subject's elevation on screen; `stage-shell-coarse-targets.test.ts` (new) pins the coarse-pointer rules for the Card and the Index in the component source, with the fine density unchanged.
 
 ### Browser matrix
 
@@ -82,6 +92,15 @@ Results, at every width and state:
 
 Measurements and error logs: `<state>-<width>-metrics.json`, `console-<width>.txt`, `page-errors-<width>.txt`, and the probe [matrix-metrics.js](./evidence/2026-11-01-browser/matrix-metrics.js).
 
+### Coarse-pointer pass (review P1)
+
+- Method: Chromium through Playwright with `hasTouch` and `isMobile` emulation, which makes `(pointer: coarse)` match in every capture. The scene was built at 1440×900 with real taps and pointer presses, then the viewport was set to 820×1180 and 1180×820. Each width measured the Wall, the Opening (Door), the object (Sphere) and the native form, with the Index open, the Cards expanded, the Wall's row Actions disclosed and the Wall's More disclosed.
+- Scope: every visible Card and Index control in each capture, skipping only controls inside a closed disclosure. The Card's writer fields, rename field, buttons and summaries are included, as are each Index row, its Actions toggle, the disclosed operations and the search field.
+- Result, after the fixes (`edfab667`): **266 visible controls, 0 below 44 × 44 CSS px** (minimum 44 × 44). No horizontal overflow. `(pointer: coarse)` matched in every capture.
+- Before the explicit rules (`424b78e2`): also 266 controls and 0 below 44 × 44. The branch's existing host rule (`.editor-host :global(button|summary|select|input)` under `pointer: coarse`) already sets the floor, so the regression described in the review did not reproduce on this branch. The explicit component rules now keep the Card and the Index at 44 px on their own, and the fine-pointer density stays 32 px.
+- Evidence, in the [2026-11-01 browser folder](./evidence/2026-11-01-browser/): [coarse-pointer-targets.json](./evidence/2026-11-01-browser/coarse-pointer-targets.json) (after), [coarse-pointer-targets-before-fix.json](./evidence/2026-11-01-browser/coarse-pointer-targets-before-fix.json) (before), the eight PNGs of each (`coarse-final-<state>-<width>.png` and `coarse-before-fix-<state>-<width>.png`), and the probe [coarse-pass.cjs](./evidence/2026-11-01-browser/coarse-pass.cjs).
+- Screenshots after the fixes: [wall 820×1180](./evidence/2026-11-01-browser/coarse-final-wall-820x1180.png), [opening 820×1180](./evidence/2026-11-01-browser/coarse-final-opening-820x1180.png), and the 1180×820 captures alongside them.
+
 ### Decisions taken inside the plan
 
 These are judgments the plan left open. None needed an owner ruling, and each is recorded here so review can overturn it.
@@ -90,6 +109,7 @@ These are judgments the plan left open. None needed an owner ruling, and each is
 - The header carries the name and the kind word, so the `Kind` and `Name` fact rows drop. The eyebrow shows the kind word and the status (the Plan membership for Layout, `Scene` for Scene).
 - Focus and Open task moved into More beside the secondary actions. Bring into view stays in the row.
 - A Scene subject shows no context chip, because its reference names no location.
+- A Scene object's plan position is split (review P2): `Position (X · Z)` carries the writer's `position` field, so the writer shows it once, and `Elevation` is a read-only row with no field id, because no writer edits Y. The Y is stated, and only once.
 
 ### Residuals
 
@@ -98,6 +118,7 @@ These are judgments the plan left open. None needed an owner ruling, and each is
 - **PLATE advanced fields.** The reference doc says advanced fields such as Wall thickness sit under More. Thickness is an inline writer field, as shipped by S05 and S15. It was not moved here; it is an owner decision.
 - **Head Find and task host.** The Head's Find still shows Scene subjects by `name · kind · id`, and the task host's target label still uses the raw identity. Both are outside the Index and Card scope and remain for a later slice.
 - **Wedged browser session.** During the first matrix attempt the page stopped answering `eval` after a width change, and the session was closed. A fresh session ran the whole matrix to completion without a hang. No page error was logged, so the cause is not identified.
-- **Coarse pointer and touch.** Not run. The execution plan's browser widths are fine pointer, and native touch and Safari remain S11's.
+- **Coarse pointer.** Run in Chromium with touch emulation (see the coarse-pointer pass). Native touch and Safari remain S11's.
+- **GPU warnings.** The coarse pass logged four Chromium `GL Driver Message … ReadPixels` warnings and no page errors. They come from the WebGL driver, not the app.
 - **Perf browser flows** remain stale (TD-16), unchanged by this slice.
 - **Server-refused Save** is not browser-verified, as in S20.
