@@ -21,6 +21,8 @@ extent = bounds(Layout ∪ Scene ∪ live candidate) expanded by 5 m, rounded ou
 empty project = 20 × 20 m centred on the target
 ```
 
+**Superseded on 2026-11-01 by [the owner's workspace decision](./../post-s19-owner-manual-review/report.md#fourth-owner-review-2026-11-01):** committed geometry only, on the 3D ground's extent. The rule above is kept as what S13 and S14 were accepted against.
+
 It has crisp edges, like a sheet of drafting paper. It grows when a candidate leaves the sheet and never moves the Camera. PLATE's inks stay. `gridPlanFor` already separates surfaces, so this changes the Paper branch only and the mat keeps its own coverage.
 
 **Ruler.** `StageScaleBar.svelte` becomes a 1 px horizontal line with 5 px perpendicular end ticks and the distance label centred below it. No fill, border or badge. Ink comes from the surface. Shown in Plan only, because a perspective length is true only at the target plane. It stays bottom-left and rises only when it would actually overlap the lower column.

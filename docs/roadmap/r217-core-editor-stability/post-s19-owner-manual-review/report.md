@@ -133,6 +133,64 @@ the through Wall has no surface there to weld to, so edge incidence still report
 - **Published releases** weren't checked for the floor or lights.
 - **Corner ticks and Wall hue** in the reference aren't drawn.
 
+## Fourth owner review (2026-11-01)
+
+**Decision, superseding D39's sheet rule and S14's candidate growth.** Workspace bounds read committed
+geometry only, on one rule for 2D and 3D: 40 × 40 m at world zero, 10 m margin, 10 m steps.
+[S13's](../r217.s13-drafting-simplification/acceptance.md) and
+[S14's](../r217.s14-live-feedback/acceptance.md) acceptance records stay as accepted history; they
+describe what shipped then, not current behaviour. Where this report's earlier sections say the
+surface follows a live candidate, this section replaces them.
+
+**Why.** Replaying a 60 m drag that swings 90° changed the 3D plate 16 times (5 shrinks) and the 2D
+sheet 32 times (11 shrinks), in 121 pointer steps.
+
+**Workspace, read from the live renderer:**
+
+| Check | 3D | 2D |
+|---|---|---|
+| Empty project | −20…20 on both axes | Same |
+| Ink past the edge, turning through 10 pointer positions | Unchanged at every position | Unchanged at every position |
+| Cancel | Unchanged | Unchanged |
+| Commit a chain of about 80 m past the edge | X grows to 90 at once | Same extent after flipping to 2D |
+| Undo | | Back to 20, and 3D after flipping back |
+| Drag a Wall's end handle round 9 positions, then release past the edge | Unchanged during the drag, X 40 on release, 20 on Undo | Not run; same rule and wiring |
+
+The candidate stays readable [past the edge](./evidence/workspace-candidate-past-edge.png). An empty
+project's 2D sheet no longer follows the Camera target, so panning well away from it now shows no
+sheet, as in 3D.
+
+**Outline ticks: a real defect, also on `main`, exposed by cream.** The mesh and the chosen edges are
+right. The Wall's spans made `EdgesGeometry` return each long edge in 0.25 m pieces (88 segments on a
+5 m Wall), the fat line is half buried in the neighbouring face, and a nub showed at each joint.
+
+| In-memory test | Ticks |
+|---|---|
+| [Opacity 1, straight Wall](./evidence/outline-ticks-straight.png) | Stay |
+| Merged runs, straight Wall | Gone |
+| [Depth bias, curved Wall](./evidence/outline-ticks-curved.png) | Gone |
+| Depth test off, curved Wall | Gone, but hidden edges show, so rejected |
+
+**What landed.** `mergeStraightEdgeRuns` and `OUTLINE_DEPTH_BIAS` in `shell/stage-outline.ts`, on
+both passes of selection, hover and erase. The picking mesh and Wall geometry are untouched. A live
+straight Wall now draws 12 segments.
+
+- **Occlusion holds.** With the Wall behind selected, against two parallel Walls 0.6 m apart, the bias
+  changed 461 pixels where turning depth off changed 35,070. Further out it was 70 of 5,934, then
+  2 of 509.
+- **Stable across views.** Selection on straight and curved Walls and Room corners across orbits and
+  zooms at device pixel ratio 2, Room corners also at 1, and [hover and erase on a curved
+  Wall](./evidence/outline-after-curved-2x.png), show no ticks.
+
+**Limits.**
+
+- The bias was calibrated by inspection, and one spot on a curved Wall frayed slightly in the
+  pre-fix trial. It didn't recur in the sweep, but no automated pixel test pins it.
+- The editor caps the renderer at pixel ratio 1.5, so a device ratio of 2 renders at 1.5. It ran in
+  emulation on Apple M2, not on a physical Retina panel in a headed browser.
+- Safari, other GPUs and native touch weren't run.
+- Gold tint and the striped band are deferred as cosmetic, as the owner ruled.
+
 ## Summary
 
 | # | Finding | Actual cause | Class | Blocks S11? |
@@ -386,7 +444,7 @@ O1 and J2 are amended for cut poché only. Room floors, Scene fills and all of 3
 
 ## S11 amendments applied
 
-S11 has not run, so [its plan](../r217.s11-integrated-final-gate/implementation-plan.md) changed without touching accepted history: J2 (cut poché), J6 and J14 (no raw text, reason retained), J13 (large project in motion, far fade), new J16 (solid Walls in Stage and Preview), the *large* fixture, a Safari cell, then J17 (cream ground and default Walls), a required native-touch cell, and J16's Preview steps and T wording.
+S11 has not run, so [its plan](../r217.s11-integrated-final-gate/implementation-plan.md) changed without touching accepted history: J2 (cut poché), J6 and J14 (no raw text, reason retained), J13 (large project in motion, far fade), new J16 (solid Walls in Stage and Preview), the *large* fixture, a Safari cell, then J17 (cream ground and default Walls, then committed-only workspace and outline continuity), J13 limited to inside the workspace, a required native-touch cell, and J16's Preview steps and T wording.
 
 ## Reproducing
 

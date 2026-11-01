@@ -915,15 +915,17 @@ and the farthest ground is plain, never one direction of lines. The 25 m level c
 through a band with no reference (R217.S19). The mat is subdivided and pushed back four depth
 steps, so a floor on the datum holds in motion with the near plane at its floor. Anchor to the
 world/floor datum with a stable origin across zoom changes.
-Paper's grid is a bounded sheet around the work: the datum bounds of Layout and
-Scene, expanded by 5 m and rounded outward to 5 m, or a 20 × 20 m sheet
-around the target for an empty project. The sheet is intersected with the visible
-coverage so a zoomed-in view cannot generate unbounded lines; it grows with the work and
-never moves the Camera. The mat's grid covers the finite mat, which the Camera's ground
-reach sizes; it has no line geometry and no line budget. Inside the same sheet around the work the
-3D ground is a finite surface in Paper's own colour, with rounded corners and Paper's grid inks at Paper's opacities. Outside it
-the Stage is plain forest with no lines and no horizon. Its default is 40 × 40 m around world zero and it is never smaller; it keeps at least 10 m beyond the work, widening in 10 m steps. A default Room floor wears the same colour. It is
-one unlit draw, follows Layout and Scene with a live candidate, keeps the lattice world-anchored, and never reads or moves the Camera.
+Both readings draw on one **workspace**, a pure function of committed Layout and Scene: 40 × 40 m
+around world zero and never smaller, keeping at least 10 m beyond the work and widening in 10 m
+steps. A live candidate never changes it, so it stands still through a gesture and changes once on
+commit and once on Undo; a candidate past the edge draws over the surround. It never reads or moves
+the Camera. Paper draws the workspace intersected with the visible coverage, so a zoomed-in view
+cannot generate unbounded lines; that intersection bounds the drawing, never the workspace. The
+mat's grid covers the finite mat, which the Camera's ground reach sizes; it has no line geometry and
+no line budget. In 3D the workspace is a finite surface in Paper's own colour, with rounded corners
+and Paper's grid inks at Paper's opacities. Outside it the Stage is plain forest with no lines and
+no horizon. A default Room floor wears the same colour. It is one unlit draw and keeps the lattice
+world-anchored.
 It is drawing state, never a Camera mode or a reason to delay navigation.
 
 The **paper rule** is fixed: a Wall wears the drafting sheet when it is the settled
