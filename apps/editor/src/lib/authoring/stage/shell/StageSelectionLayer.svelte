@@ -238,7 +238,7 @@
 				const tintMaterial = new MeshBasicMaterial({
 					color: GOLD,
 					transparent: true,
-					opacity: 0.18,
+					opacity: 0.28,
 					depthWrite: false,
 					depthTest: true,
 					polygonOffset: true,

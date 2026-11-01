@@ -515,7 +515,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		expect(layer).toContain("opacity: tone === 'hover' ? 0.6 : 1");
 		// Hover (and S10's erase dashes) are edges only; the tint is selection's alone.
 		expect(layer).toContain("if (tone !== 'selection') continue;");
-		expect(layer).toContain('opacity: 0.18');
+		expect(layer).toContain('opacity: 0.28');
 		// A selection at rest must repaint even though the ink objects are added
 		// imperatively rather than declared as Threlte children.
 		expect(layer).toContain('invalidate();');
@@ -551,12 +551,14 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		// Same gold as the mesh ink, a restrained neutral for hover, and a filter
 		// over Paper's own drawing by the identity the selection names.
 		expect(marks).toContain("PAPER_SELECTION_INK = '#d4ad45'");
+		expect(marks).toContain("PAPER_SELECTION_EDGE_INK = '#74560c'");
 		expect(marks).toContain("PAPER_HOVER_INK = '#f3f4ee'");
 		expect(marks).toContain('PAPER_MARK_HALO_INK');
 		expect(marks).toContain("line.sourceId === id");
 		expect(marks).toContain("footprint.entityId === id");
 		expect(marks).toContain('sameReference(hover.reference, selection.reference)');
-		// S04 handoff: overlay layer, no depth test, above the whole sheet.
+		// S04 handoff: overlay layer, no depth test. Contours sit above the
+		// sheet; the selection fill sits above the cut poché and under its stroke.
 		expect(marks).toContain('STAGE_OVERLAY_LAYER');
 		expect(marks).toContain('depthTest: false');
 		expect(marks).toContain('PAPER_LAYER.sceneFootprint + 12');
