@@ -17,7 +17,14 @@ import type { WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter'
  * material: the cache is owned by this closure, so the adapter must not
  * dispose shared entries. `dispose()` frees the cache when the shell unmounts.
  */
-export function createVisitorWallMaterialFactory(resolveTint: (roomId: string) => string): {
+export function createVisitorWallMaterialFactory(
+	resolveTint: (roomId: string) => string,
+	/**
+	 * How much of the tint a surface shows unlit, so it holds under dim lights.
+	 * Above zero the tint is also left untoned: AgX greys a pale colour.
+	 */
+	emissiveIntensity = 0
+): {
 	factory: WallMeshMaterialFactory;
 	dispose: () => void;
 } {
@@ -30,7 +37,10 @@ export function createVisitorWallMaterialFactory(resolveTint: (roomId: string) =
 			material = new MeshStandardMaterial({
 				color: tint,
 				roughness: definition.roughness,
-				metalness: definition.metalness
+				metalness: definition.metalness,
+				emissive: tint,
+				emissiveIntensity,
+				toneMapped: emissiveIntensity === 0
 			});
 			cache.set(tint, material);
 		}

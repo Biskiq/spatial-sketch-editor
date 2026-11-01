@@ -194,7 +194,8 @@ scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026
 - Room-level wall mesh path (`buildRoomWallMesh` + `VisitorLayoutShell` Room branch +
   `CompiledRoom.walls` from the shared compile core) — unreachable from format-6 output since
   T1.P02.S05; *retire when the visitor/editor Stage renderer parity work replaces the Room-level
-  mesh tests with physical-Wall (`buildStandaloneWallMesh`) watertight coverage*; until then its
+  mesh tests with physical-Wall (`buildStandaloneWallMesh`) watertight coverage*; that coverage now
+  exists in `apps/editor/tests/lib/layout/wall-mesh-solid-matrix.test.ts`, and until the retirement its
   heavy-lane tests are the only consumer.
 - Camera authoring room-ownership branches (`isWorldPointInsideRoomXZ`, active-room branches in
   `createScenePathAnchorAtWorldPoint` / `createSceneCameraViewKeyframeAtWorldTarget`) —

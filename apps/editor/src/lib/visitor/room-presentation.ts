@@ -22,3 +22,18 @@ export const neutralVisitorRoomPresentation: VisitorRoomPresentation = {
 	accentColor: '#a6a6ad',
 	shell: 'layout'
 };
+
+/** A physical Wall's default surface; Walls carry no authored material yet. */
+export const DEFAULT_WALL_COLOR = '#f1e6cf';
+/**
+ * The Stage and Preview light differently, and both too dimly for a pale surface
+ * to read as itself, so the default Wall holds part of its colour unlit. Diffuse
+ * light on top still separates its faces.
+ */
+export const DEFAULT_WALL_UNLIT_SHARE = 0.5;
+/**
+ * A Room's default floor: the Stage's Paper ground (`PAPER_GROUND_INK`, which this
+ * editor-free module cannot import; a test holds them equal). Drawn unlit, so a
+ * floor on the ground reads as the ground.
+ */
+export const DEFAULT_FLOOR_COLOR = '#e9ebe6';

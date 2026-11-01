@@ -76,6 +76,7 @@ import {
 	UNIT_SOURCE_VERSION,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
+import { openingRefusalWords } from './refusals';
 
 export const LAYOUT_WALL_HEIGHT_KIND = 'layout-wall-height';
 export const LAYOUT_WALL_THICKNESS_KIND = 'layout-wall-thickness';
@@ -535,7 +536,25 @@ function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 			{ [field]: value } as Parameters<typeof planUpdateWallFirstOpening>[2]
 		);
 		if (plan.kind === 'rejected') {
-			return rejected(plan.rejection.code, plan.rejection.message);
+			const baseline = request.snapshot.domain.source.units.layout.data;
+			const opening = baseline.openings.find((entry) => entry.id === openingId);
+			return rejected(
+				plan.rejection.code,
+				openingRefusalWords(baseline, plan.rejection, {
+					openingId,
+					...(opening === undefined
+						? {}
+						: {
+								wallId: opening.wallId,
+								kind: opening.kind,
+								offset: opening.offset,
+								width: opening.width,
+								height: opening.height,
+								sillHeight: opening.sillHeight
+							}),
+					[field]: value
+				})
+			);
 		}
 		return preparedLayoutCandidate(
 			request,

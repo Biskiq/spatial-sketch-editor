@@ -93,6 +93,19 @@ export type ShadowInvalidation = {
 	dispose(): void;
 };
 
+/**
+ * Whether a Scene needs per-frame shadow updates: a model's arrival can't be
+ * observed, but it can only change a shadow if a light casts one.
+ */
+export function needsPerFrameShadows(
+	entities: readonly { readonly kind: string; readonly castShadow?: boolean }[]
+): boolean {
+	return (
+		entities.some((entity) => entity.kind === 'model') &&
+		entities.some((entity) => entity.kind === 'light' && entity.castShadow === true)
+	);
+}
+
 /** Shadow maps a controller already owns, so two mounts cannot fight over one. */
 const owners = new WeakMap<ShadowMapLike, { controller: ShadowInvalidation; mounts: number }>();
 

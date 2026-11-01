@@ -1,0 +1,128 @@
+{
+ "c90": {
+  "main": {
+   "open": 8,
+   "atCorner": 0,
+   "wind": []
+  },
+  "branch": {
+   "open": 0,
+   "atCorner": 0,
+   "wind": []
+  }
+ },
+ "c60": {
+  "main": {
+   "open": 8,
+   "atCorner": 0,
+   "wind": []
+  },
+  "branch": {
+   "open": 0,
+   "atCorner": 0,
+   "wind": []
+  }
+ },
+ "c45": {
+  "main": {
+   "open": 8,
+   "atCorner": 0,
+   "wind": []
+  },
+  "branch": {
+   "open": 0,
+   "atCorner": 0,
+   "wind": []
+  }
+ },
+ "c30": {
+  "main": {
+   "open": 8,
+   "atCorner": 0,
+   "wind": [
+    "w1:wall mesh w1: triangle 152 winds opposite its stored normal",
+    "w2:wall mesh w2: triangle 0 winds opposite its stored normal"
+   ]
+  },
+  "branch": {
+   "open": 0,
+   "atCorner": 0,
+   "wind": [
+    "w1:wall mesh w1: triangle 152 winds opposite its stored normal",
+    "w2:wall mesh w2: triangle 0 winds opposite its stored normal"
+   ]
+  }
+ },
+ "c20": {
+  "main": {
+   "open": 20,
+   "atCorner": 12,
+   "wind": []
+  },
+  "branch": {
+   "open": 12,
+   "atCorner": 12,
+   "wind": []
+  }
+ },
+ "c12": {
+  "main": {
+   "open": 20,
+   "atCorner": 12,
+   "wind": []
+  },
+  "branch": {
+   "open": 12,
+   "atCorner": 12,
+   "wind": []
+  }
+ },
+ "archFree": {
+  "main": {
+   "open": 12,
+   "atCorner": 6,
+   "wind": []
+  },
+  "branch": {
+   "open": 4,
+   "atCorner": 0,
+   "wind": []
+  }
+ },
+ "pointFree": {
+  "main": {
+   "open": 12,
+   "atCorner": 6,
+   "wind": []
+  },
+  "branch": {
+   "open": 4,
+   "atCorner": 0,
+   "wind": []
+  }
+ },
+ "rectFree": {
+  "main": {
+   "open": 12,
+   "atCorner": 6,
+   "wind": []
+  },
+  "branch": {
+   "open": 0,
+   "atCorner": 0,
+   "wind": []
+  }
+ },
+ "archMid": {
+  "main": {
+   "open": 12,
+   "atCorner": 6,
+   "wind": []
+  },
+  "branch": {
+   "open": 0,
+   "atCorner": 0,
+   "wind": []
+  }
+ }
+}

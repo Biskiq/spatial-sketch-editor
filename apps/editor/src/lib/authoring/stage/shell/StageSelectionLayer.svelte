@@ -35,11 +35,14 @@
 	} from 'three';
 	import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 	import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+	import { untrack } from 'svelte';
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
+	import { PAPER_SELECTION_EDGE_INK } from '../paper-marks';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
+	import { mergeStraightEdgeRuns, OUTLINE_DEPTH_BIAS } from './stage-outline';
 
 	let {
 		selection,
@@ -48,7 +51,8 @@
 		geometry,
 		scenePick,
 		width = 1,
-		height = 1
+		height = 1,
+		fade = 1
 	}: {
 		selection: StageSelectionEntry | null;
 		hover: StageSelectionEntry | null;
@@ -59,9 +63,12 @@
 		/** Viewport CSS size; fat-line width is in CSS pixels at this resolution. */
 		width?: number;
 		height?: number;
+		/** Hands off to Paper's own marks as the sheet arrives during a flip. */
+		fade?: number;
 	} = $props();
 
 	const GOLD = 0xd4ad45;
+	const SELECTION_EDGE = Number.parseInt(PAPER_SELECTION_EDGE_INK.slice(1), 16);
 	const NEUTRAL = 0xf3f4ee;
 	const ERASE = Number.parseInt(STAGE_ERASE_INK.slice(1), 16);
 	const { invalidate } = useThrelte();
@@ -71,6 +78,8 @@
 
 	type Inked = { readonly object: Object3D; readonly dispose: () => void };
 	let inked: Inked[] = [];
+	/** Each drawn material at its own opacity, so a flip can fade it without a rebuild. */
+	const fades: { readonly material: { opacity: number }; readonly opacity: number }[] = [];
 
 	function releaseAll(): void {
 		for (const entry of inked) {
@@ -180,16 +189,19 @@
 					continue;
 				}
 				const edgeGeometry = new LineSegmentsGeometry();
-				edgeGeometry.setPositions(positions as Float32Array);
+				edgeGeometry.setPositions(mergeStraightEdgeRuns(positions));
 				edges.dispose();
 				const resolution = new Vector2(width, height);
 				const haloMaterial = new LineMaterial({
-					color: 0x152c26,
-					linewidth: tone === 'selection' ? 4.5 : tone === 'erase' ? 4 : 3.5,
+					// Paper's two-tone contour: the forest halo swallows gold on the pale
+					// ground, while this edge holds there and on the forest mat.
+					color: tone === 'selection' ? SELECTION_EDGE : 0x152c26,
+					linewidth: tone === 'selection' ? 5 : tone === 'erase' ? 4 : 3.5,
 					transparent: true,
 					opacity: 0.9,
 					depthTest: true,
 					depthWrite: false,
+					...OUTLINE_DEPTH_BIAS,
 					resolution
 				});
 				const lineMaterial = new LineMaterial({
@@ -199,6 +211,7 @@
 					opacity: tone === 'hover' ? 0.6 : 1,
 					depthTest: true,
 					depthWrite: false,
+					...OUTLINE_DEPTH_BIAS,
 					resolution,
 					// The erase treatment is dashed; dash lengths are world meters.
 					...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
@@ -222,6 +235,8 @@
 				line.renderOrder = lineOrder;
 				line.layers.set(2);
 				root.add(line);
+				fades.push({ material: haloMaterial, opacity: haloMaterial.opacity });
+				fades.push({ material: lineMaterial, opacity: lineMaterial.opacity });
 				inked.push({
 					object: halo,
 					dispose: () => {
@@ -245,6 +260,7 @@
 					polygonOffsetFactor: -1,
 					polygonOffsetUnits: -1
 				});
+				fades.push({ material: tintMaterial, opacity: tintMaterial.opacity });
 				const tint = new Mesh(tintGeometry, tintMaterial);
 				tint.matrixAutoUpdate = false;
 				tint.matrix.copy(matrix);
@@ -266,7 +282,12 @@
 		}
 	}
 
+	function applyFade(amount: number): void {
+		for (const entry of fades) entry.material.opacity = entry.opacity * amount;
+	}
+
 	function rebuild(): void {
+		fades.length = 0;
 		releaseAll();
 		apply(selection, 'selection');
 		// Hover is subordinate and never drawn for the selected subject itself. The
@@ -277,6 +298,7 @@
 		else if (hover !== null && (selection === null || !sameReference(hover.reference, selection.reference))) {
 			apply(hover, 'hover');
 		}
+		applyFade(untrack(() => fade));
 		// These objects are added and removed imperatively, so Threlte cannot infer
 		// that a selection or hover change needs a frame. Ask for exactly one.
 		invalidate();
@@ -296,6 +318,11 @@
 			releaseAll();
 			invalidate();
 		};
+	});
+
+	$effect(() => {
+		applyFade(fade);
+		invalidate();
 	});
 
 	$effect(() => () => {

@@ -327,13 +327,16 @@ describe('R217.S07 — Paper mark filtering', () => {
 		const marks = paperMarkSet(DRAWING, entry('layout', 'wall', WALL_ID), null);
 		expect(marks.selection.contours).toHaveLength(1);
 		expect(marks.selection.contours[0]!.segments).toHaveLength(4);
-		expect(marks.selection.fills).toHaveLength(1);
-		expect(marks.selection.fills[0]!.polygons).toHaveLength(1);
+		expect(marks.selection.contours[0]!.cut).toBe(true);
+		// Cut poché keeps its black ink: gold over it is brown.
+		expect(marks.selection.fills).toEqual([]);
 		expect(marks.hover.contours).toEqual([]);
 	});
 
-	it('fills an Object from its own Plan polygon and union boundary', () => {
-		const marks = paperMarkSet(DRAWING, entry('layout', 'object', OBJECT_ID), null);
+	it('fills a room-floor subject from its own Plan polygon and union boundary', () => {
+		const objectFill = DRAWING.fills.find((fill) => fill.sourceId === OBJECT_ID)!;
+		const floor: PaperPlanDrawing = { ...DRAWING, fills: DRAWING.fills.map((fill) => (fill === objectFill ? { ...fill, treatment: 'room-floor' as const } : fill)) };
+		const marks = paperMarkSet(floor, entry('layout', 'object', OBJECT_ID), null);
 		expect(marks.selection.fills).toHaveLength(1);
 		expect(marks.selection.fills[0]!.polygons).toEqual([
 			[
@@ -344,6 +347,7 @@ describe('R217.S07 — Paper mark filtering', () => {
 			]
 		]);
 		expect(marks.selection.contours).toHaveLength(1);
+		expect(marks.selection.contours[0]!.cut).toBeUndefined();
 		expect(marks.selection.contours[0]!.segments).toHaveLength(4);
 	});
 
@@ -409,7 +413,7 @@ describe('R217.S07 — Paper mark filtering', () => {
 		const marks = paperMarkSet(mixed, entry('layout', 'wall', WALL_ID), null);
 		// Four union edges plus the projected span; the cut span outline is not
 		// stroked a second time.
-		expect(marks.selection.contours[0]!.segments).toHaveLength(5);
+		expect(marks.selection.contours.flatMap((contour) => contour.segments)).toHaveLength(5);
 	});
 
 	it('never promotes a hover of the selected identity into a second ink', () => {
@@ -544,8 +548,23 @@ describe('R217.S18 — union tint of a Scene subject', () => {
 });
 
 describe('R217.S07 — Paper mark overlay', () => {
+	it('strokes selected cut poché two-tone with no tint', () => {
+		const resources = createPaperMarkScene(paperMarkSet(DRAWING, entry('layout', 'wall', WALL_ID), null), [800, 600]);
+		try {
+			expect(resources.group.children.some((child) => child instanceof Mesh && child.material instanceof MeshBasicMaterial)).toBe(false);
+			const lines = resources.group.children.filter((child): child is LineSegments2 => child instanceof LineSegments2);
+			const at = (order: number) => lines.find((line) => line.renderOrder === order)!.material as LineMaterial;
+			expect(at(PAPER_MARK_LAYER.selectionHalo).color.getHexString()).toBe(PAPER_SELECTION_EDGE_INK.slice(1));
+			expect(at(PAPER_MARK_LAYER.selectionHalo).linewidth).toBe(5);
+			expect(at(PAPER_MARK_LAYER.selectionLine).color.getHexString()).toBe('d4ad45');
+			expect(at(PAPER_MARK_LAYER.selectionLine).linewidth).toBe(2.5);
+		} finally {
+			resources.dispose();
+		}
+	});
+
 	it('draws above the sheet on the overlay layer without depth testing', () => {
-		const marks = paperMarkSet(DRAWING, entry('layout', 'wall', WALL_ID), entry('scene', 'primitive', ENTITY_ID));
+		const marks = paperMarkSet(DRAWING, entry('scene', 'primitive', ENTITY_ID), entry('layout', 'wall', WALL_ID));
 		const resources = createPaperMarkScene(marks, [800, 600]);
 		try {
 		const lines = resources.group.children.filter((child): child is LineSegments2 => child instanceof LineSegments2);
@@ -571,9 +590,8 @@ describe('R217.S07 — Paper mark overlay', () => {
 		);
 		expect(tint).toBeDefined();
 		expect(tint!.renderOrder).toBe(PAPER_MARK_LAYER.selectionTint);
-		// The fill sits above the cut poché and under the cut stroke.
-		expect(tint!.renderOrder).toBeGreaterThan(PAPER_LAYER.cut - 1);
-		expect(tint!.renderOrder).toBeLessThan(PAPER_LAYER.cut);
+		// The fill sits under the cut poché, so it never browns the ink.
+		expect(tint!.renderOrder).toBeLessThan(PAPER_LAYER.cut - 1);
 		expect((tint!.material as MeshBasicMaterial).opacity).toBeCloseTo(0.22);
 	} finally {
 		resources.dispose();

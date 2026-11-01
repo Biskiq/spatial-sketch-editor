@@ -734,6 +734,10 @@ describe('R217.S19 — display ground clip range', () => {
 		expect(evaluated(Number.NaN)).toEqual(absent);
 	});
 
+	it('keeps the near floor with the eye inside a large scene, so a close-up never clips', () => {
+		expect(evaluated(0, 75).near).toBe(0.01);
+	});
+
 	it('reaches the specified far and near for a ground plane', () => {
 		const evaluation = evaluated(0);
 		const distance = Math.hypot(...subtractVec3(evaluation.eye, evaluation.target));

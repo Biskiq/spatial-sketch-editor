@@ -21,6 +21,8 @@ extent = bounds(Layout ∪ Scene ∪ live candidate) expanded by 5 m, rounded ou
 empty project = 20 × 20 m centred on the target
 ```
 
+**Superseded on 2026-11-01 by [the owner's workspace decision](./../post-s19-owner-manual-review/report.md#fourth-owner-review-2026-11-01):** committed geometry only, on the 3D ground's extent. The rule above is kept as what S13 and S14 were accepted against.
+
 It has crisp edges, like a sheet of drafting paper. It grows when a candidate leaves the sheet and never moves the Camera. PLATE's inks stay. `gridPlanFor` already separates surfaces, so this changes the Paper branch only and the mat keeps its own coverage.
 
 **Ruler.** `StageScaleBar.svelte` becomes a 1 px horizontal line with 5 px perpendicular end ticks and the distance label centred below it. No fill, border or badge. Ink comes from the surface. Shown in Plan only, because a perspective length is true only at the target plane. It stays bottom-left and rises only when it would actually overlap the lower column.
@@ -187,13 +189,13 @@ Stage ink stays on actual geometry with canonical identity. Paper uses polygons 
 
 | Subject | Paper fill (.22 gold) | Paper edge (`#74560c`) | 3D fill (.28 gold, depth-tested) | 3D edge |
 | --- | --- | --- | --- | --- |
-| Wall | Existing Plan polygons | Union boundary | Mesh clone | Gold with dark halo |
+| Wall | Existing Plan polygons; no tint on cut poché | Union boundary; cut poché two-tone (`#74560c` under `#d4ad45`) | Mesh clone | Gold with dark halo |
 | Opening | Aperture polygon only | Aperture boundary | Synthetic aperture box | Gold with dark halo |
 | Primitive, catalogue | Footprint `points` | Footprint segments | Mesh clone | Gold with dark halo |
 | Approved model | Approved footprint; contour only if none | Footprint segments | Mesh clone | Gold with dark halo |
 | Native form | Concave ring, or `polygons` when tilted; never a bounding rectangle | Footprint segments | Mesh clone | Gold with dark halo |
 
-Paper fills sit under cut ink and are never a hit source. 3D stays depth-tested, with no x-ray. Hover stays neutral and untinted; a selected identity suppresses its own hover. Opacity and Paper edge apply O1.
+Paper fills sit under cut ink and are never a hit source. 3D stays depth-tested, with no x-ray. Hover stays neutral and untinted; a selected identity suppresses its own hover. Opacity and Paper edge apply O1 and its 2026-11-01 amendment for cut poché.
 
 ## Shell
 

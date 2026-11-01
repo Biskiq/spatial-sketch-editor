@@ -9,9 +9,10 @@
  * system:
  *
  * - a **gold** pass for the primary selection: a translucent fill under a solid
- *   contour, so a selected Room, Wall, Opening or Scene footprint reads as one
- *   identity. R217.S18 reads a Scene fill from the polygons `buildPaperPlan`
- *   already retained, and keeps the fill under cut ink;
+ *   contour, so a selected Room, Opening or Scene footprint reads as one identity.
+ *   R217.S18 reads a Scene fill from the polygons `buildPaperPlan` already retained,
+ *   and keeps the fill under cut ink. A cut Wall's poché keeps its black ink with no
+ *   tint, since gold over black is brown, and takes a two-tone gold contour instead;
  * - a **quiet neutral** contour for hover, never gold (gold means selected);
  * - R217.S10's **erase** treatment: the armed Eraser's winner in red dashes, drawn
  *   above the selection so it reads even on the selected subject.
@@ -57,14 +58,21 @@ export const PAPER_SELECTION_EDGE_INK = '#74560c';
 export const PAPER_HOVER_INK = '#f3f4ee';
 /** The dark halo the mark vocabulary uses to hold a light line over any sheet. */
 export const PAPER_MARK_HALO_INK = '#152c26';
+/** A cut contour's widths: dark gold holds on Paper, bright gold on the black poché. */
+export const PAPER_CUT_SELECTION_EDGE_WIDTH_CSS = 5;
+export const PAPER_CUT_SELECTION_CORE_WIDTH_CSS = 2.5;
 
 /** Contours sit above the drawing; the selection fill sits under cut ink. */
 export const PAPER_MARK_LAYER = {
 	hoverHalo: PAPER_LAYER.sceneFootprint + 8,
 	hover: PAPER_LAYER.sceneFootprint + 9,
-	// A fill sits under the cut stroke (40) but above the cut poché (39): a
-	// selected Wall tints its own band and never the ink that describes it.
-	selectionTint: PAPER_LAYER.cut - 0.5,
+	// A fill sits under the cut poché (39), so a Room's tint stops at its Walls'
+	// faces and never browns the ink or reveals the per-span strokes on it.
+	selectionTint: PAPER_LAYER.cut - 1.5,
+	// A Room's boundary is its Walls' centreline, so its contour sits under their
+	// poché too, and shows only where no Wall stands.
+	roomContourHalo: PAPER_LAYER.cut - 1.4,
+	roomContour: PAPER_LAYER.cut - 1.3,
 	selectionHalo: PAPER_LAYER.sceneFootprint + 11,
 	selectionLine: PAPER_LAYER.sceneFootprint + 12,
 	eraseHalo: PAPER_LAYER.sceneFootprint + 13,
@@ -77,6 +85,10 @@ export type PaperMarkTone = 'selection' | 'hover' | 'erase';
 export type PaperMarkContour = {
 	readonly elevationMeters: number;
 	readonly segments: readonly PaperSegment[];
+	/** The boundary of cut poché, stroked two-tone when selected. */
+	readonly cut?: boolean;
+	/** A Room floor's boundary, which runs inside its Walls' poché. */
+	readonly roomFloor?: boolean;
 };
 
 export type PaperMarkGeometry = {
@@ -125,23 +137,23 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 	if (entry.reference.domain === 'layout') {
 		const fills = drawing.fills.filter((fill) => fill.sourceId === id);
 		const lines = drawing.lines.filter((line) => line.sourceId === id);
-		const byElevation = new Map<number, PaperSegment[]>();
-		const addSegments = (elevationMeters: number, segments: readonly PaperSegment[]): void => {
-			const existing = byElevation.get(elevationMeters) ?? [];
-			existing.push(...segments);
-			byElevation.set(elevationMeters, existing);
-		};
-		for (const [elevationMeters, group] of groupByElevation(fills, (fill) => fill.elevationMeters)) {
-			addSegments(elevationMeters, unionOutline(group.flatMap((fill) => fill.polygons)));
+		const contours: PaperMarkContour[] = [];
+		for (const cut of [true, false]) {
+			const group = fills.filter((fill) => (fill.treatment === 'cut') === cut);
+			for (const [elevationMeters, level] of groupByElevation(group, (fill) => fill.elevationMeters)) {
+				const segments = unionOutline(level.flatMap((fill) => fill.polygons));
+				const roomFloor = !cut && level.some((fill) => fill.treatment === 'room-floor');
+				contours.push({ elevationMeters, segments, ...(cut ? { cut } : {}), ...(roomFloor ? { roomFloor } : {}) });
+			}
 		}
 		// A cut line duplicates the fill boundary (and would draw one tick per
 		// compiled Wall span); projected, hidden and symbol lines are extra geometry
 		// the subject still owns, so they remain part of its identity.
-		for (const line of fills.length > 0 ? lines.filter((candidate) => candidate.stream !== 'cut') : lines) {
-			addSegments(line.elevationMeters, line.segments);
+		const extra = fills.length > 0 ? lines.filter((candidate) => candidate.stream !== 'cut') : lines;
+		for (const [elevationMeters, level] of groupByElevation(extra, (line) => line.elevationMeters)) {
+			contours.push({ elevationMeters, segments: level.flatMap((line) => line.segments) });
 		}
-		const contours = [...byElevation].map(([elevationMeters, segments]) => ({ elevationMeters, segments }));
-		return { fills, contours };
+		return { fills: fills.filter((fill) => fill.treatment !== 'cut'), contours };
 	}
 	if (entry.reference.domain === 'scene') {
 		const footprints = drawing.footprints.filter((footprint) => footprint.entityId === id);
@@ -274,8 +286,27 @@ export function createPaperMarkScene(
 
 	// Hover: a restrained light contour held by the vocabulary's dark halo, so it
 	// reads over vellum and over a cut band without ever borrowing selection gold.
-	addLine(marks.hover, PAPER_MARK_HALO_INK, 4, 0.4, PAPER_MARK_LAYER.hoverHalo);
-	addLine(marks.hover, PAPER_HOVER_INK, 2, 0.75, PAPER_MARK_LAYER.hover);
+	const hoveredRoom = { fills: [], contours: marks.hover.contours.filter((contour) => contour.roomFloor) };
+	const hoverLines = { fills: [], contours: marks.hover.contours.filter((contour) => !contour.roomFloor) };
+	addLine(hoverLines, PAPER_MARK_HALO_INK, 4, 0.4, PAPER_MARK_LAYER.hoverHalo);
+	addLine(hoverLines, PAPER_HOVER_INK, 2, 0.75, PAPER_MARK_LAYER.hover);
+	addLine(hoveredRoom, PAPER_MARK_HALO_INK, 2, 0.5, PAPER_MARK_LAYER.roomContour);
+	// A Room's contour is under its Walls, so a faint tint is what shows the hover.
+	const roomHoverGeometry = hoveredRoom.contours.length > 0 ? createPaperFillGeometry(marks.hover.fills) : null;
+	if (roomHoverGeometry !== null) {
+		const material = new MeshBasicMaterial({
+			color: new Color(PAPER_MARK_HALO_INK).getHex(),
+			side: DoubleSide, transparent: true, opacity: 0.08,
+			depthTest: false, depthWrite: false, toneMapped: false
+		});
+		const mesh = new Mesh(roomHoverGeometry, material);
+		mesh.renderOrder = PAPER_MARK_LAYER.selectionTint;
+		mesh.frustumCulled = false;
+		mesh.layers.set(STAGE_OVERLAY_LAYER);
+		group.add(mesh);
+		disposables.push(roomHoverGeometry, material);
+		fades.push({ material, baseOpacity: material.opacity });
+	}
 
 	const tintGeometry = createPaperFillGeometry(marks.selection.fills);
 	if (tintGeometry !== null) {
@@ -294,10 +325,19 @@ export function createPaperMarkScene(
 	}
 
 	// Selection: the dark-gold edge (owner ruling O1) over the same dark halo as
-	// hover. The tint above sits between the cut poché and the cut stroke, so
-	// identity reads without hiding the Plan.
-	addLine(marks.selection, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.selectionHalo);
-	addLine(marks.selection, PAPER_SELECTION_EDGE_INK, 2.5, 1, PAPER_MARK_LAYER.selectionLine);
+	// hover. The tint above sits under the cut poché, so a subject's identity reads
+	// without hiding the Plan.
+	const room = { fills: [], contours: marks.selection.contours.filter((contour) => contour.roomFloor) };
+	addLine(room, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.roomContourHalo);
+	addLine(room, PAPER_SELECTION_EDGE_INK, 2.5, 1, PAPER_MARK_LAYER.roomContour);
+	const plain = { fills: [], contours: marks.selection.contours.filter((contour) => !contour.cut && !contour.roomFloor) };
+	addLine(plain, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.selectionHalo);
+	addLine(plain, PAPER_SELECTION_EDGE_INK, 2.5, 1, PAPER_MARK_LAYER.selectionLine);
+	// A cut Wall: no tint, so its poché stays crisp black. Neither gold holds on both
+	// Paper and ink, so the contour is both.
+	const cut = { fills: [], contours: marks.selection.contours.filter((contour) => contour.cut) };
+	addLine(cut, PAPER_SELECTION_EDGE_INK, PAPER_CUT_SELECTION_EDGE_WIDTH_CSS, 1, PAPER_MARK_LAYER.selectionHalo);
+	addLine(cut, PAPER_SELECTION_INK, PAPER_CUT_SELECTION_CORE_WIDTH_CSS, 1, PAPER_MARK_LAYER.selectionLine);
 
 	// Erase: red dashes over a dark halo, above the selection it may be naming.
 	addLine(marks.erase, PAPER_MARK_HALO_INK, 4, 0.7, PAPER_MARK_LAYER.eraseHalo);

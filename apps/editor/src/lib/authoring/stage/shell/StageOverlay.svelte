@@ -111,6 +111,11 @@
 		return lines;
 	}
 
+	/** A refused candidate's tag already says why, so a mark must not say it again. */
+	const refusalAtPointer = $derived(
+		candidates.some((candidate) => candidate.role === 'refused' && candidate.labels.length > 0)
+	);
+
 	/** The two short end ticks of a dimension line, perpendicular to it. */
 	function dimensionTicks(from: readonly [number, number], to: readonly [number, number]): string {
 		const dx = to[0] - from[0];
@@ -149,6 +154,8 @@
 				<path class="candidate-fill" d={polygonPath(polygon)} />
 			{/each}
 			{#each candidate.segments as segment, index (`${candidate.id}:segment:${index}`)}
+				<!-- The same dark halo as a mark, so the line holds on Paper and on the mat. -->
+				<line class="candidate-halo" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
 				<line class="candidate-edge" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
 			{/each}
 			{#each candidate.labels as label, index (`${candidate.id}:label:${index}`)}
@@ -187,6 +194,7 @@
 	{#each marks as mark (mark.id)}
 		{@const tip = mark.tip ?? mark.anchor}
 		{@const tail = mark.tail}
+		{@const label = mark.refusal === null ? mark.tag : refusalAtPointer ? '' : mark.refusal}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 		<g
 			class="mark"
@@ -286,8 +294,7 @@
 				/>
 			{/if}
 
-			{#if (mark.hovered || mark.active) && (mark.tag !== '' || mark.refusal !== null)}
-				{@const label = mark.refusal ?? mark.tag}
+			{#if (mark.hovered || mark.active) && label !== ''}
 				{@const width = tagWidth(label)}
 				<g class="tag" transform={`translate(${tip[0] + 10} ${tip[1] - 10})`}>
 					<rect width={width} height="17" rx="2" />
@@ -399,6 +406,15 @@
 	.candidate.subject .candidate-fill {
 		fill: rgb(212 173 69 / 0.18);
 	}
+	.candidate .candidate-halo {
+		fill: none;
+		stroke: #152c26;
+		stroke-width: 3.25;
+		stroke-linecap: round;
+	}
+	.candidate.affected .candidate-halo {
+		stroke-opacity: 0.55;
+	}
 	.candidate .candidate-edge {
 		fill: none;
 		stroke: #f3f4ee;
@@ -414,7 +430,6 @@
 		stroke-opacity: 0.55;
 	}
 	.candidate.refused .candidate-edge {
-		stroke-opacity: 0.7;
 		stroke-dasharray: 4 3;
 	}
 	.candidate-snap circle {

@@ -10,11 +10,15 @@
  * the Plan is a measured drawing on the paper, not a second depth-sorted scene.
  */
 import {
+	AlwaysStencilFunc,
 	Color,
 	DoubleSide,
 	Group,
 	Mesh,
 	MeshBasicMaterial,
+	NotEqualStencilFunc,
+	PlaneGeometry,
+	ReplaceStencilOp,
 	type Material
 } from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -23,24 +27,37 @@ import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeome
 import { createPaperFillGeometry } from './paper-fill-geometry';
 import {
 	PAPER_FILL_INK,
+	PAPER_GROUND_INK,
 	PAPER_LINE_STYLE,
 	STAGE_OVERLAY_LAYER,
 	type PaperFillDraw,
 	type PaperLineDraw,
 	type PaperPlanDrawing,
+	type PaperReveal,
 	type PaperTreatment
 } from './paper-plan';
 
 export type PaperSceneResources = {
 	readonly group: Group;
-	/** Fade the whole drawing, 0 → 1. Used only for the settle-in from the mat. */
-	setFade(fade: number): void;
+	/** Paper's arrival over the shaded frame; see `paperRevealFor`. */
+	setReveal(reveal: PaperReveal): void;
 	/** CSS-pixel viewport size; fat-line widths are CSS pixels, never device pixels. */
 	setResolution(widthCssPx: number, heightCssPx: number): void;
 	dispose(): void;
 };
 
-type FadeEntry = { readonly material: Material & { opacity: number }; readonly baseOpacity: number };
+/** Beyond any reach of the Camera, and beneath Paper's room-floor tint (10). */
+const PAPER_SHEET_METERS = 100_000;
+const PAPER_SHEET_RENDER_ORDER = 5;
+const PAPER_SHEET_STENCIL = 1;
+export const PAPER_SHEET_NAME = 'StagePaperSheet';
+export const PAPER_SHEET_HOLE_NAME = 'StagePaperSheetHole';
+
+type FadeEntry = {
+	readonly material: Material & { opacity: number };
+	readonly baseOpacity: number;
+	readonly part: keyof PaperReveal;
+};
 
 function linePositions(lines: readonly PaperLineDraw[]): Float32Array {
 	const positions: number[] = [];
@@ -54,16 +71,38 @@ function linePositions(lines: readonly PaperLineDraw[]): Float32Array {
 
 export function createPaperScene(
 	drawing: PaperPlanDrawing,
-	resolution: readonly [number, number]
+	resolution: readonly [number, number],
+	datumMeters = 0
 ): PaperSceneResources {
 	const group = new Group();
 	group.name = 'StagePaper';
 	const disposables: { dispose(): void }[] = [];
 	const fades: FadeEntry[] = [];
 
-	const addFade = (material: Material & { opacity: number }, baseOpacity: number): void => {
-		fades.push({ material, baseOpacity });
+	const addFade = (material: Material & { opacity: number }, baseOpacity: number, part: keyof PaperReveal): void => {
+		fades.push({ material, baseOpacity, part });
 	};
+
+	// The sheet itself, under every ink. It veils the shaded frame without touching
+	// any authored material, and once settled it matches the surface it covers.
+	// The cut bands are stenciled out of it, so a Wall of any material goes straight
+	// to poché instead of through the sheet's light colour first.
+	const sheetGeometry = new PlaneGeometry(PAPER_SHEET_METERS, PAPER_SHEET_METERS);
+	sheetGeometry.rotateX(-Math.PI / 2);
+	const sheetMaterial = new MeshBasicMaterial({
+		color: new Color(PAPER_GROUND_INK).getHex(),
+		side: DoubleSide, transparent: true, opacity: 1,
+		depthTest: false, depthWrite: false, toneMapped: false,
+		stencilWrite: true, stencilRef: PAPER_SHEET_STENCIL, stencilFunc: NotEqualStencilFunc
+	});
+	const sheet = new Mesh(sheetGeometry, sheetMaterial);
+	sheet.name = PAPER_SHEET_NAME;
+	sheet.position.y = datumMeters;
+	sheet.renderOrder = PAPER_SHEET_RENDER_ORDER;
+	sheet.frustumCulled = false;
+	group.add(sheet);
+	disposables.push(sheetGeometry, sheetMaterial);
+	addFade(sheetMaterial, 1, 'sheet');
 
 	// One fat-line batch per treatment: lines of the same ink and dash pattern share a
 	// draw call, and renderOrder decides where that treatment sits in the sheet.
@@ -101,7 +140,7 @@ export function createPaperScene(
 		object.layers.set(STAGE_OVERLAY_LAYER);
 		group.add(object);
 		disposables.push(geometry, material);
-		addFade(material, style.opacity);
+		addFade(material, style.opacity, 'lines');
 	}
 
 	// One batch per ink/order preserves the exact polygon triangles while keeping
@@ -126,7 +165,20 @@ export function createPaperScene(
 		mesh.layers.set(STAGE_OVERLAY_LAYER);
 		group.add(mesh);
 		disposables.push(geometry, material);
-		addFade(material, 1);
+		addFade(material, 1, treatment === 'cut' ? 'poche' : 'sheet');
+		if (treatment !== 'cut') continue;
+		const holeMaterial = new MeshBasicMaterial({
+			side: DoubleSide, transparent: true, colorWrite: false,
+			depthTest: false, depthWrite: false,
+			stencilWrite: true, stencilRef: PAPER_SHEET_STENCIL,
+			stencilFunc: AlwaysStencilFunc, stencilZPass: ReplaceStencilOp
+		});
+		const sheetHole = new Mesh(geometry, holeMaterial);
+		sheetHole.name = PAPER_SHEET_HOLE_NAME;
+		sheetHole.renderOrder = PAPER_SHEET_RENDER_ORDER - 1;
+		sheetHole.frustumCulled = false;
+		group.add(sheetHole);
+		disposables.push(holeMaterial);
 	}
 
 	for (const footprint of drawing.footprints) {
@@ -162,16 +214,15 @@ export function createPaperScene(
 		object.layers.set(STAGE_OVERLAY_LAYER);
 		group.add(object);
 		disposables.push(geometry, material);
-		addFade(material, style.opacity);
+		addFade(material, style.opacity, 'lines');
 	}
 
 	group.traverse((node) => node.layers.set(STAGE_OVERLAY_LAYER));
 
 	return {
 		group,
-		setFade(fade: number): void {
-			const clamped = Math.min(1, Math.max(0, fade));
-			for (const entry of fades) entry.material.opacity = entry.baseOpacity * clamped;
+		setReveal(reveal: PaperReveal): void {
+			for (const entry of fades) entry.material.opacity = entry.baseOpacity * reveal[entry.part];
 		},
 		setResolution(widthCssPx: number, heightCssPx: number): void {
 		group.traverse((node) => {

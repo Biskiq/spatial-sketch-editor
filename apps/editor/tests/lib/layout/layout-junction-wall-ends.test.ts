@@ -118,6 +118,9 @@ describe('P23.15 Task 3 — standalone Wall end contract', () => {
 		expect(built.ends.start?.corner).toBeNull();
 		expect(built.result.issues).toEqual([]);
 		expect(built.result.mesh).toBeDefined();
+		const cap = built.ends.start?.surfaces ?? [];
+		expect(cap.map((surface) => surface.kind)).toEqual(['terminal-cap']);
+		expect(cap[0]!.bands).toEqual([{ bottomY: 0, topY: built.compiled.height }]);
 	});
 
 	it('fails closed when a connected end has no resolved endpoint', () => {

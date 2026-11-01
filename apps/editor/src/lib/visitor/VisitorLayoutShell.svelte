@@ -4,7 +4,7 @@
 	import type { LayoutVec2 } from '@portfolio/layout-core';
 	import type { CompiledLayoutGeometry, CompiledRoom, LayoutBounds3 } from '@portfolio/layout-core';
 	import type { VisitorRoomPresentation } from './room-presentation';
-	import { neutralVisitorRoomPresentation } from './room-presentation';
+	import { DEFAULT_FLOOR_COLOR, neutralVisitorRoomPresentation } from './room-presentation';
 	import { buildRoomWallMesh } from '$lib/layout/wall-mesh-builder';
 	import { p2311Measure } from '@portfolio/layout-core';
 	import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
@@ -160,6 +160,11 @@
 		};
 	}));
 
+	/** A straight frame only fits a rectangular door; an arch keeps its bare reveal. */
+	function isFramedDoor(opening: { kind: string; profile: string }): boolean {
+		return opening.kind === 'door' && opening.profile === 'rectangular';
+	}
+
 	function adaptedFor(roomId: string): AdaptedRoom | undefined {
 		return adaptedRooms.find((room) => room.roomId === roomId);
 	}
@@ -193,10 +198,23 @@
 				name={`VisitorFloor:${room.roomId}`}
 				position={[0, room.floorElevation, 0]}
 				rotation={[-Math.PI / 2, 0, 0]}
-				receiveShadow
 			>
 				<T.ShapeGeometry args={[shapes.floor]} />
-				<MuseumMaterial materialId="wood-walnut" surfaceSize={[8, 8]} tint={colors.color} scope={textureScope} />
+				<T.MeshBasicMaterial color={DEFAULT_FLOOR_COLOR} toneMapped={false} />
+			</T.Mesh>
+			<!--
+				The unlit floor cannot receive, so this keeps its eligibility for an authored
+				light's shadow. With no casting light it draws nothing. Never picked.
+			-->
+			<T.Mesh
+				name={`VisitorFloorShadow:${room.roomId}`}
+				position={[0, room.floorElevation, 0]}
+				rotation={[-Math.PI / 2, 0, 0]}
+				receiveShadow
+				raycast={() => {}}
+			>
+				<T.ShapeGeometry args={[shapes.floor]} />
+				<T.ShadowMaterial opacity={0.3} depthWrite={false} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
 			</T.Mesh>
 			<T.Mesh
 				name={`VisitorCeiling:${room.roomId}`}
@@ -226,12 +244,13 @@
 			{/if}
 
 			{#each room.walls as wall (wall.segmentId)}
-				{#each wall.openings.filter((opening) => opening.kind === 'door') as opening (opening.openingId)}
+				{#each wall.openings.filter(isFramedDoor) as opening (opening.openingId)}
 					<RoomPortal
-						position={[opening.center.point[0], room.floorElevation, opening.center.point[1]]}
+						position={[opening.center.point[0], room.floorElevation + opening.sillHeight, opening.center.point[1]]}
 						rotation={[0, opening.center.yaw, 0]}
 						width={opening.width}
 						height={opening.height}
+						wallThickness={wall.thickness}
 						color={colors.accentColor}
 					/>
 				{/each}
@@ -245,12 +264,13 @@
 	-->
 	<T is={walls.object3d} />
 	{#each geometry.walls ?? [] as wall (wall.wallId)}
-		{#each wall.openings.filter((opening) => opening.kind === 'door') as opening (opening.openingId)}
+		{#each wall.openings.filter(isFramedDoor) as opening (opening.openingId)}
 			<RoomPortal
-				position={[opening.center.point[0], roomElevation(wall.floorId), opening.center.point[1]]}
+				position={[opening.center.point[0], roomElevation(wall.floorId) + opening.sillHeight, opening.center.point[1]]}
 				rotation={[0, opening.center.yaw, 0]}
 				width={opening.width}
 				height={opening.height}
+				wallThickness={wall.thickness}
 				color={neutralVisitorRoomPresentation.accentColor}
 			/>
 		{/each}

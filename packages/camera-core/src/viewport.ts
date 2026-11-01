@@ -81,7 +81,9 @@ export const VIEWPORT_PROJECTION_KINDS = ['perspective-3d', 'projective-transiti
 export type ViewportProjectionKind = (typeof VIEWPORT_PROJECTION_KINDS)[number];
 
 /** Declared duration of a reading flip. The evaluator uses an explicit clock, never a shell tween. */
-export const VIEWPORT_READING_TRANSITION_SECONDS = 0.6;
+export const VIEWPORT_READING_TRANSITION_SECONDS = 1.0;
+/** The share of a flip, at its Plan end, where the pose is already overhead. */
+const VIEWPORT_READING_POSE_HOLD = 0.25;
 
 /** Target-plane extent bounds, in meters of visible height at the target plane. */
 export const VIEWPORT_TARGET_PLANE_MIN_METERS = 0.05;
@@ -595,18 +597,25 @@ function transitionFrame(
 ): { pose: InspectionPose; orthographicWeight: number } {
 	const eased = smoothstep(progress);
 	const orthographicWeight = transition.from === 'plan' ? 1 - eased : eased;
+	// The pose is overhead for the Plan end of the flip while the projection keeps
+	// flattening, so Paper's reveal has time on the ground it will register with.
+	const poseEased = smoothstep(
+		transition.from === 'plan'
+			? Math.max(0, (progress - VIEWPORT_READING_POSE_HOLD) / (1 - VIEWPORT_READING_POSE_HOLD))
+			: Math.min(1, progress / (1 - VIEWPORT_READING_POSE_HOLD))
+	);
 	// Azimuth takes the shortest path so a flip rotates the way a reading change implies.
 	const rawDelta = transition.toPose.azimuthRadians - transition.fromPose.azimuthRadians;
 	const wrapped = Math.atan2(Math.sin(rawDelta), Math.cos(rawDelta));
 	return {
 		pose: {
-			target: lerpVec3(transition.fromPose.target, transition.toPose.target, eased),
-			azimuthRadians: transition.fromPose.azimuthRadians + wrapped * eased,
-			elevationRadians: lerpNumber(transition.fromPose.elevationRadians, transition.toPose.elevationRadians, eased),
+			target: lerpVec3(transition.fromPose.target, transition.toPose.target, poseEased),
+			azimuthRadians: transition.fromPose.azimuthRadians + wrapped * poseEased,
+			elevationRadians: lerpNumber(transition.fromPose.elevationRadians, transition.toPose.elevationRadians, poseEased),
 			targetPlaneHeightMeters: lerpNumber(
 				transition.fromPose.targetPlaneHeightMeters,
 				transition.toPose.targetPlaneHeightMeters,
-				eased
+				poseEased
 			)
 		},
 		orthographicWeight

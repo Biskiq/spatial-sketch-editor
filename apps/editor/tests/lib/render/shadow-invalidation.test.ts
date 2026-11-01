@@ -8,10 +8,12 @@
  * `autoUpdate` is false and nothing asked for an update, and it clears
  * `needsUpdate` after it renders.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-	createShadowInvalidation,
+	createShadowInvalidation, needsPerFrameShadows,
 	type ShadowCasterLight,
 	type ShadowMapLike
 } from '$lib/render/shadow-invalidation';
@@ -230,5 +232,51 @@ describe('T1.P02.S06 H9 — shadow invalidation', () => {
 		expect(controller.stats().passes).toBe(before);
 		controller.dispose();
 		expect(state.shadowMap.autoUpdate).toBe(true);
+	});
+});
+
+describe('the default lighting policy', () => {
+	const read = (path: string): string => readFileSync(resolve(process.cwd(), path), 'utf8');
+	const defaultLights = (source: string): string[] =>
+		source.split('<VisitorLayoutShell')[0]!.match(/<T\.DirectionalLight[^>]*>/g) ?? [];
+
+	it('gives neither built-in light a cast shadow', () => {
+		for (const path of ['src/lib/authoring/stage/shell/StageCanvas.svelte', 'src/lib/visitor/VisitorPreviewSurface.svelte']) {
+			const lights = defaultLights(read(path));
+			expect(lights.length).toBeGreaterThan(0);
+			for (const light of lights) expect(light).not.toContain('castShadow');
+		}
+	});
+
+	it('lets an authored light keep its own setting, in every kind', () => {
+		expect(read('src/lib/museum/entities/EntityLight.svelte').match(/castShadow=\{entity\.castShadow\}/g)).toHaveLength(3);
+	});
+
+	it('keeps Walls casting and receiving, and the unlit floor eligible', () => {
+		const shell = read('src/lib/visitor/VisitorLayoutShell.svelte');
+		expect(shell).toMatch(/VisitorFloorShadow:[\s\S]*?receiveShadow[\s\S]*?<T\.ShadowMaterial/);
+		const walls = read('src/lib/render/layout-wall-representation.ts');
+		expect(walls).toContain('mesh.castShadow = true');
+		expect(walls).toContain('mesh.receiveShadow = true');
+	});
+
+	it('updates per frame only for a model that a casting light could shadow', () => {
+		const model = { kind: 'model', castShadow: true };
+		expect(needsPerFrameShadows([model])).toBe(false);
+		expect(needsPerFrameShadows([model, { kind: 'light', castShadow: false }])).toBe(false);
+		expect(needsPerFrameShadows([model, { kind: 'light', castShadow: true }])).toBe(true);
+		expect(needsPerFrameShadows([{ kind: 'light', castShadow: true }])).toBe(false);
+	});
+
+	it('counts no shadow pass with no casting light', () => {
+		const shadowMap: ShadowMapLike = { autoUpdate: true, needsUpdate: true, enabled: true, render: () => {} };
+		const shadows = createShadowInvalidation({ shadowMap });
+		shadowMap.needsUpdate = true;
+		shadowMap.render([{ castShadow: false }], {}, {});
+		expect(shadows.stats().passes).toBe(0);
+		shadowMap.needsUpdate = true;
+		shadowMap.render([{ castShadow: true }], {}, {});
+		expect(shadows.stats().passes).toBe(1);
+		shadows.dispose();
 	});
 });

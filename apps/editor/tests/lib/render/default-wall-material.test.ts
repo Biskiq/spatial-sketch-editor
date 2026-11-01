@@ -1,0 +1,48 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { MeshStandardMaterial } from 'three';
+import { describe, expect, it } from 'vitest';
+import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
+import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
+import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
+
+const source = (path: string): string => readFileSync(resolve(process.cwd(), path), 'utf8');
+
+describe('the default Wall surface', () => {
+	it('holds part of its colour unlit and untoned', () => {
+		const { factory, dispose } = createVisitorWallMaterialFactory(() => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE);
+		const material = factory('surface', { roomId: 'wall' } as never).material as MeshStandardMaterial;
+		expect(material.emissiveIntensity).toBe(DEFAULT_WALL_UNLIT_SHARE);
+		expect(material.toneMapped).toBe(false);
+		expect(material.color.getHexString()).toBe(DEFAULT_WALL_COLOR.slice(1));
+		dispose();
+	});
+
+	it('leaves a plain tint exactly as it was', () => {
+		const { factory, dispose } = createVisitorWallMaterialFactory(() => '#4b4b52');
+		const material = factory('surface', { roomId: 'room' } as never).material as MeshStandardMaterial;
+		expect(material.emissiveIntensity).toBe(0);
+		expect(material.toneMapped).toBe(true);
+		dispose();
+	});
+
+	it('reaches both the Stage and Preview through the one representation', () => {
+		expect(source('src/lib/render/layout-wall-representation.ts')).toContain(
+			'createVisitorWallMaterialFactory(() => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE)'
+		);
+		expect(source('src/lib/visitor/VisitorLayoutShell.svelte')).toContain('createWallRepresentation');
+	});
+
+	it('draws the default Room floor as the ground: same colour, unlit and untoned', () => {
+		expect(DEFAULT_FLOOR_COLOR).toBe(PAPER_GROUND_INK);
+		expect(source('src/lib/visitor/VisitorLayoutShell.svelte')).toContain(
+			'<T.MeshBasicMaterial color={DEFAULT_FLOOR_COLOR} toneMapped={false} />'
+		);
+	});
+
+	it('selects with Paper\'s two-tone contour, which holds on cream and on forest', () => {
+		const layer = source('src/lib/authoring/stage/shell/StageSelectionLayer.svelte');
+		expect(layer).toContain("color: tone === 'selection' ? SELECTION_EDGE : 0x152c26");
+		expect(layer).toContain("color: tone === 'selection' ? GOLD");
+	});
+});

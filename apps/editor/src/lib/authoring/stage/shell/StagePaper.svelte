@@ -3,10 +3,10 @@
 	 * R217.S04 — the Paper Plan layer.
 	 *
 	 * A drawing of the Plan evaluation and the Scene footprint projection the Stage
-	 * already holds. It is mounted only while Paper is the visible reading (settled
-	 * Plan, orthographic weight 1, Paper appearance), inside the one Stage Canvas,
-	 * and it draws on the Stage overlay layer so the camera mask can hide the world
-	 * meshes without touching their pick eligibility.
+	 * already holds. It is mounted through a flip and while Paper is the settled
+	 * reading (`paperRevealFor`), inside the one Stage Canvas, and it draws on the
+	 * Stage overlay layer so the camera mask can hide the world meshes at weight 1
+	 * without touching their pick eligibility.
 	 *
 	 * It owns no geometry authority: every line, fill and outline comes from
 	 * `buildPaperPlan`. S05 adds the grid on the same layer; S07 re-strokes the
@@ -17,7 +17,7 @@
 	import type { CompiledLayoutGeometry, PlanEvaluation } from '@portfolio/layout-core';
 	import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
 	import type { StageSelectionEntry } from '../semantic-selection';
-	import { buildPaperPlan } from '../paper-plan';
+	import { buildPaperPlan, type PaperReveal } from '../paper-plan';
 	import { createPaperMarkScene, paperMarkSet, type PaperMarkSceneResources } from '../paper-marks';
 	import { createPaperScene, type PaperSceneResources } from '../paper-scene';
 
@@ -27,7 +27,7 @@
 		footprints,
 		width,
 		height,
-		instant = false,
+		reveal,
 		isFootprintMounted = () => true,
 		datumMeters = 0,
 		selection = null,
@@ -41,8 +41,8 @@
 		/** CSS pixels of the Stage viewport; fat-line widths are CSS pixels. */
 		width: number;
 		height: number;
-		/** Reduce motion: the settle-in switch is instant. */
-		instant?: boolean;
+		/** How far Paper has arrived over the shaded frame; see `paperRevealFor`. */
+		reveal: PaperReveal;
 		/** A footprint is drawn only for a mounted, visible body; the pick path agrees. */
 		isFootprintMounted?: (entityId: string) => boolean;
 		/** The level datum the Plan is drawn on; footprints sit on the same plane. */
@@ -60,9 +60,6 @@
 	const { scene, invalidate } = useThrelte();
 	let resources = $state.raw<PaperSceneResources | null>(null);
 	let markResources = $state.raw<PaperMarkSceneResources | null>(null);
-	let shown = false;
-	/** The current settle-in amount, so a selection built mid-fade joins the same fade. */
-	let fade = 0;
 
 	// Rebuilt only when the evaluation or the footprint projection changes identity.
 	// A Camera move retains the Plan, so a pan does not rebuild the drawing.
@@ -78,7 +75,7 @@
 	const marks = $derived.by(() => paperMarkSet(drawing, selection, hover, hoverTone));
 
 	$effect(() => {
-		const built = createPaperScene(drawing, [1, 1]);
+		const built = createPaperScene(drawing, [1, 1], datumMeters);
 		resources = built;
 		scene.add(built.group);
 		invalidate();
@@ -92,7 +89,6 @@
 
 	$effect(() => {
 		const built = createPaperMarkScene(marks, [1, 1]);
-		built.setFade(fade);
 		markResources = built;
 		scene.add(built.group);
 		invalidate();
@@ -114,34 +110,11 @@
 	});
 
 	$effect(() => {
-		const current = resources;
-		// A selection built mid-settle joins the drawing's fade instead of popping in.
-		const currentMarks = markResources;
-		if (current === null) return;
-		const apply = (amount: number): void => {
-			fade = amount;
-			current.setFade(amount);
-			currentMarks?.setFade(amount);
-		};
-		if (instant || shown) {
-			apply(1);
-			shown = true;
-			invalidate();
-			return;
-		}
-		// PLATE's settle: the drawing fades in over the mat once the reading lands at
-		// orthographic weight 1. Geometry is retained through the fade.
-		const started = performance.now();
-		let frame = 0;
-		const step = (now: number): void => {
-			const amount = Math.min(1, (now - started) / 150);
-			apply(amount);
-			invalidate();
-			if (amount < 1) frame = requestAnimationFrame(step);
-			else shown = true;
-		};
-		apply(0);
-		frame = requestAnimationFrame(step);
-		return () => cancelAnimationFrame(frame);
+		// The Camera's weight drives this, so a rebuild or selection mid-flip simply
+		// takes the current amounts and there is no clock to restart.
+		const amounts = reveal;
+		resources?.setReveal(amounts);
+		markResources?.setFade(amounts.sheet);
+		invalidate();
 	});
 </script>

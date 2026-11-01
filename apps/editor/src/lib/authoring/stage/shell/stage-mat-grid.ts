@@ -6,9 +6,11 @@
  * projected spacing of every fixed level from its own screen derivatives and
  * applies the grammar's 16 → 8 CSS px fade there: 1 m near the eye, 5 m further
  * out, 25 m toward the horizon, and plain mat where even 25 m would be denser
- * than 8 px. The 25 m level cross-fades in as the 5 m level fades out, so a zoom
- * never passes through a band with no reference. `matGridLevelWeights` in
- * `stage-grid.ts` is the tested twin of these weights.
+ * than 8 px. Lines exist only on the plate around the work. Both directions of a level share one weight, taken from the denser
+ * direction: foreshortening compresses the crosswise lines first, and a per-axis
+ * weight left only the receding lines there. The 25 m level cross-fades in as the
+ * 5 m level fades out, so a zoom never passes through a band with no reference.
+ * `matGridLevelWeights` in `stage-grid.ts` is the tested twin of these weights.
  *
  * The quad is one draw at constant cost: no line geometry, no line budget and no
  * rebuild on pan or zoom, only uniform updates. Lines stay anchored to world
@@ -16,12 +18,14 @@
  * coordinates. It owns no Camera and is never a pick root.
  */
 import { Color, ShaderMaterial } from 'three';
+import { MAT_BACKGROUND_INK, PAPER_GROUND_INK } from '../paper-plan';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '../stage-drafting';
 import {
 	GRID_COARSE_METERS,
 	GRID_FULL_SPACING_CSS_PX,
 	GRID_SUPPRESS_SPACING_CSS_PX,
-	MAT_GRID_INK,
+	PAPER_GRID_INK,
+	type GridRect,
 	type MatGround
 } from '../stage-grid';
 
@@ -38,6 +42,17 @@ export const MAT_GRID_RENDER_ORDER = 0;
  * float32 precision at grazing angles and during a reading flip.
  */
 export const MAT_GRID_SEGMENTS = 64;
+/**
+ * The mat's own depth pushback, in depth steps. Inside a large project the near
+ * plane stays at its floor so close-up geometry never clips, and there one step
+ * can be many times the 4 mm that separates the mat from a floor on the datum.
+ * The mat shares the grid's segments, since depth interpolated across one huge
+ * triangle is noisier than this pushback.
+ */
+export const MAT_GROUND_POLYGON_OFFSET_UNITS = 4;
+
+/** The plate's corner radius. */
+export const GROUND_PLATE_CORNER_METERS = 1;
 
 const float = (value: number): string => (Number.isInteger(value) ? `${value}.0` : `${value}`);
 
@@ -52,13 +67,24 @@ void main() {
 }
 `;
 
+/** 1 inside the plate's rounded rectangle and 0 outside, antialiased at its edge. */
+const PLATE_COVERAGE = /* glsl */ `
+uniform vec4 uPlate;
+float plateCoverage(vec2 lattice) {
+	vec2 q = abs(lattice - (uPlate.xy + uPlate.zw) * 0.5) - (uPlate.zw - uPlate.xy) * 0.5 + ${float(GROUND_PLATE_CORNER_METERS)};
+	float distance = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - ${float(GROUND_PLATE_CORNER_METERS)};
+	return clamp(0.5 - distance / max(fwidth(distance), 1e-9), 0.0, 1.0);
+}
+`;
+
 const FRAGMENT = /* glsl */ `
-uniform vec3 uMinorInk;
-uniform vec3 uMajorInk;
-uniform float uMinorOpacity;
-uniform float uMajorOpacity;
+uniform vec3 uPlateMinorInk;
+uniform vec3 uPlateMajorInk;
+uniform float uPlateMinorOpacity;
+uniform float uPlateMajorOpacity;
 uniform float uPixelRatio;
 varying vec2 vLattice;
+${PLATE_COVERAGE}
 
 // The grammar's fade: fully inked at 16 CSS px, absent below 8.
 float levelFade(float spacingCssPx) {
@@ -70,9 +96,9 @@ float levelFade(float spacingCssPx) {
 	);
 }
 
-// Projected spacing, in CSS px, of lines one cell apart along this coordinate.
-float spacingCssPx(float cells) {
-	float perPixel = length(vec2(dFdx(cells), dFdy(cells)));
+// Projected spacing, in CSS px, of lines one metre apart along this coordinate.
+float metreSpacingCssPx(float meters) {
+	float perPixel = length(vec2(dFdx(meters), dFdy(meters)));
 	return 1.0 / max(perPixel, 1e-9) / uPixelRatio;
 }
 
@@ -83,27 +109,33 @@ float lineCoverage(float cells) {
 }
 
 void main() {
-	float minorAlpha = 0.0;
-	float majorAlpha = 0.0;
+	// One weight per level, from the denser direction, so a level's two directions
+	// always leave together.
+	float metre = min(metreSpacingCssPx(vLattice.x), metreSpacingCssPx(vLattice.y));
+	float minorWeight = levelFade(metre * ${float(GRID_MINOR_METERS)});
+	float majorWeight = levelFade(metre * ${float(GRID_MAJOR_METERS)});
+	float coarseWeight = levelFade(metre * ${float(GRID_COARSE_METERS)}) * (1.0 - majorWeight);
+	float minorLine = 0.0;
+	float majorLine = 0.0;
 	for (int axis = 0; axis < 2; axis++) {
 		float meters = axis == 0 ? vLattice.x : vLattice.y;
-		float minorCells = meters / ${float(GRID_MINOR_METERS)};
-		float majorCells = meters / ${float(GRID_MAJOR_METERS)};
-		float coarseCells = meters / ${float(GRID_COARSE_METERS)};
-		float minorWeight = levelFade(spacingCssPx(minorCells));
-		float majorWeight = levelFade(spacingCssPx(majorCells));
-		float coarseWeight = levelFade(spacingCssPx(coarseCells)) * (1.0 - majorWeight);
-		minorAlpha = max(minorAlpha, lineCoverage(minorCells) * minorWeight * uMinorOpacity);
-		majorAlpha = max(
-			majorAlpha,
-			max(lineCoverage(majorCells) * majorWeight, lineCoverage(coarseCells) * coarseWeight) *
-				uMajorOpacity
+		minorLine = max(minorLine, lineCoverage(meters / ${float(GRID_MINOR_METERS)}) * minorWeight);
+		majorLine = max(
+			majorLine,
+			max(
+				lineCoverage(meters / ${float(GRID_MAJOR_METERS)}) * majorWeight,
+				lineCoverage(meters / ${float(GRID_COARSE_METERS)}) * coarseWeight
+			)
 		);
 	}
+	// Lines exist only on the plate; beyond it the Stage is plain forest.
+	float plate = plateCoverage(vLattice);
+	float minorAlpha = minorLine * uPlateMinorOpacity * plate;
+	float majorAlpha = majorLine * uPlateMajorOpacity * plate;
 	float alpha = max(minorAlpha, majorAlpha);
 	if (alpha <= 0.0) discard;
 	// A coarser role owns a coincident line, as on Paper.
-	vec3 ink = majorAlpha >= minorAlpha ? uMajorInk : uMinorInk;
+	vec3 ink = majorAlpha >= minorAlpha ? uPlateMajorInk : uPlateMinorInk;
 	gl_FragColor = vec4(ink, alpha);
 	#include <colorspace_fragment>
 }
@@ -115,11 +147,12 @@ export function createMatGridMaterial(): ShaderMaterial {
 			uSize: { value: 1 },
 			uLatticeOffset: { value: [0, 0] },
 			uPixelRatio: { value: 1 },
+			uPlate: { value: [0, 0, 0, 0] },
 			// PLATE's semantic inks, unlit and untoned like the Paper lines.
-			uMinorInk: { value: new Color(MAT_GRID_INK.minor) },
-			uMajorInk: { value: new Color(MAT_GRID_INK.major) },
-			uMinorOpacity: { value: MAT_GRID_INK.minorOpacity },
-			uMajorOpacity: { value: MAT_GRID_INK.majorOpacity }
+			uPlateMinorInk: { value: new Color(PAPER_GRID_INK.minor) },
+			uPlateMajorInk: { value: new Color(PAPER_GRID_INK.major) },
+			uPlateMinorOpacity: { value: PAPER_GRID_INK.minorOpacity },
+			uPlateMajorOpacity: { value: PAPER_GRID_INK.majorOpacity }
 		},
 		vertexShader: VERTEX,
 		fragmentShader: FRAGMENT,
@@ -137,13 +170,66 @@ export function createMatGridMaterial(): ShaderMaterial {
 	});
 }
 
-/** Point the material at the current mat; no rebuild, only uniforms. */
+const GROUND_VERTEX = VERTEX;
+
+const GROUND_FRAGMENT = /* glsl */ `
+uniform vec3 uPlateInk;
+uniform vec3 uMatInk;
+varying vec2 vLattice;
+${PLATE_COVERAGE}
+void main() {
+	gl_FragColor = vec4(mix(uMatInk, uPlateInk, plateCoverage(vLattice)), 1.0);
+	#include <colorspace_fragment>
+}
+`;
+
+/**
+ * The ground: one opaque unlit draw, Paper's colour inside the plate and the Stage's own
+ * background colour outside, so no horizon shows and the plate's edge can never
+ * fight the mat. It stays opaque out there to keep what lies below the datum hidden.
+ */
+export function createMatGroundMaterial(): ShaderMaterial {
+	return new ShaderMaterial({
+		uniforms: {
+			uSize: { value: 1 },
+			uLatticeOffset: { value: [0, 0] },
+			uPlate: { value: [0, 0, 0, 0] },
+			uPlateInk: { value: new Color(PAPER_GROUND_INK) },
+			uMatInk: { value: new Color(MAT_BACKGROUND_INK) }
+		},
+		vertexShader: GROUND_VERTEX,
+		fragmentShader: GROUND_FRAGMENT,
+		polygonOffset: true,
+		polygonOffsetFactor: 0,
+		polygonOffsetUnits: MAT_GROUND_POLYGON_OFFSET_UNITS,
+		toneMapped: false
+	});
+}
+
+/** Point a mat material at the current mat and plate; no rebuild, only uniforms. */
+export function updateMatMaterial(material: ShaderMaterial, ground: MatGround, plate: GridRect): void {
+	const [originX, originZ] = [
+		ground.centerXZ[0] - ground.latticeOffsetXZ[0],
+		ground.centerXZ[1] - ground.latticeOffsetXZ[1]
+	];
+	material.uniforms.uSize!.value = 2 * ground.halfExtentMeters;
+	material.uniforms.uLatticeOffset!.value = [ground.latticeOffsetXZ[0], ground.latticeOffsetXZ[1]];
+	// In lattice coordinates, like `vLattice`, so float32 never carries large world values.
+	material.uniforms.uPlate!.value = [
+		plate.minX - originX,
+		plate.minZ - originZ,
+		plate.maxX - originX,
+		plate.maxZ - originZ
+	];
+}
+
+/** The grid is the mat's own transform plus the pixel ratio its fade measures in. */
 export function updateMatGridMaterial(
 	material: ShaderMaterial,
 	ground: MatGround,
-	pixelRatio: number
+	pixelRatio: number,
+	plate: GridRect
 ): void {
-	material.uniforms.uSize!.value = 2 * ground.halfExtentMeters;
-	material.uniforms.uLatticeOffset!.value = [ground.latticeOffsetXZ[0], ground.latticeOffsetXZ[1]];
+	updateMatMaterial(material, ground, plate);
 	material.uniforms.uPixelRatio!.value = pixelRatio > 0 ? pixelRatio : 1;
 }

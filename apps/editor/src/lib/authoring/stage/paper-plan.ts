@@ -43,7 +43,6 @@ export const STAGE_OVERLAY_LAYER = 2;
 export const PAPER_INK = '#1b201c';
 export const PAPER_GROUND_INK = '#e9ebe6';
 export const MAT_BACKGROUND_INK = '#152c26';
-export const MAT_GROUND_INK = '#1d3a33';
 
 /**
  * Plan draw order, low to high. The numbers are the resolver's Plan ranks too.
@@ -553,6 +552,7 @@ export function buildPaperPlan(
 ): PaperPlanDrawing {
 	const lines: PaperLineDraw[] = [];
 	const fills: PaperFillDraw[] = [];
+	const cutBands = new Map<string, Omit<PaperLineDraw, 'segments'> & { bands: (readonly LayoutVec2[])[] }>();
 
 	eligiblePlanFragments(plan).forEach((fragment, index) => {
 		const layer = fragmentLayer(fragment);
@@ -583,15 +583,22 @@ export function buildPaperPlan(
 					elevationMeters: fragment.elevationMeters,
 					polygons: [band]
 				});
-				lines.push({
-					key,
-					sourceId: fragment.ref.sourceId,
-					stream: fragment.ref.stream,
-					layer,
-					treatment,
-					elevationMeters: fragment.elevationMeters,
-					segments: ringSegments(band)
-				});
+				// One stroke per Wall follows below, so the spans leave no cross lines.
+				const groupKey = `${fragment.ref.sourceId}:${fragment.elevationMeters}`;
+				const group = cutBands.get(groupKey);
+				if (group === undefined) {
+					cutBands.set(groupKey, {
+						key,
+						sourceId: fragment.ref.sourceId,
+						stream: fragment.ref.stream,
+						layer,
+						treatment,
+						elevationMeters: fragment.elevationMeters,
+						bands: [band]
+					});
+				} else {
+					group.bands.push(band);
+				}
 				return;
 			}
 			const polygon = polygonOfFragment(fragment);
@@ -616,6 +623,10 @@ export function buildPaperPlan(
 			segments: fragmentSegments(fragment)
 		});
 	});
+
+	for (const { bands, ...line } of cutBands.values()) {
+		lines.push({ ...line, segments: unionOutline(bands) });
+	}
 
 	const footprints: PaperFootprintDraw[] = projection.footprints
 		.filter((footprint) => options.isFootprintMounted?.(footprint.entityId) ?? true)
@@ -656,6 +667,53 @@ export function buildPaperPlan(
  */
 export function stageCameraLayerMask(paperVisible: boolean): readonly number[] {
 	return paperVisible ? [STAGE_OVERLAY_LAYER] : [STAGE_WORLD_LAYER, STAGE_OVERLAY_LAYER];
+}
+
+/**
+ * How far each part of Paper has arrived. Linework leads, the sheet covers the
+ * shaded frame under it, and the cut poché lands last, exactly at weight 1.
+ */
+export type PaperReveal = {
+	readonly lines: number;
+	readonly sheet: number;
+	readonly poche: number;
+};
+
+const PAPER_REVEAL_HIDDEN: PaperReveal = { lines: 0, sheet: 0, poche: 0 };
+const PAPER_REVEAL_SETTLED: PaperReveal = { lines: 1, sheet: 1, poche: 1 };
+/**
+ * Once the Camera is nearly overhead: the cut sits below the Wall tops, so any
+ * larger tilt would draw the lines visibly off their Walls. The lines finish only
+ * as the Camera lands, so no finished outline sits waiting for the poché.
+ */
+const PAPER_REVEAL_LINES = [0.55, 1] as const;
+const PAPER_REVEAL_SHEET = [0.7, 0.98] as const;
+const PAPER_REVEAL_POCHE = [0.75, 1] as const;
+
+function revealAmount(weight: number, [from, to]: readonly [number, number]): number {
+	const linear = Math.min(1, Math.max(0, (weight - from) / (to - from)));
+	return linear * linear * (3 - 2 * linear);
+}
+
+/**
+ * Paper's presence for this evaluation, or null while it is not drawn at all. A
+ * pure reading of the Camera's weight, with no clock of its own: the reverse flip
+ * and an interrupted flip need nothing further. Mounted for a whole flip so its
+ * build never lands in the visible part of the move.
+ */
+export function paperRevealFor(
+	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number } | null,
+	appearance: 'paper' | 'shaded'
+): PaperReveal | null {
+	if (appearance !== 'paper' || evaluation === null || evaluation.renderedReading === '3d') return null;
+	const weight = evaluation.orthographicWeight;
+	if (weight >= 1) return PAPER_REVEAL_SETTLED;
+	if (weight <= PAPER_REVEAL_LINES[0]) return PAPER_REVEAL_HIDDEN;
+	return {
+		lines: revealAmount(weight, PAPER_REVEAL_LINES),
+		sheet: revealAmount(weight, PAPER_REVEAL_SHEET),
+		poche: revealAmount(weight, PAPER_REVEAL_POCHE)
+	};
 }
 
 /** Whether the Paper layer is the visible Plan drawing. */

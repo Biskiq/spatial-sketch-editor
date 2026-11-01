@@ -652,16 +652,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		return min === null || max === null ? null : { min, max };
 	}
-	const paperContentBounds = $derived.by((): GridRect | null => {
+	const stageContentBounds = $derived.by(() => {
 		void renderRootsRevision;
 		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
 		const stage = facade;
-		if (stage === null) return null;
-		const bounds = readStageContentBounds(stage);
+		return stage === null ? null : readStageContentBounds(stage);
+	});
+	const paperContentBounds = $derived.by((): GridRect | null => {
+		const bounds = stageContentBounds;
 		return bounds === null
 			? null
 			: { minX: bounds.min[0], maxX: bounds.max[0], minZ: bounds.min[2], maxZ: bounds.max[2] };
 	});
+	$effect(() => facade?.camera.setContentBounds(stageContentBounds));
 	// Generated Plan evaluations are replaced whole; raw data keeps their references
 	// cloneable when Index selection crosses the immutable selection boundary.
 	let planView = $state.raw<PlanEvaluation | null>(null);
@@ -672,26 +675,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let rect = $state<ViewportRect | null>(null);
 	let markers = $state<readonly StageOverlayContribution[]>([]);
 	let candidatePreviews = $state.raw<readonly StageCandidatePreviewView[]>([]);
-	/**
-	 * The live candidate's datum extent, read from the same previews the overlay
-	 * draws. Paper's bounded sheet grows to include it; Fit deliberately does not,
-	 * so a drag can grow the sheet but never reframe the Camera under the pointer.
-	 */
-	const candidatePaperBounds = $derived.by((): GridRect | null => {
-		let minX = Infinity;
-		let maxX = -Infinity;
-		let minZ = Infinity;
-		let maxZ = -Infinity;
-		for (const preview of candidatePreviews) {
-			const bounds = preview.bounds;
-			if (bounds === null) continue;
-			minX = Math.min(minX, bounds.min[0]);
-			maxX = Math.max(maxX, bounds.max[0]);
-			minZ = Math.min(minZ, bounds.min[2]);
-			maxZ = Math.max(maxZ, bounds.max[2]);
-		}
-		return minX <= maxX && minZ <= maxZ ? { minX, maxX, minZ, maxZ } : null;
-	});
 	let ghosts = $state<readonly StageGhostMesh[]>([]);
 	/**
 	 * Approved creator-model bytes for the accepted source, keyed by model resource
@@ -3807,10 +3790,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						plan={planView}
 						planAppearance={preferences.planAppearance}
 						{drafting}
-						{reducedMotion}
 						datumMeters={boot.snapshot.domain.datumMeters}
 						contentBounds={paperContentBounds}
-						candidateBounds={candidatePaperBounds}
 						selection={selection}
 						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
 						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}

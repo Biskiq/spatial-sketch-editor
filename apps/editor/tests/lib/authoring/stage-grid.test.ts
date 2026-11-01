@@ -8,7 +8,8 @@
  * the origin never moves across a zoom change, and no view state reaches the
  * source.
  */
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LineSegments, ShaderMaterial } from 'three';
 import {
@@ -22,8 +23,15 @@ import { createCameraSession, sceneRadiusOf } from '$lib/authoring/stage/camera-
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
+import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
 import { createGridScene } from '$lib/authoring/stage/shell/stage-grid-scene';
-import { createMatGridMaterial, MAT_GRID_RENDER_ORDER, updateMatGridMaterial } from '$lib/authoring/stage/shell/stage-mat-grid';
+import {
+	createMatGridMaterial,
+	createMatGroundMaterial,
+	MAT_GRID_RENDER_ORDER,
+	MAT_GROUND_POLYGON_OFFSET_UNITS,
+	updateMatGridMaterial
+} from '$lib/authoring/stage/shell/stage-mat-grid';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '$lib/authoring/stage/stage-drafting';
 import {
 	GRID_COARSE_METERS,
@@ -39,6 +47,7 @@ import {
 	matGridLevelWeights,
 	matGroundFor,
 	paperSheetRectFor,
+	workspaceRectFor,
 	type GridRect
 } from '$lib/authoring/stage/stage-grid';
 
@@ -49,6 +58,128 @@ const PAPER_BASE = {
 	datumMeters: 0,
 	surface: 'paper' as const
 };
+
+describe('the mat keeps its depth away from a floor on the datum', () => {
+	it('subdivides the mat and pushes it back in depth steps', () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		const mat = source.slice(source.indexOf('<T.Mesh'), source.indexOf('{#if gridVisible}'));
+		expect(mat).toContain('args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]}');
+		const material = createMatGroundMaterial();
+		expect(material.polygonOffset).toBe(true);
+		expect(material.polygonOffsetUnits).toBe(MAT_GROUND_POLYGON_OFFSET_UNITS);
+		expect(material.depthWrite).toBe(true);
+		material.dispose();
+		expect(MAT_GROUND_POLYGON_OFFSET_UNITS).toBeGreaterThan(0);
+	});
+});
+
+describe('the Paper plate around the work', () => {
+	const DEFAULT = { minX: -20, maxX: 20, minZ: -20, maxZ: 20 };
+
+	it('keeps its default size for no work and for any work that fits', () => {
+		expect(workspaceRectFor(null)).toEqual(DEFAULT);
+		for (const contentBounds of [
+			{ minX: 0, maxX: 1, minZ: 0, maxZ: 1 },
+			{ minX: 0, maxX: 6, minZ: -5, maxZ: 0 },
+			{ minX: -10, maxX: 10, minZ: -10, maxZ: 10 }
+		]) {
+			expect(workspaceRectFor(contentBounds)).toEqual(DEFAULT);
+		}
+	});
+
+	it('widens only the side the work and its margin pass, in whole steps', () => {
+		expect(workspaceRectFor({ minX: 0, maxX: 10.5, minZ: -5, maxZ: 0 })).toEqual({ ...DEFAULT, maxX: 30 });
+		expect(workspaceRectFor({ minX: 0, maxX: 19, minZ: -5, maxZ: 0 })).toEqual({ ...DEFAULT, maxX: 30 });
+	});
+
+	it('always keeps the margin clear around the work', () => {
+		const contentBounds = { minX: -33, maxX: 47, minZ: -61, maxZ: 12 };
+		const plate = workspaceRectFor(contentBounds);
+		expect(contentBounds.minX - plate.minX).toBeGreaterThanOrEqual(10);
+		expect(plate.maxX - contentBounds.maxX).toBeGreaterThanOrEqual(10);
+		expect(contentBounds.minZ - plate.minZ).toBeGreaterThanOrEqual(10);
+		expect(plate.maxZ - contentBounds.maxZ).toBeGreaterThanOrEqual(10);
+	});
+
+	it('draws lines only on the plate, leaving plain forest beyond it', () => {
+		const material = createMatGridMaterial();
+		expect(material.fragmentShader).toContain('minorLine * uPlateMinorOpacity * plate');
+		expect(material.fragmentShader).toContain('majorLine * uPlateMajorOpacity * plate');
+		expect(material.uniforms.uMatMinorInk).toBeUndefined();
+		material.dispose();
+		const stage = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
+		expect(stage).toContain('uMatInk: { value: new Color(MAT_BACKGROUND_INK) }');
+	});
+
+	it('takes its bounds from the work alone, never the Camera', () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		expect(source).toContain('workspaceRectFor(contentBounds)');
+		expect(workspaceRectFor.length).toBe(1);
+	});
+
+	it('leaves the lines world-anchored across the plate edge', () => {
+		const material = createMatGridMaterial();
+		const plate = { minX: -5, maxX: 15, minZ: -10, maxZ: 5 };
+		for (const ground of [
+			{ centerXZ: [0, 0] as [number, number], halfExtentMeters: 64, latticeOffsetXZ: [0, 0] as [number, number] },
+			{ centerXZ: [32, -16] as [number, number], halfExtentMeters: 256, latticeOffsetXZ: [7, 9] as [number, number] }
+		]) {
+			updateMatGridMaterial(material, ground, 1, plate);
+			const [minX, minZ] = material.uniforms.uPlate!.value as number[];
+			// World −5, −10 in the same coordinates the shader's lines use.
+			expect(minX).toBe(plate.minX - (ground.centerXZ[0] - ground.latticeOffsetXZ[0]));
+			expect(minZ).toBe(plate.minZ - (ground.centerXZ[1] - ground.latticeOffsetXZ[1]));
+		}
+		material.dispose();
+	});
+
+	it('draws the ground in one unlit draw, so its edge cannot fight anything', () => {
+		const material = createMatGroundMaterial();
+		expect(material.fragmentShader).toContain('mix(uMatInk, uPlateInk, plateCoverage(vLattice))');
+		expect(material.toneMapped).toBe(false);
+		material.dispose();
+		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		expect(source).not.toContain('MeshStandardMaterial');
+		expect(source).toContain('workspaceRectFor(contentBounds)');
+	});
+
+	it('is Paper: the same ground token and the same grid inks and opacities', () => {
+		const ground = createMatGroundMaterial();
+		expect(`#${ground.uniforms.uPlateInk!.value.getHexString()}`).toBe(PAPER_GROUND_INK);
+		ground.dispose();
+		const grid = createMatGridMaterial();
+		expect(`#${grid.uniforms.uPlateMinorInk!.value.getHexString()}`).toBe(PAPER_GRID_INK.minor.toLowerCase());
+		expect(`#${grid.uniforms.uPlateMajorInk!.value.getHexString()}`).toBe(PAPER_GRID_INK.major.toLowerCase());
+		expect(grid.uniforms.uPlateMinorOpacity!.value).toBe(PAPER_GRID_INK.minorOpacity);
+		expect(grid.uniforms.uPlateMajorOpacity!.value).toBe(PAPER_GRID_INK.majorOpacity);
+		grid.dispose();
+	});
+});
+
+describe('the depth range knows Scene content', () => {
+	it('keeps a Scene object in front of the near plane, with no Layout bounds', async () => {
+		const envelope = await createUnitProject({ id: 'depth-scene', name: 'Depth', layout: createEmptyWallFirstLayoutDocument() });
+		const admission = await admitSource(envelope, {
+				sessionEpoch: 'session-s19',
+				acceptedRevision: { projectId: 'depth-scene', revisionId: 'revision-s19' }
+			});
+		if (admission.kind !== 'admitted') throw new Error('not admitted');
+		const snapshot = admission.snapshot;
+		const pose = { target: [0, 0, 0] as [number, number, number], azimuthRadians: 0, elevationRadians: Math.PI / 4, targetPlaneHeightMeters: 4 };
+		const camera = createCameraSession({ snapshot, viewportId: 'stage', outputId: 'output:depth', pose });
+		const near = (): number => {
+			const result = camera.evaluate({ left: 0, top: 0, width: 1000, height: 600, devicePixelRatio: 1 }, 0);
+			if (result.kind !== 'evaluated') throw new Error('not evaluated');
+			return result.evaluation.near;
+		};
+		const compiledOnly = near();
+		expect(camera.state().sceneRadiusMeters).toBe(1);
+		camera.setContentBounds({ min: [-0.5, 0, -0.5], max: [0.5, 3, 0.5] });
+		const withShape = near();
+		expect(camera.state().sceneRadiusMeters).toBeCloseTo(Math.hypot(0.5, 3, 0.5), 6);
+		expect(withShape).toBeLessThan(compiledOnly);
+	});
+});
 
 describe('R217.S13 — fixed grid values and thinning', () => {
 	it('draws only the fixed 1 m, 5 m and 25 m values', () => {
@@ -172,20 +303,16 @@ describe('R217.S13 — fixed grid values and thinning', () => {
 describe('R217.S13 — Paper’s bounded sheet', () => {
 	const content = { minX: 0, maxX: 7, minZ: -4, maxZ: 2 };
 
-	it('contains the work plus 5 m, rounded outward to 5 m', () => {
+	it('draws the same workspace as the 3D ground', () => {
 		const sheet = paperSheetRectFor({
 			...PAPER_BASE,
-			targetPlaneHeightMeters: 40,
+			targetPlaneHeightMeters: 200,
 			aspect: 2,
 			intervalMeters: 1,
 			contentBounds: content
 		})!;
-		expect(sheet).toEqual({ minX: -5, maxX: 15, minZ: -10, maxZ: 10 });
-		expect(sheet.minX).toBeLessThanOrEqual(content.minX - 5);
-		expect(sheet.maxX).toBeGreaterThanOrEqual(content.maxX + 5);
-		for (const edge of [sheet.minX, sheet.maxX, sheet.minZ, sheet.maxZ]) {
-			expect(Math.abs(edge % 5)).toBe(0);
-		}
+		expect(sheet).toEqual(workspaceRectFor(content));
+		expect(sheet).toEqual({ minX: -20, maxX: 20, minZ: -20, maxZ: 20 });
 	});
 
 	it('intersects the sheet with the visible coverage so a zoomed-in view stays bounded', () => {
@@ -206,24 +333,34 @@ describe('R217.S13 — Paper’s bounded sheet', () => {
 		expect(gridLinesFor(plan).length).toBeLessThan(500);
 	});
 
-	it('uses a 20 × 20 m sheet around the target for an empty project', () => {
-		const sheet = paperSheetRectFor({
-			...PAPER_BASE,
-			targetXZ: [3.4, -2.2],
-			targetPlaneHeightMeters: 60,
-			aspect: 2,
-			intervalMeters: 1,
-			contentBounds: null
-		})!;
-		expect(sheet).toEqual({ minX: -6.6, maxX: 13.4, minZ: -12.2, maxZ: 7.8 });
-		expect(sheet.maxX - sheet.minX).toBe(20);
-		expect(sheet.maxZ - sheet.minZ).toBe(20);
+	it('keeps an empty project on the default workspace wherever the Camera looks', () => {
+		for (const targetXZ of [[0, 0], [15, -10]] as [number, number][]) {
+			const sheet = paperSheetRectFor({
+				...PAPER_BASE,
+				targetXZ,
+				targetPlaneHeightMeters: 400,
+				aspect: 2,
+				intervalMeters: 1,
+				contentBounds: null
+			})!;
+			expect(sheet).toEqual({ minX: -20, maxX: 20, minZ: -20, maxZ: 20 });
+		}
+		expect(
+			paperSheetRectFor({
+				...PAPER_BASE,
+				targetXZ: [500, 500],
+				targetPlaneHeightMeters: 20,
+				aspect: 2,
+				intervalMeters: 1,
+				contentBounds: null
+			})
+		).toBeNull();
 	});
 
 	it('grows when content leaves the sheet, without a Camera input', () => {
 		// A wide target plane keeps both sheets inside the visible coverage, so
 		// the growth is observable rather than cropped to the viewport.
-		const wide = { ...PAPER_BASE, targetPlaneHeightMeters: 80, aspect: 2 };
+		const wide = { ...PAPER_BASE, targetPlaneHeightMeters: 200, aspect: 2 };
 		const near = gridPlanFor({ ...wide, metersPerCssPixel: 0.01, contentBounds: content })!;
 		const far = gridPlanFor({
 			...wide,
@@ -231,7 +368,7 @@ describe('R217.S13 — Paper’s bounded sheet', () => {
 			contentBounds: { minX: 0, maxX: 40, minZ: -4, maxZ: 2 }
 		})!;
 		expect(far.rect.maxX).toBeGreaterThan(near.rect.maxX);
-		expect(near.rect.minX).toBe(-5);
+		expect(near.rect.minX).toBe(-20);
 	});
 
 	it('retains the same drawing for a pan inside the quantised rectangle', () => {
@@ -242,31 +379,23 @@ describe('R217.S13 — Paper’s bounded sheet', () => {
 	});
 });
 
-describe('R217.S14 — Paper’s sheet includes the live candidate', () => {
-	const content = { minX: 0, maxX: 7, minZ: -4, maxZ: 2 };
-	const wide = { ...PAPER_BASE, targetPlaneHeightMeters: 80, aspect: 2, intervalMeters: 1 };
-
-	it('grows past the accepted work without moving the Camera inputs', () => {
-		const accepted = paperSheetRectFor({ ...wide, contentBounds: content })!;
-		const grown = paperSheetRectFor({
-			...wide,
-			contentBounds: content,
-			candidateBounds: { minX: 30, maxX: 33, minZ: -4, maxZ: 2 }
-		})!;
-		expect(grown.maxX).toBeGreaterThan(accepted.maxX);
-		expect(grown.maxX).toBeGreaterThanOrEqual(38);
-		expect(grown.minX).toBe(accepted.minX);
+describe('the workspace reads committed geometry only', () => {
+	it('takes no candidate input on either surface', () => {
+		for (const file of ['StageMatGround.svelte', 'StageGrid.svelte', 'StageCanvas.svelte']) {
+			const source = readFileSync(resolve(process.cwd(), `src/lib/authoring/stage/shell/${file}`), 'utf8');
+			expect(source).not.toContain('candidateBounds');
+		}
+		const route = readFileSync(resolve(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'), 'utf8');
+		expect(route).not.toContain('candidateBounds');
+		expect(route).toContain('contentBounds={paperContentBounds}');
 	});
 
-	it('frames a candidate drawn on an otherwise empty project', () => {
-		const sheet = paperSheetRectFor({
-			...wide,
-			targetXZ: [0, 0],
-			contentBounds: null,
-			candidateBounds: { minX: 24, maxX: 26, minZ: 0, maxZ: 2 }
-		})!;
-		expect(sheet.minX).toBeLessThanOrEqual(19);
-		expect(sheet.maxX).toBeGreaterThanOrEqual(31);
+	it('changes once when work is committed and restores on Undo', () => {
+		const before = { minX: 0, maxX: 5, minZ: 0, maxZ: 1 };
+		const committed = { minX: 0, maxX: 60, minZ: 0, maxZ: 1 };
+		expect(workspaceRectFor(before)).toEqual({ minX: -20, maxX: 20, minZ: -20, maxZ: 20 });
+		expect(workspaceRectFor(committed)).toEqual({ minX: -20, maxX: 70, minZ: -20, maxZ: 20 });
+		expect(workspaceRectFor(before)).toEqual({ minX: -20, maxX: 20, minZ: -20, maxZ: 20 });
 	});
 });
 
@@ -297,10 +426,17 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		for (const literal of ['8.0', '16.0', '/ 1.0', '/ 5.0', '/ 25.0']) {
 			expect(material.fragmentShader).toContain(literal);
 		}
-		updateMatGridMaterial(material, { centerXZ: [512, -256], halfExtentMeters: 1024, latticeOffsetXZ: [12, -6] }, 1.5);
+		// One weight per level from the denser direction, outside the per-axis loop.
+		const fragment = material.fragmentShader;
+		expect(fragment).toContain('min(metreSpacingCssPx(vLattice.x), metreSpacingCssPx(vLattice.y))');
+		expect(fragment.indexOf('levelFade(metre')).toBeLessThan(fragment.indexOf('for (int axis'));
+		expect(fragment.slice(fragment.indexOf('for (int axis'))).not.toContain('levelFade');
+		updateMatGridMaterial(material, { centerXZ: [512, -256], halfExtentMeters: 1024, latticeOffsetXZ: [12, -6] }, 1.5, { minX: 500, maxX: 520, minZ: -260, maxZ: -240 });
 		expect(material.uniforms.uSize!.value).toBe(2048);
 		expect(material.uniforms.uLatticeOffset!.value).toEqual([12, -6]);
 		expect(material.uniforms.uPixelRatio!.value).toBe(1.5);
+		// The plate shares `vLattice`'s origin, so float32 never carries world values.
+		expect(material.uniforms.uPlate!.value).toEqual([0, -10, 20, 10]);
 		material.dispose();
 	});
 

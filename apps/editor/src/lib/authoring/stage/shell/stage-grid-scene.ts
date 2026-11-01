@@ -23,6 +23,8 @@ export type GridSceneResources = {
 	readonly group: Group;
 	/** Update fade/role opacity without disposing the lattice. */
 	update(plan: GridPlan): void;
+	/** Paper's settle-in, 0 → 1, on top of each level's own opacity. */
+	setFade(fade: number): void;
 	dispose(): void;
 };
 
@@ -59,6 +61,16 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 
 	const disposables: { dispose(): void }[] = [];
 	const materials = new Map<string, LineBasicMaterial>();
+	const levelOpacity = new Map<LineBasicMaterial, number>();
+	let settle = 1;
+	const applyOpacity = (material: LineBasicMaterial, opacity: number): void => {
+		levelOpacity.set(material, opacity);
+		const next = opacity * settle;
+		const transparent = next < 1;
+		if (material.transparent !== transparent) material.needsUpdate = true;
+		material.opacity = next;
+		material.transparent = transparent;
+	};
 	for (const [bucketKey, bucket] of buckets) {
 		if (bucket.positions.length === 0) continue;
 		const geometry = new BufferGeometry();
@@ -81,6 +93,7 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 		object.name = `StageGrid:${bucketKey}`;
 		group.add(object);
 		materials.set(bucketKey, material);
+		levelOpacity.set(material, bucket.opacity);
 		disposables.push(geometry, material);
 	}
 
@@ -93,14 +106,17 @@ export function createGridScene(plan: GridPlan): GridSceneResources {
 			for (const level of plan.levels.levels) {
 				const material = materials.get(`${level.role}:${level.color}`);
 				if (material === undefined) continue;
-				material.opacity = level.opacity;
-				material.transparent = level.opacity < 1;
-				material.needsUpdate = true;
+				applyOpacity(material, level.opacity);
 			}
+		},
+		setFade(fade) {
+			settle = Math.min(1, Math.max(0, fade));
+			for (const [material, opacity] of levelOpacity) applyOpacity(material, opacity);
 		},
 		dispose() {
 			group.clear();
 			materials.clear();
+			levelOpacity.clear();
 			for (const disposable of disposables) disposable.dispose();
 		}
 	};

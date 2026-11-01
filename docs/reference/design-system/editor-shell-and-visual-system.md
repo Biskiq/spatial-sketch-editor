@@ -889,7 +889,7 @@ PLATE has exactly three material classes; a task name is not a new material clas
 | **Paper** | Spatial Stage, expressed as dark **cutting mat** for model/depth work or light **vellum** for measured drawing; top-down and flat readings render as paper or shaded by an application viewing preference |
 | **Instrument** | Controls acting on the work: the dark forest **dock and palettes** with an ivory armed key, the forest task surface of the Library, repair and Guide, neutral working items and restrained edges |
 
-The mat gives depth, artwork and geometry a dark ground. Vellum makes measured
+The mat gives depth, artwork and geometry a dark ground, with a Paper surface around the work. Vellum makes measured
 architecture the drawing subject. Ink and ochre are mark/state roles, not additional
 materials. Section, Unroll or precision can use a measured vellum reading without
 creating another shell. A camera route on Plan uses the same Paper as World drafting;
@@ -909,17 +909,31 @@ zoom-driven interval ladder. Decimate the **drawing** by projected CSS-pixel spa
 each level is fully inked at 16 px and above, fades from 16 to 8 px and is suppressed
 below 8 px. On Paper a 25 m reference appears only while the 5 m level is suppressed, and
 obeys the same rule. The 3D mat applies the same fade per pixel, from each pixel's own
-projected spacing, so near ground keeps 1 m, farther ground 5 m and the far ground 25 m;
-there the 25 m level cross-fades in as the 5 m level fades out, so a zoom never passes
-through a band with no reference (R217.S19). Anchor to the world/floor datum with a stable
-origin across zoom changes.
-Paper's grid is a bounded sheet around the work: the datum bounds of Layout and
-Scene, expanded by 5 m and rounded outward to 5 m, or a 20 × 20 m sheet
-around the target for an empty project. The sheet is intersected with the visible
-coverage so a zoomed-in view cannot generate unbounded lines; it grows with the work and
-never moves the Camera. The mat's grid covers the finite mat, which the Camera's ground
-reach sizes; it has no line geometry and no line budget.
+projected spacing, so near ground keeps 1 m, farther ground 5 m and the far ground 25 m.
+Both directions of a level share one weight from the denser direction, so they leave together
+and the farthest ground is plain, never one direction of lines. The 25 m level cross-fades in as the 5 m level fades out, so a zoom never passes
+through a band with no reference (R217.S19). The mat is subdivided and pushed back four depth
+steps, so a floor on the datum holds in motion with the near plane at its floor. Anchor to the
+world/floor datum with a stable origin across zoom changes.
+Both readings draw on one **workspace**, a pure function of committed Layout and Scene: 40 × 40 m
+around world zero and never smaller, keeping at least 10 m beyond the work and widening in 10 m
+steps. A live candidate never changes it, so it stands still through a gesture and changes once on
+commit and once on Undo; a candidate past the edge draws over the surround. It never reads or moves
+the Camera. Paper draws the workspace intersected with the visible coverage, so a zoomed-in view
+cannot generate unbounded lines; that intersection bounds the drawing, never the workspace. The
+mat's grid covers the finite mat, which the Camera's ground reach sizes; it has no line geometry and
+no line budget. In 3D the workspace is a finite surface in Paper's own colour, with rounded corners
+and Paper's grid inks at Paper's opacities. Outside it the Stage is plain forest with no lines and
+no horizon. A default Room floor wears the same colour. It is one unlit draw and keeps the lattice
+world-anchored.
 It is drawing state, never a Camera mode or a reason to delay navigation.
+
+A flip between the readings moves through linework as a pure reading of the Camera's orthographic
+weight. Late in the move Paper's own lines arrive, the sheet veils the
+shaded frame under them without touching any authored material. Cut bands are left out of the veil,
+so a Wall of any material goes straight to poché. Arriving from 3D, the poché fills the linework just
+after the Camera lands, the one short timed step in the flip. Leaving, it follows the weight backwards.
+Picking and tools still follow the settled reading only.
 
 The **paper rule** is fixed: a Wall wears the drafting sheet when it is the settled
 subject of a Face session, straight or curved, or is off its footprint, and keeps
@@ -940,7 +954,10 @@ display-only. Paper and selection compose; selection does not replace the sheet.
 | Primary technical / reference dimension ink on light surfaces | Dark neutral ink, contrast-calibrated (`#1b201c` reference) |
 | Light overlay ink/halo | `#F3F4EE` |
 | Paper grid minor / major | `#9FB2A2` at 0.28 / `#809984` at 0.45 |
-| Mat / background / minor and major grid | `#1D3A33` / `#152C26` / `#2B5147` and `#3C6A5C` |
+| 3D background, inside and outside the drawn ground | `#152C26` |
+| 3D ground plate, its grid and a default Room floor | Paper's ground and grid tokens, never separate values |
+| Built-in lighting | Neutral illumination only, in the Stage and Preview. A cast shadow comes only from an authored light with `castShadow` |
+| Default physical Wall | `#F1E6CF`, half unlit and untoned so it reads the same in the Stage and Preview; never over an authored material |
 | Camera infrastructure / active context | Restrained leaf green (`#4f8f6c` reference), reinforced by shape/line; no mandatory competing blue/teal shell hue |
 | Selection, the held anchor and current playback moment | Gold (`#d4ad45`, dark ink `#74560c` reference), local contour and quiet tint; selection and playback retain different shape/text cues. Gold means selected geometry (or the point being held), never hover, an available action or inspection |
 | Armed tool | Soft **ivory** key (`#f3f0e4` reference) with a dark icon on the dock material; tool colour is only a 2 px mark under an icon |
@@ -970,6 +987,7 @@ contrast-safe gold ink; on the mat use the gold core; variable content may need 
 stroke/halo. The sheet/grid remain visible. Manipulation emphasizes the active handle,
 affected edge and measurement rather than every dimension or the entire Card.
 Unselected architecture and Camera context remain quiet enough for selection to read.
+Cut poché on Paper takes no tint: its black ink stays, with `#74560c` under a `#d4ad45` core.
 
 ### Spatial mark language
 

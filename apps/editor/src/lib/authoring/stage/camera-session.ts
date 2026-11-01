@@ -86,6 +86,16 @@ export function initialInspectionPose(bounds: { min: Vec3; max: Vec3 } | null): 
 	};
 }
 
+type SceneBounds = { readonly min: Vec3; readonly max: Vec3 };
+
+function boundsUnion(a: SceneBounds | null, b: SceneBounds | null): { min: Vec3; max: Vec3 } | null {
+	if (a === null || b === null) return (a ?? b) as { min: Vec3; max: Vec3 } | null;
+	return {
+		min: [Math.min(a.min[0], b.min[0]), Math.min(a.min[1], b.min[1]), Math.min(a.min[2], b.min[2])],
+		max: [Math.max(a.max[0], b.max[0]), Math.max(a.max[1], b.max[1]), Math.max(a.max[2], b.max[2])]
+	};
+}
+
 /** The declared scene radius used for the depth range and the Plan eye distance. */
 export function sceneRadiusOf(bounds: { min: Vec3; max: Vec3 } | null, target?: Vec3): number {
 	if (bounds === null) return 1;
@@ -118,6 +128,12 @@ export type CameraSession = {
 	 * A content change: camera pose is preserved; the landed output claim is rebased too.
 	 * `displayGroundYMeters` is the new level datum the mat ground sits at, when it changed.
 	 */
+	/**
+	 * The rendered Layout ∪ Scene bounds. The compiled bounds know no Scene object,
+	 * and a near plane calibrated without them cuts through one. Depth only: never
+	 * the pose or Fit.
+	 */
+	setContentBounds(bounds: SceneBounds | null): void;
 	rebaseSource(
 		sourceRevision: string,
 		bounds?: { min: Vec3; max: Vec3 } | null,
@@ -157,6 +173,7 @@ export function evaluationIdOf(evaluation: ViewportEvaluation): string {
 
 export function createCameraSession(input: CameraSessionInput): CameraSession {
 	let bounds = input.snapshot.domain.geometry.bounds ?? null;
+	let contentBounds: SceneBounds | null = null;
 	const pose = input.pose ?? initialInspectionPose(bounds);
 	let currentState = createViewportCameraState({
 		outputId: input.outputId,
@@ -212,7 +229,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			currentState = advanceViewport(currentState, clockSeconds);
 			// Source bounds calibrate Camera's own depth evaluation; they never refit
 			// the pose. Recompute after a pan as well as after an authored edit.
-			const radius = sceneRadiusOf(bounds, currentState.pose.target);
+			const radius = sceneRadiusOf(boundsUnion(bounds, contentBounds), currentState.pose.target);
 			if (radius !== currentState.sceneRadiusMeters) currentState = { ...currentState, sceneRadiusMeters: radius };
 			generation += 1;
 			const result = evaluateViewport(currentState, rect, clockSeconds, generation);
@@ -223,6 +240,9 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			const result = requestViewingIntent(currentState, intent, clockSeconds);
 			currentState = result.state;
 			return result;
+		},
+		setContentBounds(next) {
+			contentBounds = next;
 		},
 		rebaseSource(sourceRevision, nextBounds = bounds, displayGroundYMeters) {
 			const viewport = rebaseViewportSource(currentState, sourceRevision);

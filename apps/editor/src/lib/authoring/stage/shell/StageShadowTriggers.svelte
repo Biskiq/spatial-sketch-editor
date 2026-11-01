@@ -17,10 +17,10 @@
 	 * One caster is not covered by an identity: a resolved creator model parses
 	 * after its URL arrives, so its meshes are added, and later disposed, without
 	 * `modelUrls`, `scene` or `geometry` changing. That arrival is not observable
-	 * at this boundary, so a Scene that carries a model entity keeps today's
-	 * per-frame updates (`setAlwaysUpdate`) — the plan's rule for a trigger whose
-	 * exact invalidation cannot be established. Grid documents carry no
-	 * placements, so the ordinary Stage keeps the saving.
+	 * at this boundary, so a Scene that carries a model entity and a casting light
+	 * keeps per-frame updates (`setAlwaysUpdate`) — the plan's rule for a trigger whose
+	 * exact invalidation cannot be established. With no casting light there is no
+	 * shadow map to update: only authored lights cast, and three skips the pass.
 	 *
 	 * Native forms use a narrower trigger: their renderer is lazy, but the shared
 	 * EntityForm reports from `onMount`. The Stage increments `formRenderRevision`
@@ -35,8 +35,7 @@
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import type { LayoutRoomRegistry, RuntimeScene } from '@portfolio/project-model';
 
-	import { isSceneModelEntity } from '$lib/content/scene';
-	import { createShadowInvalidation } from '$lib/render/shadow-invalidation';
+	import { createShadowInvalidation, needsPerFrameShadows } from '$lib/render/shadow-invalidation';
 
 	let {
 		geometry,
@@ -64,8 +63,7 @@
 	});
 
 	const sources = $derived([geometry, scene, rooms, modelUrls, formRenderRevision] as const);
-	/** A model entity's meshes arrive asynchronously; keep per-frame updates for it. */
-	const asynchronousCaster = $derived(scene.entities.some(isSceneModelEntity));
+	const asynchronousCaster = $derived(needsPerFrameShadows(scene.entities));
 
 	$effect(() => {
 		void sources;
