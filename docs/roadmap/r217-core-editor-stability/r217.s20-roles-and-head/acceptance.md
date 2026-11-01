@@ -28,8 +28,10 @@ The R217 README's "Starting evidence" table describes the audited base at `c13a9
 
 - Production code: `3f124420` · `feat(shell): one Head row, scoped shell roles and the Stage ⚙`
 - Tests: `05bf3ca3` · `test(shell): Find reaches the former menu, refusals are announced`
-- **Tested SHA: `05bf3ca3`.** Every gate below ran against this tree. The docs commit that carries this
-  record changes no production or test file.
+- Review fixes: `4277f4d7` (⚙ closes on an outside press and reads the shell roles), `a1ce0ef1` (route
+  indentation and comment placement) and `25a3f763` (Escape on the project menu, test).
+- **Tested SHA: `25a3f763`.** Every gate below ran against this tree. The docs commit that carries this
+  record changes no production or test file. The earlier tested SHA `05bf3ca3` is superseded by the review fixes.
 - Branch `claude/r217-s20-roles-and-head`, from `main` at `7cdc662e`. The existing S11 J12 docs commit
   `bda1df6b` is kept.
 
@@ -43,29 +45,30 @@ The R217 README's "Starting evidence" table describes the audited base at `c13a9
 | `npm run check:geometry-core` | `packages/geometry-core`, `tsc --noEmit` | exit 0, no diagnostics |
 | `npm run check:project-model` | `packages/project-model`, `tsc --noEmit` | exit 0, no diagnostics |
 | `npm run test:arch` | `apps/editor/vitest.arch.config.ts`, all arch files, including the documentation and parallel-track gates | 23 files, 194 tests pass |
-| `npm test` | `apps/editor`, `vitest run`, the complete suite | 262 files, 3399 tests pass |
+| `npm test` | `apps/editor`, `vitest run`, the complete suite | 262 files, 3404 tests pass |
 | `npm run test:heavy` | `apps/editor/vitest.heavy.config.ts` | 11 files, 138 tests pass |
 | `npm run build` | `apps/editor` production build, adapter-vercel | exit 0 |
 | `git diff --check` | whitespace over the branch | clean |
 
 Focused iteration runs, which are feedback and not acceptance, on the same tree:
-`tests/lib/authoring/head-drafting-config.test.ts` (7 tests), `head-find.test.ts` (7), `head-save.test.ts` (8),
+`tests/lib/authoring/head-drafting-config.test.ts` (11 tests), `head-find.test.ts` (8), `head-save.test.ts` (8),
 `head-save-journey.test.ts` (5), `spatial-route-gesture.test.ts` (77), `spatial-route-resume-save.test.ts` (7),
 `spatial-route-source-replacement.test.ts` (15), `stage-shell-composition.test.ts` (9) and
-`tests/lib/platform/project-lifecycle-actions.test.ts` (5): 9 files, 140 tests pass.
+`tests/lib/platform/project-lifecycle-actions.test.ts` (5): 9 files, 145 tests pass.
 
 Plan test coverage, in the four named files:
 
 - `head-find.test.ts`: every former ☰ capability (2D appearance, Height Sheet side, Reduce motion, motion
   speed, rename, delete, source download, source replacement) and Keys reach Find with their verbs. Rename and
   delete run the Head's own project procedure, and nothing else reaches the host as them. The project menu holds
-  the actions and the project id.
+  the actions and the project id. Escape closes the project menu and returns focus to the project name.
 - `head-save.test.ts`: a refused Save is announced in a polite live region and is the Save control's
   `aria-describedby`. A settled Save stays focusable (`aria-disabled`, not `disabled`) with its reason as its
   description, and a press opens that reason.
 - `head-drafting-config.test.ts`: the ⚙ holds the four viewing preferences and no Grid interval, Snap-to-grid or
-  automatic option. Grid and Snap stay the cluster's words. Escape closes the ⚙ and returns focus to it. The Head
-  holds no viewing value.
+  automatic option. Grid and Snap stay the cluster's words. Escape closes the ⚙ and returns focus to it. A press
+  outside the ⚙ and its panel closes the panel, including a press on another cluster control inside a wrapper that
+  stops pointerdown, as the Stage's `.stage-actions` does. The Head holds no viewing value.
 - `head-save-journey.test.ts`: unchanged, and still passing against the mounted Head.
 
 Not run and not applicable: `npm run check:api` and `npm run test:api`. No `apps/api` file changed, so the
@@ -110,7 +113,16 @@ Keyboard only, verified in the browser:
   to Find.
 - Keys takes focus when it opens, and Escape closes it and returns focus to the page.
 - The ⚙ and the project menu were opened from the keyboard path. Escape on the ⚙ is covered by
-  `head-drafting-config.test.ts`. Escape on the project menu is not covered (see residuals).
+  `head-drafting-config.test.ts`. Escape on the project menu closes it and returns focus to the project name, in the
+  browser and in `head-find.test.ts`.
+
+Re-check after the review fixes, at 1440×900 in a fresh session with 0 page errors:
+
+- The ⚙ panel on the mat (3D) and on Paper (2D) reads the shell roles: forest with light ink on the mat, Paper with
+  forest ink on Paper, and white selects on Paper. The S13 cluster buttons are unchanged.
+- Clicking 2D, an outside press, closes an open ⚙. A real mouse press on the empty stage closes an open ⚙ (`true`
+  before, `false` after).
+- Escape on the project menu closes it and focus returns to the project name.
 
 Screenshots, all in [evidence/2026-11-01-browser](./evidence/2026-11-01-browser/):
 
@@ -127,7 +139,8 @@ Further captures at 1440×900: [keyboard Save focus](./evidence/2026-11-01-brows
 [keyboard Preview focus](./evidence/2026-11-01-browser/head-1440x900-keyboard-preview-focus.png),
 [keyboard Find typed](./evidence/2026-11-01-browser/head-1440x900-keyboard-find-typed.png),
 [project menu](./evidence/2026-11-01-browser/head-1440x900-project-menu.png),
-[⚙ viewing settings](./evidence/2026-11-01-browser/stage-viewing-settings-1440x900.png) and
+[⚙ viewing settings on the mat](./evidence/2026-11-01-browser/stage-viewing-settings-mat-1440x900.png),
+[⚙ viewing settings on Paper](./evidence/2026-11-01-browser/stage-viewing-settings-paper-1440x900.png) and
 [Keys panel](./evidence/2026-11-01-browser/stage-keys-panel-1440x900.png).
 
 Measurements: `<width>-metrics-{empty,refused,dirty}.json` (produced by [head-metrics.js](./evidence/2026-11-01-browser/head-metrics.js)),
@@ -138,18 +151,18 @@ Measurements: `<width>-metrics-{empty,refused,dirty}.json` (produced by [head-me
 - **Perf browser flows are stale.** `apps/editor/perf/flows/*.spec.ts` and `apps/editor/perf/lib/flow.ts` still
   locate "Download source JSON" in the removed ☰ menu and "Open source JSON" on the Stage. Some of them also
   name stage controls that S13 already renamed or moved (Fit, Plan, the `.stage-actions` locator). They need the
-  Cloud stack and are outside the declared tier. They were not run or updated here and need a refresh.
+  Cloud stack and are outside the declared tier. They were not run or updated here. The coordinator's review
+  records this as a residual, and close-out routes it to tech-debt.
 - **A server-refused Save is not browser-verified.** This session has no Cloud service. The refused-Save path is
   covered by `head-save.test.ts` on a mounted Head, through the refused status, the live announcement and the
   description. The browser refusal evidence is the Undo, Save and Preview reason disclosures.
-- **Escape on the project menu is not covered** by a test or by the browser run.
 - **Native touch and Safari remain S11's**, per the plan. The coarse pass is Chromium with touch emulation only.
 - **Index and Card density roles are defined but not applied.** `--shell-index-width: 256px` and
   `--shell-card-width: 288px` live in `shell-roles.css`. S21 applies them (D06).
 - **A pin hint sits over the Height Sheet** on first pin (visible in the dirty capture). That is S22's (D42), and
   this slice does not change it.
-- **Find closes after a run and returns focus to Find.** This is a Head behaviour choice, not an owner ruling,
-  and it is flagged for review.
+- **Find closes after a run and returns focus to Find.** This is a Head behaviour choice, accepted by the
+  coordinator in the review of PR #248.
 - **Coarse Head height is 60 px**, taller than the 44 px fine-pointer row, so that 44 px targets fit on one row.
 - **A stale error in the development session.** An earlier hot-reload left `HEAD_PREFERENCE_ENTRIES is not
   defined` in one tab's error log. A fresh session logs no errors, and the Find list holds all 30 entries.
