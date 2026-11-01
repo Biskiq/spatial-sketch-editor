@@ -302,37 +302,37 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		contributionsVersion += 1;
 	}
 	/**
-		 * R217.S20 — the viewing preferences the Head's Find reaches. The Stage's ⚙ holds
-		 * the same values; Find is the second door, and both write the one preference.
-		 */
-		const HEAD_PREFERENCE_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string }[] = [
-			{ id: 'appearance:paper', adapterId: 'preference', label: '2D appearance: Paper', verb: 'Set' },
-			{ id: 'appearance:shaded', adapterId: 'preference', label: '2D appearance: Shaded', verb: 'Set' },
-			{ id: 'height-sheet:right', adapterId: 'preference', label: 'Height Sheet: Right', verb: 'Set' },
-			{ id: 'height-sheet:left', adapterId: 'preference', label: 'Height Sheet: Left', verb: 'Set' },
-			{ id: 'reduce-motion', adapterId: 'preference', label: 'Reduce motion', verb: 'Toggle' },
-			{ id: 'motion-speed:slow', adapterId: 'preference', label: 'Motion speed: Slow', verb: 'Set' },
-			{ id: 'motion-speed:normal', adapterId: 'preference', label: 'Motion speed: Normal', verb: 'Set' },
-			{ id: 'motion-speed:fast', adapterId: 'preference', label: 'Motion speed: Fast', verb: 'Set' }
-		];
-		/**
-		 * R217.S20 — the project procedures under the project name. Rename and delete run
-		 * in the Head's own lifecycle dialog; download and source replacement run the
-		 * same route functions the project menu runs.
-		 */
-		const HEAD_PROJECT_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string }[] = [
-			{ id: 'rename', adapterId: 'project-menu', label: 'Rename project', verb: 'Run' },
-			{ id: 'delete', adapterId: 'project-menu', label: 'Delete project', verb: 'Run' },
-			{ id: 'download', adapterId: 'project-menu', label: 'Download source JSON', verb: 'Run' },
-			{ id: 'source', adapterId: 'project-menu', label: 'Open source JSON', verb: 'Replace' }
-		];
-		/** Whether the Keys reference is open; it lives in Find and closes with its own control. */
-		let keysOpen = $state(false);
-		/** Moves focus into an opened reference, so a keyboard user lands in what Find opened. */
-		function focusOnOpen(node: HTMLElement): void {
-			node.focus();
-		}
-		let revealed = $state<string[]>([]);
+	 * R217.S20 — the viewing preferences the Head's Find reaches. The Stage's ⚙ holds
+	 * the same values; Find is the second door, and both write the one preference.
+	 */
+	const HEAD_PREFERENCE_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string }[] = [
+		{ id: 'appearance:paper', adapterId: 'preference', label: '2D appearance: Paper', verb: 'Set' },
+		{ id: 'appearance:shaded', adapterId: 'preference', label: '2D appearance: Shaded', verb: 'Set' },
+		{ id: 'height-sheet:right', adapterId: 'preference', label: 'Height Sheet: Right', verb: 'Set' },
+		{ id: 'height-sheet:left', adapterId: 'preference', label: 'Height Sheet: Left', verb: 'Set' },
+		{ id: 'reduce-motion', adapterId: 'preference', label: 'Reduce motion', verb: 'Toggle' },
+		{ id: 'motion-speed:slow', adapterId: 'preference', label: 'Motion speed: Slow', verb: 'Set' },
+		{ id: 'motion-speed:normal', adapterId: 'preference', label: 'Motion speed: Normal', verb: 'Set' },
+		{ id: 'motion-speed:fast', adapterId: 'preference', label: 'Motion speed: Fast', verb: 'Set' }
+	];
+	/**
+	 * R217.S20 — the project procedures under the project name. Rename and delete run
+	 * in the Head's own lifecycle dialog; download and source replacement run the
+	 * same route functions the project menu runs.
+	 */
+	const HEAD_PROJECT_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string }[] = [
+		{ id: 'rename', adapterId: 'project-menu', label: 'Rename project', verb: 'Run' },
+		{ id: 'delete', adapterId: 'project-menu', label: 'Delete project', verb: 'Run' },
+		{ id: 'download', adapterId: 'project-menu', label: 'Download source JSON', verb: 'Run' },
+		{ id: 'source', adapterId: 'project-menu', label: 'Open source JSON', verb: 'Replace' }
+	];
+	/** Whether the Keys reference is open; it lives in Find and closes with its own control. */
+	let keysOpen = $state(false);
+	/** Moves focus into an opened reference, so a keyboard user lands in what Find opened. */
+	function focusOnOpen(node: HTMLElement): void {
+		node.focus();
+	}
+	let revealed = $state<string[]>([]);
 	let lens = $state<'world' | 'experience'>('world');
 	let indexOpen = $state(true);
 	let query = $state('');
@@ -3548,7 +3548,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		paletteOpen = !paletteOpen;
 	}
 
-	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
 	/** R217.S20 — a Find preference entry writes the same browser preference the Stage's ⚙ writes. */
 	function runPreferenceEntry(id: string): void {
 		if (id === 'reduce-motion') {
@@ -3562,6 +3561,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		else if (name === 'motion-speed' && (value === 'slow' || value === 'normal' || value === 'fast')) updatePreferences({ ...preferences, motionSpeed: value });
 	}
 
+	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
 	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string }): void {
 		if (entry.adapterId === 'project-replacement' && entry.id === 'starter') {
 			requestReplacement('starter');
