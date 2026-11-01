@@ -1,6 +1,9 @@
 <script module lang="ts">
-	/** The one-time hint is a session fact, not project state. */
-	let heightHintSeen = false;
+	/**
+	 * How long the one-time pin hint stays before it clears itself. The hint is never
+	 * dismissed by the creator: it appears once per Stage session and goes away.
+	 */
+	export const PIN_HINT_MS = 6000;
 </script>
 
 <script lang="ts">
@@ -15,6 +18,11 @@
 	 * Ticks are the floor datum (long), found surfaces (short) and pins (round).
 	 * The host has already merged the owners' declarations; this component only
 	 * draws them and maps pointer travel to the same height fact.
+	 *
+	 * R217.S22 (D11, D42): a thin line with a knob and semantic ticks, not a boxed
+	 * panel. The value shows on focus, drag and touch. The one pin hint is owned by the
+	 * Stage session (`pinHintSeen`, TD-15), appears on the first pin use and clears
+	 * itself. The Sheet positions its own lane, and the route measures that lane.
 	 */
 	import { onMount } from 'svelte';
 	import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from '../plan-parameters';
@@ -27,6 +35,10 @@
 		snapIncrement,
 		reducedMotion = false,
 		side = 'right',
+		quiet = false,
+		pinHintSeen = false,
+		onPinHintSeen = () => {},
+		laneRef = $bindable(null),
 		onSetHeight,
 		onAddPin,
 		onRemovePin,
@@ -40,6 +52,16 @@
 		snapIncrement: number;
 		reducedMotion?: boolean;
 		side?: 'left' | 'right';
+		/** Paper's quiet ink instead of the mat's: the Sheet sits on a light ground. */
+		quiet?: boolean;
+		/**
+		 * Whether this Stage session has already shown the pin hint. The owner (the Stage
+		 * host) holds it, so a fresh Stage session shows its own first-pin hint.
+		 */
+		pinHintSeen?: boolean;
+		onPinHintSeen?: () => void;
+		/** The Sheet's own lane box, so the host can publish its measured width. */
+		laneRef?: HTMLElement | null;
 		onSetHeight: (heightMeters: number, cause: StageHeightCause) => void;
 		onAddPin: () => void;
 		onRemovePin: (heightMeters: number) => void;
@@ -50,10 +72,13 @@
 	let active = false;
 	let dragging = $state(false);
 	let hovered = false;
-	let focused = false;
+	let focused = $state(false);
+	/** A finger is on the rail: the value shows for a tap as well as a drag. */
+	let touching = $state(false);
 	let dragPointerId: number | null = null;
 	let snapName = $state<string | null>(null);
-	let hintDismissed = $state(false);
+	let hintVisible = $state(false);
+	let hintTimer: ReturnType<typeof setTimeout> | null = null;
 	let track = $state<HTMLDivElement | undefined>(undefined);
 
 	const maxMeters = $derived(
@@ -65,8 +90,8 @@
 			...ticks.map((tick) => tick.heightMeters + 1)
 		)
 	);
-	const foundTick = $derived(ticks.find((tick) => tick.kind === 'found') ?? null);
-	const showHint = $derived(foundTick !== null && !hintDismissed && !heightHintSeen);
+	/** The value is stated while the Sheet is focused, dragged or touched, and not otherwise. */
+	const valueShown = $derived(focused || dragging || touching);
 
 	const percentOf = (height: number): number =>
 		maxMeters > 0 ? Math.min(100, Math.max(0, (height / maxMeters) * 100)) : 0;
@@ -149,6 +174,7 @@
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		dragPointerId = event.pointerId;
 		dragging = true;
+		touching = event.pointerType === 'touch';
 		syncActive();
 		applyDrag(event.clientY, event.altKey);
 	}
@@ -173,6 +199,7 @@
 	function finishDrag(): void {
 		if (!dragging) return;
 		dragging = false;
+		touching = false;
 		snapName = null;
 		const pointerId = dragPointerId;
 		dragPointerId = null;
@@ -202,6 +229,11 @@
 			dragging = false;
 			dragPointerId = null;
 			snapName = null;
+			touching = false;
+			if (hintTimer !== null) {
+				clearTimeout(hintTimer);
+				hintTimer = null;
+			}
 			if (active) {
 				active = false;
 				onActiveChange(false);
@@ -252,9 +284,20 @@
 		}
 	}
 
-	function dismissHint(): void {
-		hintDismissed = true;
-		heightHintSeen = true;
+	/**
+	 * Pin the current height. The first pin of a Stage session shows the hint, once,
+	 * and the hint clears itself; a later pin shows nothing.
+	 */
+	function pinAtHeight(): void {
+		onAddPin();
+		if (pinHintSeen) return;
+		onPinHintSeen();
+		hintVisible = true;
+		if (hintTimer !== null) clearTimeout(hintTimer);
+		hintTimer = setTimeout(() => {
+			hintVisible = false;
+			hintTimer = null;
+		}, PIN_HINT_MS);
 	}
 
 	function stopPointer(event: PointerEvent): void {
@@ -266,8 +309,10 @@
 <div
 	class="sheet"
 	class:left={side === 'left'}
+	class:quiet
 	class:instant={reducedMotion}
 	data-stage-height-sheet
+	bind:this={laneRef}
 	onpointerenter={() => {
 		hovered = true;
 		syncActive();
@@ -287,7 +332,6 @@
 		}
 	}}
 >
-	<span class="title">Height</span>
 	<div class="rail-wrap">
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
@@ -340,55 +384,55 @@
 			aria-label={`Pin the height at ${heightMeters.toFixed(2)} metres`}
 			title="Pin this height for the session"
 			onpointerdown={stopPointer}
-			onclick={onAddPin}
+			onclick={pinAtHeight}
 		>
 			＋
 		</button>
 	</div>
-	<p class="readout" aria-live="polite">{heightMeters.toFixed(2)} m</p>
+	<p class="readout" class:shown={valueShown} aria-live="polite">{heightMeters.toFixed(2)} m</p>
 	{#if snapName !== null}
 		<p class="snap" role="status">{snapName}</p>
 	{/if}
-	{#if showHint}
-		<div class="hint" role="note">
-			<p>Pins mark a working height for this session. They are never saved.</p>
-			<button type="button" onclick={dismissHint}>Got it</button>
-		</div>
-	{/if}
 </div>
+{#if hintVisible}
+	<p class="hint" role="note" data-pin-hint>Pins mark a working height for this session. They are never saved.</p>
+{/if}
 
 <style>
+	/*
+	 * The Sheet is a line, not a box (R217.S22, D11). It is absolutely placed in the
+	 * Stage's right-edge (or left-edge) lane. The route measures this lane's width and
+	 * clears the Card from it, so no colour or width here is a second layout authority.
+	 */
 	.sheet {
-		--chassis-forest: #11291f;
-		--chassis-hairline: #405d4c;
+		position: absolute;
+		top: 50%;
+		right: 0.75rem;
+		z-index: 8;
+		transform: translateY(-50%);
 		display: grid;
 		justify-items: center;
 		gap: 0.3rem;
-		width: 4.6rem;
-		padding: 0.55rem 0.4rem 0.45rem;
-		border: 1px solid var(--chassis-hairline);
-		border-radius: 0.5rem;
-		background: rgb(17 41 31 / 94%);
+		width: 4rem;
 		color: #f4f0e9;
-		box-shadow: 0 0.4rem 1.2rem rgb(6 20 14 / 35%);
 		font-size: 0.68rem;
 		line-height: 1.25;
 	}
-	.title {
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		opacity: 0.78;
+	.sheet.left {
+		right: auto;
+		left: 0.75rem;
 	}
 	.rail-wrap {
 		position: relative;
-		display: grid;
-		justify-items: center;
+		width: 4rem;
 		height: 13rem;
 	}
 	.track {
-		position: relative;
-		width: 2.6rem;
-		height: 100%;
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: 2.75rem;
 		cursor: ns-resize;
 		touch-action: none;
 	}
@@ -429,25 +473,29 @@
 		font-size: 0.65rem;
 		cursor: pointer;
 	}
+	/* The knob is the drawn ring; its pressable area is the rail's track. */
 	.knob {
+		--knob-ring: #f4f0e9;
+		--knob-fill: #11291f;
 		position: absolute;
 		left: 50%;
 		width: 0.9rem;
 		height: 0.9rem;
+		box-sizing: border-box;
 		transform: translate(-50%, 50%);
-		border: 2px solid #f4f0e9;
+		border: 2px solid var(--knob-ring);
 		border-radius: 50%;
-		background: #11291f;
+		background: var(--knob-fill);
 		pointer-events: none;
 	}
 	.add {
 		position: absolute;
-		left: calc(100% - 0.1rem);
+		left: 2.5rem;
 		width: 1.4rem;
 		height: 1.4rem;
 		padding: 0;
 		transform: translate(0, 50%);
-		border: 1px solid var(--chassis-hairline);
+		border: 1px solid #405d4c;
 		border-radius: 50%;
 		background: #22503c;
 		color: #f4f0e9;
@@ -458,6 +506,11 @@
 		margin: 0;
 		font-variant-numeric: tabular-nums;
 		letter-spacing: 0.01em;
+		opacity: 0;
+		transition: opacity 120ms ease;
+	}
+	.readout.shown {
+		opacity: 1;
 	}
 	.snap {
 		margin: 0;
@@ -466,36 +519,53 @@
 		font-size: 0.62rem;
 		text-align: center;
 	}
+	/*
+	 * The pin hint is a Stage note above the lower column, on the left edge, clear of
+	 * the Card and the Sheet lane. It is not interactive and it clears itself.
+	 */
 	.hint {
 		position: absolute;
-		right: calc(100% + 0.45rem);
-		bottom: 0;
-		width: 11rem;
+		z-index: 9;
+		left: calc(var(--sheet-lane-left, 0px) + 1rem);
+		bottom: calc(var(--lower-column-height, 0px) + 1.25rem);
+		width: min(16rem, calc(100% - 2rem));
+		margin: 0;
 		padding: 0.5rem 0.6rem;
 		border: 1px solid #8a6a31;
 		border-radius: 0.4rem;
 		background: #2b2417;
 		color: #f4e5c8;
 		font-size: 0.66rem;
+		line-height: 1.35;
+		pointer-events: none;
 	}
-	.sheet.left .hint {
-		right: auto;
-		left: calc(100% + 0.45rem);
+	/* Paper's quiet ink: the Sheet sits on a light ground. */
+	.sheet.quiet {
+		color: var(--shell-forest, #11291f);
 	}
-	.hint p {
-		margin: 0 0 0.35rem;
+	.sheet.quiet .rail,
+	.sheet.quiet .tick {
+		background: var(--shell-forest-raised, #22503c);
 	}
-	.hint button {
-		padding: 0.25rem 0.45rem;
-		border: 1px solid #8a6a31;
-		border-radius: 0.3rem;
-		background: #3a3020;
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
+	.sheet.quiet .tick.datum {
+		background: var(--shell-forest, #11291f);
 	}
-	.sheet {
-		position: relative;
+	.sheet.quiet .knob {
+		--knob-ring: var(--shell-forest, #11291f);
+		--knob-fill: var(--shell-paper, #e9ebe6);
+	}
+	.sheet.quiet .pin {
+		border-color: var(--shell-gold-ink, #74560c);
+		background: var(--shell-gold, #d4ad45);
+		color: var(--shell-forest, #11291f);
+	}
+	.sheet.quiet .add {
+		border-color: var(--shell-forest-raised, #22503c);
+		background: var(--shell-forest-raised, #22503c);
+		color: var(--shell-paper, #e9ebe6);
+	}
+	.sheet.quiet .snap {
+		color: var(--shell-forest-raised, #22503c);
 	}
 	.track:focus-visible {
 		outline: 2px solid #9fd0b4;
@@ -507,14 +577,39 @@
 		outline-offset: 2px;
 	}
 	.instant .tick,
-	.instant .knob {
+	.instant .knob,
+	.instant .readout {
 		transition: none;
 	}
-	/* PLATE's coarse-pointer law: the knob's pressable area is 44 px, even
-	   though the drawn mark stays small. */
+	/* PLATE's coarse-pointer law: every pressable part of the Sheet is 44 × 44 px, even
+	   though the drawn mark stays small. The knob's own box is 44 px; the track is 44 px wide. */
 	@media (pointer: coarse) {
+		.sheet {
+			width: 5.5rem;
+		}
+		.rail-wrap {
+			width: 5.5rem;
+		}
 		.track {
 			width: 44px;
+		}
+		.knob {
+			width: 44px;
+			height: 44px;
+			border: 0;
+			background: transparent;
+		}
+		.knob::before {
+			content: '';
+			position: absolute;
+			inset: 15px;
+			box-sizing: border-box;
+			border: 2px solid var(--knob-ring);
+			border-radius: 50%;
+			background: var(--knob-fill);
+		}
+		.add {
+			left: 2.75rem;
 		}
 		.add,
 		.pin {
