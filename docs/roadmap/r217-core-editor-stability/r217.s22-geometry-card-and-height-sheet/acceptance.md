@@ -268,11 +268,18 @@ Anchors, computed before the compaction commit:
 plan        050a30d9418a9a910a320388ae2ea4d879f1b34c   last commit with the full plan body (reachable on main); the stub
                                                        at its path names this anchor
 acceptance  68ac2091495bac77b18047ccb216697e478b82ee   the full record before this close-out; kept in full at its path
-tag         closed/r217.s22 -> 68ac2091               created and pushed after the merge; the tag target keeps
-                                                       both anchors reachable
-merge       P1 merge of PR #252 with `--merge`; the merge-commit SHA and the post-merge verification are recorded
-            by the post-merge anchors follow-up
+tag         closed/r217.s22 -> 68ac2091               annotated tag object `82e6bc27243447eb572e93ab70df7cc933dfcc65`,
+                                                       pushed to origin; the tag target keeps both anchors reachable
+merge       P1 merge commit `c989a11192bbda47934c4b46bc692eef7962d384` (PR #252, `--merge`; parents `3eaafbb9`
+            and `a69b1c6a`)
 ```
+
+Post-merge verification, run on `main` at `c989a111`:
+
+- Both anchors are ancestors of `main`: `050a30d9` (plan) and `68ac2091` (acceptance). `git show` of each returns
+  its full body at its path.
+- The tag `closed/r217.s22` peels to `68ac2091`, and both anchors are its ancestors.
+- The tag is on origin.
 
 ```text
 CLOSEOUT PRESERVATION — R217.S22 (2026-11-01)
@@ -282,7 +289,7 @@ reference promotions:            0   the Height Sheet, pin hint and Card contrac
 renderable evidence archived:    181 files / 19 MB (112 PNG, 56 JSON, 4 text, 9 scripts and probes), moved byte-identical
 evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/evidence/CLOSED.md
 transient artifacts removed:     0
-historical anchors:              plan 050a30d9; acceptance 68ac2091; tag closed/r217.s22 -> 68ac2091 (created after the merge)
+historical anchors:              plan 050a30d9; acceptance 68ac2091; tag closed/r217.s22 -> 68ac2091 (annotated, object 82e6bc27; pushed to origin)
 new live -> archive prose links: 0
 manual-owed verification rows:   3   native touch and Safari (S11); the plinth top and 0.75 m ticks (S11 J4); a refused
                                      press in the browser, not exercised
