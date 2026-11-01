@@ -1,0 +1,761 @@
+[
+  {
+    "name": "single wall, 5 m",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w",
+        "startJoin": "terminal",
+        "endJoin": "terminal",
+        "triangles": 160,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 2,
+        "nominalVolume": 3,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 40,
+          "-y": 40,
+          "+z": 40,
+          "-z": 40
+        }
+      }
+    ],
+    "union": {
+      "edges": 244,
+      "boundaryEdges": 8,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": false,
+      "vectorAreaResidual": 0
+    },
+    "unionBoundary": [
+      "0,0,1000 — 0,30000,1000",
+      "0,0,-1000 — 0,30000,-1000",
+      "0,30000,-1000 — 0,30000,1000",
+      "0,0,-1000 — 0,0,1000",
+      "50000,0,1000 — 50000,30000,1000",
+      "50000,0,-1000 — 50000,30000,-1000",
+      "50000,30000,-1000 — 50000,30000,1000",
+      "50000,0,-1000 — 50000,0,1000"
+    ]
+  },
+  {
+    "name": "L corner (2 walls, 2 terminals)",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "terminal",
+        "endJoin": "miter",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "miter",
+        "endJoin": "terminal",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      }
+    ],
+    "union": {
+      "edges": 388,
+      "boundaryEdges": 8,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": false,
+      "vectorAreaResidual": 0.848528
+    },
+    "unionBoundary": [
+      "-40000,0,1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,30000,-1000",
+      "-40000,30000,-1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,0,1000",
+      "-1000,0,40000 — -1000,30000,40000",
+      "1000,0,40000 — 1000,30000,40000",
+      "-1000,30000,40000 — 1000,30000,40000",
+      "-1000,0,40000 — 1000,0,40000"
+    ]
+  },
+  {
+    "name": "closed rectangle (0 terminals)",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 160,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 2,
+        "nominalVolume": 3,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 40,
+          "-y": 40,
+          "+z": 40,
+          "-z": 40
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 3.599998,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      },
+      {
+        "wallId": "w3",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 160,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 3.599997,
+        "nominalVolume": 3,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 40,
+          "-y": 40,
+          "+z": 40,
+          "-z": 40
+        }
+      },
+      {
+        "wallId": "w4",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      }
+    ],
+    "union": {
+      "edges": 864,
+      "boundaryEdges": 0,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": true,
+      "vectorAreaResidual": 0
+    },
+    "unionBoundary": []
+  },
+  {
+    "name": "T junction (3 terminals)",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "terminal",
+        "endJoin": "suppressed",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "suppressed",
+        "endJoin": "terminal",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      },
+      {
+        "wallId": "w3",
+        "startJoin": "trim",
+        "endJoin": "terminal",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.56,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      }
+    ],
+    "union": {
+      "edges": 584,
+      "boundaryEdges": 16,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": false,
+      "vectorAreaResidual": 0
+    },
+    "unionBoundary": [
+      "-40000,0,1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,30000,-1000",
+      "-40000,30000,-1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,0,1000",
+      "40000,0,1000 — 40000,30000,1000",
+      "40000,0,-1000 — 40000,30000,-1000",
+      "40000,30000,-1000 — 40000,30000,1000",
+      "40000,0,-1000 — 40000,0,1000",
+      "-1000,0,1000 — -1000,30000,1000",
+      "1000,0,1000 — 1000,30000,1000",
+      "-1000,30000,1000 — 1000,30000,1000",
+      "-1000,0,1000 — 1000,0,1000"
+    ]
+  },
+  {
+    "name": "straight continuation, thicknesses differ",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "terminal",
+        "endJoin": "suppressed",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "suppressed",
+        "endJoin": "terminal",
+        "triangles": 132,
+        "boundaryEdges": 12,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 3.2,
+        "nominalVolume": 4.8,
+        "facing": {
+          "+x": 2,
+          "-x": 2,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      }
+    ],
+    "union": {
+      "edges": 398,
+      "boundaryEdges": 16,
+      "nonManifold": 0,
+      "inconsistentWinding": 2,
+      "watertight": false,
+      "vectorAreaResidual": 0
+    },
+    "unionBoundary": [
+      "-40000,0,1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,30000,-1000",
+      "-40000,30000,-1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,0,1000",
+      "0,30000,-1000 — 0,30000,1000",
+      "0,0,-1000 — 0,0,1000",
+      "0,30000,-2000 — 0,30000,2000",
+      "0,0,-2000 — 0,0,2000",
+      "40000,0,2000 — 40000,30000,2000",
+      "40000,0,-2000 — 40000,30000,-2000",
+      "40000,30000,-2000 — 40000,30000,2000",
+      "40000,0,-2000 — 40000,0,2000"
+    ]
+  },
+  {
+    "name": "L corner, heights differ",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "terminal",
+        "endJoin": "miter",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "miter",
+        "endJoin": "terminal",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.066667,
+        "nominalVolume": 1.6,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      }
+    ],
+    "union": {
+      "edges": 391,
+      "boundaryEdges": 14,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": false,
+      "vectorAreaResidual": 0.72111
+    },
+    "unionBoundary": [
+      "-40000,0,1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,30000,-1000",
+      "-40000,30000,-1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,0,1000",
+      "-1000,0,1000 — -1000,30000,1000",
+      "1000,0,-1000 — 1000,30000,-1000",
+      "-1000,30000,1000 — 1000,30000,-1000",
+      "-1000,0,1000 — -1000,20000,1000",
+      "1000,0,-1000 — 1000,20000,-1000",
+      "-1000,20000,1000 — 1000,20000,-1000",
+      "-1000,0,40000 — -1000,20000,40000",
+      "1000,0,40000 — 1000,20000,40000"
+    ]
+  },
+  {
+    "name": "closed rectangle, one lower wall",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 160,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.333333,
+        "nominalVolume": 2,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 40,
+          "-y": 40,
+          "+z": 40,
+          "-z": 40
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 3.599998,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      },
+      {
+        "wallId": "w3",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 160,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 3.599997,
+        "nominalVolume": 3,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 40,
+          "-y": 40,
+          "+z": 40,
+          "-z": 40
+        }
+      },
+      {
+        "wallId": "w4",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      }
+    ],
+    "union": {
+      "edges": 870,
+      "boundaryEdges": 12,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": false,
+      "vectorAreaResidual": 0.4
+    },
+    "unionBoundary": [
+      "1000,0,1000 — 1000,20000,1000",
+      "-1000,0,-1000 — -1000,20000,-1000",
+      "-1000,20000,-1000 — 1000,20000,1000",
+      "49000,0,1000 — 49000,20000,1000",
+      "51000,0,-1000 — 51000,20000,-1000",
+      "49000,20000,1000 — 51000,20000,-1000",
+      "49000,0,1000 — 49000,30000,1000",
+      "51000,0,-1000 — 51000,30000,-1000",
+      "49000,30000,1000 — 51000,30000,-1000",
+      "1000,0,1000 — 1000,30000,1000",
+      "-1000,0,-1000 — -1000,30000,-1000",
+      "-1000,30000,-1000 — 1000,30000,1000"
+    ]
+  },
+  {
+    "name": "closed rectangle, one thicker wall",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 160,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 4,
+        "nominalVolume": 6,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 40,
+          "-y": 40,
+          "+z": 40,
+          "-z": 40
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 4.599998,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      },
+      {
+        "wallId": "w3",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 160,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 3.599997,
+        "nominalVolume": 3,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 40,
+          "-y": 40,
+          "+z": 40,
+          "-z": 40
+        }
+      },
+      {
+        "wallId": "w4",
+        "startJoin": "miter",
+        "endJoin": "miter",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 32,
+          "-x": 32,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 0
+        }
+      }
+    ],
+    "union": {
+      "edges": 864,
+      "boundaryEdges": 0,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": true,
+      "vectorAreaResidual": 0
+    },
+    "unionBoundary": []
+  },
+  {
+    "name": "straight continuation, heights differ",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "terminal",
+        "endJoin": "suppressed",
+        "triangles": 130,
+        "boundaryEdges": 10,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 2,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "suppressed",
+        "endJoin": "terminal",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.066667,
+        "nominalVolume": 1.6,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      }
+    ],
+    "union": {
+      "edges": 394,
+      "boundaryEdges": 14,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": false,
+      "vectorAreaResidual": 0.2
+    },
+    "unionBoundary": [
+      "-40000,0,1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,30000,-1000",
+      "-40000,30000,-1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,0,1000",
+      "0,0,1000 — 0,30000,1000",
+      "0,0,-1000 — 0,30000,-1000",
+      "0,20000,1000 — 0,30000,1000",
+      "0,20000,-1000 — 0,30000,-1000",
+      "0,0,1000 — 0,20000,1000",
+      "0,0,-1000 — 0,20000,-1000",
+      "40000,0,1000 — 40000,20000,1000",
+      "40000,0,-1000 — 40000,20000,-1000"
+    ]
+  },
+  {
+    "name": "T junction, taller branch",
+    "compileIssues": [],
+    "walls": [
+      {
+        "wallId": "w1",
+        "startJoin": "terminal",
+        "endJoin": "suppressed",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      },
+      {
+        "wallId": "w2",
+        "startJoin": "suppressed",
+        "endJoin": "terminal",
+        "triangles": 128,
+        "boundaryEdges": 8,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 1.6,
+        "nominalVolume": 2.4,
+        "facing": {
+          "+x": 0,
+          "-x": 0,
+          "+y": 32,
+          "-y": 32,
+          "+z": 32,
+          "-z": 32
+        }
+      },
+      {
+        "wallId": "w3",
+        "startJoin": "trim",
+        "endJoin": "terminal",
+        "triangles": 194,
+        "boundaryEdges": 10,
+        "nonManifold": 0,
+        "windingAgrees": true,
+        "signedVolume": 2.073333,
+        "nominalVolume": 3.2,
+        "facing": {
+          "+x": 64,
+          "-x": 64,
+          "+y": 32,
+          "-y": 32,
+          "+z": 0,
+          "-z": 2
+        }
+      }
+    ],
+    "union": {
+      "edges": 684,
+      "boundaryEdges": 18,
+      "nonManifold": 0,
+      "inconsistentWinding": 0,
+      "watertight": false,
+      "vectorAreaResidual": 0.2
+    },
+    "unionBoundary": [
+      "-40000,0,1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,30000,-1000",
+      "-40000,30000,-1000 — -40000,30000,1000",
+      "-40000,0,-1000 — -40000,0,1000",
+      "40000,0,1000 — 40000,30000,1000",
+      "40000,0,-1000 — 40000,30000,-1000",
+      "40000,30000,-1000 — 40000,30000,1000",
+      "40000,0,-1000 — 40000,0,1000",
+      "-1000,0,1000 — -1000,30000,1000",
+      "1000,0,1000 — 1000,30000,1000",
+      "-1000,0,1000 — 1000,0,1000",
+      "-1000,0,40000 — -1000,30000,40000"
+    ]
+  }
+]

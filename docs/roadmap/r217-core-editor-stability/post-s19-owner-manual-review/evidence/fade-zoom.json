@@ -1,0 +1,160 @@
+{
+ "axis": [
+  {
+   "T": 12,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.84,
+   "l1": 2842,
+   "l5": 2217,
+   "l25": 530,
+   "depthLossPct": 0
+  },
+  {
+   "T": 30,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.94,
+   "l1": 4207,
+   "l5": 3528,
+   "l25": 810,
+   "depthLossPct": 0
+  },
+  {
+   "T": 60,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 1.05,
+   "l1": 4878,
+   "l5": 4998,
+   "l25": 1189,
+   "depthLossPct": 0
+  },
+  {
+   "T": 120,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 4.1,
+   "xOverZ": 1.17,
+   "l1": 3677,
+   "l5": 6686,
+   "l25": 1830,
+   "depthLossPct": 0
+  },
+  {
+   "T": 250,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 2.3,
+   "xOverZ": 1.18,
+   "l1": 387,
+   "l5": 8131,
+   "l25": 2944,
+   "depthLossPct": 0
+  },
+  {
+   "T": 500,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 7.1,
+   "xOverZ": 1.31,
+   "l1": 0,
+   "l5": 7225,
+   "l25": 4771,
+   "depthLossPct": 0
+  },
+  {
+   "T": 1000,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 4.6,
+   "xOverZ": 1.39,
+   "l1": 0,
+   "l5": 1877,
+   "l25": 7439,
+   "depthLossPct": 0
+  }
+ ],
+ "common": [
+  {
+   "T": 12,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.61,
+   "l1": 2427,
+   "l5": 1947,
+   "l25": 459,
+   "depthLossPct": 0
+  },
+  {
+   "T": 30,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.67,
+   "l1": 3433,
+   "l5": 3047,
+   "l25": 735,
+   "depthLossPct": 0
+  },
+  {
+   "T": 60,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.72,
+   "l1": 3698,
+   "l5": 4239,
+   "l25": 1062,
+   "depthLossPct": 0
+  },
+  {
+   "T": 120,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.74,
+   "l1": 2089,
+   "l5": 5496,
+   "l25": 1644,
+   "depthLossPct": 0
+  },
+  {
+   "T": 250,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.76,
+   "l1": 6,
+   "l5": 6286,
+   "l25": 2631,
+   "depthLossPct": 0
+  },
+  {
+   "T": 500,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.8,
+   "l1": 0,
+   "l5": 4689,
+   "l25": 4210,
+   "depthLossPct": 0
+  },
+  {
+   "T": 1000,
+   "el": 12,
+   "az": 0.35,
+   "singleDirPct": 0.0,
+   "xOverZ": 0.8,
+   "l1": 0,
+   "l5": 364,
+   "l25": 6113,
+   "depthLossPct": 0
+  }
+ ]
+}

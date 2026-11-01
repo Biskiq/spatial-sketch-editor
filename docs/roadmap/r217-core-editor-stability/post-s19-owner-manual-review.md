@@ -2,6 +2,8 @@
 
 **Status:** Owner observations for investigation. Not an implementation approval, new slice acceptance, waiver, or R217 closeout. S15–S19 remain historically shipped. R217.S11 is still the integrated gate.
 
+**Investigation report:** [causes and proposed fixes](./post-s19-owner-manual-review/report.md).
+
 **Base:** Manual checks after R217.S15–S19 were merged, including Plan and 3D screenshots of selected Walls, invalid drags, and isolated Walls. The screenshots were supplied in the owner conversation; they are not part of this PR. Please reproduce and capture evidence in the repo.
 
 ## My review
