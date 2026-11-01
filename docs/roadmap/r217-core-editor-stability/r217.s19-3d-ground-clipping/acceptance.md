@@ -206,7 +206,7 @@ plan       1f91ad5d7456c15aa603c0a1c4b350c57dec446a   last commit with the full 
                                                       at its path names this anchor as its recovery
 acceptance 9efa6641dd2f1da63c8358dbac2215433bc7d2c8   full record; kept in full at its path
 tag        closed/r217.s19 -> 9efa6641                tag target keeps both anchors reachable
-merge      P1 merge commit; post-merge anchor verification recorded by the anchors follow-up
+merge      P1 merge commit `edaa7ff2475975a7259f2bf5d2d7dc381d80e9c2` (PR #245, merge commit method); plan and acceptance anchors verified reachable from `main`
 ```
 
 ```text
@@ -216,7 +216,7 @@ reference promotions:            0   the mat-grid paragraph of the shell + visua
 renderable evidence archived:    39 files / 9.2 MiB (23 browser, 16 first-checkpoint), byte-identical copies
 evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s19-3d-ground-clipping/evidence/CLOSED.md
 transient artifacts removed:     0
-historical anchors:              plan 1f91ad5d7456c15aa603c0a1c4b350c57dec446a; acceptance 9efa6641dd2f1da63c8358dbac2215433bc7d2c8 (full record); tag closed/r217.s19 -> 9efa6641 (push state recorded at post-merge verification)
+historical anchors:              plan 1f91ad5d7456c15aa603c0a1c4b350c57dec446a; acceptance 9efa6641dd2f1da63c8358dbac2215433bc7d2c8 (full record); tag closed/r217.s19 -> 9efa6641 (pushed to origin)
 new live -> archive prose links: 0
 manual-owed verification rows:   4   coarse pointer, native touch, Safari, integrated journeys (S11)
 remaining deferred items:        3   far-target near (row 5); grid depth-step offset within four depth steps of the datum; S11 manual rows
