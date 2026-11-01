@@ -72,7 +72,20 @@
 		viewingOpen = false;
 		gear?.focus();
 	}
+
+	/**
+	 * A press outside the ⚙ and its panel closes the panel, as the Head's disclosures do.
+	 * It listens in the capture phase: the Stage's cluster stops pointerdown below it,
+	 * and a press on another cluster control must still close the panel.
+	 */
+	function onWindowPointerDown(event: PointerEvent): void {
+		if (!viewingOpen) return;
+		const target = event.target;
+		if (target instanceof Element && target.closest('.viewing-slot') === null) viewingOpen = false;
+	}
 </script>
+
+<svelte:window onpointerdowncapture={onWindowPointerDown} />
 
 <div class="cluster" class:quiet data-stage-drafting role="group" aria-label="Drafting state">
 	<div class="reading" role="group" aria-label="Reading">
@@ -271,6 +284,10 @@
 		padding: 0;
 		font-size: 0.95rem;
 	}
+	/*
+		The panel reads the shell's roles (shell-roles.css), not the cluster's chassis
+		inks: a mat panel is forest with light ink, and a Paper panel is Paper with forest ink.
+	*/
 	.viewing {
 		position: absolute;
 		z-index: 9;
@@ -280,10 +297,10 @@
 		gap: 0.5rem;
 		width: 16rem;
 		padding: 0.75rem;
-		border: 1px solid var(--chassis-hairline, #405d4c);
+		border: 1px solid var(--shell-hairline, #2f4a3d);
 		border-radius: 0.4rem;
-		background: var(--chassis-forest, #11291f);
-		color: #f4f0e9;
+		background: var(--shell-forest, #11291f);
+		color: var(--shell-ink-light, #f3f4ee);
 		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 40%);
 		font-size: 0.76rem;
 	}
@@ -302,9 +319,9 @@
 	.viewing select {
 		min-height: 2.1rem;
 		padding: 0 0.3rem;
-		border: 1px solid var(--chassis-hairline, #405d4c);
+		border: 1px solid var(--shell-hairline, #2f4a3d);
 		border-radius: 0.35rem;
-		background: var(--chassis-forest, #11291f);
+		background: var(--shell-forest, #11291f);
 		color: inherit;
 		font: inherit;
 	}
@@ -313,7 +330,7 @@
 		font-weight: 700;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: #aebbb0;
+		color: var(--shell-ink-quiet, #9fb2a2);
 	}
 
 	/* D42: on Paper the words read quietly, never as a dark inverted toolbar. */
@@ -334,14 +351,19 @@
 	.cluster.quiet button:focus-visible {
 		outline-color: #22503c;
 	}
+	/* On Paper the panel is Paper with forest ink; the selects are white Cards on it. Only shell roles. */
 	.cluster.quiet .viewing {
-		color: #14231b;
+		background: var(--shell-paper, #e9ebe6);
+		border-color: var(--shell-ink-quiet, #9fb2a2);
+		color: var(--shell-forest, #11291f);
 	}
 	.cluster.quiet .viewing select {
-		color: #14231b;
+		border-color: var(--shell-ink-quiet, #9fb2a2);
+		background: var(--shell-card, #ffffff);
+		color: var(--shell-forest, #11291f);
 	}
 	.cluster.quiet .group-title {
-		color: #4f6b58;
+		color: var(--shell-forest-raised, #22503c);
 	}
 
 	/* Touch targets: PLATE requires 44 px under a coarse pointer. */

@@ -71,6 +71,80 @@ function mountControl(props: ControlProps = {}): HTMLElement {
 	return target;
 }
 
+/**
+ * Mounts the cluster inside a wrapper that stops pointerdown, as the Stage's `.stage-actions`
+ * does, so a press on the cluster never reaches the window in the bubble phase.
+ */
+function mountControlInStoppingCluster(): HTMLElement {
+	target = document.createElement('div');
+	const wrapper = target;
+	wrapper.addEventListener('pointerdown', (event) => event.stopPropagation());
+	const inner = document.createElement('div');
+	wrapper.append(inner);
+	document.body.append(wrapper);
+	component = mount(StageDraftingControl, {
+		target: inner,
+		props: {
+			drafting: { grid: true, snap: true, snapSuspended: false },
+			reading: 'plan' as const,
+			gridWord: 'Grid',
+			snapWord: 'Snap',
+			onReading: () => {},
+			onPatch: () => {}
+		}
+	});
+	return wrapper;
+}
+
+function press(node: Element | Document): void {
+	node.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+}
+
+describe('R217.S20 — the ⚙ closes on a press outside it, as the Head disclosures do', () => {
+	it('closes on a press outside the ⚙ and its panel', async () => {
+		const host = mountControl();
+		const gear = host.querySelector<HTMLButtonElement>('[data-stage-viewing]')!;
+		gear.click();
+		await tick();
+		expect(gear.getAttribute('aria-expanded')).toBe('true');
+		press(document.body);
+		await tick();
+		expect(gear.getAttribute('aria-expanded')).toBe('false');
+		expect(host.querySelector<HTMLElement>('[data-stage-viewing-panel]')!.hidden).toBe(true);
+	});
+
+	it('stays open for a press on the ⚙ itself or inside its panel', async () => {
+		const host = mountControl();
+		const gear = host.querySelector<HTMLButtonElement>('[data-stage-viewing]')!;
+		gear.click();
+		await tick();
+		press(host.querySelector<HTMLElement>('[data-stage-viewing-panel] .group-title')!);
+		await tick();
+		expect(gear.getAttribute('aria-expanded')).toBe('true');
+		press(gear);
+		await tick();
+		expect(gear.getAttribute('aria-expanded')).toBe('true');
+	});
+
+	it('closes on a press on another cluster control, even where the cluster stops pointer events', async () => {
+		const host = mountControlInStoppingCluster();
+		const gear = host.querySelector<HTMLButtonElement>('[data-stage-viewing]')!;
+		gear.click();
+		await tick();
+		press(host.querySelector<HTMLButtonElement>('[data-drafting-grid]')!);
+		await tick();
+		expect(gear.getAttribute('aria-expanded')).toBe('false');
+	});
+
+	it('does nothing to a closed panel', async () => {
+		const host = mountControl();
+		const gear = host.querySelector<HTMLButtonElement>('[data-stage-viewing]')!;
+		press(document.body);
+		await tick();
+		expect(gear.getAttribute('aria-expanded')).toBe('false');
+	});
+});
+
 describe('R217.S20 — the Head holds no viewing or drafting value', () => {
 	it('renders no application menu, no Grid interval and no Snap-to-grid control', () => {
 		const host = mountHead();
