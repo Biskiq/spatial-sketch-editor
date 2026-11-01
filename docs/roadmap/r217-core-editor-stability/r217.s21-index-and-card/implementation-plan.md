@@ -35,11 +35,11 @@ Index rows are compact with human names, and the Card states each fact once, wit
 | --- | --- | --- |
 | Index rows | `apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte` | One compact line per subject at the role's Index width. Select stays the row. Open location, Bring into view and Reveal move into a disclosure on the row |
 | Labels | A small pure helper beside `EditorIndex.svelte` | Authored name, else a session-stable `Kind n` by sorted identity. Full identity stays in the accessible name. Never serialized |
-| Card types | `apps/editor/src/lib/authoring/stage/stage-facade.ts` | `StageCardFact` gains optional `fieldId`, and `StageCardAction` gains optional `group` |
-| Card rendering | `apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte` | Drops a fact whose `fieldId` has a writer. Styles only `destructive: true` as destructive |
-| Layout facts | `apps/editor/src/lib/authoring/adapters/layout.adapter.ts` `cardFacts` | Sets `fieldId`; `Stream`, `Eligible`, `Revealed` and `Domain` leave |
+| Card types | `apps/editor/src/lib/authoring/stage/stage-facade.ts` | `StageCardFact` gains optional `fieldId`, `StageCardAction` gains optional `group`, and the writer's `StageInstrumentContent` gains optional `fieldIds`, the fields it edits |
+| Card rendering | `apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte` | Drops a fact whose `fieldId` has a writer or is carried by the header (`name`, `kind`). Styles only `destructive: true` as destructive. A `secondary` action sits in More |
+| Layout facts | `apps/editor/src/lib/authoring/adapters/layout/precision.ts` `layoutFacts` (read by `layout.adapter.ts` `cardFacts`) | Sets `fieldId`. The route composes `Stream`, `Eligible`, `Revealed` and `Domain`, which move under Technical details |
 | Scene and form facts | `apps/editor/src/lib/authoring/adapters/scene.adapter.ts` `cardFacts` | Same rule, and Duplicate loses its destructive class |
-| Context chip | `apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte` input from the route | Fed by real canonical location |
+| Context chip | `apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte` input from the route | Fed by real canonical location: a Layout-located selection shows its floor's authored name; a Scene reference (`project-root`) names no location, so no chip |
 
 **Rules:**
 
