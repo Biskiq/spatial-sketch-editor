@@ -29,11 +29,12 @@
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
-import { isPaperPlanVisible, MAT_GROUND_INK } from '../paper-plan';
+import { isPaperPlanVisible } from '../paper-plan';
 import { gridIsVisible } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
+import StageMatGround from './StageMatGround.svelte';
 	import StageEntities from './StageEntities.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
@@ -110,7 +111,6 @@ import StageGrid from './StageGrid.svelte';
 	const matVisible = $derived(!paperVisible);
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
 	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
-	const matGroundArgs = [6000, 6000] as [number, number];
 	/**
 	 * R217.S06's quiet cut-plane cue: a neutral sheet at `datum + height`, spanning
 	 * the Layout bounds. It is drawn only while the Sheet is active, carries no
@@ -194,21 +194,12 @@ import StageGrid from './StageGrid.svelte';
 	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} castShadow />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 	<StageCamera {evaluation} {paperVisible} />
-	{#if evaluation !== null && gridVisible && matVisible}
-		<!-- The mat's grid is world geometry on the datum; walls occlude it. -->
-		<StageGrid
-			{evaluation}
-			surface="mat"
-			{datumMeters}
-			{contentBounds}
-		/>
-	{/if}
-	{#if matVisible}
-		<!-- The mat ground gives depth and shadows; it is not a registered pick root. -->
-		<T.Mesh position={[0, datumMeters - 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-			<T.PlaneGeometry args={matGroundArgs} />
-			<T.MeshStandardMaterial color={MAT_GROUND_INK} roughness={1} metalness={0} />
-		</T.Mesh>
+	{#if evaluation !== null && matVisible}
+		<!--
+			The mat ground and its per-pixel grid: world-anchored, occluded by walls,
+			never a registered pick root.
+		-->
+		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible} />
 	{/if}
 	{#if heightPlane !== null && !paperVisible}
 		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->
@@ -229,7 +220,8 @@ import StageGrid from './StageGrid.svelte';
 	-->
 	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
-		<VisitorLayoutShell {geometry} {presentation} />
+		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
+		<VisitorLayoutShell {geometry} {presentation} plinth={false} />
 	</T.Group>
 	<StageEntities
 		{scenePick}
@@ -249,7 +241,6 @@ import StageGrid from './StageGrid.svelte';
 			<!-- Paper's grid is overlay ink beneath the drawing, on the same sheet. -->
 			<StageGrid
 				{evaluation}
-				surface="paper"
 				{datumMeters}
 				{contentBounds}
 				{candidateBounds}

@@ -1712,7 +1712,7 @@ export function createStageFacade(input: {
 			const pose = camera.state().pose;
 			// The source rebase ends the live claim (its intent was evaluated against the
 			// old content) without touching the pose, and the host re-acquires at once.
-			camera.rebaseSource(next.sourceContentId, next.domain.geometry.bounds ?? null);
+			camera.rebaseSource(next.sourceContentId, next.domain.geometry.bounds ?? null, next.domain.datumMeters);
 			currentSnapshot = next;
 			// A replacement closes disclosure: the grips it revealed belong to the
 			// source that was replaced, not to whatever now shares its identity.
@@ -1773,7 +1773,7 @@ export function createStageFacade(input: {
 			// Metadata-only source bytes still get a fresh identity. Rebase the one
 			// camera output at its existing pose, then rebuild bound adapters against
 			// the new authored envelope while retaining the session's selection/task.
-			camera.rebaseSource(next.sourceContentId, next.domain.geometry.bounds ?? null);
+			camera.rebaseSource(next.sourceContentId, next.domain.geometry.bounds ?? null, next.domain.datumMeters);
 			currentSnapshot = next;
 			// Metadata still replaces the accepted bytes: a disclosed grip set belongs
 			// to the source it was opened against and must not survive the swap.

@@ -11,13 +11,16 @@
  *   keeps one reference before the ruler becomes the only one;
  * - lines are anchored to world `(0, datum, 0)` and generated only inside the
  *   drawn rectangle;
- * - Paper's rectangle is a bounded sheet around the work, while the mat keeps
- *   the actual datum footprint the Camera's corner rays see;
+ * - Paper's rectangle is a bounded sheet around the work, drawn as lines;
+ * - the mat's grid is drawn per pixel on the finite mat (R217.S19): each pixel
+ *   fades each level by its own projected spacing, so a perspective view keeps
+ *   1 m near the eye, 5 m further out and 25 m toward the horizon;
  * - Paper and the mat have their own inks from PLATE §Semantic color.
  *
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.
  */
+import { viewportGroundReachMeters, type ViewportEvaluation } from '@portfolio/camera-core';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from './stage-drafting';
 
 /** PLATE's grid inks. Opacity is part of the role, not a renderer default. */
@@ -180,37 +183,25 @@ export function gridRectFor(input: {
 	readonly aspect: number;
 	readonly intervalMeters: number;
 	readonly marginIntervals?: number;
-	/** Half-extent as a multiple of the target-plane size; fallback only. */
+	/** Half-extent as a multiple of the target-plane size. */
 	readonly coverage?: number;
-	/** The actual visible datum rectangle, when the Camera's rays can supply it. */
-	readonly visible?: GridRect | null;
 }): GridRect {
 	const height = Math.max(0.001, input.targetPlaneHeightMeters);
 	const width = height * Math.max(0.1, input.aspect);
 	const coverage = Math.max(0.25, input.coverage ?? 0.75);
 	const interval = Math.max(1e-6, input.intervalMeters);
 	const margin = (input.marginIntervals ?? 1) * interval;
-	// The fallback rectangle follows the **quantised centre**, so a pan smaller
-	// than half an interval cannot move an edge across a boundary. A real visible
-	// footprint already has exact edges from the Camera's rays.
-	const centerX = input.visible
-		? input.targetXZ[0]
-		: Math.round(input.targetXZ[0] / interval) * interval;
-	const centerZ = input.visible
-		? input.targetXZ[1]
-		: Math.round(input.targetXZ[1] / interval) * interval;
-	const fallbackMinX = centerX - Math.max(2, width * coverage);
-	const fallbackMaxX = centerX + Math.max(2, width * coverage);
-	const fallbackMinZ = centerZ - Math.max(2, height * coverage);
-	const fallbackMaxZ = centerZ + Math.max(2, height * coverage);
-	const minX = input.visible?.minX ?? fallbackMinX;
-	const maxX = input.visible?.maxX ?? fallbackMaxX;
-	const minZ = input.visible?.minZ ?? fallbackMinZ;
-	const maxZ = input.visible?.maxZ ?? fallbackMaxZ;
+	// The rectangle follows the **quantised centre**, so a pan smaller than half
+	// an interval cannot move an edge across a boundary.
+	const centerX = Math.round(input.targetXZ[0] / interval) * interval;
+	const centerZ = Math.round(input.targetXZ[1] / interval) * interval;
+	const minX = centerX - Math.max(2, width * coverage);
+	const maxX = centerX + Math.max(2, width * coverage);
+	const minZ = centerZ - Math.max(2, height * coverage);
+	const maxZ = centerZ + Math.max(2, height * coverage);
 	// The rectangle's edges are quantised so a small pan does not rebuild the
 	// drawing. Lines stay anchored to world zero because only the rectangle's
-	// edges are quantised, never the lattice. A visible rectangle is quantised
-	// outward, which keeps the drawn patch a superset of what the Camera sees.
+	// edges are quantised, never the lattice.
 	const quantisedMinX = Math.floor((minX - margin) / interval) * interval;
 	const quantisedMaxX = Math.ceil((maxX + margin) / interval) * interval;
 	const quantisedMinZ = Math.floor((minZ - margin) / interval) * interval;
@@ -288,98 +279,11 @@ export function paperSheetRectFor(input: {
 	return { minX: clean(minX), maxX: clean(maxX), minZ: clean(minZ), maxZ: clean(maxZ) };
 }
 
-/**
- * The datum-plane rectangle the mat actually shows, from the evaluation's own
- * four viewport-corner rays.
- *
- * A fixed multiple of the target plane was only correct while the Camera looked
- * straight down: a tilted 3D view sees the datum much farther than 3 target
- * heights, so the grid ended in a visible straight cut. This intersects each
- * corner ray with the datum plane and clamps the result to a bounded multiple of
- * the target-plane size. Below the horizon a corner ray has no forward hit; the
- * clamp is what keeps that case finite instead of drawing to infinity.
- *
- * Returns `null` when fewer than two corners meet the datum; the caller then
- * falls back to the symmetric rectangle. It composes no pose and reads no Camera
- * state beyond the matrices and rect the evaluation already published.
- */
-export function gridDatumFootprintFor(input: {
-	readonly inverseViewProjectionMatrix: readonly number[];
-	readonly rect: { readonly width: number; readonly height: number };
-	readonly datumMeters: number;
-	readonly targetXZ: readonly [number, number];
-	readonly targetPlaneHeightMeters: number;
-	readonly aspect: number;
-	/** Symmetric half-extent clamp, in target-plane heights. */
-	readonly maxHalfExtents?: number;
-}): GridRect | null {
-	const matrix = input.inverseViewProjectionMatrix;
-	if (!Array.isArray(matrix) || matrix.length !== 16) return null;
-	if (!(input.rect.width > 0) || !(input.rect.height > 0)) return null;
-	const height = Math.max(0.001, input.targetPlaneHeightMeters);
-	const width = height * Math.max(0.1, input.aspect);
-	const clampExtent = Math.max(2, (input.maxHalfExtents ?? 24) * Math.max(width, height));
-	const points: { readonly x: number; readonly z: number }[] = [];
-	for (const ndcX of [-1, 1] as const) {
-		for (const ndcY of [-1, 1] as const) {
-			const near = unprojectPoint(matrix, ndcX, ndcY, -1);
-			const far = unprojectPoint(matrix, ndcX, ndcY, 1);
-			if (near === null || far === null) continue;
-			const directionY = far[1] - near[1];
-			if (Math.abs(directionY) < 1e-9) continue;
-			const travel = (input.datumMeters - near[1]) / directionY;
-			if (!(travel > 0) || !Number.isFinite(travel)) continue;
-			const x = near[0] + (far[0] - near[0]) * travel;
-			const z = near[2] + (far[2] - near[2]) * travel;
-			if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
-			points.push({
-				x: Math.min(input.targetXZ[0] + clampExtent, Math.max(input.targetXZ[0] - clampExtent, x)),
-				z: Math.min(input.targetXZ[1] + clampExtent, Math.max(input.targetXZ[1] - clampExtent, z))
-			});
-		}
-	}
-	if (points.length < 2) return null;
-	// The target-plane rect is always visible, so the footprint is its union with
-	// the ray hits. This also covers a corner ray that lands behind a near plane.
-	const nearHalfX = Math.max(2, width * 0.75);
-	const nearHalfZ = Math.max(2, height * 0.75);
-	let minX = input.targetXZ[0] - nearHalfX;
-	let maxX = input.targetXZ[0] + nearHalfX;
-	let minZ = input.targetXZ[1] - nearHalfZ;
-	let maxZ = input.targetXZ[1] + nearHalfZ;
-	for (const point of points) {
-		minX = Math.min(minX, point.x);
-		maxX = Math.max(maxX, point.x);
-		minZ = Math.min(minZ, point.z);
-		maxZ = Math.max(maxZ, point.z);
-	}
-	return { minX, maxX, minZ, maxZ };
-}
-
-function unprojectPoint(
-	inverseViewProjection: readonly number[],
-	ndcX: number,
-	ndcY: number,
-	ndcZ: number
-): readonly [number, number, number] | null {
-	// Column-major 4×4 multiply, matching the realized Three matrices.
-	const x = ndcX;
-	const y = ndcY;
-	const z = ndcZ;
-	const w = 1;
-	const outX = inverseViewProjection[0]! * x + inverseViewProjection[4]! * y + inverseViewProjection[8]! * z + inverseViewProjection[12]! * w;
-	const outY = inverseViewProjection[1]! * x + inverseViewProjection[5]! * y + inverseViewProjection[9]! * z + inverseViewProjection[13]! * w;
-	const outZ = inverseViewProjection[2]! * x + inverseViewProjection[6]! * y + inverseViewProjection[10]! * z + inverseViewProjection[14]! * w;
-	const outW = inverseViewProjection[3]! * x + inverseViewProjection[7]! * y + inverseViewProjection[11]! * z + inverseViewProjection[15]! * w;
-	if (outW === 0 || !Number.isFinite(outW)) return null;
-	const point: [number, number, number] = [outX / outW, outY / outW, outZ / outW];
-	return point.every(Number.isFinite) ? point : null;
-}
-
 export type GridPlan = {
 	/** Changes only when the drawing itself changes (levels or rectangle). */
 	readonly key: string;
-	readonly surface: GridSurface;
+	/** Paper only; the mat's grid is drawn per pixel (`shell/stage-mat-grid.ts`). */
+	readonly surface: 'paper';
 	readonly datumMeters: number;
 	readonly levels: GridLevels;
 	readonly rect: GridRect;
@@ -392,10 +296,8 @@ export function gridPlanFor(input: {
 	readonly aspect: number;
 	readonly targetXZ: readonly [number, number];
 	readonly datumMeters: number;
-	readonly surface: GridSurface;
-	/** The Camera evaluation's corner-ray source, when one is available. */
-	readonly inverseViewProjectionMatrix?: readonly number[];
-	readonly viewport?: { readonly width: number; readonly height: number };
+	/** Paper only: the mat's grid is drawn per pixel by `stage-mat-grid`. */
+	readonly surface: 'paper';
 	/** Layout ∪ Scene datum bounds; Paper draws a bounded sheet around them. */
 	readonly contentBounds?: GridRect | null;
 	/** The live candidate's world extent; Paper's sheet grows to include it. */
@@ -403,38 +305,14 @@ export function gridPlanFor(input: {
 }): GridPlan | null {
 	const levels = gridLevelsFor(input);
 	if (levels === null) return null;
-	let rect: GridRect | null;
-	if (input.surface === 'paper') {
-		rect = paperSheetRectFor({
-			targetXZ: input.targetXZ,
-			targetPlaneHeightMeters: input.targetPlaneHeightMeters,
-			aspect: input.aspect,
-			intervalMeters: levels.minorMeters,
-			contentBounds: input.contentBounds ?? null,
-			candidateBounds: input.candidateBounds ?? null
-		});
-	} else {
-		const visible =
-			input.inverseViewProjectionMatrix !== undefined && input.viewport !== undefined
-				? gridDatumFootprintFor({
-						inverseViewProjectionMatrix: input.inverseViewProjectionMatrix,
-						rect: input.viewport,
-						datumMeters: input.datumMeters,
-						targetXZ: input.targetXZ,
-						targetPlaneHeightMeters: input.targetPlaneHeightMeters,
-						aspect: input.aspect
-					})
-				: null;
-		rect = gridRectFor({
-			targetXZ: input.targetXZ,
-			targetPlaneHeightMeters: input.targetPlaneHeightMeters,
-			aspect: input.aspect,
-			intervalMeters: levels.minorMeters,
-			// A perspective mat sees the datum far beyond the target plane.
-			coverage: 3,
-			visible
-		});
-	}
+	const rect = paperSheetRectFor({
+		targetXZ: input.targetXZ,
+		targetPlaneHeightMeters: input.targetPlaneHeightMeters,
+		aspect: input.aspect,
+		intervalMeters: levels.minorMeters,
+		contentBounds: input.contentBounds ?? null,
+		candidateBounds: input.candidateBounds ?? null
+	});
 	if (rect === null) return null;
 	// Opacity is deliberately absent: the fade changes continuously while zooming,
 	// but the lattice does not. A rebuild keyed on opacity would dispose and
@@ -510,6 +388,82 @@ export function gridLinesFor(plan: GridPlan): readonly GridLine[] {
 		}
 	}
 	return lines;
+}
+
+/**
+ * R217.S19 — the mat grid's per-pixel level weights.
+ *
+ * The mat is a perspective surface, so one zoom-wide fade could never suit both
+ * the ground at the eye and the ground at the horizon: the whole lattice faded
+ * together, and while the 5 m level faded out nothing replaced it until it was
+ * gone. The mat applies the grammar's 16 → 8 px fade **per pixel**, from that
+ * pixel's own projected spacing, and the 25 m level cross-fades in as the 5 m
+ * level fades out, so some reference is always inked. The shader in
+ * `shell/stage-mat-grid.ts` computes exactly these weights; this function is
+ * their testable twin.
+ *
+ * `minorSpacingCssPx` is the projected spacing of 1 m lines at the pixel.
+ */
+export function matGridLevelWeights(minorSpacingCssPx: number): {
+	readonly minor: number;
+	readonly major: number;
+	readonly coarse: number;
+} {
+	const fade = (spacing: number): number =>
+		Math.min(
+			1,
+			Math.max(
+				0,
+				(spacing - GRID_SUPPRESS_SPACING_CSS_PX) /
+					(GRID_FULL_SPACING_CSS_PX - GRID_SUPPRESS_SPACING_CSS_PX)
+			)
+		);
+	const minor = fade(minorSpacingCssPx * GRID_MINOR_METERS);
+	const major = fade(minorSpacingCssPx * GRID_MAJOR_METERS);
+	const coarse = fade(minorSpacingCssPx * GRID_COARSE_METERS) * (1 - major);
+	return { minor, major, coarse };
+}
+
+/** The finite mat ground: a square on the datum, as a centre and a half-extent. */
+export type MatGround = {
+	readonly centerXZ: readonly [number, number];
+	readonly halfExtentMeters: number;
+	/**
+	 * The centre's offset from the nearest 25 m lattice point. The grid shader
+	 * adds it to the quad's local coordinates, so every level stays anchored to
+	 * world zero without carrying large world coordinates into float32.
+	 */
+	readonly latticeOffsetXZ: readonly [number, number];
+};
+
+/**
+ * R217.S19 — the finite mat follows the Camera's own ground reach.
+ *
+ * The half-extent is at least 1.5 × the reach the evaluator clips the ground at,
+ * rounded up to a power of two so a zoom rarely changes it. The centre is the
+ * target quantised to an eighth of that half-extent, so a pan never moves the mat
+ * by more than its spare margin. It never enters scene bounds or Fit.
+ */
+export function matGroundFor(evaluation: ViewportEvaluation, datumMeters: number): MatGround {
+	const reach = viewportGroundReachMeters({
+		targetPlaneHeightMeters: evaluation.pose.targetPlaneHeightMeters,
+		aspect: evaluation.rect.width / evaluation.rect.height,
+		eyeHeightMeters: evaluation.eye[1] - datumMeters
+	});
+	const halfExtentMeters = 2 ** Math.ceil(Math.log2(Math.max(1, 1.5 * reach)));
+	const step = halfExtentMeters / 8;
+	const centerXZ: [number, number] = [
+		Math.round(evaluation.target[0] / step) * step,
+		Math.round(evaluation.target[2] / step) * step
+	];
+	return {
+		centerXZ,
+		halfExtentMeters,
+		latticeOffsetXZ: [
+			centerXZ[0] - Math.round(centerXZ[0] / GRID_COARSE_METERS) * GRID_COARSE_METERS,
+			centerXZ[1] - Math.round(centerXZ[1] / GRID_COARSE_METERS) * GRID_COARSE_METERS
+		]
+	};
 }
 
 /**

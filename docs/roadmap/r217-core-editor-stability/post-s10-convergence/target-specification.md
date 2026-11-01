@@ -173,11 +173,13 @@ groundNear = eyeHeight × cos(halfFov) / sin(elevation + halfFov)   when eyeHeig
 near       = max(NEAR_FLOOR, min(distance − sceneRadius, 0.9 × groundNear))
 ```
 
+**Amended 2026-10-31** by the [S19 plan §3b](../r217.s19-3d-ground-clipping/acceptance.md#owner-ruling): the eye-height multiple is 96, the mat grid is drawn per pixel with no footprint or line budget, and the mat takes no polygon offset (the grid quad does, in depth steps). The paragraphs below are the original specification.
+
 **Grid (`stage-grid.ts`, mat branch).** Replace four corner rays with the exact frustum and datum intersection, so coverage and clipping cannot disagree. Budget: at most 6,000 lines, major lines never dropped; over budget, the minor rectangle shrinks around the target. Fixed levels from O7 replace the ladder here too.
 
 **Mat (`StageCanvas.svelte`).** Centred on the quantised target, half-extent at least 1.5 × reach, with a polygon offset.
 
-**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in S19's browser check, the slice uses O4's fade alternative, which never counts as passing a numerical row. The [slice plan](../r217.s19-3d-ground-clipping/implementation-plan.md#3a-experimental-checkpoint) owns the checkpoint, pass criteria and fallbacks. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
+**Residual.** A horizon band up to about 12 CSS px at 900 px may remain, as O4 accepts. If it reads badly in S19's browser check, the slice uses O4's fade alternative, which never counts as passing a numerical row. The [slice plan](../r217.s19-3d-ground-clipping/acceptance.md#3a--3b-checkpoint-at-the-tested-revision) owns the checkpoint, pass criteria and fallbacks. **Excluded:** infinite grid, disabled depth tests, moving the Camera, widening semantic bounds, a second evaluator, timing assertions.
 
 ## Selection
 

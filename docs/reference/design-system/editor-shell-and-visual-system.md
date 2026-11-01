@@ -907,13 +907,18 @@ retain the precision and legibility requirements of their domain grammar.
 **Grid and wall sheet.** Paper draws fixed 1 m minor and 5 m major lines; there is no
 zoom-driven interval ladder. Decimate the **drawing** by projected CSS-pixel spacing:
 each level is fully inked at 16 px and above, fades from 16 to 8 px and is suppressed
-below 8 px. A 25 m reference appears only while the 5 m level is suppressed, and obeys
-the same rule. Anchor to the world/floor datum with a stable origin across zoom changes.
+below 8 px. On Paper a 25 m reference appears only while the 5 m level is suppressed, and
+obeys the same rule. The 3D mat applies the same fade per pixel, from each pixel's own
+projected spacing, so near ground keeps 1 m, farther ground 5 m and the far ground 25 m;
+there the 25 m level cross-fades in as the 5 m level fades out, so a zoom never passes
+through a band with no reference (R217.S19). Anchor to the world/floor datum with a stable
+origin across zoom changes.
 Paper's grid is a bounded sheet around the work: the datum bounds of Layout and
 Scene, expanded by 5 m and rounded outward to 5 m, or a 20 × 20 m sheet
 around the target for an empty project. The sheet is intersected with the visible
 coverage so a zoomed-in view cannot generate unbounded lines; it grows with the work and
-never moves the Camera. The mat keeps the datum footprint its corner rays actually see.
+never moves the Camera. The mat's grid covers the finite mat, which the Camera's ground
+reach sizes; it has no line geometry and no line budget.
 It is drawing state, never a Camera mode or a reason to delay navigation.
 
 The **paper rule** is fixed: a Wall wears the drafting sheet when it is the settled
