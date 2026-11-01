@@ -173,6 +173,28 @@ function button(label: string): HTMLButtonElement {
 	return found;
 }
 
+/** R217.S20: source replacement is a project-menu procedure, reached here through Find. */
+function openSourceFromFind(): void {
+	const entry = target.querySelector<HTMLButtonElement>(
+		'[data-head-find] [data-find-adapter="project-menu"][data-find-id="source"]'
+	);
+	if (entry === null) throw new Error('no Open source JSON Find entry');
+	entry.click();
+}
+
+/** R217.S20: the Stage's ⚙ holds the viewing preferences; open it to reach them. */
+function openViewingSettings(): void {
+	const gear = target.querySelector<HTMLButtonElement>('[data-stage-viewing]');
+	if (gear === null) throw new Error('no viewing settings control');
+	if (gear.getAttribute('aria-expanded') !== 'true') gear.click();
+}
+
+function reduceMotionControl(): HTMLInputElement {
+	const control = target.querySelector<HTMLInputElement>('[data-stage-viewing-panel] input[type="checkbox"]');
+	if (control === null) throw new Error('no Reduce motion control');
+	return control;
+}
+
 function headSaveButton(): HTMLButtonElement {
 	const found = target.querySelector<HTMLButtonElement>('[data-testid="head-save"]');
 	if (found === null) throw new Error('the Head Save control is not mounted');
@@ -317,11 +339,12 @@ describe('spatial route resume Save', () => {
 		harness.saveBehavior = 'auth';
 		await mountPage();
 		await waitForReady('Preferences fixture');
-		expect(target.querySelector('[data-head-motion]')?.getAttribute('aria-pressed')).toBe('false');
+		openViewingSettings();
+		expect(reduceMotionControl().checked).toBe(false);
 		headSaveButton().click();
 		await vi.waitFor(() => expect(harness.saves).toHaveLength(1));
 		const first = harness.saves[0] as SaveRequest;
-		target.querySelector<HTMLButtonElement>('[data-head-motion]')!.click();
+		reduceMotionControl().click();
 		await settled();
 		expect([...stored.values()].some((value) => value.includes('"reducedMotion":true'))).toBe(true);
 		unmount(component!);
@@ -334,7 +357,8 @@ describe('spatial route resume Save', () => {
 		harness.savedRevision = first.capture.acceptedRevision;
 		await mountPage();
 		await waitForReady('Preferences fixture');
-		expect(target.querySelector('[data-head-motion]')?.getAttribute('aria-pressed')).toBe('true');
+		openViewingSettings();
+		expect(reduceMotionControl().checked).toBe(true);
 		headSaveButton().click();
 		await vi.waitFor(() => expect(harness.saves).toHaveLength(2));
 		const second = harness.saves[1] as SaveRequest;
@@ -492,7 +516,7 @@ describe('spatial route resume Save', () => {
 			'opened.json',
 			{ type: 'application/json' }
 		);
-		button('Open source JSON').click();
+		openSourceFromFind();
 		await tick();
 		button('Replace').click();
 		await vi.waitFor(() => expect(head().dataset.project).toBe('Opened project'));

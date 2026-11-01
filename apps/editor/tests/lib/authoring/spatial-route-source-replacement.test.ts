@@ -307,9 +307,18 @@ async function admittedOffer(name: string): Promise<ReloadOffer> {
 	};
 }
 
+/** R217.S20: source replacement is a project-menu procedure, reached here through Find. */
+function openSourceFromFind(): void {
+	const entry = target.querySelector<HTMLButtonElement>(
+		'[data-head-find] [data-find-adapter="project-menu"][data-find-id="source"]'
+	);
+	if (entry === null) throw new Error('no Open source JSON Find entry');
+	entry.click();
+}
+
 /** The route's explicit replacement guard, then the file dialog. */
 async function requestOpen(): Promise<void> {
-	button('Open source JSON').click();
+	openSourceFromFind();
 	await tick();
 	// An active project always asks before replacement; the creator's confirm is
 	// what opens the file dialog.
