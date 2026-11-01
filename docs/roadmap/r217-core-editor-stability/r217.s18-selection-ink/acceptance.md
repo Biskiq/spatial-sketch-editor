@@ -9,8 +9,7 @@ The plan's criteria are in the [implementation plan](./implementation-plan.md).
 ## Delivered
 
 Selected geometry reads clearly in both readings. On Paper, a Scene subject (a primitive, a
-catalogue model, an approved creator model, a native form or a Layout Opening's host-free
-subject) carries a translucent fill from the footprint polygons that `paper-plan.ts` already
+catalogue model, an approved creator model or a native form) carries a translucent fill from the footprint polygons that `paper-plan.ts` already
 retains, under cut ink and above poché. The selection contour uses the `#74560c` Paper edge.
 
 - Opacity is 0.22 in `paper-marks.ts` and 0.28 in `StageSelectionLayer.svelte`.
@@ -82,7 +81,7 @@ Subjects were selected through the Index. Plan and 3D were switched through the 
   the 0.9 m low wall (`wall-chain-3`, Stream `hidden`, Revealed `false`).
 - **Overlaps and light walls on the dark mat:** the mixed fixture's overlapping outlines are drawn in
   Plan, and the 3D reading shows the walls on the dark mat.
-- **Hidden subject:** the 0.9 m low wall is hidden at the 1.20 m cut, recorded in its Card.
+- **Hidden subject:** the 0.9 m low wall is reported in its Card as Stream `hidden`, Revealed `false`.
 - **Widths:** 1440 × 900 for every subject; 1280 × 800, 1180 × 820 and 820 × 1180 for the overview
   (Plan, with a Layout wall selected). No horizontal page overflow at any of them.
 - **Console:** no errors or warnings in the session.
@@ -101,8 +100,9 @@ The tilted and rectangular fills match within one level, and both sit at the sin
 not the double-blend value. A side-by-side crop confirms it by eye: the two fills have the same
 tint strength.
 
-Evidence (recaptured at `f92e1211`, existing file names, live under
-`./evidence/`): `s18-form-tilted-plan.png` and `s18-form-tilted-3d.png`, plus the rectangular and
+Evidence (recaptured at `f92e1211`, existing file names; archived byte-for-byte under
+`../../../archive/roadmap/r217-core-editor-stability/r217.s18-selection-ink/evidence/2026-10-31-browser/`, manifest in
+[`CLOSED.md`](../../../archive/roadmap/r217-core-editor-stability/r217.s18-selection-ink/evidence/CLOSED.md)): `s18-form-tilted-plan.png` and `s18-form-tilted-3d.png`, plus the rectangular and
 concave form pairs, the table and native box pairs, the catalogue, unverified-catalogue and
 approved-creator-model pairs, the opening door and window pairs, the plinth pair, the full-height
 wall pair, the low-hidden wall pair, the floor pair, and `s18-overview-1180x820.png`,
@@ -124,7 +124,17 @@ background and every 3D shot has the dark mat, checked by pixel sampling.
 - **Owner-directed UX items** (shape-creation simplification, advanced working-plane controls,
   Pen/wireframe polish) remain outside S18.
 
-## Routine closeout
+## Recovery and preservation report — 2026-10-31
 
-Routine closeout on the same branch, with no production edit (see the preservation report below
-once written), per the [slice-closeout skill](../../../../.agents/skills/slice-closeout/SKILL.md).
+```text
+prose compacted:                 1   approved plan -> stub at its own path; acceptance record kept in full at its path
+reference promotions:            0   the grammar and component contracts already describe the landed behaviour
+renderable evidence archived:    32 files / 4,312 KiB (31 PNG + 1 machine-facts JSON), byte-identical copies
+evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s18-selection-ink/evidence/CLOSED.md
+transient artifacts removed:     0   no scratch runners or checkpoint were committed
+historical anchors:              plan 050a30d9418a9a910a320388ae2ea4d879f1b34c; acceptance 16349573 (full record); tag closed/r217.s18 -> 16349573
+new live -> archive prose links: 0
+manual-owed verification rows:   4   coarse pointer, native touch, Safari, integrated journeys (S11)
+remaining deferred items:        3   S11 rows; pinch-point fallback (T1); owner-directed UX follow-up
+permanent stubs added:           1   approved plan (acceptance record remains a stub at its own path)
+```
