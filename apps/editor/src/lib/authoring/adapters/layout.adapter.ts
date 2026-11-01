@@ -350,6 +350,7 @@ type JunctionHoverGesture = {
 
 /** One claimed Opening mark: slide position or width, through the Opening planner. */
 type OpeningMarkGesture = {
+	pointerPoint: LayoutVec2 | null;
 	readonly evaluationId: string;
 	/** Stage-local CSS origin shared with the host's click tolerance. */
 	readonly pressCss: readonly [number, number];
@@ -496,7 +497,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * The next press clears it; nothing is serialized.
 			 */
 			let settledRefusal: {
-				readonly wallId: string;
+				/** The subject that must stay selected for the reason to stay; a hovered Junction has none. */
+				readonly subject:
+					| { readonly kind: 'wall'; readonly wallId: string }
+					| { readonly kind: 'opening'; readonly openingId: string }
+					| { readonly kind: 'junction' };
 				readonly contentRevision: string;
 				readonly point: LayoutVec2;
 				readonly text: string;
@@ -773,7 +778,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					verb: 'Move',
 					planner: LAYOUT_JUNCTION_MOVE_KIND,
 					value: numericValue ?? (active?.request === null || active?.request === undefined
-						? `Junction ${junctionId}`
+						? 'Junction'
 						: `X ${active.request.point[0].toFixed(3)} · Z ${active.request.point[1].toFixed(3)} m`),
 					refusal: active === null ? null : refusal
 				}];
@@ -3027,6 +3032,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							widthAtStart: selectedOpeningSubject.width,
 							grabOffsetMeters: openingBodyPress ? alongAtPress - targetAtPress : 0,
 							startPoint: point,
+							pointerPoint: null,
 							lease: acquisition,
 							numericHost,
 							numericField: planNumericFields(numericHost)[0]!,
@@ -3141,7 +3147,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								junctionGesture.request = null;
 								junctionGesture.previewDocument = null;
 								junctionGesture.snap = null;
-								refusal = planned.rejection.message;
+								refusal = wallRefusalWords(planned.rejection.code);
 							} else {
 								junctionGesture.request = request;
 								junctionGesture.previewDocument = planned.document;
@@ -3193,6 +3199,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								winner = snapped.winner;
 							}
 							openingGesture.snap = winner;
+							openingGesture.pointerPoint = [point[0], point[1]];
 							const planned = planUpdateWallFirstOpening(
 								openingGesture.baseline,
 								openingGesture.openingId,
@@ -3201,7 +3208,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							if (planned.kind === 'rejected') {
 								openingGesture.request = null;
 								openingGesture.previewDocument = null;
-								refusal = planned.rejection.message;
+								const opening = openingGesture.baseline.openings.find((entry) => entry.id === openingGesture!.openingId);
+								refusal = openingRefusalWords(openingGesture.baseline, planned.rejection, {
+									openingId: openingGesture.openingId,
+									wallId: openingGesture.wallId,
+									...(opening === undefined ? {} : { kind: opening.kind, offset: opening.offset, width: opening.width }),
+									[field]: value
+								});
 							} else {
 								openingGesture.request = { field, value };
 								openingGesture.previewDocument = planned.document;
@@ -3398,18 +3411,34 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					if (junctionGesture !== null) {
-						const pending = isPointerDrag(junctionGesture.pressCss, intent.css) ? junctionGesture.request : null;
+						const dragged = isPointerDrag(junctionGesture.pressCss, intent.css);
+						const pending = dragged ? junctionGesture.request : null;
 						const wallId = junctionGesture.wallId;
+						if (dragged && pending === null && refusal !== null && junctionGesture.pointerPoint !== null) {
+							settledRefusal = {
+								subject: { kind: 'junction' },
+								contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
+								point: junctionGesture.pointerPoint,
+								text: refusal
+							};
+						}
 						endJunctionGesture();
 						if (pending !== null) void commit(pending, 'start', wallId);
 						services.stage.notifySurfaceChange();
 						return true;
 					}
 					if (openingGesture !== null) {
-						const pendingOpening = openingGesture.numeric === null && isPointerDrag(openingGesture.pressCss, intent.css)
-							? openingGesture.request
-							: null;
+						const draggedOpening = openingGesture.numeric === null && isPointerDrag(openingGesture.pressCss, intent.css);
+						const pendingOpening = draggedOpening ? openingGesture.request : null;
 						const openingId = openingGesture.openingId;
+						if (draggedOpening && pendingOpening === null && refusal !== null && openingGesture.pointerPoint !== null) {
+							settledRefusal = {
+								subject: { kind: 'opening', openingId },
+								contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
+								point: openingGesture.pointerPoint,
+								text: refusal
+							};
+						}
 						endOpeningGesture();
 						if (pendingOpening !== null) void commitMarkOpening({ ...pendingOpening, openingId });
 						services.stage.notifySurfaceChange();
@@ -3423,7 +3452,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const refusedText = dragged ? refusal : null;
 					if (pending === null && refusedText !== null && refusedPoint !== null) {
 						settledRefusal = {
-							wallId,
+							subject: { kind: 'wall', wallId },
 							contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
 							point: refusedPoint,
 							text: refusedText
@@ -3645,12 +3674,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					activeWall === null &&
 					settledRefusal !== null &&
 					settledRefusal.contentRevision === adapterContext.snapshot.domain.unitRevisions.layout &&
+					junctionGesture === null &&
+					openingGesture === null &&
 					services.stage.session.task() === null &&
-					selectedWall(adapterContext)?.frame.wallId === settledRefusal.wallId
+					(settledRefusal.subject.kind === 'junction' ||
+						(settledRefusal.subject.kind === 'wall'
+							? selectedWall(adapterContext)?.frame.wallId === settledRefusal.subject.wallId
+							: selectedOpening(adapterContext)?.openingId === settledRefusal.subject.openingId))
 				) {
 					return [
 						candidatePreviewOf({
-							id: 'layout-candidate-wall-refused-settled',
+							id: 'layout-candidate-refused-settled',
 							role: 'refused',
 							geometry: { polygons: [], segments: [] },
 							labels: [{ world: world(settledRefusal.point), text: settledRefusal.text }]
@@ -3662,15 +3696,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// the Ink hover mark. This is checked before the preview document because
 				// a refusal deliberately clears it.
 				if (activeWall !== null && activeWall.request === null && refusal !== null && activeWall.pointerPoint !== null) {
-					const middle: LayoutVec2 = [
-						(activeWall.frame.start[0] + activeWall.frame.end[0]) / 2,
-						(activeWall.frame.start[1] + activeWall.frame.end[1]) / 2
-					];
+					const reachFrom: LayoutVec2 =
+						activeWall.handle === 'start'
+							? activeWall.frame.start
+							: activeWall.handle === 'end'
+								? activeWall.frame.end
+								: [
+										(activeWall.frame.start[0] + activeWall.frame.end[0]) / 2,
+										(activeWall.frame.start[1] + activeWall.frame.end[1]) / 2
+									];
 					return [
 						candidatePreviewOf({
 							id: 'layout-candidate-wall-refused',
 							role: 'refused',
-							geometry: { polygons: [], segments: [[world(middle), world(activeWall.pointerPoint)]] },
+							geometry: { polygons: [], segments: [[world(reachFrom), world(activeWall.pointerPoint)]] },
 							labels: [{ world: world(activeWall.pointerPoint), text: refusal }]
 						})
 					];
@@ -3776,7 +3815,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					return [];
 				}
-				if (activeOpeningMark !== null) return [];
+				if (activeOpeningMark !== null) {
+					if (refusal === null || activeOpeningMark.pointerPoint === null) return [];
+					return [candidatePreviewOf({
+						id: 'layout-candidate-opening-mark-refused',
+						role: 'refused',
+						geometry: {
+							polygons: [],
+							segments: [[world(activeOpeningMark.startPoint), world(activeOpeningMark.pointerPoint)]]
+						},
+						labels: [{ world: world(activeOpeningMark.pointerPoint), text: refusal }]
+					})];
+				}
 
 				if (inkReading === 'opening') {
 					if (openingPreview?.kind === 'planned') {

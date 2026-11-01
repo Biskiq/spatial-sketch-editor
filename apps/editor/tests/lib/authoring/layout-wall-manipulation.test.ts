@@ -667,7 +667,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(
 			mounted.facade
 				.candidatePreviews()
-				.some((candidate) => candidate.id === 'layout-candidate-wall-refused-settled')
+				.some((candidate) => candidate.id === 'layout-candidate-refused-settled')
 		).toBe(false);
 	});
 
@@ -1651,6 +1651,59 @@ describe('R217.S16 — Opening priority and idle Junction hover', () => {
 		expect((await mounted.host.undo()).kind).toBe('installed');
 		expect(currentOpening(mounted)).toEqual(before);
 		expect(acceptedLayout(mounted.facade).junctions.find((candidate) => candidate.id === wall.startJunctionId)?.point).toEqual(start.point);
+	});
+
+	const RAW_REFUSAL = /wall-chain|junction-chain|opening:|proper-crossing|_/;
+
+	it('refuses a hovered Junction drag in human words, keeps the reason, and writes nothing', async () => {
+		const mounted = await mount();
+		planReading(mounted.facade);
+		const first = mounted.document.walls[0]!;
+		const junction = mounted.document.junctions.find((candidate) => candidate.id === first.startJunctionId)!;
+		const other = mounted.document.junctions.find((candidate) => candidate.id !== junction.id && candidate.id !== first.endJunctionId)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, junction.point);
+		const mark = mounted.facade.idleHoverIntent({ phase: 'move', css: from, evaluationId, coarse: false })!;
+		expect(mounted.facade.marks().find((entry) => entry.id === mark.id)?.tag).toBe('Junction');
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: mark.id, handleAdapterId: mark.adapterId }).claimed).toBe(true);
+		const to = stageCss(mounted.facade, other.point);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		const live = mounted.facade.candidatePreviews().find((candidate) => candidate.role === 'refused');
+		expect(live?.labels[0]?.text).toBeTruthy();
+		expect(live!.labels[0]!.text).not.toMatch(RAW_REFUSAL);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
+		const settled = mounted.facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-refused-settled');
+		expect(settled?.labels[0]?.text).toBe(live!.labels[0]!.text);
+		expect(settled!.segments).toHaveLength(0);
+	});
+
+	it('refuses an Opening drag in human words at the pointer, and keeps the reason', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectOpening(mounted.facade, mounted.openingId);
+		mounted.facade.setDrafting({ snapSuspended: true });
+		const evaluationId = mounted.facade.evaluationId()!;
+		const widthMark = mounted.facade.marks().find((mark) => mark.id === 'layout-opening-width-end')!;
+		const from: [number, number] = [widthMark.anchor[0] + RECT.left, widthMark.anchor[1] + RECT.top];
+		const to = stageCss(mounted.facade, [40, 0]);
+		const before = currentOpening(mounted);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		const live = mounted.facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-opening-mark-refused');
+		expect(live?.labels[0]?.text).toBeTruthy();
+		expect(live!.labels[0]!.text).not.toMatch(RAW_REFUSAL);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(currentOpening(mounted)).toEqual(before);
+		const settled = mounted.facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-refused-settled');
+		expect(settled?.labels[0]?.text).toBe(live!.labels[0]!.text);
+		// The next press retires it.
+		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'cancel', css: from, evaluationId });
+		expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-refused-settled')).toBe(false);
 	});
 
 	it('keeps a one-CSS-pixel hovered Junction press below the drag threshold', async () => {

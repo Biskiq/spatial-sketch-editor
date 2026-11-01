@@ -49,6 +49,9 @@ import {
 	readCapturedOperation
 } from './drawing-planners';
 import { layoutPlanner, preparedLayoutCandidate } from './precision';
+import { openingRefusalWords } from './refusals';
+
+export { openingRefusalWords };
 
 export const LAYOUT_OPENING_CREATE_KIND = 'layout-opening-create';
 export const LAYOUT_OPENING_DELETE_KIND = 'layout-opening-delete';
@@ -111,62 +114,6 @@ function readDeletePayload(
 	return typeof payload.openingId === 'string' && payload.openingId.length > 0
 		? { openingId: payload.openingId }
 		: { message: 'An Opening deletion needs one opening id.' };
-}
-
-function kindWords(kind: OpeningKind): string {
-	return kind === 'door' ? 'door' : 'window';
-}
-
-function meters(value: number): string {
-	return `${value.toFixed(2)} m`;
-}
-
-/**
- * The creator-facing refusal and repair for one rejected Opening operation.
- *
- * Composed from the canonical rejection (code, target ids and the planner's own
- * issue) plus the exact attempted metrics; it never re-derives whether the
- * Opening fits. Preview, palette and acceptance all call this, so the words the
- * creator reads before the gesture are the words acceptance would return.
- */
-export function openingRefusalWords(
-	document: LayoutDocumentWallFirst,
-	rejection: WallOpeningRejection,
-	attempt: Partial<OpeningCreatePayload> & { readonly openingId?: string } = {}
-): string {
-	const wallId = attempt.wallId ?? rejection.targetIds?.[0];
-	const wall = wallId === undefined ? undefined : document.walls.find((entry) => entry.id === wallId);
-	const length = wallId === undefined ? undefined : wallFirstWallLength(document, wallId);
-	const kind = attempt.kind === undefined ? 'Opening' : kindWords(attempt.kind);
-	const issue = rejection.issues?.[0]?.code;
-	if (rejection.code === 'dimension_out_of_range') return LAYOUT_DIMENSION_LIMIT_MESSAGE;
-
-	if (attempt.offset !== undefined && attempt.offset < 0) {
-		return `This ${kind} would start before the Wall. Move it onto the Wall.`;
-	}
-	if (rejection.code === 'unknown_wall') return 'That Wall is gone. Aim at a Wall that is still there.';
-	if (rejection.code === 'unknown_opening') return 'That Opening is gone. Select its Wall and try again.';
-	if (rejection.code === 'no_op') return 'That Opening already has those values.';
-	if (rejection.code === 'captured_id_in_use') return 'That identity is already taken. Start again.';
-	if (issue === 'opening_exceeds_wall') {
-		if (length !== undefined && attempt.offset !== undefined && attempt.width !== undefined) {
-			const overrun = attempt.offset + attempt.width - length;
-			return `This ${kind} would end ${meters(overrun)} past the end of the ${meters(length)} Wall. Move it ${meters(overrun)} earlier or narrow it.`;
-		}
-		return `This ${kind} does not fit its Wall. Move it earlier or narrow it.`;
-	}
-	if (issue === 'opening_exceeds_wall_height') {
-		return wall !== undefined && attempt.height !== undefined && attempt.sillHeight !== undefined
-			? `This ${meters(attempt.height)} ${kind} with a ${meters(attempt.sillHeight)} sill exceeds the ${meters(wall.height)} Wall. Shorten it or raise the Wall.`
-			: `This ${kind} is taller than its Wall. Shorten it or raise the Wall.`;
-	}
-	if (issue === 'opening_overlap') return `This ${kind} overlaps another Opening. Aim clear or narrow it.`;
-	if (issue === 'opening_host_wall_unresolved') return 'That Wall has no resolvable span. Repair it or pick another Wall.';
-	if (rejection.code === 'invalid_value') return 'Check the Offset and size: offset and sill non-negative, width and height positive.';
-	if (rejection.code === 'candidate_does_not_compile' || rejection.code === 'invalid_candidate_document') {
-		return `That Wall cannot carry this ${kind}. Pick another Wall or adjust its size.`;
-	}
-	return `That ${kind} was refused. Adjust its host or size and try again.`;
 }
 
 /** The create planner: one captured host-relative Opening, one candidate. */
