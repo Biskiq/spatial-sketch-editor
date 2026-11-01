@@ -81,7 +81,7 @@ verbatim report untouched.
 
 ## After P01
 
-- **Native object creation UX (2026-10-31):** [proposal and four PNG mockups](./native-object-creation-ux/PROPOSAL.md) — standalone object drafts, shared-Stage Object Focus, hierarchical assemblies, editable operations and source-based reuse; distinguishes shipped P01/R217 behavior from ratified constraints and proposed T2/T5 changes. Independent product research for owner review; no interactive prototype, production implementation or contract amendment.
+- **Native object creation UX (revised 2026-11-01):** [proposal](./native-object-creation-ux/PROPOSAL.md) and [connected PNG storyboard](./native-object-creation-ux/STORYBOARD.md) — World-first and standalone creation converge on Object Focus, with explicit refinement, whole/part selection, return, save/reopen and placement. Distinguishes shipped S17A/P01 behavior, planned P02 and proposed workspace UX; retains chair/piano ceiling illustrations without specifying geometry tools or component storage. Independent research for PR #244 owner review; no prototype, implementation or contract/roadmap change.
 - **Coordinated roadmaps:** [`post-p01-roadmaps/`](./post-p01-roadmaps/README.md) — [engineering foundations](./post-p01-roadmaps/engineering-authorization-roadmap.md), the [original creative briefs](./post-p01-roadmaps/prototype-roadmap.md), one capability disposition ledger and focused research triggers. Live registers retain operational state; these proposals register, authorize and ratify nothing.
 - **P1–P3 convergence (scope revised 2026-10-22):** [convergence plan](../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md)
   and three executable research commissions, routed from the coordinated roadmaps above. The owner

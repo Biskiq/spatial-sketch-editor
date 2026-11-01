@@ -1,0 +1,121 @@
+<?xml version="1.0" ?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1480" viewBox="0 0 2400 1480">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#526b5e"/>
+    </marker>
+  </defs>
+  <rect width="2400" height="1480" fill="#f2f3ed"/>
+  <rect width="2400" height="156" fill="#11291f"/>
+  <style>text{font-family:Arial,sans-serif;fill:#1d3027}.title{font-family:Georgia,serif}.quiet{fill:#52665b}.white{fill:#f5f5eb}.small{font-size:22px}.label{font-size:25px;font-weight:700}.line{fill:none;stroke:#526b5e;stroke-width:3.5;marker-end:url(#arrow)}</style>
+  <text x="72" y="70" font-size="49" class="title white">From first shape to deeper authoring</text>
+  <text x="74" y="119" font-size="25" class="white">Two entries converge on one scope. Spatial composition stays one explicit step away.</text>
+  <rect x="1750" y="54" width="156" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="1762" y="77" font-size="19" class="">S · Shipped</text>
+  <rect x="1922" y="54" width="204" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="1934" y="77" font-size="19" class="">P · P02 planned</text>
+  <rect x="2135" y="54" width="168" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="2147" y="77" font-size="19" class="">N · Proposed</text>
+  <text x="72" y="219" font-size="24" class="label">A  WORLD FIRST</text>
+  <rect x="72" y="248" width="350" height="280" rx="16" fill="#fff" stroke="#d6ddd4"/>
+  <rect x="96" y="271" width="36" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="108" y="294" font-size="19" class="">S</text>
+  <text x="96" y="338" font-size="28" class="label">Objects → draw / place</text>
+  <text x="96" y="380" font-size="23" class="quiet">Box · Round · Free · Sphere</text>
+  <text x="96" y="418" font-size="23" class="quiet">Click or draw. Size in the Card.</text>
+  <text x="96" y="456" font-size="23" class="quiet">No Room required.</text>
+  <text x="96" y="500" font-size="20" class="quiet">A1 · Existing creation gesture</text>
+  <rect x="502" y="248" width="350" height="280" rx="16" fill="#fff" stroke="#d6ddd4"/>
+  <rect x="526" y="271" width="276" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="538" y="294" font-size="19" class="">S selection · N entry</text>
+  <text x="526" y="338" font-size="28" class="label">Select → Edit object</text>
+  <text x="526" y="380" font-size="23" class="quiet">The new shape is selected.</text>
+  <text x="526" y="418" font-size="23" class="quiet">Focus is a deliberate action.</text>
+  <text x="526" y="456" font-size="23" class="quiet">Simple work can stop here.</text>
+  <text x="526" y="500" font-size="20" class="quiet">A2 · Mockup 05</text>
+  <path d="M422 387H490" class="line"/>
+  <text x="72" y="625" font-size="24" class="label">B  STANDALONE</text>
+  <rect x="72" y="655" width="258" height="285" rx="16" fill="#fff" stroke="#d6ddd4"/>
+  <rect x="92" y="676" width="36" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="104" y="699" font-size="19" class="">N</text>
+  <text x="92" y="738" font-size="27" class="label">New object</text>
+  <text x="92" y="783" font-size="21" class="quiet">Objects / My Objects</text>
+  <text x="92" y="819" font-size="21" class="quiet">Start without placement.</text>
+  <text x="92" y="905" font-size="18" class="quiet">B1 · Proposed entry</text>
+  <rect x="370" y="655" width="258" height="285" rx="16" fill="#fff" stroke="#d6ddd4"/>
+  <rect x="390" y="676" width="36" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="402" y="699" font-size="19" class="">N</text>
+  <text x="390" y="738" font-size="27" class="label">Empty scope</text>
+  <text x="390" y="783" font-size="21" class="quiet">Objects already open.</text>
+  <text x="390" y="819" font-size="21" class="quiet">No selected geometry.</text>
+  <text x="390" y="905" font-size="18" class="quiet">B2 · Mockup 01</text>
+  <rect x="668" y="655" width="258" height="285" rx="16" fill="#fff" stroke="#d6ddd4"/>
+  <rect x="688" y="676" width="36" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="700" y="699" font-size="19" class="">N</text>
+  <text x="688" y="738" font-size="27" class="label">First shape</text>
+  <text x="688" y="783" font-size="21" class="quiet">Same click / draw.</text>
+  <text x="688" y="819" font-size="21" class="quiet">Finish → select the form.</text>
+  <text x="688" y="905" font-size="18" class="quiet">B3 · Mockups 07 → 10</text>
+  <path d="M330 798H358" class="line"/>
+  <path d="M628 798H656" class="line"/>
+  <path d="M852 388H960V492H1028" class="line"/>
+  <path d="M926 798H980V650H1028" class="line"/>
+  <rect x="1040" y="316" width="520" height="630" rx="20" fill="#173b30" stroke="#173b30"/>
+  <text x="1070" y="370" font-size="23" class="white">OBJECT FOCUS</text>
+  <text x="1070" y="415" font-size="31" class="title white">The same selected object</text>
+  <text x="1070" y="452" font-size="21" class="white">F1 · Mockups 06 and 10</text>
+  <g transform="translate(1228 475) scale(0.85)">
+    <path d="M0 25L70 5L140 25L70 47Z" fill="#f3efdf" stroke="#b29749" stroke-width="2"/>
+    <path d="M0 25L70 47V150L0 125Z" fill="#d6d4c5" stroke="#b29749" stroke-width="2"/>
+    <path d="M70 47L140 25V125L70 150Z" fill="#ece9d9" stroke="#b29749" stroke-width="2"/>
+  </g>
+  <text x="1070" y="650" font-size="28" class="white">P  Refine shape · mockup 12</text>
+  <text x="1070" y="692" font-size="25" class="white">N  Add and organize parts · optional</text>
+  <text x="1070" y="731" font-size="24" class="white">Whole object ↔ selected part</text>
+  <text x="1070" y="772" font-size="21" class="white">F2 · Part selection: mockup 08</text>
+  <path d="M1070 800H1530" stroke="#668176"/>
+  <text x="1070" y="837" font-size="23" class="white">One Stage · Card · selection · Camera</text>
+  <text x="1070" y="874" font-size="23" class="white">Save accepted work; resume the object.</text>
+  <text x="1070" y="914" font-size="21" class="white">No automatic jump to advanced tools.</text>
+  <path d="M1560 492H1635V386H1688" class="line"/>
+  <path d="M1560 740H1635V810H1688" class="line"/>
+  <rect x="1700" y="248" width="628" height="280" rx="16" fill="#fff" stroke="#d6ddd4"/>
+  <rect x="1724" y="271" width="408" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="1736" y="294" font-size="19" class="">A · Return to existing placement</text>
+  <text x="1724" y="338" font-size="32" class="title">Back to World</text>
+  <text x="1724" y="380" font-size="24" class="quiet">Restore viewpoint, reading and World location.</text>
+  <text x="1724" y="418" font-size="24" class="quiet">Whole object selected; applied edits kept.</text>
+  <text x="1724" y="456" font-size="24" class="quiet">Return is not Undo or Save.</text>
+  <text x="1724" y="500" font-size="20" class="quiet">A3 · Mockup 09 matches mockup 05's viewpoint</text>
+  <rect x="1700" y="655" width="628" height="370" rx="16" fill="#fff" stroke="#d6ddd4"/>
+  <rect x="1724" y="678" width="336" height="32" rx="16" fill="#e6ece3" stroke="#cbd5c9"/>
+  <text x="1736" y="701" font-size="19" class="">B · Save, reopen and place</text>
+  <text x="1724" y="744" font-size="30" class="title">Continue the draft, then compose</text>
+  <rect x="1724" y="778" width="152" height="48" rx="8" fill="#edf0e7" stroke="#d6ddd4"/>
+  <text x="1738" y="810" font-size="22" class="">Save draft</text>
+  <rect x="1913" y="778" width="132" height="48" rx="8" fill="#edf0e7" stroke="#d6ddd4"/>
+  <text x="1927" y="810" font-size="22" class="">Resume</text>
+  <rect x="2082" y="778" width="220" height="48" rx="8" fill="#edf0e7" stroke="#d6ddd4"/>
+  <text x="2096" y="810" font-size="22" class="">Place in World</text>
+  <path d="M1883 802H1902" class="line"/>
+  <path d="M2051 802H2071" class="line"/>
+  <text x="1724" y="873" font-size="23" class="quiet">Choose World → preview copy → click to place.</text>
+  <text x="1724" y="914" font-size="23" class="quiet">Cancel keeps the draft; Undo removes insertion.</text>
+  <text x="1724" y="955" font-size="23" class="quiet">New draft flow; the copy stays independent.</text>
+  <text x="1724" y="993" font-size="20" class="quiet">B4–B5 · Save/reopen and placement are explicit</text>
+  <text x="72" y="1072" font-size="28" class="title">The short path stays short. Parts, deeper tools and library saving are optional.</text>
+  <rect x="72" y="1120" width="720" height="208" rx="12" fill="#e6ece3" stroke="#d0d8ce"/>
+  <text x="96" y="1164" font-size="21" class="label">SAVED NATIVE FORM</text>
+  <text x="96" y="1214" font-size="23" class="">Insert copy → World selection → Edit object</text>
+  <text x="96" y="1260" font-size="22" class="quiet">Copy insertion ships; Focus entry is proposed.</text>
+  <rect x="828" y="1120" width="720" height="208" rx="12" fill="#e6ece3" stroke="#d0d8ce"/>
+  <text x="852" y="1164" font-size="21" class="label">DIRECT LIBRARY EDITING · PROPOSED</text>
+  <text x="852" y="1214" font-size="23" class="">Open editable copy → the same Focus scope</text>
+  <text x="852" y="1260" font-size="22" class="quiet">Original snapshot remains unchanged.</text>
+  <rect x="1584" y="1120" width="744" height="208" rx="12" fill="#e6ece3" stroke="#d0d8ce"/>
+  <text x="1608" y="1164" font-size="21" class="label">IMPORTED WHOLE MODEL</text>
+  <text x="1608" y="1214" font-size="22" class="">World transforms today; inspection-only Focus proposed.</text>
+  <text x="1608" y="1260" font-size="22" class="quiet">No invented parts, native outline or operation history.</text>
+  <text x="72" y="1398" font-size="23" class="quiet">PR #244 · UX review revision · 2026-11-01</text>
+  <text x="1515" y="1398" font-size="22" class="quiet">Design storyboard, not an implementation or tool specification.</text>
+</svg>
