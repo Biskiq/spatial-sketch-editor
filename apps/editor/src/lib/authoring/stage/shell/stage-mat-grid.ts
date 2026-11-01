@@ -6,7 +6,7 @@
  * projected spacing of every fixed level from its own screen derivatives and
  * applies the grammar's 16 → 8 CSS px fade there: 1 m near the eye, 5 m further
  * out, 25 m toward the horizon, and plain mat where even 25 m would be denser
- * than 8 px. Both directions of a level share one weight, taken from the denser
+ * than 8 px. Lines exist only on the cream plate around the work. Both directions of a level share one weight, taken from the denser
  * direction: foreshortening compresses the crosswise lines first, and a per-axis
  * weight left only the receding lines there. The 25 m level cross-fades in as the
  * 5 m level fades out, so a zoom never passes through a band with no reference.
@@ -18,13 +18,12 @@
  * coordinates. It owns no Camera and is never a pick root.
  */
 import { Color, ShaderMaterial } from 'three';
-import { GROUND_PLATE_INK, MAT_GROUND_INK } from '../paper-plan';
+import { GROUND_PLATE_INK, MAT_BACKGROUND_INK } from '../paper-plan';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '../stage-drafting';
 import {
 	GRID_COARSE_METERS,
 	GRID_FULL_SPACING_CSS_PX,
 	GRID_SUPPRESS_SPACING_CSS_PX,
-	MAT_GRID_INK,
 	PLATE_GRID_INK,
 	type GridRect,
 	type MatGround
@@ -52,6 +51,9 @@ export const MAT_GRID_SEGMENTS = 64;
  */
 export const MAT_GROUND_POLYGON_OFFSET_UNITS = 4;
 
+/** The plate's corner radius. */
+export const GROUND_PLATE_CORNER_METERS = 1;
+
 const float = (value: number): string => (Number.isInteger(value) ? `${value}.0` : `${value}`);
 
 const VERTEX = /* glsl */ `
@@ -65,12 +67,13 @@ void main() {
 }
 `;
 
-/** 1 inside the plate and 0 outside, antialiased over one pixel at its edge. */
+/** 1 inside the plate's rounded rectangle and 0 outside, antialiased at its edge. */
 const PLATE_COVERAGE = /* glsl */ `
 uniform vec4 uPlate;
 float plateCoverage(vec2 lattice) {
-	vec2 inside = min(lattice - uPlate.xy, uPlate.zw - lattice);
-	return clamp(min(inside.x / max(fwidth(lattice.x), 1e-9), inside.y / max(fwidth(lattice.y), 1e-9)) + 0.5, 0.0, 1.0);
+	vec2 q = abs(lattice - (uPlate.xy + uPlate.zw) * 0.5) - (uPlate.zw - uPlate.xy) * 0.5 + ${float(GROUND_PLATE_CORNER_METERS)};
+	float distance = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - ${float(GROUND_PLATE_CORNER_METERS)};
+	return clamp(0.5 - distance / max(fwidth(distance), 1e-9), 0.0, 1.0);
 }
 `;
 
@@ -79,8 +82,6 @@ uniform vec3 uPlateMinorInk;
 uniform vec3 uPlateMajorInk;
 uniform float uPlateMinorOpacity;
 uniform float uPlateMajorOpacity;
-uniform vec3 uMatMinorInk;
-uniform vec3 uMatMajorInk;
 uniform float uPixelRatio;
 varying vec2 vLattice;
 ${PLATE_COVERAGE}
@@ -127,16 +128,14 @@ void main() {
 			)
 		);
 	}
-	// One lattice across the edge: Paper's inks on the plate, the mat's beyond it.
+	// Lines exist only on the plate; beyond it the Stage is plain forest.
 	float plate = plateCoverage(vLattice);
-	float minorAlpha = minorLine * mix(1.0, uPlateMinorOpacity, plate);
-	float majorAlpha = majorLine * mix(1.0, uPlateMajorOpacity, plate);
+	float minorAlpha = minorLine * uPlateMinorOpacity * plate;
+	float majorAlpha = majorLine * uPlateMajorOpacity * plate;
 	float alpha = max(minorAlpha, majorAlpha);
 	if (alpha <= 0.0) discard;
 	// A coarser role owns a coincident line, as on Paper.
-	vec3 ink = majorAlpha >= minorAlpha
-		? mix(uMatMajorInk, uPlateMajorInk, plate)
-		: mix(uMatMinorInk, uPlateMinorInk, plate);
+	vec3 ink = majorAlpha >= minorAlpha ? uPlateMajorInk : uPlateMinorInk;
 	gl_FragColor = vec4(ink, alpha);
 	#include <colorspace_fragment>
 }
@@ -153,9 +152,7 @@ export function createMatGridMaterial(): ShaderMaterial {
 			uPlateMinorInk: { value: new Color(PLATE_GRID_INK.minor) },
 			uPlateMajorInk: { value: new Color(PLATE_GRID_INK.major) },
 			uPlateMinorOpacity: { value: PLATE_GRID_INK.minorOpacity },
-			uPlateMajorOpacity: { value: PLATE_GRID_INK.majorOpacity },
-			uMatMinorInk: { value: new Color(MAT_GRID_INK.minor) },
-			uMatMajorInk: { value: new Color(MAT_GRID_INK.major) }
+			uPlateMajorOpacity: { value: PLATE_GRID_INK.majorOpacity }
 		},
 		vertexShader: VERTEX,
 		fragmentShader: FRAGMENT,
@@ -187,9 +184,9 @@ void main() {
 `;
 
 /**
- * The ground: one opaque unlit draw, forest outside the plate and cream inside,
- * so the plate's edge can never fight the mat. Unlit keeps both colours exact at
- * every Camera angle.
+ * The ground: one opaque unlit draw, cream inside the plate and the Stage's own
+ * background colour outside, so no horizon shows and the plate's edge can never
+ * fight the mat. It stays opaque out there to keep what lies below the datum hidden.
  */
 export function createMatGroundMaterial(): ShaderMaterial {
 	return new ShaderMaterial({
@@ -198,7 +195,7 @@ export function createMatGroundMaterial(): ShaderMaterial {
 			uLatticeOffset: { value: [0, 0] },
 			uPlate: { value: [0, 0, 0, 0] },
 			uPlateInk: { value: new Color(GROUND_PLATE_INK) },
-			uMatInk: { value: new Color(MAT_GROUND_INK) }
+			uMatInk: { value: new Color(MAT_BACKGROUND_INK) }
 		},
 		vertexShader: GROUND_VERTEX,
 		fragmentShader: GROUND_FRAGMENT,

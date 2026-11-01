@@ -43,8 +43,7 @@ export const STAGE_OVERLAY_LAYER = 2;
 export const PAPER_INK = '#1b201c';
 export const PAPER_GROUND_INK = '#e9ebe6';
 export const MAT_BACKGROUND_INK = '#152c26';
-export const MAT_GROUND_INK = '#1d3a33';
-/** The 3D ground inside the work's bounds; outside it stays the forest mat. */
+/** The 3D ground inside the work's bounds; outside it is plain `MAT_BACKGROUND_INK`. */
 export const GROUND_PLATE_INK = '#efe8d8';
 
 /**

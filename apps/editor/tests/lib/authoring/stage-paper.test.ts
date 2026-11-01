@@ -53,7 +53,6 @@ import {
 	fragmentTreatment,
 	isPaperPlanVisible,
 	MAT_BACKGROUND_INK,
-	MAT_GROUND_INK,
 	PAPER_GROUND_INK,
 	PAPER_LAYER,
 	PAPER_LINE_STYLE,
@@ -594,7 +593,6 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 	it('puts 3D on the mat and keeps Paper inks out of the renderer tone map', () => {
 		expect(PAPER_GROUND_INK).toBe('#e9ebe6');
 		expect(MAT_BACKGROUND_INK).toBe('#152c26');
-		expect(MAT_GROUND_INK).toBe('#1d3a33');
 
 		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
 		// No fog: the mat is a measured ground, not an atmospheric room.
@@ -607,7 +605,7 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 		);
 		expect(matGround).toContain('createMatGroundMaterial');
 		const groundShader = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
-		expect(groundShader).toContain('uMatInk: { value: new Color(MAT_GROUND_INK) }');
+		expect(groundShader).toContain('uMatInk: { value: new Color(MAT_BACKGROUND_INK) }');
 
 		// PLATE inks are semantic colors; tone mapping would shift the vellum and ink
 		// away from the shell's own values. Every Paper material opts out.

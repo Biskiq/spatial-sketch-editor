@@ -86,6 +86,22 @@ describe('the cream plate around the work', () => {
 		expect(groundPlateRectFor({})).toEqual({ minX: -10, maxX: 10, minZ: -10, maxZ: 10 });
 	});
 
+	it('draws lines only on the plate, leaving plain forest beyond it', () => {
+		const material = createMatGridMaterial();
+		expect(material.fragmentShader).toContain('minorLine * uPlateMinorOpacity * plate');
+		expect(material.fragmentShader).toContain('majorLine * uPlateMajorOpacity * plate');
+		expect(material.uniforms.uMatMinorInk).toBeUndefined();
+		material.dispose();
+		const stage = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/stage-mat-grid.ts'), 'utf8');
+		expect(stage).toContain('uMatInk: { value: new Color(MAT_BACKGROUND_INK) }');
+	});
+
+	it('takes its bounds from the work alone, never the Camera', () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		expect(source).toContain('groundPlateRectFor({ contentBounds, candidateBounds })');
+		expect(groundPlateRectFor.length).toBe(1);
+	});
+
 	it('leaves the lines world-anchored across the plate edge', () => {
 		const material = createMatGridMaterial();
 		const plate = { minX: -5, maxX: 15, minZ: -10, maxZ: 5 };
