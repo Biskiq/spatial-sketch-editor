@@ -191,7 +191,8 @@ import StageMatGround from './StageMatGround.svelte';
 		a measured ground, not an atmospheric room.
 	-->
 	<T.AmbientLight intensity={0.35} />
-	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} castShadow />
+	<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
+	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 	<StageCamera {evaluation} {paperVisible} />
 	{#if evaluation !== null && matVisible}

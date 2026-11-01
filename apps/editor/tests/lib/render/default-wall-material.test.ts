@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 import { MeshStandardMaterial } from 'three';
 import { describe, expect, it } from 'vitest';
 import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
-import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
+import { PAPER_GROUND_INK } from '$lib/authoring/stage/paper-plan';
+import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
 
 const source = (path: string): string => readFileSync(resolve(process.cwd(), path), 'utf8');
 
@@ -30,8 +31,13 @@ describe('the default Wall surface', () => {
 			'createVisitorWallMaterialFactory(() => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE)'
 		);
 		expect(source('src/lib/visitor/VisitorLayoutShell.svelte')).toContain('createWallRepresentation');
-		// The Room floor keeps its own tint.
-		expect(source('src/lib/visitor/VisitorLayoutShell.svelte')).toContain('tint={colors.color}');
+	});
+
+	it('draws the default Room floor as the ground: same colour, unlit and untoned', () => {
+		expect(DEFAULT_FLOOR_COLOR).toBe(PAPER_GROUND_INK);
+		expect(source('src/lib/visitor/VisitorLayoutShell.svelte')).toContain(
+			'<T.MeshBasicMaterial color={DEFAULT_FLOOR_COLOR} toneMapped={false} />'
+		);
 	});
 
 	it('selects with Paper\'s two-tone contour, which holds on cream and on forest', () => {

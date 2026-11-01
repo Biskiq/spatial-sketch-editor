@@ -31,3 +31,9 @@ export const DEFAULT_WALL_COLOR = '#f1e6cf';
  * light on top still separates its faces.
  */
 export const DEFAULT_WALL_UNLIT_SHARE = 0.5;
+/**
+ * A Room's default floor: the Stage's Paper ground (`PAPER_GROUND_INK`, which this
+ * editor-free module cannot import; a test holds them equal). Drawn unlit, so a
+ * floor on the ground reads as the ground.
+ */
+export const DEFAULT_FLOOR_COLOR = '#e9ebe6';

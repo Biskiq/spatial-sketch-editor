@@ -4,7 +4,7 @@
 	import type { LayoutVec2 } from '@portfolio/layout-core';
 	import type { CompiledLayoutGeometry, CompiledRoom, LayoutBounds3 } from '@portfolio/layout-core';
 	import type { VisitorRoomPresentation } from './room-presentation';
-	import { neutralVisitorRoomPresentation } from './room-presentation';
+	import { DEFAULT_FLOOR_COLOR, neutralVisitorRoomPresentation } from './room-presentation';
 	import { buildRoomWallMesh } from '$lib/layout/wall-mesh-builder';
 	import { p2311Measure } from '@portfolio/layout-core';
 	import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
@@ -198,10 +198,23 @@
 				name={`VisitorFloor:${room.roomId}`}
 				position={[0, room.floorElevation, 0]}
 				rotation={[-Math.PI / 2, 0, 0]}
-				receiveShadow
 			>
 				<T.ShapeGeometry args={[shapes.floor]} />
-				<MuseumMaterial materialId="wood-walnut" surfaceSize={[8, 8]} tint={colors.color} scope={textureScope} />
+				<T.MeshBasicMaterial color={DEFAULT_FLOOR_COLOR} toneMapped={false} />
+			</T.Mesh>
+			<!--
+				The unlit floor cannot receive, so this keeps its eligibility for an authored
+				light's shadow. With no casting light it draws nothing. Never picked.
+			-->
+			<T.Mesh
+				name={`VisitorFloorShadow:${room.roomId}`}
+				position={[0, room.floorElevation, 0]}
+				rotation={[-Math.PI / 2, 0, 0]}
+				receiveShadow
+				raycast={() => {}}
+			>
+				<T.ShapeGeometry args={[shapes.floor]} />
+				<T.ShadowMaterial opacity={0.3} depthWrite={false} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
 			</T.Mesh>
 			<T.Mesh
 				name={`VisitorCeiling:${room.roomId}`}
