@@ -53,7 +53,8 @@ A creator opens a project in a shell that matches the ratified production design
 - **Plan truth without a second renderer.** The 2D reading draws Paper from Layout's existing Plan
   representation, plus Scene footprint symbols, in the one Canvas through the one
   `ViewportEvaluation`. Plan hits resolve against what is drawn. **Paper is the default (D5)**;
-  shaded Plan is an app-menu viewing preference. The Camera transition is unchanged.
+  shaded Plan is a viewing preference in the Stage's ⚙, with a Find entry in the Head (O5,
+  R217.S20). The Camera transition is unchanged.
 - **Dock set (D3):** Select · Ink (Line, Box) · Measure · Eraser (one subject per click), with the
   Library beside it. Ink's Wall reading gains Box; the Shape reading keeps its shipped Line, Box,
   Round and Sketch. Slice, Brush and curved-Wall Round and Sketch stay absent rather than inert.

@@ -204,7 +204,7 @@ Values calibrate the wireframe against PLATE's roles. Roles live in one scoped s
 | Role | Target |
 | --- | --- |
 | Type | 13 px ordinary sans; 12–12.5 px utility; 15 px serif project identity; tabular measures |
-| Colour | Forest `#11291f`; mat `#1D3A33`; paper `#e9ebe6`; Index `#f6f7f5`; Card white; gold `#d4ad45`. Active lens pale with forest ink. Hover neutral |
+| Colour | Forest `#11291f`; 3D background `#152C26` (PR #247 retired the mat `#1D3A33`); paper `#e9ebe6`; Index `#f5f6f4` (PLATE's pale stone); Card white; gold `#d4ad45`. Active lens pale with forest ink. Hover neutral |
 | Density | Fine-pointer Head 44 px, Index 256 px, Card 288 px |
 
 ### Head

@@ -120,7 +120,7 @@ when their context is absent. **The Stage is the workspace:** every other surfac
 small, floats over the Stage or disappears.
 
 ```text
-HEAD — ☰ app menu · project · World | Experience · active Experience · [location chip when the Index is collapsed] · Find ⌘K · Undo/Redo · saved · Preview
+HEAD — Index toggle · Biskiq · project (menu: rename, delete, source download and replacement) · World | Experience · active Experience · [location chip when the Index is collapsed] · Find ⌘K · Undo/Redo · saved · Preview
 INDEX (collapses to nothing)   STAGE — dominant spatial work; reading control, Height Sheet (World), state pill
                                contextual overlay CARD
                                lower working edge, bottom up: DOCK → armed tool's PALETTE → invoked INSTRUMENT
@@ -128,7 +128,7 @@ INDEX (collapses to nothing)   STAGE — dominant spatial work; reading control,
 
 | Landmark | Shared responsibility | World expression | Experience expression |
 | --- | --- | --- | --- |
-| **Head** | Persistent project/application context, lens switch, **Find**, save/history and Preview | App menu (viewing preferences, Settings, Keys), source-history access with verb labels, Find | Active Experience identity in context; the same app and project actions |
+| **Head** | Persistent project/application context, lens switch, **Find**, save/history and Preview | Index toggle; the project name's menu (rename, delete, source download and replacement); Find, which also reaches viewing preferences and Keys; viewing preferences live in the Stage's ⚙ (O5) | Active Experience identity in context; the same app and project actions |
 | **Index** | Where am I, and where is that thing? Locator and orientation, not a primary property editor | **Scope model**: one scope at a time with crumbs, sibling menus and kind facets; relation-aware contents | Presentations and relevant relationships, including Guide awareness where present |
 | **Stage** | Continuous spatial truth, readings, spatial marks and direct manipulation | Architecture, objects, inspection, drawing and manipulation; reading control, Height Sheet, state pill | Camera View placement/framing, contextual paths and playback |
 | **Card** | What is canonically selected, what does it mean here, and what owns/reaches beyond this use? The one writer for ordinary facts | Identity, editable facts, Look, scoped ⋯ list; advanced fields under More | One contextual inspector for the selected Presentation, View, subject, Stop, transition or path point |
@@ -438,7 +438,7 @@ owns no source data. Reading settings are view/session state, never source or Un
 
 | Region | Responsibility |
 | --- | --- |
-| **Head** | App menu (viewing preferences including paper or shaded, Settings, Keys); lens switch; Find; Undo/Redo with a verb label; save; Preview. No separate history-list panel |
+| **Head** | Index toggle; the project name's menu (rename, delete, source download and replacement); lens switch; Find; Undo/Redo with a verb label; save; Preview. Viewing preferences (paper or shaded, Height Sheet side, reduced motion, motion speed) live in the Stage's ⚙, and Keys are reached from Find. No separate history-list panel |
 | **Index** | Scope-model locator and Browse. No tools, measures, capability search or task state |
 | **Stage furniture** | Reading control (2D \| 3D with a ▾ for the rest), the drafting words, the scale bar, the Height Sheet and, while a temporary reading is active, its state pill. No World status rail or persistent message band |
 | **Dock and palette** | What the pointer does; never facts, procedure steps or Apply |
@@ -604,8 +604,8 @@ reads or where the next point lands. No messages, hints, history, tool state or 
 settings belong in that cluster. Grid is one fact across 2D surfaces; on a wall laid
 flat it is Wall grid, and off reveals real wall material under the
 [paper rule](#material-and-working-surfaces-44). Viewing preferences (2D appearance,
-Height Sheet side, reduced motion, motion speed) stay in the app menu's Viewing and
-Settings groups. A later grid or snap preference has one named seam to extend; the word
+Height Sheet side, reduced motion, motion speed) stay in the Stage's ⚙ viewing panel,
+beside the drafting words, and Find reaches the same values. A later grid or snap preference has one named seam to extend; the word
 **Sheet** now means only the Height Sheet. The World status rail is retired.
 
 **2D | 3D continuity.** The switch requests a tilt through Camera about the current
