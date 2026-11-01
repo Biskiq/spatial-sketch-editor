@@ -36,7 +36,7 @@ Apple M2), 1440 × 900. Stage settings on `main`: 24-bit depth, antialias on, Th
 
 - **Corners under about 45° and an arched Opening at a free end** are pre-existing limits; see [the comparison](#corners-and-arches-against-main).
 - **A T junction's root** stays an abutment; see [what J16 guarantees](#what-j16-guarantees-at-a-t).
-- **Black patch in a large project (unproven).** The Stage shadow box is ±5 m, map 512, bias 0. It shows more against the pale ground.
+- **An authored light's shadow box** is three's default ±5 m, map 512, bias 0, so large projects may clip or patch its shadow. The default light no longer casts, so this only affects authored lights.
 - **Mat offset, accepted by the owner (2026-11-01) as a documented residual, not a merge blocker.** Content under the datum within four
   depth steps can draw over the ground. With the near floor that is about 24 cm at 100 m, and only with the eye inside the bounds.
 - **Thin-line motion.** Full-scene motion scored 23–38‰ blink on the large room with the plate at line opacities of 0.34 and 0.55; Paper's final 0.28 and 0.45 are fainter and were not remeasured. That compares with 11–29‰ on the dark mat, because
@@ -114,11 +114,24 @@ the through Wall has no surface there to weld to, so edge incidence still report
 - **The owner ruled that "cream" means Paper, not a literal cream.** My first `#efe8d8` and recalibrated line opacities are gone, so 2D and 3D share one ground token and one grid ink. The ground is unlit and untoned, so its pixels equal Paper's. The owner compared this with moving everything to ivory and chose Paper: buttons stay their existing ivory (`#f4f0e9`, `#f3f0e4`), slightly warmer than the ground.
 - **My first version kept forest lines outside the plate and a separate mat tone. The owner ruled both out,** so a pan far from the work now has no ground reference outside the plate until the plate is back in view.
 
-**Differences from the owner's reference image, not changed because they aren't in the written requirement:**
+**Third owner review (2026-11-01).**
 
-- **Room floor.** The reference shows a Room on the plain ground; here it stays dark slate, the heaviest thing in the frame, and that makes the black shadow patch obvious. It shares one tint with the floor's walnut material.
-- **Ground shadows.** The reference has soft Wall shadows on the ground. This ground is unlit and receives none. Adding them means a shadow-only pass plus fixing the ±5 m shadow box, which is itself a recorded residual.
-- **Corner ticks and Wall hue.** The reference has small corner marks and a pinker Wall. Neither is drawn, and the hue is one constant.
+- **The default Room floor adopts the ground.** It was walnut under a dark tint. It is now `DEFAULT_FLOOR_COLOR`, unlit and untoned; a test holds it equal to `PAPER_GROUND_INK`. [Stage](./evidence/floor-adopts-ground.png), [Preview](./evidence/floor-preview.png).
+- **The workspace has a fixed size.** It is 40 × 40 m around world zero and never smaller, so a small Layout doesn't change it. Beyond that it keeps at least 10 m clear of the work and widens only the side that needs it, in 10 m steps. This supersedes Paper's 5 m sheet rule for the 3D ground, and the small default in the table above; Paper's own sheet is unchanged. A live candidate still widens it immediately, with no animation.
+
+**Default lighting and shadows.**
+
+- **Policy.** The Stage's built-in light no longer casts, and Preview's never did: both reported `castShadow` false in the browser. So no authored casting light means no cast shadows, which also removes the black patch recorded above. Authored lights keep their own setting. [No authored light, then one authored casting light](./evidence/shadow-policy.png).
+- **Readability.** Without cast shadows, Wall faces still separate by their lighting and the floor and ground stay clean.
+- **Eligibility.** Walls and objects keep their flags. The unlit floor can't receive a shadow itself, so a `ShadowMaterial` receiver on the same shape does; it draws nothing with no casting light and is never picked.
+- **Passes.** three skips the pass with no casting light. `needsPerFrameShadows` also stops a model from forcing per-frame updates unless a light casts.
+- **Limit: add, remove and Undo aren't verified end to end.** The editor has no control that adds or removes a light. The trigger is Scene identity, unchanged. On the live renderer, removing the authored light changed the frame and restoring it returned the same pixels. Fixtures with and without the light load correctly.
+
+**Left for the owner:**
+
+- **The ground receives no shadow,** as before this PR, so an authored light's shadow stops at the floor's edge. Your reference shows ground shadows; adding them means a receiver on the ground too.
+- **Published releases** weren't checked for the floor or lights.
+- **Corner ticks and Wall hue** in the reference aren't drawn.
 
 ## Summary
 

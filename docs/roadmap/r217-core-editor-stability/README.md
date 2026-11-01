@@ -206,7 +206,7 @@ lifecycle and prerequisites only.
 
 **R217.S17A** (shipped) is a follow-up to S17 outside the numbered register, whose id grammar has no suffixed slice: [plan](./r217.s17a-shape-drawing-simplification/implementation-plan.md), [record](./r217.s17a-shape-drawing-simplification/acceptance.md). Decisions O10 and O11; S11 owns its integrated acceptance.
 
-**Post-S19 corrections** (implemented on PR #247, pending owner review) are a bounded owner-authorized follow-up outside the numbered register: Wall solids, ground depth, grid fade, refusal feedback, Paper cut poché, door frames, Scene depth bounds, the Paper-coloured ground and cream default Walls. The [report](./post-s19-owner-manual-review/report.md) owns causes, evidence and residuals; S11 owns their integrated rows.
+**Post-S19 corrections** (implemented on PR #247, pending owner review) are a bounded owner-authorized follow-up outside the numbered register: Wall solids, ground depth, grid fade, refusal feedback, Paper cut poché, door frames, Scene depth bounds, the Paper-coloured ground and floor, cream default Walls, and authored-only cast shadows. The [report](./post-s19-owner-manual-review/report.md) owns causes, evidence and residuals; S11 owns their integrated rows.
 
 Every consumed gate is `accepted` and every required scope `active` on `main` at this registration.
 Each slice rechecks them at its own trusted base. No slice provides a gate, changes a persisted

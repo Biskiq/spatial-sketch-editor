@@ -922,7 +922,7 @@ coverage so a zoomed-in view cannot generate unbounded lines; it grows with the 
 never moves the Camera. The mat's grid covers the finite mat, which the Camera's ground
 reach sizes; it has no line geometry and no line budget. Inside the same sheet around the work the
 3D ground is a finite surface in Paper's own colour, with rounded corners and Paper's grid inks at Paper's opacities. Outside it
-the Stage is plain forest with no lines and no horizon. An empty project's surface is 20 × 20 m around world zero. It is
+the Stage is plain forest with no lines and no horizon. Its default is 40 × 40 m around world zero and it is never smaller; it keeps at least 10 m beyond the work, widening in 10 m steps. A default Room floor wears the same colour. It is
 one unlit draw, follows Layout and Scene with a live candidate, keeps the lattice world-anchored, and never reads or moves the Camera.
 It is drawing state, never a Camera mode or a reason to delay navigation.
 
@@ -946,7 +946,8 @@ display-only. Paper and selection compose; selection does not replace the sheet.
 | Light overlay ink/halo | `#F3F4EE` |
 | Paper grid minor / major | `#9FB2A2` at 0.28 / `#809984` at 0.45 |
 | 3D background, inside and outside the drawn ground | `#152C26` |
-| 3D ground plate and its grid | Paper's ground and grid tokens, never separate values |
+| 3D ground plate, its grid and a default Room floor | Paper's ground and grid tokens, never separate values |
+| Built-in lighting | Neutral illumination only, in the Stage and Preview. A cast shadow comes only from an authored light with `castShadow` |
 | Default physical Wall | `#F1E6CF`, half unlit and untoned so it reads the same in the Stage and Preview; never over an authored material |
 | Camera infrastructure / active context | Restrained leaf green (`#4f8f6c` reference), reinforced by shape/line; no mandatory competing blue/teal shell hue |
 | Selection, the held anchor and current playback moment | Gold (`#d4ad45`, dark ink `#74560c` reference), local contour and quiet tint; selection and playback retain different shape/text cues. Gold means selected geometry (or the point being held), never hover, an available action or inspection |
