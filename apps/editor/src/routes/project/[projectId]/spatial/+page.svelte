@@ -4124,7 +4124,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							snapIncrement={heightSnapIncrement}
 							{reducedMotion}
 							side={heightSheetSide}
-							quiet={paperVisible}
 							pinHintSeen={pinHintSeen}
 							onPinHintSeen={() => (pinHintSeen = true)}
 							bind:laneRef={sheetLaneEl}

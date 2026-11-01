@@ -322,3 +322,104 @@ describe('R217.S22 — the Height Sheet control', () => {
 		expect(source).not.toContain('Got it');
 	});
 });
+
+/**
+ * R217.S23 — the Sheet's ink on the light ground. The 3D ground is pale on the plate and
+ * dark on the mat margin, Paper is pale and Shaded is dark, so the Sheet carries its own
+ * pale plate and forest ink. Its colours are shell-role tokens, and the ink does not depend
+ * on the 2D-only flag.
+ */
+describe('R217.S23 — the Height Sheet ink on the light ground', () => {
+	const SHEET_SOURCE = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
+	const ROLES = readFileSync('src/lib/authoring/stage/shell/shell-roles.css', 'utf8');
+	const token = (name: string): string => {
+		const match = ROLES.match(new RegExp(`--shell-${name}:\\s*(#[0-9a-fA-F]{6});`));
+		if (match === null) throw new Error(`no shell token --shell-${name}`);
+		return match[1]!;
+	};
+	/** WCAG 2.x relative luminance of a six-digit hex colour. */
+	const luminance = (hex: string): number => {
+		const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+		const [r, g, b] = channels.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+		return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+	};
+	const contrast = (a: string, b: string): number => {
+		const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+		return (hi! + 0.05) / (lo! + 0.05);
+	};
+
+	it('takes every colour from a shell-role token, so the ink is the same on any ground', () => {
+		const style = SHEET_SOURCE.slice(SHEET_SOURCE.indexOf('<style>'));
+		// A declaration's value with its `var(...)` calls removed: what is left must hold no
+		// literal colour. The fallback inside a var() reuses the shell-role value of the token.
+		const declarations = [...style.matchAll(/(?:^|[\s;{])(color|background|border(?:-color)?|outline|box-shadow)\s*:\s*([^;}]+)/gm)];
+		expect(declarations.length).toBeGreaterThan(10);
+		for (const [, property, value] of declarations) {
+			const bare = value!.replace(/var\([^()]*(?:\([^()]*\)[^()]*)*\)/g, '');
+			expect(bare, `${property}: ${value}`).not.toMatch(/#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(/);
+		}
+	});
+
+	it('does not depend on the 2D-only flag: the Sheet has no quiet variant to switch', () => {
+		expect(SHEET_SOURCE).not.toMatch(/\bquiet\b/);
+		expect(SHEET_SOURCE).toContain('data-ink="forest-on-paper"');
+	});
+
+	it('meets the contrast thresholds on the shell-role pairs the Sheet stands on', () => {
+		const forest = token('forest');
+		const forestRaised = token('forest-raised');
+		const paper = token('paper');
+		const gold = token('gold');
+		const goldInk = token('gold-ink');
+		// Text and value labels: 4.5:1. The rail, ticks, knob and pin ring: 3:1.
+		expect(contrast(forest, paper)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(forestRaised, paper)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(goldInk, paper)).toBeGreaterThanOrEqual(3);
+		// The pin glyph on its gold face, and the add glyph and hint text on their faces.
+		expect(contrast(forest, gold)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(paper, forestRaised)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(paper, forest)).toBeGreaterThanOrEqual(4.5);
+	});
+
+	it('shows the tick names with the value, in forest on the plate, and leaves out a name that would stack', async () => {
+		const ticks: StageHeightTick[] = [
+			{ kind: 'datum', heightMeters: 0, label: 'Floor' },
+			{ kind: 'found', heightMeters: 0.75, label: 'Table' },
+			{ kind: 'found', heightMeters: 0.755, label: 'Stacked' }
+		];
+		const target = document.createElement('div');
+		document.body.append(target);
+		const component = mount(HeightSheetProbe, {
+			target,
+			props: {
+				heightMeters: 1.2,
+				ticks,
+				onSetHeight: () => {},
+				onAddPin: () => {},
+				onRemovePin: () => {}
+			}
+		});
+		try {
+			const labels = () => [...target.querySelectorAll('.tick-label')].map((node) => node.textContent?.trim());
+			expect(labels()).toEqual([]);
+			sheetOfProbe(target).dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+			await tick();
+			expect(labels()).toEqual(['Floor', 'Table']);
+		} finally {
+			void unmount(component);
+			document.body.replaceChildren();
+		}
+	});
+
+	it('takes the 2D Paper and the 3D ground alike: the route never passes a quiet flag to the Sheet', () => {
+		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
+		const start = route.indexOf('<StageHeightSheet');
+		const end = route.indexOf('/>', start);
+		expect(start).toBeGreaterThan(0);
+		expect(route.slice(start, end)).not.toMatch(/quiet/);
+	});
+});
+
+function sheetOfProbe(target: HTMLElement): HTMLElement {
+	return target.querySelector<HTMLElement>('[data-stage-height-sheet]')!;
+}
