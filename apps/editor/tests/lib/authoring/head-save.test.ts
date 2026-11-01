@@ -1,12 +1,17 @@
+// @vitest-environment jsdom
 /**
  * T1.P01.S04 — PLATE Head Save integration.
  *
  * The state machine itself is T3.P01.S02's and is covered by its own conformance
  * suite. This file pins the Head's obligations: a visible reason instead of a
  * dead control, an explicit unsaved-work signal, and a conflict reload that is
- * handed to the host rather than installed here.
+ * handed to the host rather than installed here. R217.S20 adds the mounted Head's
+ * half: a refusal is announced accessibly, and a settled Save stays reachable from
+ * the keyboard with its reason as its description.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mount, tick, unmount } from 'svelte';
+import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 import type {
 	ReloadOffer,
 	SaveOutcome,
@@ -157,5 +162,78 @@ describe('T1.P01.S04 — Head Save', () => {
 		expect(head.control()).toMatchObject({ label: 'Retry save', disabled: false });
 		expect(head.control().reason).toBe('The server refused this Save.');
 		expect(await head.retry()).toEqual({ kind: 'refused', message: 'The server refused this Save.' });
+	});
+});
+
+describe('R217.S20 — the mounted Head announces a refusal and describes its Save', () => {
+	let component: ReturnType<typeof mount> | undefined;
+	let target: HTMLElement | undefined;
+
+	afterEach(() => {
+		if (component !== undefined) unmount(component);
+		component = undefined;
+		target?.remove();
+		target = undefined;
+	});
+
+	function mountSave(state: SaveState): HTMLElement {
+		target = document.createElement('div');
+		document.body.append(target);
+		component = mount(EditorHead, {
+			target,
+			props: {
+				projectId: 'project-1',
+				projectName: 'Save fixture',
+				lens: 'world' as const,
+				onLens: () => {},
+				canDownloadSource: true,
+				onDownloadSource: () => {},
+				historyUnavailableReason: 'Nothing to undo yet.',
+				saveUnavailableReason: 'Unused in this fixture.',
+				previewUnavailableReason: 'Preview needs an admitted project source.',
+				save: createHeadSave(state)
+			}
+		});
+		return target;
+	}
+
+	it('announces a refused Save politely and describes the Save control with the same words', async () => {
+		const { state } = stub(
+			snapshot({
+				status: 'error',
+				error: { code: 'server', message: 'The server refused this Save.', retryable: true }
+			}),
+			{ kind: 'refused', code: 'conflict', message: 'The server refused this Save.' }
+		);
+		const host = mountSave(state);
+		await tick();
+		const announcement = host.querySelector<HTMLElement>('[data-head-announce]')!;
+		expect(announcement.getAttribute('role')).toBe('status');
+		expect(announcement.getAttribute('aria-live')).toBe('polite');
+		expect(announcement.textContent).toBe('The server refused this Save.');
+		const save = host.querySelector<HTMLButtonElement>('[data-head-save-button]')!;
+		expect(save.textContent?.trim()).toBe('Retry save');
+		const describedBy = save.getAttribute('aria-describedby');
+		expect(describedBy).toBeTruthy();
+		expect(document.getElementById(describedBy!)?.textContent).toContain('The server refused this Save.');
+	});
+
+	it('keeps a settled Save focusable, describes it with its reason, and opens that reason on a press', async () => {
+		const { state } = stub(snapshot({ status: 'saved', dirty: false }));
+		const host = mountSave(state);
+		await tick();
+		const save = host.querySelector<HTMLButtonElement>('[data-head-save-button]')!;
+		// A native disabled control cannot take focus, so its reason could not be reached from the keyboard.
+		expect(save.disabled).toBe(false);
+		expect(save.getAttribute('aria-disabled')).toBe('true');
+		save.focus();
+		expect(document.activeElement).toBe(save);
+		const describedBy = save.getAttribute('aria-describedby')!;
+		expect(document.getElementById(describedBy)?.textContent).toContain('All accepted changes are saved.');
+		expect(host.querySelector<HTMLElement>('[data-head-announce]')!.textContent).toBe('');
+		save.click();
+		await tick();
+		expect(host.querySelector('[data-head-save]')?.hasAttribute('data-reason-open')).toBe(true);
+		expect(state.getSnapshot().status).toBe('saved');
 	});
 });

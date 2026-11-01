@@ -41,8 +41,7 @@
 		find = null,
 		indexOpen = true,
 		onOpenIndex = () => {},
-		reducedMotion = false,
-		onToggleReducedMotion = () => {},
+		onToggleIndex = () => {},
 		lens = 'world',
 		onLens = () => {}
 	}: {
@@ -66,8 +65,7 @@
 		find?: { entries: readonly { id: string; adapterId: string; label: string; verb: string }[]; onRun: (entry: { id: string; adapterId: string; label: string; verb: string }) => void } | null;
 		indexOpen?: boolean;
 		onOpenIndex?: () => void;
-		reducedMotion?: boolean;
-		onToggleReducedMotion?: () => void;
+		onToggleIndex?: () => void;
 		lens?: 'world' | 'experience';
 		onLens?: (lens: 'world' | 'experience') => void;
 	} = $props();
@@ -122,7 +120,7 @@
 	data-project-action-busy={String(projectActionBusy)}
 >
 	{#if !indexOpen}<button type="button" data-head-location onclick={onOpenIndex}>Open Index</button>{/if}
-	<button type="button" data-head-motion aria-pressed={reducedMotion} onclick={onToggleReducedMotion}>Reduce motion</button>
+	<button type="button" data-head-index aria-expanded={indexOpen} aria-controls="plate-index" onclick={onToggleIndex}>Index</button>
 	<button type="button" data-testid="lens-world" aria-pressed={lens === 'world'} onclick={() => onLens('world')}>World</button>
 	<button type="button" data-testid="lens-experience" aria-pressed={lens === 'experience'} onclick={() => onLens('experience')}>Experience</button>
 	{#if find}

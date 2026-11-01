@@ -129,9 +129,11 @@ import {
 		stageKeyAction,
 		stageKeyFromControl,
 		stageKeyFromTextEntry,
+		STAGE_DOCK_SHORTCUTS,
 		type StageDockSlot
 	} from '$lib/authoring/stage/stage-input';
 	import { installStageInterruptions, type StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
+	import '$lib/authoring/stage/shell/shell-roles.css';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
@@ -298,6 +300,37 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (result?.kind === 'refused') notice = result.message;
 		else { task = session.task(); notice = ''; }
 		contributionsVersion += 1;
+	}
+	/**
+	 * R217.S20 — the viewing preferences the Head's Find reaches. The Stage's ⚙ holds
+	 * the same values; Find is the second door, and both write the one preference.
+	 */
+	const HEAD_PREFERENCE_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string }[] = [
+		{ id: 'appearance:paper', adapterId: 'preference', label: '2D appearance: Paper', verb: 'Set' },
+		{ id: 'appearance:shaded', adapterId: 'preference', label: '2D appearance: Shaded', verb: 'Set' },
+		{ id: 'height-sheet:right', adapterId: 'preference', label: 'Height Sheet: Right', verb: 'Set' },
+		{ id: 'height-sheet:left', adapterId: 'preference', label: 'Height Sheet: Left', verb: 'Set' },
+		{ id: 'reduce-motion', adapterId: 'preference', label: 'Reduce motion', verb: 'Toggle' },
+		{ id: 'motion-speed:slow', adapterId: 'preference', label: 'Motion speed: Slow', verb: 'Set' },
+		{ id: 'motion-speed:normal', adapterId: 'preference', label: 'Motion speed: Normal', verb: 'Set' },
+		{ id: 'motion-speed:fast', adapterId: 'preference', label: 'Motion speed: Fast', verb: 'Set' }
+	];
+	/**
+	 * R217.S20 — the project procedures under the project name. Rename and delete run
+	 * in the Head's own lifecycle dialog; download and source replacement run the
+	 * same route functions the project menu runs.
+	 */
+	const HEAD_PROJECT_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string }[] = [
+		{ id: 'rename', adapterId: 'project-menu', label: 'Rename project', verb: 'Run' },
+		{ id: 'delete', adapterId: 'project-menu', label: 'Delete project', verb: 'Run' },
+		{ id: 'download', adapterId: 'project-menu', label: 'Download source JSON', verb: 'Run' },
+		{ id: 'source', adapterId: 'project-menu', label: 'Open source JSON', verb: 'Replace' }
+	];
+	/** Whether the Keys reference is open; it lives in Find and closes with its own control. */
+	let keysOpen = $state(false);
+	/** Moves focus into an opened reference, so a keyboard user lands in what Find opened. */
+	function focusOnOpen(node: HTMLElement): void {
+		node.focus();
 	}
 	let revealed = $state<string[]>([]);
 	let lens = $state<'world' | 'experience'>('world');
@@ -3407,7 +3440,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				adapterId: 'scale',
 				label: `Scale 1:${ratio}`,
 				verb: 'Zoom'
-			}))
+			})),
+			// R217.S20: the former ☰ menu's capabilities keep a Find entry beside their
+			// permanent homes (viewing preferences in the Stage's ⚙, the project
+			// procedures under the project name), and Keys, which has no other home.
+			...HEAD_PREFERENCE_ENTRIES,
+			{ id: 'keys', adapterId: 'keys', label: 'Keys', verb: 'Show' },
+			...HEAD_PROJECT_ENTRIES
 		];
 		return needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle));
 	});
@@ -3509,6 +3548,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		paletteOpen = !paletteOpen;
 	}
 
+	/** R217.S20 — a Find preference entry writes the same browser preference the Stage's ⚙ writes. */
+	function runPreferenceEntry(id: string): void {
+		if (id === 'reduce-motion') {
+			reducedMotion = !reducedMotion;
+			updatePreferences({ ...preferences, reducedMotion });
+			return;
+		}
+		const [name, value] = id.split(':');
+		if (name === 'appearance' && (value === 'paper' || value === 'shaded')) updatePreferences({ ...preferences, planAppearance: value });
+		else if (name === 'height-sheet' && (value === 'left' || value === 'right')) heightSheetSide = value;
+		else if (name === 'motion-speed' && (value === 'slow' || value === 'normal' || value === 'fast')) updatePreferences({ ...preferences, motionSpeed: value });
+	}
+
 	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
 	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string }): void {
 		if (entry.adapterId === 'project-replacement' && entry.id === 'starter') {
@@ -3518,6 +3570,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (entry.adapterId === 'subject') { selectSource(entry.id); return; }
 		if (entry.adapterId === 'scale') {
 			requestScaleDetent(Number(entry.id.slice('scale:'.length)));
+			return;
+		}
+		if (entry.adapterId === 'preference') { runPreferenceEntry(entry.id); return; }
+		if (entry.adapterId === 'keys') { keysOpen = true; return; }
+		if (entry.adapterId === 'project-menu') {
+			// Rename and delete open the Head's own dialog and never reach the route.
+			if (entry.id === 'download') downloadSourceJson();
+			else if (entry.id === 'source') requestReplacement('source');
 			return;
 		}
 		const key = dockKeys.find(
@@ -3634,6 +3694,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		onLens={changeLens}
 		canDownloadSource={activeProject()}
 		onDownloadSource={downloadSourceJson}
+		onOpenSource={() => requestReplacement('source')}
 		historyUnavailableReason={historyState.undoUnavailableReason ?? 'Nothing to undo yet.'}
 		redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
 		canUndo={historyState.canUndo}
@@ -3648,17 +3709,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		previewUnavailableReason={currentEnvelope === null
 			? 'Preview needs an admitted project source.'
 			: 'Create an Experience in the Experience lens to Preview it.'}
-		{reducedMotion}
-		onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
 		{indexOpen}
+		onToggleIndex={() => (indexOpen = !indexOpen)}
 		locationLabel={selectedSubjectLabel}
 		onOpenIndex={() => (indexOpen = true)}
-		planAppearance={preferences.planAppearance}
-		onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
-		heightSheetSide={heightSheetSide}
-		onHeightSheetSide={(side) => (heightSheetSide = side)}
-		motionSpeed={preferences.motionSpeed}
-		onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
 		projectActionsUnavailableReason={projectActionsUnavailableReason}
 		{projectActionBusy}
 		onPrepareRename={() => prepareProjectLifecycle(false)}
@@ -3721,7 +3775,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		{#if preview === null}
 		<EditorIndex
 			open={indexOpen}
-			onToggle={() => (indexOpen = !indexOpen)}
 			groups={indexGroups}
 			selectionId={selectedLocatorId}
 			{query}
@@ -3826,6 +3879,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
+					<!--
+						R217.S20: the ⚙ holds the viewing preferences the Head used to hold. They
+						are browser session values, so the cluster writes the same state the
+						route always wrote, and Find reaches the same values.
+					-->
 					<StageDraftingControl
 						{drafting}
 						reading={draftingReading}
@@ -3834,6 +3892,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						snapWord={draftingSnapWord}
 						onReading={setReading}
 						onPatch={patchDrafting}
+						planAppearance={preferences.planAppearance}
+						onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+						heightSheetSide={heightSheetSide}
+						onHeightSheetSide={(side) => (heightSheetSide = side)}
+						{reducedMotion}
+						onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
+						motionSpeed={preferences.motionSpeed}
+						onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
 					/>
 				</div>
 				{#if lens === 'world'}
@@ -3847,15 +3913,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						<StageZoomControls quiet={paperVisible} onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={fit} />
 					</div>
 				{/if}
-				<!-- A project-replacement action, deliberately outside the drafting cluster. -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					class="stage-project-actions"
-					onclick={(event) => event.stopPropagation()}
-					onpointerdown={(event) => event.stopPropagation()}
-				>
-					<button type="button" onclick={() => requestReplacement('source')}>Open source JSON</button>
-				</div>
 
 				{#if lens === 'world'}
 					<!--
@@ -3884,6 +3941,38 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							onResetSubscribe={(onReset) => heightSheet.subscribeReset('height-sheet-control', onReset)}
 						/>
 					</div>
+				{/if}
+
+				{#if keysOpen}
+					<!--
+						R217.S20: the Keys reference, opened from Find. Its rows read the dock's
+						own shortcut map, so the list cannot drift from the keys that work.
+					-->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<section
+						class="keys-panel"
+						aria-labelledby="keys-panel-title"
+						data-keys-panel
+						tabindex="-1"
+						use:focusOnOpen
+						onclick={(event) => event.stopPropagation()}
+						onpointerdown={(event) => event.stopPropagation()}
+						onkeydown={(event) => {
+							if (event.key !== 'Escape') return;
+							event.stopPropagation();
+							keysOpen = false;
+						}}
+					>
+						<h2 id="keys-panel-title">Keys</h2>
+						<dl>
+							<div><dt>⌘K · Ctrl+K</dt><dd>Find a subject, tool or operation</dd></div>
+							<div><dt>3 · 2</dt><dd>3D and 2D readings</dd></div>
+							<div><dt>F</dt><dd>Fit</dd></div>
+							<div><dt>{STAGE_DOCK_SHORTCUTS.select} · {STAGE_DOCK_SHORTCUTS.ink} · {STAGE_DOCK_SHORTCUTS.measure} · {STAGE_DOCK_SHORTCUTS.erase} · {STAGE_DOCK_SHORTCUTS.library}</dt><dd>Select · Ink · Measure · Eraser · Objects</dd></div>
+							<div><dt>Esc</dt><dd>Cancel the current step</dd></div>
+						</dl>
+						<button type="button" onclick={() => (keysOpen = false)}>Close keys</button>
+					</section>
 				{/if}
 
 				{#if lens === 'experience'}
@@ -4195,12 +4284,67 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.stage-zoom-slot.sheet-right {
 		right: calc(5.5rem + 1rem);
 	}
-	.stage-project-actions {
+	/*
+		R217.S20: the Keys reference Find opens. It sits where the stage's top-right
+		action used to be, clear of the Height Sheet, and takes no pointer outside itself.
+	*/
+	.keys-panel {
 		position: absolute;
 		top: 0.75rem;
 		right: 0.75rem;
-		display: flex;
-		gap: 0.4rem;
+		z-index: 9;
+		display: grid;
+		gap: 0.5rem;
+		width: min(20rem, calc(100% - 1.5rem));
+		padding: 0.75rem;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.4rem;
+		background: var(--shell-forest, #11291f);
+		color: var(--shell-ink-light, #f3f4ee);
+		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 40%);
+		font-family: var(--shell-sans, Inter, sans-serif);
+		font-size: var(--shell-text-body, 13px);
+	}
+	.keys-panel:focus-visible {
+		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline-offset: 2px;
+	}
+	.keys-panel h2 {
+		margin: 0;
+		font-size: var(--shell-text-body, 13px);
+		font-weight: 600;
+	}
+	.keys-panel dl {
+		display: grid;
+		gap: 0.3rem;
+		margin: 0;
+	}
+	.keys-panel dl > div {
+		display: grid;
+		grid-template-columns: 7.5rem 1fr;
+		gap: 0.5rem;
+	}
+	.keys-panel dt {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: var(--shell-text-utility, 12px);
+		color: var(--shell-gold, #d4ad45);
+		font-variant-numeric: tabular-nums;
+	}
+	.keys-panel dd {
+		margin: 0;
+		font-size: var(--shell-text-utility, 12px);
+		color: var(--shell-ink-quiet, #9fb2a2);
+	}
+	.keys-panel button {
+		justify-self: start;
+		min-height: var(--shell-control-height, 32px);
+		padding: 0 0.6rem;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.35rem;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
 	}
 	.stage-height-slot {
 		position: absolute;
@@ -4212,16 +4356,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.stage-height-slot.left {
 		right: auto;
 		left: 0.75rem;
-	}
-	.stage-project-actions button {
-		padding: 0.4rem 0.6rem;
-		border: 1px solid #635a6f;
-		border-radius: 0.35rem;
-		background: rgb(25 24 31 / 85%);
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-		opacity: 0.82;
 	}
 	/*
 		Round 2's one lower working edge: the invited Guide instrument sits above the

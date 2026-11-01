@@ -204,14 +204,36 @@ describe('mounted Stage pointer lifecycle', () => {
 			.map((entry) => `${entry.dataset.findAdapter}:${entry.dataset.findId}`).sort();
 		// O8: the five Scale detents are Find entries now that Scale left the toolbar.
 		const detents = [20, 50, 100, 200, 500].map((ratio) => `scale:scale:${ratio}`);
-		expect(reachable).toEqual([...registered, ...detents].sort());
+		// R217.S20: every former ☰ capability, and Keys, is a Find entry too.
+		const formerMenu = [
+			'preference:appearance:paper',
+			'preference:appearance:shaded',
+			'preference:height-sheet:right',
+			'preference:height-sheet:left',
+			'preference:reduce-motion',
+			'preference:motion-speed:slow',
+			'preference:motion-speed:normal',
+			'preference:motion-speed:fast',
+			'keys:keys',
+			'project-menu:rename',
+			'project-menu:delete',
+			'project-menu:download',
+			'project-menu:source'
+		];
+		expect(reachable).toEqual([...registered, ...detents, ...formerMenu].sort());
 		expect(target.querySelector('[data-plate-landmark="index"] .contributed-group')).toBeNull();
 	});
 	it('changes a browser preference without changing project source or history', async () => {
 		const before = facade().snapshot().canonicalJson;
 		const historyBefore = (harness.host as StageAcceptanceHost).history();
-		target.querySelector<HTMLButtonElement>('[data-head-motion]')!.click();
+		// R217.S20: Reduce motion lives in the Stage's ⚙ now, and writes the same preference.
+		target.querySelector<HTMLButtonElement>('[data-stage-viewing]')!.click();
 		await frame();
+		const motion = target.querySelector<HTMLInputElement>('[data-stage-viewing-panel] input[type="checkbox"]')!;
+		const motionBefore = motion.checked;
+		motion.click();
+		await frame();
+		expect(motion.checked).toBe(!motionBefore);
 		expect(facade().snapshot().canonicalJson).toBe(before);
 		expect((harness.host as StageAcceptanceHost).history()).toEqual(historyBefore);
 	});
@@ -219,7 +241,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		const stageFacade = facade();
 		const request = vi.spyOn(stageFacade, 'requestViewingIntent');
 		const before = stageFacade.camera.state().pose;
-		target.querySelector<HTMLButtonElement>('.index-toggle')!.click();
+		target.querySelector<HTMLButtonElement>('[data-head-index]')!.click();
 		await frame();
 		expect(target.querySelector('[data-plate-landmark="index"]')?.hasAttribute('hidden')).toBe(true);
 		target.querySelector<HTMLButtonElement>('[data-head-location]')!.click();
@@ -1162,8 +1184,10 @@ describe('R217.S05 — mounted drafting furniture', () => {
 	});
 
 	it('exposes the words as native, stateful, focusable controls with 44 px coarse targets', async () => {
+		// Two readings, two words and the R217.S20 ⚙ disclosure, all native buttons.
 		const controls = [...target.querySelectorAll<HTMLButtonElement>('[data-stage-drafting] button')];
-		expect(controls.length).toBe(4);
+		expect(controls.length).toBe(5);
+		expect(target.querySelector('[data-stage-viewing]')?.getAttribute('aria-expanded')).toBe('false');
 		for (const control of controls) {
 			expect(control.tagName).toBe('BUTTON');
 			expect(control.getAttribute('type')).toBe('button');
