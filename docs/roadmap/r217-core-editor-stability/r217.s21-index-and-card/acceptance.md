@@ -168,11 +168,18 @@ plan        370c99d9f1dc4a5baf92aae6b18b0e06e1026ce1   last commit with the full
                                                        reachable on main through the P1 merge); the stub at
                                                        its path names this anchor
 acceptance  928aa5f89a2470b80092052abf9fa6e3e848b894   the full record before this close-out; kept in full at its path
-tag         closed/r217.s21 -> 928aa5f8               created and pushed after the merge; the tag target keeps
-                                                       both anchors reachable
-merge       P1 merge of PR #250 with `--merge`; the merge-commit SHA and the post-merge verification are recorded
-            by the post-merge anchors follow-up
+tag         closed/r217.s21 -> 928aa5f8               annotated tag object `cf326d283e5ed8d5428ce9c83aad321275a76a0e`,
+                                                       pushed to origin; the tag target keeps both anchors reachable
+merge       P1 merge commit `8627973cddcdb6569cc363c101369a63bf809eab` (PR #250, `--merge`; parents `c577904c`
+            and `69f7515d`)
 ```
+
+Post-merge verification, run on `main` at `8627973c`:
+
+- Both anchors are ancestors of `main`: `370c99d9` (plan) and `928aa5f8` (acceptance). `git show` of each returns
+  its full body at its path.
+- The tag `closed/r217.s21` peels to `928aa5f8`, and both anchors are its ancestors.
+- The tag is on origin.
 
 ```text
 CLOSEOUT PRESERVATION — R217.S21 (2026-11-01)
@@ -182,7 +189,7 @@ reference promotions:            0   the Index and Card contract already reads i
 renderable evidence archived:    76 files / 6.9 MB (40 PNG, 26 JSON, 8 text, 1 script, 1 probe), moved byte-identical
 evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s21-index-and-card/evidence/CLOSED.md
 transient artifacts removed:     0
-historical anchors:              plan 370c99d9; acceptance 928aa5f8; tag closed/r217.s21 -> 928aa5f8 (annotated; pushed to origin)
+historical anchors:              plan 370c99d9; acceptance 928aa5f8; tag closed/r217.s21 -> 928aa5f8 (annotated, object cf326d28; pushed to origin)
 new live -> archive prose links: 0
 manual-owed verification rows:   3   native touch and Safari, owed by S11 (J9 and the Safari cells); the keyboard Tab
                                      path of the Card's writer fields, Delete, Bring into view and More, not walked
