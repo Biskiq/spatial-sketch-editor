@@ -18,12 +18,15 @@
  * coordinates. It owns no Camera and is never a pick root.
  */
 import { Color, ShaderMaterial } from 'three';
+import { GROUND_PLATE_INK, MAT_GROUND_INK } from '../paper-plan';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '../stage-drafting';
 import {
 	GRID_COARSE_METERS,
 	GRID_FULL_SPACING_CSS_PX,
 	GRID_SUPPRESS_SPACING_CSS_PX,
 	MAT_GRID_INK,
+	PLATE_GRID_INK,
+	type GridRect,
 	type MatGround
 } from '../stage-grid';
 
@@ -62,13 +65,25 @@ void main() {
 }
 `;
 
+/** 1 inside the plate and 0 outside, antialiased over one pixel at its edge. */
+const PLATE_COVERAGE = /* glsl */ `
+uniform vec4 uPlate;
+float plateCoverage(vec2 lattice) {
+	vec2 inside = min(lattice - uPlate.xy, uPlate.zw - lattice);
+	return clamp(min(inside.x / max(fwidth(lattice.x), 1e-9), inside.y / max(fwidth(lattice.y), 1e-9)) + 0.5, 0.0, 1.0);
+}
+`;
+
 const FRAGMENT = /* glsl */ `
-uniform vec3 uMinorInk;
-uniform vec3 uMajorInk;
-uniform float uMinorOpacity;
-uniform float uMajorOpacity;
+uniform vec3 uPlateMinorInk;
+uniform vec3 uPlateMajorInk;
+uniform float uPlateMinorOpacity;
+uniform float uPlateMajorOpacity;
+uniform vec3 uMatMinorInk;
+uniform vec3 uMatMajorInk;
 uniform float uPixelRatio;
 varying vec2 vLattice;
+${PLATE_COVERAGE}
 
 // The grammar's fade: fully inked at 16 CSS px, absent below 8.
 float levelFade(float spacingCssPx) {
@@ -99,24 +114,29 @@ void main() {
 	float minorWeight = levelFade(metre * ${float(GRID_MINOR_METERS)});
 	float majorWeight = levelFade(metre * ${float(GRID_MAJOR_METERS)});
 	float coarseWeight = levelFade(metre * ${float(GRID_COARSE_METERS)}) * (1.0 - majorWeight);
-	float minorAlpha = 0.0;
-	float majorAlpha = 0.0;
+	float minorLine = 0.0;
+	float majorLine = 0.0;
 	for (int axis = 0; axis < 2; axis++) {
 		float meters = axis == 0 ? vLattice.x : vLattice.y;
-		float minorCells = meters / ${float(GRID_MINOR_METERS)};
-		float majorCells = meters / ${float(GRID_MAJOR_METERS)};
-		float coarseCells = meters / ${float(GRID_COARSE_METERS)};
-		minorAlpha = max(minorAlpha, lineCoverage(minorCells) * minorWeight * uMinorOpacity);
-		majorAlpha = max(
-			majorAlpha,
-			max(lineCoverage(majorCells) * majorWeight, lineCoverage(coarseCells) * coarseWeight) *
-				uMajorOpacity
+		minorLine = max(minorLine, lineCoverage(meters / ${float(GRID_MINOR_METERS)}) * minorWeight);
+		majorLine = max(
+			majorLine,
+			max(
+				lineCoverage(meters / ${float(GRID_MAJOR_METERS)}) * majorWeight,
+				lineCoverage(meters / ${float(GRID_COARSE_METERS)}) * coarseWeight
+			)
 		);
 	}
+	// One lattice across the edge: Paper's inks on the plate, the mat's beyond it.
+	float plate = plateCoverage(vLattice);
+	float minorAlpha = minorLine * mix(1.0, uPlateMinorOpacity, plate);
+	float majorAlpha = majorLine * mix(1.0, uPlateMajorOpacity, plate);
 	float alpha = max(minorAlpha, majorAlpha);
 	if (alpha <= 0.0) discard;
 	// A coarser role owns a coincident line, as on Paper.
-	vec3 ink = majorAlpha >= minorAlpha ? uMajorInk : uMinorInk;
+	vec3 ink = majorAlpha >= minorAlpha
+		? mix(uMatMajorInk, uPlateMajorInk, plate)
+		: mix(uMatMinorInk, uPlateMinorInk, plate);
 	gl_FragColor = vec4(ink, alpha);
 	#include <colorspace_fragment>
 }
@@ -128,11 +148,14 @@ export function createMatGridMaterial(): ShaderMaterial {
 			uSize: { value: 1 },
 			uLatticeOffset: { value: [0, 0] },
 			uPixelRatio: { value: 1 },
+			uPlate: { value: [0, 0, 0, 0] },
 			// PLATE's semantic inks, unlit and untoned like the Paper lines.
-			uMinorInk: { value: new Color(MAT_GRID_INK.minor) },
-			uMajorInk: { value: new Color(MAT_GRID_INK.major) },
-			uMinorOpacity: { value: MAT_GRID_INK.minorOpacity },
-			uMajorOpacity: { value: MAT_GRID_INK.majorOpacity }
+			uPlateMinorInk: { value: new Color(PLATE_GRID_INK.minor) },
+			uPlateMajorInk: { value: new Color(PLATE_GRID_INK.major) },
+			uPlateMinorOpacity: { value: PLATE_GRID_INK.minorOpacity },
+			uPlateMajorOpacity: { value: PLATE_GRID_INK.majorOpacity },
+			uMatMinorInk: { value: new Color(MAT_GRID_INK.minor) },
+			uMatMajorInk: { value: new Color(MAT_GRID_INK.major) }
 		},
 		vertexShader: VERTEX,
 		fragmentShader: FRAGMENT,
@@ -150,13 +173,66 @@ export function createMatGridMaterial(): ShaderMaterial {
 	});
 }
 
-/** Point the material at the current mat; no rebuild, only uniforms. */
+const GROUND_VERTEX = VERTEX;
+
+const GROUND_FRAGMENT = /* glsl */ `
+uniform vec3 uPlateInk;
+uniform vec3 uMatInk;
+varying vec2 vLattice;
+${PLATE_COVERAGE}
+void main() {
+	gl_FragColor = vec4(mix(uMatInk, uPlateInk, plateCoverage(vLattice)), 1.0);
+	#include <colorspace_fragment>
+}
+`;
+
+/**
+ * The ground: one opaque unlit draw, forest outside the plate and cream inside,
+ * so the plate's edge can never fight the mat. Unlit keeps both colours exact at
+ * every Camera angle.
+ */
+export function createMatGroundMaterial(): ShaderMaterial {
+	return new ShaderMaterial({
+		uniforms: {
+			uSize: { value: 1 },
+			uLatticeOffset: { value: [0, 0] },
+			uPlate: { value: [0, 0, 0, 0] },
+			uPlateInk: { value: new Color(GROUND_PLATE_INK) },
+			uMatInk: { value: new Color(MAT_GROUND_INK) }
+		},
+		vertexShader: GROUND_VERTEX,
+		fragmentShader: GROUND_FRAGMENT,
+		polygonOffset: true,
+		polygonOffsetFactor: 0,
+		polygonOffsetUnits: MAT_GROUND_POLYGON_OFFSET_UNITS,
+		toneMapped: false
+	});
+}
+
+/** Point a mat material at the current mat and plate; no rebuild, only uniforms. */
+export function updateMatMaterial(material: ShaderMaterial, ground: MatGround, plate: GridRect): void {
+	const [originX, originZ] = [
+		ground.centerXZ[0] - ground.latticeOffsetXZ[0],
+		ground.centerXZ[1] - ground.latticeOffsetXZ[1]
+	];
+	material.uniforms.uSize!.value = 2 * ground.halfExtentMeters;
+	material.uniforms.uLatticeOffset!.value = [ground.latticeOffsetXZ[0], ground.latticeOffsetXZ[1]];
+	// In lattice coordinates, like `vLattice`, so float32 never carries large world values.
+	material.uniforms.uPlate!.value = [
+		plate.minX - originX,
+		plate.minZ - originZ,
+		plate.maxX - originX,
+		plate.maxZ - originZ
+	];
+}
+
+/** The grid is the mat's own transform plus the pixel ratio its fade measures in. */
 export function updateMatGridMaterial(
 	material: ShaderMaterial,
 	ground: MatGround,
-	pixelRatio: number
+	pixelRatio: number,
+	plate: GridRect
 ): void {
-	material.uniforms.uSize!.value = 2 * ground.halfExtentMeters;
-	material.uniforms.uLatticeOffset!.value = [ground.latticeOffsetXZ[0], ground.latticeOffsetXZ[1]];
+	updateMatMaterial(material, ground, plate);
 	material.uniforms.uPixelRatio!.value = pixelRatio > 0 ? pixelRatio : 1;
 }

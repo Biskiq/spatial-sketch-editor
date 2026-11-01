@@ -26,6 +26,7 @@ import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createGridScene } from '$lib/authoring/stage/shell/stage-grid-scene';
 import {
 	createMatGridMaterial,
+	createMatGroundMaterial,
 	MAT_GRID_RENDER_ORDER,
 	MAT_GROUND_POLYGON_OFFSET_UNITS,
 	updateMatGridMaterial
@@ -37,11 +38,13 @@ import {
 	GRID_SUPPRESS_SPACING_CSS_PX,
 	MAT_GRID_INK,
 	PAPER_GRID_INK,
+	PLATE_GRID_INK,
 	gridIsVisible,
 	gridLevelsFor,
 	gridLinesFor,
 	gridPlanFor,
 	gridRectFor,
+	groundPlateRectFor,
 	matGridLevelWeights,
 	matGroundFor,
 	paperSheetRectFor,
@@ -61,8 +64,57 @@ describe('the mat keeps its depth away from a floor on the datum', () => {
 		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
 		const mat = source.slice(source.indexOf('<T.Mesh'), source.indexOf('{#if gridVisible}'));
 		expect(mat).toContain('args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]}');
-		expect(mat).toContain('polygonOffsetUnits={MAT_GROUND_POLYGON_OFFSET_UNITS}');
+		const material = createMatGroundMaterial();
+		expect(material.polygonOffset).toBe(true);
+		expect(material.polygonOffsetUnits).toBe(MAT_GROUND_POLYGON_OFFSET_UNITS);
+		expect(material.depthWrite).toBe(true);
+		material.dispose();
 		expect(MAT_GROUND_POLYGON_OFFSET_UNITS).toBeGreaterThan(0);
+	});
+});
+
+describe('the cream plate around the work', () => {
+	it('is Paper\'s sheet around the work, and grows with a candidate', () => {
+		const contentBounds = { minX: 0, maxX: 6, minZ: -5, maxZ: 0 };
+		expect(groundPlateRectFor({ contentBounds })).toEqual({ minX: -5, maxX: 15, minZ: -10, maxZ: 5 });
+		expect(
+			groundPlateRectFor({ contentBounds, candidateBounds: { minX: 6, maxX: 40, minZ: 0, maxZ: 1 } })
+		).toEqual({ minX: -5, maxX: 45, minZ: -10, maxZ: 10 });
+	});
+
+	it('stays world-anchored with no work, whatever the Camera does', () => {
+		expect(groundPlateRectFor({})).toEqual({ minX: -10, maxX: 10, minZ: -10, maxZ: 10 });
+	});
+
+	it('leaves the lines world-anchored across the plate edge', () => {
+		const material = createMatGridMaterial();
+		const plate = { minX: -5, maxX: 15, minZ: -10, maxZ: 5 };
+		for (const ground of [
+			{ centerXZ: [0, 0] as [number, number], halfExtentMeters: 64, latticeOffsetXZ: [0, 0] as [number, number] },
+			{ centerXZ: [32, -16] as [number, number], halfExtentMeters: 256, latticeOffsetXZ: [7, 9] as [number, number] }
+		]) {
+			updateMatGridMaterial(material, ground, 1, plate);
+			const [minX, minZ] = material.uniforms.uPlate!.value as number[];
+			// World −5, −10 in the same coordinates the shader's lines use.
+			expect(minX).toBe(plate.minX - (ground.centerXZ[0] - ground.latticeOffsetXZ[0]));
+			expect(minZ).toBe(plate.minZ - (ground.centerXZ[1] - ground.latticeOffsetXZ[1]));
+		}
+		material.dispose();
+	});
+
+	it('draws the ground in one unlit draw, so its edge cannot fight anything', () => {
+		const material = createMatGroundMaterial();
+		expect(material.fragmentShader).toContain('mix(uMatInk, uPlateInk, plateCoverage(vLattice))');
+		expect(material.toneMapped).toBe(false);
+		material.dispose();
+		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		expect(source).not.toContain('MeshStandardMaterial');
+		expect(source).toContain('groundPlateRectFor({ contentBounds, candidateBounds })');
+	});
+
+	it('uses Paper\'s two inks, calibrated for the plate', () => {
+		expect(PLATE_GRID_INK.minor).toBe(PAPER_GRID_INK.minor);
+		expect(PLATE_GRID_INK.major).toBe(PAPER_GRID_INK.major);
 	});
 });
 
@@ -343,10 +395,12 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		expect(fragment).toContain('min(metreSpacingCssPx(vLattice.x), metreSpacingCssPx(vLattice.y))');
 		expect(fragment.indexOf('levelFade(metre')).toBeLessThan(fragment.indexOf('for (int axis'));
 		expect(fragment.slice(fragment.indexOf('for (int axis'))).not.toContain('levelFade');
-		updateMatGridMaterial(material, { centerXZ: [512, -256], halfExtentMeters: 1024, latticeOffsetXZ: [12, -6] }, 1.5);
+		updateMatGridMaterial(material, { centerXZ: [512, -256], halfExtentMeters: 1024, latticeOffsetXZ: [12, -6] }, 1.5, { minX: 500, maxX: 520, minZ: -260, maxZ: -240 });
 		expect(material.uniforms.uSize!.value).toBe(2048);
 		expect(material.uniforms.uLatticeOffset!.value).toEqual([12, -6]);
 		expect(material.uniforms.uPixelRatio!.value).toBe(1.5);
+		// The plate shares `vLattice`'s origin, so float32 never carries world values.
+		expect(material.uniforms.uPlate!.value).toEqual([0, -10, 20, 10]);
 		material.dispose();
 	});
 

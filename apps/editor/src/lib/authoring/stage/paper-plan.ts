@@ -44,6 +44,8 @@ export const PAPER_INK = '#1b201c';
 export const PAPER_GROUND_INK = '#e9ebe6';
 export const MAT_BACKGROUND_INK = '#152c26';
 export const MAT_GROUND_INK = '#1d3a33';
+/** The 3D ground inside the work's bounds; outside it stays the forest mat. */
+export const GROUND_PLATE_INK = '#efe8d8';
 
 /**
  * Plan draw order, low to high. The numbers are the resolver's Plan ranks too.

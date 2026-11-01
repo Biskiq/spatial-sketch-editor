@@ -199,7 +199,7 @@ import StageMatGround from './StageMatGround.svelte';
 			The mat ground and its per-pixel grid: world-anchored, occluded by walls,
 			never a registered pick root.
 		-->
-		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible} />
+		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible} {contentBounds} {candidateBounds} />
 	{/if}
 	{#if heightPlane !== null && !paperVisible}
 		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->

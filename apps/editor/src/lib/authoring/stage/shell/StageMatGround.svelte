@@ -4,7 +4,8 @@
 	 *
 	 * The mat is a unit plane scaled from the Camera's own ground reach. It is an
 	 * opaque ground, as before S19: it writes depth, so anything below the datum
-	 * stays under it. The grid is one subdivided quad with `stage-mat-grid`'s
+	 * stays under it. It is cream inside the plate around the work and forest
+	 * outside, in one draw. The grid is one subdivided quad with `stage-mat-grid`'s
 	 * shader, sharing the mat's transform; it is occluded only by real geometry,
 	 * and a pan or zoom updates uniforms and never rebuilds geometry. Neither is a
 	 * pick root, and neither enters bounds or Fit.
@@ -13,38 +14,51 @@
 	import { T, useThrelte } from '@threlte/core';
 	import type { Mesh } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
-	import { MAT_GROUND_INK, STAGE_OVERLAY_LAYER } from '../paper-plan';
-	import { matGroundFor } from '../stage-grid';
+	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
+	import { groundPlateRectFor, matGroundFor, type GridRect } from '../stage-grid';
 	import {
 		createMatGridMaterial,
+		createMatGroundMaterial,
 		MAT_GRID_LIFT_METERS,
 		MAT_GRID_RENDER_ORDER,
 		MAT_GRID_SEGMENTS,
-		MAT_GROUND_POLYGON_OFFSET_UNITS,
-		updateMatGridMaterial
+		updateMatGridMaterial,
+		updateMatMaterial
 	} from './stage-mat-grid';
 
 	let {
 		evaluation,
 		datumMeters = 0,
-		gridVisible
+		gridVisible,
+		contentBounds = null,
+		candidateBounds = null
 	}: {
 		evaluation: ViewportEvaluation;
 		/** The level datum the mat sits at. */
 		datumMeters?: number;
 		/** Grid/Snap view state; the mat itself always draws. */
 		gridVisible: boolean;
+		/** Layout ∪ Scene datum bounds; the plate is a sheet around them. */
+		contentBounds?: GridRect | null;
+		/** The live candidate's world extent; the plate grows to include it. */
+		candidateBounds?: GridRect | null;
 	} = $props();
 
 	const { dpr, invalidate } = useThrelte();
 	const gridMaterial = createMatGridMaterial();
-	onDestroy(() => gridMaterial.dispose());
+	const groundMaterial = createMatGroundMaterial();
+	onDestroy(() => {
+		gridMaterial.dispose();
+		groundMaterial.dispose();
+	});
 
 	const ground = $derived(matGroundFor(evaluation, datumMeters));
+	const plate = $derived(groundPlateRectFor({ contentBounds, candidateBounds }));
 	const size = $derived(2 * ground.halfExtentMeters);
 
 	$effect(() => {
-		updateMatGridMaterial(gridMaterial, ground, $dpr);
+		updateMatGridMaterial(gridMaterial, ground, $dpr, plate);
+		updateMatMaterial(groundMaterial, ground, plate);
 		invalidate();
 	});
 
@@ -59,13 +73,7 @@
 	rotation={[-Math.PI / 2, 0, 0]}
 >
 	<T.PlaneGeometry args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]} />
-	<T.MeshStandardMaterial
-		color={MAT_GROUND_INK}
-		roughness={1}
-		metalness={0}
-		polygonOffset
-		polygonOffsetUnits={MAT_GROUND_POLYGON_OFFSET_UNITS}
-	/>
+	<T is={groundMaterial} />
 </T.Mesh>
 {#if gridVisible}
 	<T.Mesh

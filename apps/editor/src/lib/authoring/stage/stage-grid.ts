@@ -15,7 +15,8 @@
  * - the mat's grid is drawn per pixel on the finite mat (R217.S19): each pixel
  *   fades each level by its own projected spacing, so a perspective view keeps
  *   1 m near the eye, 5 m further out and 25 m toward the horizon;
- * - Paper and the mat have their own inks from PLATE §Semantic color.
+ * - Paper and the mat have their own inks from PLATE §Semantic color, and the
+ *   mat's cream plate wears Paper's two inks, calibrated for it.
  *
  * The grid is display-only. It is never a pick source, never delays navigation
  * and never writes a pose, source, history or Save entry.
@@ -43,6 +44,14 @@ export const MAT_GRID_INK: GridInk = {
 	major: '#3C6A5C',
 	minorOpacity: 1,
 	majorOpacity: 1
+};
+
+/** Paper's two inks, calibrated for 3D's cream plate. */
+export const PLATE_GRID_INK: GridInk = {
+	minor: PAPER_GRID_INK.minor,
+	major: PAPER_GRID_INK.major,
+	minorOpacity: 0.34,
+	majorOpacity: 0.55
 };
 
 export type GridSurface = 'paper' | 'mat';
@@ -214,6 +223,43 @@ export function gridRectFor(input: {
 	};
 }
 
+/** The union of accepted work and a live candidate, or `null` with neither. */
+function gridWorkRect(content: GridRect | null, candidate: GridRect | null): GridRect | null {
+	if (content === null) return candidate;
+	if (candidate === null) return content;
+	return {
+		minX: Math.min(content.minX, candidate.minX),
+		maxX: Math.max(content.maxX, candidate.maxX),
+		minZ: Math.min(content.minZ, candidate.minZ),
+		maxZ: Math.max(content.maxZ, candidate.maxZ)
+	};
+}
+
+/** The work expanded by 5 m and rounded outward to the 5 m lattice. */
+function sheetAroundWork(work: GridRect): GridRect {
+	return {
+		minX: Math.floor((work.minX - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+		maxX: Math.ceil((work.maxX + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+		minZ: Math.floor((work.minZ - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
+		maxZ: Math.ceil((work.maxZ + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS
+	};
+}
+
+/**
+ * The 3D ground's cream plate: the same sheet Paper draws around the work, in
+ * full rather than intersected with the view, because the shader only compares
+ * against it. With no work it is 20 × 20 m around world zero, not around the
+ * target as on Paper, so a pan or zoom never moves it. It grows with the work
+ * and never enters bounds, Fit or the Camera.
+ */
+export function groundPlateRectFor(input: {
+	readonly contentBounds?: GridRect | null;
+	readonly candidateBounds?: GridRect | null;
+}): GridRect {
+	const work = gridWorkRect(input.contentBounds ?? null, input.candidateBounds ?? null);
+	return work === null ? { minX: -10, maxX: 10, minZ: -10, maxZ: 10 } : sheetAroundWork(work);
+}
+
 /**
  * The bounded Paper sheet: the work's datum bounds expanded by 5 m and rounded
  * outward to 5 m, or a 20 × 20 m default around the target for an empty
@@ -236,17 +282,7 @@ export function paperSheetRectFor(input: {
 	/** R217.S14 — the live candidate's world extent, never an accepted bound. */
 	readonly candidateBounds?: GridRect | null;
 }): GridRect | null {
-	const work =
-		input.contentBounds === null || input.contentBounds === undefined
-			? input.candidateBounds ?? null
-			: input.candidateBounds === null || input.candidateBounds === undefined
-				? input.contentBounds
-				: {
-						minX: Math.min(input.contentBounds.minX, input.candidateBounds.minX),
-						maxX: Math.max(input.contentBounds.maxX, input.candidateBounds.maxX),
-						minZ: Math.min(input.contentBounds.minZ, input.candidateBounds.minZ),
-						maxZ: Math.max(input.contentBounds.maxZ, input.candidateBounds.maxZ)
-					};
+	const work = gridWorkRect(input.contentBounds ?? null, input.candidateBounds ?? null);
 	const sheet =
 		work === null
 			? {
@@ -255,12 +291,7 @@ export function paperSheetRectFor(input: {
 					minZ: input.targetXZ[1] - 10,
 					maxZ: input.targetXZ[1] + 10
 				}
-			: {
-					minX: Math.floor((work.minX - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-					maxX: Math.ceil((work.maxX + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-					minZ: Math.floor((work.minZ - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-					maxZ: Math.ceil((work.maxZ + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS
-				};
+			: sheetAroundWork(work);
 	const visible = gridRectFor({
 		targetXZ: input.targetXZ,
 		targetPlaneHeightMeters: input.targetPlaneHeightMeters,
