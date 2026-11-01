@@ -111,7 +111,7 @@ the through Wall has no surface there to weld to, so edge incidence still report
   would have shifted every authored material too.
 - **The ground is unlit now.** A lit cream drifts with the view. This also removes the lighter mat near the horizon.
 - **Gold needed Paper's contour.** Over the pale ground the forest halo swallowed the gold, so 3D selection now uses the same `#74560c` under `#d4ad45`. Hover and erase keep their halo.
-- **The owner ruled that "cream" means Paper, not a literal cream.** My first `#efe8d8` and recalibrated line opacities are gone, so 2D and 3D share one ground token and one grid ink, and the controls and highlights sit on one surface. The ground is unlit and untoned, so its pixels equal Paper's.
+- **The owner ruled that "cream" means Paper, not a literal cream.** My first `#efe8d8` and recalibrated line opacities are gone, so 2D and 3D share one ground token and one grid ink. The ground is unlit and untoned, so its pixels equal Paper's. The owner compared this with moving everything to ivory and chose Paper: buttons stay their existing ivory (`#f4f0e9`, `#f3f0e4`), slightly warmer than the ground.
 - **My first version kept forest lines outside the plate and a separate mat tone. The owner ruled both out,** so a pan far from the work now has no ground reference outside the plate until the plate is back in view.
 
 **Differences from the owner's reference image, not changed because they aren't in the written requirement:**
