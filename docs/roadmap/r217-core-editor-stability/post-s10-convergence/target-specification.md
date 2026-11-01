@@ -173,7 +173,7 @@ groundNear = eyeHeight × cos(halfFov) / sin(elevation + halfFov)   when eyeHeig
 near       = max(NEAR_FLOOR, min(distance − sceneRadius, 0.9 × groundNear))
 ```
 
-**Amended 2026-10-31** by the [S19 plan §3b](../r217.s19-3d-ground-clipping/implementation-plan.md#3b-amendment--2026-10-31): the eye-height multiple is 96, the mat grid is drawn per pixel with no footprint or line budget, and the mat writes no depth instead of taking a polygon offset. The paragraphs below are the original specification.
+**Amended 2026-10-31** by the [S19 plan §3b](../r217.s19-3d-ground-clipping/implementation-plan.md#3b-amendment--2026-10-31): the eye-height multiple is 96, the mat grid is drawn per pixel with no footprint or line budget, and the mat takes no polygon offset (the grid quad does, in depth steps). The paragraphs below are the original specification.
 
 **Grid (`stage-grid.ts`, mat branch).** Replace four corner rays with the exact frustum and datum intersection, so coverage and clipping cannot disagree. Budget: at most 6,000 lines, major lines never dropped; over budget, the minor rectangle shrinks around the target. Fixed levels from O7 replace the ladder here too.
 

@@ -562,7 +562,10 @@ function groundDepthRange(
 			: Infinity;
 	const near = Math.max(
 		VIEWPORT_NEAR_FLOOR_METERS,
-		Math.min(distanceMeters - sceneRadiusMeters, VIEWPORT_GROUND_NEAR_FRACTION * groundNear)
+		Math.min(
+			distanceMeters - Math.max(sceneRadiusMeters, VIEWPORT_NEAR_FLOOR_METERS),
+			VIEWPORT_GROUND_NEAR_FRACTION * groundNear
+		)
 	);
 	return { near, far: Math.max(far, near + VIEWPORT_NEAR_FLOOR_METERS), clamped: base.clamped };
 }

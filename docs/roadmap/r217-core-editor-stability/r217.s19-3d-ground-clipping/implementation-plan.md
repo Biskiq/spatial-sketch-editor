@@ -98,7 +98,9 @@ mat and a grid that vanished and changed between zoom levels. It supersedes the 
 
 **Causes.**
 
-- **Disc.** The mat's polygon offset, added in this slice, left a dark disc around the target.
+- **Disc.** The visitor ground plinth (`GroundPlinth`, a 22 m dark cylinder 8 cm below the
+  datum) is rendered inside the Stage by `VisitorLayoutShell`. The slice's widened clip range let it
+  show through the mat as a dark disc around the origin.
 - **Grid behaviour.** S13 faded each level by its spacing at the target, applied to the whole
   lattice. A perspective mat therefore faded together everywhere. Between 5 and 10 px per 5 m it
   drew only a fading 5 m level, because 25 m appeared only after 5 m had gone.
@@ -115,14 +117,19 @@ mat and a grid that vanished and changed between zoom levels. It supersedes the 
 - **No line footprint or budget on the mat.** The exact-footprint rule and the 6,000-line budget no
   longer apply to it, and row 4 is replaced by "the mat grid is one quad at constant cost". This
   is a finite grid on the finite mat, not an infinite grid.
-- **Mat depth.** The mat draws first (`renderOrder −1`) and writes no depth, with no polygon offset.
-  Every wall, floor and object draws over it; the grid quad depth-tests against real geometry only.
+- **Mat depth.** The mat is an opaque ground that writes depth, as before this slice, with no
+  polygon offset, so content below the datum stays under it. The Stage turns the visitor plinth off
+  (`VisitorLayoutShell`'s `plinth` prop); the mat is the Stage's ground. The grid quad writes no
+  depth, depth-tests against real geometry, and takes a polygon offset in depth steps so it stays
+  ahead of the mat 6 mm below it at every distance. It draws before the other transparent Stage
+  marks (`renderOrder 0`).
 - **Reach.** `reach = max(24 × extent, 96 × eyeHeight)`. Rows 2 and 3 keep their limits.
 - **Row 5.** It is measured for poses where the target-centred scene sphere does not reach the eye.
   Otherwise near stays the scene-sphere floor, unchanged from today, and is recorded as a residual. A
   near plane derived from content bounds would add bounds to Camera state and is proposed separately.
 - **Files.** Add `shell/StageMatGround.svelte` and `shell/stage-mat-grid.ts`. `StageGrid.svelte` and
-  `stage-grid-scene.ts` become Paper-only.
+  `stage-grid-scene.ts` become Paper-only. `visitor/VisitorLayoutShell.svelte` gains a `plinth` prop
+  (default on, so the visitor is unchanged).
 - **Contract.** The shell + visual-system contract's grid paragraph is updated in the same PR.
 
 ## 4. Test cases

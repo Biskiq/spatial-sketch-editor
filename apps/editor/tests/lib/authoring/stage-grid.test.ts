@@ -23,7 +23,7 @@ import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createGridScene } from '$lib/authoring/stage/shell/stage-grid-scene';
-import { createMatGridMaterial, updateMatGridMaterial } from '$lib/authoring/stage/shell/stage-mat-grid';
+import { createMatGridMaterial, MAT_GRID_RENDER_ORDER, updateMatGridMaterial } from '$lib/authoring/stage/shell/stage-mat-grid';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '$lib/authoring/stage/stage-drafting';
 import {
 	GRID_COARSE_METERS,
@@ -282,10 +282,15 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		const material = createMatGridMaterial();
 		expect(material).toBeInstanceOf(ShaderMaterial);
 		expect(material).not.toBeInstanceOf(LineSegments);
-		// Walls occlude it; it never writes depth, so nothing can fight it.
+		// Walls occlude it; it writes no depth, and its depth-step offset keeps it
+		// ahead of the mat 6 mm below at every distance.
 		expect(material.depthTest).toBe(true);
 		expect(material.depthWrite).toBe(false);
+		expect(material.polygonOffset).toBe(true);
+		expect(material.polygonOffsetUnits).toBeLessThan(0);
 		expect(material.transparent).toBe(true);
+		// Under the height plane's tint (order 1) and every other Stage mark.
+		expect(MAT_GRID_RENDER_ORDER).toBeLessThan(1);
 		// The grammar's thresholds and the fixed levels are the shader's own.
 		for (const literal of ['8.0', '16.0', '/ 1.0', '/ 5.0', '/ 25.0']) {
 			expect(material.fragmentShader).toContain(literal);

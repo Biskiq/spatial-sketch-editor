@@ -599,7 +599,13 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
 		// No fog: the mat is a measured ground, not an atmospheric room.
 		expect(canvas).not.toMatch(/<T\.Fog/);
-		expect(canvas).toContain('color={MAT_GROUND_INK}');
+		// R217.S19: the Canvas mounts the mat ground, which wears the mat ink.
+		expect(canvas).toContain('<StageMatGround');
+		const matGround = readFileSync(
+			join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageMatGround.svelte'),
+			'utf8'
+		);
+		expect(matGround).toContain('color={MAT_GROUND_INK}');
 
 		// PLATE inks are semantic colors; tone mapping would shift the vellum and ink
 		// away from the shell's own values. Every Paper material opts out.

@@ -25,10 +25,19 @@ import {
 	type MatGround
 } from '../stage-grid';
 
-/** The grid quad sits this far above the datum; the mat itself writes no depth. */
+/** The grid quad sits this far above the datum, and the mat 4 mm below it. */
 export const MAT_GRID_LIFT_METERS = 0.002;
-/** After the mat ground, which draws first. */
-export const MAT_GRID_RENDER_ORDER = 1;
+/**
+ * Before the other transparent Stage marks: the height plane's tint (order 1)
+ * and the selection layer always draw over the grid.
+ */
+export const MAT_GRID_RENDER_ORDER = 0;
+/**
+ * The quad is subdivided so the lattice coordinate is interpolated over short
+ * triangles: one triangle across a mat hundreds of eye heights wide loses
+ * float32 precision at grazing angles and during a reading flip.
+ */
+export const MAT_GRID_SEGMENTS = 64;
 
 const float = (value: number): string => (Number.isInteger(value) ? `${value}.0` : `${value}`);
 
@@ -46,6 +55,8 @@ void main() {
 const FRAGMENT = /* glsl */ `
 uniform vec3 uMinorInk;
 uniform vec3 uMajorInk;
+uniform float uMinorOpacity;
+uniform float uMajorOpacity;
 uniform float uPixelRatio;
 varying vec2 vLattice;
 
@@ -82,10 +93,11 @@ void main() {
 		float minorWeight = levelFade(spacingCssPx(minorCells));
 		float majorWeight = levelFade(spacingCssPx(majorCells));
 		float coarseWeight = levelFade(spacingCssPx(coarseCells)) * (1.0 - majorWeight);
-		minorAlpha = max(minorAlpha, lineCoverage(minorCells) * minorWeight);
+		minorAlpha = max(minorAlpha, lineCoverage(minorCells) * minorWeight * uMinorOpacity);
 		majorAlpha = max(
 			majorAlpha,
-			max(lineCoverage(majorCells) * majorWeight, lineCoverage(coarseCells) * coarseWeight)
+			max(lineCoverage(majorCells) * majorWeight, lineCoverage(coarseCells) * coarseWeight) *
+				uMajorOpacity
 		);
 	}
 	float alpha = max(minorAlpha, majorAlpha);
@@ -105,13 +117,21 @@ export function createMatGridMaterial(): ShaderMaterial {
 			uPixelRatio: { value: 1 },
 			// PLATE's semantic inks, unlit and untoned like the Paper lines.
 			uMinorInk: { value: new Color(MAT_GRID_INK.minor) },
-			uMajorInk: { value: new Color(MAT_GRID_INK.major) }
+			uMajorInk: { value: new Color(MAT_GRID_INK.major) },
+			uMinorOpacity: { value: MAT_GRID_INK.minorOpacity },
+			uMajorOpacity: { value: MAT_GRID_INK.majorOpacity }
 		},
 		vertexShader: VERTEX,
 		fragmentShader: FRAGMENT,
 		transparent: true,
 		depthTest: true,
 		depthWrite: false,
+		// The mat writes depth 6 mm below the grid. Far out, with a small near
+		// plane, 6 mm is under one depth step; this offset is in depth steps, so
+		// the grid stays ahead of its own mat at every distance.
+		polygonOffset: true,
+		polygonOffsetFactor: -1,
+		polygonOffsetUnits: -4,
 		toneMapped: false
 	});
 }
