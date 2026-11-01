@@ -207,4 +207,51 @@ describe('physical Wall solids', () => {
 			expect(Math.abs(b[2])).toBeCloseTo(0.1, 6);
 		}
 	});
+
+	/**
+	 * Limits that exist on `main` too (the report compares them). They are pinned so
+	 * a change to them is seen; they are not the behaviour a fix should preserve.
+	 */
+	describe('known limits', () => {
+		const corner = (degrees: number): LayoutDocumentWallFirst => {
+			const r = (degrees * Math.PI) / 180;
+			return layout({ a: [0, 0], b: [5, 0], c: [5 - 4 * Math.cos(r), 4 * Math.sin(r)] }, [wall('w1', 'a', 'b'), wall('w2', 'b', 'c')]);
+		};
+		const built = (document: LayoutDocumentWallFirst): IndexedWallMesh[] => {
+			const compiled = compileWallFirstLayoutGeometry(document);
+			const joins = legJoinsByWall(compiled.geometry.junctions);
+			return compiled.geometry.walls.map((compiledWall) => buildStandaloneWallMesh(compiledWall, 0, joins.get(compiledWall.wallId) ?? null).mesh!);
+		};
+
+		it('a 30° mitre winds a triangle against its normal, though it closes', () => {
+			const all = built(corner(30));
+			expect(() => assertWindingAgreesWithNormals(all[0]!)).toThrow(/winds opposite/);
+			expect(openEdges(triangles(all))).toEqual([]);
+		});
+
+		it.each([20, 12])('a %d° bevel stays open at the corner', (degrees) => {
+			expect(openEdges(triangles(built(corner(degrees))))).toHaveLength(12);
+		});
+
+		it('an arched Opening at a free end leaves a gap between its spring and its height', () => {
+			const tris = triangles(
+				built(
+					layout({ a: [0, 0], b: [5, 0] }, [wall('w1', 'a', 'b')], [
+						{ id: 'o1', wallId: 'w1', kind: 'door', offset: 0, width: 1, height: 2.2, sillHeight: 0, profile: 'rounded' }
+					])
+				)
+			);
+			const open = openEdges(tris);
+			expect(open).toHaveLength(4);
+			for (const [a, b] of open) {
+				expect(a[0]).toBe(0);
+				expect(b[0]).toBe(0);
+				// Between the 1.7 m spring and the 2.2 m height.
+				for (const y of [a[1], b[1]]) {
+					expect(y).toBeGreaterThan(1.69);
+					expect(y).toBeLessThan(2.21);
+				}
+			}
+		});
+	});
 });
