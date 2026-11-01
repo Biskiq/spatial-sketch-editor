@@ -206,6 +206,8 @@ lifecycle and prerequisites only.
 
 **R217.S17A** (shipped) is a follow-up to S17 outside the numbered register, whose id grammar has no suffixed slice: [plan](./r217.s17a-shape-drawing-simplification/implementation-plan.md), [record](./r217.s17a-shape-drawing-simplification/acceptance.md). Decisions O10 and O11; S11 owns its integrated acceptance.
 
+**Post-S19 corrections** (implemented on PR #247, pending owner review) are a bounded owner-authorized follow-up outside the numbered register: Wall solids, ground depth, grid fade, refusal feedback and Paper cut poché. The [report](./post-s19-owner-manual-review/report.md) owns causes, evidence and residuals; S11 owns their integrated rows.
+
 Every consumed gate is `accepted` and every required scope `active` on `main` at this registration.
 Each slice rechecks them at its own trusted base. No slice provides a gate, changes a persisted
 format or adds an F interface. The architecture cycle is in its owner-verdict stage; R217
@@ -243,6 +245,7 @@ S11 runs every journey in two browsers, with fine and coarse pointers. The crite
 | J13 | 3D ground and grid with the horizon in frame |
 | J14 | Direct Wall, Junction and Opening editing from Plan alone |
 | J15 | Direct manipulation of every subject type, in both readings |
+| J16 | Walls read as closed solids from every side, selected and unselected, in Stage and Preview |
 
 ## Non-goals
 

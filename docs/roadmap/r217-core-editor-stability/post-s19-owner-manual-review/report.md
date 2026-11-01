@@ -1,16 +1,56 @@
 # R217 post-S19 owner review: causes and proposed fixes
 
-**Status:** Investigation only, for owner review. Nothing here changes product code, a shipped
-acceptance record or the S11 plan. The owner's brief is [here](../post-s19-owner-manual-review.md).
+**Status:** Investigated, then implemented on PR #247 at the owner's direction (2026-11-01), pending the
+owner's final review. Shipped acceptance records are unchanged. The owner's brief is
+[here](../post-s19-owner-manual-review.md). Sections below keep the investigation's findings;
+[what landed](#what-landed) says where the implementation departed from them.
 
 **Tested on:** `main` at `239ab893`, editor dev server, real GPU (HeadlessChrome 152, ANGLE Metal,
 Apple M2), 1440 × 900. Stage settings on `main`: 24-bit depth, antialias on, Three r186.
+
+## What landed
+
+| Group | Change | Verified by |
+| --- | --- | --- |
+| A. Wall geometry | `layout-core` publishes `terminal-cap` and `corner-exposed-end` surfaces; the builder triangulates them | `wall-mesh-solid-matrix.test.ts`; frozen compile digests unchanged once these surfaces are projected out |
+| B. Ground depth | Mat subdivided and pushed back four depth steps; **no Camera change** | 28-pose sweep and orbit and zoom records on the real components, see below |
+| C. Grid fade | One weight per level, from the denser direction | Shader pin, browser captures |
+| D. Refusal feedback | Words, retention, one tag, halo, reach from the moved end | `layout-wall-manipulation.test.ts`, `stage-candidate-label.test.ts`, browser |
+| E. Paper selection | Ruled V1, O1 and J2 amended for cut poché | `paper-marks.test.ts`, browser |
+
+**Departures from the proposals:**
+
+- **The 2% near floor was rejected, as the owner's review suspected.** With the eye 1 m from a Wall at T 60 it
+  [clipped every Wall pixel in the frame](./evidence/ground-options.json). Subdivision plus a four-step mat offset removes the
+  fighting just as completely with near left at 1 cm: 0 floor and grid pixels lost at all 28 poses, blink 0 in orbit and zoom. So
+  Camera is untouched, and `camera-viewport-evaluation.test.ts` now pins the near floor inside a large scene.
+- **Three more Wall defects were found and fixed:** a mitre read by a leg in the opposite role twisted any Wall that starts at a
+  shared corner (`swapCorner`); the thickness step carried a normal in its own plane, so its winding was arbitrary; and an Opening
+  reaching a free end left a stray jamb in open air.
+- **The Opening measure planner leaked too,** so Card and mark refusals both changed. `openingRefusalWords` moved to `refusals.ts`
+  to avoid an import cycle.
+- **Cut poché follows the fill's treatment, not the subject kind,** so a Layout object drawn as cut poché also keeps its ink.
+- **The cap experiment placed caps in the builder.** The landed surfaces are published by `layout-core`, as proposed.
+
+**Residuals:**
+
+- **Corners under about 45°.** At 30° a Wall has a triangle wound against its normal, and at 12° the bevel leaves mismatched edges. The
+  matrix stops at 45°. Bevels and sharp mitres need their own geometry work, so I stopped there rather than improvise.
+- **An arched Opening reaching a free end.** The compiled endpoint band stops at the Opening's nominal height, so a gap remains between
+  the arch's spring and that height. Rectangular Openings are closed.
+- **A T junction's root** stays an abutment: the branch ends on the through Wall's face.
+- **Black patch in a large project (unproven).** The Stage shadow box is ±5 m, map 512, bias 0.
+- **Lighter mat near the horizon.** Lit `MeshStandardMaterial`; not investigated, visible in the fade captures.
+- **Mat offset.** Content under the datum within four depth steps can draw over the mat. With the near floor that is about 24 cm at 100 m,
+  and only with the eye inside the bounds.
+- **Thin-line motion.** Grid-only motion still scores 11–29‰ blink on the large room; the mat and floor score 0. Judge by eye.
+- **Not run:** Safari, other GPUs and the visitor route. The visitor shares the builder; S11's new row renders it.
 
 ## Summary
 
 | # | Finding | Actual cause | Class | Blocks S11? |
 | --- | --- | --- | --- | --- |
-| 6 | Single Wall reads as a sheet | The mesh has no end faces. A second hole exists where corner Walls differ in height | Foundation gap (P23.9/P23.15) | Yes, with a new row |
+| 6 | Single Wall reads as a sheet | The mesh has no end faces. A second hole exists where corner Walls differ in height | Foundation gap (P23.9/P23.15) | Yes, J16 |
 | 5 | 3D ground flickers | The mat fights the floor and grid: a near plane stuck at 1 cm, plus one huge mat triangle pair | S19 residual on an older foundation | Yes, J13 |
 | 7 | Far grid fades unevenly | Each axis fades from its own spacing, so perspective removes crosswise lines first | S19 design choice | Yes, if J13 is amended as proposed |
 | 1 | Refused drag shows raw text and a pale line | The raw text is **S16**, not S15. The pale line is S14's shared overlay | Implementation defect | Yes, J6 and J14 |
@@ -37,7 +77,7 @@ drawing tool's palette, not selection ink. S20, S21, S24 and S25 don't touch the
 ## Finding 6: standalone Wall
 
 **Reproduce:** `pr247-single-wall`, a Wall from (0,0) to (5,0), 0.2 m thick and 3 m high, seen in 3D from
-either end or at an oblique angle. Run `wall-solid.probe.ts` for the mesh numbers.
+either end or at an oblique angle.
 
 **Proven path:**
 
@@ -68,20 +108,20 @@ would hide the hole rather than close it. Selection clones the same open geometr
 
 ![Main against experimental caps, oblique and end-on, unselected and selected](./evidence/wall-before-after.png)
 
-The [selected pose matrix](./evidence/wall-selected-matrix.png) covers both ends and both long sides. The
-[height-step captures](./evidence/wall-height-step.png) show the corner fixture.
+The [height-step captures](./evidence/wall-height-step.png) show the corner fixture before the fix, and
+[this branch](./evidence/branch-wall.png) shows the result.
 
 **Visitor:** same builder and same `VisitorLayoutShell` representation, so the same mesh by code path. I did
 not render it, because Preview needs an Experience. Treat visitor as inferred until the fix's browser row.
 
-**Proposed fix (T1 geometry, separate slice):**
+**Fix as proposed (landed, see [what landed](#what-landed)):**
 
 - `layout-core` publishes exposed-end surfaces from `terminalJoin` and the height-step surface from
   `resolveLegPairCorner`. The builder only triangulates them, following the existing P23.15 rule. The
   experiment's caps were built in the builder only to test the result; that isn't the proposed placement.
 - Keep the null-ends path. Bump `STANDALONE_WALL_MESH_BUILDER_SIGNATURE`.
 
-**Tests:** a physical-Wall watertight matrix on `buildStandaloneWallMesh`: union edge incidence with T-vertices
+**Tests:** `wall-mesh-solid-matrix.test.ts`, a physical-Wall watertight matrix on `buildStandaloneWallMesh`: union edge incidence with T-vertices
 accounted for, vector area, one outward face per free end, an Opening reaching an end, and differing corner
 heights. Strengthen `layout-junction-wall-ends.test.ts:113`. This also discharges the coverage precondition in
 [the T1 README's retirement note](../../t1-spatial-world/README.md).
@@ -92,7 +132,7 @@ move. New surfaces need correct classification and picking.
 ## Finding 5: ground flicker in motion
 
 **Reproduce:** `pr247-large-room`, 120 × 90 m. Target (2, 1.5, −2), azimuth −0.6, elevation 40°, target-plane
-height 24 m: floor and grid are entirely gone. Orbit and zoom records are in `motion-flicker.js`.
+height 24 m: floor and grid are entirely gone.
 
 **Proven causes, both required:**
 
@@ -132,27 +172,27 @@ and subdivision only leaves 8.47.
 **Isolation:** the mat alone doesn't blink. The 5 × 4 m room keeps the eye outside the sphere, and lost grid at
 one 56-pixel case only. Wall and selection overlays are not involved.
 
-**Proposed fix (S19 rendering correction, T1 Camera, T3 review):**
+**Candidate rejected in review:** a 2% near floor. See [what landed](#what-landed) and the
+[option comparison](./evidence/ground-options.json).
 
-- `viewport.ts`: `near = max(0.01, min(max(d − r, 0.02·d), 0.9·groundNear))`. This adds no bounds to Camera state,
-  which S19's plan had ruled out. Only the session sets `displayGroundYMeters`, so the visitor Camera is unaffected.
-- `StageMatGround.svelte:60`: `args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]}`.
+**Landed fix:** `StageMatGround.svelte` uses `args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]}` and
+`polygonOffsetUnits={MAT_GROUND_POLYGON_OFFSET_UNITS}`.
 
-**Tests:** a viewport row for `d < r` that pins the 2% near, in `camera-viewport-evaluation.test.ts`. A depth-budget
-property: the mat gap stays resolvable across the pose grid, with the large room included. A browser orbit and zoom
-row at J13 using a 120 × 90 m fixture.
+| Motion on this branch, 14 frames | Mat + floor residual, blink | Full scene residual, blink |
+| --- | --- | --- |
+| Orbit, el 35, T 30 | 0.02, 0‰ | 0.72, 11.5‰ |
+| Orbit, el 60, T 60 | 0.06, 0‰ | 1.51, 29.2‰ |
+| Orbit, el 15, T 60 | 0.05, 0‰ | 1.21, 20.4‰ |
+| Zoom, el 35 | 0.75, 0‰ | 3.05, 26.5‰ |
 
-**Risk:** near is no longer 1 cm when the eye is inside the sphere. Content closer than 2% of the target distance will
-clip; at T 60 in the large room that is about 1.2 m. Sweep poses changed 0–2 Wall pixels, but I didn't test an eye deliberately pressed
-against a Wall at a far target. The fix must measure that case, and the owner should accept it or reject it there.
+**Tests:** a viewport row pinning near inside a large scene, a source pin on the mat, and S11's J13 row with a 120 × 90 m fixture.
 
 **Remaining after the fix:** grid-only motion still scores 9–31‰ from ordinary thin lines moving across pixels, and
 line-filter variants made it no better. This is not eliminated. Re-judge by eye once the fighting has gone.
 
 ## Finding 7: uneven far fade
 
-**Reproduce:** `pr247-empty`, real UI at maximum zoom-out (mat 262,144 m, eye about 694 m high), then recorded poses
-through `grid-axis-fade.js`.
+**Reproduce:** `pr247-empty`, real UI at maximum zoom-out (mat 262,144 m, eye about 694 m high), then recorded poses.
 
 ![Main at maximum zoom-out through the real UI](./evidence/fade-real-max-zoom.png)
 
@@ -169,7 +209,7 @@ through `grid-axis-fade.js`.
 At T 1,000, el 15, az 0, bottom to top, constant-X energy is `929 809 876 1159 1230 579 48 0 0 0` and constant-Z is
 `584 781 1025 929 124 0 0 0 0 0`. Upper bands hold one direction only.
 
-**Candidate, tested live:** each level's weight uses the smaller of the two axis spacings, so both directions of a level
+**Fix, tested live and then landed ([this branch](./evidence/branch-far-fade.png)):** each level's weight uses the smaller of the two axis spacings, so both directions of a level
 leave together, and past 25 m the ground is plain mat.
 
 ```glsl
@@ -188,11 +228,9 @@ and X/Z still reads 0.61–0.82 at low elevation because perspective remains.
 
 **Zoom limit:** keep the 1,000 m clamp. No product-scale reason supports a tighter one, and the end state is clean without it.
 
-**Proposed fix (same S19 correction):** `stage-mat-grid.ts`, its twin `matGridLevelWeights` in `stage-grid.ts`, and the mat
-grid paragraph of the visual-system contract at cutover.
+**Files:** `stage-mat-grid.ts`, the doc on its twin `matGridLevelWeights`, and the mat grid paragraph of the visual-system contract.
 
-**Tests:** a twin property that a level never has one axis weighted without the other, keep the dead-band test, pin the shader
-text, and a browser row for orbit and zoom.
+**Tests:** the shader pin in `stage-grid.test.ts` requires one weight per level outside the per-axis loop, the dead-band test stays, and J13 covers motion.
 
 ## Finding 1: refused drag on Paper
 
@@ -218,7 +256,7 @@ text, and a browser row for orbit and zoom.
 against 6.32:1 on mat. It's the same for the `affected` role, so recolouring the refused state alone wouldn't fix it. The Wall gesture's
 reach also starts at the Wall's middle rather than the moved end (`:3665`).
 
-**Proposed fix (T1 Stage, with the domain words staying in the adapter):**
+**Fix ([this branch](./evidence/branch-refusal.png)), with the domain words staying in the adapter:**
 
 1. Route Junction and Opening refusals through the existing word maps, and replace the id tag with human text.
 2. Retain the reason after release for Junction and Opening, as for Wall.
@@ -252,55 +290,17 @@ the tint at 39.5. It's invisible black on black until the tint exposes it.
 
 ![Paper selection variants: main, ink with two-tone contour, ink with bright gold, solid gold](./evidence/paper-selection-variants.png)
 
-**Recommended V1:** no tint on cut poché, and a two-tone contour with `#74560c` at width 5 under `#d4ad45` at width 2.5. The ink stays crisp,
+**V1, approved by the owner and [landed](./evidence/branch-paper-selection.png):** no tint on cut poché, and a two-tone contour with `#74560c` at width 5 under `#d4ad45` at width 2.5. The ink stays crisp,
 the gold reads on both Paper and ink, and the ticks stay hidden. V3 reveals the ticks and loses the ink.
 
-**Needs a ruling:** amend O1 and J2 for cut poché only. Room floors, Scene fills and all of 3D keep the tint.
+O1 and J2 are amended for cut poché only. Room floors, Scene fills and all of 3D keep the tint.
 
-**Proposed fix (S18 visual follow-up, T1):** `paper-marks.ts`. **Tests:** `paper-marks.test.ts`, tone per treatment and no tint mesh for cut.
-**Risk:** low, limited to Paper selection. **S11:** polish. Current J2 passes as shipped.
+**Files:** `paper-marks.ts`. **Tests:** `paper-marks.test.ts`, tone per treatment and no tint mesh for cut.
 
-## Proposal for owner review
+## S11 amendments applied
 
-The baton allows one active implementation slice at a time, so these run in sequence even though their files don't overlap.
-
-| Order | Package | Contains | Owner |
-| --- | --- | --- | --- |
-| 1 | A. Closed Wall solid | Finding 6 | T1, layout-core and builder |
-| 2 | B. Ground depth and fade | Findings 5 and 7 | T1 Camera and Stage, T3 review |
-| 3 | C. Refusal words and candidate legibility | Finding 1 | T1 Stage |
-| 4 | D. Paper selection ink (only if ruled) | Finding 4 | T1 Stage |
-
-**Route:** the owning plans are closed, and their records stay as they are. These become new slices in the R217 slice register through
-[bounded replanning](../../../operations/README.md#bounded-replanning), as an orphaned obligation with explicit owner authorization. They are not added to
-S22 or S23. Slice ids and position relative to S20 are the owner's call. I recommend running them before S20, because later shell QA would otherwise
-keep tripping over A and B.
-
-**Proposed S11 amendments:** S11 hasn't run, so its rows can change without touching accepted history.
-
-- **J13, add:** "On *large* (120 × 90 m) too. In orbit and zoom motion, ground, grid and floors hold steady with the eye inside the project's bounds. Both directions
-  of a grid level leave together, and at the far extreme the ground ends as plain mat, never one direction of lines or strips."
-- **J6 and J14, add:** "A raw id or code in any refusal fails this row, for Wall, Junction and Opening gestures. The reason stays after release."
-- **New row, solid Walls:** "On a single Wall and an L with different heights, from both ends and both long sides, selected and unselected, in Stage and Preview: the Wall reads as a
-  closed solid, and no back face or hole is visible." This also closes the visitor gap above.
-- **J2, only if V1 is ruled:** "A cut Wall on Paper keeps ink poché and shows a two-tone gold contour. Tint on geometry still applies in 3D and for Room floors and models on Paper."
-
-Without these amendments, A and the far fade have no row that would fail them at S11. Passing S11 without them would be an unrecorded waiver.
-
-## What this review didn't prove
-
-- **Hardware:** all depth results are from one M2 under Metal in Chromium. Safari and other GPUs are unverified, and S11 already owes Safari.
-- **Candidates are probes, not implementations.** They were patched into a live session or a throwaway worktree. Each fix still needs its own full verification.
-- **Visitor rendering:** inferred from shared code, not rendered.
-- **Black patch in the owner's third screenshot (unproven):** the Stage light at `StageCanvas.svelte:194` keeps the default shadow box of ±5 m, map 512 and bias 0. Shadows in the
-  5 × 4 m room match the geometry, so that patch is a real shadow. On a large project this small box is the likely explanation, but I didn't prove it. Optional polish on the foundation.
-- **Lighter mat near the horizon:** visible in the fade captures and not investigated. The mat is lit `MeshStandardMaterial`.
+S11 has not run, so [its plan](../r217.s11-integrated-final-gate/implementation-plan.md) changed without touching accepted history: J2 (cut poché), J6 and J14 (no raw text, reason retained), J13 (large project in motion, far fade), new J16 (solid Walls in Stage and Preview), the *large* fixture, and a Safari cell.
 
 ## Reproducing
 
-Probes are in [`probes/`](./probes), and `cap-experiment.patch` holds the throwaway caps. All are investigation apparatus, not product tests.
-
-1. Mesh numbers, from `probes/`: `PROBE_EDITOR=<checkout>/apps/editor PROBE_OUT=<file> <checkout>/node_modules/.bin/vitest run --config vitest.probe.config.mts`
-2. Fixtures: `seed-projects.ts` creates the `pr247-*` projects through the local save route. It needs the local E2E secret, and **its output file holds a session cookie, so keep it out of
-   the repo**.
-3. Stage probes: in a dev session, set `window.__PROBE_FS` to `/@fs/<checkout>`, evaluate `stage-hook.js`, then run `depth-sweep.js`, `motion-flicker.js`, `grid-axis-fade.js` or `near-clip.js`.
+The regression tests above are the durable proof. The one-off browser probes, fixture seeding and cap experiment were dropped from the tree; they stay at `git show 5af89329:docs/roadmap/r217-core-editor-stability/post-s19-owner-manual-review/report.md` and its sibling `probes/` directory.

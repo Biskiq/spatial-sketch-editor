@@ -1,0 +1,138 @@
+{
+ "shipped": {
+  "floorLost": 3666216,
+  "gridLost": 843713,
+  "worstFloorPct": 100,
+  "motion": [
+   "4.27/0.0",
+   "3.234/7.8",
+   "2.361/0.0",
+   "6.245/1.2"
+  ],
+  "clips": [
+   "T60 0.5m: near 0.01 changed 0 of 884544",
+   "T60 1m: near 0.01 changed 0 of 884544",
+   "T20 0.3m: near 0.01 changed 0 of 884544",
+   "T3 0.1m: near 0.01 changed 0 of 884544"
+  ]
+ },
+ "near2": {
+  "floorLost": 0,
+  "gridLost": 0,
+  "worstFloorPct": 0,
+  "motion": [
+   "0.021/0.0",
+   "0.06/0.0",
+   "0.048/0.0",
+   "0.418/0.0"
+  ],
+  "clips": [
+   "T60 0.5m: near 1.18 changed 884544 of 884544",
+   "T60 1m: near 1.18 changed 884544 of 884544",
+   "T20 0.3m: near 0.39 changed 0 of 884544",
+   "T3 0.1m: near 0.06 changed 0 of 884544"
+  ]
+ },
+ "near05": {
+  "floorLost": 0,
+  "gridLost": 0,
+  "worstFloorPct": 0,
+  "motion": [
+   "0.021/0.0",
+   "0.06/0.0",
+   "0.048/0.0",
+   "0.418/0.0"
+  ],
+  "clips": [
+   "T60 0.5m: near 0.29 changed 0 of 884544",
+   "T60 1m: near 0.29 changed 0 of 884544",
+   "T20 0.3m: near 0.10 changed 0 of 884544",
+   "T3 0.1m: near 0.01 changed 0 of 884544"
+  ]
+ },
+ "seg_only": {
+  "floorLost": 1790296,
+  "gridLost": 0,
+  "worstFloorPct": 81,
+  "motion": [
+   "6.73/0.0",
+   "6.34/4.3",
+   "2.223/0.0",
+   "10.981/0.0"
+  ],
+  "clips": [
+   "T60 0.5m: near 0.01 changed 0 of 884544",
+   "T60 1m: near 0.01 changed 0 of 884544",
+   "T20 0.3m: near 0.01 changed 0 of 884544",
+   "T3 0.1m: near 0.01 changed 0 of 884544"
+  ]
+ },
+ "off4": {
+  "floorLost": 0,
+  "gridLost": 0,
+  "worstFloorPct": 0,
+  "motion": [
+   "0.021/0.0",
+   "0.06/0.0",
+   "0.048/0.0",
+   "0.418/0.0"
+  ],
+  "clips": [
+   "T60 0.5m: near 0.01 changed 0 of 884544",
+   "T60 1m: near 0.01 changed 0 of 884544",
+   "T20 0.3m: near 0.01 changed 0 of 884544",
+   "T3 0.1m: near 0.01 changed 0 of 884544"
+  ]
+ },
+ "off16": {
+  "floorLost": 0,
+  "gridLost": 0,
+  "worstFloorPct": 0,
+  "motion": [
+   "0.021/0.0",
+   "0.06/0.0",
+   "0.048/0.0",
+   "0.418/0.0"
+  ],
+  "clips": [
+   "T60 0.5m: near 0.01 changed 0 of 884544",
+   "T60 1m: near 0.01 changed 0 of 884544",
+   "T20 0.3m: near 0.01 changed 0 of 884544",
+   "T3 0.1m: near 0.01 changed 0 of 884544"
+  ]
+ },
+ "off64": {
+  "floorLost": 0,
+  "gridLost": 0,
+  "worstFloorPct": 0,
+  "motion": [
+   "0.021/0.0",
+   "0.06/0.0",
+   "0.048/0.0",
+   "0.418/0.0"
+  ],
+  "clips": [
+   "T60 0.5m: near 0.01 changed 0 of 884544",
+   "T60 1m: near 0.01 changed 0 of 884544",
+   "T20 0.3m: near 0.01 changed 0 of 884544",
+   "T3 0.1m: near 0.01 changed 0 of 884544"
+  ]
+ },
+ "fac1off8": {
+  "floorLost": 0,
+  "gridLost": 0,
+  "worstFloorPct": 0,
+  "motion": [
+   "0.021/0.0",
+   "0.06/0.0",
+   "0.048/0.0",
+   "0.418/0.0"
+  ],
+  "clips": [
+   "T60 0.5m: near 0.01 changed 0 of 884544",
+   "T60 1m: near 0.01 changed 0 of 884544",
+   "T20 0.3m: near 0.01 changed 0 of 884544",
+   "T3 0.1m: near 0.01 changed 0 of 884544"
+  ]
+ }
+}
