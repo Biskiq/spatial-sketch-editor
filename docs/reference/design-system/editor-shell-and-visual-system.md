@@ -972,6 +972,7 @@ contrast-safe gold ink; on the mat use the gold core; variable content may need 
 stroke/halo. The sheet/grid remain visible. Manipulation emphasizes the active handle,
 affected edge and measurement rather than every dimension or the entire Card.
 Unselected architecture and Camera context remain quiet enough for selection to read.
+Cut poché on Paper takes no tint: its black ink stays, with `#74560c` under a `#d4ad45` core.
 
 ### Spatial mark language
 

@@ -25,6 +25,7 @@ Decisions marked **amends a contract** change ratified text. The implementing sl
 - **Recommendation:** tint .28 on the mat; tint .22 on Paper with a dark gold `#74560c` edge, the wireframe's own values.
 - **Alternative:** keep .18 and bright gold. Least change, but selected geometry stays faint, which is what you noticed.
 - **Tradeoff:** a stronger tint hides more underlying drawing. The Scene Paper fill is a defect and ships either way.
+- **Owner amendment (2026-11-01, post-S19 review):** cut poché on Paper takes no tint: black ink with a two-tone gold contour, `#74560c` at 5 px under `#d4ad45` at 2.5 px, because .22 gold over black ink is brown. Every other Paper fill and all of 3D keep O1.
 
 ## O2 — Dragging a Wall body
 

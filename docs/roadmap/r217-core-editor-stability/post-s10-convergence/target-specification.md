@@ -187,13 +187,13 @@ Stage ink stays on actual geometry with canonical identity. Paper uses polygons 
 
 | Subject | Paper fill (.22 gold) | Paper edge (`#74560c`) | 3D fill (.28 gold, depth-tested) | 3D edge |
 | --- | --- | --- | --- | --- |
-| Wall | Existing Plan polygons | Union boundary | Mesh clone | Gold with dark halo |
+| Wall | Existing Plan polygons; no tint on cut poché | Union boundary; cut poché two-tone (`#74560c` under `#d4ad45`) | Mesh clone | Gold with dark halo |
 | Opening | Aperture polygon only | Aperture boundary | Synthetic aperture box | Gold with dark halo |
 | Primitive, catalogue | Footprint `points` | Footprint segments | Mesh clone | Gold with dark halo |
 | Approved model | Approved footprint; contour only if none | Footprint segments | Mesh clone | Gold with dark halo |
 | Native form | Concave ring, or `polygons` when tilted; never a bounding rectangle | Footprint segments | Mesh clone | Gold with dark halo |
 
-Paper fills sit under cut ink and are never a hit source. 3D stays depth-tested, with no x-ray. Hover stays neutral and untinted; a selected identity suppresses its own hover. Opacity and Paper edge apply O1.
+Paper fills sit under cut ink and are never a hit source. 3D stays depth-tested, with no x-ray. Hover stays neutral and untinted; a selected identity suppresses its own hover. Opacity and Paper edge apply O1 and its 2026-11-01 amendment for cut poché.
 
 ## Shell
 
