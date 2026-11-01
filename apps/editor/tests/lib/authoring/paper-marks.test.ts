@@ -590,9 +590,8 @@ describe('R217.S07 — Paper mark overlay', () => {
 		);
 		expect(tint).toBeDefined();
 		expect(tint!.renderOrder).toBe(PAPER_MARK_LAYER.selectionTint);
-		// The fill sits above the cut poché and under the cut stroke.
-		expect(tint!.renderOrder).toBeGreaterThan(PAPER_LAYER.cut - 1);
-		expect(tint!.renderOrder).toBeLessThan(PAPER_LAYER.cut);
+		// The fill sits under the cut poché, so it never browns the ink.
+		expect(tint!.renderOrder).toBeLessThan(PAPER_LAYER.cut - 1);
 		expect((tint!.material as MeshBasicMaterial).opacity).toBeCloseTo(0.22);
 	} finally {
 		resources.dispose();

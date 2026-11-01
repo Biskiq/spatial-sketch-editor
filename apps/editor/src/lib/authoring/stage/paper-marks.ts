@@ -66,9 +66,13 @@ export const PAPER_CUT_SELECTION_CORE_WIDTH_CSS = 2.5;
 export const PAPER_MARK_LAYER = {
 	hoverHalo: PAPER_LAYER.sceneFootprint + 8,
 	hover: PAPER_LAYER.sceneFootprint + 9,
-	// A fill sits under the cut stroke (40) but above the cut poché (39): a
-	// selected Wall tints its own band and never the ink that describes it.
-	selectionTint: PAPER_LAYER.cut - 0.5,
+	// A fill sits under the cut poché (39), so a Room's tint stops at its Walls'
+	// faces and never browns the ink or reveals the per-span strokes on it.
+	selectionTint: PAPER_LAYER.cut - 1.5,
+	// A Room's boundary is its Walls' centreline, so its contour sits under their
+	// poché too, and shows only where no Wall stands.
+	roomContourHalo: PAPER_LAYER.cut - 1.4,
+	roomContour: PAPER_LAYER.cut - 1.3,
 	selectionHalo: PAPER_LAYER.sceneFootprint + 11,
 	selectionLine: PAPER_LAYER.sceneFootprint + 12,
 	eraseHalo: PAPER_LAYER.sceneFootprint + 13,
@@ -83,6 +87,8 @@ export type PaperMarkContour = {
 	readonly segments: readonly PaperSegment[];
 	/** The boundary of cut poché, stroked two-tone when selected. */
 	readonly cut?: boolean;
+	/** A Room floor's boundary, which runs inside its Walls' poché. */
+	readonly roomFloor?: boolean;
 };
 
 export type PaperMarkGeometry = {
@@ -136,7 +142,8 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 			const group = fills.filter((fill) => (fill.treatment === 'cut') === cut);
 			for (const [elevationMeters, level] of groupByElevation(group, (fill) => fill.elevationMeters)) {
 				const segments = unionOutline(level.flatMap((fill) => fill.polygons));
-				contours.push({ elevationMeters, segments, ...(cut ? { cut } : {}) });
+				const roomFloor = !cut && level.some((fill) => fill.treatment === 'room-floor');
+				contours.push({ elevationMeters, segments, ...(cut ? { cut } : {}), ...(roomFloor ? { roomFloor } : {}) });
 			}
 		}
 		// A cut line duplicates the fill boundary (and would draw one tick per
@@ -279,8 +286,27 @@ export function createPaperMarkScene(
 
 	// Hover: a restrained light contour held by the vocabulary's dark halo, so it
 	// reads over vellum and over a cut band without ever borrowing selection gold.
-	addLine(marks.hover, PAPER_MARK_HALO_INK, 4, 0.4, PAPER_MARK_LAYER.hoverHalo);
-	addLine(marks.hover, PAPER_HOVER_INK, 2, 0.75, PAPER_MARK_LAYER.hover);
+	const hoveredRoom = { fills: [], contours: marks.hover.contours.filter((contour) => contour.roomFloor) };
+	const hoverLines = { fills: [], contours: marks.hover.contours.filter((contour) => !contour.roomFloor) };
+	addLine(hoverLines, PAPER_MARK_HALO_INK, 4, 0.4, PAPER_MARK_LAYER.hoverHalo);
+	addLine(hoverLines, PAPER_HOVER_INK, 2, 0.75, PAPER_MARK_LAYER.hover);
+	addLine(hoveredRoom, PAPER_MARK_HALO_INK, 2, 0.5, PAPER_MARK_LAYER.roomContour);
+	// A Room's contour is under its Walls, so a faint tint is what shows the hover.
+	const roomHoverGeometry = hoveredRoom.contours.length > 0 ? createPaperFillGeometry(marks.hover.fills) : null;
+	if (roomHoverGeometry !== null) {
+		const material = new MeshBasicMaterial({
+			color: new Color(PAPER_MARK_HALO_INK).getHex(),
+			side: DoubleSide, transparent: true, opacity: 0.08,
+			depthTest: false, depthWrite: false, toneMapped: false
+		});
+		const mesh = new Mesh(roomHoverGeometry, material);
+		mesh.renderOrder = PAPER_MARK_LAYER.selectionTint;
+		mesh.frustumCulled = false;
+		mesh.layers.set(STAGE_OVERLAY_LAYER);
+		group.add(mesh);
+		disposables.push(roomHoverGeometry, material);
+		fades.push({ material, baseOpacity: material.opacity });
+	}
 
 	const tintGeometry = createPaperFillGeometry(marks.selection.fills);
 	if (tintGeometry !== null) {
@@ -299,9 +325,12 @@ export function createPaperMarkScene(
 	}
 
 	// Selection: the dark-gold edge (owner ruling O1) over the same dark halo as
-	// hover. The tint above sits between the cut poché and the cut stroke, so a
-	// subject's identity reads without hiding the Plan.
-	const plain = { fills: [], contours: marks.selection.contours.filter((contour) => !contour.cut) };
+	// hover. The tint above sits under the cut poché, so a subject's identity reads
+	// without hiding the Plan.
+	const room = { fills: [], contours: marks.selection.contours.filter((contour) => contour.roomFloor) };
+	addLine(room, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.roomContourHalo);
+	addLine(room, PAPER_SELECTION_EDGE_INK, 2.5, 1, PAPER_MARK_LAYER.roomContour);
+	const plain = { fills: [], contours: marks.selection.contours.filter((contour) => !contour.cut && !contour.roomFloor) };
 	addLine(plain, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.selectionHalo);
 	addLine(plain, PAPER_SELECTION_EDGE_INK, 2.5, 1, PAPER_MARK_LAYER.selectionLine);
 	// A cut Wall: no tint, so its poché stays crisp black. Neither gold holds on both

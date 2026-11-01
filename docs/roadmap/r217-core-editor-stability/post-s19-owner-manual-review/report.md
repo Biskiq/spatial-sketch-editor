@@ -182,6 +182,8 @@ straight Wall now draws 12 segments.
   zooms at device pixel ratio 2, Room corners also at 1, and [hover and erase on a curved
   Wall](./evidence/outline-after-curved-2x.png), show no ticks.
 
+**2D Wall stripes and midline.** A Room's tint and contour drew over the cut, and its boundary runs along the Wall centreline, so hovering a Room drew a pale midline and selecting one browned half the Wall and showed the span strokes. Both now sit under the poché, and a hovered Room takes a faint tint instead. Each Wall's cut stroke is now one outline, so the 3D-to-2D fade no longer flashes cross stripes. Together with the Paper selection section above, this closes the per-span tick noted there. Focused tests only, by owner direction; the full gate wasn't rerun.
+
 **Limits.**
 
 - The bias was calibrated by inspection, and one spot on a curved Wall frayed slightly in the

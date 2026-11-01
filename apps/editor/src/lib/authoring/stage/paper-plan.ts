@@ -552,6 +552,7 @@ export function buildPaperPlan(
 ): PaperPlanDrawing {
 	const lines: PaperLineDraw[] = [];
 	const fills: PaperFillDraw[] = [];
+	const cutBands = new Map<string, Omit<PaperLineDraw, 'segments'> & { bands: (readonly LayoutVec2[])[] }>();
 
 	eligiblePlanFragments(plan).forEach((fragment, index) => {
 		const layer = fragmentLayer(fragment);
@@ -582,15 +583,22 @@ export function buildPaperPlan(
 					elevationMeters: fragment.elevationMeters,
 					polygons: [band]
 				});
-				lines.push({
-					key,
-					sourceId: fragment.ref.sourceId,
-					stream: fragment.ref.stream,
-					layer,
-					treatment,
-					elevationMeters: fragment.elevationMeters,
-					segments: ringSegments(band)
-				});
+				// One stroke per Wall follows below, so the spans leave no cross lines.
+				const groupKey = `${fragment.ref.sourceId}:${fragment.elevationMeters}`;
+				const group = cutBands.get(groupKey);
+				if (group === undefined) {
+					cutBands.set(groupKey, {
+						key,
+						sourceId: fragment.ref.sourceId,
+						stream: fragment.ref.stream,
+						layer,
+						treatment,
+						elevationMeters: fragment.elevationMeters,
+						bands: [band]
+					});
+				} else {
+					group.bands.push(band);
+				}
 				return;
 			}
 			const polygon = polygonOfFragment(fragment);
@@ -615,6 +623,10 @@ export function buildPaperPlan(
 			segments: fragmentSegments(fragment)
 		});
 	});
+
+	for (const { bands, ...line } of cutBands.values()) {
+		lines.push({ ...line, segments: unionOutline(bands) });
+	}
 
 	const footprints: PaperFootprintDraw[] = projection.footprints
 		.filter((footprint) => options.isFootprintMounted?.(footprint.entityId) ?? true)
