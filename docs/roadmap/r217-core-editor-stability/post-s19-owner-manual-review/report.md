@@ -39,7 +39,7 @@ Apple M2), 1440 × 900. Stage settings on `main`: 24-bit depth, antialias on, Th
 - **Black patch in a large project (unproven).** The Stage shadow box is ±5 m, map 512, bias 0. It shows more against the pale ground.
 - **Mat offset, accepted by the owner (2026-11-01) as a documented residual, not a merge blocker.** Content under the datum within four
   depth steps can draw over the ground. With the near floor that is about 24 cm at 100 m, and only with the eye inside the bounds.
-- **Thin-line motion.** Full-scene motion scores 23–41‰ blink on the large room with the plate, against 11–29‰ on the dark mat, because
+- **Thin-line motion.** Full-scene motion scored 23–38‰ blink on the large room with the plate at line opacities of 0.34 and 0.55; Paper's final 0.28 and 0.45 are fainter and were not remeasured. That compares with 11–29‰ on the dark mat, because
   the lines contrast more with a pale ground; the ground and floor score under 0.3‰. Judge by eye.
 - **Not run:** Safari, other GPUs and a published release. Preview was rendered in Chromium ([capture](./evidence/preview-wall.png)).
 
