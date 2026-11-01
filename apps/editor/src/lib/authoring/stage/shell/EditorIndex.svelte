@@ -509,4 +509,19 @@
 			max-height: 45%;
 		}
 	}
+
+	/*
+	 * Coarse pointer: each row's select control, its Actions toggle, every disclosed
+	 * operation and the search field reach the touch target (44 × 44 CSS px). The
+	 * fine-pointer density (32 px) is unchanged.
+	 */
+	@media (pointer: coarse) {
+		.item-row,
+		.item-actions-toggle,
+		.op,
+		.search-input {
+			min-width: var(--shell-touch-target, 44px);
+			min-height: var(--shell-touch-target, 44px);
+		}
+	}
 </style>

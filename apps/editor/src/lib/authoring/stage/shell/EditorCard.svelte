@@ -595,4 +595,19 @@
 			max-height: calc(100% - var(--lower-column-height, 0px) - 2rem);
 		}
 	}
+
+	/*
+	 * Coarse pointer: every control the Card draws reaches the touch target (44 × 44 CSS
+	 * px). The fine-pointer density above (32 px) is unchanged. The host also sets this
+	 * floor on descendants; the Card states it for its own controls.
+	 */
+	@media (pointer: coarse) {
+		.icon,
+		.action,
+		.rename input,
+		summary {
+			min-width: var(--shell-touch-target, 44px);
+			min-height: var(--shell-touch-target, 44px);
+		}
+	}
 </style>
