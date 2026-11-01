@@ -1,0 +1,204 @@
+{
+  "name": "sheet-shaded-2d-pinned-1440x900",
+  "mode": "shaded-2d",
+  "state": "pinned",
+  "viewport": [
+    1440,
+    900
+  ],
+  "coarse": false,
+  "ticks": [
+    "Floor · 0.000 m",
+    "Shape · 1.000 m"
+  ],
+  "labels": [
+    "Floor",
+    "Shape"
+  ],
+  "items": [
+    {
+      "name": "capsule-plate",
+      "kind": "plate",
+      "rect": [
+        1369.6,
+        357,
+        1389.6,
+        565
+      ],
+      "ink": null,
+      "visible": true
+    },
+    {
+      "name": "rail",
+      "kind": "line",
+      "rect": [
+        1379.1,
+        357,
+        1380.1,
+        565
+      ],
+      "ink": "rgb(34, 80, 60)",
+      "visible": true
+    },
+    {
+      "name": "tick-0:Floor · 0.000 m",
+      "kind": "line",
+      "rect": [
+        1370.8,
+        564.5,
+        1388.4,
+        565.5
+      ],
+      "ink": "rgb(17, 41, 31)",
+      "visible": true
+    },
+    {
+      "name": "tick-1:Shape · 1.000 m",
+      "kind": "line",
+      "rect": [
+        1372.4,
+        470,
+        1386.8,
+        471
+      ],
+      "ink": "rgb(34, 80, 60)",
+      "visible": true
+    },
+    {
+      "name": "knob-ring",
+      "kind": "line",
+      "rect": [
+        1372.4,
+        444.4,
+        1386.8,
+        458.8
+      ],
+      "ink": "rgb(17, 41, 31)",
+      "visible": true
+    },
+    {
+      "name": "add-glyph",
+      "kind": "text",
+      "rect": [
+        1399.2,
+        440.4,
+        1421.6,
+        462.8
+      ],
+      "ink": "rgb(233, 235, 230)",
+      "visible": true
+    },
+    {
+      "name": "add-face",
+      "kind": "plate-face",
+      "rect": [
+        1399.2,
+        440.4,
+        1421.6,
+        462.8
+      ],
+      "ink": "rgb(34, 80, 60)",
+      "visible": true
+    },
+    {
+      "name": "pin-glyph-0",
+      "kind": "text",
+      "rect": [
+        1370.8,
+        442.8,
+        1388.4,
+        460.4
+      ],
+      "ink": "rgb(17, 41, 31)",
+      "visible": true
+    },
+    {
+      "name": "pin-face-0",
+      "kind": "plate-face",
+      "rect": [
+        1370.8,
+        442.8,
+        1388.4,
+        460.4
+      ],
+      "ink": "rgb(212, 173, 69)",
+      "visible": true
+    },
+    {
+      "name": "readout",
+      "kind": "text",
+      "rect": [
+        1361.6,
+        569.8,
+        1412.2,
+        587
+      ],
+      "ink": "rgb(17, 41, 31)",
+      "visible": true
+    },
+    {
+      "name": "label-0:Floor",
+      "kind": "text",
+      "rect": [
+        1318.8,
+        556.6,
+        1357.6,
+        573.4
+      ],
+      "ink": "rgb(17, 41, 31)",
+      "visible": true
+    },
+    {
+      "name": "label-1:Shape",
+      "kind": "text",
+      "rect": [
+        1314.3,
+        462.1,
+        1357.6,
+        478.9
+      ],
+      "ink": "rgb(17, 41, 31)",
+      "visible": true
+    },
+    {
+      "name": "hint",
+      "kind": "text",
+      "rect": [
+        272,
+        785.9,
+        549.2,
+        832.4
+      ],
+      "ink": "rgb(233, 235, 230)",
+      "visible": true
+    }
+  ],
+  "shell": {
+    "sheet": [
+      1289.6,
+      357,
+      1428,
+      587
+    ],
+    "card": [
+      989.6,
+      60,
+      1277.6,
+      790.4
+    ],
+    "zoom": [
+      1167.5,
+      802.4,
+      1277.6,
+      840.4
+    ],
+    "dock": [
+      735.7,
+      840.4,
+      960.3,
+      888
+    ]
+  },
+  "sheetOverflowX": false,
+  "horizontalOverflow": false
+}
