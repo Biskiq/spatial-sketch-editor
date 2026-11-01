@@ -34,17 +34,85 @@ Apple M2), 1440 × 900. Stage settings on `main`: 24-bit depth, antialias on, Th
 
 **Residuals:**
 
-- **Corners under about 45°.** At 30° a Wall has a triangle wound against its normal, and at 12° the bevel leaves mismatched edges. The
-  matrix stops at 45°. Bevels and sharp mitres need their own geometry work, so I stopped there rather than improvise.
-- **An arched Opening reaching a free end.** The compiled endpoint band stops at the Opening's nominal height, so a gap remains between
-  the arch's spring and that height. Rectangular Openings are closed.
-- **A T junction's root** stays an abutment: the branch ends on the through Wall's face.
-- **Black patch in a large project (unproven).** The Stage shadow box is ±5 m, map 512, bias 0.
-- **Lighter mat near the horizon.** Lit `MeshStandardMaterial`; not investigated, visible in the fade captures.
-- **Mat offset.** Content under the datum within four depth steps can draw over the mat. With the near floor that is about 24 cm at 100 m,
-  and only with the eye inside the bounds.
-- **Thin-line motion.** Grid-only motion still scores 11–29‰ blink on the large room; the mat and floor score 0. Judge by eye.
-- **Not run:** Safari, other GPUs and the visitor route. The visitor shares the builder; S11's new row renders it.
+- **Corners under about 45° and an arched Opening at a free end** are pre-existing limits; see [the comparison](#corners-and-arches-against-main).
+- **A T junction's root** stays an abutment; see [what J16 guarantees](#what-j16-guarantees-at-a-t).
+- **Black patch in a large project (unproven).** The Stage shadow box is ±5 m, map 512, bias 0. It shows more against the new cream.
+- **Mat offset, accepted by the owner (2026-11-01) as a documented residual, not a merge blocker.** Content under the datum within four
+  depth steps can draw over the ground. With the near floor that is about 24 cm at 100 m, and only with the eye inside the bounds.
+- **Thin-line motion.** Full-scene motion scores 23–41‰ blink on the large room with the cream plate, against 11–29‰ on the dark mat, because
+  the lines contrast more with cream; the ground and floor score under 0.3‰. Judge by eye.
+- **Not run:** Safari, other GPUs and a published release. Preview was rendered in Chromium ([capture](./evidence/preview-wall.png)).
+
+## Second owner review (2026-11-01)
+
+### Corners and arches against `main`
+
+| Fixture ([data](./evidence/corner-arch-vs-main.json)) | `main` | This branch | Verdict |
+| --- | --- | --- | --- |
+| 30° mitre | Winding fault on both Walls; open only at its free ends | Same winding fault on the same triangles; closed | **Pre-existing** |
+| 20° and 12° bevel | 12 open edges at the corner | Same 12 | **Pre-existing** |
+| Rounded or pointed door at a free end | 12 open edges | 4, between spring and nominal height | **Pre-existing**, improved by the caps |
+| 45° and up, rectangular door at a free end | Open at free ends | Closed | Fixed earlier on this PR |
+
+Neither is a regression, so neither is fixed here. The bevel's total vector area rises on this branch only because the free ends no longer offset
+the same hole. They need their own geometry slice: sharp mitres and bevels in `layout-junction-resolution.ts`, and the endpoint band for arches.
+`wall-mesh-solid-matrix.test.ts` pins them under "known limits", so a change is seen.
+
+### Door frame: a real geometry defect
+
+The frame is `RoomPortal`, a museum-era part that every door draws. It was never fitted to the Wall:
+
+| Problem | Evidence |
+| --- | --- |
+| Posts and lintel sit outside the Opening | At a free end, a post reached 16 cm past the Wall |
+| Depth is a fixed 0.2 m | It stood 5 cm proud of a 0.1 m Wall, and its faces were coplanar with a 0.2 m Wall, so they could fight |
+| A half-torus is drawn even on a rectangular door | At a 2.9 m door its top reached about 3.22 m, over a 3 m Wall |
+
+**Fixed:** `door-frame.ts` lines the Opening's own void, 2 mm short of each Wall face, using the host Wall's thickness and the sill. Arched doors
+draw no frame, because a straight frame can't fit them.
+![Free-end door before and after](./evidence/door-frame-before-after.png)
+
+The frame's brass reads almost black here, because the Stage has no environment map. That is the existing material, unchanged.
+
+### Hollow Shape: one real defect, one Camera behaviour
+
+The Shape's mesh is closed: a 1 × 1 × 1 m form has 0 open edges and volume +1.
+
+- **Real defect, on `main` too.** `createCameraSession` took its scene radius from the compiled Layout bounds alone, so no Scene object counted. The near
+  plane could then cut through a Shape and expose its culled inside. With a 4 m Shape, near was 2.95 m at a pose that needs 1.81 m. The route now passes
+  the rendered Layout ∪ Scene bounds through `setContentBounds`. That is a depth input only; the pose, Fit and `viewport.ts` don't change.
+  ![Near plane cutting a Shape, before and after](./evidence/shape-near-cut-before-after.png)
+- **Camera behaviour, kept.** Zooming further puts the eye inside the solid, where culled faces show the ground through it. That follows from unrestricted zoom
+  toward a ground target. Stopping it would need a collision limit or `DoubleSide`, and neither was asked for.
+
+### What J16 guarantees at a T
+
+A T is closed as a **union**: the branch's root is sealed by the through Wall's face, and no gap can be seen from any side. The root is not a closed solid of its own, and
+the through Wall has no surface there to weld to, so edge incidence still reports the abutment. `wall-mesh-solid-matrix.test.ts` requires every open edge to lie on that face.
+
+### Visual direction
+
+**Landed after browser prototypes:** a cream ground (`#efe8d8`) inside Paper's sheet around Layout ∪ Scene, forest outside, Paper's two green inks on it, and warm cream default Walls (`#f1e6cf`).
+
+| Requirement | How | Evidence |
+| --- | --- | --- |
+| Follows the work and grows | `groundPlateRectFor`: 5 m margin, rounded out to 5 m, plus the live candidate | [growth, right](./evidence/ground-plate-zoom-growth.png) |
+| World anchoring | The same lattice either side of the edge. An empty project's plate is 20 × 20 m around world zero, not the target as on Paper, so pans don't move it | Unit tests |
+| Depth stability | One opaque draw changes colour at the edge, so plate and mat can't fight | 28 poses on the large room: 0 floor and 0 grid pixels lost. Ground and floor blink under 0.3‰ |
+| Unrestricted zoom | No Camera limit. The plate shrinks into the forest and the fade is unchanged | [far zoom](./evidence/ground-plate-zoom-growth.png) |
+| Authored materials | Only physical Walls change, and they carry no authored material yet. Shapes, floors and catalogue objects keep theirs | Unit test |
+| Stage and Preview | One shared Wall material factory | [Stage](./evidence/ground-plate-room.png), [Preview](./evidence/preview-wall.png) |
+
+**Where the prototype changed the brief:**
+
+- **Cream can't be a plain colour under these lights.** `#e6d9bf` rendered khaki, then grey under AgX tone mapping. The default Wall now holds half its colour unlit and skips tone mapping. Raising the lights
+  would have shifted every authored material too.
+- **The ground is unlit now.** A lit cream drifts with the view. This also removes the lighter mat near the horizon.
+- **Gold needed Paper's contour.** Over cream the forest halo swallowed the gold, so 3D selection now uses the same `#74560c` under `#d4ad45`. Hover and erase keep their halo.
+- **Paper's inks are recalibrated, not replaced.** Same hues, at 0.34 and 0.55 instead of 0.28 and 0.45, to read on warmer cream. Higher values looked stronger but blinked more: 39–70‰ at 0.55 and 0.8. Paper's own values are unchanged.
+- **The forest lines stay outside the plate,** so a far pan keeps a world reference.
+
+**Owner's call, pushed back but not changed:** the room floor stays dark slate. It is now the heaviest thing in the frame, and it is what makes the black shadow patch obvious. A paler default floor would likely suit this direction, but it was not in the brief, and it is one shared tint with the floor's walnut material.
 
 ## Summary
 
@@ -299,7 +367,7 @@ O1 and J2 are amended for cut poché only. Room floors, Scene fills and all of 3
 
 ## S11 amendments applied
 
-S11 has not run, so [its plan](../r217.s11-integrated-final-gate/implementation-plan.md) changed without touching accepted history: J2 (cut poché), J6 and J14 (no raw text, reason retained), J13 (large project in motion, far fade), new J16 (solid Walls in Stage and Preview), the *large* fixture, and a Safari cell.
+S11 has not run, so [its plan](../r217.s11-integrated-final-gate/implementation-plan.md) changed without touching accepted history: J2 (cut poché), J6 and J14 (no raw text, reason retained), J13 (large project in motion, far fade), new J16 (solid Walls in Stage and Preview), the *large* fixture, a Safari cell, then J17 (cream ground and default Walls), a required native-touch cell, and J16's Preview steps and T wording.
 
 ## Reproducing
 

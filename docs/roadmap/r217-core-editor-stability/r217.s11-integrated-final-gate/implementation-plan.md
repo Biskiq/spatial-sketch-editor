@@ -51,9 +51,10 @@ The *mixed* fixture and its browser seeding come from [R217.S17](../r217.s17-sce
 | --- | --- | --- |
 | Fine | 1440 × 900, 1280 × 800 | Chromium, Chrome |
 | Coarse (`hasTouch`, `pointer: coarse`, `hover: none`) | 1024 × 768, 768 × 1024 | Chromium, Chrome |
-| Fine, owner-run | 1440 × 900 | Safari, for J2, J5, J6, J13 and J16 |
+| Fine, owner-run | 1440 × 900 | Safari, for J2, J5, J6, J13, J16 and J17 |
+| Native touch, owner-run | A real iPad or other touchscreen | Safari on that device, for J9 |
 
-A real-iPad run is recorded as an owner-run observation when available. It is not a prerequisite.
+The coarse cells emulate touch and don't replace the native-touch cell: S12–S18's accepted records carry native touch to this gate. If no device is available, the owner records a waiver in the acceptance record; it isn't skipped silently.
 
 ### 4.3 Evidence
 
@@ -62,7 +63,7 @@ A real-iPad run is recorded as an owner-run observation when available. It is no
    - `npm run test:heavy` and `npm test`;
    - `npm run build`;
    - `npm run check:api`, and DB-backed `npm run test:api` with zero skips.
-2. **Journeys** J1–J16 below, run by an agent in each cell of the matrix. Screenshots are archived as
+2. **Journeys** J1–J17 below, run by an agent in each cell of the matrix. Screenshots are archived as
    PNGs in this slice's workspace, and a row passes only with its PNG.
 3. **Isolation:** the visitor, public and preview boundary tests, plus a build-chunk scan proving no
    R217 module is in a `/p` chunk.
@@ -98,7 +99,8 @@ A real-iPad run is recorded as an owner-run observation when available. It is no
 | J13 | **3D ground.** On *mixed*, *empty* and *large*: orbit from overhead to shallow with the horizon in frame, and zoom to both extremes | Grid and ground run to the visible edges with no straight cut, moiré band or close-up fighting. In orbit and zoom motion, ground, grid and floors hold steady with the eye inside the project's bounds, and a Wall right beside the eye is not clipped. Both directions of a grid level leave together, and at the far extreme the ground ends as plain mat, never one direction of lines or strips. Line count stays within the budget |
 | J14 | **Direct Plan editing.** On *starter*, using the Stage only: drag a selected Wall's body; drag an end point at a shared Junction; with a fine pointer only, hover and drag a corner with nothing selected; click an Opening, then slide and resize it; drag a Junction onto another Junction; pan from an unselected Wall | Neighbours stretch and stay connected, and each valid release is one Undo step. Clicking an Opening selects it. The refused drop writes nothing and gives a readable reason near the pointer, once, which stays after release. A raw id or code fails this row. Panning edits nothing. The Index is never needed |
 | J15 | **Every subject.** Native forms are created through Objects, including one in an empty project, and Free's Finish is exercised on a coarse pointer. For a primitive, a catalogue object, an approved model and a native form, in Plan and in 3D: place it; drag it by its body; turn it; size it; duplicate it; drag it off a floor; undo each step | The ghost follows the pointer and matches the accepted result, and an off-floor release writes nothing. The Card never covers the subject during a gesture |
-| J16 | **Solid Walls.** On a single Wall and on an L with different heights: orbit to both ends and both long sides, unselected and selected, in the Stage and then in Preview | The Wall reads as a closed solid from every side, with no back face or hole. Gold on a selected Wall frames a solid. The corner above the lower Wall is closed. No `DoubleSide` is involved |
+| J16 | **Solid Walls.** On a single Wall, an L with different heights, a T, a door at a free end and a Shape: orbit to both ends and both long sides, unselected and selected, in the Stage. Then choose Experience, Create Experience and Enter Preview, which needs no Guide and opens with free orbit, and repeat for the Walls | Each Wall reads as a closed solid from every side, with no back face or visible hole. A T's branch may abut the through Wall's face: nothing shows there, but it isn't a closed solid alone. Corners sharper than 45° and an arched door at a free end are the report's pre-existing limits, not failures of this row. Gold on a selected Wall frames a solid. The corner above the lower Wall is closed. A door frame stays inside its Opening on 0.1 m and 0.2 m Walls. A Shape isn't cut with the eye outside it; with the eye inside it, seeing through is expected. No `DoubleSide` is involved |
+| J17 | **Cream ground and Walls.** On *empty*, *mixed* and *large*: orbit and zoom to both extremes; pan away from the work; draw a Wall out past the plate. Select a Wall and an object. Open Preview | Inside the bounds the ground is cream with faint green lines, and outside it is forest, with a crisp edge that stays fixed in the world through every pan and zoom. The plate grows under the candidate and the Camera doesn't move. Default Walls are warm cream in the Stage and Preview; authored materials are unchanged. Gold reads on cream and on forest. Zoom has no new limit |
 
 ## 6. Acceptance criteria, reviews and stop conditions
 
