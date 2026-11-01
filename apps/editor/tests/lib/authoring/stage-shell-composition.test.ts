@@ -343,3 +343,77 @@ describe('Stage shell composition', () => {
 		expect(scaling).toEqual([]);
 	});
 });
+
+/**
+ * R217.S22 — the lanes beside the Stage, the Card during a gesture and the Card's fold.
+ * Source inspection is the proof here: the route is mounted only in a browser for the
+ * Camera and layout facts, and the rules below are composition decisions, not behaviour a
+ * jsdom layout could observe. The mounted route suite proves the behaviour they enable.
+ */
+describe('Stage shell lanes and the Card (R217.S22)', () => {
+	it('publishes the measured lanes on the Stage frame and reserves no fixed slot', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		for (const variable of ['--lower-column-height', '--zoom-lane-height', '--sheet-lane-right', '--sheet-lane-left']) {
+			expect(route).toContain(variable);
+		}
+		// The fixed `.reserved-height` slot is gone. The Sheet's lane and the zoom cluster are
+		// measured by the route and read by the Card through those variables.
+		expect(route).not.toContain('reserved-height');
+		expect(route).toContain('bind:laneRef={sheetLaneEl}');
+		expect(route).toContain('bind:this={zoomSlotEl}');
+		const card = codeOf('apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte');
+		expect(card).toContain('var(--sheet-lane-right, 0px)');
+		expect(card).toContain('var(--zoom-lane-height, 0px)');
+		expect(card).toContain('var(--lower-column-height, 0px)');
+	});
+
+	it('never submits a Camera intent, fit or Plan change from a lane measurement', () => {
+		// A lane observer changes placement only. Its effect bodies name no intent, no
+		// framing, no Plan parameter and no Camera: layout never moves the Camera.
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const start = route.indexOf('const element = sheetLaneEl;');
+		const end = route.indexOf('const sheetLaneRight = $derived');
+		expect(start).toBeGreaterThan(0);
+		expect(end).toBeGreaterThan(start);
+		const lanes = route.slice(start, end);
+		expect(lanes.match(/new ResizeObserver/g) ?? []).toHaveLength(2);
+		expect(lanes).not.toMatch(/submit\(|requestViewingIntent|acquireInspection|\bfit\(|bringIntoView|setPlanParameters|camera\./);
+	});
+
+	it('fades the Card and takes no pointer events while an authored gesture is live, never for navigation', () => {
+		const card = codeOf('apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte');
+		expect(card).toMatch(/\.card\.gesturing \{[^}]*pointer-events: none;/);
+		expect(card).toMatch(/\.card\.gesturing \{[^}]*opacity: 0\.2;/);
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		// The flag is the live lease the session holds, and a navigation press is excluded.
+		expect(route).toContain('const gesturing = lease !== null && lease.navigation !== true;');
+		expect(route).toContain('gesturing={cardGesturing}');
+	});
+
+	it('folds the Card once when a task opens and never re-derives the fold from the live task', () => {
+		// A commit that closes the task must not expand a folded Card (D36). The fold is set
+		// on the task's opening edge, and the derived fold reads only the user's choice.
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).toContain('const cardCollapsed = $derived(cardExpanded === null ? narrowShell : !cardExpanded);');
+		expect(route).not.toMatch(/task !== null && \(rect\?\.width/);
+		expect(route).toContain('let taskWasOpen = false;');
+		expect(route).toContain('if (open && !taskWasOpen && (narrowShell || (rect?.width ?? 0) < 1100)) cardExpanded = false;');
+		expect(route).not.toMatch(/if \(narrowShell\) cardExpanded = false;/);
+	});
+
+	it('states no plain "Nothing selectable there." for an ordinary empty click, but keeps the excluded-subjects reason', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).not.toContain("'Nothing selectable there.'");
+		expect(route).toContain('Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.');
+	});
+
+	it('holds the one pin hint on the Stage host, so each Stage session shows its own first-pin hint', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).toContain('let pinHintSeen = $state(false);');
+		expect(route).toContain('pinHintSeen={pinHintSeen}');
+		expect(route).toContain('onPinHintSeen={() => (pinHintSeen = true)}');
+		const sheet = codeOf(HEIGHT_SHEET);
+		expect(sheet).not.toMatch(/let heightHintSeen/);
+		expect(sheet).toContain('export const PIN_HINT_MS');
+	});
+});

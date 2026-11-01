@@ -1149,11 +1149,12 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'fit' });
 	});
 
-	it('keeps the zoom cluster clear of a right-side Sheet', () => {
-		// Geometry is browser calibration; the route owns the clearance rule. A
-		// regression here let the lifted cluster overlap the Sheet by 10 px.
+	it('keeps the zoom cluster clear of a right-side Sheet by the measured Sheet lane', () => {
+		// Geometry is browser calibration; the route owns the clearance rule. R217.S22
+		// measures the Sheet's lane and publishes it, so the cluster clears whatever width
+		// the Sheet has (a fixed 5.5 rem let a coarse Sheet's lane overlap it).
 		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
-		expect(route).toMatch(/\.stage-zoom-slot\.sheet-right\s*\{[^}]*right:\s*calc\(5\.5rem \+ 1rem\)/s);
+		expect(route).toMatch(/\.stage-zoom-slot\.sheet-right\s*\{[^}]*right:\s*calc\(var\(--sheet-lane-right, 0px\) \+ 1\.5rem\)/s);
 		expect(target.querySelector('.stage-zoom-slot')?.classList.contains('sheet-right')).toBe(true);
 	});
 
@@ -1708,5 +1709,61 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		expect(chip?.textContent).toBe(buildStarterEnclosureLayout().floor.name);
 		expect(chip?.textContent).not.toContain('Wall');
 		expect(chip?.textContent).not.toContain(wallId);
+	});
+});
+
+describe('R217.S22 — Card on the mounted route', () => {
+	const card = () => target.querySelector<HTMLElement>('[aria-label="Selected subject"]');
+	/** The Card's one Collapse/Expand control, the first control of its header. */
+	const foldButton = () => card()!.querySelector<HTMLButtonElement>('.head-actions button')!;
+	/** Invoke a contributed task from Find by its visible row label. */
+	async function openFindTask(label: string): Promise<void> {
+		const row = [...target.querySelectorAll<HTMLButtonElement>('[data-head-find] .find-results button')].find(
+			(item) => item.textContent?.includes(label)
+		);
+		if (row === undefined) throw new Error(`Missing contributed row ${label}`);
+		row.click();
+		await settled();
+	}
+
+	it('fades the Card while an authored gesture holds the Stage, and never for a navigation press', async () => {
+		const stage = facade();
+		const evaluationId = stage.evaluationId() ?? '';
+		const navigation = stage.acquireGesture({
+			owner: 'test-navigation',
+			evaluationId,
+			policy: 'continue-after-revalidation',
+			navigation: true
+		});
+		expect(navigation.kind).toBe('granted');
+		await frame();
+		expect(card()!.classList.contains('gesturing')).toBe(false);
+		if (navigation.kind === 'granted') navigation.lease.release();
+		await frame();
+
+		const authored = stage.acquireGesture({
+			owner: 'test-authored',
+			evaluationId,
+			policy: 'continue-after-revalidation'
+		});
+		expect(authored.kind).toBe('granted');
+		await frame();
+		expect(card()!.classList.contains('gesturing')).toBe(true);
+		expect(card()!.getAttribute('data-card-gesturing')).toBe('true');
+		if (authored.kind === 'granted') authored.lease.release();
+		await frame();
+		expect(card()!.classList.contains('gesturing')).toBe(false);
+	});
+
+	it('keeps a folded Card folded when the task that folded it closes underneath, as a commit does', async () => {
+		// The stage is narrower than 1100 px here, so a task that opens folds the Card.
+		await openFindTask('Place plinth');
+		await frame();
+		expect(foldButton().textContent).toBe('Expand');
+		facade().closeTask();
+		await settled();
+		expect(facade().session.task()).toBeNull();
+		// Before R217.S22 the fold was re-derived from the live task, so this expanded.
+		expect(foldButton().textContent).toBe('Expand');
 	});
 });

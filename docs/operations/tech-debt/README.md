@@ -37,6 +37,26 @@ separately approved the TD-13 Index correction. The exact scope and provenance a
 
 ## Fixed
 
+## TD-15 — Height Sheet hint repetition is shared across Stage sessions
+
+Status        fixed (7f4865c5)
+Found         2026-10-30, independent S06 review
+Owner         T1 / R217.S06 follow-up
+Symptom       After the one-time found-tick hint has appeared in one Stage session, a later distinct
+              Stage session may not show the hint even when its own first found tick appears.
+Reproduce     In one module lifetime, mount Stage A and trigger the found-tick hint; unmount it,
+              then mount a fresh Stage B with a found tick. The module-scoped flag suppresses B's hint.
+Root cause    The hint-once flag is module-scoped rather than owned by the Stage session lifecycle.
+Why green     Existing acceptance checks cover the hint within one Stage and do not create a second
+              Stage session in the same module lifetime.
+Fix options   Scope the flag to a Stage session/host, or explicitly define the hint as application-wide.
+              Do not change the product's hint cadence without the owning T1 decision.
+Then add      A mounted two-session regression that proves the selected cadence and teardown behavior.
+Evidence      R217.S06 `evidence/independent-final-review.md` (P3 residual). Fixed by R217.S22 at
+              `7f4865c5`: the flag is owned by the Stage host (`pinHintSeen`), and the hint shows on the first
+              pin of each Stage session and clears itself. Two-session test: `stage-height-sheet.test.ts`.
+
+
 ## TD-13 — Index selection passes a reactive Plan reference to immutable selection
 
 Status        fixed (`b1ffa4e3`, PR #168 takeover; owner-approved narrow correction)
@@ -229,6 +249,23 @@ Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
 
 ## Open
 
+## TD-17 — Focus after Cancel on a destructive Card confirmation lands on the page body, not Delete
+Status        open
+Found         2026-11-01, R217.S22 keyboard pass in the browser (recorded as a residual; the confirmation is S21's code)
+Owner         T1 Stage host and shell (the Card's destructive confirmation in `EditorCard.svelte`, R217.S21)
+Symptom       Delete Wall or Delete Object opens its confirmation. Cancel clears it, and keyboard focus falls to the
+              page body instead of the Delete control that opened it, so the next Tab starts from the top of the page.
+Reproduce     At 1440×900, select a Wall. From the Card's header, Tab to Delete Wall and press Enter; Tab to Cancel and
+              press Enter. Read `document.activeElement`: it is the page body. The keyboard operation is in the S22
+              record's keyboard walk (`keyboard-operate-wall-1440x900.json`).
+Root cause    Not traced at close-out. The Cancel path clears the confirmation without returning focus to the control
+              that opened it.
+Why green     Not checked at close-out.
+Fix options   Return focus to the control that opened the confirmation (Delete Wall or Delete Object) when Cancel clears
+              it. Do NOT move focus to the page body or to the Card's first control: either forces a keyboard user to
+              walk the Card again.
+Then add      A keyboard-level test for Delete, then Cancel: the Delete control is focused and the subject is unchanged.
+
 ## TD-16 — perf browser flows still locate the removed ☰ menu and the Stage's Open source JSON
 
 Status        open
@@ -252,24 +289,6 @@ Fix options   1) Point the locators at the Head's project-name menu, at Find, an
               resolve; do NOT take this, because it restores the second menu O5 removed.
 Then add      Each affected flow passes on the Cloud stack with the new locators, and a locator for a removed control
               fails the lane instead of skipping.
-
-## TD-15 — Height Sheet hint repetition is shared across Stage sessions
-
-Status        open
-Found         2026-10-30, independent S06 review
-Owner         T1 / R217.S06 follow-up
-Symptom       After the one-time found-tick hint has appeared in one Stage session, a later distinct
-              Stage session may not show the hint even when its own first found tick appears.
-Reproduce     In one module lifetime, mount Stage A and trigger the found-tick hint; unmount it,
-              then mount a fresh Stage B with a found tick. The module-scoped flag suppresses B's hint.
-Root cause    The hint-once flag is module-scoped rather than owned by the Stage session lifecycle.
-Why green     Existing acceptance checks cover the hint within one Stage and do not create a second
-              Stage session in the same module lifetime.
-Fix options   Scope the flag to a Stage session/host, or explicitly define the hint as application-wide.
-              Do not change the product's hint cadence without the owning T1 decision.
-Then add      A mounted two-session regression that proves the selected cadence and teardown behavior.
-Evidence      R217.S06 `evidence/independent-final-review.md` (P3 residual).
-
 
 ## TD-14 — envelope metadata moves outside a planner's content-derived scope check
 

@@ -1,0 +1,287 @@
+[
+  {
+    "expanded": "true",
+    "inCard": true,
+    "label": "Collapse",
+    "phase": "scene-walk",
+    "rect": [
+      1235,
+      73,
+      67,
+      32
+    ],
+    "stop": 0,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Close selection card",
+    "phase": "scene-walk",
+    "rect": [
+      1305,
+      73,
+      32,
+      32
+    ],
+    "stop": 1,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Form X (m)",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      169,
+      96,
+      32
+    ],
+    "stop": 2,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Form Z (m)",
+    "phase": "scene-walk",
+    "rect": [
+      1181,
+      169,
+      96,
+      32
+    ],
+    "stop": 3,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Move",
+    "phase": "scene-walk",
+    "rect": [
+      1283,
+      169,
+      54,
+      32
+    ],
+    "stop": 4,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Place on floor",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      207,
+      104,
+      32
+    ],
+    "stop": 5,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Form yaw (rad)",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      287,
+      96,
+      32
+    ],
+    "stop": 6,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Turn",
+    "phase": "scene-walk",
+    "rect": [
+      1181,
+      287,
+      48,
+      32
+    ],
+    "stop": 7,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Form width (m)",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      366,
+      96,
+      32
+    ],
+    "stop": 8,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Form height (m)",
+    "phase": "scene-walk",
+    "rect": [
+      1181,
+      366,
+      96,
+      32
+    ],
+    "stop": 9,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Form depth (m)",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      426,
+      96,
+      32
+    ],
+    "stop": 10,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Size",
+    "phase": "scene-walk",
+    "rect": [
+      1181,
+      426,
+      47,
+      32
+    ],
+    "stop": 11,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Duplicate",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      466,
+      259,
+      32
+    ],
+    "stop": 12,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Save to My Objects",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      493,
+      259,
+      32
+    ],
+    "stop": 13,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "scene-form-delete",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      354,
+      92,
+      32
+    ],
+    "stop": 14,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Bring into view",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      445,
+      110,
+      32
+    ],
+    "stop": 15,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "More",
+    "phase": "scene-walk",
+    "rect": [
+      1195,
+      445,
+      50,
+      34
+    ],
+    "stop": 16,
+    "tag": "summary",
+    "type": null
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Technical details",
+    "phase": "scene-walk",
+    "rect": [
+      1079,
+      497,
+      259,
+      17
+    ],
+    "stop": 17,
+    "tag": "summary",
+    "type": null
+  },
+  {
+    "expanded": null,
+    "inCard": false,
+    "label": "Select",
+    "phase": "scene-walk",
+    "rect": [
+      743,
+      846,
+      36,
+      36
+    ],
+    "stop": 18,
+    "tag": "button",
+    "type": "button"
+  }
+]

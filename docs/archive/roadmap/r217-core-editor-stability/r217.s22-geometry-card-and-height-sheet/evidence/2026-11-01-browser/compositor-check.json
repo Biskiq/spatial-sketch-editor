@@ -1,0 +1,87 @@
+{
+  "conclusion": "Headless compositor artifact. The rectangle is the .stage background (#152c26) showing through a WebGL canvas that is transparent under the Card. It appears only with a headless capture while the Card is an overflow:auto scroll container, and it is absent in the headed capture of the same state. The product paints no element there.",
+  "elementAtPoint": "document.elementsFromPoint(1134, 850) lists the WebGL canvas first; no DOM element with a background is above it at that point (compositor-check/probe-under-card.cjs).",
+  "finding": "A solid forest rectangle under the expanded Card at 1440x900 (x ~994-1274, y ~790-880) in the headless Playwright captures.",
+  "headlessVsHeaded": {
+    "headed-capture-sheet-3d-pinned-1440x900": {
+      "under-card": "#e9ebe6",
+      "under-card-2": "#e9ebe6",
+      "under-card-3": "#e9ebe6"
+    },
+    "headless-capture-sheet-3d-pinned-1440x900": {
+      "under-card": "#152c26",
+      "under-card-2": "#152c26",
+      "under-card-3": "#152c26"
+    }
+  },
+  "screenshotsOfVariants": "compositor-check/probe-*.png (headless); compositor-check/mode-headed.png (headed).",
+  "scripts": "compositor-check/*.cjs",
+  "variantSentence": "Removing the Card (display none), fading it (opacity 0), removing its max-height (none), or switching its overflow to hidden or visible removes the rectangle; hiding the canvas leaves the stage colour; a red .stage background turns the rectangle red. Removing the box-shadow or the opacity transition does not.",
+  "variants (headless, same state, one change each)": {
+    "base": {
+      "under-card": "#152c26",
+      "under-card-2": "#152c26",
+      "under-card-3": "#152c26"
+    },
+    "canvas-bg-green": {
+      "under-card": "#000000",
+      "under-card-2": "#000000",
+      "under-card-3": "#000000"
+    },
+    "canvas-hidden": {
+      "under-card": "#152c26",
+      "under-card-2": "#152c26",
+      "under-card-3": "#152c26"
+    },
+    "card-display-none": {
+      "under-card": "#e9ebe6",
+      "under-card-2": "#e9ebe6",
+      "under-card-3": "#e9ebe6"
+    },
+    "max-height-none": {
+      "under-card": "#e9ebe6",
+      "under-card-2": "#e9ebe6",
+      "under-card-3": "#e9ebe6"
+    },
+    "no-box-shadow": {
+      "under-card": "#152c26",
+      "under-card-2": "#152c26",
+      "under-card-3": "#152c26"
+    },
+    "no-transition": {
+      "under-card": "#152c26",
+      "under-card-2": "#152c26",
+      "under-card-3": "#152c26"
+    },
+    "no-transition-no-shadow": {
+      "under-card": "#152c26",
+      "under-card-2": "#152c26",
+      "under-card-3": "#152c26"
+    },
+    "opacity-zero": {
+      "under-card": "#e9ebe6",
+      "under-card-2": "#e9ebe6",
+      "under-card-3": "#e9ebe6"
+    },
+    "overflow-hidden": {
+      "under-card": "#e9ebe6",
+      "under-card-2": "#e9ebe6",
+      "under-card-3": "#e9ebe6"
+    },
+    "overflow-visible": {
+      "under-card": "#e9ebe6",
+      "under-card-2": "#e9ebe6",
+      "under-card-3": "#e9ebe6"
+    },
+    "stage-bg-red": {
+      "under-card": "#ff0000",
+      "under-card-2": "#ff0000",
+      "under-card-3": "#ff0000"
+    },
+    "zoom-hidden": {
+      "under-card": "#dce0da",
+      "under-card-2": "#e8eae5",
+      "under-card-3": "#e1e4df"
+    }
+  }
+}

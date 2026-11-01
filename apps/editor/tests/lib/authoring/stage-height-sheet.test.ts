@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * R217.S06 — the Height Sheet's one height fact.
  *
@@ -7,11 +8,16 @@
  * the replacement reset; the mounted control and Plan-cut integration are
  * proven by the route and facade suites in C2/C3.
  */
-import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mount, tick, unmount } from 'svelte';
+import StageHeightSheet, { PIN_HINT_MS } from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
+import HeightSheetProbe from './fixtures/HeightSheetProbe.svelte';
 import {
 	HEIGHT_TICK_MERGE_TOLERANCE_METERS,
 	createStageHeightSheet,
 	mergeStageHeightTicks,
+	type StageHeightCause,
 	type StageHeightTick
 } from '$lib/authoring/stage/stage-height-sheet';
 import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from '$lib/authoring/stage/plan-parameters';
@@ -179,3 +185,241 @@ describe('R217.S06 — owner-declared height ticks', () => {
 		expect(merged).toEqual([{ kind: 'datum', heightMeters: 0, label: 'Floor' }]);
 	});
 });
+
+/**
+ * R217.S22 — the Height Sheet as a control on the Stage: a thin line, the value on focus,
+ * drag and touch, the keyboard and pins unchanged, and the one pin hint per Stage session.
+ */
+describe('R217.S22 — the Height Sheet control', () => {
+	let cleanup: (() => void) | undefined;
+	afterEach(() => {
+		cleanup?.();
+		cleanup = undefined;
+		document.body.replaceChildren();
+	});
+
+	const ticksOf = (): StageHeightTick[] => [
+		{ kind: 'datum', heightMeters: 0, label: 'Floor' },
+		{ kind: 'found', heightMeters: 0.75, label: 'Table' }
+	];
+
+	function mountSheet(props: { heightMeters?: number; pins?: readonly number[] } = {}) {
+		const target = document.createElement('div');
+		document.body.append(target);
+		const calls = { heights: [] as Array<[number, StageHeightCause]>, added: 0, removed: [] as number[] };
+		const component = mount(HeightSheetProbe, {
+			target,
+			props: {
+				heightMeters: props.heightMeters ?? 1.2,
+				pins: props.pins ?? [],
+				ticks: ticksOf(),
+				onSetHeight: (height: number, cause: StageHeightCause) => calls.heights.push([height, cause]),
+				onAddPin: () => {
+					calls.added += 1;
+				},
+				onRemovePin: (height: number) => calls.removed.push(height)
+			}
+		});
+		cleanup = () => void unmount(component);
+		return { target, calls };
+	}
+
+	const sheetOf = (target: HTMLElement) => target.querySelector<HTMLElement>('[data-stage-height-sheet]')!;
+	const readoutOf = (target: HTMLElement) => target.querySelector<HTMLElement>('.readout')!;
+	const hintOf = () => document.querySelector<HTMLElement>('[data-pin-hint]');
+	const addButtonOf = (target: HTMLElement) =>
+		target.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!;
+
+	it('draws a line with a knob and ticks, with no boxed title and no permanent value', () => {
+		const { target } = mountSheet();
+		expect(target.querySelector('.title')).toBeNull();
+		expect(target.querySelector('[role="slider"]')).not.toBeNull();
+		expect(target.querySelector('.knob')).not.toBeNull();
+		expect(target.querySelectorAll('.tick')).toHaveLength(2);
+		// The value is held back until the control is focused, dragged or touched.
+		expect(readoutOf(target).classList.contains('shown')).toBe(false);
+	});
+
+	it('states the value on focus and drops it when focus leaves the Sheet', async () => {
+		const { target } = mountSheet();
+		sheetOf(target).dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+		await tick();
+		expect(readoutOf(target).classList.contains('shown')).toBe(true);
+		sheetOf(target).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+		await tick();
+		expect(readoutOf(target).classList.contains('shown')).toBe(false);
+	});
+
+	it('steps the height from the keyboard and jumps owner ticks, as before', async () => {
+		const { target, calls } = mountSheet({ heightMeters: 1.2 });
+		const slider = target.querySelector<HTMLElement>('[role="slider"]')!;
+		slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await tick();
+		expect(calls.heights.at(-1)?.[1]).toBe('key');
+		expect(calls.heights.at(-1)?.[0]).toBeCloseTo(1.3, 6);
+		slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }));
+		await tick();
+		expect(calls.heights.at(-1)).toEqual([0.75, 'tick']);
+	});
+
+	it('pins and removes through the knob and the pin marks, as before', async () => {
+		const { target, calls } = mountSheet({ pins: [0.4] });
+		addButtonOf(target).click();
+		await tick();
+		expect(calls.added).toBe(1);
+		target.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+		await tick();
+		expect(calls.removed).toEqual([0.4]);
+	});
+
+	it('shows the pin hint on the first pin of a Stage session and clears it by itself', async () => {
+		vi.useFakeTimers();
+		try {
+			const { target } = mountSheet();
+			expect(hintOf()).toBeNull();
+			addButtonOf(target).click();
+			await tick();
+			expect(hintOf()?.getAttribute('role')).toBe('note');
+			// It needs no dismissal: time alone clears it.
+			vi.advanceTimersByTime(PIN_HINT_MS);
+			await tick();
+			expect(hintOf()).toBeNull();
+			// Once per session: a second pin shows nothing.
+			addButtonOf(target).click();
+			await tick();
+			expect(hintOf()).toBeNull();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('shows the hint again in a fresh Stage session, because the flag belongs to the session (TD-15)', async () => {
+		const first = mountSheet();
+		addButtonOf(first.target).click();
+		await tick();
+		expect(hintOf()).not.toBeNull();
+		cleanup?.();
+		cleanup = undefined;
+		document.body.replaceChildren();
+		expect(hintOf()).toBeNull();
+
+		// A new Stage session holds its own flag: its first pin shows its own hint.
+		const second = mountSheet();
+		addButtonOf(second.target).click();
+		await tick();
+		expect(hintOf()).not.toBeNull();
+	});
+
+	it('keeps the coarse-pointer knob and track at 44 × 44 CSS px and the value to focus, drag and touch', () => {
+		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
+		const coarse = source.slice(source.indexOf('@media (pointer: coarse)'));
+		expect(coarse).toMatch(/\.knob \{\s*width: 44px;\s*height: 44px;/);
+		expect(coarse).toMatch(/\.track \{\s*width: 44px;/);
+		expect(source).toContain('touching = event.pointerType');
+		expect(source).toMatch(/const valueShown = \$derived\(focused \|\| dragging \|\| touching\)/);
+		// The old module-scoped flag and the dismiss button are gone.
+		expect(source).not.toContain('heightHintSeen');
+		expect(source).not.toContain('Got it');
+	});
+});
+
+/**
+ * R217.S23 — the Sheet's ink on the light ground. The 3D ground is pale on the plate and
+ * dark on the mat margin, Paper is pale and Shaded is dark, so the Sheet carries its own
+ * pale plate and forest ink. Its colours are shell-role tokens, and the ink does not depend
+ * on the 2D-only flag.
+ */
+describe('R217.S23 — the Height Sheet ink on the light ground', () => {
+	const SHEET_SOURCE = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
+	const ROLES = readFileSync('src/lib/authoring/stage/shell/shell-roles.css', 'utf8');
+	const token = (name: string): string => {
+		const match = ROLES.match(new RegExp(`--shell-${name}:\\s*(#[0-9a-fA-F]{6});`));
+		if (match === null) throw new Error(`no shell token --shell-${name}`);
+		return match[1]!;
+	};
+	/** WCAG 2.x relative luminance of a six-digit hex colour. */
+	const luminance = (hex: string): number => {
+		const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+		const [r, g, b] = channels.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+		return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+	};
+	const contrast = (a: string, b: string): number => {
+		const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+		return (hi! + 0.05) / (lo! + 0.05);
+	};
+
+	it('takes every colour from a shell-role token, so the ink is the same on any ground', () => {
+		const style = SHEET_SOURCE.slice(SHEET_SOURCE.indexOf('<style>'));
+		// A declaration's value with its `var(...)` calls removed: what is left must hold no
+		// literal colour. The fallback inside a var() reuses the shell-role value of the token.
+		const declarations = [...style.matchAll(/(?:^|[\s;{])(color|background|border(?:-color)?|outline|box-shadow)\s*:\s*([^;}]+)/gm)];
+		expect(declarations.length).toBeGreaterThan(10);
+		for (const [, property, value] of declarations) {
+			const bare = value!.replace(/var\([^()]*(?:\([^()]*\)[^()]*)*\)/g, '');
+			expect(bare, `${property}: ${value}`).not.toMatch(/#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(/);
+		}
+	});
+
+	it('does not depend on the 2D-only flag: the Sheet has no quiet variant to switch', () => {
+		expect(SHEET_SOURCE).not.toMatch(/\bquiet\b/);
+		expect(SHEET_SOURCE).toContain('data-ink="forest-on-paper"');
+	});
+
+	it('meets the contrast thresholds on the shell-role pairs the Sheet stands on', () => {
+		const forest = token('forest');
+		const forestRaised = token('forest-raised');
+		const paper = token('paper');
+		const gold = token('gold');
+		const goldInk = token('gold-ink');
+		// Text and value labels: 4.5:1. The rail, ticks, knob and pin ring: 3:1.
+		expect(contrast(forest, paper)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(forestRaised, paper)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(goldInk, paper)).toBeGreaterThanOrEqual(3);
+		// The pin glyph on its gold face, and the add glyph and hint text on their faces.
+		expect(contrast(forest, gold)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(paper, forestRaised)).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(paper, forest)).toBeGreaterThanOrEqual(4.5);
+	});
+
+	it('shows the tick names with the value, in forest on the plate, and leaves out a name that would stack', async () => {
+		const ticks: StageHeightTick[] = [
+			{ kind: 'datum', heightMeters: 0, label: 'Floor' },
+			{ kind: 'found', heightMeters: 0.75, label: 'Table' },
+			{ kind: 'found', heightMeters: 0.755, label: 'Stacked' }
+		];
+		const target = document.createElement('div');
+		document.body.append(target);
+		const component = mount(HeightSheetProbe, {
+			target,
+			props: {
+				heightMeters: 1.2,
+				ticks,
+				onSetHeight: () => {},
+				onAddPin: () => {},
+				onRemovePin: () => {}
+			}
+		});
+		try {
+			const labels = () => [...target.querySelectorAll('.tick-label')].map((node) => node.textContent?.trim());
+			expect(labels()).toEqual([]);
+			sheetOfProbe(target).dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+			await tick();
+			expect(labels()).toEqual(['Floor', 'Table']);
+		} finally {
+			void unmount(component);
+			document.body.replaceChildren();
+		}
+	});
+
+	it('takes the 2D Paper and the 3D ground alike: the route never passes a quiet flag to the Sheet', () => {
+		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
+		const start = route.indexOf('<StageHeightSheet');
+		const end = route.indexOf('/>', start);
+		expect(start).toBeGreaterThan(0);
+		expect(route.slice(start, end)).not.toMatch(/quiet/);
+	});
+});
+
+function sheetOfProbe(target: HTMLElement): HTMLElement {
+	return target.querySelector<HTMLElement>('[data-stage-height-sheet]')!;
+}

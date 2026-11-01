@@ -40,7 +40,8 @@
 		onClose,
 		onFocusTask,
 		onOpenTask,
-		onBringIntoView
+		onBringIntoView,
+		gesturing = false
 	}: {
 		identity: {
 			sourceId: string;
@@ -81,6 +82,12 @@
 		onFocusTask: () => void;
 		onOpenTask: () => void;
 		onBringIntoView: () => void;
+		/**
+		 * R217.S22 (D36): a live authored gesture on the Stage. The Card fades and takes no
+		 * pointer events until it ends, so the subject being edited stays visible. Only the
+		 * lease changes this; the Card's position, fold and facts do not.
+		 */
+		gesturing?: boolean;
 	} = $props();
 
 	/** The facts the Card shows: never one the header or the writer already carries. */
@@ -195,7 +202,7 @@
 </script>
 
 {#if identity}
-	<aside class="card" aria-label="Selected subject" data-source-id={identity.sourceId}>
+	<aside class="card" class:gesturing aria-label="Selected subject" data-source-id={identity.sourceId} data-card-gesturing={gesturing ? 'true' : 'false'}>
 		<header class="card-head">
 			<div class="identity">
 				<div class="title-row">
@@ -339,14 +346,21 @@
 	 * role's width, with forest ink. Destructive and refusal words keep their existing
 	 * values: no shell role names them yet.
 	 */
+	/*
+	 * R217.S22: the lanes are measured by the route and published on the Stage frame. The
+	 * Card clears the Height Sheet lane (measured width plus 1.5 rem) and sits above the zoom
+	 * cluster, which is itself above the lower column. It never overlaps those lanes, and a
+	 * layout change never moves the Camera.
+	 */
 	.card {
 		position: absolute;
-		inset-inline-end: 4rem;
-		bottom: calc(1rem + var(--lower-column-height, 0px) + 0.4rem);
+		inset-inline-end: calc(var(--sheet-lane-right, 0px) + 1.5rem);
+		bottom: calc(var(--lower-column-height, 0px) + var(--zoom-lane-height, 0px) + 1.5rem);
 		z-index: 12;
 		width: min(var(--shell-card-width, 288px), calc(100% - 2rem));
-		max-height: calc(100% - var(--lower-column-height, 0px) - 2rem);
+		max-height: calc(100% - var(--lower-column-height, 0px) - var(--zoom-lane-height, 0px) - 2.5rem);
 		overflow: auto;
+		transition: opacity 140ms ease;
 		box-sizing: border-box;
 		padding: 0.75rem 0.85rem 0.7rem;
 		border: 1px solid var(--shell-paper, #e9ebe6);
@@ -584,16 +598,12 @@
 	}
 
 	/*
-	 * PLATE arbitration at constrained width: the Card is an overlay on the lower
-	 * edge, and the lower column (dock plus any invoked palette) owns the same
-	 * edge. Clearing the column's measured height keeps the two from overlapping
-	 * without reflowing the Stage or moving the Camera.
+	 * A live authored gesture: the Card fades and takes no pointer events, so the subject
+	 * under it can be edited. It returns on release, at the same place it was.
 	 */
-	@media (max-width: 1279px) {
-		.card {
-			bottom: calc(1rem + var(--lower-column-height, 0px) + 0.4rem);
-			max-height: calc(100% - var(--lower-column-height, 0px) - 2rem);
-		}
+	.card.gesturing {
+		opacity: 0.2;
+		pointer-events: none;
 	}
 
 	/*

@@ -1,0 +1,209 @@
+[
+  {
+    "active": "Expand",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Expand",
+    "moreOpen": null,
+    "rect": [
+      1064,
+      712,
+      288,
+      78
+    ],
+    "step": "01-collapse-enter",
+    "techOpen": null,
+    "title": "Wall 1"
+  },
+  {
+    "active": "Collapse",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "02-expand-enter",
+    "techOpen": false,
+    "title": "Wall 1"
+  },
+  {
+    "active": "Name",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "03-name-type-enter",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "height",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "04-height-type-enter",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "height",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "05-height-refused-zero",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "layout-wall-delete",
+    "alert": "This deletes the Wall. It opens the enclosure and retires 1 Room.",
+    "cardPresent": true,
+    "disclosed": [
+      "Confirm Delete Wall",
+      "Cancel"
+    ],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "06-delete-discloses",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "Index \u25be Biskiq Enclosed room \u25be Rename Delete Download source",
+    "alert": "This deletes the Wall. It opens the enclosure and retires 1 Room.",
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "07-delete-cancel",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "Bring into view",
+    "alert": "This deletes the Wall. It opens the enclosure and retires 1 Room.",
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "08-bring-into-view",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "More",
+    "alert": "This deletes the Wall. It opens the enclosure and retires 1 Room.",
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": true,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "09-more-open",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "Focus",
+    "alert": "This deletes the Wall. It opens the enclosure and retires 1 Room.",
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": true,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "10-more-first-action",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "Open task",
+    "alert": "This deletes the Wall. It opens the enclosure and retires 1 Room.",
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": true,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "11-more-second-action",
+    "techOpen": false,
+    "title": "Party wall"
+  },
+  {
+    "active": "Technical details",
+    "alert": "This deletes the Wall. It opens the enclosure and retires 1 Room.",
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": true,
+    "rect": [
+      1064,
+      60,
+      288,
+      730
+    ],
+    "step": "12-technical-open",
+    "techOpen": true,
+    "title": "Party wall"
+  }
+]

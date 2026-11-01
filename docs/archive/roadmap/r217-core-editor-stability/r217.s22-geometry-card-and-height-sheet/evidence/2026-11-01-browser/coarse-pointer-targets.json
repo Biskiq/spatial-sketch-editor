@@ -1,0 +1,1198 @@
+{
+  "1180x820": {
+    "below44": [],
+    "coarse": true,
+    "controls": [
+      {
+        "h": 44,
+        "label": "Index \u25b8",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 62.4
+      },
+      {
+        "h": 44,
+        "label": "Enclosed room",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 121
+      },
+      {
+        "h": 44,
+        "label": "Floor",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 51
+      },
+      {
+        "h": 44,
+        "label": "World",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 58.3
+      },
+      {
+        "h": 44,
+        "label": "Experience",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 88.2
+      },
+      {
+        "h": 46,
+        "label": "Find",
+        "pass": true,
+        "region": "head",
+        "tag": "summary",
+        "w": 65.2
+      },
+      {
+        "h": 44,
+        "label": "Undo",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 53.7
+      },
+      {
+        "h": 44,
+        "label": "Redo",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 52.3
+      },
+      {
+        "h": 44,
+        "label": "Saved",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 58.2
+      },
+      {
+        "h": 44,
+        "label": "Preview",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 68.7
+      },
+      {
+        "h": 44,
+        "label": "2D plan reading (2)",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "3D reading (3)",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Grid: fixed 1 m and 5 m lines, thinned with zoom",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 53.7
+      },
+      {
+        "h": 44,
+        "label": "Snap: fixed 0.5 m increment (hold Alt or Option to",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 58.6
+      },
+      {
+        "h": 44,
+        "label": "Viewing settings",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Zoom in",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Zoom out",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Fit all (F)",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 208,
+        "label": "Height above the floor datum",
+        "pass": true,
+        "region": "sheet",
+        "tag": "div",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Remove the pin at 1.20 metres",
+        "pass": true,
+        "region": "sheet",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Pin the height at 1.20 metres",
+        "pass": true,
+        "region": "sheet",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Expand",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 59.6
+      },
+      {
+        "h": 44,
+        "label": "Close selection card",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Select",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Ink \u00b7 Wall",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Measure",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Eraser",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Objects",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      }
+    ],
+    "horizontalOverflow": false,
+    "knob": {
+      "h": 44,
+      "w": 44
+    },
+    "viewport": [
+      1180,
+      820
+    ]
+  },
+  "1180x820-card-expanded": {
+    "below44": [],
+    "coarse": true,
+    "controls": [
+      {
+        "h": 44,
+        "label": "Index \u25b8",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 62.4
+      },
+      {
+        "h": 44,
+        "label": "Enclosed room",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 121
+      },
+      {
+        "h": 44,
+        "label": "Floor",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 51
+      },
+      {
+        "h": 44,
+        "label": "World",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 58.3
+      },
+      {
+        "h": 44,
+        "label": "Experience",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 88.2
+      },
+      {
+        "h": 46,
+        "label": "Find",
+        "pass": true,
+        "region": "head",
+        "tag": "summary",
+        "w": 65.2
+      },
+      {
+        "h": 44,
+        "label": "Undo",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 53.7
+      },
+      {
+        "h": 44,
+        "label": "Redo",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 52.3
+      },
+      {
+        "h": 44,
+        "label": "Saved",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 58.2
+      },
+      {
+        "h": 44,
+        "label": "Preview",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 68.7
+      },
+      {
+        "h": 44,
+        "label": "2D plan reading (2)",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "3D reading (3)",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Grid: fixed 1 m and 5 m lines, thinned with zoom",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 53.7
+      },
+      {
+        "h": 44,
+        "label": "Snap: fixed 0.5 m increment (hold Alt or Option to",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 58.6
+      },
+      {
+        "h": 44,
+        "label": "Viewing settings",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Zoom in",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Zoom out",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Fit all (F)",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 208,
+        "label": "Height above the floor datum",
+        "pass": true,
+        "region": "sheet",
+        "tag": "div",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Remove the pin at 1.20 metres",
+        "pass": true,
+        "region": "sheet",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Pin the height at 1.20 metres",
+        "pass": true,
+        "region": "sheet",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Collapse",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 67.1
+      },
+      {
+        "h": 44,
+        "label": "Close selection card",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 46,
+        "label": "Name",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 183.3
+      },
+      {
+        "h": 46,
+        "label": "Rename",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 70
+      },
+      {
+        "h": 44,
+        "label": "INPUT",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "INPUT",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 44
+      },
+      {
+        "h": 49.2,
+        "label": "height",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "thickness",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "length",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "angle",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "deltaX",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "deltaZ",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 44,
+        "label": "Start and End X/Z",
+        "pass": true,
+        "region": "card",
+        "tag": "summary",
+        "w": 245.6
+      },
+      {
+        "h": 44,
+        "label": "Delete Wall",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 89.3
+      },
+      {
+        "h": 44,
+        "label": "Bring into view",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 110.4
+      },
+      {
+        "h": 46,
+        "label": "More",
+        "pass": true,
+        "region": "card",
+        "tag": "summary",
+        "w": 65.2
+      },
+      {
+        "h": 44,
+        "label": "Technical details",
+        "pass": true,
+        "region": "card",
+        "tag": "summary",
+        "w": 258.8
+      },
+      {
+        "h": 44,
+        "label": "Select",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Ink \u00b7 Wall",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Measure",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Eraser",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Objects",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      }
+    ],
+    "horizontalOverflow": false,
+    "knob": {
+      "h": 44,
+      "w": 44
+    },
+    "viewport": [
+      1180,
+      820
+    ]
+  },
+  "820x1180": {
+    "below44": [],
+    "coarse": true,
+    "controls": [
+      {
+        "h": 44,
+        "label": "Index \u25b8",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 62.4
+      },
+      {
+        "h": 44,
+        "label": "Enclosed room",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 121
+      },
+      {
+        "h": 44,
+        "label": "Floor",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 51
+      },
+      {
+        "h": 44,
+        "label": "World",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 58.3
+      },
+      {
+        "h": 44,
+        "label": "Experience",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 88.2
+      },
+      {
+        "h": 46,
+        "label": "Find",
+        "pass": true,
+        "region": "head",
+        "tag": "summary",
+        "w": 65.2
+      },
+      {
+        "h": 44,
+        "label": "Undo",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 53.7
+      },
+      {
+        "h": 44,
+        "label": "Redo",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 52.3
+      },
+      {
+        "h": 44,
+        "label": "Saved",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 58.2
+      },
+      {
+        "h": 44,
+        "label": "Preview",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 68.7
+      },
+      {
+        "h": 44,
+        "label": "2D plan reading (2)",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "3D reading (3)",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Grid: fixed 1 m and 5 m lines, thinned with zoom",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 53.7
+      },
+      {
+        "h": 44,
+        "label": "Snap: fixed 0.5 m increment (hold Alt or Option to",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 58.6
+      },
+      {
+        "h": 44,
+        "label": "Viewing settings",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Zoom in",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Zoom out",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Fit all (F)",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 208,
+        "label": "Height above the floor datum",
+        "pass": true,
+        "region": "sheet",
+        "tag": "div",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Remove the pin at 1.20 metres",
+        "pass": true,
+        "region": "sheet",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Pin the height at 1.20 metres",
+        "pass": true,
+        "region": "sheet",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Expand",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 59.6
+      },
+      {
+        "h": 44,
+        "label": "Close selection card",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Select",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Ink \u00b7 Wall",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Measure",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Eraser",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Objects",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      }
+    ],
+    "horizontalOverflow": false,
+    "knob": {
+      "h": 44,
+      "w": 44
+    },
+    "viewport": [
+      820,
+      1180
+    ]
+  },
+  "820x1180-card-expanded": {
+    "below44": [],
+    "coarse": true,
+    "controls": [
+      {
+        "h": 44,
+        "label": "Index \u25b8",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 62.4
+      },
+      {
+        "h": 44,
+        "label": "Enclosed room",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 121
+      },
+      {
+        "h": 44,
+        "label": "Floor",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 51
+      },
+      {
+        "h": 44,
+        "label": "World",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 58.3
+      },
+      {
+        "h": 44,
+        "label": "Experience",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 88.2
+      },
+      {
+        "h": 46,
+        "label": "Find",
+        "pass": true,
+        "region": "head",
+        "tag": "summary",
+        "w": 65.2
+      },
+      {
+        "h": 44,
+        "label": "Undo",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 53.7
+      },
+      {
+        "h": 44,
+        "label": "Redo",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 52.3
+      },
+      {
+        "h": 44,
+        "label": "Saved",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 58.2
+      },
+      {
+        "h": 44,
+        "label": "Preview",
+        "pass": true,
+        "region": "head",
+        "tag": "button",
+        "w": 68.7
+      },
+      {
+        "h": 44,
+        "label": "2D plan reading (2)",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "3D reading (3)",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Grid: fixed 1 m and 5 m lines, thinned with zoom",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 53.7
+      },
+      {
+        "h": 44,
+        "label": "Snap: fixed 0.5 m increment (hold Alt or Option to",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 58.6
+      },
+      {
+        "h": 44,
+        "label": "Viewing settings",
+        "pass": true,
+        "region": "stage-actions",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Zoom in",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Zoom out",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Fit all (F)",
+        "pass": true,
+        "region": "zoom",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 208,
+        "label": "Height above the floor datum",
+        "pass": true,
+        "region": "sheet",
+        "tag": "div",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Remove the pin at 1.20 metres",
+        "pass": true,
+        "region": "sheet",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Pin the height at 1.20 metres",
+        "pass": true,
+        "region": "sheet",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Collapse",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 67.1
+      },
+      {
+        "h": 44,
+        "label": "Close selection card",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 46,
+        "label": "Name",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 183.3
+      },
+      {
+        "h": 46,
+        "label": "Rename",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 70
+      },
+      {
+        "h": 44,
+        "label": "INPUT",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "INPUT",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 44
+      },
+      {
+        "h": 49.2,
+        "label": "height",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "thickness",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "length",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "angle",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "deltaX",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 49.2,
+        "label": "deltaZ",
+        "pass": true,
+        "region": "card",
+        "tag": "input",
+        "w": 96
+      },
+      {
+        "h": 44,
+        "label": "Start and End X/Z",
+        "pass": true,
+        "region": "card",
+        "tag": "summary",
+        "w": 245.6
+      },
+      {
+        "h": 44,
+        "label": "Delete Wall",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 89.3
+      },
+      {
+        "h": 44,
+        "label": "Bring into view",
+        "pass": true,
+        "region": "card",
+        "tag": "button",
+        "w": 110.4
+      },
+      {
+        "h": 46,
+        "label": "More",
+        "pass": true,
+        "region": "card",
+        "tag": "summary",
+        "w": 65.2
+      },
+      {
+        "h": 44,
+        "label": "Technical details",
+        "pass": true,
+        "region": "card",
+        "tag": "summary",
+        "w": 258.8
+      },
+      {
+        "h": 44,
+        "label": "Select",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Ink \u00b7 Wall",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Measure",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Eraser",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      },
+      {
+        "h": 44,
+        "label": "Objects",
+        "pass": true,
+        "region": "dock",
+        "tag": "button",
+        "w": 44
+      }
+    ],
+    "horizontalOverflow": false,
+    "knob": {
+      "h": 44,
+      "w": 44
+    },
+    "viewport": [
+      820,
+      1180
+    ]
+  }
+}

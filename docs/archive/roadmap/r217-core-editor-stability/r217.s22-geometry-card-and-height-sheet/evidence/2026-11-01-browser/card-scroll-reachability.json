@@ -1,0 +1,41 @@
+{
+  "method": "reach.cjs: for each focusable control inside the expanded Card, scrollIntoView(nearest), then the control must lie inside the Card border box and elementFromPoint at its centre must be the control or a descendant",
+  "results": [
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "scrollable": true,
+      "clientHeight": 728,
+      "scrollHeight": 829,
+      "controlsBeforeTechnical": 19,
+      "controlsAfterTechnical": 19,
+      "notInside": [
+        "Focus",
+        "Open task"
+      ],
+      "notReachable": [],
+      "technicalSummaryInsideAtBottom": true,
+      "canonicalIdInsideAtBottom": true
+    },
+    {
+      "viewport": [
+        1180,
+        820
+      ],
+      "scrollable": true,
+      "clientHeight": 648,
+      "scrollHeight": 829,
+      "controlsBeforeTechnical": 19,
+      "controlsAfterTechnical": 19,
+      "notInside": [
+        "Focus",
+        "Open task"
+      ],
+      "notReachable": [],
+      "technicalSummaryInsideAtBottom": true,
+      "canonicalIdInsideAtBottom": true
+    }
+  ]
+}

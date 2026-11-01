@@ -1,0 +1,991 @@
+{
+  "method": "WCAG 2.x relative luminance; backing = modal rendered colour of the element backing in the PNG (plate for line inks, chip or face for text), ink = computed style colour",
+  "results": {
+    "sheet-2d-paper-dragging-1180x820": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#e9ebe6",
+      "groundPlateProbe": "#e9ebe6",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "2d-paper",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "dragging",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1180,
+        820
+      ]
+    },
+    "sheet-2d-paper-dragging-1440x900": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#e9ebe6",
+      "groundPlateProbe": "#e9ebe6",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "2d-paper",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "dragging",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    "sheet-2d-paper-pinned-1180x820": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "pin-glyph-0",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#11291f",
+          "class": "text",
+          "element": "hint",
+          "ink": "#e9ebe6",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#e9ebe6",
+      "groundPlateProbe": "#e9ebe6",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "2d-paper",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "pinned",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1180,
+        820
+      ]
+    },
+    "sheet-2d-paper-pinned-1440x900": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "pin-glyph-0",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#11291f",
+          "class": "text",
+          "element": "hint",
+          "ink": "#e9ebe6",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#e9ebe6",
+      "groundPlateProbe": "#e9ebe6",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "2d-paper",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "pinned",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    "sheet-3d-dragging-1180x820": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#152c26",
+      "groundPlateProbe": "#d8ceb9",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "3d",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "dragging",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1180,
+        820
+      ]
+    },
+    "sheet-3d-dragging-1440x900": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#152c26",
+      "groundPlateProbe": "#e9ebe6",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "3d",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "dragging",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    "sheet-3d-pinned-1180x820": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "pin-glyph-0",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#11291f",
+          "class": "text",
+          "element": "hint",
+          "ink": "#e9ebe6",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#152c26",
+      "groundPlateProbe": "#d8ceb9",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "3d",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "pinned",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1180,
+        820
+      ]
+    },
+    "sheet-3d-pinned-1440x900": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "pin-glyph-0",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#11291f",
+          "class": "text",
+          "element": "hint",
+          "ink": "#e9ebe6",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#152c26",
+      "groundPlateProbe": "#e9ebe6",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "3d",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "pinned",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    "sheet-3d-pinned-coarse-820x1180": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#d4ad45",
+          "class": "text",
+          "element": "pin-glyph-0",
+          "ink": "#11291f",
+          "ratio": 7.25
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#11291f",
+          "class": "text",
+          "element": "hint",
+          "ink": "#e9ebe6",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#152c26",
+      "groundPlateProbe": "#d8ceb9",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "3d",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "pinned",
+      "textMinRatio": 7.25,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        820,
+        1180
+      ]
+    },
+    "sheet-shaded-2d-dragging-1440x900": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#e9ebe6",
+      "groundPlateProbe": "#e9ebe6",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "shaded-2d",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "dragging",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    "sheet-shaded-2d-pinned-1440x900": {
+      "elements": [
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "rail",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-0:Floor \u00b7 0.000 m",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "tick-1:Shape \u00b7 1.000 m",
+          "ink": "#22503c",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "line",
+          "element": "knob-ring",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#22503c",
+          "class": "text",
+          "element": "add-glyph",
+          "ink": "#e9ebe6",
+          "ratio": 7.67
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "pin-glyph-0",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "readout",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-0:Floor",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#e9ebe6",
+          "class": "text",
+          "element": "label-1:Shape",
+          "ink": "#11291f",
+          "ratio": 12.85
+        },
+        {
+          "backing": "#11291f",
+          "class": "text",
+          "element": "hint",
+          "ink": "#e9ebe6",
+          "ratio": 12.85
+        }
+      ],
+      "groundMatProbe": "#e9ebe6",
+      "groundPlateProbe": "#e9ebe6",
+      "labels": [
+        "Floor",
+        "Shape"
+      ],
+      "lineMinRatio": 7.67,
+      "lineThreshold": 3.0,
+      "mode": "shaded-2d",
+      "pass": true,
+      "plateSampled": "#e9ebe6",
+      "state": "pinned",
+      "textMinRatio": 7.67,
+      "textThreshold": 4.5,
+      "ticks": [
+        "Floor \u00b7 0.000 m",
+        "Shape \u00b7 1.000 m"
+      ],
+      "viewport": [
+        1440,
+        900
+      ]
+    }
+  }
+}

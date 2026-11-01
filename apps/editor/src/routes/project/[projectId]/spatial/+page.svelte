@@ -743,6 +743,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let lowerColumnEl: HTMLDivElement | undefined = $state(undefined);
 	let lowerColumnHeight = $state(0);
 	/**
+	 * R217.S22 — the measured lanes beside the Stage. The Height Sheet's lane box and the
+	 * zoom cluster are measured here, and the Card clears them through CSS variables on
+	 * the Stage frame. A lane measurement only changes placement: it never submits a
+	 * Camera intent and never refits the view.
+	 */
+	let sheetLaneEl = $state<HTMLElement | null>(null);
+	let sheetLaneWidth = $state(0);
+	let zoomSlotEl = $state<HTMLDivElement | undefined>(undefined);
+	let zoomLaneHeight = $state(0);
+	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades (D36). */
+	let cardGesturing = $state(false);
+	/**
+	 * TD-15 — the one pin hint belongs to this Stage session (this host), not to the
+	 * module, so a fresh Stage shows its own first-pin hint.
+	 */
+	let pinHintSeen = $state(false);
+	/**
 	 * Whether the contextual Card is shown. Closing the Card never clears the
 	 * selection: the Index keeps echoing it, and selecting the subject again (or
 	 * another one) brings the Card back, so identity is never lost to a dismissal.
@@ -835,6 +852,39 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		observer.observe(element);
 		return () => observer.disconnect();
 	});
+	$effect(() => {
+		// The Sheet lane: its border-box width, measured wherever the Sheet is mounted.
+		const element = sheetLaneEl;
+		if (element === null) {
+			sheetLaneWidth = 0;
+			return;
+		}
+		if (typeof ResizeObserver === 'undefined') return;
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			sheetLaneWidth = entry?.borderBoxSize?.[0]?.inlineSize ?? entry?.contentRect.width ?? 0;
+		});
+		observer.observe(element);
+		return () => observer.disconnect();
+	});
+	$effect(() => {
+		// The zoom cluster's height, so the Card clears it from above.
+		const element = zoomSlotEl;
+		if (element === undefined) {
+			zoomLaneHeight = 0;
+			return;
+		}
+		if (typeof ResizeObserver === 'undefined') return;
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			zoomLaneHeight = entry?.borderBoxSize?.[0]?.blockSize ?? entry?.contentRect.height ?? 0;
+		});
+		observer.observe(element);
+		return () => observer.disconnect();
+	});
+	/** The lane on each edge: a Sheet on the right (or left) owns that edge; the other is clear. */
+	const sheetLaneRight = $derived(heightSheetSide === 'right' ? sheetLaneWidth : 0);
+	const sheetLaneLeft = $derived(heightSheetSide === 'left' ? sheetLaneWidth : 0);
 
 	let epochCounter = 0;
 	let revisionCounter = 0;
@@ -1883,6 +1933,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// acceptance, so the Head's reported history follows it on the same frame as
 		// the render rather than only on the next accepted change.
 		refreshHistory();
+		// R217.S22 (D36): an authored gesture is a non-navigation lease. The Card fades while
+		// it lives. A navigation press (pan, orbit, zoom) never fades the Card.
+		const lease = session.gesture();
+		const gesturing = lease !== null && lease.navigation !== true;
+		if (gesturing !== cardGesturing) cardGesturing = gesturing;
 		const currentRect = rect ?? measure();
 		const result = stage.camera.evaluate(currentRect, nowSeconds());
 		evaluation = result.kind === 'evaluated' ? result.evaluation : null;
@@ -2489,7 +2544,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (stage.openTask(next)) {
 			task = next;
 			paletteOpen = true;
-			if (narrowShell) cardExpanded = false;
 			// The host's own task: no adapter contributed this instrument.
 			contributedTaskId = null;
 		}
@@ -2547,7 +2601,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		task = opened.task;
 		if (revealInstrument) paletteOpen = true;
-		if (narrowShell) cardExpanded = false;
 		contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
 	}
 
@@ -3060,11 +3113,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (hit.kind === 'none') {
 			// The Plan places no fragment for an excluded source, so a miss cannot say
 			// which subject the creator meant. Exclusion reasons and Reveal live on the
-			// Index, and this notice points there without pretending to localize.
-			notice =
-				planView !== null && planView.membership.some((row) => !row.eligible)
-					? 'Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.'
-					: 'Nothing selectable there.';
+			// Index, and this notice points there without pretending to localize. An
+			// ordinary empty click says nothing (R217.S22, D42).
+			if (planView !== null && planView.membership.some((row) => !row.eligible)) {
+				notice = 'Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.';
+			}
 			return;
 		}
 		notice = 'That click did not land on the Plan.';
@@ -3496,10 +3549,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 *
 	 * PLATE's arbitration: the Card keeps its facts readable *beside* the one lower
 	 * column, so at constrained width it folds instead of covering the task. The
-	 * creator's explicit expansion wins, and the fold is reconsidered once the task
-	 * closes.
+	 * creator's explicit expansion wins. A constrained stage folds the Card once, when a
+	 * task opens (below), and the fold is never re-derived from the live task: a commit
+	 * that closes the task therefore cannot expand a folded Card (R217.S22, D36). Closing
+	 * a task by hand reconsiders the fold (`closeTask` clears the explicit choice).
 	 */
-	const cardCollapsed = $derived(cardExpanded === null ? narrowShell || (task !== null && (rect?.width ?? 0) < 1100) : !cardExpanded);
+	const cardCollapsed = $derived(cardExpanded === null ? narrowShell : !cardExpanded);
+	let taskWasOpen = false;
+	$effect(() => {
+		const open = task !== null;
+		untrack(() => {
+			if (open && !taskWasOpen && (narrowShell || (rect?.width ?? 0) < 1100)) cardExpanded = false;
+			taskWasOpen = open;
+		});
+	});
 
 	/** Every contributed Find/rail entry from the adapters currently mounted. */
 	const findContributions = $derived.by(() => {
@@ -3926,7 +3989,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		/>
 		{/if}
 
-		<div class="stage-frame" style={`--lower-column-height: ${lowerColumnHeight}px`}>
+		<div
+			class="stage-frame"
+			style={`--lower-column-height: ${lowerColumnHeight}px; --zoom-lane-height: ${zoomLaneHeight}px; --sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
+		>
 			{#if preview === null}
 			<!--
 				The Stage surface is a pointer-driven viewport, not a widget: it handles
@@ -4029,6 +4095,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<div
 						class="stage-zoom-slot"
 						class:sheet-right={heightSheetSide === 'right'}
+						bind:this={zoomSlotEl}
 						onclick={(event) => event.stopPropagation()}
 						onpointerdown={(event) => event.stopPropagation()}
 					>
@@ -4040,12 +4107,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<!--
 						PLATE's Height Sheet in S02's right-edge slot. It is world-lens chrome:
 						the control and its plane are hidden in Experience and return with the
-						session height on the way back.
+						session height on the way back. The slot is a transparent wrapper: the
+						Sheet places its own lane and its pin hint on the Stage, so neither is
+						clipped by a box of the slot's own.
 					-->
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
 						class="stage-height-slot"
-						class:left={heightSheetSide === 'left'}
 						onclick={(event) => event.stopPropagation()}
 						onpointerdown={(event) => event.stopPropagation()}
 					>
@@ -4056,6 +4124,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							snapIncrement={heightSnapIncrement}
 							{reducedMotion}
 							side={heightSheetSide}
+							pinHintSeen={pinHintSeen}
+							onPinHintSeen={() => (pinHintSeen = true)}
+							bind:laneRef={sheetLaneEl}
 							onSetHeight={setHeight}
 							onAddPin={addHeightPin}
 							onRemovePin={removeHeightPin}
@@ -4174,7 +4245,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				<p class="stage-note preview-actions-note" role="status">Project rename and delete are unavailable in Preview. Exit Preview to manage this project.</p>
 			{/if}
 
-			<div class="reserved-height" aria-hidden="true" data-shell-height-slot></div>
 			<EditorCard
 				identity={preview === null && cardOpen ? cardIdentity : null}
 				facts={cardFacts}
@@ -4183,6 +4253,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				writer={cardWriter}
 				actions={cardActions}
 				collapsed={cardCollapsed}
+				gesturing={cardGesturing}
 				onToggleCollapsed={() => (cardExpanded = cardCollapsed)}
 				onClose={closeCard}
 				onFocusTask={() => {
@@ -4375,7 +4446,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		pointer-events: auto;
 	}
 	.lower-column[hidden] { display: none; }
-	.reserved-height { position: absolute; top: 4rem; right: 0.75rem; bottom: 5rem; width: 2.75rem; pointer-events: none; }
 	@media (max-width: 1279px) {
 		.editor-body > :global(.plate-index) { position: absolute; z-index: 20; top: 0; bottom: 5rem; left: 0; width: min(var(--shell-index-width, 256px), 80%); box-shadow: 0 0 0 100vmax rgb(0 0 0 / 25%); clip-path: inset(0 -100vmax 0 0); }
 	}
@@ -4399,13 +4469,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		gap: 0.4rem;
 	}
 	/*
-		The Height Sheet owns the right edge; the cluster clears its 5.5 rem body
-		plus the 0.75 rem Stage inset, with a 4 px gap. This also holds when the
-		lower column (dock plus palette) lifts the cluster up beside the Sheet; the
-		measured clearance is 3.6 px at 1440 × 900.
+		The Height Sheet owns the right edge: the cluster clears the measured Sheet lane
+		(R217.S22) plus the 0.75 rem Stage inset and a 0.75 rem gap. The lane width is
+		measured, not fixed, so a coarse Sheet's wider lane still clears the cluster.
 	*/
 	.stage-zoom-slot.sheet-right {
-		right: calc(5.5rem + 1rem);
+		right: calc(var(--sheet-lane-right, 0px) + 1.5rem);
 	}
 	/*
 		R217.S20: the Keys reference Find opens. It sits where the stage's top-right
@@ -4469,16 +4538,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font: inherit;
 		cursor: pointer;
 	}
+	/*
+		R217.S22: the slot is a transparent wrapper (the Sheet places its own lane and
+		hint on the Stage). It keeps the Sheet's pointer isolation without a box.
+	*/
 	.stage-height-slot {
-		position: absolute;
-		top: 50%;
-		right: 0.75rem;
-		transform: translateY(-50%);
-		z-index: 8;
-	}
-	.stage-height-slot.left {
-		right: auto;
-		left: 0.75rem;
+		display: contents;
 	}
 	/*
 		Round 2's one lower working edge: the invited Guide instrument sits above the
