@@ -237,19 +237,35 @@ function sheetAroundWork(work: GridRect): GridRect {
 	};
 }
 
+/** The 3D ground's fixed extent around world zero, which it never shrinks below. */
+export const GROUND_PLATE_DEFAULT_HALF_METERS = 20;
+/** The least ground kept beyond the work on every side. */
+export const GROUND_PLATE_MARGIN_METERS = 10;
+/** The ground grows in steps of this, so it moves rarely rather than with every edit. */
+export const GROUND_PLATE_STEP_METERS = 10;
+
 /**
- * The 3D ground's plate, drawn in Paper's own colour: the same sheet Paper draws around the work, in
- * full rather than intersected with the view, because the shader only compares
- * against it. With no work it is 20 × 20 m around world zero, not around the
- * target as on Paper, so a pan or zoom never moves it. It grows with the work
- * and never enters bounds, Fit or the Camera.
+ * The 3D ground's plate, drawn in Paper's own colour: a fixed default around world
+ * zero, widened only where the work and its margin pass it. It reads the work alone,
+ * so a pan or zoom never moves it, and it never enters bounds, Fit or the Camera.
  */
 export function groundPlateRectFor(input: {
 	readonly contentBounds?: GridRect | null;
 	readonly candidateBounds?: GridRect | null;
 }): GridRect {
+	const half = GROUND_PLATE_DEFAULT_HALF_METERS;
 	const work = gridWorkRect(input.contentBounds ?? null, input.candidateBounds ?? null);
-	return work === null ? { minX: -10, maxX: 10, minZ: -10, maxZ: 10 } : sheetAroundWork(work);
+	if (work === null) return { minX: -half, maxX: half, minZ: -half, maxZ: half };
+	const down = (value: number): number =>
+		Math.floor((value - GROUND_PLATE_MARGIN_METERS) / GROUND_PLATE_STEP_METERS) * GROUND_PLATE_STEP_METERS;
+	const up = (value: number): number =>
+		Math.ceil((value + GROUND_PLATE_MARGIN_METERS) / GROUND_PLATE_STEP_METERS) * GROUND_PLATE_STEP_METERS;
+	return {
+		minX: Math.min(-half, down(work.minX)),
+		maxX: Math.max(half, up(work.maxX)),
+		minZ: Math.min(-half, down(work.minZ)),
+		maxZ: Math.max(half, up(work.maxZ))
+	};
 }
 
 /**

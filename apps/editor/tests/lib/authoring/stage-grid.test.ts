@@ -74,16 +74,32 @@ describe('the mat keeps its depth away from a floor on the datum', () => {
 });
 
 describe('the Paper plate around the work', () => {
-	it('is Paper\'s sheet around the work, and grows with a candidate', () => {
-		const contentBounds = { minX: 0, maxX: 6, minZ: -5, maxZ: 0 };
-		expect(groundPlateRectFor({ contentBounds })).toEqual({ minX: -5, maxX: 15, minZ: -10, maxZ: 5 });
-		expect(
-			groundPlateRectFor({ contentBounds, candidateBounds: { minX: 6, maxX: 40, minZ: 0, maxZ: 1 } })
-		).toEqual({ minX: -5, maxX: 45, minZ: -10, maxZ: 10 });
+	const DEFAULT = { minX: -20, maxX: 20, minZ: -20, maxZ: 20 };
+
+	it('keeps its default size for no work and for any work that fits', () => {
+		expect(groundPlateRectFor({})).toEqual(DEFAULT);
+		for (const contentBounds of [
+			{ minX: 0, maxX: 1, minZ: 0, maxZ: 1 },
+			{ minX: 0, maxX: 6, minZ: -5, maxZ: 0 },
+			{ minX: -10, maxX: 10, minZ: -10, maxZ: 10 }
+		]) {
+			expect(groundPlateRectFor({ contentBounds })).toEqual(DEFAULT);
+		}
 	});
 
-	it('stays world-anchored with no work, whatever the Camera does', () => {
-		expect(groundPlateRectFor({})).toEqual({ minX: -10, maxX: 10, minZ: -10, maxZ: 10 });
+	it('widens only the side the work and its margin pass, in whole steps', () => {
+		expect(groundPlateRectFor({ contentBounds: { minX: 0, maxX: 10.5, minZ: -5, maxZ: 0 } })).toEqual({ ...DEFAULT, maxX: 30 });
+		expect(groundPlateRectFor({ contentBounds: { minX: 0, maxX: 19, minZ: -5, maxZ: 0 } })).toEqual({ ...DEFAULT, maxX: 30 });
+		expect(groundPlateRectFor({ contentBounds: { minX: 0, maxX: 6, minZ: -5, maxZ: 0 }, candidateBounds: { minX: 6, maxX: 40, minZ: 0, maxZ: 1 } })).toEqual({ ...DEFAULT, maxX: 50 });
+	});
+
+	it('always keeps the margin clear around the work', () => {
+		const contentBounds = { minX: -33, maxX: 47, minZ: -61, maxZ: 12 };
+		const plate = groundPlateRectFor({ contentBounds });
+		expect(contentBounds.minX - plate.minX).toBeGreaterThanOrEqual(10);
+		expect(plate.maxX - contentBounds.maxX).toBeGreaterThanOrEqual(10);
+		expect(contentBounds.minZ - plate.minZ).toBeGreaterThanOrEqual(10);
+		expect(plate.maxZ - contentBounds.maxZ).toBeGreaterThanOrEqual(10);
 	});
 
 	it('draws lines only on the plate, leaving plain forest beyond it', () => {
