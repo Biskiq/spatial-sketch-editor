@@ -223,3 +223,17 @@ These are judgments the plan left open. Review may overturn any of them.
 - **Touch and Safari.** Coarse measurements are Chromium touch emulation. Native touch and Safari remain S11's rows.
 - **Performance.** No performance measurement was taken; the 2026-10-28 owner policy keeps those owner-initiated.
 - **Scratch data.** The browser passes used a scratch database (`biskiq_r217_s22`) created on the local Compose Postgres and a scratch API on port 8790. The database and servers are released at the end of this slice (see the final report).
+
+## Independent review
+
+**Reviewer:** the convergence coordinator, independent of the implementer. Date: 2026-11-01.
+
+- **First review, `56877b24`:** accepted the measured lanes, the Card fade with no pointer events during an authored gesture, fold-on-open, the empty-click notice and TD-15. Also accepted three judgment calls: the hint on first pin, which matches the target specification; Index and Card not published as lane variables; and the hint placed on the left.
+  - **P1:** the thin Height Sheet's value, ticks and labels were near-invisible on PR #247's pale ground in 3D. Its ink followed a 2D-only quiet flag.
+- **Fix `fb57a662`:** the Sheet draws its own pale plate with forest ink from shell roles. Measured contrast: text at least 7.25:1, lines at least 7.67:1, across 11 captures. Five tests were added.
+- **Second review, `1d26835a`:** a forest rectangle under the expanded Card in the 1440 captures. The implementer proved it a headless-compositor artifact. `elementsFromPoint` returns only the canvas, and headed Chromium shows the pale ground there. Headed re-captures replace the headless ones (`ba168967`). Accepted.
+- **Accepted residuals:**
+  - At 1440×900 the expanded Card overflows its max-height by 25 px at rest, and 101 px with More open. Every control stays reachable by scrolling.
+  - The plinth-top and 0.75 m ticks from S11 J4 were not reproduced, because Place plinth created no found top in this build. S11 J4 owns that row.
+  - Focus after Cancel on a destructive confirmation in S21's Card goes to tech-debt.
+- **Verdict at `fb57a662`:** the slice meets plan §3 to §5 within the declared `affected-subsystem` tier. It submits no Camera intent on layout change and leaves the PR #247 flip untouched. S21's owed keyboard walk is done here for a Wall and a Scene object. With nothing open, withdrawn or unadjudicated, routine close-out may proceed.
