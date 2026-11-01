@@ -124,6 +124,8 @@ background and every 3D shot has the dark mat, checked by pixel sampling.
 - **Owner-directed UX items** (shape-creation simplification, advanced working-plane controls,
   Pen/wireframe polish) remain outside S18.
 
+P1 merge commit: `dc341786525527bb11ff96639a99b760f0654e99` (PR #242; merge commit method).
+
 ## Recovery and preservation report — 2026-10-31
 
 ```text
@@ -132,7 +134,7 @@ reference promotions:            0   the grammar and component contracts already
 renderable evidence archived:    32 files / 4,312 KiB (31 PNG + 1 machine-facts JSON), byte-identical copies
 evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s18-selection-ink/evidence/CLOSED.md
 transient artifacts removed:     0   no scratch runners or checkpoint were committed
-historical anchors:              plan 050a30d9418a9a910a320388ae2ea4d879f1b34c; acceptance 16349573 (full record); tag closed/r217.s18 -> 16349573
+historical anchors:              plan 050a30d9418a9a910a320388ae2ea4d879f1b34c; acceptance 16349573 (full record); tag closed/r217.s18 -> 16349573 (pushed to origin)
 new live -> archive prose links: 0
 manual-owed verification rows:   4   coarse pointer, native touch, Safari, integrated journeys (S11)
 remaining deferred items:        3   S11 rows; pinch-point fallback (T1); owner-directed UX follow-up
