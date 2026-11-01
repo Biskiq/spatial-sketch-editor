@@ -113,7 +113,13 @@ export type WallMeshBuildResult = {
  * its `clipDistance`, never at the Junction plane, so no Wall-owned body can
  * occupy the same volume as the Junction material.
  */
-type ResolvedEndClip = { start: number; end: number };
+type ResolvedEndClip = {
+	start: number;
+	end: number;
+	/** A free end's Opening reaches open air: there is no material for a jamb to face. */
+	freeStart?: boolean;
+	freeEnd?: boolean;
+};
 
 /**
  * P23.15 — one internal interface resting on this Wall's own offset face. The
@@ -223,7 +229,7 @@ const WINDING_DEGENERATE_AREA = 1e-12;
  * the editor and standalone museum copies.
  */
 export const STANDALONE_WALL_MESH_BUILDER_SIGNATURE =
-	'buildStandaloneWallMesh(v1:whole-wall,floor-elevation,resolved-ends)';
+	'buildStandaloneWallMesh(v2:whole-wall,floor-elevation,resolved-ends,exposed-end-surfaces)';
 
 /**
  * Build one watertight, surface-major `IndexedWallMesh` for a room. Unsafe
@@ -262,7 +268,7 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
  * End geometry resolves in three explicit branches, with no silent fallback:
  *
  * ```text
- * degree 1 / free end      → square terminal cap (`squareEndCorner`)
+ * degree 1 / free end      → square corners, closed by the resolved `terminal-cap` surface
  * connected + resolution   → consume the resolved corner + seam + bands
  * connected, no resolution → blocking issue, no mesh (fail closed)
  * ```
@@ -365,7 +371,9 @@ export function buildStandaloneWallMesh(
 	// resolution reports as interior.
 	const clip: ResolvedEndClip = {
 		start: ends?.start?.clipDistance ?? 0,
-		end: length - (ends?.end?.clipDistance ?? 0)
+		end: length - (ends?.end?.clipDistance ?? 0),
+		freeStart: !ends?.start || ends.start.kind === 'terminal',
+		freeEnd: !ends?.end || ends.end.kind === 'terminal'
 	};
 	const suppressions: ResolvedFaceSuppression[] = [];
 	for (const [join, atEnd] of [
@@ -383,7 +391,7 @@ export function buildStandaloneWallMesh(
 			});
 		}
 	}
-	// Three explicit branches — terminal square cap, resolved corner, or fail
+	// Three explicit branches — terminal square corners, resolved corner, or fail
 	// closed above. No silent no-resolution fallback survives.
 	const cornerStart = cornerFromJoin(ends?.start, squareEndCorner(first.point, first.normal, half));
 	const cornerEnd = cornerFromJoin(ends?.end, squareEndCorner(last.point, last.normal, half));
@@ -420,7 +428,7 @@ export function buildStandaloneWallMesh(
 	// P23.15 — the resolved difference/trim surfaces are **compiled facts**. This
 	// path only triangulates them; it never compares thicknesses, never inspects
 	// a neighbour's bands and never decides whether a step exists.
-	const surfaceFaces = buildStandaloneResolvedSurfaces(roomView, ends);
+	const surfaceFaces = buildStandaloneResolvedSurfaces(roomView, ends, breakpoints);
 	if (surfaceFaces.length > 0) {
 		const ref: WallMeshSectionRef = { roomId: wall.wallId, segmentId: wall.wallId, sectionIndex: -1, kind: 'side' };
 		faces.sections.push({ ref, surfaceKey: classify(ref), faces: surfaceFaces });
@@ -440,7 +448,7 @@ export function buildStandaloneWallMesh(
 	return { mesh, issues: [] };
 }
 
-/** Exact square end cap for a straight canonical Wall (no neighbor corner). */
+/** Exact square end corners for a straight canonical Wall (no neighbor corner). */
 function squareEndCorner(point: LayoutVec2, normal: LayoutVec2, half: number): Corner {
 	const apex = (sign: number): LayoutVec2 => [point[0] + sign * half * normal[0], point[1] + sign * half * normal[1]];
 	return { front: { kind: 'miter', apex: apex(1) }, back: { kind: 'miter', apex: apex(-1) } };
@@ -621,7 +629,11 @@ function buildStandaloneEndBridge(
  * never inspects a neighbour's bands, never decides exposure or ownership and
  * never invents a step. A surface's `normal` is authoritative for winding.
  */
-function buildStandaloneResolvedSurfaces(room: CompiledRoom, ends: ResolvedWallEnds | null): Face[] {
+function buildStandaloneResolvedSurfaces(
+	room: CompiledRoom,
+	ends: ResolvedWallEnds | null,
+	breakpoints: readonly number[]
+): Face[] {
 	const faces: Face[] = [];
 	for (const join of [ends?.start ?? null, ends?.end ?? null]) {
 		for (const surface of join?.surfaces ?? []) {
@@ -631,20 +643,30 @@ function buildStandaloneResolvedSurfaces(room: CompiledRoom, ends: ResolvedWallE
 			if (span <= LAYOUT_GEOMETRY_EPSILON) continue;
 			const faceNormal: V3 = [surface.normal[0], 0, surface.normal[1]];
 			for (const band of surface.bands) {
-				const yLo = room.floorElevation + band.bottomY;
-				const yHi = room.floorElevation + band.topY;
-				if (yHi - yLo <= LAYOUT_GEOMETRY_EPSILON) continue;
-				pushOrientedFace(
-					faces,
-					[
-						vertex(surface.from[0], yHi, surface.from[1], 0, 0, 0, 0, band.topY),
-						vertex(surface.to[0], yHi, surface.to[1], 0, 0, 0, span, band.topY),
-						vertex(surface.to[0], yLo, surface.to[1], 0, 0, 0, span, band.bottomY),
-						vertex(surface.from[0], yLo, surface.from[1], 0, 0, 0, 0, band.bottomY)
-					],
-					faceNormal,
-					BRIDGE_PICK
-				);
+				// A free end's cap shares its vertical edges with the side faces, which
+				// split at every band breakpoint, so it splits there too and welds.
+				const heights =
+					surface.kind === 'terminal-cap'
+						? segmentBands(band.bottomY, band.bottomY, band.topY, breakpoints)
+						: [band.bottomY, band.topY];
+				for (let index = 1; index < heights.length; index += 1) {
+					const bandLo = heights[index - 1]!;
+					const bandHi = heights[index]!;
+					const yLo = room.floorElevation + bandLo;
+					const yHi = room.floorElevation + bandHi;
+					if (yHi - yLo <= LAYOUT_GEOMETRY_EPSILON) continue;
+					pushOrientedFace(
+						faces,
+						[
+							vertex(surface.from[0], yHi, surface.from[1], 0, 0, 0, 0, bandHi),
+							vertex(surface.to[0], yHi, surface.to[1], 0, 0, 0, span, bandHi),
+							vertex(surface.to[0], yLo, surface.to[1], 0, 0, 0, span, bandLo),
+							vertex(surface.from[0], yLo, surface.from[1], 0, 0, 0, 0, bandLo)
+						],
+						faceNormal,
+						surface.kind === 'terminal-cap' ? SIDE_PICK : BRIDGE_PICK
+					);
+				}
 			}
 		}
 	}
@@ -1097,6 +1119,7 @@ function buildRevealFaces(
 		// Junction material closes that end, so a jamb that the clip moved off its
 		// authored position would double-paint the resolved region.
 		if (side.sign > 0 ? opening.offset < (endClip?.start ?? 0) - LAYOUT_GEOMETRY_EPSILON : opening.offset + opening.width > (endClip?.end ?? length) + LAYOUT_GEOMETRY_EPSILON) continue;
+		if (side.sign > 0 ? endClip?.freeStart && side.distance <= LAYOUT_GEOMETRY_EPSILON : endClip?.freeEnd && side.distance >= length - LAYOUT_GEOMETRY_EPSILON) continue;
 		const sample = sampleAt(wall.samples, side.distance);
 		const clip: ClipSample = {
 			...sample,
@@ -1445,6 +1468,7 @@ function profileCovers(profile: ReadonlyArray<[number, number]>, lo: number, hi:
  * comes from the emitting wall context; the face only needs the surface.
  */
 const BRIDGE_PICK: FacePick = { kind: 'wall', surface: 'bridge' };
+const SIDE_PICK: FacePick = { kind: 'wall', surface: 'side' };
 
 /** Vertical bridge quad between two plan points `p` (previous wall) and `q` (current wall). */
 function pushBridgeSide(

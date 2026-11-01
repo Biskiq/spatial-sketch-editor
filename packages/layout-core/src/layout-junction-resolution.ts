@@ -159,15 +159,20 @@ function swapCornerSide(side: CompiledCornerSide): CompiledCornerSide {
 	return side.kind === 'miter' ? side : { kind: 'bevel', a0: side.b0, b0: side.a0 };
 }
 
+/**
+ * The corner as the other role reads it. The canonical front is `-prev.normalOut`
+ * and `cur.normalOut`, so a leg in the opposite role has its own front on the
+ * canonical back, and its own offset line in the other slot.
+ */
 function swapCorner(corner: CompiledEndCorner): CompiledEndCorner {
-	return { front: swapCornerSide(corner.front), back: swapCornerSide(corner.back) };
+	return { front: swapCornerSide(corner.back), back: swapCornerSide(corner.front) };
 }
 
 /**
  * Adapt a canonical `(prev, cur)` corner to a specific leg. `canonical === 'prev'`
  * means the leg owns the `a0` slot; `'cur'` owns `b0`. A leg whose Junction end
  * is `end` reads `a0`, a leg whose end is `start` reads `b0`, so a role/label
- * mismatch swaps the offset slots (miters are unaffected).
+ * mismatch exchanges the sides and swaps the offset slots.
  */
 function cornerForEnd(corner: CompiledEndCorner, canonical: 'prev' | 'cur', end: 'start' | 'end'): CompiledEndCorner {
 	const wantsA0 = end === 'end';
@@ -290,7 +295,7 @@ export function resolveJunctionGeometry(
 	}
 
 	if (legs.length === 1) {
-		joins.push(terminalJoin(legs[0]!, bands));
+		joins.push(terminalJoin(point, legs[0]!, bands));
 		return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 	}
 
@@ -343,18 +348,19 @@ export function resolveJunctionGeometry(
 		// cyclic leg order, so a Junction-level validator can map join → sector
 		// without a second convention.
 		const seam = { sector: legs.indexOf(cur), polygon: wedgePolygon(point, prev, cur) };
-		joins.push(
-			cornerJoin(prev, bands, cornerForEnd(resolved.corner, 'prev', prev.end), ownerWallId === prev.wallId ? seam : null, {
-				canonicalRole: 'prev',
-				canonicalCorner: resolved.corner,
-				neighbor: neighborFacts(cur)
-			}),
-			cornerJoin(cur, bands, cornerForEnd(resolved.corner, 'cur', cur.end), ownerWallId === cur.wallId ? seam : null, {
-				canonicalRole: 'cur',
-				canonicalCorner: resolved.corner,
-				neighbor: neighborFacts(prev)
-			})
-		);
+		const prevJoin = cornerJoin(prev, bands, cornerForEnd(resolved.corner, 'prev', prev.end), ownerWallId === prev.wallId ? seam : null, {
+			canonicalRole: 'prev',
+			canonicalCorner: resolved.corner,
+			neighbor: neighborFacts(cur)
+		});
+		const curJoin = cornerJoin(cur, bands, cornerForEnd(resolved.corner, 'cur', cur.end), ownerWallId === cur.wallId ? seam : null, {
+			canonicalRole: 'cur',
+			canonicalCorner: resolved.corner,
+			neighbor: neighborFacts(prev)
+		});
+		attachCornerExposedEnd(prevJoin, resolved.corner, prev, cur, bands);
+		attachCornerExposedEnd(curJoin, resolved.corner, cur, prev, bands);
+		joins.push(prevJoin, curJoin);
 		return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 	}
 
@@ -490,7 +496,25 @@ function resolveDegreeThreePlus(
 	return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 }
 
-function terminalJoin(leg: CompiledJunctionLeg, bands: Array<{ bottomY: number; topY: number }>): CompiledLegJoin {
+/**
+ * A free end is exposed across its whole solid profile, so `layout-core` publishes
+ * the square cap as a resolved surface: one per solid endpoint band, leaving any
+ * Opening that reaches the end as a void.
+ */
+function terminalJoin(point: LayoutVec2, leg: CompiledJunctionLeg, bands: Array<{ bottomY: number; topY: number }>): CompiledLegJoin {
+	const [from, to] = legEndBoundary(point, leg) as [LayoutVec2, LayoutVec2];
+	const outward = outwardTangent(leg);
+	const surfaces: CompiledJunctionSurface[] = leg.endpointSolidBands
+		.filter((band) => band.solid && band.topY - band.bottomY > JUNCTION_BAND_EPSILON)
+		.map((band) => ({
+			ownerWallId: leg.wallId,
+			end: leg.end,
+			kind: 'terminal-cap',
+			from,
+			to,
+			normal: [-outward[0], -outward[1]],
+			bands: [{ bottomY: band.bottomY, topY: band.topY }]
+		}));
 	return {
 		wallId: leg.wallId,
 		end: leg.end,
@@ -499,8 +523,46 @@ function terminalJoin(leg: CompiledJunctionLeg, bands: Array<{ bottomY: number; 
 		interfaceSuppressed: false,
 		ownedSeam: null,
 		bands: bands.map((band) => ({ bottomY: band.bottomY, topY: band.topY })),
-		corner: null
+		corner: null,
+		...(surfaces.length > 0 ? { surfaces } : {})
 	};
+}
+
+/**
+ * Above or beside a shorter neighbour a mitred Wall's end is exposed: the corner
+ * plane is only interior where both legs are solid. The bevel and both-open seams
+ * already close these bands through the owner's bridge, so only a pure miter with
+ * no shared endpoint void needs the surface.
+ */
+function attachCornerExposedEnd(
+	join: CompiledLegJoin,
+	corner: CompiledEndCorner,
+	leg: CompiledJunctionLeg,
+	neighbor: CompiledJunctionLeg,
+	bands: Array<{ bottomY: number; topY: number }>
+): void {
+	if (corner.front.kind !== 'miter' || corner.back.kind !== 'miter') return;
+	if (leg.endpointOpen && neighbor.endpointOpen) return;
+	const from = corner.front.apex;
+	const to = corner.back.apex;
+	const outward = outwardTangent(leg);
+	const lateral: LayoutVec2 = [-(to[1] - from[1]), to[0] - from[0]];
+	const length = Math.hypot(lateral[0], lateral[1]);
+	if (length <= JUNCTION_BAND_EPSILON) return;
+	const sign = dot(lateral, outward) > 0 ? -1 : 1;
+	const normal: LayoutVec2 = [(sign * lateral[0]) / length, (sign * lateral[1]) / length];
+	for (const band of bands) {
+		if (!legSolidInBand(leg, band.bottomY, band.topY) || legSolidInBand(neighbor, band.bottomY, band.topY)) continue;
+		(join.surfaces ??= []).push({
+			ownerWallId: leg.wallId,
+			end: leg.end,
+			kind: 'corner-exposed-end',
+			from,
+			to,
+			normal,
+			bands: [{ bottomY: band.bottomY, topY: band.topY }]
+		});
+	}
 }
 
 function neighborFacts(leg: CompiledJunctionLeg): CompiledJunctionNeighbor {
@@ -1380,7 +1442,7 @@ function surfaceBands(
 					kind: 'continuation-thickness-step',
 					from,
 					to,
-					normal: [sign * lateral[0], sign * lateral[1]],
+					normal: outwardTangent(thinner),
 					bands: [{ bottomY: band.bottomY, topY: band.topY }]
 				});
 			}
@@ -1674,6 +1736,8 @@ function joinsBounds2(junction: LayoutVec2, joins: readonly CompiledLegJoin[]): 
 		// Resolved Wall-attributed difference/trim surfaces are emitted geometry
 		// too, so the Junction region bounds must contain them.
 		for (const surface of join.surfaces ?? []) {
+			// A free end's cap lies on the Wall's own footprint; it adds no Junction region.
+			if (surface.kind === 'terminal-cap') continue;
 			consider(surface.from);
 			consider(surface.to);
 		}

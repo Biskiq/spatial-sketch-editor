@@ -439,7 +439,13 @@ export type CompiledJunctionBand = { bottomY: number; topY: number };
 export type CompiledJunctionSurface = {
 	ownerWallId: string;
 	end: 'start' | 'end';
-	kind: 'continuation-thickness-step' | 'continuation-height-step' | 'branch-trim' | 'junction-keel';
+	kind:
+		| 'continuation-thickness-step'
+		| 'continuation-height-step'
+		| 'branch-trim'
+		| 'junction-keel'
+		| 'terminal-cap'
+		| 'corner-exposed-end';
 	from: LayoutVec2;
 	to: LayoutVec2;
 	/** Outward plan normal (unit) pointing away from the owning Wall's material. */

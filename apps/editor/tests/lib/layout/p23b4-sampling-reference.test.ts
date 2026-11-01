@@ -11,6 +11,7 @@ import {
 	wallCenterlineSamples,
 	wallCenterlineSegment,
 	wallFirstWallSpan,
+	type CompiledLegJoin,
 	type LayoutDocumentWallFirst,
 	type LayoutWall
 } from '@portfolio/layout-core';
@@ -209,14 +210,27 @@ function faceTable(document: LayoutDocumentWallFirst): string {
  *
  * The `compiled=` values in REFERENCE below were recorded from the BASE revision
  * `55683981` with this exact projection (format 5 all-boundary fixtures, role
- * and cacheKey excluded), never regenerated from the code under test.
+ * and cacheKey excluded), never regenerated from the code under test. The exposed
+ * end surfaces added after that revision are projected out, so the hashes still prove that nothing else in the compile moved.
  */
+function withoutExposedEnds<R extends { joins: readonly CompiledLegJoin[] }>(resolution: R | undefined): R | undefined {
+	if (!resolution) return resolution;
+	const joins = resolution.joins.map((join) => {
+		const kept = (join.surfaces ?? []).filter((surface) => surface.kind !== 'terminal-cap' && surface.kind !== 'corner-exposed-end');
+		if (kept.length === (join.surfaces ?? []).length) return join;
+		const { surfaces: _surfaces, ...rest } = join;
+		return kept.length > 0 ? { ...join, surfaces: kept } : rest;
+	});
+	return { ...resolution, joins };
+}
+
 function compiledDigest(document: LayoutDocumentWallFirst): string {
 	const { geometry } = compileWallFirstLayoutGeometry(document);
 	const payload = {
 		walls: geometry.walls.map(({ role: _role, cacheKey: _cacheKey, ...rest }) => rest),
 		junctions: (geometry.junctions ?? []).map(({ legs, cacheKey: _cacheKey, ...rest }) => ({
 			...rest,
+			resolution: withoutExposedEnds(rest.resolution),
 			legs: legs.map(({ role: _legRole, ...leg }) => leg)
 		})),
 		rooms: geometry.rooms,
