@@ -1,5 +1,5 @@
 /**
- * R217.S07 — **selection and hover ink on Paper**.
+ * R217.S07/S18 — **selection and hover ink on Paper**.
  *
  * Paper already owns the Plan drawing (`buildPaperPlan`). This module does not
  * evaluate, project or regroup anything: it filters that drawing's own entries by
@@ -8,17 +8,19 @@
  * The result is deliberately two small structures rather than a second drawing
  * system:
  *
- * - a **gold** pass for the primary selection: a translucent tint under a solid
+ * - a **gold** pass for the primary selection: a translucent fill under a solid
  *   contour, so a selected Room, Wall, Opening or Scene footprint reads as one
- *   identity;
+ *   identity. R217.S18 reads a Scene fill from the polygons `buildPaperPlan`
+ *   already retained, and keeps the fill under cut ink;
  * - a **quiet neutral** contour for hover, never gold (gold means selected);
  * - R217.S10's **erase** treatment: the armed Eraser's winner in red dashes, drawn
  *   above the selection so it reads even on the selected subject.
  *
- * Every mark is depth-test-free and ordered above `PAPER_LAYER.sceneFootprint`,
- * as S04's handoff requires. Nothing writes `Object3D.visible`; the Paper layer is
- * mounted only when Paper is the visible reading, and the mat's mesh ink is a
- * separate component that is unmounted instead.
+ * Every mark is depth-test-free. Contours are ordered above
+ * `PAPER_LAYER.sceneFootprint` as S04's handoff requires; the selection fill sits
+ * above the cut poché and under the cut stroke. Nothing writes `Object3D.visible`;
+ * the Paper layer is mounted only when Paper is the visible reading, and the
+ * mat's mesh ink is a separate component that is unmounted instead.
  */
 import {
 	Color,
@@ -28,7 +30,11 @@ import {
 	MeshBasicMaterial,
 	type Material
 } from 'three';
-import { createPaperFillGeometry } from './paper-fill-geometry';
+import {
+	createPaperFillGeometry,
+	unionPaperFillPolygons,
+	type PaperFillPolygons
+} from './paper-fill-geometry';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
@@ -39,23 +45,26 @@ import {
 	PAPER_LAYER,
 	STAGE_OVERLAY_LAYER,
 	unionOutline,
-	type PaperFillDraw,
 	type PaperPlanDrawing,
 	type PaperSegment
 } from './paper-plan';
 
-/** PLATE's selection gold, shared with the Stage's mesh ink and marks. */
+/** PLATE's selection gold: the translucent fill under a selected subject. */
 export const PAPER_SELECTION_INK = '#d4ad45';
+/** Owner ruling O1's dark-gold Paper edge, the wireframe's own value. */
+export const PAPER_SELECTION_EDGE_INK = '#74560c';
 /** The same quiet neutral as the mat's ink: never gold, and legible on a halo. */
 export const PAPER_HOVER_INK = '#f3f4ee';
 /** The dark halo the mark vocabulary uses to hold a light line over any sheet. */
 export const PAPER_MARK_HALO_INK = '#152c26';
 
-/** Marks sit above the drawing; hover below the selected identity it previews. */
+/** Contours sit above the drawing; the selection fill sits under cut ink. */
 export const PAPER_MARK_LAYER = {
 	hoverHalo: PAPER_LAYER.sceneFootprint + 8,
 	hover: PAPER_LAYER.sceneFootprint + 9,
-	selectionTint: PAPER_LAYER.sceneFootprint + 10,
+	// A fill sits under the cut stroke (40) but above the cut poché (39): a
+	// selected Wall tints its own band and never the ink that describes it.
+	selectionTint: PAPER_LAYER.cut - 0.5,
 	selectionHalo: PAPER_LAYER.sceneFootprint + 11,
 	selectionLine: PAPER_LAYER.sceneFootprint + 12,
 	eraseHalo: PAPER_LAYER.sceneFootprint + 13,
@@ -72,7 +81,7 @@ export type PaperMarkContour = {
 
 export type PaperMarkGeometry = {
 	/** Filled polygons the selection tints; the contour below is their boundary. */
-	readonly fills: readonly PaperFillDraw[];
+	readonly fills: readonly PaperFillPolygons[];
 	readonly contours: readonly PaperMarkContour[];
 };
 
@@ -136,13 +145,28 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 	}
 	if (entry.reference.domain === 'scene') {
 		const footprints = drawing.footprints.filter((footprint) => footprint.entityId === id);
+		// Paper already retained the projection's own polygons: a primitive or an
+		// approved model's ring, a tilted form's triangles. The mark overlay tints
+		// exactly those, and never fabricates a bounding box when a footprint retains
+		// no fillable ring. A tilted form's triangles overlap in plan, so an elevation
+		// with several polygons tints their union: no part of the subject is tinted
+		// twice, and a single retained ring is drawn exactly as Paper kept it.
+		const fillable = footprints.filter((footprint) => footprint.polygons.length > 0);
+		const fills: PaperFillPolygons[] = [
+			...groupByElevation(fillable, (footprint) => footprint.elevationMeters)
+		].map(([elevationMeters, group]) => {
+			const polygons = group.flatMap((footprint) => footprint.polygons);
+			if (polygons.length === 1) return { elevationMeters, polygons };
+			const union = unionPaperFillPolygons(polygons);
+			return union === null ? { elevationMeters, polygons } : { elevationMeters, ...union };
+		});
 		const contours = [...groupByElevation(footprints, (footprint) => footprint.elevationMeters)].map(
 			([elevationMeters, group]) => ({
 				elevationMeters,
 				segments: group.flatMap((footprint) => footprint.segments)
 			})
 		);
-		return { fills: [], contours };
+		return { fills, contours };
 	}
 	return EMPTY_GEOMETRY;
 }
@@ -257,7 +281,7 @@ export function createPaperMarkScene(
 	if (tintGeometry !== null) {
 		const material = new MeshBasicMaterial({
 			color: new Color(PAPER_SELECTION_INK).getHex(),
-			side: DoubleSide, transparent: true, opacity: 0.18,
+			side: DoubleSide, transparent: true, opacity: 0.22,
 			depthTest: false, depthWrite: false, toneMapped: false
 		});
 		const mesh = new Mesh(tintGeometry, material);
@@ -269,10 +293,11 @@ export function createPaperMarkScene(
 		fades.push({ material, baseOpacity: material.opacity });
 	}
 
-	// Selection: the same dark halo, with PLATE gold over it. The tint sits under
-	// the contour and above the sheet, so identity reads without hiding the Plan.
+	// Selection: the dark-gold edge (owner ruling O1) over the same dark halo as
+	// hover. The tint above sits between the cut poché and the cut stroke, so
+	// identity reads without hiding the Plan.
 	addLine(marks.selection, PAPER_MARK_HALO_INK, 4.5, 0.9, PAPER_MARK_LAYER.selectionHalo);
-	addLine(marks.selection, PAPER_SELECTION_INK, 2.5, 1, PAPER_MARK_LAYER.selectionLine);
+	addLine(marks.selection, PAPER_SELECTION_EDGE_INK, 2.5, 1, PAPER_MARK_LAYER.selectionLine);
 
 	// Erase: red dashes over a dark halo, above the selection it may be naming.
 	addLine(marks.erase, PAPER_MARK_HALO_INK, 4, 0.7, PAPER_MARK_LAYER.eraseHalo);
