@@ -215,51 +215,28 @@ export function gridRectFor(input: {
 	};
 }
 
-/** The union of accepted work and a live candidate, or `null` with neither. */
-function gridWorkRect(content: GridRect | null, candidate: GridRect | null): GridRect | null {
-	if (content === null) return candidate;
-	if (candidate === null) return content;
-	return {
-		minX: Math.min(content.minX, candidate.minX),
-		maxX: Math.max(content.maxX, candidate.maxX),
-		minZ: Math.min(content.minZ, candidate.minZ),
-		maxZ: Math.max(content.maxZ, candidate.maxZ)
-	};
-}
-
-/** The work expanded by 5 m and rounded outward to the 5 m lattice. */
-function sheetAroundWork(work: GridRect): GridRect {
-	return {
-		minX: Math.floor((work.minX - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-		maxX: Math.ceil((work.maxX + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-		minZ: Math.floor((work.minZ - 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS,
-		maxZ: Math.ceil((work.maxZ + 5) / GRID_MAJOR_METERS) * GRID_MAJOR_METERS
-	};
-}
-
-/** The 3D ground's fixed extent around world zero, which it never shrinks below. */
-export const GROUND_PLATE_DEFAULT_HALF_METERS = 20;
-/** The least ground kept beyond the work on every side. */
-export const GROUND_PLATE_MARGIN_METERS = 10;
-/** The ground grows in steps of this, so it moves rarely rather than with every edit. */
-export const GROUND_PLATE_STEP_METERS = 10;
+/** The workspace's fixed extent around world zero, which it never shrinks below. */
+export const WORKSPACE_DEFAULT_HALF_METERS = 20;
+/** The least ground kept beyond the committed work on every side. */
+export const WORKSPACE_MARGIN_METERS = 10;
+/** The workspace grows in steps of this, so it moves rarely rather than with every edit. */
+export const WORKSPACE_STEP_METERS = 10;
 
 /**
- * The 3D ground's plate, drawn in Paper's own colour: a fixed default around world
- * zero, widened only where the work and its margin pass it. It reads the work alone,
- * so a pan or zoom never moves it, and it never enters bounds, Fit or the Camera.
+ * The one workspace both readings draw on: a fixed default around world zero,
+ * widened only where the committed work and its margin pass it. It is a pure
+ * function of committed Layout and Scene, so a pointer, a live candidate, a pan
+ * or a zoom never changes it. Commit and Undo change it once each, and it never
+ * enters bounds, Fit or the Camera.
  */
-export function groundPlateRectFor(input: {
-	readonly contentBounds?: GridRect | null;
-	readonly candidateBounds?: GridRect | null;
-}): GridRect {
-	const half = GROUND_PLATE_DEFAULT_HALF_METERS;
-	const work = gridWorkRect(input.contentBounds ?? null, input.candidateBounds ?? null);
-	if (work === null) return { minX: -half, maxX: half, minZ: -half, maxZ: half };
+export function workspaceRectFor(contentBounds: GridRect | null): GridRect {
+	const half = WORKSPACE_DEFAULT_HALF_METERS;
+	if (contentBounds === null) return { minX: -half, maxX: half, minZ: -half, maxZ: half };
+	const work = contentBounds;
 	const down = (value: number): number =>
-		Math.floor((value - GROUND_PLATE_MARGIN_METERS) / GROUND_PLATE_STEP_METERS) * GROUND_PLATE_STEP_METERS;
+		Math.floor((value - WORKSPACE_MARGIN_METERS) / WORKSPACE_STEP_METERS) * WORKSPACE_STEP_METERS;
 	const up = (value: number): number =>
-		Math.ceil((value + GROUND_PLATE_MARGIN_METERS) / GROUND_PLATE_STEP_METERS) * GROUND_PLATE_STEP_METERS;
+		Math.ceil((value + WORKSPACE_MARGIN_METERS) / WORKSPACE_STEP_METERS) * WORKSPACE_STEP_METERS;
 	return {
 		minX: Math.min(-half, down(work.minX)),
 		maxX: Math.max(half, up(work.maxX)),
@@ -269,17 +246,10 @@ export function groundPlateRectFor(input: {
 }
 
 /**
- * The bounded Paper sheet: the work's datum bounds expanded by 5 m and rounded
- * outward to 5 m, or a 20 × 20 m default around the target for an empty
- * project.
- *
- * A live candidate is part of "the work": while a gesture proposes geometry
- * outside the accepted bounds, the sheet grows to include it. It never moves the
- * Camera, so the sheet can grow without the drawing shifting under the pointer.
- *
- * The sheet is intersected with the visible coverage, so a zoomed-in view
- * generates only the lines it can see. The intersection never moves the Camera
- * and never changes the lattice; it only bounds the drawing.
+ * Paper's drawing of the workspace. The workspace itself never reads the Camera;
+ * the drawn rectangle is intersected with the visible coverage, so a zoomed-in
+ * view generates only the lines it can see. The intersection never changes the
+ * workspace or the lattice; it only bounds the drawing.
  */
 export function paperSheetRectFor(input: {
 	readonly targetXZ: readonly [number, number];
@@ -287,19 +257,8 @@ export function paperSheetRectFor(input: {
 	readonly aspect: number;
 	readonly intervalMeters: number;
 	readonly contentBounds?: GridRect | null;
-	/** R217.S14 — the live candidate's world extent, never an accepted bound. */
-	readonly candidateBounds?: GridRect | null;
 }): GridRect | null {
-	const work = gridWorkRect(input.contentBounds ?? null, input.candidateBounds ?? null);
-	const sheet =
-		work === null
-			? {
-					minX: input.targetXZ[0] - 10,
-					maxX: input.targetXZ[0] + 10,
-					minZ: input.targetXZ[1] - 10,
-					maxZ: input.targetXZ[1] + 10
-				}
-			: sheetAroundWork(work);
+	const sheet = workspaceRectFor(input.contentBounds ?? null);
 	const visible = gridRectFor({
 		targetXZ: input.targetXZ,
 		targetPlaneHeightMeters: input.targetPlaneHeightMeters,
@@ -312,9 +271,9 @@ export function paperSheetRectFor(input: {
 	const minZ = Math.max(sheet.minZ, visible.minZ);
 	const maxZ = Math.min(sheet.maxZ, visible.maxZ);
 	if (minX >= maxX || minZ >= maxZ) return null;
-	// Both inputs are already quantised (the sheet to 5 m, the visible coverage
+	// Both inputs are already quantised (the workspace to 10 m, the visible coverage
 	// to the finest interval), so their intersection is stable without a second
-	// rounding pass. An empty project keeps its exact 20 × 20 m sheet.
+	// rounding pass.
 	return { minX: clean(minX), maxX: clean(maxX), minZ: clean(minZ), maxZ: clean(maxZ) };
 }
 
@@ -337,10 +296,8 @@ export function gridPlanFor(input: {
 	readonly datumMeters: number;
 	/** Paper only: the mat's grid is drawn per pixel by `stage-mat-grid`. */
 	readonly surface: 'paper';
-	/** Layout ∪ Scene datum bounds; Paper draws a bounded sheet around them. */
+	/** Committed Layout ∪ Scene datum bounds; Paper draws the workspace around them. */
 	readonly contentBounds?: GridRect | null;
-	/** The live candidate's world extent; Paper's sheet grows to include it. */
-	readonly candidateBounds?: GridRect | null;
 }): GridPlan | null {
 	const levels = gridLevelsFor(input);
 	if (levels === null) return null;
@@ -349,8 +306,7 @@ export function gridPlanFor(input: {
 		targetPlaneHeightMeters: input.targetPlaneHeightMeters,
 		aspect: input.aspect,
 		intervalMeters: levels.minorMeters,
-		contentBounds: input.contentBounds ?? null,
-		candidateBounds: input.candidateBounds ?? null
+		contentBounds: input.contentBounds ?? null
 	});
 	if (rect === null) return null;
 	// Opacity is deliberately absent: the fade changes continuously while zooming,

@@ -41,6 +41,7 @@
 	import { PAPER_SELECTION_EDGE_INK } from '../paper-marks';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
+	import { mergeStraightEdgeRuns, OUTLINE_DEPTH_BIAS } from './stage-outline';
 
 	let {
 		selection,
@@ -182,7 +183,7 @@
 					continue;
 				}
 				const edgeGeometry = new LineSegmentsGeometry();
-				edgeGeometry.setPositions(positions as Float32Array);
+				edgeGeometry.setPositions(mergeStraightEdgeRuns(positions));
 				edges.dispose();
 				const resolution = new Vector2(width, height);
 				const haloMaterial = new LineMaterial({
@@ -194,6 +195,7 @@
 					opacity: 0.9,
 					depthTest: true,
 					depthWrite: false,
+					...OUTLINE_DEPTH_BIAS,
 					resolution
 				});
 				const lineMaterial = new LineMaterial({
@@ -203,6 +205,7 @@
 					opacity: tone === 'hover' ? 0.6 : 1,
 					depthTest: true,
 					depthWrite: false,
+					...OUTLINE_DEPTH_BIAS,
 					resolution,
 					// The erase treatment is dashed; dash lengths are world meters.
 					...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})

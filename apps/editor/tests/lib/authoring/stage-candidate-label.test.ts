@@ -9,7 +9,7 @@ it.each([928, 820])('keeps a crossing refusal inside a %spx Stage and clear of t
 	const component = mount(StageOverlay, { target, props: {
 		markers: [], viewportWidth: width, viewportHeight: 720,
 		candidates: [{
-			id: 'refused', role: 'refused', polygons: [], bounds: null,
+			id: 'refused', role: 'refused', polygons: [],
 			segments: [[[40, 450], [width - 10, 450]]],
 			labels: [{ css: [width - 10, 450], text: 'The chain crosses an existing Wall without a Junction. End the chain on that Wall to split it, or draw into the existing Junction.' }]
 		}]
@@ -42,7 +42,7 @@ it('gives a candidate line a dark halo and says a refusal once', async () => {
 			label: 'Junction', tag: 'Junction', refusal: 'This would cross or meet another Wall.', active: true, hovered: false, open: false
 		}],
 		candidates: [{
-			id: 'refused', role: 'refused', polygons: [], bounds: null,
+			id: 'refused', role: 'refused', polygons: [],
 			segments: [[[100, 100], [300, 300]]],
 			labels: [{ css: [300, 300], text: 'This would cross or meet another Wall.' }]
 		}]

@@ -60,7 +60,6 @@ import StageMatGround from './StageMatGround.svelte';
 		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
 		contentBounds = null,
 		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
-		candidateBounds = null,
 		reducedMotion = false,
 		datumMeters = 0,
 		selection = null,
@@ -89,8 +88,6 @@ import StageMatGround from './StageMatGround.svelte';
 		drafting?: StageDraftingState;
 		/** Layout ∪ Scene datum bounds for Paper's bounded sheet. */
 		contentBounds?: GridRect | null;
-		/** The live candidate's extent, added to Paper's sheet only. */
-		candidateBounds?: GridRect | null;
 		reducedMotion?: boolean;
 		/** The level datum the mat ground sits at. */
 		datumMeters?: number;
@@ -200,7 +197,7 @@ import StageMatGround from './StageMatGround.svelte';
 			The mat ground and its per-pixel grid: world-anchored, occluded by walls,
 			never a registered pick root.
 		-->
-		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible} {contentBounds} {candidateBounds} />
+		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible} {contentBounds} />
 	{/if}
 	{#if heightPlane !== null && !paperVisible}
 		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->
@@ -244,7 +241,6 @@ import StageMatGround from './StageMatGround.svelte';
 				{evaluation}
 				{datumMeters}
 				{contentBounds}
-				{candidateBounds}
 			/>
 		{/if}
 		<StagePaper

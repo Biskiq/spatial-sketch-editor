@@ -44,10 +44,10 @@ import {
 	gridLinesFor,
 	gridPlanFor,
 	gridRectFor,
-	groundPlateRectFor,
 	matGridLevelWeights,
 	matGroundFor,
 	paperSheetRectFor,
+	workspaceRectFor,
 	type GridRect
 } from '$lib/authoring/stage/stage-grid';
 
@@ -77,25 +77,24 @@ describe('the Paper plate around the work', () => {
 	const DEFAULT = { minX: -20, maxX: 20, minZ: -20, maxZ: 20 };
 
 	it('keeps its default size for no work and for any work that fits', () => {
-		expect(groundPlateRectFor({})).toEqual(DEFAULT);
+		expect(workspaceRectFor(null)).toEqual(DEFAULT);
 		for (const contentBounds of [
 			{ minX: 0, maxX: 1, minZ: 0, maxZ: 1 },
 			{ minX: 0, maxX: 6, minZ: -5, maxZ: 0 },
 			{ minX: -10, maxX: 10, minZ: -10, maxZ: 10 }
 		]) {
-			expect(groundPlateRectFor({ contentBounds })).toEqual(DEFAULT);
+			expect(workspaceRectFor(contentBounds)).toEqual(DEFAULT);
 		}
 	});
 
 	it('widens only the side the work and its margin pass, in whole steps', () => {
-		expect(groundPlateRectFor({ contentBounds: { minX: 0, maxX: 10.5, minZ: -5, maxZ: 0 } })).toEqual({ ...DEFAULT, maxX: 30 });
-		expect(groundPlateRectFor({ contentBounds: { minX: 0, maxX: 19, minZ: -5, maxZ: 0 } })).toEqual({ ...DEFAULT, maxX: 30 });
-		expect(groundPlateRectFor({ contentBounds: { minX: 0, maxX: 6, minZ: -5, maxZ: 0 }, candidateBounds: { minX: 6, maxX: 40, minZ: 0, maxZ: 1 } })).toEqual({ ...DEFAULT, maxX: 50 });
+		expect(workspaceRectFor({ minX: 0, maxX: 10.5, minZ: -5, maxZ: 0 })).toEqual({ ...DEFAULT, maxX: 30 });
+		expect(workspaceRectFor({ minX: 0, maxX: 19, minZ: -5, maxZ: 0 })).toEqual({ ...DEFAULT, maxX: 30 });
 	});
 
 	it('always keeps the margin clear around the work', () => {
 		const contentBounds = { minX: -33, maxX: 47, minZ: -61, maxZ: 12 };
-		const plate = groundPlateRectFor({ contentBounds });
+		const plate = workspaceRectFor(contentBounds);
 		expect(contentBounds.minX - plate.minX).toBeGreaterThanOrEqual(10);
 		expect(plate.maxX - contentBounds.maxX).toBeGreaterThanOrEqual(10);
 		expect(contentBounds.minZ - plate.minZ).toBeGreaterThanOrEqual(10);
@@ -114,8 +113,8 @@ describe('the Paper plate around the work', () => {
 
 	it('takes its bounds from the work alone, never the Camera', () => {
 		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
-		expect(source).toContain('groundPlateRectFor({ contentBounds, candidateBounds })');
-		expect(groundPlateRectFor.length).toBe(1);
+		expect(source).toContain('workspaceRectFor(contentBounds)');
+		expect(workspaceRectFor.length).toBe(1);
 	});
 
 	it('leaves the lines world-anchored across the plate edge', () => {
@@ -141,7 +140,7 @@ describe('the Paper plate around the work', () => {
 		material.dispose();
 		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
 		expect(source).not.toContain('MeshStandardMaterial');
-		expect(source).toContain('groundPlateRectFor({ contentBounds, candidateBounds })');
+		expect(source).toContain('workspaceRectFor(contentBounds)');
 	});
 
 	it('is Paper: the same ground token and the same grid inks and opacities', () => {
@@ -304,20 +303,16 @@ describe('R217.S13 — fixed grid values and thinning', () => {
 describe('R217.S13 — Paper’s bounded sheet', () => {
 	const content = { minX: 0, maxX: 7, minZ: -4, maxZ: 2 };
 
-	it('contains the work plus 5 m, rounded outward to 5 m', () => {
+	it('draws the same workspace as the 3D ground', () => {
 		const sheet = paperSheetRectFor({
 			...PAPER_BASE,
-			targetPlaneHeightMeters: 40,
+			targetPlaneHeightMeters: 200,
 			aspect: 2,
 			intervalMeters: 1,
 			contentBounds: content
 		})!;
-		expect(sheet).toEqual({ minX: -5, maxX: 15, minZ: -10, maxZ: 10 });
-		expect(sheet.minX).toBeLessThanOrEqual(content.minX - 5);
-		expect(sheet.maxX).toBeGreaterThanOrEqual(content.maxX + 5);
-		for (const edge of [sheet.minX, sheet.maxX, sheet.minZ, sheet.maxZ]) {
-			expect(Math.abs(edge % 5)).toBe(0);
-		}
+		expect(sheet).toEqual(workspaceRectFor(content));
+		expect(sheet).toEqual({ minX: -20, maxX: 20, minZ: -20, maxZ: 20 });
 	});
 
 	it('intersects the sheet with the visible coverage so a zoomed-in view stays bounded', () => {
@@ -338,24 +333,34 @@ describe('R217.S13 — Paper’s bounded sheet', () => {
 		expect(gridLinesFor(plan).length).toBeLessThan(500);
 	});
 
-	it('uses a 20 × 20 m sheet around the target for an empty project', () => {
-		const sheet = paperSheetRectFor({
-			...PAPER_BASE,
-			targetXZ: [3.4, -2.2],
-			targetPlaneHeightMeters: 60,
-			aspect: 2,
-			intervalMeters: 1,
-			contentBounds: null
-		})!;
-		expect(sheet).toEqual({ minX: -6.6, maxX: 13.4, minZ: -12.2, maxZ: 7.8 });
-		expect(sheet.maxX - sheet.minX).toBe(20);
-		expect(sheet.maxZ - sheet.minZ).toBe(20);
+	it('keeps an empty project on the default workspace wherever the Camera looks', () => {
+		for (const targetXZ of [[0, 0], [15, -10]] as [number, number][]) {
+			const sheet = paperSheetRectFor({
+				...PAPER_BASE,
+				targetXZ,
+				targetPlaneHeightMeters: 400,
+				aspect: 2,
+				intervalMeters: 1,
+				contentBounds: null
+			})!;
+			expect(sheet).toEqual({ minX: -20, maxX: 20, minZ: -20, maxZ: 20 });
+		}
+		expect(
+			paperSheetRectFor({
+				...PAPER_BASE,
+				targetXZ: [500, 500],
+				targetPlaneHeightMeters: 20,
+				aspect: 2,
+				intervalMeters: 1,
+				contentBounds: null
+			})
+		).toBeNull();
 	});
 
 	it('grows when content leaves the sheet, without a Camera input', () => {
 		// A wide target plane keeps both sheets inside the visible coverage, so
 		// the growth is observable rather than cropped to the viewport.
-		const wide = { ...PAPER_BASE, targetPlaneHeightMeters: 80, aspect: 2 };
+		const wide = { ...PAPER_BASE, targetPlaneHeightMeters: 200, aspect: 2 };
 		const near = gridPlanFor({ ...wide, metersPerCssPixel: 0.01, contentBounds: content })!;
 		const far = gridPlanFor({
 			...wide,
@@ -363,7 +368,7 @@ describe('R217.S13 — Paper’s bounded sheet', () => {
 			contentBounds: { minX: 0, maxX: 40, minZ: -4, maxZ: 2 }
 		})!;
 		expect(far.rect.maxX).toBeGreaterThan(near.rect.maxX);
-		expect(near.rect.minX).toBe(-5);
+		expect(near.rect.minX).toBe(-20);
 	});
 
 	it('retains the same drawing for a pan inside the quantised rectangle', () => {
@@ -374,31 +379,23 @@ describe('R217.S13 — Paper’s bounded sheet', () => {
 	});
 });
 
-describe('R217.S14 — Paper’s sheet includes the live candidate', () => {
-	const content = { minX: 0, maxX: 7, minZ: -4, maxZ: 2 };
-	const wide = { ...PAPER_BASE, targetPlaneHeightMeters: 80, aspect: 2, intervalMeters: 1 };
-
-	it('grows past the accepted work without moving the Camera inputs', () => {
-		const accepted = paperSheetRectFor({ ...wide, contentBounds: content })!;
-		const grown = paperSheetRectFor({
-			...wide,
-			contentBounds: content,
-			candidateBounds: { minX: 30, maxX: 33, minZ: -4, maxZ: 2 }
-		})!;
-		expect(grown.maxX).toBeGreaterThan(accepted.maxX);
-		expect(grown.maxX).toBeGreaterThanOrEqual(38);
-		expect(grown.minX).toBe(accepted.minX);
+describe('the workspace reads committed geometry only', () => {
+	it('takes no candidate input on either surface', () => {
+		for (const file of ['StageMatGround.svelte', 'StageGrid.svelte', 'StageCanvas.svelte']) {
+			const source = readFileSync(resolve(process.cwd(), `src/lib/authoring/stage/shell/${file}`), 'utf8');
+			expect(source).not.toContain('candidateBounds');
+		}
+		const route = readFileSync(resolve(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'), 'utf8');
+		expect(route).not.toContain('candidateBounds');
+		expect(route).toContain('contentBounds={paperContentBounds}');
 	});
 
-	it('frames a candidate drawn on an otherwise empty project', () => {
-		const sheet = paperSheetRectFor({
-			...wide,
-			targetXZ: [0, 0],
-			contentBounds: null,
-			candidateBounds: { minX: 24, maxX: 26, minZ: 0, maxZ: 2 }
-		})!;
-		expect(sheet.minX).toBeLessThanOrEqual(19);
-		expect(sheet.maxX).toBeGreaterThanOrEqual(31);
+	it('changes once when work is committed and restores on Undo', () => {
+		const before = { minX: 0, maxX: 5, minZ: 0, maxZ: 1 };
+		const committed = { minX: 0, maxX: 60, minZ: 0, maxZ: 1 };
+		expect(workspaceRectFor(before)).toEqual({ minX: -20, maxX: 20, minZ: -20, maxZ: 20 });
+		expect(workspaceRectFor(committed)).toEqual({ minX: -20, maxX: 70, minZ: -20, maxZ: 20 });
+		expect(workspaceRectFor(before)).toEqual({ minX: -20, maxX: 20, minZ: -20, maxZ: 20 });
 	});
 });
 

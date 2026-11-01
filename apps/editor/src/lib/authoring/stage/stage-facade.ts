@@ -254,27 +254,6 @@ export type StageCandidatePreview = {
 	readonly snap?: { readonly world: Vec3; readonly name: string };
 };
 
-/** The world AABB of a candidate's drawn geometry, or `null` when it draws none. */
-function candidateBounds(candidate: StageCandidatePreview): { readonly min: Vec3; readonly max: Vec3 } | null {
-	const points = [
-		...candidate.polygons.flat(),
-		...candidate.segments.flatMap(([from, to]) => [from, to])
-	];
-	if (points.length === 0) return null;
-	const min: [number, number, number] = [Infinity, Infinity, Infinity];
-	const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
-	for (const point of points) {
-		if (!point.every(Number.isFinite)) return null;
-		min[0] = Math.min(min[0], point[0]);
-		min[1] = Math.min(min[1], point[1]);
-		min[2] = Math.min(min[2], point[2]);
-		max[0] = Math.max(max[0], point[0]);
-		max[1] = Math.max(max[1], point[1]);
-		max[2] = Math.max(max[2], point[2]);
-	}
-	return { min, max };
-}
-
 /** One candidate after the facade's single projection into Stage CSS space. */
 export type StageCandidatePreviewView = {
 	readonly id: string;
@@ -283,11 +262,6 @@ export type StageCandidatePreviewView = {
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
 	readonly labels: readonly { readonly css: readonly [number, number]; readonly text: string }[];
 	readonly snap?: { readonly css: readonly [number, number]; readonly name: string };
-	/**
-	 * The candidate's world extent, for Paper's bounded sheet. `null` when the
-	 * candidate draws no geometry.
-	 */
-	readonly bounds: { readonly min: Vec3; readonly max: Vec3 } | null;
 };
 
 export type StageWorldGraphic = {
@@ -2118,7 +2092,6 @@ export function createStageFacade(input: {
 								polygons,
 								segments,
 								labels,
-								bounds: candidateBounds(candidate),
 								...(snapPoint === null || candidate.snap === undefined
 									? {}
 									: { snap: { css: snapPoint, name: candidate.snap.name } })

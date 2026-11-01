@@ -15,7 +15,7 @@
 	import type { Mesh } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
-	import { groundPlateRectFor, matGroundFor, type GridRect } from '../stage-grid';
+	import { matGroundFor, workspaceRectFor, type GridRect } from '../stage-grid';
 	import {
 		createMatGridMaterial,
 		createMatGroundMaterial,
@@ -30,8 +30,7 @@
 		evaluation,
 		datumMeters = 0,
 		gridVisible,
-		contentBounds = null,
-		candidateBounds = null
+		contentBounds = null
 	}: {
 		evaluation: ViewportEvaluation;
 		/** The level datum the mat sits at. */
@@ -40,8 +39,6 @@
 		gridVisible: boolean;
 		/** Layout ∪ Scene datum bounds; the plate is a sheet around them. */
 		contentBounds?: GridRect | null;
-		/** The live candidate's world extent; the plate grows to include it. */
-		candidateBounds?: GridRect | null;
 	} = $props();
 
 	const { dpr, invalidate } = useThrelte();
@@ -53,7 +50,7 @@
 	});
 
 	const ground = $derived(matGroundFor(evaluation, datumMeters));
-	const plate = $derived(groundPlateRectFor({ contentBounds, candidateBounds }));
+	const plate = $derived(workspaceRectFor(contentBounds));
 	const size = $derived(2 * ground.halfExtentMeters);
 
 	$effect(() => {

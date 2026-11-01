@@ -23,7 +23,7 @@ import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
-import { createStageFacade, type StageFacade, type StageCandidatePreviewView } from '$lib/authoring/stage/stage-facade';
+import { createStageFacade, type StageFacade, type StageCandidatePreview, type StageCandidatePreviewView } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
@@ -72,6 +72,9 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };
 }
 
+/** The adapter's last contribution in world space, before the facade projects it. */
+let worldCandidates: readonly StageCandidatePreview[] = [];
+
 async function mount(rect = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 }): Promise<Mounted> {
 	const { document, wallId, openingId } = fixtureDocument();
 	const project: ProjectEnvelope = await createUnitProject({
@@ -104,7 +107,21 @@ async function mount(rect = { left: 0, top: 0, width: 1280, height: 720, deviceP
 	let services: StageAdapterServices | undefined;
 	const registration = mountStageAdapter(facade, host, (port) => {
 		services = port;
-		return createAdapter(port);
+		const adapter = createAdapter(port);
+		const bind = adapter.bind!.bind(adapter);
+		return {
+			...adapter,
+			bind(context) {
+				const binding = bind(context);
+				return {
+					...binding,
+					candidatePreview(contributionContext) {
+						worldCandidates = binding.candidatePreview?.(contributionContext) ?? [];
+						return worldCandidates;
+					}
+				};
+			}
+		};
 	});
 	if (registration.kind !== 'registered' || services === undefined) throw new Error('Layout adapter did not mount');
 	return { facade, services, document, wallId, openingId, rect };
@@ -481,12 +498,13 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		const to = stageCss(mounted, [3.5, 0.5]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		const preview = candidate(mounted, 'layout-candidate-wall');
-		expect(preview.bounds).not.toBeNull();
+		candidate(mounted, 'layout-candidate-wall');
+		const world = worldCandidates.find((preview) => preview.id === 'layout-candidate-wall')!;
 		// A 3D evaluation must sit the footprint on the mat, not float it at the
-		// Paper cut. Plan alone cannot see the difference, so bounds pin the height.
-		expect(preview.bounds!.min[1]).toBeCloseTo(datum, 9);
-		expect(preview.bounds!.max[1]).toBeCloseTo(datum, 9);
+		// Paper cut. Plan alone cannot see the difference, so world height pins it.
+		const points = [...world.polygons.flat(), ...world.segments.flat()];
+		expect(points.length).toBeGreaterThan(0);
+		for (const point of points) expect(point[1]).toBeCloseTo(datum, 9);
 	});
 
 	it('matches the compiled Paper drawing of the Opening placement release commits', async () => {

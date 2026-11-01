@@ -5,8 +5,8 @@
 	 *
 	 * The drawing is rebuilt only when its own key changes: the visible levels or
 	 * the quantised rectangle. A pan inside the same rectangle retains the
-	 * geometry, and the lines stay anchored to world zero. Paper is a bounded sheet
-	 * around the work. It is
+	 * geometry, and the lines stay anchored to world zero. Paper draws the one workspace
+	 * around the committed work. It is
 	 * display-only — never a pick root, never `Object3D.visible` appearance — and it
 	 * reads the evaluation's target-plane scale rather than a Camera of its own.
 	 */
@@ -20,16 +20,13 @@
 	let {
 		evaluation,
 		datumMeters = 0,
-		contentBounds = null,
-		candidateBounds = null
+		contentBounds = null
 	}: {
 		evaluation: ViewportEvaluation | null;
 		/** The level datum the grid is drawn on. */
 		datumMeters?: number;
-		/** Layout ∪ Scene datum bounds; Paper draws a bounded sheet around them. */
+		/** Committed Layout ∪ Scene datum bounds; Paper draws the workspace around them. */
 		contentBounds?: GridRect | null;
-		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
-		candidateBounds?: GridRect | null;
 	} = $props();
 
 	const { invalidate } = useThrelte();
@@ -48,7 +45,6 @@
 			targetXZ: [evaluation.target[0], evaluation.target[2]],
 			datumMeters,
 			contentBounds,
-			candidateBounds,
 			surface: 'paper'
 		});
 	});
