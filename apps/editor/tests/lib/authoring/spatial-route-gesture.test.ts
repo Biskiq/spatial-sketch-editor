@@ -1684,6 +1684,23 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		expect(row.querySelectorAll('.op')).toHaveLength(0);
 	});
 
+	it('keeps Select and Bring into view distinct: a row select leaves the Camera, the row\'s frame operation moves it', async () => {
+		const other = STARTER_WALL_2;
+		const before = facade().camera.state().pose;
+		indexRowOf(target, other)!.click();
+		await frame();
+		expect(facade().selection()?.sourceId).toBe(other);
+		expect(facade().camera.state().pose).toEqual(before);
+
+		const row = target.querySelector<HTMLElement>(`.item[data-source-id$=${JSON.stringify(`:${other}`)}]`)!;
+		row.querySelector<HTMLButtonElement>('.item-actions-toggle')!.click();
+		await frame();
+		const frameOp = [...row.querySelectorAll<HTMLButtonElement>('.op')].find((item) => item.textContent?.trim() === 'Bring into view')!;
+		frameOp.click();
+		await settled();
+		expect(facade().camera.state().pose).not.toEqual(before);
+	});
+
 	it('feeds the context chip the subject\'s canonical floor, never the selection', async () => {
 		target.querySelector<HTMLButtonElement>('[data-head-index]')!.click();
 		await frame();
