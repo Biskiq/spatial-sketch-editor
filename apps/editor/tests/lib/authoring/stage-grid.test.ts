@@ -288,6 +288,8 @@ describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
 		expect(material.depthWrite).toBe(false);
 		expect(material.polygonOffset).toBe(true);
 		expect(material.polygonOffsetUnits).toBeLessThan(0);
+		// Depth steps only: a slope factor would draw it over thin floor geometry.
+		expect(material.polygonOffsetFactor).toBe(0);
 		expect(material.transparent).toBe(true);
 		// Under the height plane's tint (order 1) and every other Stage mark.
 		expect(MAT_GRID_RENDER_ORDER).toBeLessThan(1);

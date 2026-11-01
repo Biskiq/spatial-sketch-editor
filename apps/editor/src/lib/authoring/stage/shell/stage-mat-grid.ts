@@ -128,9 +128,10 @@ export function createMatGridMaterial(): ShaderMaterial {
 		depthWrite: false,
 		// The mat writes depth 6 mm below the grid. Far out, with a small near
 		// plane, 6 mm is under one depth step; this offset is in depth steps, so
-		// the grid stays ahead of its own mat at every distance.
+		// the grid stays ahead of its own mat at every distance. No slope factor:
+		// at grazing angles it would carry the grid over thin geometry on the floor.
 		polygonOffset: true,
-		polygonOffsetFactor: -1,
+		polygonOffsetFactor: 0,
 		polygonOffsetUnits: -4,
 		toneMapped: false
 	});
