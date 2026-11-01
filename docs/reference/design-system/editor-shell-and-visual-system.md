@@ -515,8 +515,9 @@ new selection. Tools remain armed between hosts.
 sides) that answers "at what height". It never owns Layout's datums; it shows them. Its
 ticks tell three things apart: **Levels** (long, structural, authored), **found surfaces**
 (short, on qualified horizontal tops) and **pins** (round, manual working checkpoints that
-are never Levels). Labels appear on hover or drag and the snap name shows while dragging.
-A pin is placed from the knob, with a one-time hint after the first raised surface. A
+are never Levels). The value shows on focus, drag and touch, and the snap name shows while dragging.
+A pin is placed from the knob; the one-time pin hint appears on the first pin of a Stage session and
+clears itself (R217.S22). A
 Level is created only by an explicit action, never inferred from a surface or a pin.
 Raising the Sheet arms nothing. Under Focus, the Sheet's plane is drawn as an outline
 instead of a tint. Whether pins persist is a domain decision; until one is made they are

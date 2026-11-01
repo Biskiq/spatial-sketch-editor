@@ -255,7 +255,7 @@ Then add      Each affected flow passes on the Cloud stack with the new locators
 
 ## TD-15 — Height Sheet hint repetition is shared across Stage sessions
 
-Status        open
+Status        fixed (7f4865c5)
 Found         2026-10-30, independent S06 review
 Owner         T1 / R217.S06 follow-up
 Symptom       After the one-time found-tick hint has appeared in one Stage session, a later distinct
@@ -268,7 +268,9 @@ Why green     Existing acceptance checks cover the hint within one Stage and do 
 Fix options   Scope the flag to a Stage session/host, or explicitly define the hint as application-wide.
               Do not change the product's hint cadence without the owning T1 decision.
 Then add      A mounted two-session regression that proves the selected cadence and teardown behavior.
-Evidence      R217.S06 `evidence/independent-final-review.md` (P3 residual).
+Evidence      R217.S06 `evidence/independent-final-review.md` (P3 residual). Fixed by R217.S22 at
+              `7f4865c5`: the flag is owned by the Stage host (`pinHintSeen`), and the hint shows on the first
+              pin of each Stage session and clears itself. Two-session test: `stage-height-sheet.test.ts`.
 
 
 ## TD-14 — envelope metadata moves outside a planner's content-derived scope check
