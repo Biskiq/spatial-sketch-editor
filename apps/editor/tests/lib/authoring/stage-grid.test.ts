@@ -66,6 +66,31 @@ describe('the mat keeps its depth away from a floor on the datum', () => {
 	});
 });
 
+describe('the depth range knows Scene content', () => {
+	it('keeps a Scene object in front of the near plane, with no Layout bounds', async () => {
+		const envelope = await createUnitProject({ id: 'depth-scene', name: 'Depth', layout: createEmptyWallFirstLayoutDocument() });
+		const admission = await admitSource(envelope, {
+				sessionEpoch: 'session-s19',
+				acceptedRevision: { projectId: 'depth-scene', revisionId: 'revision-s19' }
+			});
+		if (admission.kind !== 'admitted') throw new Error('not admitted');
+		const snapshot = admission.snapshot;
+		const pose = { target: [0, 0, 0] as [number, number, number], azimuthRadians: 0, elevationRadians: Math.PI / 4, targetPlaneHeightMeters: 4 };
+		const camera = createCameraSession({ snapshot, viewportId: 'stage', outputId: 'output:depth', pose });
+		const near = (): number => {
+			const result = camera.evaluate({ left: 0, top: 0, width: 1000, height: 600, devicePixelRatio: 1 }, 0);
+			if (result.kind !== 'evaluated') throw new Error('not evaluated');
+			return result.evaluation.near;
+		};
+		const compiledOnly = near();
+		expect(camera.state().sceneRadiusMeters).toBe(1);
+		camera.setContentBounds({ min: [-0.5, 0, -0.5], max: [0.5, 3, 0.5] });
+		const withShape = near();
+		expect(camera.state().sceneRadiusMeters).toBeCloseTo(Math.hypot(0.5, 3, 0.5), 6);
+		expect(withShape).toBeLessThan(compiledOnly);
+	});
+});
+
 describe('R217.S13 — fixed grid values and thinning', () => {
 	it('draws only the fixed 1 m, 5 m and 25 m values', () => {
 		for (let index = 0; index < 200; index += 1) {

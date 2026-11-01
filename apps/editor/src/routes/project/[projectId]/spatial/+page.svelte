@@ -652,16 +652,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		return min === null || max === null ? null : { min, max };
 	}
-	const paperContentBounds = $derived.by((): GridRect | null => {
+	const stageContentBounds = $derived.by(() => {
 		void renderRootsRevision;
 		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
 		const stage = facade;
-		if (stage === null) return null;
-		const bounds = readStageContentBounds(stage);
+		return stage === null ? null : readStageContentBounds(stage);
+	});
+	const paperContentBounds = $derived.by((): GridRect | null => {
+		const bounds = stageContentBounds;
 		return bounds === null
 			? null
 			: { minX: bounds.min[0], maxX: bounds.max[0], minZ: bounds.min[2], maxZ: bounds.max[2] };
 	});
+	$effect(() => facade?.camera.setContentBounds(stageContentBounds));
 	// Generated Plan evaluations are replaced whole; raw data keeps their references
 	// cloneable when Index selection crosses the immutable selection boundary.
 	let planView = $state.raw<PlanEvaluation | null>(null);
