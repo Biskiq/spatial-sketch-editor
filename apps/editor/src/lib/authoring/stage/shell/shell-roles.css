@@ -1,0 +1,36 @@
+/*
+ * R217.S20 — PLATE's shell roles, one scoped map.
+ *
+ * Every value is a token the reference doc already names (PLATE §Semantic colour
+ * and §Typography, as amended by PR #247) or a size the target specification
+ * calibrates. No colour is introduced here. The variables sit on `.editor-host`
+ * and are read by the shell components beneath it, so there is no global font
+ * rule and no CSS scale. Components keep a literal fallback so they still render
+ * when mounted outside the route.
+ */
+.editor-host {
+	/* Colour: forest chassis, pale working surfaces and the gold selection and focus ink. */
+	--shell-forest: #11291f;
+	--shell-forest-raised: #22503c;
+	--shell-hairline: #2f4a3d;
+	--shell-ink-light: #f3f4ee;
+	--shell-ink-quiet: #9fb2a2;
+	--shell-paper: #e9ebe6;
+	--shell-index: #f5f6f4;
+	--shell-card: #ffffff;
+	--shell-gold: #d4ad45;
+	--shell-gold-ink: #74560c;
+
+	/* Type: a sans for controls, a serif for the authored project name. */
+	--shell-sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--shell-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+	--shell-text-body: 13px;
+	--shell-text-utility: 12px;
+	--shell-text-identity: 15px;
+
+	/* Density: the fine-pointer Head row and the Index and Card widths. S21 applies the Index and Card widths. */
+	--shell-head-height: 44px;
+	--shell-control-height: 32px;
+	--shell-index-width: 256px;
+	--shell-card-width: 288px;
+}

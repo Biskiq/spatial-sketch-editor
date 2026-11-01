@@ -1,16 +1,22 @@
 <script lang="ts">
 	/**
-	 * PLATE **Head** (§0.8) — persistent project/application context, the lens
-	 * switch, source-history/Save/Preview and the source download.
+	 * PLATE **Head** (§0.8): one compact row in the wireframe's order.
 	 *
-	 * Head owns application actions, not a second task toolbar: it stays compact
-	 * and one row on a wide layout. Controls with no accepted capability
-	 * (history, Save, Preview) are rendered **disabled with their reason visible**
-	 * rather than as silent dead buttons, and this component reaches no
-	 * persistence function — downloading source JSON is a pure serialization of
-	 * the admitted source the caller already holds.
+	 * Index toggle · Biskiq · project name (its disclosure holds the project actions)
+	 * · World | Experience · context chip while the Index is away · Find · Undo ·
+	 * Redo · Save · Preview.
+	 *
+	 * Head owns application actions, not a second task toolbar, and stays one row at
+	 * every desktop and tablet width. Eligibility and refusal semantics are unchanged:
+	 * a control that cannot act stays focusable with `aria-disabled` (a native
+	 * `disabled` control could not take focus, so its reason could not be reached),
+	 * and its reason is a focus, hover and tap disclosure with an accessible
+	 * description. The row holds no viewing or drafting value: those live in the
+	 * Stage's ⚙, and Keys live in Find. This component reaches no persistence
+	 * function, and downloading source JSON is a pure serialization of the admitted
+	 * source the caller already holds.
 	 */
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { resolveRovingIndex, tablistTabIndex } from '$lib/authoring/a11y/roving-focus';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
@@ -23,11 +29,13 @@
 	} from '$lib/platform/project-persistence';
 
 	/**
-	 * One contributed tool or operation the Head's Find can reach.
+	 * One contributed tool, operation or former menu capability the Head's Find can
+	 * reach.
 	 *
-	 * The host supplies the entry; the Head renders it and hands the **same**
-	 * object back when it is run, so neither side has to reconstruct the other's
-	 * vocabulary.
+	 * The host supplies the entry; the Head renders it and hands the **same** object
+	 * back when it is run, so neither side has to reconstruct the other's vocabulary.
+	 * The one exception is the project procedures (`project-menu` rename and delete):
+	 * they open the Head's own lifecycle dialog, so the Head runs them itself.
 	 */
 	export type HeadFindEntry = {
 		readonly id: string;
@@ -36,6 +44,11 @@
 		readonly verb: string;
 	};
 
+	/** The adapter id of the project procedures the Head's own menu hosts. */
+	const PROJECT_ADAPTER = 'project-menu';
+
+	const uid = $props.id();
+
 	let {
 		projectId,
 		projectName,
@@ -43,6 +56,7 @@
 		onLens,
 		canDownloadSource,
 		onDownloadSource,
+		onOpenSource = () => {},
 		historyUnavailableReason,
 		redoUnavailableReason = historyUnavailableReason,
 		canUndo = false,
@@ -60,17 +74,10 @@
 		canPreview = false,
 		onPreview = () => {},
 		previewUnavailableReason,
-		reducedMotion,
-		onToggleReducedMotion,
 		indexOpen = true,
+		onToggleIndex = () => {},
 		locationLabel = null,
 		onOpenIndex = () => {},
-		planAppearance = 'paper',
-		onPlanAppearance = () => {},
-		heightSheetSide = 'right',
-		onHeightSheetSide = () => {},
-		motionSpeed = 'normal',
-		onMotionSpeed = () => {},
 		projectActionsUnavailableReason = null,
 		projectActionBusy = false,
 		onPrepareRename = async () => ({ kind: 'blocked' as const, message: 'Project actions are unavailable.' }),
@@ -88,7 +95,9 @@
 		onLens: (lens: 'world' | 'experience') => void;
 		canDownloadSource: boolean;
 		onDownloadSource: () => void;
-		/** Why Undo/Redo cannot run; visible whenever both are unavailable. */
+		/** The project menu's source replacement; the host runs its replacement guard. */
+		onOpenSource?: () => void;
+		/** Why Undo/Redo cannot run; shown as Undo's disclosure. */
 		historyUnavailableReason: string;
 		redoUnavailableReason?: string;
 		/** Live host history commands (T1.P01.S07 wiring). */
@@ -104,18 +113,12 @@
 		canPreview?: boolean;
 		onPreview?: () => void;
 		previewUnavailableReason: string;
-		reducedMotion: boolean;
-		onToggleReducedMotion: () => void;
+		/** Whether the Index is open. The Head's toggle is its only control. */
 		indexOpen?: boolean;
+		onToggleIndex?: () => void;
+		/** The canonical location of the selected subject, or `null` when there is none. */
 		locationLabel?: string | null;
 		onOpenIndex?: () => void;
-		planAppearance?: 'paper' | 'shaded';
-		onPlanAppearance?: (value: 'paper' | 'shaded') => void;
-		/** R217.S06's Height Sheet side; session preference, never source. */
-		heightSheetSide?: 'left' | 'right';
-		onHeightSheetSide?: (side: 'left' | 'right') => void;
-		motionSpeed?: 'slow' | 'normal' | 'fast';
-		onMotionSpeed?: (value: 'slow' | 'normal' | 'fast') => void;
 		projectActionsUnavailableReason?: string | null;
 		projectActionBusy?: boolean;
 		onPrepareRename?: () => Promise<ProjectLifecyclePrepareResult>;
@@ -126,13 +129,14 @@
 		onProjectActionBusyChange?: (busy: boolean) => void;
 		onRefreshRemoteProject?: (() => void | boolean | Promise<void | boolean>) | null;
 		/**
-		 * The bounded **Find** access (Round 2 D10): the contributed tools and
-		 * operations by name, each behind the explicit verb that reaches it. The host
-		 * supplies the list — the Head renders no domain tool and hard-codes no T1
-		 * family. Absent keeps the previous Head exactly as it was.
+		 * The bounded **Find** access: the contributed tools and operations, the former
+		 * menu capabilities and Keys, each behind the explicit verb that reaches it. The
+		 * host supplies the list; the Head renders no domain tool. Absent keeps the Head
+		 * without a Find control.
 		 *
-		 * It is deliberately not the scope-model Index, a global subject search or
-		 * every future Find command: it knows only what the mounted adapters declared.
+		 * It is deliberately not the scope-model Index, a global subject search or every
+		 * future Find command: it knows only what the mounted adapters and the route
+		 * declared.
 		 */
 		find?: {
 			readonly query: string;
@@ -147,16 +151,75 @@
 		{ id: 'experience', label: 'Experience' }
 	] as const;
 
+	type ReasonKey = 'undo' | 'redo' | 'save' | 'save-unavailable' | 'preview';
+
 	let selectedLensIndex = $derived(LENSES.findIndex((entry) => entry.id === lens));
 	const lensButtons: HTMLButtonElement[] = [];
 	let findDisclosure = $state<HTMLDetailsElement>();
+	let findSummary = $state<HTMLElement>();
 	let findInput = $state<HTMLInputElement>();
+	let projectTrigger: HTMLButtonElement | undefined;
+	/** The project procedures' own dialog, reached from the menu or from Find. */
+	let lifecycle: { start(next: 'rename' | 'delete'): Promise<void> } | undefined;
+	let projectMenuOpen = $state(false);
+	/** The one open reason disclosure, opened by focus, hover or a tap. */
+	let openReason = $state<ReasonKey | null>(null);
+
+	const projectMenuId = $derived(`${uid}-project-menu`);
+	function reasonId(key: ReasonKey): string {
+		return `${uid}-reason-${key}`;
+	}
+	function reasonOpen(key: ReasonKey): '' | undefined {
+		return openReason === key ? '' : undefined;
+	}
+	function toggleReason(key: ReasonKey): void {
+		openReason = openReason === key ? null : key;
+	}
+
 	function findShortcut(event: KeyboardEvent): void {
 		if (find === null || event.defaultPrevented || !(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
 		event.preventDefault();
 		if (findDisclosure === undefined || findInput === undefined) return;
 		findDisclosure.open = true;
 		findInput.focus();
+	}
+
+	/** A press outside a disclosure closes it; the disclosure's own content keeps it open. */
+	function onWindowPointerDown(event: PointerEvent): void {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		if (openReason !== null && target.closest('[data-reason-owner]') === null) openReason = null;
+		if (projectMenuOpen && target.closest('[data-head-project-owner]') === null) projectMenuOpen = false;
+	}
+
+	function onProjectKeydown(event: KeyboardEvent): void {
+		if (event.key !== 'Escape' || !projectMenuOpen) return;
+		event.stopPropagation();
+		projectMenuOpen = false;
+		projectTrigger?.focus();
+	}
+
+	function toggleProjectMenu(): void {
+		projectMenuOpen = !projectMenuOpen;
+	}
+
+	/**
+	 * Find's project procedures. Rename and delete open this Head's own lifecycle
+	 * dialog after the menu is shown, since the dialog lives inside it. Every other
+	 * entry goes to the host.
+	 */
+	async function runFind(entry: HeadFindEntry): Promise<void> {
+		// A run closes the list and returns focus to Find, so what it opens (a dialog,
+		// a reference) can take focus without the list lying over it.
+		if (findDisclosure !== undefined) findDisclosure.open = false;
+		findSummary?.focus();
+		if (entry.adapterId === PROJECT_ADAPTER && (entry.id === 'rename' || entry.id === 'delete')) {
+			projectMenuOpen = true;
+			await tick();
+			await lifecycle?.start(entry.id);
+			return;
+		}
+		find?.onRun(entry);
 	}
 
 	// The Save state notifies on every settled command; this counter is the
@@ -184,12 +247,49 @@
 		void saveVersion;
 		return save?.isDirty() ?? false;
 	});
+	const saveDisabled = $derived(saveControl !== null && (saveControl.disabled || projectActionBusy));
+	/** The Save reason as the control words it; a project action in progress takes precedence. */
+	const saveReasonText = $derived.by((): string | null => {
+		if (saveControl === null) return null;
+		return projectActionBusy ? 'Project rename or deletion is in progress.' : saveControl.reason;
+	});
+	/**
+	 * A refusal (or a conflict, or a sign-in interruption) is announced once, in a
+	 * polite live region, as well as being the Save control's accessible description.
+	 */
+	const refusalAnnouncement = $derived.by((): string => {
+		if (saveControl === null) return '';
+		const refused = saveStatus === 'refused' || saveStatus === 'error' || saveStatus === 'auth-required' || saveControl.conflict;
+		return refused ? (saveControl.reason ?? '') : '';
+	});
 
 	async function runSave(): Promise<void> {
-		if (projectActionBusy || save === null || saveControl === null) return;
+		if (projectActionBusy || save === null || saveControl === null || saveControl.disabled) return;
 		const status = save.snapshot().status;
 		if (status === 'refused' || status === 'error' || status === 'auth-required') await save.retry();
 		else await save.save();
+	}
+
+	/** An operable Save runs; an unavailable one says why, which is the same disclosure. */
+	function onSaveClick(): void {
+		if (saveControl === null) toggleReason('save-unavailable');
+		else if (saveDisabled) toggleReason('save');
+		else void runSave();
+	}
+
+	function runUndo(): void {
+		if (canUndo) onUndo();
+		else toggleReason('undo');
+	}
+
+	function runRedo(): void {
+		if (canRedo) onRedo();
+		else toggleReason('redo');
+	}
+
+	function runPreview(): void {
+		if (canPreview) onPreview();
+		else toggleReason('preview');
 	}
 
 	function reloadRemote(): void {
@@ -219,57 +319,81 @@
 	}
 </script>
 
-<svelte:window onkeydown={findShortcut} />
+<svelte:window onkeydown={findShortcut} onpointerdown={onWindowPointerDown} />
 <header class="head" data-editor-head>
-	<details class="app-menu">
-		<summary aria-label="Application menu">☰</summary>
-		<div class="menu-body">
-			<strong>Viewing</strong>
-			<label>2D appearance <select value={planAppearance} onchange={(event) => onPlanAppearance(event.currentTarget.value as 'paper' | 'shaded')}><option value="paper">Paper</option><option value="shaded">Shaded</option></select></label>
-			<label>Height Sheet <select value={heightSheetSide} onchange={(event) => onHeightSheetSide(event.currentTarget.value as 'left' | 'right')}><option value="right">Right</option><option value="left">Left</option></select></label>
-			<strong>Settings</strong>
-			<label><input type="checkbox" checked={reducedMotion} onchange={onToggleReducedMotion} /> Reduce motion</label>
-			<label>Editor motion speed <select value={motionSpeed} onchange={(event) => onMotionSpeed(event.currentTarget.value as 'slow' | 'normal' | 'fast')}><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select></label>
-			<strong>Project</strong>
-		<ProjectLifecycleActions
-			{projectId}
-			{projectName}
-			variant="head"
-			disabledReason={projectActionsUnavailableReason}
-			onPrepareRename={onPrepareRename}
-			onRename={onRenameProject}
-			onPrepareDelete={onPrepareDelete}
-			onDelete={onDeleteProject}
-			onComplete={onProjectActionComplete}
-			onBusyChange={onProjectActionBusyChange}
-			onRefreshRemote={onRefreshRemoteProject}
-		/>
-		<button
-			type="button"
-			class="action"
-			disabled={!canDownloadSource}
-			onclick={onDownloadSource}
+	<button
+		type="button"
+		class="head-index"
+		data-head-index
+		aria-expanded={indexOpen}
+		aria-controls="plate-index"
+		onclick={onToggleIndex}
+	>
+		Index <span class="chevron" aria-hidden="true">{indexOpen ? '▾' : '▸'}</span>
+	</button>
+
+	<!--
+		Escape closes the project menu from any control inside it. The group only
+		carries that key route; its focus targets are the name and the menu's buttons.
+	-->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<div class="identity" role="group" aria-label="Project" data-head-project-owner onkeydown={onProjectKeydown}>
+		<span class="brand">Biskiq</span>
+		<h1 class="project-title">
+			<button
+				type="button"
+				class="project-name"
+				data-head-project
+				bind:this={projectTrigger}
+				aria-expanded={projectMenuOpen}
+				aria-controls={projectMenuId}
+				title={projectName}
+				onclick={toggleProjectMenu}
+			>
+				<span class="project-text">{projectName}</span>
+				<span class="chevron" aria-hidden="true">{projectMenuOpen ? '▴' : '▾'}</span>
+			</button>
+		</h1>
+		<div
+			id={projectMenuId}
+			class="project-menu"
+			role="group"
+			aria-label="Project actions"
+			data-head-project-menu
+			hidden={!projectMenuOpen}
 		>
-			Download source JSON
-		</button>
-			<strong>Status</strong>
-			{#if !canUndo && !canRedo}<p>{historyUnavailableReason}</p>{/if}
-			{#if saveControl === null}<p>{saveUnavailableReason}</p>{:else if saveControl.reason}<p>{saveControl.reason}</p>{/if}
-			{#if !canPreview}<p>{previewUnavailableReason}</p>{/if}
-			<strong>Keys</strong>
-			<p>⌘K / Ctrl+K Find · 3 3D · 2 Plan · F Fit · V Select · P Ink · M Measure · E Eraser · L Objects · Esc Cancel</p>
+			<ProjectLifecycleActions
+				bind:this={lifecycle}
+				{projectId}
+				{projectName}
+				variant="head"
+				disabledReason={projectActionsUnavailableReason}
+				onPrepareRename={onPrepareRename}
+				onRename={onRenameProject}
+				onPrepareDelete={onPrepareDelete}
+				onDelete={onDeleteProject}
+				onComplete={onProjectActionComplete}
+				onBusyChange={onProjectActionBusyChange}
+				onRefreshRemote={onRefreshRemoteProject}
+			/>
+			<button
+				type="button"
+				class="menu-action"
+				data-head-download
+				disabled={!canDownloadSource}
+				onclick={onDownloadSource}
+			>
+				Download source JSON
+			</button>
+			<button type="button" class="menu-action" data-head-source onclick={onOpenSource}>
+				Open source JSON
+			</button>
+			<p class="project-id">Project id <code>{projectId}</code></p>
 		</div>
-	</details>
-	<div class="identity">
-		<p class="app">Museum Editor</p>
-		<h1 class="project" title={projectName}>{projectName}</h1>
-		<details class="technical">
-			<summary>Technical details</summary>
-			<code class="project-id" title={projectId}>{projectId}</code>
-		</details>
 	</div>
-	{#if !indexOpen}
-		<button type="button" class="location" title={locationLabel ?? projectName} onclick={onOpenIndex}>{locationLabel ?? projectName}</button>
+
+	{#if !indexOpen && locationLabel !== null}
+		<button type="button" class="location" data-head-location title={locationLabel} onclick={onOpenIndex}>{locationLabel}</button>
 	{/if}
 
 	<div class="lens" role="group" aria-label="Product lens">
@@ -292,7 +416,7 @@
 	<div class="actions">
 		{#if find !== null}
 			<details class="find" data-head-find bind:this={findDisclosure}>
-				<summary>Find</summary>
+				<summary bind:this={findSummary}>Find</summary>
 				<div class="find-body">
 					<label class="find-field">
 						<span>Find a subject, tool or operation</span>
@@ -309,7 +433,12 @@
 						<ul class="find-results">
 							{#each find.entries as entry (`${entry.adapterId}:${entry.id}`)}
 								<li>
-									<button type="button" onclick={() => find?.onRun(entry)}>
+									<button
+										type="button"
+										data-find-id={entry.id}
+										data-find-adapter={entry.adapterId}
+										onclick={() => void runFind(entry)}
+									>
 										<span class="find-verb">{entry.verb}</span>
 										{entry.label}
 									</button>
@@ -321,224 +450,356 @@
 			</details>
 		{/if}
 
-		<div class="capability" data-editor-history data-unavailable-capability={!canUndo && !canRedo ? '' : undefined}>
-			<div class="history-actions">
+		<div class="history" data-editor-history data-unavailable-capability={!canUndo && !canRedo ? '' : undefined}>
+			<div class="cap" data-reason-owner data-reason-open={reasonOpen('undo')}>
 				<button
 					type="button"
 					class="action"
-					disabled={!canUndo}
+					data-head-undo
 					aria-disabled={!canUndo}
-					title={canUndo ? 'Undo the latest accepted change' : historyUnavailableReason}
-					onclick={onUndo}
+					aria-describedby={canUndo ? undefined : reasonId('undo')}
+					title={canUndo ? 'Undo the latest accepted change' : undefined}
+					onclick={runUndo}
 				>
 					Undo
 				</button>
+				{#if !canUndo}<span class="reason" id={reasonId('undo')}>{historyUnavailableReason}</span>{/if}
+			</div>
+			<div class="cap" data-reason-owner data-reason-open={reasonOpen('redo')}>
 				<button
 					type="button"
 					class="action"
-					disabled={!canRedo}
+					data-head-redo
 					aria-disabled={!canRedo}
-					title={canRedo ? 'Redo the last undone change' : redoUnavailableReason}
-					onclick={onRedo}
+					aria-describedby={canRedo ? undefined : reasonId('redo')}
+					title={canRedo ? 'Redo the last undone change' : undefined}
+					onclick={runRedo}
 				>
 					Redo
 				</button>
+				{#if !canRedo}<span class="reason" id={reasonId('redo')}>{redoUnavailableReason}</span>{/if}
 			</div>
-			{#if !canUndo && !canRedo}
-				<span class="reason">{historyUnavailableReason}</span>
-			{/if}
 		</div>
 
 		{#if saveControl === null}
-			<div class="capability" data-unavailable-capability>
+			<div class="cap" data-reason-owner data-unavailable-capability="" data-reason-open={reasonOpen('save-unavailable')}>
 				<button
 					type="button"
 					class="action"
-					disabled
 					aria-disabled="true"
-					title={saveUnavailableReason}
+					aria-describedby={reasonId('save-unavailable')}
+					onclick={onSaveClick}
 				>
 					Save
 				</button>
-				<span class="reason">{saveUnavailableReason}</span>
+				<span class="reason" id={reasonId('save-unavailable')}>{saveUnavailableReason}</span>
 			</div>
 		{:else}
 			<div
-				class="capability"
-				data-head-save
+				class="cap"
+				data-reason-owner
+				data-head-save=""
 				data-save-status={saveStatus}
 				data-unsaved={unsaved ? '' : undefined}
+				data-reason-open={reasonOpen('save')}
 			>
 				<button
 					type="button"
 					class="action"
-					disabled={saveControl.disabled || projectActionBusy}
-					aria-disabled={saveControl.disabled || projectActionBusy}
-					title={projectActionBusy ? 'Project rename or deletion is in progress.' : saveControl.reason ?? saveControl.label}
-					onclick={() => void runSave()}
+					data-head-save-button
+					aria-disabled={saveDisabled}
+					aria-describedby={saveReasonText !== null || unsaved ? reasonId('save') : undefined}
+					onclick={onSaveClick}
 				>
 					{saveControl.label}
 				</button>
-				{#if saveControl.reason !== null}
-					<span class="reason">{saveControl.reason}</span>
-				{/if}
-				{#if unsaved}
-					<span class="reason" data-unsaved-work>Unsaved changes</span>
+				{#if saveReasonText !== null || unsaved}
+					<span class="reason" id={reasonId('save')}>
+						{#if saveReasonText !== null}<span>{saveReasonText}</span>{/if}
+						{#if unsaved}<span class="reason-line" data-unsaved-work>Unsaved changes</span>{/if}
+					</span>
 				{/if}
 				{#if saveControl.conflict}
 					<button type="button" class="action" onclick={reloadRemote}>Reload remote</button>
 				{/if}
 			</div>
 		{/if}
+		<p class="sr-only" role="status" aria-live="polite" data-head-announce>{refusalAnnouncement}</p>
 
 		{#if canPreview}
-			<div class="capability" data-head-preview>
-				<button type="button" class="action" title="Enter an isolated visitor Preview" onclick={onPreview}>
+			<div class="cap preview" data-reason-owner data-head-preview="" data-reason-open={reasonOpen('preview')}>
+				<button
+					type="button"
+					class="action primary"
+					data-head-preview-button
+					aria-disabled="false"
+					title="Enter an isolated visitor Preview"
+					onclick={runPreview}
+				>
 					Preview
 				</button>
 			</div>
 		{:else}
-			<div class="capability" data-unavailable-capability>
+			<div class="cap preview" data-reason-owner data-unavailable-capability="" data-reason-open={reasonOpen('preview')}>
 				<button
 					type="button"
-					class="action"
-					disabled
+					class="action primary"
+					data-head-preview-button
 					aria-disabled="true"
-					title={previewUnavailableReason}
+					aria-describedby={reasonId('preview')}
+					onclick={runPreview}
 				>
 					Preview
 				</button>
-				<span class="reason">{previewUnavailableReason}</span>
+				<span class="reason" id={reasonId('preview')}>{previewUnavailableReason}</span>
 			</div>
 		{/if}
-
-
 	</div>
 </header>
 
 <style>
+	/*
+		The row takes its roles from the scoped map on `.editor-host` (shell-roles.css).
+		The literal fallbacks keep the component legible when mounted on its own.
+	*/
 	.head {
-		--chassis-forest: #11291f;
-		--chassis-forest-raised: #1c3a2c;
-		--chassis-hairline: #2f4a3d;
-		--head-ink: #f3f4ee;
-		--head-ink-quiet: #aebbb0;
-		--active-lens: #22503c;
-		--focus-ring: #d4ad45;
-		--control-height: 1.9rem;
-		--radius: 0.35rem;
-
+		box-sizing: border-box;
 		display: flex;
 		flex-wrap: nowrap;
 		align-items: center;
-		gap: 0.5rem 1rem;
-		padding: 0.5rem 0.85rem;
-		background: var(--chassis-forest);
-		color: var(--head-ink);
-		border-bottom: 1px solid var(--chassis-hairline);
-		font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+		gap: 0.5rem;
+		height: var(--shell-head-height, 44px);
+		padding: 0 0.6rem;
+		background: var(--shell-forest, #11291f);
+		color: var(--shell-ink-light, #f3f4ee);
+		border-bottom: 1px solid var(--shell-hairline, #2f4a3d);
+		font-family: var(--shell-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+		font-size: var(--shell-text-body, 13px);
+		min-width: 0;
+	}
+
+	.head-index,
+	.location {
+		font-size: var(--shell-text-utility, 12px);
+		letter-spacing: 0.02em;
 	}
 
 	.identity {
+		position: relative;
 		display: flex;
 		min-width: 0;
-		align-items: baseline;
-		gap: 0.6rem;
+		flex: 0 1 auto;
+		align-items: center;
+		gap: 0.5rem;
 	}
 
-	.app {
-		margin: 0;
-		font-size: 0.68rem;
+	.brand {
+		font-size: var(--shell-text-utility, 12px);
 		font-weight: 700;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--head-ink-quiet);
+		letter-spacing: 0.04em;
+		color: var(--shell-ink-quiet, #9fb2a2);
 		white-space: nowrap;
 	}
 
-	.project {
+	.project-title {
+		min-width: 0;
 		margin: 0;
-		max-width: 24rem;
-		overflow: hidden;
-		font-size: 1rem;
-		font-weight: 600;
+		font: inherit;
+	}
+
+	.project-name {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		max-width: 14rem;
+		min-height: var(--shell-control-height, 32px);
+		padding: 0 0.3rem;
+		border-color: transparent;
+		color: #fff;
+		font-family: var(--shell-serif, 'Iowan Old Style', Palatino, Georgia, serif);
+		font-size: var(--shell-text-identity, 15px);
+		font-weight: 400;
 		line-height: 1.2;
+	}
+
+	.project-text {
+		overflow: hidden;
+		min-width: 0;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.technical {
-		font-size: 0.72rem;
-		color: var(--head-ink-quiet);
+	.chevron {
+		font-family: var(--shell-sans, Inter, sans-serif);
+		font-size: var(--shell-text-utility, 12px);
+		color: var(--shell-ink-quiet, #9fb2a2);
 	}
 
-	.technical summary {
-		cursor: pointer;
+	/* The project menu is a disclosure on the name, holding the procedures the old ☰ held. */
+	.project-menu {
+		position: absolute;
+		z-index: 30;
+		top: calc(100% + 0.3rem);
+		left: 0;
+		display: grid;
+		gap: 0.45rem;
+		width: min(18rem, 90vw);
+		padding: 0.6rem;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.35rem;
+		background: var(--shell-forest, #11291f);
+		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 45%);
+		font-size: var(--shell-text-body, 13px);
+	}
+
+	.project-menu[hidden] {
+		display: none;
+	}
+
+	.menu-action {
+		justify-self: start;
 	}
 
 	.project-id {
-		display: inline-block;
-		margin-top: 0.3rem;
-		padding: 0.15rem 0.35rem;
-		background: var(--chassis-forest-raised);
-		border-radius: var(--radius);
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 0.72rem;
-		font-variant-numeric: tabular-nums;
+		margin: 0;
+		font-size: var(--shell-text-utility, 12px);
+		color: var(--shell-ink-quiet, #9fb2a2);
 	}
 
+	.project-id code {
+		padding: 0.1rem 0.3rem;
+		background: var(--shell-forest-raised, #22503c);
+		border-radius: 0.35rem;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: var(--shell-text-utility, 12px);
+		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
+	}
+
+	.location {
+		min-width: 0;
+		max-width: 11rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		border-color: var(--shell-hairline, #2f4a3d);
+	}
+
+	/* The lens is a pale selected segment with forest ink; the inactive segment stays quiet. */
 	.lens {
 		display: inline-flex;
+		flex: none;
 		gap: 0.15rem;
 		padding: 0.15rem;
-		background: var(--chassis-forest-raised);
-		border: 1px solid var(--chassis-hairline);
-		border-radius: var(--radius);
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.35rem;
+	}
+
+	.lens-button {
+		border-color: transparent;
+	}
+
+	.lens-button.active {
+		background: var(--shell-paper, #e9ebe6);
+		border-color: var(--shell-paper, #e9ebe6);
+		color: var(--shell-forest, #11291f);
+		font-weight: 600;
 	}
 
 	.actions {
 		display: flex;
+		flex: none;
 		flex-wrap: nowrap;
-		align-items: flex-start;
-		gap: 0.35rem 0.7rem;
+		align-items: center;
+		gap: 0.4rem;
+		min-width: 0;
 		margin-left: auto;
 	}
 
-	.capability {
-		display: flex;
-		flex-direction: column;
-		gap: 0.1rem;
-		max-width: 11rem;
+	/* One reason cell per control: its disclosure opens beside its own control only. */
+	.cap {
+		position: relative;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+	}
+
+	.history {
+		display: inline-flex;
+		gap: 0.3rem;
 	}
 
 	/*
-		Find is a disclosure rather than a permanent panel: the Head stays one row,
-		and the list it opens is the bounded set of contributed entries.
+		A reason is a disclosure: it opens on focus, hover or a tap of its control and
+		closes when focus, pointer or the tap moves away. At rest it is clipped to
+		nothing but stays in the accessibility tree, so aria-describedby reads it.
 	*/
+	.reason {
+		position: absolute;
+		z-index: 14;
+		top: calc(100% + 0.3rem);
+		left: 0;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		border: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+		font-size: var(--shell-text-utility, 12px);
+		line-height: 1.3;
+	}
+
+	.cap:hover > .reason,
+	.cap:focus-within > .reason,
+	.cap[data-reason-open] > .reason {
+		width: max-content;
+		max-width: min(18rem, 80vw);
+		height: auto;
+		padding: 0.4rem 0.55rem;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.35rem;
+		background: var(--shell-forest, #11291f);
+		color: var(--shell-ink-light, #f3f4ee);
+		overflow: visible;
+		clip-path: none;
+		white-space: normal;
+		box-shadow: 0 0.5rem 1.2rem rgb(6 20 14 / 45%);
+	}
+
+	.reason-line {
+		display: block;
+	}
+
+	/*
+		The action controls sit at the row's right edge, so each disclosure hangs from
+		its control's right edge and stays inside the viewport at every width.
+	*/
+	.actions .cap > .reason {
+		left: auto;
+		right: 0;
+	}
+
 	.find {
 		position: relative;
 	}
 
 	.find summary {
-		min-height: var(--control-height);
-		padding: 0 0.55rem;
-		border: 1px solid var(--chassis-hairline);
-		border-radius: var(--radius);
-		background: var(--chassis-forest-raised);
-		color: var(--head-ink);
-		font-size: 0.78rem;
-		line-height: calc(var(--control-height) - 2px);
+		display: inline-flex;
+		align-items: center;
+		min-height: var(--shell-control-height, 32px);
+		padding: 0 0.6rem;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.35rem;
+		background: var(--shell-forest-raised, #22503c);
+		color: var(--shell-ink-light, #f3f4ee);
+		font-size: var(--shell-text-body, 13px);
 		cursor: pointer;
 		list-style: none;
 	}
 
 	.find summary::-webkit-details-marker {
 		display: none;
-	}
-
-	.find summary:focus-visible {
-		outline: 2px solid var(--focus-ring);
-		outline-offset: 1px;
 	}
 
 	.find-body {
@@ -551,9 +812,9 @@
 		gap: 0.35rem;
 		width: min(20rem, 80vw);
 		padding: 0.5rem;
-		border: 1px solid var(--chassis-hairline);
-		border-radius: var(--radius);
-		background: var(--chassis-forest);
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.35rem;
+		background: var(--shell-forest, #11291f);
 		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 45%);
 	}
 
@@ -561,17 +822,17 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.15rem;
-		font-size: 0.68rem;
-		color: var(--head-ink-quiet);
+		font-size: var(--shell-text-utility, 12px);
+		color: var(--shell-ink-quiet, #9fb2a2);
 	}
 
 	.find-field input {
-		min-height: var(--control-height);
+		min-height: var(--shell-control-height, 32px);
 		padding: 0 0.4rem;
-		border: 1px solid var(--chassis-hairline);
-		border-radius: var(--radius);
-		background: #0e211900;
-		color: var(--head-ink);
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.35rem;
+		background: transparent;
+		color: var(--shell-ink-light, #f3f4ee);
 		font: inherit;
 	}
 
@@ -592,28 +853,13 @@
 		align-items: baseline;
 		gap: 0.4rem;
 		padding: 0.25rem 0.3rem;
-		border: 1px solid transparent;
-		border-radius: var(--radius);
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		font-size: 0.78rem;
+		border-color: transparent;
+		font-size: var(--shell-text-body, 13px);
 		text-align: left;
-		cursor: pointer;
-	}
-
-	.find-results button:hover {
-		border-color: var(--chassis-hairline);
-		background: var(--chassis-forest-raised);
-	}
-
-	.find-results button:focus-visible {
-		outline: 2px solid var(--focus-ring);
-		outline-offset: 1px;
 	}
 
 	.find-verb {
-		color: var(--focus-ring);
+		color: var(--shell-gold, #d4ad45);
 		font-size: 0.62rem;
 		font-weight: 700;
 		letter-spacing: 0.08em;
@@ -622,70 +868,99 @@
 
 	.find-empty {
 		margin: 0;
-		font-size: 0.72rem;
-		color: var(--head-ink-quiet);
-	}
-
-	.history-actions {
-		display: flex;
-		gap: 0.3rem;
-	}
-
-	/* The live Undo refusal is three lines at this width. Reserve its space
-	 * before a press: growing the Head during an erase resizes the Camera and
-	 * moves the subject away from a stationary pointer before release. */
-	@media (min-width: 1280px) {
-		.capability {
-			min-height: calc(var(--control-height) + 0.1rem + 2.325rem);
-		}
-	}
-
-	.reason {
-		font-size: 0.62rem;
-		line-height: 1.25;
-		color: var(--head-ink-quiet);
+		font-size: var(--shell-text-utility, 12px);
+		color: var(--shell-ink-quiet, #9fb2a2);
 	}
 
 	button {
-		min-height: var(--control-height);
-		padding: 0.2rem 0.6rem;
-		border: 1px solid var(--chassis-hairline);
-		border-radius: var(--radius);
+		min-height: var(--shell-control-height, 32px);
+		padding: 0 0.6rem;
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.35rem;
 		background: transparent;
 		color: inherit;
 		font: inherit;
-		font-size: 0.78rem;
+		font-size: var(--shell-text-body, 13px);
+		white-space: nowrap;
 		cursor: pointer;
 	}
 
-	button:hover:not(:disabled) {
-		border-color: var(--focus-ring);
+	/* Hover is neutral: a light overlay wash, never a second selection colour. */
+	button:hover:not([aria-disabled='true']):not(:disabled) {
+		background: rgb(243 244 238 / 8%);
 	}
 
+	/* An unavailable control keeps its focus and tap; only its look says it cannot act. */
+	button[aria-disabled='true'],
 	button:disabled {
 		cursor: default;
-		color: var(--head-ink-quiet);
+		color: var(--shell-ink-quiet, #9fb2a2);
 		border-style: dashed;
 	}
 
-	.lens-button.active {
-		background: var(--active-lens);
-		border-color: var(--active-lens);
-		color: var(--head-ink);
+	/* The row's primary action: the gold Preview, with forest ink. */
+	button.primary {
+		background: var(--shell-gold, #d4ad45);
+		border-color: var(--shell-gold, #d4ad45);
+		color: var(--shell-forest, #11291f);
+		font-weight: 600;
 	}
 
+	button.primary[aria-disabled='true'] {
+		background: transparent;
+		border-color: var(--shell-hairline, #2f4a3d);
+		color: var(--shell-ink-quiet, #9fb2a2);
+		font-weight: 400;
+	}
 
 	button:focus-visible,
 	summary:focus-visible {
-		outline: 2px solid var(--focus-ring);
+		outline: 2px solid var(--shell-gold, #d4ad45);
 		outline-offset: 2px;
 	}
 
-	.app-menu { position: relative; flex: none; }
-	.app-menu summary { cursor: pointer; list-style: none; padding: 0.35rem; }
-	.menu-body { position: absolute; z-index: 30; top: 100%; left: 0; width: 16rem; padding: 0.8rem; display: grid; gap: 0.6rem; background: var(--chassis-forest); border: 1px solid var(--chassis-hairline); }
-	.menu-body label { display: flex; justify-content: space-between; gap: 0.6rem; align-items: center; }
-	.menu-body p { margin: 0; font-size: 0.75rem; }
-	.location { min-width: 0; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	@media (max-width: 1279px) { .app, .technical, .reason { display: none; } .head { gap: 0.35rem; } .actions { gap: 0.2rem; } }
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		border: 0;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+
+	/*
+		Narrow desktop and tablet widths keep the one row by giving the name the room
+		left over. The brand and the names shrink first; no control leaves the row.
+	*/
+	@media (max-width: 1279px) {
+		.head {
+			gap: 0.35rem;
+		}
+
+		.actions {
+			gap: 0.25rem;
+		}
+
+		.project-name {
+			max-width: 9rem;
+		}
+	}
+
+	/* Coarse targets: at least 44 CSS px; the row grows to hold them without a second line. */
+	@media (pointer: coarse) {
+		.head {
+			height: auto;
+			min-height: var(--shell-head-height, 44px);
+			padding-block: 0.25rem;
+		}
+
+		button,
+		summary {
+			min-height: 44px;
+			min-width: 44px;
+		}
+	}
 </style>

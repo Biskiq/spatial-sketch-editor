@@ -23,7 +23,6 @@
 	 */
 	let {
 		open,
-		onToggle,
 		groups,
 		selectionId,
 		query,
@@ -32,8 +31,8 @@
 		onBringIntoView,
 		onReveal
 	}: {
+		/** Whether the locator shows. The Head's Index toggle is its one control, so the Index holds none. */
 		open: boolean;
-		onToggle: () => void;
 		groups: readonly {
 			id: string;
 			label: string;
@@ -127,25 +126,13 @@
 </script>
 
 <nav
+	id="plate-index"
 	class="plate-index"
 	aria-label="Project locator"
 	data-plate-landmark="index"
 	class:collapsed={!open}
 	hidden={!open}
 >
-	<div class="index-head">
-		<button
-			type="button"
-			class="index-toggle"
-			aria-expanded={open}
-			aria-controls="plate-index-body"
-			onclick={onToggle}
-		>
-			<span class="index-title">Index</span>
-			<span class="index-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
-		</button>
-	</div>
-
 	<div id="plate-index-body" class="index-body" hidden={!open}>
 		<div class="index-search">
 			<label class="search-label" for="plate-index-search">Find a subject</label>
@@ -248,52 +235,6 @@
 	}
 
 	.plate-index[hidden] { display: none; }
-
-	.index-head {
-		flex-shrink: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-		padding: 0.6rem 0.7rem;
-		border-bottom: 1px solid #e2e5df;
-	}
-
-	.plate-index.collapsed .index-head {
-		border-bottom: none;
-	}
-
-	.index-toggle {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-		min-height: 2.5rem;
-		padding: 0.35rem 0.4rem;
-		border: 1px solid transparent;
-		border-radius: 0.35rem;
-		background: none;
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-	}
-
-	.index-toggle:hover {
-		background: #e9ebe6;
-	}
-
-	.index-title {
-		font-size: 0.7rem;
-		font-weight: 700;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: #4b5349;
-	}
-
-	.index-chevron {
-		font-size: 0.8rem;
-		color: #6b7466;
-	}
-
 
 	.index-body[hidden] {
 		display: none;
@@ -484,7 +425,6 @@
 	}
 
 	/* Focus is an independent, non-hue cue (never the selection contour). */
-	.index-toggle:focus-visible,
 	.item-row:focus-visible,
 	.op:focus-visible,
 	.search-input:focus-visible {

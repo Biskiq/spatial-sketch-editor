@@ -62,9 +62,9 @@
 		onBusyChange(next);
 	}
 
-	async function openAction(next: Action, event: MouseEvent): Promise<void> {
+	async function openAction(next: Action, source: EventTarget | null): Promise<void> {
 		if (actionDisabled) return;
-		opener = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+		opener = source instanceof HTMLElement ? source : null;
 		message = '';
 		remoteName = null;
 		retryPrepared = null;
@@ -103,6 +103,15 @@
 		} else {
 			dialog.querySelector<HTMLButtonElement>('[data-primary-action]')?.focus();
 		}
+	}
+
+	/**
+	 * Opens the rename or delete procedure from outside the component, such as the
+	 * Head's Find. It is the same procedure the buttons open, with no opener to
+	 * return focus to beyond the dialog's own close.
+	 */
+	export async function start(next: Action): Promise<void> {
+		await openAction(next, null);
 	}
 
 	function closeDialog(): void {
@@ -219,8 +228,8 @@
 
 <div class="lifecycle" class:head={variant === 'head'} class:hub={variant === 'hub'}>
 	<div class="buttons" aria-label="Project actions">
-		<button type="button" aria-label={`Rename ${projectName}`} disabled={actionDisabled} title={disabledReason ?? 'Rename this project'} onclick={(event) => void openAction('rename', event)}>Rename</button>
-		<button type="button" class="delete-button" aria-label={`Delete ${projectName}`} disabled={actionDisabled} title={disabledReason ?? 'Delete this project'} onclick={(event) => void openAction('delete', event)}>Delete</button>
+		<button type="button" aria-label={`Rename ${projectName}`} disabled={actionDisabled} title={disabledReason ?? 'Rename this project'} onclick={(event) => void openAction('rename', event.currentTarget)}>Rename</button>
+		<button type="button" class="delete-button" aria-label={`Delete ${projectName}`} disabled={actionDisabled} title={disabledReason ?? 'Delete this project'} onclick={(event) => void openAction('delete', event.currentTarget)}>Delete</button>
 	</div>
 	{#if disabledReason}
 		<span class="reason">{disabledReason}</span>

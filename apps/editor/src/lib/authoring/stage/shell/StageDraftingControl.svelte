@@ -1,6 +1,7 @@
 <script lang="ts">
 	/**
-	 * R217.S13 — PLATE's **drafting cluster** in the Stage's top-left furniture slot.
+	 * R217.S13 — PLATE's **drafting cluster** in the Stage's top-left furniture slot,
+	 * with R217.S20's **⚙ viewing preferences** beside it.
 	 *
 	 * The cluster is one reading control and two words, never a toolbar of domain
 	 * tools:
@@ -10,14 +11,14 @@
 	 * - **Grid** and **Snap** toggle their one fact and say it in words; a held
 	 *   Alt/Option is reported as `Snap held`, never by colour alone. Their values
 	 *   are fixed, so zoom can only thin the drawing.
+	 * - **⚙** opens the viewing preferences: 2D appearance, Height Sheet side, Reduce
+	 *   motion and motion speed. These are browser preferences, never source, and the
+	 *   panel holds no drafting value: Grid and Snap stay the words above.
 	 *
-	 * Scale's detents moved to Find and Fit moved to the lower-right zoom cluster;
-	 * the interval menu and ⚙ left with them. Nothing here reaches source, history
-	 * or Save.
-	 *
-	 * Every control is a native button with `aria-pressed`, so keyboard access and
-	 * state announcement come from the control itself. Under `pointer: coarse`
-	 * every target is at least 44 CSS px.
+	 * Nothing here reaches source, history or Save. Every control is a native button
+	 * with `aria-pressed` or `aria-expanded`, so keyboard access and state
+	 * announcement come from the control itself. Under `pointer: coarse` every target
+	 * is at least 44 CSS px.
 	 */
 	import type { StageDraftingPatch, StageDraftingState } from '../stage-drafting';
 
@@ -28,7 +29,15 @@
 		gridWord,
 		snapWord,
 		onReading,
-		onPatch
+		onPatch,
+		planAppearance = 'paper',
+		onPlanAppearance = () => {},
+		heightSheetSide = 'right',
+		onHeightSheetSide = () => {},
+		reducedMotion = false,
+		onToggleReducedMotion = () => {},
+		motionSpeed = 'normal',
+		onMotionSpeed = () => {}
 	}: {
 		drafting: StageDraftingState;
 		/** The settled reading the segmented control reports. */
@@ -41,7 +50,28 @@
 		snapWord: string;
 		onReading: (reading: 'plan' | '3d') => void;
 		onPatch: (patch: StageDraftingPatch) => void;
+		/** The ⚙ viewing preferences: browser session values, never source. */
+		planAppearance?: 'paper' | 'shaded';
+		onPlanAppearance?: (value: 'paper' | 'shaded') => void;
+		heightSheetSide?: 'left' | 'right';
+		onHeightSheetSide?: (side: 'left' | 'right') => void;
+		reducedMotion?: boolean;
+		onToggleReducedMotion?: () => void;
+		motionSpeed?: 'slow' | 'normal' | 'fast';
+		onMotionSpeed?: (value: 'slow' | 'normal' | 'fast') => void;
 	} = $props();
+
+	let viewingOpen = $state(false);
+	let gear: HTMLButtonElement | undefined;
+	const viewingId = $props.id();
+
+	/** Escape closes the panel and returns focus to its ⚙, and stops there so the Stage keeps its own Escape. */
+	function onViewingKeydown(event: KeyboardEvent): void {
+		if (event.key !== 'Escape' || !viewingOpen) return;
+		event.stopPropagation();
+		viewingOpen = false;
+		gear?.focus();
+	}
 </script>
 
 <div class="cluster" class:quiet data-stage-drafting role="group" aria-label="Drafting state">
@@ -90,6 +120,72 @@
 	<!-- The durable aria-pressed is the switch; this polite status names the
 	     temporary Alt/Option hold, which would otherwise be visible only in text. -->
 	<span id="drafting-snap-state" class="sr-only" role="status" aria-live="polite">{snapWord}</span>
+
+	<div class="viewing-slot">
+		<button
+			type="button"
+			class="gear"
+			data-stage-viewing
+			bind:this={gear}
+			aria-label="Viewing settings"
+			aria-expanded={viewingOpen}
+			aria-controls={viewingId}
+			title="Viewing settings"
+			onclick={() => (viewingOpen = !viewingOpen)}
+			onkeydown={onViewingKeydown}
+		>
+			<span aria-hidden="true">⚙</span>
+		</button>
+		<!-- Escape closes the panel from any of its controls; the controls themselves are the focus targets. -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div
+			id={viewingId}
+			class="viewing"
+			role="group"
+			aria-label="Viewing settings"
+			data-stage-viewing-panel
+			hidden={!viewingOpen}
+			onkeydown={onViewingKeydown}
+		>
+			<strong class="group-title">Viewing</strong>
+			<label>
+				<span>2D appearance</span>
+				<select
+					value={planAppearance}
+					onchange={(event) => onPlanAppearance(event.currentTarget.value as 'paper' | 'shaded')}
+				>
+					<option value="paper">Paper</option>
+					<option value="shaded">Shaded</option>
+				</select>
+			</label>
+			<label>
+				<span>Height Sheet</span>
+				<select
+					value={heightSheetSide}
+					onchange={(event) => onHeightSheetSide(event.currentTarget.value as 'left' | 'right')}
+				>
+					<option value="right">Right</option>
+					<option value="left">Left</option>
+				</select>
+			</label>
+			<strong class="group-title">Settings</strong>
+			<label class="check">
+				<input type="checkbox" checked={reducedMotion} onchange={() => onToggleReducedMotion()} />
+				<span>Reduce motion</span>
+			</label>
+			<label>
+				<span>Editor motion speed</span>
+				<select
+					value={motionSpeed}
+					onchange={(event) => onMotionSpeed(event.currentTarget.value as 'slow' | 'normal' | 'fast')}
+				>
+					<option value="slow">Slow</option>
+					<option value="normal">Normal</option>
+					<option value="fast">Fast</option>
+				</select>
+			</label>
+		</div>
+	</div>
 </div>
 
 <style>
@@ -166,6 +262,60 @@
 		border: 0;
 	}
 
+	/* The ⚙ and its panel: a viewing disclosure, not a drafting control. */
+	.viewing-slot {
+		position: relative;
+	}
+	.gear {
+		width: 2.25rem;
+		padding: 0;
+		font-size: 0.95rem;
+	}
+	.viewing {
+		position: absolute;
+		z-index: 9;
+		top: calc(100% + 0.4rem);
+		left: 0;
+		display: grid;
+		gap: 0.5rem;
+		width: 16rem;
+		padding: 0.75rem;
+		border: 1px solid var(--chassis-hairline, #405d4c);
+		border-radius: 0.4rem;
+		background: var(--chassis-forest, #11291f);
+		color: #f4f0e9;
+		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 40%);
+		font-size: 0.76rem;
+	}
+	.viewing[hidden] {
+		display: none;
+	}
+	.viewing label {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+	}
+	.viewing label.check {
+		justify-content: flex-start;
+	}
+	.viewing select {
+		min-height: 2.1rem;
+		padding: 0 0.3rem;
+		border: 1px solid var(--chassis-hairline, #405d4c);
+		border-radius: 0.35rem;
+		background: var(--chassis-forest, #11291f);
+		color: inherit;
+		font: inherit;
+	}
+	.group-title {
+		font-size: 0.66rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #aebbb0;
+	}
+
 	/* D42: on Paper the words read quietly, never as a dark inverted toolbar. */
 	.cluster.quiet {
 		--chassis-forest: #f4f0e9;
@@ -184,6 +334,15 @@
 	.cluster.quiet button:focus-visible {
 		outline-color: #22503c;
 	}
+	.cluster.quiet .viewing {
+		color: #14231b;
+	}
+	.cluster.quiet .viewing select {
+		color: #14231b;
+	}
+	.cluster.quiet .group-title {
+		color: #4f6b58;
+	}
 
 	/* Touch targets: PLATE requires 44 px under a coarse pointer. */
 	@media (pointer: coarse) {
@@ -194,6 +353,13 @@
 		}
 		.reading button {
 			min-width: 56px;
+		}
+		.gear {
+			width: 44px;
+			padding: 0;
+		}
+		.viewing select {
+			min-height: 44px;
 		}
 	}
 </style>
