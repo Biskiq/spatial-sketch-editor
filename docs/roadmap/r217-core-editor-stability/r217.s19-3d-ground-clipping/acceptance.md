@@ -4,8 +4,8 @@
 `codex/r217-s19-ground-clipping`, based on `main` `1032c09c`. The
 [phase slice register](../README.md#slice-register) owns status;
 [R217.S11](../r217.s11-integrated-final-gate/acceptance.md) owns integrated campaign acceptance.
-The criteria are in the [implementation plan](./implementation-plan.md): §3 and §3a as amended by
-[§3b](./implementation-plan.md#3b-amendment--2026-10-31).
+The criteria are in the [implementation plan](./implementation-plan.md) (closed to a stub; its
+recovery line is in the closeout below): §3 and §3a as amended by §3b.
 
 ## Owner ruling
 
@@ -26,7 +26,7 @@ First-checkpoint values, for history:
 | 4 | Up to 12,220 lines |
 | 5 | 0.435 mm scene-local; up to 1.8 m for a target far from the content |
 
-Their captures stay in `./evidence/` (`s19-*.png`).
+Their captures are archived at `../../../archive/roadmap/r217-core-editor-stability/r217.s19-3d-ground-clipping/evidence/2026-10-31-first-checkpoint/` (`s19-*.png`).
 
 ## Delivered
 
@@ -177,10 +177,10 @@ zoom used the Stage's + / − controls. Console: 0 errors.
 - **Widths.** The low orbit at 1440 × 900, 1280 × 800, 1180 × 820 and 820 × 1180
   (`s19a-low-orbit-*.png`). No horizontal page overflow at any width.
 - **D29.** Not reproduced as a material defect at the first checkpoint
-  (`./evidence/s19-d29-overhead-after-hmr-1440.png`). Nothing since touches the room floor
+  (`../../../archive/roadmap/r217-core-editor-stability/r217.s19-3d-ground-clipping/evidence/2026-10-31-first-checkpoint/s19-d29-overhead-after-hmr-1440.png`). Nothing since touches the room floor
   material.
 
-Evidence: `./evidence/amended/`, captured at the tested revision.
+Evidence: `../../../archive/roadmap/r217-core-editor-stability/r217.s19-3d-ground-clipping/evidence/2026-10-31-browser/` (manifest in [`CLOSED.md`](../../../archive/roadmap/r217-core-editor-stability/r217.s19-3d-ground-clipping/evidence/CLOSED.md)), captured at the tested revision.
 
 ## Residuals
 
@@ -191,3 +191,34 @@ Evidence: `./evidence/amended/`, captured at the tested revision.
   geometry within four depth steps of the datum. That is sub-millimetre at room distances and
   matters only far out with a floored near.
 - **Manual rows.** Coarse pointer, native touch, Safari and the integrated journeys remain S11's.
+
+## Closeout and preservation — 2026-10-31
+
+Acceptance was recorded by the owner's combined acceptance-and-closeout request. The independent
+review verdict at `2096f940` is clean, with no open, withdrawn or unadjudicated finding, and no
+prerequisite was waived. The phase register and the baton record the slice as shipped with no
+owner override.
+
+Anchors (computed before the compaction commit):
+
+```text
+plan       1f91ad5d7456c15aa603c0a1c4b350c57dec446a   last commit with the full plan body; the stub
+                                                      at its path names this anchor as its recovery
+acceptance 9efa6641dd2f1da63c8358dbac2215433bc7d2c8   full record; kept in full at its path
+tag        closed/r217.s19 -> 9efa6641                tag target keeps both anchors reachable
+merge      P1 merge commit; post-merge anchor verification recorded by the anchors follow-up
+```
+
+```text
+CLOSEOUT PRESERVATION — R217.S19 (2026-10-31)
+prose compacted:                 1   approved plan -> stub at its own path; acceptance record kept in full
+reference promotions:            0   the mat-grid paragraph of the shell + visual-system contract already describes the landed behaviour
+renderable evidence archived:    39 files / 9.2 MiB (23 browser, 16 first-checkpoint), byte-identical copies
+evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s19-3d-ground-clipping/evidence/CLOSED.md
+transient artifacts removed:     0
+historical anchors:              plan 1f91ad5d7456c15aa603c0a1c4b350c57dec446a; acceptance 9efa6641dd2f1da63c8358dbac2215433bc7d2c8 (full record); tag closed/r217.s19 -> 9efa6641 (push state recorded at post-merge verification)
+new live -> archive prose links: 0
+manual-owed verification rows:   4   coarse pointer, native touch, Safari, integrated journeys (S11)
+remaining deferred items:        3   far-target near (row 5); grid depth-step offset within four depth steps of the datum; S11 manual rows
+permanent stubs added:           1   approved plan
+```
