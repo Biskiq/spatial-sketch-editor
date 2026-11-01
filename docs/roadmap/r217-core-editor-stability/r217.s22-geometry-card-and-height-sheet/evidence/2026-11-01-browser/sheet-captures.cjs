@@ -1,4 +1,4 @@
-// R217.S23 task-owned captures of the Height Sheet on the light ground (Playwright Chromium).
+// R217.S23 task-owned captures of the Height Sheet on the light ground (Playwright Chromium; HEADED=1 for a headed run).
 // For each state: a PNG of the Stage and a JSON of the Sheet's element rects and computed inks.
 // Usage: node sheet-captures.cjs <outDir> <projectId> <cookieFile>
 const fs = require('fs');
@@ -94,7 +94,9 @@ async function captureState(page, name, viewport, mode, state) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  // HEADED=1 runs the captures in a headed Chromium, whose compositor is the display's; the default
+  // headless run is kept for comparison (see the compositor check in the acceptance record).
+  const browser = await chromium.launch({ headless: process.env.HEADED !== '1' });
   const jobs = [];
   for (const viewport of [{ width: 1440, height: 900 }, { width: 1180, height: 820 }]) {
     for (const mode of ['3d', '2d-paper', 'shaded-2d']) {

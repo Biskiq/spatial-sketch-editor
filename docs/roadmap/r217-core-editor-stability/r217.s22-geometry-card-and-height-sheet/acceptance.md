@@ -1,6 +1,6 @@
 # R217.S22 — acceptance record: Geometry, Card and Height Sheet
 
-**Slice:** R217.S22 · **Status:** implemented at tested revision `fb57a662`; implementation evidence recorded (re-recorded after the owner's light-ground P1); independent review and acceptance pending (this record states no verdict) · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**Slice:** R217.S22 · **Status:** implemented at tested revision `fb57a662`; implementation evidence recorded (re-recorded after the owner's light-ground P1 and the compositor review); independent review and acceptance pending (this record states no verdict) · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 **AUTHORITY: NONE.** This record reports what was implemented, the gates run, the browser evidence and the drift reconciled at cutover. The [phase slice register](../README.md#slice-register) owns status. Acceptance is for the independent review.
 
@@ -23,6 +23,7 @@ The plan's own text "`.reserved-height` goes" is done: the route no longer reser
 ### Tested revision
 
 - Branch `claude/r217-s22-geometry-card-and-height-sheet`, from `main` at `3eaafbb9` (R217.S20 and S21 merged).
+- No code changed in the compositor review; the tested revision stays `fb57a662`, and the gates are not re-run for it. The review's evidence, the headed re-captures and this record are docs and evidence changes.
 - Code commits: `7f4865c5` (measured lanes, the Sheet line, the Card fade and fold, TD-15, the empty-click notice) and **`fb57a662`** (the owner's light-ground fix: the Sheet's own pale plate and forest ink, the tick names, the removal of the `quiet` flag, and the tests). **Tested SHA: `fb57a662`.** Every gate below ran against that tree; no code file changed after it.
 - Docs commits `2c2eb72b` (TD-15 closure and the reference alignment) and the re-recording commit that carries this section change no code. The reference's Height Sheet paragraph was updated in the re-recording commit to name the tick names, hover and the plate ink.
 - Paths changed by the code commit: `EditorCard.svelte`, `StageHeightSheet.svelte`, the route `spatial/+page.svelte`, the new fixture `tests/lib/authoring/fixtures/HeightSheetProbe.svelte`, and three test suites. `git diff --name-only 3eaafbb9 7f4865c5` names no `apps/api` path, so `npm run check:api` and `npm run test:api` do not apply and were not run.
@@ -71,7 +72,7 @@ Each state was reached after a fresh load, so the first-pin hint was live for th
 | Pinned, first-pin hint showing (1440 and 1180 re-captured after the ink fix; 1280 and 820 are pre-fix, superseded) | [PNG](./evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-pinned-1440x900.json) | [PNG](./evidence/2026-11-01-browser/superseded-light-ground/pinned-1280x800.png) · [JSON](./evidence/2026-11-01-browser/superseded-light-ground/pinned-1280x800.json) | [PNG](./evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.png) · [JSON](./evidence/2026-11-01-browser/sheet-3d-pinned-1180x820.json) | [PNG](./evidence/2026-11-01-browser/superseded-light-ground/pinned-820x1180.png) · [JSON](./evidence/2026-11-01-browser/superseded-light-ground/pinned-820x1180.json) |
 | Ink palette open | [PNG](./evidence/2026-11-01-browser/ink-1440x900.png) · [JSON](./evidence/2026-11-01-browser/ink-1440x900.json) | [PNG](./evidence/2026-11-01-browser/ink-1280x800.png) · [JSON](./evidence/2026-11-01-browser/ink-1280x800.json) | [PNG](./evidence/2026-11-01-browser/ink-1180x820.png) · [JSON](./evidence/2026-11-01-browser/ink-1180x820.json) | [PNG](./evidence/2026-11-01-browser/ink-820x1180.png) · [JSON](./evidence/2026-11-01-browser/ink-820x1180.json) |
 
-Measured geometry, CSS px (`l, t, r, b`), from the JSON files:
+Measured geometry, CSS px (`l, t, r, b`), from the JSON files. The Sheet's captures in the light-ground section are from a headed Chromium (see the review finding below); the matrix captures are headless and carry the artifact described there, where the Card is expanded at 1440.
 
 - **1440×900, Wall:** Card `1064, 60, 1352, 790`; Sheet `1364, 359, 1428, 585`; zoom `1242, 802, 1352, 840`; dock `736, 840, 960, 888`. The Card clears the Sheet by 12 px and sits 12 px above the zoom cluster.
 - **1280×800, Wall:** Card `904, 60, 1192, 690`; Sheet `1204, 309, 1268, 535`; zoom `1082, 702, 1192, 740`.
@@ -170,6 +171,28 @@ Chromium through Playwright with `hasTouch`, so `(pointer: coarse)` matched. Eve
 | 1180×820 | Card expanded | 43 | 0 | 44 × 44 | no | [PNG](./evidence/2026-11-01-browser/coarse-1180x820-card-expanded.png) |
 
 Touch emulation in Chromium only. Native touch and Safari remain S11's.
+
+### Review finding: a dark rectangle under the expanded Card (compositor artifact)
+
+**What was seen.** In the re-review of `fb57a662`, the headless captures [`sheet-3d-pinned-1440x900.png`](./evidence/2026-11-01-browser/superseded-headless-compositor/sheet-3d-pinned-1440x900.png) and [`sheet-3d-dragging-1440x900.png`](./evidence/2026-11-01-browser/superseded-headless-compositor/sheet-3d-dragging-1440x900.png) showed a solid forest rectangle directly under the expanded Card at 1440×900: about x 993–1273, y 785–900, exactly the Card's width, with the zoom cluster on it. The folded Card in `height-1-dragging.png` does not show it.
+
+**What it is.** A headless-compositor artifact, not product paint. The steps:
+
+- `document.elementsFromPoint(1134, 850)` lists the WebGL canvas first. No DOM element with a background sits above it at that point. The box of the Card ends at y 790, so the rectangle is below the Card.
+- The rectangle's colour is exactly the `.stage` background (`#152c26`). A red `.stage` background turns it red, and hiding the canvas leaves the same stage colour. So the canvas is transparent there in the headless capture, and the stage shows through.
+- It depends on the Card being a clipping scroll container. Hiding the Card, fading it to zero opacity, removing its `max-height`, or setting its overflow to `visible` or `hidden` removes the rectangle. Removing the box-shadow or the opacity transition does not.
+- **The same state in a headed Chromium** (the display's compositor) shows the pale ground at every sampled point under the Card: `#e9ebe6`, against `#152c26` in the headless capture of the same state (`compositor-check.json`).
+
+Conclusion: the rectangle is a headless capture artifact. The product paints nothing there, and the headed captures show the ground. This is recorded per the review's instruction, and the cause is not otherwise pinned down. The Card's overflow is the trigger, which is the second finding below.
+
+- Evidence: [`compositor-check.json`](./evidence/2026-11-01-browser/compositor-check.json) (headless and headed pixels, every variant), the variant captures and scripts in [`compositor-check/`](./evidence/2026-11-01-browser/compositor-check/), and the headed captures of every Sheet state in the light-ground section above. The headless originals are kept in [`superseded-headless-compositor/`](./evidence/2026-11-01-browser/superseded-headless-compositor/).
+- The older headless matrix capture [`wall-1440x900.png`](./evidence/2026-11-01-browser/wall-1440x900.png) and the edit-under-card captures at 1440 (`edit-under-card-1440-*.png`) carry the same artifact, because the Card is expanded in them. Their JSON probes are unaffected, and no claim in the record rests on those PNGs for the ground.
+
+**The Card's content overflows its max-height.** Yes. The Card's bottom now sits above the zoom cluster, so its `max-height` is smaller than before. At 1440×900 the content is 753 px in a 728 px box at rest, and 829 px once More is open. The Technical details row is cut at the bottom edge at rest, as the review noticed. It is a scroll region, and the row is reachable.
+
+- Evidence: [`card-scroll-reachability.json`](./evidence/2026-11-01-browser/card-scroll-reachability.json). Every control in the expanded Card is reachable by scrolling at 1440×900 and at 1180×820: 19 controls, none covered at its centre. With the scroll at the bottom, the Technical details summary and the Canonical ID row sit inside the box, at both widths.
+- Two More actions, Focus and Open task, end 0.72 px below the scroll-port edge at the bottom of the scroll, and stay inside the Card's border. The check's 0.5 px tolerance records them as not inside. They are reachable and fully visible in the scroll region.
+- No code change was made for the overflow. The fix is a layout choice: the Card's bottom sits above the zoom cluster, which the lane rules require. The alternatives are a tighter Card chrome, or a smaller zoom cluster placed elsewhere. Both change the layout the owner has accepted, so this is recorded as a residual for an owner decision rather than changed here.
 
 ### Decisions taken inside the plan
 
