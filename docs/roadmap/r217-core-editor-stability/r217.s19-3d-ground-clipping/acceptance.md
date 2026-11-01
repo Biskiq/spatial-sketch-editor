@@ -1,133 +1,188 @@
 # R217.S19 — acceptance record: 3D ground clipping
 
-**Slice:** R217.S19 · **Status:** implemented; **owner checkpoint owed** (§3a outcome: Numerical
-failure). Not reviewed, not accepted, not merged · **Plan:** [implementation-plan.md](./implementation-plan.md)
-(owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:**
-[R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**AUTHORITY: NONE.** R217.S19 was accepted on 2026-10-31 at tested revision `2096f940` on
+`codex/r217-s19-ground-clipping`, based on `main` `1032c09c`. The
+[phase slice register](../README.md#slice-register) owns status;
+[R217.S11](../r217.s11-integrated-final-gate/acceptance.md) owns integrated campaign acceptance.
+The criteria are in the [implementation plan](./implementation-plan.md): §3 and §3a as amended by
+[§3b](./implementation-plan.md#3b-amendment--2026-10-31).
 
-This record claims no acceptance. The plan's checkpoint ran on the implementation branch
-`codex/r217-s19-ground-clipping` (based on `main` `1032c09c`) at measured revision
-`80340826`. The captures were taken on the same product code; the only later change before that
-commit is the test-only pick baseline re-record. Rows 2, 4 and 5 fail with the specified formulas, so per §3a "the slice doesn't merge
-until the owner rules". Independent review and routine closeout have not run and wait for the
-ruling, because the ruling may change the revision.
+## Owner ruling
 
-## Delivered on the branch
+The first checkpoint (measured revision `80340826`) was a §3a Numerical failure: rows 2, 4 and 5
+failed with the specified formulas. The owner then reported two visible defects: a dark disc on the
+mat, and a grid that vanished and changed between zoom levels. On 2026-10-31 the owner asked for the
+fix to be proposed and implemented with independent engineering judgement, and for the plan to be
+amended. Plan §3b is that amendment. It supersedes the conflicting parts of §3 and §3a. No
+prerequisite was waived.
 
-- **Camera (`packages/camera-core/src/viewport.ts`).** `ViewportCameraInput` and the session state
-  gain optional `displayGroundYMeters` (default `null`; a non-finite value is `null`). For a
-  non-orthographic evaluation with a ground, `far = max(distance + sceneRadius, distance + reach)`
-  and `near = max(NEAR_FLOOR, min(distance − sceneRadius, 0.9 × groundNear))`, with
-  `reach = max(24 × extent, 64 × eyeHeight)` exported as `viewportGroundReachMeters`. With no ground,
-  and for the orthographic Plan, the scene-sphere range is unchanged. It never enters bounds, Fit
-  or the pose.
-- **Session (`camera-session.ts`).** The Stage supplies `snapshot.domain.datumMeters` at creation and
-  on `rebaseSource` (the two `stage-facade.ts` rebase calls pass the new datum).
-- **Grid (`stage-grid.ts`).** The mat footprint is the exact clipped-frustum ∩ datum intersection
-  (all twelve frustum edges), replacing the four corner rays and their clamp. The mat drawing holds
-  at most `GRID_MAT_LINE_BUDGET = 6000` lines: over budget, the minor rectangle shrinks to the
-  largest square around the quantised target (fallback 2's mechanism, applied always); non-minor
-  levels keep the whole footprint. `GridLine` carries its own span (`stage-grid-scene.ts` draws it).
-  `stageGridPlanFor` and `matGroundFor` hold the exact wiring `StageGrid.svelte` and
-  `StageCanvas.svelte` use, so the sweep exercises the Stage path.
-- **Mat (`StageCanvas.svelte`).** A unit plane scaled to a half-extent ≥ 1.5 × reach (rounded up to
-  a power of two), centred on the target quantised to an eighth of that, with a polygon offset.
-- **Tests.** `stage-grid.test.ts` keeps the §3a sweep as a test (4 viewports × 7 elevations 5–89°
-  × 7 azimuths × 6 zooms × 2 targets = 2,352 poses through an admitted enclosure source, the Stage
-  Camera session, `stageGridPlanFor` and `matGroundFor`), plus an every-1.25× zoom budget sweep, a
-  datum-change and horizon-crossing orbit, and a datum rebase. `camera-viewport-evaluation.test.ts`
-  pins row 6 and the formulas.
+First-checkpoint values, for history:
 
-## §3a checkpoint — measured values
+| Row | Value |
+| --- | --- |
+| 1 | 0 / 529,200 |
+| 2 | 14–15 px at `64 × eyeHeight` |
+| 3 | 14.5 px |
+| 4 | Up to 12,220 lines |
+| 5 | 0.435 mm scene-local; up to 1.8 m for a target far from the content |
 
-Measured from geometry and clip range (no appearance change can affect them). The sweep test
-writes its summary when `S19_SWEEP_OUT` is set. Gaps are CSS px normalised to a 900 px frame.
+Their captures stay in `./evidence/` (`s19-*.png`).
 
-| # | Pass | Measured | Result |
+## Delivered
+
+- **Camera.** `packages/camera-core/src/viewport.ts`.
+  - `ViewportCameraInput` and the session state gain optional `displayGroundYMeters`. The default is
+    `null`, and a non-finite value becomes `null`.
+  - A non-orthographic evaluation with a ground uses:
+    - `far = max(distance + sceneRadius, distance + reach)`
+    - `near = max(NEAR_FLOOR, min(distance − max(sceneRadius, NEAR_FLOOR), 0.9 × groundNear))`
+    - `reach = max(24 × extent, 96 × eyeHeight)`, exported as `viewportGroundReachMeters`.
+  - With no ground, and for the orthographic Plan, the range is the scene-sphere one, unchanged.
+  - The ground never enters bounds, Fit or the pose.
+- **Session.** `camera-session.ts` supplies `snapshot.domain.datumMeters` at creation and on
+  `rebaseSource`; the two `stage-facade.ts` rebase calls pass the new datum.
+- **Mat and grid.** `shell/StageMatGround.svelte` and `shell/stage-mat-grid.ts`.
+  - **Mat.** A unit plane scaled to a half-extent of at least 1.5 × reach, rounded up to a power of
+    two. It is centred on the target, quantised to an eighth of that extent. It is an opaque ground
+    that writes depth, so content below the datum stays under it.
+  - **Grid.** One 64 × 64 subdivided quad with a per-pixel shader. Each pixel applies the grammar's
+    16 → 8 CSS px fade from its own projected spacing for the fixed 1 m, 5 m and 25 m levels. The
+    25 m level cross-fades in as 5 m fades out.
+  - The lattice is anchored to world zero (`uLatticeOffset`).
+  - The grid writes no depth. It depth-tests against real geometry and takes a polygon offset in
+    depth steps (units −4, no slope factor), so it stays ahead of the mat 6 mm below it at any distance.
+  - It draws at `renderOrder 0`, under the height-plane tint. It tracks Threlte's `dpr`, and is
+    never a pick root.
+  - `matGridLevelWeights` and `matGroundFor` in `stage-grid.ts` are the tested twins of the shader
+    weights and the mat placement.
+- **Paper unchanged.** `StageGrid.svelte` and `stage-grid-scene.ts` are Paper-only. `gridPlanFor`
+  takes `surface: 'paper'` only.
+- **Disc.** The visitor `GroundPlinth`, a 22 m dark cylinder 8 cm below the datum, rendered inside
+  the Stage through `VisitorLayoutShell` and showed through the mat as the dark disc.
+  `VisitorLayoutShell` gains a `plinth` prop, default on, so the visitor is unchanged. `StageCanvas`
+  passes `plinth={false}`, so the mat is the Stage's ground.
+- **Contract.** The grid paragraph in the
+  [shell + visual-system contract](../../../reference/design-system/editor-shell-and-visual-system.md)
+  is updated. The [target specification](../post-s10-convergence/target-specification.md) carries
+  the amendment note.
+- **Pick baseline.** `stage-pick-differential` no longer models the plinth, and its baseline was
+  re-recorded. 167 `worldPoint` coordinates moved by at most 8.5e-15. Every winner and every other
+  field is unchanged.
+
+## §3a / §3b checkpoint at the tested revision
+
+The `stage-grid.test.ts` sweep pushes 2,352 poses through an admitted enclosure source, the Stage
+Camera session and `matGroundFor`:
+
+- 4 viewports × 7 elevations (5–89°) × 7 azimuths × 6 zooms × 2 targets.
+- 529,200 ground samples.
+
+It writes its summary when `S19_SWEEP_OUT` is set. Gaps are CSS px, normalised to a 900 px frame.
+
+| # | Pass (amended) | Measured at `2096f940` | Result |
 | --- | --- | --- | --- |
-| 1 | 0 drawn ground samples outside grid coverage | 0 of 529,200 samples (also 0 outside the mat). Classified: 72,576 sky, 3,528 far-clipped, 1,008 near-clipped, all at the 0.01 m near floor (0.05 m zoom, 5°, ground-level target), 0 near-clipped above the floor (D28 fixed) | **pass** |
-| 2 | ≤ 12 px, target plane ≥ 5 m | Sweep 14.0 px. Denser probe at 1440 × 900: 15 px at 25°, 5 m, target 1.5 m above ground; 13 px at 15° | **fail** |
-| 3 | ≤ 40 px below 5 m | 14.5 px | pass |
-| 4 | ≤ 6,000 lines, majors never dropped | Majors dropped: 0. Sweep worst 7,420 (1280 × 577, 1,000 m, 25 m level only). Between sweep zooms: up to 12,220 at 1440 × 900, 560 m, 5 m level only | **fail** |
-| 5 | ≤ 1 mm depth step at the target distance | Scene-local target: 0.435 mm. Sweep worst 20.7 mm: translated target ~640 m from the content, where `distance − sceneRadius` < 0 puts near on the 0.01 m floor; up to 1.8 m at 560 m zoom | **fail** |
-| 6 | `null` identical to today | Identical evaluation for absent, `null` and `NaN`; near/far = distance ∓ sceneRadius; Plan unchanged | pass |
-| 7 | Browser, see below | Observations recorded; owner to judge | owed to owner |
+| 1 | 0 drawn ground samples outside grid coverage | 0 outside the mat. Classified: 72,576 sky; 2,772 far-clipped; 1,008 near-clipped, all at the 0.01 m near floor; 0 near-clipped above the floor (D28 fixed) | pass |
+| 2 | ≤ 12 px, target plane ≥ 5 m | 9.5 px | pass |
+| 3 | ≤ 40 px below 5 m | 9.5 px | pass |
+| 4 | Replaced by §3b: the mat grid is one quad at constant cost | One subdivided quad, uniform-only updates, no line geometry or budget | pass |
+| 5 | ≤ 1 mm where the target-centred scene sphere does not reach the eye | 0.44 mm scene-local. Residual per §3b: 20.7 mm for a target about 640 m from the content, where near stays on the scene-sphere floor | pass, with residual |
+| 6 | `null` identical to today | Identical evaluation for absent, `null` and `NaN`; Plan unchanged | pass |
+| 7 | Browser, see below | No disc, no straight cut, grid at every zoom and to the horizon | pass |
 
-**Why the failures are structural, not tuning.**
+`matGridLevelWeights` is tested to have no dead band. While the 25 m level is at full spacing
+(minor spacing 0.64–200 CSS px, every 1 %), the 5 m and 25 m weights never fall below 0.5 together,
+and in the cross-fade they sum to 1. A datum change, a horizon-crossing orbit (including the
+lattice anchoring) and a datum rebase are tested.
 
-- **Row 2.** The band is the ground beyond `far`. With the 54° reference FOV and `reach ≥ 64 ×
-  eyeHeight`, the angle below the horizon at the far plane is about `sin e · cos e / (1 + 64 sin e)`,
-  which is 13–15 px at 900 px for elevations of 10–25°. O4's "about 12 px" does not hold at this FOV.
-  Fallback 1 (fade) cannot pass a numerical row and fallback 3 (cap reach) widens the band.
-- **Row 4.** Every over-budget case draws no minor level: the 5 m (or 25 m) level alone exceeds
-  6,000 lines over a low-orbit footprint that is about 96 target-plane heights across. Shrinking the
-  minor rectangle (fallback 2) cannot reduce it, and "major lines never dropped" forbids the only
-  other lever.
-- **Row 5.** The failing poses come from the specified `min(distance − sceneRadius, …)` term with the
-  Stage's target-centred scene radius, not from the ground terms. Fallback 3 (cap reach) does not
-  move near.
+## Review
 
-**Fallbacks taken:** none counts as taken. Fallback 2's minor-rectangle shrink is implemented but
-cannot affect row 4's failing poses; fallbacks 1 and 3 were not applied because neither can resolve
-rows 2, 4 or 5.
+**First pass.** An independent review (Opus 5.5, high effort) of `ddd9a922` found no P1, two P2s and
+four nits. All were fixed in `1f91ad5d`:
 
-**Decisions owed (owner).** One of, per row:
+- **P2-1.** With the mat writing no depth, content below the datum painted over it.
+  - Fix: the mat writes depth again.
+  - The grid's depth-step polygon offset keeps it ahead of the mat.
+- **P2-2.** Stale or wrong docs.
+  - §3b now names the plinth as the disc's cause and lists `VisitorLayoutShell.svelte`.
+  - This record and the baton are rewritten at the tested revision.
+- **Nit.** The grid and the height-plane tint shared `renderOrder 1`. The grid is now 0.
+- **Nit.** Float32 interpolation over one huge triangle. The quad is now subdivided 64 × 64.
+- **Nit.** The pixel ratio was not reactive. It now tracks Threlte's `dpr`.
+- **Nit.**
+  - The ink opacities are now applied.
+  - `groundDepthRange` now uses `depthRange`'s near-floor term.
+  - Line width kept: an antialiased one-pixel line spans about 2 device px.
 
-- Row 2: accept a ≤ 15 px band at FOV 54°, or raise the eye-height multiple (about 80 gives ≤ 12 px),
-  amending O4.
-- Row 4: allow the budget to thin the non-minor level far from the target (for example, hide 5 m lines
-  beyond the distance where their projected spacing falls below 8 px, which is the grid grammar's own
-  rule), or raise the budget.
-- Row 5: accept the floored near for a target far from the content, or let near use the scene bounds'
-  actual view depth instead of the target-centred sphere (a Camera-authority change this plan does not
-  name, so it stops here).
+**Re-review of `1f91ad5d`** (the same reviewer, against the fix diff). Every first-pass finding was
+resolved, and one new P2 was raised:
 
-## Browser (plan §5)
+- **Finding.** The grid's polygon-offset slope factor (−1) shifts it by about one pixel of the
+  ground's own depth slope. That would draw grid lines over thin geometry resting on the floor (a
+  1 cm slab from about 9–13 m away) and about 1 device px into the base of walls.
+- **Fix in `2096f940`.** The factor is 0; only the constant −4 depth steps remain. They keep the
+  grid ahead of the mat 6 mm below it until about `1e5 × near / eyeHeight`, which is tens of km
+  whenever the ground sets near.
+- **Test.** The shader test pins the factor at 0.
 
-Real Chromium through `agent-browser` (session `r217-s19-*`, closed), local editor dev server on
-`localhost:5173` at the measured revision. A closed four-wall room with its floor was drawn with Ink ·
-Wall in a new project. Orbit used real right-button drags (0.01 rad per px), zoom the Stage's + / −
-controls. Console: no errors.
+Overlay layer and picking were confirmed unaffected: the grid writes no depth, sits on overlay layer
+2, which the raycaster never sees, and the Stage has no GPU pick. The reviewer stated that, with the
+factor at 0, the revision is clean. `2096f940` is exactly that change plus its test assertion.
 
-- **Overhead, 45°, 15°, 5° (1440 × 900):** grid and mat continuous to the frame edges and to the
-  horizon; no straight cut. At 5° the frame's bottom row is gridded ground (D28's band is gone).
-- **Horizon in frame, zoomed out (5° and 15°):** grid reaches the horizon with a dense line haze over
-  the last few px, and no hard edge. A soft dark ellipse around the room is visible on the mat. It
-  matches the directional light's shadow-map extent, which S19 does not touch; it was not compared
-  against `main`.
-- **Close-up (5°, zoomed in):** no mat/grid fighting. The room floor in wall shadow shows grazing-angle
-  shadow striping. Toggling the mat's polygon offset by HMR did not change it, so it is shadow-map acne
-  on the room floor, not depth-range fighting.
-- **Orbit:** a four-step drag from overhead to the horizon stayed continuous at each step. Smoothness
-  was observed, not timed (timing is not a criterion).
-- **Widths:** the low orbit at 1440 × 900, 1280 × 800, 1180 × 820 and 820 × 1180. No horizontal page
-  overflow at any width.
-- **D29:** not reproduced as a material defect. After two dev-server HMR reloads mid-session the room
-  floor keeps its material: overhead, the lit corner reads lighter and the rest is the walls' shadow,
-  matching the pre-reload overhead capture.
+Review outcome for the tested revision: clean, with no open, withdrawn or unadjudicated finding.
 
-Evidence (`./evidence/`, captured at the measured revision): `s19-overhead-1440.png`,
-`s19-elev45-1440.png`, `s19-elev15-1440.png`, `s19-elev5-1440.png`,
-`s19-elev5-zoomed-out-horizon-1440.png`, `s19-elev15-zoomed-out-1440.png`, `s19-elev5-closeup-1440.png`,
-`s19-orbit-seq-1-1440.png` to `s19-orbit-seq-4-1440.png`, `s19-low-orbit-1440x900.png`,
-`s19-low-orbit-1280x800.png`, `s19-low-orbit-1180x820.png`, `s19-low-orbit-820x1180.png` and
-`s19-d29-overhead-after-hmr-1440.png`.
+## Verification at the tested revision
 
-## Verification at the measured revision
-
-Iteration evidence only; the merge gate has not run, because the slice cannot merge before the ruling.
+Tested revision: `2096f940`, with a clean product tree (`git diff -- apps packages` empty) before
+and after the gate. The full merge gate was run, per the
+[test manual](../../../../apps/editor/tests/README.md) ("What a change requires"); the tier was never
+narrowed.
 
 | Command | Result |
 | --- | --- |
-| `npx vitest run tests/lib/authoring/stage-grid.test.ts` | 24 tests: 22 passed, 2 failed (the §3a sweep: rows 2, 4, 5; the zoom-budget sweep: row 4) |
-| `npx vitest run tests/lib/museum/navigation/camera-viewport-evaluation.test.ts` | 31 passed |
-| `npm run test:fast` | 224 files / 2,992 tests: 2,989 passed, 3 failed: the two checkpoint tests above, and `stage-pick-differential.test.ts`, whose pinned baseline moved by ≤ 8.9e-15 in 177 `worldPoint` values with every winner unchanged. That baseline was re-recorded (test-only) and the file re-run: 2 / 2 passed |
 | `npm run test:arch` | 23 files / 194 tests passed |
-| `npm run check` | 2038 files, 0 errors, 0 warnings |
-| `npm run check:camera-core` | exit 0 |
+| `npm test` (complete suite) | 258 files / 3324 tests passed |
+| `npm run test:heavy` | 11 files / 138 tests passed |
+| `npm run check` | 2040 files, 0 errors, 0 warnings |
+| `npm run build` | exit 0 |
+| `npm run check:layout-core`, `check:project-model`, `check:camera-core`, `check:geometry-core` | exit 0 each |
+| `npm run check:api` | exit 0 |
+| `npm run test:api:stack` (DB-backed, Docker Postgres) | 128 passed, 0 failed, 0 skipped |
+| `git diff --check origin/main...HEAD` | exit 0 |
+
+At `ddd9a922` the same gate had two failures. Both were structure tests that had not yet listed
+`StageMatGround.svelte` and `stage-mat-grid.ts`. They were fixed in `1f91ad5d`, where the full gate
+then passed with the same counts as above. Both runs are superseded by the table above.
+
+## Browser (plan §5)
+
+Real Chromium through `agent-browser` (session `r217-s19-*`, closed), against the local editor dev
+server on `localhost:5173` serving `2096f940`. Orbit used real right-button drags (0.01 rad per px);
+zoom used the Stage's + / − controls. Console: 0 errors.
+
+- **Empty project zoom sequence (1440 × 900).** Nine frames, from the default 3D view out by two −
+  steps each. Grid at every frame, with no all-mat band and no disc:
+  `s19a-empty-zoom-0..8.png` and `s19a-empty-zoom-sheet.png`.
+- **Room.** A closed four-wall room with its floor, drawn with Ink · Wall. Default, overhead, 45°,
+  15°, 5°, the horizon in frame zoomed out at 5° and 15°, and a 5° close-up:
+  `s19a-room-*.png`, `s19a-overhead-1440.png`, `s19a-elev*-1440.png` and
+  `s19a-room-poses-sheet.png`.
+  - Grid and mat are continuous to the frame edges and fade to plain mat before the horizon, with
+    no straight cut and no near band.
+  - The room floor and walls draw over the grid where they should.
+- **Widths.** The low orbit at 1440 × 900, 1280 × 800, 1180 × 820 and 820 × 1180
+  (`s19a-low-orbit-*.png`). No horizontal page overflow at any width.
+- **D29.** Not reproduced as a material defect at the first checkpoint
+  (`./evidence/s19-d29-overhead-after-hmr-1440.png`). Nothing since touches the room floor
+  material.
+
+Evidence: `./evidence/amended/`, captured at the tested revision.
 
 ## Residuals
 
-- The two failing sweep tests stay red on the branch on purpose: they are the checkpoint, and the
-  owner's ruling decides their thresholds or the formulas.
-- Manual-owed rows (coarse pointer, native touch, Safari, integrated journeys) remain S11's.
+- **Row 5 far-target near.** For a target hundreds of metres from the content, near stays on the
+  scene-sphere floor (20.7 mm depth step at about 640 m). A near plane from the content's view depth
+  would add bounds to Camera state; §3b proposes it separately.
+- **Grid over contact.** The grid's constant four-depth-step offset can let a line show through
+  geometry within four depth steps of the datum. That is sub-millimetre at room distances and
+  matters only far out with a floored near.
+- **Manual rows.** Coarse pointer, native touch, Safari and the integrated journeys remain S11's.
