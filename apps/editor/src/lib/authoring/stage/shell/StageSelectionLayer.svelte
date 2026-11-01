@@ -38,6 +38,7 @@
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
+	import { PAPER_SELECTION_EDGE_INK } from '../paper-marks';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
 
@@ -62,6 +63,7 @@
 	} = $props();
 
 	const GOLD = 0xd4ad45;
+	const SELECTION_EDGE = Number.parseInt(PAPER_SELECTION_EDGE_INK.slice(1), 16);
 	const NEUTRAL = 0xf3f4ee;
 	const ERASE = Number.parseInt(STAGE_ERASE_INK.slice(1), 16);
 	const { invalidate } = useThrelte();
@@ -184,8 +186,10 @@
 				edges.dispose();
 				const resolution = new Vector2(width, height);
 				const haloMaterial = new LineMaterial({
-					color: 0x152c26,
-					linewidth: tone === 'selection' ? 4.5 : tone === 'erase' ? 4 : 3.5,
+					// Paper's two-tone contour: the forest halo swallows gold on the cream
+					// ground, while this edge holds there and on the forest mat.
+					color: tone === 'selection' ? SELECTION_EDGE : 0x152c26,
+					linewidth: tone === 'selection' ? 5 : tone === 'erase' ? 4 : 3.5,
 					transparent: true,
 					opacity: 0.9,
 					depthTest: true,

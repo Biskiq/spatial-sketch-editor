@@ -22,3 +22,12 @@ export const neutralVisitorRoomPresentation: VisitorRoomPresentation = {
 	accentColor: '#a6a6ad',
 	shell: 'layout'
 };
+
+/** A physical Wall's default surface; Walls carry no authored material yet. */
+export const DEFAULT_WALL_COLOR = '#f1e6cf';
+/**
+ * The Stage and Preview light differently, and both too dimly for a pale surface
+ * to read as itself, so the default Wall holds part of its colour unlit. Diffuse
+ * light on top still separates its faces.
+ */
+export const DEFAULT_WALL_UNLIT_SHARE = 0.5;

@@ -53,7 +53,7 @@ import {
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { toWallBufferGeometry, type WallMeshMaterialFactory } from '$lib/render/wall-geometry-adapter';
 import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
-import { neutralVisitorRoomPresentation } from '$lib/visitor/room-presentation';
+import { DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE } from '$lib/visitor/room-presentation';
 
 /** One retained Wall: what it was built from and how to release it. */
 type RetainedWall = {
@@ -167,12 +167,11 @@ export function createWallRepresentation(): WallRepresentation {
 	let previousGeometry: CompiledLayoutGeometry | undefined;
 
 	// A physical Wall belongs to no Room: the mesh builder resolves its surface
-	// with the Wall's own id as `roomId`, so the tint is always the neutral
-	// visitor one. That is what the component-per-mesh shell produced too, and
-	// keeping it constant is what lets the factory outlive every compile (a
+	// with the Wall's own id as `roomId`, so the tint is always the default
+	// Wall colour. Keeping it constant is what lets the factory outlive every compile (a
 	// Room-tinted lookup would also make the representation depend on Room
 	// presentation, an input no Wall mesh reads).
-	const factory = createVisitorWallMaterialFactory(() => neutralVisitorRoomPresentation.color);
+	const factory = createVisitorWallMaterialFactory(() => DEFAULT_WALL_COLOR, DEFAULT_WALL_UNLIT_SHARE);
 	const resolveMaterial: WallMeshMaterialFactory = (surfaceKey, mesh) => {
 		const resolved = factory.factory(surfaceKey, mesh);
 		materialsSeen.add(resolved.material);
