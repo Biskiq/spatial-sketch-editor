@@ -149,6 +149,11 @@ narrowed.
 | `npm run test:api:stack` (DB-backed, Docker Postgres) | 128 passed, 0 failed, 0 skipped |
 | `git diff --check origin/main...HEAD` | exit 0 |
 
+`npm run test:arch` and `npm test` are from a re-run at `d33751f9`. That commit adds only this record,
+its evidence and the baton; `git diff 2096f940 d33751f9 -- apps packages` is empty. The first run at
+`2096f940` failed one test in each lane: `documentation-references` caught a wrong relative path in
+the uncommitted draft of this record. That path was fixed before `d33751f9`.
+
 At `ddd9a922` the same gate had two failures. Both were structure tests that had not yet listed
 `StageMatGround.svelte` and `stage-mat-grid.ts`. They were fixed in `1f91ad5d`, where the full gate
 then passed with the same counts as above. Both runs are superseded by the table above.
