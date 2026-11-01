@@ -122,3 +122,21 @@ These are judgments the plan left open. None needed an owner ruling, and each is
 - **GPU warnings.** The coarse pass logged four Chromium `GL Driver Message … ReadPixels` warnings and no page errors. They come from the WebGL driver, not the app.
 - **Perf browser flows** remain stale (TD-16), unchanged by this slice.
 - **Server-refused Save** is not browser-verified, as in S20.
+
+## Independent review
+
+**Reviewer:** the convergence coordinator, independent of the implementer. Date: 2026-11-01.
+
+- **First review, `424b78e2`:** one P1 and one P2.
+  - P1: the Card and Index controls dropped to 32 px with no coarse-pointer rule of their own. The implementer measured that the host's existing coarse rule already held them at 44 px, so the regression did not reproduce. The explicit rules still remove that dependency.
+  - P2: the object and form writers declared `position` while writing only X and Z, so the Card lost the subject's Y.
+- **Accepted judgment calls:**
+  - Stream, Eligible, Revealed and Domain move under Technical details.
+  - The writer's optional `fieldIds`.
+  - Name and kind are carried by the header.
+  - Duplicate, Focus and Open task sit in More.
+  - No context chip for a Scene selection; a Layout selection shows its floor's authored name.
+  - The plan and specification clarifications stand as cutover reconciliation.
+- **Fixes:** `28538e19` adds `Position (X · Z)` and a read-only `Elevation`, each stated once, with tests. `edfab667` adds explicit 44 px coarse rules. Coarse pass: 266 controls, 0 below 44 × 44. The re-review at `edfab667` is clean, with nothing open, withdrawn or unadjudicated.
+- **Verdict at `edfab667`:** the slice meets plan §3 to §5 within the declared `affected-subsystem` tier. Generated `Kind n` labels never reach source, because rename reads the writer's authored value. The drift reconciliation follows PR #247's baseline. Routine close-out may proceed.
+- **Noted for later slices:** at 1440 × 900 the Card overlaps the Height Sheet (S22, D42). The Card's Delete keeps its pre-existing destructive colour, and S23 owns the ink palette.
