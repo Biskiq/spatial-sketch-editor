@@ -229,6 +229,30 @@ Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
 
 ## Open
 
+## TD-16 — perf browser flows still locate the removed ☰ menu and the Stage's Open source JSON
+
+Status        open
+Found         2026-11-01, R217.S20 acceptance and independent review (recorded as a residual; the flows were not run)
+Owner         T1 Stage host and shell (the controls the flows drive); the integrated perf run belongs to R217.S11
+Symptom       The `apps/editor/perf` browser flows press controls that R217.S20 moved or removed. They
+              look for "Download source JSON" in the ☰ menu, which the Head no longer has, and for "Open
+              source JSON" among the Stage actions, which now sit in the project name's menu and in Find.
+              Some also name Stage controls that R217.S13 renamed or moved (Fit, Plan, the `.stage-actions` locator).
+Reproduce     Run the affected flows against the Cloud stack (the S20 session had none). Affected files, found by
+              search: `apps/editor/perf/lib/flow.ts` (Open source JSON on the Stage, line 118),
+              `apps/editor/perf/flows/t1-s02-browser-acceptance.spec.ts`,
+              `t1-s03-opening-acceptance.spec.ts`, `t1-s04-integrated-acceptance.spec.ts`,
+              `native-form-acceptance.spec.ts`, `s17a-objects-acceptance.spec.ts` and `project-lifecycle.spec.ts`.
+Root cause    R217.S20 (O5) moved the source download, project lifecycle and Open source JSON off the ordinary
+              surface and removed the ☰ menu. The flows were written against the pre-S20 surface and were not
+              updated, because the perf lane needs the Cloud stack and sits outside the S20 tier.
+Why green     No gate in the S20 tier runs the perf flows, so the stale locators cannot fail a merge gate.
+Fix options   1) Point the locators at the Head's project-name menu, at Find, and at the route function both reach,
+              by accessible name. 2) Restore a ☰ menu or a Stage "Open source JSON" button so the old locators
+              resolve; do NOT take this, because it restores the second menu O5 removed.
+Then add      Each affected flow passes on the Cloud stack with the new locators, and a locator for a removed control
+              fails the lane instead of skipping.
+
 ## TD-15 — Height Sheet hint repetition is shared across Stage sessions
 
 Status        open

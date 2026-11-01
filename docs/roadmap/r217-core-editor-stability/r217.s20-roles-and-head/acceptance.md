@@ -1,12 +1,14 @@
 # R217.S20 — acceptance record: Roles and Head
 
-**Slice:** R217.S20 · **Status:** approved (plan); implemented, with implementation evidence below and no acceptance verdict · **Plan:**
-[implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
+**Slice:** R217.S20 · **Status:** accepted 2026-11-01 at tested revision `b5f1440b` (clean independent review; routine close-out) · **Plan:**
+[implementation-plan.md](./implementation-plan.md) (closed to a stub; owns the criteria in its recovery line) · **Phase:**
 [R217](../README.md) · **Integration route:**
 [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
-This record reports what was implemented and the evidence for it. It records no acceptance verdict:
-review, acceptance and closeout are separate steps.
+**AUTHORITY: NONE.** This record reports what was implemented, the evidence for it, the independent review
+and the acceptance. The [phase slice register](../README.md#slice-register) owns status. The verdict is in
+[Acceptance](#acceptance), and the closeout anchors and preservation report are in
+[Closeout and preservation](#closeout-and-preservation).
 
 ## Drift reconciled at cutover
 
@@ -124,27 +126,27 @@ Re-check after the review fixes, at 1440×900 in a fresh session with 0 page err
   before, `false` after).
 - Escape on the project menu closes it and focus returns to the project name.
 
-Screenshots, all in [evidence/2026-11-01-browser](./evidence/2026-11-01-browser/):
+Screenshots, all in [archived evidence 2026-11-01-browser](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/):
 
 | Width | Empty | Refused (Undo focus) | Dirty |
 | --- | --- | --- | --- |
-| 1440×900 | [head-1440x900-empty.png](./evidence/2026-11-01-browser/head-1440x900-empty.png) | [head-1440x900-refused-undo.png](./evidence/2026-11-01-browser/head-1440x900-refused-undo.png) | [head-1440x900-dirty.png](./evidence/2026-11-01-browser/head-1440x900-dirty.png) |
-| 1280×800 | [head-1280x800-empty.png](./evidence/2026-11-01-browser/head-1280x800-empty.png) | [head-1280x800-refused-undo.png](./evidence/2026-11-01-browser/head-1280x800-refused-undo.png) | [head-1280x800-dirty.png](./evidence/2026-11-01-browser/head-1280x800-dirty.png) |
-| 1180×820 | [head-1180x820-empty.png](./evidence/2026-11-01-browser/head-1180x820-empty.png) | [head-1180x820-refused-undo.png](./evidence/2026-11-01-browser/head-1180x820-refused-undo.png) | [head-1180x820-dirty.png](./evidence/2026-11-01-browser/head-1180x820-dirty.png) |
-| 820×1180 | [head-820x1180-empty.png](./evidence/2026-11-01-browser/head-820x1180-empty.png) | [head-820x1180-refused-undo.png](./evidence/2026-11-01-browser/head-820x1180-refused-undo.png) | [head-820x1180-dirty.png](./evidence/2026-11-01-browser/head-820x1180-dirty.png) |
-| Coarse 820×1180 | [head-820x1180-coarse-empty.png](./evidence/2026-11-01-browser/head-820x1180-coarse-empty.png) | [head-820x1180-coarse-refused-tap.png](./evidence/2026-11-01-browser/head-820x1180-coarse-refused-tap.png) | — |
-| Coarse 1180×820 | [head-1180x820-coarse-empty.png](./evidence/2026-11-01-browser/head-1180x820-coarse-empty.png) | [head-1180x820-coarse-refused-tap.png](./evidence/2026-11-01-browser/head-1180x820-coarse-refused-tap.png) | — |
+| 1440×900 | [head-1440x900-empty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1440x900-empty.png) | [head-1440x900-refused-undo.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1440x900-refused-undo.png) | [head-1440x900-dirty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1440x900-dirty.png) |
+| 1280×800 | [head-1280x800-empty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1280x800-empty.png) | [head-1280x800-refused-undo.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1280x800-refused-undo.png) | [head-1280x800-dirty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1280x800-dirty.png) |
+| 1180×820 | [head-1180x820-empty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1180x820-empty.png) | [head-1180x820-refused-undo.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1180x820-refused-undo.png) | [head-1180x820-dirty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1180x820-dirty.png) |
+| 820×1180 | [head-820x1180-empty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-820x1180-empty.png) | [head-820x1180-refused-undo.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-820x1180-refused-undo.png) | [head-820x1180-dirty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-820x1180-dirty.png) |
+| Coarse 820×1180 | [head-820x1180-coarse-empty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-820x1180-coarse-empty.png) | [head-820x1180-coarse-refused-tap.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-820x1180-coarse-refused-tap.png) | — |
+| Coarse 1180×820 | [head-1180x820-coarse-empty.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1180x820-coarse-empty.png) | [head-1180x820-coarse-refused-tap.png](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1180x820-coarse-refused-tap.png) | — |
 
-Further captures at 1440×900: [keyboard Save focus](./evidence/2026-11-01-browser/head-1440x900-keyboard-save-focus.png),
-[keyboard Preview focus](./evidence/2026-11-01-browser/head-1440x900-keyboard-preview-focus.png),
-[keyboard Find typed](./evidence/2026-11-01-browser/head-1440x900-keyboard-find-typed.png),
-[project menu](./evidence/2026-11-01-browser/head-1440x900-project-menu.png),
-[⚙ viewing settings on the mat](./evidence/2026-11-01-browser/stage-viewing-settings-mat-1440x900.png),
-[⚙ viewing settings on Paper](./evidence/2026-11-01-browser/stage-viewing-settings-paper-1440x900.png) and
-[Keys panel](./evidence/2026-11-01-browser/stage-keys-panel-1440x900.png).
+Further captures at 1440×900: [keyboard Save focus](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1440x900-keyboard-save-focus.png),
+[keyboard Preview focus](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1440x900-keyboard-preview-focus.png),
+[keyboard Find typed](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1440x900-keyboard-find-typed.png),
+[project menu](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-1440x900-project-menu.png),
+[⚙ viewing settings on the mat](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/stage-viewing-settings-mat-1440x900.png),
+[⚙ viewing settings on Paper](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/stage-viewing-settings-paper-1440x900.png) and
+[Keys panel](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/stage-keys-panel-1440x900.png).
 
-Measurements: `<width>-metrics-{empty,refused,dirty}.json` (produced by [head-metrics.js](./evidence/2026-11-01-browser/head-metrics.js)),
-`<width>-errors-{empty,dirty}.json`, `<width>-refused-focus.txt` and [coarse-pointer-targets.json](./evidence/2026-11-01-browser/coarse-pointer-targets.json).
+Measurements: `<width>-metrics-{empty,refused,dirty}.json` (produced by [head-metrics.js](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/head-metrics.js)),
+`<width>-errors-{empty,dirty}.json`, `<width>-refused-focus.txt` and [coarse-pointer-targets.json](../../../archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/2026-11-01-browser/coarse-pointer-targets.json).
 
 ### Residuals
 
@@ -152,7 +154,7 @@ Measurements: `<width>-metrics-{empty,refused,dirty}.json` (produced by [head-me
   locate "Download source JSON" in the removed ☰ menu and "Open source JSON" on the Stage. Some of them also
   name stage controls that S13 already renamed or moved (Fit, Plan, the `.stage-actions` locator). They need the
   Cloud stack and are outside the declared tier. They were not run or updated here. The coordinator's review
-  records this as a residual, and close-out routes it to tech-debt.
+  records this as a residual; close-out routed it to TD-16 in `docs/operations/tech-debt/README.md`.
 - **A server-refused Save is not browser-verified.** This session has no Cloud service. The refused-Save path is
   covered by `head-save.test.ts` on a mounted Head, through the refused status, the live announcement and the
   description. The browser refusal evidence is the Undo, Save and Preview reason disclosures.
@@ -175,3 +177,50 @@ Measurements: `<width>-metrics-{empty,refused,dirty}.json` (produced by [head-me
 - **Fixes:** `331fe8b4`, `8b856425` and `b5f1440b` resolve all four findings, with tests. The re-review at `b5f1440b` is clean, with nothing open, withdrawn or unadjudicated.
 - **Commit messages rewritten:** the branch's commit messages were rewritten to drop agent trailers (AGENTS.md rule 12). Every tree is unchanged, and the SHAs in this record are the rewritten ones. Tested tree `239af05b` was `25a3f763` before the rewrite and is `b5f1440b` after it.
 - **Verdict at `b5f1440b`:** the implementation meets plan §3 to §5 within the declared `affected-subsystem` tier, the recorded gates and browser matrix cover the plan's rows, and the drift reconciliation follows PR #247's baseline. Routine close-out may proceed.
+
+## Acceptance
+
+Accepted on 2026-11-01 at tested revision `b5f1440b` (tree `239af05b`). The owner directed that each slice
+go through routine close-out after the coordinator's independent review, and this close-out is that direction.
+It is not an owner override, and nothing was waived.
+
+- **Review:** the independent review verdict covers `b5f1440b` and is clean, with no open, withdrawn or
+  unadjudicated finding. The first review's four findings are fixed by `331fe8b4`, `8b856425` and `b5f1440b`, and
+  re-reviewed.
+- **Criteria:** plan §3 to §5 are met within the declared `affected-subsystem` tier. The gates and the browser
+  matrix above cover the plan's test cases and browser rows.
+- **Prerequisites:** the plan's dependency R217.S13 is shipped in the register, and O5 was applied at cutover
+  (see Drift reconciled).
+- **Capability outcomes:** none. The register's Effects column for R217.S20 is `—`.
+- **Gates:** no product gate was re-run at close-out. The recorded numbers above are reused. The documentation
+  gate `tests/docs` ran after the link repairs.
+
+## Closeout and preservation
+
+Anchors, computed before the compaction commit:
+
+```text
+plan        050a30d9418a9a910a320388ae2ea4d879f1b34c   last commit with the full plan body (on main through PR #230);
+                                                       the stub at its path names this anchor
+acceptance  e6d6faf8af4e48a9c88dc7d2db4347a372c98c14   the full record before this close-out; kept in full at its path
+tag         closed/r217.s20 -> e6d6faf8               tag target keeps both anchors reachable; created and pushed
+                                                       after the merge
+merge       P1 merge of PR #248 with `--merge`; the merge-commit SHA and the post-merge checks are recorded by the
+            post-merge anchors follow-up
+```
+
+```text
+CLOSEOUT PRESERVATION — R217.S20 (2026-11-01)
+prose compacted:                 1   approved plan -> stub at its own path; acceptance record kept in full
+reference promotions:            0   the Head and shell-role contract already reads in PLATE and the R217 README,
+                                     amended at cutover (O5)
+renderable evidence archived:    49 files / 4.2 MiB (23 PNG, 21 JSON, 4 text, 1 script), moved byte-identical
+evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s20-roles-and-head/evidence/CLOSED.md
+transient artifacts removed:     0
+historical anchors:              plan 050a30d9; acceptance e6d6faf8; tag closed/r217.s20 -> e6d6faf8
+new live -> archive prose links: 0
+manual-owed verification rows:   2   native touch and Safari, owed by S11 and kept distinct from automated evidence
+remaining deferred items:        4   Index and Card density roles (S21, D06); Height Sheet pin hint (S22, D42);
+                                     perf browser flows (TD-16); a server-refused Save not browser-verified
+permanent stubs added:           1   approved plan
+```
