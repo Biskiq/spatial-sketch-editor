@@ -52,6 +52,7 @@ import {
 	fragmentLayer,
 	fragmentTreatment,
 	isPaperPlanVisible,
+	paperRevealFor,
 	MAT_BACKGROUND_INK,
 	PAPER_GROUND_INK,
 	PAPER_LAYER,
@@ -395,8 +396,9 @@ describe('Paper Plan — Scene and native-form outlines', () => {
 		try {
 			for (const resources of [paper, selected]) {
 				// Render cost must not grow one draw call/material per sample band.
-				expect(resources.group.children).toHaveLength(1);
-				const mesh = resources.group.children[0] as Mesh;
+				const inks = resources.group.children.filter((node) => !node.name.startsWith('StagePaperSheet'));
+				expect(inks).toHaveLength(1);
+				const mesh = inks[0] as Mesh;
 				expect(mesh).toBeInstanceOf(Mesh);
 				expect(mesh.geometry.index!.count).toBe(bands.length * 6);
 				const positions = mesh.geometry.getAttribute('position');
@@ -555,6 +557,28 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 		expect(mat.test(overlay)).toBe(true);
 	});
 
+	it('reveals linework, then sheet, then poché purely from the Camera weight', () => {
+		const at = (weight: number) => paperRevealFor({ renderedReading: 'transition', orthographicWeight: weight }, 'paper')!;
+		expect(paperRevealFor({ renderedReading: '3d', orthographicWeight: 0 }, 'paper')).toBeNull();
+		expect(paperRevealFor({ renderedReading: 'transition', orthographicWeight: 0.95 }, 'shaded')).toBeNull();
+		expect(paperRevealFor(null, 'paper')).toBeNull();
+		// Mounted for the whole flip, but drawn only late in it.
+		expect(at(0.1)).toEqual({ lines: 0, sheet: 0, poche: 0 });
+		expect(paperRevealFor({ renderedReading: 'plan', orthographicWeight: 1 }, 'paper')).toEqual({ lines: 1, sheet: 1, poche: 1 });
+		let previous = at(0);
+		for (let weight = 0.01; weight < 1; weight += 0.01) {
+			const reveal = at(weight);
+			expect(reveal.lines).toBeGreaterThanOrEqual(previous.lines);
+			expect(reveal.sheet).toBeGreaterThanOrEqual(previous.sheet);
+			expect(reveal.poche).toBeGreaterThanOrEqual(previous.poche);
+			expect(reveal.lines).toBeGreaterThanOrEqual(reveal.poche);
+			expect(reveal.sheet).toBeGreaterThanOrEqual(reveal.poche);
+			previous = reveal;
+		}
+		expect(at(0.999).sheet).toBe(1);
+		expect(at(0.999).poche).toBeLessThan(1);
+	});
+
 	it('draws only when the Plan has settled and Paper is chosen', () => {
 		const plan = { renderedReading: 'plan', orthographicWeight: 1 } as const;
 		expect(isPaperPlanVisible(plan, 'paper')).toBe(true);
@@ -579,7 +603,7 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 		world.enable(STAGE_WORLD_LAYER);
 		let objects = 0;
 		resources.group.traverse((node) => {
-			if (node.type === 'Group') return;
+			if (node.type === 'Group' || node.name.startsWith('StagePaperSheet')) return;
 			objects += 1;
 			expect(node.layers.test(overlay)).toBe(true);
 			expect(node.layers.test(world)).toBe(false);

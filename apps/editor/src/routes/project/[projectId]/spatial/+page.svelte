@@ -3790,7 +3790,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						plan={planView}
 						planAppearance={preferences.planAppearance}
 						{drafting}
-						{reducedMotion}
 						datumMeters={boot.snapshot.domain.datumMeters}
 						contentBounds={paperContentBounds}
 						selection={selection}

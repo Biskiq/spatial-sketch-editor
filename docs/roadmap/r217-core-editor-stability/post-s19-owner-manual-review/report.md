@@ -193,6 +193,8 @@ straight Wall now draws 12 segments.
 - Safari, other GPUs and native touch weren't run.
 - Gold tint and the striped band are deferred as cosmetic, as the owner ruled.
 
+**3D to 2D transition.** The owner rejected timed fades as flicker and accepted this by eye. Paper's lines, sheet and poché now follow the Camera's orthographic weight, and arriving from 3D the poché fills 150 ms after landing, over 350 ms. A flip takes 1.0 s, up from 0.6 s, and the pose reaches overhead at 75% of it. Focused tests only; the motion wasn't captured and the full gate wasn't rerun.
+
 ## Summary
 
 | # | Finding | Actual cause | Class | Blocks S11? |

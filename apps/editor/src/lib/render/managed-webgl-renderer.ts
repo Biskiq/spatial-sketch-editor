@@ -93,8 +93,11 @@ export function manageWebGLRenderer(renderer: WebGLRenderer): WebGLRenderer {
 }
 
 /** Same renderer options as Threlte's default factory, with explicit ownership. */
-export function createManagedWebGLRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
+export function createManagedWebGLRenderer(
+	canvas: HTMLCanvasElement,
+	options: { readonly stencil?: boolean } = {}
+): WebGLRenderer {
 	return manageWebGLRenderer(new WebGLRenderer({
-		canvas, powerPreference: 'high-performance', antialias: true, alpha: true
+		canvas, powerPreference: 'high-performance', antialias: true, alpha: true, ...options
 	}));
 }

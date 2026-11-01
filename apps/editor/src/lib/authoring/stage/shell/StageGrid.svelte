@@ -20,13 +20,16 @@
 	let {
 		evaluation,
 		datumMeters = 0,
-		contentBounds = null
+		contentBounds = null,
+		fade = 1
 	}: {
 		evaluation: ViewportEvaluation | null;
 		/** The level datum the grid is drawn on. */
 		datumMeters?: number;
 		/** Committed Layout ∪ Scene datum bounds; Paper draws the workspace around them. */
 		contentBounds?: GridRect | null;
+		/** Paper's settle-in, so the grid arrives with the sheet it is drawn on. */
+		fade?: number;
 	} = $props();
 
 	const { invalidate } = useThrelte();
@@ -79,6 +82,7 @@
 		const current = plan;
 		if (current === null) return;
 		resources?.update(current);
+		resources?.setFade(fade);
 		invalidate();
 	});
 </script>

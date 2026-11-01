@@ -928,6 +928,13 @@ no horizon. A default Room floor wears the same colour. It is one unlit draw and
 world-anchored.
 It is drawing state, never a Camera mode or a reason to delay navigation.
 
+A flip between the readings moves through linework as a pure reading of the Camera's orthographic
+weight. Late in the move Paper's own lines arrive, the sheet veils the
+shaded frame under them without touching any authored material. Cut bands are left out of the veil,
+so a Wall of any material goes straight to poché. Arriving from 3D, the poché fills the linework just
+after the Camera lands, the one short timed step in the flip. Leaving, it follows the weight backwards.
+Picking and tools still follow the settled reading only.
+
 The **paper rule** is fixed: a Wall wears the drafting sheet when it is the settled
 subject of a Face session, straight or curved, or is off its footprint, and keeps
 it as the reading tilts back to 3D. **Wall grid off** overrides that sheet and shows

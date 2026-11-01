@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
 	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
 	/**
@@ -29,7 +30,7 @@
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
-import { isPaperPlanVisible } from '../paper-plan';
+import { isPaperPlanVisible, paperRevealFor } from '../paper-plan';
 import { gridIsVisible } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
 import StageCamera from './StageCamera.svelte';
@@ -44,6 +45,9 @@ import StageMatGround from './StageMatGround.svelte';
 	import type { GridRect } from '../stage-grid';
 
 	function ignoreRaycast(): void {}
+
+	const POCHE_LANDING_DELAY_MS = 150;
+	const POCHE_LANDING_FILL_MS = 350;
 
 	let {
 		geometry,
@@ -60,7 +64,6 @@ import StageMatGround from './StageMatGround.svelte';
 		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
 		contentBounds = null,
 		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
-		reducedMotion = false,
 		datumMeters = 0,
 		selection = null,
 		hover = null,
@@ -88,7 +91,6 @@ import StageMatGround from './StageMatGround.svelte';
 		drafting?: StageDraftingState;
 		/** Layout ∪ Scene datum bounds for Paper's bounded sheet. */
 		contentBounds?: GridRect | null;
-		reducedMotion?: boolean;
 		/** The level datum the mat ground sits at. */
 		datumMeters?: number;
 		/** Canonical primary selection and pointer hover; ink is Stage-owned. */
@@ -104,8 +106,49 @@ import StageMatGround from './StageMatGround.svelte';
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
 	const paperVisible = $derived(isPaperPlanVisible(evaluation, planAppearance));
+	/** Paper's arrival during a flip; it fully covers the shaded frame at weight 1. */
+	const paperWeightReveal = $derived(paperRevealFor(evaluation, planAppearance));
+	/**
+	 * Arriving from 3D, the poché waits for the Camera to land and then fills the
+	 * linework; the 3D frame stays drawn under it until it covers. Leaving, it follows
+	 * the weight. A Plan reached without a flip (load, reduced motion) has no wait.
+	 */
+	let pocheLanded = $state(false);
+	let pocheArrival = $state(0);
+	let flipped = false;
+	$effect(() => {
+		if (paperWeightReveal === null) {
+			pocheLanded = false;
+			pocheArrival = 0;
+			flipped = false;
+		} else if (evaluation?.renderedReading === 'transition') {
+			flipped = true;
+		}
+	});
+	$effect(() => {
+		if (!paperVisible || untrack(() => pocheLanded)) return;
+		if (!flipped) {
+			pocheLanded = true;
+			return;
+		}
+		const started = performance.now();
+		let frame = 0;
+		const step = (now: number): void => {
+			const linear = Math.min(1, Math.max(0, (now - started - POCHE_LANDING_DELAY_MS) / POCHE_LANDING_FILL_MS));
+			pocheArrival = linear * linear * (3 - 2 * linear);
+			if (linear < 1) frame = requestAnimationFrame(step);
+			else pocheLanded = true;
+		};
+		frame = requestAnimationFrame(step);
+		return () => cancelAnimationFrame(frame);
+	});
+	const paperReveal = $derived(
+		paperWeightReveal === null || pocheLanded ? paperWeightReveal : { ...paperWeightReveal, poche: pocheArrival }
+	);
+	/** The shaded frame is hidden only once Paper fully covers it. */
+	const paperCovers = $derived(paperVisible && pocheLanded);
 	/** The mat ground is the Stage's own surface in both mesh readings; Paper hides it. */
-	const matVisible = $derived(!paperVisible);
+	const matVisible = $derived(!paperCovers);
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
 	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
 	/**
@@ -181,7 +224,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 </script>
 
-<Canvas createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas), 'stage')} dpr={[1, 1.5]} shadows={PCFShadowMap}>
+<Canvas createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas, { stencil: true }), 'stage')} dpr={[1, 1.5]} shadows={PCFShadowMap}>
 	<!--
 		PLATE's two Paper materials: the light vellum while Paper draws, the dark cutting
 		mat for the model, applied by the Camera's appearance realizer. No fog: the mat is
@@ -191,7 +234,7 @@ import StageMatGround from './StageMatGround.svelte';
 	<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
 	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
-	<StageCamera {evaluation} {paperVisible} />
+	<StageCamera {evaluation} paperVisible={paperCovers} />
 	{#if evaluation !== null && matVisible}
 		<!--
 			The mat ground and its per-pixel grid: world-anchored, occluded by walls,
@@ -230,7 +273,7 @@ import StageMatGround from './StageMatGround.svelte';
 		onEntityRenderable={entityRendererReady}
 		onEntityRoot={registerSceneRoot}
 	/>
-	{#if paperVisible && plan !== null && evaluation !== null}
+	{#if paperReveal !== null && plan !== null && evaluation !== null}
 		<!--
 			The Plan is a drawing on Paper: the same Plan evaluation the Layout pick
 			provider reads, and the same Scene footprints the Scene pick reads.
@@ -241,6 +284,7 @@ import StageMatGround from './StageMatGround.svelte';
 				{evaluation}
 				{datumMeters}
 				{contentBounds}
+				fade={paperReveal.sheet}
 			/>
 		{/if}
 		<StagePaper
@@ -249,7 +293,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{footprints}
 			width={evaluation.rect.width}
 			height={evaluation.rect.height}
-			instant={reducedMotion}
+			reveal={paperReveal}
 			isFootprintMounted={footprintMounted}
 			{datumMeters}
 			{selection}
@@ -274,6 +318,7 @@ import StageMatGround from './StageMatGround.svelte';
 			{scenePick}
 			width={evaluation?.rect.width ?? 1}
 			height={evaluation?.rect.height ?? 1}
+			fade={1 - (paperReveal?.sheet ?? 0)}
 		/>
 	{/if}
 	<!--
