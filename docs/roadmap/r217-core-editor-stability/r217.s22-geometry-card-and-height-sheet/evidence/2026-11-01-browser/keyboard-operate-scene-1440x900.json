@@ -1,0 +1,87 @@
+[
+  {
+    "active": "Expand",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Expand",
+    "moreOpen": null,
+    "rect": [
+      1064,
+      448,
+      288,
+      78
+    ],
+    "step": "01-collapse-enter",
+    "techOpen": null,
+    "title": "Shape"
+  },
+  {
+    "active": "Collapse",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      278,
+      288,
+      248
+    ],
+    "step": "02-expand-enter",
+    "techOpen": false,
+    "title": "Shape"
+  },
+  {
+    "active": "Bring into view",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": false,
+    "rect": [
+      1064,
+      60,
+      288,
+      466
+    ],
+    "step": "03-bring-into-view",
+    "techOpen": false,
+    "title": "Shape"
+  },
+  {
+    "active": "More",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": true,
+    "rect": [
+      1064,
+      60,
+      288,
+      466
+    ],
+    "step": "04-more-open",
+    "techOpen": false,
+    "title": "Shape"
+  },
+  {
+    "active": "Technical details",
+    "alert": null,
+    "cardPresent": true,
+    "disclosed": [],
+    "fold": "Collapse",
+    "moreOpen": true,
+    "rect": [
+      1064,
+      60,
+      288,
+      466
+    ],
+    "step": "05-technical-open",
+    "techOpen": true,
+    "title": "Shape"
+  }
+]

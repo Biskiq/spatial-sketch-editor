@@ -1,0 +1,55 @@
+{
+  "cardCollapsed": "Expand",
+  "cardGesturing": "false",
+  "clientWidth": 820,
+  "horizontalOverflow": false,
+  "overlapCount": 0,
+  "overlaps": [],
+  "rects": {
+    "card": {
+      "b": 1070.4,
+      "h": 78.2,
+      "l": 444,
+      "r": 732,
+      "t": 992.2,
+      "w": 288
+    },
+    "dock": {
+      "b": 1168,
+      "h": 47.6,
+      "l": 297.7,
+      "r": 522.3,
+      "t": 1120.4,
+      "w": 224.5
+    },
+    "sheet": {
+      "b": 725.2,
+      "h": 226.4,
+      "l": 744,
+      "r": 808,
+      "t": 498.8,
+      "w": 64
+    },
+    "stageActions": {
+      "b": 94,
+      "h": 38,
+      "l": 12,
+      "r": 240.2,
+      "t": 56,
+      "w": 228.2
+    },
+    "zoom": {
+      "b": 1120.4,
+      "h": 38,
+      "l": 621.9,
+      "r": 732,
+      "t": 1082.4,
+      "w": 110.1
+    }
+  },
+  "scrollWidth": 820,
+  "viewport": [
+    820,
+    1180
+  ]
+}

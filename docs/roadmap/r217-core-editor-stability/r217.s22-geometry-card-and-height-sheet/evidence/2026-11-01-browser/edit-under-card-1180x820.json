@@ -1,0 +1,41 @@
+{
+  "before": {
+    "opacity": "1",
+    "pointerEvents": "auto",
+    "gesturing": "false",
+    "rect": [
+      804,
+      60,
+      288,
+      650
+    ],
+    "hitAtCardCenterIsCard": true,
+    "fold": "Collapse"
+  },
+  "during": {
+    "opacity": "0.2",
+    "pointerEvents": "none",
+    "gesturing": "true",
+    "rect": [
+      804,
+      60,
+      288,
+      650
+    ],
+    "hitAtCardCenterIsCard": false,
+    "fold": "Collapse"
+  },
+  "after": {
+    "opacity": "1",
+    "pointerEvents": "auto",
+    "gesturing": "false",
+    "rect": [
+      804,
+      60,
+      288,
+      650
+    ],
+    "hitAtCardCenterIsCard": true,
+    "fold": "Collapse"
+  }
+}

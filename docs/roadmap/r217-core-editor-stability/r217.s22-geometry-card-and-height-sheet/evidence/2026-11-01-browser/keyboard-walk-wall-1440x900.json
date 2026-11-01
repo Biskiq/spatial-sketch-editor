@@ -1,0 +1,242 @@
+[
+  {
+    "expanded": "true",
+    "inCard": true,
+    "label": "Collapse",
+    "phase": "walk",
+    "rect": [
+      1235,
+      73,
+      67,
+      32
+    ],
+    "stop": 0,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Close selection card",
+    "phase": "walk",
+    "rect": [
+      1305,
+      73,
+      32,
+      32
+    ],
+    "stop": 1,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Name",
+    "phase": "walk",
+    "rect": [
+      1079,
+      132,
+      183,
+      34
+    ],
+    "stop": 2,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Rename",
+    "phase": "walk",
+    "rect": [
+      1267,
+      132,
+      70,
+      34
+    ],
+    "stop": 3,
+    "tag": "button",
+    "type": "submit"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "",
+    "phase": "walk",
+    "rect": [
+      1090,
+      218,
+      13,
+      13
+    ],
+    "stop": 4,
+    "tag": "input",
+    "type": "radio"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "height",
+    "phase": "walk",
+    "rect": [
+      1225,
+      240,
+      96,
+      49
+    ],
+    "stop": 5,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "thickness",
+    "phase": "walk",
+    "rect": [
+      1225,
+      294,
+      96,
+      49
+    ],
+    "stop": 6,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "length",
+    "phase": "walk",
+    "rect": [
+      1225,
+      349,
+      96,
+      49
+    ],
+    "stop": 7,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "angle",
+    "phase": "walk",
+    "rect": [
+      1230,
+      404,
+      96,
+      49
+    ],
+    "stop": 8,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "deltaX",
+    "phase": "walk",
+    "rect": [
+      1225,
+      459,
+      96,
+      49
+    ],
+    "stop": 9,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "deltaZ",
+    "phase": "walk",
+    "rect": [
+      1225,
+      514,
+      96,
+      49
+    ],
+    "stop": 10,
+    "tag": "input",
+    "type": "text"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Start and End X/Z",
+    "phase": "walk",
+    "rect": [
+      1085,
+      572,
+      246,
+      16
+    ],
+    "stop": 11,
+    "tag": "summary",
+    "type": null
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "layout-wall-delete",
+    "phase": "walk",
+    "rect": [
+      1079,
+      642,
+      89,
+      32
+    ],
+    "stop": 12,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Bring into view",
+    "phase": "walk",
+    "rect": [
+      1079,
+      734,
+      110,
+      32
+    ],
+    "stop": 13,
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "More",
+    "phase": "walk",
+    "rect": [
+      1195,
+      734,
+      50,
+      34
+    ],
+    "stop": 14,
+    "tag": "summary",
+    "type": null
+  },
+  {
+    "expanded": null,
+    "inCard": true,
+    "label": "Technical details",
+    "phase": "walk",
+    "rect": [
+      1079,
+      773,
+      259,
+      17
+    ],
+    "stop": 15,
+    "tag": "summary",
+    "type": null
+  }
+]
