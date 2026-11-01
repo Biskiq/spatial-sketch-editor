@@ -20,6 +20,7 @@
 		MAT_GRID_LIFT_METERS,
 		MAT_GRID_RENDER_ORDER,
 		MAT_GRID_SEGMENTS,
+		MAT_GROUND_POLYGON_OFFSET_UNITS,
 		updateMatGridMaterial
 	} from './stage-mat-grid';
 
@@ -57,8 +58,14 @@
 	scale={[size, size, 1]}
 	rotation={[-Math.PI / 2, 0, 0]}
 >
-	<T.PlaneGeometry args={[1, 1]} />
-	<T.MeshStandardMaterial color={MAT_GROUND_INK} roughness={1} metalness={0} />
+	<T.PlaneGeometry args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]} />
+	<T.MeshStandardMaterial
+		color={MAT_GROUND_INK}
+		roughness={1}
+		metalness={0}
+		polygonOffset
+		polygonOffsetUnits={MAT_GROUND_POLYGON_OFFSET_UNITS}
+	/>
 </T.Mesh>
 {#if gridVisible}
 	<T.Mesh

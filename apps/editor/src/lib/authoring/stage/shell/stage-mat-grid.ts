@@ -38,6 +38,14 @@ export const MAT_GRID_RENDER_ORDER = 0;
  * float32 precision at grazing angles and during a reading flip.
  */
 export const MAT_GRID_SEGMENTS = 64;
+/**
+ * The mat's own depth pushback, in depth steps. Inside a large project the near
+ * plane stays at its floor so close-up geometry never clips, and there one step
+ * can be many times the 4 mm that separates the mat from a floor on the datum.
+ * The mat shares the grid's segments, since depth interpolated across one huge
+ * triangle is noisier than this pushback.
+ */
+export const MAT_GROUND_POLYGON_OFFSET_UNITS = 4;
 
 const float = (value: number): string => (Number.isInteger(value) ? `${value}.0` : `${value}`);
 

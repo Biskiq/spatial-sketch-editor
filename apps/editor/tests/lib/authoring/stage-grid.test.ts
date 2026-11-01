@@ -8,7 +8,8 @@
  * the origin never moves across a zoom change, and no view state reaches the
  * source.
  */
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LineSegments, ShaderMaterial } from 'three';
 import {
@@ -23,7 +24,12 @@ import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createGridScene } from '$lib/authoring/stage/shell/stage-grid-scene';
-import { createMatGridMaterial, MAT_GRID_RENDER_ORDER, updateMatGridMaterial } from '$lib/authoring/stage/shell/stage-mat-grid';
+import {
+	createMatGridMaterial,
+	MAT_GRID_RENDER_ORDER,
+	MAT_GROUND_POLYGON_OFFSET_UNITS,
+	updateMatGridMaterial
+} from '$lib/authoring/stage/shell/stage-mat-grid';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from '$lib/authoring/stage/stage-drafting';
 import {
 	GRID_COARSE_METERS,
@@ -49,6 +55,16 @@ const PAPER_BASE = {
 	datumMeters: 0,
 	surface: 'paper' as const
 };
+
+describe('the mat keeps its depth away from a floor on the datum', () => {
+	it('subdivides the mat and pushes it back in depth steps', () => {
+		const source = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageMatGround.svelte'), 'utf8');
+		const mat = source.slice(source.indexOf('<T.Mesh'), source.indexOf('{#if gridVisible}'));
+		expect(mat).toContain('args={[1, 1, MAT_GRID_SEGMENTS, MAT_GRID_SEGMENTS]}');
+		expect(mat).toContain('polygonOffsetUnits={MAT_GROUND_POLYGON_OFFSET_UNITS}');
+		expect(MAT_GROUND_POLYGON_OFFSET_UNITS).toBeGreaterThan(0);
+	});
+});
 
 describe('R217.S13 — fixed grid values and thinning', () => {
 	it('draws only the fixed 1 m, 5 m and 25 m values', () => {

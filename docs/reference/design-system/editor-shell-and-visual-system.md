@@ -911,8 +911,9 @@ below 8 px. On Paper a 25 m reference appears only while the 5 m level is suppre
 obeys the same rule. The 3D mat applies the same fade per pixel, from each pixel's own
 projected spacing, so near ground keeps 1 m, farther ground 5 m and the far ground 25 m;
 there the 25 m level cross-fades in as the 5 m level fades out, so a zoom never passes
-through a band with no reference (R217.S19). Anchor to the world/floor datum with a stable
-origin across zoom changes.
+through a band with no reference (R217.S19). The mat is subdivided and pushed back four depth
+steps, so a floor on the datum holds in motion with the near plane at its floor. Anchor to the
+world/floor datum with a stable origin across zoom changes.
 Paper's grid is a bounded sheet around the work: the datum bounds of Layout and
 Scene, expanded by 5 m and rounded outward to 5 m, or a 20 × 20 m sheet
 around the target for an empty project. The sheet is intersected with the visible
