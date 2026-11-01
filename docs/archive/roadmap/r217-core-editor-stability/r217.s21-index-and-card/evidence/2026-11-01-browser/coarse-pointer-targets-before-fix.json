@@ -1,0 +1,2785 @@
+{
+ "label": "before",
+ "minTargetPx": 44,
+ "method": "Chromium via Playwright, hasTouch and isMobile emulation (pointer: coarse matches)",
+ "states": [
+  {
+   "state": "wall",
+   "tag": "820x1180",
+   "coarse": true,
+   "viewport": [
+    820,
+    1180
+   ],
+   "scrollWidth": 820,
+   "clientWidth": 820,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "region": "index",
+     "tag": "input",
+     "type": "search",
+     "label": "search",
+     "w": 236.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall The long exterior wall of the east range, with its later-added re",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for The long exterior wall of the east range, with its later-a",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 2). Identity layout:wall:wall-chain-2.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 2)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 3). Identity layout:wall:wall-chain-3.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 3)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Open location",
+     "w": 95.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 99.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Wall 4. Identity layout:wall:wall-chain-4.starter-template.",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Wall 4",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Door Door 1. Identity layout:opening:opening:door:wall-chain-1.starter",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Door 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Floor Draft Room 1. Identity layout:room-floor:room.5:4:face31:wall-ch",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Draft Room 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Primitive Sphere. Identity scene:entity:entity-3a968be8-b193-4d31-920b",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Sphere",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Form Shape. Identity scene:entity:cda7c5d9-ee66-4739-a2e0-312709019398",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Shape",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Collapse",
+     "w": 67.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Close selection card",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Name",
+     "w": 183.3,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "submit",
+     "label": "Rename",
+     "w": 70,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "radio",
+     "label": "layout-fixed-endpoint",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "radio",
+     "label": "layout-fixed-endpoint",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "height",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "thickness",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "length",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "angle",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "deltaX",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "deltaZ",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Start and End X/Z",
+     "w": 245.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Delete Wall",
+     "w": 89.3,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 110.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "More",
+     "w": 65.2,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Focus",
+     "w": 57.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Open task",
+     "w": 82.9,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Technical details",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    }
+   ]
+  },
+  {
+   "state": "opening",
+   "tag": "820x1180",
+   "coarse": true,
+   "viewport": [
+    820,
+    1180
+   ],
+   "scrollWidth": 820,
+   "clientWidth": 820,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "region": "index",
+     "tag": "input",
+     "type": "search",
+     "label": "search",
+     "w": 236.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall The long exterior wall of the east range, with its later-added re",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for The long exterior wall of the east range, with its later-a",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 2). Identity layout:wall:wall-chain-2.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 2)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 3). Identity layout:wall:wall-chain-3.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 3)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Open location",
+     "w": 95.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 99.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Wall 4. Identity layout:wall:wall-chain-4.starter-template.",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Wall 4",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Door Door 1. Identity layout:opening:opening:door:wall-chain-1.starter",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Door 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Floor Draft Room 1. Identity layout:room-floor:room.5:4:face31:wall-ch",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Draft Room 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Primitive Sphere. Identity scene:entity:entity-3a968be8-b193-4d31-920b",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Sphere",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Form Shape. Identity scene:entity:cda7c5d9-ee66-4739-a2e0-312709019398",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Shape",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Collapse",
+     "w": 67.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Close selection card",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Name",
+     "w": 183.3,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "submit",
+     "label": "Rename",
+     "w": 70,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "offset",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "width",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "height",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "sillHeight",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Delete Opening",
+     "w": 115.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 110.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "More",
+     "w": 65.2,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Focus",
+     "w": 57.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Open task",
+     "w": 82.9,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Technical details",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    }
+   ]
+  },
+  {
+   "state": "object",
+   "tag": "820x1180",
+   "coarse": true,
+   "viewport": [
+    820,
+    1180
+   ],
+   "scrollWidth": 820,
+   "clientWidth": 820,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "region": "index",
+     "tag": "input",
+     "type": "search",
+     "label": "search",
+     "w": 236.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall The long exterior wall of the east range, with its later-added re",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for The long exterior wall of the east range, with its later-a",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 2). Identity layout:wall:wall-chain-2.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 2)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 3). Identity layout:wall:wall-chain-3.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 3)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Open location",
+     "w": 95.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 99.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Wall 4. Identity layout:wall:wall-chain-4.starter-template.",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Wall 4",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Door Door 1. Identity layout:opening:opening:door:wall-chain-1.starter",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Door 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Floor Draft Room 1. Identity layout:room-floor:room.5:4:face31:wall-ch",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Draft Room 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Primitive Sphere. Identity scene:entity:entity-3a968be8-b193-4d31-920b",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Sphere",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Form Shape. Identity scene:entity:cda7c5d9-ee66-4739-a2e0-312709019398",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Shape",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Collapse",
+     "w": 67.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Close selection card",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "position-x",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "position-z",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "yaw",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "size",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Delete object",
+     "w": 101.9,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 110.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "More",
+     "w": 65.2,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Technical details",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    }
+   ]
+  },
+  {
+   "state": "form",
+   "tag": "820x1180",
+   "coarse": true,
+   "viewport": [
+    820,
+    1180
+   ],
+   "scrollWidth": 820,
+   "clientWidth": 820,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "region": "index",
+     "tag": "input",
+     "type": "search",
+     "label": "search",
+     "w": 236.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall The long exterior wall of the east range, with its later-added re",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for The long exterior wall of the east range, with its later-a",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 2). Identity layout:wall:wall-chain-2.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 2)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 3). Identity layout:wall:wall-chain-3.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 3)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Open location",
+     "w": 95.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 99.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Wall 4. Identity layout:wall:wall-chain-4.starter-template.",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Wall 4",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Door Door 1. Identity layout:opening:opening:door:wall-chain-1.starter",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Door 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Floor Draft Room 1. Identity layout:room-floor:room.5:4:face31:wall-ch",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Draft Room 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Primitive Sphere. Identity scene:entity:entity-3a968be8-b193-4d31-920b",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Sphere",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Form Shape. Identity scene:entity:cda7c5d9-ee66-4739-a2e0-312709019398",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Shape",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Collapse",
+     "w": 67.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Close selection card",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form X (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form Z (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Move",
+     "w": 53.9,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Place on floor",
+     "w": 104.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form yaw (rad)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Turn",
+     "w": 48.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form width (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form height (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form depth (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Size",
+     "w": 46.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Duplicate",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Save to My Objects",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Delete form",
+     "w": 92.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 110.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "More",
+     "w": 65.2,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Technical details",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    }
+   ]
+  },
+  {
+   "state": "wall",
+   "tag": "1180x820",
+   "coarse": true,
+   "viewport": [
+    1180,
+    820
+   ],
+   "scrollWidth": 1180,
+   "clientWidth": 1180,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "region": "index",
+     "tag": "input",
+     "type": "search",
+     "label": "search",
+     "w": 236.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall The long exterior wall of the east range, with its later-added re",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for The long exterior wall of the east range, with its later-a",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 2). Identity layout:wall:wall-chain-2.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 2)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 3). Identity layout:wall:wall-chain-3.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 3)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Wall 4. Identity layout:wall:wall-chain-4.starter-template.",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Wall 4",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Door Door 1. Identity layout:opening:opening:door:wall-chain-1.starter",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Door 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Floor Draft Room 1. Identity layout:room-floor:room.5:4:face31:wall-ch",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Draft Room 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Primitive Sphere. Identity scene:entity:entity-3a968be8-b193-4d31-920b",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Sphere",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Form Shape. Identity scene:entity:cda7c5d9-ee66-4739-a2e0-312709019398",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Shape",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Collapse",
+     "w": 67.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Close selection card",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Name",
+     "w": 183.3,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "submit",
+     "label": "Rename",
+     "w": 70,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "radio",
+     "label": "layout-fixed-endpoint",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "radio",
+     "label": "layout-fixed-endpoint",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "height",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "thickness",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "length",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "angle",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "deltaX",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "deltaZ",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Start and End X/Z",
+     "w": 245.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Delete Wall",
+     "w": 89.3,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 110.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "More",
+     "w": 65.2,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Focus",
+     "w": 57.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Open task",
+     "w": 82.9,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Technical details",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    }
+   ]
+  },
+  {
+   "state": "opening",
+   "tag": "1180x820",
+   "coarse": true,
+   "viewport": [
+    1180,
+    820
+   ],
+   "scrollWidth": 1180,
+   "clientWidth": 1180,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "region": "index",
+     "tag": "input",
+     "type": "search",
+     "label": "search",
+     "w": 236.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall The long exterior wall of the east range, with its later-added re",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for The long exterior wall of the east range, with its later-a",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 2). Identity layout:wall:wall-chain-2.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 2)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 3). Identity layout:wall:wall-chain-3.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 3)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Wall 4. Identity layout:wall:wall-chain-4.starter-template.",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Wall 4",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Door Door 1. Identity layout:opening:opening:door:wall-chain-1.starter",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Door 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Floor Draft Room 1. Identity layout:room-floor:room.5:4:face31:wall-ch",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Draft Room 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Primitive Sphere. Identity scene:entity:entity-3a968be8-b193-4d31-920b",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Sphere",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Form Shape. Identity scene:entity:cda7c5d9-ee66-4739-a2e0-312709019398",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Shape",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Collapse",
+     "w": 67.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Close selection card",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Name",
+     "w": 183.3,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "submit",
+     "label": "Rename",
+     "w": 70,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "offset",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "width",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "height",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "sillHeight",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Delete Opening",
+     "w": 115.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 110.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "More",
+     "w": 65.2,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Focus",
+     "w": 57.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Open task",
+     "w": 82.9,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Technical details",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    }
+   ]
+  },
+  {
+   "state": "object",
+   "tag": "1180x820",
+   "coarse": true,
+   "viewport": [
+    1180,
+    820
+   ],
+   "scrollWidth": 1180,
+   "clientWidth": 1180,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "region": "index",
+     "tag": "input",
+     "type": "search",
+     "label": "search",
+     "w": 236.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall The long exterior wall of the east range, with its later-added re",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for The long exterior wall of the east range, with its later-a",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 2). Identity layout:wall:wall-chain-2.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 2)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 3). Identity layout:wall:wall-chain-3.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 3)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Wall 4. Identity layout:wall:wall-chain-4.starter-template.",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Wall 4",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Door Door 1. Identity layout:opening:opening:door:wall-chain-1.starter",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Door 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Floor Draft Room 1. Identity layout:room-floor:room.5:4:face31:wall-ch",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Draft Room 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Primitive Sphere. Identity scene:entity:entity-3a968be8-b193-4d31-920b",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Sphere",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Form Shape. Identity scene:entity:cda7c5d9-ee66-4739-a2e0-312709019398",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Shape",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Collapse",
+     "w": 67.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Close selection card",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "position-x",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "position-z",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "yaw",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "size",
+     "w": 96,
+     "h": 49.2,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Delete object",
+     "w": 101.9,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 110.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "More",
+     "w": 65.2,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Technical details",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    }
+   ]
+  },
+  {
+   "state": "form",
+   "tag": "1180x820",
+   "coarse": true,
+   "viewport": [
+    1180,
+    820
+   ],
+   "scrollWidth": 1180,
+   "clientWidth": 1180,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "region": "index",
+     "tag": "input",
+     "type": "search",
+     "label": "search",
+     "w": 236.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall The long exterior wall of the east range, with its later-added re",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for The long exterior wall of the east range, with its later-a",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 2). Identity layout:wall:wall-chain-2.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 2)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Party wall (Wall 3). Identity layout:wall:wall-chain-3.starter-te",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Party wall (Wall 3)",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Wall Wall 4. Identity layout:wall:wall-chain-4.starter-template.",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Wall 4",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Door Door 1. Identity layout:opening:opening:door:wall-chain-1.starter",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Door 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Floor Draft Room 1. Identity layout:room-floor:room.5:4:face31:wall-ch",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Draft Room 1",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Primitive Sphere. Identity scene:entity:entity-3a968be8-b193-4d31-920b",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Sphere",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Form Shape. Identity scene:entity:cda7c5d9-ee66-4739-a2e0-312709019398",
+     "w": 172.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "index",
+     "tag": "button",
+     "type": "button",
+     "label": "Actions for Shape",
+     "w": 58.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Collapse",
+     "w": 67.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Close selection card",
+     "w": 44,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form X (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form Z (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Move",
+     "w": 53.9,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Place on floor",
+     "w": 104.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form yaw (rad)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Turn",
+     "w": 48.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form width (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form height (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "input",
+     "type": "text",
+     "label": "Form depth (m)",
+     "w": 96,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Size",
+     "w": 46.6,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Duplicate",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Save to My Objects",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Delete form",
+     "w": 92.1,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "button",
+     "type": "button",
+     "label": "Bring into view",
+     "w": 110.4,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "More",
+     "w": 65.2,
+     "h": 46,
+     "pass": true,
+     "inView": true
+    },
+    {
+     "region": "card",
+     "tag": "summary",
+     "type": "",
+     "label": "Technical details",
+     "w": 258.8,
+     "h": 44,
+     "pass": true,
+     "inView": true
+    }
+   ]
+  }
+ ],
+ "errors": [
+  "warning: [.WebGL-0x10c0043b400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+  "warning: [.WebGL-0x10c0043b400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+  "warning: [.WebGL-0x10c0043b400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+  "warning: [.WebGL-0x10c0043b400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+ ]
+}

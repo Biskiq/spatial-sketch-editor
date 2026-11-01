@@ -151,6 +151,7 @@ import {
 	buildLayoutIntent,
 	createLayoutPlanners,
 	layoutFacts,
+	layoutCardFieldIds,
 	layoutSubjectOf,
 	parseMeasureInput,
 	parsePlacementXZ,
@@ -2545,8 +2546,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						sourceId: cardSubject.sourceId
 					});
 					if (subject === null) return null;
+					// The writer edits every writable field except the name, which the Card
+					// header's rename writer owns. Those fields are not repeated as facts.
 					return {
 						summary: subject.kind === 'wall' ? 'Wall fields' : 'Opening fields',
+						fieldIds: layoutCardFieldIds(document, subject),
 						view: { component: LayoutCardFields, services }
 					};
 				},

@@ -40,6 +40,7 @@
 		onRefreshRemoteProject = null,
 		find = null,
 		indexOpen = true,
+		locationLabel = null,
 		onOpenIndex = () => {},
 		onToggleIndex = () => {},
 		lens = 'world',
@@ -64,6 +65,7 @@
 		onRefreshRemoteProject?: (() => void | Promise<void>) | null;
 		find?: { entries: readonly { id: string; adapterId: string; label: string; verb: string }[]; onRun: (entry: { id: string; adapterId: string; label: string; verb: string }) => void } | null;
 		indexOpen?: boolean;
+		locationLabel?: string | null;
 		onOpenIndex?: () => void;
 		onToggleIndex?: () => void;
 		lens?: 'world' | 'experience';
@@ -119,7 +121,8 @@
 	data-project-actions-reason={projectActionsUnavailableReason ?? 'available'}
 	data-project-action-busy={String(projectActionBusy)}
 >
-	{#if !indexOpen}<button type="button" data-head-location onclick={onOpenIndex}>Open Index</button>{/if}
+	{#if !indexOpen && locationLabel !== null}<button type="button" data-head-location title={locationLabel} onclick={onOpenIndex}>{locationLabel}</button>{/if}
+	{#if !indexOpen && locationLabel === null}<button type="button" data-head-location onclick={onOpenIndex}>Open Index</button>{/if}
 	<button type="button" data-head-index aria-expanded={indexOpen} aria-controls="plate-index" onclick={onToggleIndex}>Index</button>
 	<button type="button" data-testid="lens-world" aria-pressed={lens === 'world'} onclick={() => onLens('world')}>World</button>
 	<button type="button" data-testid="lens-experience" aria-pressed={lens === 'experience'} onclick={() => onLens('experience')}>Experience</button>

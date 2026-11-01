@@ -2257,6 +2257,27 @@ describe('Scene adapter registration', () => {
 		);
 		const duplicate = actions.find((action) => action.id === 'scene-object-duplicate');
 		expect(duplicate?.destructive).toBeUndefined();
+		// Duplicate is a secondary action (More), not a destructive one.
+		expect(duplicate?.group).toBe('secondary');
+		expect(actions.find((action) => action.id === 'scene-object-delete')?.group).toBeUndefined();
+		// The object writer edits Position, Yaw and Size, so those facts are shown by the
+		// writer rather than repeated as rows; the header carries the name and the kind.
+		expect(facade.cardWriter(subject())?.fieldIds).toEqual(['position', 'yaw', 'scale']);
+		expect(facade.cardFacts(subject()).map((fact) => fact.fieldId)).toEqual(
+			expect.arrayContaining(['kind', 'name', 'position', 'yaw', 'scale'])
+		);
+		// The writer edits X and Z only, so the plan position row is X and Z. Y is written
+		// by no writer, so the elevation stays stated: a read-only row with no field id.
+		const placed = facade.snapshot().domain.scene.entities.find((entity) => entity.id === FIXTURE_ENTITY_ID)!;
+		const rows = facade.cardFacts(subject());
+		expect(rows.find((fact) => fact.label === 'Position (X · Z)')).toMatchObject({
+			value: `${placed.position[0]} m · ${placed.position[2]} m`,
+			fieldId: 'position'
+		});
+		expect(rows.find((fact) => fact.label === 'Elevation')).toMatchObject({
+			value: `${placed.position[1]} m`
+		});
+		expect(rows.find((fact) => fact.label === 'Elevation')?.fieldId).toBeUndefined();
 		await expect(duplicate!.run()).resolves.toMatchObject({ kind: 'accepted' });
 		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
 		const copy = facade.snapshot().domain.scene.entities.find(

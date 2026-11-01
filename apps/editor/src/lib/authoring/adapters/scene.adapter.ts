@@ -113,6 +113,7 @@ import {
 	markCandidate,
 	planSceneObjectMark,
 	primitiveBounds,
+	sceneObjectCardFieldFacts,
 	sceneObjectMarkDescriptors,
 	sceneObjectMarkIntent,
 	sceneObjectScale,
@@ -171,15 +172,24 @@ function entityFacts(
 			? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), entity)
 			: null;
 	return [
-		{ label: 'Kind', value: entity.kind },
-		{ label: 'Name', value: entity.name },
+		{ label: 'Kind', value: entity.kind, fieldId: 'kind' },
+		{ label: 'Name', value: entity.name, fieldId: 'name' },
+		// The plan position is X and Z. A writer that edits them (the object and form
+		// writers) shows them in its fields, so this row is dropped there; Y is not
+		// written by any writer, so Elevation below always states it.
 		{
-			label: 'Position',
-			value: entity.position.map((value) => `${value} m`).join(' · ')
+			label: 'Position (X · Z)',
+			value: `${entity.position[0]} m · ${entity.position[2]} m`,
+			fieldId: 'position'
+		},
+		{
+			label: 'Elevation',
+			value: `${entity.position[1]} m`
 		},
 		{
 			label: 'Yaw',
-			value: `${entity.rotation[1]} rad`
+			value: `${entity.rotation[1]} rad`,
+			fieldId: 'yaw'
 		},
 		// Only a subject Compose can actually resize advertises a Scale fact: a light
 		// or an unapproved catalogue model has no verified contact, so a Scale row
@@ -188,12 +198,13 @@ function entityFacts(
 			? [
 					{
 						label: 'Scale',
-						value: `${typeof entity.scale === 'number' ? entity.scale : 1} (uniform)`
+						value: `${typeof entity.scale === 'number' ? entity.scale : 1} (uniform)`,
+						fieldId: 'scale'
 					}
 				]
 			: []),
 		// Dimensions are exposed by the lazy Card's per-axis Size fields.
-		...(entity.kind === 'form' ? [{ label: 'Material', value: entity.materialId }] : [])
+		...(entity.kind === 'form' ? [{ label: 'Material', value: entity.materialId, fieldId: 'material' }] : [])
 	];
 }
 
@@ -2503,12 +2514,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (subject.reference?.domain !== 'scene') return null;
 					const entity = source.entities.find((entry) => entry.id === subject.sourceId);
 					if (entity?.kind === 'form') {
-						return { summary: 'Form fields', view: { component: FormCardFields, services } };
+						return {
+							summary: 'Form fields',
+							fieldIds: ['position', 'yaw'],
+							view: { component: FormCardFields, services }
+						};
 					}
 					// A catalogue model or primitive gets the Arrange instrument's exact
 					// Position, Yaw and Size writers where PLATE puts ordinary dimensions.
 					if (!isSceneObjectEntity(entity)) return null;
-					return { summary: 'Object fields', view: { component: SceneObjectCardFields, services } };
+					return {
+						summary: 'Object fields',
+						fieldIds: sceneObjectCardFieldFacts(),
+						view: { component: SceneObjectCardFields, services }
+					};
 				},
 				cardActions(subject) {
 					if (subject.reference?.domain !== 'scene') return [];
@@ -2542,6 +2561,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						{
 							id: 'scene-object-duplicate',
 							label: 'Duplicate',
+							// Not destructive: a copy is added and Undo removes it. It sits in the
+							// Card's More disclosure, so Delete is the one destructive control.
+							group: 'secondary',
 							detail: `Add one copy of ${entity.name} at +0.5 m X/Z. Undo removes it.`,
 							async run() {
 								return duplicateSceneObject(services, services.stage.snapshot(), entity.id);

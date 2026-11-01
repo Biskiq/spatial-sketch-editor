@@ -19,6 +19,7 @@ import {
 } from '@portfolio/project-model/units';
 
 import SceneObjectCardFields from '$lib/authoring/adapters/scene/SceneObjectCardFields.svelte';
+import { sceneObjectCardFieldFacts } from '$lib/authoring/adapters/scene/object-marks';
 import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { attachUnitStageSource } from '$lib/authoring/stage/unit-stage-source';
@@ -272,5 +273,11 @@ describe('Scene object Card writer', () => {
 		expect(accept).not.toHaveBeenCalled();
 		expect(yaw.value).toBe('0');
 		expect(event.defaultPrevented).toBe(true);
+	});
+});
+
+describe('the object Card declares what it writes, once', () => {
+	it('names the mark facts its writer edits, so the Card does not repeat them as rows', () => {
+		expect(sceneObjectCardFieldFacts()).toEqual(['position', 'yaw', 'scale']);
 	});
 });

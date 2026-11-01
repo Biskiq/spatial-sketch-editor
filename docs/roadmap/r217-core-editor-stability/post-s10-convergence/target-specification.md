@@ -220,8 +220,8 @@ Order: Index toggle · Biskiq · serif project name · World / Experience · con
 
 - **Index rows:** one compact line with a human label. Select, Open location and Bring into view stay distinct but disclosed.
 - **Labels:** authored name, then a session-stable `Kind n` by sorted identity, with full identity available to assistive technology. Never serialized.
-- **Card facts** gain an optional `fieldId`; a fact with a writer for that field is not repeated. `Stream`, `Eligible`, `Revealed` and `Domain` leave the ordinary Card.
-- **Card actions** gain optional `group: 'primary' | 'secondary'`. Only `destructive: true` gets destructive styling, so Duplicate stops looking dangerous.
+- **Card facts** gain an optional `fieldId`; a fact whose field the header (name, kind) or a writer carries is not repeated. `Stream`, `Eligible`, `Revealed` and `Domain` leave the ordinary Card and sit under Technical details.
+- **Card actions** gain optional `group: 'primary' | 'secondary'`. Only `destructive: true` gets destructive styling, so Duplicate stops looking dangerous. A secondary action sits in the Card's More disclosure.
 
 ### Lower edge, Height Sheet and responsive
 

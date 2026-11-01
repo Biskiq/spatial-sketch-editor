@@ -68,6 +68,18 @@ const button = (text: string) => {
 		throw new Error(`Missing button ${text}`);
 	return found;
 };
+/**
+ * The Index row for one canonical source. The row's `li` carries the identity (its
+ * Layout form is `layout:<kind>:<id>`, so a bare id names the same row); its select
+ * control is `.item-row`, which is labelled with the subject's name.
+ */
+function indexRowOf(root: ParentNode, sourceId: string): HTMLButtonElement | null {
+	const row = [...root.querySelectorAll<HTMLElement>('.item[data-source-id]')].find((item) => {
+		const identity = item.getAttribute('data-source-id') ?? '';
+		return identity === sourceId || identity.endsWith(`:${sourceId}`);
+	});
+	return row?.querySelector<HTMLButtonElement>('.item-row') ?? null;
+}
 const stage = () => target.querySelector<HTMLElement>('.stage')!;
 /** Fit is the lower-right cluster's own button (O8). */
 async function fitAll() {
@@ -259,7 +271,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 	it('selects a located Index row without passing a reactive proxy to immutable selection', async () => {
-		const row = [...target.querySelectorAll<HTMLButtonElement>('.item-row')].find(b => b.textContent?.includes(STARTER_WALL_2))!;
+		const row = indexRowOf(target, STARTER_WALL_2)!;
 		row.click();
 		await frame();
 		expect(facade().selection()?.sourceId).toBe(STARTER_WALL_2);
@@ -269,10 +281,12 @@ describe('mounted Stage pointer lifecycle', () => {
 		// Index rather than by a second projection marker.
 		expect(target.querySelector('.selection')).toBeNull();
 		expect(facade().selection()?.sourceId).toBe(wallId);
+		// The Card and the Index show the subject's name; its canonical identity is the
+		// row's `data-source-id` and the Card's, never visible text.
 		const card = target.querySelector('[aria-label="Selected subject"]');
-		expect(card?.textContent).toContain(wallId);
+		expect(card?.getAttribute('data-source-id')).toBe(wallId);
 		const index = target.querySelector('[data-plate-landmark="index"]');
-		expect(index?.textContent).toContain(wallId);
+		expect(indexRowOf(index as HTMLElement, wallId)?.getAttribute('aria-current')).toBe('true');
 	});
 	it('commits one uninterrupted drag across ordinary Camera evaluation updates', async () => {
 		const baseline = facade().snapshot().canonicalJson;
@@ -528,10 +542,8 @@ describe('mounted Stage drawing and deletion', () => {
 
 	/** Select a subject through the Index, as a creator does. */
 	async function selectIndexRow(sourceId: string) {
-		const row = [...target.querySelectorAll<HTMLButtonElement>('.item-row')].find((item) =>
-			item.textContent?.includes(sourceId)
-		);
-		if (row === undefined) throw new Error(`Missing Index row ${sourceId}`);
+		const row = indexRowOf(target, sourceId);
+		if (row === null) throw new Error(`Missing Index row ${sourceId}`);
 		row.click();
 		await frame();
 	}
@@ -1610,5 +1622,91 @@ describe('R217.S16 — selected Opening body priority', () => {
 		const accepted = stageEnvelope(facade().snapshot()).units.layout.data;
 		expect(accepted.junctions.find((junction) => junction.id === wall.startJunctionId)?.point).toEqual(start);
 		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+	});
+});
+
+describe('R217.S21 — Index and Card on the mounted route', () => {
+	it('labels an unnamed Wall with a generated Kind n in its Index row, never with its identity', () => {
+		const row = indexRowOf(target, wallId)!;
+		const name = row.querySelector('.item-name');
+		expect(name?.textContent).toMatch(/^Wall \d+$/);
+		expect(name?.classList.contains('generated')).toBe(true);
+		// The canonical identity is in the accessible name, not in the visible text.
+		expect(row.getAttribute('aria-label')).toContain(wallId);
+		expect(row.textContent).not.toContain(wallId);
+	});
+
+	it('shows the Card title on the Index label, and keeps the canonical ID out of the header', () => {
+		const label = indexRowOf(target, wallId)!.querySelector('.item-name')!.textContent;
+		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
+		expect(card.querySelector('h2.name')?.textContent).toBe(label);
+		expect(card.querySelector('.card-head')?.textContent).not.toContain(wallId);
+		// The identity is still the Card's own data, and Technical details still holds it.
+		expect(card.getAttribute('data-source-id')).toBe(wallId);
+		expect(card.querySelector('.technical')?.textContent).toContain(wallId);
+	});
+
+	it('states each Wall fact once: the writer carries the dimensions and the Card keeps only the derived Role', () => {
+		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
+		const facts = [...card.querySelectorAll('dl.facts:not(.mono) dt')].map((term) => term.textContent);
+		expect(facts).toEqual(['Datum', 'Role']);
+		expect(card.querySelector('[data-card-writer]')?.getAttribute('data-card-writer')).toBe('Wall fields');
+		expect(card.querySelector('input[data-field="height"]')).not.toBeNull();
+		expect(card.querySelector('input[data-field="thickness"]')).not.toBeNull();
+		// Stream, Eligible and Revealed are diagnostics, so they live under Technical details.
+		const technical = [...card.querySelectorAll('.technical dt')].map((term) => term.textContent);
+		expect(technical).toEqual(['Canonical ID', 'Stream', 'Eligible', 'Revealed']);
+	});
+
+	it('styles only Delete as destructive and keeps Focus and Open task one disclosure away', () => {
+		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
+		const remove = card.querySelector<HTMLButtonElement>('[data-card-action="layout-wall-delete"]')!;
+		expect(remove.classList.contains('destructive')).toBe(true);
+		const more = card.querySelector<HTMLDetailsElement>('[data-card-more]')!;
+		expect(more.open).toBe(false);
+		expect([...more.querySelectorAll('button')].map((item) => item.textContent?.trim())).toEqual(['Focus', 'Open task']);
+	});
+
+	it('discloses the Index row operations behind the row\'s Actions control', async () => {
+		const row = target.querySelector<HTMLElement>(`.item[data-source-id$=${JSON.stringify(`:${wallId}`)}]`)!;
+		const toggle = row.querySelector<HTMLButtonElement>('.item-actions-toggle')!;
+		expect(row.querySelectorAll('.op')).toHaveLength(0);
+		expect(toggle.getAttribute('aria-expanded')).toBe('false');
+		toggle.click();
+		await frame();
+		expect(toggle.getAttribute('aria-expanded')).toBe('true');
+		expect([...row.querySelectorAll('.op')].map((item) => item.textContent?.trim())).toEqual([
+			'Open location',
+			'Bring into view'
+		]);
+		toggle.click();
+		await frame();
+		expect(row.querySelectorAll('.op')).toHaveLength(0);
+	});
+
+	it('keeps Select and Bring into view distinct: a row select leaves the Camera, the row\'s frame operation moves it', async () => {
+		const other = STARTER_WALL_2;
+		const before = facade().camera.state().pose;
+		indexRowOf(target, other)!.click();
+		await frame();
+		expect(facade().selection()?.sourceId).toBe(other);
+		expect(facade().camera.state().pose).toEqual(before);
+
+		const row = target.querySelector<HTMLElement>(`.item[data-source-id$=${JSON.stringify(`:${other}`)}]`)!;
+		row.querySelector<HTMLButtonElement>('.item-actions-toggle')!.click();
+		await frame();
+		const frameOp = [...row.querySelectorAll<HTMLButtonElement>('.op')].find((item) => item.textContent?.trim() === 'Bring into view')!;
+		frameOp.click();
+		await settled();
+		expect(facade().camera.state().pose).not.toEqual(before);
+	});
+
+	it('feeds the context chip the subject\'s canonical floor, never the selection', async () => {
+		target.querySelector<HTMLButtonElement>('[data-head-index]')!.click();
+		await frame();
+		const chip = target.querySelector<HTMLElement>('[data-head-location]');
+		expect(chip?.textContent).toBe(buildStarterEnclosureLayout().floor.name);
+		expect(chip?.textContent).not.toContain('Wall');
+		expect(chip?.textContent).not.toContain(wallId);
 	});
 });
