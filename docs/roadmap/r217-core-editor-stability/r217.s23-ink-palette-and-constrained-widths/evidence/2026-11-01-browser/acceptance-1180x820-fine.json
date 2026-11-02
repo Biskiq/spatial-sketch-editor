@@ -2,6 +2,8 @@
   "width": 1180,
   "height": 820,
   "mode": "fine",
+  "sheet": "right",
+  "boxcheck": false,
   "states": {
     "inkOpen": {
       "boxes": {
@@ -12,27 +14,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          192.5,
+          123.3,
           680.6,
-          987.5,
+          918.3,
           754
         ],
         "palette": [
-          200.7,
+          131.5,
           714.6,
-          979.3,
+          910.1,
           746.6
         ],
         "card": null,
@@ -85,27 +87,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          140.5,
+          71.3,
           680.6,
-          1039.5,
+          970.3,
           754
         ],
         "palette": [
-          148.7,
+          79.5,
           714.6,
-          1031.3,
+          962.1,
           746.6
         ],
         "card": null,
@@ -163,27 +165,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          192.5,
+          123.3,
           680.6,
-          987.5,
+          918.3,
           754
         ],
         "palette": [
-          200.7,
+          131.5,
           714.6,
-          979.3,
+          910.1,
           746.6
         ],
         "card": [
@@ -241,15 +243,15 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           760.4,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": null,
@@ -297,27 +299,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          324.8,
+          255.6,
           680.6,
-          855.2,
+          786,
           754
         ],
         "palette": [
-          333,
+          263.8,
           714.6,
-          847,
+          777.8,
           746.6
         ],
         "card": [
@@ -380,27 +382,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          373.4,
+          304.2,
           680.6,
-          806.6,
+          737.4,
           754
         ],
         "palette": [
-          381.6,
+          312.4,
           714.6,
-          798.4,
+          729.2,
           746.6
         ],
         "card": [
@@ -458,27 +460,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           436.5,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          165,
+          95.8,
           436.5,
-          1015,
+          945.8,
           754
         ],
         "palette": [
-          173.2,
+          104,
           470.4,
-          1006.8,
+          937.6,
           746.6
         ],
         "card": [
@@ -527,10 +529,6 @@
           "palette"
         ],
         [
-          "lowerColumn",
-          "sheet"
-        ],
-        [
           "instrument",
           "palette"
         ],
@@ -553,9 +551,9 @@
       ],
       "horizontalOverflowPx": 0,
       "coarsePointer": false,
-      "paletteLive": "Preview hostwall-chain-1.cc1d8d46-748f-4955-ae42-7c96b88ecd2b Offset — Width0.900 m Fit Adjust the aim or the Opening measures.",
+      "paletteLive": "Preview hostwall-chain-1.aa94f148-88a5-40b6-8fe6-7c0b49b9133a Offset — Width0.900 m Fit Adjust the aim or the Opening measures.",
       "refusal": null,
-      "paletteText": "Kind\nDoor\nWindow\nWidth\nm\nHeight\nm\nSill\nm\nPreview host\nwall-chain-1.cc1d8d46-748f-4955-ae42-7c96b88ecd2b\nOffset\n—\nWidth\n0.900 m\nFit\nAdjust the aim or the Opening measures.\n\nOffset host: wall-chain-1.cc1d8d46-748f-4955-ae42-7c96b88ecd2b\n\nOffs"
+      "paletteText": "Kind\nDoor\nWindow\nWidth\nm\nHeight\nm\nSill\nm\nPreview host\nwall-chain-1.aa94f148-88a5-40b6-8fe6-7c0b49b9133a\nOffset\n—\nWidth\n0.900 m\nFit\nAdjust the aim or the Opening measures.\n\nOffset host: wall-chain-1.aa94f148-88a5-40b6-8fe6-7c0b49b9133a\n\nOffs"
     },
     "openingDone": {
       "boxes": {
@@ -566,27 +564,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          485.8,
+          416.6,
           680.6,
-          694.2,
+          625,
           754
         ],
         "palette": [
-          494,
+          424.8,
           714.6,
-          686,
+          616.8,
           746.6
         ],
         "card": [
@@ -670,27 +668,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          192.5,
+          123.3,
           680.6,
-          987.5,
+          918.3,
           754
         ],
         "palette": [
-          200.7,
+          131.5,
           714.6,
-          979.3,
+          910.1,
           746.6
         ],
         "card": [
@@ -796,27 +794,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          192.5,
+          123.3,
           680.6,
-          987.5,
+          918.3,
           754
         ],
         "palette": [
-          200.7,
+          131.5,
           714.6,
-          979.3,
+          910.1,
           746.6
         ],
         "card": [
@@ -874,21 +872,21 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           526.2,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          386.4,
+          317.3,
           526.2,
-          793.5,
+          724.4,
           754
         ],
         "palette": null,
@@ -922,10 +920,6 @@
         [
           "lowerColumn",
           "instrument"
-        ],
-        [
-          "lowerColumn",
-          "sheet"
         ]
       ],
       "horizontalOverflowPx": 0,
@@ -1149,21 +1143,21 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           526.2,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          386.4,
+          317.3,
           526.2,
-          793.5,
+          724.4,
           754
         ],
         "palette": null,
@@ -1205,10 +1199,6 @@
         ],
         [
           "lowerColumn",
-          "sheet"
-        ],
-        [
-          "lowerColumn",
           "drawing"
         ]
       ],
@@ -1219,8 +1209,8 @@
       "paletteText": null
     },
     "inkControls": {
-      "checked": 70,
-      "below44": 70,
+      "checked": 71,
+      "below44": 71,
       "samples": [
         {
           "text": "Index ▸",
@@ -1433,27 +1423,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           621.5,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          192.5,
+          123.3,
           621.5,
-          987.5,
+          918.3,
           754
         ],
         "palette": [
-          200.7,
+          131.5,
           655.4,
-          979.3,
+          910.1,
           746.6
         ],
         "card": [
@@ -1507,6 +1497,7 @@
   "consoleErrors": [
     "Failed to load resource: the server responded with a status of 404 (Not Found)"
   ],
+  "notFound": [],
   "steps": [
     {
       "name": "arm-ink",
@@ -1604,27 +1595,27 @@
         820
       ],
       "lowerColumn": [
-        12,
+        24,
         621.5,
-        1168,
+        1017.6,
         808
       ],
       "dock": [
-        477.7,
+        408.5,
         760.4,
-        702.3,
+        633.1,
         808
       ],
       "instrument": [
-        192.5,
+        123.3,
         621.5,
-        987.5,
+        918.3,
         754
       ],
       "palette": [
-        200.7,
+        131.5,
         655.4,
-        979.3,
+        910.1,
         746.6
       ],
       "card": [

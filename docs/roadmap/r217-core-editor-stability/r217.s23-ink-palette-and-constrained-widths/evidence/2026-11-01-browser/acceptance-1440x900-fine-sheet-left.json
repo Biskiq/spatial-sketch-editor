@@ -1,0 +1,1480 @@
+{
+  "width": 1440,
+  "height": 900,
+  "mode": "fine",
+  "sheet": "left",
+  "boxcheck": false,
+  "states": {
+    "inkOpen": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          760.6,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          519.7,
+          760.6,
+          1314.7,
+          834
+        ],
+        "palette": [
+          527.9,
+          794.6,
+          1306.5,
+          826.6
+        ],
+        "card": null,
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          722.6,
+          1428,
+          760.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+    },
+    "wallLineLive": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          760.6,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          471.2,
+          760.6,
+          1363.2,
+          834
+        ],
+        "palette": [
+          479.4,
+          794.6,
+          1355,
+          826.6
+        ],
+        "card": null,
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          722.6,
+          1428,
+          760.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": [
+          377.2,
+          286.5,
+          870.7,
+          372.1
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ],
+        [
+          "sheet",
+          "drawing"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Points3 Pending1.000 m · 90.0°",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n3\nPending\n1.000 m · 90.0°\nCancel"
+    },
+    "wallLineDone": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          760.6,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          519.7,
+          760.6,
+          1314.7,
+          834
+        ],
+        "palette": [
+          527.9,
+          794.6,
+          1306.5,
+          826.6
+        ],
+        "card": [
+          1128,
+          60,
+          1416,
+          710.6
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          722.6,
+          1428,
+          760.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+    },
+    "folded": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          840.4,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": null,
+        "palette": null,
+        "card": [
+          1128,
+          60,
+          1416,
+          790.4
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          802.4,
+          1428,
+          840.4
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": [
+          879.7,
+          608.2,
+          914.8,
+          620.2
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    },
+    "boxLive": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          760.6,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          652,
+          760.6,
+          1182.4,
+          834
+        ],
+        "palette": [
+          660.2,
+          794.6,
+          1174.2,
+          826.6
+        ],
+        "card": [
+          1128,
+          60,
+          1416,
+          710.6
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          722.6,
+          1428,
+          760.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": [
+          912.2,
+          429.2,
+          1298.7,
+          514.8
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ],
+        [
+          "card",
+          "drawing"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Box2.500 × 1.000 m",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nOptions\nBox\n2.500 × 1.000 m\nCancel"
+    },
+    "boxDone": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          760.6,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          652,
+          760.6,
+          1182.4,
+          834
+        ],
+        "palette": [
+          660.2,
+          794.6,
+          1174.2,
+          826.6
+        ],
+        "card": [
+          1128,
+          60,
+          1416,
+          710.6
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          722.6,
+          1428,
+          760.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": [
+          912.2,
+          429.2,
+          1298.7,
+          514.8
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ],
+        [
+          "card",
+          "drawing"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Box2.500 × 1.000 m",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nOptions\nBox\n2.500 × 1.000 m\nCancel"
+    },
+    "openingOptions": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          516.5,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          492.2,
+          516.5,
+          1342.2,
+          834
+        ],
+        "palette": [
+          500.4,
+          550.4,
+          1334,
+          826.6
+        ],
+        "card": [
+          1128,
+          60,
+          1416,
+          466.5
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          478.5,
+          1428,
+          516.5
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Preview hostwall-chain-1.c8ed5ac6-f2c4-4c61-a2d8-bf10fd04021b Offset — Width0.900 m Fit Adjust the aim or the Opening measures.",
+      "refusal": null,
+      "paletteText": "Kind\nDoor\nWindow\nWidth\nm\nHeight\nm\nSill\nm\nPreview host\nwall-chain-1.c8ed5ac6-f2c4-4c61-a2d8-bf10fd04021b\nOffset\n—\nWidth\n0.900 m\nFit\nAdjust the aim or the Opening measures.\n\nOffset host: wall-chain-1.c8ed5ac6-f2c4-4c61-a2d8-bf10fd04021b\n\nOffs"
+    },
+    "openingDone": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          760.6,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          813,
+          760.6,
+          1021.4,
+          834
+        ],
+        "palette": [
+          821.2,
+          794.6,
+          1013.2,
+          826.6
+        ],
+        "card": [
+          1128,
+          163.7,
+          1416,
+          710.6
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          722.6,
+          1428,
+          760.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nOptions"
+    },
+    "objectsFull": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          606.2,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          713.6,
+          606.2,
+          1120.7,
+          834
+        ],
+        "palette": null,
+        "card": [
+          1128,
+          60,
+          1416,
+          556.2
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          568.2,
+          1428,
+          606.2
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    },
+    "objectsFullControls": {
+      "checked": 83,
+      "below44": 78,
+      "samples": [
+        {
+          "text": "Index ▾",
+          "w": 62,
+          "h": 32
+        },
+        {
+          "text": "Untitled project ▾",
+          "w": 127,
+          "h": 32
+        },
+        {
+          "text": "World",
+          "w": 58,
+          "h": 32
+        },
+        {
+          "text": "Experience",
+          "w": 88,
+          "h": 32
+        },
+        {
+          "text": "Find",
+          "w": 47,
+          "h": 34
+        },
+        {
+          "text": "INPUT",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Replace Use enclosed room starter",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Select",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Ink · Wall",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Measure",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Eraser",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Objects",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Experience authoring",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Resize",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Duplicate",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Delete",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Place plinth",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Import model…",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:20",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:50",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:100",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:200",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:500",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set 2D appearance: Paper",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set 2D appearance: Shaded",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Height Sheet: Right",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Height Sheet: Left",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Toggle Reduce motion",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Motion speed: Slow",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Motion speed: Normal",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Motion speed: Fast",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Show Keys",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Run Rename project",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Run Delete project",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Run Download source JSON",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Replace Open source JSON",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Undo",
+          "w": 54,
+          "h": 32
+        },
+        {
+          "text": "Redo",
+          "w": 52,
+          "h": 32
+        },
+        {
+          "text": "Save to Cloud",
+          "w": 105,
+          "h": 32
+        },
+        {
+          "text": "Preview",
+          "w": 69,
+          "h": 32
+        }
+      ]
+    },
+    "objectsCompact": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          606.2,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          713.6,
+          606.2,
+          1120.7,
+          834
+        ],
+        "palette": null,
+        "card": [
+          1128,
+          60,
+          1416,
+          556.2
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          568.2,
+          1428,
+          606.2
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    },
+    "inkControls": {
+      "checked": 83,
+      "below44": 79,
+      "samples": [
+        {
+          "text": "Index ▾",
+          "w": 62,
+          "h": 32
+        },
+        {
+          "text": "Untitled project ▾",
+          "w": 127,
+          "h": 32
+        },
+        {
+          "text": "World",
+          "w": 58,
+          "h": 32
+        },
+        {
+          "text": "Experience",
+          "w": 88,
+          "h": 32
+        },
+        {
+          "text": "Find",
+          "w": 47,
+          "h": 34
+        },
+        {
+          "text": "INPUT",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Replace Use enclosed room starter",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Select",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Ink · Wall",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Measure",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Eraser",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Arm Objects",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Experience authoring",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Resize",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Duplicate",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Delete",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Place plinth",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Invoke Import model…",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:20",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:50",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:100",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:200",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Zoom Scale 1:500",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set 2D appearance: Paper",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set 2D appearance: Shaded",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Height Sheet: Right",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Height Sheet: Left",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Toggle Reduce motion",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Motion speed: Slow",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Motion speed: Normal",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Set Motion speed: Fast",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Show Keys",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Run Rename project",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Run Delete project",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Run Download source JSON",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Replace Open source JSON",
+          "w": 320,
+          "h": 32
+        },
+        {
+          "text": "Undo",
+          "w": 54,
+          "h": 32
+        },
+        {
+          "text": "Redo",
+          "w": 52,
+          "h": 32
+        },
+        {
+          "text": "Save to Cloud",
+          "w": 105,
+          "h": 32
+        },
+        {
+          "text": "Preview",
+          "w": 69,
+          "h": 32
+        }
+      ]
+    },
+    "inkPanelOpen": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1440,
+          900
+        ],
+        "lowerColumn": [
+          418.4,
+          701.5,
+          1416,
+          888
+        ],
+        "dock": [
+          804.9,
+          840.4,
+          1029.5,
+          888
+        ],
+        "instrument": [
+          700.6,
+          701.5,
+          1133.8,
+          834
+        ],
+        "palette": [
+          708.8,
+          735.4,
+          1125.6,
+          826.6
+        ],
+        "card": [
+          1128,
+          104.5,
+          1416,
+          651.5
+        ],
+        "sheet": [
+          268,
+          357,
+          406.4,
+          587
+        ],
+        "zoom": [
+          1317.9,
+          663.5,
+          1428,
+          701.5
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          900
+        ],
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Box—",
+      "refusal": null,
+      "paletteText": "Thickness\nm\nHeight\nm\nReading\nWall\nOpening\nLine\nBox\nOptions\nBox\n—\nCancel"
+    }
+  },
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "notFound": [],
+  "steps": [
+    {
+      "name": "arm-ink",
+      "ok": true
+    },
+    {
+      "name": "wall-line-live",
+      "ok": true
+    },
+    {
+      "name": "wall-line-finish",
+      "ok": true
+    },
+    {
+      "name": "fold-for-pixels",
+      "ok": true
+    },
+    {
+      "name": "unfold",
+      "ok": true
+    },
+    {
+      "name": "box-live",
+      "ok": true
+    },
+    {
+      "name": "box-release",
+      "ok": true
+    },
+    {
+      "name": "line-back",
+      "ok": true
+    },
+    {
+      "name": "opening-place",
+      "ok": true
+    },
+    {
+      "name": "opening-commit",
+      "ok": true
+    },
+    {
+      "name": "opening-back-to-wall",
+      "ok": true
+    },
+    {
+      "name": "objects-full",
+      "ok": true
+    },
+    {
+      "name": "objects-compact",
+      "ok": true
+    },
+    {
+      "name": "ink-for-controls",
+      "ok": true
+    },
+    {
+      "name": "keyboard-walk",
+      "ok": true
+    }
+  ],
+  "boxFirstReleaseUncommitted": true,
+  "keyboardWalk": [
+    "button:data-ink-wall-mode",
+    "button:data-ink-point-toggle",
+    "button:data-ink-options-toggle",
+    "button:data-ink-cancel",
+    "button:Index ▾",
+    "button:Untitled project ▾",
+    "button:World",
+    "summary:Find",
+    "button:Undo",
+    "button:Redo",
+    "button:Save to Cloud",
+    "button:Preview"
+  ],
+  "keyboardPointOpened": true,
+  "keyboardReadoutBefore": "Points0 Pending—",
+  "keyboardReadoutAfter": "Points1 Pending—",
+  "finalState": {
+    "boxes": {
+      "stage": [
+        256,
+        44,
+        1440,
+        900
+      ],
+      "lowerColumn": [
+        418.4,
+        701.5,
+        1416,
+        888
+      ],
+      "dock": [
+        804.9,
+        840.4,
+        1029.5,
+        888
+      ],
+      "instrument": [
+        519.7,
+        701.5,
+        1314.7,
+        834
+      ],
+      "palette": [
+        527.9,
+        735.4,
+        1306.5,
+        826.6
+      ],
+      "card": [
+        1128,
+        104.5,
+        1416,
+        651.5
+      ],
+      "sheet": [
+        268,
+        357,
+        406.4,
+        587
+      ],
+      "zoom": [
+        1317.9,
+        663.5,
+        1428,
+        701.5
+      ],
+      "index": [
+        0,
+        44,
+        256,
+        900
+      ],
+      "scrim": null,
+      "drawing": null
+    },
+    "overlapPairs": [
+      [
+        "lowerColumn",
+        "dock"
+      ],
+      [
+        "lowerColumn",
+        "instrument"
+      ],
+      [
+        "lowerColumn",
+        "palette"
+      ],
+      [
+        "instrument",
+        "palette"
+      ]
+    ],
+    "horizontalOverflowPx": 0,
+    "coarsePointer": false,
+    "paletteLive": "Points1 Pending—",
+    "refusal": null,
+    "paletteText": "X\nZ\nAdd point\nReading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n1\nPending\n—\nCancel"
+  },
+  "overflow": {
+    "scrollWidth": 1440,
+    "clientWidth": 1440
+  }
+}

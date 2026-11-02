@@ -2,6 +2,8 @@
   "width": 1180,
   "height": 820,
   "mode": "room",
+  "sheet": "right",
+  "boxcheck": false,
   "states": {
     "inkOpen": {
       "boxes": {
@@ -12,27 +14,27 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           680.6,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": [
-          192.5,
+          123.3,
           680.6,
-          987.5,
+          918.3,
           754
         ],
         "palette": [
-          200.7,
+          131.5,
           714.6,
-          979.3,
+          910.1,
           746.6
         ],
         "card": null,
@@ -85,15 +87,15 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           760.4,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": null,
@@ -141,15 +143,15 @@
           820
         ],
         "lowerColumn": [
-          12,
+          24,
           760.4,
-          1168,
+          1017.6,
           808
         ],
         "dock": [
-          477.7,
+          408.5,
           760.4,
-          702.3,
+          633.1,
           808
         ],
         "instrument": null,
@@ -193,6 +195,7 @@
   "consoleErrors": [
     "Failed to load resource: the server responded with a status of 404 (Not Found)"
   ],
+  "notFound": [],
   "steps": [
     {
       "name": "arm-ink",

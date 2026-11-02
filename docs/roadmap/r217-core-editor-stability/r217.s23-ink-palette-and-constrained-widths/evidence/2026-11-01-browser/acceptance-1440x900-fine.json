@@ -2,6 +2,8 @@
   "width": 1440,
   "height": 900,
   "mode": "fine",
+  "sheet": "right",
+  "boxcheck": false,
   "states": {
     "inkOpen": {
       "boxes": {
@@ -12,27 +14,27 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           760.6,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          450.5,
+          381.3,
           760.6,
-          1245.5,
+          1176.3,
           834
         ],
         "palette": [
-          458.7,
+          389.5,
           794.6,
-          1237.3,
+          1168.1,
           826.6
         ],
         "card": null,
@@ -90,27 +92,27 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           760.6,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          402,
+          332.8,
           760.6,
-          1294,
+          1224.8,
           834
         ],
         "palette": [
-          410.2,
+          341,
           794.6,
-          1285.8,
+          1216.6,
           826.6
         ],
         "card": null,
@@ -173,27 +175,27 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           760.6,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          450.5,
+          381.3,
           760.6,
-          1245.5,
+          1176.3,
           834
         ],
         "palette": [
-          458.7,
+          389.5,
           794.6,
-          1237.3,
+          1168.1,
           826.6
         ],
         "card": [
@@ -256,15 +258,15 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           840.4,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": null,
@@ -322,27 +324,27 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           760.6,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          582.8,
+          513.6,
           760.6,
-          1113.2,
+          1044,
           834
         ],
         "palette": [
-          591,
+          521.8,
           794.6,
-          1105,
+          1035.8,
           826.6
         ],
         "card": [
@@ -414,27 +416,27 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           760.6,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          582.8,
+          513.6,
           760.6,
-          1113.2,
+          1044,
           834
         ],
         "palette": [
-          591,
+          521.8,
           794.6,
-          1105,
+          1035.8,
           826.6
         ],
         "card": [
@@ -463,10 +465,10 @@
         ],
         "scrim": null,
         "drawing": [
-          876.5,
-          429.2,
-          1084.7,
-          621.8
+          919.3,
+          410.3,
+          1150,
+          441.8
         ]
       },
       "overlapPairs": [
@@ -493,9 +495,9 @@
       ],
       "horizontalOverflowPx": 0,
       "coarsePointer": false,
-      "paletteLive": "Box0.500 × 2.500 m",
+      "paletteLive": "Box0.500 × 0.000 m",
       "refusal": null,
-      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nOptions\nBox\n0.500 × 2.500 m\nCancel"
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nOptions\nBox\n0.500 × 0.000 m\nCancel"
     },
     "openingOptions": {
       "boxes": {
@@ -506,27 +508,27 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           516.5,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          423,
+          353.8,
           516.5,
-          1273,
+          1203.8,
           834
         ],
         "palette": [
-          431.2,
+          362,
           550.4,
-          1264.8,
+          1195.6,
           826.6
         ],
         "card": [
@@ -570,19 +572,15 @@
           "palette"
         ],
         [
-          "lowerColumn",
-          "sheet"
-        ],
-        [
           "instrument",
           "palette"
         ]
       ],
       "horizontalOverflowPx": 0,
       "coarsePointer": false,
-      "paletteLive": "Preview hostwall-chain-1.b7bc6a03-ac04-4d81-8d41-7f7113287dae Offset — Width0.900 m Fit Adjust the aim or the Opening measures.",
+      "paletteLive": "Preview hostwall-chain-1.0cea3c62-7b82-48d7-9107-b2c215c48661 Offset — Width0.900 m Fit Adjust the aim or the Opening measures.",
       "refusal": null,
-      "paletteText": "Kind\nDoor\nWindow\nWidth\nm\nHeight\nm\nSill\nm\nPreview host\nwall-chain-1.b7bc6a03-ac04-4d81-8d41-7f7113287dae\nOffset\n—\nWidth\n0.900 m\nFit\nAdjust the aim or the Opening measures.\n\nOffset host: wall-chain-1.b7bc6a03-ac04-4d81-8d41-7f7113287dae\n\nOffs"
+      "paletteText": "Kind\nDoor\nWindow\nWidth\nm\nHeight\nm\nSill\nm\nPreview host\nwall-chain-1.0cea3c62-7b82-48d7-9107-b2c215c48661\nOffset\n—\nWidth\n0.900 m\nFit\nAdjust the aim or the Opening measures.\n\nOffset host: wall-chain-1.0cea3c62-7b82-48d7-9107-b2c215c48661\n\nOffs"
     },
     "openingDone": {
       "boxes": {
@@ -593,27 +591,27 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           760.6,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          743.8,
+          674.6,
           760.6,
-          952.2,
+          883,
           834
         ],
         "palette": [
-          752,
+          682.8,
           794.6,
-          944,
+          874.8,
           826.6
         ],
         "card": [
@@ -676,21 +674,21 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           606.2,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          644.4,
+          575.3,
           606.2,
-          1051.5,
+          982.4,
           834
         ],
         "palette": null,
@@ -952,21 +950,21 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           606.2,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          644.4,
+          575.3,
           606.2,
-          1051.5,
+          982.4,
           834
         ],
         "palette": null,
@@ -1014,8 +1012,8 @@
       "paletteText": null
     },
     "inkControls": {
-      "checked": 82,
-      "below44": 78,
+      "checked": 83,
+      "below44": 79,
       "samples": [
         {
           "text": "Index ▾",
@@ -1228,27 +1226,27 @@
           900
         ],
         "lowerColumn": [
-          268,
+          280,
           701.5,
-          1428,
+          1277.6,
           888
         ],
         "dock": [
-          735.7,
+          666.5,
           840.4,
-          960.3,
+          891.1,
           888
         ],
         "instrument": [
-          631.4,
+          562.2,
           701.5,
-          1064.6,
+          995.4,
           834
         ],
         "palette": [
-          639.6,
+          570.4,
           735.4,
-          1056.4,
+          987.2,
           826.6
         ],
         "card": [
@@ -1307,6 +1305,7 @@
   "consoleErrors": [
     "Failed to load resource: the server responded with a status of 404 (Not Found)"
   ],
+  "notFound": [],
   "steps": [
     {
       "name": "arm-ink",
@@ -1396,27 +1395,27 @@
         900
       ],
       "lowerColumn": [
-        268,
+        280,
         701.5,
-        1428,
+        1277.6,
         888
       ],
       "dock": [
-        735.7,
+        666.5,
         840.4,
-        960.3,
+        891.1,
         888
       ],
       "instrument": [
-        450.5,
+        381.3,
         701.5,
-        1245.5,
+        1176.3,
         834
       ],
       "palette": [
-        458.7,
+        389.5,
         735.4,
-        1237.3,
+        1168.1,
         826.6
       ],
       "card": [
