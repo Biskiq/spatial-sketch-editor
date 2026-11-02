@@ -30,33 +30,38 @@
 		viewportHeight = 0,
 		tracePreview = null,
 		hostTools = null,
+		lightGround = false,
 		onActivateDisclosure = () => {}
 	}: {
-		markers: readonly { id: string; css: readonly [number, number]; label: string }[];
+		markers: readonly { id: string; css: readonly [number, number]; label: string;
+		}[];
 		marks?: readonly StageMarkView[];
 		candidates?: readonly StageCandidatePreviewView[];
 		viewportWidth?: number;
 		viewportHeight?: number;
 		tracePreview?: import('$lib/platform/perf-marks').PerfTracePreview | null;
 		hostTools?: {
-			readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean } | null;
-			readonly notice: { readonly css: readonly [number, number]; readonly message: string; readonly kind: string } | null;
+			readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean;
+			} | null;
+			readonly notice: { readonly css: readonly [number, number]; readonly message: string; readonly kind: string;
+			} | null;
 		} | null;
 		onActivateDisclosure?: (id: string) => void;
+		lightGround?: boolean;
 	} = $props();
 
 	/** The four corners of an open arrowhead at the drag end. */
-	function arrowhead(anchor: readonly [number, number], tip: readonly [number, number]): string {
+	function arrowhead(anchor: readonly [number, number], tip: readonly [number, number], reach=6.5): string {
 		const dx = tip[0] - anchor[0];
 		const dy = tip[1] - anchor[1];
 		const length = Math.hypot(dx, dy);
 		if (length === 0) return '';
 		const ux = dx / length;
 		const uy = dy / length;
-		const backX = tip[0] - ux * 8;
-		const backY = tip[1] - uy * 8;
-		const nx = -uy * 4;
-		const ny = ux * 4;
+		const backX = tip[0] - ux * reach;
+		const backY = tip[1] - uy * reach;
+		const nx = -uy * (reach * 0.62);
+		const ny = ux * (reach * 0.62);
 		return `${backX + nx},${backY + ny} ${tip[0]},${tip[1]} ${backX - nx},${backY - ny}`;
 	}
 
@@ -140,7 +145,9 @@
 	}
 </script>
 
-<svg class="overlay" role="group" aria-label="Stage manipulation marks" focusable="false">
+<svg class="overlay"
+	class:light={lightGround}
+	role="group" aria-label="Stage manipulation marks" focusable="false">
 	{#each candidates as candidate (candidate.id)}
 		<g
 			class="candidate"
@@ -194,6 +201,7 @@
 	{#each marks as mark (mark.id)}
 		{@const tip = mark.tip ?? mark.anchor}
 		{@const tail = mark.tail}
+		{@const pointRadius=mark.pointRadius??4.2}
 		{@const label = mark.refusal === null ? mark.tag : refusalAtPointer ? '' : mark.refusal}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 		<g
@@ -203,13 +211,17 @@
 			class:disclose={mark.role === 'disclose'}
 			data-mark-id={mark.id}
 			data-mark-role={mark.role}
+			data-kind={mark.kind}
 			role={mark.role === 'disclose' ? 'button' : undefined}
 			tabindex={mark.role === 'disclose' ? 0 : undefined}
 			aria-label={mark.role === 'disclose' ? mark.label : undefined}
 			onkeydown={mark.role === 'disclose' ? (event) => onDisclosureKey(event, mark.id) : undefined}
 		>
 			<title>{mark.label}</title>
-			{#if mark.kind === 'ray' || mark.kind === 'track'}
+			{#if mark.cross}
+			<path class="halo" d={`M${mark.anchor[0]-11},${mark.anchor[1]}h9 m4,0h9 M${mark.anchor[0]},${mark.anchor[1]-11}v9 m0,4v9`} />
+			<path class="stroke move-cross" d={`M${mark.anchor[0]-11},${mark.anchor[1]}h9 m4,0h9 M${mark.anchor[0]},${mark.anchor[1]-11}v9 m0,4v9`} />
+		{:else if mark.kind === 'ray' || mark.kind === 'track'}
 				<line
 					class="halo"
 					x1={mark.anchor[0]}
@@ -225,8 +237,8 @@
 					x2={tip[0]}
 					y2={tip[1]}
 				/>
-				<polyline class="halo arrow" points={arrowhead(mark.anchor, tip)} />
-				<polyline class="stroke arrow" class:held={mark.active} points={arrowhead(mark.anchor, tip)} />
+				<polyline class="halo arrow" points={arrowhead(mark.anchor,tip,tail===null?6.5:5.5)} />
+				<polyline class="stroke arrow" class:held={mark.active} points={arrowhead(mark.anchor,tip,tail===null?6.5:5.5)} />
 				{#if tail !== null}
 					<!-- A two-way base ray says the subject slides either way; the
 					     gesture and its planner are still the one mark's. -->
@@ -245,16 +257,25 @@
 						x2={tail[0]}
 						y2={tail[1]}
 					/>
-					<polyline class="halo arrow" points={arrowhead(mark.anchor, tail)} />
-					<polyline class="stroke arrow" class:held={mark.active} points={arrowhead(mark.anchor, tail)} />
+					<polyline class="halo arrow" points={arrowhead(mark.anchor,tail,5.5)} />
+					<polyline
+						class="stroke arrow"
+						class:held={mark.active}
+						points={arrowhead(mark.anchor,tail,5.5)}
+					/>
 				{/if}
-				<circle class="halo point" cx={mark.anchor[0]} cy={mark.anchor[1]} r="4.5" />
+				<circle
+					class="halo point"
+					cx={mark.anchor[0]}
+					cy={mark.anchor[1]}
+					r={pointRadius+1.6}
+				/>
 				<circle
 					class="anchor"
 					class:held={mark.active}
 					cx={mark.anchor[0]}
 					cy={mark.anchor[1]}
-					r="3"
+					r={pointRadius}
 				/>
 			{:else if mark.kind === 'ring'}
 				<polyline
@@ -266,39 +287,55 @@
 					class:held={mark.active}
 					points={mark.ring?.map((point) => point.join(',')).join(' ') ?? ''}
 				/>
-				<circle class="halo point" cx={mark.anchor[0]} cy={mark.anchor[1]} r="4.5" />
+				<circle
+					class="halo point"
+					cx={mark.anchor[0]}
+					cy={mark.anchor[1]}
+					r={pointRadius+1.6}
+				/>
 				<circle
 					class="anchor"
 					class:held={mark.active}
 					cx={mark.anchor[0]}
 					cy={mark.anchor[1]}
-					r="3"
+					r={pointRadius}
 				/>
 			{:else if mark.role === 'disclose'}
-				<circle class="halo point" cx={mark.anchor[0]} cy={mark.anchor[1]} r="6" />
+				<circle
+					class="halo point"
+					cx={mark.anchor[0]}
+					cy={mark.anchor[1]}
+					r="5.6"
+				/>
 				<circle
 					class="disclosure"
 					class:open={mark.open}
 					cx={mark.anchor[0]}
 					cy={mark.anchor[1]}
-					r="3.5"
+					r="4"
 				/>
 			{:else}
-				<circle class="halo point" cx={mark.anchor[0]} cy={mark.anchor[1]} r="4.5" />
+				<circle
+					class="halo point"
+					cx={mark.anchor[0]}
+					cy={mark.anchor[1]}
+					r={pointRadius+1.6}
+				/>
 				<circle
 					class="anchor"
 					class:held={mark.active}
 					cx={mark.anchor[0]}
 					cy={mark.anchor[1]}
-					r="3"
+					r={pointRadius}
 				/>
 			{/if}
 
 			{#if (mark.hovered || mark.active) && label !== ''}
 				{@const width = tagWidth(label)}
-				<g class="tag" transform={`translate(${tip[0] + 10} ${tip[1] - 10})`}>
-					<rect width={width} height="17" rx="2" />
-					<text x="5" y="12" class:refused={mark.refusal !== null}>{label}</text>
+				<g class="tag" transform={`translate(${tip[0] + 12} ${tip[1] - 10})`}>
+					<rect {width} height="20" rx="5" />
+					<text x="5" y="12" class:refused={mark.refusal !== null}>{label}</text
+					>
 				</g>
 			{/if}
 		</g>
@@ -306,14 +343,40 @@
 
 	{#if hostTools?.measure}
 		{@const dimension = hostTools.measure}
-		{@const middle = [(dimension.from[0] + dimension.to[0]) / 2, (dimension.from[1] + dimension.to[1]) / 2]}
-		<g class="mark dimension" class:live={dimension.live} data-measure data-measure-label={dimension.label}>
-			<line class="halo" x1={dimension.from[0]} y1={dimension.from[1]} x2={dimension.to[0]} y2={dimension.to[1]} />
-			<line class="dimension-line" x1={dimension.from[0]} y1={dimension.from[1]} x2={dimension.to[0]} y2={dimension.to[1]} />
+		{@const middle = [
+			(dimension.from[0] + dimension.to[0]) / 2,
+			(dimension.from[1] + dimension.to[1]) / 2
+		]}
+		<g
+			class="mark dimension"
+			class:live={dimension.live}
+			data-measure
+			data-measure-label={dimension.label}
+		>
+			<line
+				class="halo"
+				x1={dimension.from[0]}
+				y1={dimension.from[1]}
+				x2={dimension.to[0]}
+				y2={dimension.to[1]}
+			/>
+			<line
+				class="dimension-line"
+				x1={dimension.from[0]}
+				y1={dimension.from[1]}
+				x2={dimension.to[0]}
+				y2={dimension.to[1]}
+			/>
 			<path class="halo" d={dimensionTicks(dimension.from, dimension.to)} />
-			<path class="dimension-line" d={dimensionTicks(dimension.from, dimension.to)} />
-			<g class="tag" transform={`translate(${middle[0] + 8} ${middle[1] - 22})`}>
-				<rect width={tagWidth(dimension.label)} height="17" rx="2" />
+			<path
+				class="dimension-line"
+				d={dimensionTicks(dimension.from, dimension.to)}
+			/>
+			<g
+				class="tag"
+				transform={`translate(${middle[0] + 8} ${middle[1] - 22})`}
+			>
+				<rect width={tagWidth(dimension.label)} height="20" rx="5" />
 				<text x="5" y="12">{dimension.label}</text>
 			</g>
 		</g>
@@ -321,10 +384,16 @@
 
 	{#if hostTools?.notice}
 		{@const words = hostTools.notice}
-		<g class="mark tag-only" data-erase-notice={words.kind} transform={`translate(${words.css[0] + 12} ${words.css[1] + 12})`}>
+		<g
+			class="mark tag-only"
+			data-erase-notice={words.kind}
+			transform={`translate(${words.css[0] + 12} ${words.css[1] + 12})`}
+		>
 			<g class="tag">
-				<rect width={tagWidth(words.message)} height="17" rx="2" />
-				<text x="5" y="12" class:refused={words.kind === 'refused'}>{words.message}</text>
+				<rect width={tagWidth(words.message)} height="20" rx="5" />
+				<text x="5" y="12" class:refused={words.kind === 'refused'}
+					>{words.message}</text
+				>
 			</g>
 			<title>{words.message}</title>
 		</g>
@@ -334,7 +403,13 @@
 		<g data-perf-trace-proof transform="translate(8 8)">
 			<rect x="-2" y="-2" width="132" height="132" fill="white" />
 			{#each tracePreview.bits as bit, index}
-				<rect x={(index % 8) * 16} y={Math.floor(index / 8) * 16} width="16" height="16" fill={bit ? '#000000' : '#ffffff'} />
+				<rect
+					x={(index % 8) * 16}
+					y={Math.floor(index / 8) * 16}
+					width="16"
+					height="16"
+					fill={bit ? '#000000' : '#ffffff'}
+				/>
 			{/each}
 		</g>
 	{/if}
@@ -356,25 +431,29 @@
 	}
 	.mark .halo {
 		fill: none;
-		stroke: #152c26;
-		stroke-width: 3.5;
+		stroke: rgba(8, 22, 16, 0.38);
+		stroke-width: 3.4;
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
 	.mark .stroke {
 		fill: none;
-		stroke: #f3f4ee;
-		stroke-width: 1.5;
-		stroke-dasharray: 5 4;
+		stroke: var(--mark-ink, #fff);
+		stroke-width: 1.3;
+		stroke-dasharray: 4 3.5;
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
+	.mark .stroke.move-cross { stroke-dasharray:none; }
 	.mark .stroke.arrow {
 		stroke-dasharray: none;
 	}
-	.mark .stroke.held,
+	.mark .stroke.held {
+		stroke-dasharray: none;
+		stroke-width: 1.8;
+	}
 	.mark .anchor.held {
-		stroke: #d4ad45;
+		stroke: #74560c;
 	}
 	.mark .anchor.held {
 		fill: #d4ad45;
@@ -383,14 +462,14 @@
 		stroke-width: 3;
 	}
 	.mark .anchor {
-		fill: #f3f4ee;
-		stroke: #f3f4ee;
-		stroke-width: 1.5;
+		fill:var(--mark-ink,#fff);
+		stroke:rgba(8,22,16,.55);
+		stroke-width: 1.3;
 	}
 	.mark .disclosure {
 		fill: none;
-		stroke: #f3f4ee;
-		stroke-width: 1.5;
+		stroke: var(--mark-ink, #fff);
+		stroke-width: 1.3;
 	}
 	.mark .disclosure.open {
 		fill: #f3f4ee;
@@ -440,7 +519,7 @@
 	.candidate-snap text {
 		fill: #f3f4ee;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 10px;
+		font-size: 11px;
 		paint-order: stroke;
 		stroke: #152c26;
 		stroke-width: 2.5;
@@ -454,7 +533,7 @@
 	.candidate .tag text {
 		fill: #f3f4ee;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 10px;
+		font-size: 11px;
 		letter-spacing: 0.02em;
 	}
 	.mark .tag rect {
@@ -466,7 +545,7 @@
 	.mark .tag text {
 		fill: #f3f4ee;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 10px;
+		font-size: 11px;
 		letter-spacing: 0.02em;
 	}
 	.mark .tag text.refused {
@@ -480,5 +559,27 @@
 	}
 	.dimension.live .dimension-line {
 		stroke-dasharray: 4 3;
+	}
+	.overlay.light {
+		--mark-ink: #1b201c;
+	}
+	.light .mark .halo {
+		stroke: rgba(255, 255, 255, 0.7);
+	}
+	.mark .stroke.arrow {
+		stroke-width: 1.5;
+	}
+	.mark .halo.arrow {
+		stroke-width: 3.6;
+	}
+	.mark .anchor {
+		stroke-width: 1;
+	}
+	.mark[data-kind='ring'] .stroke {
+		stroke-dasharray: 3 4;
+	}
+	.mark .tag rect {
+		fill: rgba(10, 24, 18, 0.82);
+		stroke: none;
 	}
 </style>

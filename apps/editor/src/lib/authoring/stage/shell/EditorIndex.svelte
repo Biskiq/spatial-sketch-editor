@@ -1,38 +1,15 @@
 <script lang="ts">
-	/**
-	 * PLATE **Index** — the collapsible locator (T1.P01.S02).
-	 *
-	 * The Index answers *where am I, and where is that thing?* It is a locator and
-	 * orientation surface, never a property editor: it lists canonical sources and
-	 * the four separate subject operations (**Select**, **Open location**, **Bring
-	 * into view**, **Reveal**). Selecting never navigates, and navigation,
-	 * location and inspection never require a prior selection.
-	 *
-	 * R217.S21 — one compact row per subject at the role's Index width. The row's
-	 * main control is **Select** and nothing else; the locator operations sit behind
-	 * the row's **Actions** disclosure, so each stays a separate, keyboard-reachable
-	 * control without repeating itself on every row. The label is the subject's
-	 * authored name, or a session-stable `Kind n` (see `index-labels.ts`); the full
-	 * canonical identity lives in the row's accessible name.
-	 *
-	 * Group headings are visually distinct from selectable entities; a group with
-	 * no items renders nothing. An excluded source stays **visible and
-	 * findable** with its declared membership reason as text, but is not
-	 * selectable — its row is announced `aria-disabled` (still focusable, so it can
-	 * be located) while its locator operations remain available. **Bring into view**
-	 * needs placeable geometry, so it is disabled with its reason on an excluded row;
-	 * **Open location** works for every listed subject.
-	 *
-	 * A **revealed** item carries the evaluator's own `revealed` flag rather than
-	 * re-deriving it: the declared membership reason and the display/hit eligibility
-	 * are two independent facts, and a revealed source is styled distinctly from an
-	 * `included` one without hiding the reason it was excluded for.
-	 */
+	/** Ephemeral scope locator over accepted source relationships. Selection, scope and Camera requests stay distinct. */
 	import { membershipLabel } from './index-labels';
 
+	import ShellIcon from './ShellIcon.svelte';
+	import { worldScopeRows, type WorldScope, type WorldIndexModel } from './world-index-model';
 	let {
 		open,
-		groups,
+		model,
+		scope,
+		onScope,
+		onClose = () => {},
 		selectionId,
 		query,
 		onQuery,
@@ -40,32 +17,43 @@
 		onBringIntoView,
 		onReveal
 	}: {
-		/** Whether the locator shows. The Head's Index toggle is its one control, so the Index holds none. */
 		open: boolean;
-		groups: readonly {
-			id: string;
-			label: string;
-			items: readonly {
-				sourceId: string;
-				/** The display label: the authored name, or a generated `Kind n`. */
-				label: string;
-				/** `false` when the label is generated rather than authored. */
-				authored: boolean;
-				/** The human kind word shown before the label. */
-				kind: string;
-				eligible: boolean;
-				/** The evaluator's own revealed flag: Reveal keeps the declared reason. */
-				revealed: boolean;
-				membership: string;
-			}[];
-		}[];
+		model: WorldIndexModel;
+		scope: WorldScope;
+		onScope: (scope: WorldScope) => void;
+		onClose?: () => void;
 		selectionId: string | null;
 		query: string;
-		onQuery: (query: string) => void;
-		onSelect: (sourceId: string) => void;
-		onBringIntoView: (sourceId: string) => void;
-		onReveal: (sourceId: string) => void;
+		onQuery: (q: string) => void;
+		onSelect: (id: string) => void;
+		onBringIntoView: (id: string) => void;
+		onReveal: (id: string) => void;
 	} = $props();
+	let facet = $state('all');
+	let limit = $state(40);
+	const result = $derived(worldScopeRows(model, scope, facet, query, limit));
+	const current = $derived(model.contexts.find((c) => c.id === scope) ?? model.contexts[0]!);
+	const crumbs = $derived(
+		model.contexts.filter(
+			(c) => c.id === 'project' || (scope !== 'project' && c.id === 'floor') || c.id === scope
+		)
+	);
+	const siblings = $derived(
+		model.contexts.filter((c) => c.parent === current.parent && c.id !== scope)
+	);
+	const facets = $derived([
+		...new Set(
+			model.rows
+				.filter((r) => scope === 'project' || r.relations.includes(scope))
+				.map((r) => r.group)
+		)
+	]);
+	$effect(() => {
+		void scope;
+		void query;
+		void facet;
+		limit = 40;
+	});
 
 	/**
 	 * Locating is a locator's own operation, not a Stage one: it focuses the
@@ -97,14 +85,10 @@
 		row.focus();
 	}
 
-	/** Which rows have their Actions disclosure open. Closed by default on every row. */
-	let disclosed = $state<ReadonlySet<string>>(new Set());
+	let disclosed = $state<string | null>(null);
 
 	function toggleActions(sourceId: string): void {
-		const next = new Set(disclosed);
-		if (next.has(sourceId)) next.delete(sourceId);
-		else next.add(sourceId);
-		disclosed = next;
+		disclosed = disclosed === sourceId ? null : sourceId;
 	}
 
 	/** A DOM id that is safe for any canonical identity, which contains colons. */
@@ -112,26 +96,20 @@
 		return `${prefix}-${sourceId.replace(/[^A-Za-z0-9_-]/g, '_')}`;
 	}
 
-	/**
-	 * Only non-empty groups are rendered, and a group with items is never hidden.
-	 *
-	 * Gated on `open` deliberately: the body is `hidden`, not `{#if}`-ed, so every
-	 * expression inside it still evaluates. A closed Index that read `groups` here
-	 * would turn the complete located-subject list into a per-evaluation dependency
-	 * of a panel nobody is looking at.
-	 */
-	const visibleGroups = $derived(
-		open ? groups.filter((group) => group.items.length > 0) : []
-	);
-
-	const items = $derived(visibleGroups.flatMap((group) => group.items));
-	const hasItems = $derived(items.length > 0);
-
-	const searchedNothing = $derived(query.trim() !== '' && !hasItems);
-
 	/** The row's accessible name: the kind, the full label and the canonical identity. */
-	function accessibleName(item: { kind: string; label: string; sourceId: string; revealed: boolean; eligible: boolean; membership: string }): string {
-		const badge = item.revealed ? 'Revealed' : !item.eligible ? membershipLabel(item.membership) : '';
+	function accessibleName(item: {
+		kind: string;
+		label: string;
+		sourceId: string;
+		revealed: boolean;
+		eligible: boolean;
+		membership: string;
+	}): string {
+		const badge = item.revealed
+			? 'Revealed'
+			: !item.eligible
+				? membershipLabel(item.membership)
+				: '';
 		return `${item.kind} ${item.label}. Identity ${item.sourceId}.${badge === '' ? '' : ` ${badge}.`}`;
 	}
 </script>
@@ -144,384 +122,356 @@
 	class:collapsed={!open}
 	hidden={!open}
 >
-	<div id="plate-index-body" class="index-body" hidden={!open}>
+	{#if open}
 		<div class="index-search">
-			<label class="search-label" for="plate-index-search">Find a subject</label>
-			<input
-				id="plate-index-search"
-				type="search"
-				class="search-input"
-				placeholder="Search by name, kind or identity…"
-				value={query}
-				oninput={(event) => onQuery((event.currentTarget as HTMLInputElement).value)}
-			/>
+			<label
+				><ShellIcon name="search" size={15} />
+				<input
+					id="plate-index-search"
+					type="search"
+					aria-label="Filter places and things"
+					placeholder="Filter places and things"
+					value={query}
+					oninput={(e) => onQuery(e.currentTarget.value)}
+				/>
+			</label><button type="button" aria-label="Hide Index" onclick={onClose}
+				><ShellIcon name="chevronLeft" size={15} /></button
+			>
+		</div>
+		<div class="crumbs" role="group" aria-label="Location">
+			{#each crumbs as crumb (crumb.id)}<button
+					type="button"
+					aria-current={scope === crumb.id ? 'location' : undefined}
+					onclick={() => onScope(crumb.id)}>{crumb.label}</button
+				>{#if crumb.id !== scope}<ShellIcon name="chevronRight" size={12} />{/if}{/each}
+			{#if siblings.length}<details class="siblings">
+					<summary aria-label="Switch sibling location"
+						><ShellIcon name="chevronDown" size={12} /></summary
+					>
+					<div>
+						{#each siblings as sibling (sibling.id)}<button
+								type="button"
+								onclick={(event) => { onScope(sibling.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{sibling.label}</button
+							>{/each}
+					</div>
+				</details>{/if}
+		</div>
+		<div class="facets" role="group" aria-label="Subject kinds">
+			<button type="button" aria-pressed={facet === 'all'} onclick={() => (facet = 'all')}
+				>All</button
+			>{#each facets as kind}<button
+					type="button"
+					aria-label={kind.replace('-', ' ')}
+					title={kind.replace('-', ' ')}
+					aria-pressed={facet === kind}
+					onclick={() => (facet = kind)}
+					><ShellIcon
+						name={kind === 'wall'
+							? 'wall'
+							: kind === 'opening'
+								? 'opening'
+								: kind === 'scene'
+									? 'object'
+									: 'plan'}
+						size={16}
+					/></button
+				>{/each}
 		</div>
 
-		{#if searchedNothing}
-			<p class="index-empty" role="status">No matching subjects</p>
-		{:else if !hasItems}
-			<p class="index-empty">This project has no located subjects yet.</p>
-		{:else}
-			{#each visibleGroups as group (group.id)}
-				<section class="index-group" aria-labelledby={`plate-index-group-${group.id}`}>
-					<h3 class="group-heading" id={`plate-index-group-${group.id}`}>{group.label}</h3>
-					<ul class="group-items">
-						{#each group.items as item (item.sourceId)}
-							{@const selected = item.sourceId === selectionId}
-							{@const expanded = disclosed.has(item.sourceId)}
-							<li
-								class="item"
-								class:revealed={item.revealed}
-								class:excluded={!item.eligible}
-								class:expanded
-								data-source-id={item.sourceId}
+		{#if scope === 'project' && model.contexts.some((c) => c.id === 'floor')}<button
+				type="button"
+				class="floor-scope"
+				onclick={() => onScope('floor')}
+				><ShellIcon name="layers" size={16} />{model.contexts.find((c) => c.id === 'floor')
+					?.label}<ShellIcon name="chevronRight" size={15} /></button
+			>{/if}
+		<ul class="group-items">
+			{#each result.rows as item (item.sourceId)}
+				<li
+					class="item"
+					data-source-id={item.sourceId}
+					class:selected={selectionId === item.sourceId}
+				>
+					<div class="item-head">
+						<button
+							type="button"
+							class="item-row"
+							use:locate={item.sourceId}
+							aria-current={selectionId === item.sourceId ? 'true' : undefined}
+							aria-disabled={!item.eligible}
+							aria-label={accessibleName(item)}
+							title={item.eligible ? item.label : membershipLabel(item.membership)}
+							onclick={() => {
+								if (item.eligible) onSelect(item.sourceId);
+							}}
+						>
+							<ShellIcon
+								name={item.group === 'wall'
+									? 'wall'
+									: item.group === 'opening'
+										? 'opening'
+										: item.group === 'scene'
+											? 'object'
+											: 'plan'}
+								size={16}
+							/>
+							<span class="item-name" class:generated={!item.authored}>{item.label}</span>
+							{#if item.revealed || !item.eligible}
+								<span class="badge"
+									>{item.revealed ? 'Revealed' : membershipLabel(item.membership)}</span
+								>
+							{/if}
+						</button>
+						<button
+							type="button"
+							class="item-actions-toggle"
+							aria-label={`Actions for ${item.label}`}
+							aria-expanded={disclosed === item.sourceId}
+							onclick={() => toggleActions(item.sourceId)}
+							><ShellIcon name="more" size={15} /></button
+						>
+						{#if item.context}<button
+								type="button"
+								class="scope-entry"
+								aria-label={`Go into ${item.label}`}
+								onclick={() => onScope(item.context!)}
+								><ShellIcon name="chevronRight" size={15} /></button
+							>{/if}
+					</div>
+
+					{#if disclosed === item.sourceId}
+						<div class="item-ops">
+							<button type="button" onclick={() => openLocation(item.sourceId)}>
+								Open location
+							</button>
+							<button
+								type="button"
+								disabled={!item.eligible}
+								onclick={() => onBringIntoView(item.sourceId)}
 							>
-								<div class="item-head">
-									<button
-										type="button"
-										class="item-row"
-										use:locate={item.sourceId}
-										aria-current={selected ? 'true' : undefined}
-										aria-disabled={!item.eligible}
-										aria-label={accessibleName(item)}
-										title={item.eligible ? item.label : membershipLabel(item.membership)}
-										onclick={() => {
-											// An excluded subject stays focusable and locatable, but it is
-											// not selectable: selection means "this is the subject now".
-											if (!item.eligible) return;
-											onSelect(item.sourceId);
-										}}
-									>
-										<span class="item-kind">{item.kind}</span>
-										<span class="item-name" class:generated={!item.authored}>{item.label}</span>
-										{#if item.revealed}
-											<span class="item-badge revealed-badge" aria-hidden="true">Revealed</span>
-										{:else if !item.eligible}
-											<span class="item-badge excluded-badge" aria-hidden="true">{membershipLabel(item.membership)}</span>
-										{/if}
-									</button>
-									<button
-										type="button"
-										class="item-actions-toggle"
-										aria-expanded={expanded}
-										aria-controls={domId('plate-index-actions', item.sourceId)}
-										aria-label={`Actions for ${item.label}`}
-										onclick={() => toggleActions(item.sourceId)}
-									>
-										Actions
-									</button>
-								</div>
-
-								{#if expanded}
-									<div class="item-ops" id={domId('plate-index-actions', item.sourceId)}>
-										<button type="button" class="op" onclick={() => openLocation(item.sourceId)}>
-											Open location
-										</button>
-										<button
-											type="button"
-											class="op"
-											disabled={!item.eligible}
-											title={item.eligible
-												? `Bring ${item.label} into view`
-												: `${membershipLabel(item.membership)} — Reveal it to navigate to it`}
-											onclick={() => onBringIntoView(item.sourceId)}
-										>
-											Bring into view
-										</button>
-										{#if item.membership !== 'included' || item.revealed}
-											<button
-												type="button"
-												class="op op-reveal"
-												onclick={() => onReveal(item.sourceId)}
-											>
-												{item.revealed ? 'Hide' : 'Reveal'}
-											</button>
-										{/if}
-									</div>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				</section>
+								Bring into view
+							</button>
+							{#if item.membership !== 'included' || item.revealed}
+								<button type="button" onclick={() => onReveal(item.sourceId)}>
+									{item.revealed ? 'Hide' : 'Reveal'}
+								</button>
+							{/if}
+							{#each item.relations.filter((r) => r.startsWith('room:')) as relation}<button
+									type="button"
+									onclick={() => onScope(relation as WorldScope)}
+									>Go to {model.contexts.find((c) => c.id === relation)?.label ?? 'Room'}</button
+								>{/each}
+						</div>
+					{/if}
+				</li>
 			{/each}
-		{/if}
-
-	</div>
+		</ul>
+		{#if result.total > result.rows.length}<button type="button" onclick={() => (limit += 40)}
+				>Show more ({result.total - result.rows.length})</button
+			>{:else if result.total === 0}<p class="index-empty">No matching subjects</p>{/if}
+	{/if}
 </nav>
 
 <style>
-	/*
-	 * PLATE shell roles (shell-roles.css). The Index is a pale stone working surface
-	 * at the role's density; no colour is introduced here.
-	 */
 	.plate-index {
-		box-sizing: border-box;
-		min-height: 0;
 		display: flex;
-		width: var(--shell-index-width, 256px);
-		max-width: 100%;
-		min-width: 0;
 		flex-direction: column;
-		border: 1px solid var(--shell-paper, #e9ebe6);
-		border-radius: 0.5rem;
-		background: var(--shell-index, #f5f6f4);
-		color: var(--shell-forest, #11291f);
-		font-family: var(--shell-sans, Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif);
-		font-size: var(--shell-text-body, 13px);
-	}
-
-	.plate-index[hidden] { display: none; }
-
-	.index-body[hidden] {
-		display: none;
-	}
-
-	.index-body {
+		width: var(--shell-index-width, 256px);
+		min-width: 0;
 		min-height: 0;
 		overflow: auto;
-		display: flex;
-		flex-direction: column;
-		gap: 0.6rem;
-		padding: 0.55rem;
+		border-right: 1px solid var(--shell-hairline, #e1e4de);
+		background: var(--shell-index, #f6f7f5);
+		color: var(--shell-ink, #1b201c);
+		font: 13px/1.35 var(--shell-sans, system-ui);
+	}
+
+	.plate-index[hidden] {
+		display: none;
+	}
+	button {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		min-height: 26px;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+	}
+	button:hover {
+		background: var(--shell-leaf-tint, #e7f1ea);
 	}
 
 	.index-search {
 		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
+		align-items: center;
+		gap: 4px;
+		padding: 8px 6px 6px 8px;
 	}
-
-	.search-label {
-		color: var(--shell-forest-raised, #22503c);
-		font-size: var(--shell-text-utility, 12px);
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-	}
-
-	.search-input {
-		width: 100%;
+	.index-search label {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex: 1;
 		min-width: 0;
-		box-sizing: border-box;
-		min-height: var(--shell-control-height, 32px);
-		padding: 0.3rem 0.45rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-		background: var(--shell-card, #ffffff);
-		color: inherit;
-		font: inherit;
-		font-size: var(--shell-text-body, 13px);
+		height: 28px;
+		padding: 0 7px;
+		background: #fff;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 7px;
+		color: var(--shell-ink-3, #79817b);
+	}
+	input {
+		min-width: 0;
+		width: 100%;
+		border: 0;
+		background: none;
+		color: var(--shell-ink, #1b201c);
+		font: 12px var(--shell-sans, system-ui);
 	}
 
-	.index-empty {
-		margin: 0;
-		color: var(--shell-forest-raised, #22503c);
-		font-size: var(--shell-text-utility, 12px);
-		line-height: 1.4;
-	}
-
-	.index-group {
+	.crumbs {
 		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 3px;
+		padding: 0 10px 6px;
+		font-size: 12px;
 	}
-
-	.group-heading {
-		margin: 0;
-		color: var(--shell-forest-raised, #22503c);
-		font-size: var(--shell-text-utility, 12px);
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
+	.crumbs button {
+		padding: 2px 4px;
 	}
-
-	.group-items {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		margin: 0;
-		padding: 0;
+	.crumbs [aria-current] {
+		font-weight: 600;
+	}
+	.siblings {
+		position: relative;
+	}
+	.siblings summary {
+		cursor: pointer;
 		list-style: none;
 	}
 
-	.item {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		min-width: 0;
-		border: 1px solid transparent;
-		border-radius: 0.4rem;
-		background: var(--shell-card, #ffffff);
+	.siblings div {
+		position: absolute;
+		z-index: 30;
+		top: 24px;
+		left: -80px;
+		width: 180px;
+		display: grid;
+		padding: 6px;
+		background: white;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 8px;
+		box-shadow: var(--shell-shadow);
 	}
 
-	.item.revealed {
-		border-style: dashed;
-		border-color: var(--shell-hairline, #2f4a3d);
+	.facets {
+		display: flex;
+		gap: 2px;
+		margin: 0 8px 4px;
+		padding: 2px;
+		border-radius: 7px;
+		background: #eaede7;
+	}
+	.facets button {
+		flex: 1;
+		justify-content: center;
+		height: 24px;
+		min-height: 24px;
+		padding: 0 4px;
+		color: var(--shell-ink-3, #79817b);
+	}
+	.facets [aria-pressed='true'] {
+		background: #fff;
+		color: var(--shell-ink, #1b201c);
+		box-shadow: 0 1px 2px #0002;
+	}
+	.group-items {
+		list-style: none;
+		padding: 0;
+		margin: 0;
 	}
 
 	.item-head {
 		display: flex;
-		align-items: stretch;
-		gap: 0.2rem;
-		min-width: 0;
-	}
-
-	/* One line: the kind, the label (ellipsized, full in its title) and a badge. */
-	.item-row {
-		display: flex;
 		align-items: center;
-		flex: 1 1 auto;
-		gap: 0.4rem;
+	}
+	.item-row {
+		flex: 1;
 		min-width: 0;
-		min-height: var(--shell-control-height, 32px);
-		padding: 0.2rem 0.4rem;
-		border: 1px solid transparent;
-		border-radius: 0.3rem;
-		background: none;
-		color: inherit;
-		font: inherit;
+		min-height: 28px;
+		padding: 4px 6px 4px 10px;
+		border-radius: 0;
 		text-align: left;
-		cursor: pointer;
-	}
-
-	.item-row:hover:not(:disabled) {
-		background: var(--shell-paper, #e9ebe6);
-	}
-
-	/* Canonical selection: the gold contour and its gold ink, never a page flood. */
-	.item-row[aria-current='true'] {
-		border-color: var(--shell-gold, #d4ad45);
-		box-shadow: inset 0 0 0 1px var(--shell-gold, #d4ad45);
-		color: var(--shell-gold-ink, #74560c);
-	}
-
-	.item-row[aria-disabled='true'] {
-		cursor: not-allowed;
-		opacity: 0.72;
-	}
-
-	.op:disabled {
-		cursor: not-allowed;
-		opacity: 0.6;
-	}
-
-	.item-kind {
-		flex: none;
-		color: var(--shell-forest-raised, #22503c);
-		font-size: var(--shell-text-utility, 12px);
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		text-transform: uppercase;
 	}
 
 	.item-name {
-		min-width: 0;
-		flex: 1 1 auto;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-
-	/* A generated `Kind n` reads as a quiet placeholder, never as an authored name. */
-	.item-name.generated {
-		color: var(--shell-forest-raised, #22503c);
-		font-style: italic;
+	.item.selected {
+		background: var(--shell-gold-tint, #f8efd6);
 	}
-
-	.item-badge {
-		flex: none;
-		padding: 0.05rem 0.3rem;
-		border-radius: 999px;
-		font-size: 0.64rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-	}
-
-	.revealed-badge {
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		color: var(--shell-forest, #11291f);
-	}
-
-	.excluded-badge {
-		border: 1px solid var(--shell-paper, #e9ebe6);
-		color: var(--shell-forest-raised, #22503c);
+	.item.selected .item-name {
+		font-weight: 600;
 	}
 
 	.item-actions-toggle {
-		flex: none;
-		min-height: var(--shell-control-height, 32px);
-		padding: 0 0.45rem;
-		border: 1px solid var(--shell-paper, #e9ebe6);
-		border-radius: 0.3rem;
-		background: var(--shell-index, #f5f6f4);
-		color: var(--shell-forest-raised, #22503c);
-		font: inherit;
-		font-size: var(--shell-text-utility, 12px);
-		cursor: pointer;
+		opacity: 0;
+		padding: 0;
+		width: 26px;
+		justify-content: center;
 	}
-
-	.item-actions-toggle[aria-expanded='true'] {
-		border-color: var(--shell-hairline, #2f4a3d);
-		color: var(--shell-forest, #11291f);
+	.item:hover .item-actions-toggle,
+	.item:focus-within .item-actions-toggle {
+		opacity: 1;
+	}
+	.scope-entry {
+		width: 26px;
+		justify-content: center;
+		padding: 0;
+		margin-right: 4px;
 	}
 
 	.item-ops {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.3rem;
-		padding: 0 0.35rem 0.3rem;
+		gap: 4px;
+		padding: 4px 10px;
+		background: #fff;
+		font-size: 11px;
 	}
-
-	.op {
-		min-height: var(--shell-control-height, 32px);
-		padding: 0.2rem 0.45rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.3rem;
-		background: var(--shell-index, #f5f6f4);
-		color: var(--shell-forest, #11291f);
-		font: inherit;
-		font-size: var(--shell-text-utility, 12px);
-		cursor: pointer;
+	.badge {
+		font-size: 10px;
+		color: var(--shell-ink-3, #79817b);
 	}
-
-	.op:hover {
-		background: var(--shell-paper, #e9ebe6);
+	.index-empty {
+		padding: 10px;
+		font-size: 12px;
+		color: var(--shell-ink-3, #79817b);
 	}
-
-	.op-reveal {
-		border-style: dashed;
-	}
-
-	/* Focus is an independent, non-hue cue (never the selection contour). */
-	.item-row:focus-visible,
-	.item-actions-toggle:focus-visible,
-	.op:focus-visible,
-	.search-input:focus-visible {
-		outline: 2px solid var(--shell-forest-raised, #22503c);
-		outline-offset: 2px;
-	}
-
-	@media (max-width: 720px) {
-		.plate-index {
-			width: 100%;
-			max-width: none;
-			max-height: 45%;
-		}
-	}
-
-	/*
-	 * Coarse pointer: each row's select control, its Actions toggle, every disclosed
-	 * operation and the search field reach the touch target (44 × 44 CSS px). The
-	 * fine-pointer density (32 px) is unchanged.
-	 */
 	@media (pointer: coarse) {
-		.item-row,
+		button,
+		.facets button,
+		.index-search label,
+		input {
+			min-height: 44px;
+		}
 		.item-actions-toggle,
-		.op,
-		.search-input {
-			min-width: var(--shell-touch-target, 44px);
-			min-height: var(--shell-touch-target, 44px);
+		.scope-entry {
+			min-width: 44px;
+			opacity: 1;
+		}
+		.facets {
+			flex-wrap: wrap;
+		}
+		.facets button {
+			min-width: 44px;
 		}
 	}
 </style>

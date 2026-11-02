@@ -8,15 +8,17 @@
 	 * the first Escape restores the accepted text, a second Escape leaves the key
 	 * to the shell (which clears the selection), and blur never commits.
 	 */
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, untrack, type Snippet } from 'svelte';
+	import { compactMeasure } from '$lib/authoring/stage/shell/compact-measure';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-	import {
-		sceneObjectCardController,
-		type SceneObjectCardController
-	} from './object-card';
+	import { sceneObjectCardController, type SceneObjectCardController } from './object-card';
 	import { SCENE_OBJECT_CARD_FIELD_IDS, type SceneObjectCardFieldId } from './object-marks';
 
-	let { services }: { services: StageAdapterServices } = $props();
+	let {
+		services,
+		detailOpen = false,
+		footer
+	}: { services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet } = $props();
 
 	let alive = true;
 	onDestroy(() => {
@@ -64,9 +66,7 @@
 	function reconcile(): void {
 		const primary = services.stage.selectionState().primary;
 		const nextEntityId =
-			primary?.domain === 'scene' && primary.subject.kind === 'entity'
-				? primary.subject.id
-				: null;
+			primary?.domain === 'scene' && primary.subject.kind === 'entity' ? primary.subject.id : null;
 		if (nextEntityId !== activeEntityId) {
 			activeEntityId = nextEntityId;
 			controller = nextEntityId === null ? null : sceneObjectCardController(services, nextEntityId);
@@ -116,8 +116,7 @@
 			sync();
 		} catch (error) {
 			if (alive) {
-				errors[id] =
-					error instanceof Error ? error.message : 'The accepted install failed.';
+				errors[id] = error instanceof Error ? error.message : 'The accepted install failed.';
 			}
 		} finally {
 			if (alive) busy = false;
@@ -148,89 +147,98 @@
 		restore(id);
 		errors[id] = null;
 	}
+	let focusedField = $state<SceneObjectCardFieldId | null>(null);
 </script>
 
+{#snippet fieldRow(id: SceneObjectCardFieldId)}
+	{@const field = controller?.fields().find((entry) => entry.id === id)}
+	{#if field !== undefined}
+		<label class="field">
+			<span>{field.label}</span>
+			<input
+				type="text"
+				inputmode="decimal"
+				data-field={id}
+				value={focusedField === id ? values[id] : compactMeasure(values[id])}
+				onfocus={(event) => { focusedField = id; event.currentTarget.value = values[id]; }}
+				aria-invalid={errorOf(id) === null ? undefined : 'true'}
+				oninput={(event) => {
+					values[id] = event.currentTarget.value;
+					edit(id, event.currentTarget.value);
+				}}
+				onkeydown={(event) => onKeydown(event, id)}
+				onblur={(event) => {
+					focusedField = null;
+					onBlur(id);
+					event.currentTarget.value = compactMeasure(values[id]);
+				}}
+			/>
+			<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>
+			{#if errorOf(id) !== null}
+				<span class="refusal" role="alert">{errorOf(id)}</span>
+			{/if}
+		</label>
+	{/if}
+{/snippet}
 {#if controller !== null}
 	<div class="object-fields" data-scene-object-card-fields aria-label="Scene object fields">
-		<fieldset disabled={busy}>
-			<legend>Fields</legend>
-			{#each SCENE_OBJECT_CARD_FIELD_IDS as id (id)}
-				{@const field = controller.fields().find((entry) => entry.id === id)}
-				{#if field !== undefined}
-					<label class="field">
-						<span>{field.label}</span>
-						<input
-							type="text"
-							inputmode="decimal"
-							data-field={id}
-							bind:value={values[id]}
-							aria-invalid={errorOf(id) === null ? undefined : 'true'}
-							oninput={(event) => edit(id, event.currentTarget.value)}
-							onkeydown={(event) => onKeydown(event, id)}
-							onblur={() => onBlur(id)}
-						/>
-						<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>
-						{#if errorOf(id) !== null}
-							<span class="refusal" role="alert">{errorOf(id)}</span>
-						{/if}
-					</label>
-				{/if}
-			{/each}
-		</fieldset>
+		<fieldset disabled={busy}>{@render fieldRow('size')}</fieldset>
+		{#if footer}{@render footer()}{/if}
+		{#if detailOpen}<fieldset class="precision" disabled={busy}>
+				{#each SCENE_OBJECT_CARD_FIELD_IDS.filter((id) => id !== 'size') as id (id)}{@render fieldRow(
+						id
+					)}{/each}
+			</fieldset>{/if}
 	</div>
 {/if}
 
 <style>
-	.object-fields {
-		display: grid;
-		gap: 0.35rem;
-		margin-top: 0.6rem;
-		font-size: 0.8rem;
-	}
 	fieldset {
 		display: grid;
-		gap: 0.35rem;
+		grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+		gap: 6px;
 		border: 0;
-		padding: 0;
+		padding: 0 12px 8px;
 		margin: 0;
 	}
-	legend {
-		margin: 0 0 0.2rem;
-		color: var(--plate-ink-quiet, #5c665e);
-		font-size: 0.68rem;
-		font-weight: 700;
-		letter-spacing: 0.09em;
-		text-transform: uppercase;
+	.precision {
+		border-top: 1px solid var(--shell-hairline, #e1e4de);
+		padding-top: 8px;
 	}
 	.field {
 		display: grid;
-		grid-template-columns: 1fr 6rem auto;
-		align-items: center;
-		gap: 0.4rem;
+		gap: 2px;
+		position: relative;
+		min-width: 0;
+		font-size: 10.5px;
+		color: var(--shell-ink-2, #4a524c);
 	}
 	input {
-		min-height: 2.75rem;
-		padding: 0.1rem 0.35rem;
-		border: 1px solid var(--plate-control-edge, #cfd5cb);
-		border-radius: 0.45rem;
-		background: var(--plate-control-surface, #f5f6f4);
-		color: inherit;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	}
-	input[aria-invalid='true'] {
-		border-color: #a33b24;
+		width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		height: 26px;
+		padding: 0 20px 0 6px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 6px;
+		background: var(--shell-control-surface, #fafbf9);
+		color: var(--shell-ink, #1b201c);
+		font: 12px var(--shell-mono, monospace);
 	}
 	.unit {
-		font-size: 0.7rem;
-		color: var(--plate-ink-quiet, #5c665e);
+		position: absolute;
+		right: 6px;
+		bottom: 6px;
 	}
 	.refusal {
-		grid-column: 1 / -1;
-		font-size: 0.72rem;
-		color: #a33b24;
+		color: var(--shell-refuse, #7e2718);
 	}
-	.field:focus-within span:first-child {
-		outline: 2px solid var(--plate-focus, #2f6f52);
-		outline-offset: 1px;
+	@media (pointer: coarse) {
+		input {
+			min-height: 44px;
+		}
+		.unit {
+			bottom: 14px;
+		}
 	}
 </style>

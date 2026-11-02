@@ -28,6 +28,7 @@ describe('Objects and Pen controls', () => {
 
 	it('offers no Shape, Round or Sketch reading in the Ink palette (O10)', () => {
 		const palette = stripComments(readFileSync(resolve(ADAPTERS, 'layout/LayoutInkPalette.svelte'), 'utf8'));
-		for (const word of ['Shape', 'Round', 'Sketch']) expect(palette).not.toContain(word);
+		expect(palette).not.toContain("chooseReading('shape')");
+		for(const label of ['Round unavailable','Sketch unavailable']) {const offset=palette.indexOf(`aria-label="${label}"`);expect(offset).toBeGreaterThan(0);expect(palette.slice(offset,offset+150)).toContain('aria-disabled="true"');}
 	});
 });

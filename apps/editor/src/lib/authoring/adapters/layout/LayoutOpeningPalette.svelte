@@ -119,24 +119,13 @@
 	</div>
 	{#if error !== null}<p class="error" role="alert">{error}</p>{/if}
 
-	<dl class="live">
-		<div><dt>Preview host</dt><dd>{opening?.hostId ?? 'Aim at a Wall face'}</dd></div>
-		<div>
-			<dt>Offset</dt>
-			<dd>{opening?.offset === null || opening?.offset === undefined ? '—' : `${opening.offset.toFixed(3)} m`}</dd>
-		</div>
-		<div><dt>Width</dt><dd>{opening?.width.toFixed(3) ?? '—'} m</dd></div>
-		<div class="fit">
-			<dt>Fit</dt>
-			<dd>{opening?.canPlace ? 'Planner accepts this candidate.' : 'Adjust the aim or the Opening measures.'}</dd>
-		</div>
-	</dl>
-
 	{#if opening?.refusal !== null && opening?.refusal !== undefined}
 		<p class="refusal" role="alert" data-opening-refusal>{opening.refusal}</p>
 	{/if}
 
-	<p class="quiet">Offset host: {opening?.selectedHostId ?? 'Select a Wall or Opening'}</p>
+	<p class="quiet">
+		{opening?.selectedHostId ? 'Offset on selected Wall'
+			: 'Select a Wall for exact offset'}</p>
 	<form
 		class="typed-offset"
 		onsubmit={(event) => {
@@ -194,26 +183,6 @@
 	.quiet {
 		color: var(--shell-ink-quiet, #9fb2a2);
 		font-size: 0.68rem;
-	}
-	.live {
-		display: grid;
-		gap: 0.15rem;
-		margin: 0;
-	}
-	.live div {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.6rem;
-	}
-	.live dt {
-		color: var(--shell-ink-quiet, #9fb2a2);
-	}
-	.live dd {
-		margin: 0;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	}
-	.fit dd {
-		text-align: right;
 	}
 	.refusal {
 		margin: 0;

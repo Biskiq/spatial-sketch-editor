@@ -43,6 +43,8 @@ export type StageHandleBase = {
 	 * 24 m roof keep the same quiet mark; the reach is not a measure.
 	 */
 	readonly extent?: number;
+	/** Bounded drawing reach in CSS px; the projected result owns both drawing and hits. */
+	readonly draw?: { readonly ray?:number; readonly twoWayHalf?:number; readonly pointRadius?:number; readonly cross?:boolean };
 	/**
 	 * Draw a ray/track on both sides of its anchor — the grammar's two-way base
 	 * ray. It changes the drawing and the hit area only; the gesture is the one
@@ -119,16 +121,22 @@ export type StageHandleAdmission = {
 };
 
 function finiteVec3(value: Vec3 | undefined): value is Vec3 {
-	return value !== undefined && value.length === 3 && value.every(Number.isFinite);
+	return (
+		value !== undefined && value.length === 3 && value.every(Number.isFinite)
+	);
 }
 
 function hasUsableGeometry(descriptor: StageHandleDescriptor): boolean {
 	if (!finiteVec3(descriptor.anchor)) return false;
 	if (descriptor.kind === 'ray' || descriptor.kind === 'track') {
-		return finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0;
+		return (
+			finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0
+		);
 	}
 	if (descriptor.kind === 'ring') {
-		return finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0;
+		return (
+			finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0
+		);
 	}
 	return true;
 }
@@ -237,7 +245,9 @@ export function stageHandleVisible(
 	openDisclosures: ReadonlySet<string>
 ): boolean {
 	if (descriptor.role === 'disclose') return true;
-	return descriptor.disclosedBy === undefined || openDisclosures.has(descriptor.disclosedBy);
+	return (
+		descriptor.disclosedBy === undefined || openDisclosures.has(descriptor.disclosedBy)
+	);
 }
 
 export type StageMarkView = {
@@ -256,6 +266,8 @@ export type StageMarkView = {
 	readonly tail: readonly [number, number] | null;
 	/** Ring outline in Stage-local CSS. */
 	readonly ring: readonly (readonly [number, number])[] | null;
+	readonly pointRadius?:number;
+	readonly cross?:boolean;
 	readonly tag: string;
 	readonly refusal: string | null;
 	readonly open: boolean;
@@ -293,7 +305,9 @@ function squaredDistanceToSegment(
 	if (squared === 0) return (point[0] - start[0]) ** 2 + (point[1] - start[1]) ** 2;
 	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared;
 	const amount = Math.min(1, Math.max(0, raw));
-	return (point[0] - (start[0] + dx * amount)) ** 2 + (point[1] - (start[1] + dy * amount)) ** 2;
+	return (
+		(point[0] - (start[0] + dx * amount)) ** 2 + (point[1] - (start[1] + dy * amount)) ** 2
+	);
 }
 
 function distanceToSegment(
@@ -311,7 +325,9 @@ function normalize(value: Vec3): Vec3 | null {
 }
 
 function finiteCssPair(value: readonly [number, number] | undefined): value is readonly [number, number] {
-	return value !== undefined && value.length === 2 && value.every(Number.isFinite);
+	return (
+		value !== undefined && value.length === 2 && value.every(Number.isFinite)
+	);
 }
 
 /** A finite, non-zero CSS direction, or `null` when the hint cannot be trusted. */
@@ -442,17 +458,35 @@ export function projectStageHandles(input: {
 			if (direction === null) continue;
 			if (descriptor.bothWays === true) {
 				tip = [
-					anchor[0] + direction[0] * STAGE_MARK_GLYPH_CSS.twoWayHalf,
-					anchor[1] + direction[1] * STAGE_MARK_GLYPH_CSS.twoWayHalf
+					anchor[0] + direction[0] *
+							(Number.isFinite(descriptor.draw?.twoWayHalf)
+								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf),
+					anchor[1] + direction[1] *
+							(Number.isFinite(descriptor.draw?.twoWayHalf)
+								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf)
 				];
 				tail = [
-					anchor[0] - direction[0] * STAGE_MARK_GLYPH_CSS.twoWayHalf,
-					anchor[1] - direction[1] * STAGE_MARK_GLYPH_CSS.twoWayHalf
+					anchor[0] - direction[0] *
+							(Number.isFinite(descriptor.draw?.twoWayHalf)
+								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf),
+					anchor[1] - direction[1] *
+							(Number.isFinite(descriptor.draw?.twoWayHalf)
+								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf)
 				];
 			} else {
 				tip = [
-					anchor[0] + direction[0] * STAGE_MARK_GLYPH_CSS.ray,
-					anchor[1] + direction[1] * STAGE_MARK_GLYPH_CSS.ray
+					anchor[0] + direction[0] *
+							(Number.isFinite(descriptor.draw?.ray)
+								? Math.min(160, Math.max(6, descriptor.draw!.ray!))
+								: STAGE_MARK_GLYPH_CSS.ray),
+					anchor[1] + direction[1] *
+							(Number.isFinite(descriptor.draw?.ray)
+								? Math.min(160, Math.max(6, descriptor.draw!.ray!))
+								: STAGE_MARK_GLYPH_CSS.ray)
 				];
 			}
 		} else if (descriptor.kind === 'ring') {
@@ -485,7 +519,7 @@ export function projectStageHandles(input: {
 			// shared screen radius, regenerated in its own plane so a zoomed-out
 			// subject still has a reachable rotation grip and a close one never fills
 			// the Stage.
-			if (Math.abs(radiusCss - STAGE_MARK_GLYPH_CSS.ringRadius) > 0.5) {
+			if (radiusCss < STAGE_MARK_GLYPH_CSS.ringRadius - 0.5) {
 				points = outline(descriptor.extent * (STAGE_MARK_GLYPH_CSS.ringRadius / radiusCss));
 				if (points.length < 12) continue;
 			}
@@ -500,6 +534,8 @@ export function projectStageHandles(input: {
 		views.push({
 			adapterId: input.adapterId,
 			id: descriptor.id,
+			pointRadius:Number.isFinite(descriptor.draw?.pointRadius)?Math.min(6,Math.max(3,descriptor.draw!.pointRadius!)):4.2,
+			cross:descriptor.kind==='point' && descriptor.draw?.cross===true,
 			role: descriptor.role,
 			kind: descriptor.kind,
 			label: descriptor.label,

@@ -20,7 +20,7 @@ import type { SceneFormEntity } from '@portfolio/project-model';
 import type { Vec3 } from '@portfolio/camera-core';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
-import { axisTravelFromRay } from './ray';
+import { axisTravelFromRay } from '$lib/authoring/stage/stage-axis-travel';
 
 /** Local mesh axis: 0 = Width (X), 1 = Height (Y), 2 = Depth (Z). */
 export type FormSizeAxis = 0 | 1 | 2;
@@ -277,7 +277,8 @@ export function formMoveScreenOffset(input: {
 /** The three size rays in the domain's overlap order: Height, Width, Depth. */
 const FORM_SIZE_RAY_ORDER: readonly {
 	readonly axis: FormSizeAxis;
-	readonly id: typeof SCENE_FORM_MARK.width | typeof SCENE_FORM_MARK.height | typeof SCENE_FORM_MARK.depth;
+	readonly id:
+		| typeof SCENE_FORM_MARK.width | typeof SCENE_FORM_MARK.height | typeof SCENE_FORM_MARK.depth;
 	readonly label: string;
 	readonly note: string;
 }[] = [
@@ -336,7 +337,8 @@ export function formMarkDescriptors(input: {
 	const descriptors: StageHandleDescriptor[] = [
 		{
 			id: SCENE_FORM_MARK.move,
-			kind: 'track',
+			kind:'point',
+			draw:{cross:true},
 			role: 'edit',
 			anchor: [position[0], baseY, position[2]],
 			axis: [Math.cos(yaw), 0, -Math.sin(yaw)],
@@ -363,6 +365,7 @@ export function formMarkDescriptors(input: {
 		if (handle === undefined) return [];
 		descriptors.push({
 			id: ray.id,
+			draw:{ray:ray.axis===1?40:26},
 			kind: 'ray',
 			role: 'edit',
 			anchor: centre,

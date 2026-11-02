@@ -19,7 +19,7 @@
  * fixed there.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mount, tick, unmount } from 'svelte';
+import { flushSync, mount, tick, unmount } from 'svelte';
 import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 import type { StageCardActionRecord } from '$lib/authoring/stage/stage-facade';
 import { reactiveCell } from './__fixtures__/reactive-cell.svelte';
@@ -44,7 +44,8 @@ function cardAction(id: string, adapterId: string, detail: string) {
 }
 
 function mountCard(options: {
-	readonly identity?: () => { sourceId: string; label: string; kind: string; status: string };
+	readonly identity?: () => { sourceId: string; label: string; kind: string; status: string;
+		};
 	readonly actions?: () => readonly StageCardActionRecord[];
 } = {}) {
 	const identity =
@@ -63,12 +64,16 @@ function mountCard(options: {
 				return actions();
 			},
 			onClose: () => {},
-			onFocusTask: () => {},
-			onOpenTask: () => {},
 			onBringIntoView: () => {}
 		}
 	});
 	cleanup = () => void unmount(component);
+	flushSync();
+	flushSync(() =>
+		target
+			.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!
+			.click()
+	);
 	return target;
 }
 
@@ -144,6 +149,12 @@ describe('Card confirmation is bound to one action', () => {
 
 		identity.value = { sourceId: 'wall-b', label: 'Wall B', kind: 'wall', status: 'accepted' };
 		await tick();
+		if (!target.querySelector('[data-card-actions]')) {
+			target
+				.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!
+				.click();
+			await tick();
+		}
 		expect(controls(target)[0]!.textContent).not.toContain('Confirm');
 		await press(target, 0);
 		expect(remove.run).not.toHaveBeenCalled();
@@ -160,6 +171,12 @@ describe('Card confirmation is bound to one action', () => {
 		// Same action, same adapter, consequences the creator has not read.
 		actions.value = [{ ...remove, detail: 'This deletes Wall wall-a and 1 hosted Opening.' }];
 		await tick();
+		if (!target.querySelector('[data-card-actions]')) {
+			target
+				.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!
+				.click();
+			await tick();
+		}
 		expect(controls(target)[0]!.textContent).not.toContain('Confirm');
 		await press(target, 0);
 		expect(remove.run).not.toHaveBeenCalled();

@@ -7,7 +7,7 @@
  * a contributed writer edits its fields in place, and every other fact is a read-only row.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mount, tick, unmount } from 'svelte';
+import { flushSync, mount, tick, unmount } from 'svelte';
 import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 import type { StageCardActionRecord, StageCardFact } from '$lib/authoring/stage/stage-facade';
 
@@ -18,12 +18,14 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
-type Identity = { sourceId: string; label: string; kind: string; status: string };
+type Identity = { sourceId: string; label: string; kind: string; status: string;
+};
 
 function mountCard(options: {
 	identity?: Identity;
 	facts?: readonly StageCardFact[];
-	writer?: { summary: string; adapterId: string; fieldIds?: readonly string[] } | null;
+	writer?: { summary: string; adapterId: string; fieldIds?: readonly string[];
+	} | null;
 	actions?: readonly StageCardActionRecord[];
 	technicalFacts?: readonly StageCardFact[];
 	nameWriter?: {
@@ -44,18 +46,35 @@ function mountCard(options: {
 			technicalFacts: options.technicalFacts ?? [],
 			nameWriter: options.nameWriter ?? null,
 			onClose: () => {},
-			onFocusTask: () => {},
-			onOpenTask: () => {},
 			onBringIntoView: options.onBringIntoView ?? (() => {})
 		}
 	});
 	cleanup = () => void unmount(component);
+	flushSync();
+	flushSync(() =>
+		target.querySelector<HTMLButtonElement>('[data-card-more]')!.click()
+	);
+	flushSync(() =>
+		target
+			.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!
+			.click()
+	);
+	if (options.nameWriter)
+		flushSync(() =>
+			target.querySelector<HTMLButtonElement>('h2.name button')!.click()
+		);
+	if (options.technicalFacts)
+		flushSync(() =>
+			[...target.querySelectorAll<HTMLButtonElement>('button')]
+				.find((b) => b.textContent === 'Technical identity')!
+				.click()
+		);
 	return target;
 }
 
 /** The ordinary fact rows (not Technical details), in order. */
 function factLabels(target: HTMLElement): string[] {
-	return [...target.querySelectorAll('dl.facts:not(.mono) dt')].map((term) => term.textContent ?? '');
+	return [...target.querySelectorAll('.relations dt')].map((term) => term.textContent ?? '');
 }
 
 /** Let mount effects and the action's own settled promise run before the next press. */
@@ -102,14 +121,14 @@ describe('Card facts: each fact appears once', () => {
 		expect(factLabels(target)).toEqual(['Position', 'Material']);
 	});
 
-	it('shows the Card\'s own name in the header, never as a fact row', () => {
+	it("shows the Card's own name in the header, never as a fact row", () => {
 		const target = mountCard({
 			identity: { sourceId: 'scene:entity:plinth', label: 'Plinth', kind: 'Model', status: 'scene' },
 			facts: [{ label: 'Name', value: 'Plinth', fieldId: 'name' }]
 		});
 		expect(target.querySelector('h2.name')?.textContent).toBe('Plinth');
 		expect(factLabels(target)).toEqual([]);
-		expect(target.querySelector('.quiet')?.textContent).toBe('No further facts.');
+		expect(target.textContent).not.toContain('No further facts.');
 	});
 
 	it('keeps the elevation of a writer-edited subject as a read-only row, because no writer edits Y', () => {
@@ -124,7 +143,7 @@ describe('Card facts: each fact appears once', () => {
 		// X and Z, and the yaw, are the writer's fields; the elevation is stated once here.
 		expect(factLabels(target)).toEqual(['Elevation']);
 		expect(factLabels(target)).not.toContain('Position (X · Z)');
-		expect(target.querySelector('dl.facts:not(.mono)')?.textContent).toContain('0.5 m');
+		expect(target.querySelector('dl.relations')?.textContent).toContain('0.5 m');
 	});
 
 	it('moves diagnostics about the drawing into Technical details, out of the ordinary facts', () => {
@@ -137,7 +156,7 @@ describe('Card facts: each fact appears once', () => {
 			]
 		});
 		expect(factLabels(target)).toEqual(['Datum']);
-		const technical = [...target.querySelectorAll('.technical dt')].map((term) => term.textContent);
+		const technical = [...target.querySelectorAll('.subject-actions .facts dt')].map((term) => term.textContent);
 		expect(technical).toEqual(['Canonical ID', 'Stream', 'Eligible', 'Revealed']);
 	});
 });
@@ -154,7 +173,7 @@ describe('Card actions: only a destructive action is destructive', () => {
 		const remove = target.querySelector<HTMLButtonElement>('[data-card-action="scene-object-delete"]')!;
 		expect(duplicate.classList.contains('destructive')).toBe(false);
 		expect(remove.classList.contains('destructive')).toBe(true);
-		expect(duplicate.closest('[data-card-more]')).not.toBeNull();
+		expect(duplicate.closest('[data-card-actions]')).not.toBeNull();
 		expect(remove.closest('[data-card-more]')).toBeNull();
 	});
 

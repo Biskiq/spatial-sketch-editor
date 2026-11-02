@@ -135,7 +135,8 @@ export function offsetAlongWall(wall: ProjectedWall, point: LayoutVec2): number 
 	const dz = wall.end[1] - wall.start[1];
 	const length = Math.hypot(dx, dz);
 	if (!(length > 0)) return 0;
-	return ((point[0] - wall.start[0]) * dx + (point[1] - wall.start[1]) * dz) / length;
+	return (((point[0] - wall.start[0]) * dx + (point[1] - wall.start[1]) * dz) / length
+	);
 }
 
 /** A point at one meter distance from the Wall start, for the opening ghost. */
@@ -225,6 +226,10 @@ export type InkOpeningSnapshot = {
 
 /** What the Ink palette renders. Everything here is read from the live draft. */
 export type InkPaletteSnapshot = {
+	readonly options?: {
+		readonly thickness: number | null;
+		readonly height: number | null;
+	};
 	readonly reading: InkReading;
 	/** The Wall reading's Line or Box; meaningless for other readings. */
 	readonly wallMode: InkWallMode;
@@ -242,7 +247,8 @@ export type InkPaletteSnapshot = {
 	/** The planner-derived consequence of finishing now, or `null`. */
 	readonly consequence: string | null;
 	/** The live length/angle of the pending leg, when a pointer is over the Stage. */
-	readonly pending: { readonly length: number; readonly angleDegrees: number } | null;
+	readonly pending: { readonly length: number; readonly angleDegrees: number;
+	} | null;
 	/** Refusal or repair words; the live chain stays editable while it is shown. */
 	readonly refusal: string | null;
 };
@@ -278,7 +284,8 @@ export type InkController = {
 	 * Remembered chain options. `null` means "use the canonical default", never
 	 * zero: an unset height is resolved by the planner's own birth rule.
 	 */
-	readonly setOptions: (options: { readonly thickness: number | null; readonly height: number | null }) => void;
+	readonly setOptions: (options: { readonly thickness: number | null; readonly height: number | null;
+	}) => void;
 };
 
 export type InkSurface = {

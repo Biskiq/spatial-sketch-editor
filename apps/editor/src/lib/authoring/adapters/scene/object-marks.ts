@@ -275,7 +275,8 @@ export function sceneObjectMarkDescriptors(input: {
 	const axis: Vec3 = [Math.cos(entity.rotation[1]), 0, -Math.sin(entity.rotation[1])];
 	const move: StageHandleDescriptor = {
 		id: SCENE_OBJECT_MARK.move,
-		kind: 'track',
+		kind:'point',
+		draw:{cross:true},
 		role: 'edit',
 		anchor: [position[0], baseY, position[2]],
 		axis,
@@ -315,6 +316,7 @@ export function sceneObjectMarkDescriptors(input: {
 		},
 		{
 			id: SCENE_OBJECT_MARK.size,
+			draw:{ray:26},
 			kind: 'ray',
 			role: 'edit',
 			anchor: ray.anchor,

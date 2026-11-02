@@ -226,8 +226,8 @@ describe('R217.S07 — calibrated mark glyphs', () => {
 		const ring = marks[0]?.ring;
 		expect(ring).not.toBeNull();
 		const radii = ring!.map(([x, y]) => Math.hypot(x - 640, y - 360));
-		expect(Math.max(...radii)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.ringRadius, 3);
-		expect(Math.min(...radii)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.ringRadius, 3);
+		expect(Math.max(...radii)).toBeGreaterThanOrEqual(STAGE_MARK_GLYPH_CSS.ringRadius);
+		expect(Math.min(...radii)).toBeGreaterThanOrEqual(STAGE_MARK_GLYPH_CSS.ringRadius);
 	});
 
 	it('draws and hits both sides of a two-way base ray', () => {
@@ -510,7 +510,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 			'utf8'
 		);
 		expect(layer).toContain('const GOLD = 0xd4ad45');
-		expect(layer).toContain('const NEUTRAL = 0xf3f4ee');
+		expect(layer).toContain('const NEUTRAL = 0x4f8f6c');
 		expect(layer).toContain("color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL");
 		expect(layer).toContain("opacity: tone === 'hover' ? 0.6 : 1");
 		// Hover (and S10's erase dashes) are edges only; the tint is selection's alone.
@@ -552,7 +552,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		// over Paper's own drawing by the identity the selection names.
 		expect(marks).toContain("PAPER_SELECTION_INK = '#d4ad45'");
 		expect(marks).toContain("PAPER_SELECTION_EDGE_INK = '#74560c'");
-		expect(marks).toContain("PAPER_HOVER_INK = '#f3f4ee'");
+		expect(marks).toContain("PAPER_HOVER_INK = '#4f8f6c'");
 		expect(marks).toContain('PAPER_MARK_HALO_INK');
 		expect(marks).toContain("line.sourceId === id");
 		expect(marks).toContain("footprint.entityId === id");

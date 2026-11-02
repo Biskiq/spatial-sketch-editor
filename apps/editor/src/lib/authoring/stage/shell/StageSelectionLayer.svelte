@@ -69,7 +69,7 @@
 
 	const GOLD = 0xd4ad45;
 	const SELECTION_EDGE = Number.parseInt(PAPER_SELECTION_EDGE_INK.slice(1), 16);
-	const NEUTRAL = 0xf3f4ee;
+	const NEUTRAL = 0x4f8f6c;
 	const ERASE = Number.parseInt(STAGE_ERASE_INK.slice(1), 16);
 	const { invalidate } = useThrelte();
 
@@ -79,7 +79,8 @@
 	type Inked = { readonly object: Object3D; readonly dispose: () => void };
 	let inked: Inked[] = [];
 	/** Each drawn material at its own opacity, so a flip can fade it without a rebuild. */
-	const fades: { readonly material: { opacity: number }; readonly opacity: number }[] = [];
+	const fades: { readonly material: { opacity: number }; readonly opacity: number;
+	}[] = [];
 
 	function releaseAll(): void {
 		for (const entry of inked) {
@@ -196,9 +197,9 @@
 					// Paper's two-tone contour: the forest halo swallows gold on the pale
 					// ground, while this edge holds there and on the forest mat.
 					color: tone === 'selection' ? SELECTION_EDGE : 0x152c26,
-					linewidth: tone === 'selection' ? 5 : tone === 'erase' ? 4 : 3.5,
+					linewidth: tone === 'selection' ? 3 : tone === 'erase' ? 4 : 3.5,
 					transparent: true,
-					opacity: 0.9,
+					opacity: tone === 'selection' ? 0 : 0.9,
 					depthTest: true,
 					depthWrite: false,
 					...OUTLINE_DEPTH_BIAS,
@@ -206,7 +207,7 @@
 				});
 				const lineMaterial = new LineMaterial({
 					color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL,
-					linewidth: tone === 'selection' ? 2.5 : tone === 'erase' ? 2.2 : 1.8,
+					linewidth: tone === 'selection' ? 3 : tone === 'erase' ? 2.2 : 1.8,
 					transparent: true,
 					opacity: tone === 'hover' ? 0.6 : 1,
 					depthTest: true,

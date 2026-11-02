@@ -1,6 +1,6 @@
-# World shell recovery — owner proposal
+# World shell recovery
 
-**Status: analysis and proposed implementation only. Owner approval is required before production edits.**
+**Status: implementation authorized by the owner and delivered for inspection; visual/UX acceptance remains pending and belongs exclusively to the owner.**
 
 Base: `08602245` (merged `main`, after S24), branch `codex/r217-visual-correction`.
 This is a dedicated World presentation recovery, not S25 or a new geometry slice.
@@ -8,8 +8,9 @@ This is a dedicated World presentation recovery, not S25 or a new geometry slice
 The owner's current instruction makes the actual Round 2 wireframe and Atlas the
 visual baseline, with the explicitly preserved later decisions. Existing PLATE,
 plans and sign-offs supply constraints and conflicts; they do not lower that
-baseline. No production source, historical record or governing reference has
-been changed by this proposal.
+baseline. The approved planning documents below retain their proposal wording as
+the planning record; the owner’s implementation instruction supplies approval.
+Historical records and governing visual references remain unchanged.
 
 - [Measured design specification](./design-specification.md): source tokens,
   dimensions, composition, responsive rules and interaction states.
@@ -39,8 +40,8 @@ scripted visual acceptance journey is part of this effort.
 
 ## Approval boundary
 
-Approval of this proposal would authorize the listed implementation and selected
-departures. It would **not** accept its visual result. The owner alone accepts
+The owner authorized the complete implementation and recommended E1–E21
+dispositions in the implementation instruction. This does **not** accept its visual result. The owner alone accepts
 visual/UX parity by inspecting the working editor and directing corrections.
 
 The main proposed choices are the source Dock order with disabled unsupported
@@ -54,3 +55,25 @@ basic browser smoke checks. After implementation, delivery is the working editor
 a brief change summary and known issues/departures. Governing references change
 only after the owner's explicit visual approval. Historical records stay intact;
 there is no additional visual review round, visual score or ceremonial closeout.
+
+## Implementation handoff
+
+The shared Head, scoped Index, compact one-writer Card, Sheet, Dock/Ink palette,
+Objects Library and spatial marks now use the approved recovery presentation.
+Existing Wall height/thickness and Opening height planners have gesture bindings;
+no coupled Opening or unsupported object/support planner was added (E9).
+S25 visible shared-home adoption remains held for owner acceptance.
+
+Functional verification: `npm run check`, `npm run build` and `npm test` (all
+editor lanes). Basic smoke uses admitted joined Walls, shared Room membership,
+Openings and Scene content at the four requested sizes, including precision,
+cancellation, Undo, view-only source isolation and unavailable reasons. This is
+functional evidence only; it does not establish visual parity.
+
+Small Card labels use the existing secondary ink instead of the source’s muted
+ink after the browser contrast check failed. This accessibility-preserving token
+choice is explicitly offered for owner visual inspection. The existing exact
+length ray remains distinct from the endpoint Junction operation; exact length,
+angle, transforms and technical relations remain available through invoked
+precision. Unsupported tools retain truthful disabled reasons. Guest Save needs
+a connected cloud client, and Preview needs an authored Experience.

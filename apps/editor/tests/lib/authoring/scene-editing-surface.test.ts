@@ -1264,8 +1264,8 @@ describe('Scene adapter registration', () => {
 		expect(Math.max(width, height)).toBeLessThan(48);
 
 		const move = markOf(facade, 'scene-object-move');
-		expect(move.tip).not.toBeNull();
-		expect(Math.hypot(move.tip![0] - move.anchor[0], move.tip![1] - move.anchor[1])).toBeCloseTo(30, 3);
+		expect(move.cross).toBe(true);
+		expect(move.kind).toBe('point');
 		facade.setDrafting({ snap: false });
 		// The Move track runs through the body center; this point stays inside the
 		// small silhouette while sitting beyond its 11 px fine hit radius.

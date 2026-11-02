@@ -1,8 +1,16 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+	import { compactMeasure } from '$lib/authoring/stage/shell/compact-measure';
 	import { onDestroy } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { formCardController } from './form-card';
-	let { services }: { services: StageAdapterServices } = $props();
+	let { services,
+		detailOpen = false,
+		footer
+	}: { services: StageAdapterServices;
+		detailOpen?: boolean;
+		footer?: Snippet;
+	} = $props();
 	let version = $state(0);
 	let message = $state('');
 	let busy = $state(false);
@@ -42,8 +50,9 @@
 	async function run(kind: 'move' | 'turn' | 'place' | 'size' | 'duplicate') {
 		const current = controller;
 		if (current === null || busy) return;
-		if ((kind === 'move' || kind === 'place') && (!finite(x) || !finite(z)) ||
-			kind === 'turn' && !finite(yaw) || kind === 'size' && size.some((value) => !finite(value) || Number(value) <= 0)) {
+		if (((kind === 'move' || kind === 'place') && (!finite(x) || !finite(z))) ||
+			(kind === 'turn' && !finite(yaw)) ||
+			(kind === 'size' && size.some((value) => !finite(value) || Number(value) <= 0))) {
 			message = 'Enter finite values; dimensions must be positive.';
 			return;
 		}
@@ -89,12 +98,43 @@
 			if (alive) saveBusy = false;
 		}
 	}
+	let focusedAxis = $state<number | null>(null);
 </script>
 
 {#if controller !== null}
 	<div class="form-fields" aria-label="Form fields">
 		<fieldset disabled={busy}>
-			<legend>Move and Place</legend>
+			{#each ['Width', 'Height', 'Depth'] as label, axis}
+				<label
+					>{label} (m)<input
+						aria-label={`Form ${label.toLowerCase()} (m)`}
+						type="text"
+						inputmode="decimal"
+						value={focusedAxis === axis ? size[axis]! : compactMeasure(size[axis]!)}
+					onfocus={event=>{focusedAxis=axis;event.currentTarget.value=size[axis]!;}}
+					oninput={event=>size[axis]=event.currentTarget.value}
+					onblur={event=>{focusedAxis=null;size=controller!.dimensions.map(String);event.currentTarget.value=compactMeasure(size[axis]!);}}
+						onkeydown={(event) => {
+							if (event.key === 'Enter') {
+								event.preventDefault();
+								void run('size');
+							} else if (event.key === 'Escape') {
+								event.preventDefault();
+								event.stopPropagation();
+								size = controller!.dimensions.map(String);
+							}
+						}}
+					/></label
+				>
+			{/each}
+			{#if detailOpen}<button type="button" onclick={() => run('size')}
+					>Apply size</button
+				>{/if}
+		</fieldset>
+		{#if footer}{@render footer()}{/if}
+		{#if detailOpen}
+			<fieldset disabled={busy}>
+				<legend>Move and Place</legend>
 			<label>X (m)<input aria-label="Form X (m)" type="text" inputmode="decimal" bind:value={x} /></label>
 			<label>Z (m)<input aria-label="Form Z (m)" type="text" inputmode="decimal" bind:value={z} /></label>
 			<button type="button" onclick={() => run('move')}>Move</button>
@@ -105,17 +145,11 @@
 			<label>Yaw (rad)<input aria-label="Form yaw (rad)" type="text" inputmode="decimal" bind:value={yaw} /></label>
 			<button type="button" onclick={() => run('turn')}>Turn</button>
 		</fieldset>
-		<fieldset disabled={busy}>
-			<legend>Size</legend>
-			{#each ['Width', 'Height', 'Depth'] as label, axis}
-				<label>{label} (m)<input aria-label={`Form ${label.toLowerCase()} (m)`} type="text" inputmode="decimal" bind:value={size[axis]} /></label>
-			{/each}
-			<button type="button" onclick={() => run('size')}>Size</button>
-		</fieldset>
 		<button type="button" disabled={busy} onclick={() => run('duplicate')}>Duplicate</button>
 		<button type="button" data-save-to-my-objects disabled={busy || saveBusy} onclick={() => void save()}>
 			{saveBusy ? 'Saving…' : 'Save to My Objects'}
 		</button>
+		{/if}
 		{#if message}<p role="status">{message}</p>{/if}
 		{#if saveMessage}
 			<p role={saveRefused ? 'alert' : 'status'} class:refused={saveRefused}>{saveMessage}</p>
@@ -124,12 +158,18 @@
 {/if}
 
 <style>
-	.form-fields { display: grid; gap: 0.5rem; }
-	fieldset { display: flex; flex-wrap: wrap; gap: 0.4rem; border: 0; padding: 0; margin: 0; }
-	label { display: grid; gap: 0.2rem; }
-	input { width: 6rem; min-height: 2rem; box-sizing: border-box; padding: 0.2rem 0.35rem;
+	.form-fields { display: grid; gap: 0; }
+	fieldset {
+		padding: 0 12px 8px !important;
+		display: flex; flex-wrap: wrap; gap: 0.4rem; border: 0; padding: 0; margin: 0; }
+	label { display: grid; gap: 2px;
+		font-size: 10.5px;
+		color: var(--shell-ink-3, #79817b); }
+	input { width: 78px;
+		min-height: 26px;
+		height: 26px; box-sizing: border-box; padding: 0.2rem 0.35rem;
 		border: 1px solid var(--plate-control-edge, #cfd5cb); border-radius: 0.35rem;
-		background: var(--plate-control-surface, #f5f6f4); color: inherit; font: inherit; }
+		background: var(--plate-control-surface, #f5f6f4); color: inherit; font: 12px var(--shell-mono, monospace); }
 	button { min-height: 2rem; padding: 0.25rem 0.6rem; border: 1px solid var(--plate-control-edge, #cfd5cb);
 		border-radius: 0.4rem; background: var(--plate-control-surface, #f5f6f4); color: inherit; font: inherit; cursor: pointer; align-self: end; }
 	button:disabled { opacity: 0.5; cursor: default; }

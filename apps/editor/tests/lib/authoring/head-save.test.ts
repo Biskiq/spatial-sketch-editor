@@ -212,7 +212,7 @@ describe('R217.S20 — the mounted Head announces a refusal and describes its Sa
 		expect(announcement.getAttribute('aria-live')).toBe('polite');
 		expect(announcement.textContent).toBe('The server refused this Save.');
 		const save = host.querySelector<HTMLButtonElement>('[data-head-save-button]')!;
-		expect(save.textContent?.trim()).toBe('Retry save');
+		expect(save.getAttribute('aria-label')).toBe('Retry save');
 		const describedBy = save.getAttribute('aria-describedby');
 		expect(describedBy).toBeTruthy();
 		expect(document.getElementById(describedBy!)?.textContent).toContain('The server refused this Save.');

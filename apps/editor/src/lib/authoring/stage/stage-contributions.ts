@@ -62,6 +62,8 @@ export type StageDockKey = {
 	readonly palette: boolean;
 	/** Draw the separator before this key (Library sits beside the tools). */
 	readonly separated: boolean;
+	readonly unavailableReason?: string;
+	readonly icon?: string;
 };
 
 const HOST_DOCK_KEYS: Readonly<Record<'select' | 'measure' | 'erase', { id: string; label: string; taskKind: string | null }>> = {
@@ -99,8 +101,32 @@ export function stageDockKeys(tools: readonly StageDockTool[]): readonly StageDo
 	return [
 		host('select'),
 		...(ink === undefined ? [] : [contributed(ink)]),
-		host('measure'),
+		{
+			id: 'unavailable-slice',
+			slot: null,
+			label: 'Slice',
+			shortcut: null,
+			adapterId: 'host',
+			taskKind: null,
+			palette: false,
+			separated: false,
+			icon: 'slice',
+			unavailableReason: 'Slice is not available yet.'
+		},
 		host('erase'),
+		{
+			id: 'unavailable-brush',
+			slot: null,
+			label: 'Brush',
+			shortcut: null,
+			adapterId: 'host',
+			taskKind: null,
+			palette: false,
+			separated: false,
+			icon: 'paint',
+			unavailableReason: 'Brush is not available yet.'
+		},
+		host('measure'),
 		...others.map((tool) => contributed(tool)),
 		...(library === undefined ? [] : [contributed(library, true)])
 	];

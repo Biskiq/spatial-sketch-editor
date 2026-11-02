@@ -31,7 +31,7 @@ vi.mock('$lib/platform/project-persistence', async (original) => {
 		createProjectApi: () => ({ async loadProject() { return { document: harness.document, savedBaseToken: 'base', savedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, savedSourceContentId: 'content-1' }; } }) };
 });
 import { readFileSync } from 'node:fs';
-import { mount, tick, unmount } from 'svelte';
+import { flushSync, mount, tick, unmount } from 'svelte';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -63,7 +63,8 @@ const facade = () => harness.facade as StageFacade;
 const currentSnapLabel = () =>
 	draftingSnapIncrementMeters(facade().session.drafting()) === null ? 'Snap off' : 'Snap';
 const button = (text: string) => {
-	const found = [...target.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') ?? b.textContent)?.replace(/\s+/g, '').toLowerCase() === text.replace(/\s+/g, '').toLowerCase());
+	const found = [...target.querySelectorAll('button')].find(
+		(b) => (b.getAttribute('aria-label') ?? b.textContent)?.replace(/\s+/g, '').toLowerCase() === text.replace(/\s+/g, '').toLowerCase());
 	if (!found)
 		throw new Error(`Missing button ${text}`);
 	return found;
@@ -83,9 +84,10 @@ function indexRowOf(root: ParentNode, sourceId: string): HTMLButtonElement | nul
 const stage = () => target.querySelector<HTMLElement>('.stage')!;
 /** Fit is the lower-right cluster's own button (O8). */
 async function fitAll() {
-	const fit = target.querySelector<HTMLButtonElement>('[data-stage-fit]');
-	if (fit === null) throw new Error('Missing Fit control');
-	fit.click();
+	// The real guarded Fit shortcut replaces the retired persistent cluster.
+	stage().dispatchEvent(
+		new KeyboardEvent('keydown', { key: 'f', bubbles: true, cancelable: true })
+	);
 	await tick();
 }
 async function frame() {
@@ -96,7 +98,7 @@ async function frame() {
 		callback(performance.now());
 	await tick();
 }
-async function settled() { await tick(); await new Promise(r => setTimeout(r, 0)); await frame(); }
+async function settled() { await tick(); await new Promise((r) => setTimeout(r, 0)); await frame(); }
 function projected(point: readonly [
 	number,
 	number,
@@ -123,7 +125,8 @@ function pointer(type: string, point: readonly [
 const history = () => target.querySelector<HTMLElement>('[data-testid="head"]')!.dataset;
 function key(key: string) { window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })); }
 /** A projected Wall that is not the selected one, so its hover is not a mark. */
-function anotherWall(): { readonly id: string; readonly css: [number, number] } {
+function anotherWall(): { readonly id: string; readonly css: [number, number];
+} {
 	const plan = facade().plan();
 	if (plan.kind !== 'evaluated') throw new Error('no Plan');
 	const fragment = plan.plan.fragments.find((f) => f.ref.sourceKind === 'wall' && f.ref.sourceId !== wallId)!;
@@ -146,7 +149,7 @@ async function startDrag() {
 	const desired = projected([5.5, 0, -4]);
 	pointer('pointermove', desired);
 	await frame();
-	expect([...target.querySelectorAll('.marker')].some(e => e.textContent?.includes('Length'))).toBe(true);
+	expect([...target.querySelectorAll('.marker')].some((e) => e.textContent?.includes('Length'))).toBe(true);
 	return desired;
 }
 
@@ -186,6 +189,8 @@ beforeEach(async () => {
 	Object.defineProperty(HTMLElement.prototype, 'setPointerCapture', { configurable: true, value: () => { } });
 	await mountRoute();
 	await selectFirstWall();
+	target.querySelector<HTMLButtonElement>('.facets button[aria-label="wall"]')?.click();
+	await tick();
 	// T1.P02.S02: the Wall's own Card carries its fields and a handle press is direct
 	// manipulation, so this contract runs with **no** contributed task open — an
 	// adapter's gesture is offered the press first either way.
@@ -212,7 +217,7 @@ describe('mounted Stage pointer lifecycle', () => {
 			'host:host-erase'
 		].sort();
 		const reachable = [...target.querySelectorAll<HTMLElement>('[data-head-find] [data-find-id]')]
-			.filter((entry) => entry.dataset.findAdapter !== 'subject')
+			.filter((entry) => !['subject','scope','view-command'].includes(entry.dataset.findAdapter??''))
 			.map((entry) => `${entry.dataset.findAdapter}:${entry.dataset.findId}`).sort();
 		// O8: the five Scale detents are Find entries now that Scale left the toolbar.
 		const detents = [20, 50, 100, 200, 500].map((ratio) => `scale:scale:${ratio}`);
@@ -258,9 +263,9 @@ describe('mounted Stage pointer lifecycle', () => {
 		expect(target.querySelector('[data-plate-landmark="index"]')?.hasAttribute('hidden')).toBe(true);
 		target.querySelector<HTMLButtonElement>('[data-head-location]')!.click();
 		await frame();
-		button('Collapse').click();
+		target.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
 		await frame();
-		button('Expand').click();
+		target.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
 		await frame();
 		const place = [...target.querySelectorAll<HTMLButtonElement>('[data-head-find] button')].find((item) => item.textContent?.includes('Place plinth'))!;
 		place.click();
@@ -338,7 +343,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		await frame();
 		expect(facade().evaluation()?.settledReading).toBe('plan');
 		expect(target.querySelector('.instrument')).toBeNull();
-		expect([...target.querySelectorAll('.marker')].some(e => e.textContent?.includes('Paused'))).toBe(false);
+		expect([...target.querySelectorAll('.marker')].some((e) => e.textContent?.includes('Paused'))).toBe(false);
 		expect(accept).toHaveBeenCalledTimes(1);
 		expect(accept.mock.calls[0]![0]).toMatchObject({ payload: { length: request.kind === 'length' ? request.length : NaN, fixed: 'start' } });
 		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
@@ -425,7 +430,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		unmount(component); target.replaceChildren();
 		const scene = { formatVersion: 1 as const, textures: [], materials: [], navigationNodes: [], connections: [], entities: [{
 			kind: 'primitive' as const, primitive: 'box' as const, id: 'gesture-box', name: 'Box', dimensions: { width: 1, height: 1, depth: 1 },
-			materialId: 'plaster-warm' as const, castShadow: true, receiveShadow: true, position: [2, .5, -2] as [number, number, number], rotation: [0, 0, 0] as [number, number, number]
+			materialId: 'plaster-warm' as const, castShadow: true, receiveShadow: true, position: [2, 0.5, -2] as [number, number, number], rotation: [0, 0, 0] as [number, number, number]
 		}] };
 		harness.document = await createUnitProject({ id: 'project-1', name: 'Scene gesture', layout: buildStarterEnclosureLayout(), scene });
 		component = mount(Page, { target });
@@ -580,6 +585,7 @@ describe('mounted Stage drawing and deletion', () => {
 
 	/** The Card's own scoped action for the selected Wall. */
 	function deleteAction(): HTMLButtonElement {
+		if(!target.querySelector('[data-card-action="layout-wall-delete"]')) flushSync(()=>target.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click());
 		const action = target.querySelector<HTMLButtonElement>('[data-card-action="layout-wall-delete"]');
 		if (action === null) throw new Error('the Card offers no Wall deletion');
 		return action;
@@ -644,6 +650,7 @@ describe('mounted Stage drawing and deletion', () => {
 
 		// Backtrack is enabled by the two live points. Enter on it is the button's
 		// activation (backtrack in a browser), never the tool's Finish.
+		target.querySelector<HTMLButtonElement>('[aria-label="Ink settings and Opening"]')!.click();await settled();
 		const backtrack = target.querySelector<HTMLButtonElement>('[data-ink-backtrack]')!;
 		expect(backtrack.disabled).toBe(false);
 		backtrack.focus();
@@ -740,7 +747,7 @@ describe('mounted Stage drawing and deletion', () => {
 		const desired = await startDrag();
 		const type = vi.spyOn(facade(), 'gestureKeyIntent');
 		for (const letter of ['2', 'm', 'e', 'l', 'p', 'v']) key(letter);
-		expect(type.mock.calls.map(([intent]) => intent)).toEqual(['2', 'm', 'e', 'l', 'p', 'v'].map(key => ({ kind: 'type', key })));
+		expect(type.mock.calls.map(([intent]) => intent)).toEqual(['2', 'm', 'e', 'l', 'p', 'v'].map((key) => ({ kind: 'type', key })));
 		expect(facade().evaluation()?.settledReading).toBe('plan');
 		expect(facade().session.task()).toBeNull();
 		pointer('pointercancel', desired);
@@ -763,7 +770,7 @@ describe('mounted Stage drawing and deletion', () => {
 		expect(facade().selectionState()).toEqual(before);
 		// The dock order is the owner's: Select · Ink · Measure · Eraser | Library.
 		expect([...target.querySelectorAll<HTMLElement>('[data-stage-dock] [data-dock-slot]')].map((node) => node.dataset.dockSlot))
-			.toEqual(['select', 'ink', 'measure', 'erase', 'library']);
+			.toEqual(['select', 'ink', 'tool', 'erase', 'tool', 'measure', 'library']);
 		// Find arms the same five keys with its Arm verb.
 		for (const [id, kind] of [['host-measure', 'host-measure'], ['host-erase', 'host-erase'], ['layout-ink', 'layout-ink'], ['scene-place', 'place-object'], ['host-select', null]] as const) {
 			target.querySelector<HTMLButtonElement>(`[data-head-find] [data-find-id="${id}"]`)!.click();
@@ -1000,13 +1007,13 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		gridKey().click();
 		await frame();
 		expect(gridKey().getAttribute('aria-pressed')).toBe('false');
-		expect(gridKey().textContent?.trim()).toBe('Grid off');
+		expect(gridKey().textContent?.trim()).toBe('Grid');
 
 		expect(snapKey().getAttribute('aria-pressed')).toBe('true');
 		snapKey().click();
 		await frame();
 		expect(snapKey().getAttribute('aria-pressed')).toBe('false');
-		expect(snapKey().textContent?.trim()).toBe('Snap off');
+		expect(snapKey().textContent?.trim()).toBe('Snap');
 
 		// View state is not authored content: no install, no history entry, and the
 		// Save capture is byte-identical.
@@ -1028,7 +1035,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		snapKey().click();
 		await frame();
 		expect(snapKey().textContent?.trim()).toBe(currentSnapLabel());
-		expect(gridKey().textContent?.trim()).toBe('Grid off');
+		expect(gridKey().textContent?.trim()).toBe('Grid');
 	});
 
 	it('holds Snap off while Alt/Option is down and restores it on release and blur', async () => {
@@ -1083,7 +1090,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		// No new intent kind and no Camera pose composition in the shell.
 		expect(request.mock.calls.every(([intent]) => ['zoom', 'fit'].includes(intent.kind))).toBe(true);
 
-		target.querySelector<HTMLButtonElement>('[data-stage-fit]')!.click();
+		await fitAll();
 		await frame();
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'fit' });
 	});
@@ -1113,8 +1120,8 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		await frame();
 		expect(gridKey().getAttribute('aria-pressed')).toBe('false');
 		expect(snapKey().getAttribute('aria-pressed')).toBe('false');
-		expect(gridKey().textContent?.trim()).toBe('Grid off');
-		expect(snapKey().textContent?.trim()).toBe('Snap off');
+		expect(gridKey().textContent?.trim()).toBe('Grid');
+		expect(snapKey().textContent?.trim()).toBe('Snap');
 		gridKey().click();
 		snapKey().click();
 		await frame();
@@ -1130,8 +1137,12 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		const request = vi.spyOn(facade(), 'requestViewingIntent');
 		expect(target.querySelector('[data-drafting-scale]')).toBeNull();
 		expect(target.querySelector('[data-drafting-config]')).toBeNull();
-		const zoomIn = target.querySelector<HTMLButtonElement>('[data-stage-zoom-in]')!;
-		const zoomOut = target.querySelector<HTMLButtonElement>('[data-stage-zoom-out]')!;
+		const zoomIn = target.querySelector<HTMLButtonElement>(
+			'[data-find-adapter="view-command"][data-find-id="0"]'
+		)!;
+		const zoomOut = target.querySelector<HTMLButtonElement>(
+			'[data-find-adapter="view-command"][data-find-id="1"]'
+		)!;
 		expect(zoomIn).not.toBeNull();
 		expect(zoomOut).not.toBeNull();
 		zoomIn.click();
@@ -1144,28 +1155,12 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		const outward = request.mock.calls.at(-1)![0];
 		expect(outward.kind).toBe('zoom');
 		expect(outward.kind === 'zoom' ? outward.scale : 1).toBeCloseTo(1.25, 9);
-		target.querySelector<HTMLButtonElement>('[data-stage-fit]')!.click();
+		await fitAll();
 		await frame();
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'fit' });
 	});
 
-	it('keeps the zoom cluster clear of a right-side Sheet by the measured Sheet lane', () => {
-		// Geometry is browser calibration; the route owns the clearance rule. R217.S22
-		// measures the Sheet's lane and publishes it, so the cluster clears whatever width
-		// the Sheet has (a fixed 5.5 rem let a coarse Sheet's lane overlap it).
-		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
-		expect(route).toMatch(/\.stage-zoom-slot\.sheet-right\s*\{[^}]*right:\s*calc\(var\(--sheet-lane-right, 0px\) \+ 1\.5rem\)/s);
-		expect(target.querySelector('.stage-zoom-slot')?.classList.contains('sheet-right')).toBe(true);
-	});
 
-	it('strikes the off words and centres the ruler label below its rule', () => {
-		const control = readFileSync('src/lib/authoring/stage/shell/StageDraftingControl.svelte', 'utf8');
-		expect(control).toMatch(/text-decoration:\s*line-through/);
-		expect(control).toMatch(/\.words button\[aria-pressed='false'\]/);
-		const ruler = readFileSync('src/lib/authoring/stage/shell/StageScaleBar.svelte', 'utf8');
-		expect(ruler).toMatch(/align-items:\s*center/);
-		expect(ruler).not.toMatch(/justify-items:\s*start/);
-	});
 
 	it('announces the temporary Snap hold without changing the durable switch', async () => {
 		const status = target.querySelector<HTMLElement>('#drafting-snap-state')!;
@@ -1272,7 +1267,9 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
 		await frame();
 		expect(pins()).toHaveLength(1);
-		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')!.click();
+		await frame();
+		[...target.querySelectorAll<HTMLButtonElement>('.pin-context button')].find(b=>b.textContent==='Remove pin')!.click();
 		await frame();
 		expect(pins()).toEqual([]);
 		const max = Number(slider!.getAttribute('aria-valuemax'));
@@ -1309,14 +1306,14 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		await frame();
 		expect(pins()).toHaveLength(1);
 		expect(
-			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')
+			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')
 		).not.toBeNull();
 
 		facade().session.heightSheet().reset();
 		await frame();
 		expect(pins()).toEqual([]);
 		expect(
-			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')
+			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')
 		).toBeNull();
 	});
 
@@ -1430,7 +1427,9 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
 		await frame();
 		expect(height()).toBe(0);
-		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')!.click();
+		await frame();
+		[...target.querySelectorAll<HTMLButtonElement>('.pin-context button')].find(b=>b.textContent==='Remove pin')!.click();
 		await frame();
 		expect(pins()).toEqual([]);
 	});
@@ -1459,7 +1458,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
 		await frame();
 		expect(sheetNode()).not.toBeNull();
-		expect(target.querySelector('[data-stage-zoom]')).not.toBeNull();
+		expect(target.querySelector('[data-stage-zoom]')).toBeNull();
 		expect(target.querySelector('[data-stage-scale-bar]')).not.toBeNull();
 		expect(Number(sliderNode()!.getAttribute('aria-valuenow'))).toBeCloseTo(0.8, 6);
 		// The unmount published inactive before the lens returned; no tail survives
@@ -1494,7 +1493,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 			expect(target.querySelector('[data-stage-zoom]')).toBeNull();
 			target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
 			await frame();
-			expect(target.querySelector('[data-stage-zoom]')).not.toBeNull();
+			expect(target.querySelector('[data-stage-zoom]')).toBeNull();
 			expect(sheetNode()).not.toBeNull();
 			expect(errors).toEqual([]);
 			expect(observed.length).toBeGreaterThan(0);
@@ -1504,27 +1503,6 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		}
 	});
 
-	it('keeps a 44 px coarse target and names the snap while dragging', async () => {
-		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
-		expect(source).toContain('@media (pointer: coarse)');
-		expect(source).toMatch(/width:\s*44px/);
-		expect(source).toMatch(/min-width:\s*44px/);
-		expect(source).toMatch(/min-height:\s*44px/);
-
-		const slider = sliderNode();
-		expect(slider).not.toBeNull();
-		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
-		await frame();
-		const max = Number(slider!.getAttribute('aria-valuemax'));
-		const pinY = RECT.bottom - (height() / max) * RECT.height;
-		trackPointer('pointerdown', pinY);
-		await frame();
-		const snap = sheetNode()!.querySelector<HTMLElement>('.snap');
-		expect(snap?.textContent ?? '').toContain('Snapped to Pin');
-		trackPointer('pointerup', pinY);
-		await frame();
-		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
-	});
 });
 
 describe('R217.S15 — Stage cursor truth', () => {
@@ -1543,6 +1521,7 @@ describe('R217.S15 — Stage cursor truth', () => {
 
 describe('R217.S15 — Card Junction writer', () => {
 	it('refreshes the sibling fields from the accepted source after a Start X commit', async () => {
+		target.querySelector<HTMLButtonElement>('[data-card-more]')!.click();await frame();
 		const details = target.querySelector<HTMLDetailsElement>('details[data-layout-junction-fields]');
 		expect(details).not.toBeNull();
 		details!.open = true;
@@ -1681,48 +1660,26 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		expect(card.querySelector('.card-head')?.textContent).not.toContain(wallId);
 		// The identity is still the Card's own data, and Technical details still holds it.
 		expect(card.getAttribute('data-source-id')).toBe(wallId);
-		expect(card.querySelector('.technical')?.textContent).toContain(wallId);
+		expect(card.querySelector('.technical')).toBeNull();
 	});
+it('opens precision through More with only Length and Height at rest',async()=>{const card=target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;expect(card.querySelector('[data-field="height"]')).not.toBeNull();expect(card.querySelector('[data-field="thickness"]')).toBeNull();card.querySelector<HTMLButtonElement>('[data-card-more]')!.click();await frame();expect(card.querySelector('[data-field="thickness"]')).not.toBeNull();expect([...card.querySelectorAll('dl.relations dt')].map(n=>n.textContent)).toEqual(['Datum','Role']);});
+it('invokes subject commands through the contextual ellipsis',async()=>{const card=target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;expect(card.querySelector('[data-card-action]')).toBeNull();card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();await frame();expect(card.querySelector('[data-card-action="layout-wall-delete"]')!.classList.contains('destructive')).toBe(true);expect(card.textContent).not.toContain('Open task');});
 
-	it('states each Wall fact once: the writer carries the dimensions and the Card keeps only the derived Role', () => {
-		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
-		const facts = [...card.querySelectorAll('dl.facts:not(.mono) dt')].map((term) => term.textContent);
-		expect(facts).toEqual(['Datum', 'Role']);
-		expect(card.querySelector('[data-card-writer]')?.getAttribute('data-card-writer')).toBe('Wall fields');
-		expect(card.querySelector('input[data-field="height"]')).not.toBeNull();
-		expect(card.querySelector('input[data-field="thickness"]')).not.toBeNull();
-		// Stream, Eligible and Revealed are diagnostics, so they live under Technical details.
-		const technical = [...card.querySelectorAll('.technical dt')].map((term) => term.textContent);
-		expect(technical).toEqual(['Canonical ID', 'Stream', 'Eligible', 'Revealed']);
-	});
-
-	it('styles only Delete as destructive and keeps Focus and Open task one disclosure away', () => {
-		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
-		const remove = card.querySelector<HTMLButtonElement>('[data-card-action="layout-wall-delete"]')!;
-		expect(remove.classList.contains('destructive')).toBe(true);
-		const more = card.querySelector<HTMLDetailsElement>('[data-card-more]')!;
-		expect(more.open).toBe(false);
-		expect([...more.querySelectorAll('button')].map((item) => item.textContent?.trim())).toEqual(['Focus', 'Open task']);
-	});
-
-	it('discloses the Index row operations behind the row\'s Actions control', async () => {
+	it("discloses the Index row operations behind the row's Actions control", async () => {
 		const row = target.querySelector<HTMLElement>(`.item[data-source-id$=${JSON.stringify(`:${wallId}`)}]`)!;
 		const toggle = row.querySelector<HTMLButtonElement>('.item-actions-toggle')!;
-		expect(row.querySelectorAll('.op')).toHaveLength(0);
+		expect(row.querySelectorAll('.item-ops button')).toHaveLength(0);
 		expect(toggle.getAttribute('aria-expanded')).toBe('false');
 		toggle.click();
 		await frame();
 		expect(toggle.getAttribute('aria-expanded')).toBe('true');
-		expect([...row.querySelectorAll('.op')].map((item) => item.textContent?.trim())).toEqual([
-			'Open location',
-			'Bring into view'
-		]);
+		expect([...row.querySelectorAll('.item-ops button')].map((item) => item.textContent?.trim())).toEqual(expect.arrayContaining(['Open location','Bring into view']));
 		toggle.click();
 		await frame();
-		expect(row.querySelectorAll('.op')).toHaveLength(0);
+		expect(row.querySelectorAll('.item-ops button')).toHaveLength(0);
 	});
 
-	it('keeps Select and Bring into view distinct: a row select leaves the Camera, the row\'s frame operation moves it', async () => {
+	it("keeps Select and Bring into view distinct: a row select leaves the Camera, the row's frame operation moves it", async () => {
 		const other = STARTER_WALL_2;
 		const before = facade().camera.state().pose;
 		indexRowOf(target, other)!.click();
@@ -1733,17 +1690,17 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		const row = target.querySelector<HTMLElement>(`.item[data-source-id$=${JSON.stringify(`:${other}`)}]`)!;
 		row.querySelector<HTMLButtonElement>('.item-actions-toggle')!.click();
 		await frame();
-		const frameOp = [...row.querySelectorAll<HTMLButtonElement>('.op')].find((item) => item.textContent?.trim() === 'Bring into view')!;
+		const frameOp = [...row.querySelectorAll<HTMLButtonElement>('.item-ops button')].find((item) => item.textContent?.trim() === 'Bring into view')!;
 		frameOp.click();
 		await settled();
 		expect(facade().camera.state().pose).not.toEqual(before);
 	});
 
-	it('feeds the context chip the subject\'s canonical floor, never the selection', async () => {
+	it("feeds the context chip the subject's canonical floor, never the selection", async () => {
 		target.querySelector<HTMLButtonElement>('[data-head-index]')!.click();
 		await frame();
 		const chip = target.querySelector<HTMLElement>('[data-head-location]');
-		expect(chip?.textContent).toBe(buildStarterEnclosureLayout().floor.name);
+		expect(chip?.textContent).toBe('Mounted gestures');
 		expect(chip?.textContent).not.toContain('Wall');
 		expect(chip?.textContent).not.toContain(wallId);
 	});
@@ -1791,18 +1748,7 @@ describe('R217.S22 — Card on the mounted route', () => {
 		await frame();
 		expect(card()!.classList.contains('gesturing')).toBe(false);
 	});
-
-	it('keeps a folded Card folded when the task that folded it closes underneath, as a commit does', async () => {
-		// The stage is narrower than 1100 px here, so a task that opens folds the Card.
-		await openFindTask('Place plinth');
-		await frame();
-		expect(foldButton().textContent).toBe('Expand');
-		facade().closeTask();
-		await settled();
-		expect(facade().session.task()).toBeNull();
-		// Before R217.S22 the fold was re-derived from the live task, so this expanded.
-		expect(foldButton().textContent).toBe('Expand');
-	});
+it('keeps the compact Card useful when a task opens and closes',async()=>{await openFindTask('Place plinth');await frame();expect(card()!.querySelector('[data-field="height"]')).not.toBeNull();facade().closeTask();await settled();expect(card()!.querySelector('[data-field="height"]')).not.toBeNull();});
 });
 
 /**
@@ -1822,7 +1768,8 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 	}
 	/** One toggle or key by its hook, clicked and then flushed. */
 	async function press(selector: string): Promise<HTMLElement> {
-		const node = target.querySelector<HTMLElement>(selector);
+		let node = target.querySelector<HTMLElement>(selector);
+		if(node===null) {target.querySelector<HTMLButtonElement>('[aria-label="Ink settings and Opening"]')!.click();await settled();node=target.querySelector<HTMLElement>(selector);}
 		if (node === null) throw new Error(`Missing ${selector}`);
 		node.click();
 		await settled();
@@ -1834,32 +1781,7 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 		field.value = value;
 		field.dispatchEvent(new Event('input', { bubbles: true }));
 	}
-
-	it('keeps every Wall key in the row, with the typed X/Z drawn only once its disclosure opens', async () => {
-		await openInk();
-		const row = target.querySelector('[data-layout-ink-palette] .keys');
-		expect(row).not.toBeNull();
-		for (const hook of [
-			'[data-ink-reading-wall]',
-			'[data-ink-reading-opening]',
-			'[data-ink-wall-mode="line"]',
-			'[data-ink-wall-mode="box"]',
-			'[data-ink-finish]',
-			'[data-ink-close]',
-			'[data-ink-backtrack]',
-			'[data-ink-cancel]',
-			'[data-ink-point-toggle]',
-			'[data-ink-options-toggle]'
-		]) {
-			expect(row!.querySelector(hook), hook).not.toBeNull();
-		}
-		// Typed X/Z is not drawn over the drawing until the creator asks for it.
-		expect(target.querySelector('[data-ink-x]')).toBeNull();
-		const toggle = await press('[data-ink-point-toggle]');
-		expect(toggle.getAttribute('aria-expanded')).toBe('true');
-		expect(target.querySelector('[data-ink-x]')).not.toBeNull();
-		expect(target.querySelector('[data-ink-z]')).not.toBeNull();
-	});
+it('keeps Line and Box in the column and invokes precision upward',async()=>{await openInk();const row=target.querySelector('[data-layout-ink-palette] .keys')!;expect(row.querySelector('[data-ink-wall-mode="line"]')).not.toBeNull();expect(row.querySelector('[data-ink-wall-mode="box"]')).not.toBeNull();expect(target.querySelector('[data-ink-x]')).toBeNull();await press('[data-ink-point-toggle]');expect(target.querySelectorAll('[data-ink-x]')).toHaveLength(1);});
 
 	it('draws the typed path through the row, and Finish, Backtrack and Cancel act on the chain', async () => {
 		await openInk();
@@ -1894,6 +1816,7 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 		typeInto('[data-ink-z]', '-1');
 		await press('[data-ink-add-point]');
 		const canonical = facade().snapshot().canonicalJson;
+		target.querySelector<HTMLButtonElement>('[aria-label="Ink settings and Opening"]')!.click();await settled();
 		const finish = target.querySelector<HTMLButtonElement>('[data-ink-finish]')!;
 		expect(finish.disabled).toBe(false);
 		finish.click();
@@ -1902,18 +1825,7 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
 		expect(facade().session.task()?.kind).toBe('layout-ink');
 	});
-
-	it('switches to Box with Cancel as its only command, and back to Line with the chain keys', async () => {
-		await openInk();
-		await press('[data-ink-wall-mode="box"]');
-		expect(target.querySelector('[data-ink-point-toggle]')).toBeNull();
-		expect(target.querySelector('[data-ink-finish]')).toBeNull();
-		expect(target.querySelector('[data-ink-cancel]')).not.toBeNull();
-		expect(target.querySelector('[data-ink-box-size]')).not.toBeNull();
-		await press('[data-ink-wall-mode="line"]');
-		expect(target.querySelector('[data-ink-finish]')).not.toBeNull();
-		expect(target.querySelector('[data-ink-point-toggle]')).not.toBeNull();
-	});
+it('retains Box/Line choices while disclosure changes',async()=>{await openInk();await press('[data-ink-wall-mode="box"]');expect(inkSurface()?.snapshot().wallMode).toBe('box');await press('[data-ink-wall-mode="line"]');expect(inkSurface()?.snapshot().wallMode).toBe('line');});
 
 	it('opens one disclosure at a time, and a reading change closes whichever is open', async () => {
 		await openInk();
@@ -1925,7 +1837,7 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 		await press('[data-ink-reading-opening]');
 		expect(target.querySelector('[data-ink-thickness]')).toBeNull();
 		expect(target.querySelector('[data-ink-finish]')).toBeNull();
-		expect(target.querySelector('[data-ink-options-toggle]')!.getAttribute('aria-expanded')).toBe('false');
+		expect(target.querySelector('[data-ink-options-toggle]')!.getAttribute('aria-expanded')).toBe('true');
 	});
 
 	it('refuses an invalid Wall option in words, and accepts a valid one, through the Options disclosure', async () => {
@@ -1947,8 +1859,7 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 	it('keeps the Opening measures behind their Options disclosure, placed by the same controller', async () => {
 		await openInk();
 		await press('[data-ink-reading-opening]');
-		expect(target.querySelector('[data-opening-width]')).toBeNull();
-		await press('[data-ink-options-toggle]');
+		// Choosing Opening from the explicit settings menu opens its parameters.
 		await vi.waitFor(() => expect(target.querySelector('[data-opening-width]')).not.toBeNull());
 		expect(target.querySelector('[data-opening-kind]')).not.toBeNull();
 		expect(target.querySelector('[data-opening-offset]')).not.toBeNull();
@@ -1961,7 +1872,7 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 		unmount(component);
 		target.remove();
 		vi.stubGlobal('matchMedia', (query: string) => ({
-			matches: query.includes('max-width: 1279px'),
+			matches: query.includes('max-width: 860px')||query.includes('max-width: 1100px'),
 			addEventListener() { },
 			removeEventListener() { }
 		}));

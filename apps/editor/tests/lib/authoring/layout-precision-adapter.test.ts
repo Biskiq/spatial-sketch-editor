@@ -614,3 +614,43 @@ function selectWall(facade: StageFacade, sourceId: string): void {
 		primary: reference
 	});
 }
+
+describe('Layout scalar Stage grips',()=>{
+ it.each(['height','thickness'] as const)('types a Wall %s through one lease, one F4 install and Undo',async(field)=>{
+  const {facade,host,wallId}=await mount();selectWall(facade,wallId);
+  const before=facade.snapshot().canonicalJson;
+  const mark=facade.marks().find(m=>m.id===`layout-wall-${field}`)!;expect(mark?.tip).toBeDefined();
+  const evaluationId=facade.evaluationId()!;
+  expect(facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId}).claimed).toBe(true);
+  expect(host.history().undoUnavailableReason).toContain('proposal is live');
+  for(const key of field==='height'?'4.25':'0.31')expect(facade.gestureKeyIntent({kind:'type',key}).claimed).toBe(true);
+  facade.pointerIntent({phase:'up',css:mark.tip!,evaluationId});expect(facade.snapshot().canonicalJson).toBe(before);
+  facade.gestureKeyIntent({kind:'finish'});
+  await expect.poll(()=>host.history().position).toBe(1);
+  expect(stageEnvelope(facade.snapshot()).units.layout.data.walls.find(w=>w.id===wallId)?.[field]).toBe(field==='height'?4.25:.31);
+  expect(host.history()).toMatchObject({depth:2,position:1});expect(facade.session.gesture()).toBeNull();
+  expect((await host.undo()).kind).toBe('installed');expect(facade.snapshot().canonicalJson).toBe(before);
+  facade.dispose();
+ });
+ it.each(['cancel','refused','reading'] as const)('leaves source and history unchanged after %s',async(end)=>{
+  const {facade,host,wallId}=await mount();selectWall(facade,wallId);const before=facade.snapshot().canonicalJson;
+  const mark=facade.marks().find(m=>m.id==='layout-wall-height')!;const evaluationId=facade.evaluationId()!;
+  facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId});
+  if(end==='cancel')facade.pointerIntent({phase:'cancel',css:mark.tip!,evaluationId});
+  else if(end==='reading')facade.pointerIntent({phase:'move',css:mark.tip!,evaluationId:'stale-evaluation'});
+  else {for(const key of '0')facade.gestureKeyIntent({kind:'type',key});facade.gestureKeyIntent({kind:'finish'});facade.pointerIntent({phase:'cancel',css:mark.tip!,evaluationId});}
+  expect(facade.snapshot().canonicalJson).toBe(before);expect(host.history()).toMatchObject({depth:1,position:0});expect(facade.session.gesture()).toBeNull();facade.dispose();
+ });
+ it('edits Opening height with its sill and canonical host unchanged',async()=>{
+  const {facade,host,openingId}=await mount();const snapshot=facade.snapshot();
+  const reference={version:1 as const,domain:'layout' as const,subject:{kind:'opening' as const,id:openingId},revision:{kind:'exact' as const,contentRevision:snapshot.domain.unitRevisions.layout},instancePath:[],location:{kind:'layout-location' as const,levelId:snapshot.domain.layoutLevelId,structureInstancePath:[]},componentId:null,capabilityId:null};
+  facade.setSelection({ordered:[{reference}],primary:reference});
+  const original=stageEnvelope(snapshot).units.layout.data.openings.find(o=>o.id===openingId)!;
+  const mark=facade.marks().find(m=>m.id==='layout-opening-height')!;expect(mark).toBeDefined();const evaluationId=facade.evaluationId()!;
+  expect(facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId}).claimed).toBe(true);
+  for(const key of '1.4')facade.gestureKeyIntent({kind:'type',key});facade.gestureKeyIntent({kind:'finish'});
+  await expect.poll(()=>host.history().position).toBe(1);
+  const accepted=stageEnvelope(facade.snapshot()).units.layout.data.openings.find(o=>o.id===openingId)!;
+  expect(accepted).toMatchObject({...original,height:1.4});facade.dispose();
+ });
+});

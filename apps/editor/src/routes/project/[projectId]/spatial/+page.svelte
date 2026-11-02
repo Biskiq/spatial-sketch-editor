@@ -1,4 +1,9 @@
 <script lang="ts">
+	import {
+		createWorldIndexModel,
+		resolveWorldScope,
+		type WorldScope
+	} from '$lib/authoring/stage/shell/world-index-model';
 	import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
 	import {
 		indexLabels,
@@ -148,7 +153,6 @@ import {
 import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
 import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
-import StageZoomControls from '$lib/authoring/stage/shell/StageZoomControls.svelte';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
@@ -232,7 +236,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 */
 	let pendingSavedBase = $state.raw<{
 		readonly token: string | null;
-		readonly revision: { readonly projectId: string; readonly revisionId: string } | null;
+		readonly revision: { readonly projectId: string; readonly revisionId: string;
+		} | null;
 		readonly contentId: string | null;
 	} | null>(null);
 	/**
@@ -277,7 +282,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/** Instrument content contributed by the adapter whose task is open, if any. */
 	const contributedInstrument = $derived.by((): StageInstrumentContent | null => {
 		void contributionsVersion;
-		return contributedTaskId === null ? null : facade?.instrumentForTask(contributedTaskId.id, contributedTaskId.adapterId) ?? null;
+		return contributedTaskId === null ? null : (facade?.instrumentForTask(contributedTaskId.id, contributedTaskId.adapterId) ?? null);
 	});
 	const inactiveTask = $derived.by(() => {
 		void contributionsVersion;
@@ -312,7 +317,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * R217.S20 — the viewing preferences the Head's Find reaches. The Stage's ⚙ holds
 	 * the same values; Find is the second door, and both write the one preference.
 	 */
-	const HEAD_PREFERENCE_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string }[] = [
+	const HEAD_PREFERENCE_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string;
+	}[] = [
 		{ id: 'appearance:paper', adapterId: 'preference', label: '2D appearance: Paper', verb: 'Set' },
 		{ id: 'appearance:shaded', adapterId: 'preference', label: '2D appearance: Shaded', verb: 'Set' },
 		{ id: 'height-sheet:right', adapterId: 'preference', label: 'Height Sheet: Right', verb: 'Set' },
@@ -327,7 +333,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * in the Head's own lifecycle dialog; download and source replacement run the
 	 * same route functions the project menu runs.
 	 */
-	const HEAD_PROJECT_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string }[] = [
+	const HEAD_PROJECT_ENTRIES: readonly { id: string; adapterId: string; label: string; verb: string;
+	}[] = [
 		{ id: 'rename', adapterId: 'project-menu', label: 'Rename project', verb: 'Run' },
 		{ id: 'delete', adapterId: 'project-menu', label: 'Delete project', verb: 'Run' },
 		{ id: 'download', adapterId: 'project-menu', label: 'Download source JSON', verb: 'Run' },
@@ -349,7 +356,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const constrainedAtStart =
 		typeof window !== 'undefined' &&
 		typeof window.matchMedia === 'function' &&
-		window.matchMedia('(max-width: 1279px)').matches;
+		window.matchMedia('(max-width: 860px)').matches;
 	let indexOpen = $state(!constrainedAtStart);
 	let query = $state('');
 	let reducedMotion = $state(false);
@@ -370,7 +377,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * identity at once, so an older Preview completion can neither drive the
 	 * restored inspection output nor be accepted by a newer run.
 	 */
-	let preview = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(null);
+	let preview = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number;
+	} | null>(null);
 	/**
 	 * The last entry a mounted visitor surface carries.
 	 *
@@ -379,7 +387,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * repeat entry costs a fresh run rather than a rebuild. A new entry replaces
 	 * these props and its epoch creates the next run.
 	 */
-	let previewView = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(null);
+	let previewView = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number;
+	} | null>(null);
 	/**
 	 * The read the mounted surface was built from, frozen at its entry.
 	 *
@@ -759,8 +768,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 */
 	let sheetLaneEl = $state<HTMLElement | null>(null);
 	let sheetLaneWidth = $state(0);
-	let zoomSlotEl = $state<HTMLDivElement | null | undefined>(undefined);
-	let zoomLaneHeight = $state(0);
 	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades (D36). */
 	let cardGesturing = $state(false);
 	/**
@@ -789,7 +796,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * once the chain has settled) disarms, so this never resurrects a tool the
 	 * creator put down.
 	 */
-	let armedTool = $state<{ readonly id: string; readonly adapterId: string } | null>(null);
+	let armedTool = $state<{ readonly id: string; readonly adapterId: string;
+	} | null>(null);
 	/**
 	 * R217.S10 — the host's own tools. Each is bound to the live facade and keeps
 	 * only session view state (a measurement, an erase candidate or its words).
@@ -798,8 +806,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let eraserTool: StageEraserController | null = null;
 	/** What the host tools draw this frame, in Stage-local CSS. */
 	let hostToolOverlay = $state<{
-		readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean } | null;
-		readonly notice: { readonly css: readonly [number, number]; readonly message: string; readonly kind: string } | null;
+		readonly measure: { readonly from: readonly [number, number]; readonly to: readonly [number, number]; readonly label: string; readonly live: boolean;
+		} | null;
+		readonly notice: { readonly css: readonly [number, number]; readonly message: string; readonly kind: string;
+		} | null;
 	} | null>(null);
 	/** The Eraser's winner, drawn with the erase treatment in place of hover. */
 	let eraseHover = $state<StageSelectionEntry | null>(null);
@@ -845,7 +855,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * over the width rule until the task closes.
 	 */
 	let narrowShell = $state(constrainedAtStart);
-	let cardExpanded = $state<boolean | null>(null);
 
 	$effect(() => {
 		const element = lowerColumnEl;
@@ -873,22 +882,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const observer = new ResizeObserver((entries) => {
 			const entry = entries[0];
 			sheetLaneWidth = entry?.borderBoxSize?.[0]?.inlineSize ?? entry?.contentRect.width ?? 0;
-		});
-		observer.observe(element);
-		return () => observer.disconnect();
-	});
-	$effect(() => {
-		// The zoom cluster's height, so the Card clears it from above.
-		const element = zoomSlotEl;
-		// The slot is bound inside the World-only branch: leaving World sets it to null.
-		if (element === null || element === undefined) {
-			zoomLaneHeight = 0;
-			return;
-		}
-		if (typeof ResizeObserver === 'undefined') return;
-		const observer = new ResizeObserver((entries) => {
-			const entry = entries[0];
-			zoomLaneHeight = entry?.borderBoxSize?.[0]?.blockSize ?? entry?.contentRect.height ?? 0;
 		});
 		observer.observe(element);
 		return () => observer.disconnect();
@@ -1464,21 +1457,26 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		} catch {
 			return false;
 		}
-		return serializeProjectEnvelope({
+		return (
+			serializeProjectEnvelope({
 			...next,
 			name: previous.name,
 			acceptedRevision: previous.acceptedRevision
-		}) === remoteSavedCanonicalJson;
+		}) === remoteSavedCanonicalJson
+		);
 	}
 
 	function sameLifecycleEpoch(token: ReplacementEpochToken): boolean {
-		return session.isCurrent(token) && !tornDown && activeProject() && acceptance !== null;
+		return (
+			session.isCurrent(token) && !tornDown && activeProject() && acceptance !== null
+		);
 	}
 
 	async function readLifecycleProject(
 		includePublication: boolean,
 		token: ReplacementEpochToken
-	): Promise<{ kind: 'ready'; value: LifecycleRead } | { kind: 'stale' } | { kind: 'error'; message: string }> {
+	): Promise<
+		| { kind: 'ready'; value: LifecycleRead } | { kind: 'stale' } | { kind: 'error'; message: string }> {
 		if (api === null) return { kind: 'error', message: 'Cloud project actions are unavailable.' };
 		try {
 			const value = await runBoundLoad(session, async (signal) => {
@@ -1595,7 +1593,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function retryableLifecycleError(error: unknown): boolean {
-		return error instanceof ProjectPersistenceError && ['network', 'server', 'project-busy'].includes(error.code);
+		return (
+			error instanceof ProjectPersistenceError && ['network', 'server', 'project-busy'].includes(error.code)
+		);
 	}
 
 	async function runBoundProjectAction<T>(
@@ -1648,7 +1648,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		prepared: PreparedProjectLifecycle,
 		token: ReplacementEpochToken,
 		lock: { release(): void }
-	): Promise<{ kind: 'ready'; prepared: PreparedProjectLifecycle } | ProjectLifecycleActionResult> {
+	): Promise<
+		| { kind: 'ready'; prepared: PreparedProjectLifecycle } | ProjectLifecycleActionResult> {
 		if (!prepared.requiresExplicitRefresh) return { kind: 'ready', prepared };
 		const read = await readLifecycleProject(false, token);
 		if (read.kind === 'stale' || !sameLifecycleEpoch(token)) return { kind: 'stale' };
@@ -2037,15 +2038,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return [projected.css[0] - current.left, projected.css[1] - current.top];
 		};
 		let measured: NonNullable<typeof hostToolOverlay>['measure'] = null;
-		const view = armedHostTool === 'measure' ? measureTool?.view() ?? null : null;
+		const view = armedHostTool === 'measure' ? (measureTool?.view() ?? null) : null;
 		if (view !== null) {
 			const from = local(view.from.point);
 			const to = local(view.to.point);
 			if (from !== null && to !== null) measured = { from, to, label: view.label, live: view.live };
 		}
-		const eraseNotice = armedHostTool === 'erase' ? eraserTool?.notice() ?? null : null;
+		const eraseNotice = armedHostTool === 'erase' ? (eraserTool?.notice() ?? null) : null;
 		hostToolOverlay = { measure: measured, notice: eraseNotice };
-		const candidate = armedHostTool === 'erase' ? eraserTool?.candidate() ?? null : null;
+		const candidate = armedHostTool === 'erase' ? (eraserTool?.candidate() ?? null) : null;
 		if (candidate === null || candidate.refusal !== null) {
 			if (eraseHover !== null) eraseHover = null;
 			return;
@@ -2105,14 +2106,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 		// The shell's width rule: at a constrained width the Card folds to identity
 		// rather than covering the dock/palette's one lower column.
-		const narrow = window.matchMedia('(max-width: 1279px)');
+		const narrow = window.matchMedia('(max-width: 1100px)');
 		narrowShell = narrow.matches;
-		if (narrow.matches) indexOpen = false;
+		const portrait = window.matchMedia('(max-width: 860px)');
+		if (portrait.matches) indexOpen = false;
 		const onNarrow = (event: MediaQueryListEvent) => {
 			narrowShell = event.matches;
-			if (event.matches) indexOpen = false;
 		};
 		narrow.addEventListener('change', onNarrow);
+		const onPortrait = (event: MediaQueryListEvent) => {
+			if (event.matches) indexOpen = false;
+		};
+		portrait.addEventListener('change', onPortrait);
 
 		const onKey = (event: KeyboardEvent) => {
 			if (event.defaultPrevented) return;
@@ -2145,6 +2150,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			clearHover();
 			media.removeEventListener('change', onMedia);
 			narrow.removeEventListener('change', onNarrow);
+			portrait.removeEventListener('change', onPortrait);
 			window.removeEventListener('keydown', onKey);
 			window.removeEventListener('keyup', onReleaseSnap);
 			window.removeEventListener('blur', onWindowBlur);
@@ -2536,30 +2542,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		selection = primaryEntry(stage.selectionState());
 	}
 
-	function openTask(): void {
-		const stage = facade;
-		const selected = selection;
-		if (stage === null || selected === null) return;
-		notice = '';
-		if (selected.reference.domain !== 'layout') {
-			// The host's own task is Plan membership, a Layout projection. A Scene or
-			// other-domain subject is worked through its adapter's contributed task.
-			notice = 'This subject has no Plan membership task. Invoke a contributed operation from Find.';
-			return;
-		}
-		const next: StageTask = {
-			kind: 'subject-membership',
-			label: 'Plan membership',
-			targetRef: selected.representation ?? null, target: selected.reference
-		};
-		if (stage.openTask(next)) {
-			task = next;
-			paletteOpen = true;
-			// The host's own task: no adapter contributed this instrument.
-			contributedTaskId = null;
-		}
-	}
-
 	/**
 	 * Keep the instrument home's mirror of the facade's contributed task in step.
 	 *
@@ -2629,7 +2611,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		contributedTaskId = null;
 		// The Card's fold is reconsidered for the next task: a hand expansion belongs
 		// to the work it was made for, not to the shell forever.
-		cardExpanded = null;
 	}
 
 	function toggleReveal(sourceId: string): void {
@@ -2640,7 +2621,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/* --- pointer and keyboard ---------------------------------------------- */
 
-	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' } | null = null;
+	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host';
+	} | null = null;
 	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
 	let adapterMarkPress = false;
 	/**
@@ -2658,7 +2640,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let adapterEvaluationId: string | null = null;
 	let pinch: Map<number, [number, number]> | null = null;
 	let hoverFrame: number | null = null;
-	let hoverSample: { css: [number, number]; shift: boolean; coarse: boolean } | null = null;
+	let hoverSample: { css: [number, number]; shift: boolean; coarse: boolean;
+	} | null = null;
 	/**
 	 * The drag-versus-click decision. It is **not** the gesture: pointer up ends the
 	 * gesture, but the click that follows still has to know how far the pointer
@@ -3185,6 +3168,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			case 'reading':
 				setReading(action.reading);
 				break;
+			case 'zoom':
+				if (!event.metaKey && !event.ctrlKey && !event.altKey) {
+					event.preventDefault();
+					zoom(action.scale);
+				}
+				break;
 			case 'fit':
 				fit();
 				break;
@@ -3304,7 +3293,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const document = layoutPayload;
 		if (document === null) return null;
 		if (sourceKind === 'wall') return document.walls.find((wall) => wall.id === sourceId)?.name ?? null;
-		if (sourceKind === 'opening') return document.openings.find((opening) => opening.id === sourceId)?.name ?? null;
+		if (sourceKind === 'opening') return (
+				document.openings.find((opening) => opening.id === sourceId)?.name ?? null
+			);
 		if (sourceKind === 'room-floor' || sourceKind === 'room') {
 			return document.rooms.find((room) => room.id === sourceId)?.name ?? null;
 		}
@@ -3320,7 +3311,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** One Scene entity's authored name and kind word, from the admitted Scene. */
 	function sceneEntityOf(entityId: string) {
-		return scenePayload?.entities.find((entity) => entity.id === entityId) ?? null;
+		return (
+			scenePayload?.entities.find((entity) => entity.id === entityId) ?? null
+		);
 	}
 
 	/**
@@ -3378,53 +3371,32 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	);
 	const indexEntryMap = $derived(new Map(indexEntries.map((entry) => [entry.sourceId, entry])));
 
-	const indexGroups = $derived.by(() => {
-		if (planView === null) return [];
-		const byGroup = new Map<string, { sourceId: string; label: string; authored: boolean; kind: string; eligible: boolean; revealed: boolean; membership: string }[]>();
-		for (const entry of indexEntries) {
-			const label = indexLabelMap.get(entry.sourceId) ?? { label: entry.kindWord, authored: false };
-			const items = byGroup.get(entry.group) ?? [];
-			items.push({
-				sourceId: entry.sourceId,
-				label: label.label,
-				authored: label.authored,
-				kind: entry.kindWord,
-				eligible: entry.eligible,
-				revealed: entry.revealed,
-				membership: entry.membership
-			});
-			byGroup.set(entry.group, items);
-		}
-		const filtered = [...byGroup.entries()]
-			.filter(([, items]) => items.length > 0)
-			.map(([group, items]) => ({ id: group, label: group.replace('-', ' '), items }));
-		if (query.trim() === '') return filtered;
-		const needle = query.trim().toLowerCase();
-		return filtered
-			.map((group) => ({
-				...group,
-				items: group.items.filter((item) =>
-					item.label.toLowerCase().includes(needle) ||
-					item.kind.toLowerCase().includes(needle) ||
-					item.sourceId.toLowerCase().includes(needle)
-				)
-			}))
-			.filter((group) => group.items.length > 0);
-	});
-
-	/**
-	 * The Head's context chip: the selected subject's canonical location, read from its
-	 * reference. A Layout reference names its authored level (`layout-location`), so the
-	 * chip shows that floor's authored name. A Scene reference is `project-root` and names
-	 * no location, so no chip appears. The chip never repeats the selection.
-	 */
-	const locationLabel = $derived.by((): string | null => {
-		const selected = selection;
-		if (selected === null || selected.reference.domain !== 'layout') return null;
-		if (selected.reference.location.kind !== 'layout-location') return null;
-		const name = layoutPayload?.floor.name.trim() ?? '';
-		return name === '' ? null : name;
-	});
+	const worldIndexModel = createWorldIndexModel();
+	let worldScope = $state<WorldScope>('project');
+	const worldIndex = $derived(
+		worldIndexModel(
+			layoutPayload,
+			indexEntries.map((entry) => ({
+				...entry,
+				label: indexLabelMap.get(entry.sourceId) ?.label ?? entry.kindWord, authored: indexLabelMap.get(entry.sourceId)?.authored ?? false,
+				kind: entry.kindWord
+			})),
+			boot.status === 'ready' || boot.status === 'empty'
+				? boot.snapshot.domain.name
+				: 'Project'
+		)
+	);
+	const resolvedScope = $derived(resolveWorldScope(worldIndex, worldScope));
+	const locationLabel = $derived(
+		worldIndex.contexts
+			.filter((c) =>
+					c.id === 'project' ||
+					(resolvedScope !== 'project' && c.id === 'floor') ||
+					c.id === resolvedScope
+			)
+			.map((c) => c.label)
+			.join(' › ')
+	);
 
 	/** Plan membership is a Layout fact; another domain's subject has none to report. */
 	const selectedMembership = $derived.by((): PlanMembershipReason | null => {
@@ -3433,7 +3405,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (plan === null || selected === null || selected.reference.domain !== 'layout') return null;
 		// Indexed against the membership array: this is read on every presented frame
 		// while something is selected, so it must not scan the project.
-		return planMembershipOf(plan, selected.reference.subject.id)?.reason ?? null;
+		return (
+			planMembershipOf(plan, selected.reference.subject.id)?.reason ?? null
+		);
 	});
 
 	/**
@@ -3467,7 +3441,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * this subject, without this route knowing which domain contributed them. A fact whose
 	 * field the header or the writer shows is dropped by the Card, so each value appears once.
 	 */
-	const cardFacts = $derived.by((): readonly { readonly label: string; readonly value: string; readonly fieldId?: string }[] => {
+	const cardFacts = $derived.by((): readonly { readonly label: string; readonly value: string; readonly fieldId?: string;
+		}[] => {
 		// Reading the version makes an adapter registration or disposal re-derive.
 		void contributionsVersion;
 		const selected = selection;
@@ -3565,15 +3540,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * that closes the task therefore cannot expand a folded Card (R217.S22, D36). Closing
 	 * a task by hand reconsiders the fold (`closeTask` clears the explicit choice).
 	 */
-	const cardCollapsed = $derived(cardExpanded === null ? narrowShell : !cardExpanded);
-	let taskWasOpen = false;
-	$effect(() => {
-		const open = task !== null;
-		untrack(() => {
-			if (open && !taskWasOpen && (narrowShell || (rect?.width ?? 0) < 1100)) cardExpanded = false;
-			taskWasOpen = open;
-		});
-	});
 
 	/** Every contributed Find/rail entry from the adapters currently mounted. */
 	const findContributions = $derived.by(() => {
@@ -3605,7 +3571,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (armedHostTool !== null) return task.kind;
 		const armed = armedTool;
 		if (armed !== null && dockKeys.some((key) => key.id === armed.id && key.adapterId === armed.adapterId)) return armed.id;
-		return dockKeys.find((key) => key.taskKind === task?.kind && key.adapterId !== STAGE_HOST_ADAPTER_ID)?.id ?? '';
+		return (
+			dockKeys.find((key) => key.taskKind === task?.kind && key.adapterId !== STAGE_HOST_ADAPTER_ID)?.id ?? ''
+		);
 	});
 
 	/**
@@ -3619,8 +3587,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const needle = findQuery.trim().toLowerCase();
 		const entries = [
 			{ id: 'starter', adapterId: 'project-replacement', label: 'Use enclosed room starter', verb: 'Replace' },
-			...locatedSubjects.map((subject) => ({ id: subject.id, adapterId: 'subject', label: subject.label, verb: 'Select' })),
-			...dockKeys.map((key) => ({
+			...worldIndex.rows.map((row) => ({ id: row.sourceId, adapterId: 'subject', label: row.label, verb: 'Select' })),
+			...worldIndex.contexts.map((context) => ({
+				id: context.id,
+				adapterId: 'scope',
+				label: context.label,
+				verb: 'Go to'
+			})),
+			...['Zoom in', 'Zoom out', 'Fit'].map((label, index) => ({
+				id: String(index),
+				adapterId: 'view-command',
+				label,
+				verb: 'Run'
+			})),
+			...dockKeys
+				.filter((key) => !key.unavailableReason)
+				.map((key) => ({
 				id: key.id,
 				adapterId: key.adapterId,
 				label: key.label,
@@ -3651,7 +3633,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * Arm a dock tool: the very same contributed task the Index invokes, so a tool
 	 * has one operation behind it, never a second dock-only path into the domain.
 	 */
-	function armDockTool(tool: { readonly id: string; readonly adapterId: string }): void {
+	function armDockTool(tool: { readonly id: string; readonly adapterId: string;
+	}): void {
 		invokeContribution(tool.adapterId, tool.id);
 		armedTool = { id: tool.id, adapterId: tool.adapterId };
 		paletteOpen = true;
@@ -3758,9 +3741,21 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	/** Reach a Find result: a dock tool arms, an Index entry invokes. */
-	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string }): void {
+	function runHeadFindEntry(entry: { readonly id: string; readonly adapterId: string;
+	}): void {
 		if (entry.adapterId === 'project-replacement' && entry.id === 'starter') {
 			requestReplacement('starter');
+			return;
+		}
+		if (entry.adapterId === 'scope') {
+			worldScope = entry.id as WorldScope;
+			indexOpen = true;
+			return;
+		}
+		if (entry.adapterId === 'view-command') {
+			if (entry.id === '0') zoomIn();
+			else if (entry.id === '1') zoomOut();
+			else fit();
 			return;
 		}
 		if (entry.adapterId === 'subject') { selectSource(entry.id); return; }
@@ -3828,7 +3823,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	async function runCardAction(record: StageCardActionRecord, subjectKey: string): Promise<void> {
 		const outcome = await record.run();
 		if (pendingDelete?.subjectKey === subjectKey) pendingDelete = null;
-		notice = outcome.kind === 'accepted' ? '' : outcome.message ?? `${record.label} was not applied.`;
+		notice = outcome.kind === 'accepted' ? '' : (outcome.message ?? `${record.label} was not applied.`);
 	}
 
 	/**
@@ -3907,9 +3902,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			: 'Create an Experience in the Experience lens to Preview it.'}
 		{indexOpen}
 		onToggleIndex={() => (indexOpen = !indexOpen)}
-		locationLabel={locationLabel}
+			{locationLabel}
 		onOpenIndex={() => (indexOpen = true)}
-		projectActionsUnavailableReason={projectActionsUnavailableReason}
+			{projectActionsUnavailableReason}
 		{projectActionBusy}
 		onPrepareRename={() => prepareProjectLifecycle(false)}
 		onRenameProject={renameCurrentProject}
@@ -3969,12 +3964,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	<div
 		class="editor-body"
-		style={`--lower-column-height: ${lowerColumnHeight}px; --zoom-lane-height: ${zoomLaneHeight}px; --sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
+		style={`--lower-column-height: ${lowerColumnHeight}px; --sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
 	>
 		{#if preview === null}
 		<EditorIndex
 			open={indexOpen}
-			groups={indexGroups}
+				model={worldIndex}
+				scope={resolvedScope}
+				onScope={(scope) => (worldScope = scope)}
+				onClose={() => (indexOpen = false)}
 			selectionId={selectedLocatorId}
 			{query}
 			onQuery={(next) => (query = next)}
@@ -4021,7 +4019,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 		<div class="stage-frame">
 			{#if preview === null}
-			<!--
+				<!--
 				The Stage surface is a pointer-driven viewport, not a widget: it handles
 				click (selection through eligible Plan fragments) and wheel (zoom), while
 				keyboard viewing intents are handled once by the host's own window listener
@@ -4060,7 +4058,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{drafting}
 						datumMeters={boot.snapshot.domain.datumMeters}
 						contentBounds={paperContentBounds}
-						selection={selection}
+							{selection}
 						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
 						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
 						heightMeters={lens === 'world' ? heightMeters : null}
@@ -4068,7 +4066,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					/>
 				{/if}
 				<div class="overlay-layer">
-					<StageOverlay {markers} {marks} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+					<StageOverlay
+							lightGround={paperVisible || evaluation?.renderedReading === '3d'}
+							{markers} {marks} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 				</div>
 				<!--
 					The measured ruler is a Plan-only reading of the same evaluation. It
@@ -4109,7 +4109,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onPatch={patchDrafting}
 						planAppearance={preferences.planAppearance}
 						onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
-						heightSheetSide={heightSheetSide}
+							{heightSheetSide}
 						onHeightSheetSide={(side) => (heightSheetSide = side)}
 						{reducedMotion}
 						onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
@@ -4118,19 +4118,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					/>
 				</div>
 				{#if lens === 'world'}
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div
-						class="stage-zoom-slot"
-						class:sheet-right={heightSheetSide === 'right'}
-						bind:this={zoomSlotEl}
-						onclick={(event) => event.stopPropagation()}
-						onpointerdown={(event) => event.stopPropagation()}
-					>
-						<StageZoomControls quiet={paperVisible} onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={fit} />
-					</div>
-				{/if}
-
-				{#if lens === 'world'}
 					<!--
 						PLATE's Height Sheet in S02's right-edge slot. It is world-lens chrome:
 						the control and its plane are hidden in Experience and return with the
@@ -4138,33 +4125,34 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						Sheet places its own lane and its pin hint on the Stage, so neither is
 						clipped by a box of the slot's own.
 					-->
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div
-						class="stage-height-slot"
-						onclick={(event) => event.stopPropagation()}
-						onpointerdown={(event) => event.stopPropagation()}
-					>
-						<StageHeightSheet
-							heightMeters={heightMeters}
-							ticks={heightTicks}
-							pins={heightPins}
-							snapIncrement={heightSnapIncrement}
-							{reducedMotion}
-							side={heightSheetSide}
-							pinHintSeen={pinHintSeen}
-							onPinHintSeen={() => (pinHintSeen = true)}
-							bind:laneRef={sheetLaneEl}
-							onSetHeight={setHeight}
-							onAddPin={addHeightPin}
-							onRemovePin={removeHeightPin}
-							onActiveChange={setHeightPlaneActive}
-							onResetSubscribe={(onReset) => heightSheet.subscribeReset('height-sheet-control', onReset)}
-						/>
-					</div>
-				{/if}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							class="stage-height-slot"
+							onclick={(event) => event.stopPropagation()}
+							onpointerdown={(event) => event.stopPropagation()}
+						>
+							<StageHeightSheet
+								{heightMeters}
+								ticks={heightTicks}
+								pins={heightPins}
+								snapIncrement={heightSnapIncrement}
+								{reducedMotion}
+								side={heightSheetSide}
+								{pinHintSeen}
+								onPinHintSeen={() => (pinHintSeen = true)}
+								bind:laneRef={sheetLaneEl}
+								onSetHeight={setHeight}
+								onAddPin={addHeightPin}
+								onRemovePin={removeHeightPin}
+								onActiveChange={setHeightPlaneActive}
+								onResetSubscribe={(onReset) =>
+									heightSheet.subscribeReset('height-sheet-control', onReset)}
+							/>
+						</div>
+					{/if}
 
-				{#if keysOpen}
-					<!--
+					{#if keysOpen}
+						<!--
 						R217.S20: the Keys reference, opened from Find. Its rows read the dock's
 						own shortcut map, so the list cannot drift from the keys that work.
 					-->
@@ -4253,12 +4241,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						scene={read.scene}
 						rooms={read.rooms}
 						graph={read.graph}
-						program={entry === null ? null : entry.kind === 'presentations' ? entry.program ?? null : entry.program}
-						experienceOptions={entry === null ? null : entry.kind === 'presentations' ? entry.options ?? null : entry.options}
+						program={entry === null ? null : entry.kind === 'presentations' ? (entry.program ?? null)
+								: entry.program}
+						experienceOptions={entry === null ? null : entry.kind === 'presentations' ? (entry.options ?? null)
+								: entry.options}
 						entryPresentationId={entry?.kind === 'program' ? entry.entryPresentationId : null}
 						runEpoch={previewView?.epoch ?? 0}
 						active={preview !== null}
-						resolveTexture={(uri: string) => (isAllowedShippedTextureUri(uri) ? uri : null)}
+						resolveTexture={(uri: string) =>
+							isAllowedShippedTextureUri(uri) ? uri : null}
 						{modelUrls}
 						{reducedMotion}
 						title={entry?.title ?? null}
@@ -4279,14 +4270,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				nameWriter={cardNameWriter}
 				writer={cardWriter}
 				actions={cardActions}
-				collapsed={cardCollapsed}
+                relations={(worldIndex.rows.find(row=>row.sourceId===selectedLocatorId)?.relations??[]).filter(id=>id.startsWith('room:')).map(id=>({label:worldIndex.contexts.find(context=>context.id===id)?.label??'Room',onNavigate:()=>{worldScope=id as WorldScope;indexOpen=true;}}))}
 				gesturing={cardGesturing}
-				onToggleCollapsed={() => (cardExpanded = cardCollapsed)}
 				onClose={closeCard}
-				onFocusTask={() => {
-					notice = 'Focus deepens the current task; task depth arrives with T1.P01.S04.';
-				}}
-				onOpenTask={openTask}
 				onBringIntoView={() => {
 					const target = selectedWorldPoint();
 					if (target !== null) bringIntoView(target);
@@ -4314,23 +4300,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			-->
 			<div class="lower-column" hidden={preview !== null} inert={preview !== null} data-lower-column bind:this={lowerColumnEl}>
 				{#if lens === 'world'}
-				<StageDock keys={dockKeys} armedId={armedDockId} {paletteOpen} onPress={pressDockKey} />
+				<StageDock keys={dockKeys} armedId={armedDockId} {paletteOpen} onPress={pressDockKey}
+					>
+						{#snippet palette()}<StageInstrumentHost
+								task={paletteOpen ? taskHost : null}
+								onClose={closeTask}
+								onCollapse={() => (paletteOpen = false)}
+								instrument={contributedInstrument}
+							/>
+				{/snippet}
+					</StageDock>
 				{/if}
-				<StageInstrumentHost
-					task={paletteOpen ? taskHost : null}
-					onClose={closeTask}
-					instrument={contributedInstrument}
-				>
-					{#if selection !== null}
-						{@const selectedId = selection.reference.subject.id}
-						<div class="instrument-body">
-							<p>Declared membership: <strong>{selectedMembership ?? 'unknown'}</strong></p>
-							<button type="button" onclick={() => toggleReveal(selectedId)}>
-								{revealed.includes(selectedId) ? 'Hide' : 'Reveal'}
-							</button>
-						</div>
-					{/if}
-				</StageInstrumentHost>
+				{#if contributedInstrument!==null && contributedInstrument.presentation !== 'palette'}
+                <StageInstrumentHost task={paletteOpen ? taskHost : null} onClose={closeTask} instrument={contributedInstrument} />
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -4466,9 +4449,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	*/
 	.lower-column {
 		position: absolute;
-		inset-inline-start: calc(var(--sheet-lane-left, 0px) + 1.5rem);
-		inset-inline-end: calc(var(--sheet-lane-right, 0px) + 1.5rem);
-		bottom: 0.75rem;
+		inset-inline-start: 12px;
+		inset-inline-end: 12px;
+		bottom: 10px;
 		z-index: 6;
 		display: flex;
 		flex-direction: column-reverse;
@@ -4486,7 +4469,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		so the dock stays usable behind an open Index. Its dimming is the explicit scrim below,
 		not a viewport-sized shadow.
 	*/
-	@media (max-width: 1279px) {
+	@media (max-width: 1100px) {
 		.editor-body > :global(.plate-index) {
 			position: absolute;
 			z-index: 20;
@@ -4512,7 +4495,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			margin: 0;
 			padding: 0;
 			border: 0;
-			background: color-mix(in srgb, var(--shell-forest, #11291f) 55%, transparent);
+			background: rgb(0 0 0 / 0.12);
 			cursor: pointer;
 		}
 		.index-scrim:focus-visible {
@@ -4520,31 +4503,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 	}
 	@media (pointer: coarse) {
-		.editor-host { --shell-touch-target: 44px; }
-		.editor-host :global(button), .editor-host :global(summary), .editor-host :global(select), .editor-host :global(input) { min-width: var(--shell-touch-target); min-height: var(--shell-touch-target); }
+		.editor-host { --shell-touch-target:44px; --shell-head-height:52px; }
 	}
 	.stage-actions {
 		position: absolute;
-		top: 0.75rem;
-		left: 0.75rem;
+		top: 10px;
+		left: 10px;
 		display: flex;
 		gap: 0.4rem;
-	}
-	.stage-zoom-slot {
-		position: absolute;
-		right: 0.75rem;
-		bottom: calc(0.75rem + var(--lower-column-height, 0px));
-		z-index: 7;
-		display: flex;
-		gap: 0.4rem;
-	}
-	/*
-		The Height Sheet owns the right edge: the cluster clears the measured Sheet lane
-		(R217.S22) plus the 0.75 rem Stage inset and a 0.75 rem gap. The lane width is
-		measured, not fixed, so a coarse Sheet's wider lane still clears the cluster.
-	*/
-	.stage-zoom-slot.sheet-right {
-		right: calc(var(--sheet-lane-right, 0px) + 1.5rem);
 	}
 	/*
 		R217.S20: the Keys reference Find opens. It sits where the stage's top-right
@@ -4683,11 +4649,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		box-sizing: border-box;
 		background: #19181f;
 		border: 1px solid #635a6f;
-	}
-	.instrument-body {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
 	}
 	.resume-offer {
 		display: flex;

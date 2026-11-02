@@ -71,7 +71,7 @@ import { PAPER_LAYER } from '$lib/authoring/stage/paper-plan';
 import FormCardFields from './scene/FormCardFieldsLazy.svelte';
 import SceneObjectCardFields from './scene/SceneObjectCardFields.svelte';
 import { createObjectDrawSession, type ObjectDrawSession } from './scene/shape/draw-session';
-import { armTile, armedTile, setObjectsPanelCompact } from './scene/shape/armed-tile';
+import { armTile, armedTile, setObjectsPanelCompact, requestObjectsPrecision } from './scene/shape/armed-tile';
 import { publishObjectDraw } from './scene/shape/draw-surface';
 import type { ShapeKind } from './scene/shape/outline';
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
@@ -2101,6 +2101,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						home: 'dock',
 						slot: 'library',
 						order: 20
+					},
+					{
+						id: 'scene-exact-placement',
+						taskKind: 'place-object',
+						label: 'Objects · exact initial position',
+						railFamily: 'place',
+						capability: 'scene',
+						order: 21,
+						onInvoke: () => requestObjectsPrecision(projectIdOf())
 					},
 					{
 						id: 'scene-resize',

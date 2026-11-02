@@ -380,7 +380,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(hitStageMark(mounted.facade.marks(), { css: widthMidpoint, coarse: false })?.id).toBe(
 			SCENE_FORM_MARK.width
 		);
-		expect(hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: false })?.id).toBe(
+		expect(hitStageMark(mounted.facade.marks(), { css: move.anchor, coarse: false })?.id).toBe(
 			SCENE_FORM_MARK.move
 		);
 		mounted.facade.dispose();
@@ -398,9 +398,9 @@ describe('T5.P01.S02 — Shape reading', () => {
 
 			const evaluationId = mounted.facade.evaluationId()!;
 			const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-			const hit = hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: true });
+			const hit = hitStageMark(mounted.facade.marks(), { css: move.anchor, coarse: true });
 			expect(hit?.id).toBe(SCENE_FORM_MARK.move);
-			const start = move.tip!;
+			const start = move.anchor;
 			const before = acceptedForms(mounted.facade)[0]!;
 			const history = mounted.host.history();
 			expect(
@@ -414,8 +414,8 @@ describe('T5.P01.S02 — Shape reading', () => {
 
 			const currentEvaluation = mounted.facade.evaluationId()!;
 			const currentMove = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-			const currentHit = hitStageMark(mounted.facade.marks(), { css: currentMove.tip!, coarse: true });
-			const from = currentMove.tip!;
+			const currentHit = hitStageMark(mounted.facade.marks(), { css: currentMove.anchor, coarse: true });
+			const from = currentMove.anchor;
 			const expected: readonly [number, number, number] = [
 				before.position[0] + 0.12,
 				before.position[1],
@@ -454,8 +454,8 @@ describe('T5.P01.S02 — Shape reading', () => {
 			mounted.facade.setDrafting({ snap: state.snap, snapSuspended: state.snapSuspended });
 			const evaluationId = mounted.facade.evaluationId()!;
 			const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-			const hit = hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: true });
-			const from = move.tip!;
+			const hit = hitStageMark(mounted.facade.marks(), { css: move.anchor, coarse: true });
+			const from = move.anchor;
 			const originOnDatum: readonly [number, number, number] = [created.position[0], 0, created.position[2]];
 			const targetOnDatum: readonly [number, number, number] = [state.expected[0], 0, state.expected[2]];
 			const projectedOrigin = stageCss(mounted.facade, originOnDatum);
@@ -483,7 +483,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		mounted.facade.setDrafting({ snap: false, snapSuspended: false });
 		const evaluationId = mounted.facade.evaluationId()!;
 		const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-		const from = move.tip!;
+		const from = move.anchor;
 		const projectedOrigin = stageCss(mounted.facade, created.position);
 		const projectedOutside = stageCss(mounted.facade, [7.5, 0, created.position[2]]);
 		const to = [from[0] + projectedOutside[0] - projectedOrigin[0], from[1] + projectedOutside[1] - projectedOrigin[1]] as const;

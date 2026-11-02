@@ -284,8 +284,8 @@ describe('R217.S13 — fixed grid values and thinning', () => {
 		expect(PAPER_GRID_INK).toEqual({
 			minor: '#9FB2A2',
 			major: '#809984',
-			minorOpacity: 0.28,
-			majorOpacity: 0.45
+			minorOpacity: 0.4,
+			majorOpacity: 0.55
 		});
 		expect(MAT_GRID_INK).toEqual({
 			minor: '#2B5147',

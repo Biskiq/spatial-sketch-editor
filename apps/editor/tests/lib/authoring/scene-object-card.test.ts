@@ -154,7 +154,7 @@ async function mountCard(
 	} as unknown as StageAdapterServices;
 	const target = document.createElement('div');
 	document.body.appendChild(target);
-	const component = mount(SceneObjectCardFields, { target, props: { services } });
+	const component = mount(SceneObjectCardFields, { target, props: { services, detailOpen: true } });
 	cleanup = () => unmount(component);
 	await tick();
 	const select = (id: string): void => {

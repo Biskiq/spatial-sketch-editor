@@ -35,8 +35,8 @@ export type GridInk = {
 export const PAPER_GRID_INK: GridInk = {
 	minor: '#9FB2A2',
 	major: '#809984',
-	minorOpacity: 0.28,
-	majorOpacity: 0.45
+	minorOpacity: 0.4,
+	majorOpacity: 0.55
 };
 
 export const MAT_GRID_INK: GridInk = {

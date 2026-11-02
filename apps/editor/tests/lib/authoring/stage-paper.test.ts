@@ -304,7 +304,7 @@ describe('Paper Plan — stream treatment', () => {
 		}
 		// The cut edge is the heavier 1.5 px ink.
 		expect(drawing.lines.some((line) => line.treatment === 'cut' && line.layer === PAPER_LAYER.cut)).toBe(true);
-		expect(PAPER_LINE_STYLE.cut.widthCssPx).toBe(1.5);
+		expect(PAPER_LINE_STYLE.cut.widthCssPx).toBe(0.5);
 	});
 
 	it('draws an Opening symbol, and a lintel above the cut as projected', () => {
@@ -616,7 +616,7 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 
 	it('puts 3D on the mat and keeps Paper inks out of the renderer tone map', () => {
 		expect(PAPER_GROUND_INK).toBe('#e9ebe6');
-		expect(MAT_BACKGROUND_INK).toBe('#152c26');
+		expect(MAT_BACKGROUND_INK).toBe('#1d3a33');
 
 		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
 		// No fog: the mat is a measured ground, not an atmospheric room.

@@ -986,8 +986,8 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		const move = marks.find((mark) => mark.id === 'layout-wall-move-mark')!;
 		// The grammar's two-way base ray: one anchor, a reach on both sides.
 		expect(move.tail).not.toBeNull();
-		expect(distance(move.anchor, move.tip!)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.twoWayHalf, 6);
-		expect(distance(move.anchor, move.tail!)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.twoWayHalf, 6);
+		expect(distance(move.anchor, move.tip!)).toBeCloseTo(15, 6);
+		expect(distance(move.anchor, move.tail!)).toBeCloseTo(15, 6);
 	});
 
 	it('publishes Opening position and its truthful width ray', async () => {
@@ -996,7 +996,8 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		selectOpening(mounted.facade, mounted.openingId);
 		expect(mounted.facade.marks().map((mark) => mark.id)).toEqual([
 			'layout-opening-width-end',
-			'layout-opening-position'
+			'layout-opening-position',
+			'layout-opening-height'
 		]);
 		// The start edge is not published: the one-field width measure keeps the
 		// start fixed, so a start-edge grip would lie about which edge it moves.

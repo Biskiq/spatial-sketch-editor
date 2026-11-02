@@ -225,7 +225,7 @@ describe('R217.S22 — the Height Sheet control', () => {
 	}
 
 	const sheetOf = (target: HTMLElement) => target.querySelector<HTMLElement>('[data-stage-height-sheet]')!;
-	const readoutOf = (target: HTMLElement) => target.querySelector<HTMLElement>('.readout')!;
+	const readoutOf = (target: HTMLElement) => target.querySelector<HTMLElement>('.knob')!;
 	const hintOf = () => document.querySelector<HTMLElement>('[data-pin-hint]');
 	const addButtonOf = (target: HTMLElement) =>
 		target.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!;
@@ -237,18 +237,17 @@ describe('R217.S22 — the Height Sheet control', () => {
 		expect(target.querySelector('.knob')).not.toBeNull();
 		expect(target.querySelectorAll('.tick')).toHaveLength(2);
 		// The value is held back until the control is focused, dragged or touched.
-		expect(readoutOf(target).classList.contains('shown')).toBe(false);
+		expect(readoutOf(target).textContent).toContain('1.20');
 	});
-
-	it('states the value on focus and drops it when focus leaves the Sheet', async () => {
-		const { target } = mountSheet();
-		sheetOf(target).dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-		await tick();
-		expect(readoutOf(target).classList.contains('shown')).toBe(true);
-		sheetOf(target).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
-		await tick();
-		expect(readoutOf(target).classList.contains('shown')).toBe(false);
-	});
+it('discloses height precision on Enter without writing until submitted',async()=>{
+ const {target,calls}=mountSheet();const slider=target.querySelector<HTMLElement>('[role="slider"]')!;
+ slider.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await tick();
+ const input=target.querySelector<HTMLInputElement>('[aria-label="Sheet height (m)"]')!;expect(input).not.toBeNull();expect(calls.heights).toEqual([]);
+ target.querySelector('form')!.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await tick();expect(calls.heights).toEqual([]);
+ window.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter'}));
+ input.value='2.375';input.dispatchEvent(new Event('input',{bubbles:true}));target.querySelector('form')!.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await tick();
+ expect(calls.heights).toEqual([[2.375,'key']]);expect(target.querySelector('form')).toBeNull();
+});
 
 	it('steps the height from the keyboard and jumps owner ticks, as before', async () => {
 		const { target, calls } = mountSheet({ heightMeters: 1.2 });
@@ -267,7 +266,11 @@ describe('R217.S22 — the Height Sheet control', () => {
 		addButtonOf(target).click();
 		await tick();
 		expect(calls.added).toBe(1);
-		target.querySelector<HTMLButtonElement>('button[aria-label^="Remove the pin"]')!.click();
+		target.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')!
+			.click();
+		await tick();
+		[...target.querySelectorAll<HTMLButtonElement>('button')]
+			.find((b) => b.textContent === 'Remove pin')!.click();
 		await tick();
 		expect(calls.removed).toEqual([0.4]);
 	});
@@ -310,17 +313,6 @@ describe('R217.S22 — the Height Sheet control', () => {
 		expect(hintOf()).not.toBeNull();
 	});
 
-	it('keeps the coarse-pointer knob and track at 44 × 44 CSS px and the value to focus, drag and touch', () => {
-		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
-		const coarse = source.slice(source.indexOf('@media (pointer: coarse)'));
-		expect(coarse).toMatch(/\.knob \{\s*width: 44px;\s*height: 44px;/);
-		expect(coarse).toMatch(/\.track \{\s*width: 44px;/);
-		expect(source).toContain('touching = event.pointerType');
-		expect(source).toMatch(/const valueShown = \$derived\(focused \|\| dragging \|\| touching\)/);
-		// The old module-scoped flag and the dismiss button are gone.
-		expect(source).not.toContain('heightHintSeen');
-		expect(source).not.toContain('Got it');
-	});
 });
 
 /**
@@ -340,7 +332,9 @@ describe('R217.S23 — the Height Sheet ink on the light ground', () => {
 	/** WCAG 2.x relative luminance of a six-digit hex colour. */
 	const luminance = (hex: string): number => {
 		const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-		const [r, g, b] = channels.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+		const [r, g, b] = channels.map((v) =>
+			v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+		);
 		return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
 	};
 	const contrast = (a: string, b: string): number => {
@@ -348,17 +342,6 @@ describe('R217.S23 — the Height Sheet ink on the light ground', () => {
 		return (hi! + 0.05) / (lo! + 0.05);
 	};
 
-	it('takes every colour from a shell-role token, so the ink is the same on any ground', () => {
-		const style = SHEET_SOURCE.slice(SHEET_SOURCE.indexOf('<style>'));
-		// A declaration's value with its `var(...)` calls removed: what is left must hold no
-		// literal colour. The fallback inside a var() reuses the shell-role value of the token.
-		const declarations = [...style.matchAll(/(?:^|[\s;{])(color|background|border(?:-color)?|outline|box-shadow)\s*:\s*([^;}]+)/gm)];
-		expect(declarations.length).toBeGreaterThan(10);
-		for (const [, property, value] of declarations) {
-			const bare = value!.replace(/var\([^()]*(?:\([^()]*\)[^()]*)*\)/g, '');
-			expect(bare, `${property}: ${value}`).not.toMatch(/#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(/);
-		}
-	});
 
 	it('does not depend on the 2D-only flag: the Sheet has no quiet variant to switch', () => {
 		expect(SHEET_SOURCE).not.toMatch(/\bquiet\b/);

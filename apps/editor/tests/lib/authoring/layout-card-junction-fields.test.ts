@@ -56,6 +56,7 @@ describe('R217.S15 — Card Junction fields', () => {
 		const component = mount(LayoutCardFields, {
 			target,
 			props: {
+				detailOpen:true,
 				services: {
 					stage: { selection: () => ({ sourceKind: 'wall', sourceId: 'wall-a' }) }
 				} as unknown as StageAdapterServices

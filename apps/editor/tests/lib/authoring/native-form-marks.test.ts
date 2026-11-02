@@ -90,7 +90,7 @@ describe('R217.S09 — native form marks', () => {
 			'edit'
 		]);
 		expect(descriptors.map((descriptor) => descriptor.kind)).toEqual([
-			'track',
+			'point',
 			'point',
 			'ray',
 			'ray',
@@ -287,13 +287,13 @@ describe('R217.S09 — native form marks', () => {
 			const widthMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.width)!;
 			const depthMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.depth)!;
 			expect(widthMark.tip).not.toBeNull();
-			expect(moveMark.tip).not.toBeNull();
+			expect(moveMark.cross).toBe(true);
 			expect(depthMark.tip).not.toBeNull();
 			expect(
 				hitStageMark(marks, { css: widthMark.tip!, coarse: true })?.id
 			).toBe(SCENE_FORM_MARK.width);
 			expect(
-				hitStageMark(marks, { css: moveMark.tip!, coarse: true })?.id
+				hitStageMark(marks, { css: moveMark.anchor, coarse: true })?.id
 			).toBe(SCENE_FORM_MARK.move);
 			expect(
 				hitStageMark(marks, { css: depthMark.tip!, coarse: true })?.id

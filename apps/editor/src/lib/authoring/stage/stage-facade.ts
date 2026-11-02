@@ -1,3 +1,4 @@
+import type { Snippet } from 'svelte';
 import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { resolveStagePick } from './stage-pick';
@@ -442,6 +443,8 @@ export type StageEntryHome = 'dock' | 'find';
 
 /** One PLATE rail-family / capability-Find entry that invokes this adapter's task. */
 export type StageFindEntry = {
+	/** Optional editor-only invocation preparation, after eligibility. */
+	readonly onInvoke?: () => void;
 	readonly id: string;
 	/** The PLATE rail family this entry belongs to. */
 	readonly railFamily: string;
@@ -562,6 +565,7 @@ export type StageCardWriterRecord = StageInstrumentContent & { readonly adapterI
  * instrument to the Stage.
  */
 export type StageInstrumentContent = {
+	readonly presentation?: 'palette' | 'instrument';
 	readonly summary: string;
 	readonly facts?: readonly StageCardFact[];
 	/**
@@ -570,7 +574,7 @@ export type StageInstrumentContent = {
 	 */
 	readonly fieldIds?: readonly string[];
 	/** Editor-only UI; never serialized or imported by visitor surfaces. */
-	readonly view?: { readonly component: Component<{ services: StageAdapterServices }>; readonly services: StageAdapterServices };
+	readonly view?: { readonly component: Component<{ services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet }>; readonly services: StageAdapterServices };
 };
 
 /** The binding context: the live read access plus the adapter's own identity. */
@@ -2212,6 +2216,7 @@ export function createStageFacade(input: {
 			const entry = findEntriesOf().find((candidate) => candidate.id === id && candidate.adapterId === adapterId);
 			const tasks = tasksOf().filter((candidate) => candidate.adapterId === adapterId && candidate.taskKind === entry?.taskKind);
 			if (tasks.length !== 1) return { kind: 'refused', code: 'unknown-task', message: 'Find requires one task of the declared kind in its owning adapter' };
+			entry?.onInvoke?.();
 			return facade.openContributedTask(tasks[0]!.id, adapterId);
 		},
 		openContributedTask(id, adapterId) {
