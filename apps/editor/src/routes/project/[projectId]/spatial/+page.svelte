@@ -341,7 +341,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	let revealed = $state<string[]>([]);
 	let lens = $state<'world' | 'experience'>('world');
-	let indexOpen = $state(true);
+	/**
+	 * R217.S23 — below 1280 px the Index starts collapsed. The starting state is read once
+	 * here, as session state the creator then changes: it is not a CSS-only hide, so a
+	 * later Index toggle is never undone by a re-render at the same width.
+	 */
+	const constrainedAtStart =
+		typeof window !== 'undefined' &&
+		typeof window.matchMedia === 'function' &&
+		window.matchMedia('(max-width: 1279px)').matches;
+	let indexOpen = $state(!constrainedAtStart);
 	let query = $state('');
 	let reducedMotion = $state(false);
 	let preferences = $state<AppPreferences>({ planAppearance: 'paper', reducedMotion: null, motionSpeed: 'normal' });
@@ -835,7 +844,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * dock/palette's one lower column stays readable. The creator's own toggle wins
 	 * over the width rule until the task closes.
 	 */
-	let narrowShell = $state(false);
+	let narrowShell = $state(constrainedAtStart);
 	let cardExpanded = $state<boolean | null>(null);
 
 	$effect(() => {
@@ -3956,7 +3965,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		</div>
 	{/if}
 
-	<div class="editor-body">
+	<div
+		class="editor-body"
+		style={`--lower-column-height: ${lowerColumnHeight}px; --zoom-lane-height: ${zoomLaneHeight}px; --sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
+	>
 		{#if preview === null}
 		<EditorIndex
 			open={indexOpen}
@@ -3988,11 +4000,24 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			onReveal={(id) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); }}
 		/>
 		{/if}
+		<!--
+			R217.S23 — at a constrained width an open Index is a sheet over the Stage. Its
+			scrim is an explicit, bounded close target: it covers the Stage above the lower
+			column's measured span and sits beneath the dock, palette, drafting controls and
+			Card, so every one of them stays usable behind the sheet.
+		-->
+		{#if preview === null && narrowShell && indexOpen}
+			<button
+				type="button"
+				class="index-scrim"
+				tabindex="-1"
+				aria-label="Close the Index"
+				data-index-scrim
+				onclick={() => (indexOpen = false)}
+			></button>
+		{/if}
 
-		<div
-			class="stage-frame"
-			style={`--lower-column-height: ${lowerColumnHeight}px; --zoom-lane-height: ${zoomLaneHeight}px; --sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
-		>
+		<div class="stage-frame">
 			{#if preview === null}
 			<!--
 				The Stage surface is a pointer-driven viewport, not a widget: it handles
@@ -4446,8 +4471,44 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		pointer-events: auto;
 	}
 	.lower-column[hidden] { display: none; }
+	/*
+		R217.S23 — at a constrained width the Index is an overlay sheet. It ends above the
+		lower column's measured span (the dock, and the palette above it when one is open),
+		so the dock stays usable behind an open Index. Its dimming is the explicit scrim below,
+		not a viewport-sized shadow.
+	*/
 	@media (max-width: 1279px) {
-		.editor-body > :global(.plate-index) { position: absolute; z-index: 20; top: 0; bottom: 5rem; left: 0; width: min(var(--shell-index-width, 256px), 80%); box-shadow: 0 0 0 100vmax rgb(0 0 0 / 25%); clip-path: inset(0 -100vmax 0 0); }
+		.editor-body > :global(.plate-index) {
+			position: absolute;
+			z-index: 20;
+			top: 0;
+			bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);
+			left: 0;
+			width: min(var(--shell-index-width, 256px), 80%);
+			box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
+		}
+		/*
+			The scrim covers the Stage above the lower column and beneath it: the dock, the
+			palette, the drafting controls and the Card all stack above it (z-index 6 to 12).
+			Its tint is the forest chassis role, so the Stage reads as dimmed, not as a second
+			surface.
+		*/
+		.index-scrim {
+			position: absolute;
+			z-index: 5;
+			top: 0;
+			right: 0;
+			bottom: calc(0.75rem + var(--lower-column-height, 0px));
+			left: 0;
+			margin: 0;
+			padding: 0;
+			border: 0;
+			background: color-mix(in srgb, var(--shell-forest, #11291f) 55%, transparent);
+			cursor: pointer;
+		}
+		.index-scrim:focus-visible {
+			outline: none;
+		}
 	}
 	@media (pointer: coarse) {
 		.editor-host { --shell-touch-target: 44px; }
