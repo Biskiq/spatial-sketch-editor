@@ -15,11 +15,14 @@
 
 	let {
 		evaluation,
-		paperVisible
+		paperVisible,
+		paperInk = PAPER_GROUND_INK
 	}: {
 		evaluation: ViewportEvaluation | null;
 		/** Paper masks the world meshes without touching their `visible` flag. */
 		paperVisible: boolean;
+		/** The viewer's 2D Paper tone (a ⚙ view preference). */
+		paperInk?: string;
 	} = $props();
 
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
@@ -71,7 +74,7 @@
 		// settled Shaded Plan has no Paper build or Camera move to request the frame
 		// that would otherwise show it.
 		scene.background = null;
-		renderer.setClearColor(new Color(paperVisible ? PAPER_GROUND_INK : MAT_BACKGROUND_INK), 1);
+		renderer.setClearColor(new Color(paperVisible ? paperInk : MAT_BACKGROUND_INK), 1);
 		invalidate();
 	});
 

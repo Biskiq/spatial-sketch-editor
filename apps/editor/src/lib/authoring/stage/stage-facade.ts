@@ -576,7 +576,7 @@ export type StageInstrumentContent = {
 	 */
 	readonly fieldIds?: readonly string[];
 	/** Editor-only UI; never serialized or imported by visitor surfaces. */
-	readonly view?: { readonly component: Component<{ services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]> }>; readonly services: StageAdapterServices };
+	readonly view?: { readonly component: Component<{ services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]>; more?: Snippet<[Snippet?]> }>; readonly services: StageAdapterServices };
 };
 
 /** The binding context: the live read access plus the adapter's own identity. */

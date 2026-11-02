@@ -16,7 +16,8 @@ import {
 	evaluateLayoutPlan,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
-	type PlanEvaluation
+	type PlanEvaluation,
+	wallCenterlineSamples
 } from '@portfolio/layout-core';
 
 import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/paper-plan';
@@ -112,6 +113,63 @@ export function buildLayoutCandidatePaper(
 		subject: { polygons: polygonsFor(subjectIds), segments: segmentsFor(subjectIds) },
 		// Affected geometry is context for the edit, not another filled candidate.
 		affected: { polygons: [], segments: segmentsFor(affectedIds) }
+	};
+}
+
+/**
+ * One dashed line per changed Wall: the candidate's centerlines, nothing else.
+ *
+ * A Wall edit proposal reads as the same single line the creator drew, not as
+ * the thickness outline of the band (review pass 2 §2). Thickness, junctions
+ * and validation still come from the planner's document; only the drawing is
+ * thinned. Curved Walls are sampled through the one curve evaluator.
+ */
+export function wallCenterlinePaper(
+	document: LayoutDocumentWallFirst,
+	wallIds: ReadonlySet<string>,
+	datumMeters: number
+): CandidatePaperGeometry {
+	const junctions = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
+	const segments: [Vec3, Vec3][] = [];
+	for (const wall of document.walls) {
+		if (!wallIds.has(wall.id)) continue;
+		const start = junctions.get(wall.startJunctionId);
+		const end = junctions.get(wall.endJunctionId);
+		if (start === undefined || end === undefined) continue;
+		const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+		const points = sampled === undefined ? [start, end] : sampled.samples.map((sample) => sample.point);
+		for (let index = 1; index < points.length; index += 1) {
+			segments.push([worldPoint(points[index - 1]!, datumMeters), worldPoint(points[index]!, datumMeters)]);
+		}
+	}
+	return { polygons: [], segments };
+}
+
+/**
+ * The Wall's sheet at a candidate height: its centerline at the base, the
+ * same line lifted to the top, and the two end verticals, all dashed. Plan
+ * cannot show a height, so this is the ghost a height drag reads in 3D.
+ */
+export function wallHeightGhostPaper(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	datumMeters: number,
+	heightMeters: number
+): CandidatePaperGeometry {
+	const base = wallCenterlinePaper(document, new Set([wallId]), datumMeters).segments;
+	if (base.length === 0) return { polygons: [], segments: [] };
+	const top = datumMeters + heightMeters;
+	const lift = (point: Vec3): Vec3 => [point[0], top, point[2]];
+	const first = base[0]![0];
+	const last = base[base.length - 1]![1];
+	return {
+		polygons: [],
+		segments: [
+			...base,
+			...base.map(([start, end]) => [lift(start), lift(end)] as [Vec3, Vec3]),
+			[first, lift(first)],
+			[last, lift(last)]
+		]
 	};
 }
 

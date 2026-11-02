@@ -42,6 +42,19 @@ export const STAGE_OVERLAY_LAYER = 2;
 /** PLATE §Semantic color / §Material and working surfaces reference calibrations. */
 export const PAPER_INK = '#1b201c';
 export const PAPER_GROUND_INK = '#e9ebe6';
+
+/**
+ * Review pass 2 §7: the reference Paper tones a viewer may choose per view in
+ * the ⚙. View preferences only — never authored, never in Save. Paper stays
+ * Paper in every tone (black ink, gold selection).
+ */
+export const PAPER_TONES = {
+	current: { label: 'Current', ink: PAPER_GROUND_INK },
+	cream: { label: 'Warm cream', ink: '#f3eee2' },
+	sage: { label: 'Deeper sage', ink: '#d9dfd4' }
+} as const;
+export type PaperTone = keyof typeof PAPER_TONES;
+export const PAPER_TONE_IDS = Object.keys(PAPER_TONES) as readonly PaperTone[];
 export const MAT_BACKGROUND_INK = '#1d3a33';
 
 /**

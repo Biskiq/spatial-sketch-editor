@@ -23,8 +23,15 @@
 	let {
 		services,
 		detailOpen = false,
-		footer, secondary
-	}: { services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]> } = $props();
+		footer, secondary, more
+	}: {
+		services: StageAdapterServices;
+		/** Whether the Card's More section is expanded; closing it discards its drafts. */
+		detailOpen?: boolean;
+		footer?: Snippet;
+		secondary?: Snippet<[Snippet?]>;
+		more?: Snippet<[Snippet?]>;
+	} = $props();
 	// Check this before reading any derived state in an async continuation: a
 	// successful install can destroy the panel before acceptance resolves.
 	let alive = true;
@@ -214,12 +221,22 @@
 		{#if footer}{@render footer()}{/if}
 		{#snippet details()}
 			<div class="precision">
+				{#if instrument.subject.kind === 'wall'}
+					<!-- Base and Top are foreseen, not built: shown, disabled, never a working field. -->
+					{#each ['Base', 'Top'] as label (label)}
+						<label class="field placeholder" title="{label} is coming soon">
+							<span>{label}</span>
+							<input type="text" value="—" disabled aria-disabled="true" data-field-placeholder={label.toLowerCase()} />
+						</label>
+					{/each}
+				{/if}
 				{#each ordinaryFields.filter(field => instrument.subject.kind === 'wall' ? field.id === 'thickness' : field.id === 'offset') as field (field.id)}
-					{@render fieldRow(field)}
+					{@render fieldRow(field.id === 'thickness' ? { ...field, label: 'Thick' } : field)}
 				{/each}
 			</div>
 		{/snippet}
-		{#if secondary}{@render secondary(details)}{/if}
+		{#if more}{@render more(details)}{/if}
+		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}
 
@@ -270,9 +287,15 @@
 	}
 	.precision {
 		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 6px;
-		padding: 8px 12px;
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
+		padding: 2px 12px 6px;
+	}
+	.placeholder input {
+		border-style: dashed;
+		background: transparent;
+		color: var(--shell-ink-2, #4a524c);
+		cursor: default;
 	}
 	.error {
 		margin: 0;

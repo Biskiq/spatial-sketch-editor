@@ -15,7 +15,8 @@
 		onQuery,
 		onSelect,
 		onBringIntoView,
-		onReveal
+		onReveal,
+		onRename = () => {}
 	}: {
 		open: boolean;
 		model: WorldIndexModel;
@@ -28,6 +29,8 @@
 		onSelect: (id: string) => void;
 		onBringIntoView: (id: string) => void;
 		onReveal: (id: string) => void;
+		/** Double-click on a row renames through the selected subject's Card writer. */
+		onRename?: (id: string) => void;
 	} = $props();
 	let facet = $state('all');
 	let limit = $state(40);
@@ -183,6 +186,11 @@
 							title={item.eligible ? item.label : membershipLabel(item.membership)}
 							onclick={() => {
 								if (item.eligible) onSelect(item.sourceId);
+							}}
+							ondblclick={() => {
+								if (!item.eligible) return;
+								onSelect(item.sourceId);
+								onRename(item.sourceId);
 							}}
 						>
 							<ShellIcon

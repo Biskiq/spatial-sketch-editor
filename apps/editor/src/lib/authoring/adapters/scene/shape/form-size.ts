@@ -12,7 +12,7 @@
  * authored outline plus `form.scale`; nothing generated is stored.
  */
 import { Euler, Vector3 } from 'three';
-import { angleDeltaLabel, planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
+import { sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
 import {
 	planSetFormSize,
 	type SceneOperationResult
@@ -163,45 +163,22 @@ export function previewFormSize(input: {
 		: { refusal: result.message };
 }
 
-/** The stable ids a selected native form publishes. The host owns disclosure state. */
+/**
+ * The per-axis size rays a selected form adds to the shared Scene object marks.
+ * Move, Turn, the W·D·H chip and Lift are the object marks' own ids: a form is
+ * a Scene object whose only different capability is per-axis sizing.
+ */
 export const SCENE_FORM_MARK = {
-	move: 'scene-form-mark-move',
-	turn: 'scene-form-mark-turn',
-	scalePoint: 'scene-form-mark-scale',
 	width: 'scene-form-mark-width',
 	height: 'scene-form-mark-height',
 	depth: 'scene-form-mark-depth'
 } as const;
 
-export type SceneFormMarkId = (typeof SCENE_FORM_MARK)[keyof typeof SCENE_FORM_MARK];
+export type SceneFormRayMarkId = (typeof SCENE_FORM_MARK)[keyof typeof SCENE_FORM_MARK];
 
-/** Editing marks; the scale point is a disclosure and never claims a gesture. */
-export type SceneFormEditMarkId =
-	| typeof SCENE_FORM_MARK.move
-	| typeof SCENE_FORM_MARK.turn
-	| typeof SCENE_FORM_MARK.width
-	| typeof SCENE_FORM_MARK.height
-	| typeof SCENE_FORM_MARK.depth;
-
-export function isSceneFormEditMarkId(id: string | undefined): id is SceneFormEditMarkId {
-	return (
-		id === SCENE_FORM_MARK.move ||
-		id === SCENE_FORM_MARK.turn ||
-		id === SCENE_FORM_MARK.width ||
-		id === SCENE_FORM_MARK.height ||
-		id === SCENE_FORM_MARK.depth
-	);
+export function isSceneFormRayMarkId(id: string | undefined): id is SceneFormRayMarkId {
+	return id === SCENE_FORM_MARK.width || id === SCENE_FORM_MARK.height || id === SCENE_FORM_MARK.depth;
 }
-
-/** The live values a gesture or refusal shows on its mark. */
-export type SceneFormMarkLive = {
-	readonly markId: SceneFormMarkId;
-	readonly baseline?: SceneFormEntity;
-	readonly position: Vec3;
-	readonly yaw: number;
-	readonly scale: readonly [number, number, number];
-	readonly refusal: string | null;
-};
 
 /**
  * The Plan-only screen fallback for the edge-on Height ray.
@@ -290,123 +267,74 @@ const FORM_SIZE_RAY_ORDER: readonly {
 	{ axis: 2, id: SCENE_FORM_MARK.depth, label: 'Depth', note: '' }
 ];
 
+/** The rays the chip discloses in a reading: Plan cannot show Height. */
+export function formSizeRayIds(reading: 'plan' | '3d' | undefined): readonly SceneFormRayMarkId[] {
+	return reading === 'plan'
+		? [SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth]
+		: [SCENE_FORM_MARK.height, SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth];
+}
+
 /**
- * Publish the six descriptors for one selected native form.
+ * The per-axis size rays for one selected form, drawn on its live pose.
  *
- * A form sizes per axis, so its scale point discloses three size rays rather
- * than the object marks' one uniform size ray. Every descriptor names the fact
- * and planner the Card already writes; the host admits, draws and hit-tests
- * them, and this module never writes source.
+ * Every ray names the fact and planner the Card writes (`set-form-size`). The
+ * shared object marks publish Move, Turn, the chip that discloses these and
+ * the Lift knob; this module never writes source.
  */
-export function formMarkDescriptors(input: {
-	readonly entity: SceneFormEntity;
+export function formSizeRayDescriptors(input: {
+	/** The form at its live pose and live size. */
+	readonly pose: SceneFormEntity;
 	readonly reading?: 'plan' | '3d';
 	readonly measurement: FormSizeMeasurement;
-	readonly live?: SceneFormMarkLive | null;
+	/** The accepted measurement a delta label is read against. */
+	readonly baseline: FormSizeMeasurement;
+	readonly disclosedBy: string;
+	readonly refusal: (id: SceneFormRayMarkId) => string | null;
 	/**
 	 * The Plan legibility fallback for Height. Only the Height ray carries it;
 	 * Width and Depth keep their real world axes in every reading.
 	 */
 	readonly screenHeight?: FormMarkScreenHeight | null;
-	/**
-	 * Plan's Move grip offset. Move's contact anchor and the Width ray's centre
-	 * anchor project to the same point when Plan hides world Y, and with the
-	 * same yaw their 30 px glyphs coincide. The host takes the first descriptor
-	 * that hits, so Move (published first) would otherwise swallow every Width
-	 * press. The adapter derives a perpendicular offset from the projected Move
-	 * axis; it changes drawing and hit area only, never the driven fact.
-	 */
-	readonly screenMove?: { readonly offset: readonly [number, number] } | null;
-}): readonly StageHandleDescriptor[] {
-	const { entity, measurement } = input;
-	const live = input.live ?? null;
-	const baseline = live?.baseline ?? entity;
-	const baselineMeasurement = formSizeMeasurement(baseline);
-	if (measurement.bounds === null || measurement.handles.length !== 3) return [];
-	// The live pose lets every mark follow a Move or Turn preview without a
-	// second measurement; the accepted source remains the only authored truth.
-	const pose: SceneFormEntity =
-		live === null
-			? entity
-			: {
-					...entity,
-					position: [...live.position] as Vec3,
-					rotation: [entity.rotation[0], live.yaw, entity.rotation[2]]
-				};
-	const position = pose.position;
-	const yaw = pose.rotation[1];
-	const baseY = position[1] + measurement.contactMinY;
-	const { width, depth } = measurement.footprint;
-	const refusal = (id: SceneFormMarkId): string | null =>
-		live !== null && live.markId === id ? live.refusal : null;
-	const descriptors: StageHandleDescriptor[] = [
-		{
-			id: SCENE_FORM_MARK.move,
-			kind:'point',
-			draw:{cross:true},
-			role: 'edit',
-			anchor: [position[0], baseY, position[2]],
-			axis: [Math.cos(yaw), 0, -Math.sin(yaw)],
-			extent: Math.max(0.2, width / 2),
-			label: 'Move',
-			fact: 'position',
-			verb: 'Position',
-			planner: 'place-on-floor',
-			value: planarDeltaLabel(position[0] - baseline.position[0], position[2] - baseline.position[2]),
-
-			refusal: refusal(SCENE_FORM_MARK.move)
-		},
-		{
-			id: SCENE_FORM_MARK.scalePoint,
-			kind: 'point',
-			role: 'disclose',
-			intent: 'resize',
-			anchor: formWorldPoint(pose, measurement.bounds.max),
-			label: 'Scale',
-			reveals: input.reading === 'plan' ? [SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth] : [SCENE_FORM_MARK.height, SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth]
-		}
-	];
+}): readonly StageHandleDescriptor[] | null {
+	const { pose, measurement } = input;
+	const bounds = measurement.bounds;
+	if (bounds === null || measurement.handles.length !== 3) return null;
+	const descriptors: StageHandleDescriptor[] = [];
 	for (const ray of FORM_SIZE_RAY_ORDER) {
 		if (input.reading === 'plan' && ray.axis === 1) continue;
 		const handle = measurement.handles.find((entry) => entry.axis === ray.axis);
-		if (handle === undefined) return [];
+		if (handle === undefined) return null;
+		// Height is the stem's top knob at the chip's side (review pass 2 §6): its
+		// drag travels the same vertical axis from the form's origin, so moving
+		// the drawn anchor off the top face changes nothing it plans.
+		const top = ray.axis === 1;
 		descriptors.push({
 			id: ray.id,
-			draw:{ray:ray.axis===1?40:26},
+			draw: top ? { ray: 8, glyph: 'top-knob' } : { ray: 26 },
 			kind: 'ray',
 			role: 'edit',
-			anchor: formWorldPoint(pose, handle.local),
+			anchor: top ? formWorldPoint(pose, bounds.max) : formWorldPoint(pose, handle.local),
+			...(top
+				? {
+						stem: formWorldPoint(pose, [bounds.max[0], bounds.min[1], bounds.max[2]]),
+						screen: { offset: [26, 0] as const }
+					}
+				: {}),
 			axis: formWorldAxis(pose, ray.axis),
 			extent: Math.max(0.2, Math.abs(handle.local[ray.axis])),
 			label: ray.label,
 			fact: `scale[${ray.axis}]`,
 			verb: ray.label,
 			planner: 'set-form-size',
-			disclosedBy: SCENE_FORM_MARK.scalePoint,
-			value: sizeDeltaLabel(handle.dimension, baselineMeasurement.handles.find(entry => entry.axis === ray.axis)?.dimension ?? handle.dimension),
-			...(ray.axis === 1 && input.screenHeight != null
-				? { screen: input.screenHeight }
-				: {}),
-			refusal: refusal(ray.id)
+			disclosedBy: input.disclosedBy,
+			value: sizeDeltaLabel(
+				handle.dimension,
+				input.baseline.handles.find((entry) => entry.axis === ray.axis)?.dimension ?? handle.dimension
+			),
+			...(top && input.screenHeight != null ? { screen: input.screenHeight } : {}),
+			refusal: input.refusal(ray.id)
 		});
 	}
-	// The turn ring is drawn at the shared 30 px calibration, so the three rays
-	// would be unreachable if a ring hit won first. The ring is therefore last:
-	// its free arc stays pressable and the same-class ray order is unchanged.
-	descriptors.push({
-		id: SCENE_FORM_MARK.turn,
-		kind: 'ring',
-		role: 'edit',
-		anchor: [position[0], baseY, position[2]],
-		axis: [0, 1, 0],
-		extent: Math.max(0.2, Math.max(width, depth) / 2),
-		label: 'Turn',
-		fact: 'yaw',
-		verb: 'Yaw',
-		planner: 'set-yaw',
-		value: angleDeltaLabel(yaw, baseline.rotation[1]),
-		refusal: refusal(SCENE_FORM_MARK.turn)
-	});
 	return descriptors;
 }
 

@@ -278,6 +278,7 @@ describe('Scene object Card writer', () => {
 
 describe('the object Card declares what it writes, once', () => {
 	it('names the mark facts its writer edits, so the Card does not repeat them as rows', () => {
-		expect(sceneObjectCardFieldFacts()).toEqual(['position', 'yaw', 'scale']);
+		// Every Scene object kind is listed once; each entity declares only its own.
+		expect(sceneObjectCardFieldFacts()).toEqual(['position', 'yaw', 'scale', 'scale[0]', 'scale[1]', 'scale[2]', 'lift']);
 	});
 });

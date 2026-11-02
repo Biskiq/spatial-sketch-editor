@@ -45,6 +45,8 @@ import {
 	planPlaceOnFloor,
 	planResizeOnFloor,
 	planSetFormSize,
+	planSetLift,
+	planSetName,
 	planSetYaw,
 	finalizePlacedEntity,
 	SCENE_OPERATION_KINDS,
@@ -100,7 +102,7 @@ export type ScenePlannerOptions = {
 };
 
 /**
- * The nine Scene planners, ready to register with the accepted F.4
+ * The Scene planners, ready to register with the accepted F.4
  * coordinator. One operation kind has exactly one planner.
  */
 export function createScenePlanners(
@@ -538,6 +540,18 @@ function planOperation(
 				contactMinY: payload.contactMinY,
 				...(payload.choice === undefined ? {} : { choice: payload.choice })
 			});
+		case 'set-lift':
+			if (payload.kind !== 'set-lift') return payloadMismatch(kind);
+			return planSetLift({
+				context,
+				entityId,
+				lift: payload.lift,
+				contactMinY: payload.contactMinY,
+				...(payload.choice === undefined ? {} : { choice: payload.choice })
+			});
+		case 'set-name':
+			if (payload.kind !== 'set-name') return payloadMismatch(kind);
+			return planSetName({ context, entityId, name: payload.name });
 		case 'delete-one':
 			if (payload.kind !== 'delete-one') return payloadMismatch(kind);
 			return planDeleteOne({ context, entityId });

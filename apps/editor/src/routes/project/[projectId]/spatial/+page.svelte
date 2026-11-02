@@ -39,7 +39,7 @@
 	 * target can never intercept input.
 	 */
 	import { onMount, untrack } from 'svelte';
-	import { readAppPreferences, writeAppPreferences, type AppPreferences } from '$lib/platform/app-preferences';
+	import { DEFAULT_APP_PREFERENCES, readAppPreferences, writeAppPreferences, type AppPreferences } from '$lib/platform/app-preferences';
 	import { createEditorMotionClock } from '$lib/platform/editor-motion-clock';
 	import { beforeNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
@@ -145,6 +145,7 @@ import {
 		stageKeyFromControl,
 		stageKeyFromTextEntry,
 		STAGE_DOCK_SHORTCUTS,
+		isStageDrag,
 		type StageDockSlot
 	} from '$lib/authoring/stage/stage-input';
 	import { installStageInterruptions, type StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
@@ -161,7 +162,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	const scenePick = createScenePickSource();
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
-	import { isPaperPlanVisible } from '$lib/authoring/stage/paper-plan';
+	import { isPaperPlanVisible, PAPER_TONES } from '$lib/authoring/stage/paper-plan';
 	import {
 		approvedModelPins,
 		resolveApprovedModels,
@@ -363,7 +364,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let indexOpen = $state(!constrainedAtStart);
 	let query = $state('');
 	let reducedMotion = $state(false);
-	let preferences = $state<AppPreferences>({ planAppearance: 'paper', reducedMotion: null, motionSpeed: 'normal' });
+	let preferences = $state<AppPreferences>({ ...DEFAULT_APP_PREFERENCES });
 	const motionClock = createEditorMotionClock();
 	function updatePreferences(next: AppPreferences): void {
 		const real = performance.now() / 1000;
@@ -785,6 +786,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * another one) brings the Card back, so identity is never lost to a dismissal.
 	 */
 	let cardOpen = $state(true);
+	/** Bumped by an Index double-click: the Card opens its inline name editor. */
+	let cardRenameRequest = $state(0);
 	/**
 	 * Whether the armed tool's palette is open above the dock. Folding it hides the
 	 * instrument without disarming the tool: the creator collapses the palette to see
@@ -2018,7 +2021,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		const snapshot = stage.snapshot();
 		const evaluationId = stage.evaluationId();
-		roomLabels = evaluationId === null || !evaluation || lens !== 'world' ? [] : projectRoomLabels(
+		// Room labels are a per-view ⚙ preference: on in 2D, off in 3D by default.
+		const labelsShown = evaluation?.settledReading === 'plan' ? preferences.roomLabels2d : preferences.roomLabels3d;
+		roomLabels = evaluationId === null || !evaluation || lens !== 'world' || !labelsShown ? [] : projectRoomLabels(
 			roomLabelFacts(snapshot.domain.geometry, stageEnvelope(snapshot).units.layout.data.rooms),
 			point => {
 				const projected = stage.projectWorld(point, evaluationId);
@@ -2639,6 +2644,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	} | null = null;
 	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
 	let adapterMarkPress = false;
+	/** A dragging disclosure's press: a release within click tolerance toggles it. */
+	let disclosurePress: { readonly id: string; readonly x: number; readonly y: number } | null = null;
 	/**
 	 * The evaluation a claimed adapter press was measured in.
 	 *
@@ -2723,7 +2730,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			const mark = stage.hitMark({ css, coarse });
 			// A disclosure is a press, not a drag: it reveals grips while the same
 			// gesture context stays selected, and no adapter may claim the pointer for it.
-			if (mark?.role === 'disclose') {
+			if (mark?.role === 'disclose' && mark.mark.drags !== true) {
 				press.refuse(event.pointerId);
 				if (stage.activateDisclosure(mark.id)) stage.notifySurfaceChange();
 				return;
@@ -2748,6 +2755,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 				return true;
 			};
+			if (mark?.role === 'disclose') {
+				// The W·D·H chip: the adapter owns the press so a drag scales; a
+				// release inside click tolerance still toggles the grips.
+				stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
+				if (claimAdapterPress(mark.id, mark.adapterId)) {
+					disclosurePress = { id: mark.id, x: event.clientX, y: event.clientY };
+					return;
+				}
+				press.refuse(event.pointerId);
+				if (stage.activateDisclosure(mark.id)) stage.notifySurfaceChange();
+				return;
+			}
 			if (mark?.role === 'edit') {
 				stage.idleHoverIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
 				if (claimAdapterPress(mark.id, mark.adapterId)) return;
@@ -2995,6 +3014,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		drag = null;
 		adapterEvaluationId = null;
 		adapterMarkPress = false;
+		disclosurePress = null;
 		session.gesture()?.release();
 	}
 
@@ -3047,15 +3067,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (task !== null || adapterMarkPress) press.claim(event.pointerId);
 			const stage = facade;
 			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
+			const chip = disclosurePress;
 			drag = null;
 			adapterEvaluationId = null;
 			adapterMarkPress = false;
+			disclosurePress = null;
 			if (stage !== null && id !== null) {
 				// After a reading change the lease is already gone: the press is cancelled
 				// rather than released, so no stale projection commits.
 				const phase = session.gesture() === null ? 'cancel' : 'up';
 				perfMark('input:release', { phase });
 				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey, coarse: event.pointerType !== 'mouse' });
+				if (
+					chip !== null &&
+					phase === 'up' &&
+					!isStageDrag(chip, { x: event.clientX, y: event.clientY }) &&
+					stage.activateDisclosure(chip.id)
+				) stage.notifySurfaceChange();
 			}
 			return;
 		}
@@ -3988,6 +4016,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				bringIntoView([center[0], fragment.elevationMeters, center[1]]);
 			}}
 			onReveal={(id) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); }}
+			onRename={() => { cardOpen = true; cardRenameRequest += 1; }}
 		/>
 		{/if}
 		<!--
@@ -4045,6 +4074,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{modelUrls}
 						plan={planView}
 						planAppearance={preferences.planAppearance}
+						paperInk2d={PAPER_TONES[preferences.paperTone2d].ink}
+						paperInk3d={PAPER_TONES[preferences.paperTone3d].ink}
 						{drafting}
 						datumMeters={boot.snapshot.domain.datumMeters}
 						contentBounds={paperContentBounds}
@@ -4097,6 +4128,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onPatch={patchDrafting}
 						planAppearance={preferences.planAppearance}
 						onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+						roomLabels2d={preferences.roomLabels2d}
+						roomLabels3d={preferences.roomLabels3d}
+						paperTone2d={preferences.paperTone2d}
+						paperTone3d={preferences.paperTone3d}
+						onViewPreference={(patch) => { updatePreferences({ ...preferences, ...patch }); refresh(); }}
 							{heightSheetSide}
 						onHeightSheetSide={(side) => (heightSheetSide = side)}
 						{reducedMotion}
@@ -4255,6 +4291,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				identity={preview === null && cardOpen ? cardIdentity : null}
 				facts={cardFacts}
 				nameWriter={cardNameWriter}
+				renameRequest={cardRenameRequest}
 				writer={cardWriter}
 				actions={cardActions}
 

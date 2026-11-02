@@ -123,7 +123,8 @@ it('caps lists without renumbering or discarding excluded/revealed identities', 
 	expect(first.rows[1]?.revealed).toBe(true);
 });
 
-it('groups only accepted resting Scene contacts and restores Free visibility when a Room disappears', async () => {
+// Review pass 2 §6: a lifted object groups with the Room whose floor is beneath it.
+it('groups accepted resting and lifted Scene contacts and restores Free visibility when a Room disappears', async () => {
 	const { acceptedSceneRoomMembership } = await import('$lib/authoring/adapters/scene/room-membership');
 	const layout = twoRooms();
 	const box = (id: string, y: number) => ({ id, kind: 'primitive', name: id, primitive: 'box', dimensions: { width: 1, height: 1, depth: 1 }, position: [1, y, 1], rotation: [0,0,0] });
@@ -137,7 +138,8 @@ it('groups only accepted resting Scene contacts and restores Free visibility whe
 	} as unknown as import('@portfolio/project-model/units').ProjectEnvelope;
 	const before = JSON.stringify(envelope);
 	const rooms = acceptedSceneRoomMembership(envelope);
-	expect([...rooms.keys()]).toEqual(['native', 'resting']);
+	expect([...rooms.keys()]).toEqual(['native', 'resting', 'floating']);
+	expect(rooms.get('floating')).toBe(rooms.get('resting'));
 	expect(layout.rooms.some(room => room.id === rooms.get('resting'))).toBe(true);
 	expect(JSON.stringify(envelope)).toBe(before);
 	const deleted = { ...envelope, units: { ...envelope.units, layout: { ...envelope.units.layout, data: { ...layout, rooms: [] } } } };

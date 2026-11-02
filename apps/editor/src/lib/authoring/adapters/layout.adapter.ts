@@ -170,7 +170,7 @@ import {
 	type WallManipulationRequest,
 	type WallNeighbourPreview
 } from './layout/precision';
-import { layoutNameTarget } from './layout/adapter-support';
+import { layoutNameTarget, layoutRoomNameTarget } from './layout/adapter-support';
 import {
 	pointerWallRequest,
 	wallRequestExactLabel,
@@ -191,6 +191,8 @@ import {
 import { draftingSnapIncrementMeters, snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
 import {
 	buildLayoutCandidatePaper,
+	wallCenterlinePaper,
+	wallHeightGhostPaper,
 	candidatePreviewOf,
 	openingIdsOnWalls,
 	type CandidatePaperGeometry
@@ -503,6 +505,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					value: number;
 					anchor: [number, number, number];
 					axis: [number, number, number];
+					/** A top knob's stem foot (review pass 2 §6); absent for plain rays. */
+					stem?: [number, number, number];
 				};
 				evaluationId: string;
 				revision: string;
@@ -521,6 +525,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				scalarGesture = null;
 				if (current?.lease.lease.active) current.lease.lease.release();
 			}
+			const WALL_TOP_KNOB_REACH_METERS = 0.45;
 			function scalarSpecs(ctx: StageAdapterContext): ScalarGesture['spec'][] {
 				const wall = selectedWall(ctx);
 				const opening = wall === null ? selectedOpening(ctx) : null;
@@ -539,7 +544,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							subjectId: source.id,
 							field: 'height',
 							value: source.height,
-							anchor: framePoint(wall.frame, length / 2, y + source.height),
+							// The top knob stands just past the Wall's end on a stem from
+							// its base, clear of the body and the thickness grip. Travel is
+							// vertical, so the drawn offset never changes the planned height.
+							anchor: framePoint(wall.frame, length + WALL_TOP_KNOB_REACH_METERS, y + source.height),
+							stem: framePoint(wall.frame, length + WALL_TOP_KNOB_REACH_METERS, y),
 							axis: [0, 1, 0]
 						},
 						{
@@ -2843,6 +2852,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return subject === null ? [] : factsFor(document, subject);
 				},
 				cardName(cardSubject: StageCardSubject) {
+					if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
+						return layoutRoomNameTarget(services, cardSubject.sourceId);
+					}
 					const subject = layoutSubjectOf({
 						sourceKind: cardSubject.sourceKind,
 						sourceId: cardSubject.sourceId
@@ -3083,15 +3095,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 										anchor: spec.anchor,
 										axis: spec.axis,
 										extent: spec.value,
-										draw: {
-											ray:
-												spec.field === 'height'
-													? spec.subject === 'wall'
-														? 38
-														: 22
-													: 9,
-											twoWayHalf: 9
-										},
+										draw:
+											spec.stem !== undefined
+												? { ray: 8, glyph: 'top-knob' }
+												: {
+														ray: spec.field === 'height' ? 22 : 9,
+														twoWayHalf: 9
+													},
+										...(spec.stem === undefined ? {} : { stem: spec.stem }),
 										bothWays: spec.field === 'thickness',
 										screen:
 											spec.field === 'height'
@@ -4041,6 +4052,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const y = adapterContext.snapshot.domain.datumMeters;
 				if (scalarGesture !== null) {
 					const current = scalarGesture;
+					if (current.candidate !== null && current.value !== null && current.spec.subject === 'wall' && current.spec.field === 'height')
+						return [
+							candidatePreviewOf({
+								id: 'layout-scalar-candidate',
+								role: 'subject',
+								geometry: wallHeightGhostPaper(current.candidate, current.spec.subjectId, y, current.value)
+							})
+						];
 					if (current.candidate !== null) {
 						const ids = new Set([
 							current.spec.subjectId,
@@ -4134,10 +4153,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (activeWall !== null && activeWall.previewDocument !== null) {
 					const subjectWalls = new Set([activeWall.frame.wallId]);
 					const affectedWalls = new Set(activeWall.neighbours.map((neighbour) => neighbour.wallId));
-					const subjectIds = new Set([...subjectWalls, ...openingIdsOnWalls(activeWall.previewDocument, subjectWalls)]);
-					const affectedIds = new Set([...affectedWalls, ...openingIdsOnWalls(activeWall.previewDocument, affectedWalls)]);
-					const built = candidatePaper(activeWall.previewDocument, y, subjectIds, affectedIds);
-					if (built !== null) {
+					// One dashed centerline per changed Wall (review pass 2 §2): the
+					// proposal is the line the creator drew, not the band's outline.
+					const built = {
+						paper: {
+							subject: wallCenterlinePaper(activeWall.previewDocument, subjectWalls, y),
+							affected: wallCenterlinePaper(activeWall.previewDocument, affectedWalls, y)
+						}
+					};
+					{
 						return [
 							candidatePreviewOf({
 								id: 'layout-candidate-wall',
@@ -4169,7 +4193,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								: [candidatePreviewOf({ id: 'layout-candidate-neighbours', role: 'affected', geometry: built.paper.affected })])
 						];
 					}
-					return [];
 				}
 				if (activeWall !== null) return [];
 
@@ -4189,16 +4212,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						return [];
 					}
-					const subjectIds = new Set([
-						...activeJunction.wallIds,
-						...openingIdsOnWalls(activeJunction.previewDocument, new Set(activeJunction.wallIds))
-					]);
-					const built = candidatePaper(activeJunction.previewDocument, y, subjectIds, new Set());
-					if (built === null) return [];
 					return [candidatePreviewOf({
 						id: 'layout-candidate-junction-hover',
 						role: 'subject',
-						geometry: built.paper.subject,
+						geometry: wallCenterlinePaper(activeJunction.previewDocument, new Set(activeJunction.wallIds), y),
 						labels: [{
 							world: world(activeJunction.request.point),
 							text: planarDeltaLabel(activeJunction.request.point[0] - activeJunction.startPoint[0], activeJunction.request.point[1] - activeJunction.startPoint[1])
@@ -4291,7 +4308,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					];
 				}
 				if (inkPreview?.kind === 'refused' && points.length >= 2) {
-					return [candidatePreviewOf({
+					// The placed legs stay drawn: only the live leg is refused (review
+					// pass 2 §3). They are the same ink line the creator already drew.
+					const placed = points.slice(0, -1);
+					return [...(placed.length < 2 ? [] : [candidatePreviewOf({
+						id: 'layout-candidate-chain',
+						role: 'subject',
+						drawing: true,
+						geometry: { polygons: [], segments: placed.slice(1).map((point, i) => [world(placed[i]!.point), world(point.point)] as const) }
+					})]), candidatePreviewOf({
 						id: 'layout-candidate-chain-refused',
 						role: 'refused',
 						// A dashed cursor reach names the refused input, never a Wall band.

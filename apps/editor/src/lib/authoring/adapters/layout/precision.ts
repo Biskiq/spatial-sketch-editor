@@ -17,7 +17,7 @@
  * | Wall angle (fixed endpoint) | `layout-wall-angle` | `planExactWallAngle` |
  * | Rigid Wall translation | `layout-wall-move` | `planRigidWallMove` |
  * | Opening offset/width/height/sill | `layout-opening-measure` | `planUpdateWallFirstOpening` |
- * | Wall/Opening name | `layout-entity-name` | `planWallMetadataUpdate` / `planOpeningMetadataUpdate` |
+ * | Wall/Opening/Room name | `layout-entity-name` | `planWallMetadataUpdate` / `planOpeningMetadataUpdate` / `planRoomMetadataUpdate` |
  * | Place → Layout plinth | `layout-plinth-place` | `planCommitLayoutObjectPresetWithId` |
  *
  * Explicitly absent: independent arch rise, an authored Wall role (format 6
@@ -53,6 +53,7 @@ import {
 	planOpeningMetadataUpdate,
 	planRigidWallMove,
 	planUpdateWallFirstOpening,
+	planRoomMetadataUpdate,
 	planWallMetadataUpdate,
 	withLayoutCompileSession,
 	type FixedWallEndpoint,
@@ -105,6 +106,9 @@ export type LayoutSubject = {
 	readonly kind: LayoutSubjectKind;
 	readonly id: string;
 };
+
+/** A Room is addressed only by the name planner; it has no field instrument. */
+export type LayoutRoomSubject = { readonly kind: 'room'; readonly id: string };
 
 /**
  * One read-only Card fact for a Layout subject. `fieldId` names the field the fact shows;
@@ -175,7 +179,7 @@ export function isLayoutOpeningField(value: unknown): value is LayoutOpeningFiel
 /** An exact F.1 reference to one Layout subject in the current level. */
 export function layoutReference(
 	snapshot: PlannerRequest<ProjectEnvelope>['snapshot'],
-	subject: LayoutSubject,
+	subject: LayoutSubject | LayoutRoomSubject,
 	contentRevision: string,
 	/** The working level, supplied by the caller as an explicit input. */
 	levelId: string
@@ -266,7 +270,7 @@ export function layoutPlanner(
  */
 function addressedSubject(
 	request: PlannerRequest<ProjectEnvelope>,
-	kind: LayoutSubjectKind,
+	kind: LayoutSubjectKind | 'room',
 	id: string
 ): { readonly ok: true } | { readonly ok: false; readonly message: string } {
 	if (request.intent.targets.length !== 1) {
@@ -310,7 +314,7 @@ function capturedWorkingLevel(
 export function preparedLayoutCandidate(
 	request: PlannerRequest<ProjectEnvelope>,
 	operationKind: string,
-	subject: LayoutSubject,
+	subject: LayoutSubject | LayoutRoomSubject,
 	document: LayoutDocumentWallFirst,
 	fields: readonly string[],
 	options: { readonly created?: boolean; readonly id?: string } = {}
@@ -576,13 +580,13 @@ function entityNamePlanner(): DomainPlanner<ProjectEnvelope> {
 		if ('message' in payload) return rejected('invalid-value', payload.message);
 		const { subjectKind, subjectId, name } = payload.value;
 		if (
-			(subjectKind !== 'wall' && subjectKind !== 'opening') ||
+			(subjectKind !== 'wall' && subjectKind !== 'opening' && subjectKind !== 'room') ||
 			!opaqueId(subjectId) ||
 			typeof name !== 'string'
 		) {
 			return rejected(
 				'invalid-value',
-				'A Layout name edit needs one Wall or Opening id and one string name.'
+				'A Layout name edit needs one Wall, Opening or Room id and one string name.'
 			);
 		}
 		const addressed = addressedSubject(request, subjectKind, subjectId);
@@ -591,7 +595,9 @@ function entityNamePlanner(): DomainPlanner<ProjectEnvelope> {
 		const plan =
 			subjectKind === 'wall'
 				? planWallMetadataUpdate(document, subjectId, { name })
-				: planOpeningMetadataUpdate(document, subjectId, { name });
+				: subjectKind === 'room'
+					? planRoomMetadataUpdate(document, subjectId, { name })
+					: planOpeningMetadataUpdate(document, subjectId, { name });
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}

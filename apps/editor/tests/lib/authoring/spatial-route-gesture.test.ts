@@ -897,17 +897,20 @@ describe('mounted Stage drawing and deletion', () => {
 
 	it('binds a Card confirmation to the subject whose consequences it disclosed', async () => {
 		const canonical = facade().snapshot().canonicalJson;
+		// Review pass 2 §4: the menu's one delete home reads Erase; its accessible
+		// name keeps the adapter's own words.
+		expect(deleteAction().getAttribute('aria-label')).toBe('Delete Wall');
 		deleteAction().click();
 		await frame();
-		expect(deleteAction().textContent?.trim()).toBe('Confirm Delete Wall');
+		expect(deleteAction().textContent?.trim()).toBe('Confirm erase');
 
 		// Another Wall: the words the creator read belonged to the first one, so the
 		// new subject offers its own disclosure instead of a confirmation.
 		await selectIndexRow(STARTER_WALL_2);
-		expect(deleteAction().textContent?.trim()).toBe('Delete Wall');
+		expect(deleteAction().textContent?.trim()).toBe('Erase');
 		deleteAction().click();
 		await frame();
-		expect(deleteAction().textContent?.trim()).toBe('Confirm Delete Wall');
+		expect(deleteAction().textContent?.trim()).toBe('Confirm erase');
 		expect(facade().snapshot().canonicalJson).toBe(canonical);
 	});
 
@@ -1193,7 +1196,10 @@ describe('R217.S05 — mounted drafting furniture', () => {
 
 	it('exposes the words as native, stateful, focusable controls with 44 px coarse targets', async () => {
 		// Two readings, two words and the R217.S20 ⚙ disclosure, all native buttons.
-		const controls = [...target.querySelectorAll<HTMLButtonElement>('[data-stage-drafting] button')];
+		// The ⚙ panel's own controls are counted with the panel, not the cluster.
+		const controls = [...target.querySelectorAll<HTMLButtonElement>('[data-stage-drafting] button')].filter(
+			(control) => control.closest('[data-stage-viewing-panel]') === null
+		);
 		expect(controls.length).toBe(5);
 		expect(target.querySelector('[data-stage-viewing]')?.getAttribute('aria-expanded')).toBe('false');
 		for (const control of controls) {
@@ -1656,12 +1662,35 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		expect(card.getAttribute('data-source-id')).toBe(wallId);
 		expect(card.querySelector('.technical')).toBeNull();
 	});
-it('opens precision through More with only Length and Height at rest',async()=>{const card=target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;expect(card.querySelector('[data-field="height"]')).not.toBeNull();expect(card.querySelector('[data-field="thickness"]')).toBeNull();card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();await frame();expect(card.querySelector('[data-field="thickness"]')).not.toBeNull();expect(card.textContent).not.toContain('Datum');expect(card.querySelector('[data-field="startX"]')).toBeNull();});
+	// Review pass 2 §4: More expands the Card in place; `•••` holds functions.
+	it('opens precision through More with only Length and Height at rest', async () => {
+		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
+		expect(card.querySelector('[data-field="height"]')).not.toBeNull();
+		expect(card.querySelector('[data-field="thickness"]')).toBeNull();
+		card.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
+		await frame();
+		expect(card.querySelector('[data-card-more-section] [data-field="thickness"]')).not.toBeNull();
+		// Base and Top are foreseen placeholders: shown, disabled, never working fields.
+		for (const id of ['base', 'top']) {
+			const placeholder = card.querySelector<HTMLInputElement>(`[data-field-placeholder="${id}"]`);
+			expect(placeholder?.disabled).toBe(true);
+			expect(placeholder?.value).toBe('—');
+		}
+		expect(card.textContent).not.toContain('Datum');
+		expect(card.querySelector('[data-field="startX"]')).toBeNull();
+		// The functions menu no longer carries Thickness.
+		card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();
+		await frame();
+		const menu = card.querySelector<HTMLElement>('[data-card-actions]')!;
+		expect(menu.querySelector('[data-field="thickness"]')).toBeNull();
+		expect(menu.querySelector<HTMLButtonElement>('[data-card-function="Face this wall"]')?.disabled).toBe(true);
+		expect(menu.querySelectorAll('button.destructive')).toHaveLength(1);
+	});
 	it('discards an uncommitted thickness when the disclosure closes without writing history', async () => {
 		const before = facade().snapshot().canonicalJson;
 		const previousHistory = history();
 		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
-		const trigger = card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!;
+		const trigger = card.querySelector<HTMLButtonElement>('[data-card-more]')!;
 		trigger.click(); await frame();
 		const input = card.querySelector<HTMLInputElement>('[data-field="thickness"]')!;
 		const accepted = input.value;

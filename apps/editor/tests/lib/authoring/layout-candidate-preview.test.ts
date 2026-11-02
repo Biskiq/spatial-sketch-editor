@@ -424,7 +424,9 @@ describe('R217.S14 — overlay marker space', () => {
 });
 
 describe('R217.S14 — the preview is the candidate geometry', () => {
-	it('matches the compiled Paper drawing of the Wall move release commits', async () => {
+	// Review pass 2 §2: the drag preview is one dashed centreline per Wall, not
+	// the Paper outline. It must run exactly along the Wall the release commits.
+	it('draws the committed Wall’s centreline as the move preview', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, mounted.rect);
 		selectWall(mounted.facade, mounted.wallId);
@@ -449,16 +451,14 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 
 		const document = acceptedLayout(mounted.facade);
 		const wall = document.walls.find((entry) => entry.id === mounted.wallId)!;
-		const sourceIds = new Set([mounted.wallId, ...document.openings.filter((entry) => entry.wallId === wall.id).map((entry) => entry.id)]);
-		const accepted = acceptedPaperCss(mounted, sourceIds);
-		expect(preview.polygons.length).toBe(accepted.polygons.length);
-		for (const [index, polygon] of preview.polygons.entries()) {
-			expectPointsClose(polygon, accepted.polygons[index]!);
-		}
-		expect(preview.segments.length).toBe(accepted.segments.length);
-		for (const [index, segment] of preview.segments.entries()) {
-			expectPointsClose(segment, accepted.segments[index]!);
-		}
+		const startPoint = document.junctions.find((entry) => entry.id === wall.startJunctionId)!.point;
+		const endPoint = document.junctions.find((entry) => entry.id === wall.endJunctionId)!.point;
+		expect(preview.polygons).toEqual([]);
+		expect(preview.segments.length).toBeGreaterThan(0);
+		expectPointsClose(
+			[preview.segments[0]![0], preview.segments.at(-1)![1]],
+			[stageCss(mounted, startPoint), stageCss(mounted, endPoint)]
+		);
 
 		// The affected contribution is the same promise for reshaped neighbours,
 		// derived here from the accepted topology rather than the preview's list.
@@ -473,16 +473,16 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 				)
 				.map((entry) => entry.id)
 		);
-		const affectedSourceIds = new Set([
-			...affectedWalls,
-			...document.openings.filter((entry) => affectedWalls.has(entry.wallId)).map((entry) => entry.id)
-		]);
-		const acceptedAffected = acceptedPaperCss(mounted, affectedSourceIds);
 		expect(neighbours).toBeDefined();
 		expect(neighbours!.polygons).toEqual([]);
-		expect(neighbours!.segments.length).toBe(acceptedAffected.segments.length);
-		for (const [index, segment] of neighbours!.segments.entries()) {
-			expectPointsClose(segment, acceptedAffected.segments[index]!);
+		// Each reshaped neighbour is its own centreline run, ending at the moved Junction.
+		const moved = [wall.startJunctionId, wall.endJunctionId].map(
+			(id) => stageCss(mounted, document.junctions.find((entry) => entry.id === id)!.point)
+		);
+		expect(neighbours!.segments.length).toBeGreaterThanOrEqual(affectedWalls.size);
+		const ends = neighbours!.segments.flatMap((segment) => [segment[0], segment[1]]);
+		for (const point of moved) {
+			expect(ends.some((end) => Math.hypot(end[0] - point[0], end[1] - point[1]) < 1e-3)).toBe(true);
 		}
 	});
 
@@ -716,5 +716,19 @@ describe('R217.S14 — refusals and snap words', () => {
 			return next !== undefined && Math.abs(next.offset - 1.9) < 1e-6;
 		});
 		expect(before.offset).toBeCloseTo(1, 6);
+	});
+});
+
+describe('review pass 2 — Wall height ghost', () => {
+	it('draws the Wall sheet at the candidate height: base, lifted top and two end verticals', async () => {
+		const { wallHeightGhostPaper } = await import('$lib/authoring/adapters/layout/candidate-preview');
+		const { document, wallId } = fixtureDocument();
+		const ghost = wallHeightGhostPaper(document, wallId, 0, 3.1);
+		expect(ghost.polygons).toEqual([]);
+		const heights = ghost.segments.flatMap(([a, b]) => [a[1], b[1]]);
+		expect(new Set(heights)).toEqual(new Set([0, 3.1]));
+		const verticals = ghost.segments.filter(([a, b]) => a[0] === b[0] && a[2] === b[2]);
+		expect(verticals).toHaveLength(2);
+		expect(wallHeightGhostPaper(document, 'missing', 0, 3.1).segments).toEqual([]);
 	});
 });

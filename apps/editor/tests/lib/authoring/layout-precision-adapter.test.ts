@@ -564,6 +564,25 @@ describe('T1.P01.S04 — Layout precision', () => {
 		expect(facade.cardNameWriter({ sourceId: '(placement)', sourceKind: 'object', ref: null })).toBeNull();
 	});
 
+	// Review pass 2 §5: Rooms rename through the same canonical name planner.
+	it('contributes a Room name writer: trims, refuses a blank name and keeps the prior one', async () => {
+		const { facade } = await mount();
+		const room = stageEnvelope(facade.snapshot()).units.layout.data.rooms[0];
+		expect(room).toBeDefined();
+		for (const sourceKind of ['room', 'room-floor']) {
+			expect(facade.cardNameWriter({ sourceId: room!.id, sourceKind, ref: null })).not.toBeNull();
+		}
+		const writer = facade.cardNameWriter({ sourceId: room!.id, sourceKind: 'room-floor', ref: null })!;
+		expect(await writer.commit('  Gallery  ')).toEqual({ kind: 'accepted' });
+		const named = () => stageEnvelope(facade.snapshot()).units.layout.data.rooms.find((entry) => entry.id === room!.id)!.name;
+		expect(named()).toBe('Gallery');
+		// The accepted install rebuilds the bindings on the next evaluated frame.
+		facade.camera.evaluate(RECT, 2);
+		const blank = facade.cardNameWriter({ sourceId: room!.id, sourceKind: 'room', ref: null })!;
+		expect(await blank.commit('   ')).toMatchObject({ kind: 'refused' });
+		expect(named()).toBe('Gallery');
+	});
+
 	it('holds the host gesture lease for a live proposal and refuses Undo with live-proposal', async () => {
 		const { facade, host, services, wallId } = await mount();
 		selectWall(facade, wallId);

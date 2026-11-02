@@ -20,7 +20,13 @@ import {
 	type LayoutInstrumentOptions,
 	type LayoutWriteOutcome
 } from './instrument';
-import { layoutSubjectOf, type LayoutSubject } from './precision';
+import {
+	LAYOUT_ENTITY_NAME_KIND,
+	buildLayoutIntent,
+	layoutSubjectOf,
+	type LayoutSubject
+} from './precision';
+import { layoutSubjectReference } from './drawing-planners';
 
 function writeOutcome(outcome: StageAcceptOutcome): LayoutWriteOutcome {
 	switch (outcome.kind) {
@@ -123,6 +129,48 @@ export function layoutNameTarget(
 				code: outcome.kind === 'refused' ? outcome.code : outcome.kind,
 				message: outcome.kind === 'refused' || outcome.kind === 'invalid' ? outcome.message : 'The name was not accepted.'
 			};
+		}
+	};
+}
+
+/**
+ * The Card's Room name writer (review pass 2 §5): the same `layout-entity-name`
+ * planner Walls and Openings use, so a rename is one history entry and a blank
+ * name is refused with the prior name kept.
+ */
+export function layoutRoomNameTarget(
+	services: StageAdapterServices,
+	roomId: string
+): { readonly value: string; commit(name: string): Promise<{ kind: 'accepted' } | { kind: 'refused'; code: string; message: string }> } | null {
+	const room = documentOf(services).rooms.find((candidate) => candidate.id === roomId);
+	if (room === undefined) return null;
+	return {
+		value: room.name ?? '',
+		async commit(name: string) {
+			const trimmed = name.trim();
+			if (trimmed.length === 0) {
+				return { kind: 'refused', code: 'blank', message: 'Enter a name; an empty name is not a rename.' };
+			}
+			const snapshot = services.stage.snapshot();
+			const document = documentOf(services);
+			const contentRevision = snapshot.domain.unitRevisions.layout;
+			const outcome = await port(services).accept(
+				buildLayoutIntent({
+					kind: LAYOUT_ENTITY_NAME_KIND,
+					operationId: globalThis.crypto.randomUUID(),
+					projectId: snapshot.acceptedRevision.projectId,
+					revisionId: services.authoring.acceptedRevision().revisionId,
+					contentRevision,
+					levelId: document.floor.id,
+					targets: [
+						layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId: document.floor.id })
+					],
+					payload: { subjectKind: 'room', subjectId: roomId, name: trimmed }
+				})
+			);
+			return outcome.kind === 'refused'
+				? { kind: 'refused', code: outcome.code, message: outcome.message }
+				: { kind: 'accepted' };
 		}
 	};
 }

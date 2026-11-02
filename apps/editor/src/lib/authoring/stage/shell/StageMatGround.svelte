@@ -12,9 +12,9 @@
 	 */
 	import { onDestroy } from 'svelte';
 	import { T, useThrelte } from '@threlte/core';
-	import type { Mesh } from 'three';
+	import type { Color, Mesh } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
-	import { STAGE_OVERLAY_LAYER } from '../paper-plan';
+	import { PAPER_GROUND_INK, STAGE_OVERLAY_LAYER } from '../paper-plan';
 	import { matGroundFor, workspaceRectFor, type GridRect } from '../stage-grid';
 	import {
 		createMatGridMaterial,
@@ -30,7 +30,8 @@
 		evaluation,
 		datumMeters = 0,
 		gridVisible,
-		contentBounds = null
+		contentBounds = null,
+		plateInk = PAPER_GROUND_INK
 	}: {
 		evaluation: ViewportEvaluation;
 		/** The level datum the mat sits at. */
@@ -39,6 +40,8 @@
 		gridVisible: boolean;
 		/** Layout ∪ Scene datum bounds; the plate is a sheet around them. */
 		contentBounds?: GridRect | null;
+		/** The viewer's 3D board tone (a ⚙ view preference). */
+		plateInk?: string;
 	} = $props();
 
 	const { dpr, invalidate } = useThrelte();
@@ -56,6 +59,7 @@
 	$effect(() => {
 		updateMatGridMaterial(gridMaterial, ground, $dpr, plate);
 		updateMatMaterial(groundMaterial, ground, plate);
+		(groundMaterial.uniforms.uPlateInk!.value as Color).set(plateInk);
 		invalidate();
 	});
 

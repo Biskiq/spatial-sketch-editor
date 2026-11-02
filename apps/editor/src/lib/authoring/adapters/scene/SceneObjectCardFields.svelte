@@ -1,6 +1,8 @@
 <script lang="ts">
 	/**
-	 * R217.S08 — the Card's Position, Yaw and Size writer for a Scene object.
+	 * R217.S08 — the Card's writer for every Scene object: models, primitives
+	 * and drawn forms. Only the size row differs by kind (one uniform Size, or a
+	 * form's Width/Height/Depth), and only a form offers Save to My Objects.
 	 *
 	 * The fields are the Arrange instrument's exact values, moved to the Card.
 	 * Each one submits the planner its mark submits, shows that planner's refusal
@@ -11,14 +13,30 @@
 	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import { compactMeasure } from '$lib/authoring/stage/shell/compact-measure';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-	import { sceneObjectCardController, type SceneObjectCardController } from './object-card';
-	import { SCENE_OBJECT_CARD_FIELD_IDS, type SceneObjectCardFieldId } from './object-marks';
+	import {
+		saveSceneObjectToMyObjects,
+		sceneObjectCardController,
+		type SceneObjectCardController
+	} from './object-card';
+	import {
+		SCENE_OBJECT_CARD_FIELD_IDS,
+		sceneObjectSizeFieldIds,
+		type SceneObjectCardFieldId
+	} from './object-marks';
+	import { stageScene } from '$lib/authoring/stage/unit-stage-source';
+	import type { SceneEntity } from '@portfolio/project-model';
 
 	let {
 		services,
 		detailOpen = false,
-		footer, secondary
-	}: { services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]> } = $props();
+		footer, secondary, more
+	}: {
+		services: StageAdapterServices;
+		detailOpen?: boolean;
+		footer?: Snippet;
+		secondary?: Snippet<[Snippet?]>;
+		more?: Snippet<[Snippet?]>;
+	} = $props();
 
 	let alive = true;
 	onDestroy(() => {
@@ -38,8 +56,18 @@
 		'position-x': '',
 		'position-z': '',
 		yaw: '',
-		size: ''
+		size: '',
+		width: '',
+		height: '',
+		depth: '',
+		elevation: ''
 	});
+	/** The selected entity's kind decides its size row and whether Save is offered. */
+	let entityKind = $state<SceneEntity['kind'] | null>(null);
+	const sizeIds = $derived(entityKind === null ? [] : sceneObjectSizeFieldIds(entityKind));
+	let saveBusy = $state(false);
+	let saveMessage = $state('');
+	let saveRefused = $state(false);
 	/** The planner refusal currently under each field, held as component state. */
 	let errors = $state<Partial<Record<SceneObjectCardFieldId, string | null>>>({});
 
@@ -67,8 +95,14 @@
 		const primary = services.stage.selectionState().primary;
 		const nextEntityId =
 			primary?.domain === 'scene' && primary.subject.kind === 'entity' ? primary.subject.id : null;
+		entityKind =
+			nextEntityId === null
+				? null
+				: (stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === nextEntityId)?.kind ?? null);
 		if (nextEntityId !== activeEntityId) {
 			activeEntityId = nextEntityId;
+			saveMessage = '';
+			saveRefused = false;
 			controller = nextEntityId === null ? null : sceneObjectCardController(services, nextEntityId);
 			resetFields();
 		} else if (nextEntityId !== null && controller === null) {
@@ -148,6 +182,29 @@
 		errors[id] = null;
 	}
 	let focusedField = $state<SceneObjectCardFieldId | null>(null);
+
+	/** Save the accepted form to My Objects; not an edit, so no history entry. */
+	async function save(): Promise<void> {
+		const id = activeEntityId;
+		if (id === null || saveBusy) return;
+		saveBusy = true;
+		saveMessage = '';
+		saveRefused = false;
+		try {
+			const outcome = await saveSceneObjectToMyObjects(services, id);
+			if (!alive) return;
+			saveRefused = outcome.kind !== 'accepted';
+			saveMessage =
+				outcome.message ?? (outcome.kind === 'accepted' ? 'Saved to My Objects.' : 'The save was not accepted.');
+		} catch {
+			if (alive) {
+				saveRefused = true;
+				saveMessage = 'My Objects could not be loaded; nothing was saved.';
+			}
+		} finally {
+			if (alive) saveBusy = false;
+		}
+	}
 </script>
 
 {#snippet fieldRow(id: SceneObjectCardFieldId)}
@@ -182,9 +239,23 @@
 {/snippet}
 {#if controller !== null}
 	<div class="object-fields" data-scene-object-card-fields aria-label="Scene object fields">
-		<fieldset disabled={busy}>{@render fieldRow('size')}</fieldset>
+		<fieldset disabled={busy}>
+			{#each sizeIds as id (id)}{@render fieldRow(id)}{/each}
+		</fieldset>
 		{#if footer}{@render footer()}{/if}
-		{#if secondary}{@render secondary()}{/if}
+		{#snippet details()}
+			<fieldset disabled={busy}>{@render fieldRow('elevation')}</fieldset>
+		{/snippet}
+		{#snippet formActions()}
+			<button type="button" data-save-to-my-objects disabled={saveBusy} onclick={() => void save()}
+				>{saveBusy ? 'Saving…' : 'Save to My Objects'}</button
+			>
+		{/snippet}
+		{#if more}{@render more(details)}{/if}
+		{#if secondary}{@render secondary(entityKind === 'form' ? formActions : undefined)}{/if}
+		{#if saveMessage}
+			<p role={saveRefused ? 'alert' : 'status'} class:refused={saveRefused}>{saveMessage}</p>
+		{/if}
 	</div>
 {/if}
 
@@ -222,7 +293,8 @@
 		right: 6px;
 		bottom: 6px;
 	}
-	.refusal {
+	.refusal,
+	.refused {
 		color: var(--shell-refuse, #7e2718);
 	}
 	@media (pointer: coarse) {

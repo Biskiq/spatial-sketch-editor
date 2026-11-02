@@ -116,7 +116,15 @@ export type SceneOperationPayload =
 			readonly contactMinY: number;
 			readonly choice?: SceneSupportChoice;
 	  }
-	| { readonly kind: 'delete-one'; readonly entityId: string };
+	| { readonly kind: 'delete-one'; readonly entityId: string }
+	| {
+			readonly kind: 'set-lift';
+			readonly entityId: string;
+			readonly lift: number;
+			readonly contactMinY: number;
+			readonly choice?: SceneSupportChoice;
+	  }
+	| { readonly kind: 'set-name'; readonly entityId: string; readonly name: string };
 
 /** Read the payload for one registered operation kind. */
 export function readSceneOperationPayload(
@@ -148,6 +156,15 @@ export function readSceneOperationPayload(
 			if (record === null) return null;
 			const entityId = reader.opaqueId(record.entityId, '$.payload.entityId');
 			return entityId === null ? null : { kind: 'delete-one', entityId };
+		}
+		case 'set-lift':
+			return readSetLiftPayload(reader, raw);
+		case 'set-name': {
+			const record = reader.object(raw, '$.payload', ['entityId', 'name']);
+			if (record === null) return null;
+			const entityId = reader.opaqueId(record.entityId, '$.payload.entityId');
+			const name = reader.string(record.name, '$.payload.name');
+			return entityId === null || name === null ? null : { kind: 'set-name', entityId, name };
 		}
 		default:
 			reader.problem('$.kind', 'unsupported-operation', `No Scene operation kind "${kind}" is registered`);
@@ -536,6 +553,24 @@ function readResizePayload(reader: ShapeReader, raw: unknown): SceneOperationPay
 		kind: 'resize-on-floor',
 		entityId,
 		scale,
+		contactMinY,
+		...(choice.choice === undefined ? {} : { choice: choice.choice })
+	};
+}
+
+function readSetLiftPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+	const path = '$.payload';
+	const record = reader.object(raw, path, ['entityId', 'lift', 'contactMinY', 'supportChoice']);
+	if (record === null) return null;
+	const entityId = reader.opaqueId(record.entityId, `${path}.entityId`);
+	const lift = reader.number(record.lift, `${path}.lift`);
+	const contactMinY = reader.number(record.contactMinY, `${path}.contactMinY`);
+	const choice = readSupportChoice(reader, record.supportChoice, `${path}.supportChoice`);
+	if (entityId === null || lift === null || contactMinY === null || choice === undefined) return null;
+	return {
+		kind: 'set-lift',
+		entityId,
+		lift,
 		contactMinY,
 		...(choice.choice === undefined ? {} : { choice: choice.choice })
 	};

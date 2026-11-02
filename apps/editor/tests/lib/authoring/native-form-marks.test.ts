@@ -18,14 +18,19 @@ import {
 } from '$lib/authoring/stage/stage-handles';
 import {
 	SCENE_FORM_MARK,
-	formMarkDescriptors,
 	formMoveScreenOffset,
 	formSizeMeasurement,
 	formWorldAxis,
 	formWorldPoint,
-	isSceneFormEditMarkId,
-	type SceneFormMarkLive
+	type FormMarkScreenHeight
 } from '$lib/authoring/adapters/scene/shape/form-size';
+import {
+	SCENE_OBJECT_MARK,
+	isSceneObjectEditMarkId,
+	sceneObjectMarkDescriptors,
+	type SceneObjectLift,
+	type SceneObjectMarkLive
+} from '$lib/authoring/adapters/scene/object-marks';
 
 function squareForm(overrides: Partial<SceneFormEntity> = {}): SceneFormEntity {
 	return {
@@ -63,27 +68,46 @@ function expectVec(actual: Vec3 | undefined, expected: Vec3): void {
 	}
 }
 
+/** A form's marks through the one Scene object builder, as the adapter calls it. */
 function descriptorsFor(
 	entity: SceneFormEntity,
-	live?: SceneFormMarkLive | null
+	live: SceneObjectMarkLive | null = null,
+	options: {
+		readonly reading?: 'plan' | '3d';
+		readonly lift?: SceneObjectLift | null;
+		readonly screenHeight?: FormMarkScreenHeight | null;
+		readonly measurement?: ReturnType<typeof formSizeMeasurement>;
+	} = {}
 ): readonly StageHandleDescriptor[] {
-	return formMarkDescriptors({ entity, measurement: formSizeMeasurement(entity), live });
+	const measurement = options.measurement ?? formSizeMeasurement(entity);
+	return sceneObjectMarkDescriptors({
+		entity,
+		reading: options.reading,
+		contactMinY: measurement.contactMinY,
+		bounds: null,
+		footprint: measurement.footprint,
+		live,
+		lift: options.lift ?? null,
+		form: { measurement, baseline: measurement, form: entity.form, screenHeight: options.screenHeight }
+	});
 }
 
+// A form is a Scene object: it shares Move, Turn, the chip and Lift with every
+// model and primitive, and adds only its per-axis size rays.
 describe('R217.S09 — native form marks', () => {
-	it('publishes Move, Scale, Height, Width, Depth and finally Turn', () => {
+	it('publishes the chip, Height, Width, Depth, then the shared Move and Turn', () => {
 		const descriptors = descriptorsFor(squareForm());
 		expect(descriptors.map((descriptor) => descriptor.id)).toEqual([
-			SCENE_FORM_MARK.move,
-			SCENE_FORM_MARK.scalePoint,
+			SCENE_OBJECT_MARK.scalePoint,
 			SCENE_FORM_MARK.height,
 			SCENE_FORM_MARK.width,
 			SCENE_FORM_MARK.depth,
-			SCENE_FORM_MARK.turn
+			SCENE_OBJECT_MARK.move,
+			SCENE_OBJECT_MARK.turn
 		]);
 		expect(descriptors.map((descriptor) => descriptor.role)).toEqual([
-			'edit',
 			'disclose',
+			'edit',
 			'edit',
 			'edit',
 			'edit',
@@ -91,27 +115,29 @@ describe('R217.S09 — native form marks', () => {
 		]);
 		expect(descriptors.map((descriptor) => descriptor.kind)).toEqual([
 			'point',
+			'ray',
+			'ray',
+			'ray',
 			'point',
-			'ray',
-			'ray',
-			'ray',
 			'ring'
 		]);
-		expect(descriptors[0]).toMatchObject({
+		expect(descriptors[4]).toMatchObject({
 			label: 'Move',
 			fact: 'position',
 			verb: 'Position',
 			planner: 'place-on-floor'
 		});
-		expect(descriptors[1]).toMatchObject({
+		expect(descriptors[0]).toMatchObject({
 			label: 'Scale',
 			reveals: [SCENE_FORM_MARK.height, SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth]
 		});
-		for (const descriptor of descriptors.slice(2, 5)) {
+		// A form refuses a uniform scale, so its chip only discloses.
+		expect(descriptors[0]).not.toHaveProperty('drags');
+		for (const descriptor of descriptors.slice(1, 4)) {
 			expect(descriptor).toMatchObject({
 				role: 'edit',
 				planner: 'set-form-size',
-				disclosedBy: SCENE_FORM_MARK.scalePoint
+				disclosedBy: SCENE_OBJECT_MARK.scalePoint
 			});
 		}
 		expect(descriptors[5]).toMatchObject({
@@ -133,7 +159,7 @@ describe('R217.S09 — native form marks', () => {
 		expect(measurement.footprint.depth).toBeCloseTo(bounds.max[2] - bounds.min[2], 9);
 
 		const descriptors = descriptorsFor(entity);
-		const move = descriptors[0]!;
+		const move = descriptors[4]!;
 		expect(move.anchor[0]).toBeCloseTo(entity.position[0], 9);
 		expect(move.anchor[1]).toBeCloseTo(entity.position[1] + measurement.contactMinY, 9);
 		expect(move.anchor[2]).toBeCloseTo(entity.position[2], 9);
@@ -146,7 +172,7 @@ describe('R217.S09 — native form marks', () => {
 			9
 		);
 
-		const scale = descriptors[1]!;
+		const scale = descriptors[0]!;
 		expectVec(scale.anchor, formWorldPoint(entity, bounds.max));
 
 		const rays = [
@@ -156,11 +182,18 @@ describe('R217.S09 — native form marks', () => {
 		];
 		for (let index = 0; index < rays.length; index += 1) {
 			const ray = rays[index]!;
-			const descriptor = descriptors[2 + index]!;
+			const descriptor = descriptors[1 + index]!;
 			const handle = measurement.handles.find((entry) => entry.axis === ray.axis)!;
 			expect(descriptor.id).toBe(ray.id);
 			expect(descriptor.label).toBe(ray.label);
-			expectVec(descriptor.anchor, formWorldPoint(entity, handle.local));
+			if (ray.axis === 1) {
+				// Review pass 2 §6: Height is the stem's top knob at the chip's corner.
+				expectVec(descriptor.anchor, formWorldPoint(entity, bounds.max));
+				expectVec(descriptor.stem!, formWorldPoint(entity, [bounds.max[0], bounds.min[1], bounds.max[2]]));
+				expect(descriptor.draw).toMatchObject({ glyph: 'top-knob' });
+			} else {
+				expectVec(descriptor.anchor, formWorldPoint(entity, handle.local));
+			}
 			expectVec(descriptor.axis, formWorldAxis(entity, ray.axis));
 			expect(descriptor.extent).toBeCloseTo(
 				Math.max(0.2, Math.abs(handle.local[ray.axis])),
@@ -175,33 +208,33 @@ describe('R217.S09 — native form marks', () => {
 		const entity = squareForm({ rotation: [0, Math.PI / 2, 0] });
 		const measurement = formSizeMeasurement(entity);
 		const descriptors = descriptorsFor(entity);
-		const width = descriptors[3]!;
+		const width = descriptors[2]!;
 		expectVec(width.axis, formWorldAxis(entity, 0));
 		expect(Math.abs(width.axis![0])).toBeLessThan(1e-9);
 		expect(Math.abs(width.axis![2])).toBeCloseTo(1, 9);
 
-		const move = descriptors[0]!;
+		const move = descriptors[4]!;
 		expect(move.axis![0]).toBeCloseTo(Math.cos(Math.PI / 2), 9);
 		expect(move.axis![2]).toBeCloseTo(-Math.sin(Math.PI / 2), 9);
-		expectVec(descriptors[1]!.anchor, formWorldPoint(entity, measurement.bounds!.max));
+		expectVec(descriptors[0]!.anchor, formWorldPoint(entity, measurement.bounds!.max));
 	});
 
 	it('shows a live refusal and pose on its own mark only', () => {
 		const entity = squareForm();
-		const live: SceneFormMarkLive = {
-			markId: SCENE_FORM_MARK.turn,
+		const live: SceneObjectMarkLive = {
+			markId: SCENE_OBJECT_MARK.turn,
 			position: [3, 0, 4],
 			yaw: 0.4,
-			scale: [1, 1, 1],
+			scale: 1,
 			refusal: 'The turn is refused.'
 		};
 		const descriptors = descriptorsFor(entity, live);
-		expect(descriptors[0]!.refusal).toBeNull();
+		expect(descriptors[4]!.refusal).toBeNull();
 		expect(descriptors[5]!.refusal).toBe('The turn is refused.');
 		expect(descriptors[5]!.value).toBe(`Δθ +${((0.4 * 180) / Math.PI).toFixed(1)}°`);
-		for (const ray of descriptors.slice(2, 5)) expect(ray.refusal).toBeNull();
-		expect(descriptors[0]!.anchor[0]).toBeCloseTo(3, 9);
-		expect(descriptors[0]!.anchor[2]).toBeCloseTo(4, 9);
+		for (const ray of descriptors.slice(1, 4)) expect(ray.refusal).toBeNull();
+		expect(descriptors[4]!.anchor[0]).toBeCloseTo(3, 9);
+		expect(descriptors[4]!.anchor[2]).toBeCloseTo(4, 9);
 	});
 
 	it('keeps the Card planner vocabulary and the three-axis disclosure', () => {
@@ -212,27 +245,51 @@ describe('R217.S09 — native form marks', () => {
 		expect(new Set(planners)).toEqual(
 			new Set(['place-on-floor', 'set-yaw', 'set-form-size'])
 		);
-		expect(isSceneFormEditMarkId(SCENE_FORM_MARK.scalePoint)).toBe(false);
+		expect(isSceneObjectEditMarkId(SCENE_OBJECT_MARK.scalePoint)).toBe(false);
 		for (const id of [
-			SCENE_FORM_MARK.move,
-			SCENE_FORM_MARK.turn,
+			SCENE_OBJECT_MARK.move,
+			SCENE_OBJECT_MARK.turn,
 			SCENE_FORM_MARK.height,
 			SCENE_FORM_MARK.width,
 			SCENE_FORM_MARK.depth
 		]) {
-			expect(isSceneFormEditMarkId(id)).toBe(true);
+			expect(isSceneObjectEditMarkId(id)).toBe(true);
 		}
-		expect(formMarkDescriptors({ entity: squareForm(), measurement: { ...formSizeMeasurement(squareForm()), bounds: null } })).toEqual([]);
+		expect(descriptorsFor(squareForm(), null, { measurement: { ...formSizeMeasurement(squareForm()), bounds: null } })).toEqual([]);
+	});
+
+	it('adds the lift knob on the Height stem in 3D only, where a support lies beneath', () => {
+		const entity = squareForm();
+		const lift = { lift: 0, supportY: 0 };
+		const in3d = descriptorsFor(entity, null, { reading: '3d', lift });
+		const knob = in3d.find((descriptor) => descriptor.id === SCENE_OBJECT_MARK.lift);
+		expect(knob).toMatchObject({
+			kind: 'ray',
+			role: 'edit',
+			draw: { glyph: 'lift-knob' },
+			fact: 'lift',
+			planner: 'set-lift',
+			disclosedBy: SCENE_OBJECT_MARK.scalePoint,
+			axis: [0, 1, 0],
+			screen: { offset: [26, 0] }
+		});
+		const height = in3d.find((descriptor) => descriptor.id === SCENE_FORM_MARK.height)!;
+		// One stem: the bottom knob sits at the Height knob's stem foot.
+		expectVec(knob!.anchor as Vec3, height.stem as Vec3);
+		expect(in3d.find((descriptor) => descriptor.id === SCENE_OBJECT_MARK.scalePoint)).toMatchObject({
+			reveals: expect.arrayContaining([SCENE_OBJECT_MARK.lift])
+		});
+		expect(in3d.at(-1)?.id).toBe(SCENE_OBJECT_MARK.turn);
+		expect(isSceneObjectEditMarkId(SCENE_OBJECT_MARK.lift)).toBe(true);
+		const ids = (options: Parameters<typeof descriptorsFor>[2]) =>
+			descriptorsFor(entity, null, options).map((descriptor) => descriptor.id);
+		expect(ids({ reading: 'plan', lift })).not.toContain(SCENE_OBJECT_MARK.lift);
+		expect(ids({ reading: '3d', lift: null })).not.toContain(SCENE_OBJECT_MARK.lift);
 	});
 
 	it('carries the Plan screen fallback on Height only', () => {
-		const measurement = formSizeMeasurement(squareForm());
 		const screenHeight = { offset: [0, -48], axis: [0, -1] } as const;
-		const descriptors = formMarkDescriptors({
-			entity: squareForm(),
-			measurement,
-			screenHeight
-		});
+		const descriptors = descriptorsFor(squareForm(), null, { screenHeight });
 		const height = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.height);
 		expect(height?.screen).toEqual(screenHeight);
 		for (const descriptor of descriptors) {
@@ -240,11 +297,12 @@ describe('R217.S09 — native form marks', () => {
 				expect(descriptor.screen).toBeUndefined();
 			}
 		}
-		expect(
-			formMarkDescriptors({ entity: squareForm(), measurement }).every(
-				(descriptor) => descriptor.screen === undefined
-			)
-		).toBe(true);
+		// Without the Plan fallback, Height keeps only its top knob's side offset.
+		for (const descriptor of descriptorsFor(squareForm())) {
+			expect(descriptor.screen).toEqual(
+				descriptor.id === SCENE_FORM_MARK.height ? { offset: [26, 0] } : undefined
+			);
+		}
 	});
 
 	it('keeps Move and the Width ray separately pressable across readings', () => {
@@ -268,8 +326,8 @@ describe('R217.S09 — native form marks', () => {
 				gapPx: 24
 			});
 			if (yaw === 0) expect(screenMove.offset[1]).toBeCloseTo(-24, 6);
-			const descriptors = formMarkDescriptors({ entity, measurement, screenMove });
-			const move = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.move)!;
+			const descriptors = descriptorsFor(entity);
+			const move = descriptors.find((descriptor) => descriptor.id === SCENE_OBJECT_MARK.move)!;
 			const width = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.width)!;
 			expect(move.screen).toBeUndefined();
 			expect(move.anchor).toEqual([entity.position[0], entity.position[1] + measurement.contactMinY, entity.position[2]]);
@@ -278,13 +336,13 @@ describe('R217.S09 — native form marks', () => {
 			const marks = projectStageHandles({
 				adapterId: 'scene',
 				descriptors,
-				openDisclosures: new Set([SCENE_FORM_MARK.scalePoint]),
+				openDisclosures: new Set([SCENE_OBJECT_MARK.scalePoint]),
 				hoveredId: null,
 				activeId: null,
 				project,
 				offset: [0, 0]
 			});
-			const moveMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.move)!;
+			const moveMark = marks.find((mark) => mark.id === SCENE_OBJECT_MARK.move)!;
 			const widthMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.width)!;
 			const depthMark = marks.find((mark) => mark.id === SCENE_FORM_MARK.depth)!;
 			expect(widthMark.tip).not.toBeNull();
@@ -295,7 +353,7 @@ describe('R217.S09 — native form marks', () => {
 			).toBe(SCENE_FORM_MARK.width);
 			expect(
 				hitStageMark(marks, { css: moveMark.anchor, coarse: true })?.id
-			).toBe(SCENE_FORM_MARK.move);
+			).toBe(SCENE_OBJECT_MARK.move);
 			expect(
 				hitStageMark(marks, { css: depthMark.tip!, coarse: true })?.id
 			).toBe(SCENE_FORM_MARK.depth);
