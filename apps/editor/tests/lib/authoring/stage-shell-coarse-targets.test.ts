@@ -39,10 +39,11 @@ describe('Card and Index coarse-pointer targets (R217.S21)', () => {
 });
 
 describe('Ink row and instrument host coarse-pointer targets (R217.S23)', () => {
-	it('gives the instrument close control 44 × 44 CSS px under a coarse pointer', () => {
+	it('gives the instrument info and close controls 44 × 44 CSS px under a coarse pointer', () => {
 		const source = readFileSync('src/lib/authoring/stage/shell/StageInstrumentHost.svelte', 'utf8');
 		const block = coarseBlockOf(source);
 		expect(block).toContain('.close');
+		expect(block).toContain('.about');
 		expect(block).toMatch(/min-width:\s*var\(--shell-touch-target, 44px\)/);
 		expect(block).toMatch(/min-height:\s*var\(--shell-touch-target, 44px\)/);
 	});

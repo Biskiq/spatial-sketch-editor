@@ -478,6 +478,16 @@ describe('Ink row, constrained Index and scrim (R217.S23)', () => {
 		expect(host).toMatch(/\.instrument-body \{[^}]*overflow: auto;/);
 	});
 
+	it('describes the instrument by its facts and offers an info control, not a hover title', () => {
+		const host = codeOf(INSTRUMENT_HOST);
+		expect(host).toContain('aria-describedby={facts.length > 0 ? descriptionId : undefined}');
+		expect(host).toContain('aria-controls={aboutId}');
+		expect(host).toContain('aria-expanded={aboutOpen}');
+		expect(host).not.toMatch(/title=\{factsText/);
+		// The header's own comment states the facts' reachable routes, as the code does.
+		expect(readSource(INSTRUMENT_HOST)).toContain('not hover-only');
+	});
+
 	it('draws the palette, Opening and Objects instruments only from shell roles, with no retired literal', () => {
 		for (const file of [INSTRUMENT_HOST, INK_PALETTE, OPENING_PALETTE, SCENE_INSTRUMENT]) {
 			expect(codeOf(file), file).not.toMatch(/#8f8a99|#635a6f|#292632|#241f2b/);
@@ -549,6 +559,22 @@ describe('Ink row, constrained Index and scrim (R217.S23)', () => {
 		expect(palette).toContain("disclosed === 'point'");
 		expect(palette).toContain("disclosed === 'options'");
 		expect(palette).toMatch(/aria-expanded=\{disclosed === 'point'\}/);
+	});
+
+	it('keeps the lower column out of the Height Sheet lane on either side, with the zoom cluster\'s gap', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		// The lower column (dock, instrument and the palette's upward disclosures) takes the measured
+		// lane of the Sheet on either side, plus the same 1.5 rem the zoom cluster and Card keep.
+		expect(route).toMatch(/\.lower-column \{[^}]*inset-inline-start: calc\(var\(--sheet-lane-left, 0px\) \+ 1\.5rem\);/);
+		expect(route).toMatch(/\.lower-column \{[^}]*inset-inline-end: calc\(var\(--sheet-lane-right, 0px\) \+ 1\.5rem\);/);
+		expect(route).not.toMatch(/inset-inline: 0\.75rem/);
+		expect(route).toMatch(/\.stage-zoom-slot\.sheet-right \{\s*right: calc\(var\(--sheet-lane-right, 0px\) \+ 1\.5rem\);/);
+		// The lanes are the Sheet's measured widths, published with the other lane variables on the body.
+		expect(route).toContain('--sheet-lane-left: ${sheetLaneLeft}px');
+		expect(route).toContain('--sheet-lane-right: ${sheetLaneRight}px');
+		// The palette wraps inside that width; it is not allowed to widen the column past it.
+		const palette = codeOf(INK_PALETTE);
+		expect(palette).toMatch(/\.ink-palette \{[^}]*max-width: 100%;/);
 	});
 
 	it('meets the contrast floor for every new row, scrim and edge against the pale ground', () => {

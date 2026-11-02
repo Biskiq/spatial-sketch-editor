@@ -1,3 +1,8 @@
+<script module lang="ts">
+	/** Each mounted host takes its own id, so the description references never collide. */
+	let instances = 0;
+</script>
+
 <script lang="ts">
 	/**
 	 * StageInstrumentHost — the **invoked task instrument** home.
@@ -12,13 +17,15 @@
 	 * R217.S23 — the instrument is one row above the dock. It draws the dock's
 	 * material (forest, hairline edge, no caption) rather than a titled panel: the
 	 * procedure name, the target and Close share a single slim head, and the adapter's
-	 * content sits beneath it. The adapter's summary and facts stay on the head's
-	 * tooltip, so the row carries no text-heavy block of its own.
+	 * content sits beneath it. The adapter's facts are not hover-only. They are the
+	 * instrument's accessible description (`aria-describedby` on the section and on the
+	 * info control), and an info control reveals them as a visible list for keyboard,
+	 * touch and sighted users alike.
 	 *
 	 * It is deliberately bounded: the shell's one lower column anchors it above the
 	 * dock, so opening, closing or resizing it never reflows or implicitly reframes
 	 * the Stage. It is a home for one task, not a second shell owner: it renders no
-	 * control layout of its own beyond naming, hosting and closing.
+	 * control layout of its own beyond naming, describing, hosting and closing.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageInstrumentContent } from '../stage-facade';
@@ -40,28 +47,62 @@
 		children?: Snippet;
 	} = $props();
 
+	instances += 1;
+	const instanceId = `stage-instrument-${instances}`;
+	const descriptionId = `${instanceId}-description`;
+	const aboutId = `${instanceId}-about`;
+	let aboutOpen = $state(false);
+
 	/** The adapter's own name for the task, when it contributed one. */
 	const heading = $derived(instrument?.summary ?? task?.label ?? '');
-	/** The adapter's facts, read on hover and in the accessible description. */
-	const factsText = $derived(
-		instrument?.facts?.map((fact) => `${fact.label}: ${fact.value}`).join('. ') ?? ''
-	);
+	/** The adapter's facts, as the instrument's accessible description and its info list. */
+	const facts = $derived(instrument?.facts ?? []);
+	const factsText = $derived(facts.map((fact) => `${fact.label}: ${fact.value}`).join('. '));
 </script>
 
 {#if task}
-	<section class="instrument" aria-label={`${task.label} task`} data-stage-instrument={task.kind}>
+	<section
+		class="instrument"
+		aria-label={`${task.label} task`}
+		aria-describedby={facts.length > 0 ? descriptionId : undefined}
+		data-stage-instrument={task.kind}
+	>
 		<header class="instrument-head">
-			<h2 class="title" title={factsText === '' ? undefined : factsText}>{heading}</h2>
+			<h2 class="title">{heading}</h2>
 			{#if task.targetLabel}
 				<p class="target" title={task.targetLabel}>
 					<span class="target-key">Target</span>
 					<span class="target-value">{task.targetLabel}</span>
 				</p>
 			{/if}
+			{#if facts.length > 0}
+				<button
+					type="button"
+					class="about"
+					aria-label={`About ${heading}`}
+					aria-expanded={aboutOpen}
+					aria-controls={aboutId}
+					aria-describedby={descriptionId}
+					onclick={() => (aboutOpen = !aboutOpen)}
+				>
+					<span aria-hidden="true">i</span>
+				</button>
+			{/if}
 			<button type="button" class="close" aria-label={`Close ${task.label}`} onclick={onClose}>
 				<span aria-hidden="true">✕</span>
 			</button>
 		</header>
+		{#if facts.length > 0}
+			<p id={descriptionId} class="sr-only">{factsText}</p>
+			{#if aboutOpen}
+				<dl id={aboutId} class="about-facts">
+					{#each facts as fact (fact.label)}
+						<dt>{fact.label}</dt>
+						<dd>{fact.value}</dd>
+					{/each}
+				</dl>
+			{/if}
+		{/if}
 		<div class="instrument-body">
 			{#if instrument}
 				{#if instrument.view}
@@ -140,11 +181,11 @@
 		white-space: nowrap;
 	}
 
+	.about,
 	.close {
 		flex: none;
 		min-width: 1.5rem;
 		min-height: 1.5rem;
-		margin-left: auto;
 		padding: 0 0.35rem;
 		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
 		border-radius: 0.35rem;
@@ -155,13 +196,59 @@
 		cursor: pointer;
 	}
 
+	.about {
+		font-weight: 700;
+	}
+
+	.about[aria-expanded='true'] {
+		border-color: var(--shell-ink-light, #f3f4ee);
+	}
+
+	.close {
+		margin-left: auto;
+	}
+
+	.about:hover,
 	.close:hover {
 		border-color: var(--shell-ink-light, #f3f4ee);
 	}
 
+	.about:focus-visible,
 	.close:focus-visible {
 		outline: 2px solid var(--shell-gold, #d4ad45);
 		outline-offset: 1px;
+	}
+
+	/* The facts as a visible list, opened by the info control; the same words are the description. */
+	.about-facts {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 0.2rem 0.6rem;
+		margin: 0;
+		padding: 0.35rem 0.6rem;
+		border-bottom: 1px solid var(--shell-hairline, #2f4a3d);
+		font-size: var(--shell-text-utility, 12px);
+	}
+
+	.about-facts dt {
+		color: var(--shell-ink-quiet, #9fb2a2);
+	}
+
+	.about-facts dd {
+		margin: 0;
+	}
+
+	/* Read by assistive technology through aria-describedby; not drawn. */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.instrument-body {
@@ -181,8 +268,9 @@
 		margin-bottom: 0;
 	}
 
-	/* Coarse pointer: the close control reaches the 44 × 44 CSS px touch target. */
+	/* Coarse pointer: the info and close controls reach the 44 × 44 CSS px touch target. */
 	@media (pointer: coarse) {
+		.about,
 		.close {
 			min-width: var(--shell-touch-target, 44px);
 			min-height: var(--shell-touch-target, 44px);
