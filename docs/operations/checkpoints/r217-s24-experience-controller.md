@@ -3,7 +3,7 @@
 IDENTITY: T1 · R217 · R217.S24
 RESUME ROUTE: [R217 README](../../roadmap/r217-core-editor-stability/README.md#slice-register) → [S24 plan](../../roadmap/r217-core-editor-stability/r217.s24-experience-controller/implementation-plan.md) → [S24 record](../../roadmap/r217-core-editor-stability/r217.s24-experience-controller/acceptance.md)
 TYPE: implementation
-STATUS: paused
+STATUS: paused — at the independent-review gate
 GOAL: Extract the Experience commands and state from `ExperienceSurface.svelte` into a controller with no visible change. Also carry the owner-directed fix for the Experience lens crash (below). Then complete browser acceptance, independent review, close-out and merge.
 
 CONSTRAINTS:
@@ -35,11 +35,12 @@ DO NOT REPEAT:
 - Diagnosing the freeze. Re-checking that the five plan test files are unchanged.
 
 CURRENT:
-- The fix is committed. Browser acceptance has not run, the acceptance record has no implementation evidence yet, and there is no review verdict. Draft PR open.
+- Implementation is complete at `bc24b72c` and the browser acceptance and gate table are recorded under "Implementation evidence" in the S24 acceptance record. No review verdict exists. PR #256 is ready for review, not draft.
 
 VERIFICATION:
 - Tier: affected-subsystem.
-- Tested revision: `bc24b72c`, run in the main checkout, which includes a stale git-ignored `.svelte-kit`. The results:
+- Tested revision: `bc24b72c`. The superseded run below was in the main checkout; the recorded table is the clean worktree run plus the main-checkout suite, both in the S24 acceptance record.
+- Superseded, main checkout, stale git-ignored `.svelte-kit`. The results:
   - check: 2056 files, 0 errors, 0 warnings.
   - Kernel checks: exit 0 each.
   - test:arch: 23 files, 210 tests.
@@ -47,15 +48,15 @@ VERIFICATION:
   - build: exit 0.
   - git diff --check 668eeb66..HEAD: clean.
   - npm test: 268 files, 3501 tests passed on the re-run. The first full run failed 1 test: `scene-editing-surface.test.ts` › "places a verified catalogue model through the persistent Place planner" (`refused` instead of `committed`). It passes 3 of 3 alone and in the full re-run, so it is load-dependent. A clean-worktree run should confirm the counts before acceptance.
+- Done, recorded in the acceptance record: the clean-worktree gate table at `bc24b72c` (with the two linked-`node_modules` failures explained and cleared in the main checkout at 3501/3501); the five plan test files' empty diff and 39 tests; the 4-run, 24-PNG before/after journey at 1440×900 and 1180×820 with 0 page errors; the pixel comparison and its run-to-run control; and the unpatched-main probe that reproduces the `ResizeObserver` crash.
 - Owed:
-  - The before/after browser journey in headed Chromium at 1440×900 and 1180×820: World↔Experience, Create Experience, Capture and bind a View, Create first Guide, insert and move a Stop, save a Stop, set the default View, Enter Preview with free orbit, return.
-  - "Before" is `main` `668eeb66` with only `bc24b72c`'s route hunk applied in a temporary worktree, because unpatched `main` crashes at step one. The comparison must then show no visible change from the extraction. The lens no longer crashing is the one intended difference.
-  - Independent review, close-out and merge. S11 remains the integration route.
+  - The coordinator's independent review of `bc24b72c`.
+  - Close-out and merge. S11 remains the integration route.
 
 NEXT:
-1. Run the before/after browser journey above with 0 page errors (the favicon 404 is TD-19). Record the tested SHA, the gate table at the final code SHA, the unchanged-assertions proof, the PNG comparison, and the lens fix with its test, under "Implementation evidence" in the S24 acceptance record.
-2. Mark the PR ready. The coordinator reviews it, a Haiku agent runs the docs-only close-out, merges with `--merge`, completes this checkpoint (delete it and clear the baton's RESUME), and the next slice is R217.S25.
+1. The coordinator reviews PR #256 at `bc24b72c` and records the verdict in the acceptance record's "Independent review".
+2. On a clean verdict, a Haiku agent runs the docs-only close-out, merges with `--merge`, completes this checkpoint (delete it and clear the baton's RESUME), and the next slice is R217.S25.
 
 OPEN:
-- A load-dependent flake in `scene-editing-surface.test.ts` (persistent Place planner), seen once under the full suite. If it recurs, record it for tech-debt beside TD-18.
+- A load-dependent flake in `scene-editing-surface.test.ts` (persistent Place planner), seen once under the full suite at the pause and not since. If it recurs, record it for tech-debt beside TD-18.
 - None for the owner. S22's acceptance record still says it ran no Experience lens check. Close-out can note that the S22 regression was found and fixed in S24.
