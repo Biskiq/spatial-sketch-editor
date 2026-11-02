@@ -176,16 +176,29 @@ Tier 2  changes the North Star, an approved design or the ledger's shape; remove
   stay valid as history.
 - **The unit of work is a pull request** that adds or passes checks for one or more capabilities.
   Small work needs no plan.
-- **A plan is written only** for multi-PR work or Tier 2 work. It lives in the claiming issue or
-  draft pull request, not in the repository, and is capped at about one page:
+- **A plan is written when the work needs one:** multi-PR work, Tier 2 work, or any work where an
+  implementer would otherwise have to invent an interaction, an algorithm or a data shape.
+- **Detail is judged by the no-invention test, not by length.** A plan is complete when an
+  implementer can follow it without inventing new interaction, algorithm or format decisions. A
+  novel algorithm or interaction gets as much specification as it needs (states, edge cases,
+  pseudocode, worked examples); routine work gets a few lines. What a plan leaves out is
+  ceremony: authorization history, evidence logistics, and restated contracts it can link to.
+- **The plan is the first commit of the work's own draft pull request**, in a plans folder under
+  docs. It is reviewed in that draft before code is written (by the owner for Tier 2, otherwise by
+  a fresh-context agent), then the same pull request implements it. There is no separate plan pull
+  request. On merge, durable decisions from the plan (an algorithm, an interaction rule, a format)
+  move into the owning reference contract or code comments, and the plan file moves to the archive.
+- Plan sections, used as needed:
 
 ```text
-Goal        capability ids + North Star link
-Design      approved design reference, or "none"
-Scope       in / out
-Checks      tagged tests to add, written first and failing
-Flags       open decisions, UX, research or ambiguity this work depends on
-Risks       what could go wrong and how it would show
+Goal         capability ids + North Star link
+Design       approved design reference, or "none"
+Scope        in / out
+Specification  interactions, states, algorithms, data shapes, edge cases — enough that
+               nothing has to be invented during implementation
+Checks       tagged tests to add, written first and failing
+Flags        open decisions, UX, research or ambiguity this work depends on
+Risks        what could go wrong and how it would show
 ```
 
 - **One review round:** a fresh-context reviewer subagent, spawned by the implementer, receives
@@ -263,6 +276,43 @@ The [slice-closeout skill](../../.agents/skills/slice-closeout/SKILL.md) and
 
 The prune pull requests themselves follow the new rules.
 
+## After it is in effect
+
+**What disappears**
+
+- Owner release rows and authorization records. Permission comes from the tier table, not from a
+  per-slice release.
+- Closeout, anchor and phase-close pull requests. Merging is the closeout; status updates itself.
+- Acceptance documents. Evidence is tests plus the pull request description.
+- Baton and register updates. Claims are draft pull requests; status is computed.
+- Required cross-area review.
+
+**What remains documentation-only, by design**
+
+- North Star changes, Tier 2 decision records and approved-design updates (owner decisions).
+- The weekly gardener pull request (doc drift and archive sweeps).
+- Reference-contract updates that follow an accepted design, when they cannot ride in the
+  implementing pull request.
+
+**What the owner still does**
+
+- Approves designs and reviews design-led work to mark it `polished`.
+- Decides Tier 2 items and answers `needs-decision` and `needs-ux` flags.
+- Reads the weekly digest: regressions, Tier 1 merges, top flags, next capabilities.
+- Reviews plans for Tier 2 work in their draft pull requests.
+
+**A typical cycle**
+
+1. An agent runs `npm run status`, sees `layout.roof.gable-join` at `partial` with no claim, and
+   opens a draft pull request claiming it.
+2. If the work needs a plan, the first commit is the plan; it is reviewed in the draft.
+3. The agent writes the tagged checks (failing), implements until they pass, gets one
+   fresh-context review and fixes P0/P1 findings.
+4. Tier 0 or 1: it merges on green CI. Tier 2: it waits for the owner.
+5. The next report shows `working`. Any open question it hit is now a flag issue.
+6. Weeks later the breaker finds a T-shape failure and adds a failing edge test; the capability
+   reads `working` (regressed from `polished`) until someone fixes it.
+
 ## What does not change
 
 - The hard rules on Camera authority, distinct semantic authorities, authored-truth exclusions,
@@ -277,6 +327,8 @@ The prune pull requests themselves follow the new rules.
 - **Weak tests make status look better than reality.** Mitigated by the breaker agent, owner
   review for `polished`, and the guard on removing checks.
 - **Seeding the ledger is a large one-time job.** Seed coarsely, refine as work touches each area.
+- **Detailed plans go stale.** Mitigated by moving durable decisions into references on merge and
+  archiving the plan file.
 - **Lower review bar, more slop.** Mitigated by the tier table, checks written first and the
   gardener.
 - **GitHub dependence for flow.** Durable truth stays in the repository, so losing GitHub loses
@@ -298,7 +350,8 @@ The prune pull requests themselves follow the new rules.
 ## Open questions for the owner
 
 1. Tier 1: owner review in the weekly digest after merge (recommended), or a skim before merge?
-2. Plans in GitHub issues and pull requests (recommended), or one-page files in the repository?
+2. Plans as the first commit of the working draft pull request (recommended), or as separate
+   GitHub issues?
 3. Ledger granularity: about one entry per creator-recognizable action (recommended), or coarser?
 4. Retire R217.S11's existing plan outright, or keep it in the archive as reference?
 5. Does T5 depth pause until T4 delivers a working publish loop?
