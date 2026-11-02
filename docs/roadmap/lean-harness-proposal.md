@@ -1,9 +1,9 @@
 # Lean harness proposal — documentation and agent-workflow prune
 
-**Status:** draft proposal for owner review. It authorizes nothing and changes no rule until the
-owner merges it. **Timing:** execute after R217.S25 merges and closes out, and before R217.S11
-(the integrated final gate) starts. Remaining R217.S24 follow-up and R217.S25 finish under the
-current rules.
+**Status:** draft proposal for owner review, revision 2. It authorizes nothing and changes no rule
+until the owner merges it. **Timing:** execute after R217.S25 merges and closes out, and before
+R217.S11 (the integrated final gate) starts. Remaining R217.S24 follow-up and R217.S25 finish under
+the current rules. Once executed, this document moves to the archive.
 
 ## Why
 
@@ -15,187 +15,253 @@ intent is right. The cost has outgrown it:
   files are roadmap documents.
 - Since 2026-10-01, 729 of 1,191 commits touched documentation and 453 touched application or
   package code.
-- R217.S24's acceptance record is about 2,530 words against a 408-word plan. R217.S11's plan alone
-  is about 2,850 words.
-- Merge anchors get their own pull requests (for example #257 after #256), although Git already
-  records the merge.
-- [The release list](./now.md) stores permission as paragraphs of authorization history that an
-  agent must parse before it may start.
-- Agents follow the rules too literally: slices end in a documentation-only final acceptance plus
-  bug fixes, closeouts stall waiting for independent review, and planning requests cross-track
-  review between tracks whose "owners" are all agents.
+- R217.S24's acceptance record is about 2,530 words against a 408-word plan; R217.S11's plan alone
+  is about 2,850 words. Merge anchors get their own pull requests (for example #257 after #256).
+- [The release list](./now.md) stores permission as paragraphs of authorization history.
+- Agents follow the rules too literally: slices end in documentation-only acceptance plus bug
+  fixes, closeouts stall waiting for review, and planning requests cross-track review.
+- Planning reconciled approved designs down to the current shell instead of building the design,
+  which produced the drift R217 had to unwind.
 
-The durable reference tier is not the problem. The North Star, architecture, F contract, design
-system and component contracts together are about 60k words and stay. The bloat is roadmap state,
-authorization records, acceptance prose and archive churn.
+The durable reference tier (North Star, architecture, F contract, design system, component
+contracts; about 60k words) is not the problem and stays.
 
 ## Goals
 
-1. **Lean onboarding.** A new agent or team member asks "what's next?" and learns, in a handful of
-   reads, what is shipped, what is missing and what is already claimed.
-2. **Parallel work without duplication.** Independent work can be picked up safely; nobody builds
-   the same thing twice.
-3. **Self-building toward the North Star.** Given enough compute, an agent can read the North Star,
-   find the next gap, build it, prove it and merge it, escalating only for real judgment calls.
-4. **Bounded context.** Agents load only what their task needs, enforced by repository structure
-   rather than by reading rules.
-5. **Keep the real guardrails.** Sacred contracts, semantic authorities, visitor isolation and the
-   boundary tests stay. Strictness moves from prose into executable checks.
+1. **Lean onboarding.** A new agent or contributor asks "what's next?" and learns what works, what
+   is broken, what is undecided and what is already claimed, in a handful of reads.
+2. **Parallel work without duplication or gates.** Anyone can pick up independent work in any area.
+3. **Self-building toward the North Star.** An agent can find the next gap, build it, prove it and
+   merge it, escalating only for real judgment calls.
+4. **Honest, recoverable status.** "Shipped" can never be a stale claim; a broken feature shows as
+   broken as soon as anyone proves it.
+5. **Self-aware maintenance.** Undecided product choices, missing UX, missing research and
+   ambiguity are surfaced as visible flags instead of being guessed around or blocking everything.
+6. **Bounded context without reading rules.** Structure gives agents the right context; judgment,
+   not a reading quota, decides when they have read enough.
 
 ## Principles
 
-- **Truth in the repo, claims in GitHub.** Shipped and passing state is durable and lives in the
-  repository. Who-is-working-on-what is ephemeral and lives in draft pull requests or assigned
-  issues, so batons and release rows stop generating commits.
-- **Checks over prose.** A rule that can be a test or lint becomes one, with an error message that
-  says how to fix the violation. A rule that cannot be checked is guidance and blocks nothing.
-- **Structure over etiquette.** Progressive disclosure comes from where files live and how they
-  open, not from instructions on how to read.
-- **Docs change with code.** A behavior change and its contract update ship in the same pull
-  request. No separate documentation, closeout or anchor pull requests.
-- **Delete by default.** Closed plans and authorization history move to the archive; Git keeps the
-  rest.
-- **Judgment clause.** When following a rule costs more than the risk it guards, the agent states
-  that in one line in the pull request and proceeds. Tier 2 work is excepted.
+- **Durable truth in the repo, flow in GitHub.** Code, tests, the capability ledger, reference
+  contracts and decisions live in the repository. Claims, plans, flags and review conversations
+  live in GitHub issues and pull requests.
+- **Status is computed, never claimed.** Tests prove capabilities; a report derives each
+  capability's level from the latest test run on `main`.
+- **Checks over prose.** A rule that can be a test or lint becomes one; anything else is guidance
+  and blocks nothing.
+- **Areas, not gates.** Tracks organize code, context and expertise. Anyone may change any area.
+- **Design leads.** An owner-approved design is the target for the surface it covers; the shell
+  reference follows what ships.
+- **Flag, don't guess and don't stall.** Open a flag, continue on the most reversible reading, or
+  pick other work.
+- **Judgment clause.** When following a guideline costs more than the risk it guards, say so in one
+  line in the pull request and proceed. Tier 2 work is excepted.
 
 ## Changes
 
-### A — One state file: the capability ledger
+### A — Capability ledger with computed status
 
-Add a root `capabilities.json` seeded from the North Star. It is the single source for "what is
-shipped and what is missing" and the definition of done that lets agents stop. Roadmap tables
-become generated views of it, not hand-maintained registers.
+A root `capabilities.json` lists what the product should do: one entry per thing a creator would
+say they can do. It holds definitions only, never status.
 
 ```json
 {
-  "id": "publish.hosted-link",
-  "northStar": "north-star.md#preview-and-publish",
-  "area": "release",
-  "state": "missing",
-  "checks": ["npm run test:e2e -- publish-hosted-link"],
-  "passes": false,
-  "quality": ["design-system screenshot review", "visitor journey walkthrough"]
+  "id": "layout.roof.gable-join",
+  "area": "T1",
+  "summary": "Two gable roofs meeting at a corner join automatically with a correct valley",
+  "northStar": "north-star.md#product-convergence-destination",
+  "design": null,
+  "review": null
 }
 ```
 
-- `state` is one of `missing`, `partial` or `shipped`; `passes` flips only when every check
-  passes in CI.
-- Agents edit only `state` and `passes` during normal work; adding or reshaping capabilities is
-  Tier 2.
-- A small script validates the file and lists gaps; the gap scanner (H) reads it.
+Tests declare which capability they prove and at what level, in the test title, for example
+`[cap:layout.roof.gable-join core]` or `[cap:layout.roof.gable-join edge]`. A status script runs on
+`main` (nightly for the full end-to-end suite) and derives each capability's level:
 
-### B — Claims move to GitHub
+| Level | Meaning |
+| --- | --- |
+| `missing` | no tagged check passes, or none exists yet |
+| `partial` | some core checks pass |
+| `working` | every core check passes |
+| `polished` | every core and edge check passes, no open bug, and the owner's review of the current design is accepted and not stale |
 
-- Claiming work means opening a draft pull request (or self-assigning an issue) titled with the
-  capability id.
-- An agent checks open drafts before starting. One `gh` call replaces reading per-track batons.
-- The per-track `current.md` batons and [the release list](./now.md) retire to the archive.
+A capability whose level dropped since the previous report is shown as **regressed**. An owner
+review goes stale automatically when its referenced design changes after the review date.
+
+**When a "shipped" feature turns out broken** (for example, gable roofs fail to join on a T-shape):
+
+1. Whoever finds it adds a failing test tagged with the capability: `core` if the main journey is
+   broken, `edge` otherwise. If a test is not practical yet (visual defects), they open a `bug`
+   issue labelled with the capability instead.
+2. The next report lowers the level and marks it regressed. Nobody edits a status field, reopens a
+   slice or writes a document.
+3. A fix pull request makes the test pass, and the level recovers on the next report.
+
+**The one hard guard:** removing a tagged check or retagging it to a lower level needs the owner's
+label on the pull request, enforced in CI. Skipping a check is allowed but counts as failing, so
+status stays honest without blocking anyone.
+
+Agents may add capabilities and checks freely. The initial seeding from the North Star is reviewed
+by the owner once.
+
+### B — Claims and flags in GitHub
+
+- **Claims:** a draft pull request or self-assigned issue whose title names the capability id. An
+  agent checks open drafts before starting.
+- **Flags:** issues with a capability label and one of these flag labels.
+
+| Label | Meaning | What an agent does |
+| --- | --- | --- |
+| `needs-decision` | a product choice is undecided | proceed only on a reversible default and record the assumption; otherwise pick other work |
+| `needs-ux` | the flow or UI is not designed | build the logic behind it with a minimal surface; never invent final UX |
+| `needs-research` | the technical foundation is unknown | run a bounded spike whose exit is a decision, not an open-ended study |
+| `ambiguous` | the spec or design is unclear or contradicts itself | ask in the issue and proceed on the most reversible reading |
+| `bug` | behavior is wrong | write a failing tagged test first, then fix |
+
+Agents open flags whenever they hit one; that is the self-aware maintenance loop. Research output
+lands as a short conclusion linked from its issue and, when it settles something, as a decision or
+a ledger change.
+
+A single command (`npm run status`) prints, per capability: level, regressions, failing checks,
+open flags and claims. That is the lean scan a new agent starts from.
 
 ### C — Autonomy by risk tier
 
-This table replaces per-slice owner releases.
-
 ```text
-Tier 0  inside one area, no contract or format change
-        → agent plans, builds, gets one fresh-context agent review, merges on green CI
-Tier 1  touches a sacred contract, persisted format, cross-domain acceptance (F.4)
-        or the visitor/public surface
-        → fresh-context agent review, then owner skims before merge
-Tier 2  changes the North Star or capability ledger shape, adds an authority, migrates
-        production data, activates production, licence or new dependency
-        → owner decides
+Tier 0  everything not listed below
+        → one fresh-context agent review, merge on green CI
+Tier 1  changes a contract invariant, a persisted format, the visitor/public surface,
+        or shared shell rules
+        → agent review, merge on green CI, owner reviews in the weekly digest;
+          revert is the recovery path
+Tier 2  changes the North Star, an approved design or the ledger's shape; removes or
+        downgrades a check; records an owner review; production data or activation;
+        licence; new dependency
+        → owner decides before merge
 ```
 
-### D — Tracks become ownership areas, not review boundaries
+### D — Areas, not gates
 
-- Keep T1–T5 as areas of the codebase, mapped to paths in a CODEOWNERS-style file.
-- A script, not the agent, decides when another area must review: only when a diff touches that
-  area's contract files.
-- Planning never triggers cross-track review. When human teammates join, the same ownership file
-  routes their reviews.
-- [Cross-track execution](./cross-track-execution.md) shrinks to the ownership map and merge-order
-  rules, or retires.
+- T1–T5 remain names for areas: Spatial world, Composition, Experience, Release, Expressive
+  geometry. They organize code, local context and expertise.
+- **Fix it where you find it.** An agent working mostly in T2 may complete something T4 missed; T5
+  may build a foundation T1 lacks. Nobody delegates a gap to "the owning track".
+- Touching another area means reading its local AGENTS.md, keeping its tests green and respecting
+  its invariants (which tests enforce). Nothing more.
+- Reviews are area-aware without area owners: the reviewer subagent receives the touched areas'
+  AGENTS.md files.
+- If ownership files are added for human teammates, they notify and never block. Risk tier, not
+  area, decides escalation.
+- Parallel safety comes from claims and small pull requests. Whoever merges second rebases.
 
-### E — Plan-writing rules
+### E — Design leads
 
-Every slice plan uses one template, capped at about 600 words:
+- An owner-approved design (a prototype or design artifact marked `approved` in its README or
+  referenced by a capability's `design` field) is the target for the surface it covers. It outranks
+  the current shell and the shell reference for that surface. Designs marked `exploring` inform but
+  do not direct.
+- Agents build toward the approved design. They never reshape it to fit the current shell. If the
+  design cannot be built without breaking an invariant, or is unclear, they open `needs-decision`
+  or `ambiguous` rather than reconciling silently.
+- Acceptance for design-led work is the owner's review against the design; it is the review that
+  makes a capability `polished`.
+- After acceptance, the [shell and visual-system contract](../reference/design-system/editor-shell-and-visual-system.md)
+  is updated, in the same pull request or the next, to describe what shipped. The design is the
+  destination; the reference describes the accepted current.
+
+### F — Work units and plans
+
+- New work is identified by capability ids, not phase and slice numbers. Existing T/P/S identifiers
+  stay valid as history.
+- **The unit of work is a pull request** that adds or passes checks for one or more capabilities.
+  Small work needs no plan.
+- **A plan is written only** for multi-PR work or Tier 2 work. It lives in the claiming issue or
+  draft pull request, not in the repository, and is capped at about one page:
 
 ```text
-Goal        capability id + North Star link
+Goal        capability ids + North Star link
+Design      approved design reference, or "none"
 Scope       in / out
-Contracts   which contracts it touches → sets the tier
-Checks      spec files or commands, written first and failing before implementation
+Checks      tagged tests to add, written first and failing
+Flags       open decisions, UX, research or ambiguity this work depends on
 Risks       what could go wrong and how it would show
 ```
 
-- **A slice is one user-visible, demoable behavior.** Refactors and bug fixes are ordinary pull
-  requests with a regression test and no plan.
-- **No final-gate slices.** A phase is accepted when every slice check passes, one end-to-end
-  journey spec for the phase passes, and the owner does a short walkthrough. Defects found then are
-  fix pull requests, not a slice and not a document.
-- **No acceptance documents.** Evidence goes in the pull request description; screenshots go in
-  the pull request, not the repository. Durable browser acceptance becomes a committed Playwright
-  spec rather than captured JSON evidence.
-- **One review round with severity.** A fresh-context reviewer subagent, spawned by the
-  implementer, reviews once. P0 and P1 block; P2 and below become issues unless trivial. Escalate
-  to the owner only on disagreement or Tier 2.
-- **Closeout happens in the same pull request:** flip `passes` and move the plan to completed.
-- **Plans are frozen after merge.** Deviations are recorded in the pull request.
+- **One review round:** a fresh-context reviewer subagent, spawned by the implementer, receives
+  the diff, the touched areas' AGENTS.md files, the linked design and the capability's checks.
+  P0 and P1 findings block; P2 and below become issues unless trivial. Disagreement goes to the
+  owner.
+- **No closeout step.** Merging is the closeout; the status report updates itself. No acceptance
+  documents, anchor pull requests or phase-close records.
+- Durable knowledge discovered while planning goes into reference contracts or a one-page decision
+  record, never into a plan.
 
 The [slice-closeout skill](../../.agents/skills/slice-closeout/SKILL.md) and
-[phase-closeout skill](../../.agents/skills/phase-closeout/SKILL.md) are rewritten to this flow.
+[phase-closeout skill](../../.agents/skills/phase-closeout/SKILL.md) retire; the
+[work-checkpoint skill](../../.agents/skills/work-checkpoint/SKILL.md) stays for long resumable work.
 
-### F — Structural progressive disclosure
+### G — Context without reading rules
 
-- **Nested AGENTS.md files** inside each package or area hold that area's local rules and point to
-  its contracts. Agent tools load them when work happens in that directory.
-- **A path-to-doc map** (and optionally a context script that takes changed files and prints the
-  relevant doc sections) replaces concern-based routing.
-- **Every durable doc opens with a header box** of at most ten lines: what it covers, its key
-  invariants, the paths it governs, and when to read further.
-- **The [docs router](../README.md) shrinks to an index** of about 40 lines, one line per doc.
-- **Authority collapses to three levels:** code and tests state current behavior; reference
-  contracts state invariants; the North Star states intent. Plans are temporary.
-- **Deep exploration runs in subagents** that return short summaries, so the main session stays
-  clean without rationing reads.
-- [AGENTS.md](../../AGENTS.md) drops the reading-etiquette and precedence prose (current rules 9
-  and 10) and stays at or under about 100 lines. A new line is added only after an observed agent
-  failure.
+- **Understanding check, not a reading quota.** Before changing code, an agent should be able to
+  state what it will change, what could break and who consumes it, and how it will prove the
+  change. Read until it can; stop when it can. Review is not a substitute for reading.
+- **Wide reading goes to explorer subagents** that return short summaries, so the main session
+  stays clean.
+- **Structure carries the routing:** nested AGENTS.md files per package or area; a header box of at
+  most ten lines at the top of each durable doc (what it covers, invariants, governed paths, when
+  to read further); a path-to-doc map; the [docs router](../README.md) reduced to an index of about
+  40 lines.
+- **Three levels of authority:** code and tests state current behavior; reference contracts and
+  approved designs state invariants and targets; the North Star states intent.
+- [AGENTS.md](../../AGENTS.md) drops current rules 9 and 10 and the boot contract, and stays at or
+  under about 100 lines. A line is added only after an observed agent failure.
 
-### G — Reference tier: keep and trim
+### H — Onboarding
 
-- **Keep** the North Star, architecture, the F contract, component contracts and the
-  [shell and visual-system contract](../reference/design-system/editor-shell-and-visual-system.md).
-  The design system is the taste specification agents need to reach polish.
-- **Trim** the design system to rules and tokens. Tokens live in code and the doc points to them.
-  Designer-brief summaries are generated on demand rather than maintained by hand.
-- **Decision records:** contract-changing decisions stay as one-page ADRs. Authorization records
-  move to the archive; the tier table replaces them.
+- A "first ten minutes" section in the root README: clone, install, `npm run status`, read
+  AGENTS.md, the glossary and the North Star header box, pick an unclaimed item.
+- A one-page glossary of domain terms (Layout, Scene, Camera, Experience, Presentation, Guide,
+  Stop, World and Experience lenses, PLATE, Stage, Object Focus).
+- Human contributors and agents use the same path.
 
-### H — Two scheduled agents
+### I — Reference tier: keep and trim
 
-- **Gardener (weekly):** deletes dead docs, archives closed plans, flags drift between docs and
-  code, and opens one reviewable pull request.
-- **Gap scanner:** compares the North Star with the capability ledger, checks open claims, and
-  proposes the next unclaimed slice with a draft plan.
+- **Keep** the North Star, architecture, the F contract, component contracts and the shell
+  contract.
+- **Trim** the design system to rules and tokens; tokens live in code and the doc points to them.
+  Designer-brief summaries are generated on demand.
+- **Decision records:** Tier 2 decisions only, one page each. Authorization records move to the
+  archive.
+
+### J — Scheduled agents
+
+- **Gardener (weekly):** deletes dead docs, archives closed material, flags drift between docs and
+  code, opens one reviewable pull request.
+- **Gap scanner (weekly):** compares the North Star with the ledger and status, and produces the
+  owner digest: regressions, Tier 1 merges to review, flags ranked by how much work they block, and
+  the next unclaimed capabilities.
+- **Breaker (weekly):** exploratory testing of `working` and `polished` capabilities. Every defect
+  it finds lands as a failing tagged test or a `bug` issue.
 
 ## Sequencing
 
-1. R217.S24 finishes any open review follow-up under the current rules (its implementation and
-   closeout anchors are already on `main` at 08602245).
-2. R217.S25 merges and closes out under the current rules. No new slice starts afterward until
-   this proposal is decided.
-3. The owner reviews and merges this proposal (Tier 2 by its own definition).
-4. **Prune pull request 1, structure:** new AGENTS.md, nested AGENTS.md files, header boxes,
-   router index, path-to-doc map.
-5. **Prune pull request 2, workflow:** capability ledger seeded from the North Star, tier table,
-   plan template, rewritten closeout skills, ownership map; retire batons and the release list.
-6. **Prune pull request 3, archive sweep:** closed phases, authorization records and completed
-   plans move to the archive; the documentation-reference gate stays green throughout.
-7. **R217.S11 runs as the first lean final gate:** its existing plan is replaced by the end-to-end
-   journey spec, green CI and an owner walkthrough. R217 closes.
-8. T4 (release and delivery) is the first track planned entirely under the new rules.
-9. The gardener and gap scanner are scheduled after the ledger exists.
+1. R217.S24 follow-up and R217.S25 finish under the current rules.
+2. The owner reviews and merges this proposal (Tier 2).
+3. **Prune pull request 1, structure:** new AGENTS.md, nested AGENTS.md files, header boxes,
+   router index, glossary, path-to-doc map.
+4. **Prune pull request 2, status:** ledger seeded from the North Star (owner reviews the seed),
+   existing tests tagged, status script and its CI guard, flag labels. The first report will look
+   lower than reality wherever tests are missing; that is the honest starting point.
+5. **Prune pull request 3, workflow and archive:** tier table, plan template, design-leads rule,
+   closeout skills retired, batons and the release list archived, closed phases and authorization
+   records swept to the archive.
+6. **R217.S11 runs as the first lean final gate:** the R217 journey tests green on `main` plus an
+   owner walkthrough. R217 closes.
+7. T4 (release and delivery) is the first area planned entirely under the new rules.
+8. The scheduled agents start once the status report exists.
+
+The prune pull requests themselves follow the new rules.
 
 ## What does not change
 
@@ -203,31 +269,36 @@ The [slice-closeout skill](../../.agents/skills/slice-closeout/SKILL.md) and
   visitor isolation and no second compiler.
 - The public-surface and preview-surface boundary tests and the documentation-reference gate.
 - The North Star's ratified direction and the creative-depth admission test.
-- Owner control of North Star changes, production activation, licence and dependencies.
+- Owner control of the North Star, approved designs, check removal, production activation, licence
+  and dependencies.
 
 ## Risks
 
-- **Lower review bar, more slop.** Mitigated by the tier table, executable checks and the gardener.
-- **Agents claim done too early.** Mitigated by checks written first and `passes` flipping only in
-  CI.
-- **The prune becomes its own governance project.** Mitigated by three bounded pull requests and
-  no new process documents beyond this one.
-- **Lost history.** Nothing is deleted outright: closed material moves to the archive, and Git
-  keeps everything.
+- **Weak tests make status look better than reality.** Mitigated by the breaker agent, owner
+  review for `polished`, and the guard on removing checks.
+- **Seeding the ledger is a large one-time job.** Seed coarsely, refine as work touches each area.
+- **Lower review bar, more slop.** Mitigated by the tier table, checks written first and the
+  gardener.
+- **GitHub dependence for flow.** Durable truth stays in the repository, so losing GitHub loses
+  conversation, not product knowledge.
+- **The prune becomes its own governance project.** Mitigated by three bounded pull requests and no
+  new process documents beyond this one.
 
 ## Acceptance for this proposal
 
-- A fresh agent, given only the repository, answers "what's next and is anyone on it?" in five or
-  fewer file reads plus one `gh` call.
+- A fresh agent, given only the repository and `gh`, answers "what's next, what's broken, what's
+  undecided and is anyone on it?" from `npm run status` plus at most five file reads.
+- Adding one failing tagged test lowers a capability's level in the next report, and fixing it
+  restores the level, with no documentation edits (demonstrated once).
 - AGENTS.md is about 100 lines or fewer; the router index is about 40 lines or fewer.
 - The live roadmap surface (outside the archive) is under 10% of today's word count.
-- A Tier 0 slice goes from plan to merge with no owner action and no documentation-only commits.
+- A Tier 0 change goes from claim to merge with no owner action and no documentation-only commits.
 - All existing architecture and documentation-reference tests stay green.
 
 ## Open questions for the owner
 
-1. Is the capability ledger JSON in the repository, or GitHub issues with a label scheme? This
-   proposal recommends JSON for shipped state and GitHub only for claims.
-2. Should Tier 1 require an owner skim, or only a second fresh-context agent review?
-3. Should R217.S11's existing plan be retired outright or kept in the archive as reference?
-4. Does T5 depth pause until T4 delivers a working publish loop?
+1. Tier 1: owner review in the weekly digest after merge (recommended), or a skim before merge?
+2. Plans in GitHub issues and pull requests (recommended), or one-page files in the repository?
+3. Ledger granularity: about one entry per creator-recognizable action (recommended), or coarser?
+4. Retire R217.S11's existing plan outright, or keep it in the archive as reference?
+5. Does T5 depth pause until T4 delivers a working publish loop?
