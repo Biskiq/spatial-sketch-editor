@@ -1,6 +1,6 @@
 # R217.S24 — acceptance record: Experience controller
 
-**Slice:** R217.S24 · **Status:** approved (plan); implementation evidence recorded, one review evidence finding corrected, verdict not yet recorded · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**Slice:** R217.S24 · **Status:** accepted 2026-11-02 at tested revision `bc24b72c` (clean independent review, one P2 evidence finding corrected; routine close-out under the owner's direction; no override) · **Plan:** [implementation-plan.md](./implementation-plan.md) (closed to a stub; owns the criteria in its recovery line) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 **AUTHORITY: NONE.** This record reports what was implemented, the gates run, the browser evidence, the pixel comparison and the residuals. The [phase slice register](../README.md#slice-register) owns status, and the verdict belongs to the independent review.
 
@@ -135,4 +135,34 @@ Probe records: [unpatched](../../../archive/roadmap/r217-core-editor-stability/r
 
 The coordinator's review of `bc24b72c` found **no production-code defects** in the extraction or the lens fix. It raised one evidence finding, **P2**, on the pixel-control paragraph above: the run-to-run control existed only at 1440×900 while the conclusion was stated for both widths. The paragraph is corrected — the claim is scoped to the width that was measured, and 1180×820 states plainly that it has no control pass. The review separately reproduced the affected tests, the 210 architecture tests, the empty diffs of the preserved authorities and the five plan test files, and all 24 screenshot comparison counts.
 
-No verdict is recorded here. The verdict belongs to the reviewer, against this corrected revision.
+That corrected revision is what the owner accepted. On 2026-11-02 the owner directed the routine close-out and merge against it; no override was invoked. The review's result stands as recorded: no production-code defects in the extraction or the lens fix, and its one evidence finding corrected above.
+
+## Closeout and preservation
+
+Capability outcome, routed to the [phase register](../README.md#slice-register): R217.S24 ships the Experience controller — the lens's commands, reading and drafts out of the surface and behind one factory — and the R217.S22 Experience-lens crash fix. No cutover drift: no persisted format, gate or interface changed.
+
+Anchors, computed before the close-out commit:
+
+```text
+plan        050a30d9418a9a910a320388ae2ea4d879f1b34c   last commit with the full plan body (reachable on main); the stub
+                                                       at its path names this anchor
+acceptance  d38fc4c3ec9b512f943024aec06f1fd8c6bf4352   the full record before this close-out; kept in full at its path
+tag         closed/r217.s24 -> d38fc4c3               annotated tag, pushed after the merge; the tag target keeps both
+                                                       anchors reachable (the plan anchor is an ancestor)
+merge       P1 merge of PR #256 with `--merge`; the merge-commit SHA and the post-merge verification are recorded
+            by the post-merge anchors follow-up
+```
+
+```text
+CLOSEOUT PRESERVATION — R217.S24 (2026-11-02)
+prose compacted:                 1   approved plan -> stub at its own path; acceptance record kept in full
+reference promotions:            0   no reference contract changed
+renderable evidence archived:    61 files (51 PNG, 10 JSON), byte-identical to the run output
+evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s24-experience-controller/evidence/CLOSED.md
+transient artifacts removed:     0   the harness lives in a git-ignored scratch directory and stays there
+historical anchors:              plan 050a30d9; acceptance d38fc4c3; tag closed/r217.s24 -> d38fc4c3 (annotated; pushed after the merge)
+new live -> archive prose links: 6   the record's evidence, journal and comparison links (already archive paths)
+manual-owed verification rows:   3   native touch, Safari and the first server-rendered paint (S11's rows)
+remaining deferred items:        6   the residuals above
+permanent stubs added:           1   approved plan
+```
