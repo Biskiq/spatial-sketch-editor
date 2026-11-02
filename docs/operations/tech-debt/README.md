@@ -249,6 +249,55 @@ Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
 
 ## Open
 
+## TD-20 — the slice-closeout reference points to an archive section that does not exist
+
+Status        open
+Found         2026-11-01, R217.S23 close-out (step 8, when `references/preservation.md` was read)
+Owner         the slice-closeout skill (`.agents/skills/slice-closeout/references/preservation.md`), its owner; not a track
+Symptom       The preservation reference sends a close to `docs/archive/README.md` ("Closed-work evidence") for the evidence
+              path and manifest mechanics. That section does not exist, so a close that follows the pointer finds nothing.
+              R217.S22 and R217.S23 wrote their `CLOSED.md` manifests by example.
+Reproduce     `grep -n "Closed-work evidence" docs/archive/README.md` returns nothing. The pointer is in the reference's
+              "Archive copying" section and in its owner-ruling paragraph.
+Root cause    PR #115 (WP4) reduced `docs/archive/README.md` and never gained the mechanics the reference names.
+Why green     The documentation gate resolves links and written paths in the docs tree; it does not read the skill references.
+Fix options   Either add a "Closed-work evidence" section to `docs/archive/README.md` that states the `CLOSED.md` manifest and
+              the `git mv` rule, or change the reference's pointer to name the existing manifests. Do NOT copy the mechanics
+              into each closed stub. The skill owner decides; this entry changes no skill file.
+Then add      The reference's pointer resolves (a section, or the pointer rewritten), checked by the documentation gate or by hand.
+
+## TD-19 — the editor ships no favicon, so every page load logs a `/favicon.ico` 404
+
+Status        open
+Found         2026-11-01, R217.S23 browser acceptance (the review's nit); the Vite log records `[404] GET /favicon.ico` on each load
+Owner         the editor app shell (`apps/editor/src/app.html` and `apps/editor/static/`); no track claims it, so the owner assigns it
+Symptom       Every page load logs `Failed to load resource: the server responded with a status of 404` for `/favicon.ico` in
+              the browser console. The page works; the request is the browser's default icon fetch.
+Reproduce     Load any editor route in Chromium with the console open. The Vite log shows `[404] GET /favicon.ico` on the editor origin.
+Root cause    `src/app.html` declares no icon link, and `static/` ships no favicon, so the default request returns 404.
+Why green     No gate reads the console for the default icon request; the browser step counts page errors, not this 404.
+Fix options   Ship an icon under `apps/editor/static/` and link it from `src/app.html`. Do NOT silence it with an empty icon link
+              alone: that hides the request without providing an icon.
+Then add      A check that the linked icon (or `/favicon.ico`) returns 200 on the built app.
+
+## TD-18 — the Box second-corner first release sometimes does not commit
+
+Status        open
+Found         2026-11-01, R217.S23 browser acceptance (the review's P2; the Box step, measured against `main` and the S23 tree)
+Owner         T1 Stage input and Layout drawing (the Ink Box reading), proposed at close-out; the flake predates R217.S23
+Symptom       Drawing a Box, the release at the second corner sometimes does not commit: the Box stays a live preview. A second
+              press at the same corner sometimes commits it and sometimes does not.
+Reproduce     Headed Chromium, Playwright, one Box step per run: a first corner, then one release at the second corner. On `main`
+              `23d6d9ae`, the first release did not commit in 2 of 6 runs (1440×900 fine; 820×1180 coarse), and both stayed live
+              after one re-press. On `a7598a55` the first release did not commit in 3 of 6 (right Sheet) and 2 of 6 (left Sheet);
+              2 of 6 stayed live after the re-press in each. Numbers: the R217.S23 acceptance record, Box table.
+Root cause    Not established. It was not traced at close-out.
+Why green     No test or browser gate runs the Box second-corner release as a browser delivers it.
+Fix options   First capture the pointer sequence (down, move, up, coalesced moves) of a failing run, then trace the Layout drawing
+              adapter's release handling against it. Do NOT hide the flake with an extra re-press in the harness.
+Then add      A two-corner Box test that runs the release sequence a browser produces, and a browser pass in which the first
+              release commits in every configuration of the S23 matrix.
+
 ## TD-17 — Focus after Cancel on a destructive Card confirmation lands on the page body, not Delete
 Status        open
 Found         2026-11-01, R217.S22 keyboard pass in the browser (recorded as a residual; the confirmation is S21's code)
@@ -269,12 +318,14 @@ Then add      A keyboard-level test for Delete, then Cancel: the Delete control 
 ## TD-16 — perf browser flows still locate the removed ☰ menu and the Stage's Open source JSON
 
 Status        open
-Found         2026-11-01, R217.S20 acceptance and independent review (recorded as a residual; the flows were not run)
+Found         2026-11-01, R217.S20 acceptance and independent review (recorded as a residual; the flows were not run); extended by R217.S23 (the Point disclosure)
 Owner         T1 Stage host and shell (the controls the flows drive); the integrated perf run belongs to R217.S11
 Symptom       The `apps/editor/perf` browser flows press controls that R217.S20 moved or removed. They
               look for "Download source JSON" in the ☰ menu, which the Head no longer has, and for "Open
               source JSON" among the Stage actions, which now sit in the project name's menu and in Find.
               Some also name Stage controls that R217.S13 renamed or moved (Fit, Plan, the `.stage-actions` locator).
+              R217.S23 also put the Ink typed X/Z fields behind a Point disclosure, so the flows that fill `[data-ink-x]`
+              directly must open Point first.
 Reproduce     Run the affected flows against the Cloud stack (the S20 session had none). Affected files, found by
               search: `apps/editor/perf/lib/flow.ts` (Open source JSON on the Stage, line 118),
               `apps/editor/perf/flows/t1-s02-browser-acceptance.spec.ts`,

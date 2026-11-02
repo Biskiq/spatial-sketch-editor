@@ -1,6 +1,6 @@
 # R217.S23 — acceptance record: Ink palette and constrained widths
 
-**Slice:** R217.S23 · **Status:** implemented at tested revision `a7598a55`; the first review (at `9809dad6`) is addressed here; not accepted; no verdict recorded · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**Slice:** R217.S23 · **Status:** accepted 2026-11-01 at tested revision `a7598a55` (clean independent review; routine close-out under the owner's direction; no override) · **Plan:** [implementation-plan.md](./implementation-plan.md) (closed to a stub; owns the criteria in its recovery line) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 **AUTHORITY: NONE.** This record reports what was implemented, the gates run, the browser evidence, the contrast measured, the drift reconciled and the residuals. The [phase slice register](../README.md#slice-register) owns status, and the verdict belongs to the independent review.
 
@@ -95,7 +95,7 @@ Each fine pass drew in an empty workspace: a Wall Line (two taps and a Finish), 
 | 1180×820 coarse, left | 12, 324.9, 180, 554.9 | 249, 369.7, 1099, 746 | 69 |
 | 820×1180 coarse, left | 12, 504.9, 180, 734.9 | 192, 722, 796, 1106 | 12 |
 
-Per-run JSON: [1440×900 fine](./evidence/2026-11-01-browser/acceptance-1440x900-fine.json) · [1280×800 fine](./evidence/2026-11-01-browser/acceptance-1280x800-fine.json) · [1180×820 fine](./evidence/2026-11-01-browser/acceptance-1180x820-fine.json) · [820×1180 fine](./evidence/2026-11-01-browser/acceptance-820x1180-fine.json) · [1180×820 coarse](./evidence/2026-11-01-browser/acceptance-1180x820-coarse.json) · [820×1180 coarse](./evidence/2026-11-01-browser/acceptance-820x1180-coarse.json) · the four room passes: [1440×900](./evidence/2026-11-01-browser/acceptance-1440x900-room.json), [1280×800](./evidence/2026-11-01-browser/acceptance-1280x800-room.json), [1180×820](./evidence/2026-11-01-browser/acceptance-1180x820-room.json), [820×1180](./evidence/2026-11-01-browser/acceptance-820x1180-room.json) · the six left-side passes are the same names with `-sheet-left`.
+Per-run JSON: [1440×900 fine](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-1440x900-fine.json) · [1280×800 fine](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-1280x800-fine.json) · [1180×820 fine](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-1180x820-fine.json) · [820×1180 fine](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-820x1180-fine.json) · [1180×820 coarse](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-1180x820-coarse.json) · [820×1180 coarse](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-820x1180-coarse.json) · the four room passes: [1440×900](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-1440x900-room.json), [1280×800](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-1280x800-room.json), [1180×820](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-1180x820-room.json), [820×1180](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/acceptance-820x1180-room.json) · the six left-side passes are the same names with `-sheet-left`.
 
 **Overlaps that remain, all accounted for.** Across all 16 runs the Sheet overlaps only the scrim (which sits beneath it by design), the drawing candidate's bounding box (indicative; see the residuals), and, with the Sheet on the left at 1180 and 820, the **open Index sheet** (residual below). The Card, the zoom cluster and the dock do not overlap the Sheet in any state.
 
@@ -138,11 +138,11 @@ Every new row, scrim and edge against the pale ground, from the shell-role token
 | row hairline against the pale ground (edge) | 8.07 | 3 |
 | Index stone against the scrimmed pale ground (edge; scrim = forest at 55% over the ground, composite `#728079`) | 3.81 | 3 |
 
-Sampled from the headed PNGs, as a cross-check: the instrument row's fill against the pale Stage ground above it measured **10.59:1**; the Index stone against the scrimmed ground **3.77:1** (token 3.81); the scrim's own step against the unscrimmed ground **3.41:1**. Sample values are in [contrast.json](./evidence/2026-11-01-browser/contrast.json).
+Sampled from the headed PNGs, as a cross-check: the instrument row's fill against the pale Stage ground above it measured **10.59:1**; the Index stone against the scrimmed ground **3.77:1** (token 3.81); the scrim's own step against the unscrimmed ground **3.41:1**. Sample values are in [contrast.json](../../../archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/2026-11-01-browser/contrast.json).
 
 ## Residuals
 
-- **The open Index sheet covers a Height Sheet on the left at constrained widths.** With the Sheet on the left at 1180×820 and 820×1180 (fine and coarse), the Index sheet, when open, sits over the Sheet's lane (`sheet/index`). Accepted by design: the Index is a scrimmed modal overlay (see the Independent review section, accepted residuals). The Sheet is operable once the Index closes.
+- **Closed by design: the open Index sheet covers a Height Sheet on the left at constrained widths.** With the Sheet on the left at 1180×820 and 820×1180 (fine and coarse), the Index sheet, when open, sits over the Sheet's lane (`sheet/index`). Accepted by design, per the independent review: the Index is a scrimmed modal overlay (see the Independent review section, accepted residuals). The Sheet is operable once the Index closes.
 - **The starter room's bottom wall is under the palette row at 1180×820.** At the Fit framing the room's bottom wall (ends at y 740) sits behind the palette row (top 714.6): 13,621 wall-ink px under the footprint. Accepted by the coordinator as a residual for S11, because clearing it needs Fit to inset for the lower column, a Camera framing change outside this plan.
 - **At 820×1180 fine the palette is two rows (69.6 px).** The lane inset narrows the lower column, so the keys wrap. Heights are measured and within the Stage; no overlap results.
 - **The Opening options panel covers the drawing while open.** About 276 px tall at 1180×820 (its top at 470). It is the creator's choice and closes back to the one row. The Sheet no longer overlaps it.
@@ -189,3 +189,37 @@ The gate table above is the one run on the clean `a7598a55` tree. This record is
   - The live Box preview can pass under the Card or touch the Sheet. Previews aren't shell furniture.
   - **Nit, no action:** StageInstrumentHost numbers its ids with a module counter instead of `$props.id()`. It mounts only on a client task, so no hydration mismatch arises today.
 - **Verdict at `a7598a55`:** the slice meets plan §3 to §5 within the declared `affected-subsystem` tier. Ink keeps exactly Wall (Line, Box) and Opening, with typed X/Z, Finish, Backtrack and Cancel, and `objects-panel-guard.test.ts` stays green. Contrast on PR #247's pale ground is measured and passes. Nothing is open, withdrawn or unadjudicated, so routine close-out may proceed.
+
+## Acceptance
+
+Accepted 2026-11-01 at tested revision `a7598a55` by the owner's routine close-out direction for this slice. The independent review (above) is clean at `a7598a55`: nothing is open, withdrawn or unadjudicated, and the accepted residuals are listed in the review and in [Residuals](#residuals). No override was recorded. The gate table is the one run on the clean `a7598a55` tree; the browser matrix ran from `a7598a55`.
+
+Capability outcome, routed to the [phase register](../README.md#slice-register): R217.S23 ships the Ink palette row with Wall (Line, Box) and Opening readings, the instrument row, and the constrained Index with its scrim. Cutover drift is reconciled in the record above.
+
+## Closeout and preservation
+
+Anchors, computed before the close-out commit:
+
+```text
+plan        44bc0c5ea915a9988f51d62f24cfd6461c8e507f   last commit with the full plan body (reachable on main); the stub
+                                                       at its path names this anchor
+acceptance  b32bee31bf2b82f71f7e89cd89e2e924cfe81d81   the full record before this close-out; kept in full at its path
+tag         closed/r217.s23 -> b32bee31               created and pushed after the merge; the tag target keeps both
+                                                       anchors reachable (the plan anchor is an ancestor)
+merge       P1 merge of PR #254 with `--merge`; the merge-commit SHA and the post-merge verification are recorded
+            by the post-merge anchors follow-up
+```
+
+```text
+CLOSEOUT PRESERVATION — R217.S23 (2026-11-01)
+prose compacted:                 1   approved plan -> stub at its own path; acceptance record kept in full
+reference promotions:            1   the lower column's Height Sheet lane inset, to the lower working edge of the shell reference
+renderable evidence archived:    178 files (160 PNG, 18 JSON), moved byte-identical with git mv
+evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/CLOSED.md
+transient artifacts removed:     0
+historical anchors:              plan 44bc0c5e; acceptance b32bee31; tag closed/r217.s23 -> b32bee31 (annotated; pushed after the merge)
+new live -> archive prose links: 0
+manual-owed verification rows:   2   native touch and Safari (S11's rows); the first server-rendered paint before hydration (not measured)
+remaining deferred items:        12  the residuals above: S11 rows, TD-16, TD-18, TD-19, and the accepted residuals (the Index on a left Sheet is closed by design)
+permanent stubs added:           1   approved plan
+```

@@ -164,6 +164,7 @@ never grows sideways, and a tool never opens a second row of controls.
 - **Arming.** Clicking a tool, its key or Find's Arm verb arms it. Arming never changes
   selection; what a gesture makes becomes selected. Tools stay armed until Esc or Select.
   A control that is not a tool, such as the Height Sheet, never arms a tool.
+- **The Height Sheet lane.** The lower column insets by the measured lane of the Height Sheet on the Sheet's own side, plus 1.5 rem, so the dock and the palette, with its options open, never enter that lane. With no lane the inset is 1.5 rem on both sides, and the dock centres in what remains (R217.S23).
 - **Palette collapse is explicit.** Clicking a tool arms it and opens its palette. Clicking
   the armed tool again collapses or reopens the palette, and a small collapse control at
   the palette's foot does the same. Choosing an option or drawing never closes it, and the
