@@ -1,6 +1,6 @@
 # Lean harness proposal — documentation and agent-workflow prune
 
-**Status:** draft proposal for owner review, revision 2. It authorizes nothing and changes no rule
+**Status:** draft proposal for owner review, revision 3 (folds in the peer review of `23e3756c`). It authorizes nothing and changes no rule
 until the owner merges it. **Timing:** execute after R217.S25 merges and closes out, and before
 R217.S11 (the integrated final gate) starts. Remaining R217.S24 follow-up and R217.S25 finish under
 the current rules. Once executed, this document moves to the archive.
@@ -45,24 +45,27 @@ contracts; about 60k words) is not the problem and stays.
 - **Durable truth in the repo, flow in GitHub.** Code, tests, the capability ledger, reference
   contracts and decisions live in the repository. Claims, plans, flags and review conversations
   live in GitHub issues and pull requests.
-- **Status is computed, never claimed.** Tests prove capabilities; a report derives each
-  capability's level from the latest test run on `main`.
-- **Checks over prose.** A rule that can be a test or lint becomes one; anything else is guidance
-  and blocks nothing.
+- **Status is computed, never claimed.** Tests and confirmed bug reports drive a report that
+  derives each capability's maturity and health from the latest complete run on `main`.
+- **Checks over prose.** A rule that can be a test or lint becomes one. Other guidance blocks
+  nothing, with one exception: the retained hard rules and approved designs bind whether or not
+  tests fully cover them.
 - **Areas, not gates.** Tracks organize code, context and expertise. Anyone may change any area.
 - **Design leads.** An owner-approved design is the target for the surface it covers; the shell
   reference follows what ships.
 - **Flag, don't guess and don't stall.** Open a flag, continue on the most reversible reading, or
   pick other work.
 - **Judgment clause.** When following a guideline costs more than the risk it guards, say so in one
-  line in the pull request and proceed. Tier 2 work is excepted.
+  line in the pull request and proceed. It never applies to the retained hard rules, approved
+  designs or Tier 2 work.
+- **Enforcement before autonomy.** No mechanism is retired until its replacement is enforced.
 
 ## Changes
 
 ### A — Capability ledger with computed status
 
 A root `capabilities.json` lists what the product should do: one entry per thing a creator would
-say they can do. It holds definitions only, never status.
+say they can do. It holds definitions and the owner's review record, never status.
 
 ```json
 {
@@ -70,37 +73,68 @@ say they can do. It holds definitions only, never status.
   "area": "T1",
   "summary": "Two gable roofs meeting at a corner join automatically with a correct valley",
   "northStar": "north-star.md#product-convergence-destination",
+  "surface": ["layout-core: roof evaluation", "editor: roof authoring tools"],
   "design": null,
   "review": null
 }
 ```
 
-Tests declare which capability they prove and at what level, in the test title, for example
-`[cap:layout.roof.gable-join core]` or `[cap:layout.roof.gable-join edge]`. A status script runs on
-`main` (nightly for the full end-to-end suite) and derives each capability's level:
+A review record, once the owner accepts design-led work, names what was reviewed:
+`{ "implementation": "<commit>", "design": "<design revision>", "date": "...", "verdict": "accepted" }`.
 
-| Level | Meaning |
+**Tests carry the claims.** Each test declares the capability and level it proves in its title, for
+example `[cap:layout.roof.gable-join core]` or `[cap:layout.roof.gable-join edge]`. A reproducer
+for a confirmed defect merges as an **expected failure** linked to its issue
+(`[cap:layout.roof.gable-join core known-failing:#301]`, using the runner's expected-failure mode).
+CI stays green because the test is expected to fail, the report counts it as failing, and when a
+fix makes it pass CI flags the stale marker so the fix pull request removes it. A skipped check
+also counts as failing.
+
+**Two axes, reported separately.** Maturity says what has been proven; health says whether it works
+right now. Health is never hidden behind maturity.
+
+| Maturity | Meaning |
 | --- | --- |
-| `missing` | no tagged check passes, or none exists yet |
+| `missing` | no core check is defined, or none passes |
 | `partial` | some core checks pass |
-| `working` | every core check passes |
-| `polished` | every core and edge check passes, no open bug, and the owner's review of the current design is accepted and not stale |
+| `working` | at least one core check exists, and every core check passes |
+| `polished` | `working`, every edge check passes, and the owner's review is current |
 
-A capability whose level dropped since the previous report is shown as **regressed**. An owner
-review goes stale automatically when its referenced design changes after the review date.
+| Health | Meaning |
+| --- | --- |
+| `healthy` | no failing checks and no confirmed open bug |
+| `degraded` | an edge check fails, or a confirmed bug that does not block the main journey is open |
+| `broken` | a core check fails, or a confirmed bug labelled `blocks-core` is open, even before any reproducer exists |
+| `unknown` | the latest report for this capability is stale, incomplete or missing |
+
+A capability whose maturity or health worsened since the previous report is marked **regressed**.
+
+**The report states its own provenance:** the commit it tested, when it ran, which suites ran and
+whether each completed. A report older than the current `main` head, or with an interrupted or
+missing suite, marks the affected capabilities `unknown` instead of presenting old results as
+current.
+
+**Owner reviews are bound to both design and implementation.** A review goes stale when its design
+changes, or when a later merge touches the capability's `surface` (path globs in practice; shown as
+descriptions above). Changes elsewhere keep it. A stale review drops `polished` to `working` until
+the owner looks again.
 
 **When a "shipped" feature turns out broken** (for example, gable roofs fail to join on a T-shape):
 
-1. Whoever finds it adds a failing test tagged with the capability: `core` if the main journey is
-   broken, `edge` otherwise. If a test is not practical yet (visual defects), they open a `bug`
-   issue labelled with the capability instead.
-2. The next report lowers the level and marks it regressed. Nobody edits a status field, reopens a
-   slice or writes a document.
-3. A fix pull request makes the test pass, and the level recovers on the next report.
+1. Whoever finds it reproduces it on current `main` and opens a `bug` issue with the steps,
+   labelled with the capability, adding `blocks-core` if the main journey fails. The report reads
+   issues live, so health changes at once, before any test exists.
+2. If the defect can be automated, a reproducer merges as an expected failure linked to the issue,
+   so the report keeps showing it through the test. If it cannot be automated yet (a visual
+   defect, for example), the issue alone carries it.
+3. The fix pull request makes the reproducer pass and removes its marker, or, for an issue-only
+   defect, closes the issue with the evidence that it is fixed. Health recovers on the next report.
 
-**The one hard guard:** removing a tagged check or retagging it to a lower level needs the owner's
-label on the pull request, enforced in CI. Skipping a check is allowed but counts as failing, so
-status stays honest without blocking anyone.
+Nobody edits a status field, reopens a slice or writes a document at any step.
+
+**The hard guards,** enforced in CI: removing a tagged check, retagging it to a lower level,
+dropping `blocks-core` from a confirmed bug, or closing a `blocks-core` bug without a linked fix all
+need the owner's label on the pull request or issue.
 
 Agents may add capabilities and checks freely. The initial seeding from the North Star is reviewed
 by the owner once.
@@ -108,7 +142,10 @@ by the owner once.
 ### B — Claims and flags in GitHub
 
 - **Claims:** a draft pull request or self-assigned issue whose title names the capability id. An
-  agent checks open drafts before starting.
+  agent checks open issues and pull requests before starting, and again right after creating its
+  claim, because two agents can both see "unclaimed" first. If another claim for the same
+  capability exists, the earlier one keeps it and the later one closes or narrows its scope. The
+  status report also lists duplicate claims.
 - **Flags:** issues with a capability label and one of these flag labels.
 
 | Label | Meaning | What an agent does |
@@ -123,23 +160,33 @@ Agents open flags whenever they hit one; that is the self-aware maintenance loop
 lands as a short conclusion linked from its issue and, when it settles something, as a decision or
 a ledger change.
 
-A single command (`npm run status`) prints, per capability: level, regressions, failing checks,
-open flags and claims. That is the lean scan a new agent starts from.
+A single command (`npm run status`) prints the report's commit, age and completeness, then, per
+capability: maturity, health, regressions, failing checks, open flags and claims. That is the lean scan a new agent starts from.
 
 ### C — Autonomy by risk tier
 
 ```text
 Tier 0  everything not listed below
         → one fresh-context agent review, merge on green CI
-Tier 1  changes a contract invariant, a persisted format, the visitor/public surface,
-        or shared shell rules
+Tier 1  changes a contract's details within the retained hard rules, the visitor/public
+        surface or shared shell rules; or changes a persisted format that the previous
+        reader can still read, or that ships a tested migration and recovery path
         → agent review, merge on green CI; the owner reviews it at the next
           significant-change checkpoint; revert is the recovery path
-Tier 2  changes the North Star, an approved design or the ledger's shape; removes or
-        downgrades a check; records an owner review; production data or activation;
-        licence; new dependency
+Tier 2  changes a retained hard rule, the North Star, an approved design or the ledger's
+        shape; any persisted-format change without that compatibility or tested recovery;
+        removes or downgrades a check; records an owner review; production data or
+        activation; licence; new dependency
         → owner decides before merge
 ```
+
+- **The highest applicable tier wins.** A change's tier follows what it does, whether or not a test
+  notices.
+- **Why the persisted-format line:** reverting code does not make newly written files readable by
+  the old reader, so "revert is the recovery path" only holds for formats that stay readable or
+  ship a tested way back.
+- **Autonomous merges start only after the required merge gate exists** (see Sequencing). Until
+  then, the current rules apply.
 
 ### D — Areas, not gates
 
@@ -161,8 +208,8 @@ The owner still drives work by prompting agents; nothing runs on a schedule.
 
 - **Starting a batch is a prompt, not a pull request.** The owner tells one or more agents what to
   pursue ("the next unclaimed T4 capabilities", "these three gaps", or "whatever `npm run status`
-  ranks next"). Each agent claims its item with a draft pull request, so parallel agents never
-  pick the same thing. Each pull request merges on its own; there is no batch-level greenlight.
+  ranks next"). Each agent claims its item with a draft pull request and runs the post-claim
+  collision check, so parallel agents do not build the same thing. Each pull request merges on its own; there is no batch-level greenlight.
 - **Focus line.** A short focus file at the repository root states the current priority in a few
   lines (for example "T4 publish loop first; T5 depth paused"). `npm run status` prints it, and
   agents prefer work that matches it. Changing it is a one-line owner commit.
@@ -283,20 +330,45 @@ runs on a schedule and none is a required step in a plan.
 
 1. R217.S24 follow-up and R217.S25 finish under the current rules.
 2. The owner reviews and merges this proposal (Tier 2).
-3. **Prune pull request 1, structure:** new AGENTS.md, nested AGENTS.md files, header boxes,
-   router index, glossary, path-to-doc map.
-4. **Prune pull request 2, status:** ledger seeded from the North Star (owner reviews the seed),
-   existing tests tagged, status script and its CI guard, flag labels. The first report will look
-   lower than reality wherever tests are missing; that is the honest starting point.
+3. **Prune pull request 1, enforcement first** (runs under the current rules):
+   - a repository merge-gate workflow running `npm run check`, `npm run test:arch`, `npm test`,
+     `npm run build`, `npm run check:api` and DB-backed `npm run test:api` with zero skips, made a
+     required check on `main` through branch protection. Today the only checked-in workflow is the
+     path-filtered native-form goldens job, so this gate does not yet exist;
+   - the status script with main-branch reporting, provenance and the `unknown` state;
+   - the hard guards on checks and confirmed bugs;
+   - the ledger seeded from the North Star (owner reviews the seed), existing tests tagged, flag
+     and `blocks-core` labels. The first report will look lower than reality wherever tests are
+     missing; that is the honest starting point.
+4. **Prune pull request 2, structure** (new rules apply from here): new AGENTS.md, nested
+   AGENTS.md files, header boxes, router index, glossary, path-to-doc map.
 5. **Prune pull request 3, workflow and archive:** tier table, plan template, design-leads rule,
    closeout skills retired, batons and the release list archived, closed phases and authorization
    records swept to the archive.
-6. **R217.S11 runs as the first lean final gate:** the R217 journey tests green on `main` plus an
-   owner walkthrough. R217 closes.
+6. **R217.S11 runs as the first lean final gate.** Only its recording gets lighter; its proof does
+   not. The obligations in its [current plan](./r217-core-editor-stability/r217.s11-integrated-final-gate/implementation-plan.md)
+   carry over as tagged tests and a pull request checklist:
+   - the complete merge gate, including DB-backed API tests with zero skips;
+   - journeys J1–J17 across the pointer and viewport matrix, as tagged end-to-end tests wherever
+     automatable;
+   - the owner-run Safari cells and the native-touch cell, or an explicit owner waiver;
+   - visitor, public and preview isolation plus the build-chunk scan;
+   - the seam reviews, as tests where possible;
+   - the real-import evidence R217.S17 carried to J15;
+   - an independent review of the integrated diff and an owner walkthrough.
+
+   Screenshots go in the pull request instead of an acceptance record. Any obligation that is
+   dropped is retired by an explicit owner decision recorded in that pull request. R217 then
+   closes.
 7. T4 (release and delivery) is the first area planned entirely under the new rules.
 8. The checkpoint, gardener and breaker skills are added once the status report exists.
 
-The prune pull requests themselves follow the new rules.
+**Test migration.** In `apps/editor/tests/docs/parallel-track-gates.test.ts`, the assertions on the
+router routes, track batons, the release list and the closeout-skill preflights are replaced in
+the same pull request that retires each mechanism, by assertions on its replacement (router index,
+ledger validity, guard behavior). The documentation-reference gate and every product architecture,
+isolation and boundary test stay unchanged. No guarantee disappears without being named in the
+pull request that removes it.
 
 ## After it is in effect
 
@@ -328,15 +400,17 @@ The prune pull requests themselves follow the new rules.
 
 **A typical cycle**
 
-1. An agent runs `npm run status`, sees `layout.roof.gable-join` at `partial` with no claim, and
-   opens a draft pull request claiming it.
+1. An agent runs `npm run status`, sees `layout.roof.gable-join` at `partial` with no claim, opens
+   a draft pull request claiming it and re-checks for a colliding claim.
 2. If the work needs a plan, the first commit is the plan; it is reviewed in the draft.
 3. The agent writes the tagged checks (failing), implements until they pass, gets one
    fresh-context review and fixes P0/P1 findings.
 4. Tier 0 or 1: it merges on green CI. Tier 2: it waits for the owner.
-5. The next report shows `working`. Any open question it hit is now a flag issue.
-6. Later, when the owner runs the breaker, it finds a T-shape failure and adds a failing edge test; the capability
-   reads `working` (regressed from `polished`) until someone fixes it.
+5. The next report shows `working` and `healthy`. Any open question it hit is now a flag issue.
+6. Later, when the owner runs the breaker, it finds a T-shape failure and adds an expected-failure
+   edge test linked to a `bug` issue. The capability reads `degraded` and regressed until someone
+   fixes it. Had the main journey broken, the issue's `blocks-core` label would have shown it as
+   `broken` immediately.
 
 ## What does not change
 
@@ -352,6 +426,10 @@ The prune pull requests themselves follow the new rules.
 - **Weak tests make status look better than reality.** Mitigated by the breaker agent, owner
   review for `polished`, and the guard on removing checks.
 - **Seeding the ledger is a large one-time job.** Seed coarsely, refine as work touches each area.
+- **Review invalidation churn.** Scoped `surface` paths keep unrelated changes from expiring an
+  owner review.
+- **Status trusted while CI is missing.** Mitigated by building the merge gate and report first,
+  and by the `unknown` state for stale or incomplete runs.
 - **Detailed plans go stale.** Mitigated by moving durable decisions into references on merge and
   archiving the plan file.
 - **Lower review bar, more slop.** Mitigated by the tier table, checks written first and the
@@ -365,12 +443,19 @@ The prune pull requests themselves follow the new rules.
 
 - A fresh agent, given only the repository and `gh`, answers "what's next, what's broken, what's
   undecided and is anyone on it?" from `npm run status` plus at most five file reads.
-- Adding one failing tagged test lowers a capability's level in the next report, and fixing it
-  restores the level, with no documentation edits (demonstrated once).
+- Both defect paths are demonstrated once, with no documentation edits: an automatable defect
+  (bug issue, expected-failure reproducer, fix) and an issue-only defect. Health drops on
+  confirmation and recovers after the fix.
+- A capability with zero core checks never reads `working`.
+- A report from an older commit or with an incomplete suite shows `unknown`, and the report prints
+  its commit, run time and completeness.
+- The required merge gate is enforced on `main` before any change merges without owner action.
 - AGENTS.md is about 100 lines or fewer; the router index is about 40 lines or fewer.
 - The live roadmap surface (outside the archive) is under 10% of today's word count.
 - A Tier 0 change goes from claim to merge with no owner action and no documentation-only commits.
-- All existing architecture and documentation-reference tests stay green.
+- Product architecture, isolation, boundary and documentation-reference tests stay green and
+  unchanged; obsolete process assertions are replaced in the pull request that retires their
+  mechanism.
 
 ## Open questions for the owner
 
@@ -379,5 +464,6 @@ The prune pull requests themselves follow the new rules.
 2. Plans as the first commit of the working draft pull request (recommended), or as separate
    GitHub issues?
 3. Ledger granularity: about one entry per creator-recognizable action (recommended), or coarser?
-4. Retire R217.S11's existing plan outright, or keep it in the archive as reference?
+4. Which R217.S11 obligations, if any, should be retired by owner decision (for example the
+   native-touch cell)? The rest carry into the lean gate.
 5. Does T5 depth pause until T4 delivers a working publish loop?
