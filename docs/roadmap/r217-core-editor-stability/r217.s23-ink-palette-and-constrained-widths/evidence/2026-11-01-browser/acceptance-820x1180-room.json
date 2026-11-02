@@ -1,0 +1,196 @@
+{
+  "width": 820,
+  "height": 1180,
+  "mode": "room",
+  "states": {
+    "inkOpen": {
+      "boxes": {
+        "stage": [
+          0,
+          44,
+          820,
+          1180
+        ],
+        "lowerColumn": [
+          12,
+          1040.6,
+          808,
+          1168
+        ],
+        "dock": [
+          297.7,
+          1120.4,
+          522.3,
+          1168
+        ],
+        "instrument": [
+          12.5,
+          1040.6,
+          807.5,
+          1114
+        ],
+        "palette": [
+          20.7,
+          1074.6,
+          799.3,
+          1106.6
+        ],
+        "card": null,
+        "sheet": [
+          669.6,
+          497,
+          808,
+          727
+        ],
+        "zoom": [
+          547.5,
+          1002.6,
+          657.6,
+          1040.6
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+    },
+    "folded": {
+      "boxes": {
+        "stage": [
+          0,
+          44,
+          820,
+          1180
+        ],
+        "lowerColumn": [
+          12,
+          1120.4,
+          808,
+          1168
+        ],
+        "dock": [
+          297.7,
+          1120.4,
+          522.3,
+          1168
+        ],
+        "instrument": null,
+        "palette": null,
+        "card": null,
+        "sheet": [
+          669.6,
+          497,
+          808,
+          727
+        ],
+        "zoom": [
+          547.5,
+          1082.4,
+          657.6,
+          1120.4
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    },
+    "starterRoom": {
+      "boxes": {
+        "stage": [
+          0,
+          44,
+          820,
+          1180
+        ],
+        "lowerColumn": [
+          12,
+          1120.4,
+          808,
+          1168
+        ],
+        "dock": [
+          297.7,
+          1120.4,
+          522.3,
+          1168
+        ],
+        "instrument": null,
+        "palette": null,
+        "card": null,
+        "sheet": [
+          669.6,
+          497,
+          808,
+          727
+        ],
+        "zoom": [
+          547.5,
+          1082.4,
+          657.6,
+          1120.4
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    }
+  },
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "steps": [
+    {
+      "name": "arm-ink",
+      "ok": true
+    },
+    {
+      "name": "fold",
+      "ok": true
+    }
+  ]
+}

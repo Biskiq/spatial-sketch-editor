@@ -1,0 +1,959 @@
+{
+  "method": "wall ink = #1b201c +-6 (measured 2D poche); folded = palette hidden via the armed dock key",
+  "runs": [
+    {
+      "tag": "1180x820-coarse",
+      "width": 1180,
+      "height": 820,
+      "mode": "coarse",
+      "palette": [
+        197.5,
+        694.6,
+        982.5,
+        738.6
+      ],
+      "palette_height_px": 44.0,
+      "drawing_wall_ink_bbox_folded": [
+        112,
+        278,
+        403,
+        285
+      ],
+      "wall_ink_px_under_palette_footprint": 0,
+      "palette_footprint_area_px": 34540,
+      "live_candidate_bbox": [
+        108.7,
+        273.8,
+        614,
+        341.2
+      ],
+      "live_candidate_overlaps_palette": false,
+      "overlap_pairs_excluding_containment": {
+        "inkOpen": [],
+        "wallLineLive": [],
+        "boxLive": [
+          [
+            "sheet",
+            "drawing"
+          ]
+        ],
+        "openingOptions": [
+          [
+            "instrument",
+            "sheet"
+          ],
+          [
+            "palette",
+            "sheet"
+          ],
+          [
+            "card",
+            "scrim"
+          ],
+          [
+            "sheet",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "scrim"
+          ],
+          [
+            "index",
+            "scrim"
+          ]
+        ],
+        "indexOpen": [
+          [
+            "card",
+            "scrim"
+          ],
+          [
+            "sheet",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "drawing"
+          ],
+          [
+            "index",
+            "scrim"
+          ],
+          [
+            "scrim",
+            "drawing"
+          ]
+        ],
+        "objectsFull": [],
+        "objectsCompact": []
+      },
+      "horizontal_overflow_px": 0,
+      "page_errors": 0,
+      "console_errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "failed_steps": [],
+      "index_open_dock_reachable": [
+        {
+          "id": "host-select",
+          "reachable": true
+        },
+        {
+          "id": "layout-ink",
+          "reachable": true
+        },
+        {
+          "id": "host-measure",
+          "reachable": true
+        },
+        {
+          "id": "host-erase",
+          "reachable": true
+        },
+        {
+          "id": "scene-place",
+          "reachable": true
+        }
+      ],
+      "index_open_boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          12,
+          640.6,
+          1168,
+          808
+        ],
+        "dock": [
+          457.7,
+          752.4,
+          722.3,
+          808
+        ],
+        "instrument": [
+          189.3,
+          640.6,
+          990.7,
+          746
+        ],
+        "palette": [
+          197.5,
+          694.6,
+          982.5,
+          738.6
+        ],
+        "card": [
+          700,
+          492.4,
+          988,
+          582.6
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": [
+          0,
+          59.8,
+          256,
+          632.6
+        ],
+        "scrim": [
+          0,
+          59.8,
+          1180,
+          640.6
+        ],
+        "drawing": [
+          871,
+          623.3,
+          906.1,
+          635.3
+        ]
+      },
+      "index_closed_by_scrim_scrim_present": false,
+      "coarse_controls_checked": 70,
+      "coarse_controls_below_44": 0,
+      "coarse_samples_below_44": []
+    },
+    {
+      "tag": "1180x820-fine",
+      "width": 1180,
+      "height": 820,
+      "mode": "fine",
+      "palette": [
+        200.7,
+        714.6,
+        979.3,
+        746.6
+      ],
+      "palette_height_px": 32.0,
+      "drawing_wall_ink_bbox_folded": [
+        101,
+        267,
+        432,
+        274
+      ],
+      "wall_ink_px_under_palette_footprint": 0,
+      "palette_footprint_area_px": 24915,
+      "live_candidate_bbox": [
+        98.5,
+        262.3,
+        620,
+        331.4
+      ],
+      "live_candidate_overlaps_palette": false,
+      "overlap_pairs_excluding_containment": {
+        "inkOpen": [],
+        "wallLineLive": [],
+        "boxLive": [],
+        "openingOptions": [
+          [
+            "card",
+            "scrim"
+          ],
+          [
+            "sheet",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "scrim"
+          ],
+          [
+            "index",
+            "scrim"
+          ]
+        ],
+        "indexOpen": [
+          [
+            "card",
+            "scrim"
+          ],
+          [
+            "sheet",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "scrim"
+          ],
+          [
+            "index",
+            "scrim"
+          ]
+        ],
+        "objectsFull": [],
+        "objectsCompact": []
+      },
+      "horizontal_overflow_px": 0,
+      "page_errors": 0,
+      "console_errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "failed_steps": [],
+      "index_open_dock_reachable": [
+        {
+          "id": "host-select",
+          "reachable": true
+        },
+        {
+          "id": "layout-ink",
+          "reachable": true
+        },
+        {
+          "id": "host-measure",
+          "reachable": true
+        },
+        {
+          "id": "host-erase",
+          "reachable": true
+        },
+        {
+          "id": "scene-place",
+          "reachable": true
+        }
+      ],
+      "index_open_boxes": {
+        "stage": [
+          0,
+          44,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          12,
+          680.6,
+          1168,
+          808
+        ],
+        "dock": [
+          477.7,
+          760.4,
+          702.3,
+          808
+        ],
+        "instrument": [
+          192.5,
+          680.6,
+          987.5,
+          754
+        ],
+        "palette": [
+          200.7,
+          714.6,
+          979.3,
+          746.6
+        ],
+        "card": [
+          729.6,
+          552.4,
+          1017.6,
+          630.6
+        ],
+        "sheet": [
+          1029.6,
+          317,
+          1168,
+          547
+        ],
+        "zoom": [
+          907.5,
+          642.6,
+          1017.6,
+          680.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          672.6
+        ],
+        "scrim": [
+          0,
+          44,
+          1180,
+          680.6
+        ],
+        "drawing": null
+      },
+      "index_closed_by_scrim_scrim_present": false,
+      "keyboard_walk": [
+        "button:data-ink-wall-mode",
+        "button:data-ink-point-toggle",
+        "button:data-ink-options-toggle",
+        "button:data-ink-cancel",
+        "button:Index \u25b8",
+        "button:Untitled project \u25be",
+        "button:Floor",
+        "button:World",
+        "summary:Find",
+        "button:Undo",
+        "button:Redo",
+        "button:Save to Cloud"
+      ],
+      "keyboard_point_opened": true,
+      "keyboard_point_readout": null
+    },
+    {
+      "tag": "1180x820-room",
+      "width": 1180,
+      "height": 820,
+      "mode": "room",
+      "palette_open": [
+        200.7,
+        714.6,
+        979.3,
+        746.6
+      ],
+      "starter_room_wall_ink_bbox_folded": [
+        232,
+        124,
+        948,
+        740
+      ],
+      "starter_wall_ink_px_under_palette_footprint": 13803,
+      "page_errors": 0,
+      "failed_steps": []
+    },
+    {
+      "tag": "1280x800-fine",
+      "width": 1280,
+      "height": 800,
+      "mode": "fine",
+      "palette": [
+        378.7,
+        694.6,
+        1157.3,
+        726.6
+      ],
+      "palette_height_px": 32.0,
+      "drawing_wall_ink_bbox_folded": [
+        355,
+        261,
+        614,
+        268
+      ],
+      "wall_ink_px_under_palette_footprint": 0,
+      "palette_footprint_area_px": 24915,
+      "live_candidate_bbox": [
+        352.2,
+        258.2,
+        811.5,
+        333.8
+      ],
+      "live_candidate_overlaps_palette": false,
+      "overlap_pairs_excluding_containment": {
+        "inkOpen": [],
+        "wallLineLive": [],
+        "boxLive": [],
+        "openingOptions": [
+          [
+            "instrument",
+            "sheet"
+          ],
+          [
+            "palette",
+            "sheet"
+          ]
+        ],
+        "objectsFull": [],
+        "objectsCompact": []
+      },
+      "horizontal_overflow_px": 0,
+      "page_errors": 0,
+      "console_errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "failed_steps": [],
+      "keyboard_walk": [
+        "button:data-ink-wall-mode",
+        "button:data-ink-point-toggle",
+        "button:data-ink-options-toggle",
+        "button:data-ink-cancel",
+        "button:Index \u25be",
+        "button:Untitled project \u25be",
+        "button:World",
+        "summary:Find",
+        "button:Undo",
+        "button:Redo",
+        "button:Save to Cloud",
+        "button:Preview"
+      ],
+      "keyboard_point_opened": true,
+      "keyboard_point_readout": null
+    },
+    {
+      "tag": "1280x800-room",
+      "width": 1280,
+      "height": 800,
+      "mode": "room",
+      "palette_open": [
+        378.7,
+        694.6,
+        1157.3,
+        726.6
+      ],
+      "starter_room_wall_ink_bbox_folded": [
+        457,
+        154,
+        1079,
+        690
+      ],
+      "starter_wall_ink_px_under_palette_footprint": 0,
+      "page_errors": 0,
+      "failed_steps": []
+    },
+    {
+      "tag": "1440x900-fine",
+      "width": 1440,
+      "height": 900,
+      "mode": "fine",
+      "palette": [
+        458.7,
+        794.6,
+        1237.3,
+        826.6
+      ],
+      "palette_height_px": 32.0,
+      "drawing_wall_ink_bbox_folded": [
+        380,
+        289,
+        674,
+        298
+      ],
+      "wall_ink_px_under_palette_footprint": 0,
+      "palette_footprint_area_px": 24915,
+      "live_candidate_bbox": [
+        377.2,
+        286.5,
+        870.7,
+        372.1
+      ],
+      "live_candidate_overlaps_palette": false,
+      "overlap_pairs_excluding_containment": {
+        "inkOpen": [],
+        "wallLineLive": [],
+        "boxLive": [
+          [
+            "card",
+            "drawing"
+          ]
+        ],
+        "openingOptions": [],
+        "objectsFull": [],
+        "objectsCompact": []
+      },
+      "horizontal_overflow_px": 0,
+      "page_errors": 0,
+      "console_errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "failed_steps": [],
+      "keyboard_walk": [
+        "button:data-ink-wall-mode",
+        "button:data-ink-point-toggle",
+        "button:data-ink-options-toggle",
+        "button:data-ink-cancel",
+        "button:Index \u25be",
+        "button:Untitled project \u25be",
+        "button:World",
+        "summary:Find",
+        "button:Undo",
+        "button:Redo",
+        "button:Save to Cloud",
+        "button:Preview"
+      ],
+      "keyboard_point_opened": true,
+      "keyboard_point_readout": null
+    },
+    {
+      "tag": "1440x900-room",
+      "width": 1440,
+      "height": 900,
+      "mode": "room",
+      "palette_open": [
+        458.7,
+        794.6,
+        1237.3,
+        826.6
+      ],
+      "starter_room_wall_ink_bbox_folded": [
+        489,
+        163,
+        1207,
+        781
+      ],
+      "starter_wall_ink_px_under_palette_footprint": 0,
+      "page_errors": 0,
+      "failed_steps": []
+    },
+    {
+      "tag": "820x1180-coarse",
+      "width": 820,
+      "height": 1180,
+      "mode": "coarse",
+      "palette": [
+        20.2,
+        1005,
+        799.8,
+        1098.6
+      ],
+      "palette_height_px": 93.6,
+      "drawing_wall_ink_bbox_folded": [
+        77,
+        380,
+        276,
+        393
+      ],
+      "wall_ink_px_under_palette_footprint": 0,
+      "palette_footprint_area_px": 72970,
+      "live_candidate_bbox": [
+        74,
+        375.3,
+        488,
+        474.2
+      ],
+      "live_candidate_overlaps_palette": false,
+      "overlap_pairs_excluding_containment": {
+        "inkOpen": [],
+        "wallLineLive": [],
+        "boxLive": [
+          [
+            "sheet",
+            "drawing"
+          ]
+        ],
+        "openingOptions": [
+          [
+            "instrument",
+            "sheet"
+          ],
+          [
+            "card",
+            "scrim"
+          ],
+          [
+            "sheet",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "scrim"
+          ],
+          [
+            "index",
+            "scrim"
+          ]
+        ],
+        "indexOpen": [
+          [
+            "card",
+            "scrim"
+          ],
+          [
+            "sheet",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "scrim"
+          ],
+          [
+            "index",
+            "scrim"
+          ]
+        ],
+        "objectsFull": [
+          [
+            "instrument",
+            "zoom"
+          ]
+        ],
+        "objectsCompact": [
+          [
+            "instrument",
+            "zoom"
+          ]
+        ]
+      },
+      "horizontal_overflow_px": 0,
+      "page_errors": 0,
+      "console_errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "failed_steps": [],
+      "index_open_dock_reachable": [
+        {
+          "id": "host-select",
+          "reachable": true
+        },
+        {
+          "id": "layout-ink",
+          "reachable": true
+        },
+        {
+          "id": "host-measure",
+          "reachable": true
+        },
+        {
+          "id": "host-erase",
+          "reachable": true
+        },
+        {
+          "id": "scene-place",
+          "reachable": true
+        }
+      ],
+      "index_open_boxes": {
+        "stage": [
+          0,
+          59.8,
+          820,
+          1180
+        ],
+        "lowerColumn": [
+          12,
+          1000.6,
+          808,
+          1168
+        ],
+        "dock": [
+          277.7,
+          1112.4,
+          542.3,
+          1168
+        ],
+        "instrument": [
+          190.2,
+          1000.6,
+          629.8,
+          1106
+        ],
+        "palette": [
+          198.4,
+          1054.6,
+          621.6,
+          1098.6
+        ],
+        "card": [
+          340,
+          852.4,
+          628,
+          942.6
+        ],
+        "sheet": [
+          640,
+          504.9,
+          808,
+          734.9
+        ],
+        "zoom": [
+          494,
+          954.6,
+          628,
+          1000.6
+        ],
+        "index": [
+          0,
+          59.8,
+          256,
+          992.6
+        ],
+        "scrim": [
+          0,
+          59.8,
+          820,
+          1000.6
+        ],
+        "drawing": null
+      },
+      "index_closed_by_scrim_scrim_present": false,
+      "coarse_controls_checked": 66,
+      "coarse_controls_below_44": 0,
+      "coarse_samples_below_44": []
+    },
+    {
+      "tag": "820x1180-fine",
+      "width": 820,
+      "height": 1180,
+      "mode": "fine",
+      "palette": [
+        20.7,
+        1074.6,
+        799.3,
+        1106.6
+      ],
+      "palette_height_px": 32.0,
+      "drawing_wall_ink_bbox_folded": [
+        72,
+        369,
+        275,
+        382
+      ],
+      "wall_ink_px_under_palette_footprint": 0,
+      "palette_footprint_area_px": 24915,
+      "live_candidate_bbox": [
+        69.2,
+        363.9,
+        488,
+        464.4
+      ],
+      "live_candidate_overlaps_palette": false,
+      "overlap_pairs_excluding_containment": {
+        "inkOpen": [],
+        "wallLineLive": [],
+        "boxLive": [
+          [
+            "sheet",
+            "drawing"
+          ]
+        ],
+        "openingOptions": [
+          [
+            "card",
+            "scrim"
+          ],
+          [
+            "sheet",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "scrim"
+          ],
+          [
+            "index",
+            "scrim"
+          ]
+        ],
+        "indexOpen": [
+          [
+            "card",
+            "scrim"
+          ],
+          [
+            "sheet",
+            "scrim"
+          ],
+          [
+            "zoom",
+            "scrim"
+          ],
+          [
+            "index",
+            "scrim"
+          ]
+        ],
+        "objectsFull": [],
+        "objectsCompact": []
+      },
+      "horizontal_overflow_px": 0,
+      "page_errors": 0,
+      "console_errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "failed_steps": [],
+      "index_open_dock_reachable": [
+        {
+          "id": "host-select",
+          "reachable": true
+        },
+        {
+          "id": "layout-ink",
+          "reachable": true
+        },
+        {
+          "id": "host-measure",
+          "reachable": true
+        },
+        {
+          "id": "host-erase",
+          "reachable": true
+        },
+        {
+          "id": "scene-place",
+          "reachable": true
+        }
+      ],
+      "index_open_boxes": {
+        "stage": [
+          0,
+          44,
+          820,
+          1180
+        ],
+        "lowerColumn": [
+          12,
+          1040.6,
+          808,
+          1168
+        ],
+        "dock": [
+          297.7,
+          1120.4,
+          522.3,
+          1168
+        ],
+        "instrument": [
+          12.5,
+          1040.6,
+          807.5,
+          1114
+        ],
+        "palette": [
+          20.7,
+          1074.6,
+          799.3,
+          1106.6
+        ],
+        "card": [
+          369.6,
+          912.4,
+          657.6,
+          990.6
+        ],
+        "sheet": [
+          669.6,
+          497,
+          808,
+          727
+        ],
+        "zoom": [
+          547.5,
+          1002.6,
+          657.6,
+          1040.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          1032.6
+        ],
+        "scrim": [
+          0,
+          44,
+          820,
+          1040.6
+        ],
+        "drawing": null
+      },
+      "index_closed_by_scrim_scrim_present": false,
+      "keyboard_walk": [
+        "button:data-ink-wall-mode",
+        "button:data-ink-point-toggle",
+        "button:data-ink-options-toggle",
+        "button:data-ink-cancel",
+        "button:Index \u25b8",
+        "button:Untitled project \u25be",
+        "button:Floor",
+        "button:World",
+        "summary:Find",
+        "button:Undo",
+        "button:Redo",
+        "button:Save to Cloud"
+      ],
+      "keyboard_point_opened": true,
+      "keyboard_point_readout": null
+    },
+    {
+      "tag": "820x1180-room",
+      "width": 820,
+      "height": 1180,
+      "mode": "room",
+      "palette_open": [
+        20.7,
+        1074.6,
+        799.3,
+        1106.6
+      ],
+      "starter_room_wall_ink_bbox_folded": [
+        161,
+        398,
+        659,
+        826
+      ],
+      "starter_wall_ink_px_under_palette_footprint": 0,
+      "page_errors": 0,
+      "failed_steps": []
+    }
+  ]
+}
