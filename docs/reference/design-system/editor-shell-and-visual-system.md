@@ -132,7 +132,7 @@ INDEX (collapses to nothing)   STAGE — dominant spatial work; reading control,
 | **Index** | Where am I, and where is that thing? Locator and orientation, not a primary property editor | **Scope model**: one scope at a time with crumbs, sibling menus and kind facets; relation-aware contents | Presentations and relevant relationships, including Guide awareness where present |
 | **Stage** | Continuous spatial truth, readings, spatial marks and direct manipulation | Architecture, objects, inspection, drawing and manipulation; reading control, Height Sheet, state pill | Camera View placement/framing, contextual paths and playback |
 | **Card** | What is canonically selected, what does it mean here, and what owns/reaches beyond this use? The one writer for ordinary facts | Identity, editable facts, Look, scoped ⋯ list; advanced fields under More | One contextual inspector for the selected Presentation, View, subject, Stop, transition or path point |
-| **Dock and palette** | Pointer tools: what the pointer does next | Select · Ink · Slice · Eraser · Brush · Measure, then Library | Select · Place a View · Path, then Capture and Guide |
+| **Dock and palette** | Pointer tools: what the pointer does next | Select · Ink · Measure · Eraser, then Objects | Select · Place a View · Path, then Capture and Guide |
 | **Instrument** | Work invoked at the lower edge that needs room; selection identity stays in the Card | Library and repair only | One active **Guide context**, integrating Stop composition, Cut/Travel, path authoring and playback |
 
 The wide shell has Index left and Stage as the working ground. Card overlays the
@@ -453,20 +453,19 @@ inside the tool's palette; a new permanent slot needs an owner ruling.
 
 - **Select** picks and manipulates. Dragging a legible mark pulls the fact it addresses;
   empty-Stage drag orbits or pans per reading.
-- **Ink** is the one Pen: palette options Sketch · Line · Box · Round. It reads the surface
+- **Ink** is the one Pen: its palette offers the Wall reading (Line or Box) and the Opening reading, in one compact row above the dock (R217.S23). It reads the surface
   it lands on (ground, a raised sheet or a wall face; Tab re-reads in the same undo step)
   and the stroke. Open chains read quietly. A **reading chip** appears only for an
   ambiguous closed stroke, states the reading before anything is committed, and offers the
   next readings in order (for example Room, Raised platform, Walls only; on a raised sheet,
   Deck, Canopy roof, Walls on this height). Readings are limited to what the owning domains
   support; the chip never offers an operation a domain lacks, and Rooms stay derived.
-  **Shape** is one more reading on the chip: an ordinary editable outline object in Scene
-  that its height ray pulls into a solid; Scene decides whether and how a Shape is stored, and no format is implied. There is no Object Pen and no category chosen
+  **Shape** is not an Ink reading (O10, R217.S17A): an ordinary editable outline object is placed from Objects,
+  and its height ray pulls it into a solid in Scene; Scene decides whether and how a Shape is stored, and no format is implied. There is no Object Pen and no category chosen
   before drawing. A circle on a wall face is read by the wall (a round opening) without a
   chip. A future smarter Pen only improves the first reading and the chip order; it keeps
   the one-undo-step re-read, never commits an interpretation silently across domains, and
-  never becomes a second tool. A temporary **Shape intent** toggle in the Ink palette is a
-  retained alternative.
+  never becomes a second tool. No Shape intent toggle exists in the Ink palette (O10).
 - **Slice** has two modes: a horizontal cut at the Sheet height (pill "Cut at h · depth", no Section or Face) and a drawn vertical Slice, which is drawn like the Pen: a finite straight segment with a start and an end, a
   45° soft snap and a live length tag, previewing a translucent yellow plane and depth
   volume that cuts only within its extent. End points redraw the line, the line moves it,
@@ -1236,7 +1235,7 @@ adopt on evidence, as a named decision, without reopening the shell.
 | Collapsed Index | Head location chip (shows where you are, works on touch) | Minimal translucent edge arrow, tap zone on touch; the owner's choice between the two, with the chip favoured |
 | Collapsed palette cue | Faint caret above the armed key (small and faint; size calibrated at implementation) | No cue |
 | Width · depth · height | Progressive: click the scale point | Always shown, plus a possible zoom-dependent rule |
-| Pen and ordinary shapes | Context first: Shape is one more reading on the chip | A temporary Shape intent toggle in the Ink palette, if field use shows long runs of ordinary shapes |
+| Pen and ordinary shapes | Context first: Shape is placed from Objects, not read by the Pen (O10) | Revisit only by owner decision; no Shape intent toggle in the Ink palette |
 | Eraser kinds | Filter disclosure in the palette (owner choice) | Kind chips in the acceptance bar, the lighter answer for occasional use |
 | When erasing asks | Only across domains; up to three simple things go at once | Also when hosts, rooms or roofs are affected |
 | Roof Section 2D | Takes the Stage as a roof-local reading | Inset editor over the 3D Stage, expandable |
