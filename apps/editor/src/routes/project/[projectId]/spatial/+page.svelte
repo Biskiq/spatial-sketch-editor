@@ -4456,9 +4456,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		Stage stays pointer-driven around it, and only the dock and the instrument take
 		input — so it never turns the lower strip into a control bar.
 	*/
+	/*
+		R217.S23 — the lower column never enters the Height Sheet's lane on either side. The
+		lane is the Sheet's measured width (S22); the 1.5 rem is the Stage inset plus the gap the
+		zoom cluster and the Card already keep. The dock is centred in what remains, and the
+		palette and its upward disclosures wrap inside that width rather than overlap the Sheet.
+	*/
 	.lower-column {
 		position: absolute;
-		inset-inline: 0.75rem;
+		inset-inline-start: calc(var(--sheet-lane-left, 0px) + 1.5rem);
+		inset-inline-end: calc(var(--sheet-lane-right, 0px) + 1.5rem);
 		bottom: 0.75rem;
 		z-index: 6;
 		display: flex;
