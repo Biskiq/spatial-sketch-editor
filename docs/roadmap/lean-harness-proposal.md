@@ -133,8 +133,8 @@ Tier 0  everything not listed below
         → one fresh-context agent review, merge on green CI
 Tier 1  changes a contract invariant, a persisted format, the visitor/public surface,
         or shared shell rules
-        → agent review, merge on green CI, owner reviews in the weekly digest;
-          revert is the recovery path
+        → agent review, merge on green CI; the owner reviews it at the next
+          significant-change checkpoint; revert is the recovery path
 Tier 2  changes the North Star, an approved design or the ledger's shape; removes or
         downgrades a check; records an owner review; production data or activation;
         licence; new dependency
@@ -154,6 +154,24 @@ Tier 2  changes the North Star, an approved design or the ledger's shape; remove
 - If ownership files are added for human teammates, they notify and never block. Risk tier, not
   area, decides escalation.
 - Parallel safety comes from claims and small pull requests. Whoever merges second rebases.
+
+### D2 — Parallel work, focus and holds
+
+The owner still drives work by prompting agents; nothing runs on a schedule.
+
+- **Starting a batch is a prompt, not a pull request.** The owner tells one or more agents what to
+  pursue ("the next unclaimed T4 capabilities", "these three gaps", or "whatever `npm run status`
+  ranks next"). Each agent claims its item with a draft pull request, so parallel agents never
+  pick the same thing. Each pull request merges on its own; there is no batch-level greenlight.
+- **Focus line.** A short focus file at the repository root states the current priority in a few
+  lines (for example "T4 publish loop first; T5 depth paused"). `npm run status` prints it, and
+  agents prefer work that matches it. Changing it is a one-line owner commit.
+- **Hold.** When a new research idea or design rethink needs everything to stop, the owner sets the
+  focus file to a hold: no new claims, in-flight work either finishes its current pull request or
+  parks as a draft. The hold names its question and what ends it (a decision, a design, a research
+  conclusion). Lifting the hold is editing the same file.
+- **Converge.** If the idea changes direction, its outcome lands as ledger changes, an approved
+  design or a North Star amendment (Tier 2), and parked drafts rebase onto it or close.
 
 ### E — Design leads
 
@@ -247,15 +265,19 @@ The [slice-closeout skill](../../.agents/skills/slice-closeout/SKILL.md) and
 - **Decision records:** Tier 2 decisions only, one page each. Authorization records move to the
   archive.
 
-### J — Scheduled agents
+### J — On-demand agent skills
 
-- **Gardener (weekly):** deletes dead docs, archives closed material, flags drift between docs and
-  code, opens one reviewable pull request.
-- **Gap scanner (weekly):** compares the North Star with the ledger and status, and produces the
-  owner digest: regressions, Tier 1 merges to review, flags ranked by how much work they block, and
-  the next unclaimed capabilities.
-- **Breaker (weekly):** exploratory testing of `working` and `polished` capabilities. Every defect
-  it finds lands as a failing tagged test or a `bug` issue.
+These are skills the owner (or an agent finishing a significant change) invokes when useful. None
+runs on a schedule and none is a required step in a plan.
+
+- **Checkpoint:** after a significant functionality change, summarizes for the owner what changed,
+  status movements and regressions, Tier 1 merges since the last checkpoint, open flags ranked by
+  how much work they block, and the next unclaimed capabilities. This replaces any fixed digest.
+- **Gardener:** moves dead or closed material to the archive (it never deletes outright), flags
+  drift between docs and code, and opens one reviewable pull request. Useful before onboarding
+  someone, after a large merge, or when context starts to feel heavy.
+- **Breaker:** exploratory testing of `working` and `polished` capabilities. Every defect it finds
+  lands as a failing tagged test or a `bug` issue.
 
 ## Sequencing
 
@@ -272,7 +294,7 @@ The [slice-closeout skill](../../.agents/skills/slice-closeout/SKILL.md) and
 6. **R217.S11 runs as the first lean final gate:** the R217 journey tests green on `main` plus an
    owner walkthrough. R217 closes.
 7. T4 (release and delivery) is the first area planned entirely under the new rules.
-8. The scheduled agents start once the status report exists.
+8. The checkpoint, gardener and breaker skills are added once the status report exists.
 
 The prune pull requests themselves follow the new rules.
 
@@ -290,7 +312,8 @@ The prune pull requests themselves follow the new rules.
 **What remains documentation-only, by design**
 
 - North Star changes, Tier 2 decision records and approved-design updates (owner decisions).
-- The weekly gardener pull request (doc drift and archive sweeps).
+- Gardener pull requests, when the owner invokes it (doc drift and archive sweeps).
+- Focus and hold changes (a one-line owner commit).
 - Reference-contract updates that follow an accepted design, when they cannot ride in the
   implementing pull request.
 
@@ -298,7 +321,9 @@ The prune pull requests themselves follow the new rules.
 
 - Approves designs and reviews design-led work to mark it `polished`.
 - Decides Tier 2 items and answers `needs-decision` and `needs-ux` flags.
-- Reads the weekly digest: regressions, Tier 1 merges, top flags, next capabilities.
+- Reviews at a checkpoint after each significant functionality change: regressions, Tier 1 merges,
+  top flags, next capabilities. This is the owner's habit, not a step written into plans.
+- Starts batches by prompting agents, and sets focus or a hold when direction needs to change.
 - Reviews plans for Tier 2 work in their draft pull requests.
 
 **A typical cycle**
@@ -310,7 +335,7 @@ The prune pull requests themselves follow the new rules.
    fresh-context review and fixes P0/P1 findings.
 4. Tier 0 or 1: it merges on green CI. Tier 2: it waits for the owner.
 5. The next report shows `working`. Any open question it hit is now a flag issue.
-6. Weeks later the breaker finds a T-shape failure and adds a failing edge test; the capability
+6. Later, when the owner runs the breaker, it finds a T-shape failure and adds a failing edge test; the capability
    reads `working` (regressed from `polished`) until someone fixes it.
 
 ## What does not change
@@ -349,7 +374,8 @@ The prune pull requests themselves follow the new rules.
 
 ## Open questions for the owner
 
-1. Tier 1: owner review in the weekly digest after merge (recommended), or a skim before merge?
+1. Tier 1: owner review at the next significant-change checkpoint after merge (recommended), or a
+   skim before merge?
 2. Plans as the first commit of the working draft pull request (recommended), or as separate
    GitHub issues?
 3. Ledger granularity: about one entry per creator-recognizable action (recommended), or coarser?
