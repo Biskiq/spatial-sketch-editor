@@ -1,0 +1,1274 @@
+{
+  "width": 1180,
+  "height": 820,
+  "mode": "coarse",
+  "sheet": "right",
+  "boxcheck": false,
+  "states": {
+    "inkOpen": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          640.6,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          105.3,
+          640.6,
+          906.7,
+          746
+        ],
+        "palette": [
+          113.5,
+          694.6,
+          898.5,
+          738.6
+        ],
+        "card": null,
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+    },
+    "wallLineLive": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          640.6,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          56.8,
+          640.6,
+          955.2,
+          746
+        ],
+        "palette": [
+          65,
+          694.6,
+          947,
+          738.6
+        ],
+        "card": null,
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": [
+          108.7,
+          273.8,
+          614,
+          341.2
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Points3 Pending0.846 m · 76.0°",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n3\nPending\n0.846 m · 76.0°\nCancel"
+    },
+    "wallLineDone": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          640.6,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          105.3,
+          640.6,
+          906.7,
+          746
+        ],
+        "palette": [
+          113.5,
+          694.6,
+          898.5,
+          738.6
+        ],
+        "card": [
+          700,
+          492.4,
+          988,
+          582.6
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+    },
+    "folded": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          752.4,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": null,
+        "palette": null,
+        "card": [
+          700,
+          604.2,
+          988,
+          694.4
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          706.4,
+          988,
+          752.4
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": [
+          871,
+          623.3,
+          906.1,
+          635.3
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "card",
+          "drawing"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    },
+    "boxLive": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          640.6,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          237.6,
+          640.6,
+          774.4,
+          746
+        ],
+        "palette": [
+          245.8,
+          694.6,
+          766.2,
+          738.6
+        ],
+        "card": [
+          700,
+          492.4,
+          988,
+          582.6
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": [
+          647,
+          401.8,
+          1044.3,
+          477.8
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ],
+        [
+          "sheet",
+          "drawing"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Box3.000 × 1.000 m",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nOptions\nBox\n3.000 × 1.000 m\nCancel"
+    },
+    "boxDone": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          640.6,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          286.2,
+          640.6,
+          725.8,
+          746
+        ],
+        "palette": [
+          294.4,
+          694.6,
+          717.6,
+          738.6
+        ],
+        "card": [
+          700,
+          492.4,
+          988,
+          582.6
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Box—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nOptions\nBox\n—\nCancel"
+    },
+    "openingOptions": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          369.7,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          81,
+          369.7,
+          931,
+          746
+        ],
+        "palette": [
+          89.2,
+          423.6,
+          922.8,
+          738.6
+        ],
+        "card": [
+          700,
+          221.5,
+          988,
+          311.7
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          323.7,
+          988,
+          369.7
+        ],
+        "index": [
+          0,
+          59.8,
+          256,
+          361.7
+        ],
+        "scrim": [
+          0,
+          59.8,
+          1180,
+          369.7
+        ],
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ],
+        [
+          "card",
+          "scrim"
+        ],
+        [
+          "sheet",
+          "scrim"
+        ],
+        [
+          "zoom",
+          "scrim"
+        ],
+        [
+          "index",
+          "scrim"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Preview hostwall-chain-1.bfcf11d7-a5a2-4644-b72a-04b8ac2e7701 Offset — Width0.900 m Fit Adjust the aim or the Opening measures.",
+      "refusal": null,
+      "paletteText": "Kind\nDoor\nWindow\nWidth\nm\nHeight\nm\nSill\nm\nPreview host\nwall-chain-1.bfcf11d7-a5a2-4644-b72a-04b8ac2e7701\nOffset\n—\nWidth\n0.900 m\nFit\nAdjust the aim or the Opening measures.\n\nOffset host: wall-chain-1.bfcf11d7-a5a2-4644-b72a-04b8ac2e7701\n\nOffs"
+    },
+    "openingDone": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          640.6,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          401.3,
+          640.6,
+          610.7,
+          746
+        ],
+        "palette": [
+          409.5,
+          694.6,
+          602.5,
+          738.6
+        ],
+        "card": [
+          700,
+          492.4,
+          988,
+          582.6
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": [
+          0,
+          59.8,
+          256,
+          632.6
+        ],
+        "scrim": [
+          0,
+          59.8,
+          1180,
+          640.6
+        ],
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ],
+        [
+          "card",
+          "scrim"
+        ],
+        [
+          "sheet",
+          "scrim"
+        ],
+        [
+          "zoom",
+          "scrim"
+        ],
+        [
+          "index",
+          "scrim"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nOptions"
+    },
+    "indexOpen": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          640.6,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          105.3,
+          640.6,
+          906.7,
+          746
+        ],
+        "palette": [
+          113.5,
+          694.6,
+          898.5,
+          738.6
+        ],
+        "card": [
+          700,
+          492.4,
+          988,
+          582.6
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": [
+          0,
+          59.8,
+          256,
+          632.6
+        ],
+        "scrim": [
+          0,
+          59.8,
+          1180,
+          640.6
+        ],
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ],
+        [
+          "card",
+          "scrim"
+        ],
+        [
+          "sheet",
+          "scrim"
+        ],
+        [
+          "zoom",
+          "scrim"
+        ],
+        [
+          "index",
+          "scrim"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel",
+      "dockBehindIndex": [
+        {
+          "id": "host-select",
+          "reachable": true
+        },
+        {
+          "id": "layout-ink",
+          "reachable": true
+        },
+        {
+          "id": "host-measure",
+          "reachable": true
+        },
+        {
+          "id": "host-erase",
+          "reachable": true
+        },
+        {
+          "id": "scene-place",
+          "reachable": true
+        }
+      ]
+    },
+    "indexClosedByScrim": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          640.6,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          105.3,
+          640.6,
+          906.7,
+          746
+        ],
+        "palette": [
+          113.5,
+          694.6,
+          898.5,
+          738.6
+        ],
+        "card": [
+          700,
+          492.4,
+          988,
+          582.6
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          594.6,
+          988,
+          640.6
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+    },
+    "objectsFull": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          426.4,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          302.4,
+          426.4,
+          709.5,
+          746
+        ],
+        "palette": null,
+        "card": [
+          700,
+          278.3,
+          988,
+          368.5
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          380.5,
+          988,
+          426.5
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "zoom"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    },
+    "objectsFullControls": {
+      "checked": 67,
+      "below44": 0,
+      "samples": []
+    },
+    "objectsCompact": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          426.4,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          302.4,
+          426.4,
+          709.5,
+          746
+        ],
+        "palette": null,
+        "card": [
+          700,
+          278.3,
+          988,
+          368.5
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          380.5,
+          988,
+          426.5
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": [
+          843.3,
+          598.1,
+          906.7,
+          661.5
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "zoom"
+        ],
+        [
+          "lowerColumn",
+          "drawing"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    },
+    "inkControls": {
+      "checked": 71,
+      "below44": 0,
+      "samples": []
+    },
+    "inkPanelOpen": {
+      "boxes": {
+        "stage": [
+          0,
+          59.8,
+          1180,
+          820
+        ],
+        "lowerColumn": [
+          24,
+          569.5,
+          988,
+          808
+        ],
+        "dock": [
+          373.7,
+          752.4,
+          638.3,
+          808
+        ],
+        "instrument": [
+          105.3,
+          569.5,
+          906.7,
+          746
+        ],
+        "palette": [
+          113.5,
+          623.4,
+          898.5,
+          738.6
+        ],
+        "card": [
+          700,
+          421.3,
+          988,
+          511.5
+        ],
+        "sheet": [
+          1000,
+          324.9,
+          1168,
+          554.9
+        ],
+        "zoom": [
+          854,
+          523.5,
+          988,
+          569.5
+        ],
+        "index": null,
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": true,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Thickness\nm\nHeight\nm\nReading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+    }
+  },
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "notFound": [],
+  "steps": [
+    {
+      "name": "arm-ink",
+      "ok": true
+    },
+    {
+      "name": "wall-line-live",
+      "ok": true
+    },
+    {
+      "name": "wall-line-finish",
+      "ok": true
+    },
+    {
+      "name": "fold-for-pixels",
+      "ok": true
+    },
+    {
+      "name": "unfold",
+      "ok": true
+    },
+    {
+      "name": "box-live",
+      "ok": true
+    },
+    {
+      "name": "box-release",
+      "ok": true
+    },
+    {
+      "name": "line-back",
+      "ok": true
+    },
+    {
+      "name": "opening-place",
+      "ok": true
+    },
+    {
+      "name": "opening-commit",
+      "ok": true
+    },
+    {
+      "name": "opening-back-to-wall",
+      "ok": true
+    },
+    {
+      "name": "index-open",
+      "ok": true
+    },
+    {
+      "name": "index-scrim-close",
+      "ok": true
+    },
+    {
+      "name": "objects-full",
+      "ok": true
+    },
+    {
+      "name": "objects-compact",
+      "ok": true
+    },
+    {
+      "name": "ink-for-controls",
+      "ok": true
+    }
+  ],
+  "boxFirstReleaseUncommitted": true,
+  "coarseSizes": {
+    "checked": 71,
+    "below44": 0,
+    "samples": []
+  },
+  "finalState": {
+    "boxes": {
+      "stage": [
+        0,
+        59.8,
+        1180,
+        820
+      ],
+      "lowerColumn": [
+        24,
+        569.5,
+        988,
+        808
+      ],
+      "dock": [
+        373.7,
+        752.4,
+        638.3,
+        808
+      ],
+      "instrument": [
+        105.3,
+        569.5,
+        906.7,
+        746
+      ],
+      "palette": [
+        113.5,
+        623.4,
+        898.5,
+        738.6
+      ],
+      "card": [
+        700,
+        421.3,
+        988,
+        511.5
+      ],
+      "sheet": [
+        1000,
+        324.9,
+        1168,
+        554.9
+      ],
+      "zoom": [
+        854,
+        523.5,
+        988,
+        569.5
+      ],
+      "index": null,
+      "scrim": null,
+      "drawing": null
+    },
+    "overlapPairs": [
+      [
+        "lowerColumn",
+        "dock"
+      ],
+      [
+        "lowerColumn",
+        "instrument"
+      ],
+      [
+        "lowerColumn",
+        "palette"
+      ],
+      [
+        "instrument",
+        "palette"
+      ]
+    ],
+    "horizontalOverflowPx": 0,
+    "coarsePointer": true,
+    "paletteLive": "Points0 Pending—",
+    "refusal": null,
+    "paletteText": "Thickness\nm\nHeight\nm\nReading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+  },
+  "overflow": {
+    "scrollWidth": 1180,
+    "clientWidth": 1180
+  }
+}

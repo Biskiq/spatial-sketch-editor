@@ -1,0 +1,121 @@
+{
+  "method": "sampled from the headed-Chromium PNGs; colours are single pixels taken from flat regions; token pairs are from shell-roles.css and asserted in stage-shell-composition.test.ts",
+  "sampled": [
+    {
+      "pair": "instrument (row) fill vs pale Stage ground above it (1440x900, Ink open)",
+      "instrument_box": [
+        450.5,
+        760.6,
+        1245.5,
+        834
+      ],
+      "row_fill_sampled": [
+        17,
+        41,
+        31
+      ],
+      "ground_sampled": [
+        208,
+        216,
+        207
+      ],
+      "ratio": 10.59
+    },
+    {
+      "pair": "Index stone vs scrimmed ground (1180x820, Index open)",
+      "stone": [
+        245,
+        246,
+        244
+      ],
+      "scrimmed": [
+        114,
+        129,
+        121
+      ],
+      "unscrimmed": [
+        233,
+        235,
+        230
+      ],
+      "ratio": 3.77
+    },
+    {
+      "pair": "scrimmed ground vs unscrimmed ground (1180x820) - the scrim's own step",
+      "scrimmed": [
+        114,
+        129,
+        121
+      ],
+      "unscrimmed": [
+        233,
+        235,
+        230
+      ],
+      "ratio": 3.41
+    }
+  ],
+  "tokenPairs": [
+    {
+      "pair": "row ink on row (text)",
+      "ratio": 13.95,
+      "floor": 4.5,
+      "pass": true
+    },
+    {
+      "pair": "quiet ink on row (text)",
+      "ratio": 6.88,
+      "floor": 4.5,
+      "pass": true
+    },
+    {
+      "pair": "armed key ink on armed key (text)",
+      "ratio": 13.95,
+      "floor": 4.5,
+      "pass": true
+    },
+    {
+      "pair": "Index text on Index stone (text)",
+      "ratio": 14.24,
+      "floor": 4.5,
+      "pass": true
+    },
+    {
+      "pair": "key edge on row (icon and edge)",
+      "ratio": 6.88,
+      "floor": 3,
+      "pass": true
+    },
+    {
+      "pair": "armed key edge on row (edge)",
+      "ratio": 13.95,
+      "floor": 3,
+      "pass": true
+    },
+    {
+      "pair": "focus ring on row (edge)",
+      "ratio": 7.25,
+      "floor": 3,
+      "pass": true
+    },
+    {
+      "pair": "row fill vs pale ground (edge)",
+      "ratio": 12.85,
+      "floor": 3,
+      "pass": true
+    },
+    {
+      "pair": "row hairline vs pale ground (edge)",
+      "ratio": 8.07,
+      "floor": 3,
+      "pass": true
+    },
+    {
+      "pair": "Index stone vs scrimmed pale ground (edge; scrim = forest 55% over ground)",
+      "ratio": 3.81,
+      "floor": 3,
+      "pass": true,
+      "scrimmed_hex": "#728079"
+    }
+  ]
+}

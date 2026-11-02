@@ -184,15 +184,15 @@
 	select {
 		min-height: 1.9rem;
 		padding: 0.1rem 0.35rem;
-		border: 1px solid #635a6f;
+		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
 		border-radius: 0.3rem;
-		background: #241f2b;
+		background: var(--shell-forest, #11291f);
 		color: inherit;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	}
 	.unit,
 	.quiet {
-		color: #8f8a99;
+		color: var(--shell-ink-quiet, #9fb2a2);
 		font-size: 0.68rem;
 	}
 	.live {
@@ -206,7 +206,7 @@
 		gap: 0.6rem;
 	}
 	.live dt {
-		color: #8f8a99;
+		color: var(--shell-ink-quiet, #9fb2a2);
 	}
 	.live dd {
 		margin: 0;
@@ -242,9 +242,9 @@
 	button {
 		min-height: 2.25rem;
 		padding: 0.15rem 0.55rem;
-		border: 1px solid #635a6f;
+		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
 		border-radius: 0.35rem;
-		background: #292632;
+		background: var(--shell-forest-raised, #22503c);
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
@@ -255,7 +255,7 @@
 	}
 	button:focus-visible,
 	input:focus-visible {
-		outline: 2px solid #2f8cff;
+		outline: 2px solid var(--shell-gold, #d4ad45);
 		outline-offset: 1px;
 	}
 </style>

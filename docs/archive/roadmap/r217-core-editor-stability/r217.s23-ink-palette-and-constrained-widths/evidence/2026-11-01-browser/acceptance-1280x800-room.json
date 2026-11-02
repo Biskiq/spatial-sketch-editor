@@ -1,0 +1,224 @@
+{
+  "width": 1280,
+  "height": 800,
+  "mode": "room",
+  "sheet": "right",
+  "boxcheck": false,
+  "states": {
+    "inkOpen": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1280,
+          800
+        ],
+        "lowerColumn": [
+          280,
+          660.6,
+          1117.6,
+          788
+        ],
+        "dock": [
+          586.5,
+          740.4,
+          811.1,
+          788
+        ],
+        "instrument": [
+          301.3,
+          660.6,
+          1096.3,
+          734
+        ],
+        "palette": [
+          309.5,
+          694.6,
+          1088.1,
+          726.6
+        ],
+        "card": null,
+        "sheet": [
+          1129.6,
+          307,
+          1268,
+          537
+        ],
+        "zoom": [
+          1007.5,
+          622.6,
+          1117.6,
+          660.6
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          800
+        ],
+        "scrim": null,
+        "drawing": null
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ],
+        [
+          "lowerColumn",
+          "instrument"
+        ],
+        [
+          "lowerColumn",
+          "palette"
+        ],
+        [
+          "instrument",
+          "palette"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": "Points0 Pending—",
+      "refusal": null,
+      "paletteText": "Reading\nWall\nOpening\nLine\nBox\nFinish\nClose ring\nBacktrack\nPoint\nOptions\nPoints\n0\nPending\n—\nCancel"
+    },
+    "folded": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1280,
+          800
+        ],
+        "lowerColumn": [
+          280,
+          740.4,
+          1117.6,
+          788
+        ],
+        "dock": [
+          586.5,
+          740.4,
+          811.1,
+          788
+        ],
+        "instrument": null,
+        "palette": null,
+        "card": null,
+        "sheet": [
+          1129.6,
+          307,
+          1268,
+          537
+        ],
+        "zoom": [
+          1007.5,
+          702.4,
+          1117.6,
+          740.4
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          800
+        ],
+        "scrim": null,
+        "drawing": [
+          893.3,
+          631,
+          928.4,
+          643
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    },
+    "starterRoom": {
+      "boxes": {
+        "stage": [
+          256,
+          44,
+          1280,
+          800
+        ],
+        "lowerColumn": [
+          280,
+          740.4,
+          1117.6,
+          788
+        ],
+        "dock": [
+          586.5,
+          740.4,
+          811.1,
+          788
+        ],
+        "instrument": null,
+        "palette": null,
+        "card": null,
+        "sheet": [
+          1129.6,
+          307,
+          1268,
+          537
+        ],
+        "zoom": [
+          1007.5,
+          702.4,
+          1117.6,
+          740.4
+        ],
+        "index": [
+          0,
+          44,
+          256,
+          800
+        ],
+        "scrim": null,
+        "drawing": [
+          893.3,
+          631,
+          928.4,
+          643
+        ]
+      },
+      "overlapPairs": [
+        [
+          "lowerColumn",
+          "dock"
+        ]
+      ],
+      "horizontalOverflowPx": 0,
+      "coarsePointer": false,
+      "paletteLive": null,
+      "refusal": null,
+      "paletteText": null
+    }
+  },
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "notFound": [],
+  "steps": [
+    {
+      "name": "arm-ink",
+      "ok": true
+    },
+    {
+      "name": "fold",
+      "ok": true
+    }
+  ]
+}
