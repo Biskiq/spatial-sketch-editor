@@ -164,3 +164,24 @@ Sampled from the headed PNGs, as a cross-check: the instrument row's fill agains
 ## Closing note
 
 The record was written after the gates above. `npm run test:arch` (which includes the documentation gate) was re-run after the record was in place: exit 0, 23 files, 210 tests pass.
+
+## Independent review
+
+**Reviewer:** the convergence coordinator, independent of the implementer. Date: 2026-11-01.
+
+- **First review, `9809dad6`:**
+  - **Accepted:** the one-row instrument in the dock's material; the scrim ending at the lower column's measured top; the Index start state read at mount; text-labelled keys; the drift reconciliations; and, as a residual, the starter room under the palette at 1180×820, since clearing it would need a Camera Fit inset outside this plan, so S11 owns it.
+  - **P1:** the palette entered the Height Sheet lane with Opening options open, breaking S22's no-overlap invariant.
+  - **P2:** instrument facts were reachable only through a `title`.
+  - **P2:** an unexplained Box second-corner flake.
+  - **Nit:** an unidentified 404.
+- **Fixes, `1fb0d6bc` and `a7598a55`:**
+  - The lower column insets by the measured Sheet lane on the Sheet's side. In the 16-run matrix, no palette, instrument or lower-column box overlaps the Sheet, with options open and the Sheet on either side.
+  - The facts are the instrument's `aria-describedby` description, and a focusable info control shows them as a visible list (`stage-instrument-host.test.ts`).
+  - The Box flake reproduces on `main` `23d6d9ae` (2 of 6), so it is pre-existing and goes to tech-debt. The 404 is the absent `/favicon.ico`, also pre-existing.
+- **Accepted residuals:**
+  - At 1180 and 820 with the Sheet on the left, the open Index sheet covers the Sheet. The Index is a scrimmed modal overlay by design.
+  - At 820×1180 fine, the keys wrap to two rows.
+  - The live Box preview can pass under the Card or touch the Sheet. Previews aren't shell furniture.
+  - **Nit, no action:** StageInstrumentHost numbers its ids with a module counter instead of `$props.id()`. It mounts only on a client task, so no hydration mismatch arises today.
+- **Verdict at `a7598a55`:** the slice meets plan §3 to §5 within the declared `affected-subsystem` tier. Ink keeps exactly Wall (Line, Box) and Opening, with typed X/Z, Finish, Backtrack and Cancel, and `objects-panel-guard.test.ts` stays green. Contrast on PR #247's pale ground is measured and passes. Nothing is open, withdrawn or unadjudicated, so routine close-out may proceed.
