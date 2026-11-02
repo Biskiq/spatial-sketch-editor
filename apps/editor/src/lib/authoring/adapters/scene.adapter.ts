@@ -714,6 +714,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (current !== null && current.entity.id === entity.id) {
 					return {
 						markId: current.markId,
+						baseline: current.entity,
 						position: current.candidate?.position ?? entity.position,
 						yaw: current.candidate?.rotation[1] ?? entity.rotation[1],
 						scale: current.candidate?.form.scale ?? entity.form.scale,
@@ -789,6 +790,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							: formSizeMeasurement(current.candidate);
 				if (measurement.handles.length !== 3) return [];
 				return formMarkDescriptors({
+					reading: adapterContext.evaluation.settledReading,
 					entity,
 					measurement,
 					live: formMarkLive(accepted),
@@ -984,6 +986,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (!sceneComposeSupport(entity, contactMinY).resize) return [];
 				const bounds = objectBounds(adapterContext, entity);
 				return sceneObjectMarkDescriptors({
+					reading: adapterContext.evaluation.settledReading,
 					entity,
 					contactMinY,
 					bounds,
@@ -1981,7 +1984,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		},
 		subjects: source.entities.map((entity) => ({
 					id: `scene:entity:${entity.id}`,
-					label: `${entity.name} · ${entity.kind} · ${entity.id}`,
+					label: entity.name,
 					reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
 					worldPoint: entity.kind !== 'form' ? entity.position : formCenter(entity)
 				})),

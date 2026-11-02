@@ -40,10 +40,9 @@ function mountCard(options: {
 		target,
 		props: {
 			identity: options.identity ?? { sourceId: 'layout:wall:wall-a', label: 'Wall 1', kind: 'Wall', status: 'In the current Plan' },
-			facts: options.facts ?? [],
+			facts: [...(options.facts ?? []), ...(options.technicalFacts ?? [])],
 			writer: options.writer ?? null,
 			actions: options.actions ?? [],
-			technicalFacts: options.technicalFacts ?? [],
 			nameWriter: options.nameWriter ?? null,
 			onClose: () => {},
 			onBringIntoView: options.onBringIntoView ?? (() => {})
@@ -52,23 +51,15 @@ function mountCard(options: {
 	cleanup = () => void unmount(component);
 	flushSync();
 	flushSync(() =>
-		target.querySelector<HTMLButtonElement>('[data-card-more]')!.click()
-	);
-	flushSync(() =>
 		target
 			.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!
 			.click()
 	);
 	if (options.nameWriter)
 		flushSync(() =>
-			target.querySelector<HTMLButtonElement>('h2.name button')!.click()
+			target.querySelector<HTMLButtonElement>('h2.name button')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
 		);
-	if (options.technicalFacts)
-		flushSync(() =>
-			[...target.querySelectorAll<HTMLButtonElement>('button')]
-				.find((b) => b.textContent === 'Technical identity')!
-				.click()
-		);
+
 	return target;
 }
 
@@ -107,7 +98,7 @@ describe('Card facts: each fact appears once', () => {
 			],
 			writer: { summary: 'Wall fields', adapterId: 'layout', fieldIds: ['height', 'thickness'] }
 		});
-		expect(factLabels(target)).toEqual(['Role', 'Datum']);
+		expect(factLabels(target)).toEqual([]);
 	});
 
 	it('keeps a fact with no field id, and a fact whose field no writer edits', () => {
@@ -118,7 +109,7 @@ describe('Card facts: each fact appears once', () => {
 			],
 			writer: { summary: 'Object fields', adapterId: 'scene', fieldIds: ['position', 'yaw', 'scale'] }
 		});
-		expect(factLabels(target)).toEqual(['Position', 'Material']);
+		expect(factLabels(target)).toEqual([]);
 	});
 
 	it("shows the Card's own name in the header, never as a fact row", () => {
@@ -141,9 +132,9 @@ describe('Card facts: each fact appears once', () => {
 			writer: { summary: 'Object fields', adapterId: 'scene', fieldIds: ['position', 'yaw', 'scale'] }
 		});
 		// X and Z, and the yaw, are the writer's fields; the elevation is stated once here.
-		expect(factLabels(target)).toEqual(['Elevation']);
+		expect(factLabels(target)).toEqual([]);
 		expect(factLabels(target)).not.toContain('Position (X · Z)');
-		expect(target.querySelector('dl.relations')?.textContent).toContain('0.5 m');
+		expect(target.textContent).not.toContain('0.5 m');
 	});
 
 	it('moves diagnostics about the drawing into Technical details, out of the ordinary facts', () => {
@@ -155,9 +146,10 @@ describe('Card facts: each fact appears once', () => {
 				{ label: 'Revealed', value: 'false' }
 			]
 		});
-		expect(factLabels(target)).toEqual(['Datum']);
+		expect(factLabels(target)).toEqual([]);
 		const technical = [...target.querySelectorAll('.subject-actions .facts dt')].map((term) => term.textContent);
-		expect(technical).toEqual(['Canonical ID', 'Stream', 'Eligible', 'Revealed']);
+		expect(technical).toEqual([]);
+		expect(target.textContent).not.toContain('Technical identity');
 	});
 });
 
@@ -210,7 +202,7 @@ describe('Card name: a generated name never reaches a save', () => {
 			identity: { sourceId: 'layout:wall:wall-a', label: 'Wall 1', kind: 'Wall', status: 'In the current Plan' },
 			nameWriter: { value: '', commit: vi.fn(async () => ({ kind: 'accepted' })) }
 		});
-		expect(target.querySelector('h2.name')?.textContent).toBe('Wall 1');
+		expect(target.querySelector('h2.name')?.getAttribute('title')).toBe('Wall 1');
 		expect(target.querySelector<HTMLInputElement>('input[aria-label="Name"]')?.value).toBe('');
 	});
 
@@ -221,10 +213,10 @@ describe('Card name: a generated name never reaches a save', () => {
 			nameWriter: { value: '', commit }
 		});
 		await settle();
-		target.querySelector('form.rename')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		target.querySelector('input[aria-label="Name"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
 		await settle();
 		expect(commit).not.toHaveBeenCalled();
-		expect(target.querySelector('[role="alert"]')?.textContent).toContain('empty name is not a rename');
+		expect(target.querySelector('[role="alert"]')?.textContent).toContain('Enter a name');
 	});
 
 	it('commits only the name the creator typed, and never the generated label', async () => {
@@ -237,7 +229,7 @@ describe('Card name: a generated name never reaches a save', () => {
 		const input = target.querySelector<HTMLInputElement>('input[aria-label="Name"]')!;
 		input.value = 'Kitchen';
 		input.dispatchEvent(new Event('input', { bubbles: true }));
-		target.querySelector('form.rename')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		target.querySelector('input[aria-label="Name"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
 		await settle();
 		expect(commit).toHaveBeenCalledTimes(1);
 		expect(commit).toHaveBeenCalledWith('Kitchen');
@@ -255,4 +247,44 @@ describe('Card header: a long name stays whole and reads in full', () => {
 		expect(heading.textContent).toBe(long);
 		expect(heading.getAttribute('title')).toBe(long);
 	});
+});
+
+it('dismisses the single disclosure on Escape and outside activation, returns focus, and runs no action', async () => {
+	const remove = action('remove', { destructive: true, detail: 'Remove this subject.' });
+	const target = mountCard({ actions: [remove] });
+	const trigger = target.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!;
+	trigger.focus();
+	trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+	await tick();
+	expect(target.querySelector('[data-card-actions]')).toBeNull();
+	expect(document.activeElement).toBe(trigger);
+	trigger.click(); await tick();
+	expect(target.querySelectorAll('[data-card-actions]')).toHaveLength(1);
+	document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true })); await tick();
+	expect(target.querySelector('[data-card-actions]')).toBeNull();
+	expect(document.activeElement).toBe(trigger);
+	expect(remove.run).not.toHaveBeenCalled();
+});
+
+it('cancels title drafts on Escape and blur, and retains a refused Enter draft', async () => {
+	const commit = vi.fn(async () => ({ kind: 'refused', message: 'Try another name.' }));
+	const target = mountCard({ identity: { sourceId: 'wall', label: 'Gallery', kind: 'Wall', status: '' }, nameWriter: { value: 'Gallery', commit } });
+	let input = target.querySelector<HTMLInputElement>('[aria-label="Name"]')!;
+	input.value = 'Abandoned'; input.dispatchEvent(new Event('input', { bubbles: true }));
+	input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await tick();
+	expect(target.querySelector('[aria-label="Name"]')).toBeNull();
+	let title = target.querySelector<HTMLButtonElement>('h2 button')!;
+	title.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true })); await tick();
+	input = target.querySelector<HTMLInputElement>('[aria-label="Name"]')!;
+	input.value = 'Blurred'; input.dispatchEvent(new Event('input', { bubbles: true })); input.blur(); await tick();
+	expect(commit).not.toHaveBeenCalled();
+	title = target.querySelector<HTMLButtonElement>('h2 button')!;
+	title.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await tick();
+	input = target.querySelector<HTMLInputElement>('[aria-label="Name"]')!;
+	input.value = 'East gallery'; input.dispatchEvent(new Event('input', { bubbles: true }));
+	input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle();
+	expect(commit).toHaveBeenCalledExactlyOnceWith('East gallery');
+	expect(input.value).toBe('East gallery');
+	expect(document.activeElement).toBe(input);
+	expect(target.querySelector('[role="alert"]')?.textContent).toBe('Try another name.');
 });

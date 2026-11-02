@@ -1,6 +1,6 @@
 import type { LayoutUnitPayload } from '@portfolio/project-model/units';
 /** A navigation projection only. It never changes source, selection or Camera. */
-export type WorldScope = 'project' | 'floor' | `room:${string}`;
+export type WorldScope = 'project' | 'free' | `room:${string}`;
 export type WorldIndexItem = {
 	sourceId: string;
 	label: string;
@@ -26,15 +26,16 @@ export function createWorldIndexModel() {
 	return function worldIndexModel(
 		layout: LayoutUnitPayload | null,
 		items: readonly Omit<WorldIndexItem, 'relations' | 'context'>[],
-		projectName: string
+		projectName: string,
+		sceneRooms: ReadonlyMap<string, string> = new Map()
 	) {
 		const contexts = [
 			{ id: 'project' as WorldScope, label: projectName, parent: null as WorldScope | null }
 		];
 		if (layout) {
-			contexts.push({ id: 'floor', label: layout.floor.name || 'Floor', parent: 'project' });
+			contexts.push({ id: 'free', label: 'Free objects', parent: 'project' });
 			for (const room of layout.rooms)
-				contexts.push({ id: `room:${room.id}`, label: room.name || 'Room', parent: 'floor' });
+				contexts.push({ id: `room:${room.id}`, label: room.name || 'Room', parent: 'project' });
 		}
 		if (layout !== previous || relations === undefined) {
 			const roomsByWall = new Map<string, string[]>();
@@ -68,8 +69,17 @@ export function createWorldIndexModel() {
 						for (const roomId of roomsByWall.get(host) ?? []) relations.push(`room:${roomId}`);
 					}
 				}
-				if (kind === 'object' && objectRooms.has(id)) relations.push(`room:${objectRooms.get(id)}`);
-				relations.push('floor');
+				if (kind === 'object') {
+					const roomId = objectRooms.get(id);
+					if (roomId && layout?.rooms.some(room => room.id === roomId)) relations.push(`room:${roomId}`);
+					else relations.push('free');
+				}
+
+			}
+			if (item.sourceId.startsWith('scene:entity:')) {
+				const room = sceneRooms.get(item.sourceId.slice('scene:entity:'.length));
+				if (room && layout?.rooms.some(candidate => candidate.id === room)) relations.push(`room:${room}`);
+				else relations.push('free');
 			}
 			return { ...item, context, relations };
 		});
@@ -80,9 +90,7 @@ export const worldIndexModel = createWorldIndexModel();
 export function resolveWorldScope(model: WorldIndexModel, scope: WorldScope): WorldScope {
 	return model.contexts.some((c) => c.id === scope)
 		? scope
-		: model.contexts.some((c) => c.id === 'floor')
-			? 'floor'
-			: 'project';
+		: 'project';
 }
 export function worldScopeRows(
 	model: WorldIndexModel,
@@ -94,7 +102,7 @@ export function worldScopeRows(
 	const needle = query.trim().toLowerCase();
 	const rows = model.rows.filter(
 		(row) =>
-			(scope === 'project' || row.relations.includes(scope)) &&
+			(scope === 'project' || row.relations.includes(scope)) && row.context !== scope &&
 			(facet === 'all' || row.group === facet) &&
 			(!needle || `${row.label} ${row.kind} ${row.sourceId}`.toLowerCase().includes(needle))
 	);

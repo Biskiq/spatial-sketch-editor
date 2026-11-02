@@ -91,11 +91,11 @@ it('projects real Room boundaries, one shared Wall identity, loose Scene subject
 		const rows = worldScopeRows(model, `room:${room.id}`, 'wall', '');
 		expect(rows.rows.map((r) => r.sourceId)).toEqual([sharedId]);
 	}
-	expect(model.rows.find((r) => r.sourceId === 'scene:entity:sculpture')?.relations).toEqual([]);
+	expect(model.rows.find((r) => r.sourceId === 'scene:entity:sculpture')?.relations).toEqual(['free']);
 	expect(worldScopeRows(model, 'project', 'scene', 'sculpture').rows[0]?.sourceId).toBe(
 		'scene:entity:sculpture'
 	);
-	expect(resolveWorldScope(model, 'room:deleted')).toBe('floor');
+	expect(resolveWorldScope(model, 'room:deleted')).toBe('project');
 	const empty = project(null, [], 'Replacement');
 	expect(resolveWorldScope(empty, `room:${layout.rooms[0]!.id}`)).toBe('project');
 });
@@ -121,4 +121,26 @@ it('caps lists without renumbering or discarding excluded/revealed identities', 
 	expect(worldScopeRows(model, 'project', 'all', 'Object 44').rows[0]?.label).toBe('Object 44');
 	expect(first.rows[0]?.eligible).toBe(false);
 	expect(first.rows[1]?.revealed).toBe(true);
+});
+
+it('groups only accepted resting Scene contacts and restores Free visibility when a Room disappears', async () => {
+	const { acceptedSceneRoomMembership } = await import('$lib/authoring/adapters/scene/room-membership');
+	const layout = twoRooms();
+	const box = (id: string, y: number) => ({ id, kind: 'primitive', name: id, primitive: 'box', dimensions: { width: 1, height: 1, depth: 1 }, position: [1, y, 1], rotation: [0,0,0] });
+	const native = { id: 'native', kind: 'form', name: 'Native', position: [1,0,1], rotation:[0,0,0], form: { generator: { kind:'extrude', plane:'plan', extent:1, outline:[{key:1,u:0,v:0,smooth:false},{key:2,u:1,v:0,smooth:false},{key:3,u:1,v:1,smooth:false},{key:4,u:0,v:1,smooth:false}] }, scale:[1,1,1], nextKey:5 } };
+	const envelope = {
+		units: {
+			layout: { header: { contentRevision: 'accepted-layout' }, data: layout },
+			scene: { data: { entities: [native, box('resting', .5), box('floating', 2), { ...box('unverified-model', .5), kind: 'model', assetId: 'missing' }] } },
+			resources: { data: { resources: [] } }
+		}
+	} as unknown as import('@portfolio/project-model/units').ProjectEnvelope;
+	const before = JSON.stringify(envelope);
+	const rooms = acceptedSceneRoomMembership(envelope);
+	expect([...rooms.keys()]).toEqual(['native', 'resting']);
+	expect(layout.rooms.some(room => room.id === rooms.get('resting'))).toBe(true);
+	expect(JSON.stringify(envelope)).toBe(before);
+	const deleted = { ...envelope, units: { ...envelope.units, layout: { ...envelope.units.layout, data: { ...layout, rooms: [] } } } };
+	expect(acceptedSceneRoomMembership(deleted).size).toBe(0);
+	expect(deleted.units.scene.data.entities).toHaveLength(4);
 });

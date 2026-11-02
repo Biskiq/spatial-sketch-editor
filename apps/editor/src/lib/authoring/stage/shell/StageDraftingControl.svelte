@@ -61,7 +61,7 @@
 	function onWindowPointerDown(event: PointerEvent): void {
 		if (!viewingOpen) return;
 		const target = event.target;
-		if (target instanceof Element && target.closest('.viewing-slot') === null) viewingOpen = false;
+		if (target instanceof Element && target.closest('.viewing-slot') === null) { viewingOpen = false; gear?.focus(); }
 	}
 </script>
 
@@ -250,7 +250,7 @@
 		border-color: var(--shell-hairline, #e1e4de);
 	}
 	.quiet button:hover {
-		background: var(--shell-leaf-tint, #e7f1ea);
+		background: var(--shell-hover, #eef0ed);
 	}
 	.viewing-slot {
 		position: relative;
@@ -271,8 +271,9 @@
 		padding: 12px;
 		border: 1px solid rgb(255 255 255 / 0.1);
 		border-radius: 10px;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--shell-card, #fff);
+		color: var(--shell-ink, #1b201c);
+		border-color: var(--shell-hairline, #e1e4de);
 		box-shadow: var(--shell-shadow);
 	}
 	.viewing[hidden] {
@@ -285,10 +286,16 @@
 		gap: 8px;
 	}
 	.viewing select {
-		min-height: 28px;
+		appearance: none;
+		min-height: 30px;
+		padding: 0 22px 0 8px;
+		background-image: linear-gradient(45deg, transparent 50%, #4a524c 50%), linear-gradient(135deg, #4a524c 50%, transparent 50%);
+		background-position: calc(100% - 10px) 50%, calc(100% - 6px) 50%;
+		background-size: 4px 4px;
+		background-repeat: no-repeat;
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 6px;
-		background: #fff;
+		background-color: var(--shell-control-surface, #fafbf9);
 		color: var(--shell-ink, #1b201c);
 		font: inherit;
 	}
@@ -296,7 +303,7 @@
 		font-size: 10px;
 		text-transform: uppercase;
 		letter-spacing: 0.07em;
-		color: var(--shell-ink-quiet, #9fb2a5);
+		color: var(--shell-ink-2, #4a524c);
 	}
 	.quiet .viewing {
 		background: #fff;

@@ -666,57 +666,40 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(mounted.host.history()).toEqual(history);
 	});
 
-	it('sizes Height in settled Plan through its screen handle and commits one undoable result', async () => {
+	it('withholds Plan Height while the Card can still resize it, and keeps resize intent across acceptance and view changes', async () => {
 		const mounted = await mount();
 		const created = await createFloorForm(mounted);
-		const evaluation = settleReading(mounted.facade, 'plan');
-		const height = formSizeMeasurement(created).handles.find((handle) => handle.axis === 1)!;
-		const heightMark = sizeMark(mounted.facade, 1);
-		const from = heightMark.anchor;
-		const projectedWorldHandle = stageCss(mounted.facade, height.world);
-		// Plan hides world Y. The Height mark therefore needs its own visible
-		// screen travel, and the same point must be the hit-test target.
-		expect(sizeMark(mounted.facade, 1).tag).toContain('Height');
-		expect(Math.abs(from[1] - projectedWorldHandle[1])).toBeGreaterThan(20);
-		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
-
-		const evaluationId = mounted.facade.evaluationId()!;
-		const down = mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: heightMark.id });
-		expect(down.claimed).toBe(true);
-		const to = [from[0], from[1] - 80] as const;
-		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		const preview = mounted.facade.ghosts().find((ghost) => ghost.id === 'scene-form-mark-preview');
-		expect(preview?.shape.kind).toBe('form');
-		if (preview?.shape.kind !== 'form') throw new Error('Plan Height produced no form preview');
-		const expectedScale =
-			(height.dimension + 80 * evaluation.targetPlaneMetersPerCssPixel) / height.baseDimension;
-		expect(preview.shape.form.scale[1]).toBeCloseTo(expectedScale, 5);
-		expect(sizeMark(mounted.facade, 1).anchor[1]).toBeCloseTo(from[1] - 80, 1);
-
-		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
-		await eventually(() => acceptedForms(mounted.facade)[0]!.form.scale[1] > created.form.scale[1]);
-		const committed = acceptedForms(mounted.facade)[0]!;
-		expect(committed.form.scale[0]).toBe(created.form.scale[0]);
-		expect(committed.form.scale[1]).toBeGreaterThan(created.form.scale[1]);
-		expect(committed.form.scale[2]).toBe(created.form.scale[2]);
-		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
-
-		expect((await mounted.host.undo()).kind).toBe('installed');
-		await eventually(() => acceptedForms(mounted.facade)[0]!.form.scale[1] === created.form.scale[1]);
-		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 1 });
+		settleReading(mounted.facade, 'plan');
+		expect(mounted.facade.session.resizeHandles()).toBe(false);
+		expect(mounted.facade.activateDisclosure(SCENE_FORM_MARK.scalePoint)).toBe(true);
+		expect(mounted.facade.marks().some(mark => mark.id === SCENE_FORM_MARK.height)).toBe(false);
+		expect(mounted.facade.marks().some(mark => mark.id === SCENE_FORM_MARK.width)).toBe(true);
+		const card = formCardController(mounted.services, created.id)!;
+		const result = await card.size([card.dimensions[0]!, card.dimensions[1]! + .2, card.dimensions[2]!]);
+		expect(result.kind).toBe('installed');
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 25);
+		expect(mounted.facade.session.resizeHandles()).toBe(true);
+		settleReading(mounted.facade, '3d');
+		expect(mounted.facade.marks().some(mark => mark.id === SCENE_FORM_MARK.height)).toBe(true);
+		await createFloorForm(mounted);
+		expect(mounted.facade.session.resizeHandles()).toBe(true);
+		expect(mounted.facade.marks().find(mark => mark.id === SCENE_FORM_MARK.scalePoint)?.open).toBe(true);
+		mounted.facade.activateDisclosure(SCENE_FORM_MARK.scalePoint);
+		expect(mounted.facade.session.resizeHandles()).toBe(false);
+		expect(mounted.facade.marks().some(mark => mark.id === SCENE_FORM_MARK.width)).toBe(false);
 	});
 
-	it('cancels Plan Height preview without changing source or history', async () => {
+	it('cancels Plan Width preview without changing source or history', async () => {
 		const mounted = await mount();
 		const created = await createFloorForm(mounted);
 		settleReading(mounted.facade, 'plan');
 		const before = mounted.facade.snapshot().canonicalJson;
 		const history = mounted.host.history();
-		const heightMark = sizeMark(mounted.facade, 1);
+		const heightMark = sizeMark(mounted.facade, 0);
 		const from = heightMark.anchor;
 		const evaluationId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: heightMark.id }).claimed).toBe(true);
-		const to = [from[0], from[1] - 64] as const;
+		const to = cursorAfterAxisDelta(mounted.facade, created, 0, from, .5);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(true);
 
@@ -727,7 +710,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(false);
 	});
 
-	it('refuses Plan Height while another gesture owns the Stage', async () => {
+	it('refuses Plan Width while another gesture owns the Stage', async () => {
 		const mounted = await mount();
 		const created = await createFloorForm(mounted);
 		settleReading(mounted.facade, 'plan');
@@ -740,7 +723,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 			policy: 'cancel-on-reading-change'
 		});
 		expect(occupied.kind).toBe('granted');
-		const heightMark = sizeMark(mounted.facade, 1);
+		const heightMark = sizeMark(mounted.facade, 0);
 		const down = mounted.facade.pointerIntent({
 			phase: 'down',
 			css: heightMark.anchor,
@@ -748,7 +731,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 			handleId: heightMark.id
 		});
 		expect(down.claimed).toBe(false);
-		expect(sizeMark(mounted.facade, 1).refusal).toContain('shape-size-test-owner');
+		expect(sizeMark(mounted.facade, 0).refusal).toContain('shape-size-test-owner');
 		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(false);
 		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
 		expect(acceptedForms(mounted.facade)[0]!.form.scale).toEqual(created.form.scale);
@@ -756,15 +739,15 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(mounted.host.history()).toEqual(history);
 	});
 
-	it('drops a live Plan Height preview when accepted content replaces its source', async () => {
+	it('drops a live Plan Width preview when accepted content replaces its source', async () => {
 		const mounted = await mount();
-		await createFloorForm(mounted);
+		const created = await createFloorForm(mounted);
 		settleReading(mounted.facade, 'plan');
-		const heightMark = sizeMark(mounted.facade, 1);
+		const heightMark = sizeMark(mounted.facade, 0);
 		const from = heightMark.anchor;
 		const evaluationId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: heightMark.id }).claimed).toBe(true);
-		const to = [from[0], from[1] - 64] as const;
+		const to = cursorAfterAxisDelta(mounted.facade, created, 0, from, .5);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(true);
 

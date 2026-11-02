@@ -1,5 +1,7 @@
 # World shell recovery — proposed implementation
 
+Owner review corrections and their acceptance now live in the separate [review pass 1 follow-up plan](./review-pass-1-plan.md); this baseline is retained unchanged below.
+
 **Approval required before coding.** This plan implements the
 [measured specification](./design-specification.md) and the approved dispositions
 in [the departure register](./gap-analysis.md#departures-and-owner-decisions).

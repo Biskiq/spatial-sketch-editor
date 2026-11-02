@@ -1,3 +1,4 @@
+import { planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
 import { axisTravelFromRay } from '$lib/authoring/stage/stage-axis-travel';
 /**
  * T1.P01.S04/S05 + T1.P02.S02 — the Layout adapter.
@@ -1073,13 +1074,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					kind: 'point',
 					role: 'edit',
 					anchor: [point[0], adapterContext.snapshot.domain.datumMeters, point[1]],
-					label: 'Junction',
+					label: 'Move point',
 					fact: 'junction',
 					verb: 'Move',
 					planner: LAYOUT_JUNCTION_MOVE_KIND,
 					value: numericValue ?? (active?.request === null || active?.request === undefined
-						? 'Junction'
-						: `X ${active.request.point[0].toFixed(3)} · Z ${active.request.point[1].toFixed(3)} m`),
+						? planarDeltaLabel(0, 0)
+						: planarDeltaLabel(active.request.point[0] - active.startPoint[0], active.request.point[1] - active.startPoint[1])),
 					refusal: active === null ? null : refusal
 				}];
 			}
@@ -1116,10 +1117,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								gesture.fixed,
 								gesture.request.kind === 'junction'
 									? {
+											baseline: gesture.frame,
 											frame: gesture.preview ?? undefined,
 											incidentWalls: gesture.neighbours.length + 1
 										}
-									: undefined
+									: { baseline: gesture.frame }
 							);
 						}
 						return accepted;
@@ -1136,7 +1138,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							anchor: framePoint(wall.frame, 0, y),
 							label: 'Wall start',
 							fact: 'start',
-							verb: 'Junction',
+							verb: 'Move point',
 							planner: LAYOUT_JUNCTION_MOVE_KIND,
 							value: valueFor(
 								'layout-wall-start-mark',
@@ -1152,7 +1154,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							anchor: framePoint(wall.frame, length, y),
 							label: 'Wall end',
 							fact: 'end',
-							verb: 'Junction',
+							verb: 'Move point',
 							planner: LAYOUT_JUNCTION_MOVE_KIND,
 							value: valueFor(
 								'layout-wall-end-mark',
@@ -1240,7 +1242,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						fact: 'offset',
 						verb: 'Offset',
 						planner: LAYOUT_OPENING_MEASURE_KIND,
-						value: numericValue('layout-opening-position') ?? `Offset ${liveOffset.toFixed(3)} m`,
+						value: numericValue('layout-opening-position') ?? sizeDeltaLabel(liveOffset, opening!.offset),
 						refusal: openingGesture?.markId === 'layout-opening-position' ? refusal : null
 					},
 					{
@@ -1258,7 +1260,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						fact: 'width',
 						verb: 'Width',
 						planner: LAYOUT_OPENING_MEASURE_KIND,
-						value: numericValue('layout-opening-width-end') ?? `Width ${liveWidth.toFixed(3)} m`,
+						value: numericValue('layout-opening-width-end') ?? sizeDeltaLabel(liveWidth, opening!.width),
 						refusal: openingGesture?.markId === 'layout-opening-width-end' ? refusal : null
 					}
 				];
@@ -3073,7 +3075,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						...markDescriptors(adapterContext),
 						...(openTaskKind !== null || services.stage.session.task() !== null
 							? []
-							: scalarSpecs(adapterContext).map(
+							: scalarSpecs(adapterContext).filter(spec => spec.field !== 'height' || adapterContext.evaluation.settledReading !== 'plan').map(
 									(spec): StageHandleDescriptor => ({
 										id: spec.id,
 										kind: 'ray',
@@ -3114,7 +3116,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 											scalarGesture?.spec.id === spec.id &&
 											scalarGesture.numeric
 												? `${spec.field} ${scalarGesture.numeric.text}`
-												: `${(scalarGesture?.spec.id === spec.id ? (scalarGesture.value ?? spec.value) : spec.value).toFixed(2)} m`,
+												: sizeDeltaLabel(scalarGesture?.spec.id === spec.id ? (scalarGesture.value ?? spec.value) : spec.value, spec.value),
 										refusal:
 											scalarGesture?.spec.id === spec.id
 												? scalarGesture.refusal
@@ -3878,7 +3880,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 										{
 											id: 'layout-wall-preview',
 											css,
-											label: wallRequestLabel(activeGesture.request, activeGesture.fixed)
+											label: wallRequestLabel(activeGesture.request, activeGesture.fixed, { baseline: activeGesture.frame })
 										}
 									]),
 							// Neighbours the canonical candidate reshaped: the junction this edit
@@ -4153,6 +4155,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 														activeWall.numeric !== null
 															? `${planNumericEntryField(activeWall.numeric).label} ${activeWall.numeric.text}`
 															: wallRequestLabel(activeWall.request, activeWall.fixed, {
+																	baseline: activeWall.frame,
 																	frame: activeWall.preview ?? undefined,
 																	incidentWalls: activeWall.neighbours.length + 1
 																})
@@ -4198,7 +4201,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						geometry: built.paper.subject,
 						labels: [{
 							world: world(activeJunction.request.point),
-							text: `Junction X ${activeJunction.request.point[0].toFixed(3)} · Z ${activeJunction.request.point[1].toFixed(3)} m`
+							text: planarDeltaLabel(activeJunction.request.point[0] - activeJunction.startPoint[0], activeJunction.request.point[1] - activeJunction.startPoint[1])
 						}],
 						snap: snapOf(activeJunction.snap)
 					})];
@@ -4264,24 +4267,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const subjectIds = new Set([...inkPreview.authoredWallIds, ...inkPreview.createdRoomIds]);
 					const affectedIds = new Set(inkPreview.splitWallIds);
 					const built = candidatePaper(inkPreview.document, y, subjectIds, affectedIds);
-					const geometry = built?.paper.subject ?? EMPTY_CANDIDATE_GEOMETRY;
+					const geometry = { polygons: [], segments: [...points.slice(1).map((point, i) => [world(points[i]!.point), world(point.point)] as const), ...(live.closed && points.length > 2 ? [[world(points.at(-1)!.point), world(points[0]!.point)] as const] : [])] };
 					const labels: { world: [number, number, number]; text: string }[] = [];
 					if (inkHover !== null && !boxMode) {
 						const pending = pendingLegFacts(linePreviewBase(), inkHover.point);
-						if (pending !== null) labels.push({ world: world(inkHover.point), text: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°` });
+						if (pending !== null) labels.push({ world: world(inkHover.point), text: `${pending.length.toFixed(2)} m` });
 					}
 					if (boxMode && inkHover !== null) {
 						const anchor = boxAnchor();
 						if (anchor !== null) {
 							labels.push({
 								world: world(inkHover.point),
-								text: `Box ${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(3)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(3)} m`
+								text: `${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(2)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(2)} m`
 							});
 						}
-						labels.push({ world: world(inkHover.point), text: inkPreview.consequence.summary });
+
 					}
 					return [
-						candidatePreviewOf({ id: 'layout-candidate-chain', role: 'subject', geometry, labels, snap: snapOf(inkSnapWinner) }),
+						candidatePreviewOf({ id: 'layout-candidate-chain', role: 'subject', drawing: true, geometry, labels, snap: snapOf(inkSnapWinner) }),
 						...(built === null || (built.paper.affected.polygons.length === 0 && built.paper.affected.segments.length === 0)
 							? []
 							: [candidatePreviewOf({ id: 'layout-candidate-chain-affected', role: 'affected', geometry: built.paper.affected })])
@@ -4302,8 +4305,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return [candidatePreviewOf({
 						id: 'layout-candidate-cursor',
 						role: 'subject',
+						drawing: true,
 						geometry: { polygons: [], segments: [[world(last), world(inkHover.point)]] },
-						labels: pending === null ? [] : [{ world: world(inkHover.point), text: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°` }],
+						labels: pending === null ? [] : [{ world: world(inkHover.point), text: `${pending.length.toFixed(2)} m` }],
 						snap: snapOf(inkSnapWinner)
 					})];
 				}
@@ -4311,6 +4315,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return [candidatePreviewOf({
 						id: 'layout-candidate-cursor',
 						role: 'subject',
+						drawing: true,
 						geometry: EMPTY_CANDIDATE_GEOMETRY,
 						snap: snapOf(inkSnapWinner)
 					})];
@@ -4373,92 +4378,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const y = adapterContext.snapshot.domain.datumMeters;
 				const project = (point: readonly [number, number]) =>
 					adapterContext.project([point[0], y, point[1]]);
-				if (inkPreview !== null && inkPreview.kind === 'planned' && inkPreview.authoredWallIds.length > 0) {
-					for (const leg of plannedLegs(inkPreview.document, inkPreview.authoredWallIds)) {
-						const css = project([
-							(leg.start[0] + leg.end[0]) / 2,
-							(leg.start[1] + leg.end[1]) / 2
-						]);
-						if (css === null) continue;
-						markers.push({
-							id: `layout-ink-leg-${leg.id}`,
-							css,
-							label: `Ghost Wall ${leg.id} — ${inkPreview.consequence.summary}`
-						});
-					}
-				}
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
-				const livePoints = boxMode
-					? (boxPreviewDraft() ?? draft)
-					: linePreviewDraft();
+				const livePoints = boxMode ? (boxPreviewDraft() ?? draft) : linePreviewDraft();
 				const points = 'points' in livePoints ? livePoints.points : draft.points;
-				points.forEach((entry, index) => {
-					const css = project(entry.point);
-					if (css === null) return;
-					const targetWords =
-						entry.target.kind === 'junction'
-							? `connects to Junction ${entry.target.junctionId}`
-							: entry.target.kind === 'host'
-								? `splits Wall ${entry.target.wallId}`
-								: 'free point';
-					markers.push({
-						id: `layout-ink-point-${index}`,
-						css,
-						label: `Chain point ${index + 1} — ${targetWords}`
-					});
-				});
-				if (inkHover !== null) {
-					const targetCss = project(inkHover.point);
-					if (targetCss !== null) {
-						markers.push({
-							id: 'layout-ink-target',
-							css: targetCss,
-						label:
-							inkHover.target.kind === 'junction'
-								? `Deliberate Junction ${inkHover.target.junctionId}`
-								: inkHover.target.kind === 'host'
-									? `Deliberate Wall interior — splits ${inkHover.target.wallId}`
-									: 'Free point'
-						});
-					}
-				}
-				const pending = inkHover === null || boxMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
-				const anchor = boxMode ? boxAnchor() : null;
-				if (anchor !== null && inkHover !== null) {
-					const css = project(inkHover.point);
-					if (css !== null) {
-						markers.push({
-							id: 'layout-ink-box',
-							css,
-							label: `Box ${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(3)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(3)} m`
-						});
-					}
-				}
-				if (pending !== null && inkHover !== null) {
-					const css = project(inkHover.point);
-					if (css !== null) {
-						markers.push({
-							id: 'layout-ink-pending',
-							css,
-							label: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°`
-						});
-					}
-				}
-				if (refusal === null ? inkNotice !== null : refusal !== null) {
-					const anchor =
-						inkHover === null
-							? points.length > 0
-								? project(points[points.length - 1]!.point)
-								: null
-							: project(inkHover.point);
-					if (anchor !== null) {
-						markers.push({
-							id: 'layout-ink-refusal',
-							css: anchor,
-							label: (refusal ?? inkNotice) as string
-						});
-					}
-				}
+
 				return markers;
 			}
 		}

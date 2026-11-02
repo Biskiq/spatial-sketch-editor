@@ -15,6 +15,7 @@
  * second authority over the Wall.
  */
 
+import { angleDeltaLabel, planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
 import type { FixedWallEndpoint, LayoutVec2 } from '@portfolio/layout-core';
 
 import {
@@ -91,19 +92,16 @@ export function wallAngleWords(frame: WallFrame): string {
 export function wallRequestLabel(
 	request: WallManipulationRequest,
 	fixed: FixedWallEndpoint,
-	context?: { readonly frame?: WallFrame; readonly incidentWalls?: number }
+	context?: { readonly frame?: WallFrame; readonly baseline?: WallFrame; readonly incidentWalls?: number }
 ): string {
+	const baseline = context?.baseline;
 	if (request.kind === 'junction') {
-		const frame = context?.frame;
-		if (frame === undefined) return `X ${request.point[0].toFixed(2)} · Z ${request.point[1].toFixed(2)} m`;
-		const shared = context?.incidentWalls ?? 1;
-		return `Length ${frame.length.toFixed(2)} m · ${wallAngleWords(frame)}${shared > 1 ? ` · ${shared} Walls` : ''}`;
+		const origin = baseline === undefined ? request.point : fixed === 'start' ? baseline.end : baseline.start;
+		return planarDeltaLabel(request.point[0] - origin[0], request.point[1] - origin[1]);
 	}
-	if (request.kind === 'length') return `Length ${request.length.toFixed(2)} m`;
-	if (request.kind === 'angle') {
-		return `Angle ${((request.angleRadians * 180) / Math.PI).toFixed(1)}° · fixed ${fixed}`;
-	}
-	return `Move ${Math.hypot(request.delta[0], request.delta[1]).toFixed(2)} m`;
+	if (request.kind === 'length') return sizeDeltaLabel(request.length, baseline?.length ?? request.length);
+	if (request.kind === 'angle') return angleDeltaLabel(request.angleRadians, baseline?.angleRadians ?? request.angleRadians);
+	return planarDeltaLabel(request.delta[0], request.delta[1]);
 }
 
 /**

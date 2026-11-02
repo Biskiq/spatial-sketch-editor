@@ -23,7 +23,7 @@ import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/sce
 import { createAdapter as createLayoutAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { hitStageMark } from '$lib/authoring/stage/stage-handles';
-import { formSizeMeasurement, SCENE_FORM_MARK } from '$lib/authoring/adapters/scene/shape/form-size';
+import { formSizeMeasurement, formWorldPoint, SCENE_FORM_MARK } from '$lib/authoring/adapters/scene/shape/form-size';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -180,7 +180,7 @@ describe('R217.S09 — native form Paper agreement', () => {
 		expect(beforeDrawing.footprints[0]!.polygons).not.toEqual(paperFootprint.polygons);
 	});
 
-	it('keeps support contact through a centered factor-two Plan Height edit', async () => {
+	it('keeps support contact through a centered factor-two 3D Height edit', async () => {
 		const base = form();
 		const sourceForm: SceneFormEntity = {
 			...base,
@@ -200,7 +200,8 @@ describe('R217.S09 — native form Paper agreement', () => {
 			}
 		};
 		const { facade, host } = await mountedHost(sourceForm);
-		settlePlan(facade);
+		facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, 20);
+		facade.camera.evaluate(RECT, 30);
 		const reference = sceneEntityReference(sourceForm.id, facade.snapshot().domain.unitRevisions.scene);
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
 		facade.activateDisclosure(SCENE_FORM_MARK.scalePoint);
@@ -218,13 +219,15 @@ describe('R217.S09 — native form Paper agreement', () => {
 		const history = host.history();
 		const evaluation = facade.evaluation()!;
 		const from = heightMark.anchor;
-		const to = [from[0], from[1] - 20] as const;
+		const projected = facade.projectWorld(formWorldPoint(acceptedBefore, [0, height.local[1] + .5, 0]), facade.evaluationId()!);
+		if (projected.kind !== 'projected') throw new Error('target Height point did not project');
+		const to = [projected.css[0] - RECT.left, projected.css[1] - RECT.top] as const;
 		const evaluationId = facade.evaluationId()!;
 		expect(facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: heightMark.id }).claimed).toBe(true);
 		facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		const preview = facade.ghosts().find((ghost) => ghost.id === 'scene-form-mark-preview');
 		if (preview?.shape.kind !== 'form') throw new Error('Plan Height did not publish a form preview');
-		const expectedScale = (height.dimension + 20 * evaluation.targetPlaneMetersPerCssPixel) / height.baseDimension;
+		const expectedScale = (height.dimension + .5 * height.factor) / height.baseDimension;
 		expect(preview.shape.form.scale[1]).toBeCloseTo(expectedScale, 6);
 		facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		for (let attempt = 0; attempt < 200; attempt += 1) {

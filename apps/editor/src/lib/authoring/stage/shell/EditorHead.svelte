@@ -924,7 +924,7 @@
 	}
 	.find-results [aria-selected='true'],
 	.find-results button:hover {
-		background: var(--shell-leaf-tint, #e7f1ea);
+		background: var(--shell-hover, #eef0ed);
 		border-radius: 6px;
 	}
 	.find-verb {

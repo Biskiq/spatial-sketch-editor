@@ -311,6 +311,7 @@ import StageMatGround from './StageMatGround.svelte';
 			together, and neither writes `Object3D.visible` for appearance.
 		-->
 		<StageSelectionLayer
+			eye={evaluation ? [evaluation.inverseViewMatrix[12]!, evaluation.inverseViewMatrix[13]!, evaluation.inverseViewMatrix[14]!] : [0, 10, 10]}
 			{selection}
 			{hover}
 			{hoverTone}
@@ -330,13 +331,14 @@ import StageMatGround from './StageMatGround.svelte';
 		{#each ghosts as ghost (ghost.id)}
 			{#if ghost.shape.kind === 'form'}
 				<StageFormGhost
+					metersPerCssPixel={evaluation?.targetPlaneMetersPerCssPixel ?? 0.01}
 					form={ghost.shape.form}
 					position={ghost.center}
 					yaw={ghost.yaw}
 					treatment={ghost.treatment}
 				/>
 			{:else}
-				<StagePrimitiveGhost ghost={{ ...ghost, shape: ghost.shape }} />
+				<StagePrimitiveGhost metersPerCssPixel={evaluation?.targetPlaneMetersPerCssPixel ?? 0.01} ghost={{ ...ghost, shape: ghost.shape }} />
 			{/if}
 		{/each}
 	{/if}

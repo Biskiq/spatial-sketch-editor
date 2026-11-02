@@ -92,6 +92,8 @@ export type StageEditingGrip = StageHandleBase & {
 
 export type StageDisclosureMark = StageHandleBase & {
 	readonly role: 'disclose';
+	/** A resize toggle keeps its pressed intent across subjects and accepted edits. */
+	readonly intent?: 'resize';
 	/** Ids of this binding's editing grips the mark reveals. */
 	readonly reveals: readonly string[];
 };

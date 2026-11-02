@@ -16,12 +16,12 @@
 		form,
 		position,
 		yaw,
-		treatment = 'subject'
+		treatment = 'subject', metersPerCssPixel = 0.01
 	}: {
 		form: SceneFormSource;
 		position: readonly [number, number, number];
 		yaw: number;
-		treatment?: 'subject' | 'proxy' | 'refused';
+		treatment?: 'subject' | 'proxy' | 'refused'; metersPerCssPixel?: number;
 	} = $props();
 
 	function ignoreRaycast(): void {}
@@ -55,22 +55,9 @@
 
 {#if geometry}
 	<T.Group position={at} rotation={[0, yaw, 0]}>
-	<T.Mesh {geometry} renderOrder={2} raycast={ignoreRaycast}>
-		<T.MeshBasicMaterial
-			color={treatment === 'refused' ? 0xe27666 : 0xc9a9ff}
-			transparent
-			opacity={treatment === 'proxy' ? 0.17 : treatment === 'refused' ? 0.23 : 0.38}
-			depthWrite={false}
-			toneMapped={false}
-		/>
-	</T.Mesh>
 	{#if edges}
-		<T.LineSegments geometry={edges} renderOrder={3} raycast={ignoreRaycast}>
-			<T.LineBasicMaterial
-				color={treatment === 'refused' ? 0xe27666 : 0xc9a9ff}
-				transparent opacity={treatment === 'proxy' ? 0.45 : 0.75}
-				depthTest={false} depthWrite={false} toneMapped={false}
-			/>
+		<T.LineSegments geometry={edges} renderOrder={3} raycast={ignoreRaycast} oncreate={line => { line.computeLineDistances(); }}>
+			<T.LineDashedMaterial color={0x1b201c} dashSize={metersPerCssPixel * 1.5} gapSize={metersPerCssPixel * 3} depthTest={true} depthWrite={false} toneMapped={false} />
 		</T.LineSegments>
 	{/if}
 	</T.Group>

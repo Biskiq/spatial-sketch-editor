@@ -129,6 +129,7 @@ export function openingIdsOnWalls(
 export function candidatePreviewOf(input: {
 	readonly id: string;
 	readonly role: StageCandidatePreview['role'];
+	readonly drawing?: boolean;
 	readonly geometry: CandidatePaperGeometry;
 	readonly labels?: readonly { readonly world: Vec3; readonly text: string }[];
 	readonly snap?: { readonly world: Vec3; readonly name: string };
@@ -136,6 +137,7 @@ export function candidatePreviewOf(input: {
 	return {
 		id: input.id,
 		role: input.role,
+		drawing: input.drawing,
 		polygons: input.geometry.polygons,
 		segments: input.geometry.segments,
 		labels: input.labels ?? [],

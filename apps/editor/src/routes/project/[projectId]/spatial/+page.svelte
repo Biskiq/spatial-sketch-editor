@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { roomLabelFacts, projectRoomLabels, type RoomLabelView } from '$lib/authoring/stage/room-labels';
+	import { acceptedSceneRoomMembership } from '$lib/authoring/adapters/scene/room-membership';
+	import { STAGE_PAINT_CSS } from '$lib/authoring/stage/shell/stage-paint';
 	import {
 		createWorldIndexModel,
 		resolveWorldScope,
@@ -751,6 +754,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let installedModelSignature = '';
 	/** The model-failure notice this resolver last set, so an unrelated notice survives. */
 	let modelNotice: string | null = null;
+	let roomLabels = $state<readonly RoomLabelView[]>([]);
 	let marks = $state<readonly StageMarkView[]>([]);
 	let notice = $state('');
 	let pendingReplacement = $state<null | 'starter' | 'empty' | 'source'>(null);
@@ -2012,6 +2016,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				});
 			}
 		}
+		const snapshot = stage.snapshot();
+		const evaluationId = stage.evaluationId();
+		roomLabels = evaluationId === null || !evaluation || lens !== 'world' ? [] : projectRoomLabels(
+			roomLabelFacts(snapshot.domain.geometry, stageEnvelope(snapshot).units.layout.data.rooms),
+			point => {
+				const projected = stage.projectWorld(point, evaluationId);
+				return projected.kind === 'projected' && projected.visibility === 'visible' && rect
+					? [projected.css[0] - rect.left, projected.css[1] - rect.top] : null;
+			}, evaluation.targetPlaneMetersPerCssPixel
+		);
 		ghosts = stage.ghosts();
 		marks = stage.marks();
 		refreshHostTools();
@@ -3383,7 +3397,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			})),
 			boot.status === 'ready' || boot.status === 'empty'
 				? boot.snapshot.domain.name
-				: 'Project'
+				: 'Project',
+			currentEnvelope ? acceptedSceneRoomMembership(currentEnvelope) : new Map()
 		)
 	);
 	const resolvedScope = $derived(resolveWorldScope(worldIndex, worldScope));
@@ -3391,7 +3406,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		worldIndex.contexts
 			.filter((c) =>
 					c.id === 'project' ||
-					(resolvedScope !== 'project' && c.id === 'floor') ||
+
 					c.id === resolvedScope
 			)
 			.map((c) => c.label)
@@ -3458,31 +3473,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return stageCardFacts(facade, { sourceId: selected.reference.subject.id, sourceKind: selected.reference.subject.kind, ref: selected.representation ?? null, reference: selected.reference }, own);
 	});
 
-	/**
-	 * How the selection is drawn and which domain owns it. These are diagnostics, shown
-	 * under Technical details rather than in the ordinary Card.
-	 */
-	const cardTechnicalFacts = $derived.by((): readonly { readonly label: string; readonly value: string }[] => {
-		void contributionsVersion;
-		const selected = selection;
-		if (selected === null) return [];
-		if (selected.reference.domain !== 'layout') return [{ label: 'Domain', value: selected.reference.domain }];
-		return [
-			{ label: 'Stream', value: selected.representation?.stream ?? 'canonical' },
-			{
-				label: 'Eligible',
-				value: String(
-					(planView === null ? null : planMembershipOf(planView, selected.reference.subject.id))?.eligible ?? false
-				)
-			},
-			{ label: 'Revealed', value: String(revealed.includes(selected.reference.subject.id)) }
-		];
-	});
-
-	/**
-	 * The Card's name writer: the adapter that owns the selected subject delegates
-	 * to its canonical planner. A non-Layout or read-only subject contributes none.
-	 */
 	const cardNameWriter = $derived.by(() => {
 		void contributionsVersion;
 		const selected = selection;
@@ -3870,7 +3860,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 </script>
 
-<div class="editor-host">
+<div class="editor-host" style={`--shell-ink:${STAGE_PAINT_CSS.ink};--shell-leaf:${STAGE_PAINT_CSS.hover};--shell-gold:${STAGE_PAINT_CSS.selection}`}>
 	<!--
 		The Head and the Index are authoring chrome, so they are not mounted while
 		the isolated Preview run owns the Camera output: a visible Undo, Save or
@@ -4068,7 +4058,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				<div class="overlay-layer">
 					<StageOverlay
 							lightGround={paperVisible || evaluation?.renderedReading === '3d'}
-							{markers} {marks} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+							{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 				</div>
 				<!--
 					The measured ruler is a Plan-only reading of the same evaluation. It
@@ -4079,9 +4069,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<StageScaleBar bar={draftingScaleBar} quiet={paperVisible} />
 				{/if}
 
-				{#if boot.status === 'empty' && (currentEnvelope?.units.layout.data.walls.length ?? 0) === 0 && (currentEnvelope?.units.layout.data.objects.length ?? 0) === 0 && (currentEnvelope?.units.scene.data.entities.length ?? 0) === 0}
-					<p class="stage-note" role="status">Empty workspace — add from Objects, draw with Ink, or use Find to choose the enclosed room starter.</p>
-				{/if}
+
 
 				<!--
 					The toolbar sits over the pointer-driven Stage surface, so it stops its
@@ -4266,11 +4254,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			<EditorCard
 				identity={preview === null && cardOpen ? cardIdentity : null}
 				facts={cardFacts}
-				technicalFacts={cardTechnicalFacts}
 				nameWriter={cardNameWriter}
 				writer={cardWriter}
 				actions={cardActions}
-                relations={(worldIndex.rows.find(row=>row.sourceId===selectedLocatorId)?.relations??[]).filter(id=>id.startsWith('room:')).map(id=>({label:worldIndex.contexts.find(context=>context.id===id)?.label??'Room',onNavigate:()=>{worldScope=id as WorldScope;indexOpen=true;}}))}
+
 				gesturing={cardGesturing}
 				onClose={closeCard}
 				onBringIntoView={() => {

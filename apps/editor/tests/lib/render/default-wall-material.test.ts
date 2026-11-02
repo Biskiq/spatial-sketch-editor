@@ -40,9 +40,10 @@ describe('the default Wall surface', () => {
 		);
 	});
 
-	it('selects with Paper\'s two-tone contour, which holds on cream and on forest', () => {
+	it('keeps selection paint independent of authored Wall materials', () => {
 		const layer = source('src/lib/authoring/stage/shell/StageSelectionLayer.svelte');
-		expect(layer).toContain("color: tone === 'selection' ? SELECTION_EDGE : 0x152c26");
+		expect(layer).toContain("toneMapped: false");
+		expect(layer).not.toContain("tintGeometry");
 		expect(layer).toContain("color: tone === 'selection' ? GOLD");
 	});
 });

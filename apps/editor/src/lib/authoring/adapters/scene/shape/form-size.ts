@@ -12,6 +12,7 @@
  * authored outline plus `form.scale`; nothing generated is stored.
  */
 import { Euler, Vector3 } from 'three';
+import { angleDeltaLabel, planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
 import {
 	planSetFormSize,
 	type SceneOperationResult
@@ -195,6 +196,7 @@ export function isSceneFormEditMarkId(id: string | undefined): id is SceneFormEd
 /** The live values a gesture or refusal shows on its mark. */
 export type SceneFormMarkLive = {
 	readonly markId: SceneFormMarkId;
+	readonly baseline?: SceneFormEntity;
 	readonly position: Vec3;
 	readonly yaw: number;
 	readonly scale: readonly [number, number, number];
@@ -226,6 +228,7 @@ export type FormMarkScreenHeight = {
  */
 export function formMoveScreenOffset(input: {
 	readonly entity: SceneFormEntity;
+	readonly reading?: 'plan' | '3d';
 	readonly measurement: FormSizeMeasurement;
 	readonly project: (point: Vec3) => readonly [number, number] | null;
 	readonly gapPx?: number;
@@ -297,6 +300,7 @@ const FORM_SIZE_RAY_ORDER: readonly {
  */
 export function formMarkDescriptors(input: {
 	readonly entity: SceneFormEntity;
+	readonly reading?: 'plan' | '3d';
 	readonly measurement: FormSizeMeasurement;
 	readonly live?: SceneFormMarkLive | null;
 	/**
@@ -316,6 +320,8 @@ export function formMarkDescriptors(input: {
 }): readonly StageHandleDescriptor[] {
 	const { entity, measurement } = input;
 	const live = input.live ?? null;
+	const baseline = live?.baseline ?? entity;
+	const baselineMeasurement = formSizeMeasurement(baseline);
 	if (measurement.bounds === null || measurement.handles.length !== 3) return [];
 	// The live pose lets every mark follow a Move or Turn preview without a
 	// second measurement; the accepted source remains the only authored truth.
@@ -333,7 +339,6 @@ export function formMarkDescriptors(input: {
 	const { width, depth } = measurement.footprint;
 	const refusal = (id: SceneFormMarkId): string | null =>
 		live !== null && live.markId === id ? live.refusal : null;
-	const centre = formWorldPoint(pose, [0, 0, 0]);
 	const descriptors: StageHandleDescriptor[] = [
 		{
 			id: SCENE_FORM_MARK.move,
@@ -347,20 +352,22 @@ export function formMarkDescriptors(input: {
 			fact: 'position',
 			verb: 'Position',
 			planner: 'place-on-floor',
-			value: `X ${position[0].toFixed(3)} · Z ${position[2].toFixed(3)} m`,
-			...(input.screenMove == null ? {} : { screen: { offset: input.screenMove.offset } }),
+			value: planarDeltaLabel(position[0] - baseline.position[0], position[2] - baseline.position[2]),
+
 			refusal: refusal(SCENE_FORM_MARK.move)
 		},
 		{
 			id: SCENE_FORM_MARK.scalePoint,
 			kind: 'point',
 			role: 'disclose',
+			intent: 'resize',
 			anchor: formWorldPoint(pose, measurement.bounds.max),
 			label: 'Scale',
-			reveals: [SCENE_FORM_MARK.height, SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth]
+			reveals: input.reading === 'plan' ? [SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth] : [SCENE_FORM_MARK.height, SCENE_FORM_MARK.width, SCENE_FORM_MARK.depth]
 		}
 	];
 	for (const ray of FORM_SIZE_RAY_ORDER) {
+		if (input.reading === 'plan' && ray.axis === 1) continue;
 		const handle = measurement.handles.find((entry) => entry.axis === ray.axis);
 		if (handle === undefined) return [];
 		descriptors.push({
@@ -368,7 +375,7 @@ export function formMarkDescriptors(input: {
 			draw:{ray:ray.axis===1?40:26},
 			kind: 'ray',
 			role: 'edit',
-			anchor: centre,
+			anchor: formWorldPoint(pose, handle.local),
 			axis: formWorldAxis(pose, ray.axis),
 			extent: Math.max(0.2, Math.abs(handle.local[ray.axis])),
 			label: ray.label,
@@ -376,7 +383,7 @@ export function formMarkDescriptors(input: {
 			verb: ray.label,
 			planner: 'set-form-size',
 			disclosedBy: SCENE_FORM_MARK.scalePoint,
-			value: `${ray.label} ${handle.dimension.toFixed(3)} m${ray.note}`,
+			value: sizeDeltaLabel(handle.dimension, baselineMeasurement.handles.find(entry => entry.axis === ray.axis)?.dimension ?? handle.dimension),
 			...(ray.axis === 1 && input.screenHeight != null
 				? { screen: input.screenHeight }
 				: {}),
@@ -397,7 +404,7 @@ export function formMarkDescriptors(input: {
 		fact: 'yaw',
 		verb: 'Yaw',
 		planner: 'set-yaw',
-		value: `Yaw ${((yaw * 180) / Math.PI).toFixed(1)}°`,
+		value: angleDeltaLabel(yaw, baseline.rotation[1]),
 		refusal: refusal(SCENE_FORM_MARK.turn)
 	});
 	return descriptors;

@@ -13,6 +13,7 @@
  * dispatch, so typing a value and dragging to it produce the same candidate and
  * the same refusal words.
  */
+import { angleDeltaLabel, planarDeltaLabel, signed } from '$lib/authoring/stage/gesture-values';
 import type {
 	AuthoringIntent,
 	SceneEntity,
@@ -254,6 +255,7 @@ export function liveSceneObjectBounds(
 
 export function sceneObjectMarkDescriptors(input: {
 	readonly entity: SceneEntity;
+	readonly reading?: 'plan' | '3d';
 	readonly contactMinY: number;
 	readonly bounds: SceneObjectBounds | null;
 	readonly footprint: SceneObjectFootprint | null;
@@ -285,7 +287,7 @@ export function sceneObjectMarkDescriptors(input: {
 		fact: 'position',
 		verb: 'Position',
 		planner: 'place-on-floor',
-		value: `X ${position[0].toFixed(3)} · Z ${position[2].toFixed(3)} m`,
+		value: planarDeltaLabel(position[0] - entity.position[0], position[2] - entity.position[2]),
 		refusal: live?.markId === SCENE_OBJECT_MARK.move ? live.refusal : null
 	};
 	const turn: StageHandleDescriptor = {
@@ -299,10 +301,10 @@ export function sceneObjectMarkDescriptors(input: {
 		fact: 'yaw',
 		verb: 'Yaw',
 		planner: 'set-yaw',
-		value: `Yaw ${sceneYawDegrees(yaw).toFixed(1)}°`,
+		value: angleDeltaLabel(yaw, entity.rotation[1]),
 		refusal: live?.markId === SCENE_OBJECT_MARK.turn ? live.refusal : null
 	};
-	if (bounds === null) return [move, turn];
+	if (bounds === null || input.reading === 'plan') return [move, turn];
 	const ray = sizeRayGeometry(bounds);
 	if (ray === null) return [move, turn];
 	return [
@@ -310,6 +312,7 @@ export function sceneObjectMarkDescriptors(input: {
 			id: SCENE_OBJECT_MARK.scalePoint,
 			kind: 'point',
 			role: 'disclose',
+			intent: 'resize',
 			anchor: [bounds.max[0], bounds.max[1], bounds.max[2]],
 			label: 'Scale',
 			reveals: [SCENE_OBJECT_MARK.size]
@@ -327,7 +330,7 @@ export function sceneObjectMarkDescriptors(input: {
 			verb: 'Size',
 			planner: 'resize-on-floor',
 			disclosedBy: SCENE_OBJECT_MARK.scalePoint,
-			value: `Size ${scale.toFixed(3)} · base stays`,
+			value: `Δ ${signed(scale - acceptedScale)} → ${scale.toFixed(2)}×`,
 			refusal: live?.markId === SCENE_OBJECT_MARK.size ? live.refusal : null
 		},
 		move,

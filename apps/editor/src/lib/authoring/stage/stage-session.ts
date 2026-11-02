@@ -233,6 +233,9 @@ export type StageSession = {
 	 * The one Grid/Snap view state. It is view state only: changing it writes no
 	 * source, no history entry and no Save, and a project replacement keeps it.
 	 */
+	/** Resize is session intent; only its toggle changes it, never a proposal. */
+	resizeHandles(): boolean;
+	setResizeHandles(visible: boolean): void;
 	drafting(): StageDraftingState;
 	setDrafting(patch: StageDraftingPatch): StageDraftingState;
 	/**
@@ -403,6 +406,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 	// Grid/Snap are creator view state, not project state: they survive a content
 	// change and a replacement exactly as the lens does.
 	let draftingValue: StageDraftingState = STAGE_DRAFTING_DEFAULTS;
+	let resizeHandlesVisible = false;
 	// One Sheet per session, created here rather than per facade mount: a lens
 	// exit rebuilds adapters but must not lose the creator's height. A
 	// replacement resets the Sheet, and its subscribers stay registered.
@@ -516,6 +520,8 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 		},
 		select: setLegacy,
 		lens: () => lens,
+		resizeHandles: () => resizeHandlesVisible,
+		setResizeHandles(visible) { if (!disposed) resizeHandlesVisible = visible; },
 		drafting: () => draftingValue,
 		setDrafting(patch) {
 			if (disposed) return draftingValue;

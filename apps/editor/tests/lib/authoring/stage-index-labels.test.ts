@@ -122,7 +122,7 @@ describe('Index labels: kind words and membership', () => {
 		expect(layoutKindWord('wall')).toBe('Wall');
 		expect(layoutKindWord('opening', 'door')).toBe('Door');
 		expect(layoutKindWord('opening', 'window')).toBe('Window');
-		expect(layoutKindWord('room-floor')).toBe('Floor');
+		expect(layoutKindWord('room-floor')).toBe('Room');
 		expect(layoutKindWord('object')).toBe('Object');
 	});
 

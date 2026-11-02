@@ -18,6 +18,7 @@ Historical records and governing visual references remain unchanged.
   replacements, affected components, compatibility limits and owner decisions.
 - [Implementation plan](./implementation-plan.md): concrete replacements,
   disclosure/navigation work, retired paths, sequencing and functional checks.
+- [Owner review pass 1](./review-pass-1-plan.md): separate follow-up plan, accepted owner decisions and acceptance record. Implementation and non-browser functional verification are delivered; visual acceptance remains pending.
 
 ## Review basis
 

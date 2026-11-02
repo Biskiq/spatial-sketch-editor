@@ -1,6 +1,6 @@
 <script lang="ts">
-	/** Compact identity and one contributed writer. Precision and relations are invoked without remounting the writer. */
-	import { untrack } from 'svelte';
+	/** Compact identity and one contributed writer. Secondary actions are invoked without remounting the writer. */
+	import { untrack, tick, type Snippet } from 'svelte';
 	import ShellIcon from './ShellIcon.svelte';
 	import type {
 		StageCardActionRecord,
@@ -17,8 +17,6 @@
 		nameWriter = null,
 		writer = null,
 		actions = [],
-		technicalFacts = [],
-		relations = [],
 		onClose,
 		onBringIntoView,
 		gesturing = false
@@ -47,12 +45,6 @@
 		writer?: StageCardWriterRecord | null;
 		/** The subject's scoped contributed actions (a delete and its disclosure). */
 		actions?: readonly StageCardActionRecord[];
-		/**
-		 * Diagnostics about how the selection is drawn (Stream, Eligible, Revealed). They
-		 * belong to Technical details, not to the ordinary Card.
-		 */
-		technicalFacts?: readonly StageCardFact[];
-		relations?: readonly { label: string; onNavigate: () => void }[];
 		/**
 		 * PLATE arbitration: at constrained width the Card collapses to identity with
 		 * explicit expansion, so it never covers the task's lower column.
@@ -83,15 +75,16 @@
 	 */
 	let renaming = $state(false);
 	let detailOpen = $state(false);
-	let actionsOpen = $state(false);
-	let technicalOpen = $state(false);
+	let actionTrigger = $state<HTMLButtonElement>();
+	let panel = $state<HTMLDivElement>();
+	let titleButton = $state<HTMLButtonElement>();
+	let nameInput = $state<HTMLInputElement>();
 	const identityKey = $derived(identity?.sourceId ?? null);
 	$effect(() => {
 		void identityKey;
 		renaming = false;
 		detailOpen = false;
-		actionsOpen = false;
-		technicalOpen = false;
+		nameError = null;
 	});
 	let nameDraft = $state('');
 	let nameError = $state<string | null>(null);
@@ -151,6 +144,8 @@
 			const outcome = await action.run();
 			if (outcome.message !== undefined && outcome.kind !== 'accepted')
 				actionMessage = outcome.message;
+		} catch {
+			actionMessage = 'The action could not be completed. Try again.';
 		} finally {
 			actionBusy = false;
 		}
@@ -166,57 +161,97 @@
 		if (nameWriter === null || nameBusy) return;
 		const name = nameDraft.trim();
 		if (name.length === 0) {
-			nameError = 'Enter a name; an empty name is not a rename.';
+			nameError = 'Enter a name.';
 			return;
 		}
 		nameBusy = true;
 		nameError = null;
+		const target = identityKey;
+		const currentWriter = nameWriter;
 		try {
-			const outcome = await nameWriter.commit(name);
+			const outcome = await currentWriter.commit(name);
+			if (target !== identityKey) return;
 			if (outcome.kind !== 'accepted') {
 				nameError = outcome.message ?? 'The name was not accepted.';
 				return;
 			}
 			nameDraft = name;
 			renaming = false;
+			await tick();
+			titleButton?.focus();
+		} catch {
+			if (target === identityKey) nameError = 'The name could not be saved. Try again.';
 		} finally {
 			// A throwing writer ends the attempt too; leaving `nameBusy` true would
 			// disable the rename affordance for the rest of the selection.
 			nameBusy = false;
+			await tick();
+			if (target === identityKey && renaming) nameInput?.focus();
 		}
+	}
+
+	function closePanel(): void {
+		detailOpen = false;
+		confirming = null;
+		actionMessage = null;
+		actionTrigger?.focus();
+	}
+	function onOutside(event: PointerEvent): void {
+		if (!detailOpen || !(event.target instanceof Node)) return;
+		if (panel?.contains(event.target) || actionTrigger?.contains(event.target)) return;
+		closePanel();
+	}
+	function startRename(): void {
+		if (!nameWriter || nameBusy) return;
+		nameDraft = nameWriter.value;
+		nameError = null;
+		renaming = true;
+	}
+	function cancelRename(): void {
+		renaming = false;
+		nameDraft = nameWriter?.value ?? '';
+		nameError = null;
+	}
+	function focusName(input: HTMLInputElement) {
+		input.focus();
+		input.select();
 	}
 </script>
 
+<svelte:window onpointerdowncapture={onOutside} />
+
 {#snippet footer()}
 	<div class="footer">
-		<span class="look">Look</span>
-		<button
-			type="button"
-			aria-label="Bring into view"
-			title="Bring into view"
-			onclick={onBringIntoView}><ShellIcon name="fit" size={15} /></button
-		>
-		<button
-			type="button"
-			aria-label="Look from here unavailable"
-			title="Look from here is not available yet"
-			aria-disabled="true"><ShellIcon name="eye" size={15} /></button
-		>
-		<button
-			type="button"
-			class="more"
-			data-card-more
-			aria-expanded={detailOpen}
-			onclick={() => (detailOpen = !detailOpen)}
-			>More <ShellIcon name="chevronDown" size={12} /></button
-		>
+		<button type="button" aria-label="Bring into view" title="Bring into view" onclick={onBringIntoView}><ShellIcon name="fit" size={15} /></button>
 	</div>
 {/snippet}
+
+{#snippet secondary(content?: Snippet)}
+	{#if detailOpen}
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div class="subject-actions" bind:this={panel} data-card-actions role="group" aria-label="Subject actions"
+			onkeydown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closePanel(); } }}>
+			{#if content}{@render content()}{/if}
+			{#each actions as action (`${action.adapterId}:${action.id}`)}
+				<button type="button" class:destructive={action.destructive === true} data-card-action={action.id}
+					disabled={actionBusy} onclick={() => void runAction(action)}>
+					{confirming === confirmationKeyOf(action) ? `Confirm ${action.label}` : action.label}
+				</button>
+			{/each}
+			{#if confirming !== null}<button type="button" onclick={() => { confirming = null; actionMessage = null; }}>Cancel</button>{/if}
+			{#if actionMessage}<p class="error" role="alert">{actionMessage}</p>{/if}
+		</div>
+	{/if}
+{/snippet}
 {#if identity}
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
 	<aside
 		class="card"
 		class:gesturing
 		aria-label="Selected subject"
+		onkeydown={event => { if (detailOpen && event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closePanel(); } }}
+		onpointerdown={event => event.stopPropagation()}
+		onclick={event => event.stopPropagation()}
 		data-source-id={identity.sourceId}
 		data-card-gesturing={gesturing ? 'true' : 'false'}
 	>
@@ -226,8 +261,9 @@
 				<button
 					type="button"
 					aria-label="Subject actions"
-					aria-expanded={actionsOpen}
-					onclick={() => (actionsOpen = !actionsOpen)}><ShellIcon name="more" size={15} /></button
+					bind:this={actionTrigger}
+					aria-expanded={detailOpen}
+					onclick={() => { if (detailOpen) closePanel(); else detailOpen = true; }}><ShellIcon name="more" size={15} /></button
 				>
 				<button type="button" aria-label="Close selection card" onclick={onClose}
 					><ShellIcon name="close" size={15} /></button
@@ -235,88 +271,25 @@
 			</div>
 		</header>
 		<h2 class="name" title={identity.label}>
-			<button
-				type="button"
-				aria-label={`Rename ${identity.label}`}
-				onclick={() => {
-					if (nameWriter) renaming = !renaming;
-				}}>{identity.label}</button
-			>
-		</h2>
-		{#if renaming && nameWriter}
-			<form
-				class="rename"
-				onsubmit={(event) => {
-					event.preventDefault();
-					void commitName();
-				}}
-			>
-				<input
-					aria-label="Name"
-					value={nameDraft}
-					disabled={nameBusy}
-					oninput={(event) => (nameDraft = event.currentTarget.value)}
-					onkeydown={(event) => {
-						if (event.key === 'Escape') {
-							event.preventDefault();
-							event.stopPropagation();
-							renaming = false;
-							nameDraft = nameWriter!.value;
-							nameError = null;
-						}
-					}}
-				/>
-				<button type="submit" disabled={nameBusy}>Rename</button>
-			</form>
-			{#if nameError}
-				<p class="error" role="alert">{nameError}</p>
+			{#if renaming && nameWriter}
+				<input class="rename-input" aria-label="Name" bind:this={nameInput} use:focusName value={nameDraft} disabled={nameBusy}
+					oninput={event => nameDraft = event.currentTarget.value}
+					onblur={() => { if (!nameBusy) cancelRename(); }}
+					onkeydown={event => {
+						if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); void commitName(); }
+						if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelRename(); void tick().then(() => titleButton?.focus()); }
+					}} />
+			{:else}
+				<button type="button" bind:this={titleButton} aria-label={nameWriter ? `Rename ${identity.label}` : identity.label}
+					ondblclick={startRename}
+					onpointerup={event => { if (event.pointerType === 'touch') startRename(); }}
+					onkeydown={event => { if (event.key === 'Enter' || event.key === 'F2') { event.preventDefault(); startRename(); } }}>{identity.label}</button>
 			{/if}
-		{/if}
-		{#if actionsOpen}
-			<div class="subject-actions" data-card-actions>
-				{#if nameWriter}<button type="button" onclick={() => (renaming = true)}>Rename</button>
-				{/if}
-
-				{#each actions as action (`${action.adapterId}:${action.id}`)}
-					<button
-						type="button"
-						class:destructive={action.destructive === true}
-						data-card-action={action.id}
-						disabled={actionBusy}
-						onclick={() => void runAction(action)}
-					>
-						{confirming === confirmationKeyOf(action) ? `Confirm ${action.label}` : action.label}
-					</button>
-				{/each}
-				{#if confirming !== null}<button
-						type="button"
-						onclick={() => {
-							confirming = null;
-							actionMessage = null;
-						}}>Cancel</button
-					>{/if}
-				{#if actionMessage}
-					<p class="error" role="alert">{actionMessage}</p>
-				{/if}
-				<button
-					type="button"
-					onclick={() => (technicalOpen = !technicalOpen)}
-					aria-expanded={technicalOpen}>Technical identity</button
-				>
-				{#if technicalOpen}
-					<dl class="facts">
-						<dt>Canonical ID</dt>
-						<dd>{identity.sourceId}</dd>
-						{#each technicalFacts as fact (fact.label)}
-							<dt>{fact.label}</dt>
-							<dd>{fact.value}</dd>
-						{/each}
-					</dl>{/if}
-			</div>
-		{/if}
+		</h2>
+		{#if nameError}<p class="error" role="alert">{nameError}</p>{/if}
 		{#if writer?.view}
 			<div class="writer" data-card-writer={writer.summary}>
-				<writer.view.component services={writer.view.services} {detailOpen} {footer} />
+				<writer.view.component services={writer.view.services} {detailOpen} {footer} {secondary} />
 			</div>
 		{:else}
 			{#if ordinaryFacts.length > 0}<dl class="facts">
@@ -326,20 +299,9 @@
 						<dd>{fact.value}</dd>{/each}
 				</dl>{/if}
 			{@render footer()}
+			{@render secondary()}
 		{/if}
-		{#if detailOpen}
-			{#if relations.length}<div class="relation-links">
-					{#each relations as relation}<button type="button" onclick={relation.onNavigate}
-							>{relation.label}<ShellIcon name="chevronRight" size={12} /></button
-						>{/each}
-				</div>{/if}
-			<dl class="facts relations">
-				{#each ordinaryFacts.filter((fact) => !fact.label
-							.toLowerCase()
-							.includes('area')) as fact (fact.label)}<dt>{fact.label}</dt>
-					<dd>{fact.value}</dd>{/each}
-			</dl>
-		{/if}
+
 	</aside>
 {/if}
 
@@ -352,7 +314,7 @@
 		width: var(--shell-card-width, 288px);
 		max-width: calc(100% - 76px);
 		max-height: calc(100% - var(--lower-column-height, 50px) - 30px);
-		overflow: auto;
+		overflow: visible;
 		border: 1px solid var(--shell-hairline, #e1e4de);
 		border-radius: 12px;
 		background: #fff;
@@ -390,7 +352,7 @@
 		cursor: pointer;
 	}
 	button:hover {
-		background: var(--shell-leaf-tint, #e7f1ea);
+		background: var(--shell-hover, #eef0ed);
 	}
 	.head-actions button,
 	.footer button:not(.more) {
@@ -412,34 +374,12 @@
 		white-space: nowrap;
 		text-align: left;
 	}
-	.rename {
-		display: flex;
-		gap: 4px;
-		margin: 0 12px 8px;
-	}
-	.rename input {
-		min-width: 0;
-		width: 100%;
-		height: 26px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
-		border-radius: 6px;
-		padding: 0 6px;
-		font: 12px var(--shell-mono, monospace);
-	}
 	.footer {
 		display: flex;
 		align-items: center;
 		gap: 4px;
 		padding: 4px 8px 8px 10px;
 		border-top: 1px solid var(--shell-hairline, #e1e4de);
-	}
-	.look {
-		color: var(--shell-ink-2, #4a524c);
-		font-size: 11px;
-	}
-	.more {
-		margin-left: auto;
-		font-size: 11.5px;
 	}
 
 	.facts {
@@ -460,18 +400,6 @@
 		overflow-wrap: anywhere;
 	}
 
-	.relation-links {
-		display: grid;
-		padding: 8px 12px;
-		border-top: 1px solid var(--shell-hairline);
-		font-size: 12px;
-	}
-	.relation-links button {
-		justify-content: space-between;
-	}
-	.relations {
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
-	}
 	.subject-actions {
 		display: flex;
 		flex-wrap: wrap;
@@ -487,9 +415,6 @@
 	.destructive {
 		color: var(--shell-refuse, #7e2718);
 	}
-	button[aria-disabled='true'] {
-		opacity: 0.4;
-	}
 	.card.gesturing {
 		opacity: 0.2;
 		pointer-events: none;
@@ -502,10 +427,30 @@
 	@media (pointer: coarse) {
 		button,
 		.head-actions button,
-		.footer button:not(.more),
-		.rename input {
+		.footer button,
+		.rename-input {
 			min-width: 44px;
 			min-height: 44px;
 		}
 	}
+
+	.subject-actions {
+		position: absolute;
+		top: 34px;
+		right: 6px;
+		z-index: 30;
+		width: min(264px, calc(100vw - 100px));
+		max-height: calc(100dvh - 160px);
+		overflow: auto;
+		display: grid;
+		gap: 4px;
+		padding: 8px;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 10px;
+		background: var(--shell-card, white);
+		box-shadow: var(--shell-shadow);
+	}
+	.subject-actions button { justify-content: flex-start; min-height: 30px; }
+	.rename-input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; color: inherit; border: 1px solid var(--shell-hairline-strong); border-radius: 5px; padding: 3px 5px; }
+	@media (pointer: coarse) { .subject-actions button, .rename-input { min-height: 44px; } }
 </style>

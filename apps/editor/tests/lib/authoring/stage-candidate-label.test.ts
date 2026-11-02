@@ -32,7 +32,7 @@ it.each([928, 820])('keeps a crossing refusal inside a %spx Stage and clear of t
 	}
 });
 
-it('gives a candidate line a dark halo and says a refusal once', async () => {
+it('gives a refused candidate one boundary and one discoverable problem marker', async () => {
 	const target = document.createElement('div');
 	document.body.append(target);
 	const component = mount(StageOverlay, { target, props: {
@@ -50,9 +50,13 @@ it('gives a candidate line a dark halo and says a refusal once', async () => {
 	try {
 		await tick();
 		const lines = [...target.querySelectorAll('.candidate line')];
-		expect(lines).toHaveLength(2);
-		expect(lines[0]!.classList.contains('candidate-halo')).toBe(true);
-		expect(lines[1]!.classList.contains('candidate-edge')).toBe(true);
+		expect(lines).toHaveLength(1);
+		expect(lines[0]!.classList.contains('candidate-edge')).toBe(true);
+		expect(target.querySelectorAll('.problem[tabindex="0"]')).toHaveLength(1);
+		expect(target.querySelector('.candidate .tag')?.getAttribute('visibility')).toBe('hidden');
+		target.querySelector('.problem')!.dispatchEvent(new FocusEvent('focus'));
+		await tick();
+		expect(target.querySelector('.candidate .tag')?.getAttribute('visibility')).toBeNull();
 		expect(target.querySelectorAll('.tag')).toHaveLength(1);
 		expect(target.querySelector('.mark .tag')).toBeNull();
 	} finally {

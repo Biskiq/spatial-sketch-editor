@@ -6,10 +6,10 @@
 	import { formCardController } from './form-card';
 	let { services,
 		detailOpen = false,
-		footer
+		footer, secondary
 	}: { services: StageAdapterServices;
 		detailOpen?: boolean;
-		footer?: Snippet;
+		footer?: Snippet; secondary?: Snippet<[Snippet?]>;
 	} = $props();
 	let version = $state(0);
 	let message = $state('');
@@ -25,16 +25,10 @@
 		return primary?.domain === 'scene' && primary.subject.kind === 'entity'
 			? formCardController(services, primary.subject.id) : null;
 	});
-	let x = $state('');
-	let z = $state('');
-	let yaw = $state('');
 	let size = $state(['', '', '']);
 	$effect(() => {
 		const current = controller;
 		if (current === null) return;
-		x = String(current.entity.position[0]);
-		z = String(current.entity.position[2]);
-		yaw = String(current.entity.rotation[1]);
 		size = current.dimensions.map(String);
 	});
 	$effect(() => services.stage.onAdaptersChanged(() => { version += 1; }));
@@ -47,22 +41,16 @@
 		saveRefused = false;
 	});
 	const finite = (text: string) => text.trim() !== '' && Number.isFinite(Number(text));
-	async function run(kind: 'move' | 'turn' | 'place' | 'size' | 'duplicate') {
+	async function run(kind: 'size' | 'duplicate') {
 		const current = controller;
 		if (current === null || busy) return;
-		if (((kind === 'move' || kind === 'place') && (!finite(x) || !finite(z))) ||
-			(kind === 'turn' && !finite(yaw)) ||
-			(kind === 'size' && size.some((value) => !finite(value) || Number(value) <= 0))) {
+		if (kind === 'size' && size.some((value) => !finite(value) || Number(value) <= 0)) {
 			message = 'Enter finite values; dimensions must be positive.';
 			return;
 		}
 		busy = true;
 		try {
-			const outcome = kind === 'move' ? await current.move(Number(x), Number(z))
-				: kind === 'place' ? await current.place(Number(x), Number(z))
-				: kind === 'turn' ? await current.turn(Number(yaw))
-				: kind === 'size' ? await current.size(size.map(Number) as [number, number, number])
-				: await current.duplicate();
+			const outcome = kind === 'size' ? await current.size(size.map(Number) as [number, number, number]) : await current.duplicate();
 			if (alive) {
 				message = outcome.kind === 'refused' ? outcome.message : outcome.kind === 'no-op' ? 'No change.' : '';
 				// Rebuild the controller from the accepted source after an install, so a
@@ -127,29 +115,14 @@
 					/></label
 				>
 			{/each}
-			{#if detailOpen}<button type="button" onclick={() => run('size')}
-					>Apply size</button
-				>{/if}
+
 		</fieldset>
 		{#if footer}{@render footer()}{/if}
-		{#if detailOpen}
-			<fieldset disabled={busy}>
-				<legend>Move and Place</legend>
-			<label>X (m)<input aria-label="Form X (m)" type="text" inputmode="decimal" bind:value={x} /></label>
-			<label>Z (m)<input aria-label="Form Z (m)" type="text" inputmode="decimal" bind:value={z} /></label>
-			<button type="button" onclick={() => run('move')}>Move</button>
-			<button type="button" onclick={() => run('place')}>Place on floor</button>
-		</fieldset>
-		<fieldset disabled={busy}>
-			<legend>Turn</legend>
-			<label>Yaw (rad)<input aria-label="Form yaw (rad)" type="text" inputmode="decimal" bind:value={yaw} /></label>
-			<button type="button" onclick={() => run('turn')}>Turn</button>
-		</fieldset>
-		<button type="button" disabled={busy} onclick={() => run('duplicate')}>Duplicate</button>
-		<button type="button" data-save-to-my-objects disabled={busy || saveBusy} onclick={() => void save()}>
-			{saveBusy ? 'Saving…' : 'Save to My Objects'}
-		</button>
-		{/if}
+		{#snippet details()}
+			<button type="button" disabled={busy} onclick={() => run('duplicate')}>Duplicate</button>
+			<button type="button" data-save-to-my-objects disabled={busy || saveBusy} onclick={() => void save()}>{saveBusy ? 'Saving…' : 'Save to My Objects'}</button>
+		{/snippet}
+		{#if secondary}{@render secondary(details)}{/if}
 		{#if message}<p role="status">{message}</p>{/if}
 		{#if saveMessage}
 			<p role={saveRefused ? 'alert' : 'status'} class:refused={saveRefused}>{saveMessage}</p>
@@ -164,7 +137,7 @@
 		display: flex; flex-wrap: wrap; gap: 0.4rem; border: 0; padding: 0; margin: 0; }
 	label { display: grid; gap: 2px;
 		font-size: 10.5px;
-		color: var(--shell-ink-3, #79817b); }
+		color: var(--shell-ink-2, #4a524c); }
 	input { width: 78px;
 		min-height: 26px;
 		height: 26px; box-sizing: border-box; padding: 0.2rem 0.35rem;

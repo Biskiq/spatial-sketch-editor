@@ -17,8 +17,8 @@
 	let {
 		services,
 		detailOpen = false,
-		footer
-	}: { services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet } = $props();
+		footer, secondary
+	}: { services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]> } = $props();
 
 	let alive = true;
 	onDestroy(() => {
@@ -184,11 +184,7 @@
 	<div class="object-fields" data-scene-object-card-fields aria-label="Scene object fields">
 		<fieldset disabled={busy}>{@render fieldRow('size')}</fieldset>
 		{#if footer}{@render footer()}{/if}
-		{#if detailOpen}<fieldset class="precision" disabled={busy}>
-				{#each SCENE_OBJECT_CARD_FIELD_IDS.filter((id) => id !== 'size') as id (id)}{@render fieldRow(
-						id
-					)}{/each}
-			</fieldset>{/if}
+		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}
 
@@ -200,10 +196,6 @@
 		border: 0;
 		padding: 0 12px 8px;
 		margin: 0;
-	}
-	.precision {
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
-		padding-top: 8px;
 	}
 	.field {
 		display: grid;

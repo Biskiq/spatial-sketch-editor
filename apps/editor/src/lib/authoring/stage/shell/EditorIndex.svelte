@@ -35,7 +35,7 @@
 	const current = $derived(model.contexts.find((c) => c.id === scope) ?? model.contexts[0]!);
 	const crumbs = $derived(
 		model.contexts.filter(
-			(c) => c.id === 'project' || (scope !== 'project' && c.id === 'floor') || c.id === scope
+			(c) => c.id === 'project' || c.id === scope
 		)
 	);
 	const siblings = $derived(
@@ -78,23 +78,7 @@
 		};
 	}
 
-	function openLocation(sourceId: string): void {
-		const row = rows.get(sourceId);
-		if (row === undefined) return;
-		row.scrollIntoView({ block: 'nearest' });
-		row.focus();
-	}
 
-	let disclosed = $state<string | null>(null);
-
-	function toggleActions(sourceId: string): void {
-		disclosed = disclosed === sourceId ? null : sourceId;
-	}
-
-	/** A DOM id that is safe for any canonical identity, which contains colons. */
-	function domId(prefix: string, sourceId: string): string {
-		return `${prefix}-${sourceId.replace(/[^A-Za-z0-9_-]/g, '_')}`;
-	}
 
 	/** The row's accessible name: the kind, the full label and the canonical identity. */
 	function accessibleName(item: {
@@ -110,7 +94,7 @@
 			: !item.eligible
 				? membershipLabel(item.membership)
 				: '';
-		return `${item.kind} ${item.label}. Identity ${item.sourceId}.${badge === '' ? '' : ` ${badge}.`}`;
+		return `${item.kind} ${item.label}.${badge === '' ? '' : ` ${badge}.`}`;
 	}
 </script>
 
@@ -178,13 +162,9 @@
 				>{/each}
 		</div>
 
-		{#if scope === 'project' && model.contexts.some((c) => c.id === 'floor')}<button
-				type="button"
-				class="floor-scope"
-				onclick={() => onScope('floor')}
-				><ShellIcon name="layers" size={16} />{model.contexts.find((c) => c.id === 'floor')
-					?.label}<ShellIcon name="chevronRight" size={15} /></button
-			>{/if}
+		{#if scope === 'project' && model.rows.some(row => row.relations.includes('free'))}
+			<button type="button" class="floor-scope" onclick={() => onScope('free')}><ShellIcon name="object" size={16} />Free objects <ShellIcon name="chevronRight" size={15} /></button>
+		{/if}
 		<ul class="group-items">
 			{#each result.rows as item (item.sourceId)}
 				<li
@@ -222,47 +202,18 @@
 								>
 							{/if}
 						</button>
-						<button
-							type="button"
-							class="item-actions-toggle"
-							aria-label={`Actions for ${item.label}`}
-							aria-expanded={disclosed === item.sourceId}
-							onclick={() => toggleActions(item.sourceId)}
-							><ShellIcon name="more" size={15} /></button
-						>
+						{#if item.membership !== 'included' || item.revealed}
+							<button type="button" class="item-actions-toggle" aria-label={`${item.revealed ? 'Hide' : 'Reveal'} ${item.label}`} onclick={() => onReveal(item.sourceId)}><ShellIcon name="eye" size={15} /></button>
+						{/if}
 						{#if item.context}<button
 								type="button"
 								class="scope-entry"
 								aria-label={`Go into ${item.label}`}
 								onclick={() => onScope(item.context!)}
-								><ShellIcon name="chevronRight" size={15} /></button
+								><span class="room-count">{worldScopeRows(model, item.context!, 'all', '', Number.MAX_SAFE_INTEGER).rows.filter(row => row.context !== item.context).length}</span><ShellIcon name="chevronRight" size={15} /></button
 							>{/if}
 					</div>
 
-					{#if disclosed === item.sourceId}
-						<div class="item-ops">
-							<button type="button" onclick={() => openLocation(item.sourceId)}>
-								Open location
-							</button>
-							<button
-								type="button"
-								disabled={!item.eligible}
-								onclick={() => onBringIntoView(item.sourceId)}
-							>
-								Bring into view
-							</button>
-							{#if item.membership !== 'included' || item.revealed}
-								<button type="button" onclick={() => onReveal(item.sourceId)}>
-									{item.revealed ? 'Hide' : 'Reveal'}
-								</button>
-							{/if}
-							{#each item.relations.filter((r) => r.startsWith('room:')) as relation}<button
-									type="button"
-									onclick={() => onScope(relation as WorldScope)}
-									>Go to {model.contexts.find((c) => c.id === relation)?.label ?? 'Room'}</button
-								>{/each}
-						</div>
-					{/if}
 				</li>
 			{/each}
 		</ul>
@@ -302,7 +253,7 @@
 		cursor: pointer;
 	}
 	button:hover {
-		background: var(--shell-leaf-tint, #e7f1ea);
+		background: var(--shell-hover, #eef0ed);
 	}
 
 	.index-search {
@@ -432,20 +383,12 @@
 		opacity: 1;
 	}
 	.scope-entry {
-		width: 26px;
+		min-width: 40px;
 		justify-content: center;
 		padding: 0;
 		margin-right: 4px;
 	}
 
-	.item-ops {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 4px;
-		padding: 4px 10px;
-		background: #fff;
-		font-size: 11px;
-	}
 	.badge {
 		font-size: 10px;
 		color: var(--shell-ink-3, #79817b);

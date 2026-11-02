@@ -249,6 +249,7 @@ export type StageOverlayContribution = {
 export type StageCandidatePreview = {
 	readonly id: string;
 	readonly role: 'subject' | 'affected' | 'refused';
+	readonly drawing?: boolean;
 	readonly polygons: readonly (readonly Vec3[])[];
 	readonly segments: readonly (readonly [Vec3, Vec3])[];
 	readonly labels: readonly { readonly world: Vec3; readonly text: string }[];
@@ -259,6 +260,7 @@ export type StageCandidatePreview = {
 export type StageCandidatePreviewView = {
 	readonly id: string;
 	readonly role: StageCandidatePreview['role'];
+	readonly drawing?: boolean;
 	readonly polygons: readonly (readonly (readonly [number, number])[])[];
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
 	readonly labels: readonly { readonly css: readonly [number, number]; readonly text: string }[];
@@ -574,7 +576,7 @@ export type StageInstrumentContent = {
 	 */
 	readonly fieldIds?: readonly string[];
 	/** Editor-only UI; never serialized or imported by visitor surfaces. */
-	readonly view?: { readonly component: Component<{ services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet }>; readonly services: StageAdapterServices };
+	readonly view?: { readonly component: Component<{ services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]> }>; readonly services: StageAdapterServices };
 };
 
 /** The binding context: the live read access plus the adapter's own identity. */
@@ -1337,7 +1339,9 @@ export function createStageFacade(input: {
 		return projectStageHandles({
 			adapterId: adapterEntry.adapter.id,
 			descriptors: admission.admitted,
-			openDisclosures,
+			openDisclosures: new Set([...openDisclosures, ...admission.admitted.filter(
+				(mark) => mark.role === 'disclose' && mark.intent === 'resize' && session.resizeHandles()
+			).map(mark => mark.id)]),
 			hoveredId: markHover?.adapterId === adapterEntry.adapter.id ? markHover.id : null,
 			activeId: activeMarkId,
 			project: (point) => {
@@ -1939,6 +1943,10 @@ export function createStageFacade(input: {
 			if (!isLive()) return false;
 			const mark = stageMarks().find((candidate) => candidate.id === id);
 			if (mark === undefined || mark.role !== 'disclose') return false;
+			if (mark.descriptor.role === 'disclose' && mark.descriptor.intent === 'resize') {
+				session.setResizeHandles(!session.resizeHandles());
+				return true;
+			}
 			if (openDisclosures.has(id)) openDisclosures.delete(id);
 			else openDisclosures.add(id);
 			return true;
@@ -2115,6 +2123,7 @@ export function createStageFacade(input: {
 							return [{
 								id: candidate.id,
 								role: candidate.role,
+								drawing: candidate.drawing,
 								polygons,
 								segments,
 								labels,

@@ -22,9 +22,11 @@
 	import type { StageMarkView } from '../stage-handles';
 	import type { StageCandidatePreviewView } from '../stage-facade';
 
+	let problemOpen = $state<string | null>(null);
 	let {
 		markers,
 		marks = [],
+		roomLabels = [],
 		candidates = [],
 		viewportWidth = 0,
 		viewportHeight = 0,
@@ -36,6 +38,7 @@
 		markers: readonly { id: string; css: readonly [number, number]; label: string;
 		}[];
 		marks?: readonly StageMarkView[];
+		roomLabels?: readonly import('../room-labels').RoomLabelView[];
 		candidates?: readonly StageCandidatePreviewView[];
 		viewportWidth?: number;
 		viewportHeight?: number;
@@ -148,30 +151,49 @@
 <svg class="overlay"
 	class:light={lightGround}
 	role="group" aria-label="Stage manipulation marks" focusable="false">
+	{#each roomLabels as room (room.id)}
+		<g class="room-label" transform={`translate(${room.css[0]} ${room.css[1]})`}>
+			<text text-anchor="middle">{room.name}</text>
+			<text class="area" text-anchor="middle" y="15">{room.area.toFixed(1)} m²</text>
+		</g>
+	{/each}
 	{#each candidates as candidate (candidate.id)}
 		<g
 			class="candidate"
 			class:subject={candidate.role === 'subject'}
+			class:drawing={candidate.drawing === true}
 			class:affected={candidate.role === 'affected'}
 			class:refused={candidate.role === 'refused'}
 			data-candidate-id={candidate.id}
 			data-candidate-role={candidate.role}
 		>
-			{#each candidate.polygons as polygon, index (`${candidate.id}:polygon:${index}`)}
-				<path class="candidate-fill" d={polygonPath(polygon)} />
-			{/each}
+
 			{#each candidate.segments as segment, index (`${candidate.id}:segment:${index}`)}
 				<!-- The same dark halo as a mark, so the line holds on Paper and on the mat. -->
-				<line class="candidate-halo" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
+
 				<line class="candidate-edge" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
 			{/each}
-			{#each candidate.labels as label, index (`${candidate.id}:label:${index}`)}
+			{#if candidate.drawing && candidate.segments.length > 0}
+				<circle class="draw-end" cx={candidate.segments[0]![0][0]} cy={candidate.segments[0]![0][1]} r="3" />
+				<circle class="draw-end" cx={candidate.segments.at(-1)![1][0]} cy={candidate.segments.at(-1)![1][1]} r="3" />
+			{/if}
+			{#each candidate.labels.slice(0, 1) as label, index (`${candidate.id}:label:${index}`)}
 				{@const lines = labelLines(label.text)}
 				{@const width = Math.max(...lines.map((line) => tagWidth(line))) + 10}
 				{@const height = 6 + lines.length * 12}
 				<!-- The tag sits above the snap mark at the same point, so the two
 				     never overprint each other. -->
-				<g class="tag" transform={candidateTagPosition(label.css, width, height, index)}>
+				{#if candidate.role === 'refused'}
+					<g class="problem" role="button" tabindex="0" aria-label={label.text}
+						transform={`translate(${label.css[0]} ${label.css[1]})`}
+						onfocus={() => problemOpen = candidate.id} onblur={() => problemOpen = null}
+						onmouseenter={() => problemOpen = candidate.id} onmouseleave={() => problemOpen = null}
+						onclick={() => problemOpen = problemOpen === candidate.id ? null : candidate.id}
+						onkeydown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); problemOpen = problemOpen === candidate.id ? null : candidate.id; } }}>
+						<rect class="problem-hit" x="-22" y="-22" width="44" height="44" fill="transparent" /><circle r="8" /><text text-anchor="middle" y="4">!</text>
+					</g>
+				{/if}
+				<g class="tag" visibility={candidate.role === 'refused' && problemOpen !== candidate.id ? 'hidden' : undefined} transform={candidateTagPosition(label.css, width, height, index)}>
 					<rect {width} {height} rx="2" />
 					{#each lines as line, lineIndex (`${candidate.id}:label:${index}:${lineIndex}`)}
 						<text x="5" y={12 + lineIndex * 12}>{line}</text>
@@ -180,14 +202,16 @@
 			{/each}
 			{#if candidate.snap}
 				<g class="candidate-snap" data-snap-name={candidate.snap.name} transform={`translate(${candidate.snap.css[0]} ${candidate.snap.css[1]})`}>
-					<circle r="4" />
-					<text x="7" y="3">{candidate.snap.name}</text>
+					{#if candidate.snap.name === 'Grid'}<path d="M-4,0H4M0,-4V4" />
+					{:else if candidate.snap.name === 'Aligned'}<path d="M-4,-4V4H4" />
+					{:else}<circle r="4" />{/if}
+					<title>{candidate.snap.name}</title>
 				</g>
 			{/if}
 		</g>
 	{/each}
 
-	{#each markers as marker (marker.id)}
+	{#each markers.filter(marker => tracePreview && marker.id === 'layout-wall-preview' || (marks.length === 0 && candidates.length === 0)) as marker (marker.id)}
 		<g class="task-marker marker" transform={`translate(${marker.css[0]} ${marker.css[1]})`}>
 			<circle r="4" />
 			<title>{marker.label}</title>
@@ -202,7 +226,7 @@
 		{@const tip = mark.tip ?? mark.anchor}
 		{@const tail = mark.tail}
 		{@const pointRadius=mark.pointRadius??4.2}
-		{@const label = mark.refusal === null ? mark.tag : refusalAtPointer ? '' : mark.refusal}
+		{@const label = refusalAtPointer || candidates.some(candidate => candidate.labels.length > 0) ? '' : mark.refusal ?? mark.tag}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 		<g
 			class="mark"
@@ -214,13 +238,20 @@
 			data-kind={mark.kind}
 			role={mark.role === 'disclose' ? 'button' : undefined}
 			tabindex={mark.role === 'disclose' ? 0 : undefined}
-			aria-label={mark.role === 'disclose' ? mark.label : undefined}
+			aria-label={mark.role === 'disclose' ? 'Resize handles' : undefined}
+			aria-pressed={mark.role === 'disclose' ? mark.open : undefined}
+			onclick={mark.role === 'disclose' ? event => { event.stopPropagation(); onActivateDisclosure(mark.id); } : undefined}
+			onpointerdown={mark.role === 'disclose' ? event => event.stopPropagation() : undefined}
 			onkeydown={mark.role === 'disclose' ? (event) => onDisclosureKey(event, mark.id) : undefined}
 		>
 			<title>{mark.label}</title>
 			{#if mark.cross}
 			<path class="halo" d={`M${mark.anchor[0]-11},${mark.anchor[1]}h9 m4,0h9 M${mark.anchor[0]},${mark.anchor[1]-11}v9 m0,4v9`} />
 			<path class="stroke move-cross" d={`M${mark.anchor[0]-11},${mark.anchor[1]}h9 m4,0h9 M${mark.anchor[0]},${mark.anchor[1]-11}v9 m0,4v9`} />
+
+			{#each [[mark.anchor[0]-11,mark.anchor[1]], [mark.anchor[0]+11,mark.anchor[1]], [mark.anchor[0],mark.anchor[1]-11], [mark.anchor[0],mark.anchor[1]+11]] as end}
+				<polyline class="stroke arrow" points={arrowhead(mark.anchor, [end[0]!, end[1]!], 4)} />
+			{/each}
 		{:else if mark.kind === 'ray' || mark.kind === 'track'}
 				<line
 					class="halo"
@@ -264,19 +295,6 @@
 						points={arrowhead(mark.anchor,tail,5.5)}
 					/>
 				{/if}
-				<circle
-					class="halo point"
-					cx={mark.anchor[0]}
-					cy={mark.anchor[1]}
-					r={pointRadius+1.6}
-				/>
-				<circle
-					class="anchor"
-					class:held={mark.active}
-					cx={mark.anchor[0]}
-					cy={mark.anchor[1]}
-					r={pointRadius}
-				/>
 			{:else if mark.kind === 'ring'}
 				<polyline
 					class="halo"
@@ -287,33 +305,15 @@
 					class:held={mark.active}
 					points={mark.ring?.map((point) => point.join(',')).join(' ') ?? ''}
 				/>
-				<circle
-					class="halo point"
-					cx={mark.anchor[0]}
-					cy={mark.anchor[1]}
-					r={pointRadius+1.6}
-				/>
-				<circle
-					class="anchor"
-					class:held={mark.active}
-					cx={mark.anchor[0]}
-					cy={mark.anchor[1]}
-					r={pointRadius}
-				/>
+				{#if mark.ring && mark.ring.length > 4}
+					<polyline class="stroke arrow" points={arrowhead(mark.ring[mark.ring.length - 3]!, mark.ring[mark.ring.length - 1]!, 7)} />
+					<polyline class="stroke arrow" points={arrowhead(mark.ring[2]!, mark.ring[0]!, 7)} />
+				{/if}
 			{:else if mark.role === 'disclose'}
-				<circle
-					class="halo point"
-					cx={mark.anchor[0]}
-					cy={mark.anchor[1]}
-					r="5.6"
-				/>
-				<circle
-					class="disclosure"
-					class:open={mark.open}
-					cx={mark.anchor[0]}
-					cy={mark.anchor[1]}
-					r="4"
-				/>
+				<g class="resize-toggle" class:open={mark.open} transform={`translate(${mark.anchor[0]} ${mark.anchor[1]})`}>
+					<rect class="toggle-hit" x="-22" y="-22" width="44" height="44" fill="transparent" stroke="none" /><rect x="-12" y="-12" width="24" height="24" rx="5" />
+					<path d="M-6,1v5h5 M1,-6h5v5 M-6,6L6,-6" />
+				</g>
 			{:else}
 				<circle
 					class="halo point"
@@ -330,7 +330,7 @@
 				/>
 			{/if}
 
-			{#if (mark.hovered || mark.active) && label !== ''}
+			{#if (mark.hovered || mark.active) && label !== '' && mark.role !== 'disclose'}
 				{@const width = tagWidth(label)}
 				<g class="tag" transform={`translate(${tip[0] + 12} ${tip[1] - 10})`}>
 					<rect {width} height="20" rx="5" />
@@ -466,33 +466,9 @@
 		stroke:rgba(8,22,16,.55);
 		stroke-width: 1.3;
 	}
-	.mark .disclosure {
-		fill: none;
-		stroke: var(--mark-ink, #fff);
-		stroke-width: 1.3;
-	}
-	.mark .disclosure.open {
-		fill: #f3f4ee;
-	}
 	.mark.disclose:focus-visible {
 		outline: 2px solid #d4ad45;
 		outline-offset: 2px;
-	}
-	.candidate .candidate-fill {
-		fill: transparent;
-		stroke: none;
-	}
-	.candidate.subject .candidate-fill {
-		fill: rgb(212 173 69 / 0.18);
-	}
-	.candidate .candidate-halo {
-		fill: none;
-		stroke: #152c26;
-		stroke-width: 3.25;
-		stroke-linecap: round;
-	}
-	.candidate.affected .candidate-halo {
-		stroke-opacity: 0.55;
 	}
 	.candidate .candidate-edge {
 		fill: none;
@@ -501,28 +477,10 @@
 		stroke-linejoin: round;
 		stroke-linecap: round;
 	}
-	.candidate.subject .candidate-edge {
-		stroke: #d4ad45;
-		stroke-width: 1.5;
-	}
-	.candidate.affected .candidate-edge {
-		stroke-opacity: 0.55;
-	}
-	.candidate.refused .candidate-edge {
-		stroke-dasharray: 4 3;
-	}
-	.candidate-snap circle {
+	.candidate-snap :is(circle, path) {
 		fill: none;
 		stroke: #d4ad45;
 		stroke-width: 1.5;
-	}
-	.candidate-snap text {
-		fill: #f3f4ee;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 11px;
-		paint-order: stroke;
-		stroke: #152c26;
-		stroke-width: 2.5;
 	}
 	.candidate .tag rect {
 		fill: #152c26;
@@ -561,7 +519,7 @@
 		stroke-dasharray: 4 3;
 	}
 	.overlay.light {
-		--mark-ink: #1b201c;
+		--mark-ink: var(--shell-ink, #1b201c);
 	}
 	.light .mark .halo {
 		stroke: rgba(255, 255, 255, 0.7);
@@ -582,4 +540,20 @@
 		fill: rgba(10, 24, 18, 0.82);
 		stroke: none;
 	}
+
+	.candidate .candidate-edge { fill: none; stroke: var(--shell-ink, #1b201c); stroke-width: 1.4; stroke-dasharray: 1 4; stroke-linecap: round; stroke-opacity: 1; }
+	.candidate.drawing .candidate-edge { stroke-dasharray: none; }
+	.draw-end { fill: var(--shell-ink, #1b201c); }
+	.dimension .dimension-line { stroke: var(--mark-ink, #fff); }
+	.problem { pointer-events: auto; cursor: help; }
+	.problem circle { fill: #fff; stroke: #7e2718; stroke-width: 1.5; }
+	.problem text { fill: #7e2718; font: bold 12px system-ui; }
+	.resize-toggle rect:not(.toggle-hit) { fill: #fff; stroke: #1b201c; stroke-width: 1; }
+	.resize-toggle.open rect:not(.toggle-hit) { fill: #f8efd6; stroke: #74560c; }
+	.resize-toggle path { fill: none; stroke: var(--shell-ink, #1b201c); stroke-width: 1.4; }
+	.mark.disclose { pointer-events: auto; cursor: pointer; }
+	.mark[data-kind='ring'] .stroke { stroke-dasharray: none; }
+
+	.room-label text { fill: #4a524c; font: 12px system-ui; paint-order: stroke; stroke: #fff; stroke-width: 2px; stroke-opacity: .75; }
+	.room-label .area { font: 11px ui-monospace, monospace; }
 </style>

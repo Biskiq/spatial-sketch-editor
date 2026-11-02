@@ -60,7 +60,7 @@ import {
  * only the refusal check that the captured id is unused. Names extend the
  * existing `Draft Room N` convention — a name is not identity.
  */
-export function createAuthoringRoomAllocator(capture: LayoutIdCapture): RoomIdAllocator {
+export function createAuthoringRoomAllocator(capture: LayoutIdCapture, namePrefix = 'Draft Room'): RoomIdAllocator {
 	return {
 		nextRoomId(baseDocument, faceKey) {
 			const taken = new Set(baseDocument.rooms.map((room) => room.id));
@@ -72,8 +72,8 @@ export function createAuthoringRoomAllocator(capture: LayoutIdCapture): RoomIdAl
 		nextRoomName(existingNames) {
 			const taken = new Set(existingNames);
 			let index = 1;
-			while (taken.has(`Draft Room ${index}`)) index += 1;
-			return `Draft Room ${index}`;
+			while (taken.has(`${namePrefix} ${index}`)) index += 1;
+			return `${namePrefix} ${index}`;
 		}
 	};
 }

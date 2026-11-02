@@ -2,19 +2,18 @@
 	/**
 	 * T1.P02.S02 — the **Card's** Layout field writer (formerly Dimensions).
 	 *
-	 * PLATE (Round 2, D9) makes the Card the one writer for ordinary dimensions, so
-	 * the migrated fields render **here**: Wall height, thickness, exact length,
-	 * angle and rigid move with one explicit fixed endpoint, and Opening offset,
-	 * width, height and sill. The controller is the same one S05 shipped — same
-	 * parsers, same refusals, same gesture lease, same one-history-entry-per-field
-	 * commit — only its home moved. The name is not rendered here: the Card owns one
-	 * name writer and this component must not become a second one.
+	 * One controller owns the accepted dimensions, drafts, refusals and history.
+	 * Ordinary Wall length/height and Opening measures stay compact; thickness
+	 * and offset use the Card's one anchored secondary panel. Coordinate and
+	 * transform procedures are absent. The planner's default fixed endpoint is
+	 * preserved; presentation does not silently choose a different anchor.
+	 * The name remains the Card's delegated inline writer.
 	 *
 	 * It renders what the framework-free controller owns: the accepted value, the
 	 * edit buffer and the refusal reason. Enter commits, Esc and blur discard, and
 	 * the DOM never turns an empty field into zero.
 	 */
-	import { onDestroy, type Snippet } from 'svelte';
+	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import { compactMeasure } from '$lib/authoring/stage/shell/compact-measure';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
@@ -24,8 +23,8 @@
 	let {
 		services,
 		detailOpen = false,
-		footer
-	}: { services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet } = $props();
+		footer, secondary
+	}: { services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]> } = $props();
 	// Check this before reading any derived state in an async continuation: a
 	// successful install can destroy the panel before acceptance resolves.
 	let alive = true;
@@ -40,8 +39,6 @@
 	let currentController: LayoutInstrument | null = null;
 	/** A parameter a reading change preserved; Resume applies the captured value exactly. */
 	let paused = $state<PausedWallProposal | null>(null);
-	/** The explicit endpoint an exact length/angle edit keeps fixed. */
-	let fixedEndpoint = $state<'start' | 'end'>('start');
 
 	// The writer follows the one canonical selection: a new subject rebuilds the
 	// controller from the accepted source, so a stale selection can never keep
@@ -55,13 +52,6 @@
 		return createCardFieldsInstrument(services);
 	});
 	const editable = $derived(fields.filter((field) => field.id !== 'name'));
-	/** R217.S15 — the endpoint coordinates are the Card's one disclosed group. */
-	const junctionFields = $derived(
-		editable.filter(
-			(field) =>
-				field.id === 'startX' || field.id === 'startZ' || field.id === 'endX' || field.id === 'endZ'
-		)
-	);
 	const ordinaryFields = $derived(
 		editable.filter(
 			(field) =>
@@ -72,13 +62,6 @@
 		const ids = instrument?.subject.kind === 'wall' ? ['length', 'height'] : ['width', 'height', 'sillHeight'];
 		return ids.flatMap(id => ordinaryFields.filter(field => field.id === id));
 	});
-	const unavailableNote = $derived(
-		instrument === null
-			? ''
-			: instrument.subject.kind === 'wall'
-				? 'Read-only here: arch rise, Wall role and profile conversion have no supported writer.'
-				: 'Read-only here: the hosting Wall and profile conversion have no supported writer.'
-	);
 
 	function refresh(current = currentController): void {
 		fields = current?.fields() ?? [];
@@ -91,11 +74,16 @@
 		const current = instrument;
 		currentController = current;
 		refresh(current);
-		fixedEndpoint = current?.fixedEndpoint() ?? 'start';
 		return () => {
 			if (currentController === current) currentController = null;
 			current?.dispose();
 		};
+	});
+
+	// Dismissal discards secondary drafts; reopening never revives an abandoned edit.
+	$effect(() => {
+		if (detailOpen) return;
+		untrack(() => { currentController?.cancel('thickness'); currentController?.cancel('offset'); refresh(); });
 	});
 
 	/**
@@ -120,10 +108,6 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
-	function chooseFixedEndpoint(next: 'start' | 'end'): void {
-		fixedEndpoint = next;
-		currentController?.setFixedEndpoint(next);
-	}
 
 	async function commit(id: string): Promise<void> {
 		error = null;
@@ -228,42 +212,14 @@
 		{#if error !== null}<p class="error" role="alert">{error}</p>
 		{/if}
 		{#if footer}{@render footer()}{/if}
-		{#if detailOpen}
+		{#snippet details()}
 			<div class="precision">
-				{#if instrument.subject.kind === 'wall' && editable.some((field) => field.id === 'length')}
-					<fieldset class="fixed-endpoint" data-layout-fixed-endpoint>
-						<legend>Fixed endpoint</legend>
-						<label>
-							<input
-								type="radio"
-								name="layout-fixed-endpoint"
-								checked={fixedEndpoint === 'start'}
-								onchange={() => chooseFixedEndpoint('start')}
-							/>Start
-						</label>
-						<label>
-							<input
-								type="radio"
-								name="layout-fixed-endpoint"
-								checked={fixedEndpoint === 'end'}
-								onchange={() => chooseFixedEndpoint('end')}
-							/>End
-						</label>
-					</fieldset>
-				{/if}
-				{#each ordinaryFields.filter( (field) => (instrument.subject.kind === 'wall' ? !['length', 'height'].includes(field.id) : !['width', 'height', 'sillHeight'].includes(field.id)) ) as field (field.id)}
+				{#each ordinaryFields.filter(field => instrument.subject.kind === 'wall' ? field.id === 'thickness' : field.id === 'offset') as field (field.id)}
 					{@render fieldRow(field)}
 				{/each}
-				{#if junctionFields.length > 0}
-					<details data-layout-junction-fields>
-						<summary>Start and End X/Z</summary>
-						{#each junctionFields as field (field.id)}
-							{@render fieldRow(field)}
-						{/each}
-					</details>
-				{/if}
 			</div>
-		{/if}
+		{/snippet}
+		{#if secondary}{@render secondary(details)}{/if}
 	</div>
 {/if}
 
@@ -318,23 +274,6 @@
 		padding: 8px 12px;
 		border-top: 1px solid var(--shell-hairline, #e1e4de);
 	}
-	.fixed-endpoint {
-		display: flex;
-		gap: 8px;
-		margin: 0;
-		padding: 4px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
-		font-size: 11px;
-	}
-	.fixed-endpoint label {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-	}
-	.fixed-endpoint input {
-		width: auto;
-		height: auto;
-	}
 	.error {
 		margin: 0;
 		padding: 4px 12px;
@@ -356,15 +295,9 @@
 		color: inherit;
 		cursor: pointer;
 	}
-	summary {
-		cursor: pointer;
-		font-size: 11px;
-	}
 	@media (pointer: coarse) {
 		input,
-		button,
-		summary,
-		.fixed-endpoint label {
+		button {
 			min-height: 44px;
 			min-width: 44px;
 		}

@@ -138,7 +138,7 @@ describe('R217.S09 — native form marks', () => {
 		expect(move.anchor[1]).toBeCloseTo(entity.position[1] + measurement.contactMinY, 9);
 		expect(move.anchor[2]).toBeCloseTo(entity.position[2], 9);
 		expect(move.extent).toBeCloseTo(Math.max(0.2, measurement.footprint.width / 2), 9);
-		expect(move.value).toBe(`X 2.000 · Z 3.000 m`);
+		expect(move.value).toBe('Δx 0.00 · Δz 0.00 m');
 
 		const turn = descriptors[5]!;
 		expect(turn.extent).toBeCloseTo(
@@ -160,13 +160,13 @@ describe('R217.S09 — native form marks', () => {
 			const handle = measurement.handles.find((entry) => entry.axis === ray.axis)!;
 			expect(descriptor.id).toBe(ray.id);
 			expect(descriptor.label).toBe(ray.label);
-			expectVec(descriptor.anchor, formWorldPoint(entity, [0, 0, 0]));
+			expectVec(descriptor.anchor, formWorldPoint(entity, handle.local));
 			expectVec(descriptor.axis, formWorldAxis(entity, ray.axis));
 			expect(descriptor.extent).toBeCloseTo(
 				Math.max(0.2, Math.abs(handle.local[ray.axis])),
 				9
 			);
-			expect(descriptor.value).toBe(`${ray.label} ${handle.dimension.toFixed(3)} m${ray.note}`);
+			expect(descriptor.value).toBe(`Δ 0.00 m → ${handle.dimension.toFixed(2)} m`);
 			expect(descriptor).toMatchObject({ fact: `scale[${ray.axis}]` });
 		}
 	});
@@ -198,7 +198,7 @@ describe('R217.S09 — native form marks', () => {
 		const descriptors = descriptorsFor(entity, live);
 		expect(descriptors[0]!.refusal).toBeNull();
 		expect(descriptors[5]!.refusal).toBe('The turn is refused.');
-		expect(descriptors[5]!.value).toBe(`Yaw ${((0.4 * 180) / Math.PI).toFixed(1)}°`);
+		expect(descriptors[5]!.value).toBe(`Δθ +${((0.4 * 180) / Math.PI).toFixed(1)}°`);
 		for (const ray of descriptors.slice(2, 5)) expect(ray.refusal).toBeNull();
 		expect(descriptors[0]!.anchor[0]).toBeCloseTo(3, 9);
 		expect(descriptors[0]!.anchor[2]).toBeCloseTo(4, 9);
@@ -271,7 +271,8 @@ describe('R217.S09 — native form marks', () => {
 			const descriptors = formMarkDescriptors({ entity, measurement, screenMove });
 			const move = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.move)!;
 			const width = descriptors.find((descriptor) => descriptor.id === SCENE_FORM_MARK.width)!;
-			expect(move.screen).toEqual(screenMove);
+			expect(move.screen).toBeUndefined();
+			expect(move.anchor).toEqual([entity.position[0], entity.position[1] + measurement.contactMinY, entity.position[2]]);
 			expect(width.screen).toBeUndefined();
 
 			const marks = projectStageHandles({

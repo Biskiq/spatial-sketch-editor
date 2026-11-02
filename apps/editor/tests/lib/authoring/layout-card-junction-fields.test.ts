@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 describe('R217.S15 — Card Junction fields', () => {
-	it('puts Start and End X/Z in one disclosure and keeps ordinary fields outside it', async () => {
+	it('keeps dimensions and removes coordinate procedures without changing planner anchoring', async () => {
 		const controller = {
 			subject: { kind: 'wall', id: 'wall-a' },
 			facts: () => [],
@@ -65,16 +65,9 @@ describe('R217.S15 — Card Junction fields', () => {
 		cleanup = () => { void unmount(component); };
 		await tick();
 
-		const details = target.querySelector<HTMLDetailsElement>('details[data-layout-junction-fields]');
-		expect(details).not.toBeNull();
-		expect(details!.querySelector('summary')?.textContent).toContain('Start and End X/Z');
-		expect([...details!.querySelectorAll<HTMLInputElement>('input[data-field]')].map((input) => input.dataset.field)).toEqual([
-			'startX',
-			'startZ',
-			'endX',
-			'endZ'
-		]);
+		expect(target.querySelector('details[data-layout-junction-fields]')).toBeNull();
+		expect(target.querySelector('input[data-field="startX"]')).toBeNull();
 		expect(target.querySelector('input[data-field="length"]')).not.toBeNull();
-		expect(details!.contains(target.querySelector('input[data-field="length"]'))).toBe(false);
+		expect(controller.setFixedEndpoint).not.toHaveBeenCalled();
 	});
 });

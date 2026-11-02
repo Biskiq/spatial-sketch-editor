@@ -149,7 +149,7 @@ async function startDrag() {
 	const desired = projected([5.5, 0, -4]);
 	pointer('pointermove', desired);
 	await frame();
-	expect([...target.querySelectorAll('.marker')].some((e) => e.textContent?.includes('Length'))).toBe(true);
+	expect(target.querySelector('.candidate .tag')?.textContent).toContain('→');
 	return desired;
 }
 
@@ -263,9 +263,9 @@ describe('mounted Stage pointer lifecycle', () => {
 		expect(target.querySelector('[data-plate-landmark="index"]')?.hasAttribute('hidden')).toBe(true);
 		target.querySelector<HTMLButtonElement>('[data-head-location]')!.click();
 		await frame();
-		target.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
+		target.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();
 		await frame();
-		target.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
+		target.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();
 		await frame();
 		const place = [...target.querySelectorAll<HTMLButtonElement>('[data-head-find] button')].find((item) => item.textContent?.includes('Place plinth'))!;
 		place.click();
@@ -1520,22 +1520,16 @@ describe('R217.S15 — Stage cursor truth', () => {
 });
 
 describe('R217.S15 — Card Junction writer', () => {
-	it('refreshes the sibling fields from the accepted source after a Start X commit', async () => {
-		target.querySelector<HTMLButtonElement>('[data-card-more]')!.click();await frame();
-		const details = target.querySelector<HTMLDetailsElement>('details[data-layout-junction-fields]');
-		expect(details).not.toBeNull();
-		details!.open = true;
-		const startX = details!.querySelector<HTMLInputElement>('input[data-field="startX"]')!;
-		const lengthBefore = target.querySelector<HTMLInputElement>('input[data-field="length"]')!.value;
-		const startZBefore = target.querySelector<HTMLInputElement>('input[data-field="startZ"]')!.value;
-		startX.value = '0.5';
-		startX.dispatchEvent(new Event('input', { bubbles: true }));
-		startX.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-		await vi.waitFor(() => {
-			expect(target.querySelector<HTMLInputElement>('input[data-field="length"]')!.value).not.toBe(lengthBefore);
-		});
-		// The companion coordinate is the accepted one: committing X never rewrites Z.
-		expect(target.querySelector<HTMLInputElement>('input[data-field="startZ"]')!.value).toBe(startZBefore);
+	it('keeps coordinate forms absent and refreshes the dimension writer after an accepted length edit', async () => {
+		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
+		card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();
+		await frame();
+		expect(card.querySelector('[data-field="startX"]')).toBeNull();
+		const length = card.querySelector<HTMLInputElement>('[data-field="length"]')!;
+		length.value = '9'; length.dispatchEvent(new Event('input', { bubbles: true }));
+		length.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		await frame();
+		expect(card.querySelector<HTMLInputElement>('[data-field="length"]')!.value).toBe('9');
 	});
 });
 
@@ -1649,7 +1643,7 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		expect(name?.textContent).toMatch(/^Wall \d+$/);
 		expect(name?.classList.contains('generated')).toBe(true);
 		// The canonical identity is in the accessible name, not in the visible text.
-		expect(row.getAttribute('aria-label')).toContain(wallId);
+		expect(row.getAttribute('aria-label')).not.toContain(wallId);
 		expect(row.textContent).not.toContain(wallId);
 	});
 
@@ -1662,21 +1656,28 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 		expect(card.getAttribute('data-source-id')).toBe(wallId);
 		expect(card.querySelector('.technical')).toBeNull();
 	});
-it('opens precision through More with only Length and Height at rest',async()=>{const card=target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;expect(card.querySelector('[data-field="height"]')).not.toBeNull();expect(card.querySelector('[data-field="thickness"]')).toBeNull();card.querySelector<HTMLButtonElement>('[data-card-more]')!.click();await frame();expect(card.querySelector('[data-field="thickness"]')).not.toBeNull();expect([...card.querySelectorAll('dl.relations dt')].map(n=>n.textContent)).toEqual(['Datum','Role']);});
+it('opens precision through More with only Length and Height at rest',async()=>{const card=target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;expect(card.querySelector('[data-field="height"]')).not.toBeNull();expect(card.querySelector('[data-field="thickness"]')).toBeNull();card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();await frame();expect(card.querySelector('[data-field="thickness"]')).not.toBeNull();expect(card.textContent).not.toContain('Datum');expect(card.querySelector('[data-field="startX"]')).toBeNull();});
+	it('discards an uncommitted thickness when the disclosure closes without writing history', async () => {
+		const before = facade().snapshot().canonicalJson;
+		const previousHistory = history();
+		const card = target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;
+		const trigger = card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!;
+		trigger.click(); await frame();
+		const input = card.querySelector<HTMLInputElement>('[data-field="thickness"]')!;
+		const accepted = input.value;
+		input.focus(); input.value = '0.44'; input.dispatchEvent(new Event('input', { bubbles: true }));
+		trigger.click(); await frame(); trigger.click(); await frame();
+		expect(card.querySelector<HTMLInputElement>('[data-field="thickness"]')!.value).toBe(accepted);
+		expect(facade().snapshot().canonicalJson).toBe(before);
+		expect(history()).toEqual(previousHistory);
+	});
 it('invokes subject commands through the contextual ellipsis',async()=>{const card=target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;expect(card.querySelector('[data-card-action]')).toBeNull();card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();await frame();expect(card.querySelector('[data-card-action="layout-wall-delete"]')!.classList.contains('destructive')).toBe(true);expect(card.textContent).not.toContain('Open task');});
 
-	it("discloses the Index row operations behind the row's Actions control", async () => {
-		const row = target.querySelector<HTMLElement>(`.item[data-source-id$=${JSON.stringify(`:${wallId}`)}]`)!;
-		const toggle = row.querySelector<HTMLButtonElement>('.item-actions-toggle')!;
-		expect(row.querySelectorAll('.item-ops button')).toHaveLength(0);
-		expect(toggle.getAttribute('aria-expanded')).toBe('false');
-		toggle.click();
-		await frame();
-		expect(toggle.getAttribute('aria-expanded')).toBe('true');
-		expect([...row.querySelectorAll('.item-ops button')].map((item) => item.textContent?.trim())).toEqual(expect.arrayContaining(['Open location','Bring into view']));
-		toggle.click();
-		await frame();
-		expect(row.querySelectorAll('.item-ops button')).toHaveLength(0);
+	it('keeps one selection path and no expanded Index procedures', () => {
+		const row = indexRowOf(target, wallId)!;
+		expect(row.querySelector('.item-ops')).toBeNull();
+		expect(row.textContent).not.toContain('Open location');
+		expect(row.textContent).not.toContain('Bring into view');
 	});
 
 	it("keeps Select and Bring into view distinct: a row select leaves the Camera, the row's frame operation moves it", async () => {
@@ -1688,9 +1689,7 @@ it('invokes subject commands through the contextual ellipsis',async()=>{const ca
 		expect(facade().camera.state().pose).toEqual(before);
 
 		const row = target.querySelector<HTMLElement>(`.item[data-source-id$=${JSON.stringify(`:${other}`)}]`)!;
-		row.querySelector<HTMLButtonElement>('.item-actions-toggle')!.click();
-		await frame();
-		const frameOp = [...row.querySelectorAll<HTMLButtonElement>('.item-ops button')].find((item) => item.textContent?.trim() === 'Bring into view')!;
+		const frameOp = target.querySelector<HTMLButtonElement>('[aria-label="Bring into view"]')!;
 		frameOp.click();
 		await settled();
 		expect(facade().camera.state().pose).not.toEqual(before);

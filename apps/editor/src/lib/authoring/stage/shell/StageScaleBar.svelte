@@ -55,7 +55,7 @@
 		text-shadow: 0 1px 2px rgb(6 20 14 / 55%);
 	}
 	.scale-bar.quiet {
-		color: #233a2e;
+		color: #1b201c;
 		text-shadow: none;
 	}
 	.rule {

@@ -1979,7 +1979,9 @@ describe('Scene adapter registration', () => {
 			'scene-object-size'
 		);
 		expect(facade.snapshot().canonicalJson).toBe(canonical);
-		expect(facade.closeDisclosure()).toBe(true);
+		expect(facade.closeDisclosure()).toBe(false);
+		expect(facade.session.resizeHandles()).toBe(true);
+		expect(facade.activateDisclosure('scene-object-scale-point')).toBe(true);
 		expect(facade.marks().some((mark) => mark.id === 'scene-object-size')).toBe(false);
 	});
 
