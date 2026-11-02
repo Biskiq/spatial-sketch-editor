@@ -35,11 +35,11 @@ The reference edits are wording reconciliations. They amend no contract, and the
 
 ### Gates
 
-Run on `7c3bf0ee` from the repository root. Every command exited 0.
+Run on `a7598a55` in a clean, detached worktree of that commit (no uncommitted changes; `node_modules` linked so that the workspace packages resolve inside the worktree). One run, one tree. Every command exited 0.
 
 | Command | Subject | Result |
 | --- | --- | --- |
-| `npm run check` | `apps/editor` svelte-check, generated tsconfig (includes `tests/`) | 2052 files, 0 errors, 0 warnings |
+| `npm run check` | `apps/editor` svelte-check, generated tsconfig (includes `tests/`) | 2051 files, 0 errors, 0 warnings |
 | `npm run check:camera-core` | `packages/camera-core`, `tsc --noEmit` | exit 0 |
 | `npm run check:layout-core` | `packages/layout-core`, `tsc --noEmit` | exit 0 |
 | `npm run check:geometry-core` | `packages/geometry-core`, `tsc --noEmit` | exit 0 |
@@ -47,8 +47,12 @@ Run on `7c3bf0ee` from the repository root. Every command exited 0.
 | `npm run test:arch` | the whole arch lane, including the documentation and parallel-track gates | 23 files, 210 tests pass |
 | `npm test` | `apps/editor` `vitest run`, the complete suite | 266 files, 3484 tests pass |
 | `npm run test:heavy` | `vitest.heavy.config.ts` | 11 files, 138 tests pass |
-| `npm run build` | `apps/editor` production build, adapter-vercel | exit 0 (built in 8.72 s) |
-| `git diff --check 23d6d9ae..HEAD` | whitespace | clean, no output |
+| `npm run build` | `apps/editor` production build, adapter-vercel | exit 0 |
+| `git diff --check 23d6d9ae..a7598a55` | whitespace | clean, no output |
+
+The package checks (`camera-core`, `layout-core`, `geometry-core`, `project-model`) ran in the same run and exited 0; no `packages/` file changed after the first gate run. The `check` count is the clean tree's: the main checkout counts one more file, a git-ignored generated `$types.d.ts` for a removed route left in its `.svelte-kit`. The clean tree does not have it. The `npm test` and `test:arch` counts agree in both trees.
+
+Superseded, not repeated (the `7c3bf0ee` gate run, before the review fixes): 2051 files; `npm test` 265 files, 3479 tests; `test:arch` 23 files, 208 tests.
 
 Against S22's recorded baseline (265 files and 3460 tests in the complete suite; 200 arch tests), S23 adds 24 tests to the complete suite and 10 to the arch lane. Its files: one new test file (`stage-instrument-host.test.ts`, 3 tests) since the first review.
 
@@ -138,7 +142,7 @@ Sampled from the headed PNGs, as a cross-check: the instrument row's fill agains
 
 ## Residuals
 
-- **The open Index sheet covers a Height Sheet on the left at constrained widths.** With the Sheet on the left at 1180×820 and 820×1180 (fine and coarse), the Index sheet, when open, sits over the Sheet's lane (`sheet/index`). The Index is an overlay by design, not the palette, and the review's invariant named the Card, Sheet, dock, zoom cluster and hint. The Sheet is operable only after the Index closes. Not fixed; it needs an owner ruling on whether the Index yields the Sheet's lane when the Sheet is on the left.
+- **The open Index sheet covers a Height Sheet on the left at constrained widths.** With the Sheet on the left at 1180×820 and 820×1180 (fine and coarse), the Index sheet, when open, sits over the Sheet's lane (`sheet/index`). Accepted by design: the Index is a scrimmed modal overlay (see the Independent review section, accepted residuals). The Sheet is operable once the Index closes.
 - **The starter room's bottom wall is under the palette row at 1180×820.** At the Fit framing the room's bottom wall (ends at y 740) sits behind the palette row (top 714.6): 13,621 wall-ink px under the footprint. Accepted by the coordinator as a residual for S11, because clearing it needs Fit to inset for the lower column, a Camera framing change outside this plan.
 - **At 820×1180 fine the palette is two rows (69.6 px).** The lane inset narrows the lower column, so the keys wrap. Heights are measured and within the Stage; no overlap results.
 - **The Opening options panel covers the drawing while open.** About 276 px tall at 1180×820 (its top at 470). It is the creator's choice and closes back to the one row. The Sheet no longer overlaps it.
@@ -163,7 +167,7 @@ Sampled from the headed PNGs, as a cross-check: the instrument row's fill agains
 
 ## Closing note
 
-The record was written after the gates above. `npm run test:arch` (which includes the documentation gate) was re-run after the record was in place: exit 0, 23 files, 210 tests pass.
+The gate table above is the one run on the clean `a7598a55` tree. This record is a docs-only commit after `da85c591` (the reviewer's record), so its code is `a7598a55`. `npm run test:arch` (which includes the documentation gate) was re-run on the branch head that carries this record, in the main checkout: exit 0, 23 files, 210 tests pass. The docs gate was also run on its own: `cd apps/editor && npx vitest run --config vitest.arch.config.ts tests/docs`.
 
 ## Independent review
 
