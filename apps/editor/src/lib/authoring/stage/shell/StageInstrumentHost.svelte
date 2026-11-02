@@ -9,10 +9,16 @@
 	 * stays selected while its host Wall is unrolled) — and hosts that task's own
 	 * content through the `children` snippet.
 	 *
- * It is deliberately bounded: the shell's one lower column anchors it above the
- * dock, so opening, closing or resizing it never reflows or implicitly reframes
- * the Stage. It is a home for one task, not a second shell owner: it renders no
- * control layout of its own beyond naming, hosting and closing.
+	 * R217.S23 — the instrument is one row above the dock. It draws the dock's
+	 * material (forest, hairline edge, no caption) rather than a titled panel: the
+	 * procedure name, the target and Close share a single slim head, and the adapter's
+	 * content sits beneath it. The adapter's summary and facts stay on the head's
+	 * tooltip, so the row carries no text-heavy block of its own.
+	 *
+	 * It is deliberately bounded: the shell's one lower column anchors it above the
+	 * dock, so opening, closing or resizing it never reflows or implicitly reframes
+	 * the Stage. It is a home for one task, not a second shell owner: it renders no
+	 * control layout of its own beyond naming, hosting and closing.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageInstrumentContent } from '../stage-facade';
@@ -33,15 +39,19 @@
 		instrument?: StageInstrumentContent | null;
 		children?: Snippet;
 	} = $props();
+
+	/** The adapter's own name for the task, when it contributed one. */
+	const heading = $derived(instrument?.summary ?? task?.label ?? '');
+	/** The adapter's facts, read on hover and in the accessible description. */
+	const factsText = $derived(
+		instrument?.facts?.map((fact) => `${fact.label}: ${fact.value}`).join('. ') ?? ''
+	);
 </script>
 
 {#if task}
 	<section class="instrument" aria-label={`${task.label} task`} data-stage-instrument={task.kind}>
 		<header class="instrument-head">
-			<div class="identity">
-				<span class="eyebrow">World Instrument</span>
-				<h2 class="title">{task.label}</h2>
-			</div>
+			<h2 class="title" title={factsText === '' ? undefined : factsText}>{heading}</h2>
 			{#if task.targetLabel}
 				<p class="target" title={task.targetLabel}>
 					<span class="target-key">Target</span>
@@ -54,17 +64,8 @@
 		</header>
 		<div class="instrument-body">
 			{#if instrument}
-				<p class="contributed-summary">{instrument.summary}</p>
 				{#if instrument.view}
 					<instrument.view.component services={instrument.view.services} />
-				{/if}
-				{#if instrument.facts && instrument.facts.length > 0}
-					<dl class="contributed-facts">
-						{#each instrument.facts as fact (fact.label)}
-							<dt>{fact.label}</dt>
-							<dd>{fact.value}</dd>
-						{/each}
-					</dl>
 				{/if}
 			{:else if children}
 				{@render children()}
@@ -76,52 +77,42 @@
 <style>
 	/*
 		The lower column owns the anchoring (it is the one place the dock and this
-		instrument meet), so the instrument is an ordinary flex child: it grows upward
-		from the dock without a second absolute position of its own.
+		instrument meet), so the instrument is an ordinary flex child: it stacks above
+		the dock without a second absolute position of its own. Its surface is the
+		dock's forest material from the shell roles; no literal colour is drawn here.
 	*/
 	.instrument {
 		display: flex;
+		box-sizing: border-box;
 		flex-direction: column;
 		width: max-content;
 		max-width: 100%;
-		max-height: min(16rem, 45vh);
-		border: 1px solid #2f4a3d;
-		border-radius: 0.5rem;
-		background: rgb(17 41 31 / 96%);
-		box-shadow: 0 -0.5rem 1.5rem rgb(0 0 0 / 35%);
-		color: #f4f0e9;
-		font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		max-height: min(24rem, 60vh);
+		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border-radius: 0.6rem;
+		background: var(--shell-forest, #11291f);
+		box-shadow: 0 0.5rem 1.5rem rgb(6 20 14 / 45%);
+		color: var(--shell-ink-light, #f3f4ee);
+		font-family: var(--shell-sans, Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif);
+		font-size: var(--shell-text-utility, 12px);
 	}
 
 	.instrument-head {
 		display: flex;
 		align-items: center;
-		gap: 0.85rem;
-		padding: 0.6rem 0.75rem;
-		border-bottom: 1px solid #2f4a3d;
-	}
-
-	.identity {
-		display: flex;
+		gap: 0.5rem;
 		min-width: 0;
-		flex-direction: column;
-		gap: 0.1rem;
-	}
-
-	.eyebrow {
-		color: #aebbb0;
-		font-size: 0.65rem;
-		font-weight: 700;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
+		padding: 0.1rem 0.2rem 0.1rem 0.5rem;
+		border-bottom: 1px solid var(--shell-hairline, #2f4a3d);
 	}
 
 	.title {
 		margin: 0;
-		font-size: 0.92rem;
-		font-weight: 600;
-		line-height: 1.2;
+		min-width: 0;
 		overflow: hidden;
+		font-size: var(--shell-text-utility, 12px);
+		font-weight: 600;
+		line-height: 1.3;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -130,72 +121,56 @@
 		display: flex;
 		min-width: 0;
 		align-items: baseline;
-		gap: 0.4rem;
+		gap: 0.35rem;
 		margin: 0;
-		font-size: 0.78rem;
 	}
 
 	.target-key {
-		color: #8f8a99;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
+		flex: none;
+		color: var(--shell-ink-quiet, #9fb2a2);
 		font-size: 0.62rem;
 		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
 	.target-value {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: #e7e4dd;
 	}
 
 	.close {
+		flex: none;
+		min-width: 1.5rem;
+		min-height: 1.5rem;
 		margin-left: auto;
-		padding: 0.2rem 0.45rem;
-		border: 1px solid #635a6f;
+		padding: 0 0.35rem;
+		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
 		border-radius: 0.35rem;
-		background: #292632;
-		color: inherit;
+		background: var(--shell-forest-raised, #22503c);
+		color: var(--shell-ink-light, #f3f4ee);
 		font: inherit;
 		line-height: 1;
 		cursor: pointer;
 	}
 
 	.close:hover {
-		border-color: #aebbb0;
+		border-color: var(--shell-ink-light, #f3f4ee);
 	}
 
 	.close:focus-visible {
-		outline: 2px solid #2f8cff;
+		outline: 2px solid var(--shell-gold, #d4ad45);
 		outline-offset: 1px;
 	}
 
 	.instrument-body {
+		display: flex;
 		min-height: 0;
+		flex-direction: column;
+		gap: 0.3rem;
 		overflow: auto;
-		padding: 0.75rem;
-	}
-
-	.contributed-summary {
-		margin: 0;
-		font-size: 0.8rem;
-	}
-
-	.contributed-facts {
-		display: grid;
-		grid-template-columns: minmax(6rem, auto) 1fr;
-		gap: 0.15rem 0.7rem;
-		margin: 0.55rem 0 0;
-		font-size: 0.78rem;
-	}
-
-	.contributed-facts dt {
-		color: #8f8a99;
-	}
-
-	.contributed-facts dd {
-		margin: 0;
+		padding: 0.3rem 0.45rem 0.4rem;
 	}
 
 	.instrument-body :global(:first-child) {
@@ -204,5 +179,13 @@
 
 	.instrument-body :global(:last-child) {
 		margin-bottom: 0;
+	}
+
+	/* Coarse pointer: the close control reaches the 44 × 44 CSS px touch target. */
+	@media (pointer: coarse) {
+		.close {
+			min-width: var(--shell-touch-target, 44px);
+			min-height: var(--shell-touch-target, 44px);
+		}
 	}
 </style>
