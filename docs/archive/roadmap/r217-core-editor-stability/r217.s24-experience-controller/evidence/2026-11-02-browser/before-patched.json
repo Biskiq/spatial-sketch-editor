@@ -1,0 +1,19 @@
+{
+	"tag": "before-patched",
+	"origin": "http://localhost:5175",
+	"projectId": "project:d6c267ef-6dd5-4cfa-98c3-66c13095f6bc",
+	"pageErrors": [],
+	"consoleErrors": [
+		"Failed to load resource: the server responded with a status of 404 (Not Found)"
+	],
+	"steps": [
+		"world-mounted",
+		"experience-clicked"
+	],
+	"responsive": {
+		"worldClicked": true,
+		"worldDock": 1,
+		"pressedLens": "World"
+	},
+	"experienceSurface": 1
+}

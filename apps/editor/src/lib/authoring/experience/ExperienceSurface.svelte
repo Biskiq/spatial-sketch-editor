@@ -10,25 +10,14 @@
 	 * What it deliberately is not: no timeline, no second Camera controller, no
 	 * selection store, and no editable order outside `guide-order`. A Guide's Stop
 	 * order and its Cut/Travel selectors are the only editorial order it writes.
+	 *
+	 * R217.S24: the commands, the derived reading, the message, the busy flag and the
+	 * drafts live in createExperienceController. This component keeps the markup, the
+	 * styles and the one piece of view state, which Guide column is open.
 	 */
-	import { untrack } from 'svelte';
-	import { perfMark } from '$lib/platform/perf-marks';
 	import type { StageAdapterServices } from '../stage/stage-adapter-host';
-	import { stageEnvelope } from '../stage/unit-stage-source';
-	import type { Experience, ExperienceContinuation, ProjectEnvelope } from '@portfolio/project-model/units';
-	import { experienceFocus } from './focus.svelte';
-	import { travelGapMessages } from './travel-gap';
-	import {
-		captureBindIntent,
-		capturedFovDegrees,
-		capturedViewPose,
-		createExperienceIntent,
-		guideCreateIntent,
-		guideOrderIntent,
-		presentationUpdateIntent,
-		stopCreateIntent,
-		stopUpdateIntent
-	} from './commands';
+	import type { ProjectEnvelope } from '@portfolio/project-model/units';
+	import { createExperienceController } from './experience-controller.svelte';
 
 	let {
 		services,
@@ -41,410 +30,59 @@
 		onEnterPreview?: (() => void) | null;
 	} = $props();
 
-	let version = $state(0);
-	$effect(() => {
-		const off = services.stage.onAdaptersChanged(() => (version += 1));
-		return off;
-	});
-	const snapshot = $derived.by((): ProjectEnvelope => {
-		void version;
-		return snapshotProp ?? stageEnvelope(services.stage.snapshot());
-	});
-
-	const experiences = $derived(snapshot.units.experience.data.experiences);
-	const current = $derived.by((): Experience | null => {
-		const focused = experienceFocus.experienceId;
-		return experiences.find((entry) => entry.id === focused) ?? experiences[0] ?? null;
-	});
-	// Adopt the first Experience as focus, never create one implicitly.
-	$effect(() => {
-		if (experienceFocus.experienceId === null && current !== null) {
-			untrack(() => (experienceFocus.experienceId = current!.id));
-		}
-	});
-	const currentGuide = $derived.by(() => {
-		if (current === null || experienceFocus.guideId === null) return null;
-		return current.guides.find((guide) => guide.id === experienceFocus.guideId) ?? null;
-	});
-	const selectedPresentation = $derived.by(() => {
-		if (current === null || experienceFocus.presentationId === null) return null;
-		return current.presentations.find((entry) => entry.id === experienceFocus.presentationId) ?? null;
-	});
-	const selectedStop = $derived.by(() => {
-		if (current === null || experienceFocus.stopId === null) return null;
-		return current.stops.find((entry) => entry.id === experienceFocus.stopId) ?? null;
-	});
-	const travelGaps = $derived.by(() =>
-		current === null || selectedStop === null ? [] : travelGapMessages(snapshot, current.id, selectedStop.id)
+	// Getters: the route can replace the services or the snapshot without unmounting.
+	const controller = createExperienceController(
+		() => services,
+		() => snapshotProp
 	);
-	const stopUsage = $derived.by(() => {
-		const usage = new Map<string, string[]>();
-		for (const stop of current?.stops ?? []) {
-			usage.set(stop.presentationId, [...(usage.get(stop.presentationId) ?? []), stop.id]);
-		}
-		return usage;
-	});
-	const guideStops = $derived.by(() =>
-		currentGuide === null
-			? []
-			: currentGuide.stopIds
-					.map((stopId) => current?.stops.find((stop) => stop.id === stopId) ?? null)
-					.filter((stop): stop is NonNullable<typeof stop> => stop !== null)
-	);
-	let query = $state('');
-	const filteredPresentations = $derived.by(() => {
-		if (current === null) return [];
-		const needle = query.trim().toLowerCase();
-		if (needle === '') return current.presentations;
-		return current.presentations.filter((entry) => entry.label.toLowerCase().includes(needle));
-	});
-	const viewsOf = $derived.by(() => {
-		const views = snapshot.units.camera.data.views;
-		const byPresentation = new Map<string, { id: string; label: string }[]>();
-		for (const presentation of current?.presentations ?? []) {
-			byPresentation.set(
-				presentation.id,
-				presentation.viewIds.map((viewId) => ({
-					id: viewId,
-					label: views.find((view) => view.id === viewId)?.label ?? viewId
-				}))
-			);
-		}
-		return byPresentation;
-	});
+	const {
+		drafts,
+		createExperience,
+		captureAndBind,
+		createFirstGuide,
+		rebindToCapturedView,
+		savePresentation,
+		setDefaultView,
+		insertStop,
+		moveStop,
+		saveStop,
+		presentationLabel,
+		firstGuidePresentation,
+		openExperience,
+		chooseGuide,
+		selectPresentation,
+		selectStop
+	} = controller;
 
-	let message = $state('');
-	let busy = $state(false);
 	/** The Guide instrument is invoked from the dock; the surface is its content. */
 	let guideOpen = $state(true);
-	let firstGuideLabelDraft = $state('');
-	let presentationLabelDraft = $state('');
-	let presentationTextDraft = $state('');
-	let stopEntryViewDraft = $state('');
-	let stopHoldDraft = $state('');
-	let stopTargetDraft = $state('sequence-next');
-	let stopTransitionDraft = $state<'cut' | 'travel'>('cut');
-
-	$effect(() => {
-		const presentation = selectedPresentation;
-		untrack(() => {
-			presentationLabelDraft = presentation?.label ?? '';
-			presentationTextDraft = presentation?.text?.body ?? '';
-		});
-	});
-	$effect(() => {
-		const stop = selectedStop;
-		untrack(() => {
-			stopEntryViewDraft = stop?.entryViewId ?? '';
-			stopHoldDraft = stop?.holdSeconds === undefined ? '' : String(stop.holdSeconds);
-			const continuation = stop?.continuation;
-			stopTargetDraft = continuation?.kind === 'stop' ? continuation.stopId : continuation?.kind === 'end' ? 'end' : 'sequence-next';
-			stopTransitionDraft =
-				continuation !== undefined && continuation.kind !== 'end' ? continuation.transition ?? 'cut' : 'cut';
-		});
-	});
-
-	function newId(): string {
-		return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-	}
-
-	function revision() {
-		return services.stage.snapshot().acceptedRevision;
-	}
-
-	/** Submit one command; `true` only when the source actually changed. */
-	async function run(builder: () => Parameters<StageAdapterServices['authoring']['accept']>[0]): Promise<boolean> {
-		if (busy) return false;
-		busy = true;
-		try {
-			const outcome = await services.authoring.accept(builder());
-			if (outcome.kind === 'refused') {
-				message = `${outcome.code}: ${outcome.message}`;
-				return false;
-			}
-			if (outcome.kind !== 'installed') {
-				message = 'No change to accept.';
-				return false;
-			}
-			message = 'Accepted.';
-			return true;
-		} finally {
-			busy = false;
-		}
-	}
-
-	async function createExperience(): Promise<void> {
-		const experienceId = newId();
-		const accepted = await run(() =>
-			createExperienceIntent({
-				revision: revision(),
-				ids: { operation: newId(), experience: experienceId },
-				label: `Experience ${experiences.length + 1}`
-			})
-		);
-		// Focus never names an identity the source does not carry: a refused create
-		// must not point Preview at a non-existent Experience.
-		if (accepted) experienceFocus.openExperience(experienceId);
-	}
-
-	function selectionSubjectEntityId(): string | null {
-		const primary = services.stage.selectionState().primary;
-		if (primary === null || primary.domain !== 'scene' || primary.subject.kind !== 'entity') return null;
-		return primary.subject.id;
-	}
-
-	function currentCapturePose() {
-		const evaluation = services.stage.evaluation();
-		if (evaluation === null) {
-			message = 'The Stage has not evaluated a reading yet; wait for the reading to settle.';
-			return null;
-		}
-		// Plan is orthographic: its eye/target would record a perspective View the
-		// creator never saw. Capture is a 3D-reading action.
-		if (evaluation.projectionKind !== 'perspective-3d') {
-			message = 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.';
-			return null;
-		}
-		const fov = capturedFovDegrees(evaluation.projectionMatrix);
-		if (fov === null) {
-			message = 'The Stage projection is degenerate; frame the View again.';
-			return null;
-		}
-		return capturedViewPose({
-			label: `View ${snapshot.units.camera.data.views.length + 1}`,
-			eye: evaluation.eye,
-			target: evaluation.target,
-			fov
-		});
-	}
-
-	/**
-	 * Capture the Stage framing as a View and bind a Presentation to it.
-	 *
-	 * With a Guide open the Stop joins that Guide; with no Guide at all the capture
-	 * stays Guide-free unless the creator asked for the first Guide, in which case
-	 * View + Presentation + Guide + Stop are one accepted install.
-	 */
-	async function captureAndBind(): Promise<void> {
-		if (current === null) return;
-		const view = currentCapturePose();
-		if (view === null) return;
-		const presentationId = newId();
-		const stopId = newId();
-		const guideId = newId();
-		const subjectEntityId = selectionSubjectEntityId();
-		const wantsFirstGuide = current.guides.length === 0 && firstGuideLabelDraft.trim() !== '';
-		const accepted = await run(() =>
-			captureBindIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), view: newId(), presentation: presentationId, stop: stopId, guide: guideId },
-				experienceId: current.id,
-				view,
-				presentationLabel: `Presentation ${current.presentations.length + 1}`,
-				subjectEntityId,
-				text: null,
-				guideId: wantsFirstGuide ? null : currentGuide?.id ?? null,
-				firstGuideLabel: wantsFirstGuide ? firstGuideLabelDraft.trim() : null,
-				afterStopId: selectedStop?.id ?? null
-			})
-		);
-		if (accepted) {
-			experienceFocus.selectPresentation(presentationId);
-			if (wantsFirstGuide) {
-				experienceFocus.openGuide(guideId, stopId);
-				firstGuideLabelDraft = '';
-			}
-			// Measurement anchor for the capture/bind → Preview entry row.
-			perfMark('experience:capture-accepted', { firstGuide: wantsFirstGuide });
-		}
-	}
-
-	/** The Presentation a first Guide can start from: the selected Stop's, else the selection. */
-	function firstGuidePresentation(): { readonly id: string; readonly label: string } | null {
-		if (current === null) return null;
-		const fromStop = selectedStop === null
-			? null
-			: current.presentations.find((entry) => entry.id === selectedStop.presentationId) ?? null;
-		return fromStop ?? selectedPresentation;
-	}
-
-	/**
-	 * Create the Experience's first Guide and its initial distinct Stop.
-	 *
-	 * The Stop reuses the Presentation's own View: no Camera pose or FOV is copied
-	 * and no Connection is manufactured. The Experience's entry Guide is set
-	 * explicitly by the operation, never inferred.
-	 */
-	async function createFirstGuide(): Promise<void> {
-		if (current === null) return;
-		const presentation = firstGuidePresentation();
-		if (presentation === null) {
-			message = 'Select a Presentation, or a Stop whose Presentation the Guide starts from.';
-			return;
-		}
-		const guideId = newId();
-		const stopId = newId();
-		const accepted = await run(() =>
-			guideCreateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), guide: guideId, stop: stopId },
-				experienceId: current.id,
-				presentationId: presentation.id,
-				label: firstGuideLabelDraft.trim() === '' ? 'Guide' : firstGuideLabelDraft.trim(),
-				entryViewId: null,
-				holdSeconds: null,
-				continuation: { kind: 'sequence-next', transition: 'cut' }
-			})
-		);
-		if (accepted) {
-			experienceFocus.openGuide(guideId, stopId);
-			firstGuideLabelDraft = '';
-		}
-	}
-
-	async function rebindToCapturedView(): Promise<void> {
-		if (current === null || selectedPresentation === null) return;
-		const view = currentCapturePose();
-		if (view === null) return;
-		await run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), view: newId() },
-				experienceId: current.id,
-				presentationId: selectedPresentation.id,
-				view
-			})
-		);
-	}
-
-	async function savePresentation(): Promise<void> {
-		if (current === null || selectedPresentation === null) return;
-		const text = presentationTextDraft;
-		await run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: current.id,
-				presentationId: selectedPresentation.id,
-				label: presentationLabelDraft,
-				text: text === '' ? null : { kind: 'plain', body: text }
-			})
-		);
-	}
-
-	async function setDefaultView(presentationId: string, viewId: string): Promise<void> {
-		if (current === null) return;
-		await run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: current.id,
-				presentationId,
-				defaultViewId: viewId
-			})
-		);
-	}
-
-	async function insertStop(): Promise<void> {
-		if (current === null || currentGuide === null || selectedPresentation === null) return;
-		const stopId = newId();
-		const accepted = await run(() =>
-			stopCreateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId(), stop: stopId },
-				experienceId: current.id,
-				presentationId: selectedPresentation.id,
-				guideId: currentGuide.id,
-				afterStopId: selectedStop?.id ?? null,
-				entryViewId: null,
-				holdSeconds: null,
-				continuation: { kind: 'sequence-next', transition: 'cut' }
-			})
-		);
-		// A refused insert must not select a Stop the accepted source does not carry.
-		if (accepted) experienceFocus.selectStop(stopId);
-	}
-
-	async function moveStop(stopId: string, direction: -1 | 1): Promise<void> {
-		if (current === null || currentGuide === null) return;
-		const order = [...currentGuide.stopIds];
-		const at = order.indexOf(stopId);
-		const to = at + direction;
-		if (at === -1 || to < 0 || to >= order.length) return;
-		[order[at], order[to]] = [order[to]!, order[at]!];
-		await run(() =>
-			guideOrderIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: current.id,
-				guideId: currentGuide.id,
-				stopIds: order
-			})
-		);
-	}
-
-	async function saveStop(): Promise<void> {
-		if (current === null || selectedStop === null) return;
-		const hold = stopHoldDraft.trim() === '' ? null : Number(stopHoldDraft);
-		if (hold !== null && (!Number.isFinite(hold) || hold < 0)) {
-			message = 'A hold is a finite number of seconds, or blank for none.';
-			return;
-		}
-		let continuation: ExperienceContinuation | null = null;
-		if (stopTargetDraft === 'end') continuation = { kind: 'end' };
-		else if (stopTargetDraft === 'sequence-next') continuation = { kind: 'sequence-next', transition: stopTransitionDraft };
-		else continuation = { kind: 'stop', stopId: stopTargetDraft, transition: stopTransitionDraft };
-		await run(() =>
-			stopUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: current.id,
-				stopId: selectedStop.id,
-				entryViewId: stopEntryViewDraft === '' ? null : stopEntryViewDraft,
-				holdSeconds: hold,
-				continuation
-			})
-		);
-	}
-
-	function presentationLabel(presentationId: string): string {
-		return current?.presentations.find((entry) => entry.id === presentationId)?.label ?? presentationId;
-	}
 </script>
 
 <section class="experience-surface" aria-label="Experience authoring">
 	<header class="surface-head">
 		<h2>Experience</h2>
-		{#if experiences.length > 0}
+		{#if controller.experiences.length > 0}
 			<label class="inline">
 				<span>Experience</span>
 				<select
-					value={current?.id ?? ''}
-					onchange={(event) => experienceFocus.openExperience(event.currentTarget.value)}
+					value={controller.current?.id ?? ''}
+					onchange={(event) => openExperience(event.currentTarget.value)}
 				>
-					{#each experiences as entry (entry.id)}
+					{#each controller.experiences as entry (entry.id)}
 						<option value={entry.id}>{entry.label}</option>
 					{/each}
 				</select>
 			</label>
 		{/if}
-		<button type="button" onclick={createExperience} disabled={busy}>Create Experience</button>
+		<button type="button" onclick={createExperience} disabled={controller.busy}>Create Experience</button>
 		{#if onEnterPreview !== null}
-			<button type="button" class="quiet" onclick={() => onEnterPreview?.()} disabled={current === null}>
+			<button type="button" class="quiet" onclick={() => onEnterPreview?.()} disabled={controller.current === null}>
 				Enter Preview
 			</button>
 		{/if}
 	</header>
 
-	{#if current === null}
+	{#if controller.current === null}
 		<p class="empty">
 			This world has no Experience yet. Create one explicitly; selecting or editing a world subject never
 			creates a document implicitly.
@@ -456,22 +94,22 @@
 					<h3>Presentations</h3>
 					<label class="filter">
 						<span>Search</span>
-						<input type="search" bind:value={query} placeholder="Filter by label" />
+						<input type="search" bind:value={controller.query} placeholder="Filter by label" />
 					</label>
 				</div>
 				<ul class="rows">
-					{#each filteredPresentations as presentation (presentation.id)}
+					{#each controller.filteredPresentations as presentation (presentation.id)}
 						<li>
 							<button
 								type="button"
 								class="row"
-								class:active={selectedPresentation?.id === presentation.id}
-								aria-pressed={selectedPresentation?.id === presentation.id}
-								onclick={() => experienceFocus.selectPresentation(presentation.id)}
+								class:active={controller.selectedPresentation?.id === presentation.id}
+								aria-pressed={controller.selectedPresentation?.id === presentation.id}
+								onclick={() => selectPresentation(presentation.id)}
 							>
 								<span class="row-label">{presentation.label}</span>
 								<span class="row-meta">
-									{stopUsage.get(presentation.id)?.length ?? 0} Stop(s) ·
+									{controller.stopUsage.get(presentation.id)?.length ?? 0} Stop(s) ·
 									{presentation.defaultViewId === null ? 'no Default' : 'Default set'}
 								</span>
 							</button>
@@ -487,33 +125,33 @@
 					authored View field.
 				</p>
 
-				{#if selectedPresentation !== null}
+				{#if controller.selectedPresentation !== null}
 					<div class="card">
-						<h4>{selectedPresentation.label}</h4>
+						<h4>{controller.selectedPresentation.label}</h4>
 						<dl class="facts">
-							<div><dt>Views</dt><dd>{viewsOf.get(selectedPresentation.id)?.length ?? 0}</dd></div>
-							<div><dt>Default</dt><dd>{selectedPresentation.defaultViewId ?? 'unset — cannot be entered'}</dd></div>
+							<div><dt>Views</dt><dd>{controller.viewsOf.get(controller.selectedPresentation.id)?.length ?? 0}</dd></div>
+							<div><dt>Default</dt><dd>{controller.selectedPresentation.defaultViewId ?? 'unset — cannot be entered'}</dd></div>
 							<div>
 								<dt>Subject</dt>
 								<dd>
-									{selectedPresentation.subject === null
+									{controller.selectedPresentation.subject === null
 										? 'Environment / region'
-										: `${selectedPresentation.subject.domain}:${selectedPresentation.subject.subject.kind}:${selectedPresentation.subject.subject.id}`}
+										: `${controller.selectedPresentation.subject.domain}:${controller.selectedPresentation.subject.subject.kind}:${controller.selectedPresentation.subject.subject.id}`}
 								</dd>
 							</div>
 							<div>
 								<dt>Used in</dt>
-								<dd>{stopUsage.get(selectedPresentation.id)?.join(', ') ?? 'No Stop yet'}</dd>
+								<dd>{controller.stopUsage.get(controller.selectedPresentation.id)?.join(', ') ?? 'No Stop yet'}</dd>
 							</div>
 						</dl>
-						{#if (viewsOf.get(selectedPresentation.id)?.length ?? 0) > 1}
+						{#if (controller.viewsOf.get(controller.selectedPresentation.id)?.length ?? 0) > 1}
 							<label class="inline">
 								<span>Default View</span>
 								<select
-									value={selectedPresentation.defaultViewId ?? ''}
-									onchange={(event) => void setDefaultView(selectedPresentation!.id, event.currentTarget.value)}
+									value={controller.selectedPresentation.defaultViewId ?? ''}
+									onchange={(event) => void setDefaultView(controller.selectedPresentation!.id, event.currentTarget.value)}
 								>
-									{#each viewsOf.get(selectedPresentation.id) ?? [] as view (view.id)}
+									{#each controller.viewsOf.get(controller.selectedPresentation.id) ?? [] as view (view.id)}
 										<option value={view.id}>{view.label}</option>
 									{/each}
 								</select>
@@ -522,16 +160,16 @@
 						<div class="fields">
 							<label>
 								<span>Label</span>
-								<input bind:value={presentationLabelDraft} />
+								<input bind:value={drafts.presentationLabel} />
 							</label>
 							<label class="grow">
 								<span>Information text (plain, 4,000 code points)</span>
-								<textarea rows="3" bind:value={presentationTextDraft}></textarea>
+								<textarea rows="3" bind:value={drafts.presentationText}></textarea>
 							</label>
 						</div>
 						<div class="actions">
-							<button type="button" onclick={savePresentation} disabled={busy}>Save Presentation</button>
-							<button type="button" class="quiet" onclick={rebindToCapturedView} disabled={busy}>
+							<button type="button" onclick={savePresentation} disabled={controller.busy}>Save Presentation</button>
+							<button type="button" class="quiet" onclick={rebindToCapturedView} disabled={controller.busy}>
 								Capture and rebind
 							</button>
 						</div>
@@ -543,20 +181,17 @@
 				<section class="column" aria-label="Guides">
 					<div class="column-head">
 						<h3>Guides</h3>
-						{#if current.guides.length === 0}
+						{#if controller.current.guides.length === 0}
 							<span class="hint">No Guide: Presentations are entered from the visitor list.</span>
 						{:else}
 							<label class="inline">
 								<span>Open Guide</span>
 								<select
-									value={currentGuide?.id ?? ''}
-									onchange={(event) => {
-										const guide = current!.guides.find((entry) => entry.id === event.currentTarget.value) ?? null;
-										experienceFocus.openGuide(guide?.id ?? null, guide?.entryStopId ?? null);
-									}}
+									value={controller.currentGuide?.id ?? ''}
+									onchange={(event) => chooseGuide(event.currentTarget.value)}
 								>
 									<option value="">None</option>
-									{#each current.guides as guide (guide.id)}
+									{#each controller.current.guides as guide (guide.id)}
 										<option value={guide.id}>{guide.label}</option>
 									{/each}
 								</select>
@@ -564,12 +199,12 @@
 						{/if}
 					</div>
 
-					{#if currentGuide === null}
+					{#if controller.currentGuide === null}
 						<p class="hint">
 							This Experience carries no Guide, so its Presentations are entered from the visitor list.
 							Creating the first Guide names it the entry Guide explicitly.
 						</p>
-						{#if current.guides.length === 0}
+						{#if controller.current.guides.length === 0}
 							<div class="card" aria-label="First Guide">
 								<h4>First Guide</h4>
 								<p class="hint">
@@ -579,13 +214,13 @@
 								</p>
 								<label>
 									<span>Guide label</span>
-									<input bind:value={firstGuideLabelDraft} placeholder="Guide" />
+									<input bind:value={drafts.firstGuideLabel} placeholder="Guide" />
 								</label>
 								<div class="actions">
 									<button
 										type="button"
 										onclick={createFirstGuide}
-										disabled={busy || firstGuidePresentation() === null}
+										disabled={controller.busy || firstGuidePresentation() === null}
 									>
 										Create first Guide
 									</button>
@@ -594,14 +229,14 @@
 						{/if}
 					{:else}
 						<ol class="stop-list">
-							{#each guideStops as stop, index (stop.id)}
+							{#each controller.guideStops as stop, index (stop.id)}
 								<li>
 									<button
 										type="button"
 										class="row"
-										class:active={selectedStop?.id === stop.id}
-										aria-pressed={selectedStop?.id === stop.id}
-										onclick={() => experienceFocus.selectStop(stop.id)}
+										class:active={controller.selectedStop?.id === stop.id}
+										aria-pressed={controller.selectedStop?.id === stop.id}
+										onclick={() => selectStop(stop.id)}
 									>
 										<span class="row-label">{index + 1}. {presentationLabel(stop.presentationId)}</span>
 										<span class="row-meta">
@@ -612,8 +247,8 @@
 										</span>
 									</button>
 									<span class="reorder">
-										<button type="button" class="quiet" aria-label="Move up" onclick={() => void moveStop(stop.id, -1)} disabled={index === 0 || busy}>↑</button>
-										<button type="button" class="quiet" aria-label="Move down" onclick={() => void moveStop(stop.id, 1)} disabled={index === guideStops.length - 1 || busy}>↓</button>
+										<button type="button" class="quiet" aria-label="Move up" onclick={() => void moveStop(stop.id, -1)} disabled={index === 0 || controller.busy}>↑</button>
+										<button type="button" class="quiet" aria-label="Move down" onclick={() => void moveStop(stop.id, 1)} disabled={index === controller.guideStops.length - 1 || controller.busy}>↓</button>
 									</span>
 								</li>
 							{:else}
@@ -622,34 +257,34 @@
 						</ol>
 
 						<div class="actions">
-							<button type="button" onclick={insertStop} disabled={busy || selectedPresentation === null}>
+							<button type="button" onclick={insertStop} disabled={controller.busy || controller.selectedPresentation === null}>
 								Insert selected Presentation as a Stop
 							</button>
 						</div>
 
-						{#if selectedStop !== null}
+						{#if controller.selectedStop !== null}
 							<div class="card">
-								<h4>Stop {selectedStop.id}</h4>
+								<h4>Stop {controller.selectedStop.id}</h4>
 								<div class="fields">
 									<label>
 										<span>Entry View</span>
-										<select bind:value={stopEntryViewDraft}>
+										<select bind:value={drafts.stopEntryView}>
 											<option value="">Presentation Default</option>
-											{#each viewsOf.get(selectedStop.presentationId) ?? [] as view (view.id)}
+											{#each controller.viewsOf.get(controller.selectedStop.presentationId) ?? [] as view (view.id)}
 												<option value={view.id}>{view.label}</option>
 											{/each}
 										</select>
 									</label>
 									<label>
 										<span>Hold (seconds, blank for none)</span>
-										<input inputmode="decimal" bind:value={stopHoldDraft} />
+										<input inputmode="decimal" bind:value={drafts.stopHold} />
 									</label>
 									<label>
 										<span>Continue to</span>
-										<select bind:value={stopTargetDraft}>
+										<select bind:value={drafts.stopTarget}>
 											<option value="sequence-next">Next in Guide</option>
-											{#each current.stops as stop (stop.id)}
-												{#if stop.id !== selectedStop.id}
+											{#each controller.current.stops as stop (stop.id)}
+												{#if stop.id !== controller.selectedStop.id}
 													<option value={stop.id}>{stop.id}</option>
 												{/if}
 											{/each}
@@ -658,7 +293,7 @@
 									</label>
 									<label>
 										<span>Transition</span>
-										<select bind:value={stopTransitionDraft} disabled={stopTargetDraft === 'end'}>
+										<select bind:value={drafts.stopTransition} disabled={drafts.stopTarget === 'end'}>
 											<option value="cut">Cut (no travel)</option>
 											<option value="travel">Travel (supported connection only)</option>
 										</select>
@@ -668,11 +303,11 @@
 									A Travel is valid only where Camera connectivity joins the two Views. An unsupported Travel
 									stays authored and Preview reports the gap; nothing silently cuts.
 								</p>
-								{#each travelGaps as gap (gap)}
+								{#each controller.travelGaps as gap (gap)}
 									<p class="hint" role="alert">{gap}</p>
 								{/each}
 								<div class="actions">
-									<button type="button" onclick={saveStop} disabled={busy}>Save Stop</button>
+									<button type="button" onclick={saveStop} disabled={controller.busy}>Save Stop</button>
 									{#if onEnterPreview !== null}
 										<button type="button" class="quiet" onclick={() => onEnterPreview?.()}>
 											Preview from this Stop
@@ -712,7 +347,7 @@
 			type="button"
 			class="key"
 			onclick={captureAndBind}
-			disabled={busy || current === null}
+			disabled={controller.busy || controller.current === null}
 			title="Capture — what you see becomes a View"
 		>
 			Capture
@@ -728,7 +363,7 @@
 		</button>
 	</div>
 
-	<p class="feedback" aria-live="polite">{message}</p>
+	<p class="feedback" aria-live="polite">{controller.message}</p>
 </section>
 
 <style>

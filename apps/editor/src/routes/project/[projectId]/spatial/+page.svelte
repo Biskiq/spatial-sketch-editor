@@ -759,7 +759,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 */
 	let sheetLaneEl = $state<HTMLElement | null>(null);
 	let sheetLaneWidth = $state(0);
-	let zoomSlotEl = $state<HTMLDivElement | undefined>(undefined);
+	let zoomSlotEl = $state<HTMLDivElement | null | undefined>(undefined);
 	let zoomLaneHeight = $state(0);
 	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades (D36). */
 	let cardGesturing = $state(false);
@@ -864,7 +864,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	$effect(() => {
 		// The Sheet lane: its border-box width, measured wherever the Sheet is mounted.
 		const element = sheetLaneEl;
-		if (element === null) {
+		// Unmounting the Sheet (leaving World) may leave the binding null or undefined.
+		if (element === null || element === undefined) {
 			sheetLaneWidth = 0;
 			return;
 		}
@@ -879,7 +880,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	$effect(() => {
 		// The zoom cluster's height, so the Card clears it from above.
 		const element = zoomSlotEl;
-		if (element === undefined) {
+		// The slot is bound inside the World-only branch: leaving World sets it to null.
+		if (element === null || element === undefined) {
 			zoomLaneHeight = 0;
 			return;
 		}

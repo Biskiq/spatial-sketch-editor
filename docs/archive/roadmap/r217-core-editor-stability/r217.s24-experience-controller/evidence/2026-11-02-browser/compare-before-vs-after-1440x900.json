@@ -1,0 +1,152 @@
+[
+	{
+		"viewport": "1440x900",
+		"state": "01-world",
+		"pixels": 1296000,
+		"differing": 0,
+		"over2": 0,
+		"sharePercent": 0,
+		"meanChannelDelta": 0,
+		"box": null
+	},
+	{
+		"viewport": "1440x900",
+		"state": "02-experience-empty",
+		"pixels": 1296000,
+		"differing": 0,
+		"over2": 0,
+		"sharePercent": 0,
+		"meanChannelDelta": 0,
+		"box": null
+	},
+	{
+		"viewport": "1440x900",
+		"state": "03-create-experience",
+		"pixels": 1296000,
+		"differing": 0,
+		"over2": 0,
+		"sharePercent": 0,
+		"meanChannelDelta": 0,
+		"box": null
+	},
+	{
+		"viewport": "1440x900",
+		"state": "04-capture",
+		"pixels": 1296000,
+		"differing": 2229,
+		"over2": 2064,
+		"sharePercent": 0.172,
+		"meanChannelDelta": 0.1539,
+		"box": [
+			0,
+			56,
+			1263,
+			899
+		]
+	},
+	{
+		"viewport": "1440x900",
+		"state": "05-first-guide",
+		"pixels": 1296000,
+		"differing": 6709,
+		"over2": 6472,
+		"sharePercent": 0.5177,
+		"meanChannelDelta": 0.5571,
+		"box": [
+			431,
+			502,
+			1227,
+			657
+		]
+	},
+	{
+		"viewport": "1440x900",
+		"state": "06-stops",
+		"pixels": 1296000,
+		"differing": 8868,
+		"over2": 8572,
+		"sharePercent": 0.6843,
+		"meanChannelDelta": 0.7379,
+		"box": [
+			648,
+			518,
+			1210,
+			656
+		]
+	},
+	{
+		"viewport": "1440x900",
+		"state": "07-save-stop",
+		"pixels": 1296000,
+		"differing": 8868,
+		"over2": 8572,
+		"sharePercent": 0.6843,
+		"meanChannelDelta": 0.7379,
+		"box": [
+			648,
+			518,
+			1210,
+			656
+		]
+	},
+	{
+		"viewport": "1440x900",
+		"state": "08-default-view",
+		"pixels": 1296000,
+		"differing": 6886,
+		"over2": 6667,
+		"sharePercent": 0.5313,
+		"meanChannelDelta": 0.5846,
+		"box": [
+			648,
+			499,
+			1210,
+			602
+		]
+	},
+	{
+		"viewport": "1440x900",
+		"state": "09-preview",
+		"pixels": 1296000,
+		"differing": 0,
+		"over2": 0,
+		"sharePercent": 0,
+		"meanChannelDelta": 0,
+		"box": null
+	},
+	{
+		"viewport": "1440x900",
+		"state": "10-preview-orbit",
+		"pixels": 1296000,
+		"differing": 0,
+		"over2": 0,
+		"sharePercent": 0,
+		"meanChannelDelta": 0,
+		"box": null
+	},
+	{
+		"viewport": "1440x900",
+		"state": "11-return",
+		"pixels": 1296000,
+		"differing": 6886,
+		"over2": 6667,
+		"sharePercent": 0.5313,
+		"meanChannelDelta": 0.5846,
+		"box": [
+			648,
+			499,
+			1210,
+			602
+		]
+	},
+	{
+		"viewport": "1440x900",
+		"state": "12-world-return",
+		"pixels": 1296000,
+		"differing": 0,
+		"over2": 0,
+		"sharePercent": 0,
+		"meanChannelDelta": 0,
+		"box": null
+	}
+]

@@ -1,61 +1,42 @@
-# R217.S24 — Experience controller: implementation plan
+# R217.S24 — Experience controller (closed)
 
-**Slice:** R217.S24 · **Status:** approved (plan); released by the
-[campaign record](../../../reference/decisions/r217-convergence-campaign-2026-10-30.md) when PR #230 merges · **Phase:**
-[R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** the convergence
-integrator · **Architecture owner:** T3 · **Specialist review:** T3: command and history behaviour · **Runbook:**
-[T1 operations](../../../operations/t1-spatial-world/README.md)
+**AUTHORITY: NONE.** R217.S24 is accepted at tested revision `bc24b72c` on 2026-11-02 and ships by the P1 merge of PR #256. The [acceptance record](./acceptance.md) owns the delivered behaviour, the evidence and the anchors; the [phase slice register](../README.md#slice-register) owns status.
 
 ```text
-CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1
-VERIFICATION: affected-subsystem
-INTEGRATION ROUTE: ../r217.s11-integrated-final-gate/implementation-plan.md
+delivered       Experience commands and reading move out of ExperienceSurface.svelte into one rune module,
+                experience-controller.svelte.ts, with one factory over readServices and readSnapshot: run,
+                createExperience, captureAndBind, createFirstGuide, rebindToCapturedView, savePresentation,
+                setDefaultView, insertStop, moveStop and saveStop; the derived current, currentGuide,
+                selectedPresentation, selectedStop, travelGaps, stopUsage, guideStops, viewsOf and
+                filteredPresentations; and message, busy and the drafts. The surface keeps markup, styles and the
+                one Guide-column view fact, and reads the controller. The controller has no DOM access and no
+                second selection or Camera state.
+                Also fixes the R217.S22 Experience-lens crash (owner ruling 2026-11-01): both lane effects treat
+                null and undefined as no lane, so leaving World no longer calls ResizeObserver.observe(null).
+                That fix is the one intended behaviour change; nothing else visible changed.
+contract        None. No persisted format, gate or F interface changed; no reference contract edited.
+provenance      accepted tested revision bc24b72c (code 80c48e85, ecd23b86 and bc24b72c, from main 668eeb66);
+                implementation PR #256; plan last changed at 050a30d9 (reachable on main); closeout on the same
+                branch; the P1 merge is recorded in the post-merge anchor record.
+evidence        One gate table at bc24b72c, from a clean worktree, in the acceptance record: check (0 errors,
+                0 warnings), the four kernel checks, test:arch (23 files, 210 tests), npm test (268 files, 3501
+                tests in the main checkout), test:heavy (11 files, 138 tests), build and git diff --check. Browser
+                matrix: four headed-Chromium runs (before/after at 1440×900 and 1180×820), 12 states each, 0 page
+                errors, with the pixel comparison and its run-to-run control. The unpatched-main probe and the
+                mounted route test reproduce the lens crash; the fix passes it. The favicon 404 is TD-19.
+entry points    implementation apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts
+                                apps/editor/src/lib/authoring/experience/ExperienceSurface.svelte
+                                apps/editor/src/routes/project/[projectId]/spatial/+page.svelte
+                regressions     apps/editor/tests/lib/experience/experience-controller.test.ts
+                                apps/editor/tests/lib/experience/experience-controller-boundary.test.ts
+                                apps/editor/tests/lib/authoring/spatial-route-gesture.test.ts
+residuals       Generated View and Stop identities differ between runs, so the states that display them can
+                never be byte-identical; the 1180×820 comparison has no run-to-run control of its own. The
+                journey did not exercise Save Presentation's text, a travel transition, the Plan-reading capture
+                refusal, Head-entered Preview or guide-free Preview. Native touch, Safari and the first
+                server-rendered paint stay S11's rows. TD-19 (favicon 404). The scene-editing-surface Place
+                planner load flake did not recur. The two clean-worktree suite failures were linked-node_modules
+                artifacts, not the branch's.
+recovery        git show 050a30d9:docs/roadmap/r217-core-editor-stability/r217.s24-experience-controller/implementation-plan.md
+                · tag closed/r217.s24
 ```
-
-Planning label C04a. **Class:** Preparation for S25. Fixes Prepares D24 in the [drift register](../post-s10-convergence/drift-register.md).
-
-## 1. Outcome
-
-Experience commands move into a controller beside their surface, so R217.S25 can change where they appear without touching what they do. Nothing visible changes.
-
-## 2. Dependencies
-
-- No earlier slice.
-- Every consumed gate and required scope rechecked at this slice's trusted base.
-- The [rules for every slice](../post-s10-convergence/execution-plan.md#rules-for-every-slice) apply: shared-file order, browser widths, the interaction journey, rollback and contract edits.
-
-## 3. Scope
-
-**Behaviour:** [Experience](../post-s10-convergence/target-specification.md#experience).
-
-**Components:**
-
-| Part | Where | Change |
-| --- | --- | --- |
-| Controller | A new rune module beside `ExperienceSurface.svelte`, exposing one factory | Takes `services` and `snapshot`. Owns `run`, `createExperience`, `captureAndBind`, `createFirstGuide`, `rebindToCapturedView`, `savePresentation`, `setDefaultView`, `insertStop`, `moveStop` and `saveStop`; the derived `current`, `currentGuide`, `selectedPresentation`, `selectedStop`, `travelGaps`, `stopUsage`, `guideStops`, `viewsOf` and `filteredPresentations`; and `message`, `busy` and the drafts |
-| Surface | `apps/editor/src/lib/authoring/experience/ExperienceSurface.svelte` | Keeps markup and styles only, and reads the controller |
-| Unchanged | `apps/editor/src/lib/authoring/experience/commands.ts`, `apps/editor/src/lib/authoring/experience/focus.svelte.ts` and `apps/editor/src/lib/authoring/experience/travel-gap.ts` | Stay the command, focus and gap authorities |
-
-**Rules:**
-
-- Extraction only, with no visible change.
-- The controller has no DOM access and no second selection or Camera state.
-
-**Contracts this slice updates at cutover:**
-
-- None.
-
-## 4. Test cases
-
-- `experience-authoring.test.ts`, `experience-controllers.test.ts`, `first-guide.test.ts`, `preview-handover.test.ts` and `travel-gap.test.ts` pass with assertions unchanged.
-
-## 5. Browser acceptance
-
-- World↔Experience, Capture, View, Guide, Preview and return match before and after.
-
-## 6. Exclusions and stop conditions
-
-- Any visible change.
-
-Stop and report if correctness needs a planner, persisted-format, new snap geometry or Camera-authority change this plan does not name, or a decision the [owner rulings](../post-s10-convergence/owner-decisions.md) do not cover. The [Plan authoring audit](../post-s10-convergence/plan-authoring-audit.md) has the evidence behind this scope.

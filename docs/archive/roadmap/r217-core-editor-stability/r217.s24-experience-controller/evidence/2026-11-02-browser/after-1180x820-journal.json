@@ -1,0 +1,152 @@
+{
+	"tag": "after-1180x820",
+	"port": "5173",
+	"origin": "http://localhost:5173",
+	"width": 1180,
+	"height": 820,
+	"projectId": "project:5a27fb29-11ac-4c74-ba09-9b165efbca91",
+	"steps": [
+		{
+			"name": "signed-in",
+			"atMs": 739
+		},
+		{
+			"name": "starter-saved",
+			"atMs": 5330
+		},
+		{
+			"name": "shot:01-world",
+			"atMs": 6219
+		},
+		{
+			"name": "shot:02-experience-empty",
+			"atMs": 7115
+		},
+		{
+			"name": "shot:03-create-experience",
+			"atMs": 7822
+		},
+		{
+			"name": "shot:04-capture",
+			"atMs": 9563
+		},
+		{
+			"name": "shot:05-first-guide",
+			"atMs": 10392
+		},
+		{
+			"name": "stop-order",
+			"atMs": 12504,
+			"before": [
+				"1. Presentation 1\nDefault · hold 0s · sequence-next · cut\n↑\n↓",
+				"2. Presentation 1\nDefault · hold 0s · sequence-next · cut\n↑\n↓",
+				"3. Presentation 2\nDefault · hold 0s · sequence-next · cut\n↑\n↓"
+			],
+			"after": [
+				"1. Presentation 1\nDefault · hold 0s · sequence-next · cut\n↑\n↓",
+				"2. Presentation 2\nDefault · hold 0s · sequence-next · cut\n↑\n↓",
+				"3. Presentation 1\nDefault · hold 0s · sequence-next · cut\n↑\n↓"
+			]
+		},
+		{
+			"name": "shot:06-stops",
+			"atMs": 12577
+		},
+		{
+			"name": "shot:07-save-stop",
+			"atMs": 13575
+		},
+		{
+			"name": "default-view",
+			"atMs": 15467,
+			"options": [
+				"View 2",
+				"View 3"
+			]
+		},
+		{
+			"name": "shot:08-default-view",
+			"atMs": 15540
+		},
+		{
+			"name": "shot:09-preview",
+			"atMs": 18189
+		},
+		{
+			"name": "shot:10-preview-orbit",
+			"atMs": 19999
+		},
+		{
+			"name": "shot:11-return",
+			"atMs": 21064
+		},
+		{
+			"name": "shot:12-world-return",
+			"atMs": 21954
+		},
+		{
+			"name": "done",
+			"atMs": 21955
+		}
+	],
+	"pageErrors": [],
+	"consoleErrors": [
+		"Failed to load resource: the server responded with a status of 404 (Not Found)"
+	],
+	"requestFailures": [],
+	"screenshots": [
+		{
+			"name": "01-world",
+			"file": "after-1180x820-01-world.png"
+		},
+		{
+			"name": "02-experience-empty",
+			"file": "after-1180x820-02-experience-empty.png"
+		},
+		{
+			"name": "03-create-experience",
+			"file": "after-1180x820-03-create-experience.png"
+		},
+		{
+			"name": "04-capture",
+			"file": "after-1180x820-04-capture.png"
+		},
+		{
+			"name": "05-first-guide",
+			"file": "after-1180x820-05-first-guide.png"
+		},
+		{
+			"name": "06-stops",
+			"file": "after-1180x820-06-stops.png"
+		},
+		{
+			"name": "07-save-stop",
+			"file": "after-1180x820-07-save-stop.png"
+		},
+		{
+			"name": "08-default-view",
+			"file": "after-1180x820-08-default-view.png"
+		},
+		{
+			"name": "09-preview",
+			"file": "after-1180x820-09-preview.png"
+		},
+		{
+			"name": "10-preview-orbit",
+			"file": "after-1180x820-10-preview-orbit.png"
+		},
+		{
+			"name": "11-return",
+			"file": "after-1180x820-11-return.png"
+		},
+		{
+			"name": "12-world-return",
+			"file": "after-1180x820-12-world-return.png"
+		}
+	],
+	"overflow": {
+		"scrollWidth": 1180,
+		"innerWidth": 1180,
+		"horizontal": false
+	}
+}

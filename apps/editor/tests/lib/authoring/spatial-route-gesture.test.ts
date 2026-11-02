@@ -1467,6 +1467,43 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		expect(canvasProbe()?.dataset.heightPlane).toBe('false');
 	});
 
+	it('measures the lanes without observing an unmounted slot when the lens leaves World', async () => {
+		// jsdom has no ResizeObserver, so the lane effects return before observing. A
+		// browser's observer rejects anything that is not an Element; leaving World nulls
+		// the zoom slot's binding, which must read as "no lane", never `observe(null)`.
+		const observed: Element[] = [];
+		class StrictResizeObserver {
+			observe(element: unknown): void {
+				if (!(element instanceof Element)) throw new TypeError("Failed to execute 'observe' on 'ResizeObserver'");
+				observed.push(element);
+			}
+			unobserve(): void {}
+			disconnect(): void {}
+		}
+		vi.stubGlobal('ResizeObserver', StrictResizeObserver);
+		const errors: unknown[] = [];
+		const onError = (event: ErrorEvent): void => {
+			errors.push(event.error);
+		};
+		window.addEventListener('error', onError);
+		try {
+			target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
+			await frame();
+			target.querySelector<HTMLButtonElement>('[data-testid="lens-experience"]')!.click();
+			await frame();
+			expect(target.querySelector('[data-stage-zoom]')).toBeNull();
+			target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
+			await frame();
+			expect(target.querySelector('[data-stage-zoom]')).not.toBeNull();
+			expect(sheetNode()).not.toBeNull();
+			expect(errors).toEqual([]);
+			expect(observed.length).toBeGreaterThan(0);
+		} finally {
+			window.removeEventListener('error', onError);
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it('keeps a 44 px coarse target and names the snap while dragging', async () => {
 		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
 		expect(source).toContain('@media (pointer: coarse)');
