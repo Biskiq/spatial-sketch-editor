@@ -863,7 +863,7 @@
 	}
 
 	label > span {
-		color: #8f8a99;
+		color: var(--shell-ink-quiet, #9fb2a2);
 		font-size: 0.65rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -873,9 +873,9 @@
 	button {
 		font: inherit;
 		padding: 0.2rem 0.4rem;
-		border: 1px solid #635a6f;
+		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
 		border-radius: 0.3rem;
-		background: #292632;
+		background: var(--shell-forest-raised, #22503c);
 		color: inherit;
 	}
 
@@ -901,7 +901,7 @@
 	}
 
 	.hint {
-		color: #8f8a99;
+		color: var(--shell-ink-quiet, #9fb2a2);
 	}
 
 	.feedback {
