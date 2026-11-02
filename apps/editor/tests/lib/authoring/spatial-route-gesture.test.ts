@@ -1767,3 +1767,181 @@ describe('R217.S22 — Card on the mounted route', () => {
 		expect(foldButton().textContent).toBe('Expand');
 	});
 });
+
+/**
+ * R217.S23 — the Ink row, its upward disclosures and the constrained Index, mounted. Every
+ * Ink mode and typed path is driven through the palette's own controls, so a row that
+ * lost one would fail here as a missing hook or a chain that did not move.
+ */
+describe('R217.S23 — Ink row, disclosures and the constrained Index on the mounted route', () => {
+	function dockKey(id: string): HTMLButtonElement {
+		const found = target.querySelector<HTMLButtonElement>(`[data-dock-tool="${id}"]`);
+		if (found === null) throw new Error(`Missing dock key ${id}`);
+		return found;
+	}
+	async function openInk(): Promise<void> {
+		dockKey('layout-ink').click();
+		await settled();
+	}
+	/** One toggle or key by its hook, clicked and then flushed. */
+	async function press(selector: string): Promise<HTMLElement> {
+		const node = target.querySelector<HTMLElement>(selector);
+		if (node === null) throw new Error(`Missing ${selector}`);
+		node.click();
+		await settled();
+		return node;
+	}
+	function typeInto(selector: string, value: string): void {
+		const field = target.querySelector<HTMLInputElement>(selector);
+		if (field === null) throw new Error(`Missing ${selector}`);
+		field.value = value;
+		field.dispatchEvent(new Event('input', { bubbles: true }));
+	}
+
+	it('keeps every Wall key in the row, with the typed X/Z drawn only once its disclosure opens', async () => {
+		await openInk();
+		const row = target.querySelector('[data-layout-ink-palette] .keys');
+		expect(row).not.toBeNull();
+		for (const hook of [
+			'[data-ink-reading-wall]',
+			'[data-ink-reading-opening]',
+			'[data-ink-wall-mode="line"]',
+			'[data-ink-wall-mode="box"]',
+			'[data-ink-finish]',
+			'[data-ink-close]',
+			'[data-ink-backtrack]',
+			'[data-ink-cancel]',
+			'[data-ink-point-toggle]',
+			'[data-ink-options-toggle]'
+		]) {
+			expect(row!.querySelector(hook), hook).not.toBeNull();
+		}
+		// Typed X/Z is not drawn over the drawing until the creator asks for it.
+		expect(target.querySelector('[data-ink-x]')).toBeNull();
+		const toggle = await press('[data-ink-point-toggle]');
+		expect(toggle.getAttribute('aria-expanded')).toBe('true');
+		expect(target.querySelector('[data-ink-x]')).not.toBeNull();
+		expect(target.querySelector('[data-ink-z]')).not.toBeNull();
+	});
+
+	it('draws the typed path through the row, and Finish, Backtrack and Cancel act on the chain', async () => {
+		await openInk();
+		await press('[data-ink-point-toggle]');
+		typeInto('[data-ink-x]', '2');
+		typeInto('[data-ink-z]', '-1');
+		await press('[data-ink-add-point]');
+		expect(inkSurface()?.snapshot().points).toHaveLength(1);
+		typeInto('[data-ink-x]', '5');
+		typeInto('[data-ink-z]', '-1');
+		await press('[data-ink-add-point]');
+		expect(inkSurface()?.snapshot().points).toHaveLength(2);
+
+		// Backtrack removes the last typed point through the row's own key.
+		await press('[data-ink-backtrack]');
+		expect(inkSurface()?.snapshot().points).toHaveLength(1);
+		// Cancel ends the live chain and leaves the tool armed, with nothing written.
+		const canonical = facade().snapshot().canonicalJson;
+		await press('[data-ink-cancel]');
+		expect(inkSurface()?.snapshot().points).toHaveLength(0);
+		expect(facade().snapshot().canonicalJson).toBe(canonical);
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+	});
+
+	it('finishes a typed chain through the row key as one history step', async () => {
+		await openInk();
+		await press('[data-ink-point-toggle]');
+		typeInto('[data-ink-x]', '2');
+		typeInto('[data-ink-z]', '-1');
+		await press('[data-ink-add-point]');
+		typeInto('[data-ink-x]', '5');
+		typeInto('[data-ink-z]', '-1');
+		await press('[data-ink-add-point]');
+		const canonical = facade().snapshot().canonicalJson;
+		const finish = target.querySelector<HTMLButtonElement>('[data-ink-finish]')!;
+		expect(finish.disabled).toBe(false);
+		finish.click();
+		await vi.waitFor(() => expect(facade().snapshot().canonicalJson).not.toBe(canonical));
+		await settled();
+		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
+		expect(facade().session.task()?.kind).toBe('layout-ink');
+	});
+
+	it('switches to Box with Cancel as its only command, and back to Line with the chain keys', async () => {
+		await openInk();
+		await press('[data-ink-wall-mode="box"]');
+		expect(target.querySelector('[data-ink-point-toggle]')).toBeNull();
+		expect(target.querySelector('[data-ink-finish]')).toBeNull();
+		expect(target.querySelector('[data-ink-cancel]')).not.toBeNull();
+		expect(target.querySelector('[data-ink-box-size]')).not.toBeNull();
+		await press('[data-ink-wall-mode="line"]');
+		expect(target.querySelector('[data-ink-finish]')).not.toBeNull();
+		expect(target.querySelector('[data-ink-point-toggle]')).not.toBeNull();
+	});
+
+	it('opens one disclosure at a time, and a reading change closes whichever is open', async () => {
+		await openInk();
+		await press('[data-ink-point-toggle]');
+		expect(target.querySelector('[data-ink-x]')).not.toBeNull();
+		await press('[data-ink-options-toggle]');
+		expect(target.querySelector('[data-ink-x]')).toBeNull();
+		expect(target.querySelector('[data-ink-thickness]')).not.toBeNull();
+		await press('[data-ink-reading-opening]');
+		expect(target.querySelector('[data-ink-thickness]')).toBeNull();
+		expect(target.querySelector('[data-ink-finish]')).toBeNull();
+		expect(target.querySelector('[data-ink-options-toggle]')!.getAttribute('aria-expanded')).toBe('false');
+	});
+
+	it('refuses an invalid Wall option in words, and accepts a valid one, through the Options disclosure', async () => {
+		await openInk();
+		await press('[data-ink-options-toggle]');
+		const thickness = target.querySelector<HTMLInputElement>('[data-ink-thickness]')!;
+		thickness.value = 'not-a-number';
+		thickness.dispatchEvent(new Event('input', { bubbles: true }));
+		thickness.dispatchEvent(new Event('change', { bubbles: true }));
+		await settled();
+		expect(target.querySelector('[data-layout-ink-palette] [role="alert"]')?.textContent).toContain('Thickness');
+		thickness.value = '0.25';
+		thickness.dispatchEvent(new Event('input', { bubbles: true }));
+		thickness.dispatchEvent(new Event('change', { bubbles: true }));
+		await settled();
+		expect(target.querySelector('[data-layout-ink-palette] [role="alert"]')).toBeNull();
+	});
+
+	it('keeps the Opening measures behind their Options disclosure, placed by the same controller', async () => {
+		await openInk();
+		await press('[data-ink-reading-opening]');
+		expect(target.querySelector('[data-opening-width]')).toBeNull();
+		await press('[data-ink-options-toggle]');
+		await vi.waitFor(() => expect(target.querySelector('[data-opening-width]')).not.toBeNull());
+		expect(target.querySelector('[data-opening-kind]')).not.toBeNull();
+		expect(target.querySelector('[data-opening-offset]')).not.toBeNull();
+		// The Opening reading has no Wall chain keys in its row.
+		expect(target.querySelector('[data-ink-finish]')).toBeNull();
+	});
+
+	it('draws the Index closed below 1280 px, opens it as a sheet with a scrim, and closes it by the scrim', async () => {
+		// Remount the same route at a constrained width.
+		unmount(component);
+		target.remove();
+		vi.stubGlobal('matchMedia', (query: string) => ({
+			matches: query.includes('max-width: 1279px'),
+			addEventListener() { },
+			removeEventListener() { }
+		}));
+		await mountRoute();
+		await selectFirstWall();
+		const index = () => target.querySelector('[data-plate-landmark="index"]')!;
+		expect(index().hasAttribute('hidden')).toBe(true);
+		expect(target.querySelector('[data-index-scrim]')).toBeNull();
+
+		await press('[data-head-index]');
+		expect(index().hasAttribute('hidden')).toBe(false);
+		expect(target.querySelector('[data-index-scrim]')).not.toBeNull();
+
+		// The scrim is a close target only: it closes the sheet and keeps the selection.
+		await press('[data-index-scrim]');
+		expect(index().hasAttribute('hidden')).toBe(true);
+		expect(target.querySelector('[data-index-scrim]')).toBeNull();
+		expect(facade().selection()?.sourceId).toBe(wallId);
+	});
+});

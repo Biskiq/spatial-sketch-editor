@@ -37,3 +37,24 @@ describe('Card and Index coarse-pointer targets (R217.S21)', () => {
 		expect(source).toMatch(/\.item-row \{[^}]*min-height: var\(--shell-control-height, 32px\)/);
 	});
 });
+
+describe('Ink row and instrument host coarse-pointer targets (R217.S23)', () => {
+	it('gives the instrument close control 44 × 44 CSS px under a coarse pointer', () => {
+		const source = readFileSync('src/lib/authoring/stage/shell/StageInstrumentHost.svelte', 'utf8');
+		const block = coarseBlockOf(source);
+		expect(block).toContain('.close');
+		expect(block).toMatch(/min-width:\s*var\(--shell-touch-target, 44px\)/);
+		expect(block).toMatch(/min-height:\s*var\(--shell-touch-target, 44px\)/);
+	});
+
+	it('gives every Ink key, typed field and the typed submit 44 × 44 CSS px, and leaves the hidden radio alone', () => {
+		const source = readFileSync('src/lib/authoring/adapters/layout/LayoutInkPalette.svelte', 'utf8');
+		const block = coarseBlockOf(source);
+		for (const selector of ['.key', 'input:not(.radio)', '.typed-point button']) {
+			expect(block).toContain(selector);
+		}
+		expect(block).toMatch(/min-width:\s*var\(--shell-touch-target, 44px\)/);
+		expect(block).toMatch(/min-height:\s*var\(--shell-touch-target, 44px\)/);
+		expect(source).toMatch(/\.key \{[^}]*min-height: var\(--shell-control-height, 32px\)/);
+	});
+});

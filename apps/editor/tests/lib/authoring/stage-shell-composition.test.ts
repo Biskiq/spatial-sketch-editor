@@ -417,3 +417,165 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		expect(sheet).toContain('export const PIN_HINT_MS');
 	});
 });
+
+/**
+ * R217.S23 — the Ink row, the constrained-width Index and its scrim. The row and the scrim
+ * are composition decisions (a z-order, a bounded span, a material), so source inspection
+ * is the proof. The mounted route suite proves the behaviour they enable, and the browser
+ * record measures the rectangles and the ground.
+ */
+const SHELL_ROLES = readSource('apps/editor/src/lib/authoring/stage/shell/shell-roles.css');
+const INSTRUMENT_HOST = 'apps/editor/src/lib/authoring/stage/shell/StageInstrumentHost.svelte';
+const INK_PALETTE = 'apps/editor/src/lib/authoring/adapters/layout/LayoutInkPalette.svelte';
+const OPENING_PALETTE = 'apps/editor/src/lib/authoring/adapters/layout/LayoutOpeningPalette.svelte';
+const SCENE_INSTRUMENT = 'apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte';
+const CARD = 'apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte';
+
+/** One shell role's colour, read from the shipped map so the test cannot drift from it. */
+function shellToken(name: string): string {
+	const match = SHELL_ROLES.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6});`));
+	if (match === null) throw new Error(`the shell roles define no --${name}`);
+	return match[1]!;
+}
+
+/** WCAG 2.x relative luminance of an sRGB hex colour. */
+function relativeLuminance(hex: string): number {
+	const value = parseInt(hex.slice(1), 16);
+	const channels = [(value >> 16) & 255, (value >> 8) & 255, value & 255].map((channel) => {
+		const srgb = channel / 255;
+		return srgb <= 0.03928 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+	});
+	return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+}
+
+/** The WCAG contrast ratio between two hex colours. */
+function contrastRatio(first: string, second: string): number {
+	const [light, dark] = [relativeLuminance(first), relativeLuminance(second)].sort((a, b) => b - a);
+	return (light! + 0.05) / (dark! + 0.05);
+}
+
+/** `top` at `alpha` composited over `bottom`, as the hex the eye sees. */
+function compositeOver(top: string, alpha: number, bottom: string): string {
+	const mix = (index: number): string => {
+		const a = parseInt(top.slice(1 + index * 2, 3 + index * 2), 16);
+		const b = parseInt(bottom.slice(1 + index * 2, 3 + index * 2), 16);
+		return Math.round(a * alpha + b * (1 - alpha)).toString(16).padStart(2, '0');
+	};
+	return `#${mix(0)}${mix(1)}${mix(2)}`;
+}
+
+describe('Ink row, constrained Index and scrim (R217.S23)', () => {
+	it('draws the instrument as one dock-material row, with no caption or titled panel', () => {
+		const host = codeOf(INSTRUMENT_HOST);
+		expect(host).not.toContain('World Instrument');
+		expect(host).not.toContain('eyebrow');
+		expect(host).toContain('background: var(--shell-forest, #11291f);');
+		// The adapter's content is the body; its facts stay on the head's tooltip, not in a block.
+		expect(host).not.toContain('contributed-facts');
+		expect(host).not.toContain('contributed-summary');
+		// A tall instrument scrolls inside its own body rather than growing over the Stage.
+		expect(host).toMatch(/max-height: min\(24rem, 60vh\);/);
+		expect(host).toMatch(/\.instrument-body \{[^}]*overflow: auto;/);
+	});
+
+	it('draws the palette, Opening and Objects instruments only from shell roles, with no retired literal', () => {
+		for (const file of [INSTRUMENT_HOST, INK_PALETTE, OPENING_PALETTE, SCENE_INSTRUMENT]) {
+			expect(codeOf(file), file).not.toMatch(/#8f8a99|#635a6f|#292632|#241f2b/);
+		}
+	});
+
+	it('ends the constrained Index above the lower column and drops the viewport-sized shadow', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).not.toContain('100vmax');
+		expect(route).toContain('bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);');
+		expect(route).toMatch(/\.index-scrim \{[^}]*bottom: calc\(0\.75rem \+ var\(--lower-column-height, 0px\)\);/);
+		// The lane variables are published on the body that holds the Index and the scrim.
+		expect(route).toMatch(/class="editor-body"\s*\n\s*style=\{`--lower-column-height/);
+	});
+
+	it('stacks the scrim beneath the dock, the drafting controls and the Card, with the Index above all', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const card = codeOf(CARD);
+		const z = (source: string, selector: string): number => {
+			const match = source.match(new RegExp(`${selector} \\{[^}]*z-index: (\\d+);`));
+			if (match === null) throw new Error(`no z-index on ${selector}`);
+			return Number(match[1]);
+		};
+		const scrim = z(route, '\\.index-scrim');
+		const lower = z(route, '\\.lower-column');
+		const zoom = z(route, '\\.stage-zoom-slot');
+		const cardLayer = z(card, '\\.card');
+		const index = z(route, ':global\\(\\.plate-index\\)');
+		expect(scrim).toBeLessThan(lower);
+		expect(lower).toBeLessThan(zoom);
+		expect(zoom).toBeLessThan(cardLayer);
+		expect(cardLayer).toBeLessThan(index);
+	});
+
+	it('renders the scrim only for an open constrained Index, as a pointer-only close target', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).toContain('{#if preview === null && narrowShell && indexOpen}');
+		expect(route).toContain('onclick={() => (indexOpen = false)}');
+		expect(route).toContain('tabindex="-1"');
+	});
+
+	it('starts the Index collapsed below 1280 px as session state, not as a CSS-only hide', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).toContain("window.matchMedia('(max-width: 1279px)').matches;");
+		expect(route).toContain('let indexOpen = $state(!constrainedAtStart);');
+		expect(route).toContain('let narrowShell = $state(constrainedAtStart);');
+	});
+
+	it('keeps every Ink, Opening and Objects control inside the row or its upward disclosure', () => {
+		const palette = codeOf(INK_PALETTE);
+		for (const hook of [
+			'data-ink-reading=',
+			'data-ink-wall-mode=',
+			'data-ink-finish',
+			'data-ink-close',
+			'data-ink-backtrack',
+			'data-ink-cancel',
+			'data-ink-point-toggle',
+			'data-ink-options-toggle',
+			'data-ink-x',
+			'data-ink-z',
+			'data-ink-add-point',
+			'data-ink-thickness',
+			'data-ink-height'
+		]) {
+			expect(palette, hook).toContain(hook);
+		}
+		// Typed X/Z and the options are disclosed upward, one at a time, from the row.
+		expect(palette).toContain("disclosed === 'point'");
+		expect(palette).toContain("disclosed === 'options'");
+		expect(palette).toMatch(/aria-expanded=\{disclosed === 'point'\}/);
+	});
+
+	it('meets the contrast floor for every new row, scrim and edge against the pale ground', () => {
+		const ground = shellToken('shell-paper');
+		const forest = shellToken('shell-forest');
+		const raised = shellToken('shell-forest-raised');
+		const ink = shellToken('shell-ink-light');
+		const quiet = shellToken('shell-ink-quiet');
+		const gold = shellToken('shell-gold');
+		const index = shellToken('shell-index');
+		const hairline = shellToken('shell-hairline');
+		// Scrim: the forest tint at 55% over the pale ground, as the Stage shows under the sheet.
+		const scrimmed = compositeOver(forest, 0.55, ground);
+		const pairs: readonly { readonly name: string; readonly first: string; readonly second: string; readonly floor: number }[] = [
+			{ name: 'row ink on row (text)', first: ink, second: forest, floor: 4.5 },
+			{ name: 'quiet ink on row (text)', first: quiet, second: forest, floor: 4.5 },
+			{ name: 'armed key ink on armed key (text)', first: forest, second: ink, floor: 4.5 },
+			{ name: 'Index text on Index stone (text)', first: forest, second: index, floor: 4.5 },
+			{ name: 'key edge on row (icon and edge)', first: quiet, second: forest, floor: 3 },
+			{ name: 'armed key edge on row (edge)', first: ink, second: forest, floor: 3 },
+			{ name: 'focus ring on row (edge)', first: gold, second: forest, floor: 3 },
+			{ name: 'row fill against the pale ground (edge)', first: forest, second: ground, floor: 3 },
+			{ name: 'row hairline against the pale ground (edge)', first: hairline, second: ground, floor: 3 },
+			{ name: 'Index stone against the scrimmed ground (edge)', first: index, second: scrimmed, floor: 3 }
+		];
+		for (const pair of pairs) {
+			expect(contrastRatio(pair.first, pair.second), pair.name).toBeGreaterThanOrEqual(pair.floor);
+		}
+	});
+});
