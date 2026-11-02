@@ -1,6 +1,6 @@
 # R217.S24 — acceptance record: Experience controller
 
-**Slice:** R217.S24 · **Status:** approved (plan); implementation evidence recorded, independent review not yet performed · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
+**Slice:** R217.S24 · **Status:** approved (plan); implementation evidence recorded, one review evidence finding corrected, verdict not yet recorded · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [R217](../README.md) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/acceptance.md)
 
 **AUTHORITY: NONE.** This record reports what was implemented, the gates run, the browser evidence, the pixel comparison and the residuals. The [phase slice register](../README.md#slice-register) owns status, and the verdict belongs to the independent review.
 
@@ -99,7 +99,9 @@ Each pass logs exactly one console error: `GET /favicon.ico` 404 (TD-19, pre-exi
 
 Half the states are byte-identical at both widths. The states that differ are the ones whose text contains **generated identities** — the captured View's UUID in the Presentation card and the `Stop <id>` heading — which are new on every pass, and the differing pixels sit in exactly those text runs (bounding boxes are in the JSON). The 1-px control edges in state 04 are antialiasing.
 
-**Run-to-run control.** A second pass of the *same* tree (`after2-1440x900`) was compared against the first: 04 **2342** px, 05 **6877**, 06/07 **8983**, 08/11 **7065**, every other state **0**. Every before/after number is therefore at or below the noise of re-running one tree, so no state carries a difference that can be attributed to the extraction.
+**Run-to-run control, 1440×900.** A second pass of the *same* tree (`after2-1440x900`) was compared against the first. It differs in the same six states, inside the same bounding boxes, at the same magnitude: 04 **2342** px (0.181%), 05 **6877** (0.531%), 06/07 **8983** (0.693%), 08/11 **7065** (0.545%), every other state **0**. At this width each before/after count is at or below the same-tree count for that state (2229/2342, 6709/6877, 8868/8983, 6886/7065), so no state here carries a difference that can be attributed to the extraction.
+
+**No control pass was run at 1180×820.** The second pass was 1440×900 only, so the 1180×820 counts have no measured noise floor and are **not** claimed to sit under one. What supports them is the bounding boxes: each differing region is a card's text block — 04 `[391,515,557,542]`, 05 `[390,422,959,577]`, 06/07 `[390,441,960,579]`, 08/11 `[390,441,960,554]` — the same run of generated identity text the 1440×900 control isolates, and every state outside those runs is byte-identical at 1180×820 as well. A repeat pass at this width would make the comparison symmetric; it was not run.
 
 Comparison records: [before vs after, 1440×900](../../../archive/roadmap/r217-core-editor-stability/r217.s24-experience-controller/evidence/2026-11-02-browser/compare-before-vs-after-1440x900.json) · [before vs after, 1180×820](../../../archive/roadmap/r217-core-editor-stability/r217.s24-experience-controller/evidence/2026-11-02-browser/compare-before-vs-after-1180x820.json) · [after vs a second after, 1440×900](../../../archive/roadmap/r217-core-editor-stability/r217.s24-experience-controller/evidence/2026-11-02-browser/compare-after-vs-after2-1440x900.json).
 
@@ -131,4 +133,6 @@ Probe records: [unpatched](../../../archive/roadmap/r217-core-editor-stability/r
 
 ## Independent review
 
-Not yet performed. The coordinator's review of `bc24b72c` is the next step; this record claims no verdict.
+The coordinator's review of `bc24b72c` found **no production-code defects** in the extraction or the lens fix. It raised one evidence finding, **P2**, on the pixel-control paragraph above: the run-to-run control existed only at 1440×900 while the conclusion was stated for both widths. The paragraph is corrected — the claim is scoped to the width that was measured, and 1180×820 states plainly that it has no control pass. The review separately reproduced the affected tests, the 210 architecture tests, the empty diffs of the preserved authorities and the five plan test files, and all 24 screenshot comparison counts.
+
+No verdict is recorded here. The verdict belongs to the reviewer, against this corrected revision.
