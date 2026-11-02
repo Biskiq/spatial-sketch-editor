@@ -204,11 +204,16 @@ Anchors, computed before the close-out commit:
 plan        44bc0c5ea915a9988f51d62f24cfd6461c8e507f   last commit with the full plan body (reachable on main); the stub
                                                        at its path names this anchor
 acceptance  b32bee31bf2b82f71f7e89cd89e2e924cfe81d81   the full record before this close-out; kept in full at its path
-tag         closed/r217.s23 -> b32bee31               created and pushed after the merge; the tag target keeps both
-                                                       anchors reachable (the plan anchor is an ancestor)
-merge       P1 merge of PR #254 with `--merge`; the merge-commit SHA and the post-merge verification are recorded
-            by the post-merge anchors follow-up
+tag         closed/r217.s23 -> b32bee31               annotated tag object `f00a7e81d7242d8e6045940593367fd7ba8258e6`,
+                                                       pushed to origin; the tag target keeps both anchors reachable
+merge       P1 merge commit `6cfe0fb79da72962aecb8a95aa710b7d32b36966` (PR #254, `--merge`; parents `23d6d9ae`
+            and `7dc67c27`, the close-out commit)
 ```
+
+Post-merge verification, run on `main` at `6cfe0fb7`:
+
+- Both anchors are ancestors of `main`: `44bc0c5e` (plan) and `b32bee31` (acceptance). `git show` of each returns its full body at its path (the plan at `44bc0c5e`, the record at `b32bee31`).
+- The tag `closed/r217.s23` is annotated, peels to `b32bee31`, and keeps `44bc0c5e` reachable. It is on origin.
 
 ```text
 CLOSEOUT PRESERVATION — R217.S23 (2026-11-01)
@@ -217,7 +222,7 @@ reference promotions:            1   the lower column's Height Sheet lane inset,
 renderable evidence archived:    178 files (160 PNG, 18 JSON), moved byte-identical with git mv
 evidence stubs / manifests:      1   docs/archive/roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/evidence/CLOSED.md
 transient artifacts removed:     0
-historical anchors:              plan 44bc0c5e; acceptance b32bee31; tag closed/r217.s23 -> b32bee31 (annotated; pushed after the merge)
+historical anchors:              plan 44bc0c5e; acceptance b32bee31; tag closed/r217.s23 -> b32bee31 (annotated, object f00a7e81; pushed to origin)
 new live -> archive prose links: 0
 manual-owed verification rows:   2   native touch and Safari (S11's rows); the first server-rendered paint before hydration (not measured)
 remaining deferred items:        12  the residuals above: S11 rows, TD-16, TD-18, TD-19, and the accepted residuals (the Index on a left Sheet is closed by design)
