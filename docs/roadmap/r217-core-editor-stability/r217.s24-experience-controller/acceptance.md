@@ -149,9 +149,14 @@ plan        050a30d9418a9a910a320388ae2ea4d879f1b34c   last commit with the full
 acceptance  d38fc4c3ec9b512f943024aec06f1fd8c6bf4352   the full record before this close-out; kept in full at its path
 tag         closed/r217.s24 -> d38fc4c3               annotated tag, pushed after the merge; the tag target keeps both
                                                        anchors reachable (the plan anchor is an ancestor)
-merge       P1 merge of PR #256 with `--merge`; the merge-commit SHA and the post-merge verification are recorded
-            by the post-merge anchors follow-up
+merge       P1 merge commit `da278f3a337746a4219b9da615db9979772325f8` (PR #256, `--merge`; parents `668eeb66`
+            and `28f0e674`, the close-out commit)
 ```
+
+Post-merge verification, run on `main` at `da278f3a`:
+
+- Both anchors are ancestors of `main`: `050a30d9` (plan) and `d38fc4c3` (acceptance). `git show` of each returns its full body at its path (the plan at `050a30d9`, the record at `d38fc4c3`).
+- The tag `closed/r217.s24` is annotated, peels to `d38fc4c3`, and keeps `050a30d9` reachable. It is on origin.
 
 ```text
 CLOSEOUT PRESERVATION — R217.S24 (2026-11-02)
