@@ -79,6 +79,15 @@ The coarse cells emulate touch and don't replace the native-touch cell: S12–S1
 7. **Bundle:** the Stage route br delta since the phase base is reported. No budget is claimed.
    Performance is not measured; the mandate is
    [suspended](../../../reference/decisions/performance-mandate-suspension-2026-10-28.md).
+8. **Exposure ledger.** Every visible control that is disabled because it isn't built yet gets one
+   row: the control, its owning track, and its exit condition (build it or remove it). The first rows
+   are the World Card placeholders accepted with PR #258: the disabled `Soon` items in `•••` (Face
+   this wall / opening / this, Unroll the room, Section through here, Paint… / Paint floor…, Present
+   this in Experience) and the disabled Base and Top fields under More. A placeholder with no owner
+   or exit condition is reported, not accepted.
+9. **Red-dash watch.** Red dashes mean both *marked for erasing* (Eraser) and *refused* (draft or
+   proposal, darker refusal ink with a reason tag). A journey that uses the Eraser and drawing back
+   to back records whether the two still read apart.
 
 ## 5. Journeys
 

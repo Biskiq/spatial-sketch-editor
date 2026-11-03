@@ -51,7 +51,7 @@ Experience uses the same Head, Index, Card and lower edge as World instead of a 
 
 **Contracts this slice updates at cutover:**
 
-- None.
+- The [shell contract](../../../reference/design-system/editor-shell-and-visual-system.md#experience-expression-081)'s Experience sections, in the same PR, so they describe Experience in the shared homes when S25 merges.
 
 ## 4. Test cases
 

@@ -1,6 +1,6 @@
 # World shell recovery — owner review pass 1
 
-**Date:** 2026-11-02. **Status:** implementation delivered for owner inspection; non-browser functional verification is recorded below; owner visual acceptance pending.
+**Date:** 2026-11-02. **Status:** implemented and accepted by the owner 2026-11-02 (§8); merged with PR #258. Where [review pass 2](./review-pass-2-plan.md) or the [shell contract](../../../reference/design-system/editor-shell-and-visual-system.md) differ, they supersede this plan.
 
 This is the separate plan and acceptance home for the owner's first manual review of the recovered World shell. It covers all 24 supplied images and the interview answers. It does not record the proposed changes as shipped or the current shell as accepted. The [earlier implementation plan](./implementation-plan.md) remains the baseline for unaffected behavior; this document replaces its presentation directions wherever the owner has corrected them here. Do not append this review or its acceptance to that older plan.
 
@@ -184,9 +184,9 @@ Visual/UX acceptance belongs exclusively to the owner inspecting the working edi
 | Functional implementation checks | Passed 2026-11-02: `npm run check` (0 errors, 0 warnings), `npm run build`, `npm test` (271 files, 3,510 tests; all editor lanes), `npm run check:layout-core` and `npm run check:project-model`. Mounted DOM coverage includes dismissal, inline rename, one writer, cancelled drafts, history and Save isolation. Domain coverage includes planar height preservation, resize intent, accepted support projection, concave Room labels and joined/opening-bearing contour extraction. No browser was launched and no capture was taken, per owner instruction. |
 | Owner World visual/UX acceptance | Accepted by owner on 2026-11-02. The items reopened in [review pass 2](./review-pass-2-plan.md) were accepted there (rounds 2 and 3). |
 | Experience design acceptance | Not reviewed; outside this pass. |
-| Capability deferrals | Durable Auto/named/Free assignment and real Level navigation remain deferred under §6. Verified Auto projection is implemented through `resolveSceneSupport`, admitted contact metadata and unambiguous Room witnesses. Native forms, catalogue/primitive objects and Rooms have no contributed persisted name writer; their titles do not offer a fake rename. Wall and Opening inline rename use the existing writer. Removing fixed-endpoint radios retains the existing default anchor; choosing the other fixed endpoint remains an interaction gap. |
+| Capability deferrals | Durable Auto/named/Free assignment and real Level navigation remain deferred under §6. Verified Auto projection is implemented through `resolveSceneSupport`, admitted contact metadata and unambiguous Room witnesses. Rename covers Walls, Openings, Rooms (`layout-entity-name`) and every Scene entity, native forms and catalogue/primitive objects included (`set-name`), landed in [review pass 2](./review-pass-2-plan.md) §5. Removing fixed-endpoint radios retains the existing default anchor; choosing the other fixed endpoint remains an interaction gap. |
 
-The delivery records implementation and check outcomes here. The owner's visual acceptance statement/date remains pending until explicitly given. A proposal acceptance or a passing test suite must not be recorded as visual acceptance. Keep further corrections folded into their owning sections rather than appending a chronological review diary.
+The delivery records implementation and check outcomes here. The owner gave visual acceptance on 2026-11-02 (table above); a proposal acceptance or a passing test suite was not, and must not be, recorded as visual acceptance. Keep further corrections folded into their owning sections rather than appending a chronological review diary.
 
 ### Reconciliation after owner visual acceptance
 
